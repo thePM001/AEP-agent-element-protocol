@@ -1,0 +1,715 @@
+aep_version: "1.1"
+schema_revision: 1
+
+# ===========================================================================
+# AEP-FCR: Frontend Component Registry
+# Layer 2: Behaviour
+# Contains NO visual properties. All styling delegated via skin_binding.
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# STRUCTURAL CONTAINERS (Shell + Panels)
+# ---------------------------------------------------------------------------
+
+SH-00001:
+  label: "App Shell"
+  category: layout
+  function: "Root application container that holds all top-level panels."
+  component_file: "App.jsx"
+  parent: null
+  skin_binding: "shell"
+  states:
+    default: "Renders full application layout"
+  actions: []
+  events: {}
+  constraints:
+    - "Must be the sole root element with no parent"
+    - "Must always occupy 100vw x 100vh"
+  data_source: "None"
+  user_interaction: "Container only"
+
+PN-00001:
+  label: "Header Panel"
+  category: layout
+  function: "Top-level header bar containing logo, action buttons and user avatar."
+  component_file: "HeaderPanel.jsx"
+  parent: "SH-00001"
+  skin_binding: "panel_header"
+  states:
+    default: "Displays header contents"
+  actions: []
+  events: {}
+  constraints:
+    - "Must always be visible at all breakpoints"
+    - "Must remain fixed at the top of SH-00001"
+  data_source: "None"
+  user_interaction: "Container only"
+
+PN-00002:
+  label: "Sidebar Navigation"
+  category: layout
+  function: "Left-side navigation panel containing route links."
+  component_file: "Sidebar.jsx"
+  parent: "SH-00001"
+  skin_binding: "panel_sidebar"
+  states:
+    default: "Visible on medium and large viewports"
+    collapsed: "Hidden on base (mobile) viewport"
+  actions: []
+  events: {}
+  constraints:
+    - "Must be hidden at base breakpoint"
+    - "Must be visible at vp-md and vp-lg breakpoints"
+  data_source: "None"
+  user_interaction: "Container only"
+
+PN-00003:
+  label: "Main Content Area"
+  category: layout
+  function: "Primary content region containing toolbar, data grid and widgets."
+  component_file: "MainContent.jsx"
+  parent: "SH-00001"
+  skin_binding: "panel_main"
+  states:
+    default: "Displays main content"
+  actions: []
+  events: {}
+  constraints:
+    - "Must expand to fill available space between header, sidebar and footer"
+    - "Must occupy full width when sidebar is hidden (base breakpoint)"
+  data_source: "None"
+  user_interaction: "Container only"
+
+PN-00004:
+  label: "Footer Status Bar"
+  category: layout
+  function: "Bottom bar displaying connection status and version information."
+  component_file: "Footer.jsx"
+  parent: "SH-00001"
+  skin_binding: "panel_footer"
+  states:
+    default: "Displays footer contents"
+  actions: []
+  events: {}
+  constraints:
+    - "Must always be visible at all breakpoints"
+    - "Must remain fixed at the bottom of SH-00001"
+  data_source: "None"
+  user_interaction: "Container only"
+
+# ---------------------------------------------------------------------------
+# HEADER COMPONENTS
+# ---------------------------------------------------------------------------
+
+CP-00001:
+  label: "App Logo"
+  category: layout
+  function: "Displays the application brand mark in the header."
+  component_file: "HeaderPanel.jsx"
+  parent: "PN-00001"
+  skin_binding: "logo"
+  states:
+    default: "Displays logo image"
+  actions: []
+  events:
+    click: "navigate('/')"
+  constraints:
+    - "Must always be the first child of PN-00001"
+    - "Must remain visible at all breakpoints"
+  data_source: "Static asset"
+  user_interaction: "Click to return to dashboard"
+
+CP-00002:
+  label: "Import Button"
+  category: action
+  function: "Opens file dialog to import CSV/XLSX files into the engine."
+  component_file: "HeaderPanel.jsx"
+  parent: "PN-00001"
+  skin_binding: "button_primary"
+  states:
+    default: "Idle, clickable"
+    hover: "Accent highlight"
+    loading: "Disabled, shows spinner while file is being imported"
+    disabled: "Inactive when no file system access (web mode)"
+  actions:
+    - "open_file_dialog"
+    - "trigger_import"
+  events:
+    click: "invoke('import_file')"
+    dragover: "show_drop_overlay"
+  constraints:
+    - "Must always be visible in header"
+    - "Must be disabled during active import"
+    - "Must show loading state while engine processes file"
+  data_source: "None (triggers engine command)"
+  user_interaction: "Click to import or drag file onto button"
+  keyboard_shortcut: "Ctrl+O"
+
+CP-00003:
+  label: "Export Button"
+  category: action
+  function: "Exports the current dataset to a downloadable file."
+  component_file: "HeaderPanel.jsx"
+  parent: "PN-00001"
+  skin_binding: "button_secondary"
+  states:
+    default: "Idle, clickable"
+    hover: "Border accent highlight"
+    loading: "Disabled, shows spinner during export"
+    disabled: "Inactive when no data is loaded"
+  actions:
+    - "trigger_export"
+  events:
+    click: "invoke('export_file')"
+  constraints:
+    - "Must be disabled when CZ-00001 contains zero rows"
+    - "Must show loading state during export"
+  data_source: "None (triggers engine command)"
+  user_interaction: "Click to export"
+  keyboard_shortcut: "Ctrl+Shift+E"
+
+CP-00004:
+  label: "User Avatar Menu"
+  category: action
+  function: "Displays the current user avatar and opens the account dropdown."
+  component_file: "HeaderPanel.jsx"
+  parent: "PN-00001"
+  skin_binding: "avatar"
+  states:
+    default: "Displays user avatar"
+    hover: "Subtle ring highlight"
+    active: "Dropdown DD-00002 is open"
+  actions:
+    - "toggle_dropdown"
+  events:
+    click: "toggle('DD-00002')"
+  constraints:
+    - "Must always be the last child of PN-00001"
+    - "Must remain visible at all breakpoints"
+  data_source: "User session"
+  user_interaction: "Click to open account menu"
+
+# ---------------------------------------------------------------------------
+# NAVIGATION COMPONENTS
+# ---------------------------------------------------------------------------
+
+NV-00001:
+  label: "Nav Item: Dashboard"
+  category: action
+  function: "Navigates to the dashboard view."
+  component_file: "Sidebar.jsx"
+  parent: "PN-00002"
+  skin_binding: "nav_item"
+  states:
+    default: "Idle"
+    hover: "Background highlight"
+    active: "Currently selected route"
+  actions:
+    - "navigate"
+  events:
+    click: "navigate('/dashboard')"
+  constraints:
+    - "Only one NV item may be in active state at a time"
+  data_source: "Router state"
+  user_interaction: "Click to navigate"
+
+NV-00002:
+  label: "Nav Item: Data Explorer"
+  category: action
+  function: "Navigates to the data explorer view."
+  component_file: "Sidebar.jsx"
+  parent: "PN-00002"
+  skin_binding: "nav_item"
+  states:
+    default: "Idle"
+    hover: "Background highlight"
+    active: "Currently selected route"
+  actions:
+    - "navigate"
+  events:
+    click: "navigate('/explorer')"
+  constraints:
+    - "Only one NV item may be in active state at a time"
+  data_source: "Router state"
+  user_interaction: "Click to navigate"
+
+NV-00003:
+  label: "Nav Item: Reports"
+  category: action
+  function: "Navigates to the reports view."
+  component_file: "Sidebar.jsx"
+  parent: "PN-00002"
+  skin_binding: "nav_item"
+  states:
+    default: "Idle"
+    hover: "Background highlight"
+    active: "Currently selected route"
+  actions:
+    - "navigate"
+  events:
+    click: "navigate('/reports')"
+  constraints:
+    - "Only one NV item may be in active state at a time"
+  data_source: "Router state"
+  user_interaction: "Click to navigate"
+
+NV-00004:
+  label: "Nav Item: Settings"
+  category: action
+  function: "Opens the settings dialog."
+  component_file: "Sidebar.jsx"
+  parent: "PN-00002"
+  skin_binding: "nav_item"
+  states:
+    default: "Idle"
+    hover: "Background highlight"
+    active: "Settings dialog is open"
+  actions:
+    - "open_modal"
+  events:
+    click: "show('MD-00001')"
+  constraints:
+    - "Must open MD-00001 and OV-00001 simultaneously"
+  data_source: "None"
+  user_interaction: "Click to open settings"
+
+# ---------------------------------------------------------------------------
+# TOOLBAR COMPONENTS
+# ---------------------------------------------------------------------------
+
+TB-00001:
+  label: "Data Filter Toolbar"
+  category: layout
+  function: "Contains search and filter controls for the data grid."
+  component_file: "MainContent.jsx"
+  parent: "PN-00003"
+  skin_binding: "toolbar"
+  states:
+    default: "Displays filter controls"
+  actions: []
+  events: {}
+  constraints:
+    - "Must always appear above CZ-00001"
+    - "Must remain visible when CZ-00001 is scrollable"
+  data_source: "None"
+  user_interaction: "Container only"
+
+FM-00001:
+  label: "Search Input"
+  category: data-input
+  function: "Accepts text input to filter the data grid by keyword."
+  component_file: "FilterToolbar.jsx"
+  parent: "TB-00001"
+  skin_binding: "input"
+  states:
+    default: "Empty, shows placeholder"
+    focused: "Active cursor, border highlight"
+    filled: "Contains search term, shows clear icon"
+  actions:
+    - "filter_grid"
+    - "clear_filter"
+  events:
+    input: "debounce(invoke('filter_grid'), 300)"
+    keydown.escape: "invoke('clear_filter')"
+  constraints:
+    - "Must debounce input events by 300ms minimum"
+    - "Must show clear icon when value is non-empty"
+  data_source: "Binds to CZ-00001 filter state"
+  user_interaction: "Type to search"
+  keyboard_shortcut: "Ctrl+K"
+
+CP-00005:
+  label: "Filter Dropdown Trigger"
+  category: action
+  function: "Opens the column filter dropdown menu."
+  component_file: "FilterToolbar.jsx"
+  parent: "TB-00001"
+  skin_binding: "button_secondary"
+  states:
+    default: "Idle"
+    hover: "Border accent highlight"
+    active: "Dropdown DD-00001 is open"
+  actions:
+    - "toggle_dropdown"
+  events:
+    click: "toggle('DD-00001')"
+  constraints:
+    - "Must close DD-00001 when clicking outside"
+  data_source: "None"
+  user_interaction: "Click to open filter options"
+
+CP-00006:
+  label: "Refresh Button"
+  category: action
+  function: "Triggers a manual data refresh for the grid."
+  component_file: "FilterToolbar.jsx"
+  parent: "TB-00001"
+  skin_binding: "icon_button"
+  states:
+    default: "Idle"
+    hover: "Background highlight"
+    loading: "Spinning icon during refresh"
+  actions:
+    - "refresh_data"
+  events:
+    click: "invoke('refresh_data')"
+  constraints:
+    - "Must be disabled during active refresh"
+    - "Must show loading state until data returns"
+  data_source: "None (triggers engine command)"
+  user_interaction: "Click to refresh"
+  keyboard_shortcut: "F5"
+
+# ---------------------------------------------------------------------------
+# DATA GRID
+# ---------------------------------------------------------------------------
+
+CZ-00001:
+  label: "Primary Data Grid"
+  category: data-display
+  function: "Displays the main tabular dataset with sortable columns and selectable rows."
+  component_file: "DataGrid.jsx"
+  parent: "PN-00003"
+  skin_binding: "data_grid"
+  states:
+    default: "Displays loaded data"
+    empty: "Shows empty state message"
+    loading: "Shows skeleton rows"
+    error: "Shows error state with retry action"
+  actions:
+    - "sort_column"
+    - "select_row"
+    - "scroll"
+  events:
+    click.header: "invoke('sort_column', column)"
+    click.row: "invoke('select_row', row_id)"
+  constraints:
+    - "Must virtualise rows beyond 100 visible items"
+    - "Must maintain scroll position on data refresh"
+    - "Column sort must be single-column only"
+  data_source: "Engine query result set"
+  user_interaction: "Click headers to sort, click rows to select"
+
+# ---------------------------------------------------------------------------
+# TEMPLATE NODES (dynamic instances)
+# ---------------------------------------------------------------------------
+
+CN-TEMPLATE-01:
+  label: "Data Grid Row"
+  category: data-display
+  function: "Displays a single record as a row in the primary data grid."
+  component_file: "DataGridRow.jsx"
+  parent: "CZ-00001"
+  skin_binding: "cell_node"
+  states:
+    default: "Displays record data"
+    selected: "Highlighted with accent border"
+    hover: "Subtle background highlight"
+    loading: "Skeleton placeholder while data loads"
+  actions:
+    - "select"
+    - "expand"
+  events:
+    click: "invoke('select_row', row_id)"
+    dblclick: "invoke('expand_row', row_id)"
+  constraints:
+    - "Must inherit z-band from parent CZ-00001"
+    - "Must not exceed parent width"
+    - "Must support keyboard navigation (arrow keys)"
+  data_source: "Single record from engine query result set"
+  user_interaction: "Click to select, double-click to expand"
+  instance_prefix: "CN"
+  instance_range: "CN-00001 to CN-99999"
+
+# ---------------------------------------------------------------------------
+# WIDGETS
+# ---------------------------------------------------------------------------
+
+WD-00001:
+  label: "Summary Statistics Card"
+  category: data-display
+  function: "Displays aggregate statistics (total records, filtered count, selected count) for the current dataset."
+  component_file: "SummaryStats.jsx"
+  parent: "PN-00003"
+  skin_binding: "widget_card"
+  states:
+    default: "Displays current statistics"
+    loading: "Shows skeleton placeholders"
+    empty: "Shows zeroed values"
+  actions: []
+  events: {}
+  constraints:
+    - "Must update reactively when CZ-00001 data changes"
+    - "Must never display stale values after a refresh"
+  data_source: "Derived from CZ-00001 dataset metadata"
+  user_interaction: "Read-only display"
+
+# ---------------------------------------------------------------------------
+# MODALS AND OVERLAYS
+# ---------------------------------------------------------------------------
+
+OV-00001:
+  label: "Modal Backdrop"
+  category: feedback
+  function: "Renders a semi-transparent overlay behind active modals to block interaction with underlying content."
+  component_file: "Overlay.jsx"
+  parent: "SH-00001"
+  skin_binding: "overlay_backdrop"
+  states:
+    default: "Hidden"
+    active: "Visible, blocks pointer events on content below"
+  actions:
+    - "close_modal"
+  events:
+    click: "invoke('close_active_modal')"
+  constraints:
+    - "Must always appear when any MD element is visible"
+    - "Must always render below the active MD element and above all other content"
+    - "Clicking the backdrop must close the active modal"
+  data_source: "None"
+  user_interaction: "Click to dismiss modal"
+
+MD-00001:
+  label: "Settings Dialog"
+  category: layout
+  function: "Provides application settings including theme selection, data preferences and account configuration."
+  component_file: "SettingsDialog.jsx"
+  parent: "SH-00001"
+  skin_binding: "modal"
+  states:
+    default: "Hidden"
+    open: "Visible, centred on screen"
+    saving: "Save button disabled, shows spinner"
+  actions:
+    - "save_settings"
+    - "close"
+  events:
+    keydown.escape: "invoke('close')"
+  constraints:
+    - "Must always render above OV-00001"
+    - "Must trap focus within the dialog while open"
+    - "Must restore focus to trigger element on close"
+  data_source: "Application settings store"
+  user_interaction: "Interact with form fields, save or cancel"
+  keyboard_shortcut: "Escape to close"
+
+FM-00002:
+  label: "Settings Form"
+  category: data-input
+  function: "Contains all editable settings fields within the settings dialog."
+  component_file: "SettingsDialog.jsx"
+  parent: "MD-00001"
+  skin_binding: "form"
+  states:
+    default: "Displays current settings values"
+    dirty: "User has made unsaved changes"
+    saving: "Form is submitting"
+  actions:
+    - "submit"
+    - "reset"
+  events:
+    submit: "invoke('save_settings')"
+  constraints:
+    - "Must warn user on close if state is dirty"
+  data_source: "Application settings store"
+  user_interaction: "Edit fields"
+
+CP-00007:
+  label: "Settings Save Button"
+  category: action
+  function: "Submits the settings form and persists changes."
+  component_file: "SettingsDialog.jsx"
+  parent: "MD-00001"
+  skin_binding: "button_primary"
+  states:
+    default: "Idle, clickable"
+    hover: "Accent highlight"
+    loading: "Disabled, shows spinner while saving"
+    disabled: "Inactive when form has no unsaved changes"
+  actions:
+    - "save_settings"
+  events:
+    click: "invoke('save_settings')"
+  constraints:
+    - "Must be disabled when FM-00002 is not in dirty state"
+    - "Must show loading state during save"
+  data_source: "None (triggers settings save)"
+  user_interaction: "Click to save"
+
+CP-00008:
+  label: "Settings Cancel Button"
+  category: action
+  function: "Closes the settings dialog without saving."
+  component_file: "SettingsDialog.jsx"
+  parent: "MD-00001"
+  skin_binding: "button_secondary"
+  states:
+    default: "Idle, clickable"
+    hover: "Border accent highlight"
+  actions:
+    - "close_modal"
+  events:
+    click: "invoke('close', 'MD-00001')"
+  constraints:
+    - "Must warn user if FM-00002 is in dirty state"
+  data_source: "None"
+  user_interaction: "Click to cancel"
+
+# ---------------------------------------------------------------------------
+# DROPDOWNS
+# ---------------------------------------------------------------------------
+
+DD-00001:
+  label: "Filter Dropdown Menu"
+  category: action
+  function: "Displays column filter options for the data grid."
+  component_file: "FilterDropdown.jsx"
+  parent: "CP-00005"
+  skin_binding: "dropdown"
+  states:
+    default: "Hidden"
+    open: "Visible, positioned below trigger"
+  actions:
+    - "apply_filter"
+    - "clear_filter"
+  events:
+    click.outside: "invoke('close')"
+    keydown.escape: "invoke('close')"
+  constraints:
+    - "Must close on click outside or Escape"
+    - "Must position below CP-00005 using anchor"
+    - "Must not overflow viewport"
+  data_source: "Column definitions from CZ-00001"
+  user_interaction: "Select filter options"
+
+DD-00002:
+  label: "User Avatar Dropdown Menu"
+  category: action
+  function: "Displays user account actions (profile, logout)."
+  component_file: "UserDropdown.jsx"
+  parent: "CP-00004"
+  skin_binding: "dropdown"
+  states:
+    default: "Hidden"
+    open: "Visible, positioned below trigger"
+  actions:
+    - "navigate_profile"
+    - "logout"
+  events:
+    click.outside: "invoke('close')"
+    keydown.escape: "invoke('close')"
+  constraints:
+    - "Must close on click outside or Escape"
+    - "Must position below and right-aligned to CP-00004 using anchor"
+    - "Must not overflow viewport"
+  data_source: "User session"
+  user_interaction: "Select account action"
+
+# ---------------------------------------------------------------------------
+# FOOTER COMPONENTS
+# ---------------------------------------------------------------------------
+
+CP-00010:
+  label: "Connection Status Indicator"
+  category: feedback
+  function: "Displays the current connection state to the backend engine."
+  component_file: "Footer.jsx"
+  parent: "PN-00004"
+  skin_binding: "status_indicator"
+  states:
+    connected: "Green dot, label shows Connected"
+    disconnected: "Red dot, label shows Disconnected"
+    reconnecting: "Yellow dot, label shows Reconnecting"
+  actions: []
+  events: {}
+  constraints:
+    - "Must update within 1 second of connection state change"
+    - "Must be visible at all breakpoints"
+  data_source: "Engine connection state"
+  user_interaction: "Read-only display"
+
+CP-00011:
+  label: "Version Label"
+  category: feedback
+  function: "Displays the current application version string."
+  component_file: "Footer.jsx"
+  parent: "PN-00004"
+  skin_binding: "text_muted"
+  states:
+    default: "Displays version string"
+  actions: []
+  events: {}
+  constraints:
+    - "Must reflect the build version from package metadata"
+  data_source: "Build-time constant"
+  user_interaction: "Read-only display"
+
+# ---------------------------------------------------------------------------
+# TOOLTIP
+# ---------------------------------------------------------------------------
+
+TT-00001:
+  label: "Generic Hover Tooltip"
+  category: feedback
+  function: "Displays contextual help text on hover for any element that declares a tooltip."
+  component_file: "Tooltip.jsx"
+  parent: "SH-00001"
+  skin_binding: "tooltip"
+  states:
+    default: "Hidden"
+    visible: "Positioned near trigger, displays text"
+  actions: []
+  events:
+    mouseenter: "show_with_delay(300)"
+    mouseleave: "hide()"
+  constraints:
+    - "Must appear after 300ms hover delay"
+    - "Must never overflow viewport (auto-reposition)"
+    - "Must always render above all other elements (z: 80-89)"
+  data_source: "Tooltip text from trigger element attribute"
+  user_interaction: "Hover to view"
+
+# ===========================================================================
+# FORBIDDEN PATTERNS (OPA / Rego)
+# ===========================================================================
+#
+# AEP uses Open Policy Agent (Rego) for forbidden pattern enforcement.
+# Save the following as aep-policy.rego alongside your config files.
+# Evaluate with: opa eval -i input.json -d aep-policy.rego "data.aep.forbidden.deny"
+#
+# --- aep-policy.rego ---
+#
+# package aep.forbidden
+#
+# deny[msg] {
+#   some m
+#   startswith(m, "MD")
+#   some g
+#   startswith(g, "CZ")
+#   input.scene[m].z <= input.scene[g].z
+#   msg := sprintf("Modal %v (z=%v) must render above grid %v (z=%v)", [m, input.scene[m].z, g, input.scene[g].z])
+# }
+#
+# deny[msg] {
+#   some id
+#   input.scene[id].parent != null
+#   not input.registry[input.scene[id].parent]
+#   not input.scene[input.scene[id].parent]
+#   msg := sprintf("Orphan element: %v references non-existent parent %v", [id, input.scene[id].parent])
+# }
+#
+# deny[msg] {
+#   some id
+#   input.registry[id].skin_binding
+#   not input.theme.component_styles[input.registry[id].skin_binding]
+#   msg := sprintf("Unresolved skin_binding: %v references '%v' which does not exist in theme", [id, input.registry[id].skin_binding])
+# }
+#
+# deny[msg] {
+#   some tt
+#   startswith(tt, "TT")
+#   some md
+#   startswith(md, "MD")
+#   input.scene[tt].z <= input.scene[md].z
+#   msg := sprintf("Tooltip %v (z=%v) must render above modal %v (z=%v)", [tt, input.scene[tt].z, md, input.scene[md].z])
+# }
