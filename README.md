@@ -42,7 +42,7 @@ LAYER 2: BEHAVIOUR (aep-registry.yaml)
 
 LAYER 3: SKIN (aep-theme.yaml)
   What each element looks like.
-  Colors, typography, spacing, borders, animations, component-specific styles.
+  colours, typography, spacing, borders, animations, component-specific styles.
 ```
 
 ### Why three layers ?
@@ -325,7 +325,7 @@ A Modal (z: 70-79) ALWAYS renders above a Data Grid (z: 30-39). A Tooltip (z: 80
 
 ## 8. Layer 3: Skin (`aep-theme.yaml`)
 
-The visual theme. All colors, fonts, spacing, borders, shadows and animation parameters live here. Components reference theme variables through their `skin_binding` declared in Layer 2. No component ever contains hardcoded visual values.
+The visual theme. All colours, fonts, spacing, borders, shadows and animation parameters live here. Components reference theme variables through their `skin_binding` declared in Layer 2. No component ever contains hardcoded visual values.
 
 ### Schema
 
@@ -335,7 +335,7 @@ schema_revision: 1
 
 theme_name: "Project Dark"
 
-colors:
+colours:
   bg_primary: "#0D1117"
   bg_secondary: "#161B22"
   bg_cell: "#1C2128"
@@ -389,37 +389,37 @@ animations:
 
 component_styles:
   button_primary:
-    background: "{colors.accent}"
-    color: "#000000"
+    background: "{colours.accent}"
+    colour: "#000000"
     padding: "4px 12px"
     border_radius: "{dimensions.border_radius_sm}px"
     font_weight: "{typography.font_weight_semi}"
     font_size: "{typography.font_size_sm}"
   button_secondary:
     background: "transparent"
-    color: "{colors.text_secondary}"
-    border: "1px solid {colors.border}"
+    colour: "{colours.text_secondary}"
+    border: "1px solid {colours.border}"
     padding: "4px 12px"
     border_radius: "{dimensions.border_radius_sm}px"
   input:
-    background: "{colors.bg_cell}"
-    color: "{colors.text_primary}"
-    border: "1px solid {colors.border}"
+    background: "{colours.bg_cell}"
+    colour: "{colours.text_primary}"
+    border: "1px solid {colours.border}"
     padding: "8px 12px"
     border_radius: "{dimensions.border_radius_sm}px"
     font_family: "{typography.font_mono}"
   cell_node:
-    background: "{colors.bg_cell}"
-    color: "{colors.text_primary}"
+    background: "{colours.bg_cell}"
+    colour: "{colours.text_primary}"
     padding: "4px 8px"
-    border_bottom: "1px solid {colors.border}"
+    border_bottom: "1px solid {colours.border}"
     font_size: "{typography.font_size_sm}"
 ```
 
 ### Template variable resolution
 
 Values wrapped in `{...}` are resolved at load time:
-- `{colors.accent}` → `#58A6FF`
+- `{colours.accent}` → `#58A6FF`
 - `{dimensions.border_radius_sm}px` → `4px`
 - Nested references are supported: `{component_styles.button_primary.background}`
 
@@ -429,7 +429,7 @@ When a component renders, it reads its `skin_binding` from the registry and reso
 
 ```
 Registry: CP-00001.skin_binding = "button_primary"
-Theme:    component_styles.button_primary → { background, color, padding, ... }
+Theme:    component_styles.button_primary → { background, colour, padding, ... }
 Result:   CP-00001 renders with the resolved style properties
 ```
 
@@ -524,7 +524,7 @@ For all elements:
 |-------|----------------|
 | Layer 1 (Structure) | Defines **topology and constraints** (flex, grid, anchors, breakpoints) for all layout |
 | Layer 2 (Behaviour) | Actions, states, z-bands, skin bindings |
-| Layer 3 (Skin) | Colors, fonts, all visual properties |
+| Layer 3 (Skin) | colours, fonts, all visual properties |
 
 The result: a fully responsive application that fluidly adapts to mobile and desktop while providing AI agents with a strict, deterministic, machine-readable map of the interface.
 
@@ -560,7 +560,7 @@ Define the behaviour for every element. States, actions, events, constraints, sk
 
 ### Step 4: Create `aep-theme.yaml`
 
-Define the visual skin. Colors, fonts, spacing, animation params. Define a `component_styles` block for every `skin_binding` referenced in the registry.
+Define the visual skin. colours, fonts, spacing, animation params. Define a `component_styles` block for every `skin_binding` referenced in the registry.
 
 ### Step 5: Build the loader
 
@@ -948,7 +948,7 @@ To use: define your concrete `ElementIDs`, `Prefixes` and `ZBands` in a model co
 
 | Anti-pattern | Why it's wrong | The AEP way |
 |-------------|---------------|-------------|
-| Hardcoding colors in components | Theme swap requires editing every file | Use `skin_binding` referencing `component_styles` in `aep-theme.yaml` |
+| Hardcoding colours in components | Theme swap requires editing every file | Use `skin_binding` referencing `component_styles` in `aep-theme.yaml` |
 | Putting visual properties in the registry | Violates layer separation between behaviour and skin | Layer 2 contains `skin_binding` only; Layer 3 owns all visuals |
 | Using CSS z-index arbitrarily | Modals end up behind dropdowns | z-band hierarchy enforced by validation |
 | Creating components without registry entries | Orphan components nobody can reference | Every pixel has an AEP ID and registry entry |
@@ -970,7 +970,7 @@ To use: define your concrete `ElementIDs`, `Prefixes` and `ZBands` in a model co
 [ ] Define Template Nodes for all dynamic/repeating element types
 [ ] Create aep-scene.json with aep_version header (spatial layout, hierarchy)
 [ ] Create aep-registry.yaml with aep_version header (behaviour, states, constraints, skin bindings, forbidden patterns in Rego)
-[ ] Create aep-theme.yaml with aep_version header (colors, fonts, spacing, animations, component_styles for every skin_binding)
+[ ] Create aep-theme.yaml with aep_version header (colours, fonts, spacing, animations, component_styles for every skin_binding)
 [ ] Add data-aep-id attribute to every rendered element
 [ ] Wire component styles to skin_binding → theme resolution (no hardcoded values)
 [ ] Add AOT validation to the build pipeline (see Section 12)
@@ -990,7 +990,7 @@ AEP is not a framework or a library. It is an **architectural discipline**. It m
 1. **A unique numerical ID** (`XX-NNNNN`) that humans and AI can unambiguously reference
 2. **Exact topological coordinates** (`anchors, spatial_rules, z, dimensions`) in a scene graph
 3. **Defined behaviour** (states, actions, events, constraints) in a component registry
-4. **Themed visuals** (colors, fonts, spacing) from a swappable skin file, resolved through `skin_binding`
+4. **Themed visuals** (colours, fonts, spacing) from a swappable skin file, resolved through `skin_binding`
 5. **A versioned schema** (`aep_version`, `schema_revision`) in every config file
 
 The three layers (Structure, Behaviour, Skin) are independent. Changing one NEVER requires changing another. This separation enables deterministic AI-driven frontend development, instant theme swapping, build-time structural validation and a living documentation system that never drifts from reality.
