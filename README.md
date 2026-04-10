@@ -994,13 +994,7 @@ AEP is not a framework or a library. It is an **architectural discipline**. It m
 5. **A versioned schema** (`aep_version`, `schema_revision`) in every config file
 
 The three layers (Structure, Behaviour, Skin) are independent. Changing one NEVER requires changing another. This separation enables deterministic AI-driven frontend development, instant theme swapping, build-time structural validation and a living documentation system that never drifts from reality.
-
----
-
-## Contributing
-
-Issues and PRs welcome. If you build tooling around AEP (loaders, validators, editor plugins, OPA/Rego policy libraries, AI scaffolding compilers), open a PR to add it to the ecosystem section.
-
+--
 ## License
 
 MIT - use it, fork it, build on it.
