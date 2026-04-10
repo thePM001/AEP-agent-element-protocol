@@ -1,6 +1,6 @@
 # The Agent Element Protocol (AEP)
 # Open-Source Implementation Reference
-### Version 1.1 - 10 April 2026
+### Version 1.0 - 10 April 2026
 ### Author: thePM / [@thePM_001](https://x.com/thePM_001)
 ### License: MIT
 
