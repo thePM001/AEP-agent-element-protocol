@@ -1,0 +1,378 @@
+aep_version: "1.1"
+schema_revision: 1
+
+# ===========================================================================
+# AEP Theme: Layer 3 (Skin)
+# All visual properties live here. Components resolve styles through their
+# skin_binding declared in aep-registry.yaml. No component ever contains
+# hardcoded visual values.
+# ===========================================================================
+
+theme_name: "AEP Dark"
+
+# ---------------------------------------------------------------------------
+# COLOUR PALETTE
+# ---------------------------------------------------------------------------
+
+colors:
+  bg_primary: "#0D1117"
+  bg_secondary: "#161B22"
+  bg_cell: "#1C2128"
+  bg_hover: "#21262D"
+  bg_active: "#263040"
+  border: "#30363D"
+  border_focus: "#58A6FF"
+  text_primary: "#E6EDF3"
+  text_secondary: "#8B949E"
+  text_muted: "#6E7681"
+  accent: "#58A6FF"
+  accent_hover: "#79C0FF"
+  error: "#F85149"
+  error_bg: "#3D1117"
+  success: "#3FB950"
+  success_bg: "#122117"
+  warning: "#D29922"
+  warning_bg: "#2E2111"
+  overlay_bg: "rgba(0, 0, 0, 0.48)"
+
+# ---------------------------------------------------------------------------
+# TYPOGRAPHY
+# ---------------------------------------------------------------------------
+
+typography:
+  font_family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+  font_mono: "'JetBrains Mono', 'SF Mono', 'Fira Code', monospace"
+  font_size_xs: "9px"
+  font_size_sm: "11px"
+  font_size_md: "13px"
+  font_size_lg: "16px"
+  font_size_xl: "20px"
+  font_size_xxl: "28px"
+  font_weight_normal: 400
+  font_weight_semi: 600
+  font_weight_bold: 700
+  line_height_tight: 1.2
+  line_height_normal: 1.5
+
+# ---------------------------------------------------------------------------
+# DIMENSIONS
+# ---------------------------------------------------------------------------
+
+dimensions:
+  header_height: 40
+  footer_height: 32
+  sidebar_width: 250
+  row_height: 32
+  toolbar_height: 36
+  modal_width: 480
+  dropdown_width: 200
+  tooltip_max_width: 240
+  border_radius_sm: 4
+  border_radius_md: 8
+  border_radius_lg: 12
+  spacing_xs: 4
+  spacing_sm: 8
+  spacing_md: 12
+  spacing_lg: 16
+  spacing_xl: 24
+  spacing_xxl: 32
+
+# ---------------------------------------------------------------------------
+# ANIMATIONS
+# ---------------------------------------------------------------------------
+
+animations:
+  spring:
+    type: "spring"
+    stiffness: 300
+    damping: 30
+    duration_ms: 300
+  fade:
+    duration_ms: 150
+    easing: "ease-out"
+  slide:
+    duration_ms: 200
+    easing: "ease-in-out"
+  tooltip:
+    delay_ms: 300
+    duration_ms: 120
+    easing: "ease-out"
+
+# ---------------------------------------------------------------------------
+# COMPONENT STYLES
+# Every skin_binding in aep-registry.yaml MUST resolve to a block here.
+# ---------------------------------------------------------------------------
+
+component_styles:
+
+  # --- Shell and Panels ---
+
+  shell:
+    background: "{colors.bg_primary}"
+    color: "{colors.text_primary}"
+    font_family: "{typography.font_family}"
+    overflow: "hidden"
+
+  panel_header:
+    background: "{colors.bg_secondary}"
+    border_bottom: "1px solid {colors.border}"
+    padding: "0 {dimensions.spacing_md}px"
+
+  panel_sidebar:
+    background: "{colors.bg_secondary}"
+    border_right: "1px solid {colors.border}"
+    padding: "{dimensions.spacing_sm}px 0"
+    overflow_y: "auto"
+
+  panel_main:
+    background: "{colors.bg_primary}"
+    padding: "{dimensions.spacing_md}px"
+    overflow_y: "auto"
+
+  panel_footer:
+    background: "{colors.bg_secondary}"
+    border_top: "1px solid {colors.border}"
+    padding: "0 {dimensions.spacing_md}px"
+
+  # --- Buttons ---
+
+  button_primary:
+    background: "{colors.accent}"
+    color: "#000000"
+    padding: "4px 12px"
+    border: "none"
+    border_radius: "{dimensions.border_radius_sm}px"
+    font_family: "{typography.font_family}"
+    font_size: "{typography.font_size_sm}"
+    font_weight: "{typography.font_weight_semi}"
+    cursor: "pointer"
+    transition: "background {animations.fade.duration_ms}ms {animations.fade.easing}"
+    hover:
+      background: "{colors.accent_hover}"
+    disabled:
+      background: "{colors.bg_hover}"
+      color: "{colors.text_muted}"
+      cursor: "not-allowed"
+
+  button_secondary:
+    background: "transparent"
+    color: "{colors.text_secondary}"
+    padding: "4px 12px"
+    border: "1px solid {colors.border}"
+    border_radius: "{dimensions.border_radius_sm}px"
+    font_family: "{typography.font_family}"
+    font_size: "{typography.font_size_sm}"
+    font_weight: "{typography.font_weight_semi}"
+    cursor: "pointer"
+    transition: "border-color {animations.fade.duration_ms}ms {animations.fade.easing}"
+    hover:
+      border_color: "{colors.accent}"
+      color: "{colors.text_primary}"
+    disabled:
+      color: "{colors.text_muted}"
+      border_color: "{colors.bg_hover}"
+      cursor: "not-allowed"
+
+  icon_button:
+    background: "transparent"
+    color: "{colors.text_secondary}"
+    padding: "4px"
+    border: "none"
+    border_radius: "{dimensions.border_radius_sm}px"
+    cursor: "pointer"
+    transition: "background {animations.fade.duration_ms}ms {animations.fade.easing}"
+    hover:
+      background: "{colors.bg_hover}"
+      color: "{colors.text_primary}"
+
+  # --- Inputs ---
+
+  input:
+    background: "{colors.bg_cell}"
+    color: "{colors.text_primary}"
+    padding: "6px 12px"
+    border: "1px solid {colors.border}"
+    border_radius: "{dimensions.border_radius_sm}px"
+    font_family: "{typography.font_mono}"
+    font_size: "{typography.font_size_sm}"
+    transition: "border-color {animations.fade.duration_ms}ms {animations.fade.easing}"
+    placeholder_color: "{colors.text_muted}"
+    focus:
+      border_color: "{colors.border_focus}"
+      outline: "none"
+
+  form:
+    background: "transparent"
+    padding: "0"
+    gap: "{dimensions.spacing_md}px"
+
+  # --- Layout ---
+
+  logo:
+    height: "28px"
+    cursor: "pointer"
+
+  avatar:
+    width: "28px"
+    height: "28px"
+    border_radius: "50%"
+    cursor: "pointer"
+    border: "2px solid transparent"
+    transition: "border-color {animations.fade.duration_ms}ms {animations.fade.easing}"
+    hover:
+      border_color: "{colors.accent}"
+
+  toolbar:
+    background: "{colors.bg_secondary}"
+    padding: "{dimensions.spacing_sm}px {dimensions.spacing_md}px"
+    border_bottom: "1px solid {colors.border}"
+
+  # --- Navigation ---
+
+  nav_item:
+    background: "transparent"
+    color: "{colors.text_secondary}"
+    padding: "{dimensions.spacing_sm}px {dimensions.spacing_md}px"
+    border_radius: "{dimensions.border_radius_sm}px"
+    font_family: "{typography.font_family}"
+    font_size: "{typography.font_size_sm}"
+    font_weight: "{typography.font_weight_normal}"
+    cursor: "pointer"
+    transition: "background {animations.fade.duration_ms}ms {animations.fade.easing}"
+    hover:
+      background: "{colors.bg_hover}"
+      color: "{colors.text_primary}"
+    active:
+      background: "{colors.bg_active}"
+      color: "{colors.accent}"
+      font_weight: "{typography.font_weight_semi}"
+
+  # --- Data Grid ---
+
+  data_grid:
+    background: "{colors.bg_primary}"
+    border: "1px solid {colors.border}"
+    border_radius: "{dimensions.border_radius_md}px"
+    overflow: "auto"
+    header:
+      background: "{colors.bg_secondary}"
+      color: "{colors.text_secondary}"
+      font_size: "{typography.font_size_xs}"
+      font_weight: "{typography.font_weight_semi}"
+      text_transform: "uppercase"
+      letter_spacing: "0.5px"
+      padding: "{dimensions.spacing_sm}px {dimensions.spacing_md}px"
+      border_bottom: "1px solid {colors.border}"
+      cursor: "pointer"
+    empty:
+      color: "{colors.text_muted}"
+      font_size: "{typography.font_size_md}"
+      padding: "{dimensions.spacing_xxl}px"
+      text_align: "center"
+
+  cell_node:
+    background: "{colors.bg_primary}"
+    color: "{colors.text_primary}"
+    padding: "{dimensions.spacing_sm}px {dimensions.spacing_md}px"
+    font_family: "{typography.font_mono}"
+    font_size: "{typography.font_size_sm}"
+    border_bottom: "1px solid {colors.border}"
+    transition: "background {animations.fade.duration_ms}ms {animations.fade.easing}"
+    hover:
+      background: "{colors.bg_hover}"
+    selected:
+      background: "{colors.bg_active}"
+      border_left: "2px solid {colors.accent}"
+
+  # --- Widget ---
+
+  widget_card:
+    background: "{colors.bg_secondary}"
+    border: "1px solid {colors.border}"
+    border_radius: "{dimensions.border_radius_md}px"
+    padding: "{dimensions.spacing_lg}px"
+    label:
+      color: "{colors.text_muted}"
+      font_size: "{typography.font_size_xs}"
+      font_weight: "{typography.font_weight_semi}"
+      text_transform: "uppercase"
+    value:
+      color: "{colors.text_primary}"
+      font_size: "{typography.font_size_xl}"
+      font_weight: "{typography.font_weight_bold}"
+      font_family: "{typography.font_mono}"
+
+  # --- Modal and Overlay ---
+
+  overlay_backdrop:
+    background: "{colors.overlay_bg}"
+    transition: "opacity {animations.fade.duration_ms}ms {animations.fade.easing}"
+
+  modal:
+    background: "{colors.bg_secondary}"
+    border: "1px solid {colors.border}"
+    border_radius: "{dimensions.border_radius_lg}px"
+    padding: "{dimensions.spacing_xl}px"
+    box_shadow: "0 16px 48px rgba(0, 0, 0, 0.4)"
+    header:
+      font_size: "{typography.font_size_lg}"
+      font_weight: "{typography.font_weight_bold}"
+      color: "{colors.text_primary}"
+      margin_bottom: "{dimensions.spacing_lg}px"
+    footer:
+      display: "flex"
+      justify_content: "flex-end"
+      gap: "{dimensions.spacing_sm}px"
+      margin_top: "{dimensions.spacing_xl}px"
+
+  # --- Dropdown ---
+
+  dropdown:
+    background: "{colors.bg_secondary}"
+    border: "1px solid {colors.border}"
+    border_radius: "{dimensions.border_radius_md}px"
+    padding: "{dimensions.spacing_xs}px 0"
+    box_shadow: "0 8px 24px rgba(0, 0, 0, 0.3)"
+    min_width: "160px"
+    item:
+      padding: "{dimensions.spacing_sm}px {dimensions.spacing_md}px"
+      color: "{colors.text_primary}"
+      font_size: "{typography.font_size_sm}"
+      cursor: "pointer"
+      hover:
+        background: "{colors.bg_hover}"
+    divider:
+      border_top: "1px solid {colors.border}"
+      margin: "{dimensions.spacing_xs}px 0"
+
+  # --- Tooltip ---
+
+  tooltip:
+    background: "{colors.bg_cell}"
+    color: "{colors.text_primary}"
+    padding: "{dimensions.spacing_xs}px {dimensions.spacing_sm}px"
+    border_radius: "{dimensions.border_radius_sm}px"
+    font_size: "{typography.font_size_xs}"
+    font_family: "{typography.font_family}"
+    box_shadow: "0 4px 12px rgba(0, 0, 0, 0.3)"
+    max_width: "{dimensions.tooltip_max_width}px"
+
+  # --- Feedback ---
+
+  status_indicator:
+    font_size: "{typography.font_size_xs}"
+    font_family: "{typography.font_family}"
+    color: "{colors.text_muted}"
+    dot_size: "6px"
+    dot_margin_right: "{dimensions.spacing_xs}px"
+    connected:
+      dot_color: "{colors.success}"
+    disconnected:
+      dot_color: "{colors.error}"
+    reconnecting:
+      dot_color: "{colors.warning}"
+
+  text_muted:
+    color: "{colors.text_muted}"
+    font_size: "{typography.font_size_xs}"
+    font_family: "{typography.font_mono}"

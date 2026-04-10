@@ -1,0 +1,460 @@
+{
+  "aep_version": "1.1",
+  "schema_revision": 1,
+  "elements": {
+    "SH-00001": {
+      "id": "SH-00001",
+      "type": "shell",
+      "label": "App Shell",
+      "z": 0,
+      "visible": true,
+      "parent": null,
+      "spatial_rule": "flex",
+      "direction": "column",
+      "layout": {
+        "width": "100vw",
+        "height": "100vh"
+      },
+      "children": ["PN-00001", "PN-00002", "PN-00003", "PN-00004"]
+    },
+    "PN-00001": {
+      "id": "PN-00001",
+      "type": "panel",
+      "label": "Header Panel",
+      "z": 10,
+      "visible": true,
+      "parent": "SH-00001",
+      "spatial_rule": "flex",
+      "direction": "row",
+      "justify": "space-between",
+      "align": "center",
+      "layout": {
+        "width": "100%",
+        "height": "40px"
+      },
+      "children": ["CP-00001", "CP-00002", "CP-00003", "CP-00004"]
+    },
+    "PN-00002": {
+      "id": "PN-00002",
+      "type": "panel",
+      "label": "Sidebar Navigation",
+      "z": 10,
+      "visible": true,
+      "parent": "SH-00001",
+      "spatial_rule": "flex",
+      "direction": "column",
+      "layout": {
+        "anchors": {
+          "top": "PN-00001.bottom",
+          "left": "SH-00001.left",
+          "bottom": "PN-00004.top"
+        },
+        "width": "250px"
+      },
+      "responsive_matrix": {
+        "base": { "visible": false },
+        "vp-md": { "visible": true, "width": "250px" },
+        "vp-lg": { "visible": true, "width": "300px" }
+      },
+      "children": ["NV-00001", "NV-00002", "NV-00003", "NV-00004"]
+    },
+    "PN-00003": {
+      "id": "PN-00003",
+      "type": "panel",
+      "label": "Main Content Area",
+      "z": 10,
+      "visible": true,
+      "parent": "SH-00001",
+      "spatial_rule": "flex",
+      "direction": "column",
+      "layout": {
+        "anchors": {
+          "top": "PN-00001.bottom",
+          "left": "PN-00002.right",
+          "right": "SH-00001.right",
+          "bottom": "PN-00004.top"
+        }
+      },
+      "responsive_matrix": {
+        "base": {
+          "anchors": {
+            "top": "PN-00001.bottom",
+            "left": "SH-00001.left",
+            "right": "SH-00001.right",
+            "bottom": "PN-00004.top"
+          }
+        }
+      },
+      "children": ["TB-00001", "CZ-00001", "WD-00001"]
+    },
+    "PN-00004": {
+      "id": "PN-00004",
+      "type": "panel",
+      "label": "Footer Status Bar",
+      "z": 10,
+      "visible": true,
+      "parent": "SH-00001",
+      "spatial_rule": "flex",
+      "direction": "row",
+      "justify": "space-between",
+      "align": "center",
+      "layout": {
+        "anchors": {
+          "left": "SH-00001.left",
+          "right": "SH-00001.right",
+          "bottom": "SH-00001.bottom"
+        },
+        "height": "32px"
+      },
+      "children": ["CP-00010", "CP-00011"]
+    },
+    "CP-00001": {
+      "id": "CP-00001",
+      "type": "component",
+      "label": "App Logo",
+      "z": 20,
+      "visible": true,
+      "parent": "PN-00001",
+      "layout": {
+        "width": "120px",
+        "height": "28px"
+      },
+      "children": []
+    },
+    "CP-00002": {
+      "id": "CP-00002",
+      "type": "component",
+      "label": "Import Button",
+      "z": 20,
+      "visible": true,
+      "parent": "PN-00001",
+      "layout": {
+        "width": "auto",
+        "height": "28px"
+      },
+      "children": []
+    },
+    "CP-00003": {
+      "id": "CP-00003",
+      "type": "component",
+      "label": "Export Button",
+      "z": 20,
+      "visible": true,
+      "parent": "PN-00001",
+      "layout": {
+        "width": "auto",
+        "height": "28px"
+      },
+      "children": []
+    },
+    "CP-00004": {
+      "id": "CP-00004",
+      "type": "component",
+      "label": "User Avatar Menu",
+      "z": 20,
+      "visible": true,
+      "parent": "PN-00001",
+      "layout": {
+        "width": "32px",
+        "height": "32px"
+      },
+      "children": ["DD-00002"]
+    },
+    "CP-00010": {
+      "id": "CP-00010",
+      "type": "component",
+      "label": "Connection Status Indicator",
+      "z": 20,
+      "visible": true,
+      "parent": "PN-00004",
+      "layout": {
+        "width": "auto",
+        "height": "20px"
+      },
+      "children": []
+    },
+    "CP-00011": {
+      "id": "CP-00011",
+      "type": "component",
+      "label": "Version Label",
+      "z": 20,
+      "visible": true,
+      "parent": "PN-00004",
+      "layout": {
+        "width": "auto",
+        "height": "20px"
+      },
+      "children": []
+    },
+    "NV-00001": {
+      "id": "NV-00001",
+      "type": "navigation",
+      "label": "Nav Item: Dashboard",
+      "z": 10,
+      "visible": true,
+      "parent": "PN-00002",
+      "layout": {
+        "width": "100%",
+        "height": "36px"
+      },
+      "children": []
+    },
+    "NV-00002": {
+      "id": "NV-00002",
+      "type": "navigation",
+      "label": "Nav Item: Data Explorer",
+      "z": 10,
+      "visible": true,
+      "parent": "PN-00002",
+      "layout": {
+        "width": "100%",
+        "height": "36px"
+      },
+      "children": []
+    },
+    "NV-00003": {
+      "id": "NV-00003",
+      "type": "navigation",
+      "label": "Nav Item: Reports",
+      "z": 10,
+      "visible": true,
+      "parent": "PN-00002",
+      "layout": {
+        "width": "100%",
+        "height": "36px"
+      },
+      "children": []
+    },
+    "NV-00004": {
+      "id": "NV-00004",
+      "type": "navigation",
+      "label": "Nav Item: Settings",
+      "z": 10,
+      "visible": true,
+      "parent": "PN-00002",
+      "layout": {
+        "width": "100%",
+        "height": "36px"
+      },
+      "children": []
+    },
+    "TB-00001": {
+      "id": "TB-00001",
+      "type": "toolbar",
+      "label": "Data Filter Toolbar",
+      "z": 40,
+      "visible": true,
+      "parent": "PN-00003",
+      "spatial_rule": "flex",
+      "direction": "row",
+      "justify": "flex-start",
+      "gap": "8px",
+      "layout": {
+        "width": "100%",
+        "height": "36px"
+      },
+      "children": ["FM-00001", "CP-00005", "CP-00006"]
+    },
+    "FM-00001": {
+      "id": "FM-00001",
+      "type": "form",
+      "label": "Search Input",
+      "z": 20,
+      "visible": true,
+      "parent": "TB-00001",
+      "layout": {
+        "width": "240px",
+        "height": "28px"
+      },
+      "children": []
+    },
+    "CP-00005": {
+      "id": "CP-00005",
+      "type": "component",
+      "label": "Filter Dropdown Trigger",
+      "z": 20,
+      "visible": true,
+      "parent": "TB-00001",
+      "layout": {
+        "width": "auto",
+        "height": "28px"
+      },
+      "children": ["DD-00001"]
+    },
+    "CP-00006": {
+      "id": "CP-00006",
+      "type": "component",
+      "label": "Refresh Button",
+      "z": 20,
+      "visible": true,
+      "parent": "TB-00001",
+      "layout": {
+        "width": "28px",
+        "height": "28px"
+      },
+      "children": []
+    },
+    "CZ-00001": {
+      "id": "CZ-00001",
+      "type": "cell_zone",
+      "label": "Primary Data Grid",
+      "z": 30,
+      "visible": true,
+      "parent": "PN-00003",
+      "spatial_rule": "flex",
+      "direction": "column",
+      "layout": {
+        "width": "100%",
+        "height": "content-fit",
+        "min_height": "200px"
+      },
+      "children": []
+    },
+    "WD-00001": {
+      "id": "WD-00001",
+      "type": "widget",
+      "label": "Summary Statistics Card",
+      "z": 50,
+      "visible": true,
+      "parent": "PN-00003",
+      "spatial_rule": "flex",
+      "direction": "row",
+      "justify": "space-around",
+      "layout": {
+        "width": "100%",
+        "height": "80px"
+      },
+      "children": []
+    },
+    "MD-00001": {
+      "id": "MD-00001",
+      "type": "modal",
+      "label": "Settings Dialog",
+      "z": 70,
+      "visible": false,
+      "parent": "SH-00001",
+      "layout": {
+        "width": "480px",
+        "height": "auto",
+        "anchors": {
+          "center_x": "SH-00001.center_x",
+          "center_y": "SH-00001.center_y"
+        }
+      },
+      "children": ["FM-00002", "CP-00007", "CP-00008"]
+    },
+    "FM-00002": {
+      "id": "FM-00002",
+      "type": "form",
+      "label": "Settings Form",
+      "z": 70,
+      "visible": true,
+      "parent": "MD-00001",
+      "spatial_rule": "flex",
+      "direction": "column",
+      "gap": "12px",
+      "layout": {
+        "width": "100%",
+        "height": "auto"
+      },
+      "children": []
+    },
+    "CP-00007": {
+      "id": "CP-00007",
+      "type": "component",
+      "label": "Settings Save Button",
+      "z": 20,
+      "visible": true,
+      "parent": "MD-00001",
+      "layout": {
+        "width": "auto",
+        "height": "32px"
+      },
+      "children": []
+    },
+    "CP-00008": {
+      "id": "CP-00008",
+      "type": "component",
+      "label": "Settings Cancel Button",
+      "z": 20,
+      "visible": true,
+      "parent": "MD-00001",
+      "layout": {
+        "width": "auto",
+        "height": "32px"
+      },
+      "children": []
+    },
+    "DD-00001": {
+      "id": "DD-00001",
+      "type": "dropdown",
+      "label": "Filter Dropdown Menu",
+      "z": 70,
+      "visible": false,
+      "parent": "CP-00005",
+      "layout": {
+        "anchors": {
+          "top": "CP-00005.bottom",
+          "left": "CP-00005.left"
+        },
+        "width": "200px",
+        "height": "auto"
+      },
+      "children": []
+    },
+    "DD-00002": {
+      "id": "DD-00002",
+      "type": "dropdown",
+      "label": "User Avatar Dropdown Menu",
+      "z": 70,
+      "visible": false,
+      "parent": "CP-00004",
+      "layout": {
+        "anchors": {
+          "top": "CP-00004.bottom",
+          "right": "CP-00004.right"
+        },
+        "width": "180px",
+        "height": "auto"
+      },
+      "children": []
+    },
+    "OV-00001": {
+      "id": "OV-00001",
+      "type": "overlay",
+      "label": "Modal Backdrop",
+      "z": 60,
+      "visible": false,
+      "parent": "SH-00001",
+      "layout": {
+        "width": "100vw",
+        "height": "100vh"
+      },
+      "children": []
+    },
+    "TT-00001": {
+      "id": "TT-00001",
+      "type": "tooltip",
+      "label": "Generic Hover Tooltip",
+      "z": 80,
+      "visible": false,
+      "parent": "SH-00001",
+      "layout": {
+        "width": "auto",
+        "max_width": "240px",
+        "height": "auto"
+      },
+      "children": []
+    }
+  },
+  "viewport_breakpoints": {
+    "base": { "max_width": 639 },
+    "vp-md": { "min_width": 640, "max_width": 1023 },
+    "vp-lg": { "min_width": 1024 }
+  },
+  "camera": {
+    "x": 0,
+    "y": 0,
+    "zoom": 1.0
+  }
+}
