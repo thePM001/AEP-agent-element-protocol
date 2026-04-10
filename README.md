@@ -241,7 +241,7 @@ When the database returns 10,000 records, the framework spawns `CN-00001` throug
 
 ### Forbidden Patterns
 
-The registry defines patterns that must NEVER occur. AEP uses **Open Policy Agent (OPA / Rego)** as the formal policy language for forbidden pattern rules. This provides an enterprise-grade, heavily tested parser with a strict AST (Abstract Syntax Tree) and deterministic evaluation, ensuring that all validators — regardless of implementation language — evaluate rules identically.
+The registry defines patterns that must NEVER occur. AEP uses **Open Policy Agent (OPA / Rego)** as the formal policy language for forbidden pattern rules. This provides an enterprise-grade, heavily tested parser with a strict AST (Abstract Syntax Tree) and deterministic evaluation, ensuring that all validators - regardless of implementation language - evaluate rules identically.
 
 ```rego
 package aep.forbidden
@@ -478,7 +478,7 @@ AEP uses Flexbox and Grid concepts as explicit spatial rules in the scene graph.
 }
 ```
 
-To add a new button (`CP-00003`), an AI agent appends it to the `children` array. No pixel calculation needed — the spatial rule guarantees sequential placement.
+To add a new button (`CP-00003`), an AI agent appends it to the `children` array. No pixel calculation needed - the spatial rule guarantees sequential placement.
 
 ### 9.3 The Viewport Matrix (Responsive Breakpoints)
 
@@ -510,7 +510,7 @@ const runtimeState = AEP.getRuntimeCoordinates("CP-00001");
 
 ### 9.5 TLA+ Invariants for Topological Layout
 
-The formal verification layer checks *topology* — constraint satisfiability and logical containment:
+The formal verification layer checks *topology* - constraint satisfiability and logical containment:
 
 ```
 For all elements:
@@ -1003,4 +1003,4 @@ Issues and PRs welcome. If you build tooling around AEP (loaders, validators, ed
 
 ## License
 
-MIT — use it, fork it, build on it.
+MIT - use it, fork it, build on it.
