@@ -1,7 +1,7 @@
 # AEP Protocol Extensions
-# The Agent Anti-Hallucination Protocol Family
+# The AI Agent Anti-Hallucination Subprotocols
 
-AEP is not just a UI framework. It is a universal containment protocol for AI agent hallucinations. Every domain with rigid, predefined schemas can be made hallucination-proof using the same pattern: precompile ground truth into a deterministic registry, validate every agent output against it, reject violations with specific errors, let the agent self-correct.
+AEP is a universal containment protocol for AI agent hallucinations. Every domain with rigid, predefined schemas can be made hallucination-proof using the same pattern: precompile ground truth into a deterministic registry, validate every agent output against it, reject violations with specific errors, let the agent self-correct.
 
 This folder contains protocol extensions that apply AEP's topological matrix validation to domains beyond the frontend.
 
