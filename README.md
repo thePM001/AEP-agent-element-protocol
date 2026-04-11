@@ -25,20 +25,20 @@ AEP treats the frontend as a **topological coordinate system**, not a fluid DOM 
 - A build system can verify that no orphan components exist, no z-index violations occur and no forbidden UI patterns are created.
 - A designer can swap the entire visual skin without touching structure or behaviour.
 
-AEP's validation pattern extends beyond the frontend. Any domain with rigid, predefined schemas (workflows, REST APIs, event-driven systems, infrastructure as code,etc. ) can use the same architecture. 
+AEP's validation pattern extends beyond the frontend. Any domain with rigid, predefined schemas (workflows, REST APIs, event-driven systems, infrastructure as code) can use the same architecture.
 
-See `subprotocols/` for reference implementations that make workflows, APIs, events and Kubernetes configs hallucination-proof using the same deterministic registry pattern.
+All four subprotocols are implemented in a single unified SDK:
 
-The `subprotocols/` folder contains reference implementations for:
+**`sdk/sdk-aep-protocols.py`**
 
-| Extension | File | What It Validates |
-|-----------|------|-------------------|
-| Workflows | `protocol-aep-workflow.py` | Actions, state transitions, payload schemas, approval gates |
-| REST APIs | `protocol-aep-api.py` | HTTP methods, endpoint paths, request bodies, headers, query params |
-| Events / Pub-Sub | `protocol-aep-event.py` | Topics, payload schemas, producer permissions, correlation IDs, size limits |
-| Infrastructure as Code | `protocol-aep-iac.py` | Resource kinds, required fields, forbidden fields, type and value constraints |
+| Subprotocol | Registry Class | What It Validates |
+|-------------|----------------|-------------------|
+| Workflows | `WorkflowRegistry` | Actions, state transitions, payload schemas, approval gates |
+| REST APIs | `APIRegistry` | HTTP methods, endpoint paths, request bodies, headers, query params |
+| Events / Pub-Sub | `EventRegistry` | Topics, payload schemas, producer permissions, correlation IDs, size limits |
+| Infrastructure as Code | `IaCRegistry` | Resource kinds, required fields, forbidden fields, type and value constraints |
 
-Each extension ships with pre-built registries for common use cases (task management workflows, CRUD APIs, event-driven systems, Kubernetes resources).
+Each subprotocol ships with pre-built registries for common use cases (task management workflows, CRUD APIs, event-driven systems, Kubernetes resources). All registries are stateless and safe for multi-agent environments.
 
 See `subprotocols/protocol-aep-extensions-README.md` for full documentation and usage examples.
 
