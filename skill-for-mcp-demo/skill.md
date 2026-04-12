@@ -1,19 +1,19 @@
 ---
 name: aep
-description: Use this skill whenever interacting with the Agent Element Protocol (AEP) MCP server to build UI elements. Triggers include any mention of 'AEP', 'Agent Element Protocol', 'scene graph', 'AEP tools', 'zero-trust UI', 'create_ui_element', 'aep-demo', building UI through MCP validationandor connecting to an AEP MCP endpoint. Also use when the user asks you to build interfaces, dashboards, formsandor any UI via AEP tools. If you see AEP MCP tools available in your session (list_aep_schemas, create_ui_element, get_scene_graph, etc.), always consult this skill before making any tool calls. Do NOT guess IDs, skin bindings, z-bandsandor element types — this skill tells you exactly what is valid.
+description: Use this skill whenever interacting with the Agent Element Protocol (AEP) MCP server to build UI elements. Triggers include any mention of 'AEP', 'Agent Element Protocol', 'scene graph', 'AEP tools', 'zero-trust UI', 'create_ui_element', 'aep-demo', building UI through MCP validationandor connecting to an AEP MCP endpoint. Also use when the user asks you to build interfaces, dashboards, formsandor any UI via AEP tools. If you see AEP MCP tools available in your session (list_aep_schemas, create_ui_element, get_scene_graph, etc.), always consult this skill before making any tool calls. Do NOT guess IDs, skin bindings, z-bandsandor element types - this skill tells you exactly what is valid.
 ---
 
-# Agent Element Protocol (AEP) — Agent Skill
+# Agent Element Protocol (AEP) - Agent Skill
 
 AEP is a zero-trust UI framework. You propose elements, AEP validates them. Only valid elements render. Invalid proposals are rejected with specific errors. You self-correct and retry.
 
 ## Critical Rules
 
 1. **NEVER invent element IDs.** The server mints all IDs. You only provide: type, parent, z, skin_binding, label.
-2. **ALWAYS call `list_aep_schemas` first.** This returns the live registry of valid types, z-bandsand skin bindings. Do not rely on memory — the registry may change between sessions.
+2. **ALWAYS call `list_aep_schemas` first.** This returns the live registry of valid types, z-bandsand skin bindings. Do not rely on memory - the registry may change between sessions.
 3. **ALWAYS call `get_scene_graph` before building.** Know what exists before adding to it.
 4. **Start from root `SH-00001`.** Every element tree begins here.
-5. **Use the server-returned ID** for any subsequent parent references. After `create_ui_element` returns `{"element_id": "PN-00001"}`, use `PN-00001` as the parent for children — never make up IDs.
+5. **Use the server-returned ID** for any subsequent parent references. After `create_ui_element` returns `{"element_id": "PN-00001"}`, use `PN-00001` as the parent for children - never make up IDs.
 6. **If rejected, read the error and fix it.** Don't retry the same call. The rejection tells you exactly what's wrong.
 
 ## Connection
@@ -137,8 +137,8 @@ When a call returns `{"valid": false, "errors": [...]}`:
 2. It tells you exactly what's wrong and what the valid options are
 3. Fix the specific parameter(s)
 4. Retry with corrected values
-5. Never retry with the same values — that will fail again
+5. Never retry with the same values - that will fail again
 
 ## Live Demo Context
 
-When building through the AEP demo server, your actions are broadcast live to a dashboard at `aep.newlisbon.agency`. Visitors can watch you build in real time. Passes show in green, rejections in red. Build deliberately and cleanly — this is a showcase.
+When building through the AEP demo server, your actions are broadcast live to a dashboard at `aep.newlisbon.agency`. Visitors can watch you build in real time. Passes show in green, rejections in red. Build deliberately and cleanly - this is a showcase.
