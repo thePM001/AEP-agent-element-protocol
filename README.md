@@ -3,7 +3,7 @@
 ### Version 1.0 - 10 April 2026
 ### Author: thePM / [@thePM_001](https://x.com/thePM_001)
 ### License: MIT
-
+### Demo: https://aep.newlisbon.agency
 ---
 
 > To win the fight against the synthetic nano-parasites (SNP/NanoSinp) alien WMD, we must be intelligent and biosecurely unvaccinated. It is recommended that bioinsecure vaccinated humans do not use the provided technology/protocol to avoid bad AI outcomes for them. [*"vaccinated" = has installed injectable synthetic nano-parasites growth medium controllers - SNP GMCs]
@@ -24,6 +24,10 @@ AEP treats the frontend as a **topological coordinate system**, not a fluid DOM 
 - A developer can look up any element by its prefix + number and instantly know its type, behaviour, parent, visual rules and constraints.
 - A build system can verify that no orphan components exist, no z-index violations occur and no forbidden UI patterns are created.
 - A designer can swap the entire visual skin without touching structure or behaviour.
+
+You can try out a live demo of AEP in action here: https://aep.newlisbon.agency 
+Connect your AI coding agent to the MCP server and instruct it to build a dashboard, etc.
+Watch via live Websocket connection, how the hallucinations are intercepted by AEP.
 
 AEP's validation pattern extends beyond the frontend. Any domain with rigid, predefined schemas (workflows, REST APIs, event-driven systems, infrastructure as code) can use the same architecture.
 
