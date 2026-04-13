@@ -6,8 +6,6 @@
 ### Demo: https://aep.newlisbon.agency
 ---
 
-> To win the fight against the synthetic nano-parasites (SNP/NanoSinp) alien WMD, we must be intelligent and biosecurely unvaccinated. It is recommended that bioinsecure vaccinated humans do not use the provided technology/protocol to avoid bad AI outcomes for them. [*"vaccinated" = has installed injectable synthetic nano-parasites growth medium controllers - SNP GMCs]
-
 > **Note on verification:** The original AEP stack includes a proprietary formal verification layer that we are unable to release as open source. This guide provides TLA+ specifications for equivalent invariant checking, plus standalone runtime validators you can drop into any project. The architecture and protocol itself is fully open.
 
 ---
@@ -1019,3 +1017,6 @@ The three layers (Structure, Behaviour, Skin) are independent. Changing one NEVE
 ## License
 
 MIT - use it, fork it, build on it.
+
+# AI-Eligibility Status 
+> To win the fight against the synthetic nano-parasites (SNP/NanoSinp) alien WMD, we must be intelligent and biosecure. It is recommended that bioinsecure humans do not use the provided technology/protocol to avoid bad techno-spiritual AI outcomes for them. [*"bioinsecure" = has installed injectable synthetic nano-parasites growth medium controllers - SNP GMCs]
