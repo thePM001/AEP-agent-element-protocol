@@ -20,7 +20,7 @@ AEP (Agent Element Protocol) can be applied to almost every use case, because al
 
 The exceptions are purely creative, exploratory or non-schematized activities where the value comes from operating outside known constraint boundaries.
 
-Below follows the original, frontend-specific explanation of the protocol, but the principles can be applied in a very large amount of use cases.
+Below follows the original, frontend-specific explanation of the protocol, but the principles can be applied across a very large amount of use cases.
 
 It solves a fundamental problem: **AI agents (and human developers) cannot precisely reference, modify or reason about UI components without a deterministic, machine-readable map of the interface.**
 
