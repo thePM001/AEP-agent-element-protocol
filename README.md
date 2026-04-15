@@ -37,7 +37,7 @@ Watch via live Websocket connection, how the hallucinations are intercepted by A
 
 AEP's validation pattern extends beyond the frontend. Any domain with rigid, predefined schemas (workflows, REST APIs, event-driven systems, infrastructure as code) can use the same architecture.
 
-All four subprotocols are implemented in a single unified SDK:
+Four important subprotocols are implemented in a single unified SDK:
 
 **`sdk/sdk-aep-protocols.py`**
 
