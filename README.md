@@ -12,7 +12,7 @@
 
 ## 1. What Is AEP
 
-The Agent Element Protocol (AEP) is a **3-layer frontend governance architecture** that originally was built to give every UI element a unique numerical identity, exact spatial coordinates, defined behaviour rules and themed visual properties.
+The Agent Element Protocol (AEP) is a **3-layer governance architecture** that originally was built to give every UI element a unique numerical identity, exact spatial coordinates, defined behaviour rules and themed visual properties.
 
 Of course AEP can be applied basically to any agentic AI outputs that happen inside constrained knowledge domains with fixed rule sets and build schemas.
 
