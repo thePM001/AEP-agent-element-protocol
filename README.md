@@ -20,6 +20,8 @@ AEP (Agent Element Protocol) can be applied to almost every use case, because al
 
 The exceptions are purely creative, exploratory or non-schematized activities where the value comes from operating outside known constraint boundaries.
 
+Below follows the original, frontend-specific explanation of the protocol, but the principles can be applied in a very large amount of use cases.
+
 It solves a fundamental problem: **AI agents (and human developers) cannot precisely reference, modify or reason about UI components without a deterministic, machine-readable map of the interface.**
 
 AEP treats the frontend as a **topological coordinate system**, not a fluid DOM tree. Every element has an exact layout constraint (anchors/flex/grid), a `z` index, a numerical ID, a parent-child hierarchy and a set of behavioural constraints. This means:
