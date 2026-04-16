@@ -1,5 +1,5 @@
 # AEP - The Agent Element Protocol
-# Open-Source Implementation Reference
+# Free Basic Open-Source Version Implementation Reference
 ### Version 1.0 - 10 April 2026
 ### Author: thePM_001
 ### License: Apache-2.0
