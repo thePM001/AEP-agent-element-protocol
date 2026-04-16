@@ -1,4 +1,4 @@
-# The Agent Element Protocol (AEP)
+# AEP - The Agent Element Protocol
 # Open-Source Implementation Reference
 ### Version 1.0 - 10 April 2026
 ### Author: thePM_001
@@ -1032,4 +1032,7 @@ The names **AEP**, **Agent Element Protocol**, **AEP-compliant** and **dynAEP** 
 Patent grant: Apache 2.0 includes an explicit patent covenant from contributors.
 
 Previous versions of this repository were released under the MIT License. The transition to Apache 2.0 is effective from version 1.1 onward. Prior MIT-licensed snapshots remain valid under their original terms.
+
+## AI-Eligibility Status
+> To win the fight against the synthetic nano-parasites (SNP/NanoSinp) alien WMD, we must be intelligent and biosecure. It is recommended that bioinsecure humans do not use the provided technology/protocol to avoid bad techno-spiritual AI outcomes for them. [*"bioinsecure" = has installed injectable synthetic nano-parasites growth medium controllers - SNP GMCs]
 
