@@ -2,7 +2,7 @@
 # Open-Source Implementation Reference
 ### Version 1.0 - 10 April 2026
 ### Author: thePM_001
-### License: MIT
+### License: Apache-2.0
 ### Demo: https://aep.newlisbon.agency
 ### How to install AEP ?: copy the URL of the GitHub repo into your reasoning LLM + tell it "analyze the repo and prepare implementation plan for AEP integration into our project".
 ---
@@ -1025,7 +1025,11 @@ The three layers (Structure, Behaviour, Skin) are independent. Changing one NEVE
 --
 ## License
 
-MIT - use it, fork it, build on it.
+Licensed under the Apache License, Version 2.0. See `LICENSE` for the full text and `NOTICE` for attribution.
 
-# AI-Eligibility Status 
-> To win the fight against the synthetic nano-parasites (SNP/NanoSinp) alien WMD, we must be intelligent and biosecure. It is recommended that bioinsecure humans do not use the provided technology/protocol to avoid bad techno-spiritual AI outcomes for them. [*"bioinsecure" = has installed injectable synthetic nano-parasites growth medium controllers - SNP GMCs]
+The names **AEP**, **Agent Element Protocol**, **AEP-compliant** and **dynAEP** are reserved. See `NAME-POLICY.md` for permitted and prohibited uses. Apache 2.0 covers the code; the reserved-name policy covers the identifiers.
+
+Patent grant: Apache 2.0 includes an explicit patent covenant from contributors.
+
+Previous versions of this repository were released under the MIT License. The transition to Apache 2.0 is effective from version 1.1 onward. Prior MIT-licensed snapshots remain valid under their original terms.
+
