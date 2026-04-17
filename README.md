@@ -1,4 +1,4 @@
-# AEP - The Agent Element Protocol
+# AEP - Agent Element Protocol (Deterministic Adjudication Lattices)
 # Free Basic Open-Source Version Implementation Reference
 ### Version 1.1 - 16 April 2026
 ### Author: thePM_001 (https://x.com/thePM_001)
