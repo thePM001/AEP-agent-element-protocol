@@ -3,6 +3,7 @@
 ### Version 1.1 - 16 April 2026
 ### Author: thePM_001 (https://x.com/thePM_001)
 ### License: Apache-2.0
+### Research Paper: https://github.com/thePM001/AEP-research-paper-001
 ### Demo: https://aep.newlisbon.agency
 ### How to install AEP ?: copy the URL of the GitHub repo into your reasoning LLM + tell it "analyze the repo and prepare implementation plan for AEP integration into our project".
 ---
