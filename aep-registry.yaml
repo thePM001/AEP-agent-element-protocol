@@ -1,4 +1,4 @@
-aep_version: "1.1"
+aep_version: "2.0"
 schema_revision: 1
 
 # ===========================================================================
@@ -108,6 +108,7 @@ CP-00001:
   component_file: "HeaderPanel.jsx"
   parent: "PN-00001"
   skin_binding: "logo"
+  memory_persistence: true
   states:
     default: "Displays logo image"
   actions: []
