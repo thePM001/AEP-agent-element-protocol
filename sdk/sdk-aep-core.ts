@@ -85,6 +85,9 @@ export interface AEPConfig {
   registry: Record<string, AEPRegistryEntry>;
   theme: AEPTheme;
   meta: { reg_aep_version: string; reg_schema_revision: number };
+  // v2.0 optional
+  memory?: import("./sdk-aep-memory").MemoryFabric;
+  resolver?: import("./sdk-aep-resolver").BasicResolver;
 }
 
 export interface AEPValidationResult {
@@ -263,7 +266,10 @@ function resolvePath(obj: any, dotPath: string): string {
 // AOT Validator (full structural proof at build time)
 // ---------------------------------------------------------------------------
 
-export function validateAOT(config: AEPConfig): AEPValidationResult {
+export function validateAOT(
+  config: AEPConfig,
+  memory?: import("./sdk-aep-memory").MemoryFabric,
+): AEPValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
   const { scene, registry, theme, meta } = config;
@@ -363,7 +369,30 @@ export function validateAOT(config: AEPConfig): AEPValidationResult {
     }
   }
 
-  return { valid: errors.length === 0, errors, warnings };
+  const result: AEPValidationResult = { valid: errors.length === 0, errors, warnings };
+
+  // v2.0: record in memory if provided
+  const fabric = memory ?? config.memory;
+  if (fabric) {
+    try {
+      const { createMemoryEntry } = require("./sdk-aep-memory") as typeof import("./sdk-aep-memory");
+      for (const elId of Object.keys(scene.elements)) {
+        const entry = createMemoryEntry(
+          elId,
+          "ui",
+          { type: scene.elements[elId].type, z: scene.elements[elId].z },
+          result.valid ? "accepted" : "rejected",
+          result.errors,
+          ["aot_full"],
+        );
+        fabric.record(entry);
+      }
+    } catch {
+      // sdk-aep-memory not available; skip recording
+    }
+  }
+
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -374,6 +403,7 @@ export function validateJIT(
   config: AEPConfig,
   elementId: string,
   change: Partial<AEPElement> & { skin_binding?: string },
+  memory?: import("./sdk-aep-memory").MemoryFabric,
 ): AEPValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -423,7 +453,28 @@ export function validateJIT(
     }
   }
 
-  return { valid: errors.length === 0, errors, warnings };
+  const jitResult: AEPValidationResult = { valid: errors.length === 0, errors, warnings };
+
+  // v2.0: record in memory if provided
+  const jitFabric = memory ?? config.memory;
+  if (jitFabric) {
+    try {
+      const { createMemoryEntry } = require("./sdk-aep-memory") as typeof import("./sdk-aep-memory");
+      const entry = createMemoryEntry(
+        elementId,
+        "ui",
+        change as Record<string, any>,
+        jitResult.valid ? "accepted" : "rejected",
+        jitResult.errors,
+        ["jit_delta"],
+      );
+      jitFabric.record(entry);
+    } catch {
+      // sdk-aep-memory not available; skip recording
+    }
+  }
+
+  return jitResult;
 }
 
 // ---------------------------------------------------------------------------
@@ -482,3 +533,19 @@ function getCurrentBreakpoint(): string {
   if (w < 1024) return "vp-md";
   return "vp-lg";
 }
+
+// ---------------------------------------------------------------------------
+// v2.0: Re-exports from Lattice Memory and Basic Resolver
+// ---------------------------------------------------------------------------
+
+export type {
+  MemoryEntry,
+  MemoryFabric,
+} from "./sdk-aep-memory";
+export { InMemoryFabric, createMemoryEntry, cosineSimilarity } from "./sdk-aep-memory";
+
+export type {
+  ResolveRequest,
+  ResolveResult,
+} from "./sdk-aep-resolver";
+export { BasicResolver } from "./sdk-aep-resolver";

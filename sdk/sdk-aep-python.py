@@ -12,6 +12,48 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
+# v2.0: Lattice Memory and Basic Resolver (graceful degradation)
+try:
+    from importlib.util import spec_from_file_location, module_from_spec as _mfs
+    import os as _os
+    _sdk_dir = _os.path.dirname(_os.path.abspath(__file__))
+
+    _mem_spec = spec_from_file_location(
+        "sdk_aep_memory", _os.path.join(_sdk_dir, "sdk-aep-memory.py")
+    )
+    _mem_mod = _mfs(_mem_spec)
+    _mem_spec.loader.exec_module(_mem_mod)
+    MemoryFabric = _mem_mod.MemoryFabric
+    MemoryEntry = _mem_mod.MemoryEntry
+    InMemoryFabric = _mem_mod.InMemoryFabric
+    create_memory_entry = _mem_mod.create_memory_entry
+    _V2_MEMORY_AVAILABLE = True
+except Exception:
+    MemoryFabric = None
+    MemoryEntry = None
+    InMemoryFabric = None
+    create_memory_entry = None
+    _V2_MEMORY_AVAILABLE = False
+
+try:
+    from importlib.util import spec_from_file_location as _sfl2, module_from_spec as _mfs2
+    import os as _os2
+    _sdk_dir2 = _os2.path.dirname(_os2.path.abspath(__file__))
+    _res_spec = _sfl2(
+        "sdk_aep_resolver", _os2.path.join(_sdk_dir2, "sdk-aep-resolver.py")
+    )
+    _res_mod = _mfs2(_res_spec)
+    _res_spec.loader.exec_module(_res_mod)
+    BasicResolver = _res_mod.BasicResolver
+    ResolveRequest = _res_mod.ResolveRequest
+    ResolveResult = _res_mod.ResolveResult
+    _V2_RESOLVER_AVAILABLE = True
+except Exception:
+    BasicResolver = None
+    ResolveRequest = None
+    ResolveResult = None
+    _V2_RESOLVER_AVAILABLE = False
+
 
 # ---------------------------------------------------------------------------
 # Errors
@@ -204,11 +246,15 @@ class AEPConfig:
         reg_aep_version: str,
         reg_schema_revision: int,
         forbidden_patterns: list[dict],
+        memory=None,
+        resolver=None,
     ):
         self.elements = elements
         self.registry = registry
         self.theme = theme
         self.scene_raw = scene_raw
+        self.memory = memory      # Optional[MemoryFabric]
+        self.resolver = resolver  # Optional[BasicResolver]
         self.component_styles: dict[str, dict] = theme.get("component_styles", {})
         self.viewport_breakpoints: dict = scene_raw.get("viewport_breakpoints", {})
         self.scene_aep_version: str = str(scene_raw.get("aep_version", "1.1"))
@@ -496,7 +542,25 @@ def validate_aot(config: AEPConfig) -> ValidationResult:
                 errors.append(f"Duplicate child reference: {ref} appears in multiple parents")
             seen.add(ref)
 
-    return ValidationResult(valid=len(errors) == 0, errors=errors, warnings=warnings)
+    result = ValidationResult(valid=len(errors) == 0, errors=errors, warnings=warnings)
+
+    # v2.0: record in memory if available
+    if config.memory and _V2_MEMORY_AVAILABLE and create_memory_entry is not None:
+        try:
+            for el_id, el in config.elements.items():
+                entry = create_memory_entry(
+                    element_id=el_id,
+                    domain="ui",
+                    proposal={"type": el.type, "z": el.z},
+                    result="accepted" if result.valid else "rejected",
+                    errors=result.errors,
+                    traversal_path=["aot_full"],
+                )
+                config.memory.record(entry)
+        except Exception:
+            pass  # graceful degradation
+
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -563,7 +627,24 @@ def validate_jit(
                         f"{element_id} anchors {direction} to non-existent {target_id}"
                     )
 
-    return ValidationResult(valid=len(errors) == 0, errors=errors, warnings=warnings)
+    result = ValidationResult(valid=len(errors) == 0, errors=errors, warnings=warnings)
+
+    # v2.0: record in memory if available
+    if config.memory and _V2_MEMORY_AVAILABLE and create_memory_entry is not None:
+        try:
+            entry = create_memory_entry(
+                element_id=element_id,
+                domain="ui",
+                proposal=changes,
+                result="accepted" if result.valid else "rejected",
+                errors=result.errors,
+                traversal_path=["jit_delta"],
+            )
+            config.memory.record(entry)
+        except Exception:
+            pass  # graceful degradation
+
+    return result
 
 
 # ---------------------------------------------------------------------------
