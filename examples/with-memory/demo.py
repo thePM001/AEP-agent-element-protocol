@@ -15,6 +15,7 @@ from importlib.util import spec_from_file_location, module_from_spec
 sdk_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "sdk")
 mem_spec = spec_from_file_location("sdk_aep_memory", os.path.join(sdk_dir, "sdk-aep-memory.py"))
 mem_mod = module_from_spec(mem_spec)
+sys.modules["sdk_aep_memory"] = mem_mod
 mem_spec.loader.exec_module(mem_mod)
 
 InMemoryFabric = mem_mod.InMemoryFabric

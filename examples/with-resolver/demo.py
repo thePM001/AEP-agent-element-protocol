@@ -16,6 +16,7 @@ from importlib.util import spec_from_file_location, module_from_spec
 # Load memory module
 mem_spec = spec_from_file_location("sdk_aep_memory", os.path.join(sdk_dir, "sdk-aep-memory.py"))
 mem_mod = module_from_spec(mem_spec)
+sys.modules["sdk_aep_memory"] = mem_mod
 mem_spec.loader.exec_module(mem_mod)
 InMemoryFabric = mem_mod.InMemoryFabric
 create_memory_entry = mem_mod.create_memory_entry
@@ -23,6 +24,7 @@ create_memory_entry = mem_mod.create_memory_entry
 # Load resolver module
 res_spec = spec_from_file_location("sdk_aep_resolver", os.path.join(sdk_dir, "sdk-aep-resolver.py"))
 res_mod = module_from_spec(res_spec)
+sys.modules["sdk_aep_resolver"] = res_mod
 res_spec.loader.exec_module(res_mod)
 BasicResolver = res_mod.BasicResolver
 ResolveRequest = res_mod.ResolveRequest
