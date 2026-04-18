@@ -3,7 +3,7 @@
 ### Version 2.0 - 18 April 2026
 ### Author: thePM_001 (https://x.com/thePM_001)
 ### License: Apache-2.0
-### Research Paper: https://github.com/thePM001/AEP-research-paper-001
+### Research Paper: https://github.com/the -PM001/AEP-research-paper-001
 ### Demo: https://aep.newlisbon.agency
 ### How to install AEP ?: copy the URL of the GitHub repo into your reasoning LLM + tell it "analyze the repo and prepare implementation plan for AEP integration into our project".
 ---
@@ -1034,15 +1034,15 @@ AEP v2.0 introduces **Lattice Memory**: a persistent, append-only memory subsyst
 
 Memory serves two purposes:
 
-1. **Audit trail** — every validation decision is recorded. You can reconstruct exactly what happened, when and why.
-2. **Attractor fast-path** — when a new proposal closely matches a previously accepted one (by cosine similarity), the resolver flags it as a likely-valid candidate. Downstream advisory systems can skip expensive re-computation.
+1. **Audit trail** - every validation decision is recorded. You can reconstruct exactly what happened, when and why.
+2. **Attractor fast-path** - when a new proposal closely matches a previously accepted one (by cosine similarity), the resolver flags it as a likely-valid candidate. Downstream advisory systems can skip expensive re-computation.
 
 **Critical invariant:** Memory is **read-only to the validation pipeline**. The accept/reject decision is 100% deterministic and based solely on the scene graph, registry, theme and Rego policies. Memory never overrides a validation result. This is formally specified in TLA+ as the `MemoryDoesNotAffectDecision` invariant (see `docs/TLA+/AEP_Memory.tla`).
 
 Two storage backends ship with the SDK:
 
-- `InMemoryFabric` — volatile, list-backed. Suitable for tests and short-lived processes.
-- `SQLiteFabric` — durable SQLite storage with thread-safe access (`check_same_thread=False`).
+- `InMemoryFabric` - volatile, list-backed. Suitable for tests and short-lived processes.
+- `SQLiteFabric` - durable SQLite storage with thread-safe access (`check_same_thread=False`).
 
 Full API reference: `docs/LATTICE-MEMORY.md`. SDK files: `sdk/sdk-aep-memory.py`, `sdk/sdk-aep-memory.ts`.
 
@@ -1065,7 +1065,8 @@ Full API reference: `docs/RESOLVER.md`. SDK files: `sdk/sdk-aep-resolver.py`, `s
 
 ## 19. Migration from v1.1 to v2.0
 
-AEP v2.0 is backwards-compatible with v1.1. All existing config files are valid v2.0 files after updating `aep_version` from `"1.1"` to `"2.0"`. No existing SDK files were modified. Memory and Resolver are fully optional — they add capabilities without requiring changes to existing integrations.
+AEP v2.0 is backwards-compatible with v1.1. All existing config files are valid v2.0 files after updating `aep_version` from `"1.1"` to `"2.0"`. 
+No existing SDK files were modified. Memory and Resolver are fully optional - they add capabilities without requiring changes to existing integrations.
 
 Step-by-step migration guide: `docs/MIGRATION-v1-to-v2.md`.
 
