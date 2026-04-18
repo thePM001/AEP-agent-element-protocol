@@ -194,7 +194,54 @@ CP-00004:
 # NAVIGATION COMPONENTS
 # ---------------------------------------------------------------------------
 
+NV-00010:
+  label: "Website Navigation Bar"
+  category: layout
+  function: "Top-level navigation bar on the AEP website containing external links."
+  component_file: "aep/page.tsx"
+  parent: "SH-00001"
+  skin_binding: "panel_header"
+  states:
+    default: "Displays navigation links"
+  actions: []
+  events: {}
+  constraints:
+    - "Must be fixed at the top of the viewport"
+    - "Must always be visible"
+  data_source: "None"
+  user_interaction: "Container only"
+
 NV-00001:
+  label: "Nav GitHub Link"
+  category: action
+  function: "Links to AEP GitHub repository from navigation bar"
+  component_file: "aep/page.tsx"
+  parent: "NV-00010"
+  skin_binding: "nav_link"
+  states:
+    default: "Idle, clickable"
+    hover: "Amber text highlight"
+  events:
+    click: "navigate('https://github.com/thePM001/AEP-agent-element-protocol')"
+  constraints:
+    - "Must always be visible in nav bar"
+
+NV-00002:
+  label: "Nav Research Paper Link"
+  category: action
+  function: "Links to AEP research paper from navigation bar"
+  component_file: "aep/page.tsx"
+  parent: "NV-00010"
+  skin_binding: "nav_link"
+  states:
+    default: "Idle, clickable"
+    hover: "Amber text highlight"
+  events:
+    click: "navigate('https://github.com/thePM001/AEP-research-paper-001')"
+  constraints:
+    - "Must always be visible in nav bar"
+
+NV-00005:
   label: "Nav Item: Dashboard"
   category: action
   function: "Navigates to the dashboard view."
@@ -214,7 +261,7 @@ NV-00001:
   data_source: "Router state"
   user_interaction: "Click to navigate"
 
-NV-00002:
+NV-00006:
   label: "Nav Item: Data Explorer"
   category: action
   function: "Navigates to the data explorer view."
