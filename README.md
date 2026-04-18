@@ -1,6 +1,6 @@
 # AEP - Agent Element Protocol (Deterministic Adjudication Lattices)
 # Free Basic Open-Source Version Implementation Reference
-### Version 1.1 - 16 April 2026
+### Version 2.0 - 18 April 2026
 ### Author: thePM_001 (https://x.com/thePM_001)
 ### License: Apache-2.0
 ### Research Paper: https://github.com/thePM001/AEP-research-paper-001
@@ -1008,6 +1008,9 @@ To use: define your concrete `ElementIDs`, `Prefixes` and `ZBands` in a model co
 [ ] Verify: changing theme YAML changes visuals without touching components or registry
 [ ] Verify: every component traceable by its AEP ID
 [ ] Verify: no visual properties exist in aep-registry.yaml
+[ ] (v2.0) Optional: initialise Lattice Memory (InMemoryFabric or SQLiteFabric)
+[ ] (v2.0) Optional: initialise Basic Resolver with config and memory
+[ ] (v2.0) Optional: deploy aep-memory-policy.rego alongside aep-policy.rego
 ```
 
 ---
@@ -1023,12 +1026,55 @@ AEP is not a framework or a library. It is an **architectural discipline**. It m
 5. **A versioned schema** (`aep_version`, `schema_revision`) in every config file
 
 The three layers (Structure, Behaviour, Skin) are independent. Changing one NEVER requires changing another. This separation enables deterministic AI-driven frontend development, instant theme swapping, build-time structural validation and a living documentation system that never drifts from reality.
---
+---
+
+## 17. Lattice Memory
+
+AEP v2.0 introduces **Lattice Memory**: a persistent, append-only memory subsystem for the adjudication lattice. Memory records every validation outcome (accepted or rejected) along with the proposal, errors, traversal path and an optional embedding vector.
+
+Memory serves two purposes:
+
+1. **Audit trail** — every validation decision is recorded. You can reconstruct exactly what happened, when and why.
+2. **Attractor fast-path** — when a new proposal closely matches a previously accepted one (by cosine similarity), the resolver flags it as a likely-valid candidate. Downstream advisory systems can skip expensive re-computation.
+
+**Critical invariant:** Memory is **read-only to the validation pipeline**. The accept/reject decision is 100% deterministic and based solely on the scene graph, registry, theme and Rego policies. Memory never overrides a validation result. This is formally specified in TLA+ as the `MemoryDoesNotAffectDecision` invariant (see `docs/TLA+/AEP_Memory.tla`).
+
+Two storage backends ship with the SDK:
+
+- `InMemoryFabric` — volatile, list-backed. Suitable for tests and short-lived processes.
+- `SQLiteFabric` — durable SQLite storage with thread-safe access (`check_same_thread=False`).
+
+Full API reference: `docs/LATTICE-MEMORY.md`. SDK files: `sdk/sdk-aep-memory.py`, `sdk/sdk-aep-memory.ts`.
+
+---
+
+## 18. Basic Resolver
+
+The **Basic Resolver** routes agent proposals to the correct validator pipeline. Given a proposal (UI element, workflow step, API call, event or IaC resource), the resolver determines:
+
+1. **Which domain** handles this proposal (ui, workflow, api, event, iac).
+2. **What constraints** apply from the AEP registry.
+3. **What actions** are available from the current state (for workflows).
+4. **Whether a memory attractor** matches this proposal (fast-path signal).
+
+The resolver is **read-only and stateless**. It never modifies the scene graph, registry, theme or memory. All state comes from inputs. When registries are not provided, the resolver degrades gracefully with informational constraint notes rather than errors.
+
+Full API reference: `docs/RESOLVER.md`. SDK files: `sdk/sdk-aep-resolver.py`, `sdk/sdk-aep-resolver.ts`.
+
+---
+
+## 19. Migration from v1.1 to v2.0
+
+AEP v2.0 is backwards-compatible with v1.1. All existing config files are valid v2.0 files after updating `aep_version` from `"1.1"` to `"2.0"`. No existing SDK files were modified. Memory and Resolver are fully optional — they add capabilities without requiring changes to existing integrations.
+
+Step-by-step migration guide: `docs/MIGRATION-v1-to-v2.md`.
+
+---
 ## License
 
 Licensed under the Apache License, Version 2.0. See `LICENSE` for the full text and `NOTICE` for attribution.
 
-The names **AEP**, **Agent Element Protocol**, **AEP-compliant** and **dynAEP** are reserved. See `NAME-POLICY.md` for permitted and prohibited uses. Apache 2.0 covers the code; the reserved-name policy covers the identifiers.
+The names **AEP**, **Agent Element Protocol**, **AEP-compliant**, **dynAEP**, **AEP Lattice Memory**, **AEP Basic Resolver**, **AEP Hyper-Resolver** and **AEP Memory Fabric** are reserved. See `NAME-POLICY.md` for permitted and prohibited uses. Apache 2.0 covers the code; the reserved-name policy covers the identifiers.
 
 Patent grant: Apache 2.0 includes an explicit patent covenant from contributors.
 

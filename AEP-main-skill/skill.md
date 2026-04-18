@@ -34,11 +34,11 @@ If you find yourself editing two layers for one change, the separation is broken
 Every AEP config file MUST include `aep_version` and `schema_revision` in its header. The validator MUST reject any file missing `aep_version`.
 
 ```json
-{ "aep_version": "1.1", "schema_revision": 1, "elements": { ... } }
+{ "aep_version": "2.0", "schema_revision": 1, "elements": { ... } }
 ```
 
 ```yaml
-aep_version: "1.1"
+aep_version: "2.0"
 schema_revision: 1
 ```
 
@@ -96,7 +96,7 @@ The scene graph. A flat JSON object where every UI element has topological const
 
 ```json
 {
-  "aep_version": "1.1",
+  "aep_version": "2.0",
   "schema_revision": 1,
   "elements": {
     "SH-00001": {
@@ -174,7 +174,7 @@ An agent can query this and know not to place essential UI inside an element tha
 The component registry (AEP-FCR). Every element that renders pixels has an entry defining what it does, its states, events, constraints and what it's forbidden from doing. Layer 2 contains **no visual properties**. All styling is delegated to Layer 3 through `skin_binding`.
 
 ```yaml
-aep_version: "1.1"
+aep_version: "2.0"
 schema_revision: 1
 
 CP-00001:
@@ -250,7 +250,7 @@ deny[msg] {
 All colours, fonts, spacing, borders, shadows and animations. Components reference theme variables through `skin_binding`. No component ever contains hardcoded visual values.
 
 ```yaml
-aep_version: "1.1"
+aep_version: "2.0"
 schema_revision: 1
 theme_name: "Project Dark"
 
@@ -453,6 +453,33 @@ claude mcp add aep-demo --transport http https://aep.newlisbon.agency/demo/mcp
 ```
 
 For other MCP clients: add the URL with HTTP transport.
+
+## Lattice Memory (v2.0)
+
+AEP v2.0 adds optional **Lattice Memory**: an append-only validation memory with vector similarity search and fast-path attractor matching. Memory is **read-only to validation** — the accept/reject decision is always deterministic.
+
+```python
+from sdk_aep_memory import InMemoryFabric, create_memory_entry
+fabric = InMemoryFabric()
+entry = create_memory_entry("CP-00001", "ui", {"z": 20}, "accepted", [], ["z_band"])
+fabric.record(entry)
+```
+
+SDK files: `sdk/sdk-aep-memory.py`, `sdk/sdk-aep-memory.ts`. Docs: `docs/LATTICE-MEMORY.md`.
+
+## Basic Resolver (v2.0)
+
+The **Basic Resolver** routes agent proposals to the correct validator domain (ui, workflow, api, event, iac), collects constraints, and optionally queries memory for fast-path attractor hits. Stateless and read-only.
+
+```python
+from sdk_aep_resolver import BasicResolver, ResolveRequest
+resolver = BasicResolver(config=aep_config, memory=fabric)
+result = resolver.resolve(ResolveRequest(proposal_type="ui_element", element_id="CP-00003", payload={}))
+```
+
+SDK files: `sdk/sdk-aep-resolver.py`, `sdk/sdk-aep-resolver.ts`. Docs: `docs/RESOLVER.md`.
+
+---
 
 ## References
 
