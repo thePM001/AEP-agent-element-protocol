@@ -1,6 +1,6 @@
 ---
 name: aep
-description: Use this skill whenever working with AEP (Agent Element Protocol) or dynAEP. Triggers include 'AEP', 'dynAEP', 'scene graph', 'aep-scene.json', 'aep-registry.yaml', 'aep-theme.yaml', 'zero-trust UI', 'topological matrix', 'z-band', 'skin binding', 'AEP-FCR'or building validated UI for AI agents. Also use when implementing AEP three-layer architecture, writing AEP validators, creating MCP servers that validate agent UI outputor working with AG-UI under AEP governance. If AEP MCP tools are available (list_aep_schemas, create_ui_element, get_scene_graph), always consult this skill first. Do NOT guess IDs, skin bindings, z-bands or element types.
+description: Use this skill whenever working with AEP (Agent Element Protocol) or dynAEP. Triggers include 'AEP', 'dynAEP', 'scene graph', 'aep-scene.json', 'aep-registry.yaml', 'aep-theme.yaml', 'zero-trust UI', 'topological matrix', 'z-band', 'skin binding', 'AEP-FCR', 'lattice memory', 'memory fabric', 'attractor', 'rejection history', 'resolver', 'proposal routing', 'fast-path', 'aep v2', 'aep 2.0' or building validated UI for AI agents. Also use when implementing AEP three-layer architecture, writing AEP validators, creating MCP servers that validate agent UI output, working with AG-UI under AEP governance, querying validation memory or routing proposals through the resolver. If AEP MCP tools are available (list_aep_schemas, create_ui_element, get_scene_graph), always consult this skill first. Do NOT guess IDs, skin bindings, z-bands or element types.
 ---
 
 # Agent Element Protocol (AEP)
@@ -416,6 +416,10 @@ When you have AEP MCP tools available, follow this sequence:
 | Guessing IDs | Assuming `PN-00002` exists | Always use the ID returned by create |
 | Hardcoded visuals | Setting colours in registry | Use skin_binding, all visuals in theme |
 | Two-layer edits | Editing structure + behaviour for one change | Separation is broken, fix it |
+| Skipping the resolver | Calling a validator directly | Always route through BasicResolver before validating |
+| Not recording validation results | Validating without calling memory.record() | Call memory.record() after every accept and reject |
+| Ignoring rejection history | Retrying a failed element blindly | Query get_rejection_history() before retrying a failed element |
+| Hardcoding validator selection | Manually picking WorkflowRegistry vs APIRegistry | Let the resolver determine the correct pipeline |
 
 ### Handling Rejections
 
@@ -456,25 +460,87 @@ For other MCP clients: add the URL with HTTP transport.
 
 ## Lattice Memory (v2.0)
 
-AEP v2.0 adds optional **Lattice Memory**: an append-only validation memory with vector similarity search and fast-path attractor matching. Memory is **read-only to validation** — the accept/reject decision is always deterministic.
+Lattice Memory is a persistent append-only store of every validation result (accepted and rejected) that the adjudication lattice produces. Memory is **read-only to the validation decision**. Accept/reject stays deterministic. Memory serves two auxiliary purposes: surfacing historically successful patterns earlier and finding nearest accepted proposals for fast-path short-circuiting.
+
+**When to use it:** After every AOT or JIT validation call, record the result in the memory fabric. Before proposing a new element, query the fabric for nearest attractors to improve proposal quality.
+
+**Key API methods:**
+
+| Method | Purpose |
+|--------|---------|
+| `record(entry)` | Store a validation result (accepted or rejected) |
+| `find_nearest_attractor(embedding, limit)` | Search for similar accepted proposals by vector similarity |
+| `get_fast_path_hit(embedding, threshold)` | Check if a near-identical proposal was already validated |
+| `get_rejection_history(element_id)` | Learn from previous failures for a specific element |
+
+**Import path:**
 
 ```python
 from sdk_aep_memory import InMemoryFabric, create_memory_entry
+```
+
+**Usage pattern (record then query):**
+
+```python
+from sdk_aep_memory import InMemoryFabric, create_memory_entry
+
 fabric = InMemoryFabric()
-entry = create_memory_entry("CP-00001", "ui", {"z": 20}, "accepted", [], ["z_band"])
+
+entry = create_memory_entry(
+    element_id="CP-00001",
+    domain="ui",
+    proposal={"z": 20, "type": "component"},
+    result="accepted",
+    errors=[],
+    traversal_path=["SH-00001", "PN-00001", "CP-00001"],
+)
 fabric.record(entry)
+
+rejections = fabric.get_rejection_history("CP-00001")
+if rejections:
+    print(f"Element CP-00001 was rejected {len(rejections)} time(s) before")
 ```
 
 SDK files: `sdk/sdk-aep-memory.py`, `sdk/sdk-aep-memory.ts`. Docs: `docs/LATTICE-MEMORY.md`.
 
 ## Basic Resolver (v2.0)
 
-The **Basic Resolver** routes agent proposals to the correct validator domain (ui, workflow, api, event, iac), collects constraints, and optionally queries memory for fast-path attractor hits. Stateless and read-only.
+The Basic Resolver routes agent proposals to the correct validator pipeline (UI, Workflow, API, Event, IaC) based on element prefix, z-band, registry lookup and Rego policies. It optionally queries Lattice Memory for attractor fast-path hits.
+
+**When to use it:** Before calling any validator directly, pass the proposal through the resolver to determine the correct route and collect applicable constraints. Agents should never manually select which registry to validate against.
+
+**Key API methods:**
+
+| Method | Purpose |
+|--------|---------|
+| `resolve(request)` | Route a proposal, returning route, constraints, policy status and optional attractor |
+| `get_available_routes()` | List which domains have registries loaded |
+
+**Import path:**
 
 ```python
 from sdk_aep_resolver import BasicResolver, ResolveRequest
+```
+
+**Usage pattern (resolve then validate):**
+
+```python
+from sdk_aep_resolver import BasicResolver, ResolveRequest
+
 resolver = BasicResolver(config=aep_config, memory=fabric)
-result = resolver.resolve(ResolveRequest(proposal_type="ui_element", element_id="CP-00003", payload={}))
+
+result = resolver.resolve(ResolveRequest(
+    proposal_type="ui_element",
+    element_id="CP-00003",
+    payload={"z": 22},
+))
+
+if result.fast_path:
+    print("Fast-path hit: proposal matches a previously accepted pattern")
+elif result.policy_pass:
+    print(f"Route to {result.route} validator with {len(result.constraints)} constraint(s)")
+else:
+    print(f"Policy errors: {result.policy_errors}")
 ```
 
 SDK files: `sdk/sdk-aep-resolver.py`, `sdk/sdk-aep-resolver.ts`. Docs: `docs/RESOLVER.md`.
