@@ -15,7 +15,7 @@
         "width": "100vw",
         "height": "100vh"
       },
-      "children": ["PN-00001", "PN-00002", "PN-00003", "PN-00004", "PN-00010", "PN-00011", "PN-00012", "PN-00013", "PN-00014", "PN-00015"],
+      "children": ["NV-00010", "PN-00001", "PN-00002", "PN-00003", "PN-00004", "PN-00010", "PN-00011", "PN-00012", "PN-00013", "PN-00014", "PN-00015"],
       "memory_key": "shell-root-v1"
     },
     "PN-00001": {
@@ -57,7 +57,7 @@
         "vp-md": { "visible": true, "width": "250px" },
         "vp-lg": { "visible": true, "width": "300px" }
       },
-      "children": ["NV-00001", "NV-00002", "NV-00003", "NV-00004"]
+      "children": ["NV-00005", "NV-00006", "NV-00003", "NV-00004"]
     },
     "PN-00003": {
       "id": "PN-00003",
@@ -187,8 +187,51 @@
       },
       "children": []
     },
+    "NV-00010": {
+      "id": "NV-00010",
+      "type": "navigation",
+      "label": "Website Navigation Bar",
+      "z": 10,
+      "visible": true,
+      "parent": "SH-00001",
+      "spatial_rule": "flex",
+      "direction": "row",
+      "justify": "flex-end",
+      "align": "center",
+      "layout": {
+        "width": "100%",
+        "height": "5rem"
+      },
+      "children": ["NV-00001", "NV-00002"]
+    },
     "NV-00001": {
       "id": "NV-00001",
+      "type": "navigation",
+      "label": "Nav GitHub Link",
+      "z": 10,
+      "visible": true,
+      "parent": "NV-00010",
+      "layout": {
+        "width": "auto",
+        "height": "auto"
+      },
+      "children": []
+    },
+    "NV-00002": {
+      "id": "NV-00002",
+      "type": "navigation",
+      "label": "Nav Research Paper Link",
+      "z": 10,
+      "visible": true,
+      "parent": "NV-00010",
+      "layout": {
+        "width": "auto",
+        "height": "auto"
+      },
+      "children": []
+    },
+    "NV-00005": {
+      "id": "NV-00005",
       "type": "navigation",
       "label": "Nav Item: Dashboard",
       "z": 10,
@@ -200,8 +243,8 @@
       },
       "children": []
     },
-    "NV-00002": {
-      "id": "NV-00002",
+    "NV-00006": {
+      "id": "NV-00006",
       "type": "navigation",
       "label": "Nav Item: Data Explorer",
       "z": 10,
