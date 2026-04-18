@@ -1,5 +1,5 @@
 {
-  "aep_version": "1.1",
+  "aep_version": "2.0",
   "schema_revision": 1,
   "elements": {
     "SH-00001": {
@@ -15,7 +15,8 @@
         "width": "100vw",
         "height": "100vh"
       },
-      "children": ["PN-00001", "PN-00002", "PN-00003", "PN-00004"]
+      "children": ["PN-00001", "PN-00002", "PN-00003", "PN-00004"],
+      "memory_key": "shell-root-v1"
     },
     "PN-00001": {
       "id": "PN-00001",
