@@ -714,3 +714,341 @@ TT-00001:
 #   input.scene[tt].z <= input.scene[md].z
 #   msg := sprintf("Tooltip %v (z=%v) must render above modal %v (z=%v)", [tt, input.scene[tt].z, md, input.scene[md].z])
 # }
+
+# ===========================================================================
+# AEP v2.0 WEBSITE SECTIONS
+# Added for the v2.0 content update
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# WEBSITE SECTION PANELS
+# ---------------------------------------------------------------------------
+
+PN-00010:
+  label: "v2.0 Upgrade Banner"
+  category: layout
+  function: "Full-width banner announcing AEP v2.0 with Lattice Memory and Resolver features."
+  component_file: "aep-page.tsx"
+  parent: "SH-00001"
+  skin_binding: "panel_surface_low"
+  states:
+    default: "Displays v2.0 announcement"
+  actions: []
+  events: {}
+  constraints:
+    - "Must appear after HOW IT WORKS section"
+  data_source: "Static content"
+  user_interaction: "Container with CTA buttons"
+
+PN-00011:
+  label: "Lattice Memory Section"
+  category: layout
+  function: "Two-column section explaining the Memory Fabric and attractor system."
+  component_file: "aep-page.tsx"
+  parent: "SH-00001"
+  skin_binding: "panel_main"
+  states:
+    default: "Displays lattice memory content"
+  actions: []
+  events: {}
+  constraints:
+    - "Must appear after v2.0 Upgrade Banner"
+  data_source: "Static content"
+  user_interaction: "Read-only display with animated visualization"
+
+PN-00012:
+  label: "Resolver Section"
+  category: layout
+  function: "Three-column grid explaining the Basic Resolver routing pipeline."
+  component_file: "aep-page.tsx"
+  parent: "SH-00001"
+  skin_binding: "panel_main"
+  states:
+    default: "Displays resolver content"
+  actions: []
+  events: {}
+  constraints:
+    - "Must appear after Lattice Memory section"
+  data_source: "Static content"
+  user_interaction: "Read-only display"
+
+PN-00013:
+  label: "Protocol Overview Section"
+  category: layout
+  function: "Editorial section explaining AEP beyond the hero tagline."
+  component_file: "aep-page.tsx"
+  parent: "SH-00001"
+  skin_binding: "panel_main"
+  states:
+    default: "Displays protocol overview"
+  actions: []
+  events: {}
+  constraints:
+    - "Must appear after Resolver section"
+  data_source: "Static content"
+  user_interaction: "Read-only display"
+
+PN-00014:
+  label: "Research Paper Section"
+  category: layout
+  function: "Card displaying the research paper title, abstract excerpt and link."
+  component_file: "aep-page.tsx"
+  parent: "SH-00001"
+  skin_binding: "panel_main"
+  states:
+    default: "Displays research paper card"
+  actions: []
+  events: {}
+  constraints:
+    - "Must appear after Protocol Overview section"
+  data_source: "Static content"
+  user_interaction: "Container with CTA button"
+
+PN-00015:
+  label: "Access Tiers Section"
+  category: layout
+  function: "Two-column pricing grid comparing open source and enterprise tiers."
+  component_file: "aep-page.tsx"
+  parent: "SH-00001"
+  skin_binding: "panel_main"
+  states:
+    default: "Displays tier comparison"
+  actions: []
+  events: {}
+  constraints:
+    - "Must appear after BEYOND PRECISION INTERFACES section"
+  data_source: "Static content"
+  user_interaction: "Container with CTA buttons"
+
+# ---------------------------------------------------------------------------
+# WEBSITE WIDGETS
+# ---------------------------------------------------------------------------
+
+WD-00010:
+  label: "Memory Feature Stack"
+  category: data-display
+  function: "Vertical stack of three feature items describing Lattice Memory capabilities."
+  component_file: "aep-page.tsx"
+  parent: "PN-00011"
+  skin_binding: "widget_card"
+  states:
+    default: "Displays feature list"
+  actions: []
+  events: {}
+  constraints: []
+  data_source: "Static content"
+  user_interaction: "Read-only display"
+
+WD-00011:
+  label: "Memory Fabric Visualization"
+  category: data-display
+  function: "CSS-only visualization of memory log entries and attractor lookup."
+  component_file: "aep-page.tsx"
+  parent: "PN-00011"
+  skin_binding: "widget_card"
+  states:
+    default: "Displays animated memory visualization"
+  actions: []
+  events: {}
+  constraints: []
+  data_source: "Static content"
+  user_interaction: "Read-only animated display"
+
+WD-00012:
+  label: "Prefix Routing Card"
+  category: data-display
+  function: "Card explaining element ID prefix-based domain routing."
+  component_file: "aep-page.tsx"
+  parent: "PN-00012"
+  skin_binding: "widget_card"
+  states:
+    default: "Displays routing info"
+  actions: []
+  events: {}
+  constraints: []
+  data_source: "Static content"
+  user_interaction: "Read-only display"
+
+WD-00013:
+  label: "Rego Enforcement Card"
+  category: data-display
+  function: "Card explaining OPA/Rego policy enforcement in the resolver."
+  component_file: "aep-page.tsx"
+  parent: "PN-00012"
+  skin_binding: "widget_card"
+  states:
+    default: "Displays Rego info"
+  actions: []
+  events: {}
+  constraints: []
+  data_source: "Static content"
+  user_interaction: "Read-only display"
+
+WD-00014:
+  label: "Memory Fast-Path Card"
+  category: data-display
+  function: "Card explaining attractor-based fast-path routing."
+  component_file: "aep-page.tsx"
+  parent: "PN-00012"
+  skin_binding: "widget_card"
+  states:
+    default: "Displays fast-path info"
+  actions: []
+  events: {}
+  constraints: []
+  data_source: "Static content"
+  user_interaction: "Read-only display"
+
+WD-00015:
+  label: "Resolver Flow Diagram"
+  category: data-display
+  function: "Horizontal flow diagram showing proposal routing from agent to validators."
+  component_file: "aep-page.tsx"
+  parent: "PN-00012"
+  skin_binding: "widget_card"
+  states:
+    default: "Displays flow diagram"
+  actions: []
+  events: {}
+  constraints: []
+  data_source: "Static content"
+  user_interaction: "Read-only display"
+
+WD-00016:
+  label: "Research Paper Card"
+  category: data-display
+  function: "Wide card with paper title, abstract excerpt and verification status."
+  component_file: "aep-page.tsx"
+  parent: "PN-00014"
+  skin_binding: "widget_card"
+  states:
+    default: "Displays paper information"
+  actions: []
+  events: {}
+  constraints: []
+  data_source: "Static content"
+  user_interaction: "Container with CTA"
+
+WD-00017:
+  label: "Open Source Tier Card"
+  category: data-display
+  function: "Pricing card for AEP v2.0 Basic open source tier."
+  component_file: "aep-page.tsx"
+  parent: "PN-00015"
+  skin_binding: "widget_card"
+  states:
+    default: "Displays open source tier"
+  actions: []
+  events: {}
+  constraints: []
+  data_source: "Static content"
+  user_interaction: "Container with CTA"
+
+WD-00018:
+  label: "Radia-Pro Tier Card"
+  category: data-display
+  function: "Pricing card for Radia-Pro enterprise tier."
+  component_file: "aep-page.tsx"
+  parent: "PN-00015"
+  skin_binding: "widget_card"
+  states:
+    default: "Displays enterprise tier"
+  actions: []
+  events: {}
+  constraints: []
+  data_source: "Static content"
+  user_interaction: "Container with CTA"
+
+# ---------------------------------------------------------------------------
+# WEBSITE INTERACTIVE COMPONENTS
+# ---------------------------------------------------------------------------
+
+CP-00020:
+  label: "View on GitHub Button"
+  category: action
+  function: "Navigates to the AEP GitHub repository."
+  component_file: "aep-page.tsx"
+  parent: "PN-00010"
+  skin_binding: "button_primary"
+  states:
+    default: "Idle, clickable"
+    hover: "Accent highlight"
+  actions:
+    - "navigate"
+  events:
+    click: "navigate('https://github.com/thePM001/AEP-agent-element-protocol')"
+  constraints: []
+  data_source: "None"
+  user_interaction: "Click to navigate"
+
+CP-00021:
+  label: "Read Changelog Button"
+  category: action
+  function: "Scrolls to or navigates to the changelog section."
+  component_file: "aep-page.tsx"
+  parent: "PN-00010"
+  skin_binding: "button_secondary"
+  states:
+    default: "Idle, clickable"
+    hover: "Border accent highlight"
+  actions:
+    - "navigate"
+  events:
+    click: "navigate('#changelog')"
+  constraints: []
+  data_source: "None"
+  user_interaction: "Click to navigate"
+
+CP-00022:
+  label: "Read Paper Button"
+  category: action
+  function: "Navigates to the AEP research paper repository."
+  component_file: "aep-page.tsx"
+  parent: "WD-00016"
+  skin_binding: "button_primary"
+  states:
+    default: "Idle, clickable"
+    hover: "Accent highlight"
+  actions:
+    - "navigate"
+  events:
+    click: "navigate('https://github.com/thePM001/AEP-research-paper-001')"
+  constraints: []
+  data_source: "None"
+  user_interaction: "Click to navigate"
+
+CP-00023:
+  label: "Initialize Protocol Button"
+  category: action
+  function: "Navigates to the AEP GitHub repository for the open source tier."
+  component_file: "aep-page.tsx"
+  parent: "WD-00017"
+  skin_binding: "button_primary"
+  states:
+    default: "Idle, clickable"
+    hover: "Accent highlight"
+  actions:
+    - "navigate"
+  events:
+    click: "navigate('https://github.com/thePM001/AEP-agent-element-protocol')"
+  constraints: []
+  data_source: "None"
+  user_interaction: "Click to navigate"
+
+CP-00024:
+  label: "Request Access Button"
+  category: action
+  function: "Opens email client to contact NLA for enterprise tier."
+  component_file: "aep-page.tsx"
+  parent: "WD-00018"
+  skin_binding: "button_secondary"
+  states:
+    default: "Idle, clickable"
+    hover: "Border accent highlight"
+  actions:
+    - "navigate"
+  events:
+    click: "navigate('mailto:support@newlisbon.agency')"
+  constraints: []
+  data_source: "None"
+  user_interaction: "Click to send email"
