@@ -23,6 +23,8 @@ import type {
   AEPScene,
   AEPRuntimeCoordinates,
   AEPValidationResult,
+  ResolveRequest,
+  MemoryEntry,
 } from "@aep/core";
 import { resolveStyles, validateAOT, prefixFromId, zBandForPrefix } from "@aep/core";
 
@@ -44,6 +46,7 @@ export interface AEPProviderOptions {
 // ---------------------------------------------------------------------------
 
 interface AEPContextValue {
+  config: AEPConfig;
   scene: AEPScene;
   registry: Record<string, AEPRegistryEntry>;
   theme: AEPTheme;
@@ -98,6 +101,7 @@ export function AEPProvider({ config, options, children }: AEPProviderProps) {
   // Stable context value: only changes when dependencies actually change
   const value = useMemo<AEPContextValue>(
     () => ({
+      config,
       scene: config.scene,
       registry: config.registry,
       theme: config.theme,
@@ -105,7 +109,7 @@ export function AEPProvider({ config, options, children }: AEPProviderProps) {
       liveElements,
       setLiveElements,
     }),
-    [config.scene, config.registry, config.theme, validationResult, liveElements, setLiveElements],
+    [config, config.scene, config.registry, config.theme, validationResult, liveElements, setLiveElements],
   );
 
   return React.createElement(AEPContext.Provider, { value }, children);
@@ -479,6 +483,73 @@ export const AEPElement = forwardRef<HTMLElement, AEPElementProps>(
     }, children);
   },
 );
+
+// ---------------------------------------------------------------------------
+// useAEPMemory (v2.0)
+// ---------------------------------------------------------------------------
+
+export function useAEPMemory() {
+  const { config } = useAEPContext();
+
+  const queryAttractor = useCallback(
+    (embedding: number[], limit: number = 5): MemoryEntry[] => {
+      if (!config.memory) return [];
+      return config.memory.findNearestAttractor(embedding, limit);
+    },
+    [config.memory],
+  );
+
+  const getRejections = useCallback(
+    (elementId: string): MemoryEntry[] => {
+      if (!config.memory) return [];
+      return config.memory.getRejectionHistory(elementId);
+    },
+    [config.memory],
+  );
+
+  const getValidationCount = useCallback(
+    (elementId: string): number => {
+      if (!config.memory) return 0;
+      return config.memory.getValidationCount(elementId);
+    },
+    [config.memory],
+  );
+
+  return { queryAttractor, getRejections, getValidationCount, available: !!config.memory };
+}
+
+// ---------------------------------------------------------------------------
+// useAEPResolver (v2.0)
+// ---------------------------------------------------------------------------
+
+export function useAEPResolver() {
+  const { config } = useAEPContext();
+
+  const resolve = useCallback(
+    (request: ResolveRequest) => {
+      if (!config.resolver) {
+        return {
+          route: "ui",
+          constraints: [],
+          policyPass: true,
+          policyErrors: [],
+          availableActions: [],
+          nearestAttractor: null,
+          fastPath: false,
+        };
+      }
+      return config.resolver.resolve(request);
+    },
+    [config.resolver],
+  );
+
+  const availableRoutes = useMemo(
+    () => config.resolver?.getAvailableRoutes() ?? [],
+    [config.resolver],
+  );
+
+  return { resolve, availableRoutes, available: !!config.resolver };
+}
 
 // ---------------------------------------------------------------------------
 // Exports
