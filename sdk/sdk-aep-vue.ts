@@ -25,6 +25,8 @@ import type {
   AEPScene,
   AEPRuntimeCoordinates,
   AEPValidationResult,
+  ResolveRequest,
+  MemoryEntry,
 } from "@aep/core";
 import {
   resolveStyles,
@@ -38,6 +40,7 @@ import {
 // ---------------------------------------------------------------------------
 
 interface AEPContextValue {
+  config: AEPConfig;
   scene: AEPScene;
   registry: Record<string, AEPRegistryEntry>;
   theme: AEPTheme;
@@ -89,6 +92,7 @@ export function createAEP(config: AEPConfig, options: AEPPluginOptions = {}) {
       ) as Record<string, AEPElement>;
 
       const ctx: AEPContextValue = {
+        config,
         scene: config.scene,
         registry: config.registry,
         theme: config.theme,
@@ -439,6 +443,57 @@ export const AEPElementComponent = defineComponent({
     };
   },
 });
+
+// ---------------------------------------------------------------------------
+// useAEPMemory (v2.0)
+// ---------------------------------------------------------------------------
+
+export function useAEPMemory() {
+  const ctx = useAEPContext();
+
+  return {
+    queryAttractor(embedding: number[], limit: number = 5): MemoryEntry[] {
+      if (!ctx.config?.memory) return [];
+      return ctx.config.memory.findNearestAttractor(embedding, limit);
+    },
+    getRejections(elementId: string): MemoryEntry[] {
+      if (!ctx.config?.memory) return [];
+      return ctx.config.memory.getRejectionHistory(elementId);
+    },
+    getValidationCount(elementId: string): number {
+      if (!ctx.config?.memory) return 0;
+      return ctx.config.memory.getValidationCount(elementId);
+    },
+    available: computed(() => !!ctx.config?.memory),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// useAEPResolver (v2.0)
+// ---------------------------------------------------------------------------
+
+export function useAEPResolver() {
+  const ctx = useAEPContext();
+
+  return {
+    resolve(request: ResolveRequest) {
+      if (!ctx.config?.resolver) {
+        return {
+          route: "ui",
+          constraints: [] as string[],
+          policyPass: true,
+          policyErrors: [] as string[],
+          availableActions: [] as string[],
+          nearestAttractor: null,
+          fastPath: false,
+        };
+      }
+      return ctx.config.resolver.resolve(request);
+    },
+    availableRoutes: computed(() => ctx.config?.resolver?.getAvailableRoutes() ?? []),
+    available: computed(() => !!ctx.config?.resolver),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Exports
