@@ -376,3 +376,43 @@ component_styles:
     color: "{colors.text_muted}"
     font_size: "{typography.font_size_xs}"
     font_family: "{typography.font_mono}"
+
+  # --- v2.0 Website Section Styles ---
+
+  panel_surface_low:
+    background: "#1b1b25"
+    border_radius: "{dimensions.border_radius_lg}px"
+    padding: "{dimensions.spacing_xxl}px"
+
+  widget_feature_list:
+    background: "transparent"
+    padding: "0"
+    gap: "{dimensions.spacing_lg}px"
+
+  widget_visualization:
+    background: "{colors.bg_cell}"
+    border: "1px solid {colors.border}"
+    border_radius: "{dimensions.border_radius_md}px"
+    padding: "{dimensions.spacing_lg}px"
+
+  widget_diagram:
+    background: "{colors.bg_cell}"
+    border: "1px solid {colors.border}"
+    border_radius: "{dimensions.border_radius_md}px"
+    padding: "{dimensions.spacing_xl}px"
+    overflow: "hidden"
+
+  widget_card_wide:
+    background: "{colors.bg_cell}"
+    border: "1px solid {colors.border}"
+    border_radius: "{dimensions.border_radius_md}px"
+    padding: "{dimensions.spacing_xl}px"
+    max_width: "56rem"
+
+  widget_card_pricing:
+    background: "{colors.bg_cell}"
+    border: "1px solid {colors.border}"
+    border_radius: "{dimensions.border_radius_md}px"
+    padding: "{dimensions.spacing_xl}px"
+    display: "flex"
+    flex_direction: "column"
