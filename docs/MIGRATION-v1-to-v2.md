@@ -117,4 +117,4 @@ git reset --hard v1.1-baseline
 git push origin main --force
 ```
 
-The `v1.1-baseline` tag marks the exact state of the repository before the v2.0 upgrade. This single command restores everything.
+The `v1.1-baseline` tag indicates the exact state of the repository before the v2.0 upgrade. This single command restores everything.
