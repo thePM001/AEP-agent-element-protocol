@@ -212,7 +212,7 @@ NV-00010:
   user_interaction: "Container only"
 
 NV-00001:
-  label: "Nav GitHub Link"
+  label: "Nav GitHub AEP Link"
   category: action
   function: "Links to AEP GitHub repository from navigation bar"
   component_file: "aep/page.tsx"
@@ -227,9 +227,9 @@ NV-00001:
     - "Must always be visible in nav bar"
 
 NV-00002:
-  label: "Nav Research Paper Link"
+  label: "Nav GitHub dynAEP Link"
   category: action
-  function: "Links to AEP research paper from navigation bar"
+  function: "Links to dynAEP GitHub repository from navigation bar"
   component_file: "aep/page.tsx"
   parent: "NV-00010"
   skin_binding: "nav_link"
@@ -237,7 +237,7 @@ NV-00002:
     default: "Idle, clickable"
     hover: "Amber text highlight"
   events:
-    click: "navigate('https://github.com/thePM001/AEP-research-paper-001')"
+    click: "navigate('https://github.com/thePM001/dynAEP-dynamic-agent-element-protocol')"
   constraints:
     - "Must always be visible in nav bar"
 
