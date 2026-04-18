@@ -1,6 +1,6 @@
 ---
 name: aep
-description: Use this skill whenever interacting with the Agent Element Protocol (AEP) MCP server to build UI elements. Triggers include any mention of 'AEP', 'Agent Element Protocol', 'scene graph', 'AEP tools', 'zero-trust UI', 'create_ui_element', 'aep-demo', building UI through MCP validationandor connecting to an AEP MCP endpoint. Also use when the user asks you to build interfaces, dashboards, formsandor any UI via AEP tools. If you see AEP MCP tools available in your session (list_aep_schemas, create_ui_element, get_scene_graph, etc.), always consult this skill before making any tool calls. Do NOT guess IDs, skin bindings, z-bandsandor element types - this skill tells you exactly what is valid.
+description: Use this skill whenever interacting with the Agent Element Protocol (AEP) v2.0 MCP server to build UI elements. Triggers include any mention of 'AEP', 'Agent Element Protocol', 'scene graph', 'AEP tools', 'zero-trust UI', 'create_ui_element', 'aep-demo', 'lattice memory', 'resolver', 'attractor', 'fast-path', 'aep v2', building UI through MCP validation or connecting to an AEP MCP endpoint. Also use when the user asks you to build interfaces, dashboards, forms or any UI via AEP tools. If you see AEP MCP tools available in your session (list_aep_schemas, create_ui_element, get_scene_graph, etc.), always consult this skill before making any tool calls. Do NOT guess IDs, skin bindings, z-bands or element types - this skill tells you exactly what is valid.
 ---
 
 # Agent Element Protocol (AEP) - Agent Skill
@@ -142,3 +142,12 @@ When a call returns `{"valid": false, "errors": [...]}`:
 ## Live Demo Context
 
 When building through the AEP demo server, your actions are broadcast live to a dashboard at `aep.newlisbon.agency`. Visitors can watch you build in real time. Passes show in green, rejections in red. Build deliberately and cleanly - this is a showcase.
+
+## AEP v2.0
+
+The AEP SDK is at version 2.0. This adds two features:
+
+- **Lattice Memory** -- append-only validation memory with vector similarity search. Records every accept/reject result. Query for nearest attractors and rejection history.
+- **Basic Resolver** -- stateless proposal routing to the correct validator pipeline (UI, Workflow, API, Event, IaC). Optionally queries memory for fast-path attractor hits.
+
+The demo server at `aep.newlisbon.agency` will support Lattice Memory queries and Resolver routing once the server-side v2.0 update is deployed. The SDK files (`sdk/sdk-aep-memory.*` and `sdk/sdk-aep-resolver.*`) are available now.
