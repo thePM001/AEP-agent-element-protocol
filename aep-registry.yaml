@@ -1099,3 +1099,250 @@ CP-00024:
   constraints: []
   data_source: "None"
   user_interaction: "Click to send email"
+
+# ============================================================
+# UNIVERSAL HEXAGON NAV (identical on every page, every subdomain)
+# ============================================================
+NV-00020:
+  label: "NLA Hexagon Nav Container"
+  category: layout
+  function: "Planetwide navigation overlay triggered by NLA hexagon click"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "SH-00001"
+  skin_binding: "nav_hexagon_panel"
+  states:
+    closed: "Panel hidden, only hexagon visible"
+    open: "Panel unfolded from hexagon, navigation links visible"
+  constraints:
+    - "Must be identical on every page and subdomain"
+    - "Must overlay content without pushing layout"
+    - "Must close on outside click or second hexagon click"
+  z: 15
+
+NV-00021:
+  label: "Nav Category: Products"
+  category: layout
+  function: "Products navigation category header"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "NV-00020"
+  skin_binding: "nav_category_header"
+  z: 15
+
+NV-00022:
+  label: "Nav Link: AEP"
+  category: action
+  function: "Navigate to AEP subdomain"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "NV-00021"
+  skin_binding: "nav_link"
+  events:
+    click: "navigate('https://aep.newlisbon.agency')"
+  z: 15
+
+NV-00024:
+  label: "Nav Link: Cochelle"
+  category: action
+  function: "Cochelle product link (coming soon)"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "NV-00021"
+  skin_binding: "nav_link_disabled"
+  states:
+    disabled: "Coming soon, not clickable"
+  z: 15
+
+NV-00025:
+  label: "Nav Link: CAWs"
+  category: action
+  function: "Containerized Agentic Workflows link (coming soon)"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "NV-00021"
+  skin_binding: "nav_link_disabled"
+  z: 15
+
+NV-00026:
+  label: "Nav Link: Co-Shell"
+  category: action
+  function: "Co-Shell product link (coming soon)"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "NV-00021"
+  skin_binding: "nav_link_disabled"
+  z: 15
+
+NV-00029:
+  label: "Nav Link: Radia Agent"
+  category: action
+  function: "Radia Agent product link (coming soon)"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "NV-00021"
+  skin_binding: "nav_link_disabled"
+  z: 15
+
+NV-00030:
+  label: "Nav Link: Radia Cloud"
+  category: action
+  function: "Radia Cloud product link (coming soon)"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "NV-00021"
+  skin_binding: "nav_link_disabled"
+  z: 15
+
+NV-00031:
+  label: "Nav Link: Monad Runlayer"
+  category: action
+  function: "Monad Runlayer product link (coming soon)"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "NV-00021"
+  skin_binding: "nav_link_disabled"
+  z: 15
+
+NV-00032:
+  label: "Nav Category: Services"
+  category: layout
+  function: "Services navigation category header"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "NV-00020"
+  skin_binding: "nav_category_header"
+  z: 15
+
+NV-00033:
+  label: "Nav Link: AI Systems Architecture"
+  category: action
+  function: "AI Systems Architecture service link (coming soon)"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "NV-00032"
+  skin_binding: "nav_link_disabled"
+  z: 15
+
+NV-00034:
+  label: "Nav Link: Sovereign AI Consulting"
+  category: action
+  function: "Sovereign AI Consulting service link (coming soon)"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "NV-00032"
+  skin_binding: "nav_link_disabled"
+  z: 15
+
+NV-00035:
+  label: "Nav Link: Synthetic Media"
+  category: action
+  function: "Synthetic Media and Human Replication service link (coming soon)"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "NV-00032"
+  skin_binding: "nav_link_disabled"
+  z: 15
+
+NV-00040:
+  label: "Nav Category: Research"
+  category: layout
+  function: "Research navigation category header"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "NV-00020"
+  skin_binding: "nav_category_header"
+  z: 15
+
+NV-00041:
+  label: "Nav Link: AEP Paper"
+  category: action
+  function: "Navigate to AEP research paper on GitHub"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "NV-00040"
+  skin_binding: "nav_link"
+  events:
+    click: "navigate('https://github.com/thePM001/AEP-research-paper-001')"
+  z: 15
+
+NV-00042:
+  label: "Nav Link: IPAP"
+  category: action
+  function: "IPAP research link (coming soon)"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "NV-00040"
+  skin_binding: "nav_link_disabled"
+  z: 15
+
+NV-00043:
+  label: "Nav Category: Philosophy"
+  category: layout
+  function: "Philosophy navigation category header"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "NV-00020"
+  skin_binding: "nav_category_header"
+  z: 15
+
+NV-00044:
+  label: "Nav Link: Transhuman Eudaimonist Framework"
+  category: action
+  function: "Transhuman Eudaimonist Framework link"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "NV-00043"
+  skin_binding: "nav_link"
+  events:
+    click: "navigate('https://x.com/thePM_001/status/1890929977811685798')"
+  z: 15
+
+NV-00045:
+  label: "Nav Category: Media"
+  category: layout
+  function: "Media navigation category header"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "NV-00020"
+  skin_binding: "nav_category_header"
+  z: 15
+
+NV-00046:
+  label: "Nav Link: [biosecure]"
+  category: action
+  function: "[biosecure] media link (coming soon)"
+  component_file: "components/HexagonNav/index.tsx"
+  parent: "NV-00045"
+  skin_binding: "nav_link_disabled"
+  z: 15
+
+# ============================================================
+# NLA HOMEPAGE SECTIONS
+# ============================================================
+SH-00002:
+  label: "NLA Homepage Shell"
+  category: layout
+  function: "Root container for newlisbon.agency homepage"
+  component_file: "app/(frontend)/NLAHomePage.tsx"
+  parent: null
+  skin_binding: "shell"
+  z: 0
+
+PN-00030:
+  label: "Hero Section"
+  category: layout
+  function: "Radia face hero with agency name and positioning line"
+  component_file: "app/(frontend)/NLAHomePage.tsx"
+  parent: "SH-00002"
+  skin_binding: "panel_main"
+  z: 10
+
+PN-00031:
+  label: "Cochelle Section"
+  category: layout
+  function: "Cochelle Obtainment Environment display with ring visual"
+  component_file: "app/(frontend)/NLAHomePage.tsx"
+  parent: "SH-00002"
+  skin_binding: "panel_main"
+  z: 10
+
+PN-00032:
+  label: "Bottom Line Section"
+  category: layout
+  function: "Transhuman eudaimonist disclosure line"
+  component_file: "app/(frontend)/NLAHomePage.tsx"
+  parent: "SH-00002"
+  skin_binding: "panel_main"
+  z: 10
+
+PN-00033:
+  label: "Footer Section"
+  category: layout
+  function: "Minimal footer with copyright and GitHub links"
+  component_file: "app/(frontend)/NLAHomePage.tsx"
+  parent: "SH-00002"
+  skin_binding: "panel_footer"
+  z: 10
+
