@@ -2,7 +2,7 @@
 
 ## Scope
 
-The names **AEP**, **Agent Element Protocol**, **AEP-compliant** and **dynAEP** are reserved names managed by New Lisbon Agency (NLA) on behalf of EPSCOM (Eudaimonic Earth Post-Scarcity Committe). This policy describes permitted and prohibited uses of these names. It is separate from and additional to the Apache License 2.0 that governs the source code in this repository.
+The names **AEP**, **Agent Element Protocol**, **AEP-compliant**, **dynAEP**, **AEP Lattice Memory**, **AEP Basic Resolver**, **AEP Hyper-Resolver** and **AEP Memory Fabric** are reserved names managed by New Lisbon Agency (NLA) on behalf of EPSCOM (Eudaimonic Earth Post-Scarcity Committe). This policy describes permitted and prohibited uses of these names. It is separate from and additional to the Apache License 2.0 that governs the source code in this repository.
 
 Apache 2.0 grants you rights to use, modify and redistribute the code. It explicitly does **not** grant rights to use the project names on your fork or derived work. This file documents how those names may be used.
 
