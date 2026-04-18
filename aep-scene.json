@@ -207,7 +207,7 @@
     "NV-00001": {
       "id": "NV-00001",
       "type": "navigation",
-      "label": "Nav GitHub Link",
+      "label": "Nav GitHub AEP Link",
       "z": 10,
       "visible": true,
       "parent": "NV-00010",
@@ -220,7 +220,7 @@
     "NV-00002": {
       "id": "NV-00002",
       "type": "navigation",
-      "label": "Nav Research Paper Link",
+      "label": "Nav GitHub dynAEP Link",
       "z": 10,
       "visible": true,
       "parent": "NV-00010",
