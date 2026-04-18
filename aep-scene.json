@@ -15,7 +15,19 @@
         "width": "100vw",
         "height": "100vh"
       },
-      "children": ["NV-00010", "PN-00001", "PN-00002", "PN-00003", "PN-00004", "PN-00010", "PN-00011", "PN-00012", "PN-00013", "PN-00014", "PN-00015"],
+      "children": [
+        "NV-00010",
+        "PN-00001",
+        "PN-00002",
+        "PN-00003",
+        "PN-00004",
+        "PN-00010",
+        "PN-00011",
+        "PN-00012",
+        "PN-00013",
+        "PN-00014",
+        "PN-00015"
+      ],
       "memory_key": "shell-root-v1"
     },
     "PN-00001": {
@@ -33,7 +45,12 @@
         "width": "100%",
         "height": "40px"
       },
-      "children": ["CP-00001", "CP-00002", "CP-00003", "CP-00004"]
+      "children": [
+        "CP-00001",
+        "CP-00002",
+        "CP-00003",
+        "CP-00004"
+      ]
     },
     "PN-00002": {
       "id": "PN-00002",
@@ -53,11 +70,24 @@
         "width": "250px"
       },
       "responsive_matrix": {
-        "base": { "visible": false },
-        "vp-md": { "visible": true, "width": "250px" },
-        "vp-lg": { "visible": true, "width": "300px" }
+        "base": {
+          "visible": false
+        },
+        "vp-md": {
+          "visible": true,
+          "width": "250px"
+        },
+        "vp-lg": {
+          "visible": true,
+          "width": "300px"
+        }
       },
-      "children": ["NV-00005", "NV-00006", "NV-00003", "NV-00004"]
+      "children": [
+        "NV-00005",
+        "NV-00006",
+        "NV-00003",
+        "NV-00004"
+      ]
     },
     "PN-00003": {
       "id": "PN-00003",
@@ -86,7 +116,11 @@
           }
         }
       },
-      "children": ["TB-00001", "CZ-00001", "WD-00001"]
+      "children": [
+        "TB-00001",
+        "CZ-00001",
+        "WD-00001"
+      ]
     },
     "PN-00004": {
       "id": "PN-00004",
@@ -107,7 +141,10 @@
         },
         "height": "32px"
       },
-      "children": ["CP-00010", "CP-00011"]
+      "children": [
+        "CP-00010",
+        "CP-00011"
+      ]
     },
     "CP-00001": {
       "id": "CP-00001",
@@ -159,7 +196,9 @@
         "width": "32px",
         "height": "32px"
       },
-      "children": ["DD-00002"]
+      "children": [
+        "DD-00002"
+      ]
     },
     "CP-00010": {
       "id": "CP-00010",
@@ -202,7 +241,10 @@
         "width": "100%",
         "height": "5rem"
       },
-      "children": ["NV-00001", "NV-00002"]
+      "children": [
+        "NV-00001",
+        "NV-00002"
+      ]
     },
     "NV-00001": {
       "id": "NV-00001",
@@ -297,7 +339,11 @@
         "width": "100%",
         "height": "36px"
       },
-      "children": ["FM-00001", "CP-00005", "CP-00006"]
+      "children": [
+        "FM-00001",
+        "CP-00005",
+        "CP-00006"
+      ]
     },
     "FM-00001": {
       "id": "FM-00001",
@@ -323,7 +369,9 @@
         "width": "auto",
         "height": "28px"
       },
-      "children": ["DD-00001"]
+      "children": [
+        "DD-00001"
+      ]
     },
     "CP-00006": {
       "id": "CP-00006",
@@ -385,7 +433,11 @@
           "center_y": "SH-00001.center_y"
         }
       },
-      "children": ["FM-00002", "CP-00007", "CP-00008"]
+      "children": [
+        "FM-00002",
+        "CP-00007",
+        "CP-00008"
+      ]
     },
     "FM-00002": {
       "id": "FM-00002",
@@ -499,8 +551,14 @@
       "parent": "SH-00001",
       "spatial_rule": "flex",
       "direction": "column",
-      "layout": { "width": "100%", "height": "auto" },
-      "children": ["CP-00020", "CP-00021"]
+      "layout": {
+        "width": "100%",
+        "height": "auto"
+      },
+      "children": [
+        "CP-00020",
+        "CP-00021"
+      ]
     },
     "PN-00011": {
       "id": "PN-00011",
@@ -510,8 +568,14 @@
       "visible": true,
       "parent": "SH-00001",
       "spatial_rule": "grid",
-      "layout": { "width": "100%", "height": "auto" },
-      "children": ["WD-00010", "WD-00011"]
+      "layout": {
+        "width": "100%",
+        "height": "auto"
+      },
+      "children": [
+        "WD-00010",
+        "WD-00011"
+      ]
     },
     "PN-00012": {
       "id": "PN-00012",
@@ -522,8 +586,16 @@
       "parent": "SH-00001",
       "spatial_rule": "flex",
       "direction": "column",
-      "layout": { "width": "100%", "height": "auto" },
-      "children": ["WD-00012", "WD-00013", "WD-00014", "WD-00015"]
+      "layout": {
+        "width": "100%",
+        "height": "auto"
+      },
+      "children": [
+        "WD-00012",
+        "WD-00013",
+        "WD-00014",
+        "WD-00015"
+      ]
     },
     "PN-00013": {
       "id": "PN-00013",
@@ -534,7 +606,10 @@
       "parent": "SH-00001",
       "spatial_rule": "flex",
       "direction": "column",
-      "layout": { "width": "100%", "height": "auto" },
+      "layout": {
+        "width": "100%",
+        "height": "auto"
+      },
       "children": []
     },
     "PN-00014": {
@@ -546,8 +621,13 @@
       "parent": "SH-00001",
       "spatial_rule": "flex",
       "direction": "column",
-      "layout": { "width": "100%", "height": "auto" },
-      "children": ["WD-00016"]
+      "layout": {
+        "width": "100%",
+        "height": "auto"
+      },
+      "children": [
+        "WD-00016"
+      ]
     },
     "PN-00015": {
       "id": "PN-00015",
@@ -557,8 +637,14 @@
       "visible": true,
       "parent": "SH-00001",
       "spatial_rule": "grid",
-      "layout": { "width": "100%", "height": "auto" },
-      "children": ["WD-00017", "WD-00018"]
+      "layout": {
+        "width": "100%",
+        "height": "auto"
+      },
+      "children": [
+        "WD-00017",
+        "WD-00018"
+      ]
     },
     "WD-00010": {
       "id": "WD-00010",
@@ -567,7 +653,10 @@
       "z": 50,
       "visible": true,
       "parent": "PN-00011",
-      "layout": { "width": "100%", "height": "auto" },
+      "layout": {
+        "width": "100%",
+        "height": "auto"
+      },
       "children": []
     },
     "WD-00011": {
@@ -577,7 +666,10 @@
       "z": 50,
       "visible": true,
       "parent": "PN-00011",
-      "layout": { "width": "100%", "height": "auto" },
+      "layout": {
+        "width": "100%",
+        "height": "auto"
+      },
       "children": []
     },
     "WD-00012": {
@@ -587,7 +679,10 @@
       "z": 50,
       "visible": true,
       "parent": "PN-00012",
-      "layout": { "width": "auto", "height": "auto" },
+      "layout": {
+        "width": "auto",
+        "height": "auto"
+      },
       "children": []
     },
     "WD-00013": {
@@ -597,7 +692,10 @@
       "z": 50,
       "visible": true,
       "parent": "PN-00012",
-      "layout": { "width": "auto", "height": "auto" },
+      "layout": {
+        "width": "auto",
+        "height": "auto"
+      },
       "children": []
     },
     "WD-00014": {
@@ -607,7 +705,10 @@
       "z": 50,
       "visible": true,
       "parent": "PN-00012",
-      "layout": { "width": "auto", "height": "auto" },
+      "layout": {
+        "width": "auto",
+        "height": "auto"
+      },
       "children": []
     },
     "WD-00015": {
@@ -617,7 +718,10 @@
       "z": 50,
       "visible": true,
       "parent": "PN-00012",
-      "layout": { "width": "100%", "height": "auto" },
+      "layout": {
+        "width": "100%",
+        "height": "auto"
+      },
       "children": []
     },
     "WD-00016": {
@@ -627,8 +731,14 @@
       "z": 50,
       "visible": true,
       "parent": "PN-00014",
-      "layout": { "width": "100%", "height": "auto", "max_width": "56rem" },
-      "children": ["CP-00022"]
+      "layout": {
+        "width": "100%",
+        "height": "auto",
+        "max_width": "56rem"
+      },
+      "children": [
+        "CP-00022"
+      ]
     },
     "WD-00017": {
       "id": "WD-00017",
@@ -637,8 +747,13 @@
       "z": 50,
       "visible": true,
       "parent": "PN-00015",
-      "layout": { "width": "auto", "height": "auto" },
-      "children": ["CP-00023"]
+      "layout": {
+        "width": "auto",
+        "height": "auto"
+      },
+      "children": [
+        "CP-00023"
+      ]
     },
     "WD-00018": {
       "id": "WD-00018",
@@ -647,8 +762,13 @@
       "z": 50,
       "visible": true,
       "parent": "PN-00015",
-      "layout": { "width": "auto", "height": "auto" },
-      "children": ["CP-00024"]
+      "layout": {
+        "width": "auto",
+        "height": "auto"
+      },
+      "children": [
+        "CP-00024"
+      ]
     },
     "CP-00020": {
       "id": "CP-00020",
@@ -657,7 +777,10 @@
       "z": 20,
       "visible": true,
       "parent": "PN-00010",
-      "layout": { "width": "auto", "height": "auto" },
+      "layout": {
+        "width": "auto",
+        "height": "auto"
+      },
       "children": []
     },
     "CP-00021": {
@@ -667,7 +790,10 @@
       "z": 20,
       "visible": true,
       "parent": "PN-00010",
-      "layout": { "width": "auto", "height": "auto" },
+      "layout": {
+        "width": "auto",
+        "height": "auto"
+      },
       "children": []
     },
     "CP-00022": {
@@ -677,7 +803,10 @@
       "z": 20,
       "visible": true,
       "parent": "WD-00016",
-      "layout": { "width": "auto", "height": "auto" },
+      "layout": {
+        "width": "auto",
+        "height": "auto"
+      },
       "children": []
     },
     "CP-00023": {
@@ -687,7 +816,10 @@
       "z": 20,
       "visible": true,
       "parent": "WD-00017",
-      "layout": { "width": "auto", "height": "auto" },
+      "layout": {
+        "width": "auto",
+        "height": "auto"
+      },
       "children": []
     },
     "CP-00024": {
@@ -697,14 +829,265 @@
       "z": 20,
       "visible": true,
       "parent": "WD-00018",
-      "layout": { "width": "auto", "height": "auto" },
+      "layout": {
+        "width": "auto",
+        "height": "auto"
+      },
       "children": []
+    },
+    "NV-00020": {
+      "id": "NV-00020",
+      "type": "navigation",
+      "label": "NLA Hexagon Nav Container",
+      "z": 15,
+      "visible": true,
+      "parent": "SH-00001",
+      "layout": {
+        "width": "300px",
+        "height": "auto"
+      },
+      "children": [
+        "NV-00021",
+        "NV-00032",
+        "NV-00040",
+        "NV-00043",
+        "NV-00045"
+      ]
+    },
+    "NV-00021": {
+      "id": "NV-00021",
+      "type": "navigation",
+      "label": "Nav Category: Products",
+      "z": 15,
+      "visible": true,
+      "parent": "NV-00020",
+      "children": [
+        "NV-00022",
+        "NV-00024",
+        "NV-00025",
+        "NV-00026",
+        "NV-00029",
+        "NV-00030",
+        "NV-00031"
+      ]
+    },
+    "NV-00022": {
+      "id": "NV-00022",
+      "type": "navigation",
+      "label": "Nav Link: AEP",
+      "z": 15,
+      "visible": true,
+      "parent": "NV-00021"
+    },
+    "NV-00024": {
+      "id": "NV-00024",
+      "type": "navigation",
+      "label": "Nav Link: Cochelle",
+      "z": 15,
+      "visible": true,
+      "parent": "NV-00021"
+    },
+    "NV-00025": {
+      "id": "NV-00025",
+      "type": "navigation",
+      "label": "Nav Link: CAWs",
+      "z": 15,
+      "visible": true,
+      "parent": "NV-00021"
+    },
+    "NV-00026": {
+      "id": "NV-00026",
+      "type": "navigation",
+      "label": "Nav Link: Co-Shell",
+      "z": 15,
+      "visible": true,
+      "parent": "NV-00021"
+    },
+    "NV-00029": {
+      "id": "NV-00029",
+      "type": "navigation",
+      "label": "Nav Link: Radia Agent",
+      "z": 15,
+      "visible": true,
+      "parent": "NV-00021"
+    },
+    "NV-00030": {
+      "id": "NV-00030",
+      "type": "navigation",
+      "label": "Nav Link: Radia Cloud",
+      "z": 15,
+      "visible": true,
+      "parent": "NV-00021"
+    },
+    "NV-00031": {
+      "id": "NV-00031",
+      "type": "navigation",
+      "label": "Nav Link: Monad Runlayer",
+      "z": 15,
+      "visible": true,
+      "parent": "NV-00021"
+    },
+    "NV-00032": {
+      "id": "NV-00032",
+      "type": "navigation",
+      "label": "Nav Category: Services",
+      "z": 15,
+      "visible": true,
+      "parent": "NV-00020",
+      "children": [
+        "NV-00033",
+        "NV-00034",
+        "NV-00035"
+      ]
+    },
+    "NV-00033": {
+      "id": "NV-00033",
+      "type": "navigation",
+      "label": "Nav Link: AI Systems Architecture",
+      "z": 15,
+      "visible": true,
+      "parent": "NV-00032"
+    },
+    "NV-00034": {
+      "id": "NV-00034",
+      "type": "navigation",
+      "label": "Nav Link: Sovereign AI Consulting",
+      "z": 15,
+      "visible": true,
+      "parent": "NV-00032"
+    },
+    "NV-00035": {
+      "id": "NV-00035",
+      "type": "navigation",
+      "label": "Nav Link: Synthetic Media",
+      "z": 15,
+      "visible": true,
+      "parent": "NV-00032"
+    },
+    "NV-00040": {
+      "id": "NV-00040",
+      "type": "navigation",
+      "label": "Nav Category: Research",
+      "z": 15,
+      "visible": true,
+      "parent": "NV-00020",
+      "children": [
+        "NV-00041",
+        "NV-00042"
+      ]
+    },
+    "NV-00041": {
+      "id": "NV-00041",
+      "type": "navigation",
+      "label": "Nav Link: AEP Paper",
+      "z": 15,
+      "visible": true,
+      "parent": "NV-00040"
+    },
+    "NV-00042": {
+      "id": "NV-00042",
+      "type": "navigation",
+      "label": "Nav Link: IPAP",
+      "z": 15,
+      "visible": true,
+      "parent": "NV-00040"
+    },
+    "NV-00043": {
+      "id": "NV-00043",
+      "type": "navigation",
+      "label": "Nav Category: Philosophy",
+      "z": 15,
+      "visible": true,
+      "parent": "NV-00020",
+      "children": [
+        "NV-00044"
+      ]
+    },
+    "NV-00044": {
+      "id": "NV-00044",
+      "type": "navigation",
+      "label": "Nav Link: TEF",
+      "z": 15,
+      "visible": true,
+      "parent": "NV-00043"
+    },
+    "NV-00045": {
+      "id": "NV-00045",
+      "type": "navigation",
+      "label": "Nav Category: Media",
+      "z": 15,
+      "visible": true,
+      "parent": "NV-00020",
+      "children": [
+        "NV-00046"
+      ]
+    },
+    "NV-00046": {
+      "id": "NV-00046",
+      "type": "navigation",
+      "label": "Nav Link: [biosecure]",
+      "z": 15,
+      "visible": true,
+      "parent": "NV-00045"
+    },
+    "SH-00002": {
+      "id": "SH-00002",
+      "type": "shell",
+      "label": "NLA Homepage Shell",
+      "z": 0,
+      "visible": true,
+      "parent": null,
+      "children": [
+        "PN-00030",
+        "PN-00031",
+        "PN-00032",
+        "PN-00033"
+      ]
+    },
+    "PN-00030": {
+      "id": "PN-00030",
+      "type": "panel",
+      "label": "Hero Section",
+      "z": 10,
+      "visible": true,
+      "parent": "SH-00002"
+    },
+    "PN-00031": {
+      "id": "PN-00031",
+      "type": "panel",
+      "label": "Cochelle Section",
+      "z": 10,
+      "visible": true,
+      "parent": "SH-00002"
+    },
+    "PN-00032": {
+      "id": "PN-00032",
+      "type": "panel",
+      "label": "Bottom Line Section",
+      "z": 10,
+      "visible": true,
+      "parent": "SH-00002"
+    },
+    "PN-00033": {
+      "id": "PN-00033",
+      "type": "panel",
+      "label": "Footer Section",
+      "z": 10,
+      "visible": true,
+      "parent": "SH-00002"
     }
   },
   "viewport_breakpoints": {
-    "base": { "max_width": 639 },
-    "vp-md": { "min_width": 640, "max_width": 1023 },
-    "vp-lg": { "min_width": 1024 }
+    "base": {
+      "max_width": 639
+    },
+    "vp-md": {
+      "min_width": 640,
+      "max_width": 1023
+    },
+    "vp-lg": {
+      "min_width": 1024
+    }
   },
   "camera": {
     "x": 0,

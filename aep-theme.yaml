@@ -416,3 +416,39 @@ component_styles:
     padding: "{dimensions.spacing_xl}px"
     display: "flex"
     flex_direction: "column"
+
+  nav_hexagon_panel:
+    background: "rgba(10,10,20,0.6)"
+    backdrop_filter: "blur(20px)"
+    border: "1px solid rgba(212,200,74,0.15)"
+    border_radius: "0 0 12px 0"
+    width: "300px"
+    padding: "6rem 1.5rem 2rem"
+    box_shadow: "4px 4px 40px rgba(0,0,0,0.5)"
+
+  nav_category_header:
+    font_family: "JetBrains Mono, monospace"
+    font_size: "10px"
+    text_transform: "uppercase"
+    letter_spacing: "0.2em"
+    color: "#D4C84A"
+    margin_bottom: "12px"
+
+  nav_link:
+    font_family: "JetBrains Mono, monospace"
+    font_size: "11px"
+    text_transform: "uppercase"
+    letter_spacing: "0.1em"
+    color: "#EEEEF2"
+    text_decoration: "none"
+    hover:
+      color: "#D4C84A"
+
+  nav_link_disabled:
+    font_family: "JetBrains Mono, monospace"
+    font_size: "11px"
+    text_transform: "uppercase"
+    letter_spacing: "0.1em"
+    color: "rgba(238,238,242,0.3)"
+    cursor: "default"
+    pointer_events: "none"
