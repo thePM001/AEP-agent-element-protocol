@@ -1346,3 +1346,13 @@ PN-00033:
   skin_binding: "panel_footer"
   z: 10
 
+# ---------------------------------------------------------------------------
+# FORBIDDEN PATTERNS
+# ---------------------------------------------------------------------------
+
+forbidden_patterns:
+  - name: "unreadable_text_opacity"
+    description: "Text elements must never use opacity at or below 0.3. Minimum readable opacity for text on dark backgrounds is 0.4. Any skin binding rendering text at 30% opacity or lower is a protocol violation."
+    severity: "error"
+    enforcement: "aep-policy.rego"
+
