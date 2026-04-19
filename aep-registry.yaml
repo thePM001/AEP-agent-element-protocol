@@ -1160,9 +1160,9 @@ NV-00025:
   z: 15
 
 NV-00026:
-  label: "Nav Link: Co-Shell"
+  label: "Nav Link: Radia Co-Shell"
   category: action
-  function: "Co-Shell product link (coming soon)"
+  function: "Radia Co-Shell product link (coming soon)"
   component_file: "components/HexagonNav/index.tsx"
   parent: "NV-00021"
   skin_binding: "nav_link_disabled"
