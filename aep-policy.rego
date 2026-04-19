@@ -122,6 +122,18 @@ deny[msg] {
   msg := sprintf("Version mismatch: scene is %v but theme is %v", [input.scene.aep_version, input.theme.aep_version])
 }
 
+# --- Forbidden: text elements must not use opacity <= 0.3 ---
+deny[msg] {
+  some id
+  entry := input.registry[id]
+  entry.skin_binding
+  style := input.theme.component_styles[entry.skin_binding]
+  style.opacity
+  to_number(style.opacity) <= 0.3
+  style.color
+  msg := sprintf("Forbidden: %v uses skin binding '%v' with opacity <= 0.3 on text. Text below 30%% opacity is unreadable and prohibited.", [id, entry.skin_binding])
+}
+
 # ===========================================================================
 # HELPER RULES
 # ===========================================================================
