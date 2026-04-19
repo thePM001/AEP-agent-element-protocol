@@ -1207,9 +1207,9 @@ NV-00033:
   z: 15
 
 NV-00034:
-  label: "Nav Link: Sovereign AI Consulting"
+  label: "Nav Link: Sovereign AI"
   category: action
-  function: "Sovereign AI Consulting service link (coming soon)"
+  function: "Sovereign AI service link (coming soon)"
   component_file: "components/HexagonNav/index.tsx"
   parent: "NV-00032"
   skin_binding: "nav_link_disabled"
