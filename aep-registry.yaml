@@ -1139,10 +1139,10 @@ NV-00022:
     click: "navigate('https://aep.newlisbon.agency')"
   z: 15
 
-NV-00024:
-  label: "Nav Link: Cochelle"
+NV-00023:
+  label: "Nav Link: AEP Supervision Center"
   category: action
-  function: "Cochelle product link (coming soon)"
+  function: "AEP Supervision Center product link (coming soon)"
   component_file: "components/HexagonNav/index.tsx"
   parent: "NV-00021"
   skin_binding: "nav_link_disabled"
@@ -1150,28 +1150,21 @@ NV-00024:
     disabled: "Coming soon, not clickable"
   z: 15
 
-NV-00025:
-  label: "Nav Link: CAWs"
+NV-00024:
+  label: "Nav Link: Cochelle Obtainment Platform Environment // CAWs"
   category: action
-  function: "Containerized Agentic Workflows link (coming soon)"
+  function: "Cochelle + CAWs merged product link (coming soon)"
   component_file: "components/HexagonNav/index.tsx"
   parent: "NV-00021"
   skin_binding: "nav_link_disabled"
+  states:
+    disabled: "Coming soon, not clickable"
   z: 15
 
 NV-00026:
-  label: "Nav Link: Radia Co-Shell"
+  label: "Nav Link: Radia Co-Shell // Radia Agent"
   category: action
-  function: "Radia Co-Shell product link (coming soon)"
-  component_file: "components/HexagonNav/index.tsx"
-  parent: "NV-00021"
-  skin_binding: "nav_link_disabled"
-  z: 15
-
-NV-00029:
-  label: "Nav Link: Radia Agent"
-  category: action
-  function: "Radia Agent product link (coming soon)"
+  function: "Radia Co-Shell + Radia Agent merged product link (coming soon)"
   component_file: "components/HexagonNav/index.tsx"
   parent: "NV-00021"
   skin_binding: "nav_link_disabled"
@@ -1254,9 +1247,9 @@ NV-00041:
 NV-00042:
   label: "Nav Link: IPAP"
   category: action
-  function: "IPAP research link (coming soon)"
+  function: "IPAP media link (coming soon)"
   component_file: "components/HexagonNav/index.tsx"
-  parent: "NV-00040"
+  parent: "NV-00045"
   skin_binding: "nav_link_disabled"
   z: 15
 
