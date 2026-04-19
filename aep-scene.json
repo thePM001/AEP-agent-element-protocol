@@ -898,7 +898,7 @@
     "NV-00026": {
       "id": "NV-00026",
       "type": "navigation",
-      "label": "Nav Link: Co-Shell",
+      "label": "Nav Link: Radia Co-Shell",
       "z": 15,
       "visible": true,
       "parent": "NV-00021"
