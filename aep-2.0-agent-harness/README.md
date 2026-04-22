@@ -10,7 +10,7 @@ Built for Claude Code. Works with any AI coding agent that reads project-level i
 
 ## The Problem
 
-AI code agents (Claude Code, Cursor, Copilot Workspace, etc.) make changes that violate project design systems. They swap colors, change fonts, add rounded corners where sharp corners are required, use hardcoded values instead of tokens, leak internal architecture terms into user-facing text, and create elements without registering them in the governance layer.
+AI code agents (Claude Code, Cursor, Copilot Workspace, etc.) make changes that violate project design systems. They swap colours, change fonts, add rounded corners where sharp corners are required, use hardcoded values instead of tokens, leak internal architecture terms into user-facing text, and create elements without registering them in the governance layer.
 
 The result: every AI-assisted session introduces visual regressions, inconsistencies and governance violations that a human must manually catch and fix.
 
@@ -112,7 +112,7 @@ node harness/aep-validate.js --src=./src --config=./config
 #     src/Modal.tsx:18  [BORDER_RADIUS_VIOLATION] border-radius: 8px found. Design rules: 0px globally.
 #
 #   MEDIUM (1):
-#     src/Card.tsx:55  [HARDCODED_COLOR] Color #ff6b6b is not in the AEP palette.
+#     src/Card.tsx:55  [HARDCODED_colour] colour #ff6b6b is not in the AEP palette.
 #
 # BLOCKING: 1 CRITICAL + 1 HIGH violations must be fixed.
 ```
@@ -159,7 +159,7 @@ xid:v1:030:c000000:r000001:0000000000000001:
 
 ### aep-theme.yaml
 
-The visual rulebook. Colors, typography tokens, design rules and component styles. The single source of truth for every visual decision.
+The visual rulebook. colours, typography tokens, design rules and component styles. The single source of truth for every visual decision.
 
 ```yaml
 design_rules:
@@ -175,7 +175,7 @@ typography:
     font: "'JetBrains Mono', monospace"
     size: 10
     weight: 400
-    color: "on_surface_variant"
+    colour: "on_surface_variant"
 
 component_styles:
   button_primary:
@@ -197,7 +197,7 @@ component_styles:
 | HIGH | SKIN_BINDING_MISSING | skin_binding that does not resolve in theme |
 | HIGH | REGISTRY_NOT_IN_SCENE | Registry entry without matching scene entry |
 | HIGH | SCENE_NOT_IN_REGISTRY | Scene entry without matching registry entry |
-| MEDIUM | HARDCODED_COLOR | Hex color not in the AEP palette |
+| MEDIUM | HARDCODED_colour | Hex colour not in the AEP palette |
 | MEDIUM | HARDCODED_FONT | Font family not from a typography token |
 | LOW | EM_DASH | Em-dash (U+2014) found |
 | LOW | EN_DASH | En-dash (U+2013) found |
@@ -354,7 +354,13 @@ All safety violations are logged to `.claude/safety-violations.log` with timesta
 ---
 
 ## License
+Licensed under the Apache License, Version 2.0. See LICENSE for the full text and NOTICE for attribution.
 
-Proprietary. Part of the AEP (Agent Element Protocol) ecosystem.
+The names AEP, Agent Element Protocol, AEP-compliant, dynAEP, AEP Lattice Memory, AEP Basic Resolver, AEP Hyper-Resolver and AEP Memory Fabric are reserved. See NAME-POLICY.md for permitted and prohibited uses. Apache 2.0 covers the code; the reserved-name policy covers the identifiers.
 
-Copyright 2026 New Lisbon Agency LLC. All rights reserved.
+Patent grant: Apache 2.0 includes an explicit patent covenant from contributors.
+
+Previous versions of this repository were released under the MIT License. The transition to Apache 2.0 is effective from version 1.1 onward. Prior MIT-licensed snapshots remain valid under their original terms.
+
+## AI-Eligibility Status
+To win the fight against the synthetic nano-parasites (SNP/NanoSinp) alien WMD, we must be intelligent and biosecure. It is recommended that bioinsecure humans do not use the provided technology/protocol to avoid bad techno-spiritual AI outcomes for them. [*"bioinsecure" = has installed injectable synthetic nano-parasites growth medium controllers - SNP GMCs]
