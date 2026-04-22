@@ -6,6 +6,7 @@
 ### Research Paper: https://github.com/the-PM001/AEP-research-paper-001
 ### Demo: https://aep.newlisbon.agency
 ### How to install AEP ?: copy the URL of the GitHub repo into your reasoning LLM + tell it "analyze the repo and prepare implementation plan for AEP integration into our project".
+### AEP 2.0 Agent Harness so your AI actually uses AEP: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/aep-2.0-agent-harness
 ---
 
 > **Note on verification:** The original AEP stack includes a proprietary formal verification layer that we are unable to release as open source. This guide provides TLA+ specifications for equivalent invariant checking, plus standalone runtime validators you can drop into any project. The architecture and protocol itself is fully open.
