@@ -1,0 +1,52 @@
+version: "2.1"
+name: "aep-builder"
+
+capabilities:
+  - tool: "aep:create_element"
+    scope:
+      element_prefixes: ["SH", "PN", "NV", "CP", "FM", "IC", "WD", "CZ", "TB", "TT", "OV", "MD", "NT", "DD"]
+      z_bands: ["0-9", "10-19", "20-29", "30-39", "40-49", "50-59", "60-69", "70-79"]
+  - tool: "aep:update_element"
+    scope:
+      element_prefixes: ["PN", "NV", "CP", "FM", "IC", "WD", "CZ", "TB", "TT", "OV", "MD", "NT", "DD"]
+      exclude_ids: ["SH-00001"]
+  - tool: "aep:delete_element"
+    scope:
+      element_prefixes: ["CP", "FM", "IC", "WD", "CZ", "TB", "TT", "NT", "DD"]
+  - tool: "aep:update_skin"
+    scope:
+      bindings: ["*"]
+  - tool: "aep:update_registry"
+    scope:
+      categories: ["*"]
+  - tool: "file:read"
+    scope:
+      paths: ["aep-scene.json", "aep-registry.yaml", "aep-theme.yaml"]
+
+limits:
+  max_aep_mutations: 500
+  max_runtime_ms: 3600000
+
+gates:
+  - action: "aep:delete_element"
+    approval: human
+    risk_level: high
+
+forbidden:
+  - pattern: "SH-00001"
+    reason: "Root shell element is immutable"
+
+session:
+  max_actions: 200
+  max_denials: 30
+  rate_limit:
+    max_per_minute: 60
+  escalation:
+    - after_actions: 100
+      require: human_checkin
+    - after_denials: 15
+      require: pause
+
+evidence:
+  enabled: true
+  dir: "./ledgers"
