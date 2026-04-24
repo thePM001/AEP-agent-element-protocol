@@ -2,7 +2,13 @@
 
 ## Governance Layer for AI Code Agents
 
-The AEP Agent Harness enforces [AEP 2.0 (Agent Element Protocol)](https://github.com/thePM001/AEP-agent-element-protocol) governance on AI code agent sessions. Every file edit, component creation and code generation is validated against the AEP registry, scene graph and theme before it reaches the codebase.
+The AEP Agent Harness enforces [AEP 2.1 (Agent Element Protocol)](https://github.com/thePM001/AEP-agent-element-protocol) governance on AI code agent sessions. Every file edit, component creation and code generation is validated against the AEP registry, scene graph and theme before it reaches the codebase.
+
+AEP 2.1 introduces four new enforcement capabilities:
+- **AgentGateway** -- Intercepts agent mutations before they execute, evaluating them against registered policies
+- **Policy Evaluation** -- Structured checks against AEP rules with pass/fail verdicts per mutation
+- **Evidence Ledger** -- Append-only audit trail (`.claude/aep-evidence.jsonl`) recording every agent action, policy result and outcome
+- **Rollback** -- Revert agent changes to pre-mutation state when violations are detected post-execution
 
 Built for Claude Code. Works with any AI coding agent that reads project-level instruction files.
 
@@ -16,7 +22,7 @@ The result: every AI-assisted session introduces visual regressions, inconsisten
 
 ## The Solution
 
-The AEP Agent Harness provides three enforcement mechanisms:
+The AEP Agent Harness provides five enforcement mechanisms:
 
 1. **CLAUDE.md** -- A project-root instruction file that Claude Code reads automatically at the start of every session. Defines the mandatory pre-edit workflow and core AEP rules.
 
@@ -26,6 +32,10 @@ The AEP Agent Harness provides three enforcement mechanisms:
    - `/aep-register` -- Register a new element in all three config files
 
 3. **Automated Validator** -- A Node.js script (`harness/aep-validate.js`) that scans source files and reports violations with severity levels. Runs as a CLI command, pre-commit hook, or CI step.
+
+4. **AgentGateway + Policy Evaluation** -- Every agent mutation passes through the AgentGateway which evaluates it against registered AEP policies before execution. Failed evaluations block the mutation. Results are recorded in the evidence ledger.
+
+5. **Evidence Ledger + Rollback** -- An append-only JSONL file (`.claude/aep-evidence.jsonl`) records every agent action with timestamp, policy result and outcome. When violations are detected post-execution, the agent can rollback changes to the pre-mutation state using ledger snapshots.
 
 ---
 
@@ -127,7 +137,7 @@ The element hierarchy. Defines parent-child relationships, z-index layers, and v
 
 ```json
 {
-  "aep_version": "2.0",
+  "aep_version": "2.1",
   "elements": [
     {
       "id": "xid:v1:030:c000000:r000001:0000000000000001",
@@ -190,6 +200,7 @@ component_styles:
 | Severity | Rule | What It Checks |
 |----------|------|----------------|
 | CRITICAL | ELEMENT_NOT_REGISTERED | data-aep-id without a registry entry |
+| CRITICAL | GATEWAY_POLICY_FAIL | AgentGateway policy evaluation rejected a mutation |
 | HIGH | ELEMENT_NOT_IN_SCENE | data-aep-id without a scene graph entry |
 | HIGH | BORDER_RADIUS_VIOLATION | border-radius values that violate design rules |
 | HIGH | BOX_SHADOW_VIOLATION | box-shadow when design rules forbid shadows |
@@ -197,13 +208,80 @@ component_styles:
 | HIGH | SKIN_BINDING_MISSING | skin_binding that does not resolve in theme |
 | HIGH | REGISTRY_NOT_IN_SCENE | Registry entry without matching scene entry |
 | HIGH | SCENE_NOT_IN_REGISTRY | Scene entry without matching registry entry |
+| HIGH | EVIDENCE_LEDGER_TAMPERED | Evidence ledger deleted or truncated |
 | MEDIUM | HARDCODED_colour | Hex colour not in the AEP palette |
 | MEDIUM | HARDCODED_FONT | Font family not from a typography token |
+| MEDIUM | ROLLBACK_INCOMPLETE | Rollback recorded but target file not restored |
 | LOW | EM_DASH | Em-dash (U+2014) found |
 | LOW | EN_DASH | En-dash (U+2013) found |
 
 CRITICAL and HIGH violations block commits (exit code 1).
 MEDIUM and LOW violations are warnings (exit code 0).
+
+---
+
+## AgentGateway
+
+The AgentGateway is the AEP 2.1 policy enforcement layer. It intercepts every agent mutation before execution and evaluates it against registered AEP policies.
+
+### How It Works
+
+1. **Interception** -- Before the agent writes to any file, the AgentGateway receives the proposed change (target file, diff, affected elements).
+2. **Policy Evaluation** -- The gateway checks the mutation against all active AEP policies: element registration, visual governance, structural governance, naming governance.
+3. **Verdict** -- Each policy returns `pass` or `fail` with a reason. If any policy fails, the mutation is BLOCKED.
+4. **Evidence Recording** -- The evaluation result (pass or fail) is appended to the evidence ledger.
+
+### Policy Evaluation Output
+
+```json
+{
+  "timestamp": "2025-01-15T14:30:00.000Z",
+  "action": "file_edit",
+  "target": "src/Button.tsx",
+  "policies_evaluated": 4,
+  "verdict": "BLOCKED",
+  "failures": [
+    { "policy": "ELEMENT_REGISTRATION", "reason": "data-aep-id='btn_new' not in registry" }
+  ]
+}
+```
+
+## Evidence Ledger
+
+The evidence ledger at `.claude/aep-evidence.jsonl` is an append-only audit trail of every agent action during a session.
+
+### Ledger Entry Format
+
+Each line is a JSON object:
+
+```json
+{"ts":"2025-01-15T14:30:00.000Z","action":"file_edit","target":"src/Button.tsx","verdict":"pass","policies":4,"failures":0}
+{"ts":"2025-01-15T14:30:05.000Z","action":"file_edit","target":"src/Modal.tsx","verdict":"blocked","policies":4,"failures":1,"reason":"BORDER_RADIUS_VIOLATION"}
+{"ts":"2025-01-15T14:31:00.000Z","action":"rollback","target":"src/Card.tsx","restored_to":"pre-mutation","reason":"HARDCODED_COLOR detected post-execution"}
+```
+
+### Rules
+
+- The agent MUST NOT delete, truncate, or modify existing ledger entries.
+- The safety guard validates ledger integrity (file size must never decrease).
+- The ledger resets per session (the agent creates it at session start if absent).
+
+## Rollback
+
+When a violation is detected after a mutation has been applied, the agent can rollback the change.
+
+### Rollback Process
+
+1. The validator or safety guard detects a violation in a recently modified file.
+2. The agent reads the evidence ledger to identify the mutation that introduced the violation.
+3. The agent restores the file to its pre-mutation state (using git, undo, or cached snapshot).
+4. A `rollback` entry is appended to the evidence ledger.
+
+### When to Rollback
+
+- A CRITICAL or HIGH violation is found in a file the agent just modified.
+- A policy evaluation passed at the AgentGateway but a deeper validator check reveals a violation.
+- The user explicitly requests reverting a change.
 
 ---
 
