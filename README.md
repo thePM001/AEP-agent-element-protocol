@@ -1,13 +1,13 @@
 # AEP - Agent Element Protocol (Deterministic Adjudication Lattices)
 # Free Basic Open-Source Version Implementation Reference
-### Version 2.0 - 18 April 2026
+### Version 2.1 - 24 April 2026
 ### Author: thePM_001 (https://x.com/thePM_001)
 ### License: Apache-2.0
 ### Research Paper: https://github.com/the-PM001/AEP-research-paper-001
 ### Demo: https://aep.newlisbon.agency
 ### How to install AEP ?: 
 copy the URL of the GitHub repo into your reasoning LLM + tell it: "analyze the repo and prepare implementation plan for AEP integration into our project".
-### AEP 2.0 Agent Harness so your AI actually uses AEP: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/aep-2.0-agent-harness
+### AEP Agent Harness so your AI actually uses AEP: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/aep-2.0-agent-harness
 ---
 
 > **Note on verification:** The original AEP stack includes a proprietary formal verification layer that we are unable to release as open source. This guide provides TLA+ specifications for equivalent invariant checking, plus standalone runtime validators you can drop into any project. The architecture and protocol itself is fully open.
