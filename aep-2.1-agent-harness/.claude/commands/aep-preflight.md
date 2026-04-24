@@ -1,6 +1,6 @@
 # /aep-preflight
 
-## AEP 2.0 Preflight Check
+## AEP 2.1 Preflight Check
 
 Before making ANY code changes, you MUST complete this preflight:
 
@@ -21,18 +21,19 @@ From the loaded configuration, identify:
 - Which typography tokens exist and their font/size/weight/color values
 - Which color tokens exist in the palette
 
-### Step 3: Plan Your Changes
+### Step 3: Evaluate Policies via AgentGateway
 
-Before writing any code:
+Before writing any code, the AgentGateway intercepts your planned actions:
 - List which elements you will modify
 - Verify each element has an aep-registry entry
 - Verify your planned colors exist in the theme palette
 - Verify your planned typography matches a defined token
 - Verify your planned layout respects parent-child hierarchy in the scene graph
 - Verify no design rule will be violated
+- Confirm the AgentGateway policy evaluation passes for all planned mutations
 
 ### Step 4: Declare
 
-State explicitly: "AEP preflight complete. {N} elements in scope. {N} design rules loaded. No violations anticipated." Or state which potential conflicts exist and how you will resolve them.
+State explicitly: "AEP preflight complete. {N} elements in scope. {N} design rules loaded. AgentGateway policy evaluation passed. No violations anticipated." Or state which potential conflicts exist and how you will resolve them.
 
 Only then proceed with code changes.

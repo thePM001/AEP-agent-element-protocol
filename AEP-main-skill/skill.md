@@ -1,6 +1,6 @@
 ---
 name: aep
-description: Use this skill whenever working with AEP (Agent Element Protocol) or dynAEP. Triggers include 'AEP', 'dynAEP', 'scene graph', 'aep-scene.json', 'aep-registry.yaml', 'aep-theme.yaml', 'zero-trust UI', 'topological matrix', 'z-band', 'skin binding', 'AEP-FCR', 'lattice memory', 'memory fabric', 'attractor', 'rejection history', 'resolver', 'proposal routing', 'fast-path', 'aep v2', 'aep 2.0' or building validated UI for AI agents. Also use when implementing AEP three-layer architecture, writing AEP validators, creating MCP servers that validate agent UI output, working with AG-UI under AEP governance, querying validation memory or routing proposals through the resolver. If AEP MCP tools are available (list_aep_schemas, create_ui_element, get_scene_graph), always consult this skill first. Do NOT guess IDs, skin bindings, z-bands or element types.
+description: Use this skill whenever working with AEP (Agent Element Protocol) or dynAEP. Triggers include 'AEP', 'dynAEP', 'scene graph', 'aep-scene.json', 'aep-registry.yaml', 'aep-theme.yaml', 'zero-trust UI', 'topological matrix', 'z-band', 'skin binding', 'AEP-FCR', 'lattice memory', 'memory fabric', 'attractor', 'rejection history', 'resolver', 'proposal routing', 'fast-path', 'aep v2', 'aep 2.1', 'AgentGateway', 'policy engine', 'evidence ledger', 'rollback', 'session governance', 'MCP proxy' or building validated UI for AI agents. Also use when implementing AEP three-layer architecture, writing AEP validators, creating MCP servers that validate agent UI output, working with AG-UI under AEP governance, querying validation memory or routing proposals through the resolver. If AEP MCP tools are available (list_aep_schemas, create_ui_element, get_scene_graph), always consult this skill first. Do NOT guess IDs, skin bindings, z-bands or element types.
 ---
 
 # Agent Element Protocol (AEP)
@@ -8,6 +8,8 @@ description: Use this skill whenever working with AEP (Agent Element Protocol) o
 AEP is a **3-layer frontend governance architecture** that gives every UI element a unique numerical identity, exact spatial coordinates, defined behaviour rules and themed visual properties. It treats the frontend as a **topological coordinate system**, not a fluid DOM tree.
 
 AI agents propose UI structures. AEP validates every proposal against a strict registry. Only valid elements render. Invalid proposals are rejected with actionable errors. The agent self-corrects. Zero hallucinations reach the UI.
+
+**AEP 2.1** adds session governance with four enforcement capabilities: **AgentGateway** (intercepts agent mutations before execution), **Policy Engine** (structured checks with pass/fail verdicts), **Evidence Ledger** (append-only audit trail of every agent action), and **Rollback** (revert changes when violations are detected post-execution). It also introduces **MCP proxy** support and **CLI commands** for preflight, validation and element registration.
 
 ## The Three Layers
 
@@ -34,11 +36,11 @@ If you find yourself editing two layers for one change, the separation is broken
 Every AEP config file MUST include `aep_version` and `schema_revision` in its header. The validator MUST reject any file missing `aep_version`.
 
 ```json
-{ "aep_version": "2.0", "schema_revision": 1, "elements": { ... } }
+{ "aep_version": "2.1", "schema_revision": 1, "elements": { ... } }
 ```
 
 ```yaml
-aep_version: "2.0"
+aep_version: "2.1"
 schema_revision: 1
 ```
 
@@ -96,7 +98,7 @@ The scene graph. A flat JSON object where every UI element has topological const
 
 ```json
 {
-  "aep_version": "2.0",
+  "aep_version": "2.1",
   "schema_revision": 1,
   "elements": {
     "SH-00001": {
@@ -174,7 +176,7 @@ An agent can query this and know not to place essential UI inside an element tha
 The component registry (AEP-FCR). Every element that renders pixels has an entry defining what it does, its states, events, constraints and what it's forbidden from doing. Layer 2 contains **no visual properties**. All styling is delegated to Layer 3 through `skin_binding`.
 
 ```yaml
-aep_version: "2.0"
+aep_version: "2.1"
 schema_revision: 1
 
 CP-00001:
@@ -250,7 +252,7 @@ deny[msg] {
 All colours, fonts, spacing, borders, shadows and animations. Components reference theme variables through `skin_binding`. No component ever contains hardcoded visual values.
 
 ```yaml
-aep_version: "2.0"
+aep_version: "2.1"
 schema_revision: 1
 theme_name: "Project Dark"
 
@@ -281,6 +283,103 @@ Result:   CP-00001 renders with resolved style properties
 ```
 
 To add dark/light mode: create a new YAML with different values for the same keys. Structure and Behaviour untouched.
+
+---
+
+## AEP 2.1 Session Governance
+
+AEP 2.1 introduces four enforcement capabilities that govern AI agent sessions end-to-end.
+
+### AgentGateway
+
+The AgentGateway intercepts every agent mutation before execution. No file edit, component creation or code generation reaches the codebase without passing through the gateway.
+
+1. **Interception** -- Before the agent writes to any file, the AgentGateway receives the proposed change (target file, diff, affected elements).
+2. **Policy Evaluation** -- The gateway evaluates the mutation against all active AEP policies: element registration, visual governance, structural governance, naming governance.
+3. **Verdict** -- Each policy returns `pass` or `fail` with a reason. If any policy fails, the mutation is **BLOCKED**.
+4. **Evidence Recording** -- The evaluation result (pass or fail) is appended to the evidence ledger.
+
+```json
+{
+  "timestamp": "2025-01-15T14:30:00.000Z",
+  "action": "file_edit",
+  "target": "src/Button.tsx",
+  "policies_evaluated": 4,
+  "verdict": "BLOCKED",
+  "failures": [
+    { "policy": "ELEMENT_REGISTRATION", "reason": "data-aep-id='btn_new' not in registry" }
+  ]
+}
+```
+
+### Policy Engine
+
+The policy engine evaluates structured checks against AEP rules. Policies are composable and extensible.
+
+| Policy | What It Checks |
+|--------|---------------|
+| ELEMENT_REGISTRATION | `data-aep-id` exists in registry and scene graph |
+| VISUAL_GOVERNANCE | Colours, fonts, spacing come from theme tokens |
+| STRUCTURAL_GOVERNANCE | Parent-child relationships and z-band compliance |
+| NAMING_GOVERNANCE | No internal architecture terms in user-facing text |
+| SKIN_BINDING | Every `skin_binding` resolves in `aep-theme.yaml` |
+
+Custom policies can be added by extending `harness/aep-validate.js`.
+
+### Evidence Ledger
+
+The evidence ledger at `.claude/aep-evidence.jsonl` is an append-only audit trail of every agent action during a session.
+
+Each line is a JSON object:
+```json
+{"ts":"2025-01-15T14:30:00.000Z","action":"file_edit","target":"src/Button.tsx","verdict":"pass","policies":4,"failures":0}
+{"ts":"2025-01-15T14:30:05.000Z","action":"file_edit","target":"src/Modal.tsx","verdict":"blocked","policies":4,"failures":1,"reason":"BORDER_RADIUS_VIOLATION"}
+{"ts":"2025-01-15T14:31:00.000Z","action":"rollback","target":"src/Card.tsx","restored_to":"pre-mutation","reason":"HARDCODED_COLOR detected post-execution"}
+```
+
+**Rules:**
+- The agent MUST NOT delete, truncate, or modify existing ledger entries.
+- The safety guard validates ledger integrity (file size must never decrease).
+- The ledger resets per session (the agent creates it at session start if absent).
+
+### Rollback
+
+When a violation is detected after a mutation has been applied, the agent can rollback the change.
+
+1. The validator or safety guard detects a violation in a recently modified file.
+2. The agent reads the evidence ledger to identify the mutation that introduced the violation.
+3. The agent restores the file to its pre-mutation state (using git, undo, or cached snapshot).
+4. A `rollback` entry is appended to the evidence ledger.
+
+**When to rollback:**
+- A CRITICAL or HIGH violation is found in a file the agent just modified.
+- A policy evaluation passed at the AgentGateway but a deeper validator check reveals a violation.
+- The user explicitly requests reverting a change.
+
+### CLI Commands
+
+AEP 2.1 provides three slash commands for Claude Code sessions:
+
+| Command | When to Run | What It Does |
+|---------|-------------|--------------|
+| `/aep-preflight` | Before any edit session | Loads AEP configs, evaluates policies via AgentGateway, verifies constraints |
+| `/aep-validate` | After completing edits | Checks all changes against AEP, reviews evidence ledger, reports violations |
+| `/aep-register` | When creating a new element | Registers element in all three config files (scene, registry, theme) |
+
+CLI validator:
+```bash
+node harness/aep-validate.js          # Scan source files for violations
+node harness/aep-safety-guard.js      # Run safety guard (one-time or --watch)
+```
+
+### MCP Proxy
+
+AEP 2.1 works with MCP (Model Context Protocol) servers. When AEP MCP tools are available (`list_aep_schemas`, `create_ui_element`, `get_scene_graph`, `execute_workflow_step`, `call_validated_api`), the agent routes all UI mutations through the MCP proxy instead of direct file edits. This enables:
+
+- Server-side ID minting (no client-side ID collisions)
+- Real-time policy evaluation before element creation
+- Scene graph queries without parsing local files
+- Schema-validated API calls and workflow steps
 
 ---
 
@@ -458,7 +557,7 @@ claude mcp add aep-demo --transport http https://aep.newlisbon.agency/demo/mcp
 
 For other MCP clients: add the URL with HTTP transport.
 
-## Lattice Memory (v2.0)
+## Lattice Memory (v2.1)
 
 Lattice Memory is a persistent append-only store of every validation result (accepted and rejected) that the adjudication lattice produces. Memory is **read-only to the validation decision**. Accept/reject stays deterministic. Memory serves two auxiliary purposes: surfacing historically successful patterns earlier and finding nearest accepted proposals for fast-path short-circuiting.
 
@@ -503,7 +602,7 @@ if rejections:
 
 SDK files: `sdk/sdk-aep-memory.py`, `sdk/sdk-aep-memory.ts`. Docs: `docs/LATTICE-MEMORY.md`.
 
-## Basic Resolver (v2.0)
+## Basic Resolver (v2.1)
 
 The Basic Resolver routes agent proposals to the correct validator pipeline (UI, Workflow, API, Event, IaC) based on element prefix, z-band, registry lookup and Rego policies. It optionally queries Lattice Memory for attractor fast-path hits.
 
@@ -550,6 +649,7 @@ SDK files: `sdk/sdk-aep-resolver.py`, `sdk/sdk-aep-resolver.ts`. Docs: `docs/RES
 ## References
 
 - AEP Whitepaper: https://github.com/thePM001/AEP-agent-element-protocol
+- AEP 2.1 Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/aep-2.1-agent-harness
 - dynAEP: https://github.com/thePM001/dynAEP-dynamic-agent-element-protocol
 - AG-UI Protocol: https://github.com/ag-ui-protocol/ag-ui
 - Live Demo: https://aep.newlisbon.agency

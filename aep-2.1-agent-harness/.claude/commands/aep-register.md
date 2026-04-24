@@ -1,6 +1,6 @@
 # /aep-register
 
-## AEP 2.0 Element Registration
+## AEP 2.1 Element Registration
 
 Use this command when creating a new UI element that renders pixels.
 

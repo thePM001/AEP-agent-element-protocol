@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * AEP 2.0 Safety Guard
+ * AEP 2.1 Safety Guard
  * 
  * Monitors and blocks dangerous AI agent behaviors:
  * - Disabling sandbox/safety flags
@@ -66,6 +66,7 @@ const SAFETY_RULES = {
             '.claude/commands/aep-register.md',
             '.gitignore',                   // Prevent agent from hiding files
             '.git/hooks/pre-commit',        // Prevent agent from removing hooks
+            '.claude/aep-evidence.jsonl',   // Evidence ledger is append-only (AEP 2.1)
         ],
         action: 'BLOCK_AND_ALERT',
     },
