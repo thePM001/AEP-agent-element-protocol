@@ -1,6 +1,6 @@
 # /aep-validate
 
-## AEP 2.0 Post-Edit Validation
+## AEP 2.1 Post-Edit Validation
 
 After making code changes, run this validation before committing.
 
@@ -37,9 +37,16 @@ For each file you modified, verify:
 - Labels match registry entries?
 - No underscores in user-facing labels?
 
-### Step 3: Declare
+### Step 3: Review Evidence Ledger
 
-State: "AEP validation complete. {N} files checked. {N} violations found. {resolution}."
+Check `.claude/aep-evidence.jsonl` for the current session's audit trail:
+- Confirm all agent actions were recorded with timestamps and outcomes
+- Verify no policy evaluation failures went unresolved
+- If any rollback entries exist, confirm the rollback completed successfully
+
+### Step 4: Declare
+
+State: "AEP validation complete. {N} files checked. {N} violations found. Evidence ledger reviewed. {resolution}."
 
 If zero violations: proceed to commit.
-If violations remain: fix them before committing.
+If violations remain: fix them before committing. Use rollback if a change introduced regressions.

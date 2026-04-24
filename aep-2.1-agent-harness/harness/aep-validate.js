@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * AEP 2.0 Agent Harness -- Automated Validation Script
+ * AEP 2.1 Agent Harness -- Automated Validation Script
  * 
  * Scans the project source files and checks every rendered element
  * against the AEP registry, scene graph and theme.
@@ -317,7 +317,7 @@ class AEPValidator {
     validate() {
         const files = walkDir(this.srcDir, FILE_EXTENSIONS);
         
-        console.log(`AEP 2.0 Validation`);
+        console.log(`AEP 2.1 Validation`);
         console.log(`  Source: ${this.srcDir}`);
         console.log(`  Files: ${files.length}`);
         console.log(`  Registry entries: ${this.registryXids.size}`);
@@ -342,7 +342,10 @@ class AEPValidator {
         
         // Also validate cross-references between config files
         this.checkCrossReferences();
-        
+
+        // AEP 2.1: Validate evidence ledger integrity
+        this.checkEvidenceLedger();
+
         return this.violations;
     }
     
@@ -366,6 +369,41 @@ class AEPValidator {
         }
     }
     
+    // -----------------------------------------------------------------------
+    // Check 9: Evidence ledger integrity (AEP 2.1)
+    // -----------------------------------------------------------------------
+    checkEvidenceLedger() {
+        const ledgerPath = path.join(this.srcDir, '..', '.claude', 'aep-evidence.jsonl');
+        if (!fs.existsSync(ledgerPath)) return; // Ledger is optional until first write
+
+        try {
+            const content = fs.readFileSync(ledgerPath, 'utf8');
+            const lines = content.split('\n').filter(l => l.trim().length > 0);
+
+            for (let i = 0; i < lines.length; i++) {
+                try {
+                    const entry = JSON.parse(lines[i]);
+                    // Check for blocked gateway verdicts that were not resolved
+                    if (entry.verdict === 'blocked' && entry.action !== 'rollback') {
+                        this.addViolation(SEVERITY.CRITICAL, '.claude/aep-evidence.jsonl', i + 1,
+                            'GATEWAY_POLICY_FAIL',
+                            `AgentGateway blocked action on ${entry.target}: ${entry.reason || 'policy failure'}`);
+                    }
+                    // Check for incomplete rollbacks
+                    if (entry.action === 'rollback' && entry.restored !== true) {
+                        this.addViolation(SEVERITY.MEDIUM, '.claude/aep-evidence.jsonl', i + 1,
+                            'ROLLBACK_INCOMPLETE',
+                            `Rollback recorded for ${entry.target} but restoration not confirmed`);
+                    }
+                } catch (parseErr) {
+                    // Malformed line -- not a violation, skip
+                }
+            }
+        } catch (e) {
+            // Cannot read ledger, skip
+        }
+    }
+
     // -----------------------------------------------------------------------
     // Report
     // -----------------------------------------------------------------------

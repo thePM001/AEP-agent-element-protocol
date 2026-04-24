@@ -2,7 +2,9 @@
 
 ## What This Is
 
-This project enforces AEP (Agent Element Protocol) 2.0 governance on Claude Code sessions. Every file edit, component creation and code generation is validated against the AEP registry, scene graph and theme before it reaches the codebase.
+This project enforces AEP (Agent Element Protocol) 2.1 governance on Claude Code sessions. Every file edit, component creation and code generation is validated against the AEP registry, scene graph and theme before it reaches the codebase.
+
+AEP 2.1 adds: **AgentGateway** (intercepts agent actions before execution), **policy evaluation** (structured checks against registered policies), **evidence ledger** (append-only audit trail of all agent actions), and **rollback** (revert agent changes when violations are detected post-execution).
 
 Claude Code MUST read this file at the start of every session. This is non-negotiable.
 
@@ -16,7 +18,7 @@ Before editing ANY file in the project:
 4. Verify your planned changes do not violate any AEP constraint.
 5. After editing, run the validation: `node harness/aep-validate.js`
 
-## Core AEP 2.0 Rules
+## Core AEP 2.1 Rules
 
 ### Element Registration
 - Every UI element that renders pixels MUST have a `data-aep-id` attribute.
@@ -41,6 +43,23 @@ Before editing ANY file in the project:
 - No internal architecture terms in user-facing text unless explicitly registered in the registry as user-facing.
 - Label text MUST match the `label` field in the registry entry.
 - No underscores in user-facing labels (use spaces).
+
+### AgentGateway
+- All agent mutations MUST pass through the AgentGateway before execution.
+- The AgentGateway evaluates registered policies against the proposed change.
+- If policy evaluation fails, the mutation is BLOCKED. The agent must revise.
+- Every action (pass or fail) is recorded in the evidence ledger at `.claude/aep-evidence.jsonl`.
+
+### Evidence Ledger
+- Every agent action is appended to `.claude/aep-evidence.jsonl` with: timestamp, action type, target file, policy result, and outcome.
+- The ledger is append-only. The agent MUST NOT delete or truncate this file.
+- The ledger enables post-session audit and rollback decisions.
+
+### Rollback
+- If a committed change is later found to violate AEP policies, the agent MUST offer rollback.
+- Rollback restores the file to its pre-mutation state using evidence ledger snapshots.
+- Rollback entries are recorded in the evidence ledger with action type `rollback`.
+- The agent MUST NOT silently discard rollback evidence.
 
 ## Slash Commands
 
