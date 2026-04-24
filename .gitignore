@@ -1,7 +1,16 @@
 __pycache__/
 *.pyc
 .pytest_cache/
-tests/
+tests/__pycache__/
+
+# Build output
+dist/
+node_modules/
+
+# Test artifacts
+.test-*-ledgers/
+.test-ledgers/
+ledgers/
 
 # Secrets
 .env

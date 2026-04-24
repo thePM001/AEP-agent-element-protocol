@@ -1,0 +1,75 @@
+version: "2.1"
+name: "strict-production"
+
+capabilities:
+  - tool: "file:read"
+    scope:
+      paths: ["src/**", "docs/**"]
+  - tool: "file:write"
+    scope:
+      paths: ["src/**"]
+  - tool: "command:run"
+    scope:
+      binaries: ["npm", "node"]
+  - tool: "aep:create_element"
+    scope:
+      element_prefixes: ["CP"]
+      z_bands: ["20-29"]
+  - tool: "aep:update_element"
+    scope:
+      element_prefixes: ["CP"]
+      exclude_ids: ["SH-00001"]
+
+limits:
+  max_runtime_ms: 300000
+  max_files_changed: 10
+  max_aep_mutations: 20
+  max_cost_usd: 1.00
+
+gates:
+  - action: "file:write"
+    approval: human
+    risk_level: high
+  - action: "aep:create_element"
+    approval: human
+    risk_level: high
+  - action: "aep:update_element"
+    approval: human
+    risk_level: high
+  - action: "aep:delete_element"
+    approval: human
+    risk_level: critical
+  - action: "command:run"
+    approval: human
+    risk_level: medium
+
+forbidden:
+  - pattern: "\\.env"
+    reason: "No access to environment files in production"
+  - pattern: "\\.secret"
+    reason: "No access to secret files"
+  - pattern: "rm -rf"
+    reason: "Destructive operations forbidden"
+  - pattern: "chmod"
+    reason: "Permission changes forbidden"
+  - pattern: "curl|wget"
+    reason: "Network operations forbidden"
+  - pattern: "password|api_key|token|secret"
+    reason: "Credential patterns forbidden"
+
+session:
+  max_actions: 20
+  max_denials: 5
+  rate_limit:
+    max_per_minute: 5
+  escalation:
+    - after_actions: 10
+      require: human_checkin
+    - after_denials: 3
+      require: pause
+    - after_minutes: 5
+      require: human_checkin
+
+evidence:
+  enabled: true
+  dir: "./ledgers"

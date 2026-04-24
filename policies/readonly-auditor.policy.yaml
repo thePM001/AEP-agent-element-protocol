@@ -1,0 +1,48 @@
+version: "2.1"
+name: "readonly-auditor"
+
+capabilities:
+  - tool: "file:read"
+    scope:
+      paths: ["**"]
+  - tool: "directory:list"
+    scope:
+      paths: ["**"]
+  - tool: "git:diff"
+  - tool: "git:status"
+  - tool: "git:log"
+
+limits:
+  max_runtime_ms: 600000
+  max_files_changed: 0
+  max_aep_mutations: 0
+
+gates: []
+
+forbidden:
+  - pattern: "file:write"
+    reason: "Auditor is read-only"
+  - pattern: "file:delete"
+    reason: "Auditor is read-only"
+  - pattern: "command:run"
+    reason: "Auditor cannot execute commands"
+  - pattern: "aep:create_element"
+    reason: "Auditor cannot create elements"
+  - pattern: "aep:update_element"
+    reason: "Auditor cannot modify elements"
+  - pattern: "aep:delete_element"
+    reason: "Auditor cannot delete elements"
+  - pattern: "aep:update_skin"
+    reason: "Auditor cannot modify theme"
+  - pattern: "aep:update_registry"
+    reason: "Auditor cannot modify registry"
+
+session:
+  max_actions: 50
+  rate_limit:
+    max_per_minute: 20
+  escalation: []
+
+evidence:
+  enabled: true
+  dir: "./ledgers"
