@@ -1013,6 +1013,10 @@ To use: define your concrete `ElementIDs`, `Prefixes` and `ZBands` in a model co
 [ ] (v2.0) Optional: initialise Lattice Memory (InMemoryFabric or SQLiteFabric)
 [ ] (v2.0) Optional: initialise Basic Resolver with config and memory
 [ ] (v2.0) Optional: deploy aep-memory-policy.rego alongside aep-policy.rego
+[ ] (v2.1) Optional: define agent.policy.yaml with capabilities and limits
+[ ] (v2.1) Optional: initialise Evidence Ledger directory
+[ ] (v2.1) Optional: run npx aep init claude-code for governed Claude Code sessions
+[ ] (v2.1) Optional: add npx aep proxy to MCP configuration
 ```
 
 ---
@@ -1073,6 +1077,185 @@ No existing SDK files were modified. Memory and Resolver are fully optional - th
 Step-by-step migration guide: `docs/MIGRATION-v1-to-v2.md`.
 
 ---
+
+## 20. Session Governance
+
+AEP v2.1 introduces **Session Governance**: every agent interaction becomes a managed session with lifecycle state, statistics and escalation rules. A session tracks how many actions were evaluated, allowed, denied and gated. Escalation rules can automatically pause or terminate sessions after configurable thresholds (action count, elapsed time or denial count).
+
+```typescript
+import { AgentGateway } from "@aep/core";
+
+const gateway = new AgentGateway({ ledgerDir: "./ledgers" });
+const session = gateway.createSession("./agent.policy.yaml");
+
+// Evaluate an action against the policy
+const verdict = gateway.evaluate(session.id, {
+  tool: "aep:create_element",
+  input: { id: "CP-00010", z: 25, parent: "PN-00001" },
+  timestamp: new Date(),
+});
+
+if (verdict.decision === "allow") {
+  // Proceed with AEP structural validation
+  const result = gateway.validateAEP(session.id, verdict.actionId, {
+    id: "CP-00010", type: "component", z: 25, parent: "PN-00001",
+  });
+}
+
+// Terminate and get report
+const report = gateway.terminateSession(session.id, "task complete");
+console.log(`${report.totalActions} actions: ${report.allowed} allowed, ${report.denied} denied`);
+```
+
+Sessions transition through states: `created` -> `active` -> `paused` -> `active` -> `terminated`. Pausing happens automatically when an action triggers a gate (requires human approval) or an escalation rule fires.
+
+---
+
+## 21. Policy Engine
+
+The **Policy Engine** evaluates every agent action against a YAML policy file before the action reaches AEP structural validation. Policies define capabilities (what tools the agent can use and with what scope), limits (maximum actions, runtime, file changes), gates (actions requiring human approval), forbidden patterns (blocked tool inputs) and escalation rules.
+
+AEP-specific policy capabilities allow fine-grained control over scene graph mutations:
+
+```yaml
+version: "2.1"
+name: "my-agent-policy"
+
+capabilities:
+  - tool: "aep:create_element"
+    scope:
+      element_prefixes: ["CP", "PN"]      # Only these prefixes
+      z_bands: ["20-29", "10-19"]          # Only these z-index ranges
+  - tool: "aep:update_element"
+    scope:
+      exclude_ids: ["SH-00001"]            # Protect root shell
+
+limits:
+  max_aep_mutations: 100                   # Per session
+  max_runtime_ms: 1800000
+
+gates:
+  - action: "aep:delete_element"
+    approval: human
+    risk_level: high
+
+session:
+  max_actions: 100
+  rate_limit:
+    max_per_minute: 30
+  escalation:
+    - after_actions: 50
+      require: human_checkin
+```
+
+Four built-in policies ship in `policies/`: `coding-agent`, `aep-builder`, `readonly-auditor` and `strict-production`. Validate any policy with `npx aep validate ./my-policy.yaml`.
+
+---
+
+## 22. Evidence Ledger
+
+The **Evidence Ledger** produces an immutable, hash-chained audit trail of every action in a session. Each entry contains a sequence number, ISO 8601 timestamp, SHA-256 hash (computed from the previous hash plus the entry type and data) and the previous entry's hash. The first entry chains from a zero hash.
+
+Storage format: one JSONL file per session. Each line is one JSON object. Tamper detection works by recomputing all hashes and checking the chain. If any entry was modified, `verify()` returns the exact sequence number where the chain breaks.
+
+```typescript
+const ledger = gateway.getLedger(session.id);
+
+// Verify chain integrity
+const check = ledger.verify();
+if (!check.valid) {
+  console.error(`Chain broken at entry ${check.brokenAt}`);
+}
+
+// Generate summary report
+const report = ledger.report();
+console.log(`${report.entryCount} entries, chain ${report.chainValid ? "valid" : "broken"}`);
+```
+
+The ledger captures both policy decisions (`action:evaluate` with allow/deny) and AEP structural validation results (`aep:validate` or `aep:reject`). Session lifecycle events (`session:start`, `session:terminate`) and rollback actions (`action:rollback`) are also recorded.
+
+CLI: `npx aep report ./ledgers/<session-id>.jsonl` displays the audit trail for any session.
+
+---
+
+## 23. Rollback and Compensation
+
+Every AEP mutation stores a **compensation plan** before execution. If a rollback is needed, the pre-mutation state is restored. Rollback works for individual actions or entire sessions (in reverse chronological order).
+
+AEP-specific rollback operations:
+
+| Original action | Compensation |
+|---|---|
+| `aep:create_element` | Delete the created element |
+| `aep:delete_element` | Recreate from stored backup |
+| `aep:update_element` | Restore previous state |
+| `aep:update_skin` | Restore previous skin values |
+| `aep:update_registry` | Restore previous registry entries |
+
+```typescript
+// Store compensation before executing
+gateway.storeCompensation(session.id, actionId, "aep:create_element",
+  { id: "CP-00010", z: 25, parent: "PN-00001" });
+
+// Later: rollback that specific action
+const result = gateway.rollback(session.id, actionId);
+
+// Or rollback the entire session
+const results = gateway.rollbackSession(session.id);
+```
+
+Every rollback is logged in the evidence ledger as an `action:rollback` entry.
+
+---
+
+## 24. MCP Proxy and CLI
+
+AEP 2.1 can run as an **MCP proxy** between an AI agent and backend MCP servers. Every tool call is intercepted, policy-evaluated and (for AEP-related tools) structurally validated before forwarding.
+
+**Quick start for Claude Code:**
+
+```bash
+npx aep init claude-code
+# Creates: .claude/settings.json, CLAUDE.md, agent.policy.yaml
+
+npx aep proxy --policy ./agent.policy.yaml
+# Starts governed MCP proxy on stdin/stdout
+```
+
+**Quick start for Cursor:**
+
+```bash
+npx aep init cursor
+# Creates: .cursor/mcp.json, .cursor/rules/aep-governance.mdc, agent.policy.yaml
+```
+
+**CLI reference:**
+
+```
+aep init <agent>              Set up governance for claude-code, cursor or codex
+aep proxy --policy <file>     Start MCP proxy with policy enforcement
+aep exec <policy> <command>   Run a command through the shell proxy
+aep validate <policy>         Validate a policy YAML file
+aep report <ledger-file>      Display audit report for a session ledger
+```
+
+---
+
+## 25. Migration from v2.0 to v2.1
+
+AEP v2.1 is backwards-compatible with v2.0. All existing v2.0 config files, SDK modules, Rego policies, Lattice Memory and Basic Resolver continue to work without modification.
+
+Session Governance, Policy Engine, Evidence Ledger and Rollback are fully optional. They add capabilities without requiring changes to existing integrations. To adopt v2.1 features:
+
+1. Create an `agent.policy.yaml` file (or use a built-in policy from `policies/`).
+2. Use `AgentGateway` instead of calling validators directly.
+3. Evidence ledgers are created automatically in the configured directory.
+4. Rollback is opt-in -- call `storeCompensation` before mutations you want to be reversible.
+
+No existing v2.0 code paths were modified. The structural validator, z-band enforcement, prefix convention, Rego policies and memory subsystem remain unchanged.
+
+---
+
 ## License
 
 Licensed under the Apache License, Version 2.0. See `LICENSE` for the full text and `NOTICE` for attribution.

@@ -2,6 +2,40 @@
 
 All notable changes to the Agent Element Protocol (AEP) will be documented in this file.
 
+## [2.1.0] - 2026-04-24
+
+### Added
+- **Session Governance** -- managed session lifecycle with state tracking, statistics, escalation rules and session reports.
+- **Policy Engine** -- YAML-based policy DSL controlling capabilities, scopes, limits, gates, forbidden patterns and rate limits per session.
+- **AEP-aware policy capabilities** -- element_prefixes, z_bands and exclude_ids scoping for fine-grained AEP element governance.
+- **Evidence Ledger** -- append-only JSONL audit trail with SHA-256 hash chaining and tamper detection.
+- **Rollback and Compensation** -- reversible mutations with pre-mutation state backup and AEP scene graph restoration.
+- **Agent Gateway** -- unified entry point combining policy evaluation, AEP structural validation and evidence recording.
+- **MCP Proxy mode** -- transparent governance proxy for Claude Code, Cursor, Codex and any MCP-compatible agent.
+- **Shell Proxy mode** -- policy-enforced command execution wrapper.
+- **CLI commands** -- `aep init`, `aep proxy`, `aep exec`, `aep validate`, `aep report`.
+- **Agent init generators** for Claude Code (CLAUDE.md + settings.json), Cursor (mcp.json + rules) and Codex (AGENTS.md).
+- **Built-in policies** -- coding-agent, aep-builder, readonly-auditor, strict-production.
+- **Ledger verification** -- cryptographic chain integrity checking with exact break-point reporting.
+- **Session escalation rules** -- automatic pause or human check-in after configurable action counts, time intervals or denial thresholds.
+- **Comprehensive test suite** -- 71 tests covering session governance, policy engine, evidence ledger, rollback, gateway and MCP proxy.
+
+### Changed
+- `aep_version` bumped from `"2.0"` to `"2.1"` in all config files.
+- Validation flow extended -- policy evaluation runs BEFORE structural validation.
+- Evidence ledger captures both policy decisions and AEP structural validation results.
+
+### Unchanged
+- Three-layer architecture (Structure, Behaviour, Skin).
+- Z-band hierarchy and prefix convention.
+- AOT and JIT validation logic.
+- All existing Rego policies.
+- Lattice Memory and Basic Resolver.
+- All existing SDK files.
+- Licence (Apache 2.0).
+
+---
+
 ## [2.0.0] - 2026-04-18
 
 ### Added

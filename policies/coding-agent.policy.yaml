@@ -1,0 +1,79 @@
+version: "2.1"
+name: "coding-agent"
+
+capabilities:
+  - tool: "file:read"
+    scope:
+      paths: ["src/**", "tests/**", "docs/**", "*.json", "*.yaml", "*.yml", "*.md"]
+  - tool: "file:write"
+    scope:
+      paths: ["src/**", "tests/**"]
+  - tool: "directory:list"
+    scope:
+      paths: ["**"]
+  - tool: "command:run"
+    scope:
+      binaries: ["npm", "node", "tsc", "cargo", "mix", "git", "npx"]
+  - tool: "git:status"
+  - tool: "git:diff"
+  - tool: "git:add"
+  - tool: "git:commit"
+  - tool: "aep:create_element"
+    scope:
+      element_prefixes: ["CP", "PN", "WD"]
+      z_bands: ["20-29", "10-19", "50-59"]
+  - tool: "aep:update_element"
+    scope:
+      element_prefixes: ["CP", "PN", "WD"]
+      exclude_ids: ["SH-00001"]
+  - tool: "aep:update_skin"
+    scope:
+      bindings: ["*"]
+  - tool: "aep:update_registry"
+    scope:
+      categories: ["action", "data-input", "layout"]
+
+limits:
+  max_runtime_ms: 1800000
+  max_files_changed: 50
+  max_aep_mutations: 100
+
+gates:
+  - action: "file:delete"
+    approval: human
+    risk_level: high
+  - action: "aep:delete_element"
+    approval: human
+    risk_level: high
+  - action: "git:push"
+    approval: human
+    risk_level: medium
+
+forbidden:
+  - pattern: "\\.env"
+    reason: "Environment files may contain secrets"
+  - pattern: "\\.secret"
+    reason: "Secret files must not be accessed"
+  - pattern: "rm -rf /"
+    reason: "Destructive filesystem operation"
+  - pattern: "chmod 777"
+    reason: "Overly permissive file permissions"
+  - pattern: "password|api_key|secret_key"
+    reason: "Potential credential exposure in tool input"
+
+session:
+  max_actions: 100
+  max_denials: 20
+  rate_limit:
+    max_per_minute: 30
+  escalation:
+    - after_actions: 50
+      require: human_checkin
+    - after_denials: 10
+      require: pause
+    - after_minutes: 25
+      require: human_checkin
+
+evidence:
+  enabled: true
+  dir: "./ledgers"
