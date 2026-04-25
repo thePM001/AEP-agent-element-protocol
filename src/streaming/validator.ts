@@ -1,6 +1,7 @@
 import type { CovenantSpec } from "../covenant/types.js";
 import type { Policy } from "../policy/types.js";
 import type { StreamVerdict, StreamValidator } from "./types.js";
+import type { ScannerPipeline } from "../scanners/pipeline.js";
 
 export interface AEPScene {
   elements: Array<{ id: string; protected?: boolean }>;
@@ -16,6 +17,7 @@ export interface StreamValidatorOptions {
   policy?: Policy;
   scene?: AEPScene;
   registry?: AEPRegistry;
+  scannerPipeline?: ScannerPipeline;
 }
 
 export class AEPStreamValidator implements StreamValidator {
@@ -23,6 +25,7 @@ export class AEPStreamValidator implements StreamValidator {
   private policy?: Policy;
   private scene?: AEPScene;
   private registry?: AEPRegistry;
+  private scannerPipeline?: ScannerPipeline;
   private abortController: AbortController;
 
   constructor(options: StreamValidatorOptions) {
@@ -30,6 +33,7 @@ export class AEPStreamValidator implements StreamValidator {
     this.policy = options.policy;
     this.scene = options.scene;
     this.registry = options.registry;
+    this.scannerPipeline = options.scannerPipeline;
     this.abortController = new AbortController();
   }
 
@@ -85,6 +89,17 @@ export class AEPStreamValidator implements StreamValidator {
       return {
         continue: false,
         violation: forbiddenViolation,
+        abortSignal: this.abortController.signal,
+      };
+    }
+
+    // 6. Content scanner pipeline (hard findings only abort stream)
+    const scannerViolation = this.checkScannerPipeline(accumulated);
+    if (scannerViolation) {
+      this.abortController.abort();
+      return {
+        continue: false,
+        violation: scannerViolation,
         abortSignal: this.abortController.signal,
       };
     }
@@ -213,5 +228,24 @@ export class AEPStreamValidator implements StreamValidator {
       }
     }
     return null;
+  }
+
+  private checkScannerPipeline(
+    accumulated: string
+  ): { rule: string; reason: string } | null {
+    if (!this.scannerPipeline) return null;
+
+    const result = this.scannerPipeline.scan(accumulated);
+    if (result.passed) return null;
+
+    // Only abort on hard findings during streaming
+    const hardFindings = result.findings.filter((f) => f.severity === "hard");
+    if (hardFindings.length === 0) return null;
+
+    const first = hardFindings[0];
+    return {
+      rule: `scanner:${first.scanner}:${first.category}`,
+      reason: `Content scanner "${first.scanner}" detected: ${first.match}`,
+    };
   }
 }

@@ -9,6 +9,16 @@ import { ShellProxy } from "./proxy/shell-proxy.js";
 import { parseCovenant } from "./covenant/parser.js";
 import { evaluateCovenant } from "./covenant/evaluator.js";
 import { generateClaudeCodeCommand, generateCursorRule, generateCodexAgentSection } from "./assist/slash-commands.js";
+import { AEPassistant } from "./aepassist/assistant.js";
+import { AgentGateway } from "./gateway.js";
+import { ProofBundleBuilder } from "./proof-bundle/builder.js";
+import { DEFAULT_RELIABILITY_WEIGHTS } from "./proof-bundle/types.js";
+import { EvalRunner } from "./eval/runner.js";
+import { RuleGenerator } from "./eval/rule-generator.js";
+import { DatasetManager } from "./datasets/manager.js";
+import { PromptOptimizer } from "./optimization/optimizer.js";
+import { PromptVersionManager } from "./optimization/versioning.js";
+import type { EvalDataset } from "./eval/types.js";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -17,6 +27,7 @@ function usage(): void {
   console.log(`AEP -- Agent Element Protocol v2.2
 
 Usage:
+  aep assist [command]          Interactive governance assistant (/aepassist)
   aep init <agent>              Set up AEP governance for an agent
   aep proxy --policy <file>     Start MCP proxy server
   aep exec <policy> <command>   Execute command through shell proxy
@@ -37,6 +48,18 @@ Usage:
   aep bundle verify <f> --ledger <l>  Full verification with ledger
   aep tasks <session-id>        Show task tree for session
   aep tasks <session-id> --tree Show as indented tree view
+  aep reliability <ledger-file>  Show reliability index (theta) for session
+  aep eval <dataset> --policy <p>  Run eval dataset against policy
+  aep dataset create <name>       Create a new eval dataset
+  aep dataset add <name> <input>  Add entry to dataset
+  aep dataset import <name> <f>   Import entries from ledger
+  aep dataset export <name>       Export dataset (--format json|csv)
+  aep dataset list                List all datasets
+  aep prompt save <n> <v> <file>  Save a prompt version
+  aep prompt load <name> [ver]    Load a prompt version
+  aep prompt list <name>          List prompt versions
+  aep prompt diff <n> <a> <b>     Diff two prompt versions
+  aep prompt inject <file> --policy <p>  Inject governance context
   aep sync                      Sync offline ledger entries
   aep owasp                     Print OWASP Agentic Top 10 mapping
 
@@ -73,6 +96,10 @@ async function main(): Promise<void> {
   }
 
   switch (command) {
+    case "assist":
+    case "/aepassist":
+      handleAssist(args.slice(1));
+      break;
     case "init":
       handleInit(args[1]);
       break;
@@ -115,16 +142,44 @@ async function main(): Promise<void> {
     case "tasks":
       handleTasks(args);
       break;
+    case "reliability":
+      handleReliability(args[1]);
+      break;
     case "owasp":
       handleOwasp();
       break;
     case "sync":
       handleSync();
       break;
+    case "eval":
+      handleEval(args);
+      break;
+    case "dataset":
+      handleDataset(args);
+      break;
+    case "prompt":
+      handlePrompt(args);
+      break;
     default:
       console.error(`Unknown command: ${command}`);
       usage();
       process.exit(1);
+  }
+}
+
+function handleAssist(assistArgs: string[]): void {
+  const gateway = new AgentGateway({ ledgerDir: resolve("./ledgers") });
+  const assistant = new AEPassistant(gateway, process.cwd());
+  const input = assistArgs.join(" ");
+  const response = assistant.handle(input);
+
+  console.log(response.message);
+
+  if (response.prompt) {
+    console.log(`\n${response.prompt}`);
+  }
+  if (response.actions && response.actions.length > 0) {
+    console.log(`\nAvailable: ${response.actions.join(", ")}`);
   }
 }
 
@@ -691,6 +746,41 @@ function handleTasks(args: string[]): void {
   console.log("Use TaskDecompositionManager.getTree() programmatically.");
 }
 
+function handleReliability(ledgerPath: string | undefined): void {
+  if (!ledgerPath) {
+    console.error("Usage: aep reliability <ledger-file>");
+    process.exit(1);
+  }
+
+  const fullPath = resolve(ledgerPath);
+  const filename = fullPath.split("/").pop() ?? "";
+  const sessionId = filename.replace(".jsonl", "");
+  const dir = fullPath.replace(`/${filename}`, "");
+
+  const ledger = new EvidenceLedger({ dir, sessionId });
+  const entries = ledger.entries();
+
+  if (entries.length === 0) {
+    console.error("No entries found in ledger.");
+    process.exit(1);
+  }
+
+  const ri = ProofBundleBuilder.computeReliability(
+    entries,
+    { score: 500, tier: "standard" },
+    0,
+    DEFAULT_RELIABILITY_WEIGHTS
+  );
+
+  console.log(`Reliability Index for ${sessionId}`);
+  console.log(`  Hard compliance rate:  ${ri.hardComplianceRate}`);
+  console.log(`  Soft recovery rate:    ${ri.softRecoveryRate}`);
+  console.log(`  Drift score:           ${ri.driftScore}`);
+  console.log(`  Trust score:           ${ri.trustScore}`);
+  console.log(`  Scanner pass rate:     ${ri.scannerPassRate}`);
+  console.log(`  Theta (composite):     ${ri.theta}`);
+}
+
 function handleOwasp(): void {
   console.log(`OWASP Agentic AI Top 10 -- AEP 2.2 Mapping
 
@@ -759,6 +849,229 @@ function handleSync(): void {
   } catch (err) {
     console.error(`Sync failed: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
+  }
+}
+
+function handleEval(args: string[]): void {
+  const datasetFile = args[1];
+  const policyIdx = args.indexOf("--policy");
+  const policyPath = policyIdx !== -1 ? args[policyIdx + 1] : undefined;
+
+  if (!datasetFile || !policyPath) {
+    console.error("Usage: aep eval <dataset-file> --policy <policy-file>");
+    process.exit(1);
+  }
+
+  try {
+    const datasetContent = readFileSync(resolve(datasetFile), "utf-8");
+    const dataset: EvalDataset = JSON.parse(datasetContent);
+    const gateway = new AgentGateway({ ledgerDir: resolve("./ledgers") });
+    const runner = new EvalRunner(gateway);
+    const report = runner.run(dataset, resolve(policyPath));
+
+    console.log(`Eval: ${report.datasetName}`);
+    console.log(`  Total: ${report.total}`);
+    console.log(`  Passed: ${report.passed}`);
+    console.log(`  Failed: ${report.failed}`);
+    console.log(`  False positives: ${report.falsePositives}`);
+    console.log(`  False negatives: ${report.falseNegatives}`);
+
+    if (report.violations.length > 0) {
+      console.log(`\nViolations:`);
+      for (const v of report.violations) {
+        console.log(`  ${v.rule} (${v.category}): ${v.count} occurrences [${v.severity}]`);
+      }
+    }
+
+    if (report.suggestedRules.length > 0) {
+      console.log(`\nSuggested rules:`);
+      for (const s of report.suggestedRules) {
+        console.log(`  [${s.type}] ${s.rule} (confidence: ${s.confidence.toFixed(2)})`);
+      }
+
+      const generator = new RuleGenerator();
+      const suggestionsDir = resolve(".aep/suggestions");
+      const filePath = generator.writeSuggestions(report, suggestionsDir);
+      console.log(`\nSuggestions written to ${filePath}`);
+    }
+  } catch (err) {
+    console.error(`Eval failed: ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(1);
+  }
+}
+
+function handleDataset(args: string[]): void {
+  const subcommand = args[1];
+  const datasetDir = resolve(".aep/datasets");
+  const manager = new DatasetManager(datasetDir);
+
+  switch (subcommand) {
+    case "create": {
+      const name = args[2];
+      const description = args[3];
+      if (!name) {
+        console.error("Usage: aep dataset create <name> [description]");
+        process.exit(1);
+      }
+      const ds = manager.create(name, description);
+      console.log(`Created dataset "${ds.name}" v${ds.version}`);
+      break;
+    }
+
+    case "add": {
+      const name = args[2];
+      const input = args[3];
+      const outcome = args[4] ?? "pass";
+      if (!name || !input) {
+        console.error("Usage: aep dataset add <name> <input> [pass|fail]");
+        process.exit(1);
+      }
+      manager.addEntry(name, {
+        input,
+        expectedOutcome: outcome as "pass" | "fail",
+      });
+      console.log(`Added entry to "${name}".`);
+      break;
+    }
+
+    case "import": {
+      const name = args[2];
+      const ledgerPath = args[3];
+      if (!name || !ledgerPath) {
+        console.error("Usage: aep dataset import <name> <ledger-file>");
+        process.exit(1);
+      }
+      try {
+        manager.get(name);
+      } catch {
+        manager.create(name, `Imported from ${ledgerPath}`);
+      }
+      const added = manager.addFromLedger(name, resolve(ledgerPath));
+      console.log(`Imported ${added} entries from ledger into "${name}".`);
+      break;
+    }
+
+    case "export": {
+      const name = args[2];
+      const formatIdx = args.indexOf("--format");
+      const format = formatIdx !== -1 ? args[formatIdx + 1] : "json";
+      if (!name) {
+        console.error("Usage: aep dataset export <name> [--format json|csv]");
+        process.exit(1);
+      }
+      const output = manager.export(name, format as "json" | "csv");
+      console.log(output);
+      break;
+    }
+
+    case "list": {
+      const datasets = manager.list();
+      if (datasets.length === 0) {
+        console.log("No datasets found.");
+      } else {
+        console.log(`Datasets (${datasets.length}):`);
+        for (const ds of datasets) {
+          console.log(`  ${ds.name} v${ds.version} (${ds.entryCount} entries) ${ds.description ?? ""}`);
+        }
+      }
+      break;
+    }
+
+    default:
+      console.error("Usage: aep dataset <create|add|import|export|list>");
+      process.exit(1);
+  }
+}
+
+function handlePrompt(args: string[]): void {
+  const subcommand = args[1];
+  const manager = new PromptVersionManager(resolve("."));
+
+  switch (subcommand) {
+    case "save": {
+      const name = args[2];
+      const ver = args[3];
+      const file = args[4];
+      if (!name || !ver || !file) {
+        console.error("Usage: aep prompt save <name> <version> <file>");
+        process.exit(1);
+      }
+      const content = readFileSync(resolve(file), "utf-8");
+      manager.save(name, ver, content);
+      console.log(`Saved prompt "${name}" v${ver}.`);
+      break;
+    }
+
+    case "load": {
+      const name = args[2];
+      const ver = args[3];
+      if (!name) {
+        console.error("Usage: aep prompt load <name> [version]");
+        process.exit(1);
+      }
+      const content = manager.load(name, ver);
+      console.log(content);
+      break;
+    }
+
+    case "list": {
+      const name = args[2];
+      if (!name) {
+        console.error("Usage: aep prompt list <name>");
+        process.exit(1);
+      }
+      const versions = manager.list(name);
+      if (versions.length === 0) {
+        console.log(`No versions found for "${name}".`);
+      } else {
+        console.log(`Versions for "${name}":`);
+        for (const v of versions) {
+          console.log(`  ${v.version}  ${v.savedAt}  ${v.hash.slice(0, 12)}...`);
+        }
+      }
+      break;
+    }
+
+    case "diff": {
+      const name = args[2];
+      const vA = args[3];
+      const vB = args[4];
+      if (!name || !vA || !vB) {
+        console.error("Usage: aep prompt diff <name> <versionA> <versionB>");
+        process.exit(1);
+      }
+      const diff = manager.diff(name, vA, vB);
+      console.log(diff);
+      break;
+    }
+
+    case "inject": {
+      const file = args[2];
+      const policyIdx = args.indexOf("--policy");
+      const policyPath = policyIdx !== -1 ? args[policyIdx + 1] : undefined;
+      if (!file || !policyPath) {
+        console.error("Usage: aep prompt inject <file> --policy <policy-file>");
+        process.exit(1);
+      }
+      const prompt = readFileSync(resolve(file), "utf-8");
+      const policy = loadPolicy(resolve(policyPath));
+
+      const covenantIdx = args.indexOf("--covenant");
+      let covenant;
+      if (covenantIdx !== -1 && args[covenantIdx + 1]) {
+        const covenantSource = readFileSync(resolve(args[covenantIdx + 1]), "utf-8");
+        covenant = parseCovenant(covenantSource);
+      }
+
+      const optimizer = new PromptOptimizer(policy, covenant);
+      const result = optimizer.injectGovernanceContext(prompt);
+      console.log(result);
+      break;
+    }
+
+    default:
+      console.error("Usage: aep prompt <save|load|list|diff|inject>");
+      process.exit(1);
   }
 }
 

@@ -1,6 +1,7 @@
 import { AgentGateway, type AEPElement } from "../gateway.js";
 import type { AgentAction, Policy } from "../policy/types.js";
 import type { Session } from "../session/session.js";
+import { AEPassistant } from "../aepassist/assistant.js";
 
 export interface BackendConfig {
   name: string;
@@ -62,6 +63,16 @@ export class AEPProxyServer {
       return {
         content: [{ type: "text", text: "No active session. Call start() first." }],
         isError: true,
+      };
+    }
+
+    // /aepassist tool -- governance assistant, bypasses policy evaluation
+    if (call.name === "aepassist") {
+      const input = typeof call.arguments.input === "string" ? call.arguments.input : "";
+      const assistant = new AEPassistant(this.gateway);
+      const response = assistant.handle(input);
+      return {
+        content: [{ type: "text", text: JSON.stringify(response) }],
       };
     }
 

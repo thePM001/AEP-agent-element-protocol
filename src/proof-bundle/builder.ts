@@ -1,6 +1,7 @@
 import { createHash, sign, randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
-import type { ProofBundle, TrustScore } from "./types.js";
+import type { ProofBundle, TrustScore, ReliabilityIndex, ReliabilityWeights } from "./types.js";
+import { DEFAULT_RELIABILITY_WEIGHTS } from "./types.js";
 import type { AgentIdentity } from "../identity/types.js";
 import type { CovenantSpec } from "../covenant/types.js";
 import type { SessionReport } from "../session/session.js";
@@ -18,6 +19,7 @@ export interface ProofBundleBuildContext {
   driftScore: number;
   ledger: EvidenceLedger;
   taskTree?: TaskTree | null;
+  reliabilityWeights?: ReliabilityWeights;
 }
 
 export class ProofBundleBuilder {
@@ -37,6 +39,14 @@ export class ProofBundleBuilder {
       "sha256:" +
       createHash("sha256").update(ledgerContent).digest("hex");
 
+    // Compute reliability index
+    const reliabilityIndex = ProofBundleBuilder.computeReliability(
+      entries,
+      context.trustScore,
+      context.driftScore,
+      context.reliabilityWeights ?? DEFAULT_RELIABILITY_WEIGHTS
+    );
+
     const bundle: ProofBundle = {
       bundleId: randomUUID(),
       version: "2.2",
@@ -52,6 +62,7 @@ export class ProofBundleBuilder {
       ledgerHash,
       signature: "",
       taskTree: context.taskTree ?? null,
+      reliabilityIndex,
     };
 
     // Sign all fields except signature
@@ -68,6 +79,61 @@ export class ProofBundleBuilder {
   fromFile(path: string): ProofBundle {
     const content = readFileSync(path, "utf-8");
     return JSON.parse(content) as ProofBundle;
+  }
+
+  static computeReliability(
+    entries: import("../ledger/types.js").LedgerEntry[],
+    trustScore: TrustScore,
+    driftScore: number,
+    weights: ReliabilityWeights
+  ): ReliabilityIndex {
+    // Hard compliance rate: 1 - (hard violations / total evaluations)
+    const evaluations = entries.filter((e) => e.type === "action:evaluate");
+    const denials = evaluations.filter(
+      (e) => (e.data as Record<string, unknown>).decision === "deny"
+    );
+    const totalEvals = evaluations.length || 1;
+    const hardComplianceRate = Math.max(0, Math.min(1, 1 - denials.length / totalEvals));
+
+    // Soft recovery rate: successful recoveries / total recovery attempts
+    // If no recovery was needed, rate is 1.0 (perfect)
+    const recoveryAttempts = entries.filter((e) => e.type === "recovery:attempt");
+    const recoverySuccesses = entries.filter((e) => e.type === "recovery:success");
+    const softRecoveryRate = recoveryAttempts.length === 0
+      ? 1.0
+      : Math.min(1, recoverySuccesses.length / recoveryAttempts.length);
+
+    // Drift score: inverse of max drift (1 - drift, clamped 0-1)
+    const driftComponent = Math.max(0, Math.min(1, 1 - driftScore));
+
+    // Trust score: normalised to 0-1
+    const trustComponent = Math.max(0, Math.min(1, trustScore.score / 1000));
+
+    // Scanner pass rate: scans without findings / total scans
+    const scannerFindings = entries.filter((e) => e.type === "scanner:finding");
+    // Estimate total scans from action:result entries (each result implies a scan opportunity)
+    const actionResults = entries.filter((e) => e.type === "action:result");
+    const totalScans = actionResults.length || 1;
+    const cleanScans = Math.max(0, totalScans - scannerFindings.length);
+    const scannerPassRate = Math.min(1, cleanScans / totalScans);
+
+    // Weighted composite theta
+    const theta = Math.max(0, Math.min(1,
+      weights.hard * hardComplianceRate +
+      weights.recovery * softRecoveryRate +
+      weights.drift * driftComponent +
+      weights.trust * trustComponent +
+      weights.scanner * scannerPassRate
+    ));
+
+    return {
+      hardComplianceRate: Math.round(hardComplianceRate * 1000) / 1000,
+      softRecoveryRate: Math.round(softRecoveryRate * 1000) / 1000,
+      driftScore: Math.round(driftComponent * 1000) / 1000,
+      trustScore: Math.round(trustComponent * 1000) / 1000,
+      scannerPassRate: Math.round(scannerPassRate * 1000) / 1000,
+      theta: Math.round(theta * 1000) / 1000,
+    };
   }
 
   static serializeForSigning(bundle: ProofBundle): string {

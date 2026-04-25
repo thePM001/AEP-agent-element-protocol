@@ -13,7 +13,29 @@ export type LedgerEntryType =
   | "task:decompose"
   | "task:complete"
   | "task:fail"
-  | "task:cancel";
+  | "task:cancel"
+  | "recovery:attempt"
+  | "recovery:success"
+  | "recovery:exhausted"
+  | "scanner:finding"
+  | "workflow:start"
+  | "workflow:phase_enter"
+  | "workflow:phase_verdict"
+  | "workflow:complete"
+  | "workflow:fail";
+
+export interface TokenUsage {
+  input: number;
+  output: number;
+  total: number;
+}
+
+export interface CostRecord {
+  input_cost: number;
+  output_cost: number;
+  total_cost: number;
+  currency: string;
+}
 
 export interface LedgerEntry {
   seq: number;
@@ -23,6 +45,8 @@ export interface LedgerEntry {
   type: LedgerEntryType;
   data: Record<string, unknown>;
   stateRef?: string;
+  tokens?: TokenUsage;
+  cost?: CostRecord;
 }
 
 export interface LedgerReport {
