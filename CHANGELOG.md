@@ -2,6 +2,16 @@
 
 All notable changes to the Agent Element Protocol (AEP) will be documented in this file.
 
+## [2.5.1] - 2026-04-25
+
+### Added (Commerce Subprotocol)
+- **Commerce Subprotocol** -- validates agentic commerce workflows: product discovery, cart management, checkout, payment negotiation, fulfillment tracking and post-purchase actions. `CommerceValidator` enforces configurable policies including merchant allow/blocklists, product category blocking, transaction amount limits, daily spend tracking, human gate thresholds and payment method restrictions. `SpendTracker` accumulates daily spend with JSONL persistence at `.aep/commerce/spend.jsonl`. `CommerceRegistry` manages merchant profiles with capabilities and payment handlers. Six new ledger entry types: `commerce:discover`, `commerce:cart_update`, `commerce:checkout`, `commerce:payment`, `commerce:fulfillment`, `commerce:return`. Policy gains `commerce` config section with `enabled`, `max_transaction_amount`, `allowed_currencies`, `allowed_merchants`, `blocked_merchants`, `blocked_product_categories`, `require_human_gate_above`, `allowed_payment_methods` and `max_daily_spend`. Commerce covenant rules follow existing DSL syntax (`permit commerce:discover; forbid commerce:checkout (total > 500) [hard]`). CLI: `aep commerce status|merchants|spend`.
+
+### Changed
+- `PolicySchema` extended with optional `commerce` config section via `CommercePolicySchema`.
+- `LedgerEntryType` extended with six commerce-specific entry types.
+- 19 new tests covering add-to-cart, checkout, payment negotiation, return validation, spend tracking, registry and covenant enforcement.
+
 ## [2.5.0] - 2026-04-25
 
 ### Added (Capabilities 10-11)
