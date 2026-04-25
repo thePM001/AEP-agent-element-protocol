@@ -28,7 +28,13 @@ export type LedgerEntryType =
   | "knowledge:flag"
   | "knowledge:retrieve"
   | "model:call"
-  | "model:error";
+  | "model:error"
+  | "commerce:discover"
+  | "commerce:cart_update"
+  | "commerce:checkout"
+  | "commerce:payment"
+  | "commerce:fulfillment"
+  | "commerce:return";
 
 export interface TokenUsage {
   input: number;

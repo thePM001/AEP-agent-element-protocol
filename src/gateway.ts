@@ -24,6 +24,8 @@ import type { Finding } from "./scanners/types.js";
 import type { TokenUsage, CostRecord } from "./ledger/types.js";
 import { KnowledgeBaseManager } from "./knowledge/manager.js";
 import type { KnowledgeChunk } from "./knowledge/types.js";
+import { CommerceValidator } from "./subprotocols/commerce/validator.js";
+import type { CommerceAction, CommerceValidationResult } from "./subprotocols/commerce/types.js";
 
 export interface GatewayOptions {
   ledgerDir: string;
@@ -95,6 +97,7 @@ export class AgentGateway {
   private sessionCostTotals: Map<string, { input: number; output: number; currency: string }> = new Map();
   private sessionCompletedOutputTokens: Map<string, number[]> = new Map();
   private sessionRejectedCount: Map<string, number> = new Map();
+  private commerceValidators: Map<string, CommerceValidator> = new Map();
 
   constructor(options: GatewayOptions) {
     this.options = options;
@@ -228,6 +231,17 @@ export class AgentGateway {
         ledger,
       });
       this.knowledgeManagers.set(session.id, kbm);
+    }
+
+    // Wire commerce validator if policy has commerce config
+    if (policy.commerce?.enabled) {
+      const pipeline = this.scannerPipelines.get(session.id);
+      const cv = new CommerceValidator(
+        policy.commerce,
+        pipeline ?? null,
+        ledger,
+      );
+      this.commerceValidators.set(session.id, cv);
     }
 
     // Store covenant for proof bundle generation
@@ -596,6 +610,27 @@ export class AgentGateway {
     return this.knowledgeManagers.get(sessionId) ?? null;
   }
 
+  getCommerceValidator(sessionId: string): CommerceValidator | null {
+    return this.commerceValidators.get(sessionId) ?? null;
+  }
+
+  /**
+   * Validate a commerce action through the commerce subprotocol.
+   * Call this after evaluate() returns "allow" for commerce-prefixed tools.
+   * Returns the commerce validation result including any gate_required flag.
+   */
+  validateCommerce(
+    sessionId: string,
+    action: CommerceAction,
+    payload: unknown,
+  ): CommerceValidationResult {
+    const cv = this.commerceValidators.get(sessionId);
+    if (!cv) {
+      return { valid: true, errors: [] };
+    }
+    return cv.validateAction(action, payload);
+  }
+
   validateAEP(
     sessionId: string,
     actionId: string,
@@ -851,6 +886,7 @@ export class AgentGateway {
     this.recoveryEngines.delete(sessionId);
     this.scannerPipelines.delete(sessionId);
     this.knowledgeManagers.delete(sessionId);
+    this.commerceValidators.delete(sessionId);
     this.sessionTokenTotals.delete(sessionId);
     this.sessionCostTotals.delete(sessionId);
     this.sessionCompletedOutputTokens.delete(sessionId);

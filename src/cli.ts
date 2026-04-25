@@ -24,6 +24,13 @@ import { ModelConfigSchema, ModelRequestSchema } from "./model-gateway/types.js"
 import type { ModelProvider } from "./model-gateway/types.js";
 import { KnowledgeBaseManager } from "./knowledge/manager.js";
 import { createDefaultPipeline } from "./scanners/pipeline.js";
+import { DataProfileScanner } from "./scanners/profiler.js";
+import { MLMetrics } from "./eval/metrics.js";
+import type { MLMetricsReport } from "./eval/metrics.js";
+import { createFineTuningWorkflow } from "./workflow/templates/fine-tuning.js";
+import { WorkflowExecutor } from "./workflow/executor.js";
+import { SpendTracker } from "./subprotocols/commerce/spend-tracker.js";
+import { CommerceRegistry } from "./subprotocols/commerce/registry.js";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -75,8 +82,15 @@ Usage:
   aep kb query <name> <query>     Query a knowledge base
   aep kb list                     List all knowledge bases
   aep kb stats <name>             Show knowledge base statistics
+  aep profile <file>              Run data profiling scanner on file
+  aep metrics <file>              Compute ML metrics from JSON results
+  aep workflow init <template>    Show workflow template phases
+  aep workflow start <template>   Start a governed workflow
   aep scan <text>                 Run scanner pipeline on text
   aep scan --file <file>          Scan file contents
+  aep commerce status             Show daily spend and active summary
+  aep commerce merchants          List registered merchant profiles
+  aep commerce spend              Show daily spend tracker
   aep sync                      Sync offline ledger entries
   aep owasp                     Print OWASP Agentic Top 10 mapping
 
@@ -185,6 +199,18 @@ async function main(): Promise<void> {
       break;
     case "scan":
       handleScan(args);
+      break;
+    case "commerce":
+      handleCommerce(args);
+      break;
+    case "profile":
+      handleProfile(args);
+      break;
+    case "metrics":
+      handleMetrics(args);
+      break;
+    case "workflow":
+      handleWorkflow(args);
       break;
     default:
       console.error(`Unknown command: ${command}`);
@@ -1261,6 +1287,59 @@ function handleScan(args: string[]): void {
   }
 }
 
+function handleCommerce(args: string[]): void {
+  const sub = args[1];
+
+  switch (sub) {
+    case "status": {
+      const tracker = new SpendTracker(0, "USD");
+      const today = tracker.getToday();
+      const maxDaily = tracker.getMaxDaily();
+      console.log("Commerce Status");
+      console.log(`  Daily spend: ${today} ${tracker.getCurrency()}`);
+      if (maxDaily > 0) {
+        console.log(`  Daily limit: ${maxDaily} ${tracker.getCurrency()}`);
+        console.log(`  Remaining:   ${Math.max(0, maxDaily - today)} ${tracker.getCurrency()}`);
+      } else {
+        console.log("  Daily limit: not configured");
+      }
+      console.log("\nUse CommerceValidator and CommerceRegistry APIs programmatically");
+      console.log("to manage carts and merchant registrations.");
+      break;
+    }
+    case "merchants": {
+      const registry = new CommerceRegistry();
+      const merchants = registry.listMerchants();
+      if (merchants.length === 0) {
+        console.log("No merchants registered.");
+        console.log("Use CommerceRegistry.registerMerchant() to add merchants.");
+      } else {
+        console.log(`Merchants (${merchants.length}):`);
+        for (const m of merchants) {
+          console.log(`  ${m.id}: ${m.name} (${m.currency}) handlers: ${m.paymentHandlers.join(", ")}`);
+        }
+      }
+      break;
+    }
+    case "spend": {
+      const tracker = new SpendTracker(0, "USD");
+      const today = tracker.getToday();
+      console.log("Daily Spend Tracker");
+      console.log(`  Today: ${today} ${tracker.getCurrency()}`);
+      console.log(`  Date:  ${new Date().toISOString().slice(0, 10)}`);
+      const maxDaily = tracker.getMaxDaily();
+      if (maxDaily > 0) {
+        const pct = today > 0 ? ((today / maxDaily) * 100).toFixed(1) : "0.0";
+        console.log(`  Usage: ${pct}% of ${maxDaily} ${tracker.getCurrency()} limit`);
+      }
+      break;
+    }
+    default:
+      console.error("Usage: aep commerce <status|merchants|spend>");
+      process.exit(1);
+  }
+}
+
 function generateDefaultPolicy(): string {
   return `version: "2.5"
 name: "default-agent-policy"
@@ -1337,6 +1416,158 @@ evidence:
   enabled: true
   dir: "./ledgers"
 `;
+}
+
+function handleProfile(args: string[]): void {
+  const filePath = args[1];
+  if (!filePath) {
+    console.error("Usage: aep profile <file>");
+    process.exit(1);
+  }
+
+  const resolved = resolve(filePath);
+  if (!existsSync(resolved)) {
+    console.error(`File not found: ${resolved}`);
+    process.exit(1);
+  }
+
+  const content = readFileSync(resolved, "utf-8");
+  const scanner = new DataProfileScanner();
+  const findings = scanner.scan(content);
+
+  if (findings.length === 0) {
+    console.log("PASS: No data quality issues found.");
+  } else {
+    console.log(`DATA PROFILE FINDINGS (${findings.length}):`);
+    for (const f of findings) {
+      console.log(`  [${f.severity}] ${f.category}: ${f.match}`);
+    }
+  }
+}
+
+function handleMetrics(args: string[]): void {
+  const filePath = args[1];
+  if (!filePath) {
+    console.error("Usage: aep metrics <file>");
+    console.error("  File should be JSON with { type, actual, predicted } or { type, relevant, retrieved, k }");
+    process.exit(1);
+  }
+
+  const resolved = resolve(filePath);
+  if (!existsSync(resolved)) {
+    console.error(`File not found: ${resolved}`);
+    process.exit(1);
+  }
+
+  const content = readFileSync(resolved, "utf-8");
+  let data: Record<string, unknown>;
+  try {
+    data = JSON.parse(content);
+  } catch {
+    console.error("Invalid JSON file.");
+    process.exit(1);
+    return;
+  }
+
+  const report: MLMetricsReport = {};
+
+  if (data.type === "classification" && Array.isArray(data.actual) && Array.isArray(data.predicted)) {
+    report.classification = MLMetrics.classification(data.actual as number[], data.predicted as number[]);
+    console.log("Classification Metrics:");
+    console.log(`  Accuracy:  ${report.classification.accuracy}`);
+    console.log(`  Precision: ${report.classification.precision}`);
+    console.log(`  Recall:    ${report.classification.recall}`);
+    console.log(`  F1:        ${report.classification.f1}`);
+    const cm = report.classification.confusionMatrix;
+    console.log(`  Confusion: TP=${cm.tp} FP=${cm.fp} TN=${cm.tn} FN=${cm.fn}`);
+  } else if (data.type === "regression" && Array.isArray(data.actual) && Array.isArray(data.predicted)) {
+    report.regression = MLMetrics.regression(data.actual as number[], data.predicted as number[]);
+    console.log("Regression Metrics:");
+    console.log(`  MSE:  ${report.regression.mse}`);
+    console.log(`  RMSE: ${report.regression.rmse}`);
+    console.log(`  MAE:  ${report.regression.mae}`);
+    console.log(`  R2:   ${report.regression.r2}`);
+    console.log(`  MAPE: ${report.regression.mape}%`);
+  } else if (data.type === "retrieval" && Array.isArray(data.relevant) && Array.isArray(data.retrieved)) {
+    const k = typeof data.k === "number" ? data.k : 10;
+    report.retrieval = MLMetrics.retrieval(data.relevant as string[], data.retrieved as string[], k);
+    console.log(`Retrieval Metrics (k=${k}):`);
+    console.log(`  Precision@${k}: ${report.retrieval.precisionAtK}`);
+    console.log(`  Recall@${k}:    ${report.retrieval.recallAtK}`);
+    console.log(`  MRR:            ${report.retrieval.mrr}`);
+    console.log(`  NDCG:           ${report.retrieval.ndcg}`);
+  } else if (data.type === "generation" && Array.isArray(data.expected) && Array.isArray(data.generated)) {
+    report.generation = MLMetrics.generation(data.expected as string[], data.generated as string[]);
+    console.log("Generation Metrics:");
+    console.log(`  Exact Match: ${report.generation.exactMatch}`);
+    console.log(`  Avg Length:  ${report.generation.avgLength}`);
+    console.log(`  Empty Rate:  ${report.generation.emptyRate}`);
+  } else {
+    console.error("Unknown metrics type. Supported: classification, regression, retrieval, generation");
+    process.exit(1);
+  }
+
+  const composite = MLMetrics.compositeScore(report);
+  console.log(`\nComposite ML Score: ${composite}`);
+}
+
+function handleWorkflow(args: string[]): void {
+  const sub = args[1];
+  const template = args[2];
+
+  if (!sub || !template) {
+    console.error("Usage: aep workflow init <template> | aep workflow start <template>");
+    console.error("  Templates: fine-tuning");
+    process.exit(1);
+  }
+
+  if (template !== "fine-tuning") {
+    console.error(`Unknown workflow template: ${template}`);
+    console.error("Available templates: fine-tuning");
+    process.exit(1);
+  }
+
+  const definition = createFineTuningWorkflow();
+
+  switch (sub) {
+    case "init": {
+      console.log(`Workflow: ${definition.name}`);
+      console.log(`Phases: ${definition.phases.length}`);
+      console.log(`On Fail: ${definition.onFail}`);
+      console.log("");
+      for (let i = 0; i < definition.phases.length; i++) {
+        const phase = definition.phases[i];
+        console.log(`  ${i + 1}. ${phase.name}`);
+        console.log(`     ${phase.description}`);
+        console.log(`     Role: ${phase.role} | Ring: ${phase.ring} | Max Rework: ${phase.maxRework}`);
+        console.log(`     Exit Criteria: ${phase.exitCriteria.map((c) => c.type + (c.value !== undefined ? `(${c.value})` : "")).join(", ")}`);
+        console.log("");
+      }
+      break;
+    }
+    case "start": {
+      const policyIdx = args.indexOf("--policy");
+      const policyPath = policyIdx !== -1 ? args[policyIdx + 1] : undefined;
+
+      if (!policyPath) {
+        console.log("Starting workflow without policy binding (dry run).");
+      }
+
+      const gateway = new AgentGateway({ ledgerDir: resolve("./ledgers") });
+      const executor = new WorkflowExecutor(definition, gateway);
+
+      console.log(`Workflow "${definition.name}" initialised with ${definition.phases.length} phases.`);
+      console.log("Phases:");
+      for (const phase of definition.phases) {
+        console.log(`  - ${phase.name} (${phase.role}, ring ${phase.ring})`);
+      }
+      console.log("\nUse WorkflowExecutor API to advance through phases programmatically.");
+      break;
+    }
+    default:
+      console.error("Usage: aep workflow init <template> | aep workflow start <template>");
+      process.exit(1);
+  }
 }
 
 main().catch((err) => {

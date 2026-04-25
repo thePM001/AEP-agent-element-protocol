@@ -61,6 +61,7 @@ export {
   KnowledgeConfigSchema,
   type KnowledgePolicyConfig,
   type ModelGatewayPolicyConfig,
+  type CommercePolicyConfig,
 } from "./policy/types.js";
 export { loadPolicy, validatePolicy } from "./policy/loader.js";
 export { PolicyEvaluator, type EvaluatorOptions } from "./policy/evaluator.js";
@@ -129,7 +130,7 @@ export { type StreamVerdict, type StreamValidator } from "./streaming/types.js";
 // Proof Bundles
 export { ProofBundleBuilder, type ProofBundleBuildContext } from "./proof-bundle/builder.js";
 export { ProofBundleVerifier } from "./proof-bundle/verifier.js";
-export { type ProofBundle as SessionProofBundle, type BundleVerification, type TrustScore, type ReliabilityIndex, type ReliabilityWeights, DEFAULT_RELIABILITY_WEIGHTS } from "./proof-bundle/types.js";
+export { type ProofBundle as SessionProofBundle, type BundleVerification, type TrustScore, type ReliabilityIndex, type ReliabilityWeights, DEFAULT_RELIABILITY_WEIGHTS, ML_RELIABILITY_WEIGHTS } from "./proof-bundle/types.js";
 
 // Governed Task Decomposition
 export { TaskDecompositionManager } from "./decomposition/manager.js";
@@ -161,6 +162,7 @@ export { SecretsScanner } from "./scanners/secrets.js";
 export { JailbreakScanner } from "./scanners/jailbreak.js";
 export { ToxicityScanner } from "./scanners/toxicity.js";
 export { URLScanner } from "./scanners/urls.js";
+export { DataProfileScanner, DEFAULT_PROFILER_CONFIG, type DataProfileScannerConfig as ProfilerConfig } from "./scanners/profiler.js";
 export { ScannerPipeline, createDefaultPipeline } from "./scanners/pipeline.js";
 export {
   type Finding,
@@ -169,6 +171,7 @@ export {
   type ScannerConfig,
   type URLScannerConfig,
   type ToxicityScannerConfig,
+  type DataProfileScannerConfig,
   type ScannersConfig,
 } from "./scanners/types.js";
 
@@ -181,6 +184,7 @@ export {
   type VerdictRecord,
   type WorkflowStatus,
 } from "./workflow/types.js";
+export { createFineTuningWorkflow, FINE_TUNING_PHASES } from "./workflow/templates/fine-tuning.js";
 
 // OpenTelemetry Exporter
 export { AEPTelemetryExporter, type OTELSpan, type OTELEvent, type OTELExporterOptions } from "./telemetry/otel-exporter.js";
@@ -217,6 +221,16 @@ export {
   type SuggestedRule,
   type EvalReport,
 } from "./eval/types.js";
+
+// ML Metrics Evaluator
+export { MLMetrics } from "./eval/metrics.js";
+export {
+  type ClassificationReport,
+  type RegressionReport,
+  type RetrievalReport,
+  type GenerationReport,
+  type MLMetricsReport,
+} from "./eval/metrics.js";
 
 // Governed Dataset Management
 export { DatasetManager } from "./datasets/manager.js";
@@ -266,3 +280,30 @@ export {
   ModelMessageSchema,
   ModelGatewayPolicySchema,
 } from "./model-gateway/types.js";
+
+// Commerce Subprotocol
+export { CommerceValidator } from "./subprotocols/commerce/validator.js";
+export { SpendTracker } from "./subprotocols/commerce/spend-tracker.js";
+export { CommerceRegistry } from "./subprotocols/commerce/registry.js";
+export {
+  type CommerceAction,
+  type CartItem,
+  type Cart,
+  type Address,
+  type CheckoutSession,
+  type CheckoutStatus,
+  type PaymentNegotiation,
+  type MerchantProfile,
+  type CommercePolicy,
+  type CommerceLedgerEntryType,
+  type CommerceValidationResult,
+  CommerceActionSchema,
+  CartItemSchema,
+  CartSchema,
+  AddressSchema,
+  CheckoutSessionSchema,
+  CheckoutStatusSchema,
+  PaymentNegotiationSchema,
+  MerchantProfileSchema,
+  CommercePolicySchema,
+} from "./subprotocols/commerce/types.js";
