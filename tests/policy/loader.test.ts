@@ -11,7 +11,7 @@ describe("Policy Loader", () => {
   it("loads and validates coding-agent policy", () => {
     const policy = loadPolicy(resolve(POLICIES_DIR, "coding-agent.policy.yaml"));
     expect(policy.name).toBe("coding-agent");
-    expect(policy.version).toBe("2.2");
+    expect(policy.version).toBe("2.5");
     expect(policy.capabilities.length).toBeGreaterThan(0);
     expect(policy.session.max_actions).toBe(100);
   });

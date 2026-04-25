@@ -19,7 +19,7 @@ export class ToxicityScanner implements Scanner {
 
   constructor(config?: Partial<ToxicityScannerConfig>) {
     this.severity = config?.severity ?? "soft";
-    this.customWords = config?.customWords ?? [];
+    this.customWords = config?.custom_words ?? [];
   }
 
   scan(content: string): Finding[] {

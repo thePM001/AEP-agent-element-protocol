@@ -22,7 +22,13 @@ export type LedgerEntryType =
   | "workflow:phase_enter"
   | "workflow:phase_verdict"
   | "workflow:complete"
-  | "workflow:fail";
+  | "workflow:fail"
+  | "knowledge:ingest"
+  | "knowledge:reject"
+  | "knowledge:flag"
+  | "knowledge:retrieve"
+  | "model:call"
+  | "model:error";
 
 export interface TokenUsage {
   input: number;
