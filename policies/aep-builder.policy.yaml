@@ -1,4 +1,4 @@
-version: "2.2"
+version: "2.5"
 name: "aep-builder"
 
 capabilities:
@@ -83,3 +83,6 @@ intent:
 system:
   max_actions_per_minute: 300
   max_concurrent_sessions: 10
+
+knowledge:
+  enabled: false

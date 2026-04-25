@@ -1,8 +1,9 @@
-// AEP 2.2 -- Agent Element Protocol
+// AEP 2.5 -- Agent Element Protocol
 // Session Governance, Policy Engine, Evidence Ledger, Rollback
 // Trust Scoring, Execution Rings, Behavioural Covenants, Agent Identity
 // Cross-Agent Verification, Intent Drift Detection, Kill Switch
 // Interactive Assistant, Proof Bundles, Streaming Validation
+// Lattice-Governed Knowledge Base
 
 export { Session, type SessionState, type SessionStats, type SessionReport } from "./session/session.js";
 export { SessionManager } from "./session/session-manager.js";
@@ -57,6 +58,9 @@ export {
   type TelemetryPolicyConfig,
   TrackingConfigSchema,
   type TrackingPolicyConfig,
+  KnowledgeConfigSchema,
+  type KnowledgePolicyConfig,
+  type ModelGatewayPolicyConfig,
 } from "./policy/types.js";
 export { loadPolicy, validatePolicy } from "./policy/loader.js";
 export { PolicyEvaluator, type EvaluatorOptions } from "./policy/evaluator.js";
@@ -225,3 +229,40 @@ export {
 // Prompt Optimization Under Governance
 export { PromptOptimizer, type ComparisonReport } from "./optimization/optimizer.js";
 export { PromptVersionManager, type PromptVersion } from "./optimization/versioning.js";
+
+// Lattice-Governed Knowledge Base (Capability 10)
+export { KnowledgeBaseManager } from "./knowledge/manager.js";
+export { KnowledgeIngestor } from "./knowledge/ingest.js";
+export { GovernedRetriever } from "./knowledge/retriever.js";
+export {
+  type KnowledgeChunk,
+  type KnowledgeBase,
+  type KnowledgeBaseSummary,
+  type IngestReport,
+  type KnowledgeQueryOptions,
+} from "./knowledge/types.js";
+
+// Model Gateway (Capability 11)
+export { GovernedModelGateway, type GatewayDependencies } from "./model-gateway/gateway.js";
+export { ProviderRegistry } from "./model-gateway/registry.js";
+export { AnthropicAdapter } from "./model-gateway/providers/anthropic.js";
+export { OpenAIAdapter } from "./model-gateway/providers/openai.js";
+export { OllamaAdapter } from "./model-gateway/providers/ollama.js";
+export { CustomAdapter } from "./model-gateway/providers/custom.js";
+export {
+  type ModelProvider,
+  type ModelConfig,
+  type ModelRequest,
+  type ModelResponse,
+  type ModelMessage,
+  type GovernedModelResponse,
+  type GovernedChunk,
+  type ProviderAdapter,
+  type ModelGatewayPolicy,
+  type ModelGatewayOptions,
+  ModelProviderSchema,
+  ModelConfigSchema,
+  ModelRequestSchema,
+  ModelMessageSchema,
+  ModelGatewayPolicySchema,
+} from "./model-gateway/types.js";

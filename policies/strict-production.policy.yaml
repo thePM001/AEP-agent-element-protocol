@@ -1,4 +1,4 @@
-version: "2.2"
+version: "2.5"
 name: "strict-production"
 
 capabilities:
@@ -109,3 +109,6 @@ identity:
 system:
   max_actions_per_minute: 60
   max_concurrent_sessions: 5
+
+knowledge:
+  enabled: false

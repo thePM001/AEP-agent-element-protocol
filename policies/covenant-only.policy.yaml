@@ -1,4 +1,4 @@
-version: "2.2"
+version: "2.5"
 name: "covenant-only"
 
 capabilities:
@@ -44,3 +44,6 @@ intent:
 system:
   max_actions_per_minute: 100
   max_concurrent_sessions: 5
+
+knowledge:
+  enabled: false

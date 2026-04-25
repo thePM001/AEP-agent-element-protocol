@@ -1,0 +1,126 @@
+version: "2.5"
+name: "content-safety"
+
+capabilities:
+  - tool: "file:read"
+    scope:
+      paths: ["src/**", "tests/**", "docs/**", "*.md"]
+  - tool: "file:write"
+    scope:
+      paths: ["src/**", "tests/**"]
+  - tool: "directory:list"
+    scope:
+      paths: ["**"]
+  - tool: "command:run"
+    scope:
+      binaries: ["npm", "node", "tsc", "git"]
+  - tool: "knowledge:ingest"
+  - tool: "knowledge:query"
+
+limits:
+  max_runtime_ms: 900000
+  max_files_changed: 20
+  max_aep_mutations: 50
+
+gates:
+  - action: "file:delete"
+    approval: human
+    risk_level: high
+  - action: "knowledge:ingest"
+    approval: human
+    risk_level: medium
+
+forbidden:
+  - pattern: "\\.env"
+    reason: "Environment files may contain secrets"
+  - pattern: "\\.secret"
+    reason: "Secret files must not be accessed"
+  - pattern: "rm -rf"
+    reason: "Destructive filesystem operation"
+  - pattern: "password|api_key|secret_key|token"
+    reason: "Credential patterns forbidden"
+  - pattern: "eval\\("
+    reason: "Dynamic code execution forbidden"
+    severity: "hard"
+  - pattern: "<script"
+    reason: "Script injection forbidden"
+    severity: "hard"
+
+session:
+  max_actions: 100
+  max_denials: 15
+  rate_limit:
+    max_per_minute: 20
+  escalation:
+    - after_actions: 50
+      require: human_checkin
+    - after_denials: 8
+      require: pause
+
+evidence:
+  enabled: true
+  dir: "./ledgers"
+
+remediation:
+  max_retries: 2
+  cooldown_ms: 2000
+
+trust:
+  initial_score: 400
+  decay_rate: 8
+  penalties:
+    policy_violation: 75
+    structural_violation: 50
+    rate_limit: 20
+    forbidden_match: 150
+    intent_drift: 100
+  rewards:
+    successful_action: 3
+    successful_rollback: 8
+
+ring:
+  default: 2
+
+intent:
+  tracking: true
+  drift_threshold: 0.4
+  warmup_actions: 8
+  on_drift: "gate"
+
+system:
+  max_actions_per_minute: 120
+  max_concurrent_sessions: 10
+
+scanners:
+  enabled: true
+  pii:
+    enabled: true
+    severity: "hard"
+  injection:
+    enabled: true
+    severity: "hard"
+  secrets:
+    enabled: true
+    severity: "hard"
+  jailbreak:
+    enabled: true
+    severity: "hard"
+  toxicity:
+    enabled: true
+    severity: "hard"
+  urls:
+    enabled: true
+    severity: "hard"
+    blocklist: []
+
+recovery:
+  enabled: true
+  max_attempts: 2
+
+knowledge:
+  enabled: true
+  bases: []
+  chunk_size: 500
+  max_retrieval_chunks: 10
+  anti_context_rot: true
+  double_scan: true

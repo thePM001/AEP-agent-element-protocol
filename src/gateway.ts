@@ -22,6 +22,8 @@ import type { Violation, RecoveryCallback } from "./recovery/types.js";
 import { ScannerPipeline, createDefaultPipeline } from "./scanners/pipeline.js";
 import type { Finding } from "./scanners/types.js";
 import type { TokenUsage, CostRecord } from "./ledger/types.js";
+import { KnowledgeBaseManager } from "./knowledge/manager.js";
+import type { KnowledgeChunk } from "./knowledge/types.js";
 
 export interface GatewayOptions {
   ledgerDir: string;
@@ -88,6 +90,7 @@ export class AgentGateway {
   private sessionCovenants: Map<string, import("./covenant/types.js").CovenantSpec> = new Map();
   private recoveryEngines: Map<string, RecoveryEngine> = new Map();
   private scannerPipelines: Map<string, ScannerPipeline> = new Map();
+  private knowledgeManagers: Map<string, KnowledgeBaseManager> = new Map();
   private sessionTokenTotals: Map<string, { input: number; output: number }> = new Map();
   private sessionCostTotals: Map<string, { input: number; output: number; currency: string }> = new Map();
   private sessionCompletedOutputTokens: Map<string, number[]> = new Map();
@@ -213,6 +216,20 @@ export class AgentGateway {
       this.scannerPipelines.set(session.id, pipeline);
     }
 
+    // Wire knowledge base manager if policy has knowledge config
+    if (policy.knowledge?.enabled) {
+      const covenant = policy.covenant ? (() => {
+        try { return parseCovenant(policy.covenant!); } catch { return undefined; }
+      })() : undefined;
+      const pipeline = this.scannerPipelines.get(session.id);
+      const kbm = new KnowledgeBaseManager({
+        pipeline: pipeline ?? undefined,
+        covenant,
+        ledger,
+      });
+      this.knowledgeManagers.set(session.id, kbm);
+    }
+
     // Store covenant for proof bundle generation
     if (policy.covenant) {
       try {
@@ -247,6 +264,27 @@ export class AgentGateway {
     return session;
   }
 
+  /**
+   * Evaluate an action through the full 15-step governance chain.
+   *
+   * Step 0:  Task scope check (if decomposition active)
+   * Step 1:  Session state check
+   * Step 2:  Ring capability check
+   * Step 3:  System-wide rate limit
+   * Step 4:  Per-session rate limit
+   * Step 5:  Intent drift check (skip during warmup)
+   * Step 6:  Escalation check
+   * Step 7:  Covenant evaluation (hard + soft severity)
+   * Step 8:  Rego / forbidden pattern check
+   * Step 9:  Capability match + trust tier check
+   * Step 10: Budget/limit check
+   * Step 11: Gate check (human or webhook)
+   * Step 12: Cross-agent verification (multi-agent only)
+   * Step 13: Knowledge retrieval validation (if knowledge base active)
+   * Step 14: Content scanner pipeline
+   *
+   * After step 14: hard violation rejects, soft triggers recovery, all pass approves.
+   */
   evaluate(sessionId: string, action: AgentAction): Verdict {
     const session = this.sessionManager.getSession(sessionId);
     if (!session) {
@@ -284,6 +322,9 @@ export class AgentGateway {
       }
     }
 
+    // Steps 1-12: PolicyEvaluator handles session state, ring, rate limits,
+    // intent drift, escalation, covenant, forbidden patterns, capability+trust,
+    // budget/limit, gate and cross-agent verification
     const verdict = evaluator.evaluate(action, session);
 
     // Trust-ring demotion on denial
@@ -294,6 +335,58 @@ export class AgentGateway {
         ring.demoteOnTrustDrop(trust.getTier());
       }
     }
+
+    // Step 13: Knowledge retrieval validation (if knowledge base active)
+    if (verdict.decision === "allow") {
+      const kbm = this.knowledgeManagers.get(sessionId);
+      if (kbm && action.tool === "knowledge:retrieve") {
+        const query = String(action.input.query ?? "");
+        const scope = action.input.scope as string[] | undefined;
+        if (!query) {
+          const knowledgeDenial: Verdict = {
+            decision: "deny",
+            actionId: verdict.actionId,
+            reasons: ["Knowledge retrieval requires a query."],
+          };
+          ledger?.append("action:evaluate", {
+            actionId: knowledgeDenial.actionId,
+            tool: action.tool,
+            decision: "deny",
+            reasons: knowledgeDenial.reasons,
+            step: 13,
+          });
+          return knowledgeDenial;
+        }
+        // Validate scope against covenant
+        const covenant = this.sessionCovenants.get(sessionId);
+        if (covenant) {
+          for (const rule of covenant.rules) {
+            if (rule.type === "forbid" && rule.action === "knowledge:retrieve") {
+              for (const cond of rule.conditions) {
+                if (cond.field === "scope" && cond.operator === "==" && scope?.includes(String(cond.value))) {
+                  const knowledgeDenial: Verdict = {
+                    decision: "deny",
+                    actionId: verdict.actionId,
+                    reasons: [`Knowledge scope "${cond.value}" is forbidden by covenant.`],
+                  };
+                  ledger?.append("action:evaluate", {
+                    actionId: knowledgeDenial.actionId,
+                    tool: action.tool,
+                    decision: "deny",
+                    reasons: knowledgeDenial.reasons,
+                    step: 13,
+                  });
+                  return knowledgeDenial;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Step 14: Content scanner pipeline runs on agent output via scanContent()
+    // This step is invoked separately after the agent produces output.
 
     // Log to ledger
     const policyHash = evaluator.getPolicyHash();
@@ -325,6 +418,7 @@ export class AgentGateway {
   }
 
   /**
+   * Step 14 of the evaluation chain: content scanner pipeline.
    * Scans agent output content through the scanner pipeline.
    * Returns scan result with findings. Hard findings reject immediately.
    * Soft findings trigger recovery if a recovery engine is configured.
@@ -496,6 +590,10 @@ export class AgentGateway {
 
   getScannerPipeline(sessionId: string): ScannerPipeline | null {
     return this.scannerPipelines.get(sessionId) ?? null;
+  }
+
+  getKnowledgeManager(sessionId: string): KnowledgeBaseManager | null {
+    return this.knowledgeManagers.get(sessionId) ?? null;
   }
 
   validateAEP(
@@ -752,6 +850,7 @@ export class AgentGateway {
     this.sessionCovenants.delete(sessionId);
     this.recoveryEngines.delete(sessionId);
     this.scannerPipelines.delete(sessionId);
+    this.knowledgeManagers.delete(sessionId);
     this.sessionTokenTotals.delete(sessionId);
     this.sessionCostTotals.delete(sessionId);
     this.sessionCompletedOutputTokens.delete(sessionId);

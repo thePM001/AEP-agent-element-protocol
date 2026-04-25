@@ -73,7 +73,7 @@ export function createDefaultPipeline(config?: Partial<ScannersConfig>): Scanner
     scanners.push(
       new ToxicityScanner({
         severity: config?.toxicity?.severity ?? "soft",
-        customWords: config?.toxicity?.custom_words,
+        custom_words: config?.toxicity?.custom_words,
       })
     );
   }
