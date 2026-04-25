@@ -1,0 +1,46 @@
+version: "2.2"
+name: "covenant-only"
+
+capabilities:
+  - tool: "*"
+
+limits:
+  max_runtime_ms: 900000
+
+session:
+  max_actions: 200
+  rate_limit:
+    max_per_minute: 30
+  escalation:
+    - after_actions: 100
+      require: human_checkin
+
+evidence:
+  enabled: true
+  dir: "./ledgers"
+
+covenant: |
+  covenant StrictCovenant {
+    permit file:read;
+    permit file:write (path in ["src/", "tests/", "docs/"]);
+    forbid file:delete;
+    forbid command:run (command matches "rm.*-rf");
+    require trustTier >= "standard";
+  }
+
+trust:
+  initial_score: 500
+  decay_rate: 5
+
+ring:
+  default: 2
+
+intent:
+  tracking: true
+  drift_threshold: 0.5
+  warmup_actions: 10
+  on_drift: "warn"
+
+system:
+  max_actions_per_minute: 100
+  max_concurrent_sessions: 5

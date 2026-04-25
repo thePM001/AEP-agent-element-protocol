@@ -37,10 +37,16 @@ export class AEPProxyServer {
   private gateway: AgentGateway;
   private policy: Policy;
   private session: Session | null = null;
+  private processing = false;
+  private eventOrder = 0;
 
   constructor(options: ProxyOptions) {
     this.policy = options.policy;
     this.gateway = new AgentGateway({ ledgerDir: options.ledgerDir });
+  }
+
+  getEventOrder(): number {
+    return this.eventOrder;
   }
 
   start(metadata?: Record<string, string>): Session {
@@ -59,92 +65,117 @@ export class AEPProxyServer {
       };
     }
 
-    const action: AgentAction = {
-      tool: call.name,
-      input: call.arguments,
-      timestamp: new Date(),
-    };
-
-    // Policy evaluation
-    const verdict = this.gateway.evaluate(this.session.id, action);
-
-    if (verdict.decision === "deny") {
+    // Sequential processing guard -- reject concurrent calls
+    if (this.processing) {
       return {
         content: [
           {
             type: "text",
-            text: `Action denied by AEP policy: ${verdict.reasons.join("; ")}`,
+            text: "Sequential processing violation: concurrent call rejected.",
           },
         ],
         isError: true,
       };
     }
 
-    if (verdict.decision === "gate") {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Action requires approval: ${verdict.reasons.join("; ")}. Session paused.`,
-          },
-        ],
-        isError: true,
-      };
-    }
+    this.processing = true;
+    this.eventOrder++;
+    const currentOrder = this.eventOrder;
 
-    // AEP structural validation for element mutations
-    if (this.isAEPTool(call.name) && call.arguments.id) {
-      const element: AEPElement = {
-        id: String(call.arguments.id),
-        type: String(call.arguments.type ?? "component"),
-        z: Number(call.arguments.z ?? 0),
-        parent: call.arguments.parent as string | null,
-        label: call.arguments.label as string | undefined,
-        skin_binding: call.arguments.skin_binding as string | undefined,
+    try {
+      const action: AgentAction = {
+        tool: call.name,
+        input: call.arguments,
+        timestamp: new Date(),
       };
 
-      const validation = this.gateway.validateAEP(
-        this.session.id,
-        verdict.actionId,
-        element
-      );
+      // Policy evaluation
+      const verdict = this.gateway.evaluate(this.session.id, action);
 
-      if (!validation.valid) {
+      if (verdict.decision === "deny") {
         return {
           content: [
             {
               type: "text",
-              text: `AEP structural validation failed: ${validation.errors.join("; ")}`,
+              text: `Action denied by AEP policy: ${verdict.reasons.join("; ")}`,
             },
           ],
           isError: true,
         };
       }
 
-      // Store compensation for rollback
-      this.gateway.storeCompensation(
-        this.session.id,
-        verdict.actionId,
-        call.name,
-        call.arguments
-      );
+      if (verdict.decision === "gate") {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Action requires approval: ${verdict.reasons.join("; ")}. Session paused.`,
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      // AEP structural validation for element mutations
+      if (this.isAEPTool(call.name) && call.arguments.id) {
+        const element: AEPElement = {
+          id: String(call.arguments.id),
+          type: String(call.arguments.type ?? "component"),
+          z: Number(call.arguments.z ?? 0),
+          parent: call.arguments.parent as string | null,
+          label: call.arguments.label as string | undefined,
+          skin_binding: call.arguments.skin_binding as string | undefined,
+        };
+
+        const validation = this.gateway.validateAEP(
+          this.session.id,
+          verdict.actionId,
+          element
+        );
+
+        if (!validation.valid) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `AEP structural validation failed: ${validation.errors.join("; ")}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        // Store compensation for rollback
+        this.gateway.storeCompensation(
+          this.session.id,
+          verdict.actionId,
+          call.name,
+          call.arguments
+        );
+      }
+
+      // Forward to backend (in a real proxy this forwards via stdio/SSE)
+      // For now, record success
+      this.gateway.recordResult(this.session.id, verdict.actionId, {
+        success: true,
+        output: { forwarded: true, tool: call.name },
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              forwarded: true,
+              actionId: verdict.actionId,
+              eventOrder: currentOrder,
+            }),
+          },
+        ],
+      };
+    } finally {
+      this.processing = false;
     }
-
-    // Forward to backend (in a real proxy this forwards via stdio/SSE)
-    // For now, record success
-    this.gateway.recordResult(this.session.id, verdict.actionId, {
-      success: true,
-      output: { forwarded: true, tool: call.name },
-    });
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({ forwarded: true, actionId: verdict.actionId }),
-        },
-      ],
-    };
   }
 
   stop(reason: string = "session ended") {

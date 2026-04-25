@@ -122,4 +122,37 @@ describe("EvidenceLedger", () => {
     // Chain should still be valid
     expect(ledger2.verify().valid).toBe(true);
   });
+
+  describe("stateRef snapshots", () => {
+    it("includes stateRef when stateProvider is set", () => {
+      let counter = 0;
+      const stateLedger = new EvidenceLedger({
+        dir: TEST_DIR,
+        sessionId: randomUUID(),
+        stateProvider: () => ({ counter: ++counter }),
+      });
+
+      const e1 = stateLedger.append("session:start", {});
+      expect(e1.stateRef).toBeDefined();
+      expect(e1.stateRef).toMatch(/^sha256:[0-9a-f]{64}$/);
+    });
+
+    it("stateRef changes between entries as state changes", () => {
+      let counter = 0;
+      const stateLedger = new EvidenceLedger({
+        dir: TEST_DIR,
+        sessionId: randomUUID(),
+        stateProvider: () => ({ counter: ++counter }),
+      });
+
+      const e1 = stateLedger.append("session:start", {});
+      const e2 = stateLedger.append("action:evaluate", { tool: "x" });
+      expect(e1.stateRef).not.toBe(e2.stateRef);
+    });
+
+    it("works without stateProvider (backward compat)", () => {
+      const e = ledger.append("session:start", {});
+      expect(e.stateRef).toBeUndefined();
+    });
+  });
 });

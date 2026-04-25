@@ -1,4 +1,4 @@
-version: "2.1"
+version: "2.2"
 name: "aep-builder"
 
 capabilities:
@@ -50,3 +50,36 @@ session:
 evidence:
   enabled: true
   dir: "./ledgers"
+
+trust:
+  initial_score: 600
+  decay_rate: 3
+  penalties:
+    policy_violation: 40
+    structural_violation: 50
+    rate_limit: 10
+    forbidden_match: 100
+    intent_drift: 50
+  rewards:
+    successful_action: 8
+    successful_rollback: 15
+
+ring:
+  default: 1
+  promotion:
+    to_ring_1:
+      min_trust_tier: "standard"
+      require_approval: false
+    to_ring_0:
+      min_trust_tier: "privileged"
+      require_approval: true
+
+intent:
+  tracking: true
+  drift_threshold: 0.4
+  warmup_actions: 5
+  on_drift: "gate"
+
+system:
+  max_actions_per_minute: 300
+  max_concurrent_sessions: 10
