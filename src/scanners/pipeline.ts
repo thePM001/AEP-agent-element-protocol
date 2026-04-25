@@ -10,6 +10,10 @@ import { JailbreakScanner } from "./jailbreak.js";
 import { ToxicityScanner } from "./toxicity.js";
 import { URLScanner } from "./urls.js";
 import { DataProfileScanner } from "./profiler.js";
+import { PredictionScanner } from "./prediction.js";
+import { BrandScanner } from "./brand.js";
+import { RegulatoryScanner } from "./regulatory.js";
+import { TemporalScanner } from "./temporal.js";
 
 export class ScannerPipeline {
   private scanners: Scanner[];
@@ -99,6 +103,62 @@ export function createDefaultPipeline(config?: Partial<ScannersConfig>): Scanner
         duplicate_rate_threshold: config.profiler.duplicate_rate_threshold,
         outlier_stddev: config.profiler.outlier_stddev,
         imbalance_ratio: config.profiler.imbalance_ratio,
+      })
+    );
+  }
+
+  // Prediction scanner (disabled by default -- opt-in)
+  if (config?.prediction?.enabled === true) {
+    scanners.push(
+      new PredictionScanner({
+        severity: config.prediction.severity ?? "soft",
+        max_percentage: config.prediction.max_percentage,
+        max_horizon_days: config.prediction.max_horizon_days,
+        require_confidence: config.prediction.require_confidence,
+        block_certainty_language: config.prediction.block_certainty_language,
+      })
+    );
+  }
+
+  // Brand scanner (disabled by default -- opt-in)
+  if (config?.brand?.enabled === true) {
+    scanners.push(
+      new BrandScanner({
+        severity: config.brand.severity ?? "soft",
+        required_phrases: config.brand.required_phrases,
+        forbidden_phrases: config.brand.forbidden_phrases,
+        tone_keywords: config.brand.tone_keywords,
+        competitors: config.brand.competitors,
+        trademarks: config.brand.trademarks,
+      })
+    );
+  }
+
+  // Regulatory scanner (disabled by default -- opt-in)
+  if (config?.regulatory?.enabled === true) {
+    scanners.push(
+      new RegulatoryScanner({
+        severity: config.regulatory.severity ?? "hard",
+        check_ad_disclosure: config.regulatory.check_ad_disclosure,
+        check_financial_disclaimer: config.regulatory.check_financial_disclaimer,
+        check_medical_disclaimer: config.regulatory.check_medical_disclaimer,
+        check_affiliate_disclosure: config.regulatory.check_affiliate_disclosure,
+        check_age_restriction: config.regulatory.check_age_restriction,
+        custom_disclosures: config.regulatory.custom_disclosures,
+      })
+    );
+  }
+
+  // Temporal scanner (disabled by default -- opt-in)
+  if (config?.temporal?.enabled === true) {
+    scanners.push(
+      new TemporalScanner({
+        severity: config.temporal.severity ?? "soft",
+        max_future_days: config.temporal.max_future_days,
+        check_stale_references: config.temporal.check_stale_references,
+        check_undated_statistics: config.temporal.check_undated_statistics,
+        check_expired_content: config.temporal.check_expired_content,
+        reference_date: config.temporal.reference_date,
       })
     );
   }
