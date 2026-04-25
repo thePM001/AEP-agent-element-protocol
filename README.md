@@ -5,9 +5,70 @@
 ### License: Apache-2.0
 ### Research Paper: https://github.com/the-PM001/AEP-research-paper-001
 ### Demo: https://aep.newlisbon.agency
-### How to install AEP ?
-copy the URL of the GitHub repo into your reasoning LLM + tell it: "analyze the repo and prepare implementation plan for AEP integration into our project".
 ### AEP 2.5 Agent Harness so your AI actually uses AEP: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.5-agent-harness
+---
+
+## How to Install AEP
+
+### Method 1 -- Clone (recommended)
+
+```bash
+git clone https://github.com/thePM001/AEP-agent-element-protocol.git
+cd AEP-agent-element-protocol
+npm install
+npm run build
+npx aep assist setup
+```
+
+### Method 2 -- Install from GitHub (add to existing project)
+
+```bash
+npm install github:thePM001/AEP-agent-element-protocol
+npx aep assist setup
+```
+
+### Method 3 -- Claude Code (MCP)
+
+```bash
+git clone https://github.com/thePM001/AEP-agent-element-protocol.git
+cd AEP-agent-element-protocol && npm install && npm run build
+claude mcp add aep -- node /path/to/AEP-agent-element-protocol/dist/cli.js serve
+```
+
+Then in Claude Code: "Use the aepassist tool to set up governance."
+
+### Method 4 -- Cursor / Windsurf / Codex
+
+Clone the repo first, then add to `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "aep": {
+      "command": "node",
+      "args": ["/path/to/AEP-agent-element-protocol/dist/cli.js", "serve"]
+    }
+  }
+}
+```
+
+---
+
+## Using /aepassist
+
+After setup, use the interactive assistant for everything:
+
+```bash
+npx aep assist              # show menu
+npx aep assist setup        # first-time setup (3 questions)
+npx aep assist status       # current governance status
+npx aep assist preset strict  # switch governance preset
+npx aep assist kill         # emergency kill switch
+npx aep assist covenant list  # view active covenants
+npx aep assist identity show  # view agent identity
+npx aep assist report json  # generate audit report
+```
+
 ---
 
 ### 55 Features. One Protocol.
@@ -15,6 +76,37 @@ copy the URL of the GitHub repo into your reasoning LLM + tell it: "analyze the 
 ![AEP 2.5 - 55 Features](docs/images/feature-grid.png)
 
 ## [Explore the full interactive grid at aep.newlisbon.agency](https://aep.newlisbon.agency)
+
+---
+
+## Fleet Governance (Swarm AI)
+
+AEP 2.5 includes fleet-level governance for multi-agent swarms. Enable with `fleet.enabled: true` in your policy.
+
+```yaml
+fleet:
+  enabled: true
+  max_agents: 10
+  max_total_cost_per_hour: 100
+  max_ring0_agents: 1
+  drift_pause_threshold: 3
+  require_parent_covenant_subset: true
+```
+
+**Features:**
+- Fleet-wide status aggregation (trust, drift, cost, tokens across all agents)
+- Policy enforcement (agent limits, hourly cost caps, ring saturation, drift clustering)
+- Spawn governance (child agents inherit parent covenant subset, reduced trust, same or lower ring)
+- Inter-agent message scanning (PII, injection and secrets detection between agents)
+- Fleet API for pause, resume and kill operations
+- CLI: `aep fleet status|agents|pause|resume|kill`
+
+```typescript
+const gateway = new AgentGateway({ ledgerDir: "./ledgers" });
+const session = gateway.createSessionFromPolicy(policy);
+const fleetAPI = gateway.getFleetAPI();
+const status = fleetAPI.getStatus();
+```
 
 ---
 
@@ -1600,6 +1692,66 @@ const pipeline = createDefaultPipeline({
 ```
 
 CLI: `npx aep profile data.csv`
+
+### Domain Scanners (v2.5.3)
+
+Four domain-specific scanners extending the pipeline to 11 total. All disabled by default (opt-in via `enabled: true`).
+
+**Prediction Scanner** -- validates prediction and forecast patterns against configurable bounds. Catches extreme percentage claims, certainty language, missing confidence qualifiers and excessive timeframes.
+
+```typescript
+import { PredictionScanner, createDefaultPipeline } from "@aep/core";
+
+const scanner = new PredictionScanner({ max_percentage: 50, max_horizon_days: 730 });
+const findings = scanner.scan("Revenue will increase by 500% next year");
+
+const pipeline = createDefaultPipeline({
+  prediction: { enabled: true, severity: "soft", max_percentage: 100 }
+});
+```
+
+**Brand Scanner** -- checks content against brand guidelines: required phrases, forbidden phrases, tone keywords, competitor mentions and trademark enforcement.
+
+```typescript
+import { BrandScanner } from "@aep/core";
+
+const scanner = new BrandScanner({
+  required_phrases: ["Powered by Acme"],
+  forbidden_phrases: ["cheap"],
+  competitors: ["RivalCorp"],
+  trademarks: [{ term: "SuperWidget", suffix: "\u2122" }],
+});
+```
+
+**Regulatory Scanner** -- ensures required regulatory disclosures are present. Checks for ad disclosure, financial disclaimers, medical disclaimers, affiliate disclosure and age restriction notices. Supports custom disclosure rules.
+
+```typescript
+import { RegulatoryScanner } from "@aep/core";
+
+const scanner = new RegulatoryScanner({
+  check_ad_disclosure: true,
+  check_financial_disclaimer: true,
+  custom_disclosures: [{
+    trigger_patterns: ["weight loss"],
+    required_phrases: ["results may vary"],
+    severity: "hard",
+  }],
+});
+```
+
+**Temporal Scanner** -- enforces time-related constraints. Detects stale date references, excessive future horizons, undated statistics and expired promotional content. Supports ISO dates, Month DD YYYY, DD/MM/YYYY, quarter and month-year formats.
+
+```typescript
+import { TemporalScanner } from "@aep/core";
+
+const scanner = new TemporalScanner({
+  max_future_days: 365,
+  check_stale_references: true,
+  reference_date: "2026-06-01",
+});
+```
+
+CLI: `npx aep scan --file content.txt --scanners prediction,brand,regulatory,temporal`
 
 ### ML Metrics Evaluator
 

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ModelGatewayPolicySchema } from "../model-gateway/types.js";
 import { CommercePolicySchema } from "../subprotocols/commerce/types.js";
+import { FleetPolicySchema } from "../fleet/types.js";
 
 export const CapabilitySchema = z.object({
   tool: z.string(),
@@ -168,6 +169,55 @@ export const DataProfileScannerConfigSchema = z.object({
   imbalance_ratio: z.number().positive().optional().default(10.0),
 });
 
+export const PredictionScannerConfigSchema = z.object({
+  enabled: z.boolean().optional().default(false),
+  severity: z.enum(["hard", "soft"]).optional().default("soft"),
+  max_percentage: z.number().positive().optional().default(100),
+  max_horizon_days: z.number().positive().optional().default(365),
+  require_confidence: z.boolean().optional().default(true),
+  block_certainty_language: z.boolean().optional().default(true),
+});
+
+export const BrandScannerConfigSchema = z.object({
+  enabled: z.boolean().optional().default(false),
+  severity: z.enum(["hard", "soft"]).optional().default("soft"),
+  required_phrases: z.array(z.string()).optional().default([]),
+  forbidden_phrases: z.array(z.string()).optional().default([]),
+  tone_keywords: z.array(z.string()).optional().default([]),
+  competitors: z.array(z.string()).optional().default([]),
+  trademarks: z.array(z.object({
+    term: z.string(),
+    suffix: z.string(),
+  })).optional().default([]),
+});
+
+export const CustomDisclosureRuleSchema = z.object({
+  trigger_patterns: z.array(z.string()),
+  required_phrases: z.array(z.string()),
+  severity: z.enum(["hard", "soft"]),
+});
+
+export const RegulatoryScannerConfigSchema = z.object({
+  enabled: z.boolean().optional().default(false),
+  severity: z.enum(["hard", "soft"]).optional().default("hard"),
+  check_ad_disclosure: z.boolean().optional().default(true),
+  check_financial_disclaimer: z.boolean().optional().default(true),
+  check_medical_disclaimer: z.boolean().optional().default(true),
+  check_affiliate_disclosure: z.boolean().optional().default(true),
+  check_age_restriction: z.boolean().optional().default(true),
+  custom_disclosures: z.array(CustomDisclosureRuleSchema).optional().default([]),
+});
+
+export const TemporalScannerConfigSchema = z.object({
+  enabled: z.boolean().optional().default(false),
+  severity: z.enum(["hard", "soft"]).optional().default("soft"),
+  max_future_days: z.number().positive().optional().default(365),
+  check_stale_references: z.boolean().optional().default(true),
+  check_undated_statistics: z.boolean().optional().default(true),
+  check_expired_content: z.boolean().optional().default(true),
+  reference_date: z.string().optional(),
+});
+
 export const ScannersConfigSchema = z.object({
   enabled: z.boolean().optional().default(true),
   pii: ScannerItemConfigSchema.optional().default({}),
@@ -177,6 +227,10 @@ export const ScannersConfigSchema = z.object({
   toxicity: ToxicityScannerConfigSchema.optional().default({}),
   urls: URLScannerConfigSchema.optional().default({}),
   profiler: DataProfileScannerConfigSchema.optional().default({}),
+  prediction: PredictionScannerConfigSchema.optional().default({}),
+  brand: BrandScannerConfigSchema.optional().default({}),
+  regulatory: RegulatoryScannerConfigSchema.optional().default({}),
+  temporal: TemporalScannerConfigSchema.optional().default({}),
 }).optional();
 
 export const WorkflowConfigSchema = z.object({
@@ -235,6 +289,7 @@ export const PolicySchema = z.object({
   knowledge: KnowledgeConfigSchema,
   model_gateway: ModelGatewayPolicySchema,
   commerce: CommercePolicySchema,
+  fleet: FleetPolicySchema,
 });
 
 export type Capability = z.infer<typeof CapabilitySchema>;
@@ -263,6 +318,7 @@ export type TrackingPolicyConfig = z.infer<typeof TrackingConfigSchema>;
 export type KnowledgePolicyConfig = z.infer<typeof KnowledgeConfigSchema>;
 export type ModelGatewayPolicyConfig = z.infer<typeof ModelGatewayPolicySchema>;
 export type CommercePolicyConfig = z.infer<typeof CommercePolicySchema>;
+export type FleetPolicyConfig = z.infer<typeof FleetPolicySchema>;
 
 export interface AgentAction {
   tool: string;

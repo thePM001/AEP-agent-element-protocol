@@ -26,6 +26,11 @@ import { KnowledgeBaseManager } from "./knowledge/manager.js";
 import type { KnowledgeChunk } from "./knowledge/types.js";
 import { CommerceValidator } from "./subprotocols/commerce/validator.js";
 import type { CommerceAction, CommerceValidationResult } from "./subprotocols/commerce/types.js";
+import { FleetManager } from "./fleet/manager.js";
+import { SpawnGovernor } from "./fleet/spawn-governance.js";
+import { MessageScanner } from "./fleet/message-scanner.js";
+import { FleetAPI } from "./fleet/api.js";
+import type { FleetPolicy } from "./fleet/types.js";
 
 export interface GatewayOptions {
   ledgerDir: string;
@@ -98,6 +103,10 @@ export class AgentGateway {
   private sessionCompletedOutputTokens: Map<string, number[]> = new Map();
   private sessionRejectedCount: Map<string, number> = new Map();
   private commerceValidators: Map<string, CommerceValidator> = new Map();
+  private fleetManager: FleetManager | null = null;
+  private spawnGovernor: SpawnGovernor | null = null;
+  private messageScanner: MessageScanner | null = null;
+  private fleetAPI: FleetAPI | null = null;
 
   constructor(options: GatewayOptions) {
     this.options = options;
@@ -122,6 +131,24 @@ export class AgentGateway {
     policy: Policy,
     metadata?: Record<string, string>
   ): Session {
+    // Wire fleet manager on first session with fleet config
+    if (policy.fleet?.enabled && !this.fleetManager) {
+      const fleetPolicy = policy.fleet as NonNullable<FleetPolicy>;
+      this.fleetManager = new FleetManager(this as unknown as AgentGateway, fleetPolicy);
+      this.spawnGovernor = new SpawnGovernor(this.fleetManager, this as unknown as AgentGateway);
+      this.fleetAPI = new FleetAPI(this.fleetManager);
+    }
+
+    // Fleet capacity check (before system session limit)
+    if (this.fleetManager) {
+      const fleetResult = this.fleetManager.enforceFleetPolicy();
+      for (const action of fleetResult.actions) {
+        if (action.type === "reject_new_agent") {
+          throw new Error(action.reason);
+        }
+      }
+    }
+
     // Check max concurrent sessions
     const maxConcurrent = policy.system?.max_concurrent_sessions ?? 20;
     const activeSessions = this.sessionManager.listActiveSessions();
@@ -242,6 +269,14 @@ export class AgentGateway {
         ledger,
       );
       this.commerceValidators.set(session.id, cv);
+    }
+
+    // Wire message scanner for fleet inter-agent scanning
+    if (this.fleetManager && !this.messageScanner) {
+      const pipeline = this.scannerPipelines.get(session.id);
+      if (pipeline) {
+        this.messageScanner = new MessageScanner(pipeline);
+      }
     }
 
     // Store covenant for proof bundle generation
@@ -1006,5 +1041,23 @@ export class AgentGateway {
     });
 
     return bundle;
+  }
+
+  // --- Fleet Governance ---
+
+  getFleetManager(): FleetManager | null {
+    return this.fleetManager;
+  }
+
+  getFleetAPI(): FleetAPI | null {
+    return this.fleetAPI;
+  }
+
+  getSpawnGovernor(): SpawnGovernor | null {
+    return this.spawnGovernor;
+  }
+
+  getMessageScanner(): MessageScanner | null {
+    return this.messageScanner;
   }
 }
