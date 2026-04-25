@@ -85,7 +85,8 @@ export class ProofBundleBuilder {
     entries: import("../ledger/types.js").LedgerEntry[],
     trustScore: TrustScore,
     driftScore: number,
-    weights: ReliabilityWeights
+    weights: ReliabilityWeights,
+    mlScore?: number
   ): ReliabilityIndex {
     // Hard compliance rate: 1 - (hard violations / total evaluations)
     const evaluations = entries.filter((e) => e.type === "action:evaluate");
@@ -117,16 +118,20 @@ export class ProofBundleBuilder {
     const cleanScans = Math.max(0, totalScans - scannerFindings.length);
     const scannerPassRate = Math.min(1, cleanScans / totalScans);
 
-    // Weighted composite theta
+    // Weighted composite theta (includes mlScore if provided)
+    const mlComponent = mlScore !== undefined ? Math.max(0, Math.min(1, mlScore)) : undefined;
+    const mlWeight = mlComponent !== undefined ? (weights.ml ?? 0.20) : 0;
+
     const theta = Math.max(0, Math.min(1,
       weights.hard * hardComplianceRate +
       weights.recovery * softRecoveryRate +
       weights.drift * driftComponent +
       weights.trust * trustComponent +
-      weights.scanner * scannerPassRate
+      weights.scanner * scannerPassRate +
+      mlWeight * (mlComponent ?? 0)
     ));
 
-    return {
+    const result: ReliabilityIndex = {
       hardComplianceRate: Math.round(hardComplianceRate * 1000) / 1000,
       softRecoveryRate: Math.round(softRecoveryRate * 1000) / 1000,
       driftScore: Math.round(driftComponent * 1000) / 1000,
@@ -134,6 +139,12 @@ export class ProofBundleBuilder {
       scannerPassRate: Math.round(scannerPassRate * 1000) / 1000,
       theta: Math.round(theta * 1000) / 1000,
     };
+
+    if (mlComponent !== undefined) {
+      result.mlScore = Math.round(mlComponent * 1000) / 1000;
+    }
+
+    return result;
   }
 
   static serializeForSigning(bundle: ProofBundle): string {

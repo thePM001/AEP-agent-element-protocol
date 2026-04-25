@@ -16,6 +16,7 @@ export interface ReliabilityIndex {
   driftScore: number;
   trustScore: number;
   scannerPassRate: number;
+  mlScore?: number;
   theta: number;
 }
 
@@ -25,6 +26,7 @@ export interface ReliabilityWeights {
   drift: number;
   trust: number;
   scanner: number;
+  ml?: number;
 }
 
 export const DEFAULT_RELIABILITY_WEIGHTS: ReliabilityWeights = {
@@ -33,6 +35,15 @@ export const DEFAULT_RELIABILITY_WEIGHTS: ReliabilityWeights = {
   drift: 0.15,
   trust: 0.2,
   scanner: 0.15,
+};
+
+export const ML_RELIABILITY_WEIGHTS: ReliabilityWeights = {
+  hard: 0.25,
+  recovery: 0.15,
+  drift: 0.10,
+  trust: 0.15,
+  scanner: 0.15,
+  ml: 0.20,
 };
 
 export interface ProofBundle {
