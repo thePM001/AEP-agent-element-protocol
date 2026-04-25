@@ -9,6 +9,7 @@ import { SecretsScanner } from "./secrets.js";
 import { JailbreakScanner } from "./jailbreak.js";
 import { ToxicityScanner } from "./toxicity.js";
 import { URLScanner } from "./urls.js";
+import { DataProfileScanner } from "./profiler.js";
 
 export class ScannerPipeline {
   private scanners: Scanner[];
@@ -85,6 +86,19 @@ export function createDefaultPipeline(config?: Partial<ScannersConfig>): Scanner
         severity: config?.urls?.severity ?? "soft",
         allowlist: config?.urls?.allowlist ?? [],
         blocklist: config?.urls?.blocklist ?? [],
+      })
+    );
+  }
+
+  // Data profiler scanner (disabled by default -- opt-in)
+  if (config?.profiler?.enabled === true) {
+    scanners.push(
+      new DataProfileScanner({
+        severity: config.profiler.severity ?? "soft",
+        null_rate_threshold: config.profiler.null_rate_threshold,
+        duplicate_rate_threshold: config.profiler.duplicate_rate_threshold,
+        outlier_stddev: config.profiler.outlier_stddev,
+        imbalance_ratio: config.profiler.imbalance_ratio,
       })
     );
   }

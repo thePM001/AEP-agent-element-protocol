@@ -2,6 +2,29 @@
 
 All notable changes to the Agent Element Protocol (AEP) will be documented in this file.
 
+## [2.5.2] - 2026-04-25
+
+### Added (AI Engineer Coverage -- Capabilities A-C)
+- **Data Profiling Scanner** (Capability A) -- 7th optional scanner performing five statistical checks on tabular and structured data: null rate, duplicate rate, outlier detection (z-score), schema consistency and class imbalance. `DataProfileScanner` implements the `Scanner` interface, parses CSV and JSON array inputs, configurable thresholds. Disabled by default (opt-in via `scanners.profiler.enabled: true`). Policy gains `profiler` config in `scanners` section with `null_rate_threshold`, `duplicate_rate_threshold`, `outlier_stddev` and `imbalance_ratio` fields. CLI: `aep profile <file>`.
+- **ML Metrics Evaluator** (Capability B) -- `MLMetrics` class with pure static methods computing four metric families: classification (accuracy, precision, recall, F1, confusion matrix), regression (MSE, RMSE, MAE, R2, MAPE), retrieval (precision@k, recall@k, MRR, NDCG) and generation (exact match, avg length, empty rate). `compositeScore()` averages available metric scores into a single 0-1 value. `ReliabilityIndex` gains optional `mlScore` field weighted into theta via `ML_RELIABILITY_WEIGHTS`. `EvalReport` gains optional `mlMetrics` field. CLI: `aep metrics <file>`.
+- **Governed Fine-Tuning Workflow Template** (Capability C) -- six-phase workflow definition wrapping fine-tuning processes with governance: DATA_PREPARATION, DATA_VALIDATION, TRAINING_CONFIG, TRAINING_EXECUTION, EVALUATION, DEPLOYMENT. `createFineTuningWorkflow()` factory with configurable `onFail` strategy. Each phase specifies role, ring, entry conditions, exit criteria and rework limits. CLI: `aep workflow init fine-tuning`, `aep workflow start fine-tuning`.
+- **36 new tests** (10 profiler, 15 metrics, 11 workflow) with zero regressions. Total: 698 tests.
+
+### Changed
+- `ScannersConfigSchema` extended with `profiler` config (default disabled).
+- `ReliabilityIndex` gains optional `mlScore` field; `ReliabilityWeights` gains optional `ml` weight.
+- `ML_RELIABILITY_WEIGHTS` constant redistributes weights when ML score is present (hard 0.25, recovery 0.15, drift 0.10, trust 0.15, scanner 0.15, ml 0.20).
+- `ProofBundleBuilder.computeReliability()` accepts optional `mlScore` parameter and incorporates it into theta.
+- `EvalReport` gains optional `mlMetrics` field for ML evaluation results.
+- Scanner pipeline `createDefaultPipeline()` supports profiler opt-in.
+- CLI gains `profile`, `metrics` and `workflow` commands.
+
+### Unchanged
+- Three-layer architecture (Structure, Behaviour, Skin).
+- Z-band hierarchy and prefix convention.
+- All existing scanners, policies and SDK files.
+- Licence (Apache 2.0).
+
 ## [2.5.1] - 2026-04-25
 
 ### Added (Commerce Subprotocol)

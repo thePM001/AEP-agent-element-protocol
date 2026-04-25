@@ -35,6 +35,13 @@ export interface ToxicityScannerConfig extends ScannerConfig {
   custom_words?: string[];
 }
 
+export interface DataProfileScannerConfig extends ScannerConfig {
+  null_rate_threshold: number;
+  duplicate_rate_threshold: number;
+  outlier_stddev: number;
+  imbalance_ratio: number;
+}
+
 export interface ScannersConfig {
   enabled: boolean;
   pii: ScannerConfig;
@@ -43,4 +50,5 @@ export interface ScannersConfig {
   jailbreak: ScannerConfig;
   toxicity: ToxicityScannerConfig;
   urls: URLScannerConfig;
+  profiler: DataProfileScannerConfig;
 }

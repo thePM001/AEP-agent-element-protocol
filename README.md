@@ -1578,6 +1578,77 @@ aep commerce spend           # Show daily spend totals
 
 ---
 
+## 32. AI Engineer Coverage (v2.5.2)
+
+AEP v2.5.2 adds three capabilities for AI/ML engineering workflows.
+
+### Data Profiling Scanner
+
+The 7th scanner in the pipeline, disabled by default. Performs five statistical checks on tabular data (CSV or JSON arrays): null rate, duplicate rate, outlier detection via z-score, schema consistency and class imbalance.
+
+```typescript
+import { DataProfileScanner, createDefaultPipeline } from "@aep/core";
+
+// Standalone usage
+const scanner = new DataProfileScanner({ null_rate_threshold: 0.2, outlier_stddev: 2.5 });
+const findings = scanner.scan(csvContent);
+
+// Via pipeline (opt-in)
+const pipeline = createDefaultPipeline({
+  profiler: { enabled: true, severity: "soft", null_rate_threshold: 0.3 }
+});
+```
+
+CLI: `npx aep profile data.csv`
+
+### ML Metrics Evaluator
+
+Pure static methods for four metric families:
+
+```typescript
+import { MLMetrics } from "@aep/core";
+
+const cls = MLMetrics.classification([1,1,0,0], [1,0,0,1]);
+// { accuracy, precision, recall, f1, confusionMatrix }
+
+const reg = MLMetrics.regression([3,0.5,2], [2.5,0.0,2]);
+// { mse, rmse, mae, r2, mape }
+
+const ret = MLMetrics.retrieval(["d1","d2"], ["d2","d3","d1"], 3);
+// { precisionAtK, recallAtK, mrr, ndcg }
+
+const gen = MLMetrics.generation(["hello"], ["hello"]);
+// { exactMatch, avgLength, emptyRate }
+
+const score = MLMetrics.compositeScore({ classification: cls, regression: reg });
+```
+
+The composite score integrates into `ReliabilityIndex` as the optional `mlScore` field, weighted into theta via `ML_RELIABILITY_WEIGHTS`.
+
+CLI: `npx aep metrics results.json`
+
+### Governed Fine-Tuning Workflow
+
+Six-phase workflow template for governing fine-tuning processes:
+
+```typescript
+import { createFineTuningWorkflow, WorkflowExecutor, AgentGateway } from "@aep/core";
+
+const definition = createFineTuningWorkflow("escalate");
+const gateway = new AgentGateway({ ledgerDir: "./ledgers" });
+const executor = new WorkflowExecutor(definition, gateway);
+
+executor.startPhase("DATA_PREPARATION");
+// ... agent work ...
+executor.submitVerdict("DATA_PREPARATION", "advance");
+```
+
+Phases: DATA_PREPARATION, DATA_VALIDATION, TRAINING_CONFIG, TRAINING_EXECUTION, EVALUATION, DEPLOYMENT.
+
+CLI: `npx aep workflow init fine-tuning` and `npx aep workflow start fine-tuning`
+
+---
+
 ## License
 
 Licensed under the Apache License, Version 2.0. See `LICENSE` for the full text and `NOTICE` for attribution.
