@@ -1,0 +1,44 @@
+aep_version: "2.2"
+schema_revision: 1
+
+# AEP Element Registry
+# Every UI element that renders pixels MUST have an entry here.
+# Format: xid -> element definition
+
+xid:v1:030:c000000:r000001:0000000000000001:
+  label: "Application Shell"
+  category: layout
+  function: "Root container for the entire application."
+  component_file: "App.tsx"
+  parent: null
+  skin_binding: "shell_root"
+  states:
+    default: "Application loaded and running"
+    loading: "Initial load in progress"
+    error: "Fatal error state"
+
+xid:v1:030:c000000:r000002:0000000000000001:
+  label: "Navigation Bar"
+  category: navigation
+  function: "Top-level navigation and branding."
+  component_file: "NavBar.tsx"
+  parent: "xid:v1:030:c000000:r000001:0000000000000001"
+  skin_binding: "nav_bar"
+  states:
+    default: "Navigation visible with all controls"
+    minimal: "Reduced navigation during focused tasks"
+
+xid:v1:030:c000000:r000005:0000000000000001:
+  label: "Main Content Area"
+  category: layout
+  function: "Primary content viewport."
+  component_file: "MainContent.tsx"
+  parent: "xid:v1:030:c000000:r000001:0000000000000001"
+  skin_binding: "content_main"
+  states:
+    default: "Content displayed"
+    empty: "No content loaded"
+    loading: "Content loading"
+
+# Add new elements below this line.
+# Run 'node harness/aep-validate.js' after adding entries.

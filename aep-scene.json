@@ -758,7 +758,7 @@
     "WD-00018": {
       "id": "WD-00018",
       "type": "widget",
-      "label": "Radia-Pro Tier Card",
+      "label": "Enterprise-Pro Tier Card",
       "z": 50,
       "visible": true,
       "parent": "PN-00015",
@@ -882,7 +882,7 @@
     "NV-00024": {
       "id": "NV-00024",
       "type": "navigation",
-      "label": "Nav Link: Cochelle",
+      "label": "Nav Link: Workflow Runtime",
       "z": 15,
       "visible": true,
       "parent": "NV-00021"
@@ -898,7 +898,7 @@
     "NV-00026": {
       "id": "NV-00026",
       "type": "navigation",
-      "label": "Nav Link: Radia Co-Shell",
+      "label": "Nav Link: Co-Shell",
       "z": 15,
       "visible": true,
       "parent": "NV-00021"
@@ -906,7 +906,7 @@
     "NV-00029": {
       "id": "NV-00029",
       "type": "navigation",
-      "label": "Nav Link: Radia Agent",
+      "label": "Nav Link: Agent Platform",
       "z": 15,
       "visible": true,
       "parent": "NV-00021"
@@ -914,7 +914,7 @@
     "NV-00030": {
       "id": "NV-00030",
       "type": "navigation",
-      "label": "Nav Link: Radia Cloud",
+      "label": "Nav Link: Cloud Platform",
       "z": 15,
       "visible": true,
       "parent": "NV-00021"
@@ -1055,7 +1055,7 @@
     "PN-00031": {
       "id": "PN-00031",
       "type": "panel",
-      "label": "Cochelle Section",
+      "label": "Workflow Section",
       "z": 10,
       "visible": true,
       "parent": "SH-00002"

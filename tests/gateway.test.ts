@@ -279,4 +279,55 @@ describe("AgentGateway", () => {
       expect(session?.id).toBe(sessionId);
     });
   });
+
+  describe("policy integrity in ledger entries", () => {
+    it("session:start includes policyHash", () => {
+      const ledger = gateway.getLedger(sessionId)!;
+      const start = ledger.entries().find((e) => e.type === "session:start")!;
+      expect(start.data.policyHash).toBeDefined();
+      expect(start.data.policyHash).toMatch(/^[a-f0-9]{64}$/);
+    });
+
+    it("action:evaluate includes policyHash", () => {
+      gateway.evaluate(sessionId, action("file:read", { path: "src/a.ts" }));
+      const ledger = gateway.getLedger(sessionId)!;
+      const evalEntry = ledger.entries().find((e) => e.type === "action:evaluate")!;
+      expect(evalEntry.data.policyHash).toBeDefined();
+      expect(evalEntry.data.policyHash).toMatch(/^[a-f0-9]{64}$/);
+    });
+
+    it("session:start includes policyDeclaration", () => {
+      const ledger = gateway.getLedger(sessionId)!;
+      const start = ledger.entries().find((e) => e.type === "session:start")!;
+      const decl = start.data.policyDeclaration as Record<string, unknown>;
+      expect(decl).toBeDefined();
+      expect(decl.capabilities).toBeDefined();
+      expect(decl.forbidden).toBeDefined();
+      expect(decl.gates).toBeDefined();
+      expect(decl.limits).toBeDefined();
+      expect(decl.session).toBeDefined();
+    });
+
+    it("policyDeclaration.capabilities matches input policy", () => {
+      const ledger = gateway.getLedger(sessionId)!;
+      const start = ledger.entries().find((e) => e.type === "session:start")!;
+      const decl = start.data.policyDeclaration as Record<string, unknown>;
+      const caps = decl.capabilities as unknown[];
+      // Our makePolicy has 4 capabilities
+      expect(caps).toHaveLength(4);
+    });
+  });
+
+  describe("stateRef in ledger entries", () => {
+    it("ledger entries include stateRef from session state", () => {
+      gateway.evaluate(sessionId, action("file:read", { path: "src/a.ts" }));
+      const ledger = gateway.getLedger(sessionId)!;
+      const entries = ledger.entries();
+      // All entries should have stateRef since gateway wires a stateProvider
+      for (const entry of entries) {
+        expect(entry.stateRef).toBeDefined();
+        expect(entry.stateRef).toMatch(/^sha256:[0-9a-f]{64}$/);
+      }
+    });
+  });
 });

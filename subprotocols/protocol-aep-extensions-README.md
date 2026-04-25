@@ -171,3 +171,36 @@ result = resolver.resolve(ResolveRequest(
 ```
 
 The resolver is stateless and read-only. It never modifies the scene graph, registries or memory. If a `MemoryFabric` is provided, the resolver also queries for fast-path attractor hits to short-circuit validation of near-identical proposals.
+
+
+## AEP 2.2 Governance Integration
+
+As of AEP 2.2, all subprotocol registries can be used in conjunction with the core governance features:
+
+- **Trust-Gated Operations** -- workflow steps, API calls and IaC mutations can require a minimum trust tier via `min_trust_tier` on capabilities.
+- **Ring-Based Access** -- execution rings restrict which subprotocol operations an agent can perform. Ring 3 agents can only query registries. Ring 1+ is required for mutating operations.
+- **Covenant Integration** -- behavioural covenants can reference subprotocol actions (e.g., `forbid api:delete;` blocks DELETE API calls regardless of capability configuration).
+- **Intent Drift Detection** -- the drift detector monitors subprotocol action patterns alongside core AEP operations, detecting when an agent shifts from workflow steps to API calls unexpectedly.
+
+### Example: Trust-Gated Workflow Step
+
+```yaml
+capabilities:
+  - tool: "workflow:approve"
+    min_trust_tier: "trusted"
+  - tool: "workflow:create_task"
+    min_trust_tier: "standard"
+  - tool: "api:delete"
+    min_trust_tier: "privileged"
+```
+
+### Example: Covenant with Subprotocol Rules
+
+```
+covenant WorkflowSafety {
+  permit workflow:create_task;
+  permit workflow:assign;
+  forbid workflow:approve;
+  require trustTier >= "standard";
+}
+```

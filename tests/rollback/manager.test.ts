@@ -1,9 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdirSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import { RollbackManager } from "../../src/rollback/manager.js";
 import { EvidenceLedger } from "../../src/ledger/ledger.js";
+
+function sha256(data: string): string {
+  return createHash("sha256").update(data).digest("hex");
+}
 
 const TEST_DIR = join(
   import.meta.dirname ?? __dirname,
@@ -31,11 +35,13 @@ describe("RollbackManager", () => {
   });
 
   it("stores and retrieves compensation plans", () => {
+    const content = JSON.stringify({ id: "CP-00010", z: 25 });
     const plan = {
       actionId: "act-1",
       tool: "aep:create_element",
       originalInput: { id: "CP-00010", z: 25 },
       compensationAction: { tool: "aep:delete_element", input: { id: "CP-00010" } },
+      backup: { path: "aep:element:CP-00010", content, snapshotHash: sha256(content) },
     };
 
     manager.recordCompensation(sessionId, plan);
@@ -45,11 +51,13 @@ describe("RollbackManager", () => {
   });
 
   it("rolls back a single action", () => {
+    const content = JSON.stringify({ id: "CP-00020" });
     const plan = {
       actionId: "act-2",
       tool: "aep:create_element",
       originalInput: { id: "CP-00020" },
       compensationAction: { tool: "aep:delete_element", input: { id: "CP-00020" } },
+      backup: { path: "aep:element:CP-00020", content, snapshotHash: sha256(content) },
     };
 
     manager.recordCompensation(sessionId, plan);
@@ -68,17 +76,22 @@ describe("RollbackManager", () => {
   });
 
   it("rolls back full session in reverse order", () => {
+    const cA = JSON.stringify({ id: "CP-00001" });
+    const cB = JSON.stringify({ id: "CP-00002" });
+    const cC = JSON.stringify({ id: "CP-00001", label: "new" });
     manager.recordCompensation(sessionId, {
       actionId: "act-a",
       tool: "aep:create_element",
       originalInput: { id: "CP-00001" },
       compensationAction: { tool: "aep:delete_element", input: { id: "CP-00001" } },
+      backup: { path: "aep:element:CP-00001", content: cA, snapshotHash: sha256(cA) },
     });
     manager.recordCompensation(sessionId, {
       actionId: "act-b",
       tool: "aep:create_element",
       originalInput: { id: "CP-00002" },
       compensationAction: { tool: "aep:delete_element", input: { id: "CP-00002" } },
+      backup: { path: "aep:element:CP-00002", content: cB, snapshotHash: sha256(cB) },
     });
     manager.recordCompensation(sessionId, {
       actionId: "act-c",
@@ -88,6 +101,7 @@ describe("RollbackManager", () => {
         tool: "aep:update_element",
         input: { id: "CP-00001", label: "old" },
       },
+      backup: { path: "aep:element:CP-00001", content: cC, snapshotHash: sha256(cC) },
     });
 
     const results = manager.rollbackSession(sessionId);
@@ -100,11 +114,13 @@ describe("RollbackManager", () => {
   });
 
   it("logs rollback in evidence ledger", () => {
+    const logContent = JSON.stringify({ id: "CP-00099" });
     manager.recordCompensation(sessionId, {
       actionId: "act-logged",
       tool: "aep:delete_element",
       originalInput: { id: "CP-00099" },
       compensationAction: null,
+      backup: { path: "aep:element:CP-00099", content: logContent, snapshotHash: sha256(logContent) },
     });
 
     manager.rollback("act-logged");
@@ -144,7 +160,7 @@ describe("RollbackManager", () => {
         tool: "aep:create_element",
         input: previousState,
       });
-      expect(plan.backup?.content).toBe(JSON.stringify(previousState));
+      expect(plan.backup.content).toBe(JSON.stringify(previousState));
     });
 
     it("builds update -> restore compensation", () => {
@@ -173,6 +189,45 @@ describe("RollbackManager", () => {
         tool: "aep:update_skin",
         input: prev,
       });
+    });
+
+    it("always includes backup with snapshotHash", () => {
+      const plan = RollbackManager.buildAEPCompensation(
+        "act-backup",
+        "aep:create_element",
+        { id: "CP-00099", z: 20 }
+      );
+      expect(plan.backup).toBeDefined();
+      expect(plan.backup.path).toBe("aep:element:CP-00099");
+      expect(plan.backup.content).toBe(JSON.stringify({ id: "CP-00099", z: 20 }));
+      expect(plan.backup.snapshotHash).toMatch(/^[a-f0-9]{64}$/);
+    });
+
+    it("snapshotHash matches SHA-256 of backup content", () => {
+      const input = { id: "CP-00077", z: 22, parent: "PN-00001" };
+      const plan = RollbackManager.buildAEPCompensation(
+        "act-hash",
+        "aep:create_element",
+        input
+      );
+      const expected = sha256(JSON.stringify(input));
+      expect(plan.backup.snapshotHash).toBe(expected);
+    });
+
+    it("rollback entry includes snapshotHash", () => {
+      const input = { id: "CP-00088", z: 21 };
+      const plan = RollbackManager.buildAEPCompensation(
+        "act-snap",
+        "aep:create_element",
+        input
+      );
+      manager.recordCompensation(sessionId, plan);
+      manager.rollback("act-snap");
+
+      const entries = ledger.entries();
+      const rollbackEntry = entries.find((e) => e.type === "action:rollback");
+      expect(rollbackEntry).toBeDefined();
+      expect(rollbackEntry!.data.snapshotHash).toBe(plan.backup.snapshotHash);
     });
   });
 });

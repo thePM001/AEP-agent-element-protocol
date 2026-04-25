@@ -1,4 +1,4 @@
-version: "2.1"
+version: "2.2"
 name: "coding-agent"
 
 capabilities:
@@ -77,3 +77,36 @@ session:
 evidence:
   enabled: true
   dir: "./ledgers"
+
+trust:
+  initial_score: 500
+  decay_rate: 5
+  penalties:
+    policy_violation: 50
+    structural_violation: 30
+    rate_limit: 10
+    forbidden_match: 100
+    intent_drift: 75
+  rewards:
+    successful_action: 5
+    successful_rollback: 10
+
+ring:
+  default: 2
+  promotion:
+    to_ring_1:
+      min_trust_tier: "trusted"
+      require_approval: false
+    to_ring_0:
+      min_trust_tier: "privileged"
+      require_approval: true
+
+intent:
+  tracking: true
+  drift_threshold: 0.5
+  warmup_actions: 10
+  on_drift: "warn"
+
+system:
+  max_actions_per_minute: 200
+  max_concurrent_sessions: 20

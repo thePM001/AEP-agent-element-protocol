@@ -1,6 +1,6 @@
 {
   "name": "@aep/core",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Agent Element Protocol -- governance framework for AI agent interactions",
   "type": "module",
   "main": "./dist/index.js",

@@ -1,5 +1,10 @@
+import { createHash } from "node:crypto";
 import type { CompensationPlan, RollbackResult } from "./types.js";
 import type { EvidenceLedger } from "../ledger/ledger.js";
+
+function sha256(data: string): string {
+  return createHash("sha256").update(data).digest("hex");
+}
 
 export class RollbackManager {
   private plans: Map<string, CompensationPlan> = new Map();
@@ -37,6 +42,7 @@ export class RollbackManager {
         actionId,
         tool: plan.tool,
         compensationAction: plan.compensationAction,
+        snapshotHash: plan.backup.snapshotHash,
       });
 
       this.plans.delete(actionId);
@@ -87,7 +93,8 @@ export class RollbackManager {
     previousState?: Record<string, unknown>
   ): CompensationPlan {
     let compensationAction: Record<string, unknown> | null = null;
-    let backup: CompensationPlan["backup"] | undefined;
+    let backupPath: string;
+    let backupContent: string;
 
     switch (tool) {
       case "aep:create_element":
@@ -95,62 +102,65 @@ export class RollbackManager {
           tool: "aep:delete_element",
           input: { id: input.id },
         };
+        backupPath = `aep:element:${String(input.id)}`;
+        backupContent = JSON.stringify(input);
         break;
 
       case "aep:delete_element":
+        backupPath = `aep:element:${String(input.id)}`;
         if (previousState) {
           compensationAction = {
             tool: "aep:create_element",
             input: previousState,
           };
-          backup = {
-            path: `aep:element:${String(input.id)}`,
-            content: JSON.stringify(previousState),
-          };
+          backupContent = JSON.stringify(previousState);
+        } else {
+          backupContent = JSON.stringify(input);
         }
         break;
 
       case "aep:update_element":
+        backupPath = `aep:element:${String(input.id)}`;
         if (previousState) {
           compensationAction = {
             tool: "aep:update_element",
             input: previousState,
           };
-          backup = {
-            path: `aep:element:${String(input.id)}`,
-            content: JSON.stringify(previousState),
-          };
+          backupContent = JSON.stringify(previousState);
+        } else {
+          backupContent = JSON.stringify(input);
         }
         break;
 
       case "aep:update_skin":
+        backupPath = "aep:skin";
         if (previousState) {
           compensationAction = {
             tool: "aep:update_skin",
             input: previousState,
           };
-          backup = {
-            path: "aep:skin",
-            content: JSON.stringify(previousState),
-          };
+          backupContent = JSON.stringify(previousState);
+        } else {
+          backupContent = JSON.stringify(input);
         }
         break;
 
       case "aep:update_registry":
+        backupPath = "aep:registry";
         if (previousState) {
           compensationAction = {
             tool: "aep:update_registry",
             input: previousState,
           };
-          backup = {
-            path: "aep:registry",
-            content: JSON.stringify(previousState),
-          };
+          backupContent = JSON.stringify(previousState);
+        } else {
+          backupContent = JSON.stringify(input);
         }
         break;
 
       default:
-        // Generic: no automatic compensation
+        backupPath = `aep:generic:${tool}`;
+        backupContent = JSON.stringify(input);
         break;
     }
 
@@ -159,7 +169,11 @@ export class RollbackManager {
       tool,
       originalInput: input,
       compensationAction,
-      backup,
+      backup: {
+        path: backupPath,
+        content: backupContent,
+        snapshotHash: sha256(backupContent),
+      },
     };
   }
 }

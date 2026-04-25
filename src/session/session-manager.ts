@@ -4,21 +4,44 @@ import { loadPolicy } from "../policy/loader.js";
 
 export class SessionManager {
   private sessions: Map<string, Session> = new Map();
+  private maxConcurrentSessions: number = 20;
+
+  setMaxConcurrentSessions(max: number): void {
+    this.maxConcurrentSessions = max;
+  }
+
+  getActiveCount(): number {
+    let count = 0;
+    for (const session of this.sessions.values()) {
+      if (session.state === "active" || session.state === "created") {
+        count++;
+      }
+    }
+    return count;
+  }
 
   createSession(
     policyPath: string,
     metadata?: Record<string, string>
   ): Session {
+    if (this.getActiveCount() >= this.maxConcurrentSessions) {
+      throw new Error(
+        `Cannot create session: maximum concurrent sessions (${this.maxConcurrentSessions}) reached.`
+      );
+    }
     const policy = loadPolicy(policyPath);
-    const session = new Session(policy, metadata);
-    this.sessions.set(session.id, session);
-    return session;
+    return this.createSessionFromPolicy(policy, metadata);
   }
 
   createSessionFromPolicy(
     policy: import("../policy/types.js").Policy,
     metadata?: Record<string, string>
   ): Session {
+    if (this.getActiveCount() >= this.maxConcurrentSessions) {
+      throw new Error(
+        `Cannot create session: maximum concurrent sessions (${this.maxConcurrentSessions}) reached.`
+      );
+    }
     const session = new Session(policy, metadata);
     this.sessions.set(session.id, session);
     return session;

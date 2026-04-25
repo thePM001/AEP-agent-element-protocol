@@ -6,7 +6,14 @@ export type LedgerEntryType =
   | "action:gate"
   | "action:rollback"
   | "aep:validate"
-  | "aep:reject";
+  | "aep:reject"
+  | "stream:abort"
+  | "bundle:created"
+  | "task:create"
+  | "task:decompose"
+  | "task:complete"
+  | "task:fail"
+  | "task:cancel";
 
 export interface LedgerEntry {
   seq: number;
@@ -15,6 +22,7 @@ export interface LedgerEntry {
   prev: string;
   type: LedgerEntryType;
   data: Record<string, unknown>;
+  stateRef?: string;
 }
 
 export interface LedgerReport {

@@ -1,13 +1,13 @@
 # AEP - Agent Element Protocol (Deterministic Adjudication Lattices)
 # Free Basic Open-Source Version Implementation Reference
-### Version 2.1 - 24 April 2026
+### Version 2.2 - 24 April 2026
 ### Author: thePM_001 (https://x.com/thePM_001)
 ### License: Apache-2.0
 ### Research Paper: https://github.com/the-PM001/AEP-research-paper-001
 ### Demo: https://aep.newlisbon.agency
 ### How to install AEP ?: 
 copy the URL of the GitHub repo into your reasoning LLM + tell it: "analyze the repo and prepare implementation plan for AEP integration into our project".
-### AEP 2.1 Agent Harness so your AI actually uses AEP: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/aep-2.1-agent-harness
+### AEP 2.2 Agent Harness so your AI actually uses AEP: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/aep-2.2-agent-harness
 ---
 
 > **Note on verification:** The original AEP stack includes a proprietary formal verification layer that we are unable to release as open source. This guide provides TLA+ specifications for equivalent invariant checking, plus standalone runtime validators you can drop into any project. The architecture and protocol itself is fully open.
@@ -1017,6 +1017,9 @@ To use: define your concrete `ElementIDs`, `Prefixes` and `ZBands` in a model co
 [ ] (v2.1) Optional: initialise Evidence Ledger directory
 [ ] (v2.1) Optional: run npx aep init claude-code for governed Claude Code sessions
 [ ] (v2.1) Optional: add npx aep proxy to MCP configuration
+[ ] (v2.2) Optional: enable streaming validation in policy (streaming.enabled: true)
+[ ] (v2.2) Optional: enable auto proof bundle on session terminate (session.bundle_on_terminate: true)
+[ ] (v2.2) Optional: enable governed task decomposition with scope inheritance (decomposition.enabled: true)
 ```
 
 ---
@@ -1118,7 +1121,7 @@ The **Policy Engine** evaluates every agent action against a YAML policy file be
 AEP-specific policy capabilities allow fine-grained control over scene graph mutations:
 
 ```yaml
-version: "2.1"
+version: "2.2"
 name: "my-agent-policy"
 
 capabilities:
@@ -1208,9 +1211,59 @@ Every rollback is logged in the evidence ledger as an `action:rollback` entry.
 
 ---
 
-## 24. MCP Proxy and CLI
+## 24. Streaming Validation with Early Abort
 
-AEP 2.1 can run as an **MCP proxy** between an AI agent and backend MCP servers. Every tool call is intercepted, policy-evaluated and (for AEP-related tools) structurally validated before forwarding.
+Standard validation runs after an agent produces its full output. If a violation occurs at token 50 of a 2000-token response, the remaining 1950 tokens are wasted time and cost.
+
+**Streaming validation** intercepts agent output chunk by chunk as it streams. The moment a violation is detected, the stream is aborted.
+
+```typescript
+import { AEPStreamValidator, StreamMiddleware } from "@aep/core";
+
+const validator = new AEPStreamValidator({
+  covenant: myCovenantSpec,
+  policy: myPolicy,
+  scene: { elements: [{ id: "SH-00001", protected: true }] },
+  registry: { zBands: { CP: [20, 29] }, parentRules: { CP: { requireParent: true } } },
+});
+
+// Wrap any streaming API response
+const governed = StreamMiddleware.wrap(agentStream, validator, ledger);
+
+// Read governed stream -- aborts on first violation
+const reader = governed.getReader();
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  process.stdout.write(value);
+}
+```
+
+Five checks run on every chunk against accumulated output:
+
+1. **Covenant forbid patterns** -- string matching against forbid rules
+2. **Protected element IDs** -- detects references to protected scene elements
+3. **Z-band violations** -- detects z-index values outside allowed bands
+4. **Structural violations** -- orphan references, missing parents
+5. **Policy forbidden patterns** -- regex or literal pattern matching
+
+On violation the underlying stream is cancelled, the partial output returned and a `stream:abort` entry logged to the evidence ledger with accumulated content, violation position, rule and reason.
+
+Enable in policy YAML:
+
+```yaml
+streaming:
+  enabled: true
+  abort_on_violation: true
+```
+
+Model-agnostic. Works with any `ReadableStream<string>`. No logit access needed.
+
+---
+
+## 25. MCP Proxy and CLI
+
+AEP 2.2 can run as an **MCP proxy** between an AI agent and backend MCP servers. Every tool call is intercepted, policy-evaluated and (for AEP-related tools) structurally validated before forwarding.
 
 **Quick start for Claude Code:**
 
@@ -1241,7 +1294,7 @@ aep report <ledger-file>      Display audit report for a session ledger
 
 ---
 
-## 25. Migration from v2.0 to v2.1
+## 26. Migration from v2.0 to v2.1
 
 AEP v2.1 is backwards-compatible with v2.0. All existing v2.0 config files, SDK modules, Rego policies, Lattice Memory and Basic Resolver continue to work without modification.
 
@@ -1253,6 +1306,166 @@ Session Governance, Policy Engine, Evidence Ledger and Rollback are fully option
 4. Rollback is opt-in -- call `storeCompensation` before mutations you want to be reversible.
 
 No existing v2.0 code paths were modified. The structural validator, z-band enforcement, prefix convention, Rego policies and memory subsystem remain unchanged.
+
+---
+
+## 27. Proof Bundles
+
+AEP v2.2 introduces **Proof Bundles**: portable, signed verification artifacts that package an entire session into a single `.aep-proof.json` file. A proof bundle contains the bundle ID, agent identity, covenant spec, session report, Merkle root, entry count, trust score, execution ring, drift score, ledger hash and Ed25519 signature.
+
+Proof bundles enable auditors and regulators to independently verify agent sessions without access to the original system.
+
+```typescript
+import { AgentGateway, AgentIdentityManager } from "@aep/core";
+
+const gateway = new AgentGateway({ ledgerDir: "./ledgers" });
+const session = gateway.createSessionFromPolicy(policy);
+
+// ... agent actions ...
+
+// Generate proof bundle at session end
+const keys = AgentIdentityManager.generateKeyPair();
+const bundle = gateway.generateProofBundle(session.id, agent, keys.privateKey);
+
+// Write to file
+import { ProofBundleBuilder } from "@aep/core";
+const builder = new ProofBundleBuilder();
+builder.toFile(bundle, `./proofs/${session.id}.aep-proof.json`);
+```
+
+**Verification:**
+
+```typescript
+import { ProofBundleVerifier, ProofBundleBuilder } from "@aep/core";
+
+const builder = new ProofBundleBuilder();
+const bundle = builder.fromFile("./proofs/session.aep-proof.json");
+
+const verifier = new ProofBundleVerifier();
+
+// Verify signature, identity and structure
+const result = verifier.verify(bundle);
+console.log(`Valid: ${result.valid}, Signature: ${result.signatureValid}`);
+
+// Verify with ledger file for full cryptographic proof
+const full = verifier.verifyWithLedger(bundle, "./ledgers/session.jsonl");
+console.log(`Ledger match: ${full.ledgerHashMatch}, Merkle match: ${full.merkleRootMatch}`);
+```
+
+**Policy config:**
+
+```yaml
+session:
+  auto_bundle: true          # Log bundle:created event automatically
+  bundle_on_terminate: true   # Generate proof bundle when session terminates
+```
+
+**CLI:**
+
+```bash
+aep bundle verify ./proofs/session.aep-proof.json
+aep bundle verify ./proofs/session.aep-proof.json --ledger ./ledgers/session.jsonl
+```
+
+---
+
+## 28. Governed Task Decomposition
+
+AEP v2.2 introduces **Governed Task Decomposition**: subtask trees as first-class governed structures. Each task has its own scope (allowed tools, prefixes, paths, action budget) and completion criteria.
+
+The critical invariant: **a child task's scope is always the intersection of its parent's scope and its declared scope**. A child can never have more access than its parent. This prevents scope escalation through task decomposition.
+
+```typescript
+import { AgentGateway } from "@aep/core";
+
+const gateway = new AgentGateway({ ledgerDir: "./ledgers" });
+const session = gateway.createSessionFromPolicy(policy); // policy has decomposition.enabled: true
+
+const dm = gateway.getDecompositionManager(session.id);
+
+// Create root task with full scope
+const root = dm.createRoot(session.id, "Build auth module", {
+  allowedTools: ["file:read", "file:write", "aep:create_element"],
+  allowedPrefixes: ["CP", "PN"],
+  allowedPaths: ["src/**", "tests/**"],
+  maxActions: 50,
+  inheritFromParent: true,
+});
+
+// Decompose into subtasks (scopes are automatically intersected)
+const [writeTests, writeCode] = dm.decompose(root.taskId, [
+  { description: "Write tests", scope: { allowedTools: ["file:write"], allowedPaths: ["tests/**"], maxActions: 20, allowedPrefixes: ["CP", "PN"], inheritFromParent: true } },
+  { description: "Write code", scope: { allowedTools: ["file:read", "file:write"], allowedPaths: ["src/**"], maxActions: 30, allowedPrefixes: ["CP"], inheritFromParent: true } },
+]);
+
+// Set active task -- Step 0 in the evaluation chain checks this
+gateway.setActiveTask(session.id, writeTests.taskId);
+
+// Actions are now validated against the active task's scope
+const verdict = gateway.evaluate(session.id, {
+  tool: "file:write",
+  input: { path: "tests/auth.test.ts" },
+  timestamp: new Date(),
+});
+// verdict.decision === "allow" (within scope)
+
+// Complete with gate check
+const gate = dm.completeTask(root.taskId, { violations: 0 });
+console.log(`Gate passed: ${gate.passed}`);
+```
+
+**Scope intersection example:**
+
+```
+Parent scope:  allowedPrefixes: ["CP", "PN"]
+Child declares: allowedPrefixes: ["CP", "WD"]
+Child receives: allowedPrefixes: ["CP"]  (intersection -- WD not in parent)
+```
+
+**Policy config:**
+
+```yaml
+decomposition:
+  enabled: true
+  max_depth: 5         # Maximum nesting depth
+  max_children: 10     # Maximum subtasks per parent
+  scope_inheritance: "intersection"
+  completion_gate: true
+  completion_criteria:
+    - type: all_children_complete
+    - type: no_violations
+```
+
+**Completion criteria types:** `all_children_complete`, `tests_pass`, `no_violations`, `trust_above`, `drift_below`, `custom`.
+
+**CLI:**
+
+```bash
+aep tasks <session-id>         # Show task tree for a session
+aep tasks <session-id> --tree  # Show as indented tree
+```
+
+**Evidence ledger entries:** `task:create`, `task:decompose`, `task:complete`, `task:fail`, `task:cancel`.
+
+**Proof bundle integration:** When a proof bundle is generated for a session with task decomposition enabled, the full task tree is included in the bundle for audit purposes.
+
+---
+
+## 29. Migration from v2.1 to v2.2
+
+AEP v2.2 is backwards-compatible with v2.1. All existing v2.1 config files, policies, sessions, ledgers and SDK modules continue to work without modification.
+
+Proof Bundles, Governed Task Decomposition, Trust Scoring, Execution Rings, Behavioral Covenants, Intent Drift Detection and Streaming Validation are all optional features that add capabilities without requiring changes to existing integrations.
+
+To adopt v2.2 features:
+
+1. Update `aep_version` to `"2.2"` in config files and policies.
+2. For Proof Bundles: enable `session.bundle_on_terminate: true` in policy, or call `gateway.generateProofBundle()` manually.
+3. For Task Decomposition: add `decomposition.enabled: true` to policy, then use `gateway.getDecompositionManager()` and `gateway.setActiveTask()`.
+4. For Streaming Validation: add `streaming.enabled: true` to policy and wrap agent streams with `StreamMiddleware`.
+5. For Trust/Rings/Covenants: configure the `trust`, `ring` and `covenant` sections in your policy.
+
+No existing v2.1 code paths were modified. The gateway evaluation chain extends from 12 to 13 steps (Step 0: task scope check, only active when decomposition is enabled).
 
 ---
 

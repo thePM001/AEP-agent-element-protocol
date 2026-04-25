@@ -1,0 +1,34 @@
+{
+  "aep_version": "2.2",
+  "schema_revision": 1,
+  "project": "your-project-name",
+  "elements": [
+    {
+      "id": "xid:v1:030:c000000:r000001:0000000000000001",
+      "type": "root",
+      "label": "Application Shell",
+      "z": 0,
+      "visible": true,
+      "parent": null,
+      "layout": { "width": "100vw", "height": "100vh" }
+    },
+    {
+      "id": "xid:v1:030:c000000:r000002:0000000000000001",
+      "type": "component",
+      "label": "Navigation Bar",
+      "z": 10,
+      "visible": true,
+      "parent": "xid:v1:030:c000000:r000001:0000000000000001",
+      "layout": { "position": "top", "height": "44px" }
+    },
+    {
+      "id": "xid:v1:030:c000000:r000005:0000000000000001",
+      "type": "component",
+      "label": "Main Content Area",
+      "z": 1,
+      "visible": true,
+      "parent": "xid:v1:030:c000000:r000001:0000000000000001",
+      "layout": { "position": "fill" }
+    }
+  ]
+}

@@ -12,10 +12,16 @@ export class EvidenceLedger {
   private filePath: string;
   private seq: number = 0;
   private prevHash: string = ZERO_HASH;
+  private stateProvider?: () => Record<string, unknown>;
 
-  constructor(options: { dir: string; sessionId: string }) {
+  constructor(options: {
+    dir: string;
+    sessionId: string;
+    stateProvider?: () => Record<string, unknown>;
+  }) {
     this.dir = options.dir;
     this.sessionId = options.sessionId;
+    this.stateProvider = options.stateProvider;
     this.filePath = join(this.dir, `${this.sessionId}.jsonl`);
 
     if (!existsSync(this.dir)) {
@@ -41,6 +47,12 @@ export class EvidenceLedger {
     const ts = new Date().toISOString();
     const hash = this.computeHash(this.prevHash, type, data);
 
+    let stateRef: string | undefined;
+    if (this.stateProvider) {
+      const state = this.stateProvider();
+      stateRef = `sha256:${createHash("sha256").update(JSON.stringify(state)).digest("hex")}`;
+    }
+
     const entry: LedgerEntry = {
       seq: this.seq,
       ts,
@@ -48,6 +60,7 @@ export class EvidenceLedger {
       prev: this.prevHash,
       type,
       data,
+      ...(stateRef ? { stateRef } : {}),
     };
 
     appendFileSync(this.filePath, JSON.stringify(entry) + "\n", "utf-8");

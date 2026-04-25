@@ -1,0 +1,109 @@
+version: "2.2"
+name: "multi-agent"
+
+capabilities:
+  - tool: "file:read"
+    scope:
+      paths: ["src/**", "tests/**", "docs/**"]
+  - tool: "file:write"
+    scope:
+      paths: ["src/**", "tests/**"]
+  - tool: "aep:create_element"
+    scope:
+      element_prefixes: ["CP", "PN", "WD", "CZ", "CN"]
+      z_bands: ["10-19", "20-29", "30-39", "50-59"]
+  - tool: "aep:update_element"
+    scope:
+      exclude_ids: ["SH-00001"]
+  - tool: "command:run"
+    scope:
+      binaries: ["npm", "node", "tsc", "git"]
+  - tool: "agent:spawn"
+    min_trust_tier: "trusted"
+  - tool: "agent:delegate"
+    min_trust_tier: "trusted"
+
+limits:
+  max_runtime_ms: 3600000
+  max_files_changed: 100
+  max_aep_mutations: 200
+
+gates:
+  - action: "file:delete"
+    approval: human
+    risk_level: high
+  - action: "aep:delete_element"
+    approval: human
+    risk_level: critical
+  - action: "agent:spawn"
+    approval: webhook
+    risk_level: medium
+    webhook_url: "http://localhost:8080/approve"
+    timeout_ms: 60000
+
+forbidden:
+  - pattern: "\.env"
+    reason: "Environment files may contain secrets"
+  - pattern: "password|api_key|secret_key"
+    reason: "Potential credential exposure"
+
+session:
+  max_actions: 500
+  max_denials: 30
+  rate_limit:
+    max_per_minute: 60
+  escalation:
+    - after_actions: 200
+      require: human_checkin
+    - after_denials: 15
+      require: pause
+    - after_minutes: 45
+      require: human_checkin
+
+evidence:
+  enabled: true
+  dir: "./ledgers"
+
+covenant: |
+  covenant MultiAgentSafety {
+    permit file:read;
+    permit file:write (path in ["src/", "tests/"]);
+    forbid file:delete;
+    require trustTier >= "standard";
+  }
+
+trust:
+  initial_score: 400
+  decay_rate: 5
+  penalties:
+    policy_violation: 60
+    structural_violation: 40
+    rate_limit: 15
+    forbidden_match: 100
+    intent_drift: 80
+  rewards:
+    successful_action: 5
+    successful_rollback: 15
+
+ring:
+  default: 2
+  promotion:
+    to_ring_1:
+      min_trust_tier: "trusted"
+      require_approval: false
+    to_ring_0:
+      min_trust_tier: "privileged"
+      require_approval: true
+
+intent:
+  tracking: true
+  drift_threshold: 0.4
+  warmup_actions: 15
+  on_drift: "gate"
+
+identity:
+  require_agent_identity: true
+
+system:
+  max_actions_per_minute: 200
+  max_concurrent_sessions: 10

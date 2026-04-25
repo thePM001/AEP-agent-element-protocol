@@ -992,9 +992,9 @@ WD-00017:
   user_interaction: "Container with CTA"
 
 WD-00018:
-  label: "Radia-Pro Tier Card"
+  label: "Enterprise-Pro Tier Card"
   category: data-display
-  function: "Pricing card for Radia-Pro enterprise tier."
+  function: "Pricing card for Enterprise-Pro tier."
   component_file: "aep-page.tsx"
   parent: "PN-00015"
   skin_binding: "widget_card"
@@ -1151,9 +1151,9 @@ NV-00023:
   z: 15
 
 NV-00024:
-  label: "Nav Link: Cochelle Obtainment Platform Environment // CAWs"
+  label: "Nav Link: Workflow Runtime // CAWs"
   category: action
-  function: "Cochelle + CAWs merged product link (coming soon)"
+  function: "Workflow Runtime + CAWs merged product link (coming soon)"
   component_file: "components/HexagonNav/index.tsx"
   parent: "NV-00021"
   skin_binding: "nav_link_disabled"
@@ -1162,18 +1162,18 @@ NV-00024:
   z: 15
 
 NV-00026:
-  label: "Nav Link: Radia Co-Shell // Radia Agent"
+  label: "Nav Link: Co-Shell // Agent Platform"
   category: action
-  function: "Radia Co-Shell + Radia Agent merged product link (coming soon)"
+  function: "Co-Shell + Agent Platform merged product link (coming soon)"
   component_file: "components/HexagonNav/index.tsx"
   parent: "NV-00021"
   skin_binding: "nav_link_disabled"
   z: 15
 
 NV-00030:
-  label: "Nav Link: Radia Cloud"
+  label: "Nav Link: Cloud Platform"
   category: action
-  function: "Radia Cloud product link (coming soon)"
+  function: "Cloud Platform product link (coming soon)"
   component_file: "components/HexagonNav/index.tsx"
   parent: "NV-00021"
   skin_binding: "nav_link_disabled"
@@ -1306,16 +1306,16 @@ SH-00002:
 PN-00030:
   label: "Hero Section"
   category: layout
-  function: "Radia face hero with agency name and positioning line"
+  function: "Brand hero with agency name and positioning line"
   component_file: "app/(frontend)/NLAHomePage.tsx"
   parent: "SH-00002"
   skin_binding: "panel_main"
   z: 10
 
 PN-00031:
-  label: "Cochelle Section"
+  label: "Workflow Section"
   category: layout
-  function: "Cochelle Obtainment Environment display with ring visual"
+  function: "Workflow environment display with ring visual"
   component_file: "app/(frontend)/NLAHomePage.tsx"
   parent: "SH-00002"
   skin_binding: "panel_main"
