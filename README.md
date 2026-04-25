@@ -14,7 +14,7 @@ copy the URL of the GitHub repo into your reasoning LLM + tell it: "analyze the 
 
 ![AEP 2.2 - 55 Features](docs/images/feature-grid.png)
 
-[Explore the full interactive grid at aep.newlisbon.agency](https://aep.newlisbon.agency)
+## [Explore the full interactive grid at aep.newlisbon.agency](https://aep.newlisbon.agency)
 
 ---
 
