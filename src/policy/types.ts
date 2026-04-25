@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ModelGatewayPolicySchema } from "../model-gateway/types.js";
+import { CommercePolicySchema } from "../subprotocols/commerce/types.js";
 
 export const CapabilitySchema = z.object({
   tool: z.string(),
@@ -158,6 +159,15 @@ export const URLScannerConfigSchema = z.object({
   blocklist: z.array(z.string()).optional().default([]),
 });
 
+export const DataProfileScannerConfigSchema = z.object({
+  enabled: z.boolean().optional().default(false),
+  severity: z.enum(["hard", "soft"]).optional().default("soft"),
+  null_rate_threshold: z.number().min(0).max(1).optional().default(0.3),
+  duplicate_rate_threshold: z.number().min(0).max(1).optional().default(0.5),
+  outlier_stddev: z.number().positive().optional().default(3.0),
+  imbalance_ratio: z.number().positive().optional().default(10.0),
+});
+
 export const ScannersConfigSchema = z.object({
   enabled: z.boolean().optional().default(true),
   pii: ScannerItemConfigSchema.optional().default({}),
@@ -166,6 +176,7 @@ export const ScannersConfigSchema = z.object({
   jailbreak: ScannerItemConfigSchema.optional().default({}),
   toxicity: ToxicityScannerConfigSchema.optional().default({}),
   urls: URLScannerConfigSchema.optional().default({}),
+  profiler: DataProfileScannerConfigSchema.optional().default({}),
 }).optional();
 
 export const WorkflowConfigSchema = z.object({
@@ -223,6 +234,7 @@ export const PolicySchema = z.object({
   tracking: TrackingConfigSchema,
   knowledge: KnowledgeConfigSchema,
   model_gateway: ModelGatewayPolicySchema,
+  commerce: CommercePolicySchema,
 });
 
 export type Capability = z.infer<typeof CapabilitySchema>;
@@ -250,6 +262,7 @@ export type TelemetryPolicyConfig = z.infer<typeof TelemetryConfigSchema>;
 export type TrackingPolicyConfig = z.infer<typeof TrackingConfigSchema>;
 export type KnowledgePolicyConfig = z.infer<typeof KnowledgeConfigSchema>;
 export type ModelGatewayPolicyConfig = z.infer<typeof ModelGatewayPolicySchema>;
+export type CommercePolicyConfig = z.infer<typeof CommercePolicySchema>;
 
 export interface AgentAction {
   tool: string;

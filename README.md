@@ -1032,6 +1032,7 @@ To use: define your concrete `ElementIDs`, `Prefixes` and `ZBands` in a model co
 [ ] (v2.5) Optional: create and ingest knowledge bases (knowledge.enabled: true)
 [ ] (v2.5) Optional: configure governed model gateway (model_gateway section)
 [ ] (v2.5) Optional: enable recovery engine for soft violations (recovery.enabled: true)
+[ ] (v2.5.1) Optional: enable commerce subprotocol (commerce.enabled: true)
 ```
 
 ---
@@ -1497,6 +1498,83 @@ To adopt v2.5 features:
 6. For Workflow Phases: add `workflow` config to policy with phase definitions.
 
 No existing v2.2 code paths were modified. The gateway evaluation chain extends from 13 to 15 steps: Step 13 (knowledge retrieval validation) and Step 14 (content scanner pipeline).
+
+---
+
+## 31. Commerce Subprotocol
+
+AEP v2.5.1 introduces the **Commerce Subprotocol**: governed agentic commerce workflows covering product discovery, cart management, checkout, payment negotiation, fulfillment tracking and post-purchase actions.
+
+The subprotocol enforces configurable commerce policies including merchant allow/blocklists, product category blocking, transaction amount limits, daily spend accumulation, human gate thresholds and payment method restrictions.
+
+```typescript
+import { AgentGateway, CommerceValidator, SpendTracker, CommerceRegistry } from "@aep/core";
+
+const gateway = new AgentGateway({ ledgerDir: "./ledgers" });
+const session = gateway.createSessionFromPolicy(policy); // policy has commerce.enabled: true
+
+// Commerce actions go through the normal 15-step evaluation chain first
+const verdict = gateway.evaluate(session.id, {
+  tool: "commerce:checkout",
+  input: { session: checkoutSession },
+  timestamp: new Date(),
+});
+
+// Then through commerce-specific validation
+if (verdict.decision === "allow") {
+  const result = gateway.validateCommerce(session.id, "checkout_start", {
+    session: checkoutSession,
+  });
+
+  if (!result.valid) {
+    console.error(result.errors);
+  }
+  if (result.gate_required) {
+    console.log("Human approval required for this transaction amount.");
+  }
+}
+```
+
+**Twelve commerce actions:** `discover`, `add_to_cart`, `remove_from_cart`, `update_cart`, `checkout_start`, `checkout_complete`, `payment_negotiate`, `payment_authorize`, `fulfillment_query`, `order_status`, `return_initiate`, `refund_request`.
+
+**Policy config:**
+
+```yaml
+commerce:
+  enabled: true
+  max_transaction_amount: 500
+  allowed_currencies: ["USD", "EUR"]
+  allowed_merchants: []
+  blocked_merchants: ["shady-store"]
+  blocked_product_categories: ["weapons", "gambling"]
+  require_human_gate_above: 200
+  allowed_payment_methods: ["stripe", "paypal"]
+  max_daily_spend: 1000
+```
+
+**Spend tracking:** `SpendTracker` accumulates daily spend with JSONL persistence at `.aep/commerce/spend.jsonl`. When `max_daily_spend` is configured, checkout validation rejects transactions that would exceed the daily limit.
+
+**Merchant registry:** `CommerceRegistry` manages merchant profiles with capabilities and payment handlers.
+
+**Covenant rules:** Commerce actions work with the existing covenant DSL. Examples:
+
+```
+covenant CommerceGuard {
+  permit commerce:discover;
+  forbid commerce:checkout (total > 500) [hard];
+  require commerce:payment_authorize;
+}
+```
+
+**Six ledger entry types:** `commerce:discover`, `commerce:cart_update`, `commerce:checkout`, `commerce:payment`, `commerce:fulfillment`, `commerce:return`.
+
+**CLI:**
+
+```bash
+aep commerce status          # Show commerce subprotocol status
+aep commerce merchants       # List registered merchants
+aep commerce spend           # Show daily spend totals
+```
 
 ---
 
