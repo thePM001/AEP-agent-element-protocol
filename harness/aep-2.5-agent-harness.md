@@ -114,15 +114,24 @@ If any step denies the action, it does not execute. Work within the policy.
 
 ## Content Scanners
 
-Six content scanners run against agent output (Step 14):
+Seven content scanners run against agent output (Step 14):
 - PII scanner: detects personal identifiable information
 - Injection scanner: detects prompt injection and code injection
 - Secrets scanner: detects API keys, tokens and credentials
 - Jailbreak scanner: detects jailbreak attempts
 - Toxicity scanner: detects threats and toxic language
 - URL scanner: validates URLs against allowlist and blocklist
+- Data profiler (opt-in): checks tabular data for null rates, duplicates, outliers, schema drift and class imbalance
 
 Hard severity findings reject immediately. Soft severity findings trigger the recovery engine for automatic retry.
+
+## ML Metrics Evaluation
+
+When working with ML models, your outputs may be evaluated against standard metrics: classification (accuracy, precision, recall, F1), regression (MSE, RMSE, MAE, R2, MAPE), retrieval (precision@k, recall@k, MRR, NDCG) and generation (exact match, avg length, empty rate). These metrics feed into the ReliabilityIndex as an optional `mlScore` component.
+
+## Fine-Tuning Workflow
+
+When performing fine-tuning tasks, follow the governed workflow phases: DATA_PREPARATION, DATA_VALIDATION, TRAINING_CONFIG, TRAINING_EXECUTION, EVALUATION, DEPLOYMENT. Each phase has entry conditions, exit criteria and rework limits. The deployer role at Ring 0 is required for the final DEPLOYMENT phase.
 
 ## Model Gateway
 

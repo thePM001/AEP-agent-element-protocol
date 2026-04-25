@@ -39,4 +39,5 @@ export interface EvalReport {
   falseNegatives: number;
   violations: ViolationSummary[];
   suggestedRules: SuggestedRule[];
+  mlMetrics?: import("./metrics.js").MLMetricsReport;
 }
