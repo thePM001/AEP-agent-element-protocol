@@ -68,7 +68,11 @@ export class AEPProxyServer {
 
     // /aepassist tool -- governance assistant, bypasses policy evaluation
     if (call.name === "aepassist") {
-      const input = typeof call.arguments.input === "string" ? call.arguments.input : "";
+      const input = typeof call.arguments.command === "string"
+        ? call.arguments.command
+        : typeof call.arguments.input === "string"
+          ? call.arguments.input
+          : "";
       const assistant = new AEPassistant(this.gateway);
       const response = assistant.handle(input);
       return {
