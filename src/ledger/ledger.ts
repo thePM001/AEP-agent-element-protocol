@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
-import type { LedgerEntry, LedgerEntryType, LedgerReport } from "./types.js";
+import type { LedgerEntry, LedgerEntryType, LedgerReport, TokenUsage, CostRecord } from "./types.js";
 
 const ZERO_HASH =
   "sha256:0000000000000000000000000000000000000000000000000000000000000000";
@@ -41,7 +41,8 @@ export class EvidenceLedger {
 
   append(
     type: LedgerEntryType,
-    data: Record<string, unknown>
+    data: Record<string, unknown>,
+    options?: { tokens?: TokenUsage; cost?: CostRecord }
   ): LedgerEntry {
     this.seq++;
     const ts = new Date().toISOString();
@@ -61,6 +62,8 @@ export class EvidenceLedger {
       type,
       data,
       ...(stateRef ? { stateRef } : {}),
+      ...(options?.tokens ? { tokens: options.tokens } : {}),
+      ...(options?.cost ? { cost: options.cost } : {}),
     };
 
     appendFileSync(this.filePath, JSON.stringify(entry) + "\n", "utf-8");

@@ -17,6 +17,11 @@ import type { TaskTree, TaskScope } from "./decomposition/types.js";
 import { ProofBundleBuilder } from "./proof-bundle/builder.js";
 import type { ProofBundle } from "./proof-bundle/types.js";
 import type { AgentIdentity } from "./identity/types.js";
+import { RecoveryEngine } from "./recovery/engine.js";
+import type { Violation, RecoveryCallback } from "./recovery/types.js";
+import { ScannerPipeline, createDefaultPipeline } from "./scanners/pipeline.js";
+import type { Finding } from "./scanners/types.js";
+import type { TokenUsage, CostRecord } from "./ledger/types.js";
 
 export interface GatewayOptions {
   ledgerDir: string;
@@ -41,6 +46,8 @@ export interface ActionResult {
   error?: string;
   filesChanged?: number;
   costUsd?: number;
+  tokens?: TokenUsage;
+  cost?: CostRecord;
 }
 
 export interface AEPValidationResult {
@@ -79,6 +86,12 @@ export class AgentGateway {
   private activeTaskIds: Map<string, string> = new Map(); // sessionId -> active taskId
   private sessionAgents: Map<string, AgentIdentity> = new Map();
   private sessionCovenants: Map<string, import("./covenant/types.js").CovenantSpec> = new Map();
+  private recoveryEngines: Map<string, RecoveryEngine> = new Map();
+  private scannerPipelines: Map<string, ScannerPipeline> = new Map();
+  private sessionTokenTotals: Map<string, { input: number; output: number }> = new Map();
+  private sessionCostTotals: Map<string, { input: number; output: number; currency: string }> = new Map();
+  private sessionCompletedOutputTokens: Map<string, number[]> = new Map();
+  private sessionRejectedCount: Map<string, number> = new Map();
 
   constructor(options: GatewayOptions) {
     this.options = options;
@@ -170,6 +183,34 @@ export class AgentGateway {
     if (policy.decomposition?.enabled) {
       const dm = new TaskDecompositionManager(policy.decomposition);
       this.decompositionManagers.set(session.id, dm);
+    }
+
+    // Wire recovery engine if policy has recovery config
+    if (policy.recovery?.enabled) {
+      const re = new RecoveryEngine({
+        enabled: true,
+        maxAttempts: policy.recovery.max_attempts ?? 2,
+      });
+      this.recoveryEngines.set(session.id, re);
+    }
+
+    // Wire scanner pipeline if policy has scanners config
+    if (policy.scanners?.enabled !== false) {
+      const scannerConfig = policy.scanners;
+      const pipeline = createDefaultPipeline(
+        scannerConfig
+          ? {
+              enabled: scannerConfig.enabled,
+              pii: scannerConfig.pii,
+              injection: scannerConfig.injection,
+              secrets: scannerConfig.secrets,
+              jailbreak: scannerConfig.jailbreak,
+              toxicity: scannerConfig.toxicity,
+              urls: scannerConfig.urls,
+            }
+          : undefined
+      );
+      this.scannerPipelines.set(session.id, pipeline);
     }
 
     // Store covenant for proof bundle generation
@@ -281,6 +322,180 @@ export class AgentGateway {
     }
 
     return verdict;
+  }
+
+  /**
+   * Scans agent output content through the scanner pipeline.
+   * Returns scan result with findings. Hard findings reject immediately.
+   * Soft findings trigger recovery if a recovery engine is configured.
+   *
+   * @param sessionId - Active session ID
+   * @param content - Agent output to scan
+   * @param regenerate - Optional callback for recovery (soft violations)
+   * @returns Object with passed status, findings and optional recovered output
+   */
+  scanContent(
+    sessionId: string,
+    content: string,
+    regenerate?: RecoveryCallback
+  ): { passed: boolean; findings: Finding[]; recoveredOutput?: string } {
+    const pipeline = this.scannerPipelines.get(sessionId);
+    if (!pipeline) {
+      return { passed: true, findings: [] };
+    }
+
+    const ledger = this.ledgers.get(sessionId);
+    const trustManager = this.trustManagers.get(sessionId);
+    const result = pipeline.scan(content);
+
+    if (result.passed) {
+      return { passed: true, findings: [] };
+    }
+
+    // Log findings
+    for (const finding of result.findings) {
+      ledger?.append("scanner:finding", {
+        scanner: finding.scanner,
+        severity: finding.severity,
+        category: finding.category,
+        match: finding.match,
+        position: finding.position,
+      });
+    }
+
+    // Separate hard and soft findings
+    const hardFindings = result.findings.filter((f) => f.severity === "hard");
+    const softFindings = result.findings.filter((f) => f.severity === "soft");
+
+    // Hard findings: immediate reject, no recovery
+    if (hardFindings.length > 0) {
+      trustManager?.penalize("Content scanner hard violation", "forbidden_match");
+      return { passed: false, findings: result.findings };
+    }
+
+    // Soft findings: attempt recovery if available
+    if (softFindings.length > 0) {
+      const recoveryEngine = this.recoveryEngines.get(sessionId);
+      if (recoveryEngine && regenerate) {
+        const violation: Violation = {
+          rule: softFindings[0].category,
+          severity: "soft",
+          source: "scanner",
+          details: `Scanner "${softFindings[0].scanner}" found: ${softFindings[0].match}`,
+        };
+
+        const recoveryResult = recoveryEngine.attemptRecovery(
+          violation,
+          regenerate,
+          (newOutput: string) => {
+            const recheck = pipeline.scan(newOutput);
+            if (recheck.passed) return null;
+            const firstFinding = recheck.findings[0];
+            return {
+              rule: firstFinding.category,
+              severity: firstFinding.severity,
+              source: "scanner" as const,
+              details: `Scanner "${firstFinding.scanner}" found: ${firstFinding.match}`,
+            };
+          }
+        );
+
+        // Log recovery attempts
+        for (const attempt of recoveryResult.attempts) {
+          ledger?.append("recovery:attempt", {
+            attemptNumber: attempt.attemptNumber,
+            violation: attempt.violation,
+            result: attempt.result,
+          });
+        }
+
+        if (recoveryResult.recovered) {
+          ledger?.append("recovery:success", {
+            attempts: recoveryResult.attempts.length,
+            source: "scanner",
+          });
+          trustManager?.penalize("Soft violation recovered", undefined);
+          // Apply -10 trust for recovered soft violation
+          // (penalize applies default -50, so reward back +40)
+          trustManager?.reward("Recovery success offset", 40);
+          return {
+            passed: true,
+            findings: softFindings,
+            recoveredOutput: recoveryResult.finalOutput,
+          };
+        }
+
+        // Recovery exhausted - escalate to hard reject
+        ledger?.append("recovery:exhausted", {
+          attempts: recoveryResult.attempts.length,
+          source: "scanner",
+        });
+        trustManager?.penalize("Soft violation recovery exhausted", "policy_violation");
+        return { passed: false, findings: result.findings };
+      }
+
+      // No recovery engine - soft findings still fail
+      trustManager?.penalize("Content scanner soft violation", "structural_violation");
+      return { passed: false, findings: softFindings };
+    }
+
+    return { passed: true, findings: [] };
+  }
+
+  /**
+   * Attempts recovery for a soft violation from any source (covenant, policy or scanner).
+   * Returns recovery result with recovered output if successful.
+   */
+  attemptRecovery(
+    sessionId: string,
+    violation: Violation,
+    regenerate: RecoveryCallback,
+    validate: (output: string) => Violation | null
+  ): { recovered: boolean; finalOutput?: string } {
+    const recoveryEngine = this.recoveryEngines.get(sessionId);
+    const ledger = this.ledgers.get(sessionId);
+    const trustManager = this.trustManagers.get(sessionId);
+
+    if (!recoveryEngine) {
+      return { recovered: false };
+    }
+
+    const result = recoveryEngine.attemptRecovery(violation, regenerate, validate);
+
+    for (const attempt of result.attempts) {
+      ledger?.append("recovery:attempt", {
+        attemptNumber: attempt.attemptNumber,
+        violation: attempt.violation,
+        result: attempt.result,
+      });
+    }
+
+    if (result.recovered) {
+      ledger?.append("recovery:success", {
+        attempts: result.attempts.length,
+        source: violation.source,
+      });
+      // -10 trust for recovered soft violation
+      trustManager?.penalize("Soft violation recovered", undefined);
+      trustManager?.reward("Recovery success offset", 40);
+      return { recovered: true, finalOutput: result.finalOutput };
+    }
+
+    ledger?.append("recovery:exhausted", {
+      attempts: result.attempts.length,
+      source: violation.source,
+    });
+    // -50 trust for exhausted recovery
+    trustManager?.penalize("Soft violation recovery exhausted", "policy_violation");
+    return { recovered: false };
+  }
+
+  getRecoveryEngine(sessionId: string): RecoveryEngine | null {
+    return this.recoveryEngines.get(sessionId) ?? null;
+  }
+
+  getScannerPipeline(sessionId: string): ScannerPipeline | null {
+    return this.scannerPipelines.get(sessionId) ?? null;
   }
 
   validateAEP(
@@ -422,7 +637,47 @@ export class AgentGateway {
       error: result.error,
       filesChanged: result.filesChanged,
       costUsd: result.costUsd,
+    }, {
+      tokens: result.tokens,
+      cost: result.cost,
     });
+
+    // Accumulate token and cost totals for the session
+    if (result.tokens) {
+      const existing = this.sessionTokenTotals.get(sessionId) ?? { input: 0, output: 0 };
+      existing.input += result.tokens.input;
+      existing.output += result.tokens.output;
+      this.sessionTokenTotals.set(sessionId, existing);
+
+      // Track completed output tokens for costSaved estimation
+      const outputs = this.sessionCompletedOutputTokens.get(sessionId) ?? [];
+      outputs.push(result.tokens.output);
+      this.sessionCompletedOutputTokens.set(sessionId, outputs);
+    }
+
+    if (result.cost) {
+      const existing = this.sessionCostTotals.get(sessionId) ?? { input: 0, output: 0, currency: result.cost.currency };
+      existing.input += result.cost.input_cost;
+      existing.output += result.cost.output_cost;
+      existing.currency = result.cost.currency;
+      this.sessionCostTotals.set(sessionId, existing);
+    }
+  }
+
+  /**
+   * Record that an action was rejected or aborted (for costSaved estimation).
+   */
+  recordRejection(sessionId: string): void {
+    const count = this.sessionRejectedCount.get(sessionId) ?? 0;
+    this.sessionRejectedCount.set(sessionId, count + 1);
+  }
+
+  getSessionTokenTotals(sessionId: string): { input: number; output: number } | null {
+    return this.sessionTokenTotals.get(sessionId) ?? null;
+  }
+
+  getSessionCostTotals(sessionId: string): { input: number; output: number; currency: string } | null {
+    return this.sessionCostTotals.get(sessionId) ?? null;
   }
 
   storeCompensation(
@@ -454,6 +709,26 @@ export class AgentGateway {
     const session = this.sessionManager.getSession(sessionId);
     const report = this.sessionManager.terminateSession(sessionId, reason);
 
+    // Compute token totals and cost saved
+    const tokenTotals = this.sessionTokenTotals.get(sessionId);
+    const costTotals = this.sessionCostTotals.get(sessionId);
+    if (tokenTotals) {
+      report.totalTokens = tokenTotals.input + tokenTotals.output;
+    }
+    if (costTotals) {
+      report.totalCost = costTotals.input + costTotals.output;
+    }
+
+    // Estimate cost saved: rejected/aborted actions * average output tokens
+    const rejectedCount = this.sessionRejectedCount.get(sessionId) ?? 0;
+    const completedOutputs = this.sessionCompletedOutputTokens.get(sessionId) ?? [];
+    if (rejectedCount > 0 && completedOutputs.length > 0 && costTotals) {
+      const avgOutputTokens = completedOutputs.reduce((a, b) => a + b, 0) / completedOutputs.length;
+      const totalTokensEst = tokenTotals ? tokenTotals.input + tokenTotals.output : 0;
+      const costPerToken = totalTokensEst > 0 ? (costTotals.input + costTotals.output) / totalTokensEst : 0;
+      report.costSaved = rejectedCount * avgOutputTokens * costPerToken;
+    }
+
     ledger?.append("session:terminate", {
       sessionId,
       reason,
@@ -462,6 +737,9 @@ export class AgentGateway {
       allowed: report.allowed,
       denied: report.denied,
       gated: report.gated,
+      totalTokens: report.totalTokens,
+      totalCost: report.totalCost,
+      costSaved: report.costSaved,
     });
 
     // Clean up per-session resources
@@ -472,6 +750,12 @@ export class AgentGateway {
     this.activeTaskIds.delete(sessionId);
     this.sessionAgents.delete(sessionId);
     this.sessionCovenants.delete(sessionId);
+    this.recoveryEngines.delete(sessionId);
+    this.scannerPipelines.delete(sessionId);
+    this.sessionTokenTotals.delete(sessionId);
+    this.sessionCostTotals.delete(sessionId);
+    this.sessionCompletedOutputTokens.delete(sessionId);
+    this.sessionRejectedCount.delete(sessionId);
 
     return report;
   }

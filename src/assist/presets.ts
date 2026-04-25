@@ -18,6 +18,8 @@ const STRICT: PresetConfig = {
   decomposition: { enabled: true },
   system: { max_actions_per_minute: 100, max_concurrent_sessions: 5 },
   session: { max_actions: 50, auto_bundle: true, bundle_on_terminate: true },
+  recovery: { enabled: true, max_attempts: 2 },
+  scanners: { enabled: true },
 };
 
 const STANDARD: PresetConfig = {
@@ -34,6 +36,8 @@ const STANDARD: PresetConfig = {
   decomposition: { enabled: false },
   system: { max_actions_per_minute: 200, max_concurrent_sessions: 20 },
   session: { max_actions: 100, auto_bundle: false, bundle_on_terminate: false },
+  recovery: { enabled: true, max_attempts: 2 },
+  scanners: { enabled: true },
 };
 
 const RELAXED: PresetConfig = {
@@ -47,6 +51,8 @@ const RELAXED: PresetConfig = {
   decomposition: { enabled: false },
   system: { max_actions_per_minute: 500, max_concurrent_sessions: 50 },
   session: { max_actions: 500, auto_bundle: false, bundle_on_terminate: false },
+  recovery: { enabled: false, max_attempts: 1 },
+  scanners: { enabled: false },
 };
 
 const AUDIT: PresetConfig = {
@@ -60,6 +66,8 @@ const AUDIT: PresetConfig = {
   decomposition: { enabled: false },
   system: { max_actions_per_minute: 200, max_concurrent_sessions: 10 },
   session: { max_actions: 1000, auto_bundle: true, bundle_on_terminate: true },
+  recovery: { enabled: true, max_attempts: 3 },
+  scanners: { enabled: true },
 };
 
 const PRESETS: Record<AssistPreset, PresetConfig> = {
@@ -170,6 +178,14 @@ evidence:
 
   if (p.decomposition.enabled) {
     yaml += `\ndecomposition:\n  enabled: true\n  max_depth: 5\n  max_children: 10\n  scope_inheritance: intersection\n  completion_gate: true\n`;
+  }
+
+  if (p.recovery?.enabled) {
+    yaml += `\nrecovery:\n  enabled: true\n  max_attempts: ${p.recovery.max_attempts}\n`;
+  }
+
+  if (p.scanners?.enabled) {
+    yaml += `\nscanners:\n  enabled: true\n  pii:\n    enabled: true\n    severity: hard\n  injection:\n    enabled: true\n    severity: hard\n  secrets:\n    enabled: true\n    severity: hard\n  jailbreak:\n    enabled: true\n    severity: hard\n  toxicity:\n    enabled: true\n    severity: soft\n  urls:\n    enabled: true\n    severity: soft\n`;
   }
 
   return yaml;

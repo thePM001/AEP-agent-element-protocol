@@ -48,6 +48,9 @@ Explain the feature in plain language:
 - **Agent identity**: Unified type for capability advertising, signing and discovery
 - **Cross-agent verification**: Trustless proof exchange before multi-agent interaction
 - **Optimistic concurrency**: Version-based conflict detection on AEP element mutations
+- **Workflow phases**: Sequential phase pipelines (plan/implement/review/approve) with typed verdicts (advance/rework/skip/fail)
+- **Reliability index**: Composite governance quality score (theta) in proof bundles
+- **Token tracking**: Optional token and cost recording per action, with costSaved estimation from early aborts
 
 ### EMERGENCY
 User says "kill" or "stop everything."

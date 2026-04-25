@@ -100,4 +100,33 @@ aep covenant parse    # Parse covenant DSL
 aep covenant verify   # Verify action against covenant
 aep owasp             # Display OWASP mapping
 aep describe          # Full 2.2 capability summary
+aep eval <ds> --policy <p>  # Run eval dataset against policy
+aep dataset create <name>   # Create eval dataset
+aep dataset add <n> <input> # Add entry to dataset
+aep dataset import <n> <f>  # Import from ledger
+aep dataset export <name>   # Export dataset (json or csv)
+aep dataset list            # List all datasets
+aep prompt save <n> <v> <f> # Save prompt version
+aep prompt load <name>      # Load latest prompt version
+aep prompt list <name>      # List prompt versions
+aep prompt diff <n> <a> <b> # Diff two prompt versions
+aep prompt inject <f> --policy <p>  # Inject governance context
 ```
+
+## Eval-to-Guardrail Lifecycle
+
+The eval system runs evaluation datasets against the governance pipeline to identify failing patterns and generate suggested covenant rules or scanner patterns. The feedback loop: production ledger -> dataset -> eval -> suggested rules -> policy refinement.
+
+`EvalRunner` replays dataset entries through the full policy evaluation chain and scanner pipeline. It tracks pass/fail rates, false positives (blocked but should pass) and false negatives (allowed but should fail). `RuleGenerator` analyses violation patterns and produces covenant rules or scanner regex patterns when confidence exceeds the threshold.
+
+## Governed Dataset Management
+
+`DatasetManager` provides versioned evaluation datasets. Datasets can be created manually, imported from production evidence ledgers or loaded from JSON files. Each modification bumps the patch version. Export to JSON or CSV for external tooling. The ledger import maps `allow` decisions to `pass` and `deny` to `fail` outcomes.
+
+## Prompt Optimization Under Governance
+
+`PromptOptimizer` injects governance context into agent prompts so the agent understands its constraints before generating output. This reduces recovery cycles by making the agent aware of permitted actions, forbidden patterns, covenant rules, trust tier, execution ring and active scanners.
+
+`optimiseFromEval` takes an eval report and adds violation-specific instructions to avoid previously observed failures. `comparePrompts` runs two prompt variants against the same dataset to determine which produces better governance compliance.
+
+`PromptVersionManager` saves, loads, lists and diffs prompt versions with SHA-256 content hashes for integrity tracking.

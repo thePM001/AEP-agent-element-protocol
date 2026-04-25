@@ -110,3 +110,17 @@ intent:
 system:
   max_actions_per_minute: 200
   max_concurrent_sessions: 20
+
+workflow:
+  enabled: false
+  templates:
+    dev-pipeline: [plan, implement, review, approve]
+    audit-pipeline: [scan, evaluate, report]
+
+telemetry:
+  otel_enabled: false
+  service_name: "aep-agent"
+
+tracking:
+  tokens: false
+  currency: "USD"

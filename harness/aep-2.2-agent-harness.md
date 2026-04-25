@@ -71,6 +71,20 @@ Every action you take is recorded in an immutable evidence ledger with SHA-256 h
 
 Your session can be packaged into a signed proof bundle at any time. This bundle contains your identity, covenant, trust score, ring, drift score and a Merkle root of your action ledger. It proves your session happened as recorded.
 
+## Workflow Phases
+
+Sessions can follow a sequential workflow with typed verdicts. Each workflow defines ordered phases (plan, implement, review, approve). Within each phase, task decomposition can create subtask trees.
+
+Phase verdicts: advance (next phase, +15 trust), rework (repeat with feedback, -20 trust), skip (bypass with justification, -5 trust), fail (terminate or escalate, -100 trust).
+
+Max rework limits are enforced per phase. Exceeding the limit escalates to fail.
+
+## Token and Cost Tracking
+
+AEP records token usage and cost data when provided by the agent harness. You are responsible for counting tokens (model-specific) and passing them to the gateway via ActionResult.tokens and ActionResult.cost fields.
+
+Session reports include totalTokens, totalCost and costSaved (estimated from early aborts and rejections).
+
 ## Evaluation Chain
 
 Every action passes through 13 evaluation steps:
@@ -89,3 +103,17 @@ Every action passes through 13 evaluation steps:
 12. Cross-agent verification
 
 If any step denies the action, it does not execute. Work within the policy.
+
+## Prompt Optimization Context
+
+Your prompts may be pre-processed through the AEP prompt optimiser before reaching you. The optimiser injects governance context that tells you:
+
+- Which actions are permitted and their scopes
+- Which patterns are forbidden and why
+- Which covenant rules apply (forbid and require)
+- Your current trust tier and execution ring
+- Which content scanners are active
+
+This context helps you produce governance-compliant output on the first attempt and reduces recovery cycles. If you see an AEP governance preamble in your prompt, follow its constraints. Do not attempt to circumvent injected rules.
+
+Evaluation datasets may be run against your outputs to identify recurring violations. The system uses these results to refine prompts and generate new guardrail rules automatically.
