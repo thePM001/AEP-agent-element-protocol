@@ -10,6 +10,14 @@ copy the URL of the GitHub repo into your reasoning LLM + tell it: "analyze the 
 ### AEP 2.2 Agent Harness so your AI actually uses AEP: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/aep-2.2-agent-harness
 ---
 
+### 55 Features. One Protocol.
+
+![AEP 2.2 - 55 Features](docs/images/feature-grid.png)
+
+[Explore the full interactive grid at aep.newlisbon.agency](https://aep.newlisbon.agency)
+
+---
+
 > **Note on verification:** The original AEP stack includes a proprietary formal verification layer that we are unable to release as open source. This guide provides TLA+ specifications for equivalent invariant checking, plus standalone runtime validators you can drop into any project. The architecture and protocol itself is fully open.
 
 ---
