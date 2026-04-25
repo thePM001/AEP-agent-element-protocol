@@ -188,7 +188,7 @@ describe("JailbreakScanner", () => {
 
 describe("ToxicityScanner", () => {
   it("detects configured custom words", () => {
-    const scanner = new ToxicityScanner({ customWords: ["badword", "offensive"] });
+    const scanner = new ToxicityScanner({ custom_words: ["badword", "offensive"] });
     const findings = scanner.scan("This contains a badword and something offensive");
     expect(findings.length).toBeGreaterThanOrEqual(2);
     expect(findings[0].category).toBe("toxicity:custom_word");
@@ -202,13 +202,13 @@ describe("ToxicityScanner", () => {
   });
 
   it("returns empty for clean content", () => {
-    const scanner = new ToxicityScanner({ customWords: ["badword"] });
+    const scanner = new ToxicityScanner({ custom_words: ["badword"] });
     const findings = scanner.scan("This is perfectly clean text.");
     expect(findings).toHaveLength(0);
   });
 
   it("defaults to soft severity", () => {
-    const scanner = new ToxicityScanner({ customWords: ["trigger"] });
+    const scanner = new ToxicityScanner({ custom_words: ["trigger"] });
     const findings = scanner.scan("this is a trigger word");
     expect(findings[0].severity).toBe("soft");
   });

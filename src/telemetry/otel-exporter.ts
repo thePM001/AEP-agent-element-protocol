@@ -208,6 +208,35 @@ export class AEPTelemetryExporter {
         break;
       }
 
+      case "model:call": {
+        const data = entry.data as Record<string, unknown>;
+        const spanId = spanIdFromSeq(entry.seq, entry.hash);
+        this.spans.push({
+          traceId: this.traceId,
+          spanId,
+          parentSpanId: this.rootSpanId,
+          name: `aep.model.${data.provider as string ?? "unknown"}.${data.model as string ?? "unknown"}`,
+          kind: "CLIENT",
+          startTimeUnixNano: isoToNano(entry.ts),
+          endTimeUnixNano: isoToNano(entry.ts),
+          attributes: {
+            "aep.provider": data.provider as string ?? "",
+            "aep.model": data.model as string ?? "",
+            "aep.decision": data.decision as string ?? "",
+            "aep.latency_ms": data.latencyMs as number ?? 0,
+            "aep.scan_passed": data.scanPassed as boolean ?? true,
+            "aep.recovery_attempted": data.recoveryAttempted as boolean ?? false,
+            "aep.prompt_optimised": data.promptOptimised as boolean ?? false,
+          },
+          events: [],
+          status: {
+            code: data.decision === "deny" || data.decision === "error" ? "ERROR" : "OK",
+            ...(data.decision === "deny" ? { message: data.reason as string ?? "" } : {}),
+          },
+        });
+        break;
+      }
+
       default:
         // Other entry types are not exported as spans
         break;

@@ -118,7 +118,7 @@ describe("ProofBundleBuilder", () => {
     );
 
     expect(bundle.bundleId).toBeDefined();
-    expect(bundle.version).toBe("2.2");
+    expect(bundle.version).toBe("2.5");
     expect(bundle.createdAt).toBeDefined();
     expect(bundle.agent.name).toBe("test-agent");
     expect(bundle.covenant).not.toBeNull();

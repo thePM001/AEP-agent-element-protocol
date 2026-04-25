@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ModelGatewayPolicySchema } from "../model-gateway/types.js";
 
 export const CapabilitySchema = z.object({
   tool: z.string(),
@@ -186,6 +187,15 @@ export const TrackingConfigSchema = z.object({
   currency: z.string().optional().default("USD"),
 }).optional();
 
+export const KnowledgeConfigSchema = z.object({
+  enabled: z.boolean().optional().default(false),
+  bases: z.array(z.string()).optional().default([]),
+  chunk_size: z.number().positive().optional().default(500),
+  max_retrieval_chunks: z.number().positive().optional().default(10),
+  anti_context_rot: z.boolean().optional().default(true),
+  double_scan: z.boolean().optional().default(true),
+}).optional();
+
 export const PolicySchema = z.object({
   version: z.string(),
   name: z.string(),
@@ -211,6 +221,8 @@ export const PolicySchema = z.object({
   workflow: WorkflowConfigSchema,
   telemetry: TelemetryConfigSchema,
   tracking: TrackingConfigSchema,
+  knowledge: KnowledgeConfigSchema,
+  model_gateway: ModelGatewayPolicySchema,
 });
 
 export type Capability = z.infer<typeof CapabilitySchema>;
@@ -236,6 +248,8 @@ export type ScannersPolicyConfig = z.infer<typeof ScannersConfigSchema>;
 export type WorkflowPolicyConfig = z.infer<typeof WorkflowConfigSchema>;
 export type TelemetryPolicyConfig = z.infer<typeof TelemetryConfigSchema>;
 export type TrackingPolicyConfig = z.infer<typeof TrackingConfigSchema>;
+export type KnowledgePolicyConfig = z.infer<typeof KnowledgeConfigSchema>;
+export type ModelGatewayPolicyConfig = z.infer<typeof ModelGatewayPolicySchema>;
 
 export interface AgentAction {
   tool: string;

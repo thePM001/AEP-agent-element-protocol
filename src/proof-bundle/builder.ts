@@ -49,7 +49,7 @@ export class ProofBundleBuilder {
 
     const bundle: ProofBundle = {
       bundleId: randomUUID(),
-      version: "2.2",
+      version: "2.5",
       createdAt: new Date().toISOString(),
       agent: context.agent,
       covenant: context.covenant,

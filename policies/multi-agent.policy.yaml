@@ -1,4 +1,4 @@
-version: "2.2"
+version: "2.5"
 name: "multi-agent"
 
 capabilities:
@@ -107,3 +107,6 @@ identity:
 system:
   max_actions_per_minute: 200
   max_concurrent_sessions: 10
+
+knowledge:
+  enabled: false

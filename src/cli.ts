@@ -19,15 +19,25 @@ import { DatasetManager } from "./datasets/manager.js";
 import { PromptOptimizer } from "./optimization/optimizer.js";
 import { PromptVersionManager } from "./optimization/versioning.js";
 import type { EvalDataset } from "./eval/types.js";
+import { GovernedModelGateway } from "./model-gateway/gateway.js";
+import { ModelConfigSchema, ModelRequestSchema } from "./model-gateway/types.js";
+import type { ModelProvider } from "./model-gateway/types.js";
+import { KnowledgeBaseManager } from "./knowledge/manager.js";
+import { createDefaultPipeline } from "./scanners/pipeline.js";
 
 const args = process.argv.slice(2);
 const command = args[0];
 
 function usage(): void {
-  console.log(`AEP -- Agent Element Protocol v2.2
+  console.log(`AEP -- Agent Element Protocol v2.5
 
 Usage:
   aep assist [command]          Interactive governance assistant (/aepassist)
+  aep call <prompt>             Call a model through governed gateway
+      --model <model>           Model to use (e.g. claude-sonnet-4-5-20250929)
+      --provider <provider>     Provider (anthropic|openai|ollama|custom)
+      --policy <file>           Policy file
+      --file <file>             Read prompt from file instead
   aep init <agent>              Set up AEP governance for an agent
   aep proxy --policy <file>     Start MCP proxy server
   aep exec <policy> <command>   Execute command through shell proxy
@@ -60,6 +70,13 @@ Usage:
   aep prompt list <name>          List prompt versions
   aep prompt diff <n> <a> <b>     Diff two prompt versions
   aep prompt inject <file> --policy <p>  Inject governance context
+  aep kb create <name>            Create a knowledge base
+  aep kb ingest <name> <file>     Ingest file into knowledge base
+  aep kb query <name> <query>     Query a knowledge base
+  aep kb list                     List all knowledge bases
+  aep kb stats <name>             Show knowledge base statistics
+  aep scan <text>                 Run scanner pipeline on text
+  aep scan --file <file>          Scan file contents
   aep sync                      Sync offline ledger entries
   aep owasp                     Print OWASP Agentic Top 10 mapping
 
@@ -81,7 +98,7 @@ Options:
 }
 
 function version(): void {
-  console.log("aep 2.2.0");
+  console.log("aep 2.5.0");
 }
 
 async function main(): Promise<void> {
@@ -99,6 +116,9 @@ async function main(): Promise<void> {
     case "assist":
     case "/aepassist":
       handleAssist(args.slice(1));
+      break;
+    case "call":
+      await handleCall(args);
       break;
     case "init":
       handleInit(args[1]);
@@ -160,6 +180,12 @@ async function main(): Promise<void> {
     case "prompt":
       handlePrompt(args);
       break;
+    case "kb":
+      handleKb(args);
+      break;
+    case "scan":
+      handleScan(args);
+      break;
     default:
       console.error(`Unknown command: ${command}`);
       usage();
@@ -180,6 +206,73 @@ function handleAssist(assistArgs: string[]): void {
   }
   if (response.actions && response.actions.length > 0) {
     console.log(`\nAvailable: ${response.actions.join(", ")}`);
+  }
+}
+
+async function handleCall(args: string[]): Promise<void> {
+  const providerIdx = args.indexOf("--provider");
+  const modelIdx = args.indexOf("--model");
+  const policyIdx = args.indexOf("--policy");
+  const fileIdx = args.indexOf("--file");
+
+  const provider = (providerIdx !== -1 ? args[providerIdx + 1] : "anthropic") as ModelProvider;
+  const model = modelIdx !== -1 ? args[modelIdx + 1] : undefined;
+
+  if (!model) {
+    console.error("Usage: aep call <prompt> --model <model> --provider <provider> [--policy <file>] [--file <file>]");
+    process.exit(1);
+  }
+
+  // Build prompt from args or file
+  let prompt: string;
+  if (fileIdx !== -1 && args[fileIdx + 1]) {
+    prompt = readFileSync(resolve(args[fileIdx + 1]), "utf-8");
+  } else {
+    // Collect non-flag arguments as the prompt
+    const flagPositions = new Set([providerIdx, providerIdx + 1, modelIdx, modelIdx + 1, policyIdx, policyIdx + 1, fileIdx, fileIdx + 1, 0]);
+    const promptParts = args.filter((_, i) => !flagPositions.has(i));
+    prompt = promptParts.join(" ").trim();
+  }
+
+  if (!prompt) {
+    console.error("No prompt provided. Pass prompt text or use --file <file>.");
+    process.exit(1);
+  }
+
+  // Load policy if provided
+  const policyPath = policyIdx !== -1 ? args[policyIdx + 1] : undefined;
+  let policy;
+  if (policyPath) {
+    policy = loadPolicy(resolve(policyPath));
+  } else {
+    // Minimal inline policy
+    policy = loadPolicy(resolve("./agent.policy.yaml"));
+  }
+
+  const config = ModelConfigSchema.parse({
+    provider,
+    model,
+  });
+
+  const sessionId = `call-${Date.now()}`;
+  const gateway = new GovernedModelGateway(
+    { sessionId, config },
+    { policy },
+  );
+
+  try {
+    const response = await gateway.call(
+      ModelRequestSchema.parse({ messages: [{ role: "user", content: prompt }] }),
+    );
+
+    console.log(response.content);
+
+    if (response.cost.totalCost > 0) {
+      console.error(`\n[Cost: ${response.cost.currency} ${response.cost.totalCost.toFixed(6)} | Tokens: ${response.usage.totalTokens} | ${response.latencyMs}ms]`);
+    }
+  } catch (err) {
+    console.error(`Call failed: ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(1);
   }
 }
 
@@ -782,7 +875,7 @@ function handleReliability(ledgerPath: string | undefined): void {
 }
 
 function handleOwasp(): void {
-  console.log(`OWASP Agentic AI Top 10 -- AEP 2.2 Mapping
+  console.log(`OWASP Agentic AI Top 10 -- AEP 2.5 Mapping
 
   01 Agent Hijacking
      Mitigation: Policy evaluation chain, forbidden patterns, session isolation
@@ -1075,8 +1168,101 @@ function handlePrompt(args: string[]): void {
   }
 }
 
+function handleKb(kbArgs: string[]): void {
+  const sub = kbArgs[1];
+  const pipeline = createDefaultPipeline();
+  const manager = new KnowledgeBaseManager({ pipeline });
+
+  switch (sub) {
+    case "create": {
+      const name = kbArgs[2];
+      if (!name) { console.error("Usage: aep kb create <name>"); process.exit(1); }
+      manager.create(name);
+      console.log(`Created knowledge base "${name}".`);
+      break;
+    }
+    case "ingest": {
+      const name = kbArgs[2];
+      const file = kbArgs[3];
+      if (!name || !file) { console.error("Usage: aep kb ingest <name> <file>"); process.exit(1); }
+      const report = manager.ingestFile(name, resolve(file));
+      console.log(`Ingested: ${report.validated} validated, ${report.rejected} rejected, ${report.flagged} flagged (${report.total} total chunks).`);
+      break;
+    }
+    case "query": {
+      const name = kbArgs[2];
+      const query = kbArgs.slice(3).join(" ");
+      if (!name || !query) { console.error("Usage: aep kb query <name> <query>"); process.exit(1); }
+      const results = manager.query(name, query);
+      if (results.length === 0) {
+        console.log("No matching chunks.");
+      } else {
+        for (const c of results) {
+          const status = c.validated ? "validated" : "flagged";
+          console.log(`--- ${c.id} [${status}] source: ${c.source} ---`);
+          console.log(c.content.slice(0, 200));
+          console.log();
+        }
+      }
+      break;
+    }
+    case "list": {
+      const bases = manager.list();
+      if (bases.length === 0) { console.log("No knowledge bases found."); }
+      else {
+        for (const b of bases) {
+          console.log(`  ${b.name}  total: ${b.total}  validated: ${b.validated}  flagged: ${b.flagged}`);
+        }
+      }
+      break;
+    }
+    case "stats": {
+      const name = kbArgs[2];
+      if (!name) { console.error("Usage: aep kb stats <name>"); process.exit(1); }
+      const s = manager.stats(name);
+      console.log(`Knowledge base: ${name}`);
+      console.log(`  Total:     ${s.total}`);
+      console.log(`  Validated: ${s.validated}`);
+      console.log(`  Flagged:   ${s.flagged}`);
+      console.log(`  Rejected:  ${s.rejected}`);
+      break;
+    }
+    default:
+      console.error("Usage: aep kb <create|ingest|query|list|stats>");
+      process.exit(1);
+  }
+}
+
+function handleScan(args: string[]): void {
+  const fileIdx = args.indexOf("--file");
+  let content: string;
+
+  if (fileIdx !== -1 && args[fileIdx + 1]) {
+    content = readFileSync(resolve(args[fileIdx + 1]), "utf-8");
+  } else {
+    content = args.slice(1).join(" ");
+  }
+
+  if (!content.trim()) {
+    console.error("Usage: aep scan <text> or aep scan --file <file>");
+    process.exit(1);
+  }
+
+  const pipeline = createDefaultPipeline();
+  const result = pipeline.scan(content);
+
+  if (result.passed) {
+    console.log("PASS: No findings.");
+  } else {
+    console.log(`FINDINGS (${result.findings.length}):`);
+    for (const f of result.findings) {
+      console.log(`  [${f.severity}] ${f.scanner}: ${f.category} at pos ${f.position}`);
+    }
+  }
+}
+
 function generateDefaultPolicy(): string {
-  return `version: "2.2"
+  return `version: "2.5"
 name: "default-agent-policy"
 
 capabilities:

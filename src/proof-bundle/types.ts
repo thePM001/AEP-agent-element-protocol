@@ -37,7 +37,7 @@ export const DEFAULT_RELIABILITY_WEIGHTS: ReliabilityWeights = {
 
 export interface ProofBundle {
   bundleId: string;
-  version: "2.2";
+  version: "2.5";
   createdAt: string;
   agent: AgentIdentity;
   covenant: CovenantSpec | null;

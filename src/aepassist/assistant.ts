@@ -8,6 +8,7 @@ import { loadPolicy } from "../policy/loader.js";
 import { generatePolicyYaml, getPreset } from "../assist/presets.js";
 import { AgentIdentityManager } from "../identity/manager.js";
 import { generateKeyPairSync } from "node:crypto";
+import type { CovenantAction, IdentityAction } from "./types.js";
 import { parseAEPassistInput } from "./parser.js";
 import type {
   AEPassistResponse,

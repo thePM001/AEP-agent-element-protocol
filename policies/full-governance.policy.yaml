@@ -1,5 +1,5 @@
 version: "2.5"
-name: "coding-agent"
+name: "full-governance"
 
 capabilities:
   - tool: "file:read"
@@ -13,30 +13,27 @@ capabilities:
       paths: ["**"]
   - tool: "command:run"
     scope:
-      binaries: ["npm", "node", "tsc", "cargo", "mix", "git", "npx"]
+      binaries: ["npm", "node", "tsc", "git", "npx"]
   - tool: "git:status"
   - tool: "git:diff"
   - tool: "git:add"
   - tool: "git:commit"
   - tool: "aep:create_element"
     scope:
-      element_prefixes: ["CP", "PN", "WD"]
-      z_bands: ["20-29", "10-19", "50-59"]
+      element_prefixes: ["CP", "PN", "WD", "IC", "FM"]
+      z_bands: ["10-19", "20-29", "50-59"]
   - tool: "aep:update_element"
     scope:
-      element_prefixes: ["CP", "PN", "WD"]
+      element_prefixes: ["CP", "PN", "WD", "IC", "FM"]
       exclude_ids: ["SH-00001"]
-  - tool: "aep:update_skin"
-    scope:
-      bindings: ["*"]
-  - tool: "aep:update_registry"
-    scope:
-      categories: ["action", "data-input", "layout"]
+  - tool: "knowledge:ingest"
+  - tool: "knowledge:query"
 
 limits:
   max_runtime_ms: 1800000
   max_files_changed: 50
   max_aep_mutations: 100
+  max_cost_usd: 5.00
 
 gates:
   - action: "file:delete"
@@ -44,7 +41,7 @@ gates:
     risk_level: high
   - action: "aep:delete_element"
     approval: human
-    risk_level: high
+    risk_level: critical
   - action: "git:push"
     approval: human
     risk_level: medium
@@ -59,24 +56,29 @@ forbidden:
   - pattern: "chmod 777"
     reason: "Overly permissive file permissions"
   - pattern: "password|api_key|secret_key"
-    reason: "Potential credential exposure in tool input"
+    reason: "Potential credential exposure"
 
 session:
-  max_actions: 100
-  max_denials: 20
+  max_actions: 200
+  max_denials: 25
   rate_limit:
-    max_per_minute: 30
+    max_per_minute: 40
   escalation:
-    - after_actions: 50
+    - after_actions: 100
       require: human_checkin
-    - after_denials: 10
+    - after_denials: 12
       require: pause
     - after_minutes: 25
       require: human_checkin
+  auto_bundle: true
 
 evidence:
   enabled: true
   dir: "./ledgers"
+
+remediation:
+  max_retries: 3
+  cooldown_ms: 1000
 
 trust:
   initial_score: 500
@@ -107,12 +109,40 @@ intent:
   warmup_actions: 10
   on_drift: "warn"
 
+identity:
+  require_agent_identity: false
+
 system:
   max_actions_per_minute: 200
   max_concurrent_sessions: 20
 
+scanners:
+  enabled: true
+  pii:
+    enabled: true
+    severity: "soft"
+  injection:
+    enabled: true
+    severity: "hard"
+  secrets:
+    enabled: true
+    severity: "hard"
+  jailbreak:
+    enabled: true
+    severity: "soft"
+  toxicity:
+    enabled: true
+    severity: "soft"
+  urls:
+    enabled: true
+    severity: "soft"
+
+recovery:
+  enabled: true
+  max_attempts: 2
+
 workflow:
-  enabled: false
+  enabled: true
   templates:
     dev-pipeline: [plan, implement, review, approve]
     audit-pipeline: [scan, evaluate, report]
@@ -122,8 +152,13 @@ telemetry:
   service_name: "aep-agent"
 
 tracking:
-  tokens: false
+  tokens: true
   currency: "USD"
 
 knowledge:
-  enabled: false
+  enabled: true
+  bases: []
+  chunk_size: 500
+  max_retrieval_chunks: 10
+  anti_context_rot: true
+  double_scan: true
