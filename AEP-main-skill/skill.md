@@ -1,6 +1,6 @@
 ---
 name: aep
-description: Use this skill whenever working with AEP (Agent Element Protocol) or dynAEP. Triggers include 'AEP', 'dynAEP', 'scene graph', 'aep-scene.json', 'aep-registry.yaml', 'aep-theme.yaml', 'zero-trust UI', 'topological matrix', 'z-band', 'skin binding', 'AEP-FCR', 'lattice memory', 'memory fabric', 'attractor', 'rejection history', 'resolver', 'proposal routing', 'fast-path', 'aep v2', 'aep 2.2', 'AgentGateway', 'policy engine', 'evidence ledger', 'rollback', 'session governance', 'MCP proxy', 'trust scoring', 'execution ring', 'covenant', 'agent identity', 'cross-agent verification', 'intent drift', 'kill switch', 'merkle proof', 'quantum signature', 'streaming validation', 'OWASP agentic' or building validated UI for AI agents. Also use when implementing AEP three-layer architecture, writing AEP validators, creating MCP servers that validate agent UI output, working with AG-UI under AEP governance, querying validation memory or routing proposals through the resolver. If AEP MCP tools are available (list_aep_schemas, create_ui_element, get_scene_graph), always consult this skill first. Do NOT guess IDs, skin bindings, z-bands or element types.
+description: Use this skill whenever working with AEP (Agent Element Protocol) or dynAEP. Triggers include 'AEP', 'dynAEP', 'scene graph', 'aep-scene.json', 'aep-registry.yaml', 'aep-theme.yaml', 'zero-trust UI', 'topological matrix', 'z-band', 'skin binding', 'AEP-FCR', 'lattice memory', 'memory fabric', 'attractor', 'rejection history', 'resolver', 'proposal routing', 'fast-path', 'aep v2', 'aep 2.5', 'AgentGateway', 'policy engine', 'evidence ledger', 'rollback', 'session governance', 'MCP proxy', 'trust scoring', 'execution ring', 'covenant', 'agent identity', 'cross-agent verification', 'intent drift', 'kill switch', 'merkle proof', 'quantum signature', 'streaming validation', 'OWASP agentic' or building validated UI for AI agents. Also use when implementing AEP three-layer architecture, writing AEP validators, creating MCP servers that validate agent UI output, working with AG-UI under AEP governance, querying validation memory or routing proposals through the resolver. If AEP MCP tools are available (list_aep_schemas, create_ui_element, get_scene_graph), always consult this skill first. Do NOT guess IDs, skin bindings, z-bands or element types.
 ---
 
 # Agent Element Protocol (AEP) 2.2
@@ -9,7 +9,7 @@ AEP is a **3-layer frontend governance architecture** that gives every UI elemen
 
 AI agents propose UI structures. AEP validates every proposal against a strict registry. Only valid elements render. Invalid proposals are rejected with actionable errors. The agent self-corrects. Zero hallucinations reach the UI.
 
-**AEP 2.2** adds trust scoring, execution rings, behavioural covenants, agent identity, cross-agent verification, Merkle proofs, post-quantum signatures, RFC 3161 timestamps, kill switch, intent drift detection, streaming validation with early abort and OWASP Agentic AI Top 10 coverage.
+**AEP 2.5** adds trust scoring, execution rings, behavioural covenants, agent identity, cross-agent verification, Merkle proofs, post-quantum signatures, RFC 3161 timestamps, kill switch, intent drift detection, streaming validation with early abort and OWASP Agentic AI Top 10 coverage.
 
 ## The Three Layers
 
@@ -19,7 +19,7 @@ LAYER 2: BEHAVIOUR  (aep-registry.yaml) - What each element does and cannot do
 LAYER 3: SKIN       (aep-theme.yaml)    - What each element looks like
 ```
 
-## AEP 2.2 Capabilities
+## AEP 2.5 Capabilities
 
 ### Trust Scoring
 Continuous trust score (0-1000) with five tiers: untrusted (0-199), provisional (200-399), standard (400-599), trusted (600-799), privileged (800-1000). Time-based decay. Configurable penalties per violation type and rewards per successful action.
@@ -51,7 +51,8 @@ Ed25519/RSA identity per agent. `verifyCounterparty()` handshake with ProofBundl
 ### Evidence Integrity
 Merkle Tree per-entry verification. ML-DSA-65 post-quantum signatures. RFC 3161 timestamp authority tokens. Offline signing for air-gapped environments.
 
-### 12-Step Policy Evaluation Chain
+### 15-Step Policy Evaluation Chain
+0. Task scope check
 1. Session state check
 2. Ring capability check
 3. System-wide rate limit
@@ -64,12 +65,23 @@ Merkle Tree per-entry verification. ML-DSA-65 post-quantum signatures. RFC 3161 
 10. Budget/limit check
 11. Gate check (human or webhook)
 12. Cross-agent verification
+13. Knowledge retrieval validation
+14. Content scanner pipeline
+
+### Lattice-Governed Knowledge Base (Capability 10)
+Scanner-validated ingestion (hard reject, soft flag, clean validate), covenant-scoped retrieval, TF-IDF relevance scoring, anti-context-rot ordering (most relevant at positions 1 and N), double scanning of flagged chunks on retrieval. JSONL storage at `.aep/knowledge/<name>/chunks.jsonl`.
+
+### Content Scanner Pipeline
+Six scanners: PII, injection, secrets, jailbreak, toxicity, URLs. Configurable hard or soft severity per scanner. Hard findings reject. Soft findings trigger recovery engine for automatic retry.
+
+### Governed Model Gateway (Capability 11)
+Multi-provider LLM routing (Anthropic, OpenAI, Ollama, custom) with per-request governance. Streaming support with governed chunks. Budget tracking per request.
 
 ### Streaming Validation with Early Abort
 `AEPStreamValidator` intercepts agent output chunk by chunk as it streams. Five checks (covenant forbids, protected elements, z-band violations, structural violations, policy forbidden patterns). On first violation the stream is aborted and a `stream:abort` entry logged. `StreamMiddleware` wraps any `ReadableStream<string>`. Model-agnostic.
 
 ### OWASP Agentic AI Top 10
-Every OWASP risk mapped to specific AEP 2.2 defence mechanisms. See `docs/OWASP-MAPPING.md`.
+Every OWASP risk mapped to specific AEP 2.5 defence mechanisms. See `docs/OWASP-MAPPING.md`.
 
 ## Built-in Policies
 
@@ -81,6 +93,8 @@ Every OWASP risk mapped to specific AEP 2.2 defence mechanisms. See `docs/OWASP-
 | strict-production | 3 | 200 | Production environment with identity requirements |
 | multi-agent | 2 | 400 | Multi-agent orchestration with identity and verification |
 | covenant-only | 2 | 500 | Minimal policy relying on covenant enforcement |
+| full-governance | 1 | 600 | All capabilities enabled with knowledge base and scanners |
+| content-safety | 2 | 500 | All scanners at hard severity with knowledge base |
 
 ## CLI Commands
 
@@ -99,7 +113,7 @@ aep identity verify   # Verify an agent identity
 aep covenant parse    # Parse covenant DSL
 aep covenant verify   # Verify action against covenant
 aep owasp             # Display OWASP mapping
-aep describe          # Full 2.2 capability summary
+aep describe          # Full 2.5 capability summary
 aep eval <ds> --policy <p>  # Run eval dataset against policy
 aep dataset create <name>   # Create eval dataset
 aep dataset add <n> <input> # Add entry to dataset
@@ -111,6 +125,14 @@ aep prompt load <name>      # Load latest prompt version
 aep prompt list <name>      # List prompt versions
 aep prompt diff <n> <a> <b> # Diff two prompt versions
 aep prompt inject <f> --policy <p>  # Inject governance context
+aep kb create <name>        # Create a knowledge base
+aep kb ingest <name> <file> # Ingest a file into a knowledge base
+aep kb query <name> <query> # Query a knowledge base
+aep kb list                 # List all knowledge bases
+aep kb stats <name>         # Show knowledge base statistics
+aep scan <text>             # Run content scanner pipeline on text
+aep scan --file <file>      # Run content scanner pipeline on a file
+aep call <prompt>           # Send a prompt through the governed model gateway
 ```
 
 ## Eval-to-Guardrail Lifecycle

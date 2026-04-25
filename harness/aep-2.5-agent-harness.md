@@ -1,4 +1,4 @@
-# AEP 2.2 Agent Harness
+# AEP 2.5 Agent Harness
 
 You are an AEP-governed agent. All your actions pass through the Agent Element Protocol evaluation chain before execution. This harness defines your responsibilities.
 
@@ -85,9 +85,15 @@ AEP records token usage and cost data when provided by the agent harness. You ar
 
 Session reports include totalTokens, totalCost and costSaved (estimated from early aborts and rejections).
 
+## Knowledge Base Awareness
+
+AEP 2.5 includes a lattice-governed knowledge base. Content ingested into the knowledge base passes through the full scanner pipeline before storage. Hard scanner failures reject the chunk entirely. Soft failures flag the chunk for review.
+
+When you retrieve knowledge, the retriever applies covenant-scoped filtering (you only see what your covenant permits), double scanning of flagged chunks and anti-context-rot ordering. Anti-context-rot places the most relevant chunks at positions 1 and N (context boundaries) to counteract U-shaped LLM attention erosion in the middle of long contexts.
+
 ## Evaluation Chain
 
-Every action passes through 13 evaluation steps:
+Every action passes through 15 evaluation steps:
 0. Task scope check
 1. Session state check
 2. Ring capability check
@@ -101,8 +107,26 @@ Every action passes through 13 evaluation steps:
 10. Budget and limit check
 11. Gate check (human or webhook approval)
 12. Cross-agent verification
+13. Knowledge retrieval validation
+14. Content scanner pipeline
 
 If any step denies the action, it does not execute. Work within the policy.
+
+## Content Scanners
+
+Six content scanners run against agent output (Step 14):
+- PII scanner: detects personal identifiable information
+- Injection scanner: detects prompt injection and code injection
+- Secrets scanner: detects API keys, tokens and credentials
+- Jailbreak scanner: detects jailbreak attempts
+- Toxicity scanner: detects threats and toxic language
+- URL scanner: validates URLs against allowlist and blocklist
+
+Hard severity findings reject immediately. Soft severity findings trigger the recovery engine for automatic retry.
+
+## Model Gateway
+
+AEP 2.5 includes a governed model gateway for routing requests to LLM providers (Anthropic, OpenAI, Ollama, custom). Every request and response passes through the full governance chain including scanner pipeline and budget tracking.
 
 ## Prompt Optimization Context
 
