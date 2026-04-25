@@ -2,6 +2,39 @@
 
 All notable changes to the Agent Element Protocol (AEP) will be documented in this file.
 
+## [2.5.0] - 2026-04-25
+
+### Added (Capabilities 10-11)
+- **Lattice-Governed Knowledge Base** (Capability 10) -- scanner-validated ingestion, covenant-scoped retrieval, anti-context-rot ordering and JSONL storage. `KnowledgeIngestor` splits content into chunks and runs each through the scanner pipeline: hard failures reject, soft failures flag, clean chunks validate. `GovernedRetriever` applies TF-IDF scoring, covenant scope filtering, double scanning and anti-context-rot ordering (most relevant chunks at positions 1 and N to counteract U-shaped LLM attention erosion). `KnowledgeBaseManager` provides create, ingestFile, ingestText, query, stats and list operations with `.aep/knowledge/<name>/chunks.jsonl` persistence. Four new ledger entry types: `knowledge:ingest`, `knowledge:reject`, `knowledge:flag`, `knowledge:retrieve`. Policy gains `knowledge` config section with `enabled`, `bases`, `chunk_size`, `max_retrieval_chunks`, `anti_context_rot` and `double_scan` fields.
+- **Governed Model Gateway** (Capability 11) -- multi-provider LLM gateway with per-request governance. `GovernedModelGateway` routes requests through the full evaluation chain including scanner pipeline and budget tracking. Four provider adapters: `AnthropicAdapter`, `OpenAIAdapter`, `OllamaAdapter`, `CustomAdapter`. `ProviderRegistry` manages adapter registration and selection. Streaming support with governed chunks. Policy gains `model_gateway` config section. CLI: `aep call <prompt> --model <model> --provider <provider> --policy <file>`.
+- **Content Scanner Pipeline** -- six scanners (PII, injection, secrets, jailbreak, toxicity, URLs) orchestrated by `ScannerPipeline`. Each scanner configurable with hard or soft severity. Hard findings reject immediately. Soft findings trigger the recovery engine for automatic retry. Policy gains `scanners` config section.
+- **Recovery Engine** -- automatic retry for soft violations with configurable max attempts and cooldown. Violations from covenant evaluation or scanner pipeline are retried through a callback before final rejection.
+- **Workflow Phases** -- sequential workflow execution with typed verdicts (advance, rework, skip, fail). `WorkflowExecutor` enforces phase ordering and rework limits. Policy gains `workflow` config section with template definitions.
+- **OpenTelemetry Exporter** -- `AEPTelemetryExporter` converts session events to OTEL spans for observability integration. Policy gains `telemetry` config section.
+- **Token and Cost Tracking** -- per-session token counting and cost recording with `ActionResult.tokens` and `ActionResult.cost` fields. Session reports include totalTokens, totalCost and costSaved.
+- **Two new built-in policies** -- `full-governance` (all capabilities enabled, knowledge base, scanners, workflows, telemetry, tracking) and `content-safety` (all scanners at hard severity, knowledge base enabled, strict forbidden patterns).
+- **New CLI commands** -- `kb create|ingest|query|list|stats`, `scan <text>|--file <file>`, `call <prompt>`.
+- **627 tests** covering all capabilities with zero regressions.
+
+### Changed
+- Policy schema version bumped to `"2.5"` in all eight policy files.
+- Evaluation chain extended from 13 to 15 steps: Step 13 (knowledge retrieval validation) and Step 14 (content scanner pipeline).
+- `PolicySchema` extended with `scanners`, `recovery`, `workflow`, `telemetry`, `tracking`, `knowledge` and `model_gateway` config sections.
+- `LedgerEntryType` extended with `knowledge:ingest`, `knowledge:reject`, `knowledge:flag`, `knowledge:retrieve`, `scanner:finding`, `recovery:attempt` and `recovery:success` entry types.
+- `ProofBundle.version` updated from `"2.2"` to `"2.5"`.
+- Agent harness renamed from `aep-2.2-agent-harness` to `aep-2.5-agent-harness` and updated with 15-step chain, knowledge base awareness, content scanner and model gateway sections.
+- CLI version updated to 2.5.0.
+- Package version bumped to 2.5.0.
+
+### Unchanged
+- Three-layer architecture (Structure, Behaviour, Skin).
+- Z-band hierarchy and prefix convention.
+- AOT and JIT validation logic.
+- All existing Rego policies.
+- Lattice Memory and Basic Resolver.
+- All existing SDK files.
+- Licence (Apache 2.0).
+
 ## [2.2.0] - 2026-04-24
 
 ### Added (Capabilities 15-16)

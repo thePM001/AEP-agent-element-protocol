@@ -1,18 +1,18 @@
 # AEP - Agent Element Protocol (Deterministic Adjudication Lattices)
 # Free Basic Open-Source Version Implementation Reference
-### Version 2.2 - 25 April 2026
+### Version 2.5 - 25 April 2026
 ### Author: thePM_001 (https://x.com/thePM_001)
 ### License: Apache-2.0
 ### Research Paper: https://github.com/the-PM001/AEP-research-paper-001
 ### Demo: https://aep.newlisbon.agency
 ### How to install AEP ?
 copy the URL of the GitHub repo into your reasoning LLM + tell it: "analyze the repo and prepare implementation plan for AEP integration into our project".
-### AEP 2.2 Agent Harness so your AI actually uses AEP: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/aep-2.2-agent-harness
+### AEP 2.5 Agent Harness so your AI actually uses AEP: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.5-agent-harness
 ---
 
 ### 55 Features. One Protocol.
 
-![AEP 2.2 - 55 Features](docs/images/feature-grid.png)
+![AEP 2.5 - 55 Features](docs/images/feature-grid.png)
 
 ## [Explore the full interactive grid at aep.newlisbon.agency](https://aep.newlisbon.agency)
 
@@ -1028,6 +1028,10 @@ To use: define your concrete `ElementIDs`, `Prefixes` and `ZBands` in a model co
 [ ] (v2.2) Optional: enable streaming validation in policy (streaming.enabled: true)
 [ ] (v2.2) Optional: enable auto proof bundle on session terminate (session.bundle_on_terminate: true)
 [ ] (v2.2) Optional: enable governed task decomposition with scope inheritance (decomposition.enabled: true)
+[ ] (v2.5) Optional: enable content scanners in policy (scanners.enabled: true)
+[ ] (v2.5) Optional: create and ingest knowledge bases (knowledge.enabled: true)
+[ ] (v2.5) Optional: configure governed model gateway (model_gateway section)
+[ ] (v2.5) Optional: enable recovery engine for soft violations (recovery.enabled: true)
 ```
 
 ---
@@ -1129,7 +1133,7 @@ The **Policy Engine** evaluates every agent action against a YAML policy file be
 AEP-specific policy capabilities allow fine-grained control over scene graph mutations:
 
 ```yaml
-version: "2.2"
+version: "2.5"
 name: "my-agent-policy"
 
 capabilities:
@@ -1159,7 +1163,7 @@ session:
       require: human_checkin
 ```
 
-Four built-in policies ship in `policies/`: `coding-agent`, `aep-builder`, `readonly-auditor` and `strict-production`. Validate any policy with `npx aep validate ./my-policy.yaml`.
+Eight built-in policies ship in `policies/`: `coding-agent`, `aep-builder`, `readonly-auditor`, `strict-production`, `multi-agent`, `covenant-only`, `full-governance` and `content-safety`. Validate any policy with `npx aep validate ./my-policy.yaml`.
 
 ---
 
@@ -1271,7 +1275,7 @@ Model-agnostic. Works with any `ReadableStream<string>`. No logit access needed.
 
 ## 25. MCP Proxy and CLI
 
-AEP 2.2 can run as an **MCP proxy** between an AI agent and backend MCP servers. Every tool call is intercepted, policy-evaluated and (for AEP-related tools) structurally validated before forwarding.
+AEP 2.5 can run as an **MCP proxy** between an AI agent and backend MCP servers. Every tool call is intercepted, policy-evaluated and (for AEP-related tools) structurally validated before forwarding.
 
 **Quick start for Claude Code:**
 
@@ -1463,7 +1467,7 @@ aep tasks <session-id> --tree  # Show as indented tree
 
 AEP v2.2 is backwards-compatible with v2.1. All existing v2.1 config files, policies, sessions, ledgers and SDK modules continue to work without modification.
 
-Proof Bundles, Governed Task Decomposition, Trust Scoring, Execution Rings, Behavioral Covenants, Intent Drift Detection and Streaming Validation are all optional features that add capabilities without requiring changes to existing integrations.
+Proof Bundles, Governed Task Decomposition, Trust Scoring, Execution Rings, Behavioural Covenants, Intent Drift Detection and Streaming Validation are all optional features that add capabilities without requiring changes to existing integrations.
 
 To adopt v2.2 features:
 
@@ -1474,6 +1478,25 @@ To adopt v2.2 features:
 5. For Trust/Rings/Covenants: configure the `trust`, `ring` and `covenant` sections in your policy.
 
 No existing v2.1 code paths were modified. The gateway evaluation chain extends from 12 to 13 steps (Step 0: task scope check, only active when decomposition is enabled).
+
+---
+
+## 30. Migration from v2.2 to v2.5
+
+AEP v2.5 is backwards-compatible with v2.2. All existing v2.2 config files, policies, sessions, ledgers and SDK modules continue to work without modification.
+
+Lattice-Governed Knowledge Base, Content Scanner Pipeline, Governed Model Gateway, Recovery Engine, Workflow Phases, Token/Cost Tracking and OpenTelemetry export are all optional features that add capabilities without requiring changes to existing integrations.
+
+To adopt v2.5 features:
+
+1. Update `version` to `"2.5"` in policy files.
+2. For Knowledge Base: add `knowledge.enabled: true` to policy, then use `KnowledgeBaseManager` to create, ingest and query knowledge bases.
+3. For Content Scanners: add `scanners.enabled: true` to policy and configure per-scanner severity (hard or soft).
+4. For Model Gateway: add `model_gateway` config to policy and use `GovernedModelGateway` to route LLM requests through governance.
+5. For Recovery Engine: add `recovery.enabled: true` to policy for automatic retry on soft violations.
+6. For Workflow Phases: add `workflow` config to policy with phase definitions.
+
+No existing v2.2 code paths were modified. The gateway evaluation chain extends from 13 to 15 steps: Step 13 (knowledge retrieval validation) and Step 14 (content scanner pipeline).
 
 ---
 
