@@ -1,4 +1,4 @@
-version: "2.1"
+version: "2.2"
 name: "strict-production"
 
 capabilities:
@@ -73,3 +73,39 @@ session:
 evidence:
   enabled: true
   dir: "./ledgers"
+
+trust:
+  initial_score: 200
+  decay_rate: 15
+  penalties:
+    policy_violation: 100
+    structural_violation: 80
+    rate_limit: 50
+    forbidden_match: 200
+    intent_drift: 150
+  rewards:
+    successful_action: 2
+    successful_rollback: 5
+
+ring:
+  default: 3
+  promotion:
+    to_ring_1:
+      min_trust_tier: "trusted"
+      require_approval: true
+    to_ring_0:
+      min_trust_tier: "privileged"
+      require_approval: true
+
+intent:
+  tracking: true
+  drift_threshold: 0.3
+  warmup_actions: 3
+  on_drift: "kill"
+
+identity:
+  require_agent_identity: true
+
+system:
+  max_actions_per_minute: 60
+  max_concurrent_sessions: 5

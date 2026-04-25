@@ -2,6 +2,56 @@
 
 All notable changes to the Agent Element Protocol (AEP) will be documented in this file.
 
+## [2.2.0] - 2026-04-24
+
+### Added (Capabilities 15-16)
+- **Proof Bundles** -- portable, signed verification artifacts that package an entire session into a single `.aep-proof.json` file. Contains bundle ID, agent identity, covenant spec, session report, Merkle root, ledger hash, trust score, execution ring, drift score and Ed25519 signature. `ProofBundleBuilder` builds and serializes bundles; `ProofBundleVerifier` verifies signature, identity, covenant, expiry, and optionally full ledger hash and Merkle root matching. New `bundle:created` ledger entry type. Policy gains `session.auto_bundle` and `session.bundle_on_terminate`. CLI: `aep bundle <session-id>`, `aep bundle verify <file> [--ledger <file>]`.
+- **Governed Task Decomposition** -- subtask trees as first-class governed structures. `TaskDecompositionManager` creates root tasks, decomposes into children with scope intersection (child can NEVER widen parent scope), validates actions against task scope, enforces action budgets, max depth and max children. Completion gates with six criterion types (`all_children_complete`, `tests_pass`, `no_violations`, `trust_above`, `drift_below`, `custom`). Subtree cancellation. Gateway gains Step 0 (task scope check) before the existing 12-step chain, making it 13 steps total. Intent drift is measured against current task description. Proof bundles include task tree. Policy gains `decomposition` config section. New `task:create`, `task:decompose`, `task:complete`, `task:fail`, `task:cancel` ledger entry types. CLI: `aep tasks <session-id> [--tree]`.
+
+### Added
+- **Trust Scoring with Decay** -- continuous trust score (0-1000) with five tiers (untrusted, provisional, standard, trusted, privileged), time-based decay, configurable penalties and rewards.
+- **Execution Rings** -- four-ring privilege model (Ring 0 kernel through Ring 3 sandbox) with seven capability flags per ring (read, create, update, delete, network, spawn sub-agents, modify core). Automatic demotion on trust drop.
+- **Behavioural Covenants** -- agent-declared constraint DSL (`covenant Name { permit/forbid/require rules; }`) with parser, evaluator and compiler. Forbid overrides permit. Conditions support `in`, `matches` and comparison operators.
+- **Agent Identity** -- unified Ed25519/RSA identity system with `AgentIdentityManager` for creation, verification, expiry checks and compact serialisation.
+- **Cross-Agent Verification** -- `verifyCounterparty()` and `generateProof()` handshake protocol with `ProofBundle` exchange and configurable `CovenantRequirement` rules.
+- **Merkle Proofs** -- per-entry verification with `MerkleTree` class supporting `getRoot()`, `generateProof()` and static `verifyProof()`. L:/R: prefixed proof paths.
+- **Post-Quantum Ledger Signatures** -- ML-DSA-65 (FIPS 204) simulation via HMAC-SHA512 with `generateQuantumKeyPair()`, `quantumSign()` and `quantumVerify()`.
+- **RFC 3161 Timestamps** -- `TimestampQueue` with async/batched non-blocking `enqueue()`, `flush()`, auto-flush interval and `getToken()` for offline fallback.
+- **Kill Switch** -- `KillSwitch` class with `killAll()` and `killSession()` supporting optional rollback and trust reset to zero.
+- **Intent Drift Detection** -- `IntentDriftDetector` with four heuristics (tool category, target scope, frequency anomaly, repetition), configurable warmup period and drift threshold. Actions: warn, gate, deny or kill.
+- **OWASP Agentic AI Top 10 Mapping** -- every OWASP risk mapped to specific AEP 2.2 defence mechanisms. New `aep owasp` CLI command.
+- **Offline Signing with Sync** -- `OfflineLedger` for air-gapped environments with `append()`, `getQueue()`, `clear()` and `verifyLocalChain()`.
+- **Optimistic Concurrency** -- `_version` field on AEP elements with `validateAEPWithVersion()` for conflict-free multi-agent mutations.
+- **Streaming Validation with Early Abort** -- `AEPStreamValidator` intercepts agent output chunk by chunk, aborting on first violation. Five checks: covenant forbids, protected elements, z-band violations, structural violations and policy forbidden patterns. `StreamMiddleware` wraps any `ReadableStream<string>`. Aborts logged as `stream:abort` evidence entries. Model-agnostic.
+- **System-wide Rate Limiting** -- shared counter across all sessions with configurable `max_actions_per_minute` in system policy config.
+- **Webhook Gate Type** -- `approval: "webhook"` in gate definitions with `webhook_url` and `timeout_ms` fields.
+- **Audit Report Formats** -- `aep report --format json|csv|html` CLI command for evidence ledger export.
+- **New CLI commands** -- `kill`, `trust`, `ring`, `drift`, `identity create`, `identity verify`, `covenant parse`, `covenant verify`, `owasp`, `describe`, `report --format`.
+- **Two new built-in policies** -- `multi-agent` (cross-agent verification with Ring 0 access) and `covenant-only` (minimal policy with covenant enforcement).
+- **230 tests** covering all new and existing capabilities with zero regressions.
+
+### Changed
+- Policy schema version bumped to `"2.2"` in all policy files.
+- `PolicySchema` extended with optional `trust`, `ring`, `covenant`, `intent`, `identity`, `quantum`, `timestamp`, `system` and `streaming` config sections.
+- `CapabilitySchema` gains optional `min_trust_tier` field for trust-gated capabilities.
+- `GateSchema` gains optional `webhook_url` and `timeout_ms` fields.
+- `Verdict` type gains optional `trustDelta` field.
+- `PolicyEvaluator` now runs a 12-step evaluation chain (session state, ring capability, system rate limit, per-session rate limit, intent drift, escalation, covenant, forbidden patterns, capability + trust tier, budget/limits, gates, cross-agent verification).
+- `AgentGateway` manages per-session trust managers, ring managers, intent detectors and covenant evaluators. Automatic ring demotion on denial.
+- `SessionManager` gains `maxConcurrentSessions`, `setMaxConcurrentSessions()` and `getActiveCount()`.
+- CLI version updated to 2.2.0 with default policy version 2.2.
+- Agent harness renamed from `aep-2.1-agent-harness` to `aep-2.2-agent-harness`.
+- Package version bumped to 2.2.0.
+
+### Unchanged
+- Three-layer architecture (Structure, Behaviour, Skin).
+- Z-band hierarchy and prefix convention.
+- AOT and JIT validation logic.
+- All existing Rego policies.
+- Lattice Memory and Basic Resolver.
+- All existing SDK files.
+- Licence (Apache 2.0).
+
 ## [2.1.0] - 2026-04-24
 
 ### Added
@@ -83,3 +133,4 @@ All notable changes to the Agent Element Protocol (AEP) will be documented in th
 - Z-band hierarchy for deterministic z-index ordering.
 - AEP prefix convention (`XX-NNNNN`).
 - AOT and JIT validation modes.
+

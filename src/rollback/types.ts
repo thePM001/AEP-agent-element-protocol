@@ -3,7 +3,7 @@ export interface CompensationPlan {
   tool: string;
   originalInput: Record<string, unknown>;
   compensationAction: Record<string, unknown> | null;
-  backup?: { path: string; content: string };
+  backup: { path: string; content: string; snapshotHash: string };
 }
 
 export interface RollbackResult {

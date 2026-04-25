@@ -1,4 +1,4 @@
-version: "2.1"
+version: "2.2"
 name: "readonly-auditor"
 
 capabilities:
@@ -46,3 +46,26 @@ session:
 evidence:
   enabled: true
   dir: "./ledgers"
+
+trust:
+  initial_score: 300
+  decay_rate: 10
+  penalties:
+    policy_violation: 100
+    structural_violation: 80
+    rate_limit: 20
+    forbidden_match: 200
+    intent_drift: 100
+
+ring:
+  default: 3
+
+intent:
+  tracking: true
+  drift_threshold: 0.3
+  warmup_actions: 5
+  on_drift: "deny"
+
+system:
+  max_actions_per_minute: 100
+  max_concurrent_sessions: 5
