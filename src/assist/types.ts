@@ -69,4 +69,11 @@ export interface PresetConfig {
     auto_bundle: boolean;
     bundle_on_terminate: boolean;
   };
+  recovery?: {
+    enabled: boolean;
+    max_attempts: number;
+  };
+  scanners?: {
+    enabled: boolean;
+  };
 }

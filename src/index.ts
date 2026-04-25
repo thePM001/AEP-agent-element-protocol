@@ -47,6 +47,16 @@ export {
   type StreamingPolicyConfig,
   DecompositionConfigSchema,
   type DecompositionPolicyConfig,
+  RecoveryConfigSchema,
+  type RecoveryPolicyConfig,
+  ScannersConfigSchema,
+  type ScannersPolicyConfig,
+  WorkflowConfigSchema,
+  type WorkflowPolicyConfig,
+  TelemetryConfigSchema,
+  type TelemetryPolicyConfig,
+  TrackingConfigSchema,
+  type TrackingPolicyConfig,
 } from "./policy/types.js";
 export { loadPolicy, validatePolicy } from "./policy/loader.js";
 export { PolicyEvaluator, type EvaluatorOptions } from "./policy/evaluator.js";
@@ -55,6 +65,8 @@ export {
   type LedgerEntry,
   type LedgerEntryType,
   type LedgerReport,
+  type TokenUsage,
+  type CostRecord,
 } from "./ledger/types.js";
 export { EvidenceLedger } from "./ledger/ledger.js";
 export { MerkleTree } from "./ledger/merkle.js";
@@ -113,7 +125,7 @@ export { type StreamVerdict, type StreamValidator } from "./streaming/types.js";
 // Proof Bundles
 export { ProofBundleBuilder, type ProofBundleBuildContext } from "./proof-bundle/builder.js";
 export { ProofBundleVerifier } from "./proof-bundle/verifier.js";
-export { type ProofBundle as SessionProofBundle, type BundleVerification, type TrustScore } from "./proof-bundle/types.js";
+export { type ProofBundle as SessionProofBundle, type BundleVerification, type TrustScore, type ReliabilityIndex, type ReliabilityWeights, DEFAULT_RELIABILITY_WEIGHTS } from "./proof-bundle/types.js";
 
 // Governed Task Decomposition
 export { TaskDecompositionManager } from "./decomposition/manager.js";
@@ -126,9 +138,90 @@ export {
   type DecompositionConfig,
 } from "./decomposition/types.js";
 
+// Recovery Engine
+export { RecoveryEngine } from "./recovery/engine.js";
+export {
+  type Violation,
+  type ViolationSeverity,
+  type ViolationSource,
+  type RecoveryAttempt,
+  type RecoveryConfig,
+  type RecoveryResult,
+  type RecoveryCallback,
+} from "./recovery/types.js";
+
+// Content Scanners
+export { PIIScanner } from "./scanners/pii.js";
+export { InjectionScanner } from "./scanners/injection.js";
+export { SecretsScanner } from "./scanners/secrets.js";
+export { JailbreakScanner } from "./scanners/jailbreak.js";
+export { ToxicityScanner } from "./scanners/toxicity.js";
+export { URLScanner } from "./scanners/urls.js";
+export { ScannerPipeline, createDefaultPipeline } from "./scanners/pipeline.js";
+export {
+  type Finding,
+  type ScanResult,
+  type Scanner,
+  type ScannerConfig,
+  type URLScannerConfig,
+  type ToxicityScannerConfig,
+  type ScannersConfig,
+} from "./scanners/types.js";
+
+// Workflow Phases
+export { WorkflowExecutor } from "./workflow/executor.js";
+export {
+  type WorkflowPhase,
+  type WorkflowDefinition,
+  type PhaseVerdict,
+  type VerdictRecord,
+  type WorkflowStatus,
+} from "./workflow/types.js";
+
+// OpenTelemetry Exporter
+export { AEPTelemetryExporter, type OTELSpan, type OTELEvent, type OTELExporterOptions } from "./telemetry/otel-exporter.js";
+
 // Interactive Assistant
 export { AEPAssistant, type AssistantOptions, type AssistResponse } from "./assist/assistant.js";
 export { getPreset, getPresetNames, generatePolicyYaml } from "./assist/presets.js";
 export { getExplanation, findBestMatch, getAvailableTopics } from "./assist/explanations.js";
 export { generateClaudeCodeCommand, generateCursorRule, generateCodexAgentSection } from "./assist/slash-commands.js";
 export { type AssistPreset, type AssistAgent, type AssistStatus, type AssistIntent, type PresetConfig } from "./assist/types.js";
+
+// /aepassist Interactive Assistant
+export { AEPassistant } from "./aepassist/assistant.js";
+export { parseAEPassistInput } from "./aepassist/parser.js";
+export {
+  type AEPassistMode,
+  type AEPassistResponse,
+  type ParsedInput,
+  type ProjectType,
+  type GovernancePreset,
+  type EmergencyAction,
+  type CovenantAction,
+  type IdentityAction,
+  type ReportFormat,
+} from "./aepassist/types.js";
+
+// Eval-to-Guardrail Lifecycle
+export { EvalRunner } from "./eval/runner.js";
+export { RuleGenerator } from "./eval/rule-generator.js";
+export {
+  type EvalEntry,
+  type EvalDataset,
+  type ViolationSummary,
+  type SuggestedRule,
+  type EvalReport,
+} from "./eval/types.js";
+
+// Governed Dataset Management
+export { DatasetManager } from "./datasets/manager.js";
+export {
+  type DatasetEntry,
+  type Dataset,
+  type DatasetSummary,
+} from "./datasets/types.js";
+
+// Prompt Optimization Under Governance
+export { PromptOptimizer, type ComparisonReport } from "./optimization/optimizer.js";
+export { PromptVersionManager, type PromptVersion } from "./optimization/versioning.js";

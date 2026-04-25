@@ -24,6 +24,7 @@ export const GateSchema = z.object({
 export const ForbiddenPatternSchema = z.object({
   pattern: z.string(),
   reason: z.string().optional(),
+  severity: z.enum(["hard", "soft"]).optional().default("hard"),
 });
 
 export const EscalationRuleSchema = z.object({
@@ -133,6 +134,58 @@ export const DecompositionConfigSchema = z.object({
   completion_criteria: z.array(CompletionCriterionSchema).optional().default([]),
 }).optional();
 
+export const RecoveryConfigSchema = z.object({
+  enabled: z.boolean().optional().default(false),
+  max_attempts: z.number().positive().optional().default(2),
+}).optional();
+
+export const ScannerItemConfigSchema = z.object({
+  enabled: z.boolean().optional().default(true),
+  severity: z.enum(["hard", "soft"]).optional().default("hard"),
+});
+
+export const ToxicityScannerConfigSchema = z.object({
+  enabled: z.boolean().optional().default(true),
+  severity: z.enum(["hard", "soft"]).optional().default("soft"),
+  custom_words: z.array(z.string()).optional().default([]),
+});
+
+export const URLScannerConfigSchema = z.object({
+  enabled: z.boolean().optional().default(true),
+  severity: z.enum(["hard", "soft"]).optional().default("soft"),
+  allowlist: z.array(z.string()).optional().default([]),
+  blocklist: z.array(z.string()).optional().default([]),
+});
+
+export const ScannersConfigSchema = z.object({
+  enabled: z.boolean().optional().default(true),
+  pii: ScannerItemConfigSchema.optional().default({}),
+  injection: ScannerItemConfigSchema.optional().default({}),
+  secrets: ScannerItemConfigSchema.optional().default({}),
+  jailbreak: ScannerItemConfigSchema.optional().default({}),
+  toxicity: ToxicityScannerConfigSchema.optional().default({}),
+  urls: URLScannerConfigSchema.optional().default({}),
+}).optional();
+
+export const WorkflowConfigSchema = z.object({
+  enabled: z.boolean().optional().default(false),
+  definition: z.string().optional(),
+  templates: z.record(z.array(z.string())).optional().default({}),
+}).optional();
+
+export const TelemetryConfigSchema = z.object({
+  otel_enabled: z.boolean().optional().default(false),
+  otel_endpoint: z.string().optional(),
+  service_name: z.string().optional().default("aep-agent"),
+}).optional();
+
+export const TrackingConfigSchema = z.object({
+  tokens: z.boolean().optional().default(false),
+  cost_per_million_input: z.number().nonnegative().optional(),
+  cost_per_million_output: z.number().nonnegative().optional(),
+  currency: z.string().optional().default("USD"),
+}).optional();
+
 export const PolicySchema = z.object({
   version: z.string(),
   name: z.string(),
@@ -153,6 +206,11 @@ export const PolicySchema = z.object({
   system: SystemConfigSchema.optional(),
   streaming: StreamingConfigSchema.optional(),
   decomposition: DecompositionConfigSchema.optional(),
+  recovery: RecoveryConfigSchema,
+  scanners: ScannersConfigSchema,
+  workflow: WorkflowConfigSchema,
+  telemetry: TelemetryConfigSchema,
+  tracking: TrackingConfigSchema,
 });
 
 export type Capability = z.infer<typeof CapabilitySchema>;
@@ -173,6 +231,11 @@ export type TimestampPolicyConfig = z.infer<typeof TimestampConfigSchema>;
 export type SystemPolicyConfig = z.infer<typeof SystemConfigSchema>;
 export type StreamingPolicyConfig = z.infer<typeof StreamingConfigSchema>;
 export type DecompositionPolicyConfig = z.infer<typeof DecompositionConfigSchema>;
+export type RecoveryPolicyConfig = z.infer<typeof RecoveryConfigSchema>;
+export type ScannersPolicyConfig = z.infer<typeof ScannersConfigSchema>;
+export type WorkflowPolicyConfig = z.infer<typeof WorkflowConfigSchema>;
+export type TelemetryPolicyConfig = z.infer<typeof TelemetryConfigSchema>;
+export type TrackingPolicyConfig = z.infer<typeof TrackingConfigSchema>;
 
 export interface AgentAction {
   tool: string;

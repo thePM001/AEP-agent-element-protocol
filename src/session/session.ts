@@ -20,6 +20,9 @@ export interface SessionReport {
   denied: number;
   gated: number;
   terminationReason: string;
+  totalTokens?: number;
+  totalCost?: number;
+  costSaved?: number;
 }
 
 export class Session {

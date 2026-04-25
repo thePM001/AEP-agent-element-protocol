@@ -10,6 +10,7 @@ export interface CovenantRule {
   type: "permit" | "forbid" | "require";
   action: string;
   conditions: Condition[];
+  severity?: "hard" | "soft";
 }
 
 export interface CovenantSpec {

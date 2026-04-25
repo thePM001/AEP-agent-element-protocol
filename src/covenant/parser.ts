@@ -24,14 +24,15 @@ export function parseCovenant(source: string): CovenantSpec {
 
     if (!inBlock) continue;
 
-    // Parse rule: permit/forbid/require
-    const ruleMatch = line.match(/^(permit|forbid|require)\s+(.+?)\s*;$/);
+    // Parse rule: permit/forbid/require ... [hard|soft];
+    const ruleMatch = line.match(/^(permit|forbid|require)\s+(.+?)\s*(?:\[(hard|soft)\])?\s*;$/);
     if (!ruleMatch) {
       throw new Error(`Invalid covenant rule: "${line}"`);
     }
 
     const type = ruleMatch[1] as "permit" | "forbid" | "require";
     const rest = ruleMatch[2];
+    const severity = (ruleMatch[3] as "hard" | "soft" | undefined) ?? undefined;
 
     if (type === "require") {
       // require trust_tier >= "standard"
@@ -43,6 +44,7 @@ export function parseCovenant(source: string): CovenantSpec {
         type: "require",
         action: reqMatch[1],
         conditions: [{ field: reqMatch[1], operator: reqMatch[2] as ConditionOperator, value: reqMatch[3] }],
+        ...(severity ? { severity } : {}),
       });
       continue;
     }
@@ -83,7 +85,7 @@ export function parseCovenant(source: string): CovenantSpec {
       }
     }
 
-    rules.push({ type, action, conditions });
+    rules.push({ type, action, conditions, ...(severity ? { severity } : {}) });
   }
 
   if (!name) {

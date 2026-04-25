@@ -349,6 +349,9 @@ class AEPValidator {
         // AEP 2.2: Validate trust, ring, covenant and drift constraints
         this.checkTrustViolations();
 
+        // AEP 2.5: Validate recovery and scanner entries
+        this.checkRecoveryAndScanners();
+
         return this.violations;
     }
     
@@ -450,6 +453,39 @@ class AEPValidator {
                         this.addViolation(SEVERITY.HIGH, '.claude/aep-evidence.jsonl', i + 1,
                             'MERKLE_INTEGRITY_FAIL',
                             'Ledger Merkle proof verification failed -- possible tampering');
+                    }
+                } catch (parseErr) {}
+            }
+        } catch (e) {}
+    }
+
+    // -----------------------------------------------------------------------
+    // Check 11: Recovery and scanner entries (AEP 2.5)
+    // -----------------------------------------------------------------------
+    checkRecoveryAndScanners() {
+        const ledgerPath = path.join(this.srcDir, '..', '.claude', 'aep-evidence.jsonl');
+        if (!fs.existsSync(ledgerPath)) return;
+
+        try {
+            const content = fs.readFileSync(ledgerPath, 'utf8');
+            const lines = content.split('\n').filter(l => l.trim().length > 0);
+
+            for (let i = 0; i < lines.length; i++) {
+                try {
+                    const entry = JSON.parse(lines[i]);
+
+                    // Scanner findings with hard severity are blocking
+                    if (entry.type === 'scanner:finding' && entry.severity === 'hard') {
+                        this.addViolation(SEVERITY.CRITICAL, '.claude/aep-evidence.jsonl', i + 1,
+                            'SCANNER_HARD_FINDING',
+                            `Scanner "${entry.scanner || 'unknown'}" found hard violation: ${entry.details || entry.rule || 'unknown'}`);
+                    }
+
+                    // Recovery exhausted means the agent failed to self-correct
+                    if (entry.type === 'recovery:exhausted') {
+                        this.addViolation(SEVERITY.HIGH, '.claude/aep-evidence.jsonl', i + 1,
+                            'RECOVERY_EXHAUSTED',
+                            `Recovery exhausted after ${entry.attempts || '?'} attempts for rule: ${entry.rule || 'unknown'}`);
                     }
                 } catch (parseErr) {}
             }
