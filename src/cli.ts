@@ -42,6 +42,7 @@ function usage(): void {
 
 Usage:
   aep assist [command]          Interactive governance assistant (/aepassist)
+  aep serve                     Start MCP server (stdio mode for Claude Code)
   aep call <prompt>             Call a model through governed gateway
       --model <model>           Model to use (e.g. claude-sonnet-4-5-20250929)
       --provider <provider>     Provider (anthropic|openai|ollama|custom)
@@ -146,6 +147,9 @@ async function main(): Promise<void> {
       break;
     case "proxy":
       handleProxy(args);
+      break;
+    case "serve":
+      handleServe();
       break;
     case "exec":
       handleExec(args);
@@ -474,7 +478,44 @@ function handleProxy(args: string[]): void {
       if (!line.trim()) continue;
       try {
         const msg = JSON.parse(line);
-        if (msg.method === "tools/call") {
+
+        if (msg.method === "initialize") {
+          process.stdout.write(JSON.stringify({
+            jsonrpc: "2.0",
+            id: msg.id,
+            result: {
+              protocolVersion: "2024-11-05",
+              capabilities: { tools: {} },
+              serverInfo: { name: "aep", version: "2.5.0" },
+            },
+          }) + "\n");
+        } else if (msg.method === "notifications/initialized") {
+          // No response for notifications
+        } else if (msg.method === "ping") {
+          process.stdout.write(JSON.stringify({
+            jsonrpc: "2.0", id: msg.id, result: {},
+          }) + "\n");
+        } else if (msg.method === "tools/list") {
+          process.stdout.write(JSON.stringify({
+            jsonrpc: "2.0",
+            id: msg.id,
+            result: {
+              tools: [{
+                name: "aepassist",
+                description: "AEP interactive governance assistant. Handles setup, status, presets, emergency controls, covenants, identity and reports.",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    command: {
+                      type: "string",
+                      description: "Command to run (setup, status, preset, kill, covenant, identity, report, help)",
+                    },
+                  },
+                },
+              }],
+            },
+          }) + "\n");
+        } else if (msg.method === "tools/call") {
           proxy
             .handleToolCall({
               name: msg.params?.name ?? "",
@@ -503,6 +544,122 @@ function handleProxy(args: string[]): void {
     }
     process.exit(0);
   });
+}
+
+function handleServe(): void {
+  const ledgerDir = resolve("./ledgers");
+  const gateway = new AgentGateway({ ledgerDir });
+
+  let buffer = "";
+  process.stdin.setEncoding("utf-8");
+  process.stdin.on("data", (chunk: string) => {
+    buffer += chunk;
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        const msg = JSON.parse(line);
+        const response = handleMCPMessage(msg, gateway);
+        if (response) {
+          process.stdout.write(JSON.stringify(response) + "\n");
+        }
+      } catch {
+        // Skip malformed lines
+      }
+    }
+  });
+}
+
+interface JSONRPCMessage {
+  jsonrpc: string;
+  id?: number | string;
+  method?: string;
+  params?: Record<string, unknown>;
+}
+
+function handleMCPMessage(msg: JSONRPCMessage, gateway: AgentGateway): Record<string, unknown> | null {
+  if (msg.method === "initialize") {
+    return {
+      jsonrpc: "2.0",
+      id: msg.id,
+      result: {
+        protocolVersion: "2024-11-05",
+        capabilities: { tools: {} },
+        serverInfo: { name: "aep", version: "2.5.0" },
+      },
+    };
+  }
+
+  if (msg.method === "notifications/initialized") {
+    return null;
+  }
+
+  if (msg.method === "ping") {
+    return { jsonrpc: "2.0", id: msg.id, result: {} };
+  }
+
+  if (msg.method === "tools/list") {
+    return {
+      jsonrpc: "2.0",
+      id: msg.id,
+      result: {
+        tools: [
+          {
+            name: "aepassist",
+            description: "AEP interactive governance assistant. Handles setup, status, presets, emergency controls, covenants, identity and reports.",
+            inputSchema: {
+              type: "object",
+              properties: {
+                command: {
+                  type: "string",
+                  description: "Command to run (setup, status, preset, kill, covenant, identity, report, help)",
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+  }
+
+  if (msg.method === "tools/call") {
+    const params = msg.params ?? {};
+    const name = typeof params.name === "string" ? params.name : "";
+    const toolArgs = (params.arguments ?? {}) as Record<string, unknown>;
+
+    if (name === "aepassist") {
+      const input = typeof toolArgs.command === "string"
+        ? toolArgs.command
+        : typeof toolArgs.input === "string"
+          ? toolArgs.input
+          : "";
+      const assistant = new AEPassistant(gateway, process.cwd());
+      const response = assistant.handle(input);
+      return {
+        jsonrpc: "2.0",
+        id: msg.id,
+        result: {
+          content: [{ type: "text", text: JSON.stringify(response) }],
+        },
+      };
+    }
+
+    return {
+      jsonrpc: "2.0",
+      id: msg.id,
+      result: {
+        content: [{ type: "text", text: `Unknown tool: ${name}` }],
+        isError: true,
+      },
+    };
+  }
+
+  return {
+    jsonrpc: "2.0",
+    id: msg.id,
+    error: { code: -32601, message: `Method not found: ${msg.method}` },
+  };
 }
 
 function handleExec(args: string[]): void {
