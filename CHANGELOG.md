@@ -2,6 +2,51 @@
 
 All notable changes to the Agent Element Protocol (AEP) will be documented in this file.
 
+## [2.5.4] - 2026-04-25
+
+### Added (Domain Scanners)
+- **Prediction Scanner** (Scanner 8) -- validates prediction and forecast patterns against configurable bounds. Four rules: extreme percentage detection (default >100%), certainty language blocking, missing confidence qualifier flagging and excessive timeframe detection. Config: `max_percentage`, `max_horizon_days`, `require_confidence`, `block_certainty_language`. Disabled by default (opt-in via `scanners.prediction.enabled: true`).
+- **Brand Scanner** (Scanner 9) -- checks generated content against brand guidelines. Five rules: required phrase enforcement, forbidden phrase detection (hard severity), tone keyword verification, competitor mention flagging and trademark suffix enforcement. Config: `required_phrases`, `forbidden_phrases`, `tone_keywords`, `competitors`, `trademarks`.
+- **Regulatory Scanner** (Scanner 10) -- ensures required regulatory disclosures are present. Five built-in checks: ad disclosure, financial disclaimer, medical disclaimer, affiliate disclosure and age restriction notices. Supports custom disclosure rules via `custom_disclosures` array. Default severity: hard.
+- **Temporal Scanner** (Scanner 11) -- enforces time-related constraints on agent output. Four rules: stale date reference detection (with "as of" qualifier support), excessive future horizon flagging, undated statistic detection and expired promotional content flagging. Supports ISO, Month DD YYYY, DD/MM/YYYY, quarter and month-year date formats. Config: `max_future_days`, `check_stale_references`, `check_undated_statistics`, `check_expired_content`, `reference_date`.
+- **32 new tests** (8 per scanner) with zero regressions.
+
+### Changed
+- `ScannersConfig` extended with `prediction`, `brand`, `regulatory` and `temporal` config fields.
+- `ScannersConfigSchema` (Zod) gains four new scanner config schemas (all default disabled).
+- `createDefaultPipeline()` supports opt-in for all four domain scanners.
+- CLI `aep scan` gains `--scanners` flag for filtering specific scanners by name.
+- Scanner pipeline grows from 8 to 12 possible scanners (7 default-on + 5 opt-in).
+- Public exports updated with four new scanner classes and config types.
+
+### Unchanged
+- Three-layer architecture (Structure, Behaviour, Skin).
+- All existing scanners, policies and SDK files.
+- Licence (Apache 2.0).
+
+## [2.5.3] - 2026-04-25
+
+### Added (Fleet Governance for Swarm AI)
+- **Fleet Manager** -- aggregates governance across all active sessions. `FleetManager` provides `getStatus()` (agent summaries with trust, ring, drift, cost and action counts), `enforceFleetPolicy()` (detects violations: agent limit, cost exceeded, ring saturation, drift cluster), `registerAgent()`/`deregisterAgent()`, `pauseFleet()`/`resumeFleet()`/`killFleet()`. Configurable via `fleet` policy section with `max_agents`, `max_total_cost_per_hour`, `max_ring0_agents` and `drift_pause_threshold`.
+- **Fleet API** -- REST-style method handlers for fleet governance. `FleetAPI` wraps `FleetManager` with `getStatus()`, `getAgents()`, `getAgent(id)`, `getAlerts()`, `pauseFleet()`, `resumeFleet()` and `killFleet(rollback?)`.
+- **Spawn Governor** -- validates child agent spawning. `SpawnGovernor` ensures child agents inherit a subset of their parent covenant (child cannot permit parent-forbidden actions, child cannot skip parent requires), child ring is same or lower privilege (higher number), child trust starts at parent trust * 0.8. Fleet capacity check before spawn.
+- **Message Scanner** -- scans inter-agent messages through the scanner pipeline. `MessageScanner` prevents poisoned instructions, PII leaks and injection attempts between agents. Hard findings block, soft findings flag.
+- **Fleet CLI** -- `aep fleet status|agents|pause|resume|kill [--rollback]`.
+- **Gateway integration** -- fleet manager wired on first session with `fleet.enabled: true`. Fleet capacity check runs before system session limit. Message scanner wired from scanner pipeline. Fleet accessors: `getFleetManager()`, `getFleetAPI()`, `getSpawnGovernor()`, `getMessageScanner()`.
+- **22 new tests** covering FleetManager, FleetAPI, SpawnGovernor, MessageScanner and gateway integration.
+
+### Changed
+- `PolicySchema` extended with optional `fleet` config section via `FleetPolicySchema`.
+- `AgentGateway` gains fleet fields and four accessor methods.
+- CLI gains `fleet` command with five subcommands.
+- `index.ts` exports all fleet types and classes.
+
+### Unchanged
+- Three-layer architecture (Structure, Behaviour, Skin).
+- Z-band hierarchy and prefix convention.
+- All existing scanners, policies and SDK files.
+- Licence (Apache 2.0).
+
 ## [2.5.2] - 2026-04-25
 
 ### Added (AI Engineer Coverage -- Capabilities A-C)

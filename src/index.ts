@@ -62,6 +62,7 @@ export {
   type KnowledgePolicyConfig,
   type ModelGatewayPolicyConfig,
   type CommercePolicyConfig,
+  type FleetPolicyConfig,
 } from "./policy/types.js";
 export { loadPolicy, validatePolicy } from "./policy/loader.js";
 export { PolicyEvaluator, type EvaluatorOptions } from "./policy/evaluator.js";
@@ -163,6 +164,10 @@ export { JailbreakScanner } from "./scanners/jailbreak.js";
 export { ToxicityScanner } from "./scanners/toxicity.js";
 export { URLScanner } from "./scanners/urls.js";
 export { DataProfileScanner, DEFAULT_PROFILER_CONFIG, type DataProfileScannerConfig as ProfilerConfig } from "./scanners/profiler.js";
+export { PredictionScanner } from "./scanners/prediction.js";
+export { BrandScanner } from "./scanners/brand.js";
+export { RegulatoryScanner } from "./scanners/regulatory.js";
+export { TemporalScanner } from "./scanners/temporal.js";
 export { ScannerPipeline, createDefaultPipeline } from "./scanners/pipeline.js";
 export {
   type Finding,
@@ -172,6 +177,11 @@ export {
   type URLScannerConfig,
   type ToxicityScannerConfig,
   type DataProfileScannerConfig,
+  type PredictionScannerConfig,
+  type BrandScannerConfig,
+  type RegulatoryScannerConfig,
+  type CustomDisclosureRule,
+  type TemporalScannerConfig,
   type ScannersConfig,
 } from "./scanners/types.js";
 
@@ -307,3 +317,23 @@ export {
   MerchantProfileSchema,
   CommercePolicySchema,
 } from "./subprotocols/commerce/types.js";
+
+// Fleet Governance
+export { FleetManager } from "./fleet/manager.js";
+export { FleetAPI } from "./fleet/api.js";
+export { SpawnGovernor } from "./fleet/spawn-governance.js";
+export { MessageScanner } from "./fleet/message-scanner.js";
+export {
+  type FleetPolicy,
+  type FleetStatus,
+  type AgentSummary,
+  type FleetAlert,
+  type FleetAlertType,
+  type FleetViolation,
+  type FleetAction,
+  type FleetPolicyResult,
+  type RegisterResult,
+  type SpawnResult,
+  type MessageScanResult,
+  FleetPolicySchema,
+} from "./fleet/types.js";

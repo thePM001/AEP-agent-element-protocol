@@ -31,6 +31,8 @@ import { createFineTuningWorkflow } from "./workflow/templates/fine-tuning.js";
 import { WorkflowExecutor } from "./workflow/executor.js";
 import { SpendTracker } from "./subprotocols/commerce/spend-tracker.js";
 import { CommerceRegistry } from "./subprotocols/commerce/registry.js";
+import { FleetManager } from "./fleet/manager.js";
+import { FleetAPI } from "./fleet/api.js";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -91,6 +93,11 @@ Usage:
   aep commerce status             Show daily spend and active summary
   aep commerce merchants          List registered merchant profiles
   aep commerce spend              Show daily spend tracker
+  aep fleet status                Show fleet status (agents, trust, cost)
+  aep fleet agents                List all agents in the fleet
+  aep fleet pause                 Pause all fleet agents
+  aep fleet resume                Resume all fleet agents
+  aep fleet kill [--rollback]     Kill all fleet agents
   aep sync                      Sync offline ledger entries
   aep owasp                     Print OWASP Agentic Top 10 mapping
 
@@ -211,6 +218,9 @@ async function main(): Promise<void> {
       break;
     case "workflow":
       handleWorkflow(args);
+      break;
+    case "fleet":
+      handleFleet(args);
       break;
     default:
       console.error(`Unknown command: ${command}`);
@@ -1261,20 +1271,35 @@ function handleKb(kbArgs: string[]): void {
 
 function handleScan(args: string[]): void {
   const fileIdx = args.indexOf("--file");
+  const scannersIdx = args.indexOf("--scanners");
   let content: string;
 
   if (fileIdx !== -1 && args[fileIdx + 1]) {
     content = readFileSync(resolve(args[fileIdx + 1]), "utf-8");
   } else {
-    content = args.slice(1).join(" ");
+    // Filter out --scanners and its value from content args
+    const contentArgs = args.slice(1).filter((_, i) => {
+      const argIdx = i + 1;
+      return argIdx !== scannersIdx && argIdx !== scannersIdx + 1;
+    });
+    content = contentArgs.join(" ");
   }
 
   if (!content.trim()) {
-    console.error("Usage: aep scan <text> or aep scan --file <file>");
+    console.error("Usage: aep scan <text> or aep scan --file <file> [--scanners name1,name2]");
     process.exit(1);
   }
 
-  const pipeline = createDefaultPipeline();
+  // Build config enabling requested scanners
+  const pipelineConfig: Record<string, { enabled: boolean }> = {};
+  if (scannersIdx !== -1 && args[scannersIdx + 1]) {
+    const requested = args[scannersIdx + 1].split(",").map((s) => s.trim());
+    for (const name of requested) {
+      pipelineConfig[name] = { enabled: true };
+    }
+  }
+
+  const pipeline = createDefaultPipeline(pipelineConfig);
   const result = pipeline.scan(content);
 
   if (result.passed) {
@@ -1566,6 +1591,77 @@ function handleWorkflow(args: string[]): void {
     }
     default:
       console.error("Usage: aep workflow init <template> | aep workflow start <template>");
+      process.exit(1);
+  }
+}
+
+function handleFleet(args: string[]): void {
+  const sub = args[1];
+  const gateway = new AgentGateway({ ledgerDir: resolve("./ledgers") });
+
+  // Fleet requires a running gateway with fleet policy enabled.
+  // For CLI, we show informational output.
+  switch (sub) {
+    case "status": {
+      const fm = gateway.getFleetManager();
+      if (!fm) {
+        console.log("Fleet governance is not enabled.");
+        console.log("Enable by adding fleet.enabled: true to your policy file.");
+        console.log("Use FleetManager and FleetAPI programmatically for live fleet status.");
+        return;
+      }
+      const status = fm.getStatus();
+      console.log("Fleet Status");
+      console.log(`  Active agents:  ${status.activeAgents}`);
+      console.log(`  Total sessions: ${status.totalSessions}`);
+      console.log(`  Fleet trust:    ${status.fleetTrust.toFixed(0)}`);
+      console.log(`  Fleet drift:    ${status.fleetDrift.toFixed(2)}`);
+      console.log(`  Total cost:     ${status.totalCost.toFixed(4)}`);
+      console.log(`  Total tokens:   ${status.totalTokens}`);
+      if (status.alerts.length > 0) {
+        console.log(`\n  Alerts (${status.alerts.length}):`);
+        for (const a of status.alerts) {
+          console.log(`    [${a.severity}] ${a.type}: ${a.message}`);
+        }
+      }
+      break;
+    }
+    case "agents": {
+      const fm = gateway.getFleetManager();
+      if (!fm) {
+        console.log("Fleet governance is not enabled.");
+        return;
+      }
+      const status = fm.getStatus();
+      if (status.agents.length === 0) {
+        console.log("No agents registered.");
+      } else {
+        console.log(`Agents (${status.agents.length}):`);
+        for (const a of status.agents) {
+          console.log(`  ${a.agentId} [${a.status}] trust=${a.trust} ring=${a.ring} drift=${a.drift.toFixed(2)} cost=${a.cost.toFixed(4)}`);
+        }
+      }
+      break;
+    }
+    case "pause": {
+      console.log("Fleet pause requires an active gateway with fleet enabled.");
+      console.log("Use FleetAPI.pauseFleet() or FleetManager.pauseFleet() programmatically.");
+      break;
+    }
+    case "resume": {
+      console.log("Fleet resume requires an active gateway with fleet enabled.");
+      console.log("Use FleetAPI.resumeFleet() or FleetManager.resumeFleet() programmatically.");
+      break;
+    }
+    case "kill": {
+      const rollback = args.includes("--rollback");
+      console.log("Fleet kill requires an active gateway with fleet enabled.");
+      console.log(`Would kill all fleet agents${rollback ? " with rollback" : ""}.`);
+      console.log("Use FleetAPI.killFleet() or FleetManager.killFleet() programmatically.");
+      break;
+    }
+    default:
+      console.error("Usage: aep fleet <status|agents|pause|resume|kill>");
       process.exit(1);
   }
 }

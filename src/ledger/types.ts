@@ -34,7 +34,12 @@ export type LedgerEntryType =
   | "commerce:checkout"
   | "commerce:payment"
   | "commerce:fulfillment"
-  | "commerce:return";
+  | "commerce:return"
+  | "fleet:agent_register"
+  | "fleet:agent_deregister"
+  | "fleet:pause"
+  | "fleet:resume"
+  | "fleet:kill";
 
 export interface TokenUsage {
   input: number;

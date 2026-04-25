@@ -42,6 +42,44 @@ export interface DataProfileScannerConfig extends ScannerConfig {
   imbalance_ratio: number;
 }
 
+export interface PredictionScannerConfig extends ScannerConfig {
+  max_percentage: number;
+  max_horizon_days: number;
+  require_confidence: boolean;
+  block_certainty_language: boolean;
+}
+
+export interface BrandScannerConfig extends ScannerConfig {
+  required_phrases: string[];
+  forbidden_phrases: string[];
+  tone_keywords: string[];
+  competitors: string[];
+  trademarks: { term: string; suffix: string }[];
+}
+
+export interface CustomDisclosureRule {
+  trigger_patterns: string[];
+  required_phrases: string[];
+  severity: "hard" | "soft";
+}
+
+export interface RegulatoryScannerConfig extends ScannerConfig {
+  check_ad_disclosure: boolean;
+  check_financial_disclaimer: boolean;
+  check_medical_disclaimer: boolean;
+  check_affiliate_disclosure: boolean;
+  check_age_restriction: boolean;
+  custom_disclosures: CustomDisclosureRule[];
+}
+
+export interface TemporalScannerConfig extends ScannerConfig {
+  max_future_days: number;
+  check_stale_references: boolean;
+  check_undated_statistics: boolean;
+  check_expired_content: boolean;
+  reference_date?: string;
+}
+
 export interface ScannersConfig {
   enabled: boolean;
   pii: ScannerConfig;
@@ -51,4 +89,8 @@ export interface ScannersConfig {
   toxicity: ToxicityScannerConfig;
   urls: URLScannerConfig;
   profiler: DataProfileScannerConfig;
+  prediction: PredictionScannerConfig;
+  brand: BrandScannerConfig;
+  regulatory: RegulatoryScannerConfig;
+  temporal: TemporalScannerConfig;
 }
