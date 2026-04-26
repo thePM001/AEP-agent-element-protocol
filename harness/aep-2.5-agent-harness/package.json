@@ -1,7 +1,23 @@
 {
   "name": "aep-2.5-agent-harness",
   "version": "2.5.0",
-  "description": "Agent harness for AEP v2.5 governance protocol",
-  "main": "README.md",
-  "license": "Apache-2.0"
+  "description": "AEP 2.5 Governance Layer for AI Code Agents",
+  "main": "harness/aep-validate.js",
+  "bin": {
+    "aep-validate": "harness/aep-validate.js"
+  },
+  "scripts": {
+    "validate": "node harness/aep-validate.js",
+    "validate:src": "node harness/aep-validate.js --src=./src",
+    "safety": "node harness/aep-safety-guard.js",
+    "safety:watch": "node harness/aep-safety-guard.js --watch",
+    "safety:pre-commit": "node harness/aep-safety-guard.js --pre-commit",
+    "check": "node harness/aep-safety-guard.js && node harness/aep-validate.js"
+  },
+  "keywords": ["aep", "agent-element-protocol", "governance", "claude-code", "ai-agent", "validation"],
+  "author": "New Lisbon Agency LLC",
+  "license": "Apache-2.0",
+  "optionalDependencies": {
+    "js-yaml": "^4.1.0"
+  }
 }

@@ -1,0 +1,159 @@
+aep_version: "2.5"
+schema_revision: 1
+theme_name: "Your Project Theme"
+
+# ============================================================================
+# DESIGN RULES
+# These are enforced by the AEP validation harness.
+# Claude Code reads these before making any visual change.
+# ============================================================================
+
+design_rules:
+  border_radius: "Define your border-radius policy. Example: 0px globally with specific exceptions."
+  borders: "Define your border policy. Example: No borders, tonal layering only."
+  shadows: "Define your shadow policy. Example: Never. Use glassmorphism."
+  inputs: "Define your input style. Example: Underline only, no box borders."
+  primary_cta: "Define primary button style. Example: Gradient fill with dark text."
+  secondary_cta: "Define secondary button style. Example: Ghost border with light text."
+  status_indicators: "Define status indicator style. Example: 6px squares, never circles."
+  scrollbar: "Define scrollbar style. Example: 4px width, dark track."
+
+# ============================================================================
+# BANNED TERMS
+# Internal architecture terms that must not appear in user-facing text.
+# The validator flags any string literal containing these terms.
+# Customize this list for your project's internal vocabulary.
+# ============================================================================
+
+banned_terms: []
+# Example:
+# banned_terms:
+#   - "internal_model_name"
+#   - "debug_flag"
+#   - "legacy_api"
+
+# ============================================================================
+# COLOUR PALETTE
+# Every color used in the project MUST be defined here.
+# Hardcoded hex values in components are flagged as violations.
+# ============================================================================
+
+colours:
+  # Surfaces (background hierarchy, darkest to brightest)
+  surface_dim: "#10131b"
+  surface: "#10131b"
+  surface_container_lowest: "#0a0e15"
+  surface_container_low: "#181c23"
+  surface_container: "#1c2027"
+  surface_container_high: "#262a32"
+  surface_container_highest: "#31353d"
+  
+  # Primary accent
+  primary: "#edbbac"
+  primary_container: "#8b6356"
+  on_primary: "#47281e"
+  
+  # Text
+  on_surface: "#dfe2ed"
+  on_surface_variant: "#d5c3bd"
+  
+  # Borders
+  outline: "#9d8d89"
+  outline_variant: "#504440"
+  
+  # Semantic
+  success: "#3FB950"
+  warning: "#D29922"
+  error: "#F85149"
+  
+  # Add project-specific colors below this line.
+
+# ============================================================================
+# TYPOGRAPHY TOKENS
+# Every text element MUST use a token from this section.
+# Hardcoded font declarations in components are flagged as violations.
+# ============================================================================
+
+typography:
+  heading_large:
+    font: "'Inter', sans-serif"
+    size: 24
+    weight: 800
+    spacing: "-0.03em"
+    color: "on_surface"
+    transform: "uppercase"
+  
+  heading_medium:
+    font: "'Inter', sans-serif"
+    size: 16
+    weight: 700
+    spacing: "-0.01em"
+    color: "on_surface"
+    transform: "uppercase"
+  
+  body:
+    font: "'Inter', sans-serif"
+    size: 14
+    weight: 400
+    spacing: "0"
+    color: "on_surface"
+    transform: "none"
+  
+  label:
+    font: "'JetBrains Mono', monospace"
+    size: 10
+    weight: 400
+    spacing: "0.08em"
+    color: "on_surface_variant"
+    transform: "uppercase"
+  
+  mono:
+    font: "'JetBrains Mono', monospace"
+    size: 11
+    weight: 400
+    spacing: "0.02em"
+    color: "on_surface"
+    transform: "none"
+  
+  # Add project-specific tokens below this line.
+
+# ============================================================================
+# COMPONENT STYLES
+# Skin bindings for registered elements.
+# Each skin_binding in the registry MUST resolve to an entry here.
+# ============================================================================
+
+component_styles:
+  shell_root:
+    background: "surface_dim"
+  
+  nav_bar:
+    background: "surface"
+    height: "44px"
+  
+  content_main:
+    background: "surface_dim"
+  
+  glass_panel:
+    background: "rgba(10, 14, 21, 0.8)"
+    backdrop_filter: "blur(16px)"
+  
+  glass_overlay:
+    background: "rgba(10, 14, 21, 0.8)"
+    backdrop_filter: "blur(20px)"
+  
+  ghost_border:
+    outline: "1px solid rgba(80, 68, 64, 0.15)"
+  
+  button_primary:
+    background: "linear-gradient(135deg, primary 0%, primary_container 100%)"
+    colour: "on_primary"
+    font_weight: 700
+    letter_spacing: "0.15em"
+  
+  button_secondary:
+    background: "transparent"
+    outline: "1px solid rgba(80, 68, 64, 0.2)"
+    colour: "on_surface"
+  
+  # Add project-specific bindings below this line.
