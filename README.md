@@ -12,7 +12,7 @@
 
 ![AEP 2.5 - 73 Features](docs/images/feature-grid.png)
 
-## [Explore the full interactive grid at aep.newlisbon.agency](https://aep.newlisbon.agency)
+## [Explore the full feature grid at aep.newlisbon.agency](https://aep.newlisbon.agency)
 
 ---
 
