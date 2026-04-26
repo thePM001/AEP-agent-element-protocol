@@ -1,0 +1,7 @@
+{
+  "name": "aep-2.5-agent-harness",
+  "version": "2.5.0",
+  "description": "Agent harness for AEP v2.5 governance protocol",
+  "main": "README.md",
+  "license": "Apache-2.0"
+}
