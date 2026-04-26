@@ -83,7 +83,7 @@ npx aep assist report json  # generate audit report
 
 AEP is a 3-layer governance architecture that was originally developed to give every UI element a unique numerical identity, exact spatial coordinates, defined behaviour rules and themed visual properties. It treats the frontend as a topological coordinate system, not a fluid DOM tree. The three layers are **Structure** (what exists and where), **Behaviour** (what each element does and cannot do) and **Skin** (what each element looks like). Changing one layer never requires changing another.
 
-# However, AEP applies beyond frontend development to ALL constrained knowledge domains with fixed rule sets and build schemas. Workflows, REST APIs, ML training pipelines, event-driven systems, infrastructure as code and agentic commerce all use the same architecture: agents propose, AEP validates, only compliant output executes.
+### However, AEP applies beyond frontend development to ALL constrained knowledge domains with fixed rule sets and build schemas. Workflows, REST APIs, ML training pipelines, event-driven systems, infrastructure as code and agentic commerce all use the same architecture: agents propose, AEP validates, only compliant output executes.
 
 Every agent action passes through a deterministic 15-step evaluation chain covering task scope, session state, ring capabilities, rate limits, intent drift, covenants, forbidden patterns, trust tiers, budgets, gates, cross-agent verification, knowledge retrieval and content scanning. The chain produces allow or deny. No ambiguity. No hallucinations reach execution.
 
