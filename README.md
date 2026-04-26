@@ -87,6 +87,8 @@ AEP applies beyond the frontend to any constrained knowledge domain with fixed r
 
 Every agent action passes through a deterministic 15-step evaluation chain covering task scope, session state, ring capabilities, rate limits, intent drift, covenants, forbidden patterns, trust tiers, budgets, gates, cross-agent verification, knowledge retrieval and content scanning. The chain produces allow or deny. No ambiguity. No hallucinations reach execution.
 
+The mathematical foundation of AEP are the so-called Deterministic Adjudication Lattices (DALs). A population of LLM candidate outputs is filtered through hierarchical verification predicates. Candidates that fail any predicate are eliminated. The applied convergence theorem as outlined in the AEP research paper proves zero-defect selection with population size logarithmic in the inverse failure probability. Lattice memory stores every validated output and rejection as an immutable record. Known good proposals match against attractors and skip cold-path validation. The lattice gets faster and cheaper with continued use, while the deterministic guarantee holds: memory guides proposals toward known good solution regions, but never overrides the validation decision.
+
 ---
 
 ## 15-Step Evaluation Chain
