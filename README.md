@@ -252,6 +252,17 @@ Policy controls: merchant allow/blocklists, product category blocking, transacti
 
 ---
 
+## Governance Presets
+
+AEP ships with four presets selectable via `/aepassist preset` or `npx aep assist preset`:
+
+- **strict** - Trust starts at 200. Human gates on destructive actions. Post-quantum signatures enabled. All 11 scanners active (hard severity). Recovery engine with max 1 attempt. Workflow phases required. Fleet max 3 agents.
+- **standard** - Trust starts at 500. Webhook gates. Drift warnings enabled. 7 core scanners active. Recovery engine with max 2 attempts. Workflow phases optional.
+- **relaxed** - Trust starts at 600. No gates. Basic evidence ledger. 4 core scanners (PII, injection, secrets and jailbreak). No recovery engine. No workflow phases.
+- **audit** - Read-only mode. No mutations permitted. Full evidence collection. All 11 scanners active (soft severity). Complete OTEL export. Proof bundles generated for every session.
+
+---
+
 ## Built-in Policies
 
 | Policy | Description |
