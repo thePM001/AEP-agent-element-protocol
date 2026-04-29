@@ -8,7 +8,7 @@
 ### AEP 2.5 Agent Harness so your AI actually uses AEP: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.5-agent-harness
 ---
 
-### 75 Features. One Protocol. Too much effort to always update the image below.
+### Now 75 Features. One Protocol. 
 
 ![AEP 2.5 - 75 Features](docs/images/feature-grid.png)
 
