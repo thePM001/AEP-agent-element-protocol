@@ -17,6 +17,15 @@ const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml') || null;
 
+// dynAEP-TA: Temporal and perception validation module
+const temporal = (() => {
+    try {
+        return require('./aep-temporal-validate');
+    } catch (e) {
+        return null;
+    }
+})();
+
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
@@ -113,6 +122,12 @@ class AEPValidator {
         
         // Extract design rules
         this.designRules = this.theme?.design_rules || {};
+
+        // dynAEP-TA: Load temporal authority configuration
+        this.temporalConfig = null;
+        if (temporal) {
+            this.temporalConfig = temporal.loadTemporalConfig(configDir);
+        }
     }
     
     addViolation(severity, file, line, rule, message) {
@@ -324,12 +339,29 @@ class AEPValidator {
         console.log(`  Scene elements: ${this.sceneXids.size}`);
         console.log(`  Skin bindings: ${this.skinBindings.size}`);
         console.log(`  Palette colors: ${this.paletteColors.size}`);
+        if (temporal && this.temporalConfig) {
+            console.log(`  Temporal authority: ${this.temporalConfig.enabled ? 'ENABLED' : 'DISABLED'}`);
+            console.log(`  Perception governance: ${this.temporalConfig.perception_governance?.enabled ? 'ENABLED' : 'DISABLED'}`);
+            console.log(`  Perception modalities: ${temporal.listModalities().join(', ')}`);
+        }
         console.log('');
         
+        // Phase 1: Temporal validation (runs BEFORE structural)
+        if (temporal && this.temporalConfig && this.temporalConfig.enabled) {
+            this.checkTemporalViolations();
+        }
+
+        // Phase 2: Perception validation (runs between temporal and structural)
+        if (temporal && this.temporalConfig && this.temporalConfig.perception_governance &&
+            this.temporalConfig.perception_governance.enabled) {
+            this.checkPerceptionViolations();
+        }
+
+        // Phase 3: Structural validation
         for (const file of files) {
             const content = fs.readFileSync(file, 'utf8');
             const relPath = path.relative(process.cwd(), file);
-            
+
             this.checkElementRegistration(relPath, content);
             this.checkHardcodedColors(relPath, content);
             this.checkBorderRadius(relPath, content);
@@ -338,6 +370,11 @@ class AEPValidator {
             this.checkInternalTerminology(relPath, content);
             this.checkSkinBindings(relPath, content);
             this.checkDashes(relPath, content);
+
+            // dynAEP-TA: Check for local clock usage in governed code
+            if (temporal && this.temporalConfig && this.temporalConfig.enabled) {
+                this.checkLocalClockUsage(relPath, content);
+            }
         }
         
         // Also validate cross-references between config files
@@ -490,6 +527,156 @@ class AEPValidator {
                 } catch (parseErr) {}
             }
         } catch (e) {}
+    }
+
+    // -----------------------------------------------------------------------
+    // Check 12: Temporal event violations in evidence ledger (dynAEP-TA)
+    // -----------------------------------------------------------------------
+    checkTemporalViolations() {
+        const ledgerPath = path.join(this.srcDir, '..', '.claude', 'aep-evidence.jsonl');
+        if (!fs.existsSync(ledgerPath)) return;
+
+        try {
+            const content = fs.readFileSync(ledgerPath, 'utf8');
+            const lines = content.split('\n').filter(l => l.trim().length > 0);
+
+            for (let i = 0; i < lines.length; i++) {
+                try {
+                    const entry = JSON.parse(lines[i]);
+
+                    // Validate temporal_validation entries
+                    if (entry.type === 'temporal_validation' && entry.data) {
+                        const result = temporal.validateTemporalEvent({
+                            bridgeTimeMs: entry.data.bridgeTimeMs,
+                            agentTimeMs: entry.data.agentTimeMs,
+                            agentId: entry.data.agentId,
+                            causalPosition: entry.data.causalPosition,
+                        }, this.temporalConfig);
+
+                        for (const v of result.violations) {
+                            this.addViolation(
+                                v.severity === 'CRITICAL' ? SEVERITY.CRITICAL :
+                                    v.severity === 'HIGH' ? SEVERITY.HIGH :
+                                        v.severity === 'MEDIUM' ? SEVERITY.MEDIUM : SEVERITY.LOW,
+                                '.claude/aep-evidence.jsonl',
+                                i + 1,
+                                'TEMPORAL_' + v.type.toUpperCase(),
+                                v.message
+                            );
+                        }
+                    }
+
+                    // Check for recorded temporal violations
+                    if (entry.type === 'temporal_violation') {
+                        const severity = entry.severity === 'CRITICAL' ? SEVERITY.CRITICAL :
+                            entry.severity === 'HIGH' ? SEVERITY.HIGH : SEVERITY.MEDIUM;
+                        this.addViolation(severity, '.claude/aep-evidence.jsonl', i + 1,
+                            'TEMPORAL_VIOLATION',
+                            entry.message || `Temporal violation: ${entry.violation_type || 'unspecified'}`);
+                    }
+                } catch (parseErr) {}
+            }
+        } catch (e) {}
+    }
+
+    // -----------------------------------------------------------------------
+    // Check 13: Perception annotation violations in evidence ledger (dynAEP-TA-P)
+    // -----------------------------------------------------------------------
+    checkPerceptionViolations() {
+        const ledgerPath = path.join(this.srcDir, '..', '.claude', 'aep-evidence.jsonl');
+        if (!fs.existsSync(ledgerPath)) return;
+
+        try {
+            const content = fs.readFileSync(ledgerPath, 'utf8');
+            const lines = content.split('\n').filter(l => l.trim().length > 0);
+
+            for (let i = 0; i < lines.length; i++) {
+                try {
+                    const entry = JSON.parse(lines[i]);
+
+                    // Validate perception_governance entries
+                    if (entry.type === 'perception_governance' && entry.data) {
+                        const annotations = {};
+                        // Reconstruct annotations from the original values in the entry
+                        if (typeof entry.data.originalSyllableRate === 'number') {
+                            annotations.syllable_rate = entry.data.originalSyllableRate;
+                        }
+                        if (typeof entry.data.originalTurnGapMs === 'number') {
+                            annotations.turn_gap_ms = entry.data.originalTurnGapMs;
+                        }
+
+                        // If the entry has a generic annotations object, use that
+                        if (entry.data.originalAnnotations && typeof entry.data.originalAnnotations === 'object') {
+                            Object.assign(annotations, entry.data.originalAnnotations);
+                        }
+
+                        const modality = entry.data.modality;
+                        if (modality && Object.keys(annotations).length > 0) {
+                            const result = temporal.validatePerceptionAnnotation(
+                                modality,
+                                annotations,
+                                this.temporalConfig.perception_governance
+                            );
+
+                            for (const v of result.violations) {
+                                const severity = v.type === 'hard_violation' ? SEVERITY.CRITICAL :
+                                    v.type === 'soft_violation' ? SEVERITY.MEDIUM : SEVERITY.HIGH;
+                                this.addViolation(severity, '.claude/aep-evidence.jsonl', i + 1,
+                                    'PERCEPTION_' + v.type.toUpperCase(),
+                                    v.message
+                                );
+                            }
+                        }
+                    }
+
+                    // Check for recorded perception violations
+                    if (entry.type === 'perception_violation') {
+                        const severity = entry.severity === 'hard' ? SEVERITY.CRITICAL : SEVERITY.MEDIUM;
+                        this.addViolation(severity, '.claude/aep-evidence.jsonl', i + 1,
+                            'PERCEPTION_VIOLATION',
+                            entry.message || `Perception violation on ${entry.modality || 'unknown'}: ${entry.parameter || 'unspecified'}`);
+                    }
+                } catch (parseErr) {}
+            }
+        } catch (e) {}
+    }
+
+    // -----------------------------------------------------------------------
+    // Check 14: Local clock usage in governed code paths (dynAEP-TA)
+    // -----------------------------------------------------------------------
+    checkLocalClockUsage(file, content) {
+        // Skip config files, test files and the temporal module itself
+        if (file.includes('aep-temporal-validate') ||
+            file.includes('aep-safety-guard') ||
+            file.includes('.test.') ||
+            file.includes('.spec.') ||
+            file.includes('node_modules')) return;
+
+        const patterns = [
+            { regex: /Date\.now\(\)/g, name: 'Date.now()' },
+            { regex: /new\s+Date\(\s*\)/g, name: 'new Date()' },
+            { regex: /performance\.now\(\)/g, name: 'performance.now()' },
+        ];
+
+        const lines = content.split('\n');
+
+        for (const pat of patterns) {
+            pat.regex.lastIndex = 0;
+            let match;
+            while ((match = pat.regex.exec(content)) !== null) {
+                const lineNum = content.substring(0, match.index).split('\n').length;
+                const line = lines[lineNum - 1] || '';
+
+                // Skip comments
+                if (line.trim().startsWith('//') || line.trim().startsWith('*')) continue;
+                // Skip lines that explicitly reference temporal fallback
+                if (line.includes('temporal:fallback') || line.includes('fallback')) continue;
+
+                this.addViolation(SEVERITY.MEDIUM, file, lineNum,
+                    'LOCAL_CLOCK_USAGE',
+                    `${pat.name} found in governed code. Use dynaep_temporal_query(authoritative_time) instead.`);
+            }
+        }
     }
 
     // -----------------------------------------------------------------------
