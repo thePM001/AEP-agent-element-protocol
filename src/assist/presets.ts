@@ -2,6 +2,20 @@
 // Four governance presets: strict, standard, relaxed and audit
 
 import type { PresetConfig, AssistPreset } from "./types.js";
+import type { StepActivationProfile } from "../evaluation-chain/types.js";
+import { DEFAULT_STEP_ACTIVATION_PROFILE } from "../evaluation-chain/defaults.js";
+
+/**
+ * Step activation profiles per preset.
+ * strict/audit: force_all_preconditions = true (no short-circuits).
+ * standard/relaxed: force_all_preconditions = false (short-circuits on false precondition).
+ */
+export const PRESET_STEP_ACTIVATION: Record<AssistPreset, StepActivationProfile> = {
+  strict: { ...DEFAULT_STEP_ACTIVATION_PROFILE, force_all_preconditions: true },
+  standard: { ...DEFAULT_STEP_ACTIVATION_PROFILE, force_all_preconditions: false },
+  relaxed: { ...DEFAULT_STEP_ACTIVATION_PROFILE, force_all_preconditions: false },
+  audit: { ...DEFAULT_STEP_ACTIVATION_PROFILE, force_all_preconditions: true },
+};
 
 const STRICT: PresetConfig = {
   trust: { initial_score: 200, erosion_rate: 10 },
@@ -188,5 +202,13 @@ evidence:
     yaml += `\nscanners:\n  enabled: true\n  pii:\n    enabled: true\n    severity: hard\n  injection:\n    enabled: true\n    severity: hard\n  secrets:\n    enabled: true\n    severity: hard\n  jailbreak:\n    enabled: true\n    severity: hard\n  toxicity:\n    enabled: true\n    severity: soft\n  urls:\n    enabled: true\n    severity: soft\n`;
   }
 
+  // Step activation configuration
+  const activation = PRESET_STEP_ACTIVATION[preset];
+  yaml += `\nstep_activation:\n  force_all_preconditions: ${activation.force_all_preconditions}\n`;
+
   return yaml;
+}
+
+export function getStepActivation(preset: AssistPreset): StepActivationProfile {
+  return PRESET_STEP_ACTIVATION[preset];
 }

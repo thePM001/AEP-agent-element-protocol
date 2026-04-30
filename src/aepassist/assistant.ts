@@ -5,7 +5,8 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 
 import { join } from "node:path";
 import { AgentGateway } from "../gateway.js";
 import { loadPolicy } from "../policy/loader.js";
-import { generatePolicyYaml, getPreset } from "../assist/presets.js";
+import { generatePolicyYaml, getPreset, getStepActivation } from "../assist/presets.js";
+import { ALWAYS_MODE_STEPS, ACTIVE_MODE_STEPS } from "../evaluation-chain/defaults.js";
 import { AgentIdentityManager } from "../identity/manager.js";
 import { generateKeyPairSync } from "node:crypto";
 import type { CovenantAction, IdentityAction } from "./types.js";
@@ -239,6 +240,17 @@ Streaming validation: ${presetConfig.streaming.enabled ? "on" : "off"}`,
       // Drift status
       const driftTracking = policy.intent?.tracking ?? false;
 
+      // Evaluation chain status
+      const profile = this.gateway.getStepActivationProfile();
+      const chainStats = this.gateway.getChainStats();
+      const currentlyShortCircuiting: number[] = [];
+      for (const key of Object.keys(chainStats.shortCircuitCountByStep)) {
+        const stepNum = parseInt(key.split("_")[1], 10);
+        if (!isNaN(stepNum) && chainStats.shortCircuitCountByStep[key] > 0) {
+          currentlyShortCircuiting.push(stepNum);
+        }
+      }
+
       const msg = `AEP Governance Status
 
 Active sessions: ${sessionCount}
@@ -253,6 +265,13 @@ Ring: ${ring}
 Active covenants: ${covenantCount}
 Scanners: ${scannersEnabled ? "enabled" : "disabled"}
 Drift tracking: ${driftTracking ? "on" : "off"}
+
+Evaluation Chain:
+  Steps total:            15
+  Always-mode steps:      ${ALWAYS_MODE_STEPS.length} (${ALWAYS_MODE_STEPS.join(", ")})
+  Active-mode steps:      ${ACTIVE_MODE_STEPS.length} (${ACTIVE_MODE_STEPS.join(", ")})
+  Force all preconditions: ${profile.force_all_preconditions}
+  Currently short-circuiting: ${currentlyShortCircuiting.length > 0 ? `${currentlyShortCircuiting.length} steps (${currentlyShortCircuiting.join(", ")})` : "none yet"}
 
 Policy: ${activePath}`;
 
@@ -680,9 +699,20 @@ Formats: json, csv, html`,
         const rows = reportData.sessions
           .map(s => `<tr><td>${s.id}</td><td>${s.state}</td><td>${s.allowed}</td><td>${s.denied}</td><td>${s.gated}</td></tr>`)
           .join("\n");
+        const cs = reportData.chain_statistics;
+        const chainHtml = cs.total_evaluations > 0
+          ? `<h2>Evaluation Chain Statistics</h2>
+<table>
+<tr><th>Metric</th><th>Value</th></tr>
+<tr><td>Total evaluations</td><td>${cs.total_evaluations}</td></tr>
+<tr><td>Avg steps evaluated</td><td>${cs.average_steps_evaluated}</td></tr>
+<tr><td>Avg steps short-circuited</td><td>${cs.average_steps_short_circuited}</td></tr>
+<tr><td>Estimated time saved (µs)</td><td>${cs.estimated_time_saved_us}</td></tr>
+</table>`
+          : "";
         const html = `<!DOCTYPE html>
 <html><head><title>AEP Audit Report</title>
-<style>body{font-family:sans-serif;margin:2em}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:4px 8px}th{background:#f0f0f0}</style>
+<style>body{font-family:sans-serif;margin:2em}table{border-collapse:collapse;margin-bottom:1em}td,th{border:1px solid #ccc;padding:4px 8px}th{background:#f0f0f0}</style>
 </head><body>
 <h1>AEP Audit Report</h1>
 <p>Generated: ${reportData.timestamp}</p>
@@ -691,6 +721,7 @@ Formats: json, csv, html`,
 <tr><th>Session</th><th>State</th><th>Allowed</th><th>Denied</th><th>Gated</th></tr>
 ${rows}
 </table>
+${chainHtml}
 </body></html>`;
         writeFileSync(filePath, html);
         break;
@@ -715,10 +746,34 @@ ${rows}
       ring: 2,
     }));
 
+    // Build chain statistics from gateway
+    const cs = this.gateway.getChainStats();
+    const avgEval = cs.totalEvaluations > 0
+      ? +(cs.totalStepsEvaluated / cs.totalEvaluations).toFixed(1)
+      : 0;
+    const avgShort = cs.totalEvaluations > 0
+      ? +(cs.totalStepsShortCircuited / cs.totalEvaluations).toFixed(1)
+      : 0;
+
+    // Per-step short-circuit rates
+    const shortCircuitRateByStep: Record<string, number> = {};
+    if (cs.totalEvaluations > 0) {
+      for (const [key, count] of Object.entries(cs.shortCircuitCountByStep)) {
+        shortCircuitRateByStep[key] = +(count / cs.totalEvaluations).toFixed(3);
+      }
+    }
+
     return {
       timestamp: new Date().toISOString(),
       totalSessions: sessions.length,
       sessions: sessionData,
+      chain_statistics: {
+        total_evaluations: cs.totalEvaluations,
+        average_steps_evaluated: avgEval,
+        average_steps_short_circuited: avgShort,
+        short_circuit_rate_by_step: shortCircuitRateByStep,
+        estimated_time_saved_us: cs.totalTimeSavedUs,
+      },
     };
   }
 

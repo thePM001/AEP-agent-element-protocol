@@ -124,6 +124,25 @@ export class AEPTelemetryExporter {
       case "action:evaluate": {
         const data = entry.data as Record<string, unknown>;
         const spanId = spanIdFromSeq(entry.seq, entry.hash);
+
+        // Build attributes, including chain stats if present
+        const attrs: Record<string, string | number | boolean> = {
+          "aep.action_id": data.actionId as string ?? "",
+          "aep.tool": data.tool as string ?? "",
+          "aep.decision": data.decision as string ?? "",
+          "aep.trust_change": 0,
+          "aep.ring": 0,
+        };
+
+        // Short-circuit chain attributes (added by v2.5 chain runner)
+        if (data.steps_total !== undefined) {
+          attrs["aep.chain.steps_total"] = data.steps_total as number;
+          attrs["aep.chain.steps_evaluated"] = data.steps_evaluated as number ?? 0;
+          attrs["aep.chain.steps_short_circuited"] = data.steps_short_circuited as number ?? 0;
+          attrs["aep.chain.steps_aborted"] = data.steps_aborted as number ?? 0;
+          attrs["aep.chain.force_all_preconditions"] = data.force_all_preconditions as boolean ?? false;
+        }
+
         this.spans.push({
           traceId: this.traceId,
           spanId,
@@ -132,18 +151,37 @@ export class AEPTelemetryExporter {
           kind: "INTERNAL",
           startTimeUnixNano: isoToNano(entry.ts),
           endTimeUnixNano: isoToNano(entry.ts),
-          attributes: {
-            "aep.action_id": data.actionId as string ?? "",
-            "aep.tool": data.tool as string ?? "",
-            "aep.decision": data.decision as string ?? "",
-            "aep.trust_change": 0,
-            "aep.ring": 0,
-          },
+          attributes: attrs,
           events: [],
           status: {
             code: data.decision === "deny" ? "ERROR" : "OK",
             ...(data.decision === "deny" ? { message: ((data.reasons as string[]) ?? []).join("; ") } : {}),
           },
+        });
+        break;
+      }
+
+      case "chain:evaluate": {
+        const data = entry.data as Record<string, unknown>;
+        const spanId = spanIdFromSeq(entry.seq, entry.hash);
+        this.spans.push({
+          traceId: this.traceId,
+          spanId,
+          parentSpanId: this.rootSpanId,
+          name: `aep.chain.${data.tool as string ?? "unknown"}`,
+          kind: "INTERNAL",
+          startTimeUnixNano: isoToNano(entry.ts),
+          endTimeUnixNano: isoToNano(entry.ts),
+          attributes: {
+            "aep.tool": data.tool as string ?? "",
+            "aep.chain.steps_total": data.steps_total as number ?? 15,
+            "aep.chain.steps_evaluated": data.steps_evaluated as number ?? 0,
+            "aep.chain.steps_short_circuited": data.steps_short_circuited as number ?? 0,
+            "aep.chain.steps_aborted": data.steps_aborted as number ?? 0,
+            "aep.chain.force_all_preconditions": data.force_all_preconditions as boolean ?? false,
+          },
+          events: [],
+          status: { code: "OK" },
         });
         break;
       }

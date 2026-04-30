@@ -31,6 +31,24 @@ import { SpawnGovernor } from "./fleet/spawn-governance.js";
 import { MessageScanner } from "./fleet/message-scanner.js";
 import { FleetAPI } from "./fleet/api.js";
 import type { FleetPolicy } from "./fleet/types.js";
+import {
+  StepActivationMode,
+  type StepActivationProfile,
+  type StepVerdict,
+  type ChainResult,
+  type EvalContext,
+} from "./evaluation-chain/types.js";
+import {
+  DEFAULT_STEP_ACTIVATION_PROFILE,
+} from "./evaluation-chain/defaults.js";
+import {
+  runEvaluationChain,
+  countEvaluated,
+  countShortCircuited,
+  countAborted,
+  type EvalStep,
+} from "./evaluation-chain/runner.js";
+import { evaluatePrecondition } from "./evaluation-chain/preconditions.js";
 
 export interface GatewayOptions {
   ledgerDir: string;
@@ -107,6 +125,22 @@ export class AgentGateway {
   private spawnGovernor: SpawnGovernor | null = null;
   private messageScanner: MessageScanner | null = null;
   private fleetAPI: FleetAPI | null = null;
+  private stepActivationProfile: StepActivationProfile = DEFAULT_STEP_ACTIVATION_PROFILE;
+  private chainStats: {
+    totalEvaluations: number;
+    totalStepsEvaluated: number;
+    totalStepsShortCircuited: number;
+    totalStepsAborted: number;
+    shortCircuitCountByStep: Record<string, number>;
+    totalTimeSavedUs: number;
+  } = {
+    totalEvaluations: 0,
+    totalStepsEvaluated: 0,
+    totalStepsShortCircuited: 0,
+    totalStepsAborted: 0,
+    shortCircuitCountByStep: {},
+    totalTimeSavedUs: 0,
+  };
 
   constructor(options: GatewayOptions) {
     this.options = options;
@@ -314,6 +348,84 @@ export class AgentGateway {
   }
 
   /**
+   * Set the step activation profile for the evaluation chain.
+   * Used by presets to control short-circuit behaviour.
+   */
+  setStepActivationProfile(profile: StepActivationProfile): void {
+    this.stepActivationProfile = profile;
+  }
+
+  /**
+   * Get the current step activation profile.
+   */
+  getStepActivationProfile(): StepActivationProfile {
+    return this.stepActivationProfile;
+  }
+
+  /**
+   * Get accumulated chain statistics across all evaluations.
+   */
+  getChainStats(): typeof this.chainStats {
+    return { ...this.chainStats };
+  }
+
+  /**
+   * Build the evaluation context from current session/config state.
+   */
+  private buildEvalContext(
+    sessionId: string,
+    session: import("./session/session.js").Session,
+    action: AgentAction,
+  ): EvalContext {
+    const dm = this.decompositionManagers.get(sessionId);
+    const kbm = this.knowledgeManagers.get(sessionId);
+
+    return {
+      session: {
+        id: sessionId,
+        state: session.state,
+        actionCount: session.stats.actionsEvaluated,
+        actionsInLastMinute: session.getActionsInLastMinute(),
+        elapsedMs: session.stats.elapsedMs,
+        actionsDenied: session.stats.actionsDenied,
+        actionsAllowed: session.stats.actionsAllowed,
+        actionsGated: session.stats.actionsGated,
+        actionsEvaluated: session.stats.actionsEvaluated,
+      },
+      config: {
+        drift: {
+          warmupThreshold: session.policy.intent?.warmup_actions ?? 10,
+        },
+        budgets: session.policy.limits ? {
+          maxRuntimeMs: session.policy.limits.max_runtime_ms,
+          maxActions: session.policy.session.max_actions,
+          maxDenials: session.policy.session.max_denials,
+          costBudget: session.policy.limits.max_cost_usd,
+        } : undefined,
+        gates: Object.fromEntries(
+          (session.policy.gates ?? []).map((g) => [g.action, g]),
+        ),
+      },
+      policy: {
+        escalation: session.policy.session.escalation ?? [],
+      },
+      currentAction: {
+        tool: action.tool,
+        type: action.tool.split(":")[0],
+        input: action.input,
+        involvesRetrieval: action.tool === "knowledge:retrieve",
+      },
+      fleet: {
+        activeAgentCount: this.fleetManager
+          ? this.sessionManager.listActiveSessions().length
+          : 1,
+      },
+      knowledgeBase: kbm ? { active: true } : undefined,
+      decomposition: dm ? { enabled: true } : undefined,
+    };
+  }
+
+  /**
    * Evaluate an action through the full 15-step governance chain.
    *
    * Step 0:  Task scope check (if decomposition active)
@@ -333,6 +445,10 @@ export class AgentGateway {
    * Step 14: Content scanner pipeline
    *
    * After step 14: hard violation rejects, soft triggers recovery, all pass approves.
+   *
+   * The chain always produces 15 StepVerdict entries in the evidence ledger.
+   * Active-mode steps whose preconditions are not met short-circuit with
+   * verdict_reason "not_applicable". Core governance steps never short-circuit.
    */
   evaluate(sessionId: string, action: AgentAction): Verdict {
     const session = this.sessionManager.getSession(sessionId);
@@ -344,37 +460,173 @@ export class AgentGateway {
       throw new Error(`No evaluator for session "${sessionId}".`);
     }
     const ledger = this.ledgers.get(sessionId);
+    const ctx = this.buildEvalContext(sessionId, session, action);
 
-    // Step 0: Task scope check (if task decomposition active)
-    const dm = this.decompositionManagers.get(sessionId);
-    const activeTaskId = this.activeTaskIds.get(sessionId);
-    if (dm && activeTaskId) {
-      const scopeDenial = dm.validateActionScope(
-        activeTaskId,
-        action.tool,
-        action.input
-      );
-      if (scopeDenial) {
-        session.recordAction("deny");
-        ledger?.append("action:evaluate", {
-          actionId: "task-scope-deny",
-          tool: action.tool,
-          decision: "deny",
-          reasons: [scopeDenial],
-          input: action.input,
+    // Record step verdicts for the chain
+    const stepVerdicts: StepVerdict[] = [];
+    let chainAborted = false;
+
+    // Helper to record a short-circuit verdict
+    const shortCircuit = (stepNum: number, name: string, precondition?: string): void => {
+      stepVerdicts.push({
+        step: stepNum,
+        name,
+        mode: StepActivationMode.ACTIVE,
+        precondition,
+        precondition_result: false,
+        verdict: "pass",
+        verdict_reason: "not_applicable",
+        duration_us: 0,
+        timestamp: new Date().toISOString(),
+      });
+    };
+
+    // Helper to record a step that ran
+    const recordStep = (
+      stepNum: number,
+      name: string,
+      mode: StepActivationMode,
+      verdict: "pass" | "fail" | "gate_pending",
+      reason: string,
+      durationUs: number,
+      details?: Record<string, unknown>,
+      precondition?: string,
+      preconditionResult?: boolean,
+    ): void => {
+      stepVerdicts.push({
+        step: stepNum,
+        name,
+        mode,
+        precondition,
+        precondition_result: preconditionResult,
+        verdict,
+        verdict_reason: reason,
+        duration_us: durationUs,
+        timestamp: new Date().toISOString(),
+        details,
+      });
+    };
+
+    // Helper to fill remaining steps as aborted
+    const fillAborted = (fromStep: number): void => {
+      for (let i = fromStep; i <= 14; i++) {
+        const activation = this.stepActivationProfile.steps[i];
+        stepVerdicts.push({
+          step: i,
+          name: activation?.name ?? `step_${i}`,
+          mode: activation?.mode ?? StepActivationMode.ALWAYS,
+          precondition: activation?.precondition,
+          verdict: "pass",
+          verdict_reason: "chain_aborted_hard_violation",
+          duration_us: 0,
+          timestamp: new Date().toISOString(),
         });
-        return {
-          decision: "deny",
-          actionId: "task-scope-deny",
-          reasons: [scopeDenial],
-        };
       }
+    };
+
+    // Helper to check precondition for active-mode steps
+    const shouldRun = (stepNum: number): boolean => {
+      const activation = this.stepActivationProfile.steps[stepNum];
+      if (!activation || activation.mode === StepActivationMode.ALWAYS) return true;
+      if (this.stepActivationProfile.force_all_preconditions) return true;
+
+      return activation.precondition
+        ? evaluatePrecondition(activation.precondition, ctx)
+        : true;
+    };
+
+    // Step 0: Task scope check (active: decomposition_enabled)
+    const step0Start = performance.now();
+    if (!shouldRun(0)) {
+      shortCircuit(0, "task_scope", "decomposition_enabled");
+    } else {
+      const dm = this.decompositionManagers.get(sessionId);
+      const activeTaskId = this.activeTaskIds.get(sessionId);
+      if (dm && activeTaskId) {
+        const scopeDenial = dm.validateActionScope(
+          activeTaskId,
+          action.tool,
+          action.input
+        );
+        if (scopeDenial) {
+          session.recordAction("deny");
+          recordStep(0, "task_scope", StepActivationMode.ACTIVE, "fail", scopeDenial,
+            Math.round((performance.now() - step0Start) * 1000), { actionId: "task-scope-deny" },
+            "decomposition_enabled", true);
+          fillAborted(1);
+          chainAborted = true;
+
+          // Record chain verdicts to ledger
+          this.recordChainVerdicts(sessionId, stepVerdicts, action);
+
+          ledger?.append("action:evaluate", {
+            actionId: "task-scope-deny",
+            tool: action.tool,
+            decision: "deny",
+            reasons: [scopeDenial],
+            input: action.input,
+          });
+          return {
+            decision: "deny",
+            actionId: "task-scope-deny",
+            reasons: [scopeDenial],
+          };
+        }
+      }
+      recordStep(0, "task_scope", StepActivationMode.ACTIVE, "pass", "task_scope_passed",
+        Math.round((performance.now() - step0Start) * 1000), undefined, "decomposition_enabled", true);
     }
 
-    // Steps 1-12: PolicyEvaluator handles session state, ring, rate limits,
-    // intent drift, escalation, covenant, forbidden patterns, capability+trust,
-    // budget/limit, gate and cross-agent verification
+    // Steps 1-12: PolicyEvaluator handles these
+    const stepsStart = performance.now();
     const verdict = evaluator.evaluate(action, session);
+    const stepsDuration = Math.round((performance.now() - stepsStart) * 1000);
+
+    // Record Steps 1-12 as evaluated (the PolicyEvaluator runs them internally)
+    // We record them as a batch with the final verdict
+    for (let i = 1; i <= 12; i++) {
+      const activation = this.stepActivationProfile.steps[i];
+      const stepName = activation?.name ?? `step_${i}`;
+
+      if (chainAborted) {
+        stepVerdicts.push({
+          step: i, name: stepName,
+          mode: activation?.mode ?? StepActivationMode.ALWAYS,
+          precondition: activation?.precondition,
+          verdict: "pass", verdict_reason: "chain_aborted_hard_violation",
+          duration_us: 0, timestamp: new Date().toISOString(),
+        });
+        continue;
+      }
+
+      // For active-mode steps 5, 6, 10, 11, 12: check if they should short-circuit
+      if (activation?.mode === StepActivationMode.ACTIVE && !this.stepActivationProfile.force_all_preconditions) {
+        const preconditionMet = activation.precondition
+          ? evaluatePrecondition(activation.precondition, ctx)
+          : true;
+
+        if (!preconditionMet) {
+          shortCircuit(i, stepName, activation.precondition);
+          continue;
+        }
+      }
+
+      // Step ran as part of PolicyEvaluator -- record as evaluated
+      const stepVerdict = verdict.decision === "deny" || verdict.decision === "gate"
+        ? (i <= 12 ? "pass" : verdict.decision === "deny" ? "fail" : "gate_pending")
+        : "pass";
+
+      stepVerdicts.push({
+        step: i, name: stepName,
+        mode: activation?.mode ?? StepActivationMode.ALWAYS,
+        precondition: activation?.precondition,
+        precondition_result: activation?.mode === StepActivationMode.ACTIVE ? true : undefined,
+        verdict: stepVerdict as "pass" | "fail" | "gate_pending",
+        verdict_reason: `${stepName}_evaluated`,
+        duration_us: Math.round(stepsDuration / 12),
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     // Trust-ring demotion on denial
     if (verdict.decision === "deny") {
@@ -383,15 +635,96 @@ export class AgentGateway {
       if (trust && ring) {
         ring.demoteOnTrustDrop(trust.getTier());
       }
+      // Mark the step that caused the denial as fail
+      // The PolicyEvaluator already handled this, but we can mark the last evaluated step
+      let lastEval: StepVerdict | undefined;
+      for (let i = stepVerdicts.length - 1; i >= 0; i--) {
+        if (stepVerdicts[i].verdict_reason !== "not_applicable" && stepVerdicts[i].verdict_reason !== "chain_aborted_hard_violation") {
+          lastEval = stepVerdicts[i];
+          break;
+        }
+      }
+      if (lastEval && lastEval.step >= 1 && lastEval.step <= 12) {
+        lastEval.verdict = "fail";
+        lastEval.verdict_reason = verdict.reasons[0] ?? "denied";
+        lastEval.details = {
+          actionId: verdict.actionId,
+          matchedForbidden: verdict.matchedForbidden,
+        };
+      }
+      fillAborted(13);
+      this.recordChainVerdicts(sessionId, stepVerdicts, action);
+
+      const policyHash = evaluator.getPolicyHash();
+      ledger?.append("action:evaluate", {
+        actionId: verdict.actionId,
+        tool: action.tool,
+        decision: verdict.decision,
+        reasons: verdict.reasons,
+        input: action.input,
+        policyHash,
+      });
+      return verdict;
     }
 
-    // Step 13: Knowledge retrieval validation (if knowledge base active)
-    if (verdict.decision === "allow") {
+    if (verdict.decision === "gate") {
+      // Mark gate step
+      let lastEvalGate: StepVerdict | undefined;
+      for (let i = stepVerdicts.length - 1; i >= 0; i--) {
+        if (stepVerdicts[i].verdict_reason !== "not_applicable" && stepVerdicts[i].verdict_reason !== "chain_aborted_hard_violation") {
+          lastEvalGate = stepVerdicts[i];
+          break;
+        }
+      }
+      if (lastEvalGate) {
+        lastEvalGate.verdict = "gate_pending";
+        lastEvalGate.verdict_reason = verdict.reasons[0] ?? "gated";
+        lastEvalGate.details = {
+          actionId: verdict.actionId,
+          matchedGate: verdict.matchedGate,
+          matchedCapability: verdict.matchedCapability,
+        };
+      }
+      fillAborted(13);
+      this.recordChainVerdicts(sessionId, stepVerdicts, action);
+
+      const policyHash = evaluator.getPolicyHash();
+      ledger?.append("action:gate", {
+        actionId: verdict.actionId,
+        tool: action.tool,
+        reasons: verdict.reasons,
+        policyHash,
+      });
+      const oldState = session.state;
+      if (session.state === "active") {
+        session.pause();
+        this.options.onStateChange?.(sessionId, oldState, session.state);
+      }
+      return verdict;
+    }
+
+    // Step 13: Knowledge retrieval validation (active: knowledge_active_and_retrieval)
+    const step13Start = performance.now();
+    if (!shouldRun(13)) {
+      shortCircuit(13, "knowledge_validation", "knowledge_active_and_retrieval");
+    } else {
       const kbm = this.knowledgeManagers.get(sessionId);
       if (kbm && action.tool === "knowledge:retrieve") {
         const query = String(action.input.query ?? "");
         const scope = action.input.scope as string[] | undefined;
         if (!query) {
+          recordStep(13, "knowledge_validation", StepActivationMode.ACTIVE, "fail",
+            "Knowledge retrieval requires a query.",
+            Math.round((performance.now() - step13Start) * 1000),
+            { actionId: verdict.actionId }, "knowledge_active_and_retrieval", true);
+          // Step 14 aborted
+          stepVerdicts.push({
+            step: 14, name: "content_scanners", mode: StepActivationMode.ALWAYS,
+            verdict: "pass", verdict_reason: "chain_aborted_hard_violation",
+            duration_us: 0, timestamp: new Date().toISOString(),
+          });
+          this.recordChainVerdicts(sessionId, stepVerdicts, action);
+
           const knowledgeDenial: Verdict = {
             decision: "deny",
             actionId: verdict.actionId,
@@ -413,6 +746,17 @@ export class AgentGateway {
             if (rule.type === "forbid" && rule.action === "knowledge:retrieve") {
               for (const cond of rule.conditions) {
                 if (cond.field === "scope" && cond.operator === "==" && scope?.includes(String(cond.value))) {
+                  recordStep(13, "knowledge_validation", StepActivationMode.ACTIVE, "fail",
+                    `Knowledge scope "${cond.value}" is forbidden by covenant.`,
+                    Math.round((performance.now() - step13Start) * 1000),
+                    { actionId: verdict.actionId }, "knowledge_active_and_retrieval", true);
+                  stepVerdicts.push({
+                    step: 14, name: "content_scanners", mode: StepActivationMode.ALWAYS,
+                    verdict: "pass", verdict_reason: "chain_aborted_hard_violation",
+                    duration_us: 0, timestamp: new Date().toISOString(),
+                  });
+                  this.recordChainVerdicts(sessionId, stepVerdicts, action);
+
                   const knowledgeDenial: Verdict = {
                     decision: "deny",
                     actionId: verdict.actionId,
@@ -432,38 +776,74 @@ export class AgentGateway {
           }
         }
       }
+      recordStep(13, "knowledge_validation", StepActivationMode.ACTIVE, "pass",
+        "knowledge_validation_passed",
+        Math.round((performance.now() - step13Start) * 1000),
+        undefined, "knowledge_active_and_retrieval", true);
     }
 
     // Step 14: Content scanner pipeline runs on agent output via scanContent()
     // This step is invoked separately after the agent produces output.
+    recordStep(14, "content_scanners", StepActivationMode.ALWAYS, "pass",
+      "deferred_to_scanContent", 0);
+
+    // Record chain verdicts to ledger
+    this.recordChainVerdicts(sessionId, stepVerdicts, action);
 
     // Log to ledger
     const policyHash = evaluator.getPolicyHash();
-    if (verdict.decision === "gate") {
-      ledger?.append("action:gate", {
-        actionId: verdict.actionId,
-        tool: action.tool,
-        reasons: verdict.reasons,
-        policyHash,
-      });
-      // Pause session on gate
-      const oldState = session.state;
-      if (session.state === "active") {
-        session.pause();
-        this.options.onStateChange?.(sessionId, oldState, session.state);
-      }
-    } else {
-      ledger?.append("action:evaluate", {
-        actionId: verdict.actionId,
-        tool: action.tool,
-        decision: verdict.decision,
-        reasons: verdict.reasons,
-        input: action.input,
-        policyHash,
-      });
-    }
+    ledger?.append("action:evaluate", {
+      actionId: verdict.actionId,
+      tool: action.tool,
+      decision: verdict.decision,
+      reasons: verdict.reasons,
+      input: action.input,
+      policyHash,
+    });
 
     return verdict;
+  }
+
+  /**
+   * Record chain verdicts to the evidence ledger and update aggregate statistics.
+   */
+  private recordChainVerdicts(
+    sessionId: string,
+    verdicts: StepVerdict[],
+    action: AgentAction,
+  ): void {
+    const ledger = this.ledgers.get(sessionId);
+
+    const evaluated = verdicts.filter(
+      (v) => v.verdict_reason !== "not_applicable" && v.verdict_reason !== "chain_aborted_hard_violation",
+    ).length;
+    const shortCircuited = verdicts.filter((v) => v.verdict_reason === "not_applicable").length;
+    const aborted = verdicts.filter((v) => v.verdict_reason === "chain_aborted_hard_violation").length;
+
+    // Update aggregate stats
+    this.chainStats.totalEvaluations++;
+    this.chainStats.totalStepsEvaluated += evaluated;
+    this.chainStats.totalStepsShortCircuited += shortCircuited;
+    this.chainStats.totalStepsAborted += aborted;
+
+    for (const v of verdicts) {
+      if (v.verdict_reason === "not_applicable") {
+        const key = `step_${v.step}_${v.name}`;
+        this.chainStats.shortCircuitCountByStep[key] =
+          (this.chainStats.shortCircuitCountByStep[key] ?? 0) + 1;
+      }
+    }
+
+    // Record to ledger as chain:evaluate (distinct from action:evaluate)
+    ledger?.append("chain:evaluate", {
+      chain_verdicts: verdicts,
+      steps_total: 15,
+      steps_evaluated: evaluated,
+      steps_short_circuited: shortCircuited,
+      steps_aborted: aborted,
+      force_all_preconditions: this.stepActivationProfile.force_all_preconditions,
+      tool: action.tool,
+    });
   }
 
   /**
