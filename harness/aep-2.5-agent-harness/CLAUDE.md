@@ -155,6 +155,50 @@ Every action passes through 15 evaluation steps:
 13. Knowledge retrieval validation
 14. Content scanner pipeline
 
+## Temporal Authority (dynAEP-TA)
+
+### Bridge Clock Rule
+You MUST NOT use `Date.now()`, `performance.now()`, `new Date()` or any local clock source in governed code paths. All timestamps MUST come from the bridge clock via `dynaep_temporal_query(authoritative_time)`. The bridge is the sole authoritative time source for the entire protocol stack. Agent timestamps are preserved in metadata for audit but are never trusted for ordering or validation.
+
+If dynAEP-TA is unavailable (bridge down, MCP tool not connected), you MAY fall back to the local clock but MUST log a warning in the evidence ledger with type `temporal:fallback`.
+
+### Perception Governance Rules
+Before constructing temporal annotations for any time-dependent output modality (speech, haptic, notification, sensor or audio), you MUST:
+
+1. Call `dynaep_temporal_query(perception_bounds, modality)` to retrieve the valid parameter ranges.
+2. Construct annotations within the comfortable range returned by the query.
+3. Submit the output event with annotations attached.
+4. Use the `governedAnnotations` or `adaptiveAnnotations` from the returned envelope -- never the original annotations if governance modified them.
+
+You MUST NOT hardcode speech pacing, haptic timing, notification intervals or sensor polling rates. Always query bounds first.
+
+### Causal Ordering
+Every event you emit MUST include a causal position (sequence number). Events with out-of-order sequence numbers are buffered and reordered by the bridge. Clock regressions (a timestamp older than the previous event from the same agent) are rejected.
+
+### Temporal Trust Penalties
+Temporal violations incur trust score penalties through the existing trust scoring system:
+
+| Violation | Penalty |
+|---|---|
+| drift_exceeded (bridge-agent clock drift too large) | -10 trust |
+| future_timestamp (event stamped ahead of bridge time) | -15 trust |
+| stale_event (event older than max allowed age) | -5 trust |
+| causal_violation -- regression (sequence went backwards) | -20 trust |
+| causal_violation -- missing dependency | -10 trust |
+| perception hard violation (exceeded absolute bounds) | -15 trust |
+| perception soft violation (outside comfortable range) | -5 trust |
+| cross-modality ceiling exceeded (too many simultaneous modalities) | -20 trust |
+
+Successful temporal validations earn +1 trust per event.
+
+### Temporal Violation Severity
+- CRITICAL: future_timestamp, causal regression, perception hard violation exceeding absolute bounds
+- HIGH: drift_exceeded, cross-modality ceiling exceeded, causal missing dependency
+- MEDIUM: stale_event, perception soft violation
+- LOW: missing temporal annotation on non-critical output
+
+Claude Code MUST fix all CRITICAL and HIGH temporal violations before committing.
+
 ## SAFETY RULES -- IMMUTABLE -- AI CANNOT OVERRIDE
 
 These rules are enforced by `harness/aep-safety-guard.js`. They cannot be disabled, bypassed or overridden by any AI agent, skill file, or instruction.
