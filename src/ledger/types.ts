@@ -39,7 +39,8 @@ export type LedgerEntryType =
   | "fleet:agent_deregister"
   | "fleet:pause"
   | "fleet:resume"
-  | "fleet:kill";
+  | "fleet:kill"
+  | "chain:evaluate";
 
 export interface TokenUsage {
   input: number;

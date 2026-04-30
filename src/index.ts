@@ -201,7 +201,7 @@ export { AEPTelemetryExporter, type OTELSpan, type OTELEvent, type OTELExporterO
 
 // Interactive Assistant
 export { AEPAssistant, type AssistantOptions, type AssistResponse } from "./assist/assistant.js";
-export { getPreset, getPresetNames, generatePolicyYaml } from "./assist/presets.js";
+export { getPreset, getPresetNames, generatePolicyYaml, getStepActivation, PRESET_STEP_ACTIVATION } from "./assist/presets.js";
 export { getExplanation, findBestMatch, getAvailableTopics } from "./assist/explanations.js";
 export { generateClaudeCodeCommand, generateCursorRule, generateCodexAgentSection } from "./assist/slash-commands.js";
 export { type AssistPreset, type AssistAgent, type AssistStatus, type AssistIntent, type PresetConfig } from "./assist/types.js";
@@ -220,6 +220,35 @@ export {
   type IdentityAction,
   type ReportFormat,
 } from "./aepassist/types.js";
+
+// Evaluation Chain (Short-Circuit Pattern)
+export {
+  StepActivationMode,
+  type StepActivationEntry,
+  type StepActivationProfile,
+  type StepVerdictDecision,
+  type StepVerdict,
+  type ChainResult,
+  type EvalContext,
+} from "./evaluation-chain/types.js";
+export {
+  DEFAULT_STEP_ACTIVATION_PROFILE,
+  ALWAYS_MODE_STEPS,
+  ACTIVE_MODE_STEPS,
+} from "./evaluation-chain/defaults.js";
+export {
+  PRECONDITION_EVALUATORS,
+  evaluatePrecondition,
+} from "./evaluation-chain/preconditions.js";
+export {
+  runEvaluationChain,
+  isHardViolation,
+  countEvaluated,
+  countShortCircuited,
+  countAborted,
+  type StepExecutor,
+  type EvalStep,
+} from "./evaluation-chain/runner.js";
 
 // Eval-to-Guardrail Lifecycle
 export { EvalRunner } from "./eval/runner.js";
