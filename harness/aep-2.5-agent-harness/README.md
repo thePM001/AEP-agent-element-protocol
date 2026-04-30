@@ -1,17 +1,127 @@
 # AEP v2.5 Agent Harness
 
-## Features (75)
+## Protocol Version: 2.5
+## Features: 75
+## Authority: thePM001 // Biosecure UNVACCINATED Supreme User
 
-### Protocols
-- **Anti-Stub Verification (ASV)** -- 7 pattern detection, AST-based, pre-commit hook
-- **Biosecurity Eligibility Check** -- /aepassist endpoint, biosecure yes/no gating
+---
 
-### Endpoints
-- `GET /aepassist/status` -- check user biosecurity eligibility
-- `POST /aepassist/verify` -- initiate biosecurity verification
-- `GET /aepassist/reverify` -- check re-verification status
+## Core Architecture (12 features)
 
-### Anti-Stub Patterns Detected
+1. Hypergraph-Lattice knowledge store with R-tree spatial indexing
+2. 4-level cascade resolver (Convention -> Attractor -> JEPA -> Frontier API)
+3. 375-float frame vectors for lattice state representation
+4. 86-token coordinate table compression
+5. Binary wire format (zero-parse, typed fields at known offsets)
+6. Rust NIF hot-path computation (pack/unpack, validate, pulse, R-tree, JEPA)
+7. Elixir/OTP orchestration layer with supervision trees
+8. Phoenix LiveView web dashboard
+9. Cochelle terminal REPL interface
+10. Convention crystallisation via SEPL self-feeding loop
+11. CHRONOS append-only audit log
+12. MERKLE hash chain for tamper detection
+
+## Validation Pipeline (15 features)
+
+13. SOMTAL shadow lattice pre-validation (O(1) counter-based)
+14. Layer 1: Integrity validation (8 non-toggleable rules)
+15. Layer 2: Strata validation (26 toggleable predicates)
+16. Layer 3: Dual DAL (forward + mirror pass)
+17. Layer 4: CAMARA 16D centroid absorber (drift threshold tau_a)
+18. Stratum 23: Gricean Quantity + Quality validation
+19. Stratum 24: Gricean Relation validation
+20. Stratum 25: Gricean Manner validation
+21. Stratum 26: Anti-Stub Verification (AST-based, 7 patterns)
+22. Closure verification (S3 quaternion, proof bundles)
+23. Pre-commit hook (blocks stub patterns at git level)
+24. Agent self-audit before task completion
+25. Z3 SMT-LIB2 formal equivalence checking (optional)
+26. 4-layer validation on EVERY mutation, no bypass, no exceptions
+27. Level 0/0.5 bypass enforced at Elixir level, not in Rust
+
+## Knowledge System (12 features)
+
+28. Knowledge pump with gap detection and frontier API consultation
+29. Bulk document ingestion (PDF, markdown, text, code, JSON, ASICF)
+30. Domain classifier (13+ domains, keyword-based, zero LLM)
+31. Intelligent chunker (structure-aware: markdown, code, paragraph, fixed)
+32. ASICF universal convention format with syntrometric metadata
+33. ASICF serialiser (text, JSON, compact binary)
+34. ASICF JEPA encoder (32-float convention vectors)
+35. 74 file format conventions (DOCK 6a)
+36. 40 UX conventions (DOCK 6c)
+37. 25 deployment conventions (DOCK 6d)
+38. Syntrometric operator set (10+ pre-seeded from Heim)
+39. PDF text extraction via pdftotext for runtime knowledge docking
+
+## Neural-Symbolic Engine (8 features)
+
+40. JEPA 527K parameter predictor (ONNX runtime in Rust NIF)
+41. MLE 4096-bit HyperVector engine (dense + sparse, syntrometric header)
+42. Parallel speculative cascade (L1-L3 simultaneous)
+43. EGGROLL evolution strategies for template optimisation
+44. Convention-first resolution (70% L1 match at maturity)
+45. Self-elimination curve (L4 API calls trend toward zero)
+46. Syntrometric derivation engine (derive conventions from first principles)
+47. Training data logger for JEPA sequence learning
+
+## User and Access Control (8 features)
+
+48. UBAL-2 scaled user balance (128-float vectors per user)
+49. Biosecurity gating (16-byte eligibility header)
+50. 4-tier access model (full / limited / receive_only / denied)
+51. Wave processor (user cadence as FFT harmonics)
+52. Tiered storage (ETS hot / mmap warm / PostgreSQL cold)
+53. /aepassist biosecurity eligibility endpoint (AEP 2.5 compliant)
+54. Session tracking with UBAL state in prompt
+55. Temporal empathy (adaptive verbosity from user typing cadence)
+
+## Code Generation (8 features)
+
+56. Coupled template system (source + test generated together)
+57. Verified pipeline (codegen -> compile -> test in sandbox)
+58. Test-coupled generation (every generated module has tests)
+59. 12+ code generation templates
+60. COBOL parser (divisions, sections, paragraphs, PIC clauses)
+61. COBOL-to-modern migration pipeline (Elixir, Python, TypeScript)
+62. Binary format specification DSL with encoder/decoder generation
+63. Format-aware code validation (10 rule handlers)
+
+## Infrastructure (8 features)
+
+64. Resource governor (4-level load shedding: normal, soft, hard, emergency)
+65. Network awareness (internet, Tailscale, DNS, services, traffic monitoring)
+66. Firecracker micro-VM browser bridge (disposable sandboxed web access)
+67. URL policy allowlist with TE gate (outbound + inbound sanitisation)
+68. Content sanitiser (strip scripts, styles, tracking, injections)
+69. Governor-aware throttling per operation type
+70. Systemd watchdog integration (Level 4 survival mode)
+71. Self-architecture analysis (codebase scanning, proposal generation)
+
+## Protocols (4 features)
+
+72. Anti-Stub Verification Protocol (7 patterns, AST-based, pre-commit)
+73. Biosecurity Eligibility Check (/aepassist endpoint)
+74. AEP v3.0 internal harness (private, enforcement rules)
+75. ASICF convention format specification
+
+---
+
+## Endpoints
+
+### GET /aepassist/status
+Check user biosecurity eligibility. Returns simple biosecure yes/no.
+
+### POST /aepassist/verify
+Initiate biosecurity verification. Returns available methods.
+
+### GET /aepassist/reverify
+Check if re-verification is needed.
+
+---
+
+## Anti-Stub Patterns Detected
+
 1. Trivial return stubs (do: :ok, do: nil)
 2. Pass-through stubs (returns input unchanged)
 3. Facade functions (big docs, no implementation)
@@ -20,96 +130,29 @@
 6. Delegation to known stubs
 7. Test stubs (assertions against stub returns)
 
-### Compliance Requirements
-- AST-based stub detection (not regex)
-- Pre-commit hook blocking hard violations
-- Agent self-audit before task completion
-- Biosecurity gating on all AI capabilities
-- Biosecure users: AI access permitted
-- Non-biosecure users: AI access denied
+---
 
-### Reference Implementation
-Radia AGI Platform (private)
+## Compliance Requirements
+
+An AEP v2.5 compliant platform MUST:
+
+1. Implement 4-layer validation on every mutation
+2. Implement AST-based stub detection (not regex)
+3. Install pre-commit hook blocking hard violations
+4. Require agent self-audit before task completion
+5. Gate AI capabilities by biosecurity status
+6. Expose /aepassist/status for eligibility queries
+7. Deny AI interaction to non-biosecure users
+8. Support ASICF universal convention format
+9. Implement convention crystallisation (self-improving knowledge)
+10. Maintain CHRONOS audit log (append-only, tamper-evident)
 
 ---
 
-## Temporal Authority (dynAEP-TA)
+## Reference Implementation
 
-The harness enforces dynAEP-TA temporal governance. Agents never own the clock. The bridge is the sole authoritative time source for the entire protocol stack.
-
-### Bridge Clock Authority
-- Synchronizes to NTP (default), PTP (IEEE 1588 for microsecond precision) or system clock (fallback)
-- Every event is stamped with bridge-authoritative time
-- Agent timestamps are preserved in metadata for audit but never trusted for ordering or validation
-- All `Date.now()` calls in governed code paths are intercepted and replaced with bridge clock queries
-
-### Causal Ordering
-- Lamport vector clocks track ordering across all registered agents
-- Out-of-order events are buffered and reordered by the bridge
-- Clock regressions are rejected with a -20 trust penalty
-- Missing causal dependencies are flagged with a -10 trust penalty
-
-### TimesFM Forecasting
-- Optional 200 M-parameter time-series foundation model (Google Research)
-- Predictive forecasting and anomaly detection on element coordinate streams
-- Disabled by default (requires TimesFM installation)
-- Anomaly action configurable per governance preset (require_approval / warn / log_only)
-
-### Perception Governance (dynAEP-TA-P)
-Five output modalities with quantitative human perception thresholds from psychoacoustics research:
-
-| Modality | Key Parameters | Comfortable Range |
-|---|---|---|
-| Speech | syllable rate, turn gap, pause placement, pitch range | 3.0-5.5 syl/s, 200-800 ms gap |
-| Haptic | tap duration, vibration frequency, pattern interval | 30-200 ms tap, 50-300 hz |
-| Notification | burst limit, display duration, recovery interval | max 3/min, 3-8 s display |
-| Sensor | polling interval, display refresh alignment, response latency | 100-2000 ms poll |
-| Audio | tempo, beat alignment tolerance, fade timing | 60-180 bpm |
-
-Hard bounds define absolute human perception limits. Comfortable bounds define the range safe for sustained interaction. The harness clamps violations to the nearest valid boundary.
-
-### Adaptive Perception Profiles
-- Per-user temporal preference learning via exponential moving average (EMA)
-- Learns from interaction signals: response latency, interruptions, replay requests, speed adjustments
-- Profiles shift within the comfortable range but NEVER exceed hard perception bounds
-- Configurable learning rate and erosion half-life
-- Profiles require a minimum number of interactions before activation (default: 10)
-
-### dynaep_temporal_query Tool
-The MCP tool for all temporal operations. Supported operations:
-
-- `authoritative_time` -- get bridge-stamped current time
-- `perception_bounds` -- get modality bounds before constructing annotations
-- `staleness_check` -- check if a timestamp is stale relative to bridge time
-- `comfortable_range` -- get comfortable min/max for a specific parameter
-- `validate_annotations` -- validate proposed temporal annotations
-- `govern_preview` -- preview governed envelope without committing
-- `list_modalities` -- list all registered perception modalities
-- `get_modality_bounds` -- get full bounds for a specific modality
-
-### New /aepassist Commands
-
-```
-npx aep assist temporal status     # show bridge clock sync status, source, drift
-npx aep assist temporal bounds     # list perception bounds for all modalities
-npx aep assist temporal profile    # show adaptive perception profile for a user
-npx aep assist temporal reset      # reset temporal state (causal ordering, profiles)
-```
-
-### Temporal Validation Pipeline
-Temporal validation runs BEFORE structural validation in the harness pipeline:
-
-```
-1. Temporal validation (drift, staleness, future timestamp, causal ordering)
-2. Perception validation (annotation bounds, modality checks, adaptive profiles)
-3. Structural validation (scene graph, registry, z-bands, skin bindings)
-```
-
-Both temporal and perception validation are controlled by flags in dynaep-config.yaml:
-- `temporal_authority.enabled` -- enable/disable temporal validation
-- `temporal_authority.perception_governance.enabled` -- enable/disable perception validation
+Radia AGI Platform (private) -- 49 build phases, 2700+ tests, ~50K lines of real code, running on commodity hardware.
 
 ---
 
-## Authority
-thePM001 // Biosecure UNVACCINATED Supreme User
+**AEP v2.5 // thePM001 // Biosecure UNVACCINATED Supreme User // 2026-04-28**
