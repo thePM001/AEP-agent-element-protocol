@@ -34,7 +34,7 @@ Returns biosecurity eligibility for the requesting user.
   "aep_version": "2.6",
   "biosecure": false,
   "eligible": false,
-  "message": "AI interaction requires biosecure status."
+  "message": "AI interaction requires positive biosecurity status."
 }
 ```
 
