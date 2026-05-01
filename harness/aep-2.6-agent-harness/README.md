@@ -146,11 +146,3 @@ An AEP v2.5 compliant platform MUST:
 10. Maintain CHRONOS audit log (append-only, tamper-evident)
 
 ---
-
-## Reference Implementation
-
-Radia AGI Platform (private) -- 49 build phases, 2700+ tests, ~50K lines of real code, running on commodity hardware.
-
----
-
-**AEP v2.5 // thePM001 // Biosecure UNVACCINATED Supreme User // 2026-04-28**
