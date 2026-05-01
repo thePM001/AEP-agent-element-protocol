@@ -9,7 +9,7 @@ import { generatePolicyYaml, getPreset, getStepActivation } from "../assist/pres
 import { ALWAYS_MODE_STEPS, ACTIVE_MODE_STEPS } from "../evaluation-chain/defaults.js";
 import { AgentIdentityManager } from "../identity/manager.js";
 import { generateKeyPairSync } from "node:crypto";
-import type { CovenantAction, IdentityAction } from "./types.js";
+import type { CovenantAction, IdentityAction, SchemaAction, PolicyAction } from "./types.js";
 import { parseAEPassistInput } from "./parser.js";
 import type {
   AEPassistResponse,
@@ -18,6 +18,8 @@ import type {
   EmergencyAction,
   ReportFormat,
 } from "./types.js";
+import { SchemaBuilder } from "../schema-builder/index.js";
+import { PolicyBuilder } from "../policy-builder/index.js";
 
 const MAIN_MENU = `AEP Assistant - What would you like to do?
 
@@ -28,7 +30,9 @@ const MAIN_MENU = `AEP Assistant - What would you like to do?
   5. covenant   Create or view covenants
   6. identity   Manage agent identity
   7. report     Generate audit report
-  8. help       Show this menu`;
+  8. schema     Schema Builder (build, validate, compare, tighten)
+  9. policy     Policy Builder (build, validate, gaps)
+ 10. help       Show this menu`;
 
 const PROJECT_TYPES: ProjectType[] = ["ui", "api", "workflow", "infrastructure"];
 const PRESETS: GovernancePreset[] = ["strict", "standard", "relaxed", "audit"];
@@ -60,6 +64,10 @@ export class AEPassistant {
         return this.handleIdentity(parsed.args[0] as IdentityAction | undefined);
       case "report":
         return this.handleReport(parsed.args[0] as ReportFormat | undefined);
+      case "schema":
+        return this.handleSchema(parsed.args);
+      case "policy":
+        return this.handlePolicy(parsed.args);
       case "help":
       default:
         return this.showMenu(parsed.args[0]);
@@ -74,7 +82,7 @@ export class AEPassistant {
     return {
       mode: "help",
       message,
-      actions: ["setup", "status", "preset", "emergency", "covenant", "identity", "report"],
+      actions: ["setup", "status", "preset", "emergency", "covenant", "identity", "report", "schema", "policy"],
     };
   }
 
@@ -733,6 +741,236 @@ ${chainHtml}
       message: `Report written to .aep/reports/${filename}`,
       actions: ["status"],
     };
+  }
+
+  handleSchema(args: string[]): AEPassistResponse {
+    const action = args[0]?.toLowerCase() as SchemaAction | undefined;
+
+    if (!action) {
+      return {
+        mode: "schema",
+        message: `Schema Builder operations:
+
+  build <domain>   Build a schema from data using MLE estimation
+  validate         Validate a schema candidate (composite scoring)
+  compare          Compare multiple schema candidates and rank
+  tighten          Propose tighter constraints from observed data`,
+        prompt: "Which schema action? (build <domain> / validate / compare / tighten)",
+        actions: ["build", "validate", "compare", "tighten"],
+      };
+    }
+
+    const builder = new SchemaBuilder();
+
+    switch (action) {
+      case "build": {
+        const domain = args[1] ?? "default";
+        const schemaId = args[2] ?? `${domain}-schema`;
+        // Build a schema from sample data to demonstrate the pipeline
+        const sampleData = [
+          { name: "example", value: 42, active: true },
+          { name: "test", value: 100, active: false },
+        ];
+        const candidate = builder.buildFromData(sampleData, domain, schemaId);
+        const defStr = JSON.stringify(candidate.definition, null, 2);
+
+        return {
+          mode: "schema",
+          message: `Schema built from sample data for domain "${domain}".
+
+Schema ID: ${candidate.schemaId}
+Source: ${candidate.source}
+Definition:
+${defStr}
+
+To build from your own data, use the programmatic API:
+
+  import { SchemaBuilder } from "aep/schema-builder";
+  const builder = new SchemaBuilder();
+  const schema = builder.buildFromData(yourData, "${domain}", "${schemaId}");`,
+          actions: ["validate", "compare", "tighten"],
+        };
+      }
+
+      case "validate": {
+        const stats = builder.getStats();
+        return {
+          mode: "schema",
+          message: `Schema Validation (composite scoring with 4 analyses):
+
+  1. MLE divergence   (weight ${builder.config.mleWeight})  -- field-level data fit
+  2. Spectral coupling (weight ${builder.config.spectralWeight})  -- constraint graph structure
+  3. Permissiveness    (weight ${builder.config.permissivenessWeight})  -- entropy analysis
+  4. Modularity        (weight ${builder.config.modularityWeight})  -- community detection
+
+Thresholds: pass >= 0.8, review >= 0.5, reject < 0.5
+
+Builder stats: ${stats.totalValidated} validated, ${stats.passCount} passed, ${stats.reviewCount} review, ${stats.rejectCount} rejected
+
+Programmatic usage:
+
+  import { SchemaBuilder } from "aep/schema-builder";
+  const builder = new SchemaBuilder();
+  const result = builder.validateSchema(candidate, { historicalData });
+  // result.compositeScore, result.decision, result.diagnostics`,
+          actions: ["build", "compare", "tighten"],
+        };
+      }
+
+      case "compare": {
+        return {
+          mode: "schema",
+          message: `Schema Comparison -- rank multiple candidates by composite score.
+
+Provide an array of SchemaCandidate objects and optional historical data.
+The builder validates each against all 4 analyses and returns them ranked.
+
+Programmatic usage:
+
+  import { SchemaBuilder } from "aep/schema-builder";
+  const builder = new SchemaBuilder();
+  const { ranked, best } = builder.compareSchemas(
+    [candidateA, candidateB],
+    { historicalData, regoRules }
+  );
+  // ranked[0].score.compositeScore is the highest`,
+          actions: ["build", "validate", "tighten"],
+        };
+      }
+
+      case "tighten": {
+        return {
+          mode: "schema",
+          message: `Schema Tightening -- propose stricter constraints from MLE evidence.
+
+Analyzes current schema fields against observed data distributions and proposes
+tighter bounds (min/max, minLength/maxLength, enum narrowing) where the data
+supports it. Each proposal includes a production replay result (safe/breaking).
+
+Programmatic usage:
+
+  import { SchemaBuilder } from "aep/schema-builder";
+  const builder = new SchemaBuilder();
+  const mle = builder.mleEstimator.estimateFromData(data, domain, schemaId);
+  const proposals = builder.proposeTightening(currentSchema, mle);
+  // proposals[].fieldName, .proposedConstraint, .productionReplayResult`,
+          actions: ["build", "validate", "compare"],
+        };
+      }
+
+      default:
+        return {
+          mode: "schema",
+          message: `Unknown schema action: "${action}". Use: build, validate, compare or tighten.`,
+          actions: ["build", "validate", "compare", "tighten"],
+        };
+    }
+  }
+
+  handlePolicy(args: string[]): AEPassistResponse {
+    const action = args[0]?.toLowerCase() as PolicyAction | undefined;
+
+    if (!action) {
+      return {
+        mode: "policy",
+        message: `Policy Builder operations:
+
+  build      Build a complete Rego policy from schema and data
+  validate   Validate policy coverage against invariant manifest
+  gaps       Show missing invariants and proposed rules`,
+        prompt: "Which policy action? (build / validate / gaps)",
+        actions: ["build", "validate", "gaps"],
+      };
+    }
+
+    const builder = new PolicyBuilder();
+
+    switch (action) {
+      case "build": {
+        return {
+          mode: "policy",
+          message: `Policy Build -- full pipeline: detect invariants, generate Rego rules,
+compute spectral impact, fill structural gaps.
+
+The builder detects domain invariants from historical data, generates deny rules
+for each invariant, adds MLE outlier rules, and fills spectral gaps.
+
+Configuration:
+  Auto-propose: ${builder.config.autoPropose}
+  Confidence threshold: ${builder.config.confidenceThreshold}
+  Require manifest: ${builder.config.requireManifest}
+
+Programmatic usage:
+
+  import { PolicyBuilder } from "aep/policy-builder";
+  const builder = new PolicyBuilder();
+  const { rules, manifest, spectral } = builder.buildPolicy(
+    schema, "my-domain", { historicalData }
+  );
+  // rules[].ruleSource contains Rego deny rules
+  // manifest.invariants lists all detected invariants
+  // spectral.fiedlerValue measures constraint coupling`,
+          actions: ["validate", "gaps"],
+        };
+      }
+
+      case "validate": {
+        return {
+          mode: "policy",
+          message: `Policy Validation -- check coverage rate and spectral impact.
+
+Validates existing Rego rules against a schema and invariant manifest.
+Computes how many invariants are covered, proposes rules for gaps,
+and projects the Fiedler value improvement from proposed additions.
+
+Programmatic usage:
+
+  import { PolicyBuilder } from "aep/policy-builder";
+  const builder = new PolicyBuilder();
+  const result = builder.validatePolicy(schema, regoRules, manifest, {
+    historicalData
+  });
+  // result.coverageRate (0-1)
+  // result.missingRules[] -- uncovered invariants
+  // result.proposedRules[] -- auto-generated Rego rules
+  // result.spectralImpact.fiedlerBefore / fiedlerAfter`,
+          actions: ["build", "gaps"],
+        };
+      }
+
+      case "gaps": {
+        return {
+          mode: "policy",
+          message: `Policy Gaps -- identify missing invariants and weak coverage.
+
+The invariant detector supports 6 invariant types:
+  equality     -- field must equal a specific value
+  inequality   -- field must satisfy < / > / <= / >= bounds
+  membership   -- field value must be in a set
+  exclusion    -- field value must not be in a set
+  conditional  -- if field A then field B constraint
+  temporal     -- time-ordered field constraints
+
+To find gaps, validate your policy and inspect missingRules:
+
+  import { PolicyBuilder } from "aep/policy-builder";
+  const builder = new PolicyBuilder();
+  const result = builder.validatePolicy(schema, existingRules);
+  for (const gap of result.missingRules) {
+    console.log(gap.id, gap.description, gap.invariantType);
+  }
+  // result.proposedRules[] contains auto-generated fixes`,
+          actions: ["build", "validate"],
+        };
+      }
+
+      default:
+        return {
+          mode: "policy",
+          message: `Unknown policy action: "${action}". Use: build, validate or gaps.`,
+          actions: ["build", "validate", "gaps"],
+        };
+    }
   }
 
   private buildReportData(sessions: ReturnType<AgentGateway["listActiveSessions"]>) {

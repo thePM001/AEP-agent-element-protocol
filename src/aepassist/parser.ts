@@ -11,7 +11,9 @@ const NUMERIC_MAP: Record<string, AEPassistMode> = {
   "5": "covenant",
   "6": "identity",
   "7": "report",
-  "8": "help",
+  "8": "schema",
+  "9": "policy",
+  "10": "help",
 };
 
 const MODE_KEYWORDS: AEPassistMode[] = [
@@ -22,6 +24,8 @@ const MODE_KEYWORDS: AEPassistMode[] = [
   "covenant",
   "identity",
   "report",
+  "schema",
+  "policy",
   "help",
 ];
 

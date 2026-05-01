@@ -31,6 +31,10 @@ import { SpawnGovernor } from "./fleet/spawn-governance.js";
 import { MessageScanner } from "./fleet/message-scanner.js";
 import { FleetAPI } from "./fleet/api.js";
 import type { FleetPolicy } from "./fleet/types.js";
+import { SchemaBuilder } from "./schema-builder/schema-builder.js";
+import { PolicyBuilder } from "./policy-builder/policy-builder.js";
+import type { SchemaCandidate, SchemaValidationResult, MLEEstimation, SchemaBuilderConfig } from "./schema-builder/types.js";
+import type { PolicyValidationResult, InvariantManifest, PolicyBuilderConfig } from "./policy-builder/types.js";
 import {
   StepActivationMode,
   type StepActivationProfile,
@@ -1439,5 +1443,140 @@ export class AgentGateway {
 
   getMessageScanner(): MessageScanner | null {
     return this.messageScanner;
+  }
+
+  // --- Schema Builder (Capability 12) ---
+
+  private schemaBuilder: SchemaBuilder | null = null;
+  private schemaBuilderStats = {
+    totalValidated: 0,
+    passCount: 0,
+    reviewCount: 0,
+    rejectCount: 0,
+  };
+
+  /**
+   * Get or create the Schema Builder instance.
+   */
+  getSchemaBuilder(config?: Partial<SchemaBuilderConfig>): SchemaBuilder {
+    if (!this.schemaBuilder) {
+      this.schemaBuilder = new SchemaBuilder(config);
+    }
+    return this.schemaBuilder;
+  }
+
+  /**
+   * Validate a schema proposal using all four analytical frameworks.
+   * Records result in evidence ledger as schema:validate entry.
+   */
+  validateSchemaProposal(
+    candidate: SchemaCandidate,
+    options: {
+      sessionId?: string;
+      historicalData?: Record<string, unknown>[];
+      mleEstimation?: MLEEstimation;
+      regoRules?: string[];
+    } = {}
+  ): SchemaValidationResult {
+    const builder = this.getSchemaBuilder();
+    const result = builder.validateSchema(candidate, {
+      historicalData: options.historicalData,
+      mleEstimation: options.mleEstimation,
+      regoRules: options.regoRules,
+    });
+
+    // Record in evidence ledger if session provided
+    if (options.sessionId) {
+      const ledger = this.ledgers.get(options.sessionId);
+      ledger?.append("schema:validate", {
+        schemaId: candidate.schemaId,
+        domain: candidate.domain,
+        source: candidate.source,
+        compositeScore: result.compositeScore,
+        decision: result.decision,
+        mleAggDivergence: result.mle.aggregateDivergence,
+        fiedlerValue: result.spectral.fiedlerValue,
+        entropy: result.permissiveness.entropy,
+        modularityScore: result.modularity.modularityScore,
+        diagnostics: result.diagnostics,
+      });
+    }
+
+    // Update stats
+    this.schemaBuilderStats.totalValidated++;
+    if (result.decision === "pass") this.schemaBuilderStats.passCount++;
+    else if (result.decision === "review") this.schemaBuilderStats.reviewCount++;
+    else this.schemaBuilderStats.rejectCount++;
+
+    return result;
+  }
+
+  /**
+   * Get Schema Builder statistics.
+   */
+  getSchemaBuilderStats(): {
+    totalValidated: number;
+    passCount: number;
+    reviewCount: number;
+    rejectCount: number;
+    averageCompositeScore: number;
+  } {
+    const builder = this.schemaBuilder;
+    return builder ? builder.getStats() : {
+      ...this.schemaBuilderStats,
+      averageCompositeScore: 0,
+    };
+  }
+
+  // --- Policy Builder (Capability 13) ---
+
+  private policyBuilder: PolicyBuilder | null = null;
+
+  /**
+   * Get or create the Policy Builder instance.
+   */
+  getPolicyBuilder(config?: Partial<PolicyBuilderConfig>): PolicyBuilder {
+    if (!this.policyBuilder) {
+      this.policyBuilder = new PolicyBuilder(config);
+    }
+    return this.policyBuilder;
+  }
+
+  /**
+   * Validate a policy proposal against a schema and invariant manifest.
+   * Records result in evidence ledger as policy:validate entry.
+   */
+  validatePolicyProposal(
+    schema: SchemaCandidate,
+    rules: string[],
+    manifest?: InvariantManifest,
+    options?: {
+      sessionId?: string;
+      historicalData?: Record<string, unknown>[];
+      mleEstimation?: MLEEstimation;
+    }
+  ): PolicyValidationResult {
+    const builder = this.getPolicyBuilder();
+    const result = builder.validatePolicy(schema, rules, manifest, {
+      historicalData: options?.historicalData,
+      mleEstimation: options?.mleEstimation,
+    });
+
+    // Record in evidence ledger if session provided
+    if (options?.sessionId) {
+      const ledger = this.ledgers.get(options.sessionId);
+      ledger?.append("policy:validate", {
+        schemaId: schema.schemaId,
+        coverageRate: result.coverageRate,
+        invariantsCovered: result.invariantsCovered,
+        invariantsTotal: result.invariantsTotal,
+        missingCount: result.missingRules.length,
+        proposedCount: result.proposedRules.length,
+        fiedlerBefore: result.spectralImpact.fiedlerBefore,
+        fiedlerAfter: result.spectralImpact.fiedlerAfter,
+      });
+    }
+
+    return result;
   }
 }

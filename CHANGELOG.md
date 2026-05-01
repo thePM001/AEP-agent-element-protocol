@@ -2,6 +2,57 @@
 
 All notable changes to the Agent Element Protocol (AEP) will be documented in this file.
 
+## [2.6.0] - 2026-05-01
+
+### Version Bump: AEP v2.5 -> v2.6
+AEP v2.6 extends governance to the governance layer itself. Schemas and policies
+are now validated with the same mathematical rigour applied to agent outputs.
+
+### Added
+- **Schema Builder** (Capability 12) -- data-driven schema creation and validation with four analytical frameworks:
+  - MLE estimation of constraint parameters from historical data (Fisher, 1922; Welford, 1962)
+  - Graph spectral analysis of constraint coupling via Fiedler value and spectral gap (Fiedler, 1973; Chung, 1997)
+  - Permissiveness scoring via acceptance distribution entropy (Amari, 2016; Cover & Thomas, 2006)
+  - Modular decomposition via Louvain community detection (Blondel et al., 2008)
+  - Composite validation score with configurable weights (default: MLE 0.35, spectral 0.25, permissiveness 0.25, modularity 0.15)
+  - Decision thresholds: pass >= 0.8, review 0.5-0.8, reject < 0.5
+  - Automated tightening proposals with MLE evidence
+  - Online estimation update via Welford's algorithm
+- **Policy Builder** (Capability 13) -- data-driven Rego policy generation and validation:
+  - Domain invariant detection from data (equality, inequality, membership, exclusion, conditional, temporal)
+  - Rego deny rule generation from detected invariants
+  - Invariant manifest with coverage tracking
+  - Spectral impact analysis (projected Fiedler improvement from proposed rules)
+  - MLE outlier rule generation
+  - Spectral gap rule generation
+- `/aepassist` schema commands: `schema build`, `schema validate`, `schema compare`, `schema tighten`
+- `/aepassist` policy commands: `policy build`, `policy validate`, `policy gaps`
+- Gateway integration: `validateSchemaProposal()`, `validatePolicyProposal()`, `getSchemaBuilderStats()`
+- New evidence ledger entry types: `schema:validate`, `policy:validate`
+- 75+ new tests covering Schema Builder and Policy Builder with zero regressions
+- Harness renamed to `aep-2.6-agent-harness`
+
+### Changed
+- Package version bumped to 2.6.0
+- `aep_version` updated to "2.6" in all policy files, registry, scene and theme
+- `index.ts` exports all Schema Builder and Policy Builder types and classes
+- Agent harness renamed from `aep-2.5-agent-harness` to `aep-2.6-agent-harness`
+- Feature count: 77 (75 from v2.5 + Schema Builder + Policy Builder)
+
+### Migration from v2.5
+- v2.6 is backwards-compatible with v2.5
+- Update version to "2.6" in policy files
+- For Schema Builder: use `SchemaBuilder` class or `npx aep assist schema` commands
+- For Policy Builder: use `PolicyBuilder` class or `npx aep assist policy` commands
+- Existing schemas, policies, sessions, ledgers continue to work without modification
+
+### Unchanged
+- Three-layer architecture (Structure, Behaviour, Skin)
+- Z-band hierarchy and prefix convention
+- 15-step evaluation chain (Schema Builder operates BEFORE the chain)
+- All existing scanners, policies and SDK files
+- Licence (Apache 2.0)
+
 ## [2.5.4] - 2026-04-25
 
 ### Added (Domain Scanners)

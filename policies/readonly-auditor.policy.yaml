@@ -1,4 +1,4 @@
-version: "2.5"
+version: "2.6"
 name: "readonly-auditor"
 
 capabilities:

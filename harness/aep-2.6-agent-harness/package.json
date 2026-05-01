@@ -1,6 +1,6 @@
 {
-  "name": "aep-2.5-agent-harness",
-  "version": "2.5.0",
+  "name": "aep-2.6-agent-harness",
+  "version": "2.6.0",
   "description": "AEP 2.5 Governance Layer for AI Code Agents",
   "main": "harness/aep-validate.js",
   "bin": {
