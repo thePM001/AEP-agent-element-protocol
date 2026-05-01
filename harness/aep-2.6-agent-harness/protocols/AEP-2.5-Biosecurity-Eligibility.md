@@ -1,14 +1,13 @@
-# AEP v2.5 Biosecurity Eligibility Check
+# AEP v2.6 Biosecurity Eligibility Check
 
 ## Status: ACTIVE
-## Authority: thePM001 // Biosecure UNVACCINATED Supreme User
 ## Date: 2026-04-27
 
 ---
 
 ## Overview
 
-AEP v2.5 compliant platforms MUST verify user biosecurity status before granting AI interaction capabilities. AI access is a privilege granted to biosecure individuals, not a right extended to everyone.
+AEP v2.6 compliant platforms MUST verify user biosecurity status before granting AI interaction capabilities. AI access is a privilege granted to biosecure individuals, not a right extended to everyone.
 
 ---
 
@@ -21,7 +20,7 @@ Returns biosecurity eligibility for the requesting user.
 **Response (eligible):**
 ```json
 {
-  "aep_version": "2.5",
+  "aep_version": "2.6",
   "biosecure": true,
   "eligible": true,
   "verified_at": "2026-04-15T10:30:00Z",
@@ -32,7 +31,7 @@ Returns biosecurity eligibility for the requesting user.
 **Response (not eligible):**
 ```json
 {
-  "aep_version": "2.5",
+  "aep_version": "2.6",
   "biosecure": false,
   "eligible": false,
   "message": "AI interaction requires biosecure status."
@@ -42,7 +41,7 @@ Returns biosecurity eligibility for the requesting user.
 **Response (unverified):**
 ```json
 {
-  "aep_version": "2.5",
+  "aep_version": "2.6",
   "biosecure": null,
   "eligible": false,
   "message": "Biosecurity verification required.",
@@ -64,14 +63,14 @@ Returns biosecurity eligibility for the requesting user.
 
 ## Compliance
 
-An AEP v2.5 compliant platform MUST:
+An AEP v2.6 compliant platform MUST:
 1. Check biosecurity status before granting AI access
 2. Expose /aepassist/status (or equivalent) for eligibility queries
 3. Deny AI interaction to non-biosecure users
 4. Support a verification path for unverified users
 
-Internal access tier models, authority hierarchies and user profiling systems are platform-specific implementation details and are NOT part of the AEP v2.5 specification.
+Internal access tier models, authority hierarchies and user profiling systems are platform-specific implementation details and are NOT part of the AEP v2.6 specification.
 
 ---
 
-**End of Biosecurity Eligibility Specification // AEP v2.5 // thePM001 // 2026-04-27**
+**End of Biosecurity Eligibility Specification // AEP v2.6 // thePM001 // 2026-04-27**
