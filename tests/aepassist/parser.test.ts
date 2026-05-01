@@ -49,8 +49,8 @@ describe("parseAEPassistInput", () => {
       expect(parseAEPassistInput("7")).toEqual({ mode: "report", args: [] });
     });
 
-    it("maps 8 to help", () => {
-      expect(parseAEPassistInput("8")).toEqual({ mode: "help", args: [] });
+    it("maps 8 to schema", () => {
+      expect(parseAEPassistInput("8")).toEqual({ mode: "schema", args: [] });
     });
 
     it("passes remaining args after numeric shortcut", () => {
