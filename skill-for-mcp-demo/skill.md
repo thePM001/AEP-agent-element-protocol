@@ -69,12 +69,12 @@ These are the known types and their ID prefixes. Z-values must fall within the b
 
 | Type | Prefix | Z-Band |
 |------|--------|--------|
-| shell | SH | 0–9 |
-| panel | PN | 10–19 |
-| widget | WG | 20–29 |
-| control | CT | 30–39 |
-| overlay | OV | 40–49 |
-| cell | CL | 50–59 |
+| shell | SH | 0-9 |
+| panel | PN | 10-19 |
+| widget | WG | 20-29 |
+| control | CT | 30-39 |
+| overlay | OV | 40-49 |
+| cell | CL | 50-59 |
 
 ## Skin Bindings
 
@@ -125,7 +125,7 @@ Step 10: get_scene_graph → verify everything
 |---------|---------|-----|
 | Invented ID | `parent: "panel-1"` | Use server-returned ID like `PN-00001` |
 | Wrong skin binding | `skin_binding: "panel"` | Use `panel_main`, `panel_header`, etc. |
-| Z outside band | `type: "panel", z: 5` | Panels are 10–19, use `z: 10` |
+| Z outside band | `type: "panel", z: 5` | Panels are 10-19, use `z: 10` |
 | Unknown type | `type: "button"` | Use `control` with `button_primary` skin |
 | Missing parent | `parent: "PN-00099"` | Check scene graph, use existing ID |
 

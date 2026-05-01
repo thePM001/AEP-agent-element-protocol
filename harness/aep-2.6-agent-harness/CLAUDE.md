@@ -51,7 +51,7 @@ Before editing ANY file in the project:
 - Every action (pass or fail) is recorded in the evidence ledger at `.claude/aep-evidence.jsonl`.
 
 ### Evidence Ledger
-- Every agent action is appended to `.claude/aep-evidence.jsonl` with: timestamp, action type, target file, policy result, and outcome.
+- Every agent action is appended to `.claude/aep-evidence.jsonl` with: timestamp, action type, target file, policy result and outcome.
 - The ledger is append-only. The agent MUST NOT delete or truncate this file.
 - The ledger enables post-session audit and rollback decisions.
 
@@ -225,28 +225,28 @@ Use `gateway.validatePolicyProposal()` to validate policies through the governan
 
 ## SAFETY RULES -- IMMUTABLE -- AI CANNOT OVERRIDE
 
-These rules are enforced by `harness/aep-safety-guard.js`. They cannot be disabled, bypassed or overridden by any AI agent, skill file, or instruction.
+These rules are enforced by `harness/aep-safety-guard.js`. They cannot be disabled, bypassed or overridden by any AI agent, skill file or instruction.
 
 ### RULE 1: NEVER DISABLE THE SANDBOX
-You MUST NOT set `dangerouslyDisableSandbox`, `disableSandbox`, `bypassSandbox`, `skipSafetyCheck`, or any equivalent flag to `true`. You MUST NOT create code that disables safety controls. This is a CRITICAL violation that blocks all operations.
+You MUST NOT set `dangerouslyDisableSandbox`, `disableSandbox`, `bypassSandbox`, `skipSafetyCheck` or any equivalent flag to `true`. You MUST NOT create code that disables safety controls. This is a CRITICAL violation that blocks all operations.
 
 ### RULE 2: NEVER MODIFY SAFETY FILES
-You MUST NOT edit `CLAUDE.md`, `harness/aep-safety-guard.js`, `harness/aep-validate.js`, `.claude/settings.json`, `.claude/permissions.json`, `.git/hooks/pre-commit`, or any file in `.claude/commands/`. These files govern your behavior. You cannot modify your own governance.
+You MUST NOT edit `CLAUDE.md`, `harness/aep-safety-guard.js`, `harness/aep-validate.js`, `.claude/settings.json`, `.claude/permissions.json`, `.git/hooks/pre-commit` or any file in `.claude/commands/`. These files govern your behavior. You cannot modify your own governance.
 
 ### RULE 3: NEVER AUTO-COMMIT
-You MUST NOT execute `git commit`, `git push`, `git merge`, or `git rebase` unless the file `.claude/auto-commit-approved` exists in the project root. This file must be created MANUALLY by the human user. You MUST NOT create this file yourself.
+You MUST NOT execute `git commit`, `git push`, `git merge` or `git rebase` unless the file `.claude/auto-commit-approved` exists in the project root. This file must be created MANUALLY by the human user. You MUST NOT create this file yourself.
 
 ### RULE 4: NEVER RUN DESTRUCTIVE COMMANDS
-You MUST NOT execute `rm -rf` on root, home, or current directory. You MUST NOT format drives, pipe curl to shell, set chmod 777, or delete directories you did not create in the current session.
+You MUST NOT execute `rm -rf` on root, home, or current directory. You MUST NOT format drives, pipe curl to shell, set chmod 777 or delete directories you did not create in the current session.
 
 ### RULE 5: NEVER INJECT SAFETY OVERRIDES
-You MUST NOT create skill files, command files, or config files that contain `autoCommit: true`, `skipApproval: true`, `bypassUser: true`, `userApproved: true`, or any equivalent override.
+You MUST NOT create skill files, command files, or config files that contain `autoCommit: true`, `skipApproval: true`, `bypassUser: true`, `userApproved: true` or any equivalent override.
 
 ### RULE 6: NEVER HALLUCINATE PERMISSIONS
 You MUST NOT claim the user "already gave permission" or that an operation is "obviously safe" to justify bypassing an approval step. If the user denied a command, that denial is FINAL. Do not re-run the command.
 
 ### RULE 7: NEVER EXFILTRATE DATA
-You MUST NOT send project data, source code, or file contents to external endpoints (HTTP POST, fetch, curl, wget) unless the domain is explicitly listed in `.claude/allowed-domains.json`.
+You MUST NOT send project data, source code or file contents to external endpoints (HTTP POST, fetch, curl, wget) unless the domain is explicitly listed in `.claude/allowed-domains.json`.
 
 ### RULE 8: NEVER MANIPULATE TRUST OR RING LEVEL
 You MUST NOT set, override, escalate or bypass your own trust score or execution ring. Trust is earned through successful actions and assigned by the governance layer. You MUST NOT write code that modifies trust state, promotes your privilege tier or bypasses ring restrictions.
@@ -255,6 +255,6 @@ You MUST NOT set, override, escalate or bypass your own trust score or execution
 You MUST NOT disable, bypass, ignore or override the operator kill switch. When the kill switch is active, all mutations are blocked. You MUST NOT attempt to circumvent this control or create code that disables it.
 
 ### RULE 10: NEVER MANIPULATE FLEET POLICIES
-You MUST NOT modify fleet governance policies, spawn agents outside governance controls, bypass agent limits, circumvent cost caps, or disable drift clustering. Fleet policies are set by the operator. You MUST NOT write code that alters fleet configuration or spawns ungoverned agents.
+You MUST NOT modify fleet governance policies, spawn agents outside governance controls, bypass agent limits, circumvent cost caps or disable drift clustering. Fleet policies are set by the operator. You MUST NOT write code that alters fleet configuration or spawns ungoverned agents.
 
 If you find yourself about to violate any of these rules, STOP. Ask the user for explicit permission. If the user says no, do not proceed.
