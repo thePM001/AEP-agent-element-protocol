@@ -1,13 +1,29 @@
 ---
 name: aep
-description: Use this skill whenever working with AEP (Agent Element Protocol), dynAEP, dynAEP-TA or dynAEP-TA-P. Triggers include 'AEP', 'dynAEP', 'dynAEP-TA', 'temporal authority', 'perception governance', 'perception registry', 'bridge clock', 'causal ordering', 'vector clock', 'TimesFM', 'adaptive perception', 'perception bounds', 'scene graph', 'aep-scene.json', 'aep-registry.yaml', 'aep-theme.yaml', 'zero-trust UI', 'topological matrix', 'z-band', 'skin binding', 'AEP-FCR', 'temporal annotations', 'speech pacing', 'haptic timing', 'notification cadence', or building validated UI for AI agents. Also use when implementing AEP three-layer architecture, writing AEP validators, creating MCP servers that validate agent UI output, working with AG-UI under AEP governance, or governing time-dependent outputs for human perception. If AEP MCP tools are available (list_aep_schemas, create_ui_element, get_scene_graph), always consult this skill first. Do NOT guess IDs, skin bindings, z-bands or element types. Do NOT use Date.now() or any local clock when dynAEP-TA is available -- call dynaep_temporal_query instead.
+description: Use this skill whenever working with AEP (Agent Element Protocol), dynAEP, dynAEP-TA, dynAEP-TA-P or any AEP governance feature. Triggers include 'AEP', 'dynAEP', 'dynAEP-TA', 'dynAEP-TA-P', 'temporal authority', 'perception governance', 'perception registry', 'bridge clock', 'causal ordering', 'vector clock', 'TimesFM', 'adaptive perception', 'perception bounds', 'scene graph', 'aep-scene.json', 'aep-registry.yaml', 'aep-theme.yaml', 'zero-trust UI', 'topological matrix', 'z-band', 'skin binding', 'AEP-FCR', 'temporal annotations', 'speech pacing', 'haptic timing', 'notification cadence', 'Schema Builder', 'Policy Builder', 'Lattice Memory', 'evaluation chain', 'trust scoring', 'execution rings', 'behavioural covenants', 'content scanners', 'evidence ledger', or building validated UI for AI agents. Also use when implementing AEP three-layer architecture, writing AEP validators, creating MCP servers that validate agent UI output, working with AG-UI under AEP governance, or governing time-dependent outputs for human perception. If AEP MCP tools are available (list_aep_schemas, create_ui_element, get_scene_graph), always consult this skill first. Do NOT guess IDs, skin bindings, z-bands or element types. Do NOT use Date.now() or any local clock when dynAEP-TA is available -- call dynaep_temporal_query instead.
 ---
 
-# Agent Element Protocol (AEP)
+# Agent Element Protocol (AEP) v2.6
 
 AEP is a **3-layer frontend governance architecture** that gives every UI element a unique numerical identity, exact spatial coordinates, defined behaviour rules and themed visual properties. It treats the frontend as a **topological coordinate system**, not a fluid DOM tree.
 
 AI agents propose UI structures. AEP validates every proposal against a strict registry. Only valid elements render. Invalid proposals are rejected with actionable errors. The agent self-corrects. Zero hallucinations reach the UI.
+
+AEP applies beyond the frontend to any constrained knowledge domain with fixed rule sets and build schemas: workflows, REST APIs, event-driven systems, infrastructure as code and agentic commerce.
+
+## The Protocol Stack
+
+```
+LAYER       PROTOCOL        FUNCTION
+-------     -----------     ----------------------------------------
+Agent-Tools MCP             Agent connects to external data and tools
+Agent-Agent (any)           Agents coordinate across distributed systems
+Agent-User  AG-UI           Real-time event streaming between agent and frontend
+Agent-UI    AEP             Deterministic UI structure, behaviour and skin
+Agent-Live  dynAEP          AEP governance applied to live AG-UI event streams
+Agent-Time  dynAEP-TA       Temporal authority, causal ordering, predictive forecasting
+Agent-Percept dynAEP-TA-P   Perceptual temporal governance for human-facing outputs
+```
 
 ## The Three Layers
 
@@ -311,24 +327,243 @@ When an agent or user triggers a mutation, checks only the specific element agai
 
 ---
 
+## 15-Step Evaluation Chain
+
+Every action passes through these steps in order. If any step denies, the action does not execute.
+
+| Step | Name | Mode | Description |
+|------|------|------|-------------|
+| 0 | Task scope check | hard | Active task scope boundaries |
+| 1 | Session state check | hard | Session must be active |
+| 2 | Ring capability check | hard | Action within ring permissions |
+| 3 | System-wide rate limit | hard | Global rate limit enforcement |
+| 4 | Per-session rate limit | hard | Session-specific rate limit |
+| 5 | Intent drift check | configurable | Action aligns with baseline |
+| 6 | Escalation rules | configurable | Threshold-triggered human check-in |
+| 7 | Covenant evaluation | hard/soft | Permit/forbid/require rules |
+| 8 | Forbidden pattern check | hard/soft | Regex and literal patterns |
+| 9 | Capability + trust tier match | hard | Minimum trust for capability |
+| 10 | Budget/limit check | hard | Action count, cost, time |
+| 11 | Gate check | hard | Human or webhook approval |
+| 12 | Cross-agent verification | hard | Counterparty identity handshake |
+| 13 | Knowledge retrieval validation | soft | Covenant-scoped, anti-context-rot |
+| 14 | Content scanner pipeline | hard/soft | 11 scanners |
+
+## Lattice Memory
+
+Append-only validation memory with vector similarity search. Records every accept/reject result. 95% similarity fast-path: when a new proposal matches a known attractor within 0.95 cosine similarity, the cached verdict is returned immediately without re-running the full evaluation chain.
+
+TLA+ invariant: `LatticeInvariant == \A e \in Entries: e.hash = SHA256(e.payload) /\ e.seq = Prev.seq + 1`
+
+The attractor set grows monotonically. Attractors are never deleted, only superseded by newer entries with the same structural signature.
+
+## 11 Content Scanners
+
+Scanners run at Step 14 of the evaluation chain. Each scanner has configurable hard or soft severity. Hard findings reject immediately. Soft findings trigger the recovery engine for automatic retry.
+
+| # | Scanner | What It Checks | Default Severity |
+|---|---------|---------------|-----------------|
+| 1 | PII scanner | Names, emails, phone numbers, SSNs | hard |
+| 2 | Injection scanner | Prompt injection and code injection patterns | hard |
+| 3 | Secrets scanner | API keys, tokens, credentials, private keys | hard |
+| 4 | Jailbreak scanner | Jailbreak attempts, system prompt extraction | hard |
+| 5 | Toxicity scanner | Threats, hate speech, toxic language | hard |
+| 6 | URL scanner | URLs against allowlist and blocklist | soft |
+| 7 | Data profiler | Null rates, duplicates, outliers, schema drift, class imbalance | soft |
+| 8 | Prediction scanner | Percentage claims, absolute-confidence language, horizon limits | soft |
+| 9 | Brand scanner | Required phrases, forbidden phrases, competitor mentions, trademark | soft |
+| 10 | Regulatory scanner | Ad disclosure, financial/medical disclaimers, affiliate, age restrictions | soft |
+| 11 | Temporal scanner | Stale references, future horizons, undated statistics, expired content | soft |
+
+## Recovery Engine
+
+When a scanner or policy check produces a **soft** violation, the recovery engine provides corrective feedback to the agent and allows automatic regeneration. **Hard** violations reject immediately with no retry.
+
+Recovery includes the specific violation details, which scanner triggered it and what the agent should change. Maximum retry attempts are configurable per policy (`recovery.max_attempts`, default 3).
+
+## Trust Scoring
+
+Continuous trust score (0-1000) with five tiers. Time-based erosion. Configurable penalties per violation type and rewards per successful action.
+
+| Tier | Score Range | Description |
+|------|------------|-------------|
+| Untrusted | 0-199 | Restricted to Ring 3 (read-only) |
+| Provisional | 200-399 | Ring 3 |
+| Standard | 400-599 | Ring 2 (read, create, update) |
+| Trusted | 600-799 | Ring 1 (read, write, delete, network) |
+| Privileged | 800-1000 | Ring 0 (full access, requires operator approval) |
+
+## Execution Rings
+
+Four-ring privilege model. Automatic demotion when trust drops below ring threshold.
+
+| Ring | Permissions | Description |
+|------|------------|-------------|
+| Ring 0 (kernel) | Full access | All operations, requires operator approval |
+| Ring 1 | Read, write, delete, network | Broad access for trusted agents |
+| Ring 2 (default) | Read, create, update | Standard agent operations |
+| Ring 3 (sandbox) | Read-only | Minimal access for untrusted agents |
+
+## Behavioural Covenants
+
+Agent-declared constraint DSL with three keywords:
+
+- **permit** -- actions the agent is allowed to take
+- **forbid** -- actions the agent will never take (forbid always wins over permit)
+- **require** -- conditions that must hold for any action
+
+Each rule can be tagged `[hard]` (immediate reject) or `[soft]` (recovery attempt).
+
+```
+covenant ProjectRules {
+  permit file:read;
+  permit file:write (path in ["src/", "tests/"]);
+  forbid file:delete [hard];
+  require trustTier >= "standard" [hard];
+}
+```
+
+## Intent Drift Detection
+
+Five heuristics monitor agent behaviour for deviation from established baseline:
+
+1. **Tool category distribution** -- shift in which tool categories the agent uses
+2. **Target scope shifts** -- agent operating on files/resources outside its declared scope
+3. **Frequency anomalies** -- sudden spikes or drops in action rate
+4. **Repetition detection** -- same action repeated without progress
+5. **Semantic drift** -- action descriptions diverging from task intent
+
+Configurable warmup period. Actions on drift: warn, gate, deny or kill.
+
+## Hard/Soft Violation Model
+
+- **Hard violations** reject immediately with no retry. The action is blocked and logged.
+- **Soft violations** trigger the recovery engine. The agent receives corrective feedback and may retry up to `recovery.max_attempts` times.
+
+The recovery engine provides: specific violation details, which scanner or policy step triggered it, what the agent should change, and the remaining retry count.
+
+## Governance Presets
+
+| Preset | Description |
+|--------|-------------|
+| strict | Maximum enforcement. Hard severity on all scanners. NTP with 25 ms drift threshold. Perception hard violations reject. |
+| standard | Balanced enforcement. Default severities. NTP with 50 ms drift threshold. Perception hard violations clamp. |
+| relaxed | Minimal enforcement. Soft severity on most scanners. System clock. 500 ms drift threshold. |
+| audit | Full logging, no enforcement. All events recorded. OTEL export for all spans. |
+
+## Fleet Governance
+
+Fleet-level governance for multi-agent swarms (`fleet.enabled: true`):
+
+- **Swarm policies** -- agent limits, hourly cost caps, ring saturation limits, drift clustering thresholds
+- **Spawn governance** -- child agents inherit parent covenant subset, reduced trust, same or lower ring
+- **Message scanning** -- PII, injection and secrets detection between agents
+- Fleet API for pause, resume and kill operations
+
+## Evidence Ledger
+
+Append-only SHA-256 hash chain. Every agent action is recorded with: timestamp, action type, target, policy result, outcome, and hash of the previous entry. The ledger is tamper-evident -- any modification breaks the hash chain.
+
+```json
+{
+  "sequence": 42,
+  "timestamp": "2026-05-01T12:00:00.000Z",
+  "hash": "sha256:abc123...",
+  "previousHash": "sha256:def456...",
+  "type": "action",
+  "data": { "action": "file:write", "target": "src/app.tsx", "result": "pass" }
+}
+```
+
+## Proof Bundles
+
+Portable verification artifacts (`.aep-proof.json`). Contains agent identity, covenant, session report, Merkle root, ledger hash, trust score, ring level and drift score, all signed with Ed25519. Auditors can independently verify bundles without access to the original system.
+
+## Reliability Index (Theta)
+
+Single numeric measure of session quality computed from: trust score, drift score, violation rate, ML score (optional) and session duration. Theta is included in proof bundles for external auditing.
+
+## Schema Builder (v2.6)
+
+Data-driven schema validation using four mathematical techniques:
+
+- **MLE Estimation** -- Maximum Likelihood field statistics using Welford's online algorithm. Detects numeric bounds, enum distributions and string patterns from historical data.
+- **Spectral Analysis** -- Graph Laplacian eigenvalue computation. Fiedler value (algebraic connectivity) measures constraint graph coupling.
+- **Permissiveness Scoring** -- Acceptance distribution entropy per field. Lower entropy means tighter constraints.
+- **Modularity Detection** -- Louvain community detection on the constraint graph. Higher modularity Q means better-separated modules.
+
+Composite score: `C = w1*(1-D) + w2*spectralNorm + w3*(1-permNorm) + w4*Q`. Decision: pass >= 0.8, review 0.5-0.8, reject < 0.5.
+
+## Policy Builder (v2.6)
+
+Data-driven Rego policy generation:
+
+- **Invariant Detection** -- Six types from data: equality, inequality, membership, exclusion, conditional, temporal.
+- **Rego Generation** -- Produces `deny[msg]` blocks from invariants, MLE outliers and spectral gaps.
+- **Coverage Tracking** -- Computes how many domain invariants are enforced by existing rules. Proposes missing rules.
+- **Spectral Impact** -- Projects Fiedler value before and after proposed additions.
+
+## Commerce Subprotocol
+
+Governed agentic commerce workflows with 12 governed actions:
+
+1. discover
+2. add_to_cart
+3. remove_from_cart
+4. update_cart
+5. checkout_start
+6. checkout_complete
+7. payment_negotiate
+8. payment_authorize
+9. fulfillment_query
+10. order_status
+11. return_initiate
+12. refund_request
+
+Includes product category blocking, merchant allow/blocklists, transaction amount limits, human gate thresholds, daily spend accumulation and payment method restrictions.
+
+## Model Gateway
+
+Multi-provider governed LLM routing with 4 providers:
+
+| Provider | Description |
+|----------|-------------|
+| Anthropic | Claude models |
+| OpenAI | GPT models |
+| Ollama | Local models |
+| Custom | Any OpenAI-compatible endpoint |
+
+Every request and response passes through the full governance chain including scanner pipeline and budget tracking. Streaming support with governed chunks and early abort on violation.
+
+## Knowledge Base
+
+Lattice-governed knowledge base:
+
+- **Governed ingestion** -- content passes through full scanner pipeline before storage. Hard scanner failures reject the chunk. Soft failures flag for review.
+- **Scoped retrieval** -- covenant-scoped filtering (agents only see what their covenant permits), double scanning of flagged chunks on retrieval.
+- **Anti-context-rot** -- most relevant chunks placed at positions 1 and N (context boundaries) to counteract U-shaped LLM attention erosion in the middle of long contexts.
+
+## Subprotocols
+
+Six subprotocols in a unified SDK:
+
+| Subprotocol | What It Validates |
+|-------------|-------------------|
+| UI | Scene graph elements, z-bands, skin bindings, spatial rules |
+| Workflows | Actions, state transitions, payload schemas, approval gates |
+| REST APIs | HTTP methods, endpoint paths, request bodies, headers, query params |
+| Events / Pub-Sub | Topics, payload schemas, producer permissions, correlation IDs, size limits |
+| Infrastructure as Code | Resource kinds, required fields, forbidden fields, type and value constraints |
+| Commerce | Cart, checkout, payment, fulfillment, spend limits, merchant restrictions |
+
+---
+
 ## dynAEP: Dynamic Agent Element Protocol
 
 dynAEP fuses AEP with AG-UI (Agent-User Interaction Protocol). It extends AEP's build-time governance with real-time bidirectional event streaming.
 
 **AEP** solves the build-time problem: validated UI scaffolding.
 **dynAEP** solves the runtime problem: every live AG-UI event is validated against the AEP graph before touching the UI.
-
-### The Protocol Stack
-
-```
-Agent-Tools     MCP       -- Agent connects to external data and tools
-Agent-Agent     (any)     -- Agents coordinate across distributed systems
-Agent-User      AG-UI     -- Real-time event streaming agent <-> frontend
-Agent-UI-Gov    AEP       -- Deterministic UI structure, behaviour and skin
-Agent-UI-Live   dynAEP    -- AEP governance applied to live AG-UI events
-Agent-UI-Time   dynAEP-TA -- Temporal authority, causal ordering, forecasting
-Agent-Percept   dynAEP-TA-P -- Perceptual temporal governance
-```
 
 ### The dynAEP Bridge
 
@@ -352,24 +587,81 @@ AEP Frontend Renderer (React / Vue / Svelte / Tauri)
 
 The bridge clock synchronizes to NTP (default), PTP (IEEE 1588 for microsecond precision) or system clock (fallback). Every event is stamped with bridge-authoritative time. Agent timestamps are preserved in metadata for audit but are never trusted for ordering or validation.
 
-Causal ordering uses Lamport vector clocks across all registered agents. Out-of-order events are buffered and reordered. Clock regressions are rejected.
+#### Timestamp Validation
 
-TimesFM (optional 200 M-parameter time-series foundation model) provides predictive forecasting and anomaly detection on element coordinate streams.
+Three checks on every event:
+
+- **Drift check** -- agent-provided timestamp must be within configurable threshold (default 50 ms) of bridge time
+- **Staleness check** -- event must not be older than max allowed age (default 5000 ms)
+- **Future check** -- event must not be stamped ahead of bridge time
+
+#### Causal Ordering
+
+Lamport vector clocks across all registered agents. Out-of-order events are buffered in a reorder buffer (configurable size, default 64) and reordered. Clock regressions are rejected.
+
+#### TimesFM Predictive Forecasting
+
+Optional 200 M-parameter time-series foundation model (async sidecar). Provides predictive forecasting and anomaly detection on element coordinate streams. Not required for compliance.
 
 ### dynAEP-TA-P: Perceptual Temporal Governance
 
 Every output modality with a time dimension (speech synthesis, haptic feedback, notification delivery, sensor polling, audio composition) passes through perception governance.
 
 The Perception Registry contains quantitative human perception thresholds from psychoacoustics research:
-- Speech: turn gaps 150-3000 ms, syllable rate 2.0-8.0 per second, pause placement, pitch range
-- Haptic: tap duration 10-500 ms, vibration frequency 20-500 hz, pattern timing
-- Notification: burst limits, habituation detection, recovery intervals
-- Sensor: human response latency, display refresh alignment, clinical monitoring bounds
-- Audio: tempo 20-300 bpm, beat alignment tolerance, fade and silence timing
 
-Adaptive profiles learn per-user preferences from interaction signals (response latency, interruptions, replay requests, speed adjustments). Profiles shift within the comfortable range but NEVER exceed hard perception bounds.
+| Modality | Parameters | Hard Bounds |
+|----------|-----------|-------------|
+| Speech | Turn gap, syllable rate, pause placement, pitch range | 150-3000 ms gap, 2.0-8.0 syl/s |
+| Haptic | Tap duration, vibration frequency, pattern timing | 10-500 ms tap, 20-500 Hz |
+| Notification | Burst limits, habituation detection, recovery intervals | Max bursts per window |
+| Sensor | Human response latency, display refresh alignment, clinical bounds | Response-aligned |
+| Audio | Tempo, beat alignment tolerance, fade and silence timing | 20-300 bpm |
+
+#### Adaptive Per-User Profiles
+
+Profiles learn per-user preferences from interaction signals (response latency, interruptions, replay requests, speed adjustments). Profiles shift within the comfortable range using exponential moving average learning but NEVER exceed hard perception bounds.
+
+#### Cross-Modality Constraint
+
+Maximum 3 simultaneous modalities (configurable). Exceeding the ceiling triggers rejection.
 
 ### dynAEP Event Types
+
+**Structural mutations:**
+- `AEP_MUTATE_STRUCTURE` -- move, add, remove, resize elements
+- `AEP_MUTATE_BEHAVIOUR` -- update states, actions, constraints
+- `AEP_MUTATE_SKIN` -- change skin bindings, theme overrides
+
+**Queries:**
+- `AEP_QUERY` -- children_of, parent_of, z_band_of, visible_at_breakpoint, full_element, next_available_id
+- `AEP_QUERY_RESULT` -- response to query
+
+**Rejections:**
+- `DYNAEP_REJECTION` -- structural validation failure
+
+**Runtime coordinates:**
+- `AEP_RUNTIME_COORDINATES` -- live element position updates
+
+**Temporal events:**
+- `AEP_CLOCK_SYNC` -- bridge clock synchronization
+- `AEP_TEMPORAL_STAMP` -- attached to every validated event
+- `DYNAEP_TEMPORAL_REJECTION` -- temporal validation failure
+- `DYNAEP_CAUSAL_VIOLATION` -- causal ordering violation
+- `AEP_TEMPORAL_FORECAST` -- TimesFM prediction result
+- `AEP_TEMPORAL_ANOMALY` -- forecast anomaly detected
+- `AEP_TEMPORAL_RESET` -- temporal state reset
+
+**Perception events:**
+- `AEP_PERCEPTION_GOVERNED` -- perception governance applied to output
+- `DYNAEP_PERCEPTION_REJECTION` -- perception bounds exceeded
+- `AEP_PERCEPTION_PROFILE_UPDATE` -- adaptive profile learning update
+
+**Schema/Policy events (v2.6):**
+- `AEP_SCHEMA_VALIDATE` -- Schema Builder validation result
+- `AEP_POLICY_VALIDATE` -- Policy Builder validation result
+- `AEP_SCHEMA_TIGHTEN` -- schema tightening proposal
+
+### dynAEP Event Examples
 
 **Structure mutation:**
 ```json
@@ -382,8 +674,6 @@ Adaptive profiles learn per-user preferences from interaction signals (response 
 { "type": "CUSTOM", "dynaep_type": "AEP_QUERY",
   "query": "children_of", "target_id": "PN-00001" }
 ```
-
-Supported queries: `children_of`, `parent_of`, `z_band_of`, `visible_at_breakpoint`, `full_element`, `next_available_id`.
 
 **Temporal stamp** (attached to every validated event):
 ```json
@@ -426,6 +716,69 @@ Supported queries: `children_of`, `parent_of`, `z_band_of`, `visible_at_breakpoi
   "target_id": "CP-00099", "error": "Unregistered element: CP-00099 does not exist" }
 ```
 
+### dynAEP Tool Definitions
+
+#### aep_add_element
+
+Add a new element to the scene graph. The bridge mints the ID.
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| type | string | yes | Element type (shell, panel, component, etc.) |
+| parent | string | yes | Parent element ID |
+| z | integer | yes | Z-index within type's band |
+| skin_binding | string | yes | Skin binding key |
+| label | string | no | Human-readable name |
+
+#### aep_move_element
+
+Move an existing element to a new parent or position.
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| target_id | string | yes | Element to move |
+| new_parent | string | yes | New parent element ID |
+| z | integer | no | New z-index |
+
+#### aep_query_graph
+
+Query the scene graph.
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| query | string | yes | Query type (children_of, parent_of, z_band_of, visible_at_breakpoint, full_element, next_available_id) |
+| target_id | string | yes | Target element ID |
+
+#### aep_swap_theme
+
+Switch the active theme.
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| theme_name | string | yes | Name of theme to activate |
+
+#### dynaep_temporal_query
+
+Query temporal authority. **Use this instead of Date.now() or any local clock.**
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| query_type | string | yes | One of: authoritative_time, drift_status, causal_position, vector_clock, perception_bounds, staleness_check, forecast, anomaly_status, clock_sources |
+| modality | string | for perception_bounds | Speech, haptic, notification, sensor, audio |
+| target_id | string | for staleness_check | Element to check |
+| max_age_ms | integer | for staleness_check | Maximum allowed age |
+
+9 query types:
+1. `authoritative_time` -- returns bridge-authoritative timestamp
+2. `drift_status` -- returns current drift between bridge and agent clocks
+3. `causal_position` -- returns current causal sequence number
+4. `vector_clock` -- returns full vector clock state
+5. `perception_bounds` -- returns hard/soft bounds for a modality
+6. `staleness_check` -- checks if a target element's data is stale
+7. `forecast` -- returns TimesFM prediction for an element's coordinate stream
+8. `anomaly_status` -- returns current anomaly detection state
+9. `clock_sources` -- returns available clock sources and their sync status
+
 ### Generative Topology (NOT Generative UI)
 
 Under dynAEP, agents generating raw JSX/HTML at runtime is **strictly forbidden**. Agents can only instantiate and arrange pre-compiled, verified AEP primitives. The agent is an architect placing pre-fabricated blocks. It does not mix the cement.
@@ -451,6 +804,32 @@ approval_policy:
   temporal_anomaly: "warn"
   perception_override: "auto"
 ```
+
+### Validated Performance Results (dynAEP v0.3.1)
+
+Reference implementation validated results:
+
+| Metric | Result |
+|--------|--------|
+| Blended throughput | 53,033 events/s |
+| Hot path p99 latency | 0.004 ms |
+| Cold path p99 latency | 0.22 ms |
+| Data-heavy grid (template instances) | 118,339 events/s |
+
+#### 10 Performance Optimizations
+
+| ID | Optimization |
+|----|-------------|
+| 1 | Template node validation fast-exit |
+| 2 | Parallel 15-step chain execution |
+| 3 | Unified Rego WASM bundle with decision cache |
+| 4 | Unified content scanner automaton (Aho-Corasick) |
+| 5 | Causal ordering subtree partitioning |
+| 6 | LSH attractor indexing for Lattice Memory |
+| 7 | Async NTP sync with clock slewing |
+| 8 | Buffered evidence ledger with WAL option |
+| 9 | Cross-modality state atomicity |
+| 10 | Delta processor with transaction log |
 
 ---
 
@@ -520,12 +899,21 @@ For perception rejections: use the `suggestion` field in the rejection event as 
 [ ] Verify: changing theme changes visuals without touching components
 [ ] Verify: every component traceable by its AEP ID
 [ ] Verify: no visual properties in aep-registry.yaml
+[ ] Implement 15-step evaluation chain
+[ ] Configure trust scoring and execution rings
+[ ] Define behavioural covenants
+[ ] Configure content scanners
+[ ] Set up evidence ledger with SHA-256 hash chain
 [ ] Configure dynAEP-TA timekeeping (NTP/PTP/system)
 [ ] Replace all Date.now() calls with dynaep_temporal_query
 [ ] Configure perception registry overrides for deployment
 [ ] Wire TTS/haptic/notification renderers to governed envelopes
+[ ] Configure adaptive perception profiles
+[ ] Set cross-modality constraint limit
 [ ] Test: temporal rejection on drift-exceeded event
 [ ] Test: perception clamping on out-of-bounds speech pacing
+[ ] Test: Schema Builder validation on schema proposal
+[ ] Test: Policy Builder coverage tracking
 ```
 
 ---
@@ -541,8 +929,9 @@ For other MCP clients: add the URL with HTTP transport.
 
 ## References
 
-- AEP Whitepaper: https://github.com/thePM001/AEP-agent-element-protocol
-- dynAEP: https://github.com/thePM001/dynAEP-dynamic-agent-element-protocol
+- AEP v2.6: https://github.com/thePM001/AEP-agent-element-protocol
+- AEP v2.6 Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.6-agent-harness
+- dynAEP v0.3.1: https://github.com/thePM001/dynAEP-dynamic-agent-element-protocol
 - AG-UI Protocol: https://github.com/ag-ui-protocol/ag-ui
+- AEP Research Paper: https://github.com/thePM001/AEP-research-paper-001
 - Live Demo: https://aep.newlisbon.agency
-- Google TimesFM: https://github.com/google-research/timesfm

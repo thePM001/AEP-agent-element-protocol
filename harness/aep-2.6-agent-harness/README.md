@@ -1,6 +1,20 @@
 # AEP v2.6 Agent Harness
 
-## Features (77)
+## Protocol Stack
+
+```
+LAYER       PROTOCOL        FUNCTION
+-------     -----------     ----------------------------------------
+Agent-Tools MCP             Agent connects to external data and tools
+Agent-Agent (any)           Agents coordinate across distributed systems
+Agent-User  AG-UI           Real-time event streaming between agent and frontend
+Agent-UI    AEP             Deterministic UI structure, behaviour and skin
+Agent-Live  dynAEP          AEP governance applied to live AG-UI event streams
+Agent-Time  dynAEP-TA       Temporal authority, causal ordering, predictive forecasting
+Agent-Percept dynAEP-TA-P   Perceptual temporal governance for human-facing outputs
+```
+
+## Features (99)
 
 ---
 
@@ -96,12 +110,39 @@
 70. Systemd watchdog integration (survival mode)
 71. Codebase scanning and proposal generation
 
-## Protocols (4 features)
+## Protocols (6 features)
 
 72. ASV Protocol (7 patterns, AST-based, pre-commit)
 73. Biosecurity Eligibility Check (/aepassist endpoint)
 74. Internal harness (private, enforcement rules)
 75. Convention format specification
+76. Schema Builder validation (MLE, spectral, permissiveness, modularity)
+77. Policy Builder validation (invariant detection, Rego generation, coverage tracking)
+
+## dynAEP v0.3.1 Bridge Features (22 features)
+
+78. AG-UI event bridge with temporal pipeline
+79. Bridge-authoritative clock (NTP/PTP/system)
+80. Temporal validator (drift/staleness/future)
+81. Causal ordering engine (vector clocks, reorder buffer)
+82. TimesFM forecast sidecar (async, optional)
+83. Perception registry (5 modalities)
+84. Perception engine (governed envelopes)
+85. Adaptive profile manager (per-user learning)
+86. Cross-modality constraint enforcement
+87. Delta processor with transaction log
+88. Under-construction pattern
+89. Conflict resolution (LWW + optimistic locking)
+90. Human-in-the-loop approval policies
+91. Template node validation fast-exit
+92. Parallel 15-step chain execution
+93. Unified Rego WASM bundle with decision cache
+94. Unified content scanner automaton (Aho-Corasick)
+95. Causal ordering subtree partitioning
+96. LSH attractor indexing for Lattice Memory
+97. Async NTP sync with clock slewing
+98. Buffered evidence ledger with WAL option
+99. Cross-modality state atomicity
 
 ---
 
@@ -145,4 +186,71 @@ An AEP v2.6 compliant platform MUST:
 9. Implement self-improving knowledge
 10. Maintain append-only audit log (tamper-evident)
 
+### AEP v2.6 Governance Compliance
+
+An AEP v2.6 compliant platform MUST also:
+
+11. Implement the full 15-step evaluation chain
+12. Implement Lattice Memory with attractor fast-path
+13. Support all 11 content scanners
+14. Implement trust scoring (0-1000, 5 tiers: untrusted, provisional, standard, trusted, privileged)
+15. Implement execution rings (0-3)
+16. Support behavioural covenants (permit/forbid/require with hard/soft severity)
+17. Implement intent drift detection (5 heuristics)
+18. Support hard/soft violation model with recovery engine
+19. Maintain SHA-256 hash-chained evidence ledger
+20. Generate proof bundles (.aep-proof.json)
+21. Support Schema Builder validation (MLE, spectral, permissiveness, modularity)
+22. Support Policy Builder validation (invariant detection, coverage tracking)
+
+### dynAEP v0.3.1 Compliance Requirements
+
+An AEP v2.6 + dynAEP v0.3.1 compliant platform MUST:
+
+23. Validate every AG-UI event through the dynAEP bridge before rendering
+24. Implement bridge-authoritative timekeeping (NTP/PTP/system fallback)
+25. Reject agent-provided timestamps and overwrite with bridge time
+26. Preserve original agent timestamps in metadata for audit
+27. Enforce temporal drift thresholds (configurable, default 50 ms)
+28. Enforce staleness thresholds (configurable, default 5000 ms)
+29. Implement causal ordering with vector clocks for multi-agent scenarios
+30. Buffer and reorder out-of-order events (configurable buffer, default 64)
+31. Reject clock regression events
+32. Validate temporal annotations against perception registry before output
+33. Enforce hard perception bounds (reject or clamp per config)
+34. Clamp soft perception violations to comfortable range
+35. Support adaptive per-user perception profiles
+36. Enforce cross-modality constraint (max simultaneous modalities, default 3)
+37. Mint all AEP IDs via bridge (agents NEVER generate IDs)
+38. Validate all structural mutations against scene graph, registry, z-bands, Rego
+39. Emit typed rejection events with actionable error messages
+40. Support generative topology (NOT generative UI)
+41. Maintain transaction log of all accepted mutations
+42. Support human-in-the-loop approval policies
+43. Never use Date.now() or local clocks in any stack component
+
 ---
+
+## Performance Validation Targets
+
+A compliant dynAEP v0.3.1 implementation SHOULD meet:
+
+| Target | Minimum |
+|--------|---------|
+| Blended throughput | > 2,000 events/s on single core |
+| Hot path p99 latency | < 0.5 ms |
+| Cold path p99 latency | < 10 ms |
+| Template instance throughput | > 50,000 events/s |
+
+Reference implementation achieves:
+
+| Metric | Result |
+|--------|--------|
+| Blended throughput | 53,033 events/s |
+| Hot path p99 latency | 0.004 ms |
+| Cold path p99 latency | 0.22 ms |
+| Data-heavy grid (template instances) | 118,339 events/s |
+
+---
+
+AEP v2.6 // thePM001 // Biosecure UNVACCINATED Supreme User // 2026-05-01
