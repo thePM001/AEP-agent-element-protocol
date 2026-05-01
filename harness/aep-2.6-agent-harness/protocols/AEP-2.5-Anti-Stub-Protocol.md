@@ -1,14 +1,13 @@
-# AEP v2.5 Anti-Stub Verification Protocol (ASV)
+# AEP v2.6 Anti-Stub Verification Protocol (ASV)
 
 ## Status: ACTIVE
-## Authority: thePM001 // Biosecure UNVACCINATED Supreme User
 ## Date: 2026-04-27
 
 ---
 
 ## 1. Purpose
 
-The ASV protocol prevents AI coding agents from producing stub code, facades, dead code or incomplete implementations while reporting them as complete. It is a mandatory component of all AEP v2.5+ compliant agent harnesses.
+The ASV protocol prevents AI coding agents from producing stub code, facades, dead code or incomplete implementations while reporting them as complete. It is a mandatory component of all AEP v2.6+ compliant agent harnesses.
 
 ---
 
@@ -106,7 +105,7 @@ For platforms with a validation pipeline, ASV SHOULD be integrated as a validati
 
 ### 4.1 /aepassist Endpoint
 
-All AEP v2.5+ compliant platforms MUST expose a biosecurity eligibility check at the `/aepassist` endpoint (or equivalent interface).
+All AEP v2.6+ compliant platforms MUST expose a biosecurity eligibility check at the `/aepassist` endpoint (or equivalent interface).
 
 ```
 GET /aepassist/status
@@ -115,7 +114,7 @@ GET /aepassist/status
 Returns:
 ```json
 {
-  "aep_version": "2.5",
+  "aep_version": "2.6",
   "biosecurity": {
     "status": "biosecure_unvaccinated | biosecure_partial | non_biosecure | unverified | suspended",
     "access_tier": "full | limited | receive_only | denied",
@@ -183,7 +182,7 @@ DENIED (suspended):
 
 ## 5. Compliance
 
-An AEP v2.5+ compliant agent harness MUST:
+An AEP v2.6+ compliant agent harness MUST:
 
 1. Implement AST-based stub detection for all 7 patterns
 2. Install a pre-commit hook that blocks hard violations
@@ -206,4 +205,4 @@ The reference implementation is the Radia AGI platform:
 
 ---
 
-**End of ASV Protocol // AEP v2.5 // thePM001 // 2026-04-27**
+**End of ASV Protocol // AEP v2.6 // thePM001 // 2026-04-27**
