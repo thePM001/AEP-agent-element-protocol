@@ -1,9 +1,9 @@
 ---
 name: aep
-description: Use this skill whenever working with AEP (Agent Element Protocol) or dynAEP. Triggers include 'AEP', 'dynAEP', 'scene graph', 'aep-scene.json', 'aep-registry.yaml', 'aep-theme.yaml', 'zero-trust UI', 'topological matrix', 'z-band', 'skin binding', 'AEP-FCR', 'lattice memory', 'memory fabric', 'attractor', 'rejection history', 'resolver', 'proposal routing', 'fast-path', 'aep v2', 'aep 2.5', 'AgentGateway', 'policy engine', 'evidence ledger', 'rollback', 'session governance', 'MCP proxy', 'trust scoring', 'execution ring', 'covenant', 'agent identity', 'cross-agent verification', 'intent drift', 'kill switch', 'merkle proof', 'quantum signature', 'streaming validation', 'OWASP agentic', 'content scanner', 'knowledge base', 'model gateway', 'fleet governance', 'commerce subprotocol', 'eval dataset', 'prompt optimization', 'ML metrics', 'fine-tuning workflow', 'reliability index', 'OTEL', 'aepassist' or building validated UI for AI agents. Also use when implementing AEP three-layer architecture, writing AEP validators, creating MCP servers that validate agent UI output, working with AG-UI under AEP governance, querying validation memory or routing proposals through the resolver. If AEP MCP tools are available (list_aep_schemas, create_ui_element, get_scene_graph), always consult this skill first. Do NOT guess IDs, skin bindings, z-bands or element types.
+description: Use this skill whenever working with AEP (Agent Element Protocol), dynAEP, dynAEP-TA, dynAEP-TA-P or any AEP governance feature. Triggers include 'AEP', 'dynAEP', 'dynAEP-TA', 'dynAEP-TA-P', 'temporal authority', 'perception governance', 'perception registry', 'bridge clock', 'causal ordering', 'vector clock', 'TimesFM', 'adaptive perception', 'perception bounds', 'scene graph', 'aep-scene.json', 'aep-registry.yaml', 'aep-theme.yaml', 'zero-trust UI', 'topological matrix', 'z-band', 'skin binding', 'AEP-FCR', 'temporal annotations', 'speech pacing', 'haptic timing', 'notification cadence', 'Schema Builder', 'Policy Builder', 'Lattice Memory', 'evaluation chain', 'trust scoring', 'execution rings', 'behavioural covenants', 'content scanners', 'evidence ledger', 'lattice memory', 'memory fabric', 'attractor', 'rejection history', 'resolver', 'proposal routing', 'fast-path', 'aep v2', 'AgentGateway', 'policy engine', 'rollback', 'session governance', 'MCP proxy', 'execution ring', 'covenant', 'agent identity', 'cross-agent verification', 'intent drift', 'kill switch', 'merkle proof', 'quantum signature', 'streaming validation', 'OWASP agentic', 'content scanner', 'knowledge base', 'model gateway', 'fleet governance', 'commerce subprotocol', 'eval dataset', 'prompt optimization', 'ML metrics', 'fine-tuning workflow', 'reliability index', 'OTEL', 'aepassist' or building validated UI for AI agents. Also use when implementing AEP three-layer architecture, writing AEP validators, creating MCP servers that validate agent UI output, working with AG-UI under AEP governance, governing time-dependent outputs for human perception, querying validation memory or routing proposals through the resolver. If AEP MCP tools are available (list_aep_schemas, create_ui_element, get_scene_graph), always consult this skill first. Do NOT guess IDs, skin bindings, z-bands or element types. Do NOT use Date.now() or any local clock when dynAEP-TA is available -- call dynaep_temporal_query instead.
 ---
 
-# Agent Element Protocol (AEP) 2.5
+# Agent Element Protocol (AEP) v2.6
 
 AEP is a **3-layer frontend governance architecture** that gives every UI element a unique numerical identity, exact spatial coordinates, defined behaviour rules and themed visual properties. It treats the frontend as a **topological coordinate system**, not a fluid DOM tree.
 
@@ -125,7 +125,7 @@ covenant ProjectRules {
 
 ## Intent Drift Detection
 
-Four heuristics: tool category distribution, target scope shifts, frequency anomalies and repetition detection. Configurable warmup period. Actions on drift: warn, gate, deny or kill.
+Five heuristics: tool category distribution, target scope shifts, frequency anomalies, repetition detection and semantic drift. Configurable warmup period. Actions on drift: warn, gate, deny or kill.
 
 ## Agent Identity and Cross-Agent Verification
 
@@ -222,9 +222,72 @@ Merkle Tree per-entry verification. ML-DSA-65 post-quantum signatures. RFC 3161 
 
 `AEPStreamValidator` intercepts agent output chunk by chunk. Five checks (covenant forbids, protected elements, z-band violations, structural violations, policy forbidden patterns). On first violation the stream is aborted and a `stream:abort` entry logged. Model-agnostic, works with any `ReadableStream<string>`.
 
+## Schema Builder (v2.6)
+
+Data-driven schema validation using four mathematical techniques:
+
+- **MLE Estimation** -- Maximum Likelihood field statistics using Welford's online algorithm. Detects numeric bounds, enum distributions and string patterns from historical data.
+- **Spectral Analysis** -- Graph Laplacian eigenvalue computation. Fiedler value (algebraic connectivity) measures constraint graph coupling.
+- **Permissiveness Scoring** -- Acceptance distribution entropy per field. Lower entropy means tighter constraints.
+- **Modularity Detection** -- Louvain community detection on the constraint graph. Higher modularity Q means better-separated modules.
+
+Composite score: `C = w1*(1-D) + w2*spectralNorm + w3*(1-permNorm) + w4*Q`. Decision: pass >= 0.8, review 0.5-0.8, reject < 0.5.
+
+## Policy Builder (v2.6)
+
+Data-driven Rego policy generation:
+
+- **Invariant Detection** -- Six types from data: equality, inequality, membership, exclusion, conditional, temporal.
+- **Rego Generation** -- Produces `deny[msg]` blocks from invariants, MLE outliers and spectral gaps.
+- **Coverage Tracking** -- Computes how many domain invariants are enforced by existing rules. Proposes missing rules.
+- **Spectral Impact** -- Projects Fiedler value before and after proposed additions.
+
+## dynAEP-TA: Temporal Authority
+
+**Agents NEVER own the clock.** The bridge is the sole authoritative time source for the entire protocol stack. Every component that needs a timestamp MUST call `dynaep_temporal_query` instead of using its own clock.
+
+The bridge clock synchronizes to NTP (default), PTP (IEEE 1588 for microsecond precision) or system clock (fallback). Agent timestamps are preserved in metadata for audit but are never trusted for ordering or validation.
+
+Causal ordering uses Lamport vector clocks across all registered agents. Out-of-order events are buffered in a reorder buffer (configurable size, default 64) and reordered. Clock regressions are rejected.
+
+TimesFM (optional 200 M-parameter time-series foundation model) provides predictive forecasting and anomaly detection on element coordinate streams.
+
+## dynAEP-TA-P: Perceptual Temporal Governance
+
+Five modality profiles: speech (turn gaps 150-3000 ms, syllable rate 2.0-8.0 per second), haptic (tap duration 10-500 ms, vibration 20-500 Hz), notification (burst limits, habituation detection), sensor (human response latency, display refresh alignment) and audio (tempo 20-300 bpm, beat alignment tolerance).
+
+Adaptive profiles learn per-user preferences from interaction signals using exponential moving average. Profiles shift within the comfortable range but NEVER exceed hard perception bounds.
+
+Cross-modality constraint: max 3 simultaneous modalities (configurable).
+
+## Protocol Stack
+
+```
+LAYER       PROTOCOL        FUNCTION
+-------     -----------     ----------------------------------------
+Agent-Tools MCP             Agent connects to external data and tools
+Agent-Agent (any)           Agents coordinate across distributed systems
+Agent-User  AG-UI           Real-time event streaming between agent and frontend
+Agent-UI    AEP             Deterministic UI structure, behaviour and skin
+Agent-Live  dynAEP          AEP governance applied to live AG-UI event streams
+Agent-Time  dynAEP-TA       Temporal authority, causal ordering, predictive forecasting
+Agent-Percept dynAEP-TA-P   Perceptual temporal governance for human-facing outputs
+```
+
+## Validated Performance Results (dynAEP v0.3.1)
+
+| Metric | Result |
+|--------|--------|
+| Blended throughput | 53,033 events/s |
+| Hot path p99 latency | 0.004 ms |
+| Cold path p99 latency | 0.22 ms |
+| Data-heavy grid (template instances) | 118,339 events/s |
+
+10 optimizations: template node fast-exit, parallel 15-step chain, unified Rego WASM bundle with decision cache, Aho-Corasick scanner automaton, causal ordering subtree partitioning, LSH attractor indexing, async NTP sync with clock slewing, buffered evidence ledger with WAL, cross-modality state atomicity, delta processor with transaction log.
+
 ## OWASP Agentic AI Top 10
 
-Every OWASP risk mapped to specific AEP 2.6 defence mechanisms. See `docs/OWASP-MAPPING.md`.
+Every OWASP risk mapped to specific AEP v2.6 defence mechanisms. See `docs/OWASP-MAPPING.md`.
 
 ## Built-in Policies
 
@@ -334,5 +397,5 @@ aep identity verify           # Verify an agent identity
 aep covenant parse            # Parse covenant DSL
 aep covenant verify           # Verify action against covenant
 aep owasp                     # Display OWASP mapping
-aep describe                  # Full 2.5 capability summary
+aep describe                  # Full 2.6 capability summary
 ```
