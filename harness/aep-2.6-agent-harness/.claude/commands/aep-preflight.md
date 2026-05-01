@@ -1,6 +1,6 @@
 # /aep-preflight
 
-## AEP 2.5 Preflight Check
+## AEP 2.6 Preflight Check
 
 Before making ANY code changes, you MUST complete this preflight:
 

@@ -1,4 +1,4 @@
-// AEP 2.5 -- URL Scanner
+// AEP 2.6 -- URL Scanner
 // Detects URLs in output with configurable allowlist/blocklist.
 // Also detects obfuscated URL patterns (hxxp, [dot]).
 

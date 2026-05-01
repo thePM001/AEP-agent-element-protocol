@@ -224,7 +224,7 @@ Merkle Tree per-entry verification. ML-DSA-65 post-quantum signatures. RFC 3161 
 
 ## OWASP Agentic AI Top 10
 
-Every OWASP risk mapped to specific AEP 2.5 defence mechanisms. See `docs/OWASP-MAPPING.md`.
+Every OWASP risk mapped to specific AEP 2.6 defence mechanisms. See `docs/OWASP-MAPPING.md`.
 
 ## Built-in Policies
 
