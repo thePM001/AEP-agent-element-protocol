@@ -6,6 +6,7 @@
 ### Research Paper: https://github.com/thePM001/AEP-research-paper-001
 ### Demo: https://aep.newlisbon.agency
 ### AEP 2.6 Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.6-agent-harness
+### Major new AEP 2.6 features: Policy Builder + Schema Builder (improving mathematical/formal safety of policies/rules inserted into AEP lattices)
 
 ---
 
