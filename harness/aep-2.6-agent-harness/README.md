@@ -250,7 +250,3 @@ Reference implementation achieves:
 | Hot path p99 latency | 0.004 ms |
 | Cold path p99 latency | 0.22 ms |
 | Data-heavy grid (template instances) | 118,339 events/s |
-
----
-
-AEP v2.6 // thePM001 // Biosecure UNVACCINATED Supreme User // 2026-05-01
