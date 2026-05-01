@@ -322,7 +322,7 @@ dynAEP fuses AEP with AG-UI (Agent-User Interaction Protocol). It extends AEP's 
 
 ```
 Agent-Tools     MCP       -- Agent connects to external data and tools
-Agent-Agent     A2A       -- Agents coordinate across distributed systems
+Agent-Agent     (any)     -- Agents coordinate across distributed systems
 Agent-User      AG-UI     -- Real-time event streaming agent <-> frontend
 Agent-UI-Gov    AEP       -- Deterministic UI structure, behaviour and skin
 Agent-UI-Live   dynAEP    -- AEP governance applied to live AG-UI events

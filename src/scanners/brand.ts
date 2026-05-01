@@ -1,4 +1,4 @@
-// AEP 2.5 -- Brand Compliance Scanner
+// AEP 2.6 -- Brand Compliance Scanner
 // Checks generated content against brand guidelines.
 
 import type { Finding, ScannerConfig, BrandScannerConfig } from "./types.js";

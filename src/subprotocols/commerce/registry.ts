@@ -1,4 +1,4 @@
-// AEP 2.5 -- Commerce Registry
+// AEP 2.6 -- Commerce Registry
 // Manages merchant profiles for commerce subprotocol validation.
 
 import type { MerchantProfile } from "./types.js";

@@ -1,4 +1,4 @@
-// AEP 2.5 -- Scanner Pipeline
+// AEP 2.6 -- Scanner Pipeline
 // Orchestrates all content scanners in sequence.
 // Runs AFTER structural validation, BEFORE final approval.
 

@@ -1,4 +1,4 @@
-// AEP 2.5 -- Workflow Executor
+// AEP 2.6 -- Workflow Executor
 // Manages sequential workflow phases with typed verdicts.
 
 import type {

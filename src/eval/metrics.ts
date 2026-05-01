@@ -1,4 +1,4 @@
-// AEP 2.5 -- ML Metrics Evaluator
+// AEP 2.6 -- ML Metrics Evaluator
 // Computes standard ML evaluation metrics for classification, regression,
 // retrieval and generation tasks. All methods are pure static functions.
 
