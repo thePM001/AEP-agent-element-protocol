@@ -7,7 +7,7 @@
 
 ### New optional fields
 - `memory_key` (string, optional) in scene elements - associates an element with a memory persistence key.
-- `memory_persistence` (boolean, optional) in registry entries - marks entries that should track validation history.
+- `memory_persistence` (boolean, optional) in registry entries - flags entries that should track validation history.
 
 ### New SDK files
 - `sdk/sdk-aep-memory.py` - Lattice Memory (Python)

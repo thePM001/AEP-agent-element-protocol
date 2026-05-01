@@ -70,7 +70,7 @@ An AEP v2.5 compliant platform MUST:
 3. Deny AI interaction to non-biosecure users
 4. Support a verification path for unverified users
 
-Internal access tier models, authority hierarchies, and user profiling systems are platform-specific implementation details and are NOT part of the AEP v2.5 specification.
+Internal access tier models, authority hierarchies and user profiling systems are platform-specific implementation details and are NOT part of the AEP v2.5 specification.
 
 ---
 

@@ -104,7 +104,7 @@ PN-00004:
 CP-00001:
   label: "App Logo"
   category: layout
-  function: "Displays the application brand mark in the header."
+  function: "Displays the application brand logo in the header."
   component_file: "HeaderPanel.jsx"
   parent: "PN-00001"
   skin_binding: "logo"

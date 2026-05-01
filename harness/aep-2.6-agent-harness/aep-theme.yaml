@@ -9,12 +9,12 @@ theme_name: "Your Project Theme"
 # ============================================================================
 
 design_rules:
-  border_radius: "Define your border-radius policy. Example: 0px globally with specific exceptions."
+  border_radius: "Define your border-radius policy. Example: 0px across all components with specific exceptions."
   borders: "Define your border policy. Example: No borders, tonal layering only."
   shadows: "Define your shadow policy. Example: Never. Use glassmorphism."
   inputs: "Define your input style. Example: Underline only, no box borders."
   primary_cta: "Define primary button style. Example: Gradient fill with dark text."
-  secondary_cta: "Define secondary button style. Example: Ghost border with light text."
+  secondary_cta: "Define secondary button style. Example: Outlined border with light text."
   status_indicators: "Define status indicator style. Example: 6px squares, never circles."
   scrollbar: "Define scrollbar style. Example: 4px width, dark track."
 
