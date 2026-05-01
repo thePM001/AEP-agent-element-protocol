@@ -132,13 +132,13 @@ describe("MLMetrics", () => {
   describe("compositeScore", () => {
     it("averages available metric scores", () => {
       const report: MLMetricsReport = {
-        classification: { accuracy: 0.9, precision: 0.85, recall: 0.8, f1: 0.824, confusionMatrix: { tp: 80, fp: 14, tn: 86, fn: 20 } },
+        classification: { accuracy: 0.9, precision: 0.85, recall: 0.8, f1: 0.830, confusionMatrix: { tp: 80, fp: 14, tn: 86, fn: 20 } },
         regression: { mse: 0.5, rmse: 0.707, mae: 0.4, r2: 0.95, mape: 5.0 },
       };
 
       const score = MLMetrics.compositeScore(report);
-      // Average of f1 (0.824) and r2 (0.95)
-      expect(score).toBeCloseTo(0.887, 2);
+      // Average of f1 (0.830) and r2 (0.95)
+      expect(score).toBeCloseTo(0.890, 2);
     });
 
     it("returns 0 for empty report", () => {

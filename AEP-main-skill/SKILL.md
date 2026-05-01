@@ -405,7 +405,7 @@ Supported queries: `children_of`, `parent_of`, `z_band_of`, `visible_at_breakpoi
 **Schema validation (v2.6):**
 ```json
 { "type": "CUSTOM", "dynaep_type": "AEP_SCHEMA_VALIDATE",
-  "schemaId": "order-schema-v3", "decision": "pass", "compositeScore": 0.87 }
+  "schemaId": "order-schema-v3", "decision": "pass", "compositeScore": 0.91 }
 ```
 
 **Policy validation (v2.6):**

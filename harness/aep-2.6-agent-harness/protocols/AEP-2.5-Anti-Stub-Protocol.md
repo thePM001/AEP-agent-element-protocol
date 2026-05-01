@@ -8,7 +8,7 @@
 
 ## 1. Purpose
 
-The ASV protocol prevents AI coding agents from producing stub code, facades, dead code, or incomplete implementations while reporting them as complete. It is a mandatory component of all AEP v2.5+ compliant agent harnesses.
+The ASV protocol prevents AI coding agents from producing stub code, facades, dead code or incomplete implementations while reporting them as complete. It is a mandatory component of all AEP v2.5+ compliant agent harnesses.
 
 ---
 
@@ -21,7 +21,7 @@ The ASV protocol prevents AI coding agents from producing stub code, facades, de
 def function(_), do: raise "not implemented"
 def function(_), do: raise "TODO"
 ```
-Detection: function body is a single `raise` with message containing "not implemented", "TODO", "stub", or "NYI".
+Detection: function body is a single `raise` with message containing "not implemented", "TODO", "stub" or "NYI".
 
 **Pattern 2: Empty Module Stubs**
 Detection: module has @moduledoc but zero public functions with non-trivial bodies.
@@ -55,7 +55,7 @@ Detection: function returns its input unmodified or wrapped in {:ok, _} with no 
 Detection: @doc annotation has > 3x more lines than the function body. Function body is a single expression.
 
 **Pattern 7: Test Stubs**
-Detection: test assertions that only check for :ok, {:ok, _}, or true against functions matching Pattern 4 or 5.
+Detection: test assertions that only check for :ok, {:ok, _} or true against functions matching Pattern 4 or 5.
 
 ### 2.3 Exemptions
 
