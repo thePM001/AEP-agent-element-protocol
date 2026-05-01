@@ -1,4 +1,4 @@
-// AEP 2.5 -- Recovery Engine
+// AEP 2.6 -- Recovery Engine
 // Attempts automatic recovery for soft violations before final reject.
 // Hard violations bypass recovery entirely.
 

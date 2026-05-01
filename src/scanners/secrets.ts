@@ -1,4 +1,4 @@
-// AEP 2.5 -- Secrets Scanner
+// AEP 2.6 -- Secrets Scanner
 // Detects API keys, private keys and credential patterns in agent output.
 
 import type { Finding, Scanner, ScannerConfig } from "./types.js";

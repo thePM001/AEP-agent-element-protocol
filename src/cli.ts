@@ -38,7 +38,7 @@ const args = process.argv.slice(2);
 const command = args[0];
 
 function usage(): void {
-  console.log(`AEP -- Agent Element Protocol v2.5
+  console.log(`AEP -- Agent Element Protocol v2.6
 
 Usage:
   aep assist [command]          Interactive governance assistant (/aepassist)
@@ -1068,7 +1068,7 @@ function handleReliability(ledgerPath: string | undefined): void {
 }
 
 function handleOwasp(): void {
-  console.log(`OWASP Agentic AI Top 10 -- AEP 2.5 Mapping
+  console.log(`OWASP Agentic AI Top 10 -- AEP 2.6 Mapping
 
   01 Agent Hijacking
      Mitigation: Policy evaluation chain, forbidden patterns, session isolation

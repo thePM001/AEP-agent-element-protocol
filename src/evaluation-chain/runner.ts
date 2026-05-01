@@ -1,4 +1,4 @@
-// AEP 2.5 -- Evaluation Chain Runner
+// AEP 2.6 -- Evaluation Chain Runner
 // Orchestrates the 15-step evaluation chain with short-circuit support.
 
 import {

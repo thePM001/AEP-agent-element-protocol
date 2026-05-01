@@ -1,4 +1,4 @@
-// Tests for AEP 2.5 Lattice-Governed Knowledge Base
+// Tests for AEP 2.6 Lattice-Governed Knowledge Base
 // Covers: KnowledgeIngestor, GovernedRetriever, KnowledgeBaseManager
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";

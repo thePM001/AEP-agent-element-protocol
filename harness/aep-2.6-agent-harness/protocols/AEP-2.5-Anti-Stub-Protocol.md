@@ -1,4 +1,4 @@
-# AEP v2.6 Anti-Stub Verification Protocol (ASV)
+# AEP v2.6 ASV Protocol (Incomplete Code Verification)
 
 ## Status: ACTIVE
 ## Date: 2026-04-27
@@ -83,7 +83,7 @@ Before reporting any task as complete, the agent MUST run these checks on every 
 # Function count matches task specification
 grep -c "def " <file>
 
-# Zero stub patterns in public functions
+# Zero trivial stubs in public functions
 grep -n "do: :ok$\|do: nil$\|do: :noop\|:not_implemented\|:stub" <file>
 
 # Zero raise stubs
@@ -97,7 +97,7 @@ The agent MUST include these outputs in its completion report.
 
 ### 3.4 Validation Stratum (Recommended)
 
-For platforms with a validation pipeline, ASV SHOULD be integrated as a validation stratum. In AEP v3.0 compliant platforms, this is Stratum 26.
+For platforms with a validation pipeline, ASV SHOULD be integrated as a validation stratum (e.g., Stratum 26).
 
 ---
 
@@ -125,7 +125,7 @@ Returns:
     "eligible": true | false
   },
   "system": {
-    "platform": "radia",
+    "platform": "implementation_name",
     "version": "current version",
     "uptime_seconds": integer,
     "governor_level": 0-3
@@ -156,7 +156,7 @@ AI agent capabilities MUST be gated by biosecurity status:
 FULL ACCESS (biosecure_unvaccinated, verified):
   All AI capabilities enabled
   Code generation, deployment, lattice mutation
-  Full cascade (L1-L4)
+  Full cascade (all levels)
   Convention crystallization
   Web learning access
 
@@ -165,7 +165,7 @@ LIMITED ACCESS (biosecure_partial):
   No code generation
   No deployment
   No lattice mutation
-  Cascade L1-L3 only (no API calls)
+  Read-only cascade (no API calls)
 
 RECEIVE_ONLY (non_biosecure):
   NO AI interaction
@@ -184,25 +184,23 @@ DENIED (suspended):
 
 An AEP v2.6+ compliant agent harness MUST:
 
-1. Implement AST-based stub detection for all 7 patterns
+1. Implement AST-based detection for all 7 patterns
 2. Install a pre-commit hook that blocks hard violations
 3. Require agent self-audit before task completion
 4. Expose biosecurity eligibility at /aepassist or equivalent
 5. Gate AI capabilities by biosecurity status
 6. Enforce the TE Framework authority hierarchy (Level 0-5)
-7. Support the UBAL access tier model (full/limited/receive_only/denied)
+7. Support the access tier model (full/limited/receive_only/denied)
 
 ---
 
 ## 6. Reference Implementation
 
-The reference implementation is the Radia AGI platform:
-- ASV: `lib/radia/validation/anti_stub.ex` (Stratum 26)
-- Biosecurity gate: `lib/radia/bal/biosecurity_gate.ex`
-- UBAL profiles: `lib/radia/bal/ubal.ex`
-- Eligibility: `lib/radia/bal/eligibility.ex`
+Implementers should provide:
+- AST-based verification module (Stratum 26)
+- Biosecurity gate module
+- User access profiles
+- Eligibility check module
 - Pre-commit hook: `.git/hooks/pre-commit`
 
 ---
-
-**End of ASV Protocol // AEP v2.6 // thePM001 // 2026-04-27**

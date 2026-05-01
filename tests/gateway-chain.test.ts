@@ -1,4 +1,4 @@
-// Tests for AEP 2.5 Gateway 15-Step Evaluation Chain
+// Tests for AEP 2.6 Gateway 15-Step Evaluation Chain
 // Covers: evaluate(), scanContent(), knowledge retrieval validation
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
