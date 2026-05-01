@@ -8,6 +8,8 @@ export type AEPassistMode =
   | "covenant"
   | "identity"
   | "report"
+  | "schema"
+  | "policy"
   | "help";
 
 export interface AEPassistResponse {
@@ -28,6 +30,10 @@ export type CovenantAction = "list" | "create" | "view";
 export type IdentityAction = "show" | "create" | "export";
 
 export type ReportFormat = "json" | "csv" | "html";
+
+export type SchemaAction = "build" | "validate" | "compare" | "tighten";
+
+export type PolicyAction = "build" | "validate" | "gaps";
 
 export interface ParsedInput {
   mode: AEPassistMode;

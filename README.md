@@ -1,16 +1,16 @@
 # AEP - Agent Element Protocol (Deterministic Adjudication Lattices)
 # Free Basic Open-Source Version Implementation Reference
-### Version 2.5 - 26 April 2026
+### Version 2.6 - 1 May 2026
 ### Author: thePM_001 (https://x.com/thePM_001)
 ### License: Apache-2.0
 ### Research Paper: https://github.com/the-PM001/AEP-research-paper-001
 ### Demo: https://aep.newlisbon.agency
-### AEP 2.5 Agent Harness so your AI actually uses AEP: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.5-agent-harness
+### AEP 2.6 Agent Harness so your AI actually uses AEP: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.6-agent-harness
 ---
 
-### Now 75 Features. One Protocol. 
+### Now 77 Features. One Protocol.
 
-![AEP 2.5 - 75 Features](docs/images/feature-grid.png)
+![AEP 2.6 - 77 Features](docs/images/feature-grid.png)
 
 ## [Explore the full feature grid at aep.newlisbon.agency](https://aep.newlisbon.agency)
 
@@ -238,7 +238,7 @@ Policy controls: merchant allow/blocklists, product category blocking, transacti
 
 **Proof bundles.** Portable `.aep-proof.json` files containing agent identity, covenant, trust score, ring, drift score, reliability index (theta), Merkle root and Ed25519 signature. ML-DSA-65 post-quantum signatures available. RFC 3161 timestamp authority tokens. Offline signing for air-gapped environments.
 
-**OWASP coverage.** Every OWASP Agentic AI Top 10 risk mapped to specific AEP 2.5 defence mechanisms. See `docs/OWASP-MAPPING.md`.
+**OWASP coverage.** Every OWASP Agentic AI Top 10 risk mapped to specific AEP 2.6 defence mechanisms. See `docs/OWASP-MAPPING.md`.
 
 **Compliance targets.** EU AI Act transparency requirements, SOC 2 audit trail requirements.
 
@@ -286,21 +286,42 @@ AEP ships with four presets selectable via `/aepassist preset` or `npx aep assis
 
 ---
 
-## Migration from v2.2
+## Schema Builder (Capability 12)
 
-AEP v2.5 is backwards-compatible with v2.2. All existing config files, policies, sessions, ledgers and SDK modules continue to work without modification.
+Data-driven schema validation using four mathematical techniques:
 
-To adopt v2.5 features:
+- **MLE Estimation** -- Maximum Likelihood field statistics using Welford's online algorithm. Detects numeric bounds, enum distributions and string patterns from historical data.
+- **Spectral Analysis** -- Graph Laplacian eigenvalue computation via Jacobi algorithm. Fiedler value (algebraic connectivity) measures how tightly the schema constraint graph is coupled.
+- **Permissiveness Scoring** -- Information geometry / acceptance distribution entropy per field (Cover & Thomas). Lower entropy means tighter constraints.
+- **Modularity Detection** -- Louvain community detection algorithm on the constraint graph. Higher modularity Q means better-separated functional modules.
 
-1. Update `version` to `"2.5"` in policy files.
-2. For Knowledge Base: add `knowledge.enabled: true` and use `KnowledgeBaseManager`.
-3. For Content Scanners: add `scanners.enabled: true` and configure per-scanner severity.
-4. For Model Gateway: add `model_gateway` config and use `GovernedModelGateway`.
-5. For Recovery Engine: add `recovery.enabled: true` for automatic retry on soft violations.
-6. For Workflow Phases: add `workflow` config with phase definitions.
-7. For Commerce: add `commerce.enabled: true` with spend limits and merchant rules.
+Composite validation score: `C = w1*(1-D) + w2*S + w3*(1-perm) + w4*Q`. Decision thresholds: pass >= 0.8, review 0.5-0.8, reject < 0.5.
 
-The evaluation chain extends from 13 to 15 steps: Step 13 (knowledge retrieval validation) and Step 14 (content scanner pipeline).
+---
+
+## Policy Builder (Capability 13)
+
+Data-driven Rego policy generation with invariant detection, coverage tracking and spectral impact projection:
+
+- **Invariant Detection** -- Detects six types from data: equality, inequality, membership, exclusion, conditional, temporal. Configurable confidence threshold.
+- **Rego Generation** -- Produces syntactically valid `deny[msg]` blocks from invariants, MLE outliers and spectral gap analysis.
+- **Coverage Tracking** -- Computes how many domain invariants are enforced by existing rules. Proposes missing rules.
+- **Spectral Impact** -- Projects Fiedler value before and after proposed rule additions.
+
+---
+
+## Migration from v2.5
+
+AEP v2.6 is backwards-compatible with v2.5. All existing config files, policies, sessions, ledgers and SDK modules continue to work without modification.
+
+To adopt v2.6 features:
+
+1. Update `version` to `"2.6"` in policy files.
+2. For Schema Builder: use `SchemaBuilder` for data-driven schema validation.
+3. For Policy Builder: use `PolicyBuilder` for data-driven Rego generation.
+4. For Schema Builder via gateway: call `gateway.validateSchemaProposal()`.
+5. For Policy Builder via gateway: call `gateway.validatePolicyProposal()`.
+6. All v2.5 features remain unchanged.
 
 ---
 

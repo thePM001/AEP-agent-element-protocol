@@ -1,8 +1,6 @@
-# AEP v2.5 Agent Harness
+# AEP v2.6 Agent Harness
 
-## Protocol Version: 2.5
-## Features: 75
-## Authority: thePM001 // Biosecure UNVACCINATED Supreme User
+## Features (77)
 
 ---
 

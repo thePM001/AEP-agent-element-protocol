@@ -486,7 +486,7 @@ function handleProxy(args: string[]): void {
             result: {
               protocolVersion: "2024-11-05",
               capabilities: { tools: {} },
-              serverInfo: { name: "aep", version: "2.5.0" },
+              serverInfo: { name: "aep", version: "2.6.0" },
             },
           }) + "\n");
         } else if (msg.method === "notifications/initialized") {
@@ -586,7 +586,7 @@ function handleMCPMessage(msg: JSONRPCMessage, gateway: AgentGateway): Record<st
       result: {
         protocolVersion: "2024-11-05",
         capabilities: { tools: {} },
-        serverInfo: { name: "aep", version: "2.5.0" },
+        serverInfo: { name: "aep", version: "2.6.0" },
       },
     };
   }
@@ -1523,7 +1523,7 @@ function handleCommerce(args: string[]): void {
 }
 
 function generateDefaultPolicy(): string {
-  return `version: "2.5"
+  return `version: "2.6"
 name: "default-agent-policy"
 
 capabilities:

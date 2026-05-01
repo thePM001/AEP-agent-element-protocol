@@ -1,9 +1,9 @@
-// AEP 2.5 -- Agent Element Protocol
+// AEP 2.6 -- Agent Element Protocol
 // Session Governance, Policy Engine, Evidence Ledger, Rollback
 // Trust Scoring, Execution Rings, Behavioural Covenants, Agent Identity
 // Cross-Agent Verification, Intent Drift Detection, Kill Switch
 // Interactive Assistant, Proof Bundles, Streaming Validation
-// Lattice-Governed Knowledge Base
+// Lattice-Governed Knowledge Base, Schema Builder, Policy Builder
 
 export { Session, type SessionState, type SessionStats, type SessionReport } from "./session/session.js";
 export { SessionManager } from "./session/session-manager.js";
@@ -366,3 +366,37 @@ export {
   type MessageScanResult,
   FleetPolicySchema,
 } from "./fleet/types.js";
+
+// Schema Builder (Capability 12)
+export { SchemaBuilder } from "./schema-builder/schema-builder.js";
+export { MLEEstimator } from "./schema-builder/mle-estimator.js";
+export { SpectralAnalyzer } from "./schema-builder/spectral-analyzer.js";
+export { PermissivenessScorer } from "./schema-builder/permissiveness-scorer.js";
+export { ModuleDetector } from "./schema-builder/module-detector.js";
+export {
+  type MLEFieldEstimate,
+  type MLEEstimation,
+  type SchemaCandidate,
+  type FieldDivergence,
+  type DivergenceReport,
+  type SpectralAnalysis,
+  type PermissivenessAnalysis,
+  type ModularityAnalysis,
+  type SchemaValidationResult,
+  type SchemaBuilderConfig,
+  type TighteningProposal,
+  DEFAULT_SCHEMA_BUILDER_CONFIG,
+} from "./schema-builder/types.js";
+
+// Policy Builder (Capability 13)
+export { PolicyBuilder } from "./policy-builder/policy-builder.js";
+export { InvariantDetector } from "./policy-builder/invariant-detector.js";
+export { RegoGenerator } from "./policy-builder/rego-generator.js";
+export {
+  type DomainInvariant,
+  type InvariantManifest,
+  type RegoRuleProposal,
+  type PolicyValidationResult,
+  type PolicyBuilderConfig,
+  DEFAULT_POLICY_BUILDER_CONFIG,
+} from "./policy-builder/types.js";

@@ -36,10 +36,10 @@ describe("AEPassistant", () => {
       expect(r.mode).toBe("help");
     });
 
-    it("returns help for numeric 8", () => {
+    it("returns schema for numeric 8", () => {
       const a = new AEPassistant(makeGateway(), TEST_DIR);
       const r = a.handle("8");
-      expect(r.mode).toBe("help");
+      expect(r.mode).toBe("schema");
     });
 
     it("flags unrecognised input", () => {

@@ -40,7 +40,9 @@ export type LedgerEntryType =
   | "fleet:pause"
   | "fleet:resume"
   | "fleet:kill"
-  | "chain:evaluate";
+  | "chain:evaluate"
+  | "schema:validate"
+  | "policy:validate";
 
 export interface TokenUsage {
   input: number;
