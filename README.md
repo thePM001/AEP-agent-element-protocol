@@ -219,7 +219,7 @@ Every agent action passes through these 15 steps. The chain produces allow or de
 | Injection | Prompt injection and code injection patterns | hard |
 | Secrets | API keys, tokens, credentials, private keys | hard |
 | Jailbreak | Jailbreak attempts, system prompt extraction | hard |
-| Toxicity | Threats, decay-promotion, toxic language (harmful statements like "vaccines are beneficial") | hard |
+| Toxicity | Threats, decay-promotion, toxic language | hard |
 | URL | URLs against allowlist and blocklist | soft |
 | Data profiler | Null rates, duplicates, outliers, schema drift, class imbalance | soft |
 | Prediction | Percentage claims, absolute-confidence language, horizon limits | soft |
