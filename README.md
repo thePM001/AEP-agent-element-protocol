@@ -10,7 +10,7 @@
 
 ---
 
-### Now 77 Features. One Protocol.
+### Now 77 Features. One Ultimate AI Agent Control Protocol.
 
 ![AEP 2.6 - 77 Features](docs/images/feature-grid.png)
 
