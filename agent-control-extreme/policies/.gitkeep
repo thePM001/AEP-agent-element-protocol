@@ -1,0 +1,5 @@
+# Policies are shared with agent-control-hub/policies/
+# Symlink or copy *.policy files from there.
+#
+# agent-control-extreme uses the same policies as the reference hub.
+# The harness auto-falls-back to ../agent-control-hub/policies/ if local is empty.
