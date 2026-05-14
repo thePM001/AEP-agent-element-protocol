@@ -51,7 +51,7 @@ your infrastructure.
 ```
 agent-control-hub/
 ├── README.md                    # This file
-├── policies/                    # Agent behavioral policies (.policy files)
+├── policies/                    # Agent behavioural policies (.policy files)
 │   ├── 01-network-policy.policy
 │   ├── 02-output-policy.policy
 │   ├── 03-deployment-policy.policy
