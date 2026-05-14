@@ -1,7 +1,6 @@
 # Agent Control Hub - Open Source Setup Guide
 
 A reference implementation for setting up a centralized agent control system.
-No vendor-specific terms. No company names. Just the pattern.
 
 ---
 
