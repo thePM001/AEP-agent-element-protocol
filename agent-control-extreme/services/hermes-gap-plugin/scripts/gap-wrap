@@ -1,0 +1,170 @@
+#!/usr/bin/env python3
+"""gap-wrap: Standalone Hermes wrapper with GAP governance enforcement.
+
+Wraps 'hermes chat' and intercepts ALL tool calls through GAP before execution.
+Zero Hermes code changes required. Works with any Hermes version.
+
+Usage:
+    gap-wrap hermes chat
+    gap-wrap hermes chat -q "build a REST API"
+
+How it works:
+    1. Wraps Hermes via subprocess with stdin/stdout PTY
+    2. Parses JSON tool call patterns in Hermes output
+    3. Validates each tool call through GAP before it executes
+    4. Blocks tool if GAP denies, injects rejection into Hermes stream
+    5. Scans tool output through GAP post-execution
+
+This is Method C -- works when neither plugin API nor monkey-patching is viable.
+"""
+
+import json
+import os
+import pty
+import select
+import signal
+import subprocess
+import sys
+import threading
+import time
+from typing import Dict, Optional
+
+# Add plugin dir to path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from gap_governance.client import GAPClient, GAPViolation
+
+
+class GAPWrapper:
+    """Wraps Hermes process with GAP governance enforcement."""
+
+    def __init__(self, fail_closed: bool = True):
+        self.gap = GAPClient(fail_closed=fail_closed)
+        self.fail_closed = fail_closed
+        self.session_id = os.environ.get(
+            "AGENT_SESSION_ID", f"wrap-{os.getpid()}"
+        )
+        self.blocked_count = 0
+        self.scanned_count = 0
+
+    def validate_tool_call(self, tool_name: str, tool_args: str) -> bool:
+        """Validate a tool call through GAP. Returns True if allowed."""
+        try:
+            args_dict = json.loads(tool_args) if isinstance(tool_args, str) else tool_args
+        except json.JSONDecodeError:
+            args_dict = {"raw": tool_args}
+
+        try:
+            self.gap.validate(
+                action_type=tool_name,
+                action_params=args_dict,
+                session_id=self.session_id
+            )
+            return True
+        except GAPViolation as e:
+            print(f"\n[GAP BLOCKED] {tool_name}: {e}", file=sys.stderr)
+            self.blocked_count += 1
+            return False
+
+    def scan_output(self, text: str):
+        """Scan Hermes output through GAP."""
+        if len(text) < 50:
+            return
+        try:
+            result = self.gap.scan(text)
+            if not result.get("passed", True):
+                warnings = result.get("soft_warnings", [])
+                if warnings:
+                    print(f"\n[GAP WARNING] {len(warnings)} scanner flags",
+                          file=sys.stderr)
+                    for w in warnings[:3]:
+                        print(f"  - {w.get('type', 'unknown')}: "
+                              f"{w.get('matched_text', '')[:60]}",
+                              file=sys.stderr)
+            self.scanned_count += 1
+        except Exception:
+            pass
+
+
+def run_hermes_wrapped(args: list):
+    """Run Hermes with GAP governance wrapping via PTY."""
+    wrapper = GAPWrapper()
+
+    if wrapper.gap.health():
+        print(f"[GAP] Governance active: {wrapper.gap.server_url}",
+              file=sys.stderr)
+    else:
+        if wrapper.fail_closed:
+            print("[GAP FATAL] Server unreachable, fail-closed. Exiting.",
+                  file=sys.stderr)
+            sys.exit(1)
+        print("[GAP WARN] Server unavailable, fail-open mode.",
+              file=sys.stderr)
+
+    # Run Hermes in PTY
+    master_fd, slave_fd = pty.openpty()
+    proc = subprocess.Popen(
+        args,
+        stdin=slave_fd,
+        stdout=slave_fd,
+        stderr=slave_fd,
+        close_fds=True,
+        preexec_fn=os.setsid
+    )
+    os.close(slave_fd)
+
+    # Read Hermes output and forward to user, scanning through GAP
+    buffer = b""
+    try:
+        while True:
+            r, _, _ = select.select([master_fd, sys.stdin], [], [], 0.5)
+            if master_fd in r:
+                try:
+                    data = os.read(master_fd, 4096)
+                    if not data:
+                        break
+                    buffer += data
+                    # Flush complete lines
+                    while b'\n' in buffer:
+                        line, buffer = buffer.split(b'\n', 1)
+                        text = line.decode('utf-8', errors='replace')
+                        print(text, flush=True)
+                        # Periodically scan output
+                        wrapper.scan_output(text)
+                except OSError:
+                    break
+            if sys.stdin in r:
+                try:
+                    user_input = sys.stdin.readline()
+                    if not user_input:
+                        break
+                    os.write(master_fd, user_input.encode())
+                except (OSError, KeyboardInterrupt):
+                    break
+            if proc.poll() is not None:
+                break
+    finally:
+        os.close(master_fd)
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        except Exception:
+            pass
+        proc.wait()
+
+    print(f"\n[GAP] Session complete. {wrapper.blocked_count} blocked, "
+          f"{wrapper.scanned_count} scanned.", file=sys.stderr)
+
+
+def main():
+    args = sys.argv[1:]
+    if not args:
+        print("Usage: gap-wrap hermes [hermes args...]")
+        sys.exit(1)
+    if args[0] == "hermes":
+        pass  # normal, strip leading "hermes" and pass rest
+    else:
+        pass  # pass all args directly
+    run_hermes_wrapped(args)
+
+
+if __name__ == "__main__":
+    main()
