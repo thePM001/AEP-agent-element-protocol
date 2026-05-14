@@ -1,0 +1,10 @@
+id: branding-uniformity-policy
+severity: critical
+description: "All brand logo/symbol representations must match the official production shape exactly"
+guard: "ALL BRAND LOGOS AND SYMBOLS ACROSS ALL SYSTEMS MUST MATCH THE OFFICIAL PRODUCTION SHAPE. No custom SVG polygons, no Unicode symbol substitutes, no CSS-drawn approximations."
+rules:
+  - Every brand logo must use the exact official icon - no custom reproductions
+  - SVG polygon approximations are FORBIDDEN for brand logos
+  - Unicode symbol characters as brand logos are FORBIDDEN
+  - CSS-drawn brand shapes are FORBIDDEN
+  - All existing non-compliant brand representations must be migrated

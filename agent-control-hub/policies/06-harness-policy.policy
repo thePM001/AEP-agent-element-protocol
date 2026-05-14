@@ -1,0 +1,11 @@
+id: harness-mandatory-policy
+severity: critical
+description: "Agent bootstrap is mandatory on every spawn. The bootstrap harness is the ONLY authorized entry point."
+guard: "NO AGENT MAY PERFORM ANY WORK WITHOUT RUNNING THE BOOTSTRAP HARNESS FIRST. The bootstrap script is the ONE harness for all agents. It authenticates, registers, and validates before any agent action."
+rules:
+  - agent-bootstrap.sh MUST run as FIRST command on EVERY agent spawn
+  - Session is registered with identity: name, type, version, session ID, host, PID, start time
+  - If bootstrap fails, agent is NOT AUTHORIZED to work
+  - No other bootstrap or harness script is allowed
+  - Bootstrap must run before any code, deploy, or config change
+  - Bootstrap must run before every session, not just first time

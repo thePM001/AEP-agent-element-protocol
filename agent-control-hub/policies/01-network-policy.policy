@@ -1,0 +1,9 @@
+id: network-bind-policy
+severity: critical
+description: "No agent may create services on 0.0.0.0. Internal IP or localhost only."
+guard: "NO AGENT MAY BIND SERVICES TO 0.0.0.0. All service bind addresses must be 127.0.0.1 or a specific internal IP address."
+rules:
+  - All service bind addresses must be 127.0.0.1 or specific internal IP
+  - 0.0.0.0 is FORBIDDEN for all service bindings
+  - auto-remediate: replace 0.0.0.0 with internal IP in service configuration
+  - scan targets: systemd service files, docker compose, server configs

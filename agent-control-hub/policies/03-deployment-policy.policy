@@ -1,0 +1,17 @@
+id: deployment-approval-policy
+severity: critical
+description: "No agent may deploy without human approval. Every deployment must be registered and presented as a clear plan."
+guard: "NO AGENT MAY DEPLOY ANY SERVICE WITHOUT HUMAN APPROVAL THROUGH THE DEPLOYMENT GATE. Every planned deployment action must be registered and presented in a clear readable format. Before any work, agents must consult knowledge sources to check if component already exists."
+rules:
+  - Every deployment action must be registered before execution
+  - Deployment prompt must include: WHAT + WHY + IMPACT + ROLLBACK + DURATION
+  - Raw command chains are FORBIDDEN as authorization prompts
+  - Agent must WAIT for explicit human approval before executing
+  - No silent builds, unattended deploys, or auto-restarts without approval
+  - Before any work, agent must consult:
+    a) Knowledge base / semantic index
+    b) Documentation wiki
+    c) Existing component registries
+    d) Code repositories (never build from scratch if exists)
+    e) Project registries
+  - New components must be registered in the component registry

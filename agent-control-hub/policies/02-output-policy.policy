@@ -1,0 +1,8 @@
+id: output-display-policy
+severity: critical
+description: "All new prompts and outputs created by any agent must be displayed in full on the terminal"
+guard: "ALL NEW PROMPTS AND OUTPUTS CREATED BY ANY AGENT MUST BE DISPLAYED IN FULL ON THE TERMINAL. Outputs written to files must also be printed to stdout."
+rules:
+  - Every new prompt or output must be visible on the terminal
+  - The terminal is the primary delivery channel, not the filesystem
+  - Writing to a file alone is NOT sufficient - must also display

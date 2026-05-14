@@ -1,0 +1,10 @@
+id: writing-standards-policy
+severity: critical
+description: "Writing standards: no gray text, no em-dashes, no double-hyphen separators, no Oxford commas"
+guard: "NO AGENT MAY OUTPUT LOW-CONTRAST TEXT, EM-DASHES, OR DOUBLE-HYPHENS. Minimum contrast for all text. Em-dash and en-dash characters are forbidden. Double-hyphens used as word separators are forbidden."
+rules:
+  - All text must use minimum readable contrast - no faint or hard-to-read colors
+  - Em-dash (U+2014) and en-dash (U+2013) characters are FORBIDDEN in all output
+  - Double-hyphens as word separators are FORBIDDEN - use single hyphen
+  - Oxford commas are FORBIDDEN - no comma before 'and' or 'or' in lists
+  - CSS custom properties and CLI flags with double-hyphens are exempt
