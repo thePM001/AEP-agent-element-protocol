@@ -1,6 +1,6 @@
 ---
 name: aep
-description: Use this skill whenever working with AEP (Agent Element Protocol), dynAEP, dynAEP-TA, dynAEP-TA-P or any AEP governance feature. Triggers include 'AEP', 'dynAEP', 'dynAEP-TA', 'dynAEP-TA-P', 'temporal authority', 'perception governance', 'perception registry', 'bridge clock', 'causal ordering', 'vector clock', 'TimesFM', 'adaptive perception', 'perception bounds', 'scene graph', 'aep-scene.json', 'aep-registry.yaml', 'aep-theme.yaml', 'zero-trust UI', 'topological matrix', 'z-band', 'skin binding', 'AEP-FCR', 'temporal annotations', 'speech pacing', 'haptic timing', 'notification cadence', 'Schema Builder', 'Policy Builder', 'Lattice Memory', 'evaluation chain', 'trust scoring', 'execution rings', 'behavioural covenants', 'content scanners', 'evidence ledger', or building validated UI for AI agents. Also use when implementing AEP three-layer architecture, writing AEP validators, creating MCP servers that validate agent UI output, working with AG-UI under AEP governance, or governing time-dependent outputs for human perception. If AEP MCP tools are available (list_aep_schemas, create_ui_element, get_scene_graph), always consult this skill first. Do NOT guess IDs, skin bindings, z-bands or element types. Do NOT use Date.now() or any local clock when dynAEP-TA is available -- call dynaep_temporal_query instead.
+description: Use this skill whenever working with AEP (Agent Element Protocol), dynAEP, dynAEP-TA, dynAEP-TA-P or any AEP governance feature. Triggers include 'AEP', 'dynAEP', 'dynAEP-TA', 'dynAEP-TA-P', 'temporal authority', 'perception governance', 'perception registry', 'bridge clock', 'causal ordering', 'vector clock', 'TimesFM', 'adaptive perception', 'perception bounds', 'scene graph', 'aep-scene.json', 'aep-registry.yaml', 'aep-theme.yaml', 'zero-trust UI', 'topological matrix', 'z-band', 'skin binding', 'AEP-FCR', 'temporal annotations', 'speech pacing', 'haptic timing', 'notification cadence', 'Schema Builder', 'Policy Builder', 'Lattice Memory', 'evaluation chain', 'trust scoring', 'execution rings', 'behavioural covenants', 'content scanners', 'evidence ledger', or building validated UI for AI agents. Also use when implementing AEP three-layer architecture, writing AEP validators, creating MCP servers that validate agent UI output, working with AG-UI under AEP governance, or governing time-dependent outputs for human perception. If AEP MCP tools are available (list_aep_schemas, create_ui_element, get_scene_graph), always consult this skill first. Do NOT guess IDs, skin bindings, z-bands or element types. Do NOT use Date.now() or any local clock when dynAEP-TA is available - call dynaep_temporal_query instead.
 ---
 
 # Agent Element Protocol (AEP) v2.6 - MCP Demo Skill
@@ -26,10 +26,10 @@ Agent-Percept dynAEP-TA-P   Perceptual temporal governance for human-facing outp
 ## Critical Rules
 
 1. **NEVER invent element IDs.** The server mints all IDs. You only provide: type, parent, z, skin_binding, label.
-2. **ALWAYS call `list_aep_schemas` first.** This returns the live registry of valid types, z-bands and skin bindings. Do not rely on memory -- the registry may change between sessions.
+2. **ALWAYS call `list_aep_schemas` first.** This returns the live registry of valid types, z-bands and skin bindings. Do not rely on memory - the registry may change between sessions.
 3. **ALWAYS call `get_scene_graph` before building.** Know what exists before adding to it.
 4. **Start from root `SH-00001`.** Every element tree begins here.
-5. **Use the server-returned ID** for any subsequent parent references. After `create_ui_element` returns `{"element_id": "PN-00001"}`, use `PN-00001` as the parent for children -- never make up IDs.
+5. **Use the server-returned ID** for any subsequent parent references. After `create_ui_element` returns `{"element_id": "PN-00001"}`, use `PN-00001` as the parent for children - never make up IDs.
 6. **If rejected, read the error and fix it.** Don't retry the same call. The rejection tells you exactly what's wrong.
 7. **NEVER use Date.now()** or any local clock when dynAEP-TA is available. Call `dynaep_temporal_query` instead.
 
@@ -292,14 +292,14 @@ When a call returns `{"valid": false, "errors": [...]}`:
 2. It tells you exactly what's wrong and what the valid options are
 3. Fix the specific parameter(s)
 4. Retry with corrected values
-5. Never retry with the same values -- that will fail again
+5. Never retry with the same values - that will fail again
 
 For temporal rejections: re-sync with bridge clock, resolve causal dependencies, then retry.
 For perception rejections: use the `suggestion` field in the rejection event as a starting point for corrected annotations.
 
 ## Live Demo Context
 
-When building through the AEP demo server, your actions are broadcast live to a dashboard at `aep.newlisbon.agency`. Visitors can watch you build in real time. Passes show in green, rejections in red. Build deliberately and cleanly -- this is a showcase.
+When building through the AEP demo server, your actions are broadcast live to a dashboard at `aep.newlisbon.agency`. Visitors can watch you build in real time. Passes show in green, rejections in red. Build deliberately and cleanly - this is a showcase.
 
 ## References
 

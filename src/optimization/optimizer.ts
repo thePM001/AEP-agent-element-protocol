@@ -1,4 +1,4 @@
-// AEP 2.6 -- Prompt Optimization Under Governance
+// AEP 2.6 - Prompt Optimization Under Governance
 // Optimise prompts to produce governance-compliant output on first attempt.
 // Reduce recovery cycles. Make agents understand their governance context.
 

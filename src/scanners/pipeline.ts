@@ -1,4 +1,4 @@
-// AEP 2.6 -- Scanner Pipeline
+// AEP 2.6 - Scanner Pipeline
 // Orchestrates all content scanners in sequence.
 // Runs AFTER structural validation, BEFORE final approval.
 
@@ -94,7 +94,7 @@ export function createDefaultPipeline(config?: Partial<ScannersConfig>): Scanner
     );
   }
 
-  // Data profiler scanner (disabled by default -- opt-in)
+  // Data profiler scanner (disabled by default - opt-in)
   if (config?.profiler?.enabled === true) {
     scanners.push(
       new DataProfileScanner({
@@ -107,7 +107,7 @@ export function createDefaultPipeline(config?: Partial<ScannersConfig>): Scanner
     );
   }
 
-  // Prediction scanner (disabled by default -- opt-in)
+  // Prediction scanner (disabled by default - opt-in)
   if (config?.prediction?.enabled === true) {
     scanners.push(
       new PredictionScanner({
@@ -120,7 +120,7 @@ export function createDefaultPipeline(config?: Partial<ScannersConfig>): Scanner
     );
   }
 
-  // Brand scanner (disabled by default -- opt-in)
+  // Brand scanner (disabled by default - opt-in)
   if (config?.brand?.enabled === true) {
     scanners.push(
       new BrandScanner({
@@ -134,7 +134,7 @@ export function createDefaultPipeline(config?: Partial<ScannersConfig>): Scanner
     );
   }
 
-  // Regulatory scanner (disabled by default -- opt-in)
+  // Regulatory scanner (disabled by default - opt-in)
   if (config?.regulatory?.enabled === true) {
     scanners.push(
       new RegulatoryScanner({
@@ -149,7 +149,7 @@ export function createDefaultPipeline(config?: Partial<ScannersConfig>): Scanner
     );
   }
 
-  // Temporal scanner (disabled by default -- opt-in)
+  // Temporal scanner (disabled by default - opt-in)
   if (config?.temporal?.enabled === true) {
     scanners.push(
       new TemporalScanner({

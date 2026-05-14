@@ -1,4 +1,4 @@
-// AEP 2.6 -- Knowledge Ingestor
+// AEP 2.6 - Knowledge Ingestor
 // Splits content into chunks and runs each through the scanner pipeline.
 // Hard failures are rejected, soft failures are flagged, clean chunks are validated.
 
@@ -40,7 +40,7 @@ export class KnowledgeIngestor {
       const scanResult = this.pipeline.scan(raw);
 
       if (scanResult.passed) {
-        // Clean chunk -- validated
+        // Clean chunk - validated
         const chunk: KnowledgeChunk = {
           id,
           content: raw,
@@ -68,7 +68,7 @@ export class KnowledgeIngestor {
         );
 
         if (hardFindings.length > 0) {
-          // Hard failure -- rejected
+          // Hard failure - rejected
           report.rejected++;
 
           ledger?.append("knowledge:reject", {
@@ -82,7 +82,7 @@ export class KnowledgeIngestor {
             })),
           });
         } else if (softFindings.length > 0) {
-          // Soft failure -- flagged but stored
+          // Soft failure - flagged but stored
           const chunk: KnowledgeChunk = {
             id,
             content: raw,

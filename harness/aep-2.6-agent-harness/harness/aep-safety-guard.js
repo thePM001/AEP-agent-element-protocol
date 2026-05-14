@@ -23,7 +23,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 // ===========================================================================
-// IMMUTABLE SAFETY RULES -- THE AI CANNOT OVERRIDE THESE
+// IMMUTABLE SAFETY RULES - THE AI CANNOT OVERRIDE THESE
 // ===========================================================================
 
 const SAFETY_RULES = {
@@ -492,7 +492,7 @@ class SafetyGuard {
 // ===========================================================================
 
 function watchMode(projectDir) {
-    console.log('AEP Safety Guard -- WATCH MODE');
+    console.log('AEP Safety Guard - WATCH MODE');
     console.log(`Monitoring: ${projectDir}`);
     console.log('Press Ctrl+C to stop.\n');
     

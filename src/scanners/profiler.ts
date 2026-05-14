@@ -1,7 +1,7 @@
-// AEP 2.6 -- Data Profiling Scanner
+// AEP 2.6 - Data Profiling Scanner
 // Statistical checks on tabular and structured data.
 // Detects null rates, duplicates, outliers, schema drift and class imbalance.
-// Disabled by default -- opt-in via policy `scanners.profiler.enabled: true`.
+// Disabled by default - opt-in via policy `scanners.profiler.enabled: true`.
 
 import type { Finding, Scanner } from "./types.js";
 import type { ViolationSeverity } from "../recovery/types.js";
@@ -66,7 +66,7 @@ export class DataProfileScanner implements Scanner {
         });
       }
     } catch {
-      // Not JSON -- try CSV
+      // Not JSON - try CSV
     }
 
     if (!rows) {

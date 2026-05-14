@@ -1,4 +1,4 @@
-// Rego Generator -- generates Rego deny rules from invariants, MLE outliers, and spectral gaps
+// Rego Generator - generates Rego deny rules from invariants, MLE outliers, and spectral gaps
 // Produces syntactically valid Rego deny[msg] blocks
 
 import type { MLEEstimation, SpectralAnalysis } from "../schema-builder/types.js";

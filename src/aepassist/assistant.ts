@@ -798,10 +798,10 @@ To build from your own data, use the programmatic API:
           mode: "schema",
           message: `Schema Validation (composite scoring with 4 analyses):
 
-  1. MLE divergence   (weight ${builder.config.mleWeight})  -- field-level data fit
-  2. Spectral coupling (weight ${builder.config.spectralWeight})  -- constraint graph structure
-  3. Permissiveness    (weight ${builder.config.permissivenessWeight})  -- entropy analysis
-  4. Modularity        (weight ${builder.config.modularityWeight})  -- community detection
+  1. MLE divergence   (weight ${builder.config.mleWeight})  - field-level data fit
+  2. Spectral coupling (weight ${builder.config.spectralWeight})  - constraint graph structure
+  3. Permissiveness    (weight ${builder.config.permissivenessWeight})  - entropy analysis
+  4. Modularity        (weight ${builder.config.modularityWeight})  - community detection
 
 Thresholds: pass >= 0.8, review >= 0.5, reject < 0.5
 
@@ -820,7 +820,7 @@ Programmatic usage:
       case "compare": {
         return {
           mode: "schema",
-          message: `Schema Comparison -- rank multiple candidates by composite score.
+          message: `Schema Comparison - rank multiple candidates by composite score.
 
 Provide an array of SchemaCandidate objects and optional historical data.
 The builder validates each against all 4 analyses and returns them ranked.
@@ -841,7 +841,7 @@ Programmatic usage:
       case "tighten": {
         return {
           mode: "schema",
-          message: `Schema Tightening -- propose stricter constraints from MLE evidence.
+          message: `Schema Tightening - propose stricter constraints from MLE evidence.
 
 Analyzes current schema fields against observed data distributions and proposes
 tighter bounds (min/max, minLength/maxLength, enum narrowing) where the data
@@ -889,7 +889,7 @@ Programmatic usage:
       case "build": {
         return {
           mode: "policy",
-          message: `Policy Build -- full pipeline: detect invariants, generate Rego rules,
+          message: `Policy Build - full pipeline: detect invariants, generate Rego rules,
 compute spectral impact, fill structural gaps.
 
 The builder detects domain invariants from historical data, generates deny rules
@@ -917,7 +917,7 @@ Programmatic usage:
       case "validate": {
         return {
           mode: "policy",
-          message: `Policy Validation -- check coverage rate and spectral impact.
+          message: `Policy Validation - check coverage rate and spectral impact.
 
 Validates existing Rego rules against a schema and invariant manifest.
 Computes how many invariants are covered, proposes rules for gaps,
@@ -931,8 +931,8 @@ Programmatic usage:
     historicalData
   });
   // result.coverageRate (0-1)
-  // result.missingRules[] -- uncovered invariants
-  // result.proposedRules[] -- auto-generated Rego rules
+  // result.missingRules[] - uncovered invariants
+  // result.proposedRules[] - auto-generated Rego rules
   // result.spectralImpact.fiedlerBefore / fiedlerAfter`,
           actions: ["build", "gaps"],
         };
@@ -941,15 +941,15 @@ Programmatic usage:
       case "gaps": {
         return {
           mode: "policy",
-          message: `Policy Gaps -- identify missing invariants and weak coverage.
+          message: `Policy Gaps - identify missing invariants and weak coverage.
 
 The invariant detector supports 6 invariant types:
-  equality     -- field must equal a specific value
-  inequality   -- field must satisfy < / > / <= / >= bounds
-  membership   -- field value must be in a set
-  exclusion    -- field value must not be in a set
-  conditional  -- if field A then field B constraint
-  temporal     -- time-ordered field constraints
+  equality     - field must equal a specific value
+  inequality   - field must satisfy < / > / <= / >= bounds
+  membership   - field value must be in a set
+  exclusion    - field value must not be in a set
+  conditional  - if field A then field B constraint
+  temporal     - time-ordered field constraints
 
 To find gaps, validate your policy and inspect missingRules:
 

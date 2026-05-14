@@ -1,4 +1,4 @@
-// AEP 2.6 -- Anthropic Provider Adapter
+// AEP 2.6 - Anthropic Provider Adapter
 // Raw fetch() to api.anthropic.com. Zero SDK dependencies.
 
 import type { ProviderAdapter, ModelConfig, ModelRequest, ModelResponse } from "../types.js";

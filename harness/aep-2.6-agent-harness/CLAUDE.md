@@ -1,4 +1,4 @@
-# AEP Agent Harness -- Claude Code Governance Layer
+# AEP Agent Harness - Claude Code Governance Layer
 
 ## What This Is
 
@@ -63,9 +63,9 @@ Before editing ANY file in the project:
 
 ## Slash Commands
 
-- `/aep-preflight` -- Run before any edit session. Loads registry into context.
-- `/aep-validate` -- Run after edits. Checks all changes against AEP.
-- `/aep-register` -- Register a new element in all three config files.
+- `/aep-preflight` - Run before any edit session. Loads registry into context.
+- `/aep-validate` - Run after edits. Checks all changes against AEP.
+- `/aep-register` - Register a new element in all three config files.
 
 ## /aepassist
 
@@ -117,7 +117,7 @@ When `streaming.enabled` is true in the policy, agent output is validated chunk 
 Your sessions can be packaged into portable verification artifacts (`.aep-proof.json` files). A proof bundle contains the agent identity, covenant, session report, Merkle root, ledger hash, trust score, ring level and drift score, all signed with Ed25519. Auditors and regulators can independently verify bundles without access to the original system. If `session.bundle_on_terminate` is true in the policy, a bundle is generated automatically when the session ends.
 
 ### Governed Task Decomposition
-When `decomposition.enabled` is true in the policy, subtasks inherit scoped permissions from parent tasks. Each subtask's scope is the INTERSECTION of its parent's scope and its declared scope -- a child task can never have more access than its parent. This prevents scope escalation through task decomposition. Actions are validated against the current task's scope as Step 0 (before the 15-step evaluation chain). Task action budgets, max depth and max children are all enforced.
+When `decomposition.enabled` is true in the policy, subtasks inherit scoped permissions from parent tasks. Each subtask's scope is the INTERSECTION of its parent's scope and its declared scope - a child task can never have more access than its parent. This prevents scope escalation through task decomposition. Actions are validated against the current task's scope as Step 0 (before the 15-step evaluation chain). Task action budgets, max depth and max children are all enforced.
 
 ## AEP 2.6 Content Scanners
 
@@ -168,7 +168,7 @@ Before constructing temporal annotations for any time-dependent output modality 
 1. Call `dynaep_temporal_query(perception_bounds, modality)` to retrieve the valid parameter ranges.
 2. Construct annotations within the comfortable range returned by the query.
 3. Submit the output event with annotations attached.
-4. Use the `governedAnnotations` or `adaptiveAnnotations` from the returned envelope -- never the original annotations if governance modified them.
+4. Use the `governedAnnotations` or `adaptiveAnnotations` from the returned envelope - never the original annotations if governance modified them.
 
 You MUST NOT hardcode speech pacing, haptic timing, notification intervals or sensor polling rates. Always query bounds first.
 
@@ -183,8 +183,8 @@ Temporal violations incur trust score penalties through the existing trust scori
 | drift_exceeded (bridge-agent clock drift too large) | -10 trust |
 | future_timestamp (event stamped ahead of bridge time) | -15 trust |
 | stale_event (event older than max allowed age) | -5 trust |
-| causal_violation -- regression (sequence went backwards) | -20 trust |
-| causal_violation -- missing dependency | -10 trust |
+| causal_violation - regression (sequence went backwards) | -20 trust |
+| causal_violation - missing dependency | -10 trust |
 | perception hard violation (exceeded absolute bounds) | -15 trust |
 | perception soft violation (outside comfortable range) | -5 trust |
 | cross-modality ceiling exceeded (too many simultaneous modalities) | -20 trust |
@@ -203,10 +203,10 @@ Claude Code MUST fix all CRITICAL and HIGH temporal violations before committing
 
 The Schema Builder validates schema proposals using four mathematical techniques:
 
-- **MLE Estimation** -- Maximum Likelihood field statistics using Welford's online algorithm. Detects numeric bounds, enum distributions and string patterns from historical data.
-- **Spectral Analysis** -- Graph Laplacian eigenvalue computation. Fiedler value (algebraic connectivity) measures constraint graph coupling.
-- **Permissiveness Scoring** -- Acceptance distribution entropy per field. Lower entropy means tighter constraints.
-- **Modularity Detection** -- Louvain community detection on the constraint graph. Higher modularity Q means better-separated modules.
+- **MLE Estimation** - Maximum Likelihood field statistics using Welford's online algorithm. Detects numeric bounds, enum distributions and string patterns from historical data.
+- **Spectral Analysis** - Graph Laplacian eigenvalue computation. Fiedler value (algebraic connectivity) measures constraint graph coupling.
+- **Permissiveness Scoring** - Acceptance distribution entropy per field. Lower entropy means tighter constraints.
+- **Modularity Detection** - Louvain community detection on the constraint graph. Higher modularity Q means better-separated modules.
 
 Composite score: `C = w1*(1-D) + w2*spectralNorm + w3*(1-permNorm) + w4*Q`. Decision: pass >= 0.8, review 0.5-0.8, reject < 0.5.
 
@@ -216,14 +216,14 @@ Use `gateway.validateSchemaProposal()` to validate schemas through the governanc
 
 The Policy Builder generates Rego policies from data:
 
-- **Invariant Detection** -- Six types from data: equality, inequality, membership, exclusion, conditional, temporal.
-- **Rego Generation** -- Produces `deny[msg]` blocks from invariants, MLE outliers and spectral gaps.
-- **Coverage Tracking** -- Computes how many domain invariants are enforced by existing rules. Proposes missing rules.
-- **Spectral Impact** -- Projects Fiedler value before and after proposed additions.
+- **Invariant Detection** - Six types from data: equality, inequality, membership, exclusion, conditional, temporal.
+- **Rego Generation** - Produces `deny[msg]` blocks from invariants, MLE outliers and spectral gaps.
+- **Coverage Tracking** - Computes how many domain invariants are enforced by existing rules. Proposes missing rules.
+- **Spectral Impact** - Projects Fiedler value before and after proposed additions.
 
 Use `gateway.validatePolicyProposal()` to validate policies through the governance chain. Results are recorded in the evidence ledger as `policy:validate` entries.
 
-## SAFETY RULES -- IMMUTABLE -- AI CANNOT OVERRIDE
+## SAFETY RULES - IMMUTABLE - AI CANNOT OVERRIDE
 
 These rules are enforced by `harness/aep-safety-guard.js`. They cannot be disabled, bypassed or overridden by any AI agent, skill file or instruction.
 

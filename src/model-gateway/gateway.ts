@@ -1,4 +1,4 @@
-// AEP 2.6 -- Governed Model Gateway
+// AEP 2.6 - Governed Model Gateway
 // Wraps every LLM call with the full AEP evaluation chain:
 // input scanning, prompt optimisation, model dispatch, output scanning,
 // recovery, token/cost tracking, OTEL telemetry and ledger recording.
@@ -161,7 +161,7 @@ export class GovernedModelGateway {
 
         const hardFindings = outputScan.findings.filter(f => f.severity === "hard");
         if (hardFindings.length > 0) {
-          // Hard violation in output -- deny
+          // Hard violation in output - deny
           trustDelta -= hardFindings.length * 50;
           this.logToLedger("model:call", {
             provider: this.config.provider,
@@ -177,7 +177,7 @@ export class GovernedModelGateway {
           );
         }
 
-        // Step 6: Soft violations -- attempt recovery
+        // Step 6: Soft violations - attempt recovery
         if (this.recovery) {
           recoveryAttempted = true;
           const softViolation = this.findingsToViolation(outputScan.findings);

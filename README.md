@@ -20,7 +20,7 @@
 
 ## Quick Start
 
-### Method 1 -- Clone (recommended)
+### Method 1 - Clone (recommended)
 
 ```bash
 git clone https://github.com/thePM001/AEP-agent-element-protocol.git
@@ -30,24 +30,24 @@ npm run build
 npx aep assist setup
 ```
 
-### Method 2 -- Install from GitHub (add to existing project)
+### Method 2 - Install from GitHub (add to existing project)
 
 ```bash
 npm install github:thePM001/AEP-agent-element-protocol
 npx aep assist setup
 ```
 
-### Method 3 -- Claude Code (MCP)
+### Method 3 - Claude Code (MCP)
 
 ```bash
 git clone https://github.com/thePM001/AEP-agent-element-protocol.git
 cd AEP-agent-element-protocol && npm install && npm run build
-claude mcp add aep -- node /path/to/AEP-agent-element-protocol/dist/cli.js serve
+claude mcp add aep - node /path/to/AEP-agent-element-protocol/dist/cli.js serve
 ```
 
 Then in Claude Code: "Use the aepassist tool to set up governance."
 
-### Method 4 -- Cursor / Windsurf / Codex
+### Method 4 - Cursor / Windsurf / Codex
 
 Clone the repo first, then add to `.cursor/mcp.json`:
 
@@ -125,7 +125,7 @@ The scene graph. A flat JSON object where every element has a unique topological
 | MD | Modal/Dialog | 70-79 |
 | DD | Dropdown | 70-79 |
 | TT | Tooltip | 80-89 |
-| -- | System reserved | 90-99 |
+| - | System reserved | 90-99 |
 
 **Z-band hierarchy:** an element's z-index MUST fall within its type's band. The validator rejects violations. A Modal (z: 70-79) always renders above a Data Grid (z: 30-39). A Tooltip (z: 80-89) always renders above a Modal. Mathematically enforced.
 

@@ -1,4 +1,4 @@
-// MLE Estimator -- derives constraint parameters from observed data
+// MLE Estimator - derives constraint parameters from observed data
 // Uses Welford's online algorithm for stable numeric estimation
 // References: Fisher (1922) maximum likelihood, Welford (1962) online variance
 

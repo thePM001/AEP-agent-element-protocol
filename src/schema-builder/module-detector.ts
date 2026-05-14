@@ -1,4 +1,4 @@
-// Module Detector -- decomposes schemas into independently verifiable modules
+// Module Detector - decomposes schemas into independently verifiable modules
 // References: Blondel et al. (2008) Louvain community detection, Newman (2006) modularity
 
 import type { SchemaCandidate, ModularityAnalysis } from "./types.js";

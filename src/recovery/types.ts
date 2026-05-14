@@ -1,4 +1,4 @@
-// AEP 2.6 -- Recovery Engine Types
+// AEP 2.6 - Recovery Engine Types
 // Hard/soft violation distinction with automatic recovery for soft failures.
 
 export type ViolationSeverity = "hard" | "soft";

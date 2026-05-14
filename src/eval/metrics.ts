@@ -1,4 +1,4 @@
-// AEP 2.6 -- ML Metrics Evaluator
+// AEP 2.6 - ML Metrics Evaluator
 // Computes standard ML evaluation metrics for classification, regression,
 // retrieval and generation tasks. All methods are pure static functions.
 
@@ -141,7 +141,7 @@ export class MLMetrics {
     // Recall@K
     const recallAtK = relevantInTopK / relevantIds.length;
 
-    // MRR (Mean Reciprocal Rank) -- reciprocal rank of first relevant result
+    // MRR (Mean Reciprocal Rank) - reciprocal rank of first relevant result
     let mrr = 0;
     for (let i = 0; i < retrievedIds.length; i++) {
       if (relevantSet.has(retrievedIds[i])) {
