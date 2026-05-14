@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * AEP 2.6 Agent Harness -- Automated Validation Script
+ * AEP 2.6 Agent Harness - Automated Validation Script
  * 
  * Scans the project source files and checks every rendered element
  * against the AEP registry, scene graph and theme.
@@ -317,12 +317,12 @@ class AEPValidator {
         while ((match = emDash.exec(content)) !== null) {
             const lineNum = content.substring(0, match.index).split('\n').length;
             this.addViolation(SEVERITY.LOW, file, lineNum,
-                'EM_DASH', 'Em-dash (U+2014) found. Use -- instead.');
+                'EM_DASH', 'Em-dash (U+2014) found. Use - instead.');
         }
         while ((match = enDash.exec(content)) !== null) {
             const lineNum = content.substring(0, match.index).split('\n').length;
             this.addViolation(SEVERITY.LOW, file, lineNum,
-                'EN_DASH', 'En-dash (U+2013) found. Use -- instead.');
+                'EN_DASH', 'En-dash (U+2013) found. Use - instead.');
         }
     }
     
@@ -439,7 +439,7 @@ class AEPValidator {
                             `Rollback recorded for ${entry.target} but restoration not confirmed`);
                     }
                 } catch (parseErr) {
-                    // Malformed line -- not a violation, skip
+                    // Malformed line - not a violation, skip
                 }
             }
         } catch (e) {
@@ -474,7 +474,7 @@ class AEPValidator {
                     if (entry.kill_switch_active) {
                         this.addViolation(SEVERITY.CRITICAL, '.claude/aep-evidence.jsonl', i + 1,
                             'KILL_SWITCH_ACTIVE',
-                            'Operator kill switch is engaged -- all mutations blocked');
+                            'Operator kill switch is engaged - all mutations blocked');
                     }
                     if (entry.covenant_forbid) {
                         this.addViolation(SEVERITY.HIGH, '.claude/aep-evidence.jsonl', i + 1,
@@ -489,7 +489,7 @@ class AEPValidator {
                     if (entry.merkle_fail) {
                         this.addViolation(SEVERITY.HIGH, '.claude/aep-evidence.jsonl', i + 1,
                             'MERKLE_INTEGRITY_FAIL',
-                            'Ledger Merkle proof verification failed -- possible tampering');
+                            'Ledger Merkle proof verification failed - possible tampering');
                     }
                 } catch (parseErr) {}
             }

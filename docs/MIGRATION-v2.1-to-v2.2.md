@@ -8,43 +8,43 @@
 - Agent harness renamed from `aep-2.1-agent-harness` to `aep-2.2-agent-harness`.
 
 ### New modules
-- `src/trust/` -- Trust Scoring with time-based decay (TrustManager, types).
-- `src/rings/` -- Execution Rings with four privilege levels (RingManager, types).
-- `src/covenant/` -- Behavioural Covenants DSL (parser, evaluator, compiler, types).
-- `src/identity/` -- Agent Identity with Ed25519/RSA support (AgentIdentityManager, types).
-- `src/verification/` -- Cross-Agent Verification handshake (verifyCounterparty, generateProof, requirements).
-- `src/intent/` -- Intent Drift Detection with warmup period (IntentDriftDetector).
-- `src/session/kill-switch.ts` -- Kill Switch (killAll, killSession).
-- `src/ledger/merkle.ts` -- Merkle Tree for per-entry verification.
-- `src/ledger/quantum.ts` -- Post-Quantum Signatures (ML-DSA-65 simulation).
-- `src/ledger/timestamp.ts` -- RFC 3161 Timestamp Queue.
-- `src/ledger/offline.ts` -- Offline Ledger for air-gapped environments.
+- `src/trust/` - Trust Scoring with time-based decay (TrustManager, types).
+- `src/rings/` - Execution Rings with four privilege levels (RingManager, types).
+- `src/covenant/` - Behavioural Covenants DSL (parser, evaluator, compiler, types).
+- `src/identity/` - Agent Identity with Ed25519/RSA support (AgentIdentityManager, types).
+- `src/verification/` - Cross-Agent Verification handshake (verifyCounterparty, generateProof, requirements).
+- `src/intent/` - Intent Drift Detection with warmup period (IntentDriftDetector).
+- `src/session/kill-switch.ts` - Kill Switch (killAll, killSession).
+- `src/ledger/merkle.ts` - Merkle Tree for per-entry verification.
+- `src/ledger/quantum.ts` - Post-Quantum Signatures (ML-DSA-65 simulation).
+- `src/ledger/timestamp.ts` - RFC 3161 Timestamp Queue.
+- `src/ledger/offline.ts` - Offline Ledger for air-gapped environments.
 
 ### New policy config sections (all optional)
-- `trust` -- initial score, decay rate, penalty/reward weights.
-- `ring` -- default ring, promotion requirements per ring level.
-- `intent` -- tracking toggle, drift threshold, warmup actions, on_drift action.
-- `identity` -- require_agent_identity toggle, trusted public keys.
-- `quantum` -- enable post-quantum signatures.
-- `timestamp` -- TSA URL, batch size, flush interval.
-- `system` -- max_actions_per_minute, max_concurrent_sessions.
+- `trust` - initial score, decay rate, penalty/reward weights.
+- `ring` - default ring, promotion requirements per ring level.
+- `intent` - tracking toggle, drift threshold, warmup actions, on_drift action.
+- `identity` - require_agent_identity toggle, trusted public keys.
+- `quantum` - enable post-quantum signatures.
+- `timestamp` - TSA URL, batch size, flush interval.
+- `system` - max_actions_per_minute, max_concurrent_sessions.
 
 ### New CLI commands
-- `aep kill` -- activate kill switch (all sessions or by ID).
-- `aep trust` -- display current trust score and tier.
-- `aep ring` -- display current execution ring and capabilities.
-- `aep drift` -- display intent drift score and factors.
-- `aep identity create` -- generate a new agent identity key pair.
-- `aep identity verify` -- verify an agent identity.
-- `aep covenant parse` -- parse and display a covenant DSL string.
-- `aep covenant verify` -- verify an action against a covenant.
-- `aep owasp` -- display OWASP Agentic AI Top 10 mapping.
-- `aep describe` -- display full AEP 2.2 capability summary.
-- `aep report --format json|csv|html` -- export evidence ledger.
+- `aep kill` - activate kill switch (all sessions or by ID).
+- `aep trust` - display current trust score and tier.
+- `aep ring` - display current execution ring and capabilities.
+- `aep drift` - display intent drift score and factors.
+- `aep identity create` - generate a new agent identity key pair.
+- `aep identity verify` - verify an agent identity.
+- `aep covenant parse` - parse and display a covenant DSL string.
+- `aep covenant verify` - verify an action against a covenant.
+- `aep owasp` - display OWASP Agentic AI Top 10 mapping.
+- `aep describe` - display full AEP 2.2 capability summary.
+- `aep report --format json|csv|html` - export evidence ledger.
 
 ### New built-in policies
-- `multi-agent.policy.yaml` -- designed for multi-agent orchestration with cross-agent verification and agent identity requirements.
-- `covenant-only.policy.yaml` -- minimal policy that relies primarily on covenant enforcement.
+- `multi-agent.policy.yaml` - designed for multi-agent orchestration with cross-agent verification and agent identity requirements.
+- `covenant-only.policy.yaml` - minimal policy that relies primarily on covenant enforcement.
 
 ### Updated schemas
 - `CapabilitySchema` gains optional `min_trust_tier` field.

@@ -1,6 +1,6 @@
 ---
 name: aep
-description: Use this skill whenever working with AEP (Agent Element Protocol), dynAEP, dynAEP-TA, dynAEP-TA-P or any AEP governance feature. Triggers include 'AEP', 'dynAEP', 'dynAEP-TA', 'dynAEP-TA-P', 'temporal authority', 'perception governance', 'perception registry', 'bridge clock', 'causal ordering', 'vector clock', 'TimesFM', 'adaptive perception', 'perception bounds', 'scene graph', 'aep-scene.json', 'aep-registry.yaml', 'aep-theme.yaml', 'zero-trust UI', 'topological matrix', 'z-band', 'skin binding', 'AEP-FCR', 'temporal annotations', 'speech pacing', 'haptic timing', 'notification cadence', 'Schema Builder', 'Policy Builder', 'Lattice Memory', 'evaluation chain', 'trust scoring', 'execution rings', 'behavioural covenants', 'content scanners', 'evidence ledger', or building validated UI for AI agents. Also use when implementing AEP three-layer architecture, writing AEP validators, creating MCP servers that validate agent UI output, working with AG-UI under AEP governance, or governing time-dependent outputs for human perception. If AEP MCP tools are available (list_aep_schemas, create_ui_element, get_scene_graph), always consult this skill first. Do NOT guess IDs, skin bindings, z-bands or element types. Do NOT use Date.now() or any local clock when dynAEP-TA is available -- call dynaep_temporal_query instead.
+description: Use this skill whenever working with AEP (Agent Element Protocol), dynAEP, dynAEP-TA, dynAEP-TA-P or any AEP governance feature. Triggers include 'AEP', 'dynAEP', 'dynAEP-TA', 'dynAEP-TA-P', 'temporal authority', 'perception governance', 'perception registry', 'bridge clock', 'causal ordering', 'vector clock', 'TimesFM', 'adaptive perception', 'perception bounds', 'scene graph', 'aep-scene.json', 'aep-registry.yaml', 'aep-theme.yaml', 'zero-trust UI', 'topological matrix', 'z-band', 'skin binding', 'AEP-FCR', 'temporal annotations', 'speech pacing', 'haptic timing', 'notification cadence', 'Schema Builder', 'Policy Builder', 'Lattice Memory', 'evaluation chain', 'trust scoring', 'execution rings', 'behavioural covenants', 'content scanners', 'evidence ledger', or building validated UI for AI agents. Also use when implementing AEP three-layer architecture, writing AEP validators, creating MCP servers that validate agent UI output, working with AG-UI under AEP governance, or governing time-dependent outputs for human perception. If AEP MCP tools are available (list_aep_schemas, create_ui_element, get_scene_graph), always consult this skill first. Do NOT guess IDs, skin bindings, z-bands or element types. Do NOT use Date.now() or any local clock when dynAEP-TA is available - call dynaep_temporal_query instead.
 ---
 
 # Agent Element Protocol (AEP) v2.6
@@ -30,9 +30,9 @@ Agent-Percept dynAEP-TA-P   Perceptual temporal governance for human-facing outp
 AEP enforces strict separation into three independent layers. Each has its own config file. **Changing one layer NEVER requires changing another.**
 
 ```
-LAYER 1: STRUCTURE  (aep-scene.json)    -- What exists and where it sits in space
-LAYER 2: BEHAVIOUR  (aep-registry.yaml) -- What each element does and cannot do
-LAYER 3: SKIN       (aep-theme.yaml)    -- What each element looks like
+LAYER 1: STRUCTURE  (aep-scene.json)    - What exists and where it sits in space
+LAYER 2: BEHAVIOUR  (aep-registry.yaml) - What each element does and cannot do
+LAYER 3: SKIN       (aep-theme.yaml)    - What each element looks like
 ```
 
 | Scenario | What changes | What stays |
@@ -153,7 +153,7 @@ The scene graph. A flat JSON object where every UI element has topological const
 
 Elements declare position through relational anchors, flex/grid spatial rules and viewport-aware breakpoint matrices.
 
-**Relational Anchors** -- position relative to parents or siblings:
+**Relational Anchors** - position relative to parents or siblings:
 ```json
 "layout": {
   "anchors": {
@@ -164,7 +164,7 @@ Elements declare position through relational anchors, flex/grid spatial rules an
 }
 ```
 
-**Viewport Matrix** -- responsive breakpoints per element:
+**Viewport Matrix** - responsive breakpoints per element:
 ```json
 "responsive_matrix": {
   "base": { "visible": false },
@@ -302,11 +302,11 @@ To add dark/light mode: create a new YAML with different values for the same key
 
 ## Validation
 
-### AOT (Ahead-of-Time) -- Build Time
+### AOT (Ahead-of-Time) - Build Time
 
 Proves the static scene graph, registry and theme are 100% sound. Checks every element, parent reference, z-band, skin binding, forbidden pattern and Template Node.
 
-### JIT (Just-in-Time) Delta -- Runtime
+### JIT (Just-in-Time) Delta - Runtime
 
 When an agent or user triggers a mutation, checks only the specific element against its immediate parents, constraints and z-band. Template Node instances are exempt (mould already proven by AOT).
 
@@ -408,9 +408,9 @@ Four-ring privilege model. Automatic demotion when trust drops below ring thresh
 
 Agent-declared constraint DSL with three keywords:
 
-- **permit** -- actions the agent is allowed to take
-- **forbid** -- actions the agent will never take (forbid always wins over permit)
-- **require** -- conditions that must hold for any action
+- **permit** - actions the agent is allowed to take
+- **forbid** - actions the agent will never take (forbid always wins over permit)
+- **require** - conditions that must hold for any action
 
 Each rule can be tagged `[hard]` (immediate reject) or `[soft]` (recovery attempt).
 
@@ -427,11 +427,11 @@ covenant ProjectRules {
 
 Five heuristics monitor agent behaviour for deviation from established baseline:
 
-1. **Tool category distribution** -- shift in which tool categories the agent uses
-2. **Target scope shifts** -- agent operating on files/resources outside its declared scope
-3. **Frequency anomalies** -- sudden spikes or drops in action rate
-4. **Repetition detection** -- same action repeated without progress
-5. **Semantic drift** -- action descriptions diverging from task intent
+1. **Tool category distribution** - shift in which tool categories the agent uses
+2. **Target scope shifts** - agent operating on files/resources outside its declared scope
+3. **Frequency anomalies** - sudden spikes or drops in action rate
+4. **Repetition detection** - same action repeated without progress
+5. **Semantic drift** - action descriptions diverging from task intent
 
 Configurable warmup period. Actions on drift: warn, gate, deny or kill.
 
@@ -455,14 +455,14 @@ The recovery engine provides: specific violation details, which scanner or polic
 
 Fleet-level governance for multi-agent swarms (`fleet.enabled: true`):
 
-- **Swarm policies** -- agent limits, hourly cost caps, ring saturation limits, drift clustering thresholds
-- **Spawn governance** -- child agents inherit parent covenant subset, reduced trust, same or lower ring
-- **Message scanning** -- PII, injection and secrets detection between agents
+- **Swarm policies** - agent limits, hourly cost caps, ring saturation limits, drift clustering thresholds
+- **Spawn governance** - child agents inherit parent covenant subset, reduced trust, same or lower ring
+- **Message scanning** - PII, injection and secrets detection between agents
 - Fleet API for pause, resume and kill operations
 
 ## Evidence Ledger
 
-Append-only SHA-256 hash chain. Every agent action is recorded with: timestamp, action type, target, policy result, outcome, and hash of the previous entry. The ledger is tamper-evident -- any modification breaks the hash chain.
+Append-only SHA-256 hash chain. Every agent action is recorded with: timestamp, action type, target, policy result, outcome, and hash of the previous entry. The ledger is tamper-evident - any modification breaks the hash chain.
 
 ```json
 {
@@ -487,10 +487,10 @@ Single numeric measure of session quality computed from: trust score, drift scor
 
 Data-driven schema validation using four mathematical techniques:
 
-- **MLE Estimation** -- Maximum Likelihood field statistics using Welford's online algorithm. Detects numeric bounds, enum distributions and string patterns from historical data.
-- **Spectral Analysis** -- Graph Laplacian eigenvalue computation. Fiedler value (algebraic connectivity) measures constraint graph coupling.
-- **Permissiveness Scoring** -- Acceptance distribution entropy per field. Lower entropy means tighter constraints.
-- **Modularity Detection** -- Louvain community detection on the constraint graph. Higher modularity Q means better-separated modules.
+- **MLE Estimation** - Maximum Likelihood field statistics using Welford's online algorithm. Detects numeric bounds, enum distributions and string patterns from historical data.
+- **Spectral Analysis** - Graph Laplacian eigenvalue computation. Fiedler value (algebraic connectivity) measures constraint graph coupling.
+- **Permissiveness Scoring** - Acceptance distribution entropy per field. Lower entropy means tighter constraints.
+- **Modularity Detection** - Louvain community detection on the constraint graph. Higher modularity Q means better-separated modules.
 
 Composite score: `C = w1*(1-D) + w2*spectralNorm + w3*(1-permNorm) + w4*Q`. Decision: pass >= 0.8, review 0.5-0.8, reject < 0.5.
 
@@ -498,10 +498,10 @@ Composite score: `C = w1*(1-D) + w2*spectralNorm + w3*(1-permNorm) + w4*Q`. Deci
 
 Data-driven Rego policy generation:
 
-- **Invariant Detection** -- Six types from data: equality, inequality, membership, exclusion, conditional, temporal.
-- **Rego Generation** -- Produces `deny[msg]` blocks from invariants, MLE outliers and spectral gaps.
-- **Coverage Tracking** -- Computes how many domain invariants are enforced by existing rules. Proposes missing rules.
-- **Spectral Impact** -- Projects Fiedler value before and after proposed additions.
+- **Invariant Detection** - Six types from data: equality, inequality, membership, exclusion, conditional, temporal.
+- **Rego Generation** - Produces `deny[msg]` blocks from invariants, MLE outliers and spectral gaps.
+- **Coverage Tracking** - Computes how many domain invariants are enforced by existing rules. Proposes missing rules.
+- **Spectral Impact** - Projects Fiedler value before and after proposed additions.
 
 ## Commerce Subprotocol
 
@@ -539,9 +539,9 @@ Every request and response passes through the full governance chain including sc
 
 Lattice-governed knowledge base:
 
-- **Governed ingestion** -- content passes through full scanner pipeline before storage. Hard scanner failures reject the chunk. Soft failures flag for review.
-- **Scoped retrieval** -- covenant-scoped filtering (agents only see what their covenant permits), double scanning of flagged chunks on retrieval.
-- **Anti-context-rot** -- most relevant chunks placed at positions 1 and N (context boundaries) to counteract U-shaped LLM attention erosion in the middle of long contexts.
+- **Governed ingestion** - content passes through full scanner pipeline before storage. Hard scanner failures reject the chunk. Soft failures flag for review.
+- **Scoped retrieval** - covenant-scoped filtering (agents only see what their covenant permits), double scanning of flagged chunks on retrieval.
+- **Anti-context-rot** - most relevant chunks placed at positions 1 and N (context boundaries) to counteract U-shaped LLM attention erosion in the middle of long contexts.
 
 ## Subprotocols
 
@@ -591,9 +591,9 @@ The bridge clock synchronizes to NTP (default), PTP (IEEE 1588 for microsecond p
 
 Three checks on every event:
 
-- **Drift check** -- agent-provided timestamp must be within configurable threshold (default 50 ms) of bridge time
-- **Staleness check** -- event must not be older than max allowed age (default 5000 ms)
-- **Future check** -- event must not be stamped ahead of bridge time
+- **Drift check** - agent-provided timestamp must be within configurable threshold (default 50 ms) of bridge time
+- **Staleness check** - event must not be older than max allowed age (default 5000 ms)
+- **Future check** - event must not be stamped ahead of bridge time
 
 #### Causal Ordering
 
@@ -628,38 +628,38 @@ Maximum 3 simultaneous modalities (configurable). Exceeding the ceiling triggers
 ### dynAEP Event Types
 
 **Structural mutations:**
-- `AEP_MUTATE_STRUCTURE` -- move, add, remove, resize elements
-- `AEP_MUTATE_BEHAVIOUR` -- update states, actions, constraints
-- `AEP_MUTATE_SKIN` -- change skin bindings, theme overrides
+- `AEP_MUTATE_STRUCTURE` - move, add, remove, resize elements
+- `AEP_MUTATE_BEHAVIOUR` - update states, actions, constraints
+- `AEP_MUTATE_SKIN` - change skin bindings, theme overrides
 
 **Queries:**
-- `AEP_QUERY` -- children_of, parent_of, z_band_of, visible_at_breakpoint, full_element, next_available_id
-- `AEP_QUERY_RESULT` -- response to query
+- `AEP_QUERY` - children_of, parent_of, z_band_of, visible_at_breakpoint, full_element, next_available_id
+- `AEP_QUERY_RESULT` - response to query
 
 **Rejections:**
-- `DYNAEP_REJECTION` -- structural validation failure
+- `DYNAEP_REJECTION` - structural validation failure
 
 **Runtime coordinates:**
-- `AEP_RUNTIME_COORDINATES` -- live element position updates
+- `AEP_RUNTIME_COORDINATES` - live element position updates
 
 **Temporal events:**
-- `AEP_CLOCK_SYNC` -- bridge clock synchronization
-- `AEP_TEMPORAL_STAMP` -- attached to every validated event
-- `DYNAEP_TEMPORAL_REJECTION` -- temporal validation failure
-- `DYNAEP_CAUSAL_VIOLATION` -- causal ordering violation
-- `AEP_TEMPORAL_FORECAST` -- TimesFM prediction result
-- `AEP_TEMPORAL_ANOMALY` -- forecast anomaly detected
-- `AEP_TEMPORAL_RESET` -- temporal state reset
+- `AEP_CLOCK_SYNC` - bridge clock synchronization
+- `AEP_TEMPORAL_STAMP` - attached to every validated event
+- `DYNAEP_TEMPORAL_REJECTION` - temporal validation failure
+- `DYNAEP_CAUSAL_VIOLATION` - causal ordering violation
+- `AEP_TEMPORAL_FORECAST` - TimesFM prediction result
+- `AEP_TEMPORAL_ANOMALY` - forecast anomaly detected
+- `AEP_TEMPORAL_RESET` - temporal state reset
 
 **Perception events:**
-- `AEP_PERCEPTION_GOVERNED` -- perception governance applied to output
-- `DYNAEP_PERCEPTION_REJECTION` -- perception bounds exceeded
-- `AEP_PERCEPTION_PROFILE_UPDATE` -- adaptive profile learning update
+- `AEP_PERCEPTION_GOVERNED` - perception governance applied to output
+- `DYNAEP_PERCEPTION_REJECTION` - perception bounds exceeded
+- `AEP_PERCEPTION_PROFILE_UPDATE` - adaptive profile learning update
 
 **Schema/Policy events (v2.6):**
-- `AEP_SCHEMA_VALIDATE` -- Schema Builder validation result
-- `AEP_POLICY_VALIDATE` -- Policy Builder validation result
-- `AEP_SCHEMA_TIGHTEN` -- schema tightening proposal
+- `AEP_SCHEMA_VALIDATE` - Schema Builder validation result
+- `AEP_POLICY_VALIDATE` - Policy Builder validation result
+- `AEP_SCHEMA_TIGHTEN` - schema tightening proposal
 
 ### dynAEP Event Examples
 
@@ -769,15 +769,15 @@ Query temporal authority. **Use this instead of Date.now() or any local clock.**
 | max_age_ms | integer | for staleness_check | Maximum allowed age |
 
 9 query types:
-1. `authoritative_time` -- returns bridge-authoritative timestamp
-2. `drift_status` -- returns current drift between bridge and agent clocks
-3. `causal_position` -- returns current causal sequence number
-4. `vector_clock` -- returns full vector clock state
-5. `perception_bounds` -- returns hard/soft bounds for a modality
-6. `staleness_check` -- checks if a target element's data is stale
-7. `forecast` -- returns TimesFM prediction for an element's coordinate stream
-8. `anomaly_status` -- returns current anomaly detection state
-9. `clock_sources` -- returns available clock sources and their sync status
+1. `authoritative_time` - returns bridge-authoritative timestamp
+2. `drift_status` - returns current drift between bridge and agent clocks
+3. `causal_position` - returns current causal sequence number
+4. `vector_clock` - returns full vector clock state
+5. `perception_bounds` - returns hard/soft bounds for a modality
+6. `staleness_check` - checks if a target element's data is stale
+7. `forecast` - returns TimesFM prediction for an element's coordinate stream
+8. `anomaly_status` - returns current anomaly detection state
+9. `clock_sources` - returns available clock sources and their sync status
 
 ### Generative Topology (NOT Generative UI)
 

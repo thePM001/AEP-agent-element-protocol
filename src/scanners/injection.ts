@@ -1,4 +1,4 @@
-// AEP 2.6 -- Injection Scanner
+// AEP 2.6 - Injection Scanner
 // Detects SQL injection, XSS, SSTI and command injection patterns.
 
 import type { Finding, Scanner, ScannerConfig } from "./types.js";

@@ -43,7 +43,7 @@ type ProposalType =
 /**
  * A proposal submitted to the resolver for routing and constraint collection.
  *
- * The resolver does NOT execute the proposal -- it determines where the
+ * The resolver does NOT execute the proposal - it determines where the
  * proposal should be routed, what constraints apply, and whether a
  * memory-based fast-path shortcut is available.
  */
@@ -115,20 +115,20 @@ export interface ResolveResult {
  *
  * The resolver performs three functions:
  *
- * 1. **Routing** -- maps the proposal type to a canonical domain
+ * 1. **Routing** - maps the proposal type to a canonical domain
  *    (`"ui"`, `"workflow"`, `"api"`, `"event"`, `"iac"`).
  *
- * 2. **Constraint collection** -- for `ui_element` proposals, extracts the
+ * 2. **Constraint collection** - for `ui_element` proposals, extracts the
  *    element prefix, validates z-band compliance, looks up the registry
  *    entry, and collects declared constraints.
  *
- * 3. **Memory lookup** (optional) -- if a `MemoryFabric` is provided,
+ * 3. **Memory lookup** (optional) - if a `MemoryFabric` is provided,
  *    queries `getFastPathHit()` to check whether the proposal closely
  *    matches a previously accepted one.
  *
  * Design invariants:
  * - The resolver NEVER modifies `config` or `memory` (read-only).
- * - The resolver is fully stateless -- no internal mutation between calls.
+ * - The resolver is fully stateless - no internal mutation between calls.
  * - If no memory fabric is provided, attractor lookup is skipped entirely.
  * - If an element is not found, the result includes empty constraints with
  *   an informational note in `policyErrors`.
@@ -268,7 +268,7 @@ export class BasicResolver {
     const policyErrors: string[] = [];
     let availableActions: string[] = [];
 
-    // No config -- cannot resolve UI elements
+    // No config - cannot resolve UI elements
     if (!this.config) {
       policyErrors.push(
         "No AEP config loaded; unable to resolve UI element constraints",

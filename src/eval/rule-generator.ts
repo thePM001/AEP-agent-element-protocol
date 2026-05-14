@@ -1,4 +1,4 @@
-// AEP 2.6 -- Rule Generator
+// AEP 2.6 - Rule Generator
 // Analyses violation patterns from eval reports.
 // Produces suggested covenant rules and scanner patterns.
 // Output is human-reviewable. NEVER auto-adopted.

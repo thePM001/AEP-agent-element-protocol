@@ -1,4 +1,4 @@
-// AEP 2.6 -- Ollama Provider Adapter
+// AEP 2.6 - Ollama Provider Adapter
 // Raw fetch() to local Ollama instance. Default localhost:11434.
 
 import type { ProviderAdapter, ModelConfig, ModelRequest, ModelResponse } from "../types.js";

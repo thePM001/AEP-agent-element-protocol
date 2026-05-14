@@ -1,4 +1,4 @@
-// AEP 2.6 -- Regulatory Disclosure Scanner
+// AEP 2.6 - Regulatory Disclosure Scanner
 // Checks that agent-generated content includes required regulatory disclosures.
 
 import type { Finding, ScannerConfig, RegulatoryScannerConfig, CustomDisclosureRule } from "./types.js";

@@ -1,4 +1,4 @@
-// Policy Builder types -- AEP v2.6 Capability 13
+// Policy Builder types - AEP v2.6 Capability 13
 // Data-driven Rego policy generation with invariant detection
 
 import type { MLEEstimation, SpectralAnalysis } from "../schema-builder/types.js";

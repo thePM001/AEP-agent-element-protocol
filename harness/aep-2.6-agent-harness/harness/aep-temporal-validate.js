@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * AEP 2.6 Agent Harness -- Temporal Validation Module (dynAEP-TA)
+ * AEP 2.6 Agent Harness - Temporal Validation Module (dynAEP-TA)
  *
  * Validates timestamps against bridge-authoritative time, enforces causal
  * ordering via sequence numbers and validates perception annotations against
@@ -410,7 +410,7 @@ function validatePerceptionAnnotation(modality, annotations, config) {
     for (const [param, value] of Object.entries(annotations)) {
         const bound = bounds[param];
         if (!bound) {
-            // Unknown parameter for this modality -- skip, do not flag
+            // Unknown parameter for this modality - skip, do not flag
             continue;
         }
 

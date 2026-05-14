@@ -1,4 +1,4 @@
-// AEP 2.6 -- Prediction Validator Scanner
+// AEP 2.6 - Prediction Validator Scanner
 // Detects prediction/forecast patterns and validates against configurable bounds.
 
 import type { Finding, ScannerConfig, PredictionScannerConfig } from "./types.js";

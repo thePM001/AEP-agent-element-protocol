@@ -1,4 +1,4 @@
-// Policy Builder -- AEP v2.6 Capability 13
+// Policy Builder - AEP v2.6 Capability 13
 // Data-driven Rego policy generation with invariant detection
 
 export {
