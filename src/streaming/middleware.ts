@@ -58,13 +58,13 @@ export class StreamMiddleware {
 
             controller.error(
               new Error(
-                `AEP stream aborted: ${verdict.violation.rule} -- ${verdict.violation.reason}`
+                `AEP stream aborted: ${verdict.violation.rule} - ${verdict.violation.reason}`
               )
             );
             return;
           }
 
-          // Clean chunk -- pass it through
+          // Clean chunk - pass it through
           controller.enqueue(chunk);
         } catch (err) {
           controller.error(err);

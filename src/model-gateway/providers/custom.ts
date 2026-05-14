@@ -1,4 +1,4 @@
-// AEP 2.6 -- Custom Provider Adapter
+// AEP 2.6 - Custom Provider Adapter
 // OpenAI-compatible endpoint adapter. Works with any API that follows
 // the OpenAI chat completions format (vLLM, Together, Groq, etc.).
 

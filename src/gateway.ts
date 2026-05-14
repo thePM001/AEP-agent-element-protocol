@@ -615,7 +615,7 @@ export class AgentGateway {
         }
       }
 
-      // Step ran as part of PolicyEvaluator -- record as evaluated
+      // Step ran as part of PolicyEvaluator - record as evaluated
       const stepVerdict = verdict.decision === "deny" || verdict.decision === "gate"
         ? (i <= 12 ? "pass" : verdict.decision === "deny" ? "fail" : "gate_pending")
         : "pass";

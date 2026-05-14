@@ -1,4 +1,4 @@
-// Permissiveness Scorer -- measures schema acceptance distribution entropy
+// Permissiveness Scorer - measures schema acceptance distribution entropy
 // References: Amari (2016) Information Geometry, Cover & Thomas (2006) Elements of Information Theory
 
 import type { SchemaCandidate, MLEEstimation, PermissivenessAnalysis } from "./types.js";

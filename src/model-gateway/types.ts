@@ -1,4 +1,4 @@
-// AEP 2.6 -- Model Gateway Types
+// AEP 2.6 - Model Gateway Types
 // Provider-agnostic types for governed LLM interactions.
 // Every model call passes through the full AEP evaluation chain.
 

@@ -9,15 +9,15 @@ Design invariant: Memory is READ-ONLY to validation logic. The accept/reject
 decision is 100% deterministic and never influenced by memory state. Memory
 only serves two auxiliary purposes:
 
-  1. Proposal ranking -- surface historically successful patterns earlier.
-  2. Attractor retrieval -- find the nearest accepted proposal for fast-path
+  1. Proposal ranking - surface historically successful patterns earlier.
+  2. Attractor retrieval - find the nearest accepted proposal for fast-path
      short-circuiting (caller decides whether to use it).
 
 Two concrete backends are provided:
 
-  - InMemoryFabric  -- pure Python lists, suitable for tests and short-lived
+  - InMemoryFabric  - pure Python lists, suitable for tests and short-lived
                        processes.
-  - SQLiteFabric    -- durable SQLite storage with thread-safe access, suitable
+  - SQLiteFabric    - durable SQLite storage with thread-safe access, suitable
                        for long-running agents and multi-step workflows.
 
 Zero required dependencies beyond the Python standard library and sqlite3.
@@ -85,7 +85,7 @@ def cosine_similarity(a: List[float], b: List[float]) -> float:
 class MemoryEntry:
     """A single lattice memory record.
 
-    Frozen so that entries are immutable once created -- the append-only
+    Frozen so that entries are immutable once created - the append-only
     invariant is enforced at the data level, not just the API level.
     """
 
@@ -149,7 +149,7 @@ class MemoryFabric(ABC):
 
     @abstractmethod
     def record(self, entry: MemoryEntry) -> None:
-        """Append a validation result.  Append-only -- no updates or deletes."""
+        """Append a validation result.  Append-only - no updates or deletes."""
         ...
 
     @abstractmethod
@@ -203,7 +203,7 @@ class InMemoryFabric(MemoryFabric):
         self._entries: List[MemoryEntry] = []
         self._by_element: Dict[str, List[MemoryEntry]] = {}
 
-    # -- writes -------------------------------------------------------------
+    # - writes -------------------------------------------------------------
 
     def record(self, entry: MemoryEntry) -> None:
         self._entries.append(entry)
@@ -213,7 +213,7 @@ class InMemoryFabric(MemoryFabric):
         self._entries.clear()
         self._by_element.clear()
 
-    # -- reads --------------------------------------------------------------
+    # - reads --------------------------------------------------------------
 
     def find_nearest_attractor(
         self, embedding: List[float], limit: int = 5
@@ -349,7 +349,7 @@ class SQLiteFabric(MemoryFabric):
         self._conn.executescript(_SCHEMA_SQL)
         self._conn.commit()
 
-    # -- internal helpers ---------------------------------------------------
+    # - internal helpers ---------------------------------------------------
 
     def _execute(self, sql: str, params: tuple = ()) -> sqlite3.Cursor:
         """Execute under the write lock and return the cursor."""
@@ -364,7 +364,7 @@ class SQLiteFabric(MemoryFabric):
             cursor = self._conn.execute(sql, params)
             return cursor.fetchall()
 
-    # -- writes -------------------------------------------------------------
+    # - writes -------------------------------------------------------------
 
     def record(self, entry: MemoryEntry) -> None:
         self._execute(
@@ -378,7 +378,7 @@ class SQLiteFabric(MemoryFabric):
     def clear(self) -> None:
         self._execute("DELETE FROM memory")
 
-    # -- reads --------------------------------------------------------------
+    # - reads --------------------------------------------------------------
 
     def find_nearest_attractor(
         self, embedding: List[float], limit: int = 5

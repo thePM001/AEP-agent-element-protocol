@@ -1,4 +1,4 @@
-// Invariant Detector -- detects domain invariants from data and schema
+// Invariant Detector - detects domain invariants from data and schema
 // Statistical analysis of field relationships to discover constraints
 
 import type { SchemaCandidate } from "../schema-builder/types.js";

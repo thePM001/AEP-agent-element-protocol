@@ -1,6 +1,6 @@
 ---
 name: aep
-description: Use this skill whenever working with AEP (Agent Element Protocol), dynAEP, dynAEP-TA, dynAEP-TA-P or any AEP governance feature. Triggers include 'AEP', 'dynAEP', 'dynAEP-TA', 'dynAEP-TA-P', 'temporal authority', 'perception governance', 'perception registry', 'bridge clock', 'causal ordering', 'vector clock', 'TimesFM', 'adaptive perception', 'perception bounds', 'scene graph', 'aep-scene.json', 'aep-registry.yaml', 'aep-theme.yaml', 'zero-trust UI', 'topological matrix', 'z-band', 'skin binding', 'AEP-FCR', 'temporal annotations', 'speech pacing', 'haptic timing', 'notification cadence', 'Schema Builder', 'Policy Builder', 'Lattice Memory', 'evaluation chain', 'trust scoring', 'execution rings', 'behavioural covenants', 'content scanners', 'evidence ledger', 'lattice memory', 'memory fabric', 'attractor', 'rejection history', 'resolver', 'proposal routing', 'fast-path', 'aep v2', 'AgentGateway', 'policy engine', 'rollback', 'session governance', 'MCP proxy', 'execution ring', 'covenant', 'agent identity', 'cross-agent verification', 'intent drift', 'kill switch', 'merkle proof', 'quantum signature', 'streaming validation', 'OWASP agentic', 'content scanner', 'knowledge base', 'model gateway', 'fleet governance', 'commerce subprotocol', 'eval dataset', 'prompt optimization', 'ML metrics', 'fine-tuning workflow', 'reliability index', 'OTEL', 'aepassist' or building validated UI for AI agents. Also use when implementing AEP three-layer architecture, writing AEP validators, creating MCP servers that validate agent UI output, working with AG-UI under AEP governance, governing time-dependent outputs for human perception, querying validation memory or routing proposals through the resolver. If AEP MCP tools are available (list_aep_schemas, create_ui_element, get_scene_graph), always consult this skill first. Do NOT guess IDs, skin bindings, z-bands or element types. Do NOT use Date.now() or any local clock when dynAEP-TA is available -- call dynaep_temporal_query instead.
+description: Use this skill whenever working with AEP (Agent Element Protocol), dynAEP, dynAEP-TA, dynAEP-TA-P or any AEP governance feature. Triggers include 'AEP', 'dynAEP', 'dynAEP-TA', 'dynAEP-TA-P', 'temporal authority', 'perception governance', 'perception registry', 'bridge clock', 'causal ordering', 'vector clock', 'TimesFM', 'adaptive perception', 'perception bounds', 'scene graph', 'aep-scene.json', 'aep-registry.yaml', 'aep-theme.yaml', 'zero-trust UI', 'topological matrix', 'z-band', 'skin binding', 'AEP-FCR', 'temporal annotations', 'speech pacing', 'haptic timing', 'notification cadence', 'Schema Builder', 'Policy Builder', 'Lattice Memory', 'evaluation chain', 'trust scoring', 'execution rings', 'behavioural covenants', 'content scanners', 'evidence ledger', 'lattice memory', 'memory fabric', 'attractor', 'rejection history', 'resolver', 'proposal routing', 'fast-path', 'aep v2', 'AgentGateway', 'policy engine', 'rollback', 'session governance', 'MCP proxy', 'execution ring', 'covenant', 'agent identity', 'cross-agent verification', 'intent drift', 'kill switch', 'merkle proof', 'quantum signature', 'streaming validation', 'OWASP agentic', 'content scanner', 'knowledge base', 'model gateway', 'fleet governance', 'commerce subprotocol', 'eval dataset', 'prompt optimization', 'ML metrics', 'fine-tuning workflow', 'reliability index', 'OTEL', 'aepassist' or building validated UI for AI agents. Also use when implementing AEP three-layer architecture, writing AEP validators, creating MCP servers that validate agent UI output, working with AG-UI under AEP governance, governing time-dependent outputs for human perception, querying validation memory or routing proposals through the resolver. If AEP MCP tools are available (list_aep_schemas, create_ui_element, get_scene_graph), always consult this skill first. Do NOT guess IDs, skin bindings, z-bands or element types. Do NOT use Date.now() or any local clock when dynAEP-TA is available - call dynaep_temporal_query instead.
 ---
 
 # Agent Element Protocol (AEP) v2.6
@@ -226,10 +226,10 @@ Merkle Tree per-entry verification. ML-DSA-65 post-quantum signatures. RFC 3161 
 
 Data-driven schema validation using four mathematical techniques:
 
-- **MLE Estimation** -- Maximum Likelihood field statistics using Welford's online algorithm. Detects numeric bounds, enum distributions and string patterns from historical data.
-- **Spectral Analysis** -- Graph Laplacian eigenvalue computation. Fiedler value (algebraic connectivity) measures constraint graph coupling.
-- **Permissiveness Scoring** -- Acceptance distribution entropy per field. Lower entropy means tighter constraints.
-- **Modularity Detection** -- Louvain community detection on the constraint graph. Higher modularity Q means better-separated modules.
+- **MLE Estimation** - Maximum Likelihood field statistics using Welford's online algorithm. Detects numeric bounds, enum distributions and string patterns from historical data.
+- **Spectral Analysis** - Graph Laplacian eigenvalue computation. Fiedler value (algebraic connectivity) measures constraint graph coupling.
+- **Permissiveness Scoring** - Acceptance distribution entropy per field. Lower entropy means tighter constraints.
+- **Modularity Detection** - Louvain community detection on the constraint graph. Higher modularity Q means better-separated modules.
 
 Composite score: `C = w1*(1-D) + w2*spectralNorm + w3*(1-permNorm) + w4*Q`. Decision: pass >= 0.8, review 0.5-0.8, reject < 0.5.
 
@@ -237,10 +237,10 @@ Composite score: `C = w1*(1-D) + w2*spectralNorm + w3*(1-permNorm) + w4*Q`. Deci
 
 Data-driven Rego policy generation:
 
-- **Invariant Detection** -- Six types from data: equality, inequality, membership, exclusion, conditional, temporal.
-- **Rego Generation** -- Produces `deny[msg]` blocks from invariants, MLE outliers and spectral gaps.
-- **Coverage Tracking** -- Computes how many domain invariants are enforced by existing rules. Proposes missing rules.
-- **Spectral Impact** -- Projects Fiedler value before and after proposed additions.
+- **Invariant Detection** - Six types from data: equality, inequality, membership, exclusion, conditional, temporal.
+- **Rego Generation** - Produces `deny[msg]` blocks from invariants, MLE outliers and spectral gaps.
+- **Coverage Tracking** - Computes how many domain invariants are enforced by existing rules. Proposes missing rules.
+- **Spectral Impact** - Projects Fiedler value before and after proposed additions.
 
 ## dynAEP-TA: Temporal Authority
 

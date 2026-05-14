@@ -177,10 +177,10 @@ The resolver is stateless and read-only. It never modifies the scene graph, regi
 
 As of AEP 2.2, all subprotocol registries can be used in conjunction with the core governance features:
 
-- **Trust-Gated Operations** -- workflow steps, API calls and IaC mutations can require a minimum trust tier via `min_trust_tier` on capabilities.
-- **Ring-Based Access** -- execution rings restrict which subprotocol operations an agent can perform. Ring 3 agents can only query registries. Ring 1+ is required for mutating operations.
-- **Covenant Integration** -- behavioural covenants can reference subprotocol actions (e.g., `forbid api:delete;` blocks DELETE API calls regardless of capability configuration).
-- **Intent Drift Detection** -- the drift detector monitors subprotocol action patterns alongside core AEP operations, detecting when an agent shifts from workflow steps to API calls unexpectedly.
+- **Trust-Gated Operations** - workflow steps, API calls and IaC mutations can require a minimum trust tier via `min_trust_tier` on capabilities.
+- **Ring-Based Access** - execution rings restrict which subprotocol operations an agent can perform. Ring 3 agents can only query registries. Ring 1+ is required for mutating operations.
+- **Covenant Integration** - behavioural covenants can reference subprotocol actions (e.g., `forbid api:delete;` blocks DELETE API calls regardless of capability configuration).
+- **Intent Drift Detection** - the drift detector monitors subprotocol action patterns alongside core AEP operations, detecting when an agent shifts from workflow steps to API calls unexpectedly.
 
 ### Example: Trust-Gated Workflow Step
 

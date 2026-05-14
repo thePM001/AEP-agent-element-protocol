@@ -1,4 +1,4 @@
-// AEP 2.6 -- Knowledge Base Manager
+// AEP 2.6 - Knowledge Base Manager
 // Creates, ingests into and queries governed knowledge bases.
 // Storage: .aep/knowledge/<name>/chunks.jsonl
 

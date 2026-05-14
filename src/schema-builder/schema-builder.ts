@@ -1,4 +1,4 @@
-// Schema Builder -- orchestrates MLE estimation, spectral analysis,
+// Schema Builder - orchestrates MLE estimation, spectral analysis,
 // permissiveness scoring and modularity detection for schema validation
 // AEP v2.6 Capability 12
 
@@ -16,7 +16,7 @@ import { PermissivenessScorer } from "./permissiveness-scorer.js";
 import { ModuleDetector } from "./module-detector.js";
 
 /**
- * Schema Builder -- validates schemas with mathematical rigour.
+ * Schema Builder - validates schemas with mathematical rigour.
  * Combines four analytical frameworks into a composite validation score.
  */
 export class SchemaBuilder {

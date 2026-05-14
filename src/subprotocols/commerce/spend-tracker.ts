@@ -1,4 +1,4 @@
-// AEP 2.6 -- Commerce Spend Tracker
+// AEP 2.6 - Commerce Spend Tracker
 // Tracks cumulative daily spend across all sessions.
 // Persists to .aep/commerce/spend.jsonl
 

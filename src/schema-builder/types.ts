@@ -1,4 +1,4 @@
-// Schema Builder types -- AEP v2.6 Capability 12
+// Schema Builder types - AEP v2.6 Capability 12
 // Mathematical foundations: Fisher MLE, Fiedler spectral graph theory,
 // Amari information geometry, Blondel-Louvain clustering
 

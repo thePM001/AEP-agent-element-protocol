@@ -1,4 +1,4 @@
-// Spectral Analyzer -- measures constraint coupling via graph Laplacian eigenvalues
+// Spectral Analyzer - measures constraint coupling via graph Laplacian eigenvalues
 // References: Fiedler (1973) algebraic connectivity, Chung (1997) spectral graph theory
 
 import type { SchemaCandidate, SpectralAnalysis } from "./types.js";

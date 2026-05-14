@@ -1,4 +1,4 @@
-# AEP 2.6 Agent Harness -- dynAEP-TA Temporal Authority Update
+# AEP 2.6 Agent Harness - dynAEP-TA Temporal Authority Update
 
 ## What Changed
 
@@ -95,12 +95,12 @@ Perception governance events also produce ledger entries:
 
 New OpenTelemetry spans emitted by the harness:
 
-- `dynaep.temporal.clock_sync` -- clock synchronization events
-- `dynaep.temporal.validation` -- per-event temporal validation
-- `dynaep.temporal.causal_ordering` -- causal ordering decisions
-- `dynaep.temporal.forecast` -- TimesFM forecast computations
-- `dynaep.perception.governance` -- perception validation and clamping
-- `dynaep.perception.profile_update` -- adaptive profile learning
+- `dynaep.temporal.clock_sync` - clock synchronization events
+- `dynaep.temporal.validation` - per-event temporal validation
+- `dynaep.temporal.causal_ordering` - causal ordering decisions
+- `dynaep.temporal.forecast` - TimesFM forecast computations
+- `dynaep.perception.governance` - perception validation and clamping
+- `dynaep.perception.profile_update` - adaptive profile learning
 
 ### 6. Governance Preset Updates
 

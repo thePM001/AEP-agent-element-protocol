@@ -60,7 +60,7 @@ export class PolicyEvaluator {
   evaluate(action: AgentAction, session: Session): Verdict {
     const actionId = randomUUID();
 
-    // Policy integrity check -- detect runtime mutation
+    // Policy integrity check - detect runtime mutation
     const currentHash = createHash("sha256")
       .update(JSON.stringify(this.policy))
       .digest("hex");

@@ -1,4 +1,4 @@
-// AEP 2.6 -- Default Step Activation Profile
+// AEP 2.6 - Default Step Activation Profile
 // Defines the 15-step evaluation chain with activation modes and preconditions.
 
 import { StepActivationMode, type StepActivationProfile } from "./types.js";

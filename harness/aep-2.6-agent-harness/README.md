@@ -148,7 +148,7 @@ Agent-Percept   dynAEP-TA-P     Perceptual temporal governance for human-facing 
 74. OTEL exporter
 75. Reliability index (theta)
 
-### Schema and Policy Builder -- v2.6 (2)
+### Schema and Policy Builder - v2.6 (2)
 
 76. Schema Builder (MLE, spectral analysis, permissiveness scoring, modularity detection)
 77. Policy Builder (invariant detection, Rego generation, coverage tracking)

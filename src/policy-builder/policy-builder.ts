@@ -1,4 +1,4 @@
-// Policy Builder -- orchestrates invariant detection, Rego generation,
+// Policy Builder - orchestrates invariant detection, Rego generation,
 // coverage tracking and spectral impact analysis
 // AEP v2.6 Capability 13
 
@@ -17,7 +17,7 @@ import { InvariantDetector } from "./invariant-detector.js";
 import { RegoGenerator } from "./rego-generator.js";
 
 /**
- * Policy Builder -- data-driven Rego policy generation and validation.
+ * Policy Builder - data-driven Rego policy generation and validation.
  * Detects domain invariants from data, generates Rego rules, tracks coverage,
  * and projects spectral impact.
  */

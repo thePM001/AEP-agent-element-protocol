@@ -31,8 +31,8 @@ export interface ProxyOptions {
  * AEP MCP Proxy Server.
  *
  * Sits between an AI agent (Claude Code, Cursor, Codex) and backend MCP
- * servers. Every tool call is intercepted, policy-evaluated and -- for
- * AEP-related tools -- structurally validated before forwarding.
+ * servers. Every tool call is intercepted, policy-evaluated and - for
+ * AEP-related tools - structurally validated before forwarding.
  */
 export class AEPProxyServer {
   private gateway: AgentGateway;
@@ -66,7 +66,7 @@ export class AEPProxyServer {
       };
     }
 
-    // /aepassist tool -- governance assistant, bypasses policy evaluation
+    // /aepassist tool - governance assistant, bypasses policy evaluation
     if (call.name === "aepassist") {
       const input = typeof call.arguments.command === "string"
         ? call.arguments.command
@@ -80,7 +80,7 @@ export class AEPProxyServer {
       };
     }
 
-    // Sequential processing guard -- reject concurrent calls
+    // Sequential processing guard - reject concurrent calls
     if (this.processing) {
       return {
         content: [
