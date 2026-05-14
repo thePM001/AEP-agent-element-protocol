@@ -1,4 +1,4 @@
-# Agent Control Extreme - Standalone Reference Implementation
+# Agent Control Hub Extreme - Standalone Reference Implementation
 
 A COMPLETE, SELF-CONTAINED production control hub for zero-trust agent governance.
 Works with nothing but Bash + curl + Git. GAP Runtime is optional enhancement,
@@ -7,7 +7,7 @@ never required.
 ## Philosophy
 
 ```
-Agent Control Extreme is the operational control plane.
+Agent Control Hub Extreme is the operational control plane.
 GAP Runtime is the governance kernel (Rust, 15-step lattice).
 They are INDEPENDENT. Extreme works without GAP. GAP deepens governance.
 ```
