@@ -10,10 +10,10 @@ An Agent Control Hub is a central repository and authentication system that
 all autonomous coding agents must register with before performing any work.
 It provides:
 
-- Agent identity verification (who is this agent?)
-- Session tracking (when did it start, what is it doing?)
-- Policy enforcement (what is the agent allowed to do?)
-- Activity audit (what did the agent do?)
+- Agent identity verification (who is this agent ?)
+- Session tracking (when did it start, what is it doing ?)
+- Policy enforcement (what is the agent allowed to do ?)
+- Activity audit (what did the agent do ?)
 
 This pattern prevents unregistered, ungoverned agents from operating on
 your infrastructure.
