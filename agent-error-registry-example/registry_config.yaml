@@ -1,23 +1,28 @@
-# Example check configuration - customize for your own policies
+# Example agent error registry configuration
 #
+# Customize these rules for your own agent policies.
 # Each check has:
 #   enabled: true/false
 #   description: what it looks for
 #   severity: info | warning | error
-#   patterns: list of things to match (format depends on check type)
+#   patterns: list of things to match
+
+registry:
+  storage: registry.json
+  max_entries: 1000
 
 checks:
   forbidden_chars:
     enabled: true
     description: "Unicode characters not allowed in agent output"
     severity: warning
-    chars: [0x2014, 0x2013]  # em-dash, en-dash - replace with ' - '
+    chars: [0x2014, 0x2013]  # em-dash, en-dash
 
   low_contrast:
     enabled: true
     description: "Text that may be hard to read against dark backgrounds"
     severity: warning
-    min_opacity: 0.88  # rgba alpha below this triggers a warning
+    min_opacity: 0.88
 
   banned_words:
     enabled: true
@@ -29,20 +34,13 @@ checks:
 
   url_leaks:
     enabled: true
-    description: "Internal URLs that should not appear in public-facing output"
+    description: "Internal URLs that should not be in public-facing output"
     severity: error
     patterns:
       - staging.example.com
       - internal.example.net
-      - 10\\.\\d+\\.\\d+\\.\\d+
 
   double_hyphen:
     enabled: true
     description: "Double-hyphen used as word separator instead of single hyphen"
     severity: warning
-    # Detects ' -- ' between words (not in code/CLI flags)
-
-report:
-  path: report.txt
-  max_entries: 1000
-  rotate: true
