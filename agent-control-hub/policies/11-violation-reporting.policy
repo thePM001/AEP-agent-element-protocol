@@ -1,0 +1,18 @@
+id: violation-reporting-policy
+severity: critical
+description: "Every agent MUST scan its output after every tool call and report all policy violations to the central error registry. No agent may suppress or filter violations. Failure to report is itself a violation."
+guard: "AGENTS MUST RUN VIOLATION SCANNERS AFTER EVERY TOOL CALL. All detected violations MUST be reported to the central registry. No suppression allowed."
+rules:
+  - Every agent MUST run violation scanners after every tool call
+  - Detected violation types: gray_text, em_dash, double_hyphen, oxford_comma, non_english_output, staging_url_leak, circumvention_attempt, direct_code_write, missing_harness_boot
+  - All violations MUST be reported to the central violation registry API
+  - No agent may suppress, filter, or hide any detected violation
+  - Failure to report a violation is itself a hard violation of this policy
+  - Scanners must be re-run after any automated fix to verify resolution
+  - Reports must include: agent identity, agent session ID, timestamp, tool name, violation details
+scan_targets:
+  - agent tool output (terminal, write_file, patch, delegate_task, send_message)
+  - agent response text
+  - code generation output
+  - deployment commands
+enforcement: governance-plugin-post-tool-call
