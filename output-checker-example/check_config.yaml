@@ -1,0 +1,48 @@
+# Example check configuration - customize for your own policies
+#
+# Each check has:
+#   enabled: true/false
+#   description: what it looks for
+#   severity: info | warning | error
+#   patterns: list of things to match (format depends on check type)
+
+checks:
+  forbidden_chars:
+    enabled: true
+    description: "Unicode characters not allowed in agent output"
+    severity: warning
+    chars: [0x2014, 0x2013]  # em-dash, en-dash - replace with ' - '
+
+  low_contrast:
+    enabled: true
+    description: "Text that may be hard to read against dark backgrounds"
+    severity: warning
+    min_opacity: 0.88  # rgba alpha below this triggers a warning
+
+  banned_words:
+    enabled: true
+    description: "Words that should never appear in output"
+    severity: error
+    words:
+      - example_banned_term_1
+      - example_banned_term_2
+
+  url_leaks:
+    enabled: true
+    description: "Internal URLs that should not appear in public-facing output"
+    severity: error
+    patterns:
+      - staging.example.com
+      - internal.example.net
+      - 10\\.\\d+\\.\\d+\\.\\d+
+
+  double_hyphen:
+    enabled: true
+    description: "Double-hyphen used as word separator instead of single hyphen"
+    severity: warning
+    # Detects ' -- ' between words (not in code/CLI flags)
+
+report:
+  path: report.txt
+  max_entries: 1000
+  rotate: true
