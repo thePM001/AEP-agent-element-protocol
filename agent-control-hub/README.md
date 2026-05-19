@@ -57,18 +57,11 @@ agent-control-hub/
 │   ├── 03-deployment-policy.policy
 │   ├── 04-writing-standards.policy
 │   ├── 05-branding-policy.policy
-│   ├── 06-harness-policy.policy
-│   └── 11-violation-reporting.policy
+│   └── 06-harness-policy.policy
 ├── registry/                    # Component and session registries
 │   ├── component-registry.md    # Register every new component here
 │   ├── infrastructure-map.md    # Service map, ports, architecture
 │   └── agent-sessions.json      # LIVE - every agent session tracked
-├── scanners/                    # Policy violation scanners (9 total)
-│   └── violation-scanner.py     # Run: cat output | python3 scanner.py all
-├── api/                         # Central violation reports API
-│   └── report-api.py            # POST /violation endpoint
-├── plugins/                     # Governance plugin hooks
-│   └── violation_reporter.py    # Auto-scan tool outputs, POST violations
 └── bootstrap/                   # Agent bootstrap scripts
     ├── agent-bootstrap.sh       # Run on EVERY agent spawn, FIRST command
     ├── agent-harness.sh         # Master control script
@@ -361,84 +354,6 @@ sudo chmod +x /usr/local/bin/agent-boot /usr/local/bin/agent-harness
 
 # Test it
 agent-harness status
-```
-
----
-
-## Step 6: Set Up the Violation Reporting System
-
-The violation reporting system gives you a central error registry that
-auto-scans every agent tool output for policy violations and records them.
-
-### 6a. Start the Reports API
-
-```bash
-# Start the API on port 8420 (customize with --port)
-python3 api/report-api.py --port 8420 --dir ./violation-reports &
-
-# Verify
-curl http://127.0.0.1:8420/health
-# {"status": "ok", "service": "Policy Violation Reports API", ...}
-```
-
-### 6b. Install the Scanner
-
-```bash
-# Test the scanner
-echo "test text with an em-dash -- here" | python3 scanners/violation-scanner.py all
-
-# Expected output: list of violations (empty if clean)
-```
-
-### 6c. Wire into Governance Plugin
-
-In your governance plugin's `validate_tool_output()` method, add:
-
-```python
-from violation_reporter import report_violations
-
-def validate_tool_output(self, tool_name, output):
-    # ... existing checks ...
-
-    # Auto-scan and report policy violations
-    try:
-        report_violations(tool_name, output, self.session_id)
-    except ImportError:
-        pass  # Non-blocking: failures logged, never raised
-```
-
-### 6d. Customize the Scanners
-
-Edit `scanners/violation-scanner.py` to match your policies:
-
-| Scanner | What to customize |
-|---------|-------------------|
-| `scan_non_english` | Replace `_FORBIDDEN_WORDS` with your forbidden word list |
-| `scan_staging_url` | Replace `staging_patterns` with your internal URL patterns |
-| `scan_em_dash` | Works out of the box (detects U+2014/U+2013) |
-| `scan_gray_text` | Works out of the box (detects low-opacity colors) |
-| `scan_circumvention_attempt` | Add your own bypass pattern keywords |
-| `scan_direct_code_write` | Add your own code extension patterns |
-| All other scanners | Ready to use with no customization |
-
-### What Gets Reported
-
-Each violation report contains:
-```json
-{
-  "agent": "agent-name",
-  "agent_id": "session-uuid",
-  "timestamp": "2026-01-01T00:00:00Z",
-  "tool": "write_file",
-  "violations": [{
-    "type": "em_dash",
-    "policy_ref": "writing-standards",
-    "severity": "hard",
-    "content": "...",
-    "line": 42,
-    "fix": "Replace em-dash with ' - '"
-  }]
-}
 ```
 
 ---
