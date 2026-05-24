@@ -1,23 +1,14 @@
 # Agent Control Hub Extreme - Standalone Reference Implementation
 
 A COMPLETE, SELF-CONTAINED production control hub for zero-trust agent governance.
-Works with nothing but Bash + curl + Git. GAP Runtime is optional enhancement,
-never required.
+Works with nothing but Bash + curl + Git. 
 
-## Philosophy
-
-```
-Agent Control Hub Extreme is the operational control plane.
-GAP Runtime is the governance kernel (Rust, 15-step lattice).
-They are INDEPENDENT. Extreme works without GAP. GAP deepens governance.
-```
+````
 
 This folder contains everything needed for agent governance OUTSIDE the GAP
 Rust Runtime: bootstrapping, session management, policy enforcement (local),
 deployment gating, validation, and observability hooks.
 
-GAP is the brain (policy engine, scanners, proof chains). Extreme is the body
-(session registry, boot flow, deployment gate, operational tooling).
 
 ## What This Contains
 
@@ -134,7 +125,7 @@ nla-harness check-policies --text "test output: no violations here"
 Every agent, on every spawn, runs:
 
 ```bash
-nla-harness boot mypm+ cli 2.0
+nla-harness boot xxxmyagentnamexxx
 ```
 
 This single command:
