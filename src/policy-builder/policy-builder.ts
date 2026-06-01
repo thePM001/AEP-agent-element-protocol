@@ -1,6 +1,6 @@
 // Policy Builder - orchestrates invariant detection, Rego generation,
 // coverage tracking and spectral impact analysis
-// AEP v2.6 Capability 13
+// AEP v2.75 Capability 13
 
 import type { SchemaCandidate, MLEEstimation, SpectralAnalysis } from "../schema-builder/types.js";
 import { SpectralAnalyzer } from "../schema-builder/spectral-analyzer.js";

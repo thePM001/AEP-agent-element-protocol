@@ -4,7 +4,7 @@
 
 This project enforces AEP (Agent Element Protocol) 2.6 governance on Claude Code sessions. Every file edit, component creation and code generation is validated against the AEP registry, scene graph and theme before it reaches the codebase.
 
-AEP 2.6 provides: **AgentGateway** (intercepts agent actions before execution), **policy evaluation** (structured checks against registered policies), **evidence ledger** (append-only audit trail of all agent actions), **rollback** (revert agent changes when violations are detected post-execution), **trust scoring** (0-1000 continuous score with five tiers), **execution rings** (four-ring privilege model), **behavioural covenants** (DSL-defined permit/forbid/require rules with hard/soft severity), **intent drift detection** (pattern monitoring with warn/gate/deny/terminate), **kill switch** (operator-activated session termination), **content scanners** (11 scanners checking PII, injection, secrets, jailbreak, toxicity, URLs, data quality, predictions, brand, regulatory, temporal), **recovery engine** (automatic retry on soft violations with corrective feedback), **model gateway** (governed LLM calls with streaming abort), **fleet governance** (swarm-level agent limits, cost caps and drift clustering), **schema builder** (data-driven schema validation using MLE estimation, graph spectral analysis, information geometry and community detection), **policy builder** (data-driven Rego policy generation with domain invariant detection, coverage tracking and spectral impact projection) and **/aepassist** (interactive setup and management CLI).
+AEP 2.75 provides: **AgentGateway** (intercepts agent actions before execution), **policy evaluation** (structured checks against registered policies), **evidence ledger** (append-only audit trail of all agent actions), **rollback** (revert agent changes when violations are detected post-execution), **trust scoring** (0-1000 continuous score with five tiers), **execution rings** (four-ring privilege model), **behavioural covenants** (DSL-defined permit/forbid/require rules with hard/soft severity), **intent drift detection** (pattern monitoring with warn/gate/deny/terminate), **kill switch** (operator-activated session termination), **content scanners** (11 scanners checking PII, injection, secrets, jailbreak, toxicity, URLs, data quality, predictions, brand, regulatory, temporal), **recovery engine** (automatic retry on soft violations with corrective feedback), **model gateway** (governed LLM calls with streaming abort), **fleet governance** (swarm-level agent limits, cost caps and drift clustering), **schema builder** (data-driven schema validation using MLE estimation, graph spectral analysis, information geometry and community detection), **policy builder** (data-driven Rego policy generation with domain invariant detection, coverage tracking and spectral impact projection) and **/aepassist** (interactive setup and management CLI).
 
 Claude Code MUST read this file at the start of every session. This is non-negotiable.
 
@@ -18,7 +18,7 @@ Before editing ANY file in the project:
 4. Verify your planned changes do not violate any AEP constraint.
 5. After editing, run the validation: `node harness/aep-validate.js`
 
-## Core AEP 2.6 Rules
+## Core AEP 2.75 Rules
 
 ### Element Registration
 - Every UI element that renders pixels MUST have a `data-aep-id` attribute.
@@ -81,10 +81,10 @@ Use `/aepassist` or `npx aep assist` for setup and configuration. Available mode
 Claude Code MUST fix all CRITICAL and HIGH violations before committing.
 
 
-## AEP 2.6 Trust and Ring Governance
+## AEP 2.75 Trust and Ring Governance
 
 ### Trust Scoring
-AEP 2.6 tracks a continuous trust score (0-1000) for each agent session. Every successful action earns trust. Every policy violation, forbidden match or intent drift incurs a penalty. Trust erodes over time.
+AEP 2.75 tracks a continuous trust score (0-1000) for each agent session. Every successful action earns trust. Every policy violation, forbidden match or intent drift incurs a penalty. Trust erodes over time.
 
 The five trust tiers control which capabilities are available:
 - **Untrusted (0-199):** Restricted to Ring 3 (read-only).
@@ -102,7 +102,7 @@ To gain higher privileges, the agent must earn trust through successful actions 
 The policy may include a `covenant` field containing a DSL-defined set of permit, forbid and require rules. These are evaluated as Step 7 in the 15-step policy chain. Forbid rules override permit rules. Each rule can carry a severity tag: `[hard]` (immediate reject) or `[soft]` (recovery attempt).
 
 ### Intent Drift Detection
-AEP 2.6 monitors the pattern of agent actions. If the agent's behaviour deviates significantly from its established baseline (after a configurable warmup period), the policy can warn, gate, deny or terminate the session.
+AEP 2.75 monitors the pattern of agent actions. If the agent's behaviour deviates significantly from its established baseline (after a configurable warmup period), the policy can warn, gate, deny or terminate the session.
 
 ### Kill Switch
 The operator can activate the kill switch at any time to terminate all sessions, optionally triggering rollback of all pending changes and resetting trust to zero.
@@ -119,23 +119,23 @@ Your sessions can be packaged into portable verification artifacts (`.aep-proof.
 ### Governed Task Decomposition
 When `decomposition.enabled` is true in the policy, subtasks inherit scoped permissions from parent tasks. Each subtask's scope is the INTERSECTION of its parent's scope and its declared scope - a child task can never have more access than its parent. This prevents scope escalation through task decomposition. Actions are validated against the current task's scope as Step 0 (before the 15-step evaluation chain). Task action budgets, max depth and max children are all enforced.
 
-## AEP 2.6 Content Scanners
+## AEP 2.75 Content Scanners
 
 Your output is scanned by 11 content scanners: PII, injection, secrets, jailbreak, toxicity, URL, data profiler, prediction, brand, regulatory and temporal. Hard severity findings reject immediately. Soft severity findings trigger the recovery engine for corrective feedback and regeneration.
 
-## AEP 2.6 Recovery Engine
+## AEP 2.75 Recovery Engine
 
 Soft violations get corrective feedback and a chance to regenerate. The feedback tells you which scanner triggered, what the specific violation was and what you should change. Hard violations reject immediately with no retry. Maximum retry attempts are configured per policy.
 
-## AEP 2.6 Model Gateway
+## AEP 2.75 Model Gateway
 
 Your model calls go through the governed gateway with output validation on every response. The gateway supports four providers (Anthropic, OpenAI, Ollama, custom). Every request and response passes through the full governance chain including the scanner pipeline and budget tracking. Streaming responses can be aborted mid-stream if a violation is detected.
 
-## AEP 2.6 Fleet Governance
+## AEP 2.75 Fleet Governance
 
 You operate within a fleet with swarm-level policies including agent limits, cost caps and drift clustering. Child agents you spawn inherit your covenant as a subset with reduced trust and same or lower ring. Messages between agents are scanned for PII, injection and secrets. You MUST NOT modify fleet policies or spawn agents without governance approval.
 
-## AEP 2.6 15-Step Evaluation Chain
+## AEP 2.75 15-Step Evaluation Chain
 
 Every action passes through 15 evaluation steps:
 
@@ -199,7 +199,7 @@ Successful temporal validations earn +1 trust per event.
 
 Claude Code MUST fix all CRITICAL and HIGH temporal violations before committing.
 
-## AEP 2.6 Schema Builder (Capability 12)
+## AEP 2.75 Schema Builder (Capability 12)
 
 The Schema Builder validates schema proposals using four mathematical techniques:
 
@@ -212,7 +212,7 @@ Composite score: `C = w1*(1-D) + w2*spectralNorm + w3*(1-permNorm) + w4*Q`. Deci
 
 Use `gateway.validateSchemaProposal()` to validate schemas through the governance chain. Results are recorded in the evidence ledger as `schema:validate` entries.
 
-## AEP 2.6 Policy Builder (Capability 13)
+## AEP 2.75 Policy Builder (Capability 13)
 
 The Policy Builder generates Rego policies from data:
 

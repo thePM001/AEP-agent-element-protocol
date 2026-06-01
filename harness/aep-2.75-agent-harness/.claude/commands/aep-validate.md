@@ -1,6 +1,6 @@
 # /aep-validate
 
-## AEP 2.6 Post-Edit Validation
+## AEP 2.75 Post-Edit Validation
 
 After making code changes, run this validation before committing.
 

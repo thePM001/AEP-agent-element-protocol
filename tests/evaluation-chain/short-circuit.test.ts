@@ -1,4 +1,4 @@
-// AEP 2.6 - Short-Circuit Evaluation Chain Tests
+// AEP 2.75 - Short-Circuit Evaluation Chain Tests
 // Covers the 15-step evaluation chain with short-circuit pattern.
 // 12 unit tests + 4 integration tests.
 
