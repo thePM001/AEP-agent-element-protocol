@@ -2,6 +2,24 @@
 
 All notable changes to the Agent Element Protocol (AEP) will be documented in this file.
 
+## [2.75.0] - 2026-06-01
+
+### Added
+- CLI Power Tools: aep doctor, verify, lint-policy, red-team scan
+- Multi-Language Policy Support: OPA Rego and Cedar transpilers
+- MCP Security Gateway: tool poisoning, typosquatting and drift detection
+- Merkle-Tree Audit Records with SHA-256 proof bundles
+- AEP Intercept Proxy: one-command MCP proxy mode
+- YAML Policy Importer for external policy formats
+- Reference Policy Lattice: baseline security, deployment, writing, governance policies
+- Multi-Agent Collaboration Primitives: supervisor, debate and delegation patterns
+- AEP-Graph Orchestration Engine: stateful persistent cyclic workflows
+
+### Changed
+- Repository restructured: config/, policies/, unified subprotocols
+- Trust rings documented as canonical access control model
+- Harness and skill documentation updated for 2.75
+
 ## [2.6.0] - 2026-05-01
 
 ### Version Bump: AEP v2.5 -> v2.6
