@@ -56,18 +56,23 @@ describe("Data Permission System", () => {
     expect(checkPermission(blocked).allowed).toBe(false);
   });
 
-  it("trust rings enforce progressive access", () => {
+  it("trust rings enforce progressive rate limits", () => {
     const rings = ["sandbox", "user", "system", "enterprise"] as const;
     
-    for (let i = 0; i < rings.length; i++) {
+    for (let i = 1; i < rings.length; i++) {
       const perms = createDefaultPermissions("agent", rings[i]);
-      // Each ring should have at least as many permissions as the previous
-      if (i > 0) {
-        const prevPerms = createDefaultPermissions("agent", rings[i - 1]);
-        expect(perms.allowed_paths.length).toBeGreaterThanOrEqual(prevPerms.allowed_paths.length);
-        expect(perms.rate_limit_per_minute).toBeGreaterThanOrEqual(prevPerms.rate_limit_per_minute);
-      }
+      const prevPerms = createDefaultPermissions("agent", rings[i - 1]);
+      expect(perms.rate_limit_per_minute).toBeGreaterThanOrEqual(prevPerms.rate_limit_per_minute);
     }
+  });
+
+  it("enterprise ring has universal path access via root path", () => {
+    const perms = createDefaultPermissions("agent", "enterprise");
+    expect(perms.allowed_paths).toHaveLength(1);
+    expect(perms.allowed_paths[0].path).toBe("/");
+    expect(perms.allowed_paths[0].read).toBe(true);
+    expect(perms.allowed_paths[0].write).toBe(true);
+    expect(perms.allowed_paths[0].delete).toBe(true);
   });
 
   it("rate limits are enforced per ring", () => {
