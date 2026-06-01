@@ -25,7 +25,7 @@ Copy any policy to your project's policies/ directory and customize:
 cp policies/reference/security.gap my-project/policies/
 ```
 
-All policies are gapc-validated (290 GBNF rules, zero structural errors).
+All reference policies are pre-validated with zero structural errors. Validate your own policies with `aep lint-policy`.
 
 ## Customization
 

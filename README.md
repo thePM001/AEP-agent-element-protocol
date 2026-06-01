@@ -661,7 +661,7 @@ SANDBOX (most restrictive - bottom of lattice)
 2. **Establish ordering**: Policies within a domain form a chain from most permissive to most restrictive
 3. **Verify joins**: Every pair of policies must have a least upper bound (join) - the combined restriction
 4. **Verify meets**: Every pair must have a greatest lower bound (meet) - the shared permission
-5. **Validate with GAP**: All policies must be gapc-validated (290 GBNF rules, zero structural errors)
+5. **Validate your policies**: Use `aep lint-policy` to validate policies. Reference policies are pre-validated with zero structural errors.
 
 ### Policy Files
 
