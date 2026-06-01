@@ -434,11 +434,115 @@ function policyInit() {
     console.log('Validate with: aep lint-policy policies/custom/your-policy.yaml');
 }
 
+
+function policyBuild() {
+    const fs = require('fs');
+    const path = require('path');
+    const readline = require('readline');
+    
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+    
+    const questions = [
+        { name: 'name', prompt: 'Policy name (e.g. block-production-deletes): ', default: 'my-policy' },
+        { name: 'domain', prompt: 'Domain (security/deployment/writing/governance/custom): ', default: 'custom' },
+        { name: 'guard', prompt: 'Guard condition (e.g. action == "delete" AND environment == "production"): ', default: 'true' },
+        { name: 'effect', prompt: 'Effect (allow/deny): ', default: 'deny' },
+        { name: 'severity', prompt: 'Severity (hard/soft): ', default: 'hard' },
+        { name: 'description', prompt: 'Description: ', default: 'Custom policy' },
+    ];
+    
+    const answers = {};
+    let idx = 0;
+    
+    function askNext() {
+        if (idx >= questions.length) {
+            generatePolicy();
+            return;
+        }
+        const q = questions[idx];
+        rl.question(q.prompt + '(' + q.default + ') ', (answer) => {
+            answers[q.name] = answer || q.default;
+            idx++;
+            askNext();
+        });
+    }
+    
+    function generatePolicy() {
+        const targetDir = args[0] || './policies/custom';
+        if (!fs.existsSync(targetDir)) {
+            fs.mkdirSync(targetDir, { recursive: true });
+        }
+        
+        const policyFile = path.join(targetDir, answers.name + '.yaml');
+        
+        const policy = 'version: "2.75"\n' +
+            'domain: ' + answers.domain + '\n' +
+            'patterns:\n' +
+            '  - name: ' + answers.name + '\n' +
+            '    guard: ' + answers.guard + '\n' +
+            '    effect: ' + answers.effect + '\n' +
+            '    severity: ' + answers.severity + '\n' +
+            'covenants:\n' +
+            '  - text: "' + answers.description + '"\n' +
+            '    severity: ' + answers.severity.charAt(0).toUpperCase() + answers.severity.slice(1) + '\n';
+        
+        fs.writeFileSync(policyFile, policy);
+        
+        console.log('');
+        console.log('Policy created: ' + policyFile);
+        console.log('');
+        console.log('Validate with: aep lint-policy ' + policyFile);
+        console.log('Test with:    aep red-team');
+        
+        rl.close();
+    }
+    
+    console.log('AEP Policy Builder Assistant');
+    console.log('=============================');
+    console.log('');
+    askNext();
+}
+
+function policyTemplate() {
+    const fs = require('fs');
+    const path = require('path');
+    const targetDir = args[0] || './policies/custom';
+    
+    if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+    }
+    
+    const templates = {
+        'security.yaml': 'version: "2.75"\ndomain: security\npatterns:\n  - name: scan-outputs\n    guard: action == "output"\n    constraints:\n      - scan_pii: true\n      - scan_secrets: true\n      - scan_injection: true\n    effect: deny\n    severity: hard\ncovenants:\n  - text: "All outputs must pass security scans"\n    severity: Hard\n',
+        'deployment.yaml': 'version: "2.75"\ndomain: deployment\npatterns:\n  - name: require-approval\n    guard: action == "deploy"\n    constraints:\n      - human_approval: true\n      - allowed_domains: []\n    effect: deny\n    severity: hard\ncovenants:\n  - text: "Deployment requires human approval"\n    severity: Hard\n',
+        'writing.yaml': 'version: "2.75"\ndomain: writing\npatterns:\n  - name: block-em-dashes\n    guard: output contains U+2014\n    effect: deny\n    severity: hard\ncovenants:\n  - text: "Zero em-dashes in output"\n    severity: Hard\n',
+    };
+    
+    const templateName = args[0] || 'all';
+    
+    if (templateName === 'all') {
+        for (const [name, content] of Object.entries(templates)) {
+            fs.writeFileSync(path.join(targetDir, name), content);
+            console.log('Created: ' + name);
+        }
+        console.log('Templates created in ' + targetDir);
+    } else if (templates[templateName]) {
+        fs.writeFileSync(path.join(targetDir, templateName), templates[templateName]);
+        console.log('Created: ' + templateName);
+    } else {
+        console.log('Unknown template: ' + templateName);
+        console.log('Available: all, security, deployment, writing');
+    }
+}
+
 const commands = {
     doctor,
     verify,
     'lint-policy': lintPolicy,
-    'red-team': redTeam, 'policy-init': policyInit, 'init-policy': policyInit,
+    'red-team': redTeam, 'policy-init': policyInit, 'init-policy': policyInit, 'policy-build': policyBuild, 'build-policy': policyBuild, 'policy-template': policyTemplate, 'template-policy': policyTemplate,
 };
 
 if (commands[command]) {
@@ -452,6 +556,9 @@ if (commands[command]) {
     console.log(`  lint-policy   Validate GAP policy via gapc (POST :8405/api/validate)`);
     console.log(`  red-team      Generate and test adversarial inputs
   policy-init   Initialize a policy lattice with reference policies
-  init-policy   Same as policy-init`);
+  init-policy   Same as policy-init
+  policy-build  Interactive policy builder wizard
+  build-policy  Same as policy-build
+  policy-template Create template policies (security, deployment, writing)`);
     process.exit(1);
 }
