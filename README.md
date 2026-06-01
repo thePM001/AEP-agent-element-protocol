@@ -49,15 +49,6 @@ AEP-agent-element-protocol/
 
 ---
 
-## NEW AEP Task Manifest Standard v1.0
-
-Every task executed by agents MUST declare a task manifest. See `docs/task-manifest/` in the [AEP 2.75 Open Protocol repo](https://github.com/thePM001/NLA-AEP-2.75-open-protocol). 
-
-```
-pre_task (Rego validate) -> execute -> post_task (verify completion) -> DONE
-```
-
----
 
 ## Migration from AEP 2.6 to 2.75
 
@@ -80,6 +71,16 @@ AEP 2.75 introduces 5 new Unified Protocol features that make AEP the most unifi
 - **Complete Built-in Stack** - Governance, validation, security, compliance and intelligence ship as one integrated system. No external plugins needed.
 - **Cross-Provider Universal** - Works with every AI provider. Anthropic, OpenAI, Ollama and custom endpoints. Zero lock-in guaranteed.
 - **Instant Governance** - Four presets deploy complete governance in seconds. Every agent governed from the first action.
+
+## Task Manifest Standard
+
+AEP 2.75 introduces a task manifest standard for declaring, validating and verifying agent tasks before execution. Every task is declared as a YAML manifest specifying the task type, affected files, verification steps and completion criteria. OPA/Rego policies validate manifests before execution begins. A governance plugin enforces pre-task validation and post-task verification.
+
+```
+pre_task (Rego validate) -> execute -> post_task (verify completion) -> DONE
+```
+
+The manifest schema, Rego policies and plugin are available in the [AEP 2.75 Open Protocol repo](https://github.com/thePM001/NLA-AEP-2.75-open-protocol) under `docs/task-manifest/`.
 
 ## Quick Start
 
