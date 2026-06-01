@@ -1,0 +1,60 @@
+# TASK-MANIFEST/1.0 — NLA Task Manifest Standard
+# Every task executed by any NLA agent MUST declare and validate against this manifest.
+# Gapc-validated through GAP document: nla-task-manifest-standard.gap
+
+manifest_version: "1.0"
+
+task:
+  id: "task-YYYY-MM-DD-<slug>"           # REQUIRED: unique task identifier
+  type:                                  # REQUIRED: one of enum
+    enum: [code_change, deployment, config_update, page_update, component_creation, infrastructure, policy_update]
+  description: "string"                  # REQUIRED: what this task does, why
+  created: "ISO8601"                     # REQUIRED: when the task was declared
+  agent: "hermes"                        # REQUIRED: agent executing the task
+  environments:                          # REQUIRED: one or both
+    - staging
+    - production                          # production requires explicit gate approval
+
+  files_affected:                        # REQUIRED: every file this task creates or modifies
+    - "/opt/nla-website/src/app/(frontend)/aep-2.75/page.tsx"
+  components_affected:                   # REQUIRED if creating/modifying components
+    - "AEPFeatureGridStaging"
+  urls_affected:                         # REQUIRED: every URL this task touches
+    - "https://tasty.newlisbon.agency/aep"
+
+verification:
+  build:
+    command: "sudo systemctl restart nla-website.service"
+    wait_seconds: 10
+    health_check_url: "http://127.0.0.1:3001/"
+    must_pass: true
+
+  curl_checks:                           # REQUIRED: at least one end-to-end check
+    - url: "https://127.0.0.1/aep"
+      host_header: "tasty.newlisbon.agency"
+      expected_status: 200
+      must_contain:                      # page MUST contain these strings
+        - "AEP 2.75"
+      must_not_contain:                  # page MUST NOT contain these strings
+        - "aep.newlisbon.agency"
+
+  reference_audit:
+    check_broken_links: true
+    check_production_urls_in_staging: true
+    scan_urls:                           # URLs that must resolve correctly
+      - "/aep/demo"
+      - "/aep/dynaep"
+      - "/aep/changelog"
+
+  component_registry:
+    check_aep_registration: true         # new components must be AEP-registered
+
+completion:
+  criteria:                              # ALL must be true to mark complete
+    - all_files_written: true
+    - build_passes: true
+    - all_curl_checks_pass: true
+    - reference_audit_clean: true
+    - component_registration_done: true
+  status: pending                        # pending | in_progress | verified | failed
+  verified_at: null                      # set to ISO8601 when all criteria pass
