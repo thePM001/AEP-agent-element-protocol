@@ -9,7 +9,7 @@ const { execSync } = require('child_process');
 const command = process.argv[2];
 const args = process.argv.slice(3);
 
-// ---- doctor -----------------------------------------------------------
+// ==== doctor ===========================================================
 function doctor() {
     console.log('AEP Doctor - Subsystem Health Check');
     console.log('==================================');
@@ -111,7 +111,7 @@ function hasCount(dirPath) {
     }
 }
 
-// ---- verify -----------------------------------------------------------
+// ==== verify ===========================================================
 function verify() {
     const target = args[0];
     if (!target) {
@@ -169,7 +169,7 @@ function verify() {
     }
 }
 
-// ---- lint-policy ------------------------------------------------------
+// ==== lint-policy ======================================================
 function lintPolicy() {
     const target = args[0];
     if (!target) {
@@ -203,7 +203,7 @@ function lintPolicy() {
         // curl exits non-zero on HTTP errors; still capture stdout
         if (err.stdout) result = err.stdout.trim();
         else {
-            console.log(`FAIL: gapc unreachable -- ${err.message}`);
+            console.log(`FAIL: gapc unreachable - ${err.message}`);
             console.log('HINT: Ensure the gapc service is running on port 8405');
             console.log('      (start with: gapc serve or via the PAD transform pipeline)');
             process.exit(1);
@@ -241,7 +241,7 @@ function lintPolicy() {
     }
 }
 
-// ---- red-team ---------------------------------------------------------
+// ==== red-team =========================================================
 function redTeam() {
     console.log('AEP Red-Team Scan - Adversarial Test Generation');
     console.log('================================================');
@@ -350,7 +350,7 @@ function checkAdversarial(input, category) {
     if (category === 'Em-dash circumvention') {
         if (hasEmDash || hasEnDash || hasBoxDrawing) {
             // These SHOULD be detected by the policy lattice
-            // The policy should flag them -- so they ARE resistant if found
+            // The policy should flag them - so they ARE resistant if found
             return { resistant: true, reason: 'detected and blocked' };
         }
         return { resistant: true, reason: 'clean' };
@@ -389,7 +389,7 @@ function checkAdversarial(input, category) {
     return { resistant: false, reason: 'bypassed detection' };
 }
 
-// ---- dispatch ---------------------------------------------------------
+// ==== dispatch =========================================================
 const commands = {
     doctor,
     verify,
