@@ -5,13 +5,11 @@ This skill loads the AEP 2.75 agent harness and governance configuration.
 ## Triggers
 Use this skill when working with AEP, dynAEP, GAP or any AEP governance feature.
 Triggers include: AEP, dynAEP, GAP, policy lattice, trust ring, covenant, scanner,
-evaluation chain, evidence ledger, privilege ring, MCP security, intercept proxy.
 
 ## Features (77+)
 - 3-layer architecture (Meta AEP, Core AEP, dynAEP)
 - 15-step evaluation chain
 - 11 content scanners
-- 4 privilege rings (kernel, system, user, sandbox)
 - SHA-256 evidence ledger with Merkle proofs
 - Reference policy lattice (security, deployment, writing, governance)
 - Multi-agent collaboration (supervisor, debate, delegation)
