@@ -22,8 +22,8 @@ export const supplyChainScanner: Scanner = {
           category: "supplychain:script",
           severity: "hard",
           match: match[0],
-          index: match.index,
-          message: `Suspicious install script detected: ${sp.name}`,
+          position: match.index,
+ `Suspicious install script detected: ${sp.name}`,
         });
       }
     }
@@ -50,12 +50,12 @@ export const supplyChainScanner: Scanner = {
       if (!content.substring(intMatch.index - 200, intMatch.index).includes("integrity")) {
         findings.push({
           scanner: "supply-chain",
-          rule: "missing_integrity",
-          category: "supplychain:integrity",
+          category: "supplychain:integrity:missing",
+
           severity: "soft",
           match: intMatch[1],
-          index: intMatch.index,
-          message: `Package ${intMatch[1]} missing integrity hash`,
+          position: intMatch.index,
+ `Package ${intMatch[1]} missing integrity hash`,
         });
       }
     }

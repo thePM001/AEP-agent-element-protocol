@@ -24,12 +24,12 @@ export const promptInjectionScanner: Scanner = {
       while ((match = pattern.regex.exec(content)) !== null) {
         findings.push({
           scanner: "prompt-injection",
-          rule: pattern.name,
-          category: pattern.category,
+          category: `${pattern.category}:${pattern.name}`,
+
           severity: "hard",
           match: match[0],
-          index: match.index,
-          message: `Prompt injection detected: ${pattern.name}`,
+          position: match.index,
+ `Prompt injection detected: ${pattern.name}`,
         });
       }
     }
