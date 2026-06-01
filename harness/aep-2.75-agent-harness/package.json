@@ -1,5 +1,5 @@
 {
-  "name": "aep-2.6-agent-harness",
+  "name": "aep-2.75-agent-harness",
   "version": "2.6.0",
   "description": "AEP 2.6 Governance Layer for AI Code Agents",
   "main": "harness/aep-validate.js",

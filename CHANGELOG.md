@@ -48,13 +48,13 @@ are now validated with the same mathematical rigour applied to agent outputs.
 - Gateway integration: `validateSchemaProposal()`, `validatePolicyProposal()`, `getSchemaBuilderStats()`
 - New evidence ledger entry types: `schema:validate`, `policy:validate`
 - 75+ new tests covering Schema Builder and Policy Builder with zero regressions
-- Harness renamed to `aep-2.6-agent-harness`
+- Harness renamed to `aep-2.75-agent-harness`
 
 ### Changed
 - Package version bumped to 2.6.0
 - `aep_version` updated to "2.6" in all policy files, registry, scene and theme
 - `index.ts` exports all Schema Builder and Policy Builder types and classes
-- Agent harness renamed from `aep-2.5-agent-harness` to `aep-2.6-agent-harness`
+- Agent harness renamed from `aep-2.5-agent-harness` to `aep-2.75-agent-harness`
 - Feature count: 77 (75 from v2.5 + Schema Builder + Policy Builder)
 
 ### Migration from v2.5
