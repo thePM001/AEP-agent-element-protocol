@@ -64,12 +64,14 @@ AEP-agent-element-protocol/
 
 ### Agent Operations
 - **Agent Identity Verification**: Ed25519 key pairs, challenge-response, capability advertising
+- **Data Permission System**: Per-agent path, network, and environment access control with trust ring-based defaults
 - **Fleet Governance**: Multi-agent limits, cost caps, drift clustering
 - **Multi-Agent Collaboration**: Supervisor, debate and delegation patterns
 - **Model Gateway**: Governed LLM calls with streaming abort
 - **Recovery Engine**: Automatic retry on soft violations with corrective feedback
 
 ### Security & Infrastructure  
+- **15 Content Scanners**: PII, secrets, injection, prompt injection, jailbreak, toxicity, supply chain, URLs, data quality, predictions, brand, regulatory, temporal
 - **MCP Security Gateway**: Tool poisoning, typosquatting and drift detection
 - **Intercept Proxy**: One-command MCP proxy with policy-based tool blocking
 - **Merkle-Tree Audit**: Tamper-evident decision records

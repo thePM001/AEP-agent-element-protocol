@@ -35,3 +35,16 @@ Agents operate under GAP-based capability profiles defining allowed paths, netwo
 ## Policy Lattice
 
 All policies form a lattice with guaranteed composition. See `policies/reference/` for the baseline policy set.
+
+## Data Permission System
+
+AEP 2.75 includes per-agent data access control. Agents are restricted by trust ring:
+
+| Ring | Path Access | Network | Rate Limit | Max File |
+|------|------------|---------|------------|----------|
+| sandbox | /tmp only | localhost:8080 | 10/min | 1 MB |
+| user | /tmp, /home, /var/www | localhost + internet | 60/min | 10 MB |
+| system | /tmp, /home, /var, /opt, /etc | full local + internet | 300/min | 100 MB |
+| enterprise | / (everything) | unrestricted | 1000/min | 1 GB |
+
+Permissions are checked before every agent operation. Unknown actions are denied by default.
