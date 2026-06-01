@@ -22,8 +22,8 @@ All notable changes to the Agent Element Protocol (AEP) will be documented in th
 
 ## [2.6.0] - 2026-05-01
 
-### Version Bump: AEP v2.5 -> v2.6
-AEP v2.6 extends governance to the governance layer itself. Schemas and policies
+### Version Bump: AEP v2.5 -> v2.75
+AEP v2.75 extends governance to the governance layer itself. Schemas and policies
 are now validated with the same mathematical rigour applied to agent outputs.
 
 ### Added
@@ -52,14 +52,14 @@ are now validated with the same mathematical rigour applied to agent outputs.
 
 ### Changed
 - Package version bumped to 2.6.0
-- `aep_version` updated to "2.6" in all policy files, registry, scene and theme
+- `aep_version` updated to "2.75" in all policy files, registry, scene and theme
 - `index.ts` exports all Schema Builder and Policy Builder types and classes
 - Agent harness renamed from `aep-2.5-agent-harness` to `aep-2.75-agent-harness`
 - Feature count: 77 (75 from v2.5 + Schema Builder + Policy Builder)
 
 ### Migration from v2.5
-- v2.6 is backwards-compatible with v2.5
-- Update version to "2.6" in policy files
+- v2.75 is backwards-compatible with v2.5
+- Update version to "2.75" in policy files
 - For Schema Builder: use `SchemaBuilder` class or `npx aep assist schema` commands
 - For Policy Builder: use `PolicyBuilder` class or `npx aep assist policy` commands
 - Existing schemas, policies, sessions, ledgers continue to work without modification

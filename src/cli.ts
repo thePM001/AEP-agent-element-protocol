@@ -38,7 +38,7 @@ const args = process.argv.slice(2);
 const command = args[0];
 
 function usage(): void {
-  console.log(`AEP - Agent Element Protocol v2.6
+  console.log(`AEP - Agent Element Protocol v2.75
 
 Usage:
   aep assist [command]          Interactive governance assistant (/aepassist)
@@ -1523,7 +1523,7 @@ function handleCommerce(args: string[]): void {
 }
 
 function generateDefaultPolicy(): string {
-  return `version: "2.6"
+  return `version: "2.75"
 name: "default-agent-policy"
 
 capabilities:

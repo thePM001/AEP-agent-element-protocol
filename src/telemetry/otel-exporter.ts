@@ -134,7 +134,7 @@ export class AEPTelemetryExporter {
           "aep.ring": 0,
         };
 
-        // Short-circuit chain attributes (added by v2.6 chain runner)
+        // Short-circuit chain attributes (added by v2.75 chain runner)
         if (data.steps_total !== undefined) {
           attrs["aep.chain.steps_total"] = data.steps_total as number;
           attrs["aep.chain.steps_evaluated"] = data.steps_evaluated as number ?? 0;

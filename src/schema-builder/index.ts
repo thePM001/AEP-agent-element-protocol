@@ -1,4 +1,4 @@
-// Schema Builder - AEP v2.6 Capability 12
+// Schema Builder - AEP v2.75 Capability 12
 // Data-driven schema creation and validation with mathematical foundations
 
 export {
