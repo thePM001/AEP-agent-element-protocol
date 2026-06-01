@@ -6,7 +6,7 @@
 ### Research Paper: https://github.com/thePM001/AEP-research-paper-001
 ### Demo: https://aep.newlisbon.agency
 ### AEP 2.75 Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.75-agent-harness
-### Major new AEP 2.75 features: Policy Builder + Schema Builder (improving mathematical/formal safety of policies/rules inserted into AEP lattices)
+Schema Builder and Policy Builder (since v2.6) extend governance to the governance layer itself.
 
 ---
 
@@ -15,8 +15,8 @@
 ```
 AEP-agent-element-protocol/
   |-- src/                     TypeScript source (32 subsystems)
-  |   |-- schema-builder/      NEW v2.75 -- build schemas from data
-  |   |-- policy-builder/      NEW v2.75 -- build policies with formal validation
+  |   |-- schema-builder/      since v2.6 -- build schemas from data
+  |   |-- policy-builder/      since v2.6 -- build policies with formal validation
   |   |-- evaluation-chain/    15-step evaluation pipeline
   |   |-- aepassist/           Interactive governance assistant
   |   |-- model-gateway/       LLM provider gateway
@@ -146,10 +146,10 @@ npx aep assist kill         # emergency kill switch
 npx aep assist covenant list  # view active covenants
 npx aep assist identity show  # view agent identity
 npx aep assist report json  # generate audit report
-npx aep assist schema build <domain> <data-file>      # NEW v2.75: build schema from data
-npx aep assist schema validate <schema-file>           # NEW v2.75: validate schema
-npx aep assist policy build <schema-file>              # NEW v2.75: build Rego policy
-npx aep assist policy validate <schema-file> <rego-dir>  # NEW v2.75: validate policy coverage
+npx aep assist schema build <domain> <data-file>      # build schema from data
+npx aep assist schema validate <schema-file>           # validate schema
+npx aep assist policy build <schema-file>              # build Rego policy
+npx aep assist policy validate <schema-file> <rego-dir>  # validate policy coverage
 ```
 
 ---
@@ -298,7 +298,7 @@ Every agent action passes through these 15 steps. The chain produces allow or de
 
 ---
 
-## Schema Builder (NEW v2.75)
+## Schema Builder (since v2.6)
 
 Data-driven schema creation and validation. Four mathematical foundations:
 
@@ -321,7 +321,7 @@ npx aep assist schema validate <schema-file>
 
 ---
 
-## Policy Builder (NEW v2.75)
+## Policy Builder (since v2.6)
 
 Data-driven Rego policy generation:
 
@@ -629,7 +629,7 @@ AEP ships with four presets selectable via `/aepassist preset` or `npx aep assis
 74. OTEL exporter
 75. Reliability index (theta)
 
-### Schema and Policy Builder - NEW v2.75 (2)
+### Schema and Policy Builder - since v2.6 (2)
 
 76. Schema Builder (MLE, spectral analysis, permissiveness, modularity)
 77. Policy Builder (invariant detection, Rego generation, coverage tracking)
