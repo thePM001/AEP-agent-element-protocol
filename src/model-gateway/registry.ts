@@ -1,4 +1,4 @@
-// AEP 2.6 - Provider Registry
+// AEP 2.75 - Provider Registry
 // Maps provider names to adapter instances. Thread-safe singleton pattern.
 
 import type { ModelProvider, ProviderAdapter, ModelConfig } from "./types.js";

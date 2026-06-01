@@ -1,4 +1,4 @@
-// AEP 2.6 - Governed Retriever
+// AEP 2.75 - Governed Retriever
 // Retrieves knowledge chunks with covenant scope filtering, double scanning
 // and anti-context-rot ordering (U-shaped attention mitigation).
 

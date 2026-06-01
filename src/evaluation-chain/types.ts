@@ -1,4 +1,4 @@
-// AEP 2.6 - Evaluation Chain Short-Circuit Types
+// AEP 2.75 - Evaluation Chain Short-Circuit Types
 // Formalizes the 15-step evaluation chain activation modes.
 
 export enum StepActivationMode {

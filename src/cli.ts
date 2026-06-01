@@ -1068,7 +1068,7 @@ function handleReliability(ledgerPath: string | undefined): void {
 }
 
 function handleOwasp(): void {
-  console.log(`OWASP Agentic AI Top 10 - AEP 2.6 Mapping
+  console.log(`OWASP Agentic AI Top 10 - AEP 2.75 Mapping
 
   01 Agent Hijacking
      Mitigation: Policy evaluation chain, forbidden patterns, session isolation

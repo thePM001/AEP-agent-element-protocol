@@ -1,4 +1,4 @@
-// AEP 2.6 - Governed Model Gateway
+// AEP 2.75 - Governed Model Gateway
 // Wraps every LLM call with the full AEP evaluation chain:
 // input scanning, prompt optimisation, model dispatch, output scanning,
 // recovery, token/cost tracking, OTEL telemetry and ledger recording.

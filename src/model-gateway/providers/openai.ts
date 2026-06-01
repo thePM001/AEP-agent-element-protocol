@@ -1,4 +1,4 @@
-// AEP 2.6 - OpenAI Provider Adapter
+// AEP 2.75 - OpenAI Provider Adapter
 // Raw fetch() to api.openai.com. Zero SDK dependencies.
 
 import type { ProviderAdapter, ModelConfig, ModelRequest, ModelResponse } from "../types.js";

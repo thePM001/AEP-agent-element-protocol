@@ -1,4 +1,4 @@
-// AEP 2.6 - Precondition Evaluators
+// AEP 2.75 - Precondition Evaluators
 // Each function evaluates whether an active-mode step's precondition is met.
 
 import type { EvalContext } from "./types.js";
