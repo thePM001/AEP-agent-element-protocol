@@ -476,6 +476,72 @@ Real-time streaming governance and temporal authority. Fuses AEP with AG-UI.
 
 ---
 
+## Multi-Agent Collaboration
+
+AEP 2.75 provides native multi-agent coordination patterns built on fleet governance.
+
+### Supervisor Pattern
+One agent governs sub-agents. Supervisor assigns tasks, validates outputs, enforces policies.
+Sub-agents inherit the supervisor's trust ring with monotonic safety - child agents can never
+be less governed than parents.
+
+```typescript
+const supervisor = fleet.createSupervisor("architect", { trustRing: "system" });
+const worker = supervisor.spawn("coder", { trustRing: "user" });
+supervisor.assign(worker, { task: "implement auth module" });
+const result = worker.execute();
+supervisor.validate(result, policyLattice);
+```
+
+### Debate Pattern
+Agents cross-validate each other's outputs. Disagreements escalate to the evidence ledger.
+Majority-vote or consensus-based resolution with configurable quorum thresholds.
+
+### Task Delegation
+Dynamic task assignment with capability matching. Agents advertise capabilities via their
+identity card. The fleet manager routes tasks to the best-matching agent. Delegation chains
+preserve the trust ring hierarchy.
+
+---
+
+## AEP-Graph Orchestration
+
+Stateful persistent workflow engine built on the AEP scene graph with vector-clock causal
+ordering from dynAEP.
+
+### Node Types
+| Type | Purpose |
+|------|---------|
+| Action | Execute agent tools or operations |
+| Decision | Evaluate GAP policies for branching |
+| Wait | Human-in-the-loop approval gates |
+| Parallel | Concurrent execution with join synchronization |
+| Loop | Cyclic execution with iteration bounds and exit conditions |
+
+### Persistence
+All workflow state is persisted to the lattice memory fabric. Recovery from checkpoints
+after restart. Vector clocks ensure causal consistency across distributed execution.
+
+### Features
+- Cyclic execution with bounded loop detection
+- Checkpoints at every node for resume-after-failure
+- Human-in-the-loop branch points with timeout escalation
+- Native retry with configurable backoff (linear, exponential, Fibonacci)
+- Conditional branching via GAP policy evaluation
+
+```typescript
+const graph = new GraphEngine();
+graph.addNode({ id: "start", type: "action", next: ["review"] });
+graph.addNode({ id: "review", type: "decision", next: ["approve", "reject"] });
+graph.addNode({ id: "approve", type: "wait", next: ["deploy"] });
+graph.addNode({ id: "reject", type: "action", next: [] });
+graph.addNode({ id: "deploy", type: "action", next: [] });
+graph.validate(); // checks for cycles and missing references
+graph.execute({ input: context });
+```
+
+---
+
 ## Meta AEP
 
 Higher-order contextual policy validation. Element + context tuple. Cross-field constraints enforce rules that depend on combinations of element properties. State freshness enforcement ensures validation uses current data.
