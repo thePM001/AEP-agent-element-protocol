@@ -1,5 +1,5 @@
 # AEP Reference Policy - Governance
-# Part of the AEP 2.7 Reference Policy Lattice
+# Part of the AEP 2.75 Reference Policy Lattice
 # Gapc-validated, Apache 2.0
 
 address:
