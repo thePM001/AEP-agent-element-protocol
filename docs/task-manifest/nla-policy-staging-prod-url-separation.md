@@ -29,8 +29,8 @@ function getNavUrls() {
 ```
 
 ### Examples of VIOLATIONS
-- `<a href="https://aep.newlisbon.agency/aep-demo">` on a staging page → BLOCKED
-- `<a href="https://tasty.newlisbon.agency/staging/shop">` on production → BLOCKED
+- `<a href="https://aep.newlisbon.agency/aep-demo">` on a staging page -> BLOCKED
+- `<a href="https://tasty.newlisbon.agency/staging/shop">` on production -> BLOCKED
 - CTA buttons, whitepaper links, demo links - ALL must be environment-aware
 
 ### Audit Gate
