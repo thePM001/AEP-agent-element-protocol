@@ -509,7 +509,7 @@ function policyBuild() {
 function policyTemplate() {
     const fs = require('fs');
     const path = require('path');
-    
+    const templateName = args[0] || 'all';
     const targetDir = args[1] || './policies/custom';
     
     if (!fs.existsSync(targetDir)) {
@@ -521,8 +521,6 @@ function policyTemplate() {
         'deployment.yaml': 'version: "2.75"\ndomain: deployment\npatterns:\n  - name: require-approval\n    guard: action == "deploy"\n    constraints:\n      - human_approval: true\n      - allowed_domains: []\n    effect: deny\n    severity: hard\ncovenants:\n  - text: "Deployment requires human approval"\n    severity: Hard\n',
         'writing.yaml': 'version: "2.75"\ndomain: writing\npatterns:\n  - name: block-em-dashes\n    guard: output contains U+2014\n    effect: deny\n    severity: hard\ncovenants:\n  - text: "Zero em-dashes in output"\n    severity: Hard\n',
     };
-    
-    
     
     if (templateName === 'all') {
         for (const [name, content] of Object.entries(templates)) {
@@ -538,7 +536,6 @@ function policyTemplate() {
         console.log('Available: all, security, deployment, writing');
     }
 }
-
 const commands = {
     doctor,
     verify,
