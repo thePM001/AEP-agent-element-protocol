@@ -509,7 +509,8 @@ function policyBuild() {
 function policyTemplate() {
     const fs = require('fs');
     const path = require('path');
-    const targetDir = args[0] || './policies/custom';
+    
+    const targetDir = args[1] || './policies/custom';
     
     if (!fs.existsSync(targetDir)) {
         fs.mkdirSync(targetDir, { recursive: true });
@@ -521,7 +522,7 @@ function policyTemplate() {
         'writing.yaml': 'version: "2.75"\ndomain: writing\npatterns:\n  - name: block-em-dashes\n    guard: output contains U+2014\n    effect: deny\n    severity: hard\ncovenants:\n  - text: "Zero em-dashes in output"\n    severity: Hard\n',
     };
     
-    const templateName = args[0] || 'all';
+    
     
     if (templateName === 'all') {
         for (const [name, content] of Object.entries(templates)) {
