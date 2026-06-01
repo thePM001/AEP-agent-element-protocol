@@ -120,7 +120,7 @@ Options:
 }
 
 function version(): void {
-  console.log("aep 2.5.0");
+  console.log("aep 2.75.0");
 }
 
 async function main(): Promise<void> {
@@ -486,7 +486,7 @@ function handleProxy(args: string[]): void {
             result: {
               protocolVersion: "2024-11-05",
               capabilities: { tools: {} },
-              serverInfo: { name: "aep", version: "2.6.0" },
+              serverInfo: { name: "aep", version: "2.75.0" },
             },
           }) + "\n");
         } else if (msg.method === "notifications/initialized") {
@@ -586,7 +586,7 @@ function handleMCPMessage(msg: JSONRPCMessage, gateway: AgentGateway): Record<st
       result: {
         protocolVersion: "2024-11-05",
         capabilities: { tools: {} },
-        serverInfo: { name: "aep", version: "2.6.0" },
+        serverInfo: { name: "aep", version: "2.75.0" },
       },
     };
   }
