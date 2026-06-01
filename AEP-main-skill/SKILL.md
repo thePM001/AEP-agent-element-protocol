@@ -483,6 +483,19 @@ Portable verification artifacts (`.aep-proof.json`). Contains agent identity, co
 
 Single numeric measure of session quality computed from: trust score, drift score, violation rate, ML score (optional) and session duration. Theta is included in proof bundles for external auditing.
 
+
+## Data Permission System
+
+Every agent operation is checked against data permissions:
+- `read` - agent can read files at path
+- `write` - agent can write files at path
+- `delete` - agent can delete files at path
+- `network_connect` - agent can connect to host:port
+- `env_read` - agent can read environment variable
+
+Permissions escalate with trust ring (sandbox < user < system < enterprise).
+Unknown actions are denied by default.
+
 ## Schema Builder (v2.75)
 
 Data-driven schema validation using four mathematical techniques:
