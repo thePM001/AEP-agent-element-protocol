@@ -1,4 +1,4 @@
-# AEP 2.7 Reference Policy Lattice
+# AEP 2.75 Reference Policy Lattice
 
 This is the official AEP reference policy lattice. It provides baseline security, deployment, writing and governance policies that serve as a template for all AEP implementations.
 
