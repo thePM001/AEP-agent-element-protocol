@@ -1,12 +1,13 @@
 # AEP - Agent Element Protocol (Deterministic Adjudication Lattices)
 
-### Version 2.6 - 1 May 2026
+### Version 2.75 - 1 June 2026
 ### Author: thePM_001 (https://x.com/thePM_001)
 ### Licence: Apache-2.0
 ### Research Paper: https://github.com/thePM001/AEP-research-paper-001
 ### Demo: https://aep.newlisbon.agency
+### AEP 2.75 Open Protocol: https://github.com/thePM001/NLA-AEP-2.75-open-protocol
 ### AEP 2.6 Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.6-agent-harness
-### Major new AEP 2.6 features: Policy Builder + Schema Builder (improving mathematical/formal safety of policies/rules inserted into AEP lattices)
+### Now 80 Features. The Most Unified Agent Control Protocol. Nothing Else Needed.
 
 ---
 
@@ -40,11 +41,21 @@ AEP-agent-element-protocol/
 
 ---
 
-### Now 77 Features. One Ultimate AI Agent Control Protocol.
+### Now 80 Features. One Ultimate AI Agent Control Protocol.
 
-![AEP 2.6 - 77 Features](docs/images/feature-grid.png)
+![AEP 2.75 - 80 Features](docs/images/feature-grid.png)
 
 ## [Explore the full feature grid at aep.newlisbon.agency](https://aep.newlisbon.agency)
+
+---
+
+## NLA Task Manifest Standard v1.0
+
+Every task executed by NLA agents MUST declare a task manifest. See `docs/task-manifest/` in the [AEP 2.75 Open Protocol repo](https://github.com/thePM001/NLA-AEP-2.75-open-protocol). 
+
+```
+pre_task (Rego validate) -> execute -> post_task (verify completion) -> DONE
+```
 
 ---
 
@@ -125,7 +136,7 @@ Every agent action passes through a deterministic 15-step evaluation chain. The 
 
 The mathematical foundation is the Deterministic Adjudication Lattice (DAL). A population of LLM candidate outputs is filtered through hierarchical verification predicates. The convergence theorem proves zero-defect selection with population size logarithmic in the inverse failure probability. Lattice memory stores every validated output as an immutable record. Known good proposals match against attractors and skip cold-path validation.
 
-AEP v2.6 extends governance to the governance layer itself. The Schema Builder validates schema definitions using Maximum Likelihood Estimation (MLE), graph spectral analysis (Fiedler algebraic connectivity), permissiveness scoring (acceptance distribution entropy) and Louvain community detection. The Policy Builder detects domain invariants from data and generates Rego rules with coverage tracking. The protocol now validates its own constitutional layer with the same mathematical rigour it applies to agent outputs.
+AEP 2.75 extends governance to the governance layer itself. The Schema Builder validates schema definitions using Maximum Likelihood Estimation (MLE), graph spectral analysis (Fiedler algebraic connectivity), permissiveness scoring (acceptance distribution entropy) and Louvain community detection. The Policy Builder detects domain invariants from data and generates Rego rules with coverage tracking. The protocol now validates its own constitutional layer with the same mathematical rigour it applies to agent outputs.
 
 ---
 
@@ -426,7 +437,7 @@ Higher-order contextual policy validation. Element + context tuple. Cross-field 
 
 **Proof bundles.** Portable `.aep-proof.json` files containing agent identity, covenant, trust score, ring, drift score, reliability index (theta), Merkle root and Ed25519 signature. ML-DSA-65 post-quantum signatures available. RFC 3161 timestamp authority tokens. Offline signing for air-gapped environments.
 
-**OWASP coverage.** Every OWASP Agentic AI Top 10 risk is addressed by specific AEP 2.6 defence mechanisms. See `docs/OWASP-MAPPING.md`.
+**OWASP coverage.** Every OWASP Agentic AI Top 10 risk is addressed by specific AEP 2.75 defence mechanisms. See `docs/OWASP-MAPPING.md`.
 
 **Compliance targets.** EU AI Act transparency requirements, SOC 2 audit trail requirements.
 
