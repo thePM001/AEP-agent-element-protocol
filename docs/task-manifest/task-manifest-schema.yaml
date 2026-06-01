@@ -1,4 +1,4 @@
-# TASK-MANIFEST/1.0 — NLA Task Manifest Standard
+# TASK-MANIFEST/1.0  -  NLA Task Manifest Standard
 # Every task executed by any NLA agent MUST declare and validate against this manifest.
 # Gapc-validated through GAP document: nla-task-manifest-standard.gap
 
