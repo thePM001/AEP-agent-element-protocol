@@ -16,8 +16,8 @@
 ```
 AEP-agent-element-protocol/
   |-- src/                     TypeScript source (32 subsystems)
-  |   |-- schema-builder/      NEW v2.6 -- build schemas from data
-  |   |-- policy-builder/      NEW v2.6 -- build policies with formal validation
+  |   |-- schema-builder/      added in v2.6 -- build schemas from data
+  |   |-- policy-builder/      added in v2.6 -- build policies with formal validation
   |   |-- evaluation-chain/    15-step evaluation pipeline
   |   |-- aepassist/           Interactive governance assistant
   |   |-- model-gateway/       LLM provider gateway
@@ -26,17 +26,17 @@ AEP-agent-element-protocol/
   |   |-- ...                  24 more subsystems
   |-- config/                  Registry, theme, scene graph (YAML/JSON)
   |-- policies/                Unified policy files (.gap, .rego, .policy)
-  |-- harness/                 AEP 2.75 Agent Harness
-  |-- agent-control-extreme/   Production governance infrastructure
-  |   |-- profiles/            GAP-based agent capability profiles
-  |   |-- hub-basic-legacy/    Legacy basic control hub (reference)
+  |-- harness/                 NEW AEP 2.75 Agent Harness
+  |-- agent-control-extreme/   NEW Production governance infrastructure
+  |   |-- profiles/            NEW GAP-based agent capability profiles
+  |   |-- hub-basic-legacy/    Basic control hub (reference)
   |   |-- error-registry-example/
   |-- hermes-governance-plugin/  Agent governance plugin (Apache 2.0)
   |-- sdk/                     Protocol SDK
   |-- docs/                    Specifications, migration guides, OWASP mapping
   |-- examples/                With-memory and with-resolver examples
   |-- tests/                   Test suites (36 subsystems)
-  |-- AEP-main-skill/          Agent skill documentation
+  |-- AEP-main-skill/          NEW Agent skill documentation
 ```
 
 ---
@@ -49,9 +49,9 @@ AEP-agent-element-protocol/
 
 ---
 
-## NLA Task Manifest Standard v1.0
+## NEW AEP Task Manifest Standard v1.0
 
-Every task executed by NLA agents MUST declare a task manifest. See `docs/task-manifest/` in the [AEP 2.75 Open Protocol repo](https://github.com/thePM001/NLA-AEP-2.75-open-protocol). 
+Every task executed by agents MUST declare a task manifest. See `docs/task-manifest/` in the [AEP 2.75 Open Protocol repo](https://github.com/thePM001/NLA-AEP-2.75-open-protocol). 
 
 ```
 pre_task (Rego validate) -> execute -> post_task (verify completion) -> DONE
