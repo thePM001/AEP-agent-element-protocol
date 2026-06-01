@@ -21,7 +21,7 @@ Repository: https://github.com/thePM001/AEP-agent-element-protocol
 
 Every AEP-compliant agent must register via the harness before any work:
 ```bash
-nla-harness boot <agent_name> <type> <version>
+aep harness register <agent_name> <type> <version>
 ```
 
 ## Capability Profiles
