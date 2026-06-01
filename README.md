@@ -28,9 +28,7 @@ AEP-agent-element-protocol/
   |-- harness/                 AEP 2.6 Agent Harness
   |-- agent-control-extreme/   Production governance infrastructure
   |   |-- profiles/            GAP-based agent capability profiles
-  |   |-- hub-basic-legacy/    Legacy basic control hub (reference)
   |   |-- error-registry-example/
-  |-- hermes-governance-plugin/  Agent governance plugin (Apache 2.0)
   |-- sdk/                     Protocol SDK
   |-- docs/                    Specifications, migration guides, OWASP mapping
   |-- examples/                With-memory and with-resolver examples
