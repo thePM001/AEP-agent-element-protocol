@@ -496,7 +496,7 @@ Every agent operation is checked against data permissions:
 Permissions escalate with trust ring (sandbox < user < system < enterprise).
 Unknown actions are denied by default.
 
-## Schema Builder (v2.75)
+## Schema Builder (since v2.6)
 
 Data-driven schema validation using four mathematical techniques:
 
@@ -507,7 +507,7 @@ Data-driven schema validation using four mathematical techniques:
 
 Composite score: `C = w1*(1-D) + w2*spectralNorm + w3*(1-permNorm) + w4*Q`. Decision: pass >= 0.8, review 0.5-0.8, reject < 0.5.
 
-## Policy Builder (v2.75)
+## Policy Builder (since v2.6)
 
 Data-driven Rego policy generation:
 
