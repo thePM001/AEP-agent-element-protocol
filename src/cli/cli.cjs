@@ -390,11 +390,55 @@ function checkAdversarial(input, category) {
 }
 
 // ==== dispatch =========================================================
+
+function policyInit() {
+    const targetDir = args[0] || './policies';
+    const fs = require('fs');
+    const path = require('path');
+    
+    console.log('AEP Policy Lattice - Initializing...');
+    console.log('Target: ' + targetDir);
+    console.log('');
+    
+    const dirs = ['reference', 'custom'];
+    for (const dir of dirs) {
+        const fullPath = path.join(targetDir, dir);
+        if (!fs.existsSync(fullPath)) {
+            fs.mkdirSync(fullPath, { recursive: true });
+            console.log('  Created: ' + fullPath);
+        }
+    }
+    
+    const refDir = path.join(__dirname, '..', '..', 'policies', 'reference');
+    const destRefDir = path.join(targetDir, 'reference');
+    const policies = ['security.gap', 'deployment.gap', 'writing.gap', 'governance.gap', 'README.md'];
+    
+    for (const policy of policies) {
+        const src = path.join(refDir, policy);
+        const dest = path.join(destRefDir, policy);
+        if (fs.existsSync(src) && !fs.existsSync(dest)) {
+            fs.copyFileSync(src, dest);
+            console.log('  Copied: ' + policy);
+        }
+    }
+    
+    const latticeConfig = path.join(targetDir, 'lattice.yaml');
+    if (!fs.existsSync(latticeConfig)) {
+        const config = 'version: "2.75"\ndomains:\n  - security\n  - deployment\n  - writing\n  - governance\n  - custom\ntrust_ring: system\ncomposition: sequence\n';
+        fs.writeFileSync(latticeConfig, config);
+        console.log('  Created: lattice.yaml');
+    }
+    
+    console.log('');
+    console.log('Policy lattice initialized. Add your policies to policies/custom/');
+    console.log('Validate with: aep lint-policy policies/custom/your-policy.yaml');
+}
+
 const commands = {
     doctor,
     verify,
     'lint-policy': lintPolicy,
-    'red-team': redTeam,
+    'red-team': redTeam, 'policy-init': policyInit, 'init-policy': policyInit,
 };
 
 if (commands[command]) {
@@ -406,6 +450,8 @@ if (commands[command]) {
     console.log(`  doctor        Health check all src/ subsystems`);
     console.log(`  verify        Scan file for forbidden Unicode (U+2014, U+2013, U+2500)`);
     console.log(`  lint-policy   Validate GAP policy via gapc (POST :8405/api/validate)`);
-    console.log(`  red-team      Generate and test adversarial inputs`);
+    console.log(`  red-team      Generate and test adversarial inputs
+  policy-init   Initialize a policy lattice with reference policies
+  init-policy   Same as policy-init`);
     process.exit(1);
 }
