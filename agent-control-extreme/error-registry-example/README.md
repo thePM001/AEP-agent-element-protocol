@@ -18,10 +18,10 @@ Agent produces output
        ▼
   registry_cli.py report <output_text>
        │
-       ├── check_text_colors()     ← example: low-contrast text
-       ├── check_forbidden_chars() ← example: unwanted unicode
-       ├── check_word_list()       ← example: banned terms
-       └── check_url_patterns()    ← example: internal URL leaks
+       ├-- check_text_colors()     ← example: low-contrast text
+       ├-- check_forbidden_chars() ← example: unwanted unicode
+       ├-- check_word_list()       ← example: banned terms
+       └-- check_url_patterns()    ← example: internal URL leaks
        │
        ▼
   registry.json  ←  all findings in one place, queryable

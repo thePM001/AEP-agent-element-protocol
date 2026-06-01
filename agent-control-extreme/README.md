@@ -14,22 +14,22 @@ deployment gating, validation, and observability hooks.
 
 ```
 agent-control-extreme/
-├── README.md                       # This file
-├── bootstrap/
-│   ├── agent-bootstrap.sh          # Boot script with locking + backoff
-│   ├── agent-harness.sh            # Master harness (CORE commands)
-│   └── agent-validate.sh           # Validation runner
-├── policies/ (symlink to ../agent-control-hub/policies)
-│   └── *.policy                    # Shared policies
-├── registry/                       # Session + component registries
-│   ├── component-registry.md
-│   └── agent-sessions.json
-├── config/
-│   ├── control-hub.env             # Environment template
-│   └── deploy-checks.sh            # Deployment gate (WHAT/WHY/IMPACT/ROLLBACK/DURATION)
-└── services/
-    ├── docker-compose.yml          # Full stack with optional GAP
-    └── gap-hermes-integration.md   # How GAP can enhance governance (reference doc)
+├-- README.md                       # This file
+├-- bootstrap/
+│   ├-- agent-bootstrap.sh          # Boot script with locking + backoff
+│   ├-- agent-harness.sh            # Master harness (CORE commands)
+│   └-- agent-validate.sh           # Validation runner
+├-- policies/ (symlink to ../agent-control-hub/policies)
+│   └-- *.policy                    # Shared policies
+├-- registry/                       # Session + component registries
+│   ├-- component-registry.md
+│   └-- agent-sessions.json
+├-- config/
+│   ├-- control-hub.env             # Environment template
+│   └-- deploy-checks.sh            # Deployment gate (WHAT/WHY/IMPACT/ROLLBACK/DURATION)
+└-- services/
+    ├-- docker-compose.yml          # Full stack with optional GAP
+    └-- gap-hermes-integration.md   # How GAP can enhance governance (reference doc)
 ```
 
 ## Core Commands (Zero Dependencies)

@@ -25,7 +25,7 @@ Hermes Agent (LLM)
   │ decides: rm -rf /var/www && git pull
   │
   ▼
-GAP Runtime (governance check)  ── BLOCKED: violates deployment policy
+GAP Runtime (governance check)  -- BLOCKED: violates deployment policy
   │
   ▼
 Hermes: "Cannot proceed - GAP flagged deployment policy violation"
@@ -45,28 +45,28 @@ Rust runtime via PyO3 (Python bindings).
 
 ```
 Hermes Agent process
-├── LLM (conversation loop)
-├── Tool Dispatcher
-│   ├── terminal tool
-│   ├── file tool (read/write/patch)
-│   ├── web tool
-│   └── ...
-└── GAP Plugin (NEW)          <-- intercepts EVERY tool call
-    ├── validate action        Post /v1/validate to GAP server
-    ├── scan output            Post /v1/scan to GAP server
-    └── log proof              Post /v1/execute with proof chain
+├-- LLM (conversation loop)
+├-- Tool Dispatcher
+│   ├-- terminal tool
+│   ├-- file tool (read/write/patch)
+│   ├-- web tool
+│   └-- ...
+└-- GAP Plugin (NEW)          <-- intercepts EVERY tool call
+    ├-- validate action        Post /v1/validate to GAP server
+    ├-- scan output            Post /v1/scan to GAP server
+    └-- log proof              Post /v1/execute with proof chain
 ```
 
 **Plugin structure:**
 
 ```
 ~/.hermes/plugins/gap-governance/
-├── __init__.py
-├── plugin.py           # Hermes plugin entry point
-├── client.py           # HTTP client to GAP server (or PyO3 direct)
-├── policies/           # Cached policy bundle from control hub
-│   └── nla-policies.yaml
-└── README.md
+├-- __init__.py
+├-- plugin.py           # Hermes plugin entry point
+├-- client.py           # HTTP client to GAP server (or PyO3 direct)
+├-- policies/           # Cached policy bundle from control hub
+│   └-- nla-policies.yaml
+└-- README.md
 ```
 
 **How it works:**
@@ -172,16 +172,16 @@ proxy.
 ```
 Hermes Agent
   │
-  ├── MCP Client
+  ├-- MCP Client
   │     │
-  │     ├── ► GAP MCP Server (NEW)
+  │     ├-- ► GAP MCP Server (NEW)
   │     │     │  validates every request
   │     │     ▼
-  │     │     └── GAP Runtime (Rust, port 3200)
+  │     │     └-- GAP Runtime (Rust, port 3200)
   │     │
-  │     └── ► Other MCP servers (filesystem, database, etc.)
+  │     └-- ► Other MCP servers (filesystem, database, etc.)
   │
-  └── Native tools (terminal, web, etc.)
+  └-- Native tools (terminal, web, etc.)
         │  each call intercepted by GAP MCP
         ▼
      GAP validates → allow/deny
@@ -199,11 +199,11 @@ built-in tool dispatch. This is a code modification to `hermes-agent/agent/`.
 
 ```
 hermes-agent/agent/
-├── tool_dispatch.py     # Main tool dispatcher
-│   └── wrap_tools()     <-- NEW: wraps every handler with GAP validation
-├── gap_bridge.py        <-- NEW: GAP client (HTTP or PyO3)
-├── policies/            <-- NEW: cached policies
-└── ...
+├-- tool_dispatch.py     # Main tool dispatcher
+│   └-- wrap_tools()     <-- NEW: wraps every handler with GAP validation
+├-- gap_bridge.py        <-- NEW: GAP client (HTTP or PyO3)
+├-- policies/            <-- NEW: cached policies
+└-- ...
 ```
 
 **Implementation:**
@@ -399,32 +399,32 @@ Run GAP as:
 3. **A cron-based policy sync** - pulls policy updates from the control hub
 
 ```
-┌────────────────────────────────────────────────────────────┐
+┌------------------------------------------------------------┐
 │                    VPS / Container                          │
 │                                                             │
-│  ┌──────────────┐   HTTP    ┌──────────────────┐           │
-│  │  Hermes      │◄─────────►│  GAP MCP Server   │           │
+│  ┌--------------┐   HTTP    ┌------------------┐           │
+│  │  Hermes      │◄---------►│  GAP MCP Server   │           │
 │  │  Agent       │  validate │  (Python proxy)    │           │
 │  │  (Python)    │  scan     │                     │           │
-│  └──────┬───────┘  execute  │  port 3201          │           │
-│         │                   └─────────┬───────────┘           │
+│  └------┬-------┘  execute  │  port 3201          │           │
+│         │                   └---------┬-----------┘           │
 │         │                             │                       │
 │         │                    HTTP     ▼                       │
-│         │                   ┌──────────────────┐              │
-│         └──────────────────►│  GAP Runtime      │             │
+│         │                   ┌------------------┐              │
+│         └------------------►│  GAP Runtime      │             │
 │         tool calls          │  (Rust, port 3200)│              │
 │         (via MCP)           │  15-step lattice  │             │
 │                              │  11 scanners      │             │
 │                              │  ProofChain       │             │
 │                              │  Covenant engine   │            │
-│                              └──────────────────┘              │
+│                              └------------------┘              │
 │                                        │                       │
 │                                        ▼                       │
-│                              ┌──────────────────┐              │
+│                              ┌------------------┐              │
 │                              │  Control Hub      │             │
 │                              │  (Git, policies)  │             │
-│                              └──────────────────┘              │
-└────────────────────────────────────────────────────────────┘
+│                              └------------------┘              │
+└------------------------------------------------------------┘
 ```
 
 ---
@@ -441,17 +441,17 @@ User: "Deploy the supervision center to staging"
 
                  │
                  ▼
-     ┌──────────────────────┐
+     ┌----------------------┐
      │ Stage 1: Intent       │
      │ Extraction             │
      │                        │
      │ LLM (Hermes) parses    │
      │ natural language       │
      │ into structured intent │
-     └──────────┬───────────┘
+     └----------┬-----------┘
                 │
                 ▼
-     ┌──────────────────────┐
+     ┌----------------------┐
      │ Stage 2: GAP          │
      │ Instruction Building   │
      │                        │
@@ -464,10 +464,10 @@ User: "Deploy the supervision center to staging"
      │ - pattern/output: [ports, paths]
      │ - action steps: [build, deploy, verify]
      │ - metadata: [scanners, covenants, proof]
-     └──────────┬───────────┘
+     └----------┬-----------┘
                 │
                 ▼
-     ┌──────────────────────┐
+     ┌----------------------┐
      │ Stage 3: GAP          │
      │ Governance Validation │
      │                        │
@@ -479,12 +479,12 @@ User: "Deploy the supervision center to staging"
      │   → Trust score        │
      │                        │
      │ Result: ALLOW / DENY   │
-     └──────────┬───────────┘
+     └----------┬-----------┘
                 │
          ALLOW  │  DENY
                 │
                 ▼
-     ┌──────────────────────┐
+     ┌----------------------┐
      │ Stage 4: Execution    │
      │                        │
      │ Hermes runs tools      │
@@ -492,17 +492,17 @@ User: "Deploy the supervision center to staging"
      │                        │
      │ Each tool call scanned │
      │ by GAP post-hoc        │
-     └──────────┬───────────┘
+     └----------┬-----------┘
                 │
                 ▼
-     ┌──────────────────────┐
+     ┌----------------------┐
      │ Stage 5: Proof Chain  │
      │                        │
      │ POST /v1/execute       │
      │   → ProofChain logged  │
      │   → Audit trail        │
      │   → Git commit         │
-     └──────────────────────┘
+     └----------------------┘
 ```
 
 ### The English->GAP Compiler

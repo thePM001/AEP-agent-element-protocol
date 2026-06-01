@@ -10,6 +10,36 @@
 
 ---
 
+## Repository Structure
+
+```
+AEP-agent-element-protocol/
+  |-- src/                     TypeScript source (32 subsystems)
+  |   |-- schema-builder/      NEW v2.6 -- build schemas from data
+  |   |-- policy-builder/      NEW v2.6 -- build policies with formal validation
+  |   |-- evaluation-chain/    15-step evaluation pipeline
+  |   |-- aepassist/           Interactive governance assistant
+  |   |-- model-gateway/       LLM provider gateway
+  |   |-- streaming/           Real-time AG-UI validation
+  |   |-- subprotocols/        Commerce, identity, fleet subprotocols
+  |   |-- ...                  24 more subsystems
+  |-- config/                  Registry, theme, scene graph (YAML/JSON)
+  |-- policies/                Unified policy files (.gap, .rego, .policy)
+  |-- harness/                 AEP 2.6 Agent Harness
+  |-- agent-control-extreme/   Production governance infrastructure
+  |   |-- profiles/            GAP-based agent capability profiles
+  |   |-- hub-basic-legacy/    Legacy basic control hub (reference)
+  |   |-- error-registry-example/
+  |-- hermes-governance-plugin/  Agent governance plugin (Apache 2.0)
+  |-- sdk/                     Protocol SDK
+  |-- docs/                    Specifications, migration guides, OWASP mapping
+  |-- examples/                With-memory and with-resolver examples
+  |-- tests/                   Test suites (36 subsystems)
+  |-- AEP-main-skill/          Agent skill documentation
+```
+
+---
+
 ### Now 77 Features. One Ultimate AI Agent Control Protocol.
 
 ![AEP 2.6 - 77 Features](docs/images/feature-grid.png)
@@ -587,6 +617,49 @@ To adopt v2.6 features:
 6. All v2.5 features remain unchanged.
 
 ---
+
+## Policy Lattice Formation
+
+AEP policies form a lattice - a partially ordered set where every pair of elements has a unique supremum (join) and infimum (meet). This lattice structure guarantees that policies compose correctly without conflicts.
+
+### Lattice Structure
+
+```
+SYSTEM (most permissive - top of lattice)
+  |-- governance (deployment, code access, browser)
+  |     |-- deployment-gate (human approval)
+  |     |-- code-access (GAP-first, hyperlattice)
+  |     |-- browser-harness (Firecracker sandbox)
+  |-- writing (output conventions)
+  |     |-- em-dash-forbidden
+  |     |-- gray-text-forbidden
+  |     |-- oxford-comma-forbidden
+  |-- security (verification, scanning)
+        |-- violation-reporting
+        |-- anti-stub
+        |-- harness-mandatory
+
+SANDBOX (most restrictive - bottom of lattice)
+```
+
+### Forming a Correct Policy Lattice
+
+1. **Define domain**: Each policy belongs to exactly one domain (governance, writing, security, etc.)
+2. **Establish ordering**: Policies within a domain form a chain from most permissive to most restrictive
+3. **Verify joins**: Every pair of policies must have a least upper bound (join) - the combined restriction
+4. **Verify meets**: Every pair must have a greatest lower bound (meet) - the shared permission
+5. **Validate with GAP**: All policies must be gapc-validated (290 GBNF rules, zero structural errors)
+
+### Policy Files
+
+All policies are stored in `policies/` as GAP documents. See `agent-control-extreme/` for the enforcement infrastructure.
+
+### Composition Rules
+
+- Policies compose via conjunction: all must pass for action to be allowed
+- Domain-level policies override lower-level defaults
+- Trust ring determines which policies apply (sandbox < user < system < enterprise)
+- Policy violations are Hard (block deployment) or Soft (warn only)
 
 ## Licence
 

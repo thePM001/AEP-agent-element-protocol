@@ -37,11 +37,11 @@ bash install.sh
 
 ```
 hermes_governance/
-├── __init__.py          # Module exports
-├── plugin.py            # Hermes plugin entry + monkey-patch dispatch
-├── checks.py            # Configurable policy checks (embedded)
-├── deploy_gate.py       # Deployment gate enforcement (configurable)
-└── install.sh           # One-command install
+├-- __init__.py          # Module exports
+├-- plugin.py            # Hermes plugin entry + monkey-patch dispatch
+├-- checks.py            # Configurable policy checks (embedded)
+├-- deploy_gate.py       # Deployment gate enforcement (configurable)
+└-- install.sh           # One-command install
 ```
 
 ## Configuration

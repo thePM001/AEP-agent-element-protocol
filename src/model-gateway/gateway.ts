@@ -460,7 +460,7 @@ export class GovernedModelGateway {
     return this.sessionId;
   }
 
-  // ── Private Helpers ──────────────────────────────────────────────
+  // -- Private Helpers ----------------------------------------------
 
   private computeCost(response: ModelResponse): GovernedModelResponse["cost"] {
     if (!this.costTracking) {

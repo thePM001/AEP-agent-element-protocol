@@ -13,7 +13,7 @@ import { ScannerPipeline } from "../../src/scanners/pipeline.js";
 import { RecoveryEngine } from "../../src/recovery/engine.js";
 import type { Finding } from "../../src/scanners/types.js";
 
-// ── Helpers ────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------
 
 function makePolicy(overrides?: Partial<Policy>): Policy {
   return {
@@ -82,7 +82,7 @@ function makeRegistry(adapter: ProviderAdapter): ProviderRegistry {
   return registry;
 }
 
-// ── Tests ──────────────────────────────────────────────────────────────
+// -- Tests --------------------------------------------------------------
 
 describe("GovernedModelGateway", () => {
   describe("call()", () => {
