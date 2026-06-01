@@ -636,18 +636,6 @@ AEP ships with four presets selectable via `/aepassist preset` or `npx aep assis
 
 ---
 
-## Migration from v2.5
-
-AEP v2.6 is backwards-compatible with v2.5. All existing config files, policies, sessions, ledgers and SDK modules continue to work without modification.
-
-To adopt v2.6 features:
-
-1. Update `version` to `"2.6"` in policy files.
-2. For Schema Builder: use `SchemaBuilder` class or `npx aep assist schema` commands.
-3. For Policy Builder: use `PolicyBuilder` class or `npx aep assist policy` commands.
-4. For Schema Builder via gateway: call `gateway.validateSchemaProposal()`.
-5. For Policy Builder via gateway: call `gateway.validatePolicyProposal()`.
-6. All v2.5 features remain unchanged.
 
 ---
 
