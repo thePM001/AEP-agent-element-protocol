@@ -1,4 +1,4 @@
-// AEP 2.6 - Temporal Governance Scanner
+// AEP 2.75 - Temporal Governance Scanner
 // Enforces time-related constraints on agent output.
 
 import type { Finding, ScannerConfig, TemporalScannerConfig } from "./types.js";

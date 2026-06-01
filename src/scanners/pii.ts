@@ -1,4 +1,4 @@
-// AEP 2.6 - PII Scanner
+// AEP 2.75 - PII Scanner
 // Detects personally identifiable information in agent output.
 // Regex-based detection - no LLM needed.
 

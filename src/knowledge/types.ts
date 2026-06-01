@@ -1,4 +1,4 @@
-// AEP 2.6 - Lattice-Governed Knowledge Base Types
+// AEP 2.75 - Lattice-Governed Knowledge Base Types
 // Scanner-validated ingestion, covenant-scoped retrieval, anti-context-rot ordering.
 
 import type { ScanResult } from "../scanners/types.js";

@@ -1,4 +1,4 @@
-// AEP 2.6 - Knowledge Ingestor
+// AEP 2.75 - Knowledge Ingestor
 // Splits content into chunks and runs each through the scanner pipeline.
 // Hard failures are rejected, soft failures are flagged, clean chunks are validated.
 
