@@ -9,7 +9,6 @@ Repository: https://github.com/thePM001/AEP-agent-element-protocol
 
 - CLI Power Tools: aep doctor, verify, lint-policy, red-team scan
 - Reference Policy Lattice: baseline security, deployment, writing, governance policies
-- Privilege Rings: 4-ring execution model (kernel, system, user, sandbox)
 - MCP Security Gateway: tool poisoning, typosquatting, drift detection
 - Merkle-Tree Audit: tamper-evident decision records with Merkle proofs
 - Intercept Proxy: one-command MCP proxy with policy-based tool blocking
