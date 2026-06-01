@@ -26,7 +26,7 @@ export const promptInjectionScanner: Scanner = {
           scanner: "prompt-injection",
           rule: pattern.name,
           category: pattern.category,
-          severity: "high",
+          severity: "hard",
           match: match[0],
           index: match.index,
           message: `Prompt injection detected: ${pattern.name}`,
