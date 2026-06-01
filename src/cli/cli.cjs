@@ -509,7 +509,7 @@ function policyBuild() {
 function policyTemplate() {
     const fs = require('fs');
     const path = require('path');
-    const templateName = args[0] || 'all';
+    let templateName = args[0] || 'all';
     const targetDir = args[1] || './policies/custom';
     
     if (!fs.existsSync(targetDir)) {
