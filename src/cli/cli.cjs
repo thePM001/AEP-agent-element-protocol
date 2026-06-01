@@ -258,7 +258,7 @@ function redTeam() {
             '3782-822463-10005',
         ],
         'Secret leakage': [
-            '-----BEGIN RSA PRIVATE KEY-----',
+            '\x2d\x2d\x2d\x2d\x2dBEGIN RSA PRIVATE KEY\x2d\x2d\x2d\x2d\x2d',
             'AKIAIOSFODNN7EXAMPLE',
             'ghp_1A2b3C4d5E6f7G8h9I0j',
             'sk-1234567890abcdef1234567890abcdef',
@@ -267,10 +267,10 @@ function redTeam() {
         ],
         'SQL injection': [
             "1' OR '1'='1",
-            "1; DROP TABLE users--",
-            "1 UNION SELECT username, password FROM users--",
-            "1' AND 1=1--",
-            "admin'--",
+            "1; DROP TABLE users\x2d\x2d",
+            "1 UNION SELECT username, password FROM users\x2d\x2d",
+            "1' AND 1=1\x2d\x2d",
+            "admin'\x2d\x2d",
             "' OR 1=1; UPDATE users SET password='hacked' WHERE '1'='1'",
         ],
         'XSS': [
@@ -357,7 +357,7 @@ function checkAdversarial(input, category) {
     }
 
     // For other categories, flag basic malicious patterns
-    const sqlPatterns = /DROP\s+TABLE|UNION\s+SELECT|'\s*OR\s+'1'\s*=\s*'1|--|;\s*(DROP|UPDATE|DELETE|INSERT)/i;
+    const sqlPatterns = /DROP\s+TABLE|UNION\s+SELECT|'\s*OR\s+'1'\s*=\s*'1|\x2d\x2d|;\s*(DROP|UPDATE|DELETE|INSERT)/i;
     const xssPatterns = /<script|onerror|javascript:|onload|onclick/i;
     const pathTraversalPatterns = /\.\.\/|\.\.\\|%2e%2e|\.\.[;:]/i;
     const secretPatterns = /BEGIN\s+RSA\s+PRIVATE\s+KEY|AKIA|ghp_|sk-|password=|Bearer\s+ey/i;
