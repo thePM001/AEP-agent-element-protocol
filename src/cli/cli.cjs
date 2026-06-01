@@ -529,6 +529,10 @@ function policyTemplate() {
         }
         console.log('Templates created in ' + targetDir);
     } else if (templates[templateName]) {
+        // exact match
+    } else if (templates[templateName + '.yaml']) {
+        templateName = templateName + '.yaml';
+    
         fs.writeFileSync(path.join(targetDir, templateName), templates[templateName]);
         console.log('Created: ' + templateName);
     } else {
