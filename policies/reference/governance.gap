@@ -48,7 +48,7 @@ composition:
 
 metadata:
   provenance: AEP Reference Policy Lattice
-  version: 2.7.0
+  version: 2.75.0
   stability: stable
   trust_ring: system
   covenants:
