@@ -52,7 +52,6 @@ AEP-agent-element-protocol/
 - **Multi-Language Policies**: OPA Rego and Cedar transpilers alongside GAP
 - **MCP Security Gateway**: Tool poisoning, typosquatting and drift detection
 - **Merkle-Tree Audit**: Tamper-evident decision records with Merkle proofs
-- **Privilege Rings**: 4-ring execution model (kernel, system, user, sandbox)
 - **Intercept Proxy**: One-command MCP proxy with policy-based tool blocking
 - **YAML Policy Importer**: Import external policy formats
 - **Reference Policy Lattice**: Baseline security, deployment, writing, governance policies
