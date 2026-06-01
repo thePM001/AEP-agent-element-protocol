@@ -59,6 +59,28 @@ pre_task (Rego validate) -> execute -> post_task (verify completion) -> DONE
 
 ---
 
+## Migration from AEP 2.6 to 2.75
+
+AEP 2.75 is a direct upgrade from 2.6. All 77 features from 2.6 are preserved and 5 new Unified Protocol features are added. Migration steps:
+
+1. Update your AEP dependency: `npm install github:thePM001/AEP-agent-element-protocol`
+2. Run schema migration: `npx aep assist migrate --from 2.6 --to 2.75`
+3. Verify policy compatibility: `npx aep assist policy validate <schema-file> <rego-dir>`
+4. Your existing policies, covenants, trust scores and evidence ledgers carry forward unchanged
+5. New Unified Protocol governance presets become available automatically
+
+No breaking changes. All 2.6 configurations remain valid under 2.75.
+
+## What's New in AEP 2.75
+
+AEP 2.75 introduces 5 new Unified Protocol features that make AEP the most unified agent control protocol:
+
+- **Unified Control Plane** - Single pane of glass across all agent types, models and providers. Every capability governed through one protocol.
+- **Universal Standard** - One protocol for every interaction type. Agents, APIs, workflows, events and infrastructure all governed identically.
+- **Complete Built-in Stack** - Governance, validation, security, compliance and intelligence ship as one integrated system. No external plugins needed.
+- **Cross-Provider Universal** - Works with every AI provider. Anthropic, OpenAI, Ollama and custom endpoints. Zero lock-in guaranteed.
+- **Instant Governance** - Four presets deploy complete governance in seconds. Every agent governed from the first action.
+
 ## Quick Start
 
 ### Method 1 -- Clone (recommended)
