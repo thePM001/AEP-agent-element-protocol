@@ -61,6 +61,7 @@ AEP-agent-element-protocol/
 ---
 
 ## Quick Start
+See [Policy Lattice Setup](policies/SETUP.md) for guided policy lattice initialization.
 
 ### Method 1 -- Clone (recommended)
 
