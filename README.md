@@ -46,17 +46,41 @@ AEP-agent-element-protocol/
 
 ---
 
-## What's New in 2.75
+## AEP 2.75 Features
 
-- **CLI Power Tools**: aep doctor, verify, lint-policy, red-team scan
-- **Multi-Language Policies**: OPA Rego and Cedar transpilers alongside GAP
-- **MCP Security Gateway**: Tool poisoning, typosquatting and drift detection
-- **Merkle-Tree Audit**: Tamper-evident decision records with Merkle proofs
-- **Intercept Proxy**: One-command MCP proxy with policy-based tool blocking
+### Governance & Control
+- **15-Step Evaluation Chain**: Deterministic output validation pipeline
+- **11 Content Scanners**: PII, secrets, injection, jailbreak, toxicity, URLs, data quality, predictions, brand, regulatory, temporal
+- **4 Trust Rings**: Sandbox, user, system, enterprise - monotonic access control
+- **Evidence Ledger**: SHA-256 hash-chained audit trail with Merkle proofs
+- **Kill Switches & Rollback**: Operator-activated termination + automatic recovery
+
+### Policy System
+- **Reference Policy Lattice**: Gapc-validated security, deployment, writing, governance policies
+- **Policy Builder Assistant**: Interactive wizard + template generation for custom policies
+- **Offline Policy Validation**: Structural validation without external dependencies
+- **Multi-Language Support**: OPA Rego and Cedar transpilers alongside GAP/YAML
 - **YAML Policy Importer**: Import external policy formats
-- **Reference Policy Lattice**: Baseline security, deployment, writing, governance policies
+
+### Agent Operations
+- **Agent Identity Verification**: Ed25519 key pairs, challenge-response, capability advertising
+- **Fleet Governance**: Multi-agent limits, cost caps, drift clustering
 - **Multi-Agent Collaboration**: Supervisor, debate and delegation patterns
+- **Model Gateway**: Governed LLM calls with streaming abort
+- **Recovery Engine**: Automatic retry on soft violations with corrective feedback
+
+### Security & Infrastructure  
+- **MCP Security Gateway**: Tool poisoning, typosquatting and drift detection
+- **Intercept Proxy**: One-command MCP proxy with policy-based tool blocking
+- **Merkle-Tree Audit**: Tamper-evident decision records
 - **AEP-Graph Orchestration**: Stateful persistent cyclic workflows with checkpoints
+
+### Developer Experience
+- **CLI Power Tools**: aep doctor, verify, lint-policy, red-team, policy-init, policy-build, policy-template
+- **Schema Builder**: Data-driven schema validation (MLE, spectral analysis, community detection)
+- **Policy Builder**: Domain invariant detection with Rego rule generation
+- **TypeScript SDK**: Full programmatic access to all governance features
+- **Progressive Disclosure**: Four governance presets (strict, standard, relaxed, audit)
 
 ---
 
