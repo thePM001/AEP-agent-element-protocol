@@ -13,8 +13,10 @@ describe('Reference Policy Lattice', () => {
       expect(fs.existsSync(filePath)).toBe(true);
       const content = fs.readFileSync(filePath, 'utf8');
       expect(content.length).toBeGreaterThan(100);
-      expect(content).toContain('address:');
-      expect(content).toContain('covenants:');
+      expect(content).toContain('"address"');
+      const parsed = JSON.parse(content);
+      expect(parsed.address).toBeDefined();
+      expect(parsed.metadata).toBeDefined();
     });
   }
 
@@ -30,8 +32,9 @@ describe('Reference Policy Lattice', () => {
   it('all policies should be valid YAML-like GAP format', () => {
     for (const policy of policies) {
       const content = fs.readFileSync(path.join(REF_DIR, policy), 'utf8');
-      expect(content).toContain('domain:');
-      expect(content).toContain('severity: Hard');
+      const parsed = JSON.parse(content);
+      expect(parsed.address.domain).toBeDefined();
+      expect(parsed.metadata.trust_ring).toBe('system');
     }
   });
 
