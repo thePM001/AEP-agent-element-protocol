@@ -7,7 +7,7 @@ package nla.task_manifest
 import future.keywords.in
 import future.keywords.if
 
-# ─── Manifest completeness ───────────────────────────────────────────
+# --- Manifest completeness -------------------------------------------
 
 deny[msg] {
     not input.manifest_version
@@ -51,7 +51,7 @@ deny[msg] {
     msg := "production deployment requires explicit gate_approved = true"
 }
 
-# ─── Files and URLs ──────────────────────────────────────────────────
+# --- Files and URLs --------------------------------------------------
 
 deny[msg] {
     not input.task.files_affected
@@ -63,7 +63,7 @@ deny[msg] {
     msg := "task.urls_affected is required (even if empty array, declare it)"
 }
 
-# ─── Verification ────────────────────────────────────────────────────
+# --- Verification ----------------------------------------------------
 
 deny[msg] {
     not input.verification
@@ -92,7 +92,7 @@ deny[msg] {
     msg := sprintf("curl_check missing expected_status: %v", [check])
 }
 
-# ─── Completion ──────────────────────────────────────────────────────
+# --- Completion ------------------------------------------------------
 
 deny[msg] {
     not input.completion
@@ -104,14 +104,14 @@ deny[msg] {
     msg := "completion.criteria is required"
 }
 
-# ─── Post-task check uses deny rule directly ─────────────────────────
+# --- Post-task check uses deny rule directly -------------------------
 
 # manifest is valid when no deny rules fire
 manifest_valid {
     count(deny) == 0
 }
 
-# ─── Post-task: verify completion ────────────────────────────────────
+# --- Post-task: verify completion ------------------------------------
 
 post_deny[msg] {
     input.task.id
