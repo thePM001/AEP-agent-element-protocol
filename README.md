@@ -1,6 +1,6 @@
 # AEP - Agent Element Protocol (Deterministic Adjudication Lattices)
 
-### Version 2.7
+### Version 2.75
 ### Author: thePM_001 (https://x.com/thePM_001)
 ### Licence: Apache-2.0
 ### Research Paper: https://github.com/thePM001/AEP-research-paper-001
@@ -40,15 +40,15 @@ AEP-agent-element-protocol/
 
 ---
 
-### Now 87 Features. One Ultimate AI Agent Control Protocol.
+### Now 77+ Features. One Ultimate AI Agent Control Protocol.
 
-![AEP 2.7 - 87 Features](docs/images/feature-grid.png)
+![AEP 2.7 - 77+ Features](docs/images/feature-grid.png)
 
 ## [Explore the full feature grid at aep.newlisbon.agency](https://aep.newlisbon.agency)
 
 ---
 
-## What's New in 2.7
+## What's New in 2.75
 
 - **CLI Power Tools**: aep doctor, verify, lint-policy, red-team scan
 - **Multi-Language Policies**: OPA Rego and Cedar transpilers alongside GAP
