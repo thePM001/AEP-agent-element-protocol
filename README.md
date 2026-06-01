@@ -5,8 +5,8 @@
 ### Licence: Apache-2.0
 ### Research Paper: https://github.com/thePM001/AEP-research-paper-001
 ### Demo: https://aep.newlisbon.agency
-### AEP 2.6 Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.75-agent-harness
-### Major new AEP 2.6 features: Policy Builder + Schema Builder (improving mathematical/formal safety of policies/rules inserted into AEP lattices)
+### AEP 2.75 Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.75-agent-harness
+### Major new AEP 2.75 features: Policy Builder + Schema Builder (improving mathematical/formal safety of policies/rules inserted into AEP lattices)
 
 ---
 
@@ -15,8 +15,8 @@
 ```
 AEP-agent-element-protocol/
   |-- src/                     TypeScript source (32 subsystems)
-  |   |-- schema-builder/      NEW v2.6 -- build schemas from data
-  |   |-- policy-builder/      NEW v2.6 -- build policies with formal validation
+  |   |-- schema-builder/      NEW v2.75 -- build schemas from data
+  |   |-- policy-builder/      NEW v2.75 -- build policies with formal validation
   |   |-- evaluation-chain/    15-step evaluation pipeline
   |   |-- aepassist/           Interactive governance assistant
   |   |-- model-gateway/       LLM provider gateway
@@ -25,7 +25,7 @@ AEP-agent-element-protocol/
   |   |-- ...                  24 more subsystems
   |-- config/                  Registry, theme, scene graph (YAML/JSON)
   |-- policies/                Unified policy files (.gap, .rego, .policy)
-  |-- harness/                 AEP 2.6 Agent Harness
+  |-- harness/                 AEP 2.75 Agent Harness
   |-- agent-control-extreme/   Production governance infrastructure
   |   |-- profiles/            GAP-based agent capability profiles
   |   |-- error-registry-example/
@@ -119,10 +119,10 @@ npx aep assist kill         # emergency kill switch
 npx aep assist covenant list  # view active covenants
 npx aep assist identity show  # view agent identity
 npx aep assist report json  # generate audit report
-npx aep assist schema build <domain> <data-file>      # NEW v2.6: build schema from data
-npx aep assist schema validate <schema-file>           # NEW v2.6: validate schema
-npx aep assist policy build <schema-file>              # NEW v2.6: build Rego policy
-npx aep assist policy validate <schema-file> <rego-dir>  # NEW v2.6: validate policy coverage
+npx aep assist schema build <domain> <data-file>      # NEW v2.75: build schema from data
+npx aep assist schema validate <schema-file>           # NEW v2.75: validate schema
+npx aep assist policy build <schema-file>              # NEW v2.75: build Rego policy
+npx aep assist policy validate <schema-file> <rego-dir>  # NEW v2.75: validate policy coverage
 ```
 
 ---
@@ -137,7 +137,7 @@ Every agent action passes through a deterministic 15-step evaluation chain. The 
 
 The mathematical foundation is the Deterministic Adjudication Lattice (DAL). A population of LLM candidate outputs is filtered through hierarchical verification predicates. The convergence theorem proves zero-defect selection with population size logarithmic in the inverse failure probability. Lattice memory stores every validated output as an immutable record. Known good proposals match against attractors and skip cold-path validation.
 
-AEP v2.6 extends governance to the governance layer itself. The Schema Builder validates schema definitions using Maximum Likelihood Estimation (MLE), graph spectral analysis (Fiedler algebraic connectivity), permissiveness scoring (acceptance distribution entropy) and Louvain community detection. The Policy Builder detects domain invariants from data and generates Rego rules with coverage tracking. The protocol now validates its own constitutional layer with the same mathematical rigour it applies to agent outputs.
+AEP v2.75 extends governance to the governance layer itself. The Schema Builder validates schema definitions using Maximum Likelihood Estimation (MLE), graph spectral analysis (Fiedler algebraic connectivity), permissiveness scoring (acceptance distribution entropy) and Louvain community detection. The Policy Builder detects domain invariants from data and generates Rego rules with coverage tracking. The protocol now validates its own constitutional layer with the same mathematical rigour it applies to agent outputs.
 
 ---
 
@@ -271,7 +271,7 @@ Every agent action passes through these 15 steps. The chain produces allow or de
 
 ---
 
-## Schema Builder (NEW v2.6)
+## Schema Builder (NEW v2.75)
 
 Data-driven schema creation and validation. Four mathematical foundations:
 
@@ -294,7 +294,7 @@ npx aep assist schema validate <schema-file>
 
 ---
 
-## Policy Builder (NEW v2.6)
+## Policy Builder (NEW v2.75)
 
 Data-driven Rego policy generation:
 
@@ -438,7 +438,7 @@ Higher-order contextual policy validation. Element + context tuple. Cross-field 
 
 **Proof bundles.** Portable `.aep-proof.json` files containing agent identity, covenant, trust score, ring, drift score, reliability index (theta), Merkle root and Ed25519 signature. ML-DSA-65 post-quantum signatures available. RFC 3161 timestamp authority tokens. Offline signing for air-gapped environments.
 
-**OWASP coverage.** Every OWASP Agentic AI Top 10 risk is addressed by specific AEP 2.6 defence mechanisms. See `docs/OWASP-MAPPING.md`.
+**OWASP coverage.** Every OWASP Agentic AI Top 10 risk is addressed by specific AEP 2.75 defence mechanisms. See `docs/OWASP-MAPPING.md`.
 
 **Compliance targets.** EU AI Act transparency requirements, SOC 2 audit trail requirements.
 
@@ -602,7 +602,7 @@ AEP ships with four presets selectable via `/aepassist preset` or `npx aep assis
 74. OTEL exporter
 75. Reliability index (theta)
 
-### Schema and Policy Builder - NEW v2.6 (2)
+### Schema and Policy Builder - NEW v2.75 (2)
 
 76. Schema Builder (MLE, spectral analysis, permissiveness, modularity)
 77. Policy Builder (invariant detection, Rego generation, coverage tracking)
@@ -617,11 +617,11 @@ AEP ships with four presets selectable via `/aepassist preset` or `npx aep assis
 
 ## Migration from v2.5
 
-AEP v2.6 is backwards-compatible with v2.5. All existing config files, policies, sessions, ledgers and SDK modules continue to work without modification.
+AEP v2.75 is backwards-compatible with v2.5. All existing config files, policies, sessions, ledgers and SDK modules continue to work without modification.
 
-To adopt v2.6 features:
+To adopt v2.75 features:
 
-1. Update `version` to `"2.6"` in policy files.
+1. Update `version` to `"2.75"` in policy files.
 2. For Schema Builder: use `SchemaBuilder` class or `npx aep assist schema` commands.
 3. For Policy Builder: use `PolicyBuilder` class or `npx aep assist policy` commands.
 4. For Schema Builder via gateway: call `gateway.validateSchemaProposal()`.

@@ -3,7 +3,7 @@ name: aep
 description: Use this skill whenever working with AEP (Agent Element Protocol), dynAEP, dynAEP-TA, dynAEP-TA-P or any AEP governance feature. Triggers include 'AEP', 'dynAEP', 'dynAEP-TA', 'dynAEP-TA-P', 'temporal authority', 'perception governance', 'perception registry', 'bridge clock', 'causal ordering', 'vector clock', 'TimesFM', 'adaptive perception', 'perception bounds', 'scene graph', 'aep-scene.json', 'aep-registry.yaml', 'aep-theme.yaml', 'zero-trust UI', 'topological matrix', 'z-band', 'skin binding', 'AEP-FCR', 'temporal annotations', 'speech pacing', 'haptic timing', 'notification cadence', 'Schema Builder', 'Policy Builder', 'Lattice Memory', 'evaluation chain', 'trust scoring', 'execution rings', 'behavioural covenants', 'content scanners', 'evidence ledger', or building validated UI for AI agents. Also use when implementing AEP three-layer architecture, writing AEP validators, creating MCP servers that validate agent UI output, working with AG-UI under AEP governance, or governing time-dependent outputs for human perception. If AEP MCP tools are available (list_aep_schemas, create_ui_element, get_scene_graph), always consult this skill first. Do NOT guess IDs, skin bindings, z-bands or element types. Do NOT use Date.now() or any local clock when dynAEP-TA is available - call dynaep_temporal_query instead.
 ---
 
-# Agent Element Protocol (AEP) v2.6
+# Agent Element Protocol (AEP) v2.75
 
 AEP is a **3-layer frontend governance architecture** that gives every UI element a unique numerical identity, exact spatial coordinates, defined behaviour rules and themed visual properties. It treats the frontend as a **topological coordinate system**, not a fluid DOM tree.
 
@@ -483,7 +483,7 @@ Portable verification artifacts (`.aep-proof.json`). Contains agent identity, co
 
 Single numeric measure of session quality computed from: trust score, drift score, violation rate, ML score (optional) and session duration. Theta is included in proof bundles for external auditing.
 
-## Schema Builder (v2.6)
+## Schema Builder (v2.75)
 
 Data-driven schema validation using four mathematical techniques:
 
@@ -494,7 +494,7 @@ Data-driven schema validation using four mathematical techniques:
 
 Composite score: `C = w1*(1-D) + w2*spectralNorm + w3*(1-permNorm) + w4*Q`. Decision: pass >= 0.8, review 0.5-0.8, reject < 0.5.
 
-## Policy Builder (v2.6)
+## Policy Builder (v2.75)
 
 Data-driven Rego policy generation:
 
@@ -656,7 +656,7 @@ Maximum 3 simultaneous modalities (configurable). Exceeding the ceiling triggers
 - `DYNAEP_PERCEPTION_REJECTION` - perception bounds exceeded
 - `AEP_PERCEPTION_PROFILE_UPDATE` - adaptive profile learning update
 
-**Schema/Policy events (v2.6):**
+**Schema/Policy events (v2.75):**
 - `AEP_SCHEMA_VALIDATE` - Schema Builder validation result
 - `AEP_POLICY_VALIDATE` - Policy Builder validation result
 - `AEP_SCHEMA_TIGHTEN` - schema tightening proposal
@@ -692,19 +692,19 @@ Maximum 3 simultaneous modalities (configurable). Exceeding the ceiling triggers
   "violations": [{ "parameter": "turnGapMs", "severity": "hard" }] }
 ```
 
-**Schema validation (v2.6):**
+**Schema validation (v2.75):**
 ```json
 { "type": "CUSTOM", "dynaep_type": "AEP_SCHEMA_VALIDATE",
   "schemaId": "order-schema-v3", "decision": "pass", "compositeScore": 0.91 }
 ```
 
-**Policy validation (v2.6):**
+**Policy validation (v2.75):**
 ```json
 { "type": "CUSTOM", "dynaep_type": "AEP_POLICY_VALIDATE",
   "schemaId": "order-schema-v3", "coverageRate": 0.92, "proposedRules": 2 }
 ```
 
-**Schema tightening (v2.6):**
+**Schema tightening (v2.75):**
 ```json
 { "type": "CUSTOM", "dynaep_type": "AEP_SCHEMA_TIGHTEN",
   "schemaId": "order-schema-v3", "proposals": 3, "fields": ["amount", "status"] }
@@ -929,8 +929,8 @@ For other MCP clients: add the URL with HTTP transport.
 
 ## References
 
-- AEP v2.6: https://github.com/thePM001/AEP-agent-element-protocol
-- AEP v2.6 Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.75-agent-harness
+- AEP v2.75: https://github.com/thePM001/AEP-agent-element-protocol
+- AEP v2.75 Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.75-agent-harness
 - dynAEP v0.3.1: https://github.com/thePM001/dynAEP-dynamic-agent-element-protocol
 - AG-UI Protocol: https://github.com/ag-ui-protocol/ag-ui
 - AEP Research Paper: https://github.com/thePM001/AEP-research-paper-001

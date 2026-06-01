@@ -3,7 +3,7 @@ name: aep
 description: Use this skill whenever working with AEP (Agent Element Protocol), dynAEP, dynAEP-TA, dynAEP-TA-P or any AEP governance feature. Triggers include 'AEP', 'dynAEP', 'dynAEP-TA', 'dynAEP-TA-P', 'temporal authority', 'perception governance', 'perception registry', 'bridge clock', 'causal ordering', 'vector clock', 'TimesFM', 'adaptive perception', 'perception bounds', 'scene graph', 'aep-scene.json', 'aep-registry.yaml', 'aep-theme.yaml', 'zero-trust UI', 'topological matrix', 'z-band', 'skin binding', 'AEP-FCR', 'temporal annotations', 'speech pacing', 'haptic timing', 'notification cadence', 'Schema Builder', 'Policy Builder', 'Lattice Memory', 'evaluation chain', 'trust scoring', 'execution rings', 'behavioural covenants', 'content scanners', 'evidence ledger', 'lattice memory', 'memory fabric', 'attractor', 'rejection history', 'resolver', 'proposal routing', 'fast-path', 'aep v2', 'AgentGateway', 'policy engine', 'rollback', 'session governance', 'MCP proxy', 'execution ring', 'covenant', 'agent identity', 'cross-agent verification', 'intent drift', 'kill switch', 'merkle proof', 'quantum signature', 'streaming validation', 'OWASP agentic', 'content scanner', 'knowledge base', 'model gateway', 'fleet governance', 'commerce subprotocol', 'eval dataset', 'prompt optimization', 'ML metrics', 'fine-tuning workflow', 'reliability index', 'OTEL', 'aepassist' or building validated UI for AI agents. Also use when implementing AEP three-layer architecture, writing AEP validators, creating MCP servers that validate agent UI output, working with AG-UI under AEP governance, governing time-dependent outputs for human perception, querying validation memory or routing proposals through the resolver. If AEP MCP tools are available (list_aep_schemas, create_ui_element, get_scene_graph), always consult this skill first. Do NOT guess IDs, skin bindings, z-bands or element types. Do NOT use Date.now() or any local clock when dynAEP-TA is available - call dynaep_temporal_query instead.
 ---
 
-# Agent Element Protocol (AEP) v2.6
+# Agent Element Protocol (AEP) v2.75
 
 AEP is a **3-layer frontend governance architecture** that gives every UI element a unique numerical identity, exact spatial coordinates, defined behaviour rules and themed visual properties. It treats the frontend as a **topological coordinate system**, not a fluid DOM tree.
 
@@ -222,7 +222,7 @@ Merkle Tree per-entry verification. ML-DSA-65 post-quantum signatures. RFC 3161 
 
 `AEPStreamValidator` intercepts agent output chunk by chunk. Five checks (covenant forbids, protected elements, z-band violations, structural violations, policy forbidden patterns). On first violation the stream is aborted and a `stream:abort` entry logged. Model-agnostic, works with any `ReadableStream<string>`.
 
-## Schema Builder (v2.6)
+## Schema Builder (v2.75)
 
 Data-driven schema validation using four mathematical techniques:
 
@@ -233,7 +233,7 @@ Data-driven schema validation using four mathematical techniques:
 
 Composite score: `C = w1*(1-D) + w2*spectralNorm + w3*(1-permNorm) + w4*Q`. Decision: pass >= 0.8, review 0.5-0.8, reject < 0.5.
 
-## Policy Builder (v2.6)
+## Policy Builder (v2.75)
 
 Data-driven Rego policy generation:
 
@@ -287,7 +287,7 @@ Agent-Percept dynAEP-TA-P   Perceptual temporal governance for human-facing outp
 
 ## OWASP Agentic AI Top 10
 
-Every OWASP risk mapped to specific AEP v2.6 defence mechanisms. See `docs/OWASP-MAPPING.md`.
+Every OWASP risk mapped to specific AEP v2.75 defence mechanisms. See `docs/OWASP-MAPPING.md`.
 
 ## Built-in Policies
 
@@ -397,5 +397,5 @@ aep identity verify           # Verify an agent identity
 aep covenant parse            # Parse covenant DSL
 aep covenant verify           # Verify action against covenant
 aep owasp                     # Display OWASP mapping
-aep describe                  # Full 2.6 capability summary
+aep describe                  # Full 2.75 capability summary
 ```

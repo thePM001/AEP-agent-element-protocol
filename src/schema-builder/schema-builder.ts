@@ -1,6 +1,6 @@
 // Schema Builder - orchestrates MLE estimation, spectral analysis,
 // permissiveness scoring and modularity detection for schema validation
-// AEP v2.6 Capability 12
+// AEP v2.75 Capability 12
 
 import type {
   SchemaBuilderConfig,

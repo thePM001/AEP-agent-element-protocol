@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * AEP 2.6 Agent Harness - Temporal Validation Module (dynAEP-TA)
+ * AEP 2.75 Agent Harness - Temporal Validation Module (dynAEP-TA)
  *
  * Validates timestamps against bridge-authoritative time, enforces causal
  * ordering via sequence numbers and validates perception annotations against
