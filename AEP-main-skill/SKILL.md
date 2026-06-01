@@ -930,7 +930,7 @@ For other MCP clients: add the URL with HTTP transport.
 ## References
 
 - AEP v2.6: https://github.com/thePM001/AEP-agent-element-protocol
-- AEP v2.6 Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.6-agent-harness
+- AEP v2.6 Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.75-agent-harness
 - dynAEP v0.3.1: https://github.com/thePM001/dynAEP-dynamic-agent-element-protocol
 - AG-UI Protocol: https://github.com/ag-ui-protocol/ag-ui
 - AEP Research Paper: https://github.com/thePM001/AEP-research-paper-001
