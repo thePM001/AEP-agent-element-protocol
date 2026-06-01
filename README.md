@@ -449,7 +449,30 @@ Policy controls: merchant allow/blocklists, product category blocking, transacti
 
 ## dynAEP
 
-Real-time streaming governance. Fuses AEP with AG-UI. Delta processor validates live events against the scene graph. Under-construction pattern prevents interaction with elements not yet validated. Conflict resolution via last-write-wins or optimistic locking. Human-in-the-loop approval policies for high-risk mutations.
+Real-time streaming governance and temporal authority. Fuses AEP with AG-UI.
+
+### Streaming Governance (Core dynAEP)
+- Delta processor validates live events against the scene graph
+- Under-construction pattern prevents interaction with elements not yet validated
+- Shadow scene graph for pre-commit validation
+- Conflict resolution via last-write-wins or optimistic locking
+- Human-in-the-loop approval policies for high-risk mutations
+- Template node fast-exit for known-safe patterns
+
+### Temporal Authority (dynAEP-TA)
+- Bridge-authoritative clock as single source of temporal truth
+- TIM clock quality scoring for multi-source time verification
+- Causal ordering via vector clocks and Lamport timestamps
+- Predictive forecasting with TimesFM integration
+- Durable deadlines, timeouts, escalation and schedules
+- SLA governance with temporal primitives
+
+### Perceptual Governance (dynAEP-TA-P)
+- Temporal annotations for human-facing outputs
+- Speech pacing and haptic timing governance
+- Notification cadence enforcement
+- Adaptive perception bounds based on context
+- Bridge recovery protocol for disconnected operation
 
 ---
 
@@ -614,7 +637,7 @@ AEP ships with four presets selectable via `/aepassist preset` or `npx aep assis
 65. Infrastructure as Code subprotocol
 66. Commerce subprotocol
 
-### dynAEP (5)
+### dynAEP (10)
 
 67. AG-UI event bridge
 68. Delta processor with transaction log
