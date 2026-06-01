@@ -314,7 +314,7 @@ function redTeam() {
                 totalResistant++;
             } else {
                 console.log(`    FAIL  ${truncate(input, 60)}`);
-                console.log(`          → ${result.reason}`);
+                console.log(`          Reason: ${result.reason}`);
                 totalVulnerable++;
             }
         }
