@@ -35,11 +35,11 @@ Applies to: code changes, deployments, configuration updates, page updates, comp
 - [ ] Multi-step fixes: ALL steps completed, not just the first one
 
 ### Examples of VIOLATIONS
-- Canvas rendering fix applied but browser cache not cleared → INCOMPLETE
-- Page content updated but navbar links still point to old URLs → BROKEN REFERENCES
-- Nginx redirect fixed but page hardcoded links not updated → MULTI-STEP INCOMPLETE
-- Feature cards added but card details missing → HALF-FIX
-- Service restarted but page not verified → SKIPPED VERIFICATION
+- Canvas rendering fix applied but browser cache not cleared -> INCOMPLETE
+- Page content updated but navbar links still point to old URLs -> BROKEN REFERENCES
+- Nginx redirect fixed but page hardcoded links not updated -> MULTI-STEP INCOMPLETE
+- Feature cards added but card details missing -> HALF-FIX
+- Service restarted but page not verified -> SKIPPED VERIFICATION
 
 ### Post-Task Verification
 Every task MUST end with a verification step that confirms the output is production-ready.
