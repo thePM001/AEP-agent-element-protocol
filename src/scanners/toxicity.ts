@@ -1,4 +1,4 @@
-// AEP 2.6 - Toxicity Scanner
+// AEP 2.75 - Toxicity Scanner
 // Detects slurs, hate speech patterns and threats.
 // Keyword list with configurable word lists.
 

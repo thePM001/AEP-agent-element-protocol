@@ -1,4 +1,4 @@
-// AEP 2.6 - Commerce Subprotocol Types
+// AEP 2.75 - Commerce Subprotocol Types
 // Governs agentic commerce workflows: product discovery, cart management,
 // checkout, payment negotiation, fulfillment tracking and post-purchase actions.
 

@@ -1,4 +1,4 @@
-// AEP 2.6 - Agent Element Protocol
+// AEP 2.75 - Agent Element Protocol
 // Session Governance, Policy Engine, Evidence Ledger, Rollback
 // Trust Scoring, Execution Rings, Behavioural Covenants, Agent Identity
 // Cross-Agent Verification, Intent Drift Detection, Kill Switch

@@ -1,4 +1,4 @@
-// AEP 2.6 - Prompt Version Manager
+// AEP 2.75 - Prompt Version Manager
 // Save, load, list and diff prompt versions.
 // Storage: .aep/prompts/<name>/<version>.txt
 

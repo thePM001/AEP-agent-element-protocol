@@ -1,4 +1,4 @@
-// AEP 2.6 - Jailbreak Scanner
+// AEP 2.75 - Jailbreak Scanner
 // Detects prompt injection and jailbreak patterns in agent output.
 
 import type { Finding, Scanner, ScannerConfig } from "./types.js";

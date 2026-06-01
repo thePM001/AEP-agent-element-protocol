@@ -1,4 +1,4 @@
-// AEP 2.6 - OpenTelemetry Exporter
+// AEP 2.75 - OpenTelemetry Exporter
 // Exports evidence ledger entries as OpenTelemetry spans.
 // Uses a lightweight built-in implementation that does not require
 // @opentelemetry/api at runtime. Produces OTLP-compatible JSON.
