@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 
-// ── Provider Identification ──────────────────────────────────────────
+// -- Provider Identification ------------------------------------------
 
 export const ModelProviderSchema = z.enum([
   "anthropic",
@@ -15,7 +15,7 @@ export const ModelProviderSchema = z.enum([
 
 export type ModelProvider = z.infer<typeof ModelProviderSchema>;
 
-// ── Model Configuration ──────────────────────────────────────────────
+// -- Model Configuration ----------------------------------------------
 
 export const ModelConfigSchema = z.object({
   provider: ModelProviderSchema,
@@ -32,7 +32,7 @@ export const ModelConfigSchema = z.object({
 
 export type ModelConfig = z.infer<typeof ModelConfigSchema>;
 
-// ── Model Request ────────────────────────────────────────────────────
+// -- Model Request ----------------------------------------------------
 
 export const ModelMessageSchema = z.object({
   role: z.enum(["system", "user", "assistant"]),
@@ -53,7 +53,7 @@ export const ModelRequestSchema = z.object({
 
 export type ModelRequest = z.infer<typeof ModelRequestSchema>;
 
-// ── Raw Model Response (from provider adapter) ───────────────────────
+// -- Raw Model Response (from provider adapter) -----------------------
 
 export interface ModelResponse {
   content: string;
@@ -69,7 +69,7 @@ export interface ModelResponse {
   raw?: unknown;
 }
 
-// ── Governed Model Response (post-evaluation chain) ──────────────────
+// -- Governed Model Response (post-evaluation chain) ------------------
 
 export interface GovernedModelResponse {
   content: string;
@@ -99,7 +99,7 @@ export interface GovernedModelResponse {
   latencyMs: number;
 }
 
-// ── Streaming Chunk ──────────────────────────────────────────────────
+// -- Streaming Chunk --------------------------------------------------
 
 export interface GovernedChunk {
   content: string;
@@ -112,7 +112,7 @@ export interface GovernedChunk {
   };
 }
 
-// ── Provider Adapter Interface ───────────────────────────────────────
+// -- Provider Adapter Interface ---------------------------------------
 
 export interface ProviderAdapter {
   readonly provider: ModelProvider;
@@ -127,7 +127,7 @@ export interface ProviderAdapter {
   ): AsyncGenerator<{ content: string; done: boolean }, void, unknown>;
 }
 
-// ── Policy Configuration for Model Gateway ───────────────────────────
+// -- Policy Configuration for Model Gateway ---------------------------
 
 export const ModelGatewayPolicySchema = z.object({
   enabled: z.boolean().optional().default(false),
@@ -149,7 +149,7 @@ export const ModelGatewayPolicySchema = z.object({
 
 export type ModelGatewayPolicy = z.infer<typeof ModelGatewayPolicySchema>;
 
-// ── Gateway Options ──────────────────────────────────────────────────
+// -- Gateway Options --------------------------------------------------
 
 export interface ModelGatewayOptions {
   sessionId: string;
