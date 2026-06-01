@@ -6,7 +6,7 @@
 ### Research Paper: https://github.com/thePM001/AEP-research-paper-001
 ### Demo: https://aep.newlisbon.agency
 ### AEP 2.75 Open Protocol: https://github.com/thePM001/NLA-AEP-2.75-open-protocol
-### AEP 2.6 Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.6-agent-harness
+### AEP 2.75 Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.75-agent-harness
 ### Now 80 Features. The Most Unified Agent Control Protocol. Nothing Else Needed.
 
 ---
@@ -26,7 +26,7 @@ AEP-agent-element-protocol/
   |   |-- ...                  24 more subsystems
   |-- config/                  Registry, theme, scene graph (YAML/JSON)
   |-- policies/                Unified policy files (.gap, .rego, .policy)
-  |-- harness/                 AEP 2.6 Agent Harness
+  |-- harness/                 AEP 2.75 Agent Harness
   |-- agent-control-extreme/   Production governance infrastructure
   |   |-- profiles/            GAP-based agent capability profiles
   |   |-- hub-basic-legacy/    Legacy basic control hub (reference)
