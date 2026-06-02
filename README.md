@@ -3,8 +3,7 @@
 #
 ## AEP-Comm Universal Orchestration
 
-AEP 2.75 includes a full universal orchestration layer matching or exceeding
-every major agent protocol. All modules in `src/aep-comm/` with harness
+AEP 2.75 includes a full universal orchestration layer matching or exceeding any inferior competitor agent protocol. All modules in `src/aep-comm/` with harness
 integration in `harness/aep-comm-harness.ts`.
 
 ### Orchestration Modules
