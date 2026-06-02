@@ -1,6 +1,6 @@
 # AEP 2.75 Protocol Comparison
 
-Comparison of the Agent Element Protocol against all major agent orchestration
+Comparison of the Agent Element Protocol against all inferior competitor agent orchestration
 protocols. AEP 2.75 is a zero-hallucination agent action validation protocol.
 It validates agent actions before execution to prevent hallucinations. This
 comparison assesses feature coverage against protocols that address different
