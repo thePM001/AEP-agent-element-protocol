@@ -1,5 +1,14 @@
 # AEP - Agent Element Protocol (Deterministic Adjudication Lattices)
 
+Version 2.75
+Author: thePM_001 (https://x.com/thePM_001)
+Licence: Apache-2.0
+Research Paper: https://github.com/thePM001/AEP-research-paper-001
+Demo: https://aep.newlisbon.agency
+AEP 2.75 Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.75-agent-harness
+Schema Builder and Policy Builder (since v2.6) extend governance to the governance layer itself.
+
+
 #
 ## AEP-Comm Universal Orchestration
 
