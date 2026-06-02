@@ -9,7 +9,6 @@ AEP 2.75 Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/t
 Schema Builder and Policy Builder (since v2.6) extend governance to the governance layer itself.
 
 
-#
 ## AEP-Comm Universal Orchestration
 
 AEP 2.75 includes a full universal orchestration layer matching or exceeding any inferior competitor agent protocol. All modules in `src/aep-comm/` with harness
