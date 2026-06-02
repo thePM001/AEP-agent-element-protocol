@@ -1,6 +1,45 @@
 # AEP - Agent Element Protocol (Deterministic Adjudication Lattices)
 
-### Version 2.75
+#
+## AEP-Comm Universal Orchestration
+
+AEP 2.75 includes a full universal orchestration layer matching or exceeding
+every major agent protocol. All modules in `src/aep-comm/` with harness
+integration in `harness/aep-comm-harness.ts`.
+
+### Orchestration Modules
+
+| Module | Protocol Parity | Purpose |
+|--------|----------------|---------|
+| agent-card.ts | Google A2A | Standardized agent capability description |
+| task-lifecycle.ts | Google A2A | 8-state task management with push notifications |
+| human-in-the-loop.ts | Google A2A | Approval gates for sensitive agent actions |
+| resource-protocol.ts | Anthropic MCP | Standardized resource listing and access |
+| prompt-templates.ts | Anthropic MCP | Parameterized prompt construction |
+| code-sandbox.ts | AutoGen | Isolated code execution with policy control |
+
+### Communication Modules
+
+| Module | Purpose |
+|--------|---------|
+| discovery/dht.ts | In-memory DHT with TTL expiry |
+| discovery/registry.ts | Agent discovery with gossip protocol |
+| discovery/gossip.ts | Periodic peer health exchange |
+| messaging/router.ts | A2A message routing with lattice validation |
+| messaging/envelope.ts | JSON-LD message format with signing |
+| messaging/inbox.ts | Per-agent priority message queue |
+| messaging/transports/ws-transport.ts | WebSocket with auto-reconnect |
+| messaging/transports/sse-transport.ts | SSE with HTTP POST fallback |
+| delegate/resolver.ts | Native task delegation with retry |
+
+### Integration Modules
+
+| Module | Purpose |
+|--------|---------|
+| src/evidence/agentstream-backend.ts | Persistent evidence storage |
+| harness/aep-comm-harness.ts | Full harness wiring all modules |
+
+## Version 2.75
 ### Author: thePM_001 (https://x.com/thePM_001)
 ### Licence: Apache-2.0
 ### Research Paper: https://github.com/thePM001/AEP-research-paper-001
