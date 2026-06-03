@@ -156,7 +156,7 @@ AEP 2.75e adds cost-aware routing, budgeting, and spend control across all LLM p
 - **Price Catalog**: Embedded per-million-token pricing for 10+ providers with capability-based cheapest-finder.
 - **Pre-Dispatch Cost Estimator**: Token count and micro-USD cost estimation before every LLM call.
 - **Budget Enforcer**: Deny/warn/quota modes with monthly and daily period rotation and soft warning thresholds.
-- **HTTP 402 Micropayments (X402)**: Pay-per-request authorization gate with payment service integration, timeout handling, and audit logging.
+- **HTTP 402 Nanopayments (X402)**: Facilitator-backed verify/settle flow, 3 payment schemes (exact/upto/batch-settlement), 120s settlement cache, lifecycle hooks (onBeforeVerify, onAfterSettle), channel management for batch escrow, chainable hook registration, and signed offer receipts for proof-of-interaction.
 - **Concurrency Limiter**: Token-based acquire/release semaphore preventing cost spikes from traffic bursts.
 - **Provider Fallback**: Health-monitored failover with error ratio thresholds, rate-limit backoff, and restore buffers.
 - **Semantic Cache Tuning**: Configurable similarity threshold, TTL, and exact-match-first short-circuit for Agentstream memvid+ S3 quaternion cache.
