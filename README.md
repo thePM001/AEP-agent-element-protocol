@@ -146,6 +146,23 @@ integration in `harness/aep-comm-harness.ts`.
 - **Model Gateway**: Governed LLM calls with streaming abort
 - **Recovery Engine**: Automatic retry on soft violations with corrective feedback
 
+
+### Cost Economics (v2.75e) [NEW]
+
+AEP 2.75e adds cost-aware routing, budgeting, and spend control across all LLM providers. Built from AIephant gateway analysis.
+
+- **Provider Balance Engine**: Four load-balance strategies (provider-weighted, balanced-latency, model-weighted, model-latency) with weight validation at startup.
+- **Model Mapping**: Canonical model names resolved to provider-specific IDs for cross-provider price comparison.
+- **Price Catalog**: Embedded per-million-token pricing for 10+ providers with capability-based cheapest-finder.
+- **Pre-Dispatch Cost Estimator**: Token count and micro-USD cost estimation before every LLM call.
+- **Budget Enforcer**: Deny/warn/quota modes with monthly and daily period rotation and soft warning thresholds.
+- **HTTP 402 Micropayments (X402)**: Pay-per-request authorization gate with payment service integration, timeout handling, and audit logging.
+- **Concurrency Limiter**: Token-based acquire/release semaphore preventing cost spikes from traffic bursts.
+- **Provider Fallback**: Health-monitored failover with error ratio thresholds, rate-limit backoff, and restore buffers.
+- **Semantic Cache Tuning**: Configurable similarity threshold, TTL, and exact-match-first short-circuit for Agentstream memvid+ S3 quaternion cache.
+
+**Subsystem**: src/economics/ (9 modules) + config/embedded/ (model-mapping.yaml, price-catalog.yaml)
+
 ### Security & Infrastructure  
 - **15 Content Scanners**: PII, secrets, injection, prompt injection, jailbreak, toxicity, supply chain, URLs, data quality, predictions, brand, regulatory, temporal
 - **MCP Security Gateway**: Tool poisoning, typosquatting and drift detection
