@@ -1,4 +1,4 @@
-# NLA Policy: Full and Correct Task Execution
+# Policy: Full and Correct Task Execution
 # GAPC-VALIDATED: 2026-06-01 | 290 GBNF rules | 0 errors
 # ID: full-correct-task-execution-mandatory.v1
 # Trust Ring: SYSTEM | Grade: 10 | Mandatory

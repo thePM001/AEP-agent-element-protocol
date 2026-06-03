@@ -838,7 +838,7 @@
     "NV-00020": {
       "id": "NV-00020",
       "type": "navigation",
-      "label": "NLA Hexagon Nav Container",
+      "label": "Hexagon Nav Container",
       "z": 15,
       "visible": true,
       "parent": "SH-00001",
@@ -922,7 +922,7 @@
     "NV-00031": {
       "id": "NV-00031",
       "type": "navigation",
-      "label": "Nav Link: Monad Runlayer",
+      "label": "Nav Link: AI Runlayer",
       "z": 15,
       "visible": true,
       "parent": "NV-00021"
@@ -1033,7 +1033,7 @@
     "SH-00002": {
       "id": "SH-00002",
       "type": "shell",
-      "label": "NLA Homepage Shell",
+      "label": "Homepage Shell",
       "z": 0,
       "visible": true,
       "parent": null,
