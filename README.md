@@ -1,6 +1,6 @@
 # AEP - Agent Element Protocol (Deterministic Adjudication Lattices)
 
-Version 2.75eaof 
+Version 2.75(eaof) 
 Author: thePM_001 (https://x.com/thePM_001)  
 Licence: Apache-2.0  
 Research Paper: https://github.com/thePM001/AEP-research-paper-001  
@@ -23,7 +23,7 @@ AEP-agent-element-protocol/
   |   |-- ...                  24 more subsystems
   |-- config/                  Registry, theme, scene graph (YAML/JSON)
   |-- policies/                Unified policy files (.gap, .rego, .policy)
-  |-- harness/                 AEP 2.75eaofAgent Harness
+  |-- harness/                 AEP 2.75(eaof)  Agent Harness
   |-- agent-control-extreme/   Production governance infrastructure
   |   |-- profiles/            GAP-based agent capability profiles
   |   |-- error-registry-example/
