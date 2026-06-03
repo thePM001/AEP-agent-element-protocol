@@ -20,12 +20,12 @@ export function estimateCost(
 ): CostEstimate {
   const inputTokens = estimateTokens(inputText);
   const catalogEntry = options.catalog.lookup(provider, model);
-  
+
   if (!catalogEntry) {
     const defaultPrice = options.defaultUsdCostMillion ?? 5.0;
     return {
       estimated_input_tokens: inputTokens,
-      estimated_prompt_micro_usd: Math.ceil(inputTokens / 1000000 * defaultPrice * 1000000),
+      estimated_prompt_micro_usd: Math.ceil(inputTokens * defaultPrice),
       provider,
       model,
       price_per_million_prompt: defaultPrice,
@@ -35,18 +35,15 @@ export function estimateCost(
   }
 
   const price = catalogEntry.price;
-  const promptPrice = price.prompt;
-  const completionPrice = price.completion;
-
   return {
     estimated_input_tokens: inputTokens,
     estimated_output_tokens: undefined,
-    estimated_prompt_micro_usd: Math.ceil(inputTokens / 1000000 * promptPrice * 1000000),
+    estimated_prompt_micro_usd: Math.ceil(inputTokens * price.prompt),
     estimated_completion_micro_usd: undefined,
     provider,
     model,
-    price_per_million_prompt: promptPrice,
-    price_per_million_completion: completionPrice,
+    price_per_million_prompt: price.prompt,
+    price_per_million_completion: price.completion,
     from_cache: false,
   };
 }
@@ -66,8 +63,8 @@ export function estimateCostFromUsage(
   return {
     estimated_input_tokens: inputTokens,
     estimated_output_tokens: outputTokens,
-    estimated_prompt_micro_usd: Math.ceil(inputTokens / 1000000 * promptPrice * 1000000),
-    estimated_completion_micro_usd: Math.ceil(outputTokens / 1000000 * completionPrice * 1000000),
+    estimated_prompt_micro_usd: Math.ceil(inputTokens * promptPrice),
+    estimated_completion_micro_usd: Math.ceil(outputTokens * completionPrice),
     provider,
     model,
     price_per_million_prompt: promptPrice,
