@@ -1,5 +1,7 @@
 import { ProviderHealth, ProviderId, FallbackConfig, DEFAULT_FALLBACK } from './types';
 
+const MAX_HEALTH_ENTRIES = 50;
+
 export class FallbackManager {
   private config: FallbackConfig;
   private health: Map<ProviderId, ProviderHealth>;
@@ -13,15 +15,24 @@ export class FallbackManager {
 
   apply(healthyList: ProviderHealth[]): ProviderId[] {
     if (!this.config.enabled) return healthyList.map(h => h.provider);
-    
+
     for (const h of healthyList) {
+      // Prune: remove least-recently-checked if over max
+      if (this.health.size >= MAX_HEALTH_ENTRIES && !this.health.has(h.provider)) {
+        let oldestKey = "";
+        let oldestTime = Infinity;
+        for (const [k, v] of this.health) {
+          if (v.last_checked < oldestTime) { oldestTime = v.last_checked; oldestKey = k; }
+        }
+        this.health.delete(oldestKey);
+      }
       this.health.set(h.provider, h);
     }
 
     const now = Date.now();
     return healthyList
       .filter(h => {
-        if (h.status === 'unhealthy') return false;
+        if (h.status === "unhealthy") return false;
         if (h.error_ratio > this.config.error_ratio_threshold) {
           if (h.total_requests > this.config.grace_period_min_requests) return false;
         }
@@ -39,7 +50,7 @@ export class FallbackManager {
       h.error_requests++;
       h.error_ratio = h.error_requests / h.total_requests;
       h.last_checked = Date.now();
-      if (h.error_ratio > this.config.error_ratio_threshold) h.status = 'degraded';
+      if (h.error_ratio > this.config.error_ratio_threshold) h.status = "degraded";
     }
   }
 
@@ -49,7 +60,7 @@ export class FallbackManager {
       h.total_requests++;
       h.error_ratio = h.error_requests / h.total_requests;
       h.last_checked = Date.now();
-      if (h.error_ratio < 0.02 && h.status !== 'healthy') h.status = 'healthy';
+      if (h.error_ratio < 0.02 && h.status !== "healthy") h.status = "healthy";
     }
   }
 
