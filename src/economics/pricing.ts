@@ -1,4 +1,4 @@
-import { PriceCatalogEntry, ModelPrice, ProviderId and ModelId } from './types';
+import { PriceCatalogEntry, ModelPrice, ProviderId, ModelId } from './types';
 
 export class PriceCatalog {
   private entries: Map<ModelId, PriceCatalogEntry>;
