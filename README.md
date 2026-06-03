@@ -163,6 +163,8 @@ AEP 2.75e adds cost-aware routing, budgeting, and spend control across all LLM p
 
 **Subsystem**: src/economics/ (9 modules) + config/embedded/ (model-mapping.yaml, price-catalog.yaml)
 
+**Harness**: harness/aep-2.75-agent-harness/harness/aep-economics.js
+
 ### Security & Infrastructure  
 - **15 Content Scanners**: PII, secrets, injection, prompt injection, jailbreak, toxicity, supply chain, URLs, data quality, predictions, brand, regulatory, temporal
 - **MCP Security Gateway**: Tool poisoning, typosquatting and drift detection
