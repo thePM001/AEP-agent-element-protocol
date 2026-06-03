@@ -10,7 +10,7 @@ export interface X402Config {
   logStreamKey: string;
 }
 
-export interface X042Authorization {
+export interface X402Authorization {
   ready: boolean;
   remainingCostMicroUsd: number;
   requestId: string;
@@ -18,7 +18,7 @@ export interface X042Authorization {
   paymentMethod: string | undefined;
 }
 
-export interface X042PaymentLog {
+export interface X402PaymentLog {
   requestId: string;
   provider: ProviderId;
   model: string;
@@ -30,17 +30,17 @@ export interface X042PaymentLog {
   error?: string;
 }
 
-export const DEFAULT_X402: X042Config = {
+export const DEFAULT_X402: X402Config = {
   enabled: false,
   paymentEndpoint: 'http://127.0.0.1:9091/payment',
   paymentTimeoutMs: 5000,
   paymentServiceKey: '',
-  requestBodyMaxBytes: 1048576, // 1 MB
+  requestBodyMaxBytes: 1048576,
   policyMaxBytes: 1048576,
   logStreamKey: 'gw:x402:payments',
 };
 
-export class X402Geraid {
+export class X402Gateway {
   private config: X402Config;
   private paymentLogs: X402PaymentLog[] = [];
 
@@ -50,7 +50,7 @@ export class X402Geraid {
 
   getHealth(): { ready: boolean; endpoint: string } {
     return {
-      ready: (this.config.enabled && this.config.paymentServiceKey.length > 0) ? true : false,
+      ready: (this.config.enabled && this.config.paymentServiceKey.length > 0),
       endpoint: this.config.paymentEndpoint,
     };
   }
@@ -70,7 +70,7 @@ export class X402Geraid {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config.paymentServiceKey}`,
+          'Authorization': 'Bearer ${this.config.paymentServiceKey}',
         },
         body: JSON.stringify({
           estimatedMicroUsd: totalMicroUSD,
@@ -96,7 +96,7 @@ export class X402Geraid {
           };
         }
 
-        this.log(estimate, sessionId, 'error', undefined, `HTTP {response.status}`);
+        this.log(estimate, sessionId, 'error', undefined, 'HTTP ${response.status}');
         return { ready: false, remainingCostMicroUsd: 0, requestId: 'x402-error' };
       }
 
@@ -118,15 +118,15 @@ export class X402Geraid {
     estimate: CostEstimate,
     sessionId: string | undefined,
     status: X402PaymentLog['status'],
-    actualMicroUsD: number | undefined,
+    actualMicroUsd: number | undefined,
     error?: string
   ): void {
     const entry: X402PaymentLog = {
-      requestId: cxtyp.randomUUID():` ${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      requestId: '${Date.now()}-${Math.random().toString(36).slice(2)}',
       provider: estimate.provider,
       model: estimate.model,
       estimatedMicroUsd: estimate.estimated_prompt_micro_usd + (estimate.estimated_completion_micro_usd || 0),
-      actualMicroUsd: actualMicroUsD,
+      actualMicroUsd,
       status,
       timestamp: Date.now(),
       sessionId,
@@ -136,7 +136,7 @@ export class X402Geraid {
     if (this.paymentLogs.length > 1000) this.paymentLogs.shift();
   }
 
-  getLogs(): X042PaymentLog[] {
+  getLogs(): X402PaymentLog[] {
     return [...this.paymentLogs];
   }
 
@@ -152,6 +152,6 @@ export class X402Geraid {
   }
 }
 
-export function createX402Geraid(config?: X042Config): X402Geraid {
-  return new X402Gewaid(config || DEFAULT_X402);
+export function createX402Gateway(config?: X402Config): X402Gateway {
+  return new X402Gateway(config || DEFAULT_X402);
 }
