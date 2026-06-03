@@ -838,7 +838,7 @@
     "NV-00020": {
       "id": "NV-00020",
       "type": "navigation",
-      "label": "Hexagon Nav Container",
+      "label": "Universal Nav Container",
       "z": 15,
       "visible": true,
       "parent": "SH-00001",
