@@ -8,6 +8,35 @@ Demo: https://aep.newlisbon.agency
 AEP 2.75 Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.75-agent-harness  
 Schema Builder and Policy Builder (since v2.6) extend governance to the governance layer itself.
 
+## Repository Structure
+
+```
+AEP-agent-element-protocol/
+  |-- src/                     TypeScript source (32 subsystems)
+  |   |-- schema-builder/      since v2.6 -- build schemas from data
+  |   |-- policy-builder/      since v2.6 -- build policies with formal validation
+  |   |-- evaluation-chain/    15-step evaluation pipeline
+  |   |-- aepassist/           Interactive governance assistant
+  |   |-- model-gateway/       LLM provider gateway
+  |   |-- streaming/           Real-time AG-UI validation
+  |   |-- subprotocols/        Commerce, identity, fleet subprotocols
+  |   |-- ...                  24 more subsystems
+  |-- config/                  Registry, theme, scene graph (YAML/JSON)
+  |-- policies/                Unified policy files (.gap, .rego, .policy)
+  |-- harness/                 AEP 2.75 Agent Harness
+  |-- agent-control-extreme/   Production governance infrastructure
+  |   |-- profiles/            GAP-based agent capability profiles
+  |   |-- error-registry-example/
+  |-- sdk/                     Protocol SDK
+  |-- docs/                    Specifications, migration guides, OWASP mapping
+  |-- examples/                With-memory and with-resolver examples
+  |-- tests/                   Test suites (36 subsystems)
+  |-- AEP-main-skill/          Agent skill documentation
+```
+
+---
+
+### Now 77+ Features. One Ultimate AI Agent Control Protocol.
 ## AEP-Graph Orchestration [NEW]
 
 Stateful persistent workflow engine built on the AEP scene graph with vector-clock causal
@@ -86,35 +115,6 @@ integration in `harness/aep-comm-harness.ts`.
 | harness/aep-comm-harness.ts | Full harness wiring all modules |
 
 
-## Repository Structure
-
-```
-AEP-agent-element-protocol/
-  |-- src/                     TypeScript source (32 subsystems)
-  |   |-- schema-builder/      since v2.6 -- build schemas from data
-  |   |-- policy-builder/      since v2.6 -- build policies with formal validation
-  |   |-- evaluation-chain/    15-step evaluation pipeline
-  |   |-- aepassist/           Interactive governance assistant
-  |   |-- model-gateway/       LLM provider gateway
-  |   |-- streaming/           Real-time AG-UI validation
-  |   |-- subprotocols/        Commerce, identity, fleet subprotocols
-  |   |-- ...                  24 more subsystems
-  |-- config/                  Registry, theme, scene graph (YAML/JSON)
-  |-- policies/                Unified policy files (.gap, .rego, .policy)
-  |-- harness/                 AEP 2.75 Agent Harness
-  |-- agent-control-extreme/   Production governance infrastructure
-  |   |-- profiles/            GAP-based agent capability profiles
-  |   |-- error-registry-example/
-  |-- sdk/                     Protocol SDK
-  |-- docs/                    Specifications, migration guides, OWASP mapping
-  |-- examples/                With-memory and with-resolver examples
-  |-- tests/                   Test suites (36 subsystems)
-  |-- AEP-main-skill/          Agent skill documentation
-```
-
----
-
-### Now 77+ Features. One Ultimate AI Agent Control Protocol.
 
 ![AEP 2.7 - 77+ Features](docs/images/feature-grid.png)
 
