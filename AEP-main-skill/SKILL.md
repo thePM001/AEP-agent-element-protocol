@@ -442,6 +442,35 @@ Configurable warmup period. Actions on drift: warn, gate, deny or kill.
 
 The recovery engine provides: specific violation details, which scanner or policy step triggered it, what the agent should change, and the remaining retry count.
 
+
+## Cost Economics (v2.75e)
+
+**Subsystem**: src/economics/ (9 TypeScript modules) + config/embedded/ model-mapping.yaml and price-catalog.yaml
+
+AEP 2.75e adds cost-aware routing, budgeting, and spend control.
+
+### Modules
+| Module | Purpose |
+|--------|---------|
+| types.ts | ProviderId, ModelId, CostEstimate, BudgetConfig, FallbackConfig, EconomicsConfig |
+| balance.ts | BalanceEngine - 4 load-balance strategies (provider-weighted, balanced-latency, model-weighted, model-latency) |
+| model-mapping.ts | Canonical-to-provider model ID resolution for cross-provider price comparison |
+| pricing.ts | PriceCatalog - cost lookup, cheapest-finder, capability-based filtering |
+| cost-estimator.ts | Pre-dispatch token count and micro-USD cost estimation |
+| budget.ts | BudgetEnforcer - deny/warn/quota modes, monthly/daily period rotation |
+| concurrency.ts | ConcurrencyLimiter - token-based acquire/release semaphore |
+| fallback.ts | FallbackManager - health-monitored provider failover with error ratio thresholds |
+| x402.ts | X402Gateway - HTTP 402 micropayment authorization gate |
+
+### Config Files
+| File | Purpose |
+|------|---------|
+| config/embedded/model-mapping.yaml | 10 canonical models mapped to provider-specific IDs |
+| config/embedded/price-catalog.yaml | Per-million-token pricing for 10+ providers with capabilities |
+
+### Harness
+harness/aep-2.75-agent-harness/harness/aep-economics.js wires all economics modules for agent integration.
+
 ## Governance Presets
 
 | Preset | Description |
