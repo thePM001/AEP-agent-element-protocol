@@ -8,6 +8,45 @@ Demo: https://aep.newlisbon.agency
 AEP 2.75 Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.75-agent-harness  
 Schema Builder and Policy Builder (since v2.6) extend governance to the governance layer itself.
 
+## AEP-Graph Orchestration [NEW]
+
+Stateful persistent workflow engine built on the AEP scene graph with vector-clock causal
+ordering from dynAEP.
+
+### Node Types
+| Type | Purpose |
+|------|---------|
+| Action | Execute agent tools or operations |
+| Decision | Evaluate GAP policies for branching |
+| Wait | Human-in-the-loop approval gates |
+| Parallel | Concurrent execution with join synchronization |
+| Loop | Cyclic execution with iteration bounds and exit conditions |
+
+### Persistence
+All workflow state is persisted to the lattice memory fabric. Recovery from checkpoints
+after restart. Vector clocks ensure causal consistency across distributed execution.
+
+### Features
+- Cyclic execution with bounded loop detection
+- Checkpoints at every node for resume-after-failure
+- Human-in-the-loop branch points with timeout escalation
+- Native retry with configurable backoff (linear, exponential, Fibonacci)
+- Conditional branching via GAP policy evaluation
+
+```typescript
+const graph = new GraphEngine();
+graph.addNode({ id: "start", type: "action", next: ["review"] });
+graph.addNode({ id: "review", type: "decision", next: ["approve", "reject"] });
+graph.addNode({ id: "approve", type: "wait", next: ["deploy"] });
+graph.addNode({ id: "reject", type: "action", next: [] });
+graph.addNode({ id: "deploy", type: "action", next: [] });
+graph.validate(); // checks for cycles and missing references
+graph.execute({ input: context });
+```
+
+---
+
+
 
 ## AEP-Comm Universal Orchestration
 
@@ -541,43 +580,6 @@ preserve the trust ring hierarchy.
 
 ---
 
-## AEP-Graph Orchestration
-
-Stateful persistent workflow engine built on the AEP scene graph with vector-clock causal
-ordering from dynAEP.
-
-### Node Types
-| Type | Purpose |
-|------|---------|
-| Action | Execute agent tools or operations |
-| Decision | Evaluate GAP policies for branching |
-| Wait | Human-in-the-loop approval gates |
-| Parallel | Concurrent execution with join synchronization |
-| Loop | Cyclic execution with iteration bounds and exit conditions |
-
-### Persistence
-All workflow state is persisted to the lattice memory fabric. Recovery from checkpoints
-after restart. Vector clocks ensure causal consistency across distributed execution.
-
-### Features
-- Cyclic execution with bounded loop detection
-- Checkpoints at every node for resume-after-failure
-- Human-in-the-loop branch points with timeout escalation
-- Native retry with configurable backoff (linear, exponential, Fibonacci)
-- Conditional branching via GAP policy evaluation
-
-```typescript
-const graph = new GraphEngine();
-graph.addNode({ id: "start", type: "action", next: ["review"] });
-graph.addNode({ id: "review", type: "decision", next: ["approve", "reject"] });
-graph.addNode({ id: "approve", type: "wait", next: ["deploy"] });
-graph.addNode({ id: "reject", type: "action", next: [] });
-graph.addNode({ id: "deploy", type: "action", next: [] });
-graph.validate(); // checks for cycles and missing references
-graph.execute({ input: context });
-```
-
----
 
 ## Meta AEP
 
