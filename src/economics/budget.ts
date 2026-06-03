@@ -19,16 +19,16 @@ export class BudgetEnforcer {
 
     const estCostUSD = (estimate.estimated_prompt_micro_usd + (estimate.estimated_completion_micro_usd || 0)) / 1000000;
     const afterSpend = this.spendThisPeriod + estCostUSD;
-    const remaining = Math.max(0, this.config.hard_cap - this.spendThisPeriod);
+    const remaining = Math.max(0, this.config.hard_cap - afterSpend);
     const consumedRatio = this.config.hard_cap > 0 ? afterSpend / this.config.hard_cap : 0;
-    
-    if (consumedRatio > 1 && this.config.mode === 'deny') {
+
+    if (consumedRatio > 1 && this.config.mode === "deny") {
       return {
         allowed: false,
         remaining_usd: remaining,
         consumed_ratio: consumedRatio,
         warning: true,
-        reason: `Budget exceeded: $${afterSpend.toFixed(2)} > $${this.config.hard_cap}`,
+        reason: "Budget exceeded: $" + afterSpend.toFixed(2) + " > $" + this.config.hard_cap,
       };
     }
 
@@ -55,11 +55,13 @@ export class BudgetEnforcer {
 
   private checkPeriodRotation(): void {
     const now = new Date();
-    if (this.config.period === 'monthly' && now.getMonth() !== this.periodStart.getMonth()) {
+    if (this.config.period === "monthly" &&
+        (now.getMonth() !== this.periodStart.getMonth() || now.getFullYear() !== this.periodStart.getFullYear())) {
       this.spendThisPeriod = 0;
       this.periodStart = now;
     }
-    if (this.config.period === 'daily' && now.getDate() !== this.periodStart.getDate()) {
+    if (this.config.period === "daily" &&
+        (now.getDate() !== this.periodStart.getDate() || now.getMonth() !== this.periodStart.getMonth() || now.getFullYear() !== this.periodStart.getFullYear())) {
       this.spendThisPeriod = 0;
       this.periodStart = now;
     }
@@ -68,7 +70,7 @@ export class BudgetEnforcer {
   getSpendToDate(): number {
     return this.spendThisPeriod;
   }
-  
+
   reset(): void {
     this.spendThisPeriod = 0;
     this.periodStart = new Date();
