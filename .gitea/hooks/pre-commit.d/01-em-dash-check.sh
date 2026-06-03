@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# NLA Policy 4 Pre-Commit Hook - Blocks em-dash, en-dash, and double-hyphens
-# Installed by: NLA-PLATFORM/hooks/pre-commit-check.sh
-# Policy ref: NLA-PLATFORM/policies/nla-server-writing-conventions.gap
+# Pre-Commit Hook - Blocks em-dash, en-dash, and double-hyphens
 
 set -euo pipefail
 
@@ -12,7 +10,7 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-echo -e "${YELLOW}NLA Policy 4: Scanning for em-dash, en-dash, and double-hyphen violations...${NC}"
+echo -e "${YELLOW}Scanning for em-dash, en-dash, and double-hyphen violations...${NC}"
 
 # Get list of staged files (text only, skip binaries)
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
@@ -47,12 +45,12 @@ done <<< "$STAGED_FILES"
 if [ "$VIOLATIONS" -gt 0 ]; then
     echo ""
     echo -e "${RED}============================================${NC}"
-    echo -e "${RED}  COMMIT BLOCKED: Policy 4 Violation${NC}"
+    echo -e "${RED}  COMMIT BLOCKED: Em-dash or En-dash Violation${NC}"
     echo -e "${RED}============================================${NC}"
     echo ""
     echo "Found $VIOLATIONS em-dash or en-dash characters in staged files."
     echo ""
-    echo "Replacement rules (per Policy 4):"
+    echo "Replacement rules:"
     echo "  Em-dash (U+2014)  ->  \" - \" (space-hyphen-space)"
     echo "  En-dash (U+2013)  ->  \"-\"  (hyphen)"
     echo ""
@@ -61,9 +59,9 @@ if [ "$VIOLATIONS" -gt 0 ]; then
     echo "  find . -type f -exec sed -i 's/\\xe2\\x80\\x93/-/g' {} +"
     echo ""
     echo "Then re-stage and commit."
-    echo -e "${RED}This block is non-negotiable per NLA Policy 4.${NC}"
+    echo -e "${RED}This block is non-negotiable.${NC}"
     exit 1
 fi
 
-echo "Policy 4 scan passed: no em-dashes or en-dashes found."
+echo "Scan passed: no em-dashes or en-dashes found."
 exit 0
