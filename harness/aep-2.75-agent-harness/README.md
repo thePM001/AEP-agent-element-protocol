@@ -54,7 +54,7 @@ Permissions are checked before every agent operation. Unknown actions are denied
 - Cost Economics Engine: provider balance, model mapping, and price catalog with 4 load-balance strategies
 - Pre-Dispatch Cost Estimator: token count and micro-USD cost estimation before every LLM call
 - Budget Enforcer: deny/warn/quota modes with monthly/daily period rotation and soft warning thresholds
-- HTTP 402 Micropayments (X402): pay-per-request authorization gate with audit logging
+- HTTP 402 Nanopayments (X402): facilitator-backed verify/settle, 3 payment schemes (exact/upto/batch), 120s settlement deduplication cache, chainable lifecycle hooks (onBeforeVerify, onAfterSettle), batch channel management, signed offer receipts
 - Concurrency Limiter: token-based semaphore preventing cost spikes from traffic bursts
 - Provider Fallback: health-monitored failover with error ratio thresholds and rate-limit backoff
 
