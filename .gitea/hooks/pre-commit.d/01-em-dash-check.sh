@@ -12,7 +12,6 @@ NC='\033[0m'
 
 echo -e "${YELLOW}Scanning for em-dash, en-dash, and double-hyphen violations...${NC}"
 
-# Get list of staged files (text only, skip binaries)
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
 
 if [ -z "$STAGED_FILES" ]; then
@@ -20,26 +19,18 @@ if [ -z "$STAGED_FILES" ]; then
     exit 0
 fi
 
-# Scan each staged file
 while IFS= read -r file; do
     [ -z "$file" ] && continue
     [ ! -f "$file" ] && continue
-
-    # Skip binary files
     if file -b "$file" | grep -qE '^(data|PNG|JPEG|GIF|RIFF|WebM|ISO Media|PE32|ELF)'; then
         continue
     fi
-
-    # Check for em-dash (U+2014)
     if grep -Hn "$EM_DASH" "$file" 2>/dev/null; then
         VIOLATIONS=$((VIOLATIONS + 1))
     fi
-
-    # Check for en-dash (U+2013)
     if grep -Hn "$EN_DASH" "$file" 2>/dev/null; then
         VIOLATIONS=$((VIOLATIONS + 1))
     fi
-
 done <<< "$STAGED_FILES"
 
 if [ "$VIOLATIONS" -gt 0 ]; then
