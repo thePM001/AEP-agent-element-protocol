@@ -48,3 +48,14 @@ AEP 2.75 includes per-agent data access control. Agents are restricted by trust 
 | enterprise | / (everything) | unrestricted | 1000/min | 1 GB |
 
 Permissions are checked before every agent operation. Unknown actions are denied by default.
+
+## What's New in 2.75e (Economics)
+
+- Cost Economics Engine: provider balance, model mapping, and price catalog with 4 load-balance strategies
+- Pre-Dispatch Cost Estimator: token count and micro-USD cost estimation before every LLM call
+- Budget Enforcer: deny/warn/quota modes with monthly/daily period rotation and soft warning thresholds
+- HTTP 402 Micropayments (X402): pay-per-request authorization gate with audit logging
+- Concurrency Limiter: token-based semaphore preventing cost spikes from traffic bursts
+- Provider Fallback: health-monitored failover with error ratio thresholds and rate-limit backoff
+
+Harness entry: harness/aep-economics.js wires all 9 economics modules.
