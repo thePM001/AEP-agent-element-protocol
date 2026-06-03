@@ -6,3 +6,4 @@ export * from './cost-estimator';
 export * from './budget';
 export * from './concurrency';
 export * from './fallback';
+export * from './x402';
