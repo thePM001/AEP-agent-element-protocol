@@ -149,7 +149,7 @@ integration in `harness/aep-comm-harness.ts`.
 
 ### Cost Economics (v2.75e) [NEW]
 
-AEP 2.75e adds cost-aware routing, budgeting, and spend control across all LLM providers. Built from AIephant gateway analysis.
+AEP 2.75e adds cost-aware routing, budgeting, and spend control across all LLM providers. 
 
 - **Provider Balance Engine**: Four load-balance strategies (provider-weighted, balanced-latency, model-weighted, model-latency) with weight validation at startup.
 - **Model Mapping**: Canonical model names resolved to provider-specific IDs for cross-provider price comparison.
