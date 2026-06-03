@@ -5,7 +5,7 @@ Author: thePM_001 (https://x.com/thePM_001)
 Licence: Apache-2.0  
 Research Paper: https://github.com/thePM001/AEP-research-paper-001  
 Demo: https://aep.newlisbon.agency  
-AEP 2.75ee Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.75-agent-harness  
+AEP 2.75e Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.75-agent-harness  
 Schema Builder and Policy Builder (since v2.6) extend governance to the governance layer itself.
 
 ## Repository Structure
@@ -36,7 +36,8 @@ AEP-agent-element-protocol/
 
 ---
 
-### Now 80+ Features. One Ultimate AI Agent Control Protocol.
+### Now 90+ Features. One Ultimate AI Agent Control Protocol.
+
 ## AEP-Graph Orchestration [NEW]
 
 Stateful persistent workflow engine built on the AEP scene graph with vector-clock causal
@@ -100,7 +101,7 @@ integration in `harness/aep-comm-harness.ts`.
 | discovery/dht.ts | In-memory DHT with TTL expiry |
 | discovery/registry.ts | Agent discovery with gossip protocol |
 | discovery/gossip.ts | Periodic peer health exchange |
-| messaging/router.ts | A2A message routing with lattice validation |
+| messaging/router.ts | A2A-like message routing with lattice validation |
 | messaging/envelope.ts | JSON-LD message format with signing |
 | messaging/inbox.ts | Per-agent priority message queue |
 | messaging/transports/ws-transport.ts | WebSocket with auto-reconnect |
@@ -111,12 +112,12 @@ integration in `harness/aep-comm-harness.ts`.
 
 | Module | Purpose |
 |--------|---------|
-| src/evidence/agentstream-backend.ts | Persistent evidence storage |
+| src/evidence/agentstream-backend.ts | Persistent evidence storage (paid add-on purchaseable from NLA)|
 | harness/aep-comm-harness.ts | Full harness wiring all modules |
 
 
 
-![AEP 2.7 - 77+ Features](docs/images/feature-grid.png)
+![AEP 2.7e - 90+ Features](docs/images/feature-grid.png)
 
 ## [Explore the full feature grid at aep.newlisbon.agency](https://aep.newlisbon.agency)
 
@@ -573,7 +574,7 @@ Real-time streaming governance and temporal authority. Fuses AEP with AG-UI.
 
 ## Multi-Agent Collaboration
 
-AEP 2.75eaofprovides native multi-agent coordination patterns built on fleet governance.
+AEP 2.75e provides native multi-agent coordination patterns built on fleet governance.
 
 ### Supervisor Pattern
 One agent governs sub-agents. Supervisor assigns tasks, validates outputs, enforces policies.
@@ -654,7 +655,7 @@ AEP ships with four presets selectable via `/aepassist preset` or `npx aep assis
 
 ---
 
-## Complete Feature List (77 Features)
+## Complete Feature List (90+ Features)
 
 ### Architecture (5)
 
