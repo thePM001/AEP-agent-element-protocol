@@ -1085,7 +1085,7 @@ CP-00023:
 CP-00024:
   label: "Request Access Button"
   category: action
-  function: "Opens email client to contact NLA for enterprise tier."
+  function: "Opens email client to request enterprise tier access."
   component_file: "aep-page.tsx"
   parent: "WD-00018"
   skin_binding: "button_secondary"
@@ -1104,9 +1104,9 @@ CP-00024:
 # UNIVERSAL HEXAGON NAV (identical on every page, every subdomain)
 # ============================================================
 NV-00020:
-  label: "NLA Hexagon Nav Container"
+  label: "Hexagon Nav Container"
   category: layout
-  function: "Planetwide navigation overlay triggered by NLA hexagon click"
+  function: "Planetwide navigation overlay triggered by hexagon click"
   component_file: "components/HexagonNav/index.tsx"
   parent: "SH-00001"
   skin_binding: "nav_hexagon_panel"
@@ -1180,9 +1180,9 @@ NV-00030:
   z: 15
 
 NV-00031:
-  label: "Nav Link: Monad Runlayer"
+  label: "Nav Link: AI Runlayer"
   category: action
-  function: "Monad Runlayer product link (coming soon)"
+  function: "AI Runlayer product link (coming soon)"
   component_file: "components/HexagonNav/index.tsx"
   parent: "NV-00021"
   skin_binding: "nav_link_disabled"
@@ -1292,13 +1292,13 @@ NV-00046:
   z: 15
 
 # ============================================================
-# NLA HOMEPAGE SECTIONS
+# HOMEPAGE SECTIONS
 # ============================================================
 SH-00002:
-  label: "NLA Homepage Shell"
+  label: "Homepage Shell"
   category: layout
   function: "Root container for newlisbon.agency homepage"
-  component_file: "app/(frontend)/NLAHomePage.tsx"
+  component_file: "app/(frontend)/home/page.tsx"
   parent: null
   skin_binding: "shell"
   z: 0
@@ -1307,7 +1307,7 @@ PN-00030:
   label: "Hero Section"
   category: layout
   function: "Brand hero with agency name and positioning line"
-  component_file: "app/(frontend)/NLAHomePage.tsx"
+  component_file: "app/(frontend)/home/page.tsx"
   parent: "SH-00002"
   skin_binding: "panel_main"
   z: 10
@@ -1316,7 +1316,7 @@ PN-00031:
   label: "Workflow Section"
   category: layout
   function: "Workflow environment display with ring visual"
-  component_file: "app/(frontend)/NLAHomePage.tsx"
+  component_file: "app/(frontend)/home/page.tsx"
   parent: "SH-00002"
   skin_binding: "panel_main"
   z: 10
@@ -1325,7 +1325,7 @@ PN-00032:
   label: "Bottom Line Section"
   category: layout
   function: "Transhuman eudaimonist disclosure line"
-  component_file: "app/(frontend)/NLAHomePage.tsx"
+  component_file: "app/(frontend)/home/page.tsx"
   parent: "SH-00002"
   skin_binding: "panel_main"
   z: 10
@@ -1334,7 +1334,7 @@ PN-00033:
   label: "Footer Section"
   category: layout
   function: "Minimal footer with copyright and GitHub links"
-  component_file: "app/(frontend)/NLAHomePage.tsx"
+  component_file: "app/(frontend)/home/page.tsx"
   parent: "SH-00002"
   skin_binding: "panel_footer"
   z: 10

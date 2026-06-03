@@ -1,8 +1,8 @@
-# NLA Task Manifest Rego Policy
+# Task Manifest Rego Policy
 # Validates task manifest YAML before execution
 # Applied via Hermes governance plugin pre_task hook
 
-package nla.task_manifest
+package task_manifest
 
 import future.keywords.in
 import future.keywords.if

@@ -1,6 +1,6 @@
-# TASK-MANIFEST/1.0  -  NLA Task Manifest Standard
-# Every task executed by any NLA agent MUST declare and validate against this manifest.
-# Gapc-validated through GAP document: nla-task-manifest-standard.gap
+# TASK-MANIFEST/1.0  -  Task Manifest Standard
+# Every task executed by any agent MUST declare and validate against this manifest.
+# Gapc-validated through GAP document: task-manifest-standard.gap
 
 manifest_version: "1.0"
 
@@ -16,7 +16,7 @@ task:
     - production                          # production requires explicit gate approval
 
   files_affected:                        # REQUIRED: every file this task creates or modifies
-    - "/opt/nla-website/src/app/(frontend)/aep-2.75/page.tsx"
+    - "/opt/website/src/app/(frontend)/aep-2.75/page.tsx"
   components_affected:                   # REQUIRED if creating/modifying components
     - "AEPFeatureGridStaging"
   urls_affected:                         # REQUIRED: every URL this task touches
@@ -24,7 +24,7 @@ task:
 
 verification:
   build:
-    command: "sudo systemctl restart nla-website.service"
+    command: "sudo systemctl restart website.service"
     wait_seconds: 10
     health_check_url: "http://127.0.0.1:3001/"
     must_pass: true
