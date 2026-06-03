@@ -1,11 +1,11 @@
 # AEP - Agent Element Protocol (Deterministic Adjudication Lattices)
 
-Version 2.75  
+Version 2.75e  
 Author: thePM_001 (https://x.com/thePM_001)  
 Licence: Apache-2.0  
 Research Paper: https://github.com/thePM001/AEP-research-paper-001  
 Demo: https://aep.newlisbon.agency  
-AEP 2.75 Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.75-agent-harness  
+AEP 2.75ee Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.75-agent-harness  
 Schema Builder and Policy Builder (since v2.6) extend governance to the governance layer itself.
 
 ## Repository Structure
@@ -23,7 +23,7 @@ AEP-agent-element-protocol/
   |   |-- ...                  24 more subsystems
   |-- config/                  Registry, theme, scene graph (YAML/JSON)
   |-- policies/                Unified policy files (.gap, .rego, .policy)
-  |-- harness/                 AEP 2.75 Agent Harness
+  |-- harness/                 AEP 2.75e Agent Harness
   |-- agent-control-extreme/   Production governance infrastructure
   |   |-- profiles/            GAP-based agent capability profiles
   |   |-- error-registry-example/
@@ -36,7 +36,7 @@ AEP-agent-element-protocol/
 
 ---
 
-### Now 77+ Features. One Ultimate AI Agent Control Protocol.
+### Now 80+ Features. One Ultimate AI Agent Control Protocol.
 ## AEP-Graph Orchestration [NEW]
 
 Stateful persistent workflow engine built on the AEP scene graph with vector-clock causal
@@ -79,7 +79,7 @@ graph.execute({ input: context });
 
 ## AEP-Comm Universal Orchestration
 
-AEP 2.75 includes a full universal orchestration layer matching or exceeding any inferior competitor agent protocol. All modules in `src/aep-comm/` with harness
+AEP 2.75ee includes a full universal orchestration layer matching or exceeding any inferior competitor agent protocol. All modules in `src/aep-comm/` with harness
 integration in `harness/aep-comm-harness.ts`.
 
 ### Orchestration Modules
@@ -122,7 +122,7 @@ integration in `harness/aep-comm-harness.ts`.
 
 ---
 
-## AEP 2.75 Features
+## AEP 2.75e Features
 
 ### Governance & Control
 - **15-Step Evaluation Chain**: Deterministic output validation pipeline
@@ -149,7 +149,7 @@ integration in `harness/aep-comm-harness.ts`.
 
 ### Cost Economics (v2.75e) [NEW]
 
-AEP 2.75e adds cost-aware routing, budgeting, and spend control across all LLM providers. 
+AEP 2.75ee adds cost-aware routing, budgeting, and spend control across all LLM providers. 
 
 - **Provider Balance Engine**: Four load-balance strategies (provider-weighted, balanced-latency, model-weighted, model-latency) with weight validation at startup.
 - **Model Mapping**: Canonical model names resolved to provider-specific IDs for cross-provider price comparison.
@@ -573,7 +573,7 @@ Real-time streaming governance and temporal authority. Fuses AEP with AG-UI.
 
 ## Multi-Agent Collaboration
 
-AEP 2.75 provides native multi-agent coordination patterns built on fleet governance.
+AEP 2.75e provides native multi-agent coordination patterns built on fleet governance.
 
 ### Supervisor Pattern
 One agent governs sub-agents. Supervisor assigns tasks, validates outputs, enforces policies.
@@ -612,7 +612,7 @@ Higher-order contextual policy validation. Element + context tuple. Cross-field 
 
 **Proof bundles.** Portable `.aep-proof.json` files containing agent identity, covenant, trust score, ring, drift score, reliability index (theta), Merkle root and Ed25519 signature. ML-DSA-65 post-quantum signatures available. RFC 3161 timestamp authority tokens. Offline signing for air-gapped environments.
 
-**OWASP coverage.** Every OWASP Agentic AI Top 10 risk is addressed by specific AEP 2.75 defence mechanisms. See `docs/OWASP-MAPPING.md`.
+**OWASP coverage.** Every OWASP Agentic AI Top 10 risk is addressed by specific AEP 2.75e defence mechanisms. See `docs/OWASP-MAPPING.md`.
 
 **Compliance targets.** EU AI Act transparency requirements, SOC 2 audit trail requirements.
 
