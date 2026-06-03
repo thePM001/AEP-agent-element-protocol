@@ -1,4 +1,4 @@
-# NLA Policy: Staging-Production URL Separation
+# Policy: Staging-Production URL Separation
 # GAPC-VALIDATED: 2026-06-01 | 290 GBNF rules | 0 errors
 # ID: staging-prod-url-separation.v1
 # Trust Ring: SYSTEM | Grade: 10 | Mandatory

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-NLA Task Manifest Governance Plugin for Hermes Agent
+Task Manifest Governance Plugin for Hermes Agent
 Plugin hooks: pre_task, post_task
 Validates task manifests against Rego policies before and after execution.
 
-Install: copy to ~/.hermes/plugins/nla-task-manifest-plugin.py
-Enable: hermes plugins enable nla-task-manifest-plugin
+Install: copy to ~/.hermes/plugins/task-manifest-plugin.py
+Enable: hermes plugins enable task-manifest-plugin
 """
 
 from __future__ import annotations
@@ -17,10 +17,10 @@ import yaml
 from datetime import datetime, timezone
 from pathlib import Path
 
-PLUGIN_NAME = "nla-task-manifest"
+PLUGIN_NAME = "task-manifest"
 MANIFEST_DIR = Path(os.path.expanduser("~/.hermes/task-manifests"))
-SCHEMA_PATH = Path("/opt/nla-website/docs/task-manifest-schema.yaml")
-REGO_PATH = Path("/opt/nla-website/docs/nla-task-manifest.rego")
+SCHEMA_PATH = Path("/opt/website/docs/task-manifest-schema.yaml")
+REGO_PATH = Path("/opt/website/docs/task-manifest.rego")
 MANIFEST_LOG = Path(os.path.expanduser("~/.hermes/logs/task-manifest-log.jsonl"))
 
 
@@ -47,7 +47,7 @@ def validate_with_rego(manifest: dict) -> tuple[bool, list[str]]:
     try:
         result = subprocess.run(
             ["opa", "eval", "--format", "json", "--data", str(REGO_PATH),
-             "--input", "/dev/stdin", "data.nla.task_manifest.deny"],
+             "--input", "/dev/stdin", "data.task_manifest.deny"],
             input=json.dumps(manifest),
             capture_output=True, text=True, timeout=15
         )
