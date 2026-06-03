@@ -1101,29 +1101,29 @@ CP-00024:
   user_interaction: "Click to send email"
 
 # ============================================================
-# UNIVERSAL HEXAGON NAV (identical on every page, every subdomain)
+# UNIVERSAL NAV (identical on every page, every subdomain)
 # ============================================================
 NV-00020:
-  label: "Hexagon Nav Container"
+  label: "Universal Nav Container"
   category: layout
-  function: "Planetwide navigation overlay triggered by hexagon click"
-  component_file: "components/HexagonNav/index.tsx"
+  function: "Planetwide navigation overlay"
+  component_file: "components/UniversalNav/index.tsx"
   parent: "SH-00001"
-  skin_binding: "nav_hexagon_panel"
+  skin_binding: "nav_panel"
   states:
-    closed: "Panel hidden, only hexagon visible"
-    open: "Panel unfolded from hexagon, navigation links visible"
+    closed: "Panel hidden"
+    open: "Panel open, navigation links visible"
   constraints:
     - "Must be identical on every page and subdomain"
     - "Must overlay content without pushing layout"
-    - "Must close on outside click or second hexagon click"
+    - "Must close on outside click or toggle"
   z: 15
 
 NV-00021:
   label: "Nav Category: Products"
   category: layout
   function: "Products navigation category header"
-  component_file: "components/HexagonNav/index.tsx"
+  component_file: "components/UniversalNav/index.tsx"
   parent: "NV-00020"
   skin_binding: "nav_category_header"
   z: 15
@@ -1132,7 +1132,7 @@ NV-00022:
   label: "Nav Link: AEP"
   category: action
   function: "Navigate to AEP subdomain"
-  component_file: "components/HexagonNav/index.tsx"
+  component_file: "components/UniversalNav/index.tsx"
   parent: "NV-00021"
   skin_binding: "nav_link"
   events:
@@ -1143,7 +1143,7 @@ NV-00023:
   label: "Nav Link: AEP Supervision Center"
   category: action
   function: "AEP Supervision Center product link (coming soon)"
-  component_file: "components/HexagonNav/index.tsx"
+  component_file: "components/UniversalNav/index.tsx"
   parent: "NV-00021"
   skin_binding: "nav_link_disabled"
   states:
@@ -1154,7 +1154,7 @@ NV-00024:
   label: "Nav Link: Workflow Runtime // CAWs"
   category: action
   function: "Workflow Runtime + CAWs merged product link (coming soon)"
-  component_file: "components/HexagonNav/index.tsx"
+  component_file: "components/UniversalNav/index.tsx"
   parent: "NV-00021"
   skin_binding: "nav_link_disabled"
   states:
@@ -1165,7 +1165,7 @@ NV-00026:
   label: "Nav Link: Co-Shell // Agent Platform"
   category: action
   function: "Co-Shell + Agent Platform merged product link (coming soon)"
-  component_file: "components/HexagonNav/index.tsx"
+  component_file: "components/UniversalNav/index.tsx"
   parent: "NV-00021"
   skin_binding: "nav_link_disabled"
   z: 15
@@ -1174,7 +1174,7 @@ NV-00030:
   label: "Nav Link: Cloud Platform"
   category: action
   function: "Cloud Platform product link (coming soon)"
-  component_file: "components/HexagonNav/index.tsx"
+  component_file: "components/UniversalNav/index.tsx"
   parent: "NV-00021"
   skin_binding: "nav_link_disabled"
   z: 15
@@ -1183,7 +1183,7 @@ NV-00031:
   label: "Nav Link: AI Runlayer"
   category: action
   function: "AI Runlayer product link (coming soon)"
-  component_file: "components/HexagonNav/index.tsx"
+  component_file: "components/UniversalNav/index.tsx"
   parent: "NV-00021"
   skin_binding: "nav_link_disabled"
   z: 15
@@ -1192,7 +1192,7 @@ NV-00032:
   label: "Nav Category: Services"
   category: layout
   function: "Services navigation category header"
-  component_file: "components/HexagonNav/index.tsx"
+  component_file: "components/UniversalNav/index.tsx"
   parent: "NV-00020"
   skin_binding: "nav_category_header"
   z: 15
@@ -1201,7 +1201,7 @@ NV-00033:
   label: "Nav Link: AI Systems Architecture"
   category: action
   function: "AI Systems Architecture service link (coming soon)"
-  component_file: "components/HexagonNav/index.tsx"
+  component_file: "components/UniversalNav/index.tsx"
   parent: "NV-00032"
   skin_binding: "nav_link_disabled"
   z: 15
@@ -1210,7 +1210,7 @@ NV-00034:
   label: "Nav Link: Sovereign AI"
   category: action
   function: "Sovereign AI service link (coming soon)"
-  component_file: "components/HexagonNav/index.tsx"
+  component_file: "components/UniversalNav/index.tsx"
   parent: "NV-00032"
   skin_binding: "nav_link_disabled"
   z: 15
@@ -1219,7 +1219,7 @@ NV-00035:
   label: "Nav Link: Synthetic Media"
   category: action
   function: "Synthetic Media and Human Replication service link (coming soon)"
-  component_file: "components/HexagonNav/index.tsx"
+  component_file: "components/UniversalNav/index.tsx"
   parent: "NV-00032"
   skin_binding: "nav_link_disabled"
   z: 15
@@ -1228,7 +1228,7 @@ NV-00040:
   label: "Nav Category: Research"
   category: layout
   function: "Research navigation category header"
-  component_file: "components/HexagonNav/index.tsx"
+  component_file: "components/UniversalNav/index.tsx"
   parent: "NV-00020"
   skin_binding: "nav_category_header"
   z: 15
@@ -1237,7 +1237,7 @@ NV-00041:
   label: "Nav Link: AEP Paper"
   category: action
   function: "Navigate to AEP research paper on GitHub"
-  component_file: "components/HexagonNav/index.tsx"
+  component_file: "components/UniversalNav/index.tsx"
   parent: "NV-00040"
   skin_binding: "nav_link"
   events:
@@ -1248,7 +1248,7 @@ NV-00042:
   label: "Nav Link: IPAP"
   category: action
   function: "IPAP media link (coming soon)"
-  component_file: "components/HexagonNav/index.tsx"
+  component_file: "components/UniversalNav/index.tsx"
   parent: "NV-00045"
   skin_binding: "nav_link_disabled"
   z: 15
@@ -1257,7 +1257,7 @@ NV-00043:
   label: "Nav Category: Philosophy"
   category: layout
   function: "Philosophy navigation category header"
-  component_file: "components/HexagonNav/index.tsx"
+  component_file: "components/UniversalNav/index.tsx"
   parent: "NV-00020"
   skin_binding: "nav_category_header"
   z: 15
@@ -1266,7 +1266,7 @@ NV-00044:
   label: "Nav Link: Transhuman Eudaimonist Framework"
   category: action
   function: "Transhuman Eudaimonist Framework link"
-  component_file: "components/HexagonNav/index.tsx"
+  component_file: "components/UniversalNav/index.tsx"
   parent: "NV-00043"
   skin_binding: "nav_link"
   events:
@@ -1277,7 +1277,7 @@ NV-00045:
   label: "Nav Category: Media"
   category: layout
   function: "Media navigation category header"
-  component_file: "components/HexagonNav/index.tsx"
+  component_file: "components/UniversalNav/index.tsx"
   parent: "NV-00020"
   skin_binding: "nav_category_header"
   z: 15
@@ -1286,7 +1286,7 @@ NV-00046:
   label: "Nav Link: [biosecure]"
   category: action
   function: "[biosecure] media link (coming soon)"
-  component_file: "components/HexagonNav/index.tsx"
+  component_file: "components/UniversalNav/index.tsx"
   parent: "NV-00045"
   skin_binding: "nav_link_disabled"
   z: 15
