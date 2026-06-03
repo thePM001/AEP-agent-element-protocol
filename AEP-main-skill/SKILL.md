@@ -460,7 +460,7 @@ AEP 2.75e adds cost-aware routing, budgeting, and spend control.
 | budget.ts | BudgetEnforcer - deny/warn/quota modes, monthly/daily period rotation |
 | concurrency.ts | ConcurrencyLimiter - token-based acquire/release semaphore |
 | fallback.ts | FallbackManager - health-monitored provider failover with error ratio thresholds |
-| x402.ts | X402Gateway - HTTP 402 micropayment authorization gate |
+| x402.ts | X402Gateway - HTTP 402 agentic nanopayments: facilitator verify/settle, 3 schemes (exact/upto/batch), 120s dedup cache, chainable lifecycle hooks, batch channels, signed offer receipts |
 
 ### Config Files
 | File | Purpose |
