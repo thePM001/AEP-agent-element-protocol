@@ -80,7 +80,7 @@ graph.execute({ input: context });
 
 ## AEP-Comm Universal Orchestration
 
-AEP 2.75ee includes a full universal orchestration layer matching or exceeding any inferior competitor agent protocol. All modules in `src/aep-comm/` with harness
+AEP 2.75e includes a full universal orchestration layer matching or exceeding any inferior competitor agent protocol. All modules in `src/aep-comm/` with harness
 integration in `harness/aep-comm-harness.ts`.
 
 ### Orchestration Modules
@@ -123,7 +123,7 @@ integration in `harness/aep-comm-harness.ts`.
 
 ---
 
-## AEP 2.75eaofFeatures
+## AEP 2.75e Features
 
 ### Governance & Control
 - **15-Step Evaluation Chain**: Deterministic output validation pipeline
@@ -150,7 +150,7 @@ integration in `harness/aep-comm-harness.ts`.
 
 ### Cost Economics (v2.75e) [NEW]
 
-AEP 2.75ee adds cost-aware routing, budgeting, and spend control across all LLM providers. 
+AEP 2.75e adds cost-aware routing, budgeting, and spend control across all LLM providers. 
 
 - **Provider Balance Engine**: Four load-balance strategies (provider-weighted, balanced-latency, model-weighted, model-latency) with weight validation at startup.
 - **Model Mapping**: Canonical model names resolved to provider-specific IDs for cross-provider price comparison.
