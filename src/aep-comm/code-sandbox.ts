@@ -1,6 +1,6 @@
 /**
  * Code Execution Sandbox - Isolated execution environment for agent-generated code.
- * Uses Firecracker microVM pattern for hardware-level isolation.
+ * Uses microVM pattern for hardware-level isolation.
  * Part of AEP-Comm v2.75. Matches AutoGen code execution capability.
  */
 
