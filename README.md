@@ -816,7 +816,7 @@ SYSTEM (most permissive - top of lattice)
   |-- governance (deployment, code access, browser)
   |     |-- deployment-gate (human approval)
   |     |-- code-access (GAP-first, hyperlattice)
-  |     |-- browser-harness (Firecracker sandbox)
+  |     |-- browser-harness (sandbox)
   |-- writing (output conventions)
   |     |-- em-dash-forbidden
   |     |-- gray-text-forbidden

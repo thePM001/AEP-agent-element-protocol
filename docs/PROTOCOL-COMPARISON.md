@@ -127,4 +127,4 @@ Three features present in other protocols that AEP 2.75 should implement:
 
 3. **Code Execution Sandbox** (from AutoGen) - Isolated code execution
    environment for agent-generated code. Already partially addressed by
-   AEP 3.0 Firecracker Browser Harness pattern. Module: src/aep-comm/code-sandbox.ts
+   Isolated browser sandbox pattern. Module: src/aep-comm/code-sandbox.ts
