@@ -160,7 +160,7 @@ AEP 2.75e adds cost-aware routing, budgeting, and spend control across all LLM p
 - **HTTP 402 Nanopayments (X402)**: Facilitator-backed verify/settle flow, 3 payment schemes (exact/upto/batch-settlement), 120s settlement cache, lifecycle hooks (onBeforeVerify, onAfterSettle), channel management for batch escrow, chainable hook registration, and signed offer receipts for proof-of-interaction.
 - **Concurrency Limiter**: Token-based acquire/release semaphore preventing cost spikes from traffic bursts.
 - **Provider Fallback**: Health-monitored failover with error ratio thresholds, rate-limit backoff, and restore buffers.
-- **Semantic Cache Tuning**: Configurable similarity threshold, TTL, and exact-match-first short-circuit for Agentstream memvid+ S3 quaternion cache.
+- **Semantic Cache Tuning**: Configurable similarity threshold, TTL, and exact-match-first short-circuit for deterministic semantic cache.
 
 **Subsystem**: src/economics/ (9 modules) + config/embedded/ (model-mapping.yaml, price-catalog.yaml)
 
