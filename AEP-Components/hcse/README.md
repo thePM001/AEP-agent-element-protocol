@@ -1,7 +1,6 @@
 # AEP-HCSE (AEP-HCS-External)
 
-Optional code graph parser for external AEP 2.8 users. **Not bundled** in the main repo.
-
+Optional code graph parser for external AEP 2.8 users.
 ## Flow
 
 1. CCA enables `hcse` in the ImplementationPlan.
@@ -25,5 +24,3 @@ Optional code graph parser for external AEP 2.8 users. **Not bundled** in the ma
 - `coding-governance/lib/solidify.mjs` - `hcse_artifact` hash on solidify
 - `cca/lib/plan-executor.mjs` - download on plan execute
 - `cca/lib/component-catalog.mjs` - intent keyword match
-
-No HCS. External users only.
