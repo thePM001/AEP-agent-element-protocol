@@ -9,7 +9,7 @@
 
 AEP 2.8 merges **dynAEP 1.0** (hyperlattice runtime: `action_path` filter, temporal authority, bridge) into the main repository and adds a mandatory local **AEP Base Node** kernel with Lattice Channels, AgentMesh identity, POTOMITAN mesh fallback, **CAW Framework** execution sandboxes (`aep-caw`), and the **Agent Composer** (ships as **Composer Lite**, WASM visual canvas on port **8424**).
 
-This is the **public open-source tier**. The Docker image ships the full offline protocol including dynAEP, source-built SDK clients, conformance runner and component registry. No remote server connection is required at runtime. **NPM registry distribution is forbidden** - use Docker or a verified source clone.
+This is the **public open-source tier**. The Docker image ships the full offline protocol including dynAEP, source-built SDK clients, conformance runner and component registry. No remote server connection is required at runtime. **NPM registry distribution is forbidden due to NPM supply-chain attack risks** - use Docker or a verified source clone.
 
 ---
 
