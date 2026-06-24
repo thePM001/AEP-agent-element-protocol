@@ -20,6 +20,6 @@ See [`docs/DOCKING-PORTS.md`](docs/DOCKING-PORTS.md) for wire protocol.
 |------|------|------|------|
 | **UCB** (Universal Connect Bridge) | `ucb/` | 8412 | Foreign ingress + manifest-scoped internet egress |
 | **UCD** (Universal Connect Dock) | `universal-connect/` | _(via UCB)_ | Optional external module downloads (HCSE, CCA artifacts) |
-| **PERA** (Perceptive Rails) | `pera/` | _(via Base Node `/pera`)_ | Reserved sensor / world-model dock (provisioned 2.8, runtime AEP 3.0+) |
+| **PERA** | `pera/` | _(via Base Node `/pera`)_ | *reserved* 
 
 UCD routes all external module egress through UCB. Do not bypass UCB for optional internet-facing modules.
