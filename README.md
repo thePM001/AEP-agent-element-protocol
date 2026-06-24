@@ -9,7 +9,7 @@
 
 AEP 2.8 merges **dynAEP 1.0** (hyperlattice runtime: `action_path` filter, temporal authority, bridge) into the main repository and adds a mandatory local **AEP Base Node** kernel with Lattice Channels, AgentMesh identity, POTOMITAN mesh fallback, **CAW Framework** execution sandboxes (`aep-caw`), and the **Agent Composer** (ships as **Composer Lite**, WASM visual canvas on port **8424**).
 
-This is the **public open-source tier**. The Docker image ships the full offline protocol including dynAEP, source-built SDK clients, conformance runner and component registry. No remote server connection is required at runtime. **NPM registry distribution is forbidden due to NPM supply-chain attack risks** - use Docker or a verified source clone.
+This is the **public open-source tier**. The Docker image ships the full offline protocol including dynAEP, source-built SDK clients, conformance runner and component registry. No remote server connection is required at runtime. **NPM registry distribution is forbidden** - use Docker or a verified source clone.
 
 ---
 
@@ -107,7 +107,7 @@ flowchart LR
 
 ---
 
-## What is new in AEP v2.8 ?
+## What is new in 2.8
 
 | Component | Path | Purpose |
 |-----------|------|---------|
@@ -626,22 +626,22 @@ membership, trust floor, partial-order parents, constraint eval, validation hook
 
 ```mermaid
 flowchart TB
-  subgraph systems [Wrapped application / component / engine]
-    APP[Native AEP component]
-    UCB[UCB airlock client :8412]
+  subgraph SYSTEMS[Wrapped application component engine]
+    APP["Native AEP component"]
+    UCB["UCB airlock client port 8412"]
   end
 
-  subgraph HL [One AEP Hyperlattice]
-    LC[Lattice Channel PQ seal]
-    VAL[validateLatticeScene]
-    FIL[hyperlattice node filter action_path + GAP + LRP]
-    PIPE[temporal + structural + eval chain]
-    CANVAS[composer-lite-graph.json]
+  subgraph HL[One AEP Hyperlattice]
+    LC["Lattice Channel PQ seal"]
+    VAL["validateLatticeScene"]
+    FIL["hyperlattice filter action_path GAP LRP"]
+    PIPE["temporal structural eval chain"]
+    CANVAS["composer-lite-graph.json"]
   end
 
-  subgraph docks [Base Node docks on the wrap]
-    VE[validation_engine]
-    RM[regulation_module]
+  subgraph DOCKS[Base Node docks on the wrap]
+    VE["validation_engine"]
+    RM["regulation_module"]
   end
 
   APP --> LC
@@ -673,36 +673,36 @@ AEP 2.8 treats **GAP** (Governed Agentic Programming) as the single authoring la
 
 ```mermaid
 flowchart LR
-  subgraph author [Authoritative GAP]
-    GAP["gap instructions in AEP-Components/gap/policies/reference"]
+  subgraph AUTH_GAP[Authoritative GAP]
+    GAPREF["gap instructions in AEP-Components/gap/policies/reference"]
     PS["platform policies in AEP-Policy-System/reference"]
   end
 
-  subgraph compile [Local compile]
-    GC[gap-compile.mjs]
+  subgraph LOCAL_COMPILE[Local compile]
+    GC["gap-compile.mjs"]
   end
 
-  subgraph runtime [Runtime artifacts]
+  subgraph RT_ARTIFACTS[Runtime artifacts]
     CAWCFG["AEP_DATA caw-framework server-config.yaml"]
-    MOUNT[mount_profiles and per-mount policies]
-    TM[task-manifest-v1.json]
-    PLAN[implementation-plan-v1.json]
+    MOUNT["mount_profiles and per-mount policies"]
+    TM["task-manifest-v1.json"]
+    PLAN["implementation-plan-v1.json"]
   end
 
-  subgraph enforce [Enforcement]
-    CAW[aep-caw server and CLI]
-    UCB["UCB ingress port 8412"]
-    BN[Base Node docks]
+  subgraph ENFORCEMENT[Enforcement]
+    CAW["aep-caw server and CLI"]
+    UCBGAP["UCB ingress port 8412"]
+    BN["Base Node docks"]
   end
 
-  GAP --> GC
+  GAPREF --> GC
   PS --> BN
   GC --> CAWCFG
   GC --> MOUNT
   GC --> TM
   CAWCFG --> CAW
   MOUNT --> CAW
-  TM --> UCB
+  TM --> UCBGAP
   TM --> BN
   PLAN --> BN
 ```
