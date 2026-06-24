@@ -107,7 +107,7 @@ flowchart LR
 
 ---
 
-## What is new in 2.8
+## What is new in AEP v2.8 ?
 
 | Component | Path | Purpose |
 |-----------|------|---------|
