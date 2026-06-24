@@ -1,0 +1,12 @@
+{
+  "id": "ui",
+  "version": "2.8.0",
+  "runtime": "rust",
+  "crate": "aep-subprotocol-ui",
+  "layers": {
+    "scene": "AEP-Subprotocols/ui/aep-scene.json",
+    "registry": "AEP-Subprotocols/ui/aep-registry.yaml",
+    "theme": "AEP-Subprotocols/ui/aep-theme.yaml"
+  },
+  "entrypoints": ["AEP-Subprotocols/ui/src/lib.rs"]
+}

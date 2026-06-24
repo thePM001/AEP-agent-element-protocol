@@ -1,0 +1,34 @@
+{
+  "manifest_version": "1",
+  "id": "aep-comm",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/aep-comm/",
+  "description": "Inter-agent communication helpers.",
+  "requires": [
+    "lattice-channels",
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "comm:inter-agent"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 10,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Typed inter-agent messaging over lattice.",
+    "use_when": [
+      "multi-agent coordination"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/aep-comm/lib/index.ts"
+  }
+}

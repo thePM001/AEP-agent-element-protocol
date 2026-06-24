@@ -1,0 +1,58 @@
+# AepCaw Policy Skills
+
+AI-assistant skills for creating and editing AepCaw security policies. Works in Claude Code, NanoClaw, and other LLM-powered environments.
+
+## Skills
+
+| Skill | Description |
+|-------|-------------|
+| **aep-caw-policy-create** | Create new policies from built-in templates, including agent sandbox, CI, HTTP service, and Postgres-family DB policy use cases |
+| **aep-caw-policy-edit** | Add, remove, or update rules in existing policies with rule-ordering and DB coverage awareness |
+
+Both skills reference a shared schema in `aep-caw-policy-shared/schema-reference.md` covering core policy rule categories plus declared HTTP services, secret providers, and Postgres-family database policy blocks.
+
+## Installation
+
+### Claude Code
+
+Copy the skill directories into your Claude Code skills folder:
+
+```bash
+# Project-level (recommended - other contributors get the skills too)
+cp -r skills/aep-caw-policy-create .claude/skills/
+cp -r skills/aep-caw-policy-edit .claude/skills/
+cp -r skills/aep-caw-policy-shared .claude/skills/
+
+# User-level (available in all your projects)
+cp -r skills/aep-caw-policy-create ~/.claude/skills/
+cp -r skills/aep-caw-policy-edit ~/.claude/skills/
+cp -r skills/aep-caw-policy-shared ~/.claude/skills/
+```
+
+### NanoClaw
+
+Copy the skill directories into your NanoClaw skills folder:
+
+```bash
+cp -r skills/aep-caw-policy-create ~/.nanoclaw/skills/
+cp -r skills/aep-caw-policy-edit ~/.nanoclaw/skills/
+cp -r skills/aep-caw-policy-shared ~/.nanoclaw/skills/
+```
+
+### Other LLM environments
+
+Copy the three directories (`aep-caw-policy-create`, `aep-caw-policy-edit`, `aep-caw-policy-shared`) into whatever skills/prompts directory your environment uses. The skills are standard markdown files with YAML frontmatter - any system that loads skill files will work.
+
+## Usage
+
+Once installed, the skills activate automatically when you ask your AI assistant to work with policies:
+
+**Creating a new policy:**
+> "Create a policy for my CI pipeline that only allows npm registry access and blocks all credential files"
+
+**Editing an existing policy:**
+> "Allow my app to connect to api.stripe.com on port 443"
+> "Remove the approval requirement for curl downloads"
+> "Increase the session timeout to 8 hours"
+
+The skills handle template selection, YAML generation, rule ordering (first-match-wins), and validation via `aep-caw policy validate`.

@@ -1,0 +1,136 @@
+# AepCaw Configuration
+# Documentation: https://github.com/nla-aep/aep-caw-framework
+
+# Server settings
+server:
+  http:
+    addr: "127.0.0.1:18080"
+    read_timeout: "30s"
+    write_timeout: "60s"
+    max_request_size: "10MB"
+  grpc:
+    enabled: true
+    addr: "127.0.0.1:9090"
+  unix_socket:
+    enabled: false
+    path: "/var/run/aep-caw/aep-caw.sock"
+    permissions: "0660"
+
+# Authentication
+auth:
+  type: "none"  # Options: none, api_key
+  api_key:
+    keys_file: "/etc/aep-caw/api_keys.yaml"
+    header_name: "X-API-Key"
+
+# Logging
+logging:
+  level: "info"  # Options: debug, info, warn, error
+  format: "json"  # Options: json, text
+  output: "stderr"
+
+# Session management
+sessions:
+  base_dir: "/var/lib/aep-caw/sessions"
+  max_sessions: 100
+  default_timeout: "1h"
+  default_idle_timeout: "15m"
+  cleanup_interval: "5m"
+
+# Audit logging
+audit:
+  enabled: true
+  storage:
+    sqlite_path: "/var/lib/aep-caw/events.db"
+
+# Sandbox configuration
+sandbox:
+  enabled: true
+  allow_degraded: true
+
+  # Resource limits
+  limits:
+    max_memory_mb: 4096
+    max_cpu_percent: 100
+    max_processes: 256
+
+  # FUSE filesystem interception
+  fuse:
+    enabled: true
+    audit:
+      enabled: true
+      mode: "soft_delete"  # Options: monitor, soft_block, soft_delete, strict
+      trash_path: ".aep-caw_trash"
+      ttl: "24h"
+      quota: "1GB"
+    # Kernel-side per-mount FUSE async request queue depth
+    # When unset or 0, aep-caw defaults to go-fuse's 12
+    # Raise this when one aep-caw daemon serves many concurrent FUSE mounts
+    # max_background: 64
+
+  # Network interception
+  network:
+    enabled: true
+    intercept_mode: "all"  # Options: all, tcp_only, monitor
+    proxy_listen_addr: "127.0.0.1:0"
+
+  # Cgroups resource control
+  cgroups:
+    enabled: true
+
+  # Unix sockets wrapper (seccomp enforcement for shell shim)
+  unix_sockets:
+    enabled: true  # Wraps commands with aep-caw-unixwrap for seccomp-bpf enforcement
+
+# LLM Proxy configuration
+proxy:
+  mode: "embedded"         # embedded | disabled
+  port: 0                  # 0 = random available port
+
+  # Provider base URLs
+  # Customize these to route LLM traffic to alternative endpoints
+  providers:
+    anthropic: "https://api.anthropic.com"
+    openai: "https://api.openai.com"
+    # Examples:
+    # openai: "http://localhost:8000"     # LiteLLM / vLLM
+    # anthropic: "https://llm.corp.com"   # Corporate gateway
+
+# DLP (Data Loss Prevention) configuration
+dlp:
+  mode: "redact"           # redact | disabled
+  patterns:
+    email: true
+    phone: true
+    credit_card: true
+    ssn: true
+    api_keys: true
+
+# Policy configuration
+policies:
+  dir: "/etc/aep-caw/policies"
+  default: "default"
+  # symlink's target that evaluate to outside the workspace
+  # get evaluated (against file_rule) or flat out denied.
+  symlink_escape: "evaluate"   # Options: evaluate, deny
+
+# Approvals configuration
+approvals:
+  enabled: false
+  mode: "async"  # Options: sync, async
+  timeout: "5m"
+
+# Metrics endpoint
+metrics:
+  enabled: true
+  path: "/metrics"
+
+# Health check endpoints
+health:
+  path: "/health"
+  readiness_path: "/ready"
+
+# Development settings (disable in production)
+development:
+  disable_auth: false
+  verbose_errors: false

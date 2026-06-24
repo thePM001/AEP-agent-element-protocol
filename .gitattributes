@@ -1,3 +1,6 @@
+# Exclude internal engineering tree from git archive / GitHub export
+AEP-NOSHIP export-ignore
+
 # Mark binary files so hooks skip them
 *.pdf binary
 *.png binary

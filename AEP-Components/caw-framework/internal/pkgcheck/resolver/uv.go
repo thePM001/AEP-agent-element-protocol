@@ -1,0 +1,274 @@
+package resolver
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"fmt"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/nla-aep/aep-caw-framework/internal/pkgcheck"
+)
+
+// UVResolverConfig configures the uv resolver.
+type UVResolverConfig struct {
+	// DryRunCommand is the path to the uv binary; defaults to "uv".
+	// For additional args to prepend to the resolver-specific args, use DryRunArgs.
+	DryRunCommand string
+	// DryRunArgs contains args to prepend to the resolver-specific args.
+	// Each element is a single token (no shell splitting is performed).
+	DryRunArgs []string
+	Timeout    time.Duration // timeout for dry-run execution
+}
+
+type uvResolver struct {
+	cfg        UVResolverConfig
+	binary     string
+	prefixArgs []string
+}
+
+// NewUVResolver creates a resolver for uv pip install and uv add commands.
+func NewUVResolver(cfg UVResolverConfig) pkgcheck.Resolver {
+	if cfg.DryRunCommand == "" {
+		cfg.DryRunCommand = "uv"
+	}
+	if cfg.Timeout == 0 {
+		cfg.Timeout = 30 * time.Second
+	}
+	// DryRunCommand is the binary path only; DryRunArgs carries any prefix args.
+	// No shell splitting is performed so paths with spaces are preserved verbatim.
+	return &uvResolver{cfg: cfg, binary: cfg.DryRunCommand, prefixArgs: cfg.DryRunArgs}
+}
+
+func (r *uvResolver) Name() string { return "uv" }
+
+func (r *uvResolver) CanResolve(command string, args []string) bool {
+	base := strings.ToLower(filepath.Base(command))
+	base = strings.TrimSuffix(base, ".exe")
+	base = strings.TrimSuffix(base, ".cmd")
+	base = strings.TrimSuffix(base, ".bat")
+	if base != "uv" {
+		return false
+	}
+	if len(args) == 0 {
+		return false
+	}
+	// Only "uv pip install ..." is supported by Resolve (which runs uv pip install --dry-run).
+	if args[0] == "pip" && len(args) > 1 && args[1] == "install" {
+		return true
+	}
+	return false
+}
+
+func (r *uvResolver) Resolve(ctx context.Context, workDir string, command []string) (*pkgcheck.InstallPlan, error) {
+	var packages []string
+	var args []string
+	if len(command) > 1 {
+		args = command[1:]
+		// uv uses a two-token subcommand ("pip install").  Strip both tokens
+		// before extracting package names so "install" is not mistaken for a
+		// package name.  CanResolve already guarantees args[0]=="pip" and
+		// args[1]=="install" when we reach this path.
+		pkgArgs := args
+		if len(pkgArgs) >= 2 && pkgArgs[0] == "pip" && pkgArgs[1] == "install" {
+			pkgArgs = pkgArgs[2:]
+		}
+		packages = extractPkgArgs(pkgArgs)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, r.cfg.Timeout)
+	defer cancel()
+
+	// uv pip install --dry-run [--index-url <url>] [--extra-index-url <url>] <packages>
+	// Forward any --index-url / --extra-index-url flags from the original
+	// command so the dry-run resolves against the same index the actual install
+	// will use.
+	cmdArgs := []string{"pip", "install", "--dry-run"}
+	cmdArgs = append(cmdArgs, r.extractIndexURLFlags(command)...)
+	cmdArgs = append(cmdArgs, packages...)
+	allArgs := append(append([]string(nil), r.prefixArgs...), cmdArgs...)
+
+	cmd := exec.CommandContext(ctx, r.binary, allArgs...)
+	cmd.Dir = workDir
+
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("uv dry-run failed: %w", err)
+	}
+
+	plan, err := parseUVDryRunOutput(out, packages)
+	if err != nil {
+		return nil, err
+	}
+	plan.Registry = r.detectRegistry(args)
+	return plan, nil
+}
+
+// extractIndexURLFlags returns the subset of args that influence which
+// index/registry packages resolve from (--index-url, --extra-index-url).
+// Pass these to the dry-run so the resolver hits the same source the actual
+// install will use.
+func (r *uvResolver) extractIndexURLFlags(args []string) []string {
+	var out []string
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch {
+		case a == "--index-url" && i+1 < len(args):
+			out = append(out, a, args[i+1])
+			i++
+		case strings.HasPrefix(a, "--index-url="):
+			out = append(out, a)
+		case a == "--extra-index-url" && i+1 < len(args):
+			out = append(out, a, args[i+1])
+			i++
+		case strings.HasPrefix(a, "--extra-index-url="):
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
+// detectRegistry scans the uv pip install command args for registry override flags.
+//
+// --index-url sets the primary registry; return it directly.
+// --extra-index-url means "also use this registry", so the package may have
+// come from EITHER the primary or the extra registry. We can't tell which, so
+// we return "" (unknown) to let the privacy filter fail closed rather than
+// accidentally claiming the package came from a known-public registry.
+func (r *uvResolver) detectRegistry(args []string) string {
+	hasExtra := false
+	primary := "pypi.org"
+
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch {
+		case a == "--index-url" && i+1 < len(args):
+			primary = args[i+1]
+			i++
+		case strings.HasPrefix(a, "--index-url="):
+			primary = strings.TrimPrefix(a, "--index-url=")
+		case a == "--extra-index-url" && i+1 < len(args):
+			hasExtra = true
+			i++
+		case strings.HasPrefix(a, "--extra-index-url="):
+			hasExtra = true
+		}
+	}
+
+	if hasExtra {
+		// Package origin is ambiguous - return "" so privacy filter fails closed.
+		return ""
+	}
+	return primary
+}
+
+// parseUVDryRunOutput parses uv's --dry-run text output into an InstallPlan.
+// uv outputs lines like:
+//
+//	Would install flask-3.0.0 jinja2-3.1.2 markupsafe-2.1.3
+//
+// or one package per line:
+//
+//	Would install flask-3.0.0
+//	                jinja2-3.1.2
+func parseUVDryRunOutput(data []byte, requestedPkgs []string) (*pkgcheck.InstallPlan, error) {
+	// Build a set of requested package base names (normalized to lowercase)
+	requested := make(map[string]bool, len(requestedPkgs))
+	for _, p := range requestedPkgs {
+		name := strings.ToLower(pkgBaseName(p))
+		requested[name] = true
+	}
+
+	plan := &pkgcheck.InstallPlan{
+		Tool:       "uv",
+		Ecosystem:  pkgcheck.EcosystemPyPI,
+		Registry:   "pypi.org",
+		ResolvedAt: time.Now(),
+	}
+
+	scanner := bufio.NewScanner(bytes.NewReader(data))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		// Look for "Would install" lines
+		if strings.HasPrefix(line, "Would install ") {
+			line = strings.TrimPrefix(line, "Would install ")
+		} else if strings.HasPrefix(line, "would install ") {
+			line = strings.TrimPrefix(line, "would install ")
+		} else if line == "" {
+			continue
+		} else {
+			// Could be a continuation line with just package specs
+			// Only process if it looks like package-version specs
+			if !looksLikePackageSpec(line) {
+				continue
+			}
+		}
+
+		// Parse space-separated package-version specs
+		parts := strings.Fields(line)
+		for _, part := range parts {
+			name, version := parseUVPackageSpec(part)
+			if name == "" {
+				continue
+			}
+
+			ref := pkgcheck.PackageRef{
+				Name:    name,
+				Version: version,
+			}
+
+			if requested[strings.ToLower(name)] {
+				ref.Direct = true
+				plan.Direct = append(plan.Direct, ref)
+			} else {
+				plan.Transitive = append(plan.Transitive, ref)
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error reading uv output: %w", err)
+	}
+
+	return plan, nil
+}
+
+// parseUVPackageSpec parses a uv package spec like "flask-3.0.0" into name and version.
+// The last hyphen-separated component that starts with a digit is treated as the version.
+func parseUVPackageSpec(spec string) (name, version string) {
+	spec = strings.TrimSpace(spec)
+	if spec == "" {
+		return "", ""
+	}
+
+	// Find the last hyphen followed by a digit (version separator)
+	for i := len(spec) - 1; i > 0; i-- {
+		if spec[i-1] == '-' && i < len(spec) && spec[i] >= '0' && spec[i] <= '9' {
+			return spec[:i-1], spec[i:]
+		}
+	}
+
+	// No version found
+	return spec, ""
+}
+
+// looksLikePackageSpec checks if a line looks like it contains package-version specs.
+func looksLikePackageSpec(line string) bool {
+	parts := strings.Fields(line)
+	if len(parts) == 0 {
+		return false
+	}
+	// At least one part should contain a hyphen followed by a digit
+	for _, p := range parts {
+		for i := 1; i < len(p); i++ {
+			if p[i-1] == '-' && p[i] >= '0' && p[i] <= '9' {
+				return true
+			}
+		}
+	}
+	return false
+}

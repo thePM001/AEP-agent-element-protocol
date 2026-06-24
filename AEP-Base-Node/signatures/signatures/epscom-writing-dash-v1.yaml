@@ -1,0 +1,22 @@
+signature_version: "1"
+id: epscom-writing-dash-v1
+authority: EPSCOM
+name: Forbidden typographic dash characters
+description: Block U+2014 em dash, U+2013 en dash, U+2015 horizontal bar, U+2E3A/U+2E3B multi-em dashes, and U+2212 minus-as-dash in governed prose (writing.gap kernel alignment).
+severity: medium
+category: writing
+enabled: true
+detection:
+  type: regex
+  case_insensitive: false
+  patterns:
+    - "[\u2014\u2013\u2015\u2e3a\u2e3b\u2212]"
+response:
+  action: block
+  dock: regulation_module
+metadata:
+  authored_by: EPSCOM
+  revision: "2026-06-23"
+  references:
+    - AEP-Base-Node/crate/src/epscom.rs
+    - AEP-Policy-System/reference/writing.gap

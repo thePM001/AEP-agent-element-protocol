@@ -1,0 +1,524 @@
+# Development Safe Policy for aep-caw - Windows
+# Optimized for local development workflows on Windows with sensible guardrails
+
+version: 1
+name: dev-safe-windows
+description: |
+  Safe policy for local development on Windows. Allows project read/write,
+  approves destructive operations, blocks credential access, and guards
+  critical registry locations.
+
+# =============================================================================
+# FILE OPERATION RULES
+# =============================================================================
+
+file_rules:
+  # ---------------------------------------------------------------------------
+  # Project - full access except deletes require approval
+  # ---------------------------------------------------------------------------
+
+  - name: allow-project-read
+    description: Allow reading any file in project
+    paths:
+      - "${PROJECT_ROOT}"
+      - "${PROJECT_ROOT}/**"
+    operations:
+      - read
+      - open
+      - stat
+      - list
+      - readlink
+    decision: allow
+
+  - name: allow-project-write
+    description: Allow writing/creating files in project
+    paths:
+      - "${PROJECT_ROOT}/**"
+    operations:
+      - write
+      - create
+      - mkdir
+      - chmod
+      - rename
+    decision: allow
+
+  - name: approve-project-delete
+    description: Require approval for deleting files in project
+    paths:
+      - "${PROJECT_ROOT}/**"
+    operations:
+      - delete
+      - rmdir
+    decision: approve
+    message: "Delete {{.Path}}?"
+    timeout: 5m
+
+  # ---------------------------------------------------------------------------
+  # Git root for monorepo read access
+  # ---------------------------------------------------------------------------
+
+  - name: allow-git-root-read
+    description: Read-only access to git repository root (for monorepos)
+    paths:
+      - "${GIT_ROOT}/**"
+    operations:
+      - read
+      - open
+      - stat
+      - list
+      - readlink
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # Temporary directories - full access (Windows)
+  # ---------------------------------------------------------------------------
+
+  - name: allow-temp
+    description: Full access to Windows temp directories
+    paths:
+      - "${TEMP}/**"
+      - "${TMP}/**"
+      - "${LOCALAPPDATA}\\Temp\\**"
+    operations:
+      - "*"
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # System paths - read-only for development tools (Windows)
+  # ---------------------------------------------------------------------------
+
+  - name: allow-program-files-read
+    description: Read access to Program Files
+    paths:
+      - "C:\\Program Files\\**"
+      - "C:\\Program Files (x86)\\**"
+    operations:
+      - read
+      - open
+      - stat
+      - list
+      - readlink
+    decision: allow
+
+  - name: allow-windows-read
+    description: Read access to Windows system directory
+    paths:
+      - "C:\\Windows\\System32\\**"
+    operations:
+      - read
+      - open
+      - stat
+      - list
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # Package manager caches - full access for dev workflows (Windows)
+  # ---------------------------------------------------------------------------
+
+  - name: allow-npm-cache
+    description: npm cache access
+    paths:
+      - "${APPDATA}\\npm-cache\\**"
+      - "${LOCALAPPDATA}\\npm-cache\\**"
+    operations:
+      - "*"
+    decision: allow
+
+  - name: allow-pip-cache
+    description: pip cache access
+    paths:
+      - "${LOCALAPPDATA}\\pip\\Cache\\**"
+    operations:
+      - "*"
+    decision: allow
+
+  - name: allow-cargo-cache
+    description: Cargo cache access
+    paths:
+      - "${USERPROFILE}\\.cargo\\**"
+    operations:
+      - "*"
+    decision: allow
+
+  - name: allow-go-cache
+    description: Go module cache access
+    paths:
+      - "${USERPROFILE}\\go\\**"
+      - "${LOCALAPPDATA}\\go-build\\**"
+    operations:
+      - "*"
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # BLOCKED - credentials and secrets (Windows)
+  # ---------------------------------------------------------------------------
+
+  - name: deny-ssh-keys
+    description: Block access to SSH keys
+    paths:
+      - "${USERPROFILE}\\.ssh\\**"
+    operations:
+      - "*"
+    decision: deny
+
+  - name: deny-aws-credentials
+    description: Block AWS credentials
+    paths:
+      - "${USERPROFILE}\\.aws\\**"
+    operations:
+      - "*"
+    decision: deny
+
+  - name: deny-cloud-credentials
+    description: Block cloud provider credentials
+    paths:
+      - "${USERPROFILE}\\.gcloud\\**"
+      - "${USERPROFILE}\\.azure\\**"
+      - "${APPDATA}\\gcloud\\**"
+    operations:
+      - "*"
+    decision: deny
+
+  - name: deny-git-credentials
+    description: Block git credentials
+    paths:
+      - "${USERPROFILE}\\.git-credentials"
+      - "**\\.netrc"
+    operations:
+      - "*"
+    decision: deny
+
+  # ---------------------------------------------------------------------------
+  # Default deny
+  # ---------------------------------------------------------------------------
+
+  - name: default-deny-files
+    description: Deny all other file operations
+    paths:
+      - "**"
+    operations:
+      - "*"
+    decision: deny
+
+# =============================================================================
+# NETWORK OPERATION RULES
+# =============================================================================
+
+network_rules:
+  # ---------------------------------------------------------------------------
+  # Package registries - allowed
+  # ---------------------------------------------------------------------------
+
+  - name: allow-npm
+    description: npm registry access
+    domains:
+      - "registry.npmjs.org"
+      - "*.npmjs.org"
+      - "*.npmjs.com"
+    ports: [443, 80]
+    decision: allow
+
+  - name: allow-pypi
+    description: PyPI access
+    domains:
+      - "pypi.org"
+      - "files.pythonhosted.org"
+      - "*.pypi.org"
+    ports: [443, 80]
+    decision: allow
+
+  - name: allow-cargo
+    description: Cargo registry access
+    domains:
+      - "crates.io"
+      - "*.crates.io"
+      - "static.crates.io"
+    ports: [443, 80]
+    decision: allow
+
+  - name: allow-go-proxy
+    description: Go module proxy
+    domains:
+      - "proxy.golang.org"
+      - "sum.golang.org"
+      - "*.golang.org"
+    ports: [443, 80]
+    decision: allow
+
+  - name: allow-nuget
+    description: NuGet package registry
+    domains:
+      - "api.nuget.org"
+      - "*.nuget.org"
+    ports: [443, 80]
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # Code hosting
+  # ---------------------------------------------------------------------------
+
+  - name: allow-github
+    description: GitHub access
+    domains:
+      - "github.com"
+      - "*.github.com"
+      - "raw.githubusercontent.com"
+      - "*.githubusercontent.com"
+      - "api.github.com"
+    ports: [443, 80, 22]
+    decision: allow
+
+  - name: allow-gitlab
+    description: GitLab access
+    domains:
+      - "gitlab.com"
+      - "*.gitlab.com"
+    ports: [443, 80, 22]
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # CDNs
+  # ---------------------------------------------------------------------------
+
+  - name: allow-cdns
+    description: Common CDNs
+    domains:
+      - "*.cloudflare.com"
+      - "*.cloudfront.net"
+      - "cdn.jsdelivr.net"
+      - "unpkg.com"
+    ports: [443, 80]
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # Blocked networks
+  # ---------------------------------------------------------------------------
+
+  - name: block-metadata-services
+    description: Block cloud metadata services
+    cidrs:
+      - "169.254.169.254/32"
+    decision: deny
+
+  # ---------------------------------------------------------------------------
+  # Require approval for other destinations
+  # ---------------------------------------------------------------------------
+
+  - name: approve-unknown-https
+    description: Require approval for unknown HTTPS destinations
+    ports: [443]
+    decision: approve
+    message: "Connect to {{.RemoteAddr}}:{{.RemotePort}}?"
+    timeout: 2m
+
+  - name: default-deny-network
+    description: Deny all other network connections
+    domains:
+      - "*"
+    decision: deny
+
+# =============================================================================
+# COMMAND RULES
+# =============================================================================
+
+command_rules:
+  - name: allow-safe-commands
+    description: Standard safe commands
+    commands:
+      - dir
+      - type
+      - more
+      - find
+      - findstr
+      - sort
+      - where
+      - whoami
+      - hostname
+    decision: allow
+
+  - name: no-direct-push-to-main
+    commands: [git]
+    args_patterns:
+      - "push.*(origin\\s+)?(main|master)"
+    decision: redirect
+    redirect_to:
+      command: echo
+      args: ["Push declined. Create a branch and open a pull request instead."]
+    message: "Direct pushes to main/master are not allowed. Use feature branches and pull requests."
+
+  - name: no-force-push
+    commands: [git]
+    args_patterns:
+      - "push.*(--force|-f)"
+    decision: redirect
+    redirect_to:
+      command: echo
+      args: ["Force push blocked. Resolve conflicts through proper merge."]
+    message: "Force pushing is not allowed - merge changes through the standard workflow."
+
+  - name: no-hard-reset
+    commands: [git]
+    args_patterns:
+      - "reset.*(--hard)"
+    decision: redirect
+    redirect_to:
+      command: echo
+      args: ["Hard reset blocked. Use git stash or git checkout to preserve changes."]
+    message: "git reset --hard discards uncommitted work. Use non-destructive alternatives."
+
+  - name: no-git-clean
+    commands: [git]
+    args_patterns:
+      - "clean.*(-f|--force)"
+    decision: redirect
+    redirect_to:
+      command: echo
+      args: ["git clean blocked. Untracked files may be needed - review before deleting."]
+    message: "git clean -fd permanently deletes untracked files. Review them manually first."
+
+  - name: allow-dev-tools
+    description: Development tools
+    commands:
+      - git
+      - node
+      - npm
+      - npx
+      - python
+      - python3
+      - pip
+      - pip3
+      - cargo
+      - rustc
+      - go
+      - dotnet
+      - msbuild
+    decision: allow
+
+  - name: block-dangerous-del
+    description: Block recursive force delete
+    commands:
+      - del
+      - rmdir
+    args_patterns:
+      - ".*/s.*"
+      - ".*/q.*"
+    decision: deny
+
+  - name: block-system-commands
+    description: Block system administration commands
+    commands:
+      - shutdown
+      - sc
+      - net
+      - reg
+      - bcdedit
+      - diskpart
+    decision: deny
+
+# =============================================================================
+# WINDOWS REGISTRY RULES (Dev: Permissive with safety guards)
+# =============================================================================
+
+registry_rules:
+  # ---------------------------------------------------------------------------
+  # Allow most application settings
+  # ---------------------------------------------------------------------------
+
+  - name: allow-hkcu-software
+    description: Allow user software settings
+    paths:
+      - 'HKCU\SOFTWARE\*'
+    operations:
+      - "*"
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # Block critical persistence/security (always)
+  # ---------------------------------------------------------------------------
+
+  - name: block-run-keys
+    description: Block startup Run key modifications
+    paths:
+      - 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run*'
+      - 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run*'
+    operations:
+      - write
+      - create
+      - delete
+    decision: deny
+    priority: 100
+
+  - name: block-security-settings
+    description: Block security-related registry
+    paths:
+      - 'HKLM\SOFTWARE\Policies\Microsoft\Windows Defender*'
+      - 'HKLM\SYSTEM\CurrentControlSet\Control\Lsa*'
+    operations:
+      - "*"
+    decision: deny
+    priority: 200
+
+  # ---------------------------------------------------------------------------
+  # Approve service modifications with timeout
+  # ---------------------------------------------------------------------------
+
+  - name: approve-service-changes
+    description: Require approval for service changes
+    paths:
+      - 'HKLM\SYSTEM\CurrentControlSet\Services\*'
+    operations:
+      - write
+      - create
+      - delete
+    decision: approve
+    message: "Agent wants to modify service: {{.Path}}"
+    timeout: 5m
+
+  # ---------------------------------------------------------------------------
+  # Allow read everywhere
+  # ---------------------------------------------------------------------------
+
+  - name: allow-registry-read
+    description: Allow reading registry
+    paths:
+      - "*"
+    operations:
+      - read
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # Default deny for HKLM writes
+  # ---------------------------------------------------------------------------
+
+  - name: default-deny-hklm-write
+    description: Deny HKLM modifications by default
+    paths:
+      - 'HKLM\*'
+    operations:
+      - write
+      - create
+      - delete
+    decision: deny
+
+# =============================================================================
+# RESOURCE LIMITS
+# =============================================================================
+
+resource_limits:
+  max_memory_mb: 4096
+  cpu_quota_percent: 100
+  pids_max: 200
+  command_timeout: 10m
+  session_timeout: 8h
+  idle_timeout: 1h
+
+# =============================================================================
+# AUDIT SETTINGS
+# =============================================================================
+
+audit:
+  log_allowed: false
+  log_denied: true
+  log_approved: true
+  include_stdout: false
+  include_stderr: true

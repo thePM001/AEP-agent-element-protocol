@@ -1,0 +1,36 @@
+{
+  "manifest_version": "1",
+  "id": "covenant",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/covenant/",
+  "description": "Parse, evaluate, and compile behavioral covenant specs.",
+  "requires": [
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "covenant:parse",
+    "covenant:evaluate",
+    "covenant:compile"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 10,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Behavioral covenants beyond static policy YAML.",
+    "use_when": [
+      "behavioral constraints",
+      "conditional rules"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/covenant/lib/parser.ts"
+  }
+}

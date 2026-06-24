@@ -1,0 +1,83 @@
+version: "2.8"
+name: "aep-noship-distribution"
+
+capabilities:
+  - tool: "file:read"
+    scope:
+      paths: ["AEP-NOSHIP/**", "src/**", "AEP-Policy-System/**"]
+  - tool: "file:write"
+    scope:
+      paths: ["AEP-NOSHIP/**", "src/**", "AEP-Policy-System/**"]
+  - tool: "git:status"
+  - tool: "git:diff"
+  - tool: "git:add"
+    scope:
+      paths: ["**"]
+      exclude_paths: ["AEP-NOSHIP/**"]
+  - tool: "git:commit"
+  - tool: "command:run"
+    scope:
+      binaries: ["git", "gh", "node", "npm"]
+
+limits:
+  max_runtime_ms: 600000
+  max_files_changed: 50
+
+gates:
+  - action: "command:run"
+    approval: human
+    risk_level: critical
+    when: "git push to github.com OR gh release OR npm publish"
+
+forbidden:
+  - pattern: "git push.*github\\.com"
+    reason: "AEP-NOSHIP/ must not reach public GitHub"
+  - pattern: "gh release"
+    reason: "Releases must exclude AEP-NOSHIP/ internal assets"
+  - pattern: "gh repo sync.*github"
+    reason: "Public GitHub sync must not include AEP-NOSHIP/"
+  - pattern: "npm publish"
+    reason: "npm registry distribution is forbidden for AEP-NOSHIP/"
+  - pattern: "docker build.*--include.*AEP-NOSHIP"
+    reason: "Runtime images must exclude AEP-NOSHIP/"
+  - pattern: "rsync.*AEP-NOSHIP.*github"
+    reason: "No rsync of AEP-NOSHIP/ to public GitHub hosts"
+
+protected_paths:
+  - "AEP-NOSHIP/tests/**"
+  - "AEP-NOSHIP/plans/**"
+  - "AEP-NOSHIP/docs/**"
+  - "AEP-NOSHIP/**"
+
+distribution:
+  public_channels_forbidden: true
+  allowed_internal_mirrors:
+    - "private Gitea"
+    - "operator-controlled git remotes"
+  runtime_exclusions:
+    - "Docker COPY"
+    - "npm pack"
+    - "public tarball"
+  policy_gap: "AEP-Policy-System/reference/aep-noship-distribution.gap"
+  mandatory_rule: "aep-noship-no-public-github"
+
+session:
+  max_actions: 100
+  max_denials: 3
+  escalation:
+    - after_denials: 1
+      require: pause
+    - after_denials: 2
+      require: human_checkin
+
+evidence:
+  enabled: true
+  dir: "./ledgers"
+
+trust:
+  initial_score: 300
+  penalties:
+    policy_violation: 250
+    forbidden_match: 500
+  rewards:
+    successful_action: 1

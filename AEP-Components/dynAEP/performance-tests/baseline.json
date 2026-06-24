@@ -1,0 +1,147 @@
+{
+  "version": "0.3.1-perf",
+  "date": "2026-05-01T12:37:08.142Z",
+  "runtime": {
+    "node": "v22.22.2",
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "profiles": {
+    "single-agent-dashboard": {
+      "profile": "single-agent-dashboard",
+      "throughput_events_per_second": 76471,
+      "latency_p50_ms": 0.004035999998450279,
+      "latency_p95_ms": 0.04562699999951292,
+      "latency_p99_ms": 0.05897900000127265,
+      "latency_p999_ms": 0.12964300000021467,
+      "hot_path_rate": 0.8004191189351294,
+      "cold_path_avg_ms": 0.04411912130977884,
+      "memory_start_mb": 8.4,
+      "memory_peak_mb": 924.9,
+      "memory_end_mb": 913.9,
+      "disk_writes_per_second": 61,
+      "disk_bytes_per_second": 1390137,
+      "rejections": 458001,
+      "rejection_reasons": {
+        "Orphan element": 458001,
+        "Unregistered element": 458001,
+        "z-band violation": 458001
+      },
+      "causal_buffer_utilization": 0,
+      "causal_reorder_events": 0,
+      "causal_violations": 0,
+      "total_events": 2294814,
+      "duration_ms": 30009
+    },
+    "multi-agent-collaboration": {
+      "profile": "multi-agent-collaboration",
+      "throughput_events_per_second": 39849,
+      "latency_p50_ms": 0.025477999995928258,
+      "latency_p95_ms": 0.05199800000991672,
+      "latency_p99_ms": 0.06855200001155026,
+      "latency_p999_ms": 0.15640300000086427,
+      "hot_path_rate": 0.5003944012587381,
+      "cold_path_avg_ms": 0.043663931469883836,
+      "memory_start_mb": 1934.7,
+      "memory_peak_mb": 2246.5,
+      "memory_end_mb": 544.8,
+      "disk_writes_per_second": 77,
+      "disk_bytes_per_second": 1970531,
+      "rejections": 597270,
+      "rejection_reasons": {
+        "Orphan element": 597270,
+        "Unregistered element": 597270,
+        "z-band violation": 597270
+      },
+      "causal_buffer_utilization": 0,
+      "causal_reorder_events": 0,
+      "causal_violations": 0,
+      "total_events": 1195483,
+      "duration_ms": 30000
+    },
+    "data-heavy-grid": {
+      "profile": "data-heavy-grid",
+      "throughput_events_per_second": 118339,
+      "latency_p50_ms": 0.0035149999894201756,
+      "latency_p95_ms": 0.028051999979652464,
+      "latency_p99_ms": 0.05403100000694394,
+      "latency_p999_ms": 0.08270299999276176,
+      "hot_path_rate": 0.9500647854474984,
+      "cold_path_avg_ms": 0.052822778293029386,
+      "memory_start_mb": 1672.3,
+      "memory_peak_mb": 2556.8,
+      "memory_end_mb": 1042.1,
+      "disk_writes_per_second": 23,
+      "disk_bytes_per_second": 496587,
+      "rejections": 177279,
+      "rejection_reasons": {
+        "Orphan element": 177279,
+        "Unregistered element": 177279,
+        "z-band violation": 177279
+      },
+      "causal_buffer_utilization": 0,
+      "causal_reorder_events": 0,
+      "causal_violations": 0,
+      "total_events": 3550180,
+      "duration_ms": 30000
+    },
+    "perception-heavy": {
+      "profile": "perception-heavy",
+      "throughput_events_per_second": 22224,
+      "latency_p50_ms": 0.031267000013031065,
+      "latency_p95_ms": 0.06046100001549348,
+      "latency_p99_ms": 0.08260299998801202,
+      "latency_p999_ms": 3.592454000026919,
+      "hot_path_rate": 0,
+      "cold_path_avg_ms": 0.04414808352056242,
+      "memory_start_mb": 529.7,
+      "memory_peak_mb": 838.3,
+      "memory_end_mb": 452.5,
+      "disk_writes_per_second": 87,
+      "disk_bytes_per_second": 0,
+      "rejections": 666710,
+      "rejection_reasons": {
+        "Orphan element": 666710,
+        "Unregistered element": 666710,
+        "z-band violation": 666710
+      },
+      "causal_buffer_utilization": 0,
+      "causal_reorder_events": 0,
+      "causal_violations": 0,
+      "total_events": 666710,
+      "duration_ms": 30000
+    },
+    "burst-traffic": {
+      "profile": "burst-traffic",
+      "throughput_events_per_second": 8284,
+      "latency_p50_ms": 0.10796099994331598,
+      "latency_p95_ms": 0.17325900006107986,
+      "latency_p99_ms": 0.21979800006374717,
+      "latency_p999_ms": 2.304240999976173,
+      "hot_path_rate": 0.7997086671522214,
+      "cold_path_avg_ms": 0.06005033898538017,
+      "memory_start_mb": 32.1,
+      "memory_peak_mb": 244.5,
+      "memory_end_mb": 209,
+      "disk_writes_per_second": 5,
+      "disk_bytes_per_second": 126033,
+      "rejections": 49775,
+      "rejection_reasons": {
+        "Orphan element": 49775,
+        "Unregistered element": 49775,
+        "z-band violation": 49775
+      },
+      "causal_buffer_utilization": 0,
+      "causal_reorder_events": 0,
+      "causal_violations": 0,
+      "total_events": 248513,
+      "duration_ms": 30000
+    }
+  },
+  "success_criteria": {
+    "hot_path_p99_lt_0_5_ms": true,
+    "cold_path_p99_lt_10_ms": true,
+    "sustained_throughput_gt_2000": true,
+    "all_pass": true
+  }
+}

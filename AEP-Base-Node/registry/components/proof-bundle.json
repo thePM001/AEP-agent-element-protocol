@@ -1,0 +1,39 @@
+{
+  "manifest_version": "1",
+  "id": "proof-bundle",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/proof-bundle/",
+  "description": "Build and verify session proof bundles with reliability index.",
+  "requires": [
+    "identity",
+    "covenant",
+    "session",
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "proof:build",
+    "proof:verify",
+    "proof:reliability-index"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 20,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Portable proof bundles for session attestation.",
+    "use_when": [
+      "cross-agent verification",
+      "compliance exports"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/proof-bundle/lib/builder.ts"
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "manifest_version": "1",
+  "id": "epscom-signatures",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Base-Node/signatures/",
+  "description": "EPSCOM-curated detection signatures and trust bundle (Base Node kernel adjunct).",
+  "requires": [],
+  "bundled_with": "aep-base-node",
+  "capabilities": [
+    "epscom:detection-signatures",
+    "epscom:trust-bundle",
+    "epscom:signature-scan",
+    "epscom:writing-alignment"
+  ],
+  "actions": [
+    {
+      "id": "validate_bundle",
+      "description": "Validate trust bundle and signature YAML files",
+      "runtime": "cli",
+      "method": "node AEP-Base-Node/signatures/tooling/validate-signatures.mjs"
+    }
+  ],
+  "setup_hooks": [
+    {
+      "id": "epscom_signatures_default",
+      "policy_section": "epscom_signatures",
+      "default": {
+        "enabled": true,
+        "sync_interval_hours": 24
+      }
+    }
+  ],
+  "resource_requirements": {
+    "min_memory_mb": 16,
+    "min_disk_mb": 5,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "EPSCOM detection signatures bundled with Base Node. Trust bundle + YAML rules.",
+    "use_when": [
+      "every AEP deployment",
+      "EPSCOM governance",
+      "detection signatures",
+      "prompt injection"
+    ],
+    "avoid_when": [],
+    "pairs_with": [
+      "aep-base-node",
+      "gap-runtime-scanners",
+      "epscom-core"
+    ]
+  },
+  "implementation": {
+    "module": "AEP-Base-Node/signatures/lib/signatures-registry.mjs",
+    "context": "AEP-Base-Node/signatures/lib/signatures-context.mjs",
+    "trust_bundle": "AEP-Base-Node/signatures/trust-bundle/manifest.json"
+  },
+  "conformance": {
+    "tests": [
+      "AEP-Components/conformance/runner/run.sh",
+      "AEP-Components/conformance/tests/manifest.json"
+    ]
+  }
+}

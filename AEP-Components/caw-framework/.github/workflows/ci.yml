@@ -1,0 +1,327 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+env:
+  # Increment to bust Go module cache when needed.
+  GO_CACHE_VERSION: v4
+
+jobs:
+  test-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: sudo apt-get update && sudo apt-get install -y libfuse-dev libfuse3-dev libseccomp-dev pkg-config
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ env.GO_CACHE_VERSION }}-${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ env.GO_CACHE_VERSION }}-${{ runner.os }}-go-
+
+      - name: Free disk space
+        run: |
+          echo "=== Disk space before cleanup ==="
+          df -h /tmp /home/runner
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell
+          echo "=== Disk space after cleanup ==="
+          df -h /tmp /home/runner
+
+      - name: go test
+        run: |
+          mkdir -p "$GOTMPDIR"
+          go test -p 2 ./...
+        env:
+          GOTMPDIR: ${{ runner.temp }}/go-tmp
+
+      - name: smoke
+        run: make smoke
+
+  test-macos:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install FUSE-T
+        run: |
+          brew install --cask macfuse || true  # Try macFUSE first as fallback
+          brew install fuse-t || true  # FUSE-T preferred
+          # Verify installation
+          if [ -d "/Library/Frameworks/FUSE-T.framework" ] || [ -f "/opt/homebrew/lib/libfuse-t.dylib" ]; then
+            echo "FUSE-T installed successfully"
+          elif [ -d "/Library/Filesystems/macfuse.fs" ]; then
+            echo "macFUSE installed as fallback"
+          else
+            echo "Warning: No FUSE implementation found, CGO build may have limited functionality"
+          fi
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/Library/Caches/go-build
+          key: ${{ env.GO_CACHE_VERSION }}-${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ env.GO_CACHE_VERSION }}-${{ runner.os }}-go-
+
+      - name: go build (with CGO for FUSE-T support)
+        run: CGO_ENABLED=1 go build ./...
+
+      - name: go test (all packages)
+        run: go test ./...
+
+  test-windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~\go\pkg\mod
+            ~\AppData\Local\go-build
+          key: ${{ env.GO_CACHE_VERSION }}-${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ env.GO_CACHE_VERSION }}-${{ runner.os }}-go-
+
+      - name: go build
+        run: go build ./...
+        env:
+          CGO_ENABLED: 0
+
+      - name: go test
+        run: go test ./...
+        env:
+          CGO_ENABLED: 0
+
+  build-matrix:
+    needs: [test-linux, test-macos, test-windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        goos: [linux, darwin]
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ env.GO_CACHE_VERSION }}-${{ runner.os }}-go-${{ matrix.goos }}-${{ matrix.goarch }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ env.GO_CACHE_VERSION }}-${{ runner.os }}-go-${{ matrix.goos }}-${{ matrix.goarch }}-
+
+      - name: Install build deps (linux only)
+        if: matrix.goos == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y libfuse-dev libfuse3-dev libseccomp-dev pkg-config
+
+      - name: Cross-compile (build only)
+        run: |
+          if [ "${{ matrix.goos }}" = "linux" ]; then
+            if [ "${{ matrix.goarch }}" = "arm64" ]; then
+              export CGO_ENABLED=0
+            else
+              export CGO_ENABLED=1
+            fi
+          else
+            export CGO_ENABLED=0
+          fi
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=$CGO_ENABLED go build ./...
+
+  build-linux-arm64-cgo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          # Ubuntu 24.04 hosts arm64 packages on ports.ubuntu.com, not
+          # archive.ubuntu.com. Without restricting the default sources
+          # to amd64 and adding a ports source for arm64, `apt-get
+          # update` after `dpkg --add-architecture arm64` 404s on every
+          # arm64 Packages file.
+          sudo sed -i '/^Types: deb$/a Architectures: amd64' /etc/apt/sources.list.d/ubuntu.sources
+          sudo tee /etc/apt/sources.list.d/arm64-ports.sources >/dev/null <<'EOF'
+          Types: deb
+          URIs: http://ports.ubuntu.com/ubuntu-ports
+          Suites: noble noble-updates noble-security
+          Components: main universe restricted multiverse
+          Architectures: arm64
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+          EOF
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update
+          sudo apt-get install -y libfuse-dev libfuse3-dev pkg-config gcc-aarch64-linux-gnu libseccomp-dev libseccomp-dev:arm64
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ env.GO_CACHE_VERSION }}-${{ runner.os }}-go-linux-arm64-cgo-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ env.GO_CACHE_VERSION }}-${{ runner.os }}-go-linux-arm64-cgo-
+
+      - name: Cross-compile (arm64 CGO)
+        run: go build ./...
+        env:
+          GOOS: linux
+          GOARCH: arm64
+          CGO_ENABLED: "1"
+          CC: aarch64-linux-gnu-gcc
+          PKG_CONFIG_LIBDIR: /usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
+
+  integration:
+    needs: [test-linux]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update && sudo apt-get install -y libseccomp-dev pkg-config fuse3
+          sudo modprobe fuse
+          # Ensure /dev/fuse exists and is accessible
+          if [ ! -e /dev/fuse ]; then
+            sudo mknod /dev/fuse -m 0666 c 10 229
+          fi
+          sudo chmod 666 /dev/fuse
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ env.GO_CACHE_VERSION }}-${{ runner.os }}-go-integration-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ env.GO_CACHE_VERSION }}-${{ runner.os }}-go-integration-
+
+      - name: Run integration tests (docker)
+        env:
+          DOCKER_HOST: unix:///var/run/docker.sock
+          TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED: true
+        run: go test -v -tags=integration ./internal/integration/...
+
+      - name: Run API integration AEP-NOSHIP/tests
+        run: go test -v -tags=integration ./internal/api/... ./internal/proxy/...
+
+  fargate-e2e:
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      vars.AWS_ECS_CLUSTER != ''
+    needs: [test-linux, integration]
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ env.GO_CACHE_VERSION }}-${{ runner.os }}-go-fargate-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ env.GO_CACHE_VERSION }}-${{ runner.os }}-go-fargate-
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push aep-caw test image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -f Dockerfile.ptrace-test -t $ECR_REGISTRY/aep-caw-test:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/aep-caw-test:$IMAGE_TAG
+
+      - name: Build seccomp probe
+        run: mkdir -p build && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o build/seccomp-probe ./cmd/seccomp-probe/
+
+      - name: Build and push workload test image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -f Dockerfile.fargate-workload -t $ECR_REGISTRY/aep-caw-fargate-workload:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/aep-caw-fargate-workload:$IMAGE_TAG
+
+      - name: Run Fargate E2E AEP-NOSHIP/tests
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+          AWS_ECS_CLUSTER: ${{ vars.AWS_ECS_CLUSTER }}
+          AWS_ECS_SUBNET: ${{ vars.AWS_ECS_SUBNET }}
+          AWS_ECS_SECURITY_GROUP: ${{ vars.AWS_ECS_SECURITY_GROUP }}
+          AWS_ECS_EXECUTION_ROLE_ARN: ${{ vars.AWS_ECS_EXECUTION_ROLE_ARN }}
+          AEP_CAW_TEST_IMAGE: ${{ steps.ecr-login.outputs.registry }}/aep-caw-test:${{ github.sha }}
+          WORKLOAD_TEST_IMAGE: ${{ steps.ecr-login.outputs.registry }}/aep-caw-fargate-workload:${{ github.sha }}
+        run: go test -v -tags=fargate -timeout 5m ./internal/integration/fargate/...

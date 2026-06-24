@@ -1,0 +1,6 @@
+AEP-HCSE integrates the upstream open-source project codebase-memory-mcp
+Copyright (c) DeusData / Santander AI Lab contributors
+Licensed under MIT License
+
+AEP wrapper files in this directory are part of AEP 2.8 (Apache-2.0).
+The parser binary is downloaded at install time and is not vendored in this repository.

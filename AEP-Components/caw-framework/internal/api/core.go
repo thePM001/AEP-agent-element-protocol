@@ -1,0 +1,1714 @@
+package api
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/nla-aep/aep-caw-framework/internal/approvals"
+	"github.com/nla-aep/aep-caw-framework/internal/config"
+	"github.com/nla-aep/aep-caw-framework/internal/events"
+	"github.com/nla-aep/aep-caw-framework/internal/pkgcheck"
+	"github.com/nla-aep/aep-caw-framework/internal/platform"
+	"github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/nla-aep/aep-caw-framework/internal/policy/signing"
+	"github.com/nla-aep/aep-caw-framework/internal/session"
+	"github.com/nla-aep/aep-caw-framework/internal/signal"
+	"github.com/nla-aep/aep-caw-framework/internal/wrapperlog"
+	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"google.golang.org/grpc/metadata"
+)
+
+// traceparentKey is the context key for W3C traceparent propagation.
+type traceparentKey struct{}
+
+func withTraceparent(ctx context.Context, tp string) context.Context {
+	return context.WithValue(ctx, traceparentKey{}, tp)
+}
+
+func traceparentFromContext(ctx context.Context) string {
+	if v, ok := ctx.Value(traceparentKey{}).(string); ok {
+		return v
+	}
+	return ""
+}
+
+// macSandboxWrapperConfig is passed to aep-caw-macwrap via
+// AEP_CAW_SANDBOX_CONFIG environment variable.
+type macSandboxWrapperConfig struct {
+	WorkspacePath string                       `json:"workspace_path"`
+	AllowedPaths  []string                     `json:"allowed_paths"`
+	AllowNetwork  bool                         `json:"allow_network"`
+	MachServices  macSandboxMachServicesConfig `json:"mach_services"`
+
+	// Dynamic seatbelt fields
+	CompiledProfile string   `json:"compiled_profile,omitempty"`
+	ExtensionTokens []string `json:"extension_tokens,omitempty"`
+}
+
+type macSandboxMachServicesConfig struct {
+	DefaultAction string   `json:"default_action"`
+	Allow         []string `json:"allow"`
+	Block         []string `json:"block"`
+	AllowPrefixes []string `json:"allow_prefixes"`
+	BlockPrefixes []string `json:"block_prefixes"`
+}
+
+// wrapperSetupResult contains the result of setting up the seccomp wrapper.
+type wrapperSetupResult struct {
+	wrappedReq types.ExecRequest
+	extraCfg   *extraProcConfig
+}
+
+// setupSeccompWrapper configures the command to run through aep-caw-unixwrap for seccomp enforcement.
+// Returns the wrapped request and extra process config, or nil extraCfg if wrapping is disabled.
+// Note: aep-caw-unixwrap is Linux-only; this function returns early on other platforms.
+func (a *App) setupSeccompWrapper(req types.ExecRequest, sessionID string, s *session.Session) *wrapperSetupResult {
+	// Helper: return early without seccomp wrapping but with envInject applied.
+	earlyReturn := func() *wrapperSetupResult {
+		sessionPolicy := a.policyEngineFor(s)
+		envInject := a.mergeEnvInjectForSession(context.Background(), s.ID, sessionPolicy)
+		if len(envInject) > 0 || a.cmdResolver != nil || a.sessionTracker != nil {
+			return &wrapperSetupResult{wrappedReq: req, extraCfg: &extraProcConfig{envInject: envInject, cmdResolver: a.cmdResolver, sessionTracker: a.sessionTracker}}
+		}
+		return &wrapperSetupResult{wrappedReq: req, extraCfg: nil}
+	}
+
+	// aep-caw-unixwrap is Linux-only (uses seccomp-bpf)
+	if runtime.GOOS != "linux" {
+		return earlyReturn()
+	}
+
+	// Full ptrace mode: skip wrapper (ptrace handles everything).
+	// Hybrid mode (execve-only ptrace): fall through to use wrapper for
+	// socket/file monitoring and Landlock - ptrace only handles execve.
+	if a.ptraceTracer != nil && !a.cfg.Sandbox.Ptrace.IsExecveOnly() {
+		return earlyReturn()
+	}
+
+	origCommand := req.Command
+	origArgs := append([]string{}, req.Args...)
+
+	unixEnabled := a.cfg.Sandbox.UnixSockets.Enabled != nil && *a.cfg.Sandbox.UnixSockets.Enabled
+	if !unixEnabled {
+		return earlyReturn()
+	}
+
+	wrapperBin := strings.TrimSpace(a.cfg.Sandbox.UnixSockets.WrapperBin)
+	if wrapperBin == "" {
+		wrapperBin = "aep-caw-unixwrap"
+	}
+
+	// Check if wrapper binary exists before proceeding (CGO-disabled builds won't have it)
+	if _, err := exec.LookPath(wrapperBin); err != nil {
+		slog.Warn("seccomp wrapper unavailable: wrapper binary not found (running without seccomp enforcement)",
+			"wrapper_bin", wrapperBin,
+			"session_id", sessionID)
+		return earlyReturn()
+	}
+
+	sp := createUnixSocketPair()
+	if sp == nil {
+		// Log that seccomp wrapping failed - this is security-relevant
+		slog.Warn("seccomp wrapper disabled: failed to create notify socket pair",
+			"session_id", sessionID,
+			"command", origCommand)
+		return earlyReturn()
+	}
+
+	wrappedReq := req
+	if wrappedReq.Env == nil {
+		wrappedReq.Env = map[string]string{}
+	}
+
+	// Use session-specific policy engine (with expanded ${PROJECT_ROOT} etc.)
+	// for seccomp handlers, falling back to global policy if unavailable.
+	sessionPolicy := a.policyEngineFor(s)
+
+	envFD := 3 // first ExtraFile
+	wrappedReq.Env["AEP_CAW_NOTIFY_SOCK_FD"] = strconv.Itoa(envFD)
+
+	// execveEnabled must be computed before the signal-filter gate: the
+	// signal filter stacks a second SECCOMP_RET_USER_NOTIF filter on top
+	// of the main wrapper filter, which breaks notification delivery
+	// whenever the main filter is already using USER_NOTIF. Under
+	// hybrid-ptrace mode execve is handled by ptrace, so the wrapper
+	// does NOT install execve notify rules - reflect that here so the
+	// signal-filter gate sees the runtime configuration, not the static
+	// config value.
+	execveEnabled := a.cfg.Sandbox.Seccomp.Execve.Enabled
+	if a.ptraceTracer != nil {
+		execveEnabled = false // ptrace handles execve; don't trap in seccomp USER_NOTIF
+	}
+
+	// Signal filter: installed only when the session has signal rules
+	// AND the main seccomp filter will not itself be using USER_NOTIF.
+	// Stacking two USER_NOTIF filters breaks notification delivery - see
+	// (*App).signalFilterEnabled for the full rationale and reproducer.
+	signalFilterActive := false
+	var sigSP *unixSocketPair
+	if a.signalFilterEnabled(s, execveEnabled) {
+		sigSP = createUnixSocketPair()
+		if sigSP != nil {
+			signalFilterActive = true
+		} else {
+			slog.Warn("signal filter disabled: failed to create signal socket pair",
+				"session_id", sessionID,
+				"command", origCommand)
+		}
+	}
+
+	// Pass seccomp configuration to the wrapper
+	seccompCfg := a.buildSeccompWrapperConfig(s, seccompWrapperParams{
+		// Mirror wrap.go: the wrapper installs unix-socket notify rules from
+		// the OR of seccomp.unix_socket.enabled and top-level
+		// unix_sockets.enabled. Reading only the seccomp field here made the
+		// exec path disagree with the wrap path (issue #369 Gap B).
+		UnixSocketEnabled:   a.cfg.Sandbox.UnixSocketNotifyEnabled(),
+		SignalFilterEnabled: signalFilterActive,
+		ExecveEnabled:       execveEnabled,
+	})
+	if cfgJSON, err := json.Marshal(seccompCfg); err == nil {
+		wrappedReq.Env["AEP_CAW_SECCOMP_CONFIG"] = string(cfgJSON)
+	}
+
+	wrappedReq.Command = wrapperBin
+	wrappedReq.Args = append([]string{"--", origCommand}, origArgs...)
+
+	extraEnv := map[string]string{"AEP_CAW_NOTIFY_SOCK_FD": strconv.Itoa(envFD)}
+	// Only enable ptrace sync handshake when the wrapper will produce a notify FD.
+	// If no seccomp features need USER_NOTIF, the wrapper skips the FD send and
+	// the READY/GO handshake has nothing to synchronize on.
+	hasNotifyFeatures := seccompCfg.UnixSocketEnabled ||
+		seccompCfg.ExecveEnabled ||
+		seccompCfg.FileMonitorEnabled ||
+		seccompCfg.InterceptMetadata ||
+		blockListUsesNotify(seccompCfg.BlockedSyscalls, seccompCfg.OnBlock) ||
+		blockedFamiliesUseNotifyForSeccomp(a.cfg.Sandbox.Seccomp) ||
+		seccompSocketRulesUseNotify(a.cfg.Sandbox.Seccomp)
+	// AEP_CAW_PTRACE_SYNC goes into envInject (not env) so it overrides any
+	// user-supplied value. envInject deduplicates keys before appending.
+	ptraceSyncValue := "0"
+	if a.ptraceTracer != nil && hasNotifyFeatures {
+		ptraceSyncValue = "1"
+	}
+	if seccompJSON, ok := wrappedReq.Env["AEP_CAW_SECCOMP_CONFIG"]; ok {
+		extraEnv["AEP_CAW_SECCOMP_CONFIG"] = seccompJSON
+	}
+
+	envInject := a.mergeEnvInjectForSession(context.Background(), s.ID, sessionPolicy)
+	if envInject == nil {
+		envInject = make(map[string]string)
+	}
+	envInject["AEP_CAW_PTRACE_SYNC"] = ptraceSyncValue
+	// The wrapper log fd is set authoritatively in wrappedReq.Env /
+	// extraCfg.env by the pipe block below; an operator env_inject copy
+	// would shadow it in the child env (issue #415).
+	delete(envInject, wrapperlog.EnvKey)
+
+	extraCfg := &extraProcConfig{
+		extraFiles:       []*os.File{sp.child},
+		env:              extraEnv,
+		envInject:        envInject,
+		notifyParentSock: sp.parent,
+		notifySessionID:  sessionID,
+		notifyPolicy:     sessionPolicy,
+		notifyStore:      a.store,
+		notifyBroker:     a.broker,
+		origCommand:      origCommand, // Store original command for signal registry
+		fileMonitorCfg:   a.cfg.Sandbox.Seccomp.FileMonitor,
+		landlockEnabled:  a.cfg.Landlock.Enabled,
+		ptraceSync:       a.ptraceTracer != nil && hasNotifyFeatures,
+		cmdResolver:      a.cmdResolver,
+		sessionTracker:   a.sessionTracker,
+		blockList:        a.buildBlockListConfigFor(sessionID),
+	}
+
+	// Create execve handler if enabled (Linux-specific, will be nil on other platforms)
+	if execveEnabled {
+		extraCfg.execveHandler = createExecveHandler(a.cfg.Sandbox.Seccomp.Execve, sessionPolicy, a.approvals)
+	}
+
+	// Add signal filter config if socket pair succeeded
+	if signalFilterActive && sigSP != nil {
+		signalFD := 4 // second ExtraFile (after notify socket at FD 3)
+		wrappedReq.Env["AEP_CAW_SIGNAL_SOCK_FD"] = strconv.Itoa(signalFD)
+		extraCfg.env["AEP_CAW_SIGNAL_SOCK_FD"] = strconv.Itoa(signalFD)
+		extraCfg.extraFiles = append(extraCfg.extraFiles, sigSP.child)
+		extraCfg.signalParentSock = sigSP.parent
+		extraCfg.signalEngine = sessionPolicy.SignalEngine()
+		extraCfg.signalRegistry = signal.NewPIDRegistry(sessionID, os.Getpid())
+		extraCfg.signalCommandID = func() string { return s.CurrentCommandID() }
+	}
+
+	// Wrapper log routing (issue #415): hand the wrapper a pipe for its
+	// diagnostics (the "seccomp: filter loaded" line, landlock notices)
+	// so they land in the server log instead of the wrapped command's
+	// stderr. The fd number is the next ExtraFiles slot - 4 normally,
+	// 5 when the signal socket is present. On pipe failure the env var
+	// is omitted and the wrapper falls back to stderr (legacy behavior);
+	// logging must never block an exec. Unlike the notify/signal
+	// socketpairs above (left to finalizers), the pipe ends are
+	// explicitly released via closeWrapperLogPipe on the pre-start
+	// cancel and cmd.Start()-failure paths.
+	if logR, logW, pipeErr := os.Pipe(); pipeErr == nil {
+		fdStr := strconv.Itoa(3 + len(extraCfg.extraFiles))
+		wrappedReq.Env[wrapperlog.EnvKey] = fdStr
+		extraCfg.env[wrapperlog.EnvKey] = fdStr
+		extraCfg.extraFiles = append(extraCfg.extraFiles, logW)
+		extraCfg.wrapperLogParent = logR
+		extraCfg.wrapperLogChild = logW
+	} else {
+		slog.Warn("wrapper log pipe unavailable; wrapper diagnostics will appear on command stderr",
+			"session_id", sessionID, "error", pipeErr)
+	}
+
+	return &wrapperSetupResult{wrappedReq: wrappedReq, extraCfg: extraCfg}
+}
+
+// resolveProfile looks up a mount profile and validates it.
+func (a *App) resolveProfile(profileName string) (*config.MountProfile, error) {
+	if a.cfg.MountProfiles == nil {
+		return nil, fmt.Errorf("no mount profiles configured")
+	}
+	profile, ok := a.cfg.MountProfiles[profileName]
+	if !ok {
+		return nil, fmt.Errorf("profile %q not found", profileName)
+	}
+	if len(profile.Mounts) == 0 {
+		return nil, fmt.Errorf("profile %q has no mounts", profileName)
+	}
+	return &profile, nil
+}
+
+// setupProfileMounts creates FUSE mounts for all paths in a profile.
+func (a *App) setupProfileMounts(ctx context.Context, s *session.Session, profile *config.MountProfile) ([]session.ResolvedMount, error) {
+	var mounts []session.ResolvedMount
+
+	mountBase := a.cfg.Sandbox.FUSE.MountBaseDir
+	if mountBase == "" {
+		mountBase = a.cfg.Sessions.BaseDir
+	}
+
+	for i, spec := range profile.Mounts {
+		// Normalize to absolute clean path
+		mountPath := spec.Path
+		if !filepath.IsAbs(mountPath) {
+			absPath, err := filepath.Abs(mountPath)
+			if err != nil {
+				for _, m := range mounts {
+					if m.Unmount != nil {
+						_ = m.Unmount()
+					}
+				}
+				return nil, fmt.Errorf("mount path %q: %w", spec.Path, err)
+			}
+			mountPath = absPath
+		}
+		mountPath = filepath.Clean(mountPath)
+
+		// Validate path exists
+		if _, err := os.Stat(mountPath); err != nil {
+			// Cleanup already-created mounts
+			for _, m := range mounts {
+				if m.Unmount != nil {
+					_ = m.Unmount()
+				}
+			}
+			return nil, fmt.Errorf("mount path %q: %w", mountPath, err)
+		}
+
+		// Load per-mount policy if specified
+		var policyEngine *policy.Engine
+		if spec.Policy != "" && a.policyLoader != nil {
+			var err error
+			policyEngine, err = a.policyLoader.Load(spec.Policy)
+			if err != nil {
+				// Cleanup already-created mounts
+				for _, m := range mounts {
+					if m.Unmount != nil {
+						_ = m.Unmount()
+					}
+				}
+				return nil, fmt.Errorf("load policy %q for mount %q: %w", spec.Policy, mountPath, err)
+			}
+		} else {
+			// Fall back to global policy if no per-mount policy specified
+			policyEngine = a.policy
+		}
+
+		// Create mount point path
+		mountPoint := filepath.Join(mountBase, s.ID, fmt.Sprintf("mount-%d", i))
+
+		// Create FUSE mount if enabled
+		if a.cfg.Sandbox.FUSE.Enabled && a.platform != nil {
+			fs := a.platform.Filesystem()
+			if fs != nil && fs.Available() {
+				eventChan := make(chan platform.IOEvent, 1000)
+				go a.processIOEvents(eventChan)
+
+				fsCfg := platform.FSConfig{
+					SourcePath: mountPath,
+					MountPoint: mountPoint,
+					SessionID:  s.ID,
+					CommandIDFunc: func() string {
+						return s.CurrentCommandID()
+					},
+					TraceContextFunc: func() (string, string, string) {
+						return s.CurrentTraceContext()
+					},
+					PolicyEngine:      platform.NewPolicyAdapter(policyEngine),
+					EventChannel:      eventChan,
+					MaxBackground:     a.cfg.Sandbox.FUSE.MaxBackground,
+					SymlinkEscapeDeny: a.cfg.Policies.SymlinkEscapeDeny(),
+					// For the primary workspace mount, use the session's effective virtual
+					// root so FUSE events report paths consistent with the session (e.g.
+					// /workspace in default mode). Non-workspace mounts use their real
+					// path since they aren't mapped under the session's virtual root.
+					VirtualRoot: func() string {
+						wsClean := filepath.Clean(s.WorkspaceMountPath())
+						if filepath.Clean(mountPath) == wsClean {
+							return s.EffectiveVirtualRoot()
+						}
+						return filepath.ToSlash(mountPath)
+					}(),
+				}
+
+				m, err := fs.Mount(fsCfg)
+				if err != nil {
+					close(eventChan)
+					// Log but continue - mount failure shouldn't block session
+					a.logMountFailure(ctx, s.ID, mountPath, mountPoint, err)
+					continue
+				}
+
+				// Register the FUSE mount point (not source path) in MountRegistry
+				// so seccomp FileHandler defers only for paths the process
+				// actually accesses through the FUSE filesystem.
+				registerFUSEMount(s.ID, mountPoint)
+
+				// Capture for closure
+				sessionID := s.ID
+				capturedMountPoint := mountPoint
+				mounts = append(mounts, session.ResolvedMount{
+					Path:         mountPath,
+					Policy:       spec.Policy,
+					MountPoint:   mountPoint,
+					PolicyEngine: policyEngine,
+					Unmount: func() error {
+						deregisterFUSEMount(sessionID, capturedMountPoint)
+						err := m.Close()
+						close(eventChan)
+						return err
+					},
+				})
+			}
+		} else {
+			// No FUSE, just track the mount without actual mounting
+			mounts = append(mounts, session.ResolvedMount{
+				Path:         mountPath,
+				Policy:       spec.Policy,
+				MountPoint:   mountPath, // Direct path when not using FUSE
+				PolicyEngine: policyEngine,
+			})
+		}
+	}
+
+	return mounts, nil
+}
+
+func (a *App) logMountFailure(ctx context.Context, sessionID, path, mountPoint string, err error) {
+	ev := types.Event{
+		ID:        uuid.NewString(),
+		Timestamp: time.Now().UTC(),
+		Type:      "fuse_mount_failed",
+		SessionID: sessionID,
+		Fields: map[string]any{
+			"mount_point": mountPoint,
+			"source_path": path,
+			"error":       err.Error(),
+		},
+	}
+	_ = a.store.AppendEvent(ctx, ev)
+	a.broker.Publish(ev)
+}
+
+func (a *App) loadOptionalProfileBasePolicy(policyName string) (*policy.Policy, int, error) {
+	if a.cfg.Policies.Dir == "" {
+		return nil, 0, nil
+	}
+	policyPath, err := policy.ResolvePolicyPath(a.cfg.Policies.Dir, policyName)
+	if err != nil {
+		return nil, 0, nil
+	}
+	policyData, err := os.ReadFile(policyPath)
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("read policy: %w", err)
+	}
+	sigMode := a.cfg.Policies.Signing.SigningMode()
+	if sigMode != "off" {
+		if a.cfg.Policies.Signing.TrustStore == "" {
+			if sigMode == "enforce" {
+				return nil, http.StatusInternalServerError, fmt.Errorf("signing mode is enforce but trust_store not configured")
+			}
+			fmt.Fprintf(os.Stderr, "WARNING: signing mode is %q but trust_store not configured\n", sigMode)
+		} else {
+			ts, tsErr := signing.LoadTrustStore(a.cfg.Policies.Signing.TrustStore, sigMode == "enforce")
+			if tsErr != nil {
+				if sigMode == "enforce" {
+					return nil, http.StatusInternalServerError, fmt.Errorf("load trust store: %w", tsErr)
+				}
+				fmt.Fprintf(os.Stderr, "WARNING: failed to load trust store: %v\n", tsErr)
+			} else if _, vErr := signing.VerifyPolicyBytes(policyData, policyPath+".sig", ts); vErr != nil {
+				if sigMode == "enforce" {
+					return nil, http.StatusForbidden, fmt.Errorf("policy signing: %w", vErr)
+				}
+				fmt.Fprintf(os.Stderr, "WARNING: policy signing verification failed: %v\n", vErr)
+			}
+		}
+	}
+	pol, err := policy.LoadFromBytes(policyData)
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("load policy: %w", err)
+	}
+	return pol, 0, nil
+}
+
+// createSessionWithProfile creates a session using a mount profile.
+func (a *App) createSessionWithProfile(ctx context.Context, req types.CreateSessionRequest) (types.Session, int, error) {
+	profile, err := a.resolveProfile(req.Profile)
+	if err != nil {
+		return types.Session{}, http.StatusBadRequest, err
+	}
+
+	basePolicy := profile.BasePolicy
+	if basePolicy == "" {
+		basePolicy = a.cfg.Policies.Default
+	}
+	basePolicyDoc, code, err := a.loadOptionalProfileBasePolicy(basePolicy)
+	if err != nil {
+		return types.Session{}, code, err
+	}
+
+	// Build initial mounts from profile specs (without FUSE yet)
+	var initialMounts []session.ResolvedMount
+	for _, spec := range profile.Mounts {
+		// Normalize to absolute path to avoid CWD-dependent behavior
+		mountPath := spec.Path
+		if !filepath.IsAbs(mountPath) {
+			var err error
+			mountPath, err = filepath.Abs(mountPath)
+			if err != nil {
+				return types.Session{}, http.StatusBadRequest, fmt.Errorf("mount path %q: cannot resolve absolute path: %w", spec.Path, err)
+			}
+		}
+		// Validate path exists
+		if _, err := os.Stat(mountPath); err != nil {
+			return types.Session{}, http.StatusBadRequest, fmt.Errorf("mount path %q: %w", mountPath, err)
+		}
+		initialMounts = append(initialMounts, session.ResolvedMount{
+			Path:       mountPath,
+			Policy:     spec.Policy,
+			MountPoint: mountPath,
+		})
+	}
+
+	// Create session with profile
+	var s *session.Session
+	if req.ID != "" {
+		s, err = a.sessions.CreateWithProfile(req.ID, req.Profile, basePolicy, initialMounts)
+	} else {
+		s, err = a.sessions.CreateWithProfile("", req.Profile, basePolicy, initialMounts)
+	}
+	if err != nil {
+		code := http.StatusBadRequest
+		if errors.Is(err, session.ErrSessionExists) {
+			code = http.StatusConflict
+		}
+		return types.Session{}, code, err
+	}
+
+	// Apply real-paths mode if requested
+	a.applyRealPaths(s, req.RealPaths)
+
+	policyVars := map[string]string{}
+	if req.ProjectRoot != "" {
+		policyVars["PROJECT_ROOT"] = req.ProjectRoot
+		policyVars["GIT_ROOT"] = req.ProjectRoot
+	} else {
+		policyVars["PROJECT_ROOT"] = s.Workspace
+		policyVars["GIT_ROOT"] = s.Workspace
+	}
+	if req.Home != "" {
+		policyVars["HOME"] = req.Home
+	} else if home := os.Getenv("HOME"); home != "" {
+		policyVars["HOME"] = home
+	}
+	if basePolicyDoc != nil {
+		enforceApprovals := a.cfg.Approvals.Enabled && a.cfg.Approvals.Mode != ""
+		engine, dbRuleSet, dbStateDir, err := a.compileDBPolicyForSession(ctx, s, basePolicyDoc, policyVars, enforceApprovals)
+		if err != nil {
+			a.cleanupCreatedSession(s)
+			return types.Session{}, http.StatusBadRequest, fmt.Errorf("compile policy: %w", err)
+		}
+		s.ProjectRoot = policyVars["PROJECT_ROOT"]
+		s.GitRoot = policyVars["GIT_ROOT"]
+		a.attachSessionTor(engine)
+		s.SetPolicyEngine(engine)
+		if err := a.startSessionDBProxy(ctx, s, dbRuleSet, dbStateDir); err != nil {
+			a.cleanupCreatedSession(s)
+			return types.Session{}, http.StatusInternalServerError, fmt.Errorf("start DB proxy: %w", err)
+		}
+	}
+
+	// Generate TOTP secret if TOTP approval mode is enabled
+	if a.cfg.Approvals.Mode == "totp" {
+		secret, err := approvals.GenerateTOTPSecret()
+		if err != nil {
+			a.cleanupCreatedSession(s)
+			return types.Session{}, http.StatusInternalServerError, fmt.Errorf("generate TOTP secret: %w", err)
+		}
+		s.TOTPSecret = secret
+
+		// Display TOTP setup on TTY for local mode
+		if tty, err := os.OpenFile("/dev/tty", os.O_WRONLY, 0); err == nil {
+			_ = approvals.DisplayTOTPSetup(tty, s.ID, s.TOTPSecret)
+			tty.Close()
+		}
+	}
+
+	// Emit session_created event
+	ev := types.Event{
+		ID:        uuid.NewString(),
+		Timestamp: time.Now().UTC(),
+		Type:      "session_created",
+		SessionID: s.ID,
+		Fields: map[string]any{
+			"profile":     req.Profile,
+			"base_policy": basePolicy,
+			"mounts":      len(profile.Mounts),
+		},
+	}
+	_ = a.store.AppendEvent(ctx, ev)
+	a.broker.Publish(ev)
+
+	// Setup FUSE mounts if enabled
+	if a.cfg.Sandbox.FUSE.Enabled && a.platform != nil {
+		mounts, err := a.setupProfileMounts(ctx, s, profile)
+		if err != nil {
+			// Cleanup session on mount failure
+			a.cleanupCreatedSession(s)
+			return types.Session{}, http.StatusInternalServerError, err
+		}
+		// Update session with resolved mounts
+		s.Mounts = mounts
+	}
+
+	// Profile sessions never wire the transparent interceptor; if the onion
+	// gateway is active for this session, fail closed (deny Tor) rather than
+	// allowing unfiltered Tor. No-op when the gateway is not active.
+	a.applyTorFailClosed(ctx, s, false)
+
+	return s.Snapshot(), http.StatusCreated, nil
+}
+
+func (a *App) createSessionCore(ctx context.Context, req types.CreateSessionRequest) (types.Session, int, error) {
+	// Handle profile-based session creation
+	if req.Profile != "" {
+		return a.createSessionWithProfile(ctx, req)
+	}
+
+	policyName := req.Policy
+	if policyName == "" {
+		policyName = a.cfg.Policies.Default
+	}
+
+	// Determine if we should detect project root
+	shouldDetect := a.cfg.Policies.ShouldDetectProjectRoot()
+	if req.DetectProjectRoot != nil {
+		shouldDetect = *req.DetectProjectRoot
+	}
+
+	// Build variables map for policy expansion
+	policyVars := make(map[string]string)
+
+	if req.ProjectRoot != "" {
+		// Explicit project root provided
+		policyVars["PROJECT_ROOT"] = req.ProjectRoot
+		policyVars["GIT_ROOT"] = req.ProjectRoot // Assume same if explicit
+	} else if shouldDetect && req.Workspace != "" {
+		// Detect project roots
+		markers := a.cfg.Policies.GetProjectMarkers()
+		if markers == nil {
+			markers = policy.DefaultProjectMarkers()
+		}
+		roots, err := policy.DetectProjectRoots(req.Workspace, markers)
+		if err != nil {
+			// Log warning but continue with workspace as fallback
+			// (detection failure shouldn't block session creation)
+			slog.Warn("project root detection failed", "workspace", req.Workspace, "error", err)
+			policyVars["PROJECT_ROOT"] = req.Workspace
+		} else {
+			policyVars["PROJECT_ROOT"] = roots.ProjectRoot
+			if roots.GitRoot != "" {
+				policyVars["GIT_ROOT"] = roots.GitRoot
+			}
+		}
+	} else {
+		// No detection, use workspace as project root
+		policyVars["PROJECT_ROOT"] = req.Workspace
+	}
+
+	// Ensure GIT_ROOT is set (fall back to PROJECT_ROOT if not detected)
+	if policyVars["GIT_ROOT"] == "" && policyVars["PROJECT_ROOT"] != "" {
+		policyVars["GIT_ROOT"] = policyVars["PROJECT_ROOT"]
+	}
+
+	// Set HOME for policy variable expansion (deny rules use ${HOME}/.bashrc etc.).
+	// Prefer the CLI-provided value (the session user's HOME) over the server's
+	// os.Getenv("HOME") which may differ when the server runs as a different user.
+	// Trust model: HOME is trusted from authenticated clients, same as workspace/policy.
+	if req.Home != "" {
+		policyVars["HOME"] = req.Home
+	} else if home := os.Getenv("HOME"); home != "" {
+		policyVars["HOME"] = home
+	}
+
+	// Load policy from configured policy files. Policy compilation is deferred
+	// until after session creation so generated DB unavoidability rules can
+	// include the real session ID. When no policy dir is configured, leave
+	// basePolicy nil so compileDBPolicyForSession preserves a.policy exactly.
+	var basePolicy *policy.Policy
+	if a.cfg.Policies.Dir != "" {
+		policyPath, err := policy.ResolvePolicyPath(a.cfg.Policies.Dir, policyName)
+		if err != nil {
+			return types.Session{}, http.StatusBadRequest, fmt.Errorf("resolve policy: %w", err)
+		}
+
+		// Read raw bytes for signing verification
+		policyData, err := os.ReadFile(policyPath)
+		if err != nil {
+			return types.Session{}, http.StatusInternalServerError, fmt.Errorf("read policy: %w", err)
+		}
+
+		// Signature verification
+		sigMode := a.cfg.Policies.Signing.SigningMode()
+		if sigMode != "off" {
+			if a.cfg.Policies.Signing.TrustStore == "" {
+				if sigMode == "enforce" {
+					return types.Session{}, http.StatusInternalServerError, fmt.Errorf("signing mode is enforce but trust_store not configured")
+				}
+				fmt.Fprintf(os.Stderr, "WARNING: signing mode is %q but trust_store not configured\n", sigMode)
+			} else {
+				ts, tsErr := signing.LoadTrustStore(a.cfg.Policies.Signing.TrustStore, sigMode == "enforce")
+				if tsErr != nil {
+					if sigMode == "enforce" {
+						return types.Session{}, http.StatusInternalServerError, fmt.Errorf("load trust store: %w", tsErr)
+					}
+					fmt.Fprintf(os.Stderr, "WARNING: failed to load trust store: %v\n", tsErr)
+				} else {
+					if _, vErr := signing.VerifyPolicyBytes(policyData, policyPath+".sig", ts); vErr != nil {
+						if sigMode == "enforce" {
+							return types.Session{}, http.StatusForbidden, fmt.Errorf("policy signing: %w", vErr)
+						}
+						fmt.Fprintf(os.Stderr, "WARNING: policy signing verification failed: %v\n", vErr)
+					}
+				}
+			}
+		}
+
+		pol, err := policy.LoadFromBytes(policyData)
+		if err != nil {
+			return types.Session{}, http.StatusInternalServerError, fmt.Errorf("load policy: %w", err)
+		}
+		basePolicy = pol
+	}
+
+	var s *session.Session
+	var sessionErr error
+	if req.ID != "" {
+		s, sessionErr = a.sessions.CreateWithID(req.ID, req.Workspace, policyName)
+	} else {
+		s, sessionErr = a.sessions.Create(req.Workspace, policyName)
+	}
+	if sessionErr != nil {
+		code := http.StatusBadRequest
+		if errors.Is(sessionErr, session.ErrSessionExists) {
+			code = http.StatusConflict
+		}
+		return types.Session{}, code, sessionErr
+	}
+
+	enforceApprovals := a.cfg.Approvals.Enabled && a.cfg.Approvals.Mode != ""
+	engine, dbRuleSet, dbStateDir, err := a.compileDBPolicyForSession(ctx, s, basePolicy, policyVars, enforceApprovals)
+	if err != nil {
+		a.cleanupCreatedSession(s)
+		return types.Session{}, http.StatusBadRequest, fmt.Errorf("compile policy: %w", err)
+	}
+
+	// Store roots and session-specific policy engine
+	s.ProjectRoot = policyVars["PROJECT_ROOT"]
+	s.GitRoot = policyVars["GIT_ROOT"]
+	a.attachSessionTor(engine)
+	s.SetPolicyEngine(engine)
+
+	// Apply real-paths mode if requested
+	a.applyRealPaths(s, req.RealPaths)
+
+	// Generate TOTP secret if TOTP approval mode is enabled
+	if a.cfg.Approvals.Mode == "totp" {
+		secret, err := approvals.GenerateTOTPSecret()
+		if err != nil {
+			a.cleanupCreatedSession(s)
+			return types.Session{}, http.StatusInternalServerError, fmt.Errorf("generate TOTP secret: %w", err)
+		}
+		s.TOTPSecret = secret
+
+		// Display TOTP setup on TTY for local mode
+		if tty, err := os.OpenFile("/dev/tty", os.O_WRONLY, 0); err == nil {
+			_ = approvals.DisplayTOTPSetup(tty, s.ID, s.TOTPSecret)
+			tty.Close()
+		}
+	}
+
+	if err := a.startSessionDBProxy(ctx, s, dbRuleSet, dbStateDir); err != nil {
+		a.cleanupCreatedSession(s)
+		return types.Session{}, http.StatusInternalServerError, fmt.Errorf("start DB proxy: %w", err)
+	}
+
+	ev := types.Event{
+		ID:        uuid.NewString(),
+		Timestamp: time.Now().UTC(),
+		Type:      "session_created",
+		SessionID: s.ID,
+		Fields: map[string]any{
+			"workspace":    s.Workspace,
+			"policy":       s.Policy,
+			"project_root": s.ProjectRoot,
+			"git_root":     s.GitRoot,
+		},
+	}
+	_ = a.store.AppendEvent(ctx, ev)
+	a.broker.Publish(ev)
+
+	// Optional: mount FUSE loopback so we can monitor file operations.
+	if a.cfg.Sandbox.FUSE.Enabled && !a.cfg.Sandbox.FUSE.Deferred && a.platform != nil {
+		fs := a.platform.Filesystem()
+		if fs != nil && fs.Available() {
+			a.mountFUSEForSession(ctx, fuseMountParams{
+				session: s,
+				engine:  engine,
+				fs:      fs,
+			})
+		}
+	}
+
+	// Optional: start transparent network interception; fall back to explicit proxy on failure.
+	interceptorUp := false
+	if a.cfg.Sandbox.Network.Transparent.Enabled {
+		if err := a.tryStartTransparentNetwork(ctx, s); err != nil {
+			fail := types.Event{
+				ID:        uuid.NewString(),
+				Timestamp: time.Now().UTC(),
+				Type:      "transparent_net_failed",
+				SessionID: s.ID,
+				Fields: map[string]any{
+					"error": err.Error(),
+				},
+			}
+			_ = a.store.AppendEvent(ctx, fail)
+			a.broker.Publish(fail)
+			// Fall back to explicit proxy if configured.
+			if a.cfg.Sandbox.Network.Enabled {
+				a.startExplicitProxy(ctx, s)
+			}
+		} else {
+			interceptorUp = true
+			okEv := types.Event{
+				ID:        uuid.NewString(),
+				Timestamp: time.Now().UTC(),
+				Type:      "transparent_net_ready",
+				SessionID: s.ID,
+			}
+			_ = a.store.AppendEvent(ctx, okEv)
+			a.broker.Publish(okEv)
+		}
+	} else if a.cfg.Sandbox.Network.Enabled {
+		a.startExplicitProxy(ctx, s)
+	}
+	a.applyTorFailClosed(ctx, s, interceptorUp)
+
+	// Start embedded LLM proxy if configured
+	if a.cfg.Proxy.Mode == "embedded" || a.cfg.Proxy.IsMCPOnly() {
+		a.startLLMProxy(ctx, s)
+	}
+
+	return s.Snapshot(), http.StatusCreated, nil
+}
+
+func (a *App) execInSessionCore(ctx context.Context, id string, req types.ExecRequest) (*types.ExecResponse, int, error) {
+	if a.ptraceFailed.Load() {
+		return nil, http.StatusServiceUnavailable, errors.New("ptrace tracer exited unexpectedly; refusing to execute commands without enforcement")
+	}
+	s, ok := a.sessions.Get(id)
+	if !ok {
+		return nil, http.StatusNotFound, errors.New("session not found")
+	}
+	if strings.TrimSpace(req.Command) == "" {
+		return nil, http.StatusBadRequest, errors.New("command is required")
+	}
+
+	cmdID := "cmd-" + uuid.NewString()
+	start := time.Now().UTC()
+	unlock := s.LockExec()
+	defer unlock()
+	s.SetCurrentCommandID(cmdID)
+
+	// Propagate W3C trace context for distributed tracing correlation
+	tp := traceparentFromContext(ctx)
+	if tp == "" {
+		if md, ok := metadata.FromIncomingContext(ctx); ok {
+			tp = firstMetadataValue(md, "traceparent")
+		}
+	}
+	if tp != "" {
+		if traceID, spanID, traceFlags, ok := parseTraceparent(tp); ok {
+			s.SetCurrentTraceContext(traceID, spanID, traceFlags)
+		}
+	}
+
+	// Deferred FUSE: mount on first exec if not yet mounted
+	if a.cfg.Sandbox.FUSE.Enabled && a.cfg.Sandbox.FUSE.Deferred {
+		a.ensureFUSEMount(ctx, s)
+	}
+
+	includeEvents := strings.ToLower(strings.TrimSpace(req.IncludeEvents))
+	if includeEvents == "" {
+		includeEvents = "all"
+	}
+
+	pre := a.policyEngineFor(s).CheckCommandWithExecve(req.Command, req.Args, a.execveEnforcementActive(), a.shellCOpaqueMode())
+	redirected, originalCmd, originalArgs := applyCommandRedirect(&req.Command, &req.Args, pre)
+	approvalErr := error(nil)
+	pkgApprovalDenied := false
+	if pre.PolicyDecision == types.DecisionApprove && pre.EffectiveDecision == types.DecisionApprove && a.approvals != nil {
+		apr := approvals.Request{
+			ID:        "approval-" + uuid.NewString(),
+			SessionID: id,
+			CommandID: cmdID,
+			Kind:      "command",
+			Target:    req.Command,
+			Rule:      pre.Rule,
+			Message:   pre.Message,
+			Fields: map[string]any{
+				"command": req.Command,
+				"args":    req.Args,
+			},
+		}
+		res, err := a.approvals.RequestApproval(ctx, apr)
+		approvalErr = err
+		if pre.Approval != nil {
+			pre.Approval.ID = apr.ID
+		}
+		if err != nil || !res.Approved {
+			pre.EffectiveDecision = types.DecisionDeny
+		} else {
+			pre.EffectiveDecision = types.DecisionAllow
+		}
+	}
+
+	// Package install check (after command policy check and approval, before event emission).
+	if a.pkgChecker != nil && pre.EffectiveDecision != types.DecisionDeny {
+		verdict, pkgErr := a.pkgChecker.Check(ctx, req.Command, req.Args, req.WorkingDir)
+		if pkgErr != nil {
+			slog.Warn("package check error", "err", pkgErr)
+			pre.EffectiveDecision = types.DecisionDeny
+			pre.Message = fmt.Sprintf("package check failed: %v", pkgErr)
+		} else if verdict != nil {
+			a.emitPackageCheckEvent(ctx, id, cmdID, verdict)
+
+			switch verdict.Action {
+			case pkgcheck.VerdictBlock:
+				pre.EffectiveDecision = types.DecisionDeny
+				pre.Message = verdict.Summary
+			case pkgcheck.VerdictApprove:
+				if a.approvals != nil {
+					apr := approvals.Request{
+						ID:        "pkg-" + uuid.NewString(),
+						SessionID: id,
+						CommandID: cmdID,
+						Kind:      "package",
+						Target:    verdict.Summary,
+						Message:   verdict.Summary,
+						Fields: map[string]any{
+							"source":   "package_check",
+							"action":   string(verdict.Action),
+							"findings": len(verdict.Findings),
+						},
+					}
+					res, aprErr := a.approvals.RequestApproval(ctx, apr)
+					if aprErr != nil {
+						approvalErr = aprErr
+						pkgApprovalDenied = true
+						pre.EffectiveDecision = types.DecisionDeny
+						pre.Message = fmt.Sprintf("package install approval error: %v", aprErr)
+						if pre.Approval == nil {
+							pre.Approval = &types.ApprovalInfo{Required: true, Mode: ""}
+						}
+						pre.Approval.ID = apr.ID
+					} else if !res.Approved {
+						pkgApprovalDenied = true
+						pre.EffectiveDecision = types.DecisionDeny
+						pre.Message = fmt.Sprintf("package install approval denied: %s", verdict.Summary)
+						if pre.Approval == nil {
+							pre.Approval = &types.ApprovalInfo{Required: true, Mode: ""}
+						}
+						pre.Approval.ID = apr.ID
+					}
+				}
+			case pkgcheck.VerdictWarn:
+				slog.Warn("package install warning", "summary", verdict.Summary)
+			}
+		}
+	}
+
+	preEv := types.Event{
+		ID:        uuid.NewString(),
+		Timestamp: start,
+		Type:      "command_policy",
+		SessionID: id,
+		CommandID: cmdID,
+		Operation: "command_precheck",
+		Policy: &types.PolicyInfo{
+			Decision:          pre.PolicyDecision,
+			EffectiveDecision: pre.EffectiveDecision,
+			Rule:              pre.Rule,
+			Message:           pre.Message,
+			Approval:          pre.Approval,
+			Redirect:          pre.Redirect,
+		},
+		Fields: map[string]any{
+			"command": originalCmd,
+			"args":    originalArgs,
+		},
+	}
+	s.InjectTraceContext(preEv.Fields)
+	_ = a.store.AppendEvent(ctx, preEv)
+	a.broker.Publish(preEv)
+
+	if redirected && pre.Redirect != nil {
+		redirEv := types.Event{
+			ID:        uuid.NewString(),
+			Timestamp: start,
+			Type:      "command_redirected",
+			SessionID: id,
+			CommandID: cmdID,
+			Policy: &types.PolicyInfo{
+				Decision:          types.DecisionRedirect,
+				EffectiveDecision: types.DecisionAllow,
+				Rule:              pre.Rule,
+				Message:           pre.Message,
+				Redirect:          pre.Redirect,
+			},
+			Fields: map[string]any{
+				"from_command": originalCmd,
+				"from_args":    originalArgs,
+				"to_command":   req.Command,
+				"to_args":      req.Args,
+			},
+		}
+		s.InjectTraceContext(redirEv.Fields)
+		_ = a.store.AppendEvent(ctx, redirEv)
+		a.broker.Publish(redirEv)
+	}
+
+	if pre.EffectiveDecision == types.DecisionDeny {
+		a.emitCommandDBBypassAttempt(ctx, s, id, cmdID, pre)
+		code := "E_POLICY_DENIED"
+		if pre.PolicyDecision == types.DecisionApprove || pkgApprovalDenied {
+			code = "E_APPROVAL_DENIED"
+			if approvalErr != nil && strings.Contains(strings.ToLower(approvalErr.Error()), "timeout") {
+				code = "E_APPROVAL_TIMEOUT"
+			}
+		}
+		g := guidanceForPolicyDenied(req, pre, preEv, approvalErr, pkgApprovalDenied)
+		resp := &types.ExecResponse{
+			CommandID: cmdID,
+			SessionID: id,
+			Timestamp: start,
+			Request:   req,
+			Result: types.ExecResult{
+				ExitCode:   126,
+				DurationMs: int64(time.Since(start).Milliseconds()),
+				Error: &types.ExecError{
+					Code:       code,
+					Message:    "command denied by policy",
+					PolicyRule: pre.Rule,
+					Suggestions: func() []types.Suggestion {
+						if g == nil {
+							return nil
+						}
+						return g.Suggestions
+					}(),
+				},
+			},
+			Events: types.ExecEvents{
+				FileOperations:         []types.Event{},
+				NetworkOperations:      []types.Event{},
+				BlockedOperations:      []types.Event{preEv},
+				FileOperationsCount:    0,
+				NetworkOperationsCount: 0,
+				BlockedOperationsCount: 1,
+				OtherCount:             0,
+			},
+			Guidance: g,
+		}
+		applyIncludeEvents(resp, includeEvents)
+		return resp, http.StatusForbidden, nil
+	}
+
+	origCommand := req.Command
+	origArgs := append([]string{}, req.Args...)
+
+	// Set up seccomp wrapper (Linux) for syscall enforcement
+	wrapperResult := a.setupSeccompWrapper(req, id, s)
+	wrappedReq := wrapperResult.wrappedReq
+	extraCfg := wrapperResult.extraCfg
+
+	// macOS: sandbox wrapper with XPC control
+	if runtime.GOOS == "darwin" && a.cfg.Sandbox.XPC.Enabled && a.cfg.Sandbox.XPC.Mode == "enforce" {
+		a.wrapWithMacSandbox(&wrappedReq, origCommand, origArgs, s)
+	}
+
+	startEv := types.Event{
+		ID:        uuid.NewString(),
+		Timestamp: start,
+		Type:      "command_started",
+		SessionID: id,
+		CommandID: cmdID,
+		Fields: map[string]any{
+			"command": origCommand,
+			"args":    origArgs,
+		},
+	}
+	s.InjectTraceContext(startEv.Fields)
+	_ = a.store.AppendEvent(ctx, startEv)
+	a.broker.Publish(startEv)
+
+	limits := a.policyEngineFor(s).Limits()
+	cmdDecision := a.policyEngineFor(s).CheckCommandWithExecve(wrappedReq.Command, wrappedReq.Args, a.execveEnforcementActive(), a.shellCOpaqueMode())
+	exitCode, stdoutB, stderrB, stdoutTotal, stderrTotal, stdoutTrunc, stderrTrunc, resources, execErr := runCommandWithResources(ctx, s, cmdID, wrappedReq, a.cfg, cmdDecision.EnvPolicy, limits.CommandTimeout, a.cgroupHook(id, cmdID, limits), extraCfg, a.ptraceTracer, id)
+
+	// Check if process was killed by seccomp (SIGSYS) and emit event
+	emitSeccompBlockedIfSIGSYS(ctx, a.store, a.broker, id, cmdID, execErr)
+
+	end := time.Now().UTC()
+	endEv := types.Event{
+		ID:        uuid.NewString(),
+		Timestamp: end,
+		Type:      "command_finished",
+		SessionID: id,
+		CommandID: cmdID,
+		Fields: map[string]any{
+			"exit_code":      exitCode,
+			"duration_ms":    int64(end.Sub(start).Milliseconds()),
+			"cpu_user_ms":    resources.CPUUserMs,
+			"cpu_system_ms":  resources.CPUSystemMs,
+			"memory_peak_kb": resources.MemoryPeakKB,
+		},
+	}
+	if execErr != nil {
+		endEv.Fields["error"] = execErr.Error()
+	}
+	s.InjectTraceContext(endEv.Fields)
+	_ = a.store.AppendEvent(ctx, endEv)
+	a.broker.Publish(endEv)
+
+	collected, _ := a.store.QueryEvents(ctx, types.EventQuery{
+		CommandID: cmdID,
+		Limit:     5000,
+		Asc:       true,
+	})
+	var fileOps, netOps, blockedOps, otherOps []types.Event
+	for _, ev := range collected {
+		isBlocked := false
+		if ev.Policy != nil && ev.Policy.EffectiveDecision == types.DecisionDeny {
+			isBlocked = true
+		}
+		if b, ok := ev.Fields["blocked"].(bool); ok && b {
+			isBlocked = true
+		}
+		if isBlocked {
+			blockedOps = append(blockedOps, ev)
+		}
+
+		switch {
+		case strings.HasPrefix(ev.Type, "file_") || strings.HasPrefix(ev.Type, "dir_") || strings.HasPrefix(ev.Type, "symlink_"):
+			fileOps = append(fileOps, ev)
+		case strings.HasPrefix(ev.Type, "net_") || ev.Type == "dns_query":
+			netOps = append(netOps, ev)
+		default:
+			otherOps = append(otherOps, ev)
+		}
+	}
+	if fileOps == nil {
+		fileOps = []types.Event{}
+	}
+	if netOps == nil {
+		netOps = []types.Event{}
+	}
+	if blockedOps == nil {
+		blockedOps = []types.Event{}
+	}
+	if otherOps == nil {
+		otherOps = []types.Event{}
+	}
+
+	stderrB, stderrTotal, softSuggestions := addSoftDeleteHints(fileOps, stderrB, stderrTotal)
+
+	res := types.ExecResult{
+		ExitCode:         exitCode,
+		Stdout:           string(stdoutB),
+		Stderr:           string(stderrB),
+		StdoutTruncated:  stdoutTrunc,
+		StderrTruncated:  stderrTrunc,
+		StdoutTotalBytes: stdoutTotal,
+		StderrTotalBytes: stderrTotal,
+		DurationMs:       int64(end.Sub(start).Milliseconds()),
+	}
+	if execErr != nil {
+		res.Error = &types.ExecError{
+			Code:    "E_COMMAND_FAILED",
+			Message: execErr.Error(),
+		}
+	}
+	if stdoutTrunc && stdoutTotal > int64(len(stdoutB)) {
+		res.Pagination = &types.Pagination{
+			CurrentOffset: 0,
+			CurrentLimit:  int64(len(stdoutB)),
+			HasMore:       true,
+			NextCommand:   fmt.Sprintf("aep-caw output %s %s --stream stdout --offset %d --limit %d", id, cmdID, len(stdoutB), len(stdoutB)),
+		}
+	}
+
+	resp := &types.ExecResponse{
+		CommandID: cmdID,
+		SessionID: id,
+		Timestamp: start,
+		Request:   req,
+		Result:    res,
+		Events: types.ExecEvents{
+			FileOperations:         fileOps,
+			NetworkOperations:      netOps,
+			BlockedOperations:      blockedOps,
+			Other:                  otherOps,
+			FileOperationsCount:    len(fileOps),
+			NetworkOperationsCount: len(netOps),
+			BlockedOperationsCount: len(blockedOps),
+			OtherCount:             len(otherOps),
+		},
+		Resources: &resources,
+		Guidance:  guidanceForResponse(req, res, blockedOps, s.EffectiveVirtualRoot()),
+	}
+	addRedirectGuidance(resp, pre, originalCmd, originalArgs)
+	if len(softSuggestions) > 0 {
+		if resp.Guidance == nil {
+			resp.Guidance = &types.ExecGuidance{Status: "ok"}
+		}
+		resp.Guidance.Suggestions = append(resp.Guidance.Suggestions, softSuggestions...)
+	}
+	_ = a.store.SaveOutput(ctx, id, cmdID, stdoutB, stderrB, stdoutTotal, stderrTotal, stdoutTrunc, stderrTrunc)
+	applyIncludeEvents(resp, includeEvents)
+	return resp, http.StatusOK, nil
+}
+
+// fuseMountParams holds parameters for mountFUSEForSession.
+type fuseMountParams struct {
+	session  *session.Session
+	engine   *policy.Engine
+	fs       platform.FilesystemInterceptor
+	deferred bool // adds "deferred": true to events
+}
+
+// mountFUSEForSession performs the FUSE mount for a session's workspace.
+// The caller is responsible for ensuring fs is non-nil and Available().
+// Returns true if the mount succeeded.
+func (a *App) mountFUSEForSession(ctx context.Context, p fuseMountParams) bool {
+	s := p.session
+	fs := p.fs
+
+	mountBase := a.cfg.Sandbox.FUSE.MountBaseDir
+	if mountBase == "" {
+		mountBase = a.cfg.Sessions.BaseDir
+	}
+	mountPoint := filepath.Join(mountBase, s.ID, "workspace-mnt")
+	hashLimit, _ := config.ParseByteSize(a.cfg.Sandbox.FUSE.Audit.HashSmallFilesUnder)
+
+	// Create event channel for filesystem events
+	eventChan := make(chan platform.IOEvent, 1000)
+
+	// Start goroutine to process events from the channel
+	go a.processIOEvents(eventChan)
+
+	// Build platform FSConfig
+	fsCfg := platform.FSConfig{
+		SourcePath:  s.Workspace,
+		MountPoint:  mountPoint,
+		SessionID:   s.ID,
+		VirtualRoot: s.EffectiveVirtualRoot(),
+		CommandIDFunc: func() string {
+			return s.CurrentCommandID()
+		},
+		TraceContextFunc: func() (string, string, string) {
+			return s.CurrentTraceContext()
+		},
+		PolicyEngine:      platform.NewPolicyAdapter(p.engine),
+		EventChannel:      eventChan,
+		MaxBackground:     a.cfg.Sandbox.FUSE.MaxBackground,
+		SymlinkEscapeDeny: a.cfg.Policies.SymlinkEscapeDeny(),
+	}
+
+	// Configure soft-delete/trash. Trash must be available to FUSE when the
+	// global mode is soft_delete OR when the policy contains any per-path
+	// soft_delete rule (which upgrades matching deletes individually). The
+	// configured global mode is always passed through so default monitor
+	// behavior is preserved for non-matching deletes.
+	globalAuditMode := a.cfg.Sandbox.FUSE.Audit.Mode
+	fsCfg.AuditMode = globalAuditMode
+	if globalAuditMode == "soft_delete" || (p.engine != nil && p.engine.HasSoftDeleteFileRule()) {
+		fsCfg.TrashConfig = &platform.TrashConfig{
+			Enabled:        true,
+			TrashDir:       a.cfg.Sandbox.FUSE.Audit.TrashPath,
+			HashLimitBytes: hashLimit,
+		}
+		fsCfg.NotifySoftDelete = func(path, token string) {
+			ev := types.Event{
+				ID:        uuid.NewString(),
+				Timestamp: time.Now().UTC(),
+				Type:      "file_soft_deleted",
+				SessionID: s.ID,
+				CommandID: s.CurrentCommandID(),
+				Path:      path,
+				Fields: map[string]any{
+					"trash_token":  token,
+					"restore_hint": fmt.Sprintf("aep-caw trash restore %s", token),
+				},
+			}
+			persistCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			err := a.store.AppendEvent(persistCtx, ev)
+			cancel()
+			if err != nil {
+				slog.Error("persist fuse soft-delete event", "error", err, "event_type", ev.Type, "path", path)
+			}
+			a.broker.Publish(ev)
+		}
+	}
+
+	m, err := fs.Mount(fsCfg)
+	if err != nil {
+		// Mount failed: no FUSE server is attached to eventChan, so the
+		// processIOEvents goroutine started above would block on its
+		// receive forever. Close the channel here so it exits cleanly.
+		close(eventChan)
+		fields := map[string]any{
+			"mount_point":    mountPoint,
+			"error":          err.Error(),
+			"implementation": fs.Implementation(),
+		}
+		if p.deferred {
+			fields["deferred"] = true
+		}
+		fail := types.Event{
+			ID:        uuid.NewString(),
+			Timestamp: time.Now().UTC(),
+			Type:      "fuse_mount_failed",
+			SessionID: s.ID,
+			Fields:    fields,
+		}
+		_ = a.store.AppendEvent(ctx, fail)
+		a.broker.Publish(fail)
+		return false
+	}
+
+	s.SetWorkspaceMount(mountPoint)
+	// Register the FUSE mount point (not source path) in MountRegistry
+	// so seccomp FileHandler defers only for paths accessed through FUSE.
+	registerFUSEMount(s.ID, mountPoint)
+	// Wrap unmount to also close the event channel and
+	// deregister from MountRegistry.
+	sessionID := s.ID
+	capturedMountPoint := mountPoint
+	s.SetWorkspaceUnmount(func() error {
+		deregisterFUSEMount(sessionID, capturedMountPoint)
+		err := m.Close()
+		close(eventChan)
+		return err
+	})
+
+	fields := map[string]any{
+		"mount_point":    mountPoint,
+		"implementation": fs.Implementation(),
+	}
+	if p.deferred {
+		fields["deferred"] = true
+	}
+	okEv := types.Event{
+		ID:        uuid.NewString(),
+		Timestamp: time.Now().UTC(),
+		Type:      "fuse_mounted",
+		SessionID: s.ID,
+		Fields:    fields,
+	}
+	_ = a.store.AppendEvent(ctx, okEv)
+	a.broker.Publish(okEv)
+	return true
+}
+
+// processIOEvents reads events from the platform event channel and forwards
+// them to the event store and broker. It runs until the channel is closed.
+// Uses a per-event background context instead of a caller-provided context
+// to avoid silent event drops when the HTTP request context is canceled.
+func (a *App) processIOEvents(eventChan <-chan platform.IOEvent) {
+	for ioEvent := range eventChan {
+		// Convert platform.IOEvent to types.Event
+		ev := ioEvent.ToEvent()
+		ev.ID = uuid.NewString()
+
+		// Inject trace context from session for distributed tracing correlation
+		if s, ok := a.sessions.Get(ioEvent.SessionID); ok {
+			s.InjectTraceContext(ev.Fields)
+		}
+
+		// Store and publish the event
+		persistCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err := a.store.AppendEvent(persistCtx, ev)
+		cancel()
+		if err != nil {
+			slog.Error("persist fuse io event", "error", err, "event_type", ev.Type, "event_id", ev.ID)
+		}
+		a.broker.Publish(ev)
+	}
+}
+
+// tryEnableFUSE runs the configured deferred enable command if present.
+// It checks the marker file first (if configured) and rechecks fs availability after.
+func (a *App) tryEnableFUSE(fs platform.FilesystemInterceptor) {
+	cmd := a.cfg.Sandbox.FUSE.DeferredEnableCommand
+	if len(cmd) == 0 {
+		return
+	}
+	// If a marker file is configured, only proceed when it exists.
+	if marker := a.cfg.Sandbox.FUSE.DeferredMarkerFile; marker != "" {
+		if _, err := os.Stat(marker); err != nil {
+			return
+		}
+	}
+	out, err := exec.Command(cmd[0], cmd[1:]...).CombinedOutput()
+	if err != nil {
+		slog.Warn("ensureFUSEMount: deferred enable command failed", "cmd", cmd, "error", err, "output", string(out))
+	} else {
+		slog.Info("ensureFUSEMount: deferred enable command succeeded", "cmd", cmd)
+		fs.Recheck()
+	}
+}
+
+// ensureFUSEMount sets up the FUSE overlay for a session if not already mounted.
+// This is used for deferred FUSE mounting where FUSE becomes available after
+// session creation (e.g., in E2B sandbox environments where /dev/fuse permissions
+// change at runtime). The method is idempotent - it's a no-op if already mounted.
+func (a *App) ensureFUSEMount(ctx context.Context, s *session.Session) {
+	// Already have a real FUSE mount? (WorkspaceMount differs from Workspace when FUSE overlay is active)
+	if s.WorkspaceMount != "" && s.WorkspaceMount != s.Workspace {
+		return
+	}
+	if a.platform == nil {
+		slog.Warn("ensureFUSEMount: platform is nil")
+		return
+	}
+	fs := a.platform.Filesystem()
+	if fs == nil {
+		slog.Warn("ensureFUSEMount: filesystem is nil")
+		return
+	}
+	// Recheck availability (FUSE may have become usable after startup)
+	fs.Recheck()
+	if !fs.Available() {
+		// In deferred mode, /dev/fuse may be restricted from the snapshot.
+		// Run the configured enable command if present to make it accessible.
+		a.tryEnableFUSE(fs)
+		if !fs.Available() {
+			return
+		}
+	}
+	slog.Info("ensureFUSEMount: FUSE available, proceeding with mount", "session_id", s.ID)
+
+	// Load the session's policy engine for FUSE policy adapter.
+	// Must use NewEngineWithVariables to expand ${PROJECT_ROOT} etc.
+	var engine *policy.Engine
+	if a.cfg.Policies.Dir != "" {
+		policyPath, pErr := policy.ResolvePolicyPath(a.cfg.Policies.Dir, s.Policy)
+		if pErr == nil {
+			policyData, rErr := os.ReadFile(policyPath)
+			if rErr == nil {
+				// Signature verification (same flow as session creation)
+				sigMode := a.cfg.Policies.Signing.SigningMode()
+				if sigMode != "off" {
+					if a.cfg.Policies.Signing.TrustStore != "" {
+						ts, tsErr := signing.LoadTrustStore(a.cfg.Policies.Signing.TrustStore, sigMode == "enforce")
+						if tsErr != nil {
+							if sigMode == "enforce" {
+								slog.Error("ensureFUSEMount: trust store load failed", "error", tsErr)
+								return
+							}
+							slog.Warn("ensureFUSEMount: trust store load failed", "error", tsErr)
+						} else if _, vErr := signing.VerifyPolicyBytes(policyData, policyPath+".sig", ts); vErr != nil {
+							if sigMode == "enforce" {
+								slog.Error("ensureFUSEMount: policy signing verification failed", "error", vErr)
+								return
+							}
+							slog.Warn("ensureFUSEMount: policy signing verification failed", "error", vErr)
+						}
+					} else if sigMode == "enforce" {
+						slog.Error("ensureFUSEMount: signing mode is enforce but trust_store not configured")
+						return
+					} else {
+						slog.Warn("ensureFUSEMount: signing mode is set but trust_store not configured", "mode", sigMode)
+					}
+				}
+
+				pol, lErr := policy.LoadFromBytes(policyData)
+				if lErr == nil {
+					policyVars := map[string]string{
+						"PROJECT_ROOT": s.Workspace,
+						"GIT_ROOT":     s.Workspace,
+						"HOME":         os.Getenv("HOME"),
+					}
+					enforceApprovals := a.cfg.Approvals.Enabled && a.cfg.Approvals.Mode != ""
+					engine, _ = policy.NewEngineWithVariables(pol, enforceApprovals, true, policyVars)
+				}
+			}
+		}
+	}
+	if engine == nil {
+		engine = a.policy // fall back to global
+	}
+
+	// Store session-specific engine if session doesn't have one yet
+	if s.PolicyEngine() == nil {
+		a.attachSessionTor(engine)
+		s.SetPolicyEngine(engine)
+	}
+
+	a.mountFUSEForSession(ctx, fuseMountParams{
+		session:  s,
+		engine:   engine,
+		fs:       fs,
+		deferred: true,
+	})
+}
+
+// wrapWithMacSandbox wraps command with aep-caw-macwrap for XPC control.
+func (a *App) wrapWithMacSandbox(
+	req *types.ExecRequest,
+	origCommand string,
+	origArgs []string,
+	sess *session.Session,
+) {
+	wrapperBin := strings.TrimSpace(a.cfg.Sandbox.XPC.WrapperBin)
+	if wrapperBin == "" {
+		wrapperBin = "aep-caw-macwrap"
+	}
+
+	if _, err := exec.LookPath(wrapperBin); err != nil {
+		return
+	}
+
+	// Build mach services config with defaults
+	machCfg := macSandboxMachServicesConfig{
+		DefaultAction: a.cfg.Sandbox.XPC.MachServices.DefaultAction,
+		Allow:         a.cfg.Sandbox.XPC.MachServices.Allow,
+		Block:         a.cfg.Sandbox.XPC.MachServices.Block,
+		AllowPrefixes: a.cfg.Sandbox.XPC.MachServices.AllowPrefixes,
+		BlockPrefixes: a.cfg.Sandbox.XPC.MachServices.BlockPrefixes,
+	}
+
+	if machCfg.DefaultAction == "" {
+		machCfg.DefaultAction = "deny"
+	}
+	if len(machCfg.Allow) == 0 && machCfg.DefaultAction == "deny" {
+		machCfg.Allow = DefaultXPCAllowList
+	}
+	if len(machCfg.BlockPrefixes) == 0 && machCfg.DefaultAction == "allow" {
+		machCfg.BlockPrefixes = DefaultXPCBlockPrefixes
+	}
+
+	cfg := macSandboxWrapperConfig{
+		WorkspacePath: sess.Workspace,
+		AllowedPaths:  []string{os.Getenv("HOME")},
+		AllowNetwork:  true,
+		MachServices:  machCfg,
+	}
+
+	// Compile policy-driven SBPL profile (darwin+cgo only, no-op on other platforms)
+	compileDarwinSandboxProfile(&cfg, a.policyEngineFor(sess), sess.Workspace)
+
+	// Write profile artifact for debugging/inspection
+	if cfg.CompiledProfile != "" && sess.ID != "" {
+		artifactDir := filepath.Join(os.Getenv("HOME"), ".aep-caw", "sessions", sess.ID)
+		os.MkdirAll(artifactDir, 0700)
+		artifactPath := filepath.Join(artifactDir, "sandbox.sb")
+		if err := os.WriteFile(artifactPath, []byte(cfg.CompiledProfile), 0600); err != nil {
+			slog.Debug("failed to write sandbox profile artifact", "error", err)
+		}
+	}
+
+	cfgJSON, err := json.Marshal(cfg)
+	if err != nil {
+		return
+	}
+
+	if req.Env == nil {
+		req.Env = map[string]string{}
+	}
+
+	// Use file-based config if payload is too large for env var
+	cfgStr := string(cfgJSON)
+	if len(cfgStr) > 64*1024 {
+		tmpFile := fmt.Sprintf("/tmp/aep-caw-sandbox-%s.json", sess.ID)
+		if err := os.WriteFile(tmpFile, cfgJSON, 0600); err != nil {
+			slog.Warn("failed to write sandbox config file", "error", err)
+			return
+		}
+		req.Env["AEP_CAW_SANDBOX_CONFIG_FILE"] = tmpFile
+	} else {
+		req.Env["AEP_CAW_SANDBOX_CONFIG"] = cfgStr
+	}
+
+	req.Command = wrapperBin
+	req.Args = append([]string{"--", origCommand}, origArgs...)
+}
+
+// emitPackageCheckEvent publishes a package check audit event.
+func (a *App) emitPackageCheckEvent(ctx context.Context, sessionID, commandID string, verdict *pkgcheck.Verdict) {
+	evType := events.EventPackageCheckCompleted
+	switch verdict.Action {
+	case pkgcheck.VerdictBlock:
+		evType = events.EventPackageBlocked
+	case pkgcheck.VerdictApprove:
+		evType = events.EventPackageApproved
+	case pkgcheck.VerdictWarn:
+		evType = events.EventPackageWarning
+	}
+
+	var decision types.Decision
+	switch verdict.Action {
+	case pkgcheck.VerdictBlock:
+		decision = types.DecisionDeny
+	case pkgcheck.VerdictWarn:
+		decision = types.DecisionAudit
+	case pkgcheck.VerdictApprove:
+		decision = types.DecisionApprove
+	case pkgcheck.VerdictAllow:
+		decision = types.DecisionAllow
+	default:
+		decision = types.DecisionDeny // fail closed
+	}
+
+	ev := types.Event{
+		ID:        uuid.NewString(),
+		Timestamp: time.Now().UTC(),
+		Type:      string(evType),
+		SessionID: sessionID,
+		CommandID: commandID,
+		Policy: &types.PolicyInfo{
+			Decision:          decision,
+			EffectiveDecision: decision,
+		},
+		Fields: map[string]any{
+			"findings_count":  len(verdict.Findings),
+			"summary":         verdict.Summary,
+			"package_verdict": string(verdict.Action),
+		},
+	}
+	_ = a.store.AppendEvent(ctx, ev)
+	a.broker.Publish(ev)
+}
+
+// setTraceContext sets the W3C trace context on a session for distributed
+// tracing correlation. This allows external processes (e.g. Python agents)
+// running inside a session to associate their OTEL traces with aep-caw events.
+func (a *App) setTraceContext(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	s, ok := a.sessions.Get(id)
+	if !ok {
+		writeJSON(w, http.StatusNotFound, map[string]any{"error": "session not found"})
+		return
+	}
+
+	var req struct {
+		TraceID    string `json:"trace_id"`
+		SpanID     string `json:"span_id"`
+		TraceFlags string `json:"trace_flags"`
+	}
+	if ok := decodeJSON(w, r, &req, "invalid json"); !ok {
+		return
+	}
+	if !isValidHex(req.TraceID, 32) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "trace_id must be 32 hex characters"})
+		return
+	}
+	if req.TraceID == "00000000000000000000000000000000" {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "trace_id must not be all zeros"})
+		return
+	}
+	if req.SpanID != "" {
+		if !isValidHex(req.SpanID, 16) {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "span_id must be 16 hex characters"})
+			return
+		}
+		if req.SpanID == "0000000000000000" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "span_id must not be all zeros"})
+			return
+		}
+	}
+	if req.TraceFlags != "" && !isValidHex(req.TraceFlags, 2) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "trace_flags must be 2 hex characters"})
+		return
+	}
+
+	s.SetCurrentTraceContext(req.TraceID, req.SpanID, req.TraceFlags)
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// applyRealPaths resolves the effective real-paths mode (config default overridden
+// by request) and applies it to the session, emitting a warning when enforcement
+// is incomplete.
+func (a *App) applyRealPaths(s *session.Session, reqRealPaths *bool) {
+	realPaths := a.cfg.Sessions.RealPaths
+	if reqRealPaths != nil {
+		realPaths = *reqRealPaths
+	}
+	if realPaths {
+		if !s.SetRealPaths(true) {
+			slog.Warn("real_paths requested but workspace is empty; falling back to /workspace",
+				"session_id", s.ID)
+			return
+		}
+		if !config.FileMonitorBoolWithDefault(a.cfg.Sandbox.Seccomp.FileMonitor.EnforceWithoutFUSE, false) {
+			slog.Warn("session created with real_paths but enforce_without_fuse is false: outside-workspace file access will be audit-only",
+				"session_id", s.ID)
+		}
+	}
+}

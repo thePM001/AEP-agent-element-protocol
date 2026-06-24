@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aep:schema:base-node-config-2.8",
+  "title": "AEP Base Node Configuration",
+  "type": "object",
+  "required": ["version", "base_node"],
+  "properties": {
+    "version": { "type": "string", "const": "2.8.0" },
+    "inference_engine": {
+      "type": "object",
+      "required": ["provider", "model", "base_url", "dock"],
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": ["llama_cpp", "anthropic", "openrouter", "custom"]
+        },
+        "model": { "type": "string" },
+        "base_url": { "type": "string" },
+        "api_key_env": { "type": ["string", "null"] },
+        "dock": { "type": "string", "const": "inference_engine" },
+        "configured_by": { "type": "string" }
+      }
+    },
+    "base_node": {
+      "type": "object",
+      "required": [
+        "socket_base",
+        "lattice_db",
+        "binary_path",
+        "epscom_priority",
+        "lrps",
+        "lattice_channel_secret"
+      ],
+      "properties": {
+        "socket_base": { "type": "string" },
+        "lattice_db": { "type": "string" },
+        "binary_path": { "type": "string" },
+        "epscom_priority": { "type": "integer", "minimum": 1, "maximum": 255 },
+        "lrps": { "type": "array", "items": { "type": "string" } },
+        "lattice_channel_secret": { "type": "string", "minLength": 32 },
+        "internet_up": { "type": "boolean" },
+        "mesh_peers": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "caw_framework": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "binary": { "type": "string" },
+        "config_path": { "type": "string" },
+        "policy_name": { "type": "string" },
+        "server_port": { "type": "integer" },
+        "shell_shim": { "type": "boolean" },
+        "lattice_audit": { "type": "boolean" },
+        "mode": { "type": "string", "enum": ["enforce", "audit", "detect"] }
+      }
+    }
+  }
+}

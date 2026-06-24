@@ -1,0 +1,822 @@
+{
+  "version": "2.8.0",
+  "protocol_version": "2.8.0",
+  "bundled_offline": true,
+  "repository": {
+    "type": "github",
+    "owner": "thePM001",
+    "name": "AEP-agent-element-protocol",
+    "url": "https://github.com/thePM001/AEP-agent-element-protocol",
+    "default_branch": "main",
+    "catalog_path": "AEP-Base-Node/registry/catalog.json",
+    "components_path": "AEP-Base-Node/registry/components",
+    "components_root": "AEP-Components/",
+    "base_node_path": "AEP-Base-Node/",
+    "sdks_path": "AEP-SDKs/"
+  },
+  "components": [
+    {
+      "id": "lattice-channels",
+      "name": "Lattice Channels",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Components/lattice-channels/",
+      "description": "Unified lattice transport, TS client, and Rust channel crate.",
+      "manifest": "AEP-Base-Node/registry/components/lattice-channels.json"
+    },
+    {
+      "id": "commerce-subprotocol",
+      "name": "Commerce Subprotocol",
+      "kind": "regulation",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Subprotocols/commerce/",
+      "lrp_id": "commerce-subprotocol",
+      "description": "Agentic commerce validation and spend tracking (Rust + TS types).",
+      "manifest": "AEP-Base-Node/registry/components/commerce-subprotocol.json"
+    },
+    {
+      "id": "lattice-crypto",
+      "name": "Lattice Crypto",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Components/lattice-crypto/",
+      "description": "PQEncryptedCapsule ML-KEM-768 + ML-DSA-65 + AES-256-GCM.",
+      "manifest": "AEP-Base-Node/registry/components/lattice-crypto.json"
+    },
+    {
+      "id": "aep-base-node",
+      "name": "AEP Base Node",
+      "kind": "daemon",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Base-Node/",
+      "description": "Mandatory local governance daemon with docking ports.",
+      "manifest": "AEP-Base-Node/registry/components/aep-base-node.json"
+    },
+    {
+      "id": "epscom-signatures",
+      "name": "EPSCOM Detection Signatures",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Base-Node/signatures/",
+      "description": "EPSCOM-curated detection signatures and trust bundle (Base Node kernel adjunct).",
+      "manifest": "AEP-Base-Node/registry/components/epscom-signatures.json"
+    },
+    {
+      "id": "lattice-memory",
+      "name": "Lattice Memory",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Components/lattice-memory/",
+      "description": "sqlite-vec validation memory and attractor search.",
+      "manifest": "AEP-Base-Node/registry/components/lattice-memory.json"
+    },
+    {
+      "id": "agentmesh",
+      "name": "AgentMesh Identity",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Components/agentmesh/",
+      "description": "SPIFFE/DID/mTLS identity for lattice channels.",
+      "manifest": "AEP-Base-Node/registry/components/agentmesh.json"
+    },
+    {
+      "id": "potomitan",
+      "name": "POTOMITAN Mesh",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Base-Node/potomitan/",
+      "description": "Mesh peer registry and routing fallback.",
+      "manifest": "AEP-Base-Node/registry/components/potomitan.json"
+    },
+    {
+      "id": "dynaep-core",
+      "name": "dynAEP Action Lattice",
+      "kind": "protocol",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Components/dynAEP/",
+      "description": "Real-time event governance protocol merged into AEP 2.8.",
+      "manifest": "AEP-Base-Node/registry/components/dynaep-core.json"
+    },
+    {
+      "id": "cca",
+      "name": "CCA Setup Agent",
+      "kind": "agent",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Components/cca/",
+      "description": "Unified CCA Setup Agent: probe, registry knowledge, plan generation and execution.",
+      "manifest": "AEP-Base-Node/registry/components/cca.json"
+    },
+    {
+      "id": "wizard",
+      "name": "Install Wizard",
+      "kind": "wizard",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/wizard/",
+      "description": "Local-source developer install wizard.",
+      "manifest": "AEP-Base-Node/registry/components/wizard.json"
+    },
+    {
+      "id": "composer-lite",
+      "name": "Composer Lite WASM Canvas",
+      "kind": "ui",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Composer-Lite/",
+      "description": "Visual composer on port 8424; alternative to CCA chat planning.",
+      "manifest": "AEP-Base-Node/registry/components/composer-lite.json"
+    },
+    {
+      "id": "ucb",
+      "name": "Universal Connect Bridge",
+      "kind": "bridge",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Docks/ucb/",
+      "description": "Secured dock (:8412) for non-AEP agent protocols.",
+      "manifest": "AEP-Base-Node/registry/components/ucb.json"
+    },
+    {
+      "id": "wasm-policy-sandbox",
+      "name": "WASM Policy Sandbox",
+      "kind": "wasm",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/wasm/",
+      "description": "Policy evaluation via lattice socket wasm_sandbox.",
+      "manifest": "AEP-Base-Node/registry/components/wasm-policy-sandbox.json"
+    },
+    {
+      "id": "conformance-runner",
+      "name": "Conformance Runner CC-01..CC-16",
+      "kind": "tooling",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/conformance/",
+      "description": "Public tier conformance battery.",
+      "manifest": "AEP-Base-Node/registry/components/conformance-runner.json"
+    },
+    {
+      "id": "gap-runtime-scanners",
+      "name": "GAP Runtime Scanners",
+      "kind": "regulation",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/scanners/",
+      "lrp_id": "gap-runtime-scanners",
+      "description": "Optional 11-scanner GAP bundle (extracted from typescript-sdk).",
+      "manifest": "AEP-Base-Node/registry/components/gap-runtime-scanners.json"
+    },
+    {
+      "id": "economics",
+      "name": "Economics and X402",
+      "kind": "regulation",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/economics/",
+      "description": "Pricing, budget caps, X402 nanopayments.",
+      "manifest": "AEP-Base-Node/registry/components/economics.json"
+    },
+    {
+      "id": "schema-builder",
+      "name": "Schema Builder",
+      "kind": "tooling",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Policy-System/schema-builder/",
+      "description": "Data-driven schema validation.",
+      "manifest": "AEP-Base-Node/registry/components/schema-builder.json"
+    },
+    {
+      "id": "policy-builder",
+      "name": "Policy Builder",
+      "kind": "tooling",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Policy-System/policy-builder/",
+      "description": "Invariant detection and Rego generation.",
+      "manifest": "AEP-Base-Node/registry/components/policy-builder.json"
+    },
+    {
+      "id": "connector-postgres",
+      "name": "Postgres Connector",
+      "kind": "connector",
+      "bundled": true,
+      "default_enabled": false,
+      "composer_palette": true,
+      "path": "AEP-Connectors/postgres/",
+      "description": "UCB-only PostgreSQL connector. All traffic via /ucb/v1/egress/postgres/**.",
+      "manifest": "AEP-Base-Node/registry/components/connector-postgres.json"
+    },
+    {
+      "id": "eu-ai-act",
+      "name": "EU AI Act Compliance",
+      "kind": "compliance",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Policy-System/reference/",
+      "lrp_id": "eu-ai-act",
+      "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap",
+      "manifest": "AEP-Base-Node/registry/components/eu-ai-act.json"
+    },
+    {
+      "id": "gdpr",
+      "name": "GDPR Compliance",
+      "kind": "compliance",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Policy-System/reference/",
+      "lrp_id": "gdpr",
+      "gap_ref": "AEP-Policy-System/reference/gdpr.gap",
+      "manifest": "AEP-Base-Node/registry/components/gdpr.json"
+    },
+    {
+      "id": "soc2-type2",
+      "name": "SOC 2 Type II Compliance",
+      "kind": "compliance",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Policy-System/reference/",
+      "lrp_id": "soc2-type2",
+      "gap_ref": "AEP-Policy-System/reference/soc2-type2.gap",
+      "manifest": "AEP-Base-Node/registry/components/soc2-type2.json"
+    },
+    {
+      "id": "hipaa",
+      "name": "HIPAA Compliance",
+      "kind": "compliance",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Policy-System/reference/",
+      "lrp_id": "hipaa",
+      "gap_ref": "AEP-Policy-System/reference/hipaa.gap",
+      "manifest": "AEP-Base-Node/registry/components/hipaa.json"
+    },
+    {
+      "id": "nist-ai-rmf",
+      "name": "NIST AI RMF Compliance",
+      "kind": "compliance",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Policy-System/reference/",
+      "lrp_id": "nist-ai-rmf",
+      "gap_ref": "AEP-Policy-System/reference/nist-ai-rmf.gap",
+      "manifest": "AEP-Base-Node/registry/components/nist-ai-rmf.json"
+    },
+    {
+      "id": "iso-42001",
+      "name": "ISO 42001 Compliance",
+      "kind": "compliance",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Policy-System/reference/",
+      "lrp_id": "iso-42001",
+      "gap_ref": "AEP-Policy-System/reference/iso-42001.gap",
+      "manifest": "AEP-Base-Node/registry/components/iso-42001.json"
+    },
+    {
+      "id": "wasm-policy-node",
+      "name": "WASM Policy Node",
+      "kind": "wasm_extension",
+      "bundled": true,
+      "default_enabled": false,
+      "composer_palette": true,
+      "path": "AEP-Components/wasm/",
+      "description": "Composer palette node for WASM GAP evaluation.",
+      "manifest": "AEP-Base-Node/registry/components/wasm-policy-node.json"
+    },
+    {
+      "id": "community-extension-template",
+      "name": "Community Extension Template",
+      "kind": "template",
+      "bundled": false,
+      "default_enabled": false,
+      "path": "AEP-Base-Node/registry/components/",
+      "source": "github",
+      "description": "Template for custom WASM or protocol extensions.",
+      "manifest": "AEP-Base-Node/registry/components/community-extension-template.json"
+    },
+    {
+      "id": "evaluation-chain",
+      "name": "Evaluation Chain",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/evaluation-chain/",
+      "description": "Short-circuit evaluation chain with step activation profiles.",
+      "manifest": "AEP-Base-Node/registry/components/evaluation-chain.json"
+    },
+    {
+      "id": "session",
+      "name": "Session Governance",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Components/session/",
+      "description": "Agent session lifecycle, kill switch and session manager.",
+      "manifest": "AEP-Base-Node/registry/components/session.json"
+    },
+    {
+      "id": "policy-engine",
+      "name": "Policy Engine",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Components/policy-engine/",
+      "description": "YAML policy loading, validation and evaluation.",
+      "manifest": "AEP-Base-Node/registry/components/policy-engine.json"
+    },
+    {
+      "id": "evidence-ledger",
+      "name": "Evidence Ledger",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Components/evidence-ledger/",
+      "description": "Merkle evidence ledger, rollback and quantum timestamps.",
+      "manifest": "AEP-Base-Node/registry/components/evidence-ledger.json"
+    },
+    {
+      "id": "model-gateway",
+      "name": "Model Gateway",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/model-gateway/",
+      "description": "Governed multi-provider LLM gateway with adapters.",
+      "manifest": "AEP-Base-Node/registry/components/model-gateway.json"
+    },
+    {
+      "id": "fleet",
+      "name": "Fleet Governance",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/fleet/",
+      "description": "Multi-agent fleet manager, spawn governance, message scanning.",
+      "manifest": "AEP-Base-Node/registry/components/fleet.json"
+    },
+    {
+      "id": "covenant",
+      "name": "Behavioral Covenants",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/covenant/",
+      "description": "Parse, evaluate and compile behavioral covenant specs.",
+      "manifest": "AEP-Base-Node/registry/components/covenant.json"
+    },
+    {
+      "id": "knowledge-base",
+      "name": "Knowledge Base",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/knowledge-base/",
+      "description": "Lattice-governed knowledge ingest and retrieval.",
+      "manifest": "AEP-Base-Node/registry/components/knowledge-base.json"
+    },
+    {
+      "id": "trust-rings",
+      "name": "Trust and Rings",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/trust-rings/",
+      "description": "Trust scoring and execution ring capability gating.",
+      "manifest": "AEP-Base-Node/registry/components/trust-rings.json"
+    },
+    {
+      "id": "proof-bundle",
+      "name": "Proof Bundles",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/proof-bundle/",
+      "description": "Build and verify session proof bundles with reliability index.",
+      "manifest": "AEP-Base-Node/registry/components/proof-bundle.json"
+    },
+    {
+      "id": "recovery",
+      "name": "Recovery Engine",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/recovery/",
+      "description": "Violation detection and governed recovery attempts.",
+      "manifest": "AEP-Base-Node/registry/components/recovery.json"
+    },
+    {
+      "id": "workflow",
+      "name": "Workflow Phases",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/workflow/",
+      "description": "Multi-phase workflow executor and fine-tuning templates.",
+      "manifest": "AEP-Base-Node/registry/components/workflow.json"
+    },
+    {
+      "id": "aepassist",
+      "name": "AEP Assist",
+      "kind": "agent",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/aepassist/",
+      "description": "Interactive assistant, presets and slash-command generators.",
+      "manifest": "AEP-Base-Node/registry/components/aepassist.json"
+    },
+    {
+      "id": "identity",
+      "name": "Agent Identity",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/identity/",
+      "description": "Agent identity manager and compact identity types.",
+      "manifest": "AEP-Base-Node/registry/components/identity.json"
+    },
+    {
+      "id": "intent",
+      "name": "Intent Drift",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/intent/",
+      "description": "Intent baseline and drift detection.",
+      "manifest": "AEP-Base-Node/registry/components/intent.json"
+    },
+    {
+      "id": "decomposition",
+      "name": "Task Decomposition",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/decomposition/",
+      "description": "Governed task tree decomposition and completion gates.",
+      "manifest": "AEP-Base-Node/registry/components/decomposition.json"
+    },
+    {
+      "id": "telemetry",
+      "name": "Telemetry Export",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/telemetry/",
+      "description": "OpenTelemetry span and event exporter for AEP.",
+      "manifest": "AEP-Base-Node/registry/components/telemetry.json"
+    },
+    {
+      "id": "proxy",
+      "name": "AEP Proxy",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/proxy/",
+      "description": "MCP and shell proxy servers under lattice governance.",
+      "manifest": "AEP-Base-Node/registry/components/proxy.json"
+    },
+    {
+      "id": "datasets",
+      "name": "Dataset Manager",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/datasets/",
+      "description": "Governed dataset management for eval and training.",
+      "manifest": "AEP-Base-Node/registry/components/datasets.json"
+    },
+    {
+      "id": "graph-engine",
+      "name": "Graph Engine",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/graph-engine/",
+      "description": "Agent governance graph engine and scene registry.",
+      "manifest": "AEP-Base-Node/registry/components/graph-engine.json"
+    },
+    {
+      "id": "verification",
+      "name": "Cross-Agent Verification",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/verification/",
+      "description": "Handshake proofs and counterparty verification.",
+      "manifest": "AEP-Base-Node/registry/components/verification.json"
+    },
+    {
+      "id": "streaming",
+      "name": "Streaming Validation",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/streaming/",
+      "description": "Stream validator and middleware for governed output.",
+      "manifest": "AEP-Base-Node/registry/components/streaming.json"
+    },
+    {
+      "id": "mcp-security",
+      "name": "MCP Security",
+      "kind": "regulation",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/mcp-security/",
+      "description": "MCP subprotocol security scanners and policies.",
+      "manifest": "AEP-Base-Node/registry/components/mcp-security.json"
+    },
+    {
+      "id": "aep-comm",
+      "name": "AEP Communication",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/aep-comm/",
+      "description": "Inter-agent communication helpers.",
+      "manifest": "AEP-Base-Node/registry/components/aep-comm.json"
+    },
+    {
+      "id": "eval",
+      "name": "Eval Lifecycle",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/eval/",
+      "description": "Eval runner, rule generator and ML metrics.",
+      "manifest": "AEP-Base-Node/registry/components/eval.json"
+    },
+    {
+      "id": "optimization",
+      "name": "Prompt Optimization",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/optimization/",
+      "description": "Governed prompt optimizer and version manager.",
+      "manifest": "AEP-Base-Node/registry/components/optimization.json"
+    },
+    {
+      "id": "permissions",
+      "name": "Permissions",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/permissions/",
+      "description": "Capability permission checks for agent actions.",
+      "manifest": "AEP-Base-Node/registry/components/permissions.json"
+    },
+    {
+      "id": "intercept",
+      "name": "Action Intercept",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/intercept/",
+      "description": "Pre/post action intercept hooks.",
+      "manifest": "AEP-Base-Node/registry/components/intercept.json"
+    },
+    {
+      "id": "caw-framework",
+      "name": "AEP CAW Framework",
+      "kind": "daemon",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Components/caw-framework/",
+      "description": "Execution-Layer Security for containerized agentic workflows (aep-caw).",
+      "manifest": "AEP-Base-Node/registry/components/caw-framework.json"
+    },
+    {
+      "id": "gap",
+      "name": "GAP Language",
+      "kind": "protocol",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Components/gap/",
+      "description": "Governed Agentic Programming meta-schemas and reference policies (vendored from github.com/thePM001/gap).",
+      "manifest": "AEP-Base-Node/registry/components/gap.json"
+    },
+    {
+      "id": "coding-governance",
+      "name": "Coding Governance",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/coding-governance/",
+      "description": "Pre-change intent, blast radius, SIEE. Validator in AEP-Subprotocols/coding-governance.",
+      "manifest": "AEP-Base-Node/registry/components/coding-governance.json"
+    },
+    {
+      "id": "intent-ledger",
+      "name": "Intent Ledger",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/intent-ledger/",
+      "description": "Append-only intent provenance ledger for coding governance solidify records.",
+      "manifest": "AEP-Base-Node/registry/components/intent-ledger.json"
+    },
+    {
+      "id": "semantic-topology",
+      "name": "Semantic Topology",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/semantic-topology/",
+      "description": "Semantic DAG builder for features, invariants, and blast-radius visualization.",
+      "manifest": "AEP-Base-Node/registry/components/semantic-topology.json"
+    },
+    {
+      "id": "connector-slack",
+      "name": "Slack",
+      "kind": "connector",
+      "bundled": true,
+      "default_enabled": false,
+      "composer_palette": true,
+      "path": "AEP-Connectors/slack/",
+      "description": "UCB-only Slack connector. All traffic via /ucb/v1/egress/slack/**.",
+      "manifest": "AEP-Base-Node/registry/components/connector-slack.json"
+    },
+    {
+      "id": "connector-jira",
+      "name": "Jira",
+      "kind": "connector",
+      "bundled": true,
+      "default_enabled": false,
+      "composer_palette": true,
+      "path": "AEP-Connectors/jira/",
+      "description": "UCB-only Jira connector. All traffic via /ucb/v1/egress/jira/**.",
+      "manifest": "AEP-Base-Node/registry/components/connector-jira.json"
+    },
+    {
+      "id": "connector-notion",
+      "name": "Notion",
+      "kind": "connector",
+      "bundled": true,
+      "default_enabled": false,
+      "composer_palette": true,
+      "path": "AEP-Connectors/notion/",
+      "description": "UCB-only Notion connector. All traffic via /ucb/v1/egress/notion/**.",
+      "manifest": "AEP-Base-Node/registry/components/connector-notion.json"
+    },
+    {
+      "id": "connector-hubspot",
+      "name": "HubSpot",
+      "kind": "connector",
+      "bundled": true,
+      "default_enabled": false,
+      "composer_palette": true,
+      "path": "AEP-Connectors/hubspot/",
+      "description": "UCB-only HubSpot connector. All traffic via /ucb/v1/egress/hubspot/**.",
+      "manifest": "AEP-Base-Node/registry/components/connector-hubspot.json"
+    },
+    {
+      "id": "connector-odoo",
+      "name": "Odoo",
+      "kind": "connector",
+      "bundled": true,
+      "default_enabled": false,
+      "composer_palette": true,
+      "path": "AEP-Connectors/odoo/",
+      "description": "UCB-only Odoo connector. All traffic via /ucb/v1/egress/odoo/**.",
+      "manifest": "AEP-Base-Node/registry/components/connector-odoo.json"
+    },
+    {
+      "id": "connector-google-workspace",
+      "name": "Google Workspace",
+      "kind": "connector",
+      "bundled": true,
+      "default_enabled": false,
+      "composer_palette": true,
+      "path": "AEP-Connectors/google-workspace/",
+      "description": "UCB-only Google Workspace connector. All traffic via /ucb/v1/egress/google-workspace/**.",
+      "manifest": "AEP-Base-Node/registry/components/connector-google-workspace.json"
+    },
+    {
+      "id": "connector-gcp",
+      "name": "Google Cloud",
+      "kind": "connector",
+      "bundled": true,
+      "default_enabled": false,
+      "composer_palette": true,
+      "path": "AEP-Connectors/gcp/",
+      "description": "UCB-only Google Cloud connector. All traffic via /ucb/v1/egress/gcp/**.",
+      "manifest": "AEP-Base-Node/registry/components/connector-gcp.json"
+    },
+    {
+      "id": "connector-aws",
+      "name": "AWS",
+      "kind": "connector",
+      "bundled": true,
+      "default_enabled": false,
+      "composer_palette": true,
+      "path": "AEP-Connectors/aws/",
+      "description": "UCB-only AWS connector. All traffic via /ucb/v1/egress/aws/**.",
+      "manifest": "AEP-Base-Node/registry/components/connector-aws.json"
+    },
+    {
+      "id": "connector-azure",
+      "name": "Microsoft Azure",
+      "kind": "connector",
+      "bundled": true,
+      "default_enabled": false,
+      "composer_palette": true,
+      "path": "AEP-Connectors/azure/",
+      "description": "UCB-only Microsoft Azure connector. All traffic via /ucb/v1/egress/azure/**.",
+      "manifest": "AEP-Base-Node/registry/components/connector-azure.json"
+    },
+    {
+      "id": "aep-typescript-sdk",
+      "name": "AEP TypeScript SDK",
+      "kind": "sdk",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-SDKs/typescript/aep-protocol/",
+      "description": "Unified TypeScript governance stack and lattice-gated SDK clients.",
+      "manifest": "AEP-Base-Node/registry/components/aep-typescript-sdk.json"
+    },
+    {
+      "id": "aep-dynaep-typescript",
+      "name": "dynAEP TypeScript SDK",
+      "kind": "sdk",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-SDKs/typescript/dynaep/",
+      "description": "dynAEP Action Lattice TypeScript client library.",
+      "manifest": "AEP-Base-Node/registry/components/aep-dynaep-typescript.json"
+    },
+    {
+      "id": "aep-dynaep-python",
+      "name": "dynAEP Python SDK",
+      "kind": "sdk",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-SDKs/python/dynaep/",
+      "description": "dynAEP Action Lattice Python client library.",
+      "manifest": "AEP-Base-Node/registry/components/aep-dynaep-python.json"
+    },
+    {
+      "id": "aep-python-sdk",
+      "name": "AEP Python SDK",
+      "kind": "sdk",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-SDKs/python/aep-protocol/",
+      "description": "AEP Python loader, validator, and lattice client.",
+      "manifest": "AEP-Base-Node/registry/components/aep-python-sdk.json"
+    },
+    {
+      "id": "hcse",
+      "name": "AEP-HCSE",
+      "kind": "tooling",
+      "bundled": false,
+      "default_enabled": false,
+      "path": "AEP-Components/hcse/",
+      "description": "Optional external code graph parser (CCA download + aep-hcse rebrand).",
+      "manifest": "AEP-Base-Node/registry/components/hcse.json"
+    },
+    {
+      "id": "connector-n8n",
+      "name": "n8n",
+      "kind": "connector",
+      "bundled": true,
+      "default_enabled": false,
+      "composer_palette": true,
+      "path": "AEP-Connectors/n8n/",
+      "description": "UCB-only n8n connector. All traffic via /ucb/v1/egress/n8n/**.",
+      "manifest": "AEP-Base-Node/registry/components/connector-n8n.json"
+    },
+    {
+      "id": "connector-make",
+      "name": "Make",
+      "kind": "connector",
+      "bundled": true,
+      "default_enabled": false,
+      "composer_palette": true,
+      "path": "AEP-Connectors/make/",
+      "description": "UCB-only Make connector. All traffic via /ucb/v1/egress/make/**.",
+      "manifest": "AEP-Base-Node/registry/components/connector-make.json"
+    },
+    {
+      "id": "connector-zapier",
+      "name": "Zapier",
+      "kind": "connector",
+      "bundled": true,
+      "default_enabled": false,
+      "composer_palette": true,
+      "path": "AEP-Connectors/zapier/",
+      "description": "UCB-only Zapier connector. All traffic via /ucb/v1/egress/zapier/**.",
+      "manifest": "AEP-Base-Node/registry/components/connector-zapier.json"
+    }
+  ]
+}

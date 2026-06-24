@@ -1,0 +1,31 @@
+{
+  "id": "aep-noship-no-public-github",
+  "kind": "platform_mandatory_policy",
+  "authority": "EPSCOM",
+  "version": "2.8.0",
+  "gap_ref": "AEP-Policy-System/reference/aep-noship-distribution.gap",
+  "mandatory_gap": "AEP-Policy-System/lattice-channel-mandatory.gap",
+  "policy_yaml": "AEP-Policy-System/aep-noship-distribution.policy.yaml",
+  "protected_paths": [
+    "AEP-NOSHIP/tests/**",
+    "AEP-NOSHIP/plans/**",
+    "AEP-NOSHIP/docs/**",
+    "AEP-NOSHIP/**"
+  ],
+  "forbidden_targets": [
+    "github.com public repositories",
+    "npm registry",
+    "runtime docker images",
+    "public open-source release tarballs"
+  ],
+  "allowed_targets": [
+    "private Gitea mirrors",
+    "operator-controlled internal git remotes"
+  ],
+  "controls": [
+    "exclude_aep_noship_from_docker",
+    "exclude_aep_noship_from_github_push",
+    "exclude_aep_noship_from_npm_publish",
+    "enforce_dockerignore_aep_noship"
+  ]
+}

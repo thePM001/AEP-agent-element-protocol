@@ -1,0 +1,92 @@
+{
+  "manifest_version": "1",
+  "id": "connector-gcp",
+  "version": "2.8.0",
+  "kind": "connector",
+  "path": "AEP-Connectors/gcp/",
+  "description": "UCB-only Google Cloud connector. All traffic via /ucb/v1/egress/gcp/**.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels",
+    "ucb",
+    "composer-lite"
+  ],
+  "capabilities": [
+    "connector:gcp",
+    "ucb:egress-proxy",
+    "integration:external-api"
+  ],
+  "actions": [
+    {
+      "id": "wire_gcp",
+      "description": "Wire Google Cloud connector egress routes",
+      "runtime": "plan",
+      "method": "connector_config"
+    },
+    {
+      "id": "probe_gcp",
+      "description": "Health probe for Google Cloud",
+      "runtime": "connector",
+      "method": "probe"
+    }
+  ],
+  "setup_hooks": [
+    {
+      "id": "gcp_connector_default",
+      "policy_section": "connectors",
+      "default": {
+        "gcp": {
+          "upstream": "https://cloudresourcemanager.googleapis.com"
+        }
+      }
+    }
+  ],
+  "composer": {
+    "palette": true,
+    "node_type": "connector"
+  },
+  "composer_node": {
+    "type": "connector",
+    "label": "Google Cloud",
+    "short": "GO",
+    "color": "#475569",
+    "service": "gcp",
+    "ucb_only": true,
+    "description": "Google Cloud via UCB egress",
+    "registry_id": "connector-gcp"
+  },
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 10,
+    "requires_internet": true,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Connect Google Cloud. Requires UCB. Routes: /ucb/v1/egress/gcp/**.",
+    "use_when": [
+      "gcp",
+      "google cloud",
+      "google cloud project",
+      "gcloud"
+    ],
+    "avoid_when": [
+      "air-gapped with no external APIs",
+      "UCB disabled"
+    ],
+    "pairs_with": [
+      "ucb",
+      "aep-base-node",
+      "composer-lite"
+    ]
+  },
+  "implementation": {
+    "module": "AEP-Connectors/gcp/lib/gcp-connector.mjs",
+    "ucb_egress_prefix": "/ucb/v1/egress/gcp",
+    "auth_token_env": "AEP_GCP_ACCESS_TOKEN"
+  },
+  "integration": {
+    "ucb_only": true,
+    "mcp_optional": null,
+    "nango_compatible": true
+  }
+}

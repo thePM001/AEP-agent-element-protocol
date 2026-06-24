@@ -1,0 +1,64 @@
+# AEP 2.8 public deploy alias. Prefer docker-compose.yml for new installs.
+#
+#   cp .env.example .env
+#   docker compose -f docker-compose.public.yml up -d --build
+#   open http://localhost:8424/install
+#
+# Reverse proxy under /lite: set COMPOSER_LITE_BASE_PATH=/lite in .env
+# Remote setup: set COMPOSER_LITE_SETUP_TOKEN and open /install?setup_token=TOKEN
+
+services:
+  aep:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aep-base-node:2.8
+    container_name: aep-base-node
+    restart: unless-stopped
+    ports:
+      - "${COMPOSER_LITE_PORT:-8424}:8424"
+      - "${UCB_PORT:-8412}:8412"
+    environment:
+      AEP_DATA: /data/aep
+      AEP_IN_DOCKER: "1"
+      AEP_LATTICE_STRICT: "1"
+      AEP_SOCKET_BASE: /data/aep/sockets
+      AEP_TASK_MANIFEST_DIR: /data/aep/ucb/manifests
+      AEP_MANIFEST_RELOAD_INTERVAL_SECS: "0"
+      COMPOSER_LITE: "${COMPOSER_LITE:-1}"
+      COMPOSER_LITE_HOST: "${COMPOSER_LITE_HOST:-0.0.0.0}"
+      COMPOSER_LITE_PORT: "8424"
+      COMPOSER_LITE_BASE_PATH: "${COMPOSER_LITE_BASE_PATH:-}"
+      COMPOSER_LITE_SETUP_TOKEN: "${COMPOSER_LITE_SETUP_TOKEN:-}"
+      COMPOSER_LITE_TERMINAL: "${COMPOSER_LITE_TERMINAL:-0}"
+      UCB: "${UCB:-1}"
+      UCB_PORT: "8412"
+      UCB_API_KEY: "${UCB_API_KEY:-}"
+      WASM_SANDBOX: "1"
+      WASM_SANDBOX_SOCKET: /data/aep/sockets/wasm_sandbox
+      AEP_AUTO_SETUP: "${AEP_AUTO_SETUP:-0}"
+      AEP_TRUST_DOMAIN: "${AEP_TRUST_DOMAIN:-aep.protocol.local}"
+      AEP_COMPONENTS_FETCH: "0"
+      AEP_SETUP_LLM_PROVIDER: "${AEP_SETUP_LLM_PROVIDER:-openrouter}"
+      AEP_SETUP_LLM_MODEL: "${AEP_SETUP_LLM_MODEL:-anthropic/claude-sonnet-4}"
+      AEP_SETUP_LLM_BASE_URL: "${AEP_SETUP_LLM_BASE_URL:-https://openrouter.ai/api/v1}"
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-}"
+      UCB_GAP_ENGINE_URL: "${UCB_GAP_ENGINE_URL:-}"
+      NLA_GAP_ENGINE_URL: "${NLA_GAP_ENGINE_URL:-}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - aep-data:/data/aep
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "fetch(\"http://127.0.0.1:8424/api/health\").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+volumes:
+  aep-data:

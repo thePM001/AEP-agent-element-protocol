@@ -1,0 +1,91 @@
+{
+  "manifest_version": "1",
+  "id": "connector-notion",
+  "version": "2.8.0",
+  "kind": "connector",
+  "path": "AEP-Connectors/notion/",
+  "description": "UCB-only Notion connector. All traffic via /ucb/v1/egress/notion/**.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels",
+    "ucb",
+    "composer-lite"
+  ],
+  "capabilities": [
+    "connector:notion",
+    "ucb:egress-proxy",
+    "integration:external-api"
+  ],
+  "actions": [
+    {
+      "id": "wire_notion",
+      "description": "Wire Notion connector egress routes",
+      "runtime": "plan",
+      "method": "connector_config"
+    },
+    {
+      "id": "probe_notion",
+      "description": "Health probe for Notion",
+      "runtime": "connector",
+      "method": "probe"
+    }
+  ],
+  "setup_hooks": [
+    {
+      "id": "notion_connector_default",
+      "policy_section": "connectors",
+      "default": {
+        "notion": {
+          "upstream": "https://api.notion.com"
+        }
+      }
+    }
+  ],
+  "composer": {
+    "palette": true,
+    "node_type": "connector"
+  },
+  "composer_node": {
+    "type": "connector",
+    "label": "Notion",
+    "short": "NO",
+    "color": "#475569",
+    "service": "notion",
+    "ucb_only": true,
+    "description": "Notion via UCB egress",
+    "registry_id": "connector-notion"
+  },
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 10,
+    "requires_internet": true,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Connect Notion. Requires UCB. Routes: /ucb/v1/egress/notion/**.",
+    "use_when": [
+      "notion",
+      "notion page",
+      "notion database"
+    ],
+    "avoid_when": [
+      "air-gapped with no external APIs",
+      "UCB disabled"
+    ],
+    "pairs_with": [
+      "ucb",
+      "aep-base-node",
+      "composer-lite"
+    ]
+  },
+  "implementation": {
+    "module": "AEP-Connectors/notion/lib/notion-connector.mjs",
+    "ucb_egress_prefix": "/ucb/v1/egress/notion",
+    "auth_token_env": "AEP_NOTION_TOKEN"
+  },
+  "integration": {
+    "ucb_only": true,
+    "mcp_optional": null,
+    "nango_compatible": true
+  }
+}

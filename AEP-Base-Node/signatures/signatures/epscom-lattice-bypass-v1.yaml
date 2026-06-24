@@ -1,0 +1,23 @@
+signature_version: "1"
+id: epscom-lattice-bypass-v1
+authority: EPSCOM
+name: Lattice channel bypass attempt
+description: Detect raw HTTP/fetch calls that circumvent lattice-gated transport and UCB egress.
+severity: critical
+category: lattice
+enabled: true
+detection:
+  type: regex
+  case_insensitive: true
+  patterns:
+    - "fetch\\(['\"]https?://"
+    - "curl\\s+(-[kL]*\\s+)*https?://"
+    - "axios\\.(get|post|put|delete)\\("
+    - "bypass.*lattice"
+    - "skip.*ucb"
+response:
+  action: block
+  dock: validation_engine
+metadata:
+  authored_by: EPSCOM
+  revision: "2026-06-23"

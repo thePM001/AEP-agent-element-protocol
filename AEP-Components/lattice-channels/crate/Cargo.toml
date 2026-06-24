@@ -1,0 +1,14 @@
+[package]
+name = "aep-lattice-channel"
+description = "AEP 2.8 Lattice Channel frames with rate limiting and contract enforcement hooks"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+aep-lattice-crypto = { path = "../../lattice-crypto/crate" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+sha2.workspace = true
+hex.workspace = true

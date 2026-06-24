@@ -1,0 +1,607 @@
+//go:build linux
+// +build linux
+
+package shim_test
+
+import (
+	"bytes"
+	"fmt"
+	"net"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strconv"
+	"strings"
+	"testing"
+
+	"golang.org/x/sys/unix"
+)
+
+func TestShellShim_UsesAepCawBinAndForwardsArgs(t *testing.T) {
+	repoRoot := repoRootOrSkip(t)
+	tmp := t.TempDir()
+
+	shimBin := filepath.Join(tmp, "aep-caw-shell-shim")
+	buildOrSkip(t, repoRoot, "./cmd/aep-caw-shell-shim", shimBin)
+
+	binDir := filepath.Join(tmp, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	shimPath := filepath.Join(binDir, "sh")
+	copyFile(t, shimBin, shimPath, 0o755)
+
+	realPath := filepath.Join(binDir, "sh.real")
+	if err := os.WriteFile(realPath, []byte("#!/bin/sh\necho REAL_SH\n"), 0o755); err != nil {
+		t.Fatalf("write sh.real: %v", err)
+	}
+
+	fakeAepCaw := filepath.Join(tmp, "fake-aep-caw")
+	logPath := filepath.Join(tmp, "aep-caw.log")
+	writeFakeAepCaw(t, fakeAepCaw, logPath)
+
+	// Use a PTY so the shim takes the aep-caw path (non-TTY stdin triggers bypass).
+	pty, tty, err := openPTY()
+	if err != nil {
+		t.Skipf("pty not available: %v", err)
+	}
+	defer func() { _ = pty.Close() }()
+	defer func() { _ = tty.Close() }()
+
+	// Start a fake listener so the readiness gate passes.
+	srvURL := startFakeListener(t)
+
+	cmd := exec.Command(shimPath, "-lc", "echo hi")
+	cmd.Stdin = tty
+	cmd.Stdout = tty
+	cmd.Stderr = tty
+	cmd.Env = append(os.Environ(),
+		"AEP_CAW_BIN="+fakeAepCaw,
+		"AEP_CAW_SESSION_ID=session-test",
+		"AEP_CAW_SERVER="+srvURL,
+		"FAKE_AEP_CAW_LOG="+logPath,
+	)
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	_ = cmd.Wait()
+
+	lines := mustReadLines(t, logPath)
+	joined := strings.Join(lines, "\n")
+	if !strings.Contains(joined, "ARG0=exec") {
+		t.Fatalf("expected exec subcommand in %q", joined)
+	}
+	if !strings.Contains(joined, "--argv0") {
+		t.Fatalf("expected --argv0 in %q", joined)
+	}
+	if !strings.Contains(joined, "session-test") {
+		t.Fatalf("expected session id; got %q", joined)
+	}
+	if !strings.Contains(joined, realPath) {
+		t.Fatalf("expected real shell path; got %q", joined)
+	}
+}
+
+func TestShellShim_UsesPATHWhenAepCawBinUnset(t *testing.T) {
+	repoRoot := repoRootOrSkip(t)
+	tmp := t.TempDir()
+
+	shimBin := filepath.Join(tmp, "aep-caw-shell-shim")
+	buildOrSkip(t, repoRoot, "./cmd/aep-caw-shell-shim", shimBin)
+
+	binDir := filepath.Join(tmp, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	shimPath := filepath.Join(binDir, "sh")
+	copyFile(t, shimBin, shimPath, 0o755)
+	if err := os.WriteFile(filepath.Join(binDir, "sh.real"), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write sh.real: %v", err)
+	}
+
+	fakeDir := filepath.Join(tmp, "fakebin")
+	if err := os.MkdirAll(fakeDir, 0o755); err != nil {
+		t.Fatalf("mkdir fakebin: %v", err)
+	}
+	logPath := filepath.Join(tmp, "aep-caw.log")
+	writeFakeAepCaw(t, filepath.Join(fakeDir, "aep-caw"), logPath)
+
+	// Use a PTY so the shim takes the aep-caw path (non-TTY stdin triggers bypass).
+	pty, tty, err := openPTY()
+	if err != nil {
+		t.Skipf("pty not available: %v", err)
+	}
+	defer func() { _ = pty.Close() }()
+	defer func() { _ = tty.Close() }()
+
+	// Start a fake listener so the readiness gate passes.
+	srvURL := startFakeListener(t)
+
+	cmd := exec.Command(shimPath, "-lc", "echo hi")
+	cmd.Stdin = tty
+	cmd.Stdout = tty
+	cmd.Stderr = tty
+	cmd.Env = append(os.Environ(),
+		"PATH="+fakeDir+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"AEP_CAW_SESSION_ID=session-test",
+		"AEP_CAW_SERVER="+srvURL,
+		"FAKE_AEP_CAW_LOG="+logPath,
+	)
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	_ = cmd.Wait()
+
+	lines := mustReadLines(t, logPath)
+	if len(lines) == 0 || !strings.HasPrefix(lines[0], "ARG0=exec") {
+		t.Fatalf("expected fake aep-caw to run; got %v", lines)
+	}
+}
+
+func TestShellShim_RecursionGuardExecsRealShell(t *testing.T) {
+	repoRoot := repoRootOrSkip(t)
+	tmp := t.TempDir()
+
+	shimBin := filepath.Join(tmp, "aep-caw-shell-shim")
+	buildOrSkip(t, repoRoot, "./cmd/aep-caw-shell-shim", shimBin)
+
+	binDir := filepath.Join(tmp, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	shimPath := filepath.Join(binDir, "sh")
+	copyFile(t, shimBin, shimPath, 0o755)
+
+	realPath := filepath.Join(binDir, "sh.real")
+	if err := os.WriteFile(realPath, []byte("#!/bin/sh\necho RECURSION_OK\n"), 0o755); err != nil {
+		t.Fatalf("write sh.real: %v", err)
+	}
+
+	cmd := exec.Command(shimPath, "-lc", "echo hi")
+	cmd.Env = append(os.Environ(),
+		"AEP_CAW_IN_SESSION=1",
+		"AEP_CAW_BIN=/nonexistent/aep-caw",
+	)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("shim failed: %v (out=%s)", err, string(out))
+	}
+	if !strings.Contains(string(out), "RECURSION_OK") {
+		t.Fatalf("expected real shell to run, got %q", string(out))
+	}
+}
+
+func TestShellShim_RecursionGuardFallsBackToPathWhenNoReal(t *testing.T) {
+	// Test that when AEP_CAW_IN_SESSION=1 and .real doesn't exist,
+	// the shim falls back to looking up the shell in PATH.
+	repoRoot := repoRootOrSkip(t)
+	tmp := t.TempDir()
+
+	shimBin := filepath.Join(tmp, "aep-caw-shell-shim")
+	buildOrSkip(t, repoRoot, "./cmd/aep-caw-shell-shim", shimBin)
+
+	binDir := filepath.Join(tmp, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	shimPath := filepath.Join(binDir, "sh")
+	copyFile(t, shimBin, shimPath, 0o755)
+
+	// Note: NOT creating sh.real - testing PATH fallback
+
+	cmd := exec.Command(shimPath, "-c", "echo PATH_FALLBACK_OK")
+	cmd.Env = append(os.Environ(),
+		"AEP_CAW_IN_SESSION=1",
+		"AEP_CAW_BIN=/nonexistent/aep-caw",
+		// PATH includes /bin and /usr/bin where real sh exists
+	)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("shim failed: %v (out=%s)", err, string(out))
+	}
+	if !strings.Contains(string(out), "PATH_FALLBACK_OK") {
+		t.Fatalf("expected PATH fallback to work, got %q", string(out))
+	}
+}
+
+func TestShellShim_RespectsCustomArgv0(t *testing.T) {
+	repoRoot := repoRootOrSkip(t)
+	tmp := t.TempDir()
+
+	shimBin := filepath.Join(tmp, "aep-caw-shell-shim")
+	buildOrSkip(t, repoRoot, "./cmd/aep-caw-shell-shim", shimBin)
+
+	binDir := filepath.Join(tmp, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	shimPath := filepath.Join(binDir, "sh")
+	copyFile(t, shimBin, shimPath, 0o755)
+	realPath := filepath.Join(binDir, "sh.real")
+	if err := os.WriteFile(realPath, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write sh.real: %v", err)
+	}
+
+	fakeAepCaw := filepath.Join(tmp, "fake-aep-caw")
+	logPath := filepath.Join(tmp, "aep-caw.log")
+	writeFakeAepCaw(t, fakeAepCaw, logPath)
+
+	// Use a PTY so the shim takes the aep-caw path (non-TTY stdin triggers bypass).
+	pty, tty, err := openPTY()
+	if err != nil {
+		t.Skipf("pty not available: %v", err)
+	}
+	defer func() { _ = pty.Close() }()
+	defer func() { _ = tty.Close() }()
+
+	// Start a fake listener so the readiness gate passes.
+	srvURL := startFakeListener(t)
+
+	cmd := exec.Command(shimPath, "-lc", "echo hi")
+	// Override argv0 to simulate a harness exec'ing /bin/sh but pointing to our shim.
+	cmd.Args[0] = "/bin/sh"
+	cmd.Stdin = tty
+	cmd.Stdout = tty
+	cmd.Stderr = tty
+	cmd.Env = append(os.Environ(),
+		"AEP_CAW_BIN="+fakeAepCaw,
+		"AEP_CAW_SESSION_ID=session-test",
+		"AEP_CAW_SERVER="+srvURL,
+		"FAKE_AEP_CAW_LOG="+logPath,
+	)
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	_ = cmd.Wait()
+
+	lines := mustReadLines(t, logPath)
+	joined := strings.Join(lines, "\n")
+	// With PTY, args are: exec --pty --argv0 /bin/sh session-test -- sh.real ...
+	if !strings.Contains(joined, "--argv0") || !strings.Contains(joined, "/bin/sh") {
+		t.Fatalf("expected argv0=/bin/sh to be forwarded; got %q", joined)
+	}
+}
+
+func TestShellShim_LoginArgv0SelectsBash(t *testing.T) {
+	repoRoot := repoRootOrSkip(t)
+	tmp := t.TempDir()
+
+	shimBin := filepath.Join(tmp, "aep-caw-shell-shim")
+	buildOrSkip(t, repoRoot, "./cmd/aep-caw-shell-shim", shimBin)
+
+	binDir := filepath.Join(tmp, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	// Install shim at "bash" and provide bash.real next to it so resolveRealShell can find it.
+	shimPath := filepath.Join(binDir, "bash")
+	copyFile(t, shimBin, shimPath, 0o755)
+	realPath := filepath.Join(binDir, "bash.real")
+	if err := os.WriteFile(realPath, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write bash.real: %v", err)
+	}
+
+	fakeAepCaw := filepath.Join(tmp, "fake-aep-caw")
+	logPath := filepath.Join(tmp, "aep-caw.log")
+	writeFakeAepCaw(t, fakeAepCaw, logPath)
+
+	// Use a PTY so the shim takes the aep-caw path (non-TTY stdin triggers bypass).
+	pty, tty, err := openPTY()
+	if err != nil {
+		t.Skipf("pty not available: %v", err)
+	}
+	defer func() { _ = pty.Close() }()
+	defer func() { _ = tty.Close() }()
+
+	// Start a fake listener so the readiness gate passes.
+	srvURL := startFakeListener(t)
+
+	cmd := exec.Command(shimPath, "-lc", "echo hi")
+	// Simulate login shell argv0 ("-bash").
+	cmd.Args[0] = "-bash"
+	cmd.Stdin = tty
+	cmd.Stdout = tty
+	cmd.Stderr = tty
+	cmd.Env = append(os.Environ(),
+		"AEP_CAW_BIN="+fakeAepCaw,
+		"AEP_CAW_SESSION_ID=session-test",
+		"AEP_CAW_SERVER="+srvURL,
+		"FAKE_AEP_CAW_LOG="+logPath,
+	)
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	_ = cmd.Wait()
+
+	lines := mustReadLines(t, logPath)
+	joined := strings.Join(lines, "\n")
+	// With PTY, args are: exec --pty --argv0 -bash session-test -- bash.real ...
+	if !strings.Contains(joined, "-bash") {
+		t.Fatalf("expected argv0=-bash to be forwarded; got %q", joined)
+	}
+	if !strings.Contains(joined, realPath) {
+		t.Fatalf("expected real shell bash.real; got %q", joined)
+	}
+}
+
+func TestShellShim_AddsPTYWhenTTY(t *testing.T) {
+	repoRoot := repoRootOrSkip(t)
+	tmp := t.TempDir()
+
+	shimBin := filepath.Join(tmp, "aep-caw-shell-shim")
+	buildOrSkip(t, repoRoot, "./cmd/aep-caw-shell-shim", shimBin)
+
+	binDir := filepath.Join(tmp, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	shimPath := filepath.Join(binDir, "sh")
+	copyFile(t, shimBin, shimPath, 0o755)
+	if err := os.WriteFile(filepath.Join(binDir, "sh.real"), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write sh.real: %v", err)
+	}
+
+	fakeAepCaw := filepath.Join(tmp, "fake-aep-caw")
+	logPath := filepath.Join(tmp, "aep-caw.log")
+	writeFakeAepCaw(t, fakeAepCaw, logPath)
+
+	pty, tty, err := openPTY()
+	if err != nil {
+		t.Skipf("pty not available: %v", err)
+	}
+	defer func() { _ = pty.Close() }()
+	defer func() { _ = tty.Close() }()
+
+	// Start a fake listener so the readiness gate passes.
+	srvURL := startFakeListener(t)
+
+	cmd := exec.Command(shimPath, "-lc", "echo hi")
+	cmd.Env = append(os.Environ(),
+		"AEP_CAW_BIN="+fakeAepCaw,
+		"AEP_CAW_SESSION_ID=session-test",
+		"AEP_CAW_SERVER="+srvURL,
+		"FAKE_AEP_CAW_LOG="+logPath,
+	)
+	cmd.Stdin = tty
+	cmd.Stdout = tty
+	cmd.Stderr = tty
+
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	_ = cmd.Wait()
+
+	lines := mustReadLines(t, logPath)
+	joined := strings.Join(lines, "\n")
+	if !strings.Contains(joined, "ARG1=--pty") {
+		t.Fatalf("expected --pty when stdin/stdout are TTY; got %q", joined)
+	}
+}
+
+func TestShellShim_NonInteractiveBypass_BinaryStdinPassthrough(t *testing.T) {
+	repoRoot := repoRootOrSkip(t)
+	tmp := t.TempDir()
+
+	shimBin := filepath.Join(tmp, "aep-caw-shell-shim")
+	buildOrSkip(t, repoRoot, "./cmd/aep-caw-shell-shim", shimBin)
+
+	binDir := filepath.Join(tmp, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	shimPath := filepath.Join(binDir, "sh")
+	copyFile(t, shimBin, shimPath, 0o755)
+
+	// Use a real shell as sh.real.
+	copyFile(t, "/bin/sh", filepath.Join(binDir, "sh.real"), 0o755)
+
+	// Generate binary data with null bytes and full byte range (simulating a binary/ELF).
+	binaryData := make([]byte, 8192)
+	copy(binaryData, []byte{0x7f, 'E', 'L', 'F'})
+	for i := 4; i < len(binaryData); i++ {
+		binaryData[i] = byte(i % 256)
+	}
+
+	// Pipe binary data through the shim with non-TTY stdin, simulating:
+	//   docker exec -i container sh -c "cat" < binary_file
+	cmd := exec.Command(shimPath, "-c", "cat")
+	cmd.Stdin = bytes.NewReader(binaryData)
+	cmd.Env = []string{
+		"PATH=/usr/bin:/bin",
+		"AEP_CAW_SESSION_ID=test-session",
+		// No AEP_CAW_BIN - the bypass should exec sh.real directly.
+	}
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("shim failed: %v\nstderr: %s", err, stderr.String())
+	}
+
+	if !bytes.Equal(stdout.Bytes(), binaryData) {
+		t.Fatalf("binary data corrupted: wrote %d bytes, got %d bytes",
+			len(binaryData), stdout.Len())
+	}
+
+	// Verify stderr is clean (no shim messages leaked).
+	if stderr.Len() != 0 {
+		t.Fatalf("unexpected stderr output: %q", stderr.String())
+	}
+}
+
+func TestShellShim_NonInteractiveBypass_ExecRealShellNotAepCaw(t *testing.T) {
+	repoRoot := repoRootOrSkip(t)
+	tmp := t.TempDir()
+
+	shimBin := filepath.Join(tmp, "aep-caw-shell-shim")
+	buildOrSkip(t, repoRoot, "./cmd/aep-caw-shell-shim", shimBin)
+
+	binDir := filepath.Join(tmp, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	shimPath := filepath.Join(binDir, "sh")
+	copyFile(t, shimBin, shimPath, 0o755)
+
+	// sh.real prints a marker so we can verify it ran.
+	realPath := filepath.Join(binDir, "sh.real")
+	if err := os.WriteFile(realPath, []byte("#!/bin/sh\necho BYPASS_OK\n"), 0o755); err != nil {
+		t.Fatalf("write sh.real: %v", err)
+	}
+
+	fakeAepCaw := filepath.Join(tmp, "fake-aep-caw")
+	logPath := filepath.Join(tmp, "aep-caw.log")
+	writeFakeAepCaw(t, fakeAepCaw, logPath)
+
+	// Non-TTY stdin: the shim should bypass aep-caw and exec sh.real directly.
+	cmd := exec.Command(shimPath, "-c", "echo BYPASS_OK")
+	cmd.Stdin = strings.NewReader("")
+	cmd.Env = []string{
+		"PATH=/usr/bin:/bin",
+		"AEP_CAW_BIN=" + fakeAepCaw,
+		"AEP_CAW_SESSION_ID=test-session",
+		"FAKE_AEP_CAW_LOG=" + logPath,
+	}
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("shim failed: %v (out=%s)", err, string(out))
+	}
+
+	if !strings.Contains(string(out), "BYPASS_OK") {
+		t.Fatalf("expected real shell to run, got %q", string(out))
+	}
+
+	// Verify aep-caw was NOT invoked (log file should not exist).
+	if _, err := os.Stat(logPath); err == nil {
+		content, _ := os.ReadFile(logPath)
+		t.Fatalf("aep-caw should NOT have been invoked for non-interactive use; log: %s", content)
+	}
+}
+
+// startFakeListener starts a TCP listener on a random port and returns the
+// AEP_CAW_SERVER URL. Satisfies the shim's server readiness gate.
+func startFakeListener(t *testing.T) string {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("start fake listener: %v", err)
+	}
+	t.Cleanup(func() { ln.Close() })
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			conn.Close()
+		}
+	}()
+	return fmt.Sprintf("http://%s", ln.Addr().String())
+}
+
+func repoRootOrSkip(t *testing.T) string {
+	t.Helper()
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Skipf("getwd: %v", err)
+	}
+	dir := wd
+	for i := 0; i < 6; i++ {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	t.Skip("repo root not found (go.mod)")
+	return ""
+}
+
+func buildOrSkip(t *testing.T, repoRoot, pkg, out string) {
+	t.Helper()
+	cmd := exec.Command("go", "build", "-o", out, pkg)
+	cmd.Dir = repoRoot
+	b, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Skipf("go build failed: %v (out=%s)", err, string(b))
+	}
+}
+
+func copyFile(t *testing.T, src, dst string, mode os.FileMode) {
+	t.Helper()
+	b, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatalf("read %s: %v", src, err)
+	}
+	if err := os.WriteFile(dst, b, mode); err != nil {
+		t.Fatalf("write %s: %v", dst, err)
+	}
+}
+
+func writeFakeAepCaw(t *testing.T, path, logPath string) {
+	t.Helper()
+	s := `#!/bin/sh
+set -eu
+log="${FAKE_AEP_CAW_LOG:-` + logPath + `}"
+rm -f "$log"
+i=0
+for a in "$@"; do
+  echo "ARG${i}=${a}" >>"$log"
+  i=$((i+1))
+done
+exit 0
+`
+	if err := os.WriteFile(path, []byte(s), 0o755); err != nil {
+		t.Fatalf("write fake aep-caw: %v", err)
+	}
+}
+
+func mustReadLines(t *testing.T, path string) []string {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read log: %v", err)
+	}
+	s := strings.TrimSpace(string(b))
+	if s == "" {
+		return nil
+	}
+	return strings.Split(s, "\n")
+}
+
+// openPTY returns (master, slave) as *os.File.
+// This mirrors the Linux logic used by internal/pty.
+func openPTY() (*os.File, *os.File, error) {
+	if runtime.GOOS != "linux" {
+		return nil, nil, exec.ErrNotFound
+	}
+
+	mfd, err := unix.Open("/dev/ptmx", unix.O_RDWR|unix.O_CLOEXEC|unix.O_NOCTTY, 0)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Unlock PTY.
+	if err := unix.IoctlSetPointerInt(mfd, unix.TIOCSPTLCK, 0); err != nil {
+		_ = unix.Close(mfd)
+		return nil, nil, err
+	}
+	n, err := unix.IoctlGetInt(mfd, unix.TIOCGPTN)
+	if err != nil {
+		_ = unix.Close(mfd)
+		return nil, nil, err
+	}
+	slavePath := filepath.Join("/dev/pts", strconv.Itoa(n))
+	sfd, err := unix.Open(slavePath, unix.O_RDWR|unix.O_CLOEXEC|unix.O_NOCTTY, 0)
+	if err != nil {
+		_ = unix.Close(mfd)
+		return nil, nil, err
+	}
+	return os.NewFile(uintptr(mfd), "pty-master"), os.NewFile(uintptr(sfd), "pty-slave"), nil
+}

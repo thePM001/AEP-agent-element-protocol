@@ -1,0 +1,92 @@
+{
+  "manifest_version": "1",
+  "id": "connector-postgres",
+  "version": "2.8.0",
+  "kind": "connector",
+  "path": "AEP-Connectors/postgres/",
+  "description": "UCB-only PostgreSQL connector. All traffic via /ucb/v1/egress/postgres/**.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels",
+    "ucb",
+    "composer-lite"
+  ],
+  "capabilities": [
+    "connector:postgres",
+    "ucb:egress-proxy",
+    "integration:external-api"
+  ],
+  "actions": [
+    {
+      "id": "wire_postgres",
+      "description": "Wire PostgreSQL connector egress routes",
+      "runtime": "plan",
+      "method": "connector_config"
+    },
+    {
+      "id": "probe_postgres",
+      "description": "Health probe for PostgreSQL",
+      "runtime": "connector",
+      "method": "probe"
+    }
+  ],
+  "setup_hooks": [
+    {
+      "id": "postgres_connector_default",
+      "policy_section": "connectors",
+      "default": {
+        "postgres": {
+          "upstream": "http://postgres:5432"
+        }
+      }
+    }
+  ],
+  "composer": {
+    "palette": true,
+    "node_type": "connector"
+  },
+  "composer_node": {
+    "type": "connector",
+    "label": "PostgreSQL",
+    "short": "PO",
+    "color": "#475569",
+    "service": "postgres",
+    "ucb_only": true,
+    "description": "PostgreSQL via UCB egress",
+    "registry_id": "connector-postgres"
+  },
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 10,
+    "requires_internet": true,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Connect PostgreSQL. Requires UCB. Routes: /ucb/v1/egress/postgres/**.",
+    "use_when": [
+      "postgres",
+      "postgresql",
+      "sql database",
+      "sql db"
+    ],
+    "avoid_when": [
+      "air-gapped with no external APIs",
+      "UCB disabled"
+    ],
+    "pairs_with": [
+      "ucb",
+      "aep-base-node",
+      "composer-lite"
+    ]
+  },
+  "implementation": {
+    "module": "AEP-Connectors/postgres/lib/postgres-connector.mjs",
+    "ucb_egress_prefix": "/ucb/v1/egress/postgres",
+    "auth_token_env": "AEP_POSTGRES_PASSWORD"
+  },
+  "integration": {
+    "ucb_only": true,
+    "mcp_optional": null,
+    "nango_compatible": true
+  }
+}

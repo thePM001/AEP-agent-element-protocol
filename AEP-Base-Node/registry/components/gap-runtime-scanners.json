@@ -1,0 +1,64 @@
+{
+  "manifest_version": "1",
+  "id": "gap-runtime-scanners",
+  "version": "2.8.0",
+  "kind": "regulation",
+  "path": "AEP-Components/scanners/",
+  "description": "Optional 11-scanner GAP runtime bundle.",
+  "requires": [
+    "aep-base-node",
+    "aep-typescript-sdk"
+  ],
+  "lrp_id": "gap-runtime-scanners",
+  "docks": {
+    "primary": "regulation_module",
+    "allowed": [
+      "regulation_module"
+    ]
+  },
+  "capabilities": [
+    "scanner:pii",
+    "scanner:injection",
+    "scanner:toxicity",
+    "scanner:secrets"
+  ],
+  "actions": [
+    {
+      "id": "enable_gap_scanners_lrp",
+      "description": "Enable GAP scanner LRP",
+      "setup_hook": "sync_lrp",
+      "params": {
+        "lrp_id": "gap-runtime-scanners"
+      }
+    }
+  ],
+  "setup_hooks": [
+    {
+      "id": "sync_gap_lrp",
+      "setup_hook": "sync_lrp",
+      "params": {
+        "lrp_id": "gap-runtime-scanners"
+      }
+    }
+  ],
+  "resource_requirements": {
+    "min_memory_mb": 256,
+    "min_disk_mb": 50,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "11 runtime content scanners for governance pipelines.",
+    "use_when": [
+      "content safety requirements",
+      "PII/secrets detection"
+    ],
+    "avoid_when": [
+      "minimal latency local-only with no scanning"
+    ],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/scanners/lib/pipeline.ts"
+  }
+}

@@ -1,0 +1,400 @@
+# CI Strict Policy for aep-caw - Windows
+# Locked-down policy for CI runners on Windows - deny anything outside workspace
+
+version: 1
+name: ci-strict-windows
+description: |
+  Strict policy for CI runners on Windows. Denies anything outside workspace,
+  blocks outbound network except artifact registries, denies interactive
+  shells, and audits everything.
+
+# =============================================================================
+# FILE OPERATION RULES
+# =============================================================================
+
+file_rules:
+  # ---------------------------------------------------------------------------
+  # Workspace ONLY - full access
+  # ---------------------------------------------------------------------------
+
+  - name: allow-workspace
+    description: Full access within workspace
+    paths:
+      - "${PROJECT_ROOT}"
+      - "${PROJECT_ROOT}\\**"
+    operations:
+      - "*"
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # Temp directories for build artifacts (Windows)
+  # ---------------------------------------------------------------------------
+
+  - name: allow-temp
+    description: Full access to Windows temp directories
+    paths:
+      - "${TEMP}\\**"
+      - "${TMP}\\**"
+      - "${LOCALAPPDATA}\\Temp\\**"
+    operations:
+      - "*"
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # System paths - read-only (required for toolchains)
+  # ---------------------------------------------------------------------------
+
+  - name: allow-program-files-read
+    description: Read-only access to Program Files
+    paths:
+      - "C:\\Program Files\\**"
+      - "C:\\Program Files (x86)\\**"
+    operations:
+      - read
+      - open
+      - stat
+      - list
+      - readlink
+    decision: allow
+
+  - name: allow-windows-read
+    description: Read minimal Windows config files
+    paths:
+      - "C:\\Windows\\System32\\drivers\\etc\\hosts"
+      - "C:\\Windows\\System32\\config\\systemprofile\\**"
+    operations:
+      - read
+      - open
+      - stat
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # Package caches - only if mounted read-only
+  # ---------------------------------------------------------------------------
+
+  - name: allow-npm-cache-read
+    description: npm cache read access
+    paths:
+      - "${APPDATA}\\npm-cache\\**"
+      - "${LOCALAPPDATA}\\npm-cache\\**"
+    operations:
+      - read
+      - open
+      - stat
+      - list
+    decision: allow
+
+  - name: allow-pip-cache-read
+    description: pip cache read access
+    paths:
+      - "${LOCALAPPDATA}\\pip\\Cache\\**"
+    operations:
+      - read
+      - open
+      - stat
+      - list
+    decision: allow
+
+  - name: allow-nuget-cache-read
+    description: NuGet cache read access
+    paths:
+      - "${USERPROFILE}\\.nuget\\**"
+      - "${LOCALAPPDATA}\\NuGet\\**"
+    operations:
+      - read
+      - open
+      - stat
+      - list
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # DENY EVERYTHING ELSE
+  # ---------------------------------------------------------------------------
+
+  - name: deny-user-profile
+    description: Block access to user profile directories
+    paths:
+      - "${USERPROFILE}\\**"
+    operations:
+      - "*"
+    decision: deny
+
+  - name: default-deny-files
+    description: Deny all other file operations
+    paths:
+      - "**"
+    operations:
+      - "*"
+    decision: deny
+
+# =============================================================================
+# NETWORK OPERATION RULES
+# =============================================================================
+
+network_rules:
+  # ---------------------------------------------------------------------------
+  # Artifact registries ONLY
+  # ---------------------------------------------------------------------------
+
+  - name: allow-npm
+    description: npm registry
+    domains:
+      - "registry.npmjs.org"
+      - "*.npmjs.org"
+    ports: [443]
+    decision: allow
+
+  - name: allow-pypi
+    description: PyPI
+    domains:
+      - "pypi.org"
+      - "files.pythonhosted.org"
+    ports: [443]
+    decision: allow
+
+  - name: allow-cargo
+    description: Cargo registry
+    domains:
+      - "crates.io"
+      - "static.crates.io"
+    ports: [443]
+    decision: allow
+
+  - name: allow-go-proxy
+    description: Go module proxy
+    domains:
+      - "proxy.golang.org"
+      - "sum.golang.org"
+    ports: [443]
+    decision: allow
+
+  - name: allow-maven
+    description: Maven Central
+    domains:
+      - "repo1.maven.org"
+      - "central.maven.org"
+    ports: [443]
+    decision: allow
+
+  - name: allow-nuget
+    description: NuGet package registry
+    domains:
+      - "api.nuget.org"
+      - "*.nuget.org"
+    ports: [443]
+    decision: allow
+
+  - name: allow-docker
+    description: Docker registries
+    domains:
+      - "registry-1.docker.io"
+      - "auth.docker.io"
+      - "production.cloudflare.docker.com"
+      - "*.gcr.io"
+      - "ghcr.io"
+    ports: [443]
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # Code hosting for git clone
+  # ---------------------------------------------------------------------------
+
+  - name: allow-github
+    description: GitHub (HTTPS only, no SSH)
+    domains:
+      - "github.com"
+      - "*.github.com"
+      - "raw.githubusercontent.com"
+      - "*.githubusercontent.com"
+    ports: [443]
+    decision: allow
+
+  - name: allow-gitlab
+    description: GitLab
+    domains:
+      - "gitlab.com"
+      - "*.gitlab.com"
+    ports: [443]
+    decision: allow
+
+  - name: allow-azure-devops
+    description: Azure DevOps
+    domains:
+      - "dev.azure.com"
+      - "*.visualstudio.com"
+    ports: [443]
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # Embedded LLM Proxy
+  # ---------------------------------------------------------------------------
+
+  - name: allow-llm-proxy
+    description: Allow connections to embedded LLM proxy on localhost
+    cidrs:
+      - "127.0.0.1/32"
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # Block everything else
+  # ---------------------------------------------------------------------------
+
+  - name: block-private-networks
+    description: Block internal/private networks
+    cidrs:
+      - "10.0.0.0/8"
+      - "172.16.0.0/12"
+      - "192.168.0.0/16"
+      - "169.254.0.0/16"
+    decision: deny
+
+  - name: block-metadata-services
+    description: Block cloud metadata services
+    cidrs:
+      - "169.254.169.254/32"
+      - "100.100.100.200/32"
+    decision: deny
+
+  - name: default-deny-network
+    description: Deny all other network connections
+    domains:
+      - "*"
+    decision: deny
+
+# =============================================================================
+# COMMAND RULES
+# =============================================================================
+
+command_rules:
+  # ---------------------------------------------------------------------------
+  # Deny interactive shells
+  # ---------------------------------------------------------------------------
+
+  - name: deny-interactive-shells
+    description: Block interactive shell invocations
+    commands:
+      - cmd
+      - powershell
+      - pwsh
+    args_patterns:
+      - ".*-i.*"
+      - ".*-NoExit.*"
+    decision: deny
+
+  # ---------------------------------------------------------------------------
+  # Allow build tools
+  # ---------------------------------------------------------------------------
+
+  - name: allow-build-commands
+    description: Standard build commands
+    commands:
+      - msbuild
+      - dotnet
+      - cmake
+      - ninja
+      - gradle
+      - mvn
+    decision: allow
+
+  - name: allow-test-commands
+    description: Test runners
+    commands:
+      - pytest
+      - jest
+      - mocha
+      - cargo
+      - go
+      - npm
+      - yarn
+      - dotnet
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # Block dangerous commands (Windows)
+  # ---------------------------------------------------------------------------
+
+  - name: block-dangerous-del
+    description: Block recursive force delete
+    commands:
+      - del
+      - rmdir
+    args_patterns:
+      - ".*/s.*"
+      - ".*/q.*"
+    decision: deny
+
+  - name: block-network-tools
+    description: Block raw network tools
+    commands:
+      - telnet
+      - ssh
+      - scp
+      - ftp
+      - netsh
+    decision: deny
+
+  - name: block-system-commands
+    description: Block system administration commands
+    commands:
+      - shutdown
+      - sc
+      - net
+      - bcdedit
+      - diskpart
+      - format
+    decision: deny
+
+# =============================================================================
+# WINDOWS REGISTRY RULES (CI: Block all writes)
+# =============================================================================
+
+registry_rules:
+  # ---------------------------------------------------------------------------
+  # CI runners should NEVER modify registry
+  # ---------------------------------------------------------------------------
+
+  - name: allow-registry-read-only
+    description: Allow reading registry for build tools
+    paths:
+      - "*"
+    operations:
+      - read
+    decision: allow
+
+  - name: deny-all-registry-writes
+    description: Block all registry modifications in CI
+    paths:
+      - "*"
+    operations:
+      - write
+      - create
+      - delete
+      - rename
+    decision: deny
+    notify: true
+
+# =============================================================================
+# RESOURCE LIMITS
+# =============================================================================
+
+resource_limits:
+  max_memory_mb: 4096
+  memory_swap_max_mb: 0
+  cpu_quota_percent: 100
+  pids_max: 500
+  command_timeout: 30m
+  session_timeout: 2h
+  idle_timeout: 10m
+
+# =============================================================================
+# AUDIT SETTINGS - LOG EVERYTHING
+# =============================================================================
+
+audit:
+  log_allowed: true
+  log_denied: true
+  log_approved: true
+  include_stdout: false
+  include_stderr: true
+  include_file_content: false
+  retention_days: 90

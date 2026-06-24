@@ -1,0 +1,127 @@
+{
+  "version": "2.8.0",
+  "description": "Legacy Regulation Providers (LRPs) are sovereign states, regional unions, and international bodies and their regulations. Platform kernel contracts and EPSCOM policies are NOT LRPs.",
+  "epscom": {
+    "id": "epscom-core",
+    "name": "EPSCOM Core Regulations",
+    "priority": 255,
+    "mandatory": true,
+    "description": "Supreme platform regulations. Always highest priority over all LRPs. Not an LRP."
+  },
+  "platform_contracts": [
+    {
+      "id": "dynaep-action-lattice",
+      "name": "dynAEP Action Lattice",
+      "kind": "kernel_contract",
+      "description": "Runtime event governance contract. Registered by Base Node bootstrap. Not an LRP."
+    },
+    {
+      "id": "lattice-channel-default",
+      "name": "Lattice Channel Default Contract",
+      "kind": "kernel_contract",
+      "description": "PQEncryptedCapsule transport contract. Registered by Base Node bootstrap. Not an LRP."
+    },
+    {
+      "id": "aep-275-eval-chain",
+      "name": "AEP 2.75 15-Step Evaluation Chain",
+      "kind": "platform_feature",
+      "description": "Optional validation-engine eval chain. Enable via base_node.lrps when using a validation dock. Not an LRP."
+    },
+    {
+      "id": "gap-runtime-scanners",
+      "name": "GAP Runtime Scanners",
+      "kind": "platform_feature",
+      "description": "Optional GAP 11-scanner bundle when gap-server is installed. Not an LRP."
+    },
+    {
+      "id": "commerce-subprotocol",
+      "name": "Commerce Subprotocol",
+      "kind": "platform_feature",
+      "description": "Commerce and spend-cap subprotocol. Not an LRP."
+    }
+  ],
+  "platform_mandatory_policies": [
+    {
+      "id": "aep-noship-no-public-github",
+      "name": "AEP-NOSHIP Distribution Boundary",
+      "gap_ref": "AEP-Policy-System/reference/aep-noship-distribution.gap",
+      "mandatory_gap": "AEP-Policy-System/lattice-channel-mandatory.gap",
+      "policy_yaml": "AEP-Policy-System/aep-noship-distribution.policy.yaml",
+      "description": "AEP-NOSHIP/ internal assets must never ship to GitHub, npm, or runtime distributions. EPSCOM/platform policy, not an LRP."
+    }
+  ],
+  "lrps": [
+    {
+      "id": "eu-ai-act",
+      "name": "EU AI Act",
+      "category": "compliance",
+      "framework": "EU AI Act",
+      "jurisdiction": "European Union",
+      "priority": 155,
+      "default_enabled": false,
+      "description": "High-risk AI risk management, transparency, human oversight and post-market monitoring.",
+      "module_manifest": "wizard/lrp/modules/eu-ai-act.json",
+      "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap"
+    },
+    {
+      "id": "gdpr",
+      "name": "GDPR",
+      "category": "compliance",
+      "framework": "GDPR",
+      "jurisdiction": "European Union",
+      "priority": 154,
+      "default_enabled": false,
+      "description": "EU data protection: lawful basis, minimisation, subject rights and breach evidence.",
+      "module_manifest": "wizard/lrp/modules/gdpr.json",
+      "gap_ref": "AEP-Policy-System/reference/gdpr.gap"
+    },
+    {
+      "id": "soc2-type2",
+      "name": "SOC 2 Type II",
+      "category": "compliance",
+      "framework": "SOC 2 Type II",
+      "jurisdiction": "United States",
+      "priority": 153,
+      "default_enabled": false,
+      "description": "Trust service criteria for access control, monitoring, incident response and change management.",
+      "module_manifest": "wizard/lrp/modules/soc2-type2.json",
+      "gap_ref": "AEP-Policy-System/reference/soc2-type2.gap"
+    },
+    {
+      "id": "hipaa",
+      "name": "HIPAA",
+      "category": "compliance",
+      "framework": "HIPAA",
+      "jurisdiction": "United States",
+      "priority": 152,
+      "default_enabled": false,
+      "description": "US healthcare safeguards for access, audit, integrity, authentication and transmission.",
+      "module_manifest": "wizard/lrp/modules/hipaa.json",
+      "gap_ref": "AEP-Policy-System/reference/hipaa.gap"
+    },
+    {
+      "id": "nist-ai-rmf",
+      "name": "NIST AI RMF",
+      "category": "compliance",
+      "framework": "NIST AI RMF 1.0",
+      "jurisdiction": "United States",
+      "priority": 151,
+      "default_enabled": false,
+      "description": "NIST AI Risk Management Framework govern, map, measure and manage functions.",
+      "module_manifest": "wizard/lrp/modules/nist-ai-rmf.json",
+      "gap_ref": "AEP-Policy-System/reference/nist-ai-rmf.gap"
+    },
+    {
+      "id": "iso-42001",
+      "name": "ISO 42001",
+      "category": "compliance",
+      "framework": "ISO/IEC 42001",
+      "jurisdiction": "International",
+      "priority": 150,
+      "default_enabled": false,
+      "description": "AI management system requirements for documented controls and continual improvement.",
+      "module_manifest": "wizard/lrp/modules/iso-42001.json",
+      "gap_ref": "AEP-Policy-System/reference/iso-42001.gap"
+    }
+  ]
+}

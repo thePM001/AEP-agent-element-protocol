@@ -1,0 +1,35 @@
+{
+  "manifest_version": "1",
+  "id": "proxy",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/proxy/",
+  "description": "MCP and shell proxy servers under lattice governance.",
+  "requires": [
+    "policy-engine",
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "proxy:mcp",
+    "proxy:shell"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 20,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Proxy MCP and shell access through AgentGateway.",
+    "use_when": [
+      "MCP tool governance"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/proxy/lib/mcp-proxy.ts"
+  }
+}

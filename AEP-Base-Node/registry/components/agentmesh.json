@@ -1,0 +1,41 @@
+{
+  "manifest_version": "1",
+  "id": "agentmesh",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/agentmesh/",
+  "description": "SPIFFE/DID/mTLS identity layer for lattice channel transport.",
+  "requires": [
+    "lattice-channels"
+  ],
+  "capabilities": [
+    "identity:spiffe",
+    "identity:did",
+    "identity:mtls"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 10,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Agent identity and mTLS for mesh lattice channels.",
+    "use_when": [
+      "multi-agent mesh",
+      "cross-host lattice channels"
+    ],
+    "avoid_when": [
+      "single-node local-only dev"
+    ],
+    "pairs_with": [
+      "potomitan",
+      "lattice-channels"
+    ]
+  },
+  "implementation": {
+    "crate": "AEP-Components/agentmesh/crate"
+  }
+}

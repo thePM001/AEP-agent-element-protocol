@@ -1,0 +1,7 @@
+{
+  "id": "mcp-security",
+  "version": "2.8.0",
+  "runtime": "rust",
+  "crate": "aep-subprotocol-mcp-security",
+  "entrypoints": ["AEP-Subprotocols/mcp-security/src/lib.rs"]
+}

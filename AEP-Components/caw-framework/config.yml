@@ -1,0 +1,491 @@
+# aep-caw Server Configuration
+# Copy this to /etc/aep-caw/config.yaml and customize
+
+# =============================================================================
+# SERVER SETTINGS
+# =============================================================================
+
+server:
+  # HTTP API server
+  http:
+    addr: "127.0.0.1:18080"
+    read_timeout: 30s
+    write_timeout: 5m
+    max_request_size: 10MB
+    
+  # gRPC server (optional, for high-performance clients)
+  grpc:
+    # Provides: CreateSession, Exec, ExecStream, EventsTail.
+    # When enabled, the CLI can use gRPC for exec/events via `AEP_CAW_TRANSPORT=grpc`.
+    enabled: false
+    addr: "127.0.0.1:9090"
+    
+  # Unix socket (for local clients, lower latency)
+  unix_socket:
+    enabled: true
+    path: "./data/aep-caw.sock"
+    permissions: "0660"
+    
+  # TLS configuration
+  tls:
+    enabled: false
+    cert_file: "/etc/aep-caw/tls/server.crt"
+    key_file: "/etc/aep-caw/tls/server.key"
+    ca_file: "/etc/aep-caw/tls/ca.crt"        # For mTLS
+    client_auth: false                         # Require client certs
+
+# =============================================================================
+# AUTHENTICATION
+# =============================================================================
+
+auth:
+  # Authentication type: "none", "api_key", "oidc", "hybrid"
+  # NOTE: local dev default is unauthenticated; server will refuse to bind to non-loopback addresses.
+  type: "none"
+  
+  # API key authentication
+  api_key:
+    # Keys file format:
+    # - id: "agent-1"
+    #   key: "sk-xxxxxxxxxxxx"
+    #   description: "Production agent"
+    #   allowed_sessions: 10
+    keys_file: "./configs/api_keys.yaml"
+    header_name: "X-API-Key"
+    # gRPC clients should send the same key via metadata:
+    # - "x-api-key" (default), or
+    # - the configured header_name lowercased (e.g. "x-api-key").
+
+  # OIDC authentication (for enterprise SSO)
+  # oidc:
+  #   issuer: "https://corp.okta.com"
+  #   client_id: "aep-caw-server"
+  #   audience: "aep-caw"
+  #   claim_mappings:
+  #     operator_id: "sub"
+  #     groups: "groups"
+  #   allowed_groups:
+  #     - "aep-caw-users"
+  #   group_policy_map:
+  #     admins: "admin-policy"
+  #     developers: "default"
+  #   group_role_map:             # Explicit group-to-role mappings (required for admin/approver roles)
+  #     admins: "admin"           # Members of "admins" group get admin role
+  #     approvers: "approver"     # Members of "approvers" group get approver role
+  #     developers: "agent"       # Members of "developers" group get agent role
+
+# =============================================================================
+# LOGGING
+# =============================================================================
+
+logging:
+  # Log level: debug, info, warn, error
+  level: "info"
+  
+  # Format: json, text
+  format: "json"
+  
+  # Output: stdout, stderr, or file path
+  output: "./data/server.log"
+  
+  # Log rotation
+  rotation:
+    max_size_mb: 100
+    max_age_days: 7
+    max_backups: 5
+    compress: true
+
+# =============================================================================
+# AUDIT LOGGING
+# =============================================================================
+
+audit:
+  enabled: true
+  
+  # Separate audit log
+  output: "./data/audit.jsonl"
+
+  # Local queryable event storage (aep-caw extension)
+  storage:
+    sqlite_path: "./data/events.db"
+  
+  # What to include
+  include:
+    allowed_operations: true
+    denied_operations: true
+    approved_operations: true
+    session_lifecycle: true
+    command_stdout: false         # Can be very large
+    command_stderr: true
+    file_content: false
+    
+  # Rotation
+  rotation:
+    max_size_mb: 500
+    max_age_days: 90
+    max_backups: 10
+    compress: true
+    
+  # Optional: send to external system
+  # webhook:
+  #   url: "https://siem.example.com/aep-caw"
+  #   batch_size: 100
+  #   flush_interval: 10s
+
+# =============================================================================
+# SESSION MANAGEMENT
+# =============================================================================
+
+sessions:
+  # Where session data is stored
+  base_dir: "./data/sessions"
+  
+  # Maximum concurrent sessions
+  max_sessions: 100
+  
+  # Default timeouts (can be overridden per-session)
+  default_timeout: "4h"
+  default_idle_timeout: "30m"
+  
+  # Cleanup interval
+  cleanup_interval: "1m"
+  
+  # Session metadata retention after termination
+  metadata_retention: "24h"
+
+# =============================================================================
+# SANDBOX CONFIGURATION
+# =============================================================================
+
+sandbox:
+  # FUSE filesystem settings
+  fuse:
+    enabled: true
+    mount_base_dir: "./data/sessions"
+    audit:
+      enabled: true
+      mode: "monitor"             # monitor|soft_block|soft_delete|strict
+      trash_path: ".aep-caw_trash"
+      ttl: "7d"
+      quota: "5GB"
+      strict_on_audit_failure: false
+      max_event_queue: 1024
+      hash_small_files_under: "1MB"
+    # Kernel cache timeouts (higher = better perf, less fresh)
+    entry_timeout: "1s"
+    attr_timeout: "1s"
+    negative_timeout: "0s"
+    
+    # Read performance
+    max_readahead: 131072          # 128KB
+    async_read: true
+    
+    # Write performance (keep false for audit accuracy)
+    writeback_cache: false
+    
+    # Event batching
+    event_batch_size: 100
+    event_batch_delay: "10ms"
+    
+  # Network proxy settings
+  network:
+    enabled: true
+    proxy_listen_addr: "127.0.0.1:0"
+    transparent:
+      enabled: false
+      subnet_base: "10.250.0.0/16"
+    ebpf:
+      enabled: false          # Linux only; set true to capture connects without proxy
+      required: false         # If true and unsupported, aep-caw fails to start; setting required=true implies enabled
+      resolve_rdns: false     # Best-effort reverse DNS for ebpf net_connect events (adds latency if true)
+      enforce: false          # If true, deny connects in BPF unless allowed (only precise allow rules activate default-deny)
+      enforce_without_dns: false # If true, default-deny even when DNS resolution fails
+      map_allow_entries: 1024     # Optional override for allowlist map size (0 = default)
+      map_deny_entries: 1024      # Optional override for denylist map size (0 = default)
+      map_lpm_entries: 1024       # Optional override for LPM (CIDR) map size (0 = default)
+      map_lpm_deny_entries: 1024  # Optional override for deny LPM (CIDR) map size (0 = default)
+      map_default_entries: 1024   # Optional override for default_deny map size (0 = default)
+      dns_refresh_seconds: 60     # Interval to refresh DNS-derived allowlist (0 disables refresh)
+      dns_max_ttl_seconds: 60     # Cap for cached TTLs (used for refresh cadence)
+    # Port range for proxy listeners
+    proxy_port_range: "10000-20000"
+    
+    # DNS settings
+    dns_upstream: "8.8.8.8:53"     # Or your internal DNS
+    dns_cache_ttl: "5m"
+    
+    # Connection limits
+    max_connections_per_session: 100
+    connection_timeout: "30s"
+    
+  # Linux namespace settings
+  namespaces:
+    # Reserved for future isolation features (not implemented yet).
+    mount: false
+    network: false
+    pid: false
+    uts: false
+    user: false                    # Requires careful UID mapping
+
+  # Unix sockets wrapper settings (seccomp enforcement for shell shim)
+  unix_sockets:
+    enabled: true                  # Wraps commands with aep-caw-unixwrap for seccomp-bpf enforcement
+    # wrapper_bin: "aep-caw-unixwrap"  # Optional: override wrapper binary path
+
+  # env_inject: Environment variables injected into all commands
+  # These bypass env policy filtering (operator-trusted)
+  # Primary use: BASH_ENV to disable bash builtins that bypass seccomp
+  env_inject:
+    BASH_ENV: "/usr/lib/aep-caw/bash_startup.sh"
+    # MY_CUSTOM_VAR: "value"  # Add custom vars as needed
+
+  # seccomp settings
+  seccomp:
+    # Linux seccomp-bpf enforcement for syscall, file, and socket filters.
+    enabled: false
+    # Advisory mitigation sets. Built-ins are embedded in aep-caw; external
+    # directories are optional and only requested IDs are loaded.
+    # mitigation_sets:
+    #   - dirtyfrag-conservative
+    # mitigation_dirs:
+    #   - /etc/aep-caw/mitigations
+    # File I/O interception via seccomp-notify.
+    # When enabled, seccomp intercepts file syscalls (openat, unlinkat, etc.)
+    # and evaluates them against the active policy's file_rules.
+    file_monitor:
+      enabled: true
+      # Enforce file policy directly via seccomp, even when FUSE is unavailable.
+      # Without this, denied file operations are audit-only when FUSE is not active.
+      enforce_without_fuse: true
+    
+  # cgroups settings (v2)
+  cgroups:
+    enabled: false
+    # Base path under cgroup v2 filesystem where per-command cgroups are created.
+    # - Rootless/dev recommended: a relative path (created under the current process cgroup)
+    # base_path: "aep-caw"
+    # - Systemd/service recommended (root): a dedicated absolute cgroupfs path
+    # base_path: "/sys/fs/cgroup/aep-caw"
+
+# =============================================================================
+# RESOURCE LIMITS (defaults, can override per-session)
+# =============================================================================
+
+resource_limits:
+  # Memory
+  max_memory_mb: 2048
+  max_swap_mb: 0
+  
+  # CPU (percentage of one core)
+  max_cpu_percent: 80
+  
+  # Disk I/O (bytes per second)
+  max_disk_read_bps: 104857600     # 100 MB/s
+  max_disk_write_bps: 52428800     # 50 MB/s
+  
+  # Network (bits per second)
+  max_network_bps: 104857600       # 100 Mbps
+  
+  # Process limits
+  max_pids: 100
+  max_open_files: 1024
+  
+  # Time limits
+  command_timeout: "5m"
+
+# =============================================================================
+# LLM PROXY
+# =============================================================================
+# The embedded LLM proxy intercepts all AI agent API requests, providing
+# DLP (Data Loss Prevention), usage tracking, and audit logging.
+
+proxy:
+  # Proxy mode: embedded (automatic) or disabled
+  mode: "embedded"
+
+  # Port: 0 = random available port (recommended)
+  port: 0
+
+  # Provider base URLs
+  # Customize to route traffic to alternative LLM endpoints
+  providers:
+    anthropic: "https://api.anthropic.com"
+    openai: "https://api.openai.com"
+
+  # Examples for alternative providers:
+  # providers:
+  #   # LiteLLM / vLLM (OpenAI-compatible)
+  #   openai: "http://localhost:8000"
+  #
+  #   # Azure OpenAI
+  #   openai: "https://your-resource.openai.azure.com"
+  #
+  #   # Corporate gateway
+  #   anthropic: "https://llm-gateway.corp.example.com/anthropic"
+
+# =============================================================================
+# DLP (DATA LOSS PREVENTION)
+# =============================================================================
+# Redacts sensitive data from LLM requests before forwarding to providers.
+
+dlp:
+  # Mode: redact (scan and replace PII) or disabled
+  mode: "redact"
+
+  # Built-in patterns (all enabled by default)
+  patterns:
+    email: true                # user@example.com
+    phone: true                # 555-123-4567, (555) 123-4567
+    credit_card: true          # 4111-1111-1111-1111
+    ssn: true                  # 123-45-6789
+    api_keys: true             # sk-xxx, api-xxx, key_xxx
+
+  # Custom patterns for organization-specific data
+  # custom_patterns:
+  #   - name: customer_id
+  #     display: identifier
+  #     regex: "CUST-[0-9]{8}"
+  #
+  #   - name: internal_project
+  #     display: project_code
+  #     regex: "PROJ-[A-Z]{3}-[0-9]{4}"
+
+# LLM request storage
+llm_storage:
+  store_bodies: false          # Store full request/response bodies
+  retention:
+    max_age_days: 30
+    max_size_mb: 500
+    eviction: "oldest_first"   # oldest_first | largest_first
+
+# =============================================================================
+# POLICIES
+# =============================================================================
+
+policies:
+  # Directory containing policy files
+  dir: "./configs/policies"
+  
+  # Default policy to use if not specified
+  default: "default"
+  
+  # Policy reload interval (0 to disable hot reload)
+  reload_interval: "30s"
+
+# =============================================================================
+# MOUNT PROFILES (for multi-mount sessions)
+# =============================================================================
+
+# Mount profiles allow you to define reusable configurations for sessions
+# that need access to multiple directories with different security policies.
+# Each profile specifies a base policy and a list of mount points, where
+# each mount can have its own policy for fine-grained access control.
+
+mount_profiles:
+  # Example: Claude Code agent with protected config directories
+  # Use this profile when running AI coding assistants that need workspace
+  # access but should have read-only access to configuration files.
+  claude-agent:
+    base_policy: "default"           # Base security policy for the session
+    mounts:
+      - path: "/home/user/workspace"
+        policy: "workspace-rw"       # Full read-write access to workspace
+      - path: "/home/user/.claude"
+        policy: "config-readonly"    # Read-only access to Claude config
+      - path: "/home/user/.config/claude-code"
+        policy: "config-readonly"    # Read-only access to Claude Code settings
+
+  # Example: Restricted agent with minimal access
+  # Use this profile for untrusted agents that should only access
+  # a specific project directory with limited permissions.
+  restricted:
+    base_policy: "minimal"           # Strict base policy
+    mounts:
+      - path: "/project"
+        policy: "project-only"       # Limited access to project directory
+
+  # Example: Development environment with multiple project directories
+  # Use this profile for agents that need to work across multiple
+  # related repositories with different access levels.
+  dev-multi-repo:
+    base_policy: "dev-safe"
+    mounts:
+      - path: "/home/user/projects/frontend"
+        policy: "workspace-rw"
+      - path: "/home/user/projects/backend"
+        policy: "workspace-rw"
+      - path: "/home/user/projects/shared-libs"
+        policy: "config-readonly"    # Read-only for shared libraries
+
+# =============================================================================
+# APPROVALS
+# =============================================================================
+
+approvals:
+  enabled: false
+  # Approval mode:
+  # - local_tty: prompt on server /dev/tty (safe for local dev)
+  # - api: approvals resolved via /api/v1/approvals/* (requires auth.type=api_key to prevent self-approval)
+  mode: "local_tty"
+  # How long to wait for approval
+  timeout: "5m"
+  
+  # Notification method: "none", "webhook", "slack", "email"
+  notification:
+    type: "webhook"
+    webhook:
+      url: "https://example.com/aep-caw/approvals"
+      secret: ""                   # For webhook signature
+      
+    # Slack notification
+    # slack:
+    #   webhook_url: "https://hooks.slack.com/..."
+    #   channel: "#aep-caw-approvals"
+    
+  # Store pending approvals for UI
+  storage:
+    type: "memory"                 # or "redis"
+    # redis:
+    #   addr: "localhost:6379"
+    #   db: 0
+
+# =============================================================================
+# METRICS AND MONITORING
+# =============================================================================
+
+metrics:
+  # Prometheus metrics endpoint
+  enabled: true
+  path: "/metrics"
+  
+  # Include session metrics
+  include_session_metrics: true
+  
+  # Include per-command metrics (can be high cardinality)
+  include_command_metrics: false
+
+health:
+  # Health check endpoint
+  path: "/health"
+  
+  # Readiness check (dependencies ready)
+  readiness_path: "/ready"
+
+# =============================================================================
+# DEVELOPMENT SETTINGS (disable in production)
+# =============================================================================
+
+development:
+  # Verbose logging
+  debug: false
+  
+  # Disable auth (for testing only!)
+  disable_auth: false
+  
+  # Allow any policy (bypass policy checks)
+  disable_policy: false
+  
+  # PProf endpoints
+  pprof:
+    enabled: false
+    addr: "localhost:6060"

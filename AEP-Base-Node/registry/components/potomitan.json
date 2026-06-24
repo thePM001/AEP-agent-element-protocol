@@ -1,0 +1,49 @@
+{
+  "manifest_version": "1",
+  "id": "potomitan",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Base-Node/potomitan/",
+  "description": "Mesh peer registry and routing fallback (Yggdrasil adaptation).",
+  "requires": [
+    "agentmesh",
+    "aep-base-node"
+  ],
+  "capabilities": [
+    "mesh:peer-registry",
+    "mesh:routing",
+    "mesh:fallback"
+  ],
+  "actions": [],
+  "setup_hooks": [
+    {
+      "id": "enable_mesh",
+      "setup_hook": "set_mesh_peers",
+      "params": {
+        "min_peers": 0
+      }
+    }
+  ],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 20,
+    "requires_internet": true,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Mesh networking when internet is unavailable or for distributed agents.",
+    "use_when": [
+      "distributed multi-host agents",
+      "offline mesh networking"
+    ],
+    "avoid_when": [
+      "single Docker container local dev"
+    ],
+    "pairs_with": [
+      "agentmesh"
+    ]
+  },
+  "implementation": {
+    "crate": "AEP-Base-Node/potomitan/crate"
+  }
+}

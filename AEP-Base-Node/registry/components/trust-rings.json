@@ -1,0 +1,36 @@
+{
+  "manifest_version": "1",
+  "id": "trust-rings",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/trust-rings/",
+  "description": "Trust scoring and execution ring capability gating.",
+  "requires": [
+    "policy-engine",
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "trust:score",
+    "rings:gate",
+    "rings:capabilities"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 10,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Progressive trust and ring-based capability expansion.",
+    "use_when": [
+      "tiered agent permissions"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/trust-rings/lib/trust/manager.ts"
+  }
+}

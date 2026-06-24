@@ -1,0 +1,20 @@
+{
+  "id": "coding-governance",
+  "version": "2.8.0",
+  "runtime": "rust",
+  "crate": "aep-subprotocol-coding-governance",
+  "lrp_id": "coding-governance-subprotocol",
+  "entrypoints": ["AEP-Subprotocols/coding-governance/src/lib.rs"],
+  "actions": [
+    "propose",
+    "blast_radius",
+    "siee_check",
+    "solidify",
+    "announce",
+    "semantic_query"
+  ],
+  "gap_policies": [
+    "AEP-Components/gap/policies/reference/coding-governance-propose.gap",
+    "AEP-Components/gap/policies/reference/semantic-impact-envelope.gap"
+  ]
+}

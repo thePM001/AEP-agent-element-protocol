@@ -1,0 +1,822 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"net"
+	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"sync"
+	"syscall"
+	"time"
+
+	"github.com/nla-aep/aep-caw-framework/internal/shim"
+	"github.com/nla-aep/aep-caw-framework/internal/shim/kernelinstall"
+	"golang.org/x/term"
+)
+
+func main() {
+	argv0 := os.Args[0]
+	invoked := filepath.Base(argv0)
+
+	// Version stamp - always log when debug is on so we can verify which binary is deployed.
+	debugLog("shim v0.16.8+170 (pipe-through mode) invoked=%s argv=%v", invoked, os.Args)
+
+	shellName := strings.TrimLeft(invoked, "-")
+	if shellName != "sh" && shellName != "bash" {
+		// Default to sh semantics for unknown names.
+		shellName = "sh"
+	}
+
+	// Read shim.conf early - needed by both the kernelinstall branch (below)
+	// and the non-interactive bypass / ready-gate logic further down.
+	// Distinguishes validation errors (typos like force=tru, ready_gate=tru)
+	// from I/O errors (permission denied). Validation errors must fail
+	// visibly - a typo in ready_gate silently disabling the boot-safety
+	// gate would leave operators in the exact boot-loop this code prevents.
+	// I/O errors → fail-closed (assume force=true) because the operator
+	// wrote the file for a reason.
+	conf, confErr := shim.ReadShimConf(shimConfRoot())
+	if confErr != nil {
+		if strings.HasPrefix(confErr.Error(), "shim.conf:") {
+			fatalWithHint(127,
+				fmt.Sprintf("aep-caw-shell-shim: %v", confErr),
+				"Fix the value in "+shim.ShimConfPath(shimConfRoot())+" or remove the invalid line.",
+			)
+		}
+		debugLog("read shim.conf: %v (fail-closed: assuming force=true)", confErr)
+		conf.Force = true
+	}
+
+	// Resolve the real shell early - needed by the kernelinstall branch and by
+	// the aep-caw CLI bypass below.  We capture the error rather than fataling
+	// immediately so the in-session bypass can use its own PATH fallback (the
+	// .real file may not exist in containerised environments where the shim is
+	// installed but sh.real is absent).  Non-bypass paths fatal below if
+	// realShellErr != nil.
+	realShell, realShellErr := resolveRealShell(shellName)
+
+	// AepCaw CLI bypass: if the command being run IS the aep-caw binary,
+	// exec the real shell directly. The aep-caw CLI connects back to the
+	// server, which would deadlock if the server is handling this shim's
+	// exec request. This applies to: aep-caw detect, aep-caw --version,
+	// aep-caw debug policy-test, aep-caw trash list, etc.
+	// Checked early so the kernelinstall branch below can also skip for
+	// aep-caw-CLI invocations without duplicating the check.
+	if isAepCawCommand(os.Args[1:]) {
+		if realShellErr != nil {
+			fatalWithHint(127,
+				fmt.Sprintf("aep-caw-shell-shim: resolve real shell: %v", realShellErr),
+				fmt.Sprintf("Expected %s.real to exist next to the shim (or in /bin or /usr/bin).", shellName),
+			)
+		}
+		debugLog("aep-caw CLI bypass: command is aep-caw itself, executing real shell %s", realShell)
+		runAndExit(realShell, argv0, os.Args[1:], os.Environ())
+		return
+	}
+
+	// sessID and sessFile are resolved lazily: only when a code path actually
+	// needs them (kernel-install wrap-init, or the final aep-caw exec invocation).
+	// Bypass paths (in-session, aep-caw-CLI, non-interactive) do NOT call
+	// ResolveSessionID so they produce no session-file side effects.
+	var sessID, sessFile string
+	resolveSession := func() {
+		if sessID != "" {
+			return // already resolved
+		}
+		wd, _ := os.Getwd()
+		var sessErr error
+		sessID, sessFile, sessErr = shim.ResolveSessionID(shim.ResolveSessionIDOptions{
+			WorkDir: wd,
+		})
+		if sessErr != nil {
+			fatalWithHint(127,
+				fmt.Sprintf("aep-caw-shell-shim: resolve session id: %v", sessErr),
+				"Set AEP_CAW_SESSION_ID (best), or set AEP_CAW_SESSION_FILE to a writable file path for a stable ID.",
+			)
+		}
+		debugLog("resolved session: id=%s file=%s wd=%s", sessID, sessFile, wd)
+	}
+
+	// Kernel-install branch (issues #267 + #268). Runs BEFORE the
+	// AEP_CAW_IN_SESSION=1 recursion guard because that env var is
+	// caller-controllable - gating install on it would let a malicious
+	// sandbox-SDK supervisor bypass kernel enforcement. Server-spawned
+	// children installing again is wasteful (filter stacking) but safe.
+	//
+	// Skipped when there are no shell args (bare interactive shell - no
+	// command to wrap), for aep-caw-CLI invocations (already handled above),
+	// and when realShell could not be resolved (we fall through to the
+	// in-session guard, which has its own PATH fallback).
+	if len(os.Args) > 1 && realShellErr == nil {
+		mode, modeErr := kernelinstall.ResolveMode(conf.ShimInstall, os.Getenv("AEP_CAW_SHIM_INSTALL"))
+		if modeErr != nil {
+			fatalWithHint(126, "aep-caw-shell-shim: shim_install mode: "+modeErr.Error(),
+				"Set shim_install in /etc/aep-caw/shim.conf or AEP_CAW_SHIM_INSTALL to one of: auto, on, off.")
+		}
+		if mode != kernelinstall.ModeOff {
+			resolveSession()
+			res, installErr := kernelinstall.Install(kernelinstall.InstallParams{
+				ServerBaseURL: serverHTTPBaseURL(),
+				SessionID:     sessID,
+				APIKey:        os.Getenv("AEP_CAW_API_KEY"),
+				Mode:          mode,
+				RealShell:     realShell,
+				ShellArgs:     os.Args[1:],
+				Env:           os.Environ(),
+				CallerUID:     os.Getuid(),
+				// Forward the user's original invocation name so the wrapper
+				// can preserve argv[0] semantics (busybox applet routing on
+				// Alpine, login-shell detection on others).
+				Argv0: argv0,
+			})
+			if installErr != nil {
+				fatalWithHint(126, "aep-caw-shell-shim: kernel install: "+installErr.Error(),
+					"To disable, set shim_install=off in /etc/aep-caw/shim.conf")
+			}
+			switch res.Action {
+			case kernelinstall.ResultExec:
+				// Install drove the socketpair relay and waited for the wrapper.
+				// Propagate the wrapper's exit code.
+				os.Exit(res.WrapperExitCode)
+			case kernelinstall.ResultFailClosed:
+				fatalWithHint(126, "aep-caw-shell-shim: kernel install fail-closed: "+res.Reason,
+					"To disable, set shim_install=off in /etc/aep-caw/shim.conf")
+			case kernelinstall.ResultSkip:
+				debugLog("kernel install: skip (%s)", res.Reason)
+				// fall through to existing enforcement path
+			}
+		}
+	}
+
+	// Recursion guard: when aep-caw executes a process, it sets AEP_CAW_IN_SESSION=1.
+	// In that case, run the real shell directly. We try .real first (for proper shim
+	// installations) but fall back to system shell via PATH for containers/environments
+	// where the shim is installed but .real doesn't exist.
+	inSession := strings.TrimSpace(os.Getenv("AEP_CAW_IN_SESSION"))
+	debugLog("recursion check: AEP_CAW_IN_SESSION=%q", inSession)
+	if inSession == "1" {
+		inSessShell, inSessErr := resolveRealShell(shellName)
+		if inSessErr != nil {
+			// Fall back to looking up the shell in PATH (skipping ourselves)
+			inSessShell, inSessErr = lookupShellInPath(shellName)
+			if inSessErr != nil {
+				fatalWithHint(127,
+					fmt.Sprintf("aep-caw-shell-shim: in-session: could not find %s", shellName),
+					fmt.Sprintf("Tried %s.real and PATH lookup. Ensure the real shell is available.", shellName),
+				)
+			}
+		}
+		debugLog("recursion guard: executing real shell %s", inSessShell)
+		runAndExit(inSessShell, argv0, os.Args[1:], os.Environ())
+		return
+	}
+
+	// Non-bypass paths (non-interactive, ready-gate, and the full aep-caw exec
+	// invocation below) all need the real shell.  Fatal now if it was not
+	// resolved - the in-session guard above already returned, so we are not on
+	// that bypass path.
+	if realShellErr != nil {
+		fatalWithHint(127,
+			fmt.Sprintf("aep-caw-shell-shim: resolve real shell: %v", realShellErr),
+			fmt.Sprintf("Expected %s.real to exist next to the shim (or in /bin or /usr/bin).", shellName),
+		)
+	}
+
+	// Non-interactive bypass: when stdin is not a terminal (piped data, e.g.
+	// docker exec -i container sh -c "cat > /file" < binary), exec the real
+	// shell directly. This preserves binary stdin/stdout integrity - the shim
+	// never touches the data streams. Policy enforcement for commands inside
+	// aep-caw sessions is handled by AEP_CAW_IN_SESSION (checked above).
+	//
+	// AEP_CAW_SHIM_FORCE=1 overrides this bypass for environments like sandbox
+	// platforms where commands are always non-interactive but still require
+	// policy enforcement (e.g. Blaxel, E2B sandbox APIs).
+	//
+	// /etc/aep-caw/shim.conf with force=true also overrides the bypass, for
+	// platforms where env vars cannot be injected (e.g. exe.dev).
+	// Precedence: AEP_CAW_SHIM_FORCE=1 (env) > config file > default (false).
+	// Note: env can only ADD enforcement, never remove it.
+	forceShim := strings.TrimSpace(os.Getenv("AEP_CAW_SHIM_FORCE"))
+	forceFromEnv := forceShim == "1"
+	switch {
+	case forceFromEnv:
+		debugLog("AEP_CAW_SHIM_FORCE=1: enforcing policy despite non-interactive stdin")
+	case conf.Force:
+		forceShim = "1"
+		debugLog("shim.conf force=true: enforcing policy despite non-interactive stdin")
+	}
+	if !term.IsTerminal(int(os.Stdin.Fd())) && forceShim != "1" {
+		debugLog("non-interactive bypass: stdin is not a tty, executing real shell %s", realShell)
+		runAndExit(realShell, argv0, os.Args[1:], os.Environ())
+		return
+	}
+
+	// Server readiness gate: when ready_gate=true in shim.conf, verify the
+	// aep-caw server is listening before attempting enforcement. If the local
+	// server isn't reachable, fall through to the real shell instead of
+	// failing. This prevents boot loops when force=true is baked into the
+	// image and the shim is root's login shell - aep-caw.service may not be
+	// ready yet during early boot.
+	//
+	// The gate is opt-in (ready_gate=true) because fail-open on a local
+	// server being down is a security tradeoff: it enables boot safety but
+	// also means a crashed server temporarily disables enforcement. Operators
+	// enable it when boot reliability outweighs the crash-window risk.
+	//
+	// When AEP_CAW_SHIM_FORCE=1 is set via env (not config file), the gate
+	// is skipped entirely. The env var signals explicit operator intent to
+	// enforce unconditionally - the operator can remove the env var if there
+	// is a boot issue, unlike config-file force=true which is harder to
+	// change at boot time.
+	//
+	// Remote servers always fail-closed regardless of ready_gate.
+	if conf.ReadyGate && !forceFromEnv {
+		srvNetwork, srvAddr, srvErr := serverAddrFromEnv()
+		if srvErr != nil {
+			// Non-empty but invalid server address - fail-closed.
+			hint := "Fix the AEP_CAW_SERVER value or unset it to use the default (http://127.0.0.1:18080)."
+			if strings.ToLower(strings.TrimSpace(os.Getenv("AEP_CAW_TRANSPORT"))) == "grpc" {
+				hint = "Fix the AEP_CAW_GRPC_ADDR value or unset it to use the default (127.0.0.1:9090)."
+			}
+			fatalWithHint(127,
+				fmt.Sprintf("aep-caw-shell-shim: ready_gate: %v", srvErr),
+				hint,
+			)
+		}
+		local := serverIsLocal(srvNetwork, srvAddr)
+		// Local probes complete in <1ms (ECONNREFUSED is immediate on
+		// loopback/unix). Remote probes need a longer timeout to avoid
+		// false negatives on VPN or higher-latency links.
+		probeTimeout := 200 * time.Millisecond
+		if !local {
+			probeTimeout = 2 * time.Second
+		}
+		reachable, dialErr := serverReachable(srvNetwork, srvAddr, probeTimeout)
+		if !reachable {
+			if local && isTransientDialError(dialErr) {
+				// Transient error (ECONNREFUSED, ENOENT, timeout) on a local
+				// server - likely "not started yet" during boot. Fall through.
+				debugLog("ready_gate: local server not reachable at %s:%s (%v), falling through to real shell %s", srvNetwork, srvAddr, dialErr, realShell)
+				runAndExit(realShell, argv0, os.Args[1:], os.Environ())
+				return
+			}
+			if local {
+				// Hard error (EACCES, etc.) on a local endpoint - fail-closed.
+				fatalWithHint(127,
+					fmt.Sprintf("aep-caw-shell-shim: local server dial error at %s: %v", srvAddr, dialErr),
+					"Check unix socket permissions or server configuration.",
+				)
+			}
+			fatalWithHint(127,
+				fmt.Sprintf("aep-caw-shell-shim: remote server not reachable at %s", srvAddr),
+				"The aep-caw server is configured as a remote endpoint and is not responding. Check server availability.",
+			)
+		}
+	}
+
+	aepCawBin, err := resolveAepCawBin()
+	if err != nil {
+		hint := "Set AEP_CAW_BIN=/path/to/aep-caw or ensure `aep-caw` is available on PATH."
+		if v := strings.TrimSpace(os.Getenv("AEP_CAW_BIN")); v != "" {
+			hint = fmt.Sprintf("AEP_CAW_BIN is set to %q but wasn't executable; fix it or unset it to use PATH.", v)
+		}
+		fatalWithHint(127, fmt.Sprintf("aep-caw-shell-shim: resolve aep-caw: %v", err), hint)
+	}
+
+	// Resolve the session ID now if the kernelinstall branch did not already
+	// do so (mode was off, or realShell was unresolved).  The aep-caw exec
+	// invocation below requires sessID.
+	resolveSession()
+
+	// Stdin-mode detection: when the shim is invoked with no command args
+	// (bare /bin/bash, no -c) and stdin is a pipe, the caller is sending
+	// the command via stdin (e.g. Daytona toolbox). Read stdin and convert
+	// to -c so the command goes through aep-caw policy enforcement.
+	shellArgs := os.Args[1:]
+	if len(shellArgs) == 0 && !term.IsTerminal(int(os.Stdin.Fd())) {
+		debugLog("stdin-mode: no shell args, stdin is pipe - reading command from stdin")
+		stdinData, err := io.ReadAll(os.Stdin)
+		if err == nil {
+			cmd := strings.TrimSpace(string(stdinData))
+			if cmd != "" {
+				debugLog("stdin-mode: read %d bytes, converting to -c", len(stdinData))
+				shellArgs = []string{"-c", cmd}
+			}
+		}
+	}
+
+	tty := term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
+	args := []string{aepCawBin, "exec"}
+	if tty {
+		args = append(args, "--pty")
+	}
+	if sessFile != "" {
+		args = append(args, "--session-file", sessFile)
+	}
+	args = append(args, "--argv0", argv0, sessID, "--", realShell)
+	args = append(args, shellArgs...)
+
+	// Run aep-caw exec as a child process rather than replacing the shim via
+	// syscall.Exec. In sandbox toolboxes (Daytona, E2B), the toolbox captures
+	// output by reading pipes attached to the process it started (the shim).
+	// With syscall.Exec, the toolbox may not see output written by the exec'd
+	// process. Running as a child keeps the shim's pipes alive and the parent
+	// process visible to the toolbox until all output is written.
+	runAndExit(aepCawBin, "", args[1:], os.Environ())
+}
+
+// isMCPCommand checks if the command being executed is an MCP server.
+func isMCPCommand(argv0 string, args []string) bool {
+	// Extract command from shell -c "command"
+	if len(args) >= 2 && args[0] == "-c" {
+		// Parse the command string
+		cmdParts := strings.Fields(args[1])
+		if len(cmdParts) > 0 {
+			return shim.IsMCPServer(cmdParts[0], cmdParts[1:], nil)
+		}
+	}
+
+	// Direct command execution
+	return shim.IsMCPServer(argv0, args, nil)
+}
+
+// isAepCawCommand checks if the command being executed is the aep-caw binary.
+// This prevents a deadlock where the shim routes aep-caw CLI commands through
+// the server, and the CLI connects back to the same blocked server.
+// Fail-safe: returns false on any error (worst case is existing deadlock, not a bypass).
+func isAepCawCommand(args []string) bool {
+	// Only match when -c is the first argument. Scanning further into args
+	// could misinterpret script arguments as shell flags (e.g., "sh script.sh -c ...").
+	// Also reject login shell flags in the first position.
+	if len(args) < 2 {
+		return false
+	}
+	if args[0] == "-l" || args[0] == "--login" {
+		return false
+	}
+	if args[0] != "-c" {
+		return false
+	}
+	cmdStr := args[1]
+	if cmdStr == "" {
+		return false
+	}
+
+	// Reject compound commands (shell operators that chain multiple commands).
+	// Only bypass for simple single-command invocations to prevent enforcement
+	// bypass for chained commands like "aep-caw detect; rm -rf /".
+	// We check for compound OPERATORS, not individual characters, because
+	// characters like & and > appear in legitimate redirections (2>&1).
+	if containsCompoundOperator(cmdStr) {
+		return false
+	}
+
+	cmdParts := strings.Fields(cmdStr)
+	if len(cmdParts) == 0 {
+		return false
+	}
+	// Skip common shell prefixes to find the actual command:
+	// - "exec aep-caw detect" → "aep-caw"
+	// - "env FOO=1 aep-caw detect" → "aep-caw"
+	// - "env -i aep-caw detect" → "aep-caw"
+	cmd := extractCommand(cmdParts)
+	if cmd == "" {
+		return false
+	}
+	cmdPath, err := exec.LookPath(cmd)
+	if err != nil {
+		return false
+	}
+	aepCawPath, err := resolveAepCawBin()
+	if err != nil {
+		return false
+	}
+	// Resolve symlinks to handle installations where aep-caw is symlinked
+	// (e.g., /usr/local/bin/aep-caw -> /opt/aep-caw/bin/aep-caw).
+	cmdResolved, err := filepath.EvalSymlinks(cmdPath)
+	if err != nil {
+		cmdResolved = cmdPath
+	}
+	aepCawResolved, err := filepath.EvalSymlinks(aepCawPath)
+	if err != nil {
+		aepCawResolved = aepCawPath
+	}
+	return cmdResolved == aepCawResolved
+}
+
+// containsCompoundOperator checks if a shell command string contains operators
+// that chain multiple commands. Returns false for simple redirections like 2>&1.
+func containsCompoundOperator(s string) bool {
+	// These always indicate compound commands or subshells.
+	if strings.ContainsAny(s, ";`\n\r") {
+		return true
+	}
+	if strings.Contains(s, "&&") || strings.Contains(s, "||") || strings.Contains(s, "$(") {
+		return true
+	}
+	// Check for pipe: | that is NOT preceded by > (which would be >| clobber
+	// or part of a >&| redirect). A bare | chains commands.
+	for i, c := range s {
+		if c == '|' {
+			if i > 0 && s[i-1] == '>' {
+				continue // part of >| or >&| redirect
+			}
+			if i+1 < len(s) && s[i+1] == '|' {
+				continue // || already handled above
+			}
+			return true // bare pipe
+		}
+	}
+	return false
+}
+
+// extractCommand skips shell builtins that don't affect command resolution
+// (exec, nice, nohup, command) to find the actual executable name.
+// Does NOT skip env or VAR=VAL prefixes because those can modify PATH and
+// change which binary is resolved - skipping them would be a security bypass.
+func extractCommand(parts []string) string {
+	i := 0
+	for i < len(parts) {
+		word := parts[i]
+		switch word {
+		case "exec", "nice", "nohup", "command":
+			// Shell builtins/wrappers that don't affect command resolution.
+			i++
+		default:
+			return word
+		}
+	}
+	return ""
+}
+
+func resolveAepCawBin() (string, error) {
+	if v := strings.TrimSpace(os.Getenv("AEP_CAW_BIN")); v != "" {
+		return exec.LookPath(v)
+	}
+	return exec.LookPath("aep-caw")
+}
+
+func resolveRealShell(shellName string) (string, error) {
+	var candidates []string
+
+	// Prefer resolving relative to argv[0] when it includes a path, since callers often exec "/bin/sh"
+	// with argv0 "sh" or "/bin/sh" depending on the harness.
+	if strings.Contains(os.Args[0], "/") {
+		p := os.Args[0]
+		if !filepath.IsAbs(p) {
+			if wd, err := os.Getwd(); err == nil {
+				p = filepath.Join(wd, p)
+			}
+		}
+		candidates = append(candidates, filepath.Join(filepath.Dir(filepath.Clean(p)), shellName+".real"))
+	}
+
+	// Common install locations.
+	candidates = append(candidates,
+		filepath.Join("/bin", shellName+".real"),
+		filepath.Join("/usr/bin", shellName+".real"),
+	)
+
+	// Fallback to the actual executable's directory (works when shim is installed as a copy into /bin).
+	if exe, err := os.Executable(); err == nil {
+		candidates = append(candidates, filepath.Join(filepath.Dir(exe), shellName+".real"))
+	}
+
+	for _, p := range candidates {
+		if _, err := os.Stat(p); err == nil {
+			// Resolve symlinks to avoid loops where sh.real -> bash (the shim).
+			resolved, err := filepath.EvalSymlinks(p)
+			if err != nil {
+				return p, nil
+			}
+			// If the resolved path is the shim itself, skip this candidate.
+			if self, err := os.Executable(); err == nil {
+				if selfResolved, err := filepath.EvalSymlinks(self); err == nil {
+					if resolved == selfResolved {
+						continue
+					}
+				}
+			}
+			return p, nil
+		}
+	}
+	return "", fmt.Errorf("could not find %s.real (tried %v)", shellName, candidates)
+}
+
+// lookupShellInPath finds the shell binary in PATH, skipping the current executable
+// (to avoid infinite recursion when the shim is installed as /bin/bash).
+func lookupShellInPath(shellName string) (string, error) {
+	// Get our own executable path to skip it
+	self, err := os.Executable()
+	if err != nil {
+		self = ""
+	}
+	selfReal, _ := filepath.EvalSymlinks(self)
+
+	pathEnv := os.Getenv("PATH")
+	if pathEnv == "" {
+		pathEnv = "/usr/bin:/bin"
+	}
+
+	for _, dir := range filepath.SplitList(pathEnv) {
+		candidate := filepath.Join(dir, shellName)
+		info, err := os.Stat(candidate)
+		if err != nil || info.IsDir() {
+			continue
+		}
+		// Check if this is a symlink and resolve it
+		resolved, err := filepath.EvalSymlinks(candidate)
+		if err != nil {
+			resolved = candidate
+		}
+		// Skip if this resolves to ourselves
+		if resolved == self || resolved == selfReal {
+			continue
+		}
+		// Check if it's executable
+		if info.Mode()&0111 != 0 {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("could not find %s in PATH", shellName)
+}
+
+func execOrExit(path string, argv []string, env []string) {
+	if err := syscall.Exec(path, argv, env); err != nil {
+		fatalWithHint(127,
+			fmt.Sprintf("aep-caw-shell-shim: exec %s: %v", path, err),
+			"If you see 'permission denied' in a container, check that the shim and aep-caw binaries are executable.",
+		)
+	}
+}
+
+// runAndExit runs a command as a child process, copies its stdout/stderr
+// through the shim process, and exits with the child's exit code.
+//
+// Critical: the shim must read the child's output via pipes and re-write it
+// to its own stdout/stderr. Direct fd pass-through (cmd.Stdout = os.Stdout)
+// doesn't work in sandbox toolboxes like Daytona because the toolbox captures
+// output per-process - writes from a child PID aren't attributed to the shim
+// PID that the toolbox started. By piping through, all output flows through
+// the shim process that the toolbox is monitoring.
+//
+// argv0 overrides the child's argv[0] if non-empty. This is needed because
+// busybox (Alpine) uses argv[0] to determine which applet to run - if the
+// binary is "/bin/sh.real" but argv[0] must be "sh" for busybox to work.
+func runAndExit(path string, argv0 string, args []string, env []string) {
+	cmd := exec.Command(path, args...)
+	if argv0 != "" && len(cmd.Args) > 0 {
+		cmd.Args[0] = argv0
+	}
+	cmd.Stdin = os.Stdin
+	cmd.Env = env
+
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		fatalWithHint(127, fmt.Sprintf("aep-caw-shell-shim: stdout pipe: %v", err), "")
+	}
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		fatalWithHint(127, fmt.Sprintf("aep-caw-shell-shim: stderr pipe: %v", err), "")
+	}
+
+	debugLog("runAndExit: path=%s argv0=%s args=%v", path, argv0, args)
+	if err := cmd.Start(); err != nil {
+		fatalWithHint(127,
+			fmt.Sprintf("aep-caw-shell-shim: run %s: %v", path, err),
+			"If you see 'permission denied' in a container, check that the shim and aep-caw binaries are executable.",
+		)
+	}
+
+	// Copy child stdout/stderr through the shim process concurrently.
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() { defer wg.Done(); _, _ = io.Copy(os.Stdout, stdoutPipe) }()
+	go func() { defer wg.Done(); _, _ = io.Copy(os.Stderr, stderrPipe) }()
+
+	// Wait for pipes to drain, then wait for process exit.
+	wg.Wait()
+	waitErr := cmd.Wait()
+
+	if waitErr != nil {
+		if ee, ok := waitErr.(*exec.ExitError); ok {
+			os.Exit(ee.ExitCode())
+		}
+		fatalWithHint(127,
+			fmt.Sprintf("aep-caw-shell-shim: run %s: %v", path, waitErr),
+			"If you see 'permission denied' in a container, check that the shim and aep-caw binaries are executable.",
+		)
+	}
+	os.Exit(0)
+}
+
+func fatalWithHint(code int, msg string, hint string) {
+	_, _ = fmt.Fprintf(os.Stderr, "%s\n", strings.TrimSpace(msg))
+	if strings.TrimSpace(hint) != "" {
+		_, _ = fmt.Fprintf(os.Stderr, "Hint: %s\n", strings.TrimSpace(hint))
+	}
+	if strings.TrimSpace(os.Getenv("AEP_CAW_SHIM_DEBUG")) == "1" {
+		_, _ = fmt.Fprintf(os.Stderr, "Debug: argv0=%q args=%q\n", os.Args[0], os.Args[1:])
+		if p := strings.TrimSpace(os.Getenv("PATH")); p != "" {
+			_, _ = fmt.Fprintf(os.Stderr, "Debug: PATH=%s\n", p)
+		}
+	}
+	os.Exit(code)
+}
+
+func debugLog(format string, args ...any) {
+	if strings.TrimSpace(os.Getenv("AEP_CAW_SHIM_DEBUG")) == "1" {
+		_, _ = fmt.Fprintf(os.Stderr, "aep-caw-shell-shim: "+format+"\n", args...)
+	}
+}
+
+// serverHTTPBaseURL returns the HTTP base URL for the aep-caw server,
+// suitable for kernelinstall.Install. Defaults to the local server when
+// AEP_CAW_SERVER is unset. Returns the URL even when the server is
+// unreachable; the caller's Mode dictates how that error is handled.
+func serverHTTPBaseURL() string {
+	v := strings.TrimSpace(os.Getenv("AEP_CAW_SERVER"))
+	if v != "" {
+		return v
+	}
+	return "http://127.0.0.1:18080"
+}
+
+// serverAddrFromEnv returns the network type and address of the aep-caw server
+// for a readiness probe. It follows the same transport selection as the aep-caw
+// CLI: when AEP_CAW_TRANSPORT=grpc, probes AEP_CAW_GRPC_ADDR instead of
+// AEP_CAW_SERVER. For HTTP transport (the default), reads AEP_CAW_SERVER
+// (default http://127.0.0.1:18080) and returns ("tcp", "host:port") or
+// ("unix", "/path/to/socket").
+//
+// Returns an error for non-empty but unparseable values so the caller can
+// fail-closed instead of silently falling back to a local address.
+func serverAddrFromEnv() (network, addr string, err error) {
+	// gRPC transport: probe the gRPC address, not the HTTP server.
+	// Normalize the same way the CLI does: lowercase transport, strip
+	// scheme prefix from address (client.NewGRPC accepts "grpc://host:port").
+	transport := strings.ToLower(strings.TrimSpace(os.Getenv("AEP_CAW_TRANSPORT")))
+	if transport != "" && transport != "http" && transport != "grpc" {
+		return "", "", fmt.Errorf("invalid AEP_CAW_TRANSPORT value %q (expected http or grpc)", transport)
+	}
+	if transport == "grpc" {
+		grpcAddr := strings.TrimSpace(os.Getenv("AEP_CAW_GRPC_ADDR"))
+		if grpcAddr == "" {
+			grpcAddr = "127.0.0.1:9090"
+		}
+		// Strip scheme prefix to match client.NewGRPC normalization.
+		if strings.Contains(grpcAddr, "://") {
+			if u, parseErr := url.Parse(grpcAddr); parseErr == nil && u.Host != "" {
+				grpcAddr = u.Host
+			}
+		}
+		// Validate it looks like host:port.
+		if _, _, splitErr := net.SplitHostPort(grpcAddr); splitErr != nil {
+			return "", "", fmt.Errorf("invalid AEP_CAW_GRPC_ADDR value %q: %w", grpcAddr, splitErr)
+		}
+		return "tcp", grpcAddr, nil
+	}
+
+	raw := strings.TrimSpace(os.Getenv("AEP_CAW_SERVER"))
+	if raw == "" {
+		return "tcp", "127.0.0.1:18080", nil
+	}
+	u, parseErr := url.Parse(raw)
+	if parseErr != nil {
+		return "", "", fmt.Errorf("invalid AEP_CAW_SERVER value %q: %w", raw, parseErr)
+	}
+	switch u.Scheme {
+	case "unix":
+		// Match the client transport logic in internal/client/client.go:
+		// u.Path when Host is empty, u.Host+u.Path when both are present.
+		sockPath := u.Path
+		if sockPath == "" {
+			sockPath = u.Host
+		} else if u.Host != "" {
+			sockPath = u.Host + u.Path
+		}
+		sockPath = strings.TrimSpace(sockPath)
+		if sockPath == "" {
+			return "", "", fmt.Errorf("invalid AEP_CAW_SERVER: unix URL with empty socket path %q", raw)
+		}
+		return "unix", sockPath, nil
+	case "http", "https":
+		host := u.Hostname()
+		if host == "" {
+			return "", "", fmt.Errorf("invalid AEP_CAW_SERVER: %s URL with empty host %q", u.Scheme, raw)
+		}
+		port := u.Port()
+		if port == "" {
+			switch u.Scheme {
+			case "https":
+				port = "443"
+			default:
+				port = "80"
+			}
+		}
+		return "tcp", net.JoinHostPort(host, port), nil
+	default:
+		return "", "", fmt.Errorf("invalid AEP_CAW_SERVER: unsupported scheme %q in %q (expected http, https, or unix)", u.Scheme, raw)
+	}
+}
+
+// serverReachable does a fast dial to check if the aep-caw server is
+// listening. Supports both TCP and unix socket addresses. On loopback
+// this completes in <1ms when the server is up, or returns ECONNREFUSED
+// immediately when it's not. The timeout parameter should be short for
+// local probes (~200ms) and longer for remote probes (~2s) to avoid
+// false negatives on higher-latency links.
+//
+// Design: uses a raw TCP/unix dial rather than an HTTP health check.
+// This is intentional for a boot-time login shell: the shim must be
+// minimal (no HTTP client imports), fast, and resilient to partial
+// server startup. If a non-aep-caw service occupies the port, the
+// subsequent aep-caw exec call fails with a clear error.
+//
+// Returns the dial error so the caller can distinguish transient errors
+// (ECONNREFUSED, ENOENT - server not started) from hard errors
+// (EACCES - permission denied on unix socket).
+func serverReachable(network, addr string, timeout time.Duration) (bool, error) {
+	conn, err := net.DialTimeout(network, addr, timeout)
+	if err != nil {
+		return false, err
+	}
+	_ = conn.Close()
+	return true, nil
+}
+
+// isTransientDialError returns true for errors that indicate the server is
+// not yet started (ECONNREFUSED, ENOENT, timeout). These are safe for
+// fail-open in the readiness gate. Hard errors like EACCES (bad socket
+// permissions) return false - they should fail-closed.
+func isTransientDialError(err error) bool {
+	if err == nil {
+		return false
+	}
+	var errno syscall.Errno
+	if errors.As(err, &errno) {
+		switch errno {
+		case syscall.ECONNREFUSED, syscall.ENOENT:
+			return true
+		}
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return true
+	}
+	return false
+}
+
+// lookupHost is the hostname resolver used by serverIsLocal. Package-level
+// variable so tests can inject a fake resolver without DNS dependencies.
+var lookupHost = net.DefaultResolver.LookupHost
+
+// serverIsLocal returns true if the server address is a local endpoint
+// (loopback TCP or unix socket). Fail-open on probe failure is only safe
+// for local servers where "not reachable" means "not started yet."
+// Remote servers use fail-closed to prevent network issues from silently
+// disabling enforcement.
+//
+// For non-IP hostnames (e.g. custom /etc/hosts aliases), attempts DNS
+// resolution with a short timeout. A hostname is only considered local if
+// ALL resolved addresses are loopback - mixed-resolution names (loopback +
+// remote) are treated as remote to preserve the fail-closed guarantee.
+// If resolution fails, treats as remote (fail-closed) which is the safe default.
+func serverIsLocal(network, addr string) bool {
+	if network == "unix" {
+		return true
+	}
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return false
+	}
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	if ip != nil {
+		return ip.IsLoopback()
+	}
+	// Hostname that isn't a literal IP - resolve and check if ALL addresses
+	// are loopback. Short timeout avoids hanging during early boot when
+	// DNS/nsswitch may not be ready.
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	addrs, err := lookupHost(ctx, host)
+	if err != nil || len(addrs) == 0 {
+		return false
+	}
+	for _, a := range addrs {
+		resolved := net.ParseIP(a)
+		if resolved == nil || !resolved.IsLoopback() {
+			return false
+		}
+	}
+	return true
+}

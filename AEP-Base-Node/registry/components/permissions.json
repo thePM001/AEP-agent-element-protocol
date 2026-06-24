@@ -1,0 +1,35 @@
+{
+  "manifest_version": "1",
+  "id": "permissions",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/permissions/",
+  "description": "Capability permission checks for agent actions.",
+  "requires": [
+    "policy-engine",
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "permissions:check",
+    "permissions:capability"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 16,
+    "min_disk_mb": 5,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Fine-grained capability permission layer.",
+    "use_when": [
+      "capability-gated agents"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/permissions/lib/index.ts"
+  }
+}

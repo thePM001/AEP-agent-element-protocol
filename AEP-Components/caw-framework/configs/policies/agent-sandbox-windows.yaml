@@ -1,0 +1,555 @@
+# Agent Sandbox Policy for aep-caw - Windows
+# Maximum containment for running unknown/untrusted agent code on Windows
+
+version: 1
+name: agent-sandbox-windows
+description: |
+  High-security sandbox for AI agents running unknown code on Windows.
+  Default deny with explicit allowlist, approval for any credential access,
+  redirect network tools to internal proxies, soft-delete for recovery.
+
+# =============================================================================
+# FILE OPERATION RULES
+# =============================================================================
+
+file_rules:
+  # ---------------------------------------------------------------------------
+  # Workspace - read/write allowed, deletes are soft (recoverable)
+  # ---------------------------------------------------------------------------
+
+  - name: allow-workspace-read
+    description: Allow reading files in workspace
+    paths:
+      - "${PROJECT_ROOT}"
+      - "${PROJECT_ROOT}\\**"
+    operations:
+      - read
+      - open
+      - stat
+      - list
+      - readlink
+    decision: allow
+
+  - name: allow-workspace-write
+    description: Allow writing files in workspace
+    paths:
+      - "${PROJECT_ROOT}"
+      - "${PROJECT_ROOT}\\**"
+    operations:
+      - write
+      - create
+      - mkdir
+      - chmod
+      - rename
+    decision: allow
+
+  - name: soft-delete-workspace
+    description: Soft-delete files in workspace (recoverable)
+    paths:
+      - "${PROJECT_ROOT}"
+      - "${PROJECT_ROOT}\\**"
+    operations:
+      - delete
+      - rmdir
+    decision: soft_delete
+    message: "File quarantined (recoverable): {{.Path}}"
+
+  # ---------------------------------------------------------------------------
+  # Temp directories - sandboxed (Windows)
+  # ---------------------------------------------------------------------------
+
+  - name: allow-temp
+    description: Full access to Windows temp directories
+    paths:
+      - "${TEMP}\\**"
+      - "${TMP}\\**"
+      - "${LOCALAPPDATA}\\Temp\\**"
+    operations:
+      - "*"
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # System paths - minimal read-only (Windows)
+  # ---------------------------------------------------------------------------
+
+  - name: allow-program-files-read
+    description: Read access to Program Files
+    paths:
+      - "C:\\Program Files\\**"
+      - "C:\\Program Files (x86)\\**"
+    operations:
+      - read
+      - open
+      - stat
+      - list
+      - readlink
+    decision: allow
+
+  - name: allow-windows-minimal
+    description: Read minimal Windows system files
+    paths:
+      - "C:\\Windows\\System32\\drivers\\etc\\hosts"
+      - "C:\\Windows\\System32\\config\\systemprofile\\**"
+    operations:
+      - read
+      - stat
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # APPROVE credential/secret access (not deny - visible decision)
+  # ---------------------------------------------------------------------------
+
+  - name: approve-ssh-access
+    description: Require approval for SSH key access
+    paths:
+      - "${USERPROFILE}\\.ssh\\**"
+    operations:
+      - "*"
+    decision: approve
+    message: "Agent wants to access SSH keys: {{.Path}}"
+    timeout: 5m
+
+  - name: approve-aws-credentials
+    description: Require approval for AWS credentials
+    paths:
+      - "${USERPROFILE}\\.aws\\**"
+    operations:
+      - "*"
+    decision: approve
+    message: "Agent wants to access AWS credentials: {{.Path}}"
+    timeout: 5m
+
+  - name: approve-cloud-credentials
+    description: Require approval for cloud credentials
+    paths:
+      - "${USERPROFILE}\\.gcloud\\**"
+      - "${USERPROFILE}\\.azure\\**"
+      - "${APPDATA}\\gcloud\\**"
+      - "${USERPROFILE}\\.kube\\**"
+    operations:
+      - "*"
+    decision: approve
+    message: "Agent wants to access cloud credentials: {{.Path}}"
+    timeout: 5m
+
+  - name: approve-env-files
+    description: Require approval for .env files
+    paths:
+      - "**\\.env"
+      - "**\\.env.*"
+    operations:
+      - "*"
+    decision: approve
+    message: "Agent wants to access environment file: {{.Path}}"
+    timeout: 5m
+
+  - name: approve-git-credentials
+    description: Require approval for git credentials
+    paths:
+      - "${USERPROFILE}\\.git-credentials"
+      - "**\\.netrc"
+    operations:
+      - "*"
+    decision: approve
+    message: "Agent wants to access git credentials: {{.Path}}"
+    timeout: 5m
+
+  # ---------------------------------------------------------------------------
+  # Package caches - read-only (Windows)
+  # ---------------------------------------------------------------------------
+
+  - name: allow-cache-read
+    description: Read-only cache access
+    paths:
+      - "${APPDATA}\\npm-cache\\**"
+      - "${LOCALAPPDATA}\\pip\\Cache\\**"
+      - "${USERPROFILE}\\.cargo\\**"
+      - "${LOCALAPPDATA}\\go-build\\**"
+    operations:
+      - read
+      - open
+      - stat
+      - list
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # DENY everything else
+  # ---------------------------------------------------------------------------
+
+  - name: default-deny-files
+    description: Deny all other file operations
+    paths:
+      - "**"
+    operations:
+      - "*"
+    decision: deny
+
+# =============================================================================
+# NETWORK OPERATION RULES
+# =============================================================================
+
+network_rules:
+  # ---------------------------------------------------------------------------
+  # Localhost only by default
+  # ---------------------------------------------------------------------------
+
+  - name: allow-localhost
+    description: Allow localhost connections
+    cidrs:
+      - "127.0.0.1/32"
+      - "::1/128"
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # Package registries - redirect to internal mirrors if available
+  # ---------------------------------------------------------------------------
+
+  - name: allow-npm
+    description: npm registry
+    domains:
+      - "registry.npmjs.org"
+    ports: [443]
+    decision: allow
+
+  - name: allow-pypi
+    description: PyPI
+    domains:
+      - "pypi.org"
+      - "files.pythonhosted.org"
+    ports: [443]
+    decision: allow
+
+  - name: allow-cargo
+    description: Cargo registry
+    domains:
+      - "crates.io"
+      - "static.crates.io"
+    ports: [443]
+    decision: allow
+
+  - name: allow-go-proxy
+    description: Go module proxy
+    domains:
+      - "proxy.golang.org"
+      - "sum.golang.org"
+    ports: [443]
+    decision: allow
+
+  - name: allow-nuget
+    description: NuGet package registry
+    domains:
+      - "api.nuget.org"
+      - "*.nuget.org"
+    ports: [443]
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # Embedded LLM Proxy
+  # ---------------------------------------------------------------------------
+
+  - name: allow-llm-proxy
+    description: Allow connections to embedded LLM proxy on localhost
+    cidrs:
+      - "127.0.0.1/32"
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # Block private/internal networks
+  # ---------------------------------------------------------------------------
+
+  - name: block-private-networks
+    description: Block internal/private networks
+    cidrs:
+      - "10.0.0.0/8"
+      - "172.16.0.0/12"
+      - "192.168.0.0/16"
+      - "169.254.0.0/16"
+    decision: deny
+
+  - name: block-metadata-services
+    description: Block cloud metadata services
+    cidrs:
+      - "169.254.169.254/32"
+      - "100.100.100.200/32"
+    decision: deny
+
+  # ---------------------------------------------------------------------------
+  # Require approval for all other destinations
+  # ---------------------------------------------------------------------------
+
+  - name: approve-unknown-https
+    description: Require approval for unknown HTTPS
+    ports: [443]
+    decision: approve
+    message: "Agent wants to connect to: {{.RemoteAddr}}"
+    timeout: 2m
+
+  - name: approve-unknown-http
+    description: Require approval for HTTP (insecure)
+    ports: [80]
+    decision: approve
+    message: "Agent wants HTTP (insecure) to: {{.RemoteAddr}}"
+    timeout: 2m
+
+  - name: default-deny-network
+    description: Deny all other network connections
+    domains:
+      - "*"
+    decision: deny
+
+# =============================================================================
+# COMMAND RULES
+# =============================================================================
+
+command_rules:
+  # ---------------------------------------------------------------------------
+  # Redirect dangerous download tools
+  # ---------------------------------------------------------------------------
+
+  - name: redirect-curl
+    description: Redirect curl to audited wrapper
+    commands:
+      - curl
+    decision: redirect
+    message: "curl redirected through aep-caw-fetch for auditing"
+    redirect_to:
+      command: aep-caw-fetch
+      args: ["--source", "curl"]
+
+  - name: redirect-wget
+    description: Redirect wget to audited wrapper
+    commands:
+      - wget
+    decision: redirect
+    message: "wget redirected through aep-caw-fetch for auditing"
+    redirect_to:
+      command: aep-caw-fetch
+      args: ["--source", "wget"]
+
+  # ---------------------------------------------------------------------------
+  # Allow safe commands (Windows)
+  # ---------------------------------------------------------------------------
+
+  - name: allow-safe-commands
+    description: Standard safe commands
+    commands:
+      - dir
+      - type
+      - more
+      - find
+      - findstr
+      - sort
+      - where
+      - echo
+      - date
+      - time
+    decision: allow
+
+  - name: allow-dev-tools
+    description: Development tools
+    commands:
+      - git
+      - node
+      - npm
+      - python
+      - python3
+      - pip
+      - pip3
+      - cargo
+      - go
+      - dotnet
+      - msbuild
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # Approve package installation
+  # ---------------------------------------------------------------------------
+
+  - name: approve-package-install
+    description: Require approval for package installation
+    commands:
+      - npm
+      - pip
+      - pip3
+      - cargo
+      - dotnet
+    args_patterns:
+      - "install.*"
+      - "add.*"
+    decision: approve
+    message: "Agent wants to install packages: {{.Args}}"
+
+  # ---------------------------------------------------------------------------
+  # Block dangerous commands (Windows)
+  # ---------------------------------------------------------------------------
+
+  - name: block-del-recursive
+    description: Block recursive delete
+    commands:
+      - del
+      - rmdir
+    args_patterns:
+      - ".*/s.*"
+      - ".*/q.*"
+    decision: deny
+    message: "Recursive delete blocked. Files can be removed individually."
+
+  - name: block-network-tools
+    description: Block raw network tools
+    commands:
+      - telnet
+      - ssh
+      - scp
+      - ftp
+      - netsh
+    decision: deny
+
+  - name: block-system-commands
+    description: Block system administration commands
+    commands:
+      - shutdown
+      - sc
+      - net
+      - bcdedit
+      - diskpart
+      - format
+      - taskkill
+      - tasklist
+    decision: deny
+
+  - name: block-shell-escape
+    description: Block potential shell escapes
+    commands:
+      - runas
+      - psexec
+    decision: deny
+
+# =============================================================================
+# WINDOWS REGISTRY RULES (Maximum containment for untrusted code)
+# =============================================================================
+
+registry_rules:
+  # ---------------------------------------------------------------------------
+  # Allow only application-specific settings
+  # ---------------------------------------------------------------------------
+
+  - name: allow-aep-caw-settings
+    description: Allow aep-caw registry settings only
+    paths:
+      - 'HKCU\SOFTWARE\aep-caw\*'
+    operations:
+      - "*"
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # Block ALL high-risk locations (no approval, just deny)
+  # ---------------------------------------------------------------------------
+
+  - name: block-all-persistence
+    description: Block all persistence registry locations
+    paths:
+      - 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run*'
+      - 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run*'
+      - 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce*'
+      - 'HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon*'
+      - 'HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\*'
+      - 'HKLM\SYSTEM\CurrentControlSet\Services\*'
+    operations:
+      - write
+      - create
+      - delete
+      - rename
+    decision: deny
+    priority: 200
+    notify: true
+
+  - name: block-all-security
+    description: Block all security-related registry
+    paths:
+      - 'HKLM\SOFTWARE\Policies\Microsoft\Windows Defender*'
+      - 'HKLM\SYSTEM\CurrentControlSet\Control\Lsa*'
+      - 'HKLM\SECURITY\*'
+      - 'HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\*'
+    operations:
+      - "*"
+    decision: deny
+    priority: 300
+
+  - name: block-dll-hijack
+    description: Block DLL hijacking locations
+    paths:
+      - 'HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows*'
+      - 'HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options*'
+      - 'HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\KnownDLLs*'
+    operations:
+      - "*"
+    decision: deny
+    priority: 300
+
+  - name: block-com-hijack
+    description: Block COM object hijacking
+    paths:
+      - 'HKLM\SOFTWARE\Classes\CLSID\*'
+      - 'HKCU\SOFTWARE\Classes\CLSID\*'
+    operations:
+      - write
+      - create
+      - delete
+    decision: deny
+    priority: 200
+
+  # ---------------------------------------------------------------------------
+  # Allow reading only
+  # ---------------------------------------------------------------------------
+
+  - name: allow-registry-read
+    description: Allow reading registry values
+    paths:
+      - "*"
+    operations:
+      - read
+    decision: allow
+
+  # ---------------------------------------------------------------------------
+  # Default deny ALL write operations
+  # ---------------------------------------------------------------------------
+
+  - name: default-deny-registry
+    description: Deny all other registry modifications
+    paths:
+      - "*"
+    operations:
+      - write
+      - create
+      - delete
+      - rename
+    decision: deny
+
+# =============================================================================
+# RESOURCE LIMITS - Conservative
+# =============================================================================
+
+resource_limits:
+  max_memory_mb: 2048
+  memory_swap_max_mb: 0
+  cpu_quota_percent: 50
+  pids_max: 100
+  disk_read_bps_max: 52428800   # 50 MB/s
+  disk_write_bps_max: 26214400  # 25 MB/s
+  command_timeout: 5m
+  session_timeout: 1h
+  idle_timeout: 15m
+
+# =============================================================================
+# AUDIT SETTINGS - FULL LOGGING
+# =============================================================================
+
+audit:
+  log_allowed: true
+  log_denied: true
+  log_approved: true
+  include_stdout: true
+  include_stderr: true
+  include_file_content: false
+  retention_days: 90
+

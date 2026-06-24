@@ -1,0 +1,54 @@
+{
+  "manifest_version": "1",
+  "id": "dynaep-core",
+  "version": "2.8.0",
+  "kind": "protocol",
+  "path": "AEP-Components/dynAEP/",
+  "description": "Real-time dynAEP Action Lattice event governance protocol.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels"
+  ],
+  "capabilities": [
+    "lattice:events",
+    "lattice:pad-router",
+    "lattice:causal-log"
+  ],
+  "actions": [
+    {
+      "id": "register_lrp",
+      "description": "Register LRP on regulation dock via lattice frame",
+      "runtime": "dock",
+      "method": "register_lrp",
+      "params": {
+        "dock": "regulation_module"
+      }
+    }
+  ],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 128,
+    "min_disk_mb": 50,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Action Lattice hub for governed agent events and PAD routing.",
+    "use_when": [
+      "every AEP deployment",
+      "event governance",
+      "causal audit trail"
+    ],
+    "avoid_when": [],
+    "pairs_with": [
+      "aep-base-node",
+      "lattice-channels"
+    ]
+  },
+  "implementation": {
+    "entrypoints": [
+      "AEP-Components/dynAEP/bridge/lattice/index.ts"
+    ],
+    "docker_path": "/opt/aep/AEP-Components/dynAEP"
+  }
+}

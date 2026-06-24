@@ -1,0 +1,93 @@
+{
+  "manifest_version": "1",
+  "id": "connector-google-workspace",
+  "version": "2.8.0",
+  "kind": "connector",
+  "path": "AEP-Connectors/google-workspace/",
+  "description": "UCB-only Google Workspace connector. All traffic via /ucb/v1/egress/google-workspace/**.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels",
+    "ucb",
+    "composer-lite"
+  ],
+  "capabilities": [
+    "connector:google-workspace",
+    "ucb:egress-proxy",
+    "integration:external-api"
+  ],
+  "actions": [
+    {
+      "id": "wire_google-workspace",
+      "description": "Wire Google Workspace connector egress routes",
+      "runtime": "plan",
+      "method": "connector_config"
+    },
+    {
+      "id": "probe_google-workspace",
+      "description": "Health probe for Google Workspace",
+      "runtime": "connector",
+      "method": "probe"
+    }
+  ],
+  "setup_hooks": [
+    {
+      "id": "google-workspace_connector_default",
+      "policy_section": "connectors",
+      "default": {
+        "google-workspace": {
+          "upstream": "https://www.googleapis.com"
+        }
+      }
+    }
+  ],
+  "composer": {
+    "palette": true,
+    "node_type": "connector"
+  },
+  "composer_node": {
+    "type": "connector",
+    "label": "Google Workspace",
+    "short": "GO",
+    "color": "#475569",
+    "service": "google-workspace",
+    "ucb_only": true,
+    "description": "Google Workspace via UCB egress",
+    "registry_id": "connector-google-workspace"
+  },
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 10,
+    "requires_internet": true,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Connect Google Workspace. Requires UCB. Routes: /ucb/v1/egress/google-workspace/**.",
+    "use_when": [
+      "google workspace",
+      "gws",
+      "gmail",
+      "google drive",
+      "google calendar"
+    ],
+    "avoid_when": [
+      "air-gapped with no external APIs",
+      "UCB disabled"
+    ],
+    "pairs_with": [
+      "ucb",
+      "aep-base-node",
+      "composer-lite"
+    ]
+  },
+  "implementation": {
+    "module": "AEP-Connectors/google-workspace/lib/google-workspace-connector.mjs",
+    "ucb_egress_prefix": "/ucb/v1/egress/google-workspace",
+    "auth_token_env": "AEP_GWS_ACCESS_TOKEN"
+  },
+  "integration": {
+    "ucb_only": true,
+    "mcp_optional": null,
+    "nango_compatible": true
+  }
+}

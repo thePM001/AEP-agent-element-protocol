@@ -1,0 +1,65 @@
+{
+  "manifest_version": "1",
+  "id": "composer-lite",
+  "version": "2.8.0",
+  "kind": "ui",
+  "path": "AEP-Composer-Lite/",
+  "description": "WASM visual composer on :8424; graph planning alternative to CCA chat.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels",
+    "cca"
+  ],
+  "capabilities": [
+    "ui:wasm-canvas",
+    "ui:graph-edit",
+    "api:registry",
+    "api:cca-chat",
+    "api:wasm-evaluate"
+  ],
+  "actions": [
+    {
+      "id": "serve",
+      "description": "Start Composer Lite HTTP server",
+      "runtime": "daemon",
+      "method": "server.mjs"
+    },
+    {
+      "id": "install_component",
+      "description": "Enable registry component",
+      "runtime": "api",
+      "method": "POST /api/registry/install"
+    }
+  ],
+  "setup_hooks": [],
+  "composer": {
+    "palette": true,
+    "node_type": null
+  },
+  "resource_requirements": {
+    "min_memory_mb": 256,
+    "min_disk_mb": 100,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Visual drag-and-drop planner for agent governance graphs. Alternative to CCA chat planning.",
+    "use_when": [
+      "user prefers visual planning",
+      "WASM policy evaluation on canvas"
+    ],
+    "avoid_when": [
+      "headless server-only deployments with no UI"
+    ],
+    "pairs_with": [
+      "cca",
+      "wasm-policy-sandbox"
+    ]
+  },
+  "implementation": {
+    "port": 8424,
+    "health": "/api/health",
+    "graph_api": "/api/graph",
+    "lattice_transport": "AEP-Components/lattice-channels/lib/lattice-transport.mjs"
+  }
+}

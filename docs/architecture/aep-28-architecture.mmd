@@ -1,0 +1,72 @@
+flowchart TB
+  subgraph BAND1[Ingress and governance]
+    direction LR
+    subgraph SURFACES[Operator surfaces]
+      direction TB
+      CL[Composer Lite]
+      CCA[CCA agent]
+      HAR[Harness]
+      WIZ[Installation Wizard]
+    end
+    subgraph BRIDGES[Bridges and clients]
+      direction TB
+      UCB[UCB ingress egress airlock]
+      CONN[AEP Connectors]
+      SDK[SDK Clients]
+    end
+    subgraph GOV[Coding governance and HCSE]
+      direction TB
+      CG[coding-governance propose solidify git]
+      HCSE[aep-hcse parser MCP]
+      SEM[semantic-topology blast overlay]
+    end
+  end
+
+  subgraph BAND2[Transport and policy]
+    direction LR
+    MCPSEC[mcp-security MCP tool allowlist]
+    POL[Policy GAP and Subprotocols]
+    LT[lattice-transport PQEncryptedCapsule]
+  end
+
+  subgraph BAND3[Docks and hyperlattice wrap]
+    direction LR
+    subgraph DOCKS[AEP Docks on Base Node]
+      direction TB
+      VD[validation dock]
+      ID[inference dock]
+      UCD[UCD egress airlock]
+      WS[wasm_sandbox]
+    end
+    HL[ONE AEP HYPERLATTICE WRAP scene action_path GAP channels]
+  end
+
+  subgraph RUNTIME[Runtime]
+    direction LR
+    COMP[Protocol Components dynAEP lattice-channels]
+    KERN[Base Node Kernel Registry POTOMITAN]
+  end
+
+  CL --> LT
+  CCA --> LT
+  CCA --> HL
+  HAR --> LT
+  WIZ --> LT
+  UCB --> MCPSEC
+  UCB --> LT
+  UCB --> UCD
+  UCD --> HCSE
+  CG --> HCSE
+  CG --> HL
+  HCSE --> HL
+  SEM --> HL
+  CONN --> LT
+  SDK --> LT
+  POL --> HL
+  LT --> VD
+  LT --> ID
+  LT --> WS
+  VD --> HL
+  ID --> HL
+  HL --> COMP
+  HL --> KERN

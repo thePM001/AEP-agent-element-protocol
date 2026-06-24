@@ -1,0 +1,2591 @@
+# aep-caw: Secure Agent Shell Specification
+
+**Version:** 0.1.0-draft  
+**Date:** December 2024  
+**Status:** Draft
+
+---
+
+## Table of Contents
+
+1. [Executive Summary](#1-executive-summary)
+2. [Problem Statement](#2-problem-statement)
+3. [Goals and Non-Goals](#3-goals-and-non-goals)
+4. [Architecture Overview](#4-architecture-overview)
+5. [Core Components](#5-core-components)
+6. [Session Management](#6-session-management)
+7. [I/O Interception](#7-io-interception)
+8. [Network Interception](#8-network-interception)
+9. [Policy Engine](#9-policy-engine)
+10. [Structured Output](#10-structured-output)
+11. [API Design](#11-api-design)
+12. [CLI Interface](#12-cli-interface)
+13. [Security Model](#13-security-model)
+14. [Performance Considerations](#14-performance-considerations)
+15. [Configuration](#15-configuration)
+16. [Deployment](#16-deployment)
+17. [Future Considerations](#17-future-considerations)
+
+---
+
+## 1. Executive Summary
+
+**aep-caw** is a purpose-built shell environment for AI agents that provides comprehensive monitoring, policy enforcement, and structured I/O for command execution. Unlike traditional shells (bash, zsh) designed for human interaction, aep-caw treats the shell as an intelligent intermediary that understands context, risk, and intent.
+
+### Key Differentiators
+
+| Capability | Traditional Shell | aep-caw |
+|------------|------------------|---------|
+| Output format | Human-readable text | Structured JSON |
+| Error handling | Text error messages | Structured errors with suggestions |
+| Security | User-level permissions | Policy-based, operation-level control |
+| Visibility | Command-level only | Full I/O and network interception |
+| Database access | Invisible SQL traffic | Postgres-family DB proxy with connection and statement policy |
+| Session state | Implicit | Explicit, inspectable, persistent |
+| Risk awareness | None | Built-in risk assessment |
+
+### Primary Use Cases
+
+1. **AI Agent Sandboxing**: Secure execution environment for autonomous AI agents
+2. **Audit & Compliance**: Complete visibility into agent operations
+3. **Policy Enforcement**: Fine-grained control over what agents can do
+4. **Debugging & Observability**: Understand exactly what agents did and why
+
+---
+
+## 2. Problem Statement
+
+### 2.1 The Challenge of Agent Autonomy
+
+AI agents increasingly need to execute code, manipulate files, and interact with networks. Traditional approaches have significant limitations:
+
+**Docker/Container Isolation**
+- Coarse-grained (whole container vs. individual operations)
+- No semantic understanding of agent actions
+- Limited visibility into what happens inside
+- No built-in approval workflows
+
+**Traditional Shells**
+- Designed for humans, not machines
+- Unstructured output that's hard to parse
+- No risk awareness or policy enforcement
+- Commands are opaque black boxes
+
+**Wrapper Scripts**
+- Brittle and easily bypassed
+- Can't intercept operations within scripts
+- No visibility into subprocess I/O
+
+### 2.2 The Visibility Gap
+
+When an agent runs `python script.py`, a traditional shell sees:
+
+```
+Input:  "python script.py"
+Output: exit code 0
+```
+
+What actually happened inside is invisible:
+- Which files were read or written?
+- What network connections were made?
+- What subprocesses were spawned?
+- Was any sensitive data accessed?
+
+### 2.3 Requirements
+
+An agent execution environment must provide:
+
+1. **Complete Visibility**: See all file I/O, network operations, and subprocess activity
+2. **Policy Enforcement**: Allow/deny/approve operations based on rules
+3. **Structured Output**: Machine-parseable results, not human text
+4. **Session Persistence**: Maintain state across multiple commands efficiently
+5. **Acceptable Overhead**: Performance impact must be reasonable for real workloads
+
+---
+
+## 3. Goals and Non-Goals
+
+### 3.1 Goals
+
+| Priority | Goal | Description |
+|----------|------|-------------|
+| P0 | File I/O interception | Capture all file read/write/delete operations |
+| P0 | Network interception | Capture all network connections and DNS queries |
+| P0 | Policy enforcement | Allow/deny operations based on configurable rules |
+| P0 | Structured output | JSON output for all commands and events |
+| P0 | Session persistence | Keep sandbox alive across commands |
+| P1 | Risk assessment | Classify operations by risk level |
+| P1 | Approval workflows | Human-in-the-loop for dangerous operations |
+| P1 | Audit logging | Complete audit trail of all operations |
+| P1 | Resource limits | CPU, memory, disk, network quotas |
+| P2 | Dry-run mode | Preview effects of commands |
+| P2 | Transaction support | Checkpoint and rollback capability |
+| P2 | Intent tracking | Associate operations with declared goals |
+
+### 3.2 Non-Goals
+
+| Non-Goal | Rationale |
+|----------|-----------|
+| Replace bash/zsh for humans | Different use case; humans need different UX |
+| Perfect security | Defense in depth, not impenetrable fortress |
+| Zero overhead | Monitoring has costs; aim for acceptable overhead |
+| Cross-platform (initially) | Focus on Linux first; macOS/Windows later |
+| Kernel modifications | Stay in userspace for easier deployment |
+
+---
+
+## 4. Architecture Overview
+
+### 4.1 High-Level Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              Agent                                       │
+│                         (Claude, GPT, etc.)                             │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ HTTP/gRPC/Unix Socket
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           aep-caw Server                                 │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐    │
+│  │   Session   │  │   Policy    │  │   Audit     │  │   API       │    │
+│  │   Manager   │  │   Engine    │  │   Logger    │  │   Server    │    │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘    │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                    ┌───────────────┼───────────────┐
+                    │               │               │
+                    ▼               ▼               ▼
+         ┌─────────────────┐ ┌─────────────┐ ┌─────────────────┐
+         │    Session 1    │ │  Session 2  │ │    Session N    │
+         │                 │ │             │ │                 │
+         │ ┌─────────────┐ │ │             │ │                 │
+         │ │ Sandbox     │ │ │    ...      │ │      ...        │
+         │ │ ┌─────────┐ │ │ │             │ │                 │
+         │ │ │  FUSE   │ │ │ │             │ │                 │
+         │ │ │Workspace│ │ │ │             │ │                 │
+         │ │ └─────────┘ │ │ │             │ │                 │
+         │ │ ┌─────────┐ │ │ │             │ │                 │
+         │ │ │ Network │ │ │ │             │ │                 │
+         │ │ │  Proxy  │ │ │ │             │ │                 │
+         │ │ └─────────┘ │ │ │             │ │                 │
+         │ │ ┌─────────┐ │ │ │             │ │                 │
+         │ │ │Namespace│ │ │ │             │ │                 │
+         │ │ └─────────┘ │ │ │             │ │                 │
+         │ └─────────────┘ │ │             │ │                 │
+         └─────────────────┘ └─────────────┘ └─────────────────┘
+```
+
+### 4.2 Component Responsibilities
+
+| Component | Responsibility |
+|-----------|----------------|
+| API Server | External interface (HTTP/gRPC), authentication |
+| Session Manager | Create, track, destroy sessions; handle lifecycle |
+| Policy Engine | Evaluate operations against rules; make allow/deny decisions |
+| Audit Logger | Record all operations with full context |
+| Sandbox | Isolated execution environment per session |
+| FUSE Workspace | Intercept all file operations |
+| Network Proxy | Intercept all network traffic and DNS |
+| DB Proxy | Enforce Postgres-family `db_services`, `database_connection_rules`, and `database_rules` on Linux |
+| Namespace | Linux namespace isolation (mount, net, PID, UTS) |
+
+### 4.3 Technology Choices
+
+| Component | Technology | Rationale |
+|-----------|------------|-----------|
+| Language | Go | Single binary, good perf, excellent syscall support |
+| File interception | FUSE (go-fuse) | Userspace, no kernel modules |
+| Network interception | Transparent proxy + iptables | Works with all protocols |
+| DNS interception | Custom DNS resolver | Full visibility into lookups |
+| Namespaces | Linux namespaces | Native isolation, no Docker dependency |
+| IPC | Unix sockets | Low latency for local communication |
+| API | HTTP/2 + gRPC | Streaming support, wide compatibility |
+| Config | YAML | Human-readable, widely supported |
+
+---
+
+## 5. Core Components
+
+### 5.1 Session Manager
+
+The Session Manager handles the lifecycle of agent sessions.
+
+#### 5.1.1 Session States
+
+```
+┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
+│ creating │────▶│  ready   │────▶│   busy   │────▶│ stopping │
+└──────────┘     └──────────┘     └──────────┘     └──────────┘
+                      │  ▲              │                │
+                      │  │              │                │
+                      │  └──────────────┘                │
+                      │                                  ▼
+                      │                            ┌──────────┐
+                      └───────────────────────────▶│ stopped  │
+                                                   └──────────┘
+```
+
+#### 5.1.2 Session Configuration
+
+```yaml
+session:
+  id: "session-abc123"              # Unique identifier
+  workspace: "/home/user/project"   # Root directory to expose
+  timeout: "4h"                     # Maximum session duration
+  idle_timeout: "30m"               # Kill after inactivity
+  policy: "default"                 # Policy profile to use
+  
+  resource_limits:
+    max_memory_mb: 2048
+    max_cpu_percent: 80
+    max_disk_mb: 1000
+    max_network_mb: 500
+    command_timeout: "5m"
+  
+  network:
+    allowed_domains:
+      - "github.com"
+      - "*.npmjs.org"
+      - "pypi.org"
+    blocked_domains:
+      - "*.malware.com"
+    allowed_ports: [80, 443]
+    
+  environment:
+    PATH: "/usr/bin:/bin"
+    HOME: "/workspace"
+    LANG: "en_US.UTF-8"
+```
+
+#### Mount Profiles
+
+Mount profiles define reusable configurations for sessions that need access to multiple directories with different policies:
+
+```yaml
+mount_profiles:
+  claude-agent:
+    base_policy: "default"
+    mounts:
+      - path: "/home/user/workspace"
+        policy: "workspace-rw"
+      - path: "/home/user/.config"
+        policy: "config-readonly"
+```
+
+When a session is created with a profile, each mount path gets its own FUSE mount with the specified policy. The base_policy applies to all mounts as a second layer of enforcement.
+
+#### 5.1.3 Session Data Model
+
+```go
+type Session struct {
+    ID              string
+    State           SessionState
+    Config          SessionConfig
+    
+    // Runtime state
+    WorkingDir      string            // Current working directory
+    Environment     map[string]string // Accumulated env vars
+    
+    // Metrics
+    Created         time.Time
+    LastActivity    time.Time
+    CommandCount    int64
+    TotalFileOps    int64
+    TotalNetOps     int64
+    TotalBytesRead  int64
+    TotalBytesWritten int64
+    
+    // References
+    Sandbox         *Sandbox
+}
+```
+
+### 5.2 Sandbox
+
+Each session gets an isolated sandbox with persistent monitoring infrastructure.
+
+#### 5.2.1 Sandbox Components
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         Sandbox                              │
+│                                                             │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │                  Linux Namespaces                      │  │
+│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐     │  │
+│  │  │  Mount  │ │ Network │ │   PID   │ │   UTS   │     │  │
+│  │  └─────────┘ └─────────┘ └─────────┘ └─────────┘     │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                                                             │
+│  ┌─────────────────────┐  ┌─────────────────────────────┐  │
+│  │    FUSE Workspace   │  │     Network Subsystem       │  │
+│  │                     │  │                             │  │
+│  │  /workspace ────────┼──┼▶ Transparent TCP Proxy     │  │
+│  │    ├── src/         │  │                             │  │
+│  │    ├── tests/       │  │  DNS Interceptor            │  │
+│  │    └── config/      │  │    └─▶ Policy check         │  │
+│  │                     │  │    └─▶ Upstream resolver    │  │
+│  │  All ops monitored  │  │                             │  │
+│  │  Policy enforced    │  │  iptables REDIRECT rules    │  │
+│  └─────────────────────┘  └─────────────────────────────┘  │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │                 Command Executor                     │   │
+│  │                                                      │   │
+│  │  • Receives commands via Unix socket                │   │
+│  │  • Manages working directory state                  │   │
+│  │  • Handles shell builtins (cd, export, etc.)       │   │
+│  │  • Executes external commands                       │   │
+│  │  • Collects events per-command                      │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │                  Event Collector                     │   │
+│  │                                                      │   │
+│  │  • Aggregates events from FUSE and Network          │   │
+│  │  • Streams to connected clients                     │   │
+│  │  • Buffers per-command for response                 │   │
+│  └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### 5.2.2 Sandbox Lifecycle
+
+```go
+// Sandbox startup (once per session)
+func (s *Sandbox) Start() error {
+    // 1. Create session directory structure
+    // 2. Mount FUSE filesystem
+    // 3. Start network proxy
+    // 4. Configure iptables in network namespace
+    // 5. Start command listener on Unix socket
+    // 6. Start event collector
+}
+
+// Command execution (many per session)
+func (s *Sandbox) Execute(req ExecRequest) (*ExecResponse, error) {
+    // 1. Clear per-command event buffer
+    // 2. Resolve command and arguments
+    // 3. Handle shell builtins or execute external command
+    // 4. Collect stdout/stderr
+    // 5. Gather events from FUSE and network
+    // 6. Return structured response
+}
+
+// Sandbox teardown (once per session)
+func (s *Sandbox) Stop() error {
+    // 1. Stop event collector
+    // 2. Close command listener
+    // 3. Stop network proxy
+    // 4. Unmount FUSE filesystem
+    // 5. Cleanup session directory
+}
+```
+
+---
+
+## 6. Session Management
+
+### 6.1 Session Persistence Model
+
+Sessions persist their sandbox infrastructure between commands, amortizing setup costs.
+
+```
+Traditional (per-command sandbox):
+  
+  cmd1: [setup 200ms][exec 50ms][teardown 50ms] = 300ms
+  cmd2: [setup 200ms][exec 30ms][teardown 50ms] = 280ms
+  cmd3: [setup 200ms][exec 100ms][teardown 50ms] = 350ms
+  ─────────────────────────────────────────────────────
+  Total: 930ms overhead for 180ms of actual work
+
+Session-based:
+
+  session: [setup 200ms]
+    cmd1: [exec 50ms + 5ms overhead] = 55ms
+    cmd2: [exec 30ms + 5ms overhead] = 35ms
+    cmd3: [exec 100ms + 5ms overhead] = 105ms
+  session: [teardown 50ms]
+  ─────────────────────────────────────────────────────
+  Total: 250ms overhead for 180ms of actual work
+  
+  Improvement: ~73% reduction in overhead
+```
+
+### 6.2 State Persistence
+
+The session maintains state that persists across commands:
+
+| State | Persistence | Notes |
+|-------|-------------|-------|
+| Working directory | Session lifetime | `cd` changes persist |
+| Environment variables | Session lifetime | `export` changes persist |
+| Open file handles | Command lifetime | Closed after each command |
+| Network connections | Command lifetime | Closed after each command |
+| FUSE mount | Session lifetime | Stays mounted |
+| Network namespace | Session lifetime | Stays configured |
+
+### 6.3 Session Shell Builtins
+
+These commands are handled directly by the session, not executed externally:
+
+| Builtin | Behavior |
+|---------|----------|
+| `cd <path>` | Change session working directory |
+| `pwd` | Return current working directory |
+| `export KEY=value` | Add/update environment variable |
+| `unset KEY` | Remove environment variable |
+| `env` | List all environment variables |
+| `alias name=value` | Create command alias |
+| `unalias name` | Remove alias |
+| `history` | Show command history for session |
+
+### 6.4 Idle Timeout and Cleanup
+
+```go
+type SessionCleanupPolicy struct {
+    IdleTimeout     time.Duration  // Kill after no commands
+    MaxDuration     time.Duration  // Kill after total time
+    MaxCommands     int64          // Kill after N commands
+    MaxFileOps      int64          // Kill after N file operations
+    MaxNetOps       int64          // Kill after N network operations
+}
+```
+
+---
+
+## 7. I/O Interception
+
+### 7.1 FUSE Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    FUSE Mount Point                          │
+│                    /session/workspace                        │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              │ VFS operations
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     Kernel FUSE Module                       │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              │ /dev/fuse
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    aep-caw FUSE Daemon                       │
+│                                                             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
+│  │   Policy    │  │   Event     │  │   Passthrough       │ │
+│  │   Check     │──│   Emit      │──│   to Real FS        │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              │ syscalls
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Real Filesystem                            │
+│                   /actual/workspace/path                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 7.2 Intercepted Operations
+
+| Operation | FUSE Method | Events Emitted |
+|-----------|-------------|----------------|
+| Open file | `Open()` | `file_open` |
+| Read file | `Read()` | `file_read` (with byte count) |
+| Write file | `Write()` | `file_write` (with byte count) |
+| Create file | `Create()` | `file_create` |
+| Delete file | `Unlink()` | `file_delete` |
+| Rename file | `Rename()` | `file_rename` |
+| Make directory | `Mkdir()` | `dir_create` |
+| Remove directory | `Rmdir()` | `dir_delete` |
+| List directory | `ReadDir()` | `dir_list` |
+| Get attributes | `Getattr()` | `file_stat` |
+| Set attributes | `Setattr()` | `file_chmod`, `file_chown` |
+| Symlink | `Symlink()` | `symlink_create` |
+| Read symlink | `Readlink()` | `symlink_read` |
+
+### 7.3 File Event Schema
+
+```json
+{
+  "timestamp": "2024-12-15T10:30:45.123Z",
+  "type": "file_write",
+  "session_id": "session-abc123",
+  "command_id": "cmd-xyz789",
+  "pid": 12345,
+  "path": "/workspace/src/main.py",
+  "real_path": "/home/user/project/src/main.py",
+  "operation": {
+    "bytes": 1024,
+    "offset": 0,
+    "flags": ["O_WRONLY", "O_TRUNC"]
+  },
+  "decision": "allow",
+  "policy_rule": "allow-workspace-write",
+  "latency_us": 234,
+  "metadata": {
+    "file_type": "text/x-python",
+    "file_size_before": 512,
+    "file_size_after": 1024
+  }
+}
+```
+
+### 7.4 Performance Optimization
+
+#### Read-ahead and Caching
+
+```go
+type FUSEConfig struct {
+    // Kernel-level caching
+    EntryTimeout    time.Duration  // How long to cache directory entries
+    AttrTimeout     time.Duration  // How long to cache file attributes
+    
+    // Read optimization
+    MaxReadahead    int            // Maximum readahead in bytes
+    AsyncRead       bool           // Allow async read operations
+    
+    // Write optimization  
+    WritebackCache  bool           // Enable writeback caching
+    
+    // Event batching
+    EventBatchSize  int            // Batch events before sending
+    EventBatchDelay time.Duration  // Max delay before flushing
+}
+
+// Recommended defaults
+var DefaultFUSEConfig = FUSEConfig{
+    EntryTimeout:    1 * time.Second,
+    AttrTimeout:     1 * time.Second,
+    MaxReadahead:    128 * 1024,
+    AsyncRead:       true,
+    WritebackCache:  false,  // Keep false for audit accuracy
+    EventBatchSize:  100,
+    EventBatchDelay: 10 * time.Millisecond,
+}
+```
+
+#### Selective Monitoring
+
+Not all paths need FUSE interception:
+
+```yaml
+filesystem:
+  # Full FUSE monitoring
+  monitored_paths:
+    - "/workspace"
+    
+  # Bind-mount passthrough (no monitoring, full speed)
+  passthrough_paths:
+    - "/usr"         # Read-only system binaries
+    - "/lib"         # Read-only libraries
+    - "/etc/ssl"     # SSL certificates
+    
+  # Blocked entirely
+  blocked_paths:
+    - "/etc/passwd"
+    - "/etc/shadow"
+    - "/root"
+```
+
+---
+
+## 8. Network Interception
+
+### 8.1 Network Namespace Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Host Network                              │
+└─────────────────────────────────────────────────────────────┘
+         │                                    ▲
+         │ veth pair                          │
+         ▼                                    │
+┌─────────────────────────────────────────────────────────────┐
+│              Sandbox Network Namespace                       │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │              iptables NAT Rules                      │   │
+│  │                                                      │   │
+│  │  -A OUTPUT -p tcp -j REDIRECT --to-port 8080        │   │
+│  │  -A OUTPUT -p udp --dport 53 -j REDIRECT --to 5353  │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                         │                                   │
+│           ┌─────────────┴─────────────┐                    │
+│           ▼                           ▼                    │
+│  ┌─────────────────┐         ┌─────────────────┐          │
+│  │  TCP Proxy      │         │  DNS Resolver   │          │
+│  │  (port 8080)    │         │  (port 5353)    │          │
+│  │                 │         │                 │          │
+│  │  • Intercept    │         │  • Intercept    │          │
+│  │  • Log          │         │  • Log          │          │
+│  │  • Policy check │         │  • Policy check │          │
+│  │  • Forward      │         │  • Forward      │          │
+│  └─────────────────┘         └─────────────────┘          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 8.2 Transparent TCP Proxy
+
+The proxy intercepts all outbound TCP connections:
+### 8.3 Unix Domain Socket Monitoring (audit-only)
+
+- Instrumentation: `aep-caw-unixwrap` sets a seccomp user-notify filter around Unix domain socket syscalls and passes a notify fd back to the server.
+- Current behavior: audit-only. Events are emitted for socket creation/connect attempts, but decisions are *not yet enforced*; policy includes unix socket rules but runtime enforcement is pending ServeNotify wiring.
+- Configuration: `sandbox.unixSockets.enabled` (bool) and `sandbox.unixSockets.wrapper_bin` (optional override of `aep-caw-unixwrap`).
+- Limitations: does not yet block or redirect traffic; parent notify fd is closed until enforcement lands. Works on Linux only.
+
+
+```go
+type TCPProxy struct {
+    listenPort    int
+    policy        *PolicyEngine
+    events        chan NetworkEvent
+    
+    // Metrics
+    connections   atomic.Int64
+    bytesSent     atomic.Int64
+    bytesReceived atomic.Int64
+}
+
+func (p *TCPProxy) handleConnection(clientConn net.Conn) {
+    // 1. Get original destination (from iptables SO_ORIGINAL_DST)
+    origDst := getOriginalDst(clientConn)
+    
+    // 2. Policy check
+    event := NetworkEvent{
+        Type:       EventNetConnect,
+        RemoteAddr: origDst.IP.String(),
+        RemotePort: origDst.Port,
+        Protocol:   "tcp",
+    }
+    
+    decision := p.policy.CheckNetwork(event)
+    event.Decision = decision
+    p.emit(event)
+    
+    if decision == Deny {
+        clientConn.Close()
+        return
+    }
+    
+    // 3. Connect to actual destination
+    serverConn := net.Dial("tcp", origDst.String())
+    
+    // 4. Bidirectional proxy with monitoring
+    go p.proxyWithMonitor(clientConn, serverConn, origDst)
+    go p.proxyWithMonitor(serverConn, clientConn, origDst)
+}
+```
+
+### 8.3 DNS Interception
+
+All DNS queries are intercepted for visibility and policy enforcement:
+
+```go
+type DNSInterceptor struct {
+    listenPort     int
+    upstream       string  // e.g., "8.8.8.8:53"
+    policy         *PolicyEngine
+    events         chan NetworkEvent
+    
+    // Domain blocklist/allowlist
+    blockedDomains map[string]bool
+    allowedDomains map[string]bool  // If set, only these allowed
+}
+
+func (d *DNSInterceptor) handleQuery(query []byte, clientAddr *net.UDPAddr) {
+    domain := parseDNSDomain(query)
+    
+    event := NetworkEvent{
+        Type: EventDNSQuery,
+        Metadata: map[string]any{
+            "domain": domain,
+            "type":   parseDNSType(query),
+        },
+    }
+    
+    decision := d.checkDomainPolicy(domain)
+    event.Decision = decision
+    d.emit(event)
+    
+    if decision == Deny {
+        // Return NXDOMAIN or REFUSED
+        d.sendDNSError(query, clientAddr)
+        return
+    }
+    
+    // Forward to upstream and return response
+    response := d.forwardToUpstream(query)
+    d.sendResponse(response, clientAddr)
+}
+```
+
+### 8.4 eBPF Connect Tracing & Enforcement (Linux)
+
+- Optional cgroup eBPF programs (`cgroup/connect4/6`) attach per session when enabled.
+- Emits `net_connect` / `net_connect_blocked` events with pid/tgid, ports, family, dst IP, optional rDNS.
+- Enforcement (default-deny) activates when `sandbox.network.ebpf.enforce=true`; allowlist is built from policy:
+  - Exact domains resolved to IPs (periodic refresh; bounded cache; TTL capped by config).
+  - CIDRs (port-aware via LPM trie).
+  - Explicit denies are supported via deny maps (exact + CIDR); checked before allow/default-deny.
+- Loopback always allowed.
+- Wildcard domains keep enforcement non-strict (default-deny disabled); event `ebpf_enforce_non_strict` emitted.
+- Map sizing is configurable at startup (`map_allow_entries`, `map_lpm_entries`, `map_default_entries`); overrides are process-wide.
+- Debug: `/debug/ebpf` reports map overrides/defaults and DNS cache stats.
+
+### 8.4 Network Event Schema
+
+```json
+{
+  "timestamp": "2024-12-15T10:30:45.123Z",
+  "type": "net_connect",
+  "session_id": "session-abc123",
+  "command_id": "cmd-xyz789",
+  "pid": 12345,
+  "connection": {
+    "remote_addr": "140.82.121.4",
+    "remote_port": 443,
+    "local_port": 54321,
+    "protocol": "tcp"
+  },
+  "dns": {
+    "domain": "api.github.com",
+    "resolved_from": "dns_cache"
+  },
+  "decision": "allow",
+  "policy_rule": "allow-https",
+  "tls": {
+    "sni": "api.github.com",
+    "version": "TLS1.3"
+  }
+}
+```
+
+### 8.5 Network Metrics Per-Command
+
+```json
+{
+  "network_summary": {
+    "connections": 3,
+    "dns_queries": 2,
+    "bytes_sent": 4096,
+    "bytes_received": 65536,
+    "blocked_connections": 1,
+    "unique_destinations": [
+      {"host": "api.github.com", "port": 443},
+      {"host": "registry.npmjs.org", "port": 443}
+    ]
+  }
+}
+```
+
+### 8.6 Signal Interception
+
+aep-caw intercepts signal delivery between processes to enforce policy-based control over which signals can reach which targets. This prevents agents from terminating critical processes, enables graceful shutdown patterns, and provides audit trails for signal activity.
+
+#### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Agent Process Tree                         │
+│                                                             │
+│  ┌─────────────┐    kill(pid, sig)    ┌─────────────────┐  │
+│  │   Agent     │ ──────────────────▶ │  seccomp filter │  │
+│  │  Process    │                      │  (user-notify)  │  │
+│  └─────────────┘                      └────────┬────────┘  │
+│                                                │            │
+└────────────────────────────────────────────────┼────────────┘
+                                                 │ notify fd
+                                                 ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  aep-caw Signal Handler                       │
+│                                                             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
+│  │   Target    │  │   Policy    │  │   Decision          │ │
+│  │  Classify   │──│   Evaluate  │──│   Execute           │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘ │
+│                                                             │
+│  Decisions: allow → continue | deny → EPERM | redirect      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### Implementation
+
+Signal interception uses Linux seccomp with `SECCOMP_RET_USER_NOTIF` to trap signal-related syscalls:
+
+| Syscall | Purpose | Intercepted |
+|---------|---------|-------------|
+| `kill` | Send signal to process | Yes |
+| `tkill` | Send signal to thread | Yes |
+| `tgkill` | Send signal to thread in group | Yes |
+| `rt_sigqueueinfo` | Queue signal with data | Yes |
+| `pidfd_send_signal` | Signal via pidfd | Yes |
+
+When a process attempts to send a signal:
+
+1. **seccomp traps** the syscall and notifies aep-caw via the user-notify fd
+2. **Target classification** determines the relationship (self, child, external, etc.)
+3. **Policy evaluation** checks signal rules for a matching decision
+4. **Decision execution**:
+   - `allow`: Continue syscall normally
+   - `deny`: Return EPERM to caller
+   - `redirect`: Modify signal number and continue
+   - `audit`: Allow and log event
+
+#### Target Classification
+
+The PID registry tracks all processes in the session to classify signal targets:
+
+| Target Type | Description | Example |
+|-------------|-------------|---------|
+| `self` | Process signaling itself | `kill(getpid(), SIGTERM)` |
+| `children` | Direct child processes | Parent killing forked child |
+| `descendants` | All descendant processes | Grandparent signaling grandchild |
+| `siblings` | Same parent process | Two forked children |
+| `session` | Any process in aep-caw session | Within sandbox |
+| `parent` | The aep-caw supervisor | Child signaling parent |
+| `external` | PIDs outside session | Agent trying to kill host process |
+| `system` | PID 1, 2 (init, kthreadd) | Critical system processes |
+
+#### Signal Groups
+
+Signals can be specified individually or by group:
+
+| Group | Signals | Use Case |
+|-------|---------|----------|
+| `@all` | 1-31 | Match any signal |
+| `@fatal` | SIGKILL, SIGTERM, SIGQUIT, SIGABRT | Terminal signals |
+| `@job` | SIGSTOP, SIGCONT, SIGTSTP, SIGTTIN, SIGTTOU | Job control |
+| `@reload` | SIGHUP, SIGUSR1, SIGUSR2 | Config reload |
+| `@ignore` | SIGCHLD, SIGURG, SIGWINCH | Usually ignored |
+
+#### Event Schema
+
+```json
+{
+  "timestamp": "2026-01-11T10:30:45.123Z",
+  "type": "signal_blocked",
+  "session_id": "session-abc123",
+  "sender_pid": 12345,
+  "target_pid": 1,
+  "signal": "SIGKILL",
+  "signal_number": 9,
+  "target_type": "system",
+  "decision": "deny",
+  "policy_rule": "deny-system-signals",
+  "message": "Blocked fatal signal to init process"
+}
+```
+
+#### Platform Support
+
+| Platform | Blocking | Redirect | Audit |
+|----------|----------|----------|-------|
+| Linux | ✅ seccomp user-notify | ✅ | ✅ |
+| macOS | ❌ | ❌ | ✅ ES Framework |
+| Windows | ⚠️ Partial | ❌ | ✅ ETW |
+
+On platforms without blocking support, signals are logged but not intercepted.
+
+---
+
+## 9. Policy Engine
+
+### 9.1 Policy Model
+
+Policies define what operations are allowed, denied, or require approval.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Policy Evaluation                        │
+│                                                             │
+│   Operation ──▶ Match Rules ──▶ First Match Wins ──▶ Decision│
+│                                                             │
+│   Decisions:                                                │
+│     • allow   - Operation proceeds                         │
+│     • deny    - Operation blocked, error returned          │
+│     • approve - Operation blocked pending human approval   │
+│     • log     - Operation proceeds, marked for attention   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 9.2 Policy Configuration
+
+- `policies.allowed`: list of policy names (without `.yml`/`.yaml`) the server may load. If empty, only `policies.default` is permitted.
+- `AEP_CAW_POLICY_NAME`: optional env var to select an allowed policy at startup; invalid or disallowed values fall back to `policies.default`.
+- `policies.manifest_path`: optional SHA256 manifest file used to integrity-check policy files on load.
+- `policies.env_policy`: global environment policy for commands (allow/deny, max_bytes, max_keys, block_iteration); per-command `env_*` fields override. Default behavior with empty allow list is minimal PATH/LANG/TERM/HOME plus built-in secret deny list.
+- `policies.env_shim_path`: optional path to libenvshim.so; when set and block_iteration=true, the server sets LD_PRELOAD and AEP_CAW_ENV_BLOCK_ITERATION=1 for matching commands.
+
+Selection order:
+1. If `AEP_CAW_POLICY_NAME` is set, matches `^[A-Za-z0-9_-]+$`, and is in `policies.allowed`, use it.
+2. Else use `policies.default`.
+3. The selected policy is loaded once on first use; failures do not trigger loading another policy.
+
+```yaml
+# /etc/aep-caw/policies/default.yaml
+version: 1
+name: default
+description: Standard policy for AI agent execution
+
+# File operation rules
+file_rules:
+  # Explicitly allowed operations
+  - name: allow-workspace-read
+    paths: ["/workspace/**"]
+    operations: [read, open, stat, list]
+    decision: allow
+    
+  - name: allow-workspace-write
+    paths: ["/workspace/**"]
+    operations: [write, create]
+    decision: allow
+    
+  - name: approve-workspace-delete
+    paths: ["/workspace/**"]
+    operations: [delete]
+    decision: approve
+    message: "Agent wants to delete: {path}"
+    
+  - name: allow-tmp
+    paths: ["/tmp/**", "/var/tmp/**"]
+    operations: ["*"]
+    decision: allow
+    
+  # Explicitly denied operations
+  - name: deny-etc
+    paths: ["/etc/**"]
+    operations: ["*"]
+    decision: deny
+    
+  - name: deny-sensitive
+    paths: 
+      - "/home/**/.ssh/**"
+      - "/home/**/.aws/**"
+      - "**/.env"
+      - "**/secrets/**"
+    operations: ["*"]
+    decision: deny
+    
+  # Default deny
+  - name: default-deny-file
+    paths: ["**"]
+    operations: ["*"]
+    decision: deny
+
+# Network rules
+network_rules:
+  - name: allow-https
+    ports: [443]
+    decision: allow
+    
+  - name: allow-http
+    ports: [80]
+    decision: allow
+    
+  - name: allow-package-registries
+    domains:
+      - "registry.npmjs.org"
+      - "pypi.org"
+      - "files.pythonhosted.org"
+      - "crates.io"
+    decision: allow
+    
+  - name: allow-github
+    domains: ["*.github.com", "*.githubusercontent.com"]
+    decision: allow
+    
+  - name: block-internal
+    cidrs: ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+    decision: deny
+    
+  - name: default-deny-network
+    domains: ["*"]
+    decision: deny
+
+# Command rules (optional pre-execution check)
+command_rules:
+  - name: allow-safe-commands
+    commands: [ls, cat, head, tail, grep, find, pwd, echo]
+    decision: allow
+    
+  - name: approve-package-install
+    commands: [npm, pip, cargo, apt]
+    args_patterns: ["install*", "add*"]
+    decision: approve
+    message: "Agent wants to install packages: {args}"
+    
+  - name: deny-dangerous
+    commands: [rm, dd, mkfs, fdisk]
+    args_patterns: ["-rf*", "-r *"]
+    decision: deny
+
+# Registry rules (Windows-only)
+registry_rules:
+  - name: allow-app-settings
+    paths: ['HKCU\SOFTWARE\MyApp\*']
+    operations: ["*"]
+    decision: allow
+
+  - name: block-run-keys
+    paths:
+      - 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run*'
+      - 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run*'
+    operations: [write, create, delete]
+    decision: deny
+    priority: 100
+    notify: true
+
+  - name: approve-service-changes
+    paths: ['HKLM\SYSTEM\CurrentControlSet\Services\*']
+    operations: [write, create, delete]
+    decision: approve
+    message: "Agent wants to modify Windows service: {path}"
+    timeout: 60s
+
+  - name: block-security-settings
+    paths:
+      - 'HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\*'
+      - 'HKLM\SYSTEM\CurrentControlSet\Control\Lsa\*'
+    operations: [write, create, delete]
+    decision: deny
+    priority: 200
+
+  - name: default-deny-registry
+    paths: ["*"]
+    operations: ["*"]
+    decision: deny
+```
+
+### 9.3 Policy Engine Implementation
+
+```go
+type PolicyEngine struct {
+    fileRules     []FileRule
+    networkRules  []NetworkRule
+    commandRules  []CommandRule
+    registryRules []RegistryRule  // Windows-only
+
+    // Caching
+    decisionCache sync.Map
+    cacheTTL      time.Duration
+
+    // Approval handling
+    approvalChan chan ApprovalRequest
+    approvals    map[string]chan bool
+}
+
+type FileRule struct {
+    Name       string
+    Paths      []glob.Glob
+    Operations []string
+    Decision   Decision
+    Message    string
+}
+
+// RegistryRule controls Windows registry access (Windows-only)
+type RegistryRule struct {
+    Name       string
+    Paths      []glob.Glob  // e.g., "HKLM\SOFTWARE\..."
+    Operations []string     // read, write, delete, create, rename
+    Decision   Decision
+    Message    string
+    Priority   int          // Higher = evaluated first
+    CacheTTL   time.Duration
+    Notify     bool
+}
+
+func (p *PolicyEngine) CheckFileOp(event FileEvent) Decision {
+    // Check cache first
+    cacheKey := fmt.Sprintf("file:%s:%s", event.Path, event.Operation)
+    if cached, ok := p.decisionCache.Load(cacheKey); ok {
+        return cached.(Decision)
+    }
+    
+    // Evaluate rules in order
+    for _, rule := range p.fileRules {
+        if !matchesOperation(rule.Operations, event.Operation) {
+            continue
+        }
+        if !matchesPath(rule.Paths, event.Path) {
+            continue
+        }
+        
+        // Cache and return
+        p.decisionCache.Store(cacheKey, rule.Decision)
+        return rule.Decision
+    }
+    
+    // Default deny
+    return Deny
+}
+```
+
+### 9.4 Approval Workflow
+
+For operations requiring human approval:
+
+```
+┌─────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────┐
+│  Agent  │────▶│   aep-caw   │────▶│  Approval   │────▶│  Human  │
+│         │     │             │     │   Gateway   │     │         │
+└─────────┘     └─────────────┘     └─────────────┘     └─────────┘
+                      │                    │                  │
+                      │  Operation blocked │                  │
+                      │◀───────────────────│                  │
+                      │                    │    Review        │
+                      │                    │◀─────────────────│
+                      │                    │                  │
+                      │                    │  Verify human    │
+                      │                    │  (WebAuthn/TOTP) │
+                      │                    │◀─────────────────│
+                      │                    │                  │
+                      │                    │  Approve/Deny    │
+                      │                    │◀─────────────────│
+                      │  Signed token      │                  │
+                      │◀───────────────────│                  │
+                      │                    │                  │
+                      ▼                    │                  │
+              Continue or Error            │                  │
+```
+
+#### Human Verification
+
+To ensure approvals come from actual humans (not agents or bots), aep-caw requires verification:
+
+| Method | Security | Description |
+|--------|----------|-------------|
+| **WebAuthn/FIDO2** | High | Hardware security key or biometric (recommended) |
+| **TOTP** | Medium-High | Time-based code from authenticator app |
+| **Interactive Challenge** | Medium | Math problem, type filename, or timed delay |
+| **Local TTY** | High | Terminal prompt (cannot be accessed by agent) |
+
+**See `docs/approval-auth.md` for complete approval authentication specification.**
+
+#### Key Security Properties
+
+1. **Credential Separation**: Agent API keys cannot access approval endpoints
+2. **No Self-Approval When Auth Is Off**: When `auth.type=none` (or `development.disable_auth=true`), the approvals API is disabled
+3. **Network Isolation**: Approval service runs on separate port, blocked from agent's network namespace
+4. **Signed Tokens**: Approvals are cryptographically signed and bound to specific requests
+5. **Replay Prevention**: Tokens include nonces, timestamps, and are marked as used
+6. **Verification Required**: Every approval requires human verification (WebAuthn, TOTP, or challenge)
+
+```json
+// Approval request (sent to human)
+{
+  "request_id": "approval-123",
+  "session_id": "session-abc",
+  "timestamp": "2024-12-15T10:30:45Z",
+  "operation": {
+    "type": "file_delete",
+    "path": "/workspace/important-file.txt",
+    "details": {
+      "file_size": 4096,
+      "last_modified": "2024-12-14T08:00:00Z"
+    }
+  },
+  "context": {
+    "command": "rm important-file.txt",
+    "working_dir": "/workspace",
+    "recent_commands": [
+      "ls -la",
+      "cat important-file.txt"
+    ]
+  },
+  "policy_rule": "approve-workspace-delete",
+  "message": "Agent wants to delete: /workspace/important-file.txt",
+  "timeout": "5m",
+  "verification_required": ["webauthn", "totp"]
+}
+
+// Signed approval token (from verified human)
+{
+  "request_id": "approval-123",
+  "decision": "approve",
+  "approved_by": "user@example.com",
+  "verification_method": "webauthn",
+  "credential_id": "abc123...",
+  "timestamp": "2024-12-15T10:31:02Z",
+  "expires_at": "2024-12-15T10:36:02Z",
+  "request_hash": "sha256:...",
+  "signature": "base64:..."
+}
+```
+
+---
+
+## 10. Structured Output
+
+### 10.1 Design Philosophy
+
+Traditional shells output human-readable text.
+
+aep-caw always produces a structured **ExecResponse** at the API layer (JSON). The CLI can present that response in two ways:
+
+- **Shell mode (default):** print `stdout`/`stderr` like a normal shell and exit with the command’s exit code.
+- **JSON mode:** print the full ExecResponse (including `events` and `guidance`) for tools/agents.
+
+```
+Traditional shell:
+  $ ls -la
+  total 48
+  drwxr-xr-x  12 user staff   384 Dec 15 10:00 .
+  drwxr-xr-x   5 user staff   160 Dec 14 09:00 ..
+  -rw-r--r--   1 user staff  1420 Dec 15 09:55 README.md
+
+aep-caw (shell mode):
+  $ aep-caw exec session-abc123 -- ls -la
+  total 48
+  drwxr-xr-x  12 user staff   384 Dec 15 10:00 .
+  ...
+
+aep-caw (JSON mode):
+  $ aep-caw exec --output json --events summary session-abc123 -- ls -la
+  { "command_id": "cmd-...", "result": { "exit_code": 0, "stdout": "..." }, "events": { ... } }
+
+aep-caw (structured builtin example):
+  $ aep-caw exec session-abc123 -- als
+  { "entries": [ ... ] }
+```
+
+### 10.2 Command Response Schema
+
+Every command execution returns a structured response:
+
+```json
+{
+  "command_id": "cmd-xyz789",
+  "session_id": "session-abc123",
+  "timestamp": "2024-12-15T10:30:45.123Z",
+  
+  "request": {
+    "command": "python",
+    "args": ["process_data.py"],
+    "working_dir": "/workspace",
+    "timeout": "5m"
+  },
+  
+  "result": {
+    "exit_code": 0,
+    "stdout": "Processed 1000 records\n",
+    "stderr": "",
+    "duration_ms": 2341
+  },
+  
+  "events": {
+    "file_operations": [
+      {
+        "type": "file_read",
+        "path": "/workspace/input.csv",
+        "bytes": 45000,
+        "decision": "allow"
+      },
+      {
+        "type": "file_write",
+        "path": "/workspace/output.json",
+        "bytes": 62000,
+        "decision": "allow"
+      }
+    ],
+    "network_operations": [
+      {
+        "type": "dns_query",
+        "domain": "api.example.com",
+        "decision": "allow"
+      },
+      {
+        "type": "net_connect",
+        "remote": "93.184.216.34:443",
+        "bytes_sent": 1024,
+        "bytes_received": 8192,
+        "decision": "allow"
+      }
+    ],
+    "blocked_operations": [
+      {
+        "type": "file_read",
+        "path": "/etc/passwd",
+        "decision": "deny",
+        "policy_rule": "deny-etc"
+      }
+    ]
+  },
+  
+  "resources": {
+    "cpu_time_ms": 890,
+    "memory_peak_mb": 128,
+    "disk_read_mb": 0.04,
+    "disk_write_mb": 0.06,
+    "net_sent_kb": 1.0,
+    "net_received_kb": 8.0
+  }
+}
+```
+
+### 10.3 Structured Errors
+
+Errors include context and suggestions:
+
+```json
+{
+  "command_id": "cmd-xyz789",
+  "result": {
+    "exit_code": 1,
+    "error": {
+      "code": "ENOENT",
+      "message": "File not found",
+      "path": "/workspace/missing.txt",
+      "context": {
+        "working_dir": "/workspace",
+        "command": "cat missing.txt"
+      },
+      "suggestions": [
+        {
+          "action": "list_directory",
+          "command": "ls /workspace",
+          "reason": "See what files exist"
+        },
+        {
+          "action": "search",
+          "command": "find /workspace -name '*.txt'",
+          "reason": "Find similar files"
+        }
+      ],
+      "similar_files": [
+        "/workspace/missing-backup.txt",
+        "/workspace/data/missing.txt"
+      ]
+    }
+  }
+}
+```
+
+### 10.4 Output Truncation
+
+Large outputs are automatically truncated with pagination:
+
+```json
+{
+  "result": {
+    "stdout": "[first 10000 bytes of output...]",
+    "stdout_truncated": true,
+    "stdout_total_bytes": 5242880,
+    "stdout_total_lines": 100000,
+    "pagination": {
+      "current_offset": 0,
+      "current_limit": 10000,
+      "has_more": true,
+      "next_command": "aep-caw output session-abc123 cmd-xyz789 --offset=10000 --limit=10000"
+    }
+  }
+}
+```
+
+### 10.5 Builtin Structured Commands
+
+aep-caw provides a few structured “a*” builtins that return JSON on stdout:
+
+| Command | Structured Version | Output |
+|---------|-------------------|--------|
+| `ls` | `als` | JSON directory listing |
+| `cat` | `acat` | JSON with content + metadata |
+| `stat` | `astat` | JSON file attributes |
+| `env` | `aenv` | JSON environment map |
+
+Additional structured builtins may be added over time (the full ExecResponse JSON mode is the stable interface for tools/agents).
+
+---
+
+## 11. API Design
+
+### 11.1 API Overview
+
+aep-caw exposes both HTTP REST and gRPC APIs for programmatic access.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      API Gateway                             │
+│                                                             │
+│  ┌─────────────────┐         ┌─────────────────────────┐   │
+│  │   HTTP/REST     │         │        gRPC             │   │
+│  │   Port 18080    │         │      Port 9090          │   │
+│  └─────────────────┘         └─────────────────────────┘   │
+│           │                            │                    │
+│           └────────────┬───────────────┘                    │
+│                        ▼                                    │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │              Request Router                          │   │
+│  │                                                      │   │
+│  │  /sessions/*     → Session Manager                  │   │
+│  │  /exec           → Command Executor                 │   │
+│  │  /events         → Event Stream (SSE/gRPC stream)   │   │
+│  │  /approvals      → Approval Handler                 │   │
+│  │  /health         → Health Check                     │   │
+│  └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 11.2 REST API Endpoints
+
+#### Sessions
+
+```
+POST   /api/v1/sessions              Create new session
+GET    /api/v1/sessions              List all sessions
+GET    /api/v1/sessions/{id}         Get session details
+DELETE /api/v1/sessions/{id}         Destroy session
+PATCH  /api/v1/sessions/{id}         Update session config
+```
+
+#### Profiles
+
+```
+GET    /api/v1/profiles              List available mount profiles
+```
+
+#### Command Execution
+
+```
+POST   /api/v1/sessions/{id}/exec    Execute command
+POST   /api/v1/sessions/{id}/exec/stream Execute command (SSE output)
+GET    /api/v1/sessions/{id}/output/{cmd_id}  Get command output (pagination)
+POST   /api/v1/sessions/{id}/kill/{cmd_id}    Kill running command
+```
+
+#### Events
+
+```
+GET    /api/v1/sessions/{id}/events  Stream events (SSE)
+GET    /api/v1/sessions/{id}/history Get event history
+```
+
+#### Approvals
+
+```
+GET    /api/v1/approvals             List pending approvals
+POST   /api/v1/approvals/{id}        Approve/deny request
+```
+
+Notes:
+- These endpoints require `auth.type=api_key` and an `approver`/`admin` role.
+- When auth is disabled (`auth.type=none` or `development.disable_auth=true`), the approvals API is disabled to prevent agent self-approval.
+
+### 11.3 REST API Examples
+
+#### Create Session
+
+```http
+POST /api/v1/sessions HTTP/1.1
+Content-Type: application/json
+
+{
+  "id": "session-abc123",
+  "workspace": "/home/user/project",    // Optional if profile is set
+  "policy": "default",                  // Optional if profile is set
+  "profile": "claude-agent",            // Use mount profile instead of workspace/policy
+  "idle_timeout": "30m",
+  "resource_limits": {
+    "max_memory_mb": 2048,
+    "command_timeout": "5m"
+  },
+  "network": {
+    "allowed_domains": ["github.com", "npmjs.org"]
+  }
+}
+```
+
+**Note:** If `profile` is set, it takes precedence over `workspace` and `policy`. Profiles define multiple mounts with per-mount policies (see [Mount Profiles](#mount-profiles)).
+
+```http
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "id": "session-abc123",
+  "state": "ready",
+  "created": "2024-12-15T10:30:00Z",
+  "workspace": "/home/user/project",
+  "profile": "claude-agent",
+  "mounts": [
+    {"path": "/home/user/project", "policy": "workspace-rw", "mount_point": "/sessions/abc123/mount-0"},
+    {"path": "/home/user/.config", "policy": "config-readonly", "mount_point": "/sessions/abc123/mount-1"}
+  ],
+  "endpoints": {
+    "exec": "/api/v1/sessions/session-abc123/exec",
+    "events": "/api/v1/sessions/session-abc123/events"
+  }
+}
+```
+
+#### List Profiles
+
+```http
+GET /api/v1/profiles HTTP/1.1
+```
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "profiles": [
+    {
+      "name": "claude-agent",
+      "base_policy": "default",
+      "mounts": [
+        {"path": "/home/user/workspace", "policy": "workspace-rw"},
+        {"path": "/home/user/.config", "policy": "config-readonly"}
+      ]
+    }
+  ]
+}
+```
+
+#### Execute Command
+
+```http
+POST /api/v1/sessions/session-abc123/exec HTTP/1.1
+Content-Type: application/json
+
+{
+  "command": "npm",
+  "args": ["install"],
+  "timeout": "5m",
+  "stream_output": false
+}
+```
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "command_id": "cmd-xyz789",
+  "exit_code": 0,
+  "stdout": "added 847 packages in 12.3s\n",
+  "stderr": "",
+  "duration_ms": 12345,
+  "events": {
+    "file_operations": [...],
+    "network_operations": [...],
+    "blocked_operations": []
+  }
+}
+```
+
+#### Stream Events
+
+```http
+GET /api/v1/sessions/session-abc123/events HTTP/1.1
+Accept: text/event-stream
+```
+
+```
+HTTP/1.1 200 OK
+Content-Type: text/event-stream
+
+data: {"type":"file_open","path":"/workspace/package.json","decision":"allow"}
+
+data: {"type":"net_connect","remote":"registry.npmjs.org:443","decision":"allow"}
+
+data: {"type":"file_write","path":"/workspace/node_modules/.package-lock.json","bytes":4096}
+
+```
+
+### 11.4 gRPC API
+
+gRPC is optional. The current implementation uses `google.protobuf.Struct` so gRPC payloads match the HTTP JSON shapes.
+
+Proto: `proto/aepcaw/v1/aep-caw.proto`
+
+Example requests:
+- CreateSession: `{"workspace":"/home/user/project","policy":"default"}`
+- Exec: `{"session_id":"session-...","command":"ls","args":["-la"],"include_events":"summary"}`
+- ExecStream: `{"session_id":"session-...","command":"sh","args":["-c","echo hi"]}`
+- EventsTail: `{"session_id":"session-..."}`
+
+### 11.5 Client Libraries
+
+Client libraries are future work. Today you can:
+
+- Use the HTTP API directly (curl/any HTTP client).
+- Use the gRPC API with `grpcurl` or generate a client from `proto/aepcaw/v1/aep-caw.proto`.
+- When API key auth is enabled, pass the key via gRPC metadata `x-api-key` (or the configured header name, lowercased).
+
+---
+
+## 12. CLI Interface
+
+### 12.1 CLI Overview
+
+aep-caw provides both a server daemon and a client CLI.
+
+```
+aep-caw
+├── server      Start the aep-caw server
+├── session     Manage sessions
+│   ├── create  Create new session
+│   ├── list    List sessions
+│   ├── info    Get session details
+│   ├── destroy Destroy session
+│   └── attach  Attach to session (interactive)
+├── exec        Execute command in session
+├── events      Stream session events
+├── report      Generate session activity report
+├── approve     Handle pending approvals
+├── policy      Manage policies
+│   ├── list     List policies
+│   ├── show     Show policy details
+│   ├── validate Validate policy file
+│   └── generate Generate policy from session activity
+├── trash       Inspect/restore/purge soft-deleted files
+│   ├── list    Show diverted files (supports --session, --json)
+│   ├── restore Restore by token (optional --dest, --force-overwrite)
+│   └── purge   Enforce TTL/quota or purge by session
+└── config      Manage configuration
+    ├── show    Show resolved config
+    └── validate Validate config file
+```
+
+### 12.2 CLI Examples
+
+#### Start Server
+
+```bash
+# Start with default config
+$ aep-caw server
+
+# Start with custom config
+$ aep-caw server --config /etc/aep-caw/config.yaml
+
+# Start with debug logging
+$ AEP_CAW_LOG_LEVEL=debug aep-caw server
+```
+
+#### Session Management
+
+```bash
+# Create session
+$ aep-caw session create \
+    --workspace /home/user/project \
+    --policy default \
+    --idle-timeout 30m
+Session created: session-abc123
+
+# List sessions
+$ aep-caw session list
+ID              STATE   CREATED              COMMANDS  WORKSPACE
+session-abc123  ready   2024-12-15T10:30:00  42       /home/user/project
+session-def456  busy    2024-12-15T10:25:00  108      /home/user/other
+
+# Get session info
+$ aep-caw session info session-abc123
+ID:            session-abc123
+State:         ready
+Created:       2024-12-15T10:30:00Z
+Last Activity: 2024-12-15T11:45:23Z
+Commands:      42
+File Ops:      1,234
+Net Ops:       89
+Working Dir:   /workspace/src
+
+# Destroy session
+$ aep-caw session destroy session-abc123
+Session destroyed: session-abc123
+
+# Soft-delete lifecycle (when FUSE audit mode = soft_delete)
+$ aep-caw trash list --session session-abc123
+TOKEN       PATH                  SIZE  MODE         WHEN
+tok-abc123  /workspace/a.txt      4 B   soft_delete  2025-12-19T10:02:00Z
+
+# Restore to original path (default) or a custom destination
+$ aep-caw trash restore tok-abc123 --dest /workspace/a-restored.txt
+
+# Purge after a session ends or to reclaim space/quotas
+$ aep-caw trash purge --session session-abc123 --ttl 7d --quota 5GB
+```
+
+#### Command Execution
+
+```bash
+# Execute single command
+$ aep-caw exec session-abc123 -- npm install
+added 847 packages in 12.3s
+
+# Execute with timeout
+$ aep-caw exec session-abc123 --timeout 1m -- npm run build
+
+# Execute with JSON input
+$ aep-caw exec session-abc123 --json '{"command":"ls","args":["-la"]}'
+
+# Execute with JSON output (structured response)
+$ aep-caw exec --output json session-abc123 -- npm install
+{
+  "command_id": "cmd-...",
+  "session_id": "session-abc123",
+  "result": { "exit_code": 0, "duration_ms": 12345, "stdout": "..." },
+  "events": { "file_operations": [...], "network_operations": [...], "blocked_operations": [...] }
+}
+
+# Control response size by limiting included events
+$ aep-caw exec --output json --events summary session-abc123 -- npm install
+$ aep-caw exec --output json --events none session-abc123 -- npm install
+
+# Responses may also include `guidance` for agents (blocked vs failed, retryability, substitutions).
+
+# Stream output
+$ aep-caw exec session-abc123 --stream -- npm install
+added 100 packages...
+added 200 packages...
+
+# Interactive mode (attach to session)
+$ aep-caw session attach session-abc123
+aep-caw:session-abc123:/workspace$ als
+{
+  "entries": [...]
+}
+aep-caw:session-abc123:/workspace$ cd src
+aep-caw:session-abc123:/workspace/src$ 
+```
+
+#### Event Streaming
+
+```bash
+# Stream live events (SSE)
+$ aep-caw events tail session-abc123
+{"type":"file_open","path":"/workspace/src/main.py",...}
+{"type":"net_connect","remote":"api.github.com:443",...}
+
+# Query events
+$ aep-caw events query --session session-abc123 --type file_write,file_delete
+
+# Stream to file
+$ aep-caw events tail session-abc123 > events.jsonl
+```
+
+#### Approval Handling
+
+```bash
+# List pending approvals
+$ aep-caw approve list
+ID           SESSION        TYPE         PATH/TARGET            WAITING
+approval-1   session-abc    file_delete  /workspace/data.db     2m
+approval-2   session-def    net_connect  internal.corp.com:443  5m
+
+# Approve request
+$ aep-caw approve approval-1 --allow --reason "backup exists"
+
+# Deny request  
+$ aep-caw approve approval-2 --deny --reason "internal network blocked"
+
+# Interactive approval mode
+$ aep-caw approve watch
+[approval-3] session-abc wants to delete /workspace/config.json
+  Context: rm config.json
+  Recent commands: ls, cat config.json
+  Allow? [y/n/d(etails)]:
+```
+
+#### Session Reporting
+
+## aep-caw report
+
+Generate a markdown report summarizing session activity.
+
+### Synopsis
+
+```
+aep-caw report <session-id|latest> --level=<summary|detailed> [--output=<path>]
+```
+
+### Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `session-id` | Session UUID to report on |
+| `latest` | Use the most recent session |
+
+### Flags
+
+| Flag | Description |
+|------|-------------|
+| `--level` | Report detail level: `summary` (1 page) or `detailed` (full investigation) |
+| `--output` | Write report to file instead of stdout |
+| `--direct-db` | Query local database directly (offline mode) |
+| `--db-path` | Path to events database (default: /var/lib/aep-caw/events.db) |
+
+### Examples
+
+```bash
+# Quick summary of latest session
+aep-caw report latest --level=summary
+
+# Detailed investigation, save to file
+aep-caw report abc123-def4-5678 --level=detailed --output=report.md
+
+# Pipe to pager
+aep-caw report latest --level=summary | less
+
+# Offline mode (no server required)
+aep-caw report latest --level=summary --direct-db
+```
+
+### Report Levels
+
+**Summary** (~1 page):
+- Session overview (duration, policy, status)
+- Decision counts (allowed, blocked, redirected, etc.)
+- Key findings with severity indicators
+- Top activity by category (files, network, commands)
+
+**Detailed** (full investigation):
+- Everything in summary
+- Full event timeline
+- Blocked operations table with rules and messages
+- Redirect history
+- Complete command history
+- All file paths accessed
+- All network hosts contacted
+
+### Findings Detection
+
+Reports automatically detect and highlight:
+
+| Finding | Severity | Description |
+|---------|----------|-------------|
+| Blocked operations | Critical | Operations denied by policy |
+| Denied approvals | Critical | Requests rejected by operator |
+| Soft-deleted files | Warning | Files moved to trash |
+| Sensitive path access | Warning | Access to credentials, SSH keys, etc. |
+| Direct IP connections | Warning | Network to IPs instead of domains |
+| Unusual ports | Warning | Connections to non-80/443 ports |
+| High host diversity | Warning | >10 unique network destinations |
+| Redirected operations | Info | Commands/paths substituted by policy |
+| Granted approvals | Info | Operations approved by operator |
+| Failed commands | Info | Non-zero exit codes |
+
+## aep-caw policy generate
+
+Generate restrictive policies from observed session behavior ("profile-then-lock" workflow).
+
+### Synopsis
+
+```
+aep-caw policy generate <session-id|latest> [flags]
+```
+
+### Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `session-id` | Session UUID to analyze |
+| `latest` | Use the most recent session |
+
+### Flags
+
+| Flag | Description |
+|------|-------------|
+| `--output` | Write policy to file instead of stdout |
+| `--name` | Policy name (default: generated-<session-id>) |
+| `--threshold` | Files in same dir before collapsing to glob (default: 5) |
+| `--include-blocked` | Include blocked ops as comments (default: true) |
+| `--arg-patterns` | Generate arg patterns for risky commands (default: true) |
+| `--direct-db` | Query local database directly (offline mode) |
+| `--db-path` | Path to events database |
+
+### Examples
+
+```bash
+# Generate policy from latest session
+aep-caw policy generate latest --output=ci-policy.yaml
+
+# Generate with custom name and threshold
+aep-caw policy generate abc123 --name=production-build --threshold=10
+
+# Quick preview to stdout
+aep-caw policy generate latest
+```
+
+### Generated Policy Features
+
+**Path Grouping:**
+- When multiple files in the same directory exceed threshold, collapses to glob pattern
+- Example: 10 files in `/workspace/src/` becomes `/workspace/src/**`
+- Common parent directories are also collapsed when subdirectories exceed threshold
+
+**Domain Grouping:**
+- Multiple subdomains of the same base domain collapse to wildcard
+- Example: `api.github.com`, `raw.github.com` becomes `*.github.com`
+
+**Risky Command Detection:**
+- Built-in list: curl, wget, ssh, rm, sudo, docker, pip, etc.
+- Commands observed making network calls marked as risky
+- Commands observed deleting files marked as risky
+- Risky commands get arg patterns to restrict allowed arguments
+
+**Provenance Comments:**
+- Each rule includes comment with event count and time range
+- Sample paths/domains shown for reference
+- Blocked operations included as commented-out rules
+
+### Use Cases
+
+- **CI/CD lockdown**: Profile a build/test run, lock future runs to that behavior
+- **Agent sandboxing**: Let an AI agent run a task, generate policy for future runs
+- **Container profiling**: Profile a workload, generate minimal policy for production
+
+---
+
+## 13. Security Model
+
+### 13.1 Defense in Depth
+
+aep-caw implements multiple security layers:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Layer 1: API Authentication                                  │
+│ • API keys or JWT tokens                                    │
+│ • Per-agent credentials                                     │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Layer 2: Session Isolation                                   │
+│ • Linux namespaces (mount, net, PID, UTS)                  │
+│ • Separate filesystem view per session                     │
+│ • Isolated network namespace                               │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Layer 3: Policy Enforcement                                  │
+│ • File path restrictions                                    │
+│ • Network destination restrictions                         │
+│ • Command restrictions                                      │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Layer 4: Resource Limits                                     │
+│ • CPU and memory limits (cgroups)                          │
+│ • Disk I/O limits                                          │
+│ • Network bandwidth limits                                  │
+│ • Command timeout                                          │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Layer 5: Syscall Filtering                                   │
+│ • seccomp-bpf rules                                        │
+│ • Block dangerous syscalls (ptrace, mount, etc.)           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 13.2 Namespace Isolation
+
+Each session runs in isolated Linux namespaces:
+
+| Namespace | Isolation Provided |
+|-----------|-------------------|
+| Mount | Separate filesystem view; FUSE mounted at /workspace |
+| Network | Separate network stack; all traffic through proxy |
+| PID | Cannot see host processes |
+| UTS | Separate hostname |
+| User | Optional; map to unprivileged user |
+
+### 13.3 seccomp-bpf Profile
+
+**Status:** Implemented. See [docs/seccomp.md](seccomp.md) for detailed configuration.
+
+aep-caw uses seccomp-bpf to block dangerous syscalls that could allow an agent to escape isolation or compromise the host system. The filter is installed by `aep-caw-unixwrap` before exec'ing the target command.
+
+**Configuration:**
+
+```yaml
+sandbox:
+  seccomp:
+    enabled: true
+    mode: enforce  # enforce | audit | disabled
+    unix_socket:
+      enabled: true
+      action: enforce
+    syscalls:
+      default_action: allow
+      block:
+        - ptrace
+        - process_vm_readv
+        - process_vm_writev
+        - mount
+        - umount2
+        # ... see docs/seccomp.md for full default list
+      on_block: kill  # kill | log_and_kill
+    blocked_socket_families:        # see docs/seccomp.md § Socket Family Blocking
+      - family: AF_ALG              # blocks socket(AF_ALG, ...) → EAFNOSUPPORT
+        action: errno
+```
+
+**Default blocked socket families** (when `blocked_socket_families` is unset):
+
+aep-caw ships a default list of 12 families blocked at `errno` (returns `EAFNOSUPPORT`): `AF_ALG`, `AF_VSOCK`, `AF_RDS`, `AF_TIPC`, `AF_KCM`, plus the dead protocols `AF_X25`, `AF_AX25`, `AF_NETROM`, `AF_ROSE`, `AF_DECnet`, `AF_APPLETALK`, `AF_IPX`. Set the field to `[]` to opt out.
+
+**Default blocked syscalls** (when seccomp is enabled):
+
+| Syscall | Reason |
+|---------|--------|
+| ptrace | Process debugging/injection |
+| process_vm_readv/writev | Cross-process memory access |
+| mount, umount2, pivot_root | Filesystem manipulation |
+| reboot, kexec_load | System control |
+| init_module, finit_module, delete_module | Kernel module loading |
+| personality | Execution domain changes |
+
+When a process invokes a blocked syscall, the response depends on `sandbox.seccomp.syscalls.on_block`:
+
+- `errno` (default): syscall returns `EPERM`, no event emitted (kernel-side).
+- `kill`: process killed with `SIGSYS` via `SCMP_ACT_KILL_PROCESS`, no event emitted.
+- `log`: syscall returns `EPERM` and a `seccomp_blocked` event is emitted with `outcome: denied`.
+- `log_and_kill`: handler sends `SIGKILL` via `pidfd_send_signal` and emits `seccomp_blocked` with `outcome: killed`.
+
+```json
+{
+  "type": "seccomp_blocked",
+  "timestamp": "2026-04-15T10:30:00Z",
+  "session_id": "sess_abc123",
+  "source": "seccomp",
+  "pid": 12345,
+  "fields": {
+    "syscall": "ptrace",
+    "syscall_nr": 101,
+    "action": "log_and_kill",
+    "outcome": "killed",
+    "arch": "arm64"
+  }
+}
+```
+
+The `pid` field is the TID of the trapping thread (seccomp_notif.pid is a TID, not a TGID). See `docs/seccomp.md` for the full action table and startup-warning behavior.
+
+### 13.4 Resource Limits (cgroups v2)
+
+aep-caw enforces per-command limits via **cgroups v2** when enabled in server config:
+
+```yaml
+sandbox:
+  cgroups:
+    enabled: true
+    # Base path under the cgroup v2 filesystem where per-command cgroups are created.
+    # Rootless/dev: prefer a relative path under the current process cgroup.
+    base_path: "aep-caw"
+```
+
+Limits are sourced from the active policy `resource_limits`.
+
+Currently enforced (when cgroups are enabled): `max_memory_mb`, `cpu_quota_percent`, `pids_max`.
+
+```yaml
+resource_limits:
+  max_memory_mb: 2048        # Memory max (MB)
+  cpu_quota_percent: 80      # CPU quota (% of one CPU)
+  pids_max: 100              # Max processes
+```
+
+### 13.5 Threat Model
+
+| Threat | Mitigation |
+|--------|------------|
+| Agent accesses/edits unexpected files | Policy enforcement + workspace view (FUSE) |
+| Agent accesses sensitive files | Policy enforcement + path restrictions |
+| Agent exfiltrates data | Network policy + egress monitoring |
+| Agent DoS via resources | cgroups resource limits |
+| Agent exploits kernel | seccomp-bpf syscall filtering + eBPF monitoring |
+| Agent escapes via symlinks | FUSE resolves and validates symlinks |
+| Agent uses covert channels | Network proxy inspects all traffic |
+
+### 13.6 Audit Trail
+
+All operations are logged with full context:
+
+```json
+{
+  "audit_id": "audit-123456",
+  "timestamp": "2024-12-15T10:30:45.123456Z",
+  "session_id": "session-abc123",
+  "agent_id": "agent-xyz",
+  "command_id": "cmd-789",
+  
+  "operation": {
+    "type": "file_delete",
+    "path": "/workspace/important.txt",
+    "real_path": "/home/user/project/important.txt"
+  },
+  
+  "policy": {
+    "decision": "approve",
+    "rule": "approve-workspace-delete",
+    "approval_id": "approval-456",
+    "approved_by": "user@example.com",
+    "approval_time": "2024-12-15T10:31:02Z"
+  },
+  
+  "context": {
+    "working_dir": "/workspace",
+    "command": "rm important.txt",
+    "command_history": [
+      "ls -la",
+      "cat important.txt",
+      "rm important.txt"
+    ]
+  },
+  
+  "outcome": {
+    "success": true,
+    "duration_us": 1234
+  }
+}
+```
+
+---
+
+## 14. Performance Considerations
+
+### 14.1 Performance Targets
+
+| Metric | Target | Notes |
+|--------|--------|-------|
+| Session creation | < 500ms | One-time cost |
+| Command overhead | < 10ms | Per command |
+| FUSE latency | < 100μs | Per file operation |
+| Network proxy latency | < 1ms | Per connection |
+| Throughput overhead | < 20% | For I/O-bound workloads |
+
+### 14.2 FUSE Optimizations
+
+```go
+// FUSE mount options for performance
+var fuseOptions = []string{
+    "allow_other",          // Allow access from sandbox processes
+    "default_permissions",  // Let kernel check permissions
+    "max_read=131072",      // 128KB max read size
+    "max_write=131072",     // 128KB max write size
+    "async_read",           // Async read operations
+    "big_writes",           // Enable large write buffers
+}
+
+// Attribute caching
+var cacheTimeouts = FUSECacheConfig{
+    EntryTimeout: 1 * time.Second,  // Cache directory entries
+    AttrTimeout:  1 * time.Second,  // Cache file attributes
+    NegativeTimeout: 0,             // Don't cache ENOENT
+}
+```
+
+### 14.3 Event Batching
+
+```go
+type EventBatcher struct {
+    buffer     []IOEvent
+    bufferSize int
+    flushDelay time.Duration
+    output     chan []IOEvent
+    mu         sync.Mutex
+}
+
+func (b *EventBatcher) Add(event IOEvent) {
+    b.mu.Lock()
+    defer b.mu.Unlock()
+    
+    b.buffer = append(b.buffer, event)
+    
+    if len(b.buffer) >= b.bufferSize {
+        b.flush()
+    }
+}
+
+func (b *EventBatcher) flushLoop() {
+    ticker := time.NewTicker(b.flushDelay)
+    for range ticker.C {
+        b.mu.Lock()
+        if len(b.buffer) > 0 {
+            b.flush()
+        }
+        b.mu.Unlock()
+    }
+}
+```
+
+### 14.4 Policy Caching
+
+```go
+type PolicyCache struct {
+    cache sync.Map
+    ttl   time.Duration
+}
+
+type cacheEntry struct {
+    decision Decision
+    rule     string
+    expires  time.Time
+}
+
+func (c *PolicyCache) Get(key string) (Decision, string, bool) {
+    if val, ok := c.cache.Load(key); ok {
+        entry := val.(*cacheEntry)
+        if time.Now().Before(entry.expires) {
+            return entry.decision, entry.rule, true
+        }
+        c.cache.Delete(key)
+    }
+    return "", "", false
+}
+```
+
+### 14.5 Selective Monitoring
+
+For maximum performance, use selective monitoring:
+
+```yaml
+monitoring:
+  # Full FUSE monitoring (slower, complete visibility)
+  full_monitor:
+    - "/workspace"
+    
+  # Read-only bind mount (faster, write operations still logged)
+  read_only_passthrough:
+    - "/usr"
+    - "/lib"
+    - "/opt"
+    
+  # Full passthrough (fastest, no monitoring)
+  passthrough:
+    - "/dev"
+    - "/proc"
+    - "/sys"
+```
+
+### 14.6 Benchmark Results
+
+Expected overhead by workload type:
+
+| Workload | Overhead | Notes |
+|----------|----------|-------|
+| CPU-bound computation | ~2% | Minimal I/O |
+| Large file processing | 15-25% | Sequential I/O |
+| Many small files (npm install) | 25-40% | High metadata ops |
+| Network-heavy | 5-15% | Proxy overhead |
+| Mixed workload | 15-25% | Typical agent usage |
+
+---
+
+## 15. Configuration
+
+### 15.1 Server Configuration
+
+The current implementation’s example config is `config.yml` in the repository root.
+
+Key fields:
+- `server.http.addr`
+- `server.grpc.enabled` / `server.grpc.addr` (CreateSession, Exec, ExecStream, EventsTail)
+- `server.unix_socket.*`
+- `auth.type` and `auth.api_key.*` (HTTP header + gRPC metadata)
+- `sandbox.*` (FUSE/network/cgroups)
+  - `sandbox.fuse.audit.*` (delete safety):
+    - `enabled` (bool, default true)
+    - `mode`: `monitor` | `soft_block` | `soft_delete` | `strict` (strict wraps chosen mode; fails ops if sink unhealthy)
+    - `trash_path` (default `.aep-caw_trash`, relative to workspace when not absolute)
+    - `ttl` / `quota` (optional retention and size caps enforced by purge)
+    - `strict_on_audit_failure` (bool, fail operation when audit sink errors)
+    - `max_event_queue` (bounded async logger depth; drop-oldest unless strict)
+    - `hash_small_files_under` (size threshold to hash diverted files for integrity on restore)
+  - `sandbox.fuse.max_background` (int, default 0): kernel-side per-mount FUSE async request queue depth (`FUSE_INIT max_background`). When 0, go-fuse's default of 12 is used (matching the kernel default). Raise on multi-mount daemons under heavy ptrace+seccomp syscall traffic to reduce request_wait_answer parking. Common tuned values: 32-128. Values below 12 typically degrade throughput.
+  - `sandbox.unixSockets.*` (audit-only unix domain socket monitoring):
+    - `enabled` (bool, default false)
+    - `wrapper_bin` (path override, default `aep-caw-unixwrap` in `$PATH`)
+- `policies.*`
+  - `policies.symlink_escape`: `"evaluate"` (default) | `"deny"`. Controls FUSE-layer handling of workspace symlinks whose targets lie outside the workspace root, for operations whose policy subject is the target (open/read/write/exec). `evaluate` resolves the symlink and evaluates the resolved outside path against the normal `file_rules`, letting Python venvs (`venv/bin/python -> /usr/bin/python3`) work out of the box; operators express deny via a regular rule on `/usr/bin/**` etc. `deny` restores the historical blanket `workspace-escape` deny - any symlink target outside the workspace is refused regardless of `file_rules`. Leaf-only operations (`stat`, `readlink`, `delete`, `rmdir`) are always checked against the symlink path itself and are unaffected by this setting.
+- `approvals.*`
+
+### 15.2 Policy Configuration
+
+See [Section 9.2](#92-policy-configuration) for policy file format.
+
+### 15.3 Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `AEP_CAW_CONFIG` | CLI auto-start config path | `config.yml` |
+| `AEP_CAW_LOG_LEVEL` | Override config `logging.level` | `info` |
+| `AEP_CAW_HTTP_ADDR` | Override config `server.http.addr` | `127.0.0.1:18080` |
+| `AEP_CAW_GRPC_ADDR` | gRPC listen address | `127.0.0.1:9090` |
+| `AEP_CAW_DATA_DIR` | Override data dir (sessions + SQLite DB) | unset |
+| `AEP_CAW_NO_AUTO` | Disable CLI auto-start/auto-create behaviors | unset |
+| `AEP_CAW_TRANSPORT` | CLI transport preference (`http` or `grpc`) | `http` |
+
+---
+
+## 16. Deployment
+
+### 16.0 Cross-Platform Support
+
+aep-caw provides full security features on Linux. For Windows and macOS, we support deployment strategies that run aep-caw inside a Linux environment.
+
+| Platform | Strategy | Security Level |
+|----------|----------|----------------|
+| **Linux** | Native | ✅ Full |
+| **Windows** | WSL2 or Docker | ✅ Full |
+| **macOS** | Tiered (FUSE → sandbox → Lima/Docker) | ⚠️ Varies by tier |
+| **Container Dev** | Linux container with aep-caw | ✅ Full |
+
+**See `docs/cross-platform.md` for platform-specific notes.**
+
+### 16.1 System Requirements (Linux Native)
+
+| Requirement | Minimum | Recommended |
+|-------------|---------|-------------|
+| OS | Linux 5.4+ | Linux 5.15+ (io_uring) |
+| Architecture | amd64, arm64 | amd64 |
+| Memory | 512MB + 256MB/session | 2GB + 512MB/session |
+| Disk | 10GB | 50GB+ |
+| Kernel features | namespaces, FUSE, cgroups v2 | + seccomp, eBPF |
+
+### 16.2 Installation
+
+```bash
+# Download binary
+curl -LO https://github.com/nla-aep/aep-caw-framework/releases/latest/download/aep-caw-linux-amd64
+chmod +x aep-caw-linux-amd64
+sudo mv aep-caw-linux-amd64 /usr/local/bin/aep-caw
+
+# Create directories
+sudo mkdir -p /etc/aep-caw/policies
+sudo mkdir -p /var/lib/aep-caw
+sudo mkdir -p /var/log/aep-caw
+sudo mkdir -p /var/run/aep-caw
+
+# Copy default config and policies
+sudo cp config.yaml /etc/aep-caw/
+sudo cp policies/*.yaml /etc/aep-caw/policies/
+
+# Create systemd service
+sudo cp aep-caw.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable aep-caw
+sudo systemctl start aep-caw
+```
+
+### 16.3 Docker Deployment
+
+aep-caw is available as a Docker image that works on Linux, Windows (Docker Desktop), and macOS (Docker Desktop, Colima, OrbStack).
+
+```dockerfile
+FROM ubuntu:24.04
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    fuse3 \
+    libfuse3-dev \
+    iptables \
+    iproute2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy aep-caw binary
+COPY aep-caw /usr/local/bin/
+
+# Copy configuration
+COPY config.yaml /etc/aep-caw/
+COPY policies/ /etc/aep-caw/policies/
+
+# Create directories
+RUN mkdir -p /var/lib/aep-caw /var/log/aep-caw /var/run/aep-caw
+
+# Need privileged mode for namespaces
+# Or specific capabilities: CAP_SYS_ADMIN, CAP_NET_ADMIN
+EXPOSE 18080 9090
+
+CMD ["aep-caw", "server"]
+```
+
+```bash
+# Run with required capabilities (works on all platforms with Docker)
+docker run -d \
+  --name aep-caw \
+  --cap-add SYS_ADMIN \
+  --cap-add NET_ADMIN \
+  --device /dev/fuse \
+  --security-opt apparmor=unconfined \
+  -p 18080:18080 \
+  -p 9090:9090 \
+  -v /path/to/workspaces:/workspaces \
+  ghcr.io/aep-caw/aep-caw:latest
+```
+
+**See [docker-compose.yml](docker-compose.yml) for a complete Docker Compose configuration.**
+
+### 16.4 Kubernetes Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aep-caw
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aep-caw
+  template:
+    metadata:
+      labels:
+        app: aep-caw
+    spec:
+      containers:
+      - name: aep-caw
+        image: aep-caw:latest
+        ports:
+        - containerPort: 18080
+        - containerPort: 9090
+        securityContext:
+          privileged: true  # Required for namespaces
+        volumeMounts:
+        - name: config
+          mountPath: /etc/aep-caw
+        - name: workspaces
+          mountPath: /workspaces
+        - name: data
+          mountPath: /var/lib/aep-caw
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+      volumes:
+      - name: config
+        configMap:
+          name: aep-caw-config
+      - name: workspaces
+        persistentVolumeClaim:
+          claimName: aep-caw-workspaces
+      - name: data
+        emptyDir: {}
+```
+
+---
+
+## 17. Future Considerations
+
+### 17.1 Planned Features
+
+| Feature | Priority | Description |
+|---------|----------|-------------|
+| eBPF monitoring | High | Lower overhead alternative to FUSE |
+| Transaction support | Medium | Checkpoint and rollback |
+| Intent tracking | Medium | Associate operations with goals |
+| Multi-node | Medium | Distributed session management |
+| GPU passthrough | Low | Support for ML workloads |
+| Windows support | Low | Port to Windows |
+| macOS support | Low | Port to macOS |
+
+### 17.2 eBPF Monitoring Mode
+
+Future hybrid mode using eBPF for monitoring, FUSE only for blocking:
+
+```yaml
+monitoring:
+  mode: "hybrid"  # "fuse", "ebpf", "hybrid"
+  
+  hybrid:
+    # eBPF for read-only monitoring (low overhead)
+    ebpf_monitor:
+      - "/workspace"
+      - "/tmp"
+      
+    # FUSE only for paths that need blocking
+    fuse_enforce:
+      - "/workspace/secrets"
+```
+
+### 17.3 MCP Integration
+
+Model Context Protocol server mode for direct Claude integration:
+
+```json
+{
+  "mcpServers": {
+    "aep-caw": {
+      "command": "aep-caw",
+      "args": ["mcp-server"],
+      "env": {
+        "AEP_CAW_WORKSPACE": "/home/user/project",
+        "AEP_CAW_POLICY": "default"
+      }
+    }
+  }
+}
+```
+
+### 17.4 Intent Tracking
+
+Future feature to associate operations with declared goals:
+
+```bash
+# Declare intent
+$ aep-caw intent "Refactor authentication module"
+
+# Operations are tagged with intent
+$ aep-caw exec session-abc -- vim src/auth.py
+
+# Query what happened for an intent
+$ aep-caw intent show intent-123
+Intent: Refactor authentication module
+Duration: 45 minutes
+Files modified: 12
+Tests run: 3
+Commits: 2
+```
+
+---
+
+## Appendix A: Glossary
+
+| Term | Definition |
+|------|------------|
+| Session | A persistent sandbox environment for an agent |
+| Sandbox | Isolated execution environment with FUSE and network proxy |
+| Policy | Rules defining allowed/denied operations |
+| Event | Structured record of an I/O or network operation |
+| Approval | Human-in-the-loop authorization for sensitive operations |
+| FUSE | Filesystem in Userspace; used for file I/O interception |
+
+## Appendix B: Error Codes
+
+| Code | Name | Description |
+|------|------|-------------|
+| `E_SESSION_NOT_FOUND` | Session not found | Session ID does not exist |
+| `E_SESSION_BUSY` | Session busy | Session is executing another command |
+| `E_SESSION_STOPPED` | Session stopped | Session has been terminated |
+| `E_POLICY_DENIED` | Policy denied | Operation blocked by policy |
+| `E_APPROVAL_TIMEOUT` | Approval timeout | Human approval not received in time |
+| `E_APPROVAL_DENIED` | Approval denied | Human denied the operation |
+| `E_RESOURCE_LIMIT` | Resource limit | Resource quota exceeded |
+| `E_COMMAND_TIMEOUT` | Command timeout | Command execution timed out |
+
+## Appendix C: References
+
+- [FUSE Documentation](https://www.kernel.org/doc/html/latest/filesystems/fuse.html)
+- [Linux Namespaces](https://man7.org/linux/man-pages/man7/namespaces.7.html)
+- [seccomp](https://www.kernel.org/doc/html/latest/userspace-api/seccomp_filter.html)
+- [cgroups v2](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html)
+- [go-fuse Library](https://github.com/hanwen/go-fuse)
+
+---
+
+*This specification is a living document and will be updated as aep-caw evolves.*

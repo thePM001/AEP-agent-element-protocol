@@ -1,0 +1,50 @@
+{
+  "manifest_version": "1",
+  "id": "lattice-channels",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/lattice-channels/",
+  "description": "Unified lattice transport (MJS), TypeScript client, and Rust channel crate.",
+  "requires": [
+    "lattice-crypto"
+  ],
+  "capabilities": [
+    "transport:lattice-gated-fetch",
+    "transport:frame-builder",
+    "lattice:frame",
+    "lattice:client",
+    "channel:rust-crate"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 5,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Single lattice stack: latticeGatedFetch, TS client, aep-lattice-channel crate.",
+    "use_when": [
+      "any JS/MJS/TS client",
+      "Composer Lite",
+      "UCB",
+      "CCA"
+    ],
+    "avoid_when": [
+      "never bypass with raw fetch for governed traffic"
+    ],
+    "pairs_with": [
+      "lattice-crypto",
+      "aep-base-node",
+      "agentmesh"
+    ]
+  },
+  "implementation": {
+    "module": "AEP-Components/lattice-channels/lib/lattice-transport.mjs",
+    "typescript_bridge": "AEP-Components/lattice-channels/lib/lattice-gated-fetch.ts",
+    "client": "AEP-Components/lattice-channels/client/lattice/index.ts",
+    "crate": "AEP-Components/lattice-channels/crate",
+    "binary": "aep-lattice-log"
+  }
+}

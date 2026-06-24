@@ -1,0 +1,40 @@
+[package]
+name = "aep-base-node"
+description = "AEP 2.8 mandatory local governance daemon"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+default-run = "aep-base-node"
+
+[[bin]]
+name = "aep-base-node"
+path = "src/main.rs"
+
+[[bin]]
+name = "aep-lattice-log"
+path = "src/bin/aep-lattice-log.rs"
+
+[dependencies]
+aep-lattice-channel = { path = "../../AEP-Components/lattice-channels/crate" }
+aep-lattice-crypto = { path = "../../AEP-Components/lattice-crypto/crate" }
+aep-agentmesh = { path = "../../AEP-Components/agentmesh/crate" }
+aep-potomitan = { path = "../potomitan/crate" }
+aep-lattice-memory = { path = "../../AEP-Components/lattice-memory/crate" }
+serde.workspace = true
+serde_json.workspace = true
+rusqlite.workspace = true
+tokio = { workspace = true, features = ["sync"] }
+tracing.workspace = true
+tracing-subscriber.workspace = true
+clap.workspace = true
+rand.workspace = true
+hex.workspace = true
+sha2.workspace = true
+rustls.workspace = true
+rustls-pemfile.workspace = true
+tokio-rustls.workspace = true
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "io-util"] }

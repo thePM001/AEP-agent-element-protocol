@@ -1,0 +1,1142 @@
+package session
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/nla-aep/aep-caw-framework/internal/pathutil"
+	"github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/nla-aep/aep-caw-framework/internal/proxy/credsub"
+	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/google/uuid"
+)
+
+var (
+	ErrSessionExists    = errors.New("session already exists")
+	ErrInvalidSessionID = errors.New("invalid session id")
+)
+
+var sessionIDRe = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$`)
+
+type Session struct {
+	mu                sync.Mutex
+	cwdEscapeWarnOnce sync.Once // #377: latches the one-time symlink-cwd-escape diagnostic
+
+	ID             string
+	State          types.SessionState
+	CreatedAt      time.Time
+	LastActivity   time.Time
+	Workspace      string
+	WorkspaceMount string
+	Policy         string
+
+	Cwd         string
+	VirtualRoot string // "/workspace" or real workspace path when real_paths enabled
+	Env         map[string]string
+	History     []string
+
+	// Lifecycle fields
+	stats   types.SessionStats
+	endedAt *time.Time
+
+	currentCommandID  string
+	currentProcPID    int
+	currentTraceID    string // W3C trace context: trace ID (32 hex chars)
+	currentSpanID     string // W3C trace context: parent span ID (16 hex chars)
+	currentTraceFlags string // W3C trace context: trace flags (2 hex chars, e.g. "01")
+	execMu            sync.Mutex
+
+	workspaceUnmount func() error
+
+	proxyURL   string // Network proxy URL (for HTTP_PROXY env vars)
+	proxyClose func() error
+
+	llmProxyURL   string // LLM proxy URL (for ANTHROPIC_BASE_URL, OPENAI_BASE_URL)
+	llmProxyClose func() error
+	llmProxy      interface{} // *proxy.Proxy - stored as interface to avoid import cycle
+
+	mcpRegistry interface{} // *mcpregistry.Registry - stored as interface to avoid import cycle
+
+	netnsName  string
+	netnsClose func() error
+
+	dbProxySocketDir string
+	dbProxyClose     func() error
+
+	// Multi-mount support
+	Profile string          // Profile name if using multi-mount
+	Mounts  []ResolvedMount // Active mounts (empty if legacy single-mount)
+
+	// TOTP approval support
+	TOTPSecret string // Secret for TOTP-based approval
+
+	// Project detection results
+	ProjectRoot string
+	GitRoot     string
+
+	// Session-specific policy engine with expanded variables (e.g. ${PROJECT_ROOT}).
+	// Used by seccomp file_monitor and execve handler for accurate path matching.
+	// Falls back to the global policy if nil.
+	policyEngine *policy.Engine
+
+	// credsTable is the per-session credential substitution table.
+	// Nil if no secrets are configured.
+	credsTable *credsub.Table
+
+	// secretsClose zeros the credsTable on session close. Nil if no secrets.
+	secretsClose func()
+
+	// serviceEnvVars holds fake credentials keyed by env var name.
+	// Injected into spawned processes bypassing policy filtering.
+	// Nil if no services declare inject.env.
+	serviceEnvVars map[string]string
+}
+
+// SetPolicyEngine stores the session-specific policy engine with expanded variables.
+func (s *Session) SetPolicyEngine(engine *policy.Engine) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.policyEngine = engine
+}
+
+// PolicyEngine returns the session-specific policy engine, or nil if not set.
+func (s *Session) PolicyEngine() *policy.Engine {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.policyEngine
+}
+
+// CredsTable returns the per-session credential substitution table,
+// or nil if no secrets are configured.
+func (s *Session) CredsTable() *credsub.Table {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.credsTable
+}
+
+// SetCredsTable stores the credential table and cleanup function on
+// the session. Called by StartLLMProxy after BootstrapCredentials.
+func (s *Session) SetCredsTable(t *credsub.Table, closeFn func()) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.credsTable = t
+	s.secretsClose = closeFn
+}
+
+// SetServiceEnvVars stores the service env var map on the session.
+func (s *Session) SetServiceEnvVars(env map[string]string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.serviceEnvVars = env
+}
+
+// ServiceEnvVars returns a copy of the service env var map.
+// Returns nil if no services declare inject.env.
+func (s *Session) ServiceEnvVars() map[string]string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.serviceEnvVars == nil {
+		return nil
+	}
+	out := make(map[string]string, len(s.serviceEnvVars))
+	for k, v := range s.serviceEnvVars {
+		out[k] = v
+	}
+	return out
+}
+
+type Manager struct {
+	mu       sync.RWMutex
+	sessions map[string]*Session
+
+	maxSessions int
+}
+
+func NewManager(maxSessions int) *Manager {
+	if maxSessions <= 0 {
+		maxSessions = 100
+	}
+	return &Manager{
+		sessions:    make(map[string]*Session),
+		maxSessions: maxSessions,
+	}
+}
+
+func (m *Manager) Create(workspace, policy string) (*Session, error) {
+	return m.CreateWithID("", workspace, policy)
+}
+
+// CreateWithProfile creates a session with multiple mounts from a profile.
+func (m *Manager) CreateWithProfile(id, profile, basePolicy string, mounts []ResolvedMount) (*Session, error) {
+	if len(mounts) == 0 {
+		return nil, fmt.Errorf("at least one mount is required")
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(m.sessions) >= m.maxSessions {
+		return nil, fmt.Errorf("max sessions reached")
+	}
+
+	if id == "" {
+		id = "session-" + uuid.NewString()
+	} else if !sessionIDRe.MatchString(id) {
+		return nil, ErrInvalidSessionID
+	}
+	if _, ok := m.sessions[id]; ok {
+		return nil, ErrSessionExists
+	}
+
+	// Use first mount as the "primary" workspace for legacy compatibility.
+	// Resolve symlinks so boundary checks use the canonical path.
+	primaryWorkspace := mounts[0].Path
+	if resolved, err := filepath.EvalSymlinks(primaryWorkspace); err == nil {
+		primaryWorkspace = resolved
+	}
+
+	now := time.Now().UTC()
+	s := &Session{
+		ID:           id,
+		State:        types.SessionStateReady,
+		CreatedAt:    now,
+		LastActivity: now,
+		Workspace:    primaryWorkspace,
+		Policy:       basePolicy,
+		Profile:      profile,
+		Mounts:       mounts,
+		Cwd:          "/workspace",
+		VirtualRoot:  "/workspace",
+		Env:          map[string]string{},
+	}
+	m.sessions[id] = s
+	return s, nil
+}
+
+func (m *Manager) CreateWithID(id, workspace, policy string) (*Session, error) {
+	if workspace == "" {
+		return nil, fmt.Errorf("workspace is required")
+	}
+	abs, err := filepath.Abs(workspace)
+	if err != nil {
+		return nil, fmt.Errorf("workspace abs: %w", err)
+	}
+	st, err := os.Stat(abs)
+	if err != nil {
+		return nil, fmt.Errorf("workspace stat: %w", err)
+	}
+	if !st.IsDir() {
+		return nil, fmt.Errorf("workspace must be a directory")
+	}
+	// Resolve symlinks so the canonical path is used for FUSE mount
+	// source and workspace boundary checks (e.g. /workspace → /home/user).
+	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+		abs = resolved
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(m.sessions) >= m.maxSessions {
+		return nil, fmt.Errorf("max sessions reached")
+	}
+
+	if id == "" {
+		id = "session-" + uuid.NewString()
+	} else if !sessionIDRe.MatchString(id) {
+		return nil, ErrInvalidSessionID
+	}
+	if _, ok := m.sessions[id]; ok {
+		return nil, ErrSessionExists
+	}
+	now := time.Now().UTC()
+	s := &Session{
+		ID:             id,
+		State:          types.SessionStateReady,
+		CreatedAt:      now,
+		LastActivity:   now,
+		Workspace:      abs,
+		WorkspaceMount: abs,
+		Policy:         policy,
+		Cwd:            "/workspace",
+		VirtualRoot:    "/workspace",
+		Env:            map[string]string{},
+	}
+	m.sessions[id] = s
+	return s, nil
+}
+
+func (m *Manager) Get(id string) (*Session, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	s, ok := m.sessions[id]
+	return s, ok
+}
+
+func (m *Manager) List() []*Session {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := make([]*Session, 0, len(m.sessions))
+	for _, s := range m.sessions {
+		out = append(out, s)
+	}
+	return out
+}
+
+func (m *Manager) Count() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return len(m.sessions)
+}
+
+func (m *Manager) Destroy(id string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.sessions[id]; !ok {
+		return false
+	}
+	delete(m.sessions, id)
+	return true
+}
+
+func (s *Session) Snapshot() types.Session {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var mounts []types.MountInfo
+	for _, m := range s.Mounts {
+		mounts = append(mounts, types.MountInfo{
+			Path:       m.Path,
+			Policy:     m.Policy,
+			MountPoint: m.MountPoint,
+		})
+	}
+
+	return types.Session{
+		ID:               s.ID,
+		State:            s.State,
+		CreatedAt:        s.CreatedAt,
+		Workspace:        s.Workspace,
+		WorkspaceMount:   s.WorkspaceMount,
+		Policy:           s.Policy,
+		Profile:          s.Profile,
+		Mounts:           mounts,
+		Cwd:              s.Cwd,
+		VirtualRoot:      s.VirtualRoot,
+		ProxyURL:         s.proxyURL,
+		LLMProxyURL:      s.llmProxyURL,
+		DBProxySocketDir: s.dbProxySocketDir,
+		TOTPSecret:       s.TOTPSecret,
+		ProjectRoot:      s.ProjectRoot,
+		GitRoot:          s.GitRoot,
+	}
+}
+
+func (s *Session) LockExec() func() {
+	s.execMu.Lock()
+	s.mu.Lock()
+	s.State = types.SessionStateBusy
+	s.LastActivity = time.Now().UTC()
+	s.mu.Unlock()
+	return func() {
+		s.mu.Lock()
+		s.State = types.SessionStateReady
+		s.currentCommandID = ""
+		s.currentProcPID = 0
+		s.currentTraceID = ""
+		s.currentSpanID = ""
+		s.currentTraceFlags = ""
+		s.LastActivity = time.Now().UTC()
+		s.mu.Unlock()
+		s.execMu.Unlock()
+	}
+}
+
+func (s *Session) SetCurrentCommandID(commandID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.currentCommandID = commandID
+}
+
+func (s *Session) CurrentCommandID() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.currentCommandID
+}
+
+func (s *Session) SetCurrentProcessPID(pid int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.currentProcPID = pid
+}
+
+func (s *Session) CurrentProcessPID() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.currentProcPID
+}
+
+// SetCurrentTraceContext stores the W3C trace context for the current command execution.
+func (s *Session) SetCurrentTraceContext(traceID, spanID, traceFlags string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.currentTraceID = traceID
+	s.currentSpanID = spanID
+	s.currentTraceFlags = traceFlags
+}
+
+// CurrentTraceContext returns the trace context for the current command execution.
+func (s *Session) CurrentTraceContext() (traceID, spanID, traceFlags string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.currentTraceID, s.currentSpanID, s.currentTraceFlags
+}
+
+// InjectTraceContext adds trace_id, span_id, and trace_flags to the event fields if trace context is set.
+func (s *Session) InjectTraceContext(fields map[string]any) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.currentTraceID != "" {
+		fields["trace_id"] = s.currentTraceID
+	}
+	if s.currentSpanID != "" {
+		fields["span_id"] = s.currentSpanID
+	}
+	if s.currentTraceFlags != "" {
+		fields["trace_flags"] = s.currentTraceFlags
+	}
+}
+
+func (s *Session) TouchAt(t time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if t.IsZero() {
+		t = time.Now().UTC()
+	}
+	s.LastActivity = t.UTC()
+}
+
+func (s *Session) Touch() { s.TouchAt(time.Now().UTC()) }
+
+func (s *Session) Timestamps() (createdAt, lastActivity time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.CreatedAt, s.LastActivity
+}
+
+func (s *Session) SetWorkspaceMount(path string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if path != "" {
+		s.WorkspaceMount = path
+	}
+}
+
+func (s *Session) WorkspaceMountPath() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.WorkspaceMount != "" {
+		return s.WorkspaceMount
+	}
+	return s.Workspace
+}
+
+// SetRealPaths switches the session to use real host paths instead of /workspace.
+// Returns false when enabled is true but the workspace is empty (real paths cannot
+// be applied).
+func (s *Session) SetRealPaths(enabled bool) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if enabled {
+		if s.Workspace == "" {
+			return false // empty workspace cannot be used as virtual root
+		}
+		vroot := filepath.ToSlash(filepath.Clean(s.Workspace))
+		s.VirtualRoot = vroot
+		s.Cwd = vroot
+	} else {
+		s.VirtualRoot = "/workspace"
+		s.Cwd = "/workspace"
+	}
+	return true
+}
+
+func (s *Session) SetWorkspaceUnmount(fn func() error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.workspaceUnmount = fn
+}
+
+func (s *Session) UnmountWorkspace() error {
+	s.mu.Lock()
+	fn := s.workspaceUnmount
+	s.workspaceUnmount = nil
+	s.mu.Unlock()
+	if fn != nil {
+		return fn()
+	}
+	return nil
+}
+
+func (s *Session) SetProxy(url string, closeFn func() error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.proxyURL = url
+	s.proxyClose = closeFn
+}
+
+// SetProxyInstance stores the proxy instance for stats access.
+func (s *Session) SetProxyInstance(proxy interface{}) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.llmProxy = proxy
+}
+
+// ProxyInstance returns the LLM proxy instance, if any.
+func (s *Session) ProxyInstance() interface{} {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.llmProxy
+}
+
+// SetMCPRegistry stores the MCP tool registry instance in the session.
+// The registry is stored as interface{} to avoid an import cycle with mcpregistry.
+func (s *Session) SetMCPRegistry(r interface{}) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.mcpRegistry = r
+}
+
+// MCPRegistry returns the MCP tool registry instance, if any.
+func (s *Session) MCPRegistry() interface{} {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.mcpRegistry
+}
+
+func (s *Session) ProxyURL() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.proxyURL
+}
+
+func (s *Session) CloseProxy() error {
+	s.mu.Lock()
+	fn := s.proxyClose
+	s.proxyClose = nil
+	s.proxyURL = ""
+	s.mu.Unlock()
+	if fn != nil {
+		return fn()
+	}
+	return nil
+}
+
+// SetLLMProxy sets the LLM proxy URL and cleanup function.
+func (s *Session) SetLLMProxy(url string, closeFn func() error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.llmProxyURL = url
+	s.llmProxyClose = closeFn
+}
+
+// LLMProxyURL returns the LLM proxy URL.
+func (s *Session) LLMProxyURL() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.llmProxyURL
+}
+
+// CloseLLMProxy closes the LLM proxy.
+// Stops the proxy first (waiting for in-flight requests to drain),
+// then zeros the credential table. This ordering ensures hooks see
+// a populated table for the duration of any in-flight request.
+func (s *Session) CloseLLMProxy() error {
+	s.mu.Lock()
+	fn := s.llmProxyClose
+	secretsFn := s.secretsClose
+	s.llmProxyClose = nil
+	s.llmProxyURL = ""
+	s.llmProxy = nil
+	s.mcpRegistry = nil
+	s.credsTable = nil
+	s.secretsClose = nil
+	s.serviceEnvVars = nil
+	s.mu.Unlock()
+	// Stop proxy first so in-flight requests finish with a populated table.
+	var proxyErr error
+	if fn != nil {
+		proxyErr = fn()
+	}
+	if secretsFn != nil {
+		secretsFn()
+	}
+	return proxyErr
+}
+
+func (s *Session) SetNetNS(name string, closeFn func() error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.netnsName = name
+	s.netnsClose = closeFn
+}
+
+func (s *Session) NetNSName() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.netnsName
+}
+
+func (s *Session) CloseNetNS() error {
+	s.mu.Lock()
+	fn := s.netnsClose
+	s.netnsClose = nil
+	s.netnsName = ""
+	s.mu.Unlock()
+	if fn != nil {
+		return fn()
+	}
+	return nil
+}
+
+func (s *Session) SetDBProxy(socketDir string, closeFn func() error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.dbProxySocketDir = socketDir
+	s.dbProxyClose = closeFn
+}
+
+func (s *Session) DBProxySocketDir() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.dbProxySocketDir
+}
+
+func (s *Session) CloseDBProxy() error {
+	s.mu.Lock()
+	fn := s.dbProxyClose
+	s.dbProxyClose = nil
+	s.dbProxySocketDir = ""
+	s.mu.Unlock()
+	if fn != nil {
+		return fn()
+	}
+	return nil
+}
+
+// IsUnderRoot checks if path is equal to or a child of root using
+// path-boundary-aware logic. Delegates to pathutil.IsUnderRoot.
+func IsUnderRoot(path, root string) bool {
+	return pathutil.IsUnderRoot(path, root)
+}
+
+// IsRealPathUnder checks if a real filesystem path is equal to or under root,
+// using os.PathSeparator for boundary checks. Delegates to pathutil.IsRealPathUnder.
+func IsRealPathUnder(path, root string) bool {
+	return pathutil.IsRealPathUnder(path, root)
+}
+
+// TrimRootPrefix removes root from the front of path, using case-insensitive
+// matching on Windows. Delegates to pathutil.TrimRootPrefix.
+func TrimRootPrefix(path, root string) string {
+	return pathutil.TrimRootPrefix(path, root)
+}
+
+func (s *Session) Builtin(req types.ExecRequest) (handled bool, exitCode int, stdout, stderr []byte) {
+	switch req.Command {
+	case "cd":
+		s.Touch()
+		s.mu.Lock()
+		vroot := s.VirtualRoot
+		if vroot == "" {
+			vroot = "/workspace"
+		}
+		cwd := s.Cwd
+		s.mu.Unlock()
+		target := vroot
+		if len(req.Args) > 0 && req.Args[0] != "" {
+			t := req.Args[0]
+			if !filepath.IsAbs(t) {
+				t = filepath.ToSlash(filepath.Join(cwd, t))
+			}
+			target = filepath.ToSlash(filepath.Clean(t))
+		}
+		if !IsUnderRoot(target, vroot) {
+			return true, 1, nil, []byte(fmt.Sprintf("cd: path must be under %s\n", vroot))
+		}
+		s.mu.Lock()
+		s.Cwd = target
+		s.History = append(s.History, "cd "+target)
+		s.mu.Unlock()
+		return true, 0, []byte{}, []byte{}
+	case "pwd":
+		s.Touch()
+		s.mu.Lock()
+		out := s.Cwd
+		s.History = append(s.History, "pwd")
+		s.mu.Unlock()
+		b := []byte(out + "\n")
+		return true, 0, b, []byte{}
+	case "export":
+		s.Touch()
+		if len(req.Args) < 1 || !strings.Contains(req.Args[0], "=") {
+			msg := []byte("usage: export KEY=value\n")
+			return true, 2, []byte{}, msg
+		}
+		parts := strings.SplitN(req.Args[0], "=", 2)
+		s.mu.Lock()
+		if s.Env == nil {
+			s.Env = map[string]string{}
+		}
+		s.Env[parts[0]] = parts[1]
+		s.History = append(s.History, "export "+req.Args[0])
+		s.mu.Unlock()
+		return true, 0, []byte{}, []byte{}
+	case "unset":
+		s.Touch()
+		if len(req.Args) < 1 {
+			msg := []byte("usage: unset KEY\n")
+			return true, 2, []byte{}, msg
+		}
+		s.mu.Lock()
+		delete(s.Env, req.Args[0])
+		s.History = append(s.History, "unset "+req.Args[0])
+		s.mu.Unlock()
+		return true, 0, []byte{}, []byte{}
+	case "env":
+		s.Touch()
+		s.mu.Lock()
+		var b strings.Builder
+		for k, v := range s.Env {
+			b.WriteString(k)
+			b.WriteString("=")
+			b.WriteString(v)
+			b.WriteString("\n")
+		}
+		s.History = append(s.History, "env")
+		s.mu.Unlock()
+		out := []byte(b.String())
+		return true, 0, out, []byte{}
+	case "history":
+		s.Touch()
+		s.mu.Lock()
+		out := strings.Join(s.History, "\n") + "\n"
+		s.History = append(s.History, "history")
+		s.mu.Unlock()
+		b := []byte(out)
+		return true, 0, b, []byte{}
+	case "aenv":
+		s.Touch()
+		_, env, _ := s.GetCwdEnvHistory()
+		b, err := json.Marshal(env)
+		if err != nil {
+			return true, 1, nil, []byte(err.Error() + "\n")
+		}
+		return true, 0, b, nil
+	case "als":
+		s.Touch()
+		target := ""
+		if len(req.Args) > 0 {
+			target = req.Args[0]
+		}
+		virt, real, err := s.resolvePathForBuiltin(target)
+		if err != nil {
+			return true, 2, nil, []byte(err.Error() + "\n")
+		}
+		entries, err := os.ReadDir(real)
+		if err != nil {
+			return true, 2, nil, []byte(err.Error() + "\n")
+		}
+		type item struct {
+			Name      string `json:"name"`
+			Path      string `json:"path"`
+			IsDir     bool   `json:"is_dir"`
+			SizeBytes int64  `json:"size_bytes,omitempty"`
+			Mode      string `json:"mode,omitempty"`
+			MTime     string `json:"mtime,omitempty"`
+		}
+		out := make([]item, 0, len(entries))
+		for _, e := range entries {
+			info, _ := e.Info()
+			it := item{
+				Name:  e.Name(),
+				Path:  filepath.ToSlash(filepath.Join(virt, e.Name())),
+				IsDir: e.IsDir(),
+			}
+			if info != nil {
+				it.SizeBytes = info.Size()
+				it.Mode = info.Mode().String()
+				it.MTime = info.ModTime().UTC().Format(time.RFC3339Nano)
+			}
+			out = append(out, it)
+		}
+		b, err := json.Marshal(out)
+		if err != nil {
+			return true, 1, nil, []byte(err.Error() + "\n")
+		}
+		return true, 0, b, nil
+	case "astat":
+		s.Touch()
+		target := ""
+		if len(req.Args) > 0 {
+			target = req.Args[0]
+		}
+		virt, real, err := s.resolvePathForBuiltin(target)
+		if err != nil {
+			return true, 2, nil, []byte(err.Error() + "\n")
+		}
+		info, err := os.Stat(real)
+		if err != nil {
+			return true, 2, nil, []byte(err.Error() + "\n")
+		}
+		out := map[string]any{
+			"path":       virt,
+			"size_bytes": info.Size(),
+			"is_dir":     info.IsDir(),
+			"mode":       info.Mode().String(),
+			"mtime":      info.ModTime().UTC().Format(time.RFC3339Nano),
+		}
+		b, err := json.Marshal(out)
+		if err != nil {
+			return true, 1, nil, []byte(err.Error() + "\n")
+		}
+		return true, 0, b, nil
+	case "acat":
+		s.Touch()
+		if len(req.Args) < 1 {
+			return true, 2, nil, []byte("usage: acat <path>\n")
+		}
+		virt, real, err := s.resolvePathForBuiltin(req.Args[0])
+		if err != nil {
+			return true, 2, nil, []byte(err.Error() + "\n")
+		}
+		f, err := os.Open(real)
+		if err != nil {
+			return true, 2, nil, []byte(err.Error() + "\n")
+		}
+		defer f.Close()
+		const max = 1 * 1024 * 1024
+		buf, err := io.ReadAll(io.LimitReader(f, max+1))
+		if err != nil {
+			return true, 2, nil, []byte(err.Error() + "\n")
+		}
+		truncated := false
+		if len(buf) > max {
+			truncated = true
+			buf = buf[:max]
+		}
+		info, _ := f.Stat()
+		out := map[string]any{
+			"path":      virt,
+			"content":   string(buf),
+			"truncated": truncated,
+		}
+		if info != nil {
+			out["size_bytes"] = info.Size()
+			out["mtime"] = info.ModTime().UTC().Format(time.RFC3339Nano)
+		}
+		b, err := json.Marshal(out)
+		if err != nil {
+			return true, 1, nil, []byte(err.Error() + "\n")
+		}
+		return true, 0, b, nil
+	default:
+		return false, 0, nil, nil
+	}
+}
+
+// isVirtualPathAbs checks if a virtual path (using forward slashes) is absolute.
+// Handles both POSIX paths ("/foo") and Windows drive-letter paths ("C:/foo").
+// On Windows, filepath.IsAbs("/foo") returns false, but virtual paths always
+// use "/" as root, so we also check for a leading slash.
+func isVirtualPathAbs(p string) bool {
+	return strings.HasPrefix(p, "/") || filepath.IsAbs(p)
+}
+
+func (s *Session) ApplyPatch(patch types.SessionPatchRequest) error {
+	s.Touch()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if patch.Cwd != "" {
+		cwd := patch.Cwd
+		vroot := s.EffectiveVirtualRoot()
+		if !isVirtualPathAbs(cwd) {
+			cwd = filepath.ToSlash(filepath.Join(s.Cwd, cwd))
+		}
+		cwd = filepath.ToSlash(filepath.Clean(cwd))
+		if cwd == "." || cwd == "" {
+			cwd = vroot
+		}
+		if !IsUnderRoot(cwd, vroot) {
+			return fmt.Errorf("cwd must be under %s", vroot)
+		}
+		s.Cwd = cwd
+	}
+
+	if s.Env == nil {
+		s.Env = map[string]string{}
+	}
+	for k, v := range patch.Env {
+		if strings.TrimSpace(k) == "" {
+			continue
+		}
+		s.Env[k] = v
+	}
+	for _, k := range patch.Unset {
+		delete(s.Env, k)
+	}
+	return nil
+}
+
+// EffectiveVirtualRoot returns VirtualRoot with a safe default for legacy/empty sessions.
+func (s *Session) EffectiveVirtualRoot() string {
+	if s.VirtualRoot == "" {
+		return "/workspace"
+	}
+	return s.VirtualRoot
+}
+
+func (s *Session) resolvePathForBuiltin(arg string) (virt string, real string, err error) {
+	cwd, _, _ := s.GetCwdEnvHistory()
+	vroot := s.EffectiveVirtualRoot()
+	virt = cwd
+	if strings.TrimSpace(arg) != "" {
+		if isVirtualPathAbs(arg) {
+			virt = arg
+		} else {
+			virt = filepath.ToSlash(filepath.Join(cwd, arg))
+		}
+	}
+	virt = filepath.ToSlash(filepath.Clean(virt))
+	if virt == "." || virt == "" {
+		virt = vroot
+	}
+	if !IsUnderRoot(virt, vroot) {
+		// Outside workspace - reject for builtins (acat/als/astat run in-process
+		// and bypass seccomp). Subprocess commands handle outside paths via
+		// resolveWorkingDir in exec.go where seccomp enforces policy.
+		return "", "", fmt.Errorf("path must be under %s", vroot)
+	}
+	rel := TrimRootPrefix(virt, vroot)
+	rel = strings.TrimPrefix(rel, "/")
+	root := s.WorkspaceMountPath()
+	real = filepath.Clean(filepath.Join(root, filepath.FromSlash(rel)))
+	rootClean := filepath.Clean(root)
+	if !IsRealPathUnder(real, rootClean) {
+		return "", "", fmt.Errorf("path escapes workspace mount")
+	}
+	// Resolve root symlinks for consistent comparison (macOS /var -> /private/var)
+	rootResolved, rootErr := filepath.EvalSymlinks(rootClean)
+	if rootErr != nil {
+		rootResolved = rootClean
+	}
+	// Resolve symlinks to prevent escape via workspace symlinks.
+	// Builtins run in-process and bypass seccomp, so we must verify the
+	// resolved real path stays under the workspace root.
+	resolved, resolveErr := filepath.EvalSymlinks(real)
+	if resolveErr == nil {
+		resolved = filepath.Clean(resolved)
+		if !IsRealPathUnder(resolved, rootResolved) {
+			return "", "", fmt.Errorf("symlink escape outside workspace root")
+		}
+		real = resolved
+	}
+	// If EvalSymlinks fails (e.g., file doesn't exist), the lexical check above is sufficient
+	return virt, real, nil
+}
+
+// GetCwd returns the session's current virtual working directory. It is a
+// lightweight accessor (no env/history copy) for hot-path callers such as the
+// FUSE symlink-escape check (#377).
+func (s *Session) GetCwd() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.Cwd
+}
+
+// FirstCwdEscapeWarn reports true exactly once per session. The FUSE layer uses
+// it to emit a single diagnostic when the process cwd is a symlink whose target
+// escapes the workspace mount under symlink_escape="deny" (#377), so the
+// otherwise-opaque "everything denied" failure is self-describing.
+func (s *Session) FirstCwdEscapeWarn() bool {
+	first := false
+	s.cwdEscapeWarnOnce.Do(func() { first = true })
+	return first
+}
+
+func (s *Session) GetCwdEnvHistory() (cwd string, env map[string]string, history []string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cwd = s.Cwd
+	env = make(map[string]string, len(s.Env))
+	for k, v := range s.Env {
+		env[k] = v
+	}
+	history = append([]string(nil), s.History...)
+	return
+}
+
+func (s *Session) RecordHistory(line string) {
+	s.Touch()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	const maxHistory = 1000
+	s.History = append(s.History, line)
+	// Trim history if it exceeds the limit
+	if len(s.History) > maxHistory {
+		// Keep the most recent entries
+		s.History = s.History[len(s.History)-maxHistory:]
+	}
+}
+
+func (m *Manager) ReapExpired(now time.Time, sessionTimeout, idleTimeout time.Duration) []*Session {
+	if sessionTimeout <= 0 && idleTimeout <= 0 {
+		return nil
+	}
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+
+	// First pass: collect candidates without holding both locks simultaneously
+	m.mu.RLock()
+	candidates := make([]*Session, 0, len(m.sessions))
+	for _, s := range m.sessions {
+		candidates = append(candidates, s)
+	}
+	m.mu.RUnlock()
+
+	// Check each session's timestamps (only holding session lock)
+	var expiredIDs []string
+	for _, s := range candidates {
+		s.mu.Lock()
+		createdAt := s.CreatedAt
+		last := s.LastActivity
+		id := s.ID
+		s.mu.Unlock()
+
+		expired := false
+		if sessionTimeout > 0 && now.Sub(createdAt) > sessionTimeout {
+			expired = true
+		}
+		if !expired && idleTimeout > 0 && now.Sub(last) > idleTimeout {
+			expired = true
+		}
+		if expired {
+			expiredIDs = append(expiredIDs, id)
+		}
+	}
+
+	if len(expiredIDs) == 0 {
+		return nil
+	}
+
+	// Second pass: delete expired sessions (only holding manager lock)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var reaped []*Session
+	for _, id := range expiredIDs {
+		if s, ok := m.sessions[id]; ok {
+			delete(m.sessions, id)
+			reaped = append(reaped, s)
+		}
+	}
+	return reaped
+}
+
+// Stats returns a copy of the session statistics.
+func (s *Session) Stats() types.SessionStats {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.stats
+}
+
+// UpdateStats updates the session statistics using the provided function.
+func (s *Session) UpdateStats(fn func(*types.SessionStats)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	fn(&s.stats)
+}
+
+// IncrementFileReads increments the file read counter.
+func (s *Session) IncrementFileReads(bytes int64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stats.FileReads++
+	s.stats.BytesRead += bytes
+}
+
+// IncrementFileWrites increments the file write counter.
+func (s *Session) IncrementFileWrites(bytes int64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stats.FileWrites++
+	s.stats.BytesWritten += bytes
+}
+
+// IncrementNetworkConns increments the network connection counter.
+func (s *Session) IncrementNetworkConns() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stats.NetworkConns++
+}
+
+// IncrementBlockedOps increments the blocked operations counter.
+func (s *Session) IncrementBlockedOps() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stats.BlockedOps++
+}
+
+// IncrementCommandsExecuted increments the commands executed counter.
+func (s *Session) IncrementCommandsExecuted() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stats.CommandsExecuted++
+}
+
+// IncrementCommandsFailed increments the failed commands counter.
+func (s *Session) IncrementCommandsFailed() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stats.CommandsFailed++
+}
+
+// EndedAt returns when the session ended, or nil if still running.
+func (s *Session) EndedAt() *time.Time {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.endedAt
+}
+
+// cleanup releases all resources associated with the session.
+func (s *Session) cleanup() {
+	// Close network namespace
+	s.CloseNetNS()
+
+	// Close DB proxy
+	s.CloseDBProxy()
+
+	// Close network proxy
+	s.CloseProxy()
+
+	// Close LLM proxy
+	s.CloseLLMProxy()
+
+	// Unmount all mounts (multi-mount)
+	for i := range s.Mounts {
+		if s.Mounts[i].Unmount != nil {
+			_ = s.Mounts[i].Unmount()
+		}
+	}
+
+	// Unmount workspace (legacy single-mount)
+	s.UnmountWorkspace()
+}
