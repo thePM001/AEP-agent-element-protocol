@@ -1,4 +1,4 @@
-# NLA Port Policy
+# AEP Port Policy
 
 All AEP 2.8 public tier services MUST bind to the **84xx service mesh** range (`8400`-`8499`) unless explicitly documented as an infrastructure exception in this file.
 
@@ -6,7 +6,7 @@ All AEP 2.8 public tier services MUST bind to the **84xx service mesh** range (`
 
 | Port | Reason |
 |------|--------|
-| `28780` | Non-NLA range; never assign to AEP 2.8 services |
+| `28780` | Prohibited; never assign to AEP 2.8 services |
 
 ## AEP 2.8 public tier
 
