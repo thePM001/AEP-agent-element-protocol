@@ -1,0 +1,66 @@
+{
+  "manifest_version": "1",
+  "id": "eu-ai-act",
+  "version": "2.8.0",
+  "kind": "compliance",
+  "path": "AEP-Policy-System/reference/",
+  "description": "EU AI Act compliance pack (GAP reference).",
+  "requires": [
+    "aep-base-node",
+    "dynaep-core"
+  ],
+  "lrp_id": "eu-ai-act",
+  "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap",
+  "docks": {
+    "primary": "regulation_module",
+    "allowed": [
+      "regulation_module"
+    ]
+  },
+  "capabilities": [
+    "compliance:eu-ai-act",
+    "gap:evaluate"
+  ],
+  "actions": [
+    {
+      "id": "enable_eu-ai-act",
+      "description": "Enable EU AI Act LRP",
+      "setup_hook": "sync_lrp",
+      "params": {
+        "lrp_id": "eu-ai-act"
+      }
+    }
+  ],
+  "setup_hooks": [
+    {
+      "id": "sync_eu-ai-act",
+      "setup_hook": "sync_lrp",
+      "params": {
+        "lrp_id": "eu-ai-act"
+      }
+    }
+  ],
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 5,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "EU AI Act regulatory compliance via GAP policies.",
+    "use_when": [
+      "user requests EU AI Act",
+      "regulated industry deployment"
+    ],
+    "avoid_when": [
+      "no regulatory requirements"
+    ],
+    "pairs_with": [
+      "gap-runtime-scanners",
+      "wasm-policy-sandbox"
+    ]
+  },
+  "implementation": {
+    "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap"
+  }
+}

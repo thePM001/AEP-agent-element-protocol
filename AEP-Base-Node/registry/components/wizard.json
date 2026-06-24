@@ -1,0 +1,38 @@
+{
+  "manifest_version": "1",
+  "id": "wizard",
+  "version": "2.8.0",
+  "kind": "wizard",
+  "path": "AEP-Components/wizard/",
+  "description": "Developer install wizard for local-source builds (not customer Docker path).",
+  "requires": [
+    "aep-base-node"
+  ],
+  "capabilities": [
+    "wizard:install",
+    "wizard:config-io"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 20,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Local development install helper. Docker users should use CCA instead.",
+    "use_when": [
+      "local-source build from git clone"
+    ],
+    "avoid_when": [
+      "Docker production deployments"
+    ],
+    "pairs_with": [
+      "cca"
+    ]
+  },
+  "implementation": {
+    "entry": "AEP-Components/wizard/install-wizard.mjs"
+  }
+}

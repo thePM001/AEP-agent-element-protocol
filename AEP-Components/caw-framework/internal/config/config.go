@@ -1,0 +1,2593 @@
+package config
+
+import (
+	"fmt"
+	"log/slog"
+	"net"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strconv"
+	"time"
+
+	seccompPkg "github.com/nla-aep/aep-caw-framework/internal/seccomp"
+	secretspkg "github.com/nla-aep/aep-caw-framework/pkg/secrets"
+	"gopkg.in/yaml.v3"
+)
+
+type Config struct {
+	Platform          PlatformConfig          `yaml:"platform"`
+	Server            ServerConfig            `yaml:"server"`
+	Auth              AuthConfig              `yaml:"auth"`
+	Logging           LoggingConfig           `yaml:"logging"`
+	Audit             AuditConfig             `yaml:"audit"`
+	Sessions          SessionsConfig          `yaml:"sessions"`
+	Sandbox           SandboxConfig           `yaml:"sandbox"`
+	Policies          PoliciesConfig          `yaml:"policies"`
+	MountProfiles     map[string]MountProfile `yaml:"mount_profiles"`
+	Approvals         ApprovalsConfig         `yaml:"approvals"`
+	Metrics           MetricsConfig           `yaml:"metrics"`
+	Health            HealthConfig            `yaml:"health"`
+	Development       DevelopmentConfig       `yaml:"development"`
+	Proxy             ProxyConfig             `yaml:"proxy"`
+	DLP               DLPConfig               `yaml:"dlp"`
+	LLMStorage        LLMStorageConfig        `yaml:"llm_storage"`
+	Security          SecurityConfig          `yaml:"security"`
+	Landlock          LandlockConfig          `yaml:"landlock"`
+	LinuxCapabilities CapabilitiesConfig      `yaml:"capabilities"`
+	ThreatFeeds       ThreatFeedsConfig       `yaml:"threat_feeds"`
+	Tor               TorConfig               `yaml:"tor"`
+	PackageChecks     PackageChecksConfig     `yaml:"package_checks"`
+	Skillcheck        SkillcheckConfig        `yaml:"skillcheck"`
+	PolicySocket      PolicySocketConfig      `yaml:"policy_socket"`
+	Secrets           secretspkg.ManagerConfig `yaml:"secrets"`
+}
+
+// PlatformConfig configures cross-platform selection and fallback behavior.
+type PlatformConfig struct {
+	// Mode selects the platform: auto, linux, darwin, darwin-lima, windows, windows-wsl2
+	Mode string `yaml:"mode"`
+
+	// Fallback configures fallback behavior when preferred mode is unavailable
+	Fallback PlatformFallbackConfig `yaml:"fallback"`
+
+	// MountPoints configures platform-specific mount points
+	MountPoints PlatformMountPointsConfig `yaml:"mount_points"`
+}
+
+// PlatformFallbackConfig configures platform fallback behavior.
+type PlatformFallbackConfig struct {
+	// Enabled allows falling back to alternative platforms
+	Enabled bool `yaml:"enabled"`
+
+	// Order specifies fallback priority (first available is used)
+	Order []string `yaml:"order"`
+}
+
+// PlatformMountPointsConfig specifies platform-specific mount points.
+type PlatformMountPointsConfig struct {
+	Linux       string `yaml:"linux"`
+	Darwin      string `yaml:"darwin"`
+	Windows     string `yaml:"windows"`
+	WindowsWSL2 string `yaml:"windows_wsl2"`
+}
+
+type ServerConfig struct {
+	HTTP       ServerHTTPConfig       `yaml:"http"`
+	GRPC       ServerGRPCConfig       `yaml:"grpc"`
+	UnixSocket ServerUnixSocketConfig `yaml:"unix_socket"`
+	TLS        ServerTLSConfig        `yaml:"tls"`
+}
+
+type ServerHTTPConfig struct {
+	Addr string `yaml:"addr"`
+
+	ReadTimeout    string `yaml:"read_timeout"`
+	WriteTimeout   string `yaml:"write_timeout"`
+	MaxRequestSize string `yaml:"max_request_size"`
+}
+
+type ServerGRPCConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Addr    string `yaml:"addr"`
+}
+
+type ServerUnixSocketConfig struct {
+	Enabled     bool   `yaml:"enabled"`
+	Path        string `yaml:"path"`
+	Permissions string `yaml:"permissions"` // e.g. "0660"
+}
+
+type ServerTLSConfig struct {
+	Enabled  bool   `yaml:"enabled"`
+	CertFile string `yaml:"cert_file"`
+	KeyFile  string `yaml:"key_file"`
+	CAFile   string `yaml:"ca_file"`
+}
+
+type AuthConfig struct {
+	Type   string           `yaml:"type"` // "api_key", "oidc", "hybrid"
+	APIKey AuthAPIKeyConfig `yaml:"api_key"`
+	OIDC   OIDCConfig       `yaml:"oidc"`
+}
+
+type AuthAPIKeyConfig struct {
+	KeysFile   string `yaml:"keys_file"`
+	HeaderName string `yaml:"header_name"`
+}
+
+// OIDCConfig configures OpenID Connect authentication.
+type OIDCConfig struct {
+	Issuer           string            `yaml:"issuer"`            // e.g., "https://corp.okta.com"
+	ClientID         string            `yaml:"client_id"`         // e.g., "aep-caw-server"
+	Audience         string            `yaml:"audience"`          // Expected audience claim
+	JWKSCacheTTL     string            `yaml:"jwks_cache_ttl"`    // e.g., "1h"
+	DiscoveryTimeout string            `yaml:"discovery_timeout"` // Timeout for OIDC discovery (default: "5s")
+	ClaimMappings    OIDCClaimMappings `yaml:"claim_mappings"`
+	AllowedGroups    []string          `yaml:"allowed_groups"`   // Groups allowed to access
+	GroupPolicyMap   map[string]string `yaml:"group_policy_map"` // group -> policy name
+	GroupRoleMap     map[string]string `yaml:"group_role_map"`   // group -> role (admin, approver, agent)
+}
+
+// OIDCClaimMappings maps OIDC claims to aep-caw fields.
+type OIDCClaimMappings struct {
+	OperatorID string `yaml:"operator_id"` // Claim for operator ID (default: "sub")
+	Groups     string `yaml:"groups"`      // Claim for groups (default: "groups")
+}
+
+type LoggingConfig struct {
+	Level    string         `yaml:"level"`
+	Format   string         `yaml:"format"`
+	Output   string         `yaml:"output"`
+	Rotation RotationConfig `yaml:"rotation"`
+}
+
+type AuditConfig struct {
+	Enabled  bool           `yaml:"enabled"`
+	Output   string         `yaml:"output"`
+	Rotation RotationConfig `yaml:"rotation"`
+
+	// Storage is aep-caw-specific (not in spec config yet): local DB path.
+	Storage AuditStorageConfig `yaml:"storage"`
+
+	// Optional: ship events to an HTTP webhook.
+	Webhook AuditWebhookConfig `yaml:"webhook"`
+
+	// Integrity configures tamper-proof audit logging with HMAC chains.
+	Integrity AuditIntegrityConfig `yaml:"integrity"`
+
+	// Encryption configures AES-256-GCM encryption at rest.
+	Encryption AuditEncryptionConfig `yaml:"encryption"`
+
+	// OTEL configures OpenTelemetry event export.
+	OTEL AuditOTELConfig `yaml:"otel"`
+
+	// Watchtower configures the WTP (Watchtower Transport Protocol) sink.
+	Watchtower AuditWatchtowerConfig `yaml:"watchtower"`
+}
+
+type AuditStorageConfig struct {
+	Enabled       *bool         `yaml:"enabled"` // defaults to true; set false to skip SQLite
+	SQLitePath    string        `yaml:"sqlite_path"`
+	BatchSize     int           `yaml:"batch_size"`     // events per batch (default 64)
+	FlushInterval time.Duration `yaml:"flush_interval"` // max time before flush (default 50ms)
+	ChannelSize   int           `yaml:"channel_size"`   // async buffer capacity (default 4096)
+}
+
+type AuditWebhookConfig struct {
+	URL           string            `yaml:"url"`
+	BatchSize     int               `yaml:"batch_size"`
+	FlushInterval string            `yaml:"flush_interval"`
+	Timeout       string            `yaml:"timeout"`
+	Headers       map[string]string `yaml:"headers"`
+}
+
+// AuditIntegrityConfig configures tamper-proof audit logging.
+type AuditIntegrityConfig struct {
+	Enabled   bool   `yaml:"enabled"`
+	Algorithm string `yaml:"algorithm"` // hmac-sha256 (default), hmac-sha512
+
+	// Key source (mutually exclusive options)
+	KeySource string `yaml:"key_source"` // file, env, aws_kms, azure_keyvault, hashicorp_vault, gcp_kms
+
+	// File/Env source (legacy, still supported)
+	KeyFile string `yaml:"key_file"` // Path to HMAC key file
+	KeyEnv  string `yaml:"key_env"`  // Or env var name containing key
+
+	// AWS KMS configuration
+	AWSKMS AWSKMSConfig `yaml:"aws_kms"`
+
+	// Azure Key Vault configuration
+	AzureKeyVault AzureKeyVaultConfig `yaml:"azure_keyvault"`
+
+	// HashiCorp Vault configuration
+	HashiCorpVault HashiCorpVaultConfig `yaml:"hashicorp_vault"`
+
+	// GCP Cloud KMS configuration
+	GCPKMS GCPKMSConfig `yaml:"gcp_kms"`
+}
+
+// AWSKMSConfig configures AWS KMS integration.
+type AWSKMSConfig struct {
+	KeyID            string `yaml:"key_id"`             // KMS key ARN or alias
+	Region           string `yaml:"region"`             // AWS region
+	EncryptedDEKFile string `yaml:"encrypted_dek_file"` // Optional path to cache encrypted DEK
+}
+
+// AzureKeyVaultConfig configures Azure Key Vault integration.
+type AzureKeyVaultConfig struct {
+	VaultURL   string `yaml:"vault_url"`   // Vault URL (e.g., https://myvault.vault.azure.net)
+	KeyName    string `yaml:"key_name"`    // Secret name in vault
+	KeyVersion string `yaml:"key_version"` // Optional version (empty = latest)
+}
+
+// HashiCorpVaultConfig configures HashiCorp Vault integration.
+type HashiCorpVaultConfig struct {
+	Address    string `yaml:"address"`         // Vault address
+	AuthMethod string `yaml:"auth_method"`     // token, kubernetes, approle
+	TokenFile  string `yaml:"token_file"`      // Path to token file (for token auth)
+	K8sRole    string `yaml:"kubernetes_role"` // Role name (for kubernetes auth)
+	AppRoleID  string `yaml:"approle_id"`      // Role ID (for approle auth)
+	SecretID   string `yaml:"secret_id"`       // Secret ID (for approle auth, or use VAULT_SECRET_ID env)
+	SecretPath string `yaml:"secret_path"`     // Path to secret (e.g., secret/data/aep-caw/audit-key)
+	KeyField   string `yaml:"key_field"`       // Field name within secret (default: "key")
+}
+
+// GCPKMSConfig configures GCP Cloud KMS integration.
+type GCPKMSConfig struct {
+	KeyName          string `yaml:"key_name"`           // Full key resource name
+	EncryptedDEKFile string `yaml:"encrypted_dek_file"` // Optional path to cache encrypted DEK
+}
+
+// AuditEncryptionConfig configures encryption at rest.
+type AuditEncryptionConfig struct {
+	Enabled   bool   `yaml:"enabled"`
+	KeySource string `yaml:"key_source"` // file, env
+	KeyFile   string `yaml:"key_file"`
+	KeyEnv    string `yaml:"key_env"`
+}
+
+// AuditOTELConfig configures OpenTelemetry event export.
+type AuditOTELConfig struct {
+	Enabled  bool               `yaml:"enabled"`
+	Endpoint string             `yaml:"endpoint"`
+	Protocol string             `yaml:"protocol"` // "grpc" or "http"
+	TLS      OTELTLSConfig      `yaml:"tls"`
+	Headers  map[string]string  `yaml:"headers"`
+	Timeout  string             `yaml:"timeout"`
+	Signals  OTELSignalsConfig  `yaml:"signals"`
+	Batch    OTELBatchConfig    `yaml:"batch"`
+	Filter   OTELFilterConfig   `yaml:"filter"`
+	Resource OTELResourceConfig `yaml:"resource"`
+}
+
+// OTELTLSConfig configures TLS for the OTEL exporter.
+type OTELTLSConfig struct {
+	Enabled  bool   `yaml:"enabled"`
+	CertFile string `yaml:"cert_file"`
+	KeyFile  string `yaml:"key_file"`
+	Insecure bool   `yaml:"insecure"`
+}
+
+// OTELSignalsConfig selects which OTEL signal types to export.
+type OTELSignalsConfig struct {
+	Logs  bool `yaml:"logs"`
+	Spans bool `yaml:"spans"`
+}
+
+// OTELBatchConfig configures OTEL export batching.
+type OTELBatchConfig struct {
+	MaxSize int    `yaml:"max_size"`
+	Timeout string `yaml:"timeout"`
+}
+
+// OTELFilterConfig controls which events are exported via OTEL.
+type OTELFilterConfig struct {
+	IncludeTypes      []string `yaml:"include_types"`
+	ExcludeTypes      []string `yaml:"exclude_types"`
+	IncludeCategories []string `yaml:"include_categories"`
+	ExcludeCategories []string `yaml:"exclude_categories"`
+	MinRiskLevel      string   `yaml:"min_risk_level"`
+}
+
+// OTELResourceConfig configures the OTEL resource attributes.
+type OTELResourceConfig struct {
+	ServiceName     string            `yaml:"service_name"`
+	ExtraAttributes map[string]string `yaml:"extra_attributes"`
+}
+
+type RotationConfig struct {
+	MaxSizeMB  int  `yaml:"max_size_mb"`
+	MaxAgeDays int  `yaml:"max_age_days"`
+	MaxBackups int  `yaml:"max_backups"`
+	Compress   bool `yaml:"compress"`
+}
+
+type SessionsConfig struct {
+	BaseDir     string `yaml:"base_dir"`
+	MaxSessions int    `yaml:"max_sessions"`
+
+	// Optional defaults (duration strings). If set, these act as additional caps on top of policy resource_limits.
+	DefaultTimeout     string `yaml:"default_timeout"`
+	DefaultIdleTimeout string `yaml:"default_idle_timeout"`
+	CleanupInterval    string `yaml:"cleanup_interval"`
+
+	// RealPaths, when true, mounts workspace at its actual host path instead of
+	// virtualizing under /workspace. This preserves path continuity between
+	// host and sandbox environments.
+	RealPaths bool `yaml:"real_paths"`
+
+	// Checkpoints configures workspace checkpoint/rollback functionality.
+	Checkpoints CheckpointConfig `yaml:"checkpoints"`
+}
+
+// CheckpointConfig configures workspace checkpoint and rollback.
+type CheckpointConfig struct {
+	Enabled        bool                      `yaml:"enabled"`
+	StorageDir     string                    `yaml:"storage_dir"`     // Directory for checkpoint storage
+	MaxPerSession  int                       `yaml:"max_per_session"` // Max checkpoints per session (0 = unlimited)
+	MaxSizeMB      int                       `yaml:"max_size_mb"`     // Max total size per session (0 = unlimited)
+	AutoCheckpoint AutoCheckpointConfig      `yaml:"auto_checkpoint"`
+	Retention      CheckpointRetentionConfig `yaml:"retention"`
+}
+
+// AutoCheckpointConfig configures automatic checkpointing before risky commands.
+type AutoCheckpointConfig struct {
+	Enabled  bool     `yaml:"enabled"`
+	Triggers []string `yaml:"triggers"` // Commands that trigger auto-checkpoint (e.g., "rm", "mv")
+}
+
+// CheckpointRetentionConfig configures checkpoint cleanup.
+type CheckpointRetentionConfig struct {
+	MaxAge          string `yaml:"max_age"`          // Duration string, e.g., "24h"
+	CleanupInterval string `yaml:"cleanup_interval"` // How often to run cleanup
+}
+
+type SandboxConfig struct {
+	// Enabled enables the sandbox subsystem
+	Enabled bool `yaml:"enabled"`
+
+	// AllowDegraded permits running with reduced isolation if full isolation unavailable
+	AllowDegraded bool `yaml:"allow_degraded"`
+
+	// Limits configures resource limits for sandboxed processes
+	Limits SandboxLimitsConfig `yaml:"limits"`
+
+	FUSE        SandboxFUSEConfig        `yaml:"fuse"`
+	Network     SandboxNetworkConfig     `yaml:"network"`
+	Cgroups     SandboxCgroupsConfig     `yaml:"cgroups"`
+	UnixSockets SandboxUnixSocketsConfig `yaml:"unix_sockets"`
+	Seccomp     SandboxSeccompConfig     `yaml:"seccomp"`
+	XPC         SandboxXPCConfig         `yaml:"xpc"`
+	MCP         SandboxMCPConfig         `yaml:"mcp"`
+	Ptrace      SandboxPtraceConfig      `yaml:"ptrace"`
+
+	// EnvInject specifies environment variables to inject into every command execution.
+	// These bypass policy filtering as they are operator-configured (trusted).
+	EnvInject map[string]string `yaml:"env_inject"`
+
+	WrapEnvPolicy SandboxWrapEnvPolicyConfig `yaml:"wrap_env_policy"`
+}
+
+// SandboxWrapEnvPolicyConfig opts into enforcing env_policy (allow/deny) on the
+// client-spawned wrap path (shell shim / kernel-install / aep-caw wrap).
+// Default off; fail-open. Issue #379.
+type SandboxWrapEnvPolicyConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// Validate checks cross-field constraints in the sandbox configuration.
+func (c *SandboxConfig) Validate() error {
+	if c.Ptrace.Enabled && c.Seccomp.Execve.Enabled {
+		return fmt.Errorf("sandbox.ptrace and sandbox.seccomp.execve are mutually exclusive (hybrid mode not yet implemented)")
+	}
+	if c.Ptrace.Enabled && c.UnixSockets.Enabled != nil && *c.UnixSockets.Enabled {
+		// Hybrid mode: ptrace for execve + seccomp wrapper for sockets/files is allowed
+		// only when ptrace traces exactly execve (file/network/signal disabled, execve enabled).
+		if !c.Ptrace.IsExecveOnly() {
+			return fmt.Errorf("sandbox.ptrace with unix_sockets requires execve-only tracing (execve=true, file/network/signal=false)")
+		}
+	}
+	return c.Ptrace.Validate()
+}
+
+// SandboxLimitsConfig configures resource limits.
+type SandboxLimitsConfig struct {
+	MaxMemoryMB    int `yaml:"max_memory_mb"`
+	MaxCPUPercent  int `yaml:"max_cpu_percent"`
+	MaxProcesses   int `yaml:"max_processes"`
+	MaxDiskIOMbps  int `yaml:"max_disk_io_mbps"`
+	MaxNetworkMbps int `yaml:"max_network_mbps"`
+}
+
+// SandboxFUSEConfig configures the FUSE workspace mount.
+//
+// NOTE: adding a yaml-tagged field here requires adding its tag to
+// knownFUSEKeys in this file, or unknownFUSEKeys will emit a spurious
+// "unknown key under sandbox.fuse" warning for configs that use it.
+type SandboxFUSEConfig struct {
+	Enabled  bool            `yaml:"enabled"`
+	Deferred bool            `yaml:"deferred"`
+	Audit    FUSEAuditConfig `yaml:"audit"`
+	// Optional base dir for mounts; defaults to sessions.base_dir.
+	MountBaseDir string `yaml:"mount_base_dir"`
+	// DeferredMarkerFile is a file whose existence gates the enable command.
+	// If set, the enable command only runs when this file exists.
+	DeferredMarkerFile string `yaml:"deferred_marker_file"`
+	// DeferredEnableCommand is run when FUSE is unavailable in deferred mode
+	// to make /dev/fuse accessible (e.g., ["sudo", "/bin/chmod", "666", "/dev/fuse"]).
+	DeferredEnableCommand []string `yaml:"deferred_enable_command"`
+	// MaxBackground is the kernel-side per-mount FUSE async request queue
+	// depth (the FUSE_INIT max_background value go-fuse passes to the
+	// kernel). When unset or 0, aep-caw leaves go-fuse's default in place
+	// (12). Raising it gives the kernel more headroom for multi-mount
+	// daemons under heavy ptrace+seccomp syscall traffic; common tuned
+	// values are 32-128.
+	MaxBackground int `yaml:"max_background"`
+}
+
+type FUSEAuditConfig struct {
+	Enabled              *bool  `yaml:"enabled"`
+	Mode                 string `yaml:"mode"` // monitor, soft_block, soft_delete, strict
+	TrashPath            string `yaml:"trash_path"`
+	TTL                  string `yaml:"ttl"`
+	Quota                string `yaml:"quota"`
+	StrictOnAuditFailure bool   `yaml:"strict_on_audit_failure"`
+	MaxEventQueue        int    `yaml:"max_event_queue"`
+	HashSmallFilesUnder  string `yaml:"hash_small_files_under"`
+}
+
+type SandboxNetworkConfig struct {
+	Enabled         bool                            `yaml:"enabled"`
+	ProxyPort       int                             `yaml:"proxy_port"`
+	DNSPort         int                             `yaml:"dns_port"`
+	InterceptMode   string                          `yaml:"intercept_mode"` // all, tcp_only, monitor
+	ProxyListenAddr string                          `yaml:"proxy_listen_addr"`
+	TLSInspection   TLSInspectionConfig             `yaml:"tls_inspection"`
+	Transparent     SandboxTransparentNetworkConfig `yaml:"transparent"`
+	EBPF            SandboxEBPFConfig               `yaml:"ebpf"`
+	RateLimits      NetworkRateLimitsConfig         `yaml:"rate_limits"`
+}
+
+// NetworkRateLimitsConfig configures network rate limiting.
+type NetworkRateLimitsConfig struct {
+	Enabled     bool                       `yaml:"enabled"`
+	GlobalRPM   int                        `yaml:"global_rpm"`
+	GlobalBurst int                        `yaml:"global_burst"`
+	PerDomain   map[string]DomainRateLimit `yaml:"per_domain"`
+}
+
+// DomainRateLimit defines rate limits for a domain.
+type DomainRateLimit struct {
+	RequestsPerMinute int `yaml:"requests_per_minute"`
+	Burst             int `yaml:"burst"`
+}
+
+// TLSInspectionConfig configures TLS interception (requires CA cert).
+type TLSInspectionConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	CACert  string `yaml:"ca_cert"`
+	CAKey   string `yaml:"ca_key"`
+}
+
+type SandboxTransparentNetworkConfig struct {
+	Enabled    bool   `yaml:"enabled"`
+	SubnetBase string `yaml:"subnet_base"` // e.g. "10.250.0.0/16"
+}
+
+type SandboxEBPFConfig struct {
+	Enabled           bool `yaml:"enabled"`
+	Required          bool `yaml:"required"`
+	ResolveRDNS       bool `yaml:"resolve_rdns"`         // optional reverse DNS on ebpf net events
+	Enforce           bool `yaml:"enforce"`              // deny in BPF if not allowed
+	EnforceWithoutDNS bool `yaml:"enforce_without_dns"`  // when true, default deny even if DNS resolution failed
+	MapAllowEntries   int  `yaml:"map_allow_entries"`    // optional override for allowlist map size
+	MapDenyEntries    int  `yaml:"map_deny_entries"`     // optional override for denylist map size
+	MapLPMEntries     int  `yaml:"map_lpm_entries"`      // optional override for LPM map size
+	MapLPMDenyEntries int  `yaml:"map_lpm_deny_entries"` // optional override for deny LPM map size
+	MapDefaultEntries int  `yaml:"map_default_entries"`  // optional override for default_deny map size
+	DNSRefreshSeconds int  `yaml:"dns_refresh_seconds"`  // interval to refresh DNS-derived allowlist (0 disables)
+	DNSMaxTTLSeconds  int  `yaml:"dns_max_ttl_seconds"`  // cap TTL used for caching/refresh (0 uses default 60s)
+}
+
+type SandboxCgroupsConfig struct {
+	Enabled bool `yaml:"enabled"`
+	// BasePath is a cgroupfs directory under which per-command cgroups will be created.
+	// If empty, aep-caw will default to the current process cgroup.
+	// Note: this should be a path under /sys/fs/cgroup (or relative to the current process cgroup dir).
+	BasePath string `yaml:"base_path"`
+	// BestEffort, when true, degrades unenforceable per-command resource limits
+	// (e.g. memory.max EPERM on a non-writable nested cgroup) to a logged warning
+	// and runs the command WITHOUT the limit, instead of fail-closing the wrap.
+	// Defaults to false (fail-closed) to preserve the resource-limit guarantee.
+	// Ignored when eBPF enforcement is configured: the cgroup egress path stays strict.
+	// See issue #411.
+	BestEffort bool `yaml:"best_effort"`
+}
+
+type SandboxUnixSocketsConfig struct {
+	Enabled    *bool  `yaml:"enabled"`     // defaults to true for seccomp enforcement
+	WrapperBin string `yaml:"wrapper_bin"` // optional override; defaults to "aep-caw-unixwrap" in PATH
+}
+
+// SandboxSeccompConfig configures seccomp-bpf filtering.
+type SandboxSeccompConfig struct {
+	Enabled     bool                            `yaml:"enabled"`
+	Mode        string                          `yaml:"mode"` // enforce, audit, disabled
+	UnixSocket  SandboxSeccompUnixConfig        `yaml:"unix_socket"`
+	Syscalls    SandboxSeccompSyscallConfig     `yaml:"syscalls"`
+	Execve      ExecveConfig                    `yaml:"execve"`
+	Shellc      SandboxSeccompShellcConfig      `yaml:"shellc"`
+	FileMonitor SandboxSeccompFileMonitorConfig `yaml:"file_monitor"`
+
+	// BlockedSocketFamilies lists AF_* families whose socket/socketpair calls
+	// are intercepted. A nil value (field omitted in YAML) means "apply
+	// defaults"; a non-nil empty slice means "explicitly block nothing"
+	// (opt-out). Populated via applyDefaults from
+	// seccomp.DefaultBlockedFamilies when nil.
+	BlockedSocketFamilies []SandboxSeccompSocketFamilyConfig `yaml:"blocked_socket_families"`
+	SocketRules           []SandboxSeccompSocketRuleConfig   `yaml:"socket_rules"`
+	MitigationSets        []string                           `yaml:"mitigation_sets"`
+	MitigationDirs        []string                           `yaml:"mitigation_dirs"`
+
+	// WaitKillable tri-states SECCOMP_FILTER_FLAG_WAIT_KILLABLE_RECV:
+	//   nil   = auto-detect via boot-time behavioral probe
+	//   &true = force on (skip probe)
+	//   &false = force off (skip probe)
+	// Issue #369: kernels >=6 may accept the flag and then misbehave when
+	// the filter combines socket-family and file/metadata-family notify rules.
+	WaitKillable *bool `yaml:"wait_killable"`
+}
+
+// SandboxSeccompShellcConfig controls how the shell-shim handles opaque
+// `sh -c`/`bash -c` payloads that cannot be statically resolved to a single
+// command for policy pre-check (issue #378).
+type SandboxSeccompShellcConfig struct {
+	// Opaque selects handling for opaque shell-c scripts when the policy has
+	// a restrictive command rule (deny/redirect/approve/audit/soft_delete);
+	// allow-only policies always run opaque scripts regardless of this setting:
+	//   "enforce" (default) - run only when per-exec enforcement is active
+	//                         (ptrace, or seccomp.execve + unix_sockets);
+	//                         otherwise deny shellc-opaque-script.
+	//   "allow"             - run even without per-exec enforcement (accepts
+	//                         the bypass risk; emits a warning).
+	//   "deny"              - always deny opaque scripts.
+	Opaque string `yaml:"opaque"`
+}
+
+// SandboxSeccompUnixConfig configures unix socket monitoring via seccomp.
+type SandboxSeccompUnixConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Action  string `yaml:"action"` // enforce, audit
+}
+
+// SandboxSeccompSyscallConfig configures syscall blocking.
+type SandboxSeccompSyscallConfig struct {
+	DefaultAction string   `yaml:"default_action"` // allow, block
+	Block         []string `yaml:"block"`
+	Allow         []string `yaml:"allow"`
+	OnBlock       string   `yaml:"on_block"` // errno (default), kill, log, log_and_kill
+}
+
+// SandboxSeccompFileMonitorConfig configures file I/O interception via seccomp.
+type SandboxSeccompFileMonitorConfig struct {
+	Enabled            *bool `yaml:"enabled"`
+	EnforceWithoutFUSE *bool `yaml:"enforce_without_fuse"`
+	InterceptMetadata  *bool `yaml:"intercept_metadata"`
+	WriteOnlyOpens     *bool `yaml:"write_only_opens"`
+	OpenatEmulation    *bool `yaml:"openat_emulation"`
+	BlockIOUring       *bool `yaml:"block_io_uring"`
+}
+
+// SandboxSeccompSocketFamilyConfig describes one blocked socket family entry.
+// Family is an AF_* name (e.g. "AF_ALG") or a numeric string (e.g. "38").
+// Action is one of: errno (default), kill, log, log_and_kill.
+//
+// When blocked_socket_families is omitted from YAML the field is nil and
+// applyDefaults fills it from seccomp.DefaultBlockedFamilies. When the
+// operator sets blocked_socket_families: [] the field is a non-nil empty
+// slice and applyDefaults leaves it untouched (opt-out of all defaults).
+type SandboxSeccompSocketFamilyConfig struct {
+	Family string `yaml:"family"` // AF_* name or numeric string
+	Action string `yaml:"action"` // errno|kill|log|log_and_kill (defaults to errno)
+}
+
+type SandboxSeccompSocketRuleConfig struct {
+	Name     string `yaml:"name"`
+	Family   string `yaml:"family"`
+	Type     string `yaml:"type,omitempty"`
+	Protocol string `yaml:"protocol,omitempty"`
+	Action   string `yaml:"action"`
+}
+
+// FileMonitorBoolWithDefault returns the value of a *bool field, or defaultVal if nil.
+func FileMonitorBoolWithDefault(v *bool, defaultVal bool) bool {
+	if v != nil {
+		return *v
+	}
+	return defaultVal
+}
+
+// boolPtr returns a pointer to the given bool value.
+func boolPtr(v bool) *bool { return &v }
+
+// SandboxXPCConfig configures macOS XPC/Mach IPC control.
+type SandboxXPCConfig struct {
+	Enabled       bool                 `yaml:"enabled"`
+	Mode          string               `yaml:"mode"` // enforce, audit, disabled
+	WrapperBin    string               `yaml:"wrapper_bin"`
+	MachServices  SandboxXPCMachConfig `yaml:"mach_services"`
+	ESFMonitoring SandboxXPCESFConfig  `yaml:"esf_monitoring"`
+}
+
+// SandboxXPCMachConfig configures mach-lookup restrictions.
+type SandboxXPCMachConfig struct {
+	DefaultAction string   `yaml:"default_action"` // allow, deny
+	Allow         []string `yaml:"allow"`
+	Block         []string `yaml:"block"`
+	AllowPrefixes []string `yaml:"allow_prefixes"`
+	BlockPrefixes []string `yaml:"block_prefixes"`
+}
+
+// SandboxXPCESFConfig configures ESF-based XPC monitoring.
+type SandboxXPCESFConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// PolicySocketConfig configures the macOS policy socket server (IPC bridge
+// between the aep-caw daemon and the system extension).
+type PolicySocketConfig struct {
+	Path   string `yaml:"path" json:"path"`
+	TeamID string `yaml:"team_id" json:"team_id"`
+}
+
+// SandboxMCPConfig configures MCP security policies.
+type SandboxMCPConfig struct {
+	EnforcePolicy     bool                    `yaml:"enforce_policy"`
+	FailClosed        bool                    `yaml:"fail_closed"`        // Block unknown tools if true
+	AllowedTransports []string                `yaml:"allowed_transports"` // "stdio", "http", "sse"; empty = all allowed
+	Servers           []MCPServerDeclaration  `yaml:"servers"`
+	ServerPolicy      string                  `yaml:"server_policy"` // allowlist, denylist, none
+	AllowedServers    []MCPServerRule         `yaml:"allowed_servers"`
+	DeniedServers     []MCPServerRule         `yaml:"denied_servers"`
+	ToolPolicy        string                  `yaml:"tool_policy"` // allowlist, denylist, none
+	AllowedTools      []MCPToolRule           `yaml:"allowed_tools"`
+	DeniedTools       []MCPToolRule           `yaml:"denied_tools"`
+	VersionPinning    MCPVersionPinningConfig `yaml:"version_pinning"`
+	RateLimits        MCPRateLimitsConfig     `yaml:"rate_limits"`
+	CrossServer       CrossServerConfig       `yaml:"cross_server"`
+	OutputInspection  OutputInspectionConfig  `yaml:"output_inspection"`
+	Sampling          SamplingConfig          `yaml:"sampling"`
+}
+
+// OutputInspectionConfig configures scanning of MCP tool call responses.
+type OutputInspectionConfig struct {
+	Enabled     bool   `yaml:"enabled"`
+	OnDetection string `yaml:"on_detection"` // "alert" | "block" - default: "alert"
+}
+
+// SamplingConfig configures sampling/createMessage enforcement.
+type SamplingConfig struct {
+	Policy    string            `yaml:"policy"`     // "block" | "alert" | "allow" - default: "block"
+	PerServer map[string]string `yaml:"per_server"` // server_id → policy override
+}
+
+// ValidateMCPTransports checks that all declared MCP servers use allowed transports.
+func ValidateMCPTransports(cfg SandboxMCPConfig) error {
+	if len(cfg.AllowedTransports) == 0 {
+		return nil
+	}
+	// Validate enum values first.
+	validTransports := map[string]bool{"stdio": true, "http": true, "sse": true}
+	allowed := make(map[string]bool, len(cfg.AllowedTransports))
+	for _, t := range cfg.AllowedTransports {
+		if !validTransports[t] {
+			return fmt.Errorf("invalid allowed_transports value %q (valid: stdio, http, sse)", t)
+		}
+		allowed[t] = true
+	}
+	for _, srv := range cfg.Servers {
+		srvType := srv.Type
+		if srvType == "" {
+			srvType = "stdio"
+		}
+		if !allowed[srvType] {
+			return fmt.Errorf("MCP server %q uses transport %q which is not in allowed_transports %v", srv.ID, srvType, cfg.AllowedTransports)
+		}
+	}
+	return nil
+}
+
+// MCPServerDeclaration defines an MCP server and how to connect to it.
+type MCPServerDeclaration struct {
+	ID             string   `yaml:"id"`
+	Type           string   `yaml:"type"`            // "stdio" | "http" | "sse"
+	Command        string   `yaml:"command"`         // For stdio servers
+	Args           []string `yaml:"args"`            // For stdio servers
+	URL            string   `yaml:"url"`             // For http/sse servers
+	TLSFingerprint string   `yaml:"tls_fingerprint"` // Optional TLS cert pin
+	AllowedEnv     []string `yaml:"allowed_env"`     // If set, only these env vars (plus standard ones) are passed
+	DeniedEnv      []string `yaml:"denied_env"`      // If set, these env vars are stripped
+}
+
+// MCPServerRule matches servers by ID (supports "*" wildcard).
+type MCPServerRule struct {
+	ID string `yaml:"id"`
+}
+
+// MCPToolRule defines a tool matching rule.
+type MCPToolRule struct {
+	Server      string `yaml:"server"`       // Server ID or "*" for any
+	Tool        string `yaml:"tool"`         // Tool name or "*" for any
+	ContentHash string `yaml:"content_hash"` // Optional SHA-256 hash
+}
+
+// MCPVersionPinningConfig configures version pinning behavior.
+type MCPVersionPinningConfig struct {
+	Enabled        bool   `yaml:"enabled"`
+	OnChange       string `yaml:"on_change"`        // block, alert, allow
+	AutoTrustFirst bool   `yaml:"auto_trust_first"` // Pin on first use
+	PinBinary      bool   `yaml:"pin_binary"`
+}
+
+// MCPRateLimitsConfig configures MCP rate limiting.
+type MCPRateLimitsConfig struct {
+	Enabled      bool                    `yaml:"enabled"`
+	DefaultRPM   int                     `yaml:"default_rpm"` // Default calls per minute
+	DefaultBurst int                     `yaml:"default_burst"`
+	PerServer    map[string]MCPRateLimit `yaml:"per_server"`
+}
+
+// MCPRateLimit defines rate limit for a server.
+type MCPRateLimit struct {
+	CallsPerMinute int `yaml:"calls_per_minute"`
+	Burst          int `yaml:"burst"`
+}
+
+// CrossServerConfig configures cross-server pattern detection.
+// These patterns detect potentially malicious multi-server tool call sequences
+// (e.g., reading secrets from one server then sending them via another).
+type CrossServerConfig struct {
+	Enabled         bool                  `yaml:"enabled"`
+	ReadThenSend    ReadThenSendConfig    `yaml:"read_then_send"`
+	Burst           BurstConfig           `yaml:"burst"`
+	CrossServerFlow CrossServerFlowConfig `yaml:"cross_server_flow"`
+	ShadowTool      ShadowToolConfig      `yaml:"shadow_tool"`
+}
+
+// ReadThenSendConfig detects read-from-one-server-then-send-via-another patterns.
+type ReadThenSendConfig struct {
+	Enabled bool          `yaml:"enabled"`
+	Window  time.Duration `yaml:"window"` // default: 30s
+}
+
+// BurstConfig detects rapid-fire tool calls that may indicate exfiltration.
+type BurstConfig struct {
+	Enabled  bool          `yaml:"enabled"`
+	MaxCalls int           `yaml:"max_calls"` // default: 10
+	Window   time.Duration `yaml:"window"`    // default: 5s
+}
+
+// CrossServerFlowConfig detects tool calls that flow across different servers.
+type CrossServerFlowConfig struct {
+	Enabled      bool          `yaml:"enabled"`
+	SameTurnOnly *bool         `yaml:"same_turn_only"` // default: true
+	Window       time.Duration `yaml:"window"`         // default: 30s
+}
+
+// ShadowToolConfig detects tool names that shadow/mimic tools from other servers.
+type ShadowToolConfig struct {
+	Enabled             *bool    `yaml:"enabled"`              // default: true
+	SimilarityCheck     *bool    `yaml:"similarity_check"`     // default: false
+	SimilarityThreshold *float64 `yaml:"similarity_threshold"` // default: 0.85, range [0,1]
+}
+
+// SecurityConfig controls security mode selection and strictness.
+type SecurityConfig struct {
+	Mode         string `yaml:"mode"`          // auto, full, landlock, landlock-only, minimal
+	Strict       bool   `yaml:"strict"`        // Fail if mode requirements not met
+	MinimumMode  string `yaml:"minimum_mode"`  // Fail if auto-detect picks worse
+	WarnDegraded bool   `yaml:"warn_degraded"` // Log warnings in degraded mode
+}
+
+// LandlockConfig controls Landlock sandbox settings.
+type LandlockConfig struct {
+	Enabled      bool                  `yaml:"enabled"`
+	AllowExecute []string              `yaml:"allow_execute"` // Paths where execute is allowed
+	AllowRead    []string              `yaml:"allow_read"`    // Paths where read is allowed
+	AllowWrite   []string              `yaml:"allow_write"`   // Paths where write is allowed
+	DenyPaths    []string              `yaml:"deny_paths"`    // Paths to deny (by omission)
+	Network      LandlockNetworkConfig `yaml:"network"`
+}
+
+// LandlockNetworkConfig controls Landlock network restrictions (kernel 6.7+).
+type LandlockNetworkConfig struct {
+	AllowConnectTCP *bool `yaml:"allow_connect_tcp"` // default: true (set by applyDefaults)
+	AllowBindTCP    *bool `yaml:"allow_bind_tcp"`    // default: false (set by applyDefaults)
+	BindPorts       []int `yaml:"bind_ports"`        // reserved; not yet enforced
+}
+
+// CapabilitiesConfig controls Linux capability dropping.
+type CapabilitiesConfig struct {
+	Allow []string `yaml:"allow"` // Capabilities to keep (empty = drop all droppable)
+}
+
+// SigningConfig configures policy signature verification.
+type SigningConfig struct {
+	TrustStore string `yaml:"trust_store"` // Directory of trusted public keys
+	Mode       string `yaml:"mode"`        // "enforce", "warn", or "off" (default: "off")
+}
+
+// SigningMode returns the effective signing mode, defaulting to "off".
+func (c *SigningConfig) SigningMode() string {
+	if c.Mode == "" {
+		return "off"
+	}
+	return c.Mode
+}
+
+// Validate checks that the signing config has valid values.
+func (c *SigningConfig) Validate() error {
+	switch c.Mode {
+	case "", "off", "warn", "enforce":
+		// valid
+	default:
+		return fmt.Errorf("invalid signing mode %q: must be \"enforce\", \"warn\", or \"off\"", c.Mode)
+	}
+	if (c.Mode == "enforce" || c.Mode == "warn") && c.TrustStore == "" {
+		return fmt.Errorf("signing.trust_store is required when signing.mode is %q", c.Mode)
+	}
+	return nil
+}
+
+// PoliciesConfig configures policy loading.
+type PoliciesConfig struct {
+	Dir               string          `yaml:"dir"`
+	Default           string          `yaml:"default"`
+	Allowed           []string        `yaml:"allowed"`
+	ManifestPath      string          `yaml:"manifest_path"`
+	Signing           SigningConfig   `yaml:"signing"`
+	EnvPolicy         EnvPolicyConfig `yaml:"env_policy"`
+	EnvShimPath       string          `yaml:"env_shim_path"`
+	ReloadInterval    string          `yaml:"reload_interval"`
+	DetectProjectRoot *bool           `yaml:"detect_project_root"` // nil means true (default enabled)
+	ProjectMarkers    []string        `yaml:"project_markers"`     // Override default markers
+	SymlinkEscape     string          `yaml:"symlink_escape"`      // "evaluate"/"deny"
+}
+
+// SymlinkEscapeDeny reports whether the workspace-escape blanket deny
+// is in effect (i.e. the user set "deny"). Default is "evaluate" --
+// any value other than literal "deny" returns false.
+func (c *PoliciesConfig) SymlinkEscapeDeny() bool {
+	return c.SymlinkEscape == "deny"
+}
+
+// ShouldDetectProjectRoot returns whether project root detection is enabled.
+// Returns true by default if DetectProjectRoot is nil.
+func (c *PoliciesConfig) ShouldDetectProjectRoot() bool {
+	if c.DetectProjectRoot == nil {
+		return true // Default enabled
+	}
+	return *c.DetectProjectRoot
+}
+
+// GetProjectMarkers returns custom project markers if configured, or nil to use defaults.
+func (c *PoliciesConfig) GetProjectMarkers() []string {
+	if len(c.ProjectMarkers) > 0 {
+		return c.ProjectMarkers
+	}
+	return nil // Use defaults from policy package
+}
+
+// MountProfile defines a collection of mounts with policies.
+type MountProfile struct {
+	BasePolicy string      `yaml:"base_policy"`
+	Mounts     []MountSpec `yaml:"mounts"`
+}
+
+// MountSpec defines a single mount point with its policy.
+type MountSpec struct {
+	Path   string `yaml:"path"`
+	Policy string `yaml:"policy"`
+}
+
+type EnvPolicyConfig struct {
+	Allow          []string `yaml:"allow"`
+	Deny           []string `yaml:"deny"`
+	MaxBytes       int      `yaml:"max_bytes"`
+	MaxKeys        int      `yaml:"max_keys"`
+	BlockIteration bool     `yaml:"block_iteration"`
+}
+
+// WebAuthnConfig configures WebAuthn/FIDO2 authentication.
+type WebAuthnConfig struct {
+	RPID             string   `yaml:"rp_id"`             // e.g., "aep-caw.local"
+	RPName           string   `yaml:"rp_name"`           // e.g., "aep-caw"
+	RPOrigins        []string `yaml:"rp_origins"`        // e.g., ["http://localhost:18080"]
+	UserVerification string   `yaml:"user_verification"` // preferred, required, discouraged
+}
+
+type ApprovalsConfig struct {
+	Enabled  bool           `yaml:"enabled"`
+	Mode     string         `yaml:"mode"`    // "local_tty", "api", "totp", or "webauthn"
+	Timeout  string         `yaml:"timeout"` // duration string, e.g. "5m"
+	WebAuthn WebAuthnConfig `yaml:"webauthn"`
+}
+
+type MetricsConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Path    string `yaml:"path"`
+}
+
+type HealthConfig struct {
+	Path          string `yaml:"path"`
+	ReadinessPath string `yaml:"readiness_path"`
+}
+
+type DevelopmentConfig struct {
+	Debug         bool `yaml:"debug"`
+	DisableAuth   bool `yaml:"disable_auth"`
+	DisablePolicy bool `yaml:"disable_policy"`
+
+	PProf DevelopmentPProfConfig `yaml:"pprof"`
+}
+
+type DevelopmentPProfConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Addr    string `yaml:"addr"`
+}
+
+// AuditWatchtowerConfig configures the WTP (Watchtower Transport Protocol) sink.
+// Spec: docs/superpowers/specs/2026-04-18-wtp-client-design.md §"Configuration & Wiring".
+type AuditWatchtowerConfig struct {
+	Enabled   bool   `yaml:"enabled"`
+	Endpoint  string `yaml:"endpoint"`   // host:port
+	SessionID string `yaml:"session_id"` // optional; auto-generated ULID if empty
+	// AgentID is the operator-visible identifier for this agent on the
+	// Watchtower wire. When empty (the default), buildWatchtowerStore
+	// falls back to os.Hostname() - preserving pre-existing behaviour
+	// from before this field existed.
+	//
+	// Mirrors SessionID: optional in YAML, resolved at store-construction
+	// time (NOT in applyDefaults - non-daemon CLI subcommands like
+	// `aep-caw config show` must not trigger hostname lookup).
+	AgentID       string `yaml:"agent_id"`
+	StateDir      string `yaml:"state_dir"` // default GetUserStateDir() + "/wtp"; per-OS path differs (XDG_STATE_HOME on Linux, LOCALAPPDATA on Windows). See defaultWatchtowerStateDir.
+	EphemeralMode bool   `yaml:"ephemeral_mode"`
+
+	// LogGoawayMessage controls whether the WARN log emitted on GOAWAY
+	// receipt includes the server-supplied message text (after client-
+	// side sanitization). Three-state:
+	//   nil   - field omitted from YAML; resolved to PRD default at
+	//           store-construction time. The store-construction path
+	//           emits a single INFO at startup announcing the resolved
+	//           default so operators can audit a future default-flip.
+	//   false - explicit operator-set; same runtime behavior as nil today.
+	//   true  - opt in to verbatim sanitized goaway_message logging.
+	//           Store-construction emits a single WARN at startup
+	//           reminding the operator that this depends on the server-
+	//           side no-secrets contract documented at
+	//           proto/canyonroad/wtp/v1/wtp.proto (Goaway.message) in the
+	//           github.com/canyonroad/wtp-protos repo.
+	//
+	// This pointer-form is mandatory: a plain bool would collapse "unset"
+	// into "explicit false" before the daemon could distinguish them,
+	// preventing a future schema-major-bump default-flip from being
+	// detectable in audit logs.
+	//
+	// IMPORTANT: Defaulting MUST NOT happen in applyDefaults/applyDefaultsWithSource.
+	// The nil state must survive the config-load pipeline. Defaulting occurs
+	// ONLY at store-construction time (buildWatchtowerStore in internal/server/wtp.go).
+	LogGoawayMessage *bool `yaml:"log_goaway_message,omitempty"`
+
+	TLS       WatchtowerTLSConfig       `yaml:"tls"`
+	Auth      WatchtowerAuthConfig      `yaml:"auth"`
+	Chain     WatchtowerChainConfig     `yaml:"chain"`
+	Batch     WatchtowerBatchConfig     `yaml:"batch"`
+	WAL       WatchtowerWALConfig       `yaml:"wal"`
+	Heartbeat WatchtowerHeartbeatConfig `yaml:"heartbeat"`
+	Backoff   WatchtowerBackoffConfig   `yaml:"backoff"`
+	Filter    WatchtowerFilterConfig    `yaml:"filter"`
+
+	// DecisionContext is reported to Watchtower on SessionInit so the
+	// server can resolve the bound policy from identity + environment.
+	DecisionContext WatchtowerDecisionContextConfig `yaml:"decision_context"`
+
+	// EmitExtendedLossReasons controls whether the WTP client emits
+	// TransportLoss frames with the six reason values added in the
+	// 2026-04-27 spec: MAPPER_FAILURE, INVALID_MAPPER, INVALID_TIMESTAMP,
+	// INVALID_UTF8, SEQUENCE_OVERFLOW, ACK_REGRESSION_AFTER_GC.
+	//
+	// Default false. Strict-enum receivers reject unknown enum values
+	// per the TRANSPORT_LOSS_REASON_UNSPECIFIED contract (Goaway on
+	// unknown). Operators flip this to true once their receiving
+	// Watchtower instance has been upgraded.
+	//
+	// OVERFLOW and CRC_CORRUPTION are always emitted (they predate this
+	// spec and are part of the original wire schema) - those reasons
+	// are not gated by this flag.
+	EmitExtendedLossReasons bool `yaml:"emit_extended_loss_reasons"`
+}
+
+type WatchtowerTLSConfig struct {
+	// Insecure disables TLS entirely and dials plaintext gRPC. This is a
+	// load-bearing security choice - the daemon logs a WARN at startup when
+	// this is true. Only set this for local test servers or development
+	// environments where TLS is not available. Default: false (TLS on).
+	Insecure           bool   `yaml:"insecure"`
+	InsecureSkipVerify bool   `yaml:"insecure_skip_verify"`
+	CACertFile         string `yaml:"ca_cert_file"`
+	ClientCertFile     string `yaml:"client_cert_file"`
+	ClientKeyFile      string `yaml:"client_key_file"`
+}
+
+type WatchtowerAuthConfig struct {
+	TokenFile      string `yaml:"token_file"`
+	TokenEnv       string `yaml:"token_env"`
+	ClientCertAuth bool   `yaml:"client_cert_auth"`
+}
+
+// WatchtowerChainConfig configures the WTP per-sink hash chain HMAC key.
+// Mirrors the key-source shape from AuditIntegrityConfig so the daemon (Task 27)
+// can reuse the existing kms package plumbing in internal/audit/kms/provider.go.
+type WatchtowerChainConfig struct {
+	Algorithm string `yaml:"algorithm"` // hmac-sha256 (default) | hmac-sha512
+
+	// KeySource selects exactly one of: file, env, aws_kms, azure_keyvault,
+	// hashicorp_vault, gcp_kms. When empty, the source is inferred from
+	// whichever single sub-config below is populated.
+	KeySource string `yaml:"key_source"`
+
+	// File/Env source (legacy, still supported).
+	KeyFile string `yaml:"key_file"`
+	KeyEnv  string `yaml:"key_env"`
+
+	// AWS KMS configuration.
+	AWSKMS AWSKMSConfig `yaml:"aws_kms"`
+
+	// Azure Key Vault configuration.
+	AzureKeyVault AzureKeyVaultConfig `yaml:"azure_keyvault"`
+
+	// HashiCorp Vault configuration.
+	HashiCorpVault HashiCorpVaultConfig `yaml:"hashicorp_vault"`
+
+	// GCP Cloud KMS configuration.
+	GCPKMS GCPKMSConfig `yaml:"gcp_kms"`
+}
+
+type WatchtowerBatchConfig struct {
+	MaxEvents     int           `yaml:"max_events"`
+	MaxBytes      int           `yaml:"max_bytes"`
+	MaxTimespan   time.Duration `yaml:"max_timespan"`
+	FlushInterval time.Duration `yaml:"flush_interval"`
+	Compression   string        `yaml:"compression"` // zstd | gzip | none (default)
+	ZstdLevel     int           `yaml:"zstd_level"`  // 1..22, default 3 (only used when compression="zstd")
+	GzipLevel     int           `yaml:"gzip_level"`  // 1..9,  default 6 (only used when compression="gzip")
+}
+
+type WatchtowerWALConfig struct {
+	SegmentSize   int64         `yaml:"segment_size"`
+	MaxTotalBytes int64         `yaml:"max_total_bytes"`
+	SyncMode      string        `yaml:"sync_mode"` // immediate (only mode currently implemented; "deferred" is reserved for the periodic-sync timer hook and rejected by validation until that lands)
+	SyncInterval  time.Duration `yaml:"sync_interval"`
+}
+
+type WatchtowerHeartbeatConfig struct {
+	Interval             time.Duration `yaml:"interval"`
+	ReconnectAfterMisses int           `yaml:"reconnect_after_misses"`
+}
+
+type WatchtowerBackoffConfig struct {
+	Base time.Duration `yaml:"base"`
+	Max  time.Duration `yaml:"max"`
+}
+
+type WatchtowerFilterConfig struct {
+	IncludeTypes      []string `yaml:"include_types"`
+	ExcludeTypes      []string `yaml:"exclude_types"`
+	IncludeCategories []string `yaml:"include_categories"`
+	ExcludeCategories []string `yaml:"exclude_categories"`
+	MinRiskLevel      string   `yaml:"min_risk_level"`
+}
+
+type WatchtowerDecisionContextConfig struct {
+	Tags      []string                  `yaml:"tags"`
+	Tailscale WatchtowerTailscaleConfig `yaml:"tailscale"`
+	Extra     map[string]string         `yaml:"extra"`
+}
+
+type WatchtowerTailscaleConfig struct {
+	// Enabled is tri-state: nil => default (resolved at store construction:
+	// enabled, but the source self-disables when the socket is absent),
+	// false => never query tailscaled, true => always attempt.
+	Enabled *bool  `yaml:"enabled"`
+	Socket  string `yaml:"socket"` // optional tailscaled socket path override
+}
+
+func (w *AuditWatchtowerConfig) applyDefaults() {
+	standard := func() {
+		if w.Batch.MaxEvents == 0 {
+			w.Batch.MaxEvents = 256
+		}
+		if w.Batch.MaxBytes == 0 {
+			w.Batch.MaxBytes = 256 * 1024
+		}
+		if w.Batch.MaxTimespan == 0 {
+			w.Batch.MaxTimespan = 5 * time.Second
+		}
+		if w.Batch.FlushInterval == 0 {
+			w.Batch.FlushInterval = 1 * time.Second
+		}
+		if w.Batch.Compression == "" {
+			w.Batch.Compression = "none"
+		}
+		if w.Batch.ZstdLevel == 0 {
+			w.Batch.ZstdLevel = 3
+		}
+		if w.Batch.GzipLevel == 0 {
+			w.Batch.GzipLevel = 6
+		}
+		if w.WAL.SegmentSize == 0 {
+			w.WAL.SegmentSize = 16 * 1024 * 1024
+		}
+		if w.WAL.MaxTotalBytes == 0 {
+			w.WAL.MaxTotalBytes = 1024 * 1024 * 1024
+		}
+		if w.WAL.SyncMode == "" {
+			w.WAL.SyncMode = "immediate"
+		}
+		if w.WAL.SyncInterval == 0 {
+			w.WAL.SyncInterval = 100 * time.Millisecond
+		}
+		if w.Heartbeat.Interval == 0 {
+			w.Heartbeat.Interval = 30 * time.Second
+		}
+		if w.Heartbeat.ReconnectAfterMisses == 0 {
+			w.Heartbeat.ReconnectAfterMisses = 2
+		}
+		if w.Backoff.Base == 0 {
+			w.Backoff.Base = 500 * time.Millisecond
+		}
+		if w.Backoff.Max == 0 {
+			w.Backoff.Max = 30 * time.Second
+		}
+		if w.Chain.Algorithm == "" {
+			w.Chain.Algorithm = "hmac-sha256"
+		}
+		if w.StateDir == "" {
+			w.StateDir = defaultWatchtowerStateDir()
+		}
+	}
+	if w.EphemeralMode {
+		// Apply ephemeral overrides ONLY for zero fields. Operator-set
+		// values still win.
+		if w.Batch.MaxEvents == 0 {
+			w.Batch.MaxEvents = 64
+		}
+		if w.Batch.MaxBytes == 0 {
+			w.Batch.MaxBytes = 64 * 1024
+		}
+		if w.Batch.MaxTimespan == 0 {
+			w.Batch.MaxTimespan = 1 * time.Second
+		}
+		if w.Batch.FlushInterval == 0 {
+			w.Batch.FlushInterval = 200 * time.Millisecond
+		}
+		if w.WAL.SegmentSize == 0 {
+			w.WAL.SegmentSize = 4 * 1024 * 1024
+		}
+		if w.WAL.MaxTotalBytes == 0 {
+			w.WAL.MaxTotalBytes = 64 * 1024 * 1024
+		}
+		if w.Heartbeat.Interval == 0 {
+			w.Heartbeat.Interval = 10 * time.Second
+		}
+	}
+	standard()
+}
+
+// defaultWatchtowerStateDir returns the default state directory for WTP.
+// Uses GetUserStateDir() and falls back to the OS temp dir if a user state
+// directory cannot be determined. See GetUserStateDir() for the per-OS
+// contract - on Windows the state directory is intentionally non-roaming
+// (LOCALAPPDATA), distinct from GetUserDataDir which roams via APPDATA.
+// Cross-platform: uses filepath.Join.
+func defaultWatchtowerStateDir() string {
+	base := GetUserStateDir()
+	if base == "" {
+		base = filepath.Join(os.TempDir(), "aep-caw")
+	}
+	return filepath.Join(base, "wtp")
+}
+
+func (w *AuditWatchtowerConfig) validate() error {
+	if !w.Enabled {
+		return nil
+	}
+	if w.Endpoint == "" {
+		return fmt.Errorf("audit.watchtower.endpoint is required when enabled")
+	}
+	if _, _, err := net.SplitHostPort(w.Endpoint); err != nil {
+		return fmt.Errorf("audit.watchtower.endpoint %q: %w", w.Endpoint, err)
+	}
+
+	// Auth: exactly one source.
+	authSources := 0
+	if w.Auth.TokenFile != "" {
+		authSources++
+	}
+	if w.Auth.TokenEnv != "" {
+		authSources++
+	}
+	if w.Auth.ClientCertAuth {
+		authSources++
+	}
+	if authSources != 1 {
+		return fmt.Errorf("audit.watchtower.auth: exactly one of token_file, token_env, client_cert_auth must be set (got %d)", authSources)
+	}
+
+	// mTLS pairing: when client_cert_auth is true, both cert + key are required.
+	if w.Auth.ClientCertAuth {
+		if w.TLS.ClientCertFile == "" || w.TLS.ClientKeyFile == "" {
+			return fmt.Errorf("audit.watchtower.auth.client_cert_auth requires both tls.client_cert_file and tls.client_key_file")
+		}
+	}
+	// Partial TLS client-auth pair is invalid even without client_cert_auth.
+	if (w.TLS.ClientCertFile != "") != (w.TLS.ClientKeyFile != "") {
+		return fmt.Errorf("audit.watchtower.tls: client_cert_file and client_key_file must be set together")
+	}
+
+	// TLS file existence AND readability. We open + close instead of just
+	// stat-ing so unreadable files (perm-denied) are caught at load time.
+	for _, f := range []struct {
+		field string
+		path  string
+	}{
+		{"tls.ca_cert_file", w.TLS.CACertFile},
+		{"tls.client_cert_file", w.TLS.ClientCertFile},
+		{"tls.client_key_file", w.TLS.ClientKeyFile},
+	} {
+		if f.path == "" {
+			continue
+		}
+		fh, err := os.Open(f.path)
+		if err != nil {
+			return fmt.Errorf("audit.watchtower.%s %q: %w", f.field, f.path, err)
+		}
+		_ = fh.Close()
+	}
+
+	// Chain: validate exactly one key source AND that key_source (if set)
+	// matches the populated source block. This must mirror the field
+	// semantics in internal/audit/integrity.go:NewKMSProvider so the daemon
+	// (Task 27) doesn't silently build the wrong provider.
+	chainSources := []struct {
+		name      string
+		populated bool
+	}{
+		{"file", w.Chain.KeyFile != ""},
+		{"env", w.Chain.KeyEnv != ""},
+		{"aws_kms", w.Chain.AWSKMS.KeyID != ""},
+		{"azure_keyvault", w.Chain.AzureKeyVault.VaultURL != ""},
+		{"hashicorp_vault", w.Chain.HashiCorpVault.Address != ""},
+		{"gcp_kms", w.Chain.GCPKMS.KeyName != ""},
+	}
+	populated := []string{}
+	for _, s := range chainSources {
+		if s.populated {
+			populated = append(populated, s.name)
+		}
+	}
+	if len(populated) != 1 {
+		return fmt.Errorf("audit.watchtower.chain: exactly one key source must be set "+
+			"(key_file, key_env, aws_kms, azure_keyvault, hashicorp_vault, gcp_kms) (got %d)", len(populated))
+	}
+	inferred := populated[0]
+	switch w.Chain.KeySource {
+	case "":
+		// fine; inferred from populated block
+	case "file", "env", "aws_kms", "azure_keyvault", "hashicorp_vault", "gcp_kms":
+		if w.Chain.KeySource != inferred {
+			return fmt.Errorf("audit.watchtower.chain.key_source %q does not match populated source %q", w.Chain.KeySource, inferred)
+		}
+	default:
+		return fmt.Errorf("audit.watchtower.chain.key_source %q: must be one of file, env, aws_kms, azure_keyvault, hashicorp_vault, gcp_kms", w.Chain.KeySource)
+	}
+
+	// Per-provider minimum required fields. Mirror the kms package
+	// constructors in internal/audit/kms/{aws,azure,vault,gcp}.go so a config
+	// that passes load-time validation cannot fail later at provider
+	// construction.
+	switch inferred {
+	case "aws_kms":
+		if w.Chain.AWSKMS.KeyID == "" {
+			return fmt.Errorf("audit.watchtower.chain.aws_kms.key_id is required")
+		}
+	case "azure_keyvault":
+		if w.Chain.AzureKeyVault.VaultURL == "" {
+			return fmt.Errorf("audit.watchtower.chain.azure_keyvault.vault_url is required")
+		}
+		if w.Chain.AzureKeyVault.KeyName == "" {
+			return fmt.Errorf("audit.watchtower.chain.azure_keyvault.key_name is required")
+		}
+	case "hashicorp_vault":
+		if w.Chain.HashiCorpVault.Address == "" {
+			return fmt.Errorf("audit.watchtower.chain.hashicorp_vault.address is required")
+		}
+		if w.Chain.HashiCorpVault.SecretPath == "" {
+			return fmt.Errorf("audit.watchtower.chain.hashicorp_vault.secret_path is required")
+		}
+	case "gcp_kms":
+		if w.Chain.GCPKMS.KeyName == "" {
+			return fmt.Errorf("audit.watchtower.chain.gcp_kms.key_name is required")
+		}
+	}
+
+	switch w.Chain.Algorithm {
+	case "hmac-sha256", "hmac-sha512":
+	default:
+		return fmt.Errorf("audit.watchtower.chain.algorithm %q: must be hmac-sha256 or hmac-sha512", w.Chain.Algorithm)
+	}
+	if w.Batch.MaxBytes < 4*1024 {
+		return fmt.Errorf("audit.watchtower.batch.max_bytes %d: must be >= 4096", w.Batch.MaxBytes)
+	}
+	if w.WAL.SegmentSize > w.WAL.MaxTotalBytes/2 {
+		return fmt.Errorf("audit.watchtower.wal.segment_size %d > max_total_bytes/2 (%d)", w.WAL.SegmentSize, w.WAL.MaxTotalBytes/2)
+	}
+	switch w.Batch.Compression {
+	case "none":
+		// nothing to validate.
+	case "zstd":
+		if w.Batch.ZstdLevel < 1 || w.Batch.ZstdLevel > 22 {
+			return fmt.Errorf("audit.watchtower.batch.zstd_level %d: must be in [1,22]", w.Batch.ZstdLevel)
+		}
+	case "gzip":
+		if w.Batch.GzipLevel < 1 || w.Batch.GzipLevel > 9 {
+			return fmt.Errorf("audit.watchtower.batch.gzip_level %d: must be in [1,9]", w.Batch.GzipLevel)
+		}
+	default:
+		return fmt.Errorf("audit.watchtower.batch.compression %q: must be zstd, gzip, or none", w.Batch.Compression)
+	}
+	switch w.WAL.SyncMode {
+	case "immediate":
+	case "deferred":
+		// SyncDeferred is forward-compatible in the WAL layer but the
+		// periodic-sync timer hook is not yet wired (plan task tracks
+		// the work). WAL.Open rejects it at runtime; reject it at
+		// config validation too so a config that turns the mode on
+		// fails fast - otherwise the daemon would only fail when the
+		// audit pipeline tries to open the WAL, after the rest of the
+		// config has been accepted as valid.
+		return fmt.Errorf("audit.watchtower.wal.sync_mode %q: deferred mode requires the periodic-sync timer hook (not yet implemented); use \"immediate\"", w.WAL.SyncMode)
+	default:
+		return fmt.Errorf("audit.watchtower.wal.sync_mode %q: must be immediate", w.WAL.SyncMode)
+	}
+
+	// Filter: min_risk_level enum (matches OTEL filter).
+	switch w.Filter.MinRiskLevel {
+	case "", "low", "medium", "high", "critical":
+	default:
+		return fmt.Errorf("audit.watchtower.filter.min_risk_level %q: must be one of low, medium, high, critical (or empty)", w.Filter.MinRiskLevel)
+	}
+
+	// state_dir: ensure parent is creatable and writable. We track whether
+	// the directory pre-existed so we can clean up if the dependency-ordering
+	// gate below rejects the config (validation should be side-effect free
+	// against rejected configs).
+	stateDirExisted := false
+	if w.StateDir != "" {
+		if info, err := os.Stat(w.StateDir); err == nil && info.IsDir() {
+			stateDirExisted = true
+		}
+		if err := os.MkdirAll(w.StateDir, 0o700); err != nil {
+			return fmt.Errorf("audit.watchtower.state_dir %q: not writable: %w", w.StateDir, err)
+		}
+		probe, err := os.CreateTemp(w.StateDir, ".wtp-probe-*")
+		if err != nil {
+			if !stateDirExisted {
+				_ = os.RemoveAll(w.StateDir)
+			}
+			return fmt.Errorf("audit.watchtower.state_dir %q: not writable: %w", w.StateDir, err)
+		}
+		probePath := probe.Name()
+		_ = probe.Close()
+		_ = os.Remove(probePath)
+	}
+
+	return nil
+}
+
+func Load(path string) (*Config, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read config: %w", err)
+	}
+
+	// Expand environment variables in config content (e.g., $HOME, ${HOME})
+	expanded := os.ExpandEnv(string(b))
+	if err := rejectRemovedConfigKeys([]byte(expanded)); err != nil {
+		return nil, err
+	}
+
+	var cfg Config
+	// Pre-seed ptrace performance defaults before YAML unmarshal.
+	// Bool fields like SeccompPrefilter default to true but YAML unmarshal
+	// into a zero-value struct gives false for omitted fields. Pre-seeding
+	// ensures omitted fields keep intended defaults.
+	cfg.Sandbox.Ptrace = DefaultPtraceConfig()
+	if err := yaml.Unmarshal([]byte(expanded), &cfg); err != nil {
+		return nil, fmt.Errorf("parse config: %w", err)
+	}
+
+	applyDefaults(&cfg)
+	for _, k := range unknownFUSEKeys([]byte(expanded)) {
+		slog.Warn("unknown key under sandbox.fuse ignored; check the config schema",
+			"key", k, "hint", "soft-delete uses sandbox.fuse.audit.mode and sandbox.fuse.audit.trash_path")
+	}
+	applyEnvOverrides(&cfg)
+	if err := validateConfig(&cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}
+
+func rejectRemovedConfigKeys(data []byte) error {
+	var root yaml.Node
+	if err := yaml.Unmarshal(data, &root); err != nil {
+		return fmt.Errorf("parse config: %w", err)
+	}
+	if yamlMappingPathExists(&root, "sandbox", "seccomp", "hardening_profiles") {
+		return fmt.Errorf("sandbox.seccomp.hardening_profiles has been removed; use sandbox.seccomp.mitigation_sets")
+	}
+	return nil
+}
+
+func yamlMappingPathExists(node *yaml.Node, path ...string) bool {
+	if node == nil {
+		return false
+	}
+	if node.Kind == yaml.DocumentNode {
+		if len(node.Content) == 0 {
+			return false
+		}
+		node = node.Content[0]
+	}
+	for _, want := range path {
+		if node == nil || node.Kind != yaml.MappingNode {
+			return false
+		}
+		var next *yaml.Node
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			if node.Content[i].Value == want {
+				next = node.Content[i+1]
+				break
+			}
+		}
+		if next == nil {
+			return false
+		}
+		node = next
+	}
+	return true
+}
+
+// yamlMappingNode returns the mapping node at the given key path, or nil.
+func yamlMappingNode(node *yaml.Node, path ...string) *yaml.Node {
+	if node == nil {
+		return nil
+	}
+	if node.Kind == yaml.DocumentNode {
+		if len(node.Content) == 0 {
+			return nil
+		}
+		node = node.Content[0]
+	}
+	for _, want := range path {
+		if node == nil || node.Kind != yaml.MappingNode {
+			return nil
+		}
+		var next *yaml.Node
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			if node.Content[i].Value == want {
+				next = node.Content[i+1]
+				break
+			}
+		}
+		if next == nil {
+			return nil
+		}
+		node = next
+	}
+	return node
+}
+
+// knownFUSEKeys are the recognized keys under sandbox.fuse (see SandboxFUSEConfig).
+var knownFUSEKeys = map[string]struct{}{
+	"enabled":                 {},
+	"deferred":                {},
+	"audit":                   {},
+	"mount_base_dir":          {},
+	"deferred_marker_file":    {},
+	"deferred_enable_command": {},
+	"max_background":          {},
+}
+
+// unknownFUSEKeys returns keys present under sandbox.fuse that are not
+// recognized by SandboxFUSEConfig. Used to surface silent misconfiguration
+// (e.g. fuse.session.mode) since the YAML loader is non-strict.
+func unknownFUSEKeys(data []byte) []string {
+	var root yaml.Node
+	if err := yaml.Unmarshal(data, &root); err != nil {
+		return nil
+	}
+	fuse := yamlMappingNode(&root, "sandbox", "fuse")
+	if fuse == nil || fuse.Kind != yaml.MappingNode {
+		return nil
+	}
+	var unknown []string
+	for i := 0; i+1 < len(fuse.Content); i += 2 {
+		key := fuse.Content[i].Value
+		if _, ok := knownFUSEKeys[key]; !ok {
+			unknown = append(unknown, key)
+		}
+	}
+	return unknown
+}
+
+// LoadWithSource loads config from path and returns the config along with its source.
+// The source parameter indicates where this config path came from.
+func LoadWithSource(path string, source ConfigSource) (*Config, ConfigSource, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, source, fmt.Errorf("read config: %w", err)
+	}
+
+	// Expand environment variables in config content (e.g., $HOME, ${HOME})
+	expanded := os.ExpandEnv(string(b))
+	if err := rejectRemovedConfigKeys([]byte(expanded)); err != nil {
+		return nil, source, err
+	}
+
+	var cfg Config
+	// Pre-seed ptrace performance defaults before YAML unmarshal (same as Load).
+	cfg.Sandbox.Ptrace = DefaultPtraceConfig()
+	if err := yaml.Unmarshal([]byte(expanded), &cfg); err != nil {
+		return nil, source, fmt.Errorf("parse config: %w", err)
+	}
+
+	applyDefaultsWithSource(&cfg, source, path)
+	for _, k := range unknownFUSEKeys([]byte(expanded)) {
+		slog.Warn("unknown key under sandbox.fuse ignored; check the config schema",
+			"key", k, "hint", "soft-delete uses sandbox.fuse.audit.mode and sandbox.fuse.audit.trash_path")
+	}
+	if source == ConfigSourceBundle {
+		resolveRelativePaths(&cfg, GetUserDataDir())
+	}
+	applyEnvOverrides(&cfg)
+	if err := validateConfig(&cfg); err != nil {
+		return nil, source, err
+	}
+	return &cfg, source, nil
+}
+
+// resolveRelativePaths rewrites relative file paths in the config to be
+// relative to baseDir instead of the current working directory. This is
+// needed when loading config from the macOS app bundle, where the CWD is
+// unpredictable.
+func resolveRelativePaths(cfg *Config, baseDir string) {
+	resolve := func(p string) string {
+		if p == "" || p == "stdout" || p == "stderr" || filepath.IsAbs(p) {
+			return p
+		}
+		return filepath.Join(baseDir, p)
+	}
+	cfg.Server.UnixSocket.Path = resolve(cfg.Server.UnixSocket.Path)
+	cfg.Logging.Output = resolve(cfg.Logging.Output)
+	cfg.Audit.Output = resolve(cfg.Audit.Output)
+	cfg.Audit.Storage.SQLitePath = resolve(cfg.Audit.Storage.SQLitePath)
+	cfg.Sessions.BaseDir = resolve(cfg.Sessions.BaseDir)
+}
+
+// getDefaultDataDir returns the appropriate data directory based on config source.
+func getDefaultDataDir(source ConfigSource, configPath string) string {
+	switch source {
+	case ConfigSourceEnv:
+		// Use the directory containing the config file
+		if configPath != "" {
+			return filepath.Dir(configPath)
+		}
+		return GetUserDataDir()
+	case ConfigSourceUser:
+		return GetUserDataDir()
+	case ConfigSourceBundle:
+		return GetUserDataDir()
+	case ConfigSourceSystem:
+		return GetDataDir()
+	default:
+		return GetDataDir()
+	}
+}
+
+// getDefaultPoliciesDir returns the appropriate policies directory based on config source.
+func getDefaultPoliciesDir(source ConfigSource, configPath string) string {
+	switch source {
+	case ConfigSourceEnv:
+		// Use policies subdir of config file location
+		if configPath != "" {
+			return filepath.Join(filepath.Dir(configPath), "policies")
+		}
+		return filepath.Join(GetUserConfigDir(), "policies")
+	case ConfigSourceUser:
+		return filepath.Join(GetUserConfigDir(), "policies")
+	case ConfigSourceBundle:
+		// Use user-writable policies dir; seed from bundle on first run
+		userPolicies := filepath.Join(GetUserConfigDir(), "policies")
+		if configPath != "" {
+			bundlePolicies := filepath.Join(filepath.Dir(configPath), "policies")
+			seedPoliciesFromBundle(bundlePolicies, userPolicies)
+		}
+		return userPolicies
+	case ConfigSourceSystem:
+		return GetPoliciesDir()
+	default:
+		return GetPoliciesDir()
+	}
+}
+
+// seedPoliciesFromBundle copies bundled policy files to the user's config
+// directory if it doesn't exist yet, giving users a writable starting point.
+func seedPoliciesFromBundle(bundleDir, userDir string) {
+	// Only seed if user dir doesn't exist
+	if _, err := os.Stat(userDir); err == nil {
+		return
+	}
+	entries, err := os.ReadDir(bundleDir)
+	if err != nil || len(entries) == 0 {
+		return
+	}
+	if err := os.MkdirAll(userDir, 0o755); err != nil {
+		return
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		src := filepath.Join(bundleDir, e.Name())
+		dst := filepath.Join(userDir, e.Name())
+		data, err := os.ReadFile(src)
+		if err != nil {
+			continue
+		}
+		_ = os.WriteFile(dst, data, 0o644)
+	}
+}
+
+// applyDefaultsWithSource applies default values based on the config source.
+// This enables source-aware default path resolution:
+// - User config: defaults use ~/.local/share/aep-caw/ and ~/.config/aep-caw/
+// - System config: defaults use /var/lib/aep-caw/ and /etc/aep-caw/
+// - Env config: defaults use the directory containing the config file
+func applyDefaultsWithSource(cfg *Config, source ConfigSource, configPath string) {
+	dataDir := getDefaultDataDir(source, configPath)
+	policiesDir := getDefaultPoliciesDir(source, configPath)
+
+	// Platform defaults
+	if cfg.Platform.Mode == "" {
+		cfg.Platform.Mode = "auto"
+	}
+	if cfg.Platform.MountPoints.Linux == "" {
+		cfg.Platform.MountPoints.Linux = "/tmp/aep-caw/workspace"
+	}
+	if cfg.Platform.MountPoints.Darwin == "" {
+		cfg.Platform.MountPoints.Darwin = "/tmp/aep-caw/workspace"
+	}
+	if cfg.Platform.MountPoints.Windows == "" {
+		cfg.Platform.MountPoints.Windows = "X:"
+	}
+	if cfg.Platform.MountPoints.WindowsWSL2 == "" {
+		cfg.Platform.MountPoints.WindowsWSL2 = "/tmp/aep-caw/workspace"
+	}
+
+	if cfg.Server.HTTP.Addr == "" {
+		cfg.Server.HTTP.Addr = "0.0.0.0:18080"
+	}
+	if cfg.Server.GRPC.Addr == "" {
+		cfg.Server.GRPC.Addr = "127.0.0.1:9090"
+	}
+	if cfg.Server.HTTP.ReadTimeout == "" {
+		cfg.Server.HTTP.ReadTimeout = "30s"
+	}
+	if cfg.Server.HTTP.WriteTimeout == "" {
+		cfg.Server.HTTP.WriteTimeout = "5m"
+	}
+	if cfg.Server.HTTP.MaxRequestSize == "" {
+		cfg.Server.HTTP.MaxRequestSize = "10MB"
+	}
+	if cfg.Auth.Type == "" {
+		cfg.Auth.Type = "none"
+	}
+	if cfg.Auth.APIKey.HeaderName == "" {
+		cfg.Auth.APIKey.HeaderName = "X-API-Key"
+	}
+
+	// Use source-aware data directory for sessions
+	if cfg.Sessions.BaseDir == "" {
+		cfg.Sessions.BaseDir = filepath.Join(dataDir, "sessions")
+	}
+	if cfg.Sessions.MaxSessions <= 0 {
+		cfg.Sessions.MaxSessions = 100
+	}
+	if cfg.Sessions.CleanupInterval == "" {
+		cfg.Sessions.CleanupInterval = "1m"
+	}
+	if cfg.Sandbox.FUSE.MountBaseDir == "" {
+		cfg.Sandbox.FUSE.MountBaseDir = cfg.Sessions.BaseDir
+	}
+	if cfg.Sandbox.FUSE.Audit.Mode == "" {
+		cfg.Sandbox.FUSE.Audit.Mode = "monitor"
+	}
+	if cfg.Sandbox.FUSE.Audit.TrashPath == "" {
+		cfg.Sandbox.FUSE.Audit.TrashPath = ".aep-caw_trash"
+	}
+	if cfg.Sandbox.FUSE.Audit.TTL == "" {
+		cfg.Sandbox.FUSE.Audit.TTL = "7d"
+	}
+	if cfg.Sandbox.FUSE.Audit.Quota == "" {
+		cfg.Sandbox.FUSE.Audit.Quota = "5GB"
+	}
+	if cfg.Sandbox.FUSE.Audit.MaxEventQueue <= 0 {
+		cfg.Sandbox.FUSE.Audit.MaxEventQueue = 1024
+	}
+	if cfg.Sandbox.FUSE.Audit.HashSmallFilesUnder == "" {
+		cfg.Sandbox.FUSE.Audit.HashSmallFilesUnder = "1MB"
+	}
+	// default audit enabled unless explicitly disabled
+	if cfg.Sandbox.FUSE.Audit.Enabled == nil {
+		t := true
+		cfg.Sandbox.FUSE.Audit.Enabled = &t
+	}
+	if cfg.Sandbox.Network.ProxyPort == 0 {
+		cfg.Sandbox.Network.ProxyPort = 9080
+	}
+	if cfg.Sandbox.Network.DNSPort == 0 {
+		cfg.Sandbox.Network.DNSPort = 9053
+	}
+	if cfg.Sandbox.Network.InterceptMode == "" {
+		cfg.Sandbox.Network.InterceptMode = "all"
+	}
+	if cfg.Sandbox.Network.ProxyListenAddr == "" {
+		cfg.Sandbox.Network.ProxyListenAddr = "127.0.0.1:0"
+	}
+	// Resource limits defaults
+	if cfg.Sandbox.Limits.MaxMemoryMB == 0 {
+		cfg.Sandbox.Limits.MaxMemoryMB = 2048
+	}
+	if cfg.Sandbox.Limits.MaxCPUPercent == 0 {
+		cfg.Sandbox.Limits.MaxCPUPercent = 50
+	}
+	if cfg.Sandbox.Limits.MaxProcesses == 0 {
+		cfg.Sandbox.Limits.MaxProcesses = 100
+	}
+	if cfg.Sandbox.Limits.MaxDiskIOMbps == 0 {
+		cfg.Sandbox.Limits.MaxDiskIOMbps = 100
+	}
+	if cfg.Sandbox.Limits.MaxNetworkMbps == 0 {
+		cfg.Sandbox.Limits.MaxNetworkMbps = 50
+	}
+	if cfg.Sandbox.Network.Transparent.SubnetBase == "" {
+		cfg.Sandbox.Network.Transparent.SubnetBase = "10.250.0.0/16"
+	}
+	// eBPF tracing defaults to disabled unless explicitly enabled.
+	if cfg.Sandbox.Network.EBPF.Required && !cfg.Sandbox.Network.EBPF.Enabled {
+		// If a user set required=true but forgot enabled, force enable to avoid silent misconfig.
+		// This coupling is also documented in config.yml.
+		cfg.Sandbox.Network.EBPF.Enabled = true
+	}
+	// If enforce is set, ebpf must be enabled.
+	if cfg.Sandbox.Network.EBPF.Enforce && !cfg.Sandbox.Network.EBPF.Enabled {
+		cfg.Sandbox.Network.EBPF.Enabled = true
+	}
+	if cfg.Sandbox.Network.EBPF.DNSRefreshSeconds < 0 {
+		cfg.Sandbox.Network.EBPF.DNSRefreshSeconds = 0
+	}
+	if cfg.Sandbox.Network.EBPF.DNSMaxTTLSeconds <= 0 {
+		cfg.Sandbox.Network.EBPF.DNSMaxTTLSeconds = 60
+	}
+	if cfg.Sandbox.Network.EBPF.MapDenyEntries < 0 {
+		cfg.Sandbox.Network.EBPF.MapDenyEntries = 0
+	}
+	if cfg.Sandbox.Network.EBPF.MapLPMDenyEntries < 0 {
+		cfg.Sandbox.Network.EBPF.MapLPMDenyEntries = 0
+	}
+	// Reverse DNS is off by default to avoid latency; no defaults needed otherwise.
+	// cgroups defaults to disabled unless explicitly enabled.
+	if cfg.Sandbox.Cgroups.BasePath == "" {
+		cfg.Sandbox.Cgroups.BasePath = ""
+	}
+
+	// Unix sockets wrapper defaults to enabled for seccomp enforcement in shim mode.
+	// This wraps commands with aep-caw-unixwrap which applies seccomp-bpf filters.
+	if cfg.Sandbox.UnixSockets.Enabled == nil {
+		t := true
+		cfg.Sandbox.UnixSockets.Enabled = &t
+	}
+
+	// Seccomp defaults
+	if cfg.Sandbox.Seccomp.Mode == "" {
+		cfg.Sandbox.Seccomp.Mode = "enforce"
+	}
+	if cfg.Sandbox.Seccomp.Shellc.Opaque == "" {
+		cfg.Sandbox.Seccomp.Shellc.Opaque = "enforce"
+	}
+
+	// seccompActive is true when the seccomp wrapper will run - either because
+	// seccomp is explicitly enabled, or because unix_sockets wrapping is on
+	// (which runs aep-caw-unixwrap that installs the BPF filter).
+	wrapperEnabled := cfg.Sandbox.UnixSockets.Enabled != nil && *cfg.Sandbox.UnixSockets.Enabled
+	seccompActive := cfg.Sandbox.Seccomp.Enabled || wrapperEnabled
+
+	if cfg.Sandbox.Seccomp.Enabled && !cfg.Sandbox.Seccomp.UnixSocket.Enabled {
+		// Enable unix socket monitoring by default if seccomp is enabled
+		// AND the user hasn't explicitly disabled it via sandbox.unix_sockets.enabled=false.
+		if cfg.Sandbox.UnixSockets.Enabled == nil || *cfg.Sandbox.UnixSockets.Enabled {
+			cfg.Sandbox.Seccomp.UnixSocket.Enabled = true
+		}
+	}
+	if cfg.Sandbox.Seccomp.UnixSocket.Action == "" {
+		cfg.Sandbox.Seccomp.UnixSocket.Action = "enforce"
+	}
+	if cfg.Sandbox.Seccomp.Syscalls.DefaultAction == "" {
+		cfg.Sandbox.Seccomp.Syscalls.DefaultAction = "allow"
+	}
+	if cfg.Sandbox.Seccomp.Syscalls.OnBlock == "" {
+		cfg.Sandbox.Seccomp.Syscalls.OnBlock = "errno"
+	}
+	// Default blocked syscalls (dangerous operations)
+	if len(cfg.Sandbox.Seccomp.Syscalls.Block) == 0 && seccompActive {
+		cfg.Sandbox.Seccomp.Syscalls.Block = []string{
+			"ptrace",
+			"process_vm_readv",
+			"process_vm_writev",
+			"personality",
+			"mount",
+			"umount2",
+			"pivot_root",
+			"reboot",
+			"kexec_load",
+			"init_module",
+			"finit_module",
+			"delete_module",
+			"sethostname",
+			"setdomainname",
+		}
+	}
+
+	// Apply default blocked socket families when seccomp is active and the
+	// operator has not set the field. nil means "unset → apply defaults";
+	// a non-nil empty slice means "explicit opt-out → leave empty".
+	if seccompActive && cfg.Sandbox.Seccomp.BlockedSocketFamilies == nil {
+		defaults := seccompPkg.DefaultBlockedFamilies()
+		families := make([]SandboxSeccompSocketFamilyConfig, 0, len(defaults))
+		for _, bf := range defaults {
+			families = append(families, SandboxSeccompSocketFamilyConfig{
+				Family: bf.Name,
+				Action: string(bf.Action),
+			})
+		}
+		cfg.Sandbox.Seccomp.BlockedSocketFamilies = families
+	}
+
+	// Enable file_monitor by default when seccomp is explicitly enabled,
+	// so openat(O_WRONLY) and other file syscalls are intercepted and
+	// policy-enforced. Without this, only O_CREAT (new file creation)
+	// gets caught by Landlock - writes to existing files pass through.
+	// Note: we gate on Seccomp.Enabled, NOT seccompActive, because
+	// unix_sockets-only mode shouldn't auto-enable full file monitoring
+	// (the policy's allow-etc-read rules may not cover all paths the
+	// dynamic linker needs, causing spurious EACCES on program startup).
+	// Only auto-enable file_monitor when user didn't explicitly set it (nil).
+	// If user set enabled: false, respect that - forcing it on causes EACCES
+	// on shared library opens because the handler denies read-only opens
+	// that don't match policy paths.
+	//
+	// Also skip auto-enable when socket_rules are configured: the operator
+	// is using seccomp for socket-level enforcement only, and auto-installing
+	// file-notify rules on top deadlocks the unixwrap during seccomp setup
+	// because file syscalls in the setup path block on a notifFD that
+	// hasn't been forwarded to the server yet (issue #304). Operators who
+	// want both can still opt in explicitly with file_monitor.enabled: true.
+	if cfg.Sandbox.Seccomp.Enabled &&
+		cfg.Sandbox.Seccomp.FileMonitor.Enabled == nil &&
+		len(cfg.Sandbox.Seccomp.SocketRules) == 0 {
+		cfg.Sandbox.Seccomp.FileMonitor.Enabled = boolPtr(true)
+	}
+
+	// When file_monitor is enabled, default to enforcing policy decisions.
+	// Without this, the file_monitor only audits violations without blocking them,
+	// allowing writes to sensitive files like /etc/hostname or ~/.bashrc.
+	if FileMonitorBoolWithDefault(cfg.Sandbox.Seccomp.FileMonitor.Enabled, false) &&
+		cfg.Sandbox.Seccomp.FileMonitor.EnforceWithoutFUSE == nil {
+		cfg.Sandbox.Seccomp.FileMonitor.EnforceWithoutFUSE = boolPtr(true)
+	}
+
+	// Execve interception defaults - apply when enabled but not fully configured
+	if cfg.Sandbox.Seccomp.Execve.Enabled {
+		defaults := DefaultExecveConfig()
+		if cfg.Sandbox.Seccomp.Execve.MaxArgc == 0 {
+			cfg.Sandbox.Seccomp.Execve.MaxArgc = defaults.MaxArgc
+		}
+		if cfg.Sandbox.Seccomp.Execve.MaxArgvBytes == 0 {
+			cfg.Sandbox.Seccomp.Execve.MaxArgvBytes = defaults.MaxArgvBytes
+		}
+		if cfg.Sandbox.Seccomp.Execve.OnTruncated == "" {
+			cfg.Sandbox.Seccomp.Execve.OnTruncated = defaults.OnTruncated
+		}
+		if cfg.Sandbox.Seccomp.Execve.ApprovalTimeout == 0 {
+			cfg.Sandbox.Seccomp.Execve.ApprovalTimeout = defaults.ApprovalTimeout
+		}
+		if cfg.Sandbox.Seccomp.Execve.ApprovalTimeoutAction == "" {
+			cfg.Sandbox.Seccomp.Execve.ApprovalTimeoutAction = defaults.ApprovalTimeoutAction
+		}
+		if len(cfg.Sandbox.Seccomp.Execve.InternalBypass) == 0 {
+			cfg.Sandbox.Seccomp.Execve.InternalBypass = defaults.InternalBypass
+		}
+	}
+
+	// Cross-server pattern detection defaults
+	if cfg.Sandbox.MCP.CrossServer.ReadThenSend.Window == 0 {
+		cfg.Sandbox.MCP.CrossServer.ReadThenSend.Window = 30 * time.Second
+	}
+	if cfg.Sandbox.MCP.CrossServer.Burst.MaxCalls == 0 {
+		cfg.Sandbox.MCP.CrossServer.Burst.MaxCalls = 10
+	} else if cfg.Sandbox.MCP.CrossServer.Burst.MaxCalls < 0 {
+		cfg.Sandbox.MCP.CrossServer.Burst.MaxCalls = 10
+	}
+	if cfg.Sandbox.MCP.CrossServer.Burst.Window == 0 {
+		cfg.Sandbox.MCP.CrossServer.Burst.Window = 5 * time.Second
+	}
+	if cfg.Sandbox.MCP.CrossServer.CrossServerFlow.Window == 0 {
+		cfg.Sandbox.MCP.CrossServer.CrossServerFlow.Window = 30 * time.Second
+	}
+	// SameTurnOnly defaults to true when not explicitly set.
+	if cfg.Sandbox.MCP.CrossServer.CrossServerFlow.SameTurnOnly == nil {
+		t := true
+		cfg.Sandbox.MCP.CrossServer.CrossServerFlow.SameTurnOnly = &t
+	}
+	// ShadowTool defaults to enabled when not explicitly set.
+	if cfg.Sandbox.MCP.CrossServer.ShadowTool.Enabled == nil {
+		t := true
+		cfg.Sandbox.MCP.CrossServer.ShadowTool.Enabled = &t
+	}
+	if cfg.Sandbox.MCP.CrossServer.ShadowTool.SimilarityCheck == nil {
+		f := false
+		cfg.Sandbox.MCP.CrossServer.ShadowTool.SimilarityCheck = &f
+	}
+	if cfg.Sandbox.MCP.CrossServer.ShadowTool.SimilarityThreshold == nil {
+		d := 0.85
+		cfg.Sandbox.MCP.CrossServer.ShadowTool.SimilarityThreshold = &d
+	}
+
+	// Landlock network defaults - fail-open for connect (proxy needs it),
+	// fail-closed for bind (agents rarely need to listen).
+	// Applied unconditionally so diagnostic dumps show explicit values.
+	if cfg.Landlock.Network.AllowConnectTCP == nil {
+		v := true
+		cfg.Landlock.Network.AllowConnectTCP = &v
+	}
+	if cfg.Landlock.Network.AllowBindTCP == nil {
+		v := false
+		cfg.Landlock.Network.AllowBindTCP = &v
+	}
+	if len(cfg.Landlock.Network.BindPorts) > 0 {
+		slog.Warn("landlock.network.bind_ports is set but not yet enforced",
+			"bind_ports", cfg.Landlock.Network.BindPorts,
+			"note", "port-scoped bind rules are a planned follow-up")
+	}
+
+	// macOS XPC defaults
+	if cfg.Sandbox.XPC.Mode == "" {
+		cfg.Sandbox.XPC.Mode = "enforce"
+	}
+	if cfg.Sandbox.XPC.MachServices.DefaultAction == "" {
+		cfg.Sandbox.XPC.MachServices.DefaultAction = "deny"
+	}
+
+	// Use source-aware policies directory
+	if cfg.Policies.Dir == "" {
+		cfg.Policies.Dir = policiesDir
+	}
+	if cfg.Policies.Default == "" {
+		cfg.Policies.Default = "default"
+	}
+	if cfg.Metrics.Path == "" {
+		cfg.Metrics.Path = "/metrics"
+	}
+	if cfg.Health.Path == "" {
+		cfg.Health.Path = "/health"
+	}
+	if cfg.Health.ReadinessPath == "" {
+		cfg.Health.ReadinessPath = "/ready"
+	}
+
+	// Use source-aware data directory for SQLite
+	if cfg.Audit.Storage.Enabled == nil {
+		cfg.Audit.Storage.Enabled = boolPtr(true)
+	}
+	if cfg.Audit.Storage.SQLitePath == "" {
+		cfg.Audit.Storage.SQLitePath = filepath.Join(dataDir, "events.db")
+	}
+	if cfg.Audit.Rotation.MaxSizeMB == 0 {
+		cfg.Audit.Rotation.MaxSizeMB = 500
+	}
+	if cfg.Audit.Rotation.MaxBackups == 0 {
+		cfg.Audit.Rotation.MaxBackups = 10
+	}
+	if cfg.Audit.Webhook.BatchSize == 0 {
+		cfg.Audit.Webhook.BatchSize = 100
+	}
+	if cfg.Audit.Webhook.FlushInterval == "" {
+		cfg.Audit.Webhook.FlushInterval = "10s"
+	}
+	if cfg.Audit.Webhook.Timeout == "" {
+		cfg.Audit.Webhook.Timeout = "5s"
+	}
+	// OTEL defaults
+	if cfg.Audit.OTEL.Endpoint == "" {
+		cfg.Audit.OTEL.Endpoint = "localhost:4317"
+	}
+	if cfg.Audit.OTEL.Protocol == "" {
+		cfg.Audit.OTEL.Protocol = "grpc"
+	}
+	if cfg.Audit.OTEL.Timeout == "" {
+		cfg.Audit.OTEL.Timeout = "10s"
+	}
+	if !cfg.Audit.OTEL.Signals.Logs && !cfg.Audit.OTEL.Signals.Spans {
+		cfg.Audit.OTEL.Signals.Logs = true
+		cfg.Audit.OTEL.Signals.Spans = true
+	}
+	if cfg.Audit.OTEL.Batch.MaxSize == 0 {
+		cfg.Audit.OTEL.Batch.MaxSize = 512
+	}
+	if cfg.Audit.OTEL.Batch.Timeout == "" {
+		cfg.Audit.OTEL.Batch.Timeout = "5s"
+	}
+	if cfg.Audit.OTEL.Resource.ServiceName == "" {
+		cfg.Audit.OTEL.Resource.ServiceName = "aep-caw"
+	}
+	if cfg.Approvals.Timeout == "" {
+		cfg.Approvals.Timeout = "5m"
+	}
+	if cfg.Approvals.Mode == "" {
+		cfg.Approvals.Mode = "local_tty"
+	}
+	if cfg.Development.PProf.Addr == "" {
+		cfg.Development.PProf.Addr = "localhost:6060"
+	}
+
+	// Apply proxy defaults field by field
+	if cfg.Proxy.Mode == "" {
+		cfg.Proxy.Mode = "embedded"
+	}
+	if cfg.Proxy.Providers.Anthropic == "" {
+		cfg.Proxy.Providers.Anthropic = "https://api.anthropic.com"
+	}
+	if cfg.Proxy.Providers.OpenAI == "" {
+		cfg.Proxy.Providers.OpenAI = "https://api.openai.com"
+	}
+	// Port 0 is valid (means random), so don't override it
+
+	// Apply DLP defaults field by field
+	if cfg.DLP.Mode == "" {
+		cfg.DLP.Mode = "redact"
+	}
+	// Note: For DLPPatternsConfig booleans, we can't distinguish between
+	// "not set" and "explicitly set to false", so we should only apply
+	// defaults if the entire patterns section appears empty
+	if !cfg.DLP.Patterns.Email && !cfg.DLP.Patterns.Phone &&
+		!cfg.DLP.Patterns.CreditCard && !cfg.DLP.Patterns.SSN &&
+		!cfg.DLP.Patterns.APIKeys {
+		defaults := DefaultDLPConfig()
+		cfg.DLP.Patterns = defaults.Patterns
+	}
+
+	// Apply LLM storage defaults field by field
+	if cfg.LLMStorage.Retention.MaxAgeDays == 0 {
+		cfg.LLMStorage.Retention.MaxAgeDays = 30
+	}
+	if cfg.LLMStorage.Retention.MaxSizeMB == 0 {
+		cfg.LLMStorage.Retention.MaxSizeMB = 500
+	}
+	if cfg.LLMStorage.Retention.Eviction == "" {
+		cfg.LLMStorage.Retention.Eviction = "oldest_first"
+	}
+	// StoreBodies default is false, which is the zero value, so no need to set
+
+	// Security defaults
+	if cfg.Security.Mode == "" {
+		cfg.Security.Mode = "auto"
+	}
+	// Default to warning when running in degraded mode
+	if !cfg.Security.WarnDegraded {
+		// Only set default if not explicitly set
+		// Since we can't distinguish false from unset, default to true for new configs
+		cfg.Security.WarnDegraded = true
+	}
+
+	// Threat feeds defaults
+	if cfg.ThreatFeeds.Action == "" {
+		cfg.ThreatFeeds.Action = "deny"
+	}
+	if cfg.ThreatFeeds.SyncInterval == 0 {
+		cfg.ThreatFeeds.SyncInterval = 6 * time.Hour
+	}
+	if cfg.ThreatFeeds.Realtime.Timeout == 0 {
+		cfg.ThreatFeeds.Realtime.Timeout = 500 * time.Millisecond
+	}
+	if cfg.ThreatFeeds.Realtime.CacheTTL == 0 {
+		cfg.ThreatFeeds.Realtime.CacheTTL = 1 * time.Hour
+	}
+	if cfg.ThreatFeeds.Realtime.OnTimeout == "" {
+		cfg.ThreatFeeds.Realtime.OnTimeout = "local-only"
+	}
+
+	// Package checks defaults
+	pkgDefaults := DefaultPackageChecksConfig()
+
+	// Capture the user-provided scope BEFORE generic defaulting touches it,
+	// so external-provider promotion can distinguish "user said
+	// new_packages_only" from "YAML omitted scope".
+	userSetScope := cfg.PackageChecks.Scope != ""
+
+	// Run external-provider scope promotion. This may set Scope to
+	// "all_installs" if it was empty and an external provider is enabled,
+	// or emit a warning to stderr if the user explicitly set
+	// new_packages_only with an external provider.
+	if warnings := ApplyExternalProviderDefaults(&cfg.PackageChecks); len(warnings) > 0 {
+		for _, w := range warnings {
+			slog.Warn(w)
+		}
+	}
+
+	// Generic default for scope only kicks in if neither the user nor
+	// ApplyExternalProviderDefaults set it.
+	if cfg.PackageChecks.Scope == "" {
+		cfg.PackageChecks.Scope = pkgDefaults.Scope
+	}
+	_ = userSetScope // currently informational; warning logic uses presence of provider config
+	if cfg.PackageChecks.Cache.TTL.Vulnerability == 0 {
+		cfg.PackageChecks.Cache.TTL.Vulnerability = pkgDefaults.Cache.TTL.Vulnerability
+	}
+	if cfg.PackageChecks.Cache.TTL.License == 0 {
+		cfg.PackageChecks.Cache.TTL.License = pkgDefaults.Cache.TTL.License
+	}
+	if cfg.PackageChecks.Cache.TTL.Provenance == 0 {
+		cfg.PackageChecks.Cache.TTL.Provenance = pkgDefaults.Cache.TTL.Provenance
+	}
+	if cfg.PackageChecks.Cache.TTL.Reputation == 0 {
+		cfg.PackageChecks.Cache.TTL.Reputation = pkgDefaults.Cache.TTL.Reputation
+	}
+	if cfg.PackageChecks.Cache.TTL.Malware == 0 {
+		cfg.PackageChecks.Cache.TTL.Malware = pkgDefaults.Cache.TTL.Malware
+	}
+	if cfg.PackageChecks.Providers == nil {
+		cfg.PackageChecks.Providers = pkgDefaults.Providers
+	}
+	if cfg.PackageChecks.FailMode == "" {
+		cfg.PackageChecks.FailMode = pkgDefaults.FailMode
+	}
+	// Privacy block defaults: an unset list (nil) inherits the
+	// public-registry allowlist so the privacy gate is on by default.
+	// Use == nil rather than len(...) == 0 so users can explicitly disable
+	// the filter by setting external_scan_registries: [] in YAML.
+	if cfg.PackageChecks.Privacy.ExternalScanRegistries == nil {
+		cfg.PackageChecks.Privacy.ExternalScanRegistries = pkgDefaults.Privacy.ExternalScanRegistries
+	}
+	// PrivateScopeDenylist defaults to nil intentionally (no scope blocked by default).
+	// BlockOn: per-field defaults so partial YAML doesn't silently disable
+	// the malware/vulnerability defaults when the user only set license.
+	// A user who explicitly wants to opt out of a default sets the field to
+	// "never" (a valid BlockOnConfig value that produces no rule).
+	if cfg.PackageChecks.BlockOn.Malware == "" {
+		cfg.PackageChecks.BlockOn.Malware = pkgDefaults.BlockOn.Malware
+	}
+	if cfg.PackageChecks.BlockOn.Vulnerability == "" {
+		cfg.PackageChecks.BlockOn.Vulnerability = pkgDefaults.BlockOn.Vulnerability
+	}
+	if cfg.PackageChecks.BlockOn.License == "" {
+		cfg.PackageChecks.BlockOn.License = pkgDefaults.BlockOn.License
+	}
+	if cfg.PackageChecks.BlockOn.Reputation == "" {
+		cfg.PackageChecks.BlockOn.Reputation = pkgDefaults.BlockOn.Reputation
+	}
+	if cfg.PackageChecks.BlockOn.Provenance == "" {
+		cfg.PackageChecks.BlockOn.Provenance = pkgDefaults.BlockOn.Provenance
+	}
+
+	// Policy socket defaults (macOS system extension IPC)
+	if cfg.PolicySocket.Path == "" {
+		cfg.PolicySocket.Path = "/tmp/aep-caw-policy.sock"
+	}
+	if cfg.PolicySocket.TeamID == "" {
+		cfg.PolicySocket.TeamID = "WCKWMMKJ35"
+	}
+
+	// WTP (Watchtower Transport Protocol) defaults
+	cfg.Audit.Watchtower.applyDefaults()
+}
+
+// applyDefaults wraps applyDefaultsWithSource for backward compatibility.
+func applyDefaults(cfg *Config) {
+	applyDefaultsWithSource(cfg, ConfigSourceSystem, "")
+}
+
+func applyEnvOverrides(cfg *Config) {
+	if v := os.Getenv("AEP_CAW_PLATFORM_MODE"); v != "" {
+		cfg.Platform.Mode = v
+	}
+	if v := os.Getenv("AEP_CAW_HTTP_ADDR"); v != "" {
+		cfg.Server.HTTP.Addr = v
+	}
+	if v := os.Getenv("AEP_CAW_GRPC_ADDR"); v != "" {
+		cfg.Server.GRPC.Addr = v
+	}
+	if v := os.Getenv("AEP_CAW_LOG_LEVEL"); v != "" {
+		cfg.Logging.Level = v
+	}
+	if v := os.Getenv("AEP_CAW_DATA_DIR"); v != "" {
+		cfg.Sessions.BaseDir = filepath.Join(v, "sessions")
+		cfg.Audit.Storage.SQLitePath = filepath.Join(v, "events.db")
+	}
+	// Proxy-specific overrides
+	if v := os.Getenv("AEP_CAW_PROXY_MODE"); v != "" {
+		cfg.Proxy.Mode = v
+	}
+	if v := os.Getenv("AEP_CAW_DLP_MODE"); v != "" {
+		cfg.DLP.Mode = v
+	}
+	if v := os.Getenv("AEP_CAW_PROXY_PORT"); v != "" {
+		if port, err := strconv.Atoi(v); err == nil {
+			cfg.Proxy.Port = port
+		}
+	}
+	// OTEL overrides
+	if v := os.Getenv("AEP_CAW_OTEL_ENDPOINT"); v != "" {
+		cfg.Audit.OTEL.Endpoint = v
+	} else if v := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"); v != "" {
+		cfg.Audit.OTEL.Endpoint = v
+	}
+	if v := os.Getenv("AEP_CAW_OTEL_PROTOCOL"); v != "" {
+		cfg.Audit.OTEL.Protocol = v
+	}
+}
+
+// isSafeFeedName checks that a feed name contains only safe characters.
+func isSafeFeedName(name string) bool {
+	for _, c := range name {
+		if !((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '.' || c == '_' || c == '-') {
+			return false
+		}
+	}
+	return true
+}
+
+func validateConfig(cfg *Config) error {
+	switch cfg.Sandbox.FUSE.Audit.Mode {
+	case "monitor", "soft_block", "soft_delete", "strict":
+	default:
+		return fmt.Errorf("invalid sandbox.fuse.audit.mode %q", cfg.Sandbox.FUSE.Audit.Mode)
+	}
+	switch cfg.Policies.SymlinkEscape {
+	case "", "evaluate", "deny":
+		// "" gets normalized to "evaluate" by SymlinkEscapeDeny().
+	default:
+		return fmt.Errorf("invalid policies.symlink_escape %q: must be one of \"evaluate\" or \"deny\"", cfg.Policies.SymlinkEscape)
+	}
+	switch cfg.Sandbox.Seccomp.Syscalls.OnBlock {
+	case "", "errno", "kill", "log", "log_and_kill":
+		// ok; "" will be filled by applyDefaults
+	default:
+		return fmt.Errorf("invalid sandbox.seccomp.syscalls.on_block %q: must be one of errno, kill, log, log_and_kill",
+			cfg.Sandbox.Seccomp.Syscalls.OnBlock)
+	}
+	if cfg.Sandbox.FUSE.Audit.MaxEventQueue < 0 {
+		return fmt.Errorf("sandbox.fuse.audit.max_event_queue must be >= 0")
+	}
+	switch cfg.Sandbox.Network.InterceptMode {
+	case "", "all", "tcp_only", "monitor":
+	default:
+		return fmt.Errorf("invalid sandbox.network.intercept_mode %q", cfg.Sandbox.Network.InterceptMode)
+	}
+	// Validate platform mode
+	switch cfg.Platform.Mode {
+	case "", "auto", "linux", "darwin", "darwin-lima", "windows", "windows-wsl2":
+	default:
+		return fmt.Errorf("invalid platform.mode %q", cfg.Platform.Mode)
+	}
+	// Validate XPC mode
+	switch cfg.Sandbox.XPC.Mode {
+	case "", "enforce", "audit", "disabled":
+	default:
+		return fmt.Errorf("invalid sandbox.xpc.mode %q", cfg.Sandbox.XPC.Mode)
+	}
+	// Validate XPC default_action
+	switch cfg.Sandbox.XPC.MachServices.DefaultAction {
+	case "", "allow", "deny":
+	default:
+		return fmt.Errorf("invalid sandbox.xpc.mach_services.default_action %q", cfg.Sandbox.XPC.MachServices.DefaultAction)
+	}
+	// Validate security mode
+	switch cfg.Security.Mode {
+	case "", "auto", "full", "landlock", "landlock-only", "minimal":
+	default:
+		return fmt.Errorf("invalid security.mode %q", cfg.Security.Mode)
+	}
+	// Validate minimum_mode if specified
+	if cfg.Security.MinimumMode != "" {
+		switch cfg.Security.MinimumMode {
+		case "full", "landlock", "landlock-only", "minimal":
+		default:
+			return fmt.Errorf("invalid security.minimum_mode %q", cfg.Security.MinimumMode)
+		}
+	}
+	// Validate OTEL config
+	if cfg.Audit.OTEL.Enabled {
+		switch cfg.Audit.OTEL.Protocol {
+		case "grpc", "http":
+		default:
+			return fmt.Errorf("invalid audit.otel.protocol %q (must be \"grpc\" or \"http\")", cfg.Audit.OTEL.Protocol)
+		}
+		if cfg.Audit.OTEL.Endpoint == "" {
+			return fmt.Errorf("audit.otel.endpoint is required when otel is enabled")
+		}
+		switch cfg.Audit.OTEL.Filter.MinRiskLevel {
+		case "", "low", "medium", "high", "critical":
+		default:
+			return fmt.Errorf("invalid audit.otel.filter.min_risk_level %q", cfg.Audit.OTEL.Filter.MinRiskLevel)
+		}
+	}
+	// Validate threat_feeds config
+	if cfg.ThreatFeeds.Action != "" {
+		switch cfg.ThreatFeeds.Action {
+		case "deny", "audit":
+		default:
+			return fmt.Errorf("invalid threat_feeds.action %q (must be \"deny\" or \"audit\")", cfg.ThreatFeeds.Action)
+		}
+	}
+	for i, f := range cfg.ThreatFeeds.Feeds {
+		if f.Name == "" {
+			return fmt.Errorf("threat_feeds.feeds[%d].name must not be empty", i)
+		}
+		if !isSafeFeedName(f.Name) {
+			return fmt.Errorf("invalid threat_feeds.feeds[%d].name %q (must match [A-Za-z0-9._-]+)", i, f.Name)
+		}
+		if f.URL == "" {
+			return fmt.Errorf("threat_feeds.feeds[%d].url must not be empty", i)
+		}
+		u, err := url.Parse(f.URL)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return fmt.Errorf("invalid threat_feeds.feeds[%d].url %q (must be http or https with a valid host)", i, f.URL)
+		}
+		switch f.Format {
+		case "hostfile", "domain-list":
+		case "":
+			return fmt.Errorf("threat_feeds.feeds[%d].format must not be empty (use \"hostfile\" or \"domain-list\")", i)
+		default:
+			return fmt.Errorf("invalid threat_feeds.feeds[%d].format %q (must be \"hostfile\" or \"domain-list\")", i, f.Format)
+		}
+	}
+	feedNames := make(map[string]struct{}, len(cfg.ThreatFeeds.Feeds))
+	for i, f := range cfg.ThreatFeeds.Feeds {
+		if _, dup := feedNames[f.Name]; dup {
+			return fmt.Errorf("duplicate threat_feeds.feeds name %q at index %d", f.Name, i)
+		}
+		feedNames[f.Name] = struct{}{}
+	}
+	if cfg.ThreatFeeds.Realtime.Provider != "" {
+		return fmt.Errorf("threat_feeds.realtime.provider %q is not supported in this version", cfg.ThreatFeeds.Realtime.Provider)
+	}
+	if cfg.ThreatFeeds.Realtime.OnTimeout != "" {
+		switch cfg.ThreatFeeds.Realtime.OnTimeout {
+		case "local-only", "allow", "deny":
+		default:
+			return fmt.Errorf("invalid threat_feeds.realtime.on_timeout %q (must be \"local-only\", \"allow\", or \"deny\")", cfg.ThreatFeeds.Realtime.OnTimeout)
+		}
+	}
+	// Validate MCP transport policy
+	if err := ValidateMCPTransports(cfg.Sandbox.MCP); err != nil {
+		return err
+	}
+	// Validate TLS fingerprint format for MCP servers
+	for _, srv := range cfg.Sandbox.MCP.Servers {
+		if srv.TLSFingerprint != "" {
+			fp := srv.TLSFingerprint
+			if len(fp) < 7 || fp[:7] != "sha256:" {
+				return fmt.Errorf("MCP server %q: TLS fingerprint must start with 'sha256:'", srv.ID)
+			}
+			hexPart := fp[7:]
+			if len(hexPart) != 64 {
+				return fmt.Errorf("MCP server %q: TLS fingerprint hex must be 64 characters (SHA-256), got %d", srv.ID, len(hexPart))
+			}
+			for _, c := range hexPart {
+				if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+					return fmt.Errorf("MCP server %q: TLS fingerprint contains invalid hex character %q", srv.ID, string(c))
+				}
+			}
+		}
+	}
+	// Validate output_inspection.on_detection enum
+	if cfg.Sandbox.MCP.OutputInspection.OnDetection != "" {
+		switch cfg.Sandbox.MCP.OutputInspection.OnDetection {
+		case "allow", "alert", "block":
+		default:
+			return fmt.Errorf("invalid sandbox.mcp.output_inspection.on_detection %q (must be \"allow\", \"alert\", or \"block\")", cfg.Sandbox.MCP.OutputInspection.OnDetection)
+		}
+	}
+	// Validate sampling.policy enum
+	if cfg.Sandbox.MCP.Sampling.Policy != "" {
+		switch cfg.Sandbox.MCP.Sampling.Policy {
+		case "allow", "alert", "block":
+		default:
+			return fmt.Errorf("invalid sandbox.mcp.sampling.policy %q (must be \"allow\", \"alert\", or \"block\")", cfg.Sandbox.MCP.Sampling.Policy)
+		}
+	}
+	// Validate sampling.per_server enum values
+	for serverID, policy := range cfg.Sandbox.MCP.Sampling.PerServer {
+		switch policy {
+		case "allow", "alert", "block":
+		default:
+			return fmt.Errorf("invalid sandbox.mcp.sampling.per_server[%q] %q (must be \"allow\", \"alert\", or \"block\")", serverID, policy)
+		}
+	}
+	// Validate version_pinning.on_change enum
+	if cfg.Sandbox.MCP.VersionPinning.OnChange != "" {
+		switch cfg.Sandbox.MCP.VersionPinning.OnChange {
+		case "block", "alert", "allow":
+		default:
+			return fmt.Errorf("invalid sandbox.mcp.version_pinning.on_change %q (must be \"block\", \"alert\", or \"allow\")", cfg.Sandbox.MCP.VersionPinning.OnChange)
+		}
+	}
+	// Validate SimilarityThreshold bounds
+	if t := cfg.Sandbox.MCP.CrossServer.ShadowTool.SimilarityThreshold; t != nil {
+		if *t < 0 || *t > 1 {
+			return fmt.Errorf("sandbox.mcp.cross_server.shadow_tool.similarity_threshold must be in [0, 1], got %v", *t)
+		}
+	}
+	// Validate proxy rate limits
+	rl := cfg.Proxy.RateLimits
+	if rl.Enabled {
+		if rl.RequestsPerMinute < 0 {
+			return fmt.Errorf("proxy.rate_limits.requests_per_minute must be >= 0, got %d", rl.RequestsPerMinute)
+		}
+		if rl.RequestBurst < 0 {
+			return fmt.Errorf("proxy.rate_limits.request_burst must be >= 0, got %d", rl.RequestBurst)
+		}
+		if rl.TokensPerMinute < 0 {
+			return fmt.Errorf("proxy.rate_limits.tokens_per_minute must be >= 0, got %d", rl.TokensPerMinute)
+		}
+		if rl.TokenBurst < 0 {
+			return fmt.Errorf("proxy.rate_limits.token_burst must be >= 0, got %d", rl.TokenBurst)
+		}
+		if rl.RequestsPerMinute == 0 && rl.TokensPerMinute == 0 {
+			return fmt.Errorf("proxy.rate_limits: enabled but neither requests_per_minute nor tokens_per_minute is set")
+		}
+	}
+	// Validate package_checks config
+	if cfg.PackageChecks.Scope != "" {
+		switch cfg.PackageChecks.Scope {
+		case "new_packages_only", "all_installs":
+		default:
+			return fmt.Errorf("invalid package_checks.scope %q (must be \"new_packages_only\" or \"all_installs\")", cfg.PackageChecks.Scope)
+		}
+	}
+	// Validate package_checks.fail_mode (also reachable via PKGCHECK_FAIL_MODE
+	// env var; ResolveFailMode performs the same check at runtime, but we
+	// surface YAML-time misconfig as an explicit startup error).
+	if cfg.PackageChecks.FailMode != "" {
+		switch cfg.PackageChecks.FailMode {
+		case "open", "closed", "degraded":
+		default:
+			return fmt.Errorf("invalid package_checks.fail_mode %q (must be \"open\", \"closed\", or \"degraded\")", cfg.PackageChecks.FailMode)
+		}
+	}
+	for name, p := range cfg.PackageChecks.Providers {
+		if p.OnFailure != "" {
+			switch p.OnFailure {
+			case "warn", "deny", "allow", "approve":
+			default:
+				return fmt.Errorf("invalid package_checks.providers[%q].on_failure %q (must be \"warn\", \"deny\", \"allow\", or \"approve\")", name, p.OnFailure)
+			}
+		}
+		if p.Type != "" {
+			switch p.Type {
+			case "exec":
+			default:
+				return fmt.Errorf("invalid package_checks.providers[%q].type %q (must be \"exec\")", name, p.Type)
+			}
+		}
+	}
+	for name, r := range cfg.PackageChecks.Registries {
+		switch r.Trust {
+		case "check_full", "check_local_only", "trusted":
+		default:
+			return fmt.Errorf("invalid package_checks.registries[%q].trust %q (must be \"check_full\", \"check_local_only\", or \"trusted\")", name, r.Trust)
+		}
+	}
+	// Validate denylist globs in package_checks.privacy so malformed
+	// patterns fail at startup rather than silently fail open at runtime.
+	if err := cfg.PackageChecks.Privacy.Validate(); err != nil {
+		return fmt.Errorf("package_checks.privacy: %w", err)
+	}
+	// Validate block_on shorthand enum values so a typo like
+	// vulnerability=critcal doesn't silently compile to a permissive policy.
+	if err := cfg.PackageChecks.BlockOn.Validate(); err != nil {
+		return fmt.Errorf("package_checks.%w", err)
+	}
+	// Landlock network self-lockout check: if the user disables outbound TCP
+	// under Landlock but the sandbox proxy is enabled, agents can never reach
+	// the proxy (which listens on localhost TCP). Fail fast at startup rather
+	// than silently breaking every session with ECONNREFUSED.
+	if cfg.Landlock.Enabled &&
+		cfg.Landlock.Network.AllowConnectTCP != nil &&
+		!*cfg.Landlock.Network.AllowConnectTCP &&
+		cfg.Sandbox.Network.Enabled {
+		return fmt.Errorf(
+			"landlock.network.allow_connect_tcp is false but sandbox.network.enabled " +
+				"is true: agent processes cannot reach the aep-caw proxy without " +
+				"outbound TCP. Either set landlock.network.allow_connect_tcp to true, " +
+				"or set sandbox.network.enabled to false")
+	}
+	// Validate WTP (Watchtower Transport Protocol) config
+	if err := cfg.Audit.Watchtower.validate(); err != nil {
+		return err
+	}
+	// Validate blocked_socket_families entries.
+	for i, e := range cfg.Sandbox.Seccomp.BlockedSocketFamilies {
+		if _, _, ok := seccompPkg.ParseFamily(e.Family); !ok {
+			return fmt.Errorf("sandbox.seccomp.blocked_socket_families[%d].family: %q is not a valid AF_* name or number", i, e.Family)
+		}
+		if e.Action != "" {
+			if _, ok := seccompPkg.ParseOnBlock(e.Action); !ok {
+				return fmt.Errorf("sandbox.seccomp.blocked_socket_families[%d].action: %q is not valid (allowed: errno, kill, log, log_and_kill)", i, e.Action)
+			}
+		}
+	}
+	effective, err := EffectiveSeccompRulesForConfig(cfg.Sandbox.Seccomp)
+	if err != nil {
+		return fmt.Errorf("sandbox.seccomp.%w", err)
+	}
+	if _, err := ResolveBlockedFamilies(effective.BlockedSocketFamilies); err != nil {
+		return fmt.Errorf("sandbox.seccomp.%w", err)
+	}
+	if _, err := resolveSocketRuleConfigs(effective.SocketRules); err != nil {
+		return fmt.Errorf("sandbox.seccomp.%w", err)
+	}
+	for _, loaded := range effective.LoadedMitigations {
+		slog.Info("seccomp mitigation loaded",
+			"id", loaded.ID,
+			"source", loaded.Source,
+			"path", loaded.Path,
+			"checksum", loaded.Checksum,
+			"socket_rules", loaded.SocketRules,
+			"blocked_socket_families", loaded.BlockedSocketFamilies,
+			"syscalls", loaded.Syscalls)
+	}
+	// Config-schema cross-field invariants that the server also enforces at
+	// startup. Validated here so `aep-caw config validate` (and the shim's
+	// auto-start path) catch them before deploy rather than surfacing as a
+	// generic "server unreachable" at runtime (issue #376). Host/environment
+	// checks (capabilities, etc.) intentionally stay at server startup.
+	// Issue #378: opaque shell-c handling mode. Empty is accepted because
+	// applyDefaults normalizes it to "enforce" before the server runs.
+	switch cfg.Sandbox.Seccomp.Shellc.Opaque {
+	case "", "deny", "enforce", "allow":
+	default:
+		return fmt.Errorf("seccomp.shellc.opaque: invalid value %q (want deny, enforce, or allow)", cfg.Sandbox.Seccomp.Shellc.Opaque)
+	}
+	if err := cfg.Sandbox.Validate(); err != nil {
+		return fmt.Errorf("sandbox config: %w", err)
+	}
+	if err := cfg.Policies.Signing.Validate(); err != nil {
+		return fmt.Errorf("signing config: %w", err)
+	}
+	return nil
+}

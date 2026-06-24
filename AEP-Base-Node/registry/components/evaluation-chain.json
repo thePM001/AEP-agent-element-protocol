@@ -1,0 +1,37 @@
+{
+  "manifest_version": "1",
+  "id": "evaluation-chain",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/evaluation-chain/",
+  "description": "Short-circuit evaluation chain with step activation profiles.",
+  "requires": [
+    "policy-engine",
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "eval:chain",
+    "eval:short-circuit",
+    "eval:step-activation"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 20,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Pre-action evaluation chain with configurable step activation.",
+    "use_when": [
+      "governed agent gateways",
+      "multi-step validation"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/evaluation-chain/lib/runner.ts"
+  }
+}

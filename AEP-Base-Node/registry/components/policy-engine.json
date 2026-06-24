@@ -1,0 +1,35 @@
+{
+  "manifest_version": "1",
+  "id": "policy-engine",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/policy-engine/",
+  "description": "YAML policy loading, validation, and evaluation.",
+  "requires": [
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "policy:load",
+    "policy:validate",
+    "policy:evaluate"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 20,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Core policy engine for all governed agents.",
+    "use_when": [
+      "any AEP TypeScript agent"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/policy-engine/lib/policy/loader.ts"
+  }
+}

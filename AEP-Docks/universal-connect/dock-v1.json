@@ -1,0 +1,26 @@
+{
+  "dock_id": "universal_connect",
+  "name": "Universal Connect Dock",
+  "version": "1.0.0",
+  "kind": "ucb-regulated-egress",
+  "description": "UCB-regulated dock for optional external modules (HCSE, future CCA downloads). Internet egress only through UCB manifest-scoped routes.",
+  "regulator": {
+    "component": "ucb",
+    "path": "AEP-Docks/ucb/",
+    "port": 8412,
+    "egress_path": "/ucb/v1/egress"
+  },
+  "requires": [
+    "aep-base-node",
+    "ucb",
+    "lattice-channels"
+  ],
+  "native_docks": [
+    "inference_engine",
+    "validation_engine",
+    "future_features",
+    "regulation_module"
+  ],
+  "client": "AEP-Docks/universal-connect/lib/ucd-client.mjs",
+  "modules_dir": "AEP-Docks/universal-connect/modules/"
+}

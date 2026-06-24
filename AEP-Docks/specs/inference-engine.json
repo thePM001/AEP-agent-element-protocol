@@ -1,0 +1,9 @@
+{
+  "port_id": "inference_engine",
+  "name": "Inference Engine Dock",
+  "priority": 200,
+  "socket_suffix": "/inference",
+  "purpose": "AEP Inference Engines and lattice-gated LLM delegation",
+  "transport": "lattice-channel",
+  "implementation": "AEP-Base-Node/crate/src/docking.rs"
+}

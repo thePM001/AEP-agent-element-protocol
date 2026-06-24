@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en" data-terminal-cwd="/opt/aep" data-terminal-ws="" data-sidebar-blocks="">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AEP Composer Lite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/styles.css?v=lite-control-50" />
+  <link rel="stylesheet" href="assets/policy-lattice/lattice-policy-theme.css?v=lite-control-50" />
+</head>
+<body>
+  <div class="scanlines" aria-hidden="true"></div>
+  <div class="aurora" aria-hidden="true"></div>
+
+  <div class="composer-stage" id="composer-stage">
+    <div id="canvas-stage" class="canvas-stage">
+      <div id="canvas-world" class="canvas-world">
+        <svg id="edges-layer" class="edges-layer"></svg>
+        <div id="nodes-layer" class="nodes-layer"></div>
+      </div>
+    </div>
+  </div>
+
+  <header class="hl-panel hl-topbar lite-topbar" aria-label="Composer Lite toolbar">
+    <div class="lite-topbar-brand">
+      <span class="lite-brand-glyph" aria-hidden="true">◈</span>
+      <div class="lite-brand-copy">
+        <div class="lite-brand-title">Composer Lite</div>
+        <div class="lite-brand-sub">AEP 2.8 · Connect &gt; outgoing to &lt; incoming</div>
+      </div>
+      <span class="lite-version-badge">LITE</span>
+    </div>
+    <div class="topbar-center">
+      <div class="topbar-toolbar canvas-toolbar">
+        <button type="button" class="tool tool-btn active" data-mode="select" data-lite-tip="SELECT">◎</button>
+        <button type="button" class="tool tool-btn" data-mode="pan" data-lite-tip="PAN">✥</button>
+        <button type="button" class="tool tool-btn" data-mode="connect" data-lite-tip="CONNECT &gt; OUT TO &lt; IN">⟷</button>
+        <span class="toolbar-divider"></span>
+        <button type="button" class="tool tool-btn danger" id="btn-delete" data-lite-tip="DELETE SELECTION">✕</button>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button type="button" class="btn btn-sm" id="btn-export" data-lite-tip="EXPORT JSON">Export</button>
+      <button type="button" class="btn btn-sm btn-ghost" id="btn-fit" data-lite-tip="FIT VIEW">Fit</button>
+      <div class="lite-settings-anchor">
+        <button type="button" id="user-settings-btn" class="plasma-power-btn" data-lite-tip="COMPOSER SETTINGS" aria-label="Composer settings menu" aria-haspopup="menu" aria-expanded="false" aria-controls="user-settings-menu">
+          <span class="pause-bars" aria-hidden="true"><span></span><span></span></span>
+        </button>
+        <div id="user-settings-menu" class="user-settings-menu hl-glass" role="menu" hidden>
+          <div class="user-settings-head">Menu</div>
+          <button type="button" class="user-settings-action" id="set-open-inference" role="menuitem">CCA / LLM Inference</button>
+          <button type="button" class="user-settings-action" id="set-open-integrations" role="menuitem">Integrations</button>
+          <div class="user-settings-divider" role="separator"></div>
+          <button type="button" class="user-settings-action" id="set-open-help" role="menuitem">Help</button>
+        </div>
+      </div>
+      <span class="status-pill" id="sync-status" aria-live="polite">synced</span>
+    </div>
+  </header>
+
+  <footer class="hl-panel hl-action-bar" id="action-bar" aria-label="Node quick slots">
+    <div class="quickslot-grid" id="quickslot-grid"></div>
+    <button type="button" id="inventory-toggle" class="inventory-btn" aria-label="Open node inventory" aria-expanded="false" aria-controls="node-inventory" data-lite-tip="NODE INVENTORY">
+      <svg class="inventory-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="8.1" r="1.35" fill="currentColor"/><path d="M12 11.4v6.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </footer>
+
+  <aside
+    id="composer-action-log"
+    class="composer-action-log action-log-expanded"
+    aria-label="Composer action log"
+  >
+    <div class="action-log-head">
+      <div class="action-log-title-wrap">
+        <span class="action-log-kicker composer-chrome-kicker">Composer Lite</span>
+        <span class="action-log-title">Action Log</span>
+      </div>
+      <div class="action-log-controls">
+        <button type="button" id="action-log-objects" class="action-log-nav action-log-tab-toggle" aria-label="Canvas objects" aria-pressed="false" data-lite-tip="CANVAS OBJECTS">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h7v7H4V6zm9 0h7v7h-7V6zM4 15h7v3H4v-3zm9 0h7v3h-7v-3z" fill="currentColor"/></svg>
+        </button>
+        <button type="button" id="action-log-undo" class="action-log-nav" aria-label="Undo" disabled data-lite-tip="UNDO">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9H3v4h4l3.5-3.5A6 6 0 0 1 18 13h2a8 8 0 0 0-13.1-4.9L7 9z" fill="currentColor"/></svg>
+        </button>
+        <button type="button" id="action-log-redo" class="action-log-nav" aria-label="Redo" disabled data-lite-tip="REDO">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 9h4v4h-4l-3.5-3.5A6 6 0 0 0 6 13H4a8 8 0 0 1 13.1-4.9L17 9z" fill="currentColor"/></svg>
+        </button>
+        <button type="button" id="action-log-collapse" class="action-log-collapse" aria-label="Collapse action log">−</button>
+      </div>
+    </div>
+    <button type="button" id="action-log-toggle" class="action-log-current" aria-expanded="true" aria-controls="action-log-panel">
+      <span class="action-log-current-label" id="action-log-current">No edits yet</span>
+      <span class="action-log-count" id="action-log-count" aria-label="Edit count">0</span>
+    </button>
+    <div id="action-log-panel" class="action-log-panel">
+      <div id="action-log-view-history" class="action-log-view">
+        <ol id="action-log-list" class="action-log-list" role="listbox" aria-label="Canvas edit history"></ol>
+      </div>
+      <div id="action-log-view-objects" class="action-log-view" hidden>
+        <label class="action-log-objects-search-wrap">
+          <span class="action-log-objects-search-label">Filter</span>
+          <input type="search" id="action-log-objects-filter" class="action-log-objects-filter" placeholder="Search label type ID" autocomplete="off" spellcheck="false">
+        </label>
+        <div id="action-log-objects-list" class="action-log-objects-list" role="listbox" aria-label="Canvas objects by category"></div>
+      </div>
+    </div>
+  </aside>
+
+  <aside class="hl-panel lite-inspector" id="lite-inspector" aria-label="Composer Lite sidebar"></aside>
+
+  <div id="canvas-minimap" class="canvas-minimap" aria-label="Canvas sector map" role="navigation"></div>
+
+  <section class="composer-cca-pane cca-pane-expanded" id="composer-cca-pane" aria-label="Composer conversations">
+    <header class="cca-pane-header">
+      <div class="cca-pane-tabs" role="tablist" aria-label="Composer panel">
+        <button type="button" class="cca-tab active" id="cca-tab-agent" role="tab" aria-selected="true">Composer</button>
+        <button type="button" class="cca-tab" id="cca-tab-terminal" role="tab" aria-selected="false">Terminal</button>
+      </div>
+      <button type="button" class="cca-pane-toggle" id="cca-pane-toggle" aria-expanded="true" aria-label="Collapse composer panel">−</button>
+    </header>
+    <div class="cca-pane-body">
+      <div class="cca-panel" id="cca-panel-agent" role="tabpanel">
+        <div class="cca-console" id="cca-console" aria-label="Composer chat console">
+          <div class="cca-console-log" id="cca-chat-viewport" role="log" aria-live="polite" aria-relevant="additions">
+            <div class="cca-chat-messages" id="cca-chat-messages"></div>
+          </div>
+          <div class="cca-console-compose" id="cca-console-compose">
+            <div class="cca-compose-row">
+              <span class="cca-compose-prompt" aria-hidden="true">›</span>
+              <textarea id="cca-chat-input" class="cca-chat-input" rows="3" placeholder="Message CCA…" spellcheck="true"></textarea>
+              <button type="button" class="cca-send-btn" id="cca-send-btn">Send</button>
+            </div>
+            <div class="cca-attach-bar" id="cca-attach-bar" hidden></div>
+            <div class="cca-suggestion-bar" id="cca-suggestion-bar" hidden></div>
+            <div class="cca-composer-toolbar">
+              <button type="button" class="cca-upload-btn" id="cca-upload-btn">Attach</button>
+              <input type="file" id="cca-file-input" hidden multiple accept="*/*">
+              <span class="cca-composer-hint">Enter to send · Shift+Enter for newline · Backspace deletes selected node</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cca-panel" id="cca-panel-terminal" role="tabpanel" hidden>
+        <div class="cca-terminal-host" id="cca-terminal-host"></div>
+      </div>
+    </div>
+  </section>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+
+  <div id="quickslot-picker" class="quickslot-picker" role="dialog" aria-labelledby="quickslot-picker-title" hidden>
+    <div class="quickslot-picker-panel lite-glass">
+      <header class="quickslot-picker-header">
+        <h2 id="quickslot-picker-title" class="quickslot-picker-title">Assign Quick Slot</h2>
+        <button type="button" id="quickslot-picker-close" class="quickslot-picker-close" aria-label="Close quick picker">CLOSE</button>
+      </header>
+      <p class="quickslot-picker-hint">Click to assign this slot, or drag a node type to the canvas.</p>
+      <div id="quickslot-picker-grid" class="quickslot-picker-grid"></div>
+      <button type="button" id="quickslot-picker-inventory" class="quickslot-picker-inventory">OPEN FULL INVENTORY</button>
+    </div>
+  </div>
+
+  <div id="node-inventory" class="node-inventory" role="dialog" aria-modal="true" aria-labelledby="inventory-title" hidden>
+    <div class="node-inventory-panel lite-glass">
+      <header class="inventory-header">
+        <div class="inventory-header-copy">
+          <h2 id="inventory-title" class="inventory-title">Create Node</h2>
+          <p class="inventory-assign-hint">AEP 2.8 component catalog. Drag to canvas, assign quick slots, or forge presets.</p>
+        </div>
+        <button type="button" id="inventory-close" class="inventory-close" aria-label="Close inventory">CLOSE</button>
+      </header>
+      <div class="inventory-body">
+        <form id="inventory-create-form" class="inventory-create inventory-body-forge" autocomplete="off">
+          <h3 class="inventory-section-title">Preset Forge</h3>
+          <div class="inventory-create-grid">
+            <label class="inventory-field inventory-field-span">
+              <span>Name</span>
+              <input name="name" type="text" required maxlength="40" placeholder="My validation dock">
+            </label>
+            <label class="inventory-field">
+              <span>Base Type</span>
+              <div id="inventory-base-type-select" class="inventory-neo-select"></div>
+            </label>
+            <label class="inventory-field">
+              <span>Color</span>
+              <input name="color" type="color" value="#3de8ff">
+            </label>
+            <label class="inventory-field inventory-field-span">
+              <span>Shape</span>
+              <input name="shape" type="hidden" value="card">
+              <div id="inventory-shape-picker" class="shape-picker" role="radiogroup" aria-label="Preset shape"></div>
+            </label>
+            <label class="inventory-field" id="inventory-storage-backend-field" hidden>
+              <span>Storage Backend</span>
+              <div id="inventory-storage-backend-select" class="inventory-neo-select"></div>
+            </label>
+          </div>
+          <button type="submit" class="inventory-submit" id="inventory-create-submit">CREATE PRESET</button>
+        </form>
+        <section class="inventory-catalog-wrap inventory-body-catalog">
+          <div class="inventory-catalog-head">
+            <h3 class="inventory-section-title">AEP 2.8 Catalog</h3>
+            <span class="inventory-catalog-hint">Drag to canvas · Assign to quick slot</span>
+          </div>
+          <label class="inventory-search-wrap">
+            <span class="inventory-search-label">Filter</span>
+            <input type="search" id="inventory-search" class="inventory-search" placeholder="Search components, docks, connectors" autocomplete="off" spellcheck="false">
+          </label>
+          <div id="inventory-catalog" class="inventory-catalog"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="policy-builder-flow" class="policy-builder-overlay" role="dialog" aria-modal="true" aria-labelledby="policy-builder-title" hidden>
+    <div class="policy-builder-panel hl-glass">
+      <header class="policy-builder-header">
+        <div class="policy-builder-header-copy">
+          <span class="policy-builder-kicker">AEP 2.8 · Stage Policy</span>
+          <h2 id="policy-builder-title" class="policy-builder-title">Create Policy</h2>
+          <nav class="policy-builder-steps" aria-label="Policy creation steps" hidden></nav>
+        </div>
+        <button type="button" id="policy-builder-close" class="policy-builder-close" aria-label="Close policy builder">CLOSE</button>
+      </header>
+      <div class="policy-builder-body"></div>
+      <footer class="policy-builder-footer">
+        <span id="policy-builder-status" class="policy-builder-status" aria-live="polite"></span>
+        <div class="policy-builder-actions">
+          <button type="button" id="policy-builder-back" class="policy-builder-btn ghost" hidden>CANCEL</button>
+          <button type="button" id="policy-builder-next" class="policy-builder-btn accent">CREATE POLICY</button>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <div id="lattice-stage-policy-panel" class="stage-policy-overlay" role="dialog" aria-modal="true" aria-labelledby="stage-policy-title" hidden>
+    <div class="stage-policy-panel hl-glass">
+      <header class="stage-policy-header">
+        <div class="stage-policy-header-copy">
+          <h2 id="stage-policy-title" class="stage-policy-title">Stage Policies</h2>
+          <p id="stage-policy-hint" class="stage-policy-hint">Organize policies by category for this lattice stage.</p>
+          <div class="stage-policy-stage-tabs" role="tablist" aria-label="Policy stage level">
+            <button type="button" class="stage-policy-stage-tab" id="stage-policy-tab-warn" data-stage="0" role="tab" aria-selected="false">WARN</button>
+            <button type="button" class="stage-policy-stage-tab" id="stage-policy-tab-soft" data-stage="1" role="tab" aria-selected="false">SOFT</button>
+            <button type="button" class="stage-policy-stage-tab" id="stage-policy-tab-hard" data-stage="2" role="tab" aria-selected="false">HARD</button>
+          </div>
+        </div>
+        <button type="button" id="stage-policy-close" class="stage-policy-close" aria-label="Close policy panel">CLOSE</button>
+      </header>
+      <div id="stage-policy-storage" class="stage-policy-storage" aria-label="Connected storage nodes"></div>
+      <div class="stage-policy-toolbar">
+        <button type="button" id="stage-policy-add-category" class="stage-policy-toolbar-btn">+ Category</button>
+        <button type="button" id="stage-policy-create" class="stage-policy-toolbar-btn">Create Policy</button>
+        <button type="button" id="stage-policy-import" class="stage-policy-toolbar-btn">Import JSON</button>
+        <button type="button" id="stage-policy-cca" class="stage-policy-toolbar-btn accent">Ask CCA</button>
+        <button type="button" id="stage-policy-ingest-btn" class="stage-policy-toolbar-btn">Ingest Documents</button>
+        <button type="button" id="stage-policy-emit-traces" class="stage-policy-toolbar-btn">Emit Traces → Agentstream</button>
+        <input type="file" id="stage-policy-ingest-input" multiple accept=".json,.yaml,.yml,.md,.txt,.pdf" hidden>
+        <input type="file" id="stage-policy-import-file" accept=".json,.yaml,.yml" hidden>
+      </div>
+      <div id="stage-policy-grid" class="stage-policy-grid"></div>
+    </div>
+  </div>
+
+  <div id="settings-inference-panel" class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-inference-title" hidden>
+    <div class="settings-panel-card hl-glass">
+      <header class="settings-panel-header">
+        <h2 id="settings-inference-title" class="settings-panel-title">CCA / LLM Inference</h2>
+        <button type="button" class="settings-panel-close" data-settings-close aria-label="Close">CLOSE</button>
+      </header>
+      <p class="settings-panel-hint">API keys and endpoints for CCA (Composer chat). Saved to the base node data directory.</p>
+      <form id="lite-inference-form" class="settings-form" autocomplete="off">
+        <div class="settings-form-grid">
+          <label class="settings-field">
+            <span>Provider</span>
+            <div id="lite-inference-provider-select" class="settings-neo-select"></div>
+          </label>
+          <label class="settings-field">
+            <span>Model ID</span>
+            <input name="model" type="text" placeholder="anthropic/claude-sonnet-4">
+          </label>
+          <label class="settings-field settings-field-wide">
+            <span>API Base URL</span>
+            <input name="base_url" type="url" placeholder="https://openrouter.ai/api/v1">
+          </label>
+          <label class="settings-field settings-field-wide">
+            <span>API Key</span>
+            <input name="api_key" type="password" placeholder="Enter API key" autocomplete="off">
+          </label>
+        </div>
+        <div id="lite-inference-status" class="settings-status" hidden></div>
+        <div class="settings-panel-actions">
+          <button type="submit" class="settings-primary-btn">SAVE</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="settings-integrations-panel" class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-integrations-title" hidden>
+    <div class="settings-panel-card hl-glass">
+      <header class="settings-panel-header">
+        <h2 id="settings-integrations-title" class="settings-panel-title">Integrations</h2>
+        <button type="button" class="settings-panel-close" data-settings-close aria-label="Close">CLOSE</button>
+      </header>
+      <p id="lite-integrations-status" class="settings-panel-hint">Connector status from the base node.</p>
+      <ul id="lite-integrations-list" class="lite-integrations-list"></ul>
+    </div>
+  </div>
+
+  <div id="settings-help-panel" class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-help-title" hidden>
+    <div class="settings-panel-card hl-glass settings-panel-card-wide">
+      <header class="settings-panel-header">
+        <h2 id="settings-help-title" class="settings-panel-title">Help</h2>
+        <button type="button" class="settings-panel-close" data-settings-close aria-label="Close">CLOSE</button>
+      </header>
+      <div class="settings-help-body">
+        <h3 class="settings-form-title">Canvas</h3>
+        <ul class="settings-help-list">
+          <li>Create Node: bottom action bar (+) or right-click canvas</li>
+          <li>Connect: connect tool, drag from &gt; out to &lt; in</li>
+          <li>Action Lattice: click funnel bands for stage policies</li>
+        </ul>
+        <h3 class="settings-form-title">CCA</h3>
+        <ul class="settings-help-list">
+          <li>Configure LLM under settings (power button, top right)</li>
+          <li>Select a node before asking CCA to edit it</li>
+        </ul>
+        <h3 class="settings-form-title">Sidebar blocks</h3>
+        <ul class="settings-help-list">
+          <li>See docs/SIDEBAR-BLOCKS.md to register per-node inspector panels</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div id="nla-confirm-dialog" class="nla-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="nla-confirm-title" hidden>
+    <div class="nla-confirm-card">
+      <div id="nla-confirm-title" class="nla-confirm-title">CONFIRM</div>
+      <p id="nla-confirm-body" class="nla-confirm-body"></p>
+      <div class="nla-confirm-actions">
+        <button type="button" id="nla-confirm-cancel" class="nla-confirm-btn cancel">CANCEL</button>
+        <button type="button" id="nla-confirm-ok" class="nla-confirm-btn confirm">CONFIRM</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/policy-lattice/policy-builder-flow.js?v=lite-control-50"></script>
+  <script src="assets/policy-lattice/lattice-visual-tokens-lite.js?v=lite-control-50"></script>
+  <script src="assets/policy-lattice/lattice-policy-catalog.js?v=lite-control-50"></script>
+  <script src="assets/policy-lattice/lattice-store-lite.js?v=lite-control-50"></script>
+  <script src="assets/policy-lattice/lattice-stage-policy-panel.js?v=lite-control-50"></script>
+  <script src="assets/policy-lattice/lite-policy-bridge.js?v=lite-control-50"></script>
+  <script type="module" src="assets/app.js?v=lite-control-50"></script>
+</body>
+</html>

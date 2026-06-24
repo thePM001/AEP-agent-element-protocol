@@ -1,0 +1,28 @@
+{
+  "id": "iso-42001",
+  "framework": "ISO/IEC 42001",
+  "version": "2023",
+  "dock": "regulation_module",
+  "gap_ref": "AEP-Policy-System/reference/iso-42001.gap",
+  "articles": [
+    "Clause 6 Planning and risk treatment",
+    "Clause 7 Support and competence",
+    "Clause 8 Operation and impact assessment",
+    "Clause 9 Performance evaluation",
+    "Clause 10 Improvement"
+  ],
+  "aep_features": [
+    "Policy Builder invariant validation",
+    "Schema Builder compareSchemas for change review",
+    "Evidence Ledger for operational records",
+    "Conformance registry and proof bundles",
+    "Fleet Manager pause and resume controls"
+  ],
+  "controls": [
+    "documented_ai_impact_assessment_gate",
+    "competence_trust_tier_assignment",
+    "operational_monitoring_via_evidence_ledger",
+    "performance_review_session_reports",
+    "continual_improvement_via_policy_versioning"
+  ]
+}

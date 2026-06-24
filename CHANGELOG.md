@@ -2,6 +2,69 @@
 
 All notable changes to the Agent Element Protocol (AEP) will be documented in this file.
 
+## [2.8.0] - 2026-06-23
+
+### Changed (dynAEP / SDK layout)
+- **Removed `AEP-Components/dynAEP/sdk/`** - all SDKs live under `AEP-SDKs/` only
+- Merged Action Lattice into `AEP-SDKs/typescript/dynaep/src/bridge.ts`; protocol source remains `AEP-Components/dynAEP/bridge/lattice/`
+- Moved dynAEP React/CopilotKit bindings to `AEP-SDKs/react/`; CLI to `AEP-SDKs/typescript/dynaep/cli/`
+- `produce-aep-sdks.mjs` syncs lattice protocol into SDK before TypeScript compile
+- Updated dynAEP README §13 and observer adapter accuracy
+
+### Added (policy system / CCA)
+- **`cca/lib/policy-system-context.mjs`** - loads `AEP-Policy-System/reference/`, YAML presets, lattice mandatory rules, regulation LRP catalog
+- **`cca/lib/policy-sections.mjs`** - builds `policy_sections` with per-LRP `gap_ref` for plan-executor and setup-agent
+- CCA prompts inject full policy system via `registry-context.mjs` and `formatPolicySystemForPrompt()`
+- Plans always include `policy_overrides.policy_lattice` and `policy_overrides.regulation_lrps` when compliance LRPs enabled
+- `setup-agent.mjs` writes `config.policy_sections` on interactive install (parity with plan-executor)
+- Conformance: `AEP-NOSHIP/tests/conformance/cca-policy-system.test.mjs`
+- CCA imports `platform_mandatory_policies` from LRP catalog (NOSHIP documented as platform policy, not regulation LRP)
+
+### Added
+- **AEP Base Node** mandatory Rust daemon with inference, validation, future and regulation docking ports
+- **Lattice Channels** with PQEncryptedCapsule (ML-KEM-768, AES-256-GCM, ML-DSA-65)
+- **AgentMesh** identity layer (SPIFFE, DID, mTLS) for lattice channel transport
+- **Lattice Memory** attractor store (sqlite-vec + USearch)
+- **POTOMITAN** mesh fallback scaffold adapted from Yggdrasil
+- **dynAEP** under `AEP-Components/dynAEP/`
+- **Installation wizard** (`AEP-Components/wizard/install-wizard.mjs`) with regulation LRP catalog
+- **Setup agent** for post-install activation (`AEP-Components/cca/setup-agent.mjs`)
+- **Composer Lite** public WASM visual canvas on port 8424 (`AEP-Composer-Lite/`)
+- **Conformance runner** with CC-01 through CC-15 checks (`AEP-Components/conformance/`)
+- **WASM sandbox** optional policy eval proxy (`aep-wasm-sandbox`)
+- **Docker public image** (`docker-compose.public.yml`, `Dockerfile`) with full offline protocol
+- **Component registry** (`AEP-Base-Node/registry/`) for setup-agent and Composer Lite
+- **Subprotocol registry** (`AEP-Subprotocols/`) - Rust domain validators + `aep-subprotocol` CLI
+- **Canonical 2.8 layout**: `AEP-Base-Node/`, `AEP-Components/`, `AEP-SDKs/`, `AEP-Docks/`, `AEP-Connectors/`, `AEP-Policy-System/`, `AEP-User-Experience/`, `AEP-Composer-Lite/`
+- **`AEP-NOSHIP/`** internal engineering tree (`tests/`, `plans/`, `docs/`) excluded from runtime images and public GitHub distribution
+- **AEP-NOSHIP distribution policy** (EPSCOM platform mandatory, not an LRP): `AEP-Policy-System/reference/aep-noship-distribution.gap`, rule `aep-noship-no-public-github` in `lattice-channel-mandatory.gap`
+- **UCB** secured perimeter dock (`AEP-Docks/ucb/`) for non-AEP agent stacks
+- **Compliance regulation LRPs** (EU AI Act, GDPR, SOC 2, HIPAA, NIST AI RMF, ISO 42001) with reference GAP policies
+- Subprotocol and migration docs under `AEP-NOSHIP/docs/`; phase execution under `AEP-NOSHIP/plans/`
+
+### Changed
+- **LRP catalog taxonomy**: LRPs are sovereign/regional/international regulations only. Platform kernel contracts (`dynaep-action-lattice`, `lattice-channel-default`) and EPSCOM policies are not LRPs
+- **Subprotocols unified** under `AEP-Subprotocols/` (Rust)
+- Cargo workspace at repository root (`Cargo.toml`); unified build output under `rust/target/` via `.cargo/config.toml`
+- TypeScript gateway commerce validation delegates to `aep-subprotocol` via `AEP-SDKs/typescript/aep-protocol/`
+- Repository forked from `NLA-AEP-2.75-open-protocol` to `NLA-AEP-v2.8-open-source`
+- Root README rewritten for 2.8 public tier scope
+- `NAME-POLICY.md` moved to `AEP-NOSHIP/docs/NAME-POLICY.md`
+- `research-paper/` renamed to `AEP-Research-Paper/`
+- Policy and schema builders under `AEP-Policy-System/policy-builder/` and `AEP-Policy-System/schema-builder/`
+- Docks socket specs and UCD under `AEP-Docks/`
+
+### Removed
+- Stale root `tsconfig.json` and `.eslintrc.json` (orphaned after layout reorg; per-package TS configs remain in SDK/component trees)
+- `examples/` directory
+- `.gitea/` CI stubs (Gitea remote used directly)
+- Duplicate `rust/Cargo.lock` copy
+
+### Public vs internal scope
+- **Shipped**: Base Node, Lattice Channels, AgentMesh, POTOMITAN, dynAEP, Composer Lite, component registry, `BIOSECURITY.md` at repo root
+- **Not shipped** (`AEP-NOSHIP/`): tests, plans, internal docs, `NAME-POLICY.md`, conformance vitest harness sources
+- Advanced validation engine features beyond the public tier are not included in this repository
+
 ## [2.75.0] - 2026-06-01
 
 ### Added
@@ -28,21 +91,21 @@ are now validated with the same mathematical rigour applied to agent outputs.
 
 ### Added
 - **Schema Builder** (Capability 12) - data-driven schema creation and validation with four analytical frameworks:
-  - MLE estimation of constraint parameters from historical data (Fisher, 1922; Welford, 1962)
-  - Graph spectral analysis of constraint coupling via Fiedler value and spectral gap (Fiedler, 1973; Chung, 1997)
-  - Permissiveness scoring via acceptance distribution entropy (Amari, 2016; Cover & Thomas, 2006)
-  - Modular decomposition via Louvain community detection (Blondel et al., 2008)
-  - Composite validation score with configurable weights (default: MLE 0.35, spectral 0.25, permissiveness 0.25, modularity 0.15)
-  - Decision thresholds: pass >= 0.8, review 0.5-0.8, reject < 0.5
-  - Automated tightening proposals with MLE evidence
-  - Online estimation update via Welford's algorithm
+ - MLE estimation of constraint parameters from historical data (Fisher, 1922; Welford, 1962)
+ - Graph spectral analysis of constraint coupling via Fiedler value and spectral gap (Fiedler, 1973; Chung, 1997)
+ - Permissiveness scoring via acceptance distribution entropy (Amari, 2016; Cover & Thomas, 2006)
+ - Modular decomposition via Louvain community detection (Blondel et al., 2008)
+ - Composite validation score with configurable weights (default: MLE 0.35, spectral 0.25, permissiveness 0.25, modularity 0.15)
+ - Decision thresholds: pass >= 0.8, review 0.5-0.8, reject < 0.5
+ - Automated tightening proposals with MLE evidence
+ - Online estimation update via Welford's algorithm
 - **Policy Builder** (Capability 13) - data-driven Rego policy generation and validation:
-  - Domain invariant detection from data (equality, inequality, membership, exclusion, conditional, temporal)
-  - Rego deny rule generation from detected invariants
-  - Invariant manifest with coverage tracking
-  - Spectral impact analysis (projected Fiedler improvement from proposed rules)
-  - MLE outlier rule generation
-  - Spectral gap rule generation
+ - Domain invariant detection from data (equality, inequality, membership, exclusion, conditional, temporal)
+ - Rego deny rule generation from detected invariants
+ - Invariant manifest with coverage tracking
+ - Spectral impact analysis (projected Fiedler improvement from proposed rules)
+ - MLE outlier rule generation
+ - Spectral gap rule generation
 - `/aepassist` schema commands: `schema build`, `schema validate`, `schema compare`, `schema tighten`
 - `/aepassist` policy commands: `policy build`, `policy validate`, `policy gaps`
 - Gateway integration: `validateSchemaProposal()`, `validatePolicyProposal()`, `getSchemaBuilderStats()`
@@ -269,13 +332,13 @@ are now validated with the same mathematical rigour applied to agent outputs.
 ## [2.0.0] - 2026-04-18
 
 ### Added
-- **Lattice Memory** (`sdk/sdk-aep-memory.py`, `sdk/sdk-aep-memory.ts`)  - append-only validation memory with vector similarity search, fast-path attractor matching, audit trail export and two storage backends (InMemoryFabric, SQLiteFabric).
-- **Basic Resolver** (`sdk/sdk-aep-resolver.py`, `sdk/sdk-aep-resolver.ts`)  - stateless, read-only proposal router that maps agent proposals to the correct validator pipeline (ui, workflow, api, event, iac), collects constraints and queries memory for fast-path hits.
-- **Memory Rego policies** (`aep-memory-policy.rego`)  - OPA/Rego rules for memory entry validation (result values, registered elements, zero-error accepted entries).
-- **TLA+ specifications** (`docs/TLA+/AEP.tla`, `docs/TLA+/AEP_Memory.tla`)  - standalone formal specs for core AEP invariants and memory-specific invariants including `MemoryDoesNotAffectDecision` and `MemoryAppendOnly`.
-- **Documentation**  - `docs/LATTICE-MEMORY.md` (architecture, API reference, storage backends), `docs/RESOLVER.md` (routing logic, registry integration, API reference), `docs/MIGRATION-v1-to-v2.md` (step-by-step migration guide).
-- **Examples**  - `examples/with-memory/demo.py` (memory recording, attractor search, fast-path), `examples/with-resolver/demo.py` (multi-domain routing, memory integration).
-- **Test suite**  - `tests/test_memory.py`, `tests/test_resolver.py`, `tests/test_protocols.py`, `tests/test_validator.py`.
+- **Lattice Memory** (`sdk/sdk-aep-memory.py`, `sdk/sdk-aep-memory.ts`) - append-only validation memory with vector similarity search, fast-path attractor matching, audit trail export and two storage backends (InMemoryFabric, SQLiteFabric).
+- **Basic Resolver** (`sdk/sdk-aep-resolver.py`, `sdk/sdk-aep-resolver.ts`) - stateless, read-only proposal router that maps agent proposals to the correct validator pipeline (ui, workflow, api, event, iac), collects constraints and queries memory for fast-path hits.
+- **Memory Rego policies** (`aep-memory-policy.rego`) - OPA/Rego rules for memory entry validation (result values, registered elements, zero-error accepted entries).
+- **TLA+ specifications** (`docs/TLA+/AEP.tla`, `docs/TLA+/AEP_Memory.tla`) - standalone formal specs for core AEP invariants and memory-specific invariants including `MemoryDoesNotAffectDecision` and `MemoryAppendOnly`.
+- **Documentation** - `AEP-NOSHIP/docs/LATTICE-MEMORY.md` (architecture, API reference, storage backends), `AEP-NOSHIP/docs/RESOLVER.md` (routing logic, registry integration, API reference), `AEP-NOSHIP/docs/MIGRATION-v1-to-v2.md` (step-by-step migration guide).
+- **Examples** - `examples/with-memory/demo.py` (memory recording, attractor search, fast-path), `examples/with-resolver/demo.py` (multi-domain routing, memory integration).
+- **Test suite** - `AEP-NOSHIP/tests/test_memory.py`, `AEP-NOSHIP/tests/test_resolver.py`, `AEP-NOSHIP/tests/test_protocols.py`, `AEP-NOSHIP/tests/test_validator.py`.
 - Optional `memory_key` field on scene elements for memory persistence association.
 - Optional `memory_persistence` field on registry entries for validation history tracking.
 - Four new reserved names: `AEP Lattice Memory`, `AEP Basic Resolver`, `AEP Hyper-Resolver`, `AEP Memory Fabric`.
@@ -284,12 +347,12 @@ are now validated with the same mathematical rigour applied to agent outputs.
 - `aep_version` bumped from `"1.1"` to `"2.0"` in `aep-scene.json`, `aep-registry.yaml`, `aep-theme.yaml`.
 
 ### Unchanged
-- All existing SDK files (`sdk-aep-core.ts`, `sdk-aep-python.py`, `sdk-aep-protocols.py`, `sdk-aep-react.tsx`, `sdk-aep-vue.ts`)  - fully preserved, no modifications.
-- Existing Rego policies (`aep-policy.rego`)  - unchanged and compatible.
-- Three-layer architecture (Structure, Behaviour, Skin)  - unchanged.
-- Z-band hierarchy  - unchanged.
-- Element ID convention (`XX-NNNNN`)  - unchanged.
-- Apache 2.0 license  - unchanged.
+- All existing SDK files (`sdk-aep-core.ts`, `sdk-aep-python.py`, `sdk-aep-protocols.py`, `sdk-aep-react.tsx`, `sdk-aep-vue.ts`) - fully preserved, no modifications.
+- Existing Rego policies (`aep-policy.rego`) - unchanged and compatible.
+- Three-layer architecture (Structure, Behaviour, Skin) - unchanged.
+- Z-band hierarchy - unchanged.
+- Element ID convention (`XX-NNNNN`) - unchanged.
+- Apache 2.0 license - unchanged.
 
 ## [1.1.0] - 2026-04-16
 

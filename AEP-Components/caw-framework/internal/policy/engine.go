@@ -1,0 +1,1509 @@
+package policy
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"net"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/nla-aep/aep-caw-framework/internal/shellparse"
+	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/gobwas/glob"
+)
+
+// maxShellCDeriveDepth bounds how many nested `sh -c "…"` forms CheckCommand
+// will peel off while looking for an explicit deny. Each level has to pass
+// the strict shellparse byte-allowlist, so real-world chains terminate in
+// one or two levels; the cap guards against a pathological input. var (not
+// const) so tests can lower it to exercise the cap-exceeded fail-closed path.
+var maxShellCDeriveDepth = 4
+
+// ThreatCheckResult holds the outcome of a threat feed lookup.
+type ThreatCheckResult struct {
+	FeedName      string
+	MatchedDomain string
+}
+
+// ThreatChecker is an optional interface for domain-level threat feed lookups.
+// threatfeed.PolicyAdapter satisfies this interface, bridging the Store to the policy engine.
+type ThreatChecker interface {
+	Check(domain string) (ThreatCheckResult, bool)
+}
+
+// TorVerdict mirrors tor.Verdict at the policy layer (avoids a policy→tor
+// import). tor.PolicyAdapter translates between the two.
+type TorVerdict struct {
+	Vector   string
+	Mode     string
+	Decision string // "deny" or "audit"
+	Target   string
+}
+
+// TorChecker is the optional Tor coordinator. internal/tor.PolicyAdapter
+// satisfies it. All methods return (verdict, true) only on a Tor match
+// the caller should act on (deny short-circuits; audit attaches+continues).
+type TorChecker interface {
+	EvalExecve(filename string, argv []string) (TorVerdict, bool)
+	EvalConnect(ip net.IP, port int) (TorVerdict, bool)
+	EvalOnionName(host string) (TorVerdict, bool)
+}
+
+type Engine struct {
+	policy           *Policy
+	enforceApprovals bool
+	enforceRedirects bool
+
+	compiledFileRules     []compiledFileRule
+	compiledNetworkRules  []compiledNetworkRule
+	compiledCommandRules  []compiledCommandRule
+	compiledUnixRules     []compiledUnixRule
+	compiledRegistryRules []compiledRegistryRule
+
+	// hasRestrictiveCommandRule is true iff any compiled command rule has
+	// a decision that restricts or instruments execution (deny, redirect,
+	// soft_delete, approve, audit). Gates the opaque-shell-c deny so that
+	// allow-only policies aren't unexpectedly tightened. See
+	// CheckCommand for the consumer.
+	hasRestrictiveCommandRule bool
+
+	// HTTP service compiled lookup maps
+	httpServices     map[string]*compiledHTTPService // keyed by lowercased name
+	httpServiceHosts map[string]*compiledHTTPService // keyed by canonicalized host
+
+	// Compiled redirect rules for DNS and connect interception
+	dnsRedirectRules     []compiledDnsRedirectRule
+	connectRedirectRules []compiledConnectRedirectRule
+
+	// Compiled env policy patterns for glob matching
+	compiledEnvAllow []glob.Glob
+	compiledEnvDeny  []glob.Glob
+
+	// Signal policy engine
+	signalEngine signalEngineType
+
+	// Optional threat feed store for domain checking
+	threatStore  ThreatChecker
+	threatAction string
+
+	// Optional Tor coordinator (deny-by-default Tor controls).
+	torChecker TorChecker
+}
+
+type Limits struct {
+	CommandTimeout time.Duration
+	SessionTimeout time.Duration
+	IdleTimeout    time.Duration
+
+	MaxMemoryMB     int
+	CPUQuotaPercent int
+	PidsMax         int
+}
+
+type compiledFileRule struct {
+	rule         FileRule
+	globs        []glob.Glob
+	ops          map[string]struct{}
+	redirectTo   string // Expanded redirect target
+	preserveTree bool
+}
+
+type compiledNetworkRule struct {
+	rule        NetworkRule
+	domainGlobs []glob.Glob
+	cidrs       []*net.IPNet
+	ports       map[int]struct{}
+}
+
+type compiledCommandRule struct {
+	rule          CommandRule
+	basenames     map[string]struct{} // Commands without paths (e.g., "sh") - match by basename
+	basenameGlobs []glob.Glob         // Glob patterns for basenames (e.g., "go*", "*")
+	fullPaths     map[string]struct{} // Commands with paths (e.g., "/bin/sh") - match exact path
+	pathGlobs     []glob.Glob         // Glob patterns for paths (e.g., "/usr/*/sh")
+	argsRegexes   []*regexp.Regexp    // Regex patterns matched against joined args string
+}
+
+type compiledUnixRule struct {
+	rule  UnixSocketRule
+	paths []glob.Glob
+	ops   map[string]struct{}
+}
+
+type compiledRegistryRule struct {
+	rule     RegistryRule
+	globs    []glob.Glob
+	ops      map[string]struct{}
+	priority int
+}
+
+type compiledDnsRedirectRule struct {
+	rule    DnsRedirectRule
+	pattern *regexp.Regexp
+}
+
+type compiledConnectRedirectRule struct {
+	rule    ConnectRedirectRule
+	pattern *regexp.Regexp
+}
+
+type Decision struct {
+	PolicyDecision    types.Decision
+	EffectiveDecision types.Decision
+	Rule              string
+	Message           string
+	Approval          *types.ApprovalInfo
+	Redirect          *types.RedirectInfo
+	FileRedirect      *types.FileRedirectInfo
+	EnvPolicy         ResolvedEnvPolicy
+	ThreatFeed        string
+	ThreatMatch       string
+	ThreatAction      string      // "deny" or "audit" - set when a threat feed matched
+	Tor               *TorVerdict // non-nil when a Tor vector matched (deny or audit)
+}
+
+func NewEngine(p *Policy, enforceApprovals bool, enforceRedirects bool) (*Engine, error) {
+	e := &Engine{
+		policy:           p,
+		enforceApprovals: enforceApprovals,
+		enforceRedirects: enforceRedirects,
+	}
+
+	for _, r := range p.FileRules {
+		cr := compiledFileRule{
+			rule:         r,
+			ops:          map[string]struct{}{},
+			redirectTo:   r.RedirectTo,
+			preserveTree: r.PreserveTree,
+		}
+		for _, op := range r.Operations {
+			cr.ops[strings.ToLower(op)] = struct{}{}
+		}
+		for _, pat := range r.Paths {
+			g, err := glob.Compile(pat, '/')
+			if err != nil {
+				return nil, fmt.Errorf("compile file rule %q glob %q: %w", r.Name, pat, err)
+			}
+			cr.globs = append(cr.globs, g)
+		}
+		e.compiledFileRules = append(e.compiledFileRules, cr)
+	}
+
+	for _, r := range p.NetworkRules {
+		cr := compiledNetworkRule{
+			rule:  r,
+			ports: map[int]struct{}{},
+		}
+		for _, port := range r.Ports {
+			cr.ports[port] = struct{}{}
+		}
+		for _, pat := range r.Domains {
+			// Domain patterns in the sample policy include "*" which gobwas/glob can handle.
+			g, err := glob.Compile(strings.ToLower(pat), '.')
+			if err != nil {
+				// Fall back to path-separator compilation.
+				g, err = glob.Compile(strings.ToLower(pat))
+				if err != nil {
+					return nil, fmt.Errorf("compile network rule %q domain %q: %w", r.Name, pat, err)
+				}
+			}
+			cr.domainGlobs = append(cr.domainGlobs, g)
+		}
+		for _, cidr := range r.CIDRs {
+			_, ipnet, err := net.ParseCIDR(cidr)
+			if err != nil {
+				return nil, fmt.Errorf("parse network rule %q cidr %q: %w", r.Name, cidr, err)
+			}
+			cr.cidrs = append(cr.cidrs, ipnet)
+		}
+		e.compiledNetworkRules = append(e.compiledNetworkRules, cr)
+	}
+
+	for _, r := range p.CommandRules {
+		cr := compiledCommandRule{
+			rule:      r,
+			basenames: map[string]struct{}{},
+			fullPaths: map[string]struct{}{},
+		}
+		for _, c := range r.Commands {
+			c = strings.TrimSpace(c)
+			if c == "" {
+				continue
+			}
+			// Check if command contains a path separator
+			if strings.Contains(c, "/") {
+				// Check if it's a glob pattern (contains * or ?)
+				if strings.ContainsAny(c, "*?[") {
+					// Use '/' separator so * matches single path component only
+					g, err := glob.Compile(c, '/')
+					if err != nil {
+						// Failed to compile as glob (e.g., incomplete pattern like "[")
+						// Fall back to exact match
+						cr.fullPaths[strings.ToLower(c)] = struct{}{}
+					} else {
+						cr.pathGlobs = append(cr.pathGlobs, g)
+					}
+				} else {
+					// Exact path match (case-sensitive on Unix, but we lowercase for consistency)
+					cr.fullPaths[strings.ToLower(c)] = struct{}{}
+				}
+			} else {
+				// Basename only - check if it's a glob pattern
+				if strings.ContainsAny(c, "*?[") {
+					g, err := glob.Compile(c)
+					if err != nil {
+						// Failed to compile as glob (e.g., incomplete pattern like "[")
+						// Fall back to literal match
+						cr.basenames[strings.ToLower(c)] = struct{}{}
+					} else {
+						cr.basenameGlobs = append(cr.basenameGlobs, g)
+					}
+				} else {
+					// Literal basename match (case-insensitive)
+					cr.basenames[strings.ToLower(c)] = struct{}{}
+				}
+			}
+		}
+		for _, pat := range r.ArgsPatterns {
+			re, err := regexp.Compile(pat)
+			if err != nil {
+				return nil, fmt.Errorf("compile command rule %q arg pattern %q: %w", r.Name, pat, err)
+			}
+			cr.argsRegexes = append(cr.argsRegexes, re)
+		}
+		e.compiledCommandRules = append(e.compiledCommandRules, cr)
+	}
+
+	// Precompute whether any command rule restricts or instruments execution.
+	// Consumed by CheckCommand's opaque-shell-c defense: a shell script we
+	// can't parse (metachars, subshells, …) is a bypass risk only when the
+	// operator has expressed intent to restrict commands. If every command
+	// rule is a plain allow, the operator accepted broad shell use and
+	// denying opaque scripts would be a behavior change without a security
+	// gain.
+	for _, r := range e.compiledCommandRules {
+		switch types.Decision(strings.ToLower(r.rule.Decision)) {
+		case types.DecisionDeny,
+			types.DecisionRedirect,
+			types.DecisionSoftDelete,
+			types.DecisionApprove,
+			types.DecisionAudit:
+			e.hasRestrictiveCommandRule = true
+		}
+		if e.hasRestrictiveCommandRule {
+			break
+		}
+	}
+
+	for _, r := range p.UnixRules {
+		cr := compiledUnixRule{rule: r, ops: map[string]struct{}{}}
+		for _, op := range r.Operations {
+			cr.ops[strings.ToLower(op)] = struct{}{}
+		}
+		for _, pat := range r.Paths {
+			g, err := glob.Compile(pat, '/')
+			if err != nil {
+				g, err = glob.Compile(pat)
+			}
+			if err != nil {
+				return nil, fmt.Errorf("compile unix rule %q glob %q: %w", r.Name, pat, err)
+			}
+			cr.paths = append(cr.paths, g)
+		}
+		e.compiledUnixRules = append(e.compiledUnixRules, cr)
+	}
+
+	// Compile registry rules
+	for _, r := range p.RegistryRules {
+		cr := compiledRegistryRule{
+			rule:     r,
+			ops:      map[string]struct{}{},
+			priority: r.Priority,
+		}
+		for _, op := range r.Operations {
+			cr.ops[strings.ToLower(op)] = struct{}{}
+		}
+		for _, pat := range r.Paths {
+			// Escape backslashes for glob (backslash is the escape character in gobwas/glob)
+			// Compile without separator so * matches across path segments
+			escapedPat := strings.ReplaceAll(pat, `\`, `\\`)
+			g, err := glob.Compile(escapedPat)
+			if err != nil {
+				return nil, fmt.Errorf("compile registry rule %q glob %q: %w", r.Name, pat, err)
+			}
+			cr.globs = append(cr.globs, g)
+		}
+		e.compiledRegistryRules = append(e.compiledRegistryRules, cr)
+	}
+	// Sort by priority (higher first)
+	sort.Slice(e.compiledRegistryRules, func(i, j int) bool {
+		return e.compiledRegistryRules[i].priority > e.compiledRegistryRules[j].priority
+	})
+
+	// Compile DNS redirect rules
+	for _, r := range p.DnsRedirectRules {
+		pattern, _ := regexp.Compile(r.Match) // Already validated
+		e.dnsRedirectRules = append(e.dnsRedirectRules, compiledDnsRedirectRule{
+			rule:    r,
+			pattern: pattern,
+		})
+	}
+
+	// Compile connect redirect rules
+	for _, r := range p.ConnectRedirectRules {
+		pattern, _ := regexp.Compile(r.Match) // Already validated
+		e.connectRedirectRules = append(e.connectRedirectRules, compiledConnectRedirectRule{
+			rule:    r,
+			pattern: pattern,
+		})
+	}
+
+	// Compile env policy patterns
+	for _, pat := range p.EnvPolicy.Allow {
+		g, err := glob.Compile(pat)
+		if err != nil {
+			return nil, fmt.Errorf("compile env allow pattern %q: %w", pat, err)
+		}
+		e.compiledEnvAllow = append(e.compiledEnvAllow, g)
+	}
+	for _, pat := range p.EnvPolicy.Deny {
+		g, err := glob.Compile(pat)
+		if err != nil {
+			return nil, fmt.Errorf("compile env deny pattern %q: %w", pat, err)
+		}
+		e.compiledEnvDeny = append(e.compiledEnvDeny, g)
+	}
+
+	// Compile signal rules
+	sigEngine, err := compileSignalRules(p.SignalRules)
+	if err != nil {
+		return nil, err
+	}
+	e.signalEngine = sigEngine
+
+	// Compile HTTP services (after validation has run in Policy.Validate).
+	byName, byHost, err := compileHTTPServices(p.HTTPServices)
+	if err != nil {
+		return nil, fmt.Errorf("compile http_services: %w", err)
+	}
+	e.httpServices = byName
+	e.httpServiceHosts = byHost
+
+	return e, nil
+}
+
+// NewEngineWithVariables creates an engine with variable expansion.
+// Variables in policy paths are expanded before glob compilation.
+func NewEngineWithVariables(p *Policy, enforceApprovals bool, enforceRedirects bool, vars map[string]string) (*Engine, error) {
+	// Deep copy and expand the policy
+	expanded, err := expandPolicy(p, vars)
+	if err != nil {
+		return nil, fmt.Errorf("expand policy variables: %w", err)
+	}
+	return NewEngine(expanded, enforceApprovals, enforceRedirects)
+}
+
+// PackageRules returns the package install check rules from the loaded policy.
+func (e *Engine) PackageRules() []PackageRule {
+	if e.policy == nil {
+		return nil
+	}
+	return e.policy.PackageRules
+}
+
+// SetThreatStore configures an optional threat feed store for domain checking.
+// action must be "deny" or "audit"; defaults to "deny" if invalid.
+func (e *Engine) SetThreatStore(store ThreatChecker, action string) {
+	e.threatStore = store
+	switch action {
+	case "deny", "audit":
+		e.threatAction = action
+	default:
+		e.threatAction = "deny"
+	}
+}
+
+// SetTorPolicy installs the optional Tor coordinator. Pass nil to disable.
+func (e *Engine) SetTorPolicy(tc TorChecker) {
+	e.torChecker = tc
+}
+
+// expandPolicy creates a copy of the policy with all variables expanded.
+func expandPolicy(p *Policy, vars map[string]string) (*Policy, error) {
+	// Create a shallow copy
+	expanded := *p
+
+	// Expand file rules
+	expanded.FileRules = make([]FileRule, len(p.FileRules))
+	for i, rule := range p.FileRules {
+		expandedRule := rule
+		expandedRule.Paths = make([]string, len(rule.Paths))
+		for j, path := range rule.Paths {
+			expandedPath, err := ExpandVariables(path, vars)
+			if err != nil {
+				return nil, fmt.Errorf("rule %q path %q: %w", rule.Name, path, err)
+			}
+			expandedRule.Paths[j] = expandedPath
+		}
+		expanded.FileRules[i] = expandedRule
+	}
+
+	// Expand network rules (domains might use variables)
+	expanded.NetworkRules = make([]NetworkRule, len(p.NetworkRules))
+	for i, rule := range p.NetworkRules {
+		expandedRule := rule
+		expandedRule.Domains = make([]string, len(rule.Domains))
+		for j, domain := range rule.Domains {
+			expandedDomain, err := ExpandVariables(domain, vars)
+			if err != nil {
+				return nil, fmt.Errorf("network rule %q domain %q: %w", rule.Name, domain, err)
+			}
+			expandedRule.Domains[j] = expandedDomain
+		}
+		expanded.NetworkRules[i] = expandedRule
+	}
+
+	// Copy other rules as-is (command rules unlikely to need variables)
+	expanded.CommandRules = append([]CommandRule(nil), p.CommandRules...)
+	expanded.RegistryRules = append([]RegistryRule(nil), p.RegistryRules...)
+	expanded.UnixRules = append([]UnixSocketRule(nil), p.UnixRules...)
+
+	return &expanded, nil
+}
+
+// NetworkRules returns the raw network rules for read-only inspection (e.g., ebpf allowlist).
+func (e *Engine) NetworkRules() []NetworkRule {
+	if e == nil || e.policy == nil {
+		return nil
+	}
+	return e.policy.NetworkRules
+}
+
+// Policy returns the underlying policy for read-only inspection (e.g., Landlock path derivation).
+func (e *Engine) Policy() *Policy {
+	if e == nil {
+		return nil
+	}
+	return e.policy
+}
+
+// TransparentOverrides returns the policy's transparent command overrides
+// (Add/Remove slices), or nil if no transparent commands config is set.
+// The caller is responsible for converting to the appropriate handler type.
+func (e *Engine) TransparentOverrides() *TransparentCommandsConfig {
+	if e == nil || e.policy == nil || e.policy.TransparentCommands == nil {
+		return nil
+	}
+	return e.policy.TransparentCommands
+}
+
+// SignalEngine returns the signal policy engine, or nil if no signal rules.
+func (e *Engine) SignalEngine() signalEngineType {
+	return e.signalEngine
+}
+
+func (e *Engine) Limits() Limits {
+	if e == nil || e.policy == nil {
+		return Limits{}
+	}
+	return Limits{
+		CommandTimeout:  e.policy.ResourceLimits.CommandTimeout.Duration,
+		SessionTimeout:  e.policy.ResourceLimits.SessionTimeout.Duration,
+		IdleTimeout:     e.policy.ResourceLimits.IdleTimeout.Duration,
+		MaxMemoryMB:     e.policy.ResourceLimits.MaxMemoryMB,
+		CPUQuotaPercent: e.policy.ResourceLimits.CPUQuotaPercent,
+		PidsMax:         e.policy.ResourceLimits.PidsMax,
+	}
+}
+
+// CheckNetworkIP evaluates network_rules using a known destination IP (no DNS resolution).
+// If domain is empty, only CIDR/port-based rules can match.
+func (e *Engine) CheckNetworkIP(domain string, ip net.IP, port int) (dec Decision) {
+	if e.torChecker != nil {
+		if v, ok := e.torChecker.EvalConnect(ip, port); ok {
+			tv := v
+			if v.Decision == "deny" {
+				d := e.wrapDecision(string(types.DecisionDeny), "tor:"+v.Vector, "blocked by Tor policy", nil)
+				d.Tor = &tv
+				return d
+			}
+			defer func() { dec.Tor = &tv }() // audit: attach, don't loosen (returns below must assign named dec)
+		}
+	}
+	if e.policy == nil {
+		return Decision{PolicyDecision: types.DecisionAllow, EffectiveDecision: types.DecisionAllow}
+	}
+	domain = strings.ToLower(strings.TrimSpace(domain))
+
+	// Threat feed pre-check.
+	var threatResult *ThreatCheckResult
+	if e.threatStore != nil && domain != "" {
+		if result, matched := e.threatStore.Check(domain); matched {
+			if e.threatAction == "deny" {
+				dec = e.wrapDecision("deny", "threat-feed:"+result.FeedName,
+					"domain matched threat feed: "+result.FeedName+" (matched: "+result.MatchedDomain+")", nil)
+				dec.ThreatFeed = result.FeedName
+				dec.ThreatMatch = result.MatchedDomain
+				dec.ThreatAction = "deny"
+				return dec
+			}
+			// Audit mode: record threat metadata, continue normal rule evaluation.
+			threatResult = &result
+		}
+	}
+
+	var ips []net.IP
+	if ip != nil {
+		ips = []net.IP{ip}
+	} else if parsed := net.ParseIP(domain); parsed != nil {
+		ips = []net.IP{parsed}
+	}
+
+	for _, r := range e.compiledNetworkRules {
+		if len(r.ports) > 0 {
+			if _, ok := r.ports[port]; !ok {
+				continue
+			}
+		}
+
+		if len(r.domainGlobs) > 0 {
+			matched := false
+			for _, g := range r.domainGlobs {
+				if domain != "" && g.Match(domain) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+
+		if len(r.cidrs) > 0 {
+			matched := false
+			for _, cand := range ips {
+				for _, cidr := range r.cidrs {
+					if cidr.Contains(cand) {
+						matched = true
+						break
+					}
+				}
+				if matched {
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+
+		dec = e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, nil)
+		if threatResult != nil {
+			dec.ThreatFeed = threatResult.FeedName
+			dec.ThreatMatch = threatResult.MatchedDomain
+			dec.ThreatAction = "audit"
+		}
+		return dec
+	}
+
+	dec = e.wrapDecision(string(types.DecisionDeny), "default-deny-network", "", nil)
+	if threatResult != nil {
+		dec.ThreatFeed = threatResult.FeedName
+		dec.ThreatMatch = threatResult.MatchedDomain
+		dec.ThreatAction = "audit"
+	}
+	return dec
+}
+
+// ShellCOpaqueMode selects how opaque shell-c scripts are handled when the
+// policy has a restrictive command rule. The zero value is Enforce, so engines
+// constructed without explicit configuration keep the pre-#378 behavior.
+type ShellCOpaqueMode int
+
+const (
+	ShellCOpaqueEnforce ShellCOpaqueMode = iota // run only under active per-exec enforcement; else deny
+	ShellCOpaqueAllow                           // run even without per-exec enforcement
+	ShellCOpaqueDeny                            // always deny opaque scripts
+)
+
+// ParseShellCOpaqueMode maps a config string to a mode. Unknown/empty values
+// map to Enforce (the safe default); config validation rejects bad values
+// before this is reached in production.
+func ParseShellCOpaqueMode(s string) ShellCOpaqueMode {
+	switch s {
+	case "allow":
+		return ShellCOpaqueAllow
+	case "deny":
+		return ShellCOpaqueDeny
+	default:
+		return ShellCOpaqueEnforce
+	}
+}
+
+// CheckCommand evaluates a command against the policy with no assumption of
+// runtime execve interception (opaque shell-c scripts are pre-denied when a
+// restrictive command rule is present). See CheckCommandWithExecve for callers
+// on an execve-policed execution path.
+func (e *Engine) CheckCommand(command string, args []string) Decision {
+	return e.checkCommand(command, args, false, ShellCOpaqueEnforce)
+}
+
+// CheckCommandWithExecve is CheckCommand for callers whose execution path has
+// runtime execve interception active (seccomp USER_NOTIF or ptrace), so every
+// inner execve is policed by CheckExecve. When execveEnforcementActive is true
+// the opaque shell-c pre-deny is skipped - the script runs and its inner
+// commands are enforced precisely at exec time. Issue #375.
+func (e *Engine) CheckCommandWithExecve(command string, args []string, execveEnforcementActive bool, opaqueMode ShellCOpaqueMode) Decision {
+	return e.checkCommand(command, args, execveEnforcementActive, opaqueMode)
+}
+
+func (e *Engine) checkCommand(command string, args []string, execveEnforcementActive bool, opaqueMode ShellCOpaqueMode) Decision {
+	result, _ := e.matchCommandRules(command, args)
+	// For `<shell> -c "<simple-cmd>"` invocations, also evaluate the
+	// underlying binary so a rule like `deny bin=shutdown` fires for
+	// `sh -c "shutdown now"`. An EXPLICITLY matched rule at any derivation
+	// depth whose policy decision is strictly more restrictive than the
+	// current result takes effect (deny > redirect/soft_delete > approve >
+	// audit > allow). A default-deny on an intermediate derivation (e.g.
+	// the shell allows `ls` but no rule targets `ls`) is ignored; otherwise
+	// every indirect invocation would be blocked by default-deny.
+	resultStrictness := decisionStrictness(result.PolicyDecision)
+	cur, curArgs := command, args
+	for depth := 0; depth < maxShellCDeriveDepth; depth++ {
+		derivedCmd, derivedArgs, ok := shellparse.DerivePolicyTarget(cur, curArgs)
+		if !ok {
+			// If the original (or a previously-derived) invocation is a
+			// shell-c form that we recognize as a wrapper-bypass attempt
+			// (`exec -a name target`, `nohup --help target`,
+			// `nice --adjustment=N target`, etc.), fail closed: the
+			// operator's allow-shell rule wasn't written to cover
+			// wrappers we can't collapse, and falling through to that
+			// rule would leak the deny.
+			if shellparse.IsShellCBypassAttempt(cur, curArgs) {
+				msg := "bypass attempt via unparsable shell-c wrapper"
+				if reason := shellparse.BypassReason(cur, curArgs); reason != "" {
+					msg = "bypass attempt: " + reason
+				}
+				denyDec := e.wrapDecision(string(types.DecisionDeny), "shellc-wrapper-bypass", msg, nil)
+				if dec := denyDec; decisionStrictness(dec.PolicyDecision) > resultStrictness {
+					if dec.PolicyDecision == types.DecisionAudit || dec.PolicyDecision == types.DecisionApprove {
+						dec.EnvPolicy = result.EnvPolicy
+					}
+					result = dec
+					resultStrictness = decisionStrictness(dec.PolicyDecision)
+				}
+			} else if e.hasRestrictiveCommandRule && shellparse.IsOpaqueShellC(cur, curArgs) {
+				// Opaque scripts (metachars, pipes, subshells, globs, …) can
+				// execute binaries we can't predict. The operator chooses how to
+				// handle them via sandbox.seccomp.shellc.opaque (issue #378). The
+				// hasRestrictiveCommandRule gate is preserved so allow-only
+				// policies are never tightened.
+				switch opaqueMode {
+				case ShellCOpaqueAllow:
+					if !execveEnforcementActive {
+						slog.Warn("sandbox.seccomp.shellc.opaque=allow: running opaque shell script without per-exec enforcement",
+							"reason", shellparse.OpaqueReason(cur, curArgs))
+					}
+					// fall through: no pre-deny.
+				default: // ShellCOpaqueEnforce, ShellCOpaqueDeny
+					deny := opaqueMode == ShellCOpaqueDeny || !execveEnforcementActive
+					if deny {
+						msg := "opaque shell script cannot be safely parsed for policy pre-check"
+						if reason := shellparse.OpaqueReason(cur, curArgs); reason != "" {
+							msg = "opaque shell script: contains " + reason
+						}
+						msg += "; set sandbox.seccomp.shellc.opaque=allow to run it without per-exec enforcement, or enable execve enforcement (seccomp.execve + unix_sockets, or ptrace) to run it under policy"
+						denyDec := e.wrapDecision(string(types.DecisionDeny), "shellc-opaque-script", msg, nil)
+						if dec := denyDec; decisionStrictness(dec.PolicyDecision) > resultStrictness {
+							result = dec
+							resultStrictness = decisionStrictness(dec.PolicyDecision)
+						}
+					}
+				}
+			}
+			break
+		}
+		cur, curArgs = derivedCmd, derivedArgs
+		dec, matched := e.matchCommandRules(cur, curArgs)
+		if !matched {
+			continue
+		}
+		if s := decisionStrictness(dec.PolicyDecision); s > resultStrictness {
+			// Audit and approve don't rewrite the command - the ORIGINAL
+			// shell invocation is what actually executes (audit just
+			// emits a log event, approve gates on a human who then runs
+			// the unchanged shell command). So the shell rule's
+			// EnvPolicy must follow along; otherwise env_allow /
+			// env_deny / env_max_bytes / BASH_ENV-style injection
+			// attached to the allow-shells rule would silently vanish
+			// as soon as a stricter inner-command rule matched. For
+			// deny (no execution) and redirect (command replaced with
+			// a different target) the derived rule's EnvPolicy is
+			// appropriate as-is.
+			if dec.PolicyDecision == types.DecisionAudit || dec.PolicyDecision == types.DecisionApprove {
+				dec.EnvPolicy = result.EnvPolicy
+			}
+			result = dec
+			resultStrictness = s
+		}
+	}
+	// Depth-cap defense: if the loop terminated with a still-derivable
+	// target, a malicious chain deeper than maxShellCDeriveDepth could
+	// have smuggled a denied command past our inspection. Fail closed
+	// with shellc-depth-exceeded. Checking DerivePolicyTarget on the
+	// current (cur, curArgs) is safe: if we broke via !ok above, this
+	// call also returns !ok (no false positive); if the loop ran to
+	// completion with each level ok, this call tests the (N+1)th level.
+	if _, _, ok := shellparse.DerivePolicyTarget(cur, curArgs); ok {
+		denyDec := e.wrapDecision(string(types.DecisionDeny), "shellc-depth-exceeded", "nested shell-c chain exceeded max derivation depth", nil)
+		if s := decisionStrictness(denyDec.PolicyDecision); s > resultStrictness {
+			result = denyDec
+			resultStrictness = s
+		}
+	}
+	return result
+}
+
+// decisionStrictness ranks PolicyDecision values by how much they restrict or
+// instrument execution. Used by CheckCommand to decide whether an explicit
+// rule matched on a shell-c-derived inner command should override a more
+// permissive rule matched on the outer shell. Ordering is intentionally:
+// deny > redirect/soft_delete > approve > audit > allow - deny blocks
+// execution outright, redirect rewrites what runs, approve gates on a
+// human, audit only adds logging, and allow is the baseline.
+func decisionStrictness(d types.Decision) int {
+	switch d {
+	case types.DecisionDeny:
+		return 4
+	case types.DecisionRedirect, types.DecisionSoftDelete:
+		return 3
+	case types.DecisionApprove:
+		return 2
+	case types.DecisionAudit:
+		return 1
+	default:
+		return 0
+	}
+}
+
+// matchCommandRules runs the rule-matching loop against command/args and
+// returns the resulting decision plus whether an explicit rule matched.
+// When no rule matched, matched=false and the returned Decision is the
+// default-deny fall-through (kept here so callers that don't care about
+// match status continue to see deny-by-default).
+func (e *Engine) matchCommandRules(command string, args []string) (Decision, bool) {
+	cmdLower := strings.ToLower(command)
+	cmdBase := strings.ToLower(filepath.Base(command))
+	// The shim install renames the original shell to <name>.real and places
+	// the shim at the original path. Server-side, the shim forwards the
+	// real shell as the outer command - so an operator policy listing
+	// `commands: [bash]` would otherwise miss `bash.real` and fall through
+	// to default-deny on every shim-routed shell invocation. shellparse
+	// already strips this suffix for known-shell detection (see
+	// shellparse.basenameLower); apply the same normalization to the
+	// basename match here so policy entries written without `.real`
+	// continue to match after a shim install.
+	cmdBaseNorm := strings.TrimSuffix(cmdBase, ".real")
+
+	for _, r := range e.compiledCommandRules {
+		// Pre-check is always depth 0 (direct command from user)
+		// Skip rules that don't apply to direct commands
+		if !r.rule.Context.MatchesDepth(0) {
+			continue
+		}
+
+		// Check if command matches any of the rule's patterns
+		commandMatched := false
+
+		// If no commands specified, rule applies to all commands
+		if len(r.basenames) == 0 && len(r.basenameGlobs) == 0 && len(r.fullPaths) == 0 && len(r.pathGlobs) == 0 {
+			commandMatched = true
+		} else {
+			// Check full path matches first (more specific)
+			if _, ok := r.fullPaths[cmdLower]; ok {
+				commandMatched = true
+			}
+
+			// Check path glob patterns
+			if !commandMatched {
+				for _, g := range r.pathGlobs {
+					if g.Match(cmdLower) || g.Match(command) {
+						commandMatched = true
+						break
+					}
+				}
+			}
+
+			// Check basename matches (less specific, legacy behavior)
+			if !commandMatched {
+				if _, ok := r.basenames[cmdBase]; ok {
+					commandMatched = true
+				} else if cmdBaseNorm != cmdBase {
+					if _, ok := r.basenames[cmdBaseNorm]; ok {
+						commandMatched = true
+					}
+				}
+			}
+
+			// Check basename glob patterns
+			if !commandMatched {
+				for _, g := range r.basenameGlobs {
+					if g.Match(cmdBase) || g.Match(filepath.Base(command)) {
+						commandMatched = true
+						break
+					}
+					if cmdBaseNorm != cmdBase && g.Match(cmdBaseNorm) {
+						commandMatched = true
+						break
+					}
+				}
+			}
+		}
+
+		if !commandMatched {
+			continue
+		}
+
+		// Check argument patterns if specified (regex on joined args string)
+		if len(r.argsRegexes) > 0 {
+			argsJoined := strings.Join(args, " ")
+			matched := false
+			for _, re := range r.argsRegexes {
+				if re.MatchString(argsJoined) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+
+		dec := e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, r.rule.RedirectTo)
+		dec.EnvPolicy = MergeEnvPolicy(e.policy.EnvPolicy, r.rule)
+		return dec, true
+	}
+	// Default deny (consistent with file_rules, network_rules, and unix_socket_rules).
+	dec := e.wrapDecision(string(types.DecisionDeny), "default-deny-commands", "", nil)
+	dec.EnvPolicy = MergeEnvPolicy(e.policy.EnvPolicy, CommandRule{})
+	return dec, false
+}
+
+// isReadOperation returns true for non-mutating file operations.
+// These default to allow when no policy rule matches, because:
+//   - Reads cannot modify the filesystem
+//   - Sensitive reads are caught by explicit deny rules
+//   - The policy was designed for write enforcement; reads hit many uncovered paths
+//
+// Note: "read" and "list" are included for completeness with policy rule
+// operation names but are not currently produced by the Linux seccomp
+// syscallToOperation() mapper. The Linux path produces: open, stat,
+// readlink, access (read-like) and write, create, delete, rmdir, mkdir,
+// rename, link, symlink, chmod, chown, mknod (write-like).
+func isReadOperation(op string) bool {
+	switch op {
+	case "open", "read", "stat", "list", "readlink", "access":
+		return true
+	default:
+		return false
+	}
+}
+
+// HasSoftDeleteFileRule reports whether any compiled file rule uses the
+// soft_delete decision. Used to decide whether the FUSE layer needs a trash
+// divert wired in even when the global audit mode is not soft_delete.
+func (e *Engine) HasSoftDeleteFileRule() bool {
+	for _, r := range e.compiledFileRules {
+		if types.Decision(strings.ToLower(r.rule.Decision)) == types.DecisionSoftDelete {
+			return true
+		}
+	}
+	return false
+}
+
+func (e *Engine) CheckFile(p string, operation string) Decision {
+	operation = strings.ToLower(operation)
+	for _, r := range e.compiledFileRules {
+		if !matchOp(r.ops, operation) {
+			continue
+		}
+		for _, g := range r.globs {
+			if g.Match(p) {
+				dec := e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, nil)
+
+				// Handle file redirect if configured
+				if r.redirectTo != "" && dec.PolicyDecision == types.DecisionRedirect {
+					dec.FileRedirect = computeFileRedirect(p, operation, r.redirectTo, r.preserveTree, r.rule.Message)
+				}
+
+				return dec
+			}
+		}
+	}
+	// No rule matched - use operation-aware default.
+	// Write operations default to deny (safety net for unrecognized paths).
+	// Read operations default to allow (reads can't modify files;
+	// sensitive reads are caught by explicit deny rules above).
+	if isReadOperation(operation) {
+		return e.wrapDecision(string(types.DecisionAllow), "default-allow-reads", "", nil)
+	}
+	return e.wrapDecision(string(types.DecisionDeny), "default-deny-files", "", nil)
+}
+
+// computeFileRedirect calculates the redirected path for a file operation.
+func computeFileRedirect(originalPath, operation, targetBase string, preserveTree bool, msg string) *types.FileRedirectInfo {
+	var newPath string
+	if preserveTree {
+		// /home/user/file.txt -> /workspace/.scratch/home/user/file.txt
+		newPath = filepath.Join(targetBase, originalPath)
+	} else {
+		// /home/user/file.txt -> /workspace/.scratch/file.txt
+		newPath = filepath.Join(targetBase, filepath.Base(originalPath))
+	}
+
+	return &types.FileRedirectInfo{
+		OriginalPath: originalPath,
+		RedirectPath: newPath,
+		Operation:    operation,
+		Reason:       msg,
+	}
+}
+
+// CheckUnixSocket evaluates unix_socket_rules against a path and operation (connect|bind|listen|sendto).
+// Paths for abstract sockets should be passed as "@name".
+func (e *Engine) CheckUnixSocket(path string, operation string) Decision {
+	operation = strings.ToLower(strings.TrimSpace(operation))
+	for _, r := range e.compiledUnixRules {
+		if !matchOp(r.ops, operation) {
+			continue
+		}
+		for _, g := range r.paths {
+			if g.Match(path) {
+				return e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, nil)
+			}
+		}
+	}
+	return e.wrapDecision(string(types.DecisionDeny), "default-deny-unix", "", nil)
+}
+
+// CheckRegistry evaluates registry_rules against a path and operation.
+func (e *Engine) CheckRegistry(path string, operation string) Decision {
+	if e.policy == nil {
+		return Decision{PolicyDecision: types.DecisionAllow, EffectiveDecision: types.DecisionAllow}
+	}
+	operation = strings.ToLower(operation)
+	pathUpper := strings.ToUpper(path)
+
+	for _, r := range e.compiledRegistryRules {
+		if !matchOp(r.ops, operation) {
+			continue
+		}
+		for _, g := range r.globs {
+			if g.Match(path) || g.Match(pathUpper) {
+				return e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, nil)
+			}
+		}
+	}
+	return e.wrapDecision(string(types.DecisionDeny), "default-deny-registry", "", nil)
+}
+
+// EnvDecision represents the result of CheckEnv with additional metadata.
+type EnvDecision struct {
+	Allowed   bool
+	MatchedBy string // "allow", "deny", "default-allow", "default-deny"
+	Pattern   string // The pattern that matched, if any
+}
+
+// CheckEnv evaluates the env policy against an environment variable name.
+// Returns whether the variable is allowed and what matched.
+// Logic: deny patterns are checked first (deny wins), then allow patterns.
+// If no allow patterns defined, default is allow (unless denied).
+// If allow patterns defined, default is deny (unless allowed).
+func (e *Engine) CheckEnv(name string) EnvDecision {
+	if e == nil || e.policy == nil {
+		return EnvDecision{Allowed: true, MatchedBy: "default-allow"}
+	}
+
+	// Check deny patterns first (deny always wins)
+	for i, g := range e.compiledEnvDeny {
+		if g.Match(name) {
+			pattern := ""
+			if i < len(e.policy.EnvPolicy.Deny) {
+				pattern = e.policy.EnvPolicy.Deny[i]
+			}
+			return EnvDecision{Allowed: false, MatchedBy: "deny", Pattern: pattern}
+		}
+	}
+
+	// Check defaultSecretDeny patterns when no allow patterns defined
+	if len(e.compiledEnvAllow) == 0 {
+		for _, secret := range defaultSecretDeny {
+			if name == secret {
+				return EnvDecision{Allowed: false, MatchedBy: "default-secret-deny", Pattern: secret}
+			}
+		}
+		// No allow patterns and not denied = allow
+		return EnvDecision{Allowed: true, MatchedBy: "default-allow"}
+	}
+
+	// Check allow patterns
+	for i, g := range e.compiledEnvAllow {
+		if g.Match(name) {
+			pattern := ""
+			if i < len(e.policy.EnvPolicy.Allow) {
+				pattern = e.policy.EnvPolicy.Allow[i]
+			}
+			return EnvDecision{Allowed: true, MatchedBy: "allow", Pattern: pattern}
+		}
+	}
+
+	// Allow patterns defined but none matched = deny
+	return EnvDecision{Allowed: false, MatchedBy: "default-deny"}
+}
+
+// EnvPolicy returns the raw env policy for configuration inspection.
+func (e *Engine) EnvPolicy() EnvPolicy {
+	if e == nil || e.policy == nil {
+		return EnvPolicy{}
+	}
+	return e.policy.EnvPolicy
+}
+
+// GetEnvInject returns the env_inject map from the policy.
+// Returns an empty map if engine, policy, or EnvInject is nil.
+func (e *Engine) GetEnvInject() map[string]string {
+	if e == nil || e.policy == nil || e.policy.EnvInject == nil {
+		return map[string]string{}
+	}
+	return e.policy.EnvInject
+}
+
+// CheckNetwork evaluates network_rules against a domain and port.
+// Deprecated: Use CheckNetworkCtx for proper cancellation support.
+func (e *Engine) CheckNetwork(domain string, port int) Decision {
+	return e.CheckNetworkCtx(context.Background(), domain, port)
+}
+
+// CheckNetworkCtx evaluates network_rules against a domain and port with context support.
+// If a rule requires CIDR matching and the domain is not an IP literal, DNS resolution
+// will be performed using the provided context for cancellation.
+func (e *Engine) CheckNetworkCtx(ctx context.Context, domain string, port int) (dec Decision) {
+	domain = strings.ToLower(strings.TrimSpace(domain))
+	if e.torChecker != nil {
+		if v, ok := e.torChecker.EvalOnionName(domain); ok {
+			tv := v
+			if v.Decision == "deny" {
+				d := e.wrapDecision(string(types.DecisionDeny), "tor:"+v.Vector, "blocked by Tor policy", nil)
+				d.Tor = &tv
+				return d
+			}
+			defer func() { dec.Tor = &tv }() // audit: attach, don't loosen (returns below must assign named dec)
+		}
+	}
+	if e.torChecker != nil {
+		if ip := net.ParseIP(domain); ip != nil {
+			if v, ok := e.torChecker.EvalConnect(ip, port); ok {
+				tv := v
+				if v.Decision == "deny" {
+					d := e.wrapDecision(string(types.DecisionDeny), "tor:"+v.Vector, "blocked by Tor policy", nil)
+					d.Tor = &tv
+					return d
+				}
+				defer func() { dec.Tor = &tv }() // audit: attach, don't loosen (returns below must assign named dec)
+			}
+		}
+	}
+
+	// Threat feed pre-check (skip for empty domain, consistent with CheckNetworkIP).
+	var threatResult *ThreatCheckResult
+	if e.threatStore != nil && domain != "" {
+		if entry, matched := e.threatStore.Check(domain); matched {
+			if e.threatAction == "deny" {
+				dec = e.wrapDecision("deny", "threat-feed:"+entry.FeedName,
+					"domain matched threat feed: "+entry.FeedName+" (matched: "+entry.MatchedDomain+")", nil)
+				dec.ThreatFeed = entry.FeedName
+				dec.ThreatMatch = entry.MatchedDomain
+				dec.ThreatAction = "deny"
+				return dec
+			}
+			// Audit mode: record threat metadata, continue normal rule evaluation.
+			threatResult = &entry
+		}
+	}
+
+	var (
+		ips      []net.IP
+		resolved bool
+	)
+	if ip := net.ParseIP(domain); ip != nil {
+		ips = []net.IP{ip}
+		resolved = true
+	}
+
+	resolveIPs := func() {
+		if resolved || domain == "" {
+			return
+		}
+		resolved = true
+		// Use caller's context with a reasonable upper bound timeout
+		resolveCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		defer cancel()
+		addrs, err := net.DefaultResolver.LookupIPAddr(resolveCtx, domain)
+		if err != nil {
+			return
+		}
+		for _, a := range addrs {
+			ips = append(ips, a.IP)
+		}
+	}
+
+	for _, r := range e.compiledNetworkRules {
+		if len(r.ports) > 0 {
+			if _, ok := r.ports[port]; !ok {
+				continue
+			}
+		}
+
+		// Match domains if present.
+		if len(r.domainGlobs) > 0 {
+			matched := false
+			for _, g := range r.domainGlobs {
+				if domain != "" && g.Match(domain) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+
+		// Match CIDRs if present.
+		if len(r.cidrs) > 0 {
+			resolveIPs()
+			matched := false
+			for _, ip := range ips {
+				for _, cidr := range r.cidrs {
+					if cidr.Contains(ip) {
+						matched = true
+						break
+					}
+				}
+				if matched {
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+
+		// If rule has no selectors, it matches (e.g., approve unknown https by port only).
+		dec = e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, nil)
+		if threatResult != nil {
+			dec.ThreatFeed = threatResult.FeedName
+			dec.ThreatMatch = threatResult.MatchedDomain
+			dec.ThreatAction = "audit"
+		}
+		return dec
+	}
+
+	dec = e.wrapDecision(string(types.DecisionDeny), "default-deny-network", "", nil)
+	if threatResult != nil {
+		dec.ThreatFeed = threatResult.FeedName
+		dec.ThreatMatch = threatResult.MatchedDomain
+		dec.ThreatAction = "audit"
+	}
+	return dec
+}
+
+func matchOp(ops map[string]struct{}, op string) bool {
+	if len(ops) == 0 {
+		return true
+	}
+	if _, ok := ops["*"]; ok {
+		return true
+	}
+	_, ok := ops[op]
+	return ok
+}
+
+func (e *Engine) wrapDecision(decision string, rule string, msg string, redirect *CommandRedirect) Decision {
+	pd := types.Decision(strings.ToLower(decision))
+	switch pd {
+	case types.DecisionAllow:
+		return Decision{PolicyDecision: pd, EffectiveDecision: pd, Rule: rule, Message: msg}
+	case types.DecisionDeny:
+		return Decision{PolicyDecision: pd, EffectiveDecision: pd, Rule: rule, Message: msg}
+	case types.DecisionApprove:
+		if e.enforceApprovals {
+			return Decision{
+				PolicyDecision:    pd,
+				EffectiveDecision: pd,
+				Rule:              rule,
+				Message:           msg,
+				Approval:          &types.ApprovalInfo{Required: true, Mode: types.ApprovalModeEnforced},
+			}
+		}
+		return Decision{
+			PolicyDecision:    pd,
+			EffectiveDecision: types.DecisionAllow,
+			Rule:              rule,
+			Message:           msg,
+			Approval:          &types.ApprovalInfo{Required: true, Mode: types.ApprovalModeShadow},
+		}
+	case types.DecisionRedirect:
+		if e.enforceRedirects {
+			return Decision{
+				PolicyDecision:    pd,
+				EffectiveDecision: pd,
+				Rule:              rule,
+				Message:           msg,
+				Redirect:          toRedirectInfo(redirect, msg),
+			}
+		}
+		return Decision{
+			PolicyDecision:    pd,
+			EffectiveDecision: types.DecisionAllow,
+			Rule:              rule,
+			Message:           msg,
+			Redirect:          toRedirectInfo(redirect, msg),
+		}
+	case types.DecisionAudit:
+		// Audit is allow + enhanced logging (caller should emit audit event)
+		return Decision{
+			PolicyDecision:    pd,
+			EffectiveDecision: types.DecisionAllow,
+			Rule:              rule,
+			Message:           msg,
+		}
+	case types.DecisionSoftDelete:
+		// Soft delete means redirect destructive operations to trash
+		return Decision{
+			PolicyDecision:    pd,
+			EffectiveDecision: types.DecisionAllow,
+			Rule:              rule,
+			Message:           msg,
+		}
+	default:
+		// Safe fallback.
+		return Decision{PolicyDecision: types.DecisionDeny, EffectiveDecision: types.DecisionDeny, Rule: "invalid-policy-decision", Message: "invalid decision in policy"}
+	}
+}
+
+func toRedirectInfo(r *CommandRedirect, msg string) *types.RedirectInfo {
+	if r == nil || strings.TrimSpace(r.Command) == "" {
+		return nil
+	}
+	return &types.RedirectInfo{
+		Command:     r.Command,
+		Args:        append([]string{}, r.Args...),
+		ArgsAppend:  append([]string{}, r.ArgsAppend...),
+		Environment: copyMap(r.Environment),
+		Reason:      msg,
+	}
+}
+
+func copyMap(m map[string]string) map[string]string {
+	if m == nil {
+		return nil
+	}
+	result := make(map[string]string, len(m))
+	for k, v := range m {
+		result[k] = v
+	}
+	return result
+}
+
+// DnsRedirectResult contains the result of DNS redirect evaluation
+type DnsRedirectResult struct {
+	Matched    bool
+	Rule       string
+	ResolveTo  string
+	Visibility string
+	OnFailure  string
+}
+
+// EvaluateDnsRedirect checks if a hostname should be redirected.
+// The hostname is normalized (lowercased, trimmed, trailing dot removed)
+// to ensure case-insensitive matching consistent with DNS semantics.
+func (e *Engine) EvaluateDnsRedirect(hostname string) *DnsRedirectResult {
+	hostname = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(hostname)), ".")
+	for _, r := range e.dnsRedirectRules {
+		if r.pattern.MatchString(hostname) {
+			visibility := r.rule.Visibility
+			if visibility == "" {
+				visibility = "audit_only"
+			}
+			onFailure := r.rule.OnFailure
+			if onFailure == "" {
+				onFailure = "fail_closed"
+			}
+			return &DnsRedirectResult{
+				Matched:    true,
+				Rule:       r.rule.Name,
+				ResolveTo:  r.rule.ResolveTo,
+				Visibility: visibility,
+				OnFailure:  onFailure,
+			}
+		}
+	}
+	return &DnsRedirectResult{Matched: false}
+}
+
+// ConnectRedirectResult contains the result of connect redirect evaluation
+type ConnectRedirectResult struct {
+	Matched        bool
+	Rule           string
+	RedirectTo     string
+	RedirectToUnix string
+	TLSMode        string
+	SNI            string
+	Visibility     string
+	Message        string
+	OnFailure      string
+}
+
+// EvaluateConnectRedirect checks if a connection should be redirected.
+// The host portion of hostPort is normalized (lowercased, trailing dot removed)
+// to ensure case-insensitive matching consistent with DNS semantics.
+func (e *Engine) EvaluateConnectRedirect(hostPort string) *ConnectRedirectResult {
+	hostPort = strings.TrimSpace(hostPort)
+	if host, port, err := net.SplitHostPort(hostPort); err == nil {
+		host = strings.TrimSuffix(strings.ToLower(host), ".")
+		hostPort = net.JoinHostPort(host, port)
+	} else {
+		hostPort = strings.TrimSuffix(strings.ToLower(hostPort), ".")
+	}
+	for _, r := range e.connectRedirectRules {
+		if r.pattern.MatchString(hostPort) {
+			visibility := r.rule.Visibility
+			if visibility == "" {
+				visibility = "audit_only"
+			}
+			onFailure := r.rule.OnFailure
+			if onFailure == "" {
+				onFailure = "fail_closed"
+			}
+			tlsMode := "passthrough"
+			sni := ""
+			if r.rule.TLS != nil {
+				if r.rule.TLS.Mode != "" {
+					tlsMode = r.rule.TLS.Mode
+				}
+				sni = r.rule.TLS.SNI
+			}
+			return &ConnectRedirectResult{
+				Matched:        true,
+				Rule:           r.rule.Name,
+				RedirectTo:     r.rule.RedirectTo,
+				RedirectToUnix: r.rule.RedirectToUnix,
+				TLSMode:        tlsMode,
+				SNI:            sni,
+				Visibility:     visibility,
+				Message:        r.rule.Message,
+				OnFailure:      onFailure,
+			}
+		}
+	}
+	return &ConnectRedirectResult{Matched: false}
+}
+
+// CheckExecve evaluates an execve call against command rules with depth context support.
+// Returns the decision from the first matching rule, or default deny if none match.
+// The depth parameter represents the ancestry depth: 0 = direct (user-typed), 1+ = nested (script-spawned).
+func (e *Engine) CheckExecve(filename string, argv []string, depth int) (dec Decision) {
+	if e.torChecker != nil {
+		if v, ok := e.torChecker.EvalExecve(filename, argv); ok {
+			tv := v
+			if v.Decision == "deny" {
+				d := e.wrapDecision(string(types.DecisionDeny), "tor:"+v.Vector, "blocked by Tor policy", nil)
+				d.Tor = &tv
+				d.EnvPolicy = MergeEnvPolicy(e.policy.EnvPolicy, CommandRule{})
+				return d
+			}
+			defer func() { dec.Tor = &tv }() // audit: attach, don't loosen
+		}
+	}
+	cmdLower := strings.ToLower(filename)
+	cmdBase := strings.ToLower(filepath.Base(filename))
+
+	for _, r := range e.compiledCommandRules {
+		// Check depth/context constraint first
+		if !r.rule.Context.MatchesDepth(depth) {
+			continue
+		}
+
+		// Check if command matches any of the rule's patterns
+		commandMatched := false
+
+		// If no commands specified, rule applies to all commands
+		if len(r.basenames) == 0 && len(r.basenameGlobs) == 0 && len(r.fullPaths) == 0 && len(r.pathGlobs) == 0 {
+			commandMatched = true
+		} else {
+			// Check full path matches first (more specific)
+			if _, ok := r.fullPaths[cmdLower]; ok {
+				commandMatched = true
+			}
+
+			// Check path glob patterns
+			if !commandMatched {
+				for _, g := range r.pathGlobs {
+					if g.Match(cmdLower) || g.Match(filename) {
+						commandMatched = true
+						break
+					}
+				}
+			}
+
+			// Check basename matches (less specific, legacy behavior)
+			if !commandMatched {
+				if _, ok := r.basenames[cmdBase]; ok {
+					commandMatched = true
+				}
+			}
+
+			// Check basename glob patterns
+			if !commandMatched {
+				for _, g := range r.basenameGlobs {
+					if g.Match(cmdBase) || g.Match(filepath.Base(filename)) {
+						commandMatched = true
+						break
+					}
+				}
+			}
+		}
+
+		if !commandMatched {
+			continue
+		}
+
+		// Check argument patterns if specified (regex on joined args string)
+		if len(r.argsRegexes) > 0 {
+			argsJoined := strings.Join(argv, " ")
+			matched := false
+			for _, re := range r.argsRegexes {
+				if re.MatchString(argsJoined) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+
+		dec = e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, r.rule.RedirectTo)
+		dec.EnvPolicy = MergeEnvPolicy(e.policy.EnvPolicy, r.rule)
+		return dec
+	}
+
+	// Default deny (consistent with other Check* methods)
+	dec = e.wrapDecision(string(types.DecisionDeny), "default-deny-execve", "", nil)
+	dec.EnvPolicy = MergeEnvPolicy(e.policy.EnvPolicy, CommandRule{})
+	return dec
+}

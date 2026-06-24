@@ -1,0 +1,19 @@
+//go:build !linux
+
+package api
+
+import (
+	"fmt"
+
+	"github.com/nla-aep/aep-caw-framework/pkg/types"
+)
+
+type ptraceExecResult struct {
+	exitCode  int
+	resources types.ExecResources
+	err       error
+}
+
+func ptraceExecAttach(tracer any, pid int, sessionID, commandID string, keepStopped bool) (waitExit func() ptraceExecResult, resume func() error, err error) {
+	return nil, nil, fmt.Errorf("ptrace not supported on this platform")
+}

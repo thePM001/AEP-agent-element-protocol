@@ -1,0 +1,34 @@
+{
+  "manifest_version": "1",
+  "id": "aep-python-sdk",
+  "version": "2.8.0",
+  "kind": "sdk",
+  "path": "AEP-SDKs/python/aep-protocol/",
+  "description": "AEP Python loader, validator, and lattice client.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels"
+  ],
+  "capabilities": [
+    "sdk:lattice-gated",
+    "sdk:compiled-ai"
+  ],
+  "actions": [
+    {
+      "id": "produce_sdks",
+      "description": "Build SDK artifacts (no npm)",
+      "runtime": "cli",
+      "method": "node AEP-User-Experience/scripts/produce-aep-sdks.mjs"
+    }
+  ],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 50,
+    "requires_internet": false
+  },
+  "implementation": {
+    "producer": "AEP-User-Experience/scripts/produce-aep-sdks.mjs",
+    "dist": "AEP-SDKs/dist/sdk-manifest.json"
+  }
+}

@@ -1,0 +1,107 @@
+# aep-caw Docker Compose Configuration
+#
+# Usage:
+#   docker-compose up -d          # Start aep-caw
+#   docker-compose logs -f        # View logs
+#   docker-compose down           # Stop aep-caw
+#
+# Access:
+#   HTTP API: http://localhost:18080
+#   gRPC API: localhost:9090
+
+version: '3.8'
+
+services:
+  aep-caw:
+    image: ghcr.io/aep-caw/aep-caw:latest
+    # Or build locally:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.example
+    
+    container_name: aep-caw
+    hostname: aep-caw
+    
+    # Required capabilities for full functionality
+    cap_add:
+      - SYS_ADMIN      # Required for FUSE, namespaces
+      - NET_ADMIN      # Required for network namespace, iptables
+    
+    # Required devices
+    devices:
+      - /dev/fuse      # Required for FUSE filesystem
+    
+    # Security options
+    security_opt:
+      - apparmor=unconfined    # Required for namespace operations
+      # For SELinux systems, also add:
+      # - label=disable
+    
+    # Port mappings
+    ports:
+      - "18080:18080"    # HTTP API
+      - "9090:9090"    # gRPC API
+    
+    # Volume mounts
+    volumes:
+      # Workspace directory - where agent code runs
+      - ./workspaces:/workspaces
+      
+      # Custom configuration (optional)
+      - ./config:/etc/aep-caw:ro
+      
+      # Persistent data (session history, logs)
+      - aep-caw-data:/var/lib/aep-caw
+      
+      # Logs
+      - aep-caw-logs:/var/log/aep-caw
+    
+    # Environment variables
+    environment:
+      - AEP_CAW_LOG_LEVEL=info
+      # Policy selection (name without .yml suffix). Must be in policies.allowed or defaults to policies.default.
+      # - AEP_CAW_POLICY_NAME=default
+      # Optional env iteration block via shim for commands with env_policy.block_iteration=true
+      # - AEP_CAW_ENV_BLOCK_ITERATION=0
+      # - AEP_CAW_HTTP_ADDR=0.0.0.0:18080
+      # - AEP_CAW_GRPC_ADDR=0.0.0.0:9090
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 512M
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:18080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+# Named volumes for persistence
+volumes:
+  aep-caw-data:
+    driver: local
+  aep-caw-logs:
+    driver: local
+
+# Optional: custom network
+networks:
+  default:
+    name: aep-caw-network

@@ -1,0 +1,35 @@
+{
+  "manifest_version": "1",
+  "id": "decomposition",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/decomposition/",
+  "description": "Governed task tree decomposition and completion gates.",
+  "requires": [
+    "policy-engine",
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "decomposition:tree",
+    "decomposition:gates"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 20,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Hierarchical task decomposition under governance.",
+    "use_when": [
+      "complex multi-step tasks"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/decomposition/lib/manager.ts"
+  }
+}

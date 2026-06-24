@@ -1,0 +1,54 @@
+{
+  "manifest_version": "1",
+  "id": "schema-builder",
+  "version": "2.8.0",
+  "kind": "tooling",
+  "path": "AEP-Policy-System/schema-builder/",
+  "description": "Data-driven schema validation (MLE, spectral, permissiveness, modularity).",
+  "requires": [
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "schema:mle",
+    "schema:spectral",
+    "schema:permissiveness",
+    "schema:modularity"
+  ],
+  "actions": [
+    {
+      "id": "validate_schema",
+      "description": "Validate schema proposal",
+      "runtime": "gateway",
+      "method": "validateSchemaProposal"
+    }
+  ],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 128,
+    "min_disk_mb": 20,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Statistical schema validation for data-driven governance.",
+    "use_when": [
+      "custom data schemas",
+      "schema tightening proposals"
+    ],
+    "avoid_when": [
+      "fixed static schemas only"
+    ],
+    "pairs_with": [
+      "policy-builder"
+    ]
+  },
+  "implementation": {
+    "orchestrator": "AEP-Policy-System/schema-builder/lib/schema-builder.ts"
+  },
+  "conformance": {
+    "tests": [
+      "AEP-Components/conformance/runner/run.sh",
+      "AEP-Components/conformance/tests/manifest.json"
+    ]
+  }
+}

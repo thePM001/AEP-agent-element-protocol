@@ -1,0 +1,46 @@
+{
+  "manifest_version": "1",
+  "id": "wasm-policy-sandbox",
+  "version": "2.8.0",
+  "kind": "wasm",
+  "path": "AEP-Components/wasm/",
+  "description": "WASM policy evaluation via lattice socket wasm_sandbox.",
+  "requires": [
+    "aep-base-node"
+  ],
+  "capabilities": [
+    "wasm:evaluate",
+    "wasm:sandbox-socket"
+  ],
+  "actions": [
+    {
+      "id": "evaluate",
+      "description": "Evaluate GAP policy in WASM",
+      "runtime": "socket",
+      "method": "wasm_sandbox"
+    }
+  ],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 128,
+    "min_disk_mb": 30,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Isolated WASM sandbox for GAP policy evaluation.",
+    "use_when": [
+      "WASM policy nodes on canvas",
+      "GAP evaluation without HTTP bypass"
+    ],
+    "avoid_when": [
+      "policy evaluation not needed"
+    ],
+    "pairs_with": []
+  },
+  "implementation": {
+    "crate": "AEP-Components/wasm/crate",
+    "binary": "aep-wasm-sandbox",
+    "socket": "wasm_sandbox"
+  }
+}

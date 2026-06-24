@@ -1,0 +1,629 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to release or re-release
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
+  RELEASE_SOURCE_REF: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', github.event.inputs.tag) || github.ref }}
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ env.RELEASE_SOURCE_REF }}
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          # Namespace bumped to v3 after dropping the libseccomp 2.6
+          # source-build step. The key now salts only on go.sum so any
+          # dependency change (including libseccomp-golang) invalidates
+          # the cache. The old v2 key carried build artifacts compiled
+          # against a custom-built static libseccomp.a; those are
+          # incompatible with the new dynamic-link design.
+          key: release-v3-${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            release-v3-${{ runner.os }}-go-
+
+      - name: Free disk space
+        run: |
+          echo "=== Disk space before cleanup ==="
+          df -h /tmp /home/runner
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell
+          echo "=== Disk space after cleanup ==="
+          df -h /tmp /home/runner
+
+      - name: Install build deps (envshim, fuse, seccomp, multiarch)
+        run: |
+          # Ubuntu 24.04 hosts arm64 packages on ports.ubuntu.com, not
+          # archive.ubuntu.com. Without restricting the default sources
+          # to amd64 and adding a ports source for arm64, `apt-get
+          # update` after `dpkg --add-architecture arm64` 404s on every
+          # arm64 Packages file.
+          sudo sed -i '/^Types: deb$/a Architectures: amd64' /etc/apt/sources.list.d/ubuntu.sources
+          sudo tee /etc/apt/sources.list.d/arm64-ports.sources >/dev/null <<'EOF'
+          Types: deb
+          URIs: http://ports.ubuntu.com/ubuntu-ports
+          Suites: noble noble-updates noble-security
+          Components: main universe restricted multiverse
+          Architectures: arm64
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+          EOF
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update
+          sudo apt-get install -y \
+            libfuse-dev \
+            libseccomp-dev \
+            libseccomp-dev:arm64 \
+            pkg-config \
+            gcc-aarch64-linux-gnu \
+            make
+
+      - name: Test
+        run: |
+          mkdir -p "$GOTMPDIR"
+          go test -p=1 ./...
+        env:
+          GOTMPDIR: ${{ runner.temp }}/go-tmp
+
+      - name: Smoke
+        run: make smoke
+
+      - name: Pin GoReleaser tag selection to release ref
+        run: |
+          current_tag="${{ env.RELEASE_TAG }}"
+          echo "GORELEASER_CURRENT_TAG=$current_tag" >> "$GITHUB_ENV"
+
+          previous_tag="$(
+            git tag --list 'v*' --sort=-version:refname |
+              awk -v current="$current_tag" '
+                $0 == current { seen = 1; next }
+                !seen { next }
+                { print; exit }
+              '
+          )"
+
+          if [[ "$current_tag" != *-* ]]; then
+            previous_tag="$(
+              git tag --list 'v*' --sort=-version:refname |
+                awk -v current="$current_tag" '
+                  $0 == current { seen = 1; next }
+                  !seen { next }
+                  $0 ~ /-/ { next }
+                  { print; exit }
+                '
+            )"
+          fi
+
+          if [[ -n "$previous_tag" ]]; then
+            echo "GORELEASER_PREVIOUS_TAG=$previous_tag" >> "$GITHUB_ENV"
+          fi
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: v2.13.1
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Build Alpine/musl binaries separately (requires different libc).
+  #
+  # We intentionally do NOT use `container: golang:1.25.7-alpine` at the job
+  # level, because on arm64 GitHub runners this breaks JavaScript actions
+  # (actions/checkout@v4): Node.js is not shipped for the Alpine-on-arm64
+  # combo. Instead, the job runs on a plain ubuntu-* host, checkout happens
+  # there, and the actual musl/CGO compile is delegated to `docker run`
+  # against the multi-arch golang:alpine image. Docker pulls the matching
+  # arch variant natively on each runner (no QEMU needed).
+  alpine-build:
+    needs: goreleaser  # Wait for release to be created
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runs-on: ubuntu-latest
+          - arch: arm64
+            runs-on: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_SOURCE_REF }}
+
+      - name: Build musl-static binaries in Alpine container
+        env:
+          VERSION: ${{ env.RELEASE_TAG }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          # Keep the build script in a temp file so we avoid quoting hell
+          # around -ldflags='-s -w -extldflags "-static"' inside docker run.
+          cat > /tmp/alpine-build.sh <<'SCRIPT'
+          #!/bin/sh
+          set -eux
+          apk add --no-cache gcc musl-dev libseccomp-dev libseccomp-static make git file
+
+          # The repo is mounted from the host runner at /workspace. Files are
+          # owned by the host uid (e.g. 1001) but this container runs as root,
+          # so git refuses to operate on it (safe.directory check). Go's build
+          # VCS stamping invokes git and fails with "exit status 128". Mark
+          # the workspace as safe before any go build commands.
+          git config --global --add safe.directory /workspace
+
+          CGO_ENABLED=1 \
+          CGO_LDFLAGS="-static -lseccomp" \
+          go build -ldflags='-s -w -extldflags "-static"' \
+            -o aep-caw ./cmd/aep-caw
+          file aep-caw
+
+          CGO_ENABLED=1 \
+          CGO_LDFLAGS="-static -lseccomp" \
+          go build -ldflags='-s -w -extldflags "-static"' \
+            -o aep-caw-unixwrap ./cmd/aep-caw-unixwrap
+          file aep-caw-unixwrap
+
+          CGO_ENABLED=0 \
+          go build -ldflags='-s -w' \
+            -o aep-caw-shell-shim ./cmd/aep-caw-shell-shim
+
+          mkdir -p dist
+          tar -czvf "dist/aep-caw_${VERSION}_linux_${ARCH}_musl.tar.gz" \
+            aep-caw \
+            aep-caw-unixwrap \
+            aep-caw-shell-shim \
+            packaging/bash_startup.sh \
+            README.md \
+            LICENSE \
+            config.yml \
+            configs/policies \
+            default-policy.yml
+          SCRIPT
+          chmod +x /tmp/alpine-build.sh
+
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            -v "/tmp/alpine-build.sh:/alpine-build.sh:ro" \
+            -w /workspace \
+            -e VERSION \
+            -e ARCH \
+            golang:1.25.7-alpine \
+            /alpine-build.sh
+
+          # Files created inside the container are root-owned on the host.
+          # Chown them back so subsequent host-side steps can read them.
+          sudo chown -R "$(id -u):$(id -g)" dist aep-caw aep-caw-unixwrap aep-caw-shell-shim 2>/dev/null || true
+
+      - name: Upload Alpine binaries to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ env.RELEASE_TAG }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          gh release upload "$VERSION" \
+            "dist/aep-caw_${VERSION}_linux_${ARCH}_musl.tar.gz" \
+            --repo "${{ github.repository }}" \
+            --clobber
+
+  # Build, sign, and notarize macOS app bundle with system extension.
+  build-macos-app:
+    runs-on: macos-latest
+    needs: goreleaser
+    environment: build
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_SOURCE_REF }}
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Import signing certificate
+        env:
+          MACOS_SIGNING_CERT_P12: ${{ secrets.MACOS_SIGNING_CERT_P12 }}
+          MACOS_SIGNING_CERT_PASSWORD: ${{ secrets.MACOS_SIGNING_CERT_PASSWORD }}
+        run: |
+          echo "$MACOS_SIGNING_CERT_P12" | base64 --decode > cert.p12
+          KEYCHAIN="build.keychain"
+          KEYCHAIN_PASSWORD="actions"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security default-keychain -s "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import cert.p12 -k "$KEYCHAIN" -P "$MACOS_SIGNING_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          rm cert.p12
+
+      - name: Download darwin archives from GoReleaser
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ env.RELEASE_TAG }}
+        run: |
+          for arch in amd64 arm64; do
+            ARCHIVE="aep-caw_${VERSION#v}_darwin_${arch}.tar.gz"
+            gh release download "$VERSION" \
+              --pattern "$ARCHIVE" \
+              --repo "${{ github.repository }}" \
+              --dir .
+            mkdir -p "unsigned-${arch}"
+            tar -xzf "$ARCHIVE" -C "unsigned-${arch}"
+          done
+
+      - name: Rebuild aep-caw with CGO for system extension support
+        env:
+          VERSION: ${{ env.RELEASE_TAG }}
+        run: |
+          LDFLAGS="-s -w -X main.version=${VERSION#v} -X main.commit=$(git rev-parse --short HEAD)"
+          # Build for both architectures with CGO enabled (nofuse: macFUSE headers not available on CI)
+          CGO_ENABLED=1 GOARCH=arm64 go build -tags nofuse -ldflags "$LDFLAGS" \
+            -o build/aep-caw-arm64 ./cmd/aep-caw
+          CGO_ENABLED=1 GOARCH=amd64 go build -tags nofuse -ldflags "$LDFLAGS" \
+            -o build/aep-caw-amd64 ./cmd/aep-caw
+          # Replace goreleaser-built aep-caw with CGO-enabled builds
+          cp build/aep-caw-arm64 unsigned-arm64/aep-caw
+          cp build/aep-caw-amd64 unsigned-amd64/aep-caw
+
+      - name: Create and sign universal Go binaries
+        env:
+          SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+        run: |
+          mkdir -p build/go-universal
+          # Lipo each Mach-O binary into a universal
+          for bin in unsigned-arm64/aep-caw*; do
+            name=$(basename "$bin")
+            [ -f "$bin" ] || continue
+            file "$bin" | grep -q "Mach-O" || continue
+            amd64_bin="unsigned-amd64/${name}"
+            if [ -f "$amd64_bin" ]; then
+              lipo -create -output "build/go-universal/${name}" \
+                "$bin" "$amd64_bin"
+              echo "Created universal binary: ${name}"
+            else
+              cp "$bin" "build/go-universal/${name}"
+              echo "Copied arm64-only binary: ${name}"
+            fi
+          done
+          # Sign and verify each binary
+          signed=0
+          for bin in build/go-universal/*; do
+            echo "--- $(basename "$bin") ---"
+            lipo -info "$bin"
+            # Use minimal entitlements for shim binaries
+            if echo "$bin" | grep -q "aep-caw-shell-shim"; then
+              codesign --force --sign "$SIGNING_IDENTITY" \
+                --options runtime --timestamp \
+                "$bin"
+            else
+              codesign --force --sign "$SIGNING_IDENTITY" \
+                --entitlements macos/AepCaw/aep-caw/aep-caw.entitlements \
+                --options runtime --timestamp \
+                "$bin"
+            fi
+            codesign --verify --strict "$bin"
+            signed=$((signed + 1))
+          done
+          if [ "$signed" -eq 0 ]; then
+            echo "::error::No binaries were signed"
+            exit 1
+          fi
+          echo "Signed $signed binaries"
+
+      - name: Build Swift targets (universal)
+        run: |
+          xcodebuild \
+            -project macos/aep-caw/aep-caw.xcodeproj \
+            -scheme aep-caw \
+            -configuration Release \
+            -derivedDataPath build/DerivedData \
+            ARCHS="arm64 x86_64" \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Assemble app bundle
+        run: |
+          # Copy signed Go binaries
+          mkdir -p build/AepCaw.app/Contents/MacOS
+          cp build/go-universal/* build/AepCaw.app/Contents/MacOS/
+
+          # Copy Info.plist for host app
+          cp macos/AepCaw-files/Info.plist build/AepCaw.app/Contents/
+
+          # Copy Swift build products from DerivedData
+          PRODUCTS="build/DerivedData/Build/Products/Release"
+
+          # System Extension (Xcode names the product with the full bundle ID)
+          mkdir -p "build/AepCaw.app/Contents/Library/SystemExtensions"
+          cp -R "${PRODUCTS}/ai.canyonroad.aep-caw.SysExt.systemextension" \
+            "build/AepCaw.app/Contents/Library/SystemExtensions/"
+
+          # XPC Service
+          mkdir -p "build/AepCaw.app/Contents/XPCServices"
+          cp -R "${PRODUCTS}/xpc.xpc" \
+            "build/AepCaw.app/Contents/XPCServices/"
+
+          # Approval Dialog
+          mkdir -p "build/AepCaw.app/Contents/Resources"
+          cp -R "${PRODUCTS}/approval-dialog.app" \
+            "build/AepCaw.app/Contents/Resources/"
+
+          # Provisioning profile (required for restricted entitlements like system-extension.install)
+          cp macos/AepCaw/AepCaw_Distribution.provisionprofile \
+            "build/AepCaw.app/Contents/embedded.provisionprofile"
+
+          # Default config and policies (used as fallback when no user/system config exists)
+          cp config.yml "build/AepCaw.app/Contents/Resources/"
+          cp default-policy.yml "build/AepCaw.app/Contents/Resources/"
+          mkdir -p "build/AepCaw.app/Contents/Resources/configs/policies"
+          cp configs/policies/*.yaml "build/AepCaw.app/Contents/Resources/configs/policies/"
+
+          echo "=== App bundle structure ==="
+          find build/AepCaw.app -type f | sort
+
+      - name: Sign app bundle (inside-out)
+        env:
+          SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+        run: |
+          # 1. System Extension
+          codesign --force --sign "$SIGNING_IDENTITY" \
+            --entitlements macos/AepCaw/SysExt.entitlements \
+            --options runtime --timestamp \
+            "build/AepCaw.app/Contents/Library/SystemExtensions/ai.canyonroad.aep-caw.SysExt.systemextension"
+
+          # 2. XPC Service
+          codesign --force --sign "$SIGNING_IDENTITY" \
+            --options runtime --timestamp \
+            "build/AepCaw.app/Contents/XPCServices/xpc.xpc"
+
+          # 3. Approval Dialog
+          codesign --force --sign "$SIGNING_IDENTITY" \
+            --entitlements macos/AepCaw/approval-dialog/approval-dialog.entitlements \
+            --options runtime --timestamp \
+            "build/AepCaw.app/Contents/Resources/approval-dialog.app"
+
+          # 4. Main app bundle
+          codesign --force --sign "$SIGNING_IDENTITY" \
+            --entitlements macos/AepCaw/aep-caw/aep-caw.entitlements \
+            --options runtime --timestamp \
+            "build/AepCaw.app"
+
+          # 5. Verify
+          codesign --verify --deep --strict --verbose=2 "build/AepCaw.app"
+
+      - name: Notarize app bundle
+        env:
+          APPLE_ID: ${{ secrets.MACOS_NOTARIZATION_APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
+          TEAM_ID: ${{ secrets.MACOS_NOTARIZATION_TEAM_ID }}
+        run: |
+          ditto -c -k --keepParent build/AepCaw.app build/AepCaw.zip
+
+          # Submit and capture submission ID
+          SUBMIT_OUT=$(xcrun notarytool submit build/AepCaw.zip \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$TEAM_ID" \
+            --output-format json)
+          echo "$SUBMIT_OUT"
+          SUBMISSION_ID=$(echo "$SUBMIT_OUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+          echo "Submission ID: $SUBMISSION_ID"
+
+          # Wait for completion (best-effort - if it times out, use staple-macos workflow later)
+          if xcrun notarytool wait "$SUBMISSION_ID" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$TEAM_ID" \
+            --timeout 35m; then
+            xcrun notarytool info "$SUBMISSION_ID" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_PASSWORD" \
+              --team-id "$TEAM_ID"
+            xcrun stapler staple build/AepCaw.app
+            echo "NOTARIZED=true" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Notarization timed out (submission $SUBMISSION_ID). Run staple-macos workflow later."
+            xcrun notarytool info "$SUBMISSION_ID" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_PASSWORD" \
+              --team-id "$TEAM_ID" || true
+            echo "NOTARIZED=false" >> "$GITHUB_ENV"
+          fi
+
+      - name: Create DMG and upload to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ env.RELEASE_TAG }}
+        run: |
+          # Create DMG
+          hdiutil create -volname "AepCaw" \
+            -srcfolder build/AepCaw.app \
+            -ov -format UDZO \
+            "build/AepCaw-${VERSION}.dmg"
+
+          # Delete old darwin tarballs from release
+          for arch in amd64 arm64; do
+            ARCHIVE="aep-caw_${VERSION#v}_darwin_${arch}.tar.gz"
+            gh release delete-asset "$VERSION" "$ARCHIVE" \
+              --repo "${{ github.repository }}" \
+              --yes || true
+          done
+
+          # Upload DMG
+          gh release upload "$VERSION" "build/AepCaw-${VERSION}.dmg" \
+            --repo "${{ github.repository }}" \
+            --clobber
+
+  # Update checksums after macOS signing replaces the darwin archives.
+  update-checksums:
+    runs-on: ubuntu-latest
+    needs: [goreleaser, alpine-build, build-macos-app]
+    timeout-minutes: 10
+    steps:
+      - name: Download all release assets and regenerate checksums
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ env.RELEASE_TAG }}
+        run: |
+          mkdir -p assets
+          gh release download "$VERSION" \
+            --repo "${{ github.repository }}" \
+            --dir assets \
+            --skip-existing
+          # Remove old checksums file
+          rm -f assets/checksums.txt
+          # Generate new checksums for all assets
+          cd assets
+          sha256sum * > checksums.txt
+          cd ..
+          gh release upload "$VERSION" assets/checksums.txt \
+            --repo "${{ github.repository }}" \
+            --clobber
+
+  # Publish Homebrew cask to canyonroad/homebrew-tap (stable releases only).
+  publish-homebrew-cask:
+    runs-on: ubuntu-latest
+    needs: [build-macos-app]
+    if: ${{ !contains(github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name, '-') }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_SOURCE_REF }}
+
+      - name: Download DMG and compute SHA256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ env.RELEASE_TAG }}
+        run: |
+          gh release download "$VERSION" \
+            --pattern "AepCaw-*.dmg" \
+            --repo "${{ github.repository }}" \
+            --dir .
+          DMG_FILE=$(ls AepCaw-*.dmg)
+          if [ "$(echo "$DMG_FILE" | wc -l)" -ne 1 ]; then
+            echo "::error::Expected exactly one DMG file, found: $DMG_FILE"
+            exit 1
+          fi
+          SHA256=$(sha256sum "$DMG_FILE" | awk '{print $1}')
+          echo "SHA256=$SHA256" >> "$GITHUB_ENV"
+          echo "CLEAN_VERSION=${VERSION#v}" >> "$GITHUB_ENV"
+
+      - name: Generate cask formula from template
+        run: |
+          sed -e "s/__VERSION__/$CLEAN_VERSION/g" \
+              -e "s/__SHA256__/$SHA256/g" \
+              scripts/homebrew-cask.rb.tmpl > aep-caw.rb
+          echo "--- Generated cask formula ---"
+          cat aep-caw.rb
+
+      - name: Push to homebrew-tap
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+        run: |
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/canyonroad/homebrew-tap.git" tap
+          mkdir -p tap/Casks
+          cp aep-caw.rb tap/Casks/aep-caw.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/aep-caw.rb
+          git diff --cached --quiet || git commit -m "Update aep-caw cask to ${CLEAN_VERSION}"
+          git push
+
+  # Run integration tests across all supported Linux distros.
+  docker-test:
+    runs-on: ubuntu-latest
+    needs: [goreleaser, alpine-build]
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: debian
+            dockerfile: Dockerfile.test
+            docker_run_flags: ""
+          - name: fedora
+            dockerfile: Dockerfile.test.rpm
+            docker_run_flags: ""
+          - name: archlinux
+            dockerfile: Dockerfile.test.arch
+            docker_run_flags: ""
+          - name: alpine
+            dockerfile: Dockerfile.test.alpine
+            docker_run_flags: ""
+          - name: ubuntu
+            dockerfile: Dockerfile.test.ubuntu
+            docker_run_flags: "--device /dev/fuse --cap-add SYS_ADMIN"
+          - name: ubuntu2204
+            dockerfile: Dockerfile.test.ubuntu2204
+            docker_run_flags: "--device /dev/fuse --cap-add SYS_ADMIN"
+          - name: debian-trixie
+            dockerfile: Dockerfile.test.debian-trixie
+            docker_run_flags: ""
+          - name: rockylinux10
+            dockerfile: Dockerfile.test.rockylinux10
+            docker_run_flags: ""
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_SOURCE_REF }}
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Build sigurg_probe for docker matrix
+        run: |
+          go build -o /tmp/sigurg_probe scripts/docker-test/sigurg_probe.go
+          chmod +x /tmp/sigurg_probe
+          ls -la /tmp/sigurg_probe
+
+      - name: Build and run ${{ matrix.name }} integration test
+        env:
+          DOCKER_BUILDKIT: "1"
+        run: |
+          docker build -f ${{ matrix.dockerfile }} \
+            --build-arg AEP_CAW_TAG=${{ env.RELEASE_TAG }} \
+            -t aep-caw-test-${{ matrix.name }}:latest .
+          RUN_FLAGS="${{ matrix.docker_run_flags }}"
+          # Only pass FUSE flags if /dev/fuse exists on the runner
+          if echo "$RUN_FLAGS" | grep -q '/dev/fuse' && [ ! -e /dev/fuse ]; then
+            echo "::warning::Skipping FUSE flags: /dev/fuse not available on this runner"
+            RUN_FLAGS=""
+          fi
+          docker run --rm $RUN_FLAGS \
+            -v /tmp/sigurg_probe:/probe/sigurg_probe:ro \
+            aep-caw-test-${{ matrix.name }}:latest

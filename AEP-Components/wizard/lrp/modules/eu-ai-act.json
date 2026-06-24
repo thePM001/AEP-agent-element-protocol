@@ -1,0 +1,29 @@
+{
+  "id": "eu-ai-act",
+  "framework": "EU AI Act",
+  "version": "2024",
+  "dock": "regulation_module",
+  "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap",
+  "articles": [
+    "Art. 9 Risk Management System",
+    "Art. 13 Transparency and Provision of Information",
+    "Art. 14 Human Oversight",
+    "Art. 15 Accuracy, Robustness and Cybersecurity",
+    "Art. 52 Transparency for Certain AI Systems",
+    "Art. 61 Post-Market Monitoring"
+  ],
+  "aep_features": [
+    "Trust Scoring with risk tiers",
+    "Evidence Ledger and Merkle audit records",
+    "Gates, Escalation Rules and Kill Switch",
+    "Execution Rings and Forbidden Patterns",
+    "Agent Identity and Proof Bundles",
+    "Schema Builder drift monitoring"
+  ],
+  "controls": [
+    "risk_tier_degradation_on_drift",
+    "human_gate_before_high_impact_action",
+    "session_report_export_for_transparency",
+    "post_market_monitoring_evidence_retention"
+  ]
+}

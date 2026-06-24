@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nla.epscom/signatures/signature-v1.schema.json",
+  "title": "EPSCOM Detection Signature v1",
+  "type": "object",
+  "required": ["signature_version", "id", "authority", "severity", "category", "detection"],
+  "additionalProperties": false,
+  "properties": {
+    "signature_version": { "type": "string", "const": "1" },
+    "id": { "type": "string", "pattern": "^epscom-[a-z0-9-]+$" },
+    "authority": { "type": "string", "const": "EPSCOM" },
+    "name": { "type": "string", "minLength": 3 },
+    "description": { "type": "string" },
+    "severity": { "type": "string", "enum": ["info", "low", "medium", "high", "critical"] },
+    "category": {
+      "type": "string",
+      "enum": ["writing", "injection", "lattice", "exfiltration", "identity", "commerce"]
+    },
+    "enabled": { "type": "boolean", "default": true },
+    "detection": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "enum": ["regex", "substring", "yaml_path"] },
+        "patterns": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "case_insensitive": { "type": "boolean", "default": true }
+      }
+    },
+    "response": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "enum": ["block", "warn", "log", "quarantine"] },
+        "dock": { "type": "string", "enum": ["validation_engine", "regulation_module"] }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "authored_by": { "type": "string" },
+        "revision": { "type": "string" },
+        "references": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

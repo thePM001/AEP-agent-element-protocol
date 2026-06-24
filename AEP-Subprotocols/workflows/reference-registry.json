@@ -1,0 +1,34 @@
+[
+  {
+    "action": "create_task",
+    "payload_schema": {
+      "type": "object",
+      "required": ["title"],
+      "properties": { "title": { "type": "string" } },
+      "additionalProperties": false
+    },
+    "allowed_transitions": ["assign_task", "complete_task"],
+    "requires_approval": false
+  },
+  {
+    "action": "assign_task",
+    "payload_schema": {
+      "type": "object",
+      "required": ["task_id", "assignee"],
+      "properties": {
+        "task_id": { "type": "string" },
+        "assignee": { "type": "string" }
+      }
+    },
+    "allowed_transitions": ["complete_task"]
+  },
+  {
+    "action": "complete_task",
+    "payload_schema": {
+      "type": "object",
+      "required": ["task_id"],
+      "properties": { "task_id": { "type": "string" } }
+    },
+    "allowed_transitions": []
+  }
+]

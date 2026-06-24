@@ -1,0 +1,8 @@
+{
+  "id": "workflows",
+  "version": "2.8.0",
+  "runtime": "rust",
+  "crate": "aep-subprotocol-workflows",
+  "entrypoints": ["AEP-Subprotocols/workflows/src/lib.rs"],
+  "reference_registry": "AEP-Subprotocols/workflows/reference-registry.json"
+}

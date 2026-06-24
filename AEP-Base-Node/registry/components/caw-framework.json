@@ -1,0 +1,101 @@
+{
+  "manifest_version": "1",
+  "id": "caw-framework",
+  "version": "2.8.0",
+  "kind": "daemon",
+  "path": "AEP-Components/caw-framework/",
+  "description": "AEP CAW Framework: Execution-Layer Security for containerized agentic workflows (fork of agentsh, Apache 2.0).",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels",
+    "evidence-ledger"
+  ],
+  "capabilities": [
+    "caw:exec",
+    "caw:session",
+    "caw:policy",
+    "caw:file-enforce",
+    "caw:network-enforce",
+    "caw:process-enforce",
+    "caw:llm-proxy",
+    "caw:postgres-proxy",
+    "caw:mcp-security",
+    "caw:checkpoint",
+    "caw:lattice-audit"
+  ],
+  "actions": [
+    {
+      "id": "detect",
+      "description": "Probe host enforcement primitives",
+      "runtime": "cli",
+      "method": "aep-caw detect"
+    },
+    {
+      "id": "start_server",
+      "description": "Start CAW execution gateway server",
+      "runtime": "plan",
+      "method": "caw_framework.server"
+    },
+    {
+      "id": "install_shim",
+      "description": "Install shell shim for enforced exec",
+      "runtime": "cli",
+      "method": "aep-caw shim install-shell"
+    }
+  ],
+  "setup_hooks": [
+    {
+      "id": "caw_policy_section",
+      "policy_section": "caw_framework",
+      "default": {
+        "enabled": true,
+        "mode": "enforce",
+        "shell_shim": true,
+        "lattice_audit": true,
+        "policy_name": "default"
+      }
+    }
+  ],
+  "resource_requirements": {
+    "min_memory_mb": 512,
+    "min_disk_mb": 200,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Execution-Layer Security for CAW: policy-enforced shell, file, network, process and DB wire governance.",
+    "use_when": [
+      "coding agents",
+      "containerized agentic workflows",
+      "CAW",
+      "shell enforcement",
+      "execution layer security",
+      "subprocess audit"
+    ],
+    "avoid_when": [
+      "UI-only Schema Builder work with no shell"
+    ],
+    "pairs_with": [
+      "gap-runtime-scanners",
+      "evidence-ledger",
+      "mcp-security",
+      "proxy",
+      "session",
+      "conformance-runner"
+    ]
+  },
+  "implementation": {
+    "binary": "AEP-Components/caw-framework/cmd/aep-caw",
+    "shim": "AEP-Components/caw-framework/cmd/aep-caw-shell-shim",
+    "build": "make -C AEP-Components/caw-framework build",
+    "bridge": "AEP-Components/caw-framework/lib/lattice-bridge.mjs",
+    "service": "AEP-Components/caw-framework/lib/caw-service.mjs",
+    "notice": "AEP-Components/caw-framework/NOTICE"
+  },
+  "conformance": {
+    "tests": [
+      "AEP-Components/conformance/runner/run.sh",
+      "AEP-Components/conformance/tests/manifest.json"
+    ]
+  }
+}

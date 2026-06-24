@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aep.dev/schemas/solidify-record-v1.json",
+  "title": "SolidifyRecord",
+  "description": "Post-change provenance record appended to intent-ledger after coding-governance solidify validation.",
+  "type": "object",
+  "required": ["intent_id"],
+  "properties": {
+    "intent_id": { "type": "string", "pattern": "^INT-" },
+    "envelope_breach": { "type": "boolean", "default": false },
+    "justification": { "type": "string" },
+    "git_refs": {
+      "type": "object",
+      "description": "Auto-captured by aep solidify when AEP_GIT_INTEGRATION=1 (default). Git stays substrate.",
+      "required": ["commit"],
+      "properties": {
+        "commit": { "type": "string", "description": "git rev-parse HEAD at solidify" },
+        "branch": { "type": "string" },
+        "describe": { "type": "string" },
+        "upstream": { "type": "string" },
+        "dirty": { "type": "boolean" },
+        "repo_root": { "type": "string" },
+        "since_propose": {
+          "type": "object",
+          "properties": {
+            "propose_commit": { "type": "string" },
+            "same_commit": { "type": "boolean" },
+            "commits_since_propose": { "type": "array", "items": { "type": "string" } },
+            "files_changed_since_propose": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "evidence_ledger_ref": {
+      "type": "object",
+      "required": ["session_id"],
+      "properties": {
+        "session_id": { "type": "string" },
+        "ledger_dir": { "type": "string" },
+        "last_seq": { "type": "integer", "minimum": 0 },
+        "last_hash": { "type": "string" },
+        "entry_count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "causal_chain": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["why", "source"],
+        "properties": {
+          "why": { "type": "string" },
+          "source": { "type": "string" }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

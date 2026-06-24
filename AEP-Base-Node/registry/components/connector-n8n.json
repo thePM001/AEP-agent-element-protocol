@@ -1,0 +1,92 @@
+{
+  "manifest_version": "1",
+  "id": "connector-n8n",
+  "version": "2.8.0",
+  "kind": "connector",
+  "path": "AEP-Connectors/n8n/",
+  "description": "UCB-only n8n connector. All traffic via /ucb/v1/egress/n8n/**.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels",
+    "ucb",
+    "composer-lite"
+  ],
+  "capabilities": [
+    "connector:n8n",
+    "ucb:egress-proxy",
+    "integration:external-api"
+  ],
+  "actions": [
+    {
+      "id": "wire_n8n",
+      "description": "Wire n8n connector egress routes",
+      "runtime": "plan",
+      "method": "connector_config"
+    },
+    {
+      "id": "probe_n8n",
+      "description": "Health probe for n8n",
+      "runtime": "connector",
+      "method": "probe"
+    }
+  ],
+  "setup_hooks": [
+    {
+      "id": "n8n_connector_default",
+      "policy_section": "connectors",
+      "default": {
+        "n8n": {
+          "upstream": "https://your-instance.app.n8n.cloud/api/v1"
+        }
+      }
+    }
+  ],
+  "composer": {
+    "palette": true,
+    "node_type": "connector"
+  },
+  "composer_node": {
+    "type": "connector",
+    "label": "n8n",
+    "short": "N8",
+    "color": "#475569",
+    "service": "n8n",
+    "ucb_only": true,
+    "description": "n8n via UCB egress",
+    "registry_id": "connector-n8n"
+  },
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 10,
+    "requires_internet": true,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Connect n8n. Requires UCB. Routes: /ucb/v1/egress/n8n/**.",
+    "use_when": [
+      "n8n",
+      "n8n workflow",
+      "n8n automation",
+      "workflow automation"
+    ],
+    "avoid_when": [
+      "air-gapped with no external APIs",
+      "UCB disabled"
+    ],
+    "pairs_with": [
+      "ucb",
+      "aep-base-node",
+      "composer-lite"
+    ]
+  },
+  "implementation": {
+    "module": "AEP-Connectors/n8n/lib/n8n-connector.mjs",
+    "ucb_egress_prefix": "/ucb/v1/egress/n8n",
+    "auth_token_env": "AEP_N8N_API_KEY"
+  },
+  "integration": {
+    "ucb_only": true,
+    "mcp_optional": null,
+    "nango_compatible": true
+  }
+}

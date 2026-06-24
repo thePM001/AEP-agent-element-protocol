@@ -1,0 +1,68 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://aep.protocol.local/schemas/implementation-plan-v1.json",
+ "title": "AEP Implementation Plan v1",
+ "type": "object",
+ "required": [
+ "plan_version",
+ "created_by",
+ "created_at",
+ "user_intent",
+ "components",
+ "lrps",
+ "inference",
+ "topology",
+ "security"
+ ],
+ "properties": {
+ "plan_version": { "const": "1" },
+ "created_by": { "type": "string" },
+ "created_at": { "type": "string" },
+ "user_intent": { "type": "string" },
+ "environment_snapshot": { "type": "object" },
+ "components": {
+ "type": "array",
+ "items": {
+ "type": "object",
+ "required": ["id", "enabled"],
+ "properties": {
+ "id": { "type": "string" },
+ "enabled": { "type": "boolean" },
+ "reason": { "type": "string" },
+ "config": { "type": "object" }
+ }
+ }
+ },
+ "lrps": { "type": "array", "items": { "type": "string" } },
+ "inference": {
+ "type": "object",
+ "required": ["provider", "model", "base_url"],
+ "properties": {
+ "provider": { "type": "string" },
+ "model": { "type": "string" },
+ "base_url": { "type": "string" }
+ }
+ },
+ "topology": {
+ "type": "object",
+ "required": ["nodes", "edges"],
+ "properties": {
+ "nodes": { "type": "array" },
+ "edges": { "type": "array" }
+ }
+ },
+ "policy_overrides": { "type": "object" },
+ "connectors": { "type": "object" },
+ "security": {
+ "type": "object",
+ "required": ["lattice_strict", "internet_up"],
+ "properties": {
+ "lattice_strict": { "type": "boolean" },
+ "internet_up": { "type": "boolean" },
+ "ucb_enabled": { "type": "boolean" }
+ }
+ },
+ "warnings": { "type": "array", "items": { "type": "string" } }
+ },
+ "additionalProperties": true
+}

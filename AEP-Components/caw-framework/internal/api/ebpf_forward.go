@@ -1,0 +1,97 @@
+package api
+
+import (
+	"context"
+	"net"
+	"strings"
+	"time"
+
+	"github.com/nla-aep/aep-caw-framework/internal/metrics"
+	"github.com/nla-aep/aep-caw-framework/internal/netmonitor/ebpf"
+	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/google/uuid"
+)
+
+// forwardConnectEvents transforms raw BPF connect events into aep-caw events.
+func forwardConnectEvents(ctx context.Context, in <-chan ebpf.ConnectEvent, emit storeEmitter, sessionID string, commandID string, metrics *metrics.Collector) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case ev, ok := <-in:
+			if !ok {
+				return
+			}
+
+			fields := map[string]any{
+				"pid":    ev.PID,
+				"tgid":   ev.TGID,
+				"sport":  ev.Sport,
+				"dport":  ev.Dport,
+				"family": ev.Family,
+				"proto":  ev.Protocol,
+			}
+			var remote string
+			var ipStr string
+			if ev.Family == 2 { // AF_INET
+				ip := net.IPv4(byte(ev.DstIPv4>>24), byte(ev.DstIPv4>>16), byte(ev.DstIPv4>>8), byte(ev.DstIPv4))
+				ipStr = ip.String()
+				remote = net.JoinHostPort(ipStr, itoa(ev.Dport))
+			} else {
+				ip := net.IP(ev.DstIPv6[:])
+				ipStr = ip.String()
+				remote = net.JoinHostPort(ipStr, itoa(ev.Dport))
+			}
+			if ipStr != "" && metrics != nil {
+				if rdns := reverseLookup(ipStr); rdns != "" {
+					fields["rdns"] = rdns
+				}
+			}
+
+			out := types.Event{
+				ID:        uuid.NewString(),
+				Timestamp: time.Unix(0, int64(ev.TsNs)).UTC(),
+				Type: func() string {
+					if ev.Blocked != 0 {
+						return "net_connect_blocked"
+					}
+					return "net_connect"
+				}(),
+				SessionID: sessionID,
+				CommandID: commandID,
+				Remote:    remote,
+				Fields:    fields,
+			}
+			_ = emit.AppendEvent(context.Background(), out)
+			emit.Publish(out)
+			if metrics != nil {
+				metrics.IncEvent(out.Type)
+			}
+		}
+	}
+}
+
+func itoa(v uint16) string {
+	b := make([]byte, 0, 5)
+	n := int(v)
+	if n == 0 {
+		return "0"
+	}
+	for n > 0 {
+		b = append([]byte{'0' + byte(n%10)}, b...)
+		n /= 10
+	}
+	return string(b)
+}
+
+// reverseLookup performs a best-effort reverse DNS lookup with a short timeout.
+// Returns empty string on failure/timeout.
+func reverseLookup(ip string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	names, err := net.DefaultResolver.LookupAddr(ctx, ip)
+	if err != nil || len(names) == 0 {
+		return ""
+	}
+	return strings.TrimSuffix(names[0], ".")
+}

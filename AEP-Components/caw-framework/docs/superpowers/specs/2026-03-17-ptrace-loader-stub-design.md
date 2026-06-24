@@ -1,0 +1,220 @@
+# Ptrace Loader Stub + Experimental SYSEMU Design
+
+**Date**: 2026-03-17
+**Status**: Draft
+**Goal**: Reduce per-exec ptrace overhead by pre-installing the seccomp BPF filter via a loader binary, and experimentally reduce per-deny overhead via PTRACE_SYSEMU.
+
+## Context
+
+After the previous round of optimizations (PR #143), ptrace mode overhead is +394%. The benchmark shows per-exec attach cost as the dominant remaining overhead:
+
+| Phase | Overhead | Root cause |
+|---|---|---|
+| Deep tree (20x4-lvl) | +1316% | 80 sequential attaches × ~15ms each |
+| Process spawn (120) | +269% | 120 attaches × ~15ms each |
+| Wide tree (10x10-fan) | +372% | 100 attaches × ~15ms each |
+| Network (10 curl) | +2010% | Per-syscall stops (not attach-related) |
+
+The current attach flow per exec:
+1. `cmd.Start()` - Go forks and execs the child
+2. `PTRACE_SEIZE` + `PTRACE_INTERRUPT` + `Wait4` polling (~2-3ms)
+3. `PTRACE_SETOPTIONS` (fork/clone/exec tracing)
+4. Resume with `PtraceSyscall`
+5. **Deferred BPF injection** on first syscall EXIT: `prctl(PR_SET_NO_NEW_PRIVS)` + `seccomp(SET_MODE_FILTER)` - 2 injected syscalls, each requiring 1-2 ptrace cycles (~4-8ms total)
+6. Resume - tracee now has the prefilter
+
+Steps 1-4 are unavoidable (ptrace must attach for syscall interception). Step 5 is the target - if the child self-installs the BPF filter before the tracer attaches, the deferred injection path is eliminated entirely.
+
+## Optimization 1: Loader Stub
+
+### Design
+
+A new binary `aep-caw-loader` that wraps every exec in ptrace mode:
+
+```
+Before: fork → exec(cmd, args...) → tracer attaches → inject BPF → run
+After:  fork → exec(aep-caw-loader, cmd, args...) → loader installs BPF → exec(cmd) → tracer attaches (filter already present) → run
+```
+
+### Loader binary (`cmd/aep-caw-loader/main.go`)
+
+~60 lines. Linux-only (`//go:build linux`).
+
+**Arguments**: `aep-caw-loader --filter-fd=N -- cmd arg1 arg2 ...`
+
+**Behavior**:
+1. Parse `--filter-fd=N` from args, find `--` separator, remaining args are the real command
+2. Read serialized BPF filter from fd N (binary format: `uint16 count` + `count * 8 bytes` of `sock_filter` instructions)
+3. Call `prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)`
+4. Build `sock_fprog` struct pointing to the filter array
+5. Call `seccomp(SECCOMP_SET_MODE_FILTER, 0, &prog)`
+6. Close fd N
+7. Resolve `cmd` via PATH lookup if not absolute (`exec.LookPath` equivalent - check `$PATH` dirs)
+8. `syscall.Exec(resolvedPath, args, environ)` - replaces the loader with the real command
+
+**Error handling**: If any step fails, write error to stderr and exit 126 (matching exec failure convention). The tracer will see the process exit and report the error. The fallback (deferred injection) handles the case where the loader binary is missing.
+
+**Wire format** (pipe → loader): Simple binary encoding:
+```
+[2 bytes: uint16 little-endian instruction count]
+[count * 8 bytes: sock_filter instructions, each 8 bytes]
+```
+
+No `sock_fprog` header - the loader builds that itself with the pointer to its local buffer.
+
+### Server-side changes (`internal/api/exec.go`)
+
+When ptrace is active and `SeccompPrefilter` is enabled:
+
+1. Build the session BPF filter - this must mirror the full `injectSeccompFilter` logic: call `collectStaticDenies()`, merge with `narrowTracedSyscallNumbers(&cfg)`, and use `buildBPFForActions` when denies exist, `buildBPFForSyscalls` otherwise. Extract this into a shared function `buildSessionFilter(cfg *TracerConfig) ([]unix.SockFilter, error)` that both the loader path and `injectSeccompFilter` call.
+2. Serialize the filter to a byte buffer (wire format above)
+3. Create `os.Pipe()` - write end for server, read end inherited by child
+4. Write serialized filter to write end, close write end
+5. Wrap the command: instead of `exec.Command(cmd, args...)`, use `exec.Command(loaderPath, "--filter-fd=N", "--", cmd, args...)`
+6. Append read end to `cmd.ExtraFiles` - the fd number is `3 + len(cmd.ExtraFiles)` at the point of appending (Go assigns ExtraFiles fds starting at 3). Calculate N from this before appending.
+
+**Network namespace interaction**: When a session has a network namespace (`ns != ""`), the command is rewritten as `ip netns exec <ns> <cmd> <args...>`. The loader wrapping must be applied to the inner command (inside the netns wrapper): `ip netns exec <ns> aep-caw-loader --filter-fd=N -- cmd args...`. The loader installs the filter, then execs the real command inside the namespace. The filter persists across exec.
+
+The filter is compiled once per session (or per config change) and cached. The pipe write is ~200-500 bytes - negligible.
+
+**Loader path resolution**: The loader binary path is resolved at server startup (check `/usr/bin/aep-caw-loader`, then `$PATH`). If not found, fall back to existing deferred injection. Store the resolved path in a config field.
+
+### Tracer-side changes (`internal/ptrace/attach.go`)
+
+Add an `AttachOption`: `WithPrefilterInstalled()`. When set, `attachThread` skips setting `PendingPrefilter = true`. The tracee already has the filter, so `HasPrefilter` should be set to `true` immediately.
+
+```go
+// In attachThread, after creating TraceeState:
+if opts.prefilterInstalled {
+    s.HasPrefilter = true
+    // Don't set PendingPrefilter - filter already installed by loader
+} else if t.cfg.SeccompPrefilter && opts.sessionID != "" {
+    s.PendingPrefilter = true
+}
+```
+
+The initial resume in `attachThread` (line 158) must also check `HasPrefilter`: when the prefilter is already installed, resume with `PtraceCont` instead of `PtraceSyscall` - the first stop will be `PTRACE_EVENT_SECCOMP`, not a TRACESYSGOOD syscall stop.
+
+**Exec event**: When the loader calls `syscall.Exec(cmd)`, the tracer sees a `PTRACE_EVENT_EXEC`. This is already handled by existing exec event logic in the tracer. If attachment races with the loader's exec, the tracer may see the loader process or the post-exec process - both cases are handled correctly because the seccomp filter persists across exec and exec events reset thread state.
+
+**Lazy BPF escalation**: The loader installs only the narrow prefilter. Per-TGID read/write escalation via `injectEscalationFilter` is unaffected - it is conditional on runtime behavior and still requires ptrace-based injection via the existing deferred path.
+
+This means:
+- `allowSyscall` will use `PtraceCont` (not `PtraceSyscall`) from the first syscall - no wasted exit stops for deferred injection
+- The deferred injection path in `handleSyscallStop` is never triggered
+- The first syscall stop is a `PTRACE_EVENT_SECCOMP` (filter is already active)
+
+### Fallback behavior
+
+If `aep-caw-loader` is not found at startup:
+- Log a warning: "aep-caw-loader not found, falling back to deferred BPF injection"
+- Set `loaderPath = ""` - exec path skips the wrapper
+- All existing behavior preserved - zero regression risk
+
+### Build and distribution
+
+**Dockerfile.bench** - add build and copy:
+```dockerfile
+RUN go build -o /out/aep-caw          ./cmd/aep-caw && \
+    go build -o /out/aep-caw-shell-shim ./cmd/aep-caw-shell-shim && \
+    go build -o /out/aep-caw-unixwrap  ./cmd/aep-caw-unixwrap && \
+    go build -o /out/aep-caw-stub      ./cmd/aep-caw-stub && \
+    go build -o /out/aep-caw-loader    ./cmd/aep-caw-loader
+
+COPY --from=builder /out/aep-caw-loader    /usr/bin/aep-caw-loader
+```
+
+**Makefile** - no changes needed (existing `go build ./...` covers all `cmd/` binaries).
+
+**CI** - no changes needed (existing build matrix builds all `cmd/` binaries).
+
+### Expected impact
+
+Each exec saves ~4-8ms of BPF injection overhead (2 injected syscalls × 1-2 ptrace cycles × ~2ms each). For the benchmark:
+- Process spawn (120 execs): saves ~480-960ms → estimated 5-10% improvement
+- Deep tree (80 execs): saves ~320-640ms → estimated 4-8% improvement
+- Wide tree (100 execs): saves ~400-800ms → estimated 5-10% improvement
+
+The improvement is proportional to exec count. Deep tree's absolute overhead is dominated by the sequential attach latency (PTRACE_SEIZE + INTERRUPT + Wait4 polling), which the loader doesn't eliminate - only the BPF injection phase is removed.
+
+## Optimization 2: Experimental PTRACE_SYSEMU for denies
+
+### Design
+
+Use `PTRACE_SYSEMU` to skip kernel syscall execution for denied syscalls, saving 1 context switch per deny (entry-only instead of entry+exit).
+
+### Current deny flow (2 stops)
+
+1. **Entry stop** (seccomp or TRACESYSGOOD): handler decides deny
+2. Set `ORIG_RAX = -1` (invalidate syscall), set `PendingDenyErrno`, resume with `PtraceSyscall`
+3. **Exit stop**: kernel set `RAX = -ENOSYS`, tracer overwrites with `-errno`, resume
+
+### Proposed SYSEMU deny flow (1 stop)
+
+1. **Entry stop**: handler decides deny
+2. Set `RAX = -errno` directly (no ORIG_RAX modification needed)
+3. Resume with `PTRACE_SYSEMU` - kernel skips syscall execution, tracee sees `RAX = -errno`
+4. No exit stop
+
+### Implementation
+
+**Runtime probe** at tracer startup:
+```go
+func probePtraceSysemu() bool {
+    // Test SYSEMU from a seccomp stop on a sacrificial child
+    // Returns true if kernel handles SYSEMU correctly from SECCOMP_RET_TRACE stops
+}
+```
+
+This is a non-trivial probe - it needs to:
+1. Fork a child, attach via ptrace, install a seccomp filter
+2. Child makes a syscall that triggers the filter
+3. Tracer resumes with `PTRACE_SYSEMU`
+4. Verify the child sees the correct return value and the next syscall works normally
+
+**Tracer integration** - in `denySyscall` (`tracer.go:523`):
+```go
+if t.hasSysemu && state.HasPrefilter {
+    // Fast path: set return value, resume with SYSEMU (1 stop)
+    regs.SetReturnValue(int64(-errno))
+    t.setRegs(tid, regs)
+    // golang.org/x/sys/unix has PTRACE_SYSEMU = 0x1f but no PtraceSysemu
+    // function - use raw syscall: ptrace(PTRACE_SYSEMU, tid, 0, 0)
+    unix.RawSyscall6(unix.SYS_PTRACE, unix.PTRACE_SYSEMU, uintptr(tid), 0, 0, 0, 0)
+} else {
+    // Existing path: nullify + exit fixup (2 stops)
+    regs.SetSyscallNr(-1)
+    // ... existing code
+}
+```
+
+### Risk and scope
+
+**This is experimental.** The interaction between `PTRACE_SYSEMU` and `SECCOMP_RET_TRACE` stops is not well-documented in the kernel. The probe verifies it works at runtime. If the probe fails, the existing 2-stop path is used - zero regression.
+
+**Impact is marginal.** Deny enforcement is already +0.9% in benchmarks. The savings apply to dynamic denies (static denies are already handled at BPF level via `SECCOMP_RET_ERRNO` from PR #143). Real-world impact depends on how many dynamic denies occur.
+
+## Implementation order
+
+1. **Loader stub** - high impact, well-understood mechanism
+2. **SYSEMU** - experimental, low impact, can be deferred without loss
+
+## Files affected
+
+| File | Changes |
+|---|---|
+| `cmd/aep-caw-loader/main.go` | New - loader binary |
+| `internal/api/exec.go` | Wrap command with loader in ptrace mode |
+| `internal/ptrace/attach.go` | `WithPrefilterInstalled` option, skip deferred injection |
+| `internal/ptrace/tracer.go` | Add `hasSysemu` field, SYSEMU deny path |
+| `internal/ptrace/seccomp_filter.go` | Export filter serialization for loader |
+| `Dockerfile.bench` | Build and copy aep-caw-loader |
+
+## Testing
+
+- Unit tests for loader binary (parse args, read filter, install seccomp)
+- Unit tests for filter serialization/deserialization
+- Integration test: exec with loader, verify seccomp filter is active
+- Benchmark before/after: `make bench`
+- Cross-compile: `GOOS=windows go build ./...`
+- SYSEMU probe test: verify probe detects support/non-support correctly

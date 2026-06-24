@@ -1,0 +1,17 @@
+[package]
+name = "aep-agentmesh"
+description = "AgentMesh identity layer for AEP 2.8 Lattice Channels (SPIFFE, DID, mTLS, Signal hooks)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+hex.workspace = true
+rand.workspace = true
+thiserror.workspace = true
+rcgen.workspace = true
+rustls.workspace = true
+rustls-pemfile.workspace = true

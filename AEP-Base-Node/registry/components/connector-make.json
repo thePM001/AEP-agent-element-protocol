@@ -1,0 +1,93 @@
+{
+  "manifest_version": "1",
+  "id": "connector-make",
+  "version": "2.8.0",
+  "kind": "connector",
+  "path": "AEP-Connectors/make/",
+  "description": "UCB-only Make connector. All traffic via /ucb/v1/egress/make/**.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels",
+    "ucb",
+    "composer-lite"
+  ],
+  "capabilities": [
+    "connector:make",
+    "ucb:egress-proxy",
+    "integration:external-api"
+  ],
+  "actions": [
+    {
+      "id": "wire_make",
+      "description": "Wire Make connector egress routes",
+      "runtime": "plan",
+      "method": "connector_config"
+    },
+    {
+      "id": "probe_make",
+      "description": "Health probe for Make",
+      "runtime": "connector",
+      "method": "probe"
+    }
+  ],
+  "setup_hooks": [
+    {
+      "id": "make_connector_default",
+      "policy_section": "connectors",
+      "default": {
+        "make": {
+          "upstream": "https://eu1.make.com/api/v2"
+        }
+      }
+    }
+  ],
+  "composer": {
+    "palette": true,
+    "node_type": "connector"
+  },
+  "composer_node": {
+    "type": "connector",
+    "label": "Make",
+    "short": "MA",
+    "color": "#475569",
+    "service": "make",
+    "ucb_only": true,
+    "description": "Make via UCB egress",
+    "registry_id": "connector-make"
+  },
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 10,
+    "requires_internet": true,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Connect Make. Requires UCB. Routes: /ucb/v1/egress/make/**.",
+    "use_when": [
+      "make",
+      "make.com",
+      "integromat",
+      "make scenario",
+      "make automation"
+    ],
+    "avoid_when": [
+      "air-gapped with no external APIs",
+      "UCB disabled"
+    ],
+    "pairs_with": [
+      "ucb",
+      "aep-base-node",
+      "composer-lite"
+    ]
+  },
+  "implementation": {
+    "module": "AEP-Connectors/make/lib/make-connector.mjs",
+    "ucb_egress_prefix": "/ucb/v1/egress/make",
+    "auth_token_env": "AEP_MAKE_API_TOKEN"
+  },
+  "integration": {
+    "ucb_only": true,
+    "mcp_optional": null,
+    "nango_compatible": true
+  }
+}

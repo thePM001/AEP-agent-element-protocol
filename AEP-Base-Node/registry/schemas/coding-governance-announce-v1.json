@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aep.dev/schemas/coding-governance-announce-v1.json",
+  "title": "CodingGovernanceAnnounce",
+  "description": "Lattice CODING_GOVERNANCE_ANNOUNCE payload; requires task-manifest-v1 bound to agent_id.",
+  "type": "object",
+  "required": ["agent_id", "intent_id", "task_manifest"],
+  "properties": {
+    "agent_id": { "type": "string", "minLength": 1 },
+    "intent_id": { "type": "string", "pattern": "^INT-" },
+    "task_manifest": { "$ref": "https://aep.protocol.local/schemas/task-manifest-v1.json" },
+    "thread_id": { "type": "string" },
+    "correlation_id": { "type": "string" },
+    "session_id": { "type": "string" },
+    "trust_score": { "type": "integer", "minimum": 0, "maximum": 1000 },
+    "docking_port": {
+      "type": "string",
+      "enum": ["validation_engine", "inference_engine", "regulation_module", "future_features"]
+    }
+  },
+  "additionalProperties": true
+}

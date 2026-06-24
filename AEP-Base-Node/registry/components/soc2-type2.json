@@ -1,0 +1,66 @@
+{
+  "manifest_version": "1",
+  "id": "soc2-type2",
+  "version": "2.8.0",
+  "kind": "compliance",
+  "path": "AEP-Policy-System/reference/",
+  "description": "SOC 2 Type II compliance pack (GAP reference).",
+  "requires": [
+    "aep-base-node",
+    "dynaep-core"
+  ],
+  "lrp_id": "soc2-type2",
+  "gap_ref": "AEP-Policy-System/reference/soc2-type2.gap",
+  "docks": {
+    "primary": "regulation_module",
+    "allowed": [
+      "regulation_module"
+    ]
+  },
+  "capabilities": [
+    "compliance:soc2-type2",
+    "gap:evaluate"
+  ],
+  "actions": [
+    {
+      "id": "enable_soc2-type2",
+      "description": "Enable SOC 2 Type II LRP",
+      "setup_hook": "sync_lrp",
+      "params": {
+        "lrp_id": "soc2-type2"
+      }
+    }
+  ],
+  "setup_hooks": [
+    {
+      "id": "sync_soc2-type2",
+      "setup_hook": "sync_lrp",
+      "params": {
+        "lrp_id": "soc2-type2"
+      }
+    }
+  ],
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 5,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "SOC 2 Type II regulatory compliance via GAP policies.",
+    "use_when": [
+      "user requests SOC 2 Type II",
+      "regulated industry deployment"
+    ],
+    "avoid_when": [
+      "no regulatory requirements"
+    ],
+    "pairs_with": [
+      "gap-runtime-scanners",
+      "wasm-policy-sandbox"
+    ]
+  },
+  "implementation": {
+    "gap_ref": "AEP-Policy-System/reference/soc2-type2.gap"
+  }
+}

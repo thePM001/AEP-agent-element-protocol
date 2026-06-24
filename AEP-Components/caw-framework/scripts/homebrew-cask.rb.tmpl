@@ -1,0 +1,37 @@
+cask "aep-caw" do
+  version "__VERSION__"
+  sha256 "__SHA256__"
+
+  url "https://github.com/canyonroad/aep-caw/releases/download/v#{version}/AgentSH-v#{version}.dmg"
+  name "AgentSH"
+  desc "Secure sandboxed shell for AI agents"
+  homepage "https://github.com/canyonroad/aep-caw"
+
+  depends_on macos: ">= :sonoma"
+
+  app "AgentSH.app"
+
+  binary "#{appdir}/AgentSH.app/Contents/MacOS/aep-caw"
+  binary "#{appdir}/AgentSH.app/Contents/MacOS/aep-caw-shell-shim"
+  binary "#{appdir}/AgentSH.app/Contents/MacOS/aep-caw-stub"
+
+  uninstall quit:      "ai.canyonroad.aep-caw",
+            signal:    ["TERM", "aep-caw"],
+            launchctl: "ai.canyonroad.aep-caw.daemon"
+
+  zap trash: [
+    "~/Library/Application Support/aep-caw",
+    "~/Library/Preferences/ai.canyonroad.aep-caw.plist",
+    "~/Library/Caches/ai.canyonroad.aep-caw",
+    "~/Library/LaunchAgents/ai.canyonroad.aep-caw.daemon.plist",
+  ]
+
+  postflight do
+    system "#{appdir}/AgentSH.app/Contents/MacOS/aep-caw", "activate-extension"
+  end
+
+  caveats <<~EOS
+    After installation you will be prompted to approve the AgentSH system extension.
+    Go to System Settings -> General -> Login Items & Extensions to allow it.
+  EOS
+end

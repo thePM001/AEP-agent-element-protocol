@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "downlevelIteration": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "paths": {
+      "@dynaep/*": ["./*"],
+      "@aep/core": ["./sdk/types/aep-core.d.ts"]
+    }
+  },
+  "include": [
+    "bridge/**/*.ts",
+    "hooks/**/*.ts",
+    "observers/**/*.ts",
+    "sdk/**/*.ts",
+    "registries/**/*.yaml"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "performance-tests",
+    "benchmarks"
+  ]
+}

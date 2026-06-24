@@ -1,0 +1,9 @@
+{
+  "port_id": "future_features",
+  "name": "Future Features Dock",
+  "priority": 200,
+  "socket_suffix": "/future",
+  "purpose": "AEP 3.0+ internal plugins (not foreign ingress)",
+  "transport": "lattice-channel",
+  "implementation": "AEP-Base-Node/crate/src/docking.rs"
+}

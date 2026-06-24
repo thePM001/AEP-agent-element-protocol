@@ -1,0 +1,2470 @@
+//go:build linux
+
+package ptrace
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"os"
+	"runtime"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"golang.org/x/sys/unix"
+)
+
+// ExecHandler evaluates execve policy.
+type ExecHandler interface {
+	HandleExecve(ctx context.Context, ec ExecContext) ExecResult
+}
+
+// ExecContext carries execve information for policy evaluation.
+type ExecContext struct {
+	PID       int
+	ParentPID int
+	Filename  string
+	Argv      []string
+	Truncated bool
+	SessionID string
+	Depth     int
+	// SessionlessPIDAttach is true when this tracee descends from a root
+	// that was attached via AttachPID without a SessionID (the
+	// attach_mode=pid path in app_ptrace_linux.go's initPtraceTracer).
+	// In that mode the wrapper/session layer governs enforcement above
+	// the tracer, so an empty SessionID at HandleExecve time is
+	// intentional, not a session-accounting bug. Handlers use this to
+	// distinguish "intentionally sessionless" from "non-empty but
+	// unknown SessionID" (which is a real bug and must fail closed).
+	SessionlessPIDAttach bool
+}
+
+// ExecResult carries the policy decision.
+type ExecResult struct {
+	Allow    bool
+	Action   string // "continue", "deny", "redirect"
+	Errno    int32
+	Rule     string
+	Reason   string
+	StubPath string // for redirect: path to stub binary
+}
+
+// FileHandler evaluates file syscall policy.
+type FileHandler interface {
+	HandleFile(ctx context.Context, fc FileContext) FileResult
+}
+
+// FileContext carries file syscall information for policy evaluation.
+type FileContext struct {
+	PID       int
+	SessionID string
+	Syscall   int
+	Path      string
+	Path2     string
+	Operation string
+	Flags     int
+}
+
+// FileResult carries the file policy decision.
+type FileResult struct {
+	Allow        bool
+	Action       string // "" (legacy), "allow", "deny", "redirect", "soft-delete"
+	Errno        int32
+	RedirectPath string // for redirect
+	TrashDir     string // for soft-delete
+}
+
+// NetworkHandler evaluates network syscall policy.
+type NetworkHandler interface {
+	HandleNetwork(ctx context.Context, nc NetworkContext) NetworkResult
+}
+
+// NetworkContext carries network syscall information for policy evaluation.
+type NetworkContext struct {
+	PID       int
+	SessionID string
+	Syscall   int
+	Family    int
+	Address   string
+	Port      int
+	Operation string
+	Domain    string // DNS query name (set when Operation == "dns")
+	QueryType uint16 // DNS query type: A=1, AAAA=28, CNAME=5, etc.
+}
+
+// NetworkResult carries the network policy decision.
+type NetworkResult struct {
+	Allow            bool
+	Action           string // "" (legacy), "allow", "deny", "redirect"
+	Errno            int32
+	RedirectAddr     string      // for redirect
+	RedirectPort     int         // for redirect
+	RedirectUpstream string      // Forward DNS query to this resolver (ip:port)
+	Records          []DNSRecord // Synthetic DNS response records
+}
+
+// DNSRecord represents a single DNS response record.
+type DNSRecord struct {
+	Type  uint16 // A=1, AAAA=28, CNAME=5
+	Value string // IP address or domain name
+	TTL   uint32
+}
+
+// SignalHandler evaluates signal delivery policy.
+type SignalHandler interface {
+	HandleSignal(ctx context.Context, sc SignalContext) SignalResult
+}
+
+// SignalContext carries signal delivery information for policy evaluation.
+type SignalContext struct {
+	PID       int
+	SessionID string
+	TargetPID int
+	Signal    int
+}
+
+// SignalResult carries the signal policy decision.
+type SignalResult struct {
+	Allow          bool
+	Errno          int32
+	RedirectSignal int
+}
+
+// TracerConfig holds configuration for the ptrace tracer.
+type TracerConfig struct {
+	AttachMode        string
+	TargetPID         int
+	TargetPIDFile     string
+	TraceExecve       bool
+	TraceFile         bool
+	TraceNetwork      bool
+	TraceSignal       bool
+	MaskTracerPid     bool
+	SeccompPrefilter  bool
+	ArgLevelFilter    bool
+	MaxTracees        int
+	MaxHoldMs         int
+	OnAttachFailure   string
+	ReadyFile         string // Path to write after successful attach (sentinel for workload readiness)
+	ExecHandler       ExecHandler
+	FileHandler       FileHandler
+	NetworkHandler    NetworkHandler
+	SignalHandler     SignalHandler
+	SocketRuleChecker *SocketRuleChecker // nil disables socket tuple-rule blocking
+	FamilyChecker     *FamilyChecker     // nil disables socket-family blocking
+	Metrics           Metrics
+}
+
+// TraceeState tracks the state of a single traced thread.
+type TraceeState struct {
+	TID                   int
+	TGID                  int
+	ParentPID             int
+	SessionID             string
+	CommandID             string
+	InSyscall             bool
+	LastNr                int
+	Attached              time.Time
+	ParkedAt              time.Time
+	PendingDenyErrno      int
+	PendingFakeZero       bool  // force return value to 0 on syscall exit
+	PendingReturnOverride int64 // force return value to this on syscall exit
+	HasPendingReturn      bool  // whether PendingReturnOverride is active
+	PendingInterrupt      bool
+	HasPrefilter          bool // true if seccomp prefilter is installed for this tracee
+	PendingPrefilter      bool // inject seccomp filter on next syscall stop
+	NeedExitStop          bool // resume with PtraceSyscall to catch exit
+	// TGID-level: any thread in this TGID triggered escalation
+	NeedsReadEscalation  bool
+	NeedsWriteEscalation bool
+	// Per-thread: escalation filter installed on this specific thread
+	ThreadHasReadEscalation  bool
+	ThreadHasWriteEscalation bool
+	// Deferred: inject escalation at next exit stop
+	PendingReadEscalation  bool
+	PendingWriteEscalation bool
+	IsVforkChild           bool
+	SuppressInitialStop    bool   // suppress initial SIGSTOP from auto-trace
+	LastOpenFlags          int    // flags from last openat/openat2 entry (event-loop-only)
+	LastOpenOp             string // operation from last openat/openat2 entry (event-loop-only)
+	LastFileAction         string // action from last file entry-time policy check (event-loop-only)
+	PendingExecStubFD      int    // fd injected for exec redirect; cleaned up on exec failure (-1 = none)
+	PendingExecSavedFD     int    // fd that was displaced by stub fd; restored on exec failure (-1 = none)
+	MemFD                  int
+	// SessionlessPIDAttach marks a tracee that descends from a root
+	// attached via AttachPID without a SessionID (the attach_mode=pid
+	// path). Propagated to children via seedChildStateFromParent so
+	// HandleExecve can distinguish "intentionally sessionless"
+	// (allow + pass-through) from "non-empty unknown SessionID"
+	// (fail-closed bug).
+	SessionlessPIDAttach bool
+
+	// #369 #2 diagnostic - only written when AEP_CAW_PTRACE_TRACE is set (see
+	// trace_debug.go). awaitingResume records that a stop was consumed but no
+	// resume/park has been issued yet; the idle-tick scan flags any tracee that
+	// stays armed past wedgeThreshold. Guarded by t.mu.
+	awaitingResume bool
+	lastStopDesc   string
+	lastStopSeq    uint64
+	lastStopAt     time.Time
+	wedgeLogged    bool
+	// /proc reconciliation (#2 v2): ground-truth detection that this tracee is
+	// kernel-stopped (State t/T, TracerPid==us) while the Run loop believes it
+	// is running. procStuckSince is when we first observed it stuck; once it
+	// persists past the threshold we dump the trace ring and set procWedgeLogged.
+	procStuckSince  time.Time
+	procWedgeLogged bool
+	// listening is true while this tracee is held in PTRACE_LISTEN (a job-control
+	// group-stop the tracer is deliberately letting sit). Such tracees are
+	// legitimately stopped indefinitely, so the watchdog must NOT treat them as
+	// wedged. Set before ptraceListen, cleared when the tracee is next handled.
+	// Guarded by t.mu. (#369 #2)
+	listening bool
+}
+
+type resumeRequest struct {
+	TID   int
+	Allow bool
+	Errno int
+}
+
+// ExitReason describes why a process exited.
+type ExitReason int
+
+const (
+	ExitNormal     ExitReason = iota // process exited or was signaled (Code/Signal valid)
+	ExitVanished                     // ESRCH - process disappeared (ptrace call failed)
+	ExitTracerDown                   // tracer shut down while process was running
+)
+
+// ExitStatus carries process exit information for tracer-managed wait.
+type ExitStatus struct {
+	PID    int
+	Code   int
+	Signal int
+	Reason ExitReason
+	Rusage *unix.Rusage
+}
+
+// attachRequest carries a PID and options for the attach queue.
+type attachRequest struct {
+	pid  int
+	opts attachOpts
+}
+
+type attachOpts struct {
+	sessionID   string
+	commandID   string
+	keepStopped bool
+}
+
+// AttachOption configures how a process is attached.
+type AttachOption func(*attachOpts)
+
+// WithSessionID associates a session ID with the attached process.
+func WithSessionID(id string) AttachOption {
+	return func(o *attachOpts) { o.sessionID = id }
+}
+
+// WithCommandID associates a command ID with the attached process.
+func WithCommandID(id string) AttachOption {
+	return func(o *attachOpts) { o.commandID = id }
+}
+
+// WithKeepStopped keeps the tracee stopped after attach (for cgroup hook).
+func WithKeepStopped() AttachOption {
+	return func(o *attachOpts) { o.keepStopped = true }
+}
+
+// Tracer implements a ptrace-based syscall tracer.
+type Tracer struct {
+	cfg         TracerConfig
+	metrics     Metrics
+	processTree *ProcessTree
+
+	attachQueue chan attachRequest
+	resumeQueue chan resumeRequest
+
+	fds      *fdTracker
+	dnsProxy *dnsProxy
+
+	mu            sync.Mutex
+	tracees       map[int]*TraceeState
+	parkedTracees map[int]struct{}
+	tgidScratch   map[int]*scratchPage
+
+	attachDone sync.Map // pid → chan error
+	exitNotify sync.Map // pid → chan ExitStatus
+
+	readyFileWritten  bool
+	readyFileAttempts int
+
+	hasSyscallInfo bool // true if PTRACE_GET_SYSCALL_INFO is supported (Linux 5.3+)
+
+	// #369 #2 diagnostic - Run-goroutine-only, no lock. Throttles the /proc
+	// reconciliation scan (see trace_debug.go reconcileProc) and the ECHILD
+	// stolen-exit anomaly log (see onEchildWithTracees). echildSpins counts
+	// consecutive ECHILD-with-tracees ticks that recovered nothing, so the
+	// re-poll backs off instead of spinning at ~200 Hz on a persistent wedge.
+	lastProcScan  time.Time
+	lastEchildLog time.Time
+	echildSpins   int
+	lastExitRecon time.Time
+	idleParkLog   time.Time
+	// runThreadTID is the OS thread id (gettid) the Run loop is locked to, set
+	// once at Run start. The watchdog logs it so a stop owned by a different
+	// thread than this one is visible in the dump (#369 #2).
+	runThreadTID int
+	// lastProgressNanos is updated on every dispatched stop; the watchdog only
+	// heals when it is stale (the Run loop is genuinely not progressing), so a
+	// busy-but-progressing loop never trips the killer. currentHandlingTID is
+	// the tid the Run loop is actively in handleStop for; the watchdog never
+	// heals it (avoids killing a tracee mid-handling). Both are #369 #2.
+	lastProgressNanos  atomic.Int64
+	currentHandlingTID atomic.Int64
+
+	stopped chan struct{}
+}
+
+// NewTracer creates a new ptrace tracer.
+func NewTracer(cfg TracerConfig) *Tracer {
+	metrics := cfg.Metrics
+	if metrics == nil {
+		metrics = nopMetrics{}
+	}
+	return &Tracer{
+		cfg:           cfg,
+		metrics:       metrics,
+		processTree:   NewProcessTree(),
+		attachQueue:   make(chan attachRequest, 64),
+		resumeQueue:   make(chan resumeRequest, 64),
+		tracees:       make(map[int]*TraceeState),
+		parkedTracees: make(map[int]struct{}),
+		tgidScratch:   make(map[int]*scratchPage),
+		stopped:       make(chan struct{}),
+	}
+}
+
+// TraceeCount returns the number of currently traced threads.
+func (t *Tracer) TraceeCount() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return len(t.tracees)
+}
+
+// ResolveSessionID returns the session associated with pid. The pid may be
+// either a traced thread ID or a process TGID.
+func (t *Tracer) ResolveSessionID(pid int32) (string, bool) {
+	if t == nil || pid <= 0 {
+		return "", false
+	}
+
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if state := t.tracees[int(pid)]; state != nil && state.SessionID != "" {
+		return state.SessionID, true
+	}
+	for _, state := range t.tracees {
+		if state != nil && state.TGID == int(pid) && state.SessionID != "" {
+			return state.SessionID, true
+		}
+	}
+	return "", false
+}
+
+// findParentByTGID returns the first tracee whose TGID matches
+// parentTGID, or nil if none. Caller must hold t.mu.
+func findParentByTGID(tracees map[int]*TraceeState, parentTGID int) *TraceeState {
+	if parentTGID <= 0 {
+		return nil
+	}
+	for _, st := range tracees {
+		if st.TGID == parentTGID {
+			return st
+		}
+	}
+	return nil
+}
+
+// seedChildStateFromParent builds a fully-seeded child TraceeState by
+// copying enforcement metadata from its parent. Mirrors what
+// handleNewChild's create-from-scratch branch does, so a child created
+// through this helper (the child-stop-before-fork-event fallback path)
+// is byte-identical in enforcement state to a child created through
+// handleNewChild.
+//
+// Used by:
+//   - handleNewChild's else branch (the normal create path) - passes
+//     suppressInitialStop=true because state is created on the parent's
+//     PTRACE_EVENT_FORK, BEFORE the child's initial SIGSTOP arrives;
+//     the upcoming stop must be swallowed.
+//   - The two handleStop()/handleEventStop() PTRACE_EVENT_STOP
+//     minimal-state fallbacks - pass suppressInitialStop=false because
+//     the child's initial stop has ALREADY been received (that's what
+//     dispatched the fallback); setting the flag here would leave it
+//     stale and silently swallow the next external SIGSTOP. Without
+//     state inheritance via this helper, the child's SessionID would
+//     stay "" until the fork event fires; if it execve's in that
+//     window, HandleExecve previously denied with EACCES, which raced
+//     ld.so on the new ELF and crashed the tracee.
+//
+// Copied (in addition to bookkeeping): SessionID, HasPrefilter,
+// PendingPrefilter (skipped when parent already has the filter installed
+// since children inherit it via fork), TGID-level escalation flags,
+// thread escalation flags, and SessionlessPIDAttach. Per-thread runtime
+// state (LastNr, MemFD, Pending*, etc.) is initialized to defaults.
+//
+// If parent is nil (parent not yet in t.tracees, e.g. attaching root
+// before any tracee exists), only the per-thread defaults are
+// populated.
+//
+// Caller must hold t.mu.
+func seedChildStateFromParent(parent *TraceeState, childTID, childTGID int, suppressInitialStop bool) *TraceeState {
+	st := &TraceeState{
+		TID:                 childTID,
+		TGID:                childTGID,
+		Attached:            time.Now(),
+		LastNr:              -1,
+		MemFD:               -1,
+		PendingExecStubFD:   -1,
+		PendingExecSavedFD:  -1,
+		SuppressInitialStop: suppressInitialStop,
+	}
+	if parent == nil {
+		return st
+	}
+	pendingPrefilter := false
+	if !parent.HasPrefilter {
+		pendingPrefilter = parent.PendingPrefilter
+	}
+	st.ParentPID = parent.TGID
+	st.SessionID = parent.SessionID
+	st.HasPrefilter = parent.HasPrefilter
+	st.PendingPrefilter = pendingPrefilter
+	st.NeedsReadEscalation = parent.NeedsReadEscalation
+	st.NeedsWriteEscalation = parent.NeedsWriteEscalation
+	st.ThreadHasReadEscalation = parent.ThreadHasReadEscalation
+	st.ThreadHasWriteEscalation = parent.ThreadHasWriteEscalation
+	st.SessionlessPIDAttach = parent.SessionlessPIDAttach
+	return st
+}
+
+// writeReadyFile writes the sentinel file if configured and not yet written.
+// Retries up to 3 times on failure before giving up.
+func (t *Tracer) writeReadyFile() {
+	if t.cfg.ReadyFile == "" || t.readyFileWritten {
+		return
+	}
+	t.readyFileAttempts++
+	if err := os.WriteFile(t.cfg.ReadyFile, []byte("ready\n"), 0644); err != nil {
+		slog.Error("failed to write ready file", "path", t.cfg.ReadyFile, "error", err, "attempt", t.readyFileAttempts)
+		if t.readyFileAttempts >= 3 {
+			slog.Error("giving up on ready file after max attempts", "path", t.cfg.ReadyFile)
+			t.readyFileWritten = true // stop retrying
+		}
+		return
+	}
+	t.readyFileWritten = true
+	slog.Info("tracer ready file written", "path", t.cfg.ReadyFile)
+}
+
+// AttachPID enqueues attachment to a process.
+func (t *Tracer) AttachPID(pid int, opts ...AttachOption) error {
+	var o attachOpts
+	for _, fn := range opts {
+		fn(&o)
+	}
+	done := make(chan error, 1)
+	t.attachDone.Store(pid, done)
+	t.attachQueue <- attachRequest{pid: pid, opts: o}
+	return nil
+}
+
+// WaitAttached blocks until the process has been attached (or attach failed).
+// Times out after 10 seconds to avoid indefinite blocking when the tracer is down.
+func (t *Tracer) WaitAttached(pid int) error {
+	v, ok := t.attachDone.Load(pid)
+	if !ok {
+		return fmt.Errorf("no pending attach for pid %d", pid)
+	}
+	done := v.(chan error)
+	select {
+	case err := <-done:
+		t.attachDone.Delete(pid)
+		return err
+	case <-time.After(10 * time.Second):
+		t.attachDone.Delete(pid)
+		return fmt.Errorf("attach timed out for pid %d", pid)
+	}
+}
+
+// ResumePID resumes all keepStopped threads of a process via the resume queue.
+// For freshly-started processes (exec path), only one thread exists.
+// For multi-threaded processes, all threads sharing the TGID are resumed.
+func (t *Tracer) ResumePID(pid int) error {
+	t.mu.Lock()
+	var tids []int
+	for tid := range t.parkedTracees {
+		state := t.tracees[tid]
+		if state != nil && (state.TGID == pid || tid == pid) {
+			tids = append(tids, tid)
+		}
+	}
+	t.mu.Unlock()
+
+	if len(tids) == 0 {
+		// Fallback: send resume for the pid directly
+		t.resumeQueue <- resumeRequest{TID: pid, Allow: true}
+		return nil
+	}
+	for _, tid := range tids {
+		t.resumeQueue <- resumeRequest{TID: tid, Allow: true}
+	}
+	return nil
+}
+
+// BindSession promotes an already-traced, sessionless process to a named
+// session. It finds all TraceeState entries whose TID or TGID matches pid,
+// sets SessionID to sessionID, and clears SessionlessPIDAttach. This is the
+// correct path for attach_mode=pid + shim: when the shim forks a child shell
+// that is auto-inherited by the tracer via PTRACE_O_TRACEFORK, the child
+// carries SessionlessPIDAttach=true (no session yet). BindSession wires the
+// session the shim's wrap-init handshake established, so subsequent HandleExecve
+// calls for that shell and its descendants reach the policy engine rather than
+// passing through as "sessionless_pid_attach". Issue #416.
+func (t *Tracer) BindSession(pid int, sessionID string) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	found := false
+	for _, state := range t.tracees {
+		if state.TID == pid || state.TGID == pid {
+			state.SessionID = sessionID
+			state.SessionlessPIDAttach = false
+			found = true
+		}
+	}
+	if !found {
+		return fmt.Errorf("BindSession: pid %d not found in active tracees", pid)
+	}
+	return nil
+}
+
+// signalAttachDone signals the WaitAttached channel for a PID, if one exists.
+func (t *Tracer) signalAttachDone(pid int, err error) {
+	if v, ok := t.attachDone.Load(pid); ok {
+		v.(chan error) <- err
+	}
+}
+
+// cancelPendingAttachWaiters signals all pending WaitAttached callers with an
+// error so they don't block indefinitely when the tracer shuts down.
+func (t *Tracer) cancelPendingAttachWaiters() {
+	t.attachDone.Range(func(key, value any) bool {
+		ch := value.(chan error)
+		select {
+		case ch <- fmt.Errorf("tracer shutting down"):
+		default:
+		}
+		t.attachDone.Delete(key)
+		return true
+	})
+}
+
+// RegisterExitNotify registers an exit notification channel for a PID (TGID).
+// Must be called before AttachPID to ensure no race with fast-exit processes.
+// Returns an error if a channel is already registered for this PID.
+func (t *Tracer) RegisterExitNotify(pid int) (<-chan ExitStatus, error) {
+	ch := make(chan ExitStatus, 1)
+	_, loaded := t.exitNotify.LoadOrStore(pid, ch)
+	if loaded {
+		return nil, fmt.Errorf("exit notify already registered for pid %d", pid)
+	}
+	traceNote("exit", "register", pid)
+	return ch, nil
+}
+
+// UnregisterExitNotify removes a pending exit notification only if it matches
+// the given channel (ownership check). Safe for concurrent flows on different PIDs.
+func (t *Tracer) UnregisterExitNotify(pid int, ch <-chan ExitStatus) {
+	if v, ok := t.exitNotify.Load(pid); ok {
+		if v.(chan ExitStatus) == ch {
+			t.exitNotify.Delete(pid)
+		}
+	}
+}
+
+// cancelPendingExitWaiters signals all pending exit notification channels
+// so they don't block indefinitely when the tracer shuts down.
+func (t *Tracer) cancelPendingExitWaiters() {
+	t.exitNotify.Range(func(key, value any) bool {
+		ch := value.(chan ExitStatus)
+		select {
+		case ch <- ExitStatus{Reason: ExitTracerDown}:
+		default:
+		}
+		t.exitNotify.Delete(key)
+		return true
+	})
+}
+
+// ParkTracee marks a tracee as parked (awaiting async approval).
+func (t *Tracer) ParkTracee(tid int) {
+	t.mu.Lock()
+	t.parkedTracees[tid] = struct{}{}
+	if state, ok := t.tracees[tid]; ok {
+		state.ParkedAt = time.Now()
+	}
+	t.mu.Unlock()
+}
+
+// Available returns whether ptrace tracing is available.
+func (t *Tracer) Available() bool {
+	return true
+}
+
+// Implementation returns "ptrace".
+func (t *Tracer) Implementation() string {
+	return "ptrace"
+}
+
+func (t *Tracer) ptraceOptions() int {
+	opts := unix.PTRACE_O_TRACECLONE |
+		unix.PTRACE_O_TRACEFORK |
+		unix.PTRACE_O_TRACEVFORK |
+		unix.PTRACE_O_TRACEEXEC |
+		unix.PTRACE_O_TRACEEXIT |
+		unix.PTRACE_O_EXITKILL |
+		unix.PTRACE_O_TRACESYSGOOD
+	if t.cfg.SeccompPrefilter {
+		opts |= unix.PTRACE_O_TRACESECCOMP
+	}
+	return opts
+}
+
+func (t *Tracer) getRegs(tid int) (Regs, error) {
+	return getRegsArch(tid)
+}
+
+func (t *Tracer) setRegs(tid int, regs Regs) error {
+	return setRegsArch(tid, regs)
+}
+
+// needsExitStop returns true for syscalls that need exit-time processing.
+// These syscalls must be resumed with PtraceSyscall (not PtraceCont) so the
+// tracer catches the exit stop. All other traced syscalls are entry-only and
+// can use PtraceCont to skip directly to the next seccomp event.
+func (t *Tracer) needsExitStop(nr int) bool {
+	switch nr {
+	case unix.SYS_READ, unix.SYS_PREAD64:
+		return true // only traced when escalated - always needs exit
+	case unix.SYS_OPENAT, unix.SYS_OPENAT2:
+		// Exit-time path verification (symlink defense-in-depth) or
+		// TracerPid fd tracking. Skip when neither is active.
+		return (t.cfg.TraceFile && t.cfg.FileHandler != nil) || t.cfg.MaskTracerPid
+	case unix.SYS_CONNECT:
+		return t.cfg.TraceNetwork // inline skip in handleNetwork handles port granularity
+	case unix.SYS_EXECVE, unix.SYS_EXECVEAT:
+		return true // exec failure cleanup
+	}
+	return false
+}
+
+// mustCatchExit returns true if the tracee must be resumed with PtraceSyscall
+// to catch the syscall exit stop. True when NeedExitStop is set or when
+// pending fixups (deny errno, fake zero, return override, exec stub) require
+// exit-time processing.
+func mustCatchExit(s *TraceeState) bool {
+	if s == nil {
+		return false
+	}
+	return s.NeedExitStop || s.PendingDenyErrno != 0 || s.PendingFakeZero || s.HasPendingReturn || s.PendingExecStubFD >= 0
+}
+
+// allowSyscall resumes the tracee, allowing the syscall to proceed.
+func (t *Tracer) allowSyscall(tid int) {
+	// Fast path: without seccomp prefilter, hasPrefilter is always false,
+	// so the result is always PtraceSyscall. Skip the mutex entirely.
+	if !t.cfg.SeccompPrefilter {
+		t.traceResume(tid, "allowSyscall-syscall", 0)
+		if err := unix.PtraceSyscall(tid, 0); err != nil && errors.Is(err, unix.ESRCH) {
+			t.handleExit(tid, unix.WaitStatus(0), nil, ExitVanished)
+		}
+		return
+	}
+
+	t.mu.Lock()
+	hasPrefilter := false
+	needExit := false
+	if s := t.tracees[tid]; s != nil {
+		hasPrefilter = s.HasPrefilter
+		needExit = mustCatchExit(s)
+	}
+	t.mu.Unlock()
+
+	var err error
+	via := "allowSyscall-syscall"
+	if hasPrefilter && !needExit {
+		via = "allowSyscall-cont"
+		err = unix.PtraceCont(tid, 0)
+	} else {
+		err = unix.PtraceSyscall(tid, 0)
+	}
+	t.traceResume(tid, via, 0)
+	if err != nil && errors.Is(err, unix.ESRCH) {
+		t.handleExit(tid, unix.WaitStatus(0), nil, ExitVanished)
+	}
+}
+
+// denySyscall invalidates the current syscall and arranges for return value fixup.
+func (t *Tracer) denySyscall(tid int, errno int) error {
+	regs, err := t.getRegs(tid)
+	if err != nil {
+		if errors.Is(err, unix.ESRCH) {
+			t.handleExit(tid, unix.WaitStatus(0), nil, ExitVanished)
+			return nil
+		}
+		return err
+	}
+	regs.SetSyscallNr(-1)
+	if err := t.setRegs(tid, regs); err != nil {
+		if errors.Is(err, unix.ESRCH) {
+			t.handleExit(tid, unix.WaitStatus(0), nil, ExitVanished)
+			return nil
+		}
+		t.mu.Lock()
+		state := t.tracees[tid]
+		tgid := tid
+		if state != nil {
+			tgid = state.TGID
+		}
+		t.mu.Unlock()
+		unix.Tgkill(tgid, tid, unix.SIGKILL)
+		return fmt.Errorf("deny failed, killed tid %d: %w", tid, err)
+	}
+
+	t.mu.Lock()
+	if state, ok := t.tracees[tid]; ok {
+		state.PendingDenyErrno = errno
+		state.InSyscall = true
+	}
+	t.mu.Unlock()
+
+	t.traceResume(tid, "denySyscall", 0)
+	if err := unix.PtraceSyscall(tid, 0); err != nil {
+		if errors.Is(err, unix.ESRCH) {
+			t.handleExit(tid, unix.WaitStatus(0), nil, ExitVanished)
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+// resumeTracee resumes a tracee with an optional signal to deliver.
+// Uses PtraceCont when prefilter is active and no exit stop is needed,
+// PtraceSyscall otherwise.
+func (t *Tracer) resumeTracee(tid int, sig int) {
+	// Fast path: without seccomp prefilter, always use PtraceSyscall.
+	if !t.cfg.SeccompPrefilter {
+		t.traceResume(tid, "resumeTracee-syscall", sig)
+		unix.PtraceSyscall(tid, sig)
+		return
+	}
+
+	t.mu.Lock()
+	hasPrefilter := false
+	needExit := false
+	if s := t.tracees[tid]; s != nil {
+		hasPrefilter = s.HasPrefilter
+		needExit = mustCatchExit(s)
+	}
+	t.mu.Unlock()
+
+	if hasPrefilter && !needExit {
+		t.traceResume(tid, "resumeTracee-cont", sig)
+		unix.PtraceCont(tid, sig)
+	} else {
+		t.traceResume(tid, "resumeTracee-syscall", sig)
+		unix.PtraceSyscall(tid, sig)
+	}
+}
+
+// ptraceListen calls PTRACE_LISTEN on the specified tid. In PTRACE_SEIZE
+// mode, this keeps the tracee group-stopped while still allowing the tracer
+// to receive ptrace events.
+func ptraceListen(tid int) {
+	unix.RawSyscall6(unix.SYS_PTRACE,
+		uintptr(unix.PTRACE_LISTEN), uintptr(tid), 0, 0, 0, 0)
+}
+
+// resumeWithErrno resumes a tracee from EXIT/between-syscalls state,
+// making the current or previous syscall appear to return the specified errno.
+// Used in error paths after advancePastEntry or injection has consumed the
+// original entry.
+func (t *Tracer) resumeWithErrno(tid int, savedRegs Regs, errno int) {
+	errRegs := savedRegs.Clone()
+	errRegs.SetReturnValue(int64(-errno))
+	t.setRegs(tid, errRegs)
+	t.allowSyscall(tid)
+}
+
+// applyDenyFixup overwrites the syscall return value with -errno.
+func (t *Tracer) applyDenyFixup(tid int, errno int) {
+	regs, err := t.getRegs(tid)
+	if err != nil {
+		return
+	}
+	regs.SetReturnValue(-int64(errno))
+	t.setRegs(tid, regs)
+}
+
+// applyReturnOverride overwrites the syscall return value with an arbitrary value.
+// Used by file redirect to pass through the fd from an injected openat syscall.
+func (t *Tracer) applyReturnOverride(tid int, retval int64) {
+	regs, err := t.getRegs(tid)
+	if err != nil {
+		return
+	}
+	regs.SetReturnValue(retval)
+	t.setRegs(tid, regs)
+}
+
+// handleStop dispatches a tracee stop event.
+func (t *Tracer) handleStop(ctx context.Context, tid int, status unix.WaitStatus, rusage *unix.Rusage) {
+	// #369 #2 watchdog coordination: record that the Run loop is making progress
+	// (handling a stop), mark the tid it is actively servicing so the watchdog
+	// never heals a tracee mid-handling, and clear the listening flag - any stop
+	// event means the tracee is no longer idly held in PTRACE_LISTEN. The
+	// heartbeat is refreshed on exit too (and inside the inject poll loop, see
+	// waitForSyscallStop) so a long-but-progressing handleStop never looks
+	// stale; only the idle-spin wedge (no handleStop at all) goes stale.
+	t.lastProgressNanos.Store(time.Now().UnixNano())
+	t.currentHandlingTID.Store(int64(tid))
+	defer func() {
+		t.currentHandlingTID.Store(0)
+		t.lastProgressNanos.Store(time.Now().UnixNano())
+	}()
+	t.mu.Lock()
+	if s := t.tracees[tid]; s != nil {
+		s.listening = false
+	}
+	t.mu.Unlock()
+
+	switch {
+	case status.Exited() || status.Signaled():
+		t.handleExit(tid, status, rusage, ExitNormal)
+
+	case status.Stopped():
+		sig := status.StopSignal()
+
+		switch {
+		case sig == unix.SIGTRAP|0x80:
+			t.handleSyscallStop(ctx, tid)
+
+		case sig == unix.SIGTRAP:
+			event := status.TrapCause()
+			switch event {
+			case unix.PTRACE_EVENT_FORK, unix.PTRACE_EVENT_CLONE:
+				t.handleNewChild(tid, event)
+				t.resumeTracee(tid, 0)
+			case unix.PTRACE_EVENT_VFORK:
+				t.handleNewChild(tid, event)
+				t.markVforkChild(tid)
+				t.resumeTracee(tid, 0)
+			case unix.PTRACE_EVENT_EXEC:
+				t.handleExecEvent(tid)
+				if t.shouldDetachAfterExec(tid) {
+					if err := unix.PtraceDetach(tid); err != nil && err != unix.ESRCH {
+						slog.Warn("ptrace: detach after exec failed, resuming instead", "tid", tid, "err", err)
+						t.resumeTracee(tid, 0)
+					} else {
+						t.traceResume(tid, "detach-after-exec", 0)
+						t.handleExit(tid, unix.WaitStatus(0), nil, ExitVanished)
+					}
+				} else {
+					t.resumeTracee(tid, 0)
+				}
+			case unix.PTRACE_EVENT_SECCOMP:
+				t.handleSeccompStop(ctx, tid)
+			case unix.PTRACE_EVENT_EXIT:
+				t.handleExitEvent(tid)
+			case unix.PTRACE_EVENT_STOP:
+				t.handleEventStop(tid)
+			default:
+				// With TRACESYSGOOD always set, syscall stops are SIGTRAP|0x80.
+				// Seccomp entries are PTRACE_EVENT_SECCOMP. A plain SIGTRAP
+				// with no event is always a real signal - reinject it.
+				t.resumeTracee(tid, int(sig))
+			}
+
+		default:
+			// In PTRACE_SEIZE mode, group-stops (SIGSTOP, SIGTSTP, SIGTTIN,
+			// SIGTTOU) are reported with TrapCause == PTRACE_EVENT_STOP and
+			// the stopping signal in StopSignal. Use PTRACE_LISTEN to keep
+			// the tracee group-stopped.
+			if status.TrapCause() == unix.PTRACE_EVENT_STOP {
+				t.mu.Lock()
+				state := t.tracees[tid]
+				hasState := state != nil
+				suppress := state != nil && sig == unix.SIGSTOP && state.SuppressInitialStop
+				if suppress {
+					state.SuppressInitialStop = false
+				}
+				t.mu.Unlock()
+
+				// Auto-attached children may receive this stop before
+				// handleNewChild creates their state. Seed full
+				// enforcement state from the parent immediately so a
+				// child that execve's in this window has the same
+				// SessionID / prefilter / escalation flags it would
+				// have had via handleNewChild -- otherwise HandleExecve
+				// previously saw session_id="" and denied with EACCES,
+				// which raced the new ELF's startup in ld.so and
+				// crashed the tracee mid-injection.
+				if !hasState {
+					childTGID, _ := readTGID(tid)
+					if childTGID == 0 {
+						childTGID = tid
+					}
+					parentPID, _ := readPPID(tid)
+					t.mu.Lock()
+					if _, exists := t.tracees[tid]; !exists {
+						parent := findParentByTGID(t.tracees, parentPID)
+						// suppressInitialStop=false: the child's initial
+						// SIGSTOP has already arrived (it's what dispatched
+						// us into this branch); leaving the flag true
+						// would silently swallow the next external SIGSTOP.
+						t.tracees[tid] = seedChildStateFromParent(parent, tid, childTGID, false)
+						t.metrics.SetTraceeCount(len(t.tracees))
+					}
+					t.mu.Unlock()
+					t.resumeTracee(tid, 0)
+					break
+				}
+
+				if suppress {
+					t.resumeTracee(tid, 0)
+					break
+				}
+
+				t.mu.Lock()
+				if s := t.tracees[tid]; s != nil {
+					s.listening = true // watchdog must not treat a LISTEN'd group-stop as wedged (#369 #2)
+				}
+				t.mu.Unlock()
+				ptraceListen(tid)
+				t.traceResume(tid, "listen", 0)
+				break
+			}
+
+			// Suppress initial SIGSTOP for auto-traced children (non-group-stop).
+			if sig == unix.SIGSTOP {
+				t.mu.Lock()
+				state := t.tracees[tid]
+				suppress := state != nil && state.SuppressInitialStop
+				if suppress {
+					state.SuppressInitialStop = false
+				}
+				t.mu.Unlock()
+				if suppress {
+					t.resumeTracee(tid, 0)
+					break
+				}
+			}
+			t.resumeTracee(tid, int(sig))
+		}
+	}
+}
+
+// atSyscallExitStop reports whether the tracee is at a syscall-EXIT stop. It
+// prefers the authoritative PTRACE_GET_SYSCALL_INFO op; the hand-maintained
+// InSyscall toggle is only a pre-5.3 fallback, because that toggle can desync
+// from the real stop sequence on kernels whose post-exec stop storm interleaves
+// PTRACE_EVENT/signal stops (#369). Call on the tracer thread at a ptrace stop.
+func (t *Tracer) atSyscallExitStop(tid int, inSyscall bool) bool {
+	if t.hasSyscallInfo {
+		if op, err := t.syscallStopOp(tid); err == nil {
+			return op == ptraceSyscallInfoExit
+		}
+	}
+	return inSyscall
+}
+
+// handleSyscallStop handles SIGTRAP|0x80 stops (TRACESYSGOOD mode).
+func (t *Tracer) handleSyscallStop(ctx context.Context, tid int) {
+	// Deferred seccomp prefilter and escalation injection are only relevant
+	// when SeccompPrefilter is configured. Skip entirely in nofilter mode
+	// to avoid dead-code mutex acquisitions.
+	if t.cfg.SeccompPrefilter {
+		// Deferred seccomp prefilter injection: inject on the first syscall EXIT
+		// (not entry - injectFromEntry replaces the current syscall, which would
+		// drop the tracee's first real syscall). At exit, the syscall already
+		// completed, so injection is safe.
+		//
+		// Whether this stop is a syscall EXIT. Prefer the authoritative
+		// PTRACE_GET_SYSCALL_INFO op over the hand-maintained InSyscall toggle,
+		// which can desync from the real stop sequence on kernels whose
+		// post-exec stop storm interleaves PTRACE_EVENT/signal stops (#369).
+		// Read the op ONCE here, outside t.mu (atSyscallExitStop issues a ptrace
+		// call - never hold t.mu across it), and reuse the boolean for both the
+		// prefilter and escalation decisions in this handler invocation.
+		//
+		// Skip the op read entirely unless a prefilter or escalation inject can
+		// actually fire at this stop. handleSyscallStop runs on EVERY traced
+		// syscall, so in steady state (prefilter installed, escalations applied,
+		// nothing pending) the per-stop PTRACE_GET_SYSCALL_INFO call would be
+		// pure overhead - this package is sensitive to per-syscall ptrace cost
+		// (#369). Every branch below that consults `exit` requires one of these
+		// flags, so leaving exit=false when none is set is behavior-preserving.
+		//
+		// Historical note on the InSyscall toggle (still the pre-5.3 fallback):
+		//   InSyscall=false → entry stop (first time)
+		//   InSyscall=true  → exit stop (entry was processed)
+		t.mu.Lock()
+		state := t.tracees[tid]
+		inSyscall := state != nil && state.InSyscall
+		mayInject := state != nil && (state.PendingPrefilter ||
+			(state.HasPrefilter && (state.PendingReadEscalation || state.PendingWriteEscalation ||
+				(state.NeedsReadEscalation && !state.ThreadHasReadEscalation) ||
+				(state.NeedsWriteEscalation && !state.ThreadHasWriteEscalation))))
+		t.mu.Unlock()
+		exit := false
+		if mayInject {
+			exit = t.atSyscallExitStop(tid, inSyscall)
+		}
+
+		t.mu.Lock()
+		state = t.tracees[tid]
+		if state != nil && state.PendingPrefilter && !exit {
+			// This is a syscall entry. Let normal handling process it.
+			// The next stop will be the exit, where we'll inject.
+			t.mu.Unlock()
+		} else if state != nil && state.PendingPrefilter && exit {
+			// This is a syscall exit - safe to inject now.
+			state.PendingPrefilter = false
+			// Set InSyscall=false before injection so injectSyscall uses the
+			// correct exit-stop protocol (injectFromExit).
+			state.InSyscall = false
+			t.mu.Unlock()
+			if err := t.injectSeccompFilter(tid); err != nil {
+				slog.Warn("seccomp prefilter injection failed, falling back to TRACESYSGOOD",
+					"tid", tid, "error", err)
+				t.mu.Lock()
+				if s := t.tracees[tid]; s != nil {
+					s.InSyscall = true
+				}
+				t.mu.Unlock()
+			} else {
+				t.mu.Lock()
+				if s := t.tracees[tid]; s != nil {
+					s.HasPrefilter = true
+					s.InSyscall = true
+				}
+				t.mu.Unlock()
+			}
+			// Fall through to normal exit handling for this syscall.
+			// Do NOT return - the first syscall's exit handlers still need to run.
+			// InSyscall=true restored above so the normal toggle correctly
+			// identifies this as a syscall exit (entering := !state.InSyscall → false).
+		} else {
+			t.mu.Unlock()
+		}
+
+		// Deferred BPF escalation: inject escalation filters at exit stops.
+		// Follows the same pattern as PendingPrefilter above and reuses the same
+		// authoritative `exit` classification computed above.
+		// Only attempt injection when a seccomp prefilter is installed;
+		// without one, all syscalls are already traced via TRACESYSGOOD.
+		t.mu.Lock()
+		state = t.tracees[tid]
+		if state != nil && state.HasPrefilter && exit && state.PendingReadEscalation {
+			state.PendingReadEscalation = false
+			state.InSyscall = false
+			t.mu.Unlock()
+			if err := t.injectEscalationFilter(tid, readEscalationSyscalls); err != nil {
+				slog.Warn("deferred read escalation failed", "tid", tid, "error", err)
+				t.mu.Lock()
+				if s := t.tracees[tid]; s != nil {
+					s.InSyscall = true
+				}
+				t.mu.Unlock()
+			} else {
+				t.mu.Lock()
+				if s := t.tracees[tid]; s != nil {
+					s.ThreadHasReadEscalation = true
+					s.InSyscall = true
+				}
+				t.mu.Unlock()
+			}
+		} else if state != nil && state.HasPrefilter && exit && state.PendingWriteEscalation {
+			state.PendingWriteEscalation = false
+			state.InSyscall = false
+			t.mu.Unlock()
+			if err := t.injectEscalationFilter(tid, writeEscalationSyscalls); err != nil {
+				slog.Warn("deferred write escalation failed", "tid", tid, "error", err)
+				t.mu.Lock()
+				if s := t.tracees[tid]; s != nil {
+					s.InSyscall = true
+				}
+				t.mu.Unlock()
+			} else {
+				t.mu.Lock()
+				if s := t.tracees[tid]; s != nil {
+					s.ThreadHasWriteEscalation = true
+					s.InSyscall = true
+				}
+				t.mu.Unlock()
+			}
+		} else if state != nil && state.HasPrefilter && !exit {
+			// Entry stop - set pending flags for next exit.
+			if state.NeedsReadEscalation && !state.ThreadHasReadEscalation {
+				state.PendingReadEscalation = true
+			}
+			if state.NeedsWriteEscalation && !state.ThreadHasWriteEscalation {
+				state.PendingWriteEscalation = true
+			}
+			t.mu.Unlock()
+		} else {
+			t.mu.Unlock()
+		}
+	}
+
+	t.mu.Lock()
+	state := t.tracees[tid]
+	if state == nil {
+		t.mu.Unlock()
+		t.allowSyscall(tid)
+		return
+	}
+	entering := !state.InSyscall
+	state.InSyscall = entering
+	pendingErrno := 0
+	pendingFakeZero := false
+	hasPendingReturn := false
+	var pendingReturnOverride int64
+	pendingExecStubFD := -1
+	pendingExecSavedFD := -1
+	if !entering {
+		pendingErrno = state.PendingDenyErrno
+		state.PendingDenyErrno = 0
+		pendingFakeZero = state.PendingFakeZero
+		state.PendingFakeZero = false
+		hasPendingReturn = state.HasPendingReturn
+		pendingReturnOverride = state.PendingReturnOverride
+		state.HasPendingReturn = false
+		state.PendingReturnOverride = 0
+		pendingExecStubFD = state.PendingExecStubFD
+		pendingExecSavedFD = state.PendingExecSavedFD
+		state.PendingExecStubFD = -1
+		state.PendingExecSavedFD = -1
+	}
+	t.mu.Unlock()
+
+	if entering {
+		sc, err := t.buildSyscallContext(tid)
+		if err != nil {
+			t.allowSyscall(tid)
+			return
+		}
+		nr := sc.Info.Nr
+		// LastNr, NeedExitStop are only accessed from the event-loop
+		// goroutine (runtime.LockOSThread), no mutex needed. TGID is
+		// immutable after creation.
+		state.LastNr = nr
+		state.NeedExitStop = t.needsExitStop(nr)
+
+		// Fast-path vfork children for known safe setup syscalls.
+		// Exclude SYS_CLOSE when fd tracking is active (same as handleSeccompStop).
+		if state.IsVforkChild && !isExecveSyscall(nr) && isVforkSafeSyscall(nr) &&
+			!(nr == unix.SYS_CLOSE && t.fds != nil) {
+			t.allowSyscall(tid)
+			return
+		}
+
+		t.dispatchSyscall(ctx, tid, nr, sc)
+	} else {
+		if pendingErrno != 0 {
+			t.applyDenyFixup(tid, pendingErrno)
+		} else if pendingFakeZero {
+			t.applyDenyFixup(tid, 0)
+		} else if hasPendingReturn {
+			t.applyReturnOverride(tid, pendingReturnOverride)
+		}
+
+		// If an exec redirect injected a stub fd and the exec failed,
+		// clean up the leaked fd in the tracee.
+		if pendingExecStubFD >= 0 {
+			regs, err := t.getRegs(tid)
+			if err == nil && regs.ReturnValue() < 0 {
+				savedRegs := regs.Clone()
+				t.cleanupInjectedFD(tid, savedRegs, pendingExecStubFD, pendingExecSavedFD)
+			}
+		}
+
+		// Phase 4b: exit-time handlers
+		// LastNr, NeedExitStop are event-loop-only - no mutex needed.
+		nr := state.LastNr
+		needExitHandler := state.NeedExitStop
+		state.NeedExitStop = false
+
+		if needExitHandler && nr >= 0 {
+			exitRegs, err := t.getRegs(tid)
+			if err == nil {
+				t.handleSyscallExit(ctx, tid, nr, exitRegs)
+			}
+		}
+
+		t.allowSyscall(tid)
+	}
+}
+
+// handleSeccompStop handles PTRACE_EVENT_SECCOMP stops (prefilter mode).
+func (t *Tracer) handleSeccompStop(ctx context.Context, tid int) {
+	sc, err := t.buildSyscallContext(tid)
+	if err != nil {
+		t.allowSyscall(tid)
+		return
+	}
+	nr := sc.Info.Nr
+
+	// Mark as syscall-entry so that injection helpers (injectSyscall)
+	// use the single-phase entry protocol (modify ORIG_RAX, one cycle
+	// to exit) instead of the two-phase gadget protocol.
+	t.mu.Lock()
+	state := t.tracees[tid]
+	isVfork := state != nil && state.IsVforkChild
+	if state != nil {
+		state.InSyscall = true
+		state.LastNr = nr
+		state.NeedExitStop = t.needsExitStop(nr)
+		// Seccomp stops are entry-only. Defer escalation to next exit stop.
+		if state.NeedsReadEscalation && !state.ThreadHasReadEscalation {
+			state.PendingReadEscalation = true
+		}
+		if state.NeedsWriteEscalation && !state.ThreadHasWriteEscalation {
+			state.PendingWriteEscalation = true
+		}
+	}
+	t.mu.Unlock()
+
+	// Fast-path: vfork children skip policy for known safe setup syscalls.
+	// Between vfork and exec, only async-signal-safe operations should occur.
+	// Safe syscalls (close, dup3, sigaction, etc.) are allowed immediately.
+	// Execve gets full policy evaluation. Anything else (file, network,
+	// signal) goes through normal dispatch for policy enforcement.
+	// Exception: SYS_CLOSE must go through handleClose when fd tracking
+	// is active (t.fds != nil) to clean up statusFds/dnsRedirects/tlsWatched.
+	if isVfork && !isExecveSyscall(nr) && isVforkSafeSyscall(nr) &&
+		!(nr == unix.SYS_CLOSE && t.fds != nil) {
+		t.allowSyscall(tid)
+		return
+	}
+
+	t.dispatchSyscall(ctx, tid, nr, sc)
+}
+
+// dispatchSyscall routes a syscall to the appropriate handler.
+func (t *Tracer) dispatchSyscall(ctx context.Context, tid int, nr int, sc *SyscallContext) {
+	// Socket tuple rules are the most-specific socket policy. Check them
+	// before family rules and the generic network handler so protocol-specific
+	// Dirty Frag rules are not shadowed by broad AF_* entries.
+	if nr == unix.SYS_SOCKET || nr == unix.SYS_SOCKETPAIR {
+		family := sc.Info.Args[0]
+		typ := sc.Info.Args[1]
+		protocol := sc.Info.Args[2]
+		if t.cfg.SocketRuleChecker != nil {
+			if rule, ok := t.cfg.SocketRuleChecker.Check(uint64(nr), family, typ, protocol); ok {
+				tgid := tid
+				var sessionID string
+				t.mu.Lock()
+				if state := t.tracees[tid]; state != nil {
+					tgid = state.TGID
+					sessionID = state.SessionID
+				}
+				t.mu.Unlock()
+
+				err := t.cfg.SocketRuleChecker.Apply(tid, tgid, t, rule.Action, nr, rule, sessionID)
+				switch {
+				case errors.Is(err, PtraceKillRequested):
+					// Apply already delivered SIGKILL via Tgkill; allow the tracee
+					// to run so it receives the signal.
+					t.allowSyscall(tid)
+				case errors.Is(err, ptraceAlreadyResumed):
+					// denySyscall already resumed the tracee - nothing more to do.
+				case err != nil:
+					slog.Warn("ptrace: socket rule apply failed",
+						"tid", tid, "rule", rule.Name, "error", err)
+					t.allowSyscall(tid)
+				default:
+					// Unknown action: allow proceeds.
+					t.allowSyscall(tid)
+				}
+				return
+			}
+		}
+
+		// Socket-family blocking: check before all other handlers so that
+		// FamilyChecker rules take precedence over the generic network handler.
+		// SYS_SOCKET and SYS_SOCKETPAIR pass the AF_* family as arg0.
+		if t.cfg.FamilyChecker != nil {
+			if bf, ok := t.cfg.FamilyChecker.Check(uint64(nr), family); ok {
+				tgid := tid
+				var sessionID string
+				t.mu.Lock()
+				if state := t.tracees[tid]; state != nil {
+					tgid = state.TGID
+					sessionID = state.SessionID
+				}
+				t.mu.Unlock()
+
+				err := t.cfg.FamilyChecker.Apply(tid, tgid, t, bf.Action, nr, bf, sessionID)
+				switch {
+				case errors.Is(err, PtraceKillRequested):
+					// Apply already delivered SIGKILL via Tgkill; allow the tracee
+					// to run so it receives the signal.
+					t.allowSyscall(tid)
+				case errors.Is(err, ptraceAlreadyResumed):
+					// denySyscall already resumed the tracee - nothing more to do.
+				case err != nil:
+					slog.Warn("ptrace: family check apply failed",
+						"tid", tid, "family", bf.Name, "error", err)
+					t.allowSyscall(tid)
+				default:
+					// Unknown action: allow proceeds.
+					t.allowSyscall(tid)
+				}
+				return
+			}
+		}
+	}
+
+	switch {
+	case isExecveSyscall(nr):
+		t.handleExecve(ctx, tid, sc)
+	case isFileSyscall(nr):
+		t.handleFile(ctx, tid, sc)
+	case isNetworkSyscall(nr):
+		t.handleNetwork(ctx, tid, sc)
+	case isSignalSyscall(nr):
+		t.handleSignal(ctx, tid, sc)
+	case isWriteSyscall(nr):
+		t.handleWrite(ctx, tid, sc)
+	case isCloseSyscall(nr):
+		t.handleClose(ctx, tid, sc)
+	case isReadSyscall(nr):
+		t.handleReadEntry(tid, sc)
+	default:
+		t.allowSyscall(tid)
+	}
+}
+
+// handleSyscallExit runs exit-time handlers for syscalls that need post-processing.
+func (t *Tracer) handleSyscallExit(ctx context.Context, tid int, nr int, regs Regs) {
+	switch {
+	case isReadSyscall(nr):
+		t.handleReadExit(tid, regs)
+	case nr == unix.SYS_OPENAT || nr == unix.SYS_OPENAT2:
+		t.handleOpenatExit(ctx, tid, regs)
+	case nr == unix.SYS_CONNECT:
+		t.handleConnectExit(tid, regs)
+	}
+}
+
+// handleOpenatExit verifies the opened path against policy and tracks
+// /proc/*/status fds for TracerPid masking.
+func (t *Tracer) handleOpenatExit(ctx context.Context, tid int, regs Regs) {
+	retVal := regs.ReturnValue()
+	if retVal < 0 {
+		return // open failed
+	}
+	fd := int(retVal)
+
+	t.mu.Lock()
+	state := t.tracees[tid]
+	var tgid int
+	var sessionID string
+	if state != nil {
+		tgid = state.TGID
+		sessionID = state.SessionID
+	}
+	t.mu.Unlock()
+
+	// Event-loop-only fields - no mutex needed.
+	nr := unix.SYS_OPENAT
+	openFlags := 0
+	openOp := "open"
+	entryAction := ""
+	if state != nil {
+		nr = state.LastNr
+		openFlags = state.LastOpenFlags
+		openOp = state.LastOpenOp
+		entryAction = state.LastFileAction
+	}
+
+	// Read the real path the kernel opened.
+	path, err := os.Readlink(fmt.Sprintf("/proc/%d/fd/%d", tid, fd))
+	if err != nil {
+		// Cannot verify - fail closed only when file policy is active.
+		if t.cfg.FileHandler != nil && t.cfg.TraceFile {
+			slog.Warn("handleOpenatExit: cannot read fd path, denying",
+				"tid", tid, "fd", fd, "error", err)
+			savedRegs := regs.Clone()
+			t.cleanupInjectedFD(tid, savedRegs, fd, -1)
+			t.applyReturnOverride(tid, -int64(unix.EACCES))
+		}
+		return
+	}
+
+	// Exit-time path verification: only re-check when entry-time allowed.
+	// If entry denied, the syscall was already blocked. If entry redirected
+	// or soft-deleted, the kernel operated on the modified path - exit-time
+	// readlink reflects that modified path, not a symlink bypass.
+	// No sessionID gate - consistent with entry-time handleFile which also
+	// calls HandleFile regardless of session state.
+	if t.cfg.FileHandler != nil && t.cfg.TraceFile &&
+		(entryAction == "allow" || entryAction == "continue" || entryAction == "") {
+		result := t.cfg.FileHandler.HandleFile(ctx, FileContext{
+			PID:       tgid,
+			SessionID: sessionID,
+			Syscall:   nr,
+			Path:      path,
+			Operation: openOp,
+			Flags:     openFlags,
+		})
+		action := result.Action
+		if action == "" {
+			if result.Allow {
+				action = "allow"
+			} else {
+				action = "deny"
+			}
+		}
+		// At exit time, only "allow" and "continue" are valid passes.
+		// Redirect/soft-delete cannot be enforced post-open - treat as deny.
+		if action != "allow" && action != "continue" {
+			errno := result.Errno
+			if errno == 0 {
+				errno = int32(unix.EACCES)
+			}
+			slog.Warn("handleOpenatExit: exit-time verification denied",
+				"tid", tid, "fd", fd, "path", path, "action", action)
+			savedRegs := regs.Clone()
+			t.cleanupInjectedFD(tid, savedRegs, fd, -1)
+			t.applyReturnOverride(tid, -int64(errno))
+			return // fd closed - skip TracerPid tracking
+		}
+	}
+
+	// TracerPid masking: track fds opened on /proc/*/status.
+	// Placed after exit-time verification to avoid stale entries if the
+	// fd is denied and closed above.
+	if t.fds != nil && t.cfg.MaskTracerPid && isProcStatus(path) {
+		t.fds.trackStatusFd(tgid, fd)
+		t.escalateReadForTGID(tgid, tid)
+	}
+}
+
+// handleConnectExit marks fds as TLS-watched after successful connect to TLS ports.
+func (t *Tracer) handleConnectExit(tid int, regs Regs) {
+	if t.fds == nil {
+		return
+	}
+
+	retVal := regs.ReturnValue()
+	// connect returns 0 on success, or -EINPROGRESS for non-blocking
+	if retVal != 0 && retVal != -int64(unix.EINPROGRESS) {
+		return
+	}
+
+	t.mu.Lock()
+	state := t.tracees[tid]
+	var tgid int
+	if state != nil {
+		tgid = state.TGID
+	}
+	t.mu.Unlock()
+
+	// Read the destination address from the connect args.
+	addrPtr := regs.Arg(1)
+	addrLen := int(regs.Arg(2))
+	if addrLen <= 0 || addrLen > 128 {
+		return
+	}
+
+	buf := make([]byte, addrLen)
+	if err := t.readBytes(tid, addrPtr, buf); err != nil {
+		return
+	}
+
+	_, address, port, err := parseSockaddr(buf)
+	if err != nil {
+		return
+	}
+
+	// Only watch TLS-relevant ports
+	if port != 443 && port != 853 {
+		return
+	}
+
+	fd := int(int32(regs.Arg(0)))
+
+	// Look up domain from DNS resolution cache
+	domain, ok := t.fds.domainForIP(address)
+	if !ok || domain == "" {
+		return // No domain known - skip TLS watch to avoid empty SNI rewrite
+	}
+	t.fds.watchTLS(tgid, fd, domain)
+	// Escalate BPF to trace write for this TGID.
+	t.escalateWriteForTGID(tgid, tid)
+}
+
+// escalateReadForTGID marks all threads in the TGID for read/pread64
+// escalation and injects the escalation filter into the triggering thread.
+func (t *Tracer) escalateReadForTGID(tgid int, triggerTID int) {
+	t.mu.Lock()
+	for _, s := range t.tracees {
+		if s.TGID == tgid {
+			s.NeedsReadEscalation = true
+		}
+	}
+	triggerState := t.tracees[triggerTID]
+	alreadyEscalated := triggerState != nil && triggerState.ThreadHasReadEscalation
+	hasPrefilter := triggerState != nil && triggerState.HasPrefilter
+	t.mu.Unlock()
+
+	if alreadyEscalated || !hasPrefilter {
+		return
+	}
+
+	if err := t.injectEscalationFilter(triggerTID, readEscalationSyscalls); err != nil {
+		slog.Warn("read escalation injection failed", "tid", triggerTID, "error", err)
+		return
+	}
+
+	t.mu.Lock()
+	if s := t.tracees[triggerTID]; s != nil {
+		s.ThreadHasReadEscalation = true
+	}
+	t.mu.Unlock()
+}
+
+// escalateWriteForTGID marks all threads in the TGID for write
+// escalation and injects the escalation filter into the triggering thread.
+func (t *Tracer) escalateWriteForTGID(tgid int, triggerTID int) {
+	t.mu.Lock()
+	for _, s := range t.tracees {
+		if s.TGID == tgid {
+			s.NeedsWriteEscalation = true
+		}
+	}
+	triggerState := t.tracees[triggerTID]
+	alreadyEscalated := triggerState != nil && triggerState.ThreadHasWriteEscalation
+	hasPrefilter := triggerState != nil && triggerState.HasPrefilter
+	t.mu.Unlock()
+
+	if alreadyEscalated || !hasPrefilter {
+		return
+	}
+
+	if err := t.injectEscalationFilter(triggerTID, writeEscalationSyscalls); err != nil {
+		slog.Warn("write escalation injection failed", "tid", triggerTID, "error", err)
+		return
+	}
+
+	t.mu.Lock()
+	if s := t.tracees[triggerTID]; s != nil {
+		s.ThreadHasWriteEscalation = true
+	}
+	t.mu.Unlock()
+}
+
+// handleNewChild processes a fork/clone/vfork event.
+func (t *Tracer) handleNewChild(parentTID int, event int) {
+	childTID, err := unix.PtraceGetEventMsg(parentTID)
+	if err != nil {
+		return
+	}
+	tid := int(childTID)
+
+	childTGID, err := readTGID(tid)
+	if err != nil {
+		slog.Warn("handleNewChild: cannot read TGID", "tid", tid, "error", err)
+		return
+	}
+
+	t.mu.Lock()
+	parent := t.tracees[parentTID]
+	if parent == nil {
+		t.mu.Unlock()
+		return
+	}
+
+	isNewProcess := childTGID != parent.TGID
+
+	// If a child-stop arrived before this parent event, a minimal state
+	// already exists and the initial SIGSTOP was already handled. Update
+	// metadata in place to preserve runtime fields (InSyscall, MemFD, etc.).
+	existing := t.tracees[tid]
+	if existing != nil {
+		existing.TGID = childTGID
+		existing.ParentPID = parent.TGID
+		existing.SessionID = parent.SessionID
+		existing.HasPrefilter = parent.HasPrefilter
+		// Children inherit parent's kernel filter stack via fork().
+		// Skip PendingPrefilter if parent already has a filter installed.
+		if parent.HasPrefilter {
+			existing.PendingPrefilter = false
+		} else {
+			existing.PendingPrefilter = parent.PendingPrefilter
+		}
+		existing.NeedsReadEscalation = parent.NeedsReadEscalation
+		existing.NeedsWriteEscalation = parent.NeedsWriteEscalation
+		existing.ThreadHasReadEscalation = parent.ThreadHasReadEscalation
+		existing.ThreadHasWriteEscalation = parent.ThreadHasWriteEscalation
+		// Overwrite the marker the procfs fallback may have inferred:
+		// findParentByTGID + readPPID is best-effort and can land on the
+		// wrong tracee. The kernel-authoritative parent from the fork
+		// event always wins so a stale SessionlessPIDAttach=true cannot
+		// turn HandleExecve into a silent allow for a real session bug.
+		existing.SessionlessPIDAttach = parent.SessionlessPIDAttach
+		existing.Attached = time.Now()
+	} else {
+		// Shared with the two minimal-state fallback paths in
+		// handleStop()/handleEventStop() so a child created via either
+		// path is byte-identical in enforcement state. The normal-
+		// path child here is created on the parent's PTRACE_EVENT_FORK
+		// before the child's initial SIGSTOP arrives, so suppress it.
+		t.tracees[tid] = seedChildStateFromParent(parent, tid, childTGID, true)
+	}
+	t.metrics.SetTraceeCount(len(t.tracees))
+	t.mu.Unlock()
+
+	if isNewProcess {
+		t.processTree.AddChild(parent.TGID, childTGID)
+	}
+}
+
+func (t *Tracer) markVforkChild(parentTID int) {
+	childTID, err := unix.PtraceGetEventMsg(parentTID)
+	if err != nil {
+		return
+	}
+	t.mu.Lock()
+	if state, ok := t.tracees[int(childTID)]; ok {
+		state.IsVforkChild = true
+	}
+	t.mu.Unlock()
+}
+
+func (t *Tracer) handleExecEvent(tid int) {
+	t.mu.Lock()
+	state := t.tracees[tid]
+	if state == nil {
+		t.mu.Unlock()
+		return
+	}
+	state.IsVforkChild = false
+	// Exec succeeded: the stub fd is now inherited by the new process.
+	// Clear PendingExecStubFD so the exit handler doesn't try to clean it up.
+	// The saved fd (if any) was also replaced by exec; discard it.
+	state.PendingExecStubFD = -1
+	state.PendingExecSavedFD = -1
+	// PTRACE_EVENT_EXEC fires between execve's syscall-enter and exit.
+	// When TraceExecve is true, the seccomp prefilter traps execve at
+	// entry (setting InSyscall=true via handleSeccompStop). The exec
+	// event then fires with InSyscall already true. Keeping it true
+	// ensures the next SIGTRAP|0x80 is correctly identified as an exit.
+	//
+	// When TraceExecve is false (hybrid mode), the prefilter returns
+	// ALLOW for execve - no seccomp entry stop fires. We must
+	// explicitly set InSyscall=true here so the state is consistent.
+	// With PtraceCont resume (prefilter active), the kernel skips the
+	// exit stop entirely, so the next stop will be a fresh seccomp
+	// entry which resets InSyscall=true anyway. But setting it here
+	// keeps the state correct for any code that checks between stops.
+	if state.HasPrefilter && !t.cfg.TraceExecve {
+		state.InSyscall = true
+	}
+
+	formerTID, err := unix.PtraceGetEventMsg(tid)
+	if err == nil && int(formerTID) != tid {
+		delete(t.tracees, int(formerTID))
+	}
+
+	tgid := state.TGID
+	for otherTID, otherState := range t.tracees {
+		if otherState.TGID == tgid && otherTID != tid {
+			if otherState.MemFD >= 0 {
+				unix.Close(otherState.MemFD)
+			}
+			delete(t.tracees, otherTID)
+		}
+	}
+
+	// Exec replaces the process address space, so reopen /proc/<tid>/mem
+	// to get a fresh fd pointing to the new address space.
+	if state.MemFD >= 0 {
+		unix.Close(state.MemFD)
+		state.MemFD = -1
+	}
+	fd, err := unix.Open(fmt.Sprintf("/proc/%d/mem", tid), unix.O_RDWR, 0)
+	if err != nil {
+		slog.Warn("handleExecEvent: O_RDWR open failed, trying O_RDONLY", "tid", tid, "error", err)
+		fd, _ = unix.Open(fmt.Sprintf("/proc/%d/mem", tid), unix.O_RDONLY, 0)
+	}
+	state.MemFD = fd
+
+	t.metrics.SetTraceeCount(len(t.tracees))
+	t.mu.Unlock()
+
+	// Phase 4b: exec resets fd table, clear all fd tracking for this TGID.
+	if t.fds != nil {
+		t.fds.clearTGID(tgid)
+	}
+
+	// Exec replaces the process address space, invalidating any scratch page.
+	t.invalidateScratchPage(tgid)
+}
+
+// shouldDetachAfterExec checks whether a tracee should be detached after exec.
+// Returns true if: parent is traced, no exitNotify registered, no seccomp
+// prefilter.  Without a prefilter the child doesn't inherit a SECCOMP_RET_TRACE
+// filter, so detaching is safe and prevents pipe deadlocks between two ptraced
+// processes on gVisor.
+func (t *Tracer) shouldDetachAfterExec(tid int) bool {
+	t.mu.Lock()
+	state := t.tracees[tid]
+	if state == nil {
+		t.mu.Unlock()
+		return false
+	}
+	// Don't detach if seccomp prefilter is active - child inherits the
+	// SECCOMP_RET_TRACE filter and would get ENOSYS without a tracer.
+	if state.HasPrefilter {
+		t.mu.Unlock()
+		return false
+	}
+	tgid := state.TGID
+	parentTraced := false
+	if state.ParentPID != 0 {
+		for otherTID, other := range t.tracees {
+			if otherTID != tid && other.TGID == state.ParentPID {
+				parentTraced = true
+				break
+			}
+		}
+	}
+	t.mu.Unlock()
+
+	_, hasExitNotify := t.exitNotify.Load(tgid)
+	return parentTraced && !hasExitNotify
+}
+
+// handleExitEvent decides whether to detach or resume a tracee that hit
+// PTRACE_EVENT_EXIT.  On gVisor, the sentry's two-phase exit notification
+// re-delivery is unreliable: if a traced child exits, the traced parent's
+// wait4 may block forever.  Detaching auto-traced children whose parent is
+// also traced lets the parent reap them directly.
+func (t *Tracer) handleExitEvent(tid int) {
+	t.mu.Lock()
+	state := t.tracees[tid]
+	if state == nil {
+		t.mu.Unlock()
+		t.resumeTracee(tid, 0)
+		return
+	}
+	tgid := state.TGID
+	parentTraced := false
+	if state.ParentPID != 0 {
+		for otherTID, other := range t.tracees {
+			if otherTID != tid && other.TGID == state.ParentPID {
+				parentTraced = true
+				break
+			}
+		}
+	}
+	t.mu.Unlock()
+
+	// Never detach processes with a registered exit notification -
+	// the exec API is blocking on that channel.
+	_, hasExitNotify := t.exitNotify.Load(tgid)
+
+	if parentTraced && !hasExitNotify {
+		// Detach so the traced parent can reap the child directly,
+		// bypassing gVisor's two-phase exit notification re-delivery.
+		// Detach first: if it fails with anything other than ESRCH
+		// (process already gone), fall back to the normal resume path
+		// so the tracee stays tracked.
+		if err := unix.PtraceDetach(tid); err != nil && err != unix.ESRCH {
+			slog.Warn("ptrace: detach on exit failed, resuming instead", "tid", tid, "err", err)
+			t.resumeTracee(tid, 0)
+			return
+		}
+		t.traceResume(tid, "detach-on-exit", 0)
+		t.handleExit(tid, unix.WaitStatus(0), nil, ExitVanished)
+		return
+	}
+
+	t.resumeTracee(tid, 0)
+}
+
+func (t *Tracer) handleExit(tid int, status unix.WaitStatus, rusage *unix.Rusage, reason ExitReason) {
+	t.mu.Lock()
+	state := t.tracees[tid]
+	var tgid int
+	lastThread := true
+	if state != nil {
+		tgid = state.TGID
+		if state.MemFD >= 0 {
+			unix.Close(state.MemFD)
+		}
+		delete(t.tracees, tid)
+		if _, parked := t.parkedTracees[tid]; parked {
+			delete(t.parkedTracees, tid)
+			slog.Warn("ptrace: parked tracee exited before approval", "tid", tid)
+		}
+		// Check if any remaining threads belong to the same TGID.
+		for _, other := range t.tracees {
+			if other.TGID == tgid {
+				lastThread = false
+				break
+			}
+		}
+		t.metrics.SetTraceeCount(len(t.tracees))
+	}
+	t.mu.Unlock()
+
+	if state != nil && lastThread {
+		if v, ok := t.exitNotify.LoadAndDelete(tgid); ok {
+			ch := v.(chan ExitStatus)
+			// Deep-copy rusage to avoid aliasing the loop-local variable
+			// in Run() which gets reused on subsequent Wait4 iterations.
+			var ruCopy *unix.Rusage
+			if rusage != nil {
+				ru := *rusage
+				ruCopy = &ru
+			}
+			es := ExitStatus{
+				PID:    tgid,
+				Reason: reason,
+				Rusage: ruCopy,
+			}
+			if status.Exited() {
+				es.Code = status.ExitStatus()
+			} else if status.Signaled() {
+				es.Signal = int(status.Signal())
+			}
+			traceNote("exit", "notify", tgid)
+			ch <- es
+		}
+		if t.fds != nil {
+			t.fds.clearTGID(tgid)
+		}
+		t.invalidateScratchPage(tgid)
+	}
+}
+
+func (t *Tracer) handleEventStop(tid int) {
+	t.mu.Lock()
+	state := t.tracees[tid]
+	if state != nil && state.PendingInterrupt {
+		state.PendingInterrupt = false
+		t.mu.Unlock()
+		t.resumeTracee(tid, 0)
+		return
+	}
+	hasState := state != nil
+	t.mu.Unlock()
+
+	// This handler is only reached when sig == SIGTRAP (see handleStop
+	// dispatcher). Group-stops under PTRACE_SEIZE have the actual stopping
+	// signal (SIGSTOP/SIGTSTP/etc.) as StopSignal, so they fall into the
+	// default signal handler and never reach here. That means we only see
+	// two kinds of PTRACE_EVENT_STOP with SIGTRAP:
+	//   1. Initial auto-attach stops for children traced via
+	//      PTRACE_O_TRACEFORK/VFORK/CLONE.
+	//   2. PTRACE_INTERRUPT-induced stops (handled above via PendingInterrupt).
+	// Both are correctly resumed with PtraceSyscall/PtraceCont; PTRACE_LISTEN
+	// is not needed here.
+	if !hasState {
+		// Create minimal state so the child doesn't get lost. Seed full
+		// enforcement state from the parent via seedChildStateFromParent
+		// (see the matching block higher up in handleStop() and the
+		// helper doc for the full rationale). suppressInitialStop=false
+		// because the initial stop has already been dispatched here.
+		childTGID, _ := readTGID(tid)
+		if childTGID == 0 {
+			childTGID = tid
+		}
+		parentPID, _ := readPPID(tid)
+		t.mu.Lock()
+		if _, exists := t.tracees[tid]; !exists {
+			parent := findParentByTGID(t.tracees, parentPID)
+			t.tracees[tid] = seedChildStateFromParent(parent, tid, childTGID, false)
+			t.metrics.SetTraceeCount(len(t.tracees))
+		}
+		t.mu.Unlock()
+	}
+
+	t.resumeTracee(tid, 0)
+}
+
+// handleExecve intercepts execve/execveat syscalls for policy evaluation.
+func (t *Tracer) handleExecve(ctx context.Context, tid int, sc *SyscallContext) {
+	if t.cfg.ExecHandler == nil || !t.cfg.TraceExecve {
+		t.allowSyscall(tid)
+		return
+	}
+
+	nr := sc.Info.Nr
+	var filenamePtr uint64
+	if nr == unix.SYS_EXECVEAT {
+		filenamePtr = sc.Info.Args[1]
+	} else {
+		filenamePtr = sc.Info.Args[0]
+	}
+
+	filename, err := t.readString(tid, filenamePtr, 4096)
+	if err != nil {
+		slog.Warn("handleExecve: cannot read filename", "tid", tid, "error", err)
+		t.allowSyscall(tid)
+		return
+	}
+
+	var argvPtr uint64
+	if nr == unix.SYS_EXECVEAT {
+		argvPtr = sc.Info.Args[2]
+	} else {
+		argvPtr = sc.Info.Args[1]
+	}
+
+	argv, truncated, err := t.readArgv(tid, argvPtr, 1000, 65536)
+	if err != nil {
+		slog.Warn("handleExecve: cannot read argv", "tid", tid, "error", err)
+		t.allowSyscall(tid)
+		return
+	}
+
+	t.mu.Lock()
+	state := t.tracees[tid]
+	var tgid, parentPID int
+	var sessionID string
+	var sessionlessPIDAttach bool
+	if state != nil {
+		tgid = state.TGID
+		parentPID = state.ParentPID
+		sessionID = state.SessionID
+		sessionlessPIDAttach = state.SessionlessPIDAttach
+	}
+	t.mu.Unlock()
+
+	// Reset scratch page so exec redirect operations start fresh.
+	t.resetScratchIfPresent(tgid)
+
+	depth := t.processTree.Depth(tgid)
+
+	result := t.cfg.ExecHandler.HandleExecve(ctx, ExecContext{
+		PID:                  tgid,
+		ParentPID:            parentPID,
+		Filename:             filename,
+		Argv:                 argv,
+		Truncated:            truncated,
+		SessionID:            sessionID,
+		Depth:                depth,
+		SessionlessPIDAttach: sessionlessPIDAttach,
+	})
+
+	// Dispatch based on Action field (preferred) or Allow field (legacy fallback).
+	action := result.Action
+	if action == "" {
+		if result.Allow {
+			action = "allow"
+		} else {
+			action = "deny"
+		}
+	}
+
+	switch action {
+	case "allow", "continue":
+		t.allowSyscall(tid)
+	case "deny":
+		errno := result.Errno
+		if errno == 0 {
+			errno = int32(unix.EACCES)
+		}
+		t.denySyscall(tid, int(errno))
+	case "redirect":
+		regs, err := sc.Regs()
+		if err != nil {
+			slog.Warn("handleExecve: cannot load regs for redirect, denying", "tid", tid, "error", err)
+			t.denySyscall(tid, int(unix.EACCES))
+			return
+		}
+		t.redirectExec(ctx, tid, regs, result, ExecContext{
+			Filename: filename,
+			Argv:     argv,
+		})
+	default:
+		slog.Warn("handleExecve: unknown action, denying", "tid", tid, "action", action)
+		t.denySyscall(tid, int(unix.EACCES))
+	}
+}
+
+// Run starts the ptrace event loop.
+func (t *Tracer) Run(ctx context.Context) error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	defer t.cancelPendingAttachWaiters()
+	defer t.cancelPendingExitWaiters()
+
+	initPtraceTrace()
+	t.runThreadTID = unix.Gettid()
+	t.lastProgressNanos.Store(time.Now().UnixNano())
+
+	// External wedge watchdog (#369 #2): detects ptrace-stopped-but-unadvanced
+	// tracees by /proc ground truth from OUTSIDE this loop, and force-recovers
+	// them so a blocked exec returns instead of hanging. Runs for the lifetime
+	// of the tracer.
+	go t.runStuckTraceeWatchdog(ctx)
+
+	t.hasSyscallInfo = probePtraceSyscallInfo()
+	if t.hasSyscallInfo {
+		slog.Info("ptrace: PTRACE_GET_SYSCALL_INFO supported")
+	}
+
+	t.fds = newFdTracker()
+	if t.cfg.TraceNetwork && t.cfg.NetworkHandler != nil {
+		proxy, err := newDNSProxy(t.cfg.NetworkHandler, t.fds)
+		if err != nil {
+			slog.Warn("ptrace: failed to start DNS proxy", "error", err)
+		} else {
+			t.dnsProxy = proxy
+			go t.dnsProxy.run(ctx)
+			slog.Info("ptrace: DNS proxy started", "addr4", t.dnsProxy.addr4(), "addr6", t.dnsProxy.addr6())
+		}
+	}
+
+	// Reusable idle timer to avoid per-iteration allocation from time.After.
+	idleTimer := time.NewTimer(5 * time.Millisecond)
+	defer idleTimer.Stop()
+
+	for {
+		if err := t.drainQueues(ctx); err != nil {
+			return err
+		}
+
+		// Sweep parked timeouts on every iteration so enforcement is not
+		// load-dependent (previously only ran on the idle path).
+		t.sweepParkedTimeouts()
+
+		if !t.readyFileWritten && t.TraceeCount() > 0 {
+			t.writeReadyFile()
+		}
+
+		var status unix.WaitStatus
+		var rusage unix.Rusage
+		traceWaitCall("run", -1)
+		tid, err := unix.Wait4(-1, &status, unix.WALL|unix.WNOHANG, &rusage)
+		traceWaitRet("run", tid, status, err)
+
+		if err != nil {
+			if err == unix.EINTR {
+				continue
+			}
+			if err == unix.ECHILD {
+				// ECHILD means the kernel reports no waitable children/tracees.
+				// If we still track tracees, this is the #369 #2 stolen-exit
+				// anomaly: the child's exit was reaped out from under us (Go
+				// runtime / cmd.Wait racing our Wait4 - see attachThread), so
+				// handleExit never ran and the exec's waitFn blocks forever on
+				// its exit channel. Recover instead of parking: reap tracees that
+				// have vanished from /proc (which unblocks their waiters), run the
+				// wedge diagnostics, and re-poll on the idle timer so a transient
+				// ECHILD cannot wedge the loop. Only block efficiently (the
+				// original behaviour) when there are genuinely no tracees left.
+				if t.TraceeCount() > 0 {
+					if t.onEchildWithTracees() > 0 {
+						t.echildSpins = 0
+					} else {
+						t.echildSpins++
+					}
+					select {
+					case <-ctx.Done():
+						return ctx.Err()
+					case <-t.stopped:
+						return nil
+					case req := <-t.attachQueue:
+						t.serviceAttachReq(req)
+					case req := <-t.resumeQueue:
+						t.handleResumeRequest(req)
+					case <-idleTimer.C:
+					}
+					if !idleTimer.Stop() {
+						select {
+						case <-idleTimer.C:
+						default:
+						}
+					}
+					idleTimer.Reset(echildBackoff(t.echildSpins))
+					continue
+				}
+				// No tracees tracked. An exec may still be blocked on an
+				// exit-notify channel for a child whose exit we never saw (it
+				// vanished from /proc - reaped before we did). Reconcile pending
+				// exit-notify registrations against /proc and unblock any whose
+				// pid is gone. While execs are still pending, re-poll on a timer
+				// so a lost attach/resume wakeup can never wedge the loop here
+				// (this no-timer park is where rc10 - rc12 hung - #369 #2). Only
+				// block indefinitely when nothing at all is in flight.
+				t.reconcileExitNotify()
+				if t.hasPendingExitNotify() {
+					t.onIdleParkWithPending()
+					select {
+					case <-ctx.Done():
+						return ctx.Err()
+					case <-t.stopped:
+						return nil
+					case req := <-t.attachQueue:
+						t.serviceAttachReq(req)
+					case req := <-t.resumeQueue:
+						t.handleResumeRequest(req)
+					case <-idleTimer.C:
+					}
+					if !idleTimer.Stop() {
+						select {
+						case <-idleTimer.C:
+						default:
+						}
+					}
+					idleTimer.Reset(idleEchildRepoll)
+					continue
+				}
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-t.stopped:
+					return nil
+				case req := <-t.attachQueue:
+					t.serviceAttachReq(req)
+					continue
+				case req := <-t.resumeQueue:
+					t.handleResumeRequest(req)
+					continue
+				}
+			}
+			return fmt.Errorf("wait4: %w", err)
+		}
+
+		if tid == 0 {
+			t.scanWedged()
+			t.reconcileProc()
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-t.stopped:
+				return nil
+			case req := <-t.attachQueue:
+				t.serviceAttachReq(req)
+			case req := <-t.resumeQueue:
+				t.handleResumeRequest(req)
+			case <-idleTimer.C:
+			}
+			if !idleTimer.Stop() {
+				select {
+				case <-idleTimer.C:
+				default:
+				}
+			}
+			idleTimer.Reset(5 * time.Millisecond)
+			continue
+		}
+
+		t.echildSpins = 0
+		t.traceStop(tid, status)
+		t.handleStop(ctx, tid, status, &rusage)
+	}
+}
+
+// Start implements the SyscallTracer interface.
+func (t *Tracer) Start(ctx context.Context) error {
+	return t.Run(ctx)
+}
+
+// Stop signals the event loop to exit.
+func (t *Tracer) Stop() {
+	select {
+	case <-t.stopped:
+	default:
+		close(t.stopped)
+	}
+}
+
+// serviceAttachReq processes one queued attach request and signals its waiter.
+func (t *Tracer) serviceAttachReq(req attachRequest) {
+	traceNote("attach", "recv", req.pid)
+	if err := t.attachProcess(req.pid, req.opts); err != nil {
+		slog.Error("attach from queue failed", "pid", req.pid, "error", err)
+		traceNote("attach", "attach-failed", req.pid)
+		t.signalAttachDone(req.pid, err)
+	} else {
+		traceNote("attach", "attached", req.pid)
+		t.signalAttachDone(req.pid, nil)
+	}
+}
+
+// idleEchildRepoll is how often the genuine-idle (no tracees) ECHILD path
+// re-polls Wait4 while execs are still pending, so a lost attach/resume wakeup
+// or a vanished-but-registered exec cannot wedge the loop. Slower than the
+// active 5ms tick because nothing is running to wait on.
+const idleEchildRepoll = 50 * time.Millisecond
+
+// hasPendingExitNotify reports whether any exec is still waiting on an
+// exit-notify channel (i.e. there is in-flight work the loop must not abandon).
+func (t *Tracer) hasPendingExitNotify() bool {
+	pending := false
+	t.exitNotify.Range(func(_, _ any) bool {
+		pending = true
+		return false
+	})
+	return pending
+}
+
+// reconcileExitNotify unblocks execs whose child has vanished. When an exec's
+// registered pid no longer exists in /proc but its exit was never delivered to
+// us (reaped out from under the tracer, or processed without firing the notify),
+// the exec's waitFn blocks forever. Signal ExitVanished for any registered pid
+// that is gone from /proc. This is the no-tracee analog of recoverVanishedTracees
+// and targets the rc12 wedge where the loop parks idle (TraceeCount==0) while an
+// exec is still waiting (#369 #2). Throttled. Returns the count recovered.
+func (t *Tracer) reconcileExitNotify() int {
+	now := time.Now()
+	if now.Sub(t.lastExitRecon) < 200*time.Millisecond {
+		return 0
+	}
+	t.lastExitRecon = now
+
+	var gone []int
+	t.exitNotify.Range(func(k, _ any) bool {
+		pid, ok := k.(int)
+		if ok && !procExists(pid) {
+			gone = append(gone, pid)
+		}
+		return true
+	})
+
+	recovered := 0
+	for _, pid := range gone {
+		v, ok := t.exitNotify.LoadAndDelete(pid)
+		if !ok {
+			continue // handleExit won the race and already delivered the real exit
+		}
+		slog.Warn("ptrace: recovering vanished exec - registered pid gone from /proc, no exit delivered (#369 #2)", "pid", pid)
+		traceNote("exit", "recover-vanished", pid)
+		select {
+		case v.(chan ExitStatus) <- ExitStatus{PID: pid, Reason: ExitVanished}:
+		default:
+		}
+		recovered++
+	}
+	return recovered
+}
+
+// onIdleParkWithPending surfaces the suspicious case where the loop is about to
+// park idle (no tracees) while execs are still pending - the rc10 - rc12 wedge
+// shape. Throttled to once/second; dumps the trace ring when tracing is enabled.
+func (t *Tracer) onIdleParkWithPending() {
+	now := time.Now()
+	if now.Sub(t.idleParkLog) < time.Second {
+		return
+	}
+	t.idleParkLog = now
+	slog.Warn("ptrace: idle ECHILD park with execs still pending - re-polling (#369 #2)")
+	if ptraceTraceOn() {
+		t.dumpTraceRing("idle-echild-pending")
+	}
+}
+
+// onEchildWithTracees handles the #369 #2 anomaly: Wait4(-1) returned ECHILD even
+// though we still track tracees. It reaps tracees that have vanished from /proc
+// (recovering stolen exits), also reconciles pending exit-notify registrations,
+// surfaces the anomaly at WARN (throttled to once per second so a genuinely-stuck
+// tracee does not spam), and runs the wedge diagnostics. Returns the number of
+// stolen exits recovered. Run goroutine only.
+func (t *Tracer) onEchildWithTracees() int {
+	recovered := t.recoverVanishedTracees()
+	recovered += t.reconcileExitNotify()
+
+	now := time.Now()
+	if now.Sub(t.lastEchildLog) >= time.Second {
+		t.lastEchildLog = now
+		slog.Warn("ptrace: Wait4 ECHILD while tracees tracked - stolen-exit/wedge anomaly (#369 #2)",
+			"tracee_count", t.TraceeCount(), "recovered", recovered)
+		if ptraceTraceOn() {
+			t.dumpTraceRing("echild-with-tracees")
+		}
+	}
+
+	t.scanWedged()
+	t.reconcileProc()
+	return recovered
+}
+
+// echildBackoff maps the count of consecutive ECHILD-with-tracees ticks that
+// recovered nothing to a re-poll delay. Early ticks stay at 5ms so a transient
+// ECHILD or a freshly-vanished tracee is caught fast; a persistent wedge (no
+// recovery possible) backs off to 250ms so the loop doesn't spin at ~200 Hz.
+func echildBackoff(spins int) time.Duration {
+	switch {
+	case spins <= 4:
+		return 5 * time.Millisecond
+	case spins <= 8:
+		return 25 * time.Millisecond
+	case spins <= 16:
+		return 100 * time.Millisecond
+	default:
+		return 250 * time.Millisecond
+	}
+}
+
+// recoverVanishedTracees reaps tracees that have vanished from /proc. When
+// Wait4(-1) returns ECHILD but we still track a tracee, that tracee's exit was
+// reaped out from under us (Go runtime / cmd.Wait racing our Wait4 - see
+// attachThread). Our handleExit never ran, so its exit notification never fired
+// and the exec's waitFn blocks forever on its exit channel. Synthesize the exit
+// (ExitVanished) so the waiter unblocks. Returns the count recovered.
+func (t *Tracer) recoverVanishedTracees() int {
+	t.mu.Lock()
+	tids := make([]int, 0, len(t.tracees))
+	for tid := range t.tracees {
+		tids = append(tids, tid)
+	}
+	t.mu.Unlock()
+
+	recovered := 0
+	for _, tid := range tids {
+		if procExists(tid) {
+			continue // still present (running or ptrace-stopped) - not a stolen exit
+		}
+		slog.Warn("ptrace: recovering stolen exit - tracee vanished from /proc under ECHILD (#369 #2)", "tid", tid)
+		t.handleExit(tid, unix.WaitStatus(0), nil, ExitVanished)
+		recovered++
+	}
+	return recovered
+}
+
+func (t *Tracer) drainQueues(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-t.stopped:
+			return fmt.Errorf("tracer stopped")
+		case req := <-t.attachQueue:
+			t.serviceAttachReq(req)
+		case req := <-t.resumeQueue:
+			t.handleResumeRequest(req)
+		default:
+			return nil
+		}
+	}
+}
+
+// sweepParkedTimeouts denies parked tracees that have exceeded max_hold_ms.
+func (t *Tracer) sweepParkedTimeouts() {
+	if t.cfg.MaxHoldMs <= 0 {
+		return
+	}
+	maxDuration := time.Duration(t.cfg.MaxHoldMs) * time.Millisecond
+
+	t.mu.Lock()
+	var expired []int
+	for tid := range t.parkedTracees {
+		state := t.tracees[tid]
+		if state == nil {
+			// Tracee already exited - clean up stale parking entry.
+			delete(t.parkedTracees, tid)
+			continue
+		}
+		if !state.ParkedAt.IsZero() && time.Since(state.ParkedAt) > maxDuration {
+			expired = append(expired, tid)
+		}
+	}
+	t.mu.Unlock()
+
+	for _, tid := range expired {
+		slog.Warn("ptrace: max_hold_ms timeout, denying syscall",
+			"tid", tid,
+			"max_hold_ms", t.cfg.MaxHoldMs,
+		)
+
+		resolved := false
+		if err := t.denySyscall(tid, int(unix.EACCES)); err != nil {
+			slog.Error("ptrace: deny after timeout failed, killing tracee",
+				"tid", tid, "error", err)
+			t.mu.Lock()
+			state := t.tracees[tid]
+			tgid := tid
+			if state != nil {
+				tgid = state.TGID
+			}
+			t.mu.Unlock()
+			if err := unix.Tgkill(tgid, tid, unix.SIGKILL); err != nil {
+				if errors.Is(err, unix.ESRCH) {
+					// Tracee already gone.
+					t.handleExit(tid, unix.WaitStatus(0), nil, ExitVanished)
+					resolved = true
+				} else {
+					slog.Error("ptrace: kill after timeout also failed, will retry",
+						"tid", tid, "error", err)
+				}
+			} else {
+				resolved = true
+			}
+		} else {
+			resolved = true
+		}
+
+		if resolved {
+			t.metrics.IncTimeout()
+			t.mu.Lock()
+			delete(t.parkedTracees, tid)
+			if state, ok := t.tracees[tid]; ok {
+				state.ParkedAt = time.Time{}
+			}
+			t.mu.Unlock()
+		}
+	}
+}
+
+func (t *Tracer) handleResumeRequest(req resumeRequest) {
+	t.mu.Lock()
+	_, parked := t.parkedTracees[req.TID]
+	if parked {
+		delete(t.parkedTracees, req.TID)
+	}
+	state := t.tracees[req.TID]
+	if state != nil {
+		state.ParkedAt = time.Time{}
+	}
+	t.mu.Unlock()
+
+	if !parked {
+		slog.Warn("resume request for non-parked tracee", "tid", req.TID)
+		return
+	}
+
+	if state == nil {
+		slog.Warn("resume request for exited tracee, skipping", "tid", req.TID)
+		return
+	}
+
+	if req.Allow {
+		t.allowSyscall(req.TID)
+	} else {
+		t.denySyscall(req.TID, req.Errno)
+	}
+}

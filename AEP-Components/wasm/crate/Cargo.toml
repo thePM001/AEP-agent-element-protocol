@@ -1,0 +1,30 @@
+[package]
+name = "aep-wasm-sandbox"
+description = "WASM policy sandbox for AEP 2.8 Layer-2 isolation (lattice channel socket)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "aep_wasm_sandbox"
+path = "src/lib.rs"
+
+[[bin]]
+name = "aep-wasm-sandbox"
+path = "src/main.rs"
+
+[dependencies]
+aep-lattice-channel = { path = "../../lattice-channels/crate" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+rusqlite.workspace = true
+sha2.workspace = true
+hex.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "io-util", "signal"] }
+tracing.workspace = true
+tracing-subscriber.workspace = true
+wasmtime = "28"
+
+[dev-dependencies]
+tempfile = "3"

@@ -1,0 +1,1338 @@
+package server
+
+import (
+	"context"
+	"crypto/tls"
+	"errors"
+	"fmt"
+	"io"
+	"log/slog"
+	"net"
+	"net/http"
+	"net/http/pprof"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"runtime"
+	"strconv"
+	"strings"
+	"sync/atomic"
+	"syscall"
+	"time"
+
+	"github.com/nla-aep/aep-caw-framework/internal/api"
+	"github.com/nla-aep/aep-caw-framework/internal/approvals"
+	"github.com/nla-aep/aep-caw-framework/internal/audit"
+	"github.com/nla-aep/aep-caw-framework/internal/auth"
+	"github.com/nla-aep/aep-caw-framework/internal/capabilities"
+	"github.com/nla-aep/aep-caw-framework/internal/config"
+	"github.com/nla-aep/aep-caw-framework/internal/events"
+	limitspkg "github.com/nla-aep/aep-caw-framework/internal/limits"
+	"github.com/nla-aep/aep-caw-framework/internal/mcpregistry"
+	"github.com/nla-aep/aep-caw-framework/internal/metrics"
+	"github.com/nla-aep/aep-caw-framework/internal/ocsf"
+	"github.com/nla-aep/aep-caw-framework/internal/pkgcheck"
+	"github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/nla-aep/aep-caw-framework/internal/session"
+	"github.com/nla-aep/aep-caw-framework/internal/skillcheck"
+	"github.com/nla-aep/aep-caw-framework/internal/skillcheck/cache"
+	storepkg "github.com/nla-aep/aep-caw-framework/internal/store"
+	"github.com/nla-aep/aep-caw-framework/internal/store/composite"
+	"github.com/nla-aep/aep-caw-framework/internal/store/jsonl"
+	otelstore "github.com/nla-aep/aep-caw-framework/internal/store/otel"
+	"github.com/nla-aep/aep-caw-framework/internal/store/sqlite"
+	"github.com/nla-aep/aep-caw-framework/internal/store/webhook"
+	"github.com/nla-aep/aep-caw-framework/internal/threatfeed"
+	"github.com/nla-aep/aep-caw-framework/internal/tor"
+	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/google/uuid"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+)
+
+type Server struct {
+	httpServer *http.Server
+	httpLn     net.Listener
+
+	unixServer *http.Server
+	unixLn     net.Listener
+	unixPath   string
+
+	grpcServer *grpc.Server
+	grpcLn     net.Listener
+
+	store    *composite.Store
+	broker   *events.Broker
+	sessions *session.Manager
+
+	fatalAuditErr chan error
+
+	sessionTimeout time.Duration
+	idleTimeout    time.Duration
+	reapInterval   time.Duration
+
+	pprofLn     net.Listener
+	pprofServer *http.Server
+
+	threatSyncer *threatfeed.Syncer
+	threatStore  *threatfeed.Store
+
+	torSyncer *tor.Syncer
+
+	skillcheckDaemon *skillcheck.Daemon // nil when skillcheck.enabled=false
+
+	app *api.App // for lifecycle management (ptrace tracer shutdown)
+
+	kmsProvider io.Closer // audit/kms.Provider for HMAC key lifecycle
+
+	// policySockCancel cancels the policy socket server context (macOS only).
+	policySockCancel context.CancelFunc
+	// policySockDone is closed when the policy socket server goroutine exits.
+	policySockDone chan struct{}
+
+	// cmdResolver is set on darwin to resolve PID→command_id for ESF events.
+	// Nil on non-darwin platforms.
+	cmdResolver interface {
+		RegisterCommand(pid int32, commandID string)
+	}
+
+	// sessionTracker is set on darwin to register PIDs with sessions for ESF.
+	// Nil on non-darwin platforms.
+	sessionTracker interface {
+		RegisterProcess(sessionID string, pid, ppid int32)
+	}
+}
+
+func New(cfg *config.Config) (*Server, error) {
+	var kmsProvider io.Closer
+	var kmsCloser func() error
+
+	if cfg == nil {
+		return nil, fmt.Errorf("config is nil")
+	}
+
+	// Safety: approvals via API require authentication. Otherwise an agent could self-approve
+	// by calling the approvals endpoints on localhost.
+	if cfg.Approvals.Enabled && strings.EqualFold(strings.TrimSpace(cfg.Approvals.Mode), "api") {
+		if cfg.Development.DisableAuth || strings.EqualFold(strings.TrimSpace(cfg.Auth.Type), "none") {
+			return nil, fmt.Errorf("approvals.mode=api requires auth.type=api_key (auth is disabled)")
+		}
+	}
+	if cfg.Approvals.Enabled && strings.EqualFold(strings.TrimSpace(cfg.Approvals.Mode), "webauthn") {
+		if cfg.Development.DisableAuth || strings.EqualFold(strings.TrimSpace(cfg.Auth.Type), "none") {
+			return nil, fmt.Errorf("approvals.mode=webauthn requires authentication (auth is disabled)")
+		}
+	}
+
+	// Check that required kernel capabilities are available for enabled features.
+	// This catches issues like running in a VM/container that doesn't support
+	// ptrace, seccomp user-notify, or eBPF.
+	if err := capabilities.CheckAll(cfg); err != nil {
+		return nil, err
+	}
+
+	// Ensure data directories exist before opening stores/listeners.
+	for _, dir := range []string{
+		filepath.Dir(cfg.Server.UnixSocket.Path),
+		cfg.Sessions.BaseDir,
+		filepath.Dir(cfg.Audit.Output),
+		filepath.Dir(cfg.Audit.Storage.SQLitePath),
+		filepath.Dir(cfg.Logging.Output),
+	} {
+		if dir != "" && dir != "." {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				return nil, fmt.Errorf("create data directory %s: %w", dir, err)
+			}
+		}
+	}
+
+	// These config-schema invariants are also enforced by config.validateConfig
+	// (run by config.Load), so `aep-caw config validate` catches them pre-deploy
+	// (issue #376). The calls here are defense-in-depth for any server built from
+	// a config that did not pass through config.Load. New config-schema invariants
+	// belong in config.validateConfig, not here.
+	if err := cfg.Sandbox.Validate(); err != nil {
+		return nil, fmt.Errorf("sandbox config: %w", err)
+	}
+
+	if err := cfg.Policies.Signing.Validate(); err != nil {
+		return nil, fmt.Errorf("signing config: %w", err)
+	}
+
+	pm := policy.NewManager(
+		cfg.Policies.Dir,
+		cfg.Policies.Default,
+		cfg.Policies.Allowed,
+		cfg.Policies.ManifestPath,
+		os.Getenv("AEP_CAW_POLICY_NAME"),
+	)
+	pm.SetSigningConfig(cfg.Policies.Signing.SigningMode(), cfg.Policies.Signing.TrustStore)
+	p, err := pm.Get()
+	if err != nil {
+		return nil, err
+	}
+	enforceApprovals := cfg.Approvals.Enabled
+	engine, err := policy.NewEngine(p, enforceApprovals, true)
+	if err != nil {
+		return nil, err
+	}
+
+	// appHolder is captured by the WTP policy install hook so it can
+	// swap the App's policy engine atomically after a verified push.
+	// The App itself doesn't exist yet - it's stored further down once
+	// constructed. Until that store, the hook installs the policy file
+	// + sig but skips the engine swap (the App's first Manager.Get on
+	// the new session picks up the freshly-written file).
+	appHolder := &atomic.Pointer[api.App]{}
+
+	// Threat feed (optional).
+	var threatStore *threatfeed.Store
+	var threatSyncer *threatfeed.Syncer
+	if cfg.ThreatFeeds.Enabled {
+		cacheDir := cfg.ThreatFeeds.CacheDir
+		if cacheDir == "" {
+			cacheDir = filepath.Join(config.GetDataDir(), "threat-feeds")
+		}
+		threatStore = threatfeed.NewStore(cacheDir, cfg.ThreatFeeds.Allowlist)
+		if err := threatStore.LoadFromDisk(); err != nil {
+			slog.Warn("threat feed cache load failed", "error", err)
+		} else if threatStore.Size() > 0 {
+			slog.Info("threat feed loaded from cache", "domains", threatStore.Size())
+		}
+		engine.SetThreatStore(&threatfeed.PolicyAdapter{Store: threatStore}, cfg.ThreatFeeds.Action)
+		threatSyncer = threatfeed.NewSyncer(threatStore, cfg.ThreatFeeds, slog.Default())
+	}
+
+	torCfg := config.ResolveTorConfig(cfg.Tor)
+	var torSyncer *tor.Syncer
+	var torPol *tor.Policy
+	if torCfg.Enabled {
+		// Default the relay-feed cache dir alongside the threat-feed cache.
+		if torCfg.RelayFeed.Enabled && torCfg.RelayFeed.CacheDir == "" {
+			torCfg.RelayFeed.CacheDir = filepath.Join(config.GetDataDir(), "tor-relays")
+		}
+		p, err := tor.New(torCfg)
+		if err != nil {
+			return nil, fmt.Errorf("tor policy: %w", err)
+		}
+		torPol = p
+		engine.SetTorPolicy(&tor.PolicyAdapter{Policy: torPol})
+		slog.Info("tor access control enabled", "mode", torCfg.Mode)
+		if torCfg.Mode == "allow" && len(torCfg.OnionRules) > 0 && !cfg.Sandbox.Network.Transparent.Enabled {
+			slog.Warn("tor onion gateway configured (mode=allow + onion_rules) but transparent network is disabled; every session will fail-closed (Tor denied). Enable sandbox.network.transparent to use the gateway.")
+		}
+		if torPol.RelayFeedEnabled() {
+			torSyncer = tor.NewSyncer(torPol, slog.Default())
+		}
+	}
+
+	limits := engine.Limits()
+
+	metricsCollector := metrics.New()
+
+	var db *sqlite.Store
+	if cfg.Audit.Storage.Enabled == nil || *cfg.Audit.Storage.Enabled {
+		sqlitePath := cfg.Audit.Storage.SQLitePath
+		if sqlitePath == "" {
+			sqlitePath = filepath.Join(filepath.Dir(cfg.Sessions.BaseDir), "events.db")
+		}
+		db, err = sqlite.Open(sqlitePath, sqlite.BatchConfig{
+			BatchSize:     cfg.Audit.Storage.BatchSize,
+			FlushInterval: cfg.Audit.Storage.FlushInterval,
+			ChannelSize:   cfg.Audit.Storage.ChannelSize,
+		})
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		slog.Warn("SQLite audit storage disabled; event queries, output storage, and MCP tool tracking are unavailable")
+	}
+
+	var jsonlStore *jsonl.Store
+	if cfg.Audit.Output != "" {
+		jsonlStore, err = jsonl.New(cfg.Audit.Output, cfg.Audit.Rotation.MaxSizeMB, cfg.Audit.Rotation.MaxBackups)
+		if err != nil {
+			if db != nil {
+				_ = db.Close()
+			}
+			return nil, err
+		}
+	}
+
+	var jsonlEventStore storepkg.EventStore
+	if jsonlStore != nil {
+		jsonlEventStore = jsonlStore
+	}
+	if jsonlStore != nil && cfg.Audit.Integrity.Enabled {
+		chain, provider, err := audit.NewIntegrityChainFromConfig(
+			context.Background(), cfg.Audit.Integrity)
+		if err != nil {
+			if jsonlStore != nil {
+				_ = jsonlStore.Close()
+			}
+			if db != nil {
+				_ = db.Close()
+			}
+			return nil, fmt.Errorf("audit integrity chain: %w", err)
+		}
+		kmsProvider = provider
+		kmsCloser = provider.Close
+		defer func() {
+			if kmsCloser != nil {
+				kmsCloser()
+			}
+		}()
+		jsonlEventStore, err = storepkg.NewIntegrityStore(jsonlStore, chain, storepkg.IntegrityOptions{
+			LogPath:        cfg.Audit.Output,
+			Algorithm:      cfg.Audit.Integrity.Algorithm,
+			KeyFingerprint: chain.KeyFingerprint(),
+		})
+		if err != nil {
+			if jsonlStore != nil {
+				_ = jsonlStore.Close()
+			}
+			if db != nil {
+				_ = db.Close()
+			}
+			return nil, fmt.Errorf("audit integrity chain: %w", err)
+		}
+	}
+
+	var webhookStore *webhook.Store
+	if cfg.Audit.Webhook.URL != "" {
+		flushEvery, err := time.ParseDuration(cfg.Audit.Webhook.FlushInterval)
+		if err != nil {
+			if jsonlStore != nil {
+				_ = jsonlStore.Close()
+			}
+			if db != nil {
+				_ = db.Close()
+			}
+			return nil, fmt.Errorf("parse audit.webhook.flush_interval: %w", err)
+		}
+		timeout, err := time.ParseDuration(cfg.Audit.Webhook.Timeout)
+		if err != nil {
+			if jsonlStore != nil {
+				_ = jsonlStore.Close()
+			}
+			if db != nil {
+				_ = db.Close()
+			}
+			return nil, fmt.Errorf("parse audit.webhook.timeout: %w", err)
+		}
+		webhookStore, err = webhook.New(cfg.Audit.Webhook.URL, cfg.Audit.Webhook.BatchSize, flushEvery, timeout, cfg.Audit.Webhook.Headers)
+		if err != nil {
+			if jsonlStore != nil {
+				_ = jsonlStore.Close()
+			}
+			if db != nil {
+				_ = db.Close()
+			}
+			return nil, err
+		}
+	}
+
+	var otelStore *otelstore.Store
+	if cfg.Audit.OTEL.Enabled {
+		if !cfg.Audit.OTEL.TLS.Enabled {
+			slog.Warn("OTEL export is configured without TLS; event data will be sent in plaintext")
+		}
+		otelTimeout, err := time.ParseDuration(cfg.Audit.OTEL.Timeout)
+		if err != nil {
+			if jsonlStore != nil {
+				_ = jsonlStore.Close()
+			}
+			if db != nil {
+				_ = db.Close()
+			}
+			return nil, fmt.Errorf("parse audit.otel.timeout: %w", err)
+		}
+		otelBatchTimeout, err := time.ParseDuration(cfg.Audit.OTEL.Batch.Timeout)
+		if err != nil {
+			if jsonlStore != nil {
+				_ = jsonlStore.Close()
+			}
+			if db != nil {
+				_ = db.Close()
+			}
+			return nil, fmt.Errorf("parse audit.otel.batch.timeout: %w", err)
+		}
+		otelStore, err = otelstore.New(context.Background(), otelstore.Config{
+			Endpoint:     cfg.Audit.OTEL.Endpoint,
+			Protocol:     cfg.Audit.OTEL.Protocol,
+			TLSEnabled:   cfg.Audit.OTEL.TLS.Enabled,
+			TLSCertFile:  cfg.Audit.OTEL.TLS.CertFile,
+			TLSKeyFile:   cfg.Audit.OTEL.TLS.KeyFile,
+			TLSInsecure:  cfg.Audit.OTEL.TLS.Insecure,
+			Headers:      cfg.Audit.OTEL.Headers,
+			Timeout:      otelTimeout,
+			BatchTimeout: otelBatchTimeout,
+			BatchMaxSize: cfg.Audit.OTEL.Batch.MaxSize,
+			Signals: struct {
+				Logs bool
+			}{
+				Logs: cfg.Audit.OTEL.Signals.Logs,
+			},
+			Filter: otelstore.Filter{
+				IncludeTypes:      cfg.Audit.OTEL.Filter.IncludeTypes,
+				ExcludeTypes:      cfg.Audit.OTEL.Filter.ExcludeTypes,
+				IncludeCategories: cfg.Audit.OTEL.Filter.IncludeCategories,
+				ExcludeCategories: cfg.Audit.OTEL.Filter.ExcludeCategories,
+				MinRiskLevel:      cfg.Audit.OTEL.Filter.MinRiskLevel,
+			},
+			Resource: otelstore.BuildResource(
+				cfg.Audit.OTEL.Resource.ServiceName,
+				cfg.Audit.OTEL.Resource.ExtraAttributes,
+			),
+		})
+		if err != nil {
+			slog.Error("failed to create OTEL store, continuing without it", "error", err)
+			otelStore = nil
+		}
+	}
+
+	var eventStores []storepkg.EventStore
+	if jsonlEventStore != nil {
+		eventStores = append(eventStores, jsonlEventStore)
+	}
+	if webhookStore != nil {
+		eventStores = append(eventStores, webhookStore)
+	}
+	if otelStore != nil {
+		eventStores = append(eventStores, otelStore)
+	}
+	if cfg.Audit.Watchtower.Enabled {
+		wtpStore, err := buildWatchtowerStore(context.Background(), cfg.Audit.Watchtower, cfg.Policies, pm, appHolder, enforceApprovals, ocsf.New())
+		if err != nil {
+			return nil, fmt.Errorf("build watchtower store: %w", err)
+		}
+		if wtpStore != nil {
+			eventStores = append(eventStores, wtpStore)
+		}
+	}
+	var primary storepkg.EventStore
+	var output storepkg.OutputStore
+	if db != nil {
+		primary = metrics.WrapEventStore(db, metricsCollector)
+		output = db
+	}
+	store := composite.New(primary, output, eventStores...)
+	fatalAuditErr := make(chan error, 1)
+	store.SetAppendErrorHook(func(err error) {
+		var fatal *storepkg.FatalIntegrityError
+		if errors.As(err, &fatal) {
+			select {
+			case fatalAuditErr <- err:
+			default:
+			}
+		}
+	})
+
+	sessions := session.NewManager(cfg.Sessions.MaxSessions)
+	broker := events.NewBroker()
+	emitter := serverEmitter{
+		store:  store,
+		broker: broker,
+		registryFor: func(sessionID string) *mcpregistry.Registry {
+			s, ok := sessions.Get(sessionID)
+			if !ok {
+				return nil
+			}
+			reg, _ := s.MCPRegistry().(*mcpregistry.Registry)
+			return reg
+		},
+	}
+
+	var approvalsMgr *approvals.Manager
+	if cfg.Approvals.Enabled {
+		timeout, _ := time.ParseDuration(cfg.Approvals.Timeout)
+		approvalsMgr = approvals.New(cfg.Approvals.Mode, timeout, emitter)
+
+		// Wire up TOTP secret lookup for TOTP approval mode
+		if cfg.Approvals.Mode == "totp" {
+			approvalsMgr.SetTOTPSecretLookup(func(sessionID string) string {
+				sess, ok := sessions.Get(sessionID)
+				if !ok {
+					return ""
+				}
+				return sess.TOTPSecret
+			})
+		}
+	}
+
+	var webauthnSvc *auth.WebAuthnService
+	if cfg.Approvals.Enabled && strings.EqualFold(cfg.Approvals.Mode, "webauthn") {
+		if db == nil || db.SQLDB() == nil {
+			return nil, fmt.Errorf("approvals.mode=webauthn requires SQLite audit storage")
+		}
+		wcfg := cfg.Approvals.WebAuthn
+		store := auth.NewWebAuthnStore(db.SQLDB())
+		svc, err := auth.NewWebAuthnService(
+			wcfg.RPID,
+			wcfg.RPName,
+			wcfg.RPOrigins,
+			wcfg.UserVerification,
+			store,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("webauthn service: %w", err)
+		}
+		webauthnSvc = svc
+		if approvalsMgr != nil {
+			approvalsMgr.SetWebAuthnApprover(approvals.NewWebAuthnApprover(svc))
+		}
+	}
+
+	secretMgr, err := bootstrapSecretManager(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	var apiKeyAuth *auth.APIKeyAuth
+	if !cfg.Development.DisableAuth && (cfg.Auth.Type == "api_key" || cfg.Auth.Type == "hybrid") {
+		loaded, err := auth.LoadAPIKeys(cfg.Auth.APIKey.KeysFile, cfg.Auth.APIKey.HeaderName)
+		if err != nil {
+			_ = store.Close()
+			return nil, err
+		}
+		apiKeyAuth = loaded
+	}
+
+	var oidcAuth *auth.OIDCAuth
+	if !cfg.Development.DisableAuth && (cfg.Auth.Type == "oidc" || cfg.Auth.Type == "hybrid") {
+		discoveryTimeout := 5 * time.Second
+		if cfg.Auth.OIDC.DiscoveryTimeout != "" {
+			d, err := time.ParseDuration(cfg.Auth.OIDC.DiscoveryTimeout)
+			if err != nil {
+				_ = store.Close()
+				return nil, fmt.Errorf("parse auth.oidc.discovery_timeout: %w", err)
+			}
+			discoveryTimeout = d
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), discoveryTimeout)
+		defer cancel()
+		var err error
+		oidcAuth, err = auth.NewOIDCAuth(
+			ctx,
+			cfg.Auth.OIDC.Issuer,
+			cfg.Auth.OIDC.ClientID,
+			cfg.Auth.OIDC.Audience,
+			cfg.Auth.OIDC.ClaimMappings,
+			cfg.Auth.OIDC.AllowedGroups,
+			cfg.Auth.OIDC.GroupPolicyMap,
+			cfg.Auth.OIDC.GroupRoleMap,
+		)
+		if err != nil {
+			_ = store.Close()
+			return nil, fmt.Errorf("initialize OIDC auth: %w", err)
+		}
+		// Warn if no role mappings configured (silent role downgrade protection)
+		if warning := oidcAuth.WarnIfNoRoleMap(); warning != "" {
+			fmt.Fprintf(os.Stderr, "%s\n", warning)
+		}
+	}
+
+	policyLoader := api.NewDefaultPolicyLoader(
+		cfg.Policies.Dir, enforceApprovals, true,
+		cfg.Policies.Signing.SigningMode(), cfg.Policies.Signing.TrustStore,
+	)
+
+	var cgroupMgr *limitspkg.CgroupManager
+	if runtime.GOOS == "linux" {
+		needsCgroup := cfg.Sandbox.Cgroups.Enabled ||
+			cfg.Sandbox.Network.EBPF.Enabled ||
+			cfg.Sandbox.Network.EBPF.Enforce ||
+			cfg.Sandbox.Network.EBPF.Required
+		if needsCgroup {
+			// permitAttachOnly is inverted: cgroups.enabled=true is the operator's
+			// strict assertion that cgroup controllers work, so the probe must not
+			// fall back to attach-only on that path.
+			permitAttachOnly := !cfg.Sandbox.Cgroups.Enabled
+			mgr, err := limitspkg.NewCgroupManager(context.Background(), cfg.Sandbox.Cgroups.BasePath, permitAttachOnly)
+			if err != nil {
+				slog.Warn("cgroup v2 probe failed; per-command limits unavailable", "error", err)
+			} else {
+				probe := mgr.Probe()
+				if cfg.Sandbox.Network.EBPF.Required && probe.Mode == limitspkg.ModeUnavailable {
+					return nil, fmt.Errorf("ebpf.required=true but cgroup probe is unavailable: %s", probe.Reason)
+				}
+				cgroupMgr = mgr
+				modeEvent := types.Event{
+					ID:        uuid.NewString(),
+					Timestamp: time.Now().UTC(),
+					Type:      string(events.EventCgroupMode),
+					Fields: map[string]any{
+						"mode":         string(probe.Mode),
+						"reason":       probe.Reason,
+						"own_cgroup":   probe.OwnCgroup,
+						"slice_dir":    probe.SliceDir,
+						"io_available": probe.IOAvailable,
+						"leaf_moved":   probe.LeafMoved,
+					},
+				}
+				_ = store.AppendEvent(context.Background(), modeEvent)
+				broker.Publish(modeEvent)
+				if reaped := probe.OrphansReaped; len(reaped) > 0 {
+					reapEvent := types.Event{
+						ID:        uuid.NewString(),
+						Timestamp: time.Now().UTC(),
+						Type:      string(events.EventCgroupOrphansReaped),
+						Fields: map[string]any{
+							"count": len(reaped),
+							"names": reaped,
+						},
+					}
+					_ = store.AppendEvent(context.Background(), reapEvent)
+					broker.Publish(reapEvent)
+				}
+			}
+		}
+	}
+
+	app := api.NewApp(cfg, sessions, store, engine, broker, apiKeyAuth, oidcAuth, approvalsMgr, metricsCollector, policyLoader, cgroupMgr, torPol)
+	if webauthnSvc != nil {
+		app.SetWebAuthnService(webauthnSvc)
+	}
+	if secretMgr != nil {
+		app.SetSecretManager(secretMgr)
+	}
+	// Publish to the WTP install hook so subsequent pushed-policy
+	// receipts can SwapPolicy in-process (next CheckCommand sees the
+	// new rules without an aep-caw restart).
+	appHolder.Store(app)
+	appCloser := app.Close // ensure cleanup on error paths below
+	defer func() {
+		if appCloser != nil {
+			appCloser()
+		}
+	}()
+
+	// DB proxies are session-scoped as of DB plan 07b because listener
+	// authorization requires the owning session ID. Session creation starts
+	// the proxy after compiling the session-local DB unavoidability bundle.
+
+	// Initialize package checker (optional).
+	if cfg.PackageChecks.Enabled {
+		// Resolve and apply fail mode so Snyk/Socket OnFailure reflects
+		// the operator's policy before provider entries are constructed.
+		mode := config.ResolveFailMode(&cfg.PackageChecks)
+		// Validate the resolved mode (which may have come from
+		// PKGCHECK_FAIL_MODE env var, bypassing YAML validation).
+		// A typo like "clsoed" would otherwise silently no-op via
+		// ApplyFailMode and leave the default OnFailure in place,
+		// undermining the operator's intent.
+		switch mode {
+		case "open", "closed", "degraded":
+		default:
+			return nil, fmt.Errorf("pkgcheck: invalid fail_mode %q (env PKGCHECK_FAIL_MODE or package_checks.fail_mode); must be one of open, closed, degraded", mode)
+		}
+		config.ApplyFailMode(&cfg.PackageChecks, mode)
+
+		providerEntries := make(map[string]pkgcheck.ProviderEntry)
+		for name, provCfg := range cfg.PackageChecks.Providers {
+			if !provCfg.Enabled {
+				continue
+			}
+			entry, err := buildProviderEntry(name, provCfg)
+			if err != nil {
+				// A missing env-var value is a soft misconfiguration: the operator
+				// has named the key correctly but the value is absent (CI / dev).
+				// Under fail_mode=closed, however, an operator's intent is to fail
+				// closed on any provider failure - silently disabling a configured
+				// provider would undermine that intent, so we treat it as fatal.
+				if errors.Is(err, errMissingAPIKeyValue) {
+					if mode == "closed" {
+						return nil, fmt.Errorf("pkgcheck: provider %q enabled with missing API key under fail_mode=closed: configured to fail closed, but provider cannot operate", name)
+					}
+					slog.Warn("pkgcheck: skipping provider (API key env var unset)", "name", name, "error", err)
+					continue
+				}
+				return nil, fmt.Errorf("pkgcheck: provider %q misconfigured: %w", name, err)
+			}
+			providerEntries[name] = entry
+		}
+
+		resolvers, err := buildResolvers(cfg.PackageChecks.Resolvers)
+		if err != nil {
+			return nil, fmt.Errorf("pkgcheck: resolvers misconfigured: %w", err)
+		}
+
+		if len(providerEntries) == 0 {
+			return nil, fmt.Errorf("package_checks.enabled=true but no providers were initialized - at least one provider must be configured and have its API key (if required) set")
+		}
+
+		// Compose rules: engine.PackageRules() takes precedence, then block_on
+		// shorthand fills in the remaining finding types. We use the no-catch-all
+		// variant here so that an operator's policy file can deliberately omit
+		// a catch-all rule and rely on the evaluator's default-deny.
+		rules := append([]policy.PackageRule(nil), engine.PackageRules()...)
+		rules = append(rules, config.CompileBlockOnRules(cfg.PackageChecks.BlockOn)...)
+
+		pkgChecker := pkgcheck.NewChecker(pkgcheck.CheckerConfig{
+			Scope:     cfg.PackageChecks.Scope,
+			Resolvers: resolvers,
+			Providers: providerEntries,
+			Rules:     rules,
+			Allowlist: pkgcheck.NewAllowlist(30 * time.Second),
+			Privacy: pkgcheck.PrivacyConfig{
+				ExternalScanRegistries: cfg.PackageChecks.Privacy.ExternalScanRegistries,
+				PrivateScopeDenylist:   cfg.PackageChecks.Privacy.PrivateScopeDenylist,
+			},
+		})
+		app.SetPackageChecker(pkgChecker)
+	}
+
+	// Initialize skillcheck daemon (optional).
+	var skillcheckDaemon *skillcheck.Daemon
+	if cfg.Skillcheck.Enabled {
+		if len(cfg.Skillcheck.WatchRoots) == 0 {
+			return nil, fmt.Errorf("skillcheck.watch_roots: at least one root required when skillcheck is enabled")
+		}
+		if cfg.Skillcheck.TrashDir == "" {
+			return nil, fmt.Errorf("skillcheck.trash_dir: required when skillcheck is enabled (block verdicts cannot quarantine without it)")
+		}
+		skillcheckProviders, err := buildSkillcheckProviders(cfg.Skillcheck.Providers)
+		if err != nil {
+			return nil, err
+		}
+		if len(skillcheckProviders) == 0 {
+			return nil, fmt.Errorf("skillcheck.providers: at least one provider must be enabled when skillcheck is enabled")
+		}
+		cacheDir := cfg.Skillcheck.CacheDir
+		if cacheDir == "" {
+			cacheDir = filepath.Join(filepath.Dir(cfg.Audit.Storage.SQLitePath), "skillcache")
+		}
+		skillcache, cacheErr := cache.New(cache.Config{Dir: cacheDir, DefaultTTL: 24 * time.Hour})
+		if cacheErr != nil {
+			_ = store.Close()
+			return nil, fmt.Errorf("init skillcheck cache: %w", cacheErr)
+		}
+		daemon, daemonErr := skillcheck.NewDaemon(skillcheck.DaemonConfig{
+			Roots:    cfg.Skillcheck.WatchRoots,
+			TrashDir: cfg.Skillcheck.TrashDir,
+			Cache:    skillcache,
+			Limits: skillcheck.LoaderLimits{
+				PerFileBytes: cfg.Skillcheck.Limits.PerFileBytes,
+				TotalBytes:   cfg.Skillcheck.Limits.TotalBytes,
+			},
+			Providers:  skillcheckProviders,
+			Thresholds: buildSkillcheckThresholds(cfg.Skillcheck.Thresholds),
+			Audit:      newSkillcheckAuditSink(store),
+			Approval:   newSkillcheckApproval(approvalsMgr),
+		})
+		if daemonErr != nil {
+			_ = store.Close()
+			return nil, fmt.Errorf("init skillcheck: %w", daemonErr)
+		}
+		skillcheckDaemon = daemon
+		// Warn at startup if approve thresholds are configured but there is no
+		// approvals manager - those verdicts will be denied (escalated to block).
+		if approvalsMgr == nil {
+			for _, action := range cfg.Skillcheck.Thresholds {
+				if strings.EqualFold(action, "approve") {
+					slog.Warn("skillcheck has approve thresholds but approvals manager is not configured; approve verdicts will be denied (block)")
+					break
+				}
+			}
+		}
+	}
+
+	router := app.Router()
+
+	readTimeoutStr := cfg.Server.HTTP.ReadTimeout
+	if readTimeoutStr == "" {
+		readTimeoutStr = "30s"
+	}
+	readTimeout, err := time.ParseDuration(readTimeoutStr)
+	if err != nil {
+		_ = store.Close()
+		return nil, fmt.Errorf("parse server.http.read_timeout: %w", err)
+	}
+	writeTimeoutStr := cfg.Server.HTTP.WriteTimeout
+	if writeTimeoutStr == "" {
+		writeTimeoutStr = "5m"
+	}
+	writeTimeout, err := time.ParseDuration(writeTimeoutStr)
+	if err != nil {
+		_ = store.Close()
+		return nil, fmt.Errorf("parse server.http.write_timeout: %w", err)
+	}
+	maxReqSizeStr := cfg.Server.HTTP.MaxRequestSize
+	if maxReqSizeStr == "" {
+		maxReqSizeStr = "10MB"
+	}
+	maxReqBytes, err := config.ParseByteSize(maxReqSizeStr)
+	if err != nil {
+		_ = store.Close()
+		return nil, fmt.Errorf("parse server.http.max_request_size: %w", err)
+	}
+	handler := withRequestBodyLimit(router, maxReqBytes)
+
+	s := &http.Server{
+		Addr:              cfg.Server.HTTP.Addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 15 * time.Second,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+	}
+
+	sessionTimeout := limits.SessionTimeout
+	idleTimeout := limits.IdleTimeout
+	if cfg.Sessions.DefaultTimeout != "" {
+		d, err := time.ParseDuration(cfg.Sessions.DefaultTimeout)
+		if err != nil {
+			_ = store.Close()
+			return nil, fmt.Errorf("parse sessions.default_timeout: %w", err)
+		}
+		if d > 0 && (sessionTimeout == 0 || d < sessionTimeout) {
+			sessionTimeout = d
+		}
+	}
+	if cfg.Sessions.DefaultIdleTimeout != "" {
+		d, err := time.ParseDuration(cfg.Sessions.DefaultIdleTimeout)
+		if err != nil {
+			_ = store.Close()
+			return nil, fmt.Errorf("parse sessions.default_idle_timeout: %w", err)
+		}
+		if d > 0 && (idleTimeout == 0 || d < idleTimeout) {
+			idleTimeout = d
+		}
+	}
+	reapInterval := 1 * time.Minute
+	if cfg.Sessions.CleanupInterval != "" {
+		d, err := time.ParseDuration(cfg.Sessions.CleanupInterval)
+		if err != nil {
+			_ = store.Close()
+			return nil, fmt.Errorf("parse sessions.cleanup_interval: %w", err)
+		}
+		if d > 0 {
+			reapInterval = d
+		}
+	}
+
+	srv := &Server{
+		httpServer:       s,
+		store:            store,
+		broker:           broker,
+		sessions:         sessions,
+		fatalAuditErr:    fatalAuditErr,
+		sessionTimeout:   sessionTimeout,
+		idleTimeout:      idleTimeout,
+		reapInterval:     reapInterval,
+		threatSyncer:     threatSyncer,
+		threatStore:      threatStore,
+		torSyncer:        torSyncer,
+		skillcheckDaemon: skillcheckDaemon,
+		app:              app,
+		kmsProvider:      kmsProvider,
+	}
+
+	// Start the policy socket server (macOS only; no-op on other platforms).
+	srv.startPolicySocket(cfg, engine)
+	// Wire cmdResolver and sessionTracker into the app (darwin only).
+	if srv.cmdResolver != nil {
+		app.SetCmdResolver(srv.cmdResolver)
+	}
+	if srv.sessionTracker != nil {
+		app.SetSessionTracker(srv.sessionTracker)
+	}
+
+	ln, err := listenHTTP(cfg)
+	if err != nil {
+		_ = store.Close()
+		return nil, err
+	}
+	srv.httpLn = ln
+
+	if cfg.Server.GRPC.Enabled {
+		grpcLn, grpcErr := listenGRPC(cfg)
+		if grpcErr != nil {
+			_ = store.Close()
+			return nil, grpcErr
+		}
+
+		var opts []grpc.ServerOption
+		opts = append(opts,
+			grpc.UnaryInterceptor(api.GRPCUnaryAuthInterceptor(app)),
+			grpc.StreamInterceptor(api.GRPCStreamAuthInterceptor(app)),
+		)
+		if cfg.Server.TLS.Enabled {
+			if cfg.Server.TLS.CertFile == "" || cfg.Server.TLS.KeyFile == "" {
+				_ = grpcLn.Close()
+				_ = store.Close()
+				return nil, fmt.Errorf("server.tls enabled but cert_file/key_file missing")
+			}
+			creds, err := credentials.NewServerTLSFromFile(cfg.Server.TLS.CertFile, cfg.Server.TLS.KeyFile)
+			if err != nil {
+				_ = grpcLn.Close()
+				_ = store.Close()
+				return nil, fmt.Errorf("load grpc tls keypair: %w", err)
+			}
+			opts = append(opts, grpc.Creds(creds))
+		}
+
+		gs := grpc.NewServer(opts...)
+		api.RegisterGRPC(gs, app)
+		hs := health.NewServer()
+		hs.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
+		healthpb.RegisterHealthServer(gs, hs)
+
+		srv.grpcLn = grpcLn
+		srv.grpcServer = gs
+	}
+
+	if cfg.Server.UnixSocket.Enabled && cfg.Server.UnixSocket.Path != "" {
+		unixPath := cfg.Server.UnixSocket.Path
+		if err := os.MkdirAll(filepath.Dir(unixPath), 0o755); err != nil {
+			if isPermissionErr(err) {
+				fmt.Fprintf(os.Stderr, "aep-caw: unix socket disabled (mkdir): %v\n", err)
+				goto unixDone
+			}
+			_ = store.Close()
+			return nil, fmt.Errorf("unix socket mkdir: %w", err)
+		}
+		_ = os.Remove(unixPath)
+		unixLn, err := net.Listen("unix", unixPath)
+		if err != nil {
+			if isPermissionErr(err) {
+				fmt.Fprintf(os.Stderr, "aep-caw: unix socket disabled (listen): %v\n", err)
+				goto unixDone
+			}
+			_ = store.Close()
+			return nil, fmt.Errorf("unix socket listen: %w", err)
+		}
+		perms := os.FileMode(0o660)
+		if p := cfg.Server.UnixSocket.Permissions; p != "" {
+			u, perr := strconv.ParseUint(p, 0, 32)
+			if perr != nil {
+				_ = unixLn.Close()
+				_ = store.Close()
+				return nil, fmt.Errorf("unix socket permissions %q: %w", p, perr)
+			}
+			perms = os.FileMode(u)
+		}
+		if err := os.Chmod(unixPath, perms); err != nil {
+			if isPermissionErr(err) {
+				fmt.Fprintf(os.Stderr, "aep-caw: unix socket disabled (chmod): %v\n", err)
+				_ = unixLn.Close()
+				goto unixDone
+			}
+			_ = unixLn.Close()
+			_ = store.Close()
+			return nil, fmt.Errorf("unix socket chmod: %w", err)
+		}
+		srv.unixLn = unixLn
+		srv.unixPath = unixPath
+		srv.unixServer = &http.Server{
+			Handler:           handler,
+			ReadHeaderTimeout: 15 * time.Second,
+			ReadTimeout:       readTimeout,
+			WriteTimeout:      writeTimeout,
+		}
+	}
+unixDone:
+
+	if cfg.Development.PProf.Enabled {
+		addr := cfg.Development.PProf.Addr
+		if addr == "" {
+			addr = "localhost:6060"
+		}
+		ln, err := net.Listen("tcp", addr)
+		if err != nil {
+			_ = store.Close()
+			return nil, fmt.Errorf("pprof listen: %w", err)
+		}
+		mux := http.NewServeMux()
+		mux.HandleFunc("/debug/pprof/", pprof.Index)
+		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+		srv.pprofLn = ln
+		srv.pprofServer = &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+	}
+
+	appCloser = nil // success - don't close app on defer
+	kmsCloser = nil
+	return srv, nil
+}
+
+func isPermissionErr(err error) bool {
+	return os.IsPermission(err) || errors.Is(err, syscall.EACCES) || errors.Is(err, syscall.EPERM)
+}
+
+func withRequestBodyLimit(next http.Handler, maxBytes int64) http.Handler {
+	if maxBytes <= 0 {
+		return next
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body != nil {
+			r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func listenHTTP(cfg *config.Config) (net.Listener, error) {
+	addr := cfg.Server.HTTP.Addr
+	if cfg.Development.DisableAuth || strings.EqualFold(strings.TrimSpace(cfg.Auth.Type), "none") {
+		if !isLoopbackListenAddr(addr) {
+			return nil, fmt.Errorf("refusing to listen on %q with auth.type=none (use 127.0.0.1/localhost or enable auth)", addr)
+		}
+	}
+	if !cfg.Server.TLS.Enabled {
+		return net.Listen("tcp", addr)
+	}
+	if cfg.Server.TLS.CertFile == "" || cfg.Server.TLS.KeyFile == "" {
+		return nil, fmt.Errorf("server.tls enabled but cert_file/key_file missing")
+	}
+	cert, err := tlsLoad(cfg.Server.TLS.CertFile, cfg.Server.TLS.KeyFile)
+	if err != nil {
+		return nil, err
+	}
+	return tlsListen(addr, cert)
+}
+
+func listenGRPC(cfg *config.Config) (net.Listener, error) {
+	addr := cfg.Server.GRPC.Addr
+	if addr == "" {
+		addr = "127.0.0.1:9090"
+	}
+	if cfg.Development.DisableAuth || strings.EqualFold(strings.TrimSpace(cfg.Auth.Type), "none") {
+		if !isLoopbackListenAddr(addr) {
+			return nil, fmt.Errorf("refusing to listen on %q with auth.type=none (use 127.0.0.1/localhost or enable auth)", addr)
+		}
+	}
+	return net.Listen("tcp", addr)
+}
+
+func isLoopbackListenAddr(addr string) bool {
+	a := strings.TrimSpace(addr)
+	if a == "" {
+		return false
+	}
+	// ":18080" binds on all interfaces.
+	if strings.HasPrefix(a, ":") {
+		return false
+	}
+	host, _, err := net.SplitHostPort(a)
+	if err != nil {
+		// If it's missing a port, treat as a hostname/IP.
+		host = a
+	}
+	host = strings.TrimSpace(host)
+	if host == "" {
+		return false
+	}
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.IsLoopback()
+	}
+	// Conservative: unknown hostnames could resolve non-loopback.
+	return false
+}
+
+func tlsLoad(certFile, keyFile string) (tls.Certificate, error) {
+	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("load tls keypair: %w", err)
+	}
+	return cert, nil
+}
+
+func tlsListen(addr string, cert tls.Certificate) (net.Listener, error) {
+	cfg := &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12}
+	return tls.Listen("tcp", addr, cfg)
+}
+
+type serverEmitter struct {
+	store       *composite.Store
+	broker      *events.Broker
+	registryFor func(sessionID string) *mcpregistry.Registry
+}
+
+func (e serverEmitter) AppendEvent(ctx context.Context, ev types.Event) error {
+	if err := e.store.AppendEvent(ctx, ev); err != nil {
+		return err
+	}
+	// Also upsert to mcp_tools table for mcp_tool_seen events
+	_ = e.store.UpsertMCPToolFromEvent(ctx, ev)
+	// Bridge mcp_tool_seen/changed into the live enforcement registry
+	// so the LLM proxy can enforce policy on dynamically-discovered tools.
+	if e.registryFor != nil && ev.SessionID != "" {
+		if reg := e.registryFor(ev.SessionID); reg != nil {
+			bridgeEventToRegistry(ev, reg)
+		}
+	}
+	return nil
+}
+func (e serverEmitter) Publish(ev types.Event) { e.broker.Publish(ev) }
+
+func (s *Server) Run(ctx context.Context) error {
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	httpServer := s.httpServer
+	httpLn := s.httpLn
+	if httpServer == nil {
+		return errors.New("server http server is nil")
+	}
+	if httpLn == nil {
+		return errors.New("server http listener is nil")
+	}
+	pprofServer := s.pprofServer
+	pprofLn := s.pprofLn
+	unixServer := s.unixServer
+	unixLn := s.unixLn
+	grpcServer := s.grpcServer
+	grpcLn := s.grpcLn
+	app := s.app
+	policySockCancel := s.policySockCancel
+	policySockDone := s.policySockDone
+
+	if pprofLn != nil && pprofServer != nil {
+		go func() { _ = pprofServer.Serve(pprofLn) }()
+	}
+
+	if s.sessionTimeout > 0 || s.idleTimeout > 0 {
+		ticker := time.NewTicker(s.reapInterval)
+		defer ticker.Stop()
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					s.reapOnce(time.Now().UTC())
+				}
+			}
+		}()
+	}
+
+	var syncerDone chan struct{}
+	if s.threatSyncer != nil {
+		syncerDone = make(chan struct{})
+		go func() {
+			defer close(syncerDone)
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Error("threat feed syncer panicked", "panic", r)
+				}
+			}()
+			s.threatSyncer.Run(ctx)
+		}()
+	}
+
+	var torSyncerDone chan struct{}
+	if s.torSyncer != nil {
+		torSyncerDone = make(chan struct{})
+		go func() {
+			defer close(torSyncerDone)
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Error("tor syncer panicked", "panic", r)
+				}
+			}()
+			s.torSyncer.Run(ctx)
+		}()
+	}
+
+	var skillcheckDone chan struct{}
+	if s.skillcheckDaemon != nil {
+		skillcheckDone = make(chan struct{})
+		go func() {
+			defer close(skillcheckDone)
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Error("skillcheck daemon panicked", "panic", r)
+				}
+			}()
+			s.skillcheckDaemon.Run(ctx)
+			_ = s.skillcheckDaemon.Close()
+		}()
+	}
+
+	errCh := make(chan error, 3)
+	go func() {
+		if err := httpServer.Serve(httpLn); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+		}
+	}()
+	if unixServer != nil && unixLn != nil {
+		go func() {
+			if err := unixServer.Serve(unixLn); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				errCh <- err
+			}
+		}()
+	}
+	if grpcServer != nil && grpcLn != nil {
+		go func() {
+			if err := grpcServer.Serve(grpcLn); err != nil {
+				errCh <- err
+			}
+		}()
+	}
+
+	shutdown := func(timeout time.Duration, graceful bool) error {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
+		if pprofServer != nil {
+			_ = pprofServer.Shutdown(shutdownCtx)
+		}
+		if unixServer != nil {
+			_ = unixServer.Shutdown(shutdownCtx)
+		}
+		if grpcServer != nil {
+			if graceful {
+				grpcServer.GracefulStop()
+			} else {
+				grpcServer.Stop()
+			}
+		}
+		if policySockCancel != nil {
+			policySockCancel()
+		}
+		httpErr := httpServer.Shutdown(shutdownCtx)
+		if app != nil {
+			app.Close()
+		}
+		if syncerDone != nil {
+			<-syncerDone
+		}
+		if torSyncerDone != nil {
+			<-torSyncerDone
+		}
+		if skillcheckDone != nil {
+			<-skillcheckDone
+		}
+		if policySockDone != nil {
+			<-policySockDone
+		}
+		return httpErr
+	}
+
+	select {
+	case <-ctx.Done():
+		return shutdown(10*time.Second, true)
+	case err := <-s.fatalAuditErr:
+		slog.Error("fatal audit integrity error", "error", err)
+		stop()
+		if shutdownErr := shutdown(10*time.Second, true); shutdownErr != nil {
+			return errors.Join(err, shutdownErr)
+		}
+		return err
+	case err := <-errCh:
+		stop() // cancel context so syncer can exit
+		if shutdownErr := shutdown(2*time.Second, false); shutdownErr != nil {
+			return errors.Join(fmt.Errorf("server: %w", err), shutdownErr)
+		}
+		return fmt.Errorf("server: %w", err)
+	}
+}
+
+func (s *Server) Close() error {
+	if s.httpLn != nil {
+		_ = s.httpLn.Close()
+		s.httpLn = nil
+	}
+	if s.unixLn != nil {
+		_ = s.unixLn.Close()
+		s.unixLn = nil
+	}
+	if s.grpcLn != nil {
+		_ = s.grpcLn.Close()
+		s.grpcLn = nil
+	}
+	if s.grpcServer != nil {
+		s.grpcServer.Stop()
+		s.grpcServer = nil
+	}
+	if s.unixPath != "" {
+		_ = os.Remove(s.unixPath)
+		s.unixPath = ""
+	}
+	if s.pprofLn != nil {
+		_ = s.pprofLn.Close()
+		s.pprofLn = nil
+	}
+	if s.app != nil {
+		s.app.Close()
+	}
+	if s.sessions != nil {
+		for _, sess := range s.sessions.List() {
+			_ = sess.CloseDBProxy()
+			_ = sess.CloseNetNS()
+			_ = sess.CloseProxy()
+			_ = sess.UnmountWorkspace()
+		}
+	}
+	if s.store != nil {
+		_ = s.store.Close()
+	}
+	if s.kmsProvider != nil {
+		_ = s.kmsProvider.Close()
+	}
+	// Shut down the policy socket server (macOS only).
+	if s.policySockCancel != nil {
+		s.policySockCancel()
+		if s.policySockDone != nil {
+			<-s.policySockDone
+		}
+	}
+	return nil
+}
+
+func (s *Server) PProfAddr() string {
+	if s == nil || s.pprofLn == nil {
+		return ""
+	}
+	return s.pprofLn.Addr().String()
+}
+
+func (s *Server) GRPCAddr() string {
+	if s == nil || s.grpcLn == nil {
+		return ""
+	}
+	return s.grpcLn.Addr().String()
+}
+
+func (s *Server) reapOnce(now time.Time) {
+	reaped := s.sessions.ReapExpired(now, s.sessionTimeout, s.idleTimeout)
+	for _, sess := range reaped {
+		_ = sess.CloseDBProxy()
+		_ = sess.CloseNetNS()
+		_ = sess.CloseProxy()
+		_ = sess.UnmountWorkspace()
+
+		expiredBy := "unknown"
+		createdAt, last := sess.Timestamps()
+		if s.sessionTimeout > 0 && now.Sub(createdAt) > s.sessionTimeout {
+			expiredBy = "session_timeout"
+		} else if s.idleTimeout > 0 && now.Sub(last) > s.idleTimeout {
+			expiredBy = "idle_timeout"
+		}
+
+		ev := types.Event{
+			ID:        uuid.NewString(),
+			Timestamp: now,
+			Type:      "session_expired",
+			SessionID: sess.ID,
+			Fields: map[string]any{
+				"expired_by":      expiredBy,
+				"session_timeout": s.sessionTimeout.String(),
+				"idle_timeout":    s.idleTimeout.String(),
+			},
+		}
+		_ = s.store.AppendEvent(context.Background(), ev)
+		if s.broker != nil {
+			s.broker.Publish(ev)
+		}
+	}
+}
+
+// resolvePolicyPath superseded by policy.Manager

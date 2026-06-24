@@ -1,0 +1,14 @@
+.git
+**/target
+**/node_modules
+**/.aep
+**/dist
+*.db
+*.usearch
+.env
+.env.*
+AEP-NOSHIP
+AEP-Research-Paper
+agent-control-extreme
+CHANGELOG.md
+README.md

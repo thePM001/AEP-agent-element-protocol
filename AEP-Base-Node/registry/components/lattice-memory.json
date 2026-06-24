@@ -1,0 +1,55 @@
+{
+  "manifest_version": "1",
+  "id": "lattice-memory",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/lattice-memory/",
+  "description": "sqlite-vec persistence and USearch fast-path attractors for validation memory.",
+  "requires": [
+    "aep-base-node"
+  ],
+  "capabilities": [
+    "memory:record",
+    "memory:search",
+    "memory:attractor"
+  ],
+  "actions": [
+    {
+      "id": "memory_record",
+      "description": "Record validation memory entry",
+      "runtime": "cli",
+      "method": "aep-memory record"
+    }
+  ],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 128,
+    "min_disk_mb": 50,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Vector memory fabric for agent validation history and attractor matching.",
+    "use_when": [
+      "agents need similarity search over past validations",
+      "evidence attractor routing"
+    ],
+    "avoid_when": [
+      "pure stateless agents with no memory needs"
+    ],
+    "pairs_with": [
+      "aep-base-node",
+      "dynaep-core"
+    ]
+  },
+  "implementation": {
+    "crate": "AEP-Components/lattice-memory/crate",
+    "binary": "aep-memory"
+  },
+  "conformance": {
+    "tests": [
+      "AEP-Components/conformance/runner/run.sh",
+      "AEP-Components/conformance/tests/manifest.json"
+    ]
+  }
+}

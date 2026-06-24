@@ -1,0 +1,29 @@
+{
+  "class_uid": 4001,
+  "activity_id": 2,
+  "category_uid": 4,
+  "type_uid": 400102,
+  "time": "1777118400000000000",
+  "severity": "Informational",
+  "metadata": {
+    "version": "1.8.0",
+    "product": {
+      "name": "aep-caw",
+      "vendor_name": "aep-caw"
+    },
+    "logged_time": "1777118400000000000",
+    "event_code": "net_close",
+    "uid": "ev-net-close-1"
+  },
+  "actor": {
+    "process": {
+      "pid": "306"
+    }
+  },
+  "dst_endpoint": {
+    "ip": "93.184.216.34",
+    "port": 443,
+    "hostname": "example.com",
+    "domain": "example.com"
+  }
+}

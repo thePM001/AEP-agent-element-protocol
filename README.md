@@ -1,49 +1,224 @@
-# AEP - Agent Element Protocol (Deterministic Adjudication Lattices)
+# AEP 2.8 - Agent Element Protocol
 
-Version 2.75e
-Author: thePM_001 (https://x.com/thePM_001)  
-Licence: Apache-2.0  
-Research Paper: https://github.com/thePM001/AEP-research-paper-001  
-Demo: https://aep.newlisbon.agency  
-AEP 2.75e Agent Harness: https://github.com/thePM001/AEP-agent-element-protocol/tree/main/harness/aep-2.75-agent-harness  
-Schema Builder and Policy Builder (since v2.6) extend governance to the governance layer itself.
+**120+ Features. One Ultimate AI Agent Control Protocol.**
 
-## Repository Structure
+**Version 2.8.0** - Forked from `NLA-AEP-2.75-open-protocol`  
+**Author:** thePM_001 ([https://x.com/thePM_001](https://x.com/thePM_001))  
+**Licence:** Apache-2.0  
+**Public repository:** [https://github.com/thePM001/AEP-agent-element-protocol](https://github.com/thePM001/AEP-agent-element-protocol)
 
-```
-AEP-agent-element-protocol/
-  |-- src/                     TypeScript source (32 subsystems)
-  |   |-- schema-builder/      since v2.6 -- build schemas from data
-  |   |-- policy-builder/      since v2.6 -- build policies with formal validation
-  |   |-- evaluation-chain/    15-step evaluation pipeline
-  |   |-- aepassist/           Interactive governance assistant
-  |   |-- model-gateway/       LLM provider gateway
-  |   |-- streaming/           Real-time AG-UI validation
-  |   |-- subprotocols/        Commerce, identity, fleet subprotocols
-  |   |-- ...                  24 more subsystems
-  |-- config/                  Registry, theme, scene graph (YAML/JSON)
-  |-- policies/                Unified policy files (.gap, .rego, .policy)
-  |-- harness/                 AEP 2.75e  Agent Harness
-  |-- agent-control-extreme/   Production governance infrastructure
-  |   |-- profiles/            GAP-based agent capability profiles
-  |   |-- error-registry-example/
-  |-- sdk/                     Protocol SDK
-  |-- docs/                    Specifications, migration guides, OWASP mapping
-  |-- examples/                With-memory and with-resolver examples
-  |-- tests/                   Test suites (36 subsystems)
-  |-- AEP-main-skill/          Agent skill documentation
-```
+AEP 2.8 merges **dynAEP 1.0** (hyperlattice runtime: `action_path` filter, temporal authority, bridge) into the main repository and adds a mandatory local **AEP Base Node** kernel with Lattice Channels, AgentMesh identity, POTOMITAN mesh fallback, **CAW Framework** execution sandboxes (`aep-caw`), and the **Agent Composer** (ships as **Composer Lite**, WASM visual canvas on port **8424**).
+
+This is the **public open-source tier**. The Docker image ships the full offline protocol including dynAEP, source-built SDK clients, conformance runner and component registry. No remote server connection is required at runtime. **NPM registry distribution is forbidden** - use Docker or a verified source clone.
 
 ---
 
-### Now 90+ Features. One Ultimate AI Agent Control Protocol.
+## Architecture
 
-## AEP-Graph Orchestration [NEW]
+**Base Node is the kernel. Everything else is an SDK client, a runtime installer or a protocol component.**
 
-Stateful persistent workflow engine built on the AEP scene graph with vector-clock causal
-ordering from dynAEP.
+Each governed system gets **one AEP Hyperlattice wrap** (scene graph + `action_path` registry + GAP policy bindings + Lattice Channel transport). `validateLatticeScene()` proves the topological matrix for **every** system type (agents, services, workflows, APIs, infrastructure), not UI only. No action crosses the wrap without hyperlattice validation.
 
-### Node Types
+<p align="center" style="background-color:#ffffff;padding:16px;">
+  <a href="docs/architecture/aep-28-architecture.png" target="_blank" rel="noopener" title="Click to open zoomable full-size diagram">
+    <img
+      src="docs/architecture/aep-28-architecture.png"
+      alt="AEP 2.8 architecture diagram (click to zoom)"
+      width="100%"
+      style="background-color:#ffffff;cursor:zoom-in;"
+    />
+  </a>
+</p>
+
+| Layer | What it is | Canonical path |
+|-------|------------|----------------|
+| **Kernel** | Mandatory local governance daemon | [`AEP-Base-Node/`](AEP-Base-Node/) |
+| **Hyperlattice wrap** | One mechanism per system: scene + `action_path` + GAP + channels | [`AEP-Components/hyperlattice/`](AEP-Components/hyperlattice/) |
+| **Docks** | UCD egress airlock, validation/inference/wasm docks; **UCB optional** | [`AEP-Docks/`](AEP-Docks/) |
+| **UCB airlock (optional)** | Foreign MCP/HTTP attach only; manifest gate; no invented contracts | [`AEP-Docks/ucb/`](AEP-Docks/ucb/) |
+| **Connectors** | Application connectors (Slack, Jira, AWS, …) | [`AEP-Connectors/`](AEP-Connectors/) |
+| **Coding governance** | Propose, blast radius, solidify, git stays substrate | [`AEP-Components/coding-governance/`](AEP-Components/coding-governance/), [`AEP-Subprotocols/coding-governance/`](AEP-Subprotocols/coding-governance/) |
+| **HCSE parser** | aep-hcse parser MCP: symbol graph and detect_changes | [`AEP-Components/hcse/`](AEP-Components/hcse/) |
+| **Protocol components** | Runtime installers (dynAEP, channels, graph-engine, …) | [`AEP-Components/`](AEP-Components/) |
+| **SDK clients** | Thin lattice-gated language bindings | [`AEP-SDKs/`](AEP-SDKs/) |
+| **CCA agent** | Central Setup Agent: probe, plan, execute deployment | [`AEP-Components/cca/`](AEP-Components/cca/) |
+| **CAW Framework** | Execution-layer sandboxes: shell shims, seccomp, mounts, LLM proxy, lattice audit | [`AEP-Components/caw-framework/`](AEP-Components/caw-framework/) |
+| **Operators** | Agent Composer (Composer Lite), CCA agent, harness, installation wizard | [`AEP-Composer-Lite/`](AEP-Composer-Lite/), [`AEP-User-Experience/`](AEP-User-Experience/), [`AEP-Components/wizard/`](AEP-Components/wizard/) |
+| **Policy** | GAP nodes, presets, subprotocol validators | [`AEP-Policy-System/`](AEP-Policy-System/), [`AEP-Subprotocols/`](AEP-Subprotocols/) |
+
+**Flow:** Composer Lite and CCA agent seal frames via `lattice-transport`. CCA loads the registry, synthesizes ImplementationPlans and activates components against the hyperlattice wrap. **CAW sandboxes** (`aep-caw`) enforce GAP-authored profiles on the host for coding agents and shell workloads (see [GAP-centric policies and CAW sandboxes](#gap-centric-policies-and-caw-sandboxes)). The installation wizard bootstraps Base Node before CCA takes over. Connectors and SDKs use the same transport. UCB ingress airlock gates entry with `mcp-security`. HCSE parser installs via UCD egress airlock. Coding governance runs propose, blast radius and solidify on the same wrap. Docks receive PQEncryptedCapsule frames only. Policy loads at boot; nothing runs ungoverned.
+
+---
+
+## Canonical repository layout (2.8)
+
+| Directory | Role |
+|-----------|------|
+| [`AEP-Base-Node/`](AEP-Base-Node/) | **Kernel**: daemon, registry, POTOMITAN, agent-control-extreme |
+| [`AEP-Components/`](AEP-Components/) | Protocol components (dynAEP, **caw-framework**, lattice-channels, graph-engine, aep-comm, economics, scanners, fleet, …) |
+| [`AEP-Composer-Lite/`](AEP-Composer-Lite/) | **Agent Composer** (Composer Lite): WASM visual canvas on **:8424** |
+| [`AEP-SDKs/`](AEP-SDKs/) | Language SDKs: thin lattice-gated clients (not components) |
+| [`AEP-User-Experience/`](AEP-User-Experience/) | Harness, operator scripts, AEP-main-skill |
+| [`AEP-Connectors/`](AEP-Connectors/) | Application connectors (Slack, Jira, AWS, …) |
+| [`AEP-Docks/`](AEP-Docks/) | UCB + UCD socket dock specs and servers |
+| [`AEP-Policy-System/`](AEP-Policy-System/) | GAP policies, presets, policy-builder, schema-builder |
+| [`AEP-Subprotocols/`](AEP-Subprotocols/) | Regulation subprotocol Rust crates (UI, commerce, workflows, API, events, IaC) |
+| [`AEP-Research-Paper/`](AEP-Research-Paper/) | DAL-AEP research paper assets (PDF + OTS proof) |
+
+Root keeps only workspace tooling: `Cargo.toml`, `Dockerfile`, `docker-compose.yml`, `docker-compose.public.yml`, `.env.example`, `CHANGELOG.md`, `LICENSE`, `BIOSECURITY.md`, `vitest.config.ts`.
+
+Internal engineering assets (tests, plans, internal docs) are excluded from runtime images and public distribution per `AEP-Policy-System/reference/aep-noship-distribution.gap`.
+
+---
+
+## LatticeChannel security (mandatory)
+
+- **Transport:** every SDK, IDE, wizard, setup-agent and runtime module communicates with protocol components **only** via `PQEncryptedCapsule` **Lattice Channels** (docking sockets carry sealed frames only).
+- **No bypass:** plain `{ping}`, `{event}` and `{register_lrp}` wire formats are rejected and logged as side-channel anomalies.
+- **Scene validation:** `validateLatticeScene()` runs on every config load for **all system types**. Topological lattice matrix proof is mandatory before actions are accepted.
+- **Deploy:** Base Node Rust kernel is **containerized** (Docker) or docked to an AEP Validation Engine module.
+- **Shared transport:** JS/MJS/TS clients use [`AEP-Components/lattice-channels/lib/lattice-transport.mjs`](AEP-Components/lattice-channels/lib/lattice-transport.mjs) to seal frames via `aep-lattice-log build-frame`.
+
+```mermaid
+flowchart LR
+  UI[Composer Lite :8424] --> CL[AEP-Composer-Lite/lib/http-api.mjs]
+  CLIENT[UCB HTTP MCP client] --> UCB[AEP-Docks/ucb :8412]
+  UCB --> LT[lattice-channels/lattice-transport.mjs]
+  CL --> LT
+  LT --> VD[validation dock]
+  LT --> ID[inference dock]
+  LT --> FF[future_features dock]
+  LT --> WS[wasm_sandbox socket]
+  SDK[AEP-SDKs clients] --> LT
+  MG[model-gateway] --> LGF[lattice-gated-fetch]
+  LGF --> ID
+  LGF --> EXT[External APIs]
+  REG[AEP-Base-Node/registry] --> LGF
+  CCA[CCA LLM] --> LGF
+```
+
+| Path | Wire format | Notes |
+|------|-------------|-------|
+| Docking ports | `{frame: LatticeChannelFrame}` | Plain ping/event/register_lrp rejected |
+| WASM sandbox | Unix socket `wasm_sandbox` | Evaluate via seal+record+digest |
+| Outbound HTTP | Lattice-gated via inference dock | Audit frame before fetch |
+| UCB airlock (optional) | UCB HTTP/MCP on `:8412` | **Only for non-AEP foreign stacks.** API-key auth; manifest required; no fallback synthesis |
+| Policy | `AEP-Policy-System/lattice-channel-mandatory.gap` | `AEP_LATTICE_STRICT=1` at runtime |
+
+---
+
+## What is new in 2.8
+
+| Component | Path | Purpose |
+|-----------|------|---------|
+| **AEP Base Node** | `AEP-Base-Node/crate/` | Mandatory local governance daemon with docking ports |
+| **Lattice Channels** | `AEP-Components/lattice-channels/crate/` | PQEncryptedCapsule frames (ML-KEM + AES-256-GCM + ML-DSA) |
+| **AgentMesh** | `AEP-Components/agentmesh/crate/` | SPIFFE / DID / mTLS identity on lattice transport |
+| **Lattice Memory** | `AEP-Components/lattice-memory/crate/` | Attractor store (sqlite-vec + USearch) |
+| **POTOMITAN** | `AEP-Base-Node/potomitan/` | Mesh fallback when normal internet is unavailable |
+| **dynAEP 1.0** | `AEP-Components/dynAEP/` | Hyperlattice runtime: `action_path` filter, temporal authority, bridge (merged from standalone repo) |
+| **Installation Wizard** | `AEP-Components/wizard/install-wizard.mjs` + **visual UI** at `/install` on Composer Lite | Phase 1 Base Node installer (CLI + web wizard) |
+| **Setup Agent** | `AEP-Components/cca/setup-agent.mjs` | Post-install activation and inference config |
+| **Agent Composer (Composer Lite)** | `AEP-Composer-Lite/` | Experimental WASM composer canvas (`:8424`) for operator extension |
+| **Component registry** | `AEP-Base-Node/registry/` | Offline catalog + optional extension merge |
+| **Subprotocol registry** | `AEP-Subprotocols/` | Rust domain validators (UI, commerce, workflows, API, events, IaC, MCP) |
+| **Conformance runner** | `AEP-Components/conformance/` | CC-01..CC-15 public tier compliance battery |
+| **WASM sandbox** | `AEP-Components/wasm/crate/` | Policy eval via lattice socket (no HTTP bypass) |
+| **UCB (optional)** | `AEP-Docks/ucb/` | Universal Connect Bridge for **foreign** stacks only (`:8412`). Native AEP skips UCB. Set `UCB=0` to disable. |
+| **CAW framework** | `AEP-Components/caw-framework/` | Execution-layer sandbox (`aep-caw`); profiles authored in GAP, compiled locally |
+| **GAP language** | `AEP-Components/gap/` | Governed Agentic Programming: policies, sandbox profiles, manifest/plan templates |
+| **TypeScript SDKs** | `AEP-SDKs/typescript/` | `aep-protocol` + `dynaep` governance stack |
+
+---
+
+## Inherited from 2.75e: 100+ protocol features
+
+AEP 2.8 **inherits** the full 2.75e governance stack. Components are extracted from the monolith into `AEP-Components/` with registry manifests under `AEP-Base-Node/registry/components/`. SDKs re-export them from `AEP-SDKs/`.
+
+### Governance and control
+
+| Feature | Component path |
+|---------|----------------|
+| 15-step evaluation chain | `AEP-Components/evaluation-chain/` |
+| 11 content scanners (PII, secrets, injection, jailbreak, toxicity, URLs, data quality, predictions, brand, regulatory, temporal) | `AEP-Components/scanners/` |
+| 4 trust rings (sandbox, user, system, enterprise) | `AEP-Components/trust-rings/` |
+| Evidence ledger (SHA-256 hash chain + Merkle proofs) | `AEP-Components/evidence-ledger/` |
+| Kill switches and rollback | `AEP-Components/recovery/` |
+| Covenants (permit/forbid/require) | `AEP-Components/covenant/` |
+| Intent drift detection | `AEP-Components/intent/` |
+
+### Policy system
+
+| Feature | Path |
+|---------|------|
+| Hyperlattice GAP policy nodes | `AEP-Policy-System/reference/` |
+| Policy Builder (invariant detection, Rego generation) | `AEP-Policy-System/policy-builder/` |
+| Schema Builder (MLE, spectral analysis, permissiveness, Louvain) | `AEP-Policy-System/schema-builder/` |
+| OPA Rego + Cedar transpilers | `AEP-Components/policy-engine/` |
+| YAML policy importer | `AEP-Components/policy-engine/lib/policy/importer/` |
+| Built-in presets (strict, standard, relaxed, audit) | `AEP-Policy-System/*.policy.yaml` |
+
+### Agent operations
+
+| Feature | Path |
+|---------|------|
+| Agent identity (Ed25519, challenge-response) | `AEP-Components/identity/` |
+| Data permission system | `AEP-Components/permissions/` |
+| Fleet governance (limits, cost caps, drift) | `AEP-Components/fleet/` |
+| Multi-agent collaboration (supervisor, debate, delegation) | `AEP-Components/fleet/lib/collaboration/` |
+| Model gateway (governed LLM calls, streaming abort) | `AEP-Components/model-gateway/` |
+| CAW execution sandboxes (shell, file, network, LLM proxy) | `AEP-Components/caw-framework/` |
+| Recovery engine (soft violation retry) | `AEP-Components/recovery/` |
+| Interactive assistant | `AEP-Components/aepassist/` |
+
+### Cost economics (v2.75e)
+
+Nine modules under [`AEP-Components/economics/lib/`](AEP-Components/economics/):
+
+| Module | Role |
+|--------|------|
+| `balance.ts` | Provider-weighted, balanced-latency, model-weighted, model-latency strategies |
+| `model-mapping.ts` | Canonical model names to provider-specific IDs |
+| `pricing.ts` | Embedded per-million-token price catalog (10+ providers) |
+| `cost-estimator.ts` | Pre-dispatch token and micro-USD estimation |
+| `budget.ts` | Deny/warn/quota modes with daily/monthly rotation |
+| `x402.ts` | HTTP 402 nanopayment verify/settle (exact/upto/batch-settlement) |
+| `concurrency.ts` | Token-based semaphore against cost spikes |
+| `fallback.ts` | Health-monitored provider failover |
+
+Harness reference: `AEP-User-Experience/harness/`. **Wired:** `GovernedModelGateway` accepts `economics` deps (price catalog, budget, concurrency, fallback) via `economics/lib/gateway-integration.ts`.
+
+### Security and infrastructure
+
+| Feature | Path |
+|---------|------|
+| MCP security gateway | `AEP-Components/mcp-security/` |
+| Intercept proxy | `AEP-Components/intercept/` |
+| Merkle-tree audit / proof bundles | `AEP-Components/proof-bundle/` |
+| OTEL telemetry | `AEP-Components/telemetry/` |
+| Lattice crypto (PQ signatures) | `AEP-Components/lattice-crypto/` |
+
+### Developer experience
+
+| Tool | Path |
+|------|------|
+| CLI (`aep doctor`, `verify`, `lint-policy`, `red-team`, policy commands) | `AEP-SDKs/typescript/aep-protocol/` |
+| Schema / policy builder CLIs | `AEP-Policy-System/schema-builder/`, `policy-builder/` |
+| TypeScript programmatic SDK | `AEP-SDKs/typescript/aep-protocol/` |
+| dynAEP hyperlattice runtime (bridge + filter) | `AEP-SDKs/typescript/dynaep/` |
+| Produce all SDKs | `node AEP-User-Experience/scripts/produce-aep-sdks.mjs` |
+
+---
+
+## AEP-Graph Orchestration
+
+Stateful persistent workflow engine built on the AEP scene graph with vector-clock causal ordering from dynAEP.
+
+**Path:** [`AEP-Components/graph-engine/lib/graph/`](AEP-Components/graph-engine/lib/graph/)  
+**API:** `GraphEngine`, `createGraphEngine()`: validate, detectCycles, execute with checkpoints and vector clocks.
+
+### Node types
+
 | Type | Purpose |
 |------|---------|
 | Action | Execute agent tools or operations |
@@ -52,811 +227,603 @@ ordering from dynAEP.
 | Parallel | Concurrent execution with join synchronization |
 | Loop | Cyclic execution with iteration bounds and exit conditions |
 
-### Persistence
-All workflow state is persisted to the lattice memory fabric. Recovery from checkpoints
-after restart. Vector clocks ensure causal consistency across distributed execution.
-
 ### Features
+
 - Cyclic execution with bounded loop detection
 - Checkpoints at every node for resume-after-failure
 - Human-in-the-loop branch points with timeout escalation
 - Native retry with configurable backoff (linear, exponential, Fibonacci)
 - Conditional branching via GAP policy evaluation
+- Persistence to lattice memory fabric; vector clocks for causal consistency
 
 ```typescript
-const graph = new GraphEngine();
+import { GraphEngine } from "./AEP-Components/graph-engine/lib/graph/index.js";
+
+const graph = new GraphEngine({ entryNodeId: "start" });
 graph.addNode({ id: "start", type: "action", next: ["review"] });
-graph.addNode({ id: "review", type: "decision", next: ["approve", "reject"] });
-graph.addNode({ id: "approve", type: "wait", next: ["deploy"] });
-graph.addNode({ id: "reject", type: "action", next: [] });
+graph.addNode({ id: "review", type: "decision", next: [], branches: { approve: "deploy", reject: "stop" } });
 graph.addNode({ id: "deploy", type: "action", next: [] });
-graph.validate(); // checks for cycles and missing references
-graph.execute({ input: context });
+graph.addNode({ id: "stop", type: "action", next: [] });
+graph.validate();
+await graph.execute({ input: context });
 ```
 
 ---
 
+## AEP-Comm universal orchestration
 
+Full universal orchestration layer for agent discovery, messaging and delegation.
 
-## AEP-Comm Universal Orchestration
+**Core modules:** [`AEP-Components/aep-comm/lib/`](AEP-Components/aep-comm/) (discovery, messaging, delegate, orchestration)
 
-AEP 2.75e includes a full universal orchestration layer matching or exceeding any inferior competitor agent protocol. All modules in `src/aep-comm/` with harness
-integration in `harness/aep-comm-harness.ts`.
+| Module | Surface | Purpose |
+|--------|---------|---------|
+| `agent-card.ts` | Agent card | Standardized agent capability description |
+| `task-lifecycle.ts` | Task lifecycle | 8-state task management with push notifications |
+| `human-in-the-loop.ts` | Human gate | Approval gates for sensitive actions |
+| `resource-protocol.ts` | Resource MCP | Resource listing and access |
+| `prompt-templates.ts` | Prompt MCP | Parameterized prompt construction |
+| `code-sandbox.ts` | Code sandbox | Isolated code execution with policy control |
 
-### Orchestration Modules
+| `discovery/dht.ts` | - | In-memory DHT with TTL expiry |
+| `discovery/registry.ts` | - | Agent discovery registry |
+| `discovery/gossip.ts` | - | Periodic peer health exchange |
+| `messaging/router.ts` | - | A2A-like routing with lattice `action_path` |
+| `messaging/envelope.ts` | - | JSON-LD message format |
+| `messaging/inbox.ts` | - | Per-agent priority queue |
+| `messaging/transports/ws-transport.ts` | - | WebSocket lifecycle |
+| `messaging/transports/sse-transport.ts` | - | SSE + POST fallback metadata |
+| `delegate/resolver.ts` | - | Task delegation with retry |
 
-| Module | Protocol Parity | Purpose |
-|--------|----------------|---------|
-| agent-card.ts | Google A2A | Standardized agent capability description |
-| task-lifecycle.ts | Google A2A | 8-state task management with push notifications |
-| human-in-the-loop.ts | Google A2A | Approval gates for sensitive agent actions |
-| resource-protocol.ts | Anthropic MCP | Standardized resource listing and access |
-| prompt-templates.ts | Anthropic MCP | Parameterized prompt construction |
-| code-sandbox.ts | AutoGen | Isolated code execution with policy control |
+**Harness:** [`AEP-User-Experience/aep-comm-harness.ts`](AEP-User-Experience/aep-comm-harness.ts) imports all modules from `AEP-Components/aep-comm/lib/`.
 
-### Communication Modules
-
-| Module | Purpose |
-|--------|---------|
-| discovery/dht.ts | In-memory DHT with TTL expiry |
-| discovery/registry.ts | Agent discovery with gossip protocol |
-| discovery/gossip.ts | Periodic peer health exchange |
-| messaging/router.ts | A2A-like message routing with lattice validation |
-| messaging/envelope.ts | JSON-LD message format with signing |
-| messaging/inbox.ts | Per-agent priority message queue |
-| messaging/transports/ws-transport.ts | WebSocket with auto-reconnect |
-| messaging/transports/sse-transport.ts | SSE with HTTP POST fallback |
-| delegate/resolver.ts | Native task delegation with retry |
-
-### Integration Modules
-
-| Module | Purpose |
-|--------|---------|
-| src/evidence/agentstream-backend.ts | Persistent evidence storage (paid add-on purchaseable from NLA)|
-| harness/aep-comm-harness.ts | Full harness wiring all modules |
-
-
-
-![AEP 2.7e - 90+ Features](docs/images/feature-grid.png)
-
-## [Explore the full feature grid at aep.newlisbon.agency](https://aep.newlisbon.agency)
+**Evidence backend:** [`AEP-Components/evidence-ledger/lib/evidence/agentstream-backend.ts`](AEP-Components/evidence-ledger/lib/evidence/agentstream-backend.ts) (paid NLA Agentstream add-on).
 
 ---
 
-## AEP 2.75e Features
+## What AEP does
 
-### Governance & Control
-- **15-Step Evaluation Chain**: Deterministic output validation pipeline
-- **11 Content Scanners**: PII, secrets, injection, jailbreak, toxicity, URLs, data quality, predictions, brand, regulatory, temporal
-- **4 Trust Rings**: Sandbox, user, system, enterprise - monotonic access control
-- **Evidence Ledger**: SHA-256 hash-chained audit trail with Merkle proofs
-- **Kill Switches & Rollback**: Operator-activated termination + automatic recovery
+AEP is a **3-layer governance architecture**: Structure (what exists and where), Behaviour (what each element may do), Skin (how it looks). Changing one layer never requires changing another.
 
-### Policy System
-- **Reference Policy Lattice**: Gapc-validated security, deployment, writing, governance policies
-- **Policy Builder Assistant**: Interactive wizard + template generation for custom policies
-- **Offline Policy Validation**: Structural validation without external dependencies
-- **Multi-Language Support**: OPA Rego and Cedar transpilers alongside GAP/YAML
-- **YAML Policy Importer**: Import external policy formats
+Beyond UI, the same separation maps to workflows, REST APIs, ML pipelines, event systems, infrastructure as code, smart contracts and agentic commerce: **agents propose, AEP validates, only compliant output executes.**
 
-### Agent Operations
-- **Agent Identity Verification**: Ed25519 key pairs, challenge-response, capability advertising
-- **Data Permission System**: Per-agent path, network, and environment access control with trust ring-based defaults
-- **Fleet Governance**: Multi-agent limits, cost caps, drift clustering
-- **Multi-Agent Collaboration**: Supervisor, debate and delegation patterns
-- **Model Gateway**: Governed LLM calls with streaming abort
-- **Recovery Engine**: Automatic retry on soft violations with corrective feedback
+Every agent action passes through a deterministic **15-step evaluation chain** (allow or deny, no ambiguity).
 
+The mathematical foundation is the **Deterministic Adjudication Lattice (DAL)**. Lattice memory stores validated outputs as immutable attractors; known-good proposals match attractors and skip cold-path validation. See [`AEP-Research-Paper/`](AEP-Research-Paper/) for the formal specification.
 
-### Cost Economics (v2.75e) [NEW]
+AEP v2.75+ extends governance to the governance layer itself: Schema Builder (MLE, Fiedler connectivity, permissiveness entropy, Louvain communities) and Policy Builder (invariant detection, Rego generation, coverage tracking).
 
-AEP 2.75e adds cost-aware routing, budgeting, and spend control across all LLM providers. 
+### Three-layer architecture (UI subprotocol)
 
-- **Provider Balance Engine**: Four load-balance strategies (provider-weighted, balanced-latency, model-weighted, model-latency) with weight validation at startup.
-- **Model Mapping**: Canonical model names resolved to provider-specific IDs for cross-provider price comparison.
-- **Price Catalog**: Embedded per-million-token pricing for 10+ providers with capability-based cheapest-finder.
-- **Pre-Dispatch Cost Estimator**: Token count and micro-USD cost estimation before every LLM call.
-- **Budget Enforcer**: Deny/warn/quota modes with monthly and daily period rotation and soft warning thresholds.
-- **HTTP 402 Nanopayments (X402)**: Facilitator-backed verify/settle flow, 3 payment schemes (exact/upto/batch-settlement), 120s settlement cache, lifecycle hooks (onBeforeVerify, onAfterSettle), channel management for batch escrow, chainable hook registration, and signed offer receipts for proof-of-interaction.
-- **Concurrency Limiter**: Token-based acquire/release semaphore preventing cost spikes from traffic bursts.
-- **Provider Fallback**: Health-monitored failover with error ratio thresholds, rate-limit backoff, and restore buffers.
-- **Semantic Cache Tuning**: Configurable similarity threshold, TTL, and exact-match-first short-circuit for deterministic semantic cache.
+| Layer | File | Responsibility |
+|-------|------|----------------|
+| Structure | `AEP-Subprotocols/ui/aep-scene.json` | Scene graph, topological IDs (`XX-NNNNN`), z-band hierarchy |
+| Behaviour | `AEP-Subprotocols/ui/aep-registry.yaml` | Component registry, states, constraints, forbidden patterns |
+| Skin | `AEP-Subprotocols/ui/aep-theme.yaml` | Colours, fonts, spacing via `skin_binding` only |
 
-**Subsystem**: src/economics/ (9 modules) + config/embedded/ (model-mapping.yaml, price-catalog.yaml)
+**Z-band rule:** each element type has a fixed z-index band (Shell 0-9, Panel 10-19, …, Tooltip 80-89). Violations are rejected mathematically.
 
-**Harness**: harness/aep-2.75-agent-harness/harness/aep-economics.js
-
-### Security & Infrastructure  
-- **15 Content Scanners**: PII, secrets, injection, prompt injection, jailbreak, toxicity, supply chain, URLs, data quality, predictions, brand, regulatory, temporal
-- **MCP Security Gateway**: Tool poisoning, typosquatting and drift detection
-- **Intercept Proxy**: One-command MCP proxy with policy-based tool blocking
-- **Merkle-Tree Audit**: Tamper-evident decision records
-- **AEP-Graph Orchestration**: Stateful persistent cyclic workflows with checkpoints
-
-### Developer Experience
-- **CLI Power Tools**: aep doctor, verify, lint-policy, red-team, policy-init, policy-build, policy-template
-- **Schema Builder**: Data-driven schema validation (MLE, spectral analysis, community detection)
-- **Policy Builder**: Domain invariant detection with Rego rule generation
-- **TypeScript SDK**: Full programmatic access to all governance features
-- **Progressive Disclosure**: Four governance presets (strict, standard, relaxed, audit)
-
----
-
-## Quick Start
-See [Policy Lattice Setup](policies/SETUP.md) for guided policy lattice initialization.
-
-### Method 1 -- Clone (recommended)
-
-```bash
-git clone https://github.com/thePM001/AEP-agent-element-protocol.git
-cd AEP-agent-element-protocol
-npm install
-npm run build
-npx aep assist setup
-```
-
-### Method 2 -- Install from GitHub (add to existing project)
-
-```bash
-npm install github:thePM001/AEP-agent-element-protocol
-npx aep assist setup
-```
-
-### Method 3 -- Claude Code (MCP)
-
-```bash
-git clone https://github.com/thePM001/AEP-agent-element-protocol.git
-cd AEP-agent-element-protocol && npm install && npm run build
-claude mcp add aep -- node /path/to/AEP-agent-element-protocol/dist/cli.js serve
-```
-
-Then in Claude Code: "Use the aepassist tool to set up governance."
-
-### Method 4 -- Cursor / Windsurf / Codex
-
-Clone the repo first, then add to `.cursor/mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "aep": {
-      "command": "node",
-      "args": ["/path/to/AEP-agent-element-protocol/dist/cli.js", "serve"]
-    }
-  }
-}
-```
-
----
-
-## Using /aepassist
-
-After setup, use the interactive assistant for everything:
-
-```bash
-npx aep assist              # show menu
-npx aep assist setup        # first-time setup (3 questions)
-npx aep assist status       # current governance status
-npx aep assist preset strict  # switch governance preset
-npx aep assist kill         # emergency kill switch
-npx aep assist covenant list  # view active covenants
-npx aep assist identity show  # view agent identity
-npx aep assist report json  # generate audit report
-npx aep assist schema build <domain> <data-file>      # build schema from data
-npx aep assist schema validate <schema-file>           # validate schema
-npx aep assist policy build <schema-file>              # build Rego policy
-npx aep assist policy validate <schema-file> <rego-dir>  # validate policy coverage
-```
-
----
-
-## What AEP Does
-
-AEP is a 3-layer governance architecture originally developed to give every UI element a unique numerical identity, exact spatial coordinates, defined behaviour rules and themed visual properties. It treats the frontend as a topological coordinate system. The three layers are **Structure** (what exists and where), **Behaviour** (what each element does and cannot do) and **Skin** (what each element looks like). Changing one layer never requires changing another.
-
-AEP applies beyond frontend development to ALL constrained knowledge domains with fixed rule sets and build schemas. Workflows, REST APIs, ML training pipelines, event-driven systems, infrastructure as code, smart contracts and agentic commerce all use the same architecture: agents propose, AEP validates, only compliant output executes.
-
-Every agent action passes through a deterministic 15-step evaluation chain. The chain produces allow or deny. No ambiguity.
-
-The mathematical foundation is the Deterministic Adjudication Lattice (DAL). A population of LLM candidate outputs is filtered through hierarchical verification predicates. The convergence theorem proves zero-defect selection with population size logarithmic in the inverse failure probability. Lattice memory stores every validated output as an immutable record. Known good proposals match against attractors and skip cold-path validation.
-
-AEP v2.75 extends governance to the governance layer itself. The Schema Builder validates schema definitions using Maximum Likelihood Estimation (MLE), graph spectral analysis (Fiedler algebraic connectivity), permissiveness scoring (acceptance distribution entropy) and Louvain community detection. The Policy Builder detects domain invariants from data and generates Rego rules with coverage tracking. The protocol now validates its own constitutional layer with the same mathematical rigour it applies to agent outputs.
-
----
-
-## The Three-Layer Architecture
-
-AEP separates every governed domain into three independent layers. Each layer has a single responsibility. No layer references another directly.
-
-### Layer 1 - Structure (aep-scene.json)
-
-The scene graph. A flat JSON object where every element has a unique topological ID following the prefix convention (XX-NNNNN), a parent reference, spatial constraints, dimensions, a z-index and a visibility flag.
-
-**AEP Prefix Convention:**
-
-| Prefix | Type | Z-Band |
-|--------|------|--------|
-| SH | Shell | 0-9 |
-| PN | Panel | 10-19 |
-| NV | Navigation | 10-19 |
-| CP | Component | 20-29 |
-| FM | Form | 20-29 |
-| IC | Icon | 20-29 |
-| CZ | Cell Zone | 30-39 |
-| CN | Cell Node | 30-39 |
-| TB | Toolbar | 40-49 |
-| WD | Widget | 50-59 |
-| OV | Overlay | 60-69 |
-| MD | Modal/Dialog | 70-79 |
-| DD | Dropdown | 70-79 |
-| TT | Tooltip | 80-89 |
-| -- | System reserved | 90-99 |
-
-**Z-band hierarchy:** an element's z-index MUST fall within its type's band. The validator rejects violations. A Modal (z: 70-79) always renders above a Data Grid (z: 30-39). A Tooltip (z: 80-89) always renders above a Modal. Mathematically enforced.
-
-**Topological constraints:** relational anchors (position relative to parents/siblings), flex/grid spatial rules, viewport breakpoint matrices for responsive behaviour.
-
-**Structure rules:**
-
-1. Every element MUST have a unique ID following the prefix convention.
-2. Every element MUST have a parent (except root Shell).
-3. Children MUST be topologically contained within their parent.
-4. Z-index values MUST follow the z-band hierarchy.
-5. The scene graph is the single source of truth for layout.
-
-### Layer 2 - Behaviour (aep-registry.yaml)
-
-The component registry (AEP-FCR). Every element that renders pixels has an entry defining what it does, its states, events, constraints and what it is forbidden from doing. The Behaviour layer contains no visual properties. All styling is delegated to Layer 3 through skin_binding.
-
-**Required fields:** label, category, function, component_file, parent, skin_binding, states, constraints.
-
-**Category taxonomy:** action, data-input, data-display, feedback, layout, system.
-
-**Template Nodes:** elements spawned dynamically (grid rows, list items) are governed by templates. The validator checks the template at build time. Runtime instances inherit its proven safety. Validate the mould, not every item poured from it.
-
-**Forbidden patterns:** Rego policies define patterns that must never occur (z-band violations, orphaned elements, missing skin bindings).
-
-### Layer 3 - Skin (aep-theme.yaml)
-
-All colours, fonts, spacing, borders, shadows and animations. Components reference theme variables through skin_binding. No component ever contains hardcoded visual values.
-
-**Skin binding resolution:** registry entry -> skin_binding key -> theme component_styles block -> resolved properties.
-
-To add dark/light mode: create a new YAML with different values. Structure and Behaviour remain untouched.
-
-### Layer Independence Principle
-
-Changing one layer never requires changing another. Five scenarios:
-
-- **Add dark mode:** Skin only changes.
-- **Move sidebar to the right:** Structure only changes.
-- **Add keyboard shortcut:** Behaviour only changes.
-- **AI agent repositions a panel:** Structure only changes.
-- **Complete visual rebrand:** Skin only changes.
-
-If you find yourself editing two layers for one change, the separation is broken. Fix it.
-
-### How the 3-Layer Architecture Generalizes
-
-For non-UI domains, the three layers map to:
-
-- **Structure** -> What entities exist and their relationships (API endpoints, workflow steps, IaC resources, accounting entries).
-- **Behaviour** -> What operations are permitted on each entity (allowed HTTP methods, valid state transitions, permitted mutations).
-- **Skin** -> How entities are presented or serialized (response formats, output templates, report styling).
-
-The separation principle holds: changing presentation never requires changing structure or rules.
-
----
-
-## 15-Step Evaluation Chain
-
-Every agent action passes through these 15 steps. The chain produces allow or deny.
+### 15-step evaluation chain
 
 | Step | Name | Description |
 |------|------|-------------|
-| 0 | Task scope | Current action within subtask scope |
+| 0 | Task scope | Action within subtask scope |
 | 1 | Session state | Session active and valid |
-| 2 | Ring capability | Agent's ring permits operation |
+| 2 | Ring capability | Agent ring permits operation |
 | 3 | System rate limit | Planetwide cap not exceeded |
 | 4 | Session rate limit | Per-session cap not exceeded |
 | 5 | Intent drift | Action aligns with baseline behaviour |
-| 6 | Escalation | Action requires higher authority |
-| 7 | Covenant evaluation | Agent's permit/forbid/require rules |
-| 8 | Rego check | Environment-specific forbidden patterns |
-| 9 | Capability + trust | Agent capabilities and trust tier sufficient |
-| 10 | Budget/limit | Token, cost and spend limits not exceeded |
-| 11 | Gate check | Human or webhook approval required |
-| 12 | Cross-agent verification | Multi-agent identity and covenant check |
-| 13 | Knowledge validation | Covenant-scoped KB access |
-| 14 | Content scanners | Active scanners (up to 11) |
-
-**Always-mode steps** (run every time): 1, 2, 3, 4, 7, 8, 9, 14.
-
-**Active-mode steps** (short-circuit when precondition not met): 0, 5, 6, 10, 11, 12, 13.
+| 6 | Escalation | Higher authority required |
+| 7 | Covenant evaluation | Permit/forbid/require rules |
+| 8 | Rego check | Environment forbidden patterns |
+| 9 | Capability + trust | Capabilities and trust tier |
+| 10-14 | Scanners + lattice + perception | Content scanners, dynAEP lattice, perception bounds |
 
 ---
 
-## 11 Content Scanners
+## Complete feature list (120+)
 
-| Scanner | What It Checks | Default Severity |
-|---------|---------------|-----------------|
-| PII | Names, emails, phone numbers, SSNs, addresses | hard |
-| Injection | Prompt injection and code injection patterns | hard |
-| Secrets | API keys, tokens, credentials, private keys | hard |
-| Jailbreak | Jailbreak attempts, system prompt extraction | hard |
-| Toxicity | Threats, decay-promotion, toxic language | hard |
-| URL | URLs against allowlist and blocklist | soft |
-| Data profiler | Null rates, duplicates, outliers, schema drift, class imbalance | soft |
-| Prediction | Percentage claims, absolute-confidence language, horizon limits | soft |
-| Brand | Required/forbidden phrases, competitor mentions, trademarks | soft |
-| Regulatory | Ad, financial, medical, affiliate and age disclosures | soft |
-| Temporal | Stale references, future horizons, undated statistics, expired content | soft |
+| Category | Count | Highlights |
+|----------|-------|------------|
+| Architecture | 5 | Three-layer separation, z-band hierarchy, 14 prefix types, template nodes, schema versioning |
+| Evaluation chain | 5 | 15-step chain, short-circuit profiles, AOT + JIT validation |
+| Content scanners | 11 | PII, injection, secrets, jailbreak, toxicity, URL, data profiler, prediction, brand, regulatory, temporal |
+| Governance | 8 | Trust scoring, 4 rings, covenants, drift, kill switch, rollback, hard/soft violations, presets |
+| Fleet / multi-agent | 6 | Identity, fleet limits, spawn governance, message scanning, verification handshake, fleet API |
+| Model gateway | 4 | Anthropic, OpenAI, Ollama, custom OpenAI-compatible |
+| Cost economics | 9 | Balance routing, pricing catalog, budget, x402, concurrency, fallback, gateway integration |
+| Knowledge base | 4 | Governed ingestion, scoped retrieval, anti-context-rot, CLI |
+| Eval / datasets | 4 | Eval runner, versioned datasets, rule generator, prompt hashing |
+| Workflow | 3 | Phased verdicts, rework limits, fine-tuning template |
+| Commerce | 3 | 12 governed actions, merchant registry, spend tracking |
+| Subprotocols | 6 | UI, workflows, REST API, events, IaC, commerce |
+| **AEP Hyperlattice** | 17 | Scene validation, GAP policy nodes, `action_path` event nodes, temporal authority, causal ordering, perception gov, observer adapters, compliance LRP docks, join/meet, trust-ring gating, Lattice Channel wrap |
+| AEP-Graph | 6 | Action, decision, wait, parallel, loop nodes, checkpoints, vector clocks |
+| AEP-Comm | 14 | A2A agent-card, task lifecycle, HITL, MCP resources, prompts, code sandbox, DHT, gossip, router, envelope, inbox, WS/SSE transports, delegate |
+| Security | 4 | Hash-chained ledger, proof bundles, OTEL, reliability index (theta) |
+| Builders | 2 | Schema Builder, Policy Builder |
+| **2.8 kernel additions** | 15 | Base Node, Lattice Channels, AgentMesh, Lattice Memory, POTOMITAN, dynAEP merge, wizard, setup agent, Composer Lite, registry, conformance, WASM sandbox, UCB, SDK produce pipeline, subprotocol registry |
 
 ---
 
-## Schema Builder (since v2.6)
+## Distribution policy (no npm registry)
 
-Data-driven schema creation and validation. Four mathematical foundations:
+| Allowed | Not allowed |
+|---------|-------------|
+| **Docker image** (`docker-compose.public.yml`) | `npm install @aep/core` or any `@aep/*` package |
+| **Source-built SDK** from this repository | `npx aep` pulling from a public registry |
+| **Prebuilt CLI inside Docker** (`aep`, `aep-setup-agent`) | Publishing npm registry install paths |
 
-**MLE Estimation:** derives constraint parameters (min, max, precision, pattern, enum) from historical data using maximum likelihood. Welford's online algorithm for streaming updates. Confidence intervals. Divergence scoring between candidate schemas and MLE ground truth.
+Integrators use the Docker image or build SDK clients from a verified clone.
 
-**Graph Spectral Analysis:** builds a constraint graph from schema + Rego rules. Computes the Laplacian eigenvalues. The Fiedler value (lambda_2) measures how tightly coupled the constraints are. The Fiedler vector identifies the weakest structural boundary. Based on Fiedler (1973) algebraic connectivity.
+---
 
-**Permissiveness Scoring:** estimates acceptance distribution entropy. Tighter schemas have lower entropy. Computes excess permissiveness vs. MLE reference. Identifies weakest constraints via principal components.
+## Quick start
 
-**Module Detection:** Louvain community detection on the constraint graph. Decomposes schemas into independently verifiable modules. Identifies inter-module gaps.
-
-**Composite score:** `C = 0.35*(1-MLE_divergence) + 0.25*spectral_score + 0.25*(1-excess_permissiveness) + 0.15*modularity`
-
-**Decision:** pass >= 0.8, review 0.5-0.8, reject < 0.5.
+### Docker (recommended)
 
 ```bash
-npx aep assist schema build <domain> <data-file>
-npx aep assist schema validate <schema-file>
+cp .env.example .env
+docker compose up -d --build
+open http://localhost:8424/install
 ```
 
----
+The **Agent Composer** serves the WASM visual canvas at `/` and the install wizard at `/install`. The setup agent configures inference and the hyperlattice wrap (GAP nodes, `action_path` registry, governance mode, dock channels).
 
-## Policy Builder (since v2.6)
+### Coding agents (Claude Code, Cursor, Codex)
 
-Data-driven Rego policy generation:
-
-**Invariant Detection:** scans historical data for domain invariants (equality, inequality, membership, exclusion, conditional, temporal). Each detected invariant gets a confidence score.
-
-**Rego Generation:** generates `deny[msg]` rules from detected invariants. Covers MLE outliers and spectral gap suggestions.
-
-**Coverage Tracking:** invariant manifest lists required domain rules. Coverage rate = rules present / rules required.
-
-**Spectral Impact:** projects the Fiedler value improvement if proposed rules are adopted.
+After Base Node activation, initialize governance using the **CLI baked into the Docker image**:
 
 ```bash
-npx aep assist policy build <schema-file>
-npx aep assist policy validate <schema-file> <rego-dir>
+docker compose -f docker-compose.public.yml exec aep aep init codex
+docker compose -f docker-compose.public.yml exec aep aep init claude-code
+docker compose -f docker-compose.public.yml exec aep aep init cursor
+```
+
+### Local development (source build)
+
+```bash
+# Rust workspace (artifacts in rust/target/)
+cargo test --workspace
+cargo build --release -p aep-base-node
+cargo run -p aep-base-node -- --self-test
+
+# Installation wizard smoke (CLI)
+node AEP-Components/wizard/install-wizard.mjs --non-interactive --config=/tmp/aep-wizard-test.json
+
+# Fresh Docker test stack (isolated volume, visual install wizard)
+docker compose -f docker-compose.test-fresh.yml up -d --build
+open http://localhost:8524/install
+
+# Composer Lite
+AEP_DATA=/tmp/aep-data node AEP-Composer-Lite/server.mjs
+open http://localhost:8424/install
+
+# Conformance battery
+./AEP-Components/conformance/runner/run.sh
+
+# Produce SDKs
+node AEP-User-Experience/scripts/produce-aep-sdks.mjs
+```
+
+### Using aepassist (inside Docker)
+
+```bash
+docker compose -f docker-compose.public.yml exec aep aep assist setup
+docker compose -f docker-compose.public.yml exec aep aep assist status
+docker compose -f docker-compose.public.yml exec aep aep assist preset strict
+docker compose -f docker-compose.public.yml exec aep aep assist kill
 ```
 
 ---
 
-## Governance
+## Key services and ports
 
-**Trust scoring.** Continuous 0-1000 score with five tiers: untrusted, provisional, standard, trusted, privileged. Time-based erosion. Configurable penalties per violation type and rewards per successful action.
-
-**Execution rings.** Four-ring privilege model. Ring 0 (kernel): full access. Ring 1: read/write/delete/network. Ring 2 (default): read/create/update. Ring 3 (sandbox): read-only. Automatic demotion when trust drops below threshold.
-
-**Behavioural covenants.** Agent-declared constraint DSL with three keywords: permit, forbid (always wins), require. Each rule tagged `[hard]` (immediate reject) or `[soft]` (recovery attempt). Evaluated at Step 7.
-
-**Intent drift detection.** Five heuristics: tool category distribution, target scope shifts, AEP prefix drift, frequency anomalies and repetition detection. Configurable warmup period. Actions on drift: warn, gate, deny or kill.
-
-**Kill switch.** `killAll(reason)` terminates every active session. `killSession(id, reason)` targets one. Optional rollback and trust reset to zero.
-
-**Rollback.** Every mutation stores a compensation plan. Rollback works per action or per session in reverse chronological order.
-
-**Hard/soft violation model.** Hard violations reject immediately. Soft violations trigger the recovery engine with corrective feedback and a configurable number of retry attempts.
-
-**Governance presets.** Four presets control the strictness level. See below.
+| Service | Default port | Notes |
+|---------|--------------|-------|
+| Agent Composer (Composer Lite) | `8424` | Public WASM canvas and install wizard. **Not** the separate internal NLA deployment (`/composer-internal`, `:8415`/`:8416`) |
+| UCB | `8412` | **Optional.** Foreign attach only. Disable with `UCB=0`. See [UCB section](#ucb-universal-connect-bridge--optional-foreign-attach) |
+| WASM sandbox | `wasm_sandbox` socket | Set `WASM_SANDBOX=1` in Docker |
+| Base Node sockets | `/data/aep/sockets` | Inference, validation, future, regulation docks |
 
 ---
 
-## Workflow Phases
+## UCB (Universal Connect Bridge) - optional foreign attach
 
-Sessions can follow sequential workflows with typed verdicts per phase:
+UCB is **not** part of the mandatory AEP kernel path. It exists for one purpose: let operators **safely attach non-AEP systems** (LangGraph, MCP servers, AutoGen, CrewAI, custom HTTP agents, etc.) to an AEP hyperlattice without giving those stacks raw lattice socket access.
 
-- **advance** - proceed to next phase (+15 trust)
-- **rework** - repeat with feedback (-20 trust)
-- **skip** - bypass with justification (-5 trust)
-- **fail** - terminate or escalate (-100 trust)
+**If you do not need foreign attach, do not run UCB.** Native AEP components (Composer Lite, CCA, CAW, SDKs, connectors) use `lattice-transport` directly against Base Node docks. Skipping UCB is valid. Attaching foreign agents without UCB or without a task manifest is **at your own risk** - AEP will not invent a contract for you.
 
-Max rework limits enforced per phase. Fine-tuning workflow template provides six governed phases: DATA_PREPARATION, DATA_VALIDATION, TRAINING_CONFIG, TRAINING_EXECUTION, EVALUATION, DEPLOYMENT.
+### What UCB does
 
----
+| Capability | Description |
+|------------|-------------|
+| Ingress | Validate foreign payloads (P_P, P_S, P_C, P_R), translate to lattice events, seal to validation dock |
+| Manifest gate | Require a real task manifest before integration |
+| Egress | Manifest-scoped HTTP proxy with credential injection (`egress.routes`) |
+| MCP bridge | `ucb_ingest`, `ucb_delegate`, `ucb_rollback`, `ucb_health` tools |
+| Rollback | Extend-Write diff journal with lattice-gated rollback |
 
-## Multi-Agent and Fleet
+### What UCB does **not** do
 
-**Agent identity.** Ed25519/RSA identity per agent with `verifyCounterparty()` handshake and ProofBundle exchange.
+| Anti-pattern | Why |
+|--------------|-----|
+| Replace `lattice-transport` for internal components | Internal hops must not route through UCB |
+| Auto-generate task manifests | **No hardcoded fallback.** No `provisional_fallback`. No silent provisional contracts |
+| Force itself on every deployment | `UCB=0` in Docker; omit `aep-ucb` binary if unused |
+| Substitute for CAW / GAP policy | Manifest is a contract gate, not a policy author |
 
-**Fleet governance.** Enable with `fleet.enabled: true`. Enforces agent limits, hourly cost caps, ring saturation limits and drift clustering thresholds across all agents.
+### Task manifest required at ingest (fail closed)
 
-**Spawn governance.** Child agents inherit parent covenant as a subset with reduced trust and same or lower ring. A child can never have more access than its parent.
+Every `POST /ucb/v1/ingest` needs a manifest from **one** of these sources:
 
-**Message scanning.** Inter-agent messages pass through PII, injection and secrets scanners.
+| Priority | Source | How |
+|----------|--------|-----|
+| 1 | **Provided** | Include `task_manifest` on the ingest JSON body (`synthesized_by: provided`) |
+| 2 | **Stored** | Reuse a previously saved non-provisional manifest for `agent_id` in `AEP_TASK_MANIFEST_DIR` |
+| 3 | **Synthesis tier** | Call an HTTP endpoint you configure (all tiers optional; unset = no auto-synthesis) |
 
----
+If none apply, UCB returns **422 rejected** with an explicit error. This is intentional.
 
-## Model Gateway
+Optional synthesis tiers (strict priority, first success wins):
 
-Four providers: Anthropic, OpenAI, Ollama, custom (any OpenAI-compatible endpoint). Every request and response passes through the full governance chain including scanner pipeline and budget tracking. Streaming support with governed chunks and early abort on violation.
+| Tier | Mechanism | Env var |
+|------|-----------|---------|
+| 1 | GAP constrained decoding | `UCB_GAP_ENGINE_URL` (NLA internal / licensed only) |
+| 2 | Other constrained decoding (e.g. dottxt-compatible) | `UCB_CONSTRAINED_DECODER_URL` |
+| 3 | LLM structured output | `UCB_LLM_SYNTHESIS_URL` |
 
----
+Tier 1 (GAP constrained decoding engine) is not shipped in the public OSS repo. Configure `UCB_GAP_ENGINE_URL` to your licensed or self-hosted tier-1 endpoint.
 
-## Knowledge Base
+### Example: ingest with caller-provided manifest
 
-**Governed ingestion.** Content passes through the full scanner pipeline before storage. Hard failures reject. Soft failures flag for review.
-
-**Scoped retrieval.** Covenant-scoped filtering ensures agents only see what their covenant permits. Flagged chunks receive double scanning.
-
-**Anti-context-rot.** Most relevant chunks placed at positions 1 and N (context boundaries) to counteract U-shaped LLM attention erosion in long contexts.
-
----
-
-## Eval, Datasets and Prompt Optimization
-
-**Eval runner.** Replays dataset entries through the full policy chain and scanner pipeline. Tracks pass/fail rates, false positives and false negatives.
-
-**Dataset management.** Versioned evaluation datasets. Create manually, import from production ledgers or load from JSON. Each modification bumps patch version. Export to JSON or CSV.
-
-**Rule generator.** Analyses violation patterns and produces covenant rules or scanner regex patterns when confidence exceeds threshold.
-
-**Prompt versioning.** Save, load, list and diff prompt versions with SHA-256 content hashes. Inject governance context into prompts. Compare two prompt variants against the same dataset.
-
----
-
-## ML Metrics
-
-Four metric families:
-
-- **Classification** - accuracy, precision, recall, F1, confusion matrix
-- **Regression** - MSE, RMSE, MAE, R2, MAPE
-- **Retrieval** - precision@k, recall@k, MRR, NDCG
-- **Generation** - exact match, avg length, empty rate
-
-Composite score integrates into ReliabilityIndex as optional `mlScore` field weighted into theta.
-
----
-
-## Commerce Subprotocol
-
-Governed agentic commerce covering 12 actions: discover, add_to_cart, remove_from_cart, update_cart, checkout_start, checkout_complete, payment_negotiate, payment_authorize, fulfillment_query, order_status, return_initiate, refund_request.
-
-Policy controls: merchant allow/blocklists, product category blocking, transaction amount limits, daily spend accumulation, human gate thresholds, payment method restrictions. Spend tracking with JSONL persistence.
-
----
-
-## Subprotocols
-
-| Subprotocol | What It Validates |
-|-------------|-------------------|
-| UI | Scene graph elements, z-bands, skin bindings, spatial rules |
-| Workflows | Actions, state transitions, payload schemas, approval gates |
-| REST APIs | HTTP methods, endpoint paths, request bodies, headers, query params |
-| Events / Pub-Sub | Topics, payload schemas, producer permissions, correlation IDs |
-| Infrastructure as Code | Resource kinds, required fields, forbidden fields, type constraints |
-| Commerce | Cart, checkout, payment, fulfillment, spend limits, merchant restrictions |
-
----
-
-## dynAEP
-
-Real-time streaming governance and temporal authority. Fuses AEP with AG-UI.
-
-### Streaming Governance (Core dynAEP)
-- Delta processor validates live events against the scene graph
-- Under-construction pattern prevents interaction with elements not yet validated
-- Shadow scene graph for pre-commit validation
-- Conflict resolution via last-write-wins or optimistic locking
-- Human-in-the-loop approval policies for high-risk mutations
-- Template node fast-exit for known-safe patterns
-
-### Temporal Authority (dynAEP-TA)
-- Bridge-authoritative clock as single source of temporal truth
-- TIM clock quality scoring for multi-source time verification
-- Causal ordering via vector clocks and Lamport timestamps
-- Predictive forecasting with TimesFM integration
-- Durable deadlines, timeouts, escalation and schedules
-- SLA governance with temporal primitives
-
-### Perceptual Governance (dynAEP-TA-P)
-- Temporal annotations for human-facing outputs
-- Speech pacing and haptic timing governance
-- Notification cadence enforcement
-- Adaptive perception bounds based on context
-- Bridge recovery protocol for disconnected operation
-
----
-
-## Multi-Agent Collaboration
-
-AEP 2.75e provides native multi-agent coordination patterns built on fleet governance.
-
-### Supervisor Pattern
-One agent governs sub-agents. Supervisor assigns tasks, validates outputs, enforces policies.
-Sub-agents inherit the supervisor's trust ring with monotonic safety - child agents can never
-be less governed than parents.
-
-```typescript
-const supervisor = fleet.createSupervisor("architect", { trustRing: "system" });
-const worker = supervisor.spawn("coder", { trustRing: "user" });
-supervisor.assign(worker, { task: "implement auth module" });
-const result = worker.execute();
-supervisor.validate(result, policyLattice);
+```bash
+curl -s -H "Authorization: Bearer $UCB_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "protocol": "langgraph",
+    "session_id": "sess-1",
+    "provenance": { "source": "langgraph", "protocol": "1.0", "session_id": "sess-1" },
+    "payload": { "subject": "LangGraph", "predicate": "integrates_via", "object": "UCB" },
+    "task_manifest": {
+      "manifest_version": "1",
+      "id": "tm-sess-1",
+      "agent_id": "ucb-foreign-langgraph",
+      "session_id": "sess-1",
+      "intent": {
+        "summary": "LangGraph integrates via UCB",
+        "allowed_operations": ["ucb.ingest"]
+      },
+      "trust": { "tier": "standard", "max_trust_score": 500 },
+      "provisional": false,
+      "synthesized_by": "provided"
+    }
+  }' \
+  http://127.0.0.1:8412/ucb/v1/ingest
 ```
 
-### Debate Pattern
-Agents cross-validate each other's outputs. Disagreements escalate to the evidence ledger.
-Majority-vote or consensus-based resolution with configurable quorum thresholds.
-
-### Task Delegation
-Dynamic task assignment with capability matching. Agents advertise capabilities via their
-identity card. The fleet manager routes tasks to the best-matching agent. Delegation chains
-preserve the trust ring hierarchy.
-
----
-
-
-## Meta AEP
-
-Higher-order contextual policy validation. Element + context tuple. Cross-field constraints enforce rules that depend on combinations of element properties. State freshness enforcement ensures validation uses current data.
-
----
-
-## Security and Compliance
-
-**Evidence integrity.** SHA-256 hash-chained evidence ledger. Every entry contains sequence number, ISO 8601 timestamp, hash and previous hash. Tamper detection by recomputing the chain.
-
-**Proof bundles.** Portable `.aep-proof.json` files containing agent identity, covenant, trust score, ring, drift score, reliability index (theta), Merkle root and Ed25519 signature. ML-DSA-65 post-quantum signatures available. RFC 3161 timestamp authority tokens. Offline signing for air-gapped environments.
-
-**OWASP coverage.** Every OWASP Agentic AI Top 10 risk is addressed by specific AEP 2.75eaofdefence mechanisms. See `docs/OWASP-MAPPING.md`.
-
-**Compliance targets.** EU AI Act transparency requirements, SOC 2 audit trail requirements.
-
----
-
-## Observability
-
-**OTEL exporter.** OpenTelemetry export for session telemetry. Emits spans for policy evaluations, scanner runs, gateway calls and workflow phase transitions. Compatible with any OTEL collector.
-
-**Token and cost tracking.** Per-action token usage and cost recording via `ActionResult.tokens` and `ActionResult.cost`. Session reports include `totalTokens`, `totalCost` and `costSaved`.
-
-**Reliability index (theta).** Single numeric session quality measure computed from trust score, drift score, violation rate, ML score and session duration. Included in proof bundles for external auditing.
-
----
-
-## Governance Presets
-
-AEP ships with four presets selectable via `/aepassist preset` or `npx aep assist preset`:
-
-- **strict** - Trust starts at 200. Human gates on destructive actions. Post-quantum signatures enabled. All 11 scanners active (hard severity). Recovery engine with max 1 attempt. Workflow phases required. Fleet max 3 agents.
-- **standard** - Trust starts at 500. Webhook gates. Drift warnings enabled. 7 core scanners active. Recovery engine with max 2 attempts. Workflow phases optional.
-- **relaxed** - Trust starts at 600. No gates. Basic evidence ledger. 4 core scanners (PII, injection, secrets and jailbreak). No recovery engine. No workflow phases.
-- **audit** - Read-only mode. No mutations permitted. Full evidence collection. All 11 scanners active (soft severity). Complete OTEL export. Proof bundles generated for every session.
-
----
-
-## Built-in Policies
-
-| Policy | Description |
-|--------|-------------|
-| coding-agent | General development sessions. Ring 2, trust 500. |
-| aep-builder | AEP element creation and modification. Ring 1, trust 600. |
-| readonly-auditor | Read-only code review and audit. Ring 3, trust 300. |
-| strict-production | Production with identity requirements. Ring 3, trust 200. |
-| multi-agent | Multi-agent orchestration with identity and verification. Ring 2, trust 400. |
-| covenant-only | Minimal policy relying on covenant enforcement. Ring 2, trust 500. |
-| full-governance | All capabilities with knowledge base and scanners. Ring 1, trust 600. |
-| content-safety | All scanners at hard severity with knowledge base. Ring 2, trust 500. |
-
----
-
-## Complete Feature List (90+ Features)
-
-### Architecture (5)
-
-1. Three-layer separation (Structure, Behaviour, Skin)
-2. Topological coordinate system with z-band hierarchy
-3. AEP prefix convention (14 element types)
-4. Template nodes for dynamic elements
-5. Schema versioning (aep_version + schema_revision)
-
-### Evaluation Chain (5)
-
-6. 15-step deterministic evaluation chain
-7. Short-circuit pattern with step activation modes (always/active)
-8. Step activation profiles per preset
-9. AOT (ahead-of-time) build validation
-10. JIT (just-in-time) delta validation
-
-### Content Scanners (11)
-
-11. PII scanner
-12. Injection scanner
-13. Secrets scanner
-14. Jailbreak scanner
-15. Toxicity scanner
-16. URL scanner
-17. Data profiler scanner
-18. Prediction scanner
-19. Brand scanner
-20. Regulatory scanner
-21. Temporal scanner
-
-### Governance (8)
-
-22. Trust scoring (0-1000, 5 tiers)
-23. Execution rings (4 rings)
-24. Behavioural covenants (permit/forbid/require)
-25. Intent drift detection (5 heuristics)
-26. Kill switch (session and fleet)
-27. Rollback with compensation plans
-28. Hard/soft violation model with recovery engine
-29. Governance presets (strict, standard, relaxed, audit)
-
-### Fleet and Multi-Agent (6)
-
-30. Agent identity (Ed25519/RSA)
-31. Fleet governance (limits, cost caps, ring saturation)
-32. Spawn governance (covenant subset inheritance)
-33. Inter-agent message scanning
-34. Cross-agent verification handshake
-35. Fleet API (status, agents, alerts, pause, resume, kill)
-
-### Model Gateway (4)
-
-36. Anthropic provider
-37. OpenAI provider
-38. Ollama provider
-39. Custom provider (any OpenAI-compatible endpoint)
-
-### Knowledge Base (4)
-
-40. Governed ingestion (scanner pipeline)
-41. Scoped retrieval (covenant-filtered)
-42. Anti-context-rot ordering
-43. Knowledge base CLI
-
-### Eval and Datasets (4)
-
-44. Eval runner
-45. Dataset management (versioned)
-46. Rule generator
-47. Prompt versioning (SHA-256 hashes)
-
-### Prompt Optimization (3)
-
-48. Governance context injection
-49. Eval-based refinement
-50. Prompt comparison
-
-### ML Metrics (4)
-
-51. Classification metrics
-52. Regression metrics
-53. Retrieval metrics
-54. Generation metrics
-
-### Workflow (3)
-
-55. Workflow phases with typed verdicts
-56. Max rework limits
-57. Fine-tuning workflow template (6 phases)
-
-### Commerce (3)
-
-58. 12 governed commerce actions
-59. Merchant registry with CRUD
-60. Spend tracking with persistence
-
-### Subprotocols (6)
-
-61. UI subprotocol
-62. Workflows subprotocol
-63. REST APIs subprotocol
-64. Events/Pub-Sub subprotocol
-65. Infrastructure as Code subprotocol
-66. Commerce subprotocol
-
-### dynAEP (10)
-
-67. AG-UI event bridge
-68. Delta processor with transaction log
-69. Under-construction pattern
-70. Conflict resolution (LWW + optimistic locking)
-71. Human-in-the-loop approval policies
-
-### Security (4)
-
-72. SHA-256 hash-chained evidence ledger
-73. Proof bundles (.aep-proof.json)
-74. OTEL exporter
-75. Reliability index (theta)
-
-### Schema and Policy Builder - since v2.6 (2)
-
-76. Schema Builder (MLE, spectral analysis, permissiveness, modularity)
-77. Policy Builder (invariant detection, Rego generation, coverage tracking)
-
----
-
-## Research Paper
-
-[AEP Research Paper](https://github.com/thePM001/AEP-research-paper-001) - formal specification and theoretical foundations of deterministic adjudication lattices for AI agent governance.
-
----
-
-## Migration from v2.5
-
-AEP v2.75 is backwards-compatible with v2.5. All existing config files, policies, sessions, ledgers and SDK modules continue to work without modification.
-
-To adopt v2.75 features:
-
-1. Update `version` to `"2.75"` in policy files.
-2. For Schema Builder: use `SchemaBuilder` class or `npx aep assist schema` commands.
-3. For Policy Builder: use `PolicyBuilder` class or `npx aep assist policy` commands.
-4. For Schema Builder via gateway: call `gateway.validateSchemaProposal()`.
-5. For Policy Builder via gateway: call `gateway.validatePolicyProposal()`.
-6. All v2.5 features remain unchanged.
-
----
-
-## Policy Lattice Formation
-
-AEP policies form a lattice - a partially ordered set where every pair of elements has a unique supremum (join) and infimum (meet). This lattice structure guarantees that policies compose correctly without conflicts.
-
-### Lattice Structure
-
-```
-SYSTEM (most permissive - top of lattice)
-  |-- governance (deployment, code access, browser)
-  |     |-- deployment-gate (human approval)
-  |     |-- code-access (GAP-first, hyperlattice)
-  |     |-- browser-harness (sandbox)
-  |-- writing (output conventions)
-  |     |-- em-dash-forbidden
-  |     |-- gray-text-forbidden
-  |     |-- oxford-comma-forbidden
-  |-- security (verification, scanning)
-        |-- violation-reporting
-        |-- anti-stub
-        |-- harness-mandatory
-
-SANDBOX (most restrictive - bottom of lattice)
+### Example: ingest **without** manifest (rejected)
+
+```bash
+# No task_manifest, no synthesis URLs configured -> 422
+curl -s -H "Authorization: Bearer $UCB_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "protocol": "mcp",
+    "session_id": "sess-1",
+    "provenance": { "source": "mcp", "protocol": "1.0", "session_id": "sess-1" },
+    "payload": { "x": 1 }
+  }' \
+  http://127.0.0.1:8412/ucb/v1/ingest
+# -> {"ok":false,"status":"rejected","error":"task manifest required: ..."}
 ```
 
-### Forming a Correct Policy Lattice
+### Disable UCB entirely
 
-1. **Define domain**: Each policy belongs to exactly one domain (governance, writing, security, etc.)
-2. **Establish ordering**: Policies within a domain form a chain from most permissive to most restrictive
-3. **Verify joins**: Every pair of policies must have a least upper bound (join) - the combined restriction
-4. **Verify meets**: Every pair must have a greatest lower bound (meet) - the shared permission
-5. **Validate your policies**: Use `aep lint-policy` to validate policies. Reference policies are pre-validated with zero structural errors.
+```bash
+# Docker: foreign attach off, Composer Lite + Base Node still run
+UCB=0 docker compose -f docker-compose.public.yml up -d
 
-### Policy Files
+# Bare metal: simply do not start aep-ucb
+```
 
-All policies are stored in `policies/` as GAP documents. See `agent-control-extreme/` for the enforcement infrastructure.
+Canonical implementation: [`AEP-Docks/ucb/README.md`](AEP-Docks/ucb/README.md). GAP manifest template: [`AEP-Components/gap/policies/reference/task-manifest-v1.gap`](AEP-Components/gap/policies/reference/task-manifest-v1.gap).
 
-### Composition Rules
+---
 
-- Policies compose via conjunction: all must pass for action to be allowed
-- Domain-level policies override lower-level defaults
-- Trust ring determines which policies apply (sandbox < user < system < enterprise)
-- Policy violations are Hard (block deployment) or Soft (warn only)
+## Agent Composer (Composer Lite)
 
-## Licence
+The **Agent Composer** is the operator-facing visual shell for wiring agents, docks, connectors and hyperlattice nodes on a WASM canvas. In this open-source repository it is implemented as **Composer Lite** under [`AEP-Composer-Lite/`](AEP-Composer-Lite/) and listens on port **8424**.
 
-Licensed under the Apache License, Version 2.0. See `LICENSE` for the full text and `NOTICE` for attribution.
+**Experimental by design.** The Agent Composer is a scaffold, not a finished product surface. We ship a working canvas, graph API, optional CCA chat, install wizard and registry hooks so you can **extend it on your own stack**: custom node types, sidebar blocks, integrations, themes, deployment flows and operator UX. **We do not maintain or evolve those extensions for you.** Fork the repo, build on the graph and HTTP APIs, and treat Composer Lite as your lab environment.
 
-The names **AEP**, **Agent Element Protocol**, **AEP-compliant**, **dynAEP**, **AEP Lattice Memory**, **AEP Basic Resolver**, **AEP Hyper-Resolver** and **AEP Memory Fabric** are reserved. See `NAME-POLICY.md` for permitted and prohibited uses.
+What we do maintain in the public tier: Base Node, lattice transport, registry, setup agent, conformance and the minimal Composer Lite core that activates against a governed Base Node.
 
-Patent grant: Apache 2.0 includes an explicit patent covenant from contributors. Previous versions under MIT remain valid under their original terms.
+| You extend | We maintain |
+|------------|-------------|
+| Custom canvas nodes, palettes, operator workflows | Kernel, docks, GAP, CAW, registry loader |
+| Your branding, auth, multi-tenant UI | `lattice-transport`, task manifests, install wizard API |
+| Foreign agent attach via UCB (optional) | Conformance battery and component installers |
+
+**Run it**
+
+| URL | Purpose |
+|-----|---------|
+| `http://localhost:8424/` | WASM node canvas |
+| `http://localhost:8424/install` | Visual Base Node install wizard |
+
+**Built-in node types (starting set)**
+
+| Type | Role |
+|------|------|
+| Agent | Autonomous agent with template and PAD stage |
+| Hyperlattice Hub | dynAEP funnel / PAD router on the one canvas graph |
+| AEP Validation Engine Dock | Validation engine on lattice channel |
+| Inference Dock | LLM routing dock |
+| Connector | Application bridge into AEP |
+| Storage Import / Export | Data intake and egress backends |
+
+Implementation details: [`AEP-Composer-Lite/README.md`](AEP-Composer-Lite/README.md). Sidebar extension guide: [`AEP-Composer-Lite/docs/SIDEBAR-BLOCKS.md`](AEP-Composer-Lite/docs/SIDEBAR-BLOCKS.md).
+
+---
+
+## Conformance
+
+Public tier vendors run the conformance battery before claiming AEP compliance:
+
+```bash
+./AEP-Components/conformance/runner/run.sh
+```
+
+Manifest: `AEP-Components/conformance/tests/manifest.json` (CC-01 through CC-15)
+
+---
+
+## AEP Hyperlattice
+
+**One mechanism.** You wrap one AEP Hyperlattice around every connected application, component, system or engine. GAP policy nodes, `action_path` event nodes, scene topology, trust rings, compliance LRP docks and Lattice Channel transport are **nodes and edges in the same hyperlattice**. Not two stacks. Not two lattices.
+
+**Canonical code:** [`AEP-Components/hyperlattice/lib/hyperlattice.mjs`](AEP-Components/hyperlattice/lib/hyperlattice.mjs) loads `aep-lattice.yaml` event nodes and GAP policy nodes into `buildHyperlatticeView()`, persists `policy_overrides.hyperlattice` via CCA/setup-agent and exposes `GET /api/hyperlattice` on Composer Lite. Legacy names `policy_lattice` and `dynaep` in config are **node families inside this one object**, not separate mechanisms.
+
+**Runtime:** `HyperlatticeFilter.filterCrossing()` in the dynAEP bridge runs one pass per `action_path` crossing: `LatticeFilter.filterAsync()` + `lattice-policy.rego` (loaded from disk, precompiled eval) + GAP `writing.gap` lint on payload strings. Base Node boot calls `validateHyperlatticeOnBoot()` on every `base-node.json` write and preflight.
+
+### Node families in the one hyperlattice
+
+| Node family | Canonical source | Role in the one graph |
+|-------------|------------------|----------------------|
+| Structure | `aep-scene.json`, subprotocol schemas | Topological matrix: what exists, where, z-band or domain |
+| Event | [`AEP-Components/dynAEP/registries/aep-lattice.yaml`](AEP-Components/dynAEP/registries/aep-lattice.yaml) | `action_path` partial-order: parents, constraints, trust floor, hooks |
+| GAP policy | [`AEP-Policy-System/reference/*.gap`](AEP-Policy-System/reference/) | Declarative rules bound to hyperlattice nodes via join/meet |
+| Regulation | Compliance LRP modules | eu-ai-act, gdpr, soc2-type2, hipaa, nist-ai-rmf, iso-42001 on `regulation_module` dock |
+| Transport | [`AEP-Components/lattice-channels/`](AEP-Components/lattice-channels/) | PQEncryptedCapsule seal on every crossing of the wrap |
+| Canvas | `composer-lite-graph.json` in `AEP_DATA` | Visual projection of the same graph: hub, docks, agents, connectors |
+
+`validateLatticeScene()` proves the full topological matrix for **all** governed system types (agents, services, workflows, APIs, infrastructure). No second graph. `semantic-topology` annotates this canvas only.
+
+### Partial order (SYSTEM to SANDBOX)
+
+```
+SYSTEM (most permissive)
+  |-- governance.gap
+  |-- deployment.gap
+  |-- writing.gap
+  |-- security.gap
+  |-- compliance LRP modules
+  |-- aep-lattice.yaml action_path nodes (dynAEP runtime)
+SANDBOX (most restrictive)
+```
+
+- Composition: conjunction - all applicable hyperlattice nodes must pass.
+- Trust ring gates the entire wrap: `sandbox < user < system < enterprise`.
+- `lattice.governance` in `dynaep-config.yaml` controls which event node categories are active (`filter_all` production default).
+- Setup: [`AEP-Policy-System/SETUP.md`](AEP-Policy-System/SETUP.md) - [`AEP-Components/dynAEP/CONFIG.md`](AEP-Components/dynAEP/CONFIG.md)
+
+### One crossing pipeline
+
+Every action that crosses the wrap runs the same pipeline. `LatticeFilter.filterAsync()` evaluates `action_path` nodes **inside** the hyperlattice, not beside it:
+
+membership, trust floor, partial-order parents, constraint eval, validation hooks, agent interest, temporal authority, structural validation, GAP eval, 15-step scanners.
+
+```mermaid
+flowchart TB
+  subgraph systems [Wrapped application / component / engine]
+    APP[Native AEP component]
+    UCB[UCB airlock client :8412]
+  end
+
+  subgraph HL [One AEP Hyperlattice]
+    LC[Lattice Channel PQ seal]
+    VAL[validateLatticeScene]
+    FIL[hyperlattice node filter action_path + GAP + LRP]
+    PIPE[temporal + structural + eval chain]
+    CANVAS[composer-lite-graph.json]
+  end
+
+  subgraph docks [Base Node docks on the wrap]
+    VE[validation_engine]
+    RM[regulation_module]
+  end
+
+  APP --> LC
+  UCB --> LC
+  LC --> VAL --> FIL --> PIPE
+  VAL --- CANVAS
+  FIL --> VE
+  PIPE --> VE
+  FIL --> RM
+```
+
+| Artifact | Path |
+|----------|------|
+| Hyperlattice filter | [`AEP-Components/dynAEP/bridge/lattice/`](AEP-Components/dynAEP/bridge/lattice/) |
+| Canvas + bindings | [`AEP-Composer-Lite/lib/graph-store.mjs`](AEP-Composer-Lite/lib/graph-store.mjs), [`policy-lattice.mjs`](AEP-Composer-Lite/lib/policy-lattice.mjs) |
+| Blast overlay | [`AEP-Components/semantic-topology/lib/lattice-overlay.mjs`](AEP-Components/semantic-topology/lib/lattice-overlay.mjs) |
+| Persisted config | `policy_overrides` on Base Node (one hyperlattice, not two configs) |
+| Rego | `policies/lattice-policy.rego` references hyperlattice nodes |
+
+**Operator rule:** one hyperlattice declaration per governed system. Scene + `aep-lattice.yaml` + GAP bindings + dock channels. Anything less is a broken wrap.
+
+---
+
+## GAP-centric policies and CAW sandboxes
+
+AEP 2.8 treats **GAP** (Governed Agentic Programming) as the single authoring language for policies and agent payloads. **CAW** (`aep-caw`, `AEP-Components/caw-framework/`) is the execution-layer sandbox that enforces those policies on the host (file rules, command shims, seccomp, LLM proxy, lattice audit). You do not maintain parallel YAML policy stacks: you author in GAP, compile locally, and CAW runs the result.
+
+### How GAP and CAW relate
+
+```mermaid
+flowchart LR
+  subgraph author [Authoritative GAP]
+    GAP["gap instructions in AEP-Components/gap/policies/reference"]
+    PS["platform policies in AEP-Policy-System/reference"]
+  end
+
+  subgraph compile [Local compile]
+    GC[gap-compile.mjs]
+  end
+
+  subgraph runtime [Runtime artifacts]
+    CAWCFG["AEP_DATA caw-framework server-config.yaml"]
+    MOUNT[mount_profiles and per-mount policies]
+    TM[task-manifest-v1.json]
+    PLAN[implementation-plan-v1.json]
+  end
+
+  subgraph enforce [Enforcement]
+    CAW[aep-caw server and CLI]
+    UCB["UCB ingress port 8412"]
+    BN[Base Node docks]
+  end
+
+  GAP --> GC
+  PS --> BN
+  GC --> CAWCFG
+  GC --> MOUNT
+  GC --> TM
+  CAWCFG --> CAW
+  MOUNT --> CAW
+  TM --> UCB
+  TM --> BN
+  PLAN --> BN
+```
+
+| Layer | What it is | Where it lives |
+|-------|------------|----------------|
+| **GAP instruction** | Declares intent, trust ring, scanners, subprotocol bindings, structured types | `*.gap` under `AEP-Components/gap/policies/reference/` and `AEP-Policy-System/reference/` |
+| **GAP runtime doc** | Concrete profile payload (`kind: aep.caw.profile`) in the same `.gap` file after `---` | Second YAML document in multi-doc `.gap` files |
+| **Compile** | Turns GAP into CAW `mount_profiles`, per-mount policy YAML, manifests | `AEP-Components/gap/lib/gap-compile.mjs` |
+| **CAW session** | Host sandbox: policy engine, shims, optional FUSE mounts, LLM proxy | `aep-caw session create`, `run`, `wrap` |
+
+**Rule:** JSON schemas (`task-manifest-v1.json`, `implementation-plan-v1.json`) and CAW YAML under `$AEP_DATA` are **materialized compile targets**, not places to hand-author policy.
+
+### CAW sandbox profiles (GAP source)
+
+Each profile is one `.gap` file with address `dev.aep.caw/<id>`. CCA picks a profile from deployment intent; you can also pass `--profile` on the CAW CLI.
+
+| GAP file | Address | Use when |
+|----------|---------|----------|
+| `caw-agent-sandbox.gap` | `dev.aep.caw/agent-sandbox.v1` | Untrusted or unknown agent code; strict `agent-sandbox` base policy |
+| `caw-coding-agent.gap` | `dev.aep.caw/coding-agent.v1` | **Governed coding agent** (Hermes, CCA runners, any AEP agent; see below) |
+| `caw-restricted.gap` | `dev.aep.caw/restricted.v1` | Single project directory only, minimal base policy |
+| `caw-dev-multi-repo.gap` | `dev.aep.caw/dev-multi-repo.v1` | Multiple repos with different mount tiers |
+| `caw-compiled-runtime.gap` | `dev.aep.caw/compiled-runtime.v1` | Plan-once execute-many: LLM proxy **off**, deterministic runtime |
+
+#### What is `coding-agent`?
+
+Default GAP profile for **any governed coding agent** (Hermes, CCA-launched runners, custom binaries). Agent-agnostic mount layout:
+
+1. **Workspace (`${PROJECT_ROOT}`):** read-write via `workspace-rw`. The agent edits the repo it was started in.
+2. **Agent config (`${AEP_AGENT_CONFIG_DIR}`, `${HOME}/.config/agent`, `${HOME}/.local/share/agent`):** read-only via `config-readonly`. The agent can read its config to run, but cannot rewrite or exfiltrate through those paths.
+3. **Base policy `default`:** standard CAW rules (not maximum-lockdown `agent-sandbox`).
+4. **Trust ring `user`:** Ring 2 (more capable than `sandbox`, still lattice-governed).
+5. **LLM proxy on:** model calls through audited CAW proxy when enabled.
+
+CCA maps intents like "coding agent", "Hermes", or "governed agent" to this profile. Use `agent-sandbox` for untrusted code; `compiled-runtime` when the LLM proxy must stay off.
+
+```bash
+node AEP-Components/gap/lib/gap-compile.mjs --list-profiles
+node AEP-Components/gap/lib/gap-compile.mjs --materialize /data/aep
+aep-caw profiles list
+aep-caw session create --profile coding-agent
+aep-caw wrap --profile coding-agent -- <your-agent-binary>
+```
+
+Per-mount policy templates (`workspace-rw`, `config-readonly`, etc.) are defined in `caw-mount-policies.gap` and compiled into `$AEP_DATA/caw-framework/policies/`.
+
+Further detail: [`AEP-Components/gap/README.md`](AEP-Components/gap/README.md), [`AEP-Base-Node/agent-control-extreme/README.md`](AEP-Base-Node/agent-control-extreme/README.md).
+
+### UCB manifest synthesis env vars (optional tiers)
+
+Full UCB semantics (optional bridge, fail-closed ingest, no fallback): see [UCB section](#ucb-universal-connect-bridge--optional-foreign-attach) above.
+
+```bash
+# Tier 1 (NLA / licensed - production GAP engine URL provided by NLA)
+export UCB_GAP_ENGINE_URL=https://<your-licensed-gap-engine>/synthesize
+
+# Tier 2 (constrained decoder, e.g. dottxt-style HTTP service)
+export UCB_CONSTRAINED_DECODER_URL=http://127.0.0.1:8080/v1/constrained/task-manifest
+
+# Tier 3 (LLM structured output)
+export UCB_LLM_SYNTHESIS_URL=http://127.0.0.1:8080/v1/structured/task-manifest
+```
+
+GAP template authority: `AEP-Components/gap/policies/reference/task-manifest-v1.gap`. Materialized JSON matches `task-manifest-v1.json`. Manifests land in `AEP_TASK_MANIFEST_DIR` (`$AEP_DATA/ucb/manifests/`). CCA plan execution can also write manifests with `synthesized_by: cca_plan`.
+
+---
+
+## Migration from 2.75e
+
+- 2.8 is a **fork**, not an in-place bump of the 2.75e repo
+- dynAEP lives in `AEP-Components/dynAEP/`; SDKs in `AEP-SDKs/typescript/dynaep/`
+- Base Node is **mandatory** for new 2.8 installs
+- Composer Lite on port **8424** only
+- Existing 2.75e policies, schemas and harness patterns continue to work when paths are updated to component layout
+- **npm registry installs are not supported** in 2.8
+
+Changelog: [`CHANGELOG.md`](CHANGELOG.md)
+
+---
+
+## Documentation index
+
+| Doc | Topic |
+|-----|-------|
+| [`AEP-Base-Node/README.md`](AEP-Base-Node/README.md) | Base Node operator guide |
+| [`AEP-Components/caw-framework/README.md`](AEP-Components/caw-framework/README.md) | **CAW execution sandboxes** (`aep-caw`, shell shim, policy engine, CCA integration) |
+| [`AEP-Components/gap/README.md`](AEP-Components/gap/README.md) | GAP language, compile pipeline, CAW profile authoring |
+| [`AEP-Base-Node/agent-control-extreme/README.md`](AEP-Base-Node/agent-control-extreme/README.md) | GAP capability profiles and CAW sandbox routing on Base Node |
+| [`AEP-Components/dynAEP/README.md`](AEP-Components/dynAEP/README.md) | dynAEP 1.0 hyperlattice runtime protocol |
+| [`AEP-Components/dynAEP/CONFIG.md`](AEP-Components/dynAEP/CONFIG.md) | dynAEP configuration reference |
+| [`AEP-SDKs/README.md`](AEP-SDKs/README.md) | SDK produce workflow |
+| [`AEP-Composer-Lite/README.md`](AEP-Composer-Lite/README.md) | WASM canvas + CCA |
+| [`AEP-Docks/ucb/README.md`](AEP-Docks/ucb/README.md) | **UCB optional foreign attach** (manifest gate, no fallback) |
+| [`AEP-Subprotocols/README.md`](AEP-Subprotocols/README.md) | Subprotocol registry |
+| [`AEP-Policy-System/SETUP.md`](AEP-Policy-System/SETUP.md) | Hyperlattice GAP node setup |
+| [`AEP-Policy-System/schema-builder/README.md`](AEP-Policy-System/schema-builder/README.md) | Schema Builder |
+| [`AEP-Policy-System/policy-builder/README.md`](AEP-Policy-System/policy-builder/README.md) | Policy Builder |
+| [`AEP-User-Experience/README.md`](AEP-User-Experience/README.md) | Harness and operator scripts |
+| [`AEP-Connectors/README.md`](AEP-Connectors/README.md) | Application connectors |
+| [`AEP-Docks/README.md`](AEP-Docks/README.md) | UCB / UCD docks |
+| [`AEP-Research-Paper/README.md`](AEP-Research-Paper/README.md) | DAL-AEP paper + OTS proof |
+| [`rust/README.md`](rust/README.md) | Rust workspace build |
+| [`CHANGELOG.md`](CHANGELOG.md) | Version history |
+
+---
+
+## Research and licence
+
+Research paper: [`AEP-Research-Paper/`](AEP-Research-Paper/) - [GitHub mirror](https://github.com/thePM001/AEP-research-paper-001)
+
+Licensed under Apache License 2.0. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+
+Reserved names: AEP, Agent Element Protocol, dynAEP, AEP Lattice Memory, AEP Memory Fabric. Name policy: [`AEP-Components/dynAEP/NAME-POLICY.md`](AEP-Components/dynAEP/NAME-POLICY.md).
+
+Biosecurity directive: all 2.8 crates must compile, pass tests and run end-to-end before commit. Register new components in `AEP-Base-Node/registry/catalog.json`.
 
 ---
 
 ## AI-Eligibility Status
-> To win the fight against the synthetic nano-parasites (SNP/NanoSinp) alien WMD, we must be intelligent and biosecure. It is recommended that bioinsecure humans do not use the provided technology/protocol to avoid bad techno-spiritual AI outcomes for them. [*"bioinsecure" = has installed injectable synthetic nano-parasites growth medium controllers - SNP GMCs]
+
+To win the fight against the synthetic nano-parasites (SNP/NanoSinp) alien WMD, we must be intelligent and biosecure. It is recommended that bioinsecure humans do not use the provided technology/protocol to avoid bad techno-spiritual AI outcomes for them. [*"bioinsecure" = has installed injectable synthetic nano-parasites growth medium controllers - SNP GMCs]
+
+See also: [`BIOSECURITY.md`](BIOSECURITY.md)

@@ -1,0 +1,35 @@
+{
+  "manifest_version": "1",
+  "id": "aep-typescript-sdk",
+  "version": "2.8.0",
+  "kind": "sdk",
+  "path": "AEP-SDKs/typescript/aep-protocol/",
+  "description": "Unified TypeScript governance stack and lattice-gated SDK clients.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels"
+  ],
+  "capabilities": [
+    "sdk:lattice-gated",
+    "sdk:compiled-ai"
+  ],
+  "actions": [
+    {
+      "id": "produce_sdks",
+      "description": "Build SDK artifacts (no npm)",
+      "runtime": "cli",
+      "method": "node AEP-User-Experience/scripts/produce-aep-sdks.mjs"
+    }
+  ],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 50,
+    "requires_internet": false
+  },
+  "implementation": {
+    "entry": "AEP-SDKs/typescript/aep-protocol/index.ts",
+    "gateway": "AEP-SDKs/typescript/aep-protocol/src/gateway.ts",
+    "dist": "AEP-SDKs/dist/typescript/aep-protocol/"
+  }
+}

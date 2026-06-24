@@ -1,0 +1,90 @@
+# =============================================================================
+# Composer Lite / CCA hyperlattice action paths
+# Canonical source for CCA governance on the WASM Composer canvas.
+# Merged at runtime with AEP-Components/dynAEP/registries/aep-lattice.yaml.
+# =============================================================================
+
+aep_version: "2.8"
+composer_version: "2.8.0"
+lattice_revision: 1
+
+actions:
+
+  composer-lite:cca:chat:
+    label: "CCA chat inference on Composer Lite"
+    category: agent_action
+    parents: [agent:ready]
+    children: [composer-lite:cca:validate_writing]
+    constraints:
+      - type: required_field
+        field: message
+        description: "CCA chat requires a user message"
+    trust_floor: 2
+
+  composer-lite:cca:validate_writing:
+    label: "EPSCOM writing.gap validation before CCA reply release"
+    category: system_event
+    parents: [composer-lite:cca:chat]
+    children: [composer-lite:cca:release]
+    constraints:
+      - type: required_field
+        field: text
+        description: "Draft reply must exist before writing.gap validation"
+      - type: policy_binding
+        policy: writing.gap
+        gap_ref: AEP-Policy-System/reference/writing.gap
+        description: "Mandatory hyperlattice writing.gap (EPSCOM kernel) before release"
+    trust_floor: 2
+
+  composer-lite:cca:release:
+    label: "Release governed CCA reply to Composer Lite chat pane"
+    category: output
+    parents: [composer-lite:cca:validate_writing]
+    children: []
+    constraints:
+      - type: required_field
+        field: text
+        description: "Released reply text after hyperlattice validation"
+      - type: policy_binding
+        policy: writing.gap
+        gap_ref: AEP-Policy-System/reference/writing.gap
+    trust_floor: 2
+
+  composer-lite:cca:topology:propose:
+    label: "CCA proposes canvas topology (plan or graph suggestion)"
+    category: agent_action
+    parents: [composer-lite:cca:chat]
+    children: [composer-lite:cca:topology:validate]
+    constraints:
+      - type: policy_binding
+        policy: composer-protocol
+        gap_ref: AEP-Composer-Lite/lib/hyperlattice/composer-protocol.mjs
+        description: "Topology must use allowed Composer Lite node types and interactions"
+    trust_floor: 2
+
+  composer-lite:cca:topology:validate:
+    label: "Validate CCA topology against AEP Composer protocol"
+    category: system_event
+    parents: [composer-lite:cca:topology:propose]
+    children: [composer-lite:cca:topology:apply]
+    constraints:
+      - type: required_field
+        field: nodes
+        description: "Topology nodes[] required"
+      - type: required_field
+        field: edges
+        description: "Topology edges[] required"
+      - type: policy_binding
+        policy: composer-protocol
+    trust_floor: 2
+
+  composer-lite:cca:topology:apply:
+    label: "Apply validated CCA topology to Composer Lite canvas"
+    category: output
+    parents: [composer-lite:cca:topology:validate]
+    children: []
+    constraints:
+      - type: required_field
+        field: graph
+        description: "Validated graph document for canvas merge"
+    trust_floor: 2

@@ -1,0 +1,245 @@
+# =============================================================================
+# dynAEP 1.0 Configuration
+# =============================================================================
+
+aep_version: "1.2"
+dynaep_version: "1.0"
+schema_revision: 3
+
+# ---------------------------------------------------------------------------
+# TRANSPORT
+# ---------------------------------------------------------------------------
+
+transport:
+  protocol: "sse"                   # sse | websocket
+  endpoint: "/api/agent"
+  reconnect_interval_ms: 3000
+  heartbeat_interval_ms: 15000
+
+# ---------------------------------------------------------------------------
+# AEP SOURCE FILES (UI scene graph -- existing, unchanged)
+# ---------------------------------------------------------------------------
+
+aep_sources:
+  scene: "./AEP-Subprotocols/ui/aep-scene.json"
+  registry: "./AEP-Subprotocols/ui/aep-registry.yaml"
+  theme: "./AEP-Subprotocols/ui/aep-theme.yaml"
+
+# ---------------------------------------------------------------------------
+# LATTICE (NEW -- action registry for event governance)
+# ---------------------------------------------------------------------------
+
+lattice:
+  registry: "./registries/aep-lattice.yaml"
+  governance: "filter_all"          # filter_all | events_only | ui_only | disabled
+                                    #   filter_all: validate ALL actions and events
+                                    #   events_only: validate external/system events only
+                                    #   ui_only: backward-compatible v0.4 behavior (scene graph only)
+                                    #   disabled: skip lattice filtering entirely
+  agent_interest_enabled: true
+  hook: "mle"                       # validation hook to use: "mle" | "noop" | custom name
+
+# ---------------------------------------------------------------------------
+# VALIDATION
+# ---------------------------------------------------------------------------
+
+validation:
+  mode: "strict"                    # strict | permissive | log_only
+  aot_on_startup: true
+  jit_on_every_delta: true
+
+# ---------------------------------------------------------------------------
+# REGO POLICY (OPA / Open Policy Agent)
+# ---------------------------------------------------------------------------
+
+rego:
+  policy_path: "./policies/aep-policy.rego"
+  evaluation: "wasm"                # wasm | cli | precompiled
+  bundle_mode: "unified"
+  decision_cache_size: 5000
+  cache_invalidate_on_reload: true
+  unified_bundle_path: "./policies/aep-unified-bundle.tar.gz"
+  separate_policy_paths:
+    structural: "./policies/aep-policy.rego"
+    temporal: "./policies/temporal-policy.rego"
+    perception: "./policies/perception-policy.rego"
+    lattice: "./policies/lattice-policy.rego"
+
+# ---------------------------------------------------------------------------
+# CHAIN EXECUTION
+# ---------------------------------------------------------------------------
+
+chain_execution:
+  mode: "parallel"
+  # Stages:
+  #   Stage A: Steps 0-4 (temporal + lattice)
+  #   Stage B: Steps 5-9 (scene + registry)
+  #   Stage C: Steps 10-12 (rego policies)
+  #   Stage D: Step 13 (covenant)
+  #   Stage E: Step 14 (content scanners)
+
+# ---------------------------------------------------------------------------
+# CONTENT SCANNERS
+# ---------------------------------------------------------------------------
+
+scanners:
+  engine: "unified"
+
+# ---------------------------------------------------------------------------
+# RUNTIME REFLECTION
+# ---------------------------------------------------------------------------
+
+runtime_reflection:
+  enabled: true
+  method: "observer"
+  debounce_ms: 250
+  broadcast_to_agent: true
+  include_invisible: false
+
+# ---------------------------------------------------------------------------
+# APPROVAL POLICY
+# ---------------------------------------------------------------------------
+
+approval_policy:
+  structure_mutations: "auto"
+  behaviour_mutations: "auto"
+  skin_mutations: "auto"
+  new_element_creation: "require_approval"
+  forbidden_pattern_changes: "require_approval"
+
+# ---------------------------------------------------------------------------
+# CONFLICT RESOLUTION
+# ---------------------------------------------------------------------------
+
+conflict_resolution:
+  mode: "last_write_wins"
+
+# ---------------------------------------------------------------------------
+# ID MINTING
+# ---------------------------------------------------------------------------
+
+id_minting:
+  enabled: true
+  counters_persist: true
+
+# ---------------------------------------------------------------------------
+# THEMES
+# ---------------------------------------------------------------------------
+
+themes:
+  available:
+    - name: "dark"
+      path: "./AEP-Subprotocols/ui/aep-theme.yaml"
+    - name: "light"
+      path: "./AEP-Subprotocols/ui/aep-theme.yaml"
+  active: "dark"
+
+# ---------------------------------------------------------------------------
+# AG-UI FRONTEND TOOLS
+# ---------------------------------------------------------------------------
+
+tools:
+  aep_add_element: true
+  aep_move_element: true
+  aep_query_graph: true
+  aep_swap_theme: true
+
+# ---------------------------------------------------------------------------
+# LOGGING
+# ---------------------------------------------------------------------------
+
+logging:
+  level: "info"
+  log_rejections: true
+  log_accepted_mutations: false
+  log_tool_calls: true
+  log_lattice_events: true
+
+# ---------------------------------------------------------------------------
+# TA-1: TEMPORAL AUTHORITY (unchanged from v0.4)
+# ---------------------------------------------------------------------------
+
+timekeeping:
+  protocol: "ntp"
+  source: "pool.ntp.org"
+  sync_interval_ms: 30000
+  max_drift_ms: 50
+  max_future_ms: 500
+  max_staleness_ms: 5000
+  bridge_is_authority: true
+  log_drift_warnings: true
+
+  tim:
+    enabled: true
+    holdover_threshold: 3
+    freewheel_threshold: 5
+    uncertainty_estimation: "variance"
+    fixed_uncertainty_ns: 10000000
+
+causal_ordering:
+  enabled: true
+  max_reorder_buffer_size: 64
+  max_reorder_wait_ms: 200
+  conflict_resolution: "last_write_wins"
+  enable_vector_clocks: true
+  enable_element_history: true
+  history_depth: 100
+
+  persistence:
+    enabled: true
+    backend: "file"
+    path: "./.dynaep-causal-state"
+    flush_interval_ms: 100
+    flush_batch_size: 100
+    compact_interval_ms: 3600000
+    recovery_on_startup: true
+    max_recovery_gap_ms: 60000
+
+forecast:
+  enabled: false
+  timesfm_mode: "local"
+  timesfm_endpoint: null
+  context_window: 64
+  forecast_horizon: 12
+  anomaly_threshold: 3.0
+  debounce_ms: 250
+  adaptive_debounce: true
+  max_tracked_elements: 500
+  anomaly_action: "warn"
+
+# ---------------------------------------------------------------------------
+# TA-2: PERCEPTUAL TEMPORAL GOVERNANCE (unchanged from v0.4)
+# ---------------------------------------------------------------------------
+
+perception:
+  enabled: true
+  enable_adaptive_profiles: true
+  profile_learning_rate: 0.15
+  profile_erosion_half_life_ms: 604800000
+  min_interactions_for_profile: 5
+  hard_violation_action: "clamp"
+  soft_violation_action: "clamp"
+  governed_envelope_mode: "overwrite"
+  modality_overrides: {}
+  rego_policy_path: "./policies/perception-policy.rego"
+
+# ---------------------------------------------------------------------------
+# OPT-007: LATTICE MEMORY (unchanged from v0.4)
+# ---------------------------------------------------------------------------
+
+lattice_memory:
+  enabled: true
+  max_attractors: 2000
+  similarity_threshold: 0.95
+  index_type: "lsh"
+  lsh_tables: 8
+  lsh_hash_dimension: 4
+
+# ---------------------------------------------------------------------------
+# TA-3: TEMPORAL AUTHORITY AUDIT
+# ---------------------------------------------------------------------------
+
+temporal_authority:
+  audit_trail_depth: 500
+  mutation_tracking_enabled: true
+  staleness_broadcast_interval_ms: 10000

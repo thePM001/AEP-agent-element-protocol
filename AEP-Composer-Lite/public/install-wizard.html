@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AEP 2.8 Install Wizard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/install-wizard.css?v=install-wizard-2" />
+</head>
+<body>
+  <div class="wizard-shell">
+    <header class="wizard-header">
+      <div class="brand">
+        <span class="brand-mark">AEP</span>
+        <div>
+          <h1>Base Node Install Wizard</h1>
+          <p>Activate AEP 2.8 on a fresh environment. GAP policies, CAW sandboxes, CCA deployment.</p>
+        </div>
+      </div>
+      <div class="status-pill" id="status-pill">Probing</div>
+    </header>
+
+    <nav class="wizard-steps" id="wizard-steps" aria-label="Install steps"></nav>
+
+    <main class="wizard-panel" id="wizard-panel">
+      <p class="loading">Reading catalog</p>
+    </main>
+
+    <footer class="wizard-footer">
+      <button type="button" class="btn ghost" id="btn-back" disabled>Back</button>
+      <div class="footer-meta" id="footer-meta">Step 1 of 6</div>
+      <div class="footer-actions">
+        <button type="button" class="btn ghost" id="btn-skip" hidden>Skip CCA</button>
+        <button type="button" class="btn primary" id="btn-next">Next</button>
+      </div>
+    </footer>
+  </div>
+  <script type="module" src="assets/install-wizard.js?v=install-wizard-2"></script>
+</body>
+</html>

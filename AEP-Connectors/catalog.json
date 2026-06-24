@@ -1,0 +1,128 @@
+{
+  "version": "1.0.0",
+  "ucb_required": true,
+  "integration_backends": {
+    "mcp_ecosystem": "https://github.com/punkpeye/awesome-mcp-servers",
+    "nango_optional": "https://github.com/nangohq/nango"
+  },
+  "connectors": [
+    {
+      "id": "connector-postgres",
+      "service": "postgres",
+      "label": "PostgreSQL",
+      "upstream": "http://postgres:5432",
+      "auth_token_env": "AEP_POSTGRES_PASSWORD",
+      "keywords": ["postgres", "postgresql", "sql database", "sql db"],
+      "folder": "postgres"
+    },
+    {
+      "id": "connector-slack",
+      "service": "slack",
+      "label": "Slack",
+      "upstream": "https://slack.com/api",
+      "auth_token_env": "AEP_SLACK_BOT_TOKEN",
+      "keywords": ["slack", "slack channel", "slack message"],
+      "folder": "slack",
+      "mcp_candidates": ["@modelcontextprotocol/server-slack"]
+    },
+    {
+      "id": "connector-jira",
+      "service": "jira",
+      "label": "Jira",
+      "upstream": "https://api.atlassian.com",
+      "auth_token_env": "AEP_JIRA_API_TOKEN",
+      "keywords": ["jira", "atlassian", "jira ticket", "jira issue"],
+      "folder": "jira"
+    },
+    {
+      "id": "connector-notion",
+      "service": "notion",
+      "label": "Notion",
+      "upstream": "https://api.notion.com",
+      "auth_token_env": "AEP_NOTION_TOKEN",
+      "keywords": ["notion", "notion page", "notion database"],
+      "folder": "notion"
+    },
+    {
+      "id": "connector-hubspot",
+      "service": "hubspot",
+      "label": "HubSpot",
+      "upstream": "https://api.hubapi.com",
+      "auth_token_env": "AEP_HUBSPOT_TOKEN",
+      "keywords": ["hubspot", "crm", "hub spot"],
+      "folder": "hubspot"
+    },
+    {
+      "id": "connector-odoo",
+      "service": "odoo",
+      "label": "Odoo",
+      "upstream": "https://odoo.example.com",
+      "auth_token_env": "AEP_ODOO_API_KEY",
+      "keywords": ["odoo", "erp odoo"],
+      "folder": "odoo"
+    },
+    {
+      "id": "connector-google-workspace",
+      "service": "google-workspace",
+      "label": "Google Workspace",
+      "upstream": "https://www.googleapis.com",
+      "auth_token_env": "AEP_GWS_ACCESS_TOKEN",
+      "keywords": ["google workspace", "gws", "gmail", "google drive", "google calendar"],
+      "folder": "google-workspace"
+    },
+    {
+      "id": "connector-gcp",
+      "service": "gcp",
+      "label": "Google Cloud",
+      "upstream": "https://cloudresourcemanager.googleapis.com",
+      "auth_token_env": "AEP_GCP_ACCESS_TOKEN",
+      "keywords": ["gcp", "google cloud", "google cloud project", "gcloud"],
+      "folder": "gcp"
+    },
+    {
+      "id": "connector-aws",
+      "service": "aws",
+      "label": "AWS",
+      "upstream": "https://sts.amazonaws.com",
+      "auth_token_env": "AEP_AWS_SESSION_TOKEN",
+      "keywords": ["aws", "amazon web services", "s3", "lambda", "ec2"],
+      "folder": "aws"
+    },
+    {
+      "id": "connector-azure",
+      "service": "azure",
+      "label": "Microsoft Azure",
+      "upstream": "https://management.azure.com",
+      "auth_token_env": "AEP_AZURE_ACCESS_TOKEN",
+      "keywords": ["azure", "microsoft azure", "azure cloud"],
+      "folder": "azure"
+    },
+    {
+      "id": "connector-n8n",
+      "service": "n8n",
+      "label": "n8n",
+      "upstream": "https://your-instance.app.n8n.cloud/api/v1",
+      "auth_token_env": "AEP_N8N_API_KEY",
+      "keywords": ["n8n", "n8n workflow", "n8n automation", "workflow automation"],
+      "folder": "n8n"
+    },
+    {
+      "id": "connector-make",
+      "service": "make",
+      "label": "Make",
+      "upstream": "https://eu1.make.com/api/v2",
+      "auth_token_env": "AEP_MAKE_API_TOKEN",
+      "keywords": ["make", "make.com", "integromat", "make scenario", "make automation"],
+      "folder": "make"
+    },
+    {
+      "id": "connector-zapier",
+      "service": "zapier",
+      "label": "Zapier",
+      "upstream": "https://api.zapier.com/v1",
+      "auth_token_env": "AEP_ZAPIER_API_KEY",
+      "keywords": ["zapier", "zap", "zapier automation", "zapier workflow"],
+      "folder": "zapier"
+    }
+  ]
+}

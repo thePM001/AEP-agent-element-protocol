@@ -1,0 +1,746 @@
+package sqlite
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	_ "modernc.org/sqlite"
+)
+
+// Default async batch settings.
+const (
+	defaultBatchSize     = 64
+	defaultFlushInterval = 50 * time.Millisecond
+	defaultChannelSize   = 4096
+)
+
+// eventPayload holds pre-extracted fields ready for INSERT, avoiding
+// JSON re-parsing in the flush goroutine.
+type eventPayload struct {
+	id                string
+	tsNanos           int64
+	sessionID         string
+	commandID         string
+	evType            string
+	pid               int
+	policyDecision    string
+	effectiveDecision string
+	policyRule        string
+	path              string
+	domain            string
+	remote            string
+	operation         string
+	payloadJSON       string
+}
+
+type Store struct {
+	db *sql.DB
+
+	// Async event batching.
+	eventCh   chan eventPayload
+	flushCh   chan chan struct{} // Flush() sends ack channel; flushLoop closes it when done
+	stopCh    chan struct{}      // signals flushLoop to stop (never receives data)
+	done      chan struct{}      // closed when flushLoop exits
+	closeMu   sync.Mutex        // serializes Close vs AppendEvent
+	closed    bool               // true after Close() initiates shutdown (guarded by closeMu)
+	closeOnce sync.Once
+	inflight  sync.WaitGroup    // tracks in-flight AppendEvent calls for clean shutdown
+	lastErr   atomic.Value      // stores errHolder for health checks
+}
+
+// errHolder wraps an error for atomic.Value (which cannot store nil interfaces).
+type errHolder struct{ err error }
+
+// MCPTool represents a registered MCP tool.
+type MCPTool struct {
+	ServerID       string    `json:"server_id"`
+	ToolName       string    `json:"tool_name"`
+	ToolHash       string    `json:"tool_hash"`
+	Description    string    `json:"description"`
+	FirstSeen      time.Time `json:"first_seen"`
+	LastSeen       time.Time `json:"last_seen"`
+	Pinned         bool      `json:"pinned"`
+	DetectionCount int       `json:"detection_count"`
+	MaxSeverity    string    `json:"max_severity"`
+}
+
+// MCPToolFilter for querying tools.
+type MCPToolFilter struct {
+	ServerID      string `json:"server_id,omitempty"`
+	HasDetections bool   `json:"has_detections,omitempty"`
+}
+
+// MCPServerSummary aggregates tool info per server.
+type MCPServerSummary struct {
+	ServerID       string    `json:"server_id"`
+	ToolCount      int       `json:"tool_count"`
+	LastSeen       time.Time `json:"last_seen"`
+	DetectionCount int       `json:"detection_count"`
+}
+
+// BatchConfig controls the async event write behavior.
+type BatchConfig struct {
+	BatchSize     int           // events per flush (default 64)
+	FlushInterval time.Duration // max time before flush (default 50ms)
+	ChannelSize   int           // async buffer capacity (default 4096)
+}
+
+func (c BatchConfig) withDefaults() BatchConfig {
+	if c.BatchSize <= 0 {
+		c.BatchSize = defaultBatchSize
+	}
+	if c.FlushInterval <= 0 {
+		c.FlushInterval = defaultFlushInterval
+	}
+	if c.ChannelSize <= 0 {
+		c.ChannelSize = defaultChannelSize
+	}
+	return c
+}
+
+func Open(path string, opts ...BatchConfig) (*Store, error) {
+	cfg := BatchConfig{}
+	if len(opts) > 0 {
+		cfg = opts[0]
+	}
+	cfg = cfg.withDefaults()
+
+	if path == "" {
+		return nil, fmt.Errorf("sqlite path is empty")
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return nil, fmt.Errorf("mkdir db dir: %w", err)
+	}
+
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		return nil, fmt.Errorf("open sqlite: %w", err)
+	}
+	db.SetMaxOpenConns(1)
+
+	s := &Store{
+		db:      db,
+		eventCh: make(chan eventPayload, cfg.ChannelSize),
+		flushCh: make(chan chan struct{}, 1),
+		stopCh:  make(chan struct{}),
+		done:    make(chan struct{}),
+	}
+	if err := s.migrate(context.Background()); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	go s.flushLoop(cfg.BatchSize, cfg.FlushInterval)
+	return s, nil
+}
+
+// SQLDB exposes the underlying SQLite handle for auxiliary stores (e.g. WebAuthn).
+func (s *Store) SQLDB() *sql.DB {
+	if s == nil {
+		return nil
+	}
+	return s.db
+}
+
+func (s *Store) Close() error {
+	s.closeOnce.Do(func() {
+		s.closeMu.Lock()
+		s.closed = true
+		s.closeMu.Unlock()
+		s.inflight.Wait()
+		close(s.stopCh)
+	})
+	<-s.done
+	return s.db.Close()
+}
+
+// Flush blocks until all pending events have been written to the database.
+// Safe to call concurrently and during shutdown.
+func (s *Store) Flush() {
+	s.closeMu.Lock()
+	closed := s.closed
+	s.closeMu.Unlock()
+	if closed {
+		return
+	}
+	ack := make(chan struct{})
+	select {
+	case s.flushCh <- ack:
+		select {
+		case <-ack:
+		case <-s.done:
+		}
+	case <-s.done:
+	}
+}
+
+// LastWriteError returns the last error from a batch write, or nil.
+func (s *Store) LastWriteError() error {
+	v := s.lastErr.Load()
+	if v == nil {
+		return nil
+	}
+	return v.(errHolder).err
+}
+
+// FlushContext is like Flush but respects context cancellation.
+func (s *Store) FlushContext(ctx context.Context) {
+	s.closeMu.Lock()
+	closed := s.closed
+	s.closeMu.Unlock()
+	if closed {
+		return
+	}
+	ack := make(chan struct{})
+	select {
+	case s.flushCh <- ack:
+		select {
+		case <-ack:
+		case <-s.done:
+		case <-ctx.Done():
+		}
+	case <-s.done:
+	case <-ctx.Done():
+	}
+}
+
+func (s *Store) migrate(ctx context.Context) error {
+	stmts := []string{
+		`PRAGMA journal_mode=WAL;`,
+		`PRAGMA foreign_keys=ON;`,
+		`CREATE TABLE IF NOT EXISTS events (
+			event_id TEXT PRIMARY KEY,
+			ts_unix_ns INTEGER NOT NULL,
+			session_id TEXT NOT NULL,
+			command_id TEXT,
+			type TEXT NOT NULL,
+			pid INTEGER,
+			policy_decision TEXT,
+			effective_decision TEXT,
+			policy_rule TEXT,
+			path TEXT,
+			domain TEXT,
+			remote TEXT,
+			operation TEXT,
+			payload_json TEXT NOT NULL
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_events_session_ts ON events(session_id, ts_unix_ns);`,
+		`CREATE INDEX IF NOT EXISTS idx_events_command_ts ON events(command_id, ts_unix_ns);`,
+		`CREATE INDEX IF NOT EXISTS idx_events_type_ts ON events(type, ts_unix_ns);`,
+		`CREATE INDEX IF NOT EXISTS idx_events_path ON events(path);`,
+		`CREATE INDEX IF NOT EXISTS idx_events_domain ON events(domain);`,
+		`CREATE TABLE IF NOT EXISTS command_outputs (
+			command_id TEXT PRIMARY KEY,
+			session_id TEXT NOT NULL,
+			stdout BLOB,
+			stderr BLOB,
+			stdout_total_bytes INTEGER NOT NULL,
+			stderr_total_bytes INTEGER NOT NULL,
+			stdout_truncated INTEGER NOT NULL,
+			stderr_truncated INTEGER NOT NULL,
+			created_ts_unix_ns INTEGER NOT NULL
+		);`,
+		`CREATE TABLE IF NOT EXISTS mcp_tools (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			server_id TEXT NOT NULL,
+			tool_name TEXT NOT NULL,
+			tool_hash TEXT NOT NULL,
+			description TEXT,
+			first_seen_ns INTEGER NOT NULL,
+			last_seen_ns INTEGER NOT NULL,
+			pinned INTEGER DEFAULT 1,
+			detection_count INTEGER DEFAULT 0,
+			max_severity TEXT,
+			UNIQUE(server_id, tool_name)
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_mcp_tools_server ON mcp_tools(server_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_mcp_tools_severity ON mcp_tools(max_severity);`,
+		`CREATE TABLE IF NOT EXISTS webauthn_credentials (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id TEXT NOT NULL,
+			credential_id BLOB NOT NULL UNIQUE,
+			public_key BLOB NOT NULL,
+			attestation_type TEXT,
+			transport TEXT,
+			sign_count INTEGER NOT NULL DEFAULT 0,
+			created_at_ns INTEGER NOT NULL,
+			last_used_ns INTEGER,
+			name TEXT
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_webauthn_credentials_user ON webauthn_credentials(user_id);`,
+	}
+
+	for _, stmt := range stmts {
+		if _, err := s.db.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("sqlite migrate: %w", err)
+		}
+	}
+
+	// Add integrity_json column to events table.
+	// Ignore "duplicate column" error for idempotent migrations.
+	_, err := s.db.ExecContext(ctx, `ALTER TABLE events ADD COLUMN integrity_json TEXT;`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
+		return fmt.Errorf("sqlite migrate add integrity_json: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Store) AppendEvent(ctx context.Context, ev types.Event) error {
+	s.closeMu.Lock()
+	if s.closed {
+		s.closeMu.Unlock()
+		return fmt.Errorf("store closed")
+	}
+	s.inflight.Add(1)
+	s.closeMu.Unlock()
+	defer s.inflight.Done()
+
+	if ev.ID == "" {
+		return fmt.Errorf("event missing id")
+	}
+	if ev.Timestamp.IsZero() {
+		ev.Timestamp = time.Now().UTC()
+	}
+	b, err := json.Marshal(ev)
+	if err != nil {
+		return fmt.Errorf("marshal event: %w", err)
+	}
+
+	var policyDecision, effectiveDecision, policyRule string
+	if ev.Policy != nil {
+		policyDecision = string(ev.Policy.Decision)
+		effectiveDecision = string(ev.Policy.EffectiveDecision)
+		policyRule = ev.Policy.Rule
+	}
+
+	p := eventPayload{
+		id:                ev.ID,
+		tsNanos:           ev.Timestamp.UTC().UnixNano(),
+		sessionID:         ev.SessionID,
+		commandID:         ev.CommandID,
+		evType:            ev.Type,
+		pid:               ev.PID,
+		policyDecision:    policyDecision,
+		effectiveDecision: effectiveDecision,
+		policyRule:        policyRule,
+		path:              ev.Path,
+		domain:            ev.Domain,
+		remote:            ev.Remote,
+		operation:         ev.Operation,
+		payloadJSON:       string(b),
+	}
+
+	select {
+	case s.eventCh <- p:
+		return nil
+	case <-s.done:
+		return fmt.Errorf("store closed")
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		// Channel full - block briefly to absorb bursts before dropping.
+		select {
+		case s.eventCh <- p:
+			return nil
+		case <-s.done:
+			return fmt.Errorf("store closed")
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(5 * time.Millisecond):
+			slog.Warn("sqlite: event channel full, dropping event", "event_id", ev.ID, "type", ev.Type)
+			return fmt.Errorf("event channel full")
+		}
+	}
+}
+
+// flushLoop drains events from the channel and writes them in batched transactions.
+// It exits when stopCh is closed, after draining any remaining events from eventCh.
+func (s *Store) flushLoop(batchSize int, flushInterval time.Duration) {
+	defer close(s.done)
+
+	batch := make([]eventPayload, 0, batchSize)
+	ticker := time.NewTicker(flushInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case p := <-s.eventCh:
+			batch = append(batch, p)
+			if len(batch) >= batchSize {
+				s.flushBatch(batch)
+				batch = batch[:0]
+			}
+		case ack := <-s.flushCh:
+			// Drain all pending events from the channel.
+			s.drainInto(&batch)
+			if len(batch) > 0 {
+				s.flushBatch(batch)
+				batch = batch[:0]
+			}
+			close(ack)
+		case <-ticker.C:
+			if len(batch) > 0 {
+				s.flushBatch(batch)
+				batch = batch[:0]
+			}
+		case <-s.stopCh:
+			// Shutdown: drain remaining events and exit.
+			s.drainInto(&batch)
+			if len(batch) > 0 {
+				s.flushBatch(batch)
+			}
+			return
+		}
+	}
+}
+
+// drainInto non-blockingly moves all pending events from eventCh into batch.
+func (s *Store) drainInto(batch *[]eventPayload) {
+	for {
+		select {
+		case p := <-s.eventCh:
+			*batch = append(*batch, p)
+		default:
+			return
+		}
+	}
+}
+
+// flushBatch writes a batch of events in a single transaction.
+func (s *Store) flushBatch(batch []eventPayload) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		slog.Error("sqlite: begin batch tx", "error", err, "count", len(batch))
+		s.lastErr.Store(errHolder{err})
+		return
+	}
+
+	stmt, err := tx.Prepare(`
+		INSERT INTO events(
+			event_id, ts_unix_ns, session_id, command_id, type, pid,
+			policy_decision, effective_decision, policy_rule,
+			path, domain, remote, operation, payload_json
+		) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?);`)
+	if err != nil {
+		slog.Error("sqlite: prepare batch stmt", "error", err)
+		s.lastErr.Store(errHolder{err})
+		_ = tx.Rollback()
+		return
+	}
+	defer stmt.Close()
+
+	var hadRowErr bool
+	for _, p := range batch {
+		_, err := stmt.Exec(
+			p.id,
+			p.tsNanos,
+			p.sessionID,
+			nullable(p.commandID),
+			p.evType,
+			nullableInt(p.pid),
+			nullable(p.policyDecision),
+			nullable(p.effectiveDecision),
+			nullable(p.policyRule),
+			nullable(p.path),
+			nullable(p.domain),
+			nullable(p.remote),
+			nullable(p.operation),
+			p.payloadJSON,
+		)
+		if err != nil {
+			slog.Warn("sqlite: batch insert event", "error", err, "event_id", p.id)
+			s.lastErr.Store(errHolder{err})
+			hadRowErr = true
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		slog.Error("sqlite: commit batch tx", "error", err, "count", len(batch))
+		s.lastErr.Store(errHolder{err})
+	} else if !hadRowErr {
+		s.lastErr.Store(errHolder{}) // clear only when fully successful
+	}
+}
+
+func (s *Store) QueryEvents(ctx context.Context, q types.EventQuery) ([]types.Event, error) {
+	// Flush pending async writes to ensure read-after-write consistency.
+	// Respect the caller's context to avoid blocking on cancelled queries.
+	s.FlushContext(ctx)
+
+	where := []string{"1=1"}
+	var args []any
+
+	if q.SessionID != "" {
+		where = append(where, "session_id = ?")
+		args = append(args, q.SessionID)
+	}
+	if q.CommandID != "" {
+		where = append(where, "command_id = ?")
+		args = append(args, q.CommandID)
+	}
+	if len(q.Types) > 0 {
+		place := make([]string, 0, len(q.Types))
+		for _, t := range q.Types {
+			place = append(place, "?")
+			args = append(args, t)
+		}
+		where = append(where, "type IN ("+strings.Join(place, ",")+")")
+	}
+	if q.Since != nil {
+		where = append(where, "ts_unix_ns >= ?")
+		args = append(args, q.Since.UTC().UnixNano())
+	}
+	if q.Until != nil {
+		where = append(where, "ts_unix_ns <= ?")
+		args = append(args, q.Until.UTC().UnixNano())
+	}
+	if q.Decision != nil {
+		where = append(where, "policy_decision = ?")
+		args = append(args, string(*q.Decision))
+	}
+	if q.PathLike != "" {
+		where = append(where, "path LIKE ?")
+		args = append(args, q.PathLike)
+	}
+	if q.DomainLike != "" {
+		where = append(where, "domain LIKE ?")
+		args = append(args, q.DomainLike)
+	}
+	if q.TextLike != "" {
+		where = append(where, "payload_json LIKE ?")
+		args = append(args, q.TextLike)
+	}
+
+	order := "DESC"
+	if q.Asc {
+		order = "ASC"
+	}
+	limit := q.Limit
+	if limit <= 0 || limit > 5000 {
+		limit = 200
+	}
+	offset := q.Offset
+	if offset < 0 {
+		offset = 0
+	}
+
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT payload_json FROM events WHERE `+strings.Join(where, " AND ")+` ORDER BY ts_unix_ns `+order+` LIMIT ? OFFSET ?`,
+		append(args, limit, offset)...,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query events: %w", err)
+	}
+	defer rows.Close()
+
+	var out []types.Event
+	for rows.Next() {
+		var payload string
+		if err := rows.Scan(&payload); err != nil {
+			return nil, fmt.Errorf("scan event: %w", err)
+		}
+		var ev types.Event
+		if err := json.Unmarshal([]byte(payload), &ev); err != nil {
+			return nil, fmt.Errorf("unmarshal event: %w", err)
+		}
+		out = append(out, ev)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("query events rows: %w", err)
+	}
+	return out, nil
+}
+
+func (s *Store) SaveOutput(ctx context.Context, sessionID, commandID string, stdout, stderr []byte, stdoutTotal, stderrTotal int64, stdoutTrunc, stderrTrunc bool) error {
+	_, err := s.db.ExecContext(ctx, `
+		INSERT OR REPLACE INTO command_outputs(
+			command_id, session_id, stdout, stderr,
+			stdout_total_bytes, stderr_total_bytes,
+			stdout_truncated, stderr_truncated,
+			created_ts_unix_ns
+		) VALUES(?,?,?,?,?,?,?,?,?);`,
+		commandID,
+		sessionID,
+		stdout,
+		stderr,
+		stdoutTotal,
+		stderrTotal,
+		boolToInt(stdoutTrunc),
+		boolToInt(stderrTrunc),
+		time.Now().UTC().UnixNano(),
+	)
+	if err != nil {
+		return fmt.Errorf("save output: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) ReadOutputChunk(ctx context.Context, commandID string, stream string, offset, limit int64) ([]byte, int64, bool, error) {
+	if limit <= 0 || limit > 10*1024*1024 {
+		limit = 64 * 1024
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	stream = strings.ToLower(stream)
+	if stream != "stdout" && stream != "stderr" {
+		stream = "stdout"
+	}
+
+	var data []byte
+	var total int64
+	var truncatedInt int
+
+	row := s.db.QueryRowContext(ctx, `SELECT `+stream+`, `+stream+`_total_bytes, `+stream+`_truncated FROM command_outputs WHERE command_id = ?`, commandID)
+	if err := row.Scan(&data, &total, &truncatedInt); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, 0, false, fmt.Errorf("output not found")
+		}
+		return nil, 0, false, fmt.Errorf("read output: %w", err)
+	}
+
+	if offset >= int64(len(data)) {
+		return []byte{}, total, truncatedInt != 0, nil
+	}
+	end := offset + limit
+	if end > int64(len(data)) {
+		end = int64(len(data))
+	}
+	return data[offset:end], total, truncatedInt != 0, nil
+}
+
+// UpsertMCPTool inserts or updates an MCP tool.
+func (s *Store) UpsertMCPTool(ctx context.Context, tool MCPTool) error {
+	if tool.FirstSeen.IsZero() {
+		tool.FirstSeen = time.Now().UTC()
+	}
+	if tool.LastSeen.IsZero() {
+		tool.LastSeen = time.Now().UTC()
+	}
+
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO mcp_tools (server_id, tool_name, tool_hash, description, first_seen_ns, last_seen_ns, pinned, detection_count, max_severity)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(server_id, tool_name) DO UPDATE SET
+			tool_hash = excluded.tool_hash,
+			description = excluded.description,
+			last_seen_ns = excluded.last_seen_ns,
+			detection_count = excluded.detection_count,
+			max_severity = excluded.max_severity
+	`,
+		tool.ServerID,
+		tool.ToolName,
+		tool.ToolHash,
+		nullable(tool.Description),
+		tool.FirstSeen.UnixNano(),
+		tool.LastSeen.UnixNano(),
+		boolToInt(tool.Pinned),
+		tool.DetectionCount,
+		nullable(tool.MaxSeverity),
+	)
+	if err != nil {
+		return fmt.Errorf("upsert mcp tool: %w", err)
+	}
+	return nil
+}
+
+// ListMCPTools returns tools matching the filter.
+func (s *Store) ListMCPTools(ctx context.Context, filter MCPToolFilter) ([]MCPTool, error) {
+	where := []string{"1=1"}
+	var args []any
+
+	if filter.ServerID != "" {
+		where = append(where, "server_id = ?")
+		args = append(args, filter.ServerID)
+	}
+	if filter.HasDetections {
+		where = append(where, "detection_count > 0")
+	}
+
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT server_id, tool_name, tool_hash, description, first_seen_ns, last_seen_ns, pinned, detection_count, max_severity
+		 FROM mcp_tools WHERE `+strings.Join(where, " AND ")+` ORDER BY server_id, tool_name`,
+		args...,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query mcp tools: %w", err)
+	}
+	defer rows.Close()
+
+	var tools []MCPTool
+	for rows.Next() {
+		var t MCPTool
+		var desc sql.NullString
+		var severity sql.NullString
+		var firstNs, lastNs int64
+		var pinned int
+
+		if err := rows.Scan(&t.ServerID, &t.ToolName, &t.ToolHash, &desc, &firstNs, &lastNs, &pinned, &t.DetectionCount, &severity); err != nil {
+			return nil, fmt.Errorf("scan mcp tool: %w", err)
+		}
+		t.Description = desc.String
+		t.MaxSeverity = severity.String
+		t.FirstSeen = time.Unix(0, firstNs)
+		t.LastSeen = time.Unix(0, lastNs)
+		t.Pinned = pinned != 0
+		tools = append(tools, t)
+	}
+	return tools, rows.Err()
+}
+
+// ListMCPServers returns summary of all MCP servers.
+func (s *Store) ListMCPServers(ctx context.Context) ([]MCPServerSummary, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT server_id, COUNT(*) as tool_count, MAX(last_seen_ns) as last_seen, SUM(detection_count) as detections
+		FROM mcp_tools
+		GROUP BY server_id
+		ORDER BY server_id
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("query mcp servers: %w", err)
+	}
+	defer rows.Close()
+
+	var servers []MCPServerSummary
+	for rows.Next() {
+		var srv MCPServerSummary
+		var lastNs int64
+		if err := rows.Scan(&srv.ServerID, &srv.ToolCount, &lastNs, &srv.DetectionCount); err != nil {
+			return nil, fmt.Errorf("scan mcp server: %w", err)
+		}
+		srv.LastSeen = time.Unix(0, lastNs)
+		servers = append(servers, srv)
+	}
+	return servers, rows.Err()
+}
+
+func nullable(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
+func nullableInt(i int) any {
+	if i == 0 {
+		return nil
+	}
+	return i
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}

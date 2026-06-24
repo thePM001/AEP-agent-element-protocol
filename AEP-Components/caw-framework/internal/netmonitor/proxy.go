@@ -1,0 +1,798 @@
+package netmonitor
+
+import (
+	"bufio"
+	"context"
+	"io"
+	"net"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"github.com/nla-aep/aep-caw-framework/internal/approvals"
+	dbevents "github.com/nla-aep/aep-caw-framework/internal/db/events"
+	"github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/nla-aep/aep-caw-framework/internal/session"
+	"github.com/nla-aep/aep-caw-framework/internal/tor"
+	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/google/uuid"
+)
+
+type Emitter interface {
+	AppendEvent(ctx context.Context, ev types.Event) error
+	Publish(ev types.Event)
+}
+
+// mcpAddrSource is satisfied by *mcpregistry.Registry.
+// Used to check if a connection target is a known MCP server.
+type mcpAddrSource interface {
+	ServerAddrs() map[string]string
+}
+
+type Proxy struct {
+	sessionID string
+	sess      *session.Session
+	policy    *policy.Engine
+	approvals *approvals.Manager
+	emit      Emitter
+	dbBypass  atomic.Pointer[dbevents.BypassEmitter]
+
+	ln   net.Listener
+	wg   sync.WaitGroup
+	done chan struct{}
+}
+
+func StartProxy(listenAddr string, sessionID string, sess *session.Session, engine *policy.Engine, approvalsMgr *approvals.Manager, emit Emitter, dbBypass ...*dbevents.BypassEmitter) (*Proxy, string, error) {
+	ln, err := net.Listen("tcp", listenAddr)
+	if err != nil {
+		return nil, "", err
+	}
+
+	p := &Proxy{
+		sessionID: sessionID,
+		sess:      sess,
+		policy:    engine,
+		approvals: approvalsMgr,
+		emit:      emit,
+		ln:        ln,
+		done:      make(chan struct{}),
+	}
+	if len(dbBypass) > 0 {
+		p.SetDBBypassEmitter(dbBypass[0])
+	}
+
+	p.wg.Add(1)
+	go p.acceptLoop()
+
+	u := url.URL{Scheme: "http", Host: ln.Addr().String()}
+	return p, u.String(), nil
+}
+
+func (p *Proxy) SetDBBypassEmitter(em *dbevents.BypassEmitter) {
+	if p == nil {
+		return
+	}
+	p.dbBypass.Store(em)
+}
+
+func (p *Proxy) Close() error {
+	close(p.done)
+	err := p.ln.Close()
+	p.wg.Wait()
+	return err
+}
+
+func (p *Proxy) acceptLoop() {
+	defer p.wg.Done()
+	for {
+		conn, err := p.ln.Accept()
+		if err != nil {
+			select {
+			case <-p.done:
+				return
+			default:
+				continue
+			}
+		}
+		p.wg.Add(1)
+		go func() {
+			defer p.wg.Done()
+			_ = p.handleConn(conn)
+		}()
+	}
+}
+
+func (p *Proxy) handleConn(c net.Conn) error {
+	defer c.Close()
+	br := bufio.NewReader(c)
+	req, err := http.ReadRequest(br)
+	if err != nil {
+		return err
+	}
+	defer req.Body.Close()
+
+	if strings.EqualFold(req.Method, http.MethodConnect) {
+		return p.handleConnect(c, req)
+	}
+	return p.handleHTTP(c, req)
+}
+
+type connectDialTargetInput struct {
+	OriginalHostPort string
+	ResolvedIP       string
+	OriginalPort     string
+	Redirect         *policy.ConnectRedirectResult
+}
+
+type resolvedConnectDialTarget struct {
+	Network string
+	Address string
+}
+
+func connectDialTarget(in connectDialTargetInput) resolvedConnectDialTarget {
+	if in.Redirect != nil && in.Redirect.RedirectToUnix != "" {
+		return resolvedConnectDialTarget{Network: "unix", Address: in.Redirect.RedirectToUnix}
+	}
+	if in.Redirect != nil && in.Redirect.RedirectTo != "" {
+		return resolvedConnectDialTarget{Network: "tcp", Address: in.Redirect.RedirectTo}
+	}
+	if in.ResolvedIP != "" {
+		return resolvedConnectDialTarget{
+			Network: "tcp",
+			Address: net.JoinHostPort(in.ResolvedIP, in.OriginalPort),
+		}
+	}
+	return resolvedConnectDialTarget{Network: "tcp", Address: in.OriginalHostPort}
+}
+
+func (p *Proxy) handleConnect(client net.Conn, req *http.Request) error {
+	hostPort := req.Host
+	host, portStr, err := net.SplitHostPort(hostPort)
+	if err != nil {
+		host = hostPort
+		portStr = "443"
+	}
+	port := mustAtoi(portStr, 443)
+
+	commandID := ""
+	if p.sess != nil {
+		commandID = p.sess.CurrentCommandID()
+	}
+	engine := p.policyEngine()
+
+	// Fail-closed check: if the target host is declared as an http_services
+	// upstream, deny direct HTTPS regardless of the CheckNetworkCtx decision.
+	// The only way to reach the upstream is through the gateway via
+	// /svc/<name>/. Services opt out by setting allow_direct: true.
+	//
+	// Runs BEFORE resolveAndEmitDNS and BEFORE EvaluateConnectRedirect so
+	// that blocked requests do not trigger DNS lookups, DNS approval
+	// prompts, or redirect side effects.
+	if engine != nil {
+		if svcName, envVar, ok := engine.DeclaredHTTPServiceHost(host); ok && !engine.DeclaredHTTPServiceAllowsDirect(host) {
+			msg := "direct HTTPS to " + host + " is blocked; use " + envVar + " to route through the gateway"
+			_, _ = io.WriteString(client, "HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: "+strconv.Itoa(len(msg))+"\r\n\r\n"+msg)
+			failClosedDec := policy.Decision{
+				PolicyDecision:    types.DecisionDeny,
+				EffectiveDecision: types.DecisionDeny,
+				Rule:              "http_service_declared_fail_closed",
+				Message:           msg,
+			}
+			failClosedFields := map[string]any{
+				"method":       "CONNECT",
+				"resolved_ip":  "",
+				"service_name": svcName,
+				"env_var":      envVar,
+			}
+			netConnectEv := p.emitNetEvent(context.Background(), "net_connect", commandID, host, hostPort, port, failClosedDec, failClosedFields)
+			_ = p.emit.AppendEvent(context.Background(), netConnectEv)
+			p.emit.Publish(netConnectEv)
+			p.emitDBBypassAttempt(context.Background(), commandID, 0, failClosedDec.Rule, failClosedDec.Message)
+			p.emitHTTPServiceDeniedDirect(context.Background(), commandID, svcName, envVar, host, "", "CONNECT")
+			return nil
+		}
+	}
+
+	resolvedIP := p.resolveAndEmitDNS(context.Background(), commandID, host)
+
+	// Check for connect redirect rules
+	var redirectResult *policy.ConnectRedirectResult
+	var redirectTLS, redirectSNI string
+	if engine != nil {
+		result := engine.EvaluateConnectRedirect(hostPort)
+		if result.Matched {
+			redirectResult = result
+			redirectTLS = result.TLSMode
+			redirectSNI = result.SNI
+			// Emit redirect event if visibility is not silent
+			if result.Visibility != "silent" {
+				p.emitConnectRedirectEvent(context.Background(), commandID, host, hostPort, port, result)
+			}
+		}
+	}
+
+	ctx := req.Context()
+	dec := p.checkConnectNetwork(ctx, commandID, host, hostPort, port, redirectResult)
+	eventFields := map[string]any{
+		"method":      "CONNECT",
+		"resolved_ip": resolvedIP,
+	}
+	if redirectResult != nil {
+		if redirectResult.RedirectTo != "" {
+			eventFields["redirect_to"] = redirectResult.RedirectTo
+		}
+		if redirectResult.RedirectToUnix != "" {
+			eventFields["redirect_to_unix"] = redirectResult.RedirectToUnix
+		}
+		eventFields["redirect_tls"] = redirectTLS
+		if redirectSNI != "" {
+			eventFields["redirect_sni"] = redirectSNI
+		}
+	}
+	connectEv := p.emitNetEvent(context.Background(), "net_connect", commandID, host, hostPort, port, dec, eventFields)
+	if dec.EffectiveDecision == types.DecisionDeny {
+		_, _ = io.WriteString(client, "HTTP/1.1 403 Forbidden\r\n\r\n")
+		_ = p.emit.AppendEvent(context.Background(), connectEv)
+		p.emit.Publish(connectEv)
+		p.emitDBBypassAttempt(context.Background(), commandID, 0, dec.Rule, dec.Message)
+		return nil
+	}
+	_ = p.emit.AppendEvent(context.Background(), connectEv)
+	p.emit.Publish(connectEv)
+
+	emitMCPConnectionIfMatched(context.Background(), p.sess, p.emit, p.sessionID, commandID, host, hostPort, port)
+
+	// Determine dial target: redirect destination or original
+	dialTarget := connectDialTarget(connectDialTargetInput{
+		OriginalHostPort: hostPort,
+		ResolvedIP:       resolvedIP,
+		OriginalPort:     portStr,
+		Redirect:         redirectResult,
+	})
+
+	up, err := net.DialTimeout(dialTarget.Network, dialTarget.Address, 20*time.Second)
+	if err != nil {
+		_, _ = io.WriteString(client, "HTTP/1.1 502 Bad Gateway\r\n\r\n")
+		return nil
+	}
+	defer up.Close()
+
+	_, _ = io.WriteString(client, "HTTP/1.1 200 Connection Established\r\n\r\n")
+
+	// Rewrite SNI in the TLS ClientHello if policy requires it
+	if redirectTLS == "rewrite_sni" && redirectSNI != "" {
+		if err := sniRewriteFirstRecord(client, up, redirectSNI); err != nil {
+			if !isSNIParseError(err) {
+				return nil // I/O error, connection broken
+			}
+			// Parse error: first record forwarded unchanged, continue
+		}
+	}
+
+	var upBytes, downBytes int64
+	errCh := make(chan error, 2)
+	// Use sync.Once to ensure we only close connections once
+	var closeOnce sync.Once
+	closeBoth := func() {
+		closeOnce.Do(func() {
+			// Close both sides to unblock any pending io.Copy
+			_ = client.Close()
+			_ = up.Close()
+		})
+	}
+	go func() {
+		n, e := io.Copy(up, client)
+		upBytes = n
+		closeBoth() // Signal other copy to stop
+		errCh <- e
+	}()
+	go func() {
+		n, e := io.Copy(client, up)
+		downBytes = n
+		closeBoth() // Signal other copy to stop
+		errCh <- e
+	}()
+	<-errCh
+	<-errCh
+
+	closeEv := p.emitNetEvent(context.Background(), "net_close", commandID, host, hostPort, port, dec, map[string]any{
+		"bytes_sent":     upBytes,
+		"bytes_received": downBytes,
+		"resolved_ip":    resolvedIP,
+	})
+	_ = p.emit.AppendEvent(context.Background(), closeEv)
+	p.emit.Publish(closeEv)
+	return nil
+}
+
+func (p *Proxy) handleHTTP(client net.Conn, req *http.Request) error {
+	host := req.Host
+	if host == "" {
+		host = req.URL.Host
+	}
+	if strings.Contains(host, ":") {
+		h, _, err := net.SplitHostPort(host)
+		if err == nil {
+			host = h
+		}
+	}
+	port := 80
+	if req.URL.Scheme == "https" {
+		port = 443
+	}
+
+	commandID := ""
+	pid := 0
+	if p.sess != nil {
+		commandID = p.sess.CurrentCommandID()
+		pid = p.sess.CurrentProcessPID() // command-process PID, not necessarily the leaf caller
+	}
+	engine := p.policyEngine()
+
+	// Fail-closed check: if the target host is declared as an http_services
+	// upstream, deny direct HTTP regardless of the CheckNetworkCtx decision.
+	// Matches the analogous block in handleConnect. Services opt out by
+	// setting allow_direct: true.
+	//
+	// Runs BEFORE resolveAndEmitDNS and BEFORE net_http_request emission so
+	// that blocked requests do not trigger DNS lookups, DNS approval
+	// prompts, or observable request-tracking side effects.
+	if engine != nil {
+		if svcName, envVar, ok := engine.DeclaredHTTPServiceHost(host); ok && !engine.DeclaredHTTPServiceAllowsDirect(host) {
+			msg := "direct HTTP to " + host + " is blocked; use " + envVar + " to route through the gateway"
+			_, _ = io.WriteString(client, "HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: "+strconv.Itoa(len(msg))+"\r\n\r\n"+msg)
+			failClosedDec := policy.Decision{
+				PolicyDecision:    types.DecisionDeny,
+				EffectiveDecision: types.DecisionDeny,
+				Rule:              "http_service_declared_fail_closed",
+				Message:           msg,
+			}
+			failClosedFields := map[string]any{
+				"method":       req.Method,
+				"resolved_ip":  "",
+				"service_name": svcName,
+				"env_var":      envVar,
+			}
+			netConnectEv := p.emitNetEvent(context.Background(), "net_connect", commandID, host, host, port, failClosedDec, failClosedFields)
+			_ = p.emit.AppendEvent(context.Background(), netConnectEv)
+			p.emit.Publish(netConnectEv)
+			p.emitDBBypassAttempt(context.Background(), commandID, 0, failClosedDec.Rule, failClosedDec.Message)
+			p.emitHTTPServiceDeniedDirect(context.Background(), commandID, svcName, envVar, host, "", req.Method)
+			return nil
+		}
+	}
+
+	resolvedIP := p.resolveAndEmitDNS(context.Background(), commandID, host)
+	// Note: For HTTPS URLs via an explicit proxy, curl will use CONNECT which is handled in handleConnect.
+	// This path is for plain HTTP proxy requests, where we can record method/path (but not TLS contents).
+	if p.emit != nil {
+		ev := types.Event{
+			ID:        uuid.NewString(),
+			Timestamp: time.Now().UTC(),
+			Type:      "net_http_request",
+			SessionID: p.sessionID,
+			CommandID: commandID,
+			Domain:    strings.ToLower(host),
+			Remote:    host,
+			Fields: map[string]any{
+				"method":      req.Method,
+				"path":        req.URL.Path,
+				"resolved_ip": resolvedIP,
+			},
+		}
+		_ = p.emit.AppendEvent(context.Background(), ev)
+		p.emit.Publish(ev)
+	}
+
+	ctx := req.Context()
+	dec := p.checkNetwork(ctx, host, port)
+	dec = p.maybeApprove(ctx, commandID, dec, "network", host)
+	if dec.Tor != nil && p.emit != nil {
+		vector := dec.Tor.Vector
+		if vector == tor.VectorOnionDNS {
+			vector = tor.VectorOnionHTTP
+		}
+		tev := tor.BuildControlEvent(p.sessionID, commandID, pid, tor.Verdict{
+			Vector: vector, Mode: dec.Tor.Mode, Decision: dec.Tor.Decision, Target: dec.Tor.Target,
+		})
+		_ = p.emit.AppendEvent(context.Background(), tev)
+		p.emit.Publish(tev)
+	}
+	connectEv := p.emitNetEvent(context.Background(), "net_connect", commandID, host, host, port, dec, map[string]any{
+		"method":      req.Method,
+		"resolved_ip": resolvedIP,
+	})
+	if dec.EffectiveDecision == types.DecisionDeny {
+		resp := "HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\n\r\nblocked by policy\n"
+		_, _ = io.WriteString(client, resp)
+		_ = p.emit.AppendEvent(context.Background(), connectEv)
+		p.emit.Publish(connectEv)
+		p.emitDBBypassAttempt(context.Background(), commandID, 0, dec.Rule, dec.Message)
+		return nil
+	}
+	_ = p.emit.AppendEvent(context.Background(), connectEv)
+	p.emit.Publish(connectEv)
+
+	emitMCPConnectionIfMatched(context.Background(), p.sess, p.emit, p.sessionID, commandID, host, net.JoinHostPort(host, strconv.Itoa(port)), port)
+
+	transport := &http.Transport{
+		Proxy: nil,
+	}
+
+	req.RequestURI = ""
+	req.URL.Scheme = "http"
+	if req.URL.Host == "" {
+		req.URL.Host = req.Host
+	}
+
+	// Strip hop-by-hop headers per RFC 2616 Section 13.5.1
+	hopByHopHeaders := []string{
+		"Connection",
+		"Keep-Alive",
+		"Proxy-Authenticate",
+		"Proxy-Authorization",
+		"TE",
+		"Trailers",
+		"Transfer-Encoding",
+		"Upgrade",
+	}
+	for _, h := range hopByHopHeaders {
+		req.Header.Del(h)
+	}
+
+	resp, err := transport.RoundTrip(req)
+	if err != nil {
+		_, _ = io.WriteString(client, "HTTP/1.1 502 Bad Gateway\r\n\r\n")
+		return nil
+	}
+	defer resp.Body.Close()
+
+	if err := resp.Write(client); err != nil {
+		return nil
+	}
+	return nil
+}
+
+func (p *Proxy) checkNetwork(ctx context.Context, domain string, port int) policy.Decision {
+	engine := p.policyEngine()
+	if engine == nil {
+		return policy.Decision{PolicyDecision: types.DecisionAllow, EffectiveDecision: types.DecisionAllow}
+	}
+	return engine.CheckNetworkCtx(ctx, domain, port)
+}
+
+func (p *Proxy) checkConnectNetwork(ctx context.Context, commandID string, host string, hostPort string, port int, redirect *policy.ConnectRedirectResult) policy.Decision {
+	dec := p.checkNetwork(ctx, host, port)
+	if allowUnixRedirectForDBUnavoidability(p.policyEngine(), dec, redirect) {
+		return allowConnectRedirectDecision(redirect)
+	}
+	dec = p.maybeApprove(ctx, commandID, dec, "network", hostPort)
+	return dec
+}
+
+func (p *Proxy) isDBUnavoidabilityTCPDirectRule(ruleName string) bool {
+	if p == nil {
+		return false
+	}
+	return isDBUnavoidabilityTCPDirectRule(p.policyEngine(), ruleName)
+}
+
+func (p *Proxy) policyEngine() *policy.Engine {
+	if p == nil {
+		return nil
+	}
+	if p.sess != nil {
+		if engine := p.sess.PolicyEngine(); engine != nil {
+			return engine
+		}
+	}
+	return p.policy
+}
+
+func (p *Proxy) emitDBBypassAttempt(ctx context.Context, commandID string, pid int, ruleName string, reason string) {
+	if p == nil {
+		return
+	}
+	em := p.dbBypass.Load()
+	if em == nil {
+		return
+	}
+	em.EmitIfDBUnavoidabilityDeny(ctx, dbevents.BypassAttempt{
+		Engine:          p.policyEngine(),
+		SessionID:       p.sessionID,
+		CommandID:       commandID,
+		ProcessID:       pid,
+		ProcessIdentity: dbBypassProcessIdentity(p.sessionID, commandID),
+		RuleName:        ruleName,
+		Reason:          reason,
+	})
+}
+
+func dbBypassProcessIdentity(sessionID string, commandID string) string {
+	if commandID != "" {
+		return "command:" + commandID
+	}
+	return "session:" + sessionID
+}
+
+func allowUnixRedirectForDBUnavoidability(engine *policy.Engine, dec policy.Decision, redirect *policy.ConnectRedirectResult) bool {
+	return redirect != nil &&
+		redirect.RedirectToUnix != "" &&
+		dec.EffectiveDecision == types.DecisionDeny &&
+		isDBUnavoidabilityTCPDirectRule(engine, dec.Rule) &&
+		isDBUnavoidabilityTCPDirectRule(engine, redirect.Rule)
+}
+
+func isDBUnavoidabilityTCPDirectRule(engine *policy.Engine, ruleName string) bool {
+	if engine == nil || ruleName == "" {
+		return false
+	}
+	pol := engine.Policy()
+	if pol == nil {
+		return false
+	}
+	for _, m := range pol.Metadata {
+		if m.RuleName == ruleName && m.Source == "db_unavoidability" && m.BypassMode == "tcp_direct" {
+			return true
+		}
+	}
+	return false
+}
+
+func allowConnectRedirectDecision(redirect *policy.ConnectRedirectResult) policy.Decision {
+	return policy.Decision{
+		PolicyDecision:    types.DecisionAllow,
+		EffectiveDecision: types.DecisionAllow,
+		Rule:              redirect.Rule,
+		Message:           redirect.Message,
+	}
+}
+
+func (p *Proxy) maybeApprove(ctx context.Context, commandID string, dec policy.Decision, kind string, target string) policy.Decision {
+	if dec.PolicyDecision != types.DecisionApprove || dec.EffectiveDecision != types.DecisionApprove {
+		return dec
+	}
+	if p.approvals == nil {
+		return dec
+	}
+	req := approvals.Request{
+		ID:        "approval-" + uuid.NewString(),
+		SessionID: p.sessionID,
+		CommandID: commandID,
+		Kind:      kind,
+		Target:    target,
+		Rule:      dec.Rule,
+		Message:   dec.Message,
+	}
+	res, err := p.approvals.RequestApproval(ctx, req)
+	if dec.Approval != nil {
+		dec.Approval.ID = req.ID
+	}
+	if err != nil || !res.Approved {
+		dec.EffectiveDecision = types.DecisionDeny
+	} else {
+		dec.EffectiveDecision = types.DecisionAllow
+	}
+	return dec
+}
+
+func (p *Proxy) emitNetEvent(ctx context.Context, evType string, commandID string, domain string, remote string, port int, dec policy.Decision, fields map[string]any) types.Event {
+	ev := types.Event{
+		ID:        uuid.NewString(),
+		Timestamp: time.Now().UTC(),
+		Type:      evType,
+		SessionID: p.sessionID,
+		CommandID: commandID,
+		Domain:    strings.ToLower(domain),
+		Remote:    remote,
+		Fields:    fields,
+		Policy: &types.PolicyInfo{
+			Decision:          dec.PolicyDecision,
+			EffectiveDecision: dec.EffectiveDecision,
+			Rule:              dec.Rule,
+			Message:           dec.Message,
+			Approval:          dec.Approval,
+			ThreatFeed:        dec.ThreatFeed,
+			ThreatMatch:       dec.ThreatMatch,
+			ThreatAction:      dec.ThreatAction,
+		},
+	}
+	return ev
+}
+
+func (p *Proxy) emitConnectRedirectEvent(ctx context.Context, commandID string, domain string, hostPort string, port int, result *policy.ConnectRedirectResult) {
+	if p == nil {
+		return
+	}
+	emitConnectRedirectEvent(ctx, p.emit, p.sessionID, commandID, domain, hostPort, port, result)
+}
+
+func emitConnectRedirectEvent(ctx context.Context, emit Emitter, sessionID string, commandID string, domain string, hostPort string, port int, result *policy.ConnectRedirectResult) {
+	if emit == nil {
+		return
+	}
+	ev := types.Event{
+		ID:        uuid.NewString(),
+		Timestamp: time.Now().UTC(),
+		Type:      "connect_redirect",
+		SessionID: sessionID,
+		CommandID: commandID,
+		Domain:    strings.ToLower(domain),
+		Remote:    hostPort,
+		Fields: map[string]any{
+			"rule":       result.Rule,
+			"tls_mode":   result.TLSMode,
+			"message":    result.Message,
+			"visibility": result.Visibility,
+		},
+	}
+	if result.RedirectTo != "" {
+		ev.Fields["redirect_to"] = result.RedirectTo
+	}
+	if result.RedirectToUnix != "" {
+		ev.Fields["redirect_to_unix"] = result.RedirectToUnix
+	}
+	if result.SNI != "" {
+		ev.Fields["sni"] = result.SNI
+	}
+	_ = emit.AppendEvent(ctx, ev)
+	emit.Publish(ev)
+}
+
+// emitMCPConnectionIfMatched checks whether the connection target is a known
+// MCP server address and, if so, emits an mcp_network_connection event.
+// This is a shared function called from both Proxy and TransparentTCP handlers.
+func emitMCPConnectionIfMatched(ctx context.Context, sess *session.Session, emit Emitter, sessionID, commandID, domain, remote string, port int) {
+	if sess == nil || emit == nil {
+		return
+	}
+	src, ok := sess.MCPRegistry().(mcpAddrSource)
+	if !ok || src == nil {
+		return
+	}
+	addrs := src.ServerAddrs()
+	if len(addrs) == 0 {
+		return
+	}
+
+	hostPort := net.JoinHostPort(domain, strconv.Itoa(port))
+	serverID, found := addrs[hostPort]
+	if !found {
+		serverID, found = addrs[remote]
+	}
+	if !found {
+		return
+	}
+
+	ev := types.Event{
+		ID:        uuid.NewString(),
+		Timestamp: time.Now().UTC(),
+		Type:      "mcp_network_connection",
+		SessionID: sessionID,
+		CommandID: commandID,
+		Domain:    strings.ToLower(domain),
+		Remote:    remote,
+		Fields: map[string]any{
+			"server_id": serverID,
+		},
+	}
+	_ = emit.AppendEvent(ctx, ev)
+	emit.Publish(ev)
+}
+
+// emitHTTPServiceDeniedDirect records an audit event when the fail-closed
+// check in handleConnect or handleHTTP refuses a direct request to a
+// declared http_services upstream. These events give operators an
+// observable signal that a child process attempted to bypass the
+// gateway, even though they can take no corrective action in-band.
+func (p *Proxy) emitHTTPServiceDeniedDirect(ctx context.Context, commandID, svcName, envVar, host, resolvedIP, method string) {
+	if p.emit == nil {
+		return
+	}
+	ev := types.Event{
+		ID:        uuid.NewString(),
+		Timestamp: time.Now().UTC(),
+		Type:      "http_service_denied_direct",
+		SessionID: p.sessionID,
+		CommandID: commandID,
+		Domain:    strings.ToLower(host),
+		Remote:    host,
+		Fields: map[string]any{
+			"service_name": svcName,
+			"env_var":      envVar,
+			"request_host": host,
+			"resolved_ip":  resolvedIP,
+			"method":       method,
+		},
+	}
+	_ = p.emit.AppendEvent(ctx, ev)
+	p.emit.Publish(ev)
+}
+
+func (p *Proxy) resolveAndEmitDNS(ctx context.Context, commandID string, host string) string {
+	host = strings.TrimSpace(host)
+	if host == "" {
+		return ""
+	}
+	// No DNS resolution needed for literal IPs.
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.String()
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	ips := make([]string, 0, len(addrs))
+	for _, a := range addrs {
+		if a.IP == nil {
+			continue
+		}
+		ips = append(ips, a.IP.String())
+	}
+
+	dec := p.checkNetwork(ctx, host, 53)
+	// Mirror dns.go behavior: treat default deny as monitor-only unless explicitly matching DNS.
+	if dec.PolicyDecision == types.DecisionDeny && dec.Rule == "default-deny-network" {
+		dec.PolicyDecision = types.DecisionAllow
+		dec.EffectiveDecision = types.DecisionAllow
+		dec.Rule = "dns-monitor-only"
+	}
+	dec = p.maybeApprove(ctx, commandID, dec, "dns", host)
+
+	if p.emit != nil {
+		ev := types.Event{
+			ID:        uuid.NewString(),
+			Timestamp: time.Now().UTC(),
+			Type:      "dns_query",
+			SessionID: p.sessionID,
+			CommandID: commandID,
+			Domain:    strings.ToLower(host),
+			Fields: map[string]any{
+				"ips":    ips,
+				"source": "proxy",
+			},
+			Policy: &types.PolicyInfo{
+				Decision:          dec.PolicyDecision,
+				EffectiveDecision: dec.EffectiveDecision,
+				Rule:              dec.Rule,
+				Message:           dec.Message,
+				Approval:          dec.Approval,
+				ThreatFeed:        dec.ThreatFeed,
+				ThreatMatch:       dec.ThreatMatch,
+				ThreatAction:      dec.ThreatAction,
+			},
+		}
+		if err != nil {
+			if ev.Fields == nil {
+				ev.Fields = map[string]any{}
+			}
+			ev.Fields["error"] = err.Error()
+		}
+		_ = p.emit.AppendEvent(context.Background(), ev)
+		p.emit.Publish(ev)
+	}
+
+	if len(ips) > 0 {
+		return ips[0]
+	}
+	return ""
+}
+
+func mustAtoi(s string, def int) int {
+	n := 0
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return def
+		}
+		n = n*10 + int(r-'0')
+	}
+	if n == 0 {
+		return def
+	}
+	return n
+}

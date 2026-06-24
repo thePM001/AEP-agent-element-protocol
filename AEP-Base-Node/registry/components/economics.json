@@ -1,0 +1,53 @@
+{
+  "manifest_version": "1",
+  "id": "economics",
+  "version": "2.8.0",
+  "kind": "regulation",
+  "path": "AEP-Components/economics/",
+  "description": "Pricing, budget caps, cost estimation, X402 nanopayments.",
+  "requires": [
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "economics:budget",
+    "economics:pricing",
+    "economics:x402",
+    "economics:cost-estimate"
+  ],
+  "actions": [],
+  "setup_hooks": [
+    {
+      "id": "budget_policy",
+      "policy_section": "budget",
+      "default": {
+        "enabled": false,
+        "daily_cap_usd": 50
+      }
+    }
+  ],
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 10,
+    "requires_internet": true,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Token cost control, provider balancing, HTTP 402 nanopayments.",
+    "use_when": [
+      "cloud LLM cost control",
+      "multi-provider routing",
+      "micropayments"
+    ],
+    "avoid_when": [
+      "fully offline with no cost tracking"
+    ],
+    "pairs_with": [
+      "commerce-subprotocol",
+      "aep-typescript-sdk"
+    ]
+  },
+  "implementation": {
+    "barrel": "AEP-Components/economics/lib/index.ts",
+    "x402": "AEP-Components/economics/lib/x402.ts"
+  }
+}

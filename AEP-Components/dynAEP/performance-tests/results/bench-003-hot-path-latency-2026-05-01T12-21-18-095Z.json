@@ -1,0 +1,92 @@
+{
+  "benchmark": "bench-003-hot-path-latency",
+  "version": "0.3.1-perf",
+  "date": "2026-05-01T12:21:18.095Z",
+  "results": [
+    {
+      "attractorCount": 100,
+      "indexType": "lsh",
+      "queryCount": 10000,
+      "matchCount": 1762,
+      "missCount": 8238,
+      "latencyP50Us": 17.30600000001914,
+      "latencyP95Us": 25.789000000031592,
+      "latencyP99Us": 37.47500000002901,
+      "latencyP999Us": 270.90499999997064,
+      "latencyMeanUs": 18.360255099999915,
+      "avgCandidates": 55.93772727272727,
+      "queriesPerSecond": 54465
+    },
+    {
+      "attractorCount": 100,
+      "indexType": "brute_force",
+      "queryCount": 10000,
+      "matchCount": 1386,
+      "missCount": 8614,
+      "latencyP50Us": 11.28700000003846,
+      "latencyP95Us": 20.471000000043205,
+      "latencyP99Us": 28.233000000000175,
+      "latencyP999Us": 43.15499999995609,
+      "latencyMeanUs": 13.324295500000174,
+      "avgCandidates": 100,
+      "queriesPerSecond": 75051
+    },
+    {
+      "attractorCount": 1000,
+      "indexType": "lsh",
+      "queryCount": 10000,
+      "matchCount": 7843,
+      "missCount": 2157,
+      "latencyP50Us": 149.24300000006951,
+      "latencyP95Us": 234.42000000000007,
+      "latencyP99Us": 270.64400000017486,
+      "latencyP999Us": 590.7120000001669,
+      "latencyMeanUs": 157.30542730000192,
+      "avgCandidates": 568.816,
+      "queriesPerSecond": 6357
+    },
+    {
+      "attractorCount": 1000,
+      "indexType": "brute_force",
+      "queryCount": 10000,
+      "matchCount": 7528,
+      "missCount": 2472,
+      "latencyP50Us": 136.37299999936658,
+      "latencyP95Us": 209.34299999998984,
+      "latencyP99Us": 226.89900000023044,
+      "latencyP999Us": 277.1939999997812,
+      "latencyMeanUs": 151.10559909999935,
+      "avgCandidates": 1000,
+      "queriesPerSecond": 6618
+    },
+    {
+      "attractorCount": 10000,
+      "indexType": "lsh",
+      "queryCount": 10000,
+      "matchCount": 10000,
+      "missCount": 0,
+      "latencyP50Us": 2048.23800000122,
+      "latencyP95Us": 3144.867000000886,
+      "latencyP99Us": 3897.891000000527,
+      "latencyP999Us": 5068.87899999856,
+      "latencyMeanUs": 2115.889319500021,
+      "avgCandidates": 5671.634636363637,
+      "queriesPerSecond": 473
+    },
+    {
+      "attractorCount": 10000,
+      "indexType": "brute_force",
+      "queryCount": 10000,
+      "matchCount": 10000,
+      "missCount": 0,
+      "latencyP50Us": 1453.139999997802,
+      "latencyP95Us": 2110.9209999995073,
+      "latencyP99Us": 2331.1309999990044,
+      "latencyP999Us": 4110.797999997885,
+      "latencyMeanUs": 1579.2854063000495,
+      "avgCandidates": 10000,
+      "queriesPerSecond": 633
+    }
+  ],
+  "pass": false
+}
