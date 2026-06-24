@@ -3,7 +3,7 @@
   "name": "PERA Dock",
   "priority": 200,
   "socket_suffix": "/pera",
-  "purpose": "PERA (Perceptive Rails) - sensor ingress and world-model updates (AEP 3.0+ path)",
+  "purpose": "PERA",
   "transport": "lattice-channel",
   "implementation": "AEP-Base-Node/crate/src/pera.rs"
 }
