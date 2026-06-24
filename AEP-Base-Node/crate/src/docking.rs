@@ -144,6 +144,7 @@ pub fn port_event_type(port: &DockingPort) -> &'static str {
         DockingPort::InferenceEngine => "docking_inference_engine",
         DockingPort::ValidationEngine => "docking_validation_engine",
         DockingPort::FutureFeatures => "docking_future_features",
+        DockingPort::Pera => crate::pera::PERA_EVENT_TYPE,
         DockingPort::RegulationModule => "docking_regulation_module",
     }
 }
@@ -796,6 +797,7 @@ fn tls_dock_port(port: DockingPort) -> u16 {
         DockingPort::InferenceEngine => 28425,
         DockingPort::ValidationEngine => 28426,
         DockingPort::FutureFeatures => 28427,
+        DockingPort::Pera => 28429,
         DockingPort::RegulationModule => 28428,
     }
 }
@@ -939,6 +941,24 @@ mod tests {
         let sock_base = dir.path().join("sockets").to_string_lossy().to_string();
         let rt = DockingRuntime::with_data_dir(sock_base, conn, &[], dir.path());
         (dir, rt)
+    }
+
+    #[test]
+    fn pera_dock_records_lattice_frame() {
+        let (_dir, rt) = temp_runtime();
+        let (_frame, line) = build_test_frame(
+            &rt,
+            "ch-pera-test",
+            "pera-ingest",
+            "sess-pera",
+            DockingPort::Pera,
+            crate::pera::PERA_CONTRACT_ID,
+            b"perception-frame",
+            42,
+        );
+        let resp = process_request(&rt, &DockingPort::Pera, &line);
+        assert!(resp.ok, "pera dock should accept frame: {:?}", resp.error);
+        assert!(resp.digest.is_some());
     }
 
     #[test]

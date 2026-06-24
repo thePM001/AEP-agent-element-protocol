@@ -158,6 +158,7 @@ pub fn normalize_dock_port(port: Option<&str>) -> Result<String, String> {
         "validation_engine",
         "regulation_module",
         "future_features",
+        "pera",
     ];
     let p = port.unwrap_or("validation_engine").trim();
     if p.contains("..") || p.contains('/') {

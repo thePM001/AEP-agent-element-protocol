@@ -42,6 +42,7 @@ const MANIFESTS = {
       "dock:validation_engine",
       "dock:regulation_module",
       "dock:future_features",
+      "dock:pera",
       "lattice:enforce",
     ],
     actions: [
@@ -61,7 +62,7 @@ const MANIFESTS = {
     setup_hooks: [],
     docks: {
       primary: null,
-      allowed: ["inference_engine", "validation_engine", "regulation_module", "future_features"],
+      allowed: ["inference_engine", "validation_engine", "regulation_module", "future_features", "pera"],
     },
     resource_requirements: RR(256, 100),
     cca: CCA(

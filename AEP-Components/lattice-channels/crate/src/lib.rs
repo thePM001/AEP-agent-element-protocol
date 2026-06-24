@@ -25,6 +25,8 @@ pub enum DockingPort {
     InferenceEngine,
     ValidationEngine,
     FutureFeatures,
+    /// PERA (Perceptive Rails) - sensor ingress, world-model updates (AEP 3.0+ path).
+    Pera,
     RegulationModule,
 }
 

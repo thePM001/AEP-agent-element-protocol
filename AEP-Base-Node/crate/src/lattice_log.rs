@@ -19,6 +19,7 @@ pub enum DockingPortWire {
     #[default]
     ValidationEngine,
     FutureFeatures,
+    Pera,
     RegulationModule,
 }
 
@@ -28,6 +29,7 @@ impl DockingPortWire {
             Self::InferenceEngine => DockingPort::InferenceEngine,
             Self::ValidationEngine => DockingPort::ValidationEngine,
             Self::FutureFeatures => DockingPort::FutureFeatures,
+            Self::Pera => DockingPort::Pera,
             Self::RegulationModule => DockingPort::RegulationModule,
         }
     }

@@ -73,7 +73,7 @@ export function createUcbServer(env = process.env) {
           paper: "NLA Research Paper 005",
           perimeter: "secured-dock",
           transports: ["http", "mcp-json-rpc"],
-          docks: ["validation_engine", "inference_engine", "regulation_module", "future_features"],
+          docks: ["validation_engine", "inference_engine", "regulation_module", "future_features", "pera"],
           operations: ["ingest", "delegate", "rollback"],
           supported_protocols: [
             "langgraph",

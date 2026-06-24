@@ -90,6 +90,7 @@ fn dock_suffix(dock_port: &str) -> &str {
         "inference_engine" => "inference",
         "validation_engine" => "validation",
         "future_features" => "future",
+        "pera" => "pera",
         "regulation_module" => "regulation",
         _ => dock_port,
     }
