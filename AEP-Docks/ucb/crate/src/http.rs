@@ -93,7 +93,7 @@ async fn capabilities_handler() -> Json<Value> {
         "perimeter": "secured-dock",
         "implementation": "rust",
         "transports": ["http", "mcp-json-rpc"],
-        "docks": ["validation_engine", "inference_engine", "regulation_module", "future_features"],
+        "docks": ["validation_engine", "inference_engine", "regulation_module", "future_features", "pera"],
         "operations": ["ingest", "delegate", "rollback", "egress"],
         "supported_protocols": [
             "langgraph", "langchain", "autogen", "crewai", "mcp",

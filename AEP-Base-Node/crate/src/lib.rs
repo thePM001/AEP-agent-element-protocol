@@ -4,6 +4,7 @@ pub mod dock_keys;
 pub mod docking;
 pub mod epscom;
 pub mod lattice_log;
+pub mod pera;
 pub mod side_channel_monitor;
 pub mod task_manifest;
 
@@ -96,6 +97,12 @@ pub fn docking_port_specs(base_socket: &str) -> Vec<DockingPortSpec> {
             name: "future-features-dock",
             priority: 200,
             listen_path: format!("{base_socket}/future"),
+        },
+        DockingPortSpec {
+            port: DockingPort::Pera,
+            name: "pera-dock",
+            priority: 200,
+            listen_path: format!("{base_socket}/pera"),
         },
         DockingPortSpec {
             port: DockingPort::RegulationModule,
@@ -365,6 +372,7 @@ pub fn bootstrap_contracts_from_lrps(lrps: &[String]) -> ContractRegistry {
     }
     registry.register("epscom-core");
     registry.register("dynaep-action-lattice");
+    registry.register(crate::pera::PERA_CONTRACT_ID);
     registry.register("lattice-channel-default");
     registry
 }
@@ -380,6 +388,7 @@ mod tests {
         assert!(registry.is_active("aep-275-eval-chain"));
         assert!(registry.is_active("epscom-core"));
         assert!(registry.is_active("dynaep-action-lattice"));
+        assert!(registry.is_active(crate::pera::PERA_CONTRACT_ID));
         assert!(registry.is_active("lattice-channel-default"));
     }
 

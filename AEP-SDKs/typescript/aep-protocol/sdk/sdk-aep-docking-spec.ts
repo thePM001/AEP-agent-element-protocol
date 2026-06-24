@@ -4,6 +4,7 @@ export type DockingPortId =
   | "inference_engine"
   | "validation_engine"
   | "future_features"
+  | "pera"
   | "regulation_module";
 
 export interface DockingPortSpecWire {
@@ -32,6 +33,12 @@ export function docking_port_specs(baseSocket: string): DockingPortSpecWire[] {
       name: "future-features-dock",
       priority: 200,
       listen_path: `${baseSocket}/future`,
+    },
+    {
+      port: "pera",
+      name: "pera-dock",
+      priority: 200,
+      listen_path: `${baseSocket}/pera`,
     },
     {
       port: "regulation_module",

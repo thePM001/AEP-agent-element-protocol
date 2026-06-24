@@ -13,6 +13,7 @@ export const DOCK_SUFFIXES = [
   { port: "inference_engine", suffix: "inference" },
   { port: "validation_engine", suffix: "validation" },
   { port: "future_features", suffix: "future" },
+  { port: "pera", suffix: "pera" },
   { port: "regulation_module", suffix: "regulation" },
 ];
 
