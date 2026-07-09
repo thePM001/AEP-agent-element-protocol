@@ -24,7 +24,7 @@ Register new components in **`AEP-Base-Node/registry/catalog.json`** + **`AEP-Ba
 |------|----------|
 | `crate/` | `aep-base-node` Rust crate + `aep-lattice-log` CLI binary |
 | `registry/` | Component catalog + manifests (`catalog.json`, `components/*.json`) |
-| `docs/multi-base-node-28b.md` | Multi-base-node (2.8b) feature guide and architecture diagram |
+| `multi-base-node/` | Multi-base-node (2.8b) mode: federate multiple Base Node kernels |
 | `potomitan/` | POTOMITAN mesh peer registry (`aep-potomitan` crate) |
 | `agent-control-extreme/` | Agent Control Hub: mount profiles for multi-mount sessions |
 | `signatures/` | EPSCOM detection signatures + trust bundle (default wired, CCA accessible) |

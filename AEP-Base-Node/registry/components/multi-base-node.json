@@ -5,7 +5,7 @@
   "status": "built",
   "built": true,
   "kind": "daemon",
-  "path": "AEP-Components/multi-base-node/",
+  "path": "AEP-Base-Node/multi-base-node/",
   "description": "AEP 2.8b multi-base-node registry: node roles, lattice federation, policy bundle sync. Agentstream is optional.",
   "requires": [
     "aep-base-node",
@@ -62,7 +62,7 @@
     "default_profile": "AEP-Base-Node/registry/profiles/as-single-polar.json",
     "lattice_channel": "ex.aep.multi_base_node",
     "gap_sync_channel": "ex.aep.gap_sync",
-    "docs": "AEP-Base-Node/docs/multi-base-node-28b.md",
-    "artifact_manifest": "AEP-Base-Node/docs/multi-base-node-artifact-manifest.json"
+    "docs": "AEP-Base-Node/multi-base-node/docs/multi-base-node-28b.md",
+    "artifact_manifest": "AEP-Base-Node/multi-base-node/docs/multi-base-node-artifact-manifest.json"
   }
 }

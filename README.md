@@ -45,7 +45,7 @@ Each governed system gets **one AEP Hyperlattice wrap** (scene graph + `action_p
 | **CAW Framework** | Execution-layer sandboxes: shell shims, seccomp, mounts, LLM proxy, lattice audit | [`AEP-Components/caw-framework/`](AEP-Components/caw-framework/) |
 | **Operators** | Agent Composer (Composer Lite), CCA agent, harness, installation wizard | [`AEP-Composer-Lite/`](AEP-Composer-Lite/), [`AEP-User-Experience/`](AEP-User-Experience/), [`AEP-Components/wizard/`](AEP-Components/wizard/) |
 | **Policy** | GAP nodes, presets, subprotocol validators | [`AEP-Policy-System/`](AEP-Policy-System/), [`AEP-Subprotocols/`](AEP-Subprotocols/) |
-| **Multi-base-node (2.8b)** | Federate multiple Base Node kernels via `nodes.json` v2 and lattice channels | [`AEP-Components/multi-base-node/`](AEP-Components/multi-base-node/), [`docs`](AEP-Base-Node/docs/multi-base-node-28b.md) |
+| **Multi-base-node (2.8b)** | Federate multiple Base Node kernels via `nodes.json` v2 and lattice channels | [`AEP-Base-Node/multi-base-node/`](AEP-Base-Node/multi-base-node/) |
 
 **Flow:** Composer Lite and CCA agent seal frames via `lattice-transport`. CCA loads the registry, synthesizes ImplementationPlans and activates components against the hyperlattice wrap. **CAW sandboxes** (`aep-caw`) enforce GAP-authored profiles on the host for coding agents and shell workloads (see [GAP-centric policies and CAW sandboxes](#gap-centric-policies-and-caw-sandboxes)). The installation wizard bootstraps Base Node before CCA takes over. Connectors and SDKs use the same transport. UCB ingress airlock gates entry with `mcp-security`. HCSE parser installs via UCD egress airlock. Coding governance runs propose, blast radius and solidify on the same wrap. Docks receive PQEncryptedCapsule frames only. Policy loads at boot; nothing runs ungoverned.
 
@@ -69,6 +69,7 @@ Each governed system gets **one AEP Hyperlattice wrap** (scene graph + `action_p
 Root keeps only workspace tooling: `Cargo.toml`, `Dockerfile`, `docker-compose.yml`, `docker-compose.public.yml`, `.env.example`, `CHANGELOG.md`, `LICENSE`, `BIOSECURITY.md`, `vitest.config.ts`.
 
 Internal engineering assets (tests, plans, internal docs) are excluded from runtime images and public distribution per `AEP-Policy-System/reference/aep-noship-distribution.gap`.
+
 ---
 
 ## Multi-base-node (2.8b)
@@ -77,15 +78,16 @@ Govern multiple AEP Base Node kernels from a single `nodes.json` v2 registry: ro
 
 | Resource | Path |
 | --- | --- |
-| Feature guide | [`AEP-Base-Node/docs/multi-base-node-28b.md`](AEP-Base-Node/docs/multi-base-node-28b.md) |
-| Architecture diagram | [`AEP-Base-Node/docs/multi-base-node-28b-architecture.svg`](AEP-Base-Node/docs/multi-base-node-28b-architecture.svg) |
+| Feature guide | [`AEP-Base-Node/multi-base-node/docs/multi-base-node-28b.md`](AEP-Base-Node/multi-base-node/docs/multi-base-node-28b.md) |
+| Architecture diagram | [`AEP-Base-Node/multi-base-node/docs/multi-base-node-28b-architecture.svg`](AEP-Base-Node/multi-base-node/docs/multi-base-node-28b-architecture.svg) |
 | Registry schema | [`AEP-Base-Node/registry/schemas/nodes-registry-v2.json`](AEP-Base-Node/registry/schemas/nodes-registry-v2.json) |
-| Rust crate | [`AEP-Components/multi-base-node/crate/`](AEP-Components/multi-base-node/crate/) |
+| Rust crate | [`AEP-Base-Node/multi-base-node/crate/`](AEP-Base-Node/multi-base-node/crate/) |
 
 ```bash
 cargo test -p multi-base-node-core
 ```
 
+---
 
 ## LatticeChannel security (mandatory)
 

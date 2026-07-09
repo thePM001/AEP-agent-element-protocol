@@ -57,6 +57,26 @@
       "manifest": "AEP-Base-Node/registry/components/aep-base-node.json"
     },
     {
+      "id": "multi-base-node",
+      "name": "Multi-Base-Node (2.8b)",
+      "kind": "daemon",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Base-Node/multi-base-node/",
+      "description": "AEP 2.8b multi-base-node registry: node roles, lattice federation, policy bundle sync.",
+      "manifest": "AEP-Base-Node/registry/components/multi-base-node.json"
+    },
+    {
+      "id": "supervision-dock",
+      "name": "Supervision Dock Contract",
+      "kind": "gateway",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "NLA-AEP-Supervision-Center/aep-supervision-center-30-src/",
+      "description": "Supervision Center kernel auto-detect via optional --http-port supervision endpoints.",
+      "manifest": "AEP-Base-Node/registry/components/supervision-dock.json"
+    },
+    {
       "id": "epscom-signatures",
       "name": "EPSCOM Detection Signatures",
       "kind": "library",
@@ -607,6 +627,26 @@
       "manifest": "AEP-Base-Node/registry/components/gap.json"
     },
     {
+      "id": "gaplune-runtime",
+      "name": "GAPLUNE Runtime",
+      "kind": "daemon",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "NLA-GAP-GAPLUNE/gaplune-runtime/",
+      "description": "Governed Lua execution engine (gaplune-v1) with Lacain2 authorize and dynAEP lattice dock.",
+      "manifest": "AEP-Base-Node/registry/components/gaplune-runtime.json"
+    },
+    {
+      "id": "gaplune-decode",
+      "name": "GAPLUNE Constrained Decoding Engine",
+      "kind": "daemon",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "NLA-GAP-GAPLUNE/toolchain/gapc/",
+      "description": "Layer 1 GCDE: schema profiles, token masking, and gcde_attestation for governed generation.",
+      "manifest": "AEP-Base-Node/registry/components/gaplune-decode.json"
+    },
+    {
       "id": "coding-governance",
       "name": "Coding Governance",
       "kind": "library",
@@ -817,15 +857,6 @@
       "path": "AEP-Connectors/zapier/",
       "description": "UCB-only Zapier connector. All traffic via /ucb/v1/egress/zapier/**.",
       "manifest": "AEP-Base-Node/registry/components/connector-zapier.json"
-    },
-    {
-      "id": "multi-base-node",
-      "name": "Multi-Base-Node",
-      "version": "2.8.0",
-      "status": "built",
-      "path": "AEP-Components/multi-base-node/",
-      "description": "AEP 2.8b multi-base-node registry: node roles, lattice federation, policy bundle sync.",
-      "manifest": "AEP-Base-Node/registry/components/multi-base-node.json"
     }
   ]
 }

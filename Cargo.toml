@@ -1,12 +1,12 @@
 [workspace]
 resolver = "2"
 members = [
-    "AEP-Components/multi-base-node/crate",
     "AEP-Components/lattice-crypto/crate",
     "AEP-Components/lattice-channels/crate",
     "AEP-Components/agentmesh/crate",
     "AEP-Base-Node/potomitan/crate",
     "AEP-Components/lattice-memory/crate",
+    "AEP-Base-Node/multi-base-node/crate",
     "AEP-Base-Node/crate",
     "AEP-Components/wasm/crate",
     "AEP-Components/conformance/crate",
@@ -22,8 +22,7 @@ members = [
     "AEP-Subprotocols/coding-governance",
     "AEP-Subprotocols/cli",
 ]
-default-members = [
-    "AEP-Components/multi-base-node/crate","AEP-Base-Node/crate"]
+default-members = ["AEP-Base-Node/crate"]
 
 [workspace.package]
 version = "2.8.0"

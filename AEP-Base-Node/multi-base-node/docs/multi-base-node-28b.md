@@ -47,7 +47,7 @@ Single `primary` node, federation disabled by default. The filename is legacy na
 
 ## Rust crate
 
-`AEP-Components/multi-base-node/crate/` (`multi-base-node-core`)
+`AEP-Base-Node/multi-base-node/crate/` (`multi-base-node-core`)
 
 ```bash
 cargo test -p multi-base-node-core
@@ -75,4 +75,4 @@ Validated with `gapc validate` against `gap-meta-schema-v1.2.json`.
 
 ## Shipped artifacts
 
-`AEP-Base-Node/docs/multi-base-node-artifact-manifest.json` lists all shipped 2.8b artifacts.
+`AEP-Base-Node/multi-base-node/docs/multi-base-node-artifact-manifest.json` lists all shipped 2.8b artifacts.
