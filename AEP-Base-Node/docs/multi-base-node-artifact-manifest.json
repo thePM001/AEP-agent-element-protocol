@@ -1,0 +1,48 @@
+{
+  "manifest_version": "1",
+  "feature_id": "multi-base-node",
+  "repo": "AEP-agent-element-protocol",
+  "reviewed_at": "2026-07-09",
+  "artifacts": [
+    {
+      "id": "nodes-json-v2",
+      "path": "AEP-Base-Node/registry/nodes.json",
+      "status": "shipped"
+    },
+    {
+      "id": "nodes-registry-schema",
+      "path": "AEP-Base-Node/registry/schemas/nodes-registry-v2.json",
+      "status": "shipped"
+    },
+    {
+      "id": "single-node-profile",
+      "path": "AEP-Base-Node/registry/profiles/as-single-polar.json",
+      "status": "shipped"
+    },
+    {
+      "id": "multi-base-node-core-crate",
+      "path": "AEP-Components/multi-base-node/crate/",
+      "status": "shipped"
+    },
+    {
+      "id": "component-manifest",
+      "path": "AEP-Base-Node/registry/components/multi-base-node.json",
+      "status": "shipped"
+    },
+    {
+      "id": "docs-multi-base-node-28b",
+      "path": "AEP-Base-Node/docs/multi-base-node-28b.md",
+      "status": "shipped"
+    },
+    {
+      "id": "docs-architecture-svg",
+      "path": "AEP-Base-Node/docs/multi-base-node-28b-architecture.svg",
+      "status": "shipped"
+    },
+    {
+      "id": "federation-policies",
+      "path": "AEP-Components/gap/policies/reference/multi-base-node-federation-*.gap",
+      "status": "shipped"
+    }
+  ]
+}

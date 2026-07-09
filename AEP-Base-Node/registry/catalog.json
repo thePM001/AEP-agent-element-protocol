@@ -817,6 +817,15 @@
       "path": "AEP-Connectors/zapier/",
       "description": "UCB-only Zapier connector. All traffic via /ucb/v1/egress/zapier/**.",
       "manifest": "AEP-Base-Node/registry/components/connector-zapier.json"
+    },
+    {
+      "id": "multi-base-node",
+      "name": "Multi-Base-Node",
+      "version": "2.8.0",
+      "status": "built",
+      "path": "AEP-Components/multi-base-node/",
+      "description": "AEP 2.8b multi-base-node registry: node roles, lattice federation, policy bundle sync.",
+      "manifest": "AEP-Base-Node/registry/components/multi-base-node.json"
     }
   ]
 }

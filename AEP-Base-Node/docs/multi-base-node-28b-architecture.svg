@@ -1,0 +1,129 @@
+<!-- @generated-by: nla-aep-docs v2 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" width="960" height="720" role="img" aria-labelledby="title desc">
+  <metadata>nla-aep-docs/multi-base-node-28b-architecture/v2</metadata>
+  <title id="title">AEP 2.8b Multi-Base-Node architecture</title>
+  <desc id="desc">Registry-driven federation of Base Node kernels over lattice channels. Agentstream is optional.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#334155"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#2563eb"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+  <style><![CDATA[
+    .bg { fill: #f8fafc; }
+    .title { font: 600 26px -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; fill: #0f172a; }
+    .subtitle { font: 400 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; fill: #64748b; }
+    .panel { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; }
+    .panel-title { font: 600 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; fill: #0f172a; }
+    .label { font: 500 12px -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; fill: #334155; }
+    .mono { font: 600 11px 'SF Mono', Menlo, Consolas, monospace; fill: #1e293b; }
+    .caption { font: 400 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; fill: #64748b; }
+    .node-box { fill: #eff6ff; stroke: #3b82f6; stroke-width: 1.5; }
+    .edge-box { fill: #f0fdf4; stroke: #22c55e; stroke-width: 1.5; }
+    .optional-box { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.5; stroke-dasharray: 5 4; }
+    .channel-box { fill: #fff7ed; stroke: #f97316; stroke-width: 1.5; }
+    .policy-box { fill: #faf5ff; stroke: #a855f7; stroke-width: 1.5; }
+    .crate-box { fill: #f1f5f9; stroke: #64748b; stroke-width: 1.5; }
+    .lane { fill: #e2e8f0; stroke: #94a3b8; stroke-width: 1; stroke-dasharray: 6 4; }
+    .arrow { stroke: #334155; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+    .arrow-blue { stroke: #2563eb; stroke-width: 2; fill: none; marker-end: url(#arrow-blue); }
+    .badge { fill: #dbeafe; stroke: #3b82f6; stroke-width: 1; }
+    .badge-text { font: 600 10px 'SF Mono', Menlo, Consolas, monospace; fill: #1d4ed8; }
+  ]]></style>
+
+  <rect class="bg" x="0" y="0" width="960" height="720"/>
+  <text class="title" x="40" y="42">AEP 2.8b Multi-Base-Node</text>
+  <text class="subtitle" x="40" y="66">Registry-driven federation over lattice-channel.v1</text>
+
+  <g filter="url(#shadow)">
+    <rect class="panel" x="40" y="88" width="880" height="72" rx="10"/>
+    <text class="panel-title" x="56" y="112">nodes.json v2 registry</text>
+    <text class="mono" x="56" y="134">roles: primary | replica | edge | science-isolated</text>
+    <text class="mono" x="56" y="150">optional: agentstream_topology when Agentstream is deployed</text>
+    <rect class="badge" x="760" y="104" width="140" height="24" rx="6"/>
+    <text class="badge-text" x="772" y="120">schema_version: 2</text>
+  </g>
+
+  <rect class="lane" x="40" y="184" width="420" height="300" rx="10"/>
+  <text class="panel-title" x="56" y="208">single kernel (default)</text>
+  <text class="caption" x="56" y="226">One Base Node kernel in the registry</text>
+
+  <rect class="lane" x="500" y="184" width="420" height="300" rx="10"/>
+  <text class="panel-title" x="516" y="208">multi-kernel federation</text>
+  <text class="caption" x="516" y="226">Primary and edge kernels over lattice channels</text>
+
+  <g filter="url(#shadow)">
+    <rect class="node-box" x="110" y="250" width="280" height="88" rx="10"/>
+    <text class="label" x="126" y="276">Base Node kernel</text>
+    <text class="mono" x="126" y="298">node_id: primary</text>
+    <text class="mono" x="126" y="316">role: primary</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect class="optional-box" x="150" y="358" width="200" height="52" rx="8"/>
+    <text class="label" x="166" y="380">Agentstream (optional)</text>
+    <text class="mono" x="166" y="398">not required</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect class="node-box" x="540" y="250" width="150" height="88" rx="10"/>
+    <text class="label" x="556" y="276">primary kernel</text>
+    <text class="mono" x="556" y="298">role: primary</text>
+    <text class="mono" x="556" y="316">lattice peer</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect class="edge-box" x="730" y="250" width="150" height="88" rx="10"/>
+    <text class="label" x="746" y="276">edge kernel</text>
+    <text class="mono" x="746" y="298">role: edge</text>
+    <text class="mono" x="746" y="316">lattice peer</text>
+  </g>
+  <line class="arrow-blue" x1="690" y1="294" x2="730" y2="294"/>
+  <text class="mono" x="698" y="284" fill="#2563eb">lattice federation</text>
+
+  <g filter="url(#shadow)">
+    <rect class="optional-box" x="545" y="358" width="130" height="52" rx="8"/>
+    <text class="label" x="561" y="380">Agentstream</text>
+    <text class="mono" x="561" y="398">optional</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect class="optional-box" x="745" y="358" width="130" height="52" rx="8"/>
+    <text class="label" x="761" y="380">Agentstream</text>
+    <text class="mono" x="761" y="398">optional + ASIP</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect class="channel-box" x="40" y="508" width="880" height="112" rx="10"/>
+    <text class="panel-title" x="56" y="532">Lattice channels (mandatory transport)</text>
+    <text class="mono" x="56" y="554">ex.aep.gap_sync</text>
+    <text class="caption" x="56" y="570">Policy bundle Merkle sync between registered peers</text>
+    <text class="mono" x="320" y="554">ex.aep.multi_base_node</text>
+    <text class="caption" x="320" y="570">Federation control plane</text>
+    <text class="mono" x="600" y="554">ex.aep.node.{node_id}</text>
+    <text class="caption" x="600" y="570">Per-node channel template</text>
+    <text class="mono" x="56" y="598">ex.agentstream.asip</text>
+    <text class="caption" x="56" y="614">Only when optional Agentstream peers are deployed</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect class="crate-box" x="40" y="640" width="300" height="56" rx="8"/>
+    <text class="label" x="56" y="664">multi-base-node-core (Rust)</text>
+    <text class="mono" x="56" y="682">parse nodes.json, Merkle checkpoint, promote_replica</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect class="policy-box" x="360" y="640" width="560" height="56" rx="8"/>
+    <text class="label" x="376" y="664">Federation policy set</text>
+    <text class="mono" x="376" y="682">gapc validate on smoke, lattice, sync, asip, capsule policies</text>
+  </g>
+
+  <line class="arrow" x1="250" y1="160" x2="250" y2="250"/>
+  <line class="arrow" x1="710" y1="160" x2="710" y2="250"/>
+  <line class="arrow" x1="250" y1="338" x2="250" y2="358"/>
+  <line class="arrow" x1="615" y1="338" x2="615" y2="358"/>
+  <line class="arrow" x1="805" y1="338" x2="805" y2="358"/>
+  <line class="arrow" x1="250" y1="410" x2="250" y2="508"/>
+  <line class="arrow" x1="710" y1="410" x2="710" y2="508"/>
+</svg>

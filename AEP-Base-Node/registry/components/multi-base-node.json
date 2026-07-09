@@ -1,0 +1,68 @@
+{
+  "manifest_version": "1",
+  "id": "multi-base-node",
+  "version": "2.8.0",
+  "status": "built",
+  "built": true,
+  "kind": "daemon",
+  "path": "AEP-Components/multi-base-node/",
+  "description": "AEP 2.8b multi-base-node registry: node roles, lattice federation, policy bundle sync. Agentstream is optional.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels"
+  ],
+  "capabilities": [
+    "aep:multi-base-node-registry",
+    "aep:node-role-assignment",
+    "aep:gap-bundle-sync",
+    "aep:agentstream-topology-optional",
+    "aep:lattice-federation"
+  ],
+  "actions": [
+    {
+      "id": "list_nodes",
+      "description": "List registered Base Node kernels",
+      "runtime": "rust",
+      "method": "multi_base_node_core::list_nodes"
+    },
+    {
+      "id": "register_node",
+      "description": "Register a peer Base Node in nodes.json v2",
+      "runtime": "rust",
+      "method": "multi_base_node_core::register_node"
+    }
+  ],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 10,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Governed orchestration of multiple AEP Base Node kernels over lattice-channel.v1.",
+    "use_when": [
+      "registering primary replica edge science-isolated nodes",
+      "federating policy bundles between Base Nodes",
+      "optional as-federated Agentstream with ASIP"
+    ],
+    "avoid_when": [
+      "single-kernel deploy with no federation need",
+      "raw localhost bypass between engines"
+    ],
+    "pairs_with": [
+      "aep-base-node",
+      "lattice-channels"
+    ]
+  },
+  "implementation": {
+    "rust_crate": "multi-base-node-core",
+    "registry_file": "AEP-Base-Node/registry/nodes.json",
+    "schema_file": "AEP-Base-Node/registry/schemas/nodes-registry-v2.json",
+    "default_profile": "AEP-Base-Node/registry/profiles/as-single-polar.json",
+    "lattice_channel": "ex.aep.multi_base_node",
+    "gap_sync_channel": "ex.aep.gap_sync",
+    "docs": "AEP-Base-Node/docs/multi-base-node-28b.md",
+    "artifact_manifest": "AEP-Base-Node/docs/multi-base-node-artifact-manifest.json"
+  }
+}

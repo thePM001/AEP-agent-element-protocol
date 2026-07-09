@@ -1,0 +1,16 @@
+{
+  "manifest_version": "1",
+  "schema_version": "2",
+  "profile": "as-single-polar",
+  "nodes": [
+    {
+      "node_id": "primary",
+      "role": "primary",
+      "base_node_url": "http://127.0.0.1:7800",
+      "lattice_channel": "ex.aep.node.primary",
+      "trust_ring": "operator",
+      "agentstream_topology": "as-single",
+      "health_sla_ms": 5000
+    }
+  ]
+}

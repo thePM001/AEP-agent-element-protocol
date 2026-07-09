@@ -1,0 +1,24 @@
+{
+  "manifest_version": "1",
+  "profile_id": "as-single-polar",
+  "description": "Single-node default profile: one primary Base Node kernel with federation disabled.",
+  "deployment": {
+    "topology": "as-single",
+    "default_role": "primary",
+    "federation_enabled": false
+  },
+  "nodes_template": {
+    "schema_version": "2",
+    "node": {
+      "node_id": "primary",
+      "role": "primary",
+      "base_node_url": "http://127.0.0.1:7800",
+      "lattice_channel": "ex.aep.node.primary",
+      "trust_ring": "operator",
+      "agentstream_topology": "as-single",
+      "health_sla_ms": 5000
+    }
+  },
+  "registry_file": "AEP-Base-Node/registry/nodes.json",
+  "pairs_with": ["aep-base-node", "multi-base-node", "lattice-channels"]
+}
