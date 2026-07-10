@@ -14,7 +14,7 @@ Governed orchestration of **multiple AEP Base Node kernels** on the normal netwo
 
 - `nodes.json` schema v2 registry
 - Roles: `primary`, `replica`, `edge`, `science-isolated`
-- Policy bundle Merkle sync over `ex.aep.gap_sync`
+- Policy bundle Merkle sync over `aep.gap_sync`
 - Lattice-channel federation between nodes
 
 ## What 2.8b is NOT
@@ -57,9 +57,9 @@ Public API: parse/load/save `nodes.json`, Merkle `gap_bundle_checkpoint`, `promo
 
 Lattice helpers:
 
-- `FEDERATION_CHANNEL` = `ex.aep.multi_base_node`
-- `GAP_SYNC_CHANNEL` = `ex.aep.gap_sync`
-- `node_channel(node_id)` = `ex.aep.node.{node_id}`
+- `FEDERATION_CHANNEL` = `aep.multi_base_node`
+- `GAP_SYNC_CHANNEL` = `aep.gap_sync`
+- `node_channel(node_id)` = `aep.node.{node_id}`
 
 ## Federation policies
 

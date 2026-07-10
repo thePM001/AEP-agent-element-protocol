@@ -98,13 +98,13 @@
   <g filter="url(#shadow)">
     <rect class="channel-box" x="40" y="508" width="880" height="112" rx="10"/>
     <text class="panel-title" x="56" y="532">Lattice channels (mandatory transport)</text>
-    <text class="mono" x="56" y="554">ex.aep.gap_sync</text>
+    <text class="mono" x="56" y="554">aep.gap_sync</text>
     <text class="caption" x="56" y="570">Policy bundle Merkle sync between registered peers</text>
-    <text class="mono" x="320" y="554">ex.aep.multi_base_node</text>
+    <text class="mono" x="320" y="554">aep.multi_base_node</text>
     <text class="caption" x="320" y="570">Federation control plane</text>
-    <text class="mono" x="600" y="554">ex.aep.node.{node_id}</text>
+    <text class="mono" x="600" y="554">aep.node.{node_id}</text>
     <text class="caption" x="600" y="570">Per-node channel template</text>
-    <text class="mono" x="56" y="598">ex.agentstream.asip</text>
+    <text class="mono" x="56" y="598">aep.agentstream.asip</text>
     <text class="caption" x="56" y="614">Only when optional Agentstream peers are deployed</text>
   </g>
 

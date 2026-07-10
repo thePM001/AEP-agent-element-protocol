@@ -60,8 +60,8 @@
     "registry_file": "AEP-Base-Node/registry/nodes.json",
     "schema_file": "AEP-Base-Node/registry/schemas/nodes-registry-v2.json",
     "default_profile": "AEP-Base-Node/registry/profiles/as-single-polar.json",
-    "lattice_channel": "ex.aep.multi_base_node",
-    "gap_sync_channel": "ex.aep.gap_sync",
+    "lattice_channel": "aep.multi_base_node",
+    "gap_sync_channel": "aep.gap_sync",
     "docs": "AEP-Base-Node/multi-base-node/docs/multi-base-node-28b.md",
     "artifact_manifest": "AEP-Base-Node/multi-base-node/docs/multi-base-node-artifact-manifest.json"
   }

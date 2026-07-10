@@ -70,7 +70,7 @@ mod tests {
             node_id: id.into(),
             role,
             base_node_url: format!("http://127.0.0.1:780{}", if id.contains("edge") { 1 } else { 0 }),
-            lattice_channel: format!("ex.aep.node.{id}"),
+            lattice_channel: format!("aep.node.{id}"),
             trust_ring: "operator".into(),
             agentstream_topology: AgentstreamTopology::AsFederated,
             agentstream_peers: vec!["as-peer-edge".into()],

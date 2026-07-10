@@ -174,7 +174,7 @@ pub fn node_record_from_map(map: &serde_json::Map<String, serde_json::Value>) ->
                     .get("node_id")
                     .and_then(|v| v.as_str())
                     .unwrap_or("unknown");
-                format!("ex.aep.node.{id}")
+                format!("aep.node.{id}")
             }),
         trust_ring: map
             .get("trust_ring")
@@ -211,7 +211,7 @@ mod tests {
                 node_id: "primary".into(),
                 role: NodeRole::Primary,
                 base_node_url: "http://127.0.0.1:7800".into(),
-                lattice_channel: "ex.aep.node.primary".into(),
+                lattice_channel: "aep.node.primary".into(),
                 trust_ring: "operator".into(),
                 agentstream_topology: AgentstreamTopology::AsSingle,
                 agentstream_peers: vec![],
@@ -233,7 +233,7 @@ mod tests {
             node_id: "primary".into(),
             role: NodeRole::Primary,
             base_node_url: "http://127.0.0.1:7800".into(),
-            lattice_channel: "ex.aep.node.primary".into(),
+            lattice_channel: "aep.node.primary".into(),
             trust_ring: "operator".into(),
             agentstream_topology: AgentstreamTopology::AsSingle,
             agentstream_peers: vec![],
