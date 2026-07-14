@@ -1,9 +1,0 @@
-{
-  "port_id": "pera",
-  "name": "PERA Dock",
-  "priority": 200,
-  "socket_suffix": "/pera",
-  "purpose": "PERA",
-  "transport": "lattice-channel",
-  "implementation": "AEP-Base-Node/crate/src/pera.rs"
-}

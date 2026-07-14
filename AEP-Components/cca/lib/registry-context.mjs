@@ -32,7 +32,6 @@ const DOCK_IDS = [
   { id: "validation_engine", name: "Validation Engine Dock", suffix: "/validation" },
   { id: "regulation_module", name: "Regulation Module Dock", suffix: "/regulation" },
   { id: "future_features", name: "Future Features Dock", suffix: "/future" },
-  { id: "pera", name: "PERA Dock", suffix: "/pera" },
 ];
 
 /**

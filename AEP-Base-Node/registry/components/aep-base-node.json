@@ -20,7 +20,6 @@
     "dock:validation_engine",
     "dock:regulation_module",
     "dock:future_features",
-    "dock:pera",
     "lattice:enforce"
   ],
   "actions": [
@@ -44,8 +43,7 @@
       "inference_engine",
       "validation_engine",
       "regulation_module",
-      "future_features",
-      "pera"
+      "future_features"
     ]
   },
   "resource_requirements": {
@@ -55,7 +53,7 @@
     "gpu_required": false
   },
   "cca": {
-    "summary": "Mandatory governance kernel exposing five lattice-gated docking ports.",
+    "summary": "Mandatory governance kernel exposing four lattice-gated docking ports.",
     "use_when": [
       "every AEP deployment",
       "local agent governance",

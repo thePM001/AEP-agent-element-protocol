@@ -16,7 +16,6 @@ export type DockingPortWire =
   | "inference_engine"
   | "validation_engine"
   | "future_features"
-  | "pera"
   | "regulation_module";
 
 export interface DynAepLatticeEvent {

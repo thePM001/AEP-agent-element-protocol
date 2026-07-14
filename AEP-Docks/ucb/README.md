@@ -47,7 +47,7 @@ Foreign stack (LangGraph, MCP, AutoGen, ...)
 
 **Security invariants**
 
-- `docking_port` allowlist: `validation_engine`, `inference_engine`, `future_features`, `pera`, `regulation_module`
+- `docking_port` allowlist: `validation_engine`, `inference_engine`, `future_features`, `regulation_module`
 - Path traversal in `docking_port` rejected (`../`, `/`)
 - Ingest/rollback are dock-first: lattice send succeeds before diff journal mutation
 - Base Node enforces task manifests on docks when `AEP_DOCK_STRICT_IDENTITY=1`

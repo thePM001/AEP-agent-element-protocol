@@ -15,7 +15,7 @@
     "trust_score": { "type": "integer", "minimum": 0, "maximum": 1000 },
     "docking_port": {
       "type": "string",
-      "enum": ["validation_engine", "inference_engine", "regulation_module", "future_features", "pera"]
+      "enum": ["validation_engine", "inference_engine", "regulation_module", "future_features"]
     }
   },
   "additionalProperties": true
