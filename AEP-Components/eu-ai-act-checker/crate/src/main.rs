@@ -10,7 +10,7 @@ use std::process::ExitCode;
 #[derive(Parser)]
 #[command(name = "eu-ai-act-checker", about = "AEP EU AI Act LRP fail-closed checker")]
 struct Cli {
-    #[arg(long, env = "EU_AI_ACT_PACK_ROOT")]
+    #[arg(long, env = "EU_AI_ACT_PACK_ROOT", default_value = "EU-AI-ACT-PACK.json")]
     pack_root: PathBuf,
     #[command(subcommand)]
     cmd: Cmd,
@@ -47,7 +47,7 @@ enum Cmd {
         #[arg(long)]
         input: PathBuf,
     },
-    /// Run all fixtures under pack fixtures/ directory
+    /// Run all fixtures embedded in EU-AI-ACT-PACK.json
     Conformance,
 }
 
@@ -132,37 +132,24 @@ fn main() -> ExitCode {
             println!("{}", serde_json::to_string(&result).unwrap_or_else(|_| "{}".into()));
             return ExitCode::SUCCESS;
         }
-        Cmd::Conformance => {
-            let dir = pack.root.join("fixtures");
+                Cmd::Conformance => {
             let mut failed = 0u32;
             let mut passed = 0u32;
-            let rd = match std::fs::read_dir(&dir) {
-                Ok(r) => r,
-                Err(e) => {
-                    eprintln!("fixtures dir: {e}");
+            let map = match pack.catalog.get("fixtures").and_then(|v| v.as_object()) {
+                Some(m) if !m.is_empty() => m,
+                _ => {
+                    eprintln!("FAIL: pack has no embedded fixtures (definition file incomplete)");
                     return ExitCode::from(2);
                 }
             };
-            for ent in rd.flatten() {
-                let p = ent.path();
-                if p.extension().and_then(|e| e.to_str()) != Some("json") {
-                    continue;
-                }
-                let fix: serde_json::Value = match read_json(&p) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        eprintln!("FAIL {} read: {e}", p.display());
-                        failed += 1;
-                        continue;
-                    }
-                };
+            for (name, fix) in map {
                 let expect = fix.get("expect").cloned().unwrap_or_default();
                 let expect_decision = expect
                     .get("decision")
                     .and_then(|v| v.as_str())
                     .unwrap_or("allow");
                 let expect_code = expect.get("deny_code").and_then(|v| v.as_str());
-                match run_fixture(&pack, &fix) {
+                match run_fixture(&pack, fix) {
                     Ok(d) => {
                         let got = if d.is_deny() { "deny" } else { "allow" };
                         let code_ok = match expect_code {
@@ -171,26 +158,22 @@ fn main() -> ExitCode {
                         };
                         if got == expect_decision && code_ok {
                             passed += 1;
-                            println!("PASS {}", p.file_name().unwrap().to_string_lossy());
+                            println!("PASS {name}");
                         } else {
                             failed += 1;
                             eprintln!(
-                                "FAIL {} expected {expect_decision}/{expect_code:?} got {got}/{:?}",
-                                p.file_name().unwrap().to_string_lossy(),
+                                "FAIL {name} expected {expect_decision}/{expect_code:?} got {got}/{:?}",
                                 d.deny_code
                             );
                         }
                     }
                     Err(e) => {
                         failed += 1;
-                        eprintln!("FAIL {} err {e}", p.display());
+                        eprintln!("FAIL {name} err {e}");
                     }
                 }
             }
-            println!(
-                "{{\"passed\":{passed},\"failed\":{failed},\"controls\":{}}}",
-                pack.control_count()
-            );
+            println!("conformance passed={passed} failed={failed}");
             if failed > 0 {
                 return ExitCode::from(1);
             }

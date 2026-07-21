@@ -1,1 +1,0 @@
-{"name":"gpai-deny-not-declared","config":{"enabled":true,"role":"provider","risk_class":"gpai","gpai_provider":false},"expect":{"decision":"deny","deny_code":"EU_AI_ACT_GPAI_NOT_DECLARED"}}

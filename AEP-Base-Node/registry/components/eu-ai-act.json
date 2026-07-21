@@ -1,22 +1,24 @@
 {
   "manifest_version": "1",
   "id": "eu-ai-act",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "kind": "compliance",
-  "path": "AEP-Components/wizard/lrp/modules/eu-ai-act",
-  "description": "EU AI Act compliance checking pack (fail-closed Phase A+B). Not a legal certification.",
-  "maturity": "enforced_v1_phase_c",
+  "path": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
+  "description": "EU AI Act compliance checking pack. One definition file, one gate. Not a legal certification.",
+  "maturity": "enforced_v1",
   "requires": [
     "aep-base-node",
     "dynaep-core"
   ],
   "lrp_id": "eu-ai-act",
   "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap",
-  "control_catalog": "AEP-Components/wizard/lrp/modules/eu-ai-act/CONTROL-CATALOG.json",
+  "definition": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
+  "gate": "AEP-Components/eu-ai-act-checker/gates/gate-eu-ai-act.sh",
   "implementation": {
     "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap",
     "checker": "AEP-Components/eu-ai-act-checker",
-    "pack_root": "AEP-Components/wizard/lrp/modules/eu-ai-act"
+    "definition": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
+    "gate": "AEP-Components/eu-ai-act-checker/gates/gate-eu-ai-act.sh"
   },
   "docks": {
     "primary": "regulation_module",
@@ -32,7 +34,7 @@
   "actions": [
     {
       "id": "enable_eu-ai-act",
-      "description": "Enable EU AI Act LRP checking pack",
+      "description": "Enable EU AI Act checking pack",
       "setup_hook": "sync_lrp",
       "params": {
         "lrp_id": "eu-ai-act",
@@ -57,7 +59,8 @@
       "setup_hook": "sync_lrp",
       "params": {
         "lrp_id": "eu-ai-act",
-        "pack_root": "AEP-Components/wizard/lrp/modules/eu-ai-act",
+        "definition": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
+        "gate": "AEP-Components/eu-ai-act-checker/gates/gate-eu-ai-act.sh",
         "validate_pack": true
       }
     }
@@ -69,7 +72,7 @@
     "gpu_required": false
   },
   "cca": {
-    "summary": "EU AI Act fail-closed compliance checking via eu-ai-act-checker and control pack.",
+    "summary": "EU AI Act fail-closed compliance checking. One pack file, one gate.",
     "use_when": [
       "user requests EU AI Act checking",
       "regulated industry deployment with technical control enforcement"

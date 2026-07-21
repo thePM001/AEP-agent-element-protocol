@@ -244,10 +244,14 @@
       "kind": "compliance",
       "bundled": true,
       "default_enabled": false,
-      "path": "AEP-Policy-System/reference/",
+      "path": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
       "lrp_id": "eu-ai-act",
       "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap",
-      "manifest": "AEP-Base-Node/registry/components/eu-ai-act.json"
+      "manifest": "AEP-Base-Node/registry/components/eu-ai-act.json",
+      "maturity": "enforced_v1",
+      "description": "EU AI Act compliance checking pack. One definition file, one gate. Not a legal certification.",
+      "definition": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
+      "gate": "AEP-Components/eu-ai-act-checker/gates/gate-eu-ai-act.sh"
     },
     {
       "id": "gdpr",

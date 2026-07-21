@@ -159,39 +159,44 @@ pub struct ControlPack {
 impl ControlPack {
     pub fn load(root: impl AsRef<Path>) -> Result<Self, CheckerError> {
         let root = root.as_ref().to_path_buf();
-        let catalog_path = root.join("CONTROL-CATALOG.json");
-        if !catalog_path.is_file() {
-            return Err(CheckerError::Pack(format!(
-                "missing CONTROL-CATALOG.json under {}",
-                root.display()
-            )));
-        }
-        let catalog: Value = serde_json::from_str(&fs::read_to_string(&catalog_path)?)?;
-        let risk_classes: Value =
-            serde_json::from_str(&fs::read_to_string(root.join("RISK-CLASSES.json"))?)?;
-        let roles: Value = serde_json::from_str(&fs::read_to_string(root.join("ROLES.json"))?)?;
-        let article_map: Value =
-            serde_json::from_str(&fs::read_to_string(root.join("ARTICLE-MAP.json"))?)?;
-        let annex_path = root.join("ANNEX-III-ASSIST.json");
-        let annex_assist: Value = if annex_path.is_file() {
-            serde_json::from_str(&fs::read_to_string(&annex_path)?)?
+        // ONE definition file only: EU-AI-ACT-PACK.json
+        let pack_path = if root.is_file() {
+            root.clone()
         } else {
-            serde_json::json!({"use_cases":[]})
+            let single = root.join("EU-AI-ACT-PACK.json");
+            if single.is_file() {
+                single
+            } else {
+                return Err(CheckerError::Pack(format!(
+                    "missing definition file EU-AI-ACT-PACK.json (got {})",
+                    root.display()
+                )));
+            }
         };
-        let controls = catalog
+        let pack: Value = serde_json::from_str(&fs::read_to_string(&pack_path)?)?;
+        let controls = pack
             .get("controls")
             .and_then(|c| c.as_array())
-            .ok_or_else(|| CheckerError::Pack("controls array missing".into()))?;
+            .ok_or_else(|| CheckerError::Pack("controls array missing in pack file".into()))?;
         if controls.is_empty() {
             return Err(CheckerError::Pack("controls array empty".into()));
         }
         Ok(Self {
-            root,
-            catalog,
-            risk_classes,
-            roles,
-            article_map,
-            annex_assist,
+            root: pack_path.parent().unwrap_or(Path::new(".")).to_path_buf(),
+            catalog: pack.clone(),
+            risk_classes: pack
+                .get("risk_classes")
+                .cloned()
+                .unwrap_or(serde_json::json!([])),
+            roles: pack.get("roles").cloned().unwrap_or(serde_json::json!([])),
+            article_map: pack
+                .get("article_map")
+                .cloned()
+                .unwrap_or(serde_json::json!({})),
+            annex_assist: pack
+                .get("annex_iii_assist")
+                .cloned()
+                .unwrap_or(serde_json::json!({"use_cases": []})),
         })
     }
 
@@ -203,6 +208,8 @@ impl ControlPack {
             .unwrap_or(0)
     }
 }
+
+
 
 fn fria_valid(v: &Value) -> bool {
     v.get("fria_id")
@@ -679,6 +686,8 @@ pub fn export_transparency_report_with_opts(
 
 /// Run a golden fixture JSON file (test helper).
 pub fn run_fixture(pack: &ControlPack, fixture: &Value) -> Result<Decision, CheckerError> {
+    // fixture may already be the body; also support name lookup from pack.fixtures
+
     if let Some(classify) = fixture.get("classify") {
         let req: ClassifyRequest = serde_json::from_value(classify.clone())?;
         let result = classify_annex_iii(pack, &req);
@@ -726,8 +735,7 @@ mod tests {
     use super::*;
 
     fn pack() -> ControlPack {
-        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../wizard/lrp/modules/eu-ai-act");
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../EU-AI-ACT-PACK.json");
         ControlPack::load(root).expect("load pack")
     }
 

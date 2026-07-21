@@ -1,1 +1,0 @@
-{"name":"config-allow-deployer","config":{"enabled":true,"role":"deployer","risk_class":"limited","retention_days":30,"logging_enabled":true,"oversight_mode":"human_in_the_loop","high_impact_requires_gate":true},"expect":{"decision":"allow"}}

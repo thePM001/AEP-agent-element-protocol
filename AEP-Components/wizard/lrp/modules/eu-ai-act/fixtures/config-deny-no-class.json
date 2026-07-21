@@ -1,1 +1,0 @@
-{"name":"config-deny-no-class","config":{"enabled":true,"role":"deployer","retention_days":180,"logging_enabled":true,"risk_management_system":{"version":"1","risk_tiers":["high"],"owner":"ops"}},"expect":{"decision":"deny","deny_code":"EU_AI_ACT_RISK_CLASS_MISSING"}}

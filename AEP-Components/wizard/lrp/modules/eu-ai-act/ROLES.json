@@ -1,9 +1,0 @@
-{
-  "version": "1.0.0",
-  "roles": [
-    {"id": "provider", "description": "Places AI system on the market or puts into service"},
-    {"id": "deployer", "description": "Uses an AI system under its authority"},
-    {"id": "importer", "description": "Places on market an AI system from third country"},
-    {"id": "distributor", "description": "Makes AI system available on market"}
-  ]
-}

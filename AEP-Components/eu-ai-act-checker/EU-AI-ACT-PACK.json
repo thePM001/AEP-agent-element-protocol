@@ -1,0 +1,1638 @@
+{
+  "pack_id": "eu-ai-act",
+  "version": "1.2.0",
+  "maturity": "enforced_v1_phase_c",
+  "regulation": "Regulation (EU) 2024/1689",
+  "kind": "compliance_checking_pack",
+  "controls": [
+    {
+      "control_id": "eu-ai-act.config.role-required",
+      "articles": [],
+      "title": "Role required when LRP enabled",
+      "risk_classes": [
+        "prohibited",
+        "high_risk",
+        "limited",
+        "minimal",
+        "gpai"
+      ],
+      "roles": [
+        "provider",
+        "deployer",
+        "importer",
+        "distributor"
+      ],
+      "severity": "hard",
+      "phase": "session_start",
+      "validator": "role_required_validator",
+      "requires_platform": [],
+      "evidence_schema": null,
+      "deny_code": "EU_AI_ACT_ROLE_MISSING",
+      "allow_when": "role set",
+      "test_fixtures": [
+        "fixtures/config-deny-no-role.json"
+      ],
+      "status": "v1"
+    },
+    {
+      "control_id": "eu-ai-act.config.risk-class-required",
+      "articles": [],
+      "title": "Risk class required when LRP enabled",
+      "risk_classes": [
+        "prohibited",
+        "high_risk",
+        "limited",
+        "minimal",
+        "gpai"
+      ],
+      "roles": [
+        "provider",
+        "deployer",
+        "importer",
+        "distributor"
+      ],
+      "severity": "hard",
+      "phase": "session_start",
+      "validator": "risk_class_required_validator",
+      "requires_platform": [],
+      "evidence_schema": null,
+      "deny_code": "EU_AI_ACT_RISK_CLASS_MISSING",
+      "allow_when": "risk_class set",
+      "test_fixtures": [
+        "fixtures/config-deny-no-class.json"
+      ],
+      "status": "v1"
+    },
+    {
+      "control_id": "eu-ai-act.config.pack-loaded",
+      "articles": [],
+      "title": "Control pack must load",
+      "risk_classes": [
+        "prohibited",
+        "high_risk",
+        "limited",
+        "minimal",
+        "gpai"
+      ],
+      "roles": [
+        "provider",
+        "deployer",
+        "importer",
+        "distributor"
+      ],
+      "severity": "hard",
+      "phase": "session_start",
+      "validator": "pack_loaded_validator",
+      "requires_platform": [],
+      "evidence_schema": null,
+      "deny_code": "EU_AI_ACT_PACK_NOT_LOADED",
+      "allow_when": "pack loads",
+      "test_fixtures": [],
+      "status": "v1"
+    },
+    {
+      "control_id": "eu-ai-act.art5.prohibited-practices",
+      "articles": [
+        "5"
+      ],
+      "title": "Prohibited AI practices deny",
+      "risk_classes": [
+        "prohibited",
+        "high_risk",
+        "limited",
+        "minimal",
+        "gpai"
+      ],
+      "roles": [
+        "provider",
+        "deployer",
+        "importer",
+        "distributor"
+      ],
+      "severity": "hard",
+      "phase": "runtime",
+      "validator": "prohibited_practices_validator",
+      "requires_platform": [],
+      "evidence_schema": null,
+      "deny_code": "EU_AI_ACT_ART5_PROHIBITED",
+      "allow_when": "no prohibited match",
+      "test_fixtures": [
+        "fixtures/art5-deny-social-scoring.json"
+      ],
+      "status": "v1"
+    },
+    {
+      "control_id": "eu-ai-act.art9.rms-present",
+      "articles": [
+        "9"
+      ],
+      "title": "Risk management system evidence required",
+      "risk_classes": [
+        "high_risk"
+      ],
+      "roles": [
+        "provider",
+        "deployer"
+      ],
+      "severity": "hard",
+      "phase": "session_start",
+      "validator": "rms_present_validator",
+      "requires_platform": [],
+      "evidence_schema": "evidence-schemas/risk-management-system.v1.json",
+      "deny_code": "EU_AI_ACT_ART9_RMS_MISSING",
+      "allow_when": "RMS present",
+      "test_fixtures": [
+        "fixtures/art9-deny-no-rms.json"
+      ],
+      "status": "v1"
+    },
+    {
+      "control_id": "eu-ai-act.art9.fria-record",
+      "articles": [
+        "9",
+        "27"
+      ],
+      "title": "FRIA record for high-risk public context deployer",
+      "risk_classes": [
+        "high_risk"
+      ],
+      "roles": [
+        "deployer"
+      ],
+      "severity": "hard",
+      "phase": "session_start",
+      "validator": "fria_record_validator",
+      "requires_platform": [],
+      "evidence_schema": "evidence-schemas/fria-record.v1.json",
+      "deny_code": "EU_AI_ACT_ART9_FRIA_MISSING",
+      "allow_when": "fria_record present when public_context",
+      "test_fixtures": [
+        "fixtures/art9-deny-no-fria.json",
+        "fixtures/art9-allow-fria.json"
+      ],
+      "status": "v1"
+    },
+    {
+      "control_id": "eu-ai-act.art10.data-governance",
+      "articles": [
+        "10"
+      ],
+      "title": "Data governance for provider high-risk",
+      "risk_classes": [
+        "high_risk"
+      ],
+      "roles": [
+        "provider"
+      ],
+      "severity": "hard",
+      "phase": "session_start",
+      "validator": "data_governance_validator",
+      "requires_platform": [],
+      "evidence_schema": null,
+      "deny_code": "EU_AI_ACT_ART10_DATA_GOV_MISSING",
+      "allow_when": "data_governance_policy present",
+      "test_fixtures": [
+        "fixtures/art10-deny-no-data-gov.json"
+      ],
+      "status": "v1"
+    },
+    {
+      "control_id": "eu-ai-act.art11.technical-docs-index",
+      "articles": [
+        "11"
+      ],
+      "title": "Technical documentation index for provider high-risk",
+      "risk_classes": [
+        "high_risk"
+      ],
+      "roles": [
+        "provider"
+      ],
+      "severity": "hard",
+      "phase": "session_start",
+      "validator": "technical_docs_validator",
+      "requires_platform": [],
+      "evidence_schema": "evidence-schemas/technical-documentation-index.v1.json",
+      "deny_code": "EU_AI_ACT_ART11_TECH_DOCS_MISSING",
+      "allow_when": "technical_documentation_index.documents non-empty",
+      "test_fixtures": [
+        "fixtures/art11-deny-no-docs.json",
+        "fixtures/art11-allow-docs.json"
+      ],
+      "status": "v1"
+    },
+    {
+      "control_id": "eu-ai-act.art12.logging-enabled",
+      "articles": [
+        "12"
+      ],
+      "title": "Logging required for high-risk",
+      "risk_classes": [
+        "high_risk"
+      ],
+      "roles": [
+        "provider",
+        "deployer"
+      ],
+      "severity": "hard",
+      "phase": "session_start",
+      "validator": "logging_enabled_validator",
+      "requires_platform": [
+        "evidence_ledger",
+        "lattice_log"
+      ],
+      "evidence_schema": null,
+      "deny_code": "EU_AI_ACT_ART12_LOGGING_DISABLED",
+      "allow_when": "logging_enabled true",
+      "test_fixtures": [
+        "fixtures/art12-deny-no-log.json"
+      ],
+      "status": "v1"
+    },
+    {
+      "control_id": "eu-ai-act.art13.transparency-export",
+      "articles": [
+        "13",
+        "50"
+      ],
+      "title": "Transparency report export schema",
+      "risk_classes": [
+        "high_risk",
+        "limited"
+      ],
+      "roles": [
+        "provider",
+        "deployer"
+      ],
+      "severity": "hard",
+      "phase": "export",
+      "validator": "transparency_export_validator",
+      "requires_platform": [
+        "evidence_ledger"
+      ],
+      "evidence_schema": "evidence-schemas/transparency-report.v1.json",
+      "deny_code": "EU_AI_ACT_ART13_TRANSPARENCY_INCOMPLETE",
+      "allow_when": "export complete",
+      "test_fixtures": [
+        "fixtures/art13-deny-incomplete-report.json",
+        "fixtures/art13-allow-report.json"
+      ],
+      "status": "v1"
+    },
+    {
+      "control_id": "eu-ai-act.identity.agent-identity",
+      "articles": [
+        "13",
+        "50"
+      ],
+      "title": "Agent identity on transparency export when required",
+      "risk_classes": [
+        "high_risk",
+        "limited"
+      ],
+      "roles": [
+        "provider",
+        "deployer"
+      ],
+      "severity": "hard",
+      "phase": "export",
+      "validator": "agent_identity_validator",
+      "requires_platform": [
+        "agent_identity"
+      ],
+      "evidence_schema": null,
+      "deny_code": "EU_AI_ACT_IDENTITY_MISSING",
+      "allow_when": "agent_identity present when required",
+      "test_fixtures": [
+        "fixtures/identity-deny-missing.json",
+        "fixtures/art13-allow-report.json"
+      ],
+      "status": "v1"
+    },
+    {
+      "control_id": "eu-ai-act.art14.human-oversight-gate",
+      "articles": [
+        "14"
+      ],
+      "title": "Human oversight gate before high-impact action",
+      "risk_classes": [
+        "high_risk"
+      ],
+      "roles": [
+        "provider",
+        "deployer"
+      ],
+      "severity": "hard",
+      "phase": "runtime",
+      "validator": "human_oversight_gate_validator",
+      "requires_platform": [
+        "gates"
+      ],
+      "evidence_schema": "evidence-schemas/human-oversight-mode.v1.json",
+      "deny_code": "EU_AI_ACT_ART14_NO_HUMAN_GATE",
+      "allow_when": "gate_approval_id present",
+      "test_fixtures": [
+        "fixtures/art14-deny-no-gate.json",
+        "fixtures/art14-allow-gated.json"
+      ],
+      "status": "v1"
+    },
+    {
+      "control_id": "eu-ai-act.art15.execution-rings",
+      "articles": [
+        "15"
+      ],
+      "title": "No unconstrained full privilege when high-risk",
+      "risk_classes": [
+        "high_risk"
+      ],
+      "roles": [
+        "provider",
+        "deployer"
+      ],
+      "severity": "hard",
+      "phase": "runtime",
+      "validator": "execution_rings_validator",
+      "requires_platform": [
+        "execution_rings"
+      ],
+      "evidence_schema": null,
+      "deny_code": "EU_AI_ACT_ART15_UNCONSTRAINED",
+      "allow_when": "not full_unconstrained",
+      "test_fixtures": [
+        "fixtures/art15-deny-unconstrained.json"
+      ],
+      "status": "v1"
+    },
+    {
+      "control_id": "eu-ai-act.art61.retention-configured",
+      "articles": [
+        "61"
+      ],
+      "title": "Retention days required",
+      "risk_classes": [
+        "high_risk"
+      ],
+      "roles": [
+        "provider",
+        "deployer"
+      ],
+      "severity": "hard",
+      "phase": "session_start",
+      "validator": "retention_configured_validator",
+      "requires_platform": [
+        "evidence_ledger"
+      ],
+      "evidence_schema": "evidence-schemas/retention-config.v1.json",
+      "deny_code": "EU_AI_ACT_ART61_RETENTION_MISSING",
+      "allow_when": "retention_days positive",
+      "test_fixtures": [
+        "fixtures/art61-deny-no-retention.json"
+      ],
+      "status": "v1"
+    },
+    {
+      "control_id": "eu-ai-act.art73.incident-report-hook",
+      "articles": [
+        "73"
+      ],
+      "title": "Serious incident event type available",
+      "risk_classes": [
+        "high_risk"
+      ],
+      "roles": [
+        "provider",
+        "deployer"
+      ],
+      "severity": "hard",
+      "phase": "runtime",
+      "validator": "incident_report_hook_validator",
+      "requires_platform": [
+        "evidence_ledger"
+      ],
+      "evidence_schema": null,
+      "deny_code": "EU_AI_ACT_ART73_INCIDENT_HOOK_MISSING",
+      "allow_when": "incident_reporting_enabled true for high_risk",
+      "test_fixtures": [
+        "fixtures/art73-deny-no-hook.json",
+        "fixtures/config-allow-high-risk.json"
+      ],
+      "status": "v1"
+    },
+    {
+      "control_id": "eu-ai-act.gpai.provider-declared",
+      "articles": [],
+      "title": "GPAI provider declaration",
+      "risk_classes": [
+        "gpai"
+      ],
+      "roles": [
+        "provider"
+      ],
+      "severity": "hard",
+      "phase": "session_start",
+      "validator": "gpai_provider_declared_validator",
+      "requires_platform": [],
+      "evidence_schema": null,
+      "deny_code": "EU_AI_ACT_GPAI_NOT_DECLARED",
+      "allow_when": "gpai_provider true",
+      "test_fixtures": [
+        "fixtures/gpai-deny-not-declared.json"
+      ],
+      "status": "v1"
+    },
+    {
+      "control_id": "eu-ai-act.gpai.training-summary-hook",
+      "articles": [],
+      "title": "GPAI training summary evidence",
+      "risk_classes": [
+        "gpai"
+      ],
+      "roles": [
+        "provider"
+      ],
+      "severity": "hard",
+      "phase": "session_start",
+      "validator": "gpai_training_summary_validator",
+      "requires_platform": [],
+      "evidence_schema": null,
+      "deny_code": "EU_AI_ACT_GPAI_TRAINING_SUMMARY_MISSING",
+      "allow_when": "gpai_training_summary present",
+      "test_fixtures": [
+        "fixtures/gpai-deny-no-training-summary.json",
+        "fixtures/gpai-allow.json"
+      ],
+      "status": "v1"
+    },
+    {
+      "control_id": "eu-ai-act.gpai.systemic-risk-flag",
+      "articles": [],
+      "title": "GPAI systemic risk flag declared",
+      "risk_classes": [
+        "gpai"
+      ],
+      "roles": [
+        "provider"
+      ],
+      "severity": "hard",
+      "phase": "session_start",
+      "validator": "gpai_systemic_risk_validator",
+      "requires_platform": [],
+      "evidence_schema": null,
+      "deny_code": "EU_AI_ACT_GPAI_SYSTEMIC_FLAG_MISSING",
+      "allow_when": "gpai_systemic_risk is boolean declared",
+      "test_fixtures": [
+        "fixtures/gpai-deny-no-systemic-flag.json",
+        "fixtures/gpai-allow.json"
+      ],
+      "status": "v1"
+    },
+    {
+      "control_id": "eu-ai-act.platform.capability-present",
+      "articles": [],
+      "title": "Required platform capabilities present",
+      "risk_classes": [
+        "high_risk"
+      ],
+      "roles": [
+        "provider",
+        "deployer"
+      ],
+      "severity": "hard",
+      "phase": "session_start",
+      "validator": "platform_capability_validator",
+      "requires_platform": [
+        "gates",
+        "evidence_ledger"
+      ],
+      "evidence_schema": null,
+      "deny_code": "EU_AI_ACT_PLATFORM_CAPABILITY_MISSING",
+      "allow_when": "platform_capabilities includes required set when enforce_platform_caps true",
+      "test_fixtures": [
+        "fixtures/platform-deny-missing-caps.json"
+      ],
+      "status": "v1"
+    },
+    {
+      "control_id": "eu-ai-act.annex-iii.assistive-classify",
+      "articles": [],
+      "title": "Annex III assistive use-case classification",
+      "risk_classes": [
+        "prohibited",
+        "high_risk",
+        "limited",
+        "minimal",
+        "gpai"
+      ],
+      "roles": [
+        "provider",
+        "deployer",
+        "importer",
+        "distributor"
+      ],
+      "severity": "hard",
+      "phase": "session_start",
+      "validator": "annex_iii_assistive_validator",
+      "requires_platform": [],
+      "evidence_schema": null,
+      "deny_code": "EU_AI_ACT_ANNEX_III_MISMATCH",
+      "allow_when": "when enforce_annex_iii true, risk_class matches assistive suggestion",
+      "test_fixtures": [
+        "fixtures/annex-iii-deny-mismatch.json",
+        "fixtures/annex-iii-allow-match.json",
+        "fixtures/annex-iii-classify-employment.json"
+      ],
+      "status": "v1",
+      "note": "Assistive only; not a legal determination"
+    },
+    {
+      "control_id": "eu-ai-act.annex-iii.auto-classify",
+      "articles": [],
+      "title": "Full Annex III auto classification without human review",
+      "risk_classes": [
+        "high_risk"
+      ],
+      "roles": [
+        "provider",
+        "deployer"
+      ],
+      "severity": "advisory",
+      "phase": "deferred",
+      "validator": null,
+      "requires_platform": [],
+      "evidence_schema": null,
+      "deny_code": null,
+      "allow_when": "deferred",
+      "test_fixtures": [],
+      "status": "deferred"
+    }
+  ],
+  "risk_classes": [
+    {
+      "id": "prohibited",
+      "description": "Prohibited AI practices under Art. 5",
+      "control_mode": "always_deny_catalog"
+    },
+    {
+      "id": "high_risk",
+      "description": "High-risk AI systems",
+      "control_mode": "full_phase_a"
+    },
+    {
+      "id": "limited",
+      "description": "Limited risk transparency obligations",
+      "control_mode": "transparency"
+    },
+    {
+      "id": "minimal",
+      "description": "Minimal risk baseline logging",
+      "control_mode": "baseline"
+    },
+    {
+      "id": "gpai",
+      "description": "General-purpose AI provider track",
+      "control_mode": "gpai_phase_c"
+    }
+  ],
+  "roles": [
+    {
+      "id": "provider",
+      "description": "Places AI system on the market or puts into service"
+    },
+    {
+      "id": "deployer",
+      "description": "Uses an AI system under its authority"
+    },
+    {
+      "id": "importer",
+      "description": "Places on market an AI system from third country"
+    },
+    {
+      "id": "distributor",
+      "description": "Makes AI system available on market"
+    }
+  ],
+  "article_map": {
+    "5": [
+      "eu-ai-act.art5.prohibited-practices"
+    ],
+    "9": [
+      "eu-ai-act.art9.rms-present",
+      "eu-ai-act.art9.fria-record"
+    ],
+    "10": [
+      "eu-ai-act.art10.data-governance"
+    ],
+    "11": [
+      "eu-ai-act.art11.technical-docs-index"
+    ],
+    "12": [
+      "eu-ai-act.art12.logging-enabled"
+    ],
+    "13": [
+      "eu-ai-act.art13.transparency-export",
+      "eu-ai-act.identity.agent-identity"
+    ],
+    "14": [
+      "eu-ai-act.art14.human-oversight-gate"
+    ],
+    "15": [
+      "eu-ai-act.art15.execution-rings"
+    ],
+    "27": [
+      "eu-ai-act.art9.fria-record"
+    ],
+    "50": [
+      "eu-ai-act.art13.transparency-export",
+      "eu-ai-act.identity.agent-identity"
+    ],
+    "61": [
+      "eu-ai-act.art61.retention-configured"
+    ],
+    "73": [
+      "eu-ai-act.art73.incident-report-hook"
+    ],
+    "annex_iii": [
+      "eu-ai-act.annex-iii.assistive-classify"
+    ]
+  },
+  "annex_iii_assist": {
+    "version": "1.0.0",
+    "honesty": "Assistive mapping only. Not a legal determination.",
+    "use_cases": [
+      {
+        "id": "biometrics_remote_id",
+        "annex_refs": [
+          "III.1"
+        ],
+        "suggested_class": "high_risk",
+        "keywords": [
+          "remote_biometric",
+          "real_time_biometric"
+        ]
+      },
+      {
+        "id": "critical_infrastructure",
+        "annex_refs": [
+          "III.2"
+        ],
+        "suggested_class": "high_risk",
+        "keywords": [
+          "critical_infrastructure",
+          "traffic_management"
+        ]
+      },
+      {
+        "id": "education_scoring",
+        "annex_refs": [
+          "III.3"
+        ],
+        "suggested_class": "high_risk",
+        "keywords": [
+          "education_scoring",
+          "exam_proctoring_ai"
+        ]
+      },
+      {
+        "id": "employment_hr",
+        "annex_refs": [
+          "III.4"
+        ],
+        "suggested_class": "high_risk",
+        "keywords": [
+          "recruitment_ai",
+          "worker_monitoring",
+          "hr_screening"
+        ]
+      },
+      {
+        "id": "essential_services",
+        "annex_refs": [
+          "III.5"
+        ],
+        "suggested_class": "high_risk",
+        "keywords": [
+          "credit_scoring",
+          "emergency_dispatch"
+        ]
+      },
+      {
+        "id": "law_enforcement",
+        "annex_refs": [
+          "III.6"
+        ],
+        "suggested_class": "high_risk",
+        "keywords": [
+          "law_enforcement",
+          "crime_prediction"
+        ]
+      },
+      {
+        "id": "migration_asylum",
+        "annex_refs": [
+          "III.7"
+        ],
+        "suggested_class": "high_risk",
+        "keywords": [
+          "border_control_ai",
+          "asylum_assessment"
+        ]
+      },
+      {
+        "id": "justice_democratic",
+        "annex_refs": [
+          "III.8"
+        ],
+        "suggested_class": "high_risk",
+        "keywords": [
+          "judicial_decision_ai",
+          "election_influence_ai"
+        ]
+      },
+      {
+        "id": "social_scoring_public",
+        "annex_refs": [
+          "Art.5"
+        ],
+        "suggested_class": "prohibited",
+        "keywords": [
+          "social_scoring",
+          "social_score"
+        ]
+      },
+      {
+        "id": "chatbot_disclosure",
+        "annex_refs": [
+          "limited"
+        ],
+        "suggested_class": "limited",
+        "keywords": [
+          "chatbot",
+          "conversational_agent"
+        ]
+      }
+    ]
+  },
+  "evidence_schemas": {
+    "fria-record.v1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "required": [
+        "fria_id",
+        "summary"
+      ],
+      "properties": {
+        "fria_id": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "human-oversight-mode.v1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "human_in_the_loop",
+            "human_on_the_loop",
+            "human_in_command"
+          ]
+        },
+        "gate_required_for_high_impact": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "retention-config.v1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "required": [
+        "retention_days"
+      ],
+      "properties": {
+        "retention_days": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "export_on_request": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "risk-management-system.v1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "required": [
+        "version",
+        "risk_tiers",
+        "owner"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "risk_tiers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "last_reviewed": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "technical-documentation-index.v1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "required": [
+        "documents"
+      ],
+      "properties": {
+        "documents": {
+          "type": "array",
+          "minItems": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "transparency-report.v1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "required": [
+        "session_id",
+        "role",
+        "risk_class",
+        "actions_summary"
+      ],
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string"
+        },
+        "risk_class": {
+          "type": "string"
+        },
+        "actions_summary": {
+          "type": "array"
+        },
+        "merkle_root": {
+          "type": "string"
+        },
+        "agent_identity": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "fixtures": {
+    "annex-iii-allow-match": {
+      "name": "annex-iii-allow-match",
+      "config": {
+        "enabled": true,
+        "role": "provider",
+        "risk_class": "high_risk",
+        "enforce_annex_iii": true,
+        "annex_iii_use_cases": [
+          "employment_hr"
+        ],
+        "data_governance_policy": {
+          "version": "1"
+        },
+        "technical_documentation_index": {
+          "documents": [
+            "d1"
+          ]
+        },
+        "retention_days": 180,
+        "logging_enabled": true,
+        "incident_reporting_enabled": true,
+        "risk_management_system": {
+          "version": "1",
+          "risk_tiers": [
+            "high"
+          ],
+          "owner": "ops"
+        },
+        "capability_scope": "ring_2",
+        "platform_capabilities": [
+          "gates",
+          "evidence_ledger",
+          "lattice_log",
+          "execution_rings"
+        ]
+      },
+      "expect": {
+        "decision": "allow"
+      }
+    },
+    "annex-iii-classify-employment": {
+      "name": "annex-iii-classify-employment",
+      "classify": {
+        "use_cases": [
+          "employment_hr"
+        ],
+        "tags": [
+          "recruitment_ai"
+        ]
+      },
+      "expect": {
+        "suggested_class": "high_risk",
+        "decision": "allow"
+      }
+    },
+    "annex-iii-deny-mismatch": {
+      "name": "annex-iii-deny-mismatch",
+      "config": {
+        "enabled": true,
+        "role": "provider",
+        "risk_class": "minimal",
+        "enforce_annex_iii": true,
+        "annex_iii_use_cases": [
+          "employment_hr"
+        ],
+        "data_governance_policy": {
+          "version": "1"
+        },
+        "technical_documentation_index": {
+          "documents": [
+            "d1"
+          ]
+        },
+        "retention_days": 180,
+        "logging_enabled": true,
+        "incident_reporting_enabled": true,
+        "risk_management_system": {
+          "version": "1",
+          "risk_tiers": [
+            "high"
+          ],
+          "owner": "ops"
+        },
+        "capability_scope": "ring_2"
+      },
+      "expect": {
+        "decision": "deny",
+        "deny_code": "EU_AI_ACT_ANNEX_III_MISMATCH"
+      }
+    },
+    "art10-deny-no-data-gov": {
+      "name": "art10-deny-no-data-gov",
+      "config": {
+        "enabled": true,
+        "role": "provider",
+        "risk_class": "high_risk",
+        "retention_days": 180,
+        "logging_enabled": true,
+        "incident_reporting_enabled": true,
+        "risk_management_system": {
+          "version": "1",
+          "risk_tiers": [
+            "high"
+          ],
+          "owner": "ops"
+        },
+        "technical_documentation_index": {
+          "documents": [
+            "tdoc-1"
+          ]
+        },
+        "capability_scope": "ring_2",
+        "platform_capabilities": [
+          "gates",
+          "evidence_ledger",
+          "lattice_log",
+          "execution_rings"
+        ]
+      },
+      "expect": {
+        "decision": "deny",
+        "deny_code": "EU_AI_ACT_ART10_DATA_GOV_MISSING"
+      }
+    },
+    "art11-allow-docs": {
+      "name": "art11-allow-docs",
+      "config": {
+        "enabled": true,
+        "role": "provider",
+        "risk_class": "high_risk",
+        "retention_days": 180,
+        "logging_enabled": true,
+        "incident_reporting_enabled": true,
+        "data_governance_policy": {
+          "version": "1",
+          "policy": "minimisation"
+        },
+        "technical_documentation_index": {
+          "documents": [
+            "architecture.md",
+            "eval-report.md"
+          ]
+        },
+        "risk_management_system": {
+          "version": "1",
+          "risk_tiers": [
+            "high"
+          ],
+          "owner": "ops"
+        },
+        "capability_scope": "ring_2",
+        "platform_capabilities": [
+          "gates",
+          "evidence_ledger",
+          "lattice_log",
+          "execution_rings"
+        ]
+      },
+      "expect": {
+        "decision": "allow"
+      }
+    },
+    "art11-deny-no-docs": {
+      "name": "art11-deny-no-docs",
+      "config": {
+        "enabled": true,
+        "role": "provider",
+        "risk_class": "high_risk",
+        "retention_days": 180,
+        "logging_enabled": true,
+        "incident_reporting_enabled": true,
+        "data_governance_policy": {
+          "version": "1"
+        },
+        "risk_management_system": {
+          "version": "1",
+          "risk_tiers": [
+            "high"
+          ],
+          "owner": "ops"
+        },
+        "capability_scope": "ring_2",
+        "platform_capabilities": [
+          "gates",
+          "evidence_ledger",
+          "lattice_log",
+          "execution_rings"
+        ]
+      },
+      "expect": {
+        "decision": "deny",
+        "deny_code": "EU_AI_ACT_ART11_TECH_DOCS_MISSING"
+      }
+    },
+    "art12-deny-no-log": {
+      "name": "art12-deny-no-log",
+      "config": {
+        "enabled": true,
+        "role": "deployer",
+        "risk_class": "high_risk",
+        "retention_days": 180,
+        "logging_enabled": false,
+        "incident_reporting_enabled": true,
+        "risk_management_system": {
+          "version": "1",
+          "risk_tiers": [
+            "high"
+          ],
+          "owner": "ops"
+        },
+        "capability_scope": "ring_2",
+        "platform_capabilities": [
+          "gates",
+          "evidence_ledger",
+          "lattice_log",
+          "execution_rings"
+        ]
+      },
+      "expect": {
+        "decision": "deny",
+        "deny_code": "EU_AI_ACT_ART12_LOGGING_DISABLED"
+      }
+    },
+    "art13-allow-report": {
+      "name": "art13-allow-report",
+      "report": {
+        "session_id": "s1",
+        "role": "deployer",
+        "risk_class": "high_risk",
+        "actions_summary": [],
+        "merkle_root": "abc",
+        "agent_identity": "agent-1"
+      },
+      "require_agent_identity": true,
+      "expect": {
+        "decision": "allow"
+      }
+    },
+    "art13-deny-incomplete-report": {
+      "name": "art13-deny-incomplete-report",
+      "report": {
+        "session_id": "s1"
+      },
+      "expect": {
+        "decision": "deny",
+        "deny_code": "EU_AI_ACT_ART13_TRANSPARENCY_INCOMPLETE"
+      }
+    },
+    "art14-allow-gated": {
+      "name": "art14-allow-gated",
+      "config": {
+        "enabled": true,
+        "role": "deployer",
+        "risk_class": "high_risk",
+        "retention_days": 180,
+        "logging_enabled": true,
+        "high_impact_requires_gate": true,
+        "incident_reporting_enabled": true,
+        "risk_management_system": {
+          "version": "1",
+          "risk_tiers": [
+            "high"
+          ],
+          "owner": "ops"
+        },
+        "capability_scope": "ring_2",
+        "platform_capabilities": [
+          "gates",
+          "evidence_ledger",
+          "lattice_log",
+          "execution_rings"
+        ]
+      },
+      "action": {
+        "type": "tool_call",
+        "name": "shell.exec",
+        "impact": "high",
+        "gate_approval_id": "gate-abc-001"
+      },
+      "expect": {
+        "decision": "allow"
+      }
+    },
+    "art14-deny-no-gate": {
+      "name": "art14-deny-no-gate",
+      "config": {
+        "enabled": true,
+        "role": "deployer",
+        "risk_class": "high_risk",
+        "retention_days": 180,
+        "logging_enabled": true,
+        "high_impact_requires_gate": true,
+        "incident_reporting_enabled": true,
+        "risk_management_system": {
+          "version": "1",
+          "risk_tiers": [
+            "high"
+          ],
+          "owner": "ops"
+        },
+        "capability_scope": "ring_2",
+        "platform_capabilities": [
+          "gates",
+          "evidence_ledger",
+          "lattice_log",
+          "execution_rings"
+        ]
+      },
+      "action": {
+        "type": "tool_call",
+        "name": "shell.exec",
+        "impact": "high",
+        "gate_approval_id": null
+      },
+      "expect": {
+        "decision": "deny",
+        "deny_code": "EU_AI_ACT_ART14_NO_HUMAN_GATE"
+      }
+    },
+    "art15-deny-unconstrained": {
+      "name": "art15-deny-unconstrained",
+      "config": {
+        "enabled": true,
+        "role": "deployer",
+        "risk_class": "high_risk",
+        "retention_days": 180,
+        "logging_enabled": true,
+        "incident_reporting_enabled": true,
+        "risk_management_system": {
+          "version": "1",
+          "risk_tiers": [
+            "high"
+          ],
+          "owner": "ops"
+        },
+        "capability_scope": "full_unconstrained",
+        "platform_capabilities": [
+          "gates",
+          "evidence_ledger",
+          "lattice_log",
+          "execution_rings"
+        ]
+      },
+      "action": {
+        "type": "tool_call",
+        "name": "file.write",
+        "impact": "low"
+      },
+      "expect": {
+        "decision": "deny",
+        "deny_code": "EU_AI_ACT_ART15_UNCONSTRAINED"
+      }
+    },
+    "art5-deny-social-scoring": {
+      "name": "art5-deny-social-scoring",
+      "config": {
+        "enabled": true,
+        "role": "deployer",
+        "risk_class": "high_risk",
+        "retention_days": 180,
+        "logging_enabled": true,
+        "high_impact_requires_gate": true,
+        "incident_reporting_enabled": true,
+        "risk_management_system": {
+          "version": "1",
+          "risk_tiers": [
+            "high"
+          ],
+          "owner": "ops"
+        },
+        "capability_scope": "ring_2",
+        "platform_capabilities": [
+          "gates",
+          "evidence_ledger",
+          "lattice_log",
+          "execution_rings"
+        ]
+      },
+      "action": {
+        "type": "tool_call",
+        "name": "social_score.rank_citizens",
+        "impact": "high",
+        "gate_approval_id": "gate-1",
+        "tags": [
+          "social_scoring"
+        ]
+      },
+      "expect": {
+        "decision": "deny",
+        "deny_code": "EU_AI_ACT_ART5_PROHIBITED"
+      }
+    },
+    "art61-deny-no-retention": {
+      "name": "art61-deny-no-retention",
+      "config": {
+        "enabled": true,
+        "role": "deployer",
+        "risk_class": "high_risk",
+        "logging_enabled": true,
+        "incident_reporting_enabled": true,
+        "risk_management_system": {
+          "version": "1",
+          "risk_tiers": [
+            "high"
+          ],
+          "owner": "ops"
+        },
+        "capability_scope": "ring_2",
+        "platform_capabilities": [
+          "gates",
+          "evidence_ledger",
+          "lattice_log",
+          "execution_rings"
+        ]
+      },
+      "expect": {
+        "decision": "deny",
+        "deny_code": "EU_AI_ACT_ART61_RETENTION_MISSING"
+      }
+    },
+    "art73-deny-no-hook": {
+      "name": "art73-deny-no-hook",
+      "config": {
+        "enabled": true,
+        "role": "deployer",
+        "risk_class": "high_risk",
+        "retention_days": 180,
+        "logging_enabled": true,
+        "incident_reporting_enabled": false,
+        "risk_management_system": {
+          "version": "1",
+          "risk_tiers": [
+            "high"
+          ],
+          "owner": "ops"
+        },
+        "capability_scope": "ring_2",
+        "platform_capabilities": [
+          "gates",
+          "evidence_ledger",
+          "lattice_log",
+          "execution_rings"
+        ]
+      },
+      "expect": {
+        "decision": "deny",
+        "deny_code": "EU_AI_ACT_ART73_INCIDENT_HOOK_MISSING"
+      }
+    },
+    "art9-allow-fria": {
+      "name": "art9-allow-fria",
+      "config": {
+        "enabled": true,
+        "role": "deployer",
+        "risk_class": "high_risk",
+        "retention_days": 180,
+        "logging_enabled": true,
+        "public_context": true,
+        "require_fria": true,
+        "incident_reporting_enabled": true,
+        "fria_record": {
+          "fria_id": "FRIA-001",
+          "summary": "Public service FRIA",
+          "date": "2026-07-01"
+        },
+        "risk_management_system": {
+          "version": "1",
+          "risk_tiers": [
+            "high"
+          ],
+          "owner": "ops"
+        },
+        "capability_scope": "ring_2",
+        "platform_capabilities": [
+          "gates",
+          "evidence_ledger",
+          "lattice_log",
+          "execution_rings"
+        ]
+      },
+      "expect": {
+        "decision": "allow"
+      }
+    },
+    "art9-deny-no-fria": {
+      "name": "art9-deny-no-fria",
+      "config": {
+        "enabled": true,
+        "role": "deployer",
+        "risk_class": "high_risk",
+        "retention_days": 180,
+        "logging_enabled": true,
+        "public_context": true,
+        "require_fria": true,
+        "incident_reporting_enabled": true,
+        "risk_management_system": {
+          "version": "1",
+          "risk_tiers": [
+            "high"
+          ],
+          "owner": "ops"
+        },
+        "capability_scope": "ring_2",
+        "platform_capabilities": [
+          "gates",
+          "evidence_ledger",
+          "lattice_log",
+          "execution_rings"
+        ]
+      },
+      "expect": {
+        "decision": "deny",
+        "deny_code": "EU_AI_ACT_ART9_FRIA_MISSING"
+      }
+    },
+    "art9-deny-no-rms": {
+      "name": "art9-deny-no-rms",
+      "config": {
+        "enabled": true,
+        "role": "deployer",
+        "risk_class": "high_risk",
+        "retention_days": 180,
+        "logging_enabled": true,
+        "incident_reporting_enabled": true,
+        "capability_scope": "ring_2",
+        "platform_capabilities": [
+          "gates",
+          "evidence_ledger",
+          "lattice_log",
+          "execution_rings"
+        ]
+      },
+      "expect": {
+        "decision": "deny",
+        "deny_code": "EU_AI_ACT_ART9_RMS_MISSING"
+      }
+    },
+    "config-allow-deployer": {
+      "name": "config-allow-deployer",
+      "config": {
+        "enabled": true,
+        "role": "deployer",
+        "risk_class": "limited",
+        "retention_days": 30,
+        "logging_enabled": true,
+        "oversight_mode": "human_in_the_loop",
+        "high_impact_requires_gate": true
+      },
+      "expect": {
+        "decision": "allow"
+      }
+    },
+    "config-allow-high-risk": {
+      "name": "config-allow-high-risk",
+      "config": {
+        "enabled": true,
+        "role": "deployer",
+        "risk_class": "high_risk",
+        "retention_days": 180,
+        "logging_enabled": true,
+        "oversight_mode": "human_in_the_loop",
+        "high_impact_requires_gate": true,
+        "incident_reporting_enabled": true,
+        "risk_management_system": {
+          "version": "1.0",
+          "risk_tiers": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "owner": "compliance"
+        },
+        "capability_scope": "ring_2",
+        "platform_capabilities": [
+          "gates",
+          "evidence_ledger",
+          "lattice_log",
+          "execution_rings"
+        ]
+      },
+      "expect": {
+        "decision": "allow"
+      }
+    },
+    "config-deny-no-class": {
+      "name": "config-deny-no-class",
+      "config": {
+        "enabled": true,
+        "role": "deployer",
+        "retention_days": 180,
+        "logging_enabled": true,
+        "risk_management_system": {
+          "version": "1",
+          "risk_tiers": [
+            "high"
+          ],
+          "owner": "ops"
+        }
+      },
+      "expect": {
+        "decision": "deny",
+        "deny_code": "EU_AI_ACT_RISK_CLASS_MISSING"
+      }
+    },
+    "config-deny-no-role": {
+      "name": "config-deny-no-role",
+      "config": {
+        "enabled": true,
+        "risk_class": "high_risk",
+        "retention_days": 180,
+        "logging_enabled": true,
+        "risk_management_system": {
+          "version": "1",
+          "risk_tiers": [
+            "high"
+          ],
+          "owner": "ops"
+        }
+      },
+      "expect": {
+        "decision": "deny",
+        "deny_code": "EU_AI_ACT_ROLE_MISSING"
+      }
+    },
+    "gpai-allow": {
+      "name": "gpai-allow",
+      "config": {
+        "enabled": true,
+        "role": "provider",
+        "risk_class": "gpai",
+        "gpai_provider": true,
+        "gpai_systemic_risk": false,
+        "gpai_training_summary": {
+          "version": "1",
+          "content": "training data summary"
+        }
+      },
+      "expect": {
+        "decision": "allow"
+      }
+    },
+    "gpai-deny-no-systemic-flag": {
+      "name": "gpai-deny-no-systemic-flag",
+      "config": {
+        "enabled": true,
+        "role": "provider",
+        "risk_class": "gpai",
+        "gpai_provider": true,
+        "gpai_training_summary": {
+          "version": "1",
+          "content": "summary"
+        }
+      },
+      "expect": {
+        "decision": "deny",
+        "deny_code": "EU_AI_ACT_GPAI_SYSTEMIC_FLAG_MISSING"
+      }
+    },
+    "gpai-deny-no-training-summary": {
+      "name": "gpai-deny-no-training-summary",
+      "config": {
+        "enabled": true,
+        "role": "provider",
+        "risk_class": "gpai",
+        "gpai_provider": true,
+        "gpai_systemic_risk": false
+      },
+      "expect": {
+        "decision": "deny",
+        "deny_code": "EU_AI_ACT_GPAI_TRAINING_SUMMARY_MISSING"
+      }
+    },
+    "gpai-deny-not-declared": {
+      "name": "gpai-deny-not-declared",
+      "config": {
+        "enabled": true,
+        "role": "provider",
+        "risk_class": "gpai",
+        "gpai_provider": false
+      },
+      "expect": {
+        "decision": "deny",
+        "deny_code": "EU_AI_ACT_GPAI_NOT_DECLARED"
+      }
+    },
+    "identity-deny-missing": {
+      "name": "identity-deny-missing",
+      "report": {
+        "session_id": "s1",
+        "role": "deployer",
+        "risk_class": "high_risk",
+        "actions_summary": []
+      },
+      "require_agent_identity": true,
+      "expect": {
+        "decision": "deny",
+        "deny_code": "EU_AI_ACT_IDENTITY_MISSING"
+      }
+    },
+    "platform-deny-missing-caps": {
+      "name": "platform-deny-missing-caps",
+      "config": {
+        "enabled": true,
+        "role": "deployer",
+        "risk_class": "high_risk",
+        "retention_days": 180,
+        "logging_enabled": true,
+        "incident_reporting_enabled": true,
+        "enforce_platform_caps": true,
+        "risk_management_system": {
+          "version": "1",
+          "risk_tiers": [
+            "high"
+          ],
+          "owner": "ops"
+        },
+        "capability_scope": "ring_2",
+        "platform_capabilities": []
+      },
+      "expect": {
+        "decision": "deny",
+        "deny_code": "EU_AI_ACT_PLATFORM_CAPABILITY_MISSING"
+      }
+    }
+  }
+}

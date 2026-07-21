@@ -50,13 +50,13 @@
       "jurisdiction": "European Union",
       "priority": 155,
       "default_enabled": false,
-      "description": "Fail-closed EU AI Act compliance checking pack (Phase A+B+C assistive Annex). Not a legal certification.",
+      "description": "EU AI Act compliance checking pack. One definition file, one gate. Not a legal certification.",
       "module_manifest": "wizard/lrp/modules/eu-ai-act.json",
       "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap",
-      "maturity": "enforced_v1_phase_c",
-      "pack_root": "wizard/lrp/modules/eu-ai-act",
-      "control_catalog": "wizard/lrp/modules/eu-ai-act/CONTROL-CATALOG.json",
-      "checker": "eu-ai-act-checker"
+      "maturity": "enforced_v1",
+      "checker": "eu-ai-act-checker",
+      "definition": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
+      "gate": "AEP-Components/eu-ai-act-checker/gates/gate-eu-ai-act.sh"
     },
     {
       "id": "gdpr",

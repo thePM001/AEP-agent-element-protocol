@@ -1,1 +1,0 @@
-{"name":"art9-deny-no-rms","config":{"enabled":true,"role":"deployer","risk_class":"high_risk","retention_days":180,"logging_enabled":true,"incident_reporting_enabled":true,"capability_scope":"ring_2","platform_capabilities":["gates","evidence_ledger","lattice_log","execution_rings"]},"expect":{"decision":"deny","deny_code":"EU_AI_ACT_ART9_RMS_MISSING"}}

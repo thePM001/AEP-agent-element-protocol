@@ -1,5 +1,19 @@
 #!/usr/bin/env node
 
+import { existsSync } from "node:fs";
+import path from "node:path";
+
+/**
+ * Validate EU AI Act control pack is present on disk (setup-agent / plan enable).
+ * @param {string} repoRoot
+ */
+export function validateEuAiActPack(repoRoot) {
+  // ONE definition file only
+  const pack = path.join(repoRoot, "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json");
+  const ok = existsSync(pack);
+  return { ok, missing: ok ? [] : ["EU-AI-ACT-PACK.json"], pack };
+}
+
 /**
  * Collect and apply manifest setup_hooks for plan execution.
  */

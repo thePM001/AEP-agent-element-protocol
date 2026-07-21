@@ -1,40 +1,13 @@
 {
   "id": "eu-ai-act",
   "framework": "EU AI Act",
-  "version": "2024/1689-phase-b",
-  "maturity": "enforced_v1_phase_c",
+  "version": "2024/1689",
+  "maturity": "enforced_v1",
   "dock": "regulation_module",
-  "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap",
-  "pack_root": "AEP-Components/wizard/lrp/modules/eu-ai-act",
-  "control_catalog": "AEP-Components/wizard/lrp/modules/eu-ai-act/CONTROL-CATALOG.json",
+  "definition": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
+  "gate": "AEP-Components/eu-ai-act-checker/gates/gate-eu-ai-act.sh",
   "checker": "AEP-Components/eu-ai-act-checker",
   "checker_bin": "eu-ai-act-checker",
-  "description": "EU AI Act compliance checking pack (fail-closed Phase A controls). Not a legal certification.",
-  "articles": {
-    "5": "prohibited practices",
-    "9": "risk management system",
-    "10": "data governance",
-    "12": "logging",
-    "13": "transparency",
-    "14": "human oversight",
-    "15": "accuracy robustness cybersecurity",
-    "50": "transparency obligations",
-    "61": "ongoing monitoring retention"
-  },
-  "controls": [
-    "risk_tier_degradation_on_drift",
-    "human_gate_before_high_impact_action",
-    "session_report_export_for_transparency",
-    "art61_retention_evidence"
-  ],
-  "required_config": [
-    "role",
-    "risk_class"
-  ],
-  "high_risk_required_config": [
-    "retention_days",
-    "logging_enabled",
-    "risk_management_system"
-  ],
-  "phase": "C"
+  "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap",
+  "description": "EU AI Act compliance checking pack. One definition file, one gate. Not a legal certification."
 }

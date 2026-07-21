@@ -1,1 +1,0 @@
-{"name":"gpai-deny-no-systemic-flag","config":{"enabled":true,"role":"provider","risk_class":"gpai","gpai_provider":true,"gpai_training_summary":{"version":"1","content":"summary"}},"expect":{"decision":"deny","deny_code":"EU_AI_ACT_GPAI_SYSTEMIC_FLAG_MISSING"}}

@@ -1,29 +1,19 @@
 # eu-ai-act-checker
 
-Fail-closed EU AI Act LRP **compliance checking pack** for AEP.
+EU AI Act compliance checking pack for AEP. Not a legal certification.
 
-This is a technical control pack. It is **not** a legal certification of Regulation (EU) 2024/1689 conformity.
+## One definition file
 
-## Build
+`EU-AI-ACT-PACK.json` - controls, roles, risk classes, Annex assist, evidence schemas, fixtures.
 
-```bash
-cd crate
-cargo test
-cargo build --release
-```
-
-## Run conformance
+## One gate
 
 ```bash
-eu-ai-act-checker --pack-root ../wizard/lrp/modules/eu-ai-act conformance
+./gates/gate-eu-ai-act.sh
 ```
 
-## Gate
+## Build (once)
 
 ```bash
-./gates/gate-eu-ai-act-lrp.sh
+cd crate && cargo test && cargo build --release
 ```
-
-## Config
-
-When LRP `eu-ai-act` is enabled, require at least `role` and `risk_class`. For `high_risk` also require retention, logging, incident reporting and risk management evidence.

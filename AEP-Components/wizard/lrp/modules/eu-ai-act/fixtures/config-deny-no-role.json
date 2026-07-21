@@ -1,1 +1,0 @@
-{"name":"config-deny-no-role","config":{"enabled":true,"risk_class":"high_risk","retention_days":180,"logging_enabled":true,"risk_management_system":{"version":"1","risk_tiers":["high"],"owner":"ops"}},"expect":{"decision":"deny","deny_code":"EU_AI_ACT_ROLE_MISSING"}}

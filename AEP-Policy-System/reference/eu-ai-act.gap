@@ -142,7 +142,7 @@
   "action": {
     "type": "pipeline",
     "steps": [
-      "Load pack AEP-Components/wizard/lrp/modules/eu-ai-act",
+      "Load pack AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
       "Run eu-ai-act-checker validate_config and evaluate_action fail-closed"
     ]
   },
@@ -158,7 +158,7 @@
     "lrp_id": "eu-ai-act",
     "framework": "EU AI Act",
     "maturity": "enforced_v1_phase_c",
-    "control_catalog": "AEP-Components/wizard/lrp/modules/eu-ai-act/CONTROL-CATALOG.json",
+    "control_catalog": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
     "checker": "eu-ai-act-checker",
     "honesty": "compliance checking pack not legal certification"
   }
