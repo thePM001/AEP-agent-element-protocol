@@ -42,3 +42,9 @@ ucb-api-key.json
 ucb-api-key.recovery.txt
 **/ucb/manifests/.reload-stamp
 **/inference-config.json
+
+# Local diagram render tooling (do not ship)
+**/puppeteer-config.json
+**/*-rendered.svg
+vitest.config.ts
+**/.claude/

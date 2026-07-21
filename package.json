@@ -3,10 +3,6 @@
   "type": "module",
   "devDependencies": {
     "js-yaml": "^4.1.0",
-    "vitest": "^4.1.9",
     "yaml": "^2.9.0"
-  },
-  "dependencies": {
-    "mermaid": "^10.9.6"
   }
 }
