@@ -42,11 +42,10 @@ LRPs are sovereign states, regional unions, and international bodies and their r
 
 | File | Rule ID | Purpose |
 |------|---------|---------|
-| `aep-noship-distribution.gap` | `aep-noship-no-public-github` | `AEP-NOSHIP/` internal-only; never ship to GitHub, npm, or runtime images |
 | `../lattice-channel-mandatory.gap` | (YAML rules list) | Platform transport and distribution mandatory rules |
 
-Manifest: `AEP-Policy-System/platform/aep-noship-distribution.json`  
-Agent operator policy: `AEP-Policy-System/aep-noship-distribution.policy.yaml`
+
+| `changelog-public-surface.gap` | `changelog-public-surface.v1` | CHANGELOG product-only; ban internal distribution hygiene narratives |
 
 ## Compliance reference policies (LRPs)
 
