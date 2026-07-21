@@ -45,7 +45,6 @@ LRPs are sovereign states, regional unions, and international bodies and their r
 | `../lattice-channel-mandatory.gap` | (YAML rules list) | Platform transport and distribution mandatory rules |
 
 
-| `changelog-public-surface.gap` | `changelog-public-surface.v1` | CHANGELOG product-only; ban internal distribution hygiene narratives |
 
 ## Compliance reference policies (LRPs)
 
