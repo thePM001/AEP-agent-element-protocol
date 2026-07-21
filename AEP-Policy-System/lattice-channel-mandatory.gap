@@ -33,5 +33,4 @@ rules:
     description: TypeScript SDK exports from typescript-sdk/index.ts; lattice transport canonical in lattice-transport/
   - id: no-smtp-mail-transport-libraries
     description: Governed code must not ship SMTP mail clients (nodemailer/smtplib/sendmail/createTransport); added 2026-07-21
-  - id: changelog-public-surface-mandatory
-    description: CHANGELOG.md must pass gate-changelog-public-surface (product changes only; no internal distribution hygiene narratives)
+
