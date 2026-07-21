@@ -2,6 +2,17 @@
 
 All notable changes to the Agent Element Protocol (AEP) will be documented in this file.
 
+## [2.8.x] - 2026-07-21 (incident fix) - AEP-NOSHIP GitHub boundary
+
+### Fixed
+- **Removed** accidental `AEP-NOSHIP/` path from public GitHub `main` (must never ship)
+- Network egress no-SMTP **public** policy remains under `AEP-Policy-System/` only
+
+### Added (prevention)
+- `scripts/gate-no-noship-on-github.sh` - fail-closed tip scan for AEP-NOSHIP on publish candidates
+- Hardened `aep-noship-distribution` policy: GitHub approval cannot override NOSHIP exclusion
+- Lattice rules: `github-no-aep-noship-paths`, `public-policy-not-under-noship`
+
 ## [2.8.x] - 2026-07-21 (21.07.2026) - intermittent / August patch track
 
 > **Patch track note:** Standard policy enhancement for the AEP **2.8** line.
@@ -394,4 +405,3 @@ are now validated with the same mathematical rigour applied to agent outputs.
 - Z-band hierarchy for deterministic z-index ordering.
 - AEP prefix convention (`XX-NNNNN`).
 - AOT and JIT validation modes.
-
