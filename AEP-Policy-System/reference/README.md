@@ -15,6 +15,8 @@ SYSTEM (most permissive - top of lattice)
  |
  +-- security.gap (PII, secrets, injection, network bind, unicode)
  |
+ +-- network-egress-no-smtp.gap (SMTP / ports 25-465-587; added 2026-07-21)
+ |
 SANDBOX (most restrictive - bottom of lattice)
 ```
 
@@ -65,6 +67,7 @@ See [AEP-Components/wizard/README.md](../../AEP-Components/wizard/README.md) for
 
 ```bash
 aep lint-policy AEP-Policy-System/reference/security.gap
+aep lint-policy AEP-Policy-System/reference/network-egress-no-smtp.gap
 aep lint-policy AEP-Policy-System/reference/deployment.gap
 aep lint-policy AEP-Policy-System/reference/writing.gap
 aep lint-policy AEP-Policy-System/reference/governance.gap

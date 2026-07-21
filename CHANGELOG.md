@@ -2,6 +2,24 @@
 
 All notable changes to the Agent Element Protocol (AEP) will be documented in this file.
 
+## [2.8.x] - 2026-07-21 (21.07.2026) - intermittent / August patch track
+
+> **Patch track note:** Standard policy enhancement for the AEP **2.8** line.
+> Added **2026-07-21** (display **21.07.2026**) as part of intermittent 2.8 updates
+> leading into the **August 2026** patch package, before **AEP 2.9** (planned September).
+
+### Added (security / network egress)
+- **`AEP-Policy-System/reference/network-egress-no-smtp.gap`** - reference lattice policy forbidding SMTP and message-submission TCP ports **25, 465, 587**, plus common mail transport libraries and `smtp://` schemes
+- **`AEP-Policy-System/network-egress-no-smtp.policy.yaml`** - operator-facing policy bundle (hard severity, `control_family: network_egress`)
+- Lattice mandatory rules: `no-smtp-outbound-ports`, `no-smtp-mail-transport-libraries` in `lattice-channel-mandatory.gap`
+- Operator note: host OUTPUT drop for 25/465/587 recommended on multi-tenant agent hosts
+- Docs: control family splits **network egress** (live TCP) from **artifact placement** (policy/code publish paths)
+
+### Clarifications
+- CRM HTTPS task types labeled EMAIL are not SMTP
+- `mailto:` browser handoff is not server-side SMTP
+- No product terms from private platform stacks; this is pure AEP 2.8 public policy lattice material
+
 ## [2.8.0] - 2026-06-23
 
 ### Changed (dynAEP / SDK layout)

@@ -1,0 +1,38 @@
+# AEP 2.8 standard policy enhancement
+# Added: 2026-07-21 (21.07.2026)
+# Track: 2.8 intermittent / August 2026 patch (before AEP 2.9 in September)
+# Control family: network_egress
+# Reference GAP: AEP-Policy-System/reference/network-egress-no-smtp.gap
+
+name: network-egress-no-smtp
+aep_version: "2.8"
+added: "2026-07-21"
+added_display: "21.07.2026"
+severity: hard
+control_family: network_egress
+
+description: >
+  Agents and product services must not open SMTP or message-submission
+  TCP ports (25, 465, 587). Mail transport libraries and smtp:// schemes
+  are forbidden in governed code and agent tooling.
+
+rules:
+  - id: no-smtp-client-libraries
+    description: Reject nodemailer, smtplib, sendmail, msmtp, ssmtp, createTransport, PHPMailer, SES SendRawEmail clients
+  - id: no-mail-submission-ports
+    description: Reject TCP connect/listen on ports 25, 465, 587
+  - id: no-smtp-url-scheme
+    description: Reject smtp:// and smtps:// in agent actions and product config
+  - id: runtime-mail-port-proof
+    description: Session completion requires zero sockets on 25/465/587
+
+enforcement_hints:
+  code_scan: mail_transport_scanner
+  shell_admission: deny_mail_port_dials
+  runtime_gate: ss_or_proc_net_mail_ports
+  host_plane: optional_output_drop_25_465_587
+
+not_in_scope:
+  - HTTPS CRM task types labeled EMAIL
+  - mailto: browser client handoff
+  - Read-only documentation that names port numbers without dialing them

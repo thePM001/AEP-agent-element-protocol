@@ -32,4 +32,7 @@ rules:
   - id: typescript-sdk-unified-surface
     description: TypeScript SDK exports from typescript-sdk/index.ts; lattice transport canonical in lattice-transport/
   - id: aep-noship-no-public-github
-    description: AEP-NOSHIP/ is internal-only; must not ship to GitHub, npm, or runtime distributions
+    description: AEP-NOSHIP/ is internal-only; must not ship to GitHub, npm, or runtime distributions  - id: no-smtp-outbound-ports
+    description: Agents and services must not open SMTP/submission TCP 25/465/587 (network_egress; added 2026-07-21 for 2.8 August patch track)
+  - id: no-smtp-mail-transport-libraries
+    description: Governed code must not ship SMTP mail clients (nodemailer/smtplib/sendmail/createTransport); added 2026-07-21
