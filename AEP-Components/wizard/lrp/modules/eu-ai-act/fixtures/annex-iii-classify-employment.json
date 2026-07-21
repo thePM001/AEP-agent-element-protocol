@@ -1,0 +1,1 @@
+{"name":"annex-iii-classify-employment","classify":{"use_cases":["employment_hr"],"tags":["recruitment_ai"]},"expect":{"suggested_class":"high_risk","decision":"allow"}}

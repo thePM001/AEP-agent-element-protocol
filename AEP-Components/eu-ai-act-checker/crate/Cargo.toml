@@ -1,0 +1,24 @@
+[workspace]
+
+
+[package]
+name = "eu-ai-act-checker"
+version = "1.0.0"
+edition = "2021"
+description = "Fail-closed EU AI Act LRP compliance checker for AEP"
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+clap = { version = "4", features = ["derive", "env"] }
+
+[lib]
+name = "eu_ai_act_checker"
+path = "src/lib.rs"
+
+[[bin]]
+name = "eu-ai-act-checker"
+path = "src/main.rs"

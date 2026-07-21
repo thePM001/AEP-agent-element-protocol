@@ -1,0 +1,10 @@
+{
+  "version": "1.0.0",
+  "classes": [
+    {"id": "prohibited", "description": "Prohibited AI practices under Art. 5", "control_mode": "always_deny_catalog"},
+    {"id": "high_risk", "description": "High-risk AI systems", "control_mode": "full_phase_a"},
+    {"id": "limited", "description": "Limited risk transparency obligations", "control_mode": "transparency"},
+    {"id": "minimal", "description": "Minimal risk baseline logging", "control_mode": "baseline"},
+    {"id": "gpai", "description": "General-purpose AI provider track", "control_mode": "gpai_phase_c"}
+  ]
+}

@@ -40,16 +40,7 @@
       "description": "Commerce and spend-cap subprotocol. Not an LRP."
     }
   ],
-  "platform_mandatory_policies": [
-    {
-      "id": "aep-noship-no-public-github",
-      "name": "AEP-NOSHIP Distribution Boundary",
-      "gap_ref": "AEP-Policy-System/reference/aep-noship-distribution.gap",
-      "mandatory_gap": "AEP-Policy-System/lattice-channel-mandatory.gap",
-      "policy_yaml": "AEP-Policy-System/aep-noship-distribution.policy.yaml",
-      "description": "AEP-NOSHIP/ internal assets must never ship to GitHub, npm, or runtime distributions. EPSCOM/platform policy, not an LRP."
-    }
-  ],
+  "platform_mandatory_policies": [],
   "lrps": [
     {
       "id": "eu-ai-act",
@@ -59,9 +50,13 @@
       "jurisdiction": "European Union",
       "priority": 155,
       "default_enabled": false,
-      "description": "High-risk AI risk management, transparency, human oversight and post-market monitoring.",
+      "description": "Fail-closed EU AI Act compliance checking pack (Phase A+B+C assistive Annex). Not a legal certification.",
       "module_manifest": "wizard/lrp/modules/eu-ai-act.json",
-      "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap"
+      "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap",
+      "maturity": "enforced_v1_phase_c",
+      "pack_root": "wizard/lrp/modules/eu-ai-act",
+      "control_catalog": "wizard/lrp/modules/eu-ai-act/CONTROL-CATALOG.json",
+      "checker": "eu-ai-act-checker"
     },
     {
       "id": "gdpr",

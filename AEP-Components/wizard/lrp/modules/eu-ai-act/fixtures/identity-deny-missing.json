@@ -1,0 +1,1 @@
+{"name":"identity-deny-missing","report":{"session_id":"s1","role":"deployer","risk_class":"high_risk","actions_summary":[]},"require_agent_identity":true,"expect":{"decision":"deny","deny_code":"EU_AI_ACT_IDENTITY_MISSING"}}

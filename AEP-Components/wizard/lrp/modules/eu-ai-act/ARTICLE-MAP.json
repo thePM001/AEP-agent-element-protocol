@@ -1,0 +1,52 @@
+{
+  "version": "1.2.0",
+  "regulation": "Regulation (EU) 2024/1689",
+  "articles": {
+    "5": [
+      "eu-ai-act.art5.prohibited-practices"
+    ],
+    "9": [
+      "eu-ai-act.art9.rms-present",
+      "eu-ai-act.art9.fria-record"
+    ],
+    "10": [
+      "eu-ai-act.art10.data-governance"
+    ],
+    "11": [
+      "eu-ai-act.art11.technical-docs-index"
+    ],
+    "12": [
+      "eu-ai-act.art12.logging-enabled"
+    ],
+    "13": [
+      "eu-ai-act.art13.transparency-export",
+      "eu-ai-act.identity.agent-identity"
+    ],
+    "14": [
+      "eu-ai-act.art14.human-oversight-gate"
+    ],
+    "15": [
+      "eu-ai-act.art15.execution-rings"
+    ],
+    "27": [
+      "eu-ai-act.art9.fria-record"
+    ],
+    "50": [
+      "eu-ai-act.art13.transparency-export",
+      "eu-ai-act.identity.agent-identity"
+    ],
+    "61": [
+      "eu-ai-act.art61.retention-configured"
+    ],
+    "73": [
+      "eu-ai-act.art73.incident-report-hook"
+    ],
+    "annex_iii": [
+      "eu-ai-act.annex-iii.assistive-classify"
+    ]
+  },
+  "deprecated_aliases": {
+    "52": "50"
+  },
+  "annex_iii_assist": "ANNEX-III-ASSIST.json"
+}

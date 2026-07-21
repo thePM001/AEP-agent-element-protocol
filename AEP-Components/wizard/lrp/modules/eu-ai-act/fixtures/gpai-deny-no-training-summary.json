@@ -1,0 +1,1 @@
+{"name":"gpai-deny-no-training-summary","config":{"enabled":true,"role":"provider","risk_class":"gpai","gpai_provider":true,"gpai_systemic_risk":false},"expect":{"decision":"deny","deny_code":"EU_AI_ACT_GPAI_TRAINING_SUMMARY_MISSING"}}

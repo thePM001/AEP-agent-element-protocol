@@ -1,16 +1,23 @@
 {
   "manifest_version": "1",
   "id": "eu-ai-act",
-  "version": "2.8.0",
+  "version": "3.2.0",
   "kind": "compliance",
-  "path": "AEP-Policy-System/reference/",
-  "description": "EU AI Act compliance pack (GAP reference).",
+  "path": "AEP-Components/wizard/lrp/modules/eu-ai-act",
+  "description": "EU AI Act compliance checking pack (fail-closed Phase A+B). Not a legal certification.",
+  "maturity": "enforced_v1_phase_c",
   "requires": [
     "aep-base-node",
     "dynaep-core"
   ],
   "lrp_id": "eu-ai-act",
   "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap",
+  "control_catalog": "AEP-Components/wizard/lrp/modules/eu-ai-act/CONTROL-CATALOG.json",
+  "implementation": {
+    "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap",
+    "checker": "AEP-Components/eu-ai-act-checker",
+    "pack_root": "AEP-Components/wizard/lrp/modules/eu-ai-act"
+  },
   "docks": {
     "primary": "regulation_module",
     "allowed": [
@@ -19,13 +26,26 @@
   },
   "capabilities": [
     "compliance:eu-ai-act",
+    "compliance:eu-ai-act:check",
     "gap:evaluate"
   ],
   "actions": [
     {
       "id": "enable_eu-ai-act",
-      "description": "Enable EU AI Act LRP",
+      "description": "Enable EU AI Act LRP checking pack",
       "setup_hook": "sync_lrp",
+      "params": {
+        "lrp_id": "eu-ai-act",
+        "require_config": [
+          "role",
+          "risk_class"
+        ]
+      }
+    },
+    {
+      "id": "evaluate_eu-ai-act",
+      "description": "Evaluate action via eu-ai-act-checker",
+      "method": "evaluate_lrp",
       "params": {
         "lrp_id": "eu-ai-act"
       }
@@ -36,21 +56,23 @@
       "id": "sync_eu-ai-act",
       "setup_hook": "sync_lrp",
       "params": {
-        "lrp_id": "eu-ai-act"
+        "lrp_id": "eu-ai-act",
+        "pack_root": "AEP-Components/wizard/lrp/modules/eu-ai-act",
+        "validate_pack": true
       }
     }
   ],
   "resource_requirements": {
-    "min_memory_mb": 32,
-    "min_disk_mb": 5,
+    "min_memory_mb": 64,
+    "min_disk_mb": 20,
     "requires_internet": false,
     "gpu_required": false
   },
   "cca": {
-    "summary": "EU AI Act regulatory compliance via GAP policies.",
+    "summary": "EU AI Act fail-closed compliance checking via eu-ai-act-checker and control pack.",
     "use_when": [
-      "user requests EU AI Act",
-      "regulated industry deployment"
+      "user requests EU AI Act checking",
+      "regulated industry deployment with technical control enforcement"
     ],
     "avoid_when": [
       "no regulatory requirements"
@@ -58,9 +80,10 @@
     "pairs_with": [
       "gap-runtime-scanners",
       "wasm-policy-sandbox"
+    ],
+    "required_plan_fields": [
+      "eu_ai_act.role",
+      "eu_ai_act.risk_class"
     ]
-  },
-  "implementation": {
-    "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap"
   }
 }
