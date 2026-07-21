@@ -81,3 +81,11 @@ trust:
     forbidden_match: 500
   rewards:
     successful_action: 1
+# Hardened 2026-07-21 after accidental AEP-NOSHIP path on public GitHub
+rules_extra:
+  - id: approval_cannot_override_noship
+    description: Explicit GitHub push approval never authorizes AEP-NOSHIP inclusion
+  - id: gate-no-noship-on-github
+    description: Run scripts/gate-no-noship-on-github.sh before any github.com publish
+  - id: public_policies_not_under_noship
+    description: Public standard policies live under AEP-Policy-System only
