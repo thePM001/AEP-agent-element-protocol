@@ -2,17 +2,6 @@
 
 All notable changes to the Agent Element Protocol (AEP) will be documented in this file.
 
-## [2.8.x] - 2026-07-21 (incident fix) - AEP-NOSHIP GitHub boundary
-
-### Fixed
-- **Removed** accidental `AEP-NOSHIP/` path from public GitHub `main` (must never ship)
-- Network egress no-SMTP **public** policy remains under `AEP-Policy-System/` only
-
-### Added (prevention)
-- `scripts/gate-no-noship-on-github.sh` - fail-closed tip scan for AEP-NOSHIP on publish candidates
-- Hardened `aep-noship-distribution` policy: GitHub approval cannot override NOSHIP exclusion
-- Lattice rules: `github-no-aep-noship-paths`, `public-policy-not-under-noship`
-
 ## [2.8.x] - 2026-07-21 (21.07.2026) - intermittent / August patch track
 
 > **Patch track note:** Standard policy enhancement for the AEP **2.8** line.
@@ -46,8 +35,7 @@ All notable changes to the Agent Element Protocol (AEP) will be documented in th
 - CCA prompts inject full policy system via `registry-context.mjs` and `formatPolicySystemForPrompt()`
 - Plans always include `policy_overrides.policy_lattice` and `policy_overrides.regulation_lrps` when compliance LRPs enabled
 - `setup-agent.mjs` writes `config.policy_sections` on interactive install (parity with plan-executor)
-- Conformance: `AEP-NOSHIP/tests/conformance/cca-policy-system.test.mjs`
-- CCA imports `platform_mandatory_policies` from LRP catalog (NOSHIP documented as platform policy, not regulation LRP)
+- Conformance: `tests/conformance/cca-policy-system.test.mjs`
 
 ### Added
 - **AEP Base Node** mandatory Rust daemon with inference, validation, future and regulation docking ports
@@ -65,11 +53,9 @@ All notable changes to the Agent Element Protocol (AEP) will be documented in th
 - **Component registry** (`AEP-Base-Node/registry/`) for setup-agent and Composer Lite
 - **Subprotocol registry** (`AEP-Subprotocols/`) - Rust domain validators + `aep-subprotocol` CLI
 - **Canonical 2.8 layout**: `AEP-Base-Node/`, `AEP-Components/`, `AEP-SDKs/`, `AEP-Docks/`, `AEP-Connectors/`, `AEP-Policy-System/`, `AEP-User-Experience/`, `AEP-Composer-Lite/`
-- **`AEP-NOSHIP/`** internal engineering tree (`tests/`, `plans/`, `docs/`) excluded from runtime images and public GitHub distribution
-- **AEP-NOSHIP distribution policy** (EPSCOM platform mandatory, not an LRP): `AEP-Policy-System/reference/aep-noship-distribution.gap`, rule `aep-noship-no-public-github` in `lattice-channel-mandatory.gap`
 - **UCB** secured perimeter dock (`AEP-Docks/ucb/`) for non-AEP agent stacks
 - **Compliance regulation LRPs** (EU AI Act, GDPR, SOC 2, HIPAA, NIST AI RMF, ISO 42001) with reference GAP policies
-- Subprotocol and migration docs under `AEP-NOSHIP/docs/`; phase execution under `AEP-NOSHIP/plans/`
+- Subprotocol and migration docs under `docs/`; phase execution under `plans/`
 
 ### Changed
 - **LRP catalog taxonomy**: LRPs are sovereign/regional/international regulations only. Platform kernel contracts (`dynaep-action-lattice`, `lattice-channel-default`) and EPSCOM policies are not LRPs
@@ -78,7 +64,7 @@ All notable changes to the Agent Element Protocol (AEP) will be documented in th
 - TypeScript gateway commerce validation delegates to `aep-subprotocol` via `AEP-SDKs/typescript/aep-protocol/`
 - Repository forked from `NLA-AEP-2.75-open-protocol` to `NLA-AEP-v2.8-open-source`
 - Root README rewritten for 2.8 public tier scope
-- `NAME-POLICY.md` moved to `AEP-NOSHIP/docs/NAME-POLICY.md`
+- `NAME-POLICY.md` moved to `docs/NAME-POLICY.md`
 - `research-paper/` renamed to `AEP-Research-Paper/`
 - Policy and schema builders under `AEP-Policy-System/policy-builder/` and `AEP-Policy-System/schema-builder/`
 - Docks socket specs and UCD under `AEP-Docks/`
@@ -91,7 +77,7 @@ All notable changes to the Agent Element Protocol (AEP) will be documented in th
 
 ### Public vs internal scope
 - **Shipped**: Base Node, Lattice Channels, AgentMesh, POTOMITAN, dynAEP, Composer Lite, component registry, `BIOSECURITY.md` at repo root
-- **Not shipped** (`AEP-NOSHIP/`): tests, plans, internal docs, `NAME-POLICY.md`, conformance vitest harness sources
+- **Not shipped** (``): tests, plans, internal docs, `NAME-POLICY.md`, conformance vitest harness sources
 - Advanced validation engine features beyond the public tier are not included in this repository
 
 ## [2.75.0] - 2026-06-01
@@ -365,9 +351,9 @@ are now validated with the same mathematical rigour applied to agent outputs.
 - **Basic Resolver** (`sdk/sdk-aep-resolver.py`, `sdk/sdk-aep-resolver.ts`) - stateless, read-only proposal router that maps agent proposals to the correct validator pipeline (ui, workflow, api, event, iac), collects constraints and queries memory for fast-path hits.
 - **Memory Rego policies** (`aep-memory-policy.rego`) - OPA/Rego rules for memory entry validation (result values, registered elements, zero-error accepted entries).
 - **TLA+ specifications** (`docs/TLA+/AEP.tla`, `docs/TLA+/AEP_Memory.tla`) - standalone formal specs for core AEP invariants and memory-specific invariants including `MemoryDoesNotAffectDecision` and `MemoryAppendOnly`.
-- **Documentation** - `AEP-NOSHIP/docs/LATTICE-MEMORY.md` (architecture, API reference, storage backends), `AEP-NOSHIP/docs/RESOLVER.md` (routing logic, registry integration, API reference), `AEP-NOSHIP/docs/MIGRATION-v1-to-v2.md` (step-by-step migration guide).
+- **Documentation** - `docs/LATTICE-MEMORY.md` (architecture, API reference, storage backends), `docs/RESOLVER.md` (routing logic, registry integration, API reference), `docs/MIGRATION-v1-to-v2.md` (step-by-step migration guide).
 - **Examples** - `examples/with-memory/demo.py` (memory recording, attractor search, fast-path), `examples/with-resolver/demo.py` (multi-domain routing, memory integration).
-- **Test suite** - `AEP-NOSHIP/tests/test_memory.py`, `AEP-NOSHIP/tests/test_resolver.py`, `AEP-NOSHIP/tests/test_protocols.py`, `AEP-NOSHIP/tests/test_validator.py`.
+- **Test suite** - `tests/test_memory.py`, `tests/test_resolver.py`, `tests/test_protocols.py`, `tests/test_validator.py`.
 - Optional `memory_key` field on scene elements for memory persistence association.
 - Optional `memory_persistence` field on registry entries for validation history tracking.
 - Four new reserved names: `AEP Lattice Memory`, `AEP Basic Resolver`, `AEP Hyper-Resolver`, `AEP Memory Fabric`.
@@ -405,3 +391,4 @@ are now validated with the same mathematical rigour applied to agent outputs.
 - Z-band hierarchy for deterministic z-index ordering.
 - AEP prefix convention (`XX-NNNNN`).
 - AOT and JIT validation modes.
+
