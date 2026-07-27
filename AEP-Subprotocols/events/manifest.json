@@ -1,0 +1,8 @@
+{
+  "id": "events",
+  "version": "2.8.0",
+  "runtime": "rust",
+  "crate": "aep-subprotocol-events",
+  "entrypoints": ["AEP-Subprotocols/events/src/lib.rs"],
+  "reference_registry": "AEP-Subprotocols/events/reference-registry.json"
+}

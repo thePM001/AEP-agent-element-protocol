@@ -1,0 +1,26 @@
+//go:build !linux || !cgo
+
+package api
+
+import (
+	"context"
+	"os"
+
+	"github.com/nla-aep/aep-caw-framework/internal/approvals"
+	"github.com/nla-aep/aep-caw-framework/internal/config"
+	"github.com/nla-aep/aep-caw-framework/internal/policy"
+)
+
+// createExecveHandler is a no-op on non-Linux platforms.
+func createExecveHandler(cfg config.ExecveConfig, pol *policy.Engine, approvalMgr *approvals.Manager) any {
+	return nil
+}
+
+// startNotifyHandler is a no-op on non-Linux platforms or without CGO.
+// Unix socket enforcement via seccomp user-notify is Linux-only.
+func startNotifyHandler(ctx context.Context, parentSock *os.File, sessID string, pol *policy.Engine, store eventStore, broker eventBroker, execveHandler any, fileMonitorCfg config.SandboxSeccompFileMonitorConfig, landlockEnabled bool, blockList any, ptraceReady chan<- error) {
+	// Unix socket enforcement not available on this platform
+	if parentSock != nil {
+		_ = parentSock.Close()
+	}
+}

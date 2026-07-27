@@ -1,0 +1,35 @@
+{
+  "manifest_version": "1",
+  "id": "intercept",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/intercept/",
+  "description": "Pre/post action intercept hooks.",
+  "requires": [
+    "policy-engine",
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "intercept:pre",
+    "intercept:post"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 16,
+    "min_disk_mb": 5,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Hook points before and after governed actions.",
+    "use_when": [
+      "custom middleware"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/intercept/lib/index.ts"
+  }
+}

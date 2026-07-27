@@ -1,0 +1,92 @@
+{
+  "manifest_version": "1",
+  "id": "connector-zapier",
+  "version": "2.8.0",
+  "kind": "connector",
+  "path": "AEP-Connectors/zapier/",
+  "description": "UCB-only Zapier connector. All traffic via /ucb/v1/egress/zapier/**.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels",
+    "ucb",
+    "composer-lite"
+  ],
+  "capabilities": [
+    "connector:zapier",
+    "ucb:egress-proxy",
+    "integration:external-api"
+  ],
+  "actions": [
+    {
+      "id": "wire_zapier",
+      "description": "Wire Zapier connector egress routes",
+      "runtime": "plan",
+      "method": "connector_config"
+    },
+    {
+      "id": "probe_zapier",
+      "description": "Health probe for Zapier",
+      "runtime": "connector",
+      "method": "probe"
+    }
+  ],
+  "setup_hooks": [
+    {
+      "id": "zapier_connector_default",
+      "policy_section": "connectors",
+      "default": {
+        "zapier": {
+          "upstream": "https://api.zapier.com/v1"
+        }
+      }
+    }
+  ],
+  "composer": {
+    "palette": true,
+    "node_type": "connector"
+  },
+  "composer_node": {
+    "type": "connector",
+    "label": "Zapier",
+    "short": "ZA",
+    "color": "#475569",
+    "service": "zapier",
+    "ucb_only": true,
+    "description": "Zapier via UCB egress",
+    "registry_id": "connector-zapier"
+  },
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 10,
+    "requires_internet": true,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Connect Zapier. Requires UCB. Routes: /ucb/v1/egress/zapier/**.",
+    "use_when": [
+      "zapier",
+      "zap",
+      "zapier automation",
+      "zapier workflow"
+    ],
+    "avoid_when": [
+      "air-gapped with no external APIs",
+      "UCB disabled"
+    ],
+    "pairs_with": [
+      "ucb",
+      "aep-base-node",
+      "composer-lite"
+    ]
+  },
+  "implementation": {
+    "module": "AEP-Connectors/zapier/lib/zapier-connector.mjs",
+    "ucb_egress_prefix": "/ucb/v1/egress/zapier",
+    "auth_token_env": "AEP_ZAPIER_API_KEY"
+  },
+  "integration": {
+    "ucb_only": true,
+    "mcp_optional": null,
+    "nango_compatible": true
+  }
+}

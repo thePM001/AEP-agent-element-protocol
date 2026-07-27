@@ -1,0 +1,36 @@
+{
+  "manifest_version": "1",
+  "id": "eval",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/eval/",
+  "description": "Eval runner, rule generator, and ML metrics.",
+  "requires": [
+    "datasets",
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "eval:run",
+    "eval:rules",
+    "eval:ml-metrics"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 128,
+    "min_disk_mb": 50,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Eval-to-guardrail lifecycle with ML metrics.",
+    "use_when": [
+      "building guardrails from eval data"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/eval/lib/runner.ts"
+  }
+}

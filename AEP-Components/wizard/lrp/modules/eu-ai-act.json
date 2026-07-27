@@ -1,0 +1,13 @@
+{
+  "id": "eu-ai-act",
+  "framework": "EU AI Act",
+  "version": "2024/1689",
+  "maturity": "enforced_v1",
+  "dock": "regulation_module",
+  "definition": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
+  "gate": "AEP-Components/eu-ai-act-checker/gates/gate-eu-ai-act.sh",
+  "checker": "AEP-Components/eu-ai-act-checker",
+  "checker_bin": "eu-ai-act-checker",
+  "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap",
+  "description": "EU AI Act compliance checking pack. One definition file, one gate. Not a legal certification."
+}

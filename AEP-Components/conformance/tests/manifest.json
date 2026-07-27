@@ -1,0 +1,170 @@
+{
+ "suite": "aep-2.8-public",
+ "version": "2.8.0",
+ "description": "Mandatory checks for AEP 2.8 public-tier compliance claims",
+ "runner": "conformance/runner/run.sh",
+ "checks": [
+  {
+   "id": "CC-01",
+   "name": "PQEncryptedCapsule roundtrip",
+   "runner": "rust",
+   "crate": "aep-conformance"
+  },
+  {
+   "id": "CC-02",
+   "name": "Lattice Channel frame seal/open + contract gate",
+   "runner": "rust",
+   "crate": "aep-conformance"
+  },
+  {
+   "id": "CC-03",
+   "name": "AgentMesh trust-tier mTLS rotation",
+   "runner": "rust",
+   "crate": "aep-conformance"
+  },
+  {
+   "id": "CC-04",
+   "name": "POTOMITAN failover mode detection",
+   "runner": "rust",
+   "crate": "aep-conformance"
+  },
+  {
+   "id": "CC-05",
+   "name": "Offline mode without peers",
+   "runner": "rust",
+   "crate": "aep-conformance"
+  },
+  {
+   "id": "CC-06",
+   "name": "MeshSupervisor routing parity",
+   "runner": "rust",
+   "crate": "aep-conformance"
+  },
+  {
+   "id": "CC-07",
+   "name": "Lattice health frame on validation dock",
+   "runner": "rust",
+   "crate": "aep-conformance"
+  },
+  {
+   "id": "CC-08",
+   "name": "Docking rate limit enforcement",
+   "runner": "rust",
+   "crate": "aep-conformance"
+  },
+  {
+   "id": "CC-09",
+   "name": "Regulation lattice frame registers LRP and unlocks validation frames",
+   "runner": "rust",
+   "crate": "aep-conformance"
+  },
+  {
+   "id": "CC-13",
+   "name": "Plain ping wire format rejected",
+   "runner": "rust",
+   "crate": "aep-conformance"
+  },
+  {
+   "id": "CC-14",
+   "name": "Plain event wire format rejected",
+   "runner": "rust",
+   "crate": "aep-conformance"
+  },
+  {
+   "id": "CC-10",
+   "name": "Base Node health POTOMITAN failover E2E",
+   "runner": "vitest",
+   "file": "AEP-Components/conformance/runner/run.sh"
+  },
+  {
+   "id": "CC-11",
+   "name": "Docking trust_score rotates AgentMesh tier",
+   "runner": "vitest",
+   "file": "AEP-Components/conformance/runner/run.sh"
+  },
+  {
+   "id": "CC-12",
+   "name": "PQ capsule roundtrip via TypeScript bridge types",
+   "runner": "vitest",
+   "file": "AEP-Components/conformance/runner/run.sh"
+  },
+  {
+   "id": "CC-15",
+   "name": "Lattice-mandatory policy artifacts and frame builder",
+   "runner": "vitest",
+   "file": "AEP-Components/conformance/runner/run.sh"
+  },
+  {
+   "id": "CC-16",
+   "name": "writing.gap documentation style (em-dash, Oxford comma, double-hyphen)",
+   "runner": "node",
+   "file": "AEP-Components/conformance/runner/lint-writing-gap.mjs"
+  },
+  {
+   "id": "CC-17",
+   "name": "EPSCOM kernel writing.gap enforcement (aep-lattice-log)",
+   "runner": "vitest",
+   "file": "AEP-Components/conformance/runner/run.sh"
+  },
+  {
+   "id": "CC-18",
+   "name": "CCA full catalog coverage (59 components, graph-plan sync)",
+   "runner": "vitest",
+   "file": "AEP-Components/conformance/runner/run.sh"
+  },
+  {
+   "id": "CC-19",
+   "name": "CCA plan execution wiring (hooks, commerce, connectors)",
+   "runner": "vitest",
+   "file": "AEP-Components/conformance/runner/run.sh"
+  },
+  {
+   "id": "CC-20",
+   "name": "AEP CAW Framework registry and CCA integration",
+   "runner": "vitest",
+   "file": "AEP-Components/conformance/runner/run.sh"
+  },
+  {
+   "id": "CC-21",
+   "name": "Coding governance propose blast radius and verify_token",
+   "runner": "vitest",
+   "file": "AEP-Components/conformance/runner/run.sh"
+  },
+  {
+   "id": "CC-22",
+   "name": "Intent ledger solidify chain and AEP_SEMANTIC_STRICT guard",
+   "runner": "vitest",
+   "file": "AEP-Components/conformance/runner/run.sh"
+  },
+  {
+   "id": "CC-23",
+   "name": "Hyperlattice blast overlay projection (no parallel semantic DAG)",
+   "runner": "vitest",
+   "file": "AEP-Components/conformance/runner/run.sh"
+  },
+  {
+   "id": "CC-24",
+   "name": "Intent ledger solidify evidence-ledger cross-ref and chain verify",
+   "runner": "vitest",
+   "file": "AEP-Components/conformance/runner/run.sh"
+  },
+  {
+   "id": "CC-25",
+   "name": "Announce lattice frame binds agent_id and task manifest v1",
+   "runner": "vitest",
+   "file": "AEP-Components/conformance/runner/run.sh"
+  },
+  {
+   "id": "CC-26",
+   "name": "Lattice memory intent knots sqlite-vec plus USearch canonical plus optional Agentstream mirror",
+   "runner": "vitest",
+   "file": "AEP-Components/conformance/runner/run.sh"
+  },
+  {
+   "id": "CC-27",
+   "name": "Git integration auto-capture at propose and solidify for coding agents",
+   "runner": "vitest",
+   "file": "AEP-Components/conformance/runner/run.sh"
+  }
+ ]
+}

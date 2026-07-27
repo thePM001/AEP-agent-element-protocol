@@ -1,0 +1,36 @@
+{
+  "manifest_version": "1",
+  "id": "session",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/session/",
+  "description": "Agent session lifecycle, kill switch, and session manager.",
+  "requires": [
+    "policy-engine",
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "session:lifecycle",
+    "session:kill-switch",
+    "session:stats"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 10,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Session governance for agent runs.",
+    "use_when": [
+      "every AgentGateway deployment"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/session/lib/session.ts"
+  }
+}

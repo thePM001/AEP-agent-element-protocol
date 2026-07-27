@@ -1,0 +1,224 @@
+package config
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+
+	"github.com/nla-aep/aep-caw-framework/internal/platform"
+)
+
+// ConfigSource indicates where the configuration was loaded from.
+type ConfigSource int
+
+const (
+	// ConfigSourceEnv means config path was specified via AEP_CAW_CONFIG env var.
+	ConfigSourceEnv ConfigSource = iota
+	// ConfigSourceUser means config was loaded from user-local directory.
+	ConfigSourceUser
+	// ConfigSourceSystem means config was loaded from system-wide directory.
+	ConfigSourceSystem
+	// ConfigSourceBundle means config was loaded from the macOS .app bundle Resources.
+	ConfigSourceBundle
+)
+
+// String returns a human-readable name for the config source.
+func (s ConfigSource) String() string {
+	switch s {
+	case ConfigSourceEnv:
+		return "env"
+	case ConfigSourceUser:
+		return "user"
+	case ConfigSourceSystem:
+		return "system"
+	case ConfigSourceBundle:
+		return "bundle"
+	default:
+		return "unknown"
+	}
+}
+
+// InitializePlatform creates and configures a platform based on the config.
+func InitializePlatform(cfg *Config) (platform.Platform, error) {
+	opts := platform.PlatformOptions{
+		Mode:            cfg.Platform.Mode,
+		FallbackEnabled: cfg.Platform.Fallback.Enabled,
+		FallbackOrder:   cfg.Platform.Fallback.Order,
+	}
+
+	p, err := platform.NewWithOptions(opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize platform: %w", err)
+	}
+
+	// Validate platform capabilities meet requirements
+	caps := p.Capabilities()
+
+	if cfg.Sandbox.Enabled && !cfg.Sandbox.AllowDegraded {
+		if caps.IsolationLevel < platform.IsolationFull {
+			return nil, fmt.Errorf(
+				"platform %s has degraded isolation (level %s), "+
+					"set sandbox.allow_degraded=true to continue",
+				p.Name(), caps.IsolationLevel,
+			)
+		}
+	}
+
+	return p, nil
+}
+
+// GetMountPoint returns the appropriate mount point for the current platform.
+func GetMountPoint(cfg *Config) string {
+	mode := platform.ParsePlatformMode(cfg.Platform.Mode)
+
+	switch mode {
+	case platform.ModeLinuxNative:
+		return cfg.Platform.MountPoints.Linux
+	case platform.ModeDarwinNative, platform.ModeDarwinLima:
+		return cfg.Platform.MountPoints.Darwin
+	case platform.ModeWindowsNative:
+		return cfg.Platform.MountPoints.Windows
+	case platform.ModeWindowsWSL2:
+		return cfg.Platform.MountPoints.WindowsWSL2
+	default:
+		// Fallback based on runtime OS
+		switch runtime.GOOS {
+		case "windows":
+			return cfg.Platform.MountPoints.Windows
+		case "darwin":
+			return cfg.Platform.MountPoints.Darwin
+		default:
+			return cfg.Platform.MountPoints.Linux
+		}
+	}
+}
+
+// GetDataDir returns the platform-appropriate data directory.
+func GetDataDir() string {
+	switch runtime.GOOS {
+	case "windows":
+		if dir := os.Getenv("PROGRAMDATA"); dir != "" {
+			return dir + `\aep-caw`
+		}
+		return `C:\ProgramData\aep-caw`
+	case "darwin":
+		return "/usr/local/var/aep-caw"
+	default:
+		return "/var/lib/aep-caw"
+	}
+}
+
+// GetConfigDir returns the platform-appropriate config directory.
+func GetConfigDir() string {
+	switch runtime.GOOS {
+	case "windows":
+		if dir := os.Getenv("PROGRAMDATA"); dir != "" {
+			return dir + `\aep-caw`
+		}
+		return `C:\ProgramData\aep-caw`
+	case "darwin":
+		return "/usr/local/etc/aep-caw"
+	default:
+		return "/etc/aep-caw"
+	}
+}
+
+// GetPoliciesDir returns the platform-appropriate policies directory.
+func GetPoliciesDir() string {
+	return GetConfigDir() + string(os.PathSeparator) + "policies"
+}
+
+// GetBundleResourcesDir returns the Resources directory inside the macOS .app bundle,
+// or empty string if not running from a bundle or not on macOS.
+func GetBundleResourcesDir() string {
+	if runtime.GOOS != "darwin" {
+		return ""
+	}
+	execPath, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	execPath, err = filepath.EvalSymlinks(execPath)
+	if err != nil {
+		return ""
+	}
+	// Check if running from inside a .app bundle (e.g. /Applications/AepCaw.app/Contents/MacOS/aep-caw)
+	if idx := strings.Index(execPath, ".app/"); idx >= 0 {
+		return filepath.Join(execPath[:idx+4], "Contents", "Resources")
+	}
+	return ""
+}
+
+// GetUserConfigDir returns the user-specific config directory.
+func GetUserConfigDir() string {
+	home, _ := os.UserHomeDir()
+	switch runtime.GOOS {
+	case "windows":
+		if appdata := os.Getenv("APPDATA"); appdata != "" {
+			return appdata + `\aep-caw`
+		}
+		return home + `\AppData\Roaming\aep-caw`
+	case "darwin":
+		return home + "/Library/Application Support/aep-caw"
+	default:
+		if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
+			return xdg + "/aep-caw"
+		}
+		return home + "/.config/aep-caw"
+	}
+}
+
+// GetUserDataDir returns the user-specific data directory.
+func GetUserDataDir() string {
+	home, _ := os.UserHomeDir()
+	switch runtime.GOOS {
+	case "windows":
+		if appdata := os.Getenv("APPDATA"); appdata != "" {
+			return appdata + `\aep-caw`
+		}
+		return home + `\AppData\Roaming\aep-caw`
+	case "darwin":
+		return home + "/Library/Application Support/aep-caw"
+	default:
+		if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
+			return xdg + "/aep-caw"
+		}
+		return home + "/.local/share/aep-caw"
+	}
+}
+
+// GetUserStateDir returns the user-specific state directory used for ephemeral
+// runtime artifacts (e.g., WTP WAL/cursor/replay store).
+//
+// Linux: honors XDG_STATE_HOME with a fallback to ~/.local/state, per the
+// XDG Base Directory Specification.
+//
+// macOS: there is no canonical state directory; we reuse the same path as
+// GetUserDataDir (~/Library/Application Support/aep-caw).
+//
+// Windows: state lives under LOCALAPPDATA (non-roaming), NOT APPDATA. This
+// is a deliberate divergence from GetUserDataDir, which uses APPDATA
+// (roaming). Per-machine WAL segments, cursor positions, and replay-store
+// shards must not be roamed across hosts: they are tightly coupled to the
+// node's seq counter and would corrupt the chain if synced. State here is
+// machine-local by design; user-facing data (settings, history) stays in
+// APPDATA where roaming is appropriate.
+func GetUserStateDir() string {
+	home, _ := os.UserHomeDir()
+	switch runtime.GOOS {
+	case "windows":
+		if appdata := os.Getenv("LOCALAPPDATA"); appdata != "" {
+			return appdata + `\aep-caw`
+		}
+		return home + `\AppData\Local\aep-caw`
+	case "darwin":
+		return home + "/Library/Application Support/aep-caw"
+	default:
+		if xdg := os.Getenv("XDG_STATE_HOME"); xdg != "" {
+			return xdg + "/aep-caw"
+		}
+		return home + "/.local/state/aep-caw"
+	}
+}

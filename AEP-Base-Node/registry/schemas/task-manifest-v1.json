@@ -1,0 +1,121 @@
+{
+ "$schema": "http://json-schema.org/draft-07/schema#",
+ "$id": "https://aep.protocol.local/schemas/task-manifest-v1.json",
+ "title": "AEP Task Manifest v1",
+ "description": "Per-agent task contract: intent, trust, egress routes, MCP tools. Enforced at UCB ingress and Base Node docks.",
+ "type": "object",
+ "required": [
+ "manifest_version",
+ "id",
+ "agent_id",
+ "intent",
+ "trust",
+ "provisional",
+ "synthesized_by"
+ ],
+ "additionalProperties": false,
+ "properties": {
+ "manifest_version": { "const": "1" },
+ "id": { "type": "string", "minLength": 1 },
+ "agent_id": { "type": "string", "minLength": 1 },
+ "session_id": { "type": "string" },
+ "intent": {
+ "type": "object",
+ "required": ["summary", "allowed_operations"],
+ "properties": {
+ "summary": { "type": "string", "minLength": 1 },
+ "allowed_operations": {
+ "type": "array",
+ "items": { "type": "string" },
+ "minItems": 1
+ },
+ "caw_profile": {
+ "type": "string",
+ "description": "GAP-compiled CAW mount profile id (dev.aep.caw/* source)"
+ },
+ "gap_address": {
+ "type": "string",
+ "description": "Authoritative GAP instruction address for agent sandbox profile"
+ },
+ "coding_governance": {
+ "type": "object",
+ "properties": {
+ "intent_id": { "type": "string" },
+ "require_propose": { "type": "boolean" },
+ "statement": { "type": ["string", "null"] },
+ "envelope": { "type": "object" },
+ "blast_radius": { "type": "object" },
+ "announced_at": { "type": "string" }
+ }
+ }
+ }
+ },
+ "trust": {
+ "type": "object",
+ "required": ["tier", "max_trust_score"],
+ "properties": {
+ "tier": { "enum": ["provisional", "standard", "elevated"] },
+ "max_trust_score": { "type": "integer", "minimum": 0, "maximum": 1000 }
+ }
+ },
+ "agentmesh": {
+ "type": "object",
+ "description": "SPIFFE/DID binding reference; full bundle attached at dock",
+ "properties": {
+ "spiffe_id": { "type": "string" },
+ "did": { "type": "string" }
+ }
+ },
+ "egress": {
+ "type": "object",
+ "properties": {
+ "routes": {
+ "type": "array",
+ "items": {
+ "type": "object",
+ "required": ["path_prefix", "upstream"],
+ "properties": {
+ "path_prefix": { "type": "string" },
+ "upstream": { "type": "string", "format": "uri" },
+ "access_rules": {
+ "type": "array",
+ "items": {
+ "type": "object",
+ "required": ["action", "method", "path"],
+ "properties": {
+ "action": { "enum": ["ALLOW", "DENY"] },
+ "method": { "type": "string" },
+ "path": { "type": "string" }
+ }
+ }
+ }
+ }
+ }
+ }
+ }
+ },
+ "mcp": {
+ "type": "object",
+ "properties": {
+ "allowed_tools": { "type": "array", "items": { "type": "string" } },
+ "denied_tools": { "type": "array", "items": { "type": "string" } }
+ }
+ },
+ "provisional": { "type": "boolean" },
+ "synthesized_by": {
+ "enum": [
+ "provided",
+ "cca_plan",
+ "gap_constrained",
+ "constrained_decoder",
+ "llm_structured"
+ ]
+ },
+ "promotion_required": {
+ "type": "array",
+ "items": { "enum": ["cca", "regulation_dock", "human"] }
+ },
+ "created_at_unix": { "type": "integer", "minimum": 0 },
+ "expires_at_unix": { "type": "integer", "minimum": 0 }
+ }
+}

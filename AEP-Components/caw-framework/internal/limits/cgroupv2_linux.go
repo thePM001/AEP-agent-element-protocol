@@ -1,0 +1,166 @@
+//go:build linux
+
+package limits
+
+import (
+	"bufio"
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"syscall"
+	"time"
+)
+
+type CgroupV2Limits struct {
+	MaxMemoryBytes int64
+	CPUQuotaPct    int // percentage of one core
+	PidsMax        int
+}
+
+type CgroupV2 struct {
+	Path string
+}
+
+func DetectCgroupV2() bool {
+	_, err := os.Stat("/sys/fs/cgroup/cgroup.controllers")
+	return err == nil
+}
+
+// CurrentCgroupDir returns the cgroup v2 directory for the current process (under /sys/fs/cgroup).
+func CurrentCgroupDir() (string, error) {
+	b, err := os.ReadFile("/proc/self/cgroup")
+	if err != nil {
+		return "", err
+	}
+	// v2 unified format: "0::/path"
+	line := strings.TrimSpace(string(b))
+	if line == "" {
+		return "", fmt.Errorf("empty /proc/self/cgroup")
+	}
+	parts := strings.Split(line, ":")
+	if len(parts) < 3 {
+		return "", fmt.Errorf("unexpected /proc/self/cgroup: %q", line)
+	}
+	p := parts[len(parts)-1]
+	if p == "" {
+		p = "/"
+	}
+	return filepath.Join("/sys/fs/cgroup", strings.TrimPrefix(p, "/")), nil
+}
+
+
+func (c *CgroupV2) Close(ctx context.Context) error {
+	if c == nil || c.Path == "" {
+		return nil
+	}
+	// Wait briefly for the cgroup to become unpopulated before removing.
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if ok, _ := cgroupUnpopulated(c.Path); ok {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(25 * time.Millisecond):
+		}
+	}
+	if err := os.Remove(c.Path); err != nil && !errors.Is(err, syscall.ENOENT) {
+		return err
+	}
+	return nil
+}
+
+func cpuMaxFromPct(pct int) (quota int, period int) {
+	period = 100000 // 100ms
+	if pct <= 0 {
+		return 0, period
+	}
+	if pct > 1000 {
+		pct = 1000
+	}
+	quota = period * pct / 100
+	if quota < 1000 {
+		quota = 1000
+	}
+	return quota, period
+}
+
+func sanitizeCgroupName(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "aep-caw"
+	}
+	var b strings.Builder
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z':
+			b.WriteRune(r)
+		case r >= 'A' && r <= 'Z':
+			b.WriteRune(r)
+		case r >= '0' && r <= '9':
+			b.WriteRune(r)
+		case r == '-' || r == '_' || r == '.':
+			b.WriteRune(r)
+		default:
+			b.WriteByte('_')
+		}
+	}
+	out := b.String()
+	out = strings.Trim(out, "._-")
+	if out == "" {
+		return "aep-caw"
+	}
+	return out
+}
+
+// enableControllers writes "+<ctrl>" to parentDir/cgroup.subtree_control for each
+// controller in ctrls. On the first write failure it returns a wrapped
+// *EnableControllersError; on success it returns nil. This is a change from
+// prior behavior, which silently continued past per-controller errors and
+// masked delegation issues (issue #197).
+func enableControllers(parentDir string, ctrls []string) error {
+	return enableControllersFS(osCgroupFS{}, parentDir, ctrls)
+}
+
+func enableControllersFS(fsys cgroupFS, parentDir string, ctrls []string) error {
+	path := filepath.Join(parentDir, "cgroup.subtree_control")
+	f, err := fsys.OpenFile(path, os.O_WRONLY, 0)
+	if err != nil {
+		return &EnableControllersError{
+			ParentDir:  parentDir,
+			Controller: "*",
+			Err:        err,
+		}
+	}
+	defer f.Close()
+	for _, c := range ctrls {
+		if _, err := f.WriteString("+" + c); err != nil {
+			return &EnableControllersError{
+				ParentDir:  parentDir,
+				Controller: c,
+				Err:        err,
+			}
+		}
+	}
+	return nil
+}
+
+func cgroupUnpopulated(dir string) (bool, error) {
+	b, err := os.ReadFile(filepath.Join(dir, "cgroup.events"))
+	if err != nil {
+		return false, err
+	}
+	sc := bufio.NewScanner(strings.NewReader(string(b)))
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if strings.HasPrefix(line, "populated ") {
+			v := strings.TrimSpace(strings.TrimPrefix(line, "populated "))
+			return v == "0", nil
+		}
+	}
+	return false, nil
+}

@@ -1,0 +1,332 @@
+version: 2
+project_name: aep-caw
+
+before:
+  hooks:
+    - go mod download
+    - ./scripts/build-envshim.sh
+    - ./scripts/build-ptracer.sh
+
+builds:
+  # Linux amd64: CGO enabled for full seccomp user-notify support.
+  # Links dynamically against system libseccomp (>=2.5). The kernel
+  # flag SECCOMP_FILTER_FLAG_WAIT_KILLABLE_RECV is set via the raw
+  # seccomp(2) syscall path; see internal/platform/linux/seccomp/.
+  - id: aep-caw-linux-amd64
+    main: ./cmd/aep-caw
+    binary: aep-caw
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - linux
+    goarch:
+      - amd64
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}}
+
+  # Linux arm64: CGO enabled (cross-compiled). Links dynamically
+  # against arm64 libseccomp from Ubuntu multiarch
+  # (libseccomp-dev:arm64). PKG_CONFIG_LIBDIR points at the arm64
+  # pkgconfig path so the amd64 host's pkg-config doesn't pick up
+  # x86_64 libseccomp.
+  - id: aep-caw-linux-arm64
+    main: ./cmd/aep-caw
+    binary: aep-caw
+    env:
+      - CGO_ENABLED=1
+      - CC=aarch64-linux-gnu-gcc
+      - PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
+    goos:
+      - linux
+    goarch:
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}}
+
+  - id: aep-caw-darwin
+    main: ./cmd/aep-caw
+    binary: aep-caw
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}}
+
+  - id: aep-caw-windows
+    main: ./cmd/aep-caw
+    binary: aep-caw
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}}
+
+  - id: shim-linux
+    main: ./cmd/aep-caw-shell-shim
+    binary: aep-caw-shell-shim
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+  - id: shim-darwin
+    main: ./cmd/aep-caw-shell-shim
+    binary: aep-caw-shell-shim
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+  # unixwrap: seccomp wrapper for Linux amd64. CGO enabled; links
+  # dynamically against system libseccomp (>=2.5).
+  - id: unixwrap-linux-amd64
+    main: ./cmd/aep-caw-unixwrap
+    binary: aep-caw-unixwrap
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - linux
+    goarch:
+      - amd64
+    ldflags:
+      - -s -w
+
+  # unixwrap: seccomp wrapper for Linux arm64 (cross-compiled). Links
+  # dynamically against arm64 libseccomp from Ubuntu multiarch
+  # (libseccomp-dev:arm64). PKG_CONFIG_LIBDIR set to the arm64
+  # multiarch pkgconfig path (fail-closed: replaces default search
+  # path so the amd64 host pkg-config can't pick up x86_64 .pc files).
+  - id: unixwrap-linux-arm64
+    main: ./cmd/aep-caw-unixwrap
+    binary: aep-caw-unixwrap
+    env:
+      - CGO_ENABLED=1
+      - CC=aarch64-linux-gnu-gcc
+      - PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
+    goos:
+      - linux
+    goarch:
+      - arm64
+    ldflags:
+      - -s -w
+
+  # stub: exec redirect proxy for FUSE/seccomp interception
+  - id: stub-linux
+    main: ./cmd/aep-caw-stub
+    binary: aep-caw-stub
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+  - id: stub-darwin
+    main: ./cmd/aep-caw-stub
+    binary: aep-caw-stub
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+  # macwrap: XPC sandbox wrapper for macOS (requires CGO)
+  # NOTE: This build requires macOS with Xcode to compile - SKIPPED in CI
+  # Build locally with: CGO_ENABLED=1 go build -o bin/aep-caw-macwrap ./cmd/aep-caw-macwrap
+  # - id: macwrap-darwin
+  #   main: ./cmd/aep-caw-macwrap
+  #   binary: aep-caw-macwrap
+  #   env:
+  #     - CGO_ENABLED=1
+  #   goos:
+  #     - darwin
+  #   goarch:
+  #     - amd64
+  #     - arm64
+  #   ldflags:
+  #     - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}}
+
+archives:
+  - id: aep-caw-linux
+    ids:
+      - aep-caw-linux-amd64
+      - aep-caw-linux-arm64
+      - shim-linux
+      - unixwrap-linux-amd64
+      - unixwrap-linux-arm64
+      - stub-linux
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_linux_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
+      - config.yml
+      - default-policy.yml
+      - src: configs/policies/*.yaml
+        dst: configs/policies
+        strip_parent: true
+      - src: build/envshim/linux_{{ .Arch }}/*
+        dst: .
+        strip_parent: true
+      - src: build/ptracer/linux_{{ .Arch }}/*
+        dst: .
+        strip_parent: true
+      - packaging/bash_startup.sh
+    builds_info:
+      mode: 0755
+      group: root
+      owner: root
+
+  - id: aep-caw-darwin
+    ids:
+      - aep-caw-darwin
+      - shim-darwin
+      - stub-darwin
+      # macwrap-darwin excluded - requires native macOS build
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_darwin_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
+      - config.yml
+      - default-policy.yml
+      - src: configs/policies/*.yaml
+        dst: configs/policies
+        strip_parent: true
+
+  - id: aep-caw-windows
+    ids:
+      - aep-caw-windows
+    formats: [zip]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_windows_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
+      - config.yml
+      - default-policy.yml
+      - src: configs/policies/*.yaml
+        dst: configs/policies
+        strip_parent: true
+
+checksum:
+  name_template: "checksums.txt"
+
+nfpms:
+  - id: aep-caw
+    package_name: aep-caw
+    ids:
+      - aep-caw-linux-amd64
+      - aep-caw-linux-arm64
+      - shim-linux
+      - unixwrap-linux-amd64
+      - unixwrap-linux-arm64
+      - stub-linux
+    formats:
+      - deb
+      - rpm
+      - archlinux
+    bindir: /usr/bin
+    vendor: AepCaw
+    homepage: https://github.com/nla-aep/aep-caw-framework
+    maintainer: AepCaw Team <team@aep-caw.dev>
+    description: |
+      Secure sandboxed shell for AI agents.
+      Provides policy-based access control for file, network, and command operations.
+    license: MIT
+    section: utils
+    priority: optional
+    contents:
+      # Configuration
+      - src: packaging/config.yaml
+        dst: /etc/aep-caw/config.yaml
+        type: config|noreplace
+        file_info:
+          mode: 0644
+      # Shell completions
+      - src: packaging/completions/aep-caw.bash
+        dst: /usr/share/bash-completion/completions/aep-caw
+        file_info:
+          mode: 0644
+      - src: packaging/completions/aep-caw.zsh
+        dst: /usr/share/zsh/site-functions/_aep-caw
+        file_info:
+          mode: 0644
+      - src: packaging/completions/aep-caw.fish
+        dst: /usr/share/fish/vendor_completions.d/aep-caw.fish
+        file_info:
+          mode: 0644
+      # Documentation
+      - src: README.md
+        dst: /usr/share/doc/aep-caw/README.md
+        file_info:
+          mode: 0644
+      - src: LICENSE
+        dst: /usr/share/doc/aep-caw/LICENSE
+        file_info:
+          mode: 0644
+      # Envshim library (Linux only) - uses glob to skip if not built
+      - src: build/envshim/linux_{{ .Arch }}/*.so
+        dst: /usr/lib/aep-caw/
+      # Ptracer LD_PRELOAD library (Linux only) - Yama ptrace_scope workaround
+      - src: build/ptracer/linux_{{ .Arch }}/*.so
+        dst: /usr/lib/aep-caw/
+      # Bash startup script for environment injection
+      - src: packaging/bash_startup.sh
+        dst: /usr/lib/aep-caw/bash_startup.sh
+        file_info:
+          mode: 0755
+      # Policy files
+      - src: configs/policies/*.yaml
+        dst: /etc/aep-caw/policies/
+        type: config|noreplace
+        file_info:
+          mode: 0644
+      # Create directories
+      - dst: /etc/aep-caw
+        type: dir
+        file_info:
+          mode: 0755
+      - dst: /etc/aep-caw/policies
+        type: dir
+        file_info:
+          mode: 0755
+      - dst: /usr/lib/aep-caw
+        type: dir
+        file_info:
+          mode: 0755
+    rpm:
+      group: Applications/System
+    archlinux:
+      pkgbase: aep-caw
+
+release:
+  draft: false
+  prerelease: auto
+
+# Homebrew cask is published by the publish-homebrew-cask job in release.yml
+# (not managed by GoReleaser - the cask installs the signed DMG, not raw binaries)

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aep.dev/schemas/hcse-module-v1.json",
+  "title": "HCSE Module v1",
+  "description": "Installed AEP-HCSE external module record under $AEP_DATA/modules/aep-hcse/module.json",
+  "type": "object",
+  "required": ["kind", "schema_version", "installed_binary", "upstream_binary", "version"],
+  "properties": {
+    "kind": { "const": "aep-hcse-module" },
+    "schema_version": { "type": "integer", "const": 1 },
+    "installed_binary": { "const": "aep-hcse" },
+    "upstream_binary": { "const": "codebase-memory-mcp" },
+    "upstream_repo": { "type": "string" },
+    "version": { "type": "string" },
+    "rebranded_at": { "type": "string" },
+    "cache_dir": { "type": "string" },
+    "artifact_dir": { "const": ".aep-hcse" }
+  },
+  "additionalProperties": true
+}

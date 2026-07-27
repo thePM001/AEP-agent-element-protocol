@@ -1,0 +1,220 @@
+//go:build linux
+
+package ptrace
+
+import (
+	"errors"
+	"fmt"
+	"log/slog"
+	"os"
+	"strconv"
+	"time"
+
+	"golang.org/x/sys/unix"
+)
+
+func (t *Tracer) attachProcess(pid int, opts attachOpts) error {
+	// Seed directly-attached processes as roots in the process tree so
+	// depth-based policy rules work correctly (depth 0 for direct attaches).
+	t.processTree.AddRoot(pid)
+
+	taskDir := fmt.Sprintf("/proc/%d/task", pid)
+	entries, err := os.ReadDir(taskDir)
+	if err != nil {
+		return t.attachThread(pid, opts)
+	}
+
+	var firstErr error
+	for _, e := range entries {
+		tid, err := strconv.Atoi(e.Name())
+		if err != nil {
+			continue
+		}
+		if err := t.attachThread(tid, opts); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			slog.Warn("failed to attach thread", "tid", tid, "pid", pid, "error", err)
+		}
+	}
+	return firstErr
+}
+
+func (t *Tracer) attachThread(tid int, opts attachOpts) error {
+	traceNote("attach", "seize", tid)
+	err := unix.PtraceSeize(tid)
+	if err != nil {
+		reason := "other"
+		if errors.Is(err, unix.ESRCH) {
+			reason = "esrch"
+		} else if errors.Is(err, unix.EPERM) {
+			reason = "eperm"
+		}
+		t.metrics.IncAttachFailure(reason)
+		return fmt.Errorf("PTRACE_SEIZE tid %d: %w", tid, err)
+	}
+
+	// PTRACE_SEIZE does not stop the tracee. We must interrupt it and wait
+	// for the ptrace-stop before calling PTRACE_SETOPTIONS, which requires
+	// the tracee to be stopped (otherwise it returns ESRCH).
+	if err := unix.PtraceInterrupt(tid); err != nil {
+		t.safeDetach(tid)
+		t.metrics.IncAttachFailure("other")
+		return fmt.Errorf("PTRACE_INTERRUPT tid %d: %w", tid, err)
+	}
+
+	// Wait for the interrupt stop with a timeout. Use WNOHANG to avoid
+	// blocking forever if Go's runtime reaps the child first (e.g., when
+	// cmd.Wait() races with our Wait4).
+	var status unix.WaitStatus
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		traceWaitCall("attach", tid)
+		wpid, werr := unix.Wait4(tid, &status, unix.WNOHANG|unix.WALL, nil)
+		traceWaitRet("attach", wpid, status, werr)
+		if werr != nil {
+			if werr == unix.EINTR {
+				continue
+			}
+			t.safeDetach(tid)
+			t.metrics.IncAttachFailure("other")
+			return fmt.Errorf("wait4 after interrupt tid %d: %w", tid, werr)
+		}
+		if wpid == tid {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.safeDetach(tid)
+			t.metrics.IncAttachFailure("other")
+			return fmt.Errorf("wait4 after interrupt tid %d: timed out", tid)
+		}
+		time.Sleep(100 * time.Microsecond)
+	}
+
+	if !status.Stopped() {
+		t.safeDetach(tid)
+		t.metrics.IncAttachFailure("other")
+		return fmt.Errorf("tid %d: expected ptrace-stop after interrupt, got status %v", tid, status)
+	}
+
+	if err := unix.PtraceSetOptions(tid, t.ptraceOptions()); err != nil {
+		t.safeDetach(tid)
+		t.metrics.IncAttachFailure("other")
+		return fmt.Errorf("PTRACE_SETOPTIONS tid %d: %w", tid, err)
+	}
+
+	tgid, err := readTGID(tid)
+	if err != nil {
+		t.safeDetach(tid)
+		t.metrics.IncAttachFailure("other")
+		return fmt.Errorf("read TGID for tid %d: %w", tid, err)
+	}
+
+	// Open MemFD and create TraceeState BEFORE injection and resume.
+	// The injection engine needs TraceeState (for scratch page) and MemFD
+	// (for register read/write during injectSyscall).
+	memFD := -1
+	if fd, openErr := unix.Open(fmt.Sprintf("/proc/%d/mem", tid), unix.O_RDWR, 0); openErr != nil {
+		fd, _ = unix.Open(fmt.Sprintf("/proc/%d/mem", tid), unix.O_RDONLY, 0)
+		memFD = fd
+	} else {
+		memFD = fd
+	}
+
+	t.mu.Lock()
+	t.tracees[tid] = &TraceeState{
+		TID:                tid,
+		TGID:               tgid,
+		SessionID:          opts.sessionID,
+		CommandID:          opts.commandID,
+		Attached:           time.Now(),
+		LastNr:             -1,
+		MemFD:              memFD,
+		PendingExecStubFD:  -1,
+		PendingExecSavedFD: -1,
+		// Mark the legitimate "attach_mode=pid without a SessionID"
+		// case (initPtraceTracer's tr.AttachPID(pid) path). Children
+		// inherit this flag via seedChildStateFromParent so
+		// HandleExecve can distinguish an intentionally sessionless
+		// pid-attach descendant from a real "non-empty unknown
+		// SessionID" session-accounting bug.
+		SessionlessPIDAttach: opts.sessionID == "",
+	}
+	if opts.keepStopped {
+		t.parkedTracees[tid] = struct{}{}
+	}
+	t.metrics.SetTraceeCount(len(t.tracees))
+	t.mu.Unlock()
+
+	// Mark for deferred seccomp prefilter injection on the first syscall stop.
+	// Injection can't happen here (interrupt stop - RIP is arbitrary, not at
+	// a syscall boundary). The tracer's handleSyscallStop will check
+	// PendingPrefilter and inject on the first syscall entry.
+	if t.cfg.SeccompPrefilter && opts.sessionID != "" {
+		t.mu.Lock()
+		if s := t.tracees[tid]; s != nil {
+			s.PendingPrefilter = true
+		}
+		t.mu.Unlock()
+	}
+
+	// Resume the tracee (unless keepStopped for cgroup hook).
+	// Always use PtraceSyscall here - HasPrefilter is never true at attach
+	// time (injection is deferred to the first syscall stop).
+	var resumeErr error
+	if opts.keepStopped {
+		// Already registered in parkedTracees above.
+	} else {
+		resumeErr = unix.PtraceSyscall(tid, 0)
+	}
+	if resumeErr != nil {
+		// Rollback: clean up TraceeState and MemFD on resume failure
+		t.mu.Lock()
+		if s := t.tracees[tid]; s != nil {
+			if s.MemFD >= 0 {
+				unix.Close(s.MemFD)
+			}
+			delete(t.tracees, tid)
+			delete(t.parkedTracees, tid)
+			t.metrics.SetTraceeCount(len(t.tracees))
+		}
+		t.mu.Unlock()
+		unix.PtraceDetach(tid)
+		t.metrics.IncAttachFailure("other")
+		return fmt.Errorf("restart tid %d: %w", tid, resumeErr)
+	}
+
+	return nil
+}
+
+func (t *Tracer) safeDetach(tid int) {
+	if err := unix.PtraceInterrupt(tid); err != nil {
+		// If interrupt fails (e.g., ESRCH), the tracee may have already
+		// exited. Try detach anyway in case it's still stopped.
+		unix.PtraceDetach(tid)
+		return
+	}
+	var status unix.WaitStatus
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for {
+		traceWaitCall("detach", tid)
+		wpid, err := unix.Wait4(tid, &status, unix.WNOHANG|unix.WALL, nil)
+		traceWaitRet("detach", wpid, status, err)
+		if err != nil {
+			// Wait4 failed - try best-effort detach.
+			unix.PtraceDetach(tid)
+			return
+		}
+		if wpid == tid {
+			break
+		}
+		if time.Now().After(deadline) {
+			// Timed out waiting for stop. Try detach anyway to avoid
+			// leaving the tracee permanently ptrace-attached.
+			unix.PtraceDetach(tid)
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+	unix.PtraceDetach(tid)
+}

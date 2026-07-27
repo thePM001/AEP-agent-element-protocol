@@ -1,0 +1,8 @@
+{
+  "id": "rest-api",
+  "version": "2.8.0",
+  "runtime": "rust",
+  "crate": "aep-subprotocol-rest-api",
+  "entrypoints": ["AEP-Subprotocols/rest-api/src/lib.rs"],
+  "reference_registry": "AEP-Subprotocols/rest-api/reference-registry.json"
+}

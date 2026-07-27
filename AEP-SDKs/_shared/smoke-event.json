@@ -1,0 +1,6 @@
+{
+  "agent_id": "sdk-smoke",
+  "channel_id": "ch-smoke",
+  "event_type": "SDK_SMOKE",
+  "payload": {}
+}

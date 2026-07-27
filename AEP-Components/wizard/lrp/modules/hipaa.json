@@ -1,0 +1,30 @@
+{
+  "id": "hipaa",
+  "framework": "HIPAA",
+  "version": "45 CFR Part 164",
+  "dock": "regulation_module",
+  "gap_ref": "AEP-Policy-System/reference/hipaa.gap",
+  "articles": [
+    "164.312(a) Access Control",
+    "164.312(b) Audit Controls",
+    "164.312(c) Integrity",
+    "164.312(d) Person Authentication",
+    "164.312(e) Transmission Security",
+    "164.308(a)(5) Security Awareness"
+  ],
+  "aep_features": [
+    "Execution Rings and Trust Tiers",
+    "Evidence Ledger SHA-256 hash chain",
+    "Merkle Proofs and ML-DSA-65 signatures",
+    "Agent Identity cross-agent verification",
+    "MCP Intercept Proxy policy blocking",
+    "OWASP Agentic AI mapping and Reference Policy Lattice"
+  ],
+  "controls": [
+    "phi_access_ring_restriction",
+    "immutable_audit_trail_per_action",
+    "integrity_verification_on_export",
+    "authenticated_agent_identity_required",
+    "encrypted_transmission_monitoring"
+  ]
+}

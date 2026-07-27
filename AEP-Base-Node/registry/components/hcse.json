@@ -1,0 +1,89 @@
+{
+  "manifest_version": "1",
+  "id": "hcse",
+  "version": "2.8.0",
+  "kind": "tooling",
+  "path": "AEP-Components/hcse/",
+  "description": "AEP-HCS-External optional code graph parser. CCA downloads DeusData/codebase-memory-mcp and rebrands to aep-hcse on install.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels",
+    "coding-governance"
+  ],
+  "capabilities": [
+    "hcse:index",
+    "hcse:search",
+    "hcse:trace",
+    "hcse:detect_changes"
+  ],
+  "actions": [
+    {
+      "id": "install_module",
+      "description": "Download upstream parser and apply AEP-HCSE rebrand",
+      "runtime": "cli",
+      "method": "node AEP-Components/hcse/lib/install.mjs",
+      "setup_hook": "install_external_module",
+      "params": {
+        "module": "hcse"
+      }
+    }
+  ],
+  "setup_hooks": [
+    {
+      "id": "hcse_install",
+      "setup_hook": "install_external_module",
+      "params": {
+        "module": "hcse"
+      }
+    }
+  ],
+  "resource_requirements": {
+    "min_memory_mb": 512,
+    "min_disk_mb": 200,
+    "requires_internet": true,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Optional universal codebase parser for nool-style coding agents (symbol blast radius, MCP graph tools).",
+    "use_when": [
+      "AI coding agents",
+      "code graph",
+      "call graph search",
+      "symbol-level blast radius",
+      "HCSE",
+      "code intelligence"
+    ],
+    "avoid_when": [
+      "air-gapped installs",
+      "deployment-only plans without code edits"
+    ],
+    "pairs_with": [
+      "coding-governance",
+      "gap",
+      "intent-ledger",
+      "semantic-topology"
+    ]
+  },
+  "external_module": {
+    "upstream_repo": "https://github.com/DeusData/codebase-memory-mcp",
+    "upstream_binary": "codebase-memory-mcp",
+    "installed_binary": "aep-hcse",
+    "install_dir": "$AEP_DATA/modules/aep-hcse",
+    "cache_dir": "$AEP_DATA/cache/hcse",
+    "artifact_dir": ".aep-hcse",
+    "mcp_name": "aep-hcse",
+    "rebrand_on_install": true,
+    "ucd_spec": "AEP-Docks/universal-connect/modules/hcse.json"
+  },
+  "implementation": {
+    "module": "AEP-Components/hcse/lib/hcse-bridge.mjs",
+    "install": "AEP-Components/hcse/lib/install.mjs"
+  },
+  "docks": {
+    "primary": "universal_connect",
+    "allowed": [
+      "universal_connect",
+      "validation_engine"
+    ]
+  }
+}

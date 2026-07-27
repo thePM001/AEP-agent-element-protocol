@@ -1,0 +1,97 @@
+{
+  "manifest_version": "1",
+  "id": "ucb",
+  "version": "2.8.0",
+  "kind": "bridge",
+  "path": "AEP-Docks/ucb/",
+  "description": "Rust secured dock :8412 for foreign ingress + internet egress only.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels"
+  ],
+  "capabilities": [
+    "ucb:ingest",
+    "ucb:delegate",
+    "ucb:rollback",
+    "ucb:mcp",
+    "ucb:diff-journal",
+    "ucb:egress-proxy",
+    "ucb:task-manifest-synthesis"
+  ],
+  "actions": [
+    {
+      "id": "ingest",
+      "description": "Validate, synthesize task manifest, integrate foreign payload",
+      "runtime": "api",
+      "method": "POST /ucb/v1/ingest"
+    },
+    {
+      "id": "egress",
+      "description": "Manifest-scoped egress proxy",
+      "runtime": "api",
+      "method": "POST /ucb/v1/egress/*"
+    },
+    {
+      "id": "delegate",
+      "description": "Lattice-gated LLM delegation",
+      "runtime": "api",
+      "method": "POST /ucb/v1/delegate"
+    }
+  ],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 128,
+    "min_disk_mb": 20,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Bridge foreign agent stacks into AEP lattice. UCB for foreign ingress and internet egress; native components use lattice-transport directly.",
+    "use_when": [
+      "LangGraph",
+      "LangChain",
+      "MCP",
+      "AutoGen",
+      "Cursor",
+      "Claude Code",
+      "custom HTTP agents",
+      "external API egress"
+    ],
+    "avoid_when": [
+      "native AEP component-to-component traffic"
+    ],
+    "pairs_with": [
+      "aep-base-node",
+      "lattice-channels",
+      "agentmesh"
+    ]
+  },
+  "implementation": {
+    "language": "rust",
+    "binary": "aep-ucb",
+    "crate": "AEP-Docks/ucb/crate/",
+    "port": 8412,
+    "health": "/health",
+    "capabilities_path": "/ucb/v1/capabilities",
+    "task_manifest_schema": "AEP-Base-Node/registry/schemas/task-manifest-v1.json",
+    "lattice_transport": "AEP-Components/lattice-channels/lib/lattice-transport.mjs",
+    "supported_protocols": [
+      "langgraph",
+      "langchain",
+      "autogen",
+      "crewai",
+      "mcp",
+      "cursor",
+      "claude-code",
+      "codex",
+      "custom",
+      "http"
+    ]
+  },
+  "conformance": {
+    "tests": [
+      "AEP-Components/conformance/runner/run.sh",
+      "AEP-Components/conformance/tests/manifest.json"
+    ]
+  }
+}

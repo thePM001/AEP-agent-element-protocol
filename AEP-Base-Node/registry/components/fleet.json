@@ -1,0 +1,39 @@
+{
+  "manifest_version": "1",
+  "id": "fleet",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/fleet/",
+  "description": "Multi-agent fleet manager, spawn governance, message scanning.",
+  "requires": [
+    "policy-engine",
+    "covenant",
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "fleet:register",
+    "fleet:spawn",
+    "fleet:scan-messages"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 128,
+    "min_disk_mb": 30,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Govern multi-agent fleets with spawn limits.",
+    "use_when": [
+      "multi-agent orchestration"
+    ],
+    "avoid_when": [
+      "single agent only"
+    ],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/fleet/lib/manager.ts"
+  }
+}

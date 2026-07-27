@@ -1,0 +1,35 @@
+{
+  "manifest_version": "1",
+  "id": "datasets",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/datasets/",
+  "description": "Governed dataset management for eval and training.",
+  "requires": [
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "datasets:manage",
+    "datasets:version"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 50,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Versioned datasets under governance.",
+    "use_when": [
+      "eval pipelines",
+      "fine-tuning workflows"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/datasets/lib/manager.ts"
+  }
+}

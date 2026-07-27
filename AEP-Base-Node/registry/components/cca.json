@@ -1,0 +1,101 @@
+{
+  "manifest_version": "1",
+  "id": "cca",
+  "version": "2.8.0",
+  "kind": "agent",
+  "path": "AEP-Components/cca/",
+  "description": "Unified CCA Setup Agent: probe, registry knowledge, plan generation, execution, and Base Node activation.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels"
+  ],
+  "capabilities": [
+    "cca:probe-environment",
+    "cca:registry-context",
+    "cca:generate-plan",
+    "cca:execute-plan",
+    "cca:validate-plan",
+    "cca:plan-to-graph",
+    "cca:graph-to-plan",
+    "setup:activate",
+    "setup:register-lrps",
+    "setup:write-config",
+    "setup:inference-registration"
+  ],
+  "actions": [
+    {
+      "id": "probe",
+      "description": "Probe hardware and environment limits",
+      "runtime": "cli",
+      "method": "aep-cca probe"
+    },
+    {
+      "id": "generate_plan",
+      "description": "Generate ImplementationPlan from user intent",
+      "runtime": "api",
+      "method": "POST /api/cca/chat"
+    },
+    {
+      "id": "execute_plan",
+      "description": "Execute validated ImplementationPlan",
+      "runtime": "api",
+      "method": "POST /api/cca/plan/execute"
+    },
+    {
+      "id": "activate",
+      "description": "Activate Base Node configuration",
+      "runtime": "cli",
+      "method": "aep-cca activate"
+    },
+    {
+      "id": "setup_execute",
+      "description": "Execute plan via setup runner",
+      "runtime": "cli",
+      "method": "aep-cca setup-agent --from-plan"
+    }
+  ],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 256,
+    "min_disk_mb": 50,
+    "requires_internet": true,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Unified setup agent. Detects environment, understands all AEP components, devises and executes lattice-secured deployment plans.",
+    "use_when": [
+      "post-Docker activation",
+      "user describes agent deployment requirements",
+      "optimal component selection",
+      "non-interactive Docker bootstrap"
+    ],
+    "avoid_when": [],
+    "pairs_with": [
+      "aep-base-node",
+      "composer-lite",
+      "gap",
+      "coding-governance",
+      "caw-framework"
+    ]
+  },
+  "implementation": {
+    "cli": "AEP-Components/cca/cca.mjs",
+    "entry": "AEP-Components/cca/setup-agent.mjs",
+    "modules": [
+      "AEP-Components/cca/lib/environment-probe.mjs",
+      "AEP-Components/cca/lib/registry-context.mjs",
+      "AEP-Components/cca/lib/plan-generator.mjs",
+      "AEP-Components/cca/lib/plan-executor.mjs",
+      "AEP-Components/cca/lib/setup/inference.mjs",
+      "AEP-Components/cca/lib/setup/register.mjs",
+      "AEP-Components/cca/lib/setup/install-plan.mjs",
+      "AEP-Components/cca/lib/setup/reload.mjs"
+    ]
+  },
+  "conformance": {
+    "tests": [
+      "AEP-Components/conformance/runner/run.sh",
+      "AEP-Components/conformance/tests/manifest.json"
+    ]
+  }
+}

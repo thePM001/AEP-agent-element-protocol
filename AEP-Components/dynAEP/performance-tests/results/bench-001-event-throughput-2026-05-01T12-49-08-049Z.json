@@ -1,0 +1,41 @@
+{
+  "benchmark": "bench-001-event-throughput",
+  "version": "0.3.1-perf",
+  "date": "2026-05-01T12:49:08.048Z",
+  "results": [
+    {
+      "agentCount": 1,
+      "totalEvents": 668971,
+      "durationMs": 10000,
+      "eventsPerSecond": 66896,
+      "latencyP50Ms": 0.015783000000737957,
+      "latencyP95Ms": 0.03933900000083668,
+      "latencyP99Ms": 0.04961399999956484,
+      "p99Under10ms": true,
+      "hotPathRate": 0.5000799735713506
+    },
+    {
+      "agentCount": 5,
+      "totalEvents": 678748,
+      "durationMs": 10000,
+      "eventsPerSecond": 67875,
+      "latencyP50Ms": 0.007220999999844935,
+      "latencyP95Ms": 0.03901900000346359,
+      "latencyP99Ms": 0.04788099999859696,
+      "p99Under10ms": true,
+      "hotPathRate": 0.5001635363934774
+    },
+    {
+      "agentCount": 10,
+      "totalEvents": 629209,
+      "durationMs": 10000,
+      "eventsPerSecond": 62921,
+      "latencyP50Ms": 0.001091999998607207,
+      "latencyP95Ms": 0.040571000005002134,
+      "latencyP99Ms": 0.052359000001160894,
+      "p99Under10ms": true,
+      "hotPathRate": 0.5006365134637298
+    }
+  ],
+  "pass": true
+}

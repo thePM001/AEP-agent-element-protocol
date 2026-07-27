@@ -1,0 +1,30 @@
+{
+  "id": "soc2-type2",
+  "framework": "SOC 2 Type II",
+  "version": "2017 Trust Services Criteria",
+  "dock": "regulation_module",
+  "gap_ref": "AEP-Policy-System/reference/soc2-type2.gap",
+  "articles": [
+    "CC6.1 Logical and Physical Access Controls",
+    "CC6.2 Prior to Issuing Credentials",
+    "CC6.3 Based on Authorisation",
+    "CC7.2 Monitoring Activities",
+    "CC7.3 Evaluation of Events",
+    "CC7.4 Incident Response",
+    "CC8.1 Change Management"
+  ],
+  "aep_features": [
+    "Execution Rings and Trust-Gated Capabilities",
+    "Agent Identity Manager with key expiry",
+    "Evidence Ledger and Intent Drift Detection",
+    "Kill Switch, Rollback and Fleet Manager",
+    "Optimistic Concurrency and Policy Builder impact projection"
+  ],
+  "controls": [
+    "credential_expiry_enforced",
+    "authorisation_scoped_capabilities",
+    "continuous_session_monitoring",
+    "incident_kill_switch_and_rollback",
+    "change_management_version_gates"
+  ]
+}

@@ -1,0 +1,365 @@
+//go:build linux
+
+package api
+
+import (
+	"context"
+	"log/slog"
+	"strconv"
+	"syscall"
+	"time"
+
+	dbevents "github.com/nla-aep/aep-caw-framework/internal/db/events"
+	"github.com/nla-aep/aep-caw-framework/internal/events"
+	"github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/nla-aep/aep-caw-framework/internal/ptrace"
+	"github.com/nla-aep/aep-caw-framework/internal/session"
+	"github.com/nla-aep/aep-caw-framework/internal/store/composite"
+	"github.com/nla-aep/aep-caw-framework/internal/tor"
+	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/google/uuid"
+)
+
+// ptraceHandlerRouter routes ptrace syscall events to session-level policy
+// engines. It implements all four ptrace handler interfaces.
+type ptraceHandlerRouter struct {
+	sessions           *session.Manager
+	store              *composite.Store
+	broker             *events.Broker
+	dbBypass           *dbevents.BypassEmitter
+	staticAllowFile    bool
+	staticAllowNetwork bool
+	trashPath          string // raw trash path from config (may be relative)
+}
+
+var _ ptrace.ExecHandler = (*ptraceHandlerRouter)(nil)
+var _ ptrace.FileHandler = (*ptraceHandlerRouter)(nil)
+var _ ptrace.NetworkHandler = (*ptraceHandlerRouter)(nil)
+var _ ptrace.SignalHandler = (*ptraceHandlerRouter)(nil)
+var _ ptrace.StaticAllowChecker = (*ptraceHandlerRouter)(nil)
+
+// StaticAllowSyscalls implements ptrace.StaticAllowChecker.
+// When configured, declares file/network syscalls as always-allowed,
+// skipping ptrace stops entirely for those categories.
+func (r *ptraceHandlerRouter) StaticAllowSyscalls() []int {
+	var syscalls []int
+	if r.staticAllowFile {
+		syscalls = append(syscalls, ptrace.AllFileSyscalls()...)
+	}
+	if r.staticAllowNetwork {
+		syscalls = append(syscalls, ptrace.AllNetworkSyscalls()...)
+	}
+	return syscalls
+}
+
+func (r *ptraceHandlerRouter) emitDBBypassAttempt(ctx context.Context, engine *policy.Engine, sessionID, commandID string, pid int, ruleName, reason string) {
+	if r.dbBypass == nil {
+		return
+	}
+	r.dbBypass.EmitIfDBUnavoidabilityDeny(ctx, dbevents.BypassAttempt{
+		Engine:          engine,
+		SessionID:       sessionID,
+		CommandID:       commandID,
+		ProcessID:       pid,
+		ProcessIdentity: "pid:" + strconv.Itoa(pid),
+		RuleName:        ruleName,
+		Reason:          reason,
+	})
+}
+
+func (r *ptraceHandlerRouter) HandleExecve(ctx context.Context, ec ptrace.ExecContext) ptrace.ExecResult {
+	s, ok := r.sessions.Get(ec.SessionID)
+	if !ok {
+		// Two cases that look the same (no session for this tracee)
+		// but mean very different things:
+		//
+		//   (a) Sessionless pid-attach. initPtraceTracer calls
+		//       tr.AttachPID(pid) without WithSessionID for the
+		//       attach_mode=pid path, so the attached root and its
+		//       descendants are sessionless by design -- the wrapper
+		//       / session layer governs enforcement above the tracer.
+		//       Pass through (no policy engine to consult here).
+		//
+		//   (b) Non-empty SessionID that the session manager does not
+		//       know about. This is a real session-accounting bug:
+		//       something registered a session id with the tracer but
+		//       the session is gone (or never existed) by the time
+		//       execve fires. Fail closed, loud log.
+		//
+		// The earlier version of this branch flipped deny->allow
+		// unconditionally to avoid crashing tracees on a session race;
+		// per maintainer review (PR #312), the race itself is now
+		// closed by seedChildStateFromParent in the tracer minimal-
+		// state fallbacks, and the conflated case (b) must remain
+		// fail-closed rather than silently allowed.
+		if ec.SessionlessPIDAttach {
+			slog.Debug("ptrace: sessionless pid-attach execve, allowing pass-through",
+				"pid", ec.PID, "filename", ec.Filename)
+			return ptrace.ExecResult{Allow: true, Action: "allow", Rule: "sessionless_pid_attach"}
+		}
+		slog.Warn("ptrace: unknown session for execve, denying",
+			"session_id", ec.SessionID, "pid", ec.PID, "filename", ec.Filename)
+		return ptrace.ExecResult{Allow: false, Action: "deny", Errno: int32(syscall.EACCES), Rule: "unknown_session"}
+	}
+
+	pe := s.PolicyEngine()
+	if pe == nil {
+		slog.Warn("ptrace: no policy engine for session, denying execve", "session_id", ec.SessionID, "pid", ec.PID)
+		return ptrace.ExecResult{Allow: false, Action: "deny", Errno: int32(syscall.EACCES), Rule: "no_policy_engine"}
+	}
+
+	depth := ec.Depth
+	if depth < 0 {
+		depth = 0
+	}
+	decision := pe.CheckExecve(ec.Filename, ec.Argv, depth)
+
+	// Emit audit event
+	ev := types.Event{
+		ID:        uuid.NewString(),
+		Timestamp: time.Now().UTC(),
+		Type:      "ptrace_execve",
+		SessionID: ec.SessionID,
+		Fields: map[string]any{
+			"pid":       ec.PID,
+			"filename":  ec.Filename,
+			"argv":      ec.Argv,
+			"depth":     ec.Depth,
+			"decision":  string(decision.EffectiveDecision),
+			"rule":      decision.Rule,
+			"truncated": ec.Truncated,
+		},
+	}
+	_ = r.store.AppendEvent(ctx, ev)
+	r.broker.Publish(ev)
+
+	if decision.Tor != nil {
+		tev := tor.BuildControlEvent(ec.SessionID, "", ec.PID, tor.Verdict{
+			Vector: decision.Tor.Vector, Mode: decision.Tor.Mode, Decision: decision.Tor.Decision, Target: decision.Tor.Target,
+		})
+		_ = r.store.AppendEvent(ctx, tev)
+		r.broker.Publish(tev)
+	}
+
+	switch decision.EffectiveDecision {
+	case types.DecisionDeny:
+		r.emitDBBypassAttempt(ctx, pe, ec.SessionID, "", ec.PID, decision.Rule, decision.Message)
+		return ptrace.ExecResult{
+			Action: "deny",
+			Allow:  false,
+			Errno:  int32(syscall.EACCES),
+			Rule:   decision.Rule,
+		}
+	case types.DecisionRedirect:
+		if decision.Redirect != nil && decision.Redirect.Command != "" {
+			return ptrace.ExecResult{
+				Action:   "redirect",
+				StubPath: decision.Redirect.Command,
+				Rule:     decision.Rule,
+			}
+		}
+		// Invalid redirect payload - deny to fail closed.
+		return ptrace.ExecResult{
+			Action: "deny",
+			Allow:  false,
+			Errno:  int32(syscall.EACCES),
+			Rule:   decision.Rule + " (redirect with no target, denied)",
+		}
+	case types.DecisionApprove:
+		// Approval-required decisions cannot be handled synchronously via ptrace.
+		// Deny with a descriptive rule for audit visibility.
+		return ptrace.ExecResult{
+			Action: "deny",
+			Allow:  false,
+			Errno:  int32(syscall.EACCES),
+			Rule:   decision.Rule + " (approval required, denied in ptrace mode)",
+		}
+	default:
+		return ptrace.ExecResult{Allow: true, Action: "continue", Rule: decision.Rule}
+	}
+}
+
+func (r *ptraceHandlerRouter) HandleFile(ctx context.Context, fc ptrace.FileContext) ptrace.FileResult {
+	s, ok := r.sessions.Get(fc.SessionID)
+	if !ok {
+		slog.Warn("ptrace: unknown session for file", "session_id", fc.SessionID, "pid", fc.PID)
+		return ptrace.FileResult{Allow: false, Action: "deny", Errno: int32(syscall.EACCES)}
+	}
+
+	pe := s.PolicyEngine()
+	if pe == nil {
+		slog.Warn("ptrace: no policy engine for session, denying file op", "session_id", fc.SessionID, "pid", fc.PID)
+		return ptrace.FileResult{Allow: false, Action: "deny", Errno: int32(syscall.EACCES)}
+	}
+
+	decision := pe.CheckFile(fc.Path, fc.Operation)
+
+	ev := types.Event{
+		ID:        uuid.NewString(),
+		Timestamp: time.Now().UTC(),
+		Type:      "ptrace_file",
+		SessionID: fc.SessionID,
+		Fields: map[string]any{
+			"pid":       fc.PID,
+			"path":      fc.Path,
+			"operation": fc.Operation,
+			"decision":  string(decision.EffectiveDecision),
+			"rule":      decision.Rule,
+		},
+	}
+	_ = r.store.AppendEvent(ctx, ev)
+	r.broker.Publish(ev)
+
+	// Check PolicyDecision for soft-delete before EffectiveDecision switch.
+	// The policy engine maps soft_delete → EffectiveDecision=allow, so
+	// checking EffectiveDecision alone would miss it.
+	// Only intercept destructive operations - soft_delete on non-destructive ops
+	// (e.g. open, stat) should fall through to normal allow handling.
+	// Both "delete" (unlinkat) and "rmdir" (unlinkat+AT_REMOVEDIR) are destructive.
+	if decision.PolicyDecision == types.DecisionSoftDelete && (fc.Operation == "delete" || fc.Operation == "rmdir") {
+		trashDir := r.resolveTrashDir(s)
+		if trashDir != "" {
+			return ptrace.FileResult{
+				Action:   "soft-delete",
+				TrashDir: trashDir,
+			}
+		}
+		// No trash directory - deny to fail closed.
+		return ptrace.FileResult{
+			Allow:  false,
+			Action: "deny",
+			Errno:  int32(syscall.EACCES),
+		}
+	}
+
+	switch decision.EffectiveDecision {
+	case types.DecisionDeny:
+		return ptrace.FileResult{
+			Allow:  false,
+			Action: "deny",
+			Errno:  int32(syscall.EACCES),
+		}
+	case types.DecisionRedirect:
+		if decision.FileRedirect != nil && decision.FileRedirect.RedirectPath != "" {
+			return ptrace.FileResult{
+				Action:       "redirect",
+				RedirectPath: decision.FileRedirect.RedirectPath,
+			}
+		}
+		// Invalid redirect payload - deny to fail closed.
+		return ptrace.FileResult{Allow: false, Action: "deny", Errno: int32(syscall.EACCES)}
+	default:
+		return ptrace.FileResult{Allow: true, Action: "allow"}
+	}
+}
+
+// resolveTrashDir resolves the trash directory for a session.
+func (r *ptraceHandlerRouter) resolveTrashDir(s *session.Session) string {
+	return resolveTrashPath(r.trashPath, s.Workspace)
+}
+
+func (r *ptraceHandlerRouter) HandleNetwork(ctx context.Context, nc ptrace.NetworkContext) ptrace.NetworkResult {
+	s, ok := r.sessions.Get(nc.SessionID)
+	if !ok {
+		slog.Warn("ptrace: unknown session for network", "session_id", nc.SessionID, "pid", nc.PID)
+		return ptrace.NetworkResult{Allow: false, Action: "deny", Errno: int32(syscall.EACCES)}
+	}
+
+	pe := s.PolicyEngine()
+	if pe == nil {
+		slog.Warn("ptrace: no policy engine for session, denying network op", "session_id", nc.SessionID, "pid", nc.PID)
+		return ptrace.NetworkResult{Allow: false, Action: "deny", Errno: int32(syscall.EACCES)}
+	}
+
+	// For DNS operations, check redirect rules first, then allow/deny.
+	if nc.Operation == "dns" && nc.Domain != "" {
+		redirectResult := pe.EvaluateDnsRedirect(nc.Domain)
+		if redirectResult.Matched {
+			ev := types.Event{
+				ID:        uuid.NewString(),
+				Timestamp: time.Now().UTC(),
+				Type:      "dns_redirect",
+				SessionID: nc.SessionID,
+				Fields: map[string]any{
+					"pid":           nc.PID,
+					"original_host": nc.Domain,
+					"resolved_to":   redirectResult.ResolveTo,
+					"rule":          redirectResult.Rule,
+					"visibility":    redirectResult.Visibility,
+				},
+			}
+			if redirectResult.Visibility != "silent" {
+				_ = r.store.AppendEvent(ctx, ev)
+				r.broker.Publish(ev)
+			}
+			return ptrace.NetworkResult{
+				Allow:  true,
+				Action: "redirect",
+				Records: []ptrace.DNSRecord{
+					{Type: 1, Value: redirectResult.ResolveTo, TTL: 60},
+				},
+			}
+		}
+	}
+
+	// For DNS operations, evaluate the domain being queried rather than
+	// the resolver address (which is often a private IP like 172.x.x.x
+	// and would be blocked by private-network rules).
+	checkAddr := nc.Address
+	checkPort := nc.Port
+	if nc.Operation == "dns" && nc.Domain != "" {
+		checkAddr = nc.Domain
+		checkPort = 443 // evaluate as if connecting to the domain on HTTPS
+	}
+	decision := pe.CheckNetwork(checkAddr, checkPort)
+
+	ev := types.Event{
+		ID:        uuid.NewString(),
+		Timestamp: time.Now().UTC(),
+		Type:      "ptrace_network",
+		SessionID: nc.SessionID,
+		Fields: map[string]any{
+			"pid":       nc.PID,
+			"address":   nc.Address,
+			"port":      nc.Port,
+			"operation": nc.Operation,
+			"domain":    nc.Domain,
+			"decision":  string(decision.EffectiveDecision),
+			"rule":      decision.Rule,
+		},
+	}
+	_ = r.store.AppendEvent(ctx, ev)
+	r.broker.Publish(ev)
+
+	if decision.Tor != nil {
+		tev := tor.BuildControlEvent(nc.SessionID, "", nc.PID, tor.Verdict{
+			Vector: decision.Tor.Vector, Mode: decision.Tor.Mode, Decision: decision.Tor.Decision, Target: decision.Tor.Target,
+		})
+		_ = r.store.AppendEvent(ctx, tev)
+		r.broker.Publish(tev)
+	}
+
+	switch decision.EffectiveDecision {
+	case types.DecisionDeny:
+		r.emitDBBypassAttempt(ctx, pe, nc.SessionID, "", nc.PID, decision.Rule, decision.Message)
+		return ptrace.NetworkResult{
+			Allow:  false,
+			Action: "deny",
+			Errno:  int32(syscall.EACCES),
+		}
+	default:
+		return ptrace.NetworkResult{Allow: true, Action: "allow"}
+	}
+}
+
+func (r *ptraceHandlerRouter) HandleSignal(ctx context.Context, sc ptrace.SignalContext) ptrace.SignalResult {
+	_, ok := r.sessions.Get(sc.SessionID)
+	if !ok {
+		slog.Warn("ptrace: unknown session for signal", "session_id", sc.SessionID, "pid", sc.PID)
+		return ptrace.SignalResult{Allow: false, Errno: int32(syscall.EACCES)}
+	}
+
+	// Signal filtering via ptrace - allow all signals for now.
+	// Per-signal policy requires signal engine integration (future work).
+	return ptrace.SignalResult{Allow: true}
+}

@@ -1,0 +1,131 @@
+name: Staple macOS Notarization
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release tag (e.g. v0.14.1-rc1)"
+        required: true
+      mode:
+        description: "Mode: 'staple' (use existing submission) or 'resubmit' (fresh notarization) or 'test-stripped' (submit without sysext to diagnose)"
+        required: true
+        default: "resubmit"
+        type: choice
+        options:
+          - resubmit
+          - staple
+          - test-stripped
+      submission_id:
+        description: "Submission ID (only for 'staple' mode)"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  notarize-and-staple:
+    runs-on: macos-latest
+    environment: build
+    timeout-minutes: 45
+    steps:
+      - name: Download DMG from release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          gh release download "$VERSION" \
+            --pattern "AepCaw-${VERSION}.dmg" \
+            --repo "${{ github.repository }}" \
+            --dir .
+          echo "Downloaded AepCaw-${VERSION}.dmg"
+
+      - name: Extract app from DMG
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          hdiutil attach "AepCaw-${VERSION}.dmg" -mountpoint /tmp/aep-caw-dmg -nobrowse
+          cp -R /tmp/aep-caw-dmg/AepCaw.app ./AepCaw.app
+          hdiutil detach /tmp/aep-caw-dmg
+
+      - name: Strip sysext for diagnostic test
+        if: inputs.mode == 'test-stripped'
+        run: |
+          echo "=== Before stripping ==="
+          find AepCaw.app -type d -maxdepth 4 | sort
+          rm -rf AepCaw.app/Contents/Library/SystemExtensions
+          rm -rf AepCaw.app/Contents/XPCServices
+          rm -rf AepCaw.app/Contents/Resources/approval-dialog.app
+          echo "=== After stripping ==="
+          find AepCaw.app -type d -maxdepth 4 | sort
+          echo "Stripped sysext, xpc, and approval-dialog for diagnostic submission"
+
+      - name: Submit fresh notarization
+        if: inputs.mode == 'resubmit' || inputs.mode == 'test-stripped'
+        env:
+          APPLE_ID: ${{ secrets.MACOS_NOTARIZATION_APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
+          TEAM_ID: ${{ secrets.MACOS_NOTARIZATION_TEAM_ID }}
+        run: |
+          ditto -c -k --keepParent AepCaw.app AepCaw.zip
+
+          xcrun notarytool submit AepCaw.zip \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$TEAM_ID" \
+            --wait --timeout 35m
+
+      - name: Check existing submission
+        if: inputs.mode == 'staple'
+        env:
+          APPLE_ID: ${{ secrets.MACOS_NOTARIZATION_APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
+          TEAM_ID: ${{ secrets.MACOS_NOTARIZATION_TEAM_ID }}
+          SUBMISSION_ID: ${{ inputs.submission_id }}
+        run: |
+          if [ -z "$SUBMISSION_ID" ]; then
+            echo "::error::submission_id is required in staple mode"
+            exit 1
+          fi
+          INFO=$(xcrun notarytool info "$SUBMISSION_ID" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$TEAM_ID" 2>&1)
+          echo "$INFO"
+          if echo "$INFO" | grep -q "status: In Progress"; then
+            echo "::error::Notarization still in progress. Try again later."
+            exit 1
+          fi
+          if echo "$INFO" | grep -q "status: Invalid"; then
+            echo "::error::Notarization was rejected. Check the log:"
+            xcrun notarytool log "$SUBMISSION_ID" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_PASSWORD" \
+              --team-id "$TEAM_ID" || true
+            exit 1
+          fi
+
+      - name: Staple and repackage DMG
+        if: inputs.mode != 'test-stripped'
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          xcrun stapler staple AepCaw.app
+          xcrun stapler validate AepCaw.app
+          spctl --assess --type exec --verbose=2 AepCaw.app || true
+
+          rm "AepCaw-${VERSION}.dmg"
+          hdiutil create -volname "AepCaw" \
+            -srcfolder AepCaw.app \
+            -ov -format UDZO \
+            "AepCaw-${VERSION}.dmg"
+
+      - name: Upload stapled DMG to release
+        if: inputs.mode != 'test-stripped'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          gh release upload "$VERSION" "AepCaw-${VERSION}.dmg" \
+            --repo "${{ github.repository }}" \
+            --clobber
+          echo "Uploaded stapled DMG to release $VERSION"

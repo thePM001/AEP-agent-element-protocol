@@ -1,0 +1,9 @@
+{
+  "name": "aep-runtime-deps",
+  "private": true,
+  "description": "Docker runtime-only deps. Not npm registry distribution.",
+  "dependencies": {
+    "ws": "^8.21.0",
+    "yaml": "^2.8.0"
+  }
+}

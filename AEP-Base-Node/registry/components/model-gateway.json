@@ -1,0 +1,41 @@
+{
+  "manifest_version": "1",
+  "id": "model-gateway",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/model-gateway/",
+  "description": "Governed multi-provider LLM gateway with adapters.",
+  "requires": [
+    "policy-engine",
+    "recovery",
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "model:gateway",
+    "model:anthropic",
+    "model:openai",
+    "model:ollama"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 128,
+    "min_disk_mb": 30,
+    "requires_internet": true,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Lattice-governed LLM provider routing.",
+    "use_when": [
+      "cloud LLM access",
+      "multi-provider failover"
+    ],
+    "avoid_when": [
+      "fully offline with no LLM"
+    ],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/model-gateway/lib/gateway.ts"
+  }
+}

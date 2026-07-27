@@ -1,0 +1,364 @@
+package watchtower
+
+import (
+	"errors"
+	"fmt"
+	"log/slog"
+	"reflect"
+	"time"
+
+	"github.com/nla-aep/aep-caw-framework/internal/audit"
+	"github.com/nla-aep/aep-caw-framework/internal/metrics"
+	"github.com/nla-aep/aep-caw-framework/internal/store/eventfilter"
+	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/chain"
+	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/compact"
+	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/transport"
+	wtpv1 "github.com/canyonroad/wtp-protos/gen/go/canyonroad/wtp/v1"
+)
+
+// Options configures a watchtower Store.
+//
+// Zero-value contract for numeric / duration fields: ZERO means
+// "use the spec default" (applyDefaults fills it in BEFORE validate
+// runs). Negative values are INVALID and rejected by validate. Tests
+// that want to assert "the validate gate fires for invalid values"
+// pass a NEGATIVE - passing zero exercises the default-application
+// path instead.
+//
+// Affected fields:
+//
+//   - WALSegmentSize     (default 256 KiB)
+//   - WALMaxTotalSize    (default 16 MiB)
+//   - BatchMaxRecords    (default 256)
+//   - BatchMaxBytes      (default 256 KiB)
+//   - BatchMaxAge        (default 100 ms)
+//   - DrainDeadline      (default 2 s)
+//
+// All other fields are required (or explicitly optional with their
+// own zero-as-permissive semantics - Filter, Endpoint, TLS*, etc.).
+type Options struct {
+	// WAL configuration.
+	WALDir          string
+	WALSegmentSize  int64
+	WALMaxTotalSize int64
+
+	// Mapper translates types.Event → wtpv1.CompactEvent.
+	Mapper compact.Mapper
+
+	// Allocator hands out (sequence, generation) tuples; supplied by
+	// the composite store in production.
+	Allocator *audit.SequenceAllocator
+
+	// Identity. SessionID is persisted into wal.Meta on every MarkAcked
+	// call; KeyFingerprint is the hex digest of the active signing key
+	// and is persisted alongside SessionID. The pair is what
+	// distinguishes one installation's WAL from another's - wal.Open
+	// refuses to mount a Dir whose meta.json carries a mismatching
+	// (SessionID, KeyFingerprint) pair (Task 14a's first-writer-wins
+	// rule).
+	AgentID        string
+	SessionID      string
+	KeyFingerprint string
+
+	// DecisionContext is forwarded to transport.Options.DecisionContext.
+	DecisionContext *wtpv1.DecisionContext
+
+	// HMAC integrity chain config.
+	HMACKeyID     string
+	HMACSecret    []byte
+	HMACAlgorithm string // "hmac-sha256" (default) or "hmac-sha512"
+
+	// Batch flush thresholds.
+	BatchMaxRecords int
+	BatchMaxBytes   int
+	BatchMaxAge     time.Duration
+
+	// Transport endpoint (Task 27 wiring).
+	Endpoint      string
+	TLSEnabled    bool
+	TLSCACertFile string // optional; system roots used when empty
+	TLSCertFile   string
+	TLSKeyFile    string
+	TLSInsecure   bool
+	// CredentialSource yields the bearer credential presented to
+	// Watchtower on each Dial (authorization: Bearer <kid>.<secret>).
+	// Nil means "no bearer credential" (anonymous, or mTLS via
+	// TLSCertFile). Mutually exclusive with TLSCertFile. Fetched
+	// per-Dial so a Phase-2 rotating/attested source drops in with no
+	// transport change.
+	CredentialSource CredentialSource
+
+	// HeartbeatEvery controls how often the transport sends a ClientHeartbeat
+	// to the server. Zero means "use the spec default" (5 s). The config layer
+	// (audit.watchtower.heartbeat.interval) wires the operator-configured value
+	// here; see buildWatchtowerStore in internal/server/wtp.go.
+	HeartbeatEvery time.Duration
+
+	// BackoffInitial and BackoffMax configure the exponential back-off
+	// between reconnect attempts. Zero means "use the spec default"
+	// (200 ms initial, 30 s max). The config layer
+	// (audit.watchtower.backoff.base / backoff.max) wires the
+	// operator-configured values here; see buildWatchtowerStore in
+	// internal/server/wtp.go.
+	BackoffInitial time.Duration
+	BackoffMax     time.Duration
+
+	// LogGoawayMessage controls whether the WARN log emitted on GOAWAY
+	// receipt includes the server-supplied message text verbatim (after
+	// client-side sanitization). Threaded from AuditWatchtowerConfig
+	// (config layer) through buildWatchtowerStore (store-construction)
+	// into transport.Options.LogGoawayMessage. See transport.Options for
+	// the full semantics and the server-side no-secrets contract reference.
+	LogGoawayMessage bool
+
+	// EmitExtendedLossReasons toggles wire emission of the six
+	// TransportLossReason values added in the 2026-04-27 spec
+	// (MAPPER_FAILURE, INVALID_MAPPER, INVALID_TIMESTAMP, INVALID_UTF8,
+	// SEQUENCE_OVERFLOW, ACK_REGRESSION_AFTER_GC). When false:
+	//   - in-flight drop sites (recordSequenceOverflow, etc.) skip
+	//     wal.AppendLoss entirely; the drop is counter-only.
+	//   - the encoder drops ACK_REGRESSION_AFTER_GC PrefixLoss markers
+	//     and any other extended-reason markers it might encounter
+	//     instead of emitting them.
+	// OVERFLOW and CRC_CORRUPTION are unaffected - they're part of the
+	// original wire schema.
+	EmitExtendedLossReasons bool
+
+	// CompressionAlgo selects the algorithm used by the WTP transport
+	// for per-batch payload compression. Valid values: "none" (default),
+	// "zstd", "gzip". Empty string is treated as "none". The config
+	// layer (audit.watchtower.batch.compression) wires the operator-
+	// configured value here; see buildWatchtowerStore in
+	// internal/server/wtp.go.
+	CompressionAlgo string
+
+	// ZstdLevel and GzipLevel are the codec-specific compression levels
+	// applied when CompressionAlgo selects the corresponding codec; the
+	// other field is ignored. Zero is INVALID in production - the config
+	// layer's applyDefaults seeds zstd=3, gzip=6 before threading values
+	// here. NewEncoder rejects zero with a level-out-of-range error.
+	ZstdLevel int
+	GzipLevel int
+
+	// MaxInflight overrides the default in-flight window (8) for tests
+	// that need fine-grained back-pressure control. Zero means "use the
+	// default". Production callers leave this zero; tests set it to 1
+	// to verify that the inflight slot is held and released correctly.
+	MaxInflight int
+
+	// Filter is the optional eventfilter.Filter applied before
+	// AppendEvent reaches the chain/WAL pipeline.
+	Filter *eventfilter.Filter
+
+	// DrainDeadline bounds Close's best-effort flush.
+	DrainDeadline time.Duration
+
+	// AllowStubMapper unlocks compact.StubMapper for tests. Production
+	// callers MUST leave this false; validate() rejects StubMapper
+	// without it.
+	AllowStubMapper bool
+
+	// Dialer constructs the gRPC stream the Transport speaks WTP
+	// over. REQUIRED - until the production gRPC dialer wiring lands
+	// (Task 27), New rejects a nil Dialer rather than wiring a
+	// placeholder that would silently infinite-loop in dial-fail
+	// backoff. Tests pass testserver.DialerFor; integration code
+	// will pass a real gRPC dialer once Task 27 lands at which
+	// point this field will become OPTIONAL (nil = production
+	// dialer constructed from Endpoint + TLS* fields).
+	Dialer transport.Dialer
+
+	// Logger is the slog handle the Store and Transport use for
+	// operator-facing diagnostics. Nil defaults to slog.Default() in
+	// applyDefaults.
+	Logger *slog.Logger
+
+	// Metrics is the metrics collector wtp_* series are emitted
+	// through. Nil is safe - the WTP() accessor on a nil Collector
+	// returns a *WTPMetrics whose mutators are no-ops.
+	Metrics *metrics.Collector
+
+	// SinkChainOverrideForTests, when non-nil, replaces the default
+	// chain.WatchtowerSink (wrapping *audit.SinkChain) constructed by
+	// New. Permanent test-only seam - production callers MUST leave
+	// this nil. validate() rejects a non-nil value unless
+	// AllowSinkChainOverrideForTests is also true (mirroring the
+	// AllowStubMapper pattern). The companion flag forces tests to
+	// opt in explicitly and makes accidental production wiring a
+	// startup error rather than a silent behavior change.
+	//
+	// API stability: these two fields are exempt from normal API-
+	// stability expectations. They are test-only seams that may be
+	// renamed, refactored, or replaced without notice.
+	SinkChainOverrideForTests      chain.SinkChainAPI
+	AllowSinkChainOverrideForTests bool
+
+	// OnPolicyPushed is forwarded to transport.Options.OnPolicyPushed.
+	// When the watchtower server resolves a policy for this agent and
+	// ships it down in SessionAck, the transport invokes this callback
+	// with the raw wire payload. The callback owns signature verification
+	// (against the agent's local trust bundle) and installation (writing
+	// the policy to disk + triggering a reload). Nil disables the
+	// install path; the transport still logs the receipt at INFO.
+	OnPolicyPushed func(transport.PolicyPushed)
+}
+
+// applyDefaults fills zero-valued fields with the spec's defaults.
+// Idempotent - safe to call more than once.
+func (o *Options) applyDefaults() {
+	if o.WALSegmentSize == 0 {
+		o.WALSegmentSize = 256 * 1024
+	}
+	if o.WALMaxTotalSize == 0 {
+		o.WALMaxTotalSize = 16 * 1024 * 1024
+	}
+	if o.BatchMaxRecords == 0 {
+		o.BatchMaxRecords = 256
+	}
+	if o.BatchMaxBytes == 0 {
+		o.BatchMaxBytes = 256 * 1024
+	}
+	if o.BatchMaxAge == 0 {
+		o.BatchMaxAge = 100 * time.Millisecond
+	}
+	if o.DrainDeadline == 0 {
+		o.DrainDeadline = 2 * time.Second
+	}
+	if o.HeartbeatEvery == 0 {
+		o.HeartbeatEvery = 5 * time.Second
+	}
+	if o.BackoffInitial == 0 {
+		o.BackoffInitial = 200 * time.Millisecond
+	}
+	if o.BackoffMax == 0 {
+		o.BackoffMax = 30 * time.Second
+	}
+	if o.Logger == nil {
+		o.Logger = slog.Default()
+	}
+}
+
+// validate returns an error if Options is missing required fields or
+// contains contradictions. Called from New AFTER applyDefaults so the
+// defaulted values are visible.
+func (o *Options) validate() error {
+	if o.WALDir == "" {
+		return errors.New("watchtower: WALDir is required")
+	}
+	// Mapper rejection has three branches that MUST run in this order:
+	//   (1) untyped nil - `o.Mapper == nil` catches the zero interface
+	//       value.
+	//   (2) typed-nil pointer - a caller writing
+	//       `var m *compact.StubMapper; opts.Mapper = m` produces an
+	//       interface value with non-nil type and nil dynamic value.
+	//       `o.Mapper == nil` returns false, so we use reflect to detect
+	//       it. Detection is scoped to pointer form (reflect.Ptr +
+	//       IsNil) because production Mapper implementations are struct
+	//       pointers; map/slice/chan/func types implementing Mapper are
+	//       pathological and not part of the contract. This branch must
+	//       run BEFORE IsStubMapper so the error message points the
+	//       caller at the real bug (a nil mapper) rather than the
+	//       secondary issue (the stub type). Without this branch the
+	//       stub-rejection in (3) would fire for *StubMapper(nil), but
+	//       a non-stub typed-nil pointer would slip through and panic
+	//       on the first AppendEvent.
+	//   (3) test-only StubMapper - compact.IsStubMapper matches both
+	//       value and pointer forms. Gated by AllowStubMapper so unit
+	//       tests can opt in.
+	if o.Mapper == nil {
+		return errors.New("watchtower: mapper is required")
+	}
+	if rv := reflect.ValueOf(o.Mapper); rv.Kind() == reflect.Ptr && rv.IsNil() {
+		return errors.New("watchtower: mapper is required (got typed-nil pointer)")
+	}
+	if !o.AllowStubMapper && compact.IsStubMapper(o.Mapper) {
+		return errors.New("watchtower: test-only StubMapper not permitted in production (set AllowStubMapper for tests)")
+	}
+	if o.Allocator == nil {
+		return errors.New("watchtower: Allocator is required")
+	}
+	if o.AgentID == "" {
+		return errors.New("watchtower: AgentID is required")
+	}
+	if o.SessionID == "" {
+		return errors.New("watchtower: SessionID is required")
+	}
+	if o.HMACKeyID == "" {
+		return errors.New("watchtower: HMACKeyID is required")
+	}
+	if len(o.HMACSecret) == 0 {
+		return errors.New("watchtower: HMAC secret is required")
+	}
+	// Mirror audit.NewSinkChain's precondition so a short key is
+	// rejected at watchtower-load time with a watchtower-shaped error
+	// rather than as a generic audit error mid-construction. audit
+	// remains the canonical source of truth - if it tightens this
+	// branch must be updated to match.
+	if len(o.HMACSecret) < audit.MinKeyLength {
+		return fmt.Errorf("watchtower: HMAC secret too short: got %d bytes, need at least %d (mirrors audit.MinKeyLength)", len(o.HMACSecret), audit.MinKeyLength)
+	}
+	switch o.HMACAlgorithm {
+	case "", "hmac-sha256", "hmac-sha512":
+		// "" defaults inside audit.NewSinkChain to hmac-sha256.
+	default:
+		return fmt.Errorf("watchtower: unsupported HMACAlgorithm %q (use hmac-sha256 or hmac-sha512)", o.HMACAlgorithm)
+	}
+	if o.BatchMaxBytes < 4096 {
+		return errors.New("watchtower: BatchMaxBytes must be >= 4 KiB")
+	}
+	if o.BatchMaxRecords <= 0 {
+		return errors.New("watchtower: BatchMaxRecords must be > 0")
+	}
+	if o.BatchMaxAge <= 0 {
+		// time.NewTicker panics on a zero or negative duration; reject
+		// here so the failure mode is a clear validate() error rather
+		// than a panic deep inside runLive.
+		return errors.New("watchtower: BatchMaxAge must be > 0")
+	}
+	if o.WALSegmentSize <= 0 {
+		return errors.New("watchtower: WALSegmentSize must be > 0")
+	}
+	if o.WALMaxTotalSize <= 0 {
+		return errors.New("watchtower: WALMaxTotalSize must be > 0")
+	}
+	if o.WALSegmentSize > o.WALMaxTotalSize/2 {
+		return errors.New("watchtower: WALSegmentSize must be <= WALMaxTotalSize/2")
+	}
+	if o.DrainDeadline < 0 {
+		return errors.New("watchtower: DrainDeadline must be >= 0")
+	}
+	if o.TLSCertFile != "" && o.CredentialSource != nil {
+		return errors.New("watchtower: TLS client cert and bearer auth are mutually exclusive")
+	}
+	// TLS coherence: cert and key are paired - one without the other
+	// is a configuration mistake. Surface here so the dialer (Task 27)
+	// can assume they always arrive together.
+	if (o.TLSCertFile == "") != (o.TLSKeyFile == "") {
+		return errors.New("watchtower: TLSCertFile and TLSKeyFile must be set together")
+	}
+	if o.SinkChainOverrideForTests != nil && !o.AllowSinkChainOverrideForTests {
+		return errors.New("watchtower: SinkChainOverrideForTests must be nil in production (set AllowSinkChainOverrideForTests in tests that need the seam)")
+	}
+	// Compression configuration: defense-in-depth. The upstream
+	// internal/config validator should reject bad values, but
+	// watchtower.New is also reachable from tests and direct programmatic
+	// use that bypass that path. Empty string is treated as "none" at
+	// construction time (see compress.go); we accept it here without
+	// requiring level fields, since the codec is inert. Level bounds
+	// mirror NewEncoder's accepted range: zstd [1,22], gzip [1,9].
+	switch o.CompressionAlgo {
+	case "", "none":
+		// ok; "" normalized to "none" at construction time.
+	case "zstd":
+		if o.ZstdLevel < 1 || o.ZstdLevel > 22 {
+			return fmt.Errorf("watchtower.Options: ZstdLevel %d: must be in [1,22] when CompressionAlgo=zstd", o.ZstdLevel)
+		}
+	case "gzip":
+		if o.GzipLevel < 1 || o.GzipLevel > 9 {
+			return fmt.Errorf("watchtower.Options: GzipLevel %d: must be in [1,9] when CompressionAlgo=gzip", o.GzipLevel)
+		}
+	default:
+		return fmt.Errorf("watchtower.Options: CompressionAlgo %q: must be \"\", \"none\", \"zstd\", or \"gzip\"", o.CompressionAlgo)
+	}
+	return nil
+}

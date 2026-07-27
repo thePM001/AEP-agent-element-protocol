@@ -1,0 +1,33 @@
+{
+  "manifest_version": "1",
+  "id": "lattice-crypto",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/lattice-crypto/",
+  "description": "Post-quantum PQEncryptedCapsule (ML-KEM-768 + ML-DSA-65 + AES-256-GCM).",
+  "requires": [],
+  "capabilities": [
+    "crypto:pq-kem",
+    "crypto:pq-sign",
+    "crypto:aes-gcm"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 16,
+    "min_disk_mb": 5,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Post-quantum cryptography for all lattice capsules.",
+    "use_when": [
+      "any AEP deployment"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "crate": "AEP-Components/lattice-crypto/crate"
+  }
+}

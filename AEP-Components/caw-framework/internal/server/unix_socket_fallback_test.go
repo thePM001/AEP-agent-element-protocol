@@ -1,0 +1,92 @@
+package server
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/nla-aep/aep-caw-framework/internal/config"
+)
+
+func TestServer_UnixSocketPermissionErrorDoesNotPreventHTTP(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix sockets not supported on Windows")
+	}
+	dir := t.TempDir()
+	policyDir := filepath.Join(dir, "policies")
+	if err := os.MkdirAll(policyDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Create allow-all policy for tests
+	policyContent := `version: 1
+name: default
+command_rules:
+  - name: allow-all
+    commands: ["*"]
+    decision: allow
+file_rules:
+  - name: allow-all
+    paths: ["/**"]
+    operations: ["*"]
+    decision: allow
+`
+	if err := os.WriteFile(filepath.Join(policyDir, "default.yaml"), []byte(policyContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Use /tmp for shorter socket path (macOS has 104 char limit)
+	sockDir, err := os.MkdirTemp("/tmp", "agsh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(sockDir)
+	ro := filepath.Join(sockDir, "ro")
+	if err := os.MkdirAll(ro, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	sock := filepath.Join(ro, "s.sock")
+
+	cfg := &config.Config{}
+	cfg.Development.DisableAuth = true
+	cfg.Server.HTTP.Addr = "127.0.0.1:0"
+	cfg.Server.UnixSocket.Enabled = true
+	cfg.Server.UnixSocket.Path = sock
+	cfg.Server.UnixSocket.Permissions = "0660"
+	cfg.Sessions.BaseDir = filepath.Join(dir, "sessions")
+	cfg.Audit.Storage.SQLitePath = filepath.Join(dir, "events.db")
+	cfg.Policies.Dir = policyDir
+	cfg.Policies.Default = "default"
+	cfg.Metrics.Enabled = false
+	cfg.Health.Path = "/health"
+	cfg.Health.ReadinessPath = "/ready"
+
+	s, err := New(cfg)
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "operation not permitted") {
+			t.Skipf("listening not permitted in this environment: %v", err)
+		}
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if s.unixLn != nil || s.unixServer != nil {
+		t.Fatalf("expected unix socket listener to be disabled on permission error")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	errCh := make(chan error, 1)
+	go func() { errCh <- s.Run(ctx) }()
+
+	url := "http://" + s.httpLn.Addr().String() + "/health"
+	waitForHTTP200(t, url, 2*time.Second)
+	cancel()
+	select {
+	case <-errCh:
+	case <-time.After(2 * time.Second):
+		t.Fatalf("server did not exit after cancel")
+	}
+}

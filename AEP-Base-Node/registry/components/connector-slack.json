@@ -1,0 +1,93 @@
+{
+  "manifest_version": "1",
+  "id": "connector-slack",
+  "version": "2.8.0",
+  "kind": "connector",
+  "path": "AEP-Connectors/slack/",
+  "description": "UCB-only Slack connector. All traffic via /ucb/v1/egress/slack/**.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels",
+    "ucb",
+    "composer-lite"
+  ],
+  "capabilities": [
+    "connector:slack",
+    "ucb:egress-proxy",
+    "integration:external-api"
+  ],
+  "actions": [
+    {
+      "id": "wire_slack",
+      "description": "Wire Slack connector egress routes",
+      "runtime": "plan",
+      "method": "connector_config"
+    },
+    {
+      "id": "probe_slack",
+      "description": "Health probe for Slack",
+      "runtime": "connector",
+      "method": "probe"
+    }
+  ],
+  "setup_hooks": [
+    {
+      "id": "slack_connector_default",
+      "policy_section": "connectors",
+      "default": {
+        "slack": {
+          "upstream": "https://slack.com/api"
+        }
+      }
+    }
+  ],
+  "composer": {
+    "palette": true,
+    "node_type": "connector"
+  },
+  "composer_node": {
+    "type": "connector",
+    "label": "Slack",
+    "short": "SL",
+    "color": "#475569",
+    "service": "slack",
+    "ucb_only": true,
+    "description": "Slack via UCB egress",
+    "registry_id": "connector-slack"
+  },
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 10,
+    "requires_internet": true,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Connect Slack. Requires UCB. Routes: /ucb/v1/egress/slack/**.",
+    "use_when": [
+      "slack",
+      "slack channel",
+      "slack message"
+    ],
+    "avoid_when": [
+      "air-gapped with no external APIs",
+      "UCB disabled"
+    ],
+    "pairs_with": [
+      "ucb",
+      "aep-base-node",
+      "composer-lite"
+    ]
+  },
+  "implementation": {
+    "module": "AEP-Connectors/slack/lib/slack-connector.mjs",
+    "ucb_egress_prefix": "/ucb/v1/egress/slack",
+    "auth_token_env": "AEP_SLACK_BOT_TOKEN"
+  },
+  "integration": {
+    "ucb_only": true,
+    "mcp_optional": [
+      "@modelcontextprotocol/server-slack"
+    ],
+    "nango_compatible": true
+  }
+}

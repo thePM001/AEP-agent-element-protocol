@@ -1,0 +1,57 @@
+{
+  "manifest_version": "1",
+  "id": "policy-builder",
+  "version": "2.8.0",
+  "kind": "tooling",
+  "path": "AEP-Policy-System/policy-builder/",
+  "description": "Invariant detection and Rego rule generation from schema analysis.",
+  "requires": [
+    "schema-builder",
+    "aep-typescript-sdk"
+  ],
+  "depends_on": [
+    "schema-builder"
+  ],
+  "capabilities": [
+    "policy:invariant-detect",
+    "policy:rego-generate",
+    "policy:coverage"
+  ],
+  "actions": [
+    {
+      "id": "validate_policy",
+      "description": "Validate policy proposal",
+      "runtime": "gateway",
+      "method": "validatePolicyProposal"
+    }
+  ],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 128,
+    "min_disk_mb": 20,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Generate Rego rules and invariants from data analysis.",
+    "use_when": [
+      "OPA/Rego policy generation",
+      "invariant detection"
+    ],
+    "avoid_when": [
+      "hand-written static policies only"
+    ],
+    "pairs_with": [
+      "schema-builder"
+    ]
+  },
+  "implementation": {
+    "orchestrator": "AEP-Policy-System/policy-builder/lib/policy-builder.ts"
+  },
+  "conformance": {
+    "tests": [
+      "AEP-Components/conformance/runner/run.sh",
+      "AEP-Components/conformance/tests/manifest.json"
+    ]
+  }
+}

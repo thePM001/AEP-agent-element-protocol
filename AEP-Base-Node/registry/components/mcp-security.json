@@ -1,0 +1,35 @@
+{
+  "manifest_version": "1",
+  "id": "mcp-security",
+  "version": "2.8.0",
+  "kind": "regulation",
+  "path": "AEP-Components/mcp-security/",
+  "description": "MCP subprotocol security scanners and policies.",
+  "requires": [
+    "policy-engine",
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "mcp:security-scan",
+    "mcp:tool-policy"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 10,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Security layer for MCP tool calls.",
+    "use_when": [
+      "MCP integrations"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/mcp-security/lib/mcp-security/index.ts"
+  }
+}

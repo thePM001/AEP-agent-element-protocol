@@ -1,0 +1,38 @@
+{
+  "bundle_version": "1",
+  "authority": "EPSCOM",
+  "published_at": "2026-06-23T00:00:00Z",
+  "signatures_path": "signatures/",
+  "schema": "schemas/signature-v1.schema.json",
+  "entries": [
+    {
+      "id": "epscom-writing-dash-v1",
+      "file": "signatures/epscom-writing-dash-v1.yaml",
+      "sha256": "8d28e6dcbae1c7a87ec7badc4a3d78188c9e70c5c979374a6e195941f3f79a94",
+      "enabled": true
+    },
+    {
+      "id": "epscom-prompt-injection-v1",
+      "file": "signatures/epscom-prompt-injection-v1.yaml",
+      "sha256": "770cf8be4daa4eed417931b35c1c12fbe8dbc4e02ba582f57f44aeadb4a5dcae",
+      "enabled": true
+    },
+    {
+      "id": "epscom-lattice-bypass-v1",
+      "file": "signatures/epscom-lattice-bypass-v1.yaml",
+      "sha256": "310c7585596a5fdb9e955507e716b110ebaabf3a4e83d42d4cadeea2a0fa698e",
+      "enabled": true
+    },
+    {
+      "id": "epscom-secret-exfil-v1",
+      "file": "signatures/epscom-secret-exfil-v1.yaml",
+      "sha256": "084c43bff87c1ab6d9514930e673d71d913e0d01ea2ec43f20dfe6ef46bf89ad",
+      "enabled": true
+    }
+  ],
+  "verification": {
+    "mode": "sha256-structure",
+    "pq_signature": "ML-DSA-65",
+    "note": "Production bundles ship EPSCOM ML-DSA-65 detached signatures over manifest bytes."
+  }
+}

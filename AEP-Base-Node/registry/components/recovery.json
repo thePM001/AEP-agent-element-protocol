@@ -1,0 +1,35 @@
+{
+  "manifest_version": "1",
+  "id": "recovery",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/recovery/",
+  "description": "Violation detection and governed recovery attempts.",
+  "requires": [
+    "policy-engine",
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "recovery:detect",
+    "recovery:remediate"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 20,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Automated recovery from policy violations.",
+    "use_when": [
+      "self-healing agents"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/recovery/lib/engine.ts"
+  }
+}

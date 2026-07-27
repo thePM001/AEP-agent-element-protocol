@@ -1,0 +1,25 @@
+Fair Core License 1.0, ALv2 Future License
+
+Copyright 2026 thePM_001 / New Lisbon Agency
+
+Licensor:             thePM_001 / New Lisbon Agency
+Licensed Work:        AEP Conformance Test Suite
+Change Date:          Two years from the release date of each version
+Change License:       Apache License 2.0
+
+Licensed use:
+  You may use, modify and redistribute the Licensed Work for any
+  non-commercial purpose and for the internal business purposes of
+  testing your own implementation against the AEP specification.
+
+Prohibited use:
+  You may not redistribute the Licensed Work as part of a competing
+  conformance service, paid or unpaid, that offers AEP compliance
+  certification to third parties.
+
+Change:
+  On the Change Date, the Licensed Work converts to the Change
+  License. All restrictions above lift for that version.
+
+FCL inspired by MariaDB BSL 1.1 and Sentry Functional Source License.
+Full text: https://fcl.dev/ (or adapt as appropriate)

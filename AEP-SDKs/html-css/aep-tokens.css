@@ -1,0 +1,29 @@
+/**
+ * AEP z-band design tokens for static HTML/CSS frontends.
+ * Bands mirror prefixFromId / zBandForPrefix in aep-protocol sdk-aep-core.
+ */
+:root {
+  --aep-z-shell: 1000;
+  --aep-z-panel: 900;
+  --aep-z-overlay: 800;
+  --aep-z-modal: 850;
+  --aep-z-toolbar: 700;
+  --aep-z-navigation: 650;
+  --aep-z-widget: 500;
+  --aep-z-form: 400;
+  --aep-z-cell: 300;
+  --aep-z-icon: 200;
+  --aep-lattice-accent: #2d6cdf;
+  --aep-lattice-border: #1b3a6b;
+  --aep-lattice-surface: #f4f8ff;
+}
+
+[data-aep-element] {
+  position: relative;
+  box-sizing: border-box;
+}
+
+[data-aep-z="shell"] { z-index: var(--aep-z-shell); }
+[data-aep-z="panel"] { z-index: var(--aep-z-panel); }
+[data-aep-z="overlay"] { z-index: var(--aep-z-overlay); }
+[data-aep-z="modal"] { z-index: var(--aep-z-modal); }

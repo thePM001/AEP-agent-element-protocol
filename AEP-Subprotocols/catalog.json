@@ -1,0 +1,81 @@
+{
+  "version": "2.8.0",
+  "protocol_version": "2.8.0",
+  "bundled_offline": true,
+  "subprotocols": [
+    {
+      "id": "ui",
+      "name": "UI Subprotocol",
+      "kind": "ui",
+      "bundled": true,
+      "default_enabled": true,
+      "description": "Three-layer UI governance: scene graph, FCR behaviour, theme skin.",
+      "manifest": "AEP-Subprotocols/ui/manifest.json"
+    },
+    {
+      "id": "commerce",
+      "name": "Commerce Subprotocol",
+      "kind": "commerce",
+      "bundled": true,
+      "default_enabled": false,
+      "lrp_id": "commerce-subprotocol",
+      "description": "Spend caps, checkout validation, merchant registry, economics reference data.",
+      "manifest": "AEP-Subprotocols/commerce/manifest.json"
+    },
+    {
+      "id": "mcp-security",
+      "name": "MCP Security Subprotocol",
+      "kind": "security",
+      "bundled": true,
+      "default_enabled": false,
+      "description": "MCP tool poisoning, typosquatting, and drift detection.",
+      "manifest": "AEP-Subprotocols/mcp-security/manifest.json"
+    },
+    {
+      "id": "workflows",
+      "name": "Workflows Subprotocol",
+      "kind": "workflows",
+      "bundled": true,
+      "default_enabled": false,
+      "description": "Action and state-transition registries for agent workflows.",
+      "manifest": "AEP-Subprotocols/workflows/manifest.json"
+    },
+    {
+      "id": "rest-api",
+      "name": "REST API Subprotocol",
+      "kind": "rest-api",
+      "bundled": true,
+      "default_enabled": false,
+      "description": "HTTP method, path, body, and header validation registries.",
+      "manifest": "AEP-Subprotocols/rest-api/manifest.json"
+    },
+    {
+      "id": "events",
+      "name": "Events Subprotocol",
+      "kind": "events",
+      "bundled": true,
+      "default_enabled": false,
+      "description": "Pub-sub topic, payload, and producer permission registries.",
+      "manifest": "AEP-Subprotocols/events/manifest.json"
+    },
+    {
+      "id": "iac",
+      "name": "Infrastructure as Code Subprotocol",
+      "kind": "iac",
+      "bundled": true,
+      "default_enabled": false,
+      "description": "Resource kind and field constraint registries for IaC agents.",
+      "manifest": "AEP-Subprotocols/iac/manifest.json"
+    },
+    {
+      "id": "coding-governance",
+      "name": "Coding Governance Subprotocol",
+      "kind": "coding-governance",
+      "bundled": true,
+      "default_enabled": false,
+      "lrp_id": "coding-governance-subprotocol",
+      "description": "Intent, blast radius, SIEE, solidify validation for AI coding agents (nool-inspired).",
+      "manifest": "AEP-Subprotocols/coding-governance/manifest.json"
+    }
+  ]
+}

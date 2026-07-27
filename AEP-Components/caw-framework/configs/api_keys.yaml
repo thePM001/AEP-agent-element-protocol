@@ -1,0 +1,7 @@
+# Local development sample keys.
+# Replace before any non-loopback deployment. Sample keys are refused when
+# AEP_CAW_REFUSE_SAMPLE_KEYS is not 0 and bind is non-loopback (see apikey load).
+- id: "local-dev"
+  key: "REPLACE_ME_GENERATE_WITH_openssl_rand_hex_32"
+  description: "Placeholder - generate a real key for local use"
+  role: "admin"

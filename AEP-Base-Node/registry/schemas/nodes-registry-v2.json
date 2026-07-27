@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AEP Multi-Base-Node Registry v2",
+  "type": "object",
+  "required": ["manifest_version", "schema_version", "nodes"],
+  "properties": {
+    "manifest_version": { "type": "string", "const": "1" },
+    "schema_version": { "type": "string", "const": "2" },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "node_id",
+          "role",
+          "base_node_url",
+          "lattice_channel",
+          "trust_ring",
+          "agentstream_topology"
+        ],
+        "properties": {
+          "node_id": { "type": "string", "minLength": 1 },
+          "role": {
+            "type": "string",
+            "enum": ["primary", "replica", "edge", "science-isolated"]
+          },
+          "base_node_url": { "type": "string", "format": "uri" },
+          "lattice_channel": { "type": "string", "minLength": 1 },
+          "trust_ring": { "type": "string", "minLength": 1 },
+          "agentstream_topology": {
+            "type": "string",
+            "enum": ["as-single", "as-federated"]
+          },
+          "agentstream_peers": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "gap_bundle_checkpoint": { "type": "string" },
+          "health_sla_ms": { "type": "integer", "minimum": 1000 }
+        },
+        "if": {
+          "properties": { "agentstream_topology": { "const": "as-federated" } }
+        },
+        "then": {
+          "required": ["agentstream_peers"],
+          "properties": {
+            "agentstream_peers": { "type": "array", "minItems": 1 }
+          }
+        }
+      }
+    }
+  }
+}

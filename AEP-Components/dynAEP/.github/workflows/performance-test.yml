@@ -1,0 +1,97 @@
+name: Performance Tests
+
+on:
+  pull_request:
+    paths:
+      - 'sdk/**'
+      - 'policies/**'
+      - 'performance-tests/**'
+      - 'benchmarks/**'
+
+jobs:
+  performance:
+    name: Run Performance Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: sdk/typescript/package-lock.json
+
+      - name: Install dependencies
+        working-directory: sdk/typescript
+        run: npm ci
+
+      - name: Build
+        working-directory: sdk/typescript
+        run: npx tsc --noEmit || true
+
+      - name: Run end-to-end benchmark
+        working-directory: sdk/typescript
+        run: npx tsx ../../performance-tests/bench-012-end-to-end.ts
+        continue-on-error: true
+
+      - name: Compare against baseline
+        working-directory: sdk/typescript
+        run: node ../../scripts/compare-performance-tests.js --threshold 10
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            performance-tests/current.json
+            performance-tests/results/
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const currentPath = 'performance-tests/current.json';
+
+            if (!fs.existsSync(currentPath)) {
+              console.log('No benchmark results found');
+              return;
+            }
+
+            const current = JSON.parse(fs.readFileSync(currentPath, 'utf-8'));
+            const profiles = current.profiles || {};
+
+            let body = '## Performance Benchmark Results\n\n';
+            body += `**Version**: ${current.version}\n`;
+            body += `**Date**: ${current.date}\n\n`;
+
+            body += '| Profile | Throughput (ev/s) | p50 (ms) | p95 (ms) | p99 (ms) | Hot Path % |\n';
+            body += '|---------|-------------------|----------|----------|----------|------------|\n';
+
+            for (const [name, p] of Object.entries(profiles)) {
+              const prof = p;
+              body += `| ${name} | ${prof.throughput_events_per_second?.toLocaleString() || 'N/A'} `;
+              body += `| ${prof.latency_p50_ms?.toFixed(4) || 'N/A'} `;
+              body += `| ${prof.latency_p95_ms?.toFixed(4) || 'N/A'} `;
+              body += `| ${prof.latency_p99_ms?.toFixed(4) || 'N/A'} `;
+              body += `| ${prof.hot_path_rate ? (prof.hot_path_rate * 100).toFixed(1) + '%' : 'N/A'} |\n`;
+            }
+
+            const criteria = current.success_criteria || {};
+            body += '\n### Success Criteria\n\n';
+            body += `- Hot path p99 < 0.5 ms: ${criteria.hot_path_p99_lt_0_5_ms ? '✅' : '❌'}\n`;
+            body += `- Cold path p99 < 10 ms: ${criteria.cold_path_p99_lt_10_ms ? '✅' : '❌'}\n`;
+            body += `- Throughput > 2000 ev/s: ${criteria.sustained_throughput_gt_2000 ? '✅' : '❌'}\n`;
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });

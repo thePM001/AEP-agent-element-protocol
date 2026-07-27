@@ -1,0 +1,35 @@
+# Model Mapping - canonical name -> provider-specific model IDs
+# Enables price comparison across providers for the same capability
+
+gpt-4o:
+  - openai/gpt-4o
+  - azure/gpt-4o
+  - aws-bedrock/us-east-1/gpt-4o
+
+gpt-4o-mini:
+  - openai/gpt-4o-mini
+  - azure/gpt-4o-mini
+
+claude-sonnet-4:
+  - anthropic/claude-sonnet-4
+  - aws-bedrock/us-east-1/claude-sonnet-4
+
+claude-opus-4:
+  - anthropic/claude-opus-4
+  - aws-bedrock/us-east-1/claude-opus-4
+
+deepseek-v4:
+  - deepseek/deepseek-v4-flash
+  - deepseek/deepseek-v4-pro
+
+gemini-flash:
+  - google/gemini-flash
+
+lama-3-3-70b:
+  - openai/llama-3.3-70b
+  - groq/llama-3.3-70b
+  - ollama/llama3.3
+
+mistral-large:
+  - mistral/mistral-large
+  - azure/mistral-large

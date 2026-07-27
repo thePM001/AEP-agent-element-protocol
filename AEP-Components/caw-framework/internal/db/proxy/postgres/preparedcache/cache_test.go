@@ -1,0 +1,171 @@
+//go:build linux
+
+package preparedcache
+
+import (
+	"strconv"
+	"sync"
+	"testing"
+
+	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
+)
+
+func TestCache_PutGet_RoundTrip(t *testing.T) {
+	c := New(4)
+	c.Put("s1", Entry{Classification: effects.ClassifiedStatement{RawVerb: "SELECT"}})
+	got, ok := c.Get("s1")
+	if !ok {
+		t.Fatal("Get miss; want hit")
+	}
+	if got.Classification.RawVerb != "SELECT" {
+		t.Fatalf("RawVerb=%q want SELECT", got.Classification.RawVerb)
+	}
+}
+
+func TestCache_Get_Miss(t *testing.T) {
+	c := New(4)
+	if _, ok := c.Get("nope"); ok {
+		t.Fatal("hit on empty cache")
+	}
+}
+
+func TestCache_Eviction_AtCap(t *testing.T) {
+	c := New(2)
+	c.Put("a", Entry{Classification: effects.ClassifiedStatement{RawVerb: "A"}})
+	c.Put("b", Entry{Classification: effects.ClassifiedStatement{RawVerb: "B"}})
+	c.Put("c", Entry{Classification: effects.ClassifiedStatement{RawVerb: "C"}})
+	if _, ok := c.Get("a"); ok {
+		t.Fatal("a not evicted")
+	}
+	if _, ok := c.Get("b"); !ok {
+		t.Fatal("b missing")
+	}
+	if _, ok := c.Get("c"); !ok {
+		t.Fatal("c missing")
+	}
+}
+
+func TestCache_Get_PromotesEntry(t *testing.T) {
+	c := New(2)
+	c.Put("a", Entry{Classification: effects.ClassifiedStatement{RawVerb: "A"}})
+	c.Put("b", Entry{Classification: effects.ClassifiedStatement{RawVerb: "B"}})
+	_, _ = c.Get("a") // promote a
+	c.Put("c", Entry{Classification: effects.ClassifiedStatement{RawVerb: "C"}})
+	if _, ok := c.Get("a"); !ok {
+		t.Fatal("a should be retained")
+	}
+	if _, ok := c.Get("b"); ok {
+		t.Fatal("b should be evicted (was LRU)")
+	}
+}
+
+func TestCache_Delete(t *testing.T) {
+	c := New(4)
+	c.Put("a", Entry{Classification: effects.ClassifiedStatement{RawVerb: "A"}})
+	c.Delete("a")
+	if _, ok := c.Get("a"); ok {
+		t.Fatal("Get after Delete hit")
+	}
+	c.Delete("never-there") // no-op, no panic
+}
+
+func TestCache_Clear(t *testing.T) {
+	c := New(4)
+	c.Put("a", Entry{Classification: effects.ClassifiedStatement{RawVerb: "A"}})
+	c.Put("b", Entry{Classification: effects.ClassifiedStatement{RawVerb: "B"}})
+	c.Clear()
+	if c.Len() != 0 {
+		t.Fatalf("Len=%d want 0", c.Len())
+	}
+}
+
+func TestCache_Concurrent(t *testing.T) {
+	c := New(64)
+	var wg sync.WaitGroup
+	for w := 0; w < 8; w++ {
+		wg.Add(1)
+		go func(w int) {
+			defer wg.Done()
+			for i := 0; i < 1000; i++ {
+				name := strconv.Itoa((w*1000 + i) % 32)
+				c.Put(name, Entry{Classification: effects.ClassifiedStatement{RawVerb: name}})
+				_, _ = c.Get(name)
+				if i%37 == 0 {
+					c.Delete(name)
+				}
+			}
+		}(w)
+	}
+	wg.Wait()
+	if c.Len() > 64 {
+		t.Fatalf("Len=%d exceeded cap", c.Len())
+	}
+}
+
+func TestCachePreservesResolvedObjects(t *testing.T) {
+	c := New(2)
+	c.Put("s1", Entry{Classification: effects.ClassifiedStatement{Effects: []effects.Effect{{
+		Group:      effects.GroupRead,
+		Resolution: effects.ResolutionCatalogResolved,
+		ResolvedObjects: []effects.ResolvedObjectRef{{
+			Source: effects.ResolvedObjectSourceCatalog,
+			Kind:   effects.ResolvedObjectRelation,
+			OID:    10,
+			Schema: "public",
+			Name:   "users",
+		}},
+	}}}})
+	got, ok := c.Get("s1")
+	if !ok {
+		t.Fatal("cache miss")
+	}
+	if len(got.Classification.Effects[0].ResolvedObjects) != 1 {
+		t.Fatalf("ResolvedObjects lost: %+v", got.Classification)
+	}
+}
+
+func TestCache_RedirectMetadataRoundTrip(t *testing.T) {
+	c := New(2)
+	entry := Entry{
+		Classification: effects.ClassifiedStatement{RawVerb: "SELECT"},
+		Redirect: &RedirectMetadata{
+			OriginalClassification:   effects.ClassifiedStatement{RawVerb: "SELECT"},
+			OriginalSQL:              "select note from public.users",
+			OriginalStatementDigest:  "sha256:original",
+			RewrittenStatementDigest: "sha256:rewritten",
+			Rule:                     "redirect-users",
+			SourceRelation:           "public.users",
+			TargetRelation:           "public.safe_users",
+			PolicyIdentity:           "redirect-users",
+		},
+	}
+	c.Put("stmt", entry)
+
+	got, ok := c.Get("stmt")
+	if !ok {
+		t.Fatal("cache miss")
+	}
+	if got.Redirect == nil {
+		t.Fatal("Redirect metadata missing")
+	}
+	if got.Redirect.Rule != "redirect-users" || got.Redirect.TargetRelation != "public.safe_users" {
+		t.Fatalf("Redirect metadata = %+v", got.Redirect)
+	}
+}
+
+func TestCache_RedirectMetadataReplacementClearsOldValue(t *testing.T) {
+	c := New(2)
+	c.Put("stmt", Entry{
+		Classification: effects.ClassifiedStatement{RawVerb: "SELECT"},
+		Redirect:       &RedirectMetadata{Rule: "redirect-users"},
+	})
+	c.Put("stmt", Entry{Classification: effects.ClassifiedStatement{RawVerb: "SELECT"}})
+
+	got, ok := c.Get("stmt")
+	if !ok {
+		t.Fatal("cache miss")
+	}
+	if got.Redirect != nil {
+		t.Fatalf("old redirect metadata leaked after replacement: %+v", got.Redirect)
+	}
+}

@@ -1,0 +1,11 @@
+{
+  "k8s_deployment": {
+    "kind": "Deployment",
+    "api_version": "apps/v1",
+    "required_fields": ["metadata.name", "spec.replicas", "spec.template"],
+    "forbidden_fields": ["spec.hostNetwork"],
+    "properties": {
+      "spec.replicas": { "type": "integer", "minimum": 1, "maximum": 100 }
+    }
+  }
+}

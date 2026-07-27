@@ -1,0 +1,309 @@
+name: Windows Build
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'drivers/windows/**'
+      - 'windows/**'
+      - '.github/workflows/driver-windows.yml'
+  pull_request:
+    paths:
+      - 'drivers/windows/**'
+      - 'windows/**'
+      - '.github/workflows/driver-windows.yml'
+  workflow_dispatch:
+    inputs:
+      configuration:
+        description: 'Build configuration'
+        required: true
+        default: 'Release'
+        type: choice
+        options:
+          - Debug
+          - Release
+      sign_driver:
+        description: 'Test-sign the driver'
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  build-driver:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+        platform: [x64]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Windows Driver Kit
+        shell: powershell
+        run: |
+          # WDK requires the matching Windows SDK to be installed first
+          # GitHub runners have Windows SDK but we need WDK extension
+
+          # Download WDK 10.0.26100 (Windows 11 24H2, compatible with Win10+)
+          $wdkUrl = "https://go.microsoft.com/fwlink/?linkid=2272234"
+          $wdkInstaller = "$env:TEMP\wdksetup.exe"
+
+          Write-Host "Downloading WDK..."
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          Invoke-WebRequest -Uri $wdkUrl -OutFile $wdkInstaller -UseBasicParsing
+
+          Write-Host "Installing WDK (this may take 5-10 minutes)..."
+          $process = Start-Process -FilePath $wdkInstaller -ArgumentList "/quiet", "/norestart", "/features", "+" -Wait -PassThru -NoNewWindow
+          if ($process.ExitCode -ne 0) {
+            Write-Host "::warning::WDK installer returned exit code $($process.ExitCode)"
+          }
+
+          # Verify WDK installation by checking for fltKernel.h
+          $wdkPaths = @(
+            "C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\km\fltKernel.h",
+            "C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\km\fltKernel.h",
+            "C:\Program Files (x86)\Windows Kits\10\Include\10.0.22000.0\km\fltKernel.h"
+          )
+
+          $found = $false
+          foreach ($path in $wdkPaths) {
+            if (Test-Path $path) {
+              Write-Host "WDK verified: $path"
+              $found = $true
+              break
+            }
+          }
+
+          if (-not $found) {
+            Write-Host "Checking available WDK versions..."
+            $kmPath = "C:\Program Files (x86)\Windows Kits\10\Include"
+            if (Test-Path $kmPath) {
+              Get-ChildItem $kmPath | ForEach-Object { Write-Host "  $_" }
+            }
+            Write-Host "::error::WDK headers not found after installation"
+            exit 1
+          }
+
+          Write-Host "WDK installation complete"
+
+      - name: Install WDK Visual Studio Extension
+        shell: powershell
+        run: |
+          # Find and install the WDK VSIX for MSBuild integration
+          $vsixPaths = @(
+            "C:\Program Files (x86)\Windows Kits\10\Vsix\VS2022\10.0.26100.0\WDK.vsix",
+            "C:\Program Files (x86)\Windows Kits\10\Vsix\VS2022\WDK.vsix",
+            "C:\Program Files (x86)\Windows Kits\10\Vsix\WDK.vsix"
+          )
+
+          $vsixPath = $null
+          foreach ($path in $vsixPaths) {
+            if (Test-Path $path) {
+              $vsixPath = $path
+              break
+            }
+          }
+
+          # Find available VSIX files
+          if (-not $vsixPath) {
+            Write-Host "Looking for WDK VSIX..."
+            $vsixDir = "C:\Program Files (x86)\Windows Kits\10\Vsix"
+            if (Test-Path $vsixDir) {
+              Get-ChildItem -Path $vsixDir -Recurse -Filter "*.vsix" | ForEach-Object {
+                Write-Host "  Found: $($_.FullName)"
+                if (-not $vsixPath) { $vsixPath = $_.FullName }
+              }
+            }
+          }
+
+          if ($vsixPath) {
+            Write-Host "Installing WDK VSIX: $vsixPath"
+
+            # Find VSIXInstaller
+            $vsixInstaller = "${env:ProgramFiles}\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\VSIXInstaller.exe"
+            if (-not (Test-Path $vsixInstaller)) {
+              $vsixInstaller = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\resources\app\ServiceHub\Services\Microsoft.VisualStudio.Setup.Service\VSIXInstaller.exe"
+            }
+
+            if (Test-Path $vsixInstaller) {
+              $process = Start-Process -FilePath $vsixInstaller -ArgumentList "/quiet", "/admin", $vsixPath -Wait -PassThru -NoNewWindow
+              Write-Host "VSIX installation completed with exit code: $($process.ExitCode)"
+            } else {
+              Write-Host "::warning::VSIXInstaller not found, skipping VSIX installation"
+            }
+          } else {
+            Write-Host "::warning::WDK VSIX not found, MSBuild may not recognize WDK targets"
+          }
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build Driver
+        working-directory: drivers/windows/aep-caw-minifilter
+        shell: cmd
+        run: |
+          echo Building ${{ matrix.configuration }}/${{ matrix.platform }}
+          msbuild aep-caw.sln /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:SignMode=Off /t:Build /v:minimal
+          if errorlevel 1 exit /b 1
+          echo Build successful
+
+      - name: Create test certificate
+        if: matrix.configuration == 'Release'
+        working-directory: drivers/windows/aep-caw-minifilter
+        shell: powershell
+        run: |
+          # Create a self-signed test certificate for test signing
+          $cert = New-SelfSignedCertificate `
+            -Type CodeSigningCert `
+            -Subject "CN=AepCaw Test Driver" `
+            -KeySpec Signature `
+            -KeyUsage DigitalSignature `
+            -KeyLength 2048 `
+            -CertStoreLocation Cert:\CurrentUser\My `
+            -NotAfter (Get-Date).AddYears(1)
+
+          Write-Host "Created test certificate: $($cert.Thumbprint)"
+          echo "CERT_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
+
+      - name: Test-sign driver
+        if: matrix.configuration == 'Release'
+        working-directory: drivers/windows/aep-caw-minifilter
+        shell: powershell
+        run: |
+          $driverPath = "bin\${{ matrix.platform }}\${{ matrix.configuration }}\aep-caw.sys"
+
+          if (Test-Path $driverPath) {
+            # Find signtool
+            $signtool = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter "signtool.exe" |
+                        Where-Object { $_.FullName -match "x64" } |
+                        Select-Object -First 1 -ExpandProperty FullName
+
+            if ($signtool) {
+              Write-Host "Using signtool: $signtool"
+              Write-Host "Signing driver: $driverPath"
+
+              & $signtool sign /v /fd SHA256 /s My /n "AepCaw Test Driver" /t http://timestamp.digicert.com $driverPath
+
+              if ($LASTEXITCODE -eq 0) {
+                Write-Host "Driver signed successfully"
+              } else {
+                Write-Host "::warning::Driver signing failed (non-fatal for test builds)"
+              }
+            } else {
+              Write-Host "::warning::signtool.exe not found, skipping signing"
+            }
+          } else {
+            Write-Host "::error::Driver file not found: $driverPath"
+            exit 1
+          }
+
+      - name: Generate driver catalog
+        if: matrix.configuration == 'Release'
+        working-directory: drivers/windows/aep-caw-minifilter
+        shell: powershell
+        run: |
+          # Find inf2cat
+          $inf2cat = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter "inf2cat.exe" |
+                     Select-Object -First 1 -ExpandProperty FullName
+
+          if ($inf2cat) {
+            $binDir = "bin\${{ matrix.platform }}\${{ matrix.configuration }}"
+
+            # Copy INF to output directory
+            Copy-Item "aep-caw.inf" -Destination $binDir -Force
+
+            Write-Host "Generating driver catalog..."
+            & $inf2cat /driver:$binDir /os:10_x64
+
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "::warning::Catalog generation failed (non-fatal)"
+            }
+          } else {
+            Write-Host "::warning::inf2cat.exe not found, skipping catalog generation"
+          }
+
+      - name: Upload driver artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aep-caw-driver-${{ matrix.platform }}-${{ matrix.configuration }}
+          path: |
+            drivers/windows/aep-caw-minifilter/bin/${{ matrix.platform }}/${{ matrix.configuration }}/aep-caw.sys
+            drivers/windows/aep-caw-minifilter/bin/${{ matrix.platform }}/${{ matrix.configuration }}/aep-caw.pdb
+            drivers/windows/aep-caw-minifilter/bin/${{ matrix.platform }}/${{ matrix.configuration }}/aep-caw.inf
+            drivers/windows/aep-caw-minifilter/bin/${{ matrix.platform }}/${{ matrix.configuration }}/aep-caw.cat
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload installation scripts
+        if: matrix.configuration == 'Release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: aep-caw-driver-scripts
+          path: |
+            drivers/windows/aep-caw-minifilter/scripts/install.cmd
+            drivers/windows/aep-caw-minifilter/scripts/uninstall.cmd
+          if-no-files-found: warn
+          retention-days: 30
+
+  # Build Windows ApprovalDialog (WPF/.NET Framework 4.8.1)
+  build-approval-dialog:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build ApprovalDialog
+        shell: cmd
+        run: |
+          echo Building Windows ApprovalDialog...
+          msbuild windows\ApprovalDialog\ApprovalDialog.csproj /p:Configuration=Release /v:minimal
+          if errorlevel 1 exit /b 1
+          echo Build successful
+
+      - name: Upload ApprovalDialog artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aep-caw-approval-dialog-windows
+          path: |
+            windows/ApprovalDialog/bin/Release/aep-caw-approval-dialog.exe
+          if-no-files-found: error
+          retention-days: 30
+
+  # Summary job that runs after all builds complete
+  build-summary:
+    needs: [build-driver, build-approval-dialog]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check build results
+        run: |
+          driver_result="${{ needs.build-driver.result }}"
+          dialog_result="${{ needs.build-approval-dialog.result }}"
+
+          echo "Build Results:"
+          echo "  - Driver: $driver_result"
+          echo "  - ApprovalDialog: $dialog_result"
+          echo ""
+
+          if [ "$driver_result" == "success" ] && [ "$dialog_result" == "success" ]; then
+            echo "✅ All Windows builds completed successfully"
+            echo ""
+            echo "Artifacts available:"
+            echo "  - aep-caw-driver-x64-Debug"
+            echo "  - aep-caw-driver-x64-Release (test-signed)"
+            echo "  - aep-caw-driver-scripts"
+            echo "  - aep-caw-approval-dialog-windows"
+            echo ""
+            echo "Note: For production deployment, the Release driver must be"
+            echo "signed with an EV code signing certificate and submitted to"
+            echo "Microsoft for attestation signing."
+          else
+            echo "❌ One or more builds failed"
+            exit 1
+          fi

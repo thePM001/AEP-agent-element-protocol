@@ -1,0 +1,57 @@
+{
+  "manifest_version": "1",
+  "id": "gap",
+  "version": "2.8.0",
+  "kind": "protocol",
+  "path": "AEP-Components/gap/",
+  "description": "GAP Governed Agentic Programming language spec vendored from github.com/thePM001/gap.",
+  "requires": [
+    "aep-base-node"
+  ],
+  "capabilities": [
+    "gap:meta-schema",
+    "gap:reference-policies"
+  ],
+  "actions": [
+    {
+      "id": "validate_gap_schema",
+      "description": "Validate a GAP document against meta-schema",
+      "runtime": "cli",
+      "method": "gap validate"
+    }
+  ],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 20,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "schemas": [
+    "AEP-Components/gap/schemas/gap-meta-schema-v1.json",
+    "AEP-Components/gap/schemas/gap-meta-schema-v1.2.json"
+  ],
+  "cca": {
+    "summary": "GAP Governed Agentic Programming: .gap YAML instructions, meta-schema, subprotocol registry.",
+    "use_when": [
+      "all governed agent workflows",
+      "GAP policies",
+      "governed agentic programming",
+      "dynAEP Action Lattice",
+      "WASM GAP evaluation",
+      "coding agents with instruction lattice"
+    ],
+    "avoid_when": [
+      "user only wants raw ungoverned shell scripts without lattice"
+    ],
+    "pairs_with": [
+      "coding-governance",
+      "dynaep-core",
+      "policy-engine",
+      "wasm-policy-sandbox"
+    ]
+  },
+  "implementation": {
+    "path": "AEP-Components/gap/"
+  }
+}

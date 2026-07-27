@@ -1,0 +1,35 @@
+{
+  "manifest_version": "1",
+  "id": "intent",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/intent/",
+  "description": "Intent baseline and drift detection.",
+  "requires": [
+    "policy-engine",
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "intent:baseline",
+    "intent:drift-detect"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 10,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Detect when agent behavior drifts from stated intent.",
+    "use_when": [
+      "long-running agents"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/intent/lib/detector.ts"
+  }
+}

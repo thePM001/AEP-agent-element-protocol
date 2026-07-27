@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aep.dev/schemas/hcse-artifact-v1.json",
+  "title": "HCSE Artifact v1",
+  "description": "Team-shared code graph artifact in user git at .aep-hcse/",
+  "type": "object",
+  "required": ["kind", "schema_version"],
+  "properties": {
+    "kind": { "const": "hcse_artifact" },
+    "schema_version": { "type": "integer", "const": 1 },
+    "head_sha": { "type": ["string", "null"] },
+    "branch": { "type": ["string", "null"] },
+    "indexed_at": { "type": ["string", "null"] },
+    "mirrored_from": { "type": "string" },
+    "intent_id": { "type": ["string", "null"] }
+  },
+  "additionalProperties": true
+}

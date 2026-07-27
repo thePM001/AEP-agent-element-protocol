@@ -1,0 +1,91 @@
+{
+  "manifest_version": "1",
+  "id": "connector-azure",
+  "version": "2.8.0",
+  "kind": "connector",
+  "path": "AEP-Connectors/azure/",
+  "description": "UCB-only Microsoft Azure connector. All traffic via /ucb/v1/egress/azure/**.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels",
+    "ucb",
+    "composer-lite"
+  ],
+  "capabilities": [
+    "connector:azure",
+    "ucb:egress-proxy",
+    "integration:external-api"
+  ],
+  "actions": [
+    {
+      "id": "wire_azure",
+      "description": "Wire Microsoft Azure connector egress routes",
+      "runtime": "plan",
+      "method": "connector_config"
+    },
+    {
+      "id": "probe_azure",
+      "description": "Health probe for Microsoft Azure",
+      "runtime": "connector",
+      "method": "probe"
+    }
+  ],
+  "setup_hooks": [
+    {
+      "id": "azure_connector_default",
+      "policy_section": "connectors",
+      "default": {
+        "azure": {
+          "upstream": "https://management.azure.com"
+        }
+      }
+    }
+  ],
+  "composer": {
+    "palette": true,
+    "node_type": "connector"
+  },
+  "composer_node": {
+    "type": "connector",
+    "label": "Microsoft Azure",
+    "short": "MI",
+    "color": "#475569",
+    "service": "azure",
+    "ucb_only": true,
+    "description": "Microsoft Azure via UCB egress",
+    "registry_id": "connector-azure"
+  },
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 10,
+    "requires_internet": true,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Connect Microsoft Azure. Requires UCB. Routes: /ucb/v1/egress/azure/**.",
+    "use_when": [
+      "azure",
+      "microsoft azure",
+      "azure cloud"
+    ],
+    "avoid_when": [
+      "air-gapped with no external APIs",
+      "UCB disabled"
+    ],
+    "pairs_with": [
+      "ucb",
+      "aep-base-node",
+      "composer-lite"
+    ]
+  },
+  "implementation": {
+    "module": "AEP-Connectors/azure/lib/azure-connector.mjs",
+    "ucb_egress_prefix": "/ucb/v1/egress/azure",
+    "auth_token_env": "AEP_AZURE_ACCESS_TOKEN"
+  },
+  "integration": {
+    "ucb_only": true,
+    "mcp_optional": null,
+    "nango_compatible": true
+  }
+}

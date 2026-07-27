@@ -1,0 +1,105 @@
+# aep-caw Project Structure
+
+This document describes the *current* repository layout (not an aspirational structure).
+
+## High-level layout
+
+```
+aep-caw/
+├── cmd/aep-caw/                 # main() for the aep-caw binary
+├── internal/                    # implementation (not exported)
+├── pkg/types/                   # API/CLI types shared across packages
+├── proto/                       # gRPC proto definitions (Struct-based)
+├── configs/                     # example configs (api keys, etc.)
+├── docs/                        # design docs and notes
+├── macos/                       # macOS System Extension (ESF+NE) Swift code
+├── config.yml                   # example server config (repo-local)
+└── default-policy.yml           # example policy (repo-local)
+```
+
+## `internal/` packages (where to change what)
+
+- `internal/server/` - Wires configuration into HTTP + unix-socket servers and session lifecycle.
+- `internal/api/` - HTTP routing + handlers (`/sessions`, `/exec`, `/events`, `/metrics`), exec responses (`include_events`, `guidance`). Ptrace wiring: `ptrace_handlers.go` (policy adapter routing syscall events to session-level engines), `app_ptrace_linux.go` (tracer lifecycle), `exec_ptrace_linux.go` (attach helper for exec path).
+- `internal/cli/` - Cobra CLI commands (`aep-caw exec`, `aep-caw session …`, `aep-caw events …`).
+- `internal/client/` - HTTP + gRPC clients used by the CLI (and tests) to call the server API.
+- `internal/config/` - Config structs, load/validate helpers.
+- `internal/policy/` - Policy parsing + evaluation and derived limits/timeouts. New in this release: `http_service.go` (YAML types, validation, host canonicalization for declared HTTP services), `http_service_check.go` (the `CheckHTTPService` evaluator with traversal guard and `DeclaredHTTPServiceHost`/`DeclaredHTTPServiceAllowsDirect` helpers used by the netmonitor fail-closed path), `http_service_compile.go` (`compileHTTPServices` builds the name and host lookup tables consumed by the engine), and `http_service_fuzz_test.go` (fuzz targets for the evaluator). Database policy blocks are accepted here as opaque YAML nodes and decoded by `internal/db/policy`.
+- `internal/db/` - Postgres-family database access control. `effects/`, `policy/`, `events/`, and `service/` are platform-neutral data/evaluator packages; `classify/postgres/`, `catalog/`, and `redirect/` classify statements, resolve catalog objects, and plan safe relation redirects; `proxy/postgres/` is the Linux-only PostgreSQL wire proxy runtime with non-Linux stubs for cross-builds. Current runtime DB support is Postgres-related only.
+- `internal/session/` - Session manager and built-in commands (`cd`, `export`, `aenv`, `als`, `acat`, `astat`).
+- `internal/fsmonitor/` - FUSE workspace view + file operation capture.
+- `internal/netmonitor/` - Network proxy + DNS cache/resolver and optional netns/transparent plumbing. The netmonitor's fail-closed check calls `DeclaredHTTPServiceHost` and `DeclaredHTTPServiceAllowsDirect` from the policy engine to block direct connections to declared `http_services` upstream hosts.
+- `internal/limits/` - Optional cgroups v2 enforcement (Linux-only; wired from exec hooks).
+- `internal/ptrace/` - Ptrace-based syscall tracer for restricted containers (Linux-only, requires SYS_PTRACE). Intercepts exec, file, network, and signal syscalls via PTRACE_SEIZE. Architecture-specific register access (amd64, arm64). Wired into the server via `internal/api/` for both exec and wrap paths. Includes `AttachOption` functional options for session/command association and keepStopped control, `WaitAttached`/`ResumePID` for synchronous attach flow. Seccomp prefilter injection (`inject_seccomp.go`, `seccomp_filter.go`) for reduced overhead. `Metrics` interface with Prometheus adapter (`metrics.go`, `metrics_prometheus.go`) and overhead benchmarks (`benchmark_test.go`).
+- `internal/events/` - In-memory event broker for SSE.
+- `internal/store/` - Event sinks (SQLite, JSONL, webhook) and composition.
+- `internal/auth/` - API key auth implementation.
+- `internal/approvals/` - Approval manager (shadow/enforced modes).
+- `internal/platform/` - Platform abstraction layer for cross-platform support.
+- `internal/platform/fuse/` - Shared FUSE package for Linux (FUSE3) and Windows (WinFsp) filesystem mounting.
+- `internal/platform/lima/` - Lima VM platform for macOS with full Linux isolation (cgroups v2, iptables, namespaces).
+- `internal/platform/wsl2/` - WSL2 platform for Windows with full Linux isolation (cgroups v2, iptables, namespaces).
+
+## Notes
+
+- `pkg/types/` is the “schema” layer: keep it stable and versioned when changing API responses.
+- Tests live next to code (`*_test.go`) in `internal/*`.
+- `internal/proxy/proxy.go` dispatches `/svc/<name>/` requests to declared `http_services` entries. It reuses the existing session storage helpers (`StoreRequestBody`, `StoreResponseBody`) and per-service hook plumbing (header injection, credential substitution, URL rewrites) that the LLM proxy path uses, so logging and hook behavior are consistent across both kinds of proxy traffic.
+
+For gRPC:
+- `proto/aepcaw/v1/aep-caw.proto` defines the service (Struct-based, no codegen required).
+- `internal/api/grpc.go` implements the gRPC server (including `ExecStream` and `EventsTail`).
+- `internal/client/grpc_client.go` provides a small gRPC client used by the CLI when `AEP_CAW_TRANSPORT=grpc`.
+
+## `macos/` directory (ESF+NE enterprise mode)
+
+The `macos/` directory contains Swift code for the macOS System Extension that provides ESF+NE enforcement:
+
+```
+macos/
+├── SysExt/                      # System Extension bundle
+│   ├── main.swift               # System Extension entry point
+│   ├── ESFClient.swift          # Endpoint Security Framework client
+│   ├── FilterDataProvider.swift # Network Extension flow filter
+│   ├── DNSProxyProvider.swift   # Network Extension DNS proxy
+│   ├── Info.plist               # Bundle configuration
+│   └── SysExt.entitlements      # ESF + NE entitlements
+├── XPCService/                  # XPC service bridging Swift ↔ Go
+│   ├── main.swift               # XPC service entry point
+│   ├── XPCServiceDelegate.swift # XPC connection handling
+│   └── PolicyBridge.swift       # Unix socket bridge to Go policy server
+├── Shared/                      # Shared Swift types
+│   └── XPCProtocol.swift        # XPC protocol definition
+└── AepCaw.xcodeproj/           # Xcode project (build with Xcode 15+)
+```
+
+Related Go packages:
+- `internal/platform/darwin/xpc/` - XPC protocol types and Unix socket server
+- `internal/platform/darwin/sysext.go` - System Extension manager
+
+**Build:** `make build-macos-enterprise` (requires Xcode 15+, Apple entitlements)
+
+## `drivers/` directory (Windows kernel components)
+
+The `drivers/` directory contains Windows kernel-mode driver code:
+
+```
+drivers/
+└── windows/
+    └── aep-caw-minifilter/       # Windows Mini Filter driver
+        ├── inc/                   # Header files
+        │   ├── protocol.h         # User-mode ↔ kernel protocol
+        │   └── ...
+        └── src/                   # Driver implementation
+            ├── driver.c           # Driver entry point
+            ├── filesystem.c       # File operation interception
+            ├── communication.c    # Filter port communication
+            ├── registry.c         # Registry operation interception
+            └── ...
+```
+
+Related Go packages:
+- `internal/platform/windows/driver_client.go` - Driver communication client
+- `internal/platform/windows/filesystem.go` - Filesystem interceptor (WinFsp + minifilter)
+
+**Build:** Requires Visual Studio 2022 + WDK (Windows Driver Kit)

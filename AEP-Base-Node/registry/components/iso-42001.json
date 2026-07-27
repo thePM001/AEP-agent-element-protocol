@@ -1,0 +1,66 @@
+{
+  "manifest_version": "1",
+  "id": "iso-42001",
+  "version": "2.8.0",
+  "kind": "compliance",
+  "path": "AEP-Policy-System/reference/",
+  "description": "ISO 42001 compliance pack (GAP reference).",
+  "requires": [
+    "aep-base-node",
+    "dynaep-core"
+  ],
+  "lrp_id": "iso-42001",
+  "gap_ref": "AEP-Policy-System/reference/iso-42001.gap",
+  "docks": {
+    "primary": "regulation_module",
+    "allowed": [
+      "regulation_module"
+    ]
+  },
+  "capabilities": [
+    "compliance:iso-42001",
+    "gap:evaluate"
+  ],
+  "actions": [
+    {
+      "id": "enable_iso-42001",
+      "description": "Enable ISO 42001 LRP",
+      "setup_hook": "sync_lrp",
+      "params": {
+        "lrp_id": "iso-42001"
+      }
+    }
+  ],
+  "setup_hooks": [
+    {
+      "id": "sync_iso-42001",
+      "setup_hook": "sync_lrp",
+      "params": {
+        "lrp_id": "iso-42001"
+      }
+    }
+  ],
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 5,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "ISO 42001 regulatory compliance via GAP policies.",
+    "use_when": [
+      "user requests ISO 42001",
+      "regulated industry deployment"
+    ],
+    "avoid_when": [
+      "no regulatory requirements"
+    ],
+    "pairs_with": [
+      "gap-runtime-scanners",
+      "wasm-policy-sandbox"
+    ]
+  },
+  "implementation": {
+    "gap_ref": "AEP-Policy-System/reference/iso-42001.gap"
+  }
+}

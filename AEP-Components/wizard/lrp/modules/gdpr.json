@@ -1,0 +1,29 @@
+{
+  "id": "gdpr",
+  "framework": "GDPR",
+  "version": "2016/679",
+  "dock": "regulation_module",
+  "gap_ref": "AEP-Policy-System/reference/gdpr.gap",
+  "articles": [
+    "Art. 5 Principles",
+    "Art. 6 Lawful Basis",
+    "Art. 17 Right to Erasure",
+    "Art. 25 Data Protection by Design",
+    "Art. 30 Records of Processing",
+    "Art. 32 Security of Processing",
+    "Art. 33 Breach Notification"
+  ],
+  "aep_features": [
+    "PII scanners in security.gap lattice",
+    "Evidence Ledger with hash-chained audit",
+    "Capability Scoping and Execution Rings",
+    "MCP Security Gateway tool blocking",
+    "Proof Bundles for breach evidence export"
+  ],
+  "controls": [
+    "pii_minimisation_in_agent_outputs",
+    "lawful_basis_documented_per_session",
+    "erasure_request_workflow_gate",
+    "breach_evidence_bundle_within_72h_window"
+  ]
+}

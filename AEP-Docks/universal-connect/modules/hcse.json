@@ -1,0 +1,39 @@
+{
+  "module_id": "hcse",
+  "component_id": "hcse",
+  "description": "UCB egress routes for AEP-HCSE upstream release download",
+  "agent_id": "aep-hcse",
+  "egress": {
+    "routes": [
+      {
+        "path_prefix": "/github-api/repos/DeusData/codebase-memory-mcp",
+        "upstream": "https://api.github.com/repos/DeusData/codebase-memory-mcp",
+        "strip_prefix": "/github-api/repos/DeusData/codebase-memory-mcp",
+        "access_rules": [
+          {
+            "action": "ALLOW",
+            "method": "GET",
+            "path": "/releases/**"
+          },
+          {
+            "action": "ALLOW",
+            "method": "GET",
+            "path": "/releases/assets/**"
+          }
+        ]
+      },
+      {
+        "path_prefix": "/github-releases/DeusData/codebase-memory-mcp",
+        "upstream": "https://github.com/DeusData/codebase-memory-mcp/releases/download",
+        "strip_prefix": "/github-releases/DeusData/codebase-memory-mcp",
+        "access_rules": [
+          {
+            "action": "ALLOW",
+            "method": "GET",
+            "path": "/**"
+          }
+        ]
+      }
+    ]
+  }
+}

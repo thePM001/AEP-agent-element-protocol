@@ -1,0 +1,17 @@
+{
+  "task.created": {
+    "topic": "tasks.created",
+    "payload_schema": {
+      "type": "object",
+      "required": ["task_id", "title", "created_by"],
+      "properties": {
+        "task_id": { "type": "string" },
+        "title": { "type": "string" },
+        "created_by": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "allowed_producers": ["agent-1", "conductor"],
+    "requires_correlation_id": true
+  }
+}

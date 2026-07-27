@@ -1,0 +1,41 @@
+{
+  "manifest_version": "1",
+  "id": "community-extension-template",
+  "version": "0.1.0",
+  "kind": "template",
+  "path": "AEP-Base-Node/registry/components/",
+  "description": "Template for community WASM/protocol extensions from GitHub.",
+  "requires": [],
+  "capabilities": [],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 0,
+    "min_disk_mb": 0,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Copy this template to add custom extensions.",
+    "use_when": [
+      "building custom extensions"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "source": "github"
+  },
+  "composer_node": {
+    "type": "wasm_policy",
+    "label": "My WASM Extension",
+    "short": "MX",
+    "color": "#94a3b8",
+    "description": "Replace with your extension description"
+  },
+  "install_steps": [
+    "Fork https://github.com/thePM001/AEP-agent-element-protocol",
+    "Copy AEP-Base-Node/registry/components/community-extension-template.json",
+    "Add entry to AEP-Base-Node/registry/catalog.json"
+  ]
+}

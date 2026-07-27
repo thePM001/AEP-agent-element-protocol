@@ -1,0 +1,23 @@
+{
+  "list_tasks": {
+    "method": "GET",
+    "path": "/api/tasks",
+    "required_headers": ["Authorization"]
+  },
+  "create_task": {
+    "method": "POST",
+    "path": "/api/tasks",
+    "required_headers": ["Authorization", "Content-Type"],
+    "request_body": {
+      "type": "object",
+      "required": ["title"],
+      "properties": { "title": { "type": "string" } },
+      "additionalProperties": false
+    }
+  },
+  "get_task": {
+    "method": "GET",
+    "path": "/api/tasks/{task_id}",
+    "required_headers": ["Authorization"]
+  }
+}

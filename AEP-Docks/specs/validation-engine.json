@@ -1,0 +1,9 @@
+{
+  "port_id": "validation_engine",
+  "name": "Validation Engine Dock",
+  "priority": 200,
+  "socket_suffix": "/validation",
+  "purpose": "AEP validation engines, DynAep event ingest, UCB rollback",
+  "transport": "lattice-channel",
+  "implementation": "AEP-Base-Node/crate/src/docking.rs"
+}

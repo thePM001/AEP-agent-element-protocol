@@ -1,0 +1,96 @@
+{
+  "manifest_version": "1",
+  "id": "commerce-subprotocol",
+  "version": "2.8.0",
+  "kind": "regulation",
+  "path": "AEP-Subprotocols/commerce/",
+  "description": "Agentic commerce validation, spend tracking, merchant registry.",
+  "requires": [
+    "aep-base-node",
+    "aep-typescript-sdk"
+  ],
+  "lrp_id": "commerce-subprotocol",
+  "docks": {
+    "primary": "regulation_module",
+    "allowed": [
+      "regulation_module"
+    ]
+  },
+  "capabilities": [
+    "commerce:discover",
+    "commerce:add_to_cart",
+    "commerce:checkout",
+    "commerce:payment_authorize",
+    "commerce:refund_request"
+  ],
+  "actions": [
+    {
+      "id": "enable_commerce_lrp",
+      "description": "Register commerce LRP",
+      "setup_hook": "sync_lrp",
+      "params": {
+        "lrp_id": "commerce-subprotocol"
+      }
+    },
+    {
+      "id": "validate_commerce",
+      "description": "Validate commerce tool call",
+      "runtime": "gateway",
+      "method": "validateCommerce"
+    }
+  ],
+  "setup_hooks": [
+    {
+      "id": "commerce_policy",
+      "policy_section": "commerce",
+      "default": {
+        "enabled": false,
+        "max_daily_spend": 5000,
+        "max_transaction_amount": 1000
+      }
+    },
+    {
+      "id": "sync_commerce_lrp",
+      "setup_hook": "sync_lrp",
+      "params": {
+        "lrp_id": "commerce-subprotocol"
+      }
+    }
+  ],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 20,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Governs agent shopping, checkout, payments with spend caps.",
+    "use_when": [
+      "agentic commerce",
+      "Shopify integration",
+      "payment negotiation"
+    ],
+    "avoid_when": [
+      "no external purchases"
+    ],
+    "pairs_with": [
+      "economics",
+      "gap-runtime-scanners"
+    ]
+  },
+  "implementation": {
+    "validator": "AEP-Subprotocols/commerce/lib/validator.ts",
+    "spend_tracker": "AEP-Subprotocols/commerce/lib/spend-tracker.ts",
+    "registry": "AEP-Subprotocols/commerce/lib/registry.ts",
+    "cli": [
+      "aep commerce status",
+      "aep commerce spend"
+    ]
+  },
+  "conformance": {
+    "tests": [
+      "AEP-Components/conformance/runner/run.sh",
+      "AEP-Components/conformance/tests/manifest.json"
+    ]
+  }
+}

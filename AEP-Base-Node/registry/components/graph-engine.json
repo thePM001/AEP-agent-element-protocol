@@ -1,0 +1,36 @@
+{
+  "manifest_version": "1",
+  "id": "graph-engine",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/graph-engine/",
+  "description": "Agent governance graph engine and scene registry.",
+  "requires": [
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "graph:scene",
+    "graph:registry"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 20,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Governance graph for scenes and element registry.",
+    "use_when": [
+      "visual composer graphs"
+    ],
+    "avoid_when": [
+      "cca"
+    ],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/graph-engine/lib/graph/index.ts"
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "manifest_version": "1",
+  "id": "intent-ledger",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/intent-ledger/",
+  "description": "Append-only intent provenance store for solidify records.",
+  "requires": [
+    "coding-governance"
+  ],
+  "capabilities": [
+    "coding:provenance",
+    "coding:explain"
+  ],
+  "actions": [
+    {
+      "id": "append_intent",
+      "description": "Append intent provenance record",
+      "runtime": "library",
+      "method": "intent-ledger append"
+    }
+  ],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 100,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "storage": {
+    "provenance": "${AEP_DATA}/intent-provenance.jsonl",
+    "intents_dir": "${AEP_DATA}/intents/"
+  },
+  "cca": {
+    "summary": "Immutable causal chain: intent -> blast radius -> solidify.",
+    "use_when": [
+      "audit",
+      "compliance",
+      "nool-style provenance without nool VCS"
+    ],
+    "avoid_when": [
+      "ephemeral throwaway coding without audit trail"
+    ],
+    "pairs_with": [
+      "coding-governance",
+      "evidence-ledger"
+    ]
+  },
+  "implementation": {
+    "path": "AEP-Components/intent-ledger/"
+  }
+}

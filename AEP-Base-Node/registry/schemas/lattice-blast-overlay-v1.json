@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aep.dev/schemas/lattice-blast-overlay-v1.json",
+  "title": "LatticeBlastOverlay",
+  "description": "Projection of coding-governance blast radius onto the existing Composer hyperlattice canvas. Not a standalone graph.",
+  "type": "object",
+  "required": ["overlay_version", "intent_id", "component_ids", "highlighted_node_ids"],
+  "properties": {
+    "overlay_version": { "type": "string", "const": "1" },
+    "intent_id": { "type": "string" },
+    "statement": { "type": "string" },
+    "component_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Registry component IDs from blast_radius.impact.components"
+    },
+    "highlighted_node_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "composer-lite-graph.json node ids whose data.catalog_id matches component_ids"
+    },
+    "registry_neighbors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string" },
+          "relation": { "type": "string", "enum": ["pairs_with", "paired_by"] }
+        }
+      }
+    },
+    "policy_bindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["lrp_id", "reason"],
+        "properties": {
+          "lrp_id": { "type": "string" },
+          "name": { "type": "string" },
+          "docking_port": { "type": "string" },
+          "gap_ref": { "type": "string" },
+          "reason": {
+            "type": "string",
+            "enum": ["component_in_blast", "gap_stack", "epscom_governance", "registry_neighbor"]
+          }
+        }
+      },
+      "description": "Policy-lattice LRP bindings triggered by blast radius (read from policy-lattice)"
+    },
+    "policy_lrps": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Deprecated alias: lrp_id list derived from policy_bindings"
+    },
+    "within_envelope": { "type": "boolean" },
+    "computed_at": { "type": "string" }
+  },
+  "additionalProperties": false
+}

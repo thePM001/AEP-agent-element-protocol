@@ -1,0 +1,126 @@
+# Price Catalog - per-million token prices in USD
+# Kind: PriceCatalog
+entries:
+  - provider: openai
+    model: gpt-4o
+    price:
+      prompt: 2.50
+      completion: 10.00
+      cache_read: 1.25
+    context_window: 128000
+    max_output_tokens: 16384
+    capabilities:
+      - chat
+      - tool_use
+      - vision
+      - streaming
+
+  - provider: openai
+    model: gpt-4o-mini
+    price:
+      prompt: 0.15
+      completion: 0.60
+    context_window: 128000
+    max_output_tokens: 16384
+    capabilities:
+      - chat
+      - tool_use
+      - streaming
+
+  - provider: anthropic
+    model: claude-sonnet-4
+    price:
+      prompt: 3.00
+      completion: 15.00
+      cache_write: 3.75
+      cache_read: 0.30
+    context_window: 200000
+    max_output_tokens: 8192
+    capabilities:
+      - chat
+      - tool_use
+      - vision
+      - streaming
+
+  - provider: anthropic
+    model: claude-opus-4
+    price:
+      prompt: 15.00
+      completion: 75.00
+    context_window: 200000
+    max_output_tokens: 8192
+    capabilities:
+      - chat
+      - tool_use
+      - vision
+      - streaming
+
+  - provider: deepseek
+    model: deepseek-v4-flash
+    price:
+      prompt: 0.35
+      completion: 1.40
+    context_window: 128000
+    max_output_tokens: 8192
+    capabilities:
+      - chat
+      - streaming
+
+  - provider: deepseek
+    model: deepseek-v4-pro
+    price:
+      prompt: 1.25
+      completion: 4.00
+    context_window: 128000
+    max_output_tokens: 8192
+    capabilities:
+      - chat
+      - streaming
+
+  - provider: google
+    model: gemini-flash
+    price:
+      prompt: 0.15
+      completion: 0.60
+    context_window: 1048576
+    max_output_tokens: 8192
+    capabilities:
+      - chat
+      - tool_use
+      - vision
+      - streaming
+
+  - provider: mistral
+    model: mistral-large
+    price:
+      prompt: 2.00
+      completion: 6.00
+    context_window: 128000
+    max_output_tokens: 8192
+    capabilities:
+      - chat
+      - tool_use
+      - streaming
+
+  - provider: groq
+    model: llama-3.3-70b
+    price:
+      prompt: 0.59
+      completion: 0.79
+    context_window: 128000
+    max_output_tokens: 8192
+    capabilities:
+      - chat
+      - streaming
+
+  - provider: ollama
+    model: llama3.3
+    price:
+      prompt: 0
+      completion: 0
+    context_window: 128000
+    max_output_tokens: 8192
+    capabilities:
+      - chat
+      - streaming
+      - self-hosted

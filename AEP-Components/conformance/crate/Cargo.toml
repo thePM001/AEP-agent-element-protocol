@@ -1,0 +1,20 @@
+[package]
+name = "aep-conformance"
+description = "AEP 2.8 public-tier conformance test runner"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "aep-conformance"
+path = "src/main.rs"
+
+[dependencies]
+aep-lattice-crypto = { path = "../../lattice-crypto/crate" }
+aep-lattice-channel = { path = "../../lattice-channels/crate" }
+aep-agentmesh = { path = "../../agentmesh/crate" }
+aep-potomitan = { path = "../../../AEP-Base-Node/potomitan/crate" }
+aep-base-node = { path = "../../../AEP-Base-Node/crate" }
+serde.workspace = true
+serde_json.workspace = true
+tempfile = "3"

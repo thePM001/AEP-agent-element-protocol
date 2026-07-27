@@ -1,0 +1,56 @@
+{
+  "manifest_version": "1",
+  "id": "aep-dynaep-typescript",
+  "version": "2.8.0",
+  "kind": "sdk",
+  "path": "AEP-SDKs/typescript/dynaep/",
+  "description": "dynAEP Action Lattice TypeScript client library.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels",
+    "dynaep-core"
+  ],
+  "capabilities": [
+    "sdk:lattice-gated",
+    "sdk:compiled-ai"
+  ],
+  "actions": [
+    {
+      "id": "produce_sdks",
+      "description": "Build SDK artifacts (no npm)",
+      "runtime": "cli",
+      "method": "node AEP-User-Experience/scripts/produce-aep-sdks.mjs"
+    }
+  ],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 50,
+    "requires_internet": false
+  },
+  "implementation": {
+    "producer": "AEP-User-Experience/scripts/produce-aep-sdks.mjs",
+    "dist": "AEP-SDKs/dist/sdk-manifest.json",
+    "entrypoints": [
+      "AEP-SDKs/typescript/dynaep/src/bridge.ts",
+      "AEP-SDKs/typescript/dynaep/src/protocol/action-lattice.ts",
+      "AEP-SDKs/typescript/dynaep/cli/dynaep-cli.ts"
+    ]
+  },
+  "cca": {
+    "summary": "TypeScript dynAEP client: Action Lattice filter, bridge, temporal authority and CLI.",
+    "use_when": [
+      "TypeScript or Node agent backends",
+      "compiled AI lattice-gated SDK",
+      "dynAEP bridge integration"
+    ],
+    "avoid_when": [
+      "Python-only agent stack with no TS consumers"
+    ],
+    "pairs_with": [
+      "dynaep-core",
+      "lattice-channels",
+      "gap"
+    ]
+  }
+}

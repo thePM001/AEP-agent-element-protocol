@@ -1,0 +1,771 @@
+package cli
+
+import (
+	"bytes"
+	"context"
+	"io"
+	"net/url"
+	"os"
+	"runtime"
+	"strings"
+	"syscall"
+	"testing"
+
+	"github.com/nla-aep/aep-caw-framework/internal/client"
+	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestWrapCmd_RequiresCommand(t *testing.T) {
+	cmd := newWrapCmd()
+	buf := new(bytes.Buffer)
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	cmd.SetArgs([]string{})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "command required")
+}
+
+func TestWrapCmd_DefaultPolicy(t *testing.T) {
+	cmd := newWrapCmd()
+	policy, err := cmd.Flags().GetString("policy")
+	require.NoError(t, err)
+	assert.Equal(t, "agent-default", policy)
+}
+
+func TestWrapCmd_DefaultReport(t *testing.T) {
+	cmd := newWrapCmd()
+	report, err := cmd.Flags().GetBool("report")
+	require.NoError(t, err)
+	assert.True(t, report)
+}
+
+func TestWrapCmd_DefaultSessionEmpty(t *testing.T) {
+	cmd := newWrapCmd()
+	session, err := cmd.Flags().GetString("session")
+	require.NoError(t, err)
+	assert.Equal(t, "", session)
+}
+
+func TestWrapCmd_DefaultRootEmpty(t *testing.T) {
+	cmd := newWrapCmd()
+	root, err := cmd.Flags().GetString("root")
+	require.NoError(t, err)
+	assert.Equal(t, "", root)
+}
+
+func TestWrapCmd_ParsesFlags(t *testing.T) {
+	cmd := newWrapCmd()
+	buf := new(bytes.Buffer)
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	// Parse flags only (don't execute) to verify flag parsing works
+	err := cmd.ParseFlags([]string{"--policy", "strict", "--session", "my-sess", "--root", "/tmp/work", "--report=false"})
+	require.NoError(t, err)
+
+	policy, _ := cmd.Flags().GetString("policy")
+	assert.Equal(t, "strict", policy)
+
+	session, _ := cmd.Flags().GetString("session")
+	assert.Equal(t, "my-sess", session)
+
+	root, _ := cmd.Flags().GetString("root")
+	assert.Equal(t, "/tmp/work", root)
+
+	report, _ := cmd.Flags().GetBool("report")
+	assert.False(t, report)
+}
+
+func TestWrapCmd_CommandAfterDash(t *testing.T) {
+	// Cobra treats everything after -- as args, not flags.
+	// Verify flags before -- are parsed and everything after -- is treated as args.
+	cmd := newWrapCmd()
+	buf := new(bytes.Buffer)
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	err := cmd.ParseFlags([]string{"--policy", "strict", "--", "claude-code", "--model", "opus"})
+	require.NoError(t, err)
+
+	policy, _ := cmd.Flags().GetString("policy")
+	assert.Equal(t, "strict", policy)
+
+	// ArgsLenAtDash returns the index in Args where -- was found.
+	// Everything from that index onward is after the dash separator.
+	dashIdx := cmd.ArgsLenAtDash()
+	allArgs := cmd.Flags().Args()
+	assert.GreaterOrEqual(t, dashIdx, 0, "dash separator should be found")
+	assert.Equal(t, []string{"claude-code", "--model", "opus"}, allArgs[dashIdx:])
+}
+
+func TestWrapCmd_UsageString(t *testing.T) {
+	cmd := newWrapCmd()
+	usage := cmd.UsageString()
+	assert.Contains(t, usage, "wrap [flags] -- COMMAND [ARGS...]")
+	assert.Contains(t, usage, "--policy")
+	assert.Contains(t, usage, "--session")
+	assert.Contains(t, usage, "--root")
+	assert.Contains(t, usage, "--report")
+}
+
+func TestWrapCmd_ShortDescription(t *testing.T) {
+	cmd := newWrapCmd()
+	assert.Equal(t, "Wrap an AI agent with exec interception", cmd.Short)
+}
+
+func TestWrapCmd_RequiresCommandWithFlags(t *testing.T) {
+	// Even with flags specified, if no command after --, it should error
+	cmd := newWrapCmd()
+	buf := new(bytes.Buffer)
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	cmd.SetArgs([]string{"--policy", "strict"})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "command required")
+}
+
+// mockWrapClient implements CLIClient for testing wrap interception setup.
+type mockWrapClient struct {
+	wrapInitCalled   bool
+	wrapInitReq      types.WrapInitRequest
+	wrapInitResp     types.WrapInitResponse
+	wrapInitErr      error
+	createSessCalled bool
+	getSessionCalled bool
+	getSessionFn     func(ctx context.Context, id string) (types.Session, error)
+	createSessionFn  func(ctx context.Context, req types.CreateSessionRequest) (types.Session, error)
+}
+
+// Ensure mockWrapClient implements CLIClient at compile time.
+var _ client.CLIClient = (*mockWrapClient)(nil)
+
+func (m *mockWrapClient) WrapInit(ctx context.Context, sessionID string, req types.WrapInitRequest) (types.WrapInitResponse, error) {
+	m.wrapInitCalled = true
+	m.wrapInitReq = req
+	return m.wrapInitResp, m.wrapInitErr
+}
+
+// Satisfy CLIClient interface (unused methods for this test)
+func (m *mockWrapClient) CreateSession(ctx context.Context, workspace, policy string) (types.Session, error) {
+	m.createSessCalled = true
+	return types.Session{ID: "test-session"}, nil
+}
+func (m *mockWrapClient) CreateSessionWithID(ctx context.Context, id, workspace, policy string) (types.Session, error) {
+	return types.Session{ID: id}, nil
+}
+func (m *mockWrapClient) CreateSessionWithRequest(ctx context.Context, req types.CreateSessionRequest) (types.Session, error) {
+	m.createSessCalled = true
+	if m.createSessionFn != nil {
+		return m.createSessionFn(ctx, req)
+	}
+	return types.Session{}, nil
+}
+func (m *mockWrapClient) ListSessions(ctx context.Context) ([]types.Session, error) {
+	return nil, nil
+}
+func (m *mockWrapClient) GetSession(ctx context.Context, id string) (types.Session, error) {
+	m.getSessionCalled = true
+	if m.getSessionFn != nil {
+		return m.getSessionFn(ctx, id)
+	}
+	return types.Session{ID: id}, nil
+}
+func (m *mockWrapClient) DestroySession(ctx context.Context, id string) error { return nil }
+func (m *mockWrapClient) PatchSession(ctx context.Context, id string, req types.SessionPatchRequest) (types.Session, error) {
+	return types.Session{}, nil
+}
+func (m *mockWrapClient) Exec(ctx context.Context, sessionID string, req types.ExecRequest) (types.ExecResponse, error) {
+	return types.ExecResponse{}, nil
+}
+func (m *mockWrapClient) ExecStream(ctx context.Context, sessionID string, req types.ExecRequest) (io.ReadCloser, error) {
+	return nil, nil
+}
+func (m *mockWrapClient) KillCommand(ctx context.Context, sessionID string, commandID string) error {
+	return nil
+}
+func (m *mockWrapClient) QuerySessionEvents(ctx context.Context, sessionID string, q url.Values) ([]types.Event, error) {
+	return nil, nil
+}
+func (m *mockWrapClient) SearchEvents(ctx context.Context, q url.Values) ([]types.Event, error) {
+	return nil, nil
+}
+func (m *mockWrapClient) StreamSessionEvents(ctx context.Context, sessionID string) (io.ReadCloser, error) {
+	return nil, nil
+}
+func (m *mockWrapClient) OutputChunk(ctx context.Context, sessionID, commandID string, stream string, offset, limit int64) (map[string]any, error) {
+	return nil, nil
+}
+func (m *mockWrapClient) ListApprovals(ctx context.Context) ([]map[string]any, error) {
+	return nil, nil
+}
+func (m *mockWrapClient) ResolveApproval(ctx context.Context, id string, decision string, reason string) error {
+	return nil
+}
+func (m *mockWrapClient) PolicyTest(ctx context.Context, sessionID, operation, path string) (map[string]any, error) {
+	return nil, nil
+}
+func (m *mockWrapClient) GetProxyStatus(ctx context.Context, sessionID string) (map[string]any, error) {
+	return nil, nil
+}
+func (m *mockWrapClient) ListTaints(ctx context.Context, sessionID string) ([]types.TaintInfo, error) {
+	return nil, nil
+}
+func (m *mockWrapClient) GetTaint(ctx context.Context, pid int) (*types.TaintInfo, error) {
+	return nil, nil
+}
+func (m *mockWrapClient) GetTaintTrace(ctx context.Context, pid int) (*types.TaintTrace, error) {
+	return nil, nil
+}
+func (m *mockWrapClient) WatchTaints(ctx context.Context, agentOnly bool, handler func(types.TaintEvent)) error {
+	return nil
+}
+func (m *mockWrapClient) ListMCPTools(ctx context.Context, q url.Values) ([]map[string]any, error) {
+	return nil, nil
+}
+func (m *mockWrapClient) ListMCPServers(ctx context.Context) ([]map[string]any, error) {
+	return nil, nil
+}
+
+func TestSetupWrapInterception_CallsWrapInit(t *testing.T) {
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+		t.Skip("wrap interception requires Linux or macOS")
+	}
+
+	// Redirect the state dir: platformSetupWrap opens the wrapper log
+	// file (issue #415) and must not touch the real ~/.local/state.
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+
+	mc := &mockWrapClient{
+		wrapInitResp: types.WrapInitResponse{
+			WrapperBinary: "/bin/true",
+			SeccompConfig: `{"unix_socket_enabled":true}`,
+			NotifySocket:  "/tmp/aep-caw-notify-test.sock",
+			WrapperEnv: map[string]string{
+				"AEP_CAW_SECCOMP_CONFIG": `{"unix_socket_enabled":true}`,
+			},
+		},
+	}
+
+	cfg := &clientConfig{serverAddr: "http://127.0.0.1:18080"}
+
+	lcfg, err := setupWrapInterception(context.Background(), mc, "test-session", "/bin/echo", []string{"hello"}, cfg)
+	require.NoError(t, err)
+	require.NotNil(t, lcfg)
+
+	// Verify WrapInit was called
+	assert.True(t, mc.wrapInitCalled, "WrapInit should have been called")
+	assert.Equal(t, "/bin/echo", mc.wrapInitReq.AgentCommand)
+	assert.Equal(t, []string{"hello"}, mc.wrapInitReq.AgentArgs)
+	assert.Equal(t, os.Getuid(), mc.wrapInitReq.CallerUID)
+
+	// Verify the launch config (OS-specific assertions)
+	if runtime.GOOS == "linux" {
+		assert.Equal(t, "/bin/true", lcfg.command, "command should be the wrapper binary")
+		assert.Equal(t, []string{"--", "/bin/echo", "hello"}, lcfg.args, "args should be -- agent-cmd agent-args")
+		assert.NotNil(t, lcfg.extraFiles, "extra files should be set (socket pair child)")
+		// notify child + wrapper log file (state dir redirected above).
+		assert.Len(t, lcfg.extraFiles, 2)
+		assert.NotNil(t, lcfg.postStart, "postStart should be set")
+	} else if runtime.GOOS == "darwin" {
+		// On macOS with a wrapper binary, we get the wrapper command + args, but no extraFiles/postStart
+		assert.Equal(t, "/bin/true", lcfg.command, "command should be the wrapper binary")
+		assert.Equal(t, []string{"--", "/bin/echo", "hello"}, lcfg.args, "args should be -- agent-cmd agent-args")
+	}
+
+	// Clean up
+	for _, f := range lcfg.extraFiles {
+		if f != nil {
+			f.Close()
+		}
+	}
+}
+
+func TestSetupWrapInterception_EmptyWrapperBinary(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("empty wrapper binary is valid on macOS (ES interception)")
+	}
+	if runtime.GOOS == "windows" {
+		t.Skip("empty wrapper binary is valid on Windows (driver interception)")
+	}
+
+	mc := &mockWrapClient{
+		wrapInitResp: types.WrapInitResponse{
+			WrapperBinary: "",
+		},
+	}
+
+	cfg := &clientConfig{serverAddr: "http://127.0.0.1:18080"}
+
+	_, err := setupWrapInterception(context.Background(), mc, "test-session", "/bin/echo", nil, cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "empty wrapper binary")
+}
+
+func TestSetupWrapInterception_WrapInitError(t *testing.T) {
+	mc := &mockWrapClient{
+		wrapInitErr: assert.AnError,
+	}
+
+	cfg := &clientConfig{serverAddr: "http://127.0.0.1:18080"}
+
+	_, err := setupWrapInterception(context.Background(), mc, "test-session", "/bin/echo", nil, cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "wrap-init")
+}
+
+func TestBuildWrapEnv_IncludesInSessionWhenBypassEnabled(t *testing.T) {
+	env := buildWrapEnv([]string{"PATH=/usr/bin"}, "sess-123", "http://127.0.0.1:18080", true)
+	envMap := make(map[string]bool)
+	for _, e := range env {
+		envMap[e] = true
+	}
+
+	assert.True(t, envMap["AEP_CAW_SESSION_ID=sess-123"])
+	assert.True(t, envMap["AEP_CAW_SERVER=http://127.0.0.1:18080"])
+	assert.True(t, envMap["AEP_CAW_IN_SESSION=1"])
+}
+
+func TestBuildWrapEnv_OmitsInSessionWhenBypassDisabled(t *testing.T) {
+	env := buildWrapEnv([]string{"PATH=/usr/bin"}, "sess-123", "http://127.0.0.1:18080", false)
+	for _, e := range env {
+		if e == "AEP_CAW_IN_SESSION=1" {
+			t.Fatal("did not expect AEP_CAW_IN_SESSION when bypass is disabled")
+		}
+	}
+}
+
+func TestBuildWrapEnv_StripsInheritedAepCawVarsWhenBypassDisabled(t *testing.T) {
+	env := buildWrapEnv([]string{
+		"PATH=/usr/bin",
+		"AEP_CAW_SESSION_ID=stale-session",
+		"AEP_CAW_SERVER=http://stale",
+		"AEP_CAW_IN_SESSION=1",
+	}, "sess-123", "http://127.0.0.1:18080", false)
+
+	for _, e := range env {
+		if e == "AEP_CAW_IN_SESSION=1" {
+			t.Fatal("did not expect inherited AEP_CAW_IN_SESSION when bypass is disabled")
+		}
+		if e == "AEP_CAW_SESSION_ID=stale-session" {
+			t.Fatal("did not expect stale AEP_CAW_SESSION_ID to remain in env")
+		}
+		if e == "AEP_CAW_SERVER=http://stale" {
+			t.Fatal("did not expect stale AEP_CAW_SERVER to remain in env")
+		}
+	}
+
+	envMap := make(map[string]int)
+	for _, e := range env {
+		envMap[e]++
+	}
+	assert.Equal(t, 1, envMap["AEP_CAW_SESSION_ID=sess-123"])
+	assert.Equal(t, 1, envMap["AEP_CAW_SERVER=http://127.0.0.1:18080"])
+}
+
+func TestBuildWrapEnv_ReplacesInheritedAepCawVarsWhenBypassEnabled(t *testing.T) {
+	env := buildWrapEnv([]string{
+		"PATH=/usr/bin",
+		"AEP_CAW_SESSION_ID=stale-session",
+		"AEP_CAW_SERVER=http://stale",
+		"AEP_CAW_IN_SESSION=1",
+	}, "sess-123", "http://127.0.0.1:18080", true)
+
+	envMap := make(map[string]int)
+	for _, e := range env {
+		envMap[e]++
+	}
+
+	assert.Equal(t, 1, envMap["AEP_CAW_SESSION_ID=sess-123"])
+	assert.Equal(t, 1, envMap["AEP_CAW_SERVER=http://127.0.0.1:18080"])
+	assert.Equal(t, 1, envMap["AEP_CAW_IN_SESSION=1"])
+	assert.Equal(t, 0, envMap["AEP_CAW_SESSION_ID=stale-session"])
+	assert.Equal(t, 0, envMap["AEP_CAW_SERVER=http://stale"])
+}
+
+func TestBuildWrapEnv_StripsInheritedMixedCaseAepCawVarsWhenBypassDisabled(t *testing.T) {
+	env := buildWrapEnv([]string{
+		"PATH=/usr/bin",
+		"aep-caw_session_id=stale-session",
+		"AepCaw_Server=http://stale",
+		"aep-caw_in_session=1",
+	}, "sess-123", "http://127.0.0.1:18080", false)
+
+	for _, e := range env {
+		if e == "aep-caw_in_session=1" {
+			t.Fatal("did not expect mixed-case inherited AEP_CAW_IN_SESSION when bypass is disabled")
+		}
+		if e == "aep-caw_session_id=stale-session" {
+			t.Fatal("did not expect mixed-case stale AEP_CAW_SESSION_ID to remain in env")
+		}
+		if e == "AepCaw_Server=http://stale" {
+			t.Fatal("did not expect mixed-case stale AEP_CAW_SERVER to remain in env")
+		}
+	}
+
+	envMap := make(map[string]int)
+	for _, e := range env {
+		envMap[e]++
+	}
+	assert.Equal(t, 1, envMap["AEP_CAW_SESSION_ID=sess-123"])
+	assert.Equal(t, 1, envMap["AEP_CAW_SERVER=http://127.0.0.1:18080"])
+	assert.Equal(t, 0, envMap["AEP_CAW_IN_SESSION=1"])
+}
+
+func TestBuildWrapEnv_ReplacesInheritedMixedCaseAepCawVarsWhenBypassEnabled(t *testing.T) {
+	env := buildWrapEnv([]string{
+		"PATH=/usr/bin",
+		"aep-caw_session_id=stale-session",
+		"AepCaw_Server=http://stale",
+		"aep-caw_in_session=1",
+	}, "sess-123", "http://127.0.0.1:18080", true)
+
+	envMap := make(map[string]int)
+	for _, e := range env {
+		envMap[e]++
+	}
+
+	assert.Equal(t, 1, envMap["AEP_CAW_SESSION_ID=sess-123"])
+	assert.Equal(t, 1, envMap["AEP_CAW_SERVER=http://127.0.0.1:18080"])
+	assert.Equal(t, 1, envMap["AEP_CAW_IN_SESSION=1"])
+	assert.Equal(t, 0, envMap["aep-caw_session_id=stale-session"])
+	assert.Equal(t, 0, envMap["AepCaw_Server=http://stale"])
+	assert.Equal(t, 0, envMap["aep-caw_in_session=1"])
+}
+
+func envSliceToMap(env []string) map[string]string {
+	out := make(map[string]string, len(env))
+	for _, kv := range env {
+		k, v, ok := strings.Cut(kv, "=")
+		if ok {
+			out[k] = v
+		}
+	}
+	return out
+}
+
+func envKeyCounts(env []string) map[string]int {
+	out := make(map[string]int, len(env))
+	for _, kv := range env {
+		k, _, ok := strings.Cut(kv, "=")
+		if ok {
+			out[k]++
+		}
+	}
+	return out
+}
+
+func splitNoProxyTokens(noProxy string) []string {
+	parts := strings.Split(noProxy, ",")
+	tokens := make([]string, 0, len(parts))
+	for _, part := range parts {
+		tokens = append(tokens, strings.TrimSpace(part))
+	}
+	return tokens
+}
+
+func TestAppendWrapNetworkProxyEnv_AddsSessionProxyVars(t *testing.T) {
+	env := appendWrapNetworkProxyEnv([]string{"PATH=/usr/bin"}, "http://127.0.0.1:18081")
+	got := envSliceToMap(env)
+
+	for _, key := range []string{
+		"HTTP_PROXY",
+		"HTTPS_PROXY",
+		"ALL_PROXY",
+		"http_proxy",
+		"https_proxy",
+		"all_proxy",
+	} {
+		assert.Equal(t, "http://127.0.0.1:18081", got[key], key)
+	}
+	assert.Contains(t, got["NO_PROXY"], "localhost")
+	assert.Contains(t, got["NO_PROXY"], "127.0.0.1")
+	assert.Equal(t, got["NO_PROXY"], got["no_proxy"])
+}
+
+func TestAppendWrapNetworkProxyEnv_ReplacesInheritedProxyVars(t *testing.T) {
+	env := appendWrapNetworkProxyEnv([]string{
+		"PATH=/usr/bin",
+		"HTTP_PROXY=http://stale",
+		"https_proxy=http://stale",
+		"NO_PROXY=example.test",
+	}, "http://127.0.0.1:18081")
+	got := envSliceToMap(env)
+	counts := envKeyCounts(env)
+
+	assert.Equal(t, "http://127.0.0.1:18081", got["HTTP_PROXY"])
+	assert.Equal(t, "http://127.0.0.1:18081", got["https_proxy"])
+	assert.NotContains(t, env, "HTTP_PROXY=http://stale")
+	assert.NotContains(t, env, "https_proxy=http://stale")
+	assert.Equal(t, 1, counts["HTTP_PROXY"])
+	assert.Equal(t, 1, counts["https_proxy"])
+	assert.Equal(t, 1, counts["NO_PROXY"])
+	assert.Equal(t, 1, counts["no_proxy"])
+	assert.Contains(t, got["NO_PROXY"], "example.test")
+	assert.Contains(t, got["NO_PROXY"], "localhost")
+	assert.Contains(t, got["NO_PROXY"], "127.0.0.1")
+}
+
+func TestAppendWrapNetworkProxyEnv_AppendsDistinctNoProxyTokens(t *testing.T) {
+	env := appendWrapNetworkProxyEnv([]string{
+		"PATH=/usr/bin",
+		"NO_PROXY=notlocalhost.example,127.0.0.10",
+	}, "http://127.0.0.1:18081")
+	got := envSliceToMap(env)
+	noProxyTokens := splitNoProxyTokens(got["NO_PROXY"])
+
+	assert.Contains(t, noProxyTokens, "notlocalhost.example")
+	assert.Contains(t, noProxyTokens, "127.0.0.10")
+	assert.Contains(t, noProxyTokens, "localhost")
+	assert.Contains(t, noProxyTokens, "127.0.0.1")
+	assert.Equal(t, got["NO_PROXY"], got["no_proxy"])
+}
+
+func TestAppendWrapNetworkProxyEnv_MergesInheritedNoProxyVariants(t *testing.T) {
+	env := appendWrapNetworkProxyEnv([]string{
+		"PATH=/usr/bin",
+		"NO_PROXY=api.internal, shared.internal",
+		"no_proxy=metadata.internal,shared.internal",
+	}, "http://127.0.0.1:18081")
+	got := envSliceToMap(env)
+	noProxyTokens := splitNoProxyTokens(got["NO_PROXY"])
+
+	assert.Equal(t, []string{
+		"api.internal",
+		"shared.internal",
+		"metadata.internal",
+		"localhost",
+		"127.0.0.1",
+	}, noProxyTokens)
+	assert.Equal(t, got["NO_PROXY"], got["no_proxy"])
+}
+
+func TestAppendWrapNetworkProxyEnv_NoProxyWhenSessionProxyEmpty(t *testing.T) {
+	base := []string{
+		"PATH=/usr/bin",
+		"HTTP_PROXY=http://host-proxy",
+	}
+	env := appendWrapNetworkProxyEnv(base, "")
+
+	assert.Equal(t, base, env)
+}
+
+func TestWrapLaunchConfig_EnvContainsSessionAndWrapper(t *testing.T) {
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+		t.Skip("wrap interception requires Linux or macOS")
+	}
+
+	mc := &mockWrapClient{
+		wrapInitResp: types.WrapInitResponse{
+			WrapperBinary: "/bin/true",
+			SeccompConfig: `{"unix_socket_enabled":true}`,
+			NotifySocket:  "/tmp/aep-caw-notify-test.sock",
+			WrapperEnv: map[string]string{
+				"AEP_CAW_SECCOMP_CONFIG": `{"unix_socket_enabled":true}`,
+			},
+		},
+	}
+
+	cfg := &clientConfig{serverAddr: "http://127.0.0.1:18080"}
+
+	lcfg, err := setupWrapInterception(context.Background(), mc, "test-session", "/bin/echo", nil, cfg)
+	require.NoError(t, err)
+	require.NotNil(t, lcfg)
+
+	// Check that the env contains required variables
+	envMap := make(map[string]bool)
+	for _, e := range lcfg.env {
+		envMap[e] = true
+	}
+	assert.True(t, envMap["AEP_CAW_SESSION_ID=test-session"], "env should contain AEP_CAW_SESSION_ID")
+	assert.True(t, envMap["AEP_CAW_SERVER=http://127.0.0.1:18080"], "env should contain AEP_CAW_SERVER")
+
+	// AEP_CAW_NOTIFY_SOCK_FD is Linux-only (seccomp notification socket)
+	if runtime.GOOS == "linux" {
+		assert.True(t, envMap["AEP_CAW_NOTIFY_SOCK_FD=3"], "env should contain AEP_CAW_NOTIFY_SOCK_FD=3")
+	}
+
+	// Clean up
+	for _, f := range lcfg.extraFiles {
+		if f != nil {
+			f.Close()
+		}
+	}
+}
+
+func TestWrapLaunchConfig_AppliesEnvInject(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("aep-caw-unixwrap env_inject path is Linux-only")
+	}
+
+	mc := &mockWrapClient{
+		wrapInitResp: types.WrapInitResponse{
+			WrapperBinary: "/bin/true",
+			NotifySocket:  "/tmp/aep-caw-notify-test.sock",
+			WrapperEnv: map[string]string{
+				"AEP_CAW_SECCOMP_CONFIG": `{"unix_socket_enabled":true}`,
+			},
+			EnvInject: map[string]string{
+				"BASH_ENV": "/usr/lib/aep-caw/bash_startup.sh",
+			},
+		},
+	}
+
+	cfg := &clientConfig{serverAddr: "http://127.0.0.1:18080"}
+	lcfg, err := setupWrapInterception(context.Background(), mc, "test-session", "/bin/echo", nil, cfg)
+	require.NoError(t, err)
+	require.NotNil(t, lcfg)
+
+	envMap := make(map[string]bool)
+	for _, e := range lcfg.env {
+		envMap[e] = true
+	}
+	assert.True(t, envMap["BASH_ENV=/usr/lib/aep-caw/bash_startup.sh"],
+		"wrap env should contain injected BASH_ENV (issue #374)")
+
+	for _, f := range lcfg.extraFiles {
+		if f != nil {
+			f.Close()
+		}
+	}
+}
+
+func TestWrapLaunchConfig_AppliesEnvInject_PtraceMode(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("ptrace wrap mode is Linux-only")
+	}
+
+	mc := &mockWrapClient{
+		wrapInitResp: types.WrapInitResponse{
+			PtraceMode:   true,
+			NotifySocket: "/tmp/aep-caw-ptrace-test.sock",
+			EnvInject: map[string]string{
+				"BASH_ENV": "/usr/lib/aep-caw/bash_startup.sh",
+			},
+		},
+	}
+
+	cfg := &clientConfig{serverAddr: "http://127.0.0.1:18080"}
+	lcfg, err := setupWrapInterception(context.Background(), mc, "test-session", "/bin/echo", nil, cfg)
+	require.NoError(t, err)
+	require.NotNil(t, lcfg)
+
+	envMap := make(map[string]bool)
+	for _, e := range lcfg.env {
+		envMap[e] = true
+	}
+	assert.True(t, envMap["BASH_ENV=/usr/lib/aep-caw/bash_startup.sh"],
+		"ptrace-mode wrap env should contain injected BASH_ENV (issue #374)")
+
+	for _, f := range lcfg.extraFiles {
+		if f != nil {
+			f.Close()
+		}
+	}
+}
+
+func TestWrapLaunchConfig_EnvIncludesInSessionWhenSafe(t *testing.T) {
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+		t.Skip("wrap interception requires Linux or macOS")
+	}
+
+	mc := &mockWrapClient{
+		wrapInitResp: types.WrapInitResponse{
+			WrapperBinary:         "/bin/true",
+			NotifySocket:          "/tmp/aep-caw-notify-test.sock",
+			SafeToBypassShellShim: true,
+			WrapperEnv: map[string]string{
+				"AEP_CAW_SECCOMP_CONFIG": `{"unix_socket_enabled":true}`,
+			},
+		},
+	}
+
+	cfg := &clientConfig{serverAddr: "http://127.0.0.1:18080"}
+	lcfg, err := setupWrapInterception(context.Background(), mc, "test-session", "/bin/echo", nil, cfg)
+	require.NoError(t, err)
+
+	envMap := make(map[string]bool)
+	for _, e := range lcfg.env {
+		envMap[e] = true
+	}
+	assert.True(t, envMap["AEP_CAW_IN_SESSION=1"])
+
+	for _, f := range lcfg.extraFiles {
+		if f != nil {
+			f.Close()
+		}
+	}
+}
+
+func TestWrapLaunchConfig_EnvOmitsInSessionWhenUnsafe(t *testing.T) {
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+		t.Skip("wrap interception requires Linux or macOS")
+	}
+
+	mc := &mockWrapClient{
+		wrapInitResp: types.WrapInitResponse{
+			WrapperBinary:         "/bin/true",
+			NotifySocket:          "/tmp/aep-caw-notify-test.sock",
+			SafeToBypassShellShim: false,
+			WrapperEnv: map[string]string{
+				"AEP_CAW_SECCOMP_CONFIG": `{"unix_socket_enabled":true}`,
+			},
+		},
+	}
+
+	cfg := &clientConfig{serverAddr: "http://127.0.0.1:18080"}
+	lcfg, err := setupWrapInterception(context.Background(), mc, "test-session", "/bin/echo", nil, cfg)
+	require.NoError(t, err)
+
+	for _, e := range lcfg.env {
+		if e == "AEP_CAW_IN_SESSION=1" {
+			t.Fatal("did not expect AEP_CAW_IN_SESSION when wrap response marks bypass unsafe")
+		}
+	}
+
+	for _, f := range lcfg.extraFiles {
+		if f != nil {
+			f.Close()
+		}
+	}
+}
+
+func TestFetchSessionForWrap_AutoStartsServerOnConnRefused(t *testing.T) {
+	// Mock client: first GetSession returns ECONNREFUSED, second succeeds.
+	var calls int
+	mc := &mockWrapClient{
+		getSessionFn: func(ctx context.Context, id string) (types.Session, error) {
+			calls++
+			if calls == 1 {
+				return types.Session{}, syscall.ECONNREFUSED
+			}
+			return types.Session{ID: id}, nil
+		},
+	}
+
+	// Stub the auto-start hook so no real subprocess is forked.
+	var autoStartCalls int
+	var autoStartAddr string
+
+	origEnsureFn := ensureServerRunningFn
+	t.Cleanup(func() { ensureServerRunningFn = origEnsureFn })
+	ensureServerRunningFn = func(ctx context.Context, addr string, log io.Writer) error {
+		autoStartCalls++
+		autoStartAddr = addr
+		return nil
+	}
+
+	cfg := &clientConfig{serverAddr: "http://127.0.0.1:18080"}
+	opts := wrapOptions{sessionID: "existing-sess"}
+
+	sess, err := fetchSessionForWrap(context.Background(), mc, cfg, opts, "/tmp/work")
+
+	require.NoError(t, err)
+	assert.Equal(t, "existing-sess", sess.ID)
+	assert.Equal(t, 2, calls, "GetSession should be retried after auto-start")
+	assert.Equal(t, 1, autoStartCalls, "ensureServerRunningFn should be called exactly once")
+	assert.Equal(t, "http://127.0.0.1:18080", autoStartAddr)
+}

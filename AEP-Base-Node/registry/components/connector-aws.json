@@ -1,0 +1,93 @@
+{
+  "manifest_version": "1",
+  "id": "connector-aws",
+  "version": "2.8.0",
+  "kind": "connector",
+  "path": "AEP-Connectors/aws/",
+  "description": "UCB-only AWS connector. All traffic via /ucb/v1/egress/aws/**.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels",
+    "ucb",
+    "composer-lite"
+  ],
+  "capabilities": [
+    "connector:aws",
+    "ucb:egress-proxy",
+    "integration:external-api"
+  ],
+  "actions": [
+    {
+      "id": "wire_aws",
+      "description": "Wire AWS connector egress routes",
+      "runtime": "plan",
+      "method": "connector_config"
+    },
+    {
+      "id": "probe_aws",
+      "description": "Health probe for AWS",
+      "runtime": "connector",
+      "method": "probe"
+    }
+  ],
+  "setup_hooks": [
+    {
+      "id": "aws_connector_default",
+      "policy_section": "connectors",
+      "default": {
+        "aws": {
+          "upstream": "https://sts.amazonaws.com"
+        }
+      }
+    }
+  ],
+  "composer": {
+    "palette": true,
+    "node_type": "connector"
+  },
+  "composer_node": {
+    "type": "connector",
+    "label": "AWS",
+    "short": "AW",
+    "color": "#475569",
+    "service": "aws",
+    "ucb_only": true,
+    "description": "AWS via UCB egress",
+    "registry_id": "connector-aws"
+  },
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 10,
+    "requires_internet": true,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Connect AWS. Requires UCB. Routes: /ucb/v1/egress/aws/**.",
+    "use_when": [
+      "aws",
+      "amazon web services",
+      "s3",
+      "lambda",
+      "ec2"
+    ],
+    "avoid_when": [
+      "air-gapped with no external APIs",
+      "UCB disabled"
+    ],
+    "pairs_with": [
+      "ucb",
+      "aep-base-node",
+      "composer-lite"
+    ]
+  },
+  "implementation": {
+    "module": "AEP-Connectors/aws/lib/aws-connector.mjs",
+    "ucb_egress_prefix": "/ucb/v1/egress/aws",
+    "auth_token_env": "AEP_AWS_SESSION_TOKEN"
+  },
+  "integration": {
+    "ucb_only": true,
+    "mcp_optional": null,
+    "nango_compatible": true
+  }
+}

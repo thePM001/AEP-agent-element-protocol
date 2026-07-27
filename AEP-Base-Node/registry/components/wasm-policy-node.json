@@ -1,0 +1,48 @@
+{
+  "manifest_version": "1",
+  "id": "wasm-policy-node",
+  "version": "2.8.0",
+  "kind": "wasm_extension",
+  "path": "AEP-Components/wasm/",
+  "description": "Composer palette node for WASM GAP policy evaluation.",
+  "requires": [
+    "wasm-policy-sandbox",
+    "composer-lite"
+  ],
+  "capabilities": [
+    "composer:wasm-policy-node"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "composer": {
+    "palette": true,
+    "node_type": "wasm_policy"
+  },
+  "composer_node": {
+    "type": "wasm_policy",
+    "label": "WASM Policy",
+    "short": "WP",
+    "color": "#a78bfa",
+    "description": "Evaluate GAP policies through the local WASM sandbox",
+    "registry_id": "wasm-policy-node"
+  },
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 10,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "WASM policy evaluation node on Composer canvas.",
+    "use_when": [
+      "visual GAP policy evaluation"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "requires_components": [
+      "wasm-policy-sandbox"
+    ]
+  }
+}

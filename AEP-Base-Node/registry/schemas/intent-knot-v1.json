@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aep.dev/schemas/intent-knot-v1.json",
+  "title": "Intent Knot v1",
+  "description": "Lattice Memory attractor for coding governance intent phases (propose, solidify, announce). Canonical storage: action-lattice.db via aep-memory (SQLite 3.46.0 bundled, sqlite-vec 0.1.9 vec0, USearch 2.25.3 sidecar). Optional mirror: Agentstream capsule aep-intent-knots.",
+  "type": "object",
+  "required": ["kind", "phase", "intent_id"],
+  "properties": {
+    "kind": { "const": "intent_knot" },
+    "phase": { "enum": ["propose", "solidify", "announce"] },
+    "intent_id": { "type": "string", "pattern": "^INT-" },
+    "statement": { "type": ["string", "null"] },
+    "agent_id": { "type": ["string", "null"] },
+    "thread_id": { "type": ["string", "null"] },
+    "session_id": { "type": ["string", "null"] },
+    "task_manifest_id": { "type": ["string", "null"] },
+    "blast_radius": {
+      "type": ["object", "null"],
+      "properties": {
+        "within_envelope": { "type": ["boolean", "null"] },
+        "components": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "propose_token_hash": { "type": ["string", "null"] },
+    "solidify_record_hash": { "type": ["string", "null"] },
+    "evidence_ledger_ref": { "type": ["object", "null"] },
+    "sqlite_key": { "type": ["integer", "null"] },
+    "backends": {
+      "type": "array",
+      "items": { "enum": ["sqlite", "agentstream"] }
+    }
+  },
+  "additionalProperties": true
+}

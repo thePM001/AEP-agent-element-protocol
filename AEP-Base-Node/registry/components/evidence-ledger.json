@@ -1,0 +1,38 @@
+{
+  "manifest_version": "1",
+  "id": "evidence-ledger",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/evidence-ledger/",
+  "description": "Merkle evidence ledger, rollback, and quantum timestamps.",
+  "requires": [
+    "policy-engine",
+    "aep-typescript-sdk"
+  ],
+  "capabilities": [
+    "ledger:append",
+    "ledger:merkle",
+    "ledger:rollback",
+    "ledger:quantum-ts"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 128,
+    "min_disk_mb": 50,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Tamper-evident evidence ledger for agent actions.",
+    "use_when": [
+      "audit trail required",
+      "rollback compensation"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/evidence-ledger/lib/ledger/ledger.ts"
+  }
+}

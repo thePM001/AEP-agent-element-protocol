@@ -1,0 +1,54 @@
+{
+  "manifest_version": "1",
+  "id": "semantic-topology",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/semantic-topology/",
+  "description": "Hyperlattice blast overlay projector. Reads composer-lite-graph.json and intent snapshots; does not build a parallel DAG.",
+  "requires": [
+    "aep-base-node",
+    "gap",
+    "composer-lite",
+    "intent-ledger",
+    "coding-governance"
+  ],
+  "capabilities": [
+    "semantic:blast-overlay",
+    "semantic:registry-query"
+  ],
+  "actions": [
+    {
+      "id": "project_blast",
+      "description": "Project blast radius overlay onto composer graph",
+      "runtime": "library",
+      "method": "semantic-topology project"
+    }
+  ],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 128,
+    "min_disk_mb": 50,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Projects coding-governance blast radius onto the existing Composer hyperlattice canvas.",
+    "use_when": [
+      "visualizing intent impact on deployed topology",
+      "highlighting affected catalog_id nodes"
+    ],
+    "avoid_when": [
+      "building a new graph from scratch",
+      "replacing validateLatticeScene or UI scene graphs"
+    ],
+    "pairs_with": [
+      "composer-lite",
+      "coding-governance",
+      "intent-ledger",
+      "gap"
+    ]
+  },
+  "implementation": {
+    "path": "AEP-Components/semantic-topology/"
+  }
+}

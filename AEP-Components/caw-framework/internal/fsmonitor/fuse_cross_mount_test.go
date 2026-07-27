@@ -1,0 +1,103 @@
+//go:build linux
+
+package fsmonitor
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"sync"
+	"syscall"
+	"testing"
+
+	"github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/nla-aep/aep-caw-framework/pkg/types"
+)
+
+// Verifies outside->inside rename emits a create event with metadata.
+func TestFUSE_CrossMountIntoWorkspaceEmitsCreate(t *testing.T) {
+	if _, err := os.Stat("/dev/fuse"); err != nil {
+		t.Skip("fuse not available")
+	}
+
+	backing := t.TempDir()
+	mountPoint := filepath.Join(t.TempDir(), "mnt")
+
+	engine, err := policy.NewEngine(fuseBackingAllowPolicy(backing), false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	em := &captureEmitter{}
+	hooks := &Hooks{
+		SessionID: "sess",
+		Policy:    engine,
+		Emit:      em,
+		FUSEAudit: &FUSEAuditHooks{},
+	}
+
+	m, err := MountWorkspace(context.Background(), backing, mountPoint, hooks)
+	if err != nil {
+		t.Skipf("mount failed: %v", err)
+	}
+	defer func() { _ = m.Unmount() }()
+
+	// Create file outside and rename into workspace mount.
+	outsideDir := t.TempDir()
+	src := filepath.Join(outsideDir, "a.txt")
+	if err := os.WriteFile(src, []byte("abc"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dest := filepath.Join(mountPoint, "a.txt")
+	if err := os.Rename(src, dest); err != nil {
+		if linkErr, ok := err.(*os.LinkError); ok && linkErr.Err == syscall.EXDEV {
+			data, readErr := os.ReadFile(src)
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			if writeErr := os.WriteFile(dest, data, 0o644); writeErr != nil {
+				t.Fatal(writeErr)
+			}
+			_ = os.Remove(src)
+		} else {
+			t.Fatal(err)
+		}
+	}
+
+	found := false
+	for _, ev := range em.Events() {
+		if ev.Type == "file_create" && ev.Path == "/workspace/a.txt" {
+			found = true
+			if _, ok := ev.Fields["size"]; !ok {
+				t.Fatalf("expected size in create event")
+			}
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("file_create event not emitted for cross-mount rename")
+	}
+}
+
+type captureEmitter struct {
+	mu     sync.Mutex
+	events []types.Event
+}
+
+func (c *captureEmitter) AppendEvent(_ context.Context, ev types.Event) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.events = append(c.events, ev)
+	return nil
+}
+func (c *captureEmitter) Publish(ev types.Event) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.events = append(c.events, ev)
+}
+
+func (c *captureEmitter) Events() []types.Event {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]types.Event(nil), c.events...)
+}

@@ -1,0 +1,105 @@
+# =============================================================================
+# AEP Registration: dynAEP 1.0 Components
+# =============================================================================
+aep_version: "1.2"
+schema_revision: 1
+
+dynAEP-lattice:
+  label: "Action Lattice Filter"
+  category: governance
+  description: "Partial-order DAG event validation. Validates every event against pre-approved action lattice before output."
+  trust_floor: 2
+  version: "1.0.1"
+  location: "bridge/lattice/index.ts"
+  dependencies: ["dynAEP-hook-loader"]
+  interfaces:
+    - "LatticeFilter.filter(event) -> LatticeFilterResult"
+    - "LatticeFilter.filterAsync(event) -> Promise<LatticeFilterResult>"
+    - "governanceAppliesToCategory(mode, category) -> boolean"
+    - "AgentInterestRegistry.register(interest) -> void"
+    - "PathMatcher.match(glob, path) -> boolean"
+
+dynAEP-hook-loader:
+  label: "Validation Hook Loader"
+  category: governance
+  description: "Registers built-in MLE and noop hooks; resolves config aliases (mle -> mle-validator)."
+  trust_floor: 1
+  version: "1.0.0"
+  location: "bridge/hook-loader.ts"
+  dependencies: ["dynAEP-mle-hook", "dynAEP-hooks"]
+  interfaces:
+    - "registerBuiltinHooks(registry) -> void"
+    - "resolveHookName(configName) -> string | null"
+
+dynAEP-hooks:
+  label: "Validation Hook Interface"
+  category: governance
+  description: "Pluggable validation hook trait. MLE reference implementation ships in box."
+  trust_floor: 1
+  version: "1.0.0"
+  location: "hooks/interface.ts"
+  dependencies: ["dynAEP-lattice"]
+  interfaces:
+    - "ValidationHook.validate(event, lattice, node) -> HookResult"
+
+dynAEP-observers:
+  label: "Observer Adapter Layer"
+  category: integration
+  description: "External event normalization adapters. Webhook, SSE, poll, blockchain."
+  trust_floor: 1
+  version: "1.0.0"
+  location: "observers/"
+  dependencies: []
+  interfaces:
+    - "ObserverAdapter.start() -> Promise<void>"
+    - "ObserverAdapter.onEvent(callback) -> void"
+    - "ObserverAdapter.stop() -> Promise<void>"
+
+dynAEP-lattice-registry:
+  label: "Action Lattice Registry"
+  category: configuration
+  description: "aep-lattice.yaml: declares all system actions, partial-order relationships, constraints, trust floors."
+  trust_floor: 1
+  version: "1.0.0"
+  location: "registries/aep-lattice.yaml"
+  dependencies: ["dynAEP-lattice"]
+
+dynAEP-mle-hook:
+  label: "MLE Validation Hook (Reference)"
+  category: validation
+  description: "Morpho-Logic Engine binary hypervector constraint checking. XOR + POPCNT on u64 vectors. Sub-millisecond per event."
+  trust_floor: 2
+  version: "1.0.0"
+  location: "hooks/examples/mle-hook/index.ts"
+  dependencies: ["dynAEP-hooks"]
+  interfaces:
+    - "MleHook.validate(event, lattice, node) -> HookResult"
+
+dynAEP-lattice-policy:
+  label: "Lattice Rego Policy"
+  category: policy
+  description: "OPA/Rego rules for trust tier enforcement, forbidden sequences, rate limiting, cross-modality ceilings."
+  trust_floor: 1
+  version: "1.0.0"
+  location: "policies/lattice-policy.rego"
+  dependencies: ["dynAEP-lattice"]
+
+dynAEP-sdk-typescript:
+  label: "TypeScript SDK (Lattice Integration)"
+  category: sdk
+  description: "DynAEPBridge with async LatticeFilter.filterAsync, hook loader, and governanceAppliesToCategory."
+  trust_floor: 1
+  version: "2.8.1"
+  location: "AEP-SDKs/typescript/dynaep/src/bridge.ts"
+  dependencies: ["dynAEP-lattice", "dynAEP-hook-loader"]
+
+dynAEP-cca-bridge-config:
+  label: "CCA dynAEP Bridge Config Builder"
+  category: integration
+  description: "Maps config.dynaep from CCA plan-executor to DynAEPBridgeConfig for runtime activation."
+  trust_floor: 1
+  version: "1.0.0"
+  location: "AEP-Components/cca/lib/dynaep-bridge-config.mjs"
+  dependencies: ["dynAEP-sdk-typescript"]
+  interfaces:
+    - "buildBridgeConfigFromDynaep(dynaepConfig, repoRoot) -> DynAEPBridgeConfig"

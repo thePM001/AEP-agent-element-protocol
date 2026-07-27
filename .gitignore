@@ -1,0 +1,57 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+tests/__pycache__/
+
+# Build output
+dist/
+node_modules/
+rust/target/
+target/
+AEP-SDKs/elixir/_build/
+AEP-SDKs/elixir/deps/
+AEP-SDKs/cpp/libaep_lattice_client.a
+AEP-SDKs/cpp/src/*.o
+AEP-SDKs/go/*.test
+
+# Base Node runtime
+aep-action-lattice.db
+
+# Test artifacts
+.test-*-ledgers/
+.test-ledgers/
+ledgers/
+
+# Runtime workspace
+.aep/
+.aep-conformance-*/
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.secret
+inference-secrets.env
+inference-engine.env
+lattice-channel.env
+agent-sign-keys.json
+dock-kem.json
+ucb-api-key.json
+ucb-api-key.recovery.txt
+**/ucb/manifests/.reload-stamp
+**/inference-config.json
+
+# Local diagram render tooling (do not ship)
+**/puppeteer-config.json
+**/*-rendered.svg
+vitest.config.ts
+**/.claude/
+
+# Offline operator audit workspaces (not for public publish)
+/code audit */
+
+# BAC run artifacts
+.aep-bac/
+

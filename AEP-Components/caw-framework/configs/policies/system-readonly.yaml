@@ -1,0 +1,28 @@
+version: 1
+name: system-readonly
+description: Built-in read-only policy for system paths
+
+file_rules:
+  - name: allow-readonly
+    paths: ["/**"]
+    operations: [read, stat, list, open, readlink]
+    decision: allow
+
+  - name: deny-write
+    paths: ["/**"]
+    operations: [write, create, delete, mkdir, rmdir, chmod, rename]
+    decision: deny
+    message: "system paths are read-only"
+
+# Windows registry: read-only
+registry_rules:
+  - name: allow-registry-read
+    paths: ["*"]
+    operations: [read]
+    decision: allow
+
+  - name: deny-registry-write
+    paths: ["*"]
+    operations: [write, create, delete, rename]
+    decision: deny
+    message: "registry is read-only"

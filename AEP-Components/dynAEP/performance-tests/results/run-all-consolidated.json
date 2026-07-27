@@ -1,0 +1,84 @@
+{
+  "version": "0.3.1-perf",
+  "date": "2026-05-01T12:55:39.389Z",
+  "benchmarks": [
+    {
+      "id": "bench-001",
+      "name": "Event Throughput",
+      "status": "pass",
+      "durationMs": 49511
+    },
+    {
+      "id": "bench-003",
+      "name": "Hot Path Latency",
+      "status": "pass",
+      "durationMs": 45718
+    },
+    {
+      "id": "bench-012",
+      "name": "End-to-End Suite",
+      "status": "fail",
+      "durationMs": 300021
+    },
+    {
+      "id": "bench-002",
+      "name": "Cold Path Latency",
+      "status": "pass",
+      "durationMs": 27607
+    },
+    {
+      "id": "bench-004",
+      "name": "Rego Evaluation",
+      "status": "pass",
+      "durationMs": 1992
+    },
+    {
+      "id": "bench-005",
+      "name": "Scanner Throughput",
+      "status": "fail",
+      "durationMs": 3999
+    },
+    {
+      "id": "bench-006",
+      "name": "Causal Ordering",
+      "status": "pass",
+      "durationMs": 6066
+    },
+    {
+      "id": "bench-008",
+      "name": "Attractor Matching",
+      "status": "pass",
+      "durationMs": 1569
+    },
+    {
+      "id": "bench-009",
+      "name": "TimesFM Decoupling",
+      "status": "pass",
+      "durationMs": 1010
+    },
+    {
+      "id": "bench-010",
+      "name": "Template Fast-Exit",
+      "status": "fail",
+      "durationMs": 963
+    },
+    {
+      "id": "bench-011",
+      "name": "Buffered Ledger",
+      "status": "pass",
+      "durationMs": 1214
+    },
+    {
+      "id": "bench-012-existing",
+      "name": "Async Clock",
+      "status": "pass",
+      "durationMs": 1133
+    }
+  ],
+  "summary": {
+    "pass": 9,
+    "fail": 3,
+    "error": 0,
+    "total": 12
+  }
+}

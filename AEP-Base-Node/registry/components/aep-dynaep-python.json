@@ -1,0 +1,50 @@
+{
+  "manifest_version": "1",
+  "id": "aep-dynaep-python",
+  "version": "2.8.0",
+  "kind": "sdk",
+  "path": "AEP-SDKs/python/dynaep/",
+  "description": "dynAEP Action Lattice Python client library.",
+  "requires": [
+    "dynaep-core"
+  ],
+  "capabilities": [
+    "sdk:lattice-gated",
+    "sdk:compiled-ai"
+  ],
+  "actions": [
+    {
+      "id": "produce_sdks",
+      "description": "Build SDK artifacts (no npm)",
+      "runtime": "cli",
+      "method": "node AEP-User-Experience/scripts/produce-aep-sdks.mjs"
+    }
+  ],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 50,
+    "requires_internet": false
+  },
+  "implementation": {
+    "producer": "AEP-User-Experience/scripts/produce-aep-sdks.mjs",
+    "dist": "AEP-SDKs/dist/sdk-manifest.json",
+    "entrypoints": [
+      "AEP-SDKs/python/dynaep/__init__.py"
+    ]
+  },
+  "cca": {
+    "summary": "Python dynAEP client: Action Lattice bridge and temporal pipeline.",
+    "use_when": [
+      "Python agent backends (LangGraph, CrewAI, ADK)",
+      "lattice-gated dynAEP integration"
+    ],
+    "avoid_when": [
+      "TypeScript-only stack"
+    ],
+    "pairs_with": [
+      "dynaep-core",
+      "gap"
+    ]
+  }
+}

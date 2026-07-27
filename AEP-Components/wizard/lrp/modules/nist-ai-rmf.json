@@ -1,0 +1,26 @@
+{
+  "id": "nist-ai-rmf",
+  "framework": "NIST AI RMF 1.0",
+  "version": "1.0",
+  "dock": "regulation_module",
+  "gap_ref": "AEP-Policy-System/reference/nist-ai-rmf.gap",
+  "articles": [
+    "GOVERN 1 Policies and procedures",
+    "MAP 2 Context and risk identification",
+    "MEASURE 2 AI system evaluation",
+    "MANAGE 1 Risk response and monitoring"
+  ],
+  "aep_features": [
+    "Reference Policy Lattice hierarchy",
+    "Trust Scoring and Schema Builder MLE drift",
+    "15-Step Evaluation Chain",
+    "Proof Bundles and conformance runner CC-01..CC-12",
+    "Workflow Graph checkpoint approval"
+  ],
+  "controls": [
+    "documented_governance_lattice",
+    "risk_context_mapped_per_agent_session",
+    "continuous_measurement_via_trust_score",
+    "managed_response_via_escalation_and_kill_switch"
+  ]
+}

@@ -1,0 +1,43 @@
+import type { ScannerPipeline } from "../../scanners/lib/pipeline.js";
+import type { MessageScanResult } from "./types.js";
+
+/**
+ * Scans inter-agent messages through the scanner pipeline.
+ * Prevents poisoned instructions, PII leaks and injection
+ * attempts between agents in a fleet.
+ */
+export class MessageScanner {
+  private pipeline: ScannerPipeline;
+
+  constructor(pipeline: ScannerPipeline) {
+    this.pipeline = pipeline;
+  }
+
+  /**
+   * Scan a message sent between agents.
+   * Hard findings block the message. Soft findings flag it.
+   */
+  scanMessage(from: string, to: string, content: string): MessageScanResult {
+    // BL-02: include peer ids in scan context so policies can attribute findings
+    const contextual = `[from:${from}][to:${to}]\n${content}`;
+    const result = this.pipeline.scan(contextual);
+
+    if (result.passed) {
+      return { passed: true, blocked: false, findings: [] };
+    }
+
+    const hardFindings = result.findings.filter(f => f.severity === "hard");
+    const blocked = hardFindings.length > 0;
+
+    return {
+      passed: result.passed,
+      blocked,
+      findings: result.findings.map(f => ({
+        scanner: f.scanner,
+        severity: f.severity,
+        category: f.category,
+        match: f.match,
+      })),
+    };
+  }
+}

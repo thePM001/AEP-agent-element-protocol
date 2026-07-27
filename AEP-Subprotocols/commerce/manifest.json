@@ -1,0 +1,12 @@
+{
+  "id": "commerce",
+  "version": "2.8.0",
+  "runtime": "rust",
+  "crate": "aep-subprotocol-commerce",
+  "lrp_id": "commerce-subprotocol",
+  "entrypoints": ["AEP-Subprotocols/commerce/src/lib.rs"],
+  "reference": {
+    "model_mapping": "AEP-Subprotocols/commerce/model-mapping.yaml",
+    "price_catalog": "AEP-Subprotocols/commerce/price-catalog.yaml"
+  }
+}

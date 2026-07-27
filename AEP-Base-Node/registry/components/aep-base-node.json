@@ -1,0 +1,79 @@
+{
+  "manifest_version": "1",
+  "id": "aep-base-node",
+  "version": "2.8.0",
+  "kind": "daemon",
+  "path": "AEP-Base-Node/",
+  "description": "Mandatory local governance daemon with lattice-gated docking ports.",
+  "requires": [
+    "lattice-channels",
+    "lattice-crypto",
+    "epscom-signatures"
+  ],
+  "depends_on": [
+    "lattice-channels",
+    "lattice-crypto",
+    "epscom-signatures"
+  ],
+  "capabilities": [
+    "dock:inference_engine",
+    "dock:validation_engine",
+    "dock:regulation_module",
+    "dock:future_features",
+    "lattice:enforce"
+  ],
+  "actions": [
+    {
+      "id": "start_daemon",
+      "description": "Start Base Node with Unix socket docking listeners",
+      "runtime": "daemon",
+      "method": "aep-base-node --daemon"
+    },
+    {
+      "id": "health_check",
+      "description": "Run Base Node self-test health JSON",
+      "runtime": "cli",
+      "method": "aep-base-node --self-test"
+    }
+  ],
+  "setup_hooks": [],
+  "docks": {
+    "primary": null,
+    "allowed": [
+      "inference_engine",
+      "validation_engine",
+      "regulation_module",
+      "future_features"
+    ]
+  },
+  "resource_requirements": {
+    "min_memory_mb": 256,
+    "min_disk_mb": 100,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Mandatory governance kernel exposing four lattice-gated docking ports.",
+    "use_when": [
+      "every AEP deployment",
+      "local agent governance",
+      "docking external engines"
+    ],
+    "avoid_when": [],
+    "pairs_with": [
+      "lattice-channels",
+      "lattice-channels",
+      "dynaep-core"
+    ]
+  },
+  "implementation": {
+    "crate": "AEP-Base-Node/crate",
+    "binary": "aep-base-node"
+  },
+  "conformance": {
+    "tests": [
+      "AEP-Components/conformance/runner/run.sh",
+      "AEP-Components/conformance/tests/manifest.json"
+    ]
+  }
+}

@@ -1,0 +1,4 @@
+GAP (Governed Agentic Programming)
+Upstream: https://github.com/thePM001/gap
+Vendored into AEP 2.8 as AEP-PROTOCOL-COMPONENTS/gap/
+License: follow upstream repository license (Apache-2.0 per AEP ecosystem convention).

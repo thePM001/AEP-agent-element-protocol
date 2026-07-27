@@ -1,0 +1,195 @@
+# macOS Build Guide
+
+> **Alpha:** The ESF+NE build path is in Alpha. Build steps, signing requirements, and bundle structure may change between releases.
+
+This guide covers building aep-caw for macOS using ESF (Endpoint Security Framework) + NE (Network Extension).
+
+## Install via Homebrew
+
+The easiest way to install on macOS:
+
+```bash
+brew tap canyonroad/tap
+brew install --cask aep-caw
+```
+
+After installation, approve the system extension in **System Settings > General > Login Items & Extensions**.
+
+## Build Modes
+
+| Mode | Security Score | Requirements | Use Case |
+|------|:-------------:|--------------|----------|
+| **ESF+NE** | 90% | Xcode 15+ | Full enforcement (Alpha) |
+| **Observation** | 25% | None | Testing, audit-only |
+
+## ESF+NE Build (Enterprise - Alpha)
+
+ESF+NE provides near-Linux-level enforcement using Apple's Endpoint Security Framework and Network Extension. This build path is in Alpha - expect manual setup steps and breaking changes between releases.
+
+### Prerequisites
+
+1. **Xcode 15+** - For building Swift components
+2. **Code signing identity** - Developer ID or Apple Development certificate
+3. **Provisioning profile** - With ESF and Network Extension entitlements
+
+### Verify Prerequisites
+
+```bash
+# Check Xcode version
+xcodebuild -version
+# Should be 15.0 or higher
+
+# Check Swift version
+swift --version
+# Should be 5.9 or higher
+
+# List code signing identities
+security find-identity -v -p codesigning
+```
+
+### Build Steps
+
+#### 1. Build Go Binary for macOS
+
+```bash
+# Build for Apple Silicon (arm64)
+make build-macos-go
+
+# This creates:
+# - build/AepCaw.app/Contents/MacOS/aep-caw (arm64)
+# - build/AepCaw-amd64.app/Contents/MacOS/aep-caw (amd64)
+```
+
+#### 2. Build Swift Components
+
+```bash
+# Build System Extension and XPC Service
+make build-swift
+
+# This builds:
+# - ai.canyonroad.aep-caw.sysext.systemextension
+# - ai.canyonroad.aep-caw.xpc.xpc
+```
+
+#### 3. Assemble App Bundle
+
+```bash
+# Combine Go + Swift into app bundle
+make assemble-bundle
+```
+
+#### 4. Sign the Bundle
+
+```bash
+# Sign with your Developer ID
+SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)" make sign-bundle
+
+# Or for development
+SIGNING_IDENTITY="Apple Development" make sign-bundle
+```
+
+#### Full Enterprise Build
+
+```bash
+# One-command build (requires all prerequisites)
+SIGNING_IDENTITY="Developer ID Application" make build-macos-enterprise
+```
+
+### Output Structure
+
+```
+build/AepCaw.app/
+├── Contents/
+│   ├── Info.plist
+│   ├── MacOS/
+│   │   └── aep-caw                    # Go binary
+│   ├── Library/
+│   │   └── SystemExtensions/
+│   │       └── ai.canyonroad.aep-caw.sysext.systemextension/
+│   │           ├── Contents/
+│   │           │   ├── MacOS/
+│   │           │   │   └── ai.canyonroad.aep-caw.sysext  # ESF + NE
+│   │           │   └── Info.plist
+│   └── XPCServices/
+│       └── ai.canyonroad.aep-caw.xpc.xpc/
+│           ├── Contents/
+│           │   ├── MacOS/
+│           │   │   └── ai.canyonroad.aep-caw.xpc  # XPC bridge
+│           │   └── Info.plist
+```
+
+## System Extension Approval
+
+After installing the ESF+NE app bundle, users must approve the System Extension:
+
+1. **First launch** - macOS will prompt "System Extension Blocked"
+2. **Open System Settings** > General > Login Items & Extensions
+3. **Allow** the aep-caw System Extension
+4. **Restart may be required** for Network Extension activation
+
+This is a one-time approval per machine.
+
+## Graceful Fallback
+
+The ESF+NE binary automatically detects available entitlements:
+
+1. **With ESF + NE entitlements** - Uses ESF for file/process, Network Extension for network
+2. **Without entitlements** - Falls back to observation-only mode
+
+No code changes required - fallback is automatic at runtime.
+
+## Troubleshooting
+
+### Build Errors
+
+**"Xcode not found"**
+```bash
+xcode-select --install
+sudo xcode-select -s /Applications/Xcode.app
+```
+
+**"No signing identity found"**
+```bash
+# List available identities
+security find-identity -v -p codesigning
+
+# Use a valid identity
+SIGNING_IDENTITY="Apple Development: you@email.com (TEAMID)" make sign-bundle
+```
+
+**"Entitlement not allowed"**
+- Verify the provisioning profile is embedded in the app bundle
+- Network Extension is a standard capability - enable in Xcode Signing & Capabilities
+
+### Runtime Errors
+
+**"System Extension blocked"**
+- User must approve in System Settings > General > Login Items & Extensions
+
+**"XPC connection failed"**
+- Verify System Extension is approved and running
+- Check Console.app for XPC errors
+
+**"ESF client initialization failed"**
+- App must be signed with valid ESF entitlement and provisioning profile
+- Check code signing: `codesign -dv --entitlements - AepCaw.app`
+
+## Cross-Compilation
+
+Building macOS binaries from Linux (Go only, not Swift):
+
+```bash
+# For Apple Silicon
+GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -o aep-caw-darwin-arm64 ./cmd/aep-caw
+
+# For Intel Mac
+GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -o aep-caw-darwin-amd64 ./cmd/aep-caw
+```
+
+**Note:** CGO_ENABLED=0 means no ESF support. The binary will run in observation-only mode. Swift components (ESF+NE) must be built on macOS.
+
+## See Also
+
+- [macOS ESF+NE Architecture](macos-esf-ne-architecture.md) - Technical architecture details
+- [Platform Comparison](platform-comparison.md) - Feature comparison across platforms
+- [Cross-Platform Notes](cross-platform.md) - Quick start for all platforms

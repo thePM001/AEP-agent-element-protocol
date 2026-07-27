@@ -1,0 +1,29 @@
+# HVVCAS spec for multi-base-node-core
+components:
+  - name: node_registry
+    domain: aep.multi-base-node
+    component_type: library
+    intent: Parse validate and persist nodes.json v2 multi-base-node registry
+    inputs:
+      - name: registry_json
+        type: String
+    outputs:
+      - name: registry
+        type: NodesRegistryV2
+  - name: node_role
+    domain: aep.multi-base-node
+    component_type: enum
+    intent: Node roles primary replica edge science-isolated
+    outputs:
+      - name: role
+        type: NodeRole
+  - name: merkle_checkpoint
+    domain: aep.multi-base-node
+    component_type: crypto
+    intent: SHA256 Merkle root over policy bundle manifest for sync verification
+    inputs:
+      - name: bundle_entries
+        type: Vec<String>
+    outputs:
+      - name: root_hex
+        type: String

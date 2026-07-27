@@ -1,0 +1,458 @@
+// filesystem.c - Filesystem interception implementation
+#include "driver.h"
+#include "filesystem.h"
+#include "process.h"
+#include "cache.h"
+#include "config.h"
+#include "metrics.h"
+
+// Fail-open tracking (local state, also reported via metrics)
+static volatile LONG gConsecutiveFailures = 0;
+static volatile BOOLEAN gFailOpenMode = FALSE;
+
+// Excluded process ID (aep-caw itself when using WinFsp)
+static volatile LONG gExcludedProcessId = 0;
+
+BOOLEAN AgentshIsExcludedProcess(ULONG ProcessId) {
+    return ProcessId != 0 && ProcessId == (ULONG)gExcludedProcessId;
+}
+
+void AgentshSetExcludedProcess(ULONG ProcessId) {
+    InterlockedExchange(&gExcludedProcessId, (LONG)ProcessId);
+}
+
+// Get file path from callback data
+static NTSTATUS
+GetFilePath(
+    _In_ PFLT_CALLBACK_DATA Data,
+    _In_ PCFLT_RELATED_OBJECTS FltObjects,
+    _Out_writes_(PathSize) PWCHAR PathBuffer,
+    _In_ ULONG PathSize
+    )
+{
+    NTSTATUS status;
+    PFLT_FILE_NAME_INFORMATION nameInfo = NULL;
+
+    UNREFERENCED_PARAMETER(FltObjects);
+
+    status = FltGetFileNameInformation(
+        Data,
+        FLT_FILE_NAME_NORMALIZED | FLT_FILE_NAME_QUERY_DEFAULT,
+        &nameInfo
+        );
+
+    if (!NT_SUCCESS(status)) {
+        return status;
+    }
+
+    status = FltParseFileNameInformation(nameInfo);
+    if (!NT_SUCCESS(status)) {
+        FltReleaseFileNameInformation(nameInfo);
+        return status;
+    }
+
+    // Copy path (ensure null termination)
+    if (nameInfo->Name.Length >= PathSize * sizeof(WCHAR)) {
+        FltReleaseFileNameInformation(nameInfo);
+        return STATUS_BUFFER_TOO_SMALL;
+    }
+
+    RtlCopyMemory(PathBuffer, nameInfo->Name.Buffer, nameInfo->Name.Length);
+    PathBuffer[nameInfo->Name.Length / sizeof(WCHAR)] = L'\0';
+
+    FltReleaseFileNameInformation(nameInfo);
+    return STATUS_SUCCESS;
+}
+
+// Query policy from user-mode
+BOOLEAN
+AgentshQueryFilePolicy(
+    _In_ ULONG64 SessionToken,
+    _In_ ULONG ProcessId,
+    _In_ AEP_CAW_FILE_OP Operation,
+    _In_ PCWSTR Path,
+    _In_opt_ PCWSTR RenameDest,
+    _In_ ULONG CreateDisposition,
+    _In_ ULONG DesiredAccess,
+    _Out_ PAEP_CAW_DECISION Decision
+    )
+{
+    NTSTATUS status;
+    AEP_CAW_FILE_REQUEST request = {0};
+    AEP_CAW_POLICY_RESPONSE response = {0};
+    ULONG replyLength = sizeof(response);
+    LARGE_INTEGER timeout;
+    SIZE_T pathLen;
+
+    AgentshMetricsIncrementFilePolicyQuery();
+
+    // Default to allow on failure
+    *Decision = DECISION_ALLOW;
+
+    // Check fail mode
+    AEP_CAW_FAIL_MODE failMode = AgentshGetFailMode();
+    if (gFailOpenMode) {
+        // In fail-open mode, apply configured policy
+        if (failMode == FAIL_MODE_OPEN) {
+            AgentshMetricsIncrementAllowDecision();
+            return TRUE;
+        }
+        // In fail-closed mode, deny all
+        *Decision = DECISION_DENY;
+        AgentshMetricsIncrementDenyDecision();
+        return TRUE;
+    }
+
+    // Check if client is connected
+    if (!AgentshData.ClientConnected) {
+        return FALSE;
+    }
+
+    // Build request
+    request.Header.Type = MSG_POLICY_CHECK_FILE;
+    request.Header.Size = sizeof(request);
+    request.Header.RequestId = InterlockedIncrement(&AgentshData.MessageId);
+    request.SessionToken = SessionToken;
+    request.ProcessId = ProcessId;
+    request.ThreadId = HandleToULong(PsGetCurrentThreadId());
+    request.Operation = Operation;
+    request.CreateDisposition = CreateDisposition;
+    request.DesiredAccess = DesiredAccess;
+
+    // Copy path
+    pathLen = wcslen(Path);
+    if (pathLen >= AEP_CAW_MAX_PATH) {
+        pathLen = AEP_CAW_MAX_PATH - 1;
+    }
+    RtlCopyMemory(request.Path, Path, pathLen * sizeof(WCHAR));
+    request.Path[pathLen] = L'\0';
+
+    // Copy rename destination if provided
+    if (RenameDest != NULL) {
+        pathLen = wcslen(RenameDest);
+        if (pathLen >= AEP_CAW_MAX_PATH) {
+            pathLen = AEP_CAW_MAX_PATH - 1;
+        }
+        RtlCopyMemory(request.RenameDest, RenameDest, pathLen * sizeof(WCHAR));
+        request.RenameDest[pathLen] = L'\0';
+    }
+
+    // Set timeout (negative = relative)
+    ULONG timeoutMs = AgentshGetPolicyTimeoutMs();
+    timeout.QuadPart = -((LONGLONG)timeoutMs * 10000);
+
+    // Send message to user-mode
+    status = FltSendMessage(
+        AgentshData.FilterHandle,
+        &AgentshData.ClientPort,
+        &request,
+        sizeof(request),
+        &response,
+        &replyLength,
+        &timeout
+        );
+
+    if (NT_SUCCESS(status) && replyLength >= sizeof(response)) {
+        *Decision = response.Decision;
+        InterlockedExchange(&gConsecutiveFailures, 0);
+        AgentshMetricsSetConsecutiveFailures(0);
+        AgentshMetricsSetFailOpenMode(FALSE);
+
+        if (response.Decision == DECISION_ALLOW) {
+            AgentshMetricsIncrementAllowDecision();
+        } else {
+            AgentshMetricsIncrementDenyDecision();
+        }
+
+        // Update cache with config TTL
+        ULONG ttl = response.CacheTTLMs > 0 ? response.CacheTTLMs : AgentshGetCacheDefaultTTLMs();
+        AgentshCacheInsert(SessionToken, Operation, Path, response.Decision, ttl);
+
+        return TRUE;
+    }
+
+    // Handle failure
+    LONG failures = InterlockedIncrement(&gConsecutiveFailures);
+    AgentshMetricsSetConsecutiveFailures(failures);
+    AgentshMetricsIncrementPolicyFailure();
+
+    ULONG maxFail = AgentshGetMaxConsecutiveFailures();
+    if (failures >= (LONG)maxFail && !gFailOpenMode) {
+        gFailOpenMode = TRUE;
+        AgentshMetricsSetFailOpenMode(TRUE);
+        DbgPrint("AepCaw: Entering fail mode after %ld failures\n", failures);
+    }
+
+    // Apply fail mode policy (reuse failMode from start of function for consistency)
+    if (failMode == FAIL_MODE_CLOSED) {
+        *Decision = DECISION_DENY;
+        AgentshMetricsIncrementDenyDecision();
+    } else {
+        AgentshMetricsIncrementAllowDecision();
+    }
+
+    return FALSE;
+}
+
+// Pre-create callback
+FLT_PREOP_CALLBACK_STATUS
+AgentshPreCreate(
+    _Inout_ PFLT_CALLBACK_DATA Data,
+    _In_ PCFLT_RELATED_OBJECTS FltObjects,
+    _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
+    )
+{
+    NTSTATUS status;
+    ULONG64 sessionToken;
+    AEP_CAW_DECISION decision;
+    WCHAR pathBuffer[AEP_CAW_MAX_PATH];
+    ULONG createDisposition;
+    ULONG desiredAccess;
+    AEP_CAW_FILE_OP operation;
+    ULONG processId = HandleToULong(PsGetCurrentProcessId());
+
+    UNREFERENCED_PARAMETER(CompletionContext);
+
+    // Skip if this is the excluded process (aep-caw using WinFsp)
+    if (AgentshIsExcludedProcess(processId)) {
+        return FLT_PREOP_SUCCESS_NO_CALLBACK;
+    }
+
+    // Fast path: not a session process
+    if (!AgentshIsSessionProcess(PsGetCurrentProcessId(), &sessionToken)) {
+        return FLT_PREOP_SUCCESS_NO_CALLBACK;
+    }
+
+    // Get file path
+    status = GetFilePath(Data, FltObjects, pathBuffer, AEP_CAW_MAX_PATH);
+    if (!NT_SUCCESS(status)) {
+        return FLT_PREOP_SUCCESS_NO_CALLBACK;
+    }
+
+    // Get create parameters
+    createDisposition = (Data->Iopb->Parameters.Create.Options >> 24) & 0xFF;
+    desiredAccess = Data->Iopb->Parameters.Create.SecurityContext->DesiredAccess;
+
+    // Determine operation type based on access flags
+    if (desiredAccess & DELETE) {
+        operation = FILE_OP_DELETE;
+    } else if (desiredAccess & (FILE_WRITE_DATA | FILE_APPEND_DATA)) {
+        operation = FILE_OP_WRITE;
+    } else if (createDisposition == FILE_CREATE || createDisposition == FILE_OVERWRITE ||
+               createDisposition == FILE_OVERWRITE_IF || createDisposition == FILE_SUPERSEDE) {
+        operation = FILE_OP_CREATE;
+    } else {
+        // Read-only open - allow without policy check for now
+        return FLT_PREOP_SUCCESS_NO_CALLBACK;
+    }
+
+    // Check cache first
+    if (AgentshCacheLookup(sessionToken, operation, pathBuffer, &decision)) {
+        if (decision == DECISION_DENY) {
+            Data->IoStatus.Status = STATUS_ACCESS_DENIED;
+            Data->IoStatus.Information = 0;
+            return FLT_PREOP_COMPLETE;
+        }
+        return FLT_PREOP_SUCCESS_NO_CALLBACK;
+    }
+
+    // Query policy
+    if (AgentshQueryFilePolicy(
+            sessionToken,
+            HandleToULong(PsGetCurrentProcessId()),
+            operation,
+            pathBuffer,
+            NULL,
+            createDisposition,
+            desiredAccess,
+            &decision))
+    {
+        if (decision == DECISION_DENY) {
+            Data->IoStatus.Status = STATUS_ACCESS_DENIED;
+            Data->IoStatus.Information = 0;
+            return FLT_PREOP_COMPLETE;
+        }
+    }
+    // Fail-open: allow if query fails
+
+    return FLT_PREOP_SUCCESS_NO_CALLBACK;
+}
+
+// Pre-write callback
+FLT_PREOP_CALLBACK_STATUS
+AgentshPreWrite(
+    _Inout_ PFLT_CALLBACK_DATA Data,
+    _In_ PCFLT_RELATED_OBJECTS FltObjects,
+    _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
+    )
+{
+    NTSTATUS status;
+    ULONG64 sessionToken;
+    AEP_CAW_DECISION decision;
+    WCHAR pathBuffer[AEP_CAW_MAX_PATH];
+    ULONG processId = HandleToULong(PsGetCurrentProcessId());
+
+    UNREFERENCED_PARAMETER(CompletionContext);
+
+    // Skip if this is the excluded process (aep-caw using WinFsp)
+    if (AgentshIsExcludedProcess(processId)) {
+        return FLT_PREOP_SUCCESS_NO_CALLBACK;
+    }
+
+    // Fast path: not a session process
+    if (!AgentshIsSessionProcess(PsGetCurrentProcessId(), &sessionToken)) {
+        return FLT_PREOP_SUCCESS_NO_CALLBACK;
+    }
+
+    // Get file path
+    status = GetFilePath(Data, FltObjects, pathBuffer, AEP_CAW_MAX_PATH);
+    if (!NT_SUCCESS(status)) {
+        return FLT_PREOP_SUCCESS_NO_CALLBACK;
+    }
+
+    // Check cache first
+    if (AgentshCacheLookup(sessionToken, FILE_OP_WRITE, pathBuffer, &decision)) {
+        if (decision == DECISION_DENY) {
+            Data->IoStatus.Status = STATUS_ACCESS_DENIED;
+            Data->IoStatus.Information = 0;
+            return FLT_PREOP_COMPLETE;
+        }
+        return FLT_PREOP_SUCCESS_NO_CALLBACK;
+    }
+
+    // Query policy
+    if (AgentshQueryFilePolicy(
+            sessionToken,
+            HandleToULong(PsGetCurrentProcessId()),
+            FILE_OP_WRITE,
+            pathBuffer,
+            NULL,
+            0,
+            FILE_WRITE_DATA,
+            &decision))
+    {
+        if (decision == DECISION_DENY) {
+            Data->IoStatus.Status = STATUS_ACCESS_DENIED;
+            Data->IoStatus.Information = 0;
+            return FLT_PREOP_COMPLETE;
+        }
+    }
+
+    return FLT_PREOP_SUCCESS_NO_CALLBACK;
+}
+
+// Pre-set-information callback (delete, rename)
+FLT_PREOP_CALLBACK_STATUS
+AgentshPreSetInfo(
+    _Inout_ PFLT_CALLBACK_DATA Data,
+    _In_ PCFLT_RELATED_OBJECTS FltObjects,
+    _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
+    )
+{
+    NTSTATUS status;
+    ULONG64 sessionToken;
+    AEP_CAW_DECISION decision;
+    WCHAR pathBuffer[AEP_CAW_MAX_PATH];
+    WCHAR renameDestBuffer[AEP_CAW_MAX_PATH];
+    PCWSTR renameDest = NULL;
+    FILE_INFORMATION_CLASS infoClass;
+    AEP_CAW_FILE_OP operation;
+    ULONG processId = HandleToULong(PsGetCurrentProcessId());
+
+    UNREFERENCED_PARAMETER(CompletionContext);
+
+    // Skip if this is the excluded process (aep-caw using WinFsp)
+    if (AgentshIsExcludedProcess(processId)) {
+        return FLT_PREOP_SUCCESS_NO_CALLBACK;
+    }
+
+    // Fast path: not a session process
+    if (!AgentshIsSessionProcess(PsGetCurrentProcessId(), &sessionToken)) {
+        return FLT_PREOP_SUCCESS_NO_CALLBACK;
+    }
+
+    infoClass = Data->Iopb->Parameters.SetFileInformation.FileInformationClass;
+
+    // Only handle delete and rename
+    if (infoClass == FileDispositionInformation ||
+        infoClass == FileDispositionInformationEx) {
+        operation = FILE_OP_DELETE;
+    } else if (infoClass == FileRenameInformation ||
+               infoClass == FileRenameInformationEx) {
+        operation = FILE_OP_RENAME;
+
+        // Extract rename destination from FILE_RENAME_INFORMATION structure
+        // For IRP_MJ_SET_INFORMATION, InfoBuffer may be a user-mode pointer.
+        // Only access it if the system has already captured it as a system buffer,
+        // or if we're at PASSIVE_LEVEL and can safely probe the buffer.
+        PVOID infoBuffer = Data->Iopb->Parameters.SetFileInformation.InfoBuffer;
+        ULONG bufferLength = Data->Iopb->Parameters.SetFileInformation.Length;
+
+        // Check if this is a system buffer (safe to access directly)
+        // FLTFL_CALLBACK_DATA_SYSTEM_BUFFER indicates the buffer is in system space
+        if ((Data->Flags & FLTFL_CALLBACK_DATA_SYSTEM_BUFFER) &&
+            infoBuffer != NULL &&
+            bufferLength >= sizeof(FILE_RENAME_INFORMATION)) {
+
+            PFILE_RENAME_INFORMATION renameInfo = (PFILE_RENAME_INFORMATION)infoBuffer;
+
+            if (renameInfo->FileNameLength > 0) {
+                // Validate FileNameLength doesn't exceed the buffer
+                // Buffer layout: FILE_RENAME_INFORMATION header + FileName array
+                ULONG maxFileNameBytes = bufferLength - FIELD_OFFSET(FILE_RENAME_INFORMATION, FileName);
+                ULONG fileNameBytes = renameInfo->FileNameLength;
+
+                if (fileNameBytes <= maxFileNameBytes) {
+                    SIZE_T charCount = fileNameBytes / sizeof(WCHAR);
+                    if (charCount >= AEP_CAW_MAX_PATH) {
+                        charCount = AEP_CAW_MAX_PATH - 1;
+                    }
+
+                    RtlCopyMemory(renameDestBuffer, renameInfo->FileName, charCount * sizeof(WCHAR));
+                    renameDestBuffer[charCount] = L'\0';
+                    renameDest = renameDestBuffer;
+                }
+            }
+        }
+        // If buffer is not a system buffer or validation fails, proceed without rename dest
+        // Policy can still check source path
+    } else {
+        return FLT_PREOP_SUCCESS_NO_CALLBACK;
+    }
+
+    // Get file path
+    status = GetFilePath(Data, FltObjects, pathBuffer, AEP_CAW_MAX_PATH);
+    if (!NT_SUCCESS(status)) {
+        return FLT_PREOP_SUCCESS_NO_CALLBACK;
+    }
+
+    // Check cache first
+    if (AgentshCacheLookup(sessionToken, operation, pathBuffer, &decision)) {
+        if (decision == DECISION_DENY) {
+            Data->IoStatus.Status = STATUS_ACCESS_DENIED;
+            Data->IoStatus.Information = 0;
+            return FLT_PREOP_COMPLETE;
+        }
+        return FLT_PREOP_SUCCESS_NO_CALLBACK;
+    }
+
+    // Query policy with rename destination if available
+    if (AgentshQueryFilePolicy(
+            sessionToken,
+            HandleToULong(PsGetCurrentProcessId()),
+            operation,
+            pathBuffer,
+            renameDest,
+            0,
+            operation == FILE_OP_DELETE ? DELETE : 0,
+            &decision))
+    {
+        if (decision == DECISION_DENY) {
+            Data->IoStatus.Status = STATUS_ACCESS_DENIED;
+            Data->IoStatus.Information = 0;
+            return FLT_PREOP_COMPLETE;
+        }
+    }
+
+    return FLT_PREOP_SUCCESS_NO_CALLBACK;
+}

@@ -1,0 +1,70 @@
+{
+  "manifest_version": "1",
+  "id": "coding-governance",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/coding-governance/",
+  "description": "Pre-change intent and blast radius for AI coding. Rust validator: AEP-Subprotocols/coding-governance.",
+  "requires": [
+    "gap",
+    "aep-base-node"
+  ],
+  "subprotocol": "coding-governance",
+  "capabilities": [
+    "coding:propose",
+    "coding:siee",
+    "coding:solidify"
+  ],
+  "actions": [
+    {
+      "id": "propose_change",
+      "description": "Propose a coding change with blast radius",
+      "runtime": "cli",
+      "method": "aep-subprotocol coding-governance propose"
+    }
+  ],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 128,
+    "min_disk_mb": 50,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cli": {
+    "binary": "aep-subprotocol",
+    "subcommand": "coding-governance"
+  },
+  "cca": {
+    "summary": "nool-style intent + blast radius + git-linked solidify for AI coding agents.",
+    "use_when": [
+      "AI coding agents",
+      "Cursor",
+      "Claude Code",
+      "Codex with AEP",
+      "CCA coding agent plans"
+    ],
+    "avoid_when": [
+      "deployment-only CCA plans without code edits"
+    ],
+    "pairs_with": [
+      "gap",
+      "hcse",
+      "intent-ledger",
+      "semantic-topology",
+      "caw-framework",
+      "lattice-memory"
+    ],
+    "policy_overrides": {
+      "coding_governance": {
+        "git_integration": true,
+        "auto_git_refs": true,
+        "semantic_strict": true,
+        "require_propose": true
+      }
+    }
+  },
+  "implementation": {
+    "path": "AEP-Components/coding-governance/",
+    "subprotocol": "AEP-Subprotocols/coding-governance"
+  }
+}

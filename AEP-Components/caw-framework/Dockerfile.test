@@ -1,0 +1,595 @@
+# Self-contained integration test for aep-caw.
+# Installs the deb from a GitHub release, sets up the shell shim,
+# starts the server internally, and runs end-to-end tests.
+#
+# Build:
+#   docker build -f Dockerfile.test \
+#     --build-arg AEP_CAW_TAG=v0.10.1 \
+#     -t aep-caw-test:latest .
+#
+# Run:
+#   docker run --rm aep-caw-test:latest
+
+FROM debian:bookworm-slim
+
+ARG AEP_CAW_REPO=canyonroad/aep-caw
+ARG AEP_CAW_TAG=v0.10.1
+ARG DEB_ARCH=amd64
+
+# Install dependencies: curl for downloading, bash for shim tests, jq for JSON parsing.
+RUN set -eux; \
+  apt-get update; \
+  apt-get install -y --no-install-recommends ca-certificates curl bash jq; \
+  rm -rf /var/lib/apt/lists/*
+
+# Download and install the aep-caw deb package.
+RUN set -eux; \
+  version="${AEP_CAW_TAG#v}"; \
+  deb="aep-caw_${version}_linux_${DEB_ARCH}.deb"; \
+  url="https://github.com/${AEP_CAW_REPO}/releases/download/${AEP_CAW_TAG}/${deb}"; \
+  echo "Downloading: ${url}"; \
+  curl -fsSL -L "${url}" -o /tmp/aep-caw.deb; \
+  dpkg -i /tmp/aep-caw.deb; \
+  rm -f /tmp/aep-caw.deb; \
+  aep-caw --version
+
+# Install the shell shim (replaces /bin/sh and /bin/bash).
+RUN aep-caw shim install-shell \
+  --root / \
+  --shim /usr/bin/aep-caw-shell-shim \
+  --bash \
+  --i-understand-this-modifies-the-host
+
+# Embed the test script.
+COPY <<'SCRIPT' /test.sh
+#!/bin/bash.real
+set -euo pipefail
+
+passed=0
+failed=0
+tests_run=0
+
+pass() {
+  passed=$((passed + 1))
+  tests_run=$((tests_run + 1))
+  echo "  PASS: $1"
+}
+
+fail() {
+  failed=$((failed + 1))
+  tests_run=$((tests_run + 1))
+  echo "  FAIL: $1 - $2" >&2
+}
+
+# -------------------------------------------------------------------
+# Pre-flight: verify shim installation
+# -------------------------------------------------------------------
+echo "=== Pre-flight checks ==="
+
+if [ -f /bin/sh.real ]; then
+  pass "/bin/sh.real exists"
+else
+  fail "/bin/sh.real exists" "file not found"
+fi
+
+if [ -f /bin/bash.real ]; then
+  pass "/bin/bash.real exists"
+else
+  fail "/bin/bash.real exists" "file not found"
+fi
+
+if [ -f /bin/sh ] && [ /bin/sh -ef /usr/bin/aep-caw-shell-shim ]; then
+  pass "/bin/sh points to the shim"
+elif [ -f /bin/sh ]; then
+  pass "/bin/sh exists (shim installed)"
+else
+  fail "/bin/sh is the shim" "/bin/sh not found"
+fi
+
+# -------------------------------------------------------------------
+# Package completeness: binaries
+# -------------------------------------------------------------------
+echo ""
+echo "=== Package completeness ==="
+
+for bin in /usr/bin/aep-caw /usr/bin/aep-caw-shell-shim; do
+  if [ -x "$bin" ]; then
+    pass "$bin exists and is executable"
+  else
+    fail "$bin exists and is executable" "not found or not executable"
+  fi
+done
+
+# aep-caw-unixwrap is only shipped on amd64
+if [ "$(dpkg --print-architecture)" = "amd64" ]; then
+  if [ -x /usr/bin/aep-caw-unixwrap ]; then
+    pass "/usr/bin/aep-caw-unixwrap exists (amd64)"
+  else
+    fail "/usr/bin/aep-caw-unixwrap exists (amd64)" "not found or not executable"
+  fi
+fi
+
+# Config
+if [ -f /etc/aep-caw/config.yaml ]; then
+  pass "/etc/aep-caw/config.yaml exists"
+else
+  fail "/etc/aep-caw/config.yaml exists" "not found"
+fi
+
+# All 10 policy files
+for policy in \
+  default.yaml default-windows.yaml \
+  dev-safe.yaml dev-safe-windows.yaml \
+  ci-strict.yaml ci-strict-windows.yaml \
+  agent-sandbox.yaml agent-sandbox-windows.yaml \
+  signal-strict.yaml system-readonly.yaml; do
+  if [ -f "/etc/aep-caw/policies/$policy" ]; then
+    pass "policy $policy exists"
+  else
+    fail "policy $policy exists" "not found in /etc/aep-caw/policies/"
+  fi
+done
+
+# Shell completions
+if [ -f /usr/share/bash-completion/completions/aep-caw ]; then
+  pass "bash completion exists"
+else
+  fail "bash completion exists" "not found"
+fi
+
+if [ -f /usr/share/zsh/site-functions/_aep-caw ]; then
+  pass "zsh completion exists"
+else
+  fail "zsh completion exists" "not found"
+fi
+
+if [ -f /usr/share/fish/vendor_completions.d/aep-caw.fish ]; then
+  pass "fish completion exists"
+else
+  fail "fish completion exists" "not found"
+fi
+
+# Libs
+if [ -f /usr/lib/aep-caw/bash_startup.sh ]; then
+  pass "/usr/lib/aep-caw/bash_startup.sh exists"
+else
+  fail "/usr/lib/aep-caw/bash_startup.sh exists" "not found"
+fi
+
+# -------------------------------------------------------------------
+# Start the aep-caw server
+# -------------------------------------------------------------------
+echo ""
+echo "=== Starting aep-caw server ==="
+
+tmp="$(mktemp -d)"
+trap 'set +e; [ -n "${SERVER_PID:-}" ] && kill "$SERVER_PID" 2>/dev/null; rm -rf "$tmp"' EXIT
+
+port=18923
+base_url="http://127.0.0.1:${port}"
+export AEP_CAW_SERVER="$base_url"
+
+cat >"$tmp/config.yml" <<YAML
+server:
+  http:
+    addr: "127.0.0.1:${port}"
+  grpc:
+    enabled: false
+  unix_socket:
+    enabled: false
+
+auth:
+  type: "none"
+
+metrics:
+  enabled: false
+
+health:
+  path: "/health"
+  readiness_path: "/ready"
+
+policies:
+  dir: "/etc/aep-caw/policies"
+  default: "default"
+
+sessions:
+  base_dir: "${tmp}/sessions"
+  max_sessions: 10
+
+audit:
+  enabled: true
+  output: "${tmp}/audit.jsonl"
+  storage:
+    sqlite_path: "${tmp}/events.db"
+
+sandbox:
+  fuse:
+    enabled: false
+  network:
+    enabled: false
+  unix_sockets:
+    enabled: false
+  seccomp:
+    execve:
+      enabled: false
+YAML
+
+aep-caw server --config "$tmp/config.yml" >"$tmp/server.log" 2>&1 &
+SERVER_PID="$!"
+
+# Wait for server to become healthy.
+server_ready=0
+for _ in $(seq 1 100); do
+  if curl -fsS "${base_url}/health" >/dev/null 2>&1; then
+    server_ready=1
+    break
+  fi
+  sleep 0.1
+done
+
+if [ "$server_ready" = "1" ]; then
+  pass "server started and healthy"
+else
+  fail "server started and healthy" "server did not become ready"
+  echo "--- server log ---" >&2
+  head -100 "$tmp/server.log" >&2 || true
+  echo "--- end server log ---" >&2
+  echo ""
+  echo "=== Results: ${passed} passed, ${failed} failed, ${tests_run} total ==="
+  exit 1
+fi
+
+# Layer 1 (WAIT_KILLABLE_RECV) is validated by the unit test
+# TestInstallFilter_EmitsWaitKillEngagedOnSupportedKernel in
+# internal/netmonitor/unix/sigurg_probe_test.go, which re-execs itself
+# with a minimal seccomp filter config and asserts the raw seccomp(2)
+# load path emits wait_killable=true. We don't repeat that check here
+# because this Dockerfile.test config disables sandbox.unix_sockets,
+# so aep-caw-unixwrap is never invoked and no Layer 1 filter is
+# installed for the docker matrix to observe.
+
+# -------------------------------------------------------------------
+# Create a session
+# -------------------------------------------------------------------
+echo ""
+echo "=== Creating session ==="
+
+sid_json="$(aep-caw session create --workspace /tmp --json)"
+sid="$(echo "$sid_json" | jq -r '.id')"
+
+if [ -n "$sid" ] && [ "$sid" != "null" ]; then
+  pass "session created (id=${sid})"
+else
+  fail "session created" "failed to parse session id: ${sid_json}"
+  echo ""
+  echo "=== Results: ${passed} passed, ${failed} failed, ${tests_run} total ==="
+  exit 1
+fi
+
+# -------------------------------------------------------------------
+# Test: basic echo through /bin/sh shim
+# -------------------------------------------------------------------
+echo ""
+echo "=== Shim tests ==="
+
+sh_out="$(AEP_CAW_SESSION_ID="$sid" AEP_CAW_SHIM_FORCE=1 /bin/sh -c 'echo hello_sh' 2>&1 | tr -d '\r' | tail -n 1)"
+if [ "$sh_out" = "hello_sh" ]; then
+  pass "echo through /bin/sh shim"
+else
+  fail "echo through /bin/sh shim" "got: ${sh_out}"
+fi
+
+# -------------------------------------------------------------------
+# Test: basic echo through /bin/bash shim
+# -------------------------------------------------------------------
+bash_out="$(AEP_CAW_SESSION_ID="$sid" AEP_CAW_SHIM_FORCE=1 /bin/bash -c 'echo hello_bash' 2>&1 | tr -d '\r' | tail -n 1)"
+if [ "$bash_out" = "hello_bash" ]; then
+  pass "echo through /bin/bash shim"
+else
+  fail "echo through /bin/bash shim" "got: ${bash_out}"
+fi
+
+# -------------------------------------------------------------------
+# Test: recursion guard (AEP_CAW_IN_SESSION)
+# -------------------------------------------------------------------
+# When AEP_CAW_IN_SESSION is set, the shim should delegate directly to the
+# real shell without contacting the server. We set AEP_CAW_BIN to a
+# nonexistent path to prove the shim doesn't try to call it.
+rec_out="$(AEP_CAW_BIN=/nonexistent/aep-caw AEP_CAW_IN_SESSION=1 /bin/sh -c 'echo recursion_ok' 2>&1 | tr -d '\r' | tail -n 1)"
+if [ "$rec_out" = "recursion_ok" ]; then
+  pass "AEP_CAW_IN_SESSION recursion guard"
+else
+  fail "AEP_CAW_IN_SESSION recursion guard" "got: ${rec_out}"
+fi
+
+# -------------------------------------------------------------------
+# Test: multi-word arguments preserved
+# -------------------------------------------------------------------
+multi_out="$(AEP_CAW_SESSION_ID="$sid" AEP_CAW_SHIM_FORCE=1 /bin/sh -c 'echo "hello world"' 2>&1 | tr -d '\r' | tail -n 1)"
+if [ "$multi_out" = "hello world" ]; then
+  pass "multi-word arguments preserved"
+else
+  fail "multi-word arguments preserved" "got: ${multi_out}"
+fi
+
+# -------------------------------------------------------------------
+# Test: exit code propagation
+# -------------------------------------------------------------------
+set +e
+AEP_CAW_SESSION_ID="$sid" AEP_CAW_SHIM_FORCE=1 /bin/sh -c 'exit 42' >/dev/null 2>&1
+exit_rc=$?
+set -e
+if [ "$exit_rc" = "42" ]; then
+  pass "exit code propagation (42)"
+else
+  fail "exit code propagation (42)" "got rc=${exit_rc}"
+fi
+
+# -------------------------------------------------------------------
+# Test: non-interactive stdin passthrough (binary data integrity)
+# -------------------------------------------------------------------
+# Simulates: docker exec -i container sh -c "cat > /tmp/file" < binary
+# The shim must pass binary data through intact when stdin is piped.
+dd if=/dev/urandom bs=1024 count=4 of=/tmp/test_binary 2>/dev/null
+pipe_out="$(/bin/sh -c 'cat' < /tmp/test_binary | md5sum | awk '{print $1}')"
+orig_md5="$(md5sum /tmp/test_binary | awk '{print $1}')"
+if [ "$pipe_out" = "$orig_md5" ]; then
+  pass "binary stdin passthrough (md5 match)"
+else
+  fail "binary stdin passthrough (md5 match)" "orig=$orig_md5 got=$pipe_out"
+fi
+rm -f /tmp/test_binary
+
+# -------------------------------------------------------------------
+# Test: exec through aep-caw CLI
+# -------------------------------------------------------------------
+exec_out="$(aep-caw exec "$sid" -- sh -c 'echo exec_ok' 2>&1 | tr -d '\r' | tail -n 1)"
+if [ "$exec_out" = "exec_ok" ]; then
+  pass "aep-caw exec command"
+else
+  fail "aep-caw exec command" "got: ${exec_out}"
+fi
+
+# -------------------------------------------------------------------
+# Helper: exec_json - run a command via aep-caw exec --output json
+# Usage: exec_json <session_id> <command> [args...]
+# Sets: _ej_rc (exit code), _ej_json (full JSON output)
+# -------------------------------------------------------------------
+exec_json() {
+  local session="$1"; shift
+  set +e
+  _ej_json="$(aep-caw exec --output json --events all "$session" -- "$@" 2>&1)"
+  _ej_rc=$?
+  set -e
+}
+
+# -------------------------------------------------------------------
+# Policy enforcement: default policy
+# -------------------------------------------------------------------
+echo ""
+echo "=== Policy enforcement: default policy ==="
+
+# rm -rf should be blocked by block-dangerous-rm
+exec_json "$sid" rm -rf /tmp/test
+if [ "$_ej_rc" -ne 0 ]; then
+  pass "rm -rf exits non-zero ($_ej_rc)"
+else
+  fail "rm -rf exits non-zero" "got exit code 0"
+fi
+
+ej_blocked="$(echo "$_ej_json" | jq -r '.guidance.blocked // false')"
+if [ "$ej_blocked" = "true" ]; then
+  pass "rm -rf guidance.blocked=true"
+else
+  fail "rm -rf guidance.blocked=true" "got: $ej_blocked"
+fi
+
+ej_rule="$(echo "$_ej_json" | jq -r '.result.error.policy_rule // empty')"
+if [ "$ej_rule" = "block-dangerous-rm" ]; then
+  pass "rm -rf policy_rule=block-dangerous-rm"
+else
+  fail "rm -rf policy_rule=block-dangerous-rm" "got: $ej_rule"
+fi
+
+# shutdown should be blocked by block-system-commands
+exec_json "$sid" shutdown now
+if [ "$_ej_rc" -ne 0 ]; then
+  pass "shutdown exits non-zero ($_ej_rc)"
+else
+  fail "shutdown exits non-zero" "got exit code 0"
+fi
+
+ej_blocked="$(echo "$_ej_json" | jq -r '.guidance.blocked // false')"
+if [ "$ej_blocked" = "true" ]; then
+  pass "shutdown guidance.blocked=true"
+else
+  fail "shutdown guidance.blocked=true" "got: $ej_blocked"
+fi
+
+ej_rule="$(echo "$_ej_json" | jq -r '.result.error.policy_rule // empty')"
+if [ "$ej_rule" = "block-system-commands" ]; then
+  pass "shutdown policy_rule=block-system-commands"
+else
+  fail "shutdown policy_rule=block-system-commands" "got: $ej_rule"
+fi
+
+# echo should be allowed
+exec_json "$sid" echo hello_policy
+if [ "$_ej_rc" -eq 0 ]; then
+  pass "echo allowed (exit 0)"
+else
+  fail "echo allowed (exit 0)" "got exit code $_ej_rc"
+fi
+
+ej_stdout="$(echo "$_ej_json" | jq -r '.result.stdout // empty' | tr -d '\n')"
+if [ "$ej_stdout" = "hello_policy" ]; then
+  pass "echo stdout=hello_policy"
+else
+  fail "echo stdout=hello_policy" "got: $ej_stdout"
+fi
+
+# ls /tmp should be allowed
+exec_json "$sid" ls /tmp
+if [ "$_ej_rc" -eq 0 ]; then
+  pass "ls /tmp allowed (exit 0)"
+else
+  fail "ls /tmp allowed (exit 0)" "got exit code $_ej_rc"
+fi
+
+# -------------------------------------------------------------------
+# Policy enforcement: agent-sandbox policy
+# -------------------------------------------------------------------
+echo ""
+echo "=== Policy enforcement: agent-sandbox policy ==="
+
+sid2_json="$(aep-caw session create --workspace /tmp --policy agent-sandbox --json)"
+sid2="$(echo "$sid2_json" | jq -r '.id')"
+
+if [ -n "$sid2" ] && [ "$sid2" != "null" ]; then
+  pass "agent-sandbox session created (id=${sid2})"
+else
+  fail "agent-sandbox session created" "failed to parse session id: ${sid2_json}"
+fi
+
+# sudo should be blocked in agent-sandbox
+exec_json "$sid2" sudo whoami
+if [ "$_ej_rc" -ne 0 ]; then
+  pass "sudo exits non-zero in agent-sandbox ($_ej_rc)"
+else
+  fail "sudo exits non-zero in agent-sandbox" "got exit code 0"
+fi
+
+ej_blocked="$(echo "$_ej_json" | jq -r '.guidance.blocked // false')"
+if [ "$ej_blocked" = "true" ]; then
+  pass "sudo guidance.blocked=true"
+else
+  fail "sudo guidance.blocked=true" "got: $ej_blocked"
+fi
+
+# echo should still work in agent-sandbox
+exec_json "$sid2" echo sandbox_ok
+if [ "$_ej_rc" -eq 0 ]; then
+  pass "echo allowed in agent-sandbox (exit 0)"
+else
+  fail "echo allowed in agent-sandbox (exit 0)" "got exit code $_ej_rc"
+fi
+
+ej_stdout="$(echo "$_ej_json" | jq -r '.result.stdout // empty' | tr -d '\n')"
+if [ "$ej_stdout" = "sandbox_ok" ]; then
+  pass "echo stdout=sandbox_ok in agent-sandbox"
+else
+  fail "echo stdout=sandbox_ok in agent-sandbox" "got: $ej_stdout"
+fi
+
+# -------------------------------------------------------------------
+# Policy selection: both sessions still work independently
+# -------------------------------------------------------------------
+echo ""
+echo "=== Policy selection: parallel sessions ==="
+
+# Original session (default policy) still works
+exec_json "$sid" echo default_still_ok
+if [ "$_ej_rc" -eq 0 ]; then
+  pass "default session still works after sandbox created"
+else
+  fail "default session still works after sandbox created" "got exit code $_ej_rc"
+fi
+
+# agent-sandbox session still works
+exec_json "$sid2" echo sandbox_still_ok
+if [ "$_ej_rc" -eq 0 ]; then
+  pass "agent-sandbox session still works"
+else
+  fail "agent-sandbox session still works" "got exit code $_ej_rc"
+fi
+
+# Default session also blocks sudo (not in allow-list)
+exec_json "$sid" sudo echo default_sudo
+ej_blocked="$(echo "$_ej_json" | jq -r '.guidance.blocked // false')"
+if [ "$ej_blocked" = "true" ]; then
+  pass "sudo blocked in default policy (not in allow-list)"
+else
+  pass "sudo not policy-blocked in default (rc=$_ej_rc)"
+fi
+
+# -------------------------------------------------------------------
+# Shim + policy integration
+# -------------------------------------------------------------------
+echo ""
+echo "=== Shim + policy integration ==="
+
+# Safe command through shim should work
+shim_safe="$(AEP_CAW_SESSION_ID="$sid" AEP_CAW_SHIM_FORCE=1 /bin/sh -c 'echo shim_policy_ok' 2>&1 | tr -d '\r' | tail -n 1)"
+if [ "$shim_safe" = "shim_policy_ok" ]; then
+  pass "safe command through shim works"
+else
+  fail "safe command through shim works" "got: $shim_safe"
+fi
+
+# Blocked command through shim should fail WITH a policy-specific
+# denial message on stderr. Matching only `rc != 0` is insufficient:
+# `shutdown` can exit non-zero for unrelated reasons (binary not
+# installed, non-root in a restricted container), so a vacuous pass
+# would not prove the policy layer actually denied anything.
+# The shim routes through the PTY code path (internal/cli/exec_pty.go),
+# which emits `aep-caw: command denied by policy (rule=...)`. The
+# non-PTY path in internal/cli/exec.go emits `blocked by policy`
+# instead. Accept either phrasing so the test is robust to both paths.
+set +e
+shim_block_stderr="$(AEP_CAW_SESSION_ID="$sid" AEP_CAW_SHIM_FORCE=1 /bin/sh -c 'shutdown now' 2>&1 >/dev/null)"
+shim_block_rc=$?
+set -e
+case "$shim_block_stderr" in
+  *"denied by policy"*|*"blocked by policy"*)
+    # Denial substring alone is insufficient - a regression where the
+    # shim prints the policy message but then exits 0 would still pass
+    # a substring-only check even though the command effectively
+    # succeeded. Require rc != 0 on top of the substring.
+    if [ "$shim_block_rc" -ne 0 ]; then
+      pass "blocked command through shim fails (rc=$shim_block_rc; policy denial observed)"
+    else
+      fail "blocked command through shim fails" "rc=0 with policy denial on stderr - denial printed but command returned success. stderr: ${shim_block_stderr}"
+    fi
+    ;;
+  *)
+    fail "blocked command through shim fails" "rc=$shim_block_rc, no policy denial on stderr; got: ${shim_block_stderr}"
+    ;;
+esac
+
+# -------------------------------------------------------------------
+# SIGURG sanity probe
+#
+# Best-effort check that the WAIT_KILLABLE_RECV flag is functionally
+# engaged end-to-end. The probe is bind-mounted from /probe/sigurg_probe
+# by docker run. See scripts/docker-test/README.md.
+# -------------------------------------------------------------------
+echo ""
+echo "=== SIGURG sanity probe ==="
+if [ -x /probe/sigurg_probe ]; then
+  if /probe/sigurg_probe 2>&1; then
+    pass "sigurg_probe completed without hang"
+  else
+    fail "sigurg_probe completed without hang" "probe exited non-zero (possible WAIT_KILLABLE_RECV regression)"
+  fi
+else
+  echo "  INFO: /probe/sigurg_probe not bind-mounted; skipping (allowed if docker run lacks -v flag)"
+fi
+
+# -------------------------------------------------------------------
+# Summary
+# -------------------------------------------------------------------
+echo ""
+echo "=== Results: ${passed} passed, ${failed} failed, ${tests_run} total ==="
+
+if [ "$failed" -gt 0 ]; then
+  echo ""
+  echo "--- server log (last 50 lines) ---" >&2
+  tail -50 "$tmp/server.log" >&2 || true
+  exit 1
+fi
+
+exit 0
+SCRIPT
+
+# Use bash.real as entrypoint since /bin/bash is now the shim.
+ENTRYPOINT ["/bin/bash.real", "/test.sh"]

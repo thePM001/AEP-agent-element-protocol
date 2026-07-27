@@ -1,0 +1,10 @@
+bin/
+build/
+dist/
+.gocache/
+.gomodcache/
+.gopath/
+coverage.out
+**/.gomodcache/**
+**/.gocache/**
+**/.gopath/**

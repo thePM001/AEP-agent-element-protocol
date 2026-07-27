@@ -1,0 +1,93 @@
+# aep-caw Server Configuration (container/production defaults)
+
+server:
+  http:
+    addr: "0.0.0.0:18080"
+  grpc:
+    enabled: false
+    addr: "0.0.0.0:9090"
+
+auth:
+  type: "api_key"
+  api_key:
+    keys_file: "/etc/aep-caw/api_keys.yaml"
+    header_name: "X-API-Key"
+
+logging:
+  level: "info"
+  format: "json"
+  output: "/var/log/aep-caw/server.log"
+  rotation:
+    max_size_mb: 100
+    max_age_days: 7
+    max_backups: 5
+    compress: true
+
+audit:
+  enabled: true
+  output: "/var/log/aep-caw/audit.jsonl"
+  rotation:
+    max_size_mb: 500
+    max_age_days: 90
+    max_backups: 10
+    compress: true
+  storage:
+    sqlite_path: "/var/lib/aep-caw/events.db"
+
+sessions:
+  base_dir: "/var/lib/aep-caw/sessions"
+
+# LLM Proxy configuration
+proxy:
+  mode: "embedded"
+  port: 0
+  providers:
+    anthropic: "https://api.anthropic.com"
+    openai: "https://api.openai.com"
+    # For alternative providers:
+    # openai: "http://litellm:8000"        # LiteLLM proxy
+    # anthropic: "https://llm.corp.com"    # Corporate gateway
+
+# DLP (Data Loss Prevention)
+dlp:
+  mode: "redact"
+  patterns:
+    email: true
+    phone: true
+    credit_card: true
+    ssn: true
+    api_keys: true
+
+policies:
+  dir: "/etc/aep-caw/policies"
+  default: "default"
+  # Project root detection (enabled by default)
+  # When enabled, ${PROJECT_ROOT} and ${GIT_ROOT} are auto-detected
+  detect_project_root: true
+  # Custom project markers (optional, uses defaults if not specified)
+  # project_markers:
+  #   - ".git"
+  #   - "go.mod"
+  #   - "package.json"
+  #   - "Cargo.toml"
+  #   - "pyproject.toml"
+
+# Sandbox configuration
+sandbox:
+  # env_inject: Environment variables injected into all commands
+  # These bypass env policy filtering (operator-trusted)
+  # Primary use: BASH_ENV to disable bash builtins that bypass seccomp
+  env_inject:
+    BASH_ENV: "/usr/lib/aep-caw/bash_startup.sh"
+    # Add custom vars as needed:
+    # MY_CUSTOM_VAR: "value"
+
+health:
+  path: "/health"
+  readiness_path: "/ready"
+
+development:
+  debug: false
+  disable_auth: false
+  disable_policy: false
+

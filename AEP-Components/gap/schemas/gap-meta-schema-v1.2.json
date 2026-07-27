@@ -1,0 +1,637 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gap-lang.aep.dev/schemas/gap-meta-schema-v1.2.json",
+  "title": "GAP Instruction Meta-Schema v1.2",
+  "description": "Defines every legal structure of a .gap file. Used as the Layer 1 constraint mask for LLM-based GAP generation. Expanded from v1.1 with structured geometry blocks, subprotocol registry, constraint expressions, and feature flags.",
+  "type": "object",
+  "required": ["address", "pattern", "action", "weight", "composition", "metadata"],
+  "additionalProperties": false,
+  "properties": {
+    "address": {
+      "type": "object",
+      "required": ["domain", "id"],
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$",
+          "description": "Reverse-domain namespace (e.g. com.myorg.dev)"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*(\\.(v[0-9]+))?$",
+          "description": "Unique instruction name with optional version suffix"
+        }
+      }
+    },
+
+    "pattern": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        { "$ref": "#/$defs/PatternObject" }
+      ]
+    },
+
+    "action": { "$ref": "#/$defs/Action" },
+
+    "weight": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+
+    "composition": { "$ref": "#/$defs/Composition" },
+
+    "metadata": { "$ref": "#/$defs/Metadata" },
+
+    "types": {
+      "type": "object",
+      "description": "Inline type definitions",
+      "additionalProperties": { "$ref": "#/$defs/TypeDefinition" }
+    },
+
+    "execution": { "$ref": "#/$defs/Execution" },
+
+    "weight_estimation": {
+      "type": "object",
+      "description": "MLE weight estimation config (v1.1, §7.1)",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "min_samples": { "type": "integer", "minimum": 10, "default": 50 },
+        "decay_window": { "type": "integer", "minimum": 100, "default": 1000 },
+        "floor": { "type": "number", "minimum": 0.0, "maximum": 1.0, "default": 0.10 }
+      }
+    },
+
+    "subprotocols": {
+      "type": "object",
+      "description": "Domain-specific subprotocol registry (v1.2). Maps subprotocol name to its validator and geometry profile.",
+      "additionalProperties": { "$ref": "#/$defs/SubprotocolDefinition" }
+    },
+
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Runtime feature flag. When false, instruction is loaded but never evaluated by the lattice."
+    }
+  },
+
+  "$defs": {
+
+    "Address": {
+      "type": "object",
+      "required": ["domain", "id"],
+      "properties": {
+        "domain": { "type": "string" },
+        "id": { "type": "string" }
+      }
+    },
+
+    "PatternObject": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "guard": { "type": "string" },
+        "input": { "$ref": "#/$defs/PatternIO" },
+        "output": { "$ref": "#/$defs/PatternIO" },
+        "on": { "$ref": "#/$defs/EventSubscription" },
+        "subprotocol": {
+          "type": "string",
+          "description": "Activates domain-specific validator at Step 3.5. Must match a key in the instruction's subprotocols block or a globally registered subprotocol."
+        },
+        "constraints": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "validators": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "geometry": { "$ref": "#/$defs/GeometryBlock" },
+        "invariants": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Legacy: plain string constraints"
+            },
+            {
+              "type": "array",
+              "items": { "$ref": "#/$defs/ConstraintExpression" },
+              "description": "Structured constraint expressions (v1.2)"
+            }
+          ]
+        }
+      }
+    },
+
+    "ConstraintExpression": {
+      "type": "object",
+      "description": "Structured constraint with expression, severity, and optional validator reference (v1.2).",
+      "required": ["expr"],
+      "additionalProperties": false,
+      "properties": {
+        "expr": {
+          "type": "string",
+          "description": "Constraint expression. Domain-specific language interpreted by the named validator."
+        },
+        "lang": {
+          "type": "string",
+          "enum": ["gapdsl", "rego", "cel", "expr"],
+          "default": "gapdsl",
+          "description": "Expression language. gapdsl = GAP domain-specific language, rego = OPA Rego, cel = Common Expression Language, expr = free-form interpreted by validator."
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["hard", "soft", "advisory"],
+          "default": "hard",
+          "description": "hard = violation blocks activation. soft = violation logged but allows activation. advisory = information only."
+        },
+        "validator": {
+          "type": "string",
+          "description": "Name of the validator to interpret the expression. Defaults to 'range_check' if omitted."
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable explanation of this constraint."
+        }
+      }
+    },
+
+    "SubprotocolDefinition": {
+      "type": "object",
+      "description": "Domain-specific subprotocol definition (v1.2). Registers validators, geometry profiles, and default constraints for a domain.",
+      "required": ["validator"],
+      "additionalProperties": false,
+      "properties": {
+        "validator": {
+          "type": "string",
+          "description": "Name of the primary validator for this subprotocol."
+        },
+        "geometry_profile": {
+          "type": "string",
+          "enum": ["robotics", "drone", "molecular", "ui", "terrain", "custom"],
+          "description": "Geometry shorthand profile for this subprotocol."
+        },
+        "constraints": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Default constraints applied to all instructions using this subprotocol."
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Domain-specific fields added to the pattern schema when this subprotocol is active."
+        }
+      }
+    },
+
+    "PatternIO": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string" },
+        "schema": { "type": "string" },
+        "format": {
+          "type": "string",
+          "enum": ["json", "yaml", "text", "binary", "gltf", "protobuf", "custom"]
+        },
+        "validator": { "type": "string" },
+        "content_ref": {
+          "type": "string",
+          "description": "Path or URI to external binary content (§2). Required when format is binary, gltf or protobuf."
+        }
+      }
+    },
+
+    "EventSubscription": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "event": { "type": "string" },
+            "filter": { "type": "object" }
+          }
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["event"],
+            "properties": {
+              "event": { "type": "string" },
+              "filter": { "type": "object" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schedule": {
+              "type": "object",
+              "required": ["cron"],
+              "properties": {
+                "cron": { "type": "string" },
+                "timezone": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+
+    "GeometryBlock": {
+      "type": "object",
+      "description": "GGN shorthand type declarations (§18). Expanded to full types by gapc.",
+      "properties": {
+        "profile": {
+          "type": "string",
+          "enum": ["robotics", "drone", "molecular", "ui", "terrain"],
+          "description": "Named geometry profile providing pre-defined type shortcuts."
+        },
+        "types": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "description": "GGN type shorthand or full type expression" },
+          "description": "Named geometry type declarations using GGN shorthand syntax."
+        }
+      }
+    },
+
+    "Action": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["template", "structured", "code", "reference", "pipeline"]
+        },
+        "content": { "type": "string" },
+        "schema": { "type": "string" },
+        "format": { "type": "string" },
+        "validator": { "type": "string" },
+        "structured_generation": { "type": "boolean" },
+        "language": {
+          "type": "string",
+          "enum": ["rego", "javascript", "python", "typescript"]
+        },
+        "address": { "$ref": "#/$defs/Address" },
+        "steps": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Pipeline steps using → (pipe), | (parallel), >> (gate) operators"
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "template" } } },
+          "then": { "required": ["content"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "structured" } } },
+          "then": { "required": ["schema"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "code" } } },
+          "then": { "required": ["language", "content"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "reference" } } },
+          "then": { "required": ["address"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "pipeline" } } },
+          "then": { "required": ["steps"] }
+        }
+      ]
+    },
+
+    "Composition": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["atomic", "sequence", "conditional", "loop", "parallel", "abstraction"]
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "address": { "$ref": "#/$defs/Address" }
+            }
+          }
+        },
+        "condition": { "type": "string" },
+        "then": { "$ref": "#/$defs/Address" },
+        "else": { "$ref": "#/$defs/Address" },
+        "body": { "$ref": "#/$defs/Address" },
+        "until": { "type": "string" },
+        "max_iterations": { "type": "integer", "minimum": 1 },
+        "branches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "address": { "$ref": "#/$defs/Address" }
+            }
+          }
+        },
+        "merge": {
+          "type": "string",
+          "enum": ["all", "any", "majority"]
+        },
+        "parameters": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "address": { "$ref": "#/$defs/Address" }
+            }
+          }
+        },
+        "self_generate": { "type": "boolean" },
+        "generation_rule": { "type": "string" },
+        "generation_constraints": { "$ref": "#/$defs/GenerationConstraints" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "sequence" } } },
+          "then": { "required": ["steps"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "conditional" } } },
+          "then": { "required": ["condition", "then"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "loop" } } },
+          "then": { "required": ["body", "until", "max_iterations"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "parallel" } } },
+          "then": { "required": ["branches", "merge"] }
+        }
+      ],
+      "not": {
+        "description": "Mutual exclusion: a tool cannot be both allowed and forbidden",
+        "allOf": [
+          {
+            "required": ["properties", "tools"],
+            "properties": {
+              "tools": {
+                "required": ["allowed", "forbidden"],
+                "properties": {
+                  "allowed": { "not": { "required": ["__forbidden_intersect"] } },
+                  "forbidden": { "not": { "required": ["__allowed_intersect"] } }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+
+    "GenerationConstraints": {
+      "type": "object",
+      "properties": {
+        "max_variants": { "type": "integer", "minimum": 1 },
+        "min_quality_threshold": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "require_approval": { "type": "boolean" },
+        "max_generation_depth": { "type": "integer", "minimum": 1, "default": 3 },
+        "pruning": {
+          "type": "string",
+          "enum": ["lowest_weight", "oldest", "lowest_grade"]
+        },
+        "promotion_threshold": {
+          "type": "object",
+          "properties": {
+            "experimental_to_beta": {
+              "type": "object",
+              "properties": {
+                "min_executions": { "type": "integer" },
+                "min_grade": { "type": "integer" }
+              }
+            },
+            "beta_to_stable": {
+              "type": "object",
+              "properties": {
+                "min_executions": { "type": "integer" },
+                "min_grade": { "type": "integer" }
+              }
+            }
+          }
+        },
+        "lrt": {
+          "type": "object",
+          "description": "Likelihood Ratio Test config for statistical self-generation (v1.1, §8.8)",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "significance": { "type": "number", "minimum": 0.001, "maximum": 0.1, "default": 0.01 },
+            "min_class_samples": { "type": "integer", "minimum": 10, "default": 30 }
+          }
+        }
+      }
+    },
+
+    "Metadata": {
+      "type": "object",
+      "required": ["provenance", "version", "stability"],
+      "properties": {
+        "provenance": { "type": "string" },
+        "created_at": { "type": "string" },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "stability": {
+          "type": "string",
+          "enum": ["experimental", "beta", "stable", "deprecated"]
+        },
+        "grade": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "aspect": {
+          "type": "string",
+          "enum": ["objective", "subjective", "procedural", "heuristic"]
+        },
+        "supersedes": { "type": ["string", "null"] },
+        "trust_ring": {
+          "type": "string",
+          "enum": ["sandbox", "user", "system", "enterprise"]
+        },
+        "scanners": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "pii", "injection", "secrets", "jailbreak", "toxicity",
+              "url", "data_profiler", "prediction", "brand", "regulatory", "temporal"
+            ]
+          }
+        },
+        "covenants": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "\\[(hard|soft)\\]\\s*$"
+          }
+        },
+        "budget": { "$ref": "#/$defs/Budget" },
+        "proof": { "$ref": "#/$defs/Proof" },
+        "fleet": { "$ref": "#/$defs/Fleet" },
+        "knowledge": {
+          "type": "object",
+          "properties": {
+            "scope": { "type": "string" },
+            "anti_context_rot": { "type": "boolean" }
+          }
+        },
+        "perception": {
+          "type": "object",
+          "properties": {
+            "modalities": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "adaptive_profile": { "type": "boolean" }
+          }
+        },
+        "tools": {
+          "description": "Allowed/forbidden tool lists. gapc enforces mutual exclusion at compile time.",
+          "type": "object",
+          "properties": {
+            "allowed": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Tools this instruction may use"
+            },
+            "forbidden": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Tools this instruction must never use"
+            }
+          }
+        },
+        "writes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "emits": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["event", "schema"],
+            "properties": {
+              "event": { "type": "string" },
+              "schema": { "type": "string" }
+            }
+          }
+        },
+        "latent_governance": {
+          "type": "object",
+          "description": "Latent governance inference config (v1.1, §9)",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "rejection_threshold": { "type": "number", "minimum": 0.01, "maximum": 1.0, "default": 0.15 },
+            "min_observations": { "type": "integer", "minimum": 10, "default": 50 },
+            "auto_apply": { "type": "boolean", "default": false }
+          }
+        }
+      }
+    },
+
+    "Budget": {
+      "type": "object",
+      "properties": {
+        "max_tokens": { "type": "integer", "minimum": 1 },
+        "max_cost": { "type": "number", "minimum": 0.0 },
+        "daily_cap": { "type": "number", "minimum": 0.0 }
+      }
+    },
+
+    "Proof": {
+      "type": "object",
+      "properties": {
+        "sign": { "type": "boolean" },
+        "algorithm": {
+          "type": "string",
+          "enum": ["ed25519", "ml-dsa-65"]
+        },
+        "ledger": { "type": "boolean" },
+        "timestamp_authority": { "type": "string", "format": "uri" }
+      }
+    },
+
+    "Fleet": {
+      "type": "object",
+      "properties": {
+        "max_instances": { "type": "integer", "minimum": 1 },
+        "cost_cap_hourly": { "type": "number", "minimum": 0.0 },
+        "spawn": {
+          "type": "object",
+          "properties": {
+            "trust_reduction": { "type": "integer", "minimum": 0 },
+            "ring_ceiling": {
+              "type": "string",
+              "enum": ["sandbox", "user", "system", "enterprise"]
+            }
+          }
+        }
+      }
+    },
+
+    "Execution": {
+      "type": "object",
+      "description": "Execution configuration (retry, timeout, error handling).",
+      "properties": {
+        "retry": {
+          "type": "object",
+          "properties": {
+            "max_attempts": { "type": "integer", "minimum": 1, "maximum": 10, "default": 3 },
+            "backoff": {
+              "type": "string",
+              "enum": ["none", "linear", "exponential"],
+              "default": "exponential"
+            },
+            "backoff_base_ms": { "type": "integer", "minimum": 100, "default": 1000 }
+          }
+        },
+        "timeout_ms": { "type": "integer", "minimum": 1000, "default": 30000 },
+        "on_exhaustion": {
+          "type": "string",
+          "enum": ["fail", "degrade", "escalate"],
+          "default": "fail",
+          "description": "fail = REJECT. degrade = return partial with error. escalate = trigger human gate."
+        }
+      }
+    },
+
+    "TypeDefinition": {
+      "type": "object",
+      "description": "User-defined type. Can contain fields, format, validator, constraints.",
+      "properties": {
+        "format": { "type": "string" },
+        "validator": { "type": "string" },
+        "content_ref": {
+          "type": "string",
+          "description": "Path or URI to external binary content for binary format types (§2)."
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "object" }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

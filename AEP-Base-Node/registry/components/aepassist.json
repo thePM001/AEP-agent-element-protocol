@@ -1,0 +1,38 @@
+{
+  "manifest_version": "1",
+  "id": "aepassist",
+  "version": "2.8.0",
+  "kind": "agent",
+  "path": "AEP-Components/aepassist/",
+  "description": "Interactive assistant, presets, and slash-command generators.",
+  "requires": [
+    "aep-typescript-sdk",
+    "policy-engine"
+  ],
+  "capabilities": [
+    "assist:presets",
+    "assist:explain",
+    "assist:slash-commands",
+    "aepassist:interactive"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 20,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Developer assistant for policy presets and IDE integrations.",
+    "use_when": [
+      "onboarding",
+      "policy authoring help"
+    ],
+    "avoid_when": [],
+    "pairs_with": []
+  },
+  "implementation": {
+    "module": "AEP-Components/aepassist/lib/aepassist/assistant.ts"
+  }
+}

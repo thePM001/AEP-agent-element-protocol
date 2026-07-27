@@ -1,0 +1,45 @@
+{
+  "manifest_version": "1",
+  "id": "conformance-runner",
+  "version": "2.8.0",
+  "kind": "tooling",
+  "path": "AEP-Components/conformance/",
+  "description": "Conformance battery CC-01..CC-16 (Rust + vitest).",
+  "requires": [
+    "aep-base-node"
+  ],
+  "capabilities": [
+    "conformance:run",
+    "conformance:cc-01-16"
+  ],
+  "actions": [
+    {
+      "id": "run",
+      "description": "Run conformance suite",
+      "runtime": "cli",
+      "method": "AEP-Components/conformance/runner/run.sh"
+    }
+  ],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 512,
+    "min_disk_mb": 200,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Quality assurance conformance runner.",
+    "use_when": [
+      "CI verification",
+      "pre-release hardening"
+    ],
+    "avoid_when": [
+      "production runtime"
+    ],
+    "pairs_with": []
+  },
+  "implementation": {
+    "harness": "AEP-Components/conformance/harness/",
+    "command": "AEP-Components/conformance/runner/run.sh"
+  }
+}

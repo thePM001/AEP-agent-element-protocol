@@ -1,0 +1,90 @@
+{
+  "manifest_version": "1",
+  "id": "connector-odoo",
+  "version": "2.8.0",
+  "kind": "connector",
+  "path": "AEP-Connectors/odoo/",
+  "description": "UCB-only Odoo connector. All traffic via /ucb/v1/egress/odoo/**.",
+  "requires": [
+    "aep-base-node",
+    "lattice-channels",
+    "ucb",
+    "composer-lite"
+  ],
+  "capabilities": [
+    "connector:odoo",
+    "ucb:egress-proxy",
+    "integration:external-api"
+  ],
+  "actions": [
+    {
+      "id": "wire_odoo",
+      "description": "Wire Odoo connector egress routes",
+      "runtime": "plan",
+      "method": "connector_config"
+    },
+    {
+      "id": "probe_odoo",
+      "description": "Health probe for Odoo",
+      "runtime": "connector",
+      "method": "probe"
+    }
+  ],
+  "setup_hooks": [
+    {
+      "id": "odoo_connector_default",
+      "policy_section": "connectors",
+      "default": {
+        "odoo": {
+          "upstream": "https://odoo.example.com"
+        }
+      }
+    }
+  ],
+  "composer": {
+    "palette": true,
+    "node_type": "connector"
+  },
+  "composer_node": {
+    "type": "connector",
+    "label": "Odoo",
+    "short": "OD",
+    "color": "#475569",
+    "service": "odoo",
+    "ucb_only": true,
+    "description": "Odoo via UCB egress",
+    "registry_id": "connector-odoo"
+  },
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 10,
+    "requires_internet": true,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Connect Odoo. Requires UCB. Routes: /ucb/v1/egress/odoo/**.",
+    "use_when": [
+      "odoo",
+      "erp odoo"
+    ],
+    "avoid_when": [
+      "air-gapped with no external APIs",
+      "UCB disabled"
+    ],
+    "pairs_with": [
+      "ucb",
+      "aep-base-node",
+      "composer-lite"
+    ]
+  },
+  "implementation": {
+    "module": "AEP-Connectors/odoo/lib/odoo-connector.mjs",
+    "ucb_egress_prefix": "/ucb/v1/egress/odoo",
+    "auth_token_env": "AEP_ODOO_API_KEY"
+  },
+  "integration": {
+    "ucb_only": true,
+    "mcp_optional": null,
+    "nango_compatible": true
+  }
+}

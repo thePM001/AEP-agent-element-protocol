@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "js-yaml": "^4.3.0",
+    "yaml": "^2.9.0"
+  }
+}
