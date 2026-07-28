@@ -50,7 +50,7 @@ flowchart TB
   UCB --> BR
   BR --> DOCK[Base Node docks Unix sockets registered key verify PQ sealed frames only]
   DOCK --> CAW[CAW ELS shell/file]
-  DOCK --> AUD[evidence / EPSCOM / ledger]
+  DOCK --> AUD[evidence /  / ledger]
   OP[Operator UI Composer Lite loopback] -.->|not foreign dock surface| DOCK
 ```
 
@@ -76,7 +76,7 @@ ASCII fallback (same model):
               |
      +--------+--------+
      v                 v
-  CAW ELS          evidence / EPSCOM / ledger
+  CAW ELS          evidence /  / ledger
   (shell/file)     (audit plane)
 
  Operator UI: Composer Lite (loopback; not foreign dock surface)
