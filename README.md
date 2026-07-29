@@ -71,8 +71,6 @@ Each governed system gets **one AEP Hyperlattice wrap** (scene graph + `action_p
 
 Root keeps only workspace tooling: `Cargo.toml`, `Dockerfile`, `docker-compose.yml`, `docker-compose.public.yml`, `.env.example`, `CHANGELOG.md`, `LICENSE`, `BIOSECURITY.md`, `vitest.config.ts`.
 
-Internal engineering assets (tests, plans, internal docs) are excluded from runtime images and public distribution per the platform distribution boundary policy under AEP-Policy-System/reference/.
-
 ---
 
 ## Multi-base-node (2.8b)
@@ -836,10 +834,6 @@ Changelog: [`CHANGELOG.md`](CHANGELOG.md)
 Research paper: [`AEP-Research-Paper/`](AEP-Research-Paper/) - [GitHub mirror](https://github.com/thePM001/AEP-research-paper-001)
 
 Licensed under Apache License 2.0. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
-
-Reserved names: AEP, Agent Element Protocol, dynAEP, AEP Lattice Memory, AEP Memory Fabric. Name policy: [`AEP-Components/dynAEP/NAME-POLICY.md`](AEP-Components/dynAEP/NAME-POLICY.md).
-
-Biosecurity directive: all 2.8 crates must compile, pass tests and run end-to-end before commit. Register new components in `AEP-Base-Node/registry/catalog.json`.
 
 ---
 
