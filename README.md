@@ -2,7 +2,7 @@
 
 **120+ Features. One Ultimate AI Agent Control Protocol.**
 
-**Version 2.8.0** - Forked from `NLA-AEP-2.75-open-protocol`  
+**Version 2.8.0**
 **Author:** thePM_001 ([https://x.com/thePM_001](https://x.com/thePM_001))  
 **Licence:** Apache-2.0  
 **Public repository:** [https://github.com/thePM001/AEP-agent-element-protocol](https://github.com/thePM001/AEP-agent-element-protocol)
