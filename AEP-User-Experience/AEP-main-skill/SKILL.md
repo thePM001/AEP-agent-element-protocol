@@ -435,9 +435,9 @@ When an agent or user triggers a mutation, checks only the specific element agai
 
 ---
 
-## 15-Step Evaluation Chain
+## Evaluation chain (reference)
 
-Every action passes through these steps in order. If any step denies, the action does not execute.
+After a sealed lattice frame, the Base Node kernel runs collect-all Admit then Apply (`aep-envelope` / `aep-live-entry`) and the 15-rule meet (`aep-evaluation-chain`). The table below is those 15 named walls.
 
 | Step | Name | Mode | Description |
 |------|------|------|-------------|
@@ -459,7 +459,7 @@ Every action passes through these steps in order. If any step denies, the action
 
 ## Lattice Memory
 
-Append-only validation memory with vector similarity search. Records every accept/reject result. 95% similarity fast-path: when a new proposal matches a known attractor within 0.95 cosine similarity, the cached verdict is returned immediately without re-running the full evaluation chain.
+Append-only validation memory with vector similarity search. Records every accept/reject result. 95% similarity fast-path: when a new proposal matches a known attractor within 0.95 cosine similarity, the cached verdict is returned immediately without re-running Admit collect-all walls then Apply.
 
 TLA+ invariant: `LatticeInvariant == \A e \in Entries: e.hash = SHA256(e.payload) /\ e.seq = Prev.seq + 1`
 
@@ -467,7 +467,7 @@ The attractor set grows monotonically. Attractors are never deleted, only supers
 
 ## 11 Content Scanners
 
-Scanners run at Step 14 of the evaluation chain. Each scanner has configurable hard or soft severity. Hard findings reject immediately. Soft findings trigger the recovery engine for automatic retry.
+Scanners are walls in the 15-rule meet (step 14). They are not a later OPA stage. Each scanner has configurable hard or soft severity. Hard findings reject immediately. Soft findings trigger the recovery engine for automatic retry.
 
 | # | Scanner | What It Checks | Default Severity |
 |---|---------|---------------|-----------------|
@@ -976,7 +976,7 @@ Reference implementation validated results:
 | ID | Optimization |
 |----|-------------|
 | 1 | Template node validation fast-exit |
-| 2 | Parallel 15-step chain execution |
+| 2 | Rust 15-rule meet collect-all |
 | 3 | Unified Rego WASM bundle with decision cache |
 | 4 | Unified content scanner automaton (Aho-Corasick) |
 | 5 | Causal ordering subtree partitioning |
@@ -1054,7 +1054,7 @@ For perception rejections: use the `suggestion` field in the rejection event as 
 [ ] Verify: changing theme changes visuals without touching components
 [ ] Verify: every component traceable by its AEP ID
 [ ] Verify: no visual properties in aep-registry.yaml
-[ ] Implement 15-step evaluation chain
+[ ] Wire Admit collect-all walls then Apply on action_path
 [ ] Configure trust scoring and execution rings
 [ ] Define behavioural covenants
 [ ] Configure content scanners

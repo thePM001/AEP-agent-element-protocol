@@ -144,8 +144,7 @@ if (hook) {
 
 ## Pipeline Integration
 
-Hooks run inside `LatticeFilter.filterAsync()` in `bridge/lattice/index.ts`.
-`DynAEPBridge.processEvent()` awaits `filterAsync()` for lattice-addressed events.
+Leftover TypeScript LatticeFilter hooks are not the Base Node reference meet. After a sealed lattice frame, the kernel runs collect-all Admit and the 15-rule meet.
 
 When a node has `type: "custom"` constraints:
 
@@ -154,6 +153,6 @@ When a node has `type: "custom"` constraints:
 3. `await hook.validate(event, lattice, node)` runs; result is recorded in `constraints_passed` / `constraints_failed`
 
 Synchronous `filter()` **fails closed** on custom constraints and returns a
-`filterAsync()` requirement. Do not use `filter()` for production paths with custom hooks.
+`filterAsync()` requirement. Do not treat leftover TypeScript filter as the Base Node reference meet.
 
 Config: `lattice.hook` in `dynaep-config.yaml`. See [CONFIG.md](../CONFIG.md) and [README.md](../README.md) §8.

@@ -705,11 +705,11 @@ func TestAgentDefault_FileDecisions(t *testing.T) {
 
 		// /dev access
 		{
-			name:     "read /dev/null via allow-system-read",
+			name:     "read /dev/null via allow-dev-write",
 			path:     "/dev/null",
 			op:       "open",
 			wantDec:  types.DecisionAllow,
-			wantRule: "allow-system-read",
+			wantRule: "allow-dev-write",
 		},
 		{
 			name:     "write /dev/null via allow-dev-write",

@@ -676,3 +676,26 @@ func TestNetworkRule_Target(t *testing.T) {
 	assert.Equal(t, target.Protocol, got.Protocol)
 	assert.Equal(t, target.Decision, got.Decision)
 }
+
+func TestPolicyEngine_MostSpecificAllowBeatsCatchAllDeny(t *testing.T) {
+	config := &Config{
+		Default: "deny",
+		Processes: []ProcessConfig{
+			{
+				Name:    "agent",
+				Match:   ProcessMatchCriteria{ProcessName: "agent"},
+				Default: "deny",
+				Rules: []NetworkTarget{
+					{Host: "*", Port: "443", Decision: DecisionDeny},
+					{Host: "api.example.com", Port: "443", Protocol: "tcp", Decision: DecisionAllow},
+				},
+			},
+		},
+	}
+	engine, err := NewPolicyEngine(config)
+	require.NoError(t, err)
+	result := engine.Evaluate(ProcessInfo{Name: "agent"}, "api.example.com", nil, 443, "tcp")
+	assert.Equal(t, DecisionAllow, result.Decision)
+	result = engine.Evaluate(ProcessInfo{Name: "agent"}, "other.example.com", nil, 443, "tcp")
+	assert.Equal(t, DecisionDeny, result.Decision)
+}

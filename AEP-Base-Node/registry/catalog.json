@@ -337,7 +337,7 @@
       "bundled": true,
       "default_enabled": false,
       "path": "AEP-Components/evaluation-chain/",
-      "description": "Short-circuit evaluation chain with step activation profiles.",
+      "description": "Rust 15-rule meet. After a sealed lattice frame, Base Node kernel runs collect-all Admit then Apply. No live OPA.",
       "manifest": "AEP-Base-Node/registry/components/evaluation-chain.json"
     },
     {

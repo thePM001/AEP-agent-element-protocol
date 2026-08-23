@@ -1,0 +1,23 @@
+@PAD: aep28-env-024-ticket-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.dev-ticket.v1
+format: gaplune
+json: prohibited
+id: AEP28-ENV-024
+prio: P0
+gitea_issue: 36
+gitea_url: http://100.118.184.18:3003/thePM001/NLA-AEP-v2.8-open-source/issues/36
+title: Convert TypeScript processEvent live entry into Rust
+depends: AEP28-ENV-022
+out_of_scope: hangar tools
+
+note: ENV-022 removed sequential TypeScript deniers after aep-envelope Admit. TypeScript DynAEPBridge.processEvent still loads ActionLattice YAML, spawns aep-envelope, stamps the clock, ingests forecast coordinates, applies structure and mints IDs. Convert that live entry into Rust.
+
+acceptance:
+  - Live entry is Rust. aep-envelope admit is in-process (aep_envelope::admit). No spawnSync of aep-envelope on the live path.
+  - ActionLattice YAML load is Rust.
+  - Structural apply and ID minting are Rust.
+  - TypeScript DynAEPBridge.processEvent is not the product live path.
+  - CI fails if typescript dynaep processEvent still calls spawnSync, loadFromFile, processStateDelta or processDynAEPEvent as live product code.
+  - Do not port TemporalValidator, UnifiedRegoEvaluator, UnifiedScanner or CausalOrderingEngine sequential deniers back into the Rust live path. Walls stay in aep-envelope collect-all then Apply.
+  - AEP-SDKs/rust dynaep DynAepBridge is not a free copy of the old TypeScript sequential pipeline. Grow aep-envelope plus Rust apply.

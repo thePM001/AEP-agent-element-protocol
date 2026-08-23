@@ -1,0 +1,11 @@
+@PAD: aep-envelope-algebra-fixture-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep-admit.fixture.v1
+format: gaplune
+json: prohibited
+fixture: allow
+id=lattice.known_path	closed=false	reason=	dim=lattice
+id=writing:no_em_dashes	closed=false	reason=	dim=writing
+id=trust_floor	closed=false	reason=	dim=trust
+id=channel:non_frame_docking	closed=false	reason=	dim=channel
+id=temporal:drift_exceeded	closed=false	reason=	dim=temporal

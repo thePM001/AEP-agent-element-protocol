@@ -1,0 +1,9 @@
+@PAD: aep-admit-fixture-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep-admit.fixture.v1
+format: gaplune
+json: prohibited
+fixture: n-closed-walls
+id=wall.alpha	closed=true	reason=alpha closed
+id=wall.beta	closed=true	reason=beta closed
+id=wall.gamma	closed=true	reason=gamma closed

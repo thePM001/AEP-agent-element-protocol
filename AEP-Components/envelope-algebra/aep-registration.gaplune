@@ -1,0 +1,13 @@
+@PAD: aep-envelope-algebra-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-envelope-algebra
+version: 0.1.0
+kind: library
+path: AEP-Components/envelope-algebra/
+ticket: AEP28-ENV-008
+requires: aep-admit aep-admit-channel-order-walls aep-admit-temporal-bounds
+capability: admit.envelope-algebra.tests
+note: Envelope algebra tests. Order, collect-all and Apply skip across lattice writing trust channel and temporal walls.

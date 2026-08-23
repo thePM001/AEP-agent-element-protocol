@@ -1,0 +1,13 @@
+@PAD: aep-live-crossing-reject-copy-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-live-crossing-reject-copy
+version: 0.1.0
+kind: library
+path: AEP-Components/live-crossing-reject-copy/
+ticket: AEP28-ENV-015
+requires: aep-envelope-wrap-disabled
+capability: admit.live-crossing.reject-copy
+note: Fail CI if live processEvent rejection still says Admit then OPA. Live copy is Admit collect-all walls then Apply.

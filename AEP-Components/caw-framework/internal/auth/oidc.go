@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/nla-aep/aep-caw-framework/internal/config"
 )
 
 // tokenCacheKey returns a hash of the token for use as a cache key.
@@ -205,62 +205,142 @@ func (a *OIDCAuth) ValidateToken(ctx context.Context, token string) (*OIDCClaims
 	return claims, nil
 }
 
-// PolicyForGroups returns the policy name for the user's groups.
-// It returns the first matching policy from the group-to-policy map.
-// If no match is found, it returns an empty string.
+func policyMapRank(policy, role string) int {
+	s := strings.ToLower(strings.TrimSpace(role))
+	if s == "" {
+		s = strings.ToLower(strings.TrimSpace(policy))
+	}
+	switch {
+	case strings.Contains(s, "admin"):
+		return 3
+	case strings.Contains(s, "approver"):
+		return 2
+	case s != "":
+		return 1
+	default:
+		return 0
+	}
+}
+
+func oidcClosedToken(s string) bool {
+	s = strings.ToLower(strings.TrimSpace(s))
+	if s == "" {
+		return false
+	}
+	start := 0
+	for i := 0; i <= len(s); i++ {
+		if i < len(s) {
+			c := s[i]
+			if c != '-' && c != '_' && c != '.' && c != '/' && c != ' ' {
+				continue
+			}
+		}
+		tok := s[start:i]
+		start = i + 1
+		switch tok {
+		case "closed", "deny", "denied", "restrict", "restricted", "block", "blocked":
+			return true
+		}
+	}
+	return false
+}
+
+type oidcGroupHit struct {
+	value  string
+	group  string
+	rank   int
+	spec   int
+	closed bool
+}
+
+func oidcHitBetter(n, cur oidcGroupHit) bool {
+	if n.rank != cur.rank {
+		return n.rank > cur.rank
+	}
+	if n.closed != cur.closed {
+		return n.closed
+	}
+	if n.spec != cur.spec {
+		return n.spec > cur.spec
+	}
+	if n.group != cur.group {
+		return n.group < cur.group
+	}
+	return n.value < cur.value
+}
+
+func oidcPickHit(hits []oidcGroupHit) string {
+	if len(hits) == 0 {
+		return ""
+	}
+	best := hits[0]
+	for _, h := range hits[1:] {
+		if oidcHitBetter(h, best) {
+			best = h
+		}
+	}
+	return best.value
+}
+
+// PolicyForGroups returns the policy name for the user groups.
+// Most-specific collect-all: every mapped group is scored. Highest rank wins.
+// Same-rank closed wins. Longer group name wins when rank and closed are equal.
+// Group order does not change the winner.
 func (a *OIDCAuth) PolicyForGroups(groups []string) string {
 	if a == nil || a.groupPolicyMap == nil {
 		return ""
 	}
-
+	var hits []oidcGroupHit
 	for _, group := range groups {
-		if policy, ok := a.groupPolicyMap[group]; ok {
-			return policy
+		policy, ok := a.groupPolicyMap[group]
+		if !ok || policy == "" {
+			continue
 		}
+		role := ""
+		if a.groupRoleMap != nil {
+			role = a.groupRoleMap[group]
+		}
+		rank := policyMapRank(policy, role)
+		hits = append(hits, oidcGroupHit{
+			value:  policy,
+			group:  group,
+			rank:   rank,
+			spec:   len(group),
+			closed: oidcClosedToken(policy) || oidcClosedToken(role),
+		})
 	}
-	return ""
+	return oidcPickHit(hits)
 }
 
-// RoleForClaims determines the role based on claims using explicit group-to-role mappings.
-// If no mapping is found, returns "agent" as the default role.
-// Role values are normalized to lowercase for consistent comparison.
 func (o *OIDCAuth) RoleForClaims(claims *OIDCClaims) string {
 	if claims == nil {
 		return "agent"
 	}
-
-	// Use explicit group-to-role mappings if configured
-	if o.groupRoleMap != nil && len(o.groupRoleMap) > 0 {
-		// Check groups in order, return first matching role
-		// Priority: admin > approver > agent
-		// Normalize role values to lowercase for consistent comparison
-		for _, g := range claims.Groups {
-			if role, ok := o.groupRoleMap[g]; ok {
-				if strings.ToLower(role) == "admin" {
-					return "admin"
-				}
-			}
-		}
-		for _, g := range claims.Groups {
-			if role, ok := o.groupRoleMap[g]; ok {
-				if strings.ToLower(role) == "approver" {
-					return "approver"
-				}
-			}
-		}
-		for _, g := range claims.Groups {
-			if role, ok := o.groupRoleMap[g]; ok {
-				// Return normalized role value
-				return strings.ToLower(role)
-			}
-		}
+	if o.groupRoleMap == nil || len(o.groupRoleMap) == 0 {
+		return "agent"
 	}
-
-	// No explicit mappings or no match found - return default role
+	var hits []oidcGroupHit
+	for _, g := range claims.Groups {
+		role, ok := o.groupRoleMap[g]
+		if !ok || role == "" {
+			continue
+		}
+		role = strings.ToLower(role)
+		hits = append(hits, oidcGroupHit{
+			value:  role,
+			group:  g,
+			rank:   policyMapRank("", role),
+			spec:   len(g),
+			closed: oidcClosedToken(role),
+		})
+	}
+	if got := oidcPickHit(hits); got != "" {
+		return got
+	}
 	return "agent"
 }
 
-// Issuer returns the configured OIDC issuer URL.
+
 func (a *OIDCAuth) Issuer() string {
 	return a.issuer
 }

@@ -1,0 +1,20 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-process-event-admit-walls
+ticket: AEP28-ENV-014
+note: Durable HVVCAS is GAPLUNE. Ticket AEP28-ENV-014.
+
+component:
+  name: process_event_admit_walls
+  domain: dynaep
+  component_type: service
+  intent: Fail CI if processEvent still has else-if labLatticeFilterEnabled that runs filterAsync with no Admit walls
+  input:
+    name: bridge_source
+    type: String
+  output:
+    name: scan
+    type: String

@@ -1,0 +1,14 @@
+# @PAD: aep-live-entry-ci-cargo-v1
+# @GCDE: gaplune.policy.v1
+[package]
+name = "aep-live-entry-ci"
+version = "0.1.0"
+edition = "2021"
+description = "AEP28-ENV-024 CI. Fail if typescript processEvent still calls spawnSync loadFromFile processStateDelta or processDynAEPEvent as live product code."
+license = "UNLICENSED"
+publish = false
+[[bin]]
+name = "aep-live-entry-ci"
+path = "src/main.rs"
+[dependencies]
+anyhow = "1"

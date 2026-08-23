@@ -1,0 +1,47 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-envelope-wrap-journals
+note: Durable HVVCAS is GAPLUNE. Ticket AEP28-ENV-016.
+ticket: AEP28-ENV-016
+
+component:
+  name: residual_wrap_ticket_landed
+  domain: admit
+  component_type: library
+  intent: Prove one residual wrap ticket landed from registration or crate source
+  input:
+    name: source
+    type: String
+  input:
+    name: ticket
+    type: String
+  output:
+    name: landed
+    type: bool
+
+component:
+  name: residual_wrap_wave_landed
+  domain: admit
+  component_type: library
+  intent: Prove AEP28-ENV-012 through AEP28-ENV-015 all landed before residual wrap journals
+  input:
+    name: tree
+    type: String
+  output:
+    name: report
+    type: WaveReport
+
+component:
+  name: residual_wrap_journal_gate
+  domain: admit
+  component_type: service
+  intent: Deny residual wrap journals until residual wrap tickets land. Journals for that residual are not due while tickets are missing.
+  input:
+    name: wave
+    type: WaveReport
+  output:
+    name: allow
+    type: bool

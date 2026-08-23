@@ -513,6 +513,29 @@ function writeSdkManifests() {
   log("Wrote SDK registry manifests");
 }
 
+function syncHyperlatticeToDynaepSdk() {
+  const files = ["HyperlatticeFilter.ts", "LatticePolicyEvaluator.ts"];
+  for (const name of files) {
+    const src = join(REPO, COMPONENTS, "dynAEP/bridge/hyperlattice", name);
+    const dest = join(SDK_ROOT, "typescript/dynaep/src/hyperlattice", name);
+    if (!existsSync(src)) {
+      throw new Error("missing canonical hyperlattice source: " + src);
+    }
+    mkdirSync(dirname(dest), { recursive: true });
+    writeFileSync(dest, readFileSync(src));
+    log("Synced hyperlattice " + name + " -> " + relative(REPO, dest));
+  }
+  for (const name of files) {
+    const src = join(REPO, COMPONENTS, "dynAEP/bridge/hyperlattice", name);
+    const dest = join(SDK_ROOT, "typescript/dynaep/src/hyperlattice", name);
+    const left = readFileSync(src);
+    const right = readFileSync(dest);
+    if (Buffer.compare(left, right) !== 0) {
+      throw new Error("hyperlattice SSOT drift after produce: " + name);
+    }
+  }
+}
+
 function main() {
   log("=== AEP SDK producer ===");
   rmSync(DIST, { recursive: true, force: true });
@@ -523,6 +546,7 @@ function main() {
 
   const dynaepDir = join(SDK_ROOT, "typescript/dynaep");
   syncActionLatticeToDynaepSdk();
+  syncHyperlatticeToDynaepSdk();
   rmSync(join(dynaepDir, "dist"), { recursive: true, force: true });
   writeTsBuildConfig(dynaepDir, { includeTests: false });
   runTsc(dynaepDir);

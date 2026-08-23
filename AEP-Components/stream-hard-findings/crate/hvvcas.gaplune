@@ -1,0 +1,19 @@
+@PAD: hvvcas-stream-hard-findings-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-stream-hard-findings
+note: Durable HVVCAS is GAPLUNE.
+
+component:
+  name: collect_hard_findings
+  domain: policy
+  component_type: library
+  intent: Collect every hard finding on an accumulated model-gateway stream then refuse the yield.
+  input:
+    name: scan
+    type: StreamScan
+  output:
+    name: refuse
+    type: StreamRefuse

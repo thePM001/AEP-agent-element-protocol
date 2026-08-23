@@ -1,0 +1,13 @@
+@PAD: aep-admit-temporal-bounds-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-admit-temporal-bounds
+version: 0.1.0
+kind: library
+path: AEP-Components/admit-temporal-bounds/
+ticket: AEP28-ENV-005
+requires: aep-admit
+capability: admit.temporal-bounds.compile
+note: Fold temporal bounds into Admit walls. Clock skew and causal parent missing compile to walls. Soft warn stays warn.

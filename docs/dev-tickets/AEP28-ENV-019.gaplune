@@ -1,0 +1,18 @@
+@PAD: nla-dev-ticket-AEP28-ENV-019-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-019
+title: Park TypeScript compile-wall modules. Product gate fails if they stay live.
+status: backlog
+priority: P0
+track: aep28-envelope-algebra
+wave: rust-live
+plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-018
+scope: AEP-Components/envelope AEP-Components/dynAEP AEP-SDKs/typescript/dynaep
+notes: CI fails if product filterCrossing still contains compileLatticePolicy, compileWritingWalls, compileTrustFloorWall, compileChannelWalls or compileTemporalWalls as live authority. Those files may stay as lab parity only. Out of scope: hangar tools.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/envelope/crate
+updated: 2026-08-22

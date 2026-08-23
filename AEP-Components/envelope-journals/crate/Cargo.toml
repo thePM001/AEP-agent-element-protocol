@@ -1,0 +1,14 @@
+[package]
+name = "aep-envelope-journals"
+version = "0.1.0"
+edition = "2021"
+description = "Journals after product tickets land. coding and project BAC journals on the Admit crate only after AEP28-ENV-001 through AEP28-ENV-010 land."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-envelope-journals"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"

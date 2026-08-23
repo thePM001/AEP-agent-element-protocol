@@ -25,10 +25,10 @@ When `temporal_authority.stack_wide` is true in dynaep-config.yaml, the harness:
 
 ### 2. Perception Governance in Scanner Pipeline
 
-The temporal content scanner (evaluation chain Step 15) now queries dynAEP-TA for authoritative time when checking content staleness, instead of computing time from its own clock. This ensures that staleness checks across the entire evaluation chain use a single, consistent time source.
+The temporal content scanner (after Admit and OPA) now queries dynAEP-TA for authoritative time when checking content staleness, instead of computing time from its own clock. This ensures that staleness checks across Admit and OPA use a single, consistent time source.
 
 New scanner interaction:
-- Step 15 calls `dynaep_temporal_query(staleness_check, target_id, max_age_ms)` instead of comparing against `Date.now()`.
+- The temporal scanner calls `dynaep_temporal_query(staleness_check, target_id, max_age_ms)` instead of comparing against `Date.now()`.
 - If dynAEP-TA is unavailable, falls back to local clock with a warning.
 
 ### 3. Trust Score Integration

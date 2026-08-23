@@ -1,0 +1,15 @@
+[package]
+name = "aep-admit-trust-floor"
+version = "0.1.0"
+edition = "2021"
+description = "Compile per-node trust floor into Admit walls and fold them into collect-all."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-admit-trust-floor"
+path = "src/main.rs"
+
+[dependencies]
+aep-admit = { path = "../../admit/crate" }
+anyhow = "1"

@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gobwas/glob"
 	"github.com/nla-aep/aep-caw-framework/internal/shellparse"
 	"github.com/nla-aep/aep-caw-framework/pkg/types"
-	"github.com/gobwas/glob"
 )
 
 // maxShellCDeriveDepth bounds how many nested `sh -c "…"` forms CheckCommand
@@ -536,8 +536,8 @@ func (e *Engine) CheckNetworkIP(domain string, ip net.IP, port int) (dec Decisio
 		}
 	}
 	if e.policy == nil {
-return Decision{PolicyDecision: types.DecisionDeny, EffectiveDecision: types.DecisionDeny, Rule: "nil-policy-deny"}
-}
+		return Decision{PolicyDecision: types.DecisionDeny, EffectiveDecision: types.DecisionDeny, Rule: "nil-policy-deny"}
+	}
 	domain = strings.ToLower(strings.TrimSpace(domain))
 
 	// Threat feed pre-check.
@@ -994,8 +994,8 @@ func (e *Engine) CheckUnixSocket(path string, operation string) Decision {
 // CheckRegistry evaluates registry_rules against a path and operation.
 func (e *Engine) CheckRegistry(path string, operation string) Decision {
 	if e.policy == nil {
-return Decision{PolicyDecision: types.DecisionDeny, EffectiveDecision: types.DecisionDeny, Rule: "nil-policy-deny"}
-}
+		return Decision{PolicyDecision: types.DecisionDeny, EffectiveDecision: types.DecisionDeny, Rule: "nil-policy-deny"}
+	}
 	operation = strings.ToLower(operation)
 	pathUpper := strings.ToUpper(path)
 
@@ -1020,65 +1020,108 @@ type EnvDecision struct {
 }
 
 // CheckEnv evaluates the env policy against an environment variable name.
-// Returns whether the variable is allowed and what matched.
-// Logic: deny patterns are checked first (deny wins), then allow patterns.
-// If no allow patterns defined, default is allow (unless denied).
-// If allow patterns defined, default is deny (unless allowed).
+// Most-specific collect-all: every matching allow and deny pattern is scored.
+// Explicit allow of one name beats a catch-all deny. Same-score closed (deny) wins.
 func (e *Engine) CheckEnv(name string) EnvDecision {
-	// MEDIUM: nil engine/policy fails closed (was default-allow)
 	if e == nil || e.policy == nil {
 		return EnvDecision{Allowed: false, MatchedBy: "default-deny"}
 	}
 
-	// Check deny patterns first (deny always wins)
+	type envHit struct {
+		allow     bool
+		matchedBy string
+		pattern   string
+		spec      int
+	}
+	var hits []envHit
+
 	for i, g := range e.compiledEnvDeny {
-		if g.Match(name) {
-			pattern := ""
-			if i < len(e.policy.EnvPolicy.Deny) {
-				pattern = e.policy.EnvPolicy.Deny[i]
+		if !g.Match(name) {
+			continue
+		}
+		pat := ""
+		if i < len(e.policy.EnvPolicy.Deny) {
+			pat = e.policy.EnvPolicy.Deny[i]
+		}
+		hits = append(hits, envHit{false, "deny", pat, envPatternSpecificity(pat)})
+	}
+	for i, g := range e.compiledEnvAllow {
+		if !g.Match(name) {
+			continue
+		}
+		pat := ""
+		if i < len(e.policy.EnvPolicy.Allow) {
+			pat = e.policy.EnvPolicy.Allow[i]
+		}
+		hits = append(hits, envHit{true, "allow", pat, envPatternSpecificity(pat)})
+	}
+
+	hasExplicitDeny := false
+	for _, h := range hits {
+		if !h.allow && h.matchedBy == "deny" {
+			hasExplicitDeny = true
+			break
+		}
+	}
+	if !hasExplicitDeny {
+		upper := strings.ToUpper(name)
+		if strings.Contains(upper, "TOKEN") ||
+			strings.Contains(upper, "SECRET") ||
+			strings.Contains(upper, "PASSWORD") ||
+			strings.Contains(upper, "API_KEY") ||
+			strings.Contains(upper, "APIKEY") ||
+			strings.HasSuffix(upper, "_KEY") {
+			hits = append(hits, envHit{false, "default-secret-deny", name, envPatternSpecificity(name)})
+		}
+		if len(e.compiledEnvAllow) == 0 {
+			for _, secret := range defaultSecretDeny {
+				if name == secret {
+					hits = append(hits, envHit{false, "default-secret-deny", secret, envPatternSpecificity(secret)})
+				}
 			}
-			return EnvDecision{Allowed: false, MatchedBy: "deny", Pattern: pattern}
 		}
 	}
 
-	// Expanded default secret denylist always applies
-	upper := strings.ToUpper(name)
-	if strings.Contains(upper, "TOKEN") ||
-		strings.Contains(upper, "SECRET") ||
-		strings.Contains(upper, "PASSWORD") ||
-		strings.Contains(upper, "API_KEY") ||
-		strings.Contains(upper, "APIKEY") ||
-		strings.HasSuffix(upper, "_KEY") {
-		return EnvDecision{Allowed: false, MatchedBy: "default-secret-deny", Pattern: name}
-	}
-
-	// Check defaultSecretDeny patterns when no allow patterns defined
-	if len(e.compiledEnvAllow) == 0 {
-		for _, secret := range defaultSecretDeny {
-			if name == secret {
-				return EnvDecision{Allowed: false, MatchedBy: "default-secret-deny", Pattern: secret}
-			}
+	if len(hits) == 0 {
+		if len(e.compiledEnvAllow) == 0 {
+			return EnvDecision{Allowed: true, MatchedBy: "default-allow"}
 		}
-		// MEDIUM: no allow list => deny by default (allowlist-only env policy)
 		return EnvDecision{Allowed: false, MatchedBy: "default-deny"}
 	}
 
-	// Check allow patterns
-	for i, g := range e.compiledEnvAllow {
-		if g.Match(name) {
-			pattern := ""
-			if i < len(e.policy.EnvPolicy.Allow) {
-				pattern = e.policy.EnvPolicy.Allow[i]
-			}
-			return EnvDecision{Allowed: true, MatchedBy: "allow", Pattern: pattern}
+	best := hits[0]
+	for _, h := range hits[1:] {
+		if h.spec > best.spec {
+			best = h
+			continue
+		}
+		if h.spec == best.spec && !h.allow && best.allow {
+			best = h
 		}
 	}
-
-	// Allow patterns defined but none matched = deny
-	return EnvDecision{Allowed: false, MatchedBy: "default-deny"}
+	return EnvDecision{Allowed: best.allow, MatchedBy: best.matchedBy, Pattern: best.pattern}
 }
 
-// EnvPolicy returns the raw env policy for configuration inspection.
+func envPatternSpecificity(pat string) int {
+	if pat == "" {
+		return -1
+	}
+	if pat == "*" || pat == "**" {
+		return 0
+	}
+	wild := strings.Count(pat, "*") + strings.Count(pat, "?")
+	lit := 0
+	for _, r := range pat {
+		if r != '*' && r != '?' {
+			lit++
+		}
+	}
+	if wild == 0 {
+		return 100000 + lit
+	}
+	return 1000 + lit*10 - wild
+}
+
 func (e *Engine) EnvPolicy() EnvPolicy {
 	if e == nil || e.policy == nil {
 		return EnvPolicy{}
@@ -1253,33 +1296,33 @@ func (e *Engine) wrapDecision(decision string, rule string, msg string, redirect
 	case types.DecisionDeny:
 		return Decision{PolicyDecision: pd, EffectiveDecision: pd, Rule: rule, Message: msg}
 	case types.DecisionApprove:
-	if e.enforceApprovals {
-		return Decision{
-			PolicyDecision:    pd,
-			EffectiveDecision: pd,
-			Rule:              rule,
-			Message:           msg,
-			Approval:          &types.ApprovalInfo{Required: true, Mode: types.ApprovalModeEnforced},
+		if e.enforceApprovals {
+			return Decision{
+				PolicyDecision:    pd,
+				EffectiveDecision: pd,
+				Rule:              rule,
+				Message:           msg,
+				Approval:          &types.ApprovalInfo{Required: true, Mode: types.ApprovalModeEnforced},
+			}
 		}
-	}
-	// Fail closed when approvals disabled (opt-in shadow-allow via env).
-	if strings.EqualFold(os.Getenv("AEP_CAW_APPROVE_SHADOW_ALLOW"), "1") {
+		// Fail closed when approvals disabled (opt-in shadow-allow via env).
+		if strings.EqualFold(os.Getenv("AEP_CAW_APPROVE_SHADOW_ALLOW"), "1") {
+			return Decision{
+				PolicyDecision:    pd,
+				EffectiveDecision: types.DecisionAllow,
+				Rule:              rule,
+				Message:           msg,
+				Approval:          &types.ApprovalInfo{Required: true, Mode: types.ApprovalModeShadow},
+			}
+		}
 		return Decision{
 			PolicyDecision:    pd,
-			EffectiveDecision: types.DecisionAllow,
+			EffectiveDecision: types.DecisionDeny,
 			Rule:              rule,
-			Message:           msg,
+			Message:           msg + " (approvals disabled; deny fail-closed)",
 			Approval:          &types.ApprovalInfo{Required: true, Mode: types.ApprovalModeShadow},
 		}
-	}
-	return Decision{
-		PolicyDecision:    pd,
-		EffectiveDecision: types.DecisionDeny,
-		Rule:              rule,
-		Message:           msg + " (approvals disabled; deny fail-closed)",
-		Approval:          &types.ApprovalInfo{Required: true, Mode: types.ApprovalModeShadow},
-	}
-case types.DecisionRedirect:
+	case types.DecisionRedirect:
 		if e.enforceRedirects {
 			return Decision{
 				PolicyDecision:    pd,

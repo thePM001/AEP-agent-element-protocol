@@ -1,0 +1,18 @@
+@PAD: nla-dev-ticket-AEP28-ENV-013-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-013
+title: Remove LatticeFilter.filterAsync from product filterCrossing
+status: backlog
+priority: P0
+track: aep28-envelope-algebra
+wave: residual
+plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Components/dynAEP AEP-SDKs/typescript/dynaep
+notes: HyperlatticeFilter.filterCrossing still calls latticeFilter.filterAsync when AEP_LAB_LATTICE_FILTER is set. Product crossing must not call filterAsync. Lab sequential filter lives only in a lab harness or lab binary. Tests: filterAsync call count stays 0 on product filterCrossing. Out of scope: hangar tools.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/admit/crate
+updated: 2026-08-22

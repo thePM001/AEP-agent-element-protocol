@@ -1,0 +1,17 @@
+[package]
+name = "aep-envelope-algebra"
+version = "0.1.0"
+edition = "2021"
+description = "Envelope algebra tests: order, collect-all and Apply skip."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-envelope-algebra"
+path = "src/main.rs"
+
+[dependencies]
+aep-admit = { path = "../../admit/crate" }
+aep-admit-channel-order-walls = { path = "../../admit-channel-order-walls/crate" }
+aep-admit-temporal-bounds = { path = "../../admit-temporal-bounds/crate" }
+anyhow = "1"

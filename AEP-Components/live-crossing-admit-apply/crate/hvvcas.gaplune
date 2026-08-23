@@ -1,0 +1,44 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-live-crossing-admit-apply
+note: Durable HVVCAS is GAPLUNE. Ticket AEP28-ENV-006. Live crossing is Admit collect-all then Apply only.
+ticket: AEP28-ENV-006
+
+component:
+  name: live_cross
+  domain: dynaep
+  component_type: service
+  intent: Collect every closed Admit wall then Apply only after Admit allows. No OPA collect on the live path.
+  input:
+    name: walls
+    type: VecAdmitWall
+  output:
+    name: result
+    type: CrossingResult
+
+component:
+  name: apply_gate
+  domain: dynaep
+  component_type: library
+  intent: Apply iff Admit allow is true. Skip Apply when any wall is closed.
+  input:
+    name: admit_allow
+    type: bool
+  output:
+    name: applied
+    type: bool
+
+component:
+  name: live_opa_absent
+  domain: dynaep
+  component_type: service
+  intent: Prove filterCrossing compiles walls, admitCollectAll, then Apply iff allow. No OPA evaluate, no 15-step runner, no PolicyEvaluator on live action_path.
+  input:
+    name: filter_source
+    type: String
+  output:
+    name: scan
+    type: ScanReport

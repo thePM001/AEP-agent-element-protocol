@@ -1,0 +1,44 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-admit-temporal-bounds
+note: Durable HVVCAS is GAPLUNE. Ticket AEP28-ENV-005.
+ticket: AEP28-ENV-005
+
+component:
+  name: compile_temporal_walls
+  domain: admit
+  component_type: library
+  intent: Compile live temporal denies clock skew and causal parent missing into Admit walls for one collect-all pass
+  input:
+    name: temporal
+    type: TemporalCompileInput
+  output:
+    name: walls
+    type: VecAdmitWall
+
+component:
+  name: compile_temporal_warns
+  domain: admit
+  component_type: library
+  intent: Emit soft temporal warns without closing Admit walls
+  input:
+    name: temporal
+    type: TemporalCompileInput
+  output:
+    name: warns
+    type: VecString
+
+component:
+  name: fold_temporal_into_admit
+  domain: admit
+  component_type: library
+  intent: Fold temporal walls plus extras into one Admit collect-all pass
+  input:
+    name: extra
+    type: VecAdmitWall
+  output:
+    name: result
+    type: AdmitResult

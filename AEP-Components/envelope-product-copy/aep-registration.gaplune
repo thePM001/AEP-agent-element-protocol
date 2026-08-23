@@ -1,0 +1,13 @@
+@PAD: aep-envelope-product-copy-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-envelope-product-copy
+version: 0.1.0
+kind: library
+path: AEP-Components/envelope-product-copy/
+ticket: AEP28-ENV-009
+requires: aep-envelope-algebra aep-live-crossing-admit-apply
+capability: admit.envelope-algebra.product-copy
+note: Product copy names Admit collect-all walls then Apply. No 15-step live story. Closed set does not depend on definition order. No claim that misconfig is impossible.

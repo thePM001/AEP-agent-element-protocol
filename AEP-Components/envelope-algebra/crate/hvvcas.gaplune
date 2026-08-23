@@ -1,0 +1,56 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-envelope-algebra
+note: Durable HVVCAS is GAPLUNE. Ticket AEP28-ENV-008.
+ticket: AEP28-ENV-008
+
+component:
+  name: envelope_collect_all
+  domain: admit
+  component_type: library
+  intent: Collect every closed Admit wall across lattice writing trust channel and temporal dimensions on one pass
+  input:
+    name: walls
+    type: VecAdmitWall
+  output:
+    name: result
+    type: AdmitResult
+
+component:
+  name: envelope_order
+  domain: admit
+  component_type: library
+  intent: Prove shuffling wall order does not change the closed set key
+  input:
+    name: walls
+    type: VecAdmitWall
+  output:
+    name: key
+    type: String
+
+component:
+  name: apply_skip
+  domain: dynaep
+  component_type: library
+  intent: Skip Apply when Admit allow is false and record applied false
+  input:
+    name: admit_allow
+    type: bool
+  output:
+    name: applied
+    type: bool
+
+component:
+  name: fixture_parse
+  domain: admit
+  component_type: library
+  intent: Parse gaplune fixtures for allow one closed wall N closed walls and order permutation
+  input:
+    name: text
+    type: String
+  output:
+    name: walls
+    type: VecAdmitWall

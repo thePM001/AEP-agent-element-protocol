@@ -1,0 +1,13 @@
+@PAD: aep-live-crossing-lab-off-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-live-crossing-lab-off
+version: 0.1.0
+kind: library
+path: AEP-Components/live-crossing-lab-off/
+ticket: AEP28-ENV-013
+requires: aep-live-crossing-admit-apply
+capability: admit.live-crossing.lab-filter-off
+note: Fail CI if HyperlatticeFilter.filterCrossing still calls latticeFilter.filterAsync when AEP_LAB_LATTICE_FILTER is on. Live path is Admit collect-all then Apply. Lab LatticeFilter stays on DynAEPBridge only.

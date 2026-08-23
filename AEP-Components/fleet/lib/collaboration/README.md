@@ -35,5 +35,5 @@ action:
 ## Fleet Governance Integration
 
 Extends existing src/fleet/ with collaboration layer.
-All messages pass through 15-step evaluation chain.
+All messages pass through Admit collect-all walls then Apply.
 Inter-agent messaging scanned by all 11 scanners.

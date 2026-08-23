@@ -1,0 +1,13 @@
+@PAD: aep-envelope-wrap-journals-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-envelope-wrap-journals
+version: 0.1.0
+kind: library
+path: AEP-Components/envelope-wrap-journals/
+ticket: AEP28-ENV-016
+requires: aep-envelope-wrap-disabled aep-live-crossing-lab-off aep-process-event-admit-walls aep-live-crossing-reject-copy
+capability: admit.envelope-algebra.wrap-journals
+note: After residual wrap tickets land, coding and project BAC journals. Journals for that residual are not due while tickets are missing. Hangar tools stay out of scope.

@@ -1,0 +1,18 @@
+@PAD: nla-dev-ticket-AEP28-ENV-012-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-012
+title: Live action_path must run Admit wrap. governance=disabled is DENY.
+status: backlog
+priority: P0
+track: aep28-envelope-algebra
+wave: residual
+plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Components/dynAEP AEP-SDKs/typescript/dynaep
+notes: AEP-SDKs/typescript/dynaep/src/bridge.ts still skips HyperlatticeFilter when lattice governance=disabled. Live action_path must fail closed and run Admit collect-all. governance=disabled is lab-only, not the product crossing. Tests: action_path with governance=disabled is rejected. Out of scope: hangar tools.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/admit/crate
+updated: 2026-08-22

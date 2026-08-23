@@ -1,0 +1,31 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-hyperlattice-ssot
+note: Durable HVVCAS is GAPLUNE. Do not persist YAML.
+
+component:
+  name: ssot_compare
+  domain: app
+  component_type: service
+  intent: Compare canonical Components hyperlattice sources with SDK copies and fail when bytes differ
+  input:
+    name: repo_root
+    type: PathBuf
+  output:
+    name: report
+    type: SsotReport
+
+component:
+  name: ssot_gate
+  domain: cli
+  component_type: cli
+  intent: Exit non-zero when HyperlatticeFilter or LatticePolicyEvaluator trees drift
+  input:
+    name: args
+    type: VecString
+  output:
+    name: status
+    type: ExitCode

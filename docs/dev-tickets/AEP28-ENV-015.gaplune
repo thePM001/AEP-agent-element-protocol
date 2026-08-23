@@ -1,0 +1,18 @@
+@PAD: nla-dev-ticket-AEP28-ENV-015-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-015
+title: Strip leftover Admit-then-OPA live-path copy in the bridge
+status: backlog
+priority: P1
+track: aep28-envelope-algebra
+wave: residual
+plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-014
+scope: AEP-Components/dynAEP AEP-SDKs/typescript/dynaep
+notes: Live rejection copy still says Admit then OPA. Product copy is Admit collect-all walls then Apply. CHANGELOG historical lines may stay. Out of scope: hangar tools.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/admit/crate
+updated: 2026-08-22

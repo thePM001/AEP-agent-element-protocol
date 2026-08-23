@@ -19,8 +19,8 @@ this in the audit stream as a `command_precheck` event with
 `policy.rule = "default-deny-commands"`. That rule name is the tell for "no
 rule matched" - not "a deny rule fired."
 
-Rules in `command_rules` are evaluated **in declaration order**, and the
-**first match wins**. Within a single rule, a command is considered matching if
+Rules in `command_rules` collect every match. The most specific selector wins.
+Within a single rule, a command is considered matching if
 any of the following patterns from that rule match, tried in this order:
 
 1. **Full-path exact match** - e.g. `commands: ["/opt/myapp/bin/emdash"]`.
@@ -83,10 +83,8 @@ command_rules:
     decision: allow
 ```
 
-Place the rule **before** any broader rule that might also match (first match
-wins). In `configs/policies/default.yaml` the safe place is near the top of
-`command_rules`, above the generic allow-lists.
-
+Listing order does not decide the winner. Exact paths beat catch-all globs.
+In `configs/policies/default.yaml` keep exact allows next to the related catch-all so humans can read the pair.
 ## Recipe: allow it only under approval
 
 If you want the binary to run but want a human-in-the-loop gate, use

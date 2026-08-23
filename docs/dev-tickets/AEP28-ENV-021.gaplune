@@ -1,0 +1,18 @@
+@PAD: nla-dev-ticket-AEP28-ENV-021-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-021
+title: coding-completion and project-completion-bac after Rust live Admit lands
+status: backlog
+priority: P1
+track: aep28-envelope-algebra
+wave: rust-live
+plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-017 AEP28-ENV-018 AEP28-ENV-019 AEP28-ENV-020
+scope: AEP-Components/envelope AEP-Components/dynAEP AEP-SDKs/typescript/dynaep
+notes: Not a product hole. After Rust live Admit lands, nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/envelope/crate. No ship prose before those journals. Out of scope: hangar tools.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/envelope/crate
+updated: 2026-08-22

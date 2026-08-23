@@ -1,0 +1,18 @@
+@PAD: nla-dev-ticket-AEP28-ENV-014-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-014
+title: Live processEvent must not use LatticeFilter-only crossing
+status: backlog
+priority: P0
+track: aep28-envelope-algebra
+wave: residual
+plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-013
+scope: AEP-Components/dynAEP AEP-SDKs/typescript/dynaep
+notes: bridge.ts still has else-if labLatticeFilterEnabled that runs filterAsync without Admit walls. Live processEvent must require HyperlatticeFilter. Missing HyperlatticeFilter is DENY. Tests: labLatticeFilterEnabled does not admit an action_path that Admit would close. Out of scope: hangar tools.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/admit/crate
+updated: 2026-08-22

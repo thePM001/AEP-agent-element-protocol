@@ -6,7 +6,7 @@ description: Use when adding, removing, or updating rules in an existing AepCaw 
 # Edit AepCaw Policy
 
 ## Overview
-Make targeted edits to existing AepCaw security policies - add, remove, or update rules and declarations. Understands first-match-wins policy categories plus the separate Postgres-family database rule semantics.
+Make targeted edits to existing AepCaw security policies - add, remove or update rules and declarations. Understands most-specific collect-all policy categories plus the separate Postgres-family database rule semantics.
 
 ## When to Use
 - User asks to add/remove/update a policy rule ("allow stripe.com", "block file deletes")
@@ -37,7 +37,7 @@ Make targeted edits to existing AepCaw security policies - add, remove, or updat
    - Place allow rules before the default-deny catch-all at the end
    - Place more specific rules before less specific ones
    - When in doubt: deny rules go before the first non-deny rule in that category; allow rules go before the default-deny
-   - Do not apply this first-match-wins shortcut to `database_rules` or `database_connection_rules`; see DB rules below.
+   - Do not apply a listing-order shortcut to `database_rules` or `database_connection_rules`; see DB rules below.
 
 4. **Make the edit**
    Use the Edit tool:
@@ -91,7 +91,7 @@ Use `http_services` when the user needs method/path-level API control or credent
 
 - **Minimal edits only** - only touch the rules the user asked about
 - **Preserve formatting** - keep existing comments, blank lines, section headers
-- **Respect ordering** - never blindly append; consider first-match-wins
+- **Respect specificity** - never blindly append; consider most-specific collect-all
 - **Name new rules** in `verb-noun` format matching the existing policy style
 - **Warn about shadowing** - if a new rule would be unreachable because an earlier rule matches the same pattern, warn the user
 - **Warn about removal side-effects** - removing a deny rule may expose an allow rule that was previously unreachable; removing an allow rule may expose a deny. Explain the ordering impact when summarizing.

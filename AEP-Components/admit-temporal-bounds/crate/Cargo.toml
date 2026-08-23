@@ -1,0 +1,16 @@
+[package]
+name = "aep-admit-temporal-bounds"
+version = "0.1.0"
+edition = "2021"
+description = "Fold temporal bounds into Admit walls on the same collect-all pass."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-admit-temporal-bounds"
+path = "src/main.rs"
+
+[dependencies]
+aep-admit = { path = "../../admit/crate" }
+anyhow = "1"
+

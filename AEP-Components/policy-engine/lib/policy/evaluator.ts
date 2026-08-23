@@ -62,6 +62,11 @@ export interface EvaluatorOptions {
   scanner?: ScannerPipeline | null;
 }
 
+export function labPolicyEvaluatorEnabled(): boolean {
+  const v = String(process.env.AEP_LAB_POLICY_EVALUATOR ?? "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "on";
+}
+
 export class PolicyEvaluator {
   private policy: Policy;
   private policyHash: string;
@@ -107,6 +112,10 @@ export class PolicyEvaluator {
 
   evaluate(action: AgentAction, session: Session): Verdict {
     const actionId = randomUUID();
+    const actionPath = String(action.input?.action_path ?? "");
+    if (actionPath && !labPolicyEvaluatorEnabled()) {
+      return this.deny(actionId, ["Live action_path crossing is Admit collect-all walls then Apply. PolicyEvaluator is lab-only for action_path."], session);
+    }
 
     // Policy integrity check - detect runtime mutation
     const currentHash = createHash("sha256")

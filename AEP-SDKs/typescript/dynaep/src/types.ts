@@ -106,25 +106,6 @@ export { AsyncBridgeClock } from "./temporal/AsyncBridgeClock";
 export type { PerceptionConfig, ModalityState, ModalityInfo } from "./perception/ModalityTracker";
 export { ModalityTracker } from "./perception/ModalityTracker";
 
-// OPT-004: Chain Executor types
-export type {
-  StepMode,
-  StepVerdict,
-  StepResult,
-  ChainResult,
-  ChainInput,
-  StepContext,
-  StepExecutor,
-  ChainExecutor,
-  ChainExecutionConfig,
-} from "./chain/types";
-export {
-  CHAIN_STEP_COUNT,
-  STEP_DEFINITIONS,
-  createNotExecutedEntry,
-} from "./chain/types";
-export { ParallelChainExecutor } from "./chain/ParallelChainExecutor";
-export { SequentialChainExecutor } from "./chain/SequentialChainExecutor";
+export type { DynAEPBridgeConfig, DynAEPRejection } from "./bridge";
 
-// Bridge types (re-exported for convenience)
 export type { DynAEPBridgeConfig, DynAEPRejection } from "./bridge";

@@ -1,0 +1,13 @@
+@PAD: aep-no-sequential-ts-deny-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-no-sequential-ts-deny
+version: 0.1.0
+kind: library
+path: AEP-Components/no-sequential-ts-deny/
+ticket: AEP28-ENV-022
+requires: aep-envelope
+capability: admit.live-crossing.no-sequential-ts-deny
+note: Fail CI if processEvent still calls sequential TypeScript deniers after aep-envelope Admit allow.

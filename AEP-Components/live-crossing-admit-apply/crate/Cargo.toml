@@ -1,0 +1,16 @@
+[package]
+name = "aep-live-crossing-admit-apply"
+version = "0.1.0"
+edition = "2021"
+description = "Live crossing: Admit collect-all then Apply only."
+license = "UNLICENSED"
+publish = false
+
+
+[[bin]]
+name = "aep-live-crossing-admit-apply"
+path = "src/main.rs"
+
+[dependencies]
+aep-admit = { path = "../../admit/crate" }
+anyhow = "1"

@@ -1,0 +1,31 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-admit-parity
+note: Durable HVVCAS is GAPLUNE. Do not persist YAML.
+
+component:
+  name: parse_fixture
+  domain: cli
+  component_type: cli
+  intent: Parse a gaplune Admit fixture into wall records for collect-all
+  input:
+    name: args
+    type: VecString
+  output:
+    name: config
+    type: CliConfig
+
+component:
+  name: run_parity
+  domain: cli
+  component_type: cli
+  intent: Compare Rust aep-admit collect-all output to admit.mjs on the same fixtures and exit nonzero on mismatch
+  input:
+    name: args
+    type: VecString
+  output:
+    name: config
+    type: CliConfig

@@ -6,6 +6,7 @@ use aep_lattice_channel::{
 };
 use aep_lattice_crypto::KemKeypair;
 use rusqlite::Connection;
+use aep_live_entry::LiveEntry;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -21,6 +22,7 @@ use tokio::task::JoinHandle;
 use tracing::{info, warn};
 
 use crate::{
+    envelope_admit::{admit_sealed_payload, load_live_entry},
     dock_keys::{
         decode_signer_public_hex, load_or_create_dock_kem, signer_rate_key, AgentSignKeyStore,
     },
@@ -89,6 +91,7 @@ pub struct DockingRuntime {
     pub dock_kem: Arc<KemKeypair>,
     pub agent_sign_keys: Arc<Mutex<AgentSignKeyStore>>,
     pub replay_guard: Arc<Mutex<ReplayGuard>>,
+    pub live_entry: Arc<Mutex<LiveEntry>>,
     connection_limit: Arc<Semaphore>,
 }
 
@@ -137,6 +140,7 @@ impl DockingRuntime {
             dock_kem: Arc::new(load_or_create_dock_kem(data_dir)),
             agent_sign_keys: Arc::new(Mutex::new(AgentSignKeyStore::load(data_dir))),
             replay_guard: Arc::new(Mutex::new(ReplayGuard::default())),
+            live_entry: Arc::new(Mutex::new(load_live_entry(data_dir))),
             connection_limit: Arc::new(Semaphore::new(MAX_CONNECTIONS)),
         }
     }
@@ -653,6 +657,28 @@ fn handle_frame(
             error: Some(detail),
             pong: None,
         };
+    }
+
+    {
+        let mut live = runtime.live_entry.lock().expect("live entry lock");
+        if let Err(detail) = admit_sealed_payload(&mut live, &plaintext) {
+            drop(live);
+            let db = runtime.db.lock().expect("db lock");
+            let _ = record_side_channel_anomaly(
+                &db,
+                SideChannelAnomalyKind::EnvelopeAdmitRejected,
+                &frame.agent_id,
+                expected_port,
+                detail.clone(),
+            );
+            return DockFrameResponse {
+                ok: false,
+                event_id: None,
+                digest: None,
+                error: Some(detail),
+                pong: None,
+            };
+        }
     }
 
     let digest = frame_digest(frame);

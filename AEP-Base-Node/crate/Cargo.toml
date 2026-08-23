@@ -21,6 +21,7 @@ aep-lattice-crypto = { path = "../../AEP-Components/lattice-crypto/crate" }
 aep-agentmesh = { path = "../../AEP-Components/agentmesh/crate" }
 aep-potomitan = { path = "../potomitan/crate" }
 aep-lattice-memory = { path = "../../AEP-Components/lattice-memory/crate" }
+aep-live-entry = { path = "../../AEP-Components/live-entry/crate" }
 serde.workspace = true
 serde_json.workspace = true
 rusqlite.workspace = true

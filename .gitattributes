@@ -11,3 +11,5 @@
 *.ttf binary
 *.eot binary
 
+
+# Exclude internal engineering tree from git archive / GitHub export

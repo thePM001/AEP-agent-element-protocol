@@ -1,0 +1,14 @@
+[package]
+name = "aep-live-crossing-lab-off"
+version = "0.1.0"
+edition = "2021"
+description = "Fail CI if HyperlatticeFilter.filterCrossing still calls latticeFilter.filterAsync when AEP_LAB_LATTICE_FILTER is on."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-live-crossing-lab-off"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"

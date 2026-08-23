@@ -126,29 +126,29 @@ func TestConditionEvaluator_ConsecutiveClass(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		match   *ConsecutiveMatch
-		want    bool
+		name  string
+		match *ConsecutiveMatch
+		want  bool
 	}{
 		{
-			name:    "3+ shells matches",
-			match:   &ConsecutiveMatch{Value: "shell", CountGE: 3},
-			want:    true,
+			name:  "3+ shells matches",
+			match: &ConsecutiveMatch{Value: "shell", CountGE: 3},
+			want:  true,
 		},
 		{
-			name:    "4+ shells doesn't match",
-			match:   &ConsecutiveMatch{Value: "shell", CountGE: 4},
-			want:    false,
+			name:  "4+ shells doesn't match",
+			match: &ConsecutiveMatch{Value: "shell", CountGE: 4},
+			want:  false,
 		},
 		{
-			name:    "at most 3 shells matches",
-			match:   &ConsecutiveMatch{Value: "shell", CountLE: 3},
-			want:    true,
+			name:  "at most 3 shells matches",
+			match: &ConsecutiveMatch{Value: "shell", CountLE: 3},
+			want:  true,
 		},
 		{
-			name:    "at most 2 shells doesn't match",
-			match:   &ConsecutiveMatch{Value: "shell", CountLE: 2},
-			want:    false,
+			name:  "at most 2 shells doesn't match",
+			match: &ConsecutiveMatch{Value: "shell", CountLE: 2},
+			want:  false,
 		},
 	}
 
@@ -335,7 +335,7 @@ func TestConditionEvaluator_LogicalOr(t *testing.T) {
 
 	cond := &ChainCondition{
 		Or: []*ChainCondition{
-			{DepthEQ: intPtr(5)},           // false
+			{DepthEQ: intPtr(5)},            // false
 			{ViaContains: []string{"bash"}}, // true
 		},
 	}
@@ -649,5 +649,16 @@ func TestChainRuleEvaluator_EscapeHatchScenario(t *testing.T) {
 }
 
 // Helper functions
-func intPtr(i int) *int       { return &i }
-func boolPtr(b bool) *bool    { return &b }
+func intPtr(i int) *int    { return &i }
+func boolPtr(b bool) *bool { return &b }
+
+func TestChainRuleEvaluator_SamePriorityDenyWins(t *testing.T) {
+	e := NewChainRuleEvaluator()
+	e.SetRules([]ChainRule{
+		{Name: "allow", Priority: 10, Condition: &ChainCondition{IsTainted: boolPtr(true)}, Action: ActionAllow},
+		{Name: "deny", Priority: 10, Condition: &ChainCondition{IsTainted: boolPtr(true)}, Action: ActionDeny},
+	})
+	rule := e.Evaluate(&ProcessTaint{}, nil)
+	require.NotNil(t, rule)
+	assert.Equal(t, ActionDeny, rule.Action)
+}

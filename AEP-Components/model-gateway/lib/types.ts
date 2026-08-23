@@ -109,6 +109,8 @@ export interface GovernedChunk {
   governance?: {
     aborted: boolean;
     reason?: string;
+    findings?: string[];
+    softDenied?: boolean;
   };
 }
 

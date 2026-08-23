@@ -1,5 +1,5 @@
 flowchart TB
-  subgraph BAND1[Ingress and governance]
+  subgraph BAND1[Ingress]
     direction LR
     subgraph SURFACES[Operator surfaces]
       direction TB
@@ -10,63 +10,32 @@ flowchart TB
     end
     subgraph BRIDGES[Bridges and clients]
       direction TB
-      UCB[UCB ingress egress airlock]
+      UCB[UCB airlock optional]
       CONN[AEP Connectors]
       SDK[SDK Clients]
     end
-    subgraph GOV[Coding governance and HCSE]
-      direction TB
-      CG[coding-governance propose solidify git]
-      HCSE[aep-hcse parser MCP]
-      SEM[semantic-topology blast overlay]
-    end
   end
 
-  subgraph BAND2[Transport and policy]
-    direction LR
-    MCPSEC[mcp-security MCP tool allowlist]
-    POL[Policy GAP and Subprotocols]
-    LT[lattice-transport PQEncryptedCapsule]
+  subgraph BAND2[Transport]
+    LT[lattice-channels sealed PQEncryptedCapsule]
   end
 
-  subgraph BAND3[Docks and hyperlattice wrap]
+  subgraph BAND3[Base Node kernel]
     direction LR
-    subgraph DOCKS[AEP Docks on Base Node]
-      direction TB
-      VD[validation dock]
-      ID[inference dock]
-      UCD[UCD egress airlock]
-      WS[wasm_sandbox]
-    end
-    HL[ONE AEP HYPERLATTICE WRAP scene action_path GAP channels]
-  end
-
-  subgraph RUNTIME[Runtime]
-    direction LR
-    COMP[Protocol Components dynAEP lattice-channels]
-    KERN[Base Node Kernel Registry POTOMITAN]
+    DOCK[Docks open the frame]
+    ADMIT[aep-envelope admit collect-all then Apply]
+    MEET[aep-evaluation-chain 15-rule meet]
+    REG[Registry]
   end
 
   CL --> LT
   CCA --> LT
-  CCA --> HL
   HAR --> LT
   WIZ --> LT
-  UCB --> MCPSEC
   UCB --> LT
-  UCB --> UCD
-  UCD --> HCSE
-  CG --> HCSE
-  CG --> HL
-  HCSE --> HL
-  SEM --> HL
   CONN --> LT
   SDK --> LT
-  POL --> HL
-  LT --> VD
-  LT --> ID
-  LT --> WS
-  VD --> HL
-  ID --> HL
-  HL --> COMP
-  HL --> KERN
+  LT --> DOCK
+  DOCK --> ADMIT
+  DOCK --> MEET
+  DOCK --> REG

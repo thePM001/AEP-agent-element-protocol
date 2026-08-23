@@ -1,0 +1,11 @@
+[package]
+name = "aep-stream-hard-findings"
+version = "0.1.0"
+edition = "2021"
+description = "Collect every hard finding on a model-gateway stream then refuse the yield."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-stream-hard-findings"
+path = "src/main.rs"

@@ -1,0 +1,14 @@
+[package]
+name = "aep-envelope-wrap-disabled"
+version = "0.1.0"
+edition = "2021"
+description = "AEP28-ENV-012: wrap when lattice governance is disabled. Fail if shouldFilter skips the wrap."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-envelope-wrap-disabled"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"

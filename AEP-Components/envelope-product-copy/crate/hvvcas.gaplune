@@ -1,0 +1,55 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-envelope-product-copy
+note: Durable HVVCAS is GAPLUNE. Do not persist YAML.
+
+component:
+  name: live_copy_scan
+  domain: policy
+  component_type: library
+  intent: Scan product copy for Admit collect-all walls then Apply and reject 15-step evaluation chain as live product story
+  input:
+    name: source
+    type: String
+  output:
+    name: verdict
+    type: CopyVerdict
+
+component:
+  name: rewrite_live_copy
+  domain: policy
+  component_type: library
+  intent: Rewrite live product copy from 15-step or live OPA voice to Admit collect-all walls then Apply
+  input:
+    name: source
+    type: String
+  output:
+    name: rewritten
+    type: String
+
+component:
+  name: order_independence_copy
+  domain: admit
+  component_type: library
+  intent: Defend only that the closed set does not depend on definition order
+  input:
+    name: source
+    type: String
+  output:
+    name: names_order_independence
+    type: bool
+
+component:
+  name: misconfig_claim_scan
+  domain: policy
+  component_type: library
+  intent: Deny product copy that claims misconfig is impossible
+  input:
+    name: source
+    type: String
+  output:
+    name: banned
+    type: VecString

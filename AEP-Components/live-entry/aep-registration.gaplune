@@ -1,0 +1,13 @@
+@PAD: aep-live-entry-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-live-entry
+version: 0.1.0
+kind: library
+path: AEP-Components/live-entry/
+ticket: AEP28-ENV-024
+requires: aep-envelope aep-no-sequential-ts-deny
+capability: admit.live-entry.rust
+note: Product live path is Rust. aep_envelope admit in-process. ActionLattice YAML load is Rust. Structural apply and ID mint are Rust. TypeScript processEvent is not the product live path.

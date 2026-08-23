@@ -1,0 +1,13 @@
+@PAD: aep-admit-trust-floor-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-admit-trust-floor
+version: 0.1.0
+kind: library
+path: AEP-Components/admit-trust-floor/
+ticket: AEP28-ENV-003
+requires: aep-admit
+capability: admit.trust-floor.compile
+note: Compile per-node trust floor into Admit walls. Fold onto the same collect-all pass.

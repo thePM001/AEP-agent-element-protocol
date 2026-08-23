@@ -1,0 +1,43 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-admit-writing-walls
+note: Fold writing.gap lint into Admit walls on the same collect-all pass. No later writing stage.
+
+component:
+  name: compile_writing_walls
+  domain: admit
+  component_type: library
+  intent: Compile writing.gap denies into Admit walls for one collect-all pass
+  input:
+    name: text
+    type: String
+  output:
+    name: walls
+    type: VecAdmitWall
+
+component:
+  name: collect_payload_strings
+  domain: admit
+  component_type: library
+  intent: Walk payload values and collect every string for writing walls
+  input:
+    name: payload
+    type: String
+  output:
+    name: strings
+    type: VecString
+
+component:
+  name: writing_wall_ids
+  domain: admit
+  component_type: library
+  intent: Name writing walls writing.no_em_dashes and writing.no_oxford_comma
+  input:
+    name: rule
+    type: String
+  output:
+    name: wall_id
+    type: String

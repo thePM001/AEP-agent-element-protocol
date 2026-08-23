@@ -1,0 +1,20 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-no-sequential-ts-deny
+ticket: AEP28-ENV-022
+note: Durable HVVCAS is GAPLUNE. Ticket AEP28-ENV-022.
+
+component:
+  name: scan_process_event_after_admit
+  domain: dynaep
+  component_type: service
+  intent: Fail CI if processEvent still calls sequential TypeScript deniers after aep-envelope Admit allow
+  input:
+    name: bridge_source
+    type: String
+  output:
+    name: scan
+    type: String

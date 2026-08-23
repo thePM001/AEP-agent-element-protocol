@@ -1,0 +1,16 @@
+# @PAD: aep-process-event-admit-walls-cargo-v1
+# @GCDE: gaplune-decode hmac-sha256:d411f316d11dd764254c5870fbd48a1321f1f96cf610e1add00d4d3ca0cece29
+[package]
+name = "aep-process-event-admit-walls"
+version = "0.1.0"
+edition = "2021"
+description = "AEP28-ENV-014: fail CI if processEvent still has else-if labLatticeFilterEnabled that runs filterAsync with no Admit walls."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-process-event-admit-walls"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"

@@ -1,0 +1,43 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-envelope-walls
+note: Compile lattice-policy.rego deny_lattice into Admit walls. Live action_path must not call OPA.
+
+component:
+  name: compile_lattice_walls
+  domain: admit
+  component_type: service
+  intent: Compile lattice-policy.rego deny_lattice rules into Admit walls
+  input:
+    name: source
+    type: String
+  output:
+    name: scan
+    type: ScanReport
+
+component:
+  name: prove_rego_source
+  domain: admit
+  component_type: service
+  intent: Prove lattice-policy.rego is the source of compiled Admit walls at boot and CI
+  input:
+    name: policy_path
+    type: String
+  output:
+    name: proof
+    type: ProofReport
+
+component:
+  name: live_opa_absent
+  domain: admit
+  component_type: service
+  intent: Prove HyperlatticeFilter.filterCrossing does not call LatticePolicyEvaluator.evaluate
+  input:
+    name: filter_source
+    type: String
+  output:
+    name: scan
+    type: ScanReport

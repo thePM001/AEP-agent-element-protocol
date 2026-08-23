@@ -23,6 +23,17 @@ import type { PromptOptimizer } from "../../optimization/lib/optimizer.js";
 import type { AEPTelemetryExporter } from "../../telemetry/lib/otel-exporter.js";
 import type { Violation } from "../../recovery/lib/types.js";
 import type { Finding, ScanResult } from "../../scanners/lib/types.js";
+
+function collectHardFindings(scan: { findings?: Finding[] } | null | undefined): Finding[] {
+  return (scan?.findings ?? []).filter((f) => f.severity === "hard");
+}
+function uniqueCategories(findings: Finding[]): string[] {
+  const out: string[] = [];
+  for (const f of findings) {
+    if (f.category && !out.includes(f.category)) out.push(f.category);
+  }
+  return out;
+}
 import {
   EconomicsGatewayHooks,
   type EconomicsGatewayDeps,
@@ -135,7 +146,7 @@ export class GovernedModelGateway {
       const inputContent = messages.map(m => m.content).join("\n");
       const inputScan = this.scanner.scan(inputContent);
       if (!inputScan.passed) {
-        const hardFindings = inputScan.findings.filter(f => f.severity === "hard");
+        const hardFindings = collectHardFindings(inputScan);
         if (hardFindings.length > 0) {
           const err = new Error(
             `Input blocked by scanner: ${hardFindings.map(f => f.category).join(", ")}`
@@ -200,7 +211,7 @@ export class GovernedModelGateway {
       if (!outputScan.passed) {
         scanFindings = outputScan.findings.map(f => `${f.scanner}:${f.category}`);
 
-        const hardFindings = outputScan.findings.filter(f => f.severity === "hard");
+        const hardFindings = collectHardFindings(outputScan);
         if (hardFindings.length > 0) {
           // Hard violation in output - deny
           trustDelta -= hardFindings.length * 50;
@@ -394,7 +405,7 @@ export class GovernedModelGateway {
 
   /**
    * Stream a governed model call. Validates chunks mid-stream.
-   * Yields GovernedChunk objects. Aborts on hard violations.
+   * Yields GovernedChunk objects. Collects every hard finding on the accumulated stream then refuses the yield.
    */
   async *stream(request: ModelRequest): AsyncGenerator<GovernedChunk, void, unknown> {
     // TM-13: parity with call() - economics + scanner fail-closed + per-chunk scan before yield
@@ -446,7 +457,7 @@ export class GovernedModelGateway {
       const inputContent = messages.map(m => m.content).join("\n");
       const inputScan = this.scanner.scan(inputContent);
       if (!inputScan.passed) {
-        const hardFindings = inputScan.findings.filter(f => f.severity === "hard");
+        const hardFindings = collectHardFindings(inputScan);
         if (hardFindings.length > 0) {
           yield {
             content: "",
@@ -455,7 +466,8 @@ export class GovernedModelGateway {
             index: 0,
             governance: {
               aborted: true,
-              reason: `Input blocked: ${hardFindings.map(f => f.category).join(", ")}`,
+              reason: `Input blocked: ${uniqueCategories(hardFindings).join(", ")}`,
+              findings: hardFindings.map(f => `${f.scanner}:${f.category}`),
             },
           };
           return;
@@ -492,7 +504,7 @@ export class GovernedModelGateway {
         // Scan accumulated output BEFORE yielding each chunk (fail closed).
         if (this.scanOutput && this.scanner) {
           const midScan = this.scanner.scan(accumulated);
-          const hardFindings = midScan.findings.filter(f => f.severity === "hard");
+          const hardFindings = collectHardFindings(midScan);
           if (hardFindings.length > 0) {
             aborted = true;
             yield {
@@ -502,7 +514,8 @@ export class GovernedModelGateway {
               index,
               governance: {
                 aborted: true,
-                reason: `Stream aborted: ${hardFindings.map(f => f.category).join(", ")}`,
+                reason: `Stream aborted: ${uniqueCategories(hardFindings).join(", ")}`,
+                findings: hardFindings.map(f => `${f.scanner}:${f.category}`),
               },
             };
             this.logToLedger("stream:abort", {
@@ -545,7 +558,7 @@ export class GovernedModelGateway {
     if (!aborted && this.scanOutput && this.scanner) {
       const finalScan = this.scanner.scan(accumulated);
       if (!finalScan.passed) {
-        const hardFindings = finalScan.findings.filter(f => f.severity === "hard");
+        const hardFindings = collectHardFindings(finalScan);
         const softFindings = finalScan.findings.filter(f => f.severity === "soft");
         if (hardFindings.length > 0 || softFindings.length > 0) {
           const findings = hardFindings.length > 0 ? hardFindings : softFindings;
@@ -557,13 +570,15 @@ export class GovernedModelGateway {
             governance: {
               aborted: true,
               softDenied: softFindings.length > 0 && hardFindings.length === 0,
-              reason: `Post-stream scan failed: ${findings.map(f => f.category).join(", ")}`,
+              reason: `Post-stream scan failed: ${uniqueCategories(findings).join(", ")}`,
+              findings: findings.map(f => `${f.scanner}:${f.category}`),
             },
           };
           this.logToLedger("model:call", {
             sessionId: this.sessionId,
             provider: this.config.provider,
             model: this.config.model,
+            findings: findings.map(f => `${f.scanner}:${f.category}`),
             decision: "deny",
             streaming: true,
             chunksProcessed: index,
@@ -647,15 +662,16 @@ export class GovernedModelGateway {
   }
 
   private findingsToViolation(findings: Finding[]): Violation {
-    const first = findings[0];
+    const hard = collectHardFindings({ findings });
+    const use = hard.length > 0 ? hard : findings;
+    const cats = uniqueCategories(use);
     return {
-      rule: first?.scanner ?? "scanner",
-      severity: first?.severity ?? "soft",
+      rule: cats.join(", ") || (use[0]?.scanner ?? "scanner"),
+      severity: (hard.length > 0 ? "hard" : use[0]?.severity) ?? "soft",
       source: "scanner",
-      details: findings.map(f => `${f.scanner}: ${f.match} (${f.category})`).join("; "),
+      details: use.map(f => `${f.scanner}: ${f.match} (${f.category})`).join("; "),
     };
   }
-
   private logToLedger(type: string, data: Record<string, unknown>): void {
     if (!this.ledger) return;
     try {

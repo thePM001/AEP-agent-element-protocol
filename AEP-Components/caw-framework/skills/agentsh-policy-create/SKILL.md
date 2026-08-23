@@ -78,7 +78,7 @@ Create new AepCaw security policies from built-in templates, customized to the u
 - End rule-list categories (file_rules, network_rules, command_rules) with a default-deny catch-all
 - Use descriptive rule names in `verb-noun` format (e.g., `allow-npm`, `deny-ssh-keys`)
 - Include section comment headers matching built-in policy style
-- First match wins - place specific rules before general ones
+- Most specific selector wins. Exact paths beat catch-all globs regardless of listing order.
 - Do not invent runtime support for non-Postgres databases. Current DB enforcement is Postgres-family only.
 - For `http_services`, prefer path/method rules over broad network allows when the user needs audited API surface control.
 - For `database_rules`, remember DB evaluation is not simple first-match-wins: any matching deny wins, non-deny rules must cover every object slot, and uncovered objects fail closed.

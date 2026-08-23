@@ -1,0 +1,13 @@
+@PAD: aep-live-crossing-admit-apply-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-live-crossing-admit-apply
+version: 0.1.0
+kind: library
+path: AEP-Components/live-crossing-admit-apply/
+ticket: AEP28-ENV-006
+requires: aep-admit
+capability: dynaep.live-crossing.admit-apply
+note: Live crossing is Admit collect-all then Apply only. Skip Apply when any wall is closed. No OPA evaluate on live action_path.

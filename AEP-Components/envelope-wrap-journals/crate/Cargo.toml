@@ -1,0 +1,16 @@
+# @PAD: gaplune-creation-pad via gaplune-pad-transform encode
+# @GCDE: gaplune-decode hmac-sha256:b3c4cfa53d76cef31f0ac4f3a8c68fa6c6f12f98b5685ce061ee0e177cb0a8a1
+[package]
+name = "aep-envelope-wrap-journals"
+version = "0.1.0"
+edition = "2021"
+description = "AEP28-ENV-016: journals after residual wrap tickets land. coding and project BAC journals only after AEP28-ENV-012 through AEP28-ENV-015 land. Journals for that residual are not due while tickets are missing."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-envelope-wrap-journals"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"

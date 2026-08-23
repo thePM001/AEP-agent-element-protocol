@@ -9,7 +9,7 @@ import (
 )
 
 // Evaluator applies policy rules to findings and produces a Verdict.
-// Rules are evaluated in order; first-match-wins per finding.
+// Rules collect every match. Most specific match wins.
 type Evaluator struct {
 	rules []policy.PackageRule
 }
@@ -94,17 +94,66 @@ func (e *Evaluator) Evaluate(findings []Finding, ecosystem Ecosystem) *Verdict {
 	}
 }
 
-// evaluateFinding returns the action for a single finding by applying rules
-// in order (first-match-wins). If no rule matches, it defaults to VerdictBlock
-// (fail closed).
+// evaluateFinding collects matching rules. Most specific match wins.
+// Empty match is least specific. No match is VerdictBlock (fail closed).
 func (e *Evaluator) evaluateFinding(f Finding, ecosystem Ecosystem) VerdictAction {
+	bestExact := -1
+	bestPrefix := -1
+	bestWeight := -1
+	var bestAct VerdictAction
+	found := false
 	for _, rule := range e.rules {
-		if matchesRule(f, ecosystem, rule.Match) {
-			return mapAction(rule.Action)
+		if matchesRule(f, ecosystem, rule.Match) == false {
+			continue
+		}
+		exact := 0
+		prefix := 0
+		if len(rule.Match.Packages) > 0 {
+			exact = 1
+			prefix += 50
+		}
+		if rule.Match.FindingType != "" {
+			prefix += 10
+		}
+		if rule.Match.Severity != "" {
+			prefix += 10
+		}
+		if rule.Match.Ecosystem != "" {
+			prefix += 10
+		}
+		if len(rule.Match.Reasons) > 0 {
+			prefix += 10
+		}
+		if len(rule.Match.NamePatterns) > 0 {
+			prefix += 20
+		}
+		if rule.Match.LicenseSPDX != nil {
+			prefix += 20
+		}
+		act := mapAction(rule.Action)
+		w := act.weight()
+		better := false
+		if found == false {
+			better = true
+		} else if exact > bestExact {
+			better = true
+		} else if exact == bestExact && prefix > bestPrefix {
+			better = true
+		} else if exact == bestExact && prefix == bestPrefix && w > bestWeight {
+			better = true
+		}
+		if better {
+			bestExact = exact
+			bestPrefix = prefix
+			bestWeight = w
+			bestAct = act
+			found = true
 		}
 	}
-	// No rule matched -- fail closed.
-	return VerdictBlock
+	if found == false {
+		return VerdictBlock
+	}
+	return bestAct
 }
 
 // matchesRule returns true if the finding matches all non-empty conditions in the match.

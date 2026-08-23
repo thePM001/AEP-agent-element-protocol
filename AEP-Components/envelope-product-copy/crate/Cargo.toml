@@ -1,0 +1,11 @@
+[package]
+name = "aep-envelope-product-copy"
+version = "0.1.0"
+edition = "2021"
+description = "AEP28-ENV-009 product copy gate. Envelope algebra: Admit collect-all walls then Apply. No 15-step live story."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-envelope-product-copy"
+path = "src/main.rs"

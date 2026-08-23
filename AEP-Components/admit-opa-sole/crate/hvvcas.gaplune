@@ -1,0 +1,31 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-admit-opa-sole
+note: CI crate that proves admit.mjs carries no restricted Rego subset. Live lattice policy is OPA only.
+
+component:
+  name: restricted_fragment_scan
+  domain: admit
+  component_type: service
+  intent: Scan admit.mjs bytes and fail if a restricted Rego subset remains
+  input:
+    name: source
+    type: String
+  output:
+    name: scan
+    type: ScanReport
+
+component:
+  name: opa_sole_proof
+  domain: admit
+  component_type: service
+  intent: Prove live lattice policy is OPA lattice-policy.rego only
+  input:
+    name: policy_path
+    type: String
+  output:
+    name: proof
+    type: ProofReport

@@ -1,0 +1,11 @@
+[package]
+name = "aep-admit"
+version = "0.1.0"
+edition = "2021"
+description = "Admit walls: AND collect-all. Writing.gap and per-node trust floor compile into Admit walls on the same collect-all pass. Live lattice policy is compiled walls."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-admit"
+path = "src/main.rs"

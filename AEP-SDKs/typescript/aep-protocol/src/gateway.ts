@@ -59,6 +59,16 @@ import {
 } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/evaluation-chain/lib/runner.js";
 import { evaluatePrecondition } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/evaluation-chain/lib/preconditions.js";
 
+function collectHardFindings(findings: Finding[]): Finding[] {
+  return (findings ?? []).filter((f) => f.severity === "hard");
+}
+function uniqueCategories(findings: Finding[]): string[] {
+  const out: string[] = [];
+  for (const f of findings) {
+    if (f.category && !out.includes(f.category)) out.push(f.category);
+  }
+  return out;
+}
 export interface GatewayOptions {
   ledgerDir: string;
   onStateChange?: (
@@ -431,7 +441,7 @@ export class AgentGateway {
   }
 
   /**
-   * Evaluate an action through the full 15-step governance chain.
+   * Evaluate an action through Admit collect-all walls.
    *
    * Step 0:  Task scope check (if decomposition active)
    * Step 1:  Session state check
@@ -539,7 +549,7 @@ export class AgentGateway {
           mode: activation?.mode ?? StepActivationMode.ALWAYS,
           precondition: activation?.precondition,
           verdict: "pass",
-          verdict_reason: "chain_aborted_hard_violation",
+          verdict_reason: "collect_all_continue",
           duration_us: 0,
           timestamp: new Date().toISOString(),
         });
@@ -615,7 +625,7 @@ export class AgentGateway {
           step: i, name: stepName,
           mode: activation?.mode ?? StepActivationMode.ALWAYS,
           precondition: activation?.precondition,
-          verdict: "fail", verdict_reason: "chain_aborted_hard_violation",
+          verdict: "fail", verdict_reason: "collect_all_continue",
           duration_us: 0, timestamp: new Date().toISOString(),
         });
         continue;
@@ -745,7 +755,7 @@ export class AgentGateway {
           // Step 14 aborted
           stepVerdicts.push({
             step: 14, name: "content_scanners", mode: StepActivationMode.ALWAYS,
-            verdict: "fail", verdict_reason: "chain_aborted_hard_violation",
+            verdict: "fail", verdict_reason: "collect_all_continue",
             duration_us: 0, timestamp: new Date().toISOString(),
           });
           this.recordChainVerdicts(sessionId, stepVerdicts, action);
@@ -777,7 +787,7 @@ export class AgentGateway {
                     { actionId: verdict.actionId }, "knowledge_active_and_retrieval", true);
                   stepVerdicts.push({
                     step: 14, name: "content_scanners", mode: StepActivationMode.ALWAYS,
-                    verdict: "fail", verdict_reason: "chain_aborted_hard_violation",
+                    verdict: "fail", verdict_reason: "collect_all_continue",
                     duration_us: 0, timestamp: new Date().toISOString(),
                   });
                   this.recordChainVerdicts(sessionId, stepVerdicts, action);
@@ -912,7 +922,7 @@ export class AgentGateway {
     }
 
     // Separate hard and soft findings
-    const hardFindings = result.findings.filter((f) => f.severity === "hard");
+    const hardFindings = collectHardFindings(result.findings);
     const softFindings = result.findings.filter((f) => f.severity === "soft");
 
     // Hard findings: immediate reject, no recovery
@@ -938,16 +948,18 @@ export class AgentGateway {
           (newOutput: string) => {
             const recheck = pipeline.scan(newOutput);
             if (recheck.passed) return null;
-            const firstFinding = recheck.findings[0];
+            const hardRecheck = collectHardFindings(recheck.findings);
+            const use = hardRecheck.length > 0 ? hardRecheck : recheck.findings;
+            if (use.length === 0) return null;
+            const cats = uniqueCategories(use);
             return {
-              rule: firstFinding.category,
-              severity: firstFinding.severity,
+              rule: cats.join(", ") || use[0].category,
+              severity: hardRecheck.length > 0 ? "hard" : use[0].severity,
               source: "scanner" as const,
-              details: `Scanner "${firstFinding.scanner}" found: ${firstFinding.match}`,
+              details: use.map(f => `Scanner "${f.scanner}" found: ${f.match}`).join("; "),
             };
           }
         );
-
         // Log recovery attempts
         for (const attempt of recoveryResult.attempts) {
           ledger?.append("recovery:attempt", {

@@ -1,0 +1,15 @@
+[package]
+name = "aep-dynaep-live-crossing-e2e"
+version = "0.1.0"
+edition = "2021"
+description = "E2E: collect every closed Admit wall then OPA deny then Apply."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-dynaep-live-crossing-e2e"
+path = "src/main.rs"
+
+[dependencies]
+aep-admit = { path = "../../admit/crate" }
+anyhow = "1"

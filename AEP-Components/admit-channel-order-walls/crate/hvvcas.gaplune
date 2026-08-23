@@ -1,0 +1,45 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-admit-channel-order-walls
+note: Durable HVVCAS is GAPLUNE. Do not persist YAML.
+
+component:
+  name: compile_channel_walls
+  domain: admit
+  component_type: library
+  intent: Compile lattice channel invariants into Admit walls for one collect-all pass
+  input:
+    name: frame
+    type: ChannelFrame
+  output:
+    name: walls
+    type: VecAdmitWall
+
+component:
+  name: compile_partial_order_walls
+  domain: admit
+  component_type: library
+  intent: Compile all-parents per-agent partial-order into Admit walls
+  input:
+    name: order
+    type: PartialOrderInput
+  output:
+    name: walls
+    type: VecAdmitWall
+
+component:
+  name: fold_channel_order
+  domain: admit
+  component_type: library
+  intent: Fold channel walls and partial-order walls plus extras into one collect-all pass
+  input:
+    name: extra
+    type: VecAdmitWall
+  output:
+    name: result
+    type: AdmitResult
+
+ticket: AEP28-ENV-004

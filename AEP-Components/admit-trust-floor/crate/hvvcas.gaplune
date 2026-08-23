@@ -1,0 +1,43 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-admit-trust-floor
+note: Fold per-node lattice trust floor into Admit walls on the same collect-all pass. Ticket AEP28-ENV-003.
+
+component:
+  name: compile_trust_floor_wall
+  domain: admit
+  component_type: library
+  intent: Compile node trust floor versus agent trust tier into one Admit wall named trust_floor
+  input:
+    name: trust_tier
+    type: u32
+  output:
+    name: wall
+    type: AdmitWall
+
+component:
+  name: fold_trust_floor_into_admit
+  domain: admit
+  component_type: library
+  intent: Fold the trust floor wall plus extra walls into one Admit collect-all pass
+  input:
+    name: extra
+    type: VecAdmitWall
+  output:
+    name: result
+    type: AdmitResult
+
+component:
+  name: trust_sufficient_from_admit
+  domain: admit
+  component_type: library
+  intent: Derive trust_sufficient from whether the trust_floor wall is closed
+  input:
+    name: result
+    type: AdmitResult
+  output:
+    name: sufficient
+    type: bool

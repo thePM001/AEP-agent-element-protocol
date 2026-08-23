@@ -1,0 +1,39 @@
+{
+  "manifest_version": "1",
+  "id": "admit-parity",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/admit-parity/",
+  "description": "CI job comparing Rust aep-admit collect-all to admit.mjs on shared gaplune fixtures. Fails on mismatch.",
+  "requires": [
+    "admit"
+  ],
+  "capabilities": [
+    "eval:admit-parity",
+    "test:rust-js"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 10,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Rust versus JS Admit parity on shared fixtures.",
+    "use_when": [
+      "CI",
+      "Admit crate change",
+      "admit.mjs change"
+    ],
+    "avoid_when": [],
+    "pairs_with": [
+      "admit"
+    ]
+  },
+  "implementation": {
+    "crate": "AEP-Components/admit-parity/crate",
+    "gate": "scripts/gate-admit-parity.sh"
+  }
+}

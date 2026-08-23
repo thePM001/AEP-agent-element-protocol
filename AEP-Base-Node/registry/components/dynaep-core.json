@@ -12,7 +12,8 @@
   "capabilities": [
     "lattice:events",
     "lattice:pad-router",
-    "lattice:causal-log"
+    "lattice:causal-log",
+    "hyperlattice:ssot"
   ],
   "actions": [
     {
@@ -47,7 +48,9 @@
   },
   "implementation": {
     "entrypoints": [
-      "AEP-Components/dynAEP/bridge/lattice/index.ts"
+      "AEP-Components/dynAEP/bridge/lattice/index.ts",
+      "AEP-Components/live-entry/crate",
+      "AEP-Components/evaluation-chain/crate"
     ],
     "docker_path": "/opt/aep/AEP-Components/dynAEP"
   }

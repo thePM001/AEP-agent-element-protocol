@@ -1,0 +1,20 @@
+# @PAD: aep-live-entry-cargo-v1
+# @GCDE: gaplune.policy.v1
+[package]
+name = "aep-live-entry"
+version = "0.1.0"
+edition = "2021"
+description = "AEP28-ENV-024 Rust live entry. aep_envelope admit in-process. YAML load. Structural apply. ID mint."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-live-entry"
+path = "src/main.rs"
+
+[dependencies]
+aep-envelope = { path = "../../envelope/crate" }
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"

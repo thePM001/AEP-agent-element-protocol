@@ -1,0 +1,20 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-live-crossing-reject-copy
+note: Durable HVVCAS is GAPLUNE. Ticket AEP28-ENV-015.
+ticket: AEP28-ENV-015
+
+component:
+  name: live_reject_copy
+  domain: dynaep
+  component_type: service
+  intent: Fail if live processEvent rejection still says Admit then OPA. Live copy is Admit collect-all walls then Apply.
+  input:
+    name: bridge_source
+    type: String
+  output:
+    name: scan
+    type: String

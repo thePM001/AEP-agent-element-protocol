@@ -2,6 +2,7 @@
 
 pub mod dock_keys;
 pub mod docking;
+pub mod envelope_admit;
 pub mod epscom;
 pub mod lattice_log;
 pub mod side_channel_monitor;
@@ -292,7 +293,6 @@ pub fn record_lattice_event(
             frame_digest,
             recorded_at_unix as i64,
             "base_node_self_test",
-            "{}",
             "{}",
         ],
     )?;

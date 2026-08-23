@@ -27,6 +27,7 @@ pub enum SideChannelAnomalyKind {
     StaleFrameRejected,
     EpscomViolationRejected,
     LrpNotAllowlisted,
+    EnvelopeAdmitRejected,
 }
 
 #[derive(Debug, Clone, Serialize)]

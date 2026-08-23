@@ -1,0 +1,14 @@
+[package]
+name = "aep-envelope-algebra-ci"
+version = "0.1.0"
+edition = "2021"
+description = "CI gate against live OPA and live 15-step on action_path. Fail if admit.mjs or aep-admit re-grows a restricted Rego subset."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-envelope-algebra-ci"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"

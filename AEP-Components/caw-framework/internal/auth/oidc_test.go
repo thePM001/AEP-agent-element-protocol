@@ -34,10 +34,10 @@ func TestOIDCAuth_PolicyForGroups(t *testing.T) {
 			want:           "default",
 		},
 		{
-			name:           "first matching group wins",
+			name:           "highest rank group wins regardless of order",
 			groupPolicyMap: map[string]string{"admins": "admin", "developers": "default"},
 			groups:         []string{"developers", "admins"},
-			want:           "default",
+			want:           "admin",
 		},
 		{
 			name:           "no matching group returns empty",
@@ -326,3 +326,90 @@ func TestOIDCAuth_AllowedGroupsLogic(t *testing.T) {
 		})
 	}
 }
+
+func TestOIDCAuth_PolicyForGroups_OrderIndependent(t *testing.T) {
+	auth := &OIDCAuth{
+		groupPolicyMap: map[string]string{"admins": "admin", "developers": "default"},
+	}
+	a := auth.PolicyForGroups([]string{"developers", "admins"})
+	b := auth.PolicyForGroups([]string{"admins", "developers"})
+	if a != "admin" || b != "admin" {
+		t.Fatalf("order-independent highest rank: got %q and %q want admin", a, b)
+	}
+}
+
+func TestOIDCAuth_RoleForClaims_TwoGroups(t *testing.T) {
+	auth := &OIDCAuth{
+		groupRoleMap: map[string]string{"admins": "admin", "developers": "agent"},
+	}
+	a := auth.RoleForClaims(&OIDCClaims{Groups: []string{"developers", "admins"}})
+	b := auth.RoleForClaims(&OIDCClaims{Groups: []string{"admins", "developers"}})
+	if a != "admin" || b != "admin" {
+		t.Fatalf("two groups: got %q and %q want admin", a, b)
+	}
+}
+
+func TestOIDCAuth_PolicyForGroups_SameRankClosedWins(t *testing.T) {
+	auth := &OIDCAuth{
+		groupPolicyMap: map[string]string{
+			"devs":   "default",
+			"locked": "closed",
+		},
+	}
+	a := auth.PolicyForGroups([]string{"devs", "locked"})
+	b := auth.PolicyForGroups([]string{"locked", "devs"})
+	if a != "closed" || b != "closed" {
+		t.Fatalf("same-rank closed wins: got %q and %q want closed", a, b)
+	}
+}
+
+func TestOIDCAuth_PolicyForGroups_LongerGroupWhenOpen(t *testing.T) {
+	auth := &OIDCAuth{
+		groupPolicyMap: map[string]string{
+			"ops":          "default",
+			"platform-ops": "default-platform",
+		},
+	}
+	a := auth.PolicyForGroups([]string{"ops", "platform-ops"})
+	b := auth.PolicyForGroups([]string{"platform-ops", "ops"})
+	if a != "default-platform" || b != "default-platform" {
+		t.Fatalf("longer group wins when open: got %q and %q", a, b)
+	}
+}
+
+func TestOIDCAuth_RoleForClaims_SameRankClosedWins(t *testing.T) {
+	auth := &OIDCAuth{
+		groupRoleMap: map[string]string{
+			"devs":   "agent",
+			"locked": "closed",
+		},
+	}
+	a := auth.RoleForClaims(&OIDCClaims{Groups: []string{"devs", "locked"}})
+	b := auth.RoleForClaims(&OIDCClaims{Groups: []string{"locked", "devs"}})
+	if a != "closed" || b != "closed" {
+		t.Fatalf("role same-rank closed wins: got %q and %q want closed", a, b)
+	}
+}
+
+func TestOIDCAuth_RoleForClaims_HighestRankBeatsClosed(t *testing.T) {
+	auth := &OIDCAuth{
+		groupRoleMap: map[string]string{
+			"admins": "admin",
+			"locked": "closed",
+		},
+	}
+	got := auth.RoleForClaims(&OIDCClaims{Groups: []string{"locked", "admins"}})
+	if got != "admin" {
+		t.Fatalf("admin rank must beat closed: got %q", got)
+	}
+}
+
+func TestOIDCClosedToken(t *testing.T) {
+	if !oidcClosedToken("closed") || !oidcClosedToken("policy-closed") {
+		t.Fatal("closed tokens must score closed")
+	}
+	if oidcClosedToken("disclosed") || oidcClosedToken("admin") {
+		t.Fatal("disclosed and admin must not score closed")
+	}
+}
+

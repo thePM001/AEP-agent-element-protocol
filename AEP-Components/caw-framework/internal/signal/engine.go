@@ -103,36 +103,62 @@ func NewEngine(rules []SignalRule) (*Engine, error) {
 }
 
 // Check evaluates a signal against the policy.
-// Returns the decision from the first matching rule.
+// Collects matching rules. Most specific selector wins.
 // If no rule matches, returns default deny.
 func (e *Engine) Check(signal int, ctx *TargetContext) Decision {
+	bestExact := -1
+	bestPrefix := -1
+	var top []Decision
+	found := false
 	for _, rule := range e.rules {
-		// Check if signal matches
-		if _, ok := rule.signals[signal]; !ok {
+		if _, ok := rule.signals[signal]; ok == false {
 			continue
 		}
-
-		// Check if target matches
-		if !rule.target.Matches(ctx) {
+		if rule.target.Matches(ctx) == false {
 			continue
 		}
-
-		// Found a matching rule
-		return Decision{
+		dec := Decision{
 			Action:         DecisionAction(rule.rule.Decision),
 			Rule:           rule.rule.Name,
 			Message:        rule.rule.Message,
 			RedirectSignal: rule.redirect,
 			Fallback:       rule.rule.Fallback,
 		}
+		exact := 0
+		if len(rule.signals) == 1 {
+			exact = 1
+		}
+		prefix := 1000 - len(rule.signals)
+		if rule.target != nil {
+			switch rule.target.Type {
+			case TargetProcess, TargetPIDRange:
+				prefix += 20
+			case TargetSelf, TargetParent, TargetChildren:
+				prefix += 10
+			}
+		}
+		if found == false || exact > bestExact || (exact == bestExact && prefix > bestPrefix) {
+			bestExact = exact
+			bestPrefix = prefix
+			top = []Decision{dec}
+			found = true
+		} else if exact == bestExact && prefix == bestPrefix {
+			top = append(top, dec)
+		}
 	}
-
-	// Default deny
-	return Decision{
-		Action:  DecisionDeny,
-		Rule:    "",
-		Message: "no matching rule",
+	if found == false {
+		return Decision{
+			Action:  DecisionDeny,
+			Rule:    "",
+			Message: "no matching rule",
+		}
 	}
+	for _, d := range top {
+		if d.Action == DecisionDeny {
+			return d
+		}
+	}
+	return top[0]
 }
 
 // ApplyFallback adjusts a decision based on platform limitations.
@@ -166,9 +192,9 @@ func ApplyFallback(dec Decision, canBlock bool) Decision {
 
 	// No fallback specified, return audit as safe default
 	return Decision{
-		Action:  DecisionAudit,
-		Rule:    dec.Rule,
-		Message: dec.Message + " (platform cannot enforce)",
+		Action:   DecisionAudit,
+		Rule:     dec.Rule,
+		Message:  dec.Message + " (platform cannot enforce)",
 		Fallback: dec.Fallback,
 	}
 }

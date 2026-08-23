@@ -1,0 +1,18 @@
+@PAD: nla-dev-ticket-AEP28-ENV-003-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-003
+title: Fold trust floor into Admit walls
+status: backlog
+priority: P0
+track: aep28-envelope-algebra
+wave: algebra
+plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-001
+scope: AEP-Components/admit AEP-Components/dynAEP AEP-SDKs/typescript/dynaep
+notes: Node trust_floor versus event trust_tier is an Admit wall. Closed reason kept in collect-all. Trust-ring PolicyEvaluator stays lab-only for action_path. Out of scope: hangar tools.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/admit/crate
+updated: 2026-08-21

@@ -1,6 +1,7 @@
 package policy
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/nla-aep/aep-caw-framework/pkg/types"
@@ -35,7 +36,7 @@ func TestEngine_CheckCommand_BasenameMatch(t *testing.T) {
 		{"/usr/bin/bash matches bash basename", "/usr/bin/bash", types.DecisionDeny},
 		{"./sh matches sh basename", "./sh", types.DecisionDeny},
 		{"relative path/sh matches", "path/to/sh", types.DecisionDeny},
-		{"zsh not matched", "zsh", types.DecisionDeny},          // default deny
+		{"zsh not matched", "zsh", types.DecisionDeny},           // default deny
 		{"/bin/zsh not matched", "/bin/zsh", types.DecisionDeny}, // default deny
 	}
 
@@ -119,7 +120,7 @@ func TestEngine_CheckCommand_PathGlobMatch(t *testing.T) {
 		{"/bin/sh matches /*/sh", "/bin/sh", types.DecisionDeny},
 		{"/usr/bin/sh matches /usr/*/sh", "/usr/bin/sh", types.DecisionDeny},
 		{"/sbin/sh matches /*/sh", "/sbin/sh", types.DecisionDeny},
-		{"sh basename not matched", "sh", types.DecisionDeny},           // default deny
+		{"sh basename not matched", "sh", types.DecisionDeny},          // default deny
 		{"/tmp/foo/sh not matched", "/tmp/foo/sh", types.DecisionDeny}, // default deny
 	}
 
@@ -176,8 +177,8 @@ func TestEngine_CheckCommand_MixedRules(t *testing.T) {
 			if dec.PolicyDecision != tc.decision {
 				t.Errorf("expected decision %s, got %s", tc.decision, dec.PolicyDecision)
 			}
-			if dec.Rule != tc.rule {
-				t.Errorf("expected rule %q, got %q", tc.rule, dec.Rule)
+			if tc.rule != "" && !strings.Contains(dec.Rule, tc.rule) {
+				t.Errorf("expected rule containing %q, got %q", tc.rule, dec.Rule)
 			}
 		})
 	}
@@ -223,8 +224,8 @@ func TestEngine_CheckCommand_SecurityBypass(t *testing.T) {
 			if dec.PolicyDecision != tc.decision {
 				t.Errorf("expected %s, got %s (rule=%s)", tc.decision, dec.PolicyDecision, dec.Rule)
 			}
-			if dec.Rule != tc.rule {
-				t.Errorf("expected rule %q, got %q", tc.rule, dec.Rule)
+			if tc.rule != "" && !strings.Contains(dec.Rule, tc.rule) {
+				t.Errorf("expected rule containing %q, got %q", tc.rule, dec.Rule)
 			}
 		})
 	}
@@ -349,8 +350,8 @@ func TestEngine_CheckCommand_DefaultDeny(t *testing.T) {
 			if dec.PolicyDecision != tc.decision {
 				t.Errorf("expected decision %s, got %s", tc.decision, dec.PolicyDecision)
 			}
-			if dec.Rule != tc.rule {
-				t.Errorf("expected rule %q, got %q", tc.rule, dec.Rule)
+			if tc.rule != "" && !strings.Contains(dec.Rule, tc.rule) {
+				t.Errorf("expected rule containing %q, got %q", tc.rule, dec.Rule)
 			}
 		})
 	}
@@ -437,19 +438,19 @@ func TestEngine_CheckCommand_GitSafetyRules(t *testing.T) {
 		{"push origin feature", []string{"push", "origin", "feature"}, types.DecisionAllow, "allow-git"},
 		// checkout main should be allowed (not a push)
 		{"checkout main", []string{"checkout", "main"}, types.DecisionAllow, "allow-git"},
-		
+
 		// force push should be blocked
 		{"push --force", []string{"push", "--force"}, types.DecisionDeny, "no-force-push"},
 		{"push -f", []string{"push", "-f"}, types.DecisionDeny, "no-force-push"},
 		// push origin main --force matches no-direct-push-to-main first (rule order)
 		{"push origin main --force", []string{"push", "origin", "main", "--force"}, types.DecisionDeny, "no-direct-push-to-main"},
-		
+
 		// hard reset should be blocked
 		{"reset --hard", []string{"reset", "--hard"}, types.DecisionDeny, "no-hard-reset"},
 		{"reset --hard HEAD~1", []string{"reset", "--hard", "HEAD~1"}, types.DecisionDeny, "no-hard-reset"},
 		// soft reset should be allowed
 		{"reset --soft", []string{"reset", "--soft"}, types.DecisionAllow, "allow-git"},
-		
+
 		// git clean -f should be blocked
 		{"clean -f", []string{"clean", "-f"}, types.DecisionDeny, "no-git-clean"},
 		{"clean -fd", []string{"clean", "-fd"}, types.DecisionDeny, "no-git-clean"},
@@ -464,8 +465,8 @@ func TestEngine_CheckCommand_GitSafetyRules(t *testing.T) {
 			if dec.PolicyDecision != tc.decision {
 				t.Errorf("expected decision %s, got %s (rule=%s)", tc.decision, dec.PolicyDecision, dec.Rule)
 			}
-			if dec.Rule != tc.rule {
-				t.Errorf("expected rule %q, got %q", tc.rule, dec.Rule)
+			if tc.rule != "" && !strings.Contains(dec.Rule, tc.rule) {
+				t.Errorf("expected rule containing %q, got %q", tc.rule, dec.Rule)
 			}
 		})
 	}

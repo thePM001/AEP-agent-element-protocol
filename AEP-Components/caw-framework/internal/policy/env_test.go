@@ -129,8 +129,8 @@ func TestEngine_CheckEnv_DefaultSecrets(t *testing.T) {
 func TestEngine_CheckEnv_NilEngine(t *testing.T) {
 	var e *Engine
 	dec := e.CheckEnv("PATH")
-	if !dec.Allowed || dec.MatchedBy != "default-allow" {
-		t.Errorf("nil engine should allow, got Allowed=%v MatchedBy=%s", dec.Allowed, dec.MatchedBy)
+	if dec.Allowed {
+		t.Errorf("nil engine must fail closed, got Allowed=%v MatchedBy=%s", dec.Allowed, dec.MatchedBy)
 	}
 }
 

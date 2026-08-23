@@ -1,0 +1,44 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-envelope-journals
+note: Durable HVVCAS is GAPLUNE. Ticket AEP28-ENV-011.
+ticket: AEP28-ENV-011
+
+component:
+  name: product_ticket_landed
+  domain: admit
+  component_type: library
+  intent: Prove one envelope product ticket landed from registration or crate source
+  input:
+    name: source
+    type: String
+  output:
+    name: landed
+    type: bool
+
+component:
+  name: product_wave_landed
+  domain: admit
+  component_type: library
+  intent: Prove AEP28-ENV-001 through AEP28-ENV-010 all landed before journals
+  input:
+    name: tree
+    type: String
+  output:
+    name: report
+    type: WaveReport
+
+component:
+  name: journal_gate
+  domain: admit
+  component_type: service
+  intent: Allow Admit crate journals only after the product wave landed
+  input:
+    name: wave
+    type: WaveReport
+  output:
+    name: allow
+    type: bool

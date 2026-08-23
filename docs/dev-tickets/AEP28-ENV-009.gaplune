@@ -1,0 +1,18 @@
+@PAD: nla-dev-ticket-AEP28-ENV-009-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-009
+title: Product copy: Envelope algebra not 15-step live
+status: backlog
+priority: P1
+track: aep28-envelope-algebra
+wave: algebra
+plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-006
+scope: AEP-Components/admit AEP-Components/dynAEP AEP-SDKs/typescript/dynaep
+notes: Live copy names Admit collect-all walls then Apply. No 15-step evaluation chain as live. No sentence that misconfig is impossible. Defend only: closed set does not depend on definition order. CHANGELOG historical lines may stay. Out of scope: hangar Envelope meet.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/admit/crate
+updated: 2026-08-21

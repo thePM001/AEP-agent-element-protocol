@@ -1,0 +1,480 @@
+// CANONICAL: AEP-Components/dynAEP/bridge/hyperlattice
+// SDK replica is produced byte-identical by produce-aep-sdks.mjs
+// CI: scripts/gate-hyperlattice-ssot.sh and cargo test -p aep-hyperlattice-ssot --lib
+// @PAD: gaplune-pad-transform encode
+// @GCDE: gaplune-decode live-crossing-admit-apply-v1
+// Live crossing: Admit collect-all then Apply only (constraints, trust floor, writing, lattice-policy, lattice channel, partial-order and temporal bounds).
+// LatticeFilter is lab-only. No later writing stage after Admit.
+
+import type {
+  ActionLattice,
+  LatticeConstraint,
+  LatticeEvent,
+  LatticeFilter,
+  LatticeFilterResult,
+  LatticeNode,
+} from "../lattice/index.js";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  LatticePolicyEvaluator,
+  type LatticePolicyInput,
+  type LatticePolicyResult,
+} from "./LatticePolicyEvaluator.js";
+import {
+  compileLatticePolicy,
+  compiledToLatticePolicyResult,
+} from "./compileLatticeWalls.js";
+import {
+  channelInputFromEvent,
+  compileChannelWalls,
+  compilePartialOrderWalls,
+  missingParentsFromAdmit,
+  partialOrderSatisfiedFromAdmit,
+} from "./compileChannelOrderWalls.js";
+import {
+  compileTemporalWalls,
+  temporalInputFromEvent,
+} from "./compileTemporalWalls.js";
+function defaultLatticePolicyPath(): string | null {
+  const env = process.env.AEP_LATTICE_POLICY_REGO?.trim();
+  if (env && existsSync(env)) return env;
+  try {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const candidates = [
+      join(here, "../../policies/lattice-policy.rego"),
+      join(here, "../../../policies/lattice-policy.rego"),
+      "/root/NLA-AEP-v2.8-open-source/AEP-Components/dynAEP/policies/lattice-policy.rego",
+    ];
+    for (const c of candidates) if (existsSync(c)) return c;
+  } catch {}
+  return null;
+}
+
+export interface HyperlatticeFilterConfig {
+  latticePolicyPath?: string | null;
+  gapWritingLint?: boolean;
+  mode?: "strict" | "permissive" | "log_only";
+}
+
+export interface AdmitWall {
+  id: string;
+  closed: boolean;
+  reason: string;
+}
+
+export interface AdmitResult {
+  allow: boolean;
+  closed: AdmitWall[];
+}
+
+export interface HyperlatticeCrossingResult {
+  passed: boolean;
+  applied: boolean;
+  lattice: LatticeFilterResult;
+  lattice_policy: LatticePolicyResult;
+  gap_writing_violations: Array<{ rule: string; message: string }>;
+  reasons: string[];
+  admit: AdmitResult;
+}
+
+export const WRITING_RULE_NO_EM_DASHES = "no_em_dashes";
+export const WRITING_RULE_NO_EN_DASHES = "no_en_dashes";
+export const WRITING_RULE_NO_DASH_SUBSTITUTES = "no_dash_substitutes";
+export const WRITING_RULE_NO_BOX_DRAWING_DASHES = "no_box_drawing_dashes";
+export const WRITING_RULE_NO_MINUS_AS_DASH = "no_minus_as_dash";
+export const WRITING_RULE_NO_DOUBLE_HYPHEN = "no_double_hyphen";
+export const WRITING_RULE_NO_OXFORD_COMMA = "no_oxford_comma";
+export const WRITING_RULE_PUNCTUATION_WORD_SPACE = "punctuation_word_space";
+
+export function writingWallId(rule: string): string {
+  return `writing:${rule}`;
+}
+
+function collectPayloadStrings(value: unknown, out: string[]): void {
+  if (typeof value === "string") {
+    out.push(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectPayloadStrings(item, out);
+    return;
+  }
+  if (value && typeof value === "object") {
+    for (const v of Object.values(value as Record<string, unknown>)) {
+      collectPayloadStrings(v, out);
+    }
+  }
+}
+
+export function collectPayloadStringsExport(value: unknown): string[] {
+  const out: string[] = [];
+  collectPayloadStrings(value, out);
+  return out;
+}
+
+/** Prevent duplicate closed-wall reason concat when lattice, policy and writing share a reason. */
+function pushUnique(dst: string[], items: readonly string[]): void {
+  for (const item of items) {
+    if (item && !dst.includes(item)) dst.push(item);
+  }
+}
+
+export function labLatticeFilterEnabled(): boolean {
+  const v = String(process.env.AEP_LAB_LATTICE_FILTER ?? "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "on";
+}
+
+export function admitWallOpen(id: string): AdmitWall {
+  return { id: String(id), closed: false, reason: "" };
+}
+
+export function admitWallClose(id: string, reason: string): AdmitWall {
+  return { id: String(id), closed: true, reason: String(reason ?? "") };
+}
+
+export function admitCollectAll(walls: AdmitWall[] | null | undefined): AdmitResult {
+  const closed = (walls ?? [])
+    .filter((w) => w && w.closed)
+    .map((w) => ({ id: String(w.id), closed: true, reason: String(w.reason ?? "") }));
+  closed.sort((a, b) => a.id.localeCompare(b.id) || a.reason.localeCompare(b.reason));
+  const deduped: AdmitWall[] = [];
+  for (const wall of closed) {
+    const prev = deduped.length === 0 ? null : deduped[deduped.length - 1];
+    if (prev === null || prev.id !== wall.id || prev.reason !== wall.reason) {
+      deduped.push(wall);
+    }
+  }
+  return { allow: deduped.length === 0, closed: deduped };
+}
+
+export const WALL_TRUST_FLOOR = "trust_floor";
+
+/** Unbound events cannot raise the node trust floor. Empty agent id clamps to tier 1. */
+export function clampUnboundTrustTier(agentId: string | undefined | null, claimed: number | undefined | null): number {
+  if (!agentId) return 1;
+  const t = claimed == null ? 1 : Number(claimed);
+  if (!Number.isFinite(t) || t < 1) return 1;
+  return t;
+}
+
+/** Compile node trust floor versus agent trust tier into one Admit wall named trust_floor. */
+export function compileTrustFloorWall(trustTier: number, trustFloor: number): AdmitWall {
+  const closed = trustTier < trustFloor;
+  if (closed) {
+    return admitWallClose(
+      WALL_TRUST_FLOOR,
+      "Insufficient trust: " + String(trustTier) + " < " + String(trustFloor),
+    );
+  }
+  return admitWallOpen(WALL_TRUST_FLOOR);
+}
+
+export function closedSetKey(result: { closed?: AdmitWall[] } | null | undefined): string {
+  return (result?.closed ?? [])
+    .map((w) => `${w.id}\u001f${w.reason}`)
+    .slice()
+    .sort()
+    .join("\n");
+}
+
+function hasChar(text: string, ch: string): boolean {
+  return text.includes(ch);
+}
+
+function oxfordAndPattern(): string {
+  return "," + " " + "and ";
+}
+
+function oxfordOrPattern(): string {
+  return "," + " " + "or ";
+}
+
+function hasOxfordComma(text: string): boolean {
+  return text.includes(oxfordAndPattern()) || text.includes(oxfordOrPattern());
+}
+
+function hasDoubleHyphenProse(text: string): boolean {
+  return text.includes(" " + "-" + "-" + " ");
+}
+
+function hasPunctWordSpaceFail(text: string): boolean {
+  for (let i = 0; i < text.length - 1; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
+    if ((ch === "?" || ch === "!") && /[A-Za-z0-9]/.test(next)) return true;
+  }
+  return false;
+}
+
+function writingWall(rule: string, closed: boolean, reason: string): AdmitWall {
+  const id = writingWallId(rule);
+  return closed ? admitWallClose(id, reason) : admitWallOpen(id);
+}
+
+/** Compile writing.gap denies into Admit walls. One wall per rule. */
+export function compileWritingWalls(text: string): AdmitWall[] {
+  const walls: AdmitWall[] = [];
+  walls.push(
+    writingWall(
+      WRITING_RULE_NO_EM_DASHES,
+      hasChar(text, "\u2014"),
+      "Em dash U+2014 forbidden by writing.gap",
+    ),
+  );
+  walls.push(
+    writingWall(
+      WRITING_RULE_NO_EN_DASHES,
+      hasChar(text, "\u2013"),
+      "En dash U+2013 forbidden by writing.gap",
+    ),
+  );
+  const subst = hasChar(text, "\u2015") || hasChar(text, "\u2e3a") || hasChar(text, "\u2e3b");
+  walls.push(
+    writingWall(
+      WRITING_RULE_NO_DASH_SUBSTITUTES,
+      subst,
+      "Dash substitute U+2015 U+2E3A U+2E3B forbidden by writing.gap",
+    ),
+  );
+  const boxd = hasChar(text, "\u2500") || hasChar(text, "\u2501");
+  walls.push(
+    writingWall(
+      WRITING_RULE_NO_BOX_DRAWING_DASHES,
+      boxd,
+      "Box drawing dash U+2500 U+2501 forbidden by writing.gap",
+    ),
+  );
+  walls.push(
+    writingWall(
+      WRITING_RULE_NO_MINUS_AS_DASH,
+      hasChar(text, "\u2212"),
+      "Minus sign U+2212 used as dash forbidden by writing.gap",
+    ),
+  );
+  walls.push(
+    writingWall(
+      WRITING_RULE_NO_DOUBLE_HYPHEN,
+      hasDoubleHyphenProse(text),
+      "Double hyphen prose separator forbidden by writing.gap",
+    ),
+  );
+  walls.push(
+    writingWall(
+      WRITING_RULE_NO_OXFORD_COMMA,
+      hasOxfordComma(text),
+      "Oxford comma forbidden by writing.gap",
+    ),
+  );
+  walls.push(
+    writingWall(
+      WRITING_RULE_PUNCTUATION_WORD_SPACE,
+      hasPunctWordSpaceFail(text),
+      "Space after ? or ! before the next word required by writing.gap",
+    ),
+  );
+  return walls;
+}
+
+export function writingViolationsFromWalls(
+  walls: AdmitWall[] | null | undefined,
+): Array<{ rule: string; message: string }> {
+  const out: Array<{ rule: string; message: string }> = [];
+  for (const wall of walls ?? []) {
+    if (!wall.closed) continue;
+    if (!String(wall.id).startsWith("writing:")) continue;
+    out.push({ rule: String(wall.id).slice("writing:".length), message: wall.reason });
+  }
+  return out;
+}
+
+function constraintWallId(constraint: LatticeConstraint): string {
+  const field = constraint.field ? `:${constraint.field}` : "";
+  return `constraint:${constraint.type}${field}`;
+}
+
+function latticeResultFromAdmit(
+  event: LatticeEvent,
+  node: LatticeNode,
+  admit: AdmitResult,
+  constraints: {
+    passed: string[];
+    failed: Array<{ constraint: LatticeConstraint; reason: string }>;
+  },
+): LatticeFilterResult {
+  return {
+    passed: admit.allow,
+    action_path: event.action_path,
+    matched_node: node,
+    constraints_passed: constraints.passed,
+    constraints_failed: constraints.failed,
+    partial_order_satisfied: partialOrderSatisfiedFromAdmit(admit.closed),
+    missing_parents: missingParentsFromAdmit(admit.closed),
+    trust_sufficient: admit.closed.every((w) => w.id !== WALL_TRUST_FLOOR),
+    matched_interests: [],
+    next_actions: node.children ?? [],
+    duration_us: 0,
+  };
+}
+
+/**
+ * Unified hyperlattice crossing filter (one mechanism at runtime for action_path events).
+ */
+export class HyperlatticeFilter {
+  private readonly latticePolicy: LatticePolicyEvaluator;
+  /** Sliding 1s event timestamps per agent for live event_rate. */
+  private readonly eventTimestamps = new Map<string, number[]>();
+  /** Sliding 1s output action timestamps for simultaneous_outputs. */
+  private readonly outputTimestamps: number[] = [];
+
+  constructor(
+    private readonly latticeFilter: LatticeFilter,
+    private readonly lattice: ActionLattice,
+    private readonly config: HyperlatticeFilterConfig = {},
+  ) {
+    this.latticePolicy = new LatticePolicyEvaluator(config.latticePolicyPath ?? defaultLatticePolicyPath());
+    // Live OPA when lattice-policy.rego is present. Fail-closed unless lab fallback is set.
+    console.info(
+      `[HyperlatticeFilter] lattice policy source=${this.latticePolicy.getPolicySource()}` +
+        (config.latticePolicyPath ? ` path=${config.latticePolicyPath}` : ""),
+    );
+  }
+
+  private buildLatticePolicyInput(
+    event: LatticeEvent,
+    node: LatticeNode,
+  ): LatticePolicyInput {
+    const parents = node.parents ?? [];
+    const agentId = event.agent_id ?? "unknown";
+    const now = Date.now();
+    const windowMs = 1000;
+
+    let times = this.eventTimestamps.get(agentId) ?? [];
+    times = times.filter((t) => now - t < windowMs);
+    times.push(now);
+    this.eventTimestamps.set(agentId, times);
+
+    const cat = String(node.category ?? "").toLowerCase();
+    const isOutput =
+      cat === "output" ||
+      cat.includes("output") ||
+      String(event.action_path ?? "").toLowerCase().includes("output");
+    while (this.outputTimestamps.length && now - this.outputTimestamps[0] >= windowMs) {
+      this.outputTimestamps.shift();
+    }
+    if (isOutput) this.outputTimestamps.push(now);
+
+    return {
+      action_path: event.action_path,
+      trust_tier: event.trust_tier ?? 1,
+      category: node.category,
+      payload: (event.payload ?? {}) as Record<string, unknown>,
+      agent_id: agentId,
+      satisfied_actions: this.latticeFilter.getSatisfiedActions(),
+      parents_of: parents,
+      is_root: parents.length === 0,
+      all_actions: this.lattice.allActions(),
+      simultaneous_outputs: this.outputTimestamps.length,
+      event_rate: times.length,
+    };
+  }
+
+  getLatticeFilter(): LatticeFilter {
+    return this.latticeFilter;
+  }
+
+  latticePolicyLoaded(): boolean {
+    return this.latticePolicy.isLoaded();
+  }
+
+  policyPathForCompile(): string | null {
+    const fromConfig = this.config.latticePolicyPath;
+    if (fromConfig === undefined) {
+      return defaultLatticePolicyPath();
+    }
+    return fromConfig;
+  }
+
+  /**
+   * Single crossing pass: compile channel, partial-order, constraint, writing, lattice-policy and temporal walls.
+   * Admit collect-all. Apply iff allow. No OPA evaluate. No 15-step runner. No PolicyEvaluator on this path.
+   * LatticeFilter.filterAsync stays on DynAEPBridge lab branch only. filterCrossing never calls it. Stays async so sibling ENV extractors keep matching. Live body has no lab I/O await.
+   */
+  async filterCrossing(
+    event: LatticeEvent,
+    governance: string,
+    node: LatticeNode,
+  ): Promise<HyperlatticeCrossingResult> {
+    const reasons: string[] = [];
+    const gapWritingLint = this.config.gapWritingLint !== false;
+    void governance;
+    const mode = this.config.mode ?? "strict";
+
+    const payload = (event.payload ?? {}) as Record<string, unknown>;
+    const constraintCheck = this.lattice.evaluateConstraints(event.action_path, payload);
+    const walls: AdmitWall[] = [];
+    walls.push(...compileChannelWalls(channelInputFromEvent(event)));
+    walls.push(
+      ...compilePartialOrderWalls({
+        action_path: event.action_path,
+        parents: node.parents ?? [],
+        satisfied: this.latticeFilter.getSatisfiedActions(),
+        agent_id: event.agent_id ?? "",
+      }),
+    );
+    const agentTrust = clampUnboundTrustTier(event.agent_id, event.trust_tier);
+    const trustFloor = node.trust_floor ?? 1;
+    walls.push(compileTrustFloorWall(agentTrust, trustFloor));
+    for (const fail of constraintCheck.failed) {
+      walls.push(admitWallClose(constraintWallId(fail.constraint), fail.reason));
+    }
+    for (const ok of constraintCheck.passed) {
+      walls.push(admitWallOpen(`constraint:${ok}`));
+    }
+    if (gapWritingLint) {
+      const strings: string[] = [];
+      collectPayloadStrings(event.payload, strings);
+      walls.push(...compileWritingWalls(strings.join("\n")));
+    }
+    walls.push(...compileTemporalWalls(temporalInputFromEvent(event)));
+    const policyInput = this.buildLatticePolicyInput(event, node);
+    const compiled = compileLatticePolicy(policyInput);
+    for (const wall of compiled.walls) {
+      walls.push(admitWallClose(wall.id, wall.reason));
+    }
+    if (mode === "strict") {
+      for (const e of compiled.escalate) {
+        walls.push(admitWallClose("lattice.escalate", e));
+      }
+    }
+    const admit = admitCollectAll(walls);
+    const lattice_policy = compiledToLatticePolicyResult(
+      compiled,
+      this.policyPathForCompile(),
+    );
+    const lattice = latticeResultFromAdmit(event, node, admit, constraintCheck);
+    if (admit.allow === false) {
+      pushUnique(reasons, admit.closed.map((w) => w.reason));
+    }
+
+
+    const gap_writing_violations = writingViolationsFromWalls(admit.closed);
+    const passed = admit.allow;
+    const applied = admit.allow;
+    // Apply: record satisfied action for partial-order. Not a lab filterAsync call.
+    if (applied) {
+      this.latticeFilter.markSatisfied(event.action_path, event.agent_id);
+    }
+
+    return {
+      passed,
+      applied,
+      lattice,
+      lattice_policy,
+      gap_writing_violations,
+      reasons,
+      admit,
+    };
+  }
+}

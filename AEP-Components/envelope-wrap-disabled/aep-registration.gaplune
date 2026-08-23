@@ -1,0 +1,13 @@
+@PAD: aep-envelope-wrap-disabled-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-envelope-wrap-disabled
+version: 0.1.0
+kind: library
+path: AEP-Components/envelope-wrap-disabled/
+ticket: AEP28-ENV-012
+requires: aep-live-crossing-admit-apply
+capability: admit.envelope-algebra.wrap-disabled
+note: Wrap on action_path even when lattice governance is disabled. Fail if shouldFilter uses governance not-equals disabled as the wrap skip.

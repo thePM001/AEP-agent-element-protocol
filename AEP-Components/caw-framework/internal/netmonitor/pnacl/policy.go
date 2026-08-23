@@ -232,6 +232,55 @@ func (r *NetworkRule) Target() NetworkTarget {
 	return r.target
 }
 
+func scorePNACLTarget(t NetworkTarget) (exact, prefix, wild int) {
+	if t.IP != "" {
+		return 1, len(t.IP), 0
+	}
+	if t.CIDR != "" {
+		_, n, err := net.ParseCIDR(t.CIDR)
+		if err == nil {
+			ones, bits := n.Mask.Size()
+			if bits > 0 && ones == bits {
+				return 1, ones, 0
+			}
+			return 0, ones, 0
+		}
+	}
+	h := strings.ToLower(t.Host)
+	star := strings.Count(h, "*")
+	idx := strings.Index(h, "*")
+	if idx < 0 {
+		exact = 1
+		prefix = len(h)
+	} else {
+		lit := 0
+		for _, ch := range h {
+			if ch != '*' {
+				lit++
+			}
+		}
+		prefix = lit
+		if idx > prefix {
+			prefix = idx
+		}
+		wild = -star
+	}
+	if t.Port != "" && t.Port != "*" {
+		prefix++
+	}
+	return exact, prefix, wild
+}
+
+func pnaclBetter(ae, ap, aw, be, bp, bw int) bool {
+	if ae != be {
+		return ae > be
+	}
+	if ap != bp {
+		return ap > bp
+	}
+	return aw > bw
+}
+
 // ProcessPolicy defines network policy for a specific process.
 type ProcessPolicy struct {
 	// Name is a human-readable name for this policy.
@@ -408,61 +457,110 @@ func (e *PolicyEngine) findChildPolicy(parent *ProcessPolicy, proc ProcessInfo) 
 
 // evaluateWithChild evaluates rules for a child process.
 func (e *PolicyEngine) evaluateWithChild(parent *ProcessPolicy, child *ChildPolicy, host string, ip net.IP, port int, protocol string) PolicyResult {
-	// Check child-specific rules first (most specific wins).
+	type hit struct {
+		exact, prefix, wild int
+		res                 PolicyResult
+	}
+	var hits []hit
 	for i, rule := range child.Rules {
-		if rule.Matches(host, ip, port, protocol) {
-			return PolicyResult{
+		if rule.Matches(host, ip, port, protocol) == false {
+			continue
+		}
+		ex, pr, w := scorePNACLTarget(rule.Target())
+		pr += 100
+		hits = append(hits, hit{ex, pr, w, PolicyResult{
+			Decision:    rule.Decision(),
+			ProcessName: parent.Name,
+			ChildName:   child.Name,
+			RuleIndex:   i,
+		}})
+	}
+	if child.Inherit {
+		for i, rule := range parent.Rules {
+			if rule.Matches(host, ip, port, protocol) == false {
+				continue
+			}
+			ex, pr, w := scorePNACLTarget(rule.Target())
+			hits = append(hits, hit{ex, pr, w, PolicyResult{
 				Decision:    rule.Decision(),
 				ProcessName: parent.Name,
 				ChildName:   child.Name,
 				RuleIndex:   i,
-			}
+				IsInherited: true,
+			}})
 		}
 	}
-
-	// If inheritance is enabled, check parent rules.
-	if child.Inherit {
-		for i, rule := range parent.Rules {
-			if rule.Matches(host, ip, port, protocol) {
-				return PolicyResult{
-					Decision:    rule.Decision(),
-					ProcessName: parent.Name,
-					ChildName:   child.Name,
-					RuleIndex:   i,
-					IsInherited: true,
-				}
-			}
+	if len(hits) == 0 {
+		return PolicyResult{
+			Decision:    parent.Default,
+			ProcessName: parent.Name,
+			ChildName:   child.Name,
+			RuleIndex:   -1,
+			IsInherited: child.Inherit,
 		}
 	}
-
-	// Use parent's default decision.
-	return PolicyResult{
-		Decision:    parent.Default,
-		ProcessName: parent.Name,
-		ChildName:   child.Name,
-		RuleIndex:   -1,
-		IsInherited: child.Inherit,
+	best := hits[0]
+	for _, h := range hits[1:] {
+		if pnaclBetter(h.exact, h.prefix, h.wild, best.exact, best.prefix, best.wild) {
+			best = h
+		}
 	}
+	var top []PolicyResult
+	for _, h := range hits {
+		if h.exact == best.exact && h.prefix == best.prefix && h.wild == best.wild {
+			top = append(top, h.res)
+		}
+	}
+	for _, r := range top {
+		if r.Decision == DecisionDeny {
+			return r
+		}
+	}
+	return top[0]
 }
 
-// evaluateProcessRules evaluates rules for a process.
 func (e *PolicyEngine) evaluateProcessRules(pp *ProcessPolicy, host string, ip net.IP, port int, protocol string) PolicyResult {
+	type hit struct {
+		exact, prefix, wild int
+		res                 PolicyResult
+	}
+	var hits []hit
 	for i, rule := range pp.Rules {
-		if rule.Matches(host, ip, port, protocol) {
-			return PolicyResult{
-				Decision:    rule.Decision(),
-				ProcessName: pp.Name,
-				RuleIndex:   i,
-			}
+		if rule.Matches(host, ip, port, protocol) == false {
+			continue
+		}
+		ex, pr, w := scorePNACLTarget(rule.Target())
+		hits = append(hits, hit{ex, pr, w, PolicyResult{
+			Decision:    rule.Decision(),
+			ProcessName: pp.Name,
+			RuleIndex:   i,
+		}})
+	}
+	if len(hits) == 0 {
+		return PolicyResult{
+			Decision:    pp.Default,
+			ProcessName: pp.Name,
+			RuleIndex:   -1,
 		}
 	}
-
-	// No rule matched; use process default.
-	return PolicyResult{
-		Decision:    pp.Default,
-		ProcessName: pp.Name,
-		RuleIndex:   -1,
+	best := hits[0]
+	for _, h := range hits[1:] {
+		if pnaclBetter(h.exact, h.prefix, h.wild, best.exact, best.prefix, best.wild) {
+			best = h
+		}
 	}
+	var top []PolicyResult
+	for _, h := range hits {
+		if h.exact == best.exact && h.prefix == best.prefix && h.wild == best.wild {
+			top = append(top, h.res)
+		}
+	}
+	for _, r := range top {
+		if r.Decision == DecisionDeny {
+			return r
+		}
+	}
+	return top[0]
 }
 
 // EvaluateForParentChild evaluates policy considering parent-child relationship.
@@ -579,84 +677,131 @@ func (pe *PolicyEvaluator) Evaluate(ctx ConnectionContext, processACL *PolicyEva
 // evaluateWithInheritance evaluates rules with parent-child inheritance.
 // Child rules are evaluated first, then parent rules if inheritance is enabled.
 func (pe *PolicyEvaluator) evaluateWithInheritance(ctx ConnectionContext, parent, child *PolicyEvaluatorACL) EvaluationResult {
-	// Evaluate child-specific rules first (most specific wins).
+	type hit struct {
+		exact, prefix, wild int
+		res                 EvaluationResult
+	}
+	var hits []hit
 	for i := range child.Rules {
 		rule := &child.Rules[i]
-		if pe.evaluateNetworkTarget(*rule, ctx) {
-			return EvaluationResult{
+		if pe.evaluateNetworkTarget(*rule, ctx) == false {
+			continue
+		}
+		ex, pr, w := scorePNACLTarget(*rule)
+		pr += 100
+		hits = append(hits, hit{ex, pr, w, EvaluationResult{
+			Decision:       rule.Decision,
+			MatchedRule:    rule,
+			RuleIndex:      i,
+			ProcessACLName: parent.Name,
+			IsInherited:    false,
+			ChildACLName:   child.Name,
+		}})
+	}
+	if child.Inherit {
+		for i := range parent.Rules {
+			rule := &parent.Rules[i]
+			if pe.evaluateNetworkTarget(*rule, ctx) == false {
+				continue
+			}
+			ex, pr, w := scorePNACLTarget(*rule)
+			hits = append(hits, hit{ex, pr, w, EvaluationResult{
 				Decision:       rule.Decision,
 				MatchedRule:    rule,
 				RuleIndex:      i,
 				ProcessACLName: parent.Name,
-				IsInherited:    false,
+				IsInherited:    true,
 				ChildACLName:   child.Name,
-			}
+			}})
 		}
 	}
-
-	// If inheritance is enabled, evaluate parent rules.
-	if child.Inherit {
-		for i := range parent.Rules {
-			rule := &parent.Rules[i]
-			if pe.evaluateNetworkTarget(*rule, ctx) {
-				return EvaluationResult{
-					Decision:       rule.Decision,
-					MatchedRule:    rule,
-					RuleIndex:      i,
-					ProcessACLName: parent.Name,
-					IsInherited:    true,
-					ChildACLName:   child.Name,
-				}
-			}
+	if len(hits) == 0 {
+		defaultDecision := child.Default
+		if defaultDecision == "" {
+			defaultDecision = parent.Default
+		}
+		if defaultDecision == "" {
+			defaultDecision = pe.GlobalDefault
+		}
+		return EvaluationResult{
+			Decision:       defaultDecision,
+			RuleIndex:      -1,
+			ProcessACLName: parent.Name,
+			IsInherited:    child.Inherit,
+			ChildACLName:   child.Name,
 		}
 	}
-
-	// No rule matched; use child's default if set, otherwise parent's default.
-	defaultDecision := child.Default
-	if defaultDecision == "" {
-		defaultDecision = parent.Default
+	best := hits[0]
+	for _, h := range hits[1:] {
+		if pnaclBetter(h.exact, h.prefix, h.wild, best.exact, best.prefix, best.wild) {
+			best = h
+		}
 	}
-	if defaultDecision == "" {
-		defaultDecision = pe.GlobalDefault
+	var top []EvaluationResult
+	for _, h := range hits {
+		if h.exact == best.exact && h.prefix == best.prefix && h.wild == best.wild {
+			top = append(top, h.res)
+		}
 	}
-
-	return EvaluationResult{
-		Decision:       defaultDecision,
-		RuleIndex:      -1,
-		ProcessACLName: parent.Name,
-		IsInherited:    child.Inherit,
-		ChildACLName:   child.Name,
+	for _, r := range top {
+		if r.Decision == DecisionDeny {
+			return r
+		}
 	}
+	return top[0]
 }
 
-// evaluateACLRules evaluates a list of rules against a connection context.
 func (pe *PolicyEvaluator) evaluateACLRules(ctx ConnectionContext, rules []NetworkTarget, aclName string, defaultDecision Decision, isInherited bool, childName string) EvaluationResult {
+	type hit struct {
+		exact, prefix, wild int
+		res                 EvaluationResult
+	}
+	var hits []hit
 	for i := range rules {
 		rule := &rules[i]
-		if pe.evaluateNetworkTarget(*rule, ctx) {
-			return EvaluationResult{
-				Decision:       rule.Decision,
-				MatchedRule:    rule,
-				RuleIndex:      i,
-				ProcessACLName: aclName,
-				IsInherited:    isInherited,
-				ChildACLName:   childName,
-			}
+		if pe.evaluateNetworkTarget(*rule, ctx) == false {
+			continue
+		}
+		ex, pr, w := scorePNACLTarget(*rule)
+		hits = append(hits, hit{ex, pr, w, EvaluationResult{
+			Decision:       rule.Decision,
+			MatchedRule:    rule,
+			RuleIndex:      i,
+			ProcessACLName: aclName,
+			IsInherited:    isInherited,
+			ChildACLName:   childName,
+		}})
+	}
+	if len(hits) == 0 {
+		if defaultDecision == "" {
+			defaultDecision = pe.GlobalDefault
+		}
+		return EvaluationResult{
+			Decision:       defaultDecision,
+			RuleIndex:      -1,
+			ProcessACLName: aclName,
+			IsInherited:    isInherited,
+			ChildACLName:   childName,
 		}
 	}
-
-	// No rule matched; use default decision.
-	if defaultDecision == "" {
-		defaultDecision = pe.GlobalDefault
+	best := hits[0]
+	for _, h := range hits[1:] {
+		if pnaclBetter(h.exact, h.prefix, h.wild, best.exact, best.prefix, best.wild) {
+			best = h
+		}
 	}
-
-	return EvaluationResult{
-		Decision:       defaultDecision,
-		RuleIndex:      -1,
-		ProcessACLName: aclName,
-		IsInherited:    isInherited,
-		ChildACLName:   childName,
+	var top []EvaluationResult
+	for _, h := range hits {
+		if h.exact == best.exact && h.prefix == best.prefix && h.wild == best.wild {
+			top = append(top, h.res)
+		}
 	}
+	for _, r := range top {
+		if r.Decision == DecisionDeny {
+			return r
+		}
+	}
+	return top[0]
 }
 
 // evaluateNetworkTarget checks if a single rule matches the connection context.

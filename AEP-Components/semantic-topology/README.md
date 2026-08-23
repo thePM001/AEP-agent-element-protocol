@@ -11,7 +11,7 @@
 | Registry | `AEP-Base-Node/registry/catalog.json`, `AEP-Base-Node/registry/components/*.json` | Component IDs, `pairs_with` neighbors |
 | Intent snapshots | `intent-ledger` (`intents/<id>/blast-radius.json`) | Active blast radius component set |
 
-AEP hyperlattice scene graphs (`validateLatticeScene()`, UI scene graph, dynAEP Action Lattice) are the protocol's topological substrate. This component only **annotates** the Composer canvas layer.
+AEP hyperlattice scene graphs are the topological substrate. `validateLatticeScene()` is boot-time structural proof, not runtime Admit. This component only annotates the Composer canvas layer.
 
 ## Outputs
 

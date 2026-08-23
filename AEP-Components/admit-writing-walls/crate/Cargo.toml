@@ -1,0 +1,15 @@
+[package]
+name = "aep-admit-writing-walls"
+version = "0.1.0"
+edition = "2021"
+description = "Compile writing.gap rules into Admit walls and fold them into collect-all."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-admit-writing-walls"
+path = "src/main.rs"
+
+[dependencies]
+aep-admit = { path = "../../admit/crate" }
+anyhow = "1"

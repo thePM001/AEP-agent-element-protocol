@@ -8,7 +8,7 @@
 **Public repository:** [https://github.com/thePM001/AEP-agent-element-protocol](https://github.com/thePM001/AEP-agent-element-protocol)
 
 **AEP already had 32 Github stars before Grok "accidentally" deleted them on 22.07.2026 !**
-**AEP 2.9 is estimated for completion approximately in September 2026 with many new changes and additional features.**
+**AEP 2.9 is estimated for completion approximately in September 2026 with many new changes additional features.**
 
 **How to best explore the basics of AEP ? - Simply copy the repo URL into your LLM chat of choice that has internet search capability (Grok, Gemini, ChatGPT, Opus, etc.) and let the AI explain it to you.**
 
@@ -22,18 +22,22 @@ AEP 2.8 merges **dynAEP 1.0** (hyperlattice runtime: `action_path` filter, tempo
 
 **Base Node is the kernel. Everything else is an SDK client, a runtime installer or a protocol component.**
 
-Each governed system gets **one AEP Hyperlattice wrap** (scene graph + `action_path` registry + GAP policy bindings + Lattice Channel transport). `validateLatticeScene()` proves the topological matrix for **every** system type (agents, services, workflows, APIs, infrastructure), not UI only. No action crosses the wrap without hyperlattice validation.
+AEP 2.8 is a **reference protocol library**. Components sit in this repo so a builder can attach them. Computations those components perform belong in the **Base Node kernel**. Transport is a sealed lattice frame (`AEP-Components/lattice-channels/`). After the frame is opened, run collect-all Admit (`aep-envelope` / `aep-live-entry`) and the 15-rule meet (`aep-evaluation-chain`).
 
-<p align="center" style="background-color:#ffffff;padding:16px;">
-  <a href="docs/architecture/aep-28-architecture.png" target="_blank" rel="noopener" title="Click to open zoomable full-size diagram">
-    <img
-      src="docs/architecture/aep-28-architecture.png"
-      alt="AEP 2.8 architecture diagram (click to zoom)"
-      width="100%"
-      style="background-color:#ffffff;cursor:zoom-in;"
-    />
-  </a>
-</p>
+```mermaid
+flowchart LR
+  UI[Composer Lite]
+  SDK[SDK clients]
+  LT[lattice-channels sealed PQ frame]
+  BN[Base Node kernel]
+  ADMIT[aep-envelope admit collect-all then Apply]
+  MEET[aep-evaluation-chain 15-rule meet]
+  UI --> LT
+  SDK --> LT
+  LT --> BN
+  BN --> ADMIT
+  BN --> MEET
+```
 
 | Layer | What it is | Canonical path |
 |-------|------------|----------------|
@@ -96,26 +100,27 @@ cargo test -p multi-base-node-core
 
 - **Transport:** every SDK, IDE, wizard, setup-agent and runtime module communicates with protocol components **only** via `PQEncryptedCapsule` **Lattice Channels** (docking sockets carry sealed frames only).
 - **No bypass:** plain `{ping}`, `{event}` and `{register_lrp}` wire formats are rejected and logged as side-channel anomalies.
-- **Scene validation:** `validateLatticeScene()` runs on every config load for **all system types**. Topological lattice matrix proof is mandatory before actions are accepted.
+- **Scene proof:** `validateLatticeScene()` is boot-time structural proof of a scene graph. It is not the runtime collect-all Admit or the 15-rule meet. Actions after a sealed lattice frame are judged in the Base Node kernel.
 - **Deploy:** Base Node Rust kernel is **containerized** (Docker) or docked to an AEP Validation Engine module.
 - **Shared transport:** JS/MJS/TS clients use [`AEP-Components/lattice-channels/lib/lattice-transport.mjs`](AEP-Components/lattice-channels/lib/lattice-transport.mjs) to seal frames via `aep-lattice-log build-frame`.
 
 ```mermaid
 flowchart LR
-  UI[Composer Lite :8424] --> CL[AEP-Composer-Lite/lib/http-api.mjs]
-  CLIENT[UCB HTTP MCP client] --> UCB[AEP-Docks/ucb :8412]
-  UCB --> LT[lattice-channels/lattice-transport.mjs]
-  CL --> LT
-  LT --> VD[validation dock]
-  LT --> ID[inference dock]
-  LT --> FF[future_features dock]
-  LT --> WS[wasm_sandbox socket]
-  SDK[AEP-SDKs clients] --> LT
-  MG[model-gateway] --> LGF[lattice-gated-fetch]
-  LGF --> ID
-  LGF --> EXT[External APIs]
-  REG[AEP-Base-Node/registry] --> LGF
-  CCA[CCA LLM] --> LGF
+  UI[Composer Lite]
+  SDK[SDK clients]
+  CCA[CCA agent]
+  UCB[UCB airlock optional]
+  LT[lattice-channels sealed PQ frame]
+  BN[Base Node kernel]
+  ADMIT[aep-envelope admit collect-all then Apply]
+  MEET[aep-evaluation-chain 15-rule meet]
+  UI --> LT
+  SDK --> LT
+  CCA --> LT
+  UCB --> LT
+  LT --> BN
+  BN --> ADMIT
+  BN --> MEET
 ```
 
 | Path | Wire format | Notes |
@@ -160,7 +165,7 @@ AEP 2.8 **inherits** the full 2.75e governance stack. Components are extracted f
 
 | Feature | Component path |
 |---------|----------------|
-| 15-step evaluation chain | `AEP-Components/evaluation-chain/` |
+| evaluation-chain (Rust 15-rule meet) | `AEP-Components/evaluation-chain/crate` |
 | 11 content scanners (PII, secrets, injection, jailbreak, toxicity, URLs, data quality, predictions, brand, regulatory, temporal) | `AEP-Components/scanners/` |
 | 4 trust rings (sandbox, user, system, enterprise) | `AEP-Components/trust-rings/` |
 | Evidence ledger (SHA-256 hash chain + Merkle proofs) | `AEP-Components/evidence-ledger/` |
@@ -308,7 +313,7 @@ AEP is a **3-layer governance architecture**: Structure (what exists and where),
 
 Beyond UI, the same separation maps to workflows, REST APIs, ML pipelines, event systems, infrastructure as code, smart contracts and agentic commerce: **agents propose, AEP validates, only compliant output executes.**
 
-Every agent action passes through a deterministic **15-step evaluation chain** (allow or deny, no ambiguity).
+AEP 2.8 is a reference protocol library. Components sit in the repo so a builder can attach them. A sealed lattice frame is the transport (`AEP-Components/lattice-channels/`). After the frame is opened, run collect-all Admit walls (`aep-envelope` via `aep-live-entry`) covering constraints, trust floor, writing, lattice-policy, lattice channel, partial-order and temporal bounds. Live OPA evaluate is not on this path.
 
 The mathematical foundation is the **Deterministic Adjudication Lattice (DAL)**. Lattice memory stores validated outputs as immutable attractors; known-good proposals match attractors and skip cold-path validation. See [`AEP-Research-Paper/`](AEP-Research-Paper/) for the formal specification.
 
@@ -324,7 +329,13 @@ AEP v2.75+ extends governance to the governance layer itself: Schema Builder (ML
 
 **Z-band rule:** each element type has a fixed z-index band (Shell 0-9, Panel 10-19, …, Tooltip 80-89). Violations are rejected mathematically.
 
-### 15-step evaluation chain
+### Evaluation chain (reference)
+
+AEP 2.8 is a reference protocol library. Nothing here has to run as a factory. A builder attaches the parts.
+
+How to attach: open a sealed lattice frame (`AEP-Components/lattice-channels/`), then run the 15-rule meet in Rust (`AEP-Components/evaluation-chain/crate`, crate `aep-evaluation-chain`). All 15 walls are judged together. If two fail, both are listed. Order of walls does not change yes/no. Skip is not used.
+
+The table below is those 15 named walls.
 
 | Step | Name | Description |
 |------|------|-------------|
@@ -347,7 +358,7 @@ AEP v2.75+ extends governance to the governance layer itself: Schema Builder (ML
 | Category | Count | Highlights |
 |----------|-------|------------|
 | Architecture | 5 | Three-layer separation, z-band hierarchy, 14 prefix types, template nodes, schema versioning |
-| Evaluation chain | 5 | 15-step chain, short-circuit profiles, AOT + JIT validation |
+| Evaluation chain | 5 | Rust meet of 15 walls, collect-all, no skip, attach after sealed lattice frame |
 | Content scanners | 11 | PII, injection, secrets, jailbreak, toxicity, URL, data profiler, prediction, brand, regulatory, temporal |
 | Governance | 8 | Trust scoring, 4 rings, covenants, drift, kill switch, rollback, hard/soft violations, presets |
 | Fleet / multi-agent | 6 | Identity, fleet limits, spawn governance, message scanning, verification handshake, fleet API |
@@ -606,7 +617,7 @@ Manifest: `AEP-Components/conformance/tests/manifest.json` (CC-01 through CC-15)
 
 **Canonical code:** [`AEP-Components/hyperlattice/lib/hyperlattice.mjs`](AEP-Components/hyperlattice/lib/hyperlattice.mjs) loads `aep-lattice.yaml` event nodes and GAP policy nodes into `buildHyperlatticeView()`, persists `policy_overrides.hyperlattice` via CCA/setup-agent and exposes `GET /api/hyperlattice` on Composer Lite. Legacy names `policy_lattice` and `dynaep` in config are **node families inside this one object**, not separate mechanisms.
 
-**Runtime:** `HyperlatticeFilter.filterCrossing()` in the dynAEP bridge runs one pass per `action_path` crossing: `LatticeFilter.filterAsync()` + `lattice-policy.rego` (loaded from disk, precompiled eval) + GAP `writing.gap` lint on payload strings. Base Node boot calls `validateHyperlatticeOnBoot()` on every `base-node.json` write and preflight.
+**Runtime (reference attach):** After a sealed lattice frame is opened, run Rust `aep-live-entry` one pass per `action_path`: in-process `aep_envelope::admit` collect-all walls then Apply. Base Node boot calls `validateHyperlatticeOnBoot()` on every `base-node.json` write and preflight.
 
 ### Node families in the one hyperlattice
 
@@ -619,7 +630,7 @@ Manifest: `AEP-Components/conformance/tests/manifest.json` (CC-01 through CC-15)
 | Transport | [`AEP-Components/lattice-channels/`](AEP-Components/lattice-channels/) | PQEncryptedCapsule seal on every crossing of the wrap |
 | Canvas | `composer-lite-graph.json` in `AEP_DATA` | Visual projection of the same graph: hub, docks, agents, connectors |
 
-`validateLatticeScene()` proves the full topological matrix for **all** governed system types (agents, services, workflows, APIs, infrastructure). No second graph. `semantic-topology` annotates this canvas only.
+`validateLatticeScene()` is boot-time structural proof of a scene graph. It is not runtime Admit. Runtime attach after a sealed lattice frame is collect-all Admit (`aep-envelope` / `aep-live-entry`) and the 15-rule meet (`aep-evaluation-chain`) in the Base Node kernel. `semantic-topology` annotates the Composer canvas only.
 
 ### Partial order (SYSTEM to SANDBOX)
 
@@ -641,46 +652,41 @@ SANDBOX (most restrictive)
 
 ### One crossing pipeline
 
-Every action that crosses the wrap runs the same pipeline. `LatticeFilter.filterAsync()` evaluates `action_path` nodes **inside** the hyperlattice, not beside it:
+A builder attach recipe: sealed lattice frame, then Admit collect-all walls then Apply. Rust `aep-live-entry` (`aep_envelope::admit` in-process) is the action checker. The 15-rule meet is `aep-evaluation-chain`. `LatticeFilter.filterAsync` is a leftover sequential filter, not the reference meet.
 
-membership, trust floor, partial-order parents, constraint eval, validation hooks, agent interest, temporal authority, structural validation, GAP eval, 15-step scanners.
+Closed set does not depend on definition order.
 
 ```mermaid
 flowchart TB
-  subgraph SYSTEMS[Wrapped application component engine]
-    APP["Native AEP component"]
-    UCB["UCB airlock client port 8412"]
+  subgraph BUILDER[Builder attach]
+    APP[Native AEP component]
+    UCB[UCB airlock optional]
   end
 
-  subgraph HL[One AEP Hyperlattice]
-    LC["Lattice Channel PQ seal"]
-    VAL["validateLatticeScene"]
-    FIL["hyperlattice filter action_path GAP LRP"]
-    PIPE["temporal structural eval chain"]
-    CANVAS["composer-lite-graph.json"]
+  subgraph TRANSPORT[Lattice channels]
+    LC[Sealed PQEncryptedCapsule frame]
   end
 
-  subgraph DOCKS[Base Node docks on the wrap]
-    VE["validation_engine"]
-    RM["regulation_module"]
+  subgraph KERNEL[Base Node kernel]
+    DOCK[Docks open the frame]
+    ADMIT[aep-envelope admit collect-all then Apply]
+    MEET[aep-evaluation-chain 15-rule meet]
   end
 
   APP --> LC
   UCB --> LC
-  LC --> VAL --> FIL --> PIPE
-  VAL --- CANVAS
-  FIL --> VE
-  PIPE --> VE
-  FIL --> RM
+  LC --> DOCK
+  DOCK --> ADMIT
+  DOCK --> MEET
 ```
 
 | Artifact | Path |
 |----------|------|
-| Hyperlattice filter | [`AEP-Components/dynAEP/bridge/lattice/`](AEP-Components/dynAEP/bridge/lattice/) |
-| Canvas + bindings | [`AEP-Composer-Lite/lib/graph-store.mjs`](AEP-Composer-Lite/lib/graph-store.mjs), [`policy-lattice.mjs`](AEP-Composer-Lite/lib/policy-lattice.mjs) |
-| Blast overlay | [`AEP-Components/semantic-topology/lib/lattice-overlay.mjs`](AEP-Components/semantic-topology/lib/lattice-overlay.mjs) |
-| Persisted config | `policy_overrides` on Base Node (one hyperlattice, not two configs) |
-| Rego | `policies/lattice-policy.rego` references hyperlattice nodes |
+| Lattice channels | [`AEP-Components/lattice-channels/`](AEP-Components/lattice-channels/) |
+| Admit collect-all | [`AEP-Components/envelope/crate`](AEP-Components/envelope/crate), [`AEP-Components/live-entry/crate`](AEP-Components/live-entry/crate) |
+| 15-rule meet | [`AEP-Components/evaluation-chain/crate`](AEP-Components/evaluation-chain/crate) |
+| Base Node kernel | [`AEP-Base-Node/`](AEP-Base-Node/) |
+| Canvas + bindings | [`AEP-Composer-Lite/lib/graph-store.mjs`](AEP-Composer-Lite/lib/graph-store.mjs) |
 
 **Operator rule:** one hyperlattice declaration per governed system. Scene + `aep-lattice.yaml` + GAP bindings + dock channels. Anything less is a broken wrap.
 

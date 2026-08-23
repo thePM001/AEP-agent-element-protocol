@@ -1,0 +1,7 @@
+@PAD: aep-env022-probe-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.env022.probe.v1
+format: gaplune
+json: prohibited
+ticket: AEP28-ENV-022
+note: Probe deposit for sequential-deny fold.

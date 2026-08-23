@@ -1,0 +1,16 @@
+[package]
+name = "aep-admit-parity"
+version = "0.1.0"
+edition = "2021"
+description = "CI job: compare Rust aep-admit collect-all to admit.mjs on shared fixtures."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-admit-parity"
+path = "src/main.rs"
+
+[dependencies]
+aep-admit = { path = "../../admit/crate" }
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }

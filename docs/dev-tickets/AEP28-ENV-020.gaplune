@@ -1,0 +1,18 @@
+@PAD: nla-dev-ticket-AEP28-ENV-020-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-020
+title: Closed-set parity: live path matches aep-envelope, not the TS compilers.
+status: backlog
+priority: P0
+track: aep28-envelope-algebra
+wave: rust-live
+plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-018
+scope: AEP-Components/envelope AEP-Components/dynAEP AEP-SDKs/typescript/dynaep
+notes: Same fixtures: allow, one closed wall, N closed walls, order permutation. Live crossing closed-set key equals aep-envelope. envelope/lib/admit.mjs may match the crate. TS HyperlatticeFilter compile path is not the oracle. Out of scope: hangar tools.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/envelope/crate
+updated: 2026-08-22

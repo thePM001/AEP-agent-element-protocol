@@ -723,6 +723,15 @@ export class LatticeFilter {
     this.lattice = lattice;
     this.hookRegistry = hookRegistry || new HookRegistry();
     this.hookName = hookName || null;
+
+  }
+
+  getHookName(): string | null {
+    return this.hookName;
+  }
+
+  getRegisteredAgentIds(): string[] {
+    return Array.from(this.interests.keys());
   }
 
   /** Register an agent's interest in lattice paths */
@@ -809,7 +818,8 @@ export class LatticeFilter {
     result.matched_node = node;
 
     // 2. Check trust floor
-    const agentTrust = event.trust_tier || 1;
+    const boundAgent = Boolean(event.agent_id);
+    const agentTrust = boundAgent ? (event.trust_tier ?? 1) : 1;
     result.trust_sufficient = this.lattice.trustSufficient(
       event.action_path,
       agentTrust

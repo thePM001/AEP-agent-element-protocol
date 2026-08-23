@@ -1,0 +1,18 @@
+@PAD: nla-dev-ticket-AEP28-ENV-011-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-011
+title: coding-completion and project-completion-bac journals after envelope algebra lands
+status: backlog
+priority: P1
+track: aep28-envelope-algebra
+wave: algebra
+plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-001 AEP28-ENV-002 AEP28-ENV-003 AEP28-ENV-004 AEP28-ENV-005 AEP28-ENV-006 AEP28-ENV-007 AEP28-ENV-008 AEP28-ENV-009 AEP28-ENV-010
+scope: AEP-Components/admit AEP-Components/dynAEP AEP-SDKs/typescript/dynaep
+notes: Not a product hole. After product tickets land, nla-policy-scan gate coding-completion and project-completion-bac on the Admit crate. No ship prose before those journals. Hangar tools stay out of scope.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/admit/crate
+updated: 2026-08-21

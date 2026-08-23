@@ -1,0 +1,44 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-envelope-algebra-ci
+note: Durable HVVCAS is GAPLUNE. Ticket AEP28-ENV-010.
+ticket: AEP28-ENV-010
+
+component:
+  name: live_opa_absent
+  domain: dynaep
+  component_type: service
+  intent: Fail CI if HyperlatticeFilter.filterCrossing still calls latticePolicy.evaluate on the live path
+  input:
+    name: filter_source
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: live_15step_absent
+  domain: dynaep
+  component_type: service
+  intent: Fail CI if HyperlatticeFilter.filterCrossing still calls runEvaluationChain on the live path
+  input:
+    name: filter_source
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: restricted_rego_absent
+  domain: admit
+  component_type: service
+  intent: Fail CI if admit.mjs or aep-admit re-grows a restricted Rego subset instead of compiled walls
+  input:
+    name: source
+    type: String
+  output:
+    name: scan
+    type: String

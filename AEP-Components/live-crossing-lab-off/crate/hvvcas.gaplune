@@ -1,0 +1,20 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-live-crossing-lab-off
+note: Durable HVVCAS is GAPLUNE. Ticket AEP28-ENV-013.
+ticket: AEP28-ENV-013
+
+component:
+  name: live_lab_filter_absent
+  domain: dynaep
+  component_type: service
+  intent: Fail CI if HyperlatticeFilter.filterCrossing still calls latticeFilter.filterAsync when AEP_LAB_LATTICE_FILTER is on
+  input:
+    name: filter_source
+    type: String
+  output:
+    name: scan
+    type: String

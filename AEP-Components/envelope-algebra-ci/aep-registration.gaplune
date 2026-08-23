@@ -1,0 +1,13 @@
+@PAD: aep-envelope-algebra-ci-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-envelope-algebra-ci
+version: 0.1.0
+kind: library
+path: AEP-Components/envelope-algebra-ci/
+ticket: AEP28-ENV-010
+requires: aep-envelope-algebra
+capability: admit.envelope-algebra.ci-gate
+note: CI gate against live OPA and live 15-step on action_path. Fail if HyperlatticeFilter.filterCrossing still calls latticePolicy.evaluate or runEvaluationChain. Fail if admit.mjs or aep-admit re-grows a restricted Rego subset instead of compiled walls.

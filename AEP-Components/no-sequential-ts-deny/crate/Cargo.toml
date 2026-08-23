@@ -1,0 +1,16 @@
+# @PAD: aep-no-sequential-ts-deny-cargo-v1
+# @GCDE: gaplune.policy.v1
+[package]
+name = "aep-no-sequential-ts-deny"
+version = "0.1.0"
+edition = "2021"
+description = "AEP28-ENV-022 sequential TypeScript deny CI crate"
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-no-sequential-ts-deny"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"

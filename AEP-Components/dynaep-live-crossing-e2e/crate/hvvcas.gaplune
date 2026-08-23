@@ -1,0 +1,43 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-dynaep-live-crossing-e2e
+note: Live crossing E2E. Admit collect-all then OPA deny collect-all then Apply. Skip Apply when Admit allow is false.
+
+component:
+  name: live_crossing
+  domain: dynaep
+  component_type: service
+  intent: Collect every closed Admit wall then collect every OPA deny then Apply only after Admit allows
+  input:
+    name: crossing
+    type: CrossingInput
+  output:
+    name: result
+    type: CrossingResult
+
+component:
+  name: apply_gate
+  domain: dynaep
+  component_type: library
+  intent: Skip Apply when Admit allow is false and record applied false
+  input:
+    name: admit_allow
+    type: bool
+  output:
+    name: applied
+    type: bool
+
+component:
+  name: closed_set_order
+  domain: dynaep
+  component_type: library
+  intent: Prove shuffling wall order does not change the closed set
+  input:
+    name: walls
+    type: VecWall
+  output:
+    name: key
+    type: String

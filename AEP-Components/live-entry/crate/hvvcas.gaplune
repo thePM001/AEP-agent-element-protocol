@@ -1,0 +1,20 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-live-entry
+ticket: AEP28-ENV-024
+note: Durable HVVCAS is GAPLUNE. Ticket AEP28-ENV-024.
+
+component:
+  name: live_entry
+  domain: envelope
+  component_type: service
+  intent: Rust live entry. aep_envelope admit in-process. YAML load. Structural apply. ID mint.
+  input:
+    name: event
+    type: String
+  output:
+    name: result
+    type: String

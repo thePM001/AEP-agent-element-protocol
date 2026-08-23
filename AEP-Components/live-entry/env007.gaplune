@@ -1,0 +1,9 @@
+@PAD: aep-env007-live-entry-cover-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-live-entry-lab-bypass-cover
+ticket: AEP28-ENV-007
+path: AEP-Components/live-entry/
+note: Live path is Rust aep-live-entry. Lab lattice filter flags do not skip Admit walls. HyperlatticeFilter is parked.

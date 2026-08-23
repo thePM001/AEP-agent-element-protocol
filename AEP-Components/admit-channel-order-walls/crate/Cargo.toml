@@ -1,0 +1,15 @@
+[package]
+name = "aep-admit-channel-order-walls"
+version = "0.1.0"
+edition = "2021"
+description = "Fold lattice channel and partial-order into Admit walls on the same collect-all pass."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-admit-channel-order-walls"
+path = "src/main.rs"
+
+[dependencies]
+aep-admit = { path = "../../admit/crate" }
+anyhow = "1"

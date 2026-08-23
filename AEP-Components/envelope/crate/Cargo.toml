@@ -1,0 +1,22 @@
+[package]
+name = "aep-envelope"
+description = "AEP 2.8 Envelope Admit"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "aep_envelope"
+path = "src/lib.rs"
+
+[[bin]]
+name = "aep-envelope"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+serde_yaml = "0.9"

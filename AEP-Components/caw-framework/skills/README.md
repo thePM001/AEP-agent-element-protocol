@@ -55,4 +55,4 @@ Once installed, the skills activate automatically when you ask your AI assistant
 > "Remove the approval requirement for curl downloads"
 > "Increase the session timeout to 8 hours"
 
-The skills handle template selection, YAML generation, rule ordering (first-match-wins), and validation via `aep-caw policy validate`.
+The skills handle template selection, YAML generation, most-specific collect-all evaluation and validation via `aep-caw policy validate`.

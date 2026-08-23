@@ -39,7 +39,7 @@ AEP, dynAEP (main event runtime), Base Node, Composer Lite, CCA / setup agent, C
 - dynAEP Action Lattice merged in-repo (main event runtime)
 - Composer Lite WASM canvas and CCA plan/execute
 - Component registry and compliance LRP modules
-- 15-step evaluation chain and 11 scanners
+- Admit collect-all walls then Apply, plus 11 scanners
 - Evidence ledger with Merkle proofs
 - Schema Builder and Policy Builder
 - CAW execution-layer security (`aep-caw`)

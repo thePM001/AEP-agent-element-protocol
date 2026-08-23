@@ -34,11 +34,13 @@
     "entrypoints": [
       "AEP-SDKs/typescript/dynaep/src/bridge.ts",
       "AEP-SDKs/typescript/dynaep/src/protocol/action-lattice.ts",
-      "AEP-SDKs/typescript/dynaep/cli/dynaep-cli.ts"
+      "AEP-SDKs/typescript/dynaep/cli/dynaep-cli.ts",
+      "AEP-Components/live-entry/crate",
+      "AEP-Components/evaluation-chain/crate"
     ]
   },
   "cca": {
-    "summary": "TypeScript dynAEP client: Action Lattice filter, bridge, temporal authority and CLI.",
+    "summary": "Leftover TypeScript dynAEP client. Reference action checker is Base Node Admit and 15-rule meet.",
     "use_when": [
       "TypeScript or Node agent backends",
       "compiled AI lattice-gated SDK",

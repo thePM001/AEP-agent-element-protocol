@@ -403,7 +403,7 @@ The bridge emits a filter result for every LATTICE_EVENT. This is the structured
 }
 ```
 
-If the filter fails at any step, `passed` is false and `constraints_failed` contains the reasons. `DynAEPBridge.processEvent()` awaits `LatticeFilter.filterAsync()` and uses the result to accept or reject the event. Custom constraints (`type: custom`) require `filterAsync()`; the synchronous `filter()` method fails closed on custom constraints and directs callers to use `filterAsync()`.
+If the filter fails at any step, `passed` is false and `constraints_failed` contains the reasons. TypeScript `DynAEPBridge.processEvent()` is not the reference action checker. After a sealed lattice frame, the Base Node kernel runs collect-all Admit (`aep-envelope` / `aep-live-entry`) and the 15-rule meet (`aep-evaluation-chain`). `LatticeFilter.filterAsync()` is leftover sequential filter, not the reference meet. Custom constraints on leftover TypeScript LatticeFilter are not the Base Node reference meet.
 
 ### 5.3 LATTICE_REGISTER
 
@@ -551,7 +551,7 @@ Config alias resolution (`lattice.hook` in YAML):
 | `mle-validator` | `mle-validator` |
 | `noop` | `noop` |
 
-Custom constraints (`constraint.type === "custom"`) dispatch to the hook named by `lattice.hook` during **`filterAsync()`** only. The bridge calls `await latticeFilter.filterAsync()` inside `processEvent()`.
+Custom constraints (`constraint.type === "custom"`) dispatch to the hook named by `lattice.hook` during **`filterAsync()`** only. The reference action checker is not TypeScript processEvent. Base Node kernel runs Admit collect-all and the 15-rule meet after a sealed lattice frame.
 
 ### MLE Validation Hook
 
@@ -713,7 +713,7 @@ For the full configuration reference including temporal authority, causal orderi
 
 | SDK | Path | Contents |
 |-----|------|----------|
-| TypeScript dynAEP | `AEP-SDKs/typescript/dynaep/` | `DynAEPBridge`, `processEvent()` (**async**), Action Lattice (`filterAsync`), `hook-loader`, temporal authority, Rego, scanners |
+| TypeScript dynAEP | `AEP-SDKs/typescript/dynaep/` | leftover TypeScript client. Reference action checker is Base Node kernel Admit + 15-rule meet |
 | TypeScript AEP core | `AEP-SDKs/typescript/aep-protocol/` | Scene graph, validation, memory fabric |
 | Python dynAEP | `AEP-SDKs/python/dynaep/` | Python bridge and temporal pipeline |
 | React (AEP + dynAEP) | `AEP-SDKs/react/` | `aep-react.tsx`, `dynaep-react.tsx` (`await bridge.processEvent()`), `dynaep-copilotkit.tsx` |

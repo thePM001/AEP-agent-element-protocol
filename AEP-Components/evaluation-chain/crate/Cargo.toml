@@ -1,0 +1,13 @@
+# @PAD: aep28-eval-chain-rust-meet-v1
+# @GCDE: gaplune-decode hmac-sha256:06827ec2297b2ec9bca467d50b93f689790ce1832e3b65da038e8113b6beff8c
+[package]
+name = "aep-evaluation-chain"
+version = "0.1.0"
+edition = "2021"
+description = "AEP 2.8 evaluation chain meet. All 15 walls. Collect-all. No skip on live admit."
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

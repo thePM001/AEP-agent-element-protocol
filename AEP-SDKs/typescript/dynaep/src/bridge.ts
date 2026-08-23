@@ -40,12 +40,6 @@ import type { RegoInput, RegoResult } from "./rego/RegoDecisionCache";
 import { UnifiedScanner, type ScannerConfig, type ScanResult } from "./scanners/UnifiedScanner";
 
 // OPT-004: Chain executor types
-import type { ChainExecutor, ChainExecutionConfig, StepExecutor } from "./chain/types";
-import { ParallelChainExecutor } from "./chain/ParallelChainExecutor";
-import { SequentialChainExecutor } from "./chain/SequentialChainExecutor";
-
-import {
-  type TemporalRejectionEvent,
   type TemporalStampEvent,
   type ClockSyncEvent,
   type TemporalResetEvent,
@@ -62,9 +56,14 @@ import {
   type LatticeEvent,
   type LatticeFilterResult,
   type AgentInterest,
+  type LatticeConfig,
 } from "./protocol/action-lattice.js";
 import { registerBuiltinHooks, resolveHookName } from "./lattice/hook-loader.js";
-import { HyperlatticeFilter } from "./hyperlattice/HyperlatticeFilter.js";
+import { snapshotFromLattice, runEnvelopeAdmit, closedReasons } from "./envelope/rustAdmit.js";
+function labLatticeFilterEnabled(): boolean {
+  const v = String(process.env.AEP_LAB_LATTICE_FILTER ?? "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "on";
+}
 import { dirname, isAbsolute, resolve } from "node:path";
 
 function resolveLatticePolicyPath(
@@ -119,12 +118,14 @@ export interface DynAEPBridgeConfig {
     configs: ScannerConfig[];
   };
   // OPT-004: Chain execution configuration
-  chain_execution?: ChainExecutionConfig;
+  chain_execution?: { mode?: string };
   // Action Lattice (dynAEP 1.0)
   lattice?: {
     registry?: string;
     /** Composer Lite CCA action paths (merged after base registry). */
     composer_cca_registry?: string;
+    /** Inline lattice config for tests and embeds. Skips registry file load. */
+    inline?: LatticeConfig;
     governance?: "filter_all" | "events_only" | "ui_only" | "disabled";
     agent_interest_enabled?: boolean;
     hook?: string;
@@ -212,7 +213,7 @@ export class DynAEPBridge {
   private latticeLogger: BaseNodeLatticeLogger | null = null;
   private lattice: ActionLattice | null = null;
   private latticeFilter: LatticeFilter | null = null;
-  private hyperlatticeFilter: HyperlatticeFilter | null = null;
+  private envelopeSatisfied: string[] = [];
   /** Set when lattice registry was configured but init failed (fail-closed telemetry). */
   private latticeInitError: string | null = null;
 
@@ -246,10 +247,14 @@ export class DynAEPBridge {
     this.latticeLogger = createDefaultLatticeLogger();
 
     const latticeCfg = bridgeConfig.lattice;
-    if (latticeCfg?.registry) {
+    if (latticeCfg?.registry || latticeCfg?.inline) {
       try {
         const lattice = new ActionLattice();
-        lattice.loadFromFile(latticeCfg.registry);
+        if (latticeCfg.inline) {
+          lattice.load(latticeCfg.inline);
+        } else if (latticeCfg.registry) {
+          lattice.loadFromFile(latticeCfg.registry);
+        }
         if (latticeCfg.composer_cca_registry) {
           lattice.mergeFromFile(latticeCfg.composer_cca_registry);
         }
@@ -259,28 +264,13 @@ export class DynAEPBridge {
         const hookName = resolveHookName(latticeCfg.hook ?? "mle");
         this.latticeFilter = new LatticeFilter(lattice, hookRegistry, hookName ?? undefined);
         this.latticeFilter.seedStartupSequence();
-        const latticePolicyPath = resolveLatticePolicyPath(
-          bridgeConfig.hyperlattice?.lattice_policy_path ??
-            bridgeConfig.rego?.separatePolicyPaths?.lattice ??
-            null,
-          latticeCfg.registry,
-        );
-        this.hyperlatticeFilter = new HyperlatticeFilter(
-          this.latticeFilter,
-          lattice,
-          {
-            latticePolicyPath,
-            gapWritingLint: bridgeConfig.hyperlattice?.gap_writing_lint ?? true,
-            mode: bridgeConfig.hyperlattice?.mode ?? bridgeConfig.validation.mode,
-          },
-        );
+        this.envelopeSatisfied = [];
         this.latticeInitError = null;
       } catch (e) {
         // TM-15: never leave a half-initialised lattice under active governance.
         const msg = e instanceof Error ? e.message : String(e);
         this.lattice = null;
         this.latticeFilter = null;
-        this.hyperlatticeFilter = null;
         this.latticeInitError = msg;
         const governance = latticeCfg.governance ?? "filter_all";
         console.error(
@@ -396,360 +386,18 @@ export class DynAEPBridge {
 
   async processEvent(event: AGUIEvent): Promise<AGUIEvent | DynAEPRejection> {
     this.normalizeAgentContext(event);
-
-    // TM-15: action_path under governance must never skip the lattice wrap.
-    if (event.action_path) {
-      const governance = this.bridgeConfig.lattice?.governance ?? "filter_all";
-      if (
-        governance !== "disabled" &&
-        (!this.lattice || !(this.hyperlatticeFilter || this.latticeFilter))
-      ) {
-        const detail = this.latticeInitError
-          ? `Lattice governance unavailable: ${this.latticeInitError}`
-          : "Lattice governance required but ActionLattice is not initialised";
-        return this.createRejection(event.action_path, detail, event.timestamp);
-      }
-    }
-
-    if (event.action_path && this.lattice && (this.hyperlatticeFilter || this.latticeFilter)) {
-      const governance = this.bridgeConfig.lattice?.governance ?? "filter_all";
-      const node = this.lattice.get(event.action_path);
-      // CRITICAL: unknown action_path must fail closed (never skip the wrap).
-      if (!node) {
-        return this.createRejection(
-          event.action_path,
-          `Unknown action_path not registered in lattice: ${event.action_path}`,
-          event.timestamp,
-        );
-      }
-      // Agent security categories always filter unless governance is explicitly disabled.
-      const agentSecurity =
-        node.category === "agent_action" || node.category === "output";
-      const shouldFilter =
-        governance !== "disabled" &&
-        (agentSecurity ||
-          (governance !== "ui_only" &&
-            governanceAppliesToCategory(governance, node.category)));
-      if (shouldFilter) {
-        const latticeEvent: LatticeEvent = {
-          source: event.source ?? "unknown",
-          action_path: event.action_path,
-          payload: event.payload ?? {},
-          bridge_timestamp: event.timestamp ?? Date.now(),
-          agent_id: event.agent_id,
-          trust_tier: event.trust_tier,
-        };
-        let crossing;
-        if (this.hyperlatticeFilter) {
-          crossing = await this.hyperlatticeFilter.filterCrossing(latticeEvent, governance, node);
-        } else {
-          const latticeOnly = await this.latticeFilter!.filterAsync(latticeEvent);
-          crossing = {
-            passed: latticeOnly.passed,
-            lattice: latticeOnly,
-            reasons: latticeOnly.constraints_failed.map((c) => c.reason),
-            lattice_policy: { deny: [], warn: [], escalate: [], policy_loaded: false, policy_path: null },
-            gap_writing_violations: [],
-          };
-        }
-        this.logLatticeEvent("HYPERLATTICE_CROSSING", {
-          action_path: event.action_path,
-          passed: crossing.passed,
-          lattice_policy_deny: crossing.lattice_policy?.deny ?? [],
-          gap_writing: crossing.gap_writing_violations?.length ?? 0,
-          reasons: crossing.reasons,
-        }, event.agent_id);
-        if (!crossing.passed) {
-          return this.createRejection(
-            event.action_path,
-            `Hyperlattice crossing rejected: ${crossing.reasons.join("; ")}`,
-            event.timestamp,
-          );
-        }
-      }
-    }
-
-    // OPT-009: Template instance fast-exit. AOT-validated template instances
-    // skip heavy structural/temporal/causal paths, but NEVER skip content scanners.
-    if (event.target_id) {
-      const fastExit = this.templateResolver.tryFastExit(
-        event.target_id,
-        this.bridgeClock.now(),
-      );
-      if (fastExit.isTemplateInstance) {
-        // Residual close: still run content scanners on payload text
-        if (this.contentScanner && this.scannerEngine === "unified") {
-          const textPayload = this.extractTextPayload(event);
-          if (textPayload.length > 0) {
-            const scanResults = this.contentScanner.scan(textPayload);
-            const hardFindings = scanResults.filter((r) => r.severity === "hard");
-            if (hardFindings.length > 0) {
-              this.evidenceLedger.record(
-                "rejected_scanner",
-                event.target_id,
-                `${hardFindings[0].scannerId}:${hardFindings[0].patternId} match="${hardFindings[0].match.text}"`,
-              );
-              return this.createRejection(
-                event.target_id,
-                `Content violation on template fast-exit (${hardFindings[0].scannerLabel}): ${hardFindings[0].patternId} detected`,
-                event.timestamp,
-              );
-            }
-          }
-        }
-        // OPT-006: Record fast-exit in evidence ledger
-        this.evidenceLedger.record(
-          "fast_exit_template",
-          event.target_id,
-          `template=${fastExit.templateId}`,
-        );
-        // Stamp with minimal temporal metadata for auditability
-        (event as Record<string, unknown>)._temporal = {
-          bridgeTimeMs: fastExit.stampedAt,
-          fastExit: true,
-          templateId: fastExit.templateId,
-        };
-        return event;
-      }
-    }
-
-    // TA-1 Step 1: Temporal stamp with bridge clock
-    const temporalResult = this.temporalValidator.validate(event);
-
-    // TA-1 Step 2: Reject on temporal violations in strict mode
-    if (!temporalResult.accepted) {
-      // OPT-006: Record temporal rejection in evidence ledger
-      this.evidenceLedger.record(
-        "rejected_temporal",
-        event.target_id ?? "unknown",
-        temporalResult.violations.map((v) => v.detail).join("; "),
-      );
-      const rejection: TemporalRejectionEvent = createTemporalRejectionEvent({
-        targetId: event.target_id ?? event.dynaep_type ?? "unknown",
-        error: temporalResult.violations.map((v) => v.detail).join("; "),
-        violations: temporalResult.violations,
-        originalEventTimestamp: event.timestamp ?? null,
-        bridgeTimestamp: temporalResult.bridgeTimestamp,
-      });
-      return rejection as unknown as DynAEPRejection;
-    }
-
-    // TA-1 Step 3: Causal ordering check (for events with agent context)
-    const causalAgentId = event.agent_id ?? event._agentId;
-    if (causalAgentId && event._sequenceNumber !== undefined) {
-      const causalEvent: CausalEvent = {
-        eventId: event._eventId ?? `evt-${temporalResult.bridgeTimestamp.bridgeTimeMs}`,
-        agentId: causalAgentId,
-        bridgeTimeMs: temporalResult.bridgeTimestamp.bridgeTimeMs,
-        targetElementId: event.target_id ?? "",
-        sequenceNumber: event._sequenceNumber,
-        vectorClock: event._vectorClock ?? {},
-        causalDependencies: event._causalDependencies ?? [],
-      };
-      const causalResult = this.causalEngine.process(causalEvent);
-      if (!causalResult.ordered && causalResult.violations.length > 0) {
-        const hasRegression = causalResult.violations.some(
-          (v) => v.type === "agent_clock_regression"
-        );
-        if (hasRegression) {
-          // OPT-006: Record causal rejection in evidence ledger
-          this.evidenceLedger.record(
-            "rejected_causal",
-            event.target_id ?? "unknown",
-            causalResult.violations.map((v) => v.detail).join("; "),
-          );
-          const rejection: TemporalRejectionEvent = createTemporalRejectionEvent({
-            targetId: event.target_id ?? "unknown",
-            error: causalResult.violations.map((v) => v.detail).join("; "),
-            violations: causalResult.violations.map((v) => ({
-              type: "causal_violation" as const,
-              detail: v.detail,
-              agentTimeMs: event.timestamp ?? null,
-              bridgeTimeMs: temporalResult.bridgeTimestamp.bridgeTimeMs,
-              thresholdMs: 0,
-            })),
-            originalEventTimestamp: event.timestamp ?? null,
-            bridgeTimestamp: temporalResult.bridgeTimestamp,
-          });
-          return rejection as unknown as DynAEPRejection;
-        }
-      }
-    }
-
-    // TA-1 Step 4: Forecast - ingest coordinates and sync anomaly check (OPT-001)
-    if (
-      event.type === "CUSTOM" &&
-      event.dynaep_type === "AEP_RUNTIME_COORDINATES" &&
-      event.target_id &&
-      event.coordinates
-    ) {
-      this.forecastSidecar.ingest(event as unknown as import("./temporal/forecast").RuntimeCoordinateEvent);
-    }
-
-    // OPT-001: Synchronous O(1) anomaly check from prediction cache
-    if (event.target_id && this.bridgeConfig.forecast?.enabled) {
-      const anomalyResult: AnomalyResult | null = this.forecastSidecar.checkAnomalySync(
-        event.target_id,
-        event.coordinates ?? {}
-      );
-      if (anomalyResult !== null && anomalyResult.isAnomaly) {
-        const anomalyAction = this.bridgeConfig.forecast?.anomaly_action ?? "warn";
-        if (anomalyAction === "require_approval" && anomalyResult.recommendation === "require_approval") {
-          // OPT-006: Record anomaly rejection in evidence ledger
-          this.evidenceLedger.record(
-            "rejected_anomaly",
-            event.target_id,
-            `score=${anomalyResult.score.toFixed(2)}`,
-          );
-          return this.createRejection(
-            event.target_id,
-            `Temporal anomaly detected (score=${anomalyResult.score.toFixed(2)}): requires approval`,
-            event.timestamp,
-          );
-        }
-        // For "warn" and "log_only", attach anomaly metadata but proceed
-        // OPT-006: Record anomaly warning in evidence ledger
-        this.evidenceLedger.record(
-          "anomaly_warned",
-          event.target_id,
-          `score=${anomalyResult.score.toFixed(2)}, rec=${anomalyResult.recommendation}`,
-        );
-        (event as Record<string, unknown>)._anomaly = {
-          score: anomalyResult.score,
-          recommendation: anomalyResult.recommendation,
-        };
-      }
-    }
-
-    // OPT-002: Unified Rego policy evaluation (cached)
-    const regoInput: RegoInput = {
-      scene: this.buildRegoScene(),
-      registry: this.buildRegoRegistry(),
-      theme: { aep_version: this.config.scene.aep_version, component_styles: this.config.theme.component_styles },
-      event: {
-        target_id: event.target_id ?? "",
-        type: event.type ?? "CUSTOM",
-        dynaep_type: event.dynaep_type ?? "",
-        mutation: event.mutation ?? {},
-      },
-    };
-
-    // Attach temporal data if present
-    if (temporalResult.bridgeTimestamp) {
-      regoInput.temporal = {
-        drift_ms: temporalResult.bridgeTimestamp.driftMs ?? 0,
-        agent_time_ms: temporalResult.bridgeTimestamp.agentTimeMs ?? 0,
-        bridge_time_ms: temporalResult.bridgeTimestamp.bridgeTimeMs,
-      };
-      regoInput.config = {
-        timekeeping: {
-          max_drift_ms: this.bridgeConfig.timekeeping?.maxDriftMs ?? 50,
-          max_future_ms: this.bridgeConfig.temporal_validation?.maxFutureMs ?? 500,
-          max_staleness_ms: this.bridgeConfig.temporal_validation?.maxStalenessMs ?? 5000,
-        },
-      };
-    }
-
-    // Attach perception data if present
-    if (event._perception) {
-      regoInput.perception = event._perception;
-    }
-
-    const regoResult = this.regoEvaluator.evaluate(regoInput);
-    const regoDenials = [
-      ...regoResult.structural_deny,
-      ...regoResult.temporal_deny,
-      ...regoResult.perception_deny,
-    ];
-
-    if (regoDenials.length > 0 && this.bridgeConfig.validation.mode === "strict") {
-      this.evidenceLedger.record(
-        "rejected_rego",
-        event.target_id ?? "unknown",
-        regoDenials.join("; "),
-      );
-      return this.createRejection(
-        event.target_id ?? "unknown",
-        `Rego policy violation: ${regoDenials[0]}`,
-        event.timestamp,
-      );
-    }
-
-    // OPT-003: Content scanner (scan payload text for secrets, injection, PII)
-    if (this.contentScanner && this.scannerEngine === "unified") {
-      const textPayload = this.extractTextPayload(event);
-      if (textPayload.length > 0) {
-        const scanResults = this.contentScanner.scan(textPayload);
-        const hardFindings = scanResults.filter(r => r.severity === "hard");
-        if (hardFindings.length > 0) {
-          this.evidenceLedger.record(
-            "rejected_scanner",
-            event.target_id ?? "unknown",
-            `${hardFindings[0].scannerId}:${hardFindings[0].patternId} match="${hardFindings[0].match.text}"`,
-          );
-          return this.createRejection(
-            event.target_id ?? "unknown",
-            `Content violation (${hardFindings[0].scannerLabel}): ${hardFindings[0].patternId} detected`,
-            event.timestamp,
-          );
-        }
-        // Attach soft findings as metadata
-        if (scanResults.length > 0) {
-          (event as Record<string, unknown>)._scanFindings = scanResults.map(r => ({
-            scanner: r.scannerId,
-            pattern: r.patternId,
-            severity: r.severity,
-            match: r.match.text,
-          }));
-        }
-      }
-    }
-
-    // Proceed with structural validation (existing pipeline)
-    let structuralResult: AGUIEvent | DynAEPRejection;
-
-    if (event.type === "STATE_DELTA") {
-      structuralResult = this.processStateDelta(event);
-    } else if (event.type === "CUSTOM" && typeof event.dynaep_type === "string") {
-      structuralResult = this.processDynAEPEvent(event);
-    } else if (event.type === "TOOL_CALL_START" || event.type === "TOOL_CALL_END") {
-      structuralResult = event;
-    } else {
-      structuralResult = event;
-    }
-
-    // OPT-006: Record structural validation outcome in evidence ledger
-    if ((structuralResult as any).dynaep_type === "DYNAEP_REJECTION") {
-      this.evidenceLedger.record(
-        "rejected_structural",
-        event.target_id ?? "unknown",
-        (structuralResult as any).error ?? "structural rejection",
-      );
-    } else {
-      this.evidenceLedger.record(
-        "accepted",
-        event.target_id ?? event.dynaep_type ?? "unknown",
-        event.type ?? "event",
-      );
-    }
-
-    // TA-1 Step 5: Attach temporal metadata to accepted events
-    if ((structuralResult as any).dynaep_type !== "DYNAEP_REJECTION") {
-      (structuralResult as any)._temporal = temporalResult.bridgeTimestamp;
-    }
-
-    if (
-      event.type === "STATE_DELTA" &&
-      (structuralResult as AGUIEvent).type === "STATE_DELTA"
-    ) {
-      this.logLatticeEvent(
-        "STATE_DELTA",
-        { delta: event.delta, valid: true },
-        event.agent_id,
-      );
-    }
-
-    return structuralResult;
+    // AEP28-ENV-024 product live path is Rust aep-live-entry. aep_envelope::admit in-process.
+    // TypeScript processEvent is not the product live path.
+    // Live crossing is Rust aep-live-entry.
+    void runEnvelopeAdmit;
+    void snapshotFromLattice;
+    void closedReasons;
+    const target = event.action_path || event.target_id || "unknown";
+    return this.createRejection(
+      target,
+      "Admit collect-all walls then Apply: product live path is Rust aep-live-entry (aep_envelope::admit in-process)",
+      event.timestamp,
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -1233,6 +881,19 @@ export class DynAEPBridge {
     return this.latticeLogger?.getEventCount() ?? 0;
   }
 
+  private collectScannerNeedles(): string[] {
+    const out: string[] = [];
+    const configs = this.bridgeConfig.scanners?.configs ?? [];
+    for (const cfg of configs) {
+      for (const p of cfg.patterns ?? []) {
+        if (p.severity !== "hard") continue;
+        const src = p.regex instanceof RegExp ? p.regex.source : String(p.regex ?? "");
+        if (src.length > 0) out.push(src);
+      }
+    }
+    return out;
+  }
+
   private createRejection(targetId: string, error: string, ts?: number): DynAEPRejection {
     this.logLatticeEvent("DYNAEP_REJECTION", { target_id: targetId, error });
     return {
@@ -1245,6 +906,9 @@ export class DynAEPBridge {
   }
 
   validateLatticeEvent(event: LatticeEvent): LatticeFilterResult {
+    if (!labLatticeFilterEnabled()) {
+      throw new Error("LatticeFilter sequential stack is lab-only. Live path is aep-envelope Admit.");
+    }
     if (!this.latticeFilter) {
       throw new Error(
         "LatticeFilter is not initialised. Set bridgeConfig.lattice.registry and governance.",
@@ -1254,6 +918,9 @@ export class DynAEPBridge {
   }
 
   async validateLatticeEventAsync(event: LatticeEvent): Promise<LatticeFilterResult> {
+    if (!labLatticeFilterEnabled()) {
+      throw new Error("LatticeFilter sequential stack is lab-only. Live path is aep-envelope Admit.");
+    }
     if (!this.latticeFilter) {
       throw new Error(
         "LatticeFilter is not initialised. Set bridgeConfig.lattice.registry and governance.",
@@ -1586,18 +1253,9 @@ export class DynAEPBridge {
    * @param steps - Array of exactly 15 StepExecutor implementations
    * @returns ChainExecutor configured per bridge settings
    */
-  createChainExecutor(steps: StepExecutor[]): ChainExecutor {
-    const mode = this.bridgeConfig.chain_execution?.mode ?? "sequential";
-    if (mode === "parallel") {
-      return new ParallelChainExecutor(steps);
-    }
-    return new SequentialChainExecutor(steps);
+  createChainExecutor(_steps: unknown[]): never {
+    throw new Error("Admit collect-all walls then Apply: evaluation chain is Rust aep-evaluation-chain. TypeScript chain executors are removed.");
   }
-
-  // -------------------------------------------------------------------------
-  // TA-1: Clock Sync Broadcasting
-  // -------------------------------------------------------------------------
-
   startClockSync(emitEvent: (event: unknown) => void): void {
     this.eventEmitter = emitEvent;
 

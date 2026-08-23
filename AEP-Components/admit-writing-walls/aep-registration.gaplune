@@ -1,0 +1,13 @@
+@PAD: aep-admit-writing-walls-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-admit-writing-walls
+version: 0.1.0
+kind: library
+path: AEP-Components/admit-writing-walls/
+ticket: AEP28-ENV-002
+requires: aep-admit
+capability: admit.writing-walls.compile
+note: Compile writing.gap into Admit walls. Fold onto the same collect-all pass.

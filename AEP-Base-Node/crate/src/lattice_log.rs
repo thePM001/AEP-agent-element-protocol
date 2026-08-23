@@ -55,7 +55,8 @@ fn default_contract() -> String {
 }
 
 fn default_trust_score() -> u16 {
-    700
+    // Fail-closed: omitted ingest score is least privilege.
+    0
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -329,6 +330,13 @@ mod tests {
         let exported = export_dynaep_events(&migrated, Some(10)).expect("export");
         assert_eq!(exported.len(), 1);
         assert_eq!(exported[0].event_type, "unknown");
+    }
+
+    #[test]
+    fn omitted_trust_score_is_least_privilege() {
+        let raw = r#"{"agent_id":"a","channel_id":"c","event_type":"X","payload":{}}"#;
+        let input: DynAepEventInput = serde_json::from_str(raw).expect("parse");
+        assert_eq!(input.trust_score, 0);
     }
 }
 

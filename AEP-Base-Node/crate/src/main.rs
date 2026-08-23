@@ -74,7 +74,7 @@ struct Cli {
     /// Default under $HOME/.aep (or AEP_DATA) - not world-writable /tmp.
     #[arg(long, default_value_t = default_socket_base())]
     socket_base: String,
-    #[arg(long, default_value_t = default_lattice_db())]
+    #[arg(long, default_value = "/tmp/nla-g4-aep28/aep-action-lattice.db")]
     lattice_db: PathBuf,
     #[arg(long, default_value_t = false)]
     internet_up: bool,

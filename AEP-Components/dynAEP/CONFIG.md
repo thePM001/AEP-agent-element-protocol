@@ -219,7 +219,7 @@ lattice:
 | `ui_only` | Lattice skipped for all categories. Bridge uses AEP structural validation (v0.4-style); no lattice membership checks. |
 | `disabled` | Lattice validation entirely skipped. Use only for development or migration. |
 
-**Bridge note:** `DynAEPBridge.processEvent()` invokes the lattice only when the event has `action_path` and the path exists in `lattice.registry`. UI mutations (`AEP_MUTATE_*` without `action_path`) do not hit the lattice regardless of governance mode.
+**Reference attach:** After a sealed lattice frame, Base Node kernel runs collect-all Admit and the 15-rule meet on action_path. TypeScript processEvent is not the reference action checker.
 
 | **Example** | `governance: "filter_all"` |
 | **NEW** | Yes |
@@ -242,7 +242,7 @@ lattice:
 | **Path** | `lattice.hook` |
 | **Type** | `string` |
 | **Default** | `"mle"` |
-| **Description** | The validation hook for `type: custom` lattice constraints. `"mle"` aliases to registry key `mle-validator` (see `bridge/hook-loader.ts`). `"noop"` is pass-through. Hooks run inside `LatticeFilter.filterAsync()`; `DynAEPBridge.processEvent()` awaits this path. Custom hooks register via `HookRegistry.register()` or `registerBuiltinHooks()`. |
+| **Description** | The validation hook for `type: custom` lattice constraints. `"mle"` aliases to registry key `mle-validator` (see `bridge/hook-loader.ts`). `"noop"` is pass-through. Hooks on leftover TypeScript LatticeFilter are not the Base Node reference meet. Custom hooks register via `HookRegistry.register()` or `registerBuiltinHooks()`. |
 | **Example** | `hook: "mle"` |
 | **NEW** | Yes |
 

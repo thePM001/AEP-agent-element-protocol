@@ -203,11 +203,7 @@ constraints (object, optional): Additional match filters beyond the action
 
 ## 3. The Bridge Pipeline
 
-The bridge pipeline is a strictly ordered sequence of validation and
-enrichment stages. Every event follows every stage in order. There is no
-short-circuit path and no stage skipping. The pipeline is deterministic:
-given the same event and the same bridge state, the pipeline produces the
-same result.
+Reference attach is not this ordered TypeScript pipeline. After a sealed lattice frame, the Base Node kernel runs collect-all Admit then Apply and the 15-rule meet. The leftover TypeScript bridge pipeline below is sequential filter history, not the reference meet.
 
 ### 3.1 Stage 0: Template Instance Fast-Exit
 

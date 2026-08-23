@@ -1,0 +1,18 @@
+@PAD: nla-dev-ticket-AEP28-ENV-008-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-008
+title: Envelope algebra tests: order, collect-all and Apply skip
+status: backlog
+priority: P0
+track: aep28-envelope-algebra
+wave: algebra
+plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-006
+scope: AEP-Components/admit AEP-Components/dynAEP AEP-SDKs/typescript/dynaep
+notes: Fixtures: allow, one closed wall, N closed walls, order permutation across compiled dimensions (lattice, writing, trust, channel, temporal). Closed set key identical under shuffle. Apply not invoked when Admit fails. Rust crate plus TS filterCrossing tests. Out of scope: hangar tools.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/admit/crate
+updated: 2026-08-21

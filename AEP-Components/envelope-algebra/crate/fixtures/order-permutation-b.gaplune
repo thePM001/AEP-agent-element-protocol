@@ -1,0 +1,12 @@
+@PAD: aep-envelope-algebra-fixture-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep-admit.fixture.v1
+format: gaplune
+json: prohibited
+fixture: order-permutation-b
+id=temporal:drift_exceeded	closed=true	reason=Temporal drift exceeded: agent drift 80 ms exceeds threshold 50 ms	dim=temporal
+id=channel:non_frame_docking	closed=true	reason=Plain docking wire ping is not a lattice frame	dim=channel
+id=wall.open	closed=false	reason=	dim=lattice
+id=trust_floor	closed=true	reason=Insufficient trust: 1 < 5	dim=trust
+id=writing:no_em_dashes	closed=true	reason=Em dash U+2014 forbidden by writing.gap	dim=writing
+id=lattice.unknown_path	closed=true	reason=Unknown action path	dim=lattice

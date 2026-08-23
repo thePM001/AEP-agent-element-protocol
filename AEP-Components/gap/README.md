@@ -275,7 +275,7 @@ Every instruction carries governance inline:
 | tools | Allowed and forbidden tool lists |
 | aspect | Classification label (`objective`, `subjective`, `procedural`, `heuristic`) used by lattice Step 5 for intent drift detection |
 
-The 15-step deterministic evaluation chain validates every instruction action. Same input, same governance state, same result.
+Admit collect-all walls then Apply validates every instruction action. Same input, same governance state, same result.
 
 ## Structured Generation
 
@@ -343,7 +343,7 @@ Migrate incrementally. Each rung adds governance without rewriting existing logi
 | 3: Covenants and Scanners | Behavioural governance + content scanning | LangChain / LangGraph users |
 | 4: Composition | Sequence, conditional, parallel orchestration | n8n / Zapier users |
 | 5: Self-Generation | Automatic specialization from quality data | Any production pipeline |
-| 6: Full Governance | Trust rings, proof bundles, 15-step lattice | Production-grade governed agency |
+| 6: Full Governance | Trust rings, proof bundles, Admit collect-all walls then Apply | Production-grade governed agency |
 
 ## Repository Files
 
@@ -371,7 +371,7 @@ dottxt constrains tokens to match JSON Schema, regex or CFG at the logits level.
 GAP is a complete programming language. It handles structural constraints natively through its own constraint engine and additionally provides:
 
 - Mathematical types with native validators (Quaternion, Tensor, Matrix3x3)
-- 15-step deterministic evaluation chain
+- Admit collect-all walls then Apply
 - Trust scoring, execution rings, behavioural covenants
 - Signed proof bundles with post-quantum signatures
 - Self-generating instructions that evolve specialized variants

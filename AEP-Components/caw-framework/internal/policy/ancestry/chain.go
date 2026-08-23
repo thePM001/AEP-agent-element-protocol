@@ -37,10 +37,10 @@ type ChainCondition struct {
 	IsAgent   *bool `yaml:"is_agent,omitempty"`   // Is detected as agent
 
 	// Execution context conditions
-	EnvContains  []string `yaml:"env_contains,omitempty"`  // Environment variable patterns
-	ArgsContain  []string `yaml:"args_contain,omitempty"`  // Command argument patterns
-	CommMatches  []string `yaml:"comm_matches,omitempty"`  // Command name patterns
-	PathMatches  []string `yaml:"path_matches,omitempty"`  // Executable path patterns
+	EnvContains []string `yaml:"env_contains,omitempty"` // Environment variable patterns
+	ArgsContain []string `yaml:"args_contain,omitempty"` // Command argument patterns
+	CommMatches []string `yaml:"comm_matches,omitempty"` // Command name patterns
+	PathMatches []string `yaml:"path_matches,omitempty"` // Executable path patterns
 
 	// Source conditions
 	SourceName    []string `yaml:"source_name,omitempty"`    // Source process name patterns
@@ -513,11 +513,11 @@ const (
 type ChainRule struct {
 	Name        string          `yaml:"name"`
 	Description string          `yaml:"description,omitempty"`
-	Priority    int             `yaml:"priority"`    // Higher = evaluated first
-	Condition   *ChainCondition `yaml:"condition"`   // When this rule applies
-	Action      ChainAction     `yaml:"action"`      // What to do
+	Priority    int             `yaml:"priority"`  // Higher = evaluated first
+	Condition   *ChainCondition `yaml:"condition"` // When this rule applies
+	Action      ChainAction     `yaml:"action"`    // What to do
 	Message     string          `yaml:"message,omitempty"`
-	Continue    bool            `yaml:"continue"`    // Keep evaluating after this rule
+	Continue    bool            `yaml:"continue"` // Keep evaluating after this rule
 }
 
 // ChainRuleEvaluator evaluates chain rules.
@@ -552,16 +552,28 @@ func (e *ChainRuleEvaluator) AddRule(rule ChainRule) {
 	})
 }
 
-// Evaluate evaluates rules against a taint and context.
-// Returns the first matching rule's action, or nil if no rules match.
+// Evaluate collects matching rules. Highest priority wins.
+// Same priority: deny beats other actions. Order of listing does not decide.
 func (e *ChainRuleEvaluator) Evaluate(taint *ProcessTaint, ctx *ExecutionContext) *ChainRule {
+	var best *ChainRule
 	for i := range e.rules {
 		rule := &e.rules[i]
-		if e.evaluator.Evaluate(rule.Condition, taint, ctx) {
-			return rule
+		if e.evaluator.Evaluate(rule.Condition, taint, ctx) == false {
+			continue
+		}
+		if best == nil {
+			best = rule
+			continue
+		}
+		if rule.Priority > best.Priority {
+			best = rule
+			continue
+		}
+		if rule.Priority == best.Priority && rule.Action == ActionDeny {
+			best = rule
 		}
 	}
-	return nil
+	return best
 }
 
 // EvaluateAll evaluates all rules and returns all matching rules.

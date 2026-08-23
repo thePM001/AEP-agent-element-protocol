@@ -33,7 +33,7 @@ export const VALIDATION_ENGINE_MODES = [
     id: "nla-built",
     label: "Acquire NLA-built AEP Validation Engine",
     advantages: [
-      "Production-grade 15-step evaluation chain on the validation dock",
+      "Admit collect-all walls then Apply",
       "Conformance-certified against CC-01..CC-12 public tier checks",
       "Full scanner bundle and policy lattice integration out of the box",
       "Operator support and upgrade path from NLA",
@@ -49,7 +49,7 @@ export const VALIDATION_ENGINE_MODES = [
       "Air-gapped deployment without vendor dependency",
       "Integrate proprietary policy modules and org-specific gates",
       "Wire to the validation_engine dock socket on your Base Node",
-      "Tune eval chain steps to your risk model",
+      "Tune Admit collect-all walls then Apply to your risk model",
     ],
     note: "See docs/DOCKING-PORTS.md and AEP-Components/dynAEP/ for wire protocol. SDKs: AEP-SDKs/. Register on validation dock at activation.",
   },
@@ -63,7 +63,7 @@ export const VALIDATION_ENGINE_MODES = [
       "No extra binary or license to procure before first run",
     ],
     limitations: [
-      "No full 15-step evaluation chain enforcement",
+      "No Admit collect-all walls then Apply",
       "Reduced policy depth on validation dock (dynAEP events only)",
       "Not suitable for production governance without adding an engine later",
     ],
@@ -135,7 +135,7 @@ export function printValidationEngineMenu() {
     "The validation engine docks on the Base Node validation_engine port and runs the",
   );
   console.log(
-    "evaluation chain, scanners and policy lattice checks for dynAEP wire events.\n",
+    "Admit collect-all walls then Apply for dynAEP wire events.\n",
   );
   for (const [index, mode] of VALIDATION_ENGINE_MODES.entries()) {
     console.log(`  ${index + 1}. ${mode.label}`);

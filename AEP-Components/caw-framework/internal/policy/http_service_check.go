@@ -13,8 +13,7 @@ import (
 // upstream API often accepts both forms - and is stripped before the rule
 // matcher runs so policy authors only have to write the non-slashed form.
 //
-// Returns a wrapped Decision in the same shape as CheckNetworkCtx. First-
-// match-wins on rules. If no rule matches, the service's Default applies
+// Returns a wrapped Decision in the same shape as CheckNetworkCtx. Most specific path wins. If no rule matches, the service's Default applies
 // (the compiler defaults empty to "deny"). Unknown services always deny.
 func (e *Engine) CheckHTTPService(service, method, reqPath string) Decision {
 	cs, ok := e.httpServices[strings.ToLower(service)]
@@ -47,20 +46,37 @@ func (e *Engine) CheckHTTPService(service, method, reqPath string) Decision {
 
 	m := strings.ToUpper(method)
 
+	var hits []scoredHit
 	for _, r := range cs.rules {
-		if !methodMatchesHTTPRule(r, m) {
+		if methodMatchesHTTPRule(r, m) == false {
 			continue
 		}
-		if !pathMatchesHTTPRule(r, matchPath) {
-			continue
+		for i, g := range r.paths {
+			if g.Match(matchPath) == false {
+				continue
+			}
+			pat := matchPath
+			if i < len(r.rule.Paths) {
+				pat = r.rule.Paths[i]
+			}
+			s := scoreGlob(pat)
+			if len(r.methods) > 0 {
+				if _, star := r.methods["*"]; star == false {
+					s.prefix++
+				}
+			}
+			dec := e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, nil)
+			hits = append(hits, scoredHit{dec: dec, spec: s})
 		}
-		return e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, nil)
 	}
-
+	fallback := e.wrapDecision("deny", "default", "no rule matched", nil)
 	if cs.defaultDecision == "allow" {
-		return e.wrapDecision("allow", "default", "", nil)
+		fallback = e.wrapDecision("allow", "default", "", nil)
 	}
-	return e.wrapDecision("deny", "default", "no rule matched", nil)
+	if len(hits) > 0 {
+		return e.pickMostSpecific(hits, fallback)
+	}
+	return fallback
 }
 
 func methodMatchesHTTPRule(r compiledHTTPServiceRule, method string) bool {

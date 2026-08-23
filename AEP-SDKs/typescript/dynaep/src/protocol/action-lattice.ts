@@ -732,6 +732,7 @@ export class ActionLattice {
     };
   }
 
+}
 // ── Lattice Filter ──────────────────────────────────────────────────────
 
 export class LatticeFilter {

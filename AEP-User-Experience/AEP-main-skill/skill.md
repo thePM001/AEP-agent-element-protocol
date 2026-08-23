@@ -3,7 +3,7 @@ name: aep
 description: >-
   Use this skill for AEP 2.8, dynAEP (main AEP event runtime), Base Node,
   Composer Lite, CCA / setup agent, CAW, UCB, Path A/B, dynAEP-TA, dynAEP-TA-P,
-  Lattice Memory, evaluation chain, scanners, evidence ledger and governed UI.
+  Lattice Memory, Admit collect-all, scanners, evidence ledger and governed UI.
   Prefer SKILL.md (uppercase) as the full protocol skill. Public repo:
   https://github.com/thePM001/AEP-agent-element-protocol
 ---
@@ -94,9 +94,11 @@ npx aep assist report json # generate audit report (json, csv or html format)
 npx aep assist help # show all available commands
 ```
 
-## 15-Step Evaluation Chain
+## Live evaluator: Admit plus lattice-policy.rego
 
-Every action passes through these steps in order. If any step denies, the action does not execute.
+Live action_path crossing is Admit collect-all walls then Apply. Same input, same governance state, same result. The numbered lab runner is not the live product path.
+
+Lab runner (not live):
 
 0. Task scope check (active task scope boundaries)
 1. Session state check (session must be active)
@@ -116,7 +118,7 @@ Every action passes through these steps in order. If any step denies, the action
 
 ## 11 Content Scanners
 
-Scanners run at Step 14 of the evaluation chain. Each scanner has configurable hard or soft severity. Hard findings reject immediately. Soft findings trigger the recovery engine for automatic retry.
+Scanners run on the live crossing after Admit and OPA. Each scanner has configurable hard or soft severity. Hard findings reject immediately. Soft findings trigger the recovery engine for automatic retry.
 
 1. **PII scanner** - detects personal identifiable information (names, emails, phone numbers, SSNs)
 2. **Injection scanner** - detects prompt injection and code injection patterns
@@ -229,7 +231,7 @@ JSONL storage at `.aep/knowledge/<name>/chunks.jsonl`.
 Production ledger -> dataset -> eval -> suggested rules -> policy refinement.
 
 - **Datasets** - versioned evaluation datasets. Create manually, import from production ledgers or load from JSON. Each modification bumps patch version.
-- **Eval runner** - replays dataset entries through the full policy evaluation chain and scanner pipeline. Tracks pass/fail rates, false positives (blocked but should pass) and false negatives (allowed but should fail).
+- **Eval runner** - replays dataset entries through Admit collect-all walls then Apply and the scanner pipeline. Tracks pass/fail rates, false positives (blocked but should pass) and false negatives (allowed but should fail).
 - **Rule generator** - analyses violation patterns and produces covenant rules or scanner regex patterns when confidence exceeds threshold.
 
 ## Prompt Optimization
@@ -323,7 +325,7 @@ Agent-Percept dynAEP-TA-P Perceptual temporal governance for human-facing output
 | Cold path p99 latency | 0.22 ms |
 | Data-heavy grid (template instances) | 118,339 events/s |
 
-10 optimizations: template node fast-exit, parallel 15-step chain, unified Rego WASM bundle with decision cache, Aho-Corasick scanner automaton, causal ordering subtree partitioning, LSH attractor indexing, async NTP sync with clock slewing, buffered evidence ledger with WAL, cross-modality state atomicity, delta processor with transaction log.
+10 optimizations: template node fast-exit, Rust 15-rule meet collect-all, unified Rego WASM bundle with decision cache, Aho-Corasick scanner automaton, causal ordering subtree partitioning, LSH attractor indexing, async NTP sync with clock slewing, buffered evidence ledger with WAL, cross-modality state atomicity, delta processor with transaction log.
 
 ## OWASP Agentic AI Top 10
 

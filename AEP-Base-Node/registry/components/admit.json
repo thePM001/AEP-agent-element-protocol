@@ -1,0 +1,37 @@
+{
+  "manifest_version": "1",
+  "id": "admit",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/admit/",
+  "description": "Admit walls: AND collect-all live evaluator. Rust crate is the spec. JS admit.mjs is the live dynAEP path.",
+  "requires": [],
+  "capabilities": [
+    "eval:admit",
+    "eval:walls",
+    "eval:apply"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 16,
+    "min_disk_mb": 5,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Admit collect-all walls then OPA deny_lattice then Apply.",
+    "use_when": [
+      "live action_path crossing"
+    ],
+    "avoid_when": [],
+    "pairs_with": [
+      "admit-parity",
+      "dynAEP"
+    ]
+  },
+  "implementation": {
+    "crate": "AEP-Components/admit/crate",
+    "module": "AEP-Components/admit/lib/admit.mjs"
+  }
+}

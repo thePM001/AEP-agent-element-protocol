@@ -1,0 +1,13 @@
+@PAD: aep-admit-channel-order-walls-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-admit-channel-order-walls
+version: 0.1.0
+kind: library
+path: AEP-Components/admit-channel-order-walls/
+ticket: AEP28-ENV-004
+requires: aep-admit
+capability: admit.channel-order-walls.compile
+note: Fold lattice channel and partial-order into Admit walls on the same collect-all pass.

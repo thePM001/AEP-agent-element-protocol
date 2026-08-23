@@ -1,0 +1,18 @@
+@PAD: nla-dev-ticket-AEP28-ENV-006-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-006
+title: Live crossing is Admit collect-all then Apply only
+status: backlog
+priority: P0
+track: aep28-envelope-algebra
+wave: algebra
+plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-001 AEP28-ENV-002 AEP28-ENV-003 AEP28-ENV-004 AEP28-ENV-005
+scope: AEP-Components/admit AEP-Components/dynAEP AEP-SDKs/typescript/dynaep
+notes: filterCrossing compiles walls, admitCollectAll, then Apply iff allow. No OPA evaluate, no 15-step runner, no PolicyEvaluator on live action_path. applied=false when any wall is closed. Out of scope: 15-step as live Envelope.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/admit/crate
+updated: 2026-08-21

@@ -1,0 +1,15 @@
+[package]
+name = "aep-envelope-walls"
+version = "0.1.0"
+edition = "2021"
+description = "CI crate: compile lattice-policy.rego into Admit walls. Live action_path must not call OPA evaluate."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-envelope-walls"
+path = "src/main.rs"
+
+[dependencies]
+aep-admit = { path = "../../admit/crate" }
+anyhow = "1"

@@ -211,11 +211,7 @@ matches.
 ```
 
 **When Emitted:** Produced for every lattice-addressed event that
-enters `LatticeFilter.filterAsync()` (awaited by `DynAEPBridge.processEvent()`).
-The result is returned to the caller for routing decisions. A failed result
-causes immediate rejection before any downstream pipeline stage runs.
-Custom constraints require `filterAsync()`; synchronous `filter()` fails closed
-on custom constraints.
+is leftover TypeScript LatticeFilter history. Reference attach after a sealed lattice frame is Base Node collect-all Admit and the 15-rule meet.
 
 **Layer:** Produced by the Bridge (Lattice Filter stage). Consumed by
 the Bridge pipeline dispatcher and the event caller.

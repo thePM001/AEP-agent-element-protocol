@@ -244,7 +244,7 @@ Declared HTTP services expose selected upstream API paths to child processes thr
 | aliases | string[] | no | Extra upstream host aliases for direct-access blocking |
 | allow_direct | bool | no | Escape hatch; default false blocks direct upstream access |
 | default | string | no | `allow` or `deny`; default is fail-closed when rules exist |
-| rules | object[] | no | Method/path rules, evaluated first-match-wins |
+| rules | object[] | no | Method/path rules, most specific collect-all |
 | secret | object | no | Credential substitution config `{ref, format}` |
 | inject | object | no | Request injection config, currently `{header: {name, template}}` |
 | scrub_response | bool | no | Whether to scrub fake/real credentials from responses |
@@ -518,7 +518,7 @@ Each platform object accepts arrays of patterns:
 
 ## Evaluation Semantics
 
-- **First match wins**: File, network, command, unix socket, registry, signal, DNS redirect, connect redirect, HTTP service, and package rules are evaluated top-to-bottom within their category. The first matching rule determines the decision. Order matters.
+- **Most specific collect-all**: File, network, command, unix socket, registry, signal, DNS redirect, connect redirect, HTTP service and package rules collect every match. The most specific selector wins. Same-specificity policy deny walls join. Order does not pick the winner.
 - **DB statement rules**: `database_rules` are not simple first-match-wins. Any matching deny wins. Otherwise every object slot in each classified effect must be covered by at least one matching `allow`, `audit`, `redirect`, or `approve` rule; uncovered objects fail closed as implicit deny.
 - **DB connection rules**: all matching `database_connection_rules` are considered and the most restrictive decision wins: `deny > approve > audit > allow`.
 - **Default deny**: Convention is to end each rule category with a catch-all deny rule (e.g., `paths: ["**"]`, `domains: ["*"]`).

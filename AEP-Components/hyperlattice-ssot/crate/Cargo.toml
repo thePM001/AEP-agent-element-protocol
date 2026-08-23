@@ -1,0 +1,7 @@
+[package]
+name = "aep-hyperlattice-ssot"
+version = "0.1.0"
+edition = "2021"
+description = "CI crate: Components and SDK hyperlattice sources must match."
+license = "UNLICENSED"
+publish = false

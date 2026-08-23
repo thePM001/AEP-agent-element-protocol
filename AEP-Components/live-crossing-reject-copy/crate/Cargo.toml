@@ -1,0 +1,14 @@
+[package]
+name = "aep-live-crossing-reject-copy"
+version = "0.1.0"
+edition = "2021"
+description = "AEP28-ENV-015: live processEvent rejection is Admit collect-all walls then Apply. Fail if it still says Admit then OPA."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-live-crossing-reject-copy"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"

@@ -8,7 +8,7 @@
     "constraints": [
       "hard: apply reference policy lattice govern function before agent start",
       "hard: map risk context and trust tier at session registration",
-      "hard: measure outputs via 15-step evaluation chain and trust scoring",
+      "hard: measure outputs via Admit (AND of compiled walls, collect-all) plus live OPA on lattice-policy.rego and trust scoring",
       "hard: manage incidents via escalation rules and kill switch",
       "hard: document AI system changes through policy version gates"
     ]

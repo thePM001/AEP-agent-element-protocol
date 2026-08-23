@@ -1,0 +1,15 @@
+[package]
+name = "aep-admit-opa-sole"
+version = "0.1.0"
+edition = "2021"
+description = "CI crate: admit.mjs must not carry a restricted Rego subset. Live lattice policy is OPA only."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-admit-opa-sole"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }

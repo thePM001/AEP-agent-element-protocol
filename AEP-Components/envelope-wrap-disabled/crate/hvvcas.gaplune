@@ -1,0 +1,20 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-envelope-wrap-disabled
+note: Durable HVVCAS is GAPLUNE. Ticket AEP28-ENV-012.
+ticket: AEP28-ENV-012
+
+component:
+  name: wrap_on_disabled_governance
+  domain: dynaep
+  component_type: service
+  intent: Fail if bridge.ts skips the wrap when lattice governance is disabled. shouldFilter must not use governance not-equals disabled as the wrap skip.
+  input:
+    name: bridge_source
+    type: String
+  output:
+    name: scan
+    type: String
