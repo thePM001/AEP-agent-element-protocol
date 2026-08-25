@@ -20,9 +20,9 @@ AEP 2.8 merges **dynAEP 1.0** (hyperlattice runtime: `action_path` filter, tempo
 
 ## Architecture
 
-**Base Node is the kernel. Everything else is an SDK client, a runtime installer or a protocol component.**
+**The AEP Base Node is the kernel. Everything else is an SDK client, a runtime installer or a protocol component.**
 
-AEP 2.8 is a **reference protocol library**. Components sit in this repo so a builder can attach them. Computations those components perform belong in the **Base Node kernel**. Transport is a sealed lattice frame (`AEP-Components/lattice-channels/`). After the frame is opened, run collect-all Admit (`aep-envelope` / `aep-live-entry`) and the 15-rule meet (`aep-evaluation-chain`).
+AEP 2.8 is a **reference protocol library**. Components sit in this repo so any coding agent can attach them to a production system. Computations those components perform belong in the **Base Node kernel**. Transport of data is happening in sealed lattice frames through the Lattice Channels (`AEP-Components/lattice-channels/`). When a frame is opened, run collect-all Admit (`aep-envelope` / `aep-live-entry`) and the "15-rule meet" (`aep-evaluation-chain`) for the simultaneous evaluation pipeline before re-sealing the frame. The 15-step evaluation chain can obviously be adapted to specific project requirements, but you need to keep in mind that you then also need to adjust the collection function.
 
 ```mermaid
 flowchart LR
