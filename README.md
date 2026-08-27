@@ -4,6 +4,7 @@
 
 **Version 2.8.3**
 **Author:** thePM_001 ([https://x.com/thePM_001](https://x.com/thePM_001))  // New Lisbon Agency (NLA) // IPHCCP (Iberian Peninsula Human Civilization Continuation Project) // EPSCOM (Eudaimonic Earth Post-Scarcity Committee)
+
 **Licence:** Apache-2.0  
 **Public repository:** [https://github.com/thePM001/AEP-agent-element-protocol](https://github.com/thePM001/AEP-agent-element-protocol)
 
