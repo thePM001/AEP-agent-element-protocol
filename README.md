@@ -6,6 +6,7 @@
 **Author:** thePM_001 ([https://x.com/thePM_001](https://x.com/thePM_001))  
 **Licence:** Apache-2.0  
 **Public repository:** [https://github.com/thePM001/AEP-agent-element-protocol](https://github.com/thePM001/AEP-agent-element-protocol)
+
 **AEP research paper (NLA research paper #001): https://github.com/thePM001/AEP-research-paper-001**
 
 **GitHub stars: AEP already had 32 stars before Grok "accidentally" deleted them on 22.07.2026 !**
