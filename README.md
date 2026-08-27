@@ -3,7 +3,7 @@
 **120+ Features - One ultimate integrated AI Agent Control Protocol.**
 
 **Version 2.8.3**
-**Author:** thePM_001 ([https://x.com/thePM_001](https://x.com/thePM_001))  // NLA/IPHCCP/EPSCOM
+**Author:** thePM_001 ([https://x.com/thePM_001](https://x.com/thePM_001))  // NLA | IPHCCP | EPSCOM
 
 **Licence:** Apache-2.0  
 **Public repository:** [https://github.com/thePM001/AEP-agent-element-protocol](https://github.com/thePM001/AEP-agent-element-protocol)
