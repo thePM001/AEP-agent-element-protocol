@@ -18,29 +18,29 @@
 
 ## What AEP does
 
-### Total control of AI output
+### Total AI output control
 
-AEP (Agent Element Protocol) is total control of AI output. An agent does not get to run a tool, change a screen, fire a workflow, call an API, move money or change infrastructure until Base Node, the local kernel, allows that output. Unapproved model text stays text and does not become a live action.
+AEP (Agent Element Protocol) is an advanced deterministic mechanism for total control of AI output. An agent does not get to run a tool, change a screen, fire a workflow, call an API, move money or change infrastructure until the Base Node, the local kernel, allows that output. Unapproved model output stays unapproved and does not become a live action, when it violates the policies encoded in your AEP policy hyperlattice.
 
 ### Every surface the agent can touch
 
-The same control sits in front of screens, workflows, REST APIs, machine-learning pipelines, event systems, infrastructure as code, smart contracts and agent commerce. Agents propose work, AEP validates it and only compliant output executes.
+The control mechanism sits in front of interfaces, workflows, REST APIs, machine-learning pipelines, event systems, infrastructure as code, smart contracts and agent commerce and much more, like drones or robots. The AI proposes work, AEP validates it and only compliant output executes.
 
 ## AEP Hyperlattice
 
-One mechanism wraps every connected application, component, system or engine. Written policy, action paths, scene topology, capability dimensions, compliance docks and sealed transport are nodes and edges in that same graph rather than two stacks or two lattices.
+One mechanism wraps around every critical application, component, system or engine. Written policy, action paths, scene topology, capability dimensions, compliance docks and sealed transport are nodes and edges in that same graph, a unified policy wrap mechanism. No other protocol has the same kind of solution.
 
-Base Node, the local kernel, runs every check together for that action path and only then carries out the allowed action. A missing scene, dock, timestamp or sequence fails. Base Node proves the scene graph when it boots; that boot proof is not the runtime check.
+The AEP Base Node runs every check together for that action path and only then emits the signal for the AI to carry out the allowed action. A missing scene, dock, timestamp or sequence fails automatically. 
 
-### Node families in the one hyperlattice
+### Node families in the hyperlattice
 
-| Node family | Role in the one graph |
+| Node family | Role in the hyperlattice graph |
 |-------------|----------------------|
 | Structure | What exists, where it sits and its depth band or domain |
-| Event | Action paths: parents, constraints, who may act and hooks |
+| Event | Action paths: parents, constraints, who may act and over which hooks |
 | Written policy | Checks bound to a wrap or to an action-path prefix. Writing and security stay on for every action |
-| Regulation | Compliance modules such as EU AI Act, GDPR and SOC 2 on the regulation dock |
-| Transport | Every crossing of the wrap is a sealed encrypted capsule |
+| Regulation | Compliance modules such as EU AI Act, GDPR and SOC 2 wait on the regulation dock |
+| Transport | Every crossing of the wrap is a sealed encrypted data transport capsule |
 | Canvas | Visual projection of the same graph: hub, docks, agents and connectors |
 
 ### Wrap composition
@@ -56,11 +56,11 @@ SYSTEM (most permissive)
 SANDBOX (most restrictive)
 ```
 
-All applicable nodes must pass together. Who may do what is written per agent so Agent A may X and Agent B may Y with no rank and isolation of execution boxes stays isolation rather than a trust rank.
+All applicable nodes must pass together. Who may do what is written per agent, so agent A may perform action "X" and agent B may perform action "Y" with no rank and the isolation of execution boxes remains isolation rather than a trust rank. We have removed Trust Rings as a concept from AEP, because our mechanism is now better and enables more fine-tuned control that bioinsecure protocol designs do not match.
 
-### One crossing
+### One crossing path
 
-A builder attach is: seal a capsule then run every check together and only then carry out the allowed action. See [Kernel pulse](#kernel-pulse) for the wait after seal. TypeScript event helpers are not a second kernel. Fifteen named rows are a derived ledger of that evaluation.
+Seal a data transport capsule, then run every check together and only then carry out the allowed action. See [Kernel pulse](#kernel-pulse) for the wait period after the capsule seal. TypeScript event helpers are not a second kernel. 
 
 ```mermaid
 flowchart TB
@@ -90,10 +90,9 @@ Operator rule: one hyperlattice declaration per governed system. Scene plus acti
 
 ## Architecture
 
-
 **Base Node is the kernel and everything else is an SDK client, a runtime installer or a protocol component.**
 
-AEP 2.8 is a **reference protocol library**: a set of working components a builder can attach, not a live wired product that runs by itself. The work those components describe is performed in Base Node, the local kernel that opens each message and runs the checks. Messages travel as a sealed lattice frame, meaning an encrypted capsule on the wire. After that capsule is opened, Base Node freezes the clock at the seal time, waits one second, then runs every check together and only then carries out the allowed action. A derived ledger of fifteen named rows records that evaluation so a later reader can see what was checked; that ledger is not a second pass that can skip the wait.
+AEP 2.8 is a **reference protocol library**: a set of working components that a builder can take and attach, not a live wired product that runs by itself. The work those components describe is performed in the Base Node, the local kernel that opens each message and runs the checks. Messages travel as a sealed lattice frame, an encrypted capsule on the lattice channel transport wire. After that capsule is opened, the Base Node freezes the clock at seal time, waits 1000 MS, then runs every check together and only then carries out the allowed action. A derived ledger of fifteen named rows records that evaluation so a later reader can see what was checked; that ledger is not a second pass which can skip the wait.
 
 ```mermaid
 flowchart LR
@@ -131,11 +130,7 @@ The library is counted by this layer table. Folder count is not the library coun
 
 ### How a message is judged
 
-The same opened message must get the same yes or no. Lattice memory stores those results as frozen records for forensic reading (a later audit) and for health telemetry. Looking similar to a past allow is not proof that this message is allowed. Those stored records do not skip the check. The research paper in this repository holds the formal specification.
-
-### Who may act
-
-Who may do what is written per agent so Agent A may X and Agent B may Y. AEP 2.8 does not use Trust Rings, the old four-stage rank that treated agents as sandbox, user, operator or root and isolation of host execution boxes stays isolation rather than a rank. A numeric trust score cannot skip the kernel check.
+Every opened transport capsule must receive a positive or negative evaluation. The lattice memory stores those results as frozen records for forensic reading (a later audit) and for health telemetry, as well as for performance enhancement reasons. Looking similar to a past allow is not proof that this message is allowed. Those stored records do not skip the check. The research paper in this repository holds the formal specification.
 
 Schema Builder and Policy Builder study how rules connect and how complete they are so governance itself stays governed.
 
@@ -167,22 +162,22 @@ After a sealed capsule is opened, that kernel waits then runs every check togeth
 
 Composer Lite (the visual canvas) and the setup agent seal each message as an encrypted capsule on the wire. The setup agent reads the list of attachable components, writes a deployment plan and turns those components on under one wrap so scene, action path, written policy and channels are checked together.
 
-CAW sandboxes, the host execution boxes for coding agents and command work, apply those written policy profiles on the machine. See [GAP-centric policies and CAW sandboxes](#gap-centric-policies-and-caw-sandboxes). Host command work can run inside those boxes when the setup agent enables them; they are not a substitute for dynAEP, the standalone hyperlattice runtime component.
+CAW sandboxes, the AEP-native host execution boxes for coding agents and all other agentic processes apply those written policy profiles on the machine. See [GAP-centric policies and CAW sandboxes](#gap-centric-policies-and-caw-sandboxes). Host command work can run inside those boxes when the setup agent enables them; they are not a substitute for dynAEP, the standalone hyperlattice runtime component.
 
-Connectors and language clients use that same sealed transport. Universal Connect Bridge is an optional inbound airlock for foreign tools and it checks the tool contract before anything enters. The HCSE parser, which builds a symbol graph of the code, arrives through the outbound airlock.
+Connectors and language clients use that same sealed transport. The Universal Connect Bridge (UCB) is an optional inbound data airlock for foreign tools and it checks the tool contract before anything enters. The HCSE parser, which builds a symbol graph of the code, arrives through the outbound airlock.
 
 Coding governance proposes a change, measures how far that change reaches and only then locks it on the same wrap. Docks accept only sealed capsules because policy loads when Base Node starts and lattice paths plus docks refuse anything that is not a sealed frame.
 
 ---
 
-## Canonical repository layout (2.8)
+## Canonical repository layout (2.8.5)
 
 
 | Directory | Role |
 |-----------|------|
-| [`AEP-Base-Node/`](AEP-Base-Node/) | **Kernel**: daemon, registry, POTOMITAN, agent-control-extreme |
+| [`AEP-Base-Node/`](AEP-Base-Node/) | Kernel: daemon, registry, POTOMITAN, agent-control-extreme |
 | [`AEP-Components/`](AEP-Components/) | Protocol components (dynAEP, **caw-framework**, lattice-channels, graph-engine, aep-comm, economics, scanners, fleet, …) |
-| [`AEP-Composer-Lite/`](AEP-Composer-Lite/) | **Agent Composer** (Composer Lite): WASM visual canvas on **:8424** |
+| [`AEP-Composer-Lite/`](AEP-Composer-Lite/) | Agent Composer (Composer Lite): WASM visual canvas on port: 8424 |
 | [`AEP-SDKs/`](AEP-SDKs/) | Language SDKs: thin lattice-gated clients (not components) |
 | [`AEP-User-Experience/`](AEP-User-Experience/) | Harness, operator scripts, AEP-main-skill |
 | [`AEP-Connectors/`](AEP-Connectors/) | Application connectors (Slack, Jira, AWS, …) |
@@ -274,7 +269,7 @@ The wait is a compiled kernel constant of 1000 ms. It is not an environment vari
 
 A builder who wants a different wait rebuilds Base Node with a different compiled pulse length. Freeze-at-seal stays so the hold is judged against the freeze rather than a moving clock. Allowed drift is not set to the wait length. The five-second age stays longer than the wait or capsules would expire before they became ready. This is a kernel rebuild, not a yaml or env toggle.
 
-## What is new in 2.8
+## What is new in 2.8 compared to 2.75 (from May 2026)
 
 
 | Component | Path | Purpose |
