@@ -1,6 +1,6 @@
 # AEP v 2.8.5 - Agent Element Protocol
 
-**14 layers. One Ultimate AI Agent Control Protocol.**
+**Three-layer governance. Base Node is the kernel.**
 
 **Version 2.8.5**
 **Author:** thePM_001 ([https://x.com/thePM_001](https://x.com/thePM_001))  
