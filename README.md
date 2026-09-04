@@ -1,6 +1,6 @@
 # AEP v 2.8.5 - Agent Element Protocol
 
-**A reference protocol library. Base Node is the kernel.**
+**AEP controls AI output. Base Node is the kernel.**
 
 **Version 2.8.5**
 **Author:** thePM_001 ([https://x.com/thePM_001](https://x.com/thePM_001))  
@@ -18,21 +18,17 @@
 
 ## What AEP does
 
-AEP (Agent Element Protocol) is a reference protocol library: a set of working components a builder can attach. An agent can propose work and only output that passes the kernel check (the local yes-or-no before work may run) is allowed to execute. It is not a live wired product that runs by itself.
+### Control of AI output
 
-The same kernel check applies to screens, workflows, APIs, events and agent commerce: agents propose work, AEP validates it and only compliant output executes.
+AEP (Agent Element Protocol) is total control of AI and agent output: an agent can propose a screen change, a tool call, a workflow step or a commerce action and that output does not execute until Base Node, the local kernel, allows it. Unchecked model text does not become a live action on its own.
 
-## Kernel pulse
+### Same control on every surface
 
-After a sealed capsule (the encrypted frame on the wire) is opened, Base Node freezes the clock at seal, waits 1000 ms, then runs every check together and only then carries out the allowed action. Putting a capsule on the dock is not that check. After the wait the client asks for the result by the capsule hash so a deny names the closed walls and an allow returns an event id. Allowed clock drift is 50 ms against the freeze, which is why a 1000 ms hold still meets drift. A capsule held longer than five seconds is aged out.
+The same control applies to screens, workflows, REST APIs, machine-learning pipelines, event systems, infrastructure as code, smart contracts and agent commerce. Agents propose work, AEP validates it and only compliant output executes.
 
-### This wait is not a dynAEP setting
+### A library you attach
 
-The wait is a compiled kernel constant of 1000 ms. It is not an environment variable and it is not a dynAEP yaml key. TypeScript dynAEP remains a standalone component and does not own this wait. The 1000 ms NTP LARGE_STEP figure in dynAEP timekeeping is a clock-sync cap, not this kernel wait.
-
-### How the wait can be changed in theory
-
-A builder who wants a different wait rebuilds Base Node with a different compiled pulse length. Freeze-at-seal stays so the hold is judged against the freeze rather than a moving clock. Allowed drift is not set to the wait length. The five-second age stays longer than the wait or capsules would expire before they became ready. This is a kernel rebuild, not a yaml or env toggle.
+AEP 2.8 is a reference protocol library: a set of working components a builder can attach, not a live wired product that runs by itself. The builder starts Base Node then attaches the parts that stack needs.
 
 ## AEP Hyperlattice
 
@@ -171,7 +167,7 @@ The table below is that derived fifteen-row ledger.
 
 The installation wizard starts Base Node first so the setup agent has a kernel to talk to.
 
-After a sealed capsule is opened, that kernel waits 1000 ms then runs every check together. The wait is a compiled kernel constant, not a dynAEP yaml key. See [Kernel pulse](#kernel-pulse) for how it can be changed in theory.
+After a sealed capsule is opened, that kernel waits then runs every check together. See [Kernel pulse](#kernel-pulse) for the compiled wait and how it can be changed in theory.
 
 Composer Lite (the visual canvas) and the setup agent seal each message as an encrypted capsule on the wire. The setup agent reads the list of attachable components, writes a deployment plan and turns those components on under one wrap so scene, action path, written policy and channels are checked together.
 
@@ -269,6 +265,18 @@ flowchart LR
 | Outbound HTTP | Lattice-gated via inference dock | Audit frame before fetch |
 | Optional foreign airlock | HTTP/MCP on `:8412` | Only for non-AEP foreign stacks. API-key auth; manifest required; no fallback synthesis |
 | Policy | lattice-channel mandatory at boot | Strict lattice at runtime |
+
+## Kernel pulse
+
+After a sealed capsule (the encrypted frame on the wire) is opened, Base Node freezes the clock at seal, waits 1000 ms, then runs every check together and only then carries out the allowed action. Putting a capsule on the dock is not that check. After the wait the client asks for the result by the capsule hash so a deny names the closed walls and an allow returns an event id. Allowed clock drift is 50 ms against the freeze, which is why a 1000 ms hold still meets drift. A capsule held longer than five seconds is aged out.
+
+### This wait is not a dynAEP setting
+
+The wait is a compiled kernel constant of 1000 ms. It is not an environment variable and it is not a dynAEP yaml key. TypeScript dynAEP remains a standalone component and does not own this wait. The 1000 ms NTP LARGE_STEP figure in dynAEP timekeeping is a clock-sync cap, not this kernel wait.
+
+### How the wait can be changed in theory
+
+A builder who wants a different wait rebuilds Base Node with a different compiled pulse length. Freeze-at-seal stays so the hold is judged against the freeze rather than a moving clock. Allowed drift is not set to the wait length. The five-second age stays longer than the wait or capsules would expire before they became ready. This is a kernel rebuild, not a yaml or env toggle.
 
 ## What is new in 2.8
 
