@@ -127,8 +127,8 @@ constraint has a type, a field, an optional condition and a description.
 Supported constraint types are required_field, threshold, authorization, and
 custom.
 
-trust_floor: The minimum agent trust tier (1 through 5) required for an agent
-to propose this action. The trust floor is checked before any other validation.
+agent_may: GAP dimension grants for this action. Agent A may X. Agent B may Y.
+No rank. Empty grants fail closed for agent_action and output.
 
 ### 2.3 LatticeEvent
 
@@ -175,8 +175,7 @@ constraints_failed (array of string): Names of constraints that failed with
 partial_order_satisfied (boolean): True if all parent actions have occurred.
 missing_parents (array of string): Paths of parent actions that have not been
  satisfied (empty if partial_order_satisfied is true).
-trust_sufficient (boolean): True if the agent trust tier meets the node
- trust_floor.
+agent_may (boolean): True if the bound agent is granted this action.
 matched_interests (array of AgentInterest): List of agent interests that match
  this event action path.
 next_actions (array of string): Paths of child nodes that may follow.
@@ -203,7 +202,7 @@ constraints (object, optional): Additional match filters beyond the action
 
 ## 3. The Bridge Pipeline
 
-Reference attach is not this ordered TypeScript pipeline. After a sealed lattice frame, the Base Node kernel runs collect-all Admit then Apply and the 15-rule meet. The leftover TypeScript bridge pipeline below is sequential filter history, not the reference meet.
+Reference attach is not this ordered TypeScript pipeline. After a sealed lattice frame, the Base Node kernel runs collect-all Admit then Apply. Fifteen named rows are a derived ledger. The leftover TypeScript bridge pipeline below is sequential filter history, not the reference meet.
 
 ### 3.1 Stage 0: Template Instance Fast-Exit
 
@@ -228,8 +227,8 @@ The filter runs seven checks in order.
 1. Lattice membership. Does the event action_path match a declared lattice
  node? If not, the event is rejected immediately.
 
-2. Trust floor check. Does the agent trust tier meet or exceed the node
- trust_floor? If not, the event is rejected.
+2. GAP dimension agent_may. Is the bound agent granted this action?
+ If not, the event is rejected.
 
 3. Partial order check. Have all parent actions of this node been satisfied?
  The bridge maintains a satisfied set of action paths that grows as events
@@ -424,9 +423,9 @@ Conditions are string expressions evaluated against the field value. Supported
 operators: >, >=, <, <=, ==, between, within_range, defined, exists, and
 custom predicates registered via the validation hook interface.
 
-authorization: The named field identity or trust tier must satisfy the
-condition. Authorization constraints are evaluated against the bridge agent
-registry and the agent trust tier. Conditions may reference trust_tier,
+authorization: The named field identity must satisfy the condition.
+Authorization constraints are evaluated against the bridge agent registry
+and GAP dimension agent_may grants. Conditions may reference agent_id,
 agent_type or custom capability checks.
 
 custom: Dispatched to the registered validation hook. The hook receives
@@ -434,32 +433,16 @@ the full event, the full lattice and the matched node. The hook returns a
 HookResult. Custom constraints are evaluated after all built-in constraints
 for the node.
 
-### 4.5 Trust Tiers
+### 4.5 GAP capability dimensions
 
-Trust tiers are integers from 1 to 5. Higher numbers indicate greater trust.
-The trust floor of a lattice node is the minimum tier required to propose
-that action.
+Who-may-do-what is GAP dimension Conjunction. Agent A may X. Agent B may Y. No rank.
+Each lattice node carries agent_may grants. Empty grants fail closed for
+agent_action and output. Star grants any bound agent. Unbound grant matches
+empty agent_id. Isolation is not a trust rank.
 
-Tier 1. Any agent or external system. Root-level external events including
-webhooks, blockchain events, email receipts, sensor readings and system
-startup events require tier 1. All external observers produce events at tier 1.
-
-Tier 2. Registered agents with verified capabilities. Agent registration,
-system readiness signals, UI mutations, speech output, email classification,
-and sensor analysis require tier 2.
-
-Tier 3. Trusted agents with demonstrated reliability. Agent action proposals,
-email drafting and market price analysis require tier 3.
-
-Tier 4. High-trust agents with authorization. Email review, email sending,
-system shutdown and market price analysis require tier 4.
-
-Tier 5. Maximum trust. Trade proposals, trade validation, trade execution,
-and any action that moves value or changes system authority require tier 5.
-
-The trust tier is checked at event arrival time before any other validation.
-If the agent trust tier is below the action trust_floor, the event is rejected
-and a LATTICE_FILTER_RESULT with trust_sufficient=false is returned.
+The agent_may wall is checked on the same collect-all Admit as every other wall.
+If the bound agent is not granted the action, the event is rejected and a
+LATTICE_FILTER_RESULT with agent_may=false is returned.
 
 ### 4.6 Lattice Loading and Reloading
 
@@ -761,6 +744,8 @@ F: FREEWHEEL state. Timestamps are unreliable.
 Anomaly flags detect unusual clock behavior:
 
 LARGE_STEP: A single sync correction exceeded 1000 ms.
+
+The kernel pulse is not this LARGE_STEP cap. Base Node waits 1000 ms after freeze-at-seal before collect-all checks. TypeScript dynAEP does not own that wait. `dynaep-config.yaml` has no `pulse_ms` key. A theoretical change of the kernel wait is a Base Node rebuild of the compiled `PULSE_MS` constant while freeze-at-seal stays, kernel drift is not set to the wait length and age stays longer than the wait.
 HIGH_JITTER: A sync correction exceeded 3 standard deviations from the mean.
 SOURCE_CHANGE: The sync source changed (e.g. PTP to NTP fallback).
 SYNC_LOSS: The clock entered FREEWHEEL state.

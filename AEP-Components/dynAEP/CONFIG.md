@@ -23,7 +23,7 @@
 13. [themes](#13-themes)
 14. [tools](#14-tools)
 15. [logging](#15-logging)
-16. [timekeeping](#16-timekeeping)
+16. [timekeeping](#16-timekeeping) (NTP; kernel pulse is not this section)
 17. [causal_ordering](#17-causal_ordering)
 18. [forecast](#18-forecast)
 19. [perception](#19-perception)
@@ -219,7 +219,7 @@ lattice:
 | `ui_only` | Lattice skipped for all categories. Bridge uses AEP structural validation (v0.4-style); no lattice membership checks. |
 | `disabled` | Lattice validation entirely skipped. Use only for development or migration. |
 
-**Reference attach:** After a sealed lattice frame, Base Node kernel runs collect-all Admit and the 15-rule meet on action_path. TypeScript processEvent is not the reference action checker.
+**Reference attach:** After a sealed lattice frame, Base Node kernel runs collect-all Admit then Apply on action_path. Fifteen named rows are a derived ledger. TypeScript processEvent is not the reference action checker.
 
 | **Example** | `governance: "filter_all"` |
 | **NEW** | Yes |
@@ -817,6 +817,8 @@ logging:
 ## 16. timekeeping
 
 NTP-based wall-clock synchronisation with drift detection and TIM (Temporal Integrity Monitor) holdover.
+
+The kernel pulse (the 1000 ms wait Base Node holds after a sealed capsule is opened) is not a field in this file. There is no `pulse_ms` key. `timekeeping.max_drift_ms` is NTP drift for the TypeScript bridge clock. To change the kernel wait in theory, rebuild Base Node after editing the compiled `PULSE_MS` constant. Keep freeze-at-seal. Do not set kernel drift to the wait length. Keep age (5000 ms) longer than the wait.
 
 ```yaml
 timekeeping:

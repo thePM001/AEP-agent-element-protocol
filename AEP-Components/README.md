@@ -17,3 +17,7 @@ Infrastructure and top-level surfaces outside this folder:
 - `rust/` - build artifact target directory
 
 CCA and the setup agent resolve component paths via `AEP-Base-Node/registry/catalog.json` (`repository.components_root`).
+
+## Kernel pulse owner
+
+The kernel pulse (the 1000 ms wait after freeze-at-seal) is owned by Base Node at `AEP-Base-Node/` with constants in `AEP-Components/base-node-pulse/`. TypeScript dynAEP does not own it. `dynaep-config.yaml` has no `pulse_ms` key. Palette READMEs that do not mention the wait are not a second pulse owner. To change the wait in theory, rebuild Base Node after editing compiled `PULSE_MS`. Keep freeze-at-seal. Do not set kernel drift to the wait length. Keep age longer than the wait.

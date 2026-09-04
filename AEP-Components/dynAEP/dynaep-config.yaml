@@ -157,6 +157,11 @@ logging:
 
 # ---------------------------------------------------------------------------
 # TA-1: TEMPORAL AUTHORITY (unchanged from v0.4)
+# Kernel pulse (1000 ms wait after freeze-at-seal) is owned by Base Node.
+# There is no pulse_ms key here. max_drift_ms below is NTP drift for this
+# TypeScript bridge clock, not the kernel wait. To change the kernel wait
+# in theory, edit compiled PULSE_MS and rebuild Base Node. Keep freeze-at-seal.
+# Do not set kernel drift to the wait length. Keep age longer than the wait.
 # ---------------------------------------------------------------------------
 
 timekeeping:

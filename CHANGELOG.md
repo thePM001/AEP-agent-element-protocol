@@ -1,5 +1,374 @@
 # Changelog
 
+## [2.8.0] - 2026-09-04 - Every opened message meets the kernel checks
+
+The AEP 2.8 library now treats Base Node as the kernel: after a sealed lattice frame (the encrypted capsule on the wire) is opened, the kernel freezes the clock at seal, waits 1000 ms, then runs the check that every opened message is supposed to meet. Putting a frame on the dock is not that check. After the wait the client asks for the result by the capsule hash so a deny names the closed walls and an allow returns an event id. A missing scene, dock, timestamp or sequence fails those checks. Stored past allows stay forensic and do not skip the check. TypeScript dynAEP stays a standalone component. Universal Connect Bridge stays an optional attach for foreign stacks.
+
+## [2.8.5] - 2026-09-04 - Kernel pulse documented on Base Node and dynAEP
+
+The main README now has a first-class Kernel pulse section: the 1000 ms wait after freeze-at-seal is a compiled Base Node constant, not a dynAEP yaml key. The 1000 ms NTP LARGE_STEP cap in dynAEP timekeeping is clock-sync, not the kernel wait. In theory a builder changes the wait by rebuilding Base Node with a different compiled pulse length while freeze-at-seal stays, drift is not set to the wait length and age stays longer than the wait.
+
+## [2.8.x] - 2026-09-04 - dock client collects post-beat Admit so DenyReport.closed and allow event_id return on the wire
+
+### Changed
+After enqueue the client collects the applied DockFrameResponse by digest on the same unix dock. Enqueue still has no event_id. Deny carries deny.closed. Allow carries event_id. UCB send_frame does not treat enqueue as Admit. The 1000 ms pulse is unchanged. Attractors stay forensic. TypeScript dynAEP remains.
+
+### Added
+Crate aep-dock-post-beat-collect. cargo test -p aep-base-node --lib covers collect-by-digest. CI gate scripts/gate-aep28-env-071.sh fails if enqueue is still treated as Admit.
+
+
+## [2.8.x] - 2026-09-04 - dock Deny returns closed-wall ids and mechanical repair
+
+### Changed
+Dock Deny now returns a structured report on DockFrameResponse.deny: closed wall ids, reasons, closed_set_key and prescribed repairs for unbound scene, dock, time, sequence and writing.gap. Grant lists stay off repair.fix. A retry must seal a new capsule because digest replay is keyed at enqueue. UCB ingest JSON forwards the same deny field. Attractors stay forensic. Native Path A owns the report. Conjunction stays Boolean meet.
+
+### Added
+Crate aep-wall-set-backpressure. Rejection.closed on live-entry. admit_sealed_payload_report on Base Node. cargo test -p aep-wall-set-backpressure --lib covers bind and reseal repairs.
+
+
+
+## [2.8.x] - 2026-09-04 - README attach path names 1000 ms pulse, unbound field close and wrap bind
+
+### Changed
+README now describes the landed Base Node attach path: freeze-at-seal, 1000 ms pulse, then collect-all Admit then Apply, with missing scene, dock, timestamp or sequence closing Admit. Policy-system GAP walls bind to a lattice wrap or action_path prefix except writing and security which stay always-on, while attractors do not skip Admit and GraphEngine execute requires admitGate default deny.
+
+
+## [2.8.x] - 2026-09-04 - GraphEngine execute requires admitGate default deny
+
+### Changed
+GraphEngine.execute no longer runs nodeExecutor until admitGate allows. A missing admitGate is deny. The local vector clock ticks only after allow and is not kernel Admit. policyEvaluator on a decision node is not Admit. Kernel Admit is drift, age, future, sequence and digest replay. README, AEP-main-skill and GraphEngine README no longer teach Lamport vector clocks as live Admit. TypeScript dynAEP remains. GraphEngine is not a second kernel.
+
+### Added
+Crate aep-graph-engine-admit-gate fails if engine.ts invokes nodeExecutor without admitGate.
+
+
+## [2.8.x] - 2026-09-04 - Admit does not reuse a cosine-near attractor or a cached forecast score
+
+### Changed
+Admit wall_forecast uses only the live anomaly_score. A stored snapshot.forecast_cached_score cannot close or open the forecast wall. README and AEP-main-skill no longer teach attractor skip of Admit. Cosine-near a past allow is not membership proof. lattice-memory still records and searches for forensic and health telemetry. ENV-025 
+
+### Added
+cargo test -p aep-envelope --lib covers cached-score stays open and live score closes.
+
+
+
+## [2.8.x] - 2026-09-04 - policy-system GAP walls bind wrap or prefix
+
+### Changed
+Policy-system GAP walls bind to LatticeNode.wrap or an action_path prefix. writing and security stems still evaluate on every action_path. A finance wrap GAP item does not close an inventory wrap ping. A non-always-on GAP with empty wrap does not fold onto every event. YAML GAP parse reads guard and wrap. 
+
+### Added
+LatticeNode.wrap on aep-envelope. wrap and prefix fields on policy-system GAP load. cargo test -p aep-policy-system-admit --lib and cargo test -p aep-envelope --lib cover those cases.
+
+
+## [2.8.x] - 2026-09-04 - Base Node 1000 ms tic tac pulse
+
+### Changed
+Base Node now freezes the sealed capsule temporal snapshot after seal verify, writing scan and digest replay, then waits for a 1000 ms bridge-clock beat before Admit collect-all walls then Apply. Same-agent order is sequence_number. Queue overflow is Deny. Drift stays 50 ms against freeze. Age stays 5000 ms. Extra Admit walls bind bridge time to the frozen seal snapshot. aep-dynaep is not a second pulse owner.
+
+### Added
+Crate aep-base-node-pulse and CI gate scripts/gate-aep28-env-065.sh fail if docking.rs still Admits immediately or max_drift_ms is set to the pulse length.
+
+
+
+## [2.8.x] - 2026-09-04 - unbound scene, channel, time and sequence close
+
+### Changed
+Unbound scene, channel, time and sequence now close Admit so a payload that drops those fields cannot walk through. dest_dock may bind from the opened frame docking port, while a missing scene_id, timestamp or sequence_number is Deny. aep-dynaep wall_time and compile_temporal_walls close the same way when time is unbound. and 
+
+### Added
+Crate aep-unbound-field-close and CI gate scripts/gate-aep28-env-066.sh fail if those walls still allow when the field is missing.
+
+
+
+## [2.8.x] - 2026-09-04 - CAW CVE demo trees out of the attachable component set
+
+### Changed
+CAW CVE demo trees are not in the attachable component set.
+
+### Added
+Crate aep-caw-cve-demo-trees and CI gate scripts/gate-aep28-env-064.sh fail if a demo-cve tree remains under AEP-Components.
+
+
+
+## [2.8.x] - 2026-09-04 - EPSCOM trust bundle does not claim ML-DSA on sha256-structure
+
+### Changed
+EPSCOM trust bundle mode is sha256-structure. ML-DSA is not claimed. The signatures loader denies ML-DSA claim on sha256-structure.
+
+### Added
+Crate aep-epscom-trust-bundle-mode and CI gate scripts/gate-aep28-env-063.sh fail if the shipped bundle still claims ML-DSA.
+
+
+## [2.8.x] - 2026-09-04 - AgentMesh docs say local issuance
+
+### Changed
+AgentMesh docs say local issuance. A local cert is not mesh attestation.
+
+### Added
+Crate aep-agentmesh-local-issuance and CI gate scripts/gate-aep28-env-062.sh fail if docs still sell zero-trust identity for a local cert.
+
+
+## [2.8.x] - 2026-09-03 - lattice-gated-fetch after dock allow
+
+### Changed
+After dock allow the kernel executes bound HTTP and returns http on DockFrameResponse. lattice-gated-fetch clients consume dock http and do not ordinary-fetch the original URL.
+
+### Added
+Crate aep-lattice-gated-fetch and CI gate scripts/gate-aep28-env-061.sh fail if docking.rs or a twin still falls through after allow.
+
+
+## [2.8.x] - 2026-09-03 - advertised SDK path ships a client
+
+### Changed
+Advertised AEP-SDKs/python now ships aep-protocol and dynaep clients. The lattice client refuses AEP_LATTICE_STRICT=0 unless AEP_LATTICE_STRICT_DEV=1 and does not self-assert score 750.
+
+### Added
+Crate aep-python-sdk-path and CI gate scripts/gate-aep28-env-060.sh fail if the advertised tree or lattice client is missing.
+
+## [2.8.x] - 2026-09-03 - library count is the layer table
+
+### Changed
+- README counts the library by the Architecture layer table
+- Folder count is not the library count
+
+### Added
+- crate aep-library-layer-count
+- CI fails if README uses 120-plus as the library count
+
+## [2.8.x] - 2026-09-03 - named surfaces execute
+
+### Changed
+- CodeSandbox executes python, javascript, typescript and bash under AEP_DATA/sandbox
+- Cedar and Rego transpilers emit GAP and reverse GAP exports emit Cedar and Rego
+- MCP proxy forwards policy-allowed tool calls through stdio JSON-RPC and SSE HTTP
+
+### Added
+- crate aep-named-surfaces
+- CI fails if a named surface still refuses to run or the README does not name it live
+
+## [2.8.x] - 2026-09-03 - load AEP-Policy-System GAP as live Admit
+
+### Changed
+- AEP-Policy-System GAP files load as live Admit walls on the kernel collect-all pass
+- README and SETUP copy say Live Admit GAP files
+
+### Added
+- crate aep-policy-system-admit
+- CI fails if live dock does not compile GAP files into Admit walls
+
+## [2.8.x] - 2026-09-03 - Slack and Jira real clients through UCB
+
+### Changed
+- Slack posts chat.postMessage through UCB egress
+- Jira creates issues through UCB egress
+- Connector probes use UCB rather than vendor hosts
+
+### Added
+- crate aep-connector-ucb-clients
+- kit helpers ucbFetch slackPostMessage jiraCreateIssue
+
+## [2.8.x] - 2026-09-03 - dock line reader is not one byte per await
+
+### Changed
+- Dock line reader uses fill_buf and consume with a 64KiB BufReader
+- serve_connection no longer awaits one byte up to the 4MiB cap
+
+### Added
+- crate aep-dock-line-reader
+- CI fails if production dock line reader still awaits one byte
+
+
+
+## [2.8.x] - 2026-09-02 - isolate numeric trust_score
+
+### Changed
+- Numeric trust_score is isolation telemetry. It never admits
+- AgentMesh cert state has no trust_tier and does not rotate on score
+- validate_agent ignores numeric trust_score
+- Envelope Snapshot.trust_score is unused by walls
+
+### Added
+- crate aep-trust-score-isolation
+- CI fails if live Admit still denies on score or cert state still stores score
+
+
+## [2.8.x] - 2026-09-02 - one Admit function and one id vocabulary
+
+### Changed
+- extra_walls keeps AdmitWall id
+- Envelope WallVerdict identity is id
+- attach_live_walls assigns compile_live_walls with no conversion from a second admit_collect_all
+
+### Added
+- crate aep-one-admit-id
+- CI fails if extra_walls conversion or WallVerdict name identity remains
+
+
+
+## [2.8.x] - 2026-09-02 - dock request returns ok false on poisoned locks
+
+### Changed
+- Dock request path returns ok false when a mutex is poisoned
+- process_request does not abort the process on a poisoned lock
+
+### Added
+- crate aep-dock-request-poison
+- CI fails if production dock request path still uses lock expect or lock unwrap
+
+
+## [2.8.x] - 2026-09-02 - mint agent sign keys only via operator provision
+
+### Changed
+- Agent sign keys mint only through the operator provision command
+- First-mint get_or_create is not the identity issuer
+- lattice log and self-test look up a provisioned key
+
+### Added
+- crate aep-agent-sign-key-provision
+- aep-base-node --provision-agent-sign-key --agent-id
+- CI fails if get_or_create still mints or provision is missing
+- self-test record_lattice_event binds eight INSERT columns
+
+
+
+
+## [2.8.x] - 2026-09-02 - empty lattice closes membership and agent_may
+
+### Changed
+- Empty node map closes dag.membership and gap.agent_may
+- A non-empty action_path cannot pass membership on an empty lattice
+- Missing or unreadable lattice YAML stays Deny at load
+- 
+
+### Added
+- crate aep-empty-lattice-close
+- CI fails if wall_dag or wall_agent_may still opens on an empty node map
+
+
+## [2.8.x] - 2026-09-02 - standalone Rust dynAEP crate
+
+### Added
+- crate aep-dynaep at AEP-Components/dynAEP/crate
+- Action Lattice membership, parent closure and agent_may with the same rules as kernel envelope Admit
+- Temporal authority stamps bridge time on allowed events
+- A builder can depend on only that crate. Base Node is unchanged. TypeScript dynAEP remains.
+
+
+
+
+## [2.8.x] - 2026-09-02 - remove envelope-journals from product workspace
+
+### Removed
+- AEP-Components/envelope-journals from workspace members
+- crate aep-envelope-journals as a product workspace package
+
+### Added
+- crate aep-envelope-journals-drop
+- CI fails if aep-envelope-journals is a workspace package
+
+
+
+## [2.8.x] - 2026-09-02 - park run_meet off product SDK
+
+### Changed
+- Product Rust SDK does not export run_meet as live evaluation
+- Live evaluation stays collect-all Admit
+- Derived 15-row ledger lives under evaluation-chain as non-live
+
+### Added
+- crate aep-sdk-run-meet-park
+- CI fails if AEP-SDKs/rust/src/lib.rs pub-uses run_meet or chain_meet_keeps_all_rows stays as a product evaluation test
+
+
+## [2.8.x] - 2026-09-01 - live Admit has no rank field
+
+### Removed
+- EnvelopeAction rank field on the live Admit event
+- Live tests sending a rank field
+- TypeScript processEvent stamping a rank field
+
+### Added
+- crate aep-admit-no-trust-tier
+- CI fails if EnvelopeAction still has a rank field
+- Who-may stays GAP dimension agent_may
+
+
+## [2.8.x] - 2026-09-01 - one live evaluation
+
+### Changed
+- Live dock compiles wall crates onto extra walls then one Admit then Apply
+- live_collect_all is not a second combinator beside aep_envelope admit
+
+### Added
+- crate aep-one-live-evaluation
+- CI fails if envelope_admit.rs calls both live_collect_all and process_event Admit on the same plaintext
+
+
+
+## [2.8.x] - 2026-09-01 - live dock collect-all
+
+### Changed
+- Product Admit wall crates fold into envelope_admit collect-all
+- admit-trust-floor is not a workspace product member
+
+### Added
+- crate aep-admit-live-dock
+- CI unused product wall crate gate
+
+
+## [2.8.x] - 2026-09-01 - one live entry language
+
+### Changed
+- Product live path is Rust only
+- TypeScript processEvent is not a second product Admit
+- DynAEPBridge constructor does not load ActionLattice YAML as product Admit
+- CLI serve does not run LatticeFilter as product Admit
+
+### Added
+- crate aep-one-live-entry-language
+- tree-wide leftover scan: spawnSync aep-envelope, loadFromFile and processEvent as product live code
+- tests: constructor YAML load fails the leftover scan; processEvent createRejection fails the leftover scan
+
+
+## [2.8.x] - 2026-09-01 - one evaluation story
+
+### Changed
+- Admit collect-all then Apply is the sole live evaluation
+- Fifteen named rows are a derived ledger, not a second combinator
+- LatticeFilter leftover is not evaluation
+- README mermaid no longer forks BN to ADMIT and BN to MEET
+
+### Added
+- crate aep-one-evaluation-story
+- tests: unmapped closed Admit wall still Denies when fifteen bools are open
+
+
+## [2.8.x] - 2026-09-01 - client trust_tier ignore
+
+### Changed
+- TypeScript lattice ignores client trust_tier when agent_id is set
+- Authorization field trust_tier is not a floor. Who-may is agent_may
+
+### Added
+- crate aep-client-trust-tier-ignore
+- tests: bound agent_id plus inflated trust_tier Deny
+
+
+## [2.8.x] - 2026-09-01 - Trust Rings removal
+
+### Removed
+- Trust Rings four-stage rank is not a product member
+- ring_capability evaluation-chain step (replaced by gap_capability)
+- client trust_tier versus node trust_floor rank compare on live Admit
+- trust.penalize during Admit and workflow evaluation
+
+### Added
+- GAP capability dimensions: Agent A may X, Agent B may Y, Conjunction on the same collect-all Admit
+- crate aep-gap-capability-dimensions
+- lattice node agent_may grants. Empty grants fail closed for agent actions
+- CAW isolation stays. Isolation is not a trust rank
+
 All notable changes to the Agent Element Protocol (AEP) will be documented in this file.
 
 ## [2.8.x] - 2026-07-21 (21.07.2026) - intermittent / August patch track
@@ -391,4 +760,3 @@ are now validated with the same mathematical rigour applied to agent outputs.
 - Z-band hierarchy for deterministic z-index ordering.
 - AEP prefix convention (`XX-NNNNN`).
 - AOT and JIT validation modes.
-

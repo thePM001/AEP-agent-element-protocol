@@ -8,6 +8,16 @@
 
 dynAEP 1.0 is an open-source protocol for governing real-time events in multi-agent AI systems. Events that carry an `action_path` and match an active lattice governance mode pass through the Action Lattice before downstream pipeline stages. The lattice validates partial-order dependencies, enforces constraints and routes matching events to interested agents. UI mutations, external events (webhooks, blockchain, email, sensors), agent actions and human-facing outputs share the same bridge architecture; lattice gating applies per `lattice.governance` and event shape (see §11).
 
+## Kernel pulse is not a dynAEP setting
+
+Base Node owns the kernel pulse. After a sealed capsule is opened the kernel freezes the clock at seal, waits 1000 ms, then runs every check together. TypeScript dynAEP stays a standalone component. This tree does not own that wait.
+
+`dynaep-config.yaml` has no `pulse_ms` key. `timekeeping.max_drift_ms` (default 50) is NTP drift between the TypeScript bridge clock and its time source. Clock corrections above 1000 ms in dynAEP-TA are LARGE_STEP NTP steps, not the kernel wait.
+
+### How the wait can be changed in theory
+
+Edit the compiled `PULSE_MS` constant in Base Node pulse code and rebuild the kernel. Keep freeze-at-seal. Do not set allowed kernel drift to the wait length. Keep age (5000 ms) longer than the wait. There is no dynAEP yaml key and no environment variable for this.
+
 ---
 
 ## 1. What Is dynAEP 1.0
@@ -158,7 +168,7 @@ The pipeline is strictly ordered for each event type. When an event has `action_
 
 ## 4. Action Lattice
 
-The Action Lattice is the central governance mechanism in dynAEP 1.0. It is a partial-order DAG (directed acyclic graph) of every action that the system can perform. Each action is a node in the lattice with a unique path, a category, parent dependencies, child continuations, validation constraints and a trust floor.
+The Action Lattice is the central governance mechanism in dynAEP 1.0. It is a partial-order DAG (directed acyclic graph) of every action that the system can perform. Each action is a node in the lattice with a unique path, a category, parent dependencies, child continuations, validation constraints and agent_may grants.
 
 ### Lattice Node Anatomy
 
@@ -169,7 +179,7 @@ Every action in the lattice has these properties:
 - **parents**: list of action paths that must be satisfied before this action can fire
 - **children**: list of action paths that may follow after this action
 - **constraints**: validation gates applied at event arrival time
-- **trust_floor**: minimum agent trust tier (1-5) required to propose this action
+- **agent_may**: GAP dimension grants. Agent A may X. Agent B may Y. No rank
 
 ### Partial-Order Governance
 
@@ -205,7 +215,7 @@ actions:
  - type: required_field
  field: signature
  description: "Webhook must carry a cryptographic signature"
- trust_floor: 1
+ agent_may: ["*"]
 
  blockchain:event:
  label: "Blockchain event detected (log, transfer, mint)"
@@ -215,7 +225,7 @@ actions:
  constraints:
  - type: required_field
  field: tx_hash
- trust_floor: 1
+ agent_may: ["*"]
 
  email:incoming:
  label: "Email received"
@@ -225,7 +235,7 @@ actions:
  constraints:
  - type: required_field
  field: from
- trust_floor: 1
+ agent_may: ["*"]
 
  sensor:reading:
  label: "Sensor reading from IoT device"
@@ -237,7 +247,7 @@ actions:
  field: value
  condition: "within_range"
  description: "Reading must be within min/max supplied in payload"
- trust_floor: 1
+ agent_may: ["*"]
  # Payload at runtime must include bounds, e.g.:
  # { "value": 42.5, "min": 0, "max": 100 }
  # or { "value": 42.5, "range": { "min": 0, "max": 100 } }
@@ -249,7 +259,7 @@ actions:
  parents: []
  children: [system:health:check]
  constraints: []
- trust_floor: 1
+ agent_may: ["*"]
 
  system:health:check:
  label: "Run system health verification"
@@ -259,7 +269,7 @@ actions:
  constraints:
  - type: required_field
  field: services
- trust_floor: 2
+ agent_may: ["*"]
 
  system:ready:
  label: "System is ready for agent operations"
@@ -267,7 +277,7 @@ actions:
  parents: [system:health:check]
  children: [agent:register]
  constraints: []
- trust_floor: 2
+ agent_may: ["*"]
 
  # Agent actions require higher trust
  agent:register:
@@ -280,7 +290,7 @@ actions:
  field: capabilities
  - type: required_field
  field: agent_type
- trust_floor: 2
+ agent_may: ["*"]
 
  agent:trade:propose:
  label: "Agent proposes a trade"
@@ -291,7 +301,7 @@ actions:
  - type: threshold
  field: amount
  condition: "> 0"
- trust_floor: 5
+ agent_may: ["*"]
 
  # Validation and routing
  action:route:
@@ -307,7 +317,7 @@ actions:
  constraints:
  - type: required_field
  field: matched_agents
- trust_floor: 1
+ agent_may: ["*"]
 
  # Output actions terminate the chain
  output:notify:
@@ -319,7 +329,7 @@ actions:
  - type: threshold
  field: urgency
  condition: "defined"
- trust_floor: 1
+ agent_may: ["*"]
 
  output:ui_mutation:
  label: "Mutate a UI element via scene graph"
@@ -331,20 +341,17 @@ actions:
  field: element_id
  - type: required_field
  field: mutation
- trust_floor: 2
+ agent_may: ["*"]
 ```
 
 ### Trust Tiers
 
 Trust tiers (1-5) govern which agents can propose which actions. The mapping is:
 
-- **Tier 1**: any agent or external system. Root-level external events (webhooks, blockchain, email, sensors) are tier 1.
-- **Tier 2**: registered agents with verified capabilities. Agent registration, UI mutations and speech output require tier 2.
-- **Tier 3**: trusted agents. Email classification, proposal actions and market analysis require tier 3.
-- **Tier 4**: high-trust agents. Email review, sending, shutdown requests and market price analysis require tier 4.
-- **Tier 5**: maximum trust. Trade proposals, trade validation and trade execution require tier 5.
+Who-may-do-what is GAP dimension Conjunction. Agent A may X. Agent B may Y. No rank.
+Each node lists agent_may grants. Empty grants fail closed for agent_action and output. Star grants any bound agent. Unbound grant matches empty agent_id. Isolation is not a trust rank.
 
-The trust floor is checked at event arrival time. If the agent's trust tier is below the action's trust_floor, the event is rejected before any other validation occurs.
+The agent_may wall is checked on the same collect-all Admit as every other wall. If the bound agent is not granted the action, the event is rejected before Apply.
 
 ---
 
@@ -403,7 +410,7 @@ The bridge emits a filter result for every LATTICE_EVENT. This is the structured
 }
 ```
 
-If the filter fails at any step, `passed` is false and `constraints_failed` contains the reasons. TypeScript `DynAEPBridge.processEvent()` is not the reference action checker. After a sealed lattice frame, the Base Node kernel runs collect-all Admit (`aep-envelope` / `aep-live-entry`) and the 15-rule meet (`aep-evaluation-chain`). `LatticeFilter.filterAsync()` is leftover sequential filter, not the reference meet. Custom constraints on leftover TypeScript LatticeFilter are not the Base Node reference meet.
+If the filter fails at any step, `passed` is false and `constraints_failed` contains the reasons. TypeScript `DynAEPBridge.processEvent()` is not the reference action checker. After a sealed lattice frame, the Base Node kernel runs collect-all Admit then Apply (`aep-envelope` / `aep-live-entry`). Fifteen named rows are a derived ledger (`aep-evaluation-chain`). `LatticeFilter.filterAsync()` is leftover sequential filter, not evaluation. Custom constraints on leftover TypeScript LatticeFilter are not the Base Node reference meet.
 
 ### 5.3 LATTICE_REGISTER
 
@@ -551,7 +558,7 @@ Config alias resolution (`lattice.hook` in YAML):
 | `mle-validator` | `mle-validator` |
 | `noop` | `noop` |
 
-Custom constraints (`constraint.type === "custom"`) dispatch to the hook named by `lattice.hook` during **`filterAsync()`** only. The reference action checker is not TypeScript processEvent. Base Node kernel runs Admit collect-all and the 15-rule meet after a sealed lattice frame.
+Custom constraints (`constraint.type === "custom"`) dispatch to the hook named by `lattice.hook` during **`filterAsync()`** only. The reference action checker is not TypeScript processEvent. Base Node kernel runs Admit collect-all then Apply after a sealed lattice frame. Fifteen named rows are a derived ledger.
 
 ### MLE Validation Hook
 
@@ -709,11 +716,25 @@ For the full configuration reference including temporal authority, causal orderi
 
 ## 13. SDK Packages (AEP 2.8 layout)
 
+### Standalone Rust crate
+
+A builder can attach crate `aep-dynaep` at `AEP-Components/dynAEP/crate`. The crate is a Cargo workspace member. Collect-all Admit covers Action Lattice membership, parent closure, GAP dimension agent_may, temporal authority and perception bounds. Empty lattice is Deny. Empty action_path is Deny. TypeScript sources stay as the TypeScript form of this component. Base Node crate stays.
+
+```toml
+[dependencies]
+aep-dynaep = { path = "AEP-Components/dynAEP/crate" }
+```
+
+```bash
+cargo test -p aep-dynaep --lib
+```
+
+
 **SDKs do not live under `AEP-Components/dynAEP/`.** Protocol source of truth is `AEP-Components/dynAEP/`; SDKs are produced into `AEP-SDKs/` at the repository root. NPM registry distribution is forbidden; use `produce-aep-sdks.mjs` and lattice-gated artifacts.
 
 | SDK | Path | Contents |
 |-----|------|----------|
-| TypeScript dynAEP | `AEP-SDKs/typescript/dynaep/` | leftover TypeScript client. Reference action checker is Base Node kernel Admit + 15-rule meet |
+| TypeScript dynAEP | `AEP-SDKs/typescript/dynaep/` | leftover TypeScript client. Reference action checker is Base Node kernel Admit collect-all then Apply |
 | TypeScript AEP core | `AEP-SDKs/typescript/aep-protocol/` | Scene graph, validation, memory fabric |
 | Python dynAEP | `AEP-SDKs/python/dynaep/` | Python bridge and temporal pipeline |
 | React (AEP + dynAEP) | `AEP-SDKs/react/` | `aep-react.tsx`, `dynaep-react.tsx` (`await bridge.processEvent()`), `dynaep-copilotkit.tsx` |

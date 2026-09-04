@@ -437,20 +437,20 @@ When an agent or user triggers a mutation, checks only the specific element agai
 
 ## Evaluation chain (reference)
 
-After a sealed lattice frame, the Base Node kernel runs collect-all Admit then Apply (`aep-envelope` / `aep-live-entry`) and the 15-rule meet (`aep-evaluation-chain`). The table below is those 15 named walls.
+After a sealed lattice frame is opened, Base Node freezes the clock at seal and waits 1000 ms (compiled kernel `PULSE_MS`, not a dynAEP yaml key) then runs collect-all Admit then Apply (`aep-envelope` / `aep-live-entry`). The table below is the derived 15-row ledger (`aep-evaluation-chain`). TypeScript dynAEP remains a standalone component and does not own this wait.
 
 | Step | Name | Mode | Description |
 |------|------|------|-------------|
 | 0 | Task scope check | hard | Active task scope boundaries |
 | 1 | Session state check | hard | Session must be active |
-| 2 | Ring capability check | hard | Action within ring permissions |
+| 2 | GAP capability check | hard | Agent A may X. Agent B may Y. No rank |
 | 3 | System-wide rate limit | hard | Global rate limit enforcement |
 | 4 | Per-session rate limit | hard | Session-specific rate limit |
 | 5 | Intent drift check | configurable | Action aligns with baseline |
 | 6 | Escalation rules | configurable | Threshold-triggered human check-in |
 | 7 | Covenant evaluation | hard/soft | Permit/forbid/require rules |
 | 8 | Forbidden pattern check | hard/soft | Regex and literal patterns |
-| 9 | Capability + trust tier match | hard | Minimum trust for capability |
+| 9 | Capability grant | hard | GAP dimension who-may-do-what |
 | 10 | Budget/limit check | hard | Action count, cost, time |
 | 11 | Gate check | hard | Human or webhook approval |
 | 12 | Cross-agent verification | hard | Counterparty identity handshake |
@@ -459,7 +459,7 @@ After a sealed lattice frame, the Base Node kernel runs collect-all Admit then A
 
 ## Lattice Memory
 
-Append-only validation memory with vector similarity search. Records every accept/reject result. 95% similarity fast-path: when a new proposal matches a known attractor within 0.95 cosine similarity, the cached verdict is returned immediately without re-running Admit collect-all walls then Apply.
+Append-only validation memory with vector similarity search. Records every accept/reject result for forensic and health telemetry. Cosine-near a past allow is not membership proof. Attractors do not skip Admit. Collect-all walls then Apply still run on every opened frame.
 
 TLA+ invariant: `LatticeInvariant == \A e \in Entries: e.hash = SHA256(e.payload) /\ e.seq = Prev.seq + 1`
 
@@ -467,7 +467,7 @@ The attractor set grows monotonically. Attractors are never deleted, only supers
 
 ## 11 Content Scanners
 
-Scanners are walls in the 15-rule meet (step 14). They are not a later OPA stage. Each scanner has configurable hard or soft severity. Hard findings reject immediately. Soft findings trigger the recovery engine for automatic retry.
+Scanners are rows in the derived 15-row ledger (step 14). They are not a later OPA stage. Each scanner has configurable hard or soft severity. Hard findings reject immediately. Soft findings trigger the recovery engine for automatic retry.
 
 | # | Scanner | What It Checks | Default Severity |
 |---|---------|---------------|-----------------|
@@ -491,26 +491,11 @@ Recovery includes the specific violation details, which scanner triggered it and
 
 ## Trust Scoring
 
-Continuous trust score (0-1000) with five tiers. Time-based erosion. Configurable penalties per violation type and rewards per successful action.
+Continuous trust score (0-1000) used as evidence. It is not a who-may-do-what rank. Capability is GAP dimension Conjunction.
 
-| Tier | Score Range | Description |
-|------|------------|-------------|
-| Untrusted | 0-199 | Restricted to Ring 3 (read-only) |
-| Provisional | 200-399 | Ring 3 |
-| Standard | 400-599 | Ring 2 (read, create, update) |
-| Trusted | 600-799 | Ring 1 (read, write, delete, network) |
-| Privileged | 800-1000 | Ring 0 (full access, requires operator approval) |
+## Execution isolation
 
-## Execution Rings
-
-Four-ring privilege model. Automatic demotion when trust drops below ring threshold.
-
-| Ring | Permissions | Description |
-|------|------------|-------------|
-| Ring 0 (kernel) | Full access | All operations, requires operator approval |
-| Ring 1 | Read, write, delete, network | Broad access for trusted agents |
-| Ring 2 (default) | Read, create, update | Standard agent operations |
-| Ring 3 (sandbox) | Read-only | Minimal access for untrusted agents |
+CAW isolation stays. Isolation is not a trust rank. Who-may-do-what is GAP dimension Conjunction: Agent A may X, Agent B may Y. No four-stage rank.
 
 ## Behavioural Covenants
 
@@ -592,8 +577,8 @@ AEP 2.75e adds cost-aware routing, budgeting and spend control.
 
 Fleet-level governance for multi-agent swarms (`fleet.enabled: true`):
 
-- **Swarm policies** - agent limits, hourly cost caps, ring saturation limits, drift clustering thresholds
-- **Spawn governance** - child agents inherit parent covenant subset, reduced trust, same or lower ring
+- **Swarm policies** - agent limits, hourly cost caps, isolation saturation, drift clustering thresholds
+- **Spawn governance** - child agents inherit parent covenant subset and GAP agent-may grants
 - **Message scanning** - PII, injection and secrets detection between agents
 - Fleet API for pause, resume and kill operations
 
@@ -614,7 +599,7 @@ Append-only SHA-256 hash chain. Every agent action is recorded with: timestamp, 
 
 ## Proof Bundles
 
-Portable verification artifacts (`.aep-proof.json`). Contains agent identity, covenant, session report, Merkle root, ledger hash, trust score, ring level and drift score, all signed with Ed25519. Auditors can independently verify bundles without access to the original system.
+Portable verification artifacts (`.aep-proof.json`). Contains agent identity, covenant, session report, Merkle root, ledger hash, trust score and drift score, all signed with Ed25519. Auditors can independently verify bundles without access to the original system.
 
 ## Reliability Index (Theta)
 
@@ -630,7 +615,7 @@ Every agent operation is checked against data permissions:
 - `network_connect` - agent can connect to host:port
 - `env_read` - agent can read environment variable
 
-Permissions escalate with trust ring (sandbox < user < system < enterprise).
+Who-may-do-what is GAP dimension Conjunction. Agent A may X. Agent B may Y. No rank.
 Unknown actions are denied by default.
 
 ## Schema Builder (since v2.6)
@@ -740,6 +725,8 @@ AEP Frontend Renderer (React / Vue / Svelte / Tauri)
 
 **Agents NEVER own the clock.** The bridge is the sole authoritative time source for the entire protocol stack. Every component that needs a timestamp MUST call `dynaep_temporal_query` instead of using its own clock.
 
+The kernel 1000 ms pulse is not this TypeScript bridge clock. Base Node owns that wait as compiled `PULSE_MS`. `dynaep-config.yaml` has no `pulse_ms` key. NTP LARGE_STEP (1000 ms) is a clock-sync cap. To change the kernel wait in theory, rebuild Base Node after editing `PULSE_MS`, keep freeze-at-seal, do not set kernel drift to the wait length and keep age longer than the wait.
+
 The bridge clock synchronizes to NTP (default), PTP (IEEE 1588 for microsecond precision) or system clock (fallback). Every event is stamped with bridge-authoritative time. Agent timestamps are preserved in metadata for audit but are never trusted for ordering or validation.
 
 #### Timestamp Validation
@@ -752,7 +739,7 @@ Three checks on every event:
 
 #### Causal Ordering
 
-Lamport vector clocks across all registered agents. Out-of-order events are buffered in a reorder buffer (configurable size, default 64) and reordered. Clock regressions are rejected.
+Kernel Admit is the live clock after the 1000 ms pulse: drift, age, future, sequence and digest replay. A GraphEngine local vector clock is not Admit. It ticks only after admitGate allow. GraphEngine is not a second kernel. TypeScript dynAEP remains. Out-of-order events stay in a reorder buffer (configurable size, default 64) until the kernel clock can place them. Clock regressions are rejected.
 
 #### TimesFM Predictive Forecasting
 
@@ -945,7 +932,7 @@ conflict_resolution:
  mode: "last_write_wins" # or optimistic_locking
 ```
 
-For optimistic locking, mutations must include `expected_version`. If the element's version changed, the mutation is rejected. Causal ordering via vector clocks determines which write came first using bridge-authoritative timestamps.
+For optimistic locking, mutations must include `expected_version`. If the element's version changed, the mutation is rejected. Kernel Admit uses drift, age, future, sequence and digest replay. Bridge-authoritative timestamps stamp the event. A GraphEngine local vector clock is not Admit.
 
 ### Human-in-the-Loop
 
@@ -976,7 +963,7 @@ Reference implementation validated results:
 | ID | Optimization |
 |----|-------------|
 | 1 | Template node validation fast-exit |
-| 2 | Rust 15-rule meet collect-all |
+| 2 | Rust Admit collect-all then Apply |
 | 3 | Unified Rego WASM bundle with decision cache |
 | 4 | Unified content scanner automaton (Aho-Corasick) |
 | 5 | Causal ordering subtree partitioning |
@@ -1055,10 +1042,11 @@ For perception rejections: use the `suggestion` field in the rejection event as 
 [ ] Verify: every component traceable by its AEP ID
 [ ] Verify: no visual properties in aep-registry.yaml
 [ ] Wire Admit collect-all walls then Apply on action_path
-[ ] Configure trust scoring and execution rings
+[ ] Configure GAP agent-may grants on lattice nodes
 [ ] Define behavioural covenants
 [ ] Configure content scanners
 [ ] Set up evidence ledger with SHA-256 hash chain
+[ ] Do not treat dynaep-config.yaml as the kernel pulse; PULSE_MS is compiled in Base Node
 [ ] Configure dynAEP-TA timekeeping (NTP/PTP/system)
 [ ] Replace all Date.now() calls with dynaep_temporal_query
 [ ] Configure perception registry overrides for deployment

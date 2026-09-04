@@ -41,6 +41,16 @@ Register new components in **`AEP-Base-Node/registry/catalog.json`** + **`AEP-Ba
 
 All traffic uses Lattice Channels with PQEncryptedCapsule encryption.
 
+## Kernel pulse
+
+After a sealed capsule (the encrypted frame on the wire) is opened, Base Node freezes the clock at seal, waits 1000 ms, then runs every check together and only then carries out the allowed action. Putting a capsule on the dock is not that check. After the wait the client asks for the result by the capsule hash so a deny names the closed walls and an allow returns an event id. Allowed clock drift is 50 ms against the freeze, which is why a 1000 ms hold still meets drift. A capsule held longer than 5000 ms is aged out.
+
+The wait is the compiled constant `PULSE_MS` in `AEP-Components/base-node-pulse/crate`. There is no environment variable and no `pulse_ms` key in `dynaep-config.yaml`. TypeScript dynAEP remains a standalone component and does not own this wait. The 1000 ms figures in dynAEP timekeeping are NTP slew bounds and LARGE_STEP clock-sync caps, not the kernel wait.
+
+### How the wait can be changed in theory
+
+A builder who wants a different wait edits the compiled `PULSE_MS` constant and rebuilds Base Node. Freeze-at-seal must stay so the hold is judged against the freeze rather than a moving clock. Allowed drift must not be set to the wait length: crate tests require `MAX_DRIFT_MS != PULSE_MS` and reject a 1000 ms drift default. Age must stay longer than the wait because if `PULSE_MS` were greater than `MAX_AGE_MS` (5000) capsules would expire before they became ready. Current crate tests also pin `PULSE_MS == 1000` so a theoretical rebuild must update those pins. This is a kernel rebuild, not a yaml or env toggle.
+
 ## Build
 
 ```bash
