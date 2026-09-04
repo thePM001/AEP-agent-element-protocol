@@ -1,6 +1,6 @@
 # AEP v 2.8.5 - Agent Element Protocol
 
-**Three-layer governance. Base Node is the kernel.**
+**A reference protocol library. Base Node is the kernel.**
 
 **Version 2.8.5**
 **Author:** thePM_001 ([https://x.com/thePM_001](https://x.com/thePM_001))  
@@ -18,31 +18,25 @@
 
 ## What AEP does
 
-AEP is a three-layer governance architecture: Structure (what exists and where), Behaviour (what each element may do) and Skin (how it looks). Changing one layer never requires changing another.
+### What it is
 
-Beyond screens, the same split applies to workflows, REST APIs, machine-learning pipelines, event systems, infrastructure as code, smart contracts and agentic commerce: agents propose, AEP validates and only compliant output executes.
+AEP (Agent Element Protocol) is a reference protocol library: a set of working components a builder can attach so an agent can propose work and only output that passes the kernel check is allowed to run. It is not a live wired product that runs by itself. The same kernel check applies to screens, workflows, APIs, events and agent commerce.
 
-AEP 2.8 is a reference protocol library: a set of working components a builder can attach, not a live wired product that runs by itself. The mathematical foundation is the Deterministic Adjudication Lattice, the formal rule that the same opened message must get the same yes or no. Lattice memory stores validated outputs as frozen records for forensic and health telemetry. Looking similar to a past allow is not proof of membership and those stored records do not skip the check. After a sealed capsule is opened, Base Node still waits 1000 ms then runs every check together. That wait is a compiled kernel constant: see [Kernel pulse](#kernel-pulse). See the research paper in this repository for the formal specification.
+### How a message is judged
 
-AEP 2.8 does not use Trust Rings, the old four-stage rank that treated agents as sandbox, user, operator or root. Who may do what is written per agent so Agent A may X and Agent B may Y. Isolation of host execution boxes stays isolation; it is not a rank and a numeric trust score cannot skip the kernel check.
+Base Node is the kernel: the local process that opens each message and decides yes or no. Every message travels as a sealed capsule, meaning an encrypted frame on the wire. After Base Node opens that capsule it runs every check together and only then carries out the allowed action. The same opened message must get the same yes or no. Lattice memory stores those results as frozen records for forensic reading, meaning a later audit, and for health telemetry. Looking similar to a past allow is not proof that this message is allowed. Those stored records do not skip the check. The research paper in this repository holds the formal specification.
 
-AEP 2.75 and later also govern the governance layer itself. Schema Builder studies how the schema is connected and how permissive it is. Policy Builder finds rules that must always hold then tracks coverage.
+### Who may act
 
-### Three-layer architecture (UI subprotocol)
+Who may do what is written per agent so Agent A may X and Agent B may Y. AEP 2.8 does not use Trust Rings, the old four-stage rank that treated agents as sandbox, user, operator or root and isolation of host execution boxes stays isolation rather than a rank. A numeric trust score cannot skip the kernel check.
 
-| Layer | File | Responsibility |
-|-------|------|----------------|
-| Structure | `AEP-Subprotocols/ui/aep-scene.json` | Scene graph: what exists, where it sits and its depth band |
-| Behaviour | `AEP-Subprotocols/ui/aep-registry.yaml` | Component registry, states, constraints and forbidden patterns |
-| Skin | `AEP-Subprotocols/ui/aep-theme.yaml` | Colours, fonts and spacing bound only through skin |
-
-Each element type has a fixed depth band so a shell, a panel and a tooltip cannot steal one another depth band and a violation is rejected.
+Schema Builder and Policy Builder study how rules connect and how complete they are so governance itself stays governed.
 
 ### Evaluation chain (reference)
 
 AEP 2.8 is a reference protocol library so nothing here has to run as a factory: a builder attaches the parts.
 
-To attach: open a sealed capsule, freeze the clock at seal, wait one second, then run every check together and only then carry out the allowed action. Fifteen named rows are a derived ledger of that evaluation, a record written from the check rather than a second pass. All fifteen rows are judged together. If two fail, both are listed with wall ids, reasons and a prescribed repair for missing fields and writing. Grant lists stay off that repair and a retry must seal a new capsule because the order of the rows does not change yes or no and skip is not used.
+To attach: open a sealed capsule, freeze the clock at seal, then run every check together and only then carry out the allowed action. Fifteen named rows are a derived ledger of that evaluation, a record written from the check rather than a second pass. All fifteen rows are judged together. If two fail, both are listed with wall ids, reasons and a prescribed repair for missing fields and writing. Grant lists stay off that repair and a retry must seal a new capsule because the order of the rows does not change yes or no and skip is not used.
 
 The table below is that derived fifteen-row ledger.
 
@@ -661,6 +655,18 @@ The **Agent Composer** is the operator-facing visual shell for wiring agents, do
 **Experimental by design.** The Agent Composer is a scaffold, not a finished product surface. We ship a working canvas, graph API, optional CCA chat, install wizard and registry hooks so you can **extend it on your own stack**: custom node types, sidebar blocks, integrations, themes, deployment flows and operator UX. **We do not maintain or evolve those extensions for you.** Fork the repo, build on the graph and HTTP APIs, and treat Composer Lite as your lab environment.
 
 What we do maintain in the public tier: Base Node, lattice transport, registry, setup agent, conformance and the minimal Composer Lite core that activates against a governed Base Node.
+
+### Canvas files (adjustable)
+
+The visual canvas can split scene, behaviour and look into separate files a builder can adjust. Changing one file need not change the others.
+
+| Layer | File | Responsibility |
+|-------|------|----------------|
+| Structure | `AEP-Subprotocols/ui/aep-scene.json` | Scene graph: what exists, where it sits and its depth band |
+| Behaviour | `AEP-Subprotocols/ui/aep-registry.yaml` | Component registry, states, constraints and forbidden patterns |
+| Skin | `AEP-Subprotocols/ui/aep-theme.yaml` | Colours, fonts and spacing bound only through skin |
+
+Each element type has a fixed depth band so a shell, a panel and a tooltip cannot steal one another depth band and a violation is rejected.
 
 | You extend | We maintain |
 |------------|-------------|
