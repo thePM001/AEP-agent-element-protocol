@@ -18,41 +18,9 @@
 
 ## What AEP does
 
-### What it is
+AEP (Agent Element Protocol) is a reference protocol library: a set of working components a builder can attach. An agent can propose work and only output that passes the kernel check (the local yes-or-no before work may run) is allowed to execute. It is not a live wired product that runs by itself.
 
-AEP (Agent Element Protocol) is a reference protocol library: a set of working components a builder can attach so an agent can propose work and only output that passes the kernel check is allowed to run. It is not a live wired product that runs by itself. The same kernel check applies to screens, workflows, APIs, events and agent commerce.
-
-### How a message is judged
-
-Base Node is the kernel: the local process that opens each message and decides yes or no. Every message travels as a sealed capsule, meaning an encrypted frame on the wire. After Base Node opens that capsule it runs every check together and only then carries out the allowed action. The same opened message must get the same yes or no. Lattice memory stores those results as frozen records for forensic reading (a later audit) and for health telemetry. Looking similar to a past allow is not proof that this message is allowed. Those stored records do not skip the check. The research paper in this repository holds the formal specification.
-
-### Who may act
-
-Who may do what is written per agent so Agent A may X and Agent B may Y. AEP 2.8 does not use Trust Rings, the old four-stage rank that treated agents as sandbox, user, operator or root and isolation of host execution boxes stays isolation rather than a rank. A numeric trust score cannot skip the kernel check.
-
-Schema Builder and Policy Builder study how rules connect and how complete they are so governance itself stays governed.
-
-### Evaluation chain (reference)
-
-AEP 2.8 is a reference protocol library so nothing here has to run as a factory: a builder attaches the parts.
-
-To attach: open a sealed capsule, freeze the clock at seal, then run every check together and only then carry out the allowed action. Fifteen named rows are a derived ledger of that evaluation, a record written from the check rather than a second pass. All fifteen rows are judged together. If two fail, both are listed with wall ids, reasons and a prescribed repair for missing fields and writing. Grant lists stay off that repair and a retry must seal a new capsule because the order of the rows does not change yes or no and skip is not used.
-
-The table below is that derived fifteen-row ledger.
-
-| Step | Name | Description |
-|------|------|-------------|
-| 0 | Task scope | Action within subtask scope |
-| 1 | Session state | Session active and valid |
-| 2 | Who may act | This agent is written as allowed to do this action |
-| 3 | System rate limit | Planetwide cap not exceeded |
-| 4 | Session rate limit | Per-session cap not exceeded |
-| 5 | Intent drift | Action aligns with baseline behaviour |
-| 6 | Escalation | Higher authority required |
-| 7 | Covenant evaluation | Permit, forbid and require rules |
-| 8 | Rego check | Environment forbidden patterns |
-| 9 | Capability | Written capabilities. A numeric trust score does not skip the check |
-| 10-14 | Scanners + lattice + perception | Content scanners, dynAEP lattice, perception bounds |
+The same kernel check applies to screens, workflows, APIs, events and agent commerce: agents propose work, AEP validates it and only compliant output executes.
 
 ## Kernel pulse
 
@@ -168,6 +136,36 @@ flowchart LR
 | **Multi-base-node (2.8b)** | Federate multiple Base Node kernels via `nodes.json` v2 and lattice channels | [`AEP-Base-Node/multi-base-node/`](AEP-Base-Node/multi-base-node/) |
 
 The library is counted by this layer table. Folder count is not the library count.
+
+### How a message is judged
+
+The same opened message must get the same yes or no. Lattice memory stores those results as frozen records for forensic reading (a later audit) and for health telemetry. Looking similar to a past allow is not proof that this message is allowed. Those stored records do not skip the check. The research paper in this repository holds the formal specification.
+
+### Who may act
+
+Who may do what is written per agent so Agent A may X and Agent B may Y. AEP 2.8 does not use Trust Rings, the old four-stage rank that treated agents as sandbox, user, operator or root and isolation of host execution boxes stays isolation rather than a rank. A numeric trust score cannot skip the kernel check.
+
+Schema Builder and Policy Builder study how rules connect and how complete they are so governance itself stays governed.
+
+### Evaluation chain (reference)
+
+To attach: open a sealed capsule, freeze the clock at seal, then run every check together and only then carry out the allowed action. Fifteen named rows are a derived ledger of that evaluation, a record written from the check rather than a second pass. All fifteen rows are judged together. If two fail, both are listed with wall ids, reasons and a prescribed repair for missing fields and writing. Grant lists stay off that repair and a retry must seal a new capsule because the order of the rows does not change yes or no and skip is not used.
+
+The table below is that derived fifteen-row ledger.
+
+| Step | Name | Description |
+|------|------|-------------|
+| 0 | Task scope | Action within subtask scope |
+| 1 | Session state | Session active and valid |
+| 2 | Who may act | This agent is written as allowed to do this action |
+| 3 | System rate limit | Planetwide cap not exceeded |
+| 4 | Session rate limit | Per-session cap not exceeded |
+| 5 | Intent drift | Action aligns with baseline behaviour |
+| 6 | Escalation | Higher authority required |
+| 7 | Covenant evaluation | Permit, forbid and require rules |
+| 8 | Rego check | Environment forbidden patterns |
+| 9 | Capability | Written capabilities. A numeric trust score does not skip the check |
+| 10-14 | Scanners + lattice + perception | Content scanners, dynAEP lattice, perception bounds |
 
 ### How a builder uses it
 
