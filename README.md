@@ -24,7 +24,7 @@ AEP (Agent Element Protocol) is a reference protocol library: a set of working c
 
 ### How a message is judged
 
-Base Node is the kernel: the local process that opens each message and decides yes or no. Every message travels as a sealed capsule, meaning an encrypted frame on the wire. After Base Node opens that capsule it runs every check together and only then carries out the allowed action. The same opened message must get the same yes or no. Lattice memory stores those results as frozen records for forensic reading, meaning a later audit, and for health telemetry. Looking similar to a past allow is not proof that this message is allowed. Those stored records do not skip the check. The research paper in this repository holds the formal specification.
+Base Node is the kernel: the local process that opens each message and decides yes or no. Every message travels as a sealed capsule, meaning an encrypted frame on the wire. After Base Node opens that capsule it runs every check together and only then carries out the allowed action. The same opened message must get the same yes or no. Lattice memory stores those results as frozen records for forensic reading (a later audit) and for health telemetry. Looking similar to a past allow is not proof that this message is allowed. Those stored records do not skip the check. The research paper in this repository holds the formal specification.
 
 ### Who may act
 
