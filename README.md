@@ -18,23 +18,19 @@
 
 ## What AEP does
 
-### Control of AI output
+### Total control of AI output
 
-AEP (Agent Element Protocol) is total control of AI and agent output: an agent can propose a screen change, a tool call, a workflow step or a commerce action and that output does not execute until Base Node, the local kernel, allows it. Unchecked model text does not become a live action on its own.
+AEP (Agent Element Protocol) is total control of AI output. An agent does not get to run a tool, change a screen, fire a workflow, call an API, move money or change infrastructure until Base Node, the local kernel, allows that output. Unapproved model text stays text and does not become a live action.
 
-### Same control on every surface
+### Every surface the agent can touch
 
-The same control applies to screens, workflows, REST APIs, machine-learning pipelines, event systems, infrastructure as code, smart contracts and agent commerce. Agents propose work, AEP validates it and only compliant output executes.
-
-### A library you attach
-
-AEP 2.8 is a reference protocol library: a set of working components a builder can attach, not a live wired product that runs by itself. The builder starts Base Node then attaches the parts that stack needs.
+The same control sits in front of screens, workflows, REST APIs, machine-learning pipelines, event systems, infrastructure as code, smart contracts and agent commerce. Agents propose work, AEP validates it and only compliant output executes.
 
 ## AEP Hyperlattice
 
 One mechanism wraps every connected application, component, system or engine. Written policy, action paths, scene topology, capability dimensions, compliance docks and sealed transport are nodes and edges in that same graph rather than two stacks or two lattices.
 
-After a sealed capsule is opened, Base Node freezes the clock at the seal time, waits one second, then runs every check together for that action path and only then carries out the allowed action. A missing scene, dock, timestamp or sequence fails. Base Node proves the scene graph when it boots; that boot proof is not the runtime check.
+Base Node, the local kernel, runs every check together for that action path and only then carries out the allowed action. A missing scene, dock, timestamp or sequence fails. Base Node proves the scene graph when it boots; that boot proof is not the runtime check.
 
 ### Node families in the one hyperlattice
 
@@ -64,7 +60,7 @@ All applicable nodes must pass together. Who may do what is written per agent so
 
 ### One crossing
 
-A builder attach is: seal a capsule, freeze the clock at seal, wait one second, then run every check together and only then carry out the allowed action. TypeScript event helpers are not a second kernel. Fifteen named rows are a derived ledger of that evaluation.
+A builder attach is: seal a capsule then run every check together and only then carry out the allowed action. See [Kernel pulse](#kernel-pulse) for the wait after seal. TypeScript event helpers are not a second kernel. Fifteen named rows are a derived ledger of that evaluation.
 
 ```mermaid
 flowchart TB
