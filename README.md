@@ -3,12 +3,12 @@
 **Total AI Output Control - Vertically integrated protocol for all agentic setups**
 
 **Version 2.8.5**
-**Author:** thePM_001 ([https://x.com/thePM_001](https://x.com/thePM_001))  
+**Author:** thePM_001 ([https://x.com/thePM_001](https://x.com/thePM_001))  on behalf of EPSCOM | IPHCCP | NLA
 **Licence:** Apache-2.0  
 **Public repository:** [https://github.com/thePM001/AEP-agent-element-protocol](https://github.com/thePM001/AEP-agent-element-protocol)
 
 **AEP already had 32 Github stars before Grok "accidentally" deleted them on 22.07.2026 !**
-**AEP 2.9 is estimated for completion approximately in September 2026 with many new changes and additional features.**
+**AEP 2.9 is estimated for completion approximately during September 2026**
 
 **How to best explore the basics of AEP ? - Simply copy the repo URL into your LLM chat of choice that has internet search capability (Grok, Gemini, ChatGPT, Opus, etc.) and let the AI explain it to you.**
 
