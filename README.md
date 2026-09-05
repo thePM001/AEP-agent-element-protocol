@@ -1,6 +1,6 @@
 # AEP v 2.8.5 - Agent Element Protocol
 
-**AEP controls AI output. Base Node is the kernel.**
+**Total AI Output Control - Vertically integrated protocol for all agentic setups**
 
 **Version 2.8.5**
 **Author:** thePM_001 ([https://x.com/thePM_001](https://x.com/thePM_001))  
