@@ -120,7 +120,6 @@ flowchart LR
 | **Kernel** | Mandatory local governance daemon | [`AEP-Base-Node/`](AEP-Base-Node/) |
 | **Protocol** | Runtime protocol components (dynAEP, lattice-channels, graph-engine). Not CAW | [`AEP-Components/`](AEP-Components/) |
 | **Execution companion** | CAW host sandboxes. Not a protocol component | [`AEP-Components/caw-framework/`](AEP-Components/caw-framework/) |
-| **Clients** | Thin lattice-gated language bindings | [`AEP-SDKs/`](AEP-SDKs/) |
 
 The library is counted by this four-row layer table. Folder count is not the library count.
 
@@ -189,7 +188,6 @@ Coding governance proposes a change, measures how far that change reaches and on
 | [`AEP-Components/`](AEP-Components/) | Protocol components (dynAEP, lattice-channels, graph-engine, aep-comm, economics, scanners, fleet) |
 | [`AEP-Components/caw-framework/`](AEP-Components/caw-framework/) | Execution companion: CAW host sandboxes. Not a protocol component |
 | [`AEP-Composer-Lite/`](AEP-Composer-Lite/) | Agent Composer (Composer Lite): WASM visual canvas on port: 8424 |
-| [`AEP-SDKs/`](AEP-SDKs/) | Language SDKs: thin lattice-gated clients (not components) |
 | [`AEP-User-Experience/`](AEP-User-Experience/) | Harness, operator scripts, AEP-main-skill |
 | [`AEP-Docks/`](AEP-Docks/) | UCB + UCD socket dock specs and servers |
 | [`AEP-Policy-System/`](AEP-Policy-System/) | GAP policies, presets, policy-builder, schema-builder |
@@ -304,7 +302,6 @@ A builder who wants a different wait rebuilds Base Node with a different compile
 | **UCB (optional)** | `AEP-Docks/ucb/` | Universal Connect Bridge for **foreign** stacks only (`:8412`). Native AEP skips UCB. Set `UCB=0` to disable. |
 | **CAW framework** | `AEP-Components/caw-framework/` | Execution-layer sandbox (`aep-caw`); profiles authored in GAP, compiled locally |
 | **GAP language** | `AEP-Components/gap/` | Governed Agentic Programming: policies, sandbox profiles, manifest/plan templates |
-| **TypeScript SDKs** | `AEP-SDKs/typescript/` | `aep-protocol` + `dynaep` governance stack |
 
 ---
 
@@ -379,10 +376,7 @@ Harness reference: `AEP-User-Experience/harness/`. **Wired:** `GovernedModelGate
 
 | Tool | Path |
 |------|------|
-| CLI (`aep doctor`, `verify`, `lint-policy`, `red-team`, policy commands) | `AEP-SDKs/typescript/aep-protocol/` |
 | Schema / policy builder CLIs | `AEP-Policy-System/schema-builder/`, `policy-builder/` |
-| TypeScript programmatic SDK | `AEP-SDKs/typescript/aep-protocol/` |
-| dynAEP hyperlattice runtime (bridge + filter) | `AEP-SDKs/typescript/dynaep/` |
 | Produce all SDKs | `node AEP-User-Experience/scripts/produce-aep-sdks.mjs` |
 
 ---
@@ -498,7 +492,6 @@ docker compose up -d --build
 
 The gate-aep28-env scripts live under `scripts/`. Docker is the packaged run path. The conformance runner is the public-tier battery.
 
-README and `AEP-SDKs/README.md` share one maturity table.
 
 | SDK | Path | Class |
 |-----|------|-------|
@@ -874,7 +867,6 @@ GAP template authority: `AEP-Components/gap/policies/reference/task-manifest-v1.
 | [`AEP-Base-Node/agent-control-extreme/README.md`](AEP-Base-Node/agent-control-extreme/README.md) | GAP capability profiles and CAW sandbox routing on Base Node |
 | [`AEP-Components/dynAEP/README.md`](AEP-Components/dynAEP/README.md) | dynAEP 1.0 hyperlattice runtime protocol |
 | [`AEP-Components/dynAEP/CONFIG.md`](AEP-Components/dynAEP/CONFIG.md) | dynAEP configuration reference |
-| [`AEP-SDKs/README.md`](AEP-SDKs/README.md) | SDK produce workflow |
 | [`AEP-Composer-Lite/README.md`](AEP-Composer-Lite/README.md) | WASM canvas + CCA |
 | [`AEP-Docks/ucb/README.md`](AEP-Docks/ucb/README.md) | **UCB optional foreign attach** (manifest gate, no fallback) |
 | [`AEP-Subprotocols/README.md`](AEP-Subprotocols/README.md) | Subprotocol registry |

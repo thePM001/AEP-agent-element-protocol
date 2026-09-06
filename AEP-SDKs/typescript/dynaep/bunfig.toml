@@ -1,2 +1,0 @@
-[alias]
-"@aep/core" = "./types/aep-core-runtime.js"

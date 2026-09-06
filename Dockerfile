@@ -48,7 +48,6 @@ COPY AEP-Docks/ ./AEP-Docks/
 COPY AEP-Policy-System/ ./AEP-Policy-System/
 COPY AEP-Base-Node/ ./AEP-Base-Node/
 COPY AEP-User-Experience/ ./AEP-User-Experience/
-COPY AEP-SDKs/ ./AEP-SDKs/
 COPY AEP-Subprotocols/ ./AEP-Subprotocols/
 COPY docker/entrypoint.sh /usr/local/bin/aep-entrypoint.sh
 
