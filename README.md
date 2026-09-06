@@ -191,7 +191,6 @@ Coding governance proposes a change, measures how far that change reaches and on
 | [`AEP-User-Experience/`](AEP-User-Experience/) | Harness, operator scripts, AEP-main-skill |
 | [`AEP-Docks/`](AEP-Docks/) | UCB + UCD socket dock specs and servers |
 | [`AEP-Policy-System/`](AEP-Policy-System/) | GAP policies, presets, policy-builder, schema-builder |
-| [`AEP-Subprotocols/`](AEP-Subprotocols/) | Regulation subprotocol Rust crates (UI, commerce, workflows, API, events, IaC) |
 | [`AEP-Research-Paper/`](AEP-Research-Paper/) | DAL-AEP research paper assets (PDF + OTS proof) |
 
 Root keeps only workspace tooling: `Cargo.toml`, `Dockerfile`, `docker-compose.yml`, `docker-compose.public.yml`, `.env.example`, `CHANGELOG.md`, `LICENSE`, `BIOSECURITY.md`, `vitest.config.ts`.
@@ -296,7 +295,6 @@ A builder who wants a different wait rebuilds Base Node with a different compile
 | **Setup Agent** | `AEP-Components/cca/setup-agent.mjs` | Post-install activation and inference config |
 | **Agent Composer (Composer Lite)** | `AEP-Composer-Lite/` | Experimental WASM composer canvas (`:8424`) for operator extension |
 | **Component registry** | `AEP-Base-Node/registry/` | Offline catalog + optional extension merge |
-| **Subprotocol registry** | `AEP-Subprotocols/` | Rust domain validators (UI, commerce, workflows, API, events, IaC, MCP) |
 | **Conformance runner** | `AEP-Components/conformance/` | CC-01..CC-15 public tier compliance battery |
 | **WASM sandbox** | `AEP-Components/wasm/crate/` | Policy eval via lattice socket (no HTTP bypass) |
 | **UCB (optional)** | `AEP-Docks/ucb/` | Universal Connect Bridge for **foreign** stacks only (`:8412`). Native AEP skips UCB. Set `UCB=0` to disable. |
@@ -702,9 +700,6 @@ The visual canvas can split scene, behaviour and look into separate files a buil
 
 | Layer | File | Responsibility |
 |-------|------|----------------|
-| Structure | `AEP-Subprotocols/ui/aep-scene.json` | Scene graph: what exists, where it sits and its depth band |
-| Behaviour | `AEP-Subprotocols/ui/aep-registry.yaml` | Component registry, states, constraints and forbidden patterns |
-| Skin | `AEP-Subprotocols/ui/aep-theme.yaml` | Colours, fonts and spacing bound only through skin |
 
 Each element type has a fixed depth band so a shell, a panel and a tooltip cannot steal one another depth band and a violation is rejected.
 
@@ -869,7 +864,6 @@ GAP template authority: `AEP-Components/gap/policies/reference/task-manifest-v1.
 | [`AEP-Components/dynAEP/CONFIG.md`](AEP-Components/dynAEP/CONFIG.md) | dynAEP configuration reference |
 | [`AEP-Composer-Lite/README.md`](AEP-Composer-Lite/README.md) | WASM canvas + CCA |
 | [`AEP-Docks/ucb/README.md`](AEP-Docks/ucb/README.md) | **UCB optional foreign attach** (manifest gate, no fallback) |
-| [`AEP-Subprotocols/README.md`](AEP-Subprotocols/README.md) | Subprotocol registry |
 | [`AEP-Policy-System/SETUP.md`](AEP-Policy-System/SETUP.md) | Live Admit GAP node setup |
 | [`AEP-Policy-System/schema-builder/README.md`](AEP-Policy-System/schema-builder/README.md) | Schema Builder |
 | [`AEP-Policy-System/policy-builder/README.md`](AEP-Policy-System/policy-builder/README.md) | Policy Builder |

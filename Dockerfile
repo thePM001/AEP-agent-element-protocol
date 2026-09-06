@@ -17,8 +17,7 @@ COPY AEP-Base-Node/crate ./AEP-Base-Node/crate
 COPY AEP-Components/wasm/crate ./AEP-Components/wasm/crate
 COPY AEP-Docks/ucb/crate ./AEP-Docks/ucb/crate
 COPY AEP-Components/conformance/crate ./AEP-Components/conformance/crate
-COPY AEP-Subprotocols/ ./AEP-Subprotocols/
-RUN cargo build --release -p aep-base-node -p aep-lattice-memory -p aep-wasm-sandbox -p aep-ucb -p aep-subprotocol
+RUN cargo build --release -p aep-base-node -p aep-lattice-memory -p aep-wasm-sandbox -p aep-ucb
 
 FROM debian:bookworm-slim AS node-deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -38,7 +37,6 @@ COPY --from=rust-builder /build/rust/target/release/aep-lattice-log /usr/local/b
 COPY --from=rust-builder /build/rust/target/release/aep-memory /usr/local/bin/
 COPY --from=rust-builder /build/rust/target/release/aep-wasm-sandbox /usr/local/bin/
 COPY --from=rust-builder /build/rust/target/release/aep-ucb /usr/local/bin/
-COPY --from=rust-builder /build/rust/target/release/aep-subprotocol /usr/local/bin/
 
 WORKDIR /opt/aep
 COPY --from=node-deps /deps/node_modules ./node_modules
@@ -48,7 +46,6 @@ COPY AEP-Docks/ ./AEP-Docks/
 COPY AEP-Policy-System/ ./AEP-Policy-System/
 COPY AEP-Base-Node/ ./AEP-Base-Node/
 COPY AEP-User-Experience/ ./AEP-User-Experience/
-COPY AEP-Subprotocols/ ./AEP-Subprotocols/
 COPY docker/entrypoint.sh /usr/local/bin/aep-entrypoint.sh
 
 RUN chmod +x /opt/aep/AEP-Components/cca/cca.mjs \
