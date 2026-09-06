@@ -16,7 +16,7 @@ scope: AEP-Base-Node/crate/src/envelope_admit.rs AEP-Base-Node/crate/src/docking
 notes: HIGH. docking.rs calls admit_sealed_payload after capsule open. Non-JSON plaintext is Deny. JSON without action_path including type PING is Deny. skip tests are gone. Deny tests and live dock tests keep collect-all AND for every opened frame. PING with action_path root:ping meets Admit and can allow. Out of scope: hangar tools.
 acceptance: Non-JSON plaintext is Deny. JSON without action_path is Deny. type PING meets Admit. No Ok skip before live.process_event. CI fails if skip tests return. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Base-Node/crate before any ship prose.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
-gitea_commits:
+source_commits:
   envelope_admit: f98100a938c73fc8a0a5d25d6d0fc8c2ed94be7a
   docking: 463196b1c0d373ffd75e80057f31351431105515
   live_entry: cec952f30757bd029a45e37211d016191b974042

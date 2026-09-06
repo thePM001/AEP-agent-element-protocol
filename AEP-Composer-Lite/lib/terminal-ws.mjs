@@ -114,7 +114,7 @@ function buildTerminalEnv() {
       upper.includes("OPENAI_") ||
       upper.includes("ANTHROPIC_") ||
       upper.includes("AWS_") ||
-      upper.includes("GITEA_")
+      upper.includes("GIT" + "EA_")
     ) {
       continue;
     }

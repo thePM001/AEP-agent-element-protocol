@@ -9,7 +9,7 @@ status: closed
 priority: P2
 track: aep28-kernel
 wave: kernel-library-quality
-plan: docs/architecture/AEP-2.8-REFERENCE-LIBRARY-REMEDIATION.md
+plan: instruction-honesty-wave-1
 repo: NLA-AEP-v2.8-open-source
 depends_on: AEP28-ENV-072
 scope: AEP-Base-Node/crate/src/main.rs AEP-Base-Node/crate/src/docking.rs AEP-Base-Node/crate/src/dock_serve.rs AEP-Base-Node/crate/src/dock_pulse.rs AEP-Base-Node/crate/src/lib.rs AEP-Base-Node/crate/src/docking_tests.rs scripts/gate-aep28-env-080.sh
@@ -17,7 +17,7 @@ notes: Wave 3. Double-check of production locks: docking.rs already returns a de
 acceptance: After the stop signal, serve loops stop accepting, dock tasks join, sockets unlink and SQLite closes before process exit. Production mutex poison still returns ok false with a deny rather than panic. cargo test -p aep-base-node --lib covers drain. scripts/gate-aep28-env-080.sh greps crate src excluding tests for lock expect and runs cargo test -p aep-base-node --lib. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Base-Node crate.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
 updated: 2026-09-05
-gitea_commits:
+source_commits:
   dock_serve: 028e77be82b23300bf271a7db260132cd328f912
   docking: 34aa380d7f4882e6df7cd5f6df0e6553c781b011
   lib: 68c1a5e1c4994e0a87790bfaa6330252a439f37b

@@ -23,7 +23,7 @@ export function loadCodingGovernanceContext(repoRoot = REPO_ROOT) {
   return {
     component_id: "coding-governance",
     path: "AEP-Components/coding-governance/",
-    subprotocol: "AEP-Subprotocols/coding-governance/",
+    subprotocol: "AEP-NOSHIP/AEP-Subprotocols/coding-governance/",
     pairs_with: ["gap", "intent-ledger", "semantic-topology", "caw-framework", "lattice-memory"],
     nool_parity: {
       propose: "aep propose",

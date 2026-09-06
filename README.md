@@ -6,8 +6,6 @@
 **Author:** thePM_001 ([https://x.com/thePM_001](https://x.com/thePM_001))  
 **Licence:** Apache-2.0  
 **Public repository:** [https://github.com/thePM001/AEP-agent-element-protocol](https://github.com/thePM001/AEP-agent-element-protocol)
-**Official tree:** Gitea thePM001/NLA-AEP-v2.8-open-source
-**GitHub is a public mirror.**
 
 **AEP already had 32 Github stars before Grok "accidentally" deleted them on 22.07.2026 !**
 **AEP 2.9 is estimated for completion approximately in September 2026 with many new changes and additional features.**
@@ -93,8 +91,6 @@ Operator rule: one hyperlattice declaration per governed system. Scene plus acti
 ### One kernel sequence
 
 The kernel sequence is seal, freeze, wait, collect-all Admit then Apply so live-entry is the worked scene. TypeScript processEvent is not product Admit and CodeSandbox executes agent code as a named live surface. The domain you attach is not a second kernel so the instruction is the next section.
-
-How to attach a custom domain is [Custom sub-lattices inside the AEP hyperlattice](AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md).
 
 ## Custom sub-lattices inside the AEP hyperlattice
 
@@ -419,6 +415,7 @@ The library is counted by this layer table. Folder count is not the library coun
 | Hyperlattice wrap | One mechanism per system | [`AEP-Components/hyperlattice/`](AEP-Components/hyperlattice/) |
 | Docks | UCD egress airlock and optional UCB | [`AEP-Docks/`](AEP-Docks/) |
 | UCB airlock (optional) | Foreign MCP or HTTP attach only | [`AEP-Docks/ucb/`](AEP-Docks/ucb/) |
+| Connectors | Application connectors | [`internal-sdk/AEP-Connectors/`](internal-sdk/AEP-Connectors/) |
 | Coding governance | Propose a change then lock it | [`AEP-Components/coding-governance/`](AEP-Components/coding-governance/) |
 | HCSE parser | aep-hcse parser MCP | [`AEP-Components/hcse/`](AEP-Components/hcse/) |
 | CCA agent | Central Setup Agent | [`AEP-Components/cca/`](AEP-Components/cca/) |
@@ -478,6 +475,7 @@ Coding governance proposes a change, measures how far that change reaches and on
 | [`AEP-Components/caw-framework/`](AEP-Components/caw-framework/) | Execution companion: CAW host sandboxes. Not a protocol component |
 | [`AEP-Composer-Lite/`](AEP-Composer-Lite/) | Agent Composer (Composer Lite): WASM visual canvas on port: 8424 |
 | [`AEP-User-Experience/`](AEP-User-Experience/) | Harness, operator scripts, AEP-main-skill |
+| [`internal-sdk/AEP-Connectors/`](internal-sdk/AEP-Connectors/) | Application connectors (Slack, Jira, AWS, …) |
 | [`AEP-Docks/`](AEP-Docks/) | UCB + UCD socket dock specs and servers |
 | [`AEP-Policy-System/`](AEP-Policy-System/) | GAP policies, presets, policy-builder, schema-builder |
 | [`AEP-Research-Paper/`](AEP-Research-Paper/) | DAL-AEP research paper assets (PDF + OTS proof) |
@@ -662,6 +660,7 @@ Harness reference: `AEP-User-Experience/harness/`. **Wired:** `GovernedModelGate
 | Tool | Path |
 |------|------|
 | Schema / policy builder CLIs | `AEP-Policy-System/schema-builder/`, `policy-builder/` |
+| dynAEP hyperlattice runtime (bridge + filter) | `AEP-Components/dynAEP/` |
 
 ---
 
@@ -750,7 +749,6 @@ The component lives at [`AEP-Components/aep-comm/`](AEP-Components/aep-comm/). E
 | Eval / datasets | 4 | Eval runner, versioned datasets, rule generator, prompt hashing |
 | Workflow | 3 | Phased verdicts, rework limits, fine-tuning template |
 | Commerce | 3 | 12 governed actions, merchant registry, spend tracking |
-| Subprotocols | 6 | UI, workflows, REST API, events, IaC, commerce |
 | **AEP Hyperlattice** | 17 | Scene validation, GAP policy nodes, `action_path` event nodes, temporal authority, causal ordering, perception gov, observer adapters, compliance LRP docks, join/meet, who may do what per agent, Lattice Channel wrap |
 | AEP-Graph | 6 | Action, decision, wait, parallel, loop nodes, checkpoints, admitGate default deny |
 | AEP-Comm | 14 | Agent cards, discovery, messaging, task hand-off, human gate and isolated code execution |
@@ -762,7 +760,6 @@ The component lives at [`AEP-Components/aep-comm/`](AEP-Components/aep-comm/). E
 
 ## Official run sequence
 
-Official tree is Gitea thePM001/NLA-AEP-v2.8-open-source. GitHub is a public mirror. GitHub does not run CC-01 through CC-15.
 
 Factory checks on the official tree:
 
@@ -775,7 +772,6 @@ docker compose up -d --build
 ```
 
 The gate-aep28-env scripts live under `scripts/`. Docker is the packaged run path. The conformance runner is the public-tier battery.
-
 
 
 ## Quick start
@@ -965,8 +961,11 @@ What we do maintain in the public tier: Base Node, lattice transport, registry, 
 
 The visual canvas can split scene, behaviour and look into separate files a builder can adjust. Changing one file need not change the others. How to attach those files is [Custom sub-lattices inside the AEP hyperlattice](AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md).
 
-| Layer | File | Responsibility |
-|-------|------|----------------|
+| Layer | Responsibility |
+|-------|----------------|
+| Structure | Scene graph: what exists, where it sits and its depth band |
+| Behaviour | Registry of operations, types, fields and constraints |
+| Skin | Look only and must not carry authority |
 
 Each element type has a fixed depth band so a shell, a panel and a tooltip cannot steal one another depth band and a violation is rejected.
 
@@ -1136,6 +1135,7 @@ GAP template authority: `AEP-Components/gap/policies/reference/task-manifest-v1.
 | [`AEP-Policy-System/schema-builder/README.md`](AEP-Policy-System/schema-builder/README.md) | Schema Builder |
 | [`AEP-Policy-System/policy-builder/README.md`](AEP-Policy-System/policy-builder/README.md) | Policy Builder |
 | [`AEP-User-Experience/README.md`](AEP-User-Experience/README.md) | Harness and operator scripts |
+| [`internal-sdk/AEP-Connectors/README.md`](internal-sdk/AEP-Connectors/README.md) | Application connectors |
 | [`AEP-Docks/README.md`](AEP-Docks/README.md) | UCB / UCD docks |
 | [`AEP-Research-Paper/README.md`](AEP-Research-Paper/README.md) | DAL-AEP paper + OTS proof |
 | [`rust/README.md`](rust/README.md) | Rust workspace build |

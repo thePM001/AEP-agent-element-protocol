@@ -51,7 +51,7 @@ export const VALIDATION_ENGINE_MODES = [
       "Wire to the validation_engine dock socket on your Base Node",
       "Tune Admit collect-all walls then Apply to your risk model",
     ],
-    note: "See docs/DOCKING-PORTS.md and AEP-Components/dynAEP/ for wire protocol. SDKs: AEP-SDKs/. Register on validation dock at activation.",
+    note: "See docs/DOCKING-PORTS.md and AEP-Components/dynAEP/ for wire protocol. SDKs: AEP-NOSHIP/AEP-SDKs/. Register on validation dock at activation.",
   },
   {
     id: "none",

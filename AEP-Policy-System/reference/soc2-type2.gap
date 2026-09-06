@@ -31,6 +31,7 @@
     ],
     "lrp_id": "soc2-type2",
     "framework": "SOC 2 Type II",
-    "aep_version": "2.8.5"
+    "aep_version": "2.8.5",
+    "wrap": "soc2"
   }
 }

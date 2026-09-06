@@ -3,7 +3,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expandHome, defaultPaths } from "../../wizard/lib/paths.mjs";
-import { invokeCodingGovernanceRust } from "../../../AEP-SDKs/typescript/aep-protocol/lib/subprotocol-rust.mjs";
+import { invokeCodingGovernanceRust } from "../../../AEP-NOSHIP/AEP-SDKs/typescript/aep-protocol/lib/subprotocol-rust.mjs";
 
 const WRITE_TOOL_RE = /write|edit|patch|replace|create|delete|rename|mkdir/i;
 

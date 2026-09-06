@@ -7,7 +7,7 @@ id: AEP28-ENV-040
 title: Remove envelope-journals from the product workspace. A crate whose job is journals is not a product member.
 status: closed
 priority: P1
-track: aep28-gitea-code-analysis-2026-09-01
+track: aep28-code-analysis-2026-09-01
 wave: live-admit
 plan: none
 repo: NLA-AEP-v2.8-open-source
@@ -17,7 +17,7 @@ notes: Closed. Cargo.toml workspace members does not list envelope-journals. cra
 acceptance: Cargo.toml workspace members does not list envelope-journals. CI fails if aep-envelope-journals is a workspace package. nla-policy-scan gate coding-completion and project-completion-bac on the workspace default crate AEP-Base-Node/crate before any ship prose.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
 updated: 2026-09-02
-gitea_commits:
+source_commits:
   hvvcas: 51ceeba53a7361c9e5564f72e78ba04e1c899e04
   crate_lib: 7d24f82cb7b9dd35e800af5e6932618cf1004195
   crate_main: 47668aafd361b4d59a8d42789228f8bb6fff05e0

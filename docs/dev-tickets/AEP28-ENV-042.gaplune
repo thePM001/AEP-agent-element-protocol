@@ -17,7 +17,7 @@ notes: Closed. Empty node map closes dag.membership and gap.agent_may. Missing o
 acceptance: Empty node map closes dag.membership and gap.agent_may. Missing or unreadable lattice YAML is Deny at load. A non-empty action_path cannot pass membership on an empty lattice. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/envelope/crate before any ship prose.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/envelope/crate
 updated: 2026-09-02
-gitea_commits:
+source_commits:
   envelope_lib: cdb1cee52b19ea0e4ae9bd2da67f1b961cc5bd45
   admit_mjs: 3376656faed878b9eb6850a6fde042e837754ff6
   envelope_admit: 733c2302c3399ecc11c2c5ced29ccd7e7e2428e2

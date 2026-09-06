@@ -14,9 +14,9 @@ rust/target/release/aep-ucb
 rust/target/release/aep-subprotocol
 ```
 
-## Subprotocol crates (`AEP-Subprotocols/`)
+## Subprotocol crates (`AEP-NOSHIP/AEP-Subprotocols/`)
 
-See [AEP-Subprotocols/README.md](../AEP-Subprotocols/README.md) and [AEP-User-Experience/docs/SUBPROTOCOLS.md](../AEP-User-Experience/docs/SUBPROTOCOLS.md).
+See [AEP-NOSHIP/AEP-Subprotocols/README.md](../AEP-NOSHIP/AEP-Subprotocols/README.md) and [AEP-User-Experience/docs/SUBPROTOCOLS.md](../AEP-User-Experience/docs/SUBPROTOCOLS.md).
 
 The `aep-subprotocol` binary is the unified CLI for all domain subprotocol validators.
 

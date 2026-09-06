@@ -3,7 +3,7 @@
   "id": "commerce-subprotocol",
   "version": "2.8.0",
   "kind": "regulation",
-  "path": "AEP-Subprotocols/commerce/",
+  "path": "AEP-NOSHIP/AEP-Subprotocols/commerce/",
   "description": "Agentic commerce validation, spend tracking, merchant registry.",
   "requires": [
     "aep-base-node",
@@ -79,9 +79,9 @@
     ]
   },
   "implementation": {
-    "validator": "AEP-Subprotocols/commerce/lib/validator.ts",
-    "spend_tracker": "AEP-Subprotocols/commerce/lib/spend-tracker.ts",
-    "registry": "AEP-Subprotocols/commerce/lib/registry.ts",
+    "validator": "AEP-NOSHIP/AEP-Subprotocols/commerce/lib/validator.ts",
+    "spend_tracker": "AEP-NOSHIP/AEP-Subprotocols/commerce/lib/spend-tracker.ts",
+    "registry": "AEP-NOSHIP/AEP-Subprotocols/commerce/lib/registry.ts",
     "cli": [
       "aep commerce status",
       "aep commerce spend"

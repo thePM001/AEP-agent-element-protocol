@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CI: official Gitea run sequence. GitHub is a public mirror.
+# CI: official public run sequence. GitHub is a public mirror.
 # AEP28-ENV-078
 # @PAD: aep28-env-078-official-run-ci-gate-v1
 # @GCDE: gaplune.policy.v1
@@ -12,4 +12,4 @@ if [ -d "$ROOT/.github" ]; then
 fi
 cargo test -p aep-base-node --lib
 cargo test -p aep-base-node --test source_invariants aep28_env_078
-echo "[gate-aep28-env-078] OK official Gitea run sequence. GitHub is a public mirror"
+echo "[gate-aep28-env-078] OK official public run sequence. GitHub is a public mirror"

@@ -2,7 +2,7 @@
 
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { invokeCodingGovernanceRust } from "../../../AEP-SDKs/typescript/aep-protocol/lib/subprotocol-rust.mjs";
+import { invokeCodingGovernanceRust } from "../../../AEP-NOSHIP/AEP-SDKs/typescript/aep-protocol/lib/subprotocol-rust.mjs";
 import { explainIntent } from "../../intent-ledger/lib/ledger.mjs";
 import { expandHome, defaultPaths } from "../../wizard/lib/paths.mjs";
 import {

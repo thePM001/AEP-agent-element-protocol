@@ -17,7 +17,7 @@ notes: Closed. SSOT is 2.8.0. Banner, workspace.package.version and CHANNEL_VERS
 acceptance: Banner version, workspace.package.version and CHANNEL_VERSION are identical. CI gate fails if any of the three drifts.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/version-ssot/crate
 updated: 2026-09-01
-gitea_commits:
+source_commits:
   crate_lib: c9b0889500a9a2571b2db584905737505b36740d
   crate_cargo: 650da07561d9a25089edd56f92fd7b6770f93414
   crate_main: d0ac77c0df4e9cc412922aa518a32e5fdf40d745

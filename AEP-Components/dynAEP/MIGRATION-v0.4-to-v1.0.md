@@ -218,7 +218,7 @@ are rejected. Review your agent trust assignments before upgrading.
 
 ### 2.7 Python SDK: No Breaking API Changes
 
-The Python SDK (`AEP-SDKs/python/dynaep/`) has NO API
+The Python SDK (`AEP-NOSHIP/AEP-SDKs/python/dynaep/`) has NO API
 changes. The `DynAEPBridge`, `DynAEPBridgeConfig`, `process_event()`,
 `handle_tool_call()` and `create_ag_ui_middleware()` APIs are identical.
 The bridge validates against the lattice transparently based on the config.
@@ -490,7 +490,7 @@ dynAEP-sdk:
  category: sdk
  agent_may: ["*"]
  version: "1.0.0"
- location: "AEP-SDKs/typescript/dynaep/src/bridge.ts"
+ location: "AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/bridge.ts"
  dependencies: ["dynAEP-lattice"]
 REGEOF
 ```
@@ -941,7 +941,7 @@ observers/sse/index.ts - SSE adapter
 observers/poll/index.ts - Poll adapter
 observers/examples/blockchain/index.ts - Blockchain adapter
 policies/lattice-policy.rego - Lattice Rego policy
-AEP-SDKs/typescript/dynaep/src/bridge.ts - TypeScript SDK
+AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/bridge.ts - TypeScript SDK
 package.json - @dynaep/core npm package
 tsconfig.json - TypeScript config
 ```

@@ -84,6 +84,8 @@
     "agent_may": [
       "*"
     ],
-    "aep_version": "2.8.5"
+    "aep_version": "2.8.5",
+    "wrap": "deployment",
+    "action_path_prefix": "ops:"
   }
 }

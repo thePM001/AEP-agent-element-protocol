@@ -1,6 +1,6 @@
-/** BL-08: dead re-export stub fails loudly instead of silent no-op success. */
+/** Layer 1 stays optional authoring. Constrained decoding is not Admit. This file is unwired. */
 const MSG =
-  "gap-constrained-engine.mjs is deprecated and removed. Use AEP-Composer-Lite/lib/hyperlattice/gap-constrained-engine.mjs explicitly.";
+  "gap-constrained-engine.mjs is unwired. Layer 1 stays optional authoring. Constrained decoding is not Admit. Live Admit is collect-all after freeze-at-seal.";
 
 export function createGapConstrainedEngine() {
   throw new Error(MSG);

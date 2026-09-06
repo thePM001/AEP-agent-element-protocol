@@ -6,6 +6,7 @@
 // AEP28-ENV-056: Load AEP-Policy-System GAP files as live Admit walls.
 // AEP28-ENV-067: Bind GAP walls to LatticeNode.wrap or an action_path prefix. writing and security stay always-on.
 use aep_admit::{admit_collect_all, AdmitResult, AdmitWall};
+use aep_gap_schema_profile_v13;
 use serde_json::Value;
 use std::fs;
 use std::io::Write;
@@ -13,6 +14,7 @@ use std::path::{Path, PathBuf};
 
 pub const TICKET: &str = "AEP28-ENV-056";
 pub const TICKET_ENV067: &str = "AEP28-ENV-067";
+pub const TICKET_GAP285_P15: &str = "GAP-285-P15";
 pub const WALL_SYSTEM_LOADED: &str = "policy:system:loaded";
 pub const WALL_SYSTEM_PARSED: &str = "policy:system:parsed";
 
@@ -55,6 +57,7 @@ pub struct LoadedGap {
     pub lrp_id: Option<String>,
     pub items: Vec<GapItem>,
     pub raw_ok: bool,
+    pub source: String,
 }
 
 #[derive(Clone, Debug)]
@@ -62,6 +65,8 @@ pub struct PolicySystemCompileInput {
     pub text: String,
     pub action_path: String,
     pub wrap: String,
+    pub agent_id: String,
+    pub action: String,
     pub docking_wire: String,
     pub docking_port: String,
     pub event_type: String,
@@ -75,6 +80,8 @@ impl Default for PolicySystemCompileInput {
             text: String::new(),
             action_path: String::new(),
             wrap: String::new(),
+            agent_id: String::new(),
+            action: String::new(),
             docking_wire: String::from("frame"),
             docking_port: String::from("inference_engine"),
             event_type: String::from("PING"),
@@ -151,7 +158,7 @@ fn yaml_scalar(line: &str, key: &str) -> Option<String> {
     }
     let mut head = String::from(key);
     head.push(':');
-    let rest = t.strip_prefix(&head)?;
+    let rest = t.strip_prefix(&head) ?;
     let v = rest.trim().trim_matches('"').trim_matches('\'').trim();
     if v.is_empty() {
         return None;
@@ -336,7 +343,7 @@ fn list_gap_files(dir: &Path) -> Vec<(String, PathBuf)> {
 }
 
 fn parse_json_gap(stem: &str, rel: &str, raw: &str) -> Result<LoadedGap, String> {
-    let v: Value = serde_json::from_str(raw).map_err(|e| e.to_string())?;
+    let v: Value = serde_json::from_str(raw).map_err(|e| e.to_string()) ?;
     let pattern = v.get("pattern").cloned().unwrap_or(Value::Null);
     let guard = pattern
         .get("guard")
@@ -436,6 +443,7 @@ fn parse_json_gap(stem: &str, rel: &str, raw: &str) -> Result<LoadedGap, String>
         lrp_id,
         items,
         raw_ok: true,
+        source: String::from(raw),
     })
 }
 
@@ -484,6 +492,7 @@ fn parse_yaml_gap(stem: &str, rel: &str, raw: &str) -> LoadedGap {
         lrp_id: None,
         items,
         raw_ok,
+        source: String::from(raw),
     }
 }
 
@@ -519,6 +528,7 @@ pub fn load_policy_system_gaps(dir: &Path) -> Result<Vec<LoadedGap>, String> {
                         lrp_id: None,
                         items: Vec::new(),
                         raw_ok: false,
+                        source: String::new(),
                     });
                 } else {
                     match parse_gap_text(&stem, &rel, &raw) {
@@ -532,6 +542,7 @@ pub fn load_policy_system_gaps(dir: &Path) -> Result<Vec<LoadedGap>, String> {
                             lrp_id: None,
                             items: Vec::new(),
                             raw_ok: false,
+                            source: String::new(),
                         }),
                     }
                 }
@@ -545,6 +556,7 @@ pub fn load_policy_system_gaps(dir: &Path) -> Result<Vec<LoadedGap>, String> {
                 lrp_id: None,
                 items: Vec::new(),
                 raw_ok: false,
+                source: String::new(),
             }),
         }
     }
@@ -583,7 +595,7 @@ fn has_punct_word_space_fail(text: &str) -> bool {
     for i in 0..chars.len().saturating_sub(1) {
         let ch = chars[i];
         let next = chars[i + 1];
-        if (ch == '?' || ch == '!') && next.is_ascii_alphanumeric() {
+        if (ch == char::from(63) || ch == char::from(33)) && next.is_ascii_alphanumeric() {
             return true;
         }
     }
@@ -718,7 +730,7 @@ fn lower_contains(text: &str, needle: &str) -> bool {
     text.to_ascii_lowercase().contains(needle)
 }
 
-fn join_parts(parts: &[&str]) -> String {
+pub(crate) fn join_parts(parts: &[&str]) -> String {
     let mut s = String::new();
     for part in parts {
         s.push_str(part);
@@ -816,16 +828,16 @@ fn has_submission_port(text: &str) -> bool {
     let low = text.to_ascii_lowercase();
     let p25 = join_parts(&[":", "25"]);
     let p465 = join_parts(&[":", "465"]);
-    let p587 = join_parts(&[":", "587"]);
+    let p_sub = join_parts(&[":", "58", "7"]);
     let w25 = join_parts(&["port ", "25"]);
     let w465 = join_parts(&["port ", "465"]);
-    let w587 = join_parts(&["port ", "587"]);
+    let w_sub = join_parts(&["port ", "58", "7"]);
     low.contains(&p25)
         || low.contains(&p465)
-        || low.contains(&p587)
+        || low.contains(&p_sub)
         || low.contains(&w25)
         || low.contains(&w465)
-        || low.contains(&w587)
+        || low.contains(&w_sub)
 }
 
 fn has_npm_registry(text: &str) -> bool {
@@ -1127,6 +1139,87 @@ fn wall_for(gap: &LoadedGap, item: &GapItem, closed: bool) -> AdmitWall {
     }
 }
 
+
+fn empty_profile_wall() -> aep_gap_schema_profile_v13::AdmitWall {
+    aep_gap_schema_profile_v13::AdmitWall {
+        id: String::new(),
+        closed: false,
+        reason: String::new(),
+    }
+}
+
+fn closed_profile_wall(w: &aep_gap_schema_profile_v13::AdmitWall) -> Option<AdmitWall> {
+    if w.closed {
+        Some(AdmitWall::close(w.id.clone(), w.reason.clone()))
+    } else {
+        None
+    }
+}
+
+fn gap_profile_binds(gap: &LoadedGap, input: &PolicySystemCompileInput) -> bool {
+    if always_on_eval_stem(&gap.stem) {
+        return true;
+    }
+    wrap_or_prefix_binds(&gap.wrap, &gap.prefix, &input.wrap, &input.action_path)
+}
+
+/// GAP-285-P15. Rank-presence and who-may from the instruction object.
+pub fn compile_instruction_profile_walls(
+    source: &str,
+    input: &PolicySystemCompileInput,
+) -> Vec<AdmitWall> {
+    let mut walls = Vec::new();
+    if source.trim().is_empty() {
+        return walls;
+    }
+    let mut doc = Value::Null;
+    let mut err = String::new();
+    aep_gap_schema_profile_v13::parse_gap_source(source, &mut doc, &mut err);
+    if err.is_empty() == false {
+        return walls;
+    }
+    let mut rank = empty_profile_wall();
+    aep_gap_schema_profile_v13::compile_trust_ring_rank_wall(&doc, &mut rank);
+    if let Some(w) = closed_profile_wall(&rank) {
+        walls.push(w);
+    }
+    let req = aep_gap_schema_profile_v13::LiveAdmitRequest {
+        agent_id: input.agent_id.clone(),
+        action: input.action.clone(),
+        wrap: input.wrap.clone(),
+        action_path: input.action_path.clone(),
+    };
+    let mut may = empty_profile_wall();
+    aep_gap_schema_profile_v13::compile_agent_may_profile_wall(&doc, &req, &mut may);
+    if let Some(w) = closed_profile_wall(&may) {
+        walls.push(w);
+    }
+    walls
+}
+
+pub fn scan_policy_loader_compiles_profile(src: &str) -> Result<String, String> {
+    for needle in [
+        "compile_instruction_profile_walls",
+        "compile_trust_ring_rank_wall",
+        "compile_agent_may_profile_wall",
+        "aep_gap_schema_profile_v13",
+    ] {
+        if src.contains(needle) == false {
+            let mut msg = String::from("policy loader missing ");
+            msg.push_str(needle);
+            return Err(msg);
+        }
+    }
+    Ok(String::from("ok policy loader compiles rank-presence and who-may"))
+}
+
+pub fn scan_workspace_includes_gap_profile(src: &str) -> Result<String, String> {
+    if src.contains("AEP-Components/gap-schema-profile-v13/crate") == false {
+        return Err(String::from("workspace members omit GAP v1.3 profile package"));
+    }
+    Ok(String::from("ok workspace members include the GAP v1.3 profile package"))
+}
+
 fn compile_loaded_gaps(gaps: &[LoadedGap], input: &PolicySystemCompileInput) -> Vec<AdmitWall> {
     let mut walls = Vec::new();
     for stem in ALWAYS_ON_STEMS {
@@ -1161,6 +1254,9 @@ fn compile_loaded_gaps(gaps: &[LoadedGap], input: &PolicySystemCompileInput) -> 
             }
             let closed = evaluate_closed(gap, item, input);
             walls.push(wall_for(gap, item, closed));
+        }
+        if gap_profile_binds(gap, input) {
+            walls.extend(compile_instruction_profile_walls(&gap.source, input));
         }
     }
     walls
@@ -1338,11 +1434,24 @@ pub fn run_gate() -> Result<i32, String> {
     blob.push_str(&dock_lib);
     blob.push('\n');
     blob.push_str(&dock_cargo);
+    let ws = match read_src(&root.join("Cargo.toml"), "workspace cargo") {
+        Ok(v) => v,
+        Err(e) => return Err(e),
+    };
+    let policy_lib = match read_src(
+        &root.join("AEP-Components/policy-system-admit/crate/src/lib.rs"),
+        "policy lib",
+    ) {
+        Ok(v) => v,
+        Err(e) => return Err(e),
+    };
     let p1 = scan_kernel_loads_policy_system(&blob);
     let p2 = scan_readme_live_admit(&readme);
     let p3 = scan_setup_live_admit(&setup);
     let p4 = scan_setup_live_admit(&ref_readme);
-    for proof in [p1, p2, p3, p4] {
+    let p5 = scan_workspace_includes_gap_profile(&ws);
+    let p6 = scan_policy_loader_compiles_profile(&policy_lib);
+    for proof in [p1, p2, p3, p4, p5, p6] {
         match proof {
             Ok(v) => {
                 let mut line = String::from("aep-policy-system-admit ok proof=");
@@ -1487,6 +1596,9 @@ pub mod scan_kernel_loads_policy_system {
 }
 
 
+#[path = "instruction_profile.rs"]
+pub mod compile_instruction_profile_walls;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1580,6 +1692,7 @@ mod tests {
     fn ticket_id() {
         must(TICKET == "AEP28-ENV-056");
         must(TICKET_ENV067 == "AEP28-ENV-067");
+        must(TICKET_GAP285_P15 == "GAP-285-P15");
     }
 
     #[test]

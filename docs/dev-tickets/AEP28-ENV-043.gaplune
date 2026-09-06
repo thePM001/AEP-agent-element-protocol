@@ -12,12 +12,12 @@ wave: fail-closed-lattice
 plan: none
 repo: NLA-AEP-v2.8-open-source
 depends_on: AEP28-ENV-042
-scope: AEP-Components/envelope/crate/src/lib.rs AEP-Components/dynAEP/crate/src/lib.rs AEP-Components/admit-channel-order-walls/crate/src/lib.rs AEP-SDKs/typescript/dynaep/src/protocol/action-lattice.ts AEP-Components/satisfied-actions-partition/crate
+scope: AEP-Components/envelope/crate/src/lib.rs AEP-Components/dynAEP/crate/src/lib.rs AEP-Components/admit-channel-order-walls/crate/src/lib.rs internal-sdk/AEP-SDKs/typescript/dynaep/src/protocol/action-lattice.ts AEP-Components/satisfied-actions-partition/crate
 notes: Closed. Agent B child is Deny when only agent A satisfied the agent_action parent. System event parents stay visible in the same session. Session prefix isolates snapshots that carry session_id. Hangar tools stay out of this ticket.
 acceptance: Agent B child is Deny when only agent A satisfied the agent_action parent. System event parents remain visible in the same session. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/envelope/crate and AEP-Components/satisfied-actions-partition/crate before any ship prose.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/envelope/crate
 updated: 2026-09-02
-gitea_commits:
+source_commits:
   envelope_lib: 398cd5b1a8bcac5ef226332de28f34589e465485
   lattice_yaml: 5c395c75c715bdeea88abe0266cb9ad7fb607c16
   dynaep_lib: fad8351f2e9999a523d6e4290701b0dc4d408e56

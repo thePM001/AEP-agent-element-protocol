@@ -44,7 +44,7 @@ version = "2.8.5"
 edition = "2021"
 license = "Apache-2.0"
 authors = ["thePM001 <thepm001@users.noreply.github.com>"]
-# Public mirror URL. Official tree is Gitea thePM001/NLA-AEP-v2.8-open-source.
+# Public repository URL.
 repository = "https://github.com/thePM001/AEP-agent-element-protocol"
 
 [workspace.dependencies]

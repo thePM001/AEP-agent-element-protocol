@@ -17,7 +17,7 @@ notes: Closed. Product Admit wall crates fold into envelope_admit collect-all. a
 acceptance: Every product Admit wall crate is imported on the live dock path or is not a workspace product member. CI lists live-path crates and fails on an unused product wall crate. nla-policy-scan gate project-completion-bac on AEP-Base-Node/crate.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
 updated: 2026-09-01
-gitea_commits:
+source_commits:
   crate_lib: 3813c176638caf0b716f888c1260f78dac0f4404
   crate_main: c0df4b1bcdbe5b0c53a99cf4630a746ac1bb932e
   crate_cargo: fc8b83d310990226bcbe423540d8aa63df063034

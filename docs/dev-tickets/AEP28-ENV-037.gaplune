@@ -7,7 +7,7 @@ id: AEP28-ENV-037
 title: One live evaluation. Stop live_collect_all wall crates plus aep_envelope::admit as two stories on the same dock frame.
 status: closed
 priority: P0
-track: aep28-gitea-code-analysis-2026-09-01
+track: aep28-code-analysis-2026-09-01
 wave: live-admit
 plan: none
 repo: NLA-AEP-v2.8-open-source
@@ -17,7 +17,7 @@ notes: Closed. One Admit function judges the opened frame. Wall crates compile e
 acceptance: One Admit function judges the opened frame. live_collect_all is not a second combinator beside aep_envelope::admit. CI fails if envelope_admit.rs calls both live_collect_all and process_event Admit on the same plaintext. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Base-Node/crate AEP-Components/admit-live-dock/crate and AEP-Components/envelope/crate before any ship prose.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/envelope/crate
 updated: 2026-09-01
-gitea_commits:
+source_commits:
   crate_lib: 4f18ff8bf4ca3b5891c6a8fd3482285d6639fdf7
   crate_main: 552267e3dd5153a6f2c91db37c1adaec5892fc0d
   crate_cargo: 490f94812b8171e54f94b8c9116f0db910b4eb9c

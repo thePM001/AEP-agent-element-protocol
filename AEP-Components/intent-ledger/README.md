@@ -1,6 +1,6 @@
 # Intent Ledger Component
 
-Append-only **Intent Provenance Ledger** for coding governance. Stores `SolidifyRecord` entries; validation is `AEP-Subprotocols/coding-governance`.
+Append-only **Intent Provenance Ledger** for coding governance. Stores `SolidifyRecord` entries; validation is `AEP-NOSHIP/AEP-Subprotocols/coding-governance`.
 
 ## Storage
 

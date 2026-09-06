@@ -346,10 +346,9 @@
           "enum": ["objective", "subjective", "procedural", "heuristic"]
         },
         "supersedes": { "type": ["string", "null"] },
-        "agent_may": {
-          "type": "array",
-          "items": { "type": "string", "minLength": 1 },
-          "description": "GAP dimension grants. Agent A may X. Agent B may Y. No rank."
+        "trust_ring": {
+          "type": "string",
+          "enum": ["sandbox", "user", "system", "enterprise"]
         },
         "scanners": {
           "type": "array",

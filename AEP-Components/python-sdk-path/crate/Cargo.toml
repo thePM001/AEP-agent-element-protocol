@@ -4,7 +4,7 @@
 name = "aep-python-sdk-path"
 version = "0.1.0"
 edition = "2021"
-description = "AEP28-ENV-060. Advertised AEP-SDKs/python path ships a client."
+description = "AEP28-ENV-060. Advertised AEP-NOSHIP/AEP-SDKs/python path ships a client."
 license = "UNLICENSED"
 publish = false
 

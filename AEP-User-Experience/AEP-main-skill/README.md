@@ -14,7 +14,7 @@ AEP, dynAEP (main event runtime), Base Node, Composer Lite, CCA / setup agent, C
 |-----------|------|
 | Base Node | `AEP-Base-Node/` |
 | dynAEP | `AEP-Components/dynAEP/` |
-| dynAEP SDK | `AEP-SDKs/typescript/dynaep/` |
+| dynAEP SDK | `AEP-NOSHIP/AEP-SDKs/typescript/dynaep/` |
 | CCA | `AEP-Components/cca/` (`setup-agent.mjs`, CLI `aep-cca` / `aep-setup-agent`) |
 | Composer Lite | `AEP-Composer-Lite/` |
 | Registry | `AEP-Base-Node/registry/` |

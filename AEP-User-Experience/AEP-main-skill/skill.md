@@ -33,7 +33,7 @@ node AEP-User-Experience/aep-base-node-preflight.mjs
 |-----------|------|
 | Base Node | `AEP-Base-Node/` |
 | dynAEP | `AEP-Components/dynAEP/` |
-| dynAEP SDK | `AEP-SDKs/typescript/dynaep/` |
+| dynAEP SDK | `AEP-NOSHIP/AEP-SDKs/typescript/dynaep/` |
 | CCA | `AEP-Components/cca/` |
 | Composer Lite | `AEP-Composer-Lite/` |
 | Registry | `AEP-Base-Node/registry/` |

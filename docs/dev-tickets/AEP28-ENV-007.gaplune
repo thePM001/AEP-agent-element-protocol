@@ -14,7 +14,7 @@ wave: algebra
 plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
 repo: NLA-AEP-v2.8-open-source
 depends_on: AEP28-ENV-006
-scope: AEP-Components/admit AEP-Components/dynAEP AEP-SDKs/typescript/dynaep
+scope: AEP-Components/admit AEP-Components/dynAEP AEP-NOSHIP/AEP-SDKs/typescript/dynaep
 notes: Live path DENY when AEP_LAB_LATTICE_FILTER, AEP_LAB_POLICY_EVALUATOR, AEP_LATTICE_OPA=0 or lattice governance=disabled would skip Admit walls. Lab flags may exist only behind an explicit lab binary or test harness, not the product crossing. Out of scope: claiming misconfig is mathematically impossible.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/admit/crate
 updated: 2026-09-01

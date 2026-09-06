@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://gap-lang.aep.dev/schemas/gap-meta-schema-v1.2.json",
   "title": "GAP Instruction Meta-Schema v1.2",
-  "description": "Defines every legal structure of a .gap file. Used as the Layer 1 constraint mask for LLM-based GAP generation. Expanded from v1.1 with structured geometry blocks, subprotocol registry, constraint expressions, and feature flags.",
+  "description": "Defines every legal structure of a .gap file. Used as the Layer 1 constraint mask for LLM-based GAP generation. Expanded from v1.1 with structured geometry blocks, subprotocol registry, constraint expressions and feature flags.",
   "type": "object",
   "required": ["address", "pattern", "action", "weight", "composition", "metadata"],
   "additionalProperties": false,
@@ -19,7 +19,7 @@
         },
         "id": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*(\\.(v[0-9]+))?$",
+          "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*(\\.(v[0-9]+)){0,1}$",
           "description": "Unique instruction name with optional version suffix"
         }
       }
@@ -72,7 +72,7 @@
     "enabled": {
       "type": "boolean",
       "default": true,
-      "description": "Runtime feature flag. When false, instruction is loaded but never evaluated by the lattice."
+      "description": "Load-time flag: when false the instruction is still loaded and live Admit still evaluates walls. Closed-wall Deny names closed wall ids, reasons and a prescribed repair for unbound scene, dock, time, sequence and writing. Grant lists stay off repair and a retry must seal a new capsule."
     }
   },
 
@@ -127,7 +127,7 @@
 
     "ConstraintExpression": {
       "type": "object",
-      "description": "Structured constraint with expression, severity, and optional validator reference (v1.2).",
+      "description": "Structured constraint with expression, severity and optional validator reference (v1.2).",
       "required": ["expr"],
       "additionalProperties": false,
       "properties": {
@@ -160,7 +160,7 @@
 
     "SubprotocolDefinition": {
       "type": "object",
-      "description": "Domain-specific subprotocol definition (v1.2). Registers validators, geometry profiles, and default constraints for a domain.",
+      "description": "Domain-specific subprotocol definition (v1.2). Registers validators, geometry profiles and default constraints for a domain.",
       "required": ["validator"],
       "additionalProperties": false,
       "properties": {
@@ -457,10 +457,9 @@
           "enum": ["objective", "subjective", "procedural", "heuristic"]
         },
         "supersedes": { "type": ["string", "null"] },
-        "agent_may": {
-          "type": "array",
-          "items": { "type": "string", "minLength": 1 },
-          "description": "GAP dimension grants. Agent A may X. Agent B may Y. No rank."
+        "trust_ring": {
+          "type": "string",
+          "enum": ["sandbox", "user", "system", "enterprise"]
         },
         "scanners": {
           "type": "array",
@@ -585,7 +584,7 @@
 
     "Execution": {
       "type": "object",
-      "description": "Execution configuration (retry, timeout, error handling).",
+      "description": "Instruction-runtime retry, timeout and error handling. execution.retry and on_exhaustion are not kernel Admit. A retry of live Admit must seal a new capsule.",
       "properties": {
         "retry": {
           "type": "object",

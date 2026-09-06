@@ -31,6 +31,7 @@
     ],
     "lrp_id": "hipaa",
     "framework": "HIPAA",
-    "aep_version": "2.8.5"
+    "aep_version": "2.8.5",
+    "wrap": "health"
   }
 }

@@ -6,6 +6,6 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-cargo test --manifest-path retired-archive/instruction-crates/envelope-journals-drop/crate/Cargo.toml --lib
-cargo run -q --manifest-path retired-archive/instruction-crates/envelope-journals-drop/crate/Cargo.toml
+cargo test --manifest-path AEP-NOSHIP/instruction-crates/envelope-journals-drop/crate/Cargo.toml --lib
+cargo run -q --manifest-path AEP-NOSHIP/instruction-crates/envelope-journals-drop/crate/Cargo.toml
 echo "[gate-aep28-env-040] OK envelope-journals is not a workspace package"

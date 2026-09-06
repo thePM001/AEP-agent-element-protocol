@@ -3,7 +3,7 @@
 **How the public open-source AEP 2.8.5 protocol is supposed to be deployed securely**  
 **Audience:** operators installing AEP 2.8.5 from Docker or a verified source clone or attaching foreign agent stacks  
 **Updated:** 2026-09-05
-**Official tree:** Gitea thePM001/NLA-AEP-v2.8-open-source
+**Public repository:** https://github.com/thePM001/AEP-agent-element-protocol
 **GitHub is a public mirror.**
 
 ## 1. Mental model (read first)
@@ -96,7 +96,7 @@ ASCII fallback (same model):
 Canonical kernel and protocol material in this tree:
 
 - `AEP-Components/dynAEP/` (protocol + bridge + registries)
-- `AEP-SDKs/typescript/dynaep/` (governance stack clients)
+- `internal-sdk/AEP-SDKs/typescript/dynaep/` (governance stack clients)
 - README: Base Node is the kernel. TypeScript dynAEP is not product Admit.
 
 ## 2. Minimum secure baseline (single host)
@@ -123,9 +123,9 @@ Use for AEP-aware agents and anything that can load AEP lattice-gated clients.
 
 Canonical client entry points:
 
-- `AEP-Components/dynAEP/` and `AEP-SDKs/typescript/dynaep/`
+- `AEP-Components/dynAEP/` and `internal-sdk/AEP-SDKs/typescript/dynaep/`
 - `AEP-Components/lattice-channels/lib/lattice-transport.mjs`
-- `AEP-SDKs/` language clients
+- `internal-sdk/AEP-SDKs/` language clients
 - Base Node dock verify: `AEP-Base-Node/crate/src/docking.rs`
 
 **Do not:** open dock Unix sockets as raw JSON side-channels (`{"ping":true}`, plain `event`, plain `register_lrp`). Those are rejected by design.
@@ -266,12 +266,12 @@ export UCB_API_KEY=...
 | Concern | Path |
 | --- | --- |
 | Reference architecture diagram | `docs/architecture/aep-28-architecture.png` (source `.mmd`) |
-| Base Node kernel. TypeScript dynAEP is not product Admit | `AEP-Base-Node/`, `AEP-Components/dynAEP/`, `AEP-SDKs/typescript/dynaep/` |
+| Base Node kernel. TypeScript dynAEP is not product Admit | `AEP-Base-Node/`, `AEP-Components/dynAEP/`, `internal-sdk/AEP-SDKs/typescript/dynaep/` |
 | dynAEP config | `AEP-Components/dynAEP/CONFIG.md` |
 | Dock admit / plain reject | `AEP-Base-Node/crate/src/docking.rs` |
 | BM-07 trust | `attested_trust_score` in docking.rs |
 | Lattice client | `AEP-Components/lattice-channels/lib/lattice-transport.mjs` |
-| SDKs | `AEP-SDKs/` |
+| SDKs | `internal-sdk/AEP-SDKs/` |
 | UCB auth | `AEP-Docks/ucb/crate/src/auth.rs`, `http.rs` |
 | CAW file/unix fail-closed | `AEP-Components/caw-framework/internal/netmonitor/unix/` |
 | Policy | `AEP-Policy-System/lattice-channel-mandatory.gap` |

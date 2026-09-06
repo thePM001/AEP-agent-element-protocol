@@ -14,7 +14,7 @@ wave: rust-live
 plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
 repo: NLA-AEP-v2.8-open-source
 depends_on: AEP28-ENV-018
-scope: AEP-Components/envelope AEP-Components/dynAEP AEP-SDKs/typescript/dynaep
+scope: AEP-Components/envelope AEP-Components/dynAEP AEP-NOSHIP/AEP-SDKs/typescript/dynaep
 notes: CI fails if product filterCrossing still contains compileLatticePolicy, compileWritingWalls, compileTrustFloorWall, compileChannelWalls or compileTemporalWalls as live authority. Those files may stay as lab parity only. Out of scope: hangar tools.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/envelope/crate
 updated: 2026-09-01

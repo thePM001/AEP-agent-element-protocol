@@ -16,7 +16,7 @@ scope: AEP-Components/graph-engine/lib/graph/engine.ts AEP-Components/graph-engi
 notes: Closed. GraphEngine.execute requires admitGate default deny before nodeExecutor. A missing admitGate is deny. The local vector clock ticks only after allow and is not kernel Admit. policyEvaluator is not Admit. Kernel Admit is drift, age, future, sequence and digest replay. README, AEP-main-skill and GraphEngine README no longer teach Lamport vector clocks as live Admit. TypeScript dynAEP remains. GraphEngine is not a second kernel. Ticket close is coding close.
 acceptance: GraphEngine with no admitGate denies nodeExecutor. GraphEngine with admitGate deny does not tick the vector clock. GraphEngine with admitGate allow may run nodeExecutor and then tick. A Rust crate under AEP-Components/graph-engine-admit-gate fails if engine.ts calls nodeExecutor without admitGate. README, AEP-main-skill and GraphEngine README do not teach Lamport vector clocks as live Admit. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/graph-engine-admit-gate/crate before any ship prose.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/graph-engine-admit-gate/crate
-gitea_commits:
+source_commits:
   types: c7c3e9b1ab74115b41c6dd64972926fda20ff5b6
   engine: 4677d63a45b31e38f3def190fbae2698177d3399
   index: 021b8290b3d81ca9dd3183df31669169e6a2168f

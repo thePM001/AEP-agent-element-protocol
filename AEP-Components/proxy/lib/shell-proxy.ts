@@ -1,5 +1,5 @@
 // BL-04: use in-tree AgentGateway (SDK), not non-local ../gateway.js
-import { AgentGateway } from "../../../AEP-SDKs/typescript/aep-protocol/src/gateway.js";
+import { AgentGateway } from "../../../AEP-NOSHIP/AEP-SDKs/typescript/aep-protocol/src/gateway.js";
 import type { AgentAction, Policy } from "../../policy-engine/lib/policy/types.js";
 import type { Session } from "../../session/lib/session.js";
 

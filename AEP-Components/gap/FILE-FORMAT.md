@@ -1,5 +1,5 @@
-@PAD: gap-285-p9-file-format-v1.
-@GCDE: gaplune.policy.v1.
+@PAD: gap-285-p9-file-format-v2
+@GCDE: gaplune.policy.v1
 
 # GAP file format for AEP 2.8.5 collect-all Admit
 
@@ -17,13 +17,16 @@ This note tells operators how live GAP files are written and how collect-all Adm
 - Signed proof is not the default live AEP 2.8.5 attach.
 - Who-may is agent_may.
 - Empty grants close an agent action when the grant list is empty.
-- trust_ring is a documentary label on classic v1 and v1.2.
-- Rank rings are not the Admit floor.
-- Rank use warns then denies while who-may stays agent_may.
+- Presence of trust_ring is Deny.
+- Presence of trust_ring on a live GAP document is Deny.
+- Closed wall gap:trust_ring:rank.
+- Who-may is agent_may.
+- Do not set trust_ring on live documents.
 - Writing and security are always-on stems and they evaluate on every action path.
 - Other GAP walls bind to a wrap or an action path prefix.
 - A finance wrap GAP item does not close an inventory wrap ping.
 - A non-always-on GAP with empty wrap does not fold onto every event.
 - One instruction per document.
 - Multi-instruction families use YAML multi-document syntax with `---` separators.
-- Locator: http://100.118.184.18:3003/thePM001/NLA-AEP-v2.8-open-source/src/branch/main/AEP-Components/gap/FILE-FORMAT.md
+
+- This note lives at AEP-Components/gap/FILE-FORMAT.md

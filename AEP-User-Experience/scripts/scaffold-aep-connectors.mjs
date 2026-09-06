@@ -1,10 +1,12 @@
 #!/usr/bin/env node
+/** Generate connector lib stubs from AEP-NOSHIP/AEP-Connectors/catalog.json */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "../..");
+const catalog = JSON.parse(readFileSync(join(REPO, "AEP-NOSHIP/AEP-Connectors/catalog.json"), "utf8"));
 
 const LIB_TEMPLATE = (spec) => `#!/usr/bin/env node
 import { probeTcpHost } from "../../../AEP-Components/cca/lib/environment-probe.mjs";
@@ -93,6 +95,7 @@ Optional MCP servers from [awesome-mcp-servers](https://github.com/punkpeye/awes
 `;
 
 for (const spec of catalog.connectors) {
+  const dir = join(REPO, "AEP-NOSHIP/AEP-Connectors", spec.folder);
   const libDir = join(dir, "lib");
   mkdirSync(libDir, { recursive: true });
   const libFile = join(libDir, `${spec.service}-connector.mjs`);

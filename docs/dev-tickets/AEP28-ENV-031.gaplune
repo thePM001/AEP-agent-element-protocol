@@ -12,12 +12,12 @@ wave: rust-live
 plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
 repo: NLA-AEP-v2.8-open-source
 depends_on: AEP28-ENV-024
-scope: AEP-SDKs/typescript/dynaep AEP-Components/dynAEP AEP-Components/live-entry/crate AEP-Base-Node/crate
+scope: internal-sdk/AEP-SDKs/typescript/dynaep AEP-Components/dynAEP AEP-Components/live-entry/crate AEP-Base-Node/crate
 notes: Closed. Product live path is Rust only. TypeScript processEvent is not invoked as product Admit. Constructor does not load ActionLattice YAML as product Admit. CLI serve does not run LatticeFilter as product Admit. Tree-wide leftover scan fails if spawnSync aep-envelope, loadFromFile or processEvent remains product live code. Out of scope: hangar tools.
 acceptance: Product live path is Rust only. TypeScript processEvent is not invoked as product Admit. CI fails if spawnSync aep-envelope, loadFromFile or processEvent remains product live code. Same as ENV-024 acceptance plus a tree-wide leftover scan.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/live-entry/crate
 updated: 2026-09-01
-gitea_commits:
+source_commits:
   crate_cargo: f6b632c877f91b5d7e0237deaae0740481ff0918
   crate_main: 1f61b3b44ae01111c03f06237371971fe4e3e663
   crate_lib: 053d4d2842f870f2d888b4c458dae961f8cdce02

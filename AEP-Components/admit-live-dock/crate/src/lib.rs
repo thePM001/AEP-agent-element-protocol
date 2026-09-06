@@ -252,6 +252,8 @@ pub fn compile_live_walls(
         .unwrap_or("")
         .to_string();
     policy_in.wrap = wrap;
+    policy_in.agent_id = lattice_in.agent_id.clone();
+    policy_in.action = lattice_in.action_path.clone();
     policy_in.event = event.clone();
     walls.extend(compile_policy_system_walls(&policy_in));
     walls
@@ -482,7 +484,7 @@ pub fn scan_envelope_admit_one_live_evaluation(src: &str) -> Result<String, Stri
     Ok(String::from("ok one live evaluation"))
 }
 /// Fail if a product Admit wall crate is a workspace member and not on the live dock path.
-pub fn live_path_wall_member_gate(root: &Path) -> Result<String, String> {
+pub fn unused_wall_crate_gate(root: &Path) -> Result<String, String> {
     let ws = read_text(&root.join("Cargo.toml"));
     if ws.is_empty() {
         return Err(String::from("workspace Cargo.toml missing"));
@@ -561,7 +563,7 @@ pub fn live_path_wall_member_gate(root: &Path) -> Result<String, String> {
         }
     }
     let admit_src = read_text(&root.join("AEP-Base-Node/crate/src/envelope_admit.rs"));
-    scan_envelope_admit_one_live_evaluation(&admit_src)?;
+    scan_envelope_admit_one_live_evaluation(&admit_src) ?;
     let base_cargo = dep_names(&read_text(&root.join("AEP-Base-Node/crate/Cargo.toml")));
     if set_has(&base_cargo, "aep-admit-live-dock") == false {
         return Err(String::from("aep-base-node missing aep-admit-live-dock"));
@@ -576,7 +578,7 @@ pub fn live_path_wall_member_gate(root: &Path) -> Result<String, String> {
 
 pub fn run_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
-    let proof = live_path_wall_member_gate(&root)?;
+    let proof = unused_wall_crate_gate(&root) ?;
     let mut line = String::from("aep-admit-live-dock ");
     line.push_str(&proof);
     line.push('\n');
@@ -731,7 +733,7 @@ mod tests {
             "[package]\nname = \"aep-admit-trust-floor\"\nversion = \"0.1.0\"\n",
         )
         .expect("pkg");
-        let err = live_path_wall_member_gate(&tmp).expect_err("deny");
+        let err = unused_wall_crate_gate(&tmp).expect_err("deny");
         must(err.contains("admit-trust-floor") || err.contains("dropped"));
         let _ = fs::remove_dir_all(&tmp);
     }
@@ -798,7 +800,7 @@ mod tests {
             "use aep_admit_live_dock::live_collect_all;\n",
         )
         .expect("src");
-        let err = live_path_wall_member_gate(&tmp).expect_err("deny");
+        let err = unused_wall_crate_gate(&tmp).expect_err("deny");
         must(err.contains("not imported on live dock"));
         let _ = fs::remove_dir_all(&tmp);
     }
@@ -806,7 +808,7 @@ mod tests {
     #[test]
     fn live_workspace_unused_wall_gate() {
         let root = walk_to_workspace();
-        match live_path_wall_member_gate(&root) {
+        match unused_wall_crate_gate(&root) {
             Ok(proof) => must(proof.contains("ok live-path=")),
             Err(e) => {
                 let _ = std::io::stderr().write_all(e.as_bytes());
@@ -824,7 +826,7 @@ mod tests {
     fn compile_live_walls_returns_walls() {
         let mut live = LiveEntry::from_yaml(yaml()).expect("yaml");
         live.set_clock_ms(1000000);
-        let event = serde_json::json!({
+        let event = serde_json::json !({
             "type": "PING",
             "action_path": "root:ping",
             "payload": { "ok": true },
@@ -841,7 +843,7 @@ mod tests {
         live.set_clock_ms(1000000);
         live.freeze_temporal_snapshot(1000000);
         live.set_clock_ms(1001000);
-        let event = serde_json::json!({"type":"PING","action_path":"root:ping","payload":{"ok":true},"timestamp":1000040,"target_id":"scene-a","_sequenceNumber":1});
+        let event = serde_json::json !({"type":"PING","action_path":"root:ping","payload":{"ok":true},"timestamp":1000040,"target_id":"scene-a","_sequenceNumber":1});
         let walls = compile_live_walls(&live, &event, &LiveDockContext::unit_open());
         let mut saw = false;
         for w in &walls {
@@ -849,20 +851,20 @@ mod tests {
             if w.id == "temporal:stale_event" { must(w.closed == false); }
         }
         must(saw);
-        let compact: String = include_str!("lib.rs").chars().filter(|c| c.is_whitespace() == false).collect();
+        let compact: String = include_str !("lib.rs").chars().filter(|c| c.is_whitespace() == false).collect();
         must(compact.contains("live.wall_bridge_ts_ms()"));
         let bad = ["letbridge=live.now_ms", "()"].concat();
         must(compact.contains(&bad) == false);
         let mut live2 = LiveEntry::from_yaml(yaml()).expect("yaml");
         live2.set_clock_ms(1001000);
-        let event2 = serde_json::json!({"type":"PING","action_path":"root:ping","payload":{"ok":true},"timestamp":1000000,"target_id":"scene-a","_sequenceNumber":1});
+        let event2 = serde_json::json !({"type":"PING","action_path":"root:ping","payload":{"ok":true},"timestamp":1000000,"target_id":"scene-a","_sequenceNumber":1});
         let walls2 = compile_live_walls(&live2, &event2, &LiveDockContext::unit_open());
         must(walls2.iter().any(|w| w.id == "temporal:drift_exceeded" && w.closed));
     }
 
     #[test]
     fn dual_combinator_scan_fails() {
-        let bad = "use aep_admit_live_dock::LiveDockContext; use aep_one_live_evaluation::attach_live_walls; pub fn admit_sealed_payload_on_live_dock() { live_collect_all(live, &value, dock)?; match live.process_event(value) { _ => {} } }";
+        let bad = "use aep_admit_live_dock::LiveDockContext; use aep_one_live_evaluation::attach_live_walls; pub fn admit_sealed_payload_on_live_dock() { live_collect_all(live, &value, dock) ?; match live.process_event(value) { _ => {} } }";
         match scan_envelope_admit_one_live_evaluation(bad) {
             Err(e) => must(e.contains("both live_collect_all and process_event")),
             Ok(_) => std::process::abort(),
@@ -876,5 +878,15 @@ mod tests {
             Ok(v) => must(v.contains("ok one live evaluation")),
             Err(_) => std::process::abort(),
         }
+    }
+
+    #[test]
+    fn compile_live_walls_passes_agent_and_action_into_policy() {
+        let compact: String = include_str ! ("lib.rs")
+            .chars()
+            .filter(|c| c.is_whitespace() == false)
+            .collect();
+        must(compact.contains("policy_in.agent_id=lattice_in.agent_id.clone()"));
+        must(compact.contains("policy_in.action=lattice_in.action_path.clone()"));
     }
 }

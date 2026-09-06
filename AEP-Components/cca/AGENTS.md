@@ -121,9 +121,9 @@ GAP knowledge is injected into every LLM system prompt via `formatGapForPrompt()
 | Lattice registry | `AEP-Components/dynAEP/registries/aep-lattice.yaml` |
 | Bridge config | `AEP-Components/dynAEP/dynaep-config.yaml` (lattice.governance) |
 | Observer adapters | `AEP-Components/dynAEP/observers/` (webhook, SSE, poll, blockchain example) |
-| TypeScript SDK | `AEP-SDKs/typescript/dynaep/` |
-| Python SDK | `AEP-SDKs/python/dynaep/` |
-| React bindings | `AEP-SDKs/react/dynaep-react.tsx`, `dynaep-copilotkit.tsx` |
+| TypeScript SDK | `AEP-NOSHIP/AEP-SDKs/typescript/dynaep/` |
+| Python SDK | `AEP-NOSHIP/AEP-SDKs/python/dynaep/` |
+| React bindings | `AEP-NOSHIP/AEP-SDKs/react/dynaep-react.tsx`, `dynaep-copilotkit.tsx` |
 | SDK producer | `AEP-User-Experience/scripts/produce-aep-sdks.mjs` |
 | dynAEP context loader | `cca/lib/dynaep-context.mjs` |
 

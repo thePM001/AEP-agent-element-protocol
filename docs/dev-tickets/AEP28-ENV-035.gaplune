@@ -9,7 +9,7 @@ status: closed
 closed: 2026-09-01
 close_reason: Empty action_path is Deny before Apply. process_event does not mutate LiveEntry. STATE_DELTA without action_path does not change element z. Forecast ingest without action_path does not write coordinates. CI fails if process_event mutates then envelope_admit returns Err for the same event.
 priority: P0
-track: aep28-gitea-code-analysis-2026-09-01
+track: aep28-code-analysis-2026-09-01
 wave: live-admit
 plan: none
 repo: NLA-AEP-v2.8-open-source
@@ -18,7 +18,7 @@ scope: AEP-Base-Node/crate/src/envelope_admit.rs AEP-Components/live-entry/crate
 notes: Closed. admit_sealed_payload_on_live_dock Denies empty action_path before live_collect_all and process_event. LiveEntry.process_event Denies empty action_path after empty-lattice Deny and before clock stamp, STATE_DELTA and forecast ingest. Out of scope: hangar tools.
 acceptance: A frame without action_path is Deny with no LiveEntry mutation. STATE_DELTA without action_path does not change element z. Forecast ingest without action_path does not write coordinates. CI fails if process_event mutates then envelope_admit returns Err for the same event. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Base-Node/crate and AEP-Components/live-entry/crate before any ship prose.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
-gitea_commits:
+source_commits:
   envelope_admit: 4326e7ee999ea0158a993a885b68af19a6e0a5cb
   live_entry: 940c4363068e09e6b34d84e575b363be73c8938b
   registration: 1a12fff41b517666921770986d4afb0054f21580

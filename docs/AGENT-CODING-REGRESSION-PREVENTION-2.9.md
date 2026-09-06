@@ -4,7 +4,7 @@
 **Date:** 2026-07-26  
 **Authority:** Biosecure UNVACCINATED Supreme User directive  
 
-This document is the **protocol-facing** design. Operator audit inventories stay on host/Gitea NLA-PLATFORM internal paths only (never public GitHub AEP trees).
+This document is the **protocol-facing** design. Operator audit inventories stay on internal NLA-PLATFORM paths only (never public GitHub AEP trees).
 
 ## Why this exists
 
@@ -41,7 +41,7 @@ Every security-relevant change must include:
 
 Incomplete negative-path suite => `IncompleteSecurityProof` anomaly. No env override.
 
-## 3. Evaluation steps C1-C8 (fail-closed)
+## 3. Evaluation steps C1-C8 (DENY on miss)
 
 | Step | Name | Blocks |
 | - | - | - |
@@ -75,7 +75,7 @@ The model cannot attest that tests passed.
 ## 6. Zero-trust defaults (2.9)
 
 - Cryptographic tool capability tickets (no bare tool name strings).
-- VFS without secrets; solidifier performs Gitea writes.
+- VFS without secrets; solidifier performs source writes.
 - Ephemeral mTLS session identity.
 - Instruction channel vs Data channel (no tools from data).
 - AST-bound mutations for governed agents.
@@ -84,7 +84,7 @@ The model cannot attest that tests passed.
 - FSM: PLANNING -> DRAFTING -> TESTING -> REVIEW.
 - Wasm/Firecracker execute-and-destroy.
 - AST hash progression locks (no re-exec same hash).
-- Session TTL hop limit; non-renewable tickets.
+- Session TTL lattice-request limit; non-renewable tickets.
 - Idempotent-only tool surface.
 
 ## 7. Bootstrap rules on 2.8 (now)
@@ -107,8 +107,3 @@ Until the full lattice lands:
 - Two consecutive fix waves with zero new category regressions.
 - Public zero-trust claims only after re-audit under these rules.
 
-## 9. Canonical full plan
-
-Detailed tasks and audit mapping live on Gitea NLA-PLATFORM:
-
-`Platform-Development/aep28-internal-audits/code-audit-07-2026/IMPLEMENTATION-PLAN-AGENT-BUG-RECURRENCE-PREVENTION-2026-07-26.md`

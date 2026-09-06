@@ -1,6 +1,6 @@
 // =============================================================================
 // Action Lattice protocol (AEP-Components/dynAEP/bridge/lattice/index.ts)
-// Synced into AEP-SDKs/typescript/dynaep/src/protocol/action-lattice.ts by produce-aep-sdks.mjs.
+// Synced into AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/protocol/action-lattice.ts by produce-aep-sdks.mjs.
 //
 // Each node in the lattice represents a system action with:
 // - category (external_event, system_event, agent_action, output)

@@ -8,11 +8,11 @@ dist/
 node_modules/
 rust/target/
 target/
-AEP-SDKs/elixir/_build/
-AEP-SDKs/elixir/deps/
-AEP-SDKs/cpp/libaep_lattice_client.a
-AEP-SDKs/cpp/src/*.o
-AEP-SDKs/go/*.test
+AEP-NOSHIP/AEP-SDKs/elixir/_build/
+AEP-NOSHIP/AEP-SDKs/elixir/deps/
+AEP-NOSHIP/AEP-SDKs/cpp/libaep_lattice_client.a
+AEP-NOSHIP/AEP-SDKs/cpp/src/*.o
+AEP-NOSHIP/AEP-SDKs/go/*.test
 
 # Base Node runtime
 aep-action-lattice.db

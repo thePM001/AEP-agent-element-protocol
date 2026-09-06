@@ -90,7 +90,7 @@ dynAEP-sdk-typescript:
   description: "DynAEPBridge with async LatticeFilter.filterAsync, hook loader, and governanceAppliesToCategory."
   agent_may: ["*"]
   version: "2.8.1"
-  location: "AEP-SDKs/typescript/dynaep/src/bridge.ts"
+  location: "AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/bridge.ts"
   dependencies: ["dynAEP-lattice", "dynAEP-hook-loader"]
 
 dynAEP-cca-bridge-config:

@@ -4,13 +4,13 @@ Thin **component folder** for the coding-governance domain. Canonical implementa
 
 | Layer | Location |
 |-------|----------|
-| Validator (canonical) | `AEP-Subprotocols/coding-governance/` |
+| Validator (canonical) | `AEP-NOSHIP/AEP-Subprotocols/coding-governance/` |
 | GAP reference policies | `AEP-Components/gap/policies/reference/` |
 | Provenance store | `AEP-Components/intent-ledger/` |
 | Hyperlattice overlay | `AEP-Components/semantic-topology/` |
 | Git integration | `lib/git-integration.mjs` |
 | CCA agent builder context | `lib/coding-governance-context.mjs` |
-| TypeScript bridge | `AEP-SDKs/typescript/aep-protocol/src/subprotocol-rust.ts` |
+| TypeScript bridge | `AEP-NOSHIP/AEP-SDKs/typescript/aep-protocol/src/subprotocol-rust.ts` |
 
 ## Git integration (nool-compatible)
 

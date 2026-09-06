@@ -37,7 +37,7 @@ Public repository: https://github.com/thePM001/AEP-agent-element-protocol
 |-----------|------|------|
 | Base Node (kernel) | `AEP-Base-Node/` | Local governance daemon, docks, registry, multi-base-node |
 | dynAEP (main runtime) | `AEP-Components/dynAEP/` | Action Lattice event governance, bridge, TA / TA-P |
-| dynAEP SDK clients | `AEP-SDKs/typescript/dynaep/` | TypeScript dynAEP governance clients |
+| dynAEP SDK clients | `AEP-NOSHIP/AEP-SDKs/typescript/dynaep/` | TypeScript dynAEP governance clients |
 | CCA / setup agent | `AEP-Components/cca/` | Probe, ImplementationPlan, execute (`setup-agent.mjs`) |
 | Composer Lite | `AEP-Composer-Lite/` | WASM visual canvas `:8424` |
 | Registry | `AEP-Base-Node/registry/` | Offline component catalog (`catalog.json`) |
@@ -46,7 +46,7 @@ Public repository: https://github.com/thePM001/AEP-agent-element-protocol
 | Lattice transport | `AEP-Components/lattice-channels/` | PQ sealed LatticeChannel frames |
 | Policy (GAP) | `AEP-Policy-System/` | GAP policies, presets, builders |
 | Harness | `AEP-User-Experience/harness/` | Agent preflight helpers and UI validators |
-| Subprotocols | `AEP-Subprotocols/` | UI, commerce, workflows, REST, events, IaC, MCP security |
+| Subprotocols | `AEP-NOSHIP/AEP-Subprotocols/` | UI, commerce, workflows, REST, events, IaC, MCP security |
 
 ```bash
 # Secure baseline (see AEP secure deployment guide)
@@ -538,7 +538,7 @@ The recovery engine provides: specific violation details, which scanner or polic
 
 ## Cost Economics (v2.75e)
 
-**Subsystem**: src/economics/ (9 TypeScript modules) + AEP-Subprotocols/commerce/model-mapping.yaml and price-catalog.yaml
+**Subsystem**: src/economics/ (9 TypeScript modules) + AEP-NOSHIP/AEP-Subprotocols/commerce/model-mapping.yaml and price-catalog.yaml
 
 AEP 2.75e adds cost-aware routing, budgeting and spend control.
 
@@ -558,8 +558,8 @@ AEP 2.75e adds cost-aware routing, budgeting and spend control.
 ### Config Files
 | File | Purpose |
 |------|---------|
-| AEP-Subprotocols/commerce/model-mapping.yaml | 10 canonical models mapped to provider-specific IDs |
-| AEP-Subprotocols/commerce/price-catalog.yaml | Per-million-token pricing for 10+ providers with capabilities |
+| AEP-NOSHIP/AEP-Subprotocols/commerce/model-mapping.yaml | 10 canonical models mapped to provider-specific IDs |
+| AEP-NOSHIP/AEP-Subprotocols/commerce/price-catalog.yaml | Per-million-token pricing for 10+ providers with capabilities |
 
 ### Harness
 `AEP-User-Experience/harness/harness/aep-economics.js` wires all economics modules for agent integration.
@@ -680,7 +680,7 @@ Lattice-governed knowledge base:
 
 ## Subprotocols
 
-Seven subprotocols in **`AEP-Subprotocols/`** (Rust crates, catalog pattern like `AEP-Base-Node/registry/`). CLI: `aep-subprotocol`. Docs: `AEP-Subprotocols/README.md`, `AEP-User-Experience/docs/SUBPROTOCOLS.md`.
+Seven subprotocols in **`AEP-NOSHIP/AEP-Subprotocols/`** (Rust crates, catalog pattern like `AEP-Base-Node/registry/`). CLI: `aep-subprotocol`. Docs: `AEP-NOSHIP/AEP-Subprotocols/README.md`, `AEP-User-Experience/docs/SUBPROTOCOLS.md`.
 
 | Subprotocol | Crate | What It Validates |
 |-------------|-------|-------------------|
@@ -692,13 +692,13 @@ Seven subprotocols in **`AEP-Subprotocols/`** (Rust crates, catalog pattern like
 | Commerce | `aep-subprotocol-commerce` | Cart, checkout, payment, spend limits |
 | MCP Security | `aep-subprotocol-mcp-security` | Tool allowlist, typosquat, schema drift |
 
-UI three-layer files: `AEP-Subprotocols/ui/aep-scene.json`, `aep-registry.yaml`, `aep-theme.yaml`.
+UI three-layer files: `AEP-NOSHIP/AEP-Subprotocols/ui/aep-scene.json`, `aep-registry.yaml`, `aep-theme.yaml`.
 
 ---
 
 ## dynAEP: Dynamic Agent Element Protocol (main AEP event runtime)
 
-**dynAEP is the main AEP event runtime in 2.8.** It ships in-tree at `AEP-Components/dynAEP/` with clients under `AEP-SDKs/typescript/dynaep/`. Do not invent a second protocol runtime to replace it. Foreign frameworks attach via Path A (native lattice) or Path B (UCB); they do not substitute for dynAEP.
+**dynAEP is the main AEP event runtime in 2.8.** It ships in-tree at `AEP-Components/dynAEP/` with clients under `AEP-NOSHIP/AEP-SDKs/typescript/dynaep/`. Do not invent a second protocol runtime to replace it. Foreign frameworks attach via Path A (native lattice) or Path B (UCB); they do not substitute for dynAEP.
 
 dynAEP fuses AEP with AG-UI (Agent-User Interaction Protocol). It extends AEP's build-time governance with real-time bidirectional event streaming.
 
@@ -1073,7 +1073,7 @@ docker compose -f docker-compose.public.yml exec aep aep-cca probe
 ```
 
 - Component registry: `AEP-Base-Node/registry/catalog.json`
-- dynAEP runtime: `AEP-Components/dynAEP/` and `AEP-SDKs/typescript/dynaep/`
+- dynAEP runtime: `AEP-Components/dynAEP/` and `AEP-NOSHIP/AEP-SDKs/typescript/dynaep/`
 - Secure deploy: `AEP-User-Experience/docs/AEP-2.8-SECURE-DEPLOYMENT-GUIDE.md`
 - Optional GitHub catalog merge: `AEP_COMPONENTS_FETCH=1` (default off in public compose)
 

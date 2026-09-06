@@ -83,6 +83,7 @@
       "CRM task types labeled EMAIL over HTTPS APIs are not SMTP.",
       "mailto browser handoff is not server-side SMTP.",
       "Operators should also drop host OUTPUT to SMTP, SMTPS and message-submission ports when running multi-tenant agent hosts."
-    ]
+    ],
+    "wrap": "network"
   }
 }

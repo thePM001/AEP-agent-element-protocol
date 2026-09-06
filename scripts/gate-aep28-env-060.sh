@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CI: fail if advertised AEP-SDKs/python tree or lattice client is missing
+# CI: fail if advertised AEP-NOSHIP/AEP-SDKs/python tree or lattice client is missing
 # AEP28-ENV-060
 # @PAD: aep-python-sdk-path-ci-gate-v1
 # @GCDE: gaplune.policy.v1

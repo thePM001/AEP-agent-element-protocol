@@ -14,5 +14,6 @@ path = "src/main.rs"
 
 [dependencies]
 aep-admit = { path = "../../admit/crate" }
+aep-gap-schema-profile-v13 = { path = "../../gap-schema-profile-v13/crate" }
 anyhow = "1"
 serde_json = "1"

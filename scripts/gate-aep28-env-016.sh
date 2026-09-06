@@ -6,5 +6,5 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-cargo test --manifest-path retired-archive/instruction-crates/envelope-wrap-journals/crate/Cargo.toml --lib
+cargo test --manifest-path AEP-NOSHIP/instruction-crates/envelope-wrap-journals/crate/Cargo.toml --lib
 echo "[gate-aep28-env-016] lib tests ran"

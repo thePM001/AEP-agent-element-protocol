@@ -4,8 +4,8 @@ schema_id: gaplune.hvvcas.v1
 format: gaplune
 json: prohibited
 crate: aep-policy-system-admit
-ticket: AEP28-ENV-056 AEP28-ENV-067
-note: Load AEP-Policy-System GAP files as live Admit walls. Bind to wrap or prefix. writing and security stay always-on.
+ticket: AEP28-ENV-056 AEP28-ENV-067 GAP-285-P15
+note: Load AEP-Policy-System GAP files as live Admit walls. Bind to wrap or prefix. writing and security stay always-on. Compile rank-presence and who-may from the instruction object.
 
 component:
   name: discover_policy_system_dir
@@ -66,3 +66,15 @@ component:
   output:
     name: scan
     type: String
+
+component:
+  name: compile_instruction_profile_walls
+  domain: admit
+  component_type: service
+  intent: Compile rank-presence and who-may from the GAP instruction object
+  input:
+    name: source
+    type: String
+  output:
+    name: walls
+    type: VecAdmitWall

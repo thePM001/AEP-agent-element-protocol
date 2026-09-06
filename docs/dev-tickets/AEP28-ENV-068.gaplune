@@ -16,7 +16,7 @@ scope: AEP-Components/envelope/crate/src/seq_walls.rs README.md AEP-User-Experie
 notes: Closed. wall_forecast uses only the live anomaly_score. Cached snapshot.forecast_cached_score cannot close or open the forecast wall. README and AEP-main-skill no longer teach attractor skip of Admit. lattice-memory still records and searches. ENV-025 stays landed. Ticket close is coding close.
 acceptance: wall_forecast with forecast_require_approval true, anomaly_score 0 and forecast_cached_score above threshold stays open. wall_forecast with live anomaly_score above threshold closes. README and AEP-main-skill do not teach attractor skip of Admit. lattice-memory still records and searches. Dock still collect-all on every opened frame. cargo test -p aep-envelope --lib passes the forecast cases. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/envelope/crate before any ship prose.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/envelope/crate
-gitea_commits:
+source_commits:
   seq_walls: 8f00d15ca3011268170d65930182487267df495f
   lib: 9e479e54201b38ab5a2868f569e40364835fbb3e
   readme: 16ba93d1be289145176a0b4b2b1c556831135c21

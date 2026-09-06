@@ -7,7 +7,7 @@ id: AEP28-ENV-036
 title: Template fast_exit must meet Admit. target_id in the template set is not a skip.
 status: closed
 priority: P0
-track: aep28-gitea-code-analysis-2026-09-01
+track: aep28-code-analysis-2026-09-01
 wave: live-admit
 plan: none
 repo: NLA-AEP-v2.8-open-source
@@ -17,7 +17,7 @@ notes: Closed. LiveEntry.process_event no longer returns Event because a target_
 acceptance: An event whose target_id is in templates still runs collect-all Admit then Apply. Unknown action_path on a template target is Deny. CI fails if process_event returns Event solely because templates.contains(target_id). nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/live-entry/crate before any ship prose.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/live-entry/crate
 updated: 2026-09-01
-gitea_commits:
+source_commits:
   crate_lib: 25d53c845bb90d271fdeb9ad36a86068e9ffef89
   crate_cargo: 6112c6ff61557d7ff6d5060bc1a58e0d5e373979
   hvvcas: a49f87af7af0aed4ff583e1ea889af9e814ec182

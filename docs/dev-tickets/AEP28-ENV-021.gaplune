@@ -14,7 +14,7 @@ wave: rust-live
 plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
 repo: NLA-AEP-v2.8-open-source
 depends_on: AEP28-ENV-017 AEP28-ENV-018 AEP28-ENV-019 AEP28-ENV-020
-scope: AEP-Components/envelope AEP-Components/dynAEP AEP-SDKs/typescript/dynaep
+scope: AEP-Components/envelope AEP-Components/dynAEP AEP-NOSHIP/AEP-SDKs/typescript/dynaep
 notes: Not a product hole. After Rust live Admit lands, nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/envelope/crate. No ship prose before those journals. Out of scope: hangar tools.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/envelope/crate
 updated: 2026-09-01

@@ -17,7 +17,7 @@ notes: Closed. Record calls admit_sealed_payload_on_live_dock before INSERT. Mis
 acceptance: Record goes through dock Admit before kernel INSERT. Deny does not write. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/lattice-log-record-admit/crate before any ship prose.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/lattice-log-record-admit/crate
 updated: 2026-09-02
-gitea_commits:
+source_commits:
   lattice_log: 2db0f5cfe5b4e101095cc39f33af96b9b24cb574
   envelope_admit: d043f920aac472847a7ecbcfca88ac6378be6020
   crate_cargo: b53579e2bf6bd54d81ccf883b5aef730e79986fe

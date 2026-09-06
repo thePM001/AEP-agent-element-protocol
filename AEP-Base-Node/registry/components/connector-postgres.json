@@ -3,6 +3,7 @@
   "id": "connector-postgres",
   "version": "2.8.0",
   "kind": "connector",
+  "path": "AEP-NOSHIP/AEP-Connectors/postgres/",
   "description": "UCB-only PostgreSQL connector. All traffic via /ucb/v1/egress/postgres/**.",
   "requires": [
     "aep-base-node",
@@ -79,6 +80,7 @@
     ]
   },
   "implementation": {
+    "module": "AEP-NOSHIP/AEP-Connectors/postgres/lib/postgres-connector.mjs",
     "ucb_egress_prefix": "/ucb/v1/egress/postgres",
     "auth_token_env": "AEP_POSTGRES_PASSWORD"
   },

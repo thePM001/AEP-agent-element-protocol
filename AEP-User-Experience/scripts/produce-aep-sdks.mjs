@@ -6,7 +6,7 @@
  * - Validate aep-protocol entrypoints
  * - Package python dynaep
  * - Emit lattice-client scaffolds for other languages
- * - Write AEP-SDKs/dist/sdk-manifest.json
+ * - Write AEP-NOSHIP/AEP-SDKs/dist/sdk-manifest.json
  *
  * Run from repo root:
  *   node AEP-User-Experience/scripts/produce-aep-sdks.mjs
@@ -27,10 +27,10 @@ import { fileURLToPath } from "node:url";
 import { execFileSync, spawnSync } from "node:child_process";
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "../..");
-const SDK_ROOT = join(REPO, "AEP-SDKs");
+const SDK_ROOT = join(REPO, "AEP-NOSHIP/AEP-SDKs");
 const DIST = join(SDK_ROOT, "dist");
 const COMPONENTS = "AEP-Components";
-const SUBPROTOCOLS = "AEP-Subprotocols";
+const SUBPROTOCOLS = "AEP-NOSHIP/AEP-Subprotocols";
 
 const LATTICE_SDK_LANGS = [
   "go",
@@ -81,7 +81,7 @@ function fixAepProtocolImports() {
   for (const file of walk(srcDir)) {
     let text = readFileSync(file, "utf8");
     const orig = text;
-    text = text.replaceAll("../../commerce/", "../../../../AEP-Subprotocols/commerce/");
+    text = text.replaceAll("../../commerce/", "../../../../AEP-NOSHIP/AEP-Subprotocols/commerce/");
     text = text.replaceAll('from "../../', `from "../../../../${COMPONENTS}/`);
     text = text.replaceAll('export {', 'export {').replaceAll(
       /from "\.\.\/\.\.\/\.\.\/\.\.\/AEP-Components\/AEP-Components\//g,
@@ -99,9 +99,9 @@ function fixCommerceExports() {
   const indexPath = join(SDK_ROOT, "typescript/aep-protocol/src/index.ts");
   let text = readFileSync(indexPath, "utf8");
   const block = `// Commerce Subprotocol (component: commerce/)
-export { CommerceValidator } from "../../../../AEP-Subprotocols/commerce/lib/validator.js";
-export { SpendTracker } from "../../../../AEP-Subprotocols/commerce/lib/spend-tracker.js";
-export { CommerceRegistry } from "../../../../AEP-Subprotocols/commerce/lib/registry.js";
+export { CommerceValidator } from "../../../../AEP-NOSHIP/AEP-Subprotocols/commerce/lib/validator.js";
+export { SpendTracker } from "../../../../AEP-NOSHIP/AEP-Subprotocols/commerce/lib/spend-tracker.js";
+export { CommerceRegistry } from "../../../../AEP-NOSHIP/AEP-Subprotocols/commerce/lib/registry.js";
 export {`;
   const replacement = `// Commerce Subprotocol (Rust canonical impl; TS types only)
 export {`;
@@ -322,10 +322,10 @@ function writeDistManifest() {
     producer: "AEP-User-Experience/scripts/produce-aep-sdks.mjs",
     artifacts: ALL_SDKS.map((sdk) => ({
       id: sdk.id,
-      path: `AEP-SDKs/${sdk.path}`,
+      path: `AEP-NOSHIP/AEP-SDKs/${sdk.path}`,
       dist: sdk.kind === "typescript" || sdk.kind === "python"
-        ? `AEP-SDKs/dist/${sdk.path}`
-        : `AEP-SDKs/${sdk.path}`,
+        ? `AEP-NOSHIP/AEP-SDKs/dist/${sdk.path}`
+        : `AEP-NOSHIP/AEP-SDKs/${sdk.path}`,
       kind: sdk.kind,
       description: "Operational AEP 2.8 SDK (produce-aep-sdks verified)",
     })),
@@ -344,7 +344,7 @@ function updateCatalog() {
       kind: "sdk",
       bundled: true,
       default_enabled: true,
-      path: "AEP-SDKs/typescript/aep-protocol/",
+      path: "AEP-NOSHIP/AEP-SDKs/typescript/aep-protocol/",
       description: "Unified TypeScript governance stack and lattice-gated SDK clients.",
       manifest: "AEP-Base-Node/registry/components/aep-typescript-sdk.json",
     },
@@ -354,7 +354,7 @@ function updateCatalog() {
       kind: "sdk",
       bundled: true,
       default_enabled: true,
-      path: "AEP-SDKs/typescript/dynaep/",
+      path: "AEP-NOSHIP/AEP-SDKs/typescript/dynaep/",
       description: "dynAEP Action Lattice TypeScript client library.",
       manifest: "AEP-Base-Node/registry/components/aep-dynaep-typescript.json",
     },
@@ -364,7 +364,7 @@ function updateCatalog() {
       kind: "sdk",
       bundled: true,
       default_enabled: true,
-      path: "AEP-SDKs/python/aep-protocol/",
+      path: "AEP-NOSHIP/AEP-SDKs/python/aep-protocol/",
       description: "AEP Python loader, validator, and lattice client.",
       manifest: "AEP-Base-Node/registry/components/aep-python-sdk.json",
     },
@@ -374,7 +374,7 @@ function updateCatalog() {
       kind: "sdk",
       bundled: true,
       default_enabled: false,
-      path: "AEP-SDKs/python/dynaep/",
+      path: "AEP-NOSHIP/AEP-SDKs/python/dynaep/",
       description: "dynAEP Action Lattice Python client library.",
       manifest: "AEP-Base-Node/registry/components/aep-dynaep-python.json",
     },
@@ -386,7 +386,7 @@ function updateCatalog() {
     log(`catalog +${entry.id}`);
   }
   if (!catalog.repository.sdks_path) {
-    catalog.repository.sdks_path = "AEP-SDKs/";
+    catalog.repository.sdks_path = "AEP-NOSHIP/AEP-SDKs/";
   }
   writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`);
 }
@@ -412,7 +412,7 @@ function writeSdkManifests() {
     ],
     setup_hooks: [],
     resource_requirements: { min_memory_mb: 64, min_disk_mb: 50, requires_internet: false },
-    implementation: { producer: "AEP-User-Experience/scripts/produce-aep-sdks.mjs", dist: "AEP-SDKs/dist/sdk-manifest.json" },
+    implementation: { producer: "AEP-User-Experience/scripts/produce-aep-sdks.mjs", dist: "AEP-NOSHIP/AEP-SDKs/dist/sdk-manifest.json" },
   });
   writeFileSync(
     join(out, "aep-typescript-sdk.json"),
@@ -420,14 +420,14 @@ function writeSdkManifests() {
       {
         ...common(
           "aep-typescript-sdk",
-          "AEP-SDKs/typescript/aep-protocol/",
+          "AEP-NOSHIP/AEP-SDKs/typescript/aep-protocol/",
           "Unified TypeScript governance stack and lattice-gated SDK clients.",
           ["aep-base-node", "lattice-channels"],
         ),
         implementation: {
-          entry: "AEP-SDKs/typescript/aep-protocol/index.ts",
-          gateway: "AEP-SDKs/typescript/aep-protocol/src/gateway.ts",
-          dist: "AEP-SDKs/dist/typescript/aep-protocol/",
+          entry: "AEP-NOSHIP/AEP-SDKs/typescript/aep-protocol/index.ts",
+          gateway: "AEP-NOSHIP/AEP-SDKs/typescript/aep-protocol/src/gateway.ts",
+          dist: "AEP-NOSHIP/AEP-SDKs/dist/typescript/aep-protocol/",
         },
       },
       null,
@@ -440,17 +440,17 @@ function writeSdkManifests() {
       {
         ...common(
           "aep-dynaep-typescript",
-          "AEP-SDKs/typescript/dynaep/",
+          "AEP-NOSHIP/AEP-SDKs/typescript/dynaep/",
           "dynAEP Action Lattice TypeScript client library.",
           ["aep-base-node", "lattice-channels", "dynaep-core"],
         ),
         implementation: {
           producer: "AEP-User-Experience/scripts/produce-aep-sdks.mjs",
-          dist: "AEP-SDKs/dist/sdk-manifest.json",
+          dist: "AEP-NOSHIP/AEP-SDKs/dist/sdk-manifest.json",
           entrypoints: [
-            "AEP-SDKs/typescript/dynaep/src/bridge.ts",
-            "AEP-SDKs/typescript/dynaep/src/protocol/action-lattice.ts",
-            "AEP-SDKs/typescript/dynaep/cli/dynaep-cli.ts",
+            "AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/bridge.ts",
+            "AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/protocol/action-lattice.ts",
+            "AEP-NOSHIP/AEP-SDKs/typescript/dynaep/cli/dynaep-cli.ts",
           ],
         },
         cca: {
@@ -473,7 +473,7 @@ function writeSdkManifests() {
     `${JSON.stringify(
       common(
         "aep-python-sdk",
-        "AEP-SDKs/python/aep-protocol/",
+        "AEP-NOSHIP/AEP-SDKs/python/aep-protocol/",
         "AEP Python loader, validator, and lattice client.",
         ["aep-base-node", "lattice-channels"],
       ),
@@ -487,14 +487,14 @@ function writeSdkManifests() {
       {
         ...common(
           "aep-dynaep-python",
-          "AEP-SDKs/python/dynaep/",
+          "AEP-NOSHIP/AEP-SDKs/python/dynaep/",
           "dynAEP Action Lattice Python client library.",
           ["dynaep-core"],
         ),
         implementation: {
           producer: "AEP-User-Experience/scripts/produce-aep-sdks.mjs",
-          dist: "AEP-SDKs/dist/sdk-manifest.json",
-          entrypoints: ["AEP-SDKs/python/dynaep/__init__.py"],
+          dist: "AEP-NOSHIP/AEP-SDKs/dist/sdk-manifest.json",
+          entrypoints: ["AEP-NOSHIP/AEP-SDKs/python/dynaep/__init__.py"],
         },
         cca: {
           summary: "Python dynAEP client: Action Lattice bridge and temporal pipeline.",
@@ -576,7 +576,7 @@ function main() {
     log("(materialize-manifests skipped or failed - SDK manifests written directly)");
   }
 
-  log("\nDone. Artifacts under AEP-SDKs/dist/");
+  log("\nDone. Artifacts under AEP-NOSHIP/AEP-SDKs/dist/");
 }
 
 main();

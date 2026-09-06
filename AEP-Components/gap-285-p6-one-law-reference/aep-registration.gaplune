@@ -1,0 +1,13 @@
+@PAD: gap-285-p6-one-law-reference-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: gap-285-p6-one-law-reference
+version: 0.1.0
+kind: library
+path: crate-gap-285-p6-one-law-reference/
+ticket: GAP-285-P6
+requires: none
+capability: admit.gap-285-p6-one-law-reference.verify
+note: GAP-285-P6 one-law reference. Presence of trust_ring is Deny. Who-may is agent_may. Writing and security stay always-on. Other walls bind wrap or action_path_prefix.

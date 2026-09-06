@@ -16,7 +16,7 @@ scope: AEP-Components/wall-set-backpressure/crate AEP-Components/live-entry/crat
 notes: Closed. Dock Deny returns DockFrameResponse.deny with closed wall ids, reasons, closed_set_key and prescribed repairs for unbound scene, dock, time, sequence and writing.gap. Grant lists stay off repair.fix. Native Path A owns the report. UCB ingest JSON forwards deny. Digest replay is keyed at enqueue so a retry must seal a new capsule. Attractors stay forensic. Conjunction stays Boolean meet. One Admit function remains attach_live_walls then process_event. TypeScript dynAEP remains. Ticket close is coding close.
 acceptance: DockFrameResponse carries deny. Unbound scene repair binds target_id. Unbound dock repair binds dest_dock. Unbound time repair binds timestamp at seal with 50 ms drift unchanged. Unbound sequence repair binds _sequenceNumber. Writing walls prescribe the writing.gap fix. Grant-list field names do not appear in repair.fix. UCB DockResponse forwards deny. cargo test -p aep-wall-set-backpressure --lib and cargo test -p aep-base-node --lib and cargo test -p aep-live-entry --lib cover the report. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/wall-set-backpressure/crate.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/wall-set-backpressure/crate
-gitea_commits:
+source_commits:
   ticket_open: a63c320386ea325e28bf7f084a362f003382af11
   crate_cargo: e86b20822209cdc447c69f0881d0dcb556424a8f
   crate_main: 5498c71e4fb846c6e9165b2e58a10865e35d24aa

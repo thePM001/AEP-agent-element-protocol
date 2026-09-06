@@ -9,7 +9,7 @@ status: closed
 priority: P2
 track: aep28-kernel
 wave: kernel-library-quality
-plan: docs/architecture/AEP-2.8-REFERENCE-LIBRARY-REMEDIATION.md
+plan: instruction-honesty-wave-1
 repo: NLA-AEP-v2.8-open-source
 depends_on: AEP28-ENV-072
 scope: AEP-Components/wall-set-backpressure/crate/src/lib.rs AEP-Base-Node/crate/src/envelope_admit.rs AEP-Base-Node/crate/src/docking.rs README.md scripts/gate-aep28-env-076.sh
@@ -17,7 +17,7 @@ notes: Wave 3. EPSCOM writing walls stay protocol law at priority 255. A writing
 acceptance: ClosedWall carries class. A writing wall reports class writing. Digest replay and KEM failures report class security. Drift, pulse age, wire freshness and future skew report class temporal. agent_may failures report class capability. Mutex poison reports class poison. Unbound scene, dock and sequence report class structural. cargo test -p aep-wall-set-backpressure --lib and cargo test -p aep-base-node --lib cover the classes. README says writing walls govern output shape and are not transport security. EPSCOM_PRIORITY remains 255. scripts/gate-aep28-env-076.sh runs those tests and fails if ClosedWall lacks class. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/wall-set-backpressure/crate.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/wall-set-backpressure/crate
 updated: 2026-09-05
-gitea_commits:
+source_commits:
   wall_set_lib: ccd21bdc9e45a319761e944af462065d3f81e355
   wall_set_cargo: b62a8b784f229c0055732f8fdcfcdbd525bcbcb2
   envelope_admit: 9b53945d3bcd0653ea646db4660b9fab78706255

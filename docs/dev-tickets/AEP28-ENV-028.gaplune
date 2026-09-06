@@ -12,12 +12,12 @@ wave: ts-lab
 plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
 repo: NLA-AEP-v2.8-open-source
 depends_on: AEP28-ENV-033
-scope: AEP-SDKs/typescript/dynaep/src/protocol/action-lattice.ts AEP-Components/dynAEP/bridge/lattice/index.ts AEP-Components/client-trust-tier-ignore/crate
+scope: internal-sdk/AEP-SDKs/typescript/dynaep/src/protocol/action-lattice.ts AEP-Components/dynAEP/bridge/lattice/index.ts AEP-Components/client-trust-tier-ignore/crate
 notes: Closed. ENV-033 landed. Bound agent_id ignores client trust_tier. Who-may is agent_may. Authorization field trust_tier is not a floor. Live Rust path is aep-client-trust-tier-ignore. Out of scope: hangar tools.
 acceptance: Bound agent_id still ignores client trust_tier. Tier comes from server identity, not the event. Tests cover agent_id set plus inflated trust_tier Deny. Prefer deleting this path when ENV-033 lands.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/client-trust-tier-ignore/crate
 updated: 2026-09-01
-gitea_commits:
+source_commits:
   sdk_lattice: 1004a74fd245de028210f99a3f34290397d3ae21
   component_lattice: 1cd21825d259dcb6497957d3ff74ef1f8b4ddb05
   crate_lib: 36dcd45db8bceee2de63f6b985ef104577b87bde

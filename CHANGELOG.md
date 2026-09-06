@@ -437,6 +437,7 @@ All notable changes to the Agent Element Protocol (AEP) will be documented in th
 - **Docker public image** (`docker-compose.public.yml`, `Dockerfile`) with full offline protocol
 - **Component registry** (`AEP-Base-Node/registry/`) for setup-agent and Composer Lite
 - **Subprotocol registry** (`AEP-Subprotocols/`) - Rust domain validators + `aep-subprotocol` CLI
+- **Canonical 2.8 layout**: `AEP-Base-Node/`, `AEP-Components/`, `AEP-SDKs/`, `AEP-Docks/`, `AEP-Connectors/`, `AEP-Policy-System/`, `AEP-User-Experience/`, `AEP-Composer-Lite/`
 - **UCB** secured perimeter dock (`AEP-Docks/ucb/`) for non-AEP agent stacks
 - **Compliance regulation LRPs** (EU AI Act, GDPR, SOC 2, HIPAA, NIST AI RMF, ISO 42001) with reference GAP policies
 - Subprotocol and migration docs under `docs/`; phase execution under `plans/`
@@ -456,7 +457,7 @@ All notable changes to the Agent Element Protocol (AEP) will be documented in th
 ### Removed
 - Stale root `tsconfig.json` and `.eslintrc.json` (orphaned after layout reorg; per-package TS configs remain in SDK/component trees)
 - `examples/` directory
-- `.gitea/` CI stubs (Gitea remote used directly)
+- CI stubs on the public tree
 - Duplicate `rust/Cargo.lock` copy
 
 ### Public vs internal scope

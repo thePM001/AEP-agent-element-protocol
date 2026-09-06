@@ -19,9 +19,9 @@ bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/
 close_gates:
   coding-completion: ALLOW
   project-completion-bac: ALLOW
-  gitea-write-proof: ALLOW
+  source-write-proof: ALLOW
   nla-harness-coding-completion-gate: ALLOW
-gitea_commits:
+source_commits:
   wrapenv: 42f98060dc0616edc6cb6d1a35ba35255b27c2c9
   wrapenv_test: f1e78cfba9a5c8225fd18def9a02ef020c8b869c
   wrap_linux: 0a8a09dc22d5222f13920b7ded73c33ac61ea451

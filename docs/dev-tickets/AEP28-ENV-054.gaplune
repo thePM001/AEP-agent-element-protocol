@@ -12,6 +12,7 @@ wave: connectors
 plan: none
 repo: NLA-AEP-v2.8-open-source
 depends_on: none
+scope: AEP-NOSHIP/AEP-Connectors/slack AEP-NOSHIP/AEP-Connectors/jira AEP-NOSHIP/AEP-Connectors/lib/connector-kit.mjs
 notes: Closed. Slack posts chat.postMessage through UCB. Jira creates issues through UCB. Sibling connectors probe through UCB. Crate aep-connector-ucb-clients gates the kit.
 acceptance: Slack posts a message through UCB chat.postMessage. Jira creates an issue through UCB rest/api/3/issue. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/connector-ucb-clients/crate and AEP-Base-Node/crate before any ship prose.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate

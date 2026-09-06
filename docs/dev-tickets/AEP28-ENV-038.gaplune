@@ -7,17 +7,17 @@ id: AEP28-ENV-038
 title: Remove trust_tier from live Admit events. Who-may-do-what is agent_may, not a numeric rank on the event.
 status: closed
 priority: P1
-track: aep28-gitea-code-analysis-2026-09-01
+track: aep28-code-analysis-2026-09-01
 wave: live-admit
 plan: none
 repo: NLA-AEP-v2.8-open-source
 depends_on: none
-scope: AEP-Components/envelope/crate/src/lib.rs AEP-Components/live-entry/crate/src/lib.rs AEP-SDKs/typescript/dynaep/src/bridge.ts
+scope: AEP-Components/envelope/crate/src/lib.rs AEP-Components/live-entry/crate/src/lib.rs internal-sdk/AEP-SDKs/typescript/dynaep/src/bridge.ts
 notes: Closed. EnvelopeAction has no rank field. Live tests do not send a rank field. TypeScript processEvent does not stamp a rank field. Who-may is GAP dimension agent_may. Out of scope: hangar tools.
 acceptance: EnvelopeAction has no trust_tier field. Live tests do not send trust_tier. TypeScript processEvent does not stamp trust_tier. CI fails if trust_tier remains on the live Admit event type. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/envelope/crate before any ship prose.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/envelope/crate
 updated: 2026-09-02
-gitea_commits:
+source_commits:
   envelope_lib: 766f7a991d48d3c05269e88046e7008a5a0c06fc
   live_entry: fe57e0dc89e1da0df67f2a04edd490e652de99ab
   one_live: ec1d4e3242fd9584d89f1b82bc0da5600883d6ce

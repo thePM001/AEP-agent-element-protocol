@@ -3,6 +3,7 @@
   "id": "connector-make",
   "version": "2.8.0",
   "kind": "connector",
+  "path": "AEP-NOSHIP/AEP-Connectors/make/",
   "description": "UCB-only Make connector. All traffic via /ucb/v1/egress/make/**.",
   "requires": [
     "aep-base-node",
@@ -80,6 +81,7 @@
     ]
   },
   "implementation": {
+    "module": "AEP-NOSHIP/AEP-Connectors/make/lib/make-connector.mjs",
     "ucb_egress_prefix": "/ucb/v1/egress/make",
     "auth_token_env": "AEP_MAKE_API_TOKEN"
   },

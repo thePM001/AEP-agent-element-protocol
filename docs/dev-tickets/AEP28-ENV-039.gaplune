@@ -7,17 +7,17 @@ id: AEP28-ENV-039
 title: Park the fifteen-row run_meet combinator off the product Rust SDK. Live evaluation is collect-all Admit.
 status: closed
 priority: P1
-track: aep28-gitea-code-analysis-2026-09-01
+track: aep28-code-analysis-2026-09-01
 wave: live-admit
 plan: none
 repo: NLA-AEP-v2.8-open-source
 depends_on: none
-scope: AEP-SDKs/rust/src/lib.rs AEP-SDKs/rust/src/dynaep AEP-Components/evaluation-chain/crate
+scope: internal-sdk/AEP-SDKs/rust/src/lib.rs internal-sdk/AEP-SDKs/rust/src/dynaep AEP-Components/evaluation-chain/crate
 notes: Closed. Product Rust SDK does not export run_meet as live evaluation. Live path is collect-all Admit. Derived 15-row ledger lives under evaluation-chain as non-live. CI crate aep-sdk-run-meet-park fails if lib.rs pub-uses run_meet or chain_meet_keeps_all_rows stays as a product evaluation test. Out of scope: hangar tools.
-acceptance: Product Rust SDK does not export run_meet as live evaluation. CI fails if AEP-SDKs/rust/src/lib.rs pub-uses run_meet or chain_meet_keeps_all_rows stays as a product evaluation test. Derived ledger may live under evaluation-chain as non-live. nla-policy-scan gate coding-completion and project-completion-bac on AEP-SDKs/rust before any ship prose.
-bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-SDKs/rust
+acceptance: Product Rust SDK does not export run_meet as live evaluation. CI fails if internal-sdk/AEP-SDKs/rust/src/lib.rs pub-uses run_meet or chain_meet_keeps_all_rows stays as a product evaluation test. Derived ledger may live under evaluation-chain as non-live. nla-policy-scan gate coding-completion and project-completion-bac on internal-sdk/AEP-SDKs/rust before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/internal-sdk/AEP-SDKs/rust
 updated: 2026-09-02
-gitea_commits:
+source_commits:
   crate_lib: 2accbd9a20889dd619fa0bff46313213f581cfdb
   crate_main: f9c12b27680755041e8423cb040f2606dfb1c189
   crate_cargo: 358a8148192166a46d73dee79c2b8de4ed0c2c23

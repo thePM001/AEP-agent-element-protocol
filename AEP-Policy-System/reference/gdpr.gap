@@ -31,6 +31,7 @@
     ],
     "lrp_id": "gdpr",
     "framework": "GDPR",
-    "aep_version": "2.8.5"
+    "aep_version": "2.8.5",
+    "wrap": "privacy"
   }
 }

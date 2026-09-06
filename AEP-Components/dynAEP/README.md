@@ -4,7 +4,7 @@
 **Author:** thePM_001
 **License:** Apache-2.0
 
-**Canonical source (AEP 2.8):** `AEP-Components/dynAEP/` in [NLA-AEP-v2.8-open-source](https://github.com/thePM001/NLA-AEP-v2.8-open-source) (Gitea mirror of the open-source bundle). Standalone mirror: https://github.com/thePM001/dynAEP
+**Canonical source (AEP 2.8):** `AEP-Components/dynAEP/` in [https://github.com/thePM001/AEP-agent-element-protocol](https://github.com/thePM001/AEP-agent-element-protocol). Standalone mirror: https://github.com/thePM001/dynAEP
 
 dynAEP 1.0 is an open-source protocol for governing real-time events in multi-agent AI systems. Events that carry an `action_path` and match an active lattice governance mode pass through the Action Lattice before downstream pipeline stages. The lattice validates partial-order dependencies, enforces constraints and routes matching events to interested agents. UI mutations, external events (webhooks, blockchain, email, sensors), agent actions and human-facing outputs share the same bridge architecture; lattice gating applies per `lattice.governance` and event shape (see §11).
 
@@ -548,7 +548,7 @@ interface HookResult {
 
 ### Hook Registry and Loader
 
-The `HookRegistry` manages registered hooks keyed by name. Built-in hooks are registered at bridge init via `registerBuiltinHooks()` in `bridge/hook-loader.ts` (synced to `AEP-SDKs/typescript/dynaep/src/lattice/hook-loader.ts`).
+The `HookRegistry` manages registered hooks keyed by name. Built-in hooks are registered at bridge init via `registerBuiltinHooks()` in `bridge/hook-loader.ts` (synced to `internal-sdk/AEP-SDKs/typescript/dynaep/src/lattice/hook-loader.ts`).
 
 Config alias resolution (`lattice.hook` in YAML):
 
@@ -730,20 +730,20 @@ cargo test -p aep-dynaep --lib
 ```
 
 
-**SDKs do not live under `AEP-Components/dynAEP/`.** Protocol source of truth is `AEP-Components/dynAEP/`; SDKs are produced into `AEP-SDKs/` at the repository root. NPM registry distribution is forbidden; use `produce-aep-sdks.mjs` and lattice-gated artifacts.
+**SDKs do not live under `AEP-Components/dynAEP/`.** Protocol source of truth is `AEP-Components/dynAEP/`; SDKs are produced into `internal-sdk/AEP-SDKs/` at the repository root. NPM registry distribution is forbidden; use `produce-aep-sdks.mjs` and lattice-gated artifacts.
 
 | SDK | Path | Contents |
 |-----|------|----------|
-| TypeScript dynAEP | `AEP-SDKs/typescript/dynaep/` | leftover TypeScript client. Reference action checker is Base Node kernel Admit collect-all then Apply |
-| TypeScript AEP core | `AEP-SDKs/typescript/aep-protocol/` | Scene graph, validation, memory fabric |
-| Python dynAEP | `AEP-SDKs/python/dynaep/` | Python bridge and temporal pipeline |
-| React (AEP + dynAEP) | `AEP-SDKs/react/` | `aep-react.tsx`, `dynaep-react.tsx` (`await bridge.processEvent()`), `dynaep-copilotkit.tsx` |
-| Vue (AEP) | `AEP-SDKs/vue/` | `aep-vue.ts` composables |
-| CLI | `AEP-SDKs/typescript/dynaep/cli/dynaep-cli.ts` | `validate`, `serve`, lattice diagnostics |
+| TypeScript dynAEP | `internal-sdk/AEP-SDKs/typescript/dynaep/` | leftover TypeScript client. Reference action checker is Base Node kernel Admit collect-all then Apply |
+| TypeScript AEP core | `internal-sdk/AEP-SDKs/typescript/aep-protocol/` | Scene graph, validation, memory fabric |
+| Python dynAEP | `internal-sdk/AEP-SDKs/python/dynaep/` | Python bridge and temporal pipeline |
+| React (AEP + dynAEP) | `internal-sdk/AEP-SDKs/react/` | `aep-react.tsx`, `dynaep-react.tsx` (`await bridge.processEvent()`), `dynaep-copilotkit.tsx` |
+| Vue (AEP) | `internal-sdk/AEP-SDKs/vue/` | `aep-vue.ts` composables |
+| CLI | `internal-sdk/AEP-SDKs/typescript/dynaep/cli/dynaep-cli.ts` | `validate`, `serve`, lattice diagnostics |
 
 **Breaking change (v1.0 / CCA integration):** `DynAEPBridge.processEvent()` returns `Promise<AGUIEvent | DynAEPRejection>`. All callers must `await` it.
 
-**Tests:** `AEP-SDKs/typescript/dynaep/tests/lattice/action-lattice.test.ts` (governance modes, hook aliases, `within_range`, `filterAsync`).
+**Tests:** `internal-sdk/AEP-SDKs/typescript/dynaep/tests/lattice/action-lattice.test.ts` (governance modes, hook aliases, `within_range`, `filterAsync`).
 
 Build all SDKs:
 

@@ -1,7 +1,7 @@
 import type { AgentIdentity } from "../../identity/lib/types.js";
 import type { CovenantSpec } from "../../covenant/lib/types.js";
 import type { SessionReport } from "../../session/lib/session.js";
-import type { TrustTier } from "../../../retired-archive/retired/trust-rings/lib/trust/types.js";
+import type { TrustTier } from "../../../AEP-NOSHIP/retired/trust-rings/lib/trust/types.js";
 import type { TaskTree } from "../../decomposition/lib/types.js";
 
 export interface TrustScore {

@@ -2,7 +2,7 @@
 // @GCDE: document_sha256=p0-v275-sec24-kill-trust-cap
 import type { SessionManager } from "./session-manager.js";
 import type { SessionReport } from "./session.js";
-import type { TrustManager } from "../../../retired-archive/retired/trust-rings/lib/trust/manager.js";
+import type { TrustManager } from "../../../AEP-NOSHIP/retired/trust-rings/lib/trust/manager.js";
 import type { RollbackManager } from "../../evidence-ledger/lib/rollback/manager.js";
 
 export interface KillResult {

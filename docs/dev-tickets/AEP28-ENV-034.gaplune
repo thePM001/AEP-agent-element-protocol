@@ -9,7 +9,7 @@ status: closed
 closed: 2026-09-01
 close_reason: Operator ordered close of AEP28-ENV-034.
 priority: P0
-track: aep28-gitea-code-analysis-2026-09-01
+track: aep28-code-analysis-2026-09-01
 wave: live-admit
 plan: none
 repo: NLA-AEP-v2.8-open-source
@@ -18,9 +18,8 @@ scope: AEP-Components/live-entry/crate/src/lib.rs AEP-Base-Node/crate/src/envelo
 notes: Closed. LiveEntry.process_event Denies when lattice_nodes is empty including empty action_path. load_live_entry Denies a missing lattice.yaml and unreadable YAML. A set AEP_LATTICE_YAML path that fails does not fall through to data_dir. Dock opened frames Deny when the lattice is missing or unreadable. CI fails if LiveEntry::new plus STATE_DELTA without action_path returns Event. Out of scope: hangar tools.
 acceptance: Missing lattice is Deny. Unreadable lattice YAML is Deny. Empty action_path on an empty lattice is Deny. CI fails if LiveEntry::new plus STATE_DELTA without action_path returns Event. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/live-entry/crate and AEP-Base-Node/crate before any ship prose.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/live-entry/crate
-gitea_commits:
+source_commits:
   live_entry: a9616ef4bb601e83c5c5c6ed49e314a7682c149a
   envelope_admit: 5bdcdda51f66039639c1a80405d34cd6484d11b3
-  docking_main: http://100.118.184.18:3003/thePM001/NLA-AEP-v2.8-open-source/src/branch/main/AEP-Base-Node/crate/src/docking.rs
   hvvcas: e35a23ced66fd979c3e9b9071355e3d5bfc49f55
 updated: 2026-09-01

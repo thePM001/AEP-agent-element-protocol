@@ -17,7 +17,7 @@ notes: Closed. Default lattice_db is under AEP_DATA or HOME/.aep. A world-writab
 acceptance: Default lattice_db is under AEP_DATA or HOME/.aep. A /tmp default without a test flag is Deny. World-writable parent is refused unless the test flag is set. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Base-Node/crate before any ship prose.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
 updated: 2026-09-02
-gitea_commits:
+source_commits:
   lattice_log: 96e7226691e5e4ddfd7d1b55b1ab0d73b856ba7b
   lib: 2b533f1cc10dad55dc62c630ff64e525cda2fef1
   main: 515b66a93331d2e3ec135b26c2c484f62530e2da

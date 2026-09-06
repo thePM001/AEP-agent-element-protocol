@@ -14,7 +14,7 @@ wave: algebra
 plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
 repo: NLA-AEP-v2.8-open-source
 depends_on: AEP28-ENV-001
-scope: AEP-Components/admit AEP-Components/dynAEP AEP-SDKs/typescript/dynaep
+scope: AEP-Components/admit AEP-Components/dynAEP AEP-NOSHIP/AEP-SDKs/typescript/dynaep
 notes: Node trust_floor versus event trust_tier is an Admit wall. Closed reason kept in collect-all. Trust-ring PolicyEvaluator stays lab-only for action_path. Out of scope: hangar tools.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/admit/crate
 updated: 2026-09-01

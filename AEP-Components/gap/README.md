@@ -2,16 +2,16 @@
 
 GAP is the native instructions language for governed agency in the Agent Element Protocol and an instruction is the atomic unit so agents, workflows, validators, compositions and governance rules are all instructions that generate further instructions.
 
-Live evaluation follows AEP 2.8.5: seal a lattice-channel capsule, freeze the clock at seal, wait 1000 ms, run every check together as collect-all Admit and then Apply the allowed action. After the wait the client collects by capsule hash and live AEP 2.8.5 EPSCOM trust bundle mode is sha256-structure while rank rings are not the Admit floor.
+Live evaluation follows AEP 2.8.5: seal a lattice-channel capsule, freeze the clock at seal, wait 1000 ms, run every check together as collect-all Admit and then Apply the allowed action. After the wait the client collects by capsule hash and live AEP 2.8.5 EPSCOM trust bundle mode is sha256-structure. Presence of trust_ring is Deny. Who-may is agent_may.
 
 ## AEP 2.8 vendor tree
 
 This tree vendors classic GAP into `AEP-Components/gap/` from github.com/thePM001/gap.
 
-- `schemas/` holds GAP meta-schema v1 and v1.2 as Layer 1 authoring constraint masks.
+- `schemas/` holds GAP meta-schema v1.3 as the live Layer 1 authoring constraint mask. v1 and v1.2 remain as historical masks.
 - `policies/reference/` holds reference `.gap` instructions for coding governance, CAW sandbox profiles, task manifests and implementation plans.
 - `lib/gap-compile.mjs` compiles GAP profiles to CAW mount_profiles and per-mount policies for local use.
-- Coding governance validation runs in `AEP-Subprotocols/coding-governance/` in Rust.
+- Coding governance validation runs in Rust on the AEP vendor tree.
 - GAP policies here declare what agents must do.
 - The subprotocol enforces domain actions propose, siee_check and solidify.
 - GAP authors instructions and CAW enforces the host sandbox so they are not two policy stacks.
@@ -23,18 +23,18 @@ This tree vendors classic GAP into `AEP-Components/gap/` from github.com/thePM00
 - Use `agent-sandbox` for untrusted code and `compiled-runtime` when the LLM proxy must stay off.
 - Compile with `node lib/gap-compile.mjs --list-profiles` or `node lib/gap-compile.mjs --materialize /data/aep` then wrap with `aep-caw wrap --profile coding-agent`.
 - UCB is optional. Foreign ingest needs a task manifest that is caller-provided, stored or from an explicitly configured synthesis tier.
-- File format notes live at http://100.118.184.18:3003/thePM001/NLA-AEP-v2.8-open-source/src/branch/main/AEP-Components/gap/FILE-FORMAT.md
+- File format notes live at AEP-Components/gap/FILE-FORMAT.md.
 
 ## Three-layer enforcement
 
-GAP guarantees correctness through three independent layers and no layer requires the LLM to have seen GAP during training.
+GAP uses three layers and no layer requires the LLM to have seen GAP during training.
 
 - Authoring a `.gap` file is an instruction write and Layer 3 Admit runs after a sealed capsule.
-- Layer 1 constrained decoding is an authoring gate during token generation.
+- Layer 1 constrained decoding is optional authoring. Constrained decoding is not Admit.
 - Layer 2 structural validation runs after generation at load.
 - Layer 3 Base Node kernel is closed-wall collect-all Admit after freeze-at-seal and the 1000 ms kernel pulse, then Apply.
-- Any LLM can author valid governed GAP instructions.
-- The constraint engine removes invalid tokens from the decoding space.
+- Any LLM can author GAP instructions.
+- This vendor tree does not ship a wired Layer 1 Admit engine.
 - The lattice enforces policy together after the kernel pulse.
 
 ## Live evaluation
@@ -96,15 +96,17 @@ Pulse hold is the wait after a sealed capsule is opened. Base Node freezes the c
 - The signatures loader denies an ML-DSA claim on sha256-structure.
 - Signed proof is not the default live AEP 2.8.5 attach.
 - Collect-all Admit collects by capsule hash on that same path.
-- Rank rings are not the Admit floor.
-- `trust_ring` is a documentary label on classic v1 and v1.2.
-- Rank use warns then denies while who-may stays `agent_may`.
+- Presence of trust_ring is Deny.
+- Presence of trust_ring on a live GAP document is Deny.
+- Closed wall gap:trust_ring:rank.
+- Who-may is agent_may.
+- Do not set trust_ring on live documents.
 
 ## File format
 
 Keep `.gap` as GAP source because collect-all Admit collects by capsule hash and live hash bundle mode on that path is sha256-structure.
 
-- File format notes also live at http://100.118.184.18:3003/thePM001/NLA-AEP-v2.8-open-source/src/branch/main/AEP-Components/gap/FILE-FORMAT.md
+- File format notes also live at AEP-Components/gap/FILE-FORMAT.md.
 - Extension: `.gap`
 - Encoding: UTF-8
 - Syntax: YAML 1.2 source. Live kernel policies may be JSON-encoded GAP instructions. YAML remains valid GAP source. The kernel reads the instruction object not the skin.
@@ -115,7 +117,7 @@ Keep `.gap` as GAP source because collect-all Admit collects by capsule hash and
 - Other GAP walls bind to a wrap or prefix.
 - A finance wrap GAP item does not close an inventory wrap ping.
 - A non-always-on GAP with empty wrap does not fold onto every event.
-- Kernel bind detail lives at http://100.118.184.18:3003/thePM001/GAP/src/branch/main/docs/kernel-json-wrap.md
+- Kernel bind detail lives at docs/kernel-json-wrap.md on thePM001/GAP.
 
 ### YAML GAP source
 
@@ -229,9 +231,11 @@ AEP 2.8.5 reference policies are JSON objects with pattern.guard and the same in
 - Live AEP 2.8.5 EPSCOM trust bundle mode is sha256-structure so Ed25519 and ML-DSA-65 stay optional rather than the default live bundle.
 - Who-may is `agent_may` so Agent A may X and Agent B may Y.
 - Empty grants close an agent action when the grant list is empty.
-- `trust_ring` is a documentary label on classic v1 and v1.2.
-- Rank rings are not the Admit floor.
-- Rank use warns then denies while who-may stays `agent_may`.
+- Presence of trust_ring is Deny.
+- Presence of trust_ring on a live GAP document is Deny.
+- Closed wall gap:trust_ring:rank.
+- Who-may is agent_may.
+- Do not set trust_ring on live documents.
 - `enabled` is load-time: when false the instruction is still loaded and live Admit still evaluates walls.
 - A closed-wall close names the closed walls, the reasons and a prescribed repair.
 - A retry must seal a new capsule.
@@ -273,7 +277,7 @@ This vendor tree holds classic GAP source under `AEP-Components/gap/` and `.gap`
 
 - Live Admit still waits for freeze-at-seal, the 1000 ms kernel pulse and collect-all walls.
 - Who-may is agent_may.
-- Rank rings are not the Admit floor.
+- Presence of trust_ring is Deny.
 - Live AEP 2.8.5 EPSCOM trust bundle mode is sha256-structure.
 - Compile CAW profiles with `lib/gap-compile.mjs`.
 - The live classic GAP binary gap-schema-profile-v13 lives on thePM001/GAP and is not copied into this vendor tree.
@@ -291,7 +295,7 @@ This vendor tree holds classic GAP source under `AEP-Components/gap/` and `.gap`
 
 Migrate incrementally because each rung adds governance without rewriting existing logic.
 
-- Rung 1 Structured generation: schema enforcement via GAP constraint engine during authoring.
+- Rung 1 Structured generation: optional Layer 1 authoring when a decoder is wired.
 - Rung 2 Types and constraints: mathematical type validation.
 - Rung 3 Covenants and scanners: behavioural governance plus content scanning.
 - Rung 4 Composition: sequence, conditional, parallel orchestration.
@@ -303,17 +307,18 @@ Migrate incrementally because each rung adds governance without rewriting existi
 This OSS snapshot does not include `GAP v1 spec sheet.md` or `BIOSECURITY.md` because those files live in the GAPLUNE tree and are not copied here.
 
 - `README.md` is this file. It teaches live evaluation plus vendor compile notes.
-- `FILE-FORMAT.md` holds file format notes. Keep `.gap` as GAP source. Collect-all Admit collects by capsule hash. Live hash bundle mode is sha256-structure. Rank rings are not the Admit floor.
-- `schemas/gap-meta-schema-v1.json` is the JSON Schema 2020-12 Layer 1 constraint mask artifact.
+- `FILE-FORMAT.md` holds file format notes. Keep `.gap` as GAP source. Collect-all Admit collects by capsule hash. Live hash bundle mode is sha256-structure. Presence of trust_ring is Deny. Who-may is agent_may.
+- `schemas/gap-meta-schema-v1.3.json` is the live JSON Schema 2020-12 Layer 1 authoring constraint mask.
+- `schemas/gap-meta-schema-v1.json` is a historical JSON Schema 2020-12 optional Layer 1 authoring constraint mask artifact.
 - `schemas/gap-meta-schema-v1.2.json` is the updated meta schema with v1.1 additions.
 - `policies/reference/` holds reference `.gap` instructions for CAW profiles and coding governance.
 - `lib/gap-compile.mjs` compiles GAP profiles to CAW mount_profiles.
-- Fit analysis of classic GAP against AEP 2.8.5 evaluation is at http://100.118.184.18:3003/thePM001/GAP/src/branch/main/docs/CLASSIC-GAP-VS-AEP-2.8.5.md
+- Fit analysis of classic GAP against AEP 2.8.5 evaluation lives at docs/CLASSIC-GAP-VS-AEP-2.8.5.md on thePM001/GAP.
 - Product tickets live as `.gap` source under docs/dev-tickets/.
 
 ## Comparison: GAP vs dottxt
 
-dottxt constrains tokens to match JSON Schema, regex or CFG at the logits level and that structural constraint work is the entirety of what it does. GAP is a complete programming language that handles structural constraints natively through its own constraint engine and additionally provides the live evaluation path.
+dottxt constrains tokens to match JSON Schema, regex or CFG at the logits level and that structural constraint work is the entirety of what it does. GAP is a complete programming language. Live evaluation is collect-all Admit after freeze-at-seal and the 1000 ms kernel pulse. Optional Layer 1 authoring may constrain tokens when a decoder is wired. Constrained decoding is not Admit.
 
 - Mathematical types with native validators
 - Collect-all Admit then Apply after freeze-at-seal and the 1000 ms kernel pulse
@@ -323,7 +328,7 @@ dottxt constrains tokens to match JSON Schema, regex or CFG at the logits level 
 - Live AEP 2.8.5 EPSCOM trust bundle mode is sha256-structure with optional proof algorithms
 - Self-generating instructions that evolve specialized variants
 - dottxt's structural constraint capability is equivalent to one action flag in GAP: `structured_generation: true`
-- GAP covers that authoring gate plus live collect-all Admit
+- GAP covers that authoring gate plus live collect-all Admit. Constrained decoding is not Admit. This vendor tree does not ship a wired Layer 1 Admit engine
 
 ## License
 

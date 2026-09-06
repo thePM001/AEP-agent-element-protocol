@@ -13,7 +13,7 @@ import type {
 } from "./types.js";
 import type { AgentGateway } from "../gateway.js";
 import type { EvidenceLedger } from "../../evidence-ledger/lib/ledger/ledger.js";
-import type { TrustManager } from "../../../retired-archive/retired/trust-rings/lib/trust/manager.js";
+import type { TrustManager } from "../../../AEP-NOSHIP/retired/trust-rings/lib/trust/manager.js";
 
 export class WorkflowExecutor {
   private definition: WorkflowDefinition;

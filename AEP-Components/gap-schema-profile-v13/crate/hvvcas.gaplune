@@ -34,7 +34,7 @@ component:
   name: compile_agent_may_profile_wall
   domain: admit
   component_type: library
-  intent: Compile agent_may grants. Agent A may X. Empty grants fail closed for agent actions.
+  intent: Compile agent_may grants. Agent A may X. Empty grants Deny for agent actions.
   input:
     name: request
     type: LiveAdmitRequest
@@ -78,4 +78,4 @@ component:
     name: result
     type: AdmitResult
 
-ticket: GAP-285-P1
+ticket: GAP-285-P1 GAP-285-P15
