@@ -760,6 +760,7 @@ The component lives at [`AEP-Components/aep-comm/`](AEP-Components/aep-comm/). E
 
 ## Official run sequence
 
+Public repository is https://github.com/thePM001/AEP-agent-element-protocol. GitHub is a public mirror. GitHub does not run CC-01 through CC-15.
 
 Factory checks on the official tree:
 
