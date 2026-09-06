@@ -55,6 +55,7 @@ export interface GraphExecutionResult {
   context: GraphContext;
   checkpoints: GraphCheckpoint[];
   error?: string;
+  vectorClock: Record<string, number>;
 }
 
 export type PolicyEvaluator = (
@@ -72,10 +73,17 @@ export type ApprovalGate = (
   context: GraphContext,
 ) => Promise<boolean>;
 
+/** Envelope Admit hook. Missing admitGate is deny. policyEvaluator is not Admit. */
+export type AdmitGate = (
+  node: GraphNode,
+  context: GraphContext,
+) => Promise<boolean>;
+
 export interface GraphEngineOptions {
   entryNodeId?: string;
   policyEvaluator?: PolicyEvaluator;
   nodeExecutor?: NodeExecutor;
   approvalGate?: ApprovalGate;
+  admitGate?: AdmitGate;
   vectorClockAgentId?: string;
 }

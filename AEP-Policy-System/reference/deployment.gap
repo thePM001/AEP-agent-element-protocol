@@ -5,6 +5,8 @@
   },
   "pattern": {
     "guard": "deployment_attempt",
+    "action_path_prefix": "ops:",
+    "prefix": "ops:",
     "constraints": [
       "human_approval_required",
       "no_silent_builds",
@@ -75,10 +77,13 @@
     "type": "atomic"
   },
   "metadata": {
-    "provenance": "AEP Reference",
-    "version": "2.75.0",
+    "provenance": "AEP 2.8.5 Reference",
+    "version": "1.1.0",
     "stability": "stable",
     "aspect": "procedural",
-    "trust_ring": "system"
+    "agent_may": [
+      "*"
+    ],
+    "aep_version": "2.8.5"
   }
 }

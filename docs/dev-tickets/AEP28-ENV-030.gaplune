@@ -1,0 +1,25 @@
+@PAD: nla-dev-ticket-AEP28-ENV-030-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-030
+title: One evaluation story. Stop three meets (Admit collect-all, 15-bool combinator, TypeScript LatticeFilter leftover).
+status: closed
+priority: P0
+track: aep28-envelope-algebra
+wave: rust-live
+plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Components/one-evaluation-story/crate AEP-Components/evaluation-chain/crate AEP-SDKs/rust/src/dynaep/chain.rs AEP-Components/live-entry/crate README.md CHANGELOG.md AEP-User-Experience/AEP-main-skill/SKILL.md
+notes: Closed. One evaluation story is live. Admit collect-all then Apply is the sole live evaluation. Fifteen named rows are a derived ledger. LatticeFilter leftover is not evaluation. README mermaid no longer forks BN to ADMIT and BN to MEET. Live process_event does not call meet_named. Live processEvent does not call latticeFilter.filterAsync. Unmapped closed Admit wall still Denies when fifteen bools are open. Out of scope: hangar tools.
+acceptance: Docs and live path have one evaluation story. No BN --> MEET sibling of BN --> ADMIT. Live process_event does not call meet_named. Live processEvent does not call latticeFilter.filterAsync. Unmapped closed Admit wall still Denies when fifteen bools are open. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/one-evaluation-story/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/one-evaluation-story/crate
+updated: 2026-09-01
+gitea_commits:
+  crate_lib: 319b091b0177e105de8401ec2748c91ee7346717
+  readme: 015804a27b9b733a0bc3768976d3108f546b3ab6
+  changelog: c0ced8631d47dfabef7064730cea32d85fdcd6ab
+  workspace: 886b8631b1df66b88ad2de21f1df9ce1e5fba474
+  ticket_implemented: fb72f1bf3126c4a063f17cfc7fa0f4fe77aabbb6

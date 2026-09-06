@@ -8,6 +8,9 @@ prio: P0
 gitea_issue: 36
 gitea_url: http://100.118.184.18:3003/thePM001/NLA-AEP-v2.8-open-source/issues/36
 title: Convert TypeScript processEvent live entry into Rust
+status: closed
+closed: 2026-09-01
+close_reason: Operator ordered 2026-09-01 board close of AEP28-ENV-001 through 024. Fresh product tickets only after code analysis. No journal-only tickets.
 depends: AEP28-ENV-022
 out_of_scope: hangar tools
 
@@ -21,3 +24,4 @@ acceptance:
   - CI fails if typescript dynaep processEvent still calls spawnSync, loadFromFile, processStateDelta or processDynAEPEvent as live product code.
   - Do not port TemporalValidator, UnifiedRegoEvaluator, UnifiedScanner or CausalOrderingEngine sequential deniers back into the Rust live path. Walls stay in aep-envelope collect-all then Apply.
   - AEP-SDKs/rust dynaep DynAepBridge is not a free copy of the old TypeScript sequential pipeline. Grow aep-envelope plus Rust apply.
+updated: 2026-09-01

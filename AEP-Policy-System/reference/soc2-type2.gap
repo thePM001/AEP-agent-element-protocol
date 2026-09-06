@@ -5,6 +5,7 @@
   },
   "pattern": {
     "guard": "true",
+    "wrap": "soc2",
     "constraints": [
       "hard: enforce capability scoping and execution ring access controls",
       "hard: rotate and expire agent credentials per configured policy",
@@ -23,10 +24,13 @@
   },
   "metadata": {
     "provenance": "aep.reference.compliance.soc2",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "stability": "stable",
-    "trust_ring": "governance",
+    "agent_may": [
+      "*"
+    ],
     "lrp_id": "soc2-type2",
-    "framework": "SOC 2 Type II"
+    "framework": "SOC 2 Type II",
+    "aep_version": "2.8.5"
   }
 }

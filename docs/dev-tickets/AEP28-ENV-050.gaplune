@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-050-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-050
+title: Drop numeric trust_score from live Admit and from AgentMesh cert state. Keep it as isolation telemetry that never admits.
+status: closed
+priority: P0
+track: aep28-kernel
+wave: fail-closed-lattice
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-049
+scope: AEP-Components/agentmesh/crate AEP-Base-Node/crate AEP-Components/envelope/crate AEP-Components/conformance/crate AEP-Components/trust-score-isolation/crate
+notes: Isolation telemetry. Never admit. Never cert-rotate. MtlsCertState has no trust_tier. validate_agent ignores score. Envelope walls ignore Snapshot.trust_score.
+acceptance: Live Admit does not deny on numeric trust_score. AgentMesh cert fingerprint stays across score change. validate_agent 101 versus max 100 succeeds. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/trust-score-isolation/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/trust-score-isolation/crate
+updated: 2026-09-02

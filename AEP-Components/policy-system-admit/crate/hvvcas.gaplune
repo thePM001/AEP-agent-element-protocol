@@ -1,0 +1,68 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-policy-system-admit
+ticket: AEP28-ENV-056 AEP28-ENV-067
+note: Load AEP-Policy-System GAP files as live Admit walls. Bind to wrap or prefix. writing and security stay always-on.
+
+component:
+  name: discover_policy_system_dir
+  domain: admit
+  component_type: service
+  intent: Discover the AEP-Policy-System directory
+  input:
+    name: path
+    type: String
+  output:
+    name: path
+    type: String
+
+component:
+  name: load_policy_system_gaps
+  domain: admit
+  component_type: service
+  intent: Load GAP files from AEP-Policy-System
+  input:
+    name: dir
+    type: String
+  output:
+    name: count
+    type: usize
+
+component:
+  name: compile_policy_system_walls
+  domain: admit
+  component_type: service
+  intent: Compile GAP invariants into Admit walls
+  input:
+    name: text
+    type: String
+  output:
+    name: walls
+    type: VecAdmitWall
+
+component:
+  name: fold_policy_system_into_admit
+  domain: admit
+  component_type: service
+  intent: Fold GAP Admit walls into one collect-all pass
+  input:
+    name: text
+    type: String
+  output:
+    name: result
+    type: String
+
+component:
+  name: scan_kernel_loads_policy_system
+  domain: admit
+  component_type: service
+  intent: Fail if live dock does not load GAP as live Admit
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String

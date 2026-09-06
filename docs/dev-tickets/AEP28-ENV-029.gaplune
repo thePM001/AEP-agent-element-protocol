@@ -1,0 +1,28 @@
+@PAD: nla-dev-ticket-AEP28-ENV-029-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-029
+title: One version string. Banner 2.8.3 must not drift from workspace 2.8.0 and CHANNEL_VERSION.
+status: closed
+priority: P1
+track: aep28-version-ssot
+wave: docs
+plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: banner Cargo.toml AEP-Components/lattice-channels/crate/src/lib.rs AEP-Components/version-ssot/crate
+notes: Closed. SSOT is 2.8.0. Banner, workspace.package.version and CHANNEL_VERSION bind together. CI crate aep-version-ssot fails on drift. Subprotocol crates stay 2.8.0. Out of scope: hangar tools.
+acceptance: Banner version, workspace.package.version and CHANNEL_VERSION are identical. CI gate fails if any of the three drifts.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/version-ssot/crate
+updated: 2026-09-01
+gitea_commits:
+  crate_lib: c9b0889500a9a2571b2db584905737505b36740d
+  crate_cargo: 650da07561d9a25089edd56f92fd7b6770f93414
+  crate_main: d0ac77c0df4e9cc412922aa518a32e5fdf40d745
+  hvvcas: ba132931cf93e27038766a354598ee736629c725
+  registration: 459293e2e0d28796a1c013517532baa24e2fdeb0
+  gate: ddca625b8bd0fff4ca479c147659121c9d7b2e89
+  workspace: 12b6149a1380c041b6f2d9543f58c9ac35436b87
+  changelog: 8551be6238e589be8f91b2275d85e9c5fd12a9a3

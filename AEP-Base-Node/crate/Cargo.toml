@@ -22,13 +22,23 @@ aep-agentmesh = { path = "../../AEP-Components/agentmesh/crate" }
 aep-potomitan = { path = "../potomitan/crate" }
 aep-lattice-memory = { path = "../../AEP-Components/lattice-memory/crate" }
 aep-live-entry = { path = "../../AEP-Components/live-entry/crate" }
+aep-admit-live-dock = { path = "../../AEP-Components/admit-live-dock/crate" }
+aep-one-live-evaluation = { path = "../../AEP-Components/one-live-evaluation/crate" }
+aep-dock-request-poison = { path = "../../AEP-Components/dock-request-poison/crate" }
+aep-dock-line-reader = { path = "../../AEP-Components/dock-line-reader/crate" }
+aep-lattice-gated-fetch = { path = "../../AEP-Components/lattice-gated-fetch/crate" }
+aep-one-admit-id = { path = "../../AEP-Components/one-admit-id/crate" }
+aep-trust-score-isolation = { path = "../../AEP-Components/trust-score-isolation/crate" }
+aep-base-node-pulse = { path = "../../AEP-Components/base-node-pulse/crate" }
+aep-wall-set-backpressure = { path = "../../AEP-Components/wall-set-backpressure/crate" }
 serde.workspace = true
 serde_json.workspace = true
 rusqlite.workspace = true
-tokio = { workspace = true, features = ["sync"] }
+tokio = { workspace = true, features = ["sync", "time"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
 clap.workspace = true
+thiserror.workspace = true
 rand.workspace = true
 hex.workspace = true
 sha2.workspace = true
@@ -37,5 +47,13 @@ rustls.workspace = true
 tokio-rustls.workspace = true
 
 [dev-dependencies]
+
+anyhow.workspace = true
+aep-admit = { path = "../../AEP-Components/admit/crate" }
+aep-admit-channel-order-walls = { path = "../../AEP-Components/admit-channel-order-walls/crate" }
+aep-admit-temporal-bounds = { path = "../../AEP-Components/admit-temporal-bounds/crate" }
+aep-envelope = { path = "../../AEP-Components/envelope/crate" }
+aep-evaluation-chain = { path = "../../AEP-Components/evaluation-chain/crate" }
+aep-named-surfaces = { path = "../../AEP-Components/named-surfaces/crate" }
 tempfile = "3"
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "io-util"] }

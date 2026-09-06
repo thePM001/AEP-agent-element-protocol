@@ -6,6 +6,7 @@ import type { AgentAction, Policy } from "../../policy-engine/lib/policy/types.j
 import type { Session } from "../../session/lib/session.js";
 import { AEPassistant } from "../../aepassist/lib/aepassist/assistant.js";
 import { scanToolCall } from "../../mcp-security/lib/mcp-security/index.js";
+import { forwardMcpCall } from "./mcp-backend.js";
 
 export interface BackendConfig {
   name: string;
@@ -238,10 +239,10 @@ export class AEPProxyServer {
         };
       }
 
-      const backend = this.backends.find(
-        (b) => b.name === call.name || b.name === "*" 
-      ) ?? this.backends[0];
-      if (!backend || !backend.command) {
+      const matched = this.backends.find((b) => b.name === call.name || b.name === "*");
+      const backend = matched !== undefined ? matched : this.backends[0];
+
+      if (backend === undefined || ((backend.command === undefined || backend.command.length === 0) && (backend.url === undefined || backend.url.length === 0))) {
         this.gateway.recordResult(this.session.id, verdict.actionId, {
           success: false,
           output: {
@@ -269,35 +270,56 @@ export class AEPProxyServer {
         };
       }
 
-      this.gateway.recordResult(this.session.id, verdict.actionId, {
-        success: false,
-        output: {
-          accepted: false,
-          forwarded: false,
-          tool: call.name,
-          backend: backend.name,
-          transport: backend.transport,
-          error: "backend transport not implemented",
-        },
-      });
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              forwarded: false,
-              accepted: false,
-              isError: true,
-              actionId: verdict.actionId,
-              eventOrder: currentOrder,
-              backend: backend.name,
-              transport: backend.transport,
-              error: "policy-allowed but backend transport not implemented (fail closed)",
-            }),
+      try {
+        const forwarded = await forwardMcpCall(backend, call);
+        const ok = forwarded.isError === true ? false : true;
+        this.gateway.recordResult(this.session.id, verdict.actionId, {
+          success: ok,
+          output: {
+            accepted: ok,
+            forwarded: true,
+            tool: call.name,
+            backend: backend.name,
+            transport: backend.transport,
           },
-        ],
-        isError: true,
-      };
+        });
+        return {
+          content: forwarded.content,
+          isError: forwarded.isError,
+        };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        this.gateway.recordResult(this.session.id, verdict.actionId, {
+          success: false,
+          output: {
+            accepted: false,
+            forwarded: false,
+            tool: call.name,
+            backend: backend.name,
+            transport: backend.transport,
+            error: msg,
+          },
+        });
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                forwarded: false,
+                accepted: false,
+                isError: true,
+                actionId: verdict.actionId,
+                eventOrder: currentOrder,
+                backend: backend.name,
+                transport: backend.transport,
+                error: msg,
+              }),
+            },
+          ],
+          isError: true,
+        };
+      }
+
     } finally {
       this.processing = false;
     }

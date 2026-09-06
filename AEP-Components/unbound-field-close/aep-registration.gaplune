@@ -1,0 +1,13 @@
+@PAD: aep-unbound-field-close-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-unbound-field-close
+version: 0.1.0
+kind: library
+path: AEP-Components/unbound-field-close/
+ticket: AEP28-ENV-066
+requires: aep-envelope aep-live-entry aep-dynaep aep-admit-temporal-bounds
+capability: envelope.unbound-field-close
+note: Unbound scene, channel, time and sequence close. dest_dock may bind from the opened frame docking port. Do not reopen AEP28-ENV-034 or AEP28-ENV-042.

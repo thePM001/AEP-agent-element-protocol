@@ -1,0 +1,104 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-unbound-field-close
+ticket: AEP28-ENV-066
+note: Durable HVVCAS is GAPLUNE. Unbound scene, channel, time and sequence close. dest_dock may bind from the opened frame docking port. Do not reopen AEP28-ENV-034 or AEP28-ENV-042.
+
+component:
+  name: scan_wall_scene_missing
+  domain: envelope
+  component_type: service
+  intent: Fail if wall_scene still opens scene.membership when scene_id is empty
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_wall_time_missing
+  domain: envelope
+  component_type: service
+  intent: Fail if wall_time still opens time.authority when timestamps are missing
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_wall_channel_missing
+  domain: envelope
+  component_type: service
+  intent: Fail if wall_channel still opens channel.dock when dest_dock is empty
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_wall_causal_missing
+  domain: envelope
+  component_type: service
+  intent: Fail if wall_causal still opens causal.sequence when sequence_number is 0
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_dynaep_wall_time_missing
+  domain: envelope
+  component_type: service
+  intent: Fail if aep-dynaep wall_time still opens on missing timestamps
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: dest_dock_from_opened_frame
+  domain: envelope
+  component_type: service
+  intent: dest_dock may bind from the opened frame docking port when the event field is empty
+  input:
+    name: event_dest_dock
+    type: String
+  output:
+    name: dest_dock
+    type: String
+
+component:
+  name: scan_env034_stays
+  domain: envelope
+  component_type: service
+  intent: Fail if AEP28-ENV-034 empty lattice Deny at live entry is gone
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_env042_stays
+  domain: envelope
+  component_type: service
+  intent: Fail if empty lattice no longer closes dag.membership and gap.agent_may
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String

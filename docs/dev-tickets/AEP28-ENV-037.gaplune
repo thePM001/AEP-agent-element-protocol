@@ -1,0 +1,35 @@
+@PAD: nla-dev-ticket-AEP28-ENV-037-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-037
+title: One live evaluation. Stop live_collect_all wall crates plus aep_envelope::admit as two stories on the same dock frame.
+status: closed
+priority: P0
+track: aep28-gitea-code-analysis-2026-09-01
+wave: live-admit
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Base-Node/crate/src/envelope_admit.rs AEP-Components/admit-live-dock/crate/src/lib.rs AEP-Components/live-entry/crate/src/lib.rs AEP-Components/envelope/crate/src/lib.rs AEP-Components/one-live-evaluation/crate
+notes: Closed. One Admit function judges the opened frame. Wall crates compile extra walls. aep_envelope admit_with_extra is the one combinator. Then Apply. live_collect_all is not a second combinator beside aep_envelope admit. CI fails if envelope_admit.rs calls both live_collect_all and process_event Admit on the same plaintext. Out of scope: hangar tools.
+acceptance: One Admit function judges the opened frame. live_collect_all is not a second combinator beside aep_envelope::admit. CI fails if envelope_admit.rs calls both live_collect_all and process_event Admit on the same plaintext. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Base-Node/crate AEP-Components/admit-live-dock/crate and AEP-Components/envelope/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/envelope/crate
+updated: 2026-09-01
+gitea_commits:
+  crate_lib: 4f18ff8bf4ca3b5891c6a8fd3482285d6639fdf7
+  crate_main: 552267e3dd5153a6f2c91db37c1adaec5892fc0d
+  crate_cargo: 490f94812b8171e54f94b8c9116f0db910b4eb9c
+  hvvcas: e80a596e01cb201d3ae4bb0f9142180de693c0e1
+  registration: a06547cb3b60f8a7780b2354704d9debb2bf62f3
+  admit_live_dock_lib: 257c54ec7f2a4a78636368e6b55cde136a59559b
+  admit_live_dock_hvvcas: ad12f986ccb32c7fdc5f6ecf83e17e59bc504729
+  envelope: 2da9d6022372bd29769846d79a09cf45fef42637
+  live_entry: 3980e950532f0cc6398883ce1785117db3537af7
+  envelope_admit: 98522e78b490faf9abc228ff0d82bb54fe713d01
+  base_node_cargo: f2c0e358c187404e05aac1f22a30c1a28795b417
+  workspace: 1ba3402e1e03427af7ee38dab33347eb7d7df484
+  cargo_lock: 64797bca55ba37519f70e542b66d4aa96e287c31
+  changelog: 54c3b14ca2de21e920a03b96a662b458bb4fdf14
+  gate: f97cd008cfd763908549908cccf3ae2c4a804a14

@@ -1,0 +1,13 @@
+@PAD: aep-graph-engine-admit-gate-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-graph-engine-admit-gate
+version: 0.1.0
+kind: library
+path: AEP-Components/graph-engine-admit-gate/
+ticket: AEP28-ENV-069
+requires: graph-engine
+capability: graph-engine.admit-gate
+note: Fail if engine.ts invokes nodeExecutor without admitGate. Default deny. Tick only after allow.

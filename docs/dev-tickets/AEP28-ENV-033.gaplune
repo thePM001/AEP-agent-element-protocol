@@ -1,0 +1,26 @@
+@PAD: nla-dev-ticket-AEP28-ENV-033-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-033
+title: Remove Trust Rings from AEP 2.8. Who-may-do-what is GAP dimensions, not a four-stage rank.
+status: closed
+priority: P0
+track: aep28-trust-rings-removal
+wave: architecture
+plan: AEP28-TRUST-RINGS-REMOVAL
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Components/trust-rings AEP-Components/admit-trust-floor/crate AEP-Components/evaluation-chain/crate AEP-Components/gap-capability-dimensions AEP-SDKs/typescript/dynaep/src/protocol/action-lattice.ts AEP-Components/dynAEP AEP-Base-Node/multi-base-node/crate AEP-Components/workflow/lib/executor.ts AEP-User-Experience/AEP-main-skill README.md CHANGELOG.md
+notes: Closed. Trust Rings four-stage rank is not a product member. Who-may-do-what is GAP dimension Conjunction. Agent A may X. Agent B may Y. No rank. evaluation-chain step 2 is gap_capability. admit-trust-floor is retargeted to agent_may walls. client trust_tier is not compared to a node floor. multi-base-node uses isolation_class. Isolation is not a trust rank. skip does not mutate trust during evaluation. CAW isolation stays. Out of scope: hangar tools.
+architecture_operator: Trust Rings (sandbox < user < system < enterprise) are a hierarchy. Hierarchy is order. Order is what Envelope eliminates. Who-may-do-what is GAP dimension Conjunction. Isolation is not a trust rank.
+acceptance: No sandbox < user < system < enterprise rank in product docs or code. No trust.penalize during Admit or evaluation. No client trust_tier floor compare. Who-may-do-what is GAP dimension Conjunction. evaluation-chain has no ring_capability step. trust-rings component is not a product member. Tests fail if a ring rank or penalize side effect remains on the live path. nla-policy-scan gate coding-completion and project-completion-bac on touched Rust crates before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/evaluation-chain/crate
+updated: 2026-09-01
+gitea_commits:
+  gap_capability_dimensions: 00fa4d9fd59b16e30d990772c0624d876baae19d
+  docking_yaml: d4a83c67758c769a87555fc48f71b09b29228b24
+  envelope_admit_yaml: d49879793754d6d352c07de891fc5d9fedb92df5
+  isolation_class_nodes: 4f2e3c1d9717a621e5e16250cb6e9a805c25d7c5
+  lattice_system_event_empty_grants: 7552cf55f3293db74ebeb2d282f12f217da37c6e

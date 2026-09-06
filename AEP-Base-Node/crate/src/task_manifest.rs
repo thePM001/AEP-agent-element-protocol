@@ -2,7 +2,7 @@
 //!
 //! Session registration identity gate (TASK-A28-H01):
 //! - Production always enforces strict identity (env cannot disable).
-//! - validate_agent covers missing / provisional / trust / session mismatch.
+//! - validate_agent covers missing / provisional / session mismatch.
 //! - Docking tests must install real manifests (no silent bypass).
 
 use serde::{Deserialize, Serialize};
@@ -11,6 +11,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime};
 use tracing::warn;
+use crate::BaseNodeError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -196,14 +197,13 @@ impl ManifestRegistry {
     /// Branches (all fail-closed when `strict`):
     /// 1. missing manifest
     /// 2. provisional manifest
-    /// 3. trust_score exceeds max
-    /// 4. session_id mismatch when manifest binds a session
+    /// 3. session_id mismatch when manifest binds a session
     pub fn validate_agent(
         &self,
         agent_id: &str,
         trust_score: Option<u16>,
         session_id: Option<&str>,
-    ) -> Result<(), String> {
+    )-> Result<(), BaseNodeError> {
         if !self.strict {
             // Non-strict only via ManifestRegistry::new(..., false) for isolated unit fixtures.
             // Production from_env() never sets strict=false.
@@ -211,41 +211,26 @@ impl ManifestRegistry {
         }
         let manifest = self
             .get(agent_id)
-            .ok_or_else(|| format!("task manifest missing for agent_id={agent_id}"))?;
+            .ok_or_else(|| BaseNodeError::ManifestMissing { agent_id: agent_id.to_string() })?;
 
         if manifest.provisional {
-            return Err(format!(
-                "provisional task manifest for {agent_id}; promotion required: {:?}",
-                manifest.promotion_required
-            ));
+            return Err(BaseNodeError::ManifestProvisional { agent_id: agent_id.to_string(), required: manifest.promotion_required.clone() });
         }
 
-        let effective_score = trust_score.unwrap_or(manifest.trust.max_trust_score);
-        if effective_score > manifest.trust.max_trust_score {
-            return Err(format!(
-                "trust_score {effective_score} exceeds manifest max {}",
-                manifest.trust.max_trust_score
-            ));
-        }
+        let _ = trust_score;
 
         // LOW: production strict mode requires session_id on manifests
         if self.strict && manifest.session_id.as_deref().map(str::is_empty).unwrap_or(true) {
-            return Err(format!(
-                "session registration required for {agent_id}: manifest.session_id missing under strict mode"
-            ));
+            return Err(BaseNodeError::SessionMissing { agent_id: agent_id.to_string() });
         }
         if let Some(bound) = manifest.session_id.as_deref() {
             match session_id {
                 Some(got) if got == bound => {}
                 Some(got) => {
-                    return Err(format!(
-                        "session registration mismatch for {agent_id}: frame session_id={got} manifest session_id={bound}"
-                    ));
+                    return Err(BaseNodeError::SessionMismatch { agent_id: agent_id.to_string(), got: got.to_string(), bound: bound.to_string() });
                 }
                 None => {
-                    return Err(format!(
-                        "session registration required for {agent_id}: manifest binds session_id={bound}"
-                    ));
+                    return Err(BaseNodeError::SessionRequired { agent_id: agent_id.to_string(), bound: bound.to_string() });
                 }
             }
         }
@@ -304,7 +289,7 @@ mod tests {
         let err = reg
             .validate_agent("AG-NONE", None, Some("sess-1"))
             .unwrap_err();
-        assert!(err.contains("missing"), "{err}");
+        assert!(err.to_string().contains("missing"), "{err}");
     }
 
     #[test]
@@ -318,21 +303,19 @@ mod tests {
         let err = reg
             .validate_agent("AG-PROV", None, Some("sess-1"))
             .unwrap_err();
-        assert!(err.contains("provisional"), "{err}");
+        assert!(err.to_string().contains("provisional"), "{err}");
     }
 
     #[test]
-    fn trust_score_exceeds_max_rejected() {
+    fn trust_score_exceeds_max_still_ok() {
         let dir = tempfile::tempdir().unwrap();
         write_manifest(
             dir.path(),
             &sample_manifest("AG-TRUST", false, 100, Some("sess-1")),
         );
         let reg = ManifestRegistry::new(dir.path().to_path_buf(), true);
-        let err = reg
-            .validate_agent("AG-TRUST", Some(101), Some("sess-1"))
-            .unwrap_err();
-        assert!(err.contains("trust_score"), "{err}");
+        reg.validate_agent("AG-TRUST", Some(101), Some("sess-1"))
+            .expect("numeric trust_score is isolation telemetry");
     }
 
     #[test]
@@ -346,7 +329,7 @@ mod tests {
         let err = reg
             .validate_agent("AG-SESS", Some(50), Some("sess-other"))
             .unwrap_err();
-        assert!(err.contains("session registration mismatch"), "{err}");
+        assert!(err.to_string().contains("session registration mismatch"), "{err}");
     }
 
     #[test]
@@ -358,7 +341,7 @@ mod tests {
         );
         let reg = ManifestRegistry::new(dir.path().to_path_buf(), true);
         let err = reg.validate_agent("AG-NEED", Some(50), None).unwrap_err();
-        assert!(err.contains("session registration required"), "{err}");
+        assert!(err.to_string().contains("session registration required"), "{err}");
     }
 
     #[test]

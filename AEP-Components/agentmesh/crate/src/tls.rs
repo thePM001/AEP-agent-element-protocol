@@ -61,17 +61,53 @@ pub fn issue_workload_identity(agent_id: &str) -> Result<MtlsIdentity, TlsIdenti
     })
 }
 
-pub fn ensure_mesh_ca(data_dir: &Path) -> Result<(String, String), TlsIdentityError> {
-    let tls_dir = data_dir.join("agentmesh").join("tls");
-    fs::create_dir_all(&tls_dir)?;
-    let ca_cert_path = tls_dir.join("ca.pem");
-    let ca_key_path = tls_dir.join("ca-key.pem");
-    if ca_cert_path.exists() && ca_key_path.exists() {
-        return Ok((
-            fs::read_to_string(&ca_cert_path)?,
-            fs::read_to_string(&ca_key_path)?,
-        ));
+fn mesh_ca_force_regen() -> bool {
+    std::env::var("AEP_MESH_CA_FORCE_REGEN")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
+}
+
+#[cfg(unix)]
+fn current_euid() -> u32 {
+    extern "C" {
+        fn geteuid() -> u32;
     }
+    // SAFETY: geteuid is always available on Unix and has no failure mode.
+    unsafe { geteuid() }
+}
+
+#[cfg(unix)]
+fn secret_file_permissions_ok(path: &Path) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    use std::os::unix::fs::PermissionsExt;
+    fs::metadata(path)
+        .map(|meta| {
+            let mode_ok = (meta.permissions().mode() & 0o077) == 0;
+            let owner_ok = meta.uid() == current_euid();
+            mode_ok && owner_ok
+        })
+        .unwrap_or(false)
+}
+
+#[cfg(not(unix))]
+fn secret_file_permissions_ok(_path: &Path) -> bool {
+    true
+}
+
+fn refuse_world_readable_mesh_secret(path: &Path) -> Result<(), TlsIdentityError> {
+    if secret_file_permissions_ok(path) {
+        return Ok(());
+    }
+    Err(TlsIdentityError::Other(format!(
+        "mesh CA secret at {} has world/group-readable permissions; refusing load (chmod 0600 and set AEP_MESH_CA_FORCE_REGEN=1 only after operator rotation)",
+        path.display()
+    )))
+}
+
+fn mint_mesh_ca(
+    ca_cert_path: &Path,
+    ca_key_path: &Path,
+) -> Result<(String, String), TlsIdentityError> {
     let key_pair = KeyPair::generate()?;
     let mut params = CertificateParams::default();
     params.is_ca = rcgen::IsCa::Ca(rcgen::BasicConstraints::Unconstrained);
@@ -82,9 +118,35 @@ pub fn ensure_mesh_ca(data_dir: &Path) -> Result<(String, String), TlsIdentityEr
     let cert = params.self_signed(&key_pair)?;
     let cert_pem = cert.pem();
     let key_pem = key_pair.serialize_pem();
-    write_secret_pem(&ca_cert_path, &cert_pem)?;
-    write_secret_pem(&ca_key_path, &key_pem)?;
+    write_secret_pem(ca_cert_path, &cert_pem)?;
+    write_secret_pem(ca_key_path, &key_pem)?;
     Ok((cert_pem, key_pem))
+}
+
+pub fn ensure_mesh_ca(data_dir: &Path) -> Result<(String, String), TlsIdentityError> {
+    let tls_dir = data_dir.join("agentmesh").join("tls");
+    fs::create_dir_all(&tls_dir)?;
+    let ca_cert_path = tls_dir.join("ca.pem");
+    let ca_key_path = tls_dir.join("ca-key.pem");
+    let cert_exists = ca_cert_path.exists();
+    let key_exists = ca_key_path.exists();
+    if cert_exists && key_exists {
+        refuse_world_readable_mesh_secret(&ca_cert_path)?;
+        refuse_world_readable_mesh_secret(&ca_key_path)?;
+        return Ok((
+            fs::read_to_string(&ca_cert_path)?,
+            fs::read_to_string(&ca_key_path)?,
+        ));
+    }
+    if cert_exists || key_exists {
+        if !mesh_ca_force_regen() {
+            return Err(TlsIdentityError::Other(format!(
+                "incomplete mesh CA pair at {}; refusing silent regeneration (set AEP_MESH_CA_FORCE_REGEN=1 to rotate)",
+                tls_dir.display()
+            )));
+        }
+    }
+    mint_mesh_ca(&ca_cert_path, &ca_key_path)
 }
 
 fn write_secret_pem(path: &std::path::Path, pem: &str) -> Result<(), TlsIdentityError> {
@@ -93,14 +155,17 @@ fn write_secret_pem(path: &std::path::Path, pem: &str) -> Result<(), TlsIdentity
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let _ = fs::set_permissions(parent, fs::Permissions::from_mode(0o700));
+            fs::set_permissions(parent, fs::Permissions::from_mode(0o700)).map_err(|e| {
+                TlsIdentityError::Other(format!("chmod 0700 parent failed: {e}"))
+            })?;
         }
     }
     fs::write(path, pem).map_err(|e| TlsIdentityError::Other(e.to_string()))?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let _ = fs::set_permissions(path, fs::Permissions::from_mode(0o600));
+        fs::set_permissions(path, fs::Permissions::from_mode(0o600))
+            .map_err(|e| TlsIdentityError::Other(format!("chmod 0600 failed: {e}")))?;
     }
     Ok(())
 }
@@ -205,12 +270,22 @@ pub fn ensure_dock_server_identity(data_dir: &Path) -> Result<MtlsIdentity, TlsI
     let cert_path = tls_dir.join("dock-server.pem");
     let key_path = tls_dir.join("dock-server-key.pem");
     if cert_path.exists() && key_path.exists() {
+        refuse_world_readable_mesh_secret(&cert_path)?;
+        refuse_world_readable_mesh_secret(&key_path)?;
         let cert_pem = fs::read_to_string(&cert_path)?;
         return Ok(MtlsIdentity {
             cert_fingerprint: cert_fingerprint_pem(&cert_pem),
             cert_pem,
             key_pem: fs::read_to_string(&key_path)?,
         });
+    }
+    if cert_path.exists() || key_path.exists() {
+        if !mesh_ca_force_regen() {
+            return Err(TlsIdentityError::Other(format!(
+                "incomplete dock server identity at {}; refusing silent regeneration (set AEP_MESH_CA_FORCE_REGEN=1 to rotate)",
+                tls_dir.display()
+            )));
+        }
     }
     let (ca_pem, ca_key) = ensure_mesh_ca(data_dir)?;
     let identity = issue_signed_identity(&ca_pem, &ca_key, "aep-dock-server")?;
@@ -234,6 +309,8 @@ pub fn lattice_tls_host_port(endpoint: &str) -> Option<(&str, u16)> {
 mod tests {
     use super::*;
 
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[test]
     fn workload_identity_roundtrip() {
         let id = issue_workload_identity("AG-TLS-TEST").expect("identity");
@@ -241,7 +318,124 @@ mod tests {
         assert!(id.key_pem.contains("BEGIN PRIVATE KEY"));
         assert_eq!(id.cert_fingerprint.len(), 64);
         let client = build_client_config(&id.cert_pem, &id.cert_pem, &id.key_pem);
-        // Self-signed single cert won't verify as CA; full mesh uses ensure_mesh_ca.
+        // Self-signed single cert will not verify as CA; full mesh uses ensure_mesh_ca.
         assert!(client.is_err() || client.is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn mesh_ca_mint_is_0600() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::remove_var("AEP_MESH_CA_FORCE_REGEN");
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (cert, key) = ensure_mesh_ca(dir.path()).expect("mint");
+        assert!(cert.contains("BEGIN CERTIFICATE"));
+        assert!(key.contains("BEGIN PRIVATE KEY"));
+        use std::os::unix::fs::PermissionsExt;
+        let tls = dir.path().join("agentmesh").join("tls");
+        let ca_mode = fs::metadata(tls.join("ca.pem")).unwrap().permissions().mode() & 0o777;
+        let key_mode = fs::metadata(tls.join("ca-key.pem")).unwrap().permissions().mode() & 0o777;
+        assert_eq!(ca_mode, 0o600);
+        assert_eq!(key_mode, 0o600);
+        let again = ensure_mesh_ca(dir.path()).expect("reload 0600");
+        assert_eq!(again.0, cert);
+        assert_eq!(again.1, key);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn mesh_ca_world_readable_refuses_load() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::remove_var("AEP_MESH_CA_FORCE_REGEN");
+        let dir = tempfile::tempdir().expect("tempdir");
+        ensure_mesh_ca(dir.path()).expect("mint");
+        let ca = dir.path().join("agentmesh").join("tls").join("ca.pem");
+        use std::os::unix::fs::PermissionsExt;
+        let mut p = fs::metadata(&ca).unwrap().permissions();
+        p.set_mode(0o644);
+        fs::set_permissions(&ca, p).unwrap();
+        let err = ensure_mesh_ca(dir.path()).expect_err("must refuse");
+        let s = err.to_string();
+        assert!(
+            s.contains("world/group-readable") || s.contains("refusing load"),
+            "unexpected err: {s}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn mesh_ca_incomplete_pair_refuses_silent_regen() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::remove_var("AEP_MESH_CA_FORCE_REGEN");
+        let dir = tempfile::tempdir().expect("tempdir");
+        ensure_mesh_ca(dir.path()).expect("mint");
+        let key = dir.path().join("agentmesh").join("tls").join("ca-key.pem");
+        fs::remove_file(&key).unwrap();
+        let err = ensure_mesh_ca(dir.path()).expect_err("must refuse");
+        assert!(
+            err.to_string().contains("refusing silent regeneration"),
+            "unexpected err: {err}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn mesh_ca_force_regen_rotates_incomplete() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (c1, _) = ensure_mesh_ca(dir.path()).expect("mint");
+        fs::remove_file(dir.path().join("agentmesh").join("tls").join("ca-key.pem")).unwrap();
+        std::env::set_var("AEP_MESH_CA_FORCE_REGEN", "1");
+        let (c2, _) = ensure_mesh_ca(dir.path()).expect("force");
+        std::env::remove_var("AEP_MESH_CA_FORCE_REGEN");
+        assert_ne!(c1, c2);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn dock_server_world_readable_refuses_load() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::remove_var("AEP_MESH_CA_FORCE_REGEN");
+        let dir = tempfile::tempdir().expect("tempdir");
+        ensure_dock_server_identity(dir.path()).expect("mint");
+        let key = dir
+            .path()
+            .join("agentmesh")
+            .join("tls")
+            .join("dock-server-key.pem");
+        use std::os::unix::fs::PermissionsExt;
+        let mut p = fs::metadata(&key).unwrap().permissions();
+        p.set_mode(0o644);
+        fs::set_permissions(&key, p).unwrap();
+        let err = ensure_dock_server_identity(dir.path()).expect_err("must refuse");
+        let s = err.to_string();
+        assert!(
+            s.contains("world/group-readable") || s.contains("refusing load"),
+            "unexpected err: {s}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn dock_server_mint_is_0600() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::remove_var("AEP_MESH_CA_FORCE_REGEN");
+        let dir = tempfile::tempdir().expect("tempdir");
+        let id = ensure_dock_server_identity(dir.path()).expect("mint");
+        assert!(id.cert_pem.contains("BEGIN CERTIFICATE"));
+        use std::os::unix::fs::PermissionsExt;
+        let tls = dir.path().join("agentmesh").join("tls");
+        let cert_mode = fs::metadata(tls.join("dock-server.pem"))
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777;
+        let key_mode = fs::metadata(tls.join("dock-server-key.pem"))
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777;
+        assert_eq!(cert_mode, 0o600);
+        assert_eq!(key_mode, 0o600);
     }
 }

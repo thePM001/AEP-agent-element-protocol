@@ -6,6 +6,5 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-cargo test -p aep-envelope-wrap-disabled --lib
-cargo run -q -p aep-envelope-wrap-disabled -- --bridge "$ROOT/AEP-SDKs/typescript/dynaep/src/bridge.ts"
+cargo test -p aep-base-node --test source_invariants
 echo "[gate-aep28-env-012] OK wrap on disabled governance"

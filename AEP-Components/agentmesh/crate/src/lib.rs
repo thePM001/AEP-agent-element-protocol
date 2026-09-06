@@ -1,4 +1,5 @@
-//! AgentMesh provides zero-trust identity for Lattice Channel transport in AEP 2.8.
+//! AgentMesh provides local issuance identity for Lattice Channel transport in AEP 2.8.
+//! Local X.509 issuance is not mesh attestation.
 
 pub mod tls;
 
@@ -27,7 +28,6 @@ pub struct DidDocument {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MtlsCertState {
     pub agent_id: String,
-    pub trust_tier: u8,
     pub cert_fingerprint: String,
     pub issued_at_unix: u64,
     pub not_after_unix: u64,
@@ -47,6 +47,7 @@ pub struct AgentMeshBundle {
     pub mtls: MtlsCertState,
 }
 
+/// Isolation telemetry only. Never stored on mTLS cert state. Never admits.
 pub fn trust_tier(score: u16) -> u8 {
     match score {
         800..=1000 => 4,
@@ -102,6 +103,23 @@ pub fn spiffe_cryptographically_enforced() -> bool {
         .unwrap_or(false)
 }
 
+/// Issuance kind for AgentMesh identity.
+/// Local X.509 issuance is the default. It is not mesh attestation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IssuanceKind {
+    LocalX509,
+    SpiffeWorkloadApi,
+}
+
+/// Default issuance is local X.509 unless Workload API enforcement is opted in.
+pub fn issuance_kind() -> IssuanceKind {
+    if spiffe_cryptographically_enforced() {
+        IssuanceKind::SpiffeWorkloadApi
+    } else {
+        IssuanceKind::LocalX509
+    }
+}
+
 pub fn create_did(agent_id: &str, public_key: &[u8], capabilities: Vec<String>) -> DidDocument {
     DidDocument {
         id: format!("did:{DID_METHOD}:{agent_id}"),
@@ -113,14 +131,11 @@ pub fn create_did(agent_id: &str, public_key: &[u8], capabilities: Vec<String>) 
 
 fn mtls_from_identity(
     agent_id: &str,
-    trust_score: u16,
     now_unix: u64,
     identity: tls::MtlsIdentity,
 ) -> MtlsCertState {
-    let tier = trust_tier(trust_score);
     MtlsCertState {
         agent_id: agent_id.into(),
-        trust_tier: tier,
         cert_fingerprint: identity.cert_fingerprint,
         issued_at_unix: now_unix,
         not_after_unix: now_unix.saturating_add(MTLS_TTL_SECS),
@@ -130,9 +145,9 @@ fn mtls_from_identity(
     }
 }
 
-fn issue_workload_cert(agent_id: &str, trust_score: u16, now_unix: u64) -> MtlsCertState {
+fn issue_workload_cert(agent_id: &str, _trust_score: u16, now_unix: u64) -> MtlsCertState {
     let identity = issue_agent_identity(agent_id).expect("workload cert generation");
-    mtls_from_identity(agent_id, trust_score, now_unix, identity)
+    mtls_from_identity(agent_id, now_unix, identity)
 }
 
 pub fn create_mtls(agent_id: &str, trust_score: u16, now_unix: u64) -> MtlsCertState {
@@ -158,7 +173,7 @@ pub fn create_bundle(
         spiffe_id,
         expires_at_unix: expires,
     };
-    let mtls = mtls_from_identity(agent_id, trust_score, now_unix, identity);
+    let mtls = mtls_from_identity(agent_id, now_unix, identity);
     AgentMeshBundle {
         agent_id: agent_id.into(),
         trust_score,
@@ -168,25 +183,11 @@ pub fn create_bundle(
     }
 }
 
-pub fn rotate_on_trust_change(bundle: &mut AgentMeshBundle, new_score: u16, now_unix: u64) {
-    let old_tier = trust_tier(bundle.trust_score);
+/// Record isolation telemetry. Never reissue AgentMesh certs on score change.
+pub fn rotate_on_trust_change(bundle: &mut AgentMeshBundle, new_score: u16, _now_unix: u64) {
+    let _ = trust_tier(bundle.trust_score);
     bundle.trust_score = new_score.min(1000);
-    let new_tier = trust_tier(bundle.trust_score);
-    if old_tier != new_tier {
-        let identity =
-            issue_agent_identity(&bundle.agent_id).expect("workload identity required (fail closed)");
-        let spiffe_id = format!("spiffe://{TRUST_DOMAIN}/agent/{}", bundle.agent_id);
-        let expires = now_unix.saturating_add(MTLS_TTL_SECS);
-        bundle.spiffe = SpiffeIdentity {
-            svid: format!(
-                "x509-svid:{spiffe_id}:sha256:{}",
-                identity.cert_fingerprint
-            ),
-            spiffe_id,
-            expires_at_unix: expires,
-        };
-        bundle.mtls = mtls_from_identity(&bundle.agent_id, bundle.trust_score, now_unix, identity);
-    }
+    let _ = trust_tier(bundle.trust_score);
 }
 
 #[cfg(test)]
@@ -194,12 +195,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn trust_demotion_rotates_mtls() {
+    fn trust_score_does_not_rotate_mtls() {
         let mut bundle = create_bundle("AG-00001", 850, b"pk", vec!["validate".into()], 1_700_000_000);
         let old_fp = bundle.mtls.cert_fingerprint.clone();
         rotate_on_trust_change(&mut bundle, 500, 1_700_000_100);
-        assert_ne!(bundle.mtls.cert_fingerprint, old_fp);
-        assert_eq!(bundle.mtls.trust_tier, 2);
+        assert_eq!(bundle.mtls.cert_fingerprint, old_fp);
+        assert_eq!(bundle.trust_score, 500);
     }
 
     #[test]
@@ -230,5 +231,12 @@ mod tests {
             !json.contains("BEGIN PRIVATE KEY"),
             "private key must not serialize into AgentMeshBundle JSON"
         );
+    }
+
+    #[test]
+    fn default_issuance_is_local_x509() {
+        std::env::remove_var("AEP_AGENTMESH_SPIFFE_WORKLOAD_API");
+        assert_eq!(issuance_kind(), IssuanceKind::LocalX509);
+        assert!(!spiffe_cryptographically_enforced());
     }
 }

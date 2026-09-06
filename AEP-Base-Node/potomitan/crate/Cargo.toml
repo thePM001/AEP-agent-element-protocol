@@ -1,6 +1,6 @@
 [package]
 name = "aep-potomitan"
-description = "POTOMITAN mesh fallback adapted from Yggdrasil routing (Phase 4)"
+description = "POTOMITAN mesh packet plane plus peer registry and routing (Yggdrasil adaptation)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

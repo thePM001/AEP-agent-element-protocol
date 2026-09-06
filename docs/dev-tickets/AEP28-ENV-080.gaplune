@@ -1,0 +1,29 @@
+@PAD: nla-dev-ticket-AEP28-ENV-080-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-080
+title: Daemon stop drains dock tasks and closes SQLite. Production locks stay poison-safe.
+status: closed
+priority: P2
+track: aep28-kernel
+wave: kernel-library-quality
+plan: docs/architecture/AEP-2.8-REFERENCE-LIBRARY-REMEDIATION.md
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-072
+scope: AEP-Base-Node/crate/src/main.rs AEP-Base-Node/crate/src/docking.rs AEP-Base-Node/crate/src/dock_serve.rs AEP-Base-Node/crate/src/dock_pulse.rs AEP-Base-Node/crate/src/lib.rs AEP-Base-Node/crate/src/docking_tests.rs scripts/gate-aep28-env-080.sh
+notes: Wave 3. Double-check of production locks: docking.rs already returns a deny via lock_or_deny on poison. Remaining lock expect calls sit under cfg test after the tests module. Do not treat test expects as the product hole. The daemon hole is closed. After stop, serve loops stop accepting, dock tasks join, Unix sockets unlink and SQLite closes. scripts/gate-aep28-env-080.sh fails if AEP-Base-Node crate src files outside tests still call lock expect on a mutex.
+acceptance: After the stop signal, serve loops stop accepting, dock tasks join, sockets unlink and SQLite closes before process exit. Production mutex poison still returns ok false with a deny rather than panic. cargo test -p aep-base-node --lib covers drain. scripts/gate-aep28-env-080.sh greps crate src excluding tests for lock expect and runs cargo test -p aep-base-node --lib. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Base-Node crate.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
+updated: 2026-09-05
+gitea_commits:
+  dock_serve: 028e77be82b23300bf271a7db260132cd328f912
+  docking: 34aa380d7f4882e6df7cd5f6df0e6553c781b011
+  lib: 68c1a5e1c4994e0a87790bfaa6330252a439f37b
+  main: 8896a46ed37162a3e7fa0ce38fa7c9f8af64f6f3
+  docking_tests: 89995d0c4f6980b064d390bc79d8321047f008d2
+  gate: 763cc762cfdb148f651430abfaa1cecdf293603e
+  changelog: 9196655276baf0288853175e4fc0f5c393cf95bb
+  architecture: 50dadcd3e74d9af881b9956dfa2354d30d65dc30
+  registration: 3a6ba3759a8c022bba631b477ca9a31069c4ee03

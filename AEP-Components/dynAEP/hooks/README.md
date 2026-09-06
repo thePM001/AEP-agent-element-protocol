@@ -144,7 +144,7 @@ if (hook) {
 
 ## Pipeline Integration
 
-Leftover TypeScript LatticeFilter hooks are not the Base Node reference meet. After a sealed lattice frame, the kernel runs collect-all Admit and the 15-rule meet.
+Leftover TypeScript LatticeFilter hooks are not the Base Node reference meet. After a sealed lattice frame, the kernel runs collect-all Admit then Apply. Fifteen named rows are a derived ledger.
 
 When a node has `type: "custom"` constraints:
 

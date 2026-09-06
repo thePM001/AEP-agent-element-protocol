@@ -5,7 +5,9 @@ format: gaplune
 json_prohibited: true
 id: AEP28-ENV-022
 title: No sequential TypeScript deny after aep-envelope Admit
-status: backlog
+status: closed
+closed: 2026-09-01
+close_reason: Operator ordered 2026-09-01 board close of AEP28-ENV-001 through 024. Fresh product tickets only after code analysis. No journal-only tickets.
 priority: P0
 track: aep28-envelope-algebra
 wave: rust-live
@@ -15,4 +17,4 @@ depends_on: AEP28-ENV-018
 scope: AEP-Components/envelope AEP-SDKs/typescript/dynaep/src/bridge.ts
 notes: Live processEvent still denies AFTER aep-envelope Admit via TemporalValidator.validate, CausalOrderingEngine.process, UnifiedRegoEvaluator.evaluate, UnifiedScanner.scan (including template fast-exit) and ForecastSidecar.checkAnomalySync when require_approval. Fold those denies into aep-envelope walls or remove them from the live path. One Rust collect-all then Apply. No second sequential policy program. Host may keep bridge IO, rustAdmit spawn and ActionLattice YAML load. Out of scope: hangar tools.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/envelope/crate
-updated: 2026-08-23
+updated: 2026-09-01

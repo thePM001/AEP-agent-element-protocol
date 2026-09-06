@@ -1,0 +1,21 @@
+# @PAD: aep28-env-032-admit-live-dock-v1
+# @GCDE: gaplune-decode hmac-sha256:5b032c78617c9ca5a3f2a172bd7790a8f7639f1c4af21652fb9b48cd41b2f829
+[package]
+name = "aep-admit-live-dock"
+version = "0.1.0"
+edition = "2021"
+description = "AEP28-ENV-032. Fold product Admit wall crates into envelope_admit collect-all. AEP28-ENV-059 removed the CI wall inventory binary."
+license = "UNLICENSED"
+publish = false
+
+
+[dependencies]
+aep-admit = { path = "../../admit/crate" }
+aep-admit-writing-walls = { path = "../../admit-writing-walls/crate" }
+aep-admit-channel-order-walls = { path = "../../admit-channel-order-walls/crate" }
+aep-admit-temporal-bounds = { path = "../../admit-temporal-bounds/crate" }
+aep-envelope-walls = { path = "../../envelope-walls/crate" }
+aep-live-entry = { path = "../../live-entry/crate" }
+anyhow = "1"
+serde_json = "1"
+aep-policy-system-admit = { path = "../../policy-system-admit/crate" }

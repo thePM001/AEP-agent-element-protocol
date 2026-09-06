@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-081-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-081
+title: Kernel crates use thiserror instead of Result with String.
+status: closed
+priority: P2
+track: aep28-kernel
+wave: kernel-library-quality
+plan: docs/architecture/AEP-2.8-REFERENCE-LIBRARY-REMEDIATION.md
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-079 AEP28-ENV-076
+scope: AEP-Base-Node/crate/src/docking.rs AEP-Base-Node/crate/src/dock_freshness.rs AEP-Base-Node/crate/src/dock_pulse.rs AEP-Base-Node/crate/src/dock_rate.rs AEP-Base-Node/crate/src/dock_serve.rs AEP-Base-Node/crate/src/dock_apply.rs AEP-Base-Node/crate/src/dock_keys.rs AEP-Base-Node/crate/src/envelope_admit.rs AEP-Base-Node/crate/src/lattice_log.rs AEP-Base-Node/crate/src/task_manifest.rs AEP-Base-Node/crate/src/main.rs AEP-Base-Node/crate/src/lib.rs AEP-Components/live-entry/crate/src/lib.rs AEP-Components/evaluation-chain/crate/src/lib.rs scripts/gate-aep28-env-081.sh
+notes: Wave 3 after the docking split and DenyReport class land so error types can carry wall class where a deny is built. Kernel files still return Result with String from frame_is_fresh, dock key load, envelope admit, lattice log, task manifest, live-entry yaml load and evaluation-chain meet. workspace already depends on thiserror. envelope has a manual EnvelopeError that may convert to thiserror derive. Introduce typed errors for Base Node, live-entry and evaluation-chain. Wire them to DenyReport without dropping closed-wall ids. Do not convert leftover instruction-law crates. Do not convert source_invariants. Tests may still use String for scan messages.
+acceptance: Named kernel files have no non-test Result with String. thiserror Error enums exist for Base Node, live-entry and evaluation-chain. cargo test -p aep-base-node --lib, cargo test -p aep-live-entry --lib and cargo test -p aep-evaluation-chain --lib pass. scripts/gate-aep28-env-081.sh fails if those files still have non-test Result with String. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Base-Node crate, AEP-Components/live-entry/crate and AEP-Components/evaluation-chain/crate.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
+updated: 2026-09-05

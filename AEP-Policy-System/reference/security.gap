@@ -26,21 +26,21 @@
         "lang": "gapdsl",
         "severity": "hard",
         "validator": "pii_scanner",
-        "description": "Output must not contain email, phone, SSN, credit card, or API keys."
+        "description": "Output must not contain email, phone, SSN, credit card or API keys."
       },
       {
         "expr": "no_secrets_detected",
         "lang": "gapdsl",
         "severity": "hard",
         "validator": "secret_scanner",
-        "description": "Output must not contain private keys, tokens, or passwords."
+        "description": "Output must not contain private keys, tokens or passwords."
       },
       {
         "expr": "no_injection_patterns",
         "lang": "gapdsl",
         "severity": "hard",
         "validator": "injection_scanner",
-        "description": "Output must not contain SQL, XSS, command, or path traversal patterns."
+        "description": "Output must not contain SQL, XSS, command or path traversal patterns."
       },
       {
         "expr": "binds_to_localhost_only",
@@ -54,7 +54,7 @@
         "lang": "gapdsl",
         "severity": "hard",
         "validator": "unicode_scanner",
-        "description": "Output must not contain U+2014, U+2013, U+202E, or U+200B."
+        "description": "Output must not contain U+2014, U+2013, U+202E or U+200B."
       }
     ]
   },
@@ -70,10 +70,13 @@
     "type": "atomic"
   },
   "metadata": {
-    "provenance": "AEP 2.75 Policy Lattice Reference",
-    "version": "1.0.0",
+    "provenance": "AEP 2.8.5 Policy Lattice Reference",
+    "version": "1.1.0",
     "stability": "stable",
-    "trust_ring": "system",
-    "aspect": "objective"
+    "aspect": "objective",
+    "agent_may": [
+      "*"
+    ],
+    "aep_version": "2.8.5"
   }
 }

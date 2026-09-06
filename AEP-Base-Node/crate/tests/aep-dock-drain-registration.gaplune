@@ -1,0 +1,13 @@
+@PAD: aep-dock-drain-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-dock-drain
+version: 0.1.0
+kind: kernel
+path: AEP-Base-Node/crate/src/dock_serve.rs
+ticket: AEP28-ENV-080
+requires: aep-base-node aep-dock-request-poison
+capability: kernel.dock.drain
+note: After stop, serve loops stop accepting, dock tasks join, sockets unlink and SQLite closes. Production mutex poison returns a deny. Gate greps crate src excluding tests for lock expect.

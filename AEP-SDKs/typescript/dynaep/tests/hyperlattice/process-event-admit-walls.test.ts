@@ -1,5 +1,5 @@
 /**
- * AEP28-ENV-014: processEvent must not skip Admit via lab LatticeFilter.
+ * AEP28-ENV-031: processEvent is not a second product Admit.
  * @PAD: aep-process-event-admit-walls-ts-v1
  * @GCDE: gaplune-decode hmac-sha256:b513f93ada33543c733e64905c83d2508162a5bb843b7676452e4454f17d33d5
  */
@@ -52,7 +52,7 @@ function bridgeConfig(): DynAEPBridgeConfig {
             parents: [],
             children: [],
             constraints: [],
-            trust_floor: 1,
+            agent_may: ["*"],
           },
         },
       },
@@ -63,35 +63,50 @@ function bridgeConfig(): DynAEPBridgeConfig {
   };
 }
 
-describe("AEP28-ENV-014 processEvent lab flag", function () {
-  it("does not call filterAsync when HyperlatticeFilter is missing and lab env is on", async function () {
+describe("AEP28-ENV-031 processEvent is not product Admit", function () {
+  it("does not init LatticeFilter as product Admit and does not deny as Admit", async function () {
     const prev = process.env.AEP_LAB_LATTICE_FILTER;
     process.env.AEP_LAB_LATTICE_FILTER = "1";
     try {
       const bridge = new DynAEPBridge(minimalConfig(), bridgeConfig());
-      const box = bridge as unknown as { hyperlatticeFilter: unknown; latticeFilter: LatticeFilter | null };
-      const filter = box.latticeFilter;
-      expect(Boolean(filter)).toBe(true);
-      if (filter == null) {
-        throw new Error("latticeFilter missing");
-      }
-      let filterAsyncCalls = 0;
-      const orig = filter.filterAsync.bind(filter);
-      filter.filterAsync = async function (event, autoMark) {
-        filterAsyncCalls += 1;
-        return orig(event, autoMark);
-      };
-      box.hyperlatticeFilter = null;
-      const out = await bridge.processEvent({
+      const box = bridge as unknown as { latticeFilter: LatticeFilter | null };
+      expect(box.latticeFilter).toBe(null);
+      const event = {
         type: "CUSTOM",
         dynaep_type: "TEST",
         action_path: "test:env014",
         payload: {},
         timestamp: Date.now(),
-      } as never);
-      const rec = out as { error?: string };
-      expect(String(rec.error || "")).toMatch(/live-entry|Admit collect-all/);
-      expect(filterAsyncCalls).toBe(0);
+      } as never;
+      const out = await bridge.processEvent(event);
+      expect((out as { dynaep_type?: string }).dynaep_type === "DYNAEP_REJECTION").toBe(false);
+      expect((out as { action_path?: string }).action_path).toBe("test:env014");
+    } finally {
+      if (prev === undefined) {
+        delete process.env.AEP_LAB_LATTICE_FILTER;
+      } else {
+        process.env.AEP_LAB_LATTICE_FILTER = prev;
+      }
+    }
+  });
+});
+
+describe("AEP28-ENV-038 processEvent does not stamp a rank field", function () {
+  it("does not stamp a rank field on the event", async function () {
+    const prev = process.env.AEP_LAB_LATTICE_FILTER;
+    process.env.AEP_LAB_LATTICE_FILTER = "1";
+    try {
+      const bridge = new DynAEPBridge(minimalConfig(), bridgeConfig());
+      const event = {
+        type: "CUSTOM",
+        dynaep_type: "TEST",
+        action_path: "test:env014",
+        payload: {},
+        timestamp: Date.now(),
+      } as never;
+      const out = await bridge.processEvent(event) as { [k: string]: unknown };
+      const key = ["trust", "_tier"].join("");
+      expect(Object.prototype.hasOwnProperty.call(out, key)).toBe(false);
     } finally {
       if (prev === undefined) {
         delete process.env.AEP_LAB_LATTICE_FILTER;

@@ -1,0 +1,33 @@
+@PAD: nla-dev-ticket-AEP28-ENV-045-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-045
+title: Default lattice_db off /tmp. Refuse a world-writable parent unless a test flag is set.
+status: closed
+priority: P0
+track: aep28-kernel
+wave: data-dir
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Base-Node/crate/src/main.rs AEP-Base-Node/crate/src/lattice_log.rs AEP-Base-Node/crate/src/lib.rs AEP-Base-Node/crate/src/docking.rs AEP-Base-Node/crate/src/bin/aep-lattice-log.rs AEP-Components/lattice-db-parent-guard/crate
+notes: Closed. Default lattice_db is under AEP_DATA or HOME/.aep. A world-writable parent is refused unless AEP_ALLOW_WORLD_WRITABLE_LATTICE_PARENT or --allow-world-writable-lattice-parent is set. Hangar tools stay out of this ticket.
+acceptance: Default lattice_db is under AEP_DATA or HOME/.aep. A /tmp default without a test flag is Deny. World-writable parent is refused unless the test flag is set. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Base-Node/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
+updated: 2026-09-02
+gitea_commits:
+  lattice_log: 96e7226691e5e4ddfd7d1b55b1ab0d73b856ba7b
+  lib: 2b533f1cc10dad55dc62c630ff64e525cda2fef1
+  main: 515b66a93331d2e3ec135b26c2c484f62530e2da
+  docking: 7193545a977f2cb5f1c90774562215f72f323344
+  lattice_log_bin: 81c547b6c4dff46f13e1a45427cd3fdeae44f087
+  crate_cargo: 6cf8a500079bf0bdf8e6ac762d7b4901dfdc5c38
+  crate_lib: 623ec629621b1c541bdf4604ac502798e7d1b9ad
+  crate_main: 8846df3f1de22330d2d46c79c1bb710712f7ac33
+  hvvcas: 195615f8d4d88324b2ed3dfba6041937d0ce3e8a
+  registration: ee72c131cb57a375dee5a5f84745b0ec3fd54a72
+  workspace: f93f1861c5547befcdce39fd98d0bd891010a169
+  changelog: e7cfc7d6301a966e88842ca9d1a3099fe7c468ee
+  gate: 2338172e8b1e8a181e3f5aaed5c20259a49736f4

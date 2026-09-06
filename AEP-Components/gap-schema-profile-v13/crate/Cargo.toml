@@ -1,0 +1,19 @@
+[workspace]
+
+# @PAD: gap-285-p1-aep-gap-schema-profile-v13
+# @GCDE: gaplune.policy.v1
+[package]
+name = "aep-gap-schema-profile-v13"
+version = "0.1.0"
+edition = "2021"
+description = "GAP-285-P1. Classic GAP v1.3 live Admit profile vendored in AEP. Who-may is agent_may. trust_ring is not a live Admit floor. enabled is load-time."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-gap-schema-profile-v13"
+path = "src/main.rs"
+
+[dependencies]
+aep-admit = { path = "../../admit/crate" }
+serde_json = "1"

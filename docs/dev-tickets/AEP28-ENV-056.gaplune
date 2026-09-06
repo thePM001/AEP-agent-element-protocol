@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-056-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-056
+title: Load AEP-Policy-System GAP files as live Admit or stop implying they drive the kernel.
+status: closed
+priority: P1
+track: aep28-library-components
+wave: policy-system-admit
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Components/policy-system-admit/crate AEP-Components/admit-live-dock/crate AEP-Policy-System README.md CHANGELOG.md
+notes: Closed. Crate aep-policy-system-admit parses AEP-Policy-System GAP files and compiles them into Admit walls on compile_live_walls. Always-on stems load every event. LRP stems evaluate only when enabled. Missing directory closes policy:system:loaded. Copy says Live Admit GAP files. Not a join or meet driver.
+acceptance: GAP files compile to policy:{stem}:{expr} walls. Clean ping stays open. Missing dir closes. LRP skipped unless enabled. README live Admit lemma. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/policy-system-admit/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/policy-system-admit/crate
+updated: 2026-09-03

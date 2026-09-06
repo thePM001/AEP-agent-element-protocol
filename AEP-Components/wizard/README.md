@@ -1,6 +1,6 @@
 # AEP 2.8 Installation Wizard
 
-Phase 1 interactive installer for Base Node, LRPs and lattice channel secrets.
+Phase 1 interactive installer for Base Node, LRPs and lattice channel PQ profile.
 
 ## Usage
 
@@ -18,7 +18,7 @@ source ~/.aep/lattice-channel.env
 ## Config output
 
 - `~/.aep/base-node.json` - Base Node settings (mode 600)
-- `~/.aep/lattice-channel.env` - `LATTICE_CHANNEL_SECRET` for Agent Composer interop
+- `~/.aep/lattice-channel.env` - ML-KEM-768 and ML-DSA-65 lattice channel profile
 - `~/.aep/action-lattice.db` - forensic log + sqlite-vec Lattice Memory (USearch sidecar: `.usearch`)
 
 Build CLIs: `cargo build --release -p aep-lattice-memory -p aep-base-node` (installs `aep-memory` and `aep-lattice-log` next to `aep-base-node`).

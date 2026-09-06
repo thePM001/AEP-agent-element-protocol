@@ -112,18 +112,29 @@ pub fn compile_channel_walls(input: &ChannelCompileInput) -> Vec<AdmitWall> {
 }
 
 fn parent_satisfied(parent: &str, satisfied: &[String], agent_id: &str) -> bool {
-    if satisfied.iter().any(|s| s == parent) {
+    let agt = if agent_id.is_empty() { "unbound" } else { agent_id };
+    let mut key = String::from("agt|");
+    key.push_str(agt);
+    key.push('|');
+    key.push_str(parent);
+    if satisfied.iter().any(|s| s == &key) {
         return true;
     }
     if agent_id.is_empty() == false {
-        let mut key = String::from(agent_id);
-        key.push(':');
-        key.push_str(parent);
-        if satisfied.iter().any(|s| s == &key) {
+        let mut legacy = String::from(agent_id);
+        legacy.push(':');
+        legacy.push_str(parent);
+        if satisfied.iter().any(|s| s == &legacy) {
             return true;
         }
     }
-    false
+    let mut suffix = String::from("|");
+    suffix.push_str(parent);
+    let agent_scoped = satisfied.iter().any(|s| s.contains("agt|") && s.ends_with(&suffix));
+    if agent_scoped {
+        return false;
+    }
+    satisfied.iter().any(|s| s == parent)
 }
 
 pub fn order_parent_wall_id(parent: &str) -> String {
@@ -565,6 +576,18 @@ mod tests {
         };
         let admit = admit_collect_all(&compile_partial_order_walls(&order));
         assert_eq!(admit.allow, true);
+    }
+
+    #[test]
+    fn env043_other_agent_key_does_not_open_parent() {
+        let order = PartialOrderCompileInput {
+            action_path: String::from("agent:execute"),
+            parents: vec![String::from("agent:propose_action")],
+            satisfied: vec![String::from("agt|agent-a|agent:propose_action")],
+            agent_id: String::from("agent-b"),
+        };
+        let admit = admit_collect_all(&compile_partial_order_walls(&order));
+        assert_eq!(admit.allow, false);
     }
 
     #[test]

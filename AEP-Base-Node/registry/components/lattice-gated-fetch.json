@@ -1,0 +1,40 @@
+{
+  "manifest_version": "1",
+  "id": "lattice-gated-fetch",
+  "version": "2.8.0",
+  "kind": "library",
+  "path": "AEP-Components/lattice-gated-fetch/",
+  "description": "After dock allow execute bound HTTP and return http. Clients consume dock http and do not ordinary-fetch.",
+  "requires": [
+    "aep-base-node"
+  ],
+  "capabilities": [
+    "transport:lattice-gated-fetch",
+    "lattice:bound-http"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 16,
+    "min_disk_mb": 5,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Kernel executes bound HTTP after dock allow. Clients consume dock http.",
+    "use_when": [
+      "lattice-gated outbound HTTP"
+    ],
+    "avoid_when": [
+      "never ordinary-fetch after dock allow"
+    ],
+    "pairs_with": [
+      "lattice-channels",
+      "aep-base-node"
+    ]
+  },
+  "implementation": {
+    "crate": "AEP-Components/lattice-gated-fetch/crate",
+    "ci_gate": "scripts/gate-aep28-env-061.sh"
+  }
+}

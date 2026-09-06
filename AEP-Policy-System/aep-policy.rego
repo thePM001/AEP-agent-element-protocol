@@ -1,3 +1,4 @@
+# Leftover yaml and rego files sit beside live GAP reference docs and are not live Admit skins. Collect-all loads only GAP reference docs under AEP-Policy-System/reference. Operators use the reference GAP files from GAP-285-P6.
 package aep.forbidden
 
 # ===========================================================================

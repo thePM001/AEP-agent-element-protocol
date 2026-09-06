@@ -1024,7 +1024,7 @@ To find gaps, validate your policy and inspect missingRules:
       denied: s.stats.actionsDenied,
       gated: s.stats.actionsGated,
       trustScore: this.gateway.getTrustManager(s.id)?.getScore() ?? 0,
-      ring: this.gateway.getRingManager(s.id)?.getRing() ?? 2,
+      isolation_class: "caw",
     }));
 
     // Build chain statistics from gateway

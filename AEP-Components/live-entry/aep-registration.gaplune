@@ -7,7 +7,7 @@ id: aep-live-entry
 version: 0.1.0
 kind: library
 path: AEP-Components/live-entry/
-ticket: AEP28-ENV-024
+ticket: AEP28-ENV-036
 requires: aep-envelope aep-no-sequential-ts-deny
 capability: admit.live-entry.rust
-note: Product live path is Rust. aep_envelope admit in-process. ActionLattice YAML load is Rust. Structural apply and ID mint are Rust. TypeScript processEvent is not the product live path.
+note: Product live path is Rust with in-process aep_envelope admit, and a template target_id is not a skip so every opened frame still runs collect-all Admit then Apply. freeze_temporal_snapshot keeps bridge time at seal so a 1000 ms hold still meets 50 ms drift.

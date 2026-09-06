@@ -1,0 +1,28 @@
+@PAD: nla-dev-ticket-AEP28-ENV-076-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-076
+title: DenyReport closed walls carry a class of writing versus security versus temporal versus capability.
+status: closed
+priority: P2
+track: aep28-kernel
+wave: kernel-library-quality
+plan: docs/architecture/AEP-2.8-REFERENCE-LIBRARY-REMEDIATION.md
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-072
+scope: AEP-Components/wall-set-backpressure/crate/src/lib.rs AEP-Base-Node/crate/src/envelope_admit.rs AEP-Base-Node/crate/src/docking.rs README.md scripts/gate-aep28-env-076.sh
+notes: Wave 3. EPSCOM writing walls stay protocol law at priority 255. A writing deny can look like a security event because ClosedWall today has only id and reason. Add a class field on ClosedWall with values writing, security, temporal, capability, poison and structural. walls_from_error and every ClosedWall construction in envelope_admit.rs plus docking.rs must set class. Writing walls including em dash, en dash, double hyphen and Oxford comma stay on the Admit pass. README instruction copy must say writing walls govern output shape and are not transport security. Repair hints stay mechanical. Grant lists stay off repair.fix. Do not remove EPSCOM. Do not lower priority 255. Do not merge writing class into security class.
+acceptance: ClosedWall carries class. A writing wall reports class writing. Digest replay and KEM failures report class security. Drift, pulse age, wire freshness and future skew report class temporal. agent_may failures report class capability. Mutex poison reports class poison. Unbound scene, dock and sequence report class structural. cargo test -p aep-wall-set-backpressure --lib and cargo test -p aep-base-node --lib cover the classes. README says writing walls govern output shape and are not transport security. EPSCOM_PRIORITY remains 255. scripts/gate-aep28-env-076.sh runs those tests and fails if ClosedWall lacks class. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/wall-set-backpressure/crate.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/wall-set-backpressure/crate
+updated: 2026-09-05
+gitea_commits:
+  wall_set_lib: ccd21bdc9e45a319761e944af462065d3f81e355
+  wall_set_cargo: b62a8b784f229c0055732f8fdcfcdbd525bcbcb2
+  envelope_admit: 9b53945d3bcd0653ea646db4660b9fab78706255
+  docking: 0b7fe7c0ca46d521224880b30483b159c30899b5
+  readme: c9b1ac7234b2ee89395b6d7cdb4b4d76cde958ae
+  changelog: 67f6acd62ad44c934ca9f2812996ee692948b847
+  gate: 0cce01201f33620feccb8bd19674c778af7bec09
+  registration: b92d8ccdd57e54b8430e72dbf3943f5214d7f6b8

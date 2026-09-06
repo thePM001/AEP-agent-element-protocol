@@ -5,15 +5,13 @@
   "kind": "protocol",
   "path": "AEP-Components/dynAEP/",
   "description": "Real-time dynAEP Action Lattice event governance protocol.",
-  "requires": [
-    "aep-base-node",
-    "lattice-channels"
-  ],
+  "requires": [],
   "capabilities": [
     "lattice:events",
     "lattice:pad-router",
     "lattice:causal-log",
-    "hyperlattice:ssot"
+    "hyperlattice:ssot",
+    "lattice:rust-crate"
   ],
   "actions": [
     {
@@ -49,9 +47,9 @@
   "implementation": {
     "entrypoints": [
       "AEP-Components/dynAEP/bridge/lattice/index.ts",
-      "AEP-Components/live-entry/crate",
-      "AEP-Components/evaluation-chain/crate"
+      "AEP-Components/dynAEP/crate"
     ],
-    "docker_path": "/opt/aep/AEP-Components/dynAEP"
+    "docker_path": "/opt/aep/AEP-Components/dynAEP",
+    "crate": "AEP-Components/dynAEP/crate"
   }
 }

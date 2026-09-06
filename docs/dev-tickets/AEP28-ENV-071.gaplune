@@ -1,0 +1,31 @@
+@PAD: nla-dev-ticket-AEP28-ENV-071-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-071
+title: Dock client must collect post-beat Admit so DenyReport.closed and allow event_id return on the wire.
+status: closed
+priority: P0
+track: aep28-kernel
+wave: pulse-collect
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-065 AEP28-ENV-070
+scope: AEP-Base-Node/crate/src/docking.rs AEP-Docks/ucb/crate AEP-Components/dock-post-beat-collect/crate CHANGELOG.md README.md
+notes: Closed. After enqueue the client collects the applied DockFrameResponse by digest on the same unix dock. Deny carries deny.closed. Allow carries event_id. Enqueue still has no event_id until beat. UCB send_frame does not treat enqueue as Admit. The 1000 ms pulse is unchanged. Attractors stay forensic. TypeScript dynAEP remains. Base Node does not depend on aep-dynaep. UCB stays optional Path B. Hangar tools stay out of this ticket. AEP28-ENV-025 stays landed. Ticket close is coding close.
+acceptance: After enqueue the client can collect the applied DockFrameResponse by digest or the dock line waits until beat. Deny carries deny.closed. Allow carries event_id. Enqueue still has no event_id until beat. cargo test -p aep-base-node --lib covers collect. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Base-Node/crate.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
+gitea_commits:
+  crate_hvvcas: 3a04cc8c89b0d5f2b3926cd44f9049b6fe9389b3
+  crate_cargo: 45b78859e1ca7ef81032407263b23853efc489e5
+  crate_reg: 6eb95433c21bdef25add3e504e5c2dfe65805828
+  crate_main: 79130ed0b00921940594ee784c53114cf6b3eb61
+  crate_lib: 76ab776c44f8efa4966503a2b5f56e72cf28919b
+  docking: 24473c63fd07f9d8a51b63a406be774c9e095277
+  ucb_lattice: 59d90464d641d24c63298d409d5569c718dfecd2
+  workspace_cargo: 6db33d654029f86d6081f23be25df2728b4a64a8
+  changelog: 4e5c27f503a6c030caaea343cfbfbda92e72ec63
+  readme: 1d24460534c2be3252b4471f91d748de15fe588a
+  gate_script: 11a42a8e0bc37ba323287d234318a8bf0078cb73
+updated: 2026-09-04

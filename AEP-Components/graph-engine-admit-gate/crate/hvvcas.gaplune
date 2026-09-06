@@ -1,0 +1,44 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-graph-engine-admit-gate
+ticket: AEP28-ENV-069
+note: Durable HVVCAS is GAPLUNE. Fail if engine.ts invokes nodeExecutor without admitGate.
+
+component:
+  name: scan_admit_gate_before_executor
+  domain: graph-engine
+  component_type: service
+  intent: Fail if executeNode calls nodeExecutor without admitGate
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_default_deny
+  domain: graph-engine
+  component_type: service
+  intent: Fail if admitGate is missing and execute still runs nodeExecutor
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_tick_after_allow
+  domain: graph-engine
+  component_type: service
+  intent: Fail if tickVectorClock runs when admitGate denies
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String

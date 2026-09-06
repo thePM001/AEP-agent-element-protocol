@@ -89,13 +89,17 @@ pub fn compile_temporal_walls(input: &TemporalCompileInput) -> Vec<AdmitWall> {
     let max_future = bound_or(input.max_future_ms, DEFAULT_MAX_FUTURE_MS);
     let max_stale = bound_or(input.max_staleness_ms, DEFAULT_MAX_STALENESS_MS);
     let drift = effective_drift(input);
-    let skew_closed = input.has_agent_time && drift > max_drift;
-    let mut skew_reason = String::from("Temporal drift exceeded: agent drift ");
-    skew_reason.push_str(&drift.to_string());
-    skew_reason.push_str(" ms exceeds threshold ");
-    skew_reason.push_str(&max_drift.to_string());
-    skew_reason.push_str(" ms");
-    walls.push(emit(WALL_TEMPORAL_DRIFT, skew_closed, &skew_reason));
+    if input.has_agent_time == false {
+        walls.push(emit(WALL_TEMPORAL_DRIFT, true, "no timestamps"));
+    } else {
+        let skew_closed = drift > max_drift;
+        let mut skew_reason = String::from("Temporal drift exceeded: agent drift ");
+        skew_reason.push_str(&drift.to_string());
+        skew_reason.push_str(" ms exceeds threshold ");
+        skew_reason.push_str(&max_drift.to_string());
+        skew_reason.push_str(" ms");
+        walls.push(emit(WALL_TEMPORAL_DRIFT, skew_closed, &skew_reason));
+    }
 
     let future_closed = input.has_agent_time
         && input.agent_time_ms > input.bridge_time_ms.saturating_add(max_future);

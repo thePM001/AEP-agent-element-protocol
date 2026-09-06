@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-049-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-049
+title: Keep one Admit function and one id vocabulary. Drop extra_walls conversion from a second admit_collect_all.
+status: closed
+priority: P0
+track: aep28-kernel
+wave: fail-closed-lattice
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-037
+scope: AEP-Components/envelope/crate AEP-Components/live-entry/crate AEP-Components/one-live-evaluation/crate AEP-Components/dynAEP/crate AEP-Components/one-admit-id/crate
+notes: Closed. extra_walls is AdmitWall id. Envelope WallVerdict uses id. attach_live_walls assigns compile_live_walls. No wall_verdicts_from_admit_walls.
+acceptance: extra_walls is Vec of AdmitWall. WallVerdict identity is id. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/one-admit-id/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/one-admit-id/crate
+updated: 2026-09-02

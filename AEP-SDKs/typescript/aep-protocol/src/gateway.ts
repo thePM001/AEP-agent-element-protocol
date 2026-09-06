@@ -1,63 +1,63 @@
 // @PAD: p0-v275-h52-h53-gateway-rollback-session-v1
 // @GCDE: document_sha256=p0-v275-h52-h53-gateway
-import { SessionManager } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/session/lib/session-manager.js";
-import { Session, type SessionReport } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/session/lib/session.js";
-import { PolicyEvaluator } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/policy-engine/lib/policy/evaluator.js";
-import { loadPolicy } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/policy-engine/lib/policy/loader.js";
-import type { Policy, AgentAction, Verdict } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/policy-engine/lib/policy/types.js";
-import { EvidenceLedger } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/evidence-ledger/lib/ledger/ledger.js";
-import { RollbackManager } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/evidence-ledger/lib/rollback/manager.js";
-import type { RollbackResult } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/evidence-ledger/lib/rollback/types.js";
-import { TrustManager } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/trust-rings/lib/trust/manager.js";
-import { RingManager } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/trust-rings/lib/rings/manager.js";
-import type { RingConfig } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/trust-rings/lib/rings/types.js";
-import { parseCovenant } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/covenant/lib/parser.js";
-import { IntentDriftDetector } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/intent/lib/detector.js";
-import { KillSwitch } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/session/lib/kill-switch.js";
-import { TaskDecompositionManager } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/decomposition/lib/manager.js";
-import type { TaskTree, TaskScope } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/decomposition/lib/types.js";
-import { ProofBundleBuilder } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/proof-bundle/lib/builder.js";
-import type { ProofBundle } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/proof-bundle/lib/types.js";
-import type { AgentIdentity } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/identity/lib/types.js";
-import { RecoveryEngine } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/recovery/lib/engine.js";
-import type { Violation, RecoveryCallback } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/recovery/lib/types.js";
-import { ScannerPipeline, createDefaultPipeline } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/scanners/lib/pipeline.js";
-import type { Finding } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/scanners/lib/types.js";
-import type { TokenUsage, CostRecord } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/evidence-ledger/lib/ledger/types.js";
-import { KnowledgeBaseManager } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/knowledge-base/lib/knowledge/manager.js";
-import type { KnowledgeChunk } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/knowledge-base/lib/knowledge/types.js";
+import { SessionManager } from "../../../../AEP-Components/session/lib/session-manager.js";
+import { Session, type SessionReport } from "../../../../AEP-Components/session/lib/session.js";
+import { PolicyEvaluator } from "../../../../AEP-Components/policy-engine/lib/policy/evaluator.js";
+import { loadPolicy } from "../../../../AEP-Components/policy-engine/lib/policy/loader.js";
+import type { Policy, AgentAction, Verdict } from "../../../../AEP-Components/policy-engine/lib/policy/types.js";
+import { EvidenceLedger } from "../../../../AEP-Components/evidence-ledger/lib/ledger/ledger.js";
+import { RollbackManager } from "../../../../AEP-Components/evidence-ledger/lib/rollback/manager.js";
+import type { RollbackResult } from "../../../../AEP-Components/evidence-ledger/lib/rollback/types.js";
+import { TrustManager } from "../../../../retired-archive/retired/trust-rings/lib/trust/manager.js";
+import { RingManager } from "../../../../retired-archive/retired/trust-rings/lib/rings/manager.js";
+import type { RingConfig } from "../../../../retired-archive/retired/trust-rings/lib/rings/types.js";
+import { parseCovenant } from "../../../../AEP-Components/covenant/lib/parser.js";
+import { IntentDriftDetector } from "../../../../AEP-Components/intent/lib/detector.js";
+import { KillSwitch } from "../../../../AEP-Components/session/lib/kill-switch.js";
+import { TaskDecompositionManager } from "../../../../AEP-Components/decomposition/lib/manager.js";
+import type { TaskTree, TaskScope } from "../../../../AEP-Components/decomposition/lib/types.js";
+import { ProofBundleBuilder } from "../../../../AEP-Components/proof-bundle/lib/builder.js";
+import type { ProofBundle } from "../../../../AEP-Components/proof-bundle/lib/types.js";
+import type { AgentIdentity } from "../../../../AEP-Components/identity/lib/types.js";
+import { RecoveryEngine } from "../../../../AEP-Components/recovery/lib/engine.js";
+import type { Violation, RecoveryCallback } from "../../../../AEP-Components/recovery/lib/types.js";
+import { ScannerPipeline, createDefaultPipeline } from "../../../../AEP-Components/scanners/lib/pipeline.js";
+import type { Finding } from "../../../../AEP-Components/scanners/lib/types.js";
+import type { TokenUsage, CostRecord } from "../../../../AEP-Components/evidence-ledger/lib/ledger/types.js";
+import { KnowledgeBaseManager } from "../../../../AEP-Components/knowledge-base/lib/knowledge/manager.js";
+import type { KnowledgeChunk } from "../../../../AEP-Components/knowledge-base/lib/knowledge/types.js";
 import {
   validateCommerceRust,
   type RustValidationResult,
 } from "./subprotocol-rust.js";
-import { checkProposeToken } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/coding-governance/lib/propose-guard.mjs";
-import { FleetManager } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/fleet/lib/manager.js";
-import { SpawnGovernor } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/fleet/lib/spawn-governance.js";
-import { MessageScanner } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/fleet/lib/message-scanner.js";
-import { FleetAPI } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/fleet/lib/api.js";
-import type { FleetPolicy } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/fleet/lib/types.js";
-import { SchemaBuilder } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Policy-System/schema-builder/lib/schema-builder.js";
-import { PolicyBuilder } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Policy-System/policy-builder/lib/policy-builder.js";
-import type { SchemaCandidate, SchemaValidationResult, MLEEstimation, SchemaBuilderConfig } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Policy-System/schema-builder/lib/types.js";
-import type { PolicyValidationResult, InvariantManifest, PolicyBuilderConfig } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Policy-System/policy-builder/lib/types.js";
+import { checkProposeToken } from "../../../../AEP-Components/coding-governance/lib/propose-guard.mjs";
+import { FleetManager } from "../../../../AEP-Components/fleet/lib/manager.js";
+import { SpawnGovernor } from "../../../../AEP-Components/fleet/lib/spawn-governance.js";
+import { MessageScanner } from "../../../../AEP-Components/fleet/lib/message-scanner.js";
+import { FleetAPI } from "../../../../AEP-Components/fleet/lib/api.js";
+import type { FleetPolicy } from "../../../../AEP-Components/fleet/lib/types.js";
+import { SchemaBuilder } from "../../../../AEP-Components/../../AEP-Policy-System/schema-builder/lib/schema-builder.js";
+import { PolicyBuilder } from "../../../../AEP-Components/../../AEP-Policy-System/policy-builder/lib/policy-builder.js";
+import type { SchemaCandidate, SchemaValidationResult, MLEEstimation, SchemaBuilderConfig } from "../../../../AEP-Components/../../AEP-Policy-System/schema-builder/lib/types.js";
+import type { PolicyValidationResult, InvariantManifest, PolicyBuilderConfig } from "../../../../AEP-Components/../../AEP-Policy-System/policy-builder/lib/types.js";
 import {
   StepActivationMode,
   type StepActivationProfile,
   type StepVerdict,
   type ChainResult,
   type EvalContext,
-} from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/evaluation-chain/lib/types.js";
+} from "../../../../AEP-Components/evaluation-chain/lib/types.js";
 import {
   DEFAULT_STEP_ACTIVATION_PROFILE,
-} from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/evaluation-chain/lib/defaults.js";
+} from "../../../../AEP-Components/evaluation-chain/lib/defaults.js";
 import {
   runEvaluationChain,
   countEvaluated,
   countShortCircuited,
   countAborted,
   type EvalStep,
-} from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/evaluation-chain/lib/runner.js";
-import { evaluatePrecondition } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/evaluation-chain/lib/preconditions.js";
+} from "../../../../AEP-Components/evaluation-chain/lib/runner.js";
+import { evaluatePrecondition } from "../../../../AEP-Components/evaluation-chain/lib/preconditions.js";
 
 function collectHardFindings(findings: Finding[]): Finding[] {
   return (findings ?? []).filter((f) => f.severity === "hard");
@@ -663,13 +663,7 @@ export class AgentGateway {
       });
     }
 
-    // Trust-ring demotion on denial
     if (verdict.decision === "deny") {
-      const trust = this.trustManagers.get(sessionId);
-      const ring = this.ringManagers.get(sessionId);
-      if (trust && ring) {
-        ring.demoteOnTrustDrop(trust.getTier());
-      }
       // Mark the step that caused the denial as fail
       // The PolicyEvaluator already handled this, but we can mark the last evaluated step
       let lastEval: StepVerdict | undefined;
@@ -927,7 +921,6 @@ export class AgentGateway {
 
     // Hard findings: immediate reject, no recovery
     if (hardFindings.length > 0) {
-      trustManager?.penalize("Content scanner hard violation", "forbidden_match");
       return { passed: false, findings: result.findings };
     }
 
@@ -974,9 +967,7 @@ export class AgentGateway {
             attempts: recoveryResult.attempts.length,
             source: "scanner",
           });
-          trustManager?.penalize("Soft violation recovered", undefined);
           // Apply -10 trust for recovered soft violation
-          // (penalize applies default -50, so reward back +40)
           trustManager?.reward("Recovery success offset", 40);
           return {
             passed: true,
@@ -990,12 +981,10 @@ export class AgentGateway {
           attempts: recoveryResult.attempts.length,
           source: "scanner",
         });
-        trustManager?.penalize("Soft violation recovery exhausted", "policy_violation");
         return { passed: false, findings: result.findings };
       }
 
       // No recovery engine - soft findings still fail
-      trustManager?.penalize("Content scanner soft violation", "structural_violation");
       return { passed: false, findings: softFindings };
     }
 
@@ -1036,7 +1025,6 @@ export class AgentGateway {
         source: violation.source,
       });
       // -10 trust for recovered soft violation
-      trustManager?.penalize("Soft violation recovered", undefined);
       trustManager?.reward("Recovery success offset", 40);
       return { recovered: true, finalOutput: result.finalOutput };
     }
@@ -1046,7 +1034,6 @@ export class AgentGateway {
       source: violation.source,
     });
     // -50 trust for exhausted recovery
-    trustManager?.penalize("Soft violation recovery exhausted", "policy_violation");
     return { recovered: false };
   }
 
@@ -1452,7 +1439,7 @@ export class AgentGateway {
           score: trust?.getScore() ?? 500,
           tier: trust?.getTier() ?? "standard",
         },
-        ring: (ring?.getRing() ?? 2) as import("./rings/types.js").ExecutionRing,
+        isolation_class: "caw",
         driftScore: 0, // Drift score is cumulative; use 0 if no detector
         ledger,
         taskTree: dm ? dm.getTree(sessionId) : null,

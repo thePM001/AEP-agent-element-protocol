@@ -1,0 +1,32 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-admit-live-dock
+ticket: AEP28-ENV-032
+note: Fold product Admit wall crates into the live dock collect-all pass.
+
+component:
+  name: live_collect_all
+  domain: admit
+  component_type: service
+  intent: Fold product Admit wall crates into one live collect-all pass
+  input:
+    name: event
+    type: String
+  output:
+    name: result
+    type: String
+
+component:
+  name: compile_live_walls
+  domain: admit
+  component_type: service
+  intent: Compile product wall crates. This is not a combinator.
+  input:
+    name: event
+    type: Value
+  output:
+    name: walls
+    type: VecAdmitWall

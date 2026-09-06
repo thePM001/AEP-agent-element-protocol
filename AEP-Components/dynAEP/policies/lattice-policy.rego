@@ -2,7 +2,7 @@ package dynaep.lattice
 
 # ===========================================================================
 # Lattice Governance Policy
-# Enforces action lattice rules: trust-tier boundaries, partial-order
+# Enforces action lattice rules: GAP agent-may dimensions, partial-order
 # validation, forbidden sequences, rate limits, and cross-modality
 # constraints for output actions.
 #
@@ -10,7 +10,8 @@ package dynaep.lattice
 #
 # Expected input fields (supplied by the TypeScript LatticeFilter bridge):
 #   input.action_path       - Lattice path (e.g. "market:trade:execute")
-#   input.trust_tier        - Agent trust tier (1-5)
+#   input.agent_id          - Originating agent ID (string)
+#   input.agent_may         - Agents granted this action (GAP dimension)
 #   input.category          - Action category string
 #   input.payload           - Event payload (object)
 #   input.agent_id          - Originating agent ID (string)
@@ -32,12 +33,20 @@ package dynaep.lattice
 # HELPER RULES
 # ---------------------------------------------------------------------------
 
-# Categorise trust tiers
-trust_tier_low(t)     { t >= 1; t <= 2 }
-trust_tier_mid(t)     { t >= 3; t <= 4 }
-trust_tier_high(t)    { t == 5 }
+# Agent-may: Agent A may X. No rank.
+agent_is_granted {
+    some i
+    input.agent_may[i] == input.agent_id
+    input.agent_id != ""
+}
 
-# Critical action paths that require maximum trust
+agent_is_granted {
+    some i
+    input.agent_may[i] == "*"
+    input.agent_id != ""
+}
+
+# Critical action paths that require a granted agent
 critical_actions := {
     "market:trade:execute",
     "agent:email:send",
@@ -87,34 +96,13 @@ deny_lattice[msg] {
     )
 }
 
-# Rule 2: Trust tier 1-2 can only handle external_event and system_event
+# Rule 2: Who-may-do-what is GAP dimension Conjunction. Empty grants fail closed for agent_action.
 deny_lattice[msg] {
-    trust_tier_low(input.trust_tier)
-    input.category != "external_event"
-    input.category != "system_event"
-    msg := sprintf(
-        "Trust tier %v denied: tier 1-2 agents may only handle external_event or system_event (got '%v')",
-        [input.trust_tier, input.category]
-    )
-}
-
-# Rule 3: Trust tier 3-4 cannot execute critical actions
-deny_lattice[msg] {
-    trust_tier_mid(input.trust_tier)
-    critical_actions[input.action_path]
-    msg := sprintf(
-        "Trust tier %v denied: critical action '%v' requires trust tier 5",
-        [input.trust_tier, input.action_path]
-    )
-}
-
-# Rule 4: Agent_action for trust_tier 1-2 is always blocked
-deny_lattice[msg] {
-    trust_tier_low(input.trust_tier)
     input.category == "agent_action"
+    not agent_is_granted
     msg := sprintf(
-        "Trust tier %v denied: agent_action category requires trust tier >= 3",
-        [input.trust_tier]
+        "GAP dimension agent_may closed: agent '%v' may not '%v'",
+        [input.agent_id, input.action_path]
     )
 }
 
@@ -165,29 +153,19 @@ deny_lattice[msg] {
     )
 }
 
-# Rule 9: output category requires at least trust_tier 2
+# Rule 9: output category also uses GAP agent-may. Empty grants fail closed.
 deny_lattice[msg] {
     input.category == "output"
-    input.trust_tier < 2
+    not agent_is_granted
     msg := sprintf(
-        "Trust tier %v denied: output actions require trust tier >= 2",
-        [input.trust_tier]
+        "GAP dimension agent_may closed: agent '%v' may not '%v'",
+        [input.agent_id, input.action_path]
     )
 }
 
 # ---------------------------------------------------------------------------
 # SOFT VIOLATIONS: Warn but allow
 # ---------------------------------------------------------------------------
-
-warn_lattice[msg] {
-    trust_tier_mid(input.trust_tier)
-    input.category == "agent_action"
-    input.payload == {}
-    msg := sprintf(
-        "Trust tier %v agent_action has empty payload - recommend supplying action context",
-        [input.trust_tier]
-    )
-}
 
 warn_lattice[msg] {
     input.category == "agent_action"
@@ -205,41 +183,10 @@ warn_lattice[msg] {
     msg := "Cross-modality at ceiling: 3 simultaneous outputs active"
 }
 
-warn_lattice[msg] {
-    trust_tier_mid(input.trust_tier)
-    input.category == "agent_action"
-    count(input.satisfied_actions) > 0
-    count(input.satisfied_actions) < 2
-    msg := sprintf(
-        "Trust tier %v has only %v satisfied parent(s) - low trust-buffer for action '%v'",
-        [input.trust_tier, count(input.satisfied_actions), input.action_path]
-    )
-}
-
-warn_lattice[msg] {
-    trust_tier_high(input.trust_tier)
-    critical_actions[input.action_path]
-    not satisfied_contains("validate")
-    not satisfied_contains("review")
-    msg := sprintf(
-        "Critical action '%v' executed by trust tier %v without any prior validation or review step in satisfied actions",
-        [input.action_path, input.trust_tier]
-    )
-}
 
 # ---------------------------------------------------------------------------
 # ESCALATION: Require human approval
 # ---------------------------------------------------------------------------
-
-escalate_lattice[msg] {
-    trust_tier_high(input.trust_tier)
-    critical_actions[input.action_path]
-    count(input.satisfied_actions) == 0
-    msg := sprintf(
-        "Critical action '%v' attempted by trust tier %v with no satisfied parent actions - human approval required",
-        [input.action_path, input.trust_tier]
-    )
-}
 
 escalate_lattice[msg] {
     input.payload.repeated_violation == true
@@ -259,15 +206,6 @@ escalate_lattice[msg] {
     )
 }
 
-escalate_lattice[msg] {
-    trust_tier_high(input.trust_tier)
-    input.category == "agent_action"
-    input.payload.trust_tier_history == "direct_jump"
-    msg := sprintf(
-        "Trust tier jump detected: agent '%v' escalated directly to tier %v without mid-level validation steps",
-        [input.agent_id, input.trust_tier]
-    )
-}
 
 # ---------------------------------------------------------------------------
 # COMPOSITE VERDICT

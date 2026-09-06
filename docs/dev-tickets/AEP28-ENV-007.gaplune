@@ -5,7 +5,9 @@ format: gaplune
 json_prohibited: true
 id: AEP28-ENV-007
 title: Hard-deny lab bypass on the live path
-status: backlog
+status: closed
+closed: 2026-09-01
+close_reason: Operator ordered 2026-09-01 board close of AEP28-ENV-001 through 024. Fresh product tickets only after code analysis. No journal-only tickets.
 priority: P0
 track: aep28-envelope-algebra
 wave: algebra
@@ -15,4 +17,4 @@ depends_on: AEP28-ENV-006
 scope: AEP-Components/admit AEP-Components/dynAEP AEP-SDKs/typescript/dynaep
 notes: Live path DENY when AEP_LAB_LATTICE_FILTER, AEP_LAB_POLICY_EVALUATOR, AEP_LATTICE_OPA=0 or lattice governance=disabled would skip Admit walls. Lab flags may exist only behind an explicit lab binary or test harness, not the product crossing. Out of scope: claiming misconfig is mathematically impossible.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/admit/crate
-updated: 2026-08-21
+updated: 2026-09-01

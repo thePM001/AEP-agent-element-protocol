@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-052-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-052
+title: Mesh CA files must refuse world-readable the same as dock KEM keys.
+status: closed
+priority: P0
+track: aep28-kernel
+wave: fail-closed-lattice
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-051
+scope: AEP-Components/agentmesh/crate/src/tls.rs AEP-Base-Node/crate/src/dock_keys.rs AEP-Components/mesh-ca-secret-mode/crate
+notes: Closed. Mesh CA ca.pem and ca-key.pem refuse world/group-readable load the same as dock KEM. write_secret_pem sets 0600 fail-closed. Incomplete pair refuses silent regen unless AEP_MESH_CA_FORCE_REGEN=1. Dock KEM 0644 refuse test lands.
+acceptance: ensure_mesh_ca and ensure_dock_server_identity refuse world/group-readable files. write_secret_pem sets 0600 fail-closed. dock KEM 0644 refuse test lands. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/mesh-ca-secret-mode/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/mesh-ca-secret-mode/crate
+updated: 2026-09-03

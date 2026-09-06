@@ -41,3 +41,15 @@ component:
   output:
     name: scan
     type: ScanReport
+
+component:
+  name: compile_live_lattice_walls
+  domain: admit
+  component_type: library
+  intent: Compile lattice-policy walls for the live dock collect-all pass
+  input:
+    name: input
+    type: LatticeCompileInput
+  output:
+    name: walls
+    type: VecAdmitWall

@@ -1,0 +1,35 @@
+@PAD: nla-dev-ticket-AEP28-ENV-032-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-032
+title: Admit crate spray is not the live dock. Wire walls into envelope_admit or drop them from product.
+status: closed
+priority: P1
+track: aep28-envelope-algebra
+wave: rust-live
+plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-025
+scope: Cargo.toml AEP-Components/admit/crate AEP-Components/admit-writing-walls/crate AEP-Components/admit-channel-order-walls/crate AEP-Components/admit-temporal-bounds/crate AEP-Components/admit-trust-floor/crate AEP-Components/admit-parity/crate AEP-Components/admit-opa-sole/crate AEP-Components/envelope/crate AEP-Components/live-entry/crate AEP-Base-Node/crate/src/envelope_admit.rs
+notes: Closed. Product Admit wall crates fold into envelope_admit collect-all. aep-admit, aep-admit-writing-walls, aep-admit-channel-order-walls, aep-admit-temporal-bounds and aep-envelope-walls run on the live dock path. aep-admit-trust-floor is not a workspace product member. CI lists live-path crates and fails on an unused product wall crate. Out of scope: hangar tools.
+acceptance: Every product Admit wall crate is imported on the live dock path or is not a workspace product member. CI lists live-path crates and fails on an unused product wall crate. nla-policy-scan gate project-completion-bac on AEP-Base-Node/crate.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
+updated: 2026-09-01
+gitea_commits:
+  crate_lib: 3813c176638caf0b716f888c1260f78dac0f4404
+  crate_main: c0df4b1bcdbe5b0c53a99cf4630a746ac1bb932e
+  crate_cargo: fc8b83d310990226bcbe423540d8aa63df063034
+  hvvcas: c9467f857d1bff4806a2ba78d4932302a3bdd123
+  registration: cb64ac97e20e8d63639ab11050bb514949215e39
+  envelope_admit: f262f1c803b3d7fc07685140c156d853cd946850
+  docking: 6701b9bfcd61c16ae41dfc499cca2034bc96604d
+  base_node_cargo: 9153fa8c84096a63ede69540e80a581df2fd8f7f
+  envelope_walls: 20870592aa0195a75b38e25e65c3f45a67f173b4
+  envelope_walls_hvvcas: 2010347cb1bb3673455db7cc62b86c3ef2135854
+  workspace: 5281948945f3af8765c90f7049b2aaaa8b29cf61
+  cargo_lock: 8a4062aa4856fa66db2697e7d3b2092d7d4c04c3
+  notes_file: 2dbb2dacd82f95cc04ce6b3069456df4382b6cae
+  opened_frame: 9f80e7fe754837b429ddf86ca183b2beda1026f7
+  gate: 7cab80da474d7204727b292a3bb0b6665cc0ae44

@@ -1,24 +1,24 @@
 # AEP-SDKs
 
-Language SDKs for AEP 2.8. SDKs are **not** protocol components - they are thin compiled-AI client surfaces that call lattice-gated APIs.
+Language SDKs for AEP 2.8. SDKs are not protocol components. They are client surfaces that call lattice-gated APIs. README and this file share one maturity table whose classes are native sealer, thin client, source-only thin client, placeholder and not product Admit.
 
-| SDK | Path | Status |
-|-----|------|--------|
-| TypeScript aep-protocol | `typescript/aep-protocol/` | Operational |
-| TypeScript dynaep | `typescript/dynaep/` | Bridge + Action Lattice (`src/bridge.ts`, `cli/dynaep-cli.ts`) |
-| React dynaep | `react/dynaep-react.tsx`, `dynaep-copilotkit.tsx` | dynAEP UI bindings |
-| Python aep | `python/aep-protocol/` | Operational |
-| Python dynaep | `python/dynaep/` | Operational |
-| Go | `go/` | Operational |
-| Rust | `rust/` | Operational |
-| JavaScript | `javascript/` | Operational |
-| Vue | `vue/` | Operational |
-| React | `react/` | Operational |
-| Astro | `astro/` | Operational |
-| Elixir | `elixir/` | Operational |
-| C++ | `cpp/` | Operational |
-| Clojure | `clojure/` | Operational |
-| HTML/CSS | `html-css/` | Operational |
+| SDK | Path | Class |
+|-----|------|-------|
+| TypeScript aep-protocol | `typescript/aep-protocol/` | thin client |
+| TypeScript dynAEP | `typescript/dynaep/` | not product Admit |
+| React dynAEP | `react/dynaep-react.tsx` | thin client |
+| Python aep-protocol | `python/aep-protocol/` | source-only thin client |
+| Python dynAEP | `python/dynaep/` | source-only thin client |
+| Go | `go/` | thin client |
+| Rust | `rust/` | thin client |
+| JavaScript | `javascript/` | thin client |
+| Vue | `vue/` | placeholder |
+| React | `react/` | thin client |
+| Astro | `astro/` | placeholder |
+| Elixir | `elixir/` | thin client |
+| C++ | `cpp/` | thin client |
+| Clojure | `clojure/` | thin client |
+| HTML/CSS | `html-css/` | placeholder |
 
 Paradigm: [Compiled AI](https://doi.org/10.48550/arXiv.2604.05150) - deterministic artifacts, zero runtime LLM in SDK transports.
 

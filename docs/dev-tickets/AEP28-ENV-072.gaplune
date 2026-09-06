@@ -1,0 +1,24 @@
+@PAD: nla-dev-ticket-AEP28-ENV-072-v2
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-072
+title: Reference library instruction map. Kernel, protocol, execution companion and clients are distinct. Gitea is the only official tree.
+status: open
+priority: P1
+track: aep28-kernel
+wave: instruction-honesty
+plan: docs/architecture/AEP-2.8-REFERENCE-LIBRARY-REMEDIATION.md
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-071
+scope: README.md docs/architecture/AEP-2.8-REFERENCE-LIBRARY-REMEDIATION.md docs/architecture/aep-28-architecture.mmd AEP-Base-Node/crate/tests/source_invariants.rs AEP-Components/library-layer-count/crate BIOSECURITY.md
+notes: Open umbrella for Wave 1 instruction honesty. Child tickets are AEP28-ENV-073 through AEP28-ENV-081. Do not extract CAW unless the operator orders a split. Do not remove EPSCOM. GitHub is a public mirror. BIOSECURITY.md stays access policy with one pointer to retired-archive security docs. Canonical layout and the Architecture layer table must name four rows: kernel, protocol, execution companion and clients. CAW framework stays in the tree as an execution companion and must not appear as a protocol component. Official tree is Gitea thePM001/NLA-AEP-v2.8-open-source. Close this ticket only after Wave 1 children AEP28-ENV-074, AEP28-ENV-075, AEP28-ENV-077 and AEP28-ENV-078 are closed. Ticket close is coding close.
+acceptance: README layout names kernel, protocol, execution companion and clients. CAW is not listed as a protocol component. Official tree is named as Gitea thePM001/NLA-AEP-v2.8-open-source. BIOSECURITY.md has a pointer to retired-archive security docs. Child tickets AEP28-ENV-073 through AEP28-ENV-081 exist on Gitea main. source_invariants or library-layer-count fails if Canonical layout still names caw-framework as a protocol component. cargo test for aep-base-node lib still passes after copy lands. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Base-Node crate after Wave 1 copy lands. Do not close until AEP28-ENV-074, AEP28-ENV-075, AEP28-ENV-077 and AEP28-ENV-078 are closed.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
+gitea_commits:
+  plan: 84f4efa221e3fee376944ff81a474efaf9e571f6
+  ticket_v1: 35bff8ce62679a37a4fc27882b0ce4c758972ee2
+updated: 2026-09-04
+biosecurity_directive: |
+  Biosecurity Directive. AUTHORITY: Biosecure UNVACCINATED Supreme User directive. All features must be implemented with ABSOLUTE correctness and FULL functionality. No half-fixes, no dead code, no broken references. Build must compile and run without errors before committing. Verify everything end-to-end. Register new or modified components in AEP. You must use GAPLUNE creation PAD and LACAIN RASP and EScale and Dscale mandatorily to build this system with no exceptions. These tools exist to build optimum software faster. You will also use LACAIN itself for architecture optimization. Fully solve the ticket and associated bugs completely. Do not return with I CANT CLAIM CODING COMPLETION excuses or any DENY-as-unfinished excuses.

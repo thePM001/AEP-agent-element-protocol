@@ -1,0 +1,80 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-epscom-trust-bundle-mode
+ticket: AEP28-ENV-063
+note: EPSCOM trust bundle must not claim ML-DSA while the manifest mode is sha256-structure.
+
+component:
+  name: parse_verification
+  domain: integrity
+  component_type: service
+  intent: Parse trust bundle verification mode pq_signature and note
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: integrity_only_mode
+  domain: integrity
+  component_type: service
+  intent: Detect sha256-structure sha256 integrity or hash as integrity-only mode
+  input:
+    name: mode
+    type: String
+  output:
+    name: integrity_only
+    type: bool
+
+component:
+  name: claims_mldsa
+  domain: integrity
+  component_type: service
+  intent: Detect an ML-DSA claim in pq_signature or note
+  input:
+    name: pq
+    type: String
+  output:
+    name: claims
+    type: bool
+
+component:
+  name: refuse_mldsa_on_sha256_structure
+  domain: integrity
+  component_type: service
+  intent: Deny ML-DSA claim when verification mode is sha256-structure
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_loader_refuses_claim
+  domain: integrity
+  component_type: service
+  intent: Require the signatures registry loader to deny ML-DSA claim on sha256-structure
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: run_trust_bundle_mode_gate
+  domain: integrity
+  component_type: service
+  intent: Run live workspace gate on the shipped EPSCOM trust bundle
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String

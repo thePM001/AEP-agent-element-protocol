@@ -26,7 +26,7 @@ fn main() {
     let mut le = if yaml_path.as_os_str().is_empty() == false {
         match LiveEntry::from_yaml_file(&yaml_path) {
             Ok(v) => v,
-            Err(e) => { emit_err(&e); process::exit(1); }
+            Err(e) => { emit_err(&e.to_string()); process::exit(1); }
         }
     } else {
         LiveEntry::new()

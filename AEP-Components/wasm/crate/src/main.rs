@@ -128,7 +128,7 @@ fn validate_frame(wire: &LatticeWire) -> Result<(), String> {
         return Err("wasm sandbox requires signed PQ capsule (unsigned frame rejected)".into());
     }
     let signer_public = resolve_signer_public(wire)?;
-    let binding = frame_binding_from(frame);
+    let binding = frame_binding_from(frame).map_err(|e| e.to_string())?;
     verify_capsule_signature_bound(&frame.capsule, &signer_public, &binding)
         .map_err(|e| format!("wasm capsule signature verify failed: {e}"))?;
     Ok(())

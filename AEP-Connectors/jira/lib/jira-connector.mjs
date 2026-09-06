@@ -1,10 +1,9 @@
 #!/usr/bin/env node
-import { probeTcpHost } from "../../../AEP-Components/cca/lib/environment-probe.mjs";
 import {
   buildEgressRoutes,
   connectorExtension,
-  probeHttpsRoot,
-  probeTcpUpstream,
+  probeViaUcb,
+  jiraCreateIssue as kitJiraCreate,
 } from "../../lib/connector-kit.mjs";
 
 export const SPEC = {
@@ -14,6 +13,10 @@ export const SPEC = {
   upstream: "https://api.atlassian.com",
   authTokenEnv: "AEP_JIRA_API_TOKEN",
   keywords: ["jira","atlassian","jira ticket","jira issue"],
+  accessRules: [
+    { action: "ALLOW", method: "POST", path: "/jira/rest/api/3/issue" },
+    { action: "ALLOW", method: "GET", path: "/jira/rest/api/3/myself" },
+  ],
 };
 
 const DEFAULTS = {
@@ -47,18 +50,14 @@ export function egressRoutesForManifest(config) {
   return buildEgressRoutes(SPEC, normalizeConfig(config));
 }
 
-export async function probe(config) {
+export async function probe(config, opts = {}) {
   const v = validateConfig(config);
   if (!v.valid) return { ok: false, status: "invalid_config", errors: v.errors, ucb_only: true };
-  const url = v.config.upstream;
-  if (url.startsWith("http://") && !url.includes("://localhost")) {
-    try {
-      const u = new URL(url);
-      if (u.port || u.hostname) {
-        const port = Number(u.port || (u.protocol === "https:" ? 443 : 80));
-        return probeTcpUpstream(u.hostname, port, probeTcpHost);
-      }
-    } catch { /* fall through */ }
-  }
-  return probeHttpsRoot(url);
+  return probeViaUcb(SPEC.service, "rest/api/3/myself", { method: "GET", ...opts });
+}
+
+export async function createIssue({ projectKey, issueType, summary, description, config, ...opts } = {}) {
+  const v = validateConfig(config);
+  if (!v.valid) throw new Error(v.errors.join("; "));
+  return kitJiraCreate({ projectKey, issueType, summary, description, ...opts });
 }

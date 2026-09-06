@@ -1,0 +1,13 @@
+@PAD: aep-dynaep-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-dynaep
+version: 2.8.0
+kind: library
+path: AEP-Components/dynAEP/crate
+ticket: AEP28-ENV-041
+requires: aep-envelope
+capability: dynaep.standalone-rust
+note: Standalone Rust dynAEP crate so a builder can attach only this crate. Base Node already has dynAEP integrated and is not changed.

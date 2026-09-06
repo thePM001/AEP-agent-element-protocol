@@ -63,7 +63,7 @@ pub struct NodeRecord {
     pub role: NodeRole,
     pub base_node_url: String,
     pub lattice_channel: String,
-    pub trust_ring: String,
+    pub isolation_class: String,
     pub agentstream_topology: AgentstreamTopology,
     #[serde(default)]
     pub agentstream_peers: Vec<String>,

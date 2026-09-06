@@ -1,6 +1,6 @@
 # AEP CAW Framework
 
-**CAW (Containerized Agentic Workflows)** is AEP 2.8 Execution-Layer Security (ELS). It is a **core Base Node capability** (`caw-framework`, `default_enabled: true`) that enforces policy on shell, file, network, process, database wire and LLM traffic at runtime.
+**CAW (Containerized Agentic Workflows)** is AEP 2.8 Execution-Layer Security (ELS). It is an execution companion (`caw-framework`) that enforces policy on shell, file, network, process, database wire and LLM traffic at runtime. CAW is not a protocol component.
 
 Forked from [agentsh](https://github.com/canyonroad/agentsh) under Apache 2.0. See [NOTICE](./NOTICE).
 
@@ -38,7 +38,7 @@ User / coding agent
 
 ## CCA integration (mandatory for shell workloads)
 
-CCA treats `caw-framework` as core:
+CCA treats `caw-framework` as an execution companion:
 
 | Stage | Behavior |
 |-------|----------|

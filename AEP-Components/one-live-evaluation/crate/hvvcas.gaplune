@@ -1,0 +1,44 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-one-live-evaluation
+ticket: AEP28-ENV-037
+note: Durable HVVCAS is GAPLUNE. One Admit function judges the opened frame.
+
+component:
+  name: attach_live_walls
+  domain: admit
+  component_type: service
+  intent: Compile product wall crates onto extra walls. Not a combinator.
+  input:
+    name: event
+    type: Value
+  output:
+    name: extra_walls
+    type: VecAdmitWall
+
+component:
+  name: admit_opened_frame
+  domain: admit
+  component_type: service
+  intent: One Admit function. aep_envelope admit_with_extra judges the opened frame then Apply.
+  input:
+    name: event
+    type: Value
+  output:
+    name: result
+    type: AdmitResult
+
+component:
+  name: scan_dual_combinator
+  domain: admit
+  component_type: service
+  intent: Fail if envelope_admit.rs calls both live_collect_all and process_event Admit on the same plaintext.
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String

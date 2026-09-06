@@ -12,7 +12,7 @@ use serde_json::Value;
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "aep-subprotocol", version = "2.8.0")]
+#[command(name = "aep-subprotocol", version = "2.8.5")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,

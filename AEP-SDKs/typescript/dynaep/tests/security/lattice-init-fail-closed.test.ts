@@ -1,9 +1,10 @@
 /**
- * TM-15: lattice init must fail closed under governance.
+ * AEP28-ENV-031: constructor is not product Admit.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { DynAEPBridge, type DynAEPBridgeConfig } from "../../src/bridge.js";
 import type { AEPConfig } from "@aep/core";
+import type { LatticeFilter } from "../../src/protocol/action-lattice.js";
 
 function minimalConfig(): AEPConfig {
   return {
@@ -45,23 +46,23 @@ function baseBridgeConfig(over: Partial<DynAEPBridgeConfig> = {}): DynAEPBridgeC
   };
 }
 
-describe("TM-15 lattice init fail-closed", () => {
-  it("throws when lattice registry cannot load under governance", () => {
-    expect(() => new DynAEPBridge(minimalConfig(), baseBridgeConfig())).toThrow(/lattice init failed/i);
+describe("AEP28-ENV-031 constructor is not product Admit", () => {
+  it("does not load ActionLattice YAML as product Admit when registry is missing", () => {
+    const bridge = new DynAEPBridge(minimalConfig(), baseBridgeConfig());
+    const box = bridge as unknown as { latticeFilter: LatticeFilter | null; lattice: unknown };
+    expect(box.latticeFilter).toBe(null);
+    expect(box.lattice).toBe(null);
   });
 
-  it("does not throw governance-init error when governance is disabled", () => {
+  it("does not throw lattice init as product Admit when governance is disabled", () => {
     const cfg = baseBridgeConfig({
       lattice: {
         registry: "/nonexistent/aep-lattice-does-not-exist.yaml",
         governance: "disabled",
       },
     });
-    try {
-      new DynAEPBridge(minimalConfig(), cfg);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      expect(msg).not.toMatch(/lattice init failed under governance/i);
-    }
+    const bridge = new DynAEPBridge(minimalConfig(), cfg);
+    const box = bridge as unknown as { latticeFilter: LatticeFilter | null };
+    expect(box.latticeFilter).toBe(null);
   });
 });

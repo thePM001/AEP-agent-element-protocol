@@ -1,0 +1,35 @@
+@PAD: nla-dev-ticket-AEP28-ENV-040-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-040
+title: Remove envelope-journals from the product workspace. A crate whose job is journals is not a product member.
+status: closed
+priority: P1
+track: aep28-gitea-code-analysis-2026-09-01
+wave: live-admit
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: Cargo.toml AEP-Components/envelope-journals/crate AEP-Components/envelope-journals-drop/crate
+notes: Closed. Cargo.toml workspace members does not list envelope-journals. crate aep-envelope-journals is not a workspace package. CI crate aep-envelope-journals-drop fails if it returns. Journals crate deleted from this repo. Out of scope: hangar tools.
+acceptance: Cargo.toml workspace members does not list envelope-journals. CI fails if aep-envelope-journals is a workspace package. nla-policy-scan gate coding-completion and project-completion-bac on the workspace default crate AEP-Base-Node/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
+updated: 2026-09-02
+gitea_commits:
+  hvvcas: 51ceeba53a7361c9e5564f72e78ba04e1c899e04
+  crate_lib: 7d24f82cb7b9dd35e800af5e6932618cf1004195
+  crate_main: 47668aafd361b4d59a8d42789228f8bb6fff05e0
+  crate_cargo: 3480f8d8d5c3e4aff5a5c938577adfe761c99279
+  registration: 89c9433414d5645f530c02dd6b39d9e486cfebfd
+  workspace: 66c2e8fbc752a7fd98006e20bc331411f3e2babe
+  ci_gate: 6c3caadb6b90aa569f88077831207604ce0fa063
+  env011_gate: 085e1be67dcab1259741305887d608cc7bc3f68f
+  changelog: b195a9feb5a089d557403c5c6d3e9b0053ac7ecd
+  delete_cli: 44657e6e37de364fbe897392ce90848e19972c30
+  delete_lib: db88ac14f1a17ccbd8219f38a1f41e79733d76d3
+  delete_hvvcas: 3c5483db85a41c53d2d4dd7809c464600c279a4e
+  delete_cargo: 29a4b7a089a8b87a53e549fc2a7b697935ebf4a9
+  delete_registration: 908f9427099ce4f3c198caa13ae29ab025c6e579
+  cargo_lock: 01eeb0944cdf0343685d60aa4ad0347bfef35606

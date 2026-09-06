@@ -1,0 +1,16 @@
+# @PAD: aep28-env-063-epscom-trust-bundle-mode-v1
+# @GCDE: gaplune-decode hmac-sha256:96a05cbc159c9d3a0447bab26b0f26849d1f5a3c1dbe7486e7f258fa46b6d201
+[package]
+name = "aep-epscom-trust-bundle-mode"
+version = "0.1.0"
+edition = "2021"
+description = "AEP28-ENV-063. EPSCOM trust bundle must not claim ML-DSA while the manifest mode is sha256-structure."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-epscom-trust-bundle-mode"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"

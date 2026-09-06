@@ -1,0 +1,24 @@
+@PAD: nla-dev-ticket-AEP28-ENV-036-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-036
+title: Template fast_exit must meet Admit. target_id in the template set is not a skip.
+status: closed
+priority: P0
+track: aep28-gitea-code-analysis-2026-09-01
+wave: live-admit
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Components/live-entry/crate/src/lib.rs
+notes: Closed. LiveEntry.process_event no longer returns Event because a target_id sits in templates. Every opened frame still runs collect-all Admit then Apply, and an unknown action_path on a template target is Deny. CI fails if process_event returns Event solely because the template set holds that id. Out of scope: hangar tools.
+acceptance: An event whose target_id is in templates still runs collect-all Admit then Apply. Unknown action_path on a template target is Deny. CI fails if process_event returns Event solely because templates.contains(target_id). nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/live-entry/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/live-entry/crate
+updated: 2026-09-01
+gitea_commits:
+  crate_lib: 25d53c845bb90d271fdeb9ad36a86068e9ffef89
+  crate_cargo: 6112c6ff61557d7ff6d5060bc1a58e0d5e373979
+  hvvcas: a49f87af7af0aed4ff583e1ea889af9e814ec182
+  registration: a7bd5ed76c84100ff61b797552bd48e57f19a4a2

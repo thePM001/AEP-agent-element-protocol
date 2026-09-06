@@ -1,6 +1,7 @@
 use aep_base_node::{
     bootstrap_contracts_from_lrps, health, now_unix, open_lattice_db, record_lattice_event,
-    run_docking_servers, sockets_exist, DockingRuntime, COMPONENT_ID, EPSCOM_PRIORITY,
+    drain_docking_servers, run_docking_servers, sockets_exist, DockingRuntime, ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV,
+    COMPONENT_ID, EPSCOM_PRIORITY,
 };
 use aep_base_node::dock_keys::{load_or_create_dock_kem, AgentSignKeyStore};
 use aep_lattice_channel::{build_frame_for_dock, frame_digest, DockingPort};
@@ -74,8 +75,12 @@ struct Cli {
     /// Default under $HOME/.aep (or AEP_DATA) - not world-writable /tmp.
     #[arg(long, default_value_t = default_socket_base())]
     socket_base: String,
-    #[arg(long, default_value = "/tmp/nla-g4-aep28/aep-action-lattice.db")]
+    /// Default under $HOME/.aep (or AEP_DATA). Not tmp.
+    #[arg(long, default_value_os_t = default_lattice_db())]
     lattice_db: PathBuf,
+    /// Test flag. Allows a world-writable parent of lattice_db.
+    #[arg(long, default_value_t = false)]
+    allow_world_writable_lattice_parent: bool,
     #[arg(long, default_value_t = false)]
     internet_up: bool,
     #[arg(long, default_value_t = 0)]
@@ -85,6 +90,12 @@ struct Cli {
     /// Run as daemon with Unix socket docking port listeners (Phase 4).
     #[arg(long, default_value_t = false)]
     daemon: bool,
+    /// Operator provision: mint an agent sign key. First-mint is not the issuer.
+    #[arg(long, default_value_t = false)]
+    provision_agent_sign_key: bool,
+    /// Agent id for --provision-agent-sign-key.
+    #[arg(long)]
+    agent_id: Option<String>,
 }
 
 struct ResolvedConfig {
@@ -106,7 +117,7 @@ fn arg_present(flag: &str) -> bool {
 fn load_config_file(path: &PathBuf) -> Result<BaseNodeConfigFile, Box<dyn std::error::Error>> {
     let raw = std::fs::read_to_string(path)?;
     let parsed: BaseNodeConfigFile = serde_json::from_str(&raw)?;
-    if parsed.version != "2.8.0" {
+    if parsed.version != "2.8.5" {
         return Err(format!("unsupported config version: {}", parsed.version).into());
     }
     Ok(parsed)
@@ -170,7 +181,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = rustls::crypto::ring::default_provider().install_default();
 
     let cli = Cli::parse();
+    if cli.allow_world_writable_lattice_parent {
+        std::env::set_var(ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV, "1");
+    }
     let cfg = resolve_config(&cli)?;
+
+    if cli.provision_agent_sign_key {
+        let agent_id = cli.agent_id.as_deref().unwrap_or("").trim();
+        if agent_id.is_empty() {
+            return Err("provision-agent-sign-key requires --agent-id".into());
+        }
+        let data_dir = cfg
+            .lattice_db
+            .parent()
+            .map(PathBuf::from)
+            .unwrap_or_else(default_aep_data_dir);
+        let mut sign_store = AgentSignKeyStore::load(&data_dir);
+        let sign = sign_store.provision(agent_id)?;
+        sign_store.flush()?;
+        println!(
+            "provisioned agent_id={agent_id} public_hex={}",
+            hex::encode(&sign.public)
+        );
+        return Ok(());
+    }
 
     if cli.daemon {
         let conn = open_lattice_db(&cfg.lattice_db)?;
@@ -178,15 +212,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .lattice_db
             .parent()
             .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("/tmp"));
+            .unwrap_or_else(default_aep_data_dir);
         let runtime = DockingRuntime::with_data_dir(
             cfg.socket_base.clone(),
             conn,
             &cfg.lrps,
             &data_dir,
         );
-        let handles = run_docking_servers(runtime).await?;
+        let (runtime, handles) = run_docking_servers(runtime).await?;
         if !sockets_exist(&cfg.socket_base) {
+            drain_docking_servers(&runtime, handles).await;
             return Err("daemon failed: docking sockets not present after bind".into());
         }
         info!(
@@ -197,6 +232,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
         tokio::signal::ctrl_c().await?;
         info!("AEP Base Node daemon shutting down");
+        drain_docking_servers(&runtime, handles).await;
         return Ok(());
     }
 
@@ -209,11 +245,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .lattice_db
             .parent()
             .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("/tmp"));
+            .unwrap_or_else(default_aep_data_dir);
         let dock_kem = load_or_create_dock_kem(&data_dir);
-        let mut sign_store = AgentSignKeyStore::load(&data_dir);
-        let sign = sign_store.get_or_create("AG-BOOT").expect("boot sign key");
-        sign_store.flush()?;
+        let sign_store = AgentSignKeyStore::load(&data_dir);
+        let sign = sign_store
+            .get("AG-BOOT")
+            .map_err(|e| format!("self-test: {e}"))?;
         let frame = build_frame_for_dock(
             "ch-selftest",
             "AG-BOOT",

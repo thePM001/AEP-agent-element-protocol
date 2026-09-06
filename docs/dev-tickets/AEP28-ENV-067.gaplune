@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-067-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-067
+title: Policy-system GAP walls must bind to an action_path prefix or lattice wrap so the whole tree does not fold onto every event.
+status: closed
+priority: P0
+track: aep28-library-components
+wave: bound-policy-wrap
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Components/envelope/crate AEP-Components/policy-system-admit/crate CHANGELOG.md
+notes: Closed. LatticeNode.wrap exists. YAML and JSON GAP parse read guard and wrap. writing and security stems still evaluate on every action_path. A finance wrap GAP item does not close an inventory wrap ping. A non-always-on GAP with empty wrap does not fold onto every action_path. AEP28-ENV-056 stays closed. Ticket close is coding close.
+acceptance: LatticeNode.wrap exists. YAML GAP parse reads guard and wrap. writing and security stems still evaluate on every action_path. A finance wrap GAP item does not close an inventory wrap ping. A non-always-on GAP with empty wrap does not fold onto every action_path. cargo test -p aep-policy-system-admit --lib and cargo test -p aep-envelope --lib pass those cases. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/policy-system-admit/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/policy-system-admit/crate
+updated: 2026-09-04

@@ -1,0 +1,30 @@
+@PAD: nla-dev-ticket-AEP28-ENV-044-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-044
+title: aep-lattice-log Record must go through dock Admit or stop being a kernel write path.
+status: closed
+priority: P0
+track: aep28-kernel
+wave: fail-closed-lattice
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Base-Node/crate/src/lattice_log.rs AEP-Components/lattice-log-record-admit/crate
+notes: Closed. Record calls admit_sealed_payload_on_live_dock before INSERT. Missing action_path or missing lattice is Deny and writes zero rows. Hangar tools stay out of this ticket.
+acceptance: Record goes through dock Admit before kernel INSERT. Deny does not write. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/lattice-log-record-admit/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/lattice-log-record-admit/crate
+updated: 2026-09-02
+gitea_commits:
+  lattice_log: 2db0f5cfe5b4e101095cc39f33af96b9b24cb574
+  envelope_admit: d043f920aac472847a7ecbcfca88ac6378be6020
+  crate_cargo: b53579e2bf6bd54d81ccf883b5aef730e79986fe
+  crate_lib: 4df89671c288e61c6c85367d98efcae405202f46
+  crate_main: c0a7d2fe88bdb2b1ab0a20645dc40d4d20bcef75
+  hvvcas: 81672ce96652718a9a04ac8b763cbbad2e8500fa
+  registration: 18183812a499cc1cc646eb73130dbb7840dfc052
+  workspace: bb9641b5ec50bade99a4c2663e815630b45c0602
+  changelog: b45c23bbed8c97433bd1d8536f619d213a9a1e53
+  gate: aa6d1de93c3a14fcd470e9b0b7d19bcf0623c09c

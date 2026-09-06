@@ -1,0 +1,20 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-dynaep
+ticket: AEP28-ENV-041
+note: Durable HVVCAS is GAPLUNE for crate aep-dynaep on ticket AEP28-ENV-041. Standalone Rust dynAEP component. Action Lattice filter, temporal authority and perception governance with the same rules as kernel envelope Admit. Base Node is not changed.
+
+component:
+  name: dynaep_process_event
+  domain: dynaep
+  component_type: service
+  intent: Judge an event against Action Lattice membership, parent closure and agent_may then stamp bridge time.
+  input:
+    name: event
+    type: String
+  output:
+    name: result
+    type: String

@@ -1,0 +1,21 @@
+@PAD: nla-dev-ticket-AEP28-ENV-078-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-078
+title: Official Gitea run sequence. cargo test, gate scripts, conformance runner and Docker. GitHub is a public mirror.
+status: open
+priority: P1
+track: aep28-kernel
+wave: instruction-honesty
+plan: docs/architecture/AEP-2.8-REFERENCE-LIBRARY-REMEDIATION.md
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-072
+scope: README.md Dockerfile Cargo.toml scripts/gate-aep28-env-078.sh
+notes: Wave 1. There is no root GitHub workflow directory. CAW carries its own Actions. The mismatch is advertising CC-01 through CC-15 as if the public GitHub snapshot ran them. Official factory is Gitea thePM001/NLA-AEP-v2.8-open-source. Document the official run sequence as cargo test -p aep-base-node --lib, cargo test -p aep-base-node --test source_invariants, the scripts/gate-aep28-env runners, the conformance runner and the Docker image. State that GitHub is a public mirror rather than the CI host. workspace package repository currently points at GitHub which may stay as the public mirror URL if README names Gitea as the official tree. Dockerfile comment says no npm in the runtime image while the runtime stage still runs npm install. Either drop npm from the runtime stage or drop the false comment so the run example matches the file. Do not add root GitHub Actions unless the operator asks for a public mirror workflow. Do not claim GitHub runs the gate scripts.
+acceptance: README has an Official run sequence section naming cargo test for aep-base-node lib, source_invariants, gate-aep28-env scripts, the conformance runner and Docker. README states Gitea thePM001/NLA-AEP-v2.8-open-source is the official tree and GitHub is a public mirror. No root GitHub workflow directory is added. Dockerfile comment and runtime stage agree about npm. source_invariants or scripts/gate-aep28-env-078.sh fails if README claims GitHub runs CC-01 through CC-15. cargo test -p aep-base-node --lib still passes. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Base-Node crate.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
+updated: 2026-09-04
+biosecurity_directive: |
+  Biosecurity Directive. AUTHORITY: Biosecure UNVACCINATED Supreme User directive. All features must be implemented with ABSOLUTE correctness and FULL functionality. No half-fixes, no dead code, no broken references. Build must compile and run without errors before committing. Verify everything end-to-end. Register new or modified components in AEP. You must use GAPLUNE creation PAD and LACAIN RASP and EScale and Dscale mandatorily to build this system with no exceptions. These tools exist to build optimum software faster. You will also use LACAIN itself for architecture optimization. Fully solve the ticket and associated bugs completely. Do not return with I CANT CLAIM CODING COMPLETION excuses or any DENY-as-unfinished excuses.

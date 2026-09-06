@@ -1,0 +1,68 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-lattice-gated-fetch
+ticket: AEP28-ENV-061
+note: After dock allow lattice-gated-fetch must not fall through to ordinary fetch. Dock returns bound http. Client consumes dock http.
+
+component:
+  name: gateway_spec_from_plaintext
+  domain: lattice
+  component_type: service
+  intent: Parse dock plaintext for a LATTICE_GATEWAY_REQUEST url and method
+  input:
+    name: plaintext
+    type: String
+  output:
+    name: spec
+    type: String
+
+component:
+  name: execute_bound_http_after_allow
+  domain: lattice
+  component_type: service
+  intent: After dock allow execute bound HTTP for the admitted url. Never ordinary fetch from the client.
+  input:
+    name: spec
+    type: String
+  output:
+    name: http
+    type: String
+
+component:
+  name: http_from_dock_allow
+  domain: lattice
+  component_type: service
+  intent: Client consumes dock http after allow. Missing http is Deny. Do not ordinary fetch.
+  input:
+    name: dock_json
+    type: String
+  output:
+    name: http
+    type: String
+
+component:
+  name: scan_no_ordinary_fetch_after_dock_allow
+  domain: lattice
+  component_type: service
+  intent: Fail if latticeGatedFetch still calls ordinary fetch after dock allow
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: run_gate
+  domain: lattice
+  component_type: service
+  intent: Run live AEP28-ENV-061 gate on docking.rs and lattice-gated-fetch twins
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String

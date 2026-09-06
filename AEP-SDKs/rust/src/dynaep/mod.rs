@@ -15,7 +15,7 @@ pub mod temporal;
 
 pub use bridge::{DynAepBridge, DynAepBridgeConfig, DynAepRejection, ProcessOut, ToolCallResult};
 pub use causal::{CausalEvent, CausalOrderingEngine, SparseVectorClock};
-pub use chain::{run_meet, run_sequential, ChainResult};
+pub use chain::{CHAIN_STEP_COUNT, STEP_NAMES};
 pub use forecast::ForecastCache;
 pub use ledger::BufferedLedger;
 pub use rego::{RegoConfig, RegoResult, UnifiedRegoEvaluator};

@@ -1,0 +1,18 @@
+# @PAD: aep28-env-066-unbound-field-close-v1
+# @GCDE: gaplune-decode hmac-sha256:615cf338f18f3708585d0278d6bb15e18b1d30b83dfde8b3cdbe9c45cbdbe3a1
+[package]
+name = "aep-unbound-field-close"
+version = "0.1.0"
+edition = "2021"
+description = "AEP28-ENV-066. Unbound scene, channel, time and sequence close. dest_dock may bind from the opened frame docking port. Do not reopen AEP28-ENV-034 or AEP28-ENV-042."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-unbound-field-close"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+serde_json = "1"
+aep-envelope = { path = "../../envelope/crate" }

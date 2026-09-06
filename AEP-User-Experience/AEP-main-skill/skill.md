@@ -290,7 +290,7 @@ Data-driven Rego policy generation:
 
 The bridge clock synchronizes to NTP (default), PTP (IEEE 1588 for microsecond precision) or system clock (fallback). Agent timestamps are preserved in metadata for audit but are never trusted for ordering or validation.
 
-Causal ordering uses Lamport vector clocks across all registered agents. Out-of-order events are buffered in a reorder buffer (configurable size, default 64) and reordered. Clock regressions are rejected.
+Kernel Admit is the live clock: drift, age, future, sequence and digest replay. A GraphEngine local vector clock is not Admit. It ticks only after admitGate allow. GraphEngine is not a second kernel. TypeScript dynAEP remains.
 
 TimesFM (optional 200 M-parameter time-series foundation model) provides predictive forecasting and anomaly detection on element coordinate streams.
 
@@ -325,7 +325,7 @@ Agent-Percept dynAEP-TA-P Perceptual temporal governance for human-facing output
 | Cold path p99 latency | 0.22 ms |
 | Data-heavy grid (template instances) | 118,339 events/s |
 
-10 optimizations: template node fast-exit, Rust 15-rule meet collect-all, unified Rego WASM bundle with decision cache, Aho-Corasick scanner automaton, causal ordering subtree partitioning, LSH attractor indexing, async NTP sync with clock slewing, buffered evidence ledger with WAL, cross-modality state atomicity, delta processor with transaction log.
+10 optimizations: template node fast-exit, Rust Admit collect-all then Apply, unified Rego WASM bundle with decision cache, Aho-Corasick scanner automaton, causal ordering subtree partitioning, LSH attractor indexing, async NTP sync with clock slewing, buffered evidence ledger with WAL, cross-modality state atomicity, delta processor with transaction log.
 
 ## OWASP Agentic AI Top 10
 

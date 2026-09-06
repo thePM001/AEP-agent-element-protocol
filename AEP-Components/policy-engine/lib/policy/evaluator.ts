@@ -10,8 +10,8 @@ import type {
   ForbiddenPattern,
 } from "./types.js";
 import type { Session } from "../../../session/lib/session.js";
-import type { TrustManager } from "../../../trust-rings/lib/trust/manager.js";
-import type { RingManager } from "../../../trust-rings/lib/rings/manager.js";
+import type { TrustManager } from "../../../../retired-archive/retired/trust-rings/lib/trust/manager.js";
+import type { RingManager } from "../../../../retired-archive/retired/trust-rings/lib/rings/manager.js";
 import type { CovenantSpec } from "../../../covenant/lib/types.js";
 import { evaluateCovenant, type CovenantContext } from "../../../covenant/lib/evaluator.js";
 import type { IntentDriftDetector } from "../../../intent/lib/detector.js";
@@ -181,14 +181,7 @@ export class PolicyEvaluator {
       );
     }
 
-    // Step 2: Ring capability check (cheapest check first)
-    if (this.ringManager) {
-      const ringCheck = this.ringManager.checkCapability(action.tool);
-      if (!ringCheck.allowed) {
-        this.trustManager?.penalize("Ring capability denied", "structural_violation");
-        return this.deny(actionId, [ringCheck.reason ?? "Ring capability check failed."], session);
-      }
-    }
+    // Step 2: GAP capability is Admit wall gap.agent_may. Rings are not a product member.
 
     // Step 3: System-wide rate limit check
     if (this.systemRateCounter) {
@@ -198,7 +191,6 @@ export class PolicyEvaluator {
         this.systemRateCounter.windowStart = now;
       }
       if (this.systemRateCounter.count >= this.systemRateLimit) {
-        this.trustManager?.penalize("System rate limit exceeded", "rate_limit");
         return this.deny(actionId, [`System-wide rate limit exceeded: ${this.systemRateCounter.count}/${this.systemRateLimit} actions per minute.`], session);
       }
       this.systemRateCounter.count++;
@@ -209,7 +201,6 @@ export class PolicyEvaluator {
     if (rateLimit) {
       const actionsInLastMinute = session.getActionsInLastMinute();
       if (actionsInLastMinute >= rateLimit.max_per_minute) {
-        this.trustManager?.penalize("Rate limit exceeded", "rate_limit");
         return this.deny(
           actionId,
           [
@@ -226,7 +217,6 @@ export class PolicyEvaluator {
       if (!drift.isWarmup && drift.score >= (this.policy.intent?.drift_threshold ?? 0.5)) {
         const onDrift = this.policy.intent?.on_drift ?? "warn";
         const driftReasons = [`Intent drift detected (score: ${drift.score.toFixed(2)}): ${drift.factors.join(", ")}`];
-        this.trustManager?.penalize("Intent drift detected", "intent_drift");
 
         if (onDrift === "kill") {
           // HIGH: kill terminates the session, not only one action
@@ -328,7 +318,6 @@ export class PolicyEvaluator {
       };
       const covenantResult = evaluateCovenant(this.covenant, ctx);
       if (!covenantResult.allowed) {
-        this.trustManager?.penalize("Covenant violation", "policy_violation");
         return this.deny(actionId, [`Covenant: ${covenantResult.reason}`], session);
       }
     }
@@ -342,7 +331,6 @@ export class PolicyEvaluator {
       if (forbiddenMatch.reason) {
         reasons.push(forbiddenMatch.reason);
       }
-      this.trustManager?.penalize("Forbidden pattern match", "forbidden_match");
       // H-27: use deny() helper (consistent stats / trust accounting)
       const verdict = this.deny(actionId, reasons, session);
       return { ...verdict, matchedForbidden: forbiddenMatch };
@@ -351,7 +339,6 @@ export class PolicyEvaluator {
     // Step 9: Capability match + trust tier check
     const matchedCapability = this.matchCapability(action);
     if (!matchedCapability) {
-      this.trustManager?.penalize("No matching capability", "policy_violation");
       return this.deny(
         actionId,
         [
@@ -361,16 +348,7 @@ export class PolicyEvaluator {
       );
     }
 
-    // Trust tier check on capability
-    if (matchedCapability.min_trust_tier && this.trustManager) {
-      if (!this.trustManager.meetsMinTier(matchedCapability.min_trust_tier as any)) {
-        return this.deny(
-          actionId,
-          [`Trust tier "${this.trustManager.getTier()}" does not meet minimum "${matchedCapability.min_trust_tier}" for this capability.`],
-          session
-        );
-      }
-    }
+    // AEP28-ENV-033: who-may-do-what is GAP dimension Conjunction. No min_trust_tier rank compare.
 
     // Step 10: Budget/limit check
     const limits = this.policy.limits;
@@ -442,7 +420,6 @@ export class PolicyEvaluator {
         (f) => f.severity === "hard" || f.category === "scanner:exception",
       );
       if (hard.length > 0 || !scan.passed) {
-        this.trustManager?.penalize("Scanner hard violation", "structural_violation");
         return this.deny(
           actionId,
           [

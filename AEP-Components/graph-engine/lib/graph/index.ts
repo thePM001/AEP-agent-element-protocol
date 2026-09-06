@@ -11,5 +11,6 @@ export type {
   PolicyEvaluator,
   NodeExecutor,
   ApprovalGate,
+  AdmitGate,
   GraphEngineOptions,
 } from "./types.js";

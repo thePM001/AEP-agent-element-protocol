@@ -121,8 +121,8 @@ export function loadTrustBundle(root = DEFAULT_SIGNATURES_ROOT, opts = {}) {
   } else if (strict && process.env.AEP_TRUST_BUNDLE_REQUIRE_HMAC === "1") {
     return { ok: false, error: "trust_bundle_signature_missing", path };
   }
-  // Manifests that claim PQ/ML-DSA authenticity must not pass strict load without crypto verify.
-  // Integrity-only modes (sha256-structure) may mention planned PQ without claiming live verify.
+  // Manifests that claim ML-DSA on sha256-structure are denied.
+  // Unverified PQ claims on non-integrity modes are denied in strict load.
   const v = bundle.verification && typeof bundle.verification === "object" ? bundle.verification : {};
   const mode = String(v.mode || "").toLowerCase();
   const integrityOnly =
@@ -130,14 +130,26 @@ export function loadTrustBundle(root = DEFAULT_SIGNATURES_ROOT, opts = {}) {
     mode === "sha256" ||
     mode === "integrity" ||
     mode === "hash";
+  const note = String(v.note || "");
+  const pq = String(v.pq_signature || "");
+  const claimsMldsa =
+    /ml-dsa/i.test(pq) ||
+    (/ml-dsa/i.test(note) && !/not claimed|does not claim/i.test(note));
   const claimsPq =
-    !integrityOnly &&
     Boolean(
       v.pq_signature ||
         /ml-dsa|pq/i.test(mode) ||
-        /ml-dsa|pq/i.test(String(v.note || "")),
+        (/ml-dsa|pq/i.test(note) && !/not claimed|does not claim/i.test(note)),
     );
-  if (strict && claimsPq && !crypto_verified) {
+  if (integrityOnly && claimsMldsa) {
+    return {
+      ok: false,
+      error: "trust_bundle_mldsa_claim_on_sha256_structure",
+      path,
+      detail: "manifest mode is sha256-structure and must not claim ML-DSA",
+    };
+  }
+  if (strict && claimsPq && !crypto_verified && !integrityOnly) {
     return {
       ok: false,
       error: "trust_bundle_pq_claim_unverified",

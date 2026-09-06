@@ -1,0 +1,81 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-gap-schema-profile-v13
+note: Durable HVVCAS is GAPLUNE. Do not persist YAML. New crate only. Do not edit existing GAPLUNE trees.
+
+component:
+  name: parse_gap_source
+  domain: admit
+  component_type: library
+  intent: Parse YAML or JSON GAP source into an instruction object. YAML remains valid GAP source.
+  input:
+    name: source
+    type: String
+  output:
+    name: result
+    type: Value
+
+component:
+  name: compile_trust_ring_rank_wall
+  domain: admit
+  component_type: library
+  intent: Rank use of trust_ring warns then denies on live Admit. Who-may is agent_may.
+  input:
+    name: source
+    type: Value
+  output:
+    name: wall
+    type: AdmitWall
+
+component:
+  name: compile_agent_may_profile_wall
+  domain: admit
+  component_type: library
+  intent: Compile agent_may grants. Agent A may X. Empty grants fail closed for agent actions.
+  input:
+    name: request
+    type: LiveAdmitRequest
+  output:
+    name: wall
+    type: AdmitWall
+
+component:
+  name: compile_wrap_prefix_bind
+  domain: admit
+  component_type: library
+  intent: Bind live Admit to wrap or action_path_prefix.
+  input:
+    name: request
+    type: LiveAdmitRequest
+  output:
+    name: wall
+    type: AdmitWall
+
+component:
+  name: enabled_is_load_time
+  domain: admit
+  component_type: library
+  intent: enabled false is load-time only. It is not Admit skip.
+  input:
+    name: source
+    type: String
+  output:
+    name: result
+    type: bool
+
+component:
+  name: live_admit_gap_profile
+  domain: admit
+  component_type: library
+  intent: Collect-all live Admit for classic GAP v1.3.
+  input:
+    name: source
+    type: String
+  output:
+    name: result
+    type: AdmitResult
+
+ticket: GAP-285-P1

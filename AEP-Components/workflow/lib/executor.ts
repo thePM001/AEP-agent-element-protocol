@@ -13,7 +13,7 @@ import type {
 } from "./types.js";
 import type { AgentGateway } from "../gateway.js";
 import type { EvidenceLedger } from "../../evidence-ledger/lib/ledger/ledger.js";
-import type { TrustManager } from "../../trust-rings/lib/trust/manager.js";
+import type { TrustManager } from "../../../retired-archive/retired/trust-rings/lib/trust/manager.js";
 
 export class WorkflowExecutor {
   private definition: WorkflowDefinition;
@@ -143,9 +143,7 @@ export class WorkflowExecutor {
       }
 
       case "skip": {
-        trust?.penalize("Workflow phase skipped", undefined);
-        trust?.reward("Skip adjustment", 45);
-        // Net: -50 + 45 = -5
+        // AEP28-ENV-033: skip does not mutate trust during evaluation.
 
         // Move to next phase
         const nextIdx = idx + 1;
@@ -193,10 +191,6 @@ export class WorkflowExecutor {
   }
 
   private handleFail(phaseName: string, reason: string): void {
-    const trust = this.getTrustManager();
-    // H-50: workflow failure is not a forbidden_match
-    trust?.penalize("Workflow phase failed", "policy_violation");
-
     this.state = "failed";
     this.getLedger()?.append("workflow:fail", {
       workflow: this.definition.name,

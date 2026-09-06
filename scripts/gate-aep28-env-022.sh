@@ -6,6 +6,5 @@
 set -euo pipefail
 ROOT=$(cd $(dirname "$0")/..; pwd)
 cd "$ROOT"
-cargo test -p aep-no-sequential-ts-deny --lib
-cargo run -q -p aep-no-sequential-ts-deny
+cargo test -p aep-base-node --test source_invariants
 echo "[gate-aep28-env-022] OK no sequential TypeScript deny after Admit"

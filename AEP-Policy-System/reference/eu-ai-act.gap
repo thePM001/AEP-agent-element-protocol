@@ -5,6 +5,7 @@
   },
   "pattern": {
     "guard": "true",
+    "wrap": "eu-ai-act",
     "input": {
       "type": "object",
       "schema": "aep.reference.compliance.eu-ai-act.request.v1"
@@ -51,70 +52,70 @@
         "lang": "gapdsl",
         "severity": "hard",
         "validator": "prohibited_practices_validator",
-        "description": "Art. 5 prohibited practice patterns denied"
+        "description": "Art 5 prohibited practice patterns denied"
       },
       {
         "expr": "high_impact_requires_gate",
         "lang": "gapdsl",
         "severity": "hard",
         "validator": "human_oversight_gate_validator",
-        "description": "Art. 14 human gate for high-impact actions when high_risk"
+        "description": "Art 14 human gate for high-impact actions when high_risk"
       },
       {
         "expr": "high_risk_rms_present",
         "lang": "gapdsl",
         "severity": "hard",
         "validator": "rms_present_validator",
-        "description": "Art. 9 risk management system evidence for high_risk"
+        "description": "Art 9 risk management system evidence for high_risk"
       },
       {
         "expr": "high_risk_logging_enabled",
         "lang": "gapdsl",
         "severity": "hard",
         "validator": "logging_enabled_validator",
-        "description": "Art. 12 logging enabled for high_risk"
+        "description": "Art 12 logging enabled for high_risk"
       },
       {
         "expr": "no_full_unconstrained_high_risk",
         "lang": "gapdsl",
         "severity": "hard",
         "validator": "execution_rings_validator",
-        "description": "Art. 15 no full_unconstrained scope for high_risk"
+        "description": "Art 15 no full_unconstrained scope for high_risk"
       },
       {
         "expr": "retention_days_positive_high_risk",
         "lang": "gapdsl",
         "severity": "hard",
         "validator": "retention_configured_validator",
-        "description": "Art. 61 retention_days required for high_risk"
+        "description": "Art 61 retention_days required for high_risk"
       },
       {
         "expr": "transparency_report_complete",
         "lang": "gapdsl",
         "severity": "hard",
         "validator": "transparency_export_validator",
-        "description": "Art. 13/50 transparency export schema complete"
+        "description": "Art 13 and 50 transparency export schema complete"
       },
       {
         "expr": "fria_when_public_context",
         "lang": "gapdsl",
         "severity": "hard",
         "validator": "fria_record_validator",
-        "description": "Art. 9/27 FRIA for deployer public_context"
+        "description": "Art 9 and 27 FRIA for deployer public_context"
       },
       {
         "expr": "tech_docs_provider_high_risk",
         "lang": "gapdsl",
         "severity": "hard",
         "validator": "technical_docs_validator",
-        "description": "Art. 11 technical docs for provider high_risk"
+        "description": "Art 11 technical docs for provider high_risk"
       },
       {
         "expr": "incident_hook_high_risk",
         "lang": "gapdsl",
         "severity": "hard",
         "validator": "incident_report_hook_validator",
-        "description": "Art. 73 incident reporting enabled"
+        "description": "Art 73 incident reporting enabled"
       },
       {
         "expr": "gpai_training_summary",
@@ -143,7 +144,7 @@
     "type": "pipeline",
     "steps": [
       "Load pack AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
-      "Run eu-ai-act-checker validate_config and evaluate_action fail-closed"
+      "Run eu-ai-act-checker validate_config and evaluate_action. Write DENY on miss"
     ]
   },
   "weight": 1,
@@ -154,12 +155,15 @@
     "provenance": "aep.reference.compliance.eu-ai-act",
     "version": "1.3.0",
     "stability": "stable",
-    "trust_ring": "governance",
+    "agent_may": [
+      "*"
+    ],
     "lrp_id": "eu-ai-act",
     "framework": "EU AI Act",
     "maturity": "enforced_v1_phase_c",
     "control_catalog": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
     "checker": "eu-ai-act-checker",
-    "honesty": "compliance checking pack not legal certification"
+    "honesty": "compliance checking pack not legal certification",
+    "aep_version": "2.8.5"
   }
 }

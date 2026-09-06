@@ -1,0 +1,17 @@
+# @PAD: aep28-env-053-dock-line-reader-v1
+# @GCDE: gaplune-decode hmac-sha256:c7a5bde171368ad75ecb4f65d65e64a03bb6687e937a073199a57e7ac0700016
+[package]
+name = "aep-dock-line-reader"
+version = "0.1.0"
+edition = "2021"
+description = "AEP28-ENV-053. Dock line reader must not read one byte per await up to 4MiB."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-dock-line-reader"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+tokio = { version = "1", features = ["io-util", "macros", "rt"] }

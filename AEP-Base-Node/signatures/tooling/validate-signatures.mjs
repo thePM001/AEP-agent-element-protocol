@@ -15,7 +15,7 @@ try {
   const trust = loadTrustBundle(root);
 
   if (!trust.ok) {
-    console.error("FAIL: trust bundle missing");
+    console.error(`FAIL: trust.error ${trust.error ?? "unknown"}`);
     errors++;
   }
 

@@ -25,34 +25,36 @@ members = [
     "AEP-Components/admit-writing-walls/crate",
     "AEP-Components/admit-channel-order-walls/crate",
     "AEP-Components/admit-temporal-bounds/crate",
-    "AEP-Components/admit-trust-floor/crate",
+    "AEP-Components/admit-live-dock/crate",
     "AEP-Components/envelope-walls/crate",
     "AEP-Components/envelope/crate",
-    "AEP-Components/admit-parity/crate",
-    "AEP-Components/admit-opa-sole/crate",
-    "AEP-Components/hyperlattice-ssot/crate",
-    "AEP-Components/stream-hard-findings/crate",
-    "AEP-Components/dynaep-live-crossing-e2e/crate",
-    "AEP-Components/live-crossing-admit-apply/crate",
-    "AEP-Components/envelope-algebra/crate",
-    "AEP-Components/envelope-algebra-ci/crate",
-    "AEP-Components/envelope-journals/crate",
-    "AEP-Components/live-crossing-lab-off/crate",
-    "AEP-Components/envelope-wrap-disabled/crate",
-    "AEP-Components/live-crossing-reject-copy/crate",
-    "AEP-Components/process-event-admit-walls/crate",
-    "AEP-Components/no-sequential-ts-deny/crate",
     "AEP-Components/live-entry/crate",
-    "AEP-Components/live-entry-ci/crate",
+    "AEP-Components/dynAEP/crate",
     "AEP-Components/evaluation-chain/crate",
+    "AEP-Components/one-live-evaluation/crate",
+    "AEP-Components/dock-request-poison/crate",
+    "AEP-Components/dock-line-reader/crate",
+    "AEP-Components/policy-system-admit/crate",
+    "AEP-Components/policy-leftover-skins/crate",
+    "AEP-Components/python-sdk-path/crate",
+    "AEP-Components/lattice-gated-fetch/crate",
+    "AEP-Components/agentmesh-local-issuance/crate",
+    "AEP-Components/epscom-trust-bundle-mode/crate",
+    "AEP-Components/caw-cve-demo-trees/crate",
+    "AEP-Components/unbound-field-close/crate",
+    "AEP-Components/base-node-pulse/crate",
+    "AEP-Components/graph-engine-admit-gate/crate",
+    "AEP-Components/wall-set-backpressure/crate",
+    "AEP-Components/dock-post-beat-collect/crate",
 ]
 default-members = ["AEP-Base-Node/crate"]
 
 [workspace.package]
-version = "2.8.0"
+version = "2.8.5"
 edition = "2021"
 license = "Apache-2.0"
 authors = ["thePM001 <thepm001@users.noreply.github.com>"]
+# Public mirror URL. Official tree is Gitea thePM001/NLA-AEP-v2.8-open-source.
 repository = "https://github.com/thePM001/AEP-agent-element-protocol"
 
 [workspace.dependencies]
@@ -73,7 +75,7 @@ usearch = "2.26"
 # Pin soundness-fixed transitive deps (RUSTSEC-2026-0190 / RUSTSEC-2026-0202).
 anyhow = "1.0.103"
 cxx = "1.0.195"
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "io-util", "signal", "sync"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "io-util", "signal", "sync", "time"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 clap = { version = "4", features = ["derive"] }

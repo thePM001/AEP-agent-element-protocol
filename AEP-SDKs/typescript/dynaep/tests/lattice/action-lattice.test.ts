@@ -34,7 +34,7 @@ describe("LatticeFilter custom hooks", () => {
     registerBuiltinHooks(registry);
     filter = new LatticeFilter(lattice, registry, "mle");
     filter.seedStartupSequence();
-    filter.markSatisfied("agent:propose_action");
+    filter.markSatisfied("agent:propose_action", "agent-a");
   });
 
   it("sync filter fails closed on custom constraints", () => {
@@ -75,7 +75,7 @@ describe("LatticeFilter custom hooks", () => {
     registerBuiltinHooks(registry);
     const noopFilter = new LatticeFilter(lattice, registry, "noop");
     noopFilter.seedStartupSequence();
-    noopFilter.markSatisfied("agent:propose_action");
+    noopFilter.markSatisfied("agent:propose_action", "agent-b");
     const result = await noopFilter.filterAsync({
       source: "test",
       action_path: "action:validate",

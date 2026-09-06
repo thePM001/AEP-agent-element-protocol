@@ -113,9 +113,9 @@ pub fn validate_node(node: &NodeRecord) -> Result<()> {
             node.node_id
         )));
     }
-    if node.trust_ring.trim().is_empty() {
+    if node.isolation_class.trim().is_empty() {
         return Err(RegistryError::Invalid(format!(
-            "trust_ring required for {}",
+            "isolation_class required for {}",
             node.node_id
         )));
     }
@@ -176,8 +176,8 @@ pub fn node_record_from_map(map: &serde_json::Map<String, serde_json::Value>) ->
                     .unwrap_or("unknown");
                 format!("aep.node.{id}")
             }),
-        trust_ring: map
-            .get("trust_ring")
+        isolation_class: map
+            .get("isolation_class")
             .and_then(|v| v.as_str())
             .unwrap_or("internal")
             .to_string(),
@@ -212,7 +212,7 @@ mod tests {
                 role: NodeRole::Primary,
                 base_node_url: "http://127.0.0.1:7800".into(),
                 lattice_channel: "aep.node.primary".into(),
-                trust_ring: "operator".into(),
+                isolation_class: "operator".into(),
                 agentstream_topology: AgentstreamTopology::AsSingle,
                 agentstream_peers: vec![],
                 gap_bundle_checkpoint: String::new(),
@@ -234,7 +234,7 @@ mod tests {
             role: NodeRole::Primary,
             base_node_url: "http://127.0.0.1:7800".into(),
             lattice_channel: "aep.node.primary".into(),
-            trust_ring: "operator".into(),
+            isolation_class: "operator".into(),
             agentstream_topology: AgentstreamTopology::AsSingle,
             agentstream_peers: vec![],
             gap_bundle_checkpoint: String::new(),
@@ -261,7 +261,7 @@ mod tests {
             role: NodeRole::Primary,
             base_node_url: format!("http://127.0.0.1:7800/{id}"),
             lattice_channel: format!("aep.node.{id}"),
-            trust_ring: "operator".into(),
+            isolation_class: "operator".into(),
             agentstream_topology: AgentstreamTopology::AsSingle,
             agentstream_peers: vec![],
             gap_bundle_checkpoint: String::new(),
@@ -284,7 +284,7 @@ mod tests {
             role: NodeRole::Replica,
             base_node_url: "http://127.0.0.1:7801".into(),
             lattice_channel: "aep.node.dup".into(),
-            trust_ring: "operator".into(),
+            isolation_class: "operator".into(),
             agentstream_topology: AgentstreamTopology::AsSingle,
             agentstream_peers: vec![],
             gap_bundle_checkpoint: String::new(),

@@ -7,7 +7,6 @@ import { DEFAULT_RELIABILITY_WEIGHTS } from "./types.js";
 import type { AgentIdentity } from "../../identity/lib/types.js";
 import type { CovenantSpec } from "../../covenant/lib/types.js";
 import type { SessionReport } from "../../session/lib/session.js";
-import type { ExecutionRing } from "../../trust-rings/lib/rings/types.js";
 import type { TaskTree } from "../../decomposition/lib/types.js";
 import { MerkleTree } from "../../evidence-ledger/lib/ledger/merkle.js";
 import { EvidenceLedger } from "../../evidence-ledger/lib/ledger/ledger.js";
@@ -17,7 +16,7 @@ export interface ProofBundleBuildContext {
   agent: AgentIdentity;
   covenant: CovenantSpec | null;
   trustScore: TrustScore;
-  ring: ExecutionRing;
+  isolation_class: string;
   driftScore: number;
   ledger: EvidenceLedger;
   taskTree?: TaskTree | null;
@@ -59,7 +58,7 @@ export class ProofBundleBuilder {
       merkleRoot,
       entryCount: entries.length,
       trustScore: context.trustScore,
-      ring: context.ring,
+      isolation_class: context.isolation_class,
       driftScore: context.driftScore,
       ledgerHash,
       signature: "",

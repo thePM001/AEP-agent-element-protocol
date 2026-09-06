@@ -1,0 +1,40 @@
+@PAD: nla-dev-ticket-AEP28-ENV-031-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-031
+title: One live entry language. TypeScript processEvent is not a second product Admit.
+status: closed
+priority: P1
+track: aep28-envelope-algebra
+wave: rust-live
+plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-024
+scope: AEP-SDKs/typescript/dynaep AEP-Components/dynAEP AEP-Components/live-entry/crate AEP-Base-Node/crate
+notes: Closed. Product live path is Rust only. TypeScript processEvent is not invoked as product Admit. Constructor does not load ActionLattice YAML as product Admit. CLI serve does not run LatticeFilter as product Admit. Tree-wide leftover scan fails if spawnSync aep-envelope, loadFromFile or processEvent remains product live code. Out of scope: hangar tools.
+acceptance: Product live path is Rust only. TypeScript processEvent is not invoked as product Admit. CI fails if spawnSync aep-envelope, loadFromFile or processEvent remains product live code. Same as ENV-024 acceptance plus a tree-wide leftover scan.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/live-entry/crate
+updated: 2026-09-01
+gitea_commits:
+  crate_cargo: f6b632c877f91b5d7e0237deaae0740481ff0918
+  crate_main: 1f61b3b44ae01111c03f06237371971fe4e3e663
+  crate_lib: 053d4d2842f870f2d888b4c458dae961f8cdce02
+  hvvcas: d6a32a4fa936f88214f686af83718316faa99569
+  registration: a1840032288aa690cfc401ee617255dae2207806
+  workspace: de949496a8002e872a07587e2352f52091c345f5
+  bridge: 45106772eea78eb49e90ece63503b161f4853672
+  cli: ab7b5ee32ed62c57ab2c2c04c8ab1faec4e0e251
+  dist_bridge: 4171cc403a3b74ca3bce6deae7d452e4beb3bf3f
+  env014_scan: e63599e319896744a1253c48b6677feeff9fad1e
+  env014_reg: d52741ed3ff970680cbdfeddac22c23610899fc6
+  ts_test: 237bd9e827a889f082e2c8f948f12c8c833ea43c
+  constructor_test: d8d86c374fec20b3f5f57eac1b2415b41dfecfd9
+  live_entry: 9e40d0e9f1ed8114064ed6145a779d4632a5ec2a
+  live_entry_reg: 48619ce802d40e12427b39e9a5d30d836f8c4da7
+  envelope_admit: 080de17e875e6e6078a2e4608cfdcc954ca673dd
+  changelog: 6f1528b40b886b656f70aa690d3f29e08ba72ac7
+  readme: 5800041ee541e7f0be0aabe35a5dacc61b3959c1
+  gate: dcd89c0581c88f5af1d9fe372c7875671ee622ae
+  cargo_lock: b5a8922be5d0dbb7d7dbb76b3628f3b070c2b9d1

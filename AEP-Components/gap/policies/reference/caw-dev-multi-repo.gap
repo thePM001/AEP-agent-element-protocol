@@ -21,7 +21,18 @@ metadata:
   provenance: "aep.2.8.seed"
   version: "1.0.0"
   stability: stable
-  trust_ring: user
+  agent_may:
+    - agent_id: grok-build
+      action: compile
+    - agent_id: grok-build
+      action: write
+  wrap: caw
+  action_path_prefix: caw
+  fscale:
+    required.0.alias: nla-policy-scan
+    required.0.id: FS.0.128.172
+    required.1.alias: nla-lattice-api-route
+    required.1.id: FS.0.128.22
   aspect: procedural
 
 subprotocols:
@@ -40,7 +51,7 @@ kind: aep.caw.profile
 profile_id: dev-multi-repo
 name: dev-multi-repo
 base_policy: dev-safe
-enforcement_tier: shim
+enforcement_tier: adapter
 llm_proxy: true
 compiled_runtime: false
 mounts:

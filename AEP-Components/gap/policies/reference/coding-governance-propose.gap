@@ -22,7 +22,18 @@ metadata:
   provenance: "aep.phase11.seed"
   version: "1.0.0"
   stability: stable
-  trust_ring: user
+  agent_may:
+    - agent_id: grok-build
+      action: write
+    - agent_id: grok-build
+      action: propose
+  wrap: coding
+  action_path_prefix: coding
+  fscale:
+    required.0.alias: nla-policy-scan
+    required.0.id: FS.0.128.172
+    required.1.alias: nla-lattice-api-route
+    required.1.id: FS.0.128.22
   aspect: procedural
   subprotocols:
     coding-governance:

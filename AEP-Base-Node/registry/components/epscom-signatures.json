@@ -4,7 +4,7 @@
   "version": "2.8.0",
   "kind": "library",
   "path": "AEP-Base-Node/signatures/",
-  "description": "EPSCOM-curated detection signatures and trust bundle (Base Node kernel adjunct).",
+  "description": "EPSCOM-curated detection signatures and SHA-256 structure trust bundle. ML-DSA is not claimed.",
   "requires": [],
   "bundled_with": "aep-base-node",
   "capabilities": [
@@ -38,7 +38,7 @@
     "gpu_required": false
   },
   "cca": {
-    "summary": "EPSCOM detection signatures bundled with Base Node. Trust bundle + YAML rules.",
+    "summary": "EPSCOM detection signatures bundled with Base Node. Trust bundle plus YAML rules.",
     "use_when": [
       "every AEP deployment",
       "EPSCOM governance",
@@ -55,7 +55,8 @@
   "implementation": {
     "module": "AEP-Base-Node/signatures/lib/signatures-registry.mjs",
     "context": "AEP-Base-Node/signatures/lib/signatures-context.mjs",
-    "trust_bundle": "AEP-Base-Node/signatures/trust-bundle/manifest.json"
+    "trust_bundle": "AEP-Base-Node/signatures/trust-bundle/manifest.json",
+    "ci_gate": "scripts/gate-aep28-env-063.sh"
   },
   "conformance": {
     "tests": [

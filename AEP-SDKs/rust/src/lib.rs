@@ -45,17 +45,6 @@ mod tests {
     }
 
     #[test]
-    fn chain_meet_keeps_all_rows() {
-        let names = ["a"; 15];
-        let r = dynaep::run_meet(&names, &[3, 8]);
-        assert_eq!(r.verdict, "reject");
-        assert_eq!(r.ledger.len(), 15);
-        let closed = r.ledger.iter().filter(|s| s.verdict == "reject").count();
-        assert_eq!(closed, 2);
-        assert!(r.ledger.iter().all(|s| s.reason != "skip" && s.reason != "prior reject"));
-    }
-
-    #[test]
     fn cosine_identical_vectors() {
         assert!((cosine_similarity(&[1.0, 0.0], &[1.0, 0.0]).unwrap() - 1.0).abs() < 1e-9);
     }
@@ -63,9 +52,9 @@ mod tests {
     #[test]
     fn live_admit_unknown_path_collect_all() {
         let mut b = DynAepBridge::new(json!({"aep_version": "2.8.0"}), DynAepBridgeConfig::default());
-        let yaml = "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    trust_floor: 1\n";
+        let yaml = "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_may: []\n";
         b.load_lattice_yaml(yaml).expect("yaml");
-        let ev = json!({"type":"CUSTOM","action_path":"bogus:path","trust_tier":3,"payload":{"ok":true},"timestamp":1000000});
+        let ev = json!({"type":"CUSTOM","action_path":"bogus:path","payload":{"ok":true},"timestamp":1000000});
         match b.process_event(ev) {
             ProcessOut::Reject(r) => assert!(r.error.contains("Admit collect-all walls then Apply")),
             ProcessOut::Event(_) => panic!("expected reject"),

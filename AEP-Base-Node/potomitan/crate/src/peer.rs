@@ -168,4 +168,40 @@ mod tests {
         });
         assert_eq!(reg.active_count(), 1);
     }
+
+    #[test]
+    fn duplicate_upsert_replaces_endpoint() {
+        let mut reg = PeerRegistry::new();
+        reg.upsert(MeshPeer {
+            node_id: "node-a".into(),
+            endpoint: "mem://old".into(),
+            public_key_hex: None,
+            active: true,
+        });
+        reg.upsert(MeshPeer {
+            node_id: "node-a".into(),
+            endpoint: "mem://new".into(),
+            public_key_hex: None,
+            active: true,
+        });
+        let list = reg.list();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].endpoint, "mem://new");
+    }
+
+    #[test]
+    fn load_missing_file_is_empty() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("no-such-peers.json");
+        let reg = PeerRegistry::load(&path).expect("load");
+        assert_eq!(reg.active_count(), 0);
+    }
+
+    #[test]
+    fn load_invalid_json_is_error() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join(MESH_PEERS_FILE);
+        fs::write(&path, "not-json").expect("write");
+        assert!(PeerRegistry::load(&path).is_err());
+    }
 }

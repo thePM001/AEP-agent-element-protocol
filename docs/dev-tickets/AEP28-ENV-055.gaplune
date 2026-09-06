@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-055-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-055
+title: POTOMITAN must ship a mesh packet plane or describe the crate as registry-plus-mode.
+status: closed
+priority: P1
+track: aep28-library-components
+wave: potomitan-mesh
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Base-Node/potomitan/crate AEP-Components/potomitan-mesh-packet-plane/crate
+notes: Closed. aep-potomitan ships MeshPacketPlane with POTM wire, hop_limit, MemoryTransport, UdpTransport, send, poll and forward. Gate crate aep-potomitan-mesh-packet-plane scans the live tree. Not registry-plus-mode.
+acceptance: MeshPacket encode/decode roundtrip. Memory plane send/recv. hop_limit 0 drops transit. Unknown dest errors. Inactive peers are not routed. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Base-Node/potomitan/crate and AEP-Components/potomitan-mesh-packet-plane/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/potomitan/crate
+updated: 2026-09-03

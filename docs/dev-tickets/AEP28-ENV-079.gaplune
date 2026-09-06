@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-079-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-079
+title: Split docking.rs into wire freshness, pulse queue, rate limit, serve and apply modules. Behavior stays.
+status: closed
+priority: P2
+track: aep28-kernel
+wave: kernel-library-quality
+plan: docs/architecture/AEP-2.8-REFERENCE-LIBRARY-REMEDIATION.md
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-074 AEP28-ENV-080
+scope: AEP-Base-Node/crate/src/docking.rs AEP-Base-Node/crate/src/dock_freshness.rs AEP-Base-Node/crate/src/dock_pulse.rs AEP-Base-Node/crate/src/dock_rate.rs AEP-Base-Node/crate/src/dock_serve.rs AEP-Base-Node/crate/src/dock_apply.rs AEP-Base-Node/crate/src/lib.rs scripts/gate-aep28-env-079.sh
+notes: Wave 3. docking.rs is about 2469 lines with wire freshness, pulse queue, rate limit, mesh identity, persist, Admit apply and Unix plus TLS serve in one file. Split after AEP28-ENV-074 has moved wire constants into the pulse crate and after AEP28-ENV-080 has landed drain on the serve path so the split moves finished behavior. docking.rs stays the facade that re-exports DockingRuntime, process_request, pulse_beat, run_docking_servers and sockets_exist. New modules are dock_freshness.rs for frame_is_fresh, dock_pulse.rs for enqueue and beat, dock_rate.rs for signer and process-wide rate limits, dock_serve.rs for listeners plus drain and dock_apply.rs for collect-all Admit then Apply. Do not change pulse length, drift, age, wire window, deny shape or collect-by-digest. Tests stay with the facade or move with their module. scripts/gate-aep28-env-079.sh fails if docking.rs exceeds 500 lines after the split.
+acceptance: The five new modules exist. docking.rs is at most 500 lines. Public functions used by main.rs and tests still compile from the facade. Wire constants still come from aep-base-node-pulse. cargo test -p aep-base-node --lib passes. scripts/gate-aep28-env-079.sh checks the line cap and runs cargo test -p aep-base-node --lib. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Base-Node crate.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
+updated: 2026-09-05

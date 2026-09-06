@@ -1,0 +1,13 @@
+@PAD: aep-base-node-pulse-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-base-node-pulse
+version: 0.1.0
+kind: library
+path: AEP-Components/base-node-pulse/
+ticket: AEP28-ENV-065 AEP28-ENV-074
+requires: aep-base-node aep-live-entry aep-envelope aep-admit-live-dock
+capability: base-node.epoch-pulse
+note: Base Node 1000 ms tic tac pulse with freeze temporal snapshot at seal. Extra Admit walls bind bridge time to that freeze with queue cap 256 capsules and 262144 bytes. Overflow is Deny. Drift stays 50 ms against freeze and age stays 5000 ms. Wire sent_at freshness MAX_FRAME_AGE_SECS 300 and MAX_FRAME_FUTURE_SKEW_SECS 60 are compiled beside pulse hold so docking.rs imports those constants. aep-dynaep is not a second pulse owner.

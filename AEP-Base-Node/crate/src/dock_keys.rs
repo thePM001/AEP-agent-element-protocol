@@ -11,6 +11,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::BaseNodeError;
+
 const DOCK_KEM_FILE: &str = "dock-kem.json";
 const AGENT_SIGN_KEYS_FILE: &str = "agent-sign-keys.json";
 const DOCK_SEAL_KEY_FILE: &str = "dock-seal.key";
@@ -116,16 +118,13 @@ fn write_secret_json(path: &Path, json: &str) -> std::io::Result<()> {
 }
 
 /// Resolve AES-256 seal key: AEP_DOCK_SEAL_KEY (64 hex chars) or local dock-seal.key.
-fn resolve_seal_key(data_dir: &Path) -> Result<[u8; 32], String> {
+fn resolve_seal_key(data_dir: &Path) -> Result<[u8; 32], BaseNodeError> {
     if let Ok(hex_key) = std::env::var("AEP_DOCK_SEAL_KEY") {
         let trimmed = hex_key.trim();
         if !trimmed.is_empty() {
-            let bytes = hex::decode(trimmed).map_err(|e| format!("AEP_DOCK_SEAL_KEY decode: {e}"))?;
+            let bytes = hex::decode(trimmed).map_err(|e| BaseNodeError::SealKeyDecode(e.to_string()))?;
             if bytes.len() != 32 {
-                return Err(format!(
-                    "AEP_DOCK_SEAL_KEY must be 32 bytes (64 hex chars), got {}",
-                    bytes.len()
-                ));
+                return Err(BaseNodeError::SealKeyLength(bytes.len()));
             }
             let mut out = [0u8; 32];
             out.copy_from_slice(&bytes);
@@ -135,18 +134,11 @@ fn resolve_seal_key(data_dir: &Path) -> Result<[u8; 32], String> {
     let path = dock_seal_key_path(data_dir);
     if path.exists() {
         if !secret_file_permissions_ok(&path) {
-            return Err(format!(
-                "dock-seal.key at {} has unsafe permissions (need 0600, owner euid)",
-                path.display()
-            ));
+            return Err(BaseNodeError::SealKeyPermissions { path: path.display().to_string() });
         }
-        let raw = fs::read(&path).map_err(|e| e.to_string())?;
+        let raw = fs::read(&path)?;
         if raw.len() != 32 {
-            return Err(format!(
-                "dock-seal.key must be 32 bytes, got {} at {}",
-                raw.len(),
-                path.display()
-            ));
+            return Err(BaseNodeError::SealKeyFileLength { got: raw.len(), path: path.display().to_string() });
         }
         let mut out = [0u8; 32];
         out.copy_from_slice(&raw);
@@ -156,58 +148,59 @@ fn resolve_seal_key(data_dir: &Path) -> Result<[u8; 32], String> {
     let mut key = [0u8; 32];
     rand::thread_rng().fill_bytes(&mut key);
     if let Some(parent) = path.parent() {
-        ensure_private_dir(parent).map_err(|e| e.to_string())?;
+        ensure_private_dir(parent)?;
     }
-    fs::write(&path, key).map_err(|e| e.to_string())?;
+    fs::write(&path, key)?;
     restrict_secret_file_permissions(&path);
     Ok(key)
 }
 
-fn seal_plaintext(data_dir: &Path, plaintext: &[u8]) -> Result<String, String> {
+fn seal_plaintext(data_dir: &Path, plaintext: &[u8]) -> Result<String, BaseNodeError> {
     let key = resolve_seal_key(data_dir)?;
-    let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| e.to_string())?;
+    let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| BaseNodeError::Crypto(e.to_string()))?;
     let mut nonce_bytes = [0u8; 12];
     rand::thread_rng().fill_bytes(&mut nonce_bytes);
     let nonce = Nonce::from_slice(&nonce_bytes);
     let ct = cipher
         .encrypt(nonce, plaintext)
-        .map_err(|e| format!("seal encrypt: {e}"))?;
+        .map_err(|e| BaseNodeError::SealEncrypt(e.to_string()))?;
     let env = SealedEnvelope {
         v: 2,
         alg: "aes-256-gcm".into(),
         nonce_hex: hex::encode(nonce_bytes),
         ciphertext_hex: hex::encode(ct),
     };
-    serde_json::to_string_pretty(&env).map_err(|e| e.to_string())
+    Ok(serde_json::to_string_pretty(&env)?)
 }
 
-fn open_sealed_or_plaintext(data_dir: &Path, raw: &str) -> Result<String, String> {
+fn open_sealed_or_plaintext(data_dir: &Path, raw: &str) -> Result<String, BaseNodeError> {
     let trimmed = raw.trim();
     // v2 sealed envelope
     if let Ok(env) = serde_json::from_str::<SealedEnvelope>(trimmed) {
         if env.v != 2 || env.alg != "aes-256-gcm" {
-            return Err(format!("unsupported sealed envelope v={} alg={}", env.v, env.alg));
+            return Err(BaseNodeError::SealedEnvelopeUnsupported { v: env.v, alg: env.alg.clone() });
         }
         let key = resolve_seal_key(data_dir)?;
-        let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| e.to_string())?;
-        let nonce_bytes = hex::decode(&env.nonce_hex).map_err(|e| e.to_string())?;
+        let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| BaseNodeError::Crypto(e.to_string()))?;
+        let nonce_bytes = hex::decode(&env.nonce_hex)?;
         if nonce_bytes.len() != 12 {
-            return Err("sealed envelope nonce must be 12 bytes".into());
+            return Err(BaseNodeError::SealedEnvelopeNonce);
         }
-        let ct = hex::decode(&env.ciphertext_hex).map_err(|e| e.to_string())?;
+        let ct = hex::decode(&env.ciphertext_hex)?;
         let nonce = Nonce::from_slice(&nonce_bytes);
         let pt = cipher
             .decrypt(nonce, ct.as_ref())
-            .map_err(|_| "sealed envelope decrypt failed (wrong seal key or corrupt file)".to_string())?;
-        return String::from_utf8(pt).map_err(|e| e.to_string());
+            .map_err(|_| BaseNodeError::SealedEnvelopeDecrypt)?;
+        return Ok(String::from_utf8(pt)?);
     }
     // Legacy v1 plaintext JSON (still accepted; re-sealed on write)
     Ok(trimmed.to_string())
 }
 
-fn write_sealed_secret(data_dir: &Path, path: &Path, plaintext_json: &str) -> Result<(), String> {
+fn write_sealed_secret(data_dir: &Path, path: &Path, plaintext_json: &str) -> Result<(), BaseNodeError> {
     let sealed = seal_plaintext(data_dir, plaintext_json.as_bytes())?;
-    write_secret_json(path, &sealed).map_err(|e| e.to_string())
+    write_secret_json(path, &sealed)?;
+    Ok(())
 }
 
 /// Load dock KEM or create once if absent.
@@ -215,7 +208,7 @@ fn write_sealed_secret(data_dir: &Path, path: &Path, plaintext_json: &str) -> Re
 /// TASK-A28-H05: never silently regenerate a new identity over a corrupt or
 /// world-readable existing key file (that would replace docking identity
 /// without detection). Force rotation only with `AEP_DOCK_KEM_FORCE_REGEN=1`.
-pub fn try_load_or_create_dock_kem(data_dir: &Path) -> Result<KemKeypair, String> {
+pub fn try_load_or_create_dock_kem(data_dir: &Path) -> Result<KemKeypair, BaseNodeError> {
     let path = dock_kem_path(data_dir);
     if path.exists() {
         let perms_ok = secret_file_permissions_ok(&path);
@@ -234,10 +227,7 @@ pub fn try_load_or_create_dock_kem(data_dir: &Path) -> Result<KemKeypair, String
                     ) {
                         if !public.is_empty() && !secret.is_empty() {
                             if !perms_ok {
-                                return Err(format!(
-                                    "dock-kem at {} has world/group-readable permissions; refusing load (chmod 0600 and set AEP_DOCK_KEM_FORCE_REGEN=1 only after operator rotation)",
-                                    path.display()
-                                ));
+                                return Err(BaseNodeError::DockKemPermissions { path: path.display().to_string() });
                             }
                             // Migrate legacy plaintext to sealed v2 on load when possible.
                             if serde_json::from_str::<SealedEnvelope>(raw.trim()).is_err() {
@@ -257,10 +247,7 @@ pub fn try_load_or_create_dock_kem(data_dir: &Path) -> Result<KemKeypair, String
             .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
             .unwrap_or(false);
         if !force {
-            return Err(format!(
-                "corrupt or unreadable dock-kem at {}; refusing silent regeneration (set AEP_DOCK_KEM_FORCE_REGEN=1 to rotate)",
-                path.display()
-            ));
+            return Err(BaseNodeError::DockKemCorrupt { path: path.display().to_string() });
         }
         tracing::warn!(path = %path.display(), "AEP_DOCK_KEM_FORCE_REGEN set; rotating dock KEM");
     }
@@ -269,7 +256,7 @@ pub fn try_load_or_create_dock_kem(data_dir: &Path) -> Result<KemKeypair, String
         public_hex: hex::encode(&kem.public),
         secret_hex: hex::encode(&kem.secret),
     };
-    let json = serde_json::to_string_pretty(&file).map_err(|e| e.to_string())?;
+    let json = serde_json::to_string_pretty(&file)?;
     write_sealed_secret(data_dir, &path, &json)?;
     Ok(kem)
 }
@@ -395,24 +382,78 @@ impl AgentSignKeyStore {
         }
     }
 
-    pub fn get_or_create(&mut self, agent_id: &str) -> Result<SignKeypair, String> {
+    fn force_regen() -> bool {
+        std::env::var("AEP_AGENT_SIGN_KEYS_FORCE_REGEN")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false)
+    }
+
+    fn validate_agent_id(agent_id: &str) -> Result<(), BaseNodeError> {
+        let t = agent_id.trim();
+        if t.is_empty() {
+            return Err(BaseNodeError::AgentIdEmpty);
+        }
+        if t.len() > 128 {
+            return Err(BaseNodeError::AgentIdTooLong);
+        }
+        if t.chars().any(|c| {
+            !(c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' || c == ':')
+        }) {
+            return Err(BaseNodeError::AgentIdChars);
+        }
+        Ok(())
+    }
+
+    /// Lookup a provisioned agent sign key. Does not mint.
+    /// AEP28-ENV-046: first-mint is not the identity issuer.
+    pub fn get(&self, agent_id: &str) -> Result<SignKeypair, BaseNodeError> {
+        Self::validate_agent_id(agent_id)?;
         if let Some(existing) = self.keys.get(agent_id) {
             return Ok(existing.clone());
         }
         if self.permissions_poisoned {
             tracing::error!(
                 agent_id,
-                "refusing get_or_create: agent-sign-keys load poisoned (permissions or corrupt seal)"
+                "refusing get: agent-sign-keys load poisoned (permissions or corrupt seal)"
             );
-            return Err(
-                "agent-sign-keys load poisoned; fix mode 0600 / seal key or set AEP_AGENT_SIGN_KEYS_FORCE_REGEN=1 before minting keys"
-                    .into(),
+            return Err(BaseNodeError::SignKeysPoisoned);
+        }
+        Err(BaseNodeError::SignKeyMissing { agent_id: agent_id.to_string() })
+    }
+
+    /// Operator provision: the only mint path for agent sign keys (AEP28-ENV-046).
+    /// Idempotent when the agent already has a key unless AEP_AGENT_SIGN_KEYS_FORCE_REGEN=1.
+    pub fn provision(&mut self, agent_id: &str) -> Result<SignKeypair, BaseNodeError> {
+        Self::validate_agent_id(agent_id)?;
+        let force = Self::force_regen();
+        if self.permissions_poisoned && !force {
+            tracing::error!(
+                agent_id,
+                "refusing provision: agent-sign-keys load poisoned (permissions or corrupt seal)"
             );
+            return Err(BaseNodeError::SignKeysPoisoned);
+        }
+        if self.permissions_poisoned && force {
+            tracing::warn!(
+                agent_id,
+                "AEP_AGENT_SIGN_KEYS_FORCE_REGEN set; clearing poison so operator provision can mint"
+            );
+            self.permissions_poisoned = false;
+        }
+        if let Some(existing) = self.keys.get(agent_id) {
+            if !force {
+                return Ok(existing.clone());
+            }
         }
         let sign = generate_sign_keypair();
         self.keys.insert(agent_id.to_string(), sign.clone());
         self.dirty = true;
         Ok(sign)
+    }
+
+    /// Lookup only. First-mint is not the identity issuer (AEP28-ENV-046).
+    pub fn get_or_create(&mut self, agent_id: &str) -> Result<SignKeypair, BaseNodeError> {
+        self.get(agent_id)
     }
 
     pub fn public_for(&self, agent_id: &str) -> Option<Vec<u8>> {
@@ -505,7 +546,7 @@ mod tests {
     fn agent_sign_keys_persist() {
         let dir = tempfile::tempdir().expect("tempdir");
         let mut store = AgentSignKeyStore::load(dir.path());
-        let key = store.get_or_create("AG-TEST").expect("key");
+        let key = store.provision("AG-TEST").expect("key");
         store.flush().expect("flush");
         let reloaded = AgentSignKeyStore::load(dir.path());
         assert_eq!(
@@ -545,7 +586,7 @@ mod tests {
         restrict_secret_file_permissions(&path);
         let err = try_load_or_create_dock_kem(dir.path()).unwrap_err();
         assert!(
-            err.contains("refusing silent regeneration"),
+            err.to_string().contains("refusing silent regeneration"),
             "unexpected err: {err}"
         );
     }
@@ -582,7 +623,7 @@ mod tests {
         restrict_secret_file_permissions(&path);
         std::env::set_var("AEP_AGENT_SIGN_KEYS_FORCE_REGEN", "1");
         let mut store = AgentSignKeyStore::load(dir.path());
-        let key = store.get_or_create("AG-ROTATE").expect("remint with force");
+        let key = store.provision("AG-ROTATE").expect("remint with force");
         store.flush().expect("flush after force");
         std::env::remove_var("AEP_AGENT_SIGN_KEYS_FORCE_REGEN");
         let reloaded = AgentSignKeyStore::load(dir.path());
@@ -609,6 +650,58 @@ mod tests {
     }
 
     #[test]
+    fn first_mint_get_or_create_is_not_the_issuer() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::remove_var("AEP_AGENT_SIGN_KEYS_FORCE_REGEN");
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut store = AgentSignKeyStore::load(dir.path());
+        let err = store.get_or_create("AG-NEW").expect_err("first-mint must not issue");
+        assert!(
+            err.to_string().contains("no provisioned sign key"),
+            "unexpected err: {err}"
+        );
+        assert!(store.public_for("AG-NEW").is_none());
+    }
+
+    #[test]
+    fn provision_is_the_identity_issuer() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::remove_var("AEP_AGENT_SIGN_KEYS_FORCE_REGEN");
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut store = AgentSignKeyStore::load(dir.path());
+        let key = store.provision("AG-OP").expect("provision");
+        store.flush().expect("flush");
+        let got = store.get("AG-OP").expect("get after provision");
+        assert_eq!(got.public, key.public);
+        let reloaded = AgentSignKeyStore::load(dir.path());
+        assert_eq!(
+            reloaded.public_for("AG-OP").as_deref(),
+            Some(key.public.as_slice())
+        );
+    }
+
+    #[test]
+    fn empty_agent_id_refused() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut store = AgentSignKeyStore::load(dir.path());
+        assert!(store.provision("").is_err());
+        assert!(store.provision("   ").is_err());
+        assert!(store.get("").is_err());
+    }
+
+    #[test]
+    fn provision_idempotent_without_force() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::remove_var("AEP_AGENT_SIGN_KEYS_FORCE_REGEN");
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut store = AgentSignKeyStore::load(dir.path());
+        let a = store.provision("AG-SAME").expect("a");
+        let b = store.provision("AG-SAME").expect("b");
+        assert_eq!(a.public, b.public);
+        assert_eq!(a.secret, b.secret);
+    }
+
+    #[test]
     fn migrates_legacy_plaintext_to_sealed() {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dock_kem_path(dir.path());
@@ -623,5 +716,24 @@ mod tests {
         let raw = fs::read_to_string(&path).unwrap();
         assert!(raw.contains("aes-256-gcm"));
         assert!(!raw.contains(&legacy.secret_hex));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn world_readable_dock_kem_refuses_load() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::remove_var("AEP_DOCK_KEM_FORCE_REGEN");
+        let dir = tempfile::tempdir().expect("tempdir");
+        let _kem = load_or_create_dock_kem(dir.path());
+        let path = dock_kem_path(dir.path());
+        use std::os::unix::fs::PermissionsExt;
+        let mut p = fs::metadata(&path).expect("meta").permissions();
+        p.set_mode(0o644);
+        fs::set_permissions(&path, p).expect("chmod 0644");
+        let err = try_load_or_create_dock_kem(dir.path()).unwrap_err();
+        assert!(
+            err.to_string().contains("world/group-readable") || err.to_string().contains("refusing load"),
+            "unexpected err: {err}"
+        );
     }
 }

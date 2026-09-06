@@ -1,0 +1,13 @@
+@PAD: aep-one-live-evaluation-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-one-live-evaluation
+version: 0.1.0
+kind: library
+path: AEP-Components/one-live-evaluation/
+ticket: AEP28-ENV-037
+requires: aep-admit aep-admit-live-dock aep-envelope aep-live-entry
+capability: admit.one-live-evaluation
+note: One live evaluation. Wall crates compile extra walls. aep_envelope admit_with_extra is the one Admit function. Then Apply.

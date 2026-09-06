@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.8.x] - 2026-09-05 - Daemon stop drains dock tasks and closes SQLite
+
+### Changed
+After the stop signal, serve loops stop accepting, dock tasks join, Unix sockets unlink and SQLite closes before process exit. Production mutex poison still returns ok false with a deny rather than a panic.
+
+### Added
+scripts/gate-aep28-env-080.sh greps crate src excluding tests for lock expect and runs cargo test -p aep-base-node --lib.
+
+## [2.8.x] - 2026-09-05 - ClosedWall class on DenyReport
+
+### Changed
+DenyReport closed walls now carry a class of writing, security, temporal, capability, poison or structural. A writing deny is not a transport failure. EPSCOM writing walls stay protocol law at priority 255. docking.rs stays one file. Digest replay and KEM failures report security. Drift, pulse age, wire freshness and future skew report temporal. agent_may reports capability. Mutex poison reports poison. Unbound scene, dock and sequence report structural.
+
+### Added
+scripts/gate-aep28-env-076.sh fails if ClosedWall lacks class or EPSCOM_PRIORITY is not 255.
+
 ## [2.8.0] - 2026-09-04 - Every opened message meets the kernel checks
 
 The AEP 2.8 library now treats Base Node as the kernel: after a sealed lattice frame (the encrypted capsule on the wire) is opened, the kernel freezes the clock at seal, waits 1000 ms, then runs the check that every opened message is supposed to meet. Putting a frame on the dock is not that check. After the wait the client asks for the result by the capsule hash so a deny names the closed walls and an allow returns an event id. A missing scene, dock, timestamp or sequence fails those checks. Stored past allows stay forensic and do not skip the check. TypeScript dynAEP stays a standalone component. Universal Connect Bridge stays an optional attach for foreign stacks.

@@ -8,11 +8,11 @@ actions:
     parents: []
     children: ["action:write"]
     constraints: []
-    trust_floor: 1
+    agent_may: []
   action:write:
     label: write
     category: agent_action
     parents: ["root:ping"]
     children: []
     constraints: []
-    trust_floor: 2
+    agent_may: ["agent-a"]

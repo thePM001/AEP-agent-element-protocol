@@ -211,7 +211,7 @@ matches.
 ```
 
 **When Emitted:** Produced for every lattice-addressed event that
-is leftover TypeScript LatticeFilter history. Reference attach after a sealed lattice frame is Base Node collect-all Admit and the 15-rule meet.
+is leftover TypeScript LatticeFilter history. Reference attach after a sealed lattice frame is Base Node collect-all Admit then Apply. Fifteen named rows are a derived ledger.
 
 **Layer:** Produced by the Bridge (Lattice Filter stage). Consumed by
 the Bridge pipeline dispatcher and the event caller.

@@ -34,7 +34,11 @@ func platformSetupWrap(ctx context.Context, wrapResp types.WrapInitResponse, ses
 	if wrapResp.PtraceMode {
 		notifySocket := wrapResp.NotifySocket
 
-		env := buildWrapEnv(wrapenv.Filter(os.Environ(), wrapResp.EnvPolicy), sessID, cfg.serverAddr, wrapResp.SafeToBypassShellShim)
+		filtered, ferr := wrapenv.Filter(os.Environ(), wrapResp.EnvPolicy)
+		if ferr != nil {
+			return nil, fmt.Errorf("wrap env policy: %w", ferr)
+		}
+		env := buildWrapEnv(filtered, sessID, cfg.serverAddr, wrapResp.SafeToBypassShellShim)
 		// Overlay sandbox.env_inject so injected vars reach the command in
 		// ptrace mode too, matching the seccomp/shim paths (issue #374).
 		env = envinject.Apply(env, wrapResp.EnvInject)
@@ -137,8 +141,14 @@ func platformSetupWrap(ctx context.Context, wrapResp types.WrapInitResponse, ses
 		}
 	}
 
+	// Fail-closed env filter before any socket resources (AEP28-ENV-026).
+	filtered, ferr := wrapenv.Filter(os.Environ(), wrapResp.EnvPolicy)
+	if ferr != nil {
+		return nil, fmt.Errorf("wrap env policy: %w", ferr)
+	}
+
 	// Build env for the wrapped process
-	env := buildWrapEnv(wrapenv.Filter(os.Environ(), wrapResp.EnvPolicy), sessID, cfg.serverAddr, wrapResp.SafeToBypassShellShim)
+	env := buildWrapEnv(filtered, sessID, cfg.serverAddr, wrapResp.SafeToBypassShellShim)
 	// Overlay operator-configured sandbox.env_inject (override semantics)
 	// before the internal markers, matching the shim and server-spawned exec
 	// paths so injected vars reach the executed command (issue #374).

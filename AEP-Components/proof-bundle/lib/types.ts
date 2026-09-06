@@ -1,8 +1,7 @@
 import type { AgentIdentity } from "../../identity/lib/types.js";
 import type { CovenantSpec } from "../../covenant/lib/types.js";
 import type { SessionReport } from "../../session/lib/session.js";
-import type { TrustTier } from "../../trust-rings/lib/trust/types.js";
-import type { ExecutionRing } from "../../trust-rings/lib/rings/types.js";
+import type { TrustTier } from "../../../retired-archive/retired/trust-rings/lib/trust/types.js";
 import type { TaskTree } from "../../decomposition/lib/types.js";
 
 export interface TrustScore {
@@ -56,7 +55,7 @@ export interface ProofBundle {
   merkleRoot: string;
   entryCount: number;
   trustScore: TrustScore;
-  ring: ExecutionRing;
+  isolation_class: string;
   driftScore: number;
   ledgerHash: string;
   signature: string;

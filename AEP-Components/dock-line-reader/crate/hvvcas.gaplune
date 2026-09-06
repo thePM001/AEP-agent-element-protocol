@@ -1,0 +1,44 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-dock-line-reader
+ticket: AEP28-ENV-053
+note: Durable HVVCAS is GAPLUNE. Dock line reader must not read one byte per await up to 4MiB. Use fill_buf and consume.
+
+component:
+  name: read_line_limited
+  domain: lattice
+  component_type: service
+  intent: Read one dock line using fill_buf and consume. Cap at max_bytes. Do not await one byte.
+  input:
+    name: max_bytes
+    type: usize
+  output:
+    name: line
+    type: String
+
+component:
+  name: scan_no_one_byte_await
+  domain: lattice
+  component_type: service
+  intent: Fail if production dock line reader still awaits one byte up to the 4MiB cap
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_fill_buf_consume
+  domain: lattice
+  component_type: service
+  intent: Fail if production dock line reader does not fill_buf and consume
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String

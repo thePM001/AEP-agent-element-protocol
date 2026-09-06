@@ -5,7 +5,9 @@ format: gaplune
 json_prohibited: true
 id: AEP28-ENV-006
 title: Live crossing is Admit collect-all then Apply only
-status: backlog
+status: closed
+closed: 2026-09-01
+close_reason: Operator ordered 2026-09-01 board close of AEP28-ENV-001 through 024. Fresh product tickets only after code analysis. No journal-only tickets.
 priority: P0
 track: aep28-envelope-algebra
 wave: algebra
@@ -15,4 +17,4 @@ depends_on: AEP28-ENV-001 AEP28-ENV-002 AEP28-ENV-003 AEP28-ENV-004 AEP28-ENV-00
 scope: AEP-Components/admit AEP-Components/dynAEP AEP-SDKs/typescript/dynaep
 notes: filterCrossing compiles walls, admitCollectAll, then Apply iff allow. No OPA evaluate, no 15-step runner, no PolicyEvaluator on live action_path. applied=false when any wall is closed. Out of scope: 15-step as live Envelope.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/admit/crate
-updated: 2026-08-21
+updated: 2026-09-01

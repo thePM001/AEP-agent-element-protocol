@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-047-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-047
+title: Length-prefixed frame header binding. Reject pipe characters in ids.
+status: closed
+priority: P0
+track: aep28-kernel
+wave: fail-closed-lattice
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Components/lattice-channels/crate/src/lib.rs AEP-Components/wasm/crate/src/main.rs AEP-Components/frame-header-binding/crate
+notes: Closed. Frame header binding is length-prefixed aep-frame-v2. Ids that contain delimiter 0x7c are rejected. wasm uses fallible frame_binding_from.
+acceptance: Length-prefixed binding. Delimiter 0x7c in ids is Deny. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/frame-header-binding/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/frame-header-binding/crate
+updated: 2026-09-02

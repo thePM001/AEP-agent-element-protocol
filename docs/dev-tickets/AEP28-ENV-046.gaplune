@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-046-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-046
+title: Mint agent sign keys only via an operator provision command. Stop first-mint as the identity issuer.
+status: closed
+priority: P0
+track: aep28-kernel
+wave: fail-closed-lattice
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Base-Node/crate/src/dock_keys.rs AEP-Base-Node/crate/src/main.rs AEP-Base-Node/crate/src/lattice_log.rs AEP-Components/agent-sign-key-provision/crate
+notes: Closed. Agent sign keys mint only via aep-base-node --provision-agent-sign-key --agent-id. get_or_create is lookup only. lattice log and self-test do not first-mint.
+acceptance: Operator provision is the only mint path. First-mint get_or_create does not issue identity. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/agent-sign-key-provision/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/agent-sign-key-provision/crate
+updated: 2026-09-02

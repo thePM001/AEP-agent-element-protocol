@@ -6,7 +6,7 @@ use aep_agentmesh::{create_bundle, rotate_on_trust_change};
 use aep_base_node::{open_lattice_db, process_request, DockingRuntime};
 use aep_lattice_channel::{build_frame, open_frame, ContractRegistry, DockingPort};
 use aep_lattice_crypto::{generate_kem_keypair, generate_sign_keypair, open, seal};
-use aep_potomitan::{detect_network_mode, MeshMode, MeshPeer, MeshSupervisor};
+use aep_potomitan::{detect_network_mode, MemoryFabric, MeshMode, MeshPeer, MeshSupervisor};
 use serde::Serialize;
 
 
@@ -49,7 +49,7 @@ const CHECKS: &[Check] = &[
     },
     Check {
         id: "CC-03",
-        name: "AgentMesh mTLS fingerprint rotates on trust tier change",
+        name: "AgentMesh mTLS fingerprint stays when trust_score changes",
         run: cc_agentmesh_trust_rotation,
     },
     Check {
@@ -91,6 +91,11 @@ const CHECKS: &[Check] = &[
         id: "CC-14",
         name: "Plain event wire format rejected (side-channel defense)",
         run: cc_plain_event_rejected,
+    },
+    Check {
+        id: "CC-15",
+        name: "POTOMITAN mesh packet plane send and recv",
+        run: cc_potomitan_packet_plane,
     },
 ];
 
@@ -163,11 +168,49 @@ fn cc_agentmesh_trust_rotation() -> Result<(), String> {
     let mut bundle = create_bundle("AG-TRUST-CONF", 850, b"pk", vec![], 1_700_000_000);
     let fp_high = bundle.mtls.cert_fingerprint.clone();
     rotate_on_trust_change(&mut bundle, 450, 1_700_000_100);
-    if bundle.mtls.cert_fingerprint == fp_high {
-        return Err("trust tier demotion did not rotate mTLS fingerprint".into());
+    if bundle.mtls.cert_fingerprint != fp_high {
+        return Err("numeric trust_score rotated AgentMesh cert state".into());
     }
     if bundle.trust_score != 450 {
         return Err("trust score not updated".into());
+    }
+    Ok(())
+}
+
+
+fn cc_potomitan_packet_plane() -> Result<(), String> {
+    let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(dir.path().join("a")).map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(dir.path().join("b")).map_err(|e| e.to_string())?;
+    let fabric = MemoryFabric::new();
+    let mut a = MeshSupervisor::load(&dir.path().join("a"), false);
+    let mut b = MeshSupervisor::load(&dir.path().join("b"), false);
+    a.upsert_peer(MeshPeer {
+        node_id: "b".into(),
+        endpoint: "mem://b".into(),
+        public_key_hex: None,
+        active: true,
+    })
+    .map_err(|e| e.to_string())?;
+    b.upsert_peer(MeshPeer {
+        node_id: "a".into(),
+        endpoint: "mem://a".into(),
+        public_key_hex: None,
+        active: true,
+    })
+    .map_err(|e| e.to_string())?;
+    a.open_memory_plane("a".into(), fabric.clone());
+    b.open_memory_plane("b".into(), fabric);
+    a.send_packet("b", b"cc-plane".to_vec()).map_err(|e| e.to_string())?;
+    let got = b
+        .poll_packet()
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| String::from("missing packet"))?;
+    if got.payload != b"cc-plane" {
+        return Err(String::from("payload mismatch"));
+    }
+    if got.src != "a" {
+        return Err(String::from("src mismatch"));
     }
     Ok(())
 }

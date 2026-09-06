@@ -1,0 +1,38 @@
+@PAD: nla-dev-ticket-AEP28-ENV-043-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-043
+title: Partition satisfied_actions by agent or session so parent closure cannot leak across agents (TM-24).
+status: closed
+priority: P0
+track: aep28-kernel
+wave: fail-closed-lattice
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-042
+scope: AEP-Components/envelope/crate/src/lib.rs AEP-Components/dynAEP/crate/src/lib.rs AEP-Components/admit-channel-order-walls/crate/src/lib.rs AEP-SDKs/typescript/dynaep/src/protocol/action-lattice.ts AEP-Components/satisfied-actions-partition/crate
+notes: Closed. Agent B child is Deny when only agent A satisfied the agent_action parent. System event parents stay visible in the same session. Session prefix isolates snapshots that carry session_id. Hangar tools stay out of this ticket.
+acceptance: Agent B child is Deny when only agent A satisfied the agent_action parent. System event parents remain visible in the same session. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/envelope/crate and AEP-Components/satisfied-actions-partition/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/envelope/crate
+updated: 2026-09-02
+gitea_commits:
+  envelope_lib: 398cd5b1a8bcac5ef226332de28f34589e465485
+  lattice_yaml: 5c395c75c715bdeea88abe0266cb9ad7fb607c16
+  dynaep_lib: fad8351f2e9999a523d6e4290701b0dc4d408e56
+  live_entry: d3a8851cb9db2e6893b13da643b03ea0576fdbbd
+  compile_lattice: 25b395f636f58d446e6e42cda2d6c9997395a74a
+  channel_order: 9989051ba69f64b57efae284a29d3d0c19969cb7
+  sdk_action_lattice: 9ac8cf30269c11c4ec95b68354daea974bca24d6
+  bridge_action_lattice: f06c7629b171f3fce4367174cdb590cfb29de1b6
+  action_lattice_test: b96918d2d419d9ea0a076ce963cea9fa220c6db1
+  crate_lib: 4d0217d02062f8c34da8768c89337261d15492f7
+  crate_main: dfc7cddda295f8d7c93f2e53744126e3c84afc35
+  crate_cargo: d5af5d1a0125b9e0a78b25510865e8631da6e2bb
+  hvvcas: 6496b457441c126ee9f0469a45911908c0e7e0f7
+  registration: 8ecf012929413570ad62c80550d672cc75d40c28
+  workspace: e88396031a28dd1e4fc8e14cca84b69eff85919c
+  changelog: 536682ffda0c4adf69fb3d222fbe7bfd14fe790a
+  gate: 44da30f4c175d8f5449a9c91e365ffe6c1ec0fe3
+  scorecard: f2fb0278677f7f933b973529482455a45c27882d

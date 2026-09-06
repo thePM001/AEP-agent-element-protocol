@@ -5,5 +5,5 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-cargo test -p aep-envelope-algebra --lib
+cargo test -p aep-base-node --test source_invariants
 echo "[gate-aep28-env-008] OK crate order collect-all and Apply skip"

@@ -5,8 +5,9 @@
   },
   "pattern": {
     "guard": "true",
+    "wrap": "health",
     "constraints": [
-      "hard: restrict PHI access to privileged trust tier agents only",
+      "hard: restrict PHI access to agents listed in agent_may only",
       "hard: record immutable hash-chained audit entry for every PHI-touching action",
       "hard: verify Merkle integrity on every evidence export",
       "hard: require authenticated agent identity before PHI tool invocation",
@@ -23,10 +24,13 @@
   },
   "metadata": {
     "provenance": "aep.reference.compliance.hipaa",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "stability": "stable",
-    "trust_ring": "security",
+    "agent_may": [
+      "*"
+    ],
     "lrp_id": "hipaa",
-    "framework": "HIPAA"
+    "framework": "HIPAA",
+    "aep_version": "2.8.5"
   }
 }

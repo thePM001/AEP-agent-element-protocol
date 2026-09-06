@@ -2,52 +2,52 @@
 
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { loadPolicy } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/policy-engine/lib/policy/loader.js";
-import { EvidenceLedger } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/evidence-ledger/lib/ledger/ledger.js";
-import { OfflineLedger } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/evidence-ledger/lib/ledger/offline.js";
-import { AEPProxyServer } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/proxy/lib/mcp-proxy.js";
-import { ShellProxy } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/proxy/lib/shell-proxy.js";
-import { parseCovenant } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/covenant/lib/parser.js";
-import { evaluateCovenant } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/covenant/lib/evaluator.js";
-import { generateClaudeCodeCommand, generateCursorRule, generateCodexAgentSection } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/aepassist/lib/assist/slash-commands.js";
-import { AEPassistant } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/aepassist/lib/aepassist/assistant.js";
+import { loadPolicy } from "../../../../AEP-Components/policy-engine/lib/policy/loader.js";
+import { EvidenceLedger } from "../../../../AEP-Components/evidence-ledger/lib/ledger/ledger.js";
+import { OfflineLedger } from "../../../../AEP-Components/evidence-ledger/lib/ledger/offline.js";
+import { AEPProxyServer } from "../../../../AEP-Components/proxy/lib/mcp-proxy.js";
+import { ShellProxy } from "../../../../AEP-Components/proxy/lib/shell-proxy.js";
+import { parseCovenant } from "../../../../AEP-Components/covenant/lib/parser.js";
+import { evaluateCovenant } from "../../../../AEP-Components/covenant/lib/evaluator.js";
+import { generateClaudeCodeCommand, generateCursorRule, generateCodexAgentSection } from "../../../../AEP-Components/aepassist/lib/assist/slash-commands.js";
+import { AEPassistant } from "../../../../AEP-Components/aepassist/lib/aepassist/assistant.js";
 import { AgentGateway } from "./gateway.js";
 import { AgentIdentityManager } from "../../../../AEP-Components/identity/lib/manager.js";
 import { ProofBundleVerifier } from "../../../../AEP-Components/proof-bundle/lib/verifier.js";
-import { ProofBundleBuilder } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/proof-bundle/lib/builder.js";
-import { DEFAULT_RELIABILITY_WEIGHTS } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/proof-bundle/lib/types.js";
-import { EvalRunner } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/eval/lib/runner.js";
-import { RuleGenerator } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/eval/lib/rule-generator.js";
-import { DatasetManager } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/datasets/lib/manager.js";
-import { PromptOptimizer } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/optimization/lib/optimizer.js";
-import { PromptVersionManager } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/optimization/lib/versioning.js";
-import type { EvalDataset } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/eval/lib/types.js";
-import { GovernedModelGateway } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/model-gateway/lib/gateway.js";
-import { ModelConfigSchema, ModelRequestSchema } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/model-gateway/lib/types.js";
-import type { ModelProvider } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/model-gateway/lib/types.js";
-import { KnowledgeBaseManager } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/knowledge-base/lib/knowledge/manager.js";
-import { createDefaultPipeline } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/scanners/lib/pipeline.js";
-import { DataProfileScanner } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/scanners/lib/profiler.js";
-import { MLMetrics } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/eval/lib/metrics.js";
-import type { MLMetricsReport } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/eval/lib/metrics.js";
-import { createFineTuningWorkflow } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/workflow/lib/templates/fine-tuning.js";
-import { WorkflowExecutor } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/workflow/lib/executor.js";
+import { ProofBundleBuilder } from "../../../../AEP-Components/proof-bundle/lib/builder.js";
+import { DEFAULT_RELIABILITY_WEIGHTS } from "../../../../AEP-Components/proof-bundle/lib/types.js";
+import { EvalRunner } from "../../../../AEP-Components/eval/lib/runner.js";
+import { RuleGenerator } from "../../../../AEP-Components/eval/lib/rule-generator.js";
+import { DatasetManager } from "../../../../AEP-Components/datasets/lib/manager.js";
+import { PromptOptimizer } from "../../../../AEP-Components/optimization/lib/optimizer.js";
+import { PromptVersionManager } from "../../../../AEP-Components/optimization/lib/versioning.js";
+import type { EvalDataset } from "../../../../AEP-Components/eval/lib/types.js";
+import { GovernedModelGateway } from "../../../../AEP-Components/model-gateway/lib/gateway.js";
+import { ModelConfigSchema, ModelRequestSchema } from "../../../../AEP-Components/model-gateway/lib/types.js";
+import type { ModelProvider } from "../../../../AEP-Components/model-gateway/lib/types.js";
+import { KnowledgeBaseManager } from "../../../../AEP-Components/knowledge-base/lib/knowledge/manager.js";
+import { createDefaultPipeline } from "../../../../AEP-Components/scanners/lib/pipeline.js";
+import { DataProfileScanner } from "../../../../AEP-Components/scanners/lib/profiler.js";
+import { MLMetrics } from "../../../../AEP-Components/eval/lib/metrics.js";
+import type { MLMetricsReport } from "../../../../AEP-Components/eval/lib/metrics.js";
+import { createFineTuningWorkflow } from "../../../../AEP-Components/workflow/lib/templates/fine-tuning.js";
+import { WorkflowExecutor } from "../../../../AEP-Components/workflow/lib/executor.js";
 import { validateCommerceRust, invokeCodingGovernanceRust } from "./subprotocol-rust.js";
-import { runPropose } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/coding-governance/lib/propose.mjs";
-import { runSolidify } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/coding-governance/lib/solidify.mjs";
-import { runAnnounce } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/coding-governance/lib/announce.mjs";
-import { explainIntentRich } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/intent-ledger/lib/explain.mjs";
-import { listIntentSnapshots } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/intent-ledger/lib/ledger.mjs";
+import { runPropose } from "../../../../AEP-Components/coding-governance/lib/propose.mjs";
+import { runSolidify } from "../../../../AEP-Components/coding-governance/lib/solidify.mjs";
+import { runAnnounce } from "../../../../AEP-Components/coding-governance/lib/announce.mjs";
+import { explainIntentRich } from "../../../../AEP-Components/intent-ledger/lib/explain.mjs";
+import { listIntentSnapshots } from "../../../../AEP-Components/intent-ledger/lib/ledger.mjs";
 import {
   recordIntentKnot,
   recordIntentKnotDual,
   searchIntentKnots,
   historyIntentKnots,
-} from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/intent-ledger/lib/intent-knots.mjs";
-import { explainIntent } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/intent-ledger/lib/ledger.mjs";
-import { expandHome, defaultPaths } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/wizard/lib/paths.mjs";
-import { FleetManager } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/fleet/lib/manager.js";
-import { FleetAPI } from "../../../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/../../AEP-Components/fleet/lib/api.js";
+} from "../../../../AEP-Components/intent-ledger/lib/intent-knots.mjs";
+import { explainIntent } from "../../../../AEP-Components/intent-ledger/lib/ledger.mjs";
+import { expandHome, defaultPaths } from "../../../../AEP-Components/wizard/lib/paths.mjs";
+import { FleetManager } from "../../../../AEP-Components/fleet/lib/manager.js";
+import { FleetAPI } from "../../../../AEP-Components/fleet/lib/api.js";
 
 const AEP_VERSION = "2.8.0-alpha.1";
 const AEP_VERSION_LABEL = "2.8";
@@ -928,7 +928,7 @@ function handleRing(sessionId: string | undefined): void {
   }
   console.log("Ring inspection requires an active gateway instance.");
   console.log(`Session: ${sessionId}`);
-  console.log("Use the RingManager API programmatically to inspect ring state.");
+  console.log("Who-may-do-what is GAP dimension Conjunction. Rings are not a product member.");
 }
 
 function handleDrift(sessionId: string | undefined): void {
@@ -1047,7 +1047,7 @@ async function handleBundle(args: string[]): Promise<void> {
       console.log(`Created: ${bundle.createdAt}`);
       console.log(`Entries: ${bundle.entryCount}`);
       console.log(`Trust: ${bundle.trustScore.score} (${bundle.trustScore.tier})`);
-      console.log(`Ring: ${bundle.ring}`);
+      console.log(`Isolation class: ${bundle.isolation_class}`);
       console.log(`Drift: ${bundle.driftScore}`);
       console.log(`\nVerification:`);
       console.log(`  Signature: ${result.signatureValid ? "VALID" : "INVALID"}`);

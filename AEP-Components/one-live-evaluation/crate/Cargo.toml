@@ -1,0 +1,20 @@
+# @PAD: aep28-env-037-one-live-evaluation-v1
+# @GCDE: gaplune-decode hmac-sha256:115db0ea8965777b6809965c71d2c898a7da12b87f5315d93c95021dedacf5cc
+[package]
+name = "aep-one-live-evaluation"
+version = "0.1.0"
+edition = "2021"
+description = "AEP28-ENV-037. One live evaluation. One Admit function judges the opened frame."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-one-live-evaluation"
+path = "src/main.rs"
+
+[dependencies]
+aep-admit-live-dock = { path = "../../admit-live-dock/crate" }
+aep-envelope = { path = "../../envelope/crate" }
+aep-live-entry = { path = "../../live-entry/crate" }
+anyhow = "1"
+serde_json = "1"

@@ -1,0 +1,16 @@
+# @PAD: aep28-env-060-python-sdk-path-v1
+# @GCDE: gaplune-decode hmac-sha256:6e28019aecf807c7b36efb74bcf2f8689d34a6ff75af3c893cf4510528c9747b
+[package]
+name = "aep-python-sdk-path"
+version = "0.1.0"
+edition = "2021"
+description = "AEP28-ENV-060. Advertised AEP-SDKs/python path ships a client."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-python-sdk-path"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"

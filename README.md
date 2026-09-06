@@ -1,14 +1,16 @@
 # AEP v 2.8.5 - Agent Element Protocol
 
-**Total AI Output Control - Vertically integrated protocol for all agentic setups**
+**AEP controls AI output. Base Node is the kernel. The library is 4 layers.**
 
 **Version 2.8.5**
-**Author:** thePM_001 ([https://x.com/thePM_001](https://x.com/thePM_001))  on behalf of EPSCOM | IPHCCP | NLA
+**Author:** thePM_001 ([https://x.com/thePM_001](https://x.com/thePM_001))  
 **Licence:** Apache-2.0  
 **Public repository:** [https://github.com/thePM001/AEP-agent-element-protocol](https://github.com/thePM001/AEP-agent-element-protocol)
+**Official tree:** Gitea thePM001/NLA-AEP-v2.8-open-source
+**GitHub is a public mirror.**
 
 **AEP already had 32 Github stars before Grok "accidentally" deleted them on 22.07.2026 !**
-**AEP 2.9 is estimated for completion approximately during September 2026**
+**AEP 2.9 is estimated for completion approximately in September 2026 with many new changes and additional features.**
 
 **How to best explore the basics of AEP ? - Simply copy the repo URL into your LLM chat of choice that has internet search capability (Grok, Gemini, ChatGPT, Opus, etc.) and let the AI explain it to you.**
 
@@ -24,7 +26,7 @@ AEP (Agent Element Protocol) is an advanced deterministic mechanism for total co
 
 ### Every surface the agent can touch
 
-The control mechanism sits in front of interfaces, workflows, REST APIs, machine-learning pipelines, event systems, infrastructure as code, smart contracts and agent commerce and much more, like drones or robots. The AI proposes work, AEP validates it and only compliant output executes.
+The control mechanism sits in front of interfaces, workflows, REST APIs, event systems, infrastructure as code, smart contracts and agent commerce. The AI proposes work, AEP validates it and only compliant output executes.
 
 ## AEP Hyperlattice
 
@@ -88,6 +90,10 @@ flowchart TB
 
 Operator rule: one hyperlattice declaration per governed system. Scene plus action paths plus written policy plus dock channels. Anything less is a broken wrap.
 
+### One kernel sequence
+
+The kernel sequence is seal, freeze, wait, collect-all Admit then Apply. live-entry is the worked scene. Domain subprotocols are attach examples. TypeScript processEvent is not product Admit. CodeSandbox executes agent code as a named live surface.
+
 ## Architecture
 
 **Base Node is the kernel and everything else is an SDK client, a runtime installer or a protocol component.**
@@ -112,21 +118,26 @@ flowchart LR
 | Layer | What it is | Canonical path |
 |-------|------------|----------------|
 | **Kernel** | Mandatory local governance daemon | [`AEP-Base-Node/`](AEP-Base-Node/) |
-| **Hyperlattice wrap** | One mechanism per system: scene + `action_path` + GAP + channels | [`AEP-Components/hyperlattice/`](AEP-Components/hyperlattice/) |
-| **Docks** | UCD egress airlock, validation/inference/wasm docks; **UCB optional** | [`AEP-Docks/`](AEP-Docks/) |
-| **UCB airlock (optional)** | Foreign MCP/HTTP attach only; manifest gate; no invented contracts | [`AEP-Docks/ucb/`](AEP-Docks/ucb/) |
-| **Connectors** | Application connectors (Slack, Jira, AWS, …) | [`AEP-Connectors/`](AEP-Connectors/) |
-| **Coding governance** | Propose a change, measure how far it reaches, lock it; git stays the store | [`AEP-Components/coding-governance/`](AEP-Components/coding-governance/), [`AEP-Subprotocols/coding-governance/`](AEP-Subprotocols/coding-governance/) |
-| **HCSE parser** | aep-hcse parser MCP: symbol graph and detect_changes | [`AEP-Components/hcse/`](AEP-Components/hcse/) |
-| **Protocol components** | Runtime installers (dynAEP, channels, graph-engine, …) | [`AEP-Components/`](AEP-Components/) |
-| **SDK clients** | Thin lattice-gated language bindings | [`AEP-SDKs/`](AEP-SDKs/) |
-| **CCA agent** | Central Setup Agent: probe, plan, execute deployment | [`AEP-Components/cca/`](AEP-Components/cca/) |
-| **CAW Framework** | Execution-layer sandboxes: command wrappers, seccomp, mounts, LLM proxy, lattice audit | [`AEP-Components/caw-framework/`](AEP-Components/caw-framework/) |
-| **Operators** | Agent Composer (Composer Lite), CCA agent, harness, installation wizard | [`AEP-Composer-Lite/`](AEP-Composer-Lite/), [`AEP-User-Experience/`](AEP-User-Experience/), [`AEP-Components/wizard/`](AEP-Components/wizard/) |
-| **Policy** | GAP nodes, presets, subprotocol validators | [`AEP-Policy-System/`](AEP-Policy-System/), [`AEP-Subprotocols/`](AEP-Subprotocols/) |
-| **Multi-base-node (2.8b)** | Federate multiple Base Node kernels via `nodes.json` v2 and lattice channels | [`AEP-Base-Node/multi-base-node/`](AEP-Base-Node/multi-base-node/) |
+| **Protocol** | Runtime protocol components (dynAEP, lattice-channels, graph-engine). Not CAW | [`AEP-Components/`](AEP-Components/) |
+| **Execution companion** | CAW host sandboxes. Not a protocol component | [`AEP-Components/caw-framework/`](AEP-Components/caw-framework/) |
+| **Clients** | Thin lattice-gated language bindings | [`AEP-SDKs/`](AEP-SDKs/) |
 
-The library is counted by this layer table. Folder count is not the library count.
+The library is counted by this four-row layer table. Folder count is not the library count.
+
+### Other surfaces in this tree
+
+| Surface | What it is | Path |
+|---------|------------|------|
+| Hyperlattice wrap | One mechanism per system | [`AEP-Components/hyperlattice/`](AEP-Components/hyperlattice/) |
+| Docks | UCD egress airlock and optional UCB | [`AEP-Docks/`](AEP-Docks/) |
+| UCB airlock (optional) | Foreign MCP or HTTP attach only | [`AEP-Docks/ucb/`](AEP-Docks/ucb/) |
+| Connectors | Application connectors | [`AEP-Connectors/`](AEP-Connectors/) |
+| Coding governance | Propose a change then lock it | [`AEP-Components/coding-governance/`](AEP-Components/coding-governance/) |
+| HCSE parser | aep-hcse parser MCP | [`AEP-Components/hcse/`](AEP-Components/hcse/) |
+| CCA agent | Central Setup Agent | [`AEP-Components/cca/`](AEP-Components/cca/) |
+| Operators | Agent Composer Lite and harness | [`AEP-Composer-Lite/`](AEP-Composer-Lite/) |
+| Policy | GAP nodes and subprotocol validators | [`AEP-Policy-System/`](AEP-Policy-System/) |
+| Multi-base-node (2.8b) | Federate multiple Base Node kernels | [`AEP-Base-Node/multi-base-node/`](AEP-Base-Node/multi-base-node/) |
 
 ### How a message is judged
 
@@ -176,7 +187,8 @@ Coding governance proposes a change, measures how far that change reaches and on
 | Directory | Role |
 |-----------|------|
 | [`AEP-Base-Node/`](AEP-Base-Node/) | Kernel: daemon, registry, POTOMITAN, agent-control-extreme |
-| [`AEP-Components/`](AEP-Components/) | Protocol components (dynAEP, **caw-framework**, lattice-channels, graph-engine, aep-comm, economics, scanners, fleet, …) |
+| [`AEP-Components/`](AEP-Components/) | Protocol components (dynAEP, lattice-channels, graph-engine, aep-comm, economics, scanners, fleet) |
+| [`AEP-Components/caw-framework/`](AEP-Components/caw-framework/) | Execution companion: CAW host sandboxes. Not a protocol component |
 | [`AEP-Composer-Lite/`](AEP-Composer-Lite/) | Agent Composer (Composer Lite): WASM visual canvas on port: 8424 |
 | [`AEP-SDKs/`](AEP-SDKs/) | Language SDKs: thin lattice-gated clients (not components) |
 | [`AEP-User-Experience/`](AEP-User-Experience/) | Harness, operator scripts, AEP-main-skill |
@@ -226,6 +238,8 @@ A missing scene, dock, timestamp or sequence fails the check. The destination do
 
 When the dock denies, the report names the closed walls and the reasons plus a mechanical repair for missing fields and writing. Grant lists stay off that report. A retry must seal a new capsule because replay is keyed when the capsule is first queued.
 
+Writing walls govern output shape and are not transport security. EPSCOM writing walls stay protocol law at priority 255. Closed walls carry a class of writing, security, temporal, capability, poison or structural so a writing deny is not read as a transport failure.
+
 Putting a capsule on the dock is not the check. After the one-second wait the client asks for the result by the capsule hash on the same dock so a deny names the closed walls and an allow returns an event id.
 
 Base Node can run in a container or sit next to an AEP Validation Engine module. Language clients share one sealer for that capsule; they do not open a private back door.
@@ -259,15 +273,17 @@ flowchart LR
 
 ## Kernel pulse
 
-After a sealed capsule (the encrypted frame on the wire) is opened, Base Node freezes the clock at seal, waits 1000 ms, then runs every check together and only then carries out the allowed action. Putting a capsule on the dock is not that check. After the wait the client asks for the result by the capsule hash so a deny names the closed walls and an allow returns an event id. Allowed clock drift is 50 ms against the freeze, which is why a 1000 ms hold still meets drift. A capsule held longer than five seconds is aged out.
+Two compiled clocks live in `aep-base-node-pulse`. Pulse hold is the wait after a sealed capsule (the encrypted frame on the wire) is opened: Base Node freezes the clock at seal, waits 1000 ms, then runs every check together and only then carries out the allowed action. Putting a capsule on the dock is not that check because after the wait the client asks for the result by the capsule hash so a deny names the closed walls and an allow returns an event id. Allowed clock drift is 50 ms against the freeze which is why a 1000 ms hold still meets drift while a capsule held longer than five seconds is aged out.
+
+Wire sent_at freshness is the other clock. Before open, `frame_is_fresh` checks `sent_at_unix` against `MAX_FRAME_AGE_SECS` (300) and `MAX_FRAME_FUTURE_SKEW_SECS` (60). The wire window is wider because it covers transit before open while pulse age covers hold after freeze so five seconds of pulse age is not the 300 second wire window.
 
 ### This wait is not a dynAEP setting
 
-The wait is a compiled kernel constant of 1000 ms. It is not an environment variable and it is not a dynAEP yaml key. TypeScript dynAEP remains a standalone component and does not own this wait. The 1000 ms NTP LARGE_STEP figure in dynAEP timekeeping is a clock-sync cap, not this kernel wait.
+The wait is a compiled kernel constant of 1000 ms. It is not an environment variable and it is not a dynAEP yaml key. TypeScript dynAEP remains a standalone component and does not own this wait. The 1000 ms NTP LARGE_STEP figure in dynAEP timekeeping is a clock-sync cap rather than this kernel wait so LARGE_STEP must not be treated as this wait.
 
 ### How the wait can be changed in theory
 
-A builder who wants a different wait rebuilds Base Node with a different compiled pulse length. Freeze-at-seal stays so the hold is judged against the freeze rather than a moving clock. Allowed drift is not set to the wait length. The five-second age stays longer than the wait or capsules would expire before they became ready. This is a kernel rebuild, not a yaml or env toggle.
+A builder who wants a different wait rebuilds Base Node with a different compiled pulse length. Freeze-at-seal stays so the hold is judged against the freeze rather than a moving clock. Allowed drift is not set to the wait length so `MAX_DRIFT_MS` must not be set to 1000. The five-second age stays longer than the wait or capsules would expire before they became ready so pulse age 5000 must not be replaced with 300 seconds. This is a kernel rebuild rather than a yaml or env toggle and the 300 second wire window stays a separate compiled pair.
 
 ## What is new in 2.8 compared to 2.75 (from May 2026)
 
@@ -316,7 +332,7 @@ The tables below name working protocol parts a builder can attach. They are comp
 |---------|------|
 | Live Admit GAP files | `AEP-Policy-System/reference/` |
 | Policy Builder (invariant detection, Rego generation) | `AEP-Policy-System/policy-builder/` |
-| Schema Builder (MLE, spectral analysis, permissiveness, Louvain) | `AEP-Policy-System/schema-builder/` |
+| Schema Builder (optional study tool; not wired to the CCA agent or Docker) | `AEP-Policy-System/schema-builder/` |
 | OPA Rego + Cedar transpilers | `AEP-Components/policy-engine/` |
 | YAML policy importer | `AEP-Components/policy-engine/lib/policy/importer/` |
 | Built-in presets (strict, standard, relaxed, audit) | `AEP-Policy-System/*.policy.yaml` |
@@ -450,7 +466,7 @@ The component lives at [`AEP-Components/aep-comm/`](AEP-Components/aep-comm/). E
 | Architecture | 5 | Three-layer separation, z-band hierarchy, 14 prefix types, template nodes, schema versioning |
 | Evaluation chain | 5 | Rust meet of 15 walls, collect-all, no skip, attach after sealed lattice frame |
 | Content scanners | 11 | PII, injection, secrets, jailbreak, toxicity, URL, data profiler, prediction, brand, regulatory, temporal |
-| Governance | 8 | No Trust Rings rank, who may do what per agent, covenants, drift, kill switch, rollback, hard/soft violations, presets |
+| Governance | 8 | Who may do what per agent, covenants, drift, kill switch, rollback, hard/soft violations, presets |
 | Fleet / multi-agent | 6 | Identity, fleet limits, spawn governance, message scanning, verification handshake, fleet API |
 | Model gateway | 4 | Anthropic, OpenAI, Ollama, custom OpenAI-compatible |
 | Cost economics | 9 | Balance routing, pricing catalog, budget, x402, concurrency, fallback, gateway integration |
@@ -459,14 +475,50 @@ The component lives at [`AEP-Components/aep-comm/`](AEP-Components/aep-comm/). E
 | Workflow | 3 | Phased verdicts, rework limits, fine-tuning template |
 | Commerce | 3 | 12 governed actions, merchant registry, spend tracking |
 | Subprotocols | 6 | UI, workflows, REST API, events, IaC, commerce |
-| **AEP Hyperlattice** | 17 | Scene validation, GAP policy nodes, `action_path` event nodes, temporal authority, causal ordering, perception gov, observer adapters, compliance LRP docks, join/meet, trust-ring gating, Lattice Channel wrap |
+| **AEP Hyperlattice** | 17 | Scene validation, GAP policy nodes, `action_path` event nodes, temporal authority, causal ordering, perception gov, observer adapters, compliance LRP docks, join/meet, who may do what per agent, Lattice Channel wrap |
 | AEP-Graph | 6 | Action, decision, wait, parallel, loop nodes, checkpoints, admitGate default deny |
 | AEP-Comm | 14 | Agent cards, discovery, messaging, task hand-off, human gate and isolated code execution |
 | Security | 4 | Hash-chained ledger, proof bundles, OTEL, reliability index (theta) |
-| Builders | 2 | Schema Builder, Policy Builder |
+| Builders | 2 | Schema Builder (not wired to the CCA agent or Docker), Policy Builder |
 | **2.8 kernel additions** | 15 | Base Node, Lattice Channels, AgentMesh, Lattice Memory, POTOMITAN, dynAEP merge, wizard, setup agent, Composer Lite, registry, conformance, WASM sandbox, UCB, SDK produce pipeline, subprotocol registry |
 
 ---
+
+## Official run sequence
+
+Official tree is Gitea thePM001/NLA-AEP-v2.8-open-source. GitHub is a public mirror. GitHub does not run CC-01 through CC-15.
+
+Factory checks on the official tree:
+
+```bash
+cargo test -p aep-base-node --lib
+cargo test -p aep-base-node --test source_invariants
+scripts/gate-aep28-env-075.sh
+./AEP-Components/conformance/runner/run.sh
+docker compose up -d --build
+```
+
+The gate-aep28-env scripts live under `scripts/`. Docker is the packaged run path. The conformance runner is the public-tier battery.
+
+README and `AEP-SDKs/README.md` share one maturity table.
+
+| SDK | Path | Class |
+|-----|------|-------|
+| TypeScript aep-protocol | `typescript/aep-protocol/` | thin client |
+| TypeScript dynAEP | `typescript/dynaep/` | not product Admit |
+| React dynAEP | `react/dynaep-react.tsx` | thin client |
+| Python aep-protocol | `python/aep-protocol/` | source-only thin client |
+| Python dynAEP | `python/dynaep/` | source-only thin client |
+| Go | `go/` | thin client |
+| Rust | `rust/` | thin client |
+| JavaScript | `javascript/` | thin client |
+| Vue | `vue/` | placeholder |
+| React | `react/` | thin client |
+| Astro | `astro/` | placeholder |
+| Elixir | `elixir/` | thin client |
+| C++ | `cpp/` | thin client |
+| Clojure | `clojure/` | thin client |
+| HTML/CSS | `html-css/` | placeholder |
 
 ## Quick start
 
@@ -777,7 +829,7 @@ Default GAP profile for **any governed coding agent** (Hermes, CCA-launched runn
 1. **Workspace (`${PROJECT_ROOT}`):** read-write via `workspace-rw`. The agent edits the repo it was started in.
 2. **Agent config (`${AEP_AGENT_CONFIG_DIR}`, `${HOME}/.config/agent`, `${HOME}/.local/share/agent`):** read-only via `config-readonly`. The agent can read its config to run, but cannot rewrite or exfiltrate through those paths.
 3. **Base policy `default`:** standard CAW rules (not maximum-lockdown `agent-sandbox`).
-4. **Who may do what:** more capable than the untrusted sandbox profile, still lattice-governed. This is not a Trust Rings rank.
+4. **Who may do what:** more capable than the untrusted sandbox profile, still lattice-governed.
 5. **LLM proxy on:** model calls through audited CAW proxy when enabled.
 
 CCA maps intents like "coding agent", "Hermes", or "governed agent" to this profile. Use `agent-sandbox` for untrusted code; `compiled-runtime` when the LLM proxy must stay off.

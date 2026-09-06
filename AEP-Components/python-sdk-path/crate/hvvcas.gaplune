@@ -1,0 +1,56 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-python-sdk-path
+ticket: AEP28-ENV-060
+note: Advertised Python SDK path AEP-SDKs/python must exist and ship a client.
+
+component:
+  name: advertised_python_paths
+  domain: sdk
+  component_type: service
+  intent: Collect advertised AEP-SDKs/python paths from README
+  input:
+    name: src
+    type: String
+  output:
+    name: paths
+    type: VecString
+
+component:
+  name: require_python_tree
+  domain: sdk
+  component_type: service
+  intent: Require AEP-SDKs/python client files including lattice_client
+  input:
+    name: root
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_lattice_client_surface
+  domain: sdk
+  component_type: service
+  intent: Require build_lattice_frame and lattice_gated_fetch on the client
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: run_python_sdk_path_gate
+  domain: sdk
+  component_type: service
+  intent: Run live advertised Python SDK path gate on the workspace
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String

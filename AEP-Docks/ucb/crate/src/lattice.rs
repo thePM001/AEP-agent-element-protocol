@@ -1,8 +1,9 @@
 //! Lattice transport via aep-lattice-log CLI + Unix socket docks.
 
 use crate::translator::LatticeEvent;
+use aep_wall_set_backpressure::DenyReport;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -104,47 +105,110 @@ impl LatticeRuntime {
         frame: Value,
         trust_score: u16,
         signer_public_hex: Option<&str>,
-    ) -> Result<DockResponse, String> {
+    ) -> Result<DockResponse, LatticeDeny> {
         // HIGH residual: never send dock frames without a bound signer public key
         let Some(hex) = signer_public_hex.filter(|s| !s.is_empty()) else {
-            return Err(
-                "signer_public_hex required for lattice dock send (fail-closed unbound key)".into(),
-            );
+            return Err(LatticeDeny {
+                error: String::from("signer_public_hex required for lattice dock send (fail-closed unbound key)"),
+                deny: None,
+            });
         };
         let wire = serde_json::json!({
             "frame": frame,
             "trust_score": trust_score,
             "signer_public_hex": hex,
         });
-        let mut payload = serde_json::to_string(&wire).map_err(|e| e.to_string())?;
+        let mut payload = serde_json::to_string(&wire).map_err(|e| LatticeDeny {
+            error: e.to_string(),
+            deny: None,
+        })?;
         if !payload.ends_with('\n') {
             payload.push('\n');
         }
         let mut stream = UnixStream::connect(socket_path)
             .await
-            .map_err(|e| format!("lattice socket not found: {} ({e})", socket_path.display()))?;
-        timeout(Duration::from_secs(8), async {
+            .map_err(|e| LatticeDeny {
+                error: format!("lattice socket not found: {} ({e})", socket_path.display()),
+                deny: None,
+            })?;
+        timeout(Duration::from_secs(12), async {
             stream
                 .write_all(payload.as_bytes())
                 .await
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| LatticeDeny {
+                    error: e.to_string(),
+                    deny: None,
+                })?;
             let mut reader = tokio::io::BufReader::new(stream);
             let mut line = String::new();
             reader
                 .read_line(&mut line)
                 .await
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| LatticeDeny {
+                    error: e.to_string(),
+                    deny: None,
+                })?;
             let resp: DockResponse =
-                serde_json::from_str(line.trim()).map_err(|e| e.to_string())?;
+                serde_json::from_str(line.trim()).map_err(|e| LatticeDeny {
+                    error: e.to_string(),
+                    deny: None,
+                })?;
             if !resp.ok {
-                return Err(resp
-                    .error
-                    .unwrap_or_else(|| "lattice frame rejected".into()));
+                return Err(LatticeDeny {
+                    error: resp
+                        .error
+                        .clone()
+                        .unwrap_or_else(|| String::from("lattice frame rejected")),
+                    deny: resp.deny.clone(),
+                });
             }
-            Ok(resp)
+            if resp.event_id.is_some() {
+                return Ok(resp);
+            }
+            let Some(digest) = resp.digest.clone() else {
+                return Ok(resp);
+            };
+            let mut collect = serde_json::json!({ "collect": digest }).to_string();
+            if collect.ends_with('\n') == false {
+                collect.push('\n');
+            }
+            reader
+                .get_mut()
+                .write_all(collect.as_bytes())
+                .await
+                .map_err(|e| LatticeDeny {
+                    error: e.to_string(),
+                    deny: None,
+                })?;
+            line.clear();
+            reader
+                .read_line(&mut line)
+                .await
+                .map_err(|e| LatticeDeny {
+                    error: e.to_string(),
+                    deny: None,
+                })?;
+            let applied: DockResponse =
+                serde_json::from_str(line.trim()).map_err(|e| LatticeDeny {
+                    error: e.to_string(),
+                    deny: None,
+                })?;
+            if !applied.ok {
+                return Err(LatticeDeny {
+                    error: applied
+                        .error
+                        .clone()
+                        .unwrap_or_else(|| String::from("lattice frame rejected")),
+                    deny: applied.deny.clone(),
+                });
+            }
+            Ok(applied)
         })
         .await
-        .map_err(|_| "lattice socket timeout".to_string())?
+        .map_err(|_| LatticeDeny {
+            error: String::from("lattice socket timeout"),
+            deny: None,
+        })?
     }
 
     pub async fn health_ping(&self) -> Result<DockResponse, String> {
@@ -167,6 +231,7 @@ impl LatticeRuntime {
             built.signer_public_hex.as_deref(),
         )
         .await
+        .map_err(String::from)
     }
 }
 
@@ -201,6 +266,21 @@ pub struct DockResponse {
     pub digest: Option<String>,
     #[serde(default)]
     pub error: Option<String>,
+    #[serde(default)]
+    pub deny: Option<DenyReport>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LatticeDeny {
+    pub error: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deny: Option<DenyReport>,
+}
+
+impl From<LatticeDeny> for String {
+    fn from(d: LatticeDeny) -> String {
+        d.error
+    }
 }
 
 fn run_lattice_build(bin: &Path, args: &[String], input: &str) -> Result<BuiltFrame, String> {
@@ -242,5 +322,3 @@ fn exec_lattice_log(bin: &Path, args: &[String], input: &str) -> Result<String, 
     }
     Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
 }
-
-use serde_json::json;

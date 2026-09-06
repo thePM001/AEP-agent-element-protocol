@@ -5,6 +5,7 @@
   },
   "pattern": {
     "guard": "true",
+    "wrap": "privacy",
     "constraints": [
       "hard: minimise personal data in agent outputs and tool payloads",
       "hard: document lawful basis before processing personal data in a session",
@@ -23,10 +24,13 @@
   },
   "metadata": {
     "provenance": "aep.reference.compliance.gdpr",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "stability": "stable",
-    "trust_ring": "security",
+    "agent_may": [
+      "*"
+    ],
     "lrp_id": "gdpr",
-    "framework": "GDPR"
+    "framework": "GDPR",
+    "aep_version": "2.8.5"
   }
 }

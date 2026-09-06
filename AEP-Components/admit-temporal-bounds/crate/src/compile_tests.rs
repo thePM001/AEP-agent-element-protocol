@@ -79,6 +79,9 @@ mod tests {
     #[test]
     fn causal_parent_missing_closes() {
         let mut t = TemporalCompileInput::with_defaults();
+        t.has_agent_time = true;
+        t.agent_time_ms = 10_000;
+        t.bridge_time_ms = 10_000;
         t.causal_parents.push(String::from("evt-parent"));
         t.event_id = String::from("evt-child");
         let admit = admit_collect_all(&compile_temporal_walls(&t));
@@ -92,6 +95,9 @@ mod tests {
     #[test]
     fn delivered_causal_parent_opens() {
         let mut t = TemporalCompileInput::with_defaults();
+        t.has_agent_time = true;
+        t.agent_time_ms = 10_000;
+        t.bridge_time_ms = 10_000;
         t.causal_parents.push(String::from("evt-parent"));
         t.causal_satisfied.push(String::from("evt-parent"));
         let admit = admit_collect_all(&compile_temporal_walls(&t));
@@ -101,6 +107,9 @@ mod tests {
     #[test]
     fn missing_dependency_type_closes_without_list() {
         let mut t = TemporalCompileInput::with_defaults();
+        t.has_agent_time = true;
+        t.agent_time_ms = 10_000;
+        t.bridge_time_ms = 10_000;
         t.causal_violation_type = String::from("missing_dependency");
         t.event_id = String::from("evt-x");
         let admit = admit_collect_all(&compile_temporal_walls(&t));
@@ -132,10 +141,12 @@ mod tests {
     }
 
     #[test]
-    fn no_agent_time_does_not_invent_skew() {
+    fn unbound_agent_time_closes() {
         let t = TemporalCompileInput::with_defaults();
         let admit = admit_collect_all(&compile_temporal_walls(&t));
-        assert_eq!(admit.allow, true);
+        assert_eq!(admit.allow, false);
+        assert_eq!(admit.closed.iter().any(|w| w.id == WALL_TEMPORAL_DRIFT), true);
+        assert_eq!(admit.closed.iter().any(|w| w.reason == "no timestamps"), true);
     }
 }
 

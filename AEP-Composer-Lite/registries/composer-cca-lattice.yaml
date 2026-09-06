@@ -19,7 +19,7 @@ actions:
       - type: required_field
         field: message
         description: "CCA chat requires a user message"
-    trust_floor: 2
+    agent_may: ["*"]
 
   composer-lite:cca:validate_writing:
     label: "EPSCOM writing.gap validation before CCA reply release"
@@ -34,7 +34,7 @@ actions:
         policy: writing.gap
         gap_ref: AEP-Policy-System/reference/writing.gap
         description: "Mandatory hyperlattice writing.gap (EPSCOM kernel) before release"
-    trust_floor: 2
+    agent_may: ["*"]
 
   composer-lite:cca:release:
     label: "Release governed CCA reply to Composer Lite chat pane"
@@ -48,7 +48,7 @@ actions:
       - type: policy_binding
         policy: writing.gap
         gap_ref: AEP-Policy-System/reference/writing.gap
-    trust_floor: 2
+    agent_may: ["*"]
 
   composer-lite:cca:topology:propose:
     label: "CCA proposes canvas topology (plan or graph suggestion)"
@@ -60,7 +60,7 @@ actions:
         policy: composer-protocol
         gap_ref: AEP-Composer-Lite/lib/hyperlattice/composer-protocol.mjs
         description: "Topology must use allowed Composer Lite node types and interactions"
-    trust_floor: 2
+    agent_may: ["*"]
 
   composer-lite:cca:topology:validate:
     label: "Validate CCA topology against AEP Composer protocol"
@@ -76,7 +76,7 @@ actions:
         description: "Topology edges[] required"
       - type: policy_binding
         policy: composer-protocol
-    trust_floor: 2
+    agent_may: ["*"]
 
   composer-lite:cca:topology:apply:
     label: "Apply validated CCA topology to Composer Lite canvas"
@@ -87,4 +87,4 @@ actions:
       - type: required_field
         field: graph
         description: "Validated graph document for canvas merge"
-    trust_floor: 2
+    agent_may: ["*"]

@@ -1,7 +1,8 @@
 use aep_base_node::{
-    bootstrap_contracts_from_lrps, build_transport_frame, enforce_writing_text, enforce_writing_value,
-    event_count, export_dynaep_events, open_lattice_db, record_dynaep_event, DynAepEventInput,
-    EPSCOM_CORE_ID,
+    bootstrap_contracts_from_lrps, build_transport_frame, default_aep_data_dir,
+    default_lattice_db_path, enforce_writing_text, enforce_writing_value, event_count,
+    export_dynaep_events, open_lattice_db, record_dynaep_event, DynAepEventInput,
+    ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV, EPSCOM_CORE_ID,
 };
 use aep_lattice_channel::LatticeChannelFrame;
 use clap::{Parser, Subcommand};
@@ -9,7 +10,7 @@ use std::io::{self, Read};
 use std::path::PathBuf;
 
 const MAX_STDIN_BYTES: usize = 4 * 1024 * 1024;
-const CONFIG_VERSION: &str = "2.8.0";
+const CONFIG_VERSION: &str = "2.8.5";
 
 #[derive(Debug, Parser)]
 #[command(name = "aep-lattice-log", about = "AEP 2.8 dynAEP Action Lattice event logger")]
@@ -18,6 +19,9 @@ struct Cli {
     db: Option<PathBuf>,
     #[arg(long)]
     config: Option<PathBuf>,
+    /// Test flag. Allows a world-writable parent of the lattice db.
+    #[arg(long, default_value_t = false)]
+    allow_world_writable_lattice_parent: bool,
     #[command(subcommand)]
     command: Commands,
 }
@@ -85,8 +89,7 @@ fn resolve_db(cli: &Cli) -> Result<PathBuf, Box<dyn std::error::Error>> {
     if let Ok(path) = std::env::var("AEP_LATTICE_DB") {
         return Ok(PathBuf::from(path));
     }
-    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-    Ok(PathBuf::from(format!("{home}/.aep/action-lattice.db")))
+    Ok(default_lattice_db_path())
 }
 
 fn resolve_lrps(cli: &Cli) -> Vec<String> {
@@ -114,6 +117,9 @@ fn resolve_lrps(cli: &Cli) -> Vec<String> {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
+    if cli.allow_world_writable_lattice_parent {
+        std::env::set_var(ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV, "1");
+    }
     let db_path = resolve_db(&cli)?;
     let lrps = resolve_lrps(&cli);
     let conn = open_lattice_db(&db_path)?;
@@ -137,8 +143,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let input: DynAepEventInput = read_stdin_json()?;
             let contracts = bootstrap_contracts_from_lrps(&lrps);
             let frame: LatticeChannelFrame = build_transport_frame(&input, &contracts, &db_path)?;
+            let fallback = default_aep_data_dir();
             let sign_hex = aep_base_node::dock_keys::AgentSignKeyStore::load(
-                db_path.parent().unwrap_or(std::path::Path::new("/tmp")),
+                db_path.parent().unwrap_or(&fallback),
             )
             .public_for(&input.agent_id)
             .map(hex::encode)

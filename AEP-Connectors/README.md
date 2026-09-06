@@ -31,7 +31,7 @@ Agent / Composer / CCA plan
 `connector-postgres` is the **reference scaffold** (NT-00006 pattern):
 
 - Normalizes connection config for CCA plans and `base-node.json`
-- TCP reachability probe (no npm `pg` driver in Docker)
+- UCB reachability probe (no npm `pg` driver in Docker)
 - Emits UCB egress routes for governed SQL proxy upstreams
 
 It is **not** a full SQL driver. Real queries flow through UCB egress to your Postgres proxy or MCP SQL server.

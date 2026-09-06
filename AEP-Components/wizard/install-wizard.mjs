@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * AEP 2.8 Installation Wizard (Phase 1)
- * Configures Base Node paths, LRPs, EPSCOM priority, lattice channel secret.
+ * Configures Base Node paths, LRPs, EPSCOM priority and lattice channel PQ profile.
  */
 
 import { createInterface } from "node:readline/promises";
@@ -15,7 +15,6 @@ import {
 import { homedir } from "node:os";
 import { join, resolve, dirname } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import {
   loadLrpCatalog,
@@ -163,7 +162,6 @@ async function main() {
     ? selectLrpsDefault(catalog)
     : await selectLrpsFromLib(catalog, rl, promptYesNo);
 
-  const latticeSecret = randomBytes(32).toString("hex");
   const internetUp = opts.nonInteractive
     ? true
     : await promptYesNo(rl, "Normal internet available?", true);
@@ -176,7 +174,8 @@ async function main() {
       binary_path: binaryPath,
       epscom_priority: catalog.epscom.priority,
       lrps,
-      lattice_channel_secret: latticeSecret,
+      lattice_kem: "ML-KEM-768",
+      lattice_signature: "ML-DSA-65",
       internet_up: internetUp,
       mesh_peers: 0,
     },
@@ -202,7 +201,7 @@ async function main() {
   const envPath = join(configDir, "lattice-channel.env");
   writeFileSync(
     envPath,
-    `LATTICE_CHANNEL_SECRET=${latticeSecret}\nAGENTSTREAM_CAPSULE_SECRET=${latticeSecret}\n`,
+    `LATTICE_CHANNEL_PROFILE=aep-lattice-channel-v1\nLATTICE_KEM=ML-KEM-768\nLATTICE_SIGNATURE=ML-DSA-65\n`,
     { mode: 0o600 },
   );
   try {

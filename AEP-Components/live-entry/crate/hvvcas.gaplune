@@ -4,14 +4,14 @@ schema_id: gaplune.hvvcas.v1
 format: gaplune
 json: prohibited
 crate: aep-live-entry
-ticket: AEP28-ENV-024
-note: Durable HVVCAS is GAPLUNE. Ticket AEP28-ENV-024.
+ticket: AEP28-ENV-036
+note: Durable HVVCAS is GAPLUNE for crate aep-live-entry on ticket AEP28-ENV-036 so a template target_id is not a skip and every opened frame still runs collect-all Admit then Apply.
 
 component:
   name: live_entry
   domain: envelope
   component_type: service
-  intent: Rust live entry. aep_envelope admit in-process. YAML load. Structural apply. ID mint.
+  intent: Rust live entry with in-process aep_envelope admit, YAML load, structural apply and ID mint, while a template target still meets Admit.
   input:
     name: event
     type: String

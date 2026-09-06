@@ -9,7 +9,7 @@ Detection signatures for the Agent Element Protocol (AEP). Authored and curated 
 ```
 AEP-Base-Node/signatures/
   signatures/       # YAML detection rules (one file per rule)
-  trust-bundle/     # manifest.json index + future ML-DSA-65 detached sigs
+  trust-bundle/     # SHA-256 structure index. Mode sha256-structure. ML-DSA is not claimed.
   schemas/          # signature-v1.schema.json
   lib/              # signatures-registry.mjs, signatures-context.mjs (CCA)
   tooling/          # validate-signatures.mjs
@@ -18,14 +18,14 @@ AEP-Base-Node/signatures/
 
 ## Default wiring
 
-- **Docker/bootstrap:** `base-node.json` → `epscom_signatures.enabled: true`
+- **Docker/bootstrap:** `base-node.json` -> `epscom_signatures.enabled: true`
 - **CCA:** `loadSignaturesContext()` in registry knowledge bundle
 - **Registry:** `epscom-signatures` component (`default_enabled: true`)
 - **Scanners:** consume via `scanWithSignatures()` from `lib/signatures-registry.mjs`
 
 ## Trust bundle
 
-Detectors load `trust-bundle/manifest.json`, verify structure (production: ML-DSA-65 detached signature), then hot-load YAML files listed in `entries`.
+Mode sha256-structure. ML-DSA is not claimed. Detectors load the trust-bundle index, verify SHA-256 structure then hot-load YAML files listed in entries. This bundle does not claim ML-DSA.
 
 ```bash
 node AEP-Base-Node/signatures/tooling/validate-signatures.mjs

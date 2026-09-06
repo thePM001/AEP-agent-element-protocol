@@ -71,7 +71,7 @@
         "lang": "gapdsl",
         "severity": "hard",
         "validator": "range_check",
-        "description": "Space after ? or ! before the next word"
+        "description": "Space after question or bang before the next word"
       },
       {
         "expr": "min_brightness_f0f0f0",
@@ -84,17 +84,20 @@
   },
   "action": {
     "type": "template",
-    "content": "Apply AEP 2.75 writing conventions."
+    "content": "Apply AEP 2.8.5 writing conventions."
   },
   "weight": 1.0,
   "composition": {
     "type": "atomic"
   },
   "metadata": {
-    "provenance": "AEP 2.75",
-    "version": "1.0.0",
+    "provenance": "AEP 2.8.5",
+    "version": "1.1.0",
     "stability": "stable",
     "aspect": "objective",
-    "trust_ring": "system"
+    "agent_may": [
+      "*"
+    ],
+    "aep_version": "2.8.5"
   }
 }

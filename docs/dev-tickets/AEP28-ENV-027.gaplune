@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-027-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-027
+title: Lattice gated fetch SSRF must resolve hosts. Hostname-only prefix checks are not enough.
+status: closed
+priority: P0
+track: aep28-ssrf
+wave: rust-live
+plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-SDKs/rust/src/lattice.rs AEP-SDKs/typescript/dynaep/src/transport/lattice-gated-fetch.ts AEP-Components/lattice-channels/lib/lattice-gated-fetch.ts
+notes: HIGH. assert_url_not_ssrf extracts a hostname string and compares prefixes (127., 10., 192.168., 169.254., 172.16-31, localhost, metadata names). It does not resolve DNS to an address. A public name that maps to loopback or RFC1918, decimal/octal IP forms, IPv6 mapped v4, DNS rebinding after the check, or userinfo tricks can pass. TypeScript copies the same hostname-only checks. Repair must parse with a real URL type, resolve and Deny private/loopback/link-local/metadata addresses after resolve. Env escape hatches AEP_LATTICE_ALLOW_LOOPBACK and AEP_LATTICE_ALLOW_PRIVATE stay off by default. Out of scope: hangar tools.
+acceptance: DNS-to-private Deny. Decimal IP Deny. IPv6 mapped loopback Deny. Userinfo host spoof Deny. Tests cover resolve, not only string prefix. nla-policy-scan gate project-completion-bac on AEP-SDKs/rust if that crate is the live path.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-SDKs/rust
+updated: 2026-09-01

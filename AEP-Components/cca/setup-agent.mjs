@@ -14,7 +14,6 @@ import {
   chmodSync,
 } from "node:fs";
 import { dirname } from "node:path";
-import { randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { expandHome, defaultPaths } from "../wizard/lib/paths.mjs";
 import { loadLrpCatalog, selectLrpsDefault, selectLrpsInteractive } from "../wizard/lib/lrp.mjs";
@@ -318,7 +317,6 @@ async function main() {
 
   writeInstalledExtensions(dataDir, componentIds.map((id) => ({ id, enabled_at: new Date().toISOString() })));
 
-  const latticeSecret = randomBytes(32).toString("hex");
   const internetUp = opts.nonInteractive
     ? true
     : await promptYesNo(rl, "Normal internet available?", true);
@@ -342,7 +340,6 @@ async function main() {
     binaryPath,
     catalog,
     lrps,
-    latticeSecret,
     internetUp,
     meshPeers: 0,
     inferenceEngine: inference,
@@ -409,7 +406,7 @@ async function main() {
   mkdirSync(dirname(expandHome(latticeDb)), { recursive: true });
   mkdirSync(socketBase, { recursive: true });
 
-  writeLatticeEnv(envPath, latticeSecret);
+  writeLatticeEnv(envPath);
   console.log(`Wrote ${envPath}`);
 
   const inferenceEnvPath = joinData(dataDir, "inference-engine.env");

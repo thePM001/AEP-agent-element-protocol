@@ -50,5 +50,6 @@ Policies use YAML format with these fields:
 - `covenants`: human-readable policy descriptions
 
 ## Composition
+GAP files load as live Admit walls on the kernel collect-all pass.
 Policies compose via conjunction: all must pass for action to be allowed.
 The lattice structure guarantees that composed policies have well-defined results.

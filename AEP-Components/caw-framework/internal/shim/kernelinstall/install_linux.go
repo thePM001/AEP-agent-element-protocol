@@ -186,6 +186,12 @@ func runRelay(p InstallParams, resp types.WrapInitResponse) (Result, error) {
 	wrapperBin := resp.WrapperBinary
 	notifySocket := resp.NotifySocket
 
+	filtered, ferr := wrapenv.Filter(filterShimInternalEnv(p.Env), resp.EnvPolicy)
+	if ferr != nil {
+		reason := fmt.Sprintf("wrap env policy: %v", ferr)
+		return Result{Action: ResultFailClosed, Reason: reason}, nil
+	}
+
 	// Create AF_UNIX SOCK_SEQPACKET socketpair.
 	// fds[0] = parent end (we read the notify fd from the wrapper here)
 	// fds[1] = child end (inherited by the wrapper as fd 3)
@@ -209,7 +215,7 @@ func runRelay(p InstallParams, resp types.WrapInitResponse) (Result, error) {
 	// markers (notify fd, argv0 override, wrapper config). See
 	// assembleWrapperEnv for the env_inject override and AEP_CAW_SIGNAL_SOCK_FD
 	// stripping rationale (issue #374).
-	env := assembleWrapperEnv(wrapenv.Filter(filterShimInternalEnv(p.Env), resp.EnvPolicy), p.Argv0, resp.WrapperEnv, resp.EnvInject)
+	env := assembleWrapperEnv(filtered, p.Argv0, resp.WrapperEnv, resp.EnvInject)
 
 	// Wrapper log routing (issue #415): point the wrapper's diagnostics
 	// at the state-dir log file. The relay's own stderr IS the user's
@@ -361,8 +367,14 @@ func runPtraceHandshake(p InstallParams, resp types.WrapInitResponse) (Result, e
 	}
 
 	// Build the child's environment: same filtering as the seccomp relay path.
-	env := wrapenv.Filter(filterShimInternalEnv(p.Env), resp.EnvPolicy)
-	env = envinject.Apply(env, resp.EnvInject)
+	filtered, ferr := wrapenv.Filter(filterShimInternalEnv(p.Env), resp.EnvPolicy)
+	if ferr != nil {
+		_ = unix.Close(readFD)
+		_ = unix.Close(writeFD)
+		reason := fmt.Sprintf("wrap env policy: %v", ferr)
+		return Result{Action: ResultFailClosed, Reason: reason}, nil
+	}
+	env := envinject.Apply(filtered, resp.EnvInject)
 
 	cmd := exec.Command(p.RealShell, p.ShellArgs...)
 	cmd.Env = env
@@ -397,9 +409,9 @@ func runPtraceHandshake(p InstallParams, resp types.WrapInitResponse) (Result, e
 		// $0="--", $1=Argv0 (for exec -a), $2=RealShell, $3+=ShellArgs
 		shellArgs = make([]string, 0, 3+len(p.ShellArgs))
 		shellArgs = append(shellArgs, p.RealShell, "-c", wrapScript, "--")
-		shellArgs = append(shellArgs, p.Argv0)         // $1: argv0 for exec -a
-		shellArgs = append(shellArgs, p.RealShell)     // $2: binary (after shift, $1)
-		shellArgs = append(shellArgs, p.ShellArgs...)  // $3+: shell args
+		shellArgs = append(shellArgs, p.Argv0)        // $1: argv0 for exec -a
+		shellArgs = append(shellArgs, p.RealShell)    // $2: binary (after shift, $1)
+		shellArgs = append(shellArgs, p.ShellArgs...) // $3+: shell args
 	} else {
 		// Common case: exec the real shell directly; argv[0] = binary path.
 		// exec "$@" is POSIX and works on dash, bash, and busybox ash.
@@ -410,8 +422,8 @@ func runPtraceHandshake(p InstallParams, resp types.WrapInitResponse) (Result, e
 		// $0="--", $1=RealShell, $2+=ShellArgs
 		shellArgs = make([]string, 0, 2+len(p.ShellArgs))
 		shellArgs = append(shellArgs, p.RealShell, "-c", wrapScript, "--")
-		shellArgs = append(shellArgs, p.RealShell)     // $1: binary (exec "$@" → first arg)
-		shellArgs = append(shellArgs, p.ShellArgs...)  // $2+: shell args
+		shellArgs = append(shellArgs, p.RealShell)    // $1: binary (exec "$@" → first arg)
+		shellArgs = append(shellArgs, p.ShellArgs...) // $2+: shell args
 	}
 	cmd.Args = shellArgs
 

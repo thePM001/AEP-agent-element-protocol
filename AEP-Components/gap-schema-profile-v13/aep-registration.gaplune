@@ -1,0 +1,13 @@
+@PAD: aep-gap-schema-profile-v13-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-gap-schema-profile-v13
+version: 0.1.0
+kind: library
+path: AEP-Components/gap-schema-profile-v13/
+ticket: GAP-285-P1
+requires: aep-admit
+capability: admit.gap-schema-profile-v13.compile
+note: Classic GAP v1.3 live Admit profile. Who-may is agent_may. wrap and action_path_prefix bind. pattern.guard may be a string or a structured object. trust_ring rank is not a live Admit floor. enabled is load-time and is not Admit skip. Keep v1 and v1.2 for old documents.

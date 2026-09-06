@@ -1,4 +1,9 @@
+// @PAD: gaplune-creation-pad via gaplune-pad-transform encode
+// @GCDE: gaplune-decode hmac-sha256:8583772670252907d4a956d894c4c0319a9f09c78b0c4d1d08ad9e453da14614
+// AEP28-ENV-069: admitGate defaults to deny. executeNode calls admitGate before nodeExecutor.
+// tickVectorClock only after allow. Local vector clock is not kernel Admit.
 import type {
+  AdmitGate,
   ApprovalGate,
   GraphCheckpoint,
   GraphContext,
@@ -122,6 +127,7 @@ export class GraphEngine {
         context: this.emptyContext(params.input),
         checkpoints: [],
         error: validationErrors.join("; "),
+        vectorClock: { ...this.vectorClock },
       };
     }
 
@@ -144,6 +150,7 @@ export class GraphEngine {
           context,
           checkpoints: [...this.checkpoints],
           error: `Missing node ${currentId}`,
+          vectorClock: { ...this.vectorClock },
         };
       }
 
@@ -166,8 +173,19 @@ export class GraphEngine {
 
       const result = await this.executeNode(node, context);
       history.push(result);
+
+      if (result.error === "admit_denied") {
+        return {
+          status: "failed",
+          history,
+          context,
+          checkpoints: [...this.checkpoints],
+          error: result.error,
+          vectorClock: { ...this.vectorClock },
+        };
+      }
+
       context.history.push(node.id);
-      this.tickVectorClock();
 
       if (result.checkpoint) {
         this.checkpoints.push(result.checkpoint);
@@ -179,6 +197,7 @@ export class GraphEngine {
           history,
           context,
           checkpoints: [...this.checkpoints],
+          vectorClock: { ...this.vectorClock },
         };
       }
 
@@ -189,6 +208,7 @@ export class GraphEngine {
           context,
           checkpoints: [...this.checkpoints],
           error: result.error ?? `Node ${node.id} failed`,
+          vectorClock: { ...this.vectorClock },
         };
       }
 
@@ -201,6 +221,7 @@ export class GraphEngine {
       history,
       context,
       checkpoints: [...this.checkpoints],
+      vectorClock: { ...this.vectorClock },
     };
   }
 
@@ -208,6 +229,18 @@ export class GraphEngine {
     node: GraphNode,
     context: GraphContext,
   ): Promise<NodeExecutionResult> {
+    const admitGate = this.options.admitGate ?? defaultAdmitGate;
+    const admitted = await admitGate(node, context);
+    if (!admitted) {
+      return {
+        nodeId: node.id,
+        type: node.type,
+        status: "failed",
+        attempts: 0,
+        error: "admit_denied",
+      };
+    }
+
     const executor = this.options.nodeExecutor ?? defaultNodeExecutor;
     const policyEvaluator = this.options.policyEvaluator;
     const approvalGate = this.options.approvalGate;
@@ -223,6 +256,7 @@ export class GraphEngine {
           const branch = await policyEvaluator(node, context);
           const target = branch ? node.branches?.[branch] : undefined;
           const checkpoint = this.makeCheckpoint(node.id, context);
+          this.tickVectorClock();
           return {
             nodeId: node.id,
             type: node.type,
@@ -237,6 +271,7 @@ export class GraphEngine {
         if (node.type === "wait" && approvalGate) {
           const approved = await this.waitForApproval(node, context, approvalGate);
           if (!approved) {
+            this.tickVectorClock();
             return {
               nodeId: node.id,
               type: node.type,
@@ -248,6 +283,7 @@ export class GraphEngine {
         }
 
         const output = await executor(node, context);
+        this.tickVectorClock();
         return {
           nodeId: node.id,
           type: node.type,
@@ -264,6 +300,7 @@ export class GraphEngine {
       }
     }
 
+    this.tickVectorClock();
     return {
       nodeId: node.id,
       type: node.type,
@@ -318,6 +355,8 @@ export class GraphEngine {
     return { input: { ...(input ?? {}) }, variables: {}, history: [] };
   }
 }
+
+const defaultAdmitGate: AdmitGate = async () => false;
 
 const defaultNodeExecutor: NodeExecutor = async (node) => ({ nodeId: node.id, ok: false, error: "no executor injected (fail closed)" });
 

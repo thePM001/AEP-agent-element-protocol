@@ -448,7 +448,7 @@ class AEPValidator {
     }
 
     // -----------------------------------------------------------------------
-    // Check 10: Trust tier and ring violations (AEP 2.75)
+    // Check 10: GAP agent_may violations (AEP28-ENV-033)
     // -----------------------------------------------------------------------
     checkTrustViolations() {
         const ledgerPath = path.join(this.srcDir, '..', '.claude', 'aep-evidence.jsonl');
@@ -464,12 +464,12 @@ class AEPValidator {
                     if (entry.trust_violation) {
                         this.addViolation(SEVERITY.CRITICAL, '.claude/aep-evidence.jsonl', i + 1,
                             'TRUST_VIOLATION',
-                            `Agent at trust tier ${entry.trust_tier || 'unknown'} attempted ${entry.action} (requires tier ${entry.required_tier || 'higher'})`);
+                            `GAP dimension agent_may closed: agent '${entry.agent_id || 'unbound'}' may not '${entry.action}'`);
                     }
                     if (entry.ring_violation) {
                         this.addViolation(SEVERITY.CRITICAL, '.claude/aep-evidence.jsonl', i + 1,
-                            'RING_VIOLATION',
-                            `Agent in Ring ${entry.current_ring || '?'} attempted operation requiring Ring ${entry.required_ring || '?'}: ${entry.action}`);
+                            'AGENT_MAY_CLOSED',
+                            `GAP dimension agent_may closed: agent '${entry.agent_id || 'unbound'}' may not '${entry.action}'`);
                     }
                     if (entry.kill_switch_active) {
                         this.addViolation(SEVERITY.CRITICAL, '.claude/aep-evidence.jsonl', i + 1,

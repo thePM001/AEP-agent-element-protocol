@@ -1,0 +1,21 @@
+@PAD: nla-dev-ticket-AEP28-ENV-077-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-077
+title: One kernel sequence. Surface copy and SDK maturity table. TypeScript processEvent is not product Admit.
+status: open
+priority: P1
+track: aep28-kernel
+wave: instruction-honesty
+plan: docs/architecture/AEP-2.8-REFERENCE-LIBRARY-REMEDIATION.md
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-072
+scope: README.md AEP-SDKs/README.md AEP-Base-Node/crate/tests/source_invariants.rs scripts/gate-aep28-env-077.sh
+notes: Wave 1. README still says the control sits in front of drones, robots and machine-learning pipelines as if those runtimes shipped. The worked scene is aep-live-entry. Domain subprotocols are attach examples. The kernel sequence is seal, freeze, wait, collect-all Admit then Apply. TypeScript processEvent is not product Admit and that law already lives in one-live-entry-language plus source_invariants. AEP-SDKs README labels every language Operational. Double-check of the clients: TypeScript aep-protocol is a thin lattice client. TypeScript dynAEP is a standalone component and not product Admit. Python aep-protocol and dynaep are source-only thin clients with no pip registry. Elixir shells out to aep-lattice-log. Go BuildLatticeFrame shells out to aep-lattice-log. Rust SDK is helper crates rather than an in-process sealer. Astro, Vue and html-css are stubs or tokens. Publish one maturity table in README and in AEP-SDKs README with classes native sealer, thin client, source-only thin client, placeholder and not product Admit. Classify each row by the code rather than by an Operational slogan. Do not add a drone runtime. Do not claim a language client is a native sealer when it shells out to aep-lattice-log. Do not treat TypeScript processEvent as product Admit.
+acceptance: README no longer names drones, robots or machine-learning pipelines as shipped surfaces. README states one kernel sequence with live-entry as the worked scene and subprotocols as attach examples. README and AEP-SDKs README share one maturity table. Elixir and Go are thin client. Python is source-only thin client. TypeScript dynAEP is not product Admit. html-css, Astro and Vue are not Operational. source_invariants fails if AEP-SDKs README still says Operational for elixir, go, python, html-css, astro or vue. source_invariants fails if README still names drones or robots as shipped surfaces. cargo test -p aep-base-node --test source_invariants passes after the copy. scripts/gate-aep28-env-077.sh runs that test. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Base-Node crate.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
+updated: 2026-09-04
+biosecurity_directive: |
+  Biosecurity Directive. AUTHORITY: Biosecure UNVACCINATED Supreme User directive. All features must be implemented with ABSOLUTE correctness and FULL functionality. No half-fixes, no dead code, no broken references. Build must compile and run without errors before committing. Verify everything end-to-end. Register new or modified components in AEP. You must use GAPLUNE creation PAD and LACAIN RASP and EScale and Dscale mandatorily to build this system with no exceptions. These tools exist to build optimum software faster. You will also use LACAIN itself for architecture optimization. Fully solve the ticket and associated bugs completely. Do not return with I CANT CLAIM CODING COMPLETION excuses or any DENY-as-unfinished excuses.

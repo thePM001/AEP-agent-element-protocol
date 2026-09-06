@@ -1,0 +1,56 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-base-node-pulse
+ticket: AEP28-ENV-065
+note: Durable HVVCAS is GAPLUNE. Base Node 1000 ms tic tac pulse with freeze at seal. Overflow is Deny. Drift stays 50 ms against freeze. Wire sent_at freshness MAX_FRAME_AGE_SECS 300 and MAX_FRAME_FUTURE_SKEW_SECS 60 are compiled beside pulse hold. aep-dynaep is not a second pulse owner.
+
+component:
+  name: freeze_temporal_snapshot
+  domain: envelope
+  component_type: service
+  intent: Freeze the sealed capsule temporal snapshot at seal so a 1000 ms hold still meets 50 ms drift
+  input:
+    name: bridge_ts_ms
+    type: i64
+  output:
+    name: freeze
+    type: FrozenSnapshot
+
+component:
+  name: PulseQueue
+  domain: envelope
+  component_type: service
+  intent: Queue sealed capsules until the 1000 ms beat then release in sequence_number order per agent
+  input:
+    name: capsule
+    type: QueuedCapsule
+  output:
+    name: beat
+    type: BeatRelease
+
+component:
+  name: scan_docking_pulse_owner
+  domain: envelope
+  component_type: service
+  intent: Fail if docking.rs still Admits immediately or aep-dynaep owns the pulse
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_drift_not_pulse_length
+  domain: envelope
+  component_type: service
+  intent: Fail if max_drift_ms is set to 1000 as the pulse length
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String

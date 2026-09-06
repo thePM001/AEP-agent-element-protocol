@@ -42,7 +42,8 @@ export function admit(action, snap) {
   const walls = [];
 
   if (!Object.keys(nodes).length) {
-    walls.push(W("dag.membership", "dag", true, "no lattice configured"));
+    walls.push(W("dag.membership", "dag", false, "empty lattice closes membership"));
+    walls.push(W("gap.agent_may", "gap", false, "empty lattice closes agent_may"));
   } else if (nodes[action.action_path]) {
     walls.push(W("dag.membership", "dag", true, "node exists"));
   } else {

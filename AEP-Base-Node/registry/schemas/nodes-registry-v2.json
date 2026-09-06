@@ -16,7 +16,7 @@
           "role",
           "base_node_url",
           "lattice_channel",
-          "trust_ring",
+          "isolation_class",
           "agentstream_topology"
         ],
         "properties": {
@@ -27,7 +27,7 @@
           },
           "base_node_url": { "type": "string", "format": "uri" },
           "lattice_channel": { "type": "string", "minLength": 1 },
-          "trust_ring": { "type": "string", "minLength": 1 },
+          "isolation_class": { "type": "string", "minLength": 1 },
           "agentstream_topology": {
             "type": "string",
             "enum": ["as-single", "as-federated"]

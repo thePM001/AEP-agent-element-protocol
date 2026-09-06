@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-053-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-053
+title: Dock line reader must not read one byte per await up to 4MiB.
+status: closed
+priority: P1
+track: aep28-kernel
+wave: fail-closed-lattice
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-052
+scope: AEP-Base-Node/crate/src/docking.rs AEP-Components/dock-line-reader/crate
+notes: Closed. Dock line reader uses fill_buf and consume. It does not await one byte up to 4MiB. BufReader capacity is 64KiB.
+acceptance: Production docking.rs has no one-byte await loop. read_line_limited uses fill_buf and consume. Oversize still returns None. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/dock-line-reader/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/dock-line-reader/crate
+updated: 2026-09-03

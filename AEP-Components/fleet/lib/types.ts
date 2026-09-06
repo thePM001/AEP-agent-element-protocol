@@ -19,7 +19,7 @@ export interface AgentSummary {
   agentId: string;
   sessionId: string;
   trust: number;
-  ring: number;
+  isolation_class: string;
   drift: number;
   phase?: string;
   actions: { total: number; allowed: number; denied: number };

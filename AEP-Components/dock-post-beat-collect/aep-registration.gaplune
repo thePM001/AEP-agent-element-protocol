@@ -1,0 +1,13 @@
+@PAD: aep-dock-post-beat-collect-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-dock-post-beat-collect
+version: 0.1.0
+kind: library
+path: AEP-Components/dock-post-beat-collect/
+ticket: AEP28-ENV-071
+requires: aep-base-node aep-ucb aep-wall-set-backpressure
+capability: dock.post-beat-collect
+note: Dock client collects post-beat Admit by digest. DenyReport.closed and allow event_id return on the wire. Enqueue is not Admit.

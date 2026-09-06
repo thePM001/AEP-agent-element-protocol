@@ -1,0 +1,18 @@
+[workspace]
+
+# @PAD: gap-285-p5-aep-gap-kernel-json-wrap-bind
+# @GCDE: gaplune.policy.v1
+[package]
+name = "aep-gap-kernel-json-wrap-bind"
+version = "0.1.0"
+edition = "2021"
+description = "GAP-285-P5. Classic GAP kernel policies may be JSON-encoded instruction objects. YAML remains valid GAP source. Writing and security are always-on stems. Other GAP walls bind to a wrap or prefix."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-gap-kernel-json-wrap-bind"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = "1"

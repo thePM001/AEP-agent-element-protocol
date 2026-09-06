@@ -1,0 +1,21 @@
+@PAD: nla-dev-ticket-AEP28-ENV-075-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-075
+title: Product version 2.8.5 is one string. Archive leftover Trust Rings. Schema Builder stays unwired.
+status: open
+priority: P1
+track: aep28-kernel
+wave: instruction-honesty
+plan: docs/architecture/AEP-2.8-REFERENCE-LIBRARY-REMEDIATION.md
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-072
+scope: README.md Cargo.toml AEP-Base-Node/crate/src/main.rs AEP-Base-Node/crate/src/bin/aep-lattice-log.rs AEP-Components/lattice-channels/crate/src/lib.rs AEP-Base-Node/crate/tests/source_invariants.rs AEP-Components/version-ssot/crate AEP-Components/trust-rings AEP-Policy-System/schema-builder/README.md docs/compliance/COMPLIANCE.md AEP-Subprotocols AEP-SDKs/rust AEP-SDKs/python scripts/gate-aep28-env-075.sh
+notes: Wave 1. Closed ticket AEP28-ENV-029 bound banner, workspace package version and CHANNEL_VERSION at 2.8.0. README later drifted to 2.8.5 while workspace package version, CHANNEL_VERSION, the Base Node config loader and aep-lattice-log CONFIG_VERSION stayed 2.8.0. source_invariants version_ssot already compares those three and folded_slogan_ci_gates must fail today on banner 2.8.5 versus workspace 2.8.0. Public heading is 2.8.5 so the complete solve is one product string 2.8.5 across README title, README Version line, Canonical layout heading, workspace package version, CHANNEL_VERSION, config loader accepted version, aep-lattice-log CONFIG_VERSION, subprotocol crate versions, Rust SDK crate version and Python package versions. Prefer workspace version inherit on subprotocol crates so they cannot drift again. Extend version_ssot to also read the README title, the layout heading, the config loader literal and aep-lattice-log CONFIG_VERSION. Keep AEP28-ENV-029 law: banner, workspace and CHANNEL_VERSION stay identical at the new string. Archive AEP-Components/trust-rings to retired-archive/retired/trust-rings because Trust Rings is retired product copy with leftover TypeScript. Schema Builder stays an optional study tool. Its own README already says it is not wired to the CCA agent or Docker. Say that in the main feature table. Drop docs/compliance/COMPLIANCE.md lines that treat Schema Builder as a live Art. 9 or Art. 15 control and drop Trust Scoring as if it admits. Do not reopen AEP28-ENV-029. Do not add version-ssot as a workspace member.
+acceptance: README title, Version line and Canonical layout heading say 2.8.5. workspace package version is 2.8.5. CHANNEL_VERSION is 2.8.5. Config loader accepts 2.8.5 and refuses other product versions. aep-lattice-log CONFIG_VERSION is 2.8.5. Subprotocol crates and the Rust SDK crate follow that string. Python package versions follow that string. cargo test -p aep-base-node --test source_invariants passes version_ssot at 2.8.5 and fails if any named site drifts. AEP-Components/trust-rings is gone and retired-archive/retired/trust-rings holds the archive. Main feature table says Schema Builder is not wired to the CCA agent or Docker. COMPLIANCE.md no longer treats Schema Builder as a live Art. 9 or Art. 15 control. scripts/gate-aep28-env-075.sh runs source_invariants version_ssot plus a probe that trust-rings is absent from AEP-Components. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Base-Node crate.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
+updated: 2026-09-04
+biosecurity_directive: |
+  Biosecurity Directive. AUTHORITY: Biosecure UNVACCINATED Supreme User directive. All features must be implemented with ABSOLUTE correctness and FULL functionality. No half-fixes, no dead code, no broken references. Build must compile and run without errors before committing. Verify everything end-to-end. Register new or modified components in AEP. You must use GAPLUNE creation PAD and LACAIN RASP and EScale and Dscale mandatorily to build this system with no exceptions. These tools exist to build optimum software faster. You will also use LACAIN itself for architecture optimization. Fully solve the ticket and associated bugs completely. Do not return with I CANT CLAIM CODING COMPLETION excuses or any DENY-as-unfinished excuses.

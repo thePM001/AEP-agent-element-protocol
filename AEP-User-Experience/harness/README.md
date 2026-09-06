@@ -10,7 +10,7 @@ Public repository: https://github.com/thePM001/AEP-agent-element-protocol
 - **AEP Base Node** mandatory local daemon with four docking ports
 - **dynAEP merged** into main repo (Action Lattice, PAD router)
 - **Lattice Channels** PQEncryptedCapsule transport
-- **AgentMesh** SPIFFE/DID identity on lattice frames
+- **AgentMesh** local issuance identity on lattice frames
 - **Composer Lite** WASM visual canvas on port 8424
 - **Setup agent** post-install activation and inference registration
 - **Component registry** offline catalog plus optional GitHub extension merge
@@ -18,7 +18,7 @@ Public repository: https://github.com/thePM001/AEP-agent-element-protocol
 - **Conformance runner** CC-01 through CC-12 public tier battery
 - **Docker image** full offline protocol (no remote server required)
 
-Inherited: 15-rule meet (`aep-evaluation-chain`), 11 scanners, evidence ledger, Schema Builder, Policy Builder, economics engine. After a sealed lattice frame, Base Node kernel runs collect-all Admit then Apply.
+Inherited: derived 15-row ledger (`aep-evaluation-chain`), 11 scanners, evidence ledger, Schema Builder, Policy Builder, economics engine. After a sealed lattice frame, Base Node kernel runs collect-all Admit then Apply.
 
 ## Boot Registration
 
@@ -42,7 +42,7 @@ Agents operate under GAP-based capability profiles. Authoritative source: `AEP-C
 
 ## Evaluation Chain
 
-After a sealed lattice frame, Base Node kernel runs collect-all Admit then Apply and the 15-rule meet. Closed set does not depend on definition order. TypeScript evaluation-chain runners are removed. Scanners, trust rings, covenants and SHA-256 evidence ledger with Merkle proofs still apply. Base Node records dynAEP events on the validation dock.
+After a sealed lattice frame, Base Node kernel runs collect-all Admit then Apply. Fifteen named rows are a derived ledger. Closed set does not depend on definition order. TypeScript evaluation-chain runners are removed. Scanners, trust rings, covenants and SHA-256 evidence ledger with Merkle proofs still apply. Base Node records dynAEP events on the validation dock.
 
 ## Component Registry
 

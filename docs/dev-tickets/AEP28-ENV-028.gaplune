@@ -1,0 +1,30 @@
+@PAD: nla-dev-ticket-AEP28-ENV-028-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-028
+title: TypeScript lattice must not honour client trust_tier when agent_id is set.
+status: closed
+priority: P1
+track: aep28-trust-client
+wave: ts-lab
+plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-033
+scope: AEP-SDKs/typescript/dynaep/src/protocol/action-lattice.ts AEP-Components/dynAEP/bridge/lattice/index.ts AEP-Components/client-trust-tier-ignore/crate
+notes: Closed. ENV-033 landed. Bound agent_id ignores client trust_tier. Who-may is agent_may. Authorization field trust_tier is not a floor. Live Rust path is aep-client-trust-tier-ignore. Out of scope: hangar tools.
+acceptance: Bound agent_id still ignores client trust_tier. Tier comes from server identity, not the event. Tests cover agent_id set plus inflated trust_tier Deny. Prefer deleting this path when ENV-033 lands.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/client-trust-tier-ignore/crate
+updated: 2026-09-01
+gitea_commits:
+  sdk_lattice: 1004a74fd245de028210f99a3f34290397d3ae21
+  component_lattice: 1cd21825d259dcb6497957d3ff74ef1f8b4ddb05
+  crate_lib: 36dcd45db8bceee2de63f6b985ef104577b87bde
+  crate_main: 1b06bef63c4736eb1c3777d1269c6aafc5ca1535
+  crate_cargo: 476ffa7c18424ccd6f340c8a8747525e3b3e25ea
+  hvvcas: 08dbf94533fc2e300f8b2fdc498eaa45d6aa3b48
+  registration: ad8279024cb264c8a00f3d74261155c1f173aa2d
+  ts_tests: 1c8a0ede4c8e7d24b4fb18978471013e92355548
+  workspace: fb5e7eeb77afcd16b29801d74f950e6922a2c9d2
+  changelog: 1a834599bdf4b0dd2801c2466b708753e8e84ee4

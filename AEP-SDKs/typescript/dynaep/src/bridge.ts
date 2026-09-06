@@ -40,6 +40,7 @@ import type { RegoInput, RegoResult } from "./rego/RegoDecisionCache";
 import { UnifiedScanner, type ScannerConfig, type ScanResult } from "./scanners/UnifiedScanner";
 
 // OPT-004: Chain executor types
+import {
   type TemporalStampEvent,
   type ClockSyncEvent,
   type TemporalResetEvent,
@@ -51,33 +52,16 @@ import { UnifiedScanner, type ScannerConfig, type ScanResult } from "./scanners/
 import {
   LatticeFilter,
   ActionLattice,
-  HookRegistry,
-  governanceAppliesToCategory,
   type LatticeEvent,
   type LatticeFilterResult,
   type AgentInterest,
   type LatticeConfig,
 } from "./protocol/action-lattice.js";
-import { registerBuiltinHooks, resolveHookName } from "./lattice/hook-loader.js";
 import { snapshotFromLattice, runEnvelopeAdmit, closedReasons } from "./envelope/rustAdmit.js";
 function labLatticeFilterEnabled(): boolean {
   const v = String(process.env.AEP_LAB_LATTICE_FILTER ?? "").trim().toLowerCase();
   return v === "1" || v === "true" || v === "on";
 }
-import { dirname, isAbsolute, resolve } from "node:path";
-
-function resolveLatticePolicyPath(
-  policyPath: string | null | undefined,
-  registryPath: string | null | undefined,
-): string | null {
-  if (!policyPath) return null;
-  if (isAbsolute(policyPath)) return policyPath;
-  const regDir = registryPath ? dirname(registryPath) : process.cwd();
-  const dynaepRoot =
-    regDir.split(/[/\\]/).pop() === "registries" ? dirname(regDir) : regDir;
-  return resolve(dynaepRoot, policyPath);
-}
-
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -159,7 +143,6 @@ interface AGUIEvent {
   source?: string;
   payload?: Record<string, unknown>;
   agent_id?: string;
-  trust_tier?: number;
   [key: string]: any;
 }
 
@@ -246,43 +229,12 @@ export class DynAEPBridge {
 
     this.latticeLogger = createDefaultLatticeLogger();
 
-    const latticeCfg = bridgeConfig.lattice;
-    if (latticeCfg?.registry || latticeCfg?.inline) {
-      try {
-        const lattice = new ActionLattice();
-        if (latticeCfg.inline) {
-          lattice.load(latticeCfg.inline);
-        } else if (latticeCfg.registry) {
-          lattice.loadFromFile(latticeCfg.registry);
-        }
-        if (latticeCfg.composer_cca_registry) {
-          lattice.mergeFromFile(latticeCfg.composer_cca_registry);
-        }
-        this.lattice = lattice;
-        const hookRegistry = new HookRegistry();
-        registerBuiltinHooks(hookRegistry);
-        const hookName = resolveHookName(latticeCfg.hook ?? "mle");
-        this.latticeFilter = new LatticeFilter(lattice, hookRegistry, hookName ?? undefined);
-        this.latticeFilter.seedStartupSequence();
-        this.envelopeSatisfied = [];
-        this.latticeInitError = null;
-      } catch (e) {
-        // TM-15: never leave a half-initialised lattice under active governance.
-        const msg = e instanceof Error ? e.message : String(e);
-        this.lattice = null;
-        this.latticeFilter = null;
-        this.latticeInitError = msg;
-        const governance = latticeCfg.governance ?? "filter_all";
-        console.error(
-          `[DynAEPBridge] Failed to initialise LatticeFilter (fail-closed): ${msg}`,
-        );
-        if (governance !== "disabled") {
-          throw new Error(
-            `DynAEPBridge lattice init failed under governance=${governance}: ${msg}`,
-          );
-        }
-      }
-    }
+    // AEP28-ENV-031: ActionLattice YAML load and LatticeFilter are not product Admit.
+    // Product YAML load is Rust aep-live-entry (load_lattice_yaml_file).
+    this.lattice = null;
+    this.latticeFilter = null;
+    this.envelopeSatisfied = [];
+    this.latticeInitError = null;
 
     // TA-1: Initialise temporal authority subsystems
     const clockConfig: ClockConfig = bridgeConfig.timekeeping ?? {
@@ -386,18 +338,14 @@ export class DynAEPBridge {
 
   async processEvent(event: AGUIEvent): Promise<AGUIEvent | DynAEPRejection> {
     this.normalizeAgentContext(event);
-    // AEP28-ENV-024 product live path is Rust aep-live-entry. aep_envelope::admit in-process.
-    // TypeScript processEvent is not the product live path.
-    // Live crossing is Rust aep-live-entry.
+    // AEP28-ENV-031: TypeScript processEvent is not a second product Admit.
+    // Product live path is Rust aep-live-entry. aep_envelope::admit in-process.
+    // Admit collect-all walls then Apply lives in Rust aep-live-entry.
+    // SDKs may speak the protocol. They must not be a second denier.
     void runEnvelopeAdmit;
     void snapshotFromLattice;
     void closedReasons;
-    const target = event.action_path || event.target_id || "unknown";
-    return this.createRejection(
-      target,
-      "Admit collect-all walls then Apply: product live path is Rust aep-live-entry (aep_envelope::admit in-process)",
-      event.timestamp,
-    );
+    return event;
   }
 
   // -------------------------------------------------------------------------
@@ -930,9 +878,7 @@ export class DynAEPBridge {
   }
 
   private normalizeAgentContext(event: AGUIEvent): void {
-    // TM-19: client trust_tier is NEVER authoritative (with or without agent_id).
-    // Server-side identity mapping may raise tiers later; client input always starts at 1.
-    event.trust_tier = 1;
+    // AEP28-ENV-038: processEvent does not stamp a rank field. Who-may is agent_may.
     const agentId = event.agent_id ?? event._agentId;
     if (!agentId) return;
     if (!event.agent_id) event.agent_id = agentId;

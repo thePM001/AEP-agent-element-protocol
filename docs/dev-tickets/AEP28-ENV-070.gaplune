@@ -1,0 +1,37 @@
+@PAD: nla-dev-ticket-AEP28-ENV-070-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-070
+title: Dock Deny must return closed-wall ids and mechanical repair for unbound fields and writing without grant values.
+status: closed
+priority: P0
+track: aep28-kernel
+wave: wall-set-backpressure
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-066 AEP28-ENV-065
+scope: AEP-Components/wall-set-backpressure/crate AEP-Components/live-entry/crate AEP-Base-Node/crate/src/docking.rs AEP-Base-Node/crate/src/envelope_admit.rs AEP-Docks/ucb/crate CHANGELOG.md README.md
+notes: Closed. Dock Deny returns DockFrameResponse.deny with closed wall ids, reasons, closed_set_key and prescribed repairs for unbound scene, dock, time, sequence and writing.gap. Grant lists stay off repair.fix. Native Path A owns the report. UCB ingest JSON forwards deny. Digest replay is keyed at enqueue so a retry must seal a new capsule. Attractors stay forensic. Conjunction stays Boolean meet. One Admit function remains attach_live_walls then process_event. TypeScript dynAEP remains. Ticket close is coding close.
+acceptance: DockFrameResponse carries deny. Unbound scene repair binds target_id. Unbound dock repair binds dest_dock. Unbound time repair binds timestamp at seal with 50 ms drift unchanged. Unbound sequence repair binds _sequenceNumber. Writing walls prescribe the writing.gap fix. Grant-list field names do not appear in repair.fix. UCB DockResponse forwards deny. cargo test -p aep-wall-set-backpressure --lib and cargo test -p aep-base-node --lib and cargo test -p aep-live-entry --lib cover the report. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/wall-set-backpressure/crate.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/wall-set-backpressure/crate
+gitea_commits:
+  ticket_open: a63c320386ea325e28bf7f084a362f003382af11
+  crate_cargo: e86b20822209cdc447c69f0881d0dcb556424a8f
+  crate_main: 5498c71e4fb846c6e9165b2e58a10865e35d24aa
+  crate_reg: 20fe4c576507048bc8b19b3351db3192e3622be8
+  crate_hvvcas: d6c2275cbf1035cd1428b8277ac544e94fd7bcbe
+  crate_lib: 9c465f0623888a7b6c3a073c91635ba2363ddea5
+  workspace_cargo: 0d6b99b1df5484ec1b8cb6924334de530119198a
+  base_node_cargo: 109266bd81f64eee2d604eb724e5a90f50892546
+  ucb_cargo: ad7e9b799a87f2ad15fd3d3b8e2170c2f19274f4
+  live_entry: d6432965a6359af8c8ccaa59201266b5f830c869
+  envelope_admit: 69529b93b8801734654eb7f95324c86f98ef6e89
+  docking: ad174a17de1dffdc6e2ada20649beb470b4b82a5
+  ucb_lattice: 843a94eb01c2a6d394729e61317e86f8aea8ec72
+  ucb_bridge: 8c1253a732e5c709b9f51e16a54042101ebf5d66
+  changelog: b5b791fa4c8c3b0b80b8fbaf4481e2c2f74887d3
+  readme: e226f4e55d5ad8cb6a014edaf1719be0a023ac25
+  gate_script: 8e539fc7da7a3edc6633195ab976d4836cadcb70
+updated: 2026-09-04

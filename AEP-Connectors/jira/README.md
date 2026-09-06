@@ -1,18 +1,24 @@
 # Jira Connector
 
-**Registry id:** `connector-jira`  
+**Registry id:** `connector-jira`
 **UCB-only:** all traffic via `/ucb/v1/egress/jira/**`
+
+## Create an issue
+
+`createIssue({ projectKey, issueType, summary, description })` posts `/rest/api/3/issue` through UCB. UCB injects `AEP_JIRA_API_TOKEN` as Bearer on the egress proxy. This is a real client.
+
+## Probe
+
+`probe` calls UCB `GET /jira/rest/api/3/myself`.
 
 ## Auth
 
-Set `AEP_JIRA_API_TOKEN` in the environment. UCB injects it as Bearer on egress proxy.
+Set `AEP_JIRA_API_TOKEN` in the environment.
 
 ## Default upstream
 
-`https://api.atlassian.com`
+`https://api.atlassian.com` is UCB route metadata. Connectors call UCB rather than that host.
 
-Override in CCA plan `connectors.jira` or task manifest egress routes.
+## Access rules
 
-## MCP / Nango
-
-Optional MCP servers from [awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) or self-hosted [Nango](https://github.com/nangohq/nango) may sit upstream - still reached only through UCB egress.
+Manifest routes allow `POST /jira/rest/api/3/issue` and `GET /jira/rest/api/3/myself`.

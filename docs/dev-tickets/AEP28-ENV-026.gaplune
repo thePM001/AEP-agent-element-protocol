@@ -1,0 +1,39 @@
+@PAD: nla-dev-ticket-AEP28-ENV-026-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-026
+title: CAW wrapenv Filter must fail-closed. Stop inherited env on nil wire or BuildEnv error.
+status: closed
+priority: P0
+track: aep28-caw-wrapenv
+wave: caw
+plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Components/caw-framework/internal/wrapenv/wrapenv.go AEP-Components/caw-wrapenv-failclosed/crate
+notes: HIGH. wrapenv.Filter fail-closed. Nil wire returns empty env and ErrNilWire. BuildEnv error returns empty env and error. Callers Deny wrap. wrapEnvPolicyWire sends empty wire when flag off. Nil when no engine. CI crate aep-caw-wrapenv-failclosed scans wrapenv.go. Out of scope: hangar tools. Operator close 2026-09-01.
+acceptance: nil wire Deny or empty env, never inherited base. BuildEnv error Deny, never unfiltered base. Tests lock fail-closed. nla-policy-scan gate coding-completion is N/A for Go. Prove with wrapenv tests plus aep-caw wrap path.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/caw-wrapenv-failclosed/crate
+close_gates:
+  coding-completion: ALLOW
+  project-completion-bac: ALLOW
+  gitea-write-proof: ALLOW
+  nla-harness-coding-completion-gate: ALLOW
+gitea_commits:
+  wrapenv: 42f98060dc0616edc6cb6d1a35ba35255b27c2c9
+  wrapenv_test: f1e78cfba9a5c8225fd18def9a02ef020c8b869c
+  wrap_linux: 0a8a09dc22d5222f13920b7ded73c33ac61ea451
+  install_linux: e97dccc3516fcbddd5fe7f1f67b96d3cd2cb3ca8
+  wrap_api: c3966b2e086da1ccccedb80c4c1d25a6adb0df27
+  wrap_api_test: afa405a4e19f179841d973c09d6632e9e2254475
+  kernelinstall_test: 493508b53fe3465ee9bc2db5e9360b8246df8e43
+  sessions: d7a9b18bec2c6740c85f5146b112a3993caa552b
+  crate_cargo: 20a963fbaa8808a73f2cb15b39ac0804205610e7
+  crate_hvvcas: 7481fa002e06b8af0b815e990bc9193c720cf977
+  crate_lib: 365a41d615c6efddc43763d2e61759a4801bd3d5
+  crate_main: 5d567f57bae06e80dcccbf60e67cefb805efe32e
+  workspace_cargo: d0fb0f562dfbae148f4a0faf157f975e86d14738
+closed_at: 2026-09-01T00:00:00Z
+updated: 2026-09-01

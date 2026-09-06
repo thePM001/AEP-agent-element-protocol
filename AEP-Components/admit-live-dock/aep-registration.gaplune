@@ -1,0 +1,13 @@
+@PAD: aep-admit-live-dock-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-admit-live-dock
+version: 0.1.0
+kind: library
+path: AEP-Components/admit-live-dock/
+ticket: AEP28-ENV-032
+requires: aep-admit aep-admit-writing-walls aep-admit-channel-order-walls aep-admit-temporal-bounds aep-envelope-walls aep-live-entry aep-policy-system-admit
+capability: admit.live-dock.collect-all
+note: Live dock collect-all. Product Admit wall crates run here or leave the workspace. Extra temporal walls measure 50 ms drift against freeze for AEP28-ENV-065.

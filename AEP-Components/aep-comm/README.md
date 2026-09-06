@@ -17,6 +17,6 @@ Messages travel as a JSON-LD envelope, meaning a typed JSON document with linked
 
 ## Hand off a task
 
-A task moves through eight states and can push a notification when the state changes. Sensitive steps can wait for a human. Delegation picks another agent by a named capability and retries if that agent fails. Isolated code execution sits behind written policy. The sandbox can run python, javascript, typescript and bash with timeout, output caps, path-escape refusal and optional network isolation.
+A task moves through eight states and can push a notification when the state changes. Sensitive steps can wait for a human. Delegation picks another agent by a named capability and retries if that agent fails. CodeSandbox execute sits behind written policy. The sandbox can run python, javascript, typescript and bash with timeout, output caps, path-escape refusal and optional network isolation.
 
 Tests: `./AEP-Components/conformance/runner/run.sh`

@@ -27,10 +27,10 @@ export function writeConfig(path, config, opts = {}) {
   }
 }
 
-export function writeLatticeEnv(envPath, secret) {
+export function writeLatticeEnv(envPath) {
   writeFileSync(
     envPath,
-    `LATTICE_CHANNEL_SECRET=${secret}\nAGENTSTREAM_CAPSULE_SECRET=${secret}\n`,
+    `LATTICE_CHANNEL_PROFILE=aep-lattice-channel-v1\nLATTICE_KEM=ML-KEM-768\nLATTICE_SIGNATURE=ML-DSA-65\n`,
     { mode: 0o600 },
   );
   try {
@@ -46,7 +46,6 @@ export function buildBaseNodeConfig({
   binaryPath,
   catalog,
   lrps,
-  latticeSecret,
   internetUp,
   meshPeers = 0,
   inferenceEngine = null,
@@ -60,7 +59,8 @@ export function buildBaseNodeConfig({
       binary_path: binaryPath,
       epscom_priority: catalog.epscom.priority,
       lrps,
-      lattice_channel_secret: latticeSecret,
+      lattice_kem: "ML-KEM-768",
+      lattice_signature: "ML-DSA-65",
       internet_up: internetUp,
       mesh_peers: meshPeers,
     },

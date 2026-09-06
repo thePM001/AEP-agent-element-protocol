@@ -103,12 +103,10 @@ export { AEPProxyServer, type ProxyOptions, type BackendConfig, type MCPToolCall
 export { ShellProxy, type ShellProxyOptions, type ShellResult } from "../../../../AEP-Components/proxy/lib/shell-proxy.js";
 
 // Trust Scoring
-export { TrustManager } from "../../../../AEP-Components/trust-rings/lib/trust/manager.js";
-export { type TrustTier, type TrustEvent, type TrustConfig } from "../../../../AEP-Components/trust-rings/lib/trust/types.js";
+export { TrustManager } from "../../../../retired-archive/retired/trust-rings/lib/trust/manager.js";
+export { type TrustTier, type TrustEvent, type TrustConfig } from "../../../../retired-archive/retired/trust-rings/lib/trust/types.js";
 
-// Execution Rings
-export { RingManager } from "../../../../AEP-Components/trust-rings/lib/rings/manager.js";
-export { type ExecutionRing, type RingConfig, type RingCapabilities } from "../../../../AEP-Components/trust-rings/lib/rings/types.js";
+// AEP28-ENV-033: rings are not a product member. Who-may-do-what is GAP dimension Conjunction.
 
 // Behavioral Covenants
 export { parseCovenant } from "../../../../AEP-Components/covenant/lib/parser.js";

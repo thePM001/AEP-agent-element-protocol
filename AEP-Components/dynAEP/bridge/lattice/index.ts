@@ -7,7 +7,7 @@
 // - parents (partial order: what must happen first)
 // - children (what may follow)
 // - constraints (validation gates at event arrival time)
-// - trust_floor (minimum agent trust tier)
+// - agent_may (GAP dimension: which agents may this action. No rank.)
 //
 // The lattice filter validates every event against its partial-order
 // closure and constraints BEFORE it reaches any output renderer.
@@ -73,7 +73,7 @@ export interface LatticeNode {
   parents: string[];
   children: string[];
   constraints: LatticeConstraint[];
-  trust_floor: number;
+  agent_may: string[];
 }
 
 export interface LatticeConfig {
@@ -98,8 +98,13 @@ export interface LatticeEvent {
   bridge_timestamp: number;
   /** Optional agent that originated this event (if known) */
   agent_id?: string;
-  /** Agent trust tier (1-5, default 1 when unset) */
+  /** Non-authoritative client claim. Never compared as a floor. */
   trust_tier?: number;
+}
+
+/** AEP28-ENV-028: drop client trust_tier. Who-may is agent_may. */
+export function ignoreClientTrustTier(_tier?: number): undefined {
+  return undefined;
 }
 
 export interface AgentInterest {
@@ -118,7 +123,7 @@ export interface LatticeFilterResult {
   constraints_failed: Array<{ constraint: LatticeConstraint; reason: string }>;
   partial_order_satisfied: boolean;
   missing_parents: string[];
-  trust_sufficient: boolean;
+  agent_may: boolean;
   matched_interests: AgentInterest[];
   next_actions: string[];
   duration_us: number;
@@ -372,10 +377,22 @@ export class ActionLattice {
 
     const missing: string[] = [];
     for (const parent of node.parents) {
-      // Per-agent tracking: agent must have satisfied it, OR it's a global event (root)
-      const key = agentId ? `${agentId}:${parent}` : parent;
-      const globalKey = parent;
-      if (!satisfiedActions.has(key) && !satisfiedActions.has(globalKey)) {
+      const pnode = this.nodes.get(parent);
+      const systemish =
+        pnode?.category === "system_event" ||
+        pnode?.category === "external_event" ||
+        parent.startsWith("system:") ||
+        parent.startsWith("system_");
+      if (systemish) {
+        if (!satisfiedActions.has(parent)) {
+          missing.push(parent);
+        }
+        continue;
+      }
+      const who = agentId && agentId.length > 0 ? agentId : "unbound";
+      const key = `agt|${who}|${parent}`;
+      const legacy = agentId ? `${agentId}:${parent}` : "";
+      if (!satisfiedActions.has(key) && !(legacy && satisfiedActions.has(legacy))) {
         missing.push(parent);
       }
     }
@@ -384,12 +401,19 @@ export class ActionLattice {
   }
 
   /**
-   * Check trust level against an action's trust_floor (1-5).
+   * GAP dimension: Agent A may X. No numeric rank.
    */
-  trustSufficient(actionPath: string, trustTier: number): boolean {
+  agentMay(actionPath: string, agentId?: string): boolean {
     const node = this.nodes.get(actionPath);
     if (!node) return false;
-    return trustTier >= node.trust_floor;
+    const grants = node.agent_may ?? [];
+    const systemish = node.category === "system_event" || node.category === "external_event";
+    if (grants.length === 0) return systemish;
+    return grants.some((g) => {
+      if (g === "*") return Boolean(agentId);
+      if (g === "unbound") return !agentId;
+      return g === agentId;
+    });
   }
 
   /**
@@ -409,7 +433,7 @@ export class ActionLattice {
     const passed: string[] = [];
     const failed: Array<{ constraint: LatticeConstraint; reason: string }> = [];
 
-    for (const constraint of node.constraints) {
+    for (const constraint of node.constraints ?? []) {
       switch (constraint.type) {
         case "required_field": {
           if (constraint.field && payload[constraint.field] !== undefined) {
@@ -653,6 +677,12 @@ export class ActionLattice {
     condition: string,
     payload: Record<string, unknown> = {},
   ): { passed: boolean; reason: string } {
+    if (field === "trust_tier") {
+      return {
+        passed: false,
+        reason: "client trust_tier is not a floor",
+      };
+    }
     if (value === undefined) {
       return { passed: false, reason: `Authorization field '${field}' is missing` };
     }
@@ -723,15 +753,6 @@ export class LatticeFilter {
     this.lattice = lattice;
     this.hookRegistry = hookRegistry || new HookRegistry();
     this.hookName = hookName || null;
-
-  }
-
-  getHookName(): string | null {
-    return this.hookName;
-  }
-
-  getRegisteredAgentIds(): string[] {
-    return Array.from(this.interests.keys());
   }
 
   /** Register an agent's interest in lattice paths */
@@ -751,18 +772,19 @@ export class LatticeFilter {
    */
   markSatisfied(actionPath: string, agentId?: string): void {
     const path = String(actionPath ?? "");
-    const isSystem =
-      path.startsWith("system:") || path.startsWith("system_");
-    if (isSystem || agentId === "global") {
+    const node = this.lattice.get(path);
+    const systemish =
+      node?.category === "system_event" ||
+      node?.category === "external_event" ||
+      path.startsWith("system:") ||
+      path.startsWith("system_") ||
+      agentId === "system";
+    if (systemish) {
       this.satisfiedActions.add(path);
       return;
     }
-    if (agentId) {
-      this.satisfiedActions.add(`${agentId}:${path}`);
-      return;
-    }
-    // No agentId: keep global for backward-compat system bootstrap only
-    this.satisfiedActions.add(path);
+    const who = agentId && agentId.length > 0 ? agentId : "unbound";
+    this.satisfiedActions.add(`agt|${who}|${path}`);
   }
 
   /** Check if an action path matches a glob pattern */
@@ -796,7 +818,7 @@ export class LatticeFilter {
       constraints_failed: [],
       partial_order_satisfied: false,
       missing_parents: [],
-      trust_sufficient: false,
+      agent_may: false,
       matched_interests: [],
       next_actions: [],
       duration_us: 0,
@@ -817,22 +839,18 @@ export class LatticeFilter {
     }
     result.matched_node = node;
 
-    // 2. Check trust floor
-    const boundAgent = Boolean(event.agent_id);
-    const agentTrust = boundAgent ? (event.trust_tier ?? 1) : 1;
-    result.trust_sufficient = this.lattice.trustSufficient(
-      event.action_path,
-      agentTrust
-    );
-    if (!result.trust_sufficient) {
+    // 2. GAP dimension who-may-do-what. No client trust_tier floor compare.
+    result.agent_may = this.lattice.agentMay(event.action_path, event.agent_id);
+    if (!result.agent_may) {
+      const who = event.agent_id ? event.agent_id : "unbound";
       result.constraints_failed.push({
         constraint: {
           type: "authorization",
-          field: "trust_tier",
-          condition: `>= ${node.trust_floor}`,
-          description: `Agent trust tier ${agentTrust} below required ${node.trust_floor}`,
+          field: "agent_id",
+          condition: "agent_may",
+          description: `GAP dimension agent_may closed: agent '${who}' may not '${event.action_path}'`,
         },
-        reason: `Insufficient trust: ${agentTrust} < ${node.trust_floor}`,
+        reason: `GAP dimension agent_may closed: agent '${who}' may not '${event.action_path}'`,
       });
       result.duration_us = this.elapsedUs(startTime);
       return result;
@@ -866,6 +884,7 @@ export class LatticeFilter {
       registered_agent_ids: Array.from(this.interests.keys()),
     };
     delete serverPayload.registered;
+    delete serverPayload.trust_tier;
     const constraintCheck = this.lattice.evaluateConstraints(
       event.action_path,
       serverPayload,
@@ -878,7 +897,7 @@ export class LatticeFilter {
     }
 
     // 5. Custom constraints require async hook dispatch (fail closed in sync path)
-    const hasCustomConstraints = node.constraints.some((c) => c.type === "custom");
+    const hasCustomConstraints = (node.constraints ?? []).some((c) => c.type === "custom");
     if (hasCustomConstraints && !deferCustomHooks) {
       const resolvedHook = this.hookName
         ? (HOOK_NAME_ALIASES[this.hookName] ?? this.hookName)
@@ -935,7 +954,7 @@ export class LatticeFilter {
   async filterAsync(event: LatticeEvent, autoMarkSatisfied: boolean = true): Promise<LatticeFilterResult> {
     const startTime = process.hrtime.bigint();
     const node = this.lattice.get(event.action_path);
-    const hasCustomConstraints = node?.constraints.some((c) => c.type === "custom") ?? false;
+    const hasCustomConstraints = (node?.constraints ?? []).some((c) => c.type === "custom");
 
     if (hasCustomConstraints) {
       const resolvedHook = this.hookName
@@ -958,7 +977,7 @@ export class LatticeFilter {
           }],
           partial_order_satisfied: false,
           missing_parents: [],
-          trust_sufficient: false,
+          agent_may: false,
           matched_interests: [],
           next_actions: [],
           duration_us: this.elapsedUs(startTime),

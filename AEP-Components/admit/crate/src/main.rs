@@ -2,11 +2,11 @@
 // @GCDE: gaplune.policy.v1
 // CLI: one wall per line id=<id> closed=<true|false> reason=<text>
 // writing_text=<prose> compiles writing.gap into Admit walls on this pass.
-// trust_tier=<n> plus trust_floor=<n> compile the trust floor wall on this pass.
+// agent_id= action= grant=agent:action compile the GAP agent-may wall on this pass.
 // Prints allow= and closed=<id>|<reason> lines. Closed set is sorted.
 
 use aep_admit::{
-    admit_collect_all, compile_trust_floor_wall, compile_writing_walls, AdmitWall,
+    admit_collect_all, compile_agent_may_wall, compile_writing_walls, AdmitWall, AgentMayGrant,
 };
 use std::io::{self, Read};
 
@@ -53,22 +53,32 @@ fn main() {
     let mut buf = String::new();
     io::stdin().read_to_string(&mut buf).expect("stdin");
     let mut walls: Vec<AdmitWall> = Vec::new();
-    let mut trust_tier: Option<u32> = None;
-    let mut trust_floor: Option<u32> = None;
+    let mut agent_id = String::new();
+    let mut action = String::new();
+    let mut grants: Vec<AgentMayGrant> = Vec::new();
     for line in buf.lines() {
         let t = line.trim();
-        if let Some(v) = t.strip_prefix("trust_tier=") {
-            trust_tier = v.trim().parse::<u32>().ok();
+        if let Some(v) = t.strip_prefix("agent_id=") {
+            agent_id = v.trim().to_string();
             continue;
         }
-        if let Some(v) = t.strip_prefix("trust_floor=") {
-            trust_floor = v.trim().parse::<u32>().ok();
+        if let Some(v) = t.strip_prefix("action=") {
+            action = v.trim().to_string();
+            continue;
+        }
+        if let Some(v) = t.strip_prefix("grant=") {
+            if let Some((a, act)) = v.split_once(':') {
+                grants.push(AgentMayGrant {
+                    agent_id: a.trim().to_string(),
+                    action: act.trim().to_string(),
+                });
+            }
             continue;
         }
         walls.extend(parse_line(line));
     }
-    if let (Some(tier), Some(floor)) = (trust_tier, trust_floor) {
-        walls.push(compile_trust_floor_wall(tier, floor));
+    if action.is_empty() == false {
+        walls.push(compile_agent_may_wall(&agent_id, &action, &grants));
     }
     let result = admit_collect_all(&walls);
     let mut out = String::from("allow=");

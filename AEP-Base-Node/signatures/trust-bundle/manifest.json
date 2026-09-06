@@ -32,7 +32,6 @@
   ],
   "verification": {
     "mode": "sha256-structure",
-    "pq_signature": "ML-DSA-65",
-    "note": "Production bundles ship EPSCOM ML-DSA-65 detached signatures over manifest bytes."
+    "note": "This bundle is SHA-256 structure integrity. ML-DSA is not claimed."
   }
 }

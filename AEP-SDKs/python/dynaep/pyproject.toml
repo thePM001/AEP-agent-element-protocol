@@ -1,0 +1,15 @@
+# @PAD: aep28-env-060-dynaep-pyproject-v1
+# @GCDE: gaplune-decode hmac-sha256:6e28019aecf807c7b36efb74bcf2f8689d34a6ff75af3c893cf4510528c9747b
+[project]
+name = "dynaep"
+version = "2.8.5"
+description = "dynAEP Python bridge client"
+requires-python = ">=3.10"
+dependencies = []
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["dynaep*"]

@@ -1,0 +1,36 @@
+@PAD: nla-dev-ticket-AEP28-ENV-038-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-038
+title: Remove trust_tier from live Admit events. Who-may-do-what is agent_may, not a numeric rank on the event.
+status: closed
+priority: P1
+track: aep28-gitea-code-analysis-2026-09-01
+wave: live-admit
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Components/envelope/crate/src/lib.rs AEP-Components/live-entry/crate/src/lib.rs AEP-SDKs/typescript/dynaep/src/bridge.ts
+notes: Closed. EnvelopeAction has no rank field. Live tests do not send a rank field. TypeScript processEvent does not stamp a rank field. Who-may is GAP dimension agent_may. Out of scope: hangar tools.
+acceptance: EnvelopeAction has no trust_tier field. Live tests do not send trust_tier. TypeScript processEvent does not stamp trust_tier. CI fails if trust_tier remains on the live Admit event type. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/envelope/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/envelope/crate
+updated: 2026-09-02
+gitea_commits:
+  envelope_lib: 766f7a991d48d3c05269e88046e7008a5a0c06fc
+  live_entry: fe57e0dc89e1da0df67f2a04edd490e652de99ab
+  one_live: ec1d4e3242fd9584d89f1b82bc0da5600883d6ce
+  bridge: 17eeb267926f2716f94c27aa0670dd48df64f291
+  envelope_admit: 83aecb64ddd6412117f1d9476db49feb35725b19
+  docking: 3e9632d822532e8098aa88e8d550fe50dfc180f8
+  live_dock: 009e0b4a45f379606e2f37d97f8ce8d9c9794c79
+  rust_sdk: a68b9004ba272904a8d2ba93549fa037da305b44
+  crate_cargo: 0e816221d33662d5c90f0281781ad4dcf2e70c9e
+  crate_lib: 0fde946a1689dcc8d7d2f15d3888a9c5dc422e58
+  crate_main: 73b6ec8f0c54d4afc4c945bf647bef17c90702c3
+  hvvcas: abc32249bc5bcc0222b327bb3e20335e3edb7533
+  registration: 15aa86efb4f9145eb90669896135127fcf95f503
+  workspace: 9df102da7f34fb67b45e5717ecca0699415dfa74
+  changelog: f834f861b80a0b6be86e03fc2370c5b487e859cb
+  ts_test: fdc342bad8d1949d254d26b0042fc9c8ca53e6dc

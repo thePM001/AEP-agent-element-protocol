@@ -1,0 +1,18 @@
+# @PAD: aep28-env-056-policy-system-admit-v1
+# @GCDE: gaplune-decode hmac-sha256:550dd0b80916ad8bf3925e60fe606fa95da9a748c51a4bb92978604037f4f20b
+[package]
+name = "aep-policy-system-admit"
+version = "0.1.0"
+edition = "2021"
+description = "AEP28-ENV-056 AEP28-ENV-067. Load AEP-Policy-System GAP files as live Admit walls bound to wrap or prefix."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-policy-system-admit"
+path = "src/main.rs"
+
+[dependencies]
+aep-admit = { path = "../../admit/crate" }
+anyhow = "1"
+serde_json = "1"

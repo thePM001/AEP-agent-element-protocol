@@ -157,7 +157,8 @@ pub async fn ingest_foreign_payload(
                 "ok": false,
                 "status": "rejected",
                 "validation": validation,
-                "error": e,
+                "error": e.error,
+                "deny": e.deny,
             });
         }
     };
@@ -272,7 +273,7 @@ pub async fn rollback_foreign_integrations(rt: &Arc<UcbRuntime>, steps: usize) -
         )
         .await
     {
-        return json!({ "ok": false, "error": e, "rolled_back": 0 });
+        return json!({ "ok": false, "error": e.error, "deny": e.deny, "rolled_back": 0 });
     }
 
     let recorded = match rt.lattice.seal_and_record(&rollback_event) {

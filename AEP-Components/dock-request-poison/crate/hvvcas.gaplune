@@ -1,0 +1,56 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-dock-request-poison
+ticket: AEP28-ENV-048
+note: Durable HVVCAS is GAPLUNE. Dock request path returns ok false on poisoned locks. Do not abort the process.
+
+component:
+  name: lock_or_poison
+  domain: lattice
+  component_type: service
+  intent: Map a poisoned mutex to an error string. Do not abort the process.
+  input:
+    name: name
+    type: String
+  output:
+    name: result
+    type: String
+
+component:
+  name: poisoned_lock_message
+  domain: lattice
+  component_type: service
+  intent: Build the dock request ok false error string for a poisoned lock
+  input:
+    name: name
+    type: String
+  output:
+    name: message
+    type: String
+
+component:
+  name: scan_prod_no_lock_expect
+  domain: lattice
+  component_type: service
+  intent: Fail if production dock request path still uses lock expect or lock unwrap
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_ok_false_on_poison
+  domain: lattice
+  component_type: service
+  intent: Fail if dock request path does not return ok false on poisoned locks
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String

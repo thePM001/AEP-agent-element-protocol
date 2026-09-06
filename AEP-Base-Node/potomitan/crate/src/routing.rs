@@ -23,6 +23,10 @@ impl RoutingTable {
         Self::default()
     }
 
+    pub fn insert(&mut self, entry: RouteEntry) {
+        self.routes.insert(entry.destination.clone(), entry);
+    }
+
     pub fn rebuild_from_peers(peers: &[MeshPeer]) -> Self {
         let mut table = Self::new();
         for peer in peers.iter().filter(|p| p.active) {
@@ -68,5 +72,47 @@ mod tests {
         let table = RoutingTable::rebuild_from_peers(&peers);
         assert_eq!(table.reachable_destinations(), 1);
         assert_eq!(table.route_to("pot-01").unwrap().via_endpoint, "tls://10.0.0.2:12345");
+    }
+
+    #[test]
+    fn inactive_peers_are_not_routed() {
+        let peers = vec![
+            MeshPeer {
+                node_id: "live".into(),
+                endpoint: "mem://live".into(),
+                public_key_hex: None,
+                active: true,
+            },
+            MeshPeer {
+                node_id: "dead".into(),
+                endpoint: "mem://dead".into(),
+                public_key_hex: None,
+                active: false,
+            },
+        ];
+        let table = RoutingTable::rebuild_from_peers(&peers);
+        assert_eq!(table.reachable_destinations(), 1);
+        assert!(table.route_to("live").is_some());
+        assert!(table.route_to("dead").is_none());
+    }
+
+    #[test]
+    fn unknown_destination_is_none() {
+        let table = RoutingTable::new();
+        assert!(table.route_to("no-such-node").is_none());
+    }
+
+    #[test]
+    fn insert_multi_hop_route() {
+        let mut table = RoutingTable::new();
+        table.insert(RouteEntry {
+            destination: "c".into(),
+            next_hop: "b".into(),
+            cost: 2,
+            via_endpoint: "mem://b".into(),
+        });
+        let r = table.route_to("c").expect("route");
+        assert_eq!(r.next_hop, "b");
+        assert_eq!(r.cost, 2);
     }
 }

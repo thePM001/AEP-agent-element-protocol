@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-063-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-063
+title: EPSCOM trust bundle must not claim ML-DSA while the manifest mode is sha256-structure.
+status: closed
+priority: P1
+track: aep28-library-components
+wave: epscom-trust-bundle-mode
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Base-Node/signatures/trust-bundle AEP-Base-Node/signatures/lib/signatures-registry.mjs AEP-Base-Node/signatures catalog AEP-Base-Node/signatures/tooling/validate-signatures.mjs AEP-Components/epscom-trust-bundle-mode/crate CHANGELOG.md Cargo.toml scripts/gate-aep28-env-063.sh
+notes: Closed. EPSCOM trust bundle mode is sha256-structure. ML-DSA is not claimed. Crate aep-epscom-trust-bundle-mode fails if the loader still exempts the claim. CI gate scripts/gate-aep28-env-063.sh runs cargo test --lib and cargo run.
+acceptance: Shipped trust bundle mode is sha256-structure and does not claim ML-DSA. Loader returns trust_bundle_mldsa_claim_on_sha256_structure on that contradiction. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/epscom-trust-bundle-mode/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/epscom-trust-bundle-mode/crate
+updated: 2026-09-04

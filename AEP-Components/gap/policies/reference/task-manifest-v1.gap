@@ -10,7 +10,7 @@ action:
   schema: TaskManifestV1
   structured_generation: true
   content: |
-    Synthesize task-manifest-v1 with GAP-typed intent, trust tier, and CAW profile binding.
+    Synthesize task-manifest-v1 with GAP-typed intent, trust tier and CAW profile binding.
 
 weight: 1.0
 
@@ -21,7 +21,18 @@ metadata:
   provenance: "aep.2.8.seed"
   version: "1.0.0"
   stability: stable
-  trust_ring: user
+  agent_may:
+    - agent_id: grok-build
+      action: write
+    - agent_id: grok-build
+      action: manifest
+  wrap: ucb
+  action_path_prefix: ucb
+  fscale:
+    required.0.alias: nla-policy-scan
+    required.0.id: FS.0.128.172
+    required.1.alias: nla-lattice-api-route
+    required.1.id: FS.0.128.22
   aspect: procedural
 
 subprotocols:

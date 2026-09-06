@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-054-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-054
+title: Connectors must implement real upstream clients if a builder is expected to attach them as functioning pieces.
+status: closed
+priority: P1
+track: aep28-library-components
+wave: connectors
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Connectors/slack AEP-Connectors/jira AEP-Connectors/lib/connector-kit.mjs
+notes: Closed. Slack posts chat.postMessage through UCB. Jira creates issues through UCB. Sibling connectors probe through UCB. Crate aep-connector-ucb-clients gates the kit.
+acceptance: Slack posts a message through UCB chat.postMessage. Jira creates an issue through UCB rest/api/3/issue. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/connector-ucb-clients/crate and AEP-Base-Node/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
+updated: 2026-09-03

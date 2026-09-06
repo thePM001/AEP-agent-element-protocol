@@ -213,7 +213,7 @@ enforced on every event:
 - Tier 4: high-trust agents (email review, shutdown)
 - Tier 5: maximum trust (trade proposal, execution)
 
-Every lattice node has a `trust_floor`. Events from agents below the floor
+Every lattice node has `agent_may` grants. Events from agents not granted the action
 are rejected. Review your agent trust assignments before upgrading.
 
 ### 2.7 Python SDK: No Breaking API Changes
@@ -241,7 +241,7 @@ perform. Each action has:
 - **children** - list of action paths that may follow
 - **constraints** - validation gates (required_field, threshold, authorization,
  custom)
-- **trust_floor** - minimum agent trust tier (1-5)
+- **agent_may** - GAP dimension grants. Agent A may X. Agent B may Y. No rank
 
 The bridge validates every incoming event against the lattice:
 
@@ -432,7 +432,7 @@ dynAEP-lattice:
  label: "Action Lattice Filter"
  category: governance
  description: "Partial-order DAG event validation"
- trust_floor: 2
+ agent_may: ["*"]
  version: "1.0.0"
  location: "bridge/lattice/index.ts"
  dependencies: []
@@ -442,7 +442,7 @@ dynAEP-lattice:
 dynAEP-hooks:
  label: "Validation Hook Interface"
  category: governance
- trust_floor: 1
+ agent_may: ["*"]
  version: "1.0.0"
  location: "hooks/interface.ts"
  dependencies: ["dynAEP-lattice"]
@@ -452,7 +452,7 @@ dynAEP-hooks:
 dynAEP-observers:
  label: "Observer Adapter Layer"
  category: integration
- trust_floor: 1
+ agent_may: ["*"]
  version: "1.0.0"
  location: "observers/"
  dependencies: []
@@ -464,7 +464,7 @@ dynAEP-observers:
 dynAEP-lattice-registry:
  label: "Action Lattice Registry"
  category: configuration
- trust_floor: 1
+ agent_may: ["*"]
  version: "1.0.0"
  location: "registries/aep-lattice.yaml"
  dependencies: ["dynAEP-lattice"]
@@ -472,7 +472,7 @@ dynAEP-lattice-registry:
 dynAEP-mle-hook:
  label: "MLE Validation Hook (Reference)"
  category: validation
- trust_floor: 2
+ agent_may: ["*"]
  version: "1.0.0"
  location: "hooks/examples/mle-hook/index.ts"
  dependencies: ["dynAEP-hooks"]
@@ -480,7 +480,7 @@ dynAEP-mle-hook:
 dynAEP-lattice-policy:
  label: "Lattice Rego Policy"
  category: policy
- trust_floor: 1
+ agent_may: ["*"]
  version: "1.0.0"
  location: "policies/lattice-policy.rego"
  dependencies: ["dynAEP-lattice"]
@@ -488,7 +488,7 @@ dynAEP-lattice-policy:
 dynAEP-sdk:
  label: "TypeScript SDK (Lattice Integration)"
  category: sdk
- trust_floor: 1
+ agent_may: ["*"]
  version: "1.0.0"
  location: "AEP-SDKs/typescript/dynaep/src/bridge.ts"
  dependencies: ["dynAEP-lattice"]
@@ -529,7 +529,7 @@ actions:
  constraints:
  - type: required_field
  field: signature
- trust_floor: 1
+ agent_may: ["*"]
 
  webhook:validate:
  label: "Validate webhook payload"
@@ -537,7 +537,7 @@ actions:
  parents: [webhook:incoming]
  children: [action:route]
  constraints: []
- trust_floor: 2
+ agent_may: ["*"]
 
  action:route:
  label: "Route event to agents"
@@ -547,7 +547,7 @@ actions:
  constraints:
  - type: required_field
  field: matched_agents
- trust_floor: 1
+ agent_may: ["*"]
 
  output:notify:
  label: "Send notification"
@@ -555,7 +555,7 @@ actions:
  parents: [action:route]
  children: []
  constraints: []
- trust_floor: 1
+ agent_may: ["*"]
 
  output:ui_mutation:
  label: "UI scene graph mutation"
@@ -567,7 +567,7 @@ actions:
  field: element_id
  - type: required_field
  field: mutation
- trust_floor: 2
+ agent_may: ["*"]
 LATTICEEOF
 ```
 

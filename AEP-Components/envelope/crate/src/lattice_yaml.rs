@@ -48,13 +48,12 @@ struct YamlNode {
     parents: Vec<String>,
     #[serde(default)]
     children: Vec<String>,
-    #[serde(default = "one")]
-    trust_floor: u32,
+    #[serde(default)]
+    agent_may: Vec<String>,
+    #[serde(default)]
+    wrap: String,
 }
 
-fn one() -> u32 {
-    1
-}
 
 fn mapping_colon(rest: &str) -> Option<usize> {
     if let Some(i) = rest.find(": ") { return Some(i); }
@@ -107,8 +106,9 @@ pub fn load_lattice_yaml(text: &str) -> Result<HashMap<String, LatticeNode>, Env
             LatticeNode {
                 action_path: id,
                 parents: n.parents,
-                trust_floor: n.trust_floor,
+                agent_may: n.agent_may,
                 category: n.category,
+                wrap: n.wrap,
             },
         );
     }
@@ -192,7 +192,7 @@ pub fn snapshot_from_nodes(
 pub fn apply_admit(snap: &mut Snapshot, action: &EnvelopeAction, plan: &ApplyPlan) {
     crate::apply(snap, plan);
     if plan.ledger_allow {
-        snap.satisfied_actions.insert(action.action_path.clone());
+        crate::record_satisfied(snap, &action.action_path, &action.agent_id);
         if !action.agent_id.is_empty() && action.sequence_number > 0 {
             let e = snap
                 .last_seq_by_agent
@@ -211,7 +211,7 @@ pub fn closed_reasons(result: &crate::AdmitResult) -> Vec<String> {
         .iter()
         .map(|w| {
             if w.reason.is_empty() {
-                w.name.clone()
+                w.id.clone()
             } else {
                 w.reason.clone()
             }
@@ -231,12 +231,21 @@ mod tests {
 
     #[test]
     fn loads_colon_keys() {
-        let yaml = "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    trust_floor: 1\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    trust_floor: 2\n";
+        let yaml = "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_may: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_may: [\"agent-a\"]\n";
         let nodes = load_lattice_yaml(yaml).expect("load");
         must(nodes.contains_key("root:ping"));
         must(nodes.contains_key("action:write"));
         must(nodes.get("action:write").unwrap().parents[0] == "root:ping");
-        must(nodes.get("action:write").unwrap().trust_floor == 2);
+        must(nodes.get("action:write").unwrap().agent_may == vec![String::from("agent-a")]);
+        must(nodes.get("action:write").unwrap().wrap.is_empty());
+    }
+
+    #[test]
+    fn loads_wrap_on_lattice_node() {
+        let yaml = "actions:\n  inventory:ping:\n    category: system_event\n    wrap: inventory\n    parents: []\n    children: []\n    agent_may: [\"*\"]\n  finance:pay:\n    category: agent_action\n    wrap: finance\n    parents: [\"inventory:ping\"]\n    children: []\n    agent_may: [\"agent-a\"]\n";
+        let nodes = load_lattice_yaml(yaml).expect("load");
+        must(nodes.get("inventory:ping").unwrap().wrap == "inventory");
+        must(nodes.get("finance:pay").unwrap().wrap == "finance");
     }
 
     #[test]
@@ -251,7 +260,6 @@ mod tests {
         let action = EnvelopeAction {
             action_path: "root:ping".into(),
             agent_id: "agent-a".into(),
-            trust_tier: 1,
             payload: serde_json::json!({"ok": true}),
             tool: String::new(),
             dest_dock: String::new(),
@@ -262,11 +270,11 @@ mod tests {
         };
         let plan = ApplyPlan {
             increment_rate: true,
-            penalize_trust: false,
             ledger_allow: true,
         };
         apply_admit(&mut snap, &action, &plan);
-        must(snap.satisfied_actions.contains("root:ping"));
+        let key = crate::agent_record_key("", "agent-a", "root:ping");
+        must(snap.satisfied_actions.contains(&key));
         must(snap.last_seq_by_agent.get("agent-a") == Some(&3));
         must(snap.actions_last_minute == 1);
     }

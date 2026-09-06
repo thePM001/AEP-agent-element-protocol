@@ -1,8 +1,9 @@
-// @PAD: gaplune-creation-pad emit ( zero-LLM )
 // HVVCAS: compile_lattice_walls domain:policy type:library
 // Compile lattice-policy.rego deny_lattice into Admit walls.
 // Live action_path uses these walls. OPA evaluate is lab only.
+// AEP28-ENV-033: who-may-do-what is GAP dimension Conjunction. No trust rank.
 
+use super::compile_trust::{agent_is_granted, AgentMayGrant};
 use super::AdmitWall;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -10,9 +11,9 @@ use std::path::{Path, PathBuf};
 #[derive(Clone, Debug, Default)]
 pub struct LatticeCompileInput {
     pub action_path: String,
-    pub trust_tier: u32,
     pub category: String,
     pub agent_id: String,
+    pub agent_may: Vec<String>,
     pub satisfied_actions: Vec<String>,
     pub parents_of: Vec<String>,
     pub is_root: bool,
@@ -21,7 +22,6 @@ pub struct LatticeCompileInput {
     pub event_rate: f64,
     pub payload_empty: bool,
     pub payload_repeated_violation: bool,
-    pub payload_trust_tier_history: String,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -119,17 +119,58 @@ fn set_has(items: &[String], needle: &str) -> bool {
     items.iter().any(|s| s == needle)
 }
 
-fn trust_tier_low(t: u32) -> bool {
-    t >= 1 && t <= 2
+fn agent_partition_id(agent_id: &str) -> &str {
+    if agent_id.is_empty() {
+        "unbound"
+    } else {
+        agent_id
+    }
 }
 
-fn trust_tier_mid(t: u32) -> bool {
-    t >= 3 && t <= 4
+fn agent_record_key(session_id: &str, agent_id: &str, path: &str) -> String {
+    let agt = agent_partition_id(agent_id);
+    if session_id.is_empty() {
+        let mut k = String::from("agt|");
+        k.push_str(agt);
+        k.push('|');
+        k.push_str(path);
+        k
+    } else {
+        let mut k = String::from("ses|");
+        k.push_str(session_id);
+        k.push_str("|agt|");
+        k.push_str(agt);
+        k.push('|');
+        k.push_str(path);
+        k
+    }
 }
 
-fn trust_tier_high(t: u32) -> bool {
-    t == 5
+fn parent_recorded(items: &[String], parent: &str, agent_id: &str) -> bool {
+    let key = agent_record_key("", agent_id, parent);
+    if set_has(items, &key) {
+        return true;
+    }
+    if agent_id.is_empty() == false {
+        let mut legacy = String::from(agent_id);
+        legacy.push(':');
+        legacy.push_str(parent);
+        if set_has(items, &legacy) {
+            return true;
+        }
+    }
+    let suffix = {
+        let mut s = String::from("|");
+        s.push_str(parent);
+        s
+    };
+    let agent_scoped = items.iter().any(|s| s.contains("agt|") && s.ends_with(&suffix));
+    if agent_scoped {
+        return false;
+    }
+    set_has(items, parent)
 }
+
 
 fn rate_text(rate: f64) -> String {
     if rate.fract() == 0.0 {
@@ -144,6 +185,16 @@ fn close_wall(id: &str, reason: String, out: &mut CompiledPolicy) {
     out.walls.push(AdmitWall::close(id, reason));
 }
 
+fn grants_from_allowed(allowed: &[String]) -> Vec<AgentMayGrant> {
+    allowed
+        .iter()
+        .map(|a| AgentMayGrant {
+            agent_id: a.clone(),
+            action: String::from("*"),
+        })
+        .collect()
+}
+
 pub fn compile_lattice_policy(input: &LatticeCompileInput, sets: &PolicySets) -> CompiledPolicy {
     let mut out = CompiledPolicy::default();
     let known = set_has(&input.all_actions, &input.action_path);
@@ -155,38 +206,27 @@ pub fn compile_lattice_policy(input: &LatticeCompileInput, sets: &PolicySets) ->
         close_wall("lattice.unknown_path", reason, &mut out);
     }
 
-    if trust_tier_low(input.trust_tier) {
-        if input.category != "external_event" && input.category != "system_event" {
-            let mut reason = String::from("Trust tier ");
-            reason.push_str(&input.trust_tier.to_string());
-            reason.push_str(
-                " denied: tier 1-2 agents may only handle external_event or system_event (got '",
-            );
-            reason.push_str(&input.category);
-            reason.push_str("')");
-            close_wall("lattice.trust_tier_low_category", reason, &mut out);
+    let systemish = input.category == "external_event" || input.category == "system_event";
+    if input.agent_may.is_empty() == false || systemish == false {
+        let grants = grants_from_allowed(&input.agent_may);
+        if agent_is_granted(&input.agent_id, &input.action_path, &grants) == false {
+            let mut reason = String::from("GAP dimension agent_may closed: agent '");
+            if input.agent_id.is_empty() {
+                reason.push_str("unbound");
+            } else {
+                reason.push_str(&input.agent_id);
+            }
+            reason.push_str("' may not '");
+            reason.push_str(&input.action_path);
+            reason.push('\'');
+            close_wall("lattice.agent_may", reason, &mut out);
         }
-        if input.category == "agent_action" {
-            let mut reason = String::from("Trust tier ");
-            reason.push_str(&input.trust_tier.to_string());
-            reason.push_str(" denied: agent_action category requires trust tier >= 3");
-            close_wall("lattice.trust_tier_low_agent_action", reason, &mut out);
-        }
-    }
-
-    if trust_tier_mid(input.trust_tier) && set_has(&sets.critical_actions, &input.action_path) {
-        let mut reason = String::from("Trust tier ");
-        reason.push_str(&input.trust_tier.to_string());
-        reason.push_str(" denied: critical action '");
-        reason.push_str(&input.action_path);
-        reason.push_str("' requires trust tier 5");
-        close_wall("lattice.trust_tier_mid_critical", reason, &mut out);
     }
 
     if input.is_root == false && input.parents_of.is_empty() == false {
         let mut any_parent = false;
         for p in &input.parents_of {
-            if set_has(&input.satisfied_actions, p) {
+            if parent_recorded(&input.satisfied_actions, p, &input.agent_id) {
                 any_parent = true;
             }
         }
@@ -202,7 +242,7 @@ pub fn compile_lattice_policy(input: &LatticeCompileInput, sets: &PolicySets) ->
     }
 
     for (parent, child) in &sets.forbidden_pairs {
-        if set_has(&input.satisfied_actions, parent) && child == &input.action_path {
+        if parent_recorded(&input.satisfied_actions, parent, &input.agent_id) && child == &input.action_path {
             let mut reason = String::from("Forbidden sequence: '");
             reason.push_str(&input.action_path);
             reason.push_str("' must not follow '");
@@ -230,20 +270,6 @@ pub fn compile_lattice_policy(input: &LatticeCompileInput, sets: &PolicySets) ->
         close_wall("lattice.cross_modality", reason, &mut out);
     }
 
-    if input.category == "output" && input.trust_tier < 2 {
-        let mut reason = String::from("Trust tier ");
-        reason.push_str(&input.trust_tier.to_string());
-        reason.push_str(" denied: output actions require trust tier >= 2");
-        close_wall("lattice.output_trust", reason, &mut out);
-    }
-
-    if trust_tier_mid(input.trust_tier) && input.category == "agent_action" && input.payload_empty {
-        let mut msg = String::from("Trust tier ");
-        msg.push_str(&input.trust_tier.to_string());
-        msg.push_str(" agent_action has empty payload - recommend supplying action context");
-        out.warn.push(msg);
-    }
-
     if input.category == "agent_action" && input.event_rate > 7.0 && input.event_rate <= 10.0 {
         let mut msg = String::from("Agent '");
         msg.push_str(&input.agent_id);
@@ -256,43 +282,6 @@ pub fn compile_lattice_policy(input: &LatticeCompileInput, sets: &PolicySets) ->
     if set_has(&sets.output_actions, &input.action_path) && input.simultaneous_outputs == 3 {
         out.warn
             .push(String::from("Cross-modality at ceiling: 3 simultaneous outputs active"));
-    }
-
-    if trust_tier_mid(input.trust_tier) && input.category == "agent_action" {
-        let n_sat = input.satisfied_actions.len();
-        if n_sat > 0 && n_sat < 2 {
-            let mut msg = String::from("Trust tier ");
-            msg.push_str(&input.trust_tier.to_string());
-            msg.push_str(" has only ");
-            msg.push_str(&n_sat.to_string());
-            msg.push_str(" satisfied parent(s) - low trust-buffer for action '");
-            msg.push_str(&input.action_path);
-            msg.push('\'');
-            out.warn.push(msg);
-        }
-    }
-
-    if trust_tier_high(input.trust_tier) && set_has(&sets.critical_actions, &input.action_path) {
-        let has_review = input
-            .satisfied_actions
-            .iter()
-            .any(|a| a.contains("validate") || a.contains("review"));
-        if has_review == false {
-            let mut msg = String::from("Critical action '");
-            msg.push_str(&input.action_path);
-            msg.push_str("' executed by trust tier ");
-            msg.push_str(&input.trust_tier.to_string());
-            msg.push_str(" without any prior validation or review step in satisfied actions");
-            out.warn.push(msg);
-        }
-        if input.satisfied_actions.is_empty() {
-            let mut msg = String::from("Critical action '");
-            msg.push_str(&input.action_path);
-            msg.push_str("' attempted by trust tier ");
-            msg.push_str(&input.trust_tier.to_string());
-            msg.push_str(" with no satisfied parent actions - human approval required");
-            out.escalate.push(msg);
-        }
     }
 
     if input.payload_repeated_violation && input.event_rate > 10.0 {
@@ -308,18 +297,6 @@ pub fn compile_lattice_policy(input: &LatticeCompileInput, sets: &PolicySets) ->
         let mut msg = String::from("Unknown action path '");
         msg.push_str(&input.action_path);
         msg.push_str("' detected - possible agent hallucination, manual review recommended");
-        out.escalate.push(msg);
-    }
-
-    if trust_tier_high(input.trust_tier)
-        && input.category == "agent_action"
-        && input.payload_trust_tier_history == "direct_jump"
-    {
-        let mut msg = String::from("Trust tier jump detected: agent '");
-        msg.push_str(&input.agent_id);
-        msg.push_str("' escalated directly to tier ");
-        msg.push_str(&input.trust_tier.to_string());
-        msg.push_str(" without mid-level validation steps");
         out.escalate.push(msg);
     }
 
@@ -340,7 +317,7 @@ pub fn prove_rego_source(rego: &str) -> Result<String, String> {
         "Partial-order violation",
         "Rate limit exceeded",
         "Cross-modality ceiling",
-        "output actions require trust tier",
+        "agent_may",
     ];
     let mut missing = Vec::new();
     for n in needles {
@@ -352,6 +329,20 @@ pub fn prove_rego_source(rego: &str) -> Result<String, String> {
         let mut msg = String::from("lattice-policy.rego missing compiled-wall source: ");
         msg.push_str(&missing.join(","));
         return Err(msg);
+    }
+    let banned = [
+        "trust_tier_low",
+        "trust_tier_mid",
+        "trust_tier_high",
+        "requires trust tier",
+        "output actions require trust tier",
+    ];
+    for n in banned {
+        if rego.contains(n) {
+            let mut msg = String::from("lattice-policy.rego still has rank lemma: ");
+            msg.push_str(n);
+            return Err(msg);
+        }
     }
     let sets = parse_policy_sets(rego);
     if sets.critical_actions.is_empty()
@@ -407,7 +398,6 @@ mod tests {
     fn unknown_path_reason_is_a_closed_wall() -> Result<(), String> {
         let mut input = LatticeCompileInput::default();
         input.action_path = String::from("bogus:path");
-        input.trust_tier = 3;
         input.category = String::from("agent_action");
         input.all_actions.push(String::from("webhook:incoming"));
         let compiled = compile_lattice_policy(&input, &sample_sets());
@@ -426,21 +416,50 @@ mod tests {
     }
 
     #[test]
-    fn trust_tier_one_agent_action_closes() -> Result<(), String> {
+    fn agent_may_denied_closes() -> Result<(), String> {
         let mut input = LatticeCompileInput::default();
         input.action_path = String::from("webhook:incoming");
-        input.trust_tier = 1;
         input.category = String::from("agent_action");
+        input.agent_id = String::from("agent-b");
+        input.agent_may.push(String::from("agent-a"));
         input.all_actions.push(String::from("webhook:incoming"));
         input.is_root = true;
         let compiled = compile_lattice_policy(&input, &sample_sets());
         if compiled
-            .deny
+            .walls
             .iter()
-            .any(|d| d.contains("agent_action category requires"))
+            .any(|w| w.closed && w.id == "lattice.agent_may")
             == false
         {
-            return Err(String::from("expected trust deny for agent_action"));
+            return Err(String::from("expected closed lattice.agent_may wall"));
+        }
+        if compiled
+            .deny
+            .iter()
+            .any(|d| d.contains("may not"))
+            == false
+        {
+            return Err(String::from("expected GAP dimension deny"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn granted_agent_does_not_close_agent_may() -> Result<(), String> {
+        let mut input = LatticeCompileInput::default();
+        input.action_path = String::from("webhook:incoming");
+        input.category = String::from("agent_action");
+        input.agent_id = String::from("agent-a");
+        input.agent_may.push(String::from("agent-a"));
+        input.all_actions.push(String::from("webhook:incoming"));
+        input.is_root = true;
+        let compiled = compile_lattice_policy(&input, &sample_sets());
+        if compiled
+            .walls
+            .iter()
+            .any(|w| w.closed && w.id == "lattice.agent_may")
+        {
+            return Err(String::from("granted agent must not close agent_may"));
         }
         Ok(())
     }

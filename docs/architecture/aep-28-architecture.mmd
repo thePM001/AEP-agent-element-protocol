@@ -1,41 +1,33 @@
 flowchart TB
-  subgraph BAND1[Ingress]
-    direction LR
-    subgraph SURFACES[Operator surfaces]
-      direction TB
-      CL[Composer Lite]
-      CCA[CCA agent]
-      HAR[Harness]
-      WIZ[Installation Wizard]
-    end
-    subgraph BRIDGES[Bridges and clients]
-      direction TB
-      UCB[UCB airlock optional]
-      CONN[AEP Connectors]
-      SDK[SDK Clients]
-    end
+  subgraph CLIENTS[Clients]
+    direction TB
+    SDK[SDK clients]
+    OP[Composer Lite harness and wizard]
   end
 
-  subgraph BAND2[Transport]
+  subgraph PROTOCOL[Protocol]
+    direction TB
     LT[lattice-channels sealed PQEncryptedCapsule]
+    DOCK[Docks open the frame]
   end
 
-  subgraph BAND3[Base Node kernel]
-    direction LR
-    DOCK[Docks open the frame]
-    ADMIT[aep-envelope admit collect-all then Apply]
-    MEET[aep-evaluation-chain 15-rule meet]
+  subgraph KERNEL[Kernel]
+    direction TB
+    BN[Base Node]
+    EVAL[admit collect-all then Apply]
+    LEDGER[derived fifteen-row record]
     REG[Registry]
   end
 
-  CL --> LT
-  CCA --> LT
-  HAR --> LT
-  WIZ --> LT
-  UCB --> LT
-  CONN --> LT
+  subgraph COMPANION[Execution companion]
+    CAW[caw-framework]
+  end
+
   SDK --> LT
+  OP --> LT
   LT --> DOCK
-  DOCK --> ADMIT
-  DOCK --> MEET
-  DOCK --> REG
+  DOCK --> BN
+  BN --> EVAL
+  EVAL --> LEDGER
+  BN --> REG
+  CAW -.-> BN

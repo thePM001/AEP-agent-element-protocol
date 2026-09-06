@@ -20,7 +20,7 @@ export const EnvPermissionSchema = z.object({
 
 export const AgentPermissionsSchema = z.object({
   agent_id: z.string(),
-  trust_ring: z.enum(["sandbox", "user", "system", "enterprise"]),
+  isolation_class: z.string().default("caw"),
   allowed_paths: z.array(PathPermissionSchema).default([]),
   allowed_network: z.array(NetworkPermissionSchema).default([]),
   allowed_env: z.array(EnvPermissionSchema).default([]),
@@ -207,98 +207,24 @@ export function checkPermission(check: DataPermissionCheck): PermissionResult {
 
 export function createDefaultPermissions(
   agentId: string,
-  trustRing: "sandbox" | "user" | "system" | "enterprise"
+  isolationClass = "caw"
 ): AgentPermissions {
-  // LOW: scope user paths to agent home not all of /home
   const home = `/home/${agentId.replace(/[^a-zA-Z0-9._-]/g, "_") || "agent"}`;
-
-  switch (trustRing) {
-    case "sandbox":
-      return {
-        agent_id: agentId,
-        trust_ring: trustRing,
-        allowed_paths: [
-          { path: "/tmp", read: true, write: true, delete: true },
-        ],
-        allowed_network: [
-          { host: "127.0.0.1", port: 8080, protocols: ["http"] },
-        ],
-        allowed_env: [
-          { name: "HOME", read: true },
-          { name: "USER", read: true },
-        ],
-        max_file_size: 1_048_576,
-        rate_limit_per_minute: 10,
-      };
-
-    case "user":
-      return {
-        agent_id: agentId,
-        trust_ring: trustRing,
-        allowed_paths: [
-          { path: "/tmp", read: true, write: true, delete: true },
-          { path: home, read: true, write: true, delete: false },
-          { path: "/var/www", read: true, write: false, delete: false },
-        ],
-        allowed_network: [
-          { host: "127.0.0.1", port: 8080, protocols: ["http"] },
-          { host: "127.0.0.1", port: 3000, protocols: ["http"] },
-          { host: "127.0.0.1", port: 443, protocols: ["https"] },
-        ],
-        allowed_env: [
-          { name: "HOME", read: true },
-          { name: "USER", read: true },
-          { name: "PATH", read: true },
-        ],
-        max_file_size: 10_485_760,
-        rate_limit_per_minute: 60,
-      };
-
-    case "system":
-      return {
-        agent_id: agentId,
-        trust_ring: trustRing,
-        allowed_paths: [
-          { path: "/tmp", read: true, write: true, delete: true },
-          { path: home, read: true, write: true, delete: true },
-          { path: "/var", read: true, write: true, delete: false },
-          { path: "/opt", read: true, write: true, delete: false },
-          { path: "/etc", read: true, write: false, delete: false },
-        ],
-        allowed_network: [
-          { host: "127.0.0.1", port: 8080, protocols: ["http", "https"] },
-          { host: "0.0.0.0", port: 443, protocols: ["https"] },
-        ],
-        allowed_env: [
-          { name: "HOME", read: true },
-          { name: "USER", read: true },
-          { name: "PATH", read: true },
-          { name: "PYTHONPATH", read: true },
-        ],
-        max_file_size: 104_857_600,
-        rate_limit_per_minute: 300,
-      };
-
-    case "enterprise":
-      // BL-03: fail-closed defaults (deny write/delete unless explicit grant)
-      return {
-        agent_id: agentId,
-        trust_ring: trustRing,
-        allowed_paths: [
-          { path: home, read: true, write: false, delete: false },
-          { path: "/tmp", read: true, write: true, delete: false },
-          { path: "/var/tmp", read: true, write: true, delete: false },
-        ],
-        allowed_network: [
-          { host: "127.0.0.1", port: 443, protocols: ["https"] },
-        ],
-        allowed_env: [
-          { name: "HOME", read: true },
-          { name: "USER", read: true },
-          { name: "PATH", read: true },
-        ],
-        max_file_size: 1_073_741_824,
-        rate_limit_per_minute: 1000,
-      };
-  }
+  return {
+    agent_id: agentId,
+    isolation_class: isolationClass,
+    allowed_paths: [
+      { path: "/tmp", read: true, write: true, delete: false },
+      { path: home, read: true, write: false, delete: false },
+    ],
+    allowed_network: [
+      { host: "127.0.0.1", port: 8080, protocols: ["http"] },
+    ],
+    allowed_env: [
+      { name: "HOME", read: true },
+      { name: "USER", read: true },
+    ],
+    max_file_size: 1_048_576,
+    rate_limit_per_minute: 10,
+  };
 }

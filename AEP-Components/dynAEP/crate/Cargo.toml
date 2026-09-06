@@ -1,0 +1,24 @@
+# @PAD: aep-dynaep-cargo-v1
+# @GCDE: gaplune.policy.v1
+[package]
+name = "aep-dynaep"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Standalone dynAEP component. Action Lattice filter, temporal authority and perception governance with the same rules as kernel envelope Admit. A builder can depend on only this crate. Base Node is not changed."
+publish = false
+
+[lib]
+name = "aep_dynaep"
+path = "src/lib.rs"
+
+[[bin]]
+name = "aep-dynaep"
+path = "src/main.rs"
+
+[dependencies]
+aep-envelope = { path = "../../envelope/crate" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = "0.9"
+thiserror = { workspace = true }

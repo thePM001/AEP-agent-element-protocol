@@ -1,0 +1,32 @@
+@PAD: nla-dev-ticket-AEP28-ENV-039-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-039
+title: Park the fifteen-row run_meet combinator off the product Rust SDK. Live evaluation is collect-all Admit.
+status: closed
+priority: P1
+track: aep28-gitea-code-analysis-2026-09-01
+wave: live-admit
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-SDKs/rust/src/lib.rs AEP-SDKs/rust/src/dynaep AEP-Components/evaluation-chain/crate
+notes: Closed. Product Rust SDK does not export run_meet as live evaluation. Live path is collect-all Admit. Derived 15-row ledger lives under evaluation-chain as non-live. CI crate aep-sdk-run-meet-park fails if lib.rs pub-uses run_meet or chain_meet_keeps_all_rows stays as a product evaluation test. Out of scope: hangar tools.
+acceptance: Product Rust SDK does not export run_meet as live evaluation. CI fails if AEP-SDKs/rust/src/lib.rs pub-uses run_meet or chain_meet_keeps_all_rows stays as a product evaluation test. Derived ledger may live under evaluation-chain as non-live. nla-policy-scan gate coding-completion and project-completion-bac on AEP-SDKs/rust before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-SDKs/rust
+updated: 2026-09-02
+gitea_commits:
+  crate_lib: 2accbd9a20889dd619fa0bff46313213f581cfdb
+  crate_main: f9c12b27680755041e8423cb040f2606dfb1c189
+  crate_cargo: 358a8148192166a46d73dee79c2b8de4ed0c2c23
+  hvvcas: a35718f27acb6b8a9f75eeba3a5739e0c899e0c1
+  registration: a7a66b7aa778e714791c0a8655a840a6bb4fdf75
+  sdk_lib: 4efe469ecaeff5a5506feeebf075d220a8d79e57
+  dynaep_mod: ea19a41025c2e6ef2a1156b5e38e81d894bdba1e
+  dynaep_chain: f73623b72c720fbbc6f1caca067f718fae99eb2f
+  evaluation_chain: f8e65fd18614b7b329a0f9816fe8ffa67ae465b5
+  workspace: 85ccb7642a8f2eaac0813fbe9cbdd0cf9d3f081a
+  changelog: 2675d4467e311039e050e9e7ef8b82de7148df66
+  ci_gate: 516ef4673001833f8f312ef5407f23201f847672

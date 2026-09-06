@@ -2,7 +2,9 @@
 
 pub mod dock_keys;
 pub mod docking;
+// AEP28-ENV-079: dock_freshness, dock_pulse, dock_rate, dock_serve and dock_apply are docking facade modules.
 pub mod envelope_admit;
+pub mod error;
 pub mod epscom;
 pub mod lattice_log;
 pub mod side_channel_monitor;
@@ -19,11 +21,14 @@ pub use side_channel_monitor::{
     SIDE_CHANNEL_EVENT_TYPE,
 };
 pub use docking::{
-    process_request, run_docking_servers, sockets_exist, DockFrameResponse, DockingRuntime,
+    drain_docking_servers, process_request, pulse_beat, run_docking_servers, sockets_exist,
+    unlink_sockets, DockFrameResponse, DockingRuntime,
 };
 pub use lattice_log::{
-    build_transport_frame, export_dynaep_events, open_lattice_db, record_dynaep_event,
-    DynAepEventExport, DynAepEventInput, DynAepEventRecord,
+    build_transport_frame, default_aep_data_dir, default_lattice_db_path, export_dynaep_events,
+    open_lattice_db, record_dynaep_event, refuse_world_writable_lattice_parent,
+    refuse_world_writable_lattice_parent_with_allow, world_writable_lattice_parent_allowed,
+    ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV, DynAepEventExport, DynAepEventInput, DynAepEventRecord,
 };
 use aep_potomitan::{detect_network_mode, status, MeshMode, MeshSupervisor, MESH_PEERS_FILE};
 use rusqlite::{Connection, params};
@@ -33,6 +38,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const COMPONENT_ID: &str = "aep-base-node";
 pub const EPSCOM_PRIORITY: u8 = 255;
+
+pub use error::{AdmitDeny, BaseNodeError};
 
 pub use epscom::{
     enforce_writing_text, enforce_writing_value, lint_writing_prose, value_has_writing_violations,
@@ -108,6 +115,7 @@ pub fn docking_port_specs(base_socket: &str) -> Vec<DockingPortSpec> {
 }
 
 pub fn init_action_lattice_db(path: &Path) -> rusqlite::Result<Connection> {
+    lattice_log::refuse_world_writable_lattice_parent(path)?;
     if let Some(parent) = path.parent() {
         if !parent.as_os_str().is_empty() {
             std::fs::create_dir_all(parent).map_err(|e| {
@@ -222,13 +230,13 @@ pub fn verify_inbound_dock_frame(
     signer_public: &[u8],
     contracts: &ContractRegistry,
     allow_inactive_contract: bool,
-) -> Result<Vec<u8>, String> {
+) -> Result<Vec<u8>, BaseNodeError> {
     let result = if allow_inactive_contract {
         open_verified_capsule(frame, dock_kem, signer_public)
     } else {
         verify_and_open_frame(frame, dock_kem, signer_public, contracts)
     };
-    result.map_err(|e| e.to_string())
+    result.map_err(|e| BaseNodeError::Channel(e.to_string()))
 }
 
 pub fn record_channel_frame(
@@ -293,6 +301,7 @@ pub fn record_lattice_event(
             frame_digest,
             recorded_at_unix as i64,
             "base_node_self_test",
+            "{}",
             "{}",
         ],
     )?;
@@ -444,5 +453,22 @@ mod tests {
         assert_eq!(report.mesh_mode, MeshMode::Offline);
         assert!(!report.mesh_reachable);
         assert!(!report.internet_up);
+    }
+
+    #[test]
+    fn record_lattice_event_binds_eight_columns() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db = dir.path().join("aep-action-lattice.db");
+        let conn = lattice_log::open_lattice_db(&db).expect("open");
+        record_lattice_event(
+            &conn,
+            "AG-BOOT",
+            "ch-selftest",
+            "dynaep-action-lattice",
+            "digest-env046",
+            1,
+        )
+        .expect("record");
+        assert_eq!(event_count(&conn).expect("count"), 1);
     }
 }

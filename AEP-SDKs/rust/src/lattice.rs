@@ -2,11 +2,12 @@
 
 use serde_json::{json, Value};
 use std::env;
-use std::fs;
 use std::io::Write;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, ToSocketAddrs};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::Duration;
+use url::Url;
 
 #[derive(Debug, Clone, Default)]
 pub struct GatewayMeta {
@@ -121,7 +122,7 @@ fn send_lattice_line(socket_path: &Path, line: &str) -> Result<String, String> {
     Ok(text.lines().next().unwrap_or("").trim().to_string())
 }
 
-pub fn lattice_dock_request(socket_base: &Path, dock_port: &str, event: Value) -> Result<(), String> {
+pub fn lattice_dock_request(socket_base: &Path, dock_port: &str, event: Value) -> Result<Value, String> {
     let socket_path = socket_base.join(dock_suffix(dock_port));
     let sealed = build_lattice_frame(event)?;
     let wire = json!({ "frame": sealed.get("frame").cloned().unwrap_or(Value::Null) });
@@ -134,63 +135,285 @@ pub fn lattice_dock_request(socket_base: &Path, dock_port: &str, event: Value) -
             .unwrap_or("lattice frame rejected")
             .into());
     }
-    Ok(())
+    Ok(resp)
+}
+
+fn http_from_dock_allow(resp: &Value) -> Result<Vec<u8>, String> {
+    let http = match resp.get("http") {
+        Some(h) if h.is_null() == false => h,
+        _ => return Err(String::from("lattice-gated-fetch: dock allow did not return http")),
+    };
+    let b64s = http.get("body_b64").and_then(|v| v.as_str()).unwrap_or("");
+    decode_body_b64(b64s)
+}
+
+fn decode_body_b64(s: &str) -> Result<Vec<u8>, String> {
+    if s.is_empty() {
+        return Ok(Vec::new());
+    }
+    fn val(c: u8) -> Option<u8> {
+        match c {
+            b'A'..=b'Z' => Some(c - b'A'),
+            b'a'..=b'z' => Some(c - b'a' + 26),
+            b'0'..=b'9' => Some(c - b'0' + 52),
+            b'+' => Some(62),
+            b'/' => Some(63),
+            b'=' => None,
+            _ => None,
+        }
+    }
+    let bytes = s.as_bytes();
+    let mut out = Vec::new();
+    let mut i = 0usize;
+    while i < bytes.len() {
+        let a = val(bytes[i]).unwrap_or(0);
+        let b = if i + 1 < bytes.len() { val(bytes[i + 1]).unwrap_or(0) } else { 0 };
+        let c = if i + 2 < bytes.len() { val(bytes[i + 2]) } else { None };
+        let d = if i + 3 < bytes.len() { val(bytes[i + 3]) } else { None };
+        out.push((a << 2) | (b >> 4));
+        if let Some(cv) = c {
+            out.push(((b & 0x0f) << 4) | (cv >> 2));
+            if let Some(dv) = d {
+                out.push(((cv & 0x03) << 6) | dv);
+            }
+        }
+        i = i.saturating_add(4);
+    }
+    Ok(out)
+}
+
+#[derive(Debug, Clone, Copy)]
+struct SsrfPolicy {
+    allow_loopback: bool,
+    allow_private: bool,
+}
+
+impl SsrfPolicy {
+    fn from_env() -> Self {
+        Self {
+            allow_loopback: env::var("AEP_LATTICE_ALLOW_LOOPBACK")
+                .map(|v| v == "1")
+                .unwrap_or(false),
+            allow_private: env::var("AEP_LATTICE_ALLOW_PRIVATE")
+                .map(|v| v == "1")
+                .unwrap_or(false),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AddrClass {
+    Public,
+    Loopback,
+    Private,
+    LinkLocal,
+    Unspecified,
+}
+
+fn parse_ipv4_numeric_part(part: &str) -> Option<u32> {
+    if part.is_empty() {
+        return None;
+    }
+    if let Some(hex) = part.strip_prefix("0x").or_else(|| part.strip_prefix("0X")) {
+        if hex.is_empty() || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return None;
+        }
+        return u32::from_str_radix(hex, 16).ok();
+    }
+    if part.len() > 1 && part.starts_with('0') && part.bytes().all(|b| (b'0'..=b'7').contains(&b)) {
+        return u32::from_str_radix(part, 8).ok();
+    }
+    if part.bytes().all(|b| b.is_ascii_digit()) {
+        return part.parse::<u32>().ok();
+    }
+    None
+}
+
+fn parse_weird_ipv4(host: &str) -> Option<Ipv4Addr> {
+    if host.is_empty() || host.contains(':') {
+        return None;
+    }
+    let parts: Vec<&str> = host.split('.').collect();
+    if parts.is_empty() || parts.len() > 4 {
+        return None;
+    }
+    let nums: Vec<u32> = parts
+        .iter()
+        .copied()
+        .map(parse_ipv4_numeric_part)
+        .collect::<Option<Vec<_>>>()?;
+    match nums.as_slice() {
+        [a] => Some(Ipv4Addr::from(*a)),
+        [a, b] if *a <= 0xff && *b <= 0x00ff_ffff => Some(Ipv4Addr::new(
+            *a as u8,
+            ((*b >> 16) & 0xff) as u8,
+            ((*b >> 8) & 0xff) as u8,
+            (*b & 0xff) as u8,
+        )),
+        [a, b, c] if *a <= 0xff && *b <= 0xff && *c <= 0xffff => Some(Ipv4Addr::new(
+            *a as u8,
+            *b as u8,
+            ((*c >> 8) & 0xff) as u8,
+            (*c & 0xff) as u8,
+        )),
+        [a, b, c, d] if *a <= 0xff && *b <= 0xff && *c <= 0xff && *d <= 0xff => {
+            Some(Ipv4Addr::new(*a as u8, *b as u8, *c as u8, *d as u8))
+        }
+        _ => None,
+    }
+}
+
+fn classify_v4(ip: Ipv4Addr) -> AddrClass {
+    if ip.is_unspecified() || ip.octets()[0] == 0 {
+        AddrClass::Unspecified
+    } else if ip.is_loopback() {
+        AddrClass::Loopback
+    } else if ip.is_link_local() {
+        AddrClass::LinkLocal
+    } else if ip.is_private() {
+        AddrClass::Private
+    } else if ip.is_broadcast() {
+        AddrClass::Private
+    } else {
+        AddrClass::Public
+    }
+}
+
+fn v6_mapped_or_compatible_v4(ip: Ipv6Addr) -> Option<Ipv4Addr> {
+    if let Some(v4) = ip.to_ipv4_mapped() {
+        return Some(v4);
+    }
+    if ip == Ipv6Addr::LOCALHOST || ip == Ipv6Addr::UNSPECIFIED {
+        return None;
+    }
+    let s = ip.segments();
+    if s[0] == 0 && s[1] == 0 && s[2] == 0 && s[3] == 0 && s[4] == 0 && s[5] == 0 {
+        return ip.to_ipv4();
+    }
+    None
+}
+
+fn classify_ip(ip: IpAddr) -> AddrClass {
+    match ip {
+        IpAddr::V4(v4) => classify_v4(v4),
+        IpAddr::V6(v6) => {
+            if let Some(v4) = v6_mapped_or_compatible_v4(v6) {
+                classify_v4(v4)
+            } else if v6.is_loopback() {
+                AddrClass::Loopback
+            } else if v6.is_unspecified() {
+                AddrClass::Unspecified
+            } else if v6.is_unicast_link_local() {
+                AddrClass::LinkLocal
+            } else if v6.is_unique_local() {
+                AddrClass::Private
+            } else {
+                AddrClass::Public
+            }
+        }
+    }
+}
+
+fn deny_addr(ip: IpAddr, policy: &SsrfPolicy) -> Result<(), String> {
+    match classify_ip(ip) {
+        AddrClass::Public => Ok(()),
+        AddrClass::Loopback | AddrClass::Unspecified => {
+            if policy.allow_loopback {
+                Ok(())
+            } else {
+                Err("lattice-gated-fetch: loopback blocked".into())
+            }
+        }
+        AddrClass::Private | AddrClass::LinkLocal => {
+            if policy.allow_private {
+                Ok(())
+            } else {
+                Err("lattice-gated-fetch: private/metadata host blocked".into())
+            }
+        }
+    }
+}
+
+fn is_metadata_name(host: &str) -> bool {
+    let h = host.trim_end_matches('.').to_ascii_lowercase();
+    h == "metadata"
+        || h == "metadata.google.internal"
+        || h.ends_with(".internal")
+        || h.ends_with(".local")
+}
+
+fn lookup_ips(host: &str) -> Result<Vec<IpAddr>, String> {
+    let mut ips: Vec<IpAddr> = (host, 0u16)
+        .to_socket_addrs()
+        .map_err(|e| format!("lattice-gated-fetch: DNS resolve failed: {e}"))?
+        .map(|sa| sa.ip())
+        .collect();
+    ips.sort();
+    ips.dedup();
+    if ips.is_empty() {
+        return Err("lattice-gated-fetch: DNS resolve returned no addresses".into());
+    }
+    Ok(ips)
 }
 
 fn assert_url_not_ssrf(raw: &str) -> Result<(), String> {
-    let lower = raw.to_ascii_lowercase();
-    if !(lower.starts_with("http://") || lower.starts_with("https://")) {
-        return Err(format!("lattice-gated-fetch: blocked or invalid URL scheme"));
+    assert_url_not_ssrf_with_lookup(raw, &SsrfPolicy::from_env(), lookup_ips)
+}
+
+fn assert_url_not_ssrf_with_lookup<F>(
+    raw: &str,
+    policy: &SsrfPolicy,
+    lookup: F,
+) -> Result<(), String>
+where
+    F: Fn(&str) -> Result<Vec<IpAddr>, String>,
+{
+    let parsed = Url::parse(raw).map_err(|_| "lattice-gated-fetch: invalid URL".to_string())?;
+    if parsed.scheme() != "http" && parsed.scheme() != "https" {
+        return Err("lattice-gated-fetch: blocked or invalid URL scheme".into());
     }
-    // crude host extract after scheme
-    let rest = raw.splitn(2, "://").nth(1).unwrap_or("");
-    let hostport = rest.split('/').next().unwrap_or("").split('@').next_back().unwrap_or("");
-    let host = hostport
-        .trim_start_matches('[')
-        .split(']')
-        .next()
-        .unwrap_or(hostport)
-        .split(':')
-        .next()
-        .unwrap_or("")
-        .to_ascii_lowercase();
-    let allow_loop = env::var("AEP_LATTICE_ALLOW_LOOPBACK").map(|v| v == "1").unwrap_or(false);
-    let allow_priv = env::var("AEP_LATTICE_ALLOW_PRIVATE").map(|v| v == "1").unwrap_or(false);
-    let is_loop = host == "localhost"
-        || host == "0.0.0.0"
-        || host == "::1"
-        || host.starts_with("127.");
-    if !allow_loop && is_loop {
-        return Err("lattice-gated-fetch: loopback blocked".into());
+    if !parsed.username().is_empty() || parsed.password().is_some() {
+        return Err("lattice-gated-fetch: userinfo host spoof blocked".into());
     }
-    let is_priv = host.starts_with("10.")
-        || host.starts_with("192.168.")
-        || host.starts_with("169.254.")
-        || host.ends_with(".internal")
-        || host == "metadata.google.internal"
-        || host == "metadata"
-        || host.ends_with(".local")
-        || {
-            if let Some(rest) = host.strip_prefix("172.") {
-                rest.split('.')
-                    .next()
-                    .and_then(|s| s.parse::<u8>().ok())
-                    .map(|o| (16..=31).contains(&o))
-                    .unwrap_or(false)
-            } else {
-                false
-            }
-        };
-    if !allow_priv && is_priv {
+    let host = match parsed.host() {
+        Some(url::Host::Ipv4(v4)) => {
+            deny_addr(IpAddr::V4(v4), policy)?;
+            return Ok(());
+        }
+        Some(url::Host::Ipv6(v6)) => {
+            deny_addr(IpAddr::V6(v6), policy)?;
+            return Ok(());
+        }
+        Some(url::Host::Domain(d)) => d.to_ascii_lowercase(),
+        None => return Err("lattice-gated-fetch: invalid URL".into()),
+    };
+    if host.is_empty() {
+        return Err("lattice-gated-fetch: invalid URL".into());
+    }
+    if is_metadata_name(&host) {
+        if policy.allow_private {
+            return Ok(());
+        }
         return Err("lattice-gated-fetch: private/metadata host blocked".into());
+    }
+    if let Some(v4) = parse_weird_ipv4(&host) {
+        deny_addr(IpAddr::V4(v4), policy)?;
+        return Ok(());
+    }
+    let ips = lookup(&host)?;
+    if ips.is_empty() {
+        return Err("lattice-gated-fetch: DNS resolve returned no addresses".into());
+    }
+    for ip in ips {
+        deny_addr(ip, policy)?;
     }
     Ok(())
 }
 
-pub fn lattice_gated_fetch_url(url: &str, method: &str, meta: GatewayMeta) -> Result<(), String> {
+pub fn lattice_gated_fetch_url(url: &str, method: &str, meta: GatewayMeta) -> Result<Vec<u8>, String> {
     assert_url_not_ssrf(url)?;
     if !lattice_strict_enabled()? {
-        return Ok(());
+        return Ok(Vec::new());
     }
     let socket_base = resolve_socket_base();
     let mut payload = json!({
@@ -217,7 +440,7 @@ pub fn lattice_gated_fetch_url(url: &str, method: &str, meta: GatewayMeta) -> Re
         "trust_score": meta.trust_score.unwrap_or(0),
         "payload": payload,
     });
-    lattice_dock_request(&socket_base, "inference_engine", event)?;
+    let resp = lattice_dock_request(&socket_base, "inference_engine", event)?;
     let inference = socket_base.join("inference");
     if !inference.exists() {
         return Err(format!(
@@ -225,7 +448,190 @@ pub fn lattice_gated_fetch_url(url: &str, method: &str, meta: GatewayMeta) -> Re
             inference.display()
         ));
     }
-    Ok(())
+    http_from_dock_allow(&resp)
 }
 
+#[cfg(test)]
+mod ssrf_tests {
+    use super::*;
 
+    fn deny_policy() -> SsrfPolicy {
+        SsrfPolicy {
+            allow_loopback: false,
+            allow_private: false,
+        }
+    }
+
+    fn stub(host: &str, ips: Vec<IpAddr>) -> impl Fn(&str) -> Result<Vec<IpAddr>, String> {
+        let expected = host.to_string();
+        move |h| {
+            if h == expected {
+                Ok(ips.clone())
+            } else {
+                Err(format!("unexpected host {h}"))
+            }
+        }
+    }
+
+    #[test]
+    fn decimal_ipv4_loopback_denied() {
+        let err = assert_url_not_ssrf_with_lookup(
+            "http://2130706433/",
+            &deny_policy(),
+            |_| unreachable!("decimal must not DNS"),
+        )
+        .unwrap_err();
+        assert!(err.contains("loopback"), "{err}");
+    }
+
+    #[test]
+    fn octal_ipv4_loopback_denied() {
+        let err = assert_url_not_ssrf_with_lookup(
+            "http://0177.0.0.1/",
+            &deny_policy(),
+            |_| unreachable!("octal must not DNS"),
+        )
+        .unwrap_err();
+        assert!(err.contains("loopback"), "{err}");
+    }
+
+    #[test]
+    fn ipv6_mapped_loopback_denied() {
+        let err = assert_url_not_ssrf_with_lookup(
+            "http://[::ffff:127.0.0.1]/",
+            &deny_policy(),
+            |_| unreachable!("literal must not DNS"),
+        )
+        .unwrap_err();
+        assert!(err.contains("loopback"), "{err}");
+    }
+
+    #[test]
+    fn userinfo_host_spoof_denied() {
+        let err = assert_url_not_ssrf_with_lookup(
+            "http://evil.example@127.0.0.1/",
+            &deny_policy(),
+            |_| unreachable!("userinfo must not DNS"),
+        )
+        .unwrap_err();
+        assert!(err.contains("userinfo"), "{err}");
+    }
+
+    #[test]
+    fn dns_to_private_denied() {
+        let err = assert_url_not_ssrf_with_lookup(
+            "https://public.example/",
+            &deny_policy(),
+            stub("public.example", vec![IpAddr::from(Ipv4Addr::new(10, 1, 2, 3))]),
+        )
+        .unwrap_err();
+        assert!(err.contains("private"), "{err}");
+    }
+
+    #[test]
+    fn dns_to_loopback_denied() {
+        let err = assert_url_not_ssrf_with_lookup(
+            "https://rebind.example/",
+            &deny_policy(),
+            stub(
+                "rebind.example",
+                vec![
+                    IpAddr::from(Ipv4Addr::new(1, 1, 1, 1)),
+                    IpAddr::from(Ipv4Addr::LOCALHOST),
+                ],
+            ),
+        )
+        .unwrap_err();
+        assert!(err.contains("loopback"), "{err}");
+    }
+
+    #[test]
+    fn dns_to_public_allowed() {
+        assert_url_not_ssrf_with_lookup(
+            "https://public.example/",
+            &deny_policy(),
+            stub("public.example", vec![IpAddr::from(Ipv4Addr::new(1, 1, 1, 1))]),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn public_literal_allowed() {
+        assert_url_not_ssrf_with_lookup(
+            "https://1.1.1.1/",
+            &deny_policy(),
+            |_| unreachable!("literal must not DNS"),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn rfc1918_literal_denied() {
+        let err = assert_url_not_ssrf_with_lookup(
+            "http://192.168.1.1/",
+            &deny_policy(),
+            |_| unreachable!("literal must not DNS"),
+        )
+        .unwrap_err();
+        assert!(err.contains("private"), "{err}");
+    }
+
+    #[test]
+    fn metadata_name_denied_without_dns() {
+        let err = assert_url_not_ssrf_with_lookup(
+            "http://metadata.google.internal/",
+            &deny_policy(),
+            |_| unreachable!("metadata must not DNS"),
+        )
+        .unwrap_err();
+        assert!(err.contains("metadata"), "{err}");
+    }
+
+    #[test]
+    fn localhost_resolves_and_denies() {
+        let err = assert_url_not_ssrf("http://localhost/foo").unwrap_err();
+        assert!(
+            err.contains("loopback") || err.contains("DNS"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn allow_loopback_hatch() {
+        let policy = SsrfPolicy {
+            allow_loopback: true,
+            allow_private: false,
+        };
+        assert_url_not_ssrf_with_lookup(
+            "http://127.0.0.1/",
+            &policy,
+            |_| unreachable!("literal must not DNS"),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn allow_private_hatch() {
+        let policy = SsrfPolicy {
+            allow_loopback: false,
+            allow_private: true,
+        };
+        assert_url_not_ssrf_with_lookup(
+            "http://10.0.0.1/",
+            &policy,
+            |_| unreachable!("literal must not DNS"),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn empty_dns_denied() {
+        let err = assert_url_not_ssrf_with_lookup(
+            "https://empty.example/",
+            &deny_policy(),
+            |_| Ok(Vec::new()),
+        )
+        .unwrap_err();
+        assert!(err.contains("DNS") || err.contains("no addresses"), "{err}");
+    }
+}

@@ -3,7 +3,6 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { expandHome, defaultPaths } from "../../wizard/lib/paths.mjs";
 import { loadLrpCatalog } from "../../wizard/lib/lrp.mjs";
@@ -247,7 +246,6 @@ export async function executeImplementationPlan(plan, options = {}) {
   );
 
   const catalog = loadLrpCatalog();
-  const latticeSecret = randomBytes(32).toString("hex");
   const internetUp = plan.security?.internet_up ?? true;
 
   const inference = plan.inference ?? resolveInferenceConfig(env, dataDir);
@@ -262,7 +260,6 @@ export async function executeImplementationPlan(plan, options = {}) {
     binaryPath,
     catalog,
     lrps,
-    latticeSecret,
     internetUp,
     meshPeers: componentIds.includes("potomitan") ? 1 : 0,
     inferenceEngine: inference,
@@ -467,7 +464,7 @@ export async function executeImplementationPlan(plan, options = {}) {
   writeConfig(configPath, config, { repoRoot, dataDir });
   mkdirSync(dirname(expandHome(latticeDb)), { recursive: true });
   mkdirSync(socketBase, { recursive: true });
-  writeLatticeEnv(envPath, latticeSecret);
+  writeLatticeEnv(envPath);
 
   const inferenceEnvPath = joinData(dataDir, "inference-engine.env");
   writeInferenceEnv(inferenceEnvPath, inference);

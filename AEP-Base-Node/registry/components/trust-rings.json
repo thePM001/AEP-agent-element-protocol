@@ -1,36 +1,22 @@
 {
   "manifest_version": "1",
   "id": "trust-rings",
-  "version": "2.8.0",
-  "kind": "library",
-  "path": "AEP-Components/trust-rings/",
-  "description": "Trust scoring and execution ring capability gating.",
-  "requires": [
-    "policy-engine",
-    "aep-typescript-sdk"
-  ],
-  "capabilities": [
-    "trust:score",
-    "rings:gate",
-    "rings:capabilities"
-  ],
+  "version": "2.8.5",
+  "kind": "retired",
+  "path": "retired-archive/retired/trust-rings/",
+  "description": "Retired AEP28-ENV-033. Trust rings are not a product member. Who-may-do-what is GAP dimension Conjunction.",
+  "requires": [],
+  "capabilities": [],
   "actions": [],
   "setup_hooks": [],
-  "resource_requirements": {
-    "min_memory_mb": 32,
-    "min_disk_mb": 10,
-    "requires_internet": false,
-    "gpu_required": false
-  },
+  "product_member": false,
   "cca": {
-    "summary": "Progressive trust and ring-based capability expansion.",
-    "use_when": [
-      "tiered agent permissions"
+    "summary": "Not a product member. Isolation is not a trust rank.",
+    "use_when": [],
+    "avoid_when": [
+      "tiered agent permissions",
+      "ring escalation"
     ],
-    "avoid_when": [],
     "pairs_with": []
-  },
-  "implementation": {
-    "module": "AEP-Components/trust-rings/lib/trust/manager.ts"
   }
 }

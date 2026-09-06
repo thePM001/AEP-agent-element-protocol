@@ -211,6 +211,7 @@ const COMPOSER_PALETTE_SKIP = new Set([
   "community-extension-template",
   "dynaep-core",
   "lattice-channels",
+  "lattice-gated-fetch",
   "lattice-crypto",
   "lattice-memory",
   "aep-base-node",

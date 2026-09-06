@@ -21,7 +21,18 @@ metadata:
   provenance: aep-agent-element-protocol
   version: 1.0.0
   stability: experimental
-  trust_ring: user
+  agent_may:
+    - agent_id: grok-build
+      action: write
+    - agent_id: grok-build
+      action: federate
+  wrap: federation
+  action_path_prefix: federation
+  fscale:
+    required.0.alias: nla-policy-scan
+    required.0.id: FS.0.128.172
+    required.1.alias: nla-lattice-api-route
+    required.1.id: FS.0.128.22
   covenants:
     - "capsule_prefix MUST be multi-base-node-sync [hard]"
     - "gap_sync and federated_search MUST emit trail entries when audit enabled [hard]"

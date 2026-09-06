@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-066-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-066
+title: Unbound scene, channel, time and sequence must close Admit the same way empty lattice membership already closes.
+status: closed
+priority: P0
+track: aep28-kernel
+wave: fail-closed-unbound-walls
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Components/envelope/crate AEP-Components/dynAEP/crate AEP-Components/admit-temporal-bounds/crate AEP-Components/admit-live-dock/crate CHANGELOG.md
+notes: Product hole. envelope wall_scene opens when proven_scene_ids is empty or scene_id is empty. wall_channel opens when allowed_docks is empty or dest_dock is empty. wall_time opens when agent_ts_ms is 0 or bridge_ts_ms is 0. wall_causal opens when sequence_number is 0. Empty lattice membership already closes dag.membership and gap.agent_may (ENV-042). These four walls still fail-open so a payload that drops those fields walks through Admit. aep-dynaep wall_time uses the same no-timestamps open. Close those walls when unbound. dest_dock may be taken from the opened frame docking port. scene_id, agent_ts_ms and sequence_number must be on the payload or frame. Kernel self-test fixtures must bind those fields. Do not reopen ENV-034 or ENV-042. Hangar tools and NLA-PLATFORM stay out of this ticket. TypeScript dynAEP remains. Base Node does not depend on aep-dynaep.
+acceptance: Empty proven_scene_ids closes scene.membership. Empty scene_id closes scene.membership. Empty allowed_docks closes channel.dock. Empty dest_dock closes channel.dock. agent_ts_ms 0 or bridge_ts_ms 0 closes time.authority. sequence_number 0 closes causal.sequence. aep-dynaep wall_time closes on missing timestamps. compile_temporal_walls closes when has_agent_time is false. Kernel fixtures that used unbound stamps bind scene, dock, time and sequence. cargo test -p aep-envelope --lib and cargo test -p aep-dynaep --lib and cargo test -p aep-admit-temporal-bounds --lib pass those denies. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/envelope/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/envelope/crate
+updated: 2026-09-04

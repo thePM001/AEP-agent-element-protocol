@@ -1,0 +1,13 @@
+@PAD: aep-wall-set-backpressure-registration-v2
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-wall-set-backpressure
+version: 0.1.0
+kind: library
+path: AEP-Components/wall-set-backpressure/
+ticket: AEP28-ENV-070 AEP28-ENV-076
+requires: aep-live-entry aep-base-node
+capability: admit.wall-set-backpressure
+note: ClosedWall carries class writing, security, temporal, capability, poison or structural. Writing walls stay protocol law at priority 255. Dock Deny returns closed-wall ids and mechanical repair for unbound fields and writing. No grant values. No lattice-memory lookup.

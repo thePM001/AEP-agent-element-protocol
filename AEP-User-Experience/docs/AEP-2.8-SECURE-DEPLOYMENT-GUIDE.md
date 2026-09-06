@@ -1,18 +1,20 @@
-# AEP 2.8 Secure Deployment Guide
+# AEP 2.8.5 Secure Deployment Guide
 
-**How the public open-source AEP 2.8 protocol is supposed to be deployed securely**  
-**Audience:** operators installing AEP 2.8 from Docker or a verified source clone, or attaching foreign agent stacks  
-**Updated:** 2026-07-27
+**How the public open-source AEP 2.8.5 protocol is supposed to be deployed securely**  
+**Audience:** operators installing AEP 2.8.5 from Docker or a verified source clone or attaching foreign agent stacks  
+**Updated:** 2026-09-05
+**Official tree:** Gitea thePM001/NLA-AEP-v2.8-open-source
+**GitHub is a public mirror.**
 
 ## 1. Mental model (read first)
 
-AEP 2.8 is the public open-source Agent Element Protocol. **dynAEP is the main AEP runtime** for real-time event governance (Action Lattice, bridge, temporal authority, perception governance). It ships in this tree as a first-class component and SDK stack. **Base Node is the local kernel** (docks, registry, lattice channels). **CAW** is host execution-layer security for shell and file. **Composer Lite** is the operator / CCA plane.
+AEP 2.8.5 is the public open-source Agent Element Protocol. **Base Node is the kernel.** TypeScript dynAEP is not product Admit. **CAW** is host execution-layer security for shell and file. **Composer Lite** is the operator / CCA plane. CAW is an execution companion and is not a protocol component.
 
-You do **not** invent a second "AEP protocol runtime" to replace dynAEP. You **run dynAEP** (via the Base Node / component install path and/or `AEP-SDKs/typescript/dynaep`) as the governed event runtime. Foreign agent frameworks (LangGraph, CrewAI, custom MCP, and similar) are optional attach surfaces; they connect into AEP. They are not a substitute for dynAEP.
+You do **not** invent a second protocol kernel. You run Base Node as the local kernel. TypeScript processEvent is not product Admit. Foreign agent frameworks (LangGraph, CrewAI, custom MCP and similar) are optional attach surfaces. They connect into AEP. They are not a substitute for Base Node Admit.
 
 ### 1.1 Reference architecture diagram
 
-Canonical AEP 2.8 stack layout (operator surfaces, Path B UCB, lattice transport, docks, hyperlattice wrap, Base Node kernel, dynAEP runtime components). Same diagram as the repository README.
+Canonical AEP 2.8.5 stack layout (operator surfaces, Path B UCB, lattice transport, docks, hyperlattice wrap, Base Node kernel, protocol components). Same diagram as the repository README. GitHub is a public mirror.
 
 <p align="center" style="background-color:#ffffff;padding:16px;">
   <a href="../../docs/architecture/aep-28-architecture.png" target="_blank" rel="noopener" title="Click to open full-size AEP 2.8 architecture diagram">
@@ -34,8 +36,8 @@ How to read it for secure deploy:
 
 1. **Operator plane** (Composer Lite, CCA, harness, wizard) is not the foreign-agent API surface.
 2. **Path B** is UCB only (ingress/egress airlock), then lattice-transport. Never raw docks to foreign stacks.
-3. **Path A** is SDK / connectors / dynAEP clients sealing frames on lattice-transport into Base Node docks.
-4. **One hyperlattice wrap** plus Base Node kernel and protocol components (including **dynAEP**) are the admit path. Nothing bypasses sealed LatticeChannel frames in production.
+3. **Path A** is Base Node plus lattice-gated SDK clients sealing frames on lattice-transport into Base Node docks. TypeScript dynAEP is not product Admit.
+4. **One hyperlattice wrap** plus Base Node kernel and protocol components is the admit path. Nothing bypasses sealed LatticeChannel frames in production.
 
 ### 1.2 Connect model (Path A / Path B)
 
@@ -44,9 +46,9 @@ flowchart TB
   W[Agent workers / tools / foreign frameworks optional]
   W --> PA[Path A native preferred]
   W --> PB[Path B foreign optional UCB]
-  PA --> DYN[dynAEP + AEP SDKs + lattice-transport]
+  PA --> BN[Base Node kernel + lattice-transport]
   PB --> UCB[UCB :8412 API key + task manifest]
-  DYN --> BR[dynAEP bridge / Action Lattice main AEP event runtime]
+  BN --> BR[Admit then Apply. TypeScript dynAEP is not product Admit]
   UCB --> BR
   BR --> DOCK[Base Node docks Unix sockets registered key verify PQ sealed frames only]
   DOCK --> CAW[CAW ELS shell/file]
@@ -63,12 +65,12 @@ ASCII fallback (same model):
      |                           |
      v                           v
  Path A - native                 Path B - foreign (optional UCB)
- dynAEP + AEP SDKs               UCB :8412
+ Base Node kernel + AEP SDKs               UCB :8412
  lattice-transport               API key + task manifest
      |                           |
      +--------+------------------+
               v
-     dynAEP bridge / Action Lattice (main AEP event runtime)
+     Base Node Admit then Apply (TypeScript dynAEP is not product Admit)
               |
               v
      Base Node docks (Unix sockets) - registered key verify
@@ -84,36 +86,36 @@ ASCII fallback (same model):
 
 **Rules of the road:**
 
-1. **dynAEP is the main AEP runtime.** Enable and operate it as the event governance path for agent and system events under AEP 2.8.
+1. **Base Node is the kernel.** Enable and operate it as the Admit then Apply path for agent and system events under AEP 2.8.5. TypeScript dynAEP is not product Admit.
 2. **Base Node is mandatory** as the local kernel for docks, identity and sealed lattice transport.
 3. **Connect workers via Path A or B** (section 2.2). Never hand foreign stacks raw dock sockets.
 4. **CAW** confines host shell/file when coding or shell workloads are in scope.
 5. **Composer Lite** is for operators and CCA, not the internet agent API.
 6. Keep lattice strict; do not disable sealed-frame docking requirements.
 
-Canonical dynAEP material in this tree:
+Canonical kernel and protocol material in this tree:
 
 - `AEP-Components/dynAEP/` (protocol + bridge + registries)
 - `AEP-SDKs/typescript/dynaep/` (governance stack clients)
-- README: dynAEP 1.0 hyperlattice runtime merged into AEP 2.8
+- README: Base Node is the kernel. TypeScript dynAEP is not product Admit.
 
 ## 2. Minimum secure baseline (single host)
 
-### 2.1 dynAEP runtime (required)
+### 2.1 Base Node kernel (required)
 
-- Install and run the AEP 2.8 stack so **dynAEP** is active (component path and/or TypeScript dynaep SDK path used by your governed processes).
+- Install and run the AEP 2.8.5 stack so **Base Node** is active as the kernel. TypeScript dynAEP is not product Admit.
 - Use production lattice governance defaults where applicable (`lattice.governance` / filter modes documented in `AEP-Components/dynAEP/CONFIG.md`).
 - Lattice-addressed events with `action_path` must pass the Action Lattice before downstream stages when governance is on.
 - Temporal authority (dynAEP-TA) and perception governance (dynAEP-TA-P) apply as configured; do not let agents mint ungoverned clocks for governed events.
 
 ### 2.2 How workers and foreign stacks connect to AEP
 
-#### Path A - Native (dynAEP + lattice; preferred)
+#### Path A - Native (Base Node + lattice; preferred)
 
-Use for AEP-aware agents and anything that can load AEP / dynAEP clients.
+Use for AEP-aware agents and anything that can load AEP lattice-gated clients.
 
 1. Run **Base Node** so docking sockets exist under `AEP_DATA` (or your configured socket base).
-2. Run processes under **dynAEP** governance (bridge / filter / SDK) so events hit the Action Lattice and related stages as configured.
+2. Run processes under **Base Node** Admit then Apply so events hit the kernel and related stages as configured. TypeScript dynAEP is not product Admit.
 3. Use **AEP SDKs** or **lattice-transport** to seal frames and send them to Base Node docks (validation, inference, regulation, future-features as required).
 4. Register agent identity and signing material the Base Node expects. Frames must carry a verifiable signer bound to a registered agent; unbound or plain wire is rejected.
 5. Prefer **lattice-gated** outbound HTTP for connectors (do not set `AEP_LATTICE_STRICT=0` in production).
@@ -148,9 +150,9 @@ UCB surface: `AEP-Docks/ucb/`.
 | Foreign stack (MCP, custom HTTP, non-AEP orchestrator) | **Path B (UCB)** |
 | Both | Path A for native AEP/dynAEP workers; Path B only for foreign attach |
 
-#### What is not dynAEP
+#### What is not the product kernel
 
-Process schedulers, LLM vendor SDKs and generic orchestrators are **not** the AEP protocol runtime. They may host model calls or tools, but **event governance under AEP 2.8 still goes through dynAEP** (Path A) or UCB into the lattice (Path B). OS process isolation around worker PIDs remains operator-owned host hygiene; it does not replace dynAEP.
+Process schedulers, LLM vendor SDKs and generic orchestrators are **not** the AEP protocol kernel. They may host model calls or tools, but **event governance under AEP 2.8.5 still goes through Base Node Admit** (Path A) or UCB into the lattice (Path B). OS process isolation around worker PIDs remains operator-owned host hygiene. It does not replace Base Node. TypeScript dynAEP is not product Admit.
 
 ### 2.3 Base Node
 
@@ -199,7 +201,7 @@ export UCB_API_KEY=...
 - Seccomp path resolve failures **deny** (fail closed).
 - soft_delete without FUSE/ptrace trash **denies** destructive ops on seccomp-only path.
 - Do not run production coding agents without CAW when shell is in scope.
-- CAW is host ELS. It does not replace **dynAEP** as the event governance runtime.
+- CAW is host ELS. It does not replace **Base Node** as the kernel. TypeScript dynAEP is not product Admit.
 
 ### 2.8 Lattice strict and egress
 
@@ -211,7 +213,7 @@ export UCB_API_KEY=...
 
 ### Profile A: Lab / single operator laptop
 
-- **dynAEP** + Base Node on the local host (Path A).
+- **Base Node** on the local host (Path A). TypeScript dynAEP is not product Admit.
 - Composer on loopback.
 - UCB off unless testing foreign attach (Path B).
 - CAW on for any shell agent work.
@@ -219,7 +221,7 @@ export UCB_API_KEY=...
 
 ### Profile B: Production (native AEP only)
 
-- **dynAEP** as main event runtime; Base Node docks private.
+- **Base Node** as kernel. Docks private. TypeScript dynAEP is not product Admit.
 - Workers on **Path A** only.
 - UCB **disabled**.
 - Composer loopback or reverse proxy with token.
@@ -228,7 +230,7 @@ export UCB_API_KEY=...
 
 ### Profile C: Production with foreign stacks
 
-- Same as B for native dynAEP/AEP workers (Path A).
+- Same as B for native Base Node / AEP workers (Path A). TypeScript dynAEP is not product Admit.
 - UCB on loopback or private interface for foreign stacks (Path B).
 - Strong UCB_API_KEY, rotated.
 - Manifest required per foreign agent.
@@ -236,7 +238,7 @@ export UCB_API_KEY=...
 
 ## 4. What not to do
 
-1. Treat a generic orchestrator or LLM SDK as a replacement for **dynAEP**.
+1. Treat a generic orchestrator or LLM SDK as a replacement for **Base Node**.
 2. Skip Base Node and expect protocol admit without docks and sealed frames.
 3. Run agents free on the host with no Path A or Path B into AEP.
 4. Mount Base Node dock sockets into a foreign stack to skip UCB.
@@ -250,9 +252,9 @@ export UCB_API_KEY=...
 ## 5. Verification checklist
 
 ```bash
-# dynAEP governance path is active for lattice-addressed events
+# Base Node kernel path is active for lattice-addressed events. TypeScript dynAEP is not product Admit
 # Base Node docks refuse plain ping
-# Workers reach AEP only via Path A (dynAEP/lattice) or Path B (UCB)
+# Workers reach AEP only via Path A (Base Node/lattice) or Path B (UCB)
 # Composer loopback
 # UCB without key returns 401 when UCB is enabled
 # Composer without token from non-loopback returns 403 for mutating routes
@@ -264,7 +266,7 @@ export UCB_API_KEY=...
 | Concern | Path |
 | --- | --- |
 | Reference architecture diagram | `docs/architecture/aep-28-architecture.png` (source `.mmd`) |
-| dynAEP main runtime | `AEP-Components/dynAEP/`, `AEP-SDKs/typescript/dynaep/` |
+| Base Node kernel. TypeScript dynAEP is not product Admit | `AEP-Base-Node/`, `AEP-Components/dynAEP/`, `AEP-SDKs/typescript/dynaep/` |
 | dynAEP config | `AEP-Components/dynAEP/CONFIG.md` |
 | Dock admit / plain reject | `AEP-Base-Node/crate/src/docking.rs` |
 | BM-07 trust | `attested_trust_score` in docking.rs |

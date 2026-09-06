@@ -837,7 +837,7 @@ const MANIFESTS = {
     id: "trust-rings",
     version: "2.8.0",
     kind: "library",
-    path: "AEP-Components/trust-rings/",
+    path: "retired-archive/retired/trust-rings/",
     description: "Trust scoring and execution ring capability gating.",
     requires: ["policy-engine", "aep-typescript-sdk"],
     capabilities: ["trust:score", "rings:gate", "rings:capabilities"],
@@ -845,7 +845,7 @@ const MANIFESTS = {
     setup_hooks: [],
     resource_requirements: RR(32, 10),
     cca: CCA("Progressive trust and ring-based capability expansion.", ["tiered agent permissions"], []),
-    implementation: { module: "AEP-Components/trust-rings/lib/trust/manager.ts" },
+    implementation: { module: "retired-archive/retired/trust-rings/lib/trust/manager.ts" },
   },
 
   "proof-bundle": {

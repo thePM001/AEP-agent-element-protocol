@@ -20,5 +20,5 @@ for name in HyperlatticeFilter.ts LatticePolicyEvaluator.ts compileLatticeWalls.
 done
 echo "[gate-hyperlattice-ssot] ALLOW: Components and SDK hyperlattice trees are byte-identical"
 if command -v cargo >/dev/null 2>&1 && [[ -f "$ROOT/Cargo.toml" ]]; then
-  cargo test -p aep-hyperlattice-ssot --manifest-path "$ROOT/Cargo.toml" --lib
+cargo test -p aep-base-node --test source_invariants
 fi

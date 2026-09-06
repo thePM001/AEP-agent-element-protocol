@@ -1,0 +1,18 @@
+# @PAD: aep28-env-065-base-node-pulse-v1
+# @GCDE: gaplune-decode hmac-sha256:ddc268f216c624cd04055c3a8fed5c8ed0f08b2e2bbb97374bd4963f4fe8e060
+[package]
+name = "aep-base-node-pulse"
+version = "0.1.0"
+edition = "2021"
+description = "AEP28-ENV-065 AEP28-ENV-074. Base Node 1000 ms tic tac pulse with freeze temporal snapshot at seal. Queue cap 256 capsules and 262144 bytes. Overflow Deny. Drift 50 ms against freeze. Age 5000 ms. Wire sent_at freshness MAX_FRAME_AGE_SECS 300 and MAX_FRAME_FUTURE_SKEW_SECS 60. aep-dynaep is not a second pulse owner."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-base-node-pulse"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

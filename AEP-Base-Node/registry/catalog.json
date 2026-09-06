@@ -26,6 +26,16 @@
       "manifest": "AEP-Base-Node/registry/components/lattice-channels.json"
     },
     {
+      "id": "lattice-gated-fetch",
+      "name": "Lattice Gated Fetch",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Components/lattice-gated-fetch/",
+      "description": "After dock allow execute bound HTTP and return http. Clients consume dock http.",
+      "manifest": "AEP-Base-Node/registry/components/lattice-gated-fetch.json"
+    },
+    {
       "id": "commerce-subprotocol",
       "name": "Commerce Subprotocol",
       "kind": "regulation",
@@ -411,14 +421,14 @@
       "manifest": "AEP-Base-Node/registry/components/knowledge-base.json"
     },
     {
-      "id": "trust-rings",
-      "name": "Trust and Rings",
+      "id": "gap-capability-dimensions",
+      "name": "GAP capability dimensions",
       "kind": "library",
       "bundled": true,
-      "default_enabled": false,
-      "path": "AEP-Components/trust-rings/",
-      "description": "Trust scoring and execution ring capability gating.",
-      "manifest": "AEP-Base-Node/registry/components/trust-rings.json"
+      "default_enabled": true,
+      "path": "AEP-Components/gap-capability-dimensions/",
+      "description": "Who-may-do-what is GAP dimension Conjunction. Agent A may X. Agent B may Y. No rank. Isolation is not a trust rank.",
+      "manifest": "AEP-Base-Node/registry/components/gap-capability-dimensions.json"
     },
     {
       "id": "proof-bundle",

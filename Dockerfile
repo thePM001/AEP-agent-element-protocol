@@ -20,9 +20,17 @@ COPY AEP-Components/conformance/crate ./AEP-Components/conformance/crate
 COPY AEP-Subprotocols/ ./AEP-Subprotocols/
 RUN cargo build --release -p aep-base-node -p aep-lattice-memory -p aep-wasm-sandbox -p aep-ucb -p aep-subprotocol
 
+FROM debian:bookworm-slim AS node-deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates nodejs npm \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /deps
+COPY docker/runtime-deps.package.json ./package.json
+RUN npm install --omit=dev --no-audit --no-fund && rm -f package.json package-lock.json
+
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates tini procps nodejs npm \
+    ca-certificates tini procps nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=rust-builder /build/rust/target/release/aep-base-node /usr/local/bin/
@@ -33,8 +41,7 @@ COPY --from=rust-builder /build/rust/target/release/aep-ucb /usr/local/bin/
 COPY --from=rust-builder /build/rust/target/release/aep-subprotocol /usr/local/bin/
 
 WORKDIR /opt/aep
-COPY docker/runtime-deps.package.json ./package.json
-RUN npm install --omit=dev --no-audit --no-fund && rm -f package.json package-lock.json
+COPY --from=node-deps /deps/node_modules ./node_modules
 COPY AEP-Components/ ./AEP-Components/
 COPY AEP-Composer-Lite/ ./AEP-Composer-Lite/
 COPY AEP-Docks/ ./AEP-Docks/

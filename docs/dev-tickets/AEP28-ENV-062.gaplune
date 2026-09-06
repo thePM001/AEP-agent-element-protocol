@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-062-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-062
+title: AgentMesh docs must say local issuance. Do not sell zero-trust mesh attestation for a local cert.
+status: closed
+priority: P1
+track: aep28-library-components
+wave: agentmesh-local-issuance
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Components/agentmesh/README.md AEP-Components/agentmesh/crate/src/lib.rs README.md AEP-User-Experience/harness/README.md AEP-Components/agentmesh-local-issuance/crate CHANGELOG.md Cargo.toml scripts/gate-aep28-env-062.sh
+notes: Closed. AgentMesh docs say local issuance. A local cert is not mesh attestation. Crate aep-agentmesh-local-issuance fails if docs still sell zero-trust identity for a local cert. CI gate scripts/gate-aep28-env-062.sh runs cargo test --lib and cargo run.
+acceptance: AgentMesh README, crate rustdoc, public README row and harness README say local issuance. They do not sell zero-trust identity for a local cert. IssuanceKind LocalX509 is the default. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/agentmesh-local-issuance/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/agentmesh-local-issuance/crate
+updated: 2026-09-04

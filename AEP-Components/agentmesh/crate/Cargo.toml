@@ -1,6 +1,6 @@
 [package]
 name = "aep-agentmesh"
-description = "AgentMesh identity layer for AEP 2.8 Lattice Channels (SPIFFE, DID, mTLS, Signal hooks)"
+description = "AgentMesh local issuance identity for AEP 2.8 Lattice Channels (X.509, DID and mTLS)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -15,3 +15,6 @@ thiserror.workspace = true
 rcgen.workspace = true
 rustls.workspace = true
 rustls-pki-types.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

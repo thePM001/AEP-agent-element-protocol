@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-065-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-065
+title: Base Node must release sealed capsules on a 1000 ms bridge-clock pulse with freeze-at-seal time.
+status: closed
+priority: P0
+track: aep28-kernel
+wave: epoch-pulse
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-066
+scope: AEP-Base-Node/crate/src/docking.rs AEP-Components/live-entry/crate AEP-Components/envelope/crate CHANGELOG.md
+notes: Product hole. docking.rs Admits an opened frame immediately. There is no 1000 ms tic tac pulse of the Base Node bridge clock. A capsule is a sealed lattice frame (PQEncryptedCapsule) carrying one intent. Holding a sealed capsule for 1000 ms then measuring drift against live bridge_ts_ms would exceed the 50 ms drift wall so a pulse without freeze-at-seal would deny every held capsule. Land a 1000 ms release cadence on bridge_ts_ms: after seal verify and payload writing scan, check digest replay then freeze the temporal snapshot and enqueue. On each 1000 ms beat dequeue ready capsules and run collect-all Admit then Apply per capsule. Same-agent capsules Admit in sequence_number order. Queue cap defaults to 256 capsules and 262144 bytes. Overflow is Deny. Drift and future stay measured against the frozen seal snapshot. Age stays 5000 ms at Admit against that freeze. max_drift_ms stays 50. Replay stays SQLite frame_digest plus in-memory ReplayGuard keyed by digest. An epoch id is telemetry. Do not widen drift to 1000 ms. Do not replace digest replay with a pulse counter. Depends on ENV-066 so unbound time cannot fail-open inside the queue. Hangar tools and NLA-PLATFORM stay out of this ticket. UCB stays optional. Docker is not the protocol. TypeScript dynAEP remains. The pulse belongs in Base Node. aep-dynaep does not become a second pulse owner.
+acceptance: Opened frames enqueue after seal verify, payload writing scan and digest replay. Pulse length is 1000 ms on bridge_ts_ms. Admit collect-all then Apply runs per capsule on the beat. Same-agent order is sequence_number. Overflow of 256 capsules or 262144 bytes is Deny. A capsule held 1000 ms still meets 50 ms drift against freeze. Age 5000 ms still closes a capsule older than five pulses. Tests fail if max_drift_ms is set to 1000 as the pulse length. Duplicate digest at enqueue is Deny. cargo test -p aep-base-node --lib covers the pulse. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Base-Node/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
+updated: 2026-09-04

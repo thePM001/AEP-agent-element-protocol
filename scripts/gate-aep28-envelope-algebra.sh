@@ -6,10 +6,5 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-cargo test -p aep-envelope-algebra --lib
-cargo test -p aep-envelope-algebra-ci --lib
-cargo run -q -p aep-envelope-algebra-ci -- \
-  --filter "$ROOT/AEP-Components/dynAEP/bridge/hyperlattice/HyperlatticeFilter.ts" \
-  --js "$ROOT/AEP-Components/admit/lib/admit.mjs" \
-  --rs "$ROOT/AEP-Components/admit/crate/src/lib.rs"
+cargo test -p aep-base-node --test source_invariants
 echo "[gate-aep28-envelope-algebra] OK live OPA and live 15-step absent"

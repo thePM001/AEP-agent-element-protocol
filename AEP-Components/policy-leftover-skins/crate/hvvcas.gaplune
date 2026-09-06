@@ -1,0 +1,68 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-policy-leftover-skins
+ticket: GAP-285-P10
+note: Leftover yaml and rego files sit beside live GAP reference docs and are not live Admit skins. Collect-all loads only GAP reference docs.
+
+component:
+  name: leftover_inventory
+  domain: admit
+  component_type: library
+  intent: List leftover yaml and rego files beside live GAP reference docs
+  input:
+    name: policy_system_dir
+    type: Path
+  output:
+    name: leftover
+    type: VecPath
+
+component:
+  name: leftover_naming
+  domain: admit
+  component_type: library
+  intent: Require leftover naming text that this file is not a live Admit skin
+  input:
+    name: text
+    type: String
+  output:
+    name: ok
+    type: ResultString
+
+component:
+  name: collect_all_gap_only
+  domain: admit
+  component_type: library
+  intent: Collect-all loads only GAP reference docs with gap suffix
+  input:
+    name: policy_system_dir
+    type: Path
+  output:
+    name: gaps
+    type: VecPath
+
+component:
+  name: leftover_not_admit
+  domain: admit
+  component_type: library
+  intent: Refuse leftover yaml or rego as a live Admit skin
+  input:
+    name: path
+    type: Path
+  output:
+    name: ok
+    type: ResultString
+
+component:
+  name: p6_pointer
+  domain: admit
+  component_type: library
+  intent: Point operators to reference GAP files from GAP-285-P6
+  input:
+    name: none
+    type: Unit
+  output:
+    name: refs
+    type: VecString

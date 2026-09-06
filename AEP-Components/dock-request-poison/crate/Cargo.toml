@@ -1,0 +1,17 @@
+# @PAD: aep28-env-048-dock-request-poison-v1
+# @GCDE: gaplune-decode hmac-sha256:51b44641c50993fa411406a0562967e5c38f5420ba7f220c86e6066dc17990be
+[package]
+name = "aep-dock-request-poison"
+version = "0.1.0"
+edition = "2021"
+description = "AEP28-ENV-048. Dock request path returns ok false on poisoned locks. Do not abort the process."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-dock-request-poison"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+serde_json = "1"

@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-074-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-074
+title: Compile wire sent_at freshness beside pulse hold. Name both clocks. Fail if docking.rs reintroduces local magic numbers.
+status: closed
+priority: P1
+track: aep28-kernel
+wave: instruction-honesty
+plan: docs/architecture/AEP-2.8-REFERENCE-LIBRARY-REMEDIATION.md
+repo: NLA-AEP-v2.8-open-source
+depends_on: AEP28-ENV-072
+scope: AEP-Components/base-node-pulse/crate/src/lib.rs AEP-Base-Node/crate/src/docking.rs README.md scripts/gate-aep28-env-074.sh
+notes: Wave 1. Two clocks already exist in code and only one is named. Pulse hold is compiled in aep-base-node-pulse as PULSE_MS 1000, MAX_DRIFT_MS 50 and MAX_AGE_MS 5000 with freeze-at-seal. Wire freshness is still a local pair in docking.rs: MAX_FRAME_AGE_SECS 300 and MAX_FRAME_FUTURE_SKEW_SECS 60 on sent_at_unix before open. README Kernel pulse describes the five-second pulse age and never names the 300 second wire window. For a reference library two named checks are legal while unnamed dual numbers are not. Compile both clocks in the pulse crate. docking.rs must import the wire constants and must not keep local copies. Pulse crate tests fail if docking.rs contains const MAX_FRAME_AGE_SECS or const MAX_FRAME_FUTURE_SKEW_SECS. README Kernel pulse names pulse hold versus wire sent_at freshness and says why the wire window is wider: wire covers transit before open while pulse age covers hold after freeze. Do not set MAX_DRIFT_MS to the pulse length. Do not replace pulse age 5000 with 300 seconds. Do not treat dynAEP LARGE_STEP as this wait. Existing pulse tests from AEP28-ENV-065 stay.
+acceptance: aep-base-node-pulse exports MAX_FRAME_AGE_SECS 300 and MAX_FRAME_FUTURE_SKEW_SECS 60 beside PULSE_MS, MAX_DRIFT_MS and MAX_AGE_MS. docking.rs frame_is_fresh uses those pulse-crate constants. Pulse crate tests fail if docking.rs reintroduces local MAX_FRAME_AGE_SECS or MAX_FRAME_FUTURE_SKEW_SECS. README Kernel pulse names pulse hold versus wire sent_at freshness and states the 300s versus 5s reason. cargo test -p aep-base-node-pulse --lib and cargo test -p aep-base-node --lib pass. scripts/gate-aep28-env-074.sh runs those tests. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/base-node-pulse/crate and AEP-Base-Node/crate.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/base-node-pulse/crate
+updated: 2026-09-05

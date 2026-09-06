@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-057-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-057
+title: Implement named not-implemented surfaces or describe them as unfinished in the component README.
+status: closed
+priority: P1
+track: aep28-library-components
+wave: unfinished-surfaces
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Components/aep-comm/lib/code-sandbox.ts AEP-Components/policy-engine/lib/policy/transpilers AEP-Components/proxy/lib/mcp-proxy.ts AEP-Components/named-surfaces/crate
+notes: Closed. CodeSandbox executes python, javascript, typescript and bash under AEP_DATA/sandbox. Cedar and Rego transpilers emit GAP and reverse GAP exports emit Cedar and Rego. MCP proxy forwards policy-allowed tool calls through stdio JSON-RPC and SSE HTTP. Hangar tools stay out of this ticket.
+acceptance: Each named surface either functions or its README says unfinished. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Base-Node/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Base-Node/crate
+updated: 2026-09-04

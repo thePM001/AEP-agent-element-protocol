@@ -10,8 +10,6 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { loadAEPConfigs, validateAOT, prefixFromId } from "../../aep-protocol/sdk/sdk-aep-core.js";
 import type { AEPRegistryEntry, AEPElement } from "../../aep-protocol/sdk/sdk-aep-core.js";
 import {
-  ActionLattice,
-  LatticeFilter,
   type LatticeEvent,
 } from "../src/protocol/action-lattice.js";
 
@@ -290,23 +288,13 @@ function cmdServe(): void {
     process.exit(1);
   }
 
-  let latticePath: string;
+  // AEP28-ENV-031: CLI serve is not product Admit. Product live path is Rust aep-live-entry.
+  let latticePath = dir;
   try {
     latticePath = resolveLatticePath(dir);
-  } catch (err: any) {
-    console.error(`FAIL: ${err.message}\n`);
-    process.exit(1);
+  } catch {
+    latticePath = dir;
   }
-
-  const lattice = new ActionLattice();
-  try {
-    lattice.loadFromFile(latticePath);
-  } catch (err: any) {
-    console.error(`FAIL: unable to load lattice registry: ${err.message}\n`);
-    process.exit(1);
-  }
-
-  const filter = new LatticeFilter(lattice);
   const recentEvents: LatticeEvent[] = [];
 
   const server = createServer((req, res) => {
@@ -370,18 +358,10 @@ function cmdServe(): void {
           trust_tier: parsed.trust_tier ?? 1,
         };
 
-        const result = filter.filter(event);
-        if (result.passed) {
-          recentEvents.push(event);
-          if (recentEvents.length > 200) {
-            recentEvents.shift();
-          }
-        }
-
-        writeJson(res, result.passed ? 200 : 422, {
-          ok: result.passed,
+        writeJson(res, 501, {
+          ok: false,
           event,
-          filter: result,
+          error: "Product live path is Rust aep-live-entry. TypeScript CLI is not product Admit.",
         });
       });
       return;

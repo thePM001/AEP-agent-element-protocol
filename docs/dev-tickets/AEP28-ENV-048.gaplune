@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-048-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-048
+title: Dock request path must return ok false on poisoned locks rather than abort the process.
+status: closed
+priority: P0
+track: aep28-kernel
+wave: fail-closed-lattice
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Base-Node/crate/src/docking.rs AEP-Components/dock-request-poison/crate
+notes: Closed. process_request returns ok false when a mutex is poisoned. The process does not abort.
+acceptance: Poisoned lock on the dock request path returns ok false. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/dock-request-poison/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/dock-request-poison/crate
+updated: 2026-09-02

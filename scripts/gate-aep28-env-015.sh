@@ -6,6 +6,5 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-cargo test -p aep-live-crossing-reject-copy --lib
-cargo run -q -p aep-live-crossing-reject-copy -- --bridge "$ROOT/AEP-SDKs/typescript/dynaep/src/bridge.ts"
+cargo test -p aep-base-node --test source_invariants
 echo "[gate-aep28-env-015] OK live reject copy"

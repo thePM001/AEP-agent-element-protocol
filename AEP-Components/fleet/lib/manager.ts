@@ -42,7 +42,7 @@ export class FleetManager {
       const tokenTotals = this.gateway.getSessionTokenTotals(session.id);
 
       const trustScore = trust?.getScore() ?? 0; // unknown manager: untrusted, do not invent mid-tier
-      const ringLevel = ring?.getRing() ?? 2;
+      const isolationClass = "caw";
       // L-8: typed drift access
       const driftScore =
         drift && typeof (drift as { getScore?: () => number }).getScore === "function"
@@ -60,7 +60,7 @@ export class FleetManager {
         agentId,
         sessionId: session.id,
         trust: trustScore,
-        ring: ringLevel,
+        isolation_class: isolationClass,
         drift: driftScore,
         actions: {
           total: session.stats.actionsEvaluated,

@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-041-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-041
+title: Standalone Rust dynAEP crate in AEP-Components/dynAEP with the same rules as the kernel so a builder can attach only that crate.
+status: closed
+priority: P0
+track: aep28-library-components
+wave: rust-component
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: AEP-Components/dynAEP AEP-SDKs/typescript/dynaep AEP-Base-Node/registry/components/dynaep-core.json
+notes: Closed. AEP-Components/dynAEP/crate is a Cargo workspace member named aep-dynaep that judges events with Action Lattice membership, parent closure and agent_may plus temporal authority and perception governance output ceiling with the same rules as kernel envelope Admit. Base Node code is unchanged and TypeScript dynAEP remains. Hangar tools empty-lattice TM-24 lattice-log Record tmp keystore and slogan-crate collapse stay out of this ticket.
+acceptance: AEP-Components/dynAEP/crate exists as a Cargo workspace member. cargo test on the dynAEP crate passes Action Lattice membership, parent closure and agent_may cases that the kernel already covers. A builder can depend on only that crate while Base Node code is unchanged and TypeScript dynAEP remains. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/dynAEP/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/dynAEP/crate
+updated: 2026-09-02

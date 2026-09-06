@@ -1,7 +1,7 @@
 [package]
 name = "aep-subprotocol-commerce"
 description = "AEP Commerce subprotocol - spend caps and checkout validation"
-version = "2.8.0"
+version.workspace = true
 edition = "2021"
 license = "Apache-2.0"
 

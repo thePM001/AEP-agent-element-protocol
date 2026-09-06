@@ -1,0 +1,68 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-agentmesh-local-issuance
+ticket: AEP28-ENV-062
+note: AgentMesh docs must say local issuance. Do not sell zero-trust mesh attestation for a local cert.
+
+component:
+  name: scan_agentmesh_readme
+  domain: identity
+  component_type: service
+  intent: Require AgentMesh README to say local issuance and refuse zero-trust identity selling
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_crate_module_docs
+  domain: identity
+  component_type: service
+  intent: Require AgentMesh crate rustdoc to say local issuance and refuse zero-trust identity selling
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_public_readme_row
+  domain: identity
+  component_type: service
+  intent: Require public README AgentMesh row to say local issuance
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: require_honest_capability_flag
+  domain: identity
+  component_type: service
+  intent: Require spiffe_cryptographically_enforced so local X.509 is not sold as Workload API
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: run_local_issuance_gate
+  domain: identity
+  component_type: service
+  intent: Run live AgentMesh local issuance docs gate on the workspace
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String

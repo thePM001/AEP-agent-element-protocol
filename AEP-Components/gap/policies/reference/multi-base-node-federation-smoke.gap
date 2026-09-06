@@ -3,7 +3,7 @@ address:
   id: federation-smoke.v1
 
 pattern: |
-  AEP 2.8b multi-base-node federation smoke policy.
+  AEP 2.8.5 multi-base-node federation smoke policy.
   Policy bundle Merkle sync and lattice-channel federation MUST use lattice-channel.v1.
 
 action:
@@ -20,7 +20,18 @@ metadata:
   provenance: aep-agent-element-protocol
   version: 1.0.0
   stability: experimental
-  trust_ring: user
+  agent_may:
+    - agent_id: grok-build
+      action: write
+    - agent_id: grok-build
+      action: federate
+  wrap: federation
+  action_path_prefix: federation
+  fscale:
+    required.0.alias: nla-policy-scan
+    required.0.id: FS.0.128.172
+    required.1.alias: nla-lattice-api-route
+    required.1.id: FS.0.128.22
   covenants:
     - "Cross-node federation MUST use lattice-channel.v1 not raw localhost bypass [hard]"
     - "Agentstream is optional; topology fields apply only when Agentstream is deployed [hard]"

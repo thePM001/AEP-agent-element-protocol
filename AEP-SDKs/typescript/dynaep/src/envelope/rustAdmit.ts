@@ -17,11 +17,11 @@ export type EnvelopeSnapExtras = {
   scanner_needles?: string[];
 };
 export function snapshotFromLattice(lattice: ActionLattice, satisfied: string[], bridgeTsMs: number, extras?: EnvelopeSnapExtras) {
-  const lattice_nodes: Record<string, { action_path: string; parents: string[]; trust_floor: number; category: string }> = {};
+  const lattice_nodes: Record<string, { action_path: string; parents: string[]; agent_may: string[]; category: string }> = {};
   for (const id of lattice.allActions()) {
     const n = lattice.get(id);
     if (!n) continue;
-    lattice_nodes[id] = { action_path: id, parents: n.parents ?? [], trust_floor: n.trust_floor ?? 1, category: String(n.category ?? "") };
+    lattice_nodes[id] = { action_path: id, parents: n.parents ?? [], agent_may: n.agent_may ?? [], category: String(n.category ?? "") };
   }
   return { lattice_nodes, satisfied_actions: satisfied.slice(), bridge_ts_ms: bridgeTsMs, gap_scan_payload: true, max_actions_per_minute: 200, event_rate_max: 200, actions_last_minute: 0, event_rate: 0, max_drift_ms: extras?.max_drift_ms ?? 50, max_age_ms: extras?.max_age_ms ?? 5000, max_future_ms: extras?.max_future_ms ?? 500, last_seq_by_agent: extras?.last_seq_by_agent ?? {}, forecast_require_approval: extras?.forecast_require_approval ?? false, forecast_anomaly_threshold: extras?.forecast_anomaly_threshold ?? 3.0, forecast_cached_score: extras?.forecast_cached_score ?? 0, scanner_needles: extras?.scanner_needles ?? [] };
 }

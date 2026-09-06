@@ -1,0 +1,17 @@
+# @PAD: gaplune-creation-pad via gaplune-pad-transform encode
+# @GCDE: gaplune-decode hmac-sha256:0b0ebb948f4e645f8496f19736350782f652b3ed8fdb2ea2f4a29b12b377241a
+[package]
+name = "aep-graph-engine-admit-gate"
+version = "0.1.0"
+edition = "2021"
+description = "AEP28-ENV-069. Fail if graph-engine engine.ts invokes nodeExecutor without admitGate. Default deny. Tick only after allow."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-graph-engine-admit-gate"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+serde_json = "1"

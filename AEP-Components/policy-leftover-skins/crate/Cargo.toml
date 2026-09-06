@@ -1,0 +1,13 @@
+# @PAD: gap-285-p10-policy-leftover-skins-v1
+# @GCDE: gaplune.policy.v1
+[package]
+name = "aep-policy-leftover-skins"
+version = "0.1.0"
+edition = "2021"
+description = "GAP-285-P10. Leftover yaml and rego files sit beside live GAP reference docs and are not live Admit skins. Collect-all loads only GAP reference docs."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-policy-leftover-skins"
+path = "src/main.rs"

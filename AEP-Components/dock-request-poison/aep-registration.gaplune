@@ -1,0 +1,13 @@
+@PAD: aep-dock-request-poison-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-dock-request-poison
+version: 0.1.0
+kind: library
+path: AEP-Components/dock-request-poison/
+ticket: AEP28-ENV-048
+requires: aep-base-node
+capability: lattice.dock-request-poison
+note: Dock request path returns ok false on poisoned locks. Do not abort the process.

@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/nla-aep/aep-caw-framework/internal/config"
 	"github.com/nla-aep/aep-caw-framework/internal/landlock"
 	"github.com/nla-aep/aep-caw-framework/internal/limits"
@@ -24,8 +26,6 @@ import (
 	seccomppkg "github.com/nla-aep/aep-caw-framework/internal/seccomp"
 	"github.com/nla-aep/aep-caw-framework/internal/session"
 	"github.com/nla-aep/aep-caw-framework/pkg/types"
-	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 )
 
 var (
@@ -520,15 +520,17 @@ func (a *App) wrapInitCore(s *session.Session, sessionID string, req types.WrapI
 }
 
 // wrapEnvPolicyWire resolves the env policy for the wrapped command and returns
-// it as a wire value for the client to filter the inherited environment, when
-// sandbox.wrap_env_policy.enabled is set. Returns nil when disabled or when no
-// engine is available (fail-open). Even an empty (no allow/deny) policy yields a
-// non-nil wire so the client still applies the default-secret-deny baseline.
+// it as a wire value for the client to filter the inherited environment.
+//
+// Fail-closed (AEP28-ENV-026): a nil wire makes the client Deny wrap.
+// When sandbox.wrap_env_policy.enabled is off, return an empty non-nil wire so
+// the client still applies default-secret-deny and wrap can proceed.
+// When no engine is available, return nil so the client Denies wrap.
 // Only allow/deny are carried; max_*/block_iteration are not enforced on the
 // wrap path. Issue #379.
 func (a *App) wrapEnvPolicyWire(s *session.Session, req types.WrapInitRequest) *types.EnvPolicyWire {
 	if !a.cfg.Sandbox.WrapEnvPolicy.Enabled {
-		return nil
+		return &types.EnvPolicyWire{}
 	}
 	engine := a.policyEngineFor(s)
 	if engine == nil {

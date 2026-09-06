@@ -1,0 +1,104 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-dock-post-beat-collect
+ticket: AEP28-ENV-071
+note: Durable HVVCAS is GAPLUNE. Dock client collects post-beat Admit by digest. DenyReport.closed and allow event_id return on the wire.
+
+component:
+  name: collect_line
+  domain: dock
+  component_type: library
+  intent: Build the unix dock collect-by-digest line from a capsule digest
+  input:
+    name: digest
+    type: String
+  output:
+    name: line
+    type: String
+
+component:
+  name: is_enqueue_ack
+  domain: dock
+  component_type: library
+  intent: True when the wire line is enqueue ok with digest and no event_id
+  input:
+    name: ok
+    type: String
+  output:
+    name: enqueue
+    type: String
+
+component:
+  name: is_applied_allow
+  domain: dock
+  component_type: library
+  intent: True when the collected line carries allow event_id
+  input:
+    name: event_id
+    type: String
+  output:
+    name: allow
+    type: String
+
+component:
+  name: is_applied_deny
+  domain: dock
+  component_type: library
+  intent: True when the collected line carries DenyReport.closed
+  input:
+    name: closed
+    type: String
+  output:
+    name: deny
+    type: String
+
+component:
+  name: scan_dock_collect_variant
+  domain: dock
+  component_type: service
+  intent: Fail if DockRequest lacks a collect digest variant
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_process_request_collect
+  domain: dock
+  component_type: service
+  intent: Fail if process_request does not collect last_applied by digest
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_ucb_collect
+  domain: dock
+  component_type: service
+  intent: Fail if UCB send_frame returns enqueue as Admit and skips collect-by-digest
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_pulse_untouched
+  domain: dock
+  component_type: service
+  intent: Fail if collect skips the 1000 ms pulse or adds a second in-process Admit
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String

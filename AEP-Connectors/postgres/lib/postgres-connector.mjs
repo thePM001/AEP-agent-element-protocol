@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 
-import { probeTcpHost } from "../../../AEP-Components/cca/lib/environment-probe.mjs";
 import {
   buildEgressRoutes,
   connectorExtension,
-  probeTcpUpstream,
+  probeViaUcb,
 } from "../../lib/connector-kit.mjs";
 
 export const SPEC = {
@@ -87,12 +86,12 @@ export function postgresConnectorExtension(config) {
 /**
  * @param {object} config
  */
-export async function probePostgres(config) {
+export async function probePostgres(config, opts = {}) {
   const v = validatePostgresConfig(config);
   if (!v.valid) {
     return { ok: false, status: "invalid_config", errors: v.errors, ucb_only: true };
   }
-  const result = await probeTcpUpstream(v.config.host, v.config.port, probeTcpHost);
+  const result = await probeViaUcb(SPEC.service, "", opts);
   return {
     ...result,
     database: v.config.database,

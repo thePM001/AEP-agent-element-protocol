@@ -1,0 +1,19 @@
+@PAD: nla-dev-ticket-AEP28-ENV-058-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: AEP28-ENV-058
+title: README must count the library by the layer table not by folder count as 120-plus Features.
+status: closed
+priority: P1
+track: aep28-library-components
+wave: library-layer-count
+plan: none
+repo: NLA-AEP-v2.8-open-source
+depends_on: none
+scope: README.md AEP-Components/library-layer-count/crate CHANGELOG.md Cargo.toml scripts/gate-aep28-env-058.sh
+notes: Closed. README headline is 14 layers from the Architecture layer table. Folder count is not the library count. Crate aep-library-layer-count parses the table and fails 120-plus or folder-count headlines. CI gate scripts/gate-aep28-env-058.sh runs cargo test --lib and cargo run.
+acceptance: Headline layer count equals Architecture layer table row count. README has no 120-plus library count. Folder count is not the library count. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/library-layer-count/crate before any ship prose.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/library-layer-count/crate
+updated: 2026-09-03

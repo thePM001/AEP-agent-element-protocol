@@ -1,0 +1,13 @@
+@PAD: aep-policy-leftover-skins-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-policy-leftover-skins
+version: 0.1.0
+kind: library
+path: AEP-Components/policy-leftover-skins/
+ticket: GAP-285-P10
+requires: none
+capability: admit.policy-system.leftover-not-admit
+note: Leftover yaml and rego files sit beside live GAP reference docs and are not live Admit skins. Collect-all loads only GAP reference docs. Operators use the reference GAP files from GAP-285-P6.

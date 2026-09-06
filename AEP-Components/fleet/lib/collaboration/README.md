@@ -29,7 +29,7 @@ action:
  name: code_reviewer
  capabilities: [read_code, write_review, flag_issues]
  delegation: [tester]
- trust_ring: user
+ isolation_class: caw
 ```
 
 ## Fleet Governance Integration

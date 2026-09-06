@@ -1,0 +1,13 @@
+@PAD: aep-gap-kernel-json-wrap-bind-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-gap-kernel-json-wrap-bind
+version: 0.1.0
+kind: library
+path: AEP-Components/gap-kernel-json-wrap-bind/
+ticket: GAP-285-P5
+requires: none
+capability: admit.gap-kernel-json-wrap-bind.compile
+note: Classic GAP live kernel policies may be JSON-encoded GAP instructions. YAML remains valid GAP source. Writing and security are always-on stems. Other GAP walls bind to LatticeNode wrap or an action_path prefix. A finance wrap does not close an inventory wrap ping. A non-always-on GAP with empty wrap does not fold onto every event. The kernel reads the instruction object not the skin.

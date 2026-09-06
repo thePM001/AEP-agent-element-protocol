@@ -1,0 +1,69 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-gap-kernel-json-wrap-bind
+note: Durable HVVCAS is GAPLUNE. New crate only. Do not edit existing GAPLUNE trees.
+
+component:
+  name: parse_gap_instruction
+  domain: admit
+  component_type: library
+  intent: Parse JSON-encoded GAP kernel policy or YAML GAP source into an instruction object. YAML remains valid GAP source. The kernel reads the instruction object not the skin.
+  input:
+    name: source
+    type: String
+  output:
+    name: result
+    type: Instruction
+
+component:
+  name: classify_stem
+  domain: admit
+  component_type: library
+  intent: Classify a GAP instruction as writing, security or other. Writing and security are always-on stems.
+  input:
+    name: instruction
+    type: Instruction
+  output:
+    name: stem
+    type: String
+
+component:
+  name: wrap_or_prefix_binds
+  domain: admit
+  component_type: library
+  intent: Bind other GAP walls to LatticeNode wrap or an action_path prefix. A finance wrap does not bind an inventory wrap ping.
+  input:
+    name: request
+    type: BindRequest
+  output:
+    name: binds
+    type: bool
+
+component:
+  name: stem_applies
+  domain: admit
+  component_type: library
+  intent: Writing and security evaluate on every action_path. A non-always-on GAP with empty wrap does not fold onto every event.
+  input:
+    name: request
+    type: BindRequest
+  output:
+    name: applies
+    type: bool
+
+component:
+  name: live_admit_json_kernel
+  domain: admit
+  component_type: library
+  intent: Collect-all live Admit for JSON-encoded or YAML GAP kernel policies with wrap or prefix bind and always-on writing and security stems.
+  input:
+    name: source
+    type: String
+  output:
+    name: result
+    type: AdmitResult
+
+ticket: GAP-285-P5

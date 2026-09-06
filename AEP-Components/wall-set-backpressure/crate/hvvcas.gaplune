@@ -1,0 +1,80 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-wall-set-backpressure
+ticket: AEP28-ENV-070
+note: Durable HVVCAS is GAPLUNE. Dock Deny returns closed-wall ids and mechanical repair.
+
+component:
+  name: from_closed
+  domain: admit
+  component_type: library
+  intent: Build a deny report from closed wall ids and reasons
+  input:
+    name: closed
+    type: String
+  output:
+    name: report
+    type: String
+
+component:
+  name: repairs_for
+  domain: admit
+  component_type: library
+  intent: Prescribe mechanical repair for unbound fields and writing
+  input:
+    name: closed
+    type: String
+  output:
+    name: repairs
+    type: String
+
+component:
+  name: scan_dock_deny_field
+  domain: admit
+  component_type: service
+  intent: Fail if DockFrameResponse lacks the deny report field
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_live_entry_closed
+  domain: admit
+  component_type: service
+  intent: Fail if Rejection drops closed walls
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_ucb_deny_field
+  domain: admit
+  component_type: service
+  intent: Fail if UCB DockResponse drops deny
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_no_lookup
+  domain: admit
+  component_type: service
+  intent: Fail if the crate looks up lattice-memory or copies grant lists into repair.fix
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
