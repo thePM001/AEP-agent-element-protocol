@@ -13,7 +13,7 @@ const {
   createFallbackManager, createX402Gateway,
 } = economics;
 
-const DEFAULT_CONFIG = require("../../AEP-NOSHIP/AEP-Subprotocols/commerce/price-catalog.yaml");
+const DEFAULT_CONFIG = require("../../internal-sdk/AEP-Subprotocols/commerce/price-catalog.yaml");
 
 module.exports = {
   BalanceEngine, PriceCatalog, BudgetEnforcer, ConcurrencyLimiter,

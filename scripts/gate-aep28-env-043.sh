@@ -6,8 +6,8 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-cargo test --manifest-path AEP-NOSHIP/instruction-crates/satisfied-actions-partition/crate/Cargo.toml --lib
-cargo run -q --manifest-path AEP-NOSHIP/instruction-crates/satisfied-actions-partition/crate/Cargo.toml
+cargo test --manifest-path internal-sdk/instruction-crates/satisfied-actions-partition/crate/Cargo.toml --lib
+cargo run -q --manifest-path internal-sdk/instruction-crates/satisfied-actions-partition/crate/Cargo.toml
 cargo test -p aep-envelope --lib
 cargo test -p aep-dynaep --lib
 cargo test -p aep-live-entry --lib

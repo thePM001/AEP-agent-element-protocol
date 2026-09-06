@@ -3,7 +3,7 @@
   "id": "connector-slack",
   "version": "2.8.0",
   "kind": "connector",
-  "path": "AEP-NOSHIP/AEP-Connectors/slack/",
+  "path": "internal-sdk/AEP-Connectors/slack/",
   "description": "UCB-only Slack connector. All traffic via /ucb/v1/egress/slack/**.",
   "requires": [
     "aep-base-node",
@@ -79,7 +79,7 @@
     ]
   },
   "implementation": {
-    "module": "AEP-NOSHIP/AEP-Connectors/slack/lib/slack-connector.mjs",
+    "module": "internal-sdk/AEP-Connectors/slack/lib/slack-connector.mjs",
     "ucb_egress_prefix": "/ucb/v1/egress/slack",
     "auth_token_env": "AEP_SLACK_BOT_TOKEN"
   },

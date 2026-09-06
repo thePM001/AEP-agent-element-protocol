@@ -3,7 +3,7 @@
   "id": "aep-python-sdk",
   "version": "2.8.0",
   "kind": "sdk",
-  "path": "AEP-NOSHIP/AEP-SDKs/python/aep-protocol/",
+  "path": "internal-sdk/AEP-SDKs/python/aep-protocol/",
   "description": "AEP Python loader, validator, and lattice client.",
   "requires": [
     "aep-base-node",
@@ -29,6 +29,6 @@
   },
   "implementation": {
     "producer": "AEP-User-Experience/scripts/produce-aep-sdks.mjs",
-    "dist": "AEP-NOSHIP/AEP-SDKs/dist/sdk-manifest.json"
+    "dist": "internal-sdk/AEP-SDKs/dist/sdk-manifest.json"
   }
 }

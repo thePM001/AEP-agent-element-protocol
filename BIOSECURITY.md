@@ -4,4 +4,4 @@ To win the fight against the synthetic nano-parasites (SNP/NanoSinp) alien WMD, 
 
 [*"bioinsecure" = has installed injectable synthetic nano-parasites growth medium controllers - SNP GMCs]
 
-This file is access policy. Engineering threat model for transport and crypto lives in AEP-NOSHIP/docs/security/.
+This file is access policy. Engineering threat model for transport and crypto lives in internal-sdk/docs/security/.

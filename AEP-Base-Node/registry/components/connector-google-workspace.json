@@ -3,7 +3,7 @@
   "id": "connector-google-workspace",
   "version": "2.8.0",
   "kind": "connector",
-  "path": "AEP-NOSHIP/AEP-Connectors/google-workspace/",
+  "path": "internal-sdk/AEP-Connectors/google-workspace/",
   "description": "UCB-only Google Workspace connector. All traffic via /ucb/v1/egress/google-workspace/**.",
   "requires": [
     "aep-base-node",
@@ -81,7 +81,7 @@
     ]
   },
   "implementation": {
-    "module": "AEP-NOSHIP/AEP-Connectors/google-workspace/lib/google-workspace-connector.mjs",
+    "module": "internal-sdk/AEP-Connectors/google-workspace/lib/google-workspace-connector.mjs",
     "ucb_egress_prefix": "/ucb/v1/egress/google-workspace",
     "auth_token_env": "AEP_GWS_ACCESS_TOKEN"
   },

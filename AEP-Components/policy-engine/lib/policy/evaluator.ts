@@ -10,8 +10,8 @@ import type {
   ForbiddenPattern,
 } from "./types.js";
 import type { Session } from "../../../session/lib/session.js";
-import type { TrustManager } from "../../../../AEP-NOSHIP/retired/trust-rings/lib/trust/manager.js";
-import type { RingManager } from "../../../../AEP-NOSHIP/retired/trust-rings/lib/rings/manager.js";
+import type { TrustManager } from "../../../../internal-sdk/retired/trust-rings/lib/trust/manager.js";
+import type { RingManager } from "../../../../internal-sdk/retired/trust-rings/lib/rings/manager.js";
 import type { CovenantSpec } from "../../../covenant/lib/types.js";
 import { evaluateCovenant, type CovenantContext } from "../../../covenant/lib/evaluator.js";
 import type { IntentDriftDetector } from "../../../intent/lib/detector.js";

@@ -3,7 +3,7 @@
   "id": "aep-typescript-sdk",
   "version": "2.8.0",
   "kind": "sdk",
-  "path": "AEP-NOSHIP/AEP-SDKs/typescript/aep-protocol/",
+  "path": "internal-sdk/AEP-SDKs/typescript/aep-protocol/",
   "description": "Unified TypeScript governance stack and lattice-gated SDK clients.",
   "requires": [
     "aep-base-node",
@@ -28,8 +28,8 @@
     "requires_internet": false
   },
   "implementation": {
-    "entry": "AEP-NOSHIP/AEP-SDKs/typescript/aep-protocol/index.ts",
-    "gateway": "AEP-NOSHIP/AEP-SDKs/typescript/aep-protocol/src/gateway.ts",
-    "dist": "AEP-NOSHIP/AEP-SDKs/dist/typescript/aep-protocol/"
+    "entry": "internal-sdk/AEP-SDKs/typescript/aep-protocol/index.ts",
+    "gateway": "internal-sdk/AEP-SDKs/typescript/aep-protocol/src/gateway.ts",
+    "dist": "internal-sdk/AEP-SDKs/dist/typescript/aep-protocol/"
   }
 }

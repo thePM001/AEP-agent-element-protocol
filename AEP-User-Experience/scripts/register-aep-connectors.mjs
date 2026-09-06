@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-/** Register AEP-NOSHIP/AEP-Connectors/catalog.json entries in AEP-Base-Node registry */
+/** Register internal-sdk/AEP-Connectors/catalog.json entries in AEP-Base-Node registry */
 
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "../..");
-const catalog = JSON.parse(readFileSync(join(REPO, "AEP-NOSHIP/AEP-Connectors/catalog.json"), "utf8"));
+const catalog = JSON.parse(readFileSync(join(REPO, "internal-sdk/AEP-Connectors/catalog.json"), "utf8"));
 const registryCatalogPath = join(REPO, "AEP-Base-Node/registry/catalog.json");
 const registryCatalog = JSON.parse(readFileSync(registryCatalogPath, "utf8"));
 const componentsDir = join(REPO, "AEP-Base-Node/registry/components");
@@ -18,7 +18,7 @@ function manifestFor(spec) {
     id: spec.id,
     version: "2.8.0",
     kind: "connector",
-    path: `AEP-NOSHIP/AEP-Connectors/${folder}/`,
+    path: `internal-sdk/AEP-Connectors/${folder}/`,
     description: `UCB-only ${spec.label} connector. All traffic via /ucb/v1/egress/${spec.service}/**.`,
     requires: ["aep-base-node", "lattice-channels", "ucb", "composer-lite"],
     capabilities: [
@@ -71,7 +71,7 @@ function manifestFor(spec) {
       pairs_with: ["ucb", "aep-base-node", "composer-lite"],
     },
     implementation: {
-      module: `AEP-NOSHIP/AEP-Connectors/${folder}/lib/${spec.service}-connector.mjs`,
+      module: `internal-sdk/AEP-Connectors/${folder}/lib/${spec.service}-connector.mjs`,
       ucb_egress_prefix: `/ucb/v1/egress/${spec.service}`,
       auth_token_env: spec.auth_token_env,
     },
@@ -97,7 +97,7 @@ for (const spec of catalog.connectors) {
       bundled: true,
       default_enabled: false,
       composer_palette: true,
-      path: `AEP-NOSHIP/AEP-Connectors/${spec.folder}/`,
+      path: `internal-sdk/AEP-Connectors/${spec.folder}/`,
       description: manifest.description,
       manifest: `AEP-Base-Node/registry/components/${spec.id}.json`,
     });
@@ -105,7 +105,7 @@ for (const spec of catalog.connectors) {
   } else {
     const entry = registryCatalog.components.find((c) => c.id === spec.id);
     if (entry) {
-      entry.path = `AEP-NOSHIP/AEP-Connectors/${spec.folder}/`;
+      entry.path = `internal-sdk/AEP-Connectors/${spec.folder}/`;
       entry.description = manifest.description;
       entry.composer_palette = true;
     }

@@ -14,7 +14,7 @@ wave: rust-live
 plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
 repo: NLA-AEP-v2.8-open-source
 depends_on: AEP28-ENV-018
-scope: AEP-Components/envelope AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/bridge.ts
+scope: AEP-Components/envelope internal-sdk/AEP-SDKs/typescript/dynaep/src/bridge.ts
 notes: Live processEvent still denies AFTER aep-envelope Admit via TemporalValidator.validate, CausalOrderingEngine.process, UnifiedRegoEvaluator.evaluate, UnifiedScanner.scan (including template fast-exit) and ForecastSidecar.checkAnomalySync when require_approval. Fold those denies into aep-envelope walls or remove them from the live path. One Rust collect-all then Apply. No second sequential policy program. Host may keep bridge IO, rustAdmit spawn and ActionLattice YAML load. Out of scope: hangar tools.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/envelope/crate
 updated: 2026-09-01

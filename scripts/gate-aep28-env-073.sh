@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CI: leftover instruction crates live under AEP-NOSHIP/instruction-crates.
+# CI: leftover instruction crates live under internal-sdk/instruction-crates.
 # AEP28-ENV-073
 # @PAD: aep28-env-073-leftover-instruction-crates-ci-gate-v1
 # @GCDE: gaplune.policy.v1
@@ -91,7 +91,7 @@ COMPANIONS=(
   workflow
 )
 
-INV="$ROOT/AEP-NOSHIP/instruction-crates/INVENTORY.gaplune"
+INV="$ROOT/internal-sdk/instruction-crates/INVENTORY.gaplune"
 if test -f "$INV"; then
   :
 else
@@ -109,7 +109,7 @@ for name in "${LEFTOVERS[@]}"; do
     echo "[gate-aep28-env-073] leftover still under AEP-Components: $name" >&2
     exit 1
   fi
-  if test -d "$ROOT/AEP-NOSHIP/instruction-crates/$name"; then
+  if test -d "$ROOT/internal-sdk/instruction-crates/$name"; then
     :
   else
     echo "[gate-aep28-env-073] relocated crate missing: $name" >&2
@@ -125,7 +125,7 @@ for name in "${LEFTOVERS[@]}"; do
     echo "[gate-aep28-env-073] leftover is a workspace member: $name" >&2
     exit 1
   fi
-  if grep -F -q "AEP-NOSHIP/instruction-crates/$name/crate" "$ROOT/Cargo.toml"; then
+  if grep -F -q "internal-sdk/instruction-crates/$name/crate" "$ROOT/Cargo.toml"; then
     echo "[gate-aep28-env-073] leftover is a workspace member: $name" >&2
     exit 1
   fi

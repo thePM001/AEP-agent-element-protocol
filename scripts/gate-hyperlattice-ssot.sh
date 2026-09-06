@@ -5,7 +5,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CANON="$ROOT/AEP-Components/dynAEP/bridge/hyperlattice"
-REPLICA="$ROOT/AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/hyperlattice"
+REPLICA="$ROOT/internal-sdk/AEP-SDKs/typescript/dynaep/src/hyperlattice"
 fail() { echo "SSOT DRIFT: $*" >&2; exit 1; }
 for name in HyperlatticeFilter.ts LatticePolicyEvaluator.ts compileLatticeWalls.ts compileChannelOrderWalls.ts compileTemporalWalls.ts; do
   a="$CANON/$name"

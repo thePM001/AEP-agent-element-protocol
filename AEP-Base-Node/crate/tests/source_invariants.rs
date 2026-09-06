@@ -9,41 +9,41 @@ use std::path::{Path, PathBuf};
 pub const TICKET: &str = "AEP28-ENV-059";
 
 pub const SLOGAN_CI_MEMBERS: &[&str] = &[
-    "AEP-NOSHIP/instruction-crates/admit-no-trust-tier/crate",
-    "AEP-NOSHIP/instruction-crates/admit-opa-sole/crate",
-    "AEP-NOSHIP/instruction-crates/admit-parity/crate",
-    "AEP-NOSHIP/instruction-crates/agent-sign-key-provision/crate",
-    "AEP-NOSHIP/instruction-crates/caw-wrapenv-failclosed/crate",
-    "AEP-NOSHIP/instruction-crates/client-trust-tier-ignore/crate",
-    "AEP-NOSHIP/instruction-crates/connector-ucb-clients/crate",
-    "AEP-NOSHIP/instruction-crates/dynaep-live-crossing-e2e/crate",
-    "AEP-NOSHIP/instruction-crates/empty-lattice-close/crate",
-    "AEP-NOSHIP/instruction-crates/envelope-algebra/crate",
-    "AEP-NOSHIP/instruction-crates/envelope-algebra-ci/crate",
-    "AEP-NOSHIP/instruction-crates/envelope-wrap-disabled/crate",
-    "AEP-NOSHIP/instruction-crates/frame-header-binding/crate",
-    "AEP-NOSHIP/instruction-crates/gap-capability-dimensions/crate",
-    "AEP-NOSHIP/instruction-crates/hyperlattice-ssot/crate",
-    "AEP-NOSHIP/instruction-crates/kernel-pq-channel/crate",
-    "AEP-NOSHIP/instruction-crates/lattice-db-parent-guard/crate",
-    "AEP-NOSHIP/instruction-crates/lattice-log-record-admit/crate",
-    "AEP-NOSHIP/instruction-crates/library-layer-count/crate",
-    "AEP-NOSHIP/instruction-crates/live-crossing-admit-apply/crate",
-    "AEP-NOSHIP/instruction-crates/live-crossing-lab-off/crate",
-    "AEP-NOSHIP/instruction-crates/live-crossing-reject-copy/crate",
-    "AEP-NOSHIP/instruction-crates/live-entry-ci/crate",
-    "AEP-NOSHIP/instruction-crates/mesh-ca-secret-mode/crate",
-    "AEP-NOSHIP/instruction-crates/no-sequential-ts-deny/crate",
-    "AEP-NOSHIP/instruction-crates/one-evaluation-story/crate",
-    "AEP-NOSHIP/instruction-crates/one-live-entry-language/crate",
-    "AEP-NOSHIP/instruction-crates/potomitan-mesh-packet-plane/crate",
-    "AEP-NOSHIP/instruction-crates/process-event-admit-walls/crate",
-    "AEP-NOSHIP/instruction-crates/sdk-run-meet-park/crate",
-    "AEP-NOSHIP/instruction-crates/stream-hard-findings/crate",
-    "AEP-NOSHIP/instruction-crates/version-ssot/crate",
-    "AEP-NOSHIP/instruction-crates/named-surfaces/crate",
-    "AEP-NOSHIP/instruction-crates/one-admit-id/crate",
-    "AEP-NOSHIP/instruction-crates/trust-score-isolation/crate",
+    "internal-sdk/instruction-crates/admit-no-trust-tier/crate",
+    "internal-sdk/instruction-crates/admit-opa-sole/crate",
+    "internal-sdk/instruction-crates/admit-parity/crate",
+    "internal-sdk/instruction-crates/agent-sign-key-provision/crate",
+    "internal-sdk/instruction-crates/caw-wrapenv-failclosed/crate",
+    "internal-sdk/instruction-crates/client-trust-tier-ignore/crate",
+    "internal-sdk/instruction-crates/connector-ucb-clients/crate",
+    "internal-sdk/instruction-crates/dynaep-live-crossing-e2e/crate",
+    "internal-sdk/instruction-crates/empty-lattice-close/crate",
+    "internal-sdk/instruction-crates/envelope-algebra/crate",
+    "internal-sdk/instruction-crates/envelope-algebra-ci/crate",
+    "internal-sdk/instruction-crates/envelope-wrap-disabled/crate",
+    "internal-sdk/instruction-crates/frame-header-binding/crate",
+    "internal-sdk/instruction-crates/gap-capability-dimensions/crate",
+    "internal-sdk/instruction-crates/hyperlattice-ssot/crate",
+    "internal-sdk/instruction-crates/kernel-pq-channel/crate",
+    "internal-sdk/instruction-crates/lattice-db-parent-guard/crate",
+    "internal-sdk/instruction-crates/lattice-log-record-admit/crate",
+    "internal-sdk/instruction-crates/library-layer-count/crate",
+    "internal-sdk/instruction-crates/live-crossing-admit-apply/crate",
+    "internal-sdk/instruction-crates/live-crossing-lab-off/crate",
+    "internal-sdk/instruction-crates/live-crossing-reject-copy/crate",
+    "internal-sdk/instruction-crates/live-entry-ci/crate",
+    "internal-sdk/instruction-crates/mesh-ca-secret-mode/crate",
+    "internal-sdk/instruction-crates/no-sequential-ts-deny/crate",
+    "internal-sdk/instruction-crates/one-evaluation-story/crate",
+    "internal-sdk/instruction-crates/one-live-entry-language/crate",
+    "internal-sdk/instruction-crates/potomitan-mesh-packet-plane/crate",
+    "internal-sdk/instruction-crates/process-event-admit-walls/crate",
+    "internal-sdk/instruction-crates/sdk-run-meet-park/crate",
+    "internal-sdk/instruction-crates/stream-hard-findings/crate",
+    "internal-sdk/instruction-crates/version-ssot/crate",
+    "internal-sdk/instruction-crates/named-surfaces/crate",
+    "internal-sdk/instruction-crates/one-admit-id/crate",
+    "internal-sdk/instruction-crates/trust-score-isolation/crate",
 ];
 
 pub const SLOGAN_CI_PACKAGES: &[&str] = &[
@@ -241,14 +241,14 @@ pub fn leftover_instruction_crates_relocated(root: &Path) -> Result<String, Stri
             msg.push_str(name);
             return Err(msg);
         }
-        let dest = root.join("AEP-NOSHIP/instruction-crates").join(name);
+        let dest = root.join("internal-sdk/instruction-crates").join(name);
         if dest.is_dir() == false {
             let mut msg = String::from("relocated instruction crate missing: ");
             msg.push_str(name);
             return Err(msg);
         }
         let old_member = format!("AEP-Components/{name}/crate");
-        let new_member = format!("AEP-NOSHIP/instruction-crates/{name}/crate");
+        let new_member = format!("internal-sdk/instruction-crates/{name}/crate");
         if members.iter().any(|m| m == &old_member || m == &new_member) {
             let mut msg = String::from("leftover crate is a workspace member: ");
             msg.push_str(name);
@@ -266,7 +266,7 @@ pub fn leftover_instruction_crates_relocated(root: &Path) -> Result<String, Stri
     if root.join("AEP-Components/trust-rings").exists() {
         return Err(String::from("Trust Rings still under AEP-Components"));
     }
-    let inv = root.join("AEP-NOSHIP/instruction-crates/INVENTORY.gaplune");
+    let inv = root.join("internal-sdk/instruction-crates/INVENTORY.gaplune");
     if inv.is_file() == false {
         return Err(String::from("INVENTORY.gaplune missing"));
     }
@@ -726,7 +726,7 @@ pub fn run_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
     let envelope = root.join("AEP-Components/envelope/crate/src/lib.rs");
     let live = root.join("AEP-Components/live-entry/crate/src/lib.rs");
-    let bridge = root.join("AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/bridge.ts");
+    let bridge = root.join("internal-sdk/AEP-SDKs/typescript/dynaep/src/bridge.ts");
     for (path, scan) in [
         (envelope, "envelope"),
         (live, "live"),
@@ -2510,7 +2510,7 @@ fn walk_to_workspace() -> PathBuf {
     };
     let mut i = 0usize;
     while i < 12 {
-        let probe = dir.join("AEP-NOSHIP/AEP-Connectors").join("lib").join("connector-kit.mjs");
+        let probe = dir.join("internal-sdk/AEP-Connectors").join("lib").join("connector-kit.mjs");
         if probe.is_file() {
             return dir;
         }
@@ -2556,14 +2556,14 @@ fn read_src(path: &PathBuf, label: &str) -> Result<String, String> {
 
 pub fn run_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
-    let kit = root.join("AEP-NOSHIP/AEP-Connectors").join("lib").join("connector-kit.mjs");
+    let kit = root.join("internal-sdk/AEP-Connectors").join("lib").join("connector-kit.mjs");
     let slack = root
-        .join("AEP-NOSHIP/AEP-Connectors")
+        .join("internal-sdk/AEP-Connectors")
         .join("slack")
         .join("lib")
         .join("slack-connector.mjs");
     let jira = root
-        .join("AEP-NOSHIP/AEP-Connectors")
+        .join("internal-sdk/AEP-Connectors")
         .join("jira")
         .join("lib")
         .join("jira-connector.mjs");
@@ -2579,7 +2579,7 @@ pub fn run_gate() -> Result<i32, String> {
         scan_no_vendor_direct(&jira_src)?,
     ];
     let mut mjs = Vec::new();
-    walk_mjs(&root.join("AEP-NOSHIP/AEP-Connectors"), &mut mjs);
+    walk_mjs(&root.join("internal-sdk/AEP-Connectors"), &mut mjs);
     for p in mjs {
         let src = read_src(&p, "connector mjs")?;
         proofs.push(scan_no_vendor_direct(&src)?);
@@ -4023,7 +4023,7 @@ pub fn wrap_on_disabled_governance(bridge_source: &str) -> Result<String, String
 
 pub fn default_bridge_ts() -> PathBuf {
     crate::walk_to_workspace()
-        .join("AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/bridge.ts")
+        .join("internal-sdk/AEP-SDKs/typescript/dynaep/src/bridge.ts")
 }
 
 pub fn run_gate(bridge: &Path) -> Result<i32, String> {
@@ -4723,7 +4723,7 @@ pub fn canonical_dir() -> PathBuf {
 }
 
 pub fn replica_dir() -> PathBuf {
-    crate::walk_to_workspace().join("AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/hyperlattice")
+    crate::walk_to_workspace().join("internal-sdk/AEP-SDKs/typescript/dynaep/src/hyperlattice")
 }
 
 pub fn assert_identical(name: &str) {
@@ -6834,7 +6834,7 @@ pub fn live_reject_copy(bridge_source: &str) -> Result<String, String> {
 
 pub fn default_bridge_ts() -> PathBuf {
     crate::walk_to_workspace()
-        .join("AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/bridge.ts")
+        .join("internal-sdk/AEP-SDKs/typescript/dynaep/src/bridge.ts")
 }
 
 pub fn run_gate(bridge: &Path) -> Result<i32, String> {
@@ -6975,7 +6975,7 @@ pub fn scan_live(src: &str) -> Result<String, String> {
     Ok(String::from("ok typescript processEvent is not product live path"))
 }
 pub fn default_bridge() -> PathBuf {
-    crate::walk_to_workspace().join("AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/bridge.ts")
+    crate::walk_to_workspace().join("internal-sdk/AEP-SDKs/typescript/dynaep/src/bridge.ts")
 }
 pub fn run_gate() -> Result<i32, String> {
     let live = default_bridge();
@@ -7421,7 +7421,7 @@ pub fn scan_live(src: &str) -> Result<String, String> {
     Ok(String::from("ok no sequential TypeScript deny after Admit"))
 }
 pub fn run_gate() -> Result<i32, String> {
-    let live = crate::walk_to_workspace().join("AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src").join(concat!("brid","ge.ts"));
+    let live = crate::walk_to_workspace().join("internal-sdk/AEP-SDKs/typescript/dynaep/src").join(concat!("brid","ge.ts"));
     if live.is_file() == false { return Err(String::from("live source missing")); }
     let src = fs::read_to_string(&live).map_err(|e| e.to_string())?;
     let proof = scan_live(&src)?;
@@ -7658,7 +7658,7 @@ pub fn default_live_entry() -> PathBuf {
     walk_to_workspace().join("AEP-Components/live-entry/crate/src/lib.rs")
 }
 pub fn default_bridge() -> PathBuf {
-    walk_to_workspace().join("AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/bridge.ts")
+    walk_to_workspace().join("internal-sdk/AEP-SDKs/typescript/dynaep/src/bridge.ts")
 }
 
 fn missing(path: &Path) -> String {
@@ -8105,7 +8105,7 @@ fn walk_to_workspace() -> PathBuf {
     let mut i = 0usize;
     while i < 8 {
         let live = dir.join("AEP-Components/live-entry/crate/src/lib.rs");
-        let bridge = dir.join("AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/bridge.ts");
+        let bridge = dir.join("internal-sdk/AEP-SDKs/typescript/dynaep/src/bridge.ts");
         if live.is_file() && bridge.is_file() {
             return dir;
         }
@@ -8177,7 +8177,7 @@ pub fn scan_file(path: &Path, src: &str) -> Result<String, String> {
 
 pub fn scan_tree(root: &Path) -> Result<String, String> {
     let roots = [
-        root.join("AEP-NOSHIP/AEP-SDKs/typescript/dynaep"),
+        root.join("internal-sdk/AEP-SDKs/typescript/dynaep"),
         root.join("AEP-Components/dynAEP"),
         root.join("AEP-Components/live-entry/crate"),
         root.join("AEP-Base-Node/crate"),
@@ -8708,7 +8708,7 @@ pub fn scan_process_event_admit_walls(bridge_source: &str) -> Result<String, Str
     Ok(String::from("ok processEvent is not product Admit"))
 }
 pub fn default_bridge_ts() -> PathBuf {
-    crate::walk_to_workspace().join("AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/bridge.ts")
+    crate::walk_to_workspace().join("internal-sdk/AEP-SDKs/typescript/dynaep/src/bridge.ts")
 }
 pub fn default_workspace_lock() -> PathBuf {
     crate::walk_to_workspace().join("Cargo.lock")
@@ -8863,7 +8863,7 @@ fn walk_to_workspace() -> PathBuf {
     };
     let mut i = 0usize;
     while i < 12 {
-        let sdk = dir.join("AEP-NOSHIP/AEP-SDKs/rust/src/lib.rs");
+        let sdk = dir.join("internal-sdk/AEP-SDKs/rust/src/lib.rs");
         if sdk.is_file() {
             return dir;
         }
@@ -8892,8 +8892,8 @@ fn empty_kind(kind: &str) -> String {
 
 pub fn run_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
-    let lib = root.join("AEP-NOSHIP/AEP-SDKs/rust/src/lib.rs");
-    let dynaep = root.join("AEP-NOSHIP/AEP-SDKs/rust/src/dynaep/mod.rs");
+    let lib = root.join("internal-sdk/AEP-SDKs/rust/src/lib.rs");
+    let dynaep = root.join("internal-sdk/AEP-SDKs/rust/src/dynaep/mod.rs");
     for (path, kind) in [(lib, "lib"), (dynaep, "dynaep")] {
         if path.is_file() == false {
             return Err(missing_kind(kind));
@@ -9778,7 +9778,7 @@ pub fn run_gate() -> Result<i32, String> {
         Ok(v) => v,
         Err(e) => return Err(e),
     };
-    let sdk = match read_file(&root.join("AEP-NOSHIP/AEP-SDKs").join("README.md")) {
+    let sdk = match read_file(&root.join("internal-sdk/AEP-SDKs").join("README.md")) {
         Ok(v) => v,
         Err(e) => return Err(e),
     };
@@ -10196,7 +10196,7 @@ pub fn run_named_surface_gate() -> Result<i32, String> {
         Ok(v) => v,
         Err(e) => return Err(e),
     };
-    let named_readme_src = match must_read(&root, &["AEP-NOSHIP", "instruction-crates", "named-surfaces", "README.md"], "named-surfaces README") {
+    let named_readme_src = match must_read(&root, &["internal-sdk", "instruction-crates", "named-surfaces", "README.md"], "named-surfaces README") {
         Ok(v) => v,
         Err(e) => return Err(e),
     };
@@ -11130,15 +11130,15 @@ pub mod instruction_map {
         Ok(String::from("ok public tree named"))
     }
 
-    /// BIOSECURITY.md stays access policy with one pointer to AEP-NOSHIP security docs.
+    /// BIOSECURITY.md stays access policy with one pointer to internal-sdk security docs.
     pub fn scan_biosecurity_pointer(src: &str) -> Result<String, String> {
         let low = src.to_ascii_lowercase();
         if low.contains("access policy") == false {
             return Err(String::from("BIOSECURITY.md missing access policy sentence"));
         }
-        if src.contains("AEP-NOSHIP") == false || low.contains("docs/security") == false {
+        if src.contains("internal-sdk") == false || low.contains("docs/security") == false {
             return Err(String::from(
-                "BIOSECURITY.md missing pointer to AEP-NOSHIP security docs",
+                "BIOSECURITY.md missing pointer to internal-sdk security docs",
             ));
         }
         Ok(String::from("ok BIOSECURITY pointer"))
@@ -11223,7 +11223,7 @@ fn four_row_architecture_requires_named_rows() {
          | **Kernel** | daemon | [`AEP-Base-Node/`](AEP-Base-Node/) |\n\
          | **Protocol** | envelope | [`AEP-Components/`](AEP-Components/) |\n\
          | **Execution companion** | CAW host sandboxes. Not a protocol component | [`AEP-Components/caw-framework/`](AEP-Components/caw-framework/) |\n\
-         | **Clients** | sdks | [`AEP-NOSHIP/AEP-SDKs/`](AEP-NOSHIP/AEP-SDKs/) |\n",
+         | **Clients** | sdks | [`internal-sdk/AEP-SDKs/`](internal-sdk/AEP-SDKs/) |\n",
     );
     match instruction_map::scan_four_row_architecture(&src) {
         Ok(_) => {}
@@ -11290,7 +11290,7 @@ fn folded_slogan_ci_gates() -> Result<(), String> {
     envelope_algebra_ci::run_gate(&filter, &admit_js, &admit_rs)?;
     live_crossing_admit_apply::run_gate(&filter)?;
     live_crossing_lab_off::run_gate(&filter)?;
-    let bridge = root.join("AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/bridge.ts");
+    let bridge = root.join("internal-sdk/AEP-SDKs/typescript/dynaep/src/bridge.ts");
     envelope_wrap_disabled::run_gate(&bridge)?;
     live_crossing_reject_copy::run_gate(&bridge)?;
     process_event_admit_walls::run_gate(&bridge)?;

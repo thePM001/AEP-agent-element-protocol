@@ -3,7 +3,7 @@
   "id": "connector-odoo",
   "version": "2.8.0",
   "kind": "connector",
-  "path": "AEP-NOSHIP/AEP-Connectors/odoo/",
+  "path": "internal-sdk/AEP-Connectors/odoo/",
   "description": "UCB-only Odoo connector. All traffic via /ucb/v1/egress/odoo/**.",
   "requires": [
     "aep-base-node",
@@ -78,7 +78,7 @@
     ]
   },
   "implementation": {
-    "module": "AEP-NOSHIP/AEP-Connectors/odoo/lib/odoo-connector.mjs",
+    "module": "internal-sdk/AEP-Connectors/odoo/lib/odoo-connector.mjs",
     "ucb_egress_prefix": "/ucb/v1/egress/odoo",
     "auth_token_env": "AEP_ODOO_API_KEY"
   },

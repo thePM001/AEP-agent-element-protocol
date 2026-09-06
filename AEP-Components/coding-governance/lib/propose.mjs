@@ -3,7 +3,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { resolveRepoRoot } from "./paths.mjs";
-import { invokeCodingGovernanceRust } from "../../../AEP-NOSHIP/AEP-SDKs/typescript/aep-protocol/lib/subprotocol-rust.mjs";
+import { invokeCodingGovernanceRust } from "../../../internal-sdk/AEP-SDKs/typescript/aep-protocol/lib/subprotocol-rust.mjs";
 import { saveIntentSnapshot } from "../../intent-ledger/lib/ledger.mjs";
 import { recordIntentKnot } from "../../intent-ledger/lib/intent-knots.mjs";
 import { enrichProposeWithGit } from "./git-integration.mjs";

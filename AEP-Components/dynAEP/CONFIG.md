@@ -136,9 +136,9 @@ Paths to the static AEP registry files that define the scene graph, element regi
 
 ```yaml
 aep_sources:
-  scene: "./AEP-NOSHIP/AEP-Subprotocols/ui/aep-scene.json"
-  registry: "./AEP-NOSHIP/AEP-Subprotocols/ui/aep-registry.yaml"
-  theme: "./AEP-NOSHIP/AEP-Subprotocols/ui/aep-theme.yaml"
+  scene: "./internal-sdk/AEP-Subprotocols/ui/aep-scene.json"
+  registry: "./internal-sdk/AEP-Subprotocols/ui/aep-registry.yaml"
+  theme: "./internal-sdk/AEP-Subprotocols/ui/aep-theme.yaml"
 ```
 
 ### aep_sources.scene
@@ -147,9 +147,9 @@ aep_sources:
 |-----------|-------|
 | **Path** | `aep_sources.scene` |
 | **Type** | `string` (file path) |
-| **Default** | `"./AEP-NOSHIP/AEP-Subprotocols/ui/aep-scene.json"` |
+| **Default** | `"./internal-sdk/AEP-Subprotocols/ui/aep-scene.json"` |
 | **Description** | Path to the scene-graph JSON file. Describes the UI element tree (containers, widgets, layout). |
-| **Example** | `scene: "./AEP-NOSHIP/AEP-Subprotocols/ui/aep-scene.json"` |
+| **Example** | `scene: "./internal-sdk/AEP-Subprotocols/ui/aep-scene.json"` |
 | **NEW** | No |
 
 ### aep_sources.registry
@@ -158,9 +158,9 @@ aep_sources:
 |-----------|-------|
 | **Path** | `aep_sources.registry` |
 | **Type** | `string` (file path) |
-| **Default** | `"./AEP-NOSHIP/AEP-Subprotocols/ui/aep-registry.yaml"` |
+| **Default** | `"./internal-sdk/AEP-Subprotocols/ui/aep-registry.yaml"` |
 | **Description** | Path to the element registry YAML file. Defines every allowable element type, its properties, constraints and default values. |
-| **Example** | `registry: "./AEP-NOSHIP/AEP-Subprotocols/ui/aep-registry.yaml"` |
+| **Example** | `registry: "./internal-sdk/AEP-Subprotocols/ui/aep-registry.yaml"` |
 | **NEW** | No |
 
 ### aep_sources.theme
@@ -169,9 +169,9 @@ aep_sources:
 |-----------|-------|
 | **Path** | `aep_sources.theme` |
 | **Type** | `string` (file path) |
-| **Default** | `"./AEP-NOSHIP/AEP-Subprotocols/ui/aep-theme.yaml"` |
+| **Default** | `"./internal-sdk/AEP-Subprotocols/ui/aep-theme.yaml"` |
 | **Description** | Path to the default theme definition (used as fallback when `themes.active` is invalid or missing). |
-| **Example** | `theme: "./AEP-NOSHIP/AEP-Subprotocols/ui/aep-theme.yaml"` |
+| **Example** | `theme: "./internal-sdk/AEP-Subprotocols/ui/aep-theme.yaml"` |
 | **NEW** | No |
 
 ---

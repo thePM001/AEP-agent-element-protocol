@@ -500,12 +500,12 @@ fn client_twins(root: &Path) -> Vec<(String, PathBuf)> {
     out.push((String::from("lattice-channels-ts"), twin_at(root, &["AEP-Components","lattice-channels","lib","lattice-gated-fetch.ts"])));
     out.push((String::from("lattice-channels-mjs"), twin_at(root, &["AEP-Components","lattice-channels","lib","lattice-gated-fetch.mjs"])));
     out.push((String::from("lattice-transport-mjs"), twin_at(root, &["AEP-Components","lattice-channels","lib","lattice-transport.mjs"])));
-    out.push((String::from("dynaep-ts"), twin_at(root, &["AEP-NOSHIP/AEP-SDKs","typescript","dynaep","src","transport","lattice-gated-fetch.ts"])));
-    out.push((String::from("javascript-mjs"), twin_at(root, &["AEP-NOSHIP/AEP-SDKs","javascript","lattice-gated-fetch.mjs"])));
-    out.push((String::from("html-css-js"), twin_at(root, &["AEP-NOSHIP/AEP-SDKs","html-css","lattice_client.js"])));
-    out.push((String::from("python-client"), twin_at(root, &["AEP-NOSHIP/AEP-SDKs","python","aep-protocol","aep","lattice_client.py"])));
-    out.push((String::from("python-dist"), twin_at(root, &["AEP-NOSHIP/AEP-SDKs","dist","python","aep-protocol","aep","lattice_client.py"])));
-    out.push((String::from("rust-sdk"), twin_at(root, &["AEP-NOSHIP/AEP-SDKs","rust","src","lattice.rs"])));
+    out.push((String::from("dynaep-ts"), twin_at(root, &["internal-sdk/AEP-SDKs","typescript","dynaep","src","transport","lattice-gated-fetch.ts"])));
+    out.push((String::from("javascript-mjs"), twin_at(root, &["internal-sdk/AEP-SDKs","javascript","lattice-gated-fetch.mjs"])));
+    out.push((String::from("html-css-js"), twin_at(root, &["internal-sdk/AEP-SDKs","html-css","lattice_client.js"])));
+    out.push((String::from("python-client"), twin_at(root, &["internal-sdk/AEP-SDKs","python","aep-protocol","aep","lattice_client.py"])));
+    out.push((String::from("python-dist"), twin_at(root, &["internal-sdk/AEP-SDKs","dist","python","aep-protocol","aep","lattice_client.py"])));
+    out.push((String::from("rust-sdk"), twin_at(root, &["internal-sdk/AEP-SDKs","rust","src","lattice.rs"])));
     out
 }
 

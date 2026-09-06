@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { invokeCodingGovernanceRust } from "../../../AEP-NOSHIP/AEP-SDKs/typescript/aep-protocol/lib/subprotocol-rust.mjs";
+import { invokeCodingGovernanceRust } from "../../../internal-sdk/AEP-SDKs/typescript/aep-protocol/lib/subprotocol-rust.mjs";
 import { appendSolidifyRecord } from "../../intent-ledger/lib/ledger.mjs";
 import {
   buildEvidenceLedgerRef,

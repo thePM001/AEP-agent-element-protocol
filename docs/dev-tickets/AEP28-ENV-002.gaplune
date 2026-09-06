@@ -14,7 +14,7 @@ wave: algebra
 plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
 repo: NLA-AEP-v2.8-open-source
 depends_on: AEP28-ENV-001
-scope: AEP-Components/admit AEP-Components/dynAEP AEP-NOSHIP/AEP-SDKs/typescript/dynaep
+scope: AEP-Components/admit AEP-Components/dynAEP internal-sdk/AEP-SDKs/typescript/dynaep
 notes: Writing lint (em-dash, Oxford comma) becomes closed Admit walls on the same collect-all pass. No separate writing stage after Admit. Out of scope: hangar tools.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/admit/crate
 updated: 2026-09-01

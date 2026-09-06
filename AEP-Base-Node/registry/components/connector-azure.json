@@ -3,7 +3,7 @@
   "id": "connector-azure",
   "version": "2.8.0",
   "kind": "connector",
-  "path": "AEP-NOSHIP/AEP-Connectors/azure/",
+  "path": "internal-sdk/AEP-Connectors/azure/",
   "description": "UCB-only Microsoft Azure connector. All traffic via /ucb/v1/egress/azure/**.",
   "requires": [
     "aep-base-node",
@@ -79,7 +79,7 @@
     ]
   },
   "implementation": {
-    "module": "AEP-NOSHIP/AEP-Connectors/azure/lib/azure-connector.mjs",
+    "module": "internal-sdk/AEP-Connectors/azure/lib/azure-connector.mjs",
     "ucb_egress_prefix": "/ucb/v1/egress/azure",
     "auth_token_env": "AEP_AZURE_ACCESS_TOKEN"
   },

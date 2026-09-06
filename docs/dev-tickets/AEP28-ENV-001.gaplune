@@ -14,7 +14,7 @@ wave: algebra
 plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
 repo: NLA-AEP-v2.8-open-source
 depends_on: none
-scope: AEP-Components/admit AEP-Components/dynAEP AEP-NOSHIP/AEP-SDKs/typescript/dynaep
+scope: AEP-Components/admit AEP-Components/dynAEP internal-sdk/AEP-SDKs/typescript/dynaep
 notes: Generate Admit walls from lattice-policy.rego in CI and at boot. HyperlatticeFilter.filterCrossing must not call LatticePolicyEvaluator.evaluate on the live path. OPA may stay as a lab generator. Grow aep-admit or add aep-envelope-walls. Out of scope: CAMARA hangar and continuous-vector Envelope meet.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/admit/crate
 updated: 2026-09-01

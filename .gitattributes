@@ -13,4 +13,4 @@
 
 
 # Exclude internal engineering tree from git archive / GitHub export
-AEP-NOSHIP export-ignore
+internal-sdk export-ignore

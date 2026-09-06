@@ -4,15 +4,15 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "../..");
-const INDEX = join(REPO, "AEP-NOSHIP/AEP-SDKs/typescript/aep-protocol/src/index.ts");
+const INDEX = join(REPO, "internal-sdk/AEP-SDKs/typescript/aep-protocol/src/index.ts");
 
 const MAP = {
   "./session/": "../../../../AEP-Components/session/lib/",
   "./policy/": "../../../../AEP-Components/policy-engine/lib/policy/",
   "./ledger/": "../../../../AEP-Components/evidence-ledger/lib/ledger/",
   "./rollback/": "../../../../AEP-Components/evidence-ledger/lib/rollback/",
-  "./trust/": "../../../../AEP-NOSHIP/retired/trust-rings/lib/trust/",
-  "./rings/": "../../../../AEP-NOSHIP/retired/trust-rings/lib/rings/",
+  "./trust/": "../../../../internal-sdk/retired/trust-rings/lib/trust/",
+  "./rings/": "../../../../internal-sdk/retired/trust-rings/lib/rings/",
   "./covenant/": "../../../../AEP-Components/covenant/lib/",
   "./intent/": "../../../../AEP-Components/intent/lib/",
   "./decomposition/": "../../../../AEP-Components/decomposition/lib/",
@@ -50,4 +50,4 @@ for (const [from, to] of Object.entries(MAP)) {
 }
 
 writeFileSync(INDEX, text);
-console.log("Rewrote AEP-NOSHIP/AEP-SDKs/typescript/aep-protocol/src/index.ts");
+console.log("Rewrote internal-sdk/AEP-SDKs/typescript/aep-protocol/src/index.ts");

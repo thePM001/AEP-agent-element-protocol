@@ -3,7 +3,7 @@
   "id": "aep-dynaep-typescript",
   "version": "2.8.0",
   "kind": "sdk",
-  "path": "AEP-NOSHIP/AEP-SDKs/typescript/dynaep/",
+  "path": "internal-sdk/AEP-SDKs/typescript/dynaep/",
   "description": "dynAEP Action Lattice TypeScript client library.",
   "requires": [
     "aep-base-node",
@@ -30,11 +30,11 @@
   },
   "implementation": {
     "producer": "AEP-User-Experience/scripts/produce-aep-sdks.mjs",
-    "dist": "AEP-NOSHIP/AEP-SDKs/dist/sdk-manifest.json",
+    "dist": "internal-sdk/AEP-SDKs/dist/sdk-manifest.json",
     "entrypoints": [
-      "AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/bridge.ts",
-      "AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/protocol/action-lattice.ts",
-      "AEP-NOSHIP/AEP-SDKs/typescript/dynaep/cli/dynaep-cli.ts",
+      "internal-sdk/AEP-SDKs/typescript/dynaep/src/bridge.ts",
+      "internal-sdk/AEP-SDKs/typescript/dynaep/src/protocol/action-lattice.ts",
+      "internal-sdk/AEP-SDKs/typescript/dynaep/cli/dynaep-cli.ts",
       "AEP-Components/live-entry/crate",
       "AEP-Components/evaluation-chain/crate"
     ]

@@ -12,13 +12,13 @@ const REPO_ROOT = join(__dirname, "../../..");
 export const DYNAEP_ROOT = "AEP-Components/dynAEP";
 
 export const DYNAEP_SDK_PATHS = {
-  typescript: "AEP-NOSHIP/AEP-SDKs/typescript/dynaep/",
-  typescript_cli: "AEP-NOSHIP/AEP-SDKs/typescript/dynaep/cli/dynaep-cli.ts",
-  python: "AEP-NOSHIP/AEP-SDKs/python/dynaep/",
-  react: "AEP-NOSHIP/AEP-SDKs/react/dynaep-react.tsx",
-  react_copilotkit: "AEP-NOSHIP/AEP-SDKs/react/dynaep-copilotkit.tsx",
+  typescript: "internal-sdk/AEP-SDKs/typescript/dynaep/",
+  typescript_cli: "internal-sdk/AEP-SDKs/typescript/dynaep/cli/dynaep-cli.ts",
+  python: "internal-sdk/AEP-SDKs/python/dynaep/",
+  react: "internal-sdk/AEP-SDKs/react/dynaep-react.tsx",
+  react_copilotkit: "internal-sdk/AEP-SDKs/react/dynaep-copilotkit.tsx",
   produce_script: "AEP-User-Experience/scripts/produce-aep-sdks.mjs",
-  dist_manifest: "AEP-NOSHIP/AEP-SDKs/dist/sdk-manifest.json",
+  dist_manifest: "internal-sdk/AEP-SDKs/dist/sdk-manifest.json",
 };
 
 export const DYNAEP_GOVERNANCE_MODES = [
@@ -249,9 +249,9 @@ export function buildDynaepPolicyOverrides(plan, ctx = loadDynaepContext()) {
 export function formatDynaepForPrompt(ctx) {
   const lines = [
     "",
-    "dynAEP Action Lattice (protocol: AEP-Components/dynAEP/; SDKs: AEP-NOSHIP/AEP-SDKs/ only):",
+    "dynAEP Action Lattice (protocol: AEP-Components/dynAEP/; SDKs: internal-sdk/AEP-SDKs/ only):",
     `Kernel contract ${ctx.kernel_contract} is registered by Base Node bootstrap - NOT an LRP. Do not put it in plan.lrps.`,
-    `Component dynaep-core (${ctx.root}) holds protocol only. Language SDKs live under AEP-NOSHIP/AEP-SDKs/, built via produce-aep-sdks.mjs.`,
+    `Component dynaep-core (${ctx.root}) holds protocol only. Language SDKs live under internal-sdk/AEP-SDKs/, built via produce-aep-sdks.mjs.`,
     "",
     "Protocol entrypoints:",
   ];

@@ -57,7 +57,7 @@ GAP and AEP Policy System (AEP-Policy-System/):
 - Canonical reference GAP policies: AEP-Policy-System/reference/*.gap (governance, deployment, security, writing, compliance LRPs).
 - Component gap holds GAP language meta-schemas; coding-governance GAPs remain in AEP-Components/gap/policies/reference/.
 - Enable gap in every governed deployment. Pair with dynaep-core for Action Lattice evaluation.
-- dynAEP protocol lives in AEP-Components/dynAEP/; SDKs in AEP-NOSHIP/AEP-SDKs/ only. Set policy_overrides.dynaep (lattice registry, governance_mode, sdk_paths, observers).
+- dynAEP protocol lives in AEP-Components/dynAEP/; SDKs in internal-sdk/AEP-SDKs/ only. Set policy_overrides.dynaep (lattice registry, governance_mode, sdk_paths, observers).
 - dynaep-action-lattice is a kernel contract (Base Node bootstrap), not an LRP. gap-runtime-scanners and commerce-subprotocol are platform features - enable as components, not plan.lrps.
 - Regulation LRPs (eu-ai-act, gdpr, hipaa, etc.) are sovereign/regional/international frameworks only - not platform contracts.
 - When enabling a regulation LRP, set plan.lrps and policy_overrides.regulation_lrps.modules with gap_ref from the policy system.

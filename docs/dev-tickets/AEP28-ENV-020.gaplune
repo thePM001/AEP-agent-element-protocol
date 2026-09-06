@@ -14,7 +14,7 @@ wave: rust-live
 plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
 repo: NLA-AEP-v2.8-open-source
 depends_on: AEP28-ENV-018
-scope: AEP-Components/envelope AEP-Components/dynAEP AEP-NOSHIP/AEP-SDKs/typescript/dynaep
+scope: AEP-Components/envelope AEP-Components/dynAEP internal-sdk/AEP-SDKs/typescript/dynaep
 notes: Same fixtures: allow, one closed wall, N closed walls, order permutation. Live crossing closed-set key equals aep-envelope. envelope/lib/admit.mjs may match the crate. TS HyperlatticeFilter compile path is not the oracle. Out of scope: hangar tools.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/envelope/crate
 updated: 2026-09-01

@@ -512,7 +512,7 @@ const MANIFESTS = {
     id: "commerce-subprotocol",
     version: "2.8.0",
     kind: "regulation",
-    path: "AEP-NOSHIP/AEP-Subprotocols/commerce/",
+    path: "internal-sdk/AEP-Subprotocols/commerce/",
     description: "Agentic commerce validation, spend tracking, merchant registry.",
     requires: ["aep-base-node", "aep-typescript-sdk"],
     lrp_id: "commerce-subprotocol",
@@ -554,9 +554,9 @@ const MANIFESTS = {
       ["economics", "gap-runtime-scanners"],
     ),
     implementation: {
-      validator: "AEP-NOSHIP/AEP-Subprotocols/commerce/lib/validator.ts",
-      spend_tracker: "AEP-NOSHIP/AEP-Subprotocols/commerce/lib/spend-tracker.ts",
-      registry: "AEP-NOSHIP/AEP-Subprotocols/commerce/lib/registry.ts",
+      validator: "internal-sdk/AEP-Subprotocols/commerce/lib/validator.ts",
+      spend_tracker: "internal-sdk/AEP-Subprotocols/commerce/lib/spend-tracker.ts",
+      registry: "internal-sdk/AEP-Subprotocols/commerce/lib/registry.ts",
       cli: ["aep commerce status", "aep commerce spend"],
     },
     conformance: { tests: ["AEP-Components/conformance/runner/run.sh", "AEP-Components/conformance/tests/manifest.json"] },
@@ -643,7 +643,7 @@ const MANIFESTS = {
     id: "connector-postgres",
     version: "2.8.0",
     kind: "connector",
-    path: "AEP-NOSHIP/AEP-Connectors/postgres/",
+    path: "internal-sdk/AEP-Connectors/postgres/",
     description: "Lattice-gated Postgres connector via NT-00006 bridge (public tier).",
     requires: ["aep-base-node", "lattice-channels", "composer-lite"],
     capabilities: ["connector:postgres", "storage:import", "storage:export", "evidence:persist"],
@@ -676,7 +676,7 @@ const MANIFESTS = {
       ["composer-lite", "aep-base-node"],
       "Enable connector-postgres and add connector node with storage_backend postgres",
     ),
-    implementation: { module: "AEP-NOSHIP/AEP-Connectors/postgres/lib/postgres-connector.mjs" },
+    implementation: { module: "internal-sdk/AEP-Connectors/postgres/lib/postgres-connector.mjs" },
   },
 
   "wasm-policy-node": {
@@ -837,7 +837,7 @@ const MANIFESTS = {
     id: "trust-rings",
     version: "2.8.0",
     kind: "library",
-    path: "AEP-NOSHIP/retired/trust-rings/",
+    path: "internal-sdk/retired/trust-rings/",
     description: "Trust scoring and execution ring capability gating.",
     requires: ["policy-engine", "aep-typescript-sdk"],
     capabilities: ["trust:score", "rings:gate", "rings:capabilities"],
@@ -845,7 +845,7 @@ const MANIFESTS = {
     setup_hooks: [],
     resource_requirements: RR(32, 10),
     cca: CCA("Progressive trust and ring-based capability expansion.", ["tiered agent permissions"], []),
-    implementation: { module: "AEP-NOSHIP/retired/trust-rings/lib/trust/manager.ts" },
+    implementation: { module: "internal-sdk/retired/trust-rings/lib/trust/manager.ts" },
   },
 
   "proof-bundle": {

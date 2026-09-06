@@ -7,5 +7,5 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 cargo test -p aep-base-node --test source_invariants
-node AEP-NOSHIP/AEP-Connectors/lib/connector-kit.ucb.test.mjs
+node internal-sdk/AEP-Connectors/lib/connector-kit.ucb.test.mjs
 echo "[gate-aep28-env-054] OK Slack and Jira real clients through UCB"

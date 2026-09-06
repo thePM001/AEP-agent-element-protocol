@@ -12,7 +12,7 @@ wave: lattice-gated-fetch
 plan: none
 repo: NLA-AEP-v2.8-open-source
 depends_on: none
-scope: AEP-Base-Node/crate/src/docking.rs AEP-Components/lattice-gated-fetch/crate AEP-Components/lattice-channels/lib AEP-NOSHIP/AEP-SDKs/typescript AEP-NOSHIP/AEP-SDKs/javascript AEP-NOSHIP/AEP-SDKs/html-css/lattice_client.js AEP-NOSHIP/AEP-SDKs/python/aep-protocol/aep/lattice_client.py AEP-NOSHIP/AEP-SDKs/rust/src/lattice.rs CHANGELOG.md Cargo.toml scripts/gate-aep28-env-061.sh
+scope: AEP-Base-Node/crate/src/docking.rs AEP-Components/lattice-gated-fetch/crate AEP-Components/lattice-channels/lib internal-sdk/AEP-SDKs/typescript internal-sdk/AEP-SDKs/javascript internal-sdk/AEP-SDKs/html-css/lattice_client.js internal-sdk/AEP-SDKs/python/aep-protocol/aep/lattice_client.py internal-sdk/AEP-SDKs/rust/src/lattice.rs CHANGELOG.md Cargo.toml scripts/gate-aep28-env-061.sh
 notes: Closed. After dock allow the kernel executes bound HTTP and returns http. Clients consume dock http. Ordinary fetch after allow is Deny. BIOSECURE UNVACCINATED SUPREME USER APPROVAL for python lattice_client.py so the existing client stops urlopen after dock allow.
 acceptance: DockFrameResponse.http carries bound HTTP after LATTICE_GATEWAY_REQUEST allow. lattice-gated-fetch twins do not ordinary-fetch after dock allow. Crate aep-lattice-gated-fetch fails if docking.rs or a twin still falls through. CI gate scripts/gate-aep28-env-061.sh runs cargo test --lib and cargo run.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/lattice-gated-fetch/crate

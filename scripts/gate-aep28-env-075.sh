@@ -10,8 +10,8 @@ if [ -e "$ROOT/AEP-Components/trust-rings" ]; then
   echo "[gate-aep28-env-075] leftover AEP-Components/trust-rings" >&2
   exit 1
 fi
-if [ ! -f "$ROOT/AEP-NOSHIP/retired/trust-rings/README.md" ]; then
-  echo "[gate-aep28-env-075] archive missing AEP-NOSHIP/retired/trust-rings" >&2
+if [ ! -f "$ROOT/internal-sdk/retired/trust-rings/README.md" ]; then
+  echo "[gate-aep28-env-075] archive missing internal-sdk/retired/trust-rings" >&2
   exit 1
 fi
 cargo test -p aep-base-node --test source_invariants version_ssot

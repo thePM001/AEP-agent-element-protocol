@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { explainIntent } from "../../intent-ledger/lib/ledger.mjs";
 import { loadGraph } from "../../../AEP-Composer-Lite/lib/graph-store.mjs";
 import { buildPolicyLatticeView } from "../../../AEP-Composer-Lite/lib/policy-lattice.mjs";
-import { invokeCodingGovernanceRust } from "../../../AEP-NOSHIP/AEP-SDKs/typescript/aep-protocol/lib/subprotocol-rust.mjs";
+import { invokeCodingGovernanceRust } from "../../../internal-sdk/AEP-SDKs/typescript/aep-protocol/lib/subprotocol-rust.mjs";
 import { resolveRepoRoot } from "../../coding-governance/lib/paths.mjs";
 
 function catalogComponentIds(repoRoot) {

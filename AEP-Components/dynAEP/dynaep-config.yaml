@@ -21,9 +21,9 @@ transport:
 # ---------------------------------------------------------------------------
 
 aep_sources:
-  scene: "./AEP-NOSHIP/AEP-Subprotocols/ui/aep-scene.json"
-  registry: "./AEP-NOSHIP/AEP-Subprotocols/ui/aep-registry.yaml"
-  theme: "./AEP-NOSHIP/AEP-Subprotocols/ui/aep-theme.yaml"
+  scene: "./internal-sdk/AEP-Subprotocols/ui/aep-scene.json"
+  registry: "./internal-sdk/AEP-Subprotocols/ui/aep-registry.yaml"
+  theme: "./internal-sdk/AEP-Subprotocols/ui/aep-theme.yaml"
 
 # ---------------------------------------------------------------------------
 # LATTICE (NEW -- action registry for event governance)
@@ -129,9 +129,9 @@ id_minting:
 themes:
   available:
     - name: "dark"
-      path: "./AEP-NOSHIP/AEP-Subprotocols/ui/aep-theme.yaml"
+      path: "./internal-sdk/AEP-Subprotocols/ui/aep-theme.yaml"
     - name: "light"
-      path: "./AEP-NOSHIP/AEP-Subprotocols/ui/aep-theme.yaml"
+      path: "./internal-sdk/AEP-Subprotocols/ui/aep-theme.yaml"
   active: "dark"
 
 # ---------------------------------------------------------------------------

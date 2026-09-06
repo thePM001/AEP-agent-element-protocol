@@ -14,7 +14,7 @@ wave: rust-live
 plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
 repo: NLA-AEP-v2.8-open-source
 depends_on: AEP28-ENV-017
-scope: AEP-Components/envelope AEP-Components/dynAEP AEP-NOSHIP/AEP-SDKs/typescript/dynaep
+scope: AEP-Components/envelope AEP-Components/dynAEP internal-sdk/AEP-SDKs/typescript/dynaep
 notes: bridge.ts processEvent must call aep-envelope Admit (FFI, NAPI or CLI) and Apply iff allow. Do not compile walls in TypeScript. Missing aep-envelope is DENY. Out of scope: hangar tools.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/envelope/crate
 updated: 2026-09-01

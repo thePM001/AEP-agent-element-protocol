@@ -12,8 +12,8 @@ wave: rust-live
 plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
 repo: NLA-AEP-v2.8-open-source
 depends_on: none
-scope: AEP-NOSHIP/AEP-SDKs/rust/src/lattice.rs AEP-NOSHIP/AEP-SDKs/typescript/dynaep/src/transport/lattice-gated-fetch.ts AEP-Components/lattice-channels/lib/lattice-gated-fetch.ts
+scope: internal-sdk/AEP-SDKs/rust/src/lattice.rs internal-sdk/AEP-SDKs/typescript/dynaep/src/transport/lattice-gated-fetch.ts AEP-Components/lattice-channels/lib/lattice-gated-fetch.ts
 notes: HIGH. assert_url_not_ssrf extracts a hostname string and compares prefixes (127., 10., 192.168., 169.254., 172.16-31, localhost, metadata names). It does not resolve DNS to an address. A public name that maps to loopback or RFC1918, decimal/octal IP forms, IPv6 mapped v4, DNS rebinding after the check, or userinfo tricks can pass. TypeScript copies the same hostname-only checks. Repair must parse with a real URL type, resolve and Deny private/loopback/link-local/metadata addresses after resolve. Env escape hatches AEP_LATTICE_ALLOW_LOOPBACK and AEP_LATTICE_ALLOW_PRIVATE stay off by default. Out of scope: hangar tools.
-acceptance: DNS-to-private Deny. Decimal IP Deny. IPv6 mapped loopback Deny. Userinfo host spoof Deny. Tests cover resolve, not only string prefix. nla-policy-scan gate project-completion-bac on AEP-NOSHIP/AEP-SDKs/rust if that crate is the live path.
-bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-NOSHIP/AEP-SDKs/rust
+acceptance: DNS-to-private Deny. Decimal IP Deny. IPv6 mapped loopback Deny. Userinfo host spoof Deny. Tests cover resolve, not only string prefix. nla-policy-scan gate project-completion-bac on internal-sdk/AEP-SDKs/rust if that crate is the live path.
+bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/internal-sdk/AEP-SDKs/rust
 updated: 2026-09-01
