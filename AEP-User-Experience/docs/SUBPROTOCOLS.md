@@ -1,21 +1,21 @@
 # Custom sub-lattices inside the AEP hyperlattice
 
-AEP does not ship domain products. Base Node is the kernel. The wrap is one hyperlattice per governed system: scene plus action paths plus written policy plus dock channels.
+Total AI output control is the product and the local kernel is Base Node so a domain folder does not become a second kernel. One governed system gets one hyperlattice wrap and that wrap is the scene, the action paths, the written policy and the dock channels taken together. If any of those four is missing the wrap is broken.
 
-A custom sub-protocol is an attach on that wrap. It is not a second kernel. Bundled UI, commerce, workflow, REST, events, IaC or MCP crates are not the library.
+A custom sub-protocol is the domain you attach onto that wrap. It tells the kernel what an agent may propose in your field of work. It is not a shipped UI product, not a commerce engine, not a workflow runner, not a REST server, not an events bus, not an IaC product and not an MCP product because bundled crates of that kind were attach examples rather than the public library.
 
-## What you declare
+## What you write
 
-You own the domain files. Structure is a scene graph of what exists. Behaviour is the registry of operations, types, fields and constraints. Skin is look only. Action paths name each allowed agent move as a node on the hyperlattice. GAP policy says who may do what. Dock channels take sealed capsules only.
+You own the domain files so Structure is the scene graph of what exists, where it sits and how deep it may go, Behaviour is the registry of operations, types, fields and constraints and Skin is look only and must not carry authority. Each move an agent is allowed to propose is an action_path node on the hyperlattice. GAP policy writes who may do what. Dock channels accept sealed capsules only.
 
-## Kernel sequence
+## How the kernel treats the attach
 
-Seal, freeze, wait, collect-all Admit then Apply. live-entry is the worked scene. A domain check may reject a proposed payload before seal. It may not skip Admit. Execution happens only after Base Node allows the output. TypeScript processEvent is not product Admit.
+The kernel sequence is seal, freeze, wait, collect-all Admit then Apply and live-entry is the worked scene. Your domain check may reject a proposed payload before it is sealed and it may not skip Admit so execution happens only after Base Node allows the output. TypeScript processEvent is not product Admit.
 
-## Pattern
+## The attach pattern
 
-REGISTRY defines valid operations. VALIDATOR checks every agent-proposed action against that registry. REJECTION returns specific errors so the agent can self-correct. EXECUTION applies only Admit-allowed actions. Registries are stateless and the caller passes execution state in.
+Name the valid operations in a registry, check every agent-proposed action against that registry and when the proposal fails return a specific error so the agent can correct it. When Admit allows the action, execute it and keep the registry stateless because the caller passes execution state in.
 
-## Do not
+## What not to do
 
-Do not add a parallel runtime that opens unsealed work. Do not count extra domain folders as extra library layers. The library count is the kernel, protocol, execution companion and clients table.
+Do not stand up a parallel runtime that opens unsealed work and do not treat extra domain folders as extra layers of the library because the library count is the four-row table of kernel, protocol, execution companion and clients.
