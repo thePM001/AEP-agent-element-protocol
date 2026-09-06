@@ -94,7 +94,7 @@ Operator rule: one hyperlattice declaration per governed system. Scene plus acti
 
 The kernel sequence is seal, freeze, wait, collect-all Admit then Apply so live-entry is the worked scene. TypeScript processEvent is not product Admit and CodeSandbox executes agent code as a named live surface. The domain you attach is not a second kernel so the instruction is the next section.
 
-How to attach a custom domain is [Custom sub-lattices inside the AEP hyperlattice](AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md). A second copy is [AEP-User-Experience/docs/SUBPROTOCOLS.md](AEP-User-Experience/docs/SUBPROTOCOLS.md).
+How to attach a custom domain is [Custom sub-lattices inside the AEP hyperlattice](AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md).
 
 ## Custom sub-lattices inside the AEP hyperlattice
 
@@ -1129,7 +1129,6 @@ GAP template authority: `AEP-Components/gap/policies/reference/task-manifest-v1.
 | [`AEP-Base-Node/agent-control-extreme/README.md`](AEP-Base-Node/agent-control-extreme/README.md) | GAP capability profiles and CAW sandbox routing on Base Node |
 | [`AEP-Components/dynAEP/README.md`](AEP-Components/dynAEP/README.md) | dynAEP 1.0 hyperlattice runtime protocol |
 | [`AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md`](AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md) | How to attach a custom sub-lattice |
-| [`AEP-User-Experience/docs/SUBPROTOCOLS.md`](AEP-User-Experience/docs/SUBPROTOCOLS.md) | Custom sub-lattice how-to (same text) |
 | [`AEP-Components/dynAEP/CONFIG.md`](AEP-Components/dynAEP/CONFIG.md) | dynAEP configuration reference |
 | [`AEP-Composer-Lite/README.md`](AEP-Composer-Lite/README.md) | WASM canvas + CCA |
 | [`AEP-Docks/ucb/README.md`](AEP-Docks/ucb/README.md) | **UCB optional foreign attach** (manifest gate, no fallback) |
