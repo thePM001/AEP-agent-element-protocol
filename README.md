@@ -387,20 +387,18 @@ Do not stand up a parallel runtime that opens unsealed work and do not treat ext
 
 ## Architecture
 
-**Base Node is the kernel and everything else is an SDK client, a runtime installer or a protocol component.**
+**Base Node is the kernel and everything else is a runtime installer or a protocol component.**
 
 AEP 2.8 is a **reference protocol library**: a set of working components that a builder can take and attach, not a live wired product that runs by itself. The work those components describe is performed in the Base Node, the local kernel that opens each message and runs the checks. Messages travel as a sealed lattice frame, an encrypted capsule on the lattice channel transport wire. After that capsule is opened, the Base Node freezes the clock at seal time, waits 1000 MS, then runs every check together and only then carries out the allowed action. A derived ledger of fifteen named rows records that evaluation so a later reader can see what was checked; that ledger is not a second pass which can skip the wait.
 
 ```mermaid
 flowchart LR
   UI[Composer Lite]
-  SDK[SDK clients]
   LT[sealed encrypted frame]
   BN[Base Node kernel]
   EVAL[wait one second then every check then carry out]
   LEDGER[derived fifteen-row record]
   UI --> LT
-  SDK --> LT
   LT --> BN
   BN --> EVAL
   EVAL --> LEDGER
@@ -412,7 +410,7 @@ flowchart LR
 | **Protocol** | Runtime protocol components (dynAEP, lattice-channels, graph-engine). Not CAW | [`AEP-Components/`](AEP-Components/) |
 | **Execution companion** | CAW host sandboxes. Not a protocol component | [`AEP-Components/caw-framework/`](AEP-Components/caw-framework/) |
 
-The library is counted by this four-row layer table. Folder count is not the library count.
+The library is counted by this layer table. Folder count is not the library count.
 
 ### Other surfaces in this tree
 
@@ -533,7 +531,6 @@ Base Node can run in a container or sit next to an AEP Validation Engine module.
 ```mermaid
 flowchart LR
   UI[Composer Lite]
-  SDK[SDK clients]
   CCA[setup agent]
   UCB[optional foreign airlock]
   LT[sealed encrypted capsule]
@@ -541,7 +538,6 @@ flowchart LR
   EVAL[wait one second then every check then carry out]
   LEDGER[derived fifteen-row record]
   UI --> LT
-  SDK --> LT
   CCA --> LT
   UCB --> LT
   LT --> BN
@@ -666,7 +662,6 @@ Harness reference: `AEP-User-Experience/harness/`. **Wired:** `GovernedModelGate
 | Tool | Path |
 |------|------|
 | Schema / policy builder CLIs | `AEP-Policy-System/schema-builder/`, `policy-builder/` |
-| Produce all SDKs | `node AEP-User-Experience/scripts/produce-aep-sdks.mjs` |
 
 ---
 
@@ -761,7 +756,7 @@ The component lives at [`AEP-Components/aep-comm/`](AEP-Components/aep-comm/). E
 | AEP-Comm | 14 | Agent cards, discovery, messaging, task hand-off, human gate and isolated code execution |
 | Security | 4 | Hash-chained ledger, proof bundles, OTEL, reliability index (theta) |
 | Builders | 2 | Schema Builder (not wired to the CCA agent or Docker), Policy Builder |
-| **2.8 kernel additions** | 15 | Base Node, Lattice Channels, AgentMesh, Lattice Memory, POTOMITAN, dynAEP merge, wizard, setup agent, Composer Lite, registry, conformance, WASM sandbox, UCB, SDK produce pipeline, subprotocol registry |
+| **2.8 kernel additions** | 13 | Base Node, Lattice Channels, AgentMesh, Lattice Memory, POTOMITAN, dynAEP merge, wizard, setup agent, Composer Lite, registry, conformance, WASM sandbox and UCB |
 
 ---
 
@@ -782,23 +777,6 @@ docker compose up -d --build
 The gate-aep28-env scripts live under `scripts/`. Docker is the packaged run path. The conformance runner is the public-tier battery.
 
 
-| SDK | Path | Class |
-|-----|------|-------|
-| TypeScript aep-protocol | `typescript/aep-protocol/` | thin client |
-| TypeScript dynAEP | `typescript/dynaep/` | not product Admit |
-| React dynAEP | `react/dynaep-react.tsx` | thin client |
-| Python aep-protocol | `python/aep-protocol/` | source-only thin client |
-| Python dynAEP | `python/dynaep/` | source-only thin client |
-| Go | `go/` | thin client |
-| Rust | `rust/` | thin client |
-| JavaScript | `javascript/` | thin client |
-| Vue | `vue/` | placeholder |
-| React | `react/` | thin client |
-| Astro | `astro/` | placeholder |
-| Elixir | `elixir/` | thin client |
-| C++ | `cpp/` | thin client |
-| Clojure | `clojure/` | thin client |
-| HTML/CSS | `html-css/` | placeholder |
 
 ## Quick start
 
@@ -845,8 +823,6 @@ open http://localhost:8424/install
 # Conformance battery
 ./AEP-Components/conformance/runner/run.sh
 
-# Produce SDKs
-node AEP-User-Experience/scripts/produce-aep-sdks.mjs
 ```
 
 ### Using aepassist (inside Docker)
@@ -877,7 +853,7 @@ docker compose -f docker-compose.public.yml exec aep aep assist kill
 
 UCB is **not** part of the mandatory AEP kernel path. It exists for one purpose: let operators **safely attach non-AEP systems** (LangGraph, MCP servers, AutoGen, CrewAI, custom HTTP agents, etc.) to an AEP hyperlattice without giving those stacks raw lattice socket access.
 
-**If you do not need foreign attach, do not run UCB.** Native AEP components (Composer Lite, CCA, CAW, SDKs, connectors) use `lattice-transport` directly against Base Node docks. Skipping UCB is valid. Attaching foreign agents without UCB or without a task manifest is **at your own risk** - AEP will not invent a contract for you.
+**If you do not need foreign attach, do not run UCB.** Native AEP components (Composer Lite, CCA and CAW) use `lattice-transport` directly against Base Node docks. Skipping UCB is valid. Attaching foreign agents without UCB or without a task manifest is **at your own risk** - AEP will not invent a contract for you.
 
 ### What UCB does
 
