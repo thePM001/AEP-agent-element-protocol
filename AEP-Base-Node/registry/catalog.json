@@ -244,7 +244,6 @@
       "bundled": true,
       "default_enabled": false,
       "composer_palette": true,
-      "path": "AEP-Connectors/postgres/",
       "description": "UCB-only PostgreSQL connector. All traffic via /ucb/v1/egress/postgres/**.",
       "manifest": "AEP-Base-Node/registry/components/connector-postgres.json"
     },
@@ -697,7 +696,6 @@
       "bundled": true,
       "default_enabled": false,
       "composer_palette": true,
-      "path": "AEP-Connectors/slack/",
       "description": "UCB-only Slack connector. All traffic via /ucb/v1/egress/slack/**.",
       "manifest": "AEP-Base-Node/registry/components/connector-slack.json"
     },
@@ -708,7 +706,6 @@
       "bundled": true,
       "default_enabled": false,
       "composer_palette": true,
-      "path": "AEP-Connectors/jira/",
       "description": "UCB-only Jira connector. All traffic via /ucb/v1/egress/jira/**.",
       "manifest": "AEP-Base-Node/registry/components/connector-jira.json"
     },
@@ -719,7 +716,6 @@
       "bundled": true,
       "default_enabled": false,
       "composer_palette": true,
-      "path": "AEP-Connectors/notion/",
       "description": "UCB-only Notion connector. All traffic via /ucb/v1/egress/notion/**.",
       "manifest": "AEP-Base-Node/registry/components/connector-notion.json"
     },
@@ -730,7 +726,6 @@
       "bundled": true,
       "default_enabled": false,
       "composer_palette": true,
-      "path": "AEP-Connectors/hubspot/",
       "description": "UCB-only HubSpot connector. All traffic via /ucb/v1/egress/hubspot/**.",
       "manifest": "AEP-Base-Node/registry/components/connector-hubspot.json"
     },
@@ -741,7 +736,6 @@
       "bundled": true,
       "default_enabled": false,
       "composer_palette": true,
-      "path": "AEP-Connectors/odoo/",
       "description": "UCB-only Odoo connector. All traffic via /ucb/v1/egress/odoo/**.",
       "manifest": "AEP-Base-Node/registry/components/connector-odoo.json"
     },
@@ -752,7 +746,6 @@
       "bundled": true,
       "default_enabled": false,
       "composer_palette": true,
-      "path": "AEP-Connectors/google-workspace/",
       "description": "UCB-only Google Workspace connector. All traffic via /ucb/v1/egress/google-workspace/**.",
       "manifest": "AEP-Base-Node/registry/components/connector-google-workspace.json"
     },
@@ -763,7 +756,6 @@
       "bundled": true,
       "default_enabled": false,
       "composer_palette": true,
-      "path": "AEP-Connectors/gcp/",
       "description": "UCB-only Google Cloud connector. All traffic via /ucb/v1/egress/gcp/**.",
       "manifest": "AEP-Base-Node/registry/components/connector-gcp.json"
     },
@@ -774,7 +766,6 @@
       "bundled": true,
       "default_enabled": false,
       "composer_palette": true,
-      "path": "AEP-Connectors/aws/",
       "description": "UCB-only AWS connector. All traffic via /ucb/v1/egress/aws/**.",
       "manifest": "AEP-Base-Node/registry/components/connector-aws.json"
     },
@@ -785,7 +776,6 @@
       "bundled": true,
       "default_enabled": false,
       "composer_palette": true,
-      "path": "AEP-Connectors/azure/",
       "description": "UCB-only Microsoft Azure connector. All traffic via /ucb/v1/egress/azure/**.",
       "manifest": "AEP-Base-Node/registry/components/connector-azure.json"
     },
@@ -846,7 +836,6 @@
       "bundled": true,
       "default_enabled": false,
       "composer_palette": true,
-      "path": "AEP-Connectors/n8n/",
       "description": "UCB-only n8n connector. All traffic via /ucb/v1/egress/n8n/**.",
       "manifest": "AEP-Base-Node/registry/components/connector-n8n.json"
     },
@@ -857,7 +846,6 @@
       "bundled": true,
       "default_enabled": false,
       "composer_palette": true,
-      "path": "AEP-Connectors/make/",
       "description": "UCB-only Make connector. All traffic via /ucb/v1/egress/make/**.",
       "manifest": "AEP-Base-Node/registry/components/connector-make.json"
     },
@@ -868,7 +856,6 @@
       "bundled": true,
       "default_enabled": false,
       "composer_palette": true,
-      "path": "AEP-Connectors/zapier/",
       "description": "UCB-only Zapier connector. All traffic via /ucb/v1/egress/zapier/**.",
       "manifest": "AEP-Base-Node/registry/components/connector-zapier.json"
     }

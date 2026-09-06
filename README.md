@@ -131,7 +131,6 @@ The library is counted by this four-row layer table. Folder count is not the lib
 | Hyperlattice wrap | One mechanism per system | [`AEP-Components/hyperlattice/`](AEP-Components/hyperlattice/) |
 | Docks | UCD egress airlock and optional UCB | [`AEP-Docks/`](AEP-Docks/) |
 | UCB airlock (optional) | Foreign MCP or HTTP attach only | [`AEP-Docks/ucb/`](AEP-Docks/ucb/) |
-| Connectors | Application connectors | [`AEP-Connectors/`](AEP-Connectors/) |
 | Coding governance | Propose a change then lock it | [`AEP-Components/coding-governance/`](AEP-Components/coding-governance/) |
 | HCSE parser | aep-hcse parser MCP | [`AEP-Components/hcse/`](AEP-Components/hcse/) |
 | CCA agent | Central Setup Agent | [`AEP-Components/cca/`](AEP-Components/cca/) |
@@ -192,7 +191,6 @@ Coding governance proposes a change, measures how far that change reaches and on
 | [`AEP-Composer-Lite/`](AEP-Composer-Lite/) | Agent Composer (Composer Lite): WASM visual canvas on port: 8424 |
 | [`AEP-SDKs/`](AEP-SDKs/) | Language SDKs: thin lattice-gated clients (not components) |
 | [`AEP-User-Experience/`](AEP-User-Experience/) | Harness, operator scripts, AEP-main-skill |
-| [`AEP-Connectors/`](AEP-Connectors/) | Application connectors (Slack, Jira, AWS, …) |
 | [`AEP-Docks/`](AEP-Docks/) | UCB + UCD socket dock specs and servers |
 | [`AEP-Policy-System/`](AEP-Policy-System/) | GAP policies, presets, policy-builder, schema-builder |
 | [`AEP-Subprotocols/`](AEP-Subprotocols/) | Regulation subprotocol Rust crates (UI, commerce, workflows, API, events, IaC) |
@@ -884,7 +882,6 @@ GAP template authority: `AEP-Components/gap/policies/reference/task-manifest-v1.
 | [`AEP-Policy-System/schema-builder/README.md`](AEP-Policy-System/schema-builder/README.md) | Schema Builder |
 | [`AEP-Policy-System/policy-builder/README.md`](AEP-Policy-System/policy-builder/README.md) | Policy Builder |
 | [`AEP-User-Experience/README.md`](AEP-User-Experience/README.md) | Harness and operator scripts |
-| [`AEP-Connectors/README.md`](AEP-Connectors/README.md) | Application connectors |
 | [`AEP-Docks/README.md`](AEP-Docks/README.md) | UCB / UCD docks |
 | [`AEP-Research-Paper/README.md`](AEP-Research-Paper/README.md) | DAL-AEP paper + OTS proof |
 | [`rust/README.md`](rust/README.md) | Rust workspace build |

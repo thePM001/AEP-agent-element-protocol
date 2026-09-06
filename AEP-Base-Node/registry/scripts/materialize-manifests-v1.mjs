@@ -643,7 +643,6 @@ const MANIFESTS = {
     id: "connector-postgres",
     version: "2.8.0",
     kind: "connector",
-    path: "AEP-Connectors/postgres/",
     description: "Lattice-gated Postgres connector via NT-00006 bridge (public tier).",
     requires: ["aep-base-node", "lattice-channels", "composer-lite"],
     capabilities: ["connector:postgres", "storage:import", "storage:export", "evidence:persist"],
@@ -676,7 +675,6 @@ const MANIFESTS = {
       ["composer-lite", "aep-base-node"],
       "Enable connector-postgres and add connector node with storage_backend postgres",
     ),
-    implementation: { module: "AEP-Connectors/postgres/lib/postgres-connector.mjs" },
   },
 
   "wasm-policy-node": {

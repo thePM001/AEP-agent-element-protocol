@@ -3,7 +3,6 @@
   "id": "connector-notion",
   "version": "2.8.0",
   "kind": "connector",
-  "path": "AEP-Connectors/notion/",
   "description": "UCB-only Notion connector. All traffic via /ucb/v1/egress/notion/**.",
   "requires": [
     "aep-base-node",
@@ -79,7 +78,6 @@
     ]
   },
   "implementation": {
-    "module": "AEP-Connectors/notion/lib/notion-connector.mjs",
     "ucb_egress_prefix": "/ucb/v1/egress/notion",
     "auth_token_env": "AEP_NOTION_TOKEN"
   },

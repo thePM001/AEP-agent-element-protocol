@@ -46,7 +46,6 @@ COPY AEP-Components/ ./AEP-Components/
 COPY AEP-Composer-Lite/ ./AEP-Composer-Lite/
 COPY AEP-Docks/ ./AEP-Docks/
 COPY AEP-Policy-System/ ./AEP-Policy-System/
-COPY AEP-Connectors/ ./AEP-Connectors/
 COPY AEP-Base-Node/ ./AEP-Base-Node/
 COPY AEP-User-Experience/ ./AEP-User-Experience/
 COPY AEP-SDKs/ ./AEP-SDKs/
