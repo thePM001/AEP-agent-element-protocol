@@ -94,6 +94,8 @@ Operator rule: one hyperlattice declaration per governed system. Scene plus acti
 
 The kernel sequence is seal, freeze, wait, collect-all Admit then Apply so live-entry is the worked scene. TypeScript processEvent is not product Admit and CodeSandbox executes agent code as a named live surface. The domain you attach is not a second kernel so the instruction is the next section.
 
+How to attach a custom domain is [Custom sub-lattices inside the AEP hyperlattice](AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md). A second copy is [AEP-User-Experience/docs/SUBPROTOCOLS.md](AEP-User-Experience/docs/SUBPROTOCOLS.md).
+
 ## Custom sub-lattices inside the AEP hyperlattice
 
 A custom sub-lattice is the domain you attach onto one AEP hyperlattice wrap so Base Node can judge what an agent may propose in your field of work. Total AI output control stays the product and Base Node stays the local kernel, which means a domain folder is not a second kernel and is not a shipped UI product, commerce engine, workflow runner, REST server, events bus, IaC product or MCP product. You write the domain because the kernel already exists so this section is the instruction to follow in order and a missing piece is a broken wrap rather than a style choice.
@@ -985,7 +987,7 @@ What we do maintain in the public tier: Base Node, lattice transport, registry, 
 
 ### Canvas files (adjustable)
 
-The visual canvas can split scene, behaviour and look into separate files a builder can adjust. Changing one file need not change the others.
+The visual canvas can split scene, behaviour and look into separate files a builder can adjust. Changing one file need not change the others. How to attach those files is [Custom sub-lattices inside the AEP hyperlattice](AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md).
 
 | Layer | File | Responsibility |
 |-------|------|----------------|
@@ -1151,6 +1153,7 @@ GAP template authority: `AEP-Components/gap/policies/reference/task-manifest-v1.
 | [`AEP-Base-Node/agent-control-extreme/README.md`](AEP-Base-Node/agent-control-extreme/README.md) | GAP capability profiles and CAW sandbox routing on Base Node |
 | [`AEP-Components/dynAEP/README.md`](AEP-Components/dynAEP/README.md) | dynAEP 1.0 hyperlattice runtime protocol |
 | [`AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md`](AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md) | How to attach a custom sub-lattice |
+| [`AEP-User-Experience/docs/SUBPROTOCOLS.md`](AEP-User-Experience/docs/SUBPROTOCOLS.md) | Custom sub-lattice how-to (same text) |
 | [`AEP-Components/dynAEP/CONFIG.md`](AEP-Components/dynAEP/CONFIG.md) | dynAEP configuration reference |
 | [`AEP-Composer-Lite/README.md`](AEP-Composer-Lite/README.md) | WASM canvas + CCA |
 | [`AEP-Docks/ucb/README.md`](AEP-Docks/ucb/README.md) | **UCB optional foreign attach** (manifest gate, no fallback) |
