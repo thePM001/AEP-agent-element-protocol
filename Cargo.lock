@@ -66,7 +66,7 @@ dependencies = [
 
 [[package]]
 name = "aep-agentmesh"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "hex",
  "rand 0.8.7",
@@ -89,7 +89,7 @@ dependencies = [
 
 [[package]]
 name = "aep-base-node"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "aep-admit",
  "aep-admit-channel-order-walls",
@@ -147,7 +147,7 @@ dependencies = [
 
 [[package]]
 name = "aep-conformance"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "aep-agentmesh",
  "aep-base-node",
@@ -185,7 +185,7 @@ dependencies = [
 
 [[package]]
 name = "aep-dynaep"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "aep-envelope",
  "serde",
@@ -196,7 +196,7 @@ dependencies = [
 
 [[package]]
 name = "aep-envelope"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "aep-admit",
  "clap",
@@ -239,7 +239,7 @@ dependencies = [
 
 [[package]]
 name = "aep-lattice-channel"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "aep-lattice-crypto",
  "hex",
@@ -251,7 +251,7 @@ dependencies = [
 
 [[package]]
 name = "aep-lattice-crypto"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "aes-gcm",
  "base64",
@@ -281,7 +281,7 @@ dependencies = [
 
 [[package]]
 name = "aep-lattice-memory"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "clap",
  "rusqlite",
@@ -341,7 +341,7 @@ dependencies = [
 
 [[package]]
 name = "aep-potomitan"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "serde",
  "serde_json",
@@ -358,7 +358,7 @@ dependencies = [
 
 [[package]]
 name = "aep-subprotocol"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "aep-subprotocol-coding-governance",
  "aep-subprotocol-commerce",
@@ -377,7 +377,7 @@ dependencies = [
 
 [[package]]
 name = "aep-subprotocol-coding-governance"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "aep-subprotocol-core",
  "hex",
@@ -389,7 +389,7 @@ dependencies = [
 
 [[package]]
 name = "aep-subprotocol-commerce"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "aep-subprotocol-core",
  "chrono",
@@ -402,7 +402,7 @@ dependencies = [
 
 [[package]]
 name = "aep-subprotocol-core"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "regex",
  "serde",
@@ -413,7 +413,7 @@ dependencies = [
 
 [[package]]
 name = "aep-subprotocol-events"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "aep-subprotocol-core",
  "serde",
@@ -422,7 +422,7 @@ dependencies = [
 
 [[package]]
 name = "aep-subprotocol-iac"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "aep-subprotocol-core",
  "serde",
@@ -431,7 +431,7 @@ dependencies = [
 
 [[package]]
 name = "aep-subprotocol-mcp-security"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "aep-subprotocol-core",
  "hex",
@@ -442,7 +442,7 @@ dependencies = [
 
 [[package]]
 name = "aep-subprotocol-rest-api"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "aep-subprotocol-core",
  "serde",
@@ -451,7 +451,7 @@ dependencies = [
 
 [[package]]
 name = "aep-subprotocol-ui"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "aep-subprotocol-core",
  "serde",
@@ -461,7 +461,7 @@ dependencies = [
 
 [[package]]
 name = "aep-subprotocol-workflows"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "aep-subprotocol-core",
  "hex",
@@ -481,7 +481,7 @@ dependencies = [
 
 [[package]]
 name = "aep-ucb"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "aep-agentmesh",
  "aep-wall-set-backpressure",
@@ -521,7 +521,7 @@ dependencies = [
 
 [[package]]
 name = "aep-wasm-sandbox"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "aep-lattice-channel",
  "aep-lattice-crypto",
@@ -2102,7 +2102,7 @@ dependencies = [
 
 [[package]]
 name = "multi-base-node-core"
-version = "2.8.5"
+version = "2.8.6"
 dependencies = [
  "hex",
  "serde",

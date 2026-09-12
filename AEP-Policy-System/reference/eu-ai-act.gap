@@ -164,7 +164,7 @@
     "control_catalog": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
     "checker": "eu-ai-act-checker",
     "honesty": "compliance checking pack not legal certification",
-    "aep_version": "2.8.5",
+    "aep_version": "2.8.6",
     "wrap": "eu-ai-act"
   }
 }

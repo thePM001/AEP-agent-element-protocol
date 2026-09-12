@@ -7,4 +7,4 @@ crate: aep-ucb-perimeter-v1
 path: AEP-Docks/ucb/perimeter-v1
 attest: false
 hvvcas: |
-  HVVCAS. AEP 2.8.5 UCB perimeter-v1 library. Default profile perimeter-v1. Paper 005 VSA stays off unless named. Creation generate emitted a scaffold. This crate is the real library.
+  HVVCAS. AEP 2.8.6 UCB perimeter-v1 library. Default profile perimeter-v1. Paper 005 VSA stays off unless named. Creation generate emitted a scaffold. This crate is the real library.

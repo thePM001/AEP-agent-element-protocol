@@ -70,13 +70,13 @@
     "type": "atomic"
   },
   "metadata": {
-    "provenance": "AEP 2.8.5 Policy Lattice Reference",
+    "provenance": "AEP 2.8.6 Policy Lattice Reference",
     "version": "1.1.0",
     "stability": "stable",
     "aspect": "objective",
     "agent_may": [
       "*"
     ],
-    "aep_version": "2.8.5"
+    "aep_version": "2.8.6"
   }
 }

@@ -44,7 +44,7 @@ Every element except the root shell must name a parent that already exists in th
 
 ```json
 {
-  "aep_version": "2.8.5",
+  "aep_version": "2.8.6",
   "schema_revision": 1,
   "elements": {
     "SH-00001": {
@@ -88,7 +88,7 @@ The registry names every valid operation, type, field and constraint. It contain
 Each entry needs a label, a category, a function, a parent when it is a scene element, a `skin_binding` when it renders, the states it may occupy, the actions it may emit and the constraints it must keep. Template entries cover repeating rows so you prove the mould once rather than every instance.
 
 ```yaml
-aep_version: "2.8.5"
+aep_version: "2.8.6"
 schema_revision: 1
 
 create_record:
@@ -119,7 +119,7 @@ When a proposal fails, return a specific error so the agent can correct that fie
 The theme file holds colours, fonts, spacing, borders and motion. Components reference it through `skin_binding`. The theme must not name operations, who may act, parents or docks. If a colour file can allow or deny an action, authority has leaked into skin and the wrap is broken.
 
 ```yaml
-aep_version: "2.8.5"
+aep_version: "2.8.6"
 schema_revision: 1
 theme_name: "Records quiet"
 
@@ -142,7 +142,7 @@ To rebrand, swap the theme and leave scene and registry untouched.
 Every move an agent may propose is an `action_path` node. The lattice says which actions exist, what must happen before each action (parents), which constraints apply at arrival and which agents may perform the action. An action cannot proceed until every parent has been satisfied. That partial order is how you stop archive-before-create, pay-before-risk or apply-before-Admit.
 
 ```yaml
-aep_version: "2.8.5"
+aep_version: "2.8.6"
 lattice_revision: 1
 
 actions:

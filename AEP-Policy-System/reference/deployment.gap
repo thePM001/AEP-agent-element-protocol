@@ -77,14 +77,14 @@
     "type": "atomic"
   },
   "metadata": {
-    "provenance": "AEP 2.8.5 Reference",
+    "provenance": "AEP 2.8.6 Reference",
     "version": "1.1.0",
     "stability": "stable",
     "aspect": "procedural",
     "agent_may": [
       "*"
     ],
-    "aep_version": "2.8.5",
+    "aep_version": "2.8.6",
     "wrap": "deployment",
     "action_path_prefix": "ops:"
   }

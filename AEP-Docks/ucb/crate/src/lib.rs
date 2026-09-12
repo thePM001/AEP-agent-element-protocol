@@ -1,6 +1,6 @@
 // @PAD: aep-ucb-public-contract-2.8.5
 // @GCDE: gaplune-decode hmac-sha256:ab54811d1526a0253fdd14253ff4ed74c94aafc36362f2c29fc94a24eef11c06
-//! AEP 2.8.5 Universal Connect Bridge (UCB).
+//! AEP 2.8.6 Universal Connect Bridge (UCB).
 //!
 //! UCB is an attach gateway. It is not a second evaluator. Base Node is the
 //! only live evaluator. Public capabilities are ingest, delegate, health, rollback, egress and
@@ -25,6 +25,6 @@ pub mod mcp;
 pub mod store;
 pub mod translator;
 
-pub const UCB_VERSION: &str = "2.8.5";
-pub const BRIDGE_ID: &str = "ucb/2.8.5";
+pub const UCB_VERSION: &str = "2.8.6";
+pub const BRIDGE_ID: &str = "ucb/2.8.6";
 pub const DOCK_WIRE_SCORE: u16 = 0;

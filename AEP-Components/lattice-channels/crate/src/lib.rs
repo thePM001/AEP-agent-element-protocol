@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use thiserror::Error;
 
-pub const CHANNEL_VERSION: &str = "2.8.5";
+pub const CHANNEL_VERSION: &str = "2.8.6";
 
 /// AEP 2.8 security invariant: no component may bypass Lattice Channels.
 pub const LATTICE_CHANNEL_ONLY: bool = true;

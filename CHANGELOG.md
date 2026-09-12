@@ -1,19 +1,19 @@
 # Changelog
 
-## [2.8.5] - 2026-09-12 - Universal Connect Bridge, CCA setup and CAW names
+## [2.8.6] - 2026-09-12 - Universal Connect Bridge, CCA setup and CAW names
 
 ### Changed
 The optional Universal Connect Bridge now ships Predicate Profile perimeter-v1 as the default attach profile so ingest content checks call the scanner pack and body size is capped at 256 KiB by default with a 2 MiB hard cap. Dock wait is five seconds and the journal rotates at a byte cap while staying hash-chained so rollback can name the tail record after Base Node ACK. Operator auth stays UCB_API_KEY while foreign agents use per-agent keys. Task manifests carry a digest and a signature so unsigned or provisional manifests cannot enable egress. Ingest waits for collect-all Admit allow before the journal is persisted and egress writes an audit row while isolating caller Authorization plus connection headers. Public compile uses the local gap-manifest-v1 compiler and Paper 005 VSA stays off unless named.
 
-On Unix validate runs in a forked child under a two-slot pool so a two second timeout kills that child and frees the slot. Crate tests cover collect-all Admit deny plus missing or silent docks. Composer reads NLA_GAP_ENGINE_URL only when that variable is set and does not invent a docker gateway. MCP JSON-RPC on POST /ucb/v1/mcp uses the same auth as ingest and refuses malformed tool arguments. CCA setup writes protocol 2.8.5, strips trust fields and always runs Base Node health so enqueue is not Admit. CAW runtime identifiers use aep-caw and origin helper docs are gone from the public tree while LICENSE plus NOTICE copyright stay.
+On Unix validate runs in a forked child under a two-slot pool so a two second timeout kills that child and frees the slot. Crate tests cover collect-all Admit deny plus missing or silent docks. Composer reads NLA_GAP_ENGINE_URL only when that variable is set and does not invent a docker gateway. MCP JSON-RPC on POST /ucb/v1/mcp uses the same auth as ingest and refuses malformed tool arguments. CCA setup writes protocol 2.8.6, strips trust fields and always runs Base Node health so enqueue is not Admit. CAW runtime identifiers use aep-caw and origin helper docs are gone from the public tree while LICENSE plus NOTICE copyright stay.
 
 ### Added
 Attach notes for this wave live beside the Universal Connect Bridge docs and the workspace now includes the perimeter-v1 crate.
 
-## [2.8.5] - 2026-09-12 - Public library repair
+## [2.8.6] - 2026-09-12 - Public library repair
 
 ### Changed
-A clean clone of the kernel now builds because the missing path packages were restored under the components tree and the isolation package was not brought back. Client-library trees, subprotocol packs and trust ranks were deleted from the live tree. Catalog version is 2.8.5 without those rows. Agent permission replaced chance language in live kernel code: an empty permission list refuses including system events and external events and the permission wall always runs. Deny text is this agent does not have permission for this action. Public writing policy name is CORRECTWRITING_EN. Universal Connect Bridge requires a manifest, refuses synthesis and trust fields and is not a second evaluator. Root front page was not edited. Product string stays 2.8.5.
+A clean clone of the kernel now builds because the missing path packages were restored under the components tree and the isolation package was not brought back. Client-library trees, subprotocol packs and trust ranks were deleted from the live tree. Catalog version is 2.8.6 without those rows. Agent permission replaced chance language in live kernel code: an empty permission list refuses including system events and external events and the permission wall always runs. Deny text is this agent does not have permission for this action. Public writing policy name is CORRECTWRITING_EN. Universal Connect Bridge requires a manifest, refuses synthesis and trust fields and is not a second evaluator. Root front page was not edited. Product string stays 2.8.6.
 
 ### Added
 Operator path docs, deny catalog, compiled pulse notes, lattice memory notes, foreign attach contract, tree, agents, target, a minimal wrap example that returns allow true and optional connector notes for Prime and Polygres. Public kernel types include Envelope, AdmitResult, DenyReport, ClosedWall, Pulse, agent permission and process sealed.

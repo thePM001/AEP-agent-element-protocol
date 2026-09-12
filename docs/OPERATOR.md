@@ -1,6 +1,6 @@
-# Operator path (AEP 2.8.5)
+# Operator path (AEP 2.8.6)
 
-AEP 2.8.5 is a protocol library and a local kernel rather than a drop-in product that replaces a stack on first boot. The builder presents a manifest and a sealed capsule. Base Node freezes the clock at seal, waits the compiled 1000 ms pulse, runs every written wall together, records the ledger and applies only after Admit. This file is the operator path, it does not replace the root README that the operator owns and BIOSECURITY.md is not required to deploy.
+AEP 2.8.6 is a protocol library and a local kernel rather than a drop-in product that replaces a stack on first boot. The builder presents a manifest and a sealed capsule. Base Node freezes the clock at seal, waits the compiled 1000 ms pulse, runs every written wall together, records the ledger and applies only after Admit. This file is the operator path, it does not replace the root README that the operator owns and BIOSECURITY.md is not required to deploy.
 
 Docker is the first operator path and source build is secondary for changing compiled pulse constants.
 

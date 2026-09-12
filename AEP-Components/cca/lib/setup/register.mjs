@@ -6,7 +6,7 @@
 import { latticeDockRequest } from "../../../lattice-channels/lib/lattice-transport.mjs";
 import { stripTrustFields } from "../strip-trust-fields.mjs";
 
-export const AEP_PROTOCOL_VERSION = "2.8.5";
+export const AEP_PROTOCOL_VERSION = "2.8.6";
 export const BASE_NODE_AGENT_ID = "AG-BASE-NODE";
 export const BASE_NODE_CHANNEL_ID = "ch-AEP-Base-Node-local";
 export const BASE_NODE_CONTRACT_ID = "dynaep-action-lattice";

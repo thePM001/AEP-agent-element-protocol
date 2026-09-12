@@ -10,7 +10,7 @@ use std::io::{self, Read};
 use std::path::PathBuf;
 
 const MAX_STDIN_BYTES: usize = 4 * 1024 * 1024;
-const CONFIG_VERSION: &str = "2.8.5";
+const CONFIG_VERSION: &str = "2.8.6";
 
 #[derive(Debug, Parser)]
 #[command(name = "aep-lattice-log", about = "AEP 2.8 dynAEP Action Lattice event logger")]

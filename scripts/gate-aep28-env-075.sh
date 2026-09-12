@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CI: product version 2.8.5 is one string. Leftover Trust Rings stay archived.
+# CI: product version 2.8.6 is one string. Leftover Trust Rings stay archived.
 # AEP28-ENV-075
 # @PAD: aep28-env-075-version-ssot-ci-gate-v1
 # @GCDE: gaplune.policy.v1
@@ -15,4 +15,4 @@ if [ ! -f "$ROOT/internal-sdk/retired/trust-rings/README.md" ]; then
   exit 1
 fi
 cargo test -p aep-base-node --test source_invariants version_ssot
-echo "[gate-aep28-env-075] OK version 2.8.5 ssot and trust-rings archived"
+echo "[gate-aep28-env-075] OK version 2.8.6 ssot and trust-rings archived"

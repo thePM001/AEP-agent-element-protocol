@@ -3,7 +3,7 @@ address:
   id: federation-smoke.v1
 
 pattern: |
-  AEP 2.8.5 multi-base-node federation smoke policy.
+  AEP 2.8.6 multi-base-node federation smoke policy.
   Policy bundle Merkle sync and lattice-channel federation MUST use lattice-channel.v1.
 
 action:

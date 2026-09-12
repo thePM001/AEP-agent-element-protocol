@@ -63,7 +63,7 @@
     "type": "atomic"
   },
   "metadata": {
-    "provenance": "AEP 2.8.5 Policy Lattice Reference",
+    "provenance": "AEP 2.8.6 Policy Lattice Reference",
     "version": "1.1.0",
     "stability": "stable",
     "aspect": "objective",
@@ -71,10 +71,10 @@
       "*"
     ],
     "control_family": "network_egress",
-    "aep_version": "2.8.5",
+    "aep_version": "2.8.6",
     "added": "2026-07-21",
     "title": "Network egress: no SMTP or mail submission ports",
-    "summary": "Standard security enhancement for AEP 2.8.5. Separates network egress from artifact placement. Blocks SMTP, SMTPS and message-submission ports and common mail client libraries.",
+    "summary": "Standard security enhancement for AEP 2.8.6. Separates network egress from artifact placement. Blocks SMTP, SMTPS and message-submission ports and common mail client libraries.",
     "pairs_with": [
       "aep.reference.security.policy-lattice.v1",
       "aep.reference.deployment"

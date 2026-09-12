@@ -84,20 +84,20 @@
   },
   "action": {
     "type": "template",
-    "content": "Apply AEP 2.8.5 writing conventions."
+    "content": "Apply AEP 2.8.6 writing conventions."
   },
   "weight": 1.0,
   "composition": {
     "type": "atomic"
   },
   "metadata": {
-    "provenance": "AEP 2.8.5",
+    "provenance": "AEP 2.8.6",
     "version": "1.1.0",
     "stability": "stable",
     "aspect": "objective",
     "agent_may": [
       "*"
     ],
-    "aep_version": "2.8.5"
+    "aep_version": "2.8.6"
   }
 }

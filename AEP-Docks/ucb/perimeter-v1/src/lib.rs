@@ -1,7 +1,7 @@
 //! @PAD: gaplune-creation-pad emit ( zero-LLM )
 //! @GCDE: gaplune.policy.v1
 //!
-//! AEP 2.8.5 UCB perimeter-v1 library. Default profile is signed provenance,
+//! AEP 2.8.6 UCB perimeter-v1 library. Default profile is signed provenance,
 //! schema plus byte caps, scanner-backed P_C, replay window, per-agent keys,
 //! signed manifests and a hash-chained evidence log. Paper 005 VSA stays off
 //! unless named. Creation generate emitted a scaffold. This crate is the real

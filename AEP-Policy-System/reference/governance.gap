@@ -15,7 +15,7 @@
   },
   "action": {
     "type": "template",
-    "content": "Enforce AEP 2.8.5 governance policy."
+    "content": "Enforce AEP 2.8.6 governance policy."
   },
   "weight": 1.0,
   "composition": {
@@ -28,7 +28,7 @@
     "agent_may": [
       "*"
     ],
-    "aep_version": "2.8.5",
+    "aep_version": "2.8.6",
     "wrap": "governance"
   }
 }

@@ -1,6 +1,6 @@
 # CCA - Central Setup Agent
 
-**CCA (Central Setup Agent)** is the AEP 2.8.5 deployment architect. After Docker deploy and Base Node startup, CCA probes the environment, loads the full component registry, accepts natural-language deployment intent and produces an **ImplementationPlan** that setup-agent (or `plan-executor`) can activate. Composer Lite is the visual editor for the same plan format.
+**CCA (Central Setup Agent)** is the AEP 2.8.6 deployment architect. After Docker deploy and Base Node startup, CCA probes the environment, loads the full component registry, accepts natural-language deployment intent and produces an **ImplementationPlan** that setup-agent (or `plan-executor`) can activate. Composer Lite is the visual editor for the same plan format.
 
 | Property | Value |
 |----------|-------|
@@ -58,7 +58,7 @@ flowchart TB
 
 ### Default deployment model
 
-| Topic | Default in AEP 2.8.5 public tier |
+| Topic | Default in AEP 2.8.6 public tier |
 |-------|--------------------------------|
 | Validation engine | `validation_engine.mode = "none"` - no dedicated validation engine unless operator opts in |
 | CCA dock placement | CCA is **not** permanently on the validation dock |

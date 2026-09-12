@@ -1,20 +1,20 @@
-# AEP 2.8.5 Secure Deployment Guide
+# AEP 2.8.6 Secure Deployment Guide
 
-**How the public open-source AEP 2.8.5 protocol is supposed to be deployed securely**  
-**Audience:** operators installing AEP 2.8.5 from Docker or a verified source clone or attaching foreign agent stacks  
+**How the public open-source AEP 2.8.6 protocol is supposed to be deployed securely**  
+**Audience:** operators installing AEP 2.8.6 from Docker or a verified source clone or attaching foreign agent stacks  
 **Updated:** 2026-09-05
 **Public repository:** https://github.com/thePM001/AEP-agent-element-protocol
 **GitHub is a public mirror.**
 
 ## 1. Mental model (read first)
 
-AEP 2.8.5 is the public open-source Agent Element Protocol. **Base Node is the kernel.** TypeScript dynAEP is not product Admit. **CAW** is host execution-layer security for shell and file. **Composer Lite** is the operator / CCA plane. CAW is an execution companion and is not a protocol component.
+AEP 2.8.6 is the public open-source Agent Element Protocol. **Base Node is the kernel.** TypeScript dynAEP is not product Admit. **CAW** is host execution-layer security for shell and file. **Composer Lite** is the operator / CCA plane. CAW is an execution companion and is not a protocol component.
 
 You do **not** invent a second protocol kernel. You run Base Node as the local kernel. TypeScript processEvent is not product Admit. Foreign agent frameworks (LangGraph, CrewAI, custom MCP and similar) are optional attach surfaces. They connect into AEP. They are not a substitute for Base Node Admit.
 
 ### 1.1 Reference architecture diagram
 
-Canonical AEP 2.8.5 stack layout (operator surfaces, Path B UCB, lattice transport, docks, hyperlattice wrap, Base Node kernel, protocol components). Same diagram as the repository README. GitHub is a public mirror.
+Canonical AEP 2.8.6 stack layout (operator surfaces, Path B UCB, lattice transport, docks, hyperlattice wrap, Base Node kernel, protocol components). Same diagram as the repository README. GitHub is a public mirror.
 
 <p align="center" style="background-color:#ffffff;padding:16px;">
   <a href="../../docs/architecture/aep-28-architecture.png" target="_blank" rel="noopener" title="Click to open full-size AEP 2.8 architecture diagram">
@@ -86,7 +86,7 @@ ASCII fallback (same model):
 
 **Rules of the road:**
 
-1. **Base Node is the kernel.** Enable and operate it as the Admit then Apply path for agent and system events under AEP 2.8.5. TypeScript dynAEP is not product Admit.
+1. **Base Node is the kernel.** Enable and operate it as the Admit then Apply path for agent and system events under AEP 2.8.6. TypeScript dynAEP is not product Admit.
 2. **Base Node is mandatory** as the local kernel for docks, identity and sealed lattice transport.
 3. **Connect workers via Path A or B** (section 2.2). Never hand foreign stacks raw dock sockets.
 4. **CAW** confines host shell/file when coding or shell workloads are in scope.
@@ -103,7 +103,7 @@ Canonical kernel and protocol material in this tree:
 
 ### 2.1 Base Node kernel (required)
 
-- Install and run the AEP 2.8.5 stack so **Base Node** is active as the kernel. TypeScript dynAEP is not product Admit.
+- Install and run the AEP 2.8.6 stack so **Base Node** is active as the kernel. TypeScript dynAEP is not product Admit.
 - Use production lattice governance defaults where applicable (`lattice.governance` / filter modes documented in `AEP-Components/dynAEP/CONFIG.md`).
 - Lattice-addressed events with `action_path` must pass the Action Lattice before downstream stages when governance is on.
 - Temporal authority (dynAEP-TA) and perception governance (dynAEP-TA-P) apply as configured; do not let agents mint ungoverned clocks for governed events.
@@ -152,7 +152,7 @@ UCB surface: `AEP-Docks/ucb/`.
 
 #### What is not the product kernel
 
-Process schedulers, LLM vendor SDKs and generic orchestrators are **not** the AEP protocol kernel. They may host model calls or tools, but **event governance under AEP 2.8.5 still goes through Base Node Admit** (Path A) or UCB into the lattice (Path B). OS process isolation around worker PIDs remains operator-owned host hygiene. It does not replace Base Node. TypeScript dynAEP is not product Admit.
+Process schedulers, LLM vendor SDKs and generic orchestrators are **not** the AEP protocol kernel. They may host model calls or tools, but **event governance under AEP 2.8.6 still goes through Base Node Admit** (Path A) or UCB into the lattice (Path B). OS process isolation around worker PIDs remains operator-owned host hygiene. It does not replace Base Node. TypeScript dynAEP is not product Admit.
 
 ### 2.3 Base Node
 

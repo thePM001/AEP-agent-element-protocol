@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * AEP 2.8.5 Setup Agent
+ * AEP 2.8.6 Setup Agent
  * Activation and configuration after Docker deploy. Full protocol is already in the image.
  */
 
@@ -221,7 +221,7 @@ async function main() {
   let envPath = paths.envPath;
 
 
-  console.log("AEP 2.8.5 Setup Agent");
+  console.log("AEP 2.8.6 Setup Agent");
   console.log("=====================");
   console.log("Activates and configures the protocol already loaded in this container.\n");
 
@@ -499,7 +499,7 @@ async function main() {
 
   if (rl) rl.close();
   if (activated) {
-    console.log("\nAEP 2.8.5. Base Node is activated and configured.");
+    console.log("\nAEP 2.8.6. Base Node is activated and configured.");
   } else {
     console.log("\nHealth was skipped for operator debug. Base Node is not claimed as activated.");
   }

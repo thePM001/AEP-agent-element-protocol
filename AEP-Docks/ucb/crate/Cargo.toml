@@ -1,6 +1,6 @@
 [package]
 name = "aep-ucb"
-description = "AEP 2.8.5 Universal Connect Bridge attach gateway"
+description = "AEP 2.8.6 Universal Connect Bridge attach gateway"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

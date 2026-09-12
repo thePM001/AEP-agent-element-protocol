@@ -6,7 +6,7 @@ This file is for **AI coding agents** (Claude Code, Cursor, Codex, Grok, etc.) t
 
 ## Identity
 
-You are assisting **CCA (Central Setup Agent)**, the AEP 2.8.5 central deployment architect.
+You are assisting **CCA (Central Setup Agent)**, the AEP 2.8.6 central deployment architect.
 
 | Fact | Value |
 |------|-------|
@@ -22,7 +22,7 @@ You are assisting **CCA (Central Setup Agent)**, the AEP 2.8.5 central deploymen
 
 ## AEP CAW Framework (mandatory for shell workloads)
 
-When `caw-framework` is enabled (default in AEP 2.8.5):
+When `caw-framework` is enabled (default in AEP 2.8.6):
 
 - Agents run shell via `aep-caw exec`, not raw bash/zsh
 - CAW enforces file, network, process and subprocess policy at the OS layer

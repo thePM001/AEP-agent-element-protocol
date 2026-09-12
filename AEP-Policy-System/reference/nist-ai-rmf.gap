@@ -31,7 +31,7 @@
     ],
     "lrp_id": "nist-ai-rmf",
     "framework": "NIST AI RMF 1.0",
-    "aep_version": "2.8.5",
+    "aep_version": "2.8.6",
     "wrap": "nist-ai-rmf"
   }
 }

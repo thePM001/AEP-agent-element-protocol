@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://gap-lang.aep.dev/schemas/gap-meta-schema-v1.3.json",
   "title": "GAP Instruction Meta-Schema v1.3",
-  "description": "Classic GAP 2.8.5 profile (v1.3). Who-may is agent_may. wrap and action_path_prefix bind. pattern.guard is a string or a structured ConstraintExpression. Presence of trust_ring is Deny. Presence of rank is Deny. Every non-empty rank value is Deny. enabled is load-time and is not Admit skip. Keep v1 and v1.2 for old documents. covenants and scanners remain.",
+  "description": "Classic GAP 2.8.6 profile (v1.3). Who-may is agent_may. wrap and action_path_prefix bind. pattern.guard is a string or a structured ConstraintExpression. Presence of trust_ring is Deny. Presence of rank is Deny. Every non-empty rank value is Deny. enabled is load-time and is not Admit skip. Keep v1 and v1.2 for old documents. covenants and scanners remain.",
   "type": "object",
   "required": ["address", "pattern", "action", "weight", "composition", "metadata"],
   "additionalProperties": false,

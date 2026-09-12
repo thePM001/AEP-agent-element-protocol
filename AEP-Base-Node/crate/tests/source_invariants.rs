@@ -9509,37 +9509,37 @@ mod tests {
 
     #[test]
     fn version_ssot_title_layout_config_log_extract() {
-        let title = format!("# AEP v {} - Agent Element Protocol\n", "2.8.5");
-        let layout = format!("## Canonical repository layout ({})\n", "2.8.5");
-        let config = format!("    if parsed.version != \"{}\" {{\n        return Err(\"bad\".into());\n    }}\n", "2.8.5");
-        let logv = format!("const CONFIG_VERSION: &str = \"{}\";\n", "2.8.5");
-        assert_eq!(extract_title_version(&title).unwrap(), "2.8.5");
-        assert_eq!(extract_layout_heading_version(&layout).unwrap(), "2.8.5");
-        assert_eq!(extract_config_loader_version(&config).unwrap(), "2.8.5");
-        assert_eq!(extract_lattice_log_version(&logv).unwrap(), "2.8.5");
+        let title = format!("# AEP v {} - Agent Element Protocol\n", "2.8.6");
+        let layout = format!("## Canonical repository layout ({})\n", "2.8.6");
+        let config = format!("    if parsed.version != \"{}\" {{\n        return Err(\"bad\".into());\n    }}\n", "2.8.6");
+        let logv = format!("const CONFIG_VERSION: &str = \"{}\";\n", "2.8.6");
+        assert_eq!(extract_title_version(&title).unwrap(), "2.8.6");
+        assert_eq!(extract_layout_heading_version(&layout).unwrap(), "2.8.6");
+        assert_eq!(extract_config_loader_version(&config).unwrap(), "2.8.6");
+        assert_eq!(extract_lattice_log_version(&logv).unwrap(), "2.8.6");
     }
 
     #[test]
     fn version_ssot_product_identical_at_285() {
-        let ok = product_versions_identical("2.8.5", "2.8.5", "2.8.5", "2.8.5", "2.8.5", "2.8.5", "2.8.5");
-        assert_eq!(ok.unwrap().contains("2.8.5"), true);
+        let ok = product_versions_identical("2.8.6", "2.8.6", "2.8.6", "2.8.6", "2.8.6", "2.8.6", "2.8.6");
+        assert_eq!(ok.unwrap().contains("2.8.6"), true);
     }
 
     #[test]
     fn version_ssot_title_drift_fails() {
-        let err = product_versions_identical("2.8.5", "2.8.4", "2.8.5", "2.8.5", "2.8.5", "2.8.5", "2.8.5").unwrap_err();
+        let err = product_versions_identical("2.8.6", "2.8.4", "2.8.6", "2.8.6", "2.8.6", "2.8.6", "2.8.6").unwrap_err();
         assert_eq!(err.contains("version drift"), true);
     }
 
     #[test]
     fn version_ssot_layout_drift_fails() {
-        let err = product_versions_identical("2.8.5", "2.8.5", "2.8.4", "2.8.5", "2.8.5", "2.8.5", "2.8.5").unwrap_err();
+        let err = product_versions_identical("2.8.6", "2.8.6", "2.8.4", "2.8.6", "2.8.6", "2.8.6", "2.8.6").unwrap_err();
         assert_eq!(err.contains("version drift"), true);
     }
 
     #[test]
     fn version_ssot_config_drift_fails() {
-        let err = product_versions_identical("2.8.5", "2.8.5", "2.8.5", "2.8.5", "2.8.5", "2.8.0", "2.8.5").unwrap_err();
+        let err = product_versions_identical("2.8.6", "2.8.6", "2.8.6", "2.8.6", "2.8.6", "2.8.0", "2.8.6").unwrap_err();
         assert_eq!(err.contains("version drift"), true);
     }
 
@@ -9550,22 +9550,22 @@ mod tests {
         let channel = default_channel_lib();
         assert_eq!(run_gate(&banner, &cargo, &channel).is_ok(), true);
         let src = fs::read_to_string(&banner).unwrap();
-        assert_eq!(extract_banner_version(&src).unwrap(), "2.8.5");
-        assert_eq!(extract_title_version(&src).unwrap(), "2.8.5");
-        assert_eq!(extract_layout_heading_version(&src).unwrap(), "2.8.5");
+        assert_eq!(extract_banner_version(&src).unwrap(), "2.8.6");
+        assert_eq!(extract_title_version(&src).unwrap(), "2.8.6");
+        assert_eq!(extract_layout_heading_version(&src).unwrap(), "2.8.6");
         let wv = extract_workspace_version(&fs::read_to_string(&cargo).unwrap()).unwrap();
-        assert_eq!(wv, "2.8.5");
+        assert_eq!(wv, "2.8.6");
         let cv = extract_channel_version(&fs::read_to_string(&channel).unwrap()).unwrap();
-        assert_eq!(cv, "2.8.5");
+        assert_eq!(cv, "2.8.6");
         let cfg = extract_config_loader_version(&fs::read_to_string(&default_config_loader()).unwrap()).unwrap();
-        assert_eq!(cfg, "2.8.5");
+        assert_eq!(cfg, "2.8.6");
         let logv = extract_lattice_log_version(&fs::read_to_string(&default_lattice_log()).unwrap()).unwrap();
-        assert_eq!(logv, "2.8.5");
+        assert_eq!(logv, "2.8.6");
     }
 
     #[test]
     fn version_ssot_lattice_log_drift_fails() {
-        let err = product_versions_identical("2.8.5", "2.8.5", "2.8.5", "2.8.5", "2.8.5", "2.8.5", "2.8.0").unwrap_err();
+        let err = product_versions_identical("2.8.6", "2.8.6", "2.8.6", "2.8.6", "2.8.6", "2.8.6", "2.8.0").unwrap_err();
         assert_eq!(err.contains("version drift"), true);
     }
 }
@@ -11183,7 +11183,7 @@ fn ticket_id() {
 #[test]
 fn canonical_layout_caw_not_protocol_fails_on_old_row() {
     let bad = String::from(
-        "## Canonical repository layout (2.8.5)\n\n\
+        "## Canonical repository layout (2.8.6)\n\n\
          | Directory | Role |\n\
          |-----------|------|\n\
          | [`AEP-Base-Node/`](AEP-Base-Node/) | Kernel |\n\
@@ -11202,7 +11202,7 @@ fn canonical_layout_caw_not_protocol_fails_on_old_row() {
 #[test]
 fn canonical_layout_caw_execution_companion_passes() {
     let good = String::from(
-        "## Canonical repository layout (2.8.5)\n\n\
+        "## Canonical repository layout (2.8.6)\n\n\
          | Directory | Role |\n\
          |-----------|------|\n\
          | [`AEP-Base-Node/`](AEP-Base-Node/) | Kernel |\n\

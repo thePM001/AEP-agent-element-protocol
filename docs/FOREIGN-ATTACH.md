@@ -1,4 +1,4 @@
-# Foreign attach (AEP 2.8.5)
+# Foreign attach (AEP 2.8.6)
 
 Send a task manifest when you attach a foreign stack through the optional Universal Connect Bridge. The bridge checks the contract and then docks the sealed capsule so Base Node can evaluate it. Do not omit the manifest, do not send trust fields and do not expect the bridge to invent a contract. Foreign frameworks stay fixtures rather than protocol members.
 

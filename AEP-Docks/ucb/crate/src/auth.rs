@@ -145,7 +145,7 @@ fn load_or_create_operator(data_dir: &Path, env_key: Option<&str>) -> (String, A
     let key = format!("ucb_{}", hex::encode(rand_bytes(24)));
     let preview = format!("{}…{}", &key[..8.min(key.len())], &key[key.len().saturating_sub(4)..]);
     let material = serde_json::json!({
-        "version": "2.8.5",
+        "version": "2.8.6",
         "created_at": chrono_now_rfc3339(),
         "key_hash": hash_key(&key),
         "key_preview": preview,
