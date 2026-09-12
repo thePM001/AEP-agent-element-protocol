@@ -1,4 +1,4 @@
-# AEP 2.8 - Docker deploy (copy .env.example to .env first)
+# AEP 2.8.6 - Docker deploy (copy .env.example to .env first)
 #
 #   cp .env.example .env
 #   # REQUIRED when publishing non-loopback (set COMPOSER_LITE_HOST=0.0.0.0 explicitly): set a strong token
@@ -6,7 +6,7 @@
 #   docker compose up -d --build
 #   open http://localhost:8424/install  (send X-AEP-Setup-Token header for /api/*)
 #
-# Fail-closed: non-loopback bind without COMPOSER_LITE_SETUP_TOKEN refuses to start.
+# Non-loopback bind without COMPOSER_LITE_SETUP_TOKEN refuses to start.
 # After activation, fetch UCB API key (loopback + token when configured):
 #   curl -s -H "X-AEP-Setup-Token: $COMPOSER_LITE_SETUP_TOKEN" http://127.0.0.1:8424/api/setup/ucb-key
 # Or:
@@ -17,7 +17,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: aep-base-node:2.8
+    image: aep-base-node:2.8.6
     container_name: aep-base-node
     restart: unless-stopped
     ports:

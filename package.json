@@ -1,4 +1,6 @@
 {
+  "name": "AEP-agent-element-protocol",
+  "version": "2.8.6",
   "private": true,
   "type": "module",
   "devDependencies": {

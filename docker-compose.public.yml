@@ -1,4 +1,4 @@
-# AEP 2.8 public deploy alias. Prefer docker-compose.yml for new installs.
+# AEP 2.8.6 public deploy alias. Prefer docker-compose.yml for new installs.
 #
 #   cp .env.example .env
 #   docker compose -f docker-compose.public.yml up -d --build
@@ -13,7 +13,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: aep-base-node:2.8
+    image: aep-base-node:2.8.6
     container_name: aep-base-node
     restart: unless-stopped
     ports:

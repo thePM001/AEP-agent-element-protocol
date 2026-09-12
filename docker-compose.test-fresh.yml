@@ -1,4 +1,4 @@
-# Fresh AEP 2.8 test stack - isolated volume, no production data.
+# Fresh AEP 2.8.6 test stack - isolated volume, no production data.
 # Visual install wizard: http://localhost:8524/install
 # Composer Lite canvas:    http://localhost:8524/
 #
@@ -10,7 +10,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: aep-base-node:2.8-test
+    image: aep-base-node:2.8.6-test
     container_name: aep-base-node-test
     restart: unless-stopped
     ports:

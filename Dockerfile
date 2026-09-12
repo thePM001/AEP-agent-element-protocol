@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# AEP 2.8 - containerized modular deploy. No npm in runtime image.
+# AEP 2.8.6 - containerized modular deploy. No npm in runtime image.
 
 FROM rust:1-bookworm AS rust-builder
 WORKDIR /build
