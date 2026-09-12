@@ -30,7 +30,8 @@ import {
   recordActivationEvent,
 } from "../../wizard/lib/docking.mjs";
 import { flushManifestRegistry } from "./setup/reload.mjs";
-import { registerBaseNodeWithLattice } from "./setup/register.mjs";
+import { AEP_PROTOCOL_VERSION, registerBaseNodeWithLattice } from "./setup/register.mjs";
+import { writeUcbEnv, buildUcbSetupNotes } from "./setup/ucb-env.mjs";
 import {
   resolveInferenceConfig,
   writeInferenceEnv,
@@ -57,6 +58,7 @@ function joinData(dataDir, name) {
   return `${dataDir.replace(/\/$/, "")}/${name}`;
 }
 
+
 function plansDir(dataDir) {
   return joinData(dataDir, "plans");
 }
@@ -67,7 +69,7 @@ function activePlanPath(dataDir) {
 
 export function loadActivePlan(dataDir) {
   const path = activePlanPath(dataDir);
-  if (!existsSync(path)) return null;
+  if ( ! existsSync(path)) return null;
   try {
     return JSON.parse(readFileSync(path, "utf8"));
   } catch {
@@ -103,21 +105,21 @@ function writeActivation(path, report) {
  */
 export async function executeCcaPlanOverlay(plan, options = {}) {
   const paths = defaultPaths();
-  const dataDir = expandHome(options.dataDir ?? paths.dataDir);
-  const env = options.env ?? process.env;
-  const socketBase = options.socketBase ?? env.AEP_SOCKET_BASE ?? joinData(dataDir, "sockets");
-  const configPath = options.configPath ?? joinData(dataDir, "base-node.json");
-  const waitMs = options.waitMs ?? 30000;
+  const dataDir = expandHome(options.dataDir   ??   paths.dataDir);
+  const env = options.env   ??   process.env;
+  const socketBase = options.socketBase   ??   env.AEP_SOCKET_BASE   ??   joinData(dataDir, "sockets");
+  const configPath = options.configPath   ??   joinData(dataDir, "base-node.json");
+  const waitMs = options.waitMs   ??   30000;
   const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
   const context = await buildRegistryContext(dataDir, env);
   const validation = validatePlanAgainstRegistry(plan, context.components, context.environment);
-  if (!validation.valid && !options.force) {
+  if ( ! validation.valid && ! options.force) {
     throw new Error(`Plan validation failed: ${validation.errors.join("; ")}`);
   }
 
   const ready = await waitForDocks(socketBase, waitMs);
-  if (!ready) {
+  if ( ! ready) {
     throw new Error(`Docking sockets not ready under ${socketBase} after ${waitMs}ms`);
   }
 
@@ -125,7 +127,7 @@ export async function executeCcaPlanOverlay(plan, options = {}) {
   const registry = await loadComponentRegistry(env);
   const existingInstalled = loadInstalledExtensions(dataDir);
   const mergedIds = new Set([
-    ...(existingInstalled.installed ?? []).map((e) => e.id),
+    ...(existingInstalled.installed   ??   []).map((e) => e.id),
     ...componentIds,
   ]);
   writeInstalledExtensions(
@@ -133,15 +135,16 @@ export async function executeCcaPlanOverlay(plan, options = {}) {
     [...mergedIds].map((id) => ({ id, enabled_at: new Date().toISOString() })),
   );
 
-  if (componentIds.includes("caw-framework") || componentIds.includes("ucb") || plan.security?.ucb_enabled) {
+  if (componentIds.includes("caw-framework") || componentIds.includes("ucb") || plan.security  ?.  ucb_enabled) {
     try {
       synthesizeTaskManifestsFromPlan(plan, dataDir, repoRoot);
     } catch (err) {
-      plan.warnings = [...(plan.warnings ?? []), `task manifest synthesis: ${err.message}`];
+      plan.warnings = [...(plan.warnings   ??   []), `task manifest synthesis: ${err.message}`];
     }
   }
 
   writeActivePlan(dataDir, plan);
+  writeUcbEnv(joinData(dataDir, "ucb.env"), env);
   try {
     const graph = planToGraph(plan);
     saveGraph(dataDir, graph);
@@ -152,6 +155,7 @@ export async function executeCcaPlanOverlay(plan, options = {}) {
   const reload = flushManifestRegistry(dataDir, options);
   const report = {
     status: "cca_overlay",
+    ucb: buildUcbSetupNotes(env),
     overlay_at: new Date().toISOString(),
     activated_by: "cca-plan-overlay",
     config_path: configPath,
@@ -171,15 +175,14 @@ export async function executeCcaPlanOverlay(plan, options = {}) {
  */
 export async function executeImplementationPlan(plan, options = {}) {
   const paths = defaultPaths();
-  const dataDir = expandHome(options.dataDir ?? paths.dataDir);
-  const env = options.env ?? process.env;
-  const socketBase = options.socketBase ?? env.AEP_SOCKET_BASE ?? joinData(dataDir, "sockets");
-  const latticeDb = expandHome(options.latticeDb ?? joinData(dataDir, "action-lattice.db"));
-  const configPath = options.configPath ?? joinData(dataDir, "base-node.json");
+  const dataDir = expandHome(options.dataDir   ??   paths.dataDir);
+  const env = options.env   ??   process.env;
+  const socketBase = options.socketBase   ??   env.AEP_SOCKET_BASE   ??   joinData(dataDir, "sockets");
+  const latticeDb = expandHome(options.latticeDb   ??   joinData(dataDir, "action-lattice.db"));
+  const configPath = options.configPath   ??   joinData(dataDir, "base-node.json");
   const activationPath = joinData(dataDir, "activation.json");
   const envPath = joinData(dataDir, "lattice-channel.env");
-  const waitMs = options.waitMs ?? 30000;
-  const skipHealth = options.skipHealth ?? false;
+  const waitMs = options.waitMs   ??   30000;
   const binaryPath = paths.baseNodeBin;
   const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
@@ -192,28 +195,28 @@ export async function executeImplementationPlan(plan, options = {}) {
 
   const context = await buildRegistryContext(dataDir, env);
   const validation = validatePlanAgainstRegistry(plan, context.components, context.environment);
-  if (!validation.valid && !options.force) {
+  if ( ! validation.valid && ! options.force) {
     throw new Error(`Plan validation failed: ${validation.errors.join("; ")}`);
   }
 
-  if (!existsSync(binaryPath)) {
+  if ( ! existsSync(binaryPath)) {
     throw new Error(`Base Node binary not found: ${binaryPath}`);
   }
 
   const ready = await waitForDocks(socketBase, waitMs);
-  if (!ready) {
+  if ( ! ready) {
     throw new Error(`Docking sockets not ready under ${socketBase} after ${waitMs}ms`);
   }
 
   const dockResults = pingAllDocks(socketBase, { configPath });
-  const notListening = dockResults.filter((d) => !d.listening);
+  const notListening = dockResults.filter((d) => ! d.listening);
   if (notListening.length) {
     throw new Error(
       `Dock sockets not listening: ${notListening.map((d) => d.port).join(", ")}`,
     );
   }
-  const pingFailed = dockResults.filter((d) => d.listening && !d.pong);
-  if (pingFailed.length && !options.allowDockPingFailure) {
+  const pingFailed = dockResults.filter((d) => d.listening && ! d.pong);
+  if (pingFailed.length && ! options.allowDockPingFailure) {
     throw new Error(`Dock ping failed: ${pingFailed.map((d) => d.port).join(", ")}`);
   }
 
@@ -226,15 +229,15 @@ export async function executeImplementationPlan(plan, options = {}) {
       dataDir,
       socketBase,
       componentIds,
-      cwd: options.cwd ?? process.cwd(),
+      cwd: options.cwd   ??   process.cwd(),
       force: options.forceHcseInstall === true,
     });
   }
 
-  let lrps = [...new Set([...(plan.lrps ?? []), ...hookData.lrps])];
+  let lrps = [...new Set([...(plan.lrps   ??   []), ...hookData.lrps])];
   lrps = syncLrpsFromComponents(componentIds, registry.components, lrps);
 
-  const validationEnginePlan = options.validationEngine ?? {
+  const validationEnginePlan = options.validationEngine   ??   {
     id: "none",
     label: "Try without dedicated validation engine",
   };
@@ -246,12 +249,12 @@ export async function executeImplementationPlan(plan, options = {}) {
   );
 
   const catalog = loadLrpCatalog();
-  const internetUp = plan.security?.internet_up ?? true;
+  const internetUp = plan.security  ?.  internet_up   ??   true;
 
-  const inference = plan.inference ?? resolveInferenceConfig(env, dataDir);
+  const inference = plan.inference   ??   resolveInferenceConfig(env, dataDir);
 
   const signaturesPath =
-    env.AEP_EPSCOM_SIGNATURES_PATH ??
+    env.AEP_EPSCOM_SIGNATURES_PATH   ??  
     join(dirname(fileURLToPath(import.meta.url)), "../../../AEP-Base-Node/signatures");
 
   let config = buildBaseNodeConfig({
@@ -271,7 +274,7 @@ export async function executeImplementationPlan(plan, options = {}) {
     path: signaturesPath,
     trust_bundle: "trust-bundle/manifest.json",
     sync_interval_hours: 24,
-    signature_ids: (context.epscom_signatures?.signatures ?? []).map((s) => s.id),
+    signature_ids: (context.epscom_signatures  ?.  signatures   ??   []).map((s) => s.id),
   };
 
   config = applyValidationEngineToConfig(config, validationEnginePlan);
@@ -279,12 +282,12 @@ export async function executeImplementationPlan(plan, options = {}) {
   const policySections = mergePolicySections(hookData.policy_sections, plan.policy_overrides);
   if (componentIds.includes("commerce-subprotocol")) {
     policySections.commerce = {
-      ...(policySections.commerce ?? {}),
+      ...(policySections.commerce   ??   {}),
       enabled: true,
     };
   }
   if (componentIds.includes("coding-governance")) {
-    const cg = plan.policy_overrides?.coding_governance ?? {};
+    const cg = plan.policy_overrides  ?.  coding_governance   ??   {};
     policySections.coding_governance = {
       enabled: true,
       require_propose: cg.require_propose !== false,
@@ -292,9 +295,9 @@ export async function executeImplementationPlan(plan, options = {}) {
       auto_git_refs: cg.auto_git_refs !== false,
       semantic_strict: cg.semantic_strict === true,
       subprotocol: "coding-governance",
-      reference_policies: cg.reference_policies ?? [],
-      workflow: cg.workflow ?? [],
-      agent_instructions: cg.agent_instructions ?? [],
+      reference_policies: cg.reference_policies   ??   [],
+      workflow: cg.workflow   ??   [],
+      agent_instructions: cg.agent_instructions   ??   [],
     };
     config.coding_governance = {
       enabled: true,
@@ -321,7 +324,7 @@ export async function executeImplementationPlan(plan, options = {}) {
       "",
     ];
     let n = 1;
-    for (const step of policySections.coding_governance.workflow ?? []) {
+    for (const step of policySections.coding_governance.workflow   ??   []) {
       if (step.startsWith("#")) {
         lines.push("", step.slice(1).trim());
         continue;
@@ -329,7 +332,7 @@ export async function executeImplementationPlan(plan, options = {}) {
       lines.push(`${n}. \`${step}\``);
       n += 1;
     }
-    for (const note of policySections.coding_governance.agent_instructions ?? []) {
+    for (const note of policySections.coding_governance.agent_instructions   ??   []) {
       lines.push(`- ${note}`);
     }
     if (componentIds.includes("hcse")) {
@@ -354,7 +357,7 @@ export async function executeImplementationPlan(plan, options = {}) {
       upstream: "DeusData/codebase-memory-mcp",
     };
     config.hcse = { ...policySections.hcse };
-    if (!componentIds.includes("coding-governance")) {
+    if ( ! componentIds.includes("coding-governance")) {
       const workflowPath = join(dataDir, "coding-agent-workflow.md");
       appendFileSync(
         workflowPath,
@@ -362,9 +365,9 @@ export async function executeImplementationPlan(plan, options = {}) {
       );
     }
   }
-  if (componentIds.includes("dynaep-core") && plan.policy_overrides?.dynaep) {
+  if (componentIds.includes("dynaep-core") && plan.policy_overrides  ?.  dynaep) {
     policySections.dynaep = {
-      ...(policySections.dynaep ?? {}),
+      ...(policySections.dynaep   ??   {}),
       ...plan.policy_overrides.dynaep,
       enabled: true,
     };
@@ -385,24 +388,24 @@ export async function executeImplementationPlan(plan, options = {}) {
         lattice: {
           registry: dyn.lattice_registry,
           governance: dyn.governance_mode,
-          hook: dyn.validation_hook ?? "mle",
-          agent_interest_enabled: dyn.agent_interest_enabled ?? true,
+          hook: dyn.validation_hook   ??   "mle",
+          agent_interest_enabled: dyn.agent_interest_enabled   ??   true,
         },
       },
     };
   }
   if (componentIds.includes("caw-framework")) {
     const cawConfigPath = ensureCawConfig(dataDir, repoRoot);
-    const cawOv = plan.policy_overrides?.caw_framework ?? {};
+    const cawOv = plan.policy_overrides  ?.  caw_framework   ??   {};
     policySections.caw_framework = {
-      ...(policySections.caw_framework ?? {}),
+      ...(policySections.caw_framework   ??   {}),
       enabled: true,
       mode: "enforce",
       shell_shim: true,
       lattice_audit: true,
-      policy_name: cawOv.policy_name ?? "default",
-      mount_profile: cawOv.mount_profile ?? "agent-sandbox",
-      gap_address: cawOv.gap_address ?? "dev.aep.caw/agent-sandbox.v1",
+      policy_name: cawOv.policy_name   ??   "default",
+      mount_profile: cawOv.mount_profile   ??   "agent-sandbox",
+      gap_address: cawOv.gap_address   ??   "dev.aep.caw/agent-sandbox.v1",
       config_path: cawConfigPath,
     };
     config.caw_framework = buildCawFrameworkConfig({
@@ -429,11 +432,11 @@ export async function executeImplementationPlan(plan, options = {}) {
     }
   }
 
-  if (componentIds.includes("caw-framework") || componentIds.includes("ucb") || plan.security?.ucb_enabled) {
+  if (componentIds.includes("caw-framework") || componentIds.includes("ucb") || plan.security  ?.  ucb_enabled) {
     try {
       synthesizeTaskManifestsFromPlan(plan, dataDir, repoRoot);
     } catch (err) {
-      plan.warnings = [...(plan.warnings ?? []), `task manifest synthesis: ${err.message}`];
+      plan.warnings = [...(plan.warnings   ??   []), `task manifest synthesis: ${err.message}`];
     }
   }
 
@@ -460,11 +463,13 @@ export async function executeImplementationPlan(plan, options = {}) {
     dynaep_included: componentIds.includes("dynaep-core"),
     notes: "Activated via CCA ImplementationPlan",
   };
+  config.ucb = buildUcbSetupNotes(env);
 
   writeConfig(configPath, config, { repoRoot, dataDir });
   mkdirSync(dirname(expandHome(latticeDb)), { recursive: true });
   mkdirSync(socketBase, { recursive: true });
   writeLatticeEnv(envPath);
+  writeUcbEnv(joinData(dataDir, "ucb.env"), env);
 
   const inferenceEnvPath = joinData(dataDir, "inference-engine.env");
   writeInferenceEnv(inferenceEnvPath, inference);
@@ -473,7 +478,7 @@ export async function executeImplementationPlan(plan, options = {}) {
   const dockEvent = recordActivationEvent(socketBase, "setup-agent", latticeOpts);
   const registerEvent = registerBaseNodeWithLattice(socketBase, {
     ...latticeOpts,
-    version: "2.8.0",
+    version: AEP_PROTOCOL_VERSION,
     registeredBy: "cca-plan-executor",
     lrps,
   });
@@ -488,17 +493,15 @@ export async function executeImplementationPlan(plan, options = {}) {
     /* graph save optional */
   }
 
-  let health = null;
-  if (!skipHealth) {
-    health = runHealthCheck(binaryPath, config, configPath);
-    if (health.status !== "ok") {
-      throw new Error(`Unexpected health status: ${health.status}`);
-    }
+  const health = runHealthCheck(binaryPath, config, configPath);
+  if (health.status !== "ok") {
+    throw new Error(`Unexpected health status: ${health.status}`);
   }
 
   const report = {
     status: "activated",
-    version: "2.8.0",
+    version: AEP_PROTOCOL_VERSION,
+    ucb: buildUcbSetupNotes(env),
     activated_at: new Date().toISOString(),
     activated_by: "cca-plan-executor",
     config_path: configPath,
@@ -511,9 +514,9 @@ export async function executeImplementationPlan(plan, options = {}) {
     policy_sections: finalPolicySections,
     connectors,
     docking: dockResults,
-    activation_event_id: dockEvent.event_id ?? null,
-    registration_event_id: registerEvent.event_id ?? null,
-    inference_register_event_id: inferenceEvent.event_id ?? null,
+    activation_event_id: dockEvent.event_id   ??   null,
+    registration_event_id: registerEvent.event_id   ??   null,
+    inference_register_event_id: inferenceEvent.event_id   ??   null,
     health,
   };
 
@@ -532,7 +535,7 @@ export async function executeImplementationPlan(plan, options = {}) {
       } catch {
         cargoAvailable = false;
       }
-      if (!cargoAvailable) {
+      if ( ! cargoAvailable) {
         conformance = {
           status: "skipped",
           runner: runnerPath,
@@ -543,7 +546,7 @@ export async function executeImplementationPlan(plan, options = {}) {
           const output = execFileSync("bash", [runnerPath], {
             cwd: join(dirname(runnerPath), "../.."),
             encoding: "utf8",
-            timeout: options.conformanceTimeoutMs ?? 300000,
+            timeout: options.conformanceTimeoutMs   ??   300000,
             env: { ...env, AEP_DATA_DIR: dataDir },
           });
           conformance = { status: "passed", runner: runnerPath, output_tail: output.slice(-2000) };
@@ -552,9 +555,9 @@ export async function executeImplementationPlan(plan, options = {}) {
             status: "failed",
             runner: runnerPath,
             message: err.message,
-            output_tail: String(err.stdout ?? err.stderr ?? "").slice(-2000),
+            output_tail: String(err.stdout   ??   err.stderr   ??   "").slice(-2000),
           };
-          if (!options.forceConformance) {
+          if ( ! options.forceConformance) {
             throw new Error(`Conformance runner failed: ${err.message}`);
           }
         }

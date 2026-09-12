@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * AEP 2.8 Setup Agent
+ * AEP 2.8.5 Setup Agent
  * Activation and configuration after Docker deploy. Full protocol is already in the image.
  */
 
@@ -36,7 +36,8 @@ import {
   recordActivationEvent,
 } from "../wizard/lib/docking.mjs";
 import { flushManifestRegistry } from "./lib/setup/reload.mjs";
-import { registerBaseNodeWithLattice } from "./lib/setup/register.mjs";
+import { AEP_PROTOCOL_VERSION, registerBaseNodeWithLattice } from "./lib/setup/register.mjs";
+import { writeUcbEnv, buildUcbSetupNotes } from "./lib/setup/ucb-env.mjs";
 import {
   resolveInferenceConfig,
   promptInferenceConfig,
@@ -69,9 +70,10 @@ import {
   writeActivePlan,
 } from "../cca/lib/plan-executor.mjs";
 
+
 function parseCsvArg(argv, prefix) {
-  const raw = argv.find((a) => a.startsWith(`${prefix}=`))?.split("=")[1];
-  if (!raw) return null;
+  const raw = argv.find((a) => a.startsWith(`${prefix}=`))  ?.  split("=")[1];
+  if ( ! raw) return null;
   return raw
     .split(",")
     .map((s) => s.trim())
@@ -84,34 +86,33 @@ function parseArgs(argv) {
     nonInteractive: argv.includes("--non-interactive"),
     skipIfActivated: argv.includes("--skip-if-activated"),
     force: argv.includes("--force"),
-    skipHealth: argv.includes("--skip-health"),
     fromPlan: argv.includes("--from-plan"),
     cca: argv.includes("--cca"),
     intent: intentIdx >= 0 ? argv.slice(intentIdx + 1).join(" ").trim() : null,
-    configOut: argv.find((a) => a.startsWith("--config="))?.split("=")[1],
-    waitMs: Number(argv.find((a) => a.startsWith("--wait-ms="))?.split("=")[1] || 30000),
+    configOut: argv.find((a) => a.startsWith("--config="))  ?.  split("=")[1],
+    waitMs: Number(argv.find((a) => a.startsWith("--wait-ms="))  ?.  split("=")[1] || 30000),
     lrps: parseCsvArg(argv, "--lrps"),
     components: parseCsvArg(argv, "--components"),
     validationEngine:
-      argv.find((a) => a.startsWith("--validation-engine="))?.split("=")[1]?.trim() || null,
+      argv.find((a) => a.startsWith("--validation-engine="))  ?.  split("=")[1]  ?.  trim() || null,
   };
 }
 
 async function prompt(rl, question, defaultValue) {
   const suffix = defaultValue !== undefined ? ` [${defaultValue}]` : "";
   const answer = (await rl.question(`${question}${suffix}: `)).trim();
-  return answer || String(defaultValue ?? "");
+  return answer || String(defaultValue   ??   "");
 }
 
 async function promptYesNo(rl, question, defaultYes = true) {
   const hint = defaultYes ? "Y/n" : "y/N";
   const answer = (await rl.question(`${question} (${hint}): `)).trim().toLowerCase();
-  if (!answer) return defaultYes;
+  if ( ! answer) return defaultYes;
   return answer === "y" || answer === "yes";
 }
 
 function loadActivation(path) {
-  if (!existsSync(path)) return null;
+  if ( ! existsSync(path)) return null;
   try {
     return JSON.parse(readFileSync(path, "utf8"));
   } catch {
@@ -143,11 +144,15 @@ function smokeMemory(memoryBin, configPath, latticeDb) {
     element_id: "AG-SETUP",
     domain: "event",
     proposal: { source: "setup-agent", phase: "activation" },
-    result: "accepted",
+    result: "smoke",
     errors: [],
     traversal_path: [],
     embedding,
-    metadata: { source: "setup-agent" },
+    metadata: {
+      source: "setup-agent",
+      admit: false,
+      note: "memory smoke search is not Admit",
+    },
   };
   const record = spawnSync(
     memoryBin,
@@ -167,7 +172,7 @@ function smokeMemory(memoryBin, configPath, latticeDb) {
     throw new Error(search.stderr || search.stdout || "aep-memory search failed");
   }
   const matches = JSON.parse(search.stdout.trim());
-  if (!Array.isArray(matches) || matches.length === 0) {
+  if ( ! Array.isArray(matches) || matches.length === 0) {
     throw new Error("aep-memory search returned no matches");
   }
   return { matches };
@@ -181,13 +186,13 @@ async function main() {
     const { ensureInstallWizardManifests } = await import(
       "../../AEP-Composer-Lite/lib/ensure-setup-manifests.mjs"
     );
-    ensureInstallWizardManifests(expandHome(process.env.AEP_DATA ?? paths.dataDir));
+    ensureInstallWizardManifests(expandHome(process.env.AEP_DATA   ??   paths.dataDir));
   } catch {
     /* CLI path outside Composer Lite */
   }
 
   if (opts.fromPlan || opts.cca) {
-    const dataDir = expandHome(process.env.AEP_DATA ?? paths.dataDir);
+    const dataDir = expandHome(process.env.AEP_DATA   ??   paths.dataDir);
     let plan = loadActivePlan(dataDir);
     if (opts.cca && opts.intent) {
       const generated = await generatePlanFromIntent(opts.intent, dataDir, process.env);
@@ -196,15 +201,15 @@ async function main() {
       console.log("CCA generated ImplementationPlan:");
       console.log(JSON.stringify({ user_intent: plan.user_intent, components: plan.components.filter((c) => c.enabled).map((c) => c.id) }, null, 2));
     }
-    if (!plan) {
+    if ( ! plan) {
       throw new Error("No active ImplementationPlan. Run: aep-cca plan --intent \"...\"");
     }
     const result = await executeImplementationPlan(plan, {
       dataDir,
-      skipHealth: opts.skipHealth,
+      nonInteractive: opts.nonInteractive,
       waitMs: opts.waitMs,
     });
-    console.log("CCA plan executed successfully.");
+    console.log("CCA plan executed. Enqueue is not Admit.");
     console.log(JSON.stringify({ status: result.report.status, plan_id: result.report.plan_id, components: result.report.components }, null, 2));
     return;
   }
@@ -215,12 +220,13 @@ async function main() {
   let activationPath = paths.activationPath;
   let envPath = paths.envPath;
 
-  console.log("AEP 2.8 Setup Agent");
-  console.log("===================");
+
+  console.log("AEP 2.8.5 Setup Agent");
+  console.log("=====================");
   console.log("Activates and configures the protocol already loaded in this container.\n");
 
   const existing = loadActivation(activationPath);
-  if (existing?.status === "activated" && opts.skipIfActivated && !opts.force) {
+  if (existing  ?.  status === "activated" && opts.skipIfActivated && ! opts.force) {
     console.log(`Already activated at ${existing.activated_at}`);
     console.log(JSON.stringify(existing, null, 2));
     return;
@@ -268,36 +274,36 @@ async function main() {
   const resolvedConfigPath = opts.configOut || joinData(dataDir, "base-node.json");
 
   const binaryPath = paths.baseNodeBin;
-  if (!existsSync(binaryPath)) {
+  if ( ! existsSync(binaryPath)) {
     throw new Error(`Base Node binary not found: ${binaryPath}`);
   }
 
   console.log("\nWaiting for Base Node docking sockets...");
   const ready = await waitForDocks(socketBase, opts.waitMs);
-  if (!ready) {
+  if ( ! ready) {
     throw new Error(
       `Docking sockets not ready under ${socketBase} after ${opts.waitMs}ms. Is aep-base-node --daemon running?`,
     );
   }
 
   const dockResults = pingAllDocks(socketBase, { configPath: resolvedConfigPath });
-  const missing = dockResults.filter((d) => !d.listening);
+  const missing = dockResults.filter((d) => ! d.listening);
   if (missing.length) {
     throw new Error(
       `Dock sockets not listening: ${missing.map((d) => d.port).join(", ")}`,
     );
   }
-  const pingFailed = dockResults.filter((d) => d.listening && !d.pong);
+  const pingFailed = dockResults.filter((d) => d.listening && ! d.pong);
   if (pingFailed.length) {
     console.log(
       `WARNING: ${pingFailed.length} dock(s) listening but health ping not registered yet (pre-activation is OK): ${pingFailed.map((d) => d.port).join(", ")}`,
     );
   } else {
-    console.log(`All ${dockResults.length} docking ports responded to ping.`);
+    console.log(`All ${dockResults.length} docking ports responded to ping. Ping is not Admit.`);
   }
 
   const componentRegistry = await loadComponentRegistry(process.env);
-  const componentIds = opts.components?.length
+  const componentIds = opts.components  ?.  length
     ? opts.components
     : opts.nonInteractive
       ? defaultEnabledComponentIds(componentRegistry.components)
@@ -307,7 +313,7 @@ async function main() {
           promptYesNo,
         );
 
-  let lrps = opts.lrps?.length
+  let lrps = opts.lrps  ?.  length
     ? opts.lrps
     : opts.nonInteractive
       ? selectLrpsDefault(catalog)
@@ -328,7 +334,7 @@ async function main() {
   console.log(
     `\nInference Engine: ${inference.provider} / ${inference.model} @ ${inference.base_url}`,
   );
-  if (inference.api_key_env && !process.env[inference.api_key_env]) {
+  if (inference.api_key_env && ! process.env[inference.api_key_env]) {
     console.log(
       `WARNING: ${inference.api_key_env} not set - cloud provider calls will fail.`,
     );
@@ -399,6 +405,7 @@ async function main() {
   if (Object.keys(policySections).length) {
     config.policy_sections = policySections;
   }
+  config.ucb = buildUcbSetupNotes(process.env);
 
   writeConfig(resolvedConfigPath, config, { repoRoot, dataDir });
   console.log(`\nWrote ${resolvedConfigPath}`);
@@ -409,53 +416,58 @@ async function main() {
   writeLatticeEnv(envPath);
   console.log(`Wrote ${envPath}`);
 
+  const ucbEnvPath = joinData(dataDir, "ucb.env");
+  const ucbNotes = writeUcbEnv(ucbEnvPath, process.env);
+  console.log(`Wrote ${ucbEnvPath} (Predicate Profile ${ucbNotes.predicate_profile}).`);
+  console.log("UCB is an optional attach gateway. It is not a second evaluator.");
+
   const inferenceEnvPath = joinData(dataDir, "inference-engine.env");
   writeInferenceEnv(inferenceEnvPath, inference);
   console.log(`Wrote ${inferenceEnvPath}`);
 
   const latticeOpts = { configPath: resolvedConfigPath, env: process.env };
 
-  console.log("\nRecording activation event on validation dock...");
+  console.log("\nRecording activation event on validation dock. Activation dock event is not Admit.");
   const dockEvent = recordActivationEvent(socketBase, "setup-agent", latticeOpts);
-  console.log(`Activation event recorded (event_id=${dockEvent.event_id ?? "n/a"}).`);
+  console.log(`Activation event recorded (event_id=${dockEvent.event_id   ??   "n/a"}). Enqueue is not Admit.`);
 
   console.log("Registering Base Node with dynAEP Action Lattice...");
   const registerEvent = registerBaseNodeWithLattice(socketBase, {
     ...latticeOpts,
-    version: "2.8.0",
+    version: AEP_PROTOCOL_VERSION,
     registeredBy: "setup-agent",
     lrps,
   });
   console.log(
-    `Base Node registered (event_id=${registerEvent.event_id ?? "n/a"}, agent=AG-BASE-NODE).`,
+    `Base Node registered (event_id=${registerEvent.event_id   ??   "n/a"}, agent=AG-BASE-NODE).`,
   );
 
   console.log("Registering Inference Engine on inference dock...");
   const inferenceEvent = registerInferenceEngineWithDock(socketBase, inference, latticeOpts);
   console.log(
-    `Inference Engine registered (event_id=${inferenceEvent.event_id ?? "n/a"}, ${inference.provider}/${inference.model}).`,
+    `Inference Engine registered (event_id=${inferenceEvent.event_id   ??   "n/a"}, ${inference.provider}/${inference.model}).`,
   );
 
   if (existsSync(paths.memoryBin)) {
-    console.log("\nSmoke-testing lattice memory fabric...");
+    console.log("\nSmoke-testing lattice memory fabric. Memory search is not Admit.");
     const memoryResult = smokeMemory(paths.memoryBin, resolvedConfigPath, latticeDb);
-    console.log(`Memory search OK (${memoryResult.matches.length} match).`);
+    console.log(
+      `Memory search returned ${memoryResult.matches.length} match. Looking similar to a past allow is not allow.`,
+    );
   }
 
-  let health = null;
-  if (!opts.skipHealth) {
-    console.log("\nRunning Base Node health check...");
-    health = runHealthCheck(binaryPath, config, resolvedConfigPath);
-    if (health.status !== "ok") {
-      throw new Error(`Unexpected health status: ${health.status}`);
-    }
-    console.log("Health: OK");
-    console.log(`Docking ports listening: ${health.docking_ports_listening}`);
+  console.log("\nRunning Base Node health check...");
+  const health = runHealthCheck(binaryPath, config, resolvedConfigPath);
+  if (health.status !== "ok") {
+    throw new Error(`Unexpected health status: ${health.status}`);
   }
+  console.log("Health: OK");
+  console.log(`Docking ports listening: ${health.docking_ports_listening}`);
 
   const report = {
     status: "activated",
-    version: "2.8.0",
+    version: AEP_PROTOCOL_VERSION,
+    ucb: buildUcbSetupNotes(process.env),
     activated_at: new Date().toISOString(),
     config_path: resolvedConfigPath,
     data_dir: dataDir,
@@ -467,11 +479,11 @@ async function main() {
     components: componentIds,
     component_registry_version: componentRegistry.version,
     docking: dockResults,
-    activation_event_id: dockEvent.event_id ?? null,
-    registration_event_id: registerEvent.event_id ?? null,
+    activation_event_id: dockEvent.event_id   ??   null,
+    registration_event_id: registerEvent.event_id   ??   null,
     base_node_agent_id: "AG-BASE-NODE",
     inference_engine: inference,
-    inference_register_event_id: inferenceEvent.event_id ?? null,
+    inference_register_event_id: inferenceEvent.event_id   ??   null,
     health,
   };
 
@@ -479,14 +491,19 @@ async function main() {
   console.log(`\nWrote ${activationPath}`);
 
   const reload = flushManifestRegistry(dataDir);
-  if (reload.daemon?.reloaded) {
+  if (reload.daemon  ?.  reloaded) {
     console.log("Signaled Base Node daemon reload to apply configuration.");
   } else if (reload.stamp) {
     console.log("Manifest registry reload stamp written for immediate dock pickup.");
   }
 
   if (rl) rl.close();
-  console.log("\nAEP 2.8 setup complete. Base Node is activated and configured.");
+  if (activated) {
+    console.log("\nAEP 2.8.5. Base Node is activated and configured.");
+  } else {
+    console.log("\nHealth was skipped for operator debug. Base Node is not claimed as activated.");
+  }
+  console.log("Activation dock event is not Admit. Enqueue is not Admit. Ping is not Admit.");
   console.log(JSON.stringify({ status: report.status, activated_at: report.activated_at }));
 }
 

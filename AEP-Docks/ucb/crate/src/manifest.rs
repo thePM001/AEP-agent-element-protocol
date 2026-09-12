@@ -1,310 +1,350 @@
-//! Optional task manifest resolution at UCB ingress.
-//!
-//! UCB is an optional bridge for attaching non-AEP systems safely. Manifest
-//! contracts are never invented by AEP. Ingress requires one of:
-//!
-//! 1. Caller-supplied `task_manifest` on the ingest body
-//! 2. A previously stored non-provisional manifest for the agent
-//! 3. An explicitly configured synthesis tier (all optional):
-//!    - Tier 1: GAP constrained decoding (`UCB_GAP_ENGINE_URL`)
-//!    - Tier 2: Other constrained decoders (`UCB_CONSTRAINED_DECODER_URL`)
-//!    - Tier 3: LLM structured output (`UCB_LLM_SYNTHESIS_URL`)
-//!
-//! If none of the above apply, ingest is rejected. Skipping UCB or skipping
-//! manifest configuration is at the operator's own risk.
+// @PAD: aep-ucb-public-contract-2.8.5
+// @GCDE: gaplune-decode hmac-sha256:ab54811d1526a0253fdd14253ff4ed74c94aafc36362f2c29fc94a24eef11c06
+//! Mandatory task manifest at UCB ingest. Synthesis is refused.
 
-use crate::config::UcbConfig;
-use crate::store::TaskManifestV1;
+use crate::store::{value_has_trust_fields, ManifestStore, TaskManifestV1};
+use aep_ucb_perimeter_v1::{digest_canonical, SignedManifest, StrictMode};
+use aep_wall_set_backpressure::{ClosedWall, DenyReport, RepairHint, CLASS_CAPABILITY, CLASS_STRUCTURAL};
 
-#[derive(Debug, Clone)]
-pub struct SynthesisRequest {
-    pub agent_id: String,
-    pub session_id: String,
-    pub intent_summary: String,
-    pub allowed_operations: Vec<String>,
-    pub trust_score: u16,
+
+pub fn compute_manifest_digest(manifest: &TaskManifestV1) -> String {
+    let mut value = serde_json::to_value(manifest).unwrap_or(serde_json::Value::Null);
+    if let Some(obj) = value.as_object_mut() {
+        obj.remove("manifest_digest");
+        obj.remove("signature");
+        obj.remove("trust");
+    }
+    digest_canonical(&value)
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum SynthesisError {
-    #[error("task manifest required: provide task_manifest in ingest body or configure UCB_GAP_ENGINE_URL, UCB_CONSTRAINED_DECODER_URL, or UCB_LLM_SYNTHESIS_URL")]
-    NoManifestSource,
-    #[error("configured task manifest synthesis tiers failed")]
-    TiersFailed,
-    #[error("provided task_manifest agent_id does not match request agent_id")]
-    AgentIdMismatch,
-    #[error("http: {0}")]
-    Http(String),
-}
-
-/// Harden caller-supplied manifests: provisional clamp, trust cap, egress sanitize.
-/// CRITICAL: provided manifests must not skip provisional/trust/egress hardening.
-pub fn harden_provided_manifest(mut m: TaskManifestV1, req: &SynthesisRequest) -> TaskManifestV1 {
-    if m.synthesized_by.is_empty() {
-        m.synthesized_by = "provided".into();
-    }
-    // Always bind agent_id from request (ignore forged identity on provided body).
-    m.agent_id = req.agent_id.clone();
-    if m.session_id.is_none() && !req.session_id.is_empty() {
-        m.session_id = Some(req.session_id.clone());
-    }
-    // Provided path is untrusted until promotion (same clamp as LLM tier).
-    m.provisional = true;
-    if m.promotion_required.is_empty() {
-        m.promotion_required = vec!["cca".into(), "regulation_dock".into()];
-    }
-    m.trust.tier = "provisional".into();
-    let cap = req.trust_score.min(200);
-    m.trust.max_trust_score = m.trust.max_trust_score.min(cap).min(200);
-    if let Some(ref mut egress) = m.egress {
-        sanitize_provided_egress(egress);
-    }
-    m
-}
-
-fn sanitize_provided_egress(egress: &mut serde_json::Value) {
-    let Some(routes) = egress.get_mut("routes").and_then(|r| r.as_array_mut()) else {
-        return;
+pub fn signed_from_task(manifest: &TaskManifestV1) -> SignedManifest {
+    let digest = if manifest.manifest_digest.is_empty() {
+        compute_manifest_digest(manifest)
+    } else {
+        manifest.manifest_digest.clone()
     };
-    for route in routes.iter_mut() {
-        if let Some(obj) = route.as_object_mut() {
-            // Drop arbitrary secret env names from client-provided routes.
-            // Operators re-attach allowlisted names after promotion / config.
-            if let Some(env_name) = obj.get("auth_token_env").and_then(|v| v.as_str()) {
-                if !crate::egress::auth_token_env_allowed(env_name) {
-                    obj.remove("auth_token_env");
-                }
-            }
-        }
+    SignedManifest {
+        body: serde_json::to_value(manifest).unwrap_or(serde_json::json!({})),
+        digest,
+        signature: manifest.signature.clone(),
+        provisional: manifest.provisional,
     }
 }
 
-pub async fn synthesize_or_load(
-    cfg: &UcbConfig,
-    store: &crate::store::ManifestStore,
-    req: &SynthesisRequest,
-    provided: Option<TaskManifestV1>,
-) -> Result<TaskManifestV1, SynthesisError> {
+pub fn unsigned_manifest() -> DenyReport {
+    closed_report(
+        "ManifestUnsigned",
+        "ucb.manifest.signature",
+        "unsigned task manifest",
+        CLASS_CAPABILITY,
+        "signature",
+        "sign the task manifest then reseal",
+    )
+}
+
+pub fn egress_refused_unsigned() -> DenyReport {
+    closed_report(
+        "ManifestUnsigned",
+        "ucb.manifest.egress",
+        "unsigned or provisional manifest cannot enable egress",
+        CLASS_CAPABILITY,
+        "signature",
+        "sign and promote the task manifest then reseal",
+    )
+}
+
+pub fn strict_mode_from_env() -> StrictMode {
+    if std::env::var("UCB_MANIFEST_STRICT").map(|v| v == "0").unwrap_or(false) {
+        StrictMode::Off
+    } else {
+        StrictMode::On
+    }
+}
+
+fn closed_report(error: &str, wall_id: &str, reason: &str, class: &str, field: &str, fix: &str) -> DenyReport {
+    let closed = vec![ClosedWall::with_class(wall_id, reason, class)];
+    let mut report = DenyReport::from_error_and_closed(error, &closed);
+    report.repairs = vec![RepairHint {
+        wall_id: String::from(wall_id),
+        field: String::from(field),
+        kind: String::from("bind_field"),
+        fix: String::from(fix),
+    }];
+    report.reseal_required = true;
+    report
+}
+
+pub fn manifest_missing() -> DenyReport {
+    closed_report(
+        "ManifestMissing",
+        "ucb.manifest",
+        "no task manifest for agent_id",
+        CLASS_STRUCTURAL,
+        "task_manifest",
+        "store a non-provisional manifest under AEP_TASK_MANIFEST_DIR or send task_manifest on ingest then reseal",
+    )
+}
+
+pub fn manifest_provisional() -> DenyReport {
+    closed_report(
+        "ManifestProvisional",
+        "ucb.manifest.provisional",
+        "stored manifest is still provisional",
+        CLASS_CAPABILITY,
+        "provisional",
+        "complete promotion_required then store a non-provisional manifest and reseal",
+    )
+}
+
+pub fn session_missing() -> DenyReport {
+    closed_report(
+        "SessionMissing",
+        "ucb.session",
+        "manifest.session_id is missing",
+        CLASS_CAPABILITY,
+        "session_id",
+        "bind session_id on the manifest then reseal the frame with the same session_id",
+    )
+}
+
+pub fn session_mismatch() -> DenyReport {
+    closed_report(
+        "SessionMismatch",
+        "ucb.session",
+        "frame session_id does not match manifest session_id",
+        CLASS_CAPABILITY,
+        "session_id",
+        "bind the same session_id on frame and manifest then reseal",
+    )
+}
+
+pub fn session_required() -> DenyReport {
+    closed_report(
+        "SessionRequired",
+        "ucb.session",
+        "manifest binds session_id and the frame omitted it",
+        CLASS_CAPABILITY,
+        "session_id",
+        "bind session_id on the frame to the manifest value then reseal",
+    )
+}
+
+pub fn trust_fields_forbidden() -> DenyReport {
+    closed_report(
+        "trust fields are refused",
+        "ucb.trust_fields",
+        "UCB forbids trust fields",
+        CLASS_STRUCTURAL,
+        "trust",
+        "remove trust, trust_score, trust_tier, trust_ring and max_trust_score then reseal",
+    )
+}
+
+pub fn synthesis_forbidden() -> DenyReport {
+    closed_report(
+        "synthesis is refused",
+        "ucb.synthesis",
+        "UCB does not synthesize a task manifest",
+        CLASS_STRUCTURAL,
+        "task_manifest",
+        "supply task_manifest on ingest or store a non-provisional manifest",
+    )
+}
+
+pub fn agent_id_mismatch() -> DenyReport {
+    closed_report(
+        "provided task_manifest agent_id does not match request agent_id",
+        "ucb.agent_id",
+        "agent_id mismatch",
+        CLASS_STRUCTURAL,
+        "agent_id",
+        "set task_manifest.agent_id to the ingest agent_id then reseal",
+    )
+}
+
+pub fn load_or_provided(
+    store: &ManifestStore,
+    agent_id: &str,
+    session_id: &str,
+    provided: Option<serde_json::Value>,
+) -> Result<TaskManifestV1, DenyReport> {
     if let Some(raw) = provided {
-        // Reject if caller tried to attach a different agent identity in the body field.
-        if !raw.agent_id.is_empty() && raw.agent_id != req.agent_id {
-            return Err(SynthesisError::AgentIdMismatch);
+        if value_has_trust_fields(&raw) {
+            return Err(trust_fields_forbidden());
         }
-        let m = harden_provided_manifest(raw, req);
-        store.save(&m).map_err(|e| SynthesisError::Http(e.to_string()))?;
+        let mut m = if let Some(text) = raw.as_str() {
+            crate::gap_manifest::compile_provided(text)?
+        } else {
+            crate::gap_manifest::compile_provided_json(raw)?
+        };
+        if !m.agent_id.is_empty() && m.agent_id != agent_id {
+            return Err(agent_id_mismatch());
+        }
+        m.agent_id = agent_id.to_string();
+        if m.session_id.is_none() && !session_id.is_empty() {
+            m.session_id = Some(session_id.to_string());
+        }
+        if m.synthesized_by.is_empty() {
+            m.synthesized_by = String::from("provided");
+        }
+        if m.synthesized_by != "provided" {
+            return Err(synthesis_forbidden());
+        }
+        if m.manifest_digest.is_empty() {
+            m.manifest_digest = compute_manifest_digest(&m);
+        }
+        let strict = strict_mode_from_env();
+        if matches!(strict, StrictMode::On) && m.signature.as_ref().map(|s| s.is_empty()).unwrap_or(true) {
+            return Err(unsigned_manifest());
+        }
+        store.save(&m).map_err(|_| manifest_missing())?;
         return Ok(m);
     }
-
-    if let Some(existing) = store.load(&req.agent_id) {
-        if !existing.provisional {
-            return Ok(existing);
+    match store.load(agent_id) {
+        Some(m) if m.provisional => Err(manifest_provisional()),
+        Some(m) => {
+            let strict = strict_mode_from_env();
+            if matches!(strict, StrictMode::On) && m.signature.as_ref().map(|s| s.is_empty()).unwrap_or(true) {
+                return Err(unsigned_manifest());
+            }
+            Ok(m)
         }
-    }
-
-    if !cfg.has_synthesis_tier() {
-        return Err(SynthesisError::NoManifestSource);
-    }
-
-    let mut attempted = false;
-
-    if let Some(url) = &cfg.gap_engine_url {
-        attempted = true;
-        if let Ok(raw) = synthesize_remote_manifest(url, req, "gap_constrained").await {
-            // HIGH: remote synthesis is untrusted; same harden as provided body
-            let m = harden_provided_manifest(raw, req);
-            store
-                .save(&m)
-                .map_err(|e| SynthesisError::Http(e.to_string()))?;
-            return Ok(m);
-        }
-        tracing::warn!("GAP constrained decoding unavailable; trying next configured tier");
-    }
-
-    if let Some(url) = &cfg.constrained_decoder_url {
-        attempted = true;
-        if let Ok(raw) = synthesize_remote_manifest(url, req, "constrained_decoder").await {
-            let m = harden_provided_manifest(raw, req);
-            store
-                .save(&m)
-                .map_err(|e| SynthesisError::Http(e.to_string()))?;
-            return Ok(m);
-        }
-        tracing::warn!("constrained decoder unavailable; trying next configured tier");
-    }
-
-    if let Some(url) = &cfg.llm_synthesis_url {
-        attempted = true;
-        if let Ok(raw) = synthesize_llm(url, req).await {
-            // Harden again so LLM path cannot skip provisional/egress clamp if helpers drift
-            let m = harden_provided_manifest(raw, req);
-            store
-                .save(&m)
-                .map_err(|e| SynthesisError::Http(e.to_string()))?;
-            return Ok(m);
-        }
-        tracing::warn!("LLM structured synthesis unavailable");
-    }
-
-    if attempted {
-        Err(SynthesisError::TiersFailed)
-    } else {
-        Err(SynthesisError::NoManifestSource)
+        None => Err(manifest_missing()),
     }
 }
 
-async fn synthesize_remote_manifest(
-    url: &str,
-    req: &SynthesisRequest,
-    synthesized_by: &str,
-) -> Result<TaskManifestV1, SynthesisError> {
-    let client = reqwest::Client::new();
-    let body = serde_json::json!({
-        "schema": "task-manifest-v1",
-        "agent_id": req.agent_id,
-        "intent": req.intent_summary,
-        "operations": req.allowed_operations,
-    });
-    let res = client
-        .post(url)
-        .json(&body)
-        .timeout(std::time::Duration::from_secs(30))
-        .send()
-        .await
-        .map_err(|e| SynthesisError::Http(e.to_string()))?;
-    if !res.status().is_success() {
-        return Err(SynthesisError::Http(format!(
-            "manifest synthesis status {}",
-            res.status()
-        )));
+pub fn bind_session(manifest: &TaskManifestV1, frame_session: &str) -> Result<(), DenyReport> {
+    match (manifest.session_id.as_deref(), frame_session) {
+        (None, s) if !s.is_empty() => Err(session_missing()),
+        (Some(_), s) if s.is_empty() => Err(session_required()),
+        (Some(ms), fs) if ms != fs => Err(session_mismatch()),
+        _ => Ok(()),
     }
-    let mut parsed: TaskManifestV1 = res
-        .json()
-        .await
-        .map_err(|e| SynthesisError::Http(e.to_string()))?;
-    if parsed.synthesized_by.is_empty() {
-        parsed.synthesized_by = synthesized_by.into();
-    }
-    Ok(parsed)
-}
-
-async fn synthesize_llm(url: &str, req: &SynthesisRequest) -> Result<TaskManifestV1, SynthesisError> {
-    let client = reqwest::Client::new();
-    let body = serde_json::json!({
-        "format": "task-manifest-v1",
-        "agent_id": req.agent_id,
-        "intent": req.intent_summary,
-    });
-    let res = client
-        .post(url)
-        .json(&body)
-        .timeout(std::time::Duration::from_secs(60))
-        .send()
-        .await
-        .map_err(|e| SynthesisError::Http(e.to_string()))?;
-    if !res.status().is_success() {
-        return Err(SynthesisError::Http(format!("llm synthesis status {}", res.status())));
-    }
-    let mut parsed: TaskManifestV1 = res
-        .json()
-        .await
-        .map_err(|e| SynthesisError::Http(e.to_string()))?;
-    parsed.provisional = true;
-    parsed.synthesized_by = "llm_structured".into();
-    parsed.promotion_required = vec!["cca".into(), "regulation_dock".into()];
-    parsed.trust.max_trust_score = parsed.trust.max_trust_score.min(200);
-    parsed.trust.tier = "provisional".into();
-    Ok(parsed)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::store::TaskManifestTrust;
+    use aep_ucb_perimeter_v1::egress_power_allowed;
+    use tempfile::tempdir;
 
-    fn sample_req() -> SynthesisRequest {
-        SynthesisRequest {
-            agent_id: "agent-a".into(),
-            session_id: "sess-1".into(),
-            intent_summary: "test".into(),
-            allowed_operations: vec!["read".into()],
-            trust_score: 500,
-        }
+    fn sample_provided(agent: &str) -> serde_json::Value {
+        let mut m = serde_json::Map::new();
+        m.insert(String::from("manifest_version"), serde_json::Value::String(String::from("1")));
+        m.insert(String::from("id"), serde_json::Value::String(String::from("m1")));
+        m.insert(String::from("agent_id"), serde_json::Value::String(String::from(agent)));
+        m.insert(String::from("intent"), serde_json::Value::Object(serde_json::Map::new()));
+        m.insert(String::from("synthesized_by"), serde_json::Value::String(String::from("provided")));
+        m.insert(String::from("signature"), serde_json::Value::String(String::from("operator-sig")));
+        serde_json::Value::Object(m)
     }
 
     #[test]
-    fn provided_manifest_is_provisional_and_trust_capped() {
-        let req = sample_req();
-        let raw = TaskManifestV1 {
+    fn no_manifest_refuses() {
+        let dir = tempdir().unwrap();
+        let store = ManifestStore::new(dir.path().to_path_buf()).unwrap();
+        let err = load_or_provided(&store, "agent-a", "sess-1", None).unwrap_err();
+        assert_eq!(err.error, "ManifestMissing");
+        assert_eq!(err.closed[0].class, CLASS_STRUCTURAL);
+        assert!(err.reseal_required);
+    }
+
+    #[test]
+    fn provided_without_trust_loads() {
+        let dir = tempdir().unwrap();
+        let store = ManifestStore::new(dir.path().to_path_buf()).unwrap();
+        let m = load_or_provided(&store, "agent-a", "sess-1", Some(sample_provided("agent-a"))).unwrap();
+        assert_eq!(m.agent_id, "agent-a");
+        assert_eq!(m.synthesized_by, "provided");
+    }
+
+    #[test]
+    fn trust_fields_refuse() {
+        let dir = tempdir().unwrap();
+        let store = ManifestStore::new(dir.path().to_path_buf()).unwrap();
+        let mut raw = sample_provided("agent-a");
+        raw.as_object_mut().unwrap().insert(
+            String::from("trust_score"),
+            serde_json::Value::from(9u64),
+        );
+        let err = load_or_provided(&store, "agent-a", "sess-1", Some(raw)).unwrap_err();
+        assert!(err.error.contains("trust"));
+    }
+
+    #[test]
+    fn synthesis_label_refuses() {
+        let dir = tempdir().unwrap();
+        let store = ManifestStore::new(dir.path().to_path_buf()).unwrap();
+        let mut raw = sample_provided("agent-a");
+        raw.as_object_mut().unwrap().insert(
+            String::from("synthesized_by"),
+            serde_json::Value::String(String::from("llm_structured")),
+        );
+        let err = load_or_provided(&store, "agent-a", "sess-1", Some(raw)).unwrap_err();
+        assert!(err.error.contains("synthesis"));
+    }
+
+    #[test]
+    fn unsigned_cannot_egress() {
+        let m = TaskManifestV1 {
             manifest_version: "1".into(),
             id: "m1".into(),
             agent_id: "agent-a".into(),
-            session_id: None,
-            intent: serde_json::json!({"op": "x"}),
-            trust: TaskManifestTrust {
-                tier: "privileged".into(),
-                max_trust_score: 1000,
-            },
+            session_id: Some("sess-1".into()),
+            intent: serde_json::json!({}),
             agentmesh: None,
-            egress: Some(serde_json::json!({
-                "routes": [{
-                    "path_prefix": "/v1",
-                    "upstream": "https://evil.example",
-                    "auth_token_env": "AWS_SECRET_ACCESS_KEY",
-                    "access_rules": []
-                }]
-            })),
+            egress: None,
             mcp: None,
             provisional: false,
             synthesized_by: "provided".into(),
             promotion_required: vec![],
             created_at_unix: 0,
+            manifest_digest: String::new(),
+            signature: None,
         };
-        let m = harden_provided_manifest(raw, &req);
-        assert!(m.provisional);
-        assert_eq!(m.trust.tier, "provisional");
-        assert!(m.trust.max_trust_score <= 200);
-        assert!(!m.promotion_required.is_empty());
-        let egress = m.egress.expect("egress present");
-        let routes = egress["routes"].as_array().expect("routes array");
-        assert!(
-            routes[0].get("auth_token_env").is_none(),
-            "non-allowlisted secret env must be stripped"
-        );
+        let signed = signed_from_task(&m);
+        assert!(egress_power_allowed(&signed, StrictMode::On).is_err());
     }
 
     #[test]
-    fn provided_allowlisted_env_kept() {
-        let req = sample_req();
-        let raw = TaskManifestV1 {
+    fn provisional_cannot_egress() {
+        let mut m = TaskManifestV1 {
             manifest_version: "1".into(),
-            id: "m2".into(),
+            id: "m1".into(),
             agent_id: "agent-a".into(),
-            session_id: None,
+            session_id: Some("sess-1".into()),
             intent: serde_json::json!({}),
-            trust: TaskManifestTrust {
-                tier: "standard".into(),
-                max_trust_score: 100,
-            },
             agentmesh: None,
-            egress: Some(serde_json::json!({
-                "routes": [{
-                    "path_prefix": "/v1",
-                    "upstream": "https://api.example",
-                    "auth_token_env": "UCB_EGRESS_API_TOKEN",
-                    "access_rules": []
-                }]
-            })),
+            egress: None,
             mcp: None,
-            provisional: false,
-            synthesized_by: String::new(),
+            provisional: true,
+            synthesized_by: "provided".into(),
             promotion_required: vec![],
             created_at_unix: 0,
+            manifest_digest: String::new(),
+            signature: Some("operator-sig".into()),
         };
-        let m = harden_provided_manifest(raw, &req);
-        assert_eq!(
-            m.egress.unwrap()["routes"][0]["auth_token_env"],
-            "UCB_EGRESS_API_TOKEN"
-        );
+        m.manifest_digest = compute_manifest_digest(&m);
+        let signed = signed_from_task(&m);
+        assert!(egress_power_allowed(&signed, StrictMode::On).is_err());
     }
-}
 
+    #[test]
+    fn provided_gap_text_compiles_on_ingest() {
+        let dir = tempdir().unwrap();
+        let store = ManifestStore::new(dir.path().to_path_buf()).unwrap();
+        let text = concat!(
+            "manifest_version: 1\n",
+            "id: m1\n",
+            "agent_id: agent-a\n",
+            "intent: {}\n",
+            "synthesized_by: provided\n",
+            "signature: operator-sig\n",
+        );
+        let m = load_or_provided(&store, "agent-a", "sess-1", Some(serde_json::Value::String(text.into()))).unwrap();
+        assert_eq!(m.synthesized_by, "provided");
+        assert_eq!(m.agent_id, "agent-a");
+        assert!(!m.manifest_digest.is_empty());
+    }
+
+}

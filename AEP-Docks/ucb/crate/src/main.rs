@@ -1,3 +1,5 @@
+// @PAD: aep-ucb-public-contract-2.8.5
+// @GCDE: gaplune-decode hmac-sha256:ab54811d1526a0253fdd14253ff4ed74c94aafc36362f2c29fc94a24eef11c06
 //! AEP Universal Connect Bridge (UCB) - Rust binary entry point.
 
 use aep_ucb::auth::bootstrap_auth;
@@ -9,7 +11,7 @@ use std::sync::Arc;
 use tracing_subscriber::EnvFilter;
 
 #[derive(Debug, Parser)]
-#[command(name = "aep-ucb", about = "AEP 2.8 Universal Connect Bridge (Rust)")]
+#[command(name = "aep-ucb", about = "AEP 2.8.5 Universal Connect Bridge (Rust)")]
 struct Cli {
     #[arg(long, env = "UCB_HOST")]
     host: Option<String>,
@@ -42,13 +44,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "UCB API key generated. Use Authorization: Bearer <key> for protected endpoints."
             );
             eprintln!("UCB key preview: {preview}");
-            let recovery = config.data_dir.join("ucb-api-key.recovery.txt");
-            if recovery.is_file() {
-                eprintln!(
-                    "UCB key recovery file: {} (read once via docker compose exec aep cat /data/aep/ucb-api-key.recovery.txt)",
-                    recovery.display()
-                );
-            }
         }
     }
 
@@ -70,7 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     eprintln!(
         "AEP Universal Connect Bridge (UCB) listening on http://{addr} [rust]"
     );
-    eprintln!("Secured dock: foreign ingress + internet egress only (no internal lattice hop)");
+    eprintln!("Secured dock: foreign ingress + internet egress only (no internal lattice attach)");
 
     axum::serve(listener, app).await?;
     Ok(())

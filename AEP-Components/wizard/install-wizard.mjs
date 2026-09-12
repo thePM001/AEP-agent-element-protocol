@@ -28,7 +28,6 @@ const REPO_ROOT = resolve(__dirname, "../..");
 function parseArgs(argv) {
   return {
     nonInteractive: argv.includes("--non-interactive"),
-    skipHealth: argv.includes("--skip-health"),
     configOut: argv.find((a) => a.startsWith("--config="))?.split("=")[1],
   };
 }
@@ -167,7 +166,7 @@ async function main() {
     : await promptYesNo(rl, "Normal internet available?", true);
 
   const config = {
-    version: "2.8.0",
+    version: "2.8.5",
     base_node: {
       socket_base: socketBase,
       lattice_db: latticeDb,
@@ -187,16 +186,14 @@ async function main() {
   const latticeDbParent = dirname(expandHome(latticeDb));
   mkdirSync(latticeDbParent, { recursive: true });
 
-  if (!opts.skipHealth) {
-    console.log("\nRunning Base Node health check...");
-    const health = runHealthCheck(binaryPath, config, configPath);
-    if (health.status !== "ok") {
-      throw new Error(`Unexpected health status: ${health.status}`);
-    }
-    console.log("Health: OK");
-    console.log(`Docking ports: ${health.docking_ports.length}`);
-    console.log(`Action lattice events: ${health.action_lattice_events}`);
+  console.log("\nRunning Base Node health check...");
+  const health = runHealthCheck(binaryPath, config, configPath);
+  if (health.status !== "ok") {
+    throw new Error(`Unexpected health status: ${health.status}`);
   }
+  console.log("Health: OK");
+  console.log(`Docking ports: ${health.docking_ports.length}`);
+  console.log(`Action lattice events: ${health.action_lattice_events}`);
 
   const envPath = join(configDir, "lattice-channel.env");
   writeFileSync(

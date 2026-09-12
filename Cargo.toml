@@ -11,6 +11,7 @@ members = [
     "AEP-Components/wasm/crate",
     "AEP-Components/conformance/crate",
     "AEP-Docks/ucb/crate",
+    "AEP-Docks/ucb/perimeter-v1",
     "AEP-Components/admit/crate",
     "AEP-Components/admit-writing-walls/crate",
     "AEP-Components/admit-channel-order-walls/crate",

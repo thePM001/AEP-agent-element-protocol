@@ -1,3 +1,5 @@
+// @PAD: aep-ucb-public-contract-2.8.5
+// @GCDE: gaplune-decode hmac-sha256:ab54811d1526a0253fdd14253ff4ed74c94aafc36362f2c29fc94a24eef11c06
 //! Lattice-gated LLM delegation (inference_engine dock audit + outbound HTTP).
 
 use crate::bridge::{ingest_foreign_payload, UcbRuntime};
@@ -79,11 +81,7 @@ pub async fn delegate_to_foreign_model(rt: &Arc<UcbRuntime>, body: DelegateBody)
             protocol: Some(protocol.clone()),
             session_id: Some(session_id.clone()),
             agent_id: Some(agent_id.clone()),
-            provenance: Some(crate::ingress::Provenance {
-                source: protocol.clone(),
-                protocol: "ucb/1.0".into(),
-                session_id: session_id.clone(),
-            }),
+            provenance: Some(crate::ingress::Provenance::bound(&protocol, "ucb/1.0", &session_id)),
             payload: if model_output.is_object() {
                 model_output.clone()
             } else {
@@ -134,8 +132,7 @@ async fn lattice_gate_delegate(
         event_type: "UCB_DELEGATE".into(),
         session_id: session_id.to_string(),
         docking_port: "inference_engine".into(),
-        // TM-22: foreign delegate is provisional; never stamp elevated lattice trust.
-        trust_score: crate::ingress::FOREIGN_TRUST_DEFAULT,
+        dock_wire_score: crate::DOCK_WIRE_SCORE,
         payload: json!({
             "gateway": inference.provider,
             "model": inference.model,
@@ -150,7 +147,7 @@ async fn lattice_gate_delegate(
         .send_frame(
             &socket,
             built.frame,
-            event.trust_score,
+            event.dock_wire_score,
             built.signer_public_hex.as_deref(),
         )
         .await?;

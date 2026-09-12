@@ -1,6 +1,6 @@
 # CCA - Central Setup Agent
 
-**CCA (Central Setup Agent)** is the AEP 2.8 deployment architect. After Docker deploy and Base Node startup, CCA probes the environment, loads the full component registry, accepts natural-language deployment intent and produces an **ImplementationPlan** that setup-agent (or `plan-executor`) can activate. Composer Lite is the visual editor for the same plan format.
+**CCA (Central Setup Agent)** is the AEP 2.8.5 deployment architect. After Docker deploy and Base Node startup, CCA probes the environment, loads the full component registry, accepts natural-language deployment intent and produces an **ImplementationPlan** that setup-agent (or `plan-executor`) can activate. Composer Lite is the visual editor for the same plan format.
 
 | Property | Value |
 |----------|-------|
@@ -58,7 +58,7 @@ flowchart TB
 
 ### Default deployment model
 
-| Topic | Default in AEP 2.8 public tier |
+| Topic | Default in AEP 2.8.5 public tier |
 |-------|--------------------------------|
 | Validation engine | `validation_engine.mode = "none"` - no dedicated validation engine unless operator opts in |
 | CCA dock placement | CCA is **not** permanently on the validation dock |
@@ -97,7 +97,7 @@ node AEP-Components/cca/cca.mjs execute
 |---------|-------------|
 | `aep-cca probe` | Print `EnvironmentProfile` JSON (CPU, RAM, disk, GPU, constraints) |
 | `aep-cca context` | Print full registry knowledge bundle (components, docks, environment, **gap**) |
-| `aep-cca gap` | Print GAP language summary (meta-schema, policies, subprotocols) |
+| `aep-cca gap` | Print GAP language summary (meta-schema and policies) |
 | `aep-cca plan --intent "..."` | Generate and save `{AEP_DATA}/plans/active.json` |
 | `aep-cca plan --intent "..." --execute` | Generate then execute in one step |
 | `aep-cca execute` | Execute the current active plan |
@@ -227,7 +227,7 @@ CCA reads every bundled manifest via `component-catalog.mjs`:
 | `component` | Generic AEP component nodes |
 | `data_input` / `data_output` | Storage import/export |
 
-Infrastructure libraries (`lattice-crypto`, `lattice-channel`, `lattice-memory`, `lattice-transport`, `lattice-client`, `aep-typescript-sdk`) are enabled in the plan but omitted from canvas topology to reduce clutter.
+Infrastructure libraries (`lattice-crypto`, `lattice-channel`, `lattice-memory`, `lattice-transport`, `lattice-client`) are enabled in the plan but omitted from canvas topology to reduce clutter.
 
 ---
 
@@ -242,9 +242,11 @@ Infrastructure libraries (`lattice-crypto`, `lattice-channel`, `lattice-memory`,
 5. Enable `commerce.enabled: true` when `commerce-subprotocol` is in the plan
 6. Register Base Node and inference engine on lattice
 7. Save active plan and sync Composer graph via `plan-to-graph.mjs`
-8. Run health check on Base Node binary
+8. Run health check on Base Node binary. Health is required.
 9. Optionally run conformance runner when `conformance-runner` is enabled
 10. Request daemon reload
+
+Activation dock event is not Admit. Enqueue is not Admit. Ping is not Admit. Memory smoke search is not Admit. Looking similar to a past allow is not allow. UCB setup notes use operator key `UCB_API_KEY` when present and Predicate Profile `perimeter-v1`. UCB is not a second evaluator. There is no remote GAP engine URL and no `UCB_GAP_ENGINE_URL`.
 
 ### Executor options
 
@@ -252,7 +254,6 @@ Infrastructure libraries (`lattice-crypto`, `lattice-channel`, `lattice-memory`,
 |--------|---------|-------------|
 | `runConformance` | `true` | Run `conformance/runner/run.sh` when conformance-runner enabled |
 | `forceConformance` | `false` | Continue activation even if conformance fails |
-| `skipHealth` | `false` | Skip Base Node health probe |
 | `force` | `false` | Execute despite plan validation errors |
 | `validationEngine` | `{ id: "none" }` | Validation engine install plan |
 
@@ -329,7 +330,7 @@ cd AEP-Components/conformance/harness && npm install
 | `Dock ping failed` | Base Node not running | Start daemon, check `AEP_SOCKET_BASE` |
 | `LLM unavailable` | Missing API key | Set `OPENROUTER_API_KEY` or use rule-based mode |
 | `Plan validation failed` | Unknown component or RAM too low | `aep-cca validate` for errors; adjust intent |
-| Graph edits lost in plan | `plan_sync` not sent | Composer sends `plan_sync: true` on save (default since 2.8) |
+| Graph edits lost in plan | `plan_sync` not sent | Composer sends `plan_sync: true` on save (default since 2.8.5) |
 | Commerce disabled after execute | Policy default `enabled: false` | Fixed: executor sets `commerce.enabled: true` when commerce LRP active |
 | Writing lint failures | EPSCOM kernel | Remove em-dashes and Oxford commas from output strings |
 

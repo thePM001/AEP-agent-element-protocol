@@ -1,5 +1,7 @@
 //! Egress proxy: credential injection + firewall-style access rules (Airlock patterns).
 
+use aep_ucb_perimeter_v1::WireLimits;
+use axum::http::HeaderMap;
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 
@@ -173,7 +175,56 @@ pub struct ProxyResponse {
     pub body: Vec<u8>,
 }
 
-/// Fail-closed SSRF gate for egress upstream URLs.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EgressAudit {
+    pub agent_id: String,
+    pub route: String,
+    pub method: String,
+    pub host: String,
+    pub bytes: usize,
+    pub status: u16,
+    pub manifest_digest: String,
+}
+
+pub fn credential_inject_allowed(signed: bool, provisional: bool) -> bool {
+    signed && !provisional
+}
+
+/// Deny auth_token_env unless inject is allowed (signed and non-provisional).
+pub fn auth_token_env_denied(inject: bool, env_key: Option<&str>) -> bool {
+    env_key.map(str::trim).filter(|s| !s.is_empty()).is_some() && !inject
+}
+
+pub fn audit_host(upstream: &str) -> String {
+    reqwest::Url::parse(upstream)
+        .ok()
+        .and_then(|u| u.host_str().map(str::to_string))
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| upstream.to_string())
+}
+
+pub fn response_over_cap(len: usize) -> bool {
+    len > WireLimits::default().egress_default_bytes
+}
+
+pub fn is_isolated_caller_header(name: &str) -> bool {
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "authorization" | "connection" | "keep-alive" | "proxy-connection" | "transfer-encoding" | "upgrade" | "te" | "trailer"
+    )
+}
+
+pub fn strip_caller_headers(headers: &HeaderMap) -> HeaderMap {
+    let mut out = HeaderMap::new();
+    for (k, v) in headers.iter() {
+        if !is_isolated_caller_header(k.as_str()) {
+            out.append(k, v.clone());
+        }
+    }
+    out
+}
+
+/// SSRF gate for egress upstream URLs. Private, loopback and link-local hosts refuse.
 pub fn validate_upstream_url(url: &str) -> Result<(), String> {
     let parsed = reqwest::Url::parse(url).map_err(|e| format!("invalid upstream url: {e}"))?;
     let scheme = parsed.scheme().to_ascii_lowercase();
@@ -246,6 +297,17 @@ pub async fn proxy_request(
     remainder_path: &str,
     body: Option<Vec<u8>>,
 ) -> Result<ProxyResponse, String> {
+    proxy_request_isolated(route, method, remainder_path, body, true, None).await
+}
+
+pub async fn proxy_request_isolated(
+    route: &EgressRoute,
+    method: &str,
+    remainder_path: &str,
+    body: Option<Vec<u8>>,
+    inject: bool,
+    caller_headers: Option<&HeaderMap>,
+) -> Result<ProxyResponse, String> {
     if !evaluate_access(&route.access_rules, method, remainder_path) {
         return Ok(ProxyResponse {
             status: 403,
@@ -291,9 +353,12 @@ pub async fn proxy_request(
         }
     }
     let pinned = pinned.ok_or_else(|| "upstream DNS re-resolve returned no addresses".to_string())?;
+    let limits = WireLimits::default();
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .resolve(&host, pinned)
+        .connect_timeout(std::time::Duration::from_millis(limits.egress_connect_ms))
+        .timeout(std::time::Duration::from_millis(limits.egress_total_ms))
         .build()
         .map_err(|e| e.to_string())?;
     let mut req = match method.to_uppercase().as_str() {
@@ -305,15 +370,30 @@ pub async fn proxy_request(
         "HEAD" => client.head(&url),
         _ => return Err(format!("unsupported method {method}")),
     };
-    if let Some(env_key) = &route.auth_token_env {
-        if !auth_token_env_allowed(env_key) {
-            return Err(format!(
-                "auth_token_env not allowlisted: {env_key} (use UCB_EGRESS_* / UCB_AUTH_* or UCB_EGRESS_SECRET_ENV_ALLOWLIST)"
-            ));
+    if auth_token_env_denied(inject, route.auth_token_env.as_deref()) {
+        return Err("auth_token_env denied unless signed and non-provisional".into());
+    }
+    if let Some(headers) = caller_headers {
+        let stripped = strip_caller_headers(headers);
+        for (k, v) in stripped.iter() {
+            let name = k.as_str();
+            if name.eq_ignore_ascii_case("host") || name.eq_ignore_ascii_case("content-length") {
+                continue;
+            }
+            req = req.header(k, v);
         }
-        if let Ok(token) = std::env::var(env_key) {
-            if !token.is_empty() {
-                req = req.header("Authorization", format!("Bearer {token}"));
+    }
+    if inject {
+        if let Some(env_key) = &route.auth_token_env {
+            if !auth_token_env_allowed(env_key) {
+                return Err(format!(
+                    "auth_token_env not allowlisted: {env_key} (use UCB_EGRESS_* / UCB_AUTH_* or UCB_EGRESS_SECRET_ENV_ALLOWLIST)"
+                ));
+            }
+            if let Ok(token) = std::env::var(env_key) {
+                if !token.is_empty() {
+                    req = req.header("Authorization", format!("Bearer {token}"));
+                }
             }
         }
     }
@@ -330,11 +410,30 @@ pub async fn proxy_request(
         .get(reqwest::header::CONTENT_TYPE)
         .and_then(|v| v.to_str().ok())
         .map(str::to_string);
-    let bytes = res.bytes().await.map_err(|e| e.to_string())?;
+    if let Some(len) = res.content_length() {
+        if response_over_cap(len as usize) {
+            return Err("egress response over cap".into());
+        }
+    }
+    let cap = WireLimits::default().egress_default_bytes;
+    let mut acc: Vec<u8> = Vec::new();
+    let mut res = res;
+    loop {
+        match res.chunk().await {
+            Ok(Some(chunk)) => {
+                if acc.len().saturating_add(chunk.len()) > cap {
+                    return Err("egress response over cap".into());
+                }
+                acc.extend_from_slice(&chunk);
+            }
+            Ok(None) => break,
+            Err(e) => return Err(e.to_string()),
+        }
+    }
     Ok(ProxyResponse {
         status,
         content_type,
-        body: bytes.to_vec(),
+        body: acc,
     })
 }
 
@@ -365,6 +464,38 @@ mod tests {
         }];
         assert!(!evaluate_access(&rules, "GET", "/v1/models"));
         assert!(evaluate_access(&rules, "POST", "/v1/chat/completions"));
+    }
+
+    #[test]
+    fn unsigned_provisional_cannot_inject() {
+        assert!(!credential_inject_allowed(false, false));
+        assert!(!credential_inject_allowed(true, true));
+        assert!(credential_inject_allowed(true, false));
+        assert!(auth_token_env_denied(false, Some("UCB_EGRESS_TOKEN")));
+        assert!(!auth_token_env_denied(true, Some("UCB_EGRESS_TOKEN")));
+        assert!(!auth_token_env_denied(false, None));
+        assert!(!auth_token_env_denied(false, Some("")));
+    }
+
+    #[test]
+    fn audit_host_and_response_cap() {
+        assert_eq!(audit_host("https://example.com/v1/chat"), "example.com");
+        assert_eq!(audit_host("not-a-url"), "not-a-url");
+        let cap = WireLimits::default().egress_default_bytes;
+        assert!(!response_over_cap(cap));
+        assert!(response_over_cap(cap + 1));
+    }
+
+    #[test]
+    fn strips_authorization_and_connection() {
+        let mut h = HeaderMap::new();
+        h.insert("authorization", "Bearer secret".parse().unwrap());
+        h.insert("connection", "keep-alive".parse().unwrap());
+        h.insert("x-request-id", "abc".parse().unwrap());
+        let out = strip_caller_headers(&h);
+        assert!(!out.contains_key("authorization"));
+        assert!(!out.contains_key("connection"));
+        assert!(out.contains_key("x-request-id"));
     }
 
     #[test]

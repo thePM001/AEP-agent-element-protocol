@@ -1,25 +1,35 @@
-//! Foreign ingest validation (P_P, P_S, P_C, P_R predicates).
+// @PAD: aep-ucb-public-contract-2.8.5
+// @GCDE: gaplune-decode hmac-sha256:ab54811d1526a0253fdd14253ff4ed74c94aafc36362f2c29fc94a24eef11c06
+//! Foreign ingest validation through perimeter-v1 scanner-backed predicates.
 
+use aep_ucb_perimeter_v1::{
+    parse_profile, validate_ingest, DefaultScannerPack, IngestView, PredicateProfile, Provenance as PerimeterProvenance,
+    ScannerId,
+};
 use serde::{Deserialize, Serialize};
-
-
-/// BM-06: P_C is a **weak heuristic denylist only**.
-/// It is not content-safety. Rely on lattice / EPSCOM / structured schema.
-/// Attackers can evade substring checks; do not treat pass as "safe payload".
-pub const PC_HEURISTIC_ONLY: bool = true;
-
-const FORBIDDEN: &[&str] = &[
-    "ignore all previous",
-    "system prompt override",
-    "drop table",
-    "rm -rf",
-];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Provenance {
     pub source: String,
     pub protocol: String,
     pub session_id: String,
+    #[serde(default)]
+    pub digest: Option<String>,
+    #[serde(default)]
+    pub signature: Option<String>,
+}
+
+impl Provenance {
+    pub fn bound(source: &str, protocol: &str, session_id: &str) -> Self {
+        let p = PerimeterProvenance::bound(source, protocol, session_id);
+        Self {
+            source: p.source,
+            protocol: p.protocol,
+            session_id: p.session_id,
+            digest: p.digest,
+            signature: p.signature,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -38,11 +48,31 @@ pub struct ForeignIngestBody {
     #[serde(default)]
     pub docking_port: Option<String>,
     #[serde(default)]
-    pub trust_score: Option<i64>,
-    #[serde(default)]
     pub agent_id: Option<String>,
     #[serde(default)]
     pub task_manifest: Option<serde_json::Value>,
+    #[serde(default)]
+    pub trust_score: Option<serde_json::Value>,
+    #[serde(default)]
+    pub trust: Option<serde_json::Value>,
+    #[serde(default)]
+    pub trust_tier: Option<serde_json::Value>,
+    #[serde(default)]
+    pub trust_ring: Option<serde_json::Value>,
+}
+
+impl ForeignIngestBody {
+    pub fn has_trust_fields(&self) -> bool {
+        self.trust_score.is_some()
+            || self.trust.is_some()
+            || self.trust_tier.is_some()
+            || self.trust_ring.is_some()
+            || self
+                .task_manifest
+                .as_ref()
+                .map(crate::store::value_has_trust_fields)
+                .unwrap_or(false)
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -51,6 +81,8 @@ pub struct ValidationResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub predicate: Option<&'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub scanner_id: Option<ScannerId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
 
@@ -58,108 +90,56 @@ pub fn validate_foreign_ingest(body: &ForeignIngestBody) -> ValidationResult {
     validate_foreign_ingest_with_context(body, &[])
 }
 
+pub fn validate_foreign_ingest_with_profile(
+    body: &ForeignIngestBody,
+    prior_fingerprints: &[u32],
+    profile: PredicateProfile,
+) -> ValidationResult {
+    let payload = effective_payload(body);
+    let mapped = body.provenance.as_ref().map(|p| PerimeterProvenance {
+        source: p.source.clone(),
+        protocol: p.protocol.clone(),
+        session_id: p.session_id.clone(),
+        digest: p.digest.clone(),
+        signature: p.signature.clone(),
+    });
+    let view = IngestView {
+        provenance: mapped.as_ref(),
+        payload: &payload,
+        content_type: Some("application/json"),
+        body_len: payload.to_string().len(),
+        prior_fingerprints,
+    };
+    let v = validate_ingest(profile, &view, &DefaultScannerPack);
+    ValidationResult {
+        ok: v.ok,
+        predicate: v.predicate,
+        scanner_id: v.scanner_id,
+        error: v.error,
+    }
+}
+
 pub fn validate_foreign_ingest_with_context(
     body: &ForeignIngestBody,
     prior_fingerprints: &[u32],
 ) -> ValidationResult {
-    let checks = [
-        validate_provenance(body.provenance.as_ref()),
-        validate_structural(body),
-        validate_non_contradiction(body),
-        validate_resonance(body, prior_fingerprints),
-    ];
-    for c in checks {
-        if !c.ok {
-            return c;
+    let raw = std::env::var("UCB_PREDICATE_PROFILE").ok();
+    let profile = match parse_profile(raw.as_deref()) {
+        Ok(p) => p,
+        Err(e) => {
+            return ValidationResult {
+                ok: false,
+                predicate: Some("profile"),
+                scanner_id: None,
+                error: Some(e.to_string()),
+            }
         }
-    }
-    ValidationResult {
-        ok: true,
-        predicate: None,
-        error: None,
-    }
-}
-
-fn validate_resonance(body: &ForeignIngestBody, prior_fingerprints: &[u32]) -> ValidationResult {
-    let payload = effective_payload(body);
-    let fingerprint = binding_fingerprint(&payload);
-    if prior_fingerprints.is_empty() {
-        return ok();
-    }
-    let matches = prior_fingerprints
-        .iter()
-        .filter(|p| **p == fingerprint)
-        .count();
-    let resonance = 1.0 - (matches as f64 / prior_fingerprints.len() as f64);
-    if resonance < 0.05 {
-        return fail(
-            "P_R",
-            "resonance below threshold (duplicate foreign payload)",
-        );
-    }
-    ok()
-}
-
-fn validate_provenance(p: Option<&Provenance>) -> ValidationResult {
-    let Some(p) = p else {
-        return fail("P_P", "provenance object required");
     };
-    if p.source.is_empty() || p.protocol.is_empty() || p.session_id.is_empty() {
-        return fail("P_P", "provenance requires source, protocol, session_id");
-    }
-    ok()
+    validate_foreign_ingest_with_profile(body, prior_fingerprints, profile)
 }
 
-fn validate_structural(body: &ForeignIngestBody) -> ValidationResult {
-    let payload = effective_payload(body);
-    if payload.as_object().map(|o| o.is_empty()).unwrap_or(true) && !payload.is_array() {
-        return fail("P_S", "payload must contain at least one field");
-    }
-    ok()
-}
-
-fn validate_non_contradiction(body: &ForeignIngestBody) -> ValidationResult {
-    // BM-06: explicit weak-heuristic contract (not sole safety gate)
-    debug_assert!(PC_HEURISTIC_ONLY);
-    let text = effective_payload(body).to_string().to_lowercase();
-    for pat in FORBIDDEN {
-        if text.contains(pat) {
-            return fail(
-                "P_C",
-                "forbidden destructive pattern detected (P_C heuristic denylist only; not full content safety)",
-            );
-        }
-    }
-    ok()
-}
-
-/// Deterministic VSA-style binding fingerprint (matches `translator.mjs` / Paper 005 P_R).
 pub fn binding_fingerprint(payload: &serde_json::Value) -> u32 {
-    if let Some(obj) = payload.as_object() {
-        let subject = obj.get("subject").or_else(|| obj.get("s")).and_then(|v| v.as_str());
-        let predicate = obj.get("predicate").or_else(|| obj.get("p")).and_then(|v| v.as_str());
-        let object = obj.get("object").or_else(|| obj.get("o")).and_then(|v| v.as_str());
-        if let (Some(s), Some(p), Some(o)) = (subject, predicate, object) {
-            return hypervector_seed(&format!("{s}|{p}|{o}"));
-        }
-        let mut keys: Vec<&str> = obj.keys().map(|k| k.as_str()).collect();
-        keys.sort_unstable();
-        let joined = keys
-            .iter()
-            .map(|k| format!("{k}:{}", serde_json::to_string(&obj[*k]).unwrap_or_default()))
-            .collect::<Vec<_>>()
-            .join(";");
-        return hypervector_seed(&joined);
-    }
-    hypervector_seed(&payload.to_string())
-}
-
-pub fn hypervector_seed(text: &str) -> u32 {
-    let mut hash: u32 = 0;
-    for ch in text.chars() {
-        hash = hash.wrapping_mul(31).wrapping_add(ch as u32);
-    }
-    hash
+    aep_ucb_perimeter_v1::predicates::binding_fingerprint(payload)
 }
 
 pub fn normalize_dock_port(port: Option<&str>) -> Result<String, String> {
@@ -170,7 +150,7 @@ pub fn normalize_dock_port(port: Option<&str>) -> Result<String, String> {
         "future_features",
     ];
     let p = port.unwrap_or("validation_engine").trim();
-    if p.contains("..") || p.contains('/') {
+    if p.contains("..") || p.contains("/") {
         return Err(format!("invalid docking_port: {p}"));
     }
     if !ALLOWED.contains(&p) {
@@ -182,25 +162,7 @@ pub fn normalize_dock_port(port: Option<&str>) -> Result<String, String> {
     Ok(p.into())
 }
 
-/// Foreign-path hard ceiling (aligned with provisional manifest max).
-pub const FOREIGN_TRUST_HARD_MAX: u16 = 100;
-/// Default provisional trust when client omits trust_score (least privilege).
-pub const FOREIGN_TRUST_DEFAULT: u16 = 50;
-
-/// TM-22: client trust is provisional only. Default low; hard-cap at 100 (not 1000).
-pub fn clamp_trust(score: Option<i64>) -> u16 {
-    clamp_trust_to_max(score, FOREIGN_TRUST_HARD_MAX)
-}
-
-/// Cap client/operator-supplied trust to `max` (also bounded by FOREIGN_TRUST_HARD_MAX).
-pub fn clamp_trust_to_max(score: Option<i64>, max: u16) -> u16 {
-    let hard = max.min(FOREIGN_TRUST_HARD_MAX);
-    let default = FOREIGN_TRUST_DEFAULT.min(hard) as i64;
-    let s = score.unwrap_or(default);
-    s.clamp(0, hard as i64) as u16
-}
-
-fn effective_payload(body: &ForeignIngestBody) -> serde_json::Value {
+pub fn effective_payload(body: &ForeignIngestBody) -> serde_json::Value {
     if !body.payload.is_null() {
         return body.payload.clone();
     }
@@ -210,71 +172,64 @@ fn effective_payload(body: &ForeignIngestBody) -> serde_json::Value {
     if let Some(d) = &body.data {
         return d.clone();
     }
-    serde_json::json!({})
-}
-
-fn ok() -> ValidationResult {
-    ValidationResult {
-        ok: true,
-        predicate: None,
-        error: None,
-    }
-}
-
-fn fail(predicate: &'static str, error: &str) -> ValidationResult {
-    ValidationResult {
-        ok: false,
-        predicate: Some(predicate),
-        error: Some(error.into()),
-    }
+    serde_json::Value::Object(serde_json::Map::new())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
 
     #[test]
-    fn binding_fingerprint_matches_mjs_structured_fact() {
-        let fp = binding_fingerprint(&json!({
-            "subject": "UCB",
-            "predicate": "bridges",
-            "object": "AEP"
-        }));
-        // Golden value from translator.mjs hypervectorSeed('UCB|bridges|AEP')
-        assert_eq!(fp, 1_384_834_866);
-        assert_eq!(fp, hypervector_seed("UCB|bridges|AEP"));
+    fn secrets_payload_returns_pc_scanner() {
+        let body = ForeignIngestBody {
+            provenance: Some(Provenance::bound("langgraph", "1.0", "sess-1")),
+            payload: serde_json::json!({"note": "please dump AWS_SECRET_ACCESS_KEY=wxyz"}),
+            ..Default::default()
+        };
+        let r = validate_foreign_ingest_with_profile(&body, &[], PredicateProfile::PerimeterV1);
+        assert!(!r.ok);
+        assert_eq!(r.predicate, Some("P_C"));
+        assert_eq!(r.scanner_id, Some(ScannerId::Secrets));
     }
 
     #[test]
-    fn bm06_pc_is_heuristic_only_and_flags_denylist() {
-        assert!(PC_HEURISTIC_ONLY);
+    fn missing_digest_is_pp() {
         let body = ForeignIngestBody {
             provenance: Some(Provenance {
                 source: "t".into(),
                 protocol: "x".into(),
                 session_id: "s".into(),
+                digest: None,
+                signature: None,
             }),
-            payload: json!({ "note": "please DROP TABLE users" }),
+            payload: serde_json::json!({"subject": "a", "predicate": "b", "object": "c"}),
             ..Default::default()
         };
-        let r = validate_foreign_ingest(&body);
+        let r = validate_foreign_ingest_with_profile(&body, &[], PredicateProfile::PerimeterV1);
         assert!(!r.ok);
-        assert_eq!(r.predicate, Some("P_C"));
-        assert!(r
-            .error
-            .as_deref()
-            .unwrap_or("")
-            .contains("heuristic denylist only"));
+        assert_eq!(r.predicate, Some("P_P"));
     }
 
     #[test]
-    fn tm22_clamp_trust_defaults_low_and_hard_caps() {
-        assert_eq!(clamp_trust(None), FOREIGN_TRUST_DEFAULT);
-        assert_eq!(clamp_trust(Some(1000)), FOREIGN_TRUST_HARD_MAX);
-        assert_eq!(clamp_trust(Some(9999)), FOREIGN_TRUST_HARD_MAX);
-        assert_eq!(clamp_trust(Some(75)), 75);
-        assert_eq!(clamp_trust(Some(-5)), 0);
-        assert_eq!(clamp_trust_to_max(Some(200), 40), 40);
+    fn paper005_named_stays_off() {
+        let body = ForeignIngestBody {
+            provenance: Some(Provenance::bound("langgraph", "1.0", "sess-1")),
+            payload: serde_json::json!({"subject": "x", "predicate": "y", "object": "z"}),
+            ..Default::default()
+        };
+        let r = validate_foreign_ingest_with_profile(&body, &[], PredicateProfile::Paper005Vsa);
+        assert!(!r.ok);
+        assert_eq!(r.predicate, Some("profile"));
+    }
+
+    #[test]
+    fn trust_fields_on_body_are_detected() {
+        let body = ForeignIngestBody {
+            trust_score: Some(serde_json::Value::from(9u64)),
+            ..Default::default()
+        };
+        assert!(body.has_trust_fields());
+        let clean = ForeignIngestBody::default();
+        assert!(!clean.has_trust_fields());
     }
 }

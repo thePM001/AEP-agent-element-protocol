@@ -2,7 +2,9 @@
 
 /**
  * CCA GAP policies for Composer Lite hyperlattice.
- * Validates via local NLA gapc engine (no external LLM).
+ * No external LLM. Optional remote schema validate uses NLA_GAP_ENGINE_URL only when set.
+ * When that variable is unset, health and validate skip the network and do not invent a URL.
+ * Public UCB compile is local gap-manifest-v1 and is not this path.
  */
 
 import { existsSync } from "node:fs";
@@ -22,32 +24,58 @@ export const CCA_GAP_POLICY_FILES = [
   "cca-hyperlattice.gap",
 ];
 
-export function resolveGapEngineUrl(env = process.env) {
-  if (env.NLA_GAP_ENGINE_URL) return env.NLA_GAP_ENGINE_URL.replace(/\/$/, "");
-  if (env.UCB_GAP_ENGINE_URL) return env.UCB_GAP_ENGINE_URL.replace(/\/$/, "");
-  if (existsSync("/.dockerenv")) {
-    const gateway = env.DOCKER_HOST_GATEWAY ?? "172.23.0.1";
-    return `http://${gateway}:8407`;
-  }
-  return "http://127.0.0.1:8407";
+export const GAP_ENGINE_UNSET_REASON =
+  "NLA_GAP_ENGINE_URL is unset; remote GAP engine is not called";
+
+function trimEngineUrl(raw) {
+  if (typeof raw !== "string") return "";
+  return raw.trim().replace(/\/$/, "");
 }
 
-export function loadCcaGapPolicies(repoRoot) {
+function envValue(env, key) {
+  if (env && typeof env === "object") return env[key];
+  return undefined;
+}
+
+export function resolveGapEngineUrl(env = process.env) {
+  const nla = trimEngineUrl(envValue(env, "NLA_GAP_ENGINE_URL"));
+  if (nla) return nla;
+  return null;
+}
+
+export function gapEngineConfigured(env = process.env) {
+  return resolveGapEngineUrl(env) !== null;
+}
+
+function skippedEngineResult(extra = {}) {
+  return {
+    ok: false,
+    configured: false,
+    skipped: true,
+    reason: GAP_ENGINE_UNSET_REASON,
+    ...extra,
+  };
+}
+
+export function loadCcaGapPolicies(repoRoot, env = process.env) {
   const root = repoRoot ?? join(COMPOSER_ROOT, "..");
   const refDir = join(root, COMPOSER_CCA_GAP_POLICIES_DIR);
+  const engine = resolveGapEngineUrl(env);
   const policies = [];
   for (const file of CCA_GAP_POLICY_FILES) {
     const path = join(refDir, file);
-    if (!existsSync(path)) continue;
+    if (existsSync(path) === false) continue;
     const parsed = parseGapFile(path);
+    const instruction = parsed.instruction;
+    const address = instruction && instruction.address ? instruction.address : null;
     policies.push({
       file,
       path: `${COMPOSER_CCA_GAP_POLICIES_DIR}/${file}`,
-      address: parsed.instruction?.address ?? null,
-      instruction: parsed.instruction,
+      address,
+      instruction,
       runtime: parsed.runtime,
-      synthesized_by: "gapc_validated",
-      engine: resolveGapEngineUrl(),
+      synthesized_by: engine ? "gapc_validated" : "local_gap_parse",
+      engine,
     });
   }
   return policies;
@@ -55,13 +83,16 @@ export function loadCcaGapPolicies(repoRoot) {
 
 export async function gapEngineHealth(env = process.env) {
   const base = resolveGapEngineUrl(env);
+  if (base === null) return skippedEngineResult();
   const res = await fetch(`${base}/api/v1/health`, { signal: AbortSignal.timeout(5000) });
-  if (!res.ok) throw new Error(`GAP engine health failed (${res.status})`);
-  return res.json();
+  if (res.ok === false) throw new Error(`GAP engine health failed (${res.status})`);
+  const body = await res.json();
+  return { ...body, configured: true, skipped: false, engine: base };
 }
 
 export async function validateGapDocument(document, env = process.env) {
   const base = resolveGapEngineUrl(env);
+  if (base === null) return skippedEngineResult();
   const res = await fetch(`${base}/api/v1/validate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -69,45 +100,83 @@ export async function validateGapDocument(document, env = process.env) {
     signal: AbortSignal.timeout(15000),
   });
   const body = await res.json();
-  if (!res.ok) {
+  if (res.ok === false) {
     throw new Error(body.error ?? `GAP validate failed (${res.status})`);
   }
   return body;
 }
 
 export async function validateCcaGapPolicies(repoRoot, env = process.env) {
-  const policies = loadCcaGapPolicies(repoRoot);
+  const policies = loadCcaGapPolicies(repoRoot, env);
+  const base = resolveGapEngineUrl(env);
+  if (base === null) {
+    return {
+      ok: false,
+      configured: false,
+      skipped: true,
+      engine: null,
+      reason: GAP_ENGINE_UNSET_REASON,
+      policies: policies.map((p) => ({
+        file: p.file,
+        ok: false,
+        skipped: true,
+        error: GAP_ENGINE_UNSET_REASON,
+      })),
+    };
+  }
   const results = [];
   for (const policy of policies) {
-    if (!policy.instruction) {
+    if (policy.instruction) {
+      try {
+        const v = await validateGapDocument(policy.instruction, env);
+        results.push({ file: policy.file, address: policy.address, ...v });
+      } catch (err) {
+        results.push({ file: policy.file, ok: false, error: err.message });
+      }
+    } else {
       results.push({ file: policy.file, ok: false, error: "missing instruction document" });
-      continue;
-    }
-    try {
-      const v = await validateGapDocument(policy.instruction, env);
-      results.push({ file: policy.file, address: policy.address, ...v });
-    } catch (err) {
-      results.push({ file: policy.file, ok: false, error: err.message });
     }
   }
   return {
     ok: results.every((r) => r.ok !== false),
-    engine: resolveGapEngineUrl(env),
+    configured: true,
+    skipped: false,
+    engine: base,
     policies: results,
   };
 }
 
 export function ccaWritingConstraintsFromGap(policies = []) {
   const writing = policies.find((p) => p.file === "cca-writing-chat.gap");
-  return writing?.instruction?.pattern?.constraints ?? [];
+  if (
+    writing
+    && writing.instruction
+    && writing.instruction.pattern
+    && writing.instruction.pattern.constraints
+  ) {
+    return writing.instruction.pattern.constraints;
+  }
+  return [];
 }
 
 export function formatCcaGapPoliciesForPrompt(policies = []) {
   const lines = ["CCA GAP policies (NLA gapc engine, schema-validated, no external LLM):"];
   for (const p of policies) {
-    const addr = p.address ? `${p.address.domain}/${p.address.id}` : p.file;
-    const constraints = p.instruction?.pattern?.constraints ?? [];
-    lines.push(`- ${addr}: ${p.instruction?.action?.content ?? ""}`);
+    const addr =
+      p.address && p.address.domain && p.address.id
+        ? `${p.address.domain}/${p.address.id}`
+        : p.file;
+    const constraints =
+      p.instruction
+      && p.instruction.pattern
+      && p.instruction.pattern.constraints
+        ? p.instruction.pattern.constraints
+        : [];
+    const content =
+      p.instruction && p.instruction.action && p.instruction.action.content
+        ? p.instruction.action.content
+        : "";
+    lines.push(`- ${addr}: ${content}`);
     if (constraints.length) lines.push(`  constraints: ${constraints.join(", ")}`);
   }
   return lines.join("\n");

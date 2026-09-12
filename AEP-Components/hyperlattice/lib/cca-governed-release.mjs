@@ -16,6 +16,8 @@ import {
   loadCcaGapPolicies,
   validateGapDocument,
   gapEngineHealth,
+  gapEngineConfigured,
+  GAP_ENGINE_UNSET_REASON,
 } from "./gap-constrained-engine.mjs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,15 +37,27 @@ export const CCA_HYPERLATTICE_ACTIONS = {
 export const CCA_COMPOSER_PROTOCOL = buildComposerProtocolSpec();
 
 async function assertCcaGapPoliciesOnline(env = process.env) {
-  const policies = loadCcaGapPolicies(__repoRoot);
+  const policies = loadCcaGapPolicies(__repoRoot, env);
   const writing = policies.find((p) => p.file === "cca-writing-chat.gap");
-  if (!writing?.instruction) {
+  if ( ! writing  ?.  instruction) {
     throw new Error("CCA GAP policy cca-writing-chat.gap missing; run materialize-cca-gap.mjs");
+  }
+  if (gapEngineConfigured(env) === false) {
+    return {
+      policies,
+      writing_validation: {
+        ok: true,
+        skipped: true,
+        configured: false,
+        reason: GAP_ENGINE_UNSET_REASON,
+      },
+      engine_skipped: true,
+    };
   }
   await gapEngineHealth(env);
   const validated = await validateGapDocument(writing.instruction, env);
-  if (!validated.ok) {
-    throw new Error(`GAP engine rejected cca-writing-chat.gap: ${validated.errors?.join("; ")}`);
+  if ( ! validated.ok) {
+    throw new Error(`GAP engine rejected cca-writing-chat.gap: ${validated.errors  ?.  join("; ")}`);
   }
   return { policies, writing_validation: validated };
 }
@@ -63,30 +77,30 @@ function latticeOptsFrom(opts = {}) {
 }
 
 export function assertCcaHyperlatticeDockStages(stages, opts = {}) {
-  if (!opts.socketBase || !latticeStrictEnabled(opts.env)) return;
+  if ( ! opts.socketBase || ! latticeStrictEnabled(opts.env)) return;
   const failures = stages.filter(
     (s) =>
-      s?.skipped !== "lattice_not_strict"
-      && (!s?.recorded || s?.audit_error),
+      s  ?.  skipped !== "lattice_not_strict"
+      && ( ! s  ?.  recorded || s  ?.  audit_error),
   );
-  if (!failures.length) return;
+  if ( ! failures.length) return;
   const detail = failures
     .map((s) => {
-      const path = s.action_path ?? s.dock ?? "unknown";
+      const path = s.action_path   ??   s.dock   ??   "unknown";
       return s.audit_error ? `${path}: ${s.audit_error}` : `${path}: not recorded`;
     })
     .join("; ");
-  const err = new Error(`Hyperlattice dock audit failed (fail-closed): ${detail}`);
+  const err = new Error(`Hyperlattice dock audit failed (DENY on miss): ${detail}`);
   err.violations = failures.map((s) => ({
     rule: "hyperlattice_dock_audit",
-    message: s.audit_error ?? "dock stage not recorded",
-    action_path: s.action_path ?? s.dock,
+    message: s.audit_error   ??   "dock stage not recorded",
+    action_path: s.action_path   ??   s.dock,
   }));
   throw err;
 }
 
 function recordCcaLatticeStage(socketBase, stage, payload, opts = {}) {
-  if (!socketBase || !latticeStrictEnabled(opts.env)) {
+  if ( ! socketBase || ! latticeStrictEnabled(opts.env)) {
     return { recorded: false, skipped: "lattice_not_strict" };
   }
   const requireRecord = opts.requireDockRecord === true;
@@ -129,16 +143,16 @@ function recordCcaLatticeStage(socketBase, stage, payload, opts = {}) {
     },
   }[stage];
 
-  if (!spec) throw new Error(`unknown CCA hyperlattice stage: ${stage}`);
+  if ( ! spec) throw new Error(`unknown CCA hyperlattice stage: ${stage}`);
 
   const event = {
     agent_id: "cca",
     channel_id: spec.channel_id,
     contract_id: "aep-275-eval-chain",
     event_type: spec.event_type,
-    session_id: opts.sessionId ?? "cca-chat-session",
+    session_id: opts.sessionId   ??   "cca-chat-session",
     docking_port: spec.docking_port,
-    trust_score: opts.trustScore ?? 750,
+    trust_score: opts.trustScore   ??   750,
     payload: {
       action_path: spec.action_path,
       topology: "hyperlattice",
@@ -160,7 +174,7 @@ function recordCcaLatticeStage(socketBase, stage, payload, opts = {}) {
     };
     if (requireRecord) {
       const blocked = new Error(
-        `Hyperlattice dock audit failed (fail-closed): ${spec.action_path}: ${err.message}`,
+        `Hyperlattice dock audit failed (DENY on miss): ${spec.action_path}: ${err.message}`,
       );
       blocked.violations = [
         {
@@ -176,13 +190,13 @@ function recordCcaLatticeStage(socketBase, stage, payload, opts = {}) {
 }
 
 /**
- * Fail-closed CCA reply release through the Composer Lite hyperlattice wrap.
+ * DENY on miss CCA reply release through the Composer Lite hyperlattice wrap.
  * EPSCOM writing.gap (kernel) + lattice validation_engine audit before UI release.
  */
 export async function releaseCcaReplyViaHyperlattice(text, opts = {}) {
   const stages = [];
-  const mode = opts.mode ?? "chat";
-  const ccaChat = opts.ccaChat ?? mode === "chat";
+  const mode = opts.mode   ??   "chat";
+  const ccaChat = opts.ccaChat   ??   mode === "chat";
   let gapPolicyValidation = null;
 
   try {
@@ -191,11 +205,11 @@ export async function releaseCcaReplyViaHyperlattice(text, opts = {}) {
 
     const writingValidation = validateCcaChatWritingDraft(text, {
       ccaChat,
-      greeting: opts.greeting ?? false,
-      writingHelp: opts.writingHelp ?? false,
+      greeting: opts.greeting   ??   false,
+      writingHelp: opts.writingHelp   ??   false,
       ...latticeOptsFrom(opts),
     });
-    if (!writingValidation.ok) {
+    if ( ! writingValidation.ok) {
       const err = new Error(
         `CCA hyperlattice writing.gap blocked draft: ${writingValidation.violations.map((v) => v.rule).join(", ")}`,
       );
@@ -206,8 +220,8 @@ export async function releaseCcaReplyViaHyperlattice(text, opts = {}) {
 
     assertCcaChatWritingDraft(text, {
       ccaChat,
-      greeting: opts.greeting ?? false,
-      writingHelp: opts.writingHelp ?? false,
+      greeting: opts.greeting   ??   false,
+      writingHelp: opts.writingHelp   ??   false,
       ...latticeOptsFrom(opts),
     });
 
@@ -218,7 +232,7 @@ export async function releaseCcaReplyViaHyperlattice(text, opts = {}) {
           "validate_writing",
           {
             mode,
-            text_len: String(text ?? "").length,
+            text_len: String(text   ??   "").length,
             policy: CCA_WRITING_GAP_POLICY,
             writing_validation: writingValidation,
             greeting_mode: writingValidation.greeting_mode,
@@ -230,7 +244,7 @@ export async function releaseCcaReplyViaHyperlattice(text, opts = {}) {
     }
 
     const released = {
-      text: String(text ?? ""),
+      text: String(text   ??   ""),
       validation: writingValidation,
     };
 
@@ -264,9 +278,9 @@ export async function releaseCcaReplyViaHyperlattice(text, opts = {}) {
         gap_policy: {
           ...CCA_WRITING_GAP_POLICY,
           cca_gap_address:
-            gapPolicyValidation?.policies?.find((p) => p.file === "cca-writing-chat.gap")?.address ?? null,
+            gapPolicyValidation  ?.  policies  ?.  find((p) => p.file === "cca-writing-chat.gap")  ?.  address   ??   null,
         },
-        gap_engine_validation: gapPolicyValidation?.writing_validation ?? null,
+        gap_engine_validation: gapPolicyValidation  ?.  writing_validation   ??   null,
         action_paths: [
           CCA_HYPERLATTICE_ACTIONS.chat,
           CCA_HYPERLATTICE_ACTIONS.validateWriting,
@@ -294,17 +308,17 @@ export async function releaseCcaReplyViaHyperlattice(text, opts = {}) {
       lattice_stages: stages,
       dock_audit_ok: false,
       dock_audit_warnings: stages
-        .filter((s) => s?.audit_error)
+        .filter((s) => s  ?.  audit_error)
         .map((s) => `${s.action_path}: ${s.audit_error}`),
     };
     const error = new Error(err.message);
-    error.violations = err.violations ?? [];
+    error.violations = err.violations   ??   [];
     error.hyperlattice_validation = blocked;
     error.writing_validation = {
       ok: false,
       authority: "epscom-core",
       violations:
-        err.violations?.length > 0
+        err.violations  ?.  length > 0
           ? err.violations
           : [{ rule: "release_blocked", message: err.message }],
     };
@@ -314,13 +328,13 @@ export async function releaseCcaReplyViaHyperlattice(text, opts = {}) {
 
 /**
  * Validate CCA topology (plan or graph suggestion) through hyperlattice composer_protocol rules.
- * Throws if invalid (fail-closed before canvas apply).
+ * Throws if invalid (DENY on miss before canvas apply).
  */
 export function validateCcaTopologyViaHyperlattice(topology, opts = {}) {
   const stages = [];
-  const validation = validateComposerTopology(topology ?? {});
+  const validation = validateComposerTopology(topology   ??   {});
 
-  const dockOpts = { ...opts, sessionId: opts.sessionId ?? "cca-topology-validate", requireDockRecord: true };
+  const dockOpts = { ...opts, sessionId: opts.sessionId   ??   "cca-topology-validate", requireDockRecord: true };
 
   if (opts.socketBase) {
     stages.push(
@@ -329,8 +343,8 @@ export function validateCcaTopologyViaHyperlattice(topology, opts = {}) {
         "topology_propose",
         {
           composer_protocol: CCA_COMPOSER_PROTOCOL.id,
-          node_count: topology?.nodes?.length ?? 0,
-          edge_count: topology?.edges?.length ?? 0,
+          node_count: topology  ?.  nodes  ?.  length   ??   0,
+          edge_count: topology  ?.  edges  ?.  length   ??   0,
         },
         dockOpts,
       ),
@@ -349,7 +363,7 @@ export function validateCcaTopologyViaHyperlattice(topology, opts = {}) {
     );
   }
 
-  if (!validation.valid) {
+  if ( ! validation.valid) {
     const err = new Error(
       `Composer protocol blocked topology: ${validation.errors.join("; ")}`,
     );
@@ -398,15 +412,15 @@ export function validateCcaTopologyViaHyperlattice(topology, opts = {}) {
 
 /** Record CCA inference request on hyperlattice inference_engine dock. */
 export function recordCcaChatInference(meta, opts = {}) {
-  if (!opts.socketBase) return { recorded: false };
+  if ( ! opts.socketBase) return { recorded: false };
   return recordCcaLatticeStage(
     opts.socketBase,
     "chat",
     {
-      mode: meta.mode ?? "chat",
-      message_len: String(meta.message ?? "").length,
-      provider: meta.provider ?? null,
-      model: meta.model ?? null,
+      mode: meta.mode   ??   "chat",
+      message_len: String(meta.message   ??   "").length,
+      provider: meta.provider   ??   null,
+      model: meta.model   ??   null,
     },
     opts,
   );
@@ -415,11 +429,11 @@ export function recordCcaChatInference(meta, opts = {}) {
 /**
  * Mandatory chat-box release gate. ALL CCA agent text must pass through this before
  * the UI may render it: inference_engine dock + EPSCOM writing.gap + validation_engine dock.
- * Throws fail-closed on any validation or dock audit failure.
+ * Throws DENY on miss on any validation or dock audit failure.
  */
 export async function releaseCcaTextToChatBox(text, opts = {}) {
-  const mode = opts.mode ?? "chat";
-  const ccaChat = opts.ccaChat ?? mode === "chat";
+  const mode = opts.mode   ??   "chat";
+  const ccaChat = opts.ccaChat   ??   mode === "chat";
   const dockOpts = { ...opts, requireDockRecord: true };
 
   let chatStage = null;
@@ -427,9 +441,9 @@ export async function releaseCcaTextToChatBox(text, opts = {}) {
     chatStage = recordCcaChatInference(
       {
         mode,
-        message: opts.inferenceMessage ?? "",
-        provider: opts.provider ?? null,
-        model: opts.model ?? null,
+        message: opts.inferenceMessage   ??   "",
+        provider: opts.provider   ??   null,
+        model: opts.model   ??   null,
       },
       dockOpts,
     );
@@ -438,28 +452,28 @@ export async function releaseCcaTextToChatBox(text, opts = {}) {
   const released = await releaseCcaReplyViaHyperlattice(text, {
     mode,
     ccaChat,
-    greeting: opts.greeting ?? false,
-    writingHelp: opts.writingHelp ?? false,
+    greeting: opts.greeting   ??   false,
+    writingHelp: opts.writingHelp   ??   false,
     ...dockOpts,
-    sessionId: opts.sessionId ?? "cca-chat-release",
+    sessionId: opts.sessionId   ??   "cca-chat-release",
   });
 
   const wv = released.writing_validation;
   const hl = released.hyperlattice_validation;
-  if (chatStage?.recorded) {
-    hl.lattice_stages = [chatStage, ...(hl.lattice_stages ?? [])];
+  if (chatStage  ?.  recorded) {
+    hl.lattice_stages = [chatStage, ...(hl.lattice_stages   ??   [])];
   }
-  if (wv?.ok !== true || hl?.ok !== true || hl?.dock_audit_ok === false) {
+  if (wv  ?.  ok !== true || hl  ?.  ok !== true || hl  ?.  dock_audit_ok === false) {
     const err = new Error(
-      "CCA reply blocked: EPSCOM writing.gap or hyperlattice validation did not pass (fail-closed)",
+      "CCA reply blocked: EPSCOM writing.gap or hyperlattice validation did not pass (DENY on miss)",
     );
-    err.violations = wv?.violations ?? [{ rule: "release_blocked", message: err.message }];
-    err.writing_validation = wv ?? {
+    err.violations = wv  ?.  violations   ??   [{ rule: "release_blocked", message: err.message }];
+    err.writing_validation = wv   ??   {
       ok: false,
       authority: "epscom-core",
       violations: err.violations,
     };
-    err.hyperlattice_validation = hl ?? {
+    err.hyperlattice_validation = hl   ??   {
       ok: false,
       topology: "hyperlattice",
       agent_id: "cca",

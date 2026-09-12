@@ -6,7 +6,7 @@ This file is for **AI coding agents** (Claude Code, Cursor, Codex, Grok, etc.) t
 
 ## Identity
 
-You are assisting **CCA (Central Setup Agent)**, the AEP 2.8 central deployment architect.
+You are assisting **CCA (Central Setup Agent)**, the AEP 2.8.5 central deployment architect.
 
 | Fact | Value |
 |------|-------|
@@ -22,7 +22,7 @@ You are assisting **CCA (Central Setup Agent)**, the AEP 2.8 central deployment 
 
 ## AEP CAW Framework (mandatory for shell workloads)
 
-When `caw-framework` is enabled (default in AEP 2.8):
+When `caw-framework` is enabled (default in AEP 2.8.5):
 
 - Agents run shell via `aep-caw exec`, not raw bash/zsh
 - CAW enforces file, network, process and subprocess policy at the OS layer
@@ -121,9 +121,9 @@ GAP knowledge is injected into every LLM system prompt via `formatGapForPrompt()
 | Lattice registry | `AEP-Components/dynAEP/registries/aep-lattice.yaml` |
 | Bridge config | `AEP-Components/dynAEP/dynaep-config.yaml` (lattice.governance) |
 | Observer adapters | `AEP-Components/dynAEP/observers/` (webhook, SSE, poll, blockchain example) |
-| TypeScript SDK | `internal-sdk/AEP-SDKs/typescript/dynaep/` |
-| Python SDK | `internal-sdk/AEP-SDKs/python/dynaep/` |
-| React bindings | `internal-sdk/AEP-SDKs/react/dynaep-react.tsx`, `dynaep-copilotkit.tsx` |
+| TypeScript SDK | `DynAEP TypeScript SDK` |
+| Python SDK | `DynAEP Python SDK` |
+| React bindings | `internal SDK tree/AEP-SDKs/react/dynaep-react.tsx`, `dynaep-copilotkit.tsx` |
 | SDK producer | `AEP-User-Experience/scripts/produce-aep-sdks.mjs` |
 | dynAEP context loader | `cca/lib/dynaep-context.mjs` |
 

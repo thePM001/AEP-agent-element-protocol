@@ -1,0 +1,10 @@
+@PAD: gaplune-creation-pad emit ( zero-LLM )
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.creation.record.v1
+format: gaplune
+json_prohibited: true
+crate: aep-ucb-perimeter-v1
+path: AEP-Docks/ucb/perimeter-v1
+attest: false
+hvvcas: |
+  HVVCAS. AEP 2.8.5 UCB perimeter-v1 library. Default profile perimeter-v1. Paper 005 VSA stays off unless named. Creation generate emitted a scaffold. This crate is the real library.
