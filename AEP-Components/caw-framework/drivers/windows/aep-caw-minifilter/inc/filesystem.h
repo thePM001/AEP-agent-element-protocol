@@ -6,12 +6,12 @@
 #include "protocol.h"
 
 // Process exclusion (for WinFsp coexistence)
-BOOLEAN AgentshIsExcludedProcess(ULONG ProcessId);
-void AgentshSetExcludedProcess(ULONG ProcessId);
+BOOLEAN AepCawIsExcludedProcess(ULONG ProcessId);
+void AepCawSetExcludedProcess(ULONG ProcessId);
 
 // Query policy from user-mode
 BOOLEAN
-AgentshQueryFilePolicy(
+AepCawQueryFilePolicy(
     _In_ ULONG64 SessionToken,
     _In_ ULONG ProcessId,
     _In_ AEP_CAW_FILE_OP Operation,
@@ -24,21 +24,21 @@ AgentshQueryFilePolicy(
 
 // IRP callbacks
 FLT_PREOP_CALLBACK_STATUS
-AgentshPreCreate(
+AepCawPreCreate(
     _Inout_ PFLT_CALLBACK_DATA Data,
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
     );
 
 FLT_PREOP_CALLBACK_STATUS
-AgentshPreWrite(
+AepCawPreWrite(
     _Inout_ PFLT_CALLBACK_DATA Data,
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
     );
 
 FLT_PREOP_CALLBACK_STATUS
-AgentshPreSetInfo(
+AepCawPreSetInfo(
     _Inout_ PFLT_CALLBACK_DATA Data,
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _Flt_CompletionContext_Outptr_ PVOID *CompletionContext

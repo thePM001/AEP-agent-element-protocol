@@ -44,4 +44,4 @@ You operate inside or alongside **AEP CAW Framework** (`caw-framework`), the Exe
 
 ## Attribution
 
-Forked from agentsh (Apache 2.0). Do not rename back to agentsh in AEP deliverables.
+Apache 2.0. See NOTICE.

@@ -2,7 +2,7 @@
 #include "driver.h"
 #include "metrics.h"
 
-// Global metrics
+// Metrics
 static struct {
     volatile LONG CacheHitCount;
     volatile LONG CacheMissCount;
@@ -20,84 +20,84 @@ static struct {
     volatile LONG ConsecutiveFailures;
 } gMetrics;
 
-VOID AgentshInitializeMetrics(VOID)
+VOID AepCawInitializeMetrics(VOID)
 {
     RtlZeroMemory(&gMetrics, sizeof(gMetrics));
 }
 
-VOID AgentshMetricsIncrementCacheHit(VOID)
+VOID AepCawMetricsIncrementCacheHit(VOID)
 {
     InterlockedIncrement(&gMetrics.CacheHitCount);
 }
 
-VOID AgentshMetricsIncrementCacheMiss(VOID)
+VOID AepCawMetricsIncrementCacheMiss(VOID)
 {
     InterlockedIncrement(&gMetrics.CacheMissCount);
 }
 
-VOID AgentshMetricsIncrementCacheEviction(VOID)
+VOID AepCawMetricsIncrementCacheEviction(VOID)
 {
     InterlockedIncrement(&gMetrics.CacheEvictionCount);
 }
 
-VOID AgentshMetricsIncrementFilePolicyQuery(VOID)
+VOID AepCawMetricsIncrementFilePolicyQuery(VOID)
 {
     InterlockedIncrement(&gMetrics.FilePolicyQueries);
 }
 
-VOID AgentshMetricsIncrementRegistryPolicyQuery(VOID)
+VOID AepCawMetricsIncrementRegistryPolicyQuery(VOID)
 {
     InterlockedIncrement(&gMetrics.RegistryPolicyQueries);
 }
 
-VOID AgentshMetricsIncrementPolicyTimeout(VOID)
+VOID AepCawMetricsIncrementPolicyTimeout(VOID)
 {
     InterlockedIncrement(&gMetrics.PolicyQueryTimeouts);
 }
 
-VOID AgentshMetricsIncrementPolicyFailure(VOID)
+VOID AepCawMetricsIncrementPolicyFailure(VOID)
 {
     InterlockedIncrement(&gMetrics.PolicyQueryFailures);
 }
 
-VOID AgentshMetricsIncrementAllowDecision(VOID)
+VOID AepCawMetricsIncrementAllowDecision(VOID)
 {
     InterlockedIncrement(&gMetrics.AllowDecisions);
 }
 
-VOID AgentshMetricsIncrementDenyDecision(VOID)
+VOID AepCawMetricsIncrementDenyDecision(VOID)
 {
     InterlockedIncrement(&gMetrics.DenyDecisions);
 }
 
-VOID AgentshMetricsSetActiveSessionCount(ULONG count)
+VOID AepCawMetricsSetActiveSessionCount(ULONG count)
 {
     InterlockedExchange(&gMetrics.ActiveSessions, count);
 }
 
-VOID AgentshMetricsSetTrackedProcessCount(ULONG count)
+VOID AepCawMetricsSetTrackedProcessCount(ULONG count)
 {
     InterlockedExchange(&gMetrics.TrackedProcesses, count);
 }
 
-VOID AgentshMetricsSetCacheEntryCount(ULONG count)
+VOID AepCawMetricsSetCacheEntryCount(ULONG count)
 {
     InterlockedExchange(&gMetrics.CacheEntryCount, count);
 }
 
-VOID AgentshMetricsSetFailOpenMode(BOOLEAN enabled)
+VOID AepCawMetricsSetFailOpenMode(BOOLEAN enabled)
 {
     // Direct assignment is safe for BOOLEAN on x86/x64 - single byte write is atomic.
     // InterlockedExchange8 would add unnecessary overhead for this status flag.
     gMetrics.FailOpenMode = enabled;
 }
 
-VOID AgentshMetricsSetConsecutiveFailures(ULONG count)
+VOID AepCawMetricsSetConsecutiveFailures(ULONG count)
 {
     InterlockedExchange(&gMetrics.ConsecutiveFailures, count);
 }
 
-VOID AgentshMetricsGet(_Out_ PAEP_CAW_METRICS metrics)
+VOID AepCawMetricsGet(_Out_ PAEP_CAW_METRICS metrics)
 {
     metrics->CacheHitCount = gMetrics.CacheHitCount;
     metrics->CacheMissCount = gMetrics.CacheMissCount;
@@ -115,7 +115,7 @@ VOID AgentshMetricsGet(_Out_ PAEP_CAW_METRICS metrics)
     metrics->ConsecutiveFailures = gMetrics.ConsecutiveFailures;
 }
 
-VOID AgentshMetricsReset(VOID)
+VOID AepCawMetricsReset(VOID)
 {
     InterlockedExchange(&gMetrics.CacheHitCount, 0);
     InterlockedExchange(&gMetrics.CacheMissCount, 0);

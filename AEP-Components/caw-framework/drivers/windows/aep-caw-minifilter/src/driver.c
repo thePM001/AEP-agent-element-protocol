@@ -2,13 +2,13 @@
 #include "driver.h"
 
 // Global data
-AEP_CAW_GLOBAL_DATA AgentshData = {0};
+AEP_CAW_GLOBAL_DATA AepCawData = {0};
 
 // Filter callbacks
 CONST FLT_OPERATION_REGISTRATION FilterCallbacks[] = {
-    { IRP_MJ_CREATE, 0, AgentshPreCreate, NULL },
-    { IRP_MJ_WRITE, 0, AgentshPreWrite, NULL },
-    { IRP_MJ_SET_INFORMATION, 0, AgentshPreSetInfo, NULL },
+    { IRP_MJ_CREATE, 0, AepCawPreCreate, NULL },
+    { IRP_MJ_WRITE, 0, AepCawPreWrite, NULL },
+    { IRP_MJ_SET_INFORMATION, 0, AepCawPreSetInfo, NULL },
     { IRP_MJ_OPERATION_END }
 };
 
@@ -19,9 +19,9 @@ CONST FLT_REGISTRATION FilterRegistration = {
     0,                                  // Flags
     NULL,                               // Context registration
     FilterCallbacks,                    // Operation callbacks
-    AgentshFilterUnload,                // FilterUnload
-    AgentshInstanceSetup,               // InstanceSetup
-    AgentshInstanceQueryTeardown,       // InstanceQueryTeardown
+    AepCawFilterUnload,                // FilterUnload
+    AepCawInstanceSetup,               // InstanceSetup
+    AepCawInstanceQueryTeardown,       // InstanceQueryTeardown
     NULL,                               // InstanceTeardownStart
     NULL,                               // InstanceTeardownComplete
     NULL,                               // GenerateFileName
@@ -31,7 +31,7 @@ CONST FLT_REGISTRATION FilterRegistration = {
 
 // Instance setup - attach to all NTFS volumes
 NTSTATUS
-AgentshInstanceSetup(
+AepCawInstanceSetup(
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _In_ FLT_INSTANCE_SETUP_FLAGS Flags,
     _In_ DEVICE_TYPE VolumeDeviceType,
@@ -52,7 +52,7 @@ AgentshInstanceSetup(
 
 // Instance query teardown - allow detach
 NTSTATUS
-AgentshInstanceQueryTeardown(
+AepCawInstanceQueryTeardown(
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _In_ FLT_INSTANCE_QUERY_TEARDOWN_FLAGS Flags
     )
@@ -65,28 +65,28 @@ AgentshInstanceQueryTeardown(
 
 // Filter unload
 NTSTATUS
-AgentshFilterUnload(
+AepCawFilterUnload(
     _In_ FLT_FILTER_UNLOAD_FLAGS Flags
     )
 {
     UNREFERENCED_PARAMETER(Flags);
 
     // Shutdown registry filter
-    AgentshShutdownRegistryFilter();
+    AepCawShutdownRegistryFilter();
 
     // Shutdown policy cache
-    AgentshShutdownCache();
+    AepCawShutdownCache();
 
     // Shutdown process tracking
-    AgentshShutdownProcessTracking();
+    AepCawShutdownProcessTracking();
 
     // Shutdown communication
-    AgentshShutdownCommunication();
+    AepCawShutdownCommunication();
 
     // Unregister filter
-    if (AgentshData.FilterHandle != NULL) {
-        FltUnregisterFilter(AgentshData.FilterHandle);
-        AgentshData.FilterHandle = NULL;
+    if (AepCawData.FilterHandle != NULL) {
+        FltUnregisterFilter(AepCawData.FilterHandle);
+        AepCawData.FilterHandle = NULL;
     }
 
     return STATUS_SUCCESS;
@@ -104,19 +104,19 @@ DriverEntry(
     UNREFERENCED_PARAMETER(RegistryPath);
 
     // Initialize global data
-    RtlZeroMemory(&AgentshData, sizeof(AgentshData));
+    RtlZeroMemory(&AepCawData, sizeof(AepCawData));
 
     // Initialize configuration
-    AgentshInitializeConfig();
+    AepCawInitializeConfig();
 
     // Initialize metrics
-    AgentshInitializeMetrics();
+    AepCawInitializeMetrics();
 
     // Register with filter manager
     status = FltRegisterFilter(
         DriverObject,
         &FilterRegistration,
-        &AgentshData.FilterHandle
+        &AepCawData.FilterHandle
         );
 
     if (!NT_SUCCESS(status)) {
@@ -124,47 +124,47 @@ DriverEntry(
     }
 
     // Initialize communication port
-    status = AgentshInitializeCommunication(AgentshData.FilterHandle);
+    status = AepCawInitializeCommunication(AepCawData.FilterHandle);
     if (!NT_SUCCESS(status)) {
-        FltUnregisterFilter(AgentshData.FilterHandle);
+        FltUnregisterFilter(AepCawData.FilterHandle);
         return status;
     }
 
     // Initialize process tracking
-    status = AgentshInitializeProcessTracking();
+    status = AepCawInitializeProcessTracking();
     if (!NT_SUCCESS(status)) {
-        AgentshShutdownCommunication();
-        FltUnregisterFilter(AgentshData.FilterHandle);
+        AepCawShutdownCommunication();
+        FltUnregisterFilter(AepCawData.FilterHandle);
         return status;
     }
 
     // Initialize policy cache
-    status = AgentshInitializeCache();
+    status = AepCawInitializeCache();
     if (!NT_SUCCESS(status)) {
-        AgentshShutdownProcessTracking();
-        AgentshShutdownCommunication();
-        FltUnregisterFilter(AgentshData.FilterHandle);
+        AepCawShutdownProcessTracking();
+        AepCawShutdownCommunication();
+        FltUnregisterFilter(AepCawData.FilterHandle);
         return status;
     }
 
     // Initialize registry filter
-    status = AgentshInitializeRegistryFilter(DriverObject);
+    status = AepCawInitializeRegistryFilter(DriverObject);
     if (!NT_SUCCESS(status)) {
-        AgentshShutdownCache();
-        AgentshShutdownProcessTracking();
-        AgentshShutdownCommunication();
-        FltUnregisterFilter(AgentshData.FilterHandle);
+        AepCawShutdownCache();
+        AepCawShutdownProcessTracking();
+        AepCawShutdownCommunication();
+        FltUnregisterFilter(AepCawData.FilterHandle);
         return status;
     }
 
     // Start filtering
-    status = FltStartFiltering(AgentshData.FilterHandle);
+    status = FltStartFiltering(AepCawData.FilterHandle);
     if (!NT_SUCCESS(status)) {
-        AgentshShutdownRegistryFilter();
-        AgentshShutdownCache();
-        AgentshShutdownProcessTracking();
-        AgentshShutdownCommunication();
-        FltUnregisterFilter(AgentshData.FilterHandle);
+        AepCawShutdownRegistryFilter();
+        AepCawShutdownCache();
+        AepCawShutdownProcessTracking();
+        AepCawShutdownCommunication();
+        FltUnregisterFilter(AepCawData.FilterHandle);
         return status;
     }
 

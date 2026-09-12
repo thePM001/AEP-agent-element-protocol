@@ -42,7 +42,7 @@ static const PCWSTR HighRiskPaths[HIGH_RISK_PATH_COUNT] = {
 
 // Check if path is high-risk
 BOOLEAN
-AgentshIsHighRiskRegistryPath(
+AepCawIsHighRiskRegistryPath(
     _In_ PCWSTR KeyPath
     )
 {
@@ -117,7 +117,7 @@ GetRegistryKeyPath(
 
 // Query registry policy from user-mode
 BOOLEAN
-AgentshQueryRegistryPolicy(
+AepCawQueryRegistryPolicy(
     _In_ ULONG64 SessionToken,
     _In_ ULONG ProcessId,
     _In_ AEP_CAW_REGISTRY_OP Operation,
@@ -136,31 +136,31 @@ AgentshQueryRegistryPolicy(
     SIZE_T pathLen;
     SIZE_T valueLen;
 
-    AgentshMetricsIncrementRegistryPolicyQuery();
+    AepCawMetricsIncrementRegistryPolicyQuery();
 
     *Decision = DECISION_ALLOW;
 
     // Check fail mode
-    AEP_CAW_FAIL_MODE failMode = AgentshGetFailMode();
+    AEP_CAW_FAIL_MODE failMode = AepCawGetFailMode();
     if (gFailOpenMode) {
         // In fail-open mode, apply configured policy
         if (failMode == FAIL_MODE_OPEN) {
-            AgentshMetricsIncrementAllowDecision();
+            AepCawMetricsIncrementAllowDecision();
             return TRUE;
         }
         // In fail-closed mode, deny all
         *Decision = DECISION_DENY;
-        AgentshMetricsIncrementDenyDecision();
+        AepCawMetricsIncrementDenyDecision();
         return TRUE;
     }
 
-    if (!AgentshData.ClientConnected) {
+    if (!AepCawData.ClientConnected) {
         return FALSE;
     }
 
     request.Header.Type = MSG_POLICY_CHECK_REGISTRY;
     request.Header.Size = sizeof(request);
-    request.Header.RequestId = InterlockedIncrement(&AgentshData.MessageId);
+    request.Header.RequestId = InterlockedIncrement(&AepCawData.MessageId);
     request.SessionToken = SessionToken;
     request.ProcessId = ProcessId;
     request.ThreadId = HandleToULong(PsGetCurrentThreadId());
@@ -184,12 +184,12 @@ AgentshQueryRegistryPolicy(
         request.ValueName[valueLen] = L'\0';
     }
 
-    ULONG timeoutMs = AgentshGetPolicyTimeoutMs();
+    ULONG timeoutMs = AepCawGetPolicyTimeoutMs();
     timeout.QuadPart = -((LONGLONG)timeoutMs * 10000);
 
     status = FltSendMessage(
-        AgentshData.FilterHandle,
-        &AgentshData.ClientPort,
+        AepCawData.FilterHandle,
+        &AepCawData.ClientPort,
         &request,
         sizeof(request),
         &response,
@@ -200,18 +200,18 @@ AgentshQueryRegistryPolicy(
     if (NT_SUCCESS(status) && replyLength >= sizeof(response)) {
         *Decision = response.Decision;
         InterlockedExchange(&gConsecutiveFailures, 0);
-        AgentshMetricsSetConsecutiveFailures(0);
-        AgentshMetricsSetFailOpenMode(FALSE);
+        AepCawMetricsSetConsecutiveFailures(0);
+        AepCawMetricsSetFailOpenMode(FALSE);
 
         if (response.Decision == DECISION_ALLOW) {
-            AgentshMetricsIncrementAllowDecision();
+            AepCawMetricsIncrementAllowDecision();
         } else {
-            AgentshMetricsIncrementDenyDecision();
+            AepCawMetricsIncrementDenyDecision();
         }
 
         // Update cache with config TTL
-        ULONG ttl = response.CacheTTLMs > 0 ? response.CacheTTLMs : AgentshGetCacheDefaultTTLMs();
-        AgentshCacheInsert(
+        ULONG ttl = response.CacheTTLMs > 0 ? response.CacheTTLMs : AepCawGetCacheDefaultTTLMs();
+        AepCawCacheInsert(
             SessionToken,
             (AEP_CAW_FILE_OP)(Operation + REG_OP_CACHE_OFFSET),
             KeyPath,
@@ -224,22 +224,22 @@ AgentshQueryRegistryPolicy(
 
     // Handle failure
     LONG failures = InterlockedIncrement(&gConsecutiveFailures);
-    AgentshMetricsSetConsecutiveFailures(failures);
-    AgentshMetricsIncrementPolicyFailure();
+    AepCawMetricsSetConsecutiveFailures(failures);
+    AepCawMetricsIncrementPolicyFailure();
 
-    ULONG maxFail = AgentshGetMaxConsecutiveFailures();
+    ULONG maxFail = AepCawGetMaxConsecutiveFailures();
     if (failures >= (LONG)maxFail && !gFailOpenMode) {
         gFailOpenMode = TRUE;
-        AgentshMetricsSetFailOpenMode(TRUE);
+        AepCawMetricsSetFailOpenMode(TRUE);
         DbgPrint("AepCaw: Registry entering fail mode after %ld failures\n", failures);
     }
 
     // Apply fail mode policy (reuse failMode from start of function for consistency)
     if (failMode == FAIL_MODE_CLOSED) {
         *Decision = DECISION_DENY;
-        AgentshMetricsIncrementDenyDecision();
+        AepCawMetricsIncrementDenyDecision();
     } else {
-        AgentshMetricsIncrementAllowDecision();
+        AepCawMetricsIncrementAllowDecision();
     }
 
     return FALSE;
@@ -272,18 +272,18 @@ HandlePreCreateKey(
         }
     }
 
-    if (AgentshIsHighRiskRegistryPath(keyPath)) {
+    if (AepCawIsHighRiskRegistryPath(keyPath)) {
         DbgPrint("AepCaw: High-risk registry create key: %ws\n", keyPath);
     }
 
-    if (AgentshCacheLookup(SessionToken, (AEP_CAW_FILE_OP)(REG_OP_CREATE_KEY + REG_OP_CACHE_OFFSET), keyPath, &decision)) {
+    if (AepCawCacheLookup(SessionToken, (AEP_CAW_FILE_OP)(REG_OP_CREATE_KEY + REG_OP_CACHE_OFFSET), keyPath, &decision)) {
         if (decision == DECISION_DENY) {
             return STATUS_ACCESS_DENIED;
         }
         return STATUS_SUCCESS;
     }
 
-    if (AgentshQueryRegistryPolicy(
+    if (AepCawQueryRegistryPolicy(
             SessionToken,
             HandleToULong(PsGetCurrentProcessId()),
             REG_OP_CREATE_KEY,
@@ -318,7 +318,7 @@ HandlePreSetValue(
         return STATUS_SUCCESS;
     }
 
-    if (AgentshIsHighRiskRegistryPath(keyPath)) {
+    if (AepCawIsHighRiskRegistryPath(keyPath)) {
         DbgPrint("AepCaw: High-risk registry set value: %ws\n", keyPath);
     }
 
@@ -333,14 +333,14 @@ HandlePreSetValue(
         valueName[0] = L'\0';
     }
 
-    if (AgentshCacheLookup(SessionToken, (AEP_CAW_FILE_OP)(REG_OP_SET_VALUE + REG_OP_CACHE_OFFSET), keyPath, &decision)) {
+    if (AepCawCacheLookup(SessionToken, (AEP_CAW_FILE_OP)(REG_OP_SET_VALUE + REG_OP_CACHE_OFFSET), keyPath, &decision)) {
         if (decision == DECISION_DENY) {
             return STATUS_ACCESS_DENIED;
         }
         return STATUS_SUCCESS;
     }
 
-    if (AgentshQueryRegistryPolicy(
+    if (AepCawQueryRegistryPolicy(
             SessionToken,
             HandleToULong(PsGetCurrentProcessId()),
             REG_OP_SET_VALUE,
@@ -374,18 +374,18 @@ HandlePreDeleteKey(
         return STATUS_SUCCESS;
     }
 
-    if (AgentshIsHighRiskRegistryPath(keyPath)) {
+    if (AepCawIsHighRiskRegistryPath(keyPath)) {
         DbgPrint("AepCaw: High-risk registry delete key: %ws\n", keyPath);
     }
 
-    if (AgentshCacheLookup(SessionToken, (AEP_CAW_FILE_OP)(REG_OP_DELETE_KEY + REG_OP_CACHE_OFFSET), keyPath, &decision)) {
+    if (AepCawCacheLookup(SessionToken, (AEP_CAW_FILE_OP)(REG_OP_DELETE_KEY + REG_OP_CACHE_OFFSET), keyPath, &decision)) {
         if (decision == DECISION_DENY) {
             return STATUS_ACCESS_DENIED;
         }
         return STATUS_SUCCESS;
     }
 
-    if (AgentshQueryRegistryPolicy(
+    if (AepCawQueryRegistryPolicy(
             SessionToken,
             HandleToULong(PsGetCurrentProcessId()),
             REG_OP_DELETE_KEY,
@@ -420,7 +420,7 @@ HandlePreDeleteValue(
         return STATUS_SUCCESS;
     }
 
-    if (AgentshIsHighRiskRegistryPath(keyPath)) {
+    if (AepCawIsHighRiskRegistryPath(keyPath)) {
         DbgPrint("AepCaw: High-risk registry delete value: %ws\n", keyPath);
     }
 
@@ -435,14 +435,14 @@ HandlePreDeleteValue(
         valueName[0] = L'\0';
     }
 
-    if (AgentshCacheLookup(SessionToken, (AEP_CAW_FILE_OP)(REG_OP_DELETE_VALUE + REG_OP_CACHE_OFFSET), keyPath, &decision)) {
+    if (AepCawCacheLookup(SessionToken, (AEP_CAW_FILE_OP)(REG_OP_DELETE_VALUE + REG_OP_CACHE_OFFSET), keyPath, &decision)) {
         if (decision == DECISION_DENY) {
             return STATUS_ACCESS_DENIED;
         }
         return STATUS_SUCCESS;
     }
 
-    if (AgentshQueryRegistryPolicy(
+    if (AepCawQueryRegistryPolicy(
             SessionToken,
             HandleToULong(PsGetCurrentProcessId()),
             REG_OP_DELETE_VALUE,
@@ -476,18 +476,18 @@ HandlePreRenameKey(
         return STATUS_SUCCESS;
     }
 
-    if (AgentshIsHighRiskRegistryPath(keyPath)) {
+    if (AepCawIsHighRiskRegistryPath(keyPath)) {
         DbgPrint("AepCaw: High-risk registry rename key: %ws\n", keyPath);
     }
 
-    if (AgentshCacheLookup(SessionToken, (AEP_CAW_FILE_OP)(REG_OP_RENAME_KEY + REG_OP_CACHE_OFFSET), keyPath, &decision)) {
+    if (AepCawCacheLookup(SessionToken, (AEP_CAW_FILE_OP)(REG_OP_RENAME_KEY + REG_OP_CACHE_OFFSET), keyPath, &decision)) {
         if (decision == DECISION_DENY) {
             return STATUS_ACCESS_DENIED;
         }
         return STATUS_SUCCESS;
     }
 
-    if (AgentshQueryRegistryPolicy(
+    if (AepCawQueryRegistryPolicy(
             SessionToken,
             HandleToULong(PsGetCurrentProcessId()),
             REG_OP_RENAME_KEY,
@@ -524,7 +524,7 @@ RegistryCallback(
 
     notifyClass = (REG_NOTIFY_CLASS)(ULONG_PTR)Argument1;
 
-    if (!AgentshIsSessionProcess(PsGetCurrentProcessId(), &sessionToken)) {
+    if (!AepCawIsSessionProcess(PsGetCurrentProcessId(), &sessionToken)) {
         return STATUS_SUCCESS;
     }
 
@@ -553,7 +553,7 @@ RegistryCallback(
 
 // Initialize registry filtering
 NTSTATUS
-AgentshInitializeRegistryFilter(
+AepCawInitializeRegistryFilter(
     _In_ PDRIVER_OBJECT DriverObject
     )
 {
@@ -582,7 +582,7 @@ AgentshInitializeRegistryFilter(
 
 // Shutdown registry filtering
 VOID
-AgentshShutdownRegistryFilter(
+AepCawShutdownRegistryFilter(
     VOID
     )
 {

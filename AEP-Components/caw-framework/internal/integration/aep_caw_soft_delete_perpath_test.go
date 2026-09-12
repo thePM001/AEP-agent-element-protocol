@@ -11,13 +11,13 @@ import (
 	"github.com/nla-aep/aep-caw-framework/pkg/types"
 )
 
-// TestAgentSh_SoftDelete_PerPathPolicy is the integration-level regression test
+// TestAepCaw_SoftDelete_PerPathPolicy is the integration-level regression test
 // for #417: a per-path `decision: soft_delete` file rule must route unlink to
-// trash even when the global sandbox.fuse.audit.mode is NOT set to soft_delete
+// trash even when the sandbox.fuse.audit.mode is NOT set to soft_delete
 // (here it is left at "monitor", the default).
 //
 // Requires /dev/fuse inside the docker host (GitHub ubuntu runners provide it).
-func TestAgentSh_SoftDelete_PerPathPolicy(t *testing.T) {
+func TestAepCaw_SoftDelete_PerPathPolicy(t *testing.T) {
 	ctx := context.Background()
 
 	bin := buildAepCawBinary(t)
@@ -48,7 +48,7 @@ func TestAgentSh_SoftDelete_PerPathPolicy(t *testing.T) {
 	}
 
 	// Delete the file; expect soft-delete guidance and stderr hint.
-	// The global audit mode is "monitor" - only the per-path file rule
+	// The policy audit mode is "monitor" - only the per-path file rule
 	// (decision: soft_delete) should cause the divert to trash.
 	delResp, err := cli.Exec(ctx, sess.ID, types.ExecRequest{
 		Command: "rm",
@@ -122,7 +122,7 @@ func TestAgentSh_SoftDelete_PerPathPolicy(t *testing.T) {
 	}
 }
 
-// softDeletePerPathPolicyYAML defines a policy where the global audit mode is
+// softDeletePerPathPolicyYAML defines a policy where the policy audit mode is
 // NOT soft_delete, but a per-path file_rule carries decision: soft_delete.
 // The path "/**" is used because the FUSE layer resolves /workspace/... to the
 // real backing temp-dir path before the policy check, so only a broad glob

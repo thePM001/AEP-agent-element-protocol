@@ -1,5 +1,5 @@
 @echo off
-REM build.cmd - Build the AgentSH mini filter driver
+REM build.cmd - Build the AepCaw mini filter driver
 
 setlocal
 
@@ -10,7 +10,7 @@ set PLATFORM=%2
 if "%PLATFORM%"=="" set PLATFORM=x64
 
 echo ========================================
-echo Building AgentSH Driver (%CONFIG%/%PLATFORM%)
+echo Building AepCaw Driver (%CONFIG%/%PLATFORM%)
 echo ========================================
 
 pushd %~dp0..

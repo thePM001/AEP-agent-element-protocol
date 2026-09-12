@@ -28,7 +28,6 @@ When `caw-framework` is enabled (default in AEP 2.8.6):
 - CAW enforces file, network, process and subprocess policy at the OS layer
 - CAW audit events record as `CAW_AUDIT_EVENT` on the validation dock
 - Plan executor writes `caw_framework` to `base-node.json` and policy sections
-- Fork attribution: agentsh (Apache 2.0) -> `AEP-Components/caw-framework/`
 
 Do not disable CAW for coding-agent or CAW intents unless the user explicitly requests no shell enforcement.
 

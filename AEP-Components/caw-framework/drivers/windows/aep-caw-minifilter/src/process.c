@@ -9,7 +9,7 @@ static BOOLEAN gProcessCallbackRegistered = FALSE;
 
 // Forward declaration
 VOID
-AgentshProcessNotifyCallback(
+AepCawProcessNotifyCallback(
     _Inout_ PEPROCESS Process,
     _In_ HANDLE ProcessId,
     _Inout_opt_ PPS_CREATE_NOTIFY_INFO CreateInfo
@@ -24,7 +24,7 @@ HashProcessId(HANDLE ProcessId)
 
 // Initialize process tracking
 NTSTATUS
-AgentshInitializeProcessTracking(
+AepCawInitializeProcessTracking(
     VOID
     )
 {
@@ -45,7 +45,7 @@ AgentshInitializeProcessTracking(
 
     // Register process notification callback
     status = PsSetCreateProcessNotifyRoutineEx(
-        AgentshProcessNotifyCallback,
+        AepCawProcessNotifyCallback,
         FALSE   // Remove = FALSE (register)
         );
 
@@ -61,7 +61,7 @@ AgentshInitializeProcessTracking(
 
 // Shutdown process tracking
 VOID
-AgentshShutdownProcessTracking(
+AepCawShutdownProcessTracking(
     VOID
     )
 {
@@ -72,7 +72,7 @@ AgentshShutdownProcessTracking(
 
     // Unregister callback first
     if (gProcessCallbackRegistered) {
-        PsSetCreateProcessNotifyRoutineEx(AgentshProcessNotifyCallback, TRUE);
+        PsSetCreateProcessNotifyRoutineEx(AepCawProcessNotifyCallback, TRUE);
         gProcessCallbackRegistered = FALSE;
     }
 
@@ -106,7 +106,7 @@ AgentshShutdownProcessTracking(
 
 // Register a session
 NTSTATUS
-AgentshRegisterSession(
+AepCawRegisterSession(
     _In_ ULONG64 SessionToken,
     _In_ HANDLE RootProcessId,
     _In_opt_ PCWSTR WorkspacePath
@@ -156,7 +156,7 @@ AgentshRegisterSession(
     ExReleasePushLockExclusive(&gSessionList.Lock);
 
     // Add root process to tracking
-    status = AgentshAddSessionProcess(RootProcessId, NULL, SessionToken);
+    status = AepCawAddSessionProcess(RootProcessId, NULL, SessionToken);
     if (!NT_SUCCESS(status)) {
         // Remove session on failure
         ExAcquirePushLockExclusive(&gSessionList.Lock);
@@ -179,7 +179,7 @@ AgentshRegisterSession(
 
 // Unregister a session
 NTSTATUS
-AgentshUnregisterSession(
+AepCawUnregisterSession(
     _In_ ULONG64 SessionToken
     )
 {
@@ -238,7 +238,7 @@ AgentshUnregisterSession(
 
 // Check if a process belongs to a session
 BOOLEAN
-AgentshIsSessionProcess(
+AepCawIsSessionProcess(
     _In_ HANDLE ProcessId,
     _Out_ PULONG64 SessionToken
     )
@@ -270,7 +270,7 @@ AgentshIsSessionProcess(
 
 // Get session info by token
 PSESSION_INFO
-AgentshGetSessionInfo(
+AepCawGetSessionInfo(
     _In_ ULONG64 SessionToken
     )
 {
@@ -296,7 +296,7 @@ AgentshGetSessionInfo(
 
 // Add process to tracking table
 NTSTATUS
-AgentshAddSessionProcess(
+AepCawAddSessionProcess(
     _In_ HANDLE ProcessId,
     _In_ HANDLE ParentProcessId,
     _In_ ULONG64 SessionToken
@@ -329,7 +329,7 @@ AgentshAddSessionProcess(
 
     // Increment session process count
     {
-        PSESSION_INFO session = AgentshGetSessionInfo(SessionToken);
+        PSESSION_INFO session = AepCawGetSessionInfo(SessionToken);
         if (session != NULL) {
             InterlockedIncrement(&session->ProcessCount);
         }
@@ -340,7 +340,7 @@ AgentshAddSessionProcess(
 
 // Remove process from tracking table
 BOOLEAN
-AgentshRemoveSessionProcess(
+AepCawRemoveSessionProcess(
     _In_ HANDLE ProcessId,
     _Out_opt_ PULONG64 SessionToken
     )
@@ -372,7 +372,7 @@ AgentshRemoveSessionProcess(
 
     if (found) {
         // Decrement session process count
-        PSESSION_INFO session = AgentshGetSessionInfo(token);
+        PSESSION_INFO session = AepCawGetSessionInfo(token);
         if (session != NULL) {
             InterlockedDecrement(&session->ProcessCount);
         }
@@ -387,7 +387,7 @@ AgentshRemoveSessionProcess(
 
 // Process creation/termination callback
 VOID
-AgentshProcessNotifyCallback(
+AepCawProcessNotifyCallback(
     _Inout_ PEPROCESS Process,
     _In_ HANDLE ProcessId,
     _Inout_opt_ PPS_CREATE_NOTIFY_INFO CreateInfo
@@ -399,9 +399,9 @@ AgentshProcessNotifyCallback(
 
     if (CreateInfo != NULL) {
         // Process creation - check if parent is tracked
-        if (AgentshIsSessionProcess(CreateInfo->ParentProcessId, &parentSession)) {
+        if (AepCawIsSessionProcess(CreateInfo->ParentProcessId, &parentSession)) {
             // Add child to same session
-            NTSTATUS status = AgentshAddSessionProcess(
+            NTSTATUS status = AepCawAddSessionProcess(
                 ProcessId,
                 CreateInfo->ParentProcessId,
                 parentSession
@@ -417,7 +417,7 @@ AgentshProcessNotifyCallback(
     } else {
         // Process termination - remove if tracked
         ULONG64 sessionToken;
-        if (AgentshRemoveSessionProcess(ProcessId, &sessionToken)) {
+        if (AepCawRemoveSessionProcess(ProcessId, &sessionToken)) {
             DbgPrint("AepCaw: Process %u removed from session 0x%llX\n",
                      HandleToULong(ProcessId), sessionToken);
         }

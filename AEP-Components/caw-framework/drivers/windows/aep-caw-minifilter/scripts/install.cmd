@@ -1,5 +1,5 @@
 @echo off
-REM install.cmd - Install the AgentSH driver (requires admin)
+REM install.cmd - Install the AepCaw driver (requires admin)
 
 setlocal
 
@@ -13,7 +13,7 @@ if not exist "%DRIVER_PATH%" (
 )
 
 echo ========================================
-echo Installing AgentSH Driver
+echo Installing AepCaw Driver
 echo ========================================
 
 REM Check admin privileges

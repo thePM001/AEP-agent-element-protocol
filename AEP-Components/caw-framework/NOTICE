@@ -1,6 +1,6 @@
 AEP CAW Framework (Containerized Agentic Workflows)
 
-This component incorporates source code from agentsh (https://github.com/canyonroad/agentsh)
+This component incorporates source under the Apache License, Version 2.0.
 Copyright 2025 Eran Sandler
 
 Licensed under the Apache License, Version 2.0 (the "License");

@@ -6,30 +6,30 @@
 #include "protocol.h"
 
 // Initialize metrics
-VOID AgentshInitializeMetrics(VOID);
+VOID AepCawInitializeMetrics(VOID);
 
 // Increment counters (thread-safe)
-VOID AgentshMetricsIncrementCacheHit(VOID);
-VOID AgentshMetricsIncrementCacheMiss(VOID);
-VOID AgentshMetricsIncrementCacheEviction(VOID);
-VOID AgentshMetricsIncrementFilePolicyQuery(VOID);
-VOID AgentshMetricsIncrementRegistryPolicyQuery(VOID);
-VOID AgentshMetricsIncrementPolicyTimeout(VOID);
-VOID AgentshMetricsIncrementPolicyFailure(VOID);
-VOID AgentshMetricsIncrementAllowDecision(VOID);
-VOID AgentshMetricsIncrementDenyDecision(VOID);
+VOID AepCawMetricsIncrementCacheHit(VOID);
+VOID AepCawMetricsIncrementCacheMiss(VOID);
+VOID AepCawMetricsIncrementCacheEviction(VOID);
+VOID AepCawMetricsIncrementFilePolicyQuery(VOID);
+VOID AepCawMetricsIncrementRegistryPolicyQuery(VOID);
+VOID AepCawMetricsIncrementPolicyTimeout(VOID);
+VOID AepCawMetricsIncrementPolicyFailure(VOID);
+VOID AepCawMetricsIncrementAllowDecision(VOID);
+VOID AepCawMetricsIncrementDenyDecision(VOID);
 
 // Set/get values (thread-safe)
-VOID AgentshMetricsSetActiveSessionCount(_In_ ULONG count);
-VOID AgentshMetricsSetTrackedProcessCount(_In_ ULONG count);
-VOID AgentshMetricsSetCacheEntryCount(_In_ ULONG count);
-VOID AgentshMetricsSetFailOpenMode(_In_ BOOLEAN enabled);
-VOID AgentshMetricsSetConsecutiveFailures(_In_ ULONG count);
+VOID AepCawMetricsSetActiveSessionCount(_In_ ULONG count);
+VOID AepCawMetricsSetTrackedProcessCount(_In_ ULONG count);
+VOID AepCawMetricsSetCacheEntryCount(_In_ ULONG count);
+VOID AepCawMetricsSetFailOpenMode(_In_ BOOLEAN enabled);
+VOID AepCawMetricsSetConsecutiveFailures(_In_ ULONG count);
 
 // Get metrics snapshot
-VOID AgentshMetricsGet(_Out_ PAEP_CAW_METRICS metrics);
+VOID AepCawMetricsGet(_Out_ PAEP_CAW_METRICS metrics);
 
 // Reset counters
-VOID AgentshMetricsReset(VOID);
+VOID AepCawMetricsReset(VOID);
 
 #endif // _AEP_CAW_METRICS_H_

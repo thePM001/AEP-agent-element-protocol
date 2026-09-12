@@ -24,7 +24,7 @@ typedef struct _SESSION_PROCESS {
 
 // Session info entry
 typedef struct _SESSION_INFO {
-    LIST_ENTRY ListEntry;           // Global session list
+    LIST_ENTRY ListEntry;           // Session list
     ULONG64 SessionToken;
     HANDLE RootProcessId;
     UNICODE_STRING WorkspacePath;
@@ -47,19 +47,19 @@ typedef struct _SESSION_LIST {
 
 // Initialize process tracking (call from DriverEntry)
 NTSTATUS
-AgentshInitializeProcessTracking(
+AepCawInitializeProcessTracking(
     VOID
     );
 
 // Shutdown process tracking (call from FilterUnload)
 VOID
-AgentshShutdownProcessTracking(
+AepCawShutdownProcessTracking(
     VOID
     );
 
 // Register a session (from user-mode message)
 NTSTATUS
-AgentshRegisterSession(
+AepCawRegisterSession(
     _In_ ULONG64 SessionToken,
     _In_ HANDLE RootProcessId,
     _In_opt_ PCWSTR WorkspacePath
@@ -67,26 +67,26 @@ AgentshRegisterSession(
 
 // Unregister a session (from user-mode message)
 NTSTATUS
-AgentshUnregisterSession(
+AepCawUnregisterSession(
     _In_ ULONG64 SessionToken
     );
 
 // Check if a process belongs to a session
 BOOLEAN
-AgentshIsSessionProcess(
+AepCawIsSessionProcess(
     _In_ HANDLE ProcessId,
     _Out_ PULONG64 SessionToken
     );
 
 // Get session info by token
 PSESSION_INFO
-AgentshGetSessionInfo(
+AepCawGetSessionInfo(
     _In_ ULONG64 SessionToken
     );
 
 // Internal: Add process to tracking table
 NTSTATUS
-AgentshAddSessionProcess(
+AepCawAddSessionProcess(
     _In_ HANDLE ProcessId,
     _In_ HANDLE ParentProcessId,
     _In_ ULONG64 SessionToken
@@ -94,7 +94,7 @@ AgentshAddSessionProcess(
 
 // Internal: Remove process from tracking table
 BOOLEAN
-AgentshRemoveSessionProcess(
+AepCawRemoveSessionProcess(
     _In_ HANDLE ProcessId,
     _Out_opt_ PULONG64 SessionToken
     );

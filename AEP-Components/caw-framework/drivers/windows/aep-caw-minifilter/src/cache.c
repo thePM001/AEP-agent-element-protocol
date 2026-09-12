@@ -20,7 +20,7 @@ static ULONG HashPath(PCWSTR Path)
 
 // Initialize the policy cache
 NTSTATUS
-AgentshInitializeCache(
+AepCawInitializeCache(
     VOID
     )
 {
@@ -43,7 +43,7 @@ AgentshInitializeCache(
 
 // Shutdown the policy cache
 VOID
-AgentshShutdownCache(
+AepCawShutdownCache(
     VOID
     )
 {
@@ -77,7 +77,7 @@ static BOOLEAN IsExpired(PCACHE_ENTRY Entry)
 
 // Lookup a cached decision
 BOOLEAN
-AgentshCacheLookup(
+AepCawCacheLookup(
     _In_ ULONG64 SessionToken,
     _In_ AEP_CAW_FILE_OP Operation,
     _In_ PCWSTR Path,
@@ -141,7 +141,7 @@ static VOID EvictIfNeeded(VOID)
 
 // Insert a decision into the cache
 VOID
-AgentshCacheInsert(
+AepCawCacheInsert(
     _In_ ULONG64 SessionToken,
     _In_ AEP_CAW_FILE_OP Operation,
     _In_ PCWSTR Path,
@@ -202,7 +202,7 @@ AgentshCacheInsert(
 
 // Invalidate all entries for a session
 VOID
-AgentshCacheInvalidateSession(
+AepCawCacheInvalidateSession(
     _In_ ULONG64 SessionToken
     )
 {
@@ -230,7 +230,7 @@ AgentshCacheInvalidateSession(
 
 // Get cache statistics
 VOID
-AgentshCacheGetStats(
+AepCawCacheGetStats(
     _Out_ PLONG HitCount,
     _Out_ PLONG MissCount,
     _Out_ PLONG EntryCount

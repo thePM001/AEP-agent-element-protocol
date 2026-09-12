@@ -38,19 +38,19 @@ typedef struct _POLICY_CACHE {
 
 // Initialize the policy cache
 NTSTATUS
-AgentshInitializeCache(
+AepCawInitializeCache(
     VOID
     );
 
 // Shutdown the policy cache
 VOID
-AgentshShutdownCache(
+AepCawShutdownCache(
     VOID
     );
 
 // Lookup a cached decision
 BOOLEAN
-AgentshCacheLookup(
+AepCawCacheLookup(
     _In_ ULONG64 SessionToken,
     _In_ AEP_CAW_FILE_OP Operation,
     _In_ PCWSTR Path,
@@ -59,7 +59,7 @@ AgentshCacheLookup(
 
 // Insert a decision into the cache
 VOID
-AgentshCacheInsert(
+AepCawCacheInsert(
     _In_ ULONG64 SessionToken,
     _In_ AEP_CAW_FILE_OP Operation,
     _In_ PCWSTR Path,
@@ -69,13 +69,13 @@ AgentshCacheInsert(
 
 // Invalidate all entries for a session
 VOID
-AgentshCacheInvalidateSession(
+AepCawCacheInvalidateSession(
     _In_ ULONG64 SessionToken
     );
 
 // Get cache statistics
 VOID
-AgentshCacheGetStats(
+AepCawCacheGetStats(
     _Out_ PLONG HitCount,
     _Out_ PLONG MissCount,
     _Out_ PLONG EntryCount

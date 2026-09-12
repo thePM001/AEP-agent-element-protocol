@@ -13,11 +13,11 @@ static volatile BOOLEAN gFailOpenMode = FALSE;
 // Excluded process ID (aep-caw itself when using WinFsp)
 static volatile LONG gExcludedProcessId = 0;
 
-BOOLEAN AgentshIsExcludedProcess(ULONG ProcessId) {
+BOOLEAN AepCawIsExcludedProcess(ULONG ProcessId) {
     return ProcessId != 0 && ProcessId == (ULONG)gExcludedProcessId;
 }
 
-void AgentshSetExcludedProcess(ULONG ProcessId) {
+void AepCawSetExcludedProcess(ULONG ProcessId) {
     InterlockedExchange(&gExcludedProcessId, (LONG)ProcessId);
 }
 
@@ -66,7 +66,7 @@ GetFilePath(
 
 // Query policy from user-mode
 BOOLEAN
-AgentshQueryFilePolicy(
+AepCawQueryFilePolicy(
     _In_ ULONG64 SessionToken,
     _In_ ULONG ProcessId,
     _In_ AEP_CAW_FILE_OP Operation,
@@ -84,34 +84,34 @@ AgentshQueryFilePolicy(
     LARGE_INTEGER timeout;
     SIZE_T pathLen;
 
-    AgentshMetricsIncrementFilePolicyQuery();
+    AepCawMetricsIncrementFilePolicyQuery();
 
     // Default to allow on failure
     *Decision = DECISION_ALLOW;
 
     // Check fail mode
-    AEP_CAW_FAIL_MODE failMode = AgentshGetFailMode();
+    AEP_CAW_FAIL_MODE failMode = AepCawGetFailMode();
     if (gFailOpenMode) {
         // In fail-open mode, apply configured policy
         if (failMode == FAIL_MODE_OPEN) {
-            AgentshMetricsIncrementAllowDecision();
+            AepCawMetricsIncrementAllowDecision();
             return TRUE;
         }
         // In fail-closed mode, deny all
         *Decision = DECISION_DENY;
-        AgentshMetricsIncrementDenyDecision();
+        AepCawMetricsIncrementDenyDecision();
         return TRUE;
     }
 
     // Check if client is connected
-    if (!AgentshData.ClientConnected) {
+    if (!AepCawData.ClientConnected) {
         return FALSE;
     }
 
     // Build request
     request.Header.Type = MSG_POLICY_CHECK_FILE;
     request.Header.Size = sizeof(request);
-    request.Header.RequestId = InterlockedIncrement(&AgentshData.MessageId);
+    request.Header.RequestId = InterlockedIncrement(&AepCawData.MessageId);
     request.SessionToken = SessionToken;
     request.ProcessId = ProcessId;
     request.ThreadId = HandleToULong(PsGetCurrentThreadId());
@@ -138,13 +138,13 @@ AgentshQueryFilePolicy(
     }
 
     // Set timeout (negative = relative)
-    ULONG timeoutMs = AgentshGetPolicyTimeoutMs();
+    ULONG timeoutMs = AepCawGetPolicyTimeoutMs();
     timeout.QuadPart = -((LONGLONG)timeoutMs * 10000);
 
     // Send message to user-mode
     status = FltSendMessage(
-        AgentshData.FilterHandle,
-        &AgentshData.ClientPort,
+        AepCawData.FilterHandle,
+        &AepCawData.ClientPort,
         &request,
         sizeof(request),
         &response,
@@ -155,40 +155,40 @@ AgentshQueryFilePolicy(
     if (NT_SUCCESS(status) && replyLength >= sizeof(response)) {
         *Decision = response.Decision;
         InterlockedExchange(&gConsecutiveFailures, 0);
-        AgentshMetricsSetConsecutiveFailures(0);
-        AgentshMetricsSetFailOpenMode(FALSE);
+        AepCawMetricsSetConsecutiveFailures(0);
+        AepCawMetricsSetFailOpenMode(FALSE);
 
         if (response.Decision == DECISION_ALLOW) {
-            AgentshMetricsIncrementAllowDecision();
+            AepCawMetricsIncrementAllowDecision();
         } else {
-            AgentshMetricsIncrementDenyDecision();
+            AepCawMetricsIncrementDenyDecision();
         }
 
         // Update cache with config TTL
-        ULONG ttl = response.CacheTTLMs > 0 ? response.CacheTTLMs : AgentshGetCacheDefaultTTLMs();
-        AgentshCacheInsert(SessionToken, Operation, Path, response.Decision, ttl);
+        ULONG ttl = response.CacheTTLMs > 0 ? response.CacheTTLMs : AepCawGetCacheDefaultTTLMs();
+        AepCawCacheInsert(SessionToken, Operation, Path, response.Decision, ttl);
 
         return TRUE;
     }
 
     // Handle failure
     LONG failures = InterlockedIncrement(&gConsecutiveFailures);
-    AgentshMetricsSetConsecutiveFailures(failures);
-    AgentshMetricsIncrementPolicyFailure();
+    AepCawMetricsSetConsecutiveFailures(failures);
+    AepCawMetricsIncrementPolicyFailure();
 
-    ULONG maxFail = AgentshGetMaxConsecutiveFailures();
+    ULONG maxFail = AepCawGetMaxConsecutiveFailures();
     if (failures >= (LONG)maxFail && !gFailOpenMode) {
         gFailOpenMode = TRUE;
-        AgentshMetricsSetFailOpenMode(TRUE);
+        AepCawMetricsSetFailOpenMode(TRUE);
         DbgPrint("AepCaw: Entering fail mode after %ld failures\n", failures);
     }
 
     // Apply fail mode policy (reuse failMode from start of function for consistency)
     if (failMode == FAIL_MODE_CLOSED) {
         *Decision = DECISION_DENY;
-        AgentshMetricsIncrementDenyDecision();
+        AepCawMetricsIncrementDenyDecision();
     } else {
-        AgentshMetricsIncrementAllowDecision();
+        AepCawMetricsIncrementAllowDecision();
     }
 
     return FALSE;
@@ -196,7 +196,7 @@ AgentshQueryFilePolicy(
 
 // Pre-create callback
 FLT_PREOP_CALLBACK_STATUS
-AgentshPreCreate(
+AepCawPreCreate(
     _Inout_ PFLT_CALLBACK_DATA Data,
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
@@ -214,12 +214,12 @@ AgentshPreCreate(
     UNREFERENCED_PARAMETER(CompletionContext);
 
     // Skip if this is the excluded process (aep-caw using WinFsp)
-    if (AgentshIsExcludedProcess(processId)) {
+    if (AepCawIsExcludedProcess(processId)) {
         return FLT_PREOP_SUCCESS_NO_CALLBACK;
     }
 
     // Fast path: not a session process
-    if (!AgentshIsSessionProcess(PsGetCurrentProcessId(), &sessionToken)) {
+    if (!AepCawIsSessionProcess(PsGetCurrentProcessId(), &sessionToken)) {
         return FLT_PREOP_SUCCESS_NO_CALLBACK;
     }
 
@@ -247,7 +247,7 @@ AgentshPreCreate(
     }
 
     // Check cache first
-    if (AgentshCacheLookup(sessionToken, operation, pathBuffer, &decision)) {
+    if (AepCawCacheLookup(sessionToken, operation, pathBuffer, &decision)) {
         if (decision == DECISION_DENY) {
             Data->IoStatus.Status = STATUS_ACCESS_DENIED;
             Data->IoStatus.Information = 0;
@@ -257,7 +257,7 @@ AgentshPreCreate(
     }
 
     // Query policy
-    if (AgentshQueryFilePolicy(
+    if (AepCawQueryFilePolicy(
             sessionToken,
             HandleToULong(PsGetCurrentProcessId()),
             operation,
@@ -280,7 +280,7 @@ AgentshPreCreate(
 
 // Pre-write callback
 FLT_PREOP_CALLBACK_STATUS
-AgentshPreWrite(
+AepCawPreWrite(
     _Inout_ PFLT_CALLBACK_DATA Data,
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
@@ -295,12 +295,12 @@ AgentshPreWrite(
     UNREFERENCED_PARAMETER(CompletionContext);
 
     // Skip if this is the excluded process (aep-caw using WinFsp)
-    if (AgentshIsExcludedProcess(processId)) {
+    if (AepCawIsExcludedProcess(processId)) {
         return FLT_PREOP_SUCCESS_NO_CALLBACK;
     }
 
     // Fast path: not a session process
-    if (!AgentshIsSessionProcess(PsGetCurrentProcessId(), &sessionToken)) {
+    if (!AepCawIsSessionProcess(PsGetCurrentProcessId(), &sessionToken)) {
         return FLT_PREOP_SUCCESS_NO_CALLBACK;
     }
 
@@ -311,7 +311,7 @@ AgentshPreWrite(
     }
 
     // Check cache first
-    if (AgentshCacheLookup(sessionToken, FILE_OP_WRITE, pathBuffer, &decision)) {
+    if (AepCawCacheLookup(sessionToken, FILE_OP_WRITE, pathBuffer, &decision)) {
         if (decision == DECISION_DENY) {
             Data->IoStatus.Status = STATUS_ACCESS_DENIED;
             Data->IoStatus.Information = 0;
@@ -321,7 +321,7 @@ AgentshPreWrite(
     }
 
     // Query policy
-    if (AgentshQueryFilePolicy(
+    if (AepCawQueryFilePolicy(
             sessionToken,
             HandleToULong(PsGetCurrentProcessId()),
             FILE_OP_WRITE,
@@ -343,7 +343,7 @@ AgentshPreWrite(
 
 // Pre-set-information callback (delete, rename)
 FLT_PREOP_CALLBACK_STATUS
-AgentshPreSetInfo(
+AepCawPreSetInfo(
     _Inout_ PFLT_CALLBACK_DATA Data,
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
     _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
@@ -362,12 +362,12 @@ AgentshPreSetInfo(
     UNREFERENCED_PARAMETER(CompletionContext);
 
     // Skip if this is the excluded process (aep-caw using WinFsp)
-    if (AgentshIsExcludedProcess(processId)) {
+    if (AepCawIsExcludedProcess(processId)) {
         return FLT_PREOP_SUCCESS_NO_CALLBACK;
     }
 
     // Fast path: not a session process
-    if (!AgentshIsSessionProcess(PsGetCurrentProcessId(), &sessionToken)) {
+    if (!AepCawIsSessionProcess(PsGetCurrentProcessId(), &sessionToken)) {
         return FLT_PREOP_SUCCESS_NO_CALLBACK;
     }
 
@@ -427,7 +427,7 @@ AgentshPreSetInfo(
     }
 
     // Check cache first
-    if (AgentshCacheLookup(sessionToken, operation, pathBuffer, &decision)) {
+    if (AepCawCacheLookup(sessionToken, operation, pathBuffer, &decision)) {
         if (decision == DECISION_DENY) {
             Data->IoStatus.Status = STATUS_ACCESS_DENIED;
             Data->IoStatus.Information = 0;
@@ -437,7 +437,7 @@ AgentshPreSetInfo(
     }
 
     // Query policy with rename destination if available
-    if (AgentshQueryFilePolicy(
+    if (AepCawQueryFilePolicy(
             sessionToken,
             HandleToULong(PsGetCurrentProcessId()),
             operation,

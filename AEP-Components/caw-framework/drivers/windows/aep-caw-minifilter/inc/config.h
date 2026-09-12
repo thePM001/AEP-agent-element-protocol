@@ -13,19 +13,19 @@
 #define DEFAULT_CACHE_TTL_MS            5000
 
 // Initialize configuration with defaults
-VOID AgentshInitializeConfig(VOID);
+VOID AepCawInitializeConfig(VOID);
 
 // Get current configuration
-VOID AgentshGetConfig(_Out_ PAEP_CAW_CONFIG config);
+VOID AepCawGetConfig(_Out_ PAEP_CAW_CONFIG config);
 
 // Apply new configuration
-NTSTATUS AgentshSetConfig(_In_ PAEP_CAW_CONFIG config);
+NTSTATUS AepCawSetConfig(_In_ PAEP_CAW_CONFIG config);
 
 // Query configuration values
-AEP_CAW_FAIL_MODE AgentshGetFailMode(VOID);
-ULONG AgentshGetPolicyTimeoutMs(VOID);
-ULONG AgentshGetMaxConsecutiveFailures(VOID);
-ULONG AgentshGetCacheMaxEntries(VOID);
-ULONG AgentshGetCacheDefaultTTLMs(VOID);
+AEP_CAW_FAIL_MODE AepCawGetFailMode(VOID);
+ULONG AepCawGetPolicyTimeoutMs(VOID);
+ULONG AepCawGetMaxConsecutiveFailures(VOID);
+ULONG AepCawGetCacheMaxEntries(VOID);
+ULONG AepCawGetCacheDefaultTTLMs(VOID);
 
 #endif // _AEP_CAW_CONFIG_H_

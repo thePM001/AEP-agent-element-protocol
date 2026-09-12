@@ -13,19 +13,19 @@
 
 // Initialize registry filtering
 NTSTATUS
-AgentshInitializeRegistryFilter(
+AepCawInitializeRegistryFilter(
     _In_ PDRIVER_OBJECT DriverObject
     );
 
 // Shutdown registry filtering
 VOID
-AgentshShutdownRegistryFilter(
+AepCawShutdownRegistryFilter(
     VOID
     );
 
 // Query registry policy from user-mode
 BOOLEAN
-AgentshQueryRegistryPolicy(
+AepCawQueryRegistryPolicy(
     _In_ ULONG64 SessionToken,
     _In_ ULONG ProcessId,
     _In_ AEP_CAW_REGISTRY_OP Operation,
@@ -38,7 +38,7 @@ AgentshQueryRegistryPolicy(
 
 // Check if path is high-risk (persistence, security)
 BOOLEAN
-AgentshIsHighRiskRegistryPath(
+AepCawIsHighRiskRegistryPath(
     _In_ PCWSTR KeyPath
     );
 

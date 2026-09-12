@@ -1,10 +1,10 @@
 @echo off
-REM uninstall.cmd - Uninstall the AgentSH driver (requires admin)
+REM uninstall.cmd - Uninstall the AepCaw driver (requires admin)
 
 setlocal
 
 echo ========================================
-echo Uninstalling AgentSH Driver
+echo Uninstalling AepCaw Driver
 echo ========================================
 
 REM Check admin privileges

@@ -4263,7 +4263,7 @@ func NewWindowsWSL2Platform() (*WindowsWSL2Platform, error) {
     }
     
     // Ensure aep-caw is installed in WSL2
-    if err := p.ensureAgentshInstalled(); err != nil {
+    if err := p.ensureAepCawInstalled(); err != nil {
         return nil, err
     }
     
@@ -4319,7 +4319,7 @@ func (p *WindowsWSL2Platform) installDistro() error {
     return cmd.Run()
 }
 
-func (p *WindowsWSL2Platform) ensureAgentshInstalled() error {
+func (p *WindowsWSL2Platform) ensureAepCawInstalled() error {
     // Check if aep-caw exists in WSL2
     cmd := p.wslCommand("which", "aep-caw")
     if err := cmd.Run(); err != nil {
@@ -7279,7 +7279,7 @@ func main() {
     // Handle -c flag specially (most common case)
     if len(args) >= 2 && args[0] == "-c" {
         // Execute command string via aep-caw
-        executeViaAgentsh(serverAddr, sessionID, args[1])
+        executeViaAepCaw(serverAddr, sessionID, args[1])
     } else if len(args) == 0 {
         // Interactive shell - attach to session
         attachInteractive(serverAddr, sessionID, realShell)
@@ -7305,9 +7305,9 @@ func findRealShell(name string) string {
     return "/bin/sh.real"
 }
 
-func executeViaAgentsh(server, session, command string) {
+func executeViaAepCaw(server, session, command string) {
     // Connect to aep-caw and execute
-    client := NewAgentshClient(server)
+    client := NewAepCawClient(server)
     
     result, err := client.Exec(session, ExecRequest{
         Command: "/bin/sh",
@@ -7327,7 +7327,7 @@ func executeViaAgentsh(server, session, command string) {
 
 func autoCreateSession(server string) string {
     // Check if server is running
-    client := NewAgentshClient(server)
+    client := NewAepCawClient(server)
     
     if !client.IsHealthy() {
         // Start server if AEP_CAW_NO_AUTO is not set
@@ -7543,11 +7543,11 @@ if ($env:AEP_CAW_ENABLED) {
 }
 
 # Alternative: Function wrapper for common commands
-function Invoke-AgentshCommand {
+function Invoke-AepCawCommand {
     param([string]$Command)
     aep-caw exec $env:AEP_CAW_SESSION -- cmd /c $Command
 }
-Set-Alias -Name ash -Value Invoke-AgentshCommand
+Set-Alias -Name ash -Value Invoke-AepCawCommand
 ```
 
 #### 9.4.2 CMD Wrapper Executable
@@ -7586,7 +7586,7 @@ func main() {
     for i, arg := range args {
         if strings.EqualFold(arg, "/c") && i+1 < len(args) {
             command := strings.Join(args[i+1:], " ")
-            executeViaAgentsh(server, session, command)
+            executeViaAepCaw(server, session, command)
             return
         }
     }
@@ -7922,7 +7922,7 @@ func main() {
     url, opts := parseArgs(os.Args[1:])
     
     // Log the request to aep-caw
-    client := NewAgentshClient(server)
+    client := NewAepCawClient(server)
     client.LogNetworkRequest(session, NetworkRequest{
         Type:   "http",
         URL:    url,
@@ -10055,7 +10055,7 @@ func (m *WindowsIPCMonitor) startETWTrace() error {
     )
     
     // Create trace session
-    sessionName := "AgentshIPCMonitor"
+    sessionName := "AepCawIPCMonitor"
     // ... ETW setup code
     
     return nil
@@ -10394,11 +10394,11 @@ type BaseEvent struct {
     // ============================================================
     
     // aep-caw binary version
-    AgentshVersion    string `json:"aep-caw_version"` // "1.2.3"
+    AepCawVersion    string `json:"aep-caw_version"` // "1.2.3"
     
     // aep-caw build info
-    AgentshCommit     string `json:"aep-caw_commit,omitempty"` // "abc123f"
-    AgentshBuildTime  string `json:"aep-caw_build_time,omitempty"` // "2025-01-15T10:00:00Z"
+    AepCawCommit     string `json:"aep-caw_commit,omitempty"` // "abc123f"
+    AepCawBuildTime  string `json:"aep-caw_build_time,omitempty"` // "2025-01-15T10:00:00Z"
     
     // Event schema version (for forward/backward compatibility)
     EventSchemaVersion string `json:"event_schema_version"` // "1.0"
@@ -10638,9 +10638,9 @@ type RuntimeContext struct {
     IPCBackend      string
     
     // Version
-    AgentshVersion  string
-    AgentshCommit   string
-    AgentshBuildTime string
+    AepCawVersion  string
+    AepCawCommit   string
+    AepCawBuildTime string
     EventSchemaVersion string
 }
 
@@ -10865,9 +10865,9 @@ func (f *EventFactory) NewEvent(eventType EventType, pid int) *BaseEvent {
         IPCBackend:      f.ctx.IPCBackend,
         
         // Version
-        AgentshVersion:     f.ctx.AgentshVersion,
-        AgentshCommit:      f.ctx.AgentshCommit,
-        AgentshBuildTime:   f.ctx.AgentshBuildTime,
+        AepCawVersion:     f.ctx.AepCawVersion,
+        AepCawCommit:      f.ctx.AepCawCommit,
+        AepCawBuildTime:   f.ctx.AepCawBuildTime,
         EventSchemaVersion: f.ctx.EventSchemaVersion,
         
         // Correlation
@@ -13072,7 +13072,7 @@ function Install-WSL2 {
     wsl -d Ubuntu-24.04 -- bash -c 'curl -fsSL https://get.aep-caw.dev | bash'
 }
 
-function Install-AgentshNative {
+function Install-AepCawNative {
     $arch = if ([Environment]::Is64BitOperatingSystem) { "amd64" } else { "386" }
     $url = "https://github.com/nla-aep/aep-caw-framework/releases/download/$Version/aep-caw-windows-$arch.exe"
     
@@ -13109,7 +13109,7 @@ switch ($Mode) {
     'native' {
         Install-WinFsp
         Install-WinDivert
-        Install-AgentshNative
+        Install-AepCawNative
         
         Write-Host ""
         Write-Host "aep-caw installed in native Windows mode."
@@ -13117,7 +13117,7 @@ switch ($Mode) {
     }
     'wsl2' {
         Install-WSL2
-        Install-AgentshNative  # Also install native wrapper
+        Install-AepCawNative  # Also install native wrapper
         
         Write-Host ""
         Write-Host "aep-caw installed with WSL2 backend."
@@ -14144,7 +14144,7 @@ func (m *SessionManager) StartSession(ctx context.Context, req StartSessionReque
 syntax = "proto3";
 package aepcaw.v1;
 
-service AgentshService {
+service AepCawService {
     // Session management
     rpc CreateSession(CreateSessionRequest) returns (Session);
     rpc GetSession(GetSessionRequest) returns (Session);
@@ -14975,7 +14975,7 @@ metadata:
 spec:
   group: aep-caw.io
   names:
-    kind: AgentshSession
+    kind: AepCawSession
     plural: aep-cawsessions
     singular: aep-cawsession
     shortNames: [as]
@@ -15013,7 +15013,7 @@ spec:
 # Example session
 
 apiVersion: aep-caw.io/v1
-kind: AgentshSession
+kind: AepCawSession
 metadata:
   name: coding-task-123
 spec:

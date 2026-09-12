@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
 	"github.com/nla-aep/aep-caw-framework/internal/client"
 	"github.com/nla-aep/aep-caw-framework/pkg/types"
-	"github.com/docker/docker/api/types/container"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )

@@ -2,36 +2,36 @@ cask "aep-caw" do
   version "__VERSION__"
   sha256 "__SHA256__"
 
-  url "https://github.com/canyonroad/aep-caw/releases/download/v#{version}/AgentSH-v#{version}.dmg"
-  name "AgentSH"
+  url "https://github.com/canyonroad/aep-caw/releases/download/v#{version}/AepCaw-v#{version}.dmg"
+  name "AepCaw"
   desc "Secure sandboxed shell for AI agents"
   homepage "https://github.com/canyonroad/aep-caw"
 
   depends_on macos: ">= :sonoma"
 
-  app "AgentSH.app"
+  app "AepCaw.app"
 
-  binary "#{appdir}/AgentSH.app/Contents/MacOS/aep-caw"
-  binary "#{appdir}/AgentSH.app/Contents/MacOS/aep-caw-shell-shim"
-  binary "#{appdir}/AgentSH.app/Contents/MacOS/aep-caw-stub"
+  binary "#{appdir}/AepCaw.app/Contents/MacOS/aep-caw"
+  binary "#{appdir}/AepCaw.app/Contents/MacOS/aep-caw-shell-shim"
+  binary "#{appdir}/AepCaw.app/Contents/MacOS/aep-caw-stub"
 
-  uninstall quit:      "ai.canyonroad.aep-caw",
+  uninstall quit:      "ai.nla-aep.aep-caw",
             signal:    ["TERM", "aep-caw"],
-            launchctl: "ai.canyonroad.aep-caw.daemon"
+            launchctl: "ai.nla-aep.aep-caw.daemon"
 
   zap trash: [
     "~/Library/Application Support/aep-caw",
-    "~/Library/Preferences/ai.canyonroad.aep-caw.plist",
-    "~/Library/Caches/ai.canyonroad.aep-caw",
-    "~/Library/LaunchAgents/ai.canyonroad.aep-caw.daemon.plist",
+    "~/Library/Preferences/ai.nla-aep.aep-caw.plist",
+    "~/Library/Caches/ai.nla-aep.aep-caw",
+    "~/Library/LaunchAgents/ai.nla-aep.aep-caw.daemon.plist",
   ]
 
   postflight do
-    system "#{appdir}/AgentSH.app/Contents/MacOS/aep-caw", "activate-extension"
+    system "#{appdir}/AepCaw.app/Contents/MacOS/aep-caw", "activate-extension"
   end
 
   caveats <<~EOS
-    After installation you will be prompted to approve the AgentSH system extension.
+    After installation you will be prompted to approve the AepCaw system extension.
     Go to System Settings -> General -> Login Items & Extensions to allow it.
   EOS
 end

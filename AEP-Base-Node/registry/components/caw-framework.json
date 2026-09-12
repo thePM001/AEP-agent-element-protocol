@@ -1,10 +1,10 @@
 {
   "manifest_version": "1",
   "id": "caw-framework",
-  "version": "2.8.0",
+  "version": "2.8.5",
   "kind": "daemon",
   "path": "AEP-Components/caw-framework/",
-  "description": "AEP CAW Framework: Execution-Layer Security for containerized agentic workflows (fork of agentsh, Apache 2.0).",
+  "description": "AEP CAW Framework: Execution-Layer Security for containerized agentic workflows (Apache 2.0).",
   "requires": [
     "aep-base-node",
     "lattice-channels",
@@ -97,5 +97,6 @@
       "AEP-Components/conformance/runner/run.sh",
       "AEP-Components/conformance/tests/manifest.json"
     ]
-  }
+  },
+  "role": "kernel"
 }

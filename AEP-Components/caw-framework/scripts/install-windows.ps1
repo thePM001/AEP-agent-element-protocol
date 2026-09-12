@@ -192,7 +192,7 @@ function Install-WSL2 {
 }
 
 # Download and install aep-caw native binary
-function Install-AgentshNative {
+function Install-AepCawNative {
     param([string]$Ver)
 
     $arch = Get-SystemArch
@@ -355,7 +355,7 @@ function Main {
             Write-Host ""
 
             # Just install the binary
-            if (-not (Install-AgentshNative -Ver $Version)) {
+            if (-not (Install-AepCawNative -Ver $Version)) {
                 exit 1
             }
             Install-Envshim -Ver $Version
@@ -373,7 +373,7 @@ function Main {
             Write-Warn "WinDivert installation failed. Network interception may not work."
         }
 
-        if (-not (Install-AgentshNative -Ver $Version)) {
+        if (-not (Install-AepCawNative -Ver $Version)) {
             exit 1
         }
 
@@ -387,7 +387,7 @@ function Main {
         }
 
         # Also install native wrapper
-        if (-not (Install-AgentshNative -Ver $Version)) {
+        if (-not (Install-AepCawNative -Ver $Version)) {
             Write-Warn "Native wrapper installation failed. Use 'wsl' command directly."
         }
         else {

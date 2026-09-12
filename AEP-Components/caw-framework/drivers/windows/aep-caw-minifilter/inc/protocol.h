@@ -2,7 +2,7 @@
 #ifndef _AEP_CAW_PROTOCOL_H_
 #define _AEP_CAW_PROTOCOL_H_
 
-#define AEP_CAW_PORT_NAME L"\\AgentshPort"
+#define AEP_CAW_PORT_NAME L"\\AepCawPort"
 #define AEP_CAW_MAX_PATH 520
 
 // Message types

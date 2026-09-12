@@ -16,7 +16,7 @@
 
 ## AEP CAW execution companion
 
-**CAW (Containerized Agentic Workflows)** is host execution-layer security. It is an execution companion (`caw-framework`). CAW is not a protocol component. Forked from agentsh (Apache 2.0), renamed to `aep-caw`.
+**CAW (Containerized Agentic Workflows)** is host execution-layer security. It is an execution companion (`caw-framework`). CAW is not a protocol component. Runtime binary is `aep-caw`.
 
 | Layer | Component | Role |
 |-------|-----------|------|

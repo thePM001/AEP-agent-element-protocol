@@ -3,7 +3,7 @@
 
 // Forward declarations
 NTSTATUS
-AgentshConnectNotify(
+AepCawConnectNotify(
     _In_ PFLT_PORT ClientPort,
     _In_opt_ PVOID ServerPortCookie,
     _In_reads_bytes_opt_(SizeOfContext) PVOID ConnectionContext,
@@ -12,12 +12,12 @@ AgentshConnectNotify(
     );
 
 VOID
-AgentshDisconnectNotify(
+AepCawDisconnectNotify(
     _In_opt_ PVOID ConnectionCookie
     );
 
 NTSTATUS
-AgentshMessageNotify(
+AepCawMessageNotify(
     _In_opt_ PVOID PortCookie,
     _In_reads_bytes_opt_(InputBufferLength) PVOID InputBuffer,
     _In_ ULONG InputBufferLength,
@@ -28,7 +28,7 @@ AgentshMessageNotify(
 
 // Initialize communication port
 NTSTATUS
-AgentshInitializeCommunication(
+AepCawInitializeCommunication(
     _In_ PFLT_FILTER Filter
     )
 {
@@ -56,12 +56,12 @@ AgentshInitializeCommunication(
     // Create communication port
     status = FltCreateCommunicationPort(
         Filter,
-        &AgentshData.ServerPort,
+        &AepCawData.ServerPort,
         &oa,
         NULL,                       // ServerPortCookie
-        AgentshConnectNotify,
-        AgentshDisconnectNotify,
-        AgentshMessageNotify,
+        AepCawConnectNotify,
+        AepCawDisconnectNotify,
+        AepCawMessageNotify,
         1                           // MaxConnections
         );
 
@@ -72,19 +72,19 @@ AgentshInitializeCommunication(
 
 // Shutdown communication
 VOID
-AgentshShutdownCommunication(
+AepCawShutdownCommunication(
     VOID
     )
 {
-    if (AgentshData.ServerPort != NULL) {
-        FltCloseCommunicationPort(AgentshData.ServerPort);
-        AgentshData.ServerPort = NULL;
+    if (AepCawData.ServerPort != NULL) {
+        FltCloseCommunicationPort(AepCawData.ServerPort);
+        AepCawData.ServerPort = NULL;
     }
 }
 
 // Client connect notification
 NTSTATUS
-AgentshConnectNotify(
+AepCawConnectNotify(
     _In_ PFLT_PORT ClientPort,
     _In_opt_ PVOID ServerPortCookie,
     _In_reads_bytes_opt_(SizeOfContext) PVOID ConnectionContext,
@@ -105,9 +105,9 @@ AgentshConnectNotify(
     ctx = (PAEP_CAW_CONNECTION_CONTEXT)ConnectionContext;
 
     // Store client info
-    AgentshData.ClientPort = ClientPort;
-    AgentshData.ClientPid = ctx->ClientPid;
-    AgentshData.ClientConnected = TRUE;
+    AepCawData.ClientPort = ClientPort;
+    AepCawData.ClientPid = ctx->ClientPid;
+    AepCawData.ClientConnected = TRUE;
 
     *ConnectionPortCookie = NULL;
 
@@ -119,7 +119,7 @@ AgentshConnectNotify(
 
 // Client disconnect notification
 VOID
-AgentshDisconnectNotify(
+AepCawDisconnectNotify(
     _In_opt_ PVOID ConnectionCookie
     )
 {
@@ -128,15 +128,15 @@ AgentshDisconnectNotify(
     DbgPrint("AepCaw: Client disconnected\n");
 
     // Clear client state
-    FltCloseClientPort(AgentshData.FilterHandle, &AgentshData.ClientPort);
-    AgentshData.ClientPort = NULL;
-    AgentshData.ClientPid = 0;
-    AgentshData.ClientConnected = FALSE;
+    FltCloseClientPort(AepCawData.FilterHandle, &AepCawData.ClientPort);
+    AepCawData.ClientPort = NULL;
+    AepCawData.ClientPid = 0;
+    AepCawData.ClientConnected = FALSE;
 }
 
 // Message notification from user-mode
 NTSTATUS
-AgentshMessageNotify(
+AepCawMessageNotify(
     _In_opt_ PVOID PortCookie,
     _In_reads_bytes_opt_(InputBufferLength) PVOID InputBuffer,
     _In_ ULONG InputBufferLength,
@@ -166,7 +166,7 @@ AgentshMessageNotify(
         case MSG_REGISTER_SESSION:
             if (InputBufferLength >= sizeof(AEP_CAW_SESSION_REGISTER)) {
                 PAEP_CAW_SESSION_REGISTER reg = (PAEP_CAW_SESSION_REGISTER)InputBuffer;
-                status = AgentshRegisterSession(
+                status = AepCawRegisterSession(
                     reg->SessionToken,
                     ULongToHandle(reg->RootProcessId),
                     reg->WorkspacePath[0] != L'\0' ? reg->WorkspacePath : NULL
@@ -182,7 +182,7 @@ AgentshMessageNotify(
         case MSG_UNREGISTER_SESSION:
             if (InputBufferLength >= sizeof(AEP_CAW_SESSION_UNREGISTER)) {
                 PAEP_CAW_SESSION_UNREGISTER unreg = (PAEP_CAW_SESSION_UNREGISTER)InputBuffer;
-                status = AgentshUnregisterSession(unreg->SessionToken);
+                status = AepCawUnregisterSession(unreg->SessionToken);
                 if (!NT_SUCCESS(status)) {
                     DbgPrint("AepCaw: Session unregistration failed: 0x%08X\n", status);
                 }
@@ -194,7 +194,7 @@ AgentshMessageNotify(
         case MSG_SET_CONFIG:
             if (InputBufferLength >= sizeof(AEP_CAW_CONFIG)) {
                 PAEP_CAW_CONFIG config = (PAEP_CAW_CONFIG)InputBuffer;
-                status = AgentshSetConfig(config);
+                status = AepCawSetConfig(config);
                 if (!NT_SUCCESS(status)) {
                     DbgPrint("AepCaw: Config update failed: 0x%08X\n", status);
                 }
@@ -209,7 +209,7 @@ AgentshMessageNotify(
                 RtlZeroMemory(metrics, sizeof(AEP_CAW_METRICS));
                 metrics->Header.Type = MSG_METRICS_REPLY;
                 metrics->Header.Size = sizeof(AEP_CAW_METRICS);
-                AgentshMetricsGet(metrics);
+                AepCawMetricsGet(metrics);
                 *ReturnOutputBufferLength = sizeof(AEP_CAW_METRICS);
             } else {
                 status = STATUS_BUFFER_TOO_SMALL;
@@ -220,7 +220,7 @@ AgentshMessageNotify(
             {
                 PAEP_CAW_EXCLUDE_PROCESS excludeMsg = (PAEP_CAW_EXCLUDE_PROCESS)InputBuffer;
                 if (InputBufferLength >= sizeof(AEP_CAW_EXCLUDE_PROCESS)) {
-                    AgentshSetExcludedProcess(excludeMsg->ProcessId);
+                    AepCawSetExcludedProcess(excludeMsg->ProcessId);
                     DbgPrint("AepCaw: Set excluded process: %u\n", excludeMsg->ProcessId);
                     status = STATUS_SUCCESS;
                 } else {
@@ -239,7 +239,7 @@ AgentshMessageNotify(
 
 // Send ping to user-mode client
 NTSTATUS
-AgentshSendPing(
+AepCawSendPing(
     VOID
     )
 {
@@ -249,14 +249,14 @@ AgentshSendPing(
     ULONG replyLength = sizeof(pong);
     LARGE_INTEGER timeout;
 
-    if (!AgentshData.ClientConnected || AgentshData.ClientPort == NULL) {
+    if (!AepCawData.ClientConnected || AepCawData.ClientPort == NULL) {
         return STATUS_PORT_DISCONNECTED;
     }
 
     // Build ping message
     ping.Header.Type = MSG_PING;
     ping.Header.Size = sizeof(ping);
-    ping.Header.RequestId = InterlockedIncrement(&AgentshData.MessageId);
+    ping.Header.RequestId = InterlockedIncrement(&AepCawData.MessageId);
     ping.DriverVersion = AEP_CAW_DRIVER_VERSION;
     KeQuerySystemTimePrecise((PLARGE_INTEGER)&ping.Timestamp);
 
@@ -264,8 +264,8 @@ AgentshSendPing(
     timeout.QuadPart = -50000000LL;  // 100ns units, negative = relative
 
     status = FltSendMessage(
-        AgentshData.FilterHandle,
-        &AgentshData.ClientPort,
+        AepCawData.FilterHandle,
+        &AepCawData.ClientPort,
         &ping,
         sizeof(ping),
         &pong,

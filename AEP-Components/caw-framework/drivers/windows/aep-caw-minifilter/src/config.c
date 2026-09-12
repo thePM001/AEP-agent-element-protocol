@@ -2,11 +2,11 @@
 #include "driver.h"
 #include "config.h"
 
-// Global configuration (protected by lock)
+// Configuration (protected by lock)
 static EX_PUSH_LOCK gConfigLock;
 static AEP_CAW_CONFIG gConfig;
 
-VOID AgentshInitializeConfig(VOID)
+VOID AepCawInitializeConfig(VOID)
 {
     ExInitializePushLock(&gConfigLock);
 
@@ -21,14 +21,14 @@ VOID AgentshInitializeConfig(VOID)
              gConfig.FailMode, gConfig.PolicyQueryTimeoutMs);
 }
 
-VOID AgentshGetConfig(_Out_ PAEP_CAW_CONFIG config)
+VOID AepCawGetConfig(_Out_ PAEP_CAW_CONFIG config)
 {
     ExAcquirePushLockShared(&gConfigLock);
     RtlCopyMemory(config, &gConfig, sizeof(AEP_CAW_CONFIG));
     ExReleasePushLockShared(&gConfigLock);
 }
 
-NTSTATUS AgentshSetConfig(_In_ PAEP_CAW_CONFIG config)
+NTSTATUS AepCawSetConfig(_In_ PAEP_CAW_CONFIG config)
 {
     // Validate FailMode enum
     if (config->FailMode != FAIL_MODE_OPEN && config->FailMode != FAIL_MODE_CLOSED) {
@@ -65,7 +65,7 @@ NTSTATUS AgentshSetConfig(_In_ PAEP_CAW_CONFIG config)
     return STATUS_SUCCESS;
 }
 
-AEP_CAW_FAIL_MODE AgentshGetFailMode(VOID)
+AEP_CAW_FAIL_MODE AepCawGetFailMode(VOID)
 {
     AEP_CAW_FAIL_MODE mode;
     ExAcquirePushLockShared(&gConfigLock);
@@ -74,7 +74,7 @@ AEP_CAW_FAIL_MODE AgentshGetFailMode(VOID)
     return mode;
 }
 
-ULONG AgentshGetPolicyTimeoutMs(VOID)
+ULONG AepCawGetPolicyTimeoutMs(VOID)
 {
     ULONG timeout;
     ExAcquirePushLockShared(&gConfigLock);
@@ -83,7 +83,7 @@ ULONG AgentshGetPolicyTimeoutMs(VOID)
     return timeout;
 }
 
-ULONG AgentshGetMaxConsecutiveFailures(VOID)
+ULONG AepCawGetMaxConsecutiveFailures(VOID)
 {
     ULONG maxFail;
     ExAcquirePushLockShared(&gConfigLock);
@@ -92,7 +92,7 @@ ULONG AgentshGetMaxConsecutiveFailures(VOID)
     return maxFail;
 }
 
-ULONG AgentshGetCacheMaxEntries(VOID)
+ULONG AepCawGetCacheMaxEntries(VOID)
 {
     ULONG maxEntries;
     ExAcquirePushLockShared(&gConfigLock);
@@ -101,7 +101,7 @@ ULONG AgentshGetCacheMaxEntries(VOID)
     return maxEntries;
 }
 
-ULONG AgentshGetCacheDefaultTTLMs(VOID)
+ULONG AepCawGetCacheDefaultTTLMs(VOID)
 {
     ULONG ttl;
     ExAcquirePushLockShared(&gConfigLock);
