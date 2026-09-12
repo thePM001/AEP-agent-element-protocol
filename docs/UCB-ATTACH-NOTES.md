@@ -1,6 +1,6 @@
 # UCB attach notes (AEP 2.8.5)
 
-This page is the public attach record for AEP 2.8.5. A file named CHANGELOG.md is not used.
+This page is the public attach record for AEP 2.8.5.
 
 The optional Universal Connect Bridge uses Predicate Profile perimeter-v1 by default. Content checks call the scanner pack. Ingest uses a 256 KiB default cap and a 2 MiB hard cap. Dock wait is 5 seconds and the journal rotates at a byte cap. The operator key remains UCB_API_KEY and foreign agents use per-agent keys. Task manifests carry a digest and a signature. Unsigned or provisional manifests cannot enable egress. The journal is hash-chained and rollback names the tail record after Base Node ACK. Ingest waits for collect-all Admit allow before the journal is persisted. Egress writes an audit row and isolates caller Authorization plus connection headers. Public compile uses the local gap-manifest-v1 compiler. Paper 005 VSA stays off unless named.
 
