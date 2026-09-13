@@ -279,3 +279,19 @@ export UCB_API_KEY=...
 ## 7. Change control
 
 Deploy profile changes (public bind, UCB on, shell on, connect path) require operator approval. Do not treat OSS compose defaults as production without this guide.
+
+## 8. Kernel sequence and the isolation rule
+
+Base Node is the only live evaluator. Enqueue is not Admit, the TypeScript process event is not product Admit and the theme yaml file has no Admit authority. UCB is an attach gateway rather than a second evaluator, CAW is an execution companion rather than a second evaluator, Lattice Memory never admits, looking similar to a past allow is not allow and an empty agent permission list refuses.
+
+Isolation lives in CAW. The walls are kernel results about the envelope, so a passed wall is not by itself process governance and a wall pass is not execution confinement. There is no shell without a CAW session: run the wrapped command path rather than a bare shell, because a command that no CAW session wrapped is not confined even when the wall passed. CAW confines the host process and Base Node admits the envelope, so a run needs both.
+
+Admit is the collect-all wall pass after the compiled pulse. Apply runs only after Admit allows and the refuse report is the frozen body. CORRECTWRITING_EN is the public writing policy name, the class is writing, wall ids are writing:* and the pulse is the compiled 1000 ms value. Agent permission is the protocol word for who is written as allowed to act. CAW wraps host commands and is not raw bash. UCB requires a task manifest and does not synthesize one. The ingest acknowledgement waits for the collect-all pass before the UCB journal is persisted.
+
+## 9. Operator reading order
+
+Read the error catalogue for the refuse dialect. Read the compiled note for the pulse constants. Read the memory note for the store and the optional Polygres backend. Read the foreign attach note for the manifest and the session refuses. Read the target note for the ISA, RAM, disk, GPU, RSS and latency floors. Read the wrap example for a documented command that returns allow true.
+
+## 10. Key repair notes
+
+Sign key, dock key and seal key refuses are usually mode and provision repairs. Set 0600 on dock-seal.key, dock-kem and the agent sign keys. Provision a missing sign key with the base node tool and an agent id. Read the error catalogue for the refuse list.

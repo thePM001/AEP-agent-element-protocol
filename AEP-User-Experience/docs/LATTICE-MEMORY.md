@@ -6,7 +6,7 @@ Lattice Memory stores forensic attractors and health telemetry and it never admi
 
 sqlite is the durable default so the Base Node sqlite file holds vector rows plus metadata, the in-memory backend is a process-local fast path for similarity search and Polygres is an optional Lattice Memory backend for graph, vector, text and hybrid retrieval that is not a default compose service.
 
-Operators who want Polygres attach it after Base Node is already judging sealed capsules. Do not add Polygres to the public compose file and do not treat a Polygres hit as Admit. See AEP-User-Experience/docs/connectors/polygres.md for optional backend notes.
+Operators who want Polygres attach it after Base Node is already judging sealed capsules. Do not add Polygres to the public compose file and do not treat a Polygres hit as Admit.
 
 ## What Memory does not do
 
