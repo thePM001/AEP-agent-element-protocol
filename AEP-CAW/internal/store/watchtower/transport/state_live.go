@@ -8,7 +8,7 @@ import (
 	"github.com/nla-aep/aep-caw-framework/internal/metrics"
 	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/transport/compress"
 	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/wal"
-	wtpv1 "github.com/canyonroad/wtp-protos/gen/go/canyonroad/wtp/v1"
+	wtpv1 "github.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1"
 	"google.golang.org/protobuf/proto"
 )
 

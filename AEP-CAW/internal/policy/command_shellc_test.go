@@ -814,7 +814,7 @@ func TestEngine_CheckCommand_ShellCDerive_ShimRealSuffix(t *testing.T) {
 }
 
 // TestEngine_CheckCommand_RealSuffix_PolicyOmitsRealVariant covers
-// canyonroad/aep-caw#270: under shim install, the server sees the renamed
+// thePM001/AEP-agent-element-protocol#270: under shim install, the server sees the renamed
 // real shell (e.g. /bin/bash.real) as the outer command, but operator
 // policies typically list shells without the .real suffix
 // (`commands: [bash]`). Before the fix, basename matching was strict and

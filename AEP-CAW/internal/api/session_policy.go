@@ -17,7 +17,7 @@ import (
 // Reads the global engine via a.Policy() so a SwapPolicy by the WTP
 // pushed-policy install hook is observed by every subsequent session.
 //
-// This exists to fix canyonroad/aep-caw#191: before this helper, the command
+// This exists to fix thePM001/AEP-agent-element-protocol#191: before this helper, the command
 // precheck and wrap-time Landlock derivation paths used a.policy directly,
 // which silently ignored custom rules authored in any non-default policy file.
 // All new call sites that need to consult "the policy for this session" should

@@ -6,7 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/nla-aep/aep-caw-framework/internal/metrics"
-	wtpv1 "github.com/canyonroad/wtp-protos/gen/go/canyonroad/wtp/v1"
+	wtpv1 "github.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1"
 )
 
 // runConnecting establishes a stream and exchanges SessionInit/SessionAck.

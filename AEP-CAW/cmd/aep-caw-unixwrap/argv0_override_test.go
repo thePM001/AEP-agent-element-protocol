@@ -8,7 +8,7 @@ import (
 )
 
 // TestApplyArgv0Override covers the Alpine busybox regression
-// (canyonroad/aep-caw#270 follow-up): the shim sets
+// (thePM001/AEP-agent-element-protocol#270 follow-up): the shim sets
 // AEP_CAW_UNIXWRAP_ARGV0 so busybox-multicall binaries see the original
 // invocation name (e.g. "/bin/sh") instead of the renamed
 // "/bin/sh.real" - busybox uses argv[0] basename to pick its applet,

@@ -6,7 +6,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/nla-aep/aep-caw-framework/pkg/types"
-	ocsfpb "github.com/canyonroad/wtp-protos/gen/go/canyonroad/wtp/v1/ocsf"
+	ocsfpb "github.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1/ocsf"
 )
 
 // processProjector builds a *ocsfpb.ProcessActivity from an event

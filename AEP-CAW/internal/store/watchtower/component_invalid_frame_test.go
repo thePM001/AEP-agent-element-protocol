@@ -13,7 +13,7 @@ import (
 	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower"
 	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/compact"
 	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/testserver"
-	wtpv1 "github.com/canyonroad/wtp-protos/gen/go/canyonroad/wtp/v1"
+	wtpv1 "github.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1"
 )
 
 // invalidFrameReasonCounterRE captures the numeric value of

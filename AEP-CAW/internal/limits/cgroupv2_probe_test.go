@@ -441,7 +441,7 @@ func TestProbe_ExplicitLeafHintNotStripped(t *testing.T) {
 // case: cgroup.subtree_control reports cpu/memory/pids delegated, but
 // mkdir within the subtree is denied. Without the writability probe, this
 // silently produces per-command cgroup_apply_failed at runtime while
-// detect over-reports cgroups_v2 ✓ (canyonroad/aep-caw#272).
+// detect over-reports cgroups_v2 ✓ (thePM001/AEP-agent-element-protocol#272).
 func TestProbe_AlreadyDelegated_MkdirDeniedFallsBack(t *testing.T) {
 	f := newFakeCgroupFS()
 	seedHealthyRoot(f)

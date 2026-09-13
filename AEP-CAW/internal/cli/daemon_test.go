@@ -202,7 +202,7 @@ func TestLaunchdPlistTemplate(t *testing.T) {
 	if !strings.Contains(launchdPlistTemplate, "RunAtLoad") {
 		t.Error("template should have RunAtLoad key")
 	}
-	if !strings.Contains(launchdPlistTemplate, "ai.canyonroad.aep-caw.daemon") {
+	if !strings.Contains(launchdPlistTemplate, "ai.nla-aep.aep-caw.daemon") {
 		t.Error("template should have correct label")
 	}
 }

@@ -553,7 +553,7 @@ func (a *App) wrapEnvPolicyWire(s *session.Session, req types.WrapInitRequest) *
 // nil slices are safe to append() to, so callers can unconditionally tack
 // on config-derived paths afterwards.
 //
-// This helper is the regression boundary for canyonroad/aep-caw#191: it
+// This helper is the regression boundary for thePM001/AEP-agent-element-protocol#191: it
 // was extracted from wrapInitCore specifically so the derivation path can
 // be tested end-to-end without standing up seccomp. See
 // TestWrap_LandlockDerivationUsesSessionPolicy.
@@ -574,7 +574,7 @@ func (a *App) deriveLandlockAllowPaths(s *session.Session) (execute, read, write
 // filter socket for this session. It consults the session's effective
 // policy engine (per-session engine if set, otherwise the global engine)
 // so per-session signal rules are honored - reading a.policy directly
-// silently ignores non-default policy files (canyonroad/aep-caw#191).
+// silently ignores non-default policy files (thePM001/AEP-agent-element-protocol#191).
 //
 // Signal filtering is disabled whenever the main seccomp filter already
 // uses SECCOMP_RET_USER_NOTIF (for execve interception, unix socket

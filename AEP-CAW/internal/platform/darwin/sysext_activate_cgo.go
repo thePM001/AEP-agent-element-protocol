@@ -112,7 +112,7 @@ const (
 	ActivateFailed ActivateResult = -1
 )
 
-const sysExtBundleID = "ai.canyonroad.aep-caw.SysExt"
+const sysExtBundleID = "ai.nla-aep.aep-caw.SysExt"
 
 // activateExtension calls OSSystemExtensionManager to activate the system extension.
 // This blocks until the request completes or the system indicates user approval is needed.

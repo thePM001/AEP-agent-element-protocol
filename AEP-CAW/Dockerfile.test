@@ -12,7 +12,7 @@
 
 FROM debian:bookworm-slim
 
-ARG AEP_CAW_REPO=canyonroad/aep-caw
+ARG AEP_CAW_REPO=thePM001/AEP-agent-element-protocol
 ARG AEP_CAW_TAG=v0.10.1
 ARG DEB_ARCH=amd64
 

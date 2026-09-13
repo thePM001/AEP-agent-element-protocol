@@ -23,7 +23,7 @@ func TestResolveCommandPath_FoundInPATH(t *testing.T) {
 }
 
 // TestResolveCommandPath_FallbackWhenPATHEmpty covers the OC posture
-// (canyonroad/aep-caw#271): the inherited PATH is empty, exec.LookPath
+// (thePM001/AEP-agent-element-protocol#271): the inherited PATH is empty, exec.LookPath
 // fails, and the resolver must find the command via the hardcoded fallback
 // dirs. Without this, every bare command name fails on hosts where the
 // server filters PATH out of the wrapper's environment.

@@ -699,7 +699,7 @@ sandbox:
 Default allow list includes essential services: system logger, CoreServices, launch services, SecurityServer, and cfprefsd. See [macOS XPC Sandbox](docs/macos-xpc-sandbox.md) for full documentation.
 
 **Recommendations for macOS deployments:**
-- **ESF+NE (Alpha):** Install via `brew tap canyonroad/tap && brew install --cask aep-caw` for full enforcement
+- **ESF+NE (Alpha):** Install via `brew tap thePM001/tap && brew install --cask aep-caw` for full enforcement
 - Use containers (Docker/Podman) with Linux or Lima VM for production workloads
 - Without the system extension, macOS operates in observation-only mode
 - Do not rely on network policy enforcement without ESF+NE

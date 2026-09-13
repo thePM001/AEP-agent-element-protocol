@@ -5,7 +5,7 @@ import (
 	"reflect"
 
 	"github.com/nla-aep/aep-caw-framework/pkg/types"
-	wtpv1 "github.com/canyonroad/wtp-protos/gen/go/canyonroad/wtp/v1"
+	wtpv1 "github.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1"
 )
 
 // ErrInvalidMapper is returned when m is untyped nil or a typed-nil pointer

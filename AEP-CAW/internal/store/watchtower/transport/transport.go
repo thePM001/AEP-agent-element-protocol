@@ -11,7 +11,7 @@ import (
 	"github.com/nla-aep/aep-caw-framework/internal/metrics"
 	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/transport/compress"
 	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/wal"
-	wtpv1 "github.com/canyonroad/wtp-protos/gen/go/canyonroad/wtp/v1"
+	wtpv1 "github.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1"
 	"golang.org/x/time/rate"
 )
 
@@ -227,7 +227,7 @@ type Options struct {
 	//
 	// Setting this to true is OPT-IN and is gated on the Watchtower-
 	// server-side contract that forbids secrets, credentials, or PII
-	// in Goaway.message. That contract lives in the canyonroad repo
+	// in Goaway.message. That contract lives in the proto package in this repository
 	// (Watchtower server team - see spec §"`goaway_message`
 	// redaction policy" for the follow-up tracker). Operators who
 	// set this to true while the contract is pending take

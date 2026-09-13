@@ -201,7 +201,7 @@ func startNotifyHandlerForWrap(ctx context.Context, notifyFD *os.File, sessionID
 // startSignalHandlerForWrap starts the signal filter handler for a wrap session.
 func startSignalHandlerForWrap(ctx context.Context, signalFD *os.File, sessionID string, a *App, s *session.Session) {
 	// Route through the session's effective policy engine so per-session
-	// signal rules are honored (canyonroad/aep-caw#191). Previously this
+	// signal rules are honored (thePM001/AEP-agent-element-protocol#191). Previously this
 	// function read a.policy directly, which silently ignored rules
 	// authored in any non-default policy file.
 	engine := a.policyEngineFor(s)

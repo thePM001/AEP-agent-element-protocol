@@ -15,7 +15,7 @@ import (
 
 // PolicyUpdatedNotification is the Darwin notification name posted when
 // policy changes. The Swift SysExt listens for this to refresh its cache.
-const PolicyUpdatedNotification = "ai.canyonroad.aep-caw.policy-updated"
+const PolicyUpdatedNotification = "ai.nla-aep.aep-caw.policy-updated"
 
 // NotifyPolicyUpdated posts a Darwin notification to signal the SysExt
 // that the policy cache should be refreshed. This is a fire-and-forget
@@ -33,7 +33,7 @@ func NotifyPolicyUpdated() {
 // SessionRegisteredNotification is the Darwin notification name posted when
 // a new session is registered. The Swift SysExt listens for this to know
 // a session is active and ready.
-const SessionRegisteredNotification = "ai.canyonroad.aep-caw.session-registered"
+const SessionRegisteredNotification = "ai.nla-aep.aep-caw.session-registered"
 
 // NotifySessionRegistered posts a Darwin notification to signal the SysExt
 // that a new session has been registered and is ready.

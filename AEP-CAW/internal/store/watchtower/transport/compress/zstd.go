@@ -5,7 +5,7 @@ import (
 
 	"github.com/klauspost/compress/zstd"
 
-	wtpv1 "github.com/canyonroad/wtp-protos/gen/go/canyonroad/wtp/v1"
+	wtpv1 "github.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1"
 )
 
 // minZstdLevel and maxZstdLevel mirror the canonical zstd CLI's

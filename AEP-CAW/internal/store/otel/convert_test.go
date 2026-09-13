@@ -153,13 +153,13 @@ func TestConvertToLogRecord_Attributes(t *testing.T) {
 	attrs := logRecordAttrs(rec)
 	assertAttr(t, attrs, "process.pid", int64(100))
 	assertAttr(t, attrs, "process.parent_pid", int64(50))
-	assertAttr(t, attrs, "canyonroad.product", "aep-caw")
-	assertAttr(t, attrs, "canyonroad.event.type", "file_write")
-	assertAttr(t, attrs, "canyonroad.session.id", "sess-1")
-	assertAttr(t, attrs, "canyonroad.command.id", "cmd-1")
-	assertAttr(t, attrs, "canyonroad.path", "/workspace/test.go")
-	assertAttr(t, attrs, "canyonroad.decision", "allow")
-	assertAttr(t, attrs, "canyonroad.policy.rule", "allow-workspace")
+	assertAttr(t, attrs, "aep-caw.product", "aep-caw")
+	assertAttr(t, attrs, "aep-caw.event.type", "file_write")
+	assertAttr(t, attrs, "aep-caw.session.id", "sess-1")
+	assertAttr(t, attrs, "aep-caw.command.id", "cmd-1")
+	assertAttr(t, attrs, "aep-caw.path", "/workspace/test.go")
+	assertAttr(t, attrs, "aep-caw.decision", "allow")
+	assertAttr(t, attrs, "aep-caw.policy.rule", "allow-workspace")
 }
 
 func TestConvertToLogRecord_FieldsAttributes(t *testing.T) {
@@ -181,14 +181,14 @@ func TestConvertToLogRecord_FieldsAttributes(t *testing.T) {
 	rec := convertToLogRecord(ev)
 	attrs := logRecordAttrs(rec)
 
-	assertAttr(t, attrs, "canyonroad.risk_level", "high")
-	assertAttr(t, attrs, "canyonroad.agent_id", "agent-1")
-	assertAttr(t, attrs, "canyonroad.latency_us", int64(1500))
-	assertAttr(t, attrs, "canyonroad.error", "permission denied")
+	assertAttr(t, attrs, "aep-caw.risk_level", "high")
+	assertAttr(t, attrs, "aep-caw.agent_id", "agent-1")
+	assertAttr(t, attrs, "aep-caw.latency_us", int64(1500))
+	assertAttr(t, attrs, "aep-caw.error", "permission denied")
 
 	// Custom fields not in the well-known list should not appear.
-	if _, ok := attrs["canyonroad.custom_field"]; ok {
-		t.Error("unexpected attribute canyonroad.custom_field")
+	if _, ok := attrs["aep-caw.custom_field"]; ok {
+		t.Error("unexpected attribute aep-caw.custom_field")
 	}
 }
 
@@ -207,8 +207,8 @@ func TestConvertToLogRecord_OptionalFieldsOmitted(t *testing.T) {
 		t.Error("unexpected attribute process.pid when PID=0")
 	}
 	// No policy -> no decision attribute.
-	if _, ok := attrs["canyonroad.decision"]; ok {
-		t.Error("unexpected attribute canyonroad.decision when no policy")
+	if _, ok := attrs["aep-caw.decision"]; ok {
+		t.Error("unexpected attribute aep-caw.decision when no policy")
 	}
 }
 

@@ -117,7 +117,7 @@ func checkSysExtInstalled() bool {
 		return false
 	}
 	outputStr := string(output)
-	return strings.Contains(outputStr, "ai.canyonroad.aep-caw.SysExt") &&
+	return strings.Contains(outputStr, "ai.nla-aep.aep-caw.SysExt") &&
 		strings.Contains(outputStr, "activated enabled")
 }
 

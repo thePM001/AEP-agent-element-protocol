@@ -18,7 +18,7 @@ import (
 	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/compact"
 	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/testserver"
 	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/transport"
-	wtpv1 "github.com/canyonroad/wtp-protos/gen/go/canyonroad/wtp/v1"
+	wtpv1 "github.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1"
 )
 
 // skipOnWindowsCI mirrors the pattern used by transport-level component
@@ -254,7 +254,7 @@ func TestStore_SessionInit_SendFailed(t *testing.T) {
 // sharing the same metrics.WTPMetrics handle.
 func TestStore_SessionInit_Unknown(t *testing.T) {
 	t.Skip("validator-failure path is unreachable from a component test today: " +
-		"wtpv1.ValidateSessionInit (gen/go/canyonroad/wtp/v1/validate.go:265 in the github.com/canyonroad/wtp-protos repo) only rejects " +
+		"wtpv1.ValidateSessionInit (proto/aepcaw/wtp/v1/validate.go:265 in the this repository) only rejects " +
 		"Algorithm==UNSPECIFIED, but watchtower.Options.validate() " +
 		"(internal/store/watchtower/options.go) maps every accepted HMACAlgorithm to " +
 		"a non-UNSPECIFIED proto enum. Unit coverage for IncSessionInitFailures(unknown) " +

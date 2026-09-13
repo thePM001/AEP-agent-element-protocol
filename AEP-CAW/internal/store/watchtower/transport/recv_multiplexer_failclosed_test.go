@@ -11,7 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/transport"
-	wtpv1 "github.com/canyonroad/wtp-protos/gen/go/canyonroad/wtp/v1"
+	wtpv1 "github.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1"
 )
 
 // recordingHandler is the handler-agnostic test capture surface for

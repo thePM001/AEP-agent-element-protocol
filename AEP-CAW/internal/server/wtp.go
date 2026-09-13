@@ -29,7 +29,7 @@ import (
 	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower"
 	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/compact"
 	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/transport"
-	wtpv1 "github.com/canyonroad/wtp-protos/gen/go/canyonroad/wtp/v1"
+	wtpv1 "github.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1"
 )
 
 // resolveLogGoawayMessage applies the three-state (nil / false / true)
@@ -51,7 +51,7 @@ func resolveLogGoawayMessage(cfgVal *bool, logger *slog.Logger) bool {
 		return defaultV
 	case *cfgVal:
 		logger.Warn("watchtower: log_goaway_message=true; goaway_message text will be logged after client-side sanitization, depends on server-side no-secrets contract",
-			"see", "github.com/canyonroad/wtp-protos proto/canyonroad/wtp/v1/wtp.proto Goaway.message")
+			"see", "this repository proto/aepcaw/wtp/v1/wtp.proto Goaway.message")
 		return true
 	default:
 		// explicit false - no log

@@ -14,7 +14,7 @@ import (
 )
 
 // fallbackPATH lists standard system directories searched when exec.LookPath
-// fails to resolve a bare command name. The OC posture (canyonroad/aep-caw#271)
+// fails to resolve a bare command name. The OC posture (thePM001/AEP-agent-element-protocol#271)
 // can strip PATH from the wrapper's inherited environment, causing LookPath
 // to return "executable file not found in $PATH" even for ubiquitous commands
 // like echo that exist at /usr/bin/echo. The wrapper retries through this
