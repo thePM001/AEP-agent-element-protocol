@@ -6,6 +6,10 @@ This project now keeps CHANGELOG.md at the repository root.
 A dated entry that names the ticket id is required before that ticket can close.
 Write DENY on miss. Policy nla-server-aep-ticket-close-changelog-mandatory.
 
+## [2.8.6] - 2026-09-13 - Public conformance workflow removed
+
+Remove the public conformance workflow from the public tree, because the operator judged it to carry no value for the repository. The workflow file and its folder are gone, the target document no longer ties the conformance gate to CI and the suite stays available to run by hand. The removal landed as one commit on main.
+
 ## [2.8.6] - 2026-09-13 - Minimal wrap example home
 
 Move the minimal wrap example from the root examples folder into AEP-User-Experience, because the example is operator facing and AEP-User-Experience is the operator UX home. The crate keeps its own manifest and lock file, the read path in the operator note and the named path list now point at the new home and the old folder is gone. The move landed as one commit on main.

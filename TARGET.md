@@ -20,4 +20,4 @@ GPU is no because Admit does not use a GPU.
 
 ## RSS and latency
 
-The memory and latency floors and ceilings are internal design targets. They live in the internal target file under internal-export-area, because the public tree does not carry a measurement harness. A design that needs more than the floor stays a defect of the design. The public conformance suite in CI is the gate that has to pass before any release claim.
+The memory and latency floors and ceilings are internal design targets. They live in the internal target file under internal-export-area, because the public tree does not carry a measurement harness. A design that needs more than the floor stays a defect of the design. The public conformance suite is the gate that has to pass before any release claim.
