@@ -6,6 +6,10 @@ This project now keeps CHANGELOG.md at the repository root.
 A dated entry that names the ticket id is required before that ticket can close.
 Write DENY on miss. Policy nla-server-aep-ticket-close-changelog-mandatory.
 
+## [2.8.6] - 2026-09-13 - CTRL-288-P9
+
+Rename the agent control extreme tree to agent control hub. The Base Node folder carried a retired tone in its name while the component row and the mount profile role called the component the Agent Control Hub, so every reader had to translate the path. The folder is now AEP-Base-Node/agent-control-hub with its three files kept byte for byte, the docker ignore entry, the Base Node component row and the three root readme references name the new path and the old path is gone from the tree. The rename landed as one commit on main. This entry was restored after a later changelog write dropped it.
+
 ## [2.8.6] - 2026-09-13 - CTRL-288-P7
 
 Say plainly what the multi base node is: an optional experimental surface. The tree presented the 2.8b federation mode as a shipped kernel component, with a readme section, a registry row and an artifact list that called every file shipped, while the default build compiles the single base node kernel only and nothing in the tree depends on the federation crate. The operator ruled that the mode is optional and experimental, so the readme files, the workspace manifest, the registry row and the artifact list now say so: the default is the single base node, the federation crate is built on purpose and no default run uses it. This entry was restored after a later changelog write dropped it.
