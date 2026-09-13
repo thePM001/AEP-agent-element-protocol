@@ -17,13 +17,13 @@ message Metadata {
   optional string version       = 1; // OCSF schema version, e.g. "1.8.0"
   optional Product product      = 2;
   optional uint64 logged_time   = 3; // unix nanos
-  optional string event_code    = 4; // agentsh ev.Type for cross-reference
+  optional string event_code    = 4; // aep-caw ev.Type for cross-reference
   optional string uid           = 5; // ev.ID
 }
 
 message Product {
-  optional string name          = 1; // "agentsh"
-  optional string vendor_name   = 2; // "agentsh"
+  optional string name          = 1; // "aep-caw"
+  optional string vendor_name   = 2; // "aep-caw"
   optional string version       = 3; // agent version when known
 }
 
@@ -35,7 +35,7 @@ message Process {
   optional string name          = 3; // basename of the executable
   optional string cmd_line      = 4; // joined argv (space-separated, shell-safe-quoted)
   optional File   file          = 5; // executable file
-  optional uint32 depth         = 6; // agentsh extension: nesting depth
+  optional uint32 depth         = 6; // aep-caw extension: nesting depth
   optional string session_uid   = 7; // ev.SessionID
   optional string command_uid   = 8; // ev.CommandID
 }

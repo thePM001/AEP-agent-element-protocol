@@ -21,7 +21,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// ApplicationActivity (class_uid 6005). OCSF v1.8.0 subset, with agentsh
+// ApplicationActivity (class_uid 6005). OCSF v1.8.0 subset, with aep-caw
 // extensions for infrastructure events tagged via agent_internal.
 //
 // OCSF activities used (1..7):
@@ -31,7 +31,7 @@ const (
 //	3 = Update
 //	6 = Other (used for misc agent actions like secret_access)
 //
-// agentsh-internal activities (>=100, see AppActivity enum):
+// aep-caw internal activities (>=100, see AppActivity enum):
 //
 //	100 = EBPF Attached
 //	101 = FUSE Mounted

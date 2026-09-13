@@ -25,7 +25,7 @@ const (
 
 // ProcessActivity (class_uid 1007). OCSF v1.8.0 subset.
 //
-// Activities used by agentsh:
+// Activities used by aep-caw:
 //
 //	1 = Launch
 //	2 = Terminate

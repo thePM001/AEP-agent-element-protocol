@@ -35,7 +35,7 @@ type Metadata struct {
 	Version       *string                `protobuf:"bytes,1,opt,name=version,proto3,oneof" json:"version,omitempty"` // OCSF schema version, e.g. "1.8.0"
 	Product       *Product               `protobuf:"bytes,2,opt,name=product,proto3,oneof" json:"product,omitempty"`
 	LoggedTime    *uint64                `protobuf:"varint,3,opt,name=logged_time,json=loggedTime,proto3,oneof" json:"logged_time,omitempty"` // unix nanos
-	EventCode     *string                `protobuf:"bytes,4,opt,name=event_code,json=eventCode,proto3,oneof" json:"event_code,omitempty"`     // agentsh ev.Type for cross-reference
+	EventCode     *string                `protobuf:"bytes,4,opt,name=event_code,json=eventCode,proto3,oneof" json:"event_code,omitempty"`     // aep-caw ev.Type for cross-reference
 	Uid           *string                `protobuf:"bytes,5,opt,name=uid,proto3,oneof" json:"uid,omitempty"`                                  // ev.ID
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -108,8 +108,8 @@ func (x *Metadata) GetUid() string {
 
 type Product struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`                               // "agentsh"
-	VendorName    *string                `protobuf:"bytes,2,opt,name=vendor_name,json=vendorName,proto3,oneof" json:"vendor_name,omitempty"` // "agentsh"
+	Name          *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`                               // "aep-caw"
+	VendorName    *string                `protobuf:"bytes,2,opt,name=vendor_name,json=vendorName,proto3,oneof" json:"vendor_name,omitempty"` // "aep-caw"
 	Version       *string                `protobuf:"bytes,3,opt,name=version,proto3,oneof" json:"version,omitempty"`                         // agent version when known
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -175,7 +175,7 @@ type Process struct {
 	Name          *string                `protobuf:"bytes,3,opt,name=name,proto3,oneof" json:"name,omitempty"`                               // basename of the executable
 	CmdLine       *string                `protobuf:"bytes,4,opt,name=cmd_line,json=cmdLine,proto3,oneof" json:"cmd_line,omitempty"`          // joined argv (space-separated, shell-safe-quoted)
 	File          *File                  `protobuf:"bytes,5,opt,name=file,proto3,oneof" json:"file,omitempty"`                               // executable file
-	Depth         *uint32                `protobuf:"varint,6,opt,name=depth,proto3,oneof" json:"depth,omitempty"`                            // agentsh extension: nesting depth
+	Depth         *uint32                `protobuf:"varint,6,opt,name=depth,proto3,oneof" json:"depth,omitempty"`                            // aep-caw extension: nesting depth
 	SessionUid    *string                `protobuf:"bytes,7,opt,name=session_uid,json=sessionUid,proto3,oneof" json:"session_uid,omitempty"` // ev.SessionID
 	CommandUid    *string                `protobuf:"bytes,8,opt,name=command_uid,json=commandUid,proto3,oneof" json:"command_uid,omitempty"` // ev.CommandID
 	unknownFields protoimpl.UnknownFields
