@@ -27,7 +27,6 @@ members = [
     "AEP-Components/dock-line-reader/crate",
     "AEP-Components/policy-system-admit/crate",
     "AEP-Components/policy-leftover-skins/crate",
-    "AEP-Components/python-sdk-path/crate",
     "AEP-Components/lattice-gated-fetch/crate",
     "AEP-Components/agentmesh-local-issuance/crate",
     "AEP-Components/epscom-trust-bundle-mode/crate",

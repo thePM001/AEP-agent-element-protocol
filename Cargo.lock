@@ -24,6 +24,9 @@ dependencies = [
 [[package]]
 name = "aep-admit"
 version = "0.1.0"
+dependencies = [
+ "aep-wall-set-backpressure",
+]
 
 [[package]]
 name = "aep-admit-channel-order-walls"
@@ -345,13 +348,6 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror 2.0.19",
-]
-
-[[package]]
-name = "aep-python-sdk-path"
-version = "0.1.0"
-dependencies = [
- "anyhow",
 ]
 
 [[package]]
