@@ -52,7 +52,7 @@ Base Node **is** the local agent control kernel. Governance code, registry, mesh
 |--------|------|------|
 | Docking servers | `crate/src/docking.rs` | inference / validation / regulation / future Unix sockets |
 | Task manifests | `crate/src/task_manifest.rs` | UCB agent contracts (`AEP_TASK_MANIFEST_DIR`) |
-| EPSCOM writing kernel | `crate/src/epscom.rs` | writing.gap enforcement (`no_em_dashes`, `no_en_dashes`, `no_dash_substitutes`, `no_minus_as_dash`, `no_double_hyphen`, `no_oxford_comma`) |
+| CORRECTWRITING_EN kernel | `crate/src/epscom.rs` | writing.gap enforcement (`no_em_dashes`, `no_en_dashes`, `no_dash_substitutes`, `no_minus_as_dash`, `no_double_hyphen`, `no_oxford_comma`) |
 | Side-channel monitor | `crate/src/side_channel_monitor.rs` | Anomaly events on validation dock |
 | Lattice log | `crate/src/lattice_log.rs` | dynAEP event export + `aep-lattice-log` CLI |
 

@@ -188,7 +188,7 @@ async fn serve_port(
     listener: UnixListener,
     listen_path: String,
 ) -> std::io::Result<()> {
-    info!(port = ?port, path = %listen_path, "docking port listening");
+    info!(port = %format!("{port:?}"), path = %listen_path, "docking port listening");
     let mut stop_rx = runtime.stop.subscribe();
     loop {
         if runtime.is_stopping() {
@@ -242,7 +242,7 @@ async fn serve_tls_port(
     acceptor: TlsAcceptor,
     bind_addr: String,
 ) -> std::io::Result<()> {
-    info!(port = ?port, addr = %bind_addr, "docking TLS port listening");
+    info!(port = %format!("{port:?}"), addr = %bind_addr, "docking TLS port listening");
     let mut stop_rx = runtime.stop.subscribe();
     loop {
         if runtime.is_stopping() {
@@ -327,14 +327,14 @@ pub async fn run_docking_servers(
             let tcp_port = tls_dock_port(port);
             let bind_addr = format!("{host}:{tcp_port}");
             let listener = TcpListener::bind(&bind_addr).await.map_err(|e| {
-                warn!(error = %e, addr = %bind_addr, ?port, "docking TLS bind failed");
+                warn!(error = %e, addr = %bind_addr, port = %format!("{port:?}"), "docking TLS bind failed");
                 e
             })?;
             let acceptor = acceptor.clone();
             let addr = bind_addr.clone();
             handles.push(tokio::spawn(async move {
                 if let Err(e) = serve_tls_port(rt, port, listener, acceptor, addr).await {
-                    warn!(error = %e, ?port, "docking TLS listener exited");
+                    warn!(error = %e, port = %format!("{port:?}"), "docking TLS listener exited");
                 }
             }));
         }
@@ -344,12 +344,12 @@ pub async fn run_docking_servers(
         let listen_path = spec.listen_path.clone();
         let port = spec.port;
         let listener = bind_listener(&listen_path).map_err(|e| {
-            warn!(error = %e, path = %listen_path, ?port, "docking port bind failed");
+            warn!(error = %e, path = %listen_path, port = %format!("{port:?}"), "docking port bind failed");
             e
         })?;
         handles.push(tokio::spawn(async move {
             if let Err(e) = serve_port(rt, port, listener, listen_path).await {
-                warn!(error = %e, ?port, "docking port listener exited");
+                warn!(error = %e, port = %format!("{port:?}"), "docking port listener exited");
             }
         }));
     }
