@@ -62,8 +62,9 @@
       "bundled": true,
       "default_enabled": false,
       "path": "AEP-Base-Node/multi-base-node/",
-      "description": "AEP 2.8b multi-base-node registry: node roles, lattice federation, policy bundle sync.",
+      "description": "AEP 2.8b multi-base-node registry: node roles, lattice federation, policy bundle sync. Optional experimental surface, not part of the default build.",
       "manifest": "AEP-Base-Node/registry/components/multi-base-node.json",
+      "maturity": "experimental",
       "role": "kernel"
     },
     {

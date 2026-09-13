@@ -37,6 +37,10 @@ members = [
     "AEP-Components/wall-set-backpressure/crate",
     "AEP-Components/dock-post-beat-collect/crate",
 ]
+# The default build is the single Base Node kernel. The multi base node is an
+# optional experimental surface and it is not a default member, so a plain
+# build does not compile it. Build it on purpose with:
+#   cargo build -p multi-base-node-core
 default-members = ["AEP-Base-Node/crate"]
 
 [workspace.package]

@@ -2,11 +2,11 @@
   "manifest_version": "1",
   "id": "multi-base-node",
   "version": "2.8.5",
-  "status": "built",
+  "status": "experimental",
   "built": true,
   "kind": "daemon",
   "path": "AEP-Base-Node/multi-base-node/",
-  "description": "AEP 2.8b multi-base-node registry: node roles, lattice federation, policy bundle sync. Agentstream is optional.",
+  "description": "AEP 2.8b multi-base-node registry: node roles, lattice federation, policy bundle sync. Optional experimental surface, so it is not part of the default build and no default run uses it. Agentstream is optional.",
   "requires": [
     "aep-base-node",
     "lattice-channels"
@@ -40,7 +40,7 @@
     "gpu_required": false
   },
   "cca": {
-    "summary": "Governed orchestration of multiple AEP Base Node kernels over lattice-channel.v1.",
+    "summary": "Optional experimental surface for orchestration of multiple AEP Base Node kernels over lattice-channel.v1. The default build is the single Base Node kernel.",
     "use_when": [
       "registering primary replica edge science-isolated nodes",
       "federating policy bundles between Base Nodes",

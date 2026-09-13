@@ -64,9 +64,9 @@ Register new components in **`AEP-Base-Node/registry/catalog.json`** + **`AEP-Ba
 |------|----------|
 | `crate/` | `aep-base-node` Rust crate + `aep-lattice-log` CLI binary |
 | `registry/` | Component catalog + manifests (`catalog.json`, `components/*.json`) |
-| `multi-base-node/` | Multi-base-node (2.8b) mode: federate multiple Base Node kernels |
+| `multi-base-node/` | Multi-base-node (2.8b) mode: federate multiple Base Node kernels (optional experimental surface, not in the default build) |
 | `potomitan/` | POTOMITAN mesh peer registry (`aep-potomitan` crate) |
-| `agent-control-extreme/` | Agent Control Hub: mount profiles for multi-mount sessions |
+| `agent-control-hub/` | Agent Control Hub: mount profiles for multi-mount sessions |
 | `signatures/` | EPSCOM detection signatures + trust bundle (default wired, CCA accessible) |
 | `AEP-Components/dynAEP/NAME-POLICY.md` | Reserved-name policy |
 
@@ -99,3 +99,5 @@ A builder who wants a different wait edits the compiled `PULSE_MS` constant and 
 cargo build --release -p aep-base-node
 # binaries: rust/target/release/aep-base-node, aep-lattice-log
 ```
+
+The default build is the single Base Node kernel. Other workspace crates, such as the multi base node, are built on purpose and they are not part of the default build or the default deployment.

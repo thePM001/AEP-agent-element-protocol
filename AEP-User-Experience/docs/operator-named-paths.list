@@ -4,3 +4,6 @@ AEP-User-Experience/docs/LATTICE-MEMORY.md
 AEP-User-Experience/docs/FOREIGN-ATTACH.md
 TARGET.md
 AEP-User-Experience/examples/minimal-wrap/README.md
+AEP-User-Experience/examples/end-to-end-run/README.md
+AEP-User-Experience/examples/end-to-end-run/run.sh
+AEP-User-Experience/examples/end-to-end-run/END-TO-END-RUN.transcript.md

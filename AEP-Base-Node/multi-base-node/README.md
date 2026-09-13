@@ -1,5 +1,7 @@
 # Multi-Base-Node (2.8b)
 
+**Status:** optional experimental surface. It is not part of the default build and it is not part of the default deployment. The default workspace member is the single Base Node kernel, so a plain build compiles that kernel only. Build or test this crate on purpose with the command in the Build section below.
+
 Federate multiple AEP Base Node kernels from one `nodes.json` v2 registry.
 
 ## Architecture
@@ -30,5 +32,7 @@ Source: [`docs/multi-base-node-28b-architecture.svg`](./docs/multi-base-node-28b
 ```bash
 cargo test -p multi-base-node-core
 ```
+
+That command is the only thing that builds the crate. Nothing in the default path depends on it, and no default run uses it.
 
 Agentstream is optional. Federation uses lattice-channel.v1 transport.

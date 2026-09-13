@@ -13,7 +13,7 @@ use serde::Deserialize;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, UnixListener};
 use tokio::task::JoinHandle;
 use tokio_rustls::TlsAcceptor;
@@ -159,6 +159,25 @@ where
             None => break,
             Some(Some(l)) => l,
             Some(None) => {
+                // The line reader reports a clean end of stream and a line past
+                // the cap the same way, so probe the stream. Pending bytes mean
+                // the line crossed the cap. An empty probe means the peer
+                // closed, which is not a side channel anomaly.
+                let pending = match tokio::time::timeout(
+                    Duration::from_millis(250),
+                    reader.fill_buf(),
+                )
+                .await
+                {
+                    Ok(Ok(buf)) => buf.is_empty() == false,
+                    // A read error or a quiet stream after a full cap is not a
+                    // clean close, so the line counts as over the cap.
+                    Ok(Err(_)) => true,
+                    Err(_) => true,
+                };
+                if pending == false {
+                    break;
+                }
                 let resp = match lock_or_deny(&runtime.db, "db") {
                     Ok(db) => {
                         let _ = record_side_channel_anomaly(

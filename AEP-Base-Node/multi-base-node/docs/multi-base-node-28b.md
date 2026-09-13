@@ -1,6 +1,6 @@
 # AEP 2.8b Multi-Base-Node
 
-**Status:** shipped on `main`.
+**Status:** optional experimental surface. It is built on purpose and it is not part of the default build or the default deployment.
 
 ## Architecture
 

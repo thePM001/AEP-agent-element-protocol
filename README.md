@@ -421,7 +421,7 @@ The library is counted by this layer table. Folder count is not the library coun
 | CCA agent | Central Setup Agent | [`AEP-CCA-Central-Setup-Agent/`](AEP-CCA-Central-Setup-Agent/) |
 | Operators | Agent Composer Lite and harness | [`AEP-Composer-Lite/`](AEP-Composer-Lite/) |
 | Policy | GAP nodes and subprotocol validators | [`AEP-Policy-System/`](AEP-Policy-System/) |
-| Multi-base-node (2.8b) | Federate multiple Base Node kernels | [`AEP-Base-Node/multi-base-node/`](AEP-Base-Node/multi-base-node/) |
+| Multi-base-node (2.8b) | Federate multiple Base Node kernels (optional experimental surface) | [`AEP-Base-Node/multi-base-node/`](AEP-Base-Node/multi-base-node/) |
 
 ### How a message is judged
 
@@ -470,7 +470,7 @@ Coding governance proposes a change, measures how far that change reaches and on
 
 | Directory | Role |
 |-----------|------|
-| [`AEP-Base-Node/`](AEP-Base-Node/) | Kernel: daemon, registry, POTOMITAN, agent-control-extreme |
+| [`AEP-Base-Node/`](AEP-Base-Node/) | Kernel: daemon, registry, POTOMITAN, agent-control-hub |
 | [`AEP-Components/`](AEP-Components/) | Protocol components (dynAEP, lattice-channels, graph-engine, aep-comm, economics, scanners, fleet) |
 | [`AEP-CAW/`](AEP-CAW/) | Execution companion: CAW host sandboxes. Not a protocol component |
 | [`AEP-Composer-Lite/`](AEP-Composer-Lite/) | Agent Composer (Composer Lite): WASM visual canvas on port: 8424 |
@@ -486,6 +486,7 @@ Root keeps only workspace tooling: `Cargo.toml`, `Dockerfile`, `docker-compose.y
 
 ## Multi-base-node (2.8b)
 
+**Status:** optional experimental surface. It is not part of the default build and it is not part of the default deployment, because the default workspace member is the single Base Node kernel.
 
 Govern multiple AEP Base Node kernels from a single `nodes.json` v2 registry: roles (`primary`, `replica`, `edge`, `science-isolated`), policy bundle Merkle sync over lattice channels, and optional Agentstream topologies (`as-single`, `as-federated` with ASIP).
 
@@ -1095,7 +1096,7 @@ aep-caw wrap --profile coding-agent -- <your-agent-binary>
 
 Per-mount policy templates (`workspace-rw`, `config-readonly`, etc.) are defined in `caw-mount-policies.gap` and compiled into `$AEP_DATA/caw-framework/policies/`.
 
-Further detail: [`AEP-Components/gap/README.md`](AEP-Components/gap/README.md), [`AEP-Base-Node/agent-control-extreme/README.md`](AEP-Base-Node/agent-control-extreme/README.md).
+Further detail: [`AEP-Components/gap/README.md`](AEP-Components/gap/README.md), [`AEP-Base-Node/agent-control-hub/README.md`](AEP-Base-Node/agent-control-hub/README.md).
 
 ### UCB manifest synthesis env vars (optional tiers)
 
@@ -1124,7 +1125,7 @@ GAP template authority: `AEP-Components/gap/policies/reference/task-manifest-v1.
 | [`AEP-Base-Node/README.md`](AEP-Base-Node/README.md) | Base Node operator guide |
 | [`AEP-CAW/README.md`](AEP-CAW/README.md) | **CAW execution sandboxes** (`aep-caw`, shell shim, policy engine, CCA integration) |
 | [`AEP-Components/gap/README.md`](AEP-Components/gap/README.md) | GAP language, compile pipeline, CAW profile authoring |
-| [`AEP-Base-Node/agent-control-extreme/README.md`](AEP-Base-Node/agent-control-extreme/README.md) | GAP capability profiles and CAW sandbox routing on Base Node |
+| [`AEP-Base-Node/agent-control-hub/README.md`](AEP-Base-Node/agent-control-hub/README.md) | GAP capability profiles and CAW sandbox routing on Base Node |
 | [`AEP-Components/dynAEP/README.md`](AEP-Components/dynAEP/README.md) | dynAEP 1.0 hyperlattice runtime protocol |
 | [`AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md`](AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md) | How to attach a custom sub-lattice |
 | [`AEP-Components/dynAEP/CONFIG.md`](AEP-Components/dynAEP/CONFIG.md) | dynAEP configuration reference |
