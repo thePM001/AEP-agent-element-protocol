@@ -238,14 +238,12 @@
       "kind": "compliance",
       "bundled": true,
       "default_enabled": false,
-      "path": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
+      "path": "AEP-Policy-System/reference/",
       "lrp_id": "eu-ai-act",
       "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap",
       "manifest": "AEP-Base-Node/registry/components/eu-ai-act.json",
       "maturity": "enforced_v1",
-      "description": "EU AI Act compliance checking pack. One definition file, one gate. Not a legal certification.",
-      "definition": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
-      "gate": "AEP-Components/eu-ai-act-checker/gates/gate-eu-ai-act.sh",
+      "description": "EU AI Act compliance pack (GAP reference).",
       "role": "companion"
     },
     {
@@ -430,8 +428,8 @@
       "kind": "library",
       "bundled": true,
       "default_enabled": true,
-      "path": "AEP-Components/gap-capability-dimensions/",
-      "description": "Who-may-do-what is GAP dimension Conjunction. Agent A may X. Agent B may Y.",
+      "path": "AEP-Components/admit/crate",
+      "description": "Agent permission is the GAP dimension Conjunction. The dimension compiles in the admit permission wall.",
       "manifest": "AEP-Base-Node/registry/components/gap-capability-dimensions.json",
       "role": "kernel"
     },
@@ -629,7 +627,7 @@
       "bundled": true,
       "default_enabled": false,
       "path": "AEP-Components/permissions/",
-      "description": "Pointer to kernel agent permission. Checks live in the kernel permission wall.",
+      "description": "Kernel agent permission facade crate. It re-exports the permission wall names from the admit crate.",
       "manifest": "AEP-Base-Node/registry/components/permissions.json",
       "role": "kernel"
     },

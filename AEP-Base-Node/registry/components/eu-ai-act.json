@@ -3,22 +3,16 @@
   "id": "eu-ai-act",
   "version": "2.8.5",
   "kind": "compliance",
-  "path": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
-  "description": "EU AI Act compliance checking pack. One definition file, one gate. Not a legal certification.",
-  "maturity": "enforced_v1",
+  "path": "AEP-Policy-System/reference/",
+  "description": "EU AI Act compliance pack (GAP reference).",
   "requires": [
     "aep-base-node",
     "dynaep-core"
   ],
   "lrp_id": "eu-ai-act",
   "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap",
-  "definition": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
-  "gate": "AEP-Components/eu-ai-act-checker/gates/gate-eu-ai-act.sh",
   "implementation": {
-    "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap",
-    "checker": "AEP-Components/eu-ai-act-checker",
-    "definition": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
-    "gate": "AEP-Components/eu-ai-act-checker/gates/gate-eu-ai-act.sh"
+    "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap"
   },
   "docks": {
     "primary": "regulation_module",

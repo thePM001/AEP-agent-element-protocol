@@ -4,7 +4,7 @@
   "version": "2.8.5",
   "kind": "library",
   "path": "AEP-Components/permissions/",
-  "description": "Pointer to kernel agent permission. Checks live in the kernel permission wall.",
+  "description": "Kernel agent permission facade crate. It re-exports the permission wall names from the admit crate.",
   "requires": [
     "policy-engine"
   ],
@@ -29,6 +29,7 @@
     "pairs_with": []
   },
   "implementation": {
+    "crate": "AEP-Components/permissions/crate",
     "kernel": "AEP-Components/admit"
   },
   "role": "kernel"
