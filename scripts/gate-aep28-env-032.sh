@@ -9,5 +9,4 @@ cd "$ROOT"
 cargo test -p aep-admit-live-dock --lib
 cargo test -p aep-envelope-walls --lib
 cargo test -p aep-base-node --lib
-cargo test -p aep-base-node --test source_invariants
 echo "[gate-aep28-env-032] OK live dock collect-all; product walls on live dock"

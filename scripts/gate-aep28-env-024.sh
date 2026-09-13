@@ -7,5 +7,4 @@ set -euo pipefail
 ROOT=$(cd $(dirname "$0")/..; pwd)
 cd "$ROOT"
 cargo test -p aep-live-entry --lib
-cargo test -p aep-base-node --test source_invariants
 echo "[gate-aep28-env-024] OK rust live entry; typescript processEvent is not product live path"

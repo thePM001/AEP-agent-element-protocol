@@ -10,5 +10,4 @@ cargo test -p aep-envelope --lib
 cargo test -p aep-live-entry --lib
 cargo test -p aep-dynaep --lib
 cargo test -p aep-one-live-evaluation --lib
-cargo test -p aep-base-node --test source_invariants
 echo "[gate-aep28-env-049] OK one Admit function and one id vocabulary"

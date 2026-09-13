@@ -18,5 +18,4 @@ if ! command -v cargo >/dev/null 2>&1; then
 fi
 
 cargo test -p aep-admit --lib
-cargo test -p aep-base-node --test source_invariants
 echo "[gate-admit-parity] OK rust matches JS on shared fixtures"

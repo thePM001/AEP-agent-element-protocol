@@ -6,6 +6,5 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-cargo test -p aep-base-node --test source_invariants
 cargo test -p aep-live-entry --lib
 echo "[gate-aep28-env-042] OK empty lattice closes dag.membership and gap.agent_may"

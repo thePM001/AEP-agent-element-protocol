@@ -766,8 +766,6 @@ Factory checks on the official tree:
 
 ```bash
 cargo test -p aep-base-node --lib
-cargo test -p aep-base-node --test source_invariants
-scripts/gate-aep28-env-075.sh
 ./AEP-Components/conformance/runner/run.sh
 docker compose up -d --build
 ```

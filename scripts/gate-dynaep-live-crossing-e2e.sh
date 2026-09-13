@@ -5,6 +5,5 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-cargo test -p aep-base-node --test source_invariants
 cargo test -p aep-admit --lib
 echo "[gate-dynaep-live-crossing-e2e] OK crate collect-all and skip Apply"

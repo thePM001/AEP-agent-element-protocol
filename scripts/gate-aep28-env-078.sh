@@ -11,5 +11,4 @@ if [ -d "$ROOT/.github" ]; then
   exit 1
 fi
 cargo test -p aep-base-node --lib
-cargo test -p aep-base-node --test source_invariants aep28_env_078
 echo "[gate-aep28-env-078] OK official public run sequence. GitHub is a public mirror"

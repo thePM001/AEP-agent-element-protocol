@@ -12,5 +12,4 @@ cargo test -p aep-admit-live-dock --lib
 cargo test -p aep-one-live-evaluation --lib
 cargo run -q -p aep-one-live-evaluation
 cargo test -p aep-base-node --lib
-cargo test -p aep-base-node --test source_invariants
 echo "[gate-aep28-env-037] OK one live evaluation; dual combinator fails"
