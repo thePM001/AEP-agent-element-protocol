@@ -22,7 +22,7 @@ metadata:
   provenance: "aep.2.8.seed"
   version: "1.0.0"
   stability: stable
-  agent_may:
+  agent_permission:
     - agent_id: grok-build
       action: write
     - agent_id: grok-build

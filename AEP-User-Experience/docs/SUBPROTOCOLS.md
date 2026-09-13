@@ -17,7 +17,7 @@ You own the domain files. Put them in a folder you control, for example `records
 | Scene graph (`scene.json`) | Structure: what exists, where it sits and how deep it may go | Topology only |
 | Registry (`registry.yaml`) | Behaviour: operations, types, fields, states and constraints | Names what may be proposed |
 | Theme (`theme.yaml`) | Skin: colours, fonts and spacing bound only through `skin_binding` | Look only. No operations |
-| Action lattice (`lattice.yaml`) | Event nodes: `action_path`, parents, constraints and `agent_may` | Partial order of moves |
+| Action lattice (`lattice.yaml`) | Event nodes: `action_path`, parents, constraints and `agent_permission` | Partial order of moves |
 | GAP instruction (`records.gap`) | Written policy: who may do what, bound to a wrap or an action-path prefix | Live Admit walls |
 | Dock bind | Transport: sealed encrypted capsules into Base Node docks | No unsealed work |
 
@@ -158,7 +158,7 @@ actions:
       - type: required_field
         field: owner
         description: "A record must name an owner agent_id"
-    agent_may: ["clerk"]
+    agent_permission: ["clerk"]
 
   records:archive:
     label: "Archive a record"
@@ -169,16 +169,16 @@ actions:
       - type: required_field
         field: record_id
         description: "Archive needs the id minted on create"
-    agent_may: ["archivist"]
+    agent_permission: ["archivist"]
 ```
 
-`agent_may` on the lattice node is the same who-may idea as GAP. Empty grants close the action. Rank rings are not the Admit floor. Agent A may create and agent B may archive with no rank between them.
+`agent_permission` on the lattice node is the same who-may idea as GAP. Empty grants close the action. Rank rings are not the Admit floor. Agent A may create and agent B may archive with no rank between them.
 
 ### Written policy (GAP)
 
 GAP is the written instruction that becomes a live Admit wall after a sealed capsule. Keep `.gap` as UTF-8 source with one instruction per document. Writing and security are always-on stems and they evaluate on every action path. Other walls bind to a wrap or to an `action_path_prefix` so a records wall does not close a payments ping.
 
-Who-may is `agent_may` so an empty grant list closes that agent's action. `trust_ring` is a documentary label and rank use warns then denies while who-may stays `agent_may`.
+Who-may is `agent_permission` so an empty grant list closes that agent's action. `trust_ring` is a documentary label and rank use warns then denies while who-may stays `agent_permission`.
 
 ```yaml
 address:
@@ -198,7 +198,7 @@ action:
 
 metadata:
   version: "1.0.0"
-  agent_may:
+  agent_permission:
     - agent_id: clerk
       action: records:create
     - agent_id: archivist
@@ -241,7 +241,7 @@ Rejection bodies should be specific:
 | Unknown operation | `unknown_action: records:delete is not in the records registry` |
 | Missing field | `missing_field: title is required on records:create` |
 | Parent not satisfied | `parent_unsatisfied: records:archive requires records:create` |
-| Empty or wrong grant | `agent_may: clerk may not records:archive` |
+| Empty or wrong grant | `agent_permission: clerk may not records:archive` |
 | Skin tried to deny | `skin_has_authority: theme must not name operations` |
 | Admit closed | `admit_denied: collect-all closed this capsule; execution must not run` |
 
@@ -257,11 +257,11 @@ See [Kernel pulse](#kernel-pulse) for how the wait can be changed in theory (reb
 
 Suppose you govern a records inbox. Clerk may create a record. Archivist may archive a record that already exists. No one else may. You create `records/` with the scene, registry, theme, lattice and GAP files above. You point `aep_sources` at that folder. You load `records.gap` so wrap `records` and prefix `records` are bound. You run Base Node so docks accept sealed capsules.
 
-Walk a clerk proposal `{ "action_path": "records:create", "owner": "clerk" }` with no title. The registry check returns `missing_field: title is required on records:create` before a capsule is sealed. The clerk retries with a title. The lattice parent list is empty so create may proceed. GAP `agent_may` lists clerk on `records:create` so the wall does not close. The client seals a lattice-channel capsule. Base Node freezes, waits 1000 ms, runs collect-all Admit and Apply. Only then does your executor insert the row and the bridge mints `record_id`.
+Walk a clerk proposal `{ "action_path": "records:create", "owner": "clerk" }` with no title. The registry check returns `missing_field: title is required on records:create` before a capsule is sealed. The clerk retries with a title. The lattice parent list is empty so create may proceed. GAP `agent_permission` lists clerk on `records:create` so the wall does not close. The client seals a lattice-channel capsule. Base Node freezes, waits 1000 ms, runs collect-all Admit and Apply. Only then does your executor insert the row and the bridge mints `record_id`.
 
 Walk an archive before create. The lattice parent `records:create` has not been satisfied so the checker returns `parent_unsatisfied` and nothing is sealed.
 
-Walk a clerk who proposes `records:archive`. GAP `agent_may` does not grant clerk that action so Admit closes even if the registry shape is valid. Execution must not run.
+Walk a clerk who proposes `records:archive`. GAP `agent_permission` does not grant clerk that action so Admit closes even if the registry shape is valid. Execution must not run.
 
 Walk a theme file that lists `actions: ["records:create"]`. That is skin carrying authority so reject the theme and fix the split.
 
@@ -277,8 +277,8 @@ Do not stand up a parallel runtime that opens unsealed work and do not treat ext
 - [ ] Scene graph present, rooted, parents closed and depth bands kept
 - [ ] Registry names every operation, type, field and constraint
 - [ ] Theme has look only and no operations
-- [ ] Action lattice names `action_path` nodes, parents, constraints and `agent_may`
-- [ ] GAP instruction binds `wrap` or `action_path_prefix` and lists `agent_may`
+- [ ] Action lattice names `action_path` nodes, parents, constraints and `agent_permission`
+- [ ] GAP instruction binds `wrap` or `action_path_prefix` and lists `agent_permission`
 - [ ] Writing and security stems stay on
 - [ ] Dock channels take sealed capsules only
 - [ ] Domain checker returns specific errors

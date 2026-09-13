@@ -8,7 +8,7 @@
     "wrap": "nist-ai-rmf",
     "constraints": [
       "hard: apply reference policy lattice govern function before agent start",
-      "hard: map risk context and agent_may grants at session registration",
+      "hard: map risk context and agent_permission grants at session registration",
       "hard: measure outputs via Admit collect-all of compiled walls plus live OPA on lattice-policy.rego and derived ledger scoring",
       "hard: manage incidents via escalation rules and kill switch",
       "hard: document AI system changes through policy version gates"
@@ -26,8 +26,8 @@
     "provenance": "aep.reference.compliance.nist-ai-rmf",
     "version": "1.1.0",
     "stability": "stable",
-    "agent_may": [
-      "*"
+    "agent_permission": [
+      "agent-a"
     ],
     "lrp_id": "nist-ai-rmf",
     "framework": "NIST AI RMF 1.0",

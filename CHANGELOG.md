@@ -6,6 +6,10 @@ This project now keeps CHANGELOG.md at the repository root.
 A dated entry that names the ticket id is required before that ticket can close.
 Write DENY on miss. Policy nla-server-aep-ticket-close-changelog-mandatory.
 
+## [2.8.6] - 2026-09-13 - Who may field rename and attach surface
+
+Finish the who may field rename across the public tree. The kernel reads the field name agent_permission while the documents, the schemas and the shipped reference policies still used the old name, so a builder who followed the library docs wrote a field the kernel does not read. Every public document, schema and reference policy now carries the single field name, the reference policies grant named agents instead of a wildcard, the tree gains one public API document that matches the kernel facade and the permissions component ships a crate rather than a pointer file.
+
 ## [2.8.6] - 2026-09-13 - Public conformance workflow removed
 
 Remove the public conformance workflow from the public tree, because the operator judged it to carry no value for the repository. The workflow file and its folder are gone, the target document no longer ties the conformance gate to CI and the suite stays available to run by hand. The removal landed as one commit on main.

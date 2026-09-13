@@ -7,7 +7,7 @@
     "guard": "true",
     "wrap": "health",
     "constraints": [
-      "hard: restrict PHI access to agents listed in agent_may only",
+      "hard: restrict PHI access to agents listed in agent_permission only",
       "hard: record immutable hash-chained audit entry for every PHI-touching action",
       "hard: verify Merkle integrity on every evidence export",
       "hard: require authenticated agent identity before PHI tool invocation",
@@ -26,8 +26,8 @@
     "provenance": "aep.reference.compliance.hipaa",
     "version": "1.1.0",
     "stability": "stable",
-    "agent_may": [
-      "*"
+    "agent_permission": [
+      "agent-a"
     ],
     "lrp_id": "hipaa",
     "framework": "HIPAA",

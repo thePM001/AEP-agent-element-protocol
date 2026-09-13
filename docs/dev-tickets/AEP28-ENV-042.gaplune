@@ -4,7 +4,7 @@ schema_id: gaplune.nla.dev-tickets.ticket.v1
 format: gaplune
 json_prohibited: true
 id: AEP28-ENV-042
-title: Empty lattice must close dag.membership and gap.agent_may. Do not reopen AEP28-ENV-034.
+title: Empty lattice must close dag.membership and gap.agent_permission. Do not reopen AEP28-ENV-034.
 status: closed
 priority: P0
 track: aep28-kernel
@@ -13,8 +13,8 @@ plan: none
 repo: NLA-AEP-v2.8-open-source
 depends_on: none
 scope: AEP-Components/envelope/crate/src/lib.rs AEP-Base-Node/crate/src/envelope_admit.rs AEP-Components/live-entry/crate
-notes: Closed. Empty node map closes dag.membership and gap.agent_may. Missing or unreadable lattice YAML stays Deny at load. A non-empty action_path cannot pass membership on an empty lattice. AEP28-ENV-034 is not reopened. Hangar tools stay out of this ticket.
-acceptance: Empty node map closes dag.membership and gap.agent_may. Missing or unreadable lattice YAML is Deny at load. A non-empty action_path cannot pass membership on an empty lattice. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/envelope/crate before any ship prose.
+notes: Closed. Empty node map closes dag.membership and gap.agent_permission. Missing or unreadable lattice YAML stays Deny at load. A non-empty action_path cannot pass membership on an empty lattice. AEP28-ENV-034 is not reopened. Hangar tools stay out of this ticket.
+acceptance: Empty node map closes dag.membership and gap.agent_permission. Missing or unreadable lattice YAML is Deny at load. A non-empty action_path cannot pass membership on an empty lattice. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/envelope/crate before any ship prose.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/envelope/crate
 updated: 2026-09-02
 source_commits:

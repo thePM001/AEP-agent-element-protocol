@@ -26,8 +26,8 @@
     "provenance": "aep.reference.compliance.soc2",
     "version": "1.1.0",
     "stability": "stable",
-    "agent_may": [
-      "*"
+    "agent_permission": [
+      "agent-a"
     ],
     "lrp_id": "soc2-type2",
     "framework": "SOC 2 Type II",

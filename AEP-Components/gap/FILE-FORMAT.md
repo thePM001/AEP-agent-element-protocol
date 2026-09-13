@@ -15,12 +15,12 @@ This note tells operators how live GAP files are written and how collect-all Adm
 - Optional proof algorithms may still name Ed25519 or ML-DSA-65.
 - The signatures loader denies an ML-DSA claim on sha256-structure.
 - Signed proof is not the default live AEP 2.8.6 attach.
-- Who-may is agent_may.
+- Who-may is agent_permission.
 - Empty grants close an agent action when the grant list is empty.
 - Presence of trust_ring is Deny.
 - Presence of trust_ring on a live GAP document is Deny.
 - Closed wall gap:trust_ring:rank.
-- Who-may is agent_may.
+- Who-may is agent_permission.
 - Do not set trust_ring on live documents.
 - Writing and security are always-on stems and they evaluate on every action path.
 - Other GAP walls bind to a wrap or an action path prefix.

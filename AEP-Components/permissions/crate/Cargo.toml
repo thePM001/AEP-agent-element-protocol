@@ -1,0 +1,9 @@
+[package]
+name = "aep-permissions"
+version = "0.1.0"
+edition = "2021"
+description = "Kernel agent permission facade: re-exports the permission wall names from aep-admit so an attach reader imports one crate and one field name."
+license = "UNLICENSED"
+
+[dependencies]
+aep-admit = { path = "../../admit/crate" }

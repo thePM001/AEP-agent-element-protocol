@@ -25,8 +25,8 @@
     "provenance": "aep.reference.governance",
     "version": "1.1.0",
     "stability": "stable",
-    "agent_may": [
-      "*"
+    "agent_permission": [
+      "agent-a"
     ],
     "aep_version": "2.8.6",
     "wrap": "governance"

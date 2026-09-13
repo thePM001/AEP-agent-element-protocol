@@ -155,8 +155,8 @@
     "provenance": "aep.reference.compliance.eu-ai-act",
     "version": "1.3.0",
     "stability": "stable",
-    "agent_may": [
-      "*"
+    "agent_permission": [
+      "agent-a"
     ],
     "lrp_id": "eu-ai-act",
     "framework": "EU AI Act",

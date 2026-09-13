@@ -26,8 +26,8 @@
     "provenance": "aep.reference.compliance.gdpr",
     "version": "1.1.0",
     "stability": "stable",
-    "agent_may": [
-      "*"
+    "agent_permission": [
+      "agent-a"
     ],
     "lrp_id": "gdpr",
     "framework": "GDPR",

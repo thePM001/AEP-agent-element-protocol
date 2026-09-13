@@ -2,7 +2,7 @@
 
 GAP is the native instructions language for governed agency in the Agent Element Protocol and an instruction is the atomic unit so agents, workflows, validators, compositions and governance rules are all instructions that generate further instructions.
 
-Live evaluation follows AEP 2.8.6: seal a lattice-channel capsule, freeze the clock at seal, wait 1000 ms, run every check together as collect-all Admit and then Apply the allowed action. After the wait the client collects by capsule hash and live AEP 2.8.6 EPSCOM trust bundle mode is sha256-structure. Presence of trust_ring is Deny. Who-may is agent_may.
+Live evaluation follows AEP 2.8.6: seal a lattice-channel capsule, freeze the clock at seal, wait 1000 ms, run every check together as collect-all Admit and then Apply the allowed action. After the wait the client collects by capsule hash and live AEP 2.8.6 EPSCOM trust bundle mode is sha256-structure. Presence of trust_ring is Deny. Who-may is agent_permission.
 
 ## AEP 2.8 vendor tree
 
@@ -19,7 +19,7 @@ This tree vendors classic GAP into `AEP-Components/gap/` from github.com/thePM00
 - `caw-coding-agent.gap` at `dev.aep.caw/coding-agent.v1` is the default profile for a governed coding agent.
 - `${PROJECT_ROOT}` is read-write.
 - `${AEP_AGENT_CONFIG_DIR}`, `${HOME}/.config/agent` and `${HOME}/.local/share/agent` are read-only.
-- The base policy is `default` with agent_may grants and the LLM proxy enabled.
+- The base policy is `default` with agent_permission grants and the LLM proxy enabled.
 - Use `agent-sandbox` for untrusted code and `compiled-runtime` when the LLM proxy must stay off.
 - Compile with `node lib/gap-compile.mjs --list-profiles` or `node lib/gap-compile.mjs --materialize /data/aep` then wrap with `aep-caw wrap --profile coding-agent`.
 - UCB is optional. Foreign ingest needs a task manifest that is caller-provided, stored or from an explicitly configured synthesis tier.
@@ -59,14 +59,14 @@ Fifteen named rows are a derived ledger of that evaluation and the ledger is a f
 
 - Row 0 Task scope: action within subtask scope.
 - Row 1 Session state: session active and valid.
-- Row 2 Who may act: agent_may, this agent is written as allowed to do this action.
+- Row 2 Who may act: agent_permission, this agent is written as allowed to do this action.
 - Row 3 System rate limit: planetwide cap not exceeded.
 - Row 4 Session rate limit: per-session cap not exceeded.
 - Row 5 Intent drift: action aligns with baseline behaviour.
 - Row 6 Escalation: higher authority required.
 - Row 7 Covenant evaluation: permit, forbid and require rules.
 - Row 8 Pattern check: environment forbidden patterns.
-- Row 9 Capability: written capabilities. Who-may stays agent_may. A numeric trust score is evidence on the derived ledger.
+- Row 9 Capability: written capabilities. Who-may stays agent_permission. A numeric trust score is evidence on the derived ledger.
 - Row 10 Budget: token, cost and time limits.
 - Row 11 Gate: human or webhook approval.
 - Row 12 Cross-agent: counterparty identity handshake.
@@ -99,7 +99,7 @@ Pulse hold is the wait after a sealed capsule is opened. Base Node freezes the c
 - Presence of trust_ring is Deny.
 - Presence of trust_ring on a live GAP document is Deny.
 - Closed wall gap:trust_ring:rank.
-- Who-may is agent_may.
+- Who-may is agent_permission.
 - Do not set trust_ring on live documents.
 
 ## File format
@@ -138,7 +138,7 @@ Keep `.gap` as GAP source because collect-all Admit collects by capsule hash and
 >   version: "1.0.0"
 >   stability: experimental
 >   wrap: finance
->   agent_may:
+>   agent_permission:
 >     - finance.pay
 > ```
 
@@ -182,7 +182,7 @@ AEP 2.8.6 reference policies are JSON objects with pattern.guard and the same in
 >   version: "1.0.0"
 >   stability: stable
 >   grade: 8
->   agent_may:
+>   agent_permission:
 >     - review.pull_request
 > execution:
 >   retry:
@@ -208,7 +208,7 @@ AEP 2.8.6 reference policies are JSON objects with pattern.guard and the same in
 
 > ```yaml
 > metadata:
->   agent_may:
+>   agent_permission:
 >     - review.pull_request
 >   wrap: governance
 >   scanners:
@@ -229,12 +229,12 @@ AEP 2.8.6 reference policies are JSON objects with pattern.guard and the same in
 
 - The proof.algorithm field names an optional proof algorithm.
 - Live AEP 2.8.6 EPSCOM trust bundle mode is sha256-structure so Ed25519 and ML-DSA-65 stay optional rather than the default live bundle.
-- Who-may is `agent_may` so Agent A may X and Agent B may Y.
+- Who-may is `agent_permission` so Agent A may X and Agent B may Y.
 - Empty grants close an agent action when the grant list is empty.
 - Presence of trust_ring is Deny.
 - Presence of trust_ring on a live GAP document is Deny.
 - Closed wall gap:trust_ring:rank.
-- Who-may is agent_may.
+- Who-may is agent_permission.
 - Do not set trust_ring on live documents.
 - `enabled` is load-time: when false the instruction is still loaded and live Admit still evaluates walls.
 - A closed-wall close names the closed walls, the reasons and a prescribed repair.
@@ -258,7 +258,7 @@ AEP 2.8.6 reference policies are JSON objects with pattern.guard and the same in
 
 - Every instruction carries governance inline.
 
-- agent_may: who-may grants. Agent A may X. Agent B may Y.
+- agent_permission: who-may grants. Agent A may X. Agent B may Y.
 - wrap: lattice wrap or action path prefix this wall binds to. Writing and security stay always on.
 - action_path_prefix: action path prefix this wall binds to.
 - scanners: PII, Injection, Secrets, Jailbreak, Toxicity, URL, Data Profiler, Prediction, Brand, Regulatory and Temporal.
@@ -276,7 +276,7 @@ AEP 2.8.6 reference policies are JSON objects with pattern.guard and the same in
 This vendor tree holds classic GAP source under `AEP-Components/gap/` and `.gap` files stay GAP source.
 
 - Live Admit still waits for freeze-at-seal, the 1000 ms kernel pulse and collect-all walls.
-- Who-may is agent_may.
+- Who-may is agent_permission.
 - Presence of trust_ring is Deny.
 - Live AEP 2.8.6 EPSCOM trust bundle mode is sha256-structure.
 - Compile CAW profiles with `lib/gap-compile.mjs`.
@@ -300,14 +300,14 @@ Migrate incrementally because each rung adds governance without rewriting existi
 - Rung 3 Covenants and scanners: behavioural governance plus content scanning.
 - Rung 4 Composition: sequence, conditional, parallel orchestration.
 - Rung 5 Self-generation: automatic specialization from quality data.
-- Rung 6 Full governance: agent_may, sha256-structure, collect-all Admit then Apply.
+- Rung 6 Full governance: agent_permission, sha256-structure, collect-all Admit then Apply.
 
 ## Repository files
 
 This OSS snapshot does not include `GAP v1 spec sheet.md` or `BIOSECURITY.md` because those files live in the GAPLUNE tree and are not copied here.
 
 - `README.md` is this file. It teaches live evaluation plus vendor compile notes.
-- `FILE-FORMAT.md` holds file format notes. Keep `.gap` as GAP source. Collect-all Admit collects by capsule hash. Live hash bundle mode is sha256-structure. Presence of trust_ring is Deny. Who-may is agent_may.
+- `FILE-FORMAT.md` holds file format notes. Keep `.gap` as GAP source. Collect-all Admit collects by capsule hash. Live hash bundle mode is sha256-structure. Presence of trust_ring is Deny. Who-may is agent_permission.
 - `schemas/gap-meta-schema-v1.3.json` is the live JSON Schema 2020-12 Layer 1 authoring constraint mask.
 - `schemas/gap-meta-schema-v1.json` is a historical JSON Schema 2020-12 optional Layer 1 authoring constraint mask artifact.
 - `schemas/gap-meta-schema-v1.2.json` is the updated meta schema with v1.1 additions.
@@ -323,7 +323,7 @@ dottxt constrains tokens to match JSON Schema, regex or CFG at the logits level 
 - Mathematical types with native validators
 - Collect-all Admit then Apply after freeze-at-seal and the 1000 ms kernel pulse
 - A derived fifteen-row ledger of that evaluation
-- agent_may who-may grants
+- agent_permission who-may grants
 - Behavioural covenants
 - Live AEP 2.8.6 EPSCOM trust bundle mode is sha256-structure with optional proof algorithms
 - Self-generating instructions that evolve specialized variants
