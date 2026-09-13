@@ -88,6 +88,9 @@ var pendingTypes = map[string]struct{}{
 	"taint_removed":                 {},
 	"mcp_cross_server_blocked":      {},
 	"mcp_tool_call_intercepted":     {},
+	// Base Node kernel dock gate. The execution path refuses the run and
+	// emits one event per silent dock before any command starts.
+	"kernel_dock_refused": {},
 	// Application Activity (6005) - Task 22
 	"mcp_tool_called":             {},
 	"mcp_tool_seen":               {},

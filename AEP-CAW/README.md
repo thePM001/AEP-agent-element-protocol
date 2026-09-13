@@ -34,6 +34,8 @@ User / coding agent
 
 **Two layers, one stack:** CAW governs what runs on the host. AEP governs protocol compliance and audit.
 
+Every execution path probes the Base Node kernel dock before a command starts. The Base Node is the admission authority, so a host admission with a silent dock is not governance: CAW refuses the run and names the silent dock. See [Kernel dock gate](#kernel-dock-gate).
+
 ---
 
 ## CCA integration (mandatory for shell workloads)
@@ -151,6 +153,37 @@ Default policy: `configs/policies/default.yaml`. Server config: `configs/server-
 
 ---
 
+## Kernel dock gate
+
+The Base Node kernel publishes one Unix socket dock per port under the socket base and answers a newline delimited JSON ping with a pong. CAW runs the host workload, so every execution path checks that dock before a command starts. The check sits in the execution path itself rather than in a separate operator script, so a wrapped agent cannot run a command while the kernel that admits it is silent.
+
+The check is on unless the config turns it off. It covers the plain exec, the streamed exec and the PTY start, so no entry point bypasses it.
+
+| Setting | Default | Meaning |
+|---------|---------|---------|
+| `kernel_dock.enabled` | on | Refuse the run while the dock does not answer. Absent key means on. |
+| `kernel_dock.socket_base` | resolved | Directory that holds the dock sockets. Empty means `AEP_SOCKET_BASE`, else `AEP_DATA/sockets`, else `$HOME/.aep/sockets`. |
+| `kernel_dock.dock` | `validation_engine` | Dock the execution path probes. The validation dock carries the admission decision. |
+| `kernel_dock.timeout` | `2s` | Dial and read deadline for one ping. |
+
+### Refusal
+
+A silent dock refuses the run with one named refusal on stderr and an HTTP 503 from the server:
+
+```
+aep-caw: kernel dock silent (rule=kernel-dock-silent dock=validation_engine socket=/data/aep/sockets/validation): dial unix /data/aep/sockets/validation: connect: no such file or directory
+```
+
+The refusal names the rule, the dock and the socket path, so the operator reads which dock stayed silent. The server also records a `kernel_dock_refused` event with the rule, the dock, the socket and the error text, so the refusal is part of the session evidence rather than only a line on a terminal.
+
+```bash
+# Stop the kernel dock and run a wrapped command: the command is refused.
+aep-caw wrap -- bash -c 'echo hi'
+# aep-caw: kernel dock silent (rule=kernel-dock-silent dock=validation_engine socket=...)
+```
+
+An operator who runs the conformance suite or the smoke script with no kernel at all sets `kernel_dock.enabled: false` in that run's config.
+
 ## Agent rules (AGENTS.md)
 
 When `caw-framework` is enabled in the active plan:
@@ -182,6 +215,7 @@ Includes: catalog registration, manifest capabilities, CCA plan wiring, binary r
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | `aep-caw` panic on start | Corrupt protobuf descriptors | Run `make proto` then `make build` |
+| `kernel dock silent (rule=kernel-dock-silent)` | The Base Node kernel is not answering on its dock socket | Start the Base Node daemon (`aep-base-node --daemon`) or point `kernel_dock.socket_base` at the live socket directory |
 | `detect --json` fails | Flag does not exist | Use `probeCawHost()` or plain `aep-caw detect` |
 | Binary not found | Not built | `make build`, set `AEP_CAW_BIN` |
 | libseccomp missing | Build dep | `apt-get install libseccomp-dev` |

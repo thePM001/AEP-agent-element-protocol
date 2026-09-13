@@ -314,7 +314,7 @@ This OSS snapshot does not include `GAP v1 spec sheet.md` or `BIOSECURITY.md` be
 - `policies/reference/` holds reference `.gap` instructions for CAW profiles and coding governance.
 - `lib/gap-compile.mjs` compiles GAP profiles to CAW mount_profiles.
 - Fit analysis of classic GAP against AEP 2.8.6 evaluation lives at docs/CLASSIC-GAP-VS-AEP-2.8.5.md on thePM001/GAP.
-- Product tickets live as `.gap` source under docs/dev-tickets/.
+- Product tickets live as `.gap` source under AEP-User-Experience/docs/dev-tickets/.
 
 ## Comparison: GAP vs dottxt
 

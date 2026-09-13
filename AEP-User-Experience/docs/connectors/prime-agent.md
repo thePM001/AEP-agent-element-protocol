@@ -4,4 +4,4 @@ Prime Agent is an optional coding harness and it is not a default compose servic
 
 A task manifest is mandatory on UCB ingest, Prime cannot synthesize a manifest and Prime Refine cannot rewrite Admit walls. Enqueue is not Admit, looking similar to a past allow is not allow and an empty agent permission list refuses.
 
-Do not add Prime as a compose service next to Base Node. Keep Prime off the public compose file, wrap Prime with CAW so host commands are not raw bash and send sealed work to Base Node docks. See docs/FOREIGN-ATTACH.md and docs/OPERATOR.md.
+Do not add Prime as a compose service next to Base Node. Keep Prime off the public compose file, wrap Prime with CAW so host commands are not raw bash and send sealed work to Base Node docks. See AEP-User-Experience/docs/FOREIGN-ATTACH.md and AEP-User-Experience/docs/OPERATOR.md.

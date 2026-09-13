@@ -373,6 +373,32 @@ policies:
   reload_interval: "30s"
 
 # =============================================================================
+# KERNEL DOCK (Base Node admission check)
+# =============================================================================
+
+# Every CAW execution path probes the AEP Base Node kernel dock before a
+# command starts. The Base Node is the admission authority for the host, so a
+# silent dock refuses the run with the named rule kernel-dock-silent instead
+# of letting a command run with no live kernel behind it. The check is on
+# unless the whole product runs with no kernel.
+
+kernel_dock:
+  # Refuse the run while the dock does not answer. Absent means on.
+  enabled: true
+
+  # Directory that holds the dock sockets. Empty means AEP_SOCKET_BASE, else
+  # AEP_DATA/sockets, else $HOME/.aep/sockets.
+  socket_base: ""
+
+  # Dock the execution path probes. The validation dock carries the admission
+  # decision. One of validation_engine, inference_engine, future_features or
+  # regulation_module.
+  dock: "validation_engine"
+
+  # Dial and read deadline for one ping. The dock answers a ping with a pong.
+  timeout: "2s"
+
+# =============================================================================
 # MOUNT PROFILES (for multi-mount sessions)
 # =============================================================================
 

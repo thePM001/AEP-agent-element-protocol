@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/nla-aep/aep-caw-framework/internal/approvals"
 	"github.com/nla-aep/aep-caw-framework/internal/config"
 	"github.com/nla-aep/aep-caw-framework/internal/events"
@@ -26,8 +28,6 @@ import (
 	"github.com/nla-aep/aep-caw-framework/internal/signal"
 	"github.com/nla-aep/aep-caw-framework/internal/wrapperlog"
 	"github.com/nla-aep/aep-caw-framework/pkg/types"
-	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -83,10 +83,10 @@ func (a *App) setupSeccompWrapper(req types.ExecRequest, sessionID string, s *se
 		}
 		sessionPolicy := a.policyEngineFor(s)
 		sessID := sessionID
-	if s != nil {
-		sessID = s.ID
-	}
-	envInject := a.mergeEnvInjectForSession(context.Background(), sessID, sessionPolicy)
+		if s != nil {
+			sessID = s.ID
+		}
+		envInject := a.mergeEnvInjectForSession(context.Background(), sessID, sessionPolicy)
 		if len(envInject) > 0 || a.cmdResolver != nil || a.sessionTracker != nil {
 			return &wrapperSetupResult{wrappedReq: req, extraCfg: &extraProcConfig{envInject: envInject, cmdResolver: a.cmdResolver, sessionTracker: a.sessionTracker}}
 		}
@@ -651,7 +651,6 @@ func (a *App) createSessionWithProfile(ctx context.Context, req types.CreateSess
 	return s.Snapshot(), http.StatusCreated, nil
 }
 
-
 // rejectClientPathExpand blocks client-controlled roots that would widen policy globs.
 func rejectClientPathExpand(label, p string) error {
 	p = strings.TrimSpace(p)
@@ -924,6 +923,11 @@ func (a *App) execInSessionCore(ctx context.Context, id string, req types.ExecRe
 	}
 
 	cmdID := "cmd-" + uuid.NewString()
+	// Kernel dock check: refuse the run while the Base Node kernel dock stays
+	// silent, so no host admission proceeds with no live kernel behind it.
+	if err := a.kernelDockGate(ctx, id, cmdID); err != nil {
+		return nil, http.StatusServiceUnavailable, err
+	}
 	start := time.Now().UTC()
 	unlock := s.LockExec()
 	defer unlock()

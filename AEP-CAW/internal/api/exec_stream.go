@@ -14,13 +14,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/nla-aep/aep-caw-framework/internal/approvals"
 	"github.com/nla-aep/aep-caw-framework/internal/config"
 	"github.com/nla-aep/aep-caw-framework/internal/policy"
 	"github.com/nla-aep/aep-caw-framework/internal/session"
 	"github.com/nla-aep/aep-caw-framework/pkg/types"
-	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 )
 
 func (a *App) execInSessionStream(w http.ResponseWriter, r *http.Request) {
@@ -49,6 +49,12 @@ func (a *App) execInSessionStream(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cmdID := "cmd-" + uuid.NewString()
+	// Kernel dock check: the streamed exec path refuses the same way as the
+	// plain exec path while the kernel dock stays silent.
+	if err := a.kernelDockGate(r.Context(), id, cmdID); err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": err.Error()})
+		return
+	}
 	start := time.Now().UTC()
 	unlock := s.LockExec()
 	defer unlock()

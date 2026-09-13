@@ -614,6 +614,10 @@ resource_limits:
 
 // Config: file_monitor enabled with enforcement (emulation defaults to true)
 const fileMonitorConfigYAML = `
+kernel_dock:
+  # This container suite runs CAW with no Base Node kernel. The kernel dock
+  # gate has its own tests and the smoke script covers the refusal end to end.
+  enabled: false
 server:
   http:
     addr: "0.0.0.0:18080"
@@ -661,6 +665,10 @@ trash:
 
 // Config: file_monitor with openat_emulation explicitly disabled
 const fileMonitorNoEmulationConfigYAML = `
+kernel_dock:
+  # This container suite runs CAW with no Base Node kernel. The kernel dock
+  # gate has its own tests and the smoke script covers the refusal end to end.
+  enabled: false
 server:
   http:
     addr: "0.0.0.0:18080"

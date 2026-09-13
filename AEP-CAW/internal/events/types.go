@@ -158,6 +158,14 @@ const (
 	EventCgroupLimitsDegraded EventType = "cgroup_limits_degraded"
 )
 
+// Base Node kernel dock events.
+const (
+	// EventKernelDockRefused is emitted when the execution path refuses a
+	// command because the kernel dock did not answer the ping. The event
+	// carries the rule, the dock and the socket path.
+	EventKernelDockRefused EventType = "kernel_dock_refused"
+)
+
 // PolicyLoadedEvent is emitted when a policy is loaded.
 type PolicyLoadedEvent struct {
 	PolicyName    string `json:"policy_name"`

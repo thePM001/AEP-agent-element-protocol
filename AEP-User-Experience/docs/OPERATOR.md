@@ -26,14 +26,18 @@ cargo build --release -p aep-base-node
 
 Base Node is the only live evaluator, enqueue is not Admit, TypeScript processEvent is not product Admit and the theme yaml file has no Admit authority. UCB is an attach gateway not a second evaluator, CAW is an execution companion not a second evaluator, Lattice Memory never admits, looking similar to a past allow is not allow and an empty agent permission list refuses.
 
+## Isolation rule
+
+Isolation lives in CAW. The walls are kernel results about the envelope, so a passed wall is not by itself process governance and a wall pass is not execution confinement. There is no shell without a CAW session: run the wrapped command path rather than a bare shell, because a command that no CAW session wrapped is not confined even when the wall passed. CAW confines the host process and Base Node admits the envelope, so a run needs both.
+
 ## Glossary
 
 Admit is the collect-all wall pass after the compiled pulse, Apply runs only after Admit allows and DenyReport is the frozen refuse body. CORRECTWRITING_EN is the public writing policy name, class is writing, wall ids are writing:* and pulse is compiled PULSE_MS 1000. Agent permission is the protocol word for who is written as allowed to act, CAW wraps host commands and is not raw bash and UCB requires a task manifest and does not synthesize one. Ingest ACK waits for collect-all Admit allow before the UCB journal is persisted.
 
 ## Operator docs
 
-Read docs/ERROR-CATALOG.md for deny dialect and BaseNodeError. Read docs/WHAT-IS-COMPILED.md for pulse constants. Read docs/LATTICE-MEMORY.md for sqlite, memory and optional Polygres backends. Read docs/FOREIGN-ATTACH.md for manifest and session refuses. Read docs/TREE.md for Kernel, Protocol, Execution, UX and Policy. Read TARGET.md for ISA, RAM, disk, GPU, RSS and latency floors. Read AEP-User-Experience/examples/minimal-wrap for a documented command that returns allow true.
+Read AEP-User-Experience/docs/ERROR-CATALOG.md for deny dialect and BaseNodeError. Read AEP-User-Experience/docs/WHAT-IS-COMPILED.md for pulse constants. Read AEP-User-Experience/docs/LATTICE-MEMORY.md for sqlite, memory and optional Polygres backends. Read AEP-User-Experience/docs/FOREIGN-ATTACH.md for manifest and session refuses. Read AEP-User-Experience/docs/TREE.md for Kernel, Protocol, Execution, UX and Policy. Read TARGET.md for ISA, RAM, disk, GPU, RSS and latency floors. Read AEP-User-Experience/examples/minimal-wrap for a documented command that returns allow true.
 
 ## Keys that look like crypto death
 
-SealKey, DockKem and SignKey refuses are often mode and provision repairs. chmod 0600 on dock-seal.key, dock-kem and agent-sign-keys. Provision a missing sign key with aep-base-node --provision-agent-sign-key --agent-id AGENT_ID. See docs/ERROR-CATALOG.md.
+SealKey, DockKem and SignKey refuses are often mode and provision repairs. chmod 0600 on dock-seal.key, dock-kem and agent-sign-keys. Provision a missing sign key with aep-base-node --provision-agent-sign-key --agent-id AGENT_ID. See AEP-User-Experience/docs/ERROR-CATALOG.md.

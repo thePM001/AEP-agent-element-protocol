@@ -17,9 +17,9 @@ You do **not** invent a second protocol kernel. You run Base Node as the local k
 Canonical AEP 2.8.6 stack layout (operator surfaces, Path B UCB, lattice transport, docks, hyperlattice wrap, Base Node kernel, protocol components). Same diagram as the repository README. GitHub is a public mirror.
 
 <p align="center" style="background-color:#ffffff;padding:16px;">
-  <a href="../../docs/architecture/aep-28-architecture.png" target="_blank" rel="noopener" title="Click to open full-size AEP 2.8 architecture diagram">
+  <a href="architecture/aep-28-architecture.png" target="_blank" rel="noopener" title="Click to open full-size AEP 2.8 architecture diagram">
     <img
-      src="../../docs/architecture/aep-28-architecture.png"
+      src="architecture/aep-28-architecture.png"
       alt="AEP 2.8 architecture diagram: Composer Lite, CCA, UCB, lattice-transport, docks, hyperlattice wrap, Base Node, dynAEP"
       width="100%"
       style="background-color:#ffffff;cursor:zoom-in;"
@@ -29,8 +29,8 @@ Canonical AEP 2.8.6 stack layout (operator surfaces, Path B UCB, lattice transpo
 
 | Asset | Path |
 | --- | --- |
-| PNG (full size) | [`docs/architecture/aep-28-architecture.png`](../../docs/architecture/aep-28-architecture.png) |
-| Mermaid source | [`docs/architecture/aep-28-architecture.mmd`](../../docs/architecture/aep-28-architecture.mmd) |
+| PNG (full size) | [`AEP-User-Experience/docs/architecture/aep-28-architecture.png`](architecture/aep-28-architecture.png) |
+| Mermaid source | [`AEP-User-Experience/docs/architecture/aep-28-architecture.mmd`](architecture/aep-28-architecture.mmd) |
 
 How to read it for secure deploy:
 
@@ -265,7 +265,7 @@ export UCB_API_KEY=...
 
 | Concern | Path |
 | --- | --- |
-| Reference architecture diagram | `docs/architecture/aep-28-architecture.png` (source `.mmd`) |
+| Reference architecture diagram | `AEP-User-Experience/docs/architecture/aep-28-architecture.png` (source `.mmd`) |
 | Base Node kernel. TypeScript dynAEP is not product Admit | `AEP-Base-Node/`, `AEP-Components/dynAEP/`, `internal-sdk/AEP-SDKs/typescript/dynaep/` |
 | dynAEP config | `AEP-Components/dynAEP/CONFIG.md` |
 | Dock admit / plain reject | `AEP-Base-Node/crate/src/docking.rs` |

@@ -20,6 +20,10 @@ import (
 )
 
 const wrapStrongTestConfigYAML = `
+kernel_dock:
+  # This container suite runs CAW with no Base Node kernel. The kernel dock
+  # gate has its own tests and the smoke script covers the refusal end to end.
+  enabled: false
 server:
   http:
     addr: "0.0.0.0:18080"

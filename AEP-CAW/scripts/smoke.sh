@@ -74,6 +74,9 @@ retry() {
 tmp="$(mktemp -d)"
 cleanup() {
   set +e
+  if [[ -n "${DOCK_PID:-}" ]] && kill -0 "$DOCK_PID" 2>/dev/null; then
+    kill "$DOCK_PID" 2>/dev/null || true
+  fi
   if [[ -n "${SERVER_PID:-}" ]] && kill -0 "$SERVER_PID" 2>/dev/null; then
     kill "$SERVER_PID" 2>/dev/null || true
     sleep 0.1
@@ -129,6 +132,14 @@ policies:
   dir: "./configs/policies"
   default: "default"
 
+# The execution path probes the Base Node kernel dock, so this run answers the
+# dock itself and then takes the dock down to prove the refusal.
+kernel_dock:
+  enabled: true
+  socket_base: "${tmp}/sockets"
+  dock: "validation_engine"
+  timeout: "2s"
+
 sessions:
   base_dir: "${tmp}/sessions"
   max_sessions: 10
@@ -150,6 +161,39 @@ sandbox:
     execve:
       enabled: false
 YAML
+
+# Kernel dock stub: binds the validation dock and answers the Base Node ping
+# with a pong, so the execution path sees a live kernel. The refusal check at
+# the end of this script takes it down and requires the refusal.
+dock_stub() {
+  "$PYTHON" - "$1" <<'PY'
+import os, socket, sys
+
+path = sys.argv[1]
+os.makedirs(os.path.dirname(path), exist_ok=True)
+try:
+    os.unlink(path)
+except FileNotFoundError:
+    pass
+srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+srv.bind(path)
+srv.listen(16)
+while True:
+    try:
+        conn, _ = srv.accept()
+    except OSError:
+        break
+    try:
+        conn.recv(512)
+        conn.sendall(b'{"ok":true,"pong":true}\n')
+    finally:
+        conn.close()
+PY
+}
+
+mkdir -p "$tmp/sockets"
+dock_stub "$tmp/sockets/validation" &
+DOCK_PID="$!"
 
 ./bin/aep-caw server --config "$tmp/config.yml" >"$tmp/server.log" 2>&1 &
 SERVER_PID="$!"
@@ -422,5 +466,32 @@ if [[ -f ./bin/aep-caw-unixwrap ]]; then
     echo "smoke: NOTE (seccomp test inconclusive: $seccomp_out)" >&2
   fi
 fi
+
+# Kernel dock gate: with the dock taken down, a wrapped command is refused with
+# the named rule instead of running.
+kill "$DOCK_PID" 2>/dev/null || true
+wait "$DOCK_PID" 2>/dev/null || true
+DOCK_PID=""
+rm -f "$tmp/sockets/validation"
+sleep 0.2
+
+set +e
+refuse_out="$(./bin/aep-caw exec "$sid" -- sh -c 'echo ran_without_kernel' 2>&1 | tr -d '\r')"
+refuse_rc=$?
+set -e
+if [[ "$refuse_rc" == "0" ]]; then
+  echo "smoke: exec was allowed while the kernel dock was silent" >&2
+  echo "smoke: exec output: $refuse_out" >&2
+  exit 1
+fi
+if [[ "$refuse_out" != *"kernel-dock-silent"* ]]; then
+  echo "smoke: refusal does not name rule kernel-dock-silent: $refuse_out" >&2
+  exit 1
+fi
+if [[ "$refuse_out" == *"ran_without_kernel"* ]]; then
+  echo "smoke: the refused command ran anyway: $refuse_out" >&2
+  exit 1
+fi
+echo "smoke: kernel dock refusal verified (rule=kernel-dock-silent)"
 
 echo "smoke: ok (sid=$sid url=$base_url)"

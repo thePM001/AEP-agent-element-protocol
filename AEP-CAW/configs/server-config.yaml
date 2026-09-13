@@ -58,6 +58,16 @@ dlp:
     ssn: true
     api_keys: true
 
+# Base Node kernel dock check. Every execution path probes the dock before a
+# command starts and refuses the run with the named rule kernel-dock-silent
+# while the dock stays silent. The check is on unless enabled is false.
+kernel_dock:
+  enabled: true
+  # Empty means AEP_SOCKET_BASE, else AEP_DATA/sockets, else $HOME/.aep/sockets.
+  socket_base: ""
+  dock: "validation_engine"
+  timeout: "2s"
+
 policies:
   dir: "/etc/aep-caw/policies"
   default: "default"

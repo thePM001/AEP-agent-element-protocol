@@ -8,39 +8,87 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/nla-aep/aep-caw-framework/internal/kerneldock"
 	seccompPkg "github.com/nla-aep/aep-caw-framework/internal/seccomp"
 	secretspkg "github.com/nla-aep/aep-caw-framework/pkg/secrets"
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	Platform          PlatformConfig          `yaml:"platform"`
-	Server            ServerConfig            `yaml:"server"`
-	Auth              AuthConfig              `yaml:"auth"`
-	Logging           LoggingConfig           `yaml:"logging"`
-	Audit             AuditConfig             `yaml:"audit"`
-	Sessions          SessionsConfig          `yaml:"sessions"`
-	Sandbox           SandboxConfig           `yaml:"sandbox"`
-	Policies          PoliciesConfig          `yaml:"policies"`
-	MountProfiles     map[string]MountProfile `yaml:"mount_profiles"`
-	Approvals         ApprovalsConfig         `yaml:"approvals"`
-	Metrics           MetricsConfig           `yaml:"metrics"`
-	Health            HealthConfig            `yaml:"health"`
-	Development       DevelopmentConfig       `yaml:"development"`
-	Proxy             ProxyConfig             `yaml:"proxy"`
-	DLP               DLPConfig               `yaml:"dlp"`
-	LLMStorage        LLMStorageConfig        `yaml:"llm_storage"`
-	Security          SecurityConfig          `yaml:"security"`
-	Landlock          LandlockConfig          `yaml:"landlock"`
-	LinuxCapabilities CapabilitiesConfig      `yaml:"capabilities"`
-	ThreatFeeds       ThreatFeedsConfig       `yaml:"threat_feeds"`
-	Tor               TorConfig               `yaml:"tor"`
-	PackageChecks     PackageChecksConfig     `yaml:"package_checks"`
-	Skillcheck        SkillcheckConfig        `yaml:"skillcheck"`
-	PolicySocket      PolicySocketConfig      `yaml:"policy_socket"`
+	Platform          PlatformConfig           `yaml:"platform"`
+	Server            ServerConfig             `yaml:"server"`
+	Auth              AuthConfig               `yaml:"auth"`
+	Logging           LoggingConfig            `yaml:"logging"`
+	Audit             AuditConfig              `yaml:"audit"`
+	Sessions          SessionsConfig           `yaml:"sessions"`
+	Sandbox           SandboxConfig            `yaml:"sandbox"`
+	Policies          PoliciesConfig           `yaml:"policies"`
+	MountProfiles     map[string]MountProfile  `yaml:"mount_profiles"`
+	Approvals         ApprovalsConfig          `yaml:"approvals"`
+	Metrics           MetricsConfig            `yaml:"metrics"`
+	Health            HealthConfig             `yaml:"health"`
+	Development       DevelopmentConfig        `yaml:"development"`
+	Proxy             ProxyConfig              `yaml:"proxy"`
+	DLP               DLPConfig                `yaml:"dlp"`
+	LLMStorage        LLMStorageConfig         `yaml:"llm_storage"`
+	Security          SecurityConfig           `yaml:"security"`
+	Landlock          LandlockConfig           `yaml:"landlock"`
+	LinuxCapabilities CapabilitiesConfig       `yaml:"capabilities"`
+	ThreatFeeds       ThreatFeedsConfig        `yaml:"threat_feeds"`
+	Tor               TorConfig                `yaml:"tor"`
+	PackageChecks     PackageChecksConfig      `yaml:"package_checks"`
+	Skillcheck        SkillcheckConfig         `yaml:"skillcheck"`
+	PolicySocket      PolicySocketConfig       `yaml:"policy_socket"`
+	KernelDock        KernelDockConfig         `yaml:"kernel_dock"`
 	Secrets           secretspkg.ManagerConfig `yaml:"secrets"`
+}
+
+// KernelDockConfig configures the Base Node kernel dock check that the
+// execution path runs before a command is allowed to start.
+//
+// AEP 2.8 treats the Base Node as the local governance kernel. The kernel
+// publishes one Unix socket dock per port under the socket base, so CAW
+// refuses to run a command while the probed dock stays silent. applyDefaults
+// turns the check on for every loaded config, so the refusal is the default.
+type KernelDockConfig struct {
+	// Enabled turns the dock check on. applyDefaults sets it to true, so a
+	// config file without the key still refuses a silent dock. Set it to
+	// false only for a run with no kernel at all, which is what the
+	// conformance fixtures declare when they exercise another subject.
+	Enabled *bool `yaml:"enabled" json:"enabled,omitempty"`
+
+	// SocketBase is the directory that holds the dock sockets. Empty means
+	// AEP_SOCKET_BASE, else AEP_DATA/sockets, else $HOME/.aep/sockets.
+	SocketBase string `yaml:"socket_base" json:"socket_base,omitempty"`
+
+	// Dock is the dock port id the execution path probes. Empty means
+	// validation_engine, the dock that carries the admission decision.
+	Dock string `yaml:"dock" json:"dock,omitempty"`
+
+	// Timeout is the dial and read deadline for one ping as a Go duration.
+	// Empty means 2s.
+	Timeout string `yaml:"timeout" json:"timeout,omitempty"`
+}
+
+// KernelDockEnabled reports whether the execution path runs the dock check.
+// A config that skipped applyDefaults leaves the pointer nil, which reads as
+// off, so unit fixtures that build a Config literal keep running with no
+// kernel while every loaded config file refuses a silent dock.
+func (c KernelDockConfig) KernelDockEnabled() bool {
+	return c.Enabled != nil && *c.Enabled
+}
+
+// KernelDockTimeout returns the ping deadline, DefaultTimeout when unset or
+// unparseable.
+func (c KernelDockConfig) KernelDockTimeout() time.Duration {
+	d, err := time.ParseDuration(strings.TrimSpace(c.Timeout))
+	if err != nil || d <= 0 {
+		return kerneldock.DefaultTimeout
+	}
+	return d
 }
 
 // PlatformConfig configures cross-platform selection and fallback behavior.
@@ -2211,6 +2259,21 @@ func applyDefaultsWithSource(cfg *Config, source ConfigSource, configPath string
 		cfg.PolicySocket.TeamID = "WCKWMMKJ35"
 	}
 
+	// Kernel dock defaults. The dock check is on unless the config turns it
+	// off, because a host admission with no live kernel behind it is not
+	// governance. The socket base stays empty here so the probe resolves
+	// AEP_SOCKET_BASE or AEP_DATA/sockets at run time.
+	if cfg.KernelDock.Enabled == nil {
+		t := true
+		cfg.KernelDock.Enabled = &t
+	}
+	if strings.TrimSpace(cfg.KernelDock.Dock) == "" {
+		cfg.KernelDock.Dock = kerneldock.DefaultDock
+	}
+	if strings.TrimSpace(cfg.KernelDock.Timeout) == "" {
+		cfg.KernelDock.Timeout = kerneldock.DefaultTimeout.String()
+	}
+
 	// WTP (Watchtower Transport Protocol) defaults
 	cfg.Audit.Watchtower.applyDefaults()
 }
@@ -2291,6 +2354,21 @@ func validateConfig(cfg *Config) error {
 	}
 	if cfg.Sandbox.FUSE.Audit.MaxEventQueue < 0 {
 		return fmt.Errorf("sandbox.fuse.audit.max_event_queue must be >= 0")
+	}
+	// Kernel dock check: the dock id must be one the kernel binds and the
+	// timeout must be a positive duration.
+	if cfg.KernelDock.KernelDockEnabled() {
+		if strings.TrimSpace(cfg.KernelDock.Dock) == "" {
+			cfg.KernelDock.Dock = kerneldock.DefaultDock
+		}
+		if err := kerneldock.ValidateDock(cfg.KernelDock.Dock); err != nil {
+			return fmt.Errorf("kernel_dock.dock: %w", err)
+		}
+	}
+	if v := strings.TrimSpace(cfg.KernelDock.Timeout); v != "" {
+		if d, err := time.ParseDuration(v); err != nil || d <= 0 {
+			return fmt.Errorf("invalid kernel_dock.timeout %q: must be a positive duration such as 2s", v)
+		}
 	}
 	switch cfg.Sandbox.Network.InterceptMode {
 	case "", "all", "tcp_only", "monitor":

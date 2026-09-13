@@ -1,8 +1,8 @@
-docs/OPERATOR.md
-docs/ERROR-CATALOG.md
-docs/WHAT-IS-COMPILED.md
-docs/LATTICE-MEMORY.md
-docs/FOREIGN-ATTACH.md
-docs/TREE.md
+AEP-User-Experience/docs/OPERATOR.md
+AEP-User-Experience/docs/ERROR-CATALOG.md
+AEP-User-Experience/docs/WHAT-IS-COMPILED.md
+AEP-User-Experience/docs/LATTICE-MEMORY.md
+AEP-User-Experience/docs/FOREIGN-ATTACH.md
+AEP-User-Experience/docs/TREE.md
 TARGET.md
 AEP-User-Experience/examples/minimal-wrap/README.md

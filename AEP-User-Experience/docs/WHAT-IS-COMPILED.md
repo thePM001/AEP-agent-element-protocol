@@ -5,3 +5,5 @@ The kernel pulse is compiled as PULSE_MS 1000 in AEP-Components/base-node-pulse/
 MAX_DRIFT_MS is 50 against the freeze and must not be set to 1000. MAX_AGE_MS is 5000 and must stay longer than PULSE_MS or capsules would expire before they became ready. MAX_FRAME_AGE_SECS is 300 and MAX_FRAME_FUTURE_SKEW_SECS is 60 as the wire sent_at window before open, so pulse age is not the 300 second wire window and LARGE_STEP stays an NTP cap that must not be treated as PULSE_MS.
 
 theme yaml has no Admit authority, TypeScript processEvent is not product Admit, UCB is not a second evaluator, CAW is not a second evaluator and Lattice Memory never admits. Writing walls use CORRECTWRITING_EN and writing:* ids.
+
+Isolation lives in CAW rather than in the kernel, so no compiled constant confines a host process. A wall pass is a compiled kernel result about the envelope and it is not process governance on its own, which means a command that no CAW session wrapped is not confined even when the wall passed.

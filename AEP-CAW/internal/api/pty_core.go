@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/nla-aep/aep-caw-framework/internal/approvals"
 	"github.com/nla-aep/aep-caw-framework/internal/pty"
 	"github.com/nla-aep/aep-caw-framework/pkg/types"
-	"github.com/google/uuid"
 )
 
 type ptyStartParams struct {
@@ -56,6 +56,11 @@ func (a *App) startPTY(ctx context.Context, sessionID string, req ptyStartParams
 	}
 
 	cmdID := "cmd-" + uuid.NewString()
+	// Kernel dock check: the PTY exec path refuses the same way as the plain
+	// exec path while the kernel dock stays silent.
+	if err := a.kernelDockGate(ctx, sessionID, cmdID); err != nil {
+		return nil, http.StatusServiceUnavailable, err
+	}
 	start := time.Now().UTC()
 	unlock := sess.LockExec()
 	sess.SetCurrentCommandID(cmdID)

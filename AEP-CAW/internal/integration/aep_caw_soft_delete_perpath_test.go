@@ -157,6 +157,10 @@ resource_limits:
 // sandbox.fuse.audit.mode is "monitor" (the default), NOT "soft_delete".
 // The soft-delete behaviour is driven solely by the per-path file_rule above.
 const softDeletePerPathConfigYAML = `
+kernel_dock:
+  # This container suite runs CAW with no Base Node kernel. The kernel dock
+  # gate has its own tests and the smoke script covers the refusal end to end.
+  enabled: false
 server:
   http:
     addr: "0.0.0.0:18080"
