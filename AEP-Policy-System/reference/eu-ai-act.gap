@@ -156,7 +156,10 @@
     "version": "1.3.0",
     "stability": "stable",
     "agent_permission": [
-      "agent-a"
+      {
+        "agent_id": "agent-a",
+        "action": "*"
+      }
     ],
     "lrp_id": "eu-ai-act",
     "framework": "EU AI Act",

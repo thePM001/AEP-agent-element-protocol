@@ -47,6 +47,14 @@ pub struct ForeignIngestBody {
     pub session_id: Option<String>,
     #[serde(default)]
     pub docking_port: Option<String>,
+    /// Lattice action path for the sealed inner event. Required for an attach
+    /// that must pass the dock Admit, because the dock reads the sealed path.
+    #[serde(default)]
+    pub action_path: Option<String>,
+    /// Scene that the attach binds. The dock Admit closes an unbound scene, so
+    /// an attach that must pass names the scene it touches.
+    #[serde(default)]
+    pub target_id: Option<String>,
     #[serde(default)]
     pub agent_id: Option<String>,
     #[serde(default)]

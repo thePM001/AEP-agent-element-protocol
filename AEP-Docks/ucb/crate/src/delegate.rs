@@ -132,6 +132,7 @@ async fn lattice_gate_delegate(
         event_type: "UCB_DELEGATE".into(),
         session_id: session_id.to_string(),
         docking_port: "inference_engine".into(),
+        action_path: String::new(),
         dock_wire_score: crate::DOCK_WIRE_SCORE,
         payload: json!({
             "gateway": inference.provider,

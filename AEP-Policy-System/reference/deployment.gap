@@ -82,7 +82,10 @@
     "stability": "stable",
     "aspect": "procedural",
     "agent_permission": [
-      "agent-a"
+      {
+        "agent_id": "agent-a",
+        "action": "*"
+      }
     ],
     "aep_version": "2.8.6",
     "wrap": "deployment",

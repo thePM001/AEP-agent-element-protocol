@@ -1,0 +1,16 @@
+[package]
+name = "aep-end-to-end-run"
+version = "2.8.6"
+edition = "2021"
+license = "Apache-2.0"
+description = "AEP 2.8.6 end to end run. One command walks every layer twice: the refuse path first and the pass path second."
+publish = false
+
+[workspace]
+
+[dependencies]
+aep-base-node = { path = "../../../AEP-Base-Node/crate" }
+aep-base-node-pulse = { path = "../../../AEP-Components/base-node-pulse/crate" }
+aep-envelope = { path = "../../../AEP-Components/envelope/crate" }
+aep-lattice-crypto = { path = "../../../AEP-Components/lattice-crypto/crate" }
+serde_json = "1"

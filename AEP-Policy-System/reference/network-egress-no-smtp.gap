@@ -68,7 +68,10 @@
     "stability": "stable",
     "aspect": "objective",
     "agent_permission": [
-      "agent-a"
+      {
+        "agent_id": "agent-a",
+        "action": "*"
+      }
     ],
     "control_family": "network_egress",
     "aep_version": "2.8.6",

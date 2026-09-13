@@ -27,7 +27,10 @@
     "version": "1.1.0",
     "stability": "stable",
     "agent_permission": [
-      "agent-a"
+      {
+        "agent_id": "agent-a",
+        "action": "*"
+      }
     ],
     "lrp_id": "soc2-type2",
     "framework": "SOC 2 Type II",

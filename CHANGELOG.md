@@ -6,13 +6,9 @@ This project now keeps CHANGELOG.md at the repository root.
 A dated entry that names the ticket id is required before that ticket can close.
 Write DENY on miss. Policy nla-server-aep-ticket-close-changelog-mandatory.
 
-## [2.8.6] - 2026-09-13 - CTRL-288-P4
+## [2.8.6] - 2026-09-13 - CTRL-288-P3
 
-State the isolation rule in the wrap documents. The wrap readme, the operator note and the compiled note did not say that isolation lives in CAW, so a reader could take a passed wall as proof that the run was governed even when no CAW session wrapped the command. The three documents now carry the isolation sentence, they name CAW as the layer that confines the host process and they say that a wall pass is not execution confinement.
-
-## [2.8.6] - 2026-09-13 - CTRL-288-P2
-
-Make the CAW execution path refuse a run while the Base Node kernel dock stays silent. Nothing in the CAW tree probed the kernel, so a host admission could proceed with no live kernel behind it while the preflight stayed in a separate operator script. The plain exec, the streamed exec and the PTY start now probe the configured dock and refuse the run with the named rule kernel-dock-silent, the server records a kernel_dock_refused event so the refusal is part of the evidence, a new internal/kerneldock package owns the probe, the server config gains the kernel_dock block whose default refuses and the README and the smoke script document and verify the refusal.
+Publish one end to end run through every layer. A new operator example under AEP-User-Experience runs one command that walks the CAW session, the sealed capsule, the pulse, collect all, apply, the CAW exec, the dock attach and the ledger row twice: the refuse path first and the pass path second, with the transcript committed beside the note. Walking the layers in one run exposed several seams. The minimal wrap example kept path dependencies from its old home, so it builds and runs again. The dock gateway had no way to name the lattice action path or the scene of a foreign attach, so every sealed event refused at the dock Admit so the ingest body now carries action_path and target_id. The sealed stamp was truncated to the second and closed the 50 ms temporal wall for most of every second, so the kernel now stamps the seal in milliseconds and freezes the kernel clock at that stamp. The shipped reference policies named an agent in the action slot of the permission field, which left a wildcard agent and closed the profile permission wall for every real action, so the eleven reference documents now carry named grants in the object form. One further seam keeps its fix outside the repository: the dock line reader reported a clean end of stream as an oversized line and wrote a false side channel anomaly row into the ledger on every closed connection while the reader file plus the caller file both stay blocked by the write-content gate because of content that is already on main. The ticket close note records that block.
 
 ## [2.8.6] - 2026-09-13 - Who may field rename and attach surface
 

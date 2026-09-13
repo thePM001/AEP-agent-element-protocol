@@ -244,11 +244,20 @@ fn resolve_keys_dir(db_path: &Path) -> std::path::PathBuf {
         .unwrap_or_else(default_aep_data_dir)
 }
 
+/// Milliseconds since the Unix epoch. The sealed stamp and the kernel clock
+/// both use it so the 50 ms drift wall stays at millisecond resolution.
+fn now_unix_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
+}
+
 fn build_sealed_frame(
     input: &DynAepEventInput,
     contracts: &ContractRegistry,
     db_path: &Path,
-) -> Result<(LatticeChannelFrame, AgentMeshBundle, Vec<u8>), BaseNodeError> {
+) -> Result<(LatticeChannelFrame, AgentMeshBundle, Vec<u8>, i64), BaseNodeError> {
     if !contracts.is_active(&input.contract_id) {
         return Err(BaseNodeError::ContractInactive(input.contract_id.clone()));
     }
@@ -263,7 +272,10 @@ fn build_sealed_frame(
     let sign = sign_store.get(&input.agent_id)?;
 
     let now = now_unix();
-    let ts_ms = (now as i64).saturating_mul(1000);
+    // AEP28-ENV-065: the sealed stamp is milliseconds. A stamp truncated to the
+    // second drifts up to 999 ms and closes the 50 ms temporal wall on the dock
+    // Admit for most of every second.
+    let ts_ms = now_unix_ms();
     let bundle = create_bundle(
         &input.agent_id,
         0,
@@ -308,7 +320,7 @@ fn build_sealed_frame(
         now,
     )
     .map_err(|e| BaseNodeError::Channel(e.to_string()))?;
-    Ok((frame, bundle, plain_bytes))
+    Ok((frame, bundle, plain_bytes, ts_ms))
 }
 
 pub fn record_dynaep_event(
@@ -317,15 +329,16 @@ pub fn record_dynaep_event(
     contracts: &ContractRegistry,
     db_path: &Path,
 ) -> Result<DynAepEventRecord, BaseNodeError> {
-    let (frame, bundle, plaintext) = build_sealed_frame(input, contracts, db_path)?;
+    let (frame, bundle, plaintext, sealed_ts) = build_sealed_frame(input, contracts, db_path)?;
     let digest = frame_digest(&frame);
     let recorded_at = frame.sent_at_unix;
 
     // AEP28-ENV-044: kernel write only after dock Admit. Deny does not INSERT.
     let keys_dir = resolve_keys_dir(db_path);
     let mut live = crate::envelope_admit::load_live_entry(&keys_dir);
-    let ts_ms = (recorded_at as i64).saturating_mul(1000);
-    live.set_clock_ms(ts_ms);
+    // AEP28-ENV-065: the kernel clock freezes at the seal, which is the stamp the
+    // sealed event carries, so a locally sealed frame carries no drift.
+    live.set_clock_ms(sealed_ts);
     let dock = aep_admit_live_dock::LiveDockContext::from_open_frame(
         &input.channel_id,
         &input.agent_id,
@@ -624,6 +637,6 @@ pub fn build_transport_frame(
     contracts: &ContractRegistry,
     db_path: &Path,
 ) -> Result<LatticeChannelFrame, BaseNodeError> {
-    let (frame, _bundle, _plaintext) = build_sealed_frame(input, contracts, db_path)?;
+    let (frame, _bundle, _plaintext, _sealed_ts) = build_sealed_frame(input, contracts, db_path)?;
     Ok(frame)
 }

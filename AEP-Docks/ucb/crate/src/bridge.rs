@@ -596,6 +596,7 @@ pub async fn rollback_foreign_integrations(rt: &Arc<UcbRuntime>, diff_ids: Vec<S
         event_type: "UCB_ROLLBACK".into(),
         session_id: format!("ucb-rollback-{}", now_ms()),
         docking_port: "validation_engine".into(),
+        action_path: String::new(),
         dock_wire_score: crate::DOCK_WIRE_SCORE,
         payload: Value::Object(payload),
     };

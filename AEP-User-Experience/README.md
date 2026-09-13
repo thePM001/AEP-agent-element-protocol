@@ -1,6 +1,6 @@
 # AEP User Experience
 
-Operator-facing tooling: harness, agent skill, validation shortcuts and manual modification scripts.
+Operator-facing tooling: harness, agent skill, validation shortcuts and the wrap example.
 
 ## Harness
 
@@ -14,22 +14,6 @@ node ../aep-base-node-preflight.mjs
 
 Slash commands: `.claude/commands/aep-preflight.md`, `aep-validate.md`, `aep-register.md`, `aep-base-node.md`
 
-## Operator scripts
-
-Path: `AEP-User-Experience/scripts/`
-
-Manual repo modifications, layout migrations, connector scaffolding and E2E smoke checks.
-
-```bash
-# E2E protocol smoke (from repo root)
-./AEP-User-Experience/scripts/e2e-lattice-smoke.sh
-./AEP-User-Experience/scripts/e2e-ucb-smoke.sh
-
-# Connector registry maintenance
-node AEP-User-Experience/scripts/scaffold-aep-connectors.mjs
-node AEP-User-Experience/scripts/register-aep-connectors.mjs
-```
-
 ## Root shortcuts
 
 From repo root:
@@ -40,11 +24,15 @@ node AEP-User-Experience/aep-validate.js
 node AEP-User-Experience/aep-base-node-preflight.mjs
 ```
 
-## Example
+## Examples
 
 Path: `AEP-User-Experience/examples/minimal-wrap/`
 
 A single documented run that prints the allow decision, the sealed payload roundtrip, the compiled pulse and the deny report.
+
+Path: `AEP-User-Experience/examples/end-to-end-run/`
+
+A single documented run that walks every layer twice. The refuse path runs first and every layer fails closed. The pass path runs second and the same layers allow, with a ledger row at the end. The transcript of the run is committed beside the note.
 
 ## Legacy 2.75 harness
 

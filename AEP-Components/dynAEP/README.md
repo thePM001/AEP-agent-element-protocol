@@ -745,12 +745,6 @@ cargo test -p aep-dynaep --lib
 
 **Tests:** `AEP-Components/dynAEP/typescript/dynaep/tests/lattice/action-lattice.test.ts` (governance modes, hook aliases, `within_range`, `filterAsync`).
 
-Build all SDKs:
-
-```bash
-node AEP-User-Experience/scripts/not-a-product
-```
-
 Registry component IDs: `aep-dynaep-typescript`, `aep-dynaep-python`, `dynaep-core` (protocol only), `dynAEP-hook-loader`, `dynAEP-cca-bridge-config`.
 
 ### 13.1 CCA and Base Node integration

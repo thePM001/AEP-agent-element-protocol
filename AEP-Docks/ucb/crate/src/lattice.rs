@@ -184,6 +184,7 @@ impl LatticeRuntime {
             event_type: "LATTICE_HEALTH_PING".into(),
             session_id: "ucb-health".into(),
             docking_port: "validation_engine".into(),
+            action_path: String::new(),
             dock_wire_score: crate::DOCK_WIRE_SCORE,
             payload: serde_json::json!({ "probe": true }),
         };

@@ -11,7 +11,6 @@ Infrastructure and top-level surfaces outside this folder:
 - `AEP-Docks/` - socket dock specs, UCB bridge, Universal Connect Dock (UCD)
 - `AEP-Policy-System/` - policy YAML/REGO plus `policy-builder/` and `schema-builder/`
 - `docker/` - container entrypoint and runtime deps
-- `AEP-User-Experience/scripts/` - manual modification and E2E tooling
 - `rust/` - build artifact target directory
 
 CCA and the setup agent resolve component paths via `AEP-Base-Node/registry/catalog.json` (`repository.components_root`).

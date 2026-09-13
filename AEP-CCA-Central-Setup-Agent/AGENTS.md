@@ -123,7 +123,6 @@ GAP knowledge is injected into every LLM system prompt via `formatGapForPrompt()
 | TypeScript SDK | `DynAEP TypeScript SDK` |
 | Python SDK | `DynAEP Python SDK` |
 | React bindings | `internal SDK tree/AEP-SDKs/react/dynaep-react.tsx`, `dynaep-copilotkit.tsx` |
-| SDK producer | `AEP-User-Experience/scripts/produce-aep-sdks.mjs` |
 | dynAEP context loader | `cca/lib/dynaep-context.mjs` |
 
 CCA must inject `dynaep` into registry context and set on every governed plan:

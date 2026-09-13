@@ -15,6 +15,11 @@ pub struct LatticeEvent {
     pub event_type: String,
     pub session_id: String,
     pub docking_port: String,
+    /// Lattice action path for the sealed inner event. The dock Admit reads this
+    /// field, so an attach that must pass the dock names a path that the Base
+    /// Node lattice grants to the agent. An empty path stays a closed wall.
+    #[serde(default)]
+    pub action_path: String,
     #[serde(rename = "trust_score")]
     pub dock_wire_score: u16,
     pub payload: Value,
@@ -70,6 +75,9 @@ pub fn translate_foreign_ingest(body: &crate::ingress::ForeignIngestBody) -> Res
     provenance.insert(String::from("timestamp_ms"), Value::from(now_ms()));
     provenance.insert(String::from("bridge"), Value::String(String::from(crate::BRIDGE_ID)));
     translated.insert(String::from("provenance"), Value::Object(provenance));
+    if let Some(scene) = body.target_id.clone().filter(|s| s.is_empty() == false) {
+        translated.insert(String::from("target_id"), Value::String(scene));
+    }
     if let Some(f) = fact_from_structured(&raw_payload) {
         let mut fact = serde_json::Map::new();
         fact.insert(String::from("subject"), Value::String(f.0));
@@ -84,6 +92,7 @@ pub fn translate_foreign_ingest(body: &crate::ingress::ForeignIngestBody) -> Res
         event_type: "UCB_INGEST".into(),
         session_id,
         docking_port: dock,
+        action_path: body.action_path.clone().unwrap_or_default(),
         dock_wire_score: DOCK_WIRE_SCORE,
         payload: Value::Object(translated),
     })
