@@ -8,7 +8,7 @@ Test battery that determines who gets to claim AEP-compliance for the **2.8 publ
 
 ## License
 
-Fair Core License 1.0. Converts to Apache 2.0 after 24 months per version. The full terms are in the top level NOTICE.
+Fair Core License 1.0. Converts to Apache 2.0 after 24 months per version. No separate licence file ships with this suite.
 
 ## What This Gates
 
