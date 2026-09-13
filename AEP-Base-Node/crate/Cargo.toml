@@ -1,6 +1,6 @@
 [package]
 name = "aep-base-node"
-description = "AEP 2.8 mandatory local governance daemon"
+description = "AEP 2.8.6 local governance daemon"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -27,8 +27,6 @@ aep-one-live-evaluation = { path = "../../AEP-Components/one-live-evaluation/cra
 aep-dock-request-poison = { path = "../../AEP-Components/dock-request-poison/crate" }
 aep-dock-line-reader = { path = "../../AEP-Components/dock-line-reader/crate" }
 aep-lattice-gated-fetch = { path = "../../AEP-Components/lattice-gated-fetch/crate" }
-aep-one-admit-id = { path = "../../AEP-Components/one-admit-id/crate" }
-aep-trust-score-isolation = { path = "../../AEP-Components/trust-score-isolation/crate" }
 aep-base-node-pulse = { path = "../../AEP-Components/base-node-pulse/crate" }
 aep-wall-set-backpressure = { path = "../../AEP-Components/wall-set-backpressure/crate" }
 serde.workspace = true
@@ -54,6 +52,5 @@ aep-admit-channel-order-walls = { path = "../../AEP-Components/admit-channel-ord
 aep-admit-temporal-bounds = { path = "../../AEP-Components/admit-temporal-bounds/crate" }
 aep-envelope = { path = "../../AEP-Components/envelope/crate" }
 aep-evaluation-chain = { path = "../../AEP-Components/evaluation-chain/crate" }
-aep-named-surfaces = { path = "../../AEP-Components/named-surfaces/crate" }
 tempfile = "3"
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "io-util"] }
