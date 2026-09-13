@@ -33,5 +33,5 @@ node AEP-Base-Node/signatures/tooling/validate-signatures.mjs
 
 ## Licensing
 
-- **Signature content** (`signatures/`, `schemas/`, `trust-bundle/`): CC BY-SA 4.0 (`LICENSE-CONTENT`)
-- **Tooling** (`tooling/`, `lib/`): Apache 2.0 (`LICENSE-TOOLING`)
+- **Signature content** (`signatures/`, `schemas/`, `trust-bundle/`): CC BY-SA 4.0, stated in the top level NOTICE
+- **Tooling** (`tooling/`, `lib/`): Apache 2.0, the top level LICENSE
