@@ -1,0 +1,11 @@
+[package]
+name = "aep-minimal-wrap"
+version = "2.8.6"
+edition = "2021"
+license = "Apache-2.0"
+description = "AEP 2.8.6 minimal wrap. Uses public kernel names. Documented command prints allow true."
+
+[workspace]
+
+[dependencies]
+aep-base-node = { path = "../../AEP-Base-Node/crate" }
