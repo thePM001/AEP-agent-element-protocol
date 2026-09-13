@@ -9,6 +9,10 @@ You may obtain a copy of the License at
 
  http://www.apache.org/licenses/LICENSE-2.0
 
+This product includes the AEP CAW component (AEP-CAW), the execution layer
+security companion for agent runs. That component carries its own notice and
+licence text beside its tree.
+
 The names "AEP", "Agent Element Protocol", "AEP-compliant" and "dynAEP"
 are subject to a reserved-name policy published by New Lisbon Agency.
 The Apache 2.0 License does not grant rights to use these names; see

@@ -1,0 +1,13 @@
+AEP CAW - Containerized Agentic Workflows
+Copyright 2026 thePM_001 / New Lisbon Agency
+
+This component is part of the AEP project and it is licensed under the Apache
+License, Version 2.0. The licence text ships beside this file as LICENSE.
+
+This component includes one generated protocol package that is licensed under
+the Apache License, Version 2.0.
+
+The names "AEP", "Agent Element Protocol", "AEP-compliant" and "dynAEP" are
+subject to a reserved-name policy published by New Lisbon Agency. The Apache
+2.0 License does not grant rights to use these names. Read the dynAEP name
+policy in this repository for the terms of use.
