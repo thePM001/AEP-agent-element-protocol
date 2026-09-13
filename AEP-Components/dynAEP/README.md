@@ -730,22 +730,7 @@ cargo test -p aep-dynaep --lib
 ```
 
 
-**SDKs do not live under `AEP-Components/dynAEP/`.** Protocol source of truth is `AEP-Components/dynAEP/`; SDKs are produced into `AEP-Components/dynAEP/` at the repository root. NPM registry distribution is forbidden; use `not-a-product` and lattice-gated artifacts.
-
-| SDK | Path | Contents |
-|-----|------|----------|
-| TypeScript dynAEP | `AEP-Components/dynAEP/typescript/dynaep/` | leftover TypeScript client. Reference action checker is Base Node kernel Admit collect-all then Apply |
-| TypeScript AEP core | `AEP-Components/dynAEP/typescript/aep-protocol/` | Scene graph, validation, memory fabric |
-| Python dynAEP | `AEP-Components/dynAEP/python/dynaep/` | Python bridge and temporal pipeline |
-| React (AEP + dynAEP) | `AEP-Components/dynAEP/react/` | `aep-react.tsx`, `dynaep-react.tsx` (`await bridge.processEvent()`), `dynaep-copilotkit.tsx` |
-| Vue (AEP) | `AEP-Components/dynAEP/vue/` | `aep-vue.ts` composables |
-| CLI | `AEP-Components/dynAEP/typescript/dynaep/cli/dynaep-cli.ts` | `validate`, `serve`, lattice diagnostics |
-
-**Breaking change (v1.0 / CCA integration):** `DynAEPBridge.processEvent()` returns `Promise<AGUIEvent | DynAEPRejection>`. All callers must `await` it.
-
-**Tests:** `AEP-Components/dynAEP/typescript/dynaep/tests/lattice/action-lattice.test.ts` (governance modes, hook aliases, `within_range`, `filterAsync`).
-
-Registry component IDs: `aep-dynaep-typescript`, `aep-dynaep-python`, `dynaep-core` (protocol only), `dynAEP-hook-loader`, `dynAEP-cca-bridge-config`.
+**This component ships no SDK tree.** The protocol source of truth is `AEP-Components/dynAEP/` and the crate beside it. The reference action checker is the Base Node kernel Admit pass, and there is no package registry distribution for this component.
 
 ### 13.1 CCA and Base Node integration
 

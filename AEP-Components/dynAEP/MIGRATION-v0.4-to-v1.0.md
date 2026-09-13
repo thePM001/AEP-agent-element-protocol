@@ -4,6 +4,10 @@
 **Target Version:** dynAEP 1.0 (lattice-based event governance)
 **Source Version:** dynAEP v0.4 (TA-3 Durable Temporal Authority)
 
+**Note:** the SDK trees this document names are no longer shipped. The protocol source of truth is the dynAEP component and its crate.
+
+**Note:** the SDK trees this document names are no longer shipped. The protocol source of truth is the dynAEP component and its crate.
+
 This guide covers the upgrade from dynAEP v0.4 (Durable Temporal Authority,
 164-test release) to dynAEP v1.0 (Action Lattice universal event governance).
 Read the entire guide before starting your migration. Estimated total effort
