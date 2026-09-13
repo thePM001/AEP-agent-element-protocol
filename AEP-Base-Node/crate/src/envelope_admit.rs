@@ -6,7 +6,7 @@
 //! AEP28-ENV-034: missing lattice, unreadable lattice YAML and empty action_path on an empty lattice are Deny.
 //! AEP28-ENV-035: collect-all Deny for empty action_path runs before Apply. process_event must not mutate LiveEntry then return Event.
 //! AEP28-ENV-037: one Admit function. attach_live_walls then process_event. live_collect_all is not a second combinator.
-//! AEP28-ENV-042: empty lattice closes dag.membership and gap.agent_may. Do not reopen AEP28-ENV-034.
+//! AEP28-ENV-042: empty lattice closes dag.membership and gap.agent_permission. Do not reopen AEP28-ENV-034.
 //! AEP28-ENV-066: unbound scene, channel, time and sequence close. dest_dock may bind from the opened frame docking port.
 //! AEP28-ENV-065: Admit collect-all then Apply runs on the Base Node pulse beat against the frozen seal snapshot.
 //! AEP28-ENV-044: aep-lattice-log Record must call admit_sealed_payload_on_live_dock before kernel INSERT.
@@ -108,7 +108,7 @@ pub fn admit_sealed_payload_report(
 mod tests {
     use super::*;
     fn yaml() -> &'static str {
-        "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_may: []\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_may: [\"agent-a\"]\n"
+        "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_permission: [\"agent-a\"]\n"
     }
     #[test]
     fn denies_non_json() {
@@ -220,7 +220,7 @@ mod tests {
         assert!(err.repairs.iter().any(|h| h.field == "action_path"));
     }
     #[test]
-    fn empty_lattice_agent_may_is_capability_class() {
+    fn empty_lattice_agent_permission_is_capability_class() {
         let mut le = LiveEntry::new();
         let mut map = serde_json::Map::new();
         map.insert(String::from("type"), Value::String(String::from("PING")));
@@ -228,7 +228,7 @@ mod tests {
         let body = serde_json::to_vec(&Value::Object(map)).expect("body");
         let err = admit_sealed_payload_report(&mut le, &body, &LiveDockContext::unit_open())
             .expect_err("deny");
-        assert!(err.closed.iter().any(|w| w.id == "gap.agent_may" && w.class == CLASS_CAPABILITY));
+        assert!(err.closed.iter().any(|w| w.id == "gap.agent_permission" && w.class == CLASS_CAPABILITY));
         assert!(err.closed.iter().any(|w| w.id == "dag.membership" && w.class == CLASS_STRUCTURAL));
     }
     #[test]

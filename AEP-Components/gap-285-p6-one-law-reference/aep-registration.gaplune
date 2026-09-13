@@ -10,4 +10,4 @@ path: crate-gap-285-p6-one-law-reference/
 ticket: GAP-285-P6
 requires: none
 capability: admit.gap-285-p6-one-law-reference.verify
-note: GAP-285-P6 one-law reference. Presence of trust_ring is Deny. Who-may is agent_may. Writing and security stay always-on. Other walls bind wrap or action_path_prefix.
+note: GAP-285-P6 one-law reference. Presence of trust_ring is Deny. Agent permission is agent_permission. Writing and security stay always-on. Other walls bind wrap or action_path_prefix.

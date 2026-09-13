@@ -336,7 +336,7 @@ mod tests {
     }
 
     #[test]
-    fn compile_trust_refuses() {
+    fn trust_fields_refused() {
         let mut raw = sample_json();
         raw.as_object_mut()
             .unwrap()

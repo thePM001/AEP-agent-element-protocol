@@ -1,16 +1,14 @@
 # Coding Governance Component
 
-Thin **component folder** for the coding-governance domain. Canonical implementation is the Rust subprotocol crate.
+Thin **component folder** for the coding-governance domain. Canonical checks live in the kernel Admit path and in GAP reference policies.
 
 | Layer | Location |
 |-------|----------|
-| Validator (canonical) | `internal-sdk/AEP-Subprotocols/coding-governance/` |
 | GAP reference policies | `AEP-Components/gap/policies/reference/` |
 | Provenance store | `AEP-Components/intent-ledger/` |
 | Hyperlattice overlay | `AEP-Components/semantic-topology/` |
 | Git integration | `lib/git-integration.mjs` |
 | CCA agent builder context | `lib/coding-governance-context.mjs` |
-| TypeScript bridge | `internal-sdk/AEP-SDKs/typescript/aep-protocol/src/subprotocol-rust.ts` |
 
 ## Git integration (nool-compatible)
 
@@ -27,4 +25,4 @@ Solidify includes `since_propose` diff when propose git snapshot exists.
 
 When CCA enables `coding-governance`, `plan-generator.mjs` sets `policy_overrides.coding_governance` with `git_integration`, `auto_git_refs`, `semantic_strict`, and `require_propose`. `plan-executor.mjs` writes `$AEP_DATA/coding-agent-workflow.md` and `base-node.json` `policy_sections.coding_governance`.
 
-No validation logic in this folder beyond bridges. Registry manifest points agents to the subprotocol CLI and GAP policies.
+No validation logic in this folder beyond bridges. Registry manifest points agents to GAP policies.

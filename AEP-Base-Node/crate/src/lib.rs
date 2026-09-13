@@ -1,4 +1,4 @@
-//! AEP Base Node - mandatory local governance kernel for AEP 2.8.
+//! AEP Base Node - mandatory local governance kernel for AEP 2.8.5.
 
 pub mod dock_keys;
 pub mod docking;
@@ -40,6 +40,10 @@ pub const COMPONENT_ID: &str = "aep-base-node";
 pub const EPSCOM_PRIORITY: u8 = 255;
 
 pub use error::{AdmitDeny, BaseNodeError};
+pub use aep_wall_set_backpressure::{ClosedWall, DenyReport};
+pub use aep_base_node_pulse::PULSE_MS;
+pub use aep_live_entry::{AdmitResult, Envelope, Pulse, agent_permission, AgentPermission, DENY_NO_PERMISSION};
+pub use envelope_admit::admit_sealed_payload as process_sealed;
 
 pub use epscom::{
     enforce_writing_text, enforce_writing_value, lint_writing_prose, value_has_writing_violations,
@@ -260,10 +264,18 @@ pub fn record_channel_frame(
             Some("frame replay rejected".into()),
         ));
     }
-    let payload_json =
-        serde_json::to_string(frame).unwrap_or_else(|_| "{}".to_string());
-    let agentmesh_json =
-        serde_json::to_string(bundle).unwrap_or_else(|_| "{}".to_string());
+    let payload_json = match serde_json::to_string(frame) {
+        Ok(v) => v,
+        Err(e) => {
+            return Err(rusqlite::Error::ToSqlConversionFailure(Box::new(e)));
+        }
+    };
+    let agentmesh_json = match serde_json::to_string(bundle) {
+        Ok(v) => v,
+        Err(e) => {
+            return Err(rusqlite::Error::ToSqlConversionFailure(Box::new(e)));
+        }
+    };
     conn.execute(
         "INSERT INTO action_lattice_events
          (agent_id, channel_id, contract_id, frame_digest, recorded_at_unix, event_type, payload_json, agentmesh_json)
@@ -282,6 +294,11 @@ pub fn record_channel_frame(
     Ok(conn.last_insert_rowid())
 }
 
+#[derive(Serialize)]
+struct SelfTestLedgerKind {
+    kind: String,
+}
+
 pub fn record_lattice_event(
     conn: &Connection,
     agent_id: &str,
@@ -290,7 +307,23 @@ pub fn record_lattice_event(
     frame_digest: &str,
     recorded_at_unix: u64,
 ) -> rusqlite::Result<()> {
-    conn.execute(
+    let payload = SelfTestLedgerKind {
+        kind: String::from("base_node_self_test"),
+    };
+    let mesh = SelfTestLedgerKind {
+        kind: String::from("agentmesh"),
+    };
+    let payload_ser = serde_json::to_string(&payload);
+    if payload_ser.is_err() {
+        return Err(rusqlite::Error::ToSqlConversionFailure(Box::new(payload_ser.unwrap_err())));
+    }
+    let payload_json = payload_ser.unwrap();
+    let mesh_ser = serde_json::to_string(&mesh);
+    if mesh_ser.is_err() {
+        return Err(rusqlite::Error::ToSqlConversionFailure(Box::new(mesh_ser.unwrap_err())));
+    }
+    let agentmesh_json = mesh_ser.unwrap();
+    let exec_r = conn.execute(
         "INSERT INTO action_lattice_events
          (agent_id, channel_id, contract_id, frame_digest, recorded_at_unix, event_type, payload_json, agentmesh_json)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
@@ -301,10 +334,13 @@ pub fn record_lattice_event(
             frame_digest,
             recorded_at_unix as i64,
             "base_node_self_test",
-            "{}",
-            "{}",
+            payload_json,
+            agentmesh_json,
         ],
-    )?;
+    );
+    if exec_r.is_err() {
+        return Err(exec_r.unwrap_err());
+    }
     Ok(())
 }
 

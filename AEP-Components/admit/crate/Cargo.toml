@@ -2,10 +2,13 @@
 name = "aep-admit"
 version = "0.1.0"
 edition = "2021"
-description = "Admit walls: AND collect-all. Writing.gap and GAP agent-may dimensions compile into Admit walls on the same collect-all pass. Live lattice policy is compiled walls."
+description = "Admit walls: AND collect-all. Writing.gap and GAP agent permission dimensions compile into Admit walls on the same collect-all pass. Live lattice policy is compiled walls."
 license = "UNLICENSED"
 publish = false
 
 [[bin]]
 name = "aep-admit"
 path = "src/main.rs"
+
+[dependencies]
+aep-wall-set-backpressure = { path = "../../wall-set-backpressure/crate" }

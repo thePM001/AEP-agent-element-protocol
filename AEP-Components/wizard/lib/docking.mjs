@@ -31,8 +31,7 @@ export function pingDock(socketPath, opts = {}) {
       event_type: "LATTICE_HEALTH_PING",
       session_id: opts.sessionId ?? "wizard-health",
       docking_port: dockPort,
-      trust_score: opts.trustScore ?? 700,
-      payload: { probe: true },
+      payload: { probe: true, admit: false },
     },
     opts,
   );
@@ -87,8 +86,7 @@ export function recordActivationEvent(socketBase, agentId = "setup-agent", opts 
       event_type: "SETUP_ACTIVATION",
       session_id: "setup-session",
       docking_port: "validation_engine",
-      trust_score: 700,
-      payload: { phase: "activation", ok: true },
+      payload: { phase: "activation", recorded: true, admit: false },
     },
     opts,
   );

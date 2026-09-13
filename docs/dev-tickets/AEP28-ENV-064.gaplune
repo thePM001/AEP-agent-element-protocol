@@ -12,8 +12,8 @@ wave: caw-cve-demo-trees
 plan: none
 repo: NLA-AEP-v2.8-open-source
 depends_on: none
-scope: AEP-Components/caw-framework/examples AEP-Components/caw-cve-demo-trees/crate CHANGELOG.md Cargo.toml scripts/gate-aep28-env-064.sh
-notes: Closed. CAW CVE demo trees are out of the attachable component set. Crate aep-caw-cve-demo-trees fails if a demo-cve tree remains under AEP-Components. CI gate scripts/gate-aep28-env-064.sh runs cargo test --lib and cargo run.
+scope: AEP-CAW/examples AEP-Components/caw-cve-demo-trees/crate CHANGELOG.md Cargo.toml internal-export-area/scripts/gate-aep28-env-064.sh
+notes: Closed. CAW CVE demo trees are out of the attachable component set. Crate aep-caw-cve-demo-trees fails if a demo-cve tree remains under AEP-Components. CI gate internal-export-area/scripts/gate-aep28-env-064.sh runs cargo test --lib and cargo run.
 acceptance: No demo-cve tree remains under AEP-Components. Catalog and caw-framework manifest do not list a CVE demo tree as attachable. nla-policy-scan gate coding-completion and project-completion-bac on AEP-Components/caw-cve-demo-trees/crate before any ship prose.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/caw-cve-demo-trees/crate
 updated: 2026-09-04

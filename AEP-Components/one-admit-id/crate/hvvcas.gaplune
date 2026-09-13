@@ -1,0 +1,44 @@
+@PAD: hvvcas-spec-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.hvvcas.v1
+format: gaplune
+json: prohibited
+crate: aep-one-admit-id
+ticket: AEP28-ENV-049
+note: Durable HVVCAS is GAPLUNE. Keep one Admit function and one id vocabulary. Drop extra_walls conversion from a second admit_collect_all.
+
+component:
+  name: scan_no_extra_walls_conversion
+  domain: admit
+  component_type: service
+  intent: Fail if extra_walls is filled by converting AdmitWall id into WallVerdict name
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_one_id_vocabulary
+  domain: admit
+  component_type: service
+  intent: Fail if envelope WallVerdict still uses name as the wall identity
+  input:
+    name: src
+    type: String
+  output:
+    name: scan
+    type: String
+
+component:
+  name: scan_one_admit_function
+  domain: admit
+  component_type: service
+  intent: Fail if live extra_walls is still Vec of WallVerdict or a second admit_collect_all
+  input:
+    name: live_src
+    type: String
+  output:
+    name: scan
+    type: String

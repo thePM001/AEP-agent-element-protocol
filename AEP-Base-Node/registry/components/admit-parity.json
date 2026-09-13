@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "admit-parity",
-  "version": "2.8.0",
+  "version": "2.8.5",
   "kind": "library",
   "path": "AEP-Components/admit-parity/",
   "description": "CI job comparing Rust aep-admit collect-all to admit.mjs on shared gaplune fixtures. Fails on mismatch.",
@@ -34,6 +34,7 @@
   },
   "implementation": {
     "crate": "AEP-Components/admit-parity/crate",
-    "gate": "scripts/gate-admit-parity.sh"
-  }
+    "gate": "internal-export-area/scripts/gate-admit-parity.sh"
+  },
+  "role": "kernel"
 }

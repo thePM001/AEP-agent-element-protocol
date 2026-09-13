@@ -19,10 +19,10 @@ component:
     type: Value
 
 component:
-  name: compile_trust_ring_rank_wall
+  name: compile_leftover_rank_field_wall
   domain: admit
   component_type: library
-  intent: Rank use of trust_ring warns then denies on live Admit. Who-may is agent_may.
+  intent: Rank use of trust_ring warns then denies on live Admit. Agent permission is agent_permission.
   input:
     name: source
     type: Value
@@ -31,10 +31,10 @@ component:
     type: AdmitWall
 
 component:
-  name: compile_agent_may_profile_wall
+  name: compile_agent_permission_profile_wall
   domain: admit
   component_type: library
-  intent: Compile agent_may grants. Agent A may X. Empty grants Deny for agent actions.
+  intent: Compile agent_permission grants. Agent A may X. Empty grants Deny for agent actions.
   input:
     name: request
     type: LiveAdmitRequest

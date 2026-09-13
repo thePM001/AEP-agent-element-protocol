@@ -47,6 +47,6 @@ tooling/ are licensed separately under LICENSE-TOOLING (Apache License 2.0).
 
 The names "AEP", "Agent Element Protocol", "AEP-compliant" and "dynAEP" are
 subject to the reserved-name policy published at
-github.com/thePM001/AEP-agent-element-protocol/blob/main/AEP-Components/dynAEP/NAME-POLICY.md.
+AEP-Components/dynAEP/NAME-POLICY.md.
 Neither this license nor the Apache 2.0 license on tooling grants rights to
 use those names.

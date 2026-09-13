@@ -1,10 +1,10 @@
 {
   "manifest_version": "1",
   "id": "gap",
-  "version": "2.8.0",
+  "version": "2.8.5",
   "kind": "protocol",
   "path": "AEP-Components/gap/",
-  "description": "GAP Governed Agentic Programming language spec vendored from github.com/thePM001/gap.",
+  "description": "Governed Agentic Programming meta-schemas and reference policies.",
   "requires": [
     "aep-base-node"
   ],
@@ -32,7 +32,7 @@
     "AEP-Components/gap/schemas/gap-meta-schema-v1.2.json"
   ],
   "cca": {
-    "summary": "GAP Governed Agentic Programming: .gap YAML instructions, meta-schema, subprotocol registry.",
+    "summary": "GAP Governed Agentic Programming: .gap YAML instructions and meta-schema.",
     "use_when": [
       "all governed agent workflows",
       "GAP policies",
@@ -53,5 +53,6 @@
   },
   "implementation": {
     "path": "AEP-Components/gap/"
-  }
+  },
+  "role": "kernel"
 }

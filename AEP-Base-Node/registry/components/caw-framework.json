@@ -3,7 +3,7 @@
   "id": "caw-framework",
   "version": "2.8.5",
   "kind": "daemon",
-  "path": "AEP-Components/caw-framework/",
+  "path": "AEP-CAW/",
   "description": "AEP CAW Framework: Execution-Layer Security for containerized agentic workflows (Apache 2.0).",
   "requires": [
     "aep-base-node",
@@ -85,12 +85,12 @@
     ]
   },
   "implementation": {
-    "binary": "AEP-Components/caw-framework/cmd/aep-caw",
-    "shim": "AEP-Components/caw-framework/cmd/aep-caw-shell-shim",
-    "build": "make -C AEP-Components/caw-framework build",
-    "bridge": "AEP-Components/caw-framework/lib/lattice-bridge.mjs",
-    "service": "AEP-Components/caw-framework/lib/caw-service.mjs",
-    "notice": "AEP-Components/caw-framework/NOTICE"
+    "binary": "AEP-CAW/cmd/aep-caw",
+    "shim": "AEP-CAW/cmd/aep-caw-shell-shim",
+    "build": "make -C AEP-CAW build",
+    "bridge": "AEP-CAW/lib/lattice-bridge.mjs",
+    "service": "AEP-CAW/lib/caw-service.mjs",
+    "notice": "AEP-CAW/NOTICE"
   },
   "conformance": {
     "tests": [

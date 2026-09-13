@@ -7,4 +7,4 @@ export {
   getCcaPublicState,
   runCcaChat,
   extractGraphSuggestion,
-} from "../../AEP-Components/cca/lib/chat.mjs";
+} from "../../AEP-CCA-Central-Setup-Agent/lib/chat.mjs";

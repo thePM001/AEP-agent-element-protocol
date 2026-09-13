@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "lattice-memory",
-  "version": "2.8.0",
+  "version": "2.8.5",
   "kind": "library",
   "path": "AEP-Components/lattice-memory/",
   "description": "sqlite-vec persistence and USearch fast-path attractors for validation memory.",
@@ -51,5 +51,6 @@
       "AEP-Components/conformance/runner/run.sh",
       "AEP-Components/conformance/tests/manifest.json"
     ]
-  }
+  },
+  "role": "kernel"
 }

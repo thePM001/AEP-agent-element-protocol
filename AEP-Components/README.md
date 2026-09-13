@@ -2,7 +2,7 @@
 
 All bundled AEP protocol components live under this directory. Each subfolder is a first-class component with its own `README.md`, registry manifest (`AEP-Base-Node/registry/components/{id}.json`) and `lib/` or `crate/` implementation.
 
-The TypeScript SDK (`typescript-sdk/`) is a **thin client surface** only (`index.ts`, `gateway.ts`, `cli.ts`). It re-exports sibling components here; it is not a monolith.
+Runtime code for each component lives in that component folder. Client libraries are not a product of AEP 2.8.5.
 
 Infrastructure and top-level surfaces outside this folder:
 
@@ -10,8 +10,6 @@ Infrastructure and top-level surfaces outside this folder:
 - `AEP-Composer-Lite/` - WASM visual canvas (:8424), not a protocol component subfolder
 - `AEP-Docks/` - socket dock specs, UCB bridge, Universal Connect Dock (UCD)
 - `AEP-Policy-System/` - policy YAML/REGO plus `policy-builder/` and `schema-builder/`
-- `internal-sdk/AEP-Subprotocols/` - regulation subprotocol crates
-- internal engineering tree (export-ignore; not shipped)
 - `docker/` - container entrypoint and runtime deps
 - `AEP-User-Experience/scripts/` - manual modification and E2E tooling
 - `rust/` - build artifact target directory

@@ -6,4 +6,4 @@ Multi-phase workflow executor and fine-tuning templates.
 - **Path:** `workflow/`
 - **Manifest:** `AEP-Base-Node/registry/components/workflow.json`
 
-Re-exported by `typescript-sdk/` for programmatic access. Runtime code lives in `lib/`.
+Runtime code lives in `lib/`.

@@ -8,24 +8,24 @@ import { loadLrpCatalog, listComplianceModules, listPlatformContracts } from "..
 import {
   INSTALL_METHODS,
   VALIDATION_ENGINE_MODES,
-} from "../../AEP-Components/cca/lib/setup/install-plan.mjs";
+} from "../../AEP-CCA-Central-Setup-Agent/lib/setup/install-plan.mjs";
 import { loadComponentRegistry } from "../../AEP-Base-Node/registry/lib/registry.mjs";
 import {
   INFERENCE_PROVIDERS,
   PROVIDER_DEFAULTS,
   saveInferenceConfig,
-} from "../../AEP-Components/cca/lib/setup/inference.mjs";
+} from "../../AEP-CCA-Central-Setup-Agent/lib/setup/inference.mjs";
 import { resolveRuntime, fetchHealth, fetchDocking } from "./runtime.mjs";
 import { ensureInstallWizardManifests } from "./ensure-setup-manifests.mjs";
 import { buildUcbPublicStatus } from "./ucb-status.mjs";
-import { generatePlanFromIntent } from "../../AEP-Components/cca/lib/plan-generator.mjs";
+import { generatePlanFromIntent } from "../../AEP-CCA-Central-Setup-Agent/lib/plan-generator.mjs";
 import {
   executeImplementationPlan,
   writeActivePlan,
-} from "../../AEP-Components/cca/lib/plan-executor.mjs";
+} from "../../AEP-CCA-Central-Setup-Agent/lib/plan-executor.mjs";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
-const SETUP_AGENT_SCRIPT = join(__dirname, "../../AEP-Components/cca/setup-agent.mjs");
+const SETUP_AGENT_SCRIPT = join(__dirname, "../../AEP-CCA-Central-Setup-Agent/setup-agent.mjs");
 
 export async function buildSetupWizardCatalog(env = process.env) {
   const catalog = loadLrpCatalog();

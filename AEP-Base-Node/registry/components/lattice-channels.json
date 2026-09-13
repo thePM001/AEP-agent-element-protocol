@@ -1,10 +1,10 @@
 {
   "manifest_version": "1",
   "id": "lattice-channels",
-  "version": "2.8.0",
+  "version": "2.8.5",
   "kind": "library",
   "path": "AEP-Components/lattice-channels/",
-  "description": "Unified lattice transport (MJS), TypeScript client, and Rust channel crate.",
+  "description": "Unified lattice transport and Rust channel crate.",
   "requires": [
     "lattice-crypto"
   ],
@@ -24,7 +24,7 @@
     "gpu_required": false
   },
   "cca": {
-    "summary": "Single lattice stack: latticeGatedFetch, TS client, aep-lattice-channel crate.",
+    "summary": "Single lattice stack: latticeGatedFetch and aep-lattice-channel crate.",
     "use_when": [
       "any JS/MJS/TS client",
       "Composer Lite",
@@ -46,5 +46,6 @@
     "client": "AEP-Components/lattice-channels/client/lattice/index.ts",
     "crate": "AEP-Components/lattice-channels/crate",
     "binary": "aep-lattice-log"
-  }
+  },
+  "role": "kernel"
 }

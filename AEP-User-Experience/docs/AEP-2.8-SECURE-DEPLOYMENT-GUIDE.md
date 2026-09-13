@@ -273,7 +273,7 @@ export UCB_API_KEY=...
 | Lattice client | `AEP-Components/lattice-channels/lib/lattice-transport.mjs` |
 | SDKs | `internal-sdk/AEP-SDKs/` |
 | UCB auth | `AEP-Docks/ucb/crate/src/auth.rs`, `http.rs` |
-| CAW file/unix fail-closed | `AEP-Components/caw-framework/internal/netmonitor/unix/` |
+| CAW file/unix fail-closed | `AEP-CAW/internal/netmonitor/unix/` |
 | Policy | `AEP-Policy-System/lattice-channel-mandatory.gap` |
 
 ## 7. Change control

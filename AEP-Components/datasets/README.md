@@ -6,4 +6,4 @@ Governed dataset management for eval and training.
 - **Path:** `datasets/`
 - **Manifest:** `AEP-Base-Node/registry/components/datasets.json`
 
-Re-exported by `typescript-sdk/` for programmatic access. Runtime code lives in `lib/`.
+Runtime code lives in `lib/`.

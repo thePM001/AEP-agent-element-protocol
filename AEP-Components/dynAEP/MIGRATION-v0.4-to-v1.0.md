@@ -213,12 +213,12 @@ enforced on every event:
 - Tier 4: high-trust agents (email review, shutdown)
 - Tier 5: maximum trust (trade proposal, execution)
 
-Every lattice node has `agent_may` grants. Events from agents not granted the action
+Every lattice node has `agent_permission` grants. Events from agents not listed for the action
 are rejected. Review your agent trust assignments before upgrading.
 
 ### 2.7 Python SDK: No Breaking API Changes
 
-The Python SDK (`internal-sdk/AEP-SDKs/python/dynaep/`) has NO API
+The Python SDK (`AEP-Components/dynAEP/python/dynaep/`) has NO API
 changes. The `DynAEPBridge`, `DynAEPBridgeConfig`, `process_event()`,
 `handle_tool_call()` and `create_ag_ui_middleware()` APIs are identical.
 The bridge validates against the lattice transparently based on the config.
@@ -241,7 +241,7 @@ perform. Each action has:
 - **children** - list of action paths that may follow
 - **constraints** - validation gates (required_field, threshold, authorization,
  custom)
-- **agent_may** - GAP dimension grants. Agent A may X. Agent B may Y. No rank
+- **agent_permission** - GAP dimension grants. Agent A may X. Agent B may Y. No rank
 
 The bridge validates every incoming event against the lattice:
 
@@ -299,9 +299,9 @@ Three new event types for lattice governance:
 - **LATTICE_FILTER_RESULT** - structured verdict from the lattice filter
 - **LATTICE_REGISTER** - agent interest registration
 
-### 3.6 TypeScript SDK (`@dynaep/core`)
+### 3.6 in-tree TypeScript lattice (`@dynaep/core`)
 
-New TypeScript SDK with full lattice integration:
+New in-tree TypeScript lattice with full lattice integration:
 
 - `LatticeFilter` - core validation engine
 - `ActionLattice` - lattice data structure with upper/lower set traversal
@@ -432,7 +432,7 @@ dynAEP-lattice:
  label: "Action Lattice Filter"
  category: governance
  description: "Partial-order DAG event validation"
- agent_may: ["*"]
+ agent_permission: ["*"]
  version: "1.0.0"
  location: "bridge/lattice/index.ts"
  dependencies: []
@@ -442,7 +442,7 @@ dynAEP-lattice:
 dynAEP-hooks:
  label: "Validation Hook Interface"
  category: governance
- agent_may: ["*"]
+ agent_permission: ["*"]
  version: "1.0.0"
  location: "hooks/interface.ts"
  dependencies: ["dynAEP-lattice"]
@@ -452,7 +452,7 @@ dynAEP-hooks:
 dynAEP-observers:
  label: "Observer Adapter Layer"
  category: integration
- agent_may: ["*"]
+ agent_permission: ["*"]
  version: "1.0.0"
  location: "observers/"
  dependencies: []
@@ -464,7 +464,7 @@ dynAEP-observers:
 dynAEP-lattice-registry:
  label: "Action Lattice Registry"
  category: configuration
- agent_may: ["*"]
+ agent_permission: ["*"]
  version: "1.0.0"
  location: "registries/aep-lattice.yaml"
  dependencies: ["dynAEP-lattice"]
@@ -472,7 +472,7 @@ dynAEP-lattice-registry:
 dynAEP-mle-hook:
  label: "MLE Validation Hook (Reference)"
  category: validation
- agent_may: ["*"]
+ agent_permission: ["*"]
  version: "1.0.0"
  location: "hooks/examples/mle-hook/index.ts"
  dependencies: ["dynAEP-hooks"]
@@ -480,17 +480,17 @@ dynAEP-mle-hook:
 dynAEP-lattice-policy:
  label: "Lattice Rego Policy"
  category: policy
- agent_may: ["*"]
+ agent_permission: ["*"]
  version: "1.0.0"
  location: "policies/lattice-policy.rego"
  dependencies: ["dynAEP-lattice"]
 
 dynAEP-sdk:
- label: "TypeScript SDK (Lattice Integration)"
+ label: "in-tree TypeScript lattice (Lattice Integration)"
  category: sdk
- agent_may: ["*"]
+ agent_permission: ["*"]
  version: "1.0.0"
- location: "internal-sdk/AEP-SDKs/typescript/dynaep/src/bridge.ts"
+ location: "AEP-Components/dynAEP/typescript/dynaep/src/bridge.ts"
  dependencies: ["dynAEP-lattice"]
 REGEOF
 ```
@@ -529,7 +529,7 @@ actions:
  constraints:
  - type: required_field
  field: signature
- agent_may: ["*"]
+ agent_permission: ["*"]
 
  webhook:validate:
  label: "Validate webhook payload"
@@ -537,7 +537,7 @@ actions:
  parents: [webhook:incoming]
  children: [action:route]
  constraints: []
- agent_may: ["*"]
+ agent_permission: ["*"]
 
  action:route:
  label: "Route event to agents"
@@ -547,7 +547,7 @@ actions:
  constraints:
  - type: required_field
  field: matched_agents
- agent_may: ["*"]
+ agent_permission: ["*"]
 
  output:notify:
  label: "Send notification"
@@ -555,7 +555,7 @@ actions:
  parents: [action:route]
  children: []
  constraints: []
- agent_may: ["*"]
+ agent_permission: ["*"]
 
  output:ui_mutation:
  label: "UI scene graph mutation"
@@ -567,7 +567,7 @@ actions:
  field: element_id
  - type: required_field
  field: mutation
- agent_may: ["*"]
+ agent_permission: ["*"]
 LATTICEEOF
 ```
 
@@ -941,7 +941,7 @@ observers/sse/index.ts - SSE adapter
 observers/poll/index.ts - Poll adapter
 observers/examples/blockchain/index.ts - Blockchain adapter
 policies/lattice-policy.rego - Lattice Rego policy
-internal-sdk/AEP-SDKs/typescript/dynaep/src/bridge.ts - TypeScript SDK
+AEP-Components/dynAEP/typescript/dynaep/src/bridge.ts - in-tree TypeScript lattice
 package.json - @dynaep/core npm package
 tsconfig.json - TypeScript config
 ```

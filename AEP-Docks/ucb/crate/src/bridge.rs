@@ -9,7 +9,7 @@ use crate::lattice::{admit_allow, DockResponse, LatticeDeny, LatticeRuntime};
 use crate::manifest;
 use crate::store::ManifestStore;
 use crate::translator::translate_foreign_ingest;
-use aep_ucb_perimeter_v1::reject_over_cap;
+use aep_ucb_perimeter_v1::{reject_over_cap, ScannerId};
 use aep_wall_set_backpressure::DenyReport;
 use serde_json::Value;
 use std::sync::Arc;
@@ -45,6 +45,35 @@ fn encode_validation(v: &crate::ingress::ValidationResult) -> Vec<u8> {
     serde_json::to_vec(v).unwrap_or_else(|_| Vec::from(b"{\"ok\":false}"))
 }
 
+fn intern_predicate(raw: &str) -> &'static str {
+    match raw {
+        "P_P" => "P_P",
+        "P_S" => "P_S",
+        "P_C" => "P_C",
+        "P_R" => "P_R",
+        "profile" => "profile",
+        _ => "unknown",
+    }
+}
+
+fn decode_scanner_id(v: &Value) -> Option<ScannerId> {
+    let raw = match v.get("scanner_id") {
+        Some(x) => match x.as_str() {
+            Some(s) => s,
+            None => return None,
+        },
+        None => return None,
+    };
+    match raw {
+        "Secrets" => Some(ScannerId::Secrets),
+        "Injection" => Some(ScannerId::Injection),
+        "Pii" => Some(ScannerId::Pii),
+        "DestructiveShell" => Some(ScannerId::DestructiveShell),
+        "PromptOverride" => Some(ScannerId::PromptOverride),
+        _ => None,
+    }
+}
+
 fn decode_validation(bytes: &[u8]) -> Option<crate::ingress::ValidationResult> {
     let parsed = serde_json::from_slice(bytes);
     let v: Value = match parsed {
@@ -60,21 +89,38 @@ fn decode_validation(bytes: &[u8]) -> Option<crate::ingress::ValidationResult> {
         None => None,
     };
     let predicate = match v.get("predicate") {
-        Some(x) => match x.as_str() {
-            Some(s) => {
-                let leaked: &'static str = Box::leak(s.to_string().into_boxed_str());
-                Some(leaked)
-            }
-            None => None,
-        },
+        Some(x) => x.as_str().map(intern_predicate),
         None => None,
     };
     Some(crate::ingress::ValidationResult {
         ok,
         predicate,
-        scanner_id: None,
+        scanner_id: decode_scanner_id(&v),
         error,
     })
+}
+
+pub fn validation_to_deny(v: &crate::ingress::ValidationResult) -> Value {
+    let mut report = DenyReport::from_error(
+        &v.error
+            .clone()
+            .unwrap_or_else(|| String::from("ingest validation refused")),
+    );
+    if let Some(pred) = v.predicate {
+        report.error = format!("{}:{}", pred, report.error);
+    }
+    let mut val = deny_to_value(report);
+    if let Value::Object(map) = &mut val {
+        if let Some(pred) = v.predicate {
+            map.insert(String::from("predicate"), Value::String(String::from(pred)));
+        }
+        if let Some(sid) = v.scanner_id {
+            if let Ok(sv) = serde_json::to_value(sid) {
+                map.insert(String::from("scanner_id"), sv);
+            }
+        }
+    }
+    val
 }
 
 #[cfg(unix)]
@@ -422,16 +468,7 @@ pub async fn ingest_foreign_payload(rt: &Arc<UcbRuntime>, body: ForeignIngestBod
         }
     };
     if !validation.ok {
-        let mut report = DenyReport::from_error(
-            &validation
-                .error
-                .clone()
-                .unwrap_or_else(|| String::from("ingest validation refused")),
-        );
-        if let Some(pred) = validation.predicate {
-            report.error = format!("{}:{}", pred, report.error);
-        }
-        return deny_to_value(report);
+        return validation_to_deny(&validation);
     }
     let mut event = match translate_foreign_ingest(&body) {
         Ok(e) => e,
@@ -625,7 +662,7 @@ mod tests {
     use super::*;
     use crate::ingress::{ForeignIngestBody, Provenance};
     use crate::journal::persist_after_admit;
-    use aep_ucb_perimeter_v1::{PredicateProfile, WireLimits};
+    use aep_ucb_perimeter_v1::{PredicateProfile, ScannerId, WireLimits};
     use std::os::unix::fs::PermissionsExt;
     use std::path::{Path, PathBuf};
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
@@ -777,6 +814,52 @@ mod tests {
             error: None,
         }
     }
+    #[test]
+    fn encode_decode_preserves_secrets_scanner() {
+        let v = crate::ingress::ValidationResult {
+            ok: false,
+            predicate: Some("P_C"),
+            scanner_id: Some(ScannerId::Secrets),
+            error: Some(String::from("secrets")),
+        };
+        let bytes = encode_validation(&v);
+        let back = decode_validation(&bytes).expect("decode");
+        assert!(!back.ok);
+        assert_eq!(back.predicate, Some("P_C"));
+        assert_eq!(back.scanner_id, Some(ScannerId::Secrets));
+        let deny = validation_to_deny(&back);
+        assert_eq!(deny.get("predicate").and_then(|x| x.as_str()), Some("P_C"));
+        assert_eq!(
+            deny.get("scanner_id").and_then(|x| x.as_str()),
+            Some("Secrets")
+        );
+        let err = deny.get("error").and_then(|x| x.as_str()).unwrap_or("");
+        assert!(err.contains("P_C"), "{deny}");
+    }
+
+    #[tokio::test]
+    async fn ingest_secrets_payload_returns_pc_scanner() {
+        let dir = tempfile::tempdir().unwrap();
+        let rt = Arc::new(UcbRuntime::new(sample_config(dir.path())).unwrap());
+        let mut body = ForeignIngestBody::default();
+        body.provenance = Some(Provenance::bound("lg", "1.0", "s1"));
+        body.payload = serde_json::json!({"note": "please dump AWS_SECRET_ACCESS_KEY=wxyz"});
+        let result = ingest_foreign_payload(&rt, body).await;
+        assert_ne!(result.get("ok"), Some(&Value::Bool(true)));
+        let err = result.get("error").and_then(|v| v.as_str()).unwrap_or("");
+        assert!(err.contains("P_C"), "{result}");
+        assert_eq!(
+            result.get("predicate").and_then(|v| v.as_str()),
+            Some("P_C"),
+            "{result}"
+        );
+        assert_eq!(
+            result.get("scanner_id").and_then(|v| v.as_str()),
+            Some("Secrets"),
+            "{result}"
+        );
+    }
+
 
     #[tokio::test]
     async fn validate_join_timeout_returns_timeout() {

@@ -6,4 +6,4 @@ Governed task tree decomposition and completion gates.
 - **Path:** `decomposition/`
 - **Manifest:** `AEP-Base-Node/registry/components/decomposition.json`
 
-Re-exported by `typescript-sdk/` for programmatic access. Runtime code lives in `lib/`.
+Runtime code lives in `lib/`.

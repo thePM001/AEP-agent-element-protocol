@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:aep:schema:base-node-config-2.8",
+  "$id": "urn:aep:schema:base-node-config-2.8.5",
   "title": "AEP Base Node Configuration",
   "type": "object",
   "required": ["version", "base_node"],
   "properties": {
-    "version": { "type": "string", "const": "2.8.0" },
+    "version": { "type": "string", "const": "2.8.5" },
     "inference_engine": {
       "type": "object",
       "required": ["provider", "model", "base_url", "dock"],

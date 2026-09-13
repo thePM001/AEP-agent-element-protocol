@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "evaluation-chain",
-  "version": "2.8.0",
+  "version": "2.8.5",
   "kind": "library",
   "path": "AEP-Components/evaluation-chain/",
   "description": "Rust meet of 15 walls. Live admit is collect-all AND. TypeScript runner is removed.",
@@ -33,5 +33,6 @@
   },
   "implementation": {
     "module": "AEP-Components/evaluation-chain/crate"
-  }
+  },
+  "role": "kernel"
 }

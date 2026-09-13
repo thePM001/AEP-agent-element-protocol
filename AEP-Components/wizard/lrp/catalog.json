@@ -1,5 +1,5 @@
 {
-  "version": "2.8.0",
+  "version": "2.8.5",
   "description": "Legacy Regulation Providers (LRPs) are sovereign states, regional unions, and international bodies and their regulations. Platform kernel contracts and EPSCOM policies are NOT LRPs.",
   "epscom": {
     "id": "epscom-core",

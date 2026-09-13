@@ -1,13 +1,13 @@
 // =============================================================================
 // Action Lattice protocol (AEP-Components/dynAEP/bridge/lattice/index.ts)
-// Synced into internal-sdk/AEP-SDKs/typescript/dynaep/src/protocol/action-lattice.ts by produce-aep-sdks.mjs.
+// In-tree Action Lattice for AEP 2.8.5.
 //
 // Each node in the lattice represents a system action with:
 // - category (external_event, system_event, agent_action, output)
 // - parents (partial order: what must happen first)
 // - children (what may follow)
 // - constraints (validation gates at event arrival time)
-// - agent_may (GAP dimension: which agents may this action. No rank.)
+// - agent_permission (GAP dimension: which agents may this action. No rank.)
 //
 // The lattice filter validates every event against its partial-order
 // closure and constraints BEFORE it reaches any output renderer.
@@ -73,7 +73,7 @@ export interface LatticeNode {
   parents: string[];
   children: string[];
   constraints: LatticeConstraint[];
-  agent_may: string[];
+  agent_permission: string[];
 }
 
 export interface LatticeConfig {
@@ -102,7 +102,7 @@ export interface LatticeEvent {
   trust_tier?: number;
 }
 
-/** AEP28-ENV-028: drop client trust_tier. Who-may is agent_may. */
+/** AEP28-ENV-028: drop client trust_tier. Agent permission is agent_permission. */
 export function ignoreClientTrustTier(_tier?: number): undefined {
   return undefined;
 }
@@ -123,7 +123,7 @@ export interface LatticeFilterResult {
   constraints_failed: Array<{ constraint: LatticeConstraint; reason: string }>;
   partial_order_satisfied: boolean;
   missing_parents: string[];
-  agent_may: boolean;
+  agent_permission: boolean;
   matched_interests: AgentInterest[];
   next_actions: string[];
   duration_us: number;
@@ -403,16 +403,16 @@ export class ActionLattice {
   /**
    * GAP dimension: Agent A may X. No numeric rank.
    */
-  agentMay(actionPath: string, agentId?: string): boolean {
+  agentPermission(actionPath: string, agentId?: string): boolean {
     const node = this.nodes.get(actionPath);
     if (!node) return false;
-    const grants = node.agent_may ?? [];
+    const perms = node.agent_permission ?? [];
     const systemish = node.category === "system_event" || node.category === "external_event";
-    if (grants.length === 0) return systemish;
-    return grants.some((g) => {
-      if (g === "*") return Boolean(agentId);
-      if (g === "unbound") return !agentId;
-      return g === agentId;
+    if (perms.length === 0) return false;
+    return perms.some((item) => {
+      if (item === "*") return Boolean(agentId);
+      if (item === "unbound") return !agentId;
+      return item === agentId;
     });
   }
 
@@ -680,7 +680,7 @@ export class ActionLattice {
     if (field === "trust_tier") {
       return {
         passed: false,
-        reason: "client trust_tier is not a floor",
+        reason: "client trust fields are refused",
       };
     }
     if (value === undefined) {
@@ -818,7 +818,7 @@ export class LatticeFilter {
       constraints_failed: [],
       partial_order_satisfied: false,
       missing_parents: [],
-      agent_may: false,
+      agent_permission: false,
       matched_interests: [],
       next_actions: [],
       duration_us: 0,
@@ -839,18 +839,18 @@ export class LatticeFilter {
     }
     result.matched_node = node;
 
-    // 2. GAP dimension who-may-do-what. No client trust_tier floor compare.
-    result.agent_may = this.lattice.agentMay(event.action_path, event.agent_id);
-    if (!result.agent_may) {
+    // 2. GAP dimension agent permission-do-what. No client trust_tier floor compare.
+    result.agent_permission = this.lattice.agentPermission(event.action_path, event.agent_id);
+    if (!result.agent_permission) {
       const who = event.agent_id ? event.agent_id : "unbound";
       result.constraints_failed.push({
         constraint: {
           type: "authorization",
           field: "agent_id",
-          condition: "agent_may",
-          description: `GAP dimension agent_may closed: agent '${who}' may not '${event.action_path}'`,
+          condition: "agent_permission",
+          description: `GAP dimension agent_permission closed: agent '${who}' may not '${event.action_path}'`,
         },
-        reason: `GAP dimension agent_may closed: agent '${who}' may not '${event.action_path}'`,
+        reason: `GAP dimension agent_permission closed: agent '${who}' may not '${event.action_path}'`,
       });
       result.duration_us = this.elapsedUs(startTime);
       return result;
@@ -977,7 +977,7 @@ export class LatticeFilter {
           }],
           partial_order_satisfied: false,
           missing_parents: [],
-          agent_may: false,
+          agent_permission: false,
           matched_interests: [],
           next_actions: [],
           duration_us: this.elapsedUs(startTime),

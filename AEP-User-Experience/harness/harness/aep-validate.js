@@ -448,7 +448,7 @@ class AEPValidator {
     }
 
     // -----------------------------------------------------------------------
-    // Check 10: GAP agent_may violations (AEP28-ENV-033)
+    // Check 10: GAP agent_permission violations (AEP28-ENV-033)
     // -----------------------------------------------------------------------
     checkTrustViolations() {
         const ledgerPath = path.join(this.srcDir, '..', '.claude', 'aep-evidence.jsonl');
@@ -464,12 +464,12 @@ class AEPValidator {
                     if (entry.trust_violation) {
                         this.addViolation(SEVERITY.CRITICAL, '.claude/aep-evidence.jsonl', i + 1,
                             'TRUST_VIOLATION',
-                            `GAP dimension agent_may closed: agent '${entry.agent_id || 'unbound'}' may not '${entry.action}'`);
+                            `GAP dimension agent_permission closed: agent '${entry.agent_id || 'unbound'}' may not '${entry.action}'`);
                     }
                     if (entry.ring_violation) {
                         this.addViolation(SEVERITY.CRITICAL, '.claude/aep-evidence.jsonl', i + 1,
-                            'AGENT_MAY_CLOSED',
-                            `GAP dimension agent_may closed: agent '${entry.agent_id || 'unbound'}' may not '${entry.action}'`);
+                            'AGENT_PERMISSION_CLOSED',
+                            `GAP dimension agent_permission closed: agent '${entry.agent_id || 'unbound'}' may not '${entry.action}'`);
                     }
                     if (entry.kill_switch_active) {
                         this.addViolation(SEVERITY.CRITICAL, '.claude/aep-evidence.jsonl', i + 1,

@@ -5,8 +5,8 @@ import { join } from "node:path";
 import { loadGraph } from "../../../AEP-Composer-Lite/lib/graph-store.mjs";
 import yaml from "yaml";
 import { buildPolicyLatticeView } from "../../../AEP-Composer-Lite/lib/policy-lattice.mjs";
-import { buildDynaepPolicyOverrides, loadDynaepContext } from "../../../AEP-Components/cca/lib/dynaep-context.mjs";
-import { loadPolicySystemContext } from "../../../AEP-Components/cca/lib/policy-system-context.mjs";
+import { buildDynaepPolicyOverrides, loadDynaepContext } from "../../../AEP-CCA-Central-Setup-Agent/lib/dynaep-context.mjs";
+import { loadPolicySystemContext } from "../../../AEP-CCA-Central-Setup-Agent/lib/policy-system-context.mjs";
 import {
   buildComposerProtocolSpec,
   validateComposerTopology,
@@ -18,21 +18,21 @@ import { COMPOSER_CCA_LATTICE_REGISTRY } from "./paths.mjs";
 export const HYPERLATTICE_TOPOLOGY = "hyperlattice";
 
 function parseActionRegistryDoc(doc, relPath) {
-  const actions = doc?.actions ?? {};
+  const actions = doc  ?.  actions   ??   {};
   const action_nodes = Object.entries(actions).map(([action_path, node]) => ({
     node_family: "event",
     action_path,
-    label: node?.label ?? action_path,
-    category: node?.category ?? "unknown",
-    parents: node?.parents ?? [],
-    children: node?.children ?? [],
-    trust_floor: node?.trust_floor ?? 1,
+    label: node  ?.  label   ??   action_path,
+    category: node  ?.  category   ??   "unknown",
+    parents: node  ?.  parents   ??   [],
+    children: node  ?.  children   ??   [],
+    trust_floor: node  ?.  trust_floor   ??   1,
   }));
   return {
     path: relPath,
-    aep_version: doc?.aep_version ?? null,
-    dynaep_version: doc?.dynaep_version ?? null,
-    lattice_revision: doc?.lattice_revision ?? null,
+    aep_version: doc  ?.  aep_version   ??   null,
+    dynaep_version: doc  ?.  dynaep_version   ??   null,
+    lattice_revision: doc  ?.  lattice_revision   ??   null,
     action_nodes,
     action_count: action_nodes.length,
   };
@@ -44,9 +44,9 @@ function parseActionRegistryDoc(doc, relPath) {
  * @param {string} [relativePath]
  */
 export function loadActionLatticeRegistry(repoRoot, relativePath) {
-  const rel = relativePath ?? "AEP-Components/dynAEP/registries/aep-lattice.yaml";
+  const rel = relativePath   ??   "AEP-Components/dynAEP/registries/aep-lattice.yaml";
   const abs = join(repoRoot, rel);
-  if (!existsSync(abs)) {
+  if ( ! existsSync(abs)) {
     throw new Error(`hyperlattice: missing action registry ${rel}`);
   }
   const doc = yaml.parse(readFileSync(abs, "utf8"));
@@ -60,7 +60,7 @@ export function loadActionLatticeRegistry(repoRoot, relativePath) {
 export function loadComposerCcaLatticeRegistry(repoRoot) {
   const rel = COMPOSER_CCA_LATTICE_REGISTRY;
   const abs = join(repoRoot, rel);
-  if (!existsSync(abs)) {
+  if ( ! existsSync(abs)) {
     throw new Error(`hyperlattice: missing Composer CCA registry ${rel}`);
   }
   const doc = yaml.parse(readFileSync(abs, "utf8"));
@@ -111,7 +111,7 @@ export function detectActionLatticeCycles(actionNodes) {
     }
     visiting.add(path);
     const node = byPath.get(path);
-    for (const parent of node?.parents ?? []) {
+    for (const parent of node  ?.  parents   ??   []) {
       if (byPath.has(parent)) dfs(parent, stack.concat(path));
     }
     visiting.delete(path);
@@ -128,12 +128,12 @@ export function detectActionLatticeCycles(actionNodes) {
  */
 export function validateHyperlattice(view) {
   const errors = [];
-  const actionNodes = view?.event_nodes ?? [];
+  const actionNodes = view  ?.  event_nodes   ??   [];
   const knownPaths = new Set(actionNodes.map((n) => n.action_path));
 
   for (const node of actionNodes) {
-    for (const parent of node.parents ?? []) {
-      if (!knownPaths.has(parent)) {
+    for (const parent of node.parents   ??   []) {
+      if ( ! knownPaths.has(parent)) {
         errors.push(`unknown parent ${parent} for action_path ${node.action_path}`);
       }
     }
@@ -144,17 +144,17 @@ export function validateHyperlattice(view) {
     errors.push(`action_path cycle: ${cycle.join(" -> ")}`);
   }
 
-  for (const policy of view?.gap_policy_nodes ?? []) {
-    const abs = join(view.repo_root ?? "", policy.path);
-    if (view.repo_root && !existsSync(abs)) {
+  for (const policy of view  ?.  gap_policy_nodes   ??   []) {
+    const abs = join(view.repo_root   ??   "", policy.path);
+    if (view.repo_root && ! existsSync(abs)) {
       errors.push(`missing GAP policy node file: ${policy.path}`);
     }
   }
 
-  const bindings = view?.channel_bindings ?? [];
+  const bindings = view  ?.  channel_bindings   ??   [];
   const contractIds = new Set(bindings.map((b) => b.contract_id));
-  for (const canvas of view?.canvas_nodes ?? []) {
-    if (canvas.contract_id && !contractIds.has(canvas.contract_id)) {
+  for (const canvas of view  ?.  canvas_nodes   ??   []) {
+    if (canvas.contract_id && ! contractIds.has(canvas.contract_id)) {
       errors.push(
         `canvas node ${canvas.id} contract_id ${canvas.contract_id} not in hyperlattice channel_bindings`,
       );
@@ -172,9 +172,9 @@ export function validateHyperlattice(view) {
  * @param {object|null} [opts.composerGraph]
  */
 export function buildHyperlatticeView(opts = {}) {
-  const repoRoot = opts.repoRoot ?? process.cwd();
-  const activeRegulationLrps = opts.activeRegulationLrps ?? [];
-  const composerGraph = opts.composerGraph ?? null;
+  const repoRoot = opts.repoRoot   ??   process.cwd();
+  const activeRegulationLrps = opts.activeRegulationLrps   ??   [];
+  const composerGraph = opts.composerGraph   ??   null;
 
   const policyView = buildPolicyLatticeView(activeRegulationLrps);
   const dyn = loadDynaepContext(repoRoot);
@@ -184,7 +184,7 @@ export function buildHyperlatticeView(opts = {}) {
 
   const ccaGapPolicies = loadCcaGapPolicies(repoRoot);
   const gap_policy_nodes = [
-    ...(policyView.reference_policies ?? []).map((p) => ({
+    ...(policyView.reference_policies   ??   []).map((p) => ({
       node_family: "gap_policy",
       id: p.file,
       domain: p.domain,
@@ -193,10 +193,10 @@ export function buildHyperlatticeView(opts = {}) {
     ...ccaGapPolicies.map((p) => ({
       node_family: "gap_policy",
       id: p.file,
-      domain: p.address?.domain ?? p.file,
+      domain: p.address  ?.  domain   ??   p.file,
       path: p.path,
       cca_agent: true,
-      synthesized_by: "gapc_validated",
+      synthesized_by: p.synthesized_by   ??   "local_gap_parse",
       gap_address: p.address ? `${p.address.domain}/${p.address.id}` : null,
     })),
   ];
@@ -207,13 +207,13 @@ export function buildHyperlatticeView(opts = {}) {
     node_family: "composer_protocol",
     ...n,
   }));
-  const canvas_nodes = (composerGraph?.nodes ?? []).map((n) => ({
+  const canvas_nodes = (composerGraph  ?.  nodes   ??   []).map((n) => ({
     node_family: "canvas",
     id: n.id,
     type: n.type,
-    contract_id: n.data?.contract_id ?? null,
-    lattice_id: n.data?.lattice_id ?? null,
-    channel_id: n.data?.channel_id ?? null,
+    contract_id: n.data  ?.  contract_id   ??   null,
+    lattice_id: n.data  ?.  lattice_id   ??   null,
+    channel_id: n.data  ?.  channel_id   ??   null,
   }));
 
   const view = {
@@ -246,14 +246,14 @@ export function buildHyperlatticeView(opts = {}) {
       event: event_nodes.length,
       composer_protocol: composer_protocol_nodes.length,
       canvas: canvas_nodes.length,
-      channel_bindings: (policyView.channel_bindings ?? []).length,
+      channel_bindings: (policyView.channel_bindings   ??   []).length,
     },
   };
 
   view.validation = validateHyperlattice(view);
-  if (composerGraph?.nodes?.length) {
+  if (composerGraph  ?.  nodes  ?.  length) {
     view.composer_topology_validation = validateComposerTopology(composerGraph);
-    if (!view.composer_topology_validation.valid) {
+    if ( ! view.composer_topology_validation.valid) {
       view.validation.valid = false;
       view.validation.errors.push(...view.composer_topology_validation.errors);
     }
@@ -267,12 +267,12 @@ export function buildHyperlatticeView(opts = {}) {
  * @param {object} [context]
  */
 export function buildHyperlatticeConfig(plan, context = {}) {
-  const ps = context.policy_system ?? loadPolicySystemContext();
-  const dyn = context.dynaep ?? loadDynaepContext();
-  const po = plan?.policy_overrides ?? {};
+  const ps = context.policy_system   ??   loadPolicySystemContext();
+  const dyn = context.dynaep   ??   loadDynaepContext();
+  const po = plan  ?.  policy_overrides   ??   {};
 
   const policy_lattice =
-    po.policy_lattice ?? {
+    po.policy_lattice   ??   {
       enabled: true,
       hierarchy: ps.hierarchy.map((h) => h.label),
       mandatory_gap: ps.mandatory_gap,
@@ -280,7 +280,7 @@ export function buildHyperlatticeConfig(plan, context = {}) {
       yaml_presets: ps.yaml_presets.map((p) => p.path),
     };
 
-  const dynaep = po.dynaep ?? buildDynaepPolicyOverrides(plan, dyn);
+  const dynaep = po.dynaep   ??   buildDynaepPolicyOverrides(plan, dyn);
 
   return {
     topology: HYPERLATTICE_TOPOLOGY,
@@ -293,9 +293,9 @@ export function buildHyperlatticeConfig(plan, context = {}) {
     validation_hook: dynaep.validation_hook,
     policy_lattice,
     dynaep,
-    gap: po.gap ?? null,
-    regulation_lrps: po.regulation_lrps ?? null,
-    coding_governance: po.coding_governance ?? null,
+    gap: po.gap   ??   null,
+    regulation_lrps: po.regulation_lrps   ??   null,
+    coding_governance: po.coding_governance   ??   null,
   };
 }
 
@@ -305,7 +305,7 @@ export function buildHyperlatticeConfig(plan, context = {}) {
  * @param {object} [context]
  */
 export function applyHyperlatticeOverrides(plan, context = {}) {
-  plan.policy_overrides = plan.policy_overrides ?? {};
+  plan.policy_overrides = plan.policy_overrides   ??   {};
   plan.policy_overrides.hyperlattice = buildHyperlatticeConfig(plan, context);
 }
 
@@ -317,11 +317,11 @@ export function applyHyperlatticeOverrides(plan, context = {}) {
  */
 export function validateHyperlatticeOnBoot(config, repoRoot, opts = {}) {
   const errors = [];
-  const lrps = config?.base_node?.lrps ?? [];
+  const lrps = config  ?.  base_node  ?.  lrps   ??   [];
   const hyper =
-    config?.policy_sections?.hyperlattice ??
-    config?.hyperlattice ??
-    config?.policy_sections?.dynaep ??
+    config  ?.  policy_sections  ?.  hyperlattice   ??  
+    config  ?.  hyperlattice   ??  
+    config  ?.  policy_sections  ?.  dynaep   ??  
     null;
 
   let composerGraph = null;
@@ -339,33 +339,33 @@ export function validateHyperlatticeOnBoot(config, repoRoot, opts = {}) {
     composerGraph,
   });
   const structural = validateHyperlattice(view);
-  if (!structural.valid) {
+  if ( ! structural.valid) {
     errors.push(...structural.errors);
   }
 
-  const registryPath = hyper?.lattice_registry ?? hyper?.dynaep?.lattice_registry;
+  const registryPath = hyper  ?.  lattice_registry   ??   hyper  ?.  dynaep  ?.  lattice_registry;
   if (registryPath) {
     const abs = join(repoRoot, registryPath);
-    if (!existsSync(abs)) {
+    if ( ! existsSync(abs)) {
       errors.push(`hyperlattice: missing lattice_registry ${registryPath}`);
     }
   }
 
-  const ccaRegistryPath = hyper?.composer_cca_registry ?? COMPOSER_CCA_LATTICE_REGISTRY;
+  const ccaRegistryPath = hyper  ?.  composer_cca_registry   ??   COMPOSER_CCA_LATTICE_REGISTRY;
   const ccaAbs = join(repoRoot, ccaRegistryPath);
-  if (!existsSync(ccaAbs)) {
+  if ( ! existsSync(ccaAbs)) {
     errors.push(`hyperlattice: missing composer_cca_registry ${ccaRegistryPath}`);
   }
 
   const latticePolicyRel =
-    hyper?.dynaep?.bridge?.rego?.separate_policy_paths?.lattice ??
+    hyper  ?.  dynaep  ?.  bridge  ?.  rego  ?.  separate_policy_paths  ?.  lattice   ??  
     "AEP-Components/dynAEP/policies/lattice-policy.rego";
   const latticePolicyAbs = join(repoRoot, latticePolicyRel);
-  if (!existsSync(latticePolicyAbs)) {
+  if ( ! existsSync(latticePolicyAbs)) {
     errors.push(`hyperlattice: missing lattice-policy.rego at ${latticePolicyRel}`);
   }
 
-  if (config?.policy_sections && !config.policy_sections.hyperlattice) {
+  if (config  ?.  policy_sections && ! config.policy_sections.hyperlattice) {
     errors.push("hyperlattice: policy_sections.hyperlattice missing on Base Node config");
   }
 
@@ -386,7 +386,7 @@ export function validateHyperlatticeOnBoot(config, repoRoot, opts = {}) {
  */
 export function assertHyperlatticeBoot(config, repoRoot, opts = {}) {
   const result = validateHyperlatticeOnBoot(config, repoRoot, opts);
-  if (!result.valid) {
+  if ( ! result.valid) {
     throw new Error(`Hyperlattice boot validation failed: ${result.errors.join("; ")}`);
   }
   return result;

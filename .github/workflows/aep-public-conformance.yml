@@ -1,0 +1,35 @@
+name: AEP 2.8 public conformance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  workspace-build:
+    name: Build the workspace
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build every workspace member
+        run: cargo build --workspace
+
+  conformance:
+    name: Run the mandatory conformance suite
+    runs-on: ubuntu-latest
+    needs: workspace-build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run the conformance runner
+        run: bash AEP-Components/conformance/runner/run.sh

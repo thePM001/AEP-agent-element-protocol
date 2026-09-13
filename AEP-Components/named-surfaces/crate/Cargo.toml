@@ -1,0 +1,16 @@
+# @PAD: aep28-env-057-named-surfaces-v1
+# @GCDE: gaplune-decode hmac-sha256:87584f39ab5fcefa80665514052b76fcea5a54e33a934dd64cafd5763f226804
+[package]
+name = "aep-named-surfaces"
+version = "0.1.0"
+edition = "2021"
+description = "AEP28-ENV-057. Named surfaces execute: CodeSandbox, transpilers and MCP backend transport."
+license = "UNLICENSED"
+publish = false
+
+[[bin]]
+name = "aep-named-surfaces"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"

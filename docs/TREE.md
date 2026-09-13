@@ -12,7 +12,7 @@ AEP-Components holds protocol components such as dynAEP, lattice channels, envel
 
 ## Execution
 
-CAW under AEP-Components/caw-framework is the execution companion. CAW is not a second evaluator and is not raw bash. Prime Agent if used is wrapped by CAW and still cannot rewrite Admit walls.
+CAW under AEP-CAW is the execution companion. CAW is not a second evaluator and is not raw bash. Prime Agent if used is wrapped by CAW and still cannot rewrite Admit walls.
 
 ## UX
 

@@ -7,4 +7,4 @@ Merkle evidence ledger, rollback and ML-DSA-65 post-quantum signatures
 - **Path:** `evidence-ledger/`
 - **Manifest:** `AEP-Base-Node/registry/components/evidence-ledger.json`
 
-Re-exported by `typescript-sdk/` for programmatic access. Runtime code lives in `lib/`.
+Runtime code lives in `lib/`.

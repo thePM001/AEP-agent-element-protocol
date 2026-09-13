@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "eu-ai-act",
-  "version": "3.3.0",
+  "version": "2.8.5",
   "kind": "compliance",
   "path": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
   "description": "EU AI Act compliance checking pack. One definition file, one gate. Not a legal certification.",
@@ -88,5 +88,6 @@
       "eu_ai_act.role",
       "eu_ai_act.risk_class"
     ]
-  }
+  },
+  "role": "companion"
 }

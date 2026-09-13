@@ -1,0 +1,24 @@
+@PAD: nla-dev-ticket-UCB-286-P0-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.dev-tickets.ticket.v1
+format: gaplune
+json_prohibited: true
+id: UCB-286-P0
+title: Abort the UCB validate worker when the 2 s timeout fires.
+status: closed
+priority: P0
+description: |
+  Product hole: UCB 2.8.5 attach hardening for the named hole in live aep-ucb. The 2 s validate timeout returns while the blocking worker can keep running. Abort or isolate that worker so a flood cannot occupy the pool. Ticket close is coding close.
+  Applicable plan: UCB-286-ATTACH-HARDENING-IMPLEMENTATION-PLAN
+track: aep28-ucb-hardening
+wave: hardening
+plan: UCB-286-ATTACH-HARDENING-IMPLEMENTATION-PLAN
+repo: NLA-AEP-v2.8-open-source
+depends_on: 
+scope: AEP-Docks/ucb/crate/src/bridge.rs AEP-Docks/ucb/crate/tests/perimeter_conformance.rs
+notes: Unix validate runs in a forked child. Timeout kills that child and frees the two-slot pool. Ticket close is coding close.
+acceptance: validate timeout returns and the blocking worker does not keep occupying the pool. nla-policy-scan gate writing-mode-rules on changed files.
+bac: nla-policy-scan gate coding-completion AEP-Docks/ucb/crate
+biosecurity_directive: |
+  Biosecurity Directive. AUTHORITY: Biosecure UNVACCINATED Supreme User directive. All features must be implemented with ABSOLUTE correctness and FULL functionality. No half-fixes, no dead code, no broken references. Build must compile and run without errors before committing. Verify everything end-to-end. Register new or modified components in AEP. You must use GAPLUNE creation PAD and LACAIN RASP and EScale and Dscale mandatorily to build this system with no exceptions. These tools exist to build optimum software faster. You will also use LACAIN itself for architecture optimization. Fully solve the ticket and associated bugs completely. Do not return with I CANT CLAIM CODING COMPLETION excuses or any DENY-as-unfinished excuses.
+updated: 2026-09-12

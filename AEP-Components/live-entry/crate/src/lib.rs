@@ -6,7 +6,7 @@
 // HVVCAS: live_entry domain:envelope type:service
 // AEP28-ENV-025 Rust live entry. aep_envelope admit in-process. Fail-closed for empty action_path when lattice is loaded.
 // AEP28-ENV-034: missing lattice, unreadable lattice and empty action_path on an empty lattice are Deny.
-// AEP28-ENV-042: empty lattice closes dag.membership and gap.agent_may. Do not reopen AEP28-ENV-034.
+// AEP28-ENV-042: empty lattice closes dag.membership and gap.agent_permission. Do not reopen AEP28-ENV-034.
 // AEP28-ENV-066: unbound scene, channel, time and sequence close. dest_dock may bind from the opened frame docking port.
 // AEP28-ENV-065: freeze_temporal_snapshot keeps bridge_ts_ms at seal so a 1000 ms hold still meets 50 ms drift.
 // AEP28-ENV-043: partition satisfied_actions by agent or session so parent closure cannot leak across agents.
@@ -17,6 +17,7 @@ use aep_envelope::{
     action_is_satisfied, admit, admit_with_extra, apply_admit, closed_reasons, dest_dock_from_opened_frame, load_lattice_yaml, load_lattice_yaml_file, plan_apply,
     snapshot_from_nodes, AdmitWall, EnvelopeAction, Snapshot,
 };
+pub use aep_envelope::{agent_permission, AgentPermission, AdmitResult, Envelope, Pulse, PULSE_MS, DENY_NO_PERMISSION};
 use serde_json::Value;
 use thiserror::Error;
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -90,6 +91,7 @@ pub struct LiveEntry {
     frozen_bridge_ts_ms: Option<i64>,
     pub extra_walls: Vec<AdmitWall>,
     pub opened_dest_dock: String,
+    pub opened_agent_id: String,
 }
 impl Default for LiveEntry { fn default() -> Self { Self::new() } }
 impl LiveEntry {
@@ -99,7 +101,7 @@ impl LiveEntry {
             live: HashMap::new(), versions: HashMap::new(), id_counters: HashMap::new(),
             registry: HashSet::new(), styles: HashSet::new(), templates: HashSet::new(),
             forecast: HashMap::new(), overwrite_timestamps: true, jit_on_every_delta: true,
-            conflict_mode: String::from("last_write_wins"), clock_override_ms: None, frozen_bridge_ts_ms: None, extra_walls: Vec::new(), opened_dest_dock: String::new(),
+            conflict_mode: String::from("last_write_wins"), clock_override_ms: None, frozen_bridge_ts_ms: None, extra_walls: Vec::new(), opened_dest_dock: String::new(), opened_agent_id: String::new(),
         }
     }
     pub fn from_yaml(text: &str) -> Result<Self, LiveEntryError> {
@@ -206,7 +208,7 @@ impl LiveEntry {
                 error: String::from("Lattice required but ActionLattice is not initialised"),
                 closed: vec![
                     AdmitWall::close("dag.membership", "empty lattice closes membership"),
-                    AdmitWall::close("gap.agent_may", "empty lattice closes agent_may"),
+                    AdmitWall::close("gap.agent_permission", "empty lattice closes agent_permission"),
                 ],
             });
         }
@@ -224,7 +226,10 @@ impl LiveEntry {
             Some(ms) => ms,
             None => self.now_ms(),
         };
-        let action = action_from_event(&event, &self.opened_dest_dock);
+        let mut action = action_from_event(&event, &self.opened_dest_dock);
+        if action.agent_id.is_empty() && self.opened_agent_id.is_empty() == false {
+            action.agent_id = self.opened_agent_id.clone();
+        }
         let extra = pending_extra;
         let result = if extra.is_empty() {
             admit(&action, &self.snapshot)
@@ -513,7 +518,7 @@ mod tests {
     use super::*;
     fn must(cond: bool) { if cond == false { std::process::abort(); } }
     fn yaml() -> &'static str {
-        "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_may: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_may: [\"agent-a\"]\n"
+        "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_permission: [\"agent-a\"]\n"
     }
     fn bind_allow(le: &mut LiveEntry, scene: &str) {
         le.bind_opened_frame(scene, "inference_engine");

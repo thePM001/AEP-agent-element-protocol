@@ -39,22 +39,6 @@ mod tests {
     }
 
     #[test]
-    fn paper005_stays_off() {
-        let p = Provenance::bound("langgraph", "1.0", "sess-1");
-        let payload = json!({"subject": "x", "predicate": "y", "object": "z"});
-        let view = IngestView {
-            provenance: Some(&p),
-            payload: &payload,
-            content_type: Some("application/json"),
-            body_len: 32,
-            prior_fingerprints: &[],
-        };
-        let v = validate_ingest(PredicateProfile::Paper005Vsa, &view, &DefaultScannerPack);
-        assert!(!v.ok);
-        assert_eq!(v.predicate, Some("profile"));
-    }
-
-    #[test]
     fn pp_needs_digest() {
         let p = Provenance {
             source: "langgraph".into(),

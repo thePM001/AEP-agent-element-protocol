@@ -6,4 +6,4 @@ Multi-agent fleet manager, spawn governance, message scanning.
 - **Path:** `fleet/`
 - **Manifest:** `AEP-Base-Node/registry/components/fleet.json`
 
-Re-exported by `typescript-sdk/` for programmatic access. Runtime code lives in `lib/`.
+Runtime code lives in `lib/`.

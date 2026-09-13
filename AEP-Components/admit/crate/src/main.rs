@@ -2,11 +2,11 @@
 // @GCDE: gaplune.policy.v1
 // CLI: one wall per line id=<id> closed=<true|false> reason=<text>
 // writing_text=<prose> compiles writing.gap into Admit walls on this pass.
-// agent_id= action= grant=agent:action compile the GAP agent-may wall on this pass.
+// agent_id= action= permission=agent:action compile the GAP agent permission wall on this pass.
 // Prints allow= and closed=<id>|<reason> lines. Closed set is sorted.
 
 use aep_admit::{
-    admit_collect_all, compile_agent_may_wall, compile_writing_walls, AdmitWall, AgentMayGrant,
+    admit_collect_all, compile_agent_permission_wall, compile_writing_walls, AdmitWall, AgentPermission,
 };
 use std::io::{self, Read};
 
@@ -55,7 +55,7 @@ fn main() {
     let mut walls: Vec<AdmitWall> = Vec::new();
     let mut agent_id = String::new();
     let mut action = String::new();
-    let mut grants: Vec<AgentMayGrant> = Vec::new();
+    let mut records: Vec<AgentPermission> = Vec::new();
     for line in buf.lines() {
         let t = line.trim();
         if let Some(v) = t.strip_prefix("agent_id=") {
@@ -66,9 +66,9 @@ fn main() {
             action = v.trim().to_string();
             continue;
         }
-        if let Some(v) = t.strip_prefix("grant=") {
+        if let Some(v) = t.strip_prefix("permission=") {
             if let Some((a, act)) = v.split_once(':') {
-                grants.push(AgentMayGrant {
+                records.push(AgentPermission {
                     agent_id: a.trim().to_string(),
                     action: act.trim().to_string(),
                 });
@@ -78,7 +78,7 @@ fn main() {
         walls.extend(parse_line(line));
     }
     if action.is_empty() == false {
-        walls.push(compile_agent_may_wall(&agent_id, &action, &grants));
+        walls.push(compile_agent_permission_wall(&agent_id, &action, &records));
     }
     let result = admit_collect_all(&walls);
     let mut out = String::from("allow=");

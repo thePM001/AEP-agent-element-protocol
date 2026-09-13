@@ -6,7 +6,7 @@ YAML policy loading, validation and evaluation.
 - **Path:** `policy-engine/`
 - **Manifest:** `AEP-Base-Node/registry/components/policy-engine.json`
 
-Re-exported by `typescript-sdk/` for programmatic access. Runtime code lives in `lib/`.
+Runtime code lives in `lib/`.
 
 Policy transpilers emit GAP from Cedar and Rego and emit Cedar and Rego from GAP. Empty input is refused rather than passed through.
 

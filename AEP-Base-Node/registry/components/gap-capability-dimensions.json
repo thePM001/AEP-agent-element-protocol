@@ -1,15 +1,15 @@
 {
   "manifest_version": "1",
   "id": "gap-capability-dimensions",
-  "version": "2.8.0",
+  "version": "2.8.5",
   "kind": "library",
   "path": "AEP-Components/gap-capability-dimensions/",
-  "description": "Who-may-do-what is GAP dimension Conjunction. Agent A may X. Agent B may Y. No rank. Isolation is not a trust rank.",
+  "description": "Agent permission is GAP dimension Conjunction. Agent A listed for X. Agent B listed for Y.",
   "requires": [
     "aep-admit"
   ],
   "capabilities": [
-    "admit:agent-may",
+    "admit:agent-permission",
     "gap:capability-dimensions"
   ],
   "actions": [],
@@ -21,9 +21,9 @@
     "gpu_required": false
   },
   "cca": {
-    "summary": "GAP dimension who-may-do-what on the same collect-all Admit.",
+    "summary": "GAP dimension agent permission on the same collect-all Admit.",
     "use_when": [
-      "agent capability grants without rank"
+      "agent capability without rank"
     ],
     "avoid_when": [],
     "pairs_with": [
@@ -33,5 +33,6 @@
   },
   "implementation": {
     "crate": "AEP-Components/gap-capability-dimensions/crate"
-  }
+  },
+  "role": "kernel"
 }

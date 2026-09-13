@@ -116,17 +116,6 @@ fn journal_named_tail_only() {
     j.verify_chain().unwrap();
 }
 
-#[test]
-fn paper005_stays_off_unless_named() {
-    let body = ForeignIngestBody {
-        provenance: Some(Provenance::bound("lg", "1.0", "s1")),
-        payload: serde_json::json!({"subject": "x", "predicate": "y", "object": "z"}),
-        ..Default::default()
-    };
-    let r = validate_foreign_ingest_with_profile(&body, &[], PredicateProfile::Paper005Vsa);
-    assert!(!r.ok);
-    assert_eq!(r.predicate, Some("profile"));
-}
 
 #[test]
 fn compile_local_gap_text() {
@@ -196,18 +185,6 @@ fn mcp_rollback_requires_exactly_one_named_tail_id() {
     assert!(parse_rollback_diff_ids(&serde_json::json!({"diff_ids": ["a", "b"]})).is_err());
 }
 
-#[test]
-fn paper005_named_is_not_a_substitute() {
-    let unsigned = SignedManifest {
-        body: serde_json::json!({"agent_id": "a"}),
-        digest: String::new(),
-        signature: None,
-        provisional: false,
-    };
-    assert!(egress_power_allowed(&unsigned, StrictMode::On).is_err());
-    assert!(validate_upstream_url("http://127.0.0.1/x").is_err());
-    assert_ne!(parse_profile(None).unwrap(), PredicateProfile::Paper005Vsa);
-}
 
 #[test]
 fn public_capabilities_compiler() {

@@ -16,12 +16,12 @@ mkdir -p "${AEP_DATA}" "${AEP_SOCKET_BASE}" /run/aep
 
 if [ "${1:-}" = "setup-agent" ]; then
   shift
-  exec node /opt/aep/AEP-Components/cca/setup-agent.mjs "$@"
+  exec node /opt/aep/AEP-CCA-Central-Setup-Agent/setup-agent.mjs "$@"
 fi
 
 if [ "${1:-}" = "cca" ] || [ "${1:-}" = "aep-cca" ]; then
   shift
-  exec node /opt/aep/AEP-Components/cca/cca.mjs "$@"
+  exec node /opt/aep/AEP-CCA-Central-Setup-Agent/cca.mjs "$@"
 fi
 
 if [ "${1:-}" = "composer-lite" ] || [ "${1:-}" = "wasm-composer" ]; then
@@ -50,7 +50,7 @@ bootstrap_config() {
   SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
   cat > "${CONFIG}" <<EOF
 {
-  "version": "2.8.0",
+  "version": "2.8.5",
   "base_node": {
     "socket_base": "${AEP_SOCKET_BASE}",
     "lattice_db": "${LATTICE_DB}",
@@ -65,9 +65,7 @@ bootstrap_config() {
   },
   "epscom_signatures": {
     "enabled": true,
-    "path": "/opt/aep/AEP-Base-Node/signatures",
-    "trust_bundle": "trust-bundle/manifest.json",
-    "sync_interval_hours": 24
+    "path": "/opt/aep/AEP-Base-Node/signatures"
   }
 }
 EOF
@@ -228,9 +226,9 @@ fi
 
 if [ "${AEP_AUTO_SETUP:-}" = "1" ] && [ ! -f "${AEP_DATA}/activation.json" ]; then
   if [ -n "${AEP_CCA_INTENT:-}" ]; then
-    node /opt/aep/AEP-Components/cca/setup-agent.mjs --cca --intent "${AEP_CCA_INTENT}" || exit 1
+    node /opt/aep/AEP-CCA-Central-Setup-Agent/setup-agent.mjs --cca --intent "${AEP_CCA_INTENT}" || exit 1
   else
-    node /opt/aep/AEP-Components/cca/setup-agent.mjs --non-interactive --skip-if-activated || exit 1
+    node /opt/aep/AEP-CCA-Central-Setup-Agent/setup-agent.mjs --non-interactive --skip-if-activated || exit 1
   fi
   if [ -n "${DAEMON_PID}" ]; then
     kill "${DAEMON_PID}" 2>/dev/null || true

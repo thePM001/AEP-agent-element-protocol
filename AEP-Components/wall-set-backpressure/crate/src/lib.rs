@@ -72,7 +72,7 @@ pub fn classify_wall(id: &str, reason: &str) -> String {
     {
         return String::from(CLASS_WRITING);
     }
-    if id == "gap.agent_may" || id_l.contains("agent_may") || reason_l.contains("agent_may") {
+    if id == "gap.agent_permission" || id_l.contains("agent_permission") || reason_l.contains("agent_permission") {
         return String::from(CLASS_CAPABILITY);
     }
     if id == "digest.replay"
@@ -328,7 +328,7 @@ fn repair_one(w: &ClosedWall) -> RepairHint {
             KIND_CLOSED_ONLY,
             "Wait for the 1000 ms pulse. Do not retry the same digest.",
         ),
-        "dag.membership" | "gap.agent_may" | "dag.parents" => hint(
+        "dag.membership" | "gap.agent_permission" | "dag.parents" => hint(
             &w.id,
             "",
             KIND_CLOSED_ONLY,
@@ -442,8 +442,8 @@ fn walls_from_error(error: &str) -> Vec<ClosedWall> {
                 CLASS_STRUCTURAL,
             ),
             ClosedWall::with_class(
-                "gap.agent_may",
-                "empty lattice closes agent_may",
+                "gap.agent_permission",
+                "empty lattice closes agent_permission",
                 CLASS_CAPABILITY,
             ),
         ];
@@ -642,7 +642,7 @@ pub fn scan_repairs_have_no_grant_lists() -> Result<String, String> {
             CLASS_STRUCTURAL,
         ),
         ClosedWall::with_class(
-            "gap.agent_may",
+            "gap.agent_permission",
             "GAP dimension closed: empty grants fail closed",
             CLASS_CAPABILITY,
         ),
@@ -1069,9 +1069,9 @@ mod tests {
     }
 
     #[test]
-    fn agent_may_class_is_capability() {
+    fn agent_permission_class_is_capability() {
         let r = from_error("Lattice required but ActionLattice is not initialised");
-        must(r.closed.iter().any(|w| w.id == "gap.agent_may" && w.class == CLASS_CAPABILITY));
+        must(r.closed.iter().any(|w| w.id == "gap.agent_permission" && w.class == CLASS_CAPABILITY));
         must(r.closed.iter().any(|w| w.id == "dag.membership" && w.class == CLASS_STRUCTURAL));
     }
 

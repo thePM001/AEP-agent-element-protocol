@@ -6,7 +6,6 @@ import { FleetPolicySchema } from "../../../fleet/lib/types.js";
 export const CapabilitySchema = z.object({
   tool: z.string(),
   scope: z.record(z.array(z.string())).optional().default({}),
-  min_trust_tier: z.string().optional(),
 });
 
 export const LimitsSchema = z.object({
@@ -80,11 +79,9 @@ export const RingConfigSchema = z.object({
   default: z.number().min(0).max(3).optional().default(2),
   promotion: z.object({
     to_ring_1: z.object({
-      min_trust_tier: z.string().optional(),
       require_approval: z.boolean().optional().default(false),
     }).optional().default({}),
     to_ring_0: z.object({
-      min_trust_tier: z.string().optional(),
       require_approval: z.boolean().optional().default(true),
     }).optional().default({}),
   }).optional().default({}),

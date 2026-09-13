@@ -17,7 +17,7 @@ import { createAgentMeshBundle } from "./agentmesh-preview.mjs";
 import {
   getInferencePublicState,
   saveInferenceConfig,
-} from "../../AEP-Components/cca/lib/setup/inference.mjs";
+} from "../../AEP-CCA-Central-Setup-Agent/lib/setup/inference.mjs";
 import {
   getMeshPublicState,
   upsertMeshPeer,
@@ -37,15 +37,15 @@ import {
   resolvePaletteExtensions,
 } from "../../AEP-Base-Node/registry/lib/registry.mjs";
 import { getCcaPublicState, runCcaChat } from "./cca.mjs";
-import { buildRegistryContext } from "../../AEP-Components/cca/lib/registry-context.mjs";
-import { probeEnvironment } from "../../AEP-Components/cca/lib/environment-probe.mjs";
+import { buildRegistryContext } from "../../AEP-CCA-Central-Setup-Agent/lib/registry-context.mjs";
+import { probeEnvironment } from "../../AEP-CCA-Central-Setup-Agent/lib/environment-probe.mjs";
 import {
   loadActivePlan,
   writeActivePlan,
   executeImplementationPlan,
-} from "../../AEP-Components/cca/lib/plan-executor.mjs";
-import { validatePlanAgainstRegistry } from "../../AEP-Components/cca/lib/plan-schema.mjs";
-import { graphToPlan } from "../../AEP-Components/cca/lib/graph-to-plan.mjs";
+} from "../../AEP-CCA-Central-Setup-Agent/lib/plan-executor.mjs";
+import { validatePlanAgainstRegistry } from "../../AEP-CCA-Central-Setup-Agent/lib/plan-schema.mjs";
+import { graphToPlan } from "../../AEP-CCA-Central-Setup-Agent/lib/graph-to-plan.mjs";
 import { attachTerminalWebSocket } from "./terminal-ws.mjs";
 import { getIntegrationsState, resolveAgentstreamUrl } from "./integrations.mjs";
 import { readMultipartUpload } from "./cca-upload.mjs";

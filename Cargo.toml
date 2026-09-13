@@ -8,7 +8,7 @@ members = [
     "AEP-Components/lattice-memory/crate",
     "AEP-Base-Node/multi-base-node/crate",
     "AEP-Base-Node/crate",
-    "AEP-Components/wasm/crate",
+    "AEP-Composer-Lite/wasm-sandbox/crate",
     "AEP-Components/conformance/crate",
     "AEP-Docks/ucb/crate",
     "AEP-Docks/ucb/perimeter-v1",

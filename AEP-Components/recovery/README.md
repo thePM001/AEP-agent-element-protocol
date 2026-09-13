@@ -6,4 +6,4 @@ Violation detection and governed recovery attempts.
 - **Path:** `recovery/`
 - **Manifest:** `AEP-Base-Node/registry/components/recovery.json`
 
-Re-exported by `typescript-sdk/` for programmatic access. Runtime code lives in `lib/`.
+Runtime code lives in `lib/`.

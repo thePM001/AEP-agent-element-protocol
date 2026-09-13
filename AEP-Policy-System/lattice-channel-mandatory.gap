@@ -19,8 +19,8 @@ rules:
     description: LLM, Agentstream, registry, and external HTTP gated via inference_engine dock
   - id: setup-agent-inference-lattice-register
     description: INFERENCE_ENGINE_REGISTER sealed as LatticeChannelFrame on validation dock
-  - id: sdk-docking-frame-only
-    description: SDK docking client logEvent and ping use build-frame; no plain wire bypass
+  - id: docking-frame-only
+    description: Docking client logEvent and ping use build-frame; no plain wire bypass
   - id: ucb-secured-perimeter-dock
     description: Non-AEP agent stacks integrate only via UCB (:8412); UCB uses lattice transport internally
   - id: ucb-auth-required
@@ -29,8 +29,8 @@ rules:
     description: dynAEP poll/SSE/blockchain observers use observerLatticeFetch via inference_engine dock
   - id: dynaep-forecast-lattice-gate
     description: TimesFM forecast sidecar health/predict HTTP gated via latticeGatedFetch
-  - id: typescript-sdk-unified-surface
-    description: TypeScript SDK exports from typescript-sdk/index.ts; lattice transport canonical in lattice-transport/
+  - id: lattice-transport-canonical-surface
+    description: Lattice transport stays canonical in lattice-transport/
   - id: no-smtp-mail-transport-libraries
     description: Governed code must not ship SMTP mail clients (nodemailer/smtplib/sendmail/createTransport); added 2026-07-21
 

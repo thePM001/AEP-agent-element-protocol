@@ -6,7 +6,7 @@ import {
   existsSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import { CANVAS_SKIP_COMPONENT_IDS } from "../../AEP-Components/cca/lib/component-catalog.mjs";
+import { CANVAS_SKIP_COMPONENT_IDS } from "../../AEP-CCA-Central-Setup-Agent/lib/component-catalog.mjs";
 
 export const GRAPH_FILE = "composer-lite-graph.json";
 const LEGACY_GRAPH_FILE = "wasm-composer-graph.json";

@@ -12,7 +12,7 @@ wave: caw
 plan: AEP28-ENVELOPE-ALGEBRA-IMPLEMENTATION-PLAN
 repo: NLA-AEP-v2.8-open-source
 depends_on: none
-scope: AEP-Components/caw-framework/internal/wrapenv/wrapenv.go AEP-Components/caw-wrapenv-failclosed/crate
+scope: AEP-CAW/internal/wrapenv/wrapenv.go AEP-Components/caw-wrapenv-failclosed/crate
 notes: HIGH. wrapenv.Filter fail-closed. Nil wire returns empty env and ErrNilWire. BuildEnv error returns empty env and error. Callers Deny wrap. wrapEnvPolicyWire sends empty wire when flag off. Nil when no engine. CI crate aep-caw-wrapenv-failclosed scans wrapenv.go. Out of scope: hangar tools. Operator close 2026-09-01.
 acceptance: nil wire Deny or empty env, never inherited base. BuildEnv error Deny, never unfiltered base. Tests lock fail-closed. nla-policy-scan gate coding-completion is N/A for Go. Prove with wrapenv tests plus aep-caw wrap path.
 bac: nla-policy-scan gate project-completion-bac /root/NLA-AEP-v2.8-open-source/AEP-Components/caw-wrapenv-failclosed/crate

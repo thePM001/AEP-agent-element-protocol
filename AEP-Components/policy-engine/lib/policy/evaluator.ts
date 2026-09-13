@@ -10,8 +10,6 @@ import type {
   ForbiddenPattern,
 } from "./types.js";
 import type { Session } from "../../../session/lib/session.js";
-import type { TrustManager } from "../../../../internal-sdk/retired/trust-rings/lib/trust/manager.js";
-import type { RingManager } from "../../../../internal-sdk/retired/trust-rings/lib/rings/manager.js";
 import type { CovenantSpec } from "../../../covenant/lib/types.js";
 import { evaluateCovenant, type CovenantContext } from "../../../covenant/lib/evaluator.js";
 import type { IntentDriftDetector } from "../../../intent/lib/detector.js";
@@ -52,8 +50,6 @@ function verifyAgentIdentitySignature(action: AgentAction): boolean {
 }
 
 export interface EvaluatorOptions {
-  trustManager?: TrustManager;
-  ringManager?: RingManager;
   covenant?: CovenantSpec;
   intentDetector?: IntentDriftDetector;
   systemRateCounter?: { count: number; windowStart: number };
@@ -70,8 +66,6 @@ export function labPolicyEvaluatorEnabled(): boolean {
 export class PolicyEvaluator {
   private policy: Policy;
   private policyHash: string;
-  private trustManager?: TrustManager;
-  private ringManager?: RingManager;
   private covenant?: CovenantSpec;
   private intentDetector?: IntentDriftDetector;
   private systemRateCounter?: { count: number; windowStart: number };
@@ -84,8 +78,6 @@ export class PolicyEvaluator {
       .digest("hex");
     Object.freeze(policy);
     this.policy = policy;
-    this.trustManager = options?.trustManager;
-    this.ringManager = options?.ringManager;
     this.covenant = options?.covenant;
     this.intentDetector = options?.intentDetector;
     this.systemRateCounter = options?.systemRateCounter;
@@ -104,8 +96,6 @@ export class PolicyEvaluator {
     return this.policyHash;
   }
 
-  setTrustManager(tm: TrustManager): void { this.trustManager = tm; }
-  setRingManager(rm: RingManager): void { this.ringManager = rm; }
   setCovenant(c: CovenantSpec): void { this.covenant = c; }
   setIntentDetector(d: IntentDriftDetector): void { this.intentDetector = d; }
   setSystemRateCounter(c: { count: number; windowStart: number }): void { this.systemRateCounter = c; }
@@ -181,7 +171,7 @@ export class PolicyEvaluator {
       );
     }
 
-    // Step 2: GAP capability is Admit wall gap.agent_may. Rings are not a product member.
+    // Step 2: GAP capability is Admit wall gap.agent_permission. Rings are not a product member.
 
     // Step 3: System-wide rate limit check
     if (this.systemRateCounter) {
@@ -313,8 +303,6 @@ export class PolicyEvaluator {
       const ctx: CovenantContext = {
         action: action.tool,
         input: action.input,
-        trustTier: this.trustManager?.getTier(),
-        ring: this.ringManager?.getRing(),
       };
       const covenantResult = evaluateCovenant(this.covenant, ctx);
       if (!covenantResult.allowed) {
@@ -348,7 +336,7 @@ export class PolicyEvaluator {
       );
     }
 
-    // AEP28-ENV-033: who-may-do-what is GAP dimension Conjunction. No min_trust_tier rank compare.
+    // AEP28-ENV-033: Agent permission is GAP dimension Conjunction. No rank compare.
 
     // Step 10: Budget/limit check
     const limits = this.policy.limits;
@@ -433,8 +421,6 @@ export class PolicyEvaluator {
     }
 
     // All checks passed - allow
-    this.trustManager?.reward("Action permitted");
-    this.trustManager?.markActivity();
     session.recordAction("allow");
     return {
       decision: "allow",

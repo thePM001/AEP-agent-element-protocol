@@ -6,4 +6,4 @@ Agent session lifecycle, kill switch and session manager.
 - **Path:** `session/`
 - **Manifest:** `AEP-Base-Node/registry/components/session.json`
 
-Re-exported by `typescript-sdk/` for programmatic access. Runtime code lives in `lib/`.
+Runtime code lives in `lib/`.

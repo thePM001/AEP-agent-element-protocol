@@ -6,4 +6,4 @@ Build and verify session proof bundles with reliability index.
 - **Path:** `proof-bundle/`
 - **Manifest:** `AEP-Base-Node/registry/components/proof-bundle.json`
 
-Re-exported by `typescript-sdk/` for programmatic access. Runtime code lives in `lib/`.
+Runtime code lives in `lib/`.

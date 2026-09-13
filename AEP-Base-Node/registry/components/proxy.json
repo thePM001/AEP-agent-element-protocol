@@ -1,13 +1,12 @@
 {
   "manifest_version": "1",
   "id": "proxy",
-  "version": "2.8.0",
+  "version": "2.8.5",
   "kind": "library",
   "path": "AEP-Components/proxy/",
   "description": "MCP and shell proxy servers under lattice governance.",
   "requires": [
-    "policy-engine",
-    "aep-typescript-sdk"
+    "policy-engine"
   ],
   "capabilities": [
     "proxy:mcp",
@@ -31,5 +30,6 @@
   },
   "implementation": {
     "module": "AEP-Components/proxy/lib/mcp-proxy.ts"
-  }
+  },
+  "role": "companion"
 }

@@ -4,7 +4,7 @@
 **Author:** thePM_001
 **License:** Apache-2.0
 
-**Canonical source (AEP 2.8):** `AEP-Components/dynAEP/` in [https://github.com/thePM001/AEP-agent-element-protocol](https://github.com/thePM001/AEP-agent-element-protocol). Standalone mirror: https://github.com/thePM001/dynAEP
+**Canonical source (AEP 2.8):** `AEP-Components/dynAEP/` in [https://github.com/thePM001/AEP-2.8.5-library](https://github.com/thePM001/AEP-2.8.5-library). Standalone mirror: https://github.com/thePM001/dynAEP
 
 dynAEP 1.0 is an open-source protocol for governing real-time events in multi-agent AI systems. Events that carry an `action_path` and match an active lattice governance mode pass through the Action Lattice before downstream pipeline stages. The lattice validates partial-order dependencies, enforces constraints and routes matching events to interested agents. UI mutations, external events (webhooks, blockchain, email, sensors), agent actions and human-facing outputs share the same bridge architecture; lattice gating applies per `lattice.governance` and event shape (see §11).
 
@@ -168,7 +168,7 @@ The pipeline is strictly ordered for each event type. When an event has `action_
 
 ## 4. Action Lattice
 
-The Action Lattice is the central governance mechanism in dynAEP 1.0. It is a partial-order DAG (directed acyclic graph) of every action that the system can perform. Each action is a node in the lattice with a unique path, a category, parent dependencies, child continuations, validation constraints and agent_may grants.
+The Action Lattice is the central governance mechanism in dynAEP 1.0. It is a partial-order DAG (directed acyclic graph) of every action that the system can perform. Each action is a node in the lattice with a unique path, a category, parent dependencies, child continuations, validation constraints and agent_permission grants.
 
 ### Lattice Node Anatomy
 
@@ -179,7 +179,7 @@ Every action in the lattice has these properties:
 - **parents**: list of action paths that must be satisfied before this action can fire
 - **children**: list of action paths that may follow after this action
 - **constraints**: validation gates applied at event arrival time
-- **agent_may**: GAP dimension grants. Agent A may X. Agent B may Y. No rank
+- **agent_permission**: GAP dimension grants. Agent A may X. Agent B may Y. No rank
 
 ### Partial-Order Governance
 
@@ -215,7 +215,7 @@ actions:
  - type: required_field
  field: signature
  description: "Webhook must carry a cryptographic signature"
- agent_may: ["*"]
+ agent_permission: ["*"]
 
  blockchain:event:
  label: "Blockchain event detected (log, transfer, mint)"
@@ -225,7 +225,7 @@ actions:
  constraints:
  - type: required_field
  field: tx_hash
- agent_may: ["*"]
+ agent_permission: ["*"]
 
  email:incoming:
  label: "Email received"
@@ -235,7 +235,7 @@ actions:
  constraints:
  - type: required_field
  field: from
- agent_may: ["*"]
+ agent_permission: ["*"]
 
  sensor:reading:
  label: "Sensor reading from IoT device"
@@ -247,7 +247,7 @@ actions:
  field: value
  condition: "within_range"
  description: "Reading must be within min/max supplied in payload"
- agent_may: ["*"]
+ agent_permission: ["*"]
  # Payload at runtime must include bounds, e.g.:
  # { "value": 42.5, "min": 0, "max": 100 }
  # or { "value": 42.5, "range": { "min": 0, "max": 100 } }
@@ -259,7 +259,7 @@ actions:
  parents: []
  children: [system:health:check]
  constraints: []
- agent_may: ["*"]
+ agent_permission: ["*"]
 
  system:health:check:
  label: "Run system health verification"
@@ -269,7 +269,7 @@ actions:
  constraints:
  - type: required_field
  field: services
- agent_may: ["*"]
+ agent_permission: ["*"]
 
  system:ready:
  label: "System is ready for agent operations"
@@ -277,7 +277,7 @@ actions:
  parents: [system:health:check]
  children: [agent:register]
  constraints: []
- agent_may: ["*"]
+ agent_permission: ["*"]
 
  # Agent actions require higher trust
  agent:register:
@@ -290,7 +290,7 @@ actions:
  field: capabilities
  - type: required_field
  field: agent_type
- agent_may: ["*"]
+ agent_permission: ["*"]
 
  agent:trade:propose:
  label: "Agent proposes a trade"
@@ -301,7 +301,7 @@ actions:
  - type: threshold
  field: amount
  condition: "> 0"
- agent_may: ["*"]
+ agent_permission: ["*"]
 
  # Validation and routing
  action:route:
@@ -317,7 +317,7 @@ actions:
  constraints:
  - type: required_field
  field: matched_agents
- agent_may: ["*"]
+ agent_permission: ["*"]
 
  # Output actions terminate the chain
  output:notify:
@@ -329,7 +329,7 @@ actions:
  - type: threshold
  field: urgency
  condition: "defined"
- agent_may: ["*"]
+ agent_permission: ["*"]
 
  output:ui_mutation:
  label: "Mutate a UI element via scene graph"
@@ -341,7 +341,7 @@ actions:
  field: element_id
  - type: required_field
  field: mutation
- agent_may: ["*"]
+ agent_permission: ["*"]
 ```
 
 ### Trust Tiers
@@ -349,9 +349,9 @@ actions:
 Trust tiers (1-5) govern which agents can propose which actions. The mapping is:
 
 Who-may-do-what is GAP dimension Conjunction. Agent A may X. Agent B may Y. No rank.
-Each node lists agent_may grants. Empty grants fail closed for agent_action and output. Star grants any bound agent. Unbound grant matches empty agent_id. Isolation is not a trust rank.
+Each node lists agent_permission grants. Empty grants fail closed for agent_action and output. Star grants any bound agent. Unbound grant matches empty agent_id. Isolation is not a trust rank.
 
-The agent_may wall is checked on the same collect-all Admit as every other wall. If the bound agent is not granted the action, the event is rejected before Apply.
+The agent_permission wall is checked on the same collect-all Admit as every other wall. If the bound agent is not granted the action, the event is rejected before Apply.
 
 ---
 
@@ -548,7 +548,7 @@ interface HookResult {
 
 ### Hook Registry and Loader
 
-The `HookRegistry` manages registered hooks keyed by name. Built-in hooks are registered at bridge init via `registerBuiltinHooks()` in `bridge/hook-loader.ts` (synced to `internal-sdk/AEP-SDKs/typescript/dynaep/src/lattice/hook-loader.ts`).
+The `HookRegistry` manages registered hooks keyed by name. Built-in hooks are registered at bridge init via `registerBuiltinHooks()` in `bridge/hook-loader.ts` (synced to `AEP-Components/dynAEP/typescript/dynaep/src/lattice/hook-loader.ts`).
 
 Config alias resolution (`lattice.hook` in YAML):
 
@@ -718,7 +718,7 @@ For the full configuration reference including temporal authority, causal orderi
 
 ### Standalone Rust crate
 
-A builder can attach crate `aep-dynaep` at `AEP-Components/dynAEP/crate`. The crate is a Cargo workspace member. Collect-all Admit covers Action Lattice membership, parent closure, GAP dimension agent_may, temporal authority and perception bounds. Empty lattice is Deny. Empty action_path is Deny. TypeScript sources stay as the TypeScript form of this component. Base Node crate stays.
+A builder can attach crate `aep-dynaep` at `AEP-Components/dynAEP/crate`. The crate is a Cargo workspace member. Collect-all Admit covers Action Lattice membership, parent closure, GAP dimension agent_permission, temporal authority and perception bounds. Empty lattice is Deny. Empty action_path is Deny. TypeScript sources stay as the TypeScript form of this component. Base Node crate stays.
 
 ```toml
 [dependencies]
@@ -730,25 +730,25 @@ cargo test -p aep-dynaep --lib
 ```
 
 
-**SDKs do not live under `AEP-Components/dynAEP/`.** Protocol source of truth is `AEP-Components/dynAEP/`; SDKs are produced into `internal-sdk/AEP-SDKs/` at the repository root. NPM registry distribution is forbidden; use `produce-aep-sdks.mjs` and lattice-gated artifacts.
+**SDKs do not live under `AEP-Components/dynAEP/`.** Protocol source of truth is `AEP-Components/dynAEP/`; SDKs are produced into `AEP-Components/dynAEP/` at the repository root. NPM registry distribution is forbidden; use `not-a-product` and lattice-gated artifacts.
 
 | SDK | Path | Contents |
 |-----|------|----------|
-| TypeScript dynAEP | `internal-sdk/AEP-SDKs/typescript/dynaep/` | leftover TypeScript client. Reference action checker is Base Node kernel Admit collect-all then Apply |
-| TypeScript AEP core | `internal-sdk/AEP-SDKs/typescript/aep-protocol/` | Scene graph, validation, memory fabric |
-| Python dynAEP | `internal-sdk/AEP-SDKs/python/dynaep/` | Python bridge and temporal pipeline |
-| React (AEP + dynAEP) | `internal-sdk/AEP-SDKs/react/` | `aep-react.tsx`, `dynaep-react.tsx` (`await bridge.processEvent()`), `dynaep-copilotkit.tsx` |
-| Vue (AEP) | `internal-sdk/AEP-SDKs/vue/` | `aep-vue.ts` composables |
-| CLI | `internal-sdk/AEP-SDKs/typescript/dynaep/cli/dynaep-cli.ts` | `validate`, `serve`, lattice diagnostics |
+| TypeScript dynAEP | `AEP-Components/dynAEP/typescript/dynaep/` | leftover TypeScript client. Reference action checker is Base Node kernel Admit collect-all then Apply |
+| TypeScript AEP core | `AEP-Components/dynAEP/typescript/aep-protocol/` | Scene graph, validation, memory fabric |
+| Python dynAEP | `AEP-Components/dynAEP/python/dynaep/` | Python bridge and temporal pipeline |
+| React (AEP + dynAEP) | `AEP-Components/dynAEP/react/` | `aep-react.tsx`, `dynaep-react.tsx` (`await bridge.processEvent()`), `dynaep-copilotkit.tsx` |
+| Vue (AEP) | `AEP-Components/dynAEP/vue/` | `aep-vue.ts` composables |
+| CLI | `AEP-Components/dynAEP/typescript/dynaep/cli/dynaep-cli.ts` | `validate`, `serve`, lattice diagnostics |
 
 **Breaking change (v1.0 / CCA integration):** `DynAEPBridge.processEvent()` returns `Promise<AGUIEvent | DynAEPRejection>`. All callers must `await` it.
 
-**Tests:** `internal-sdk/AEP-SDKs/typescript/dynaep/tests/lattice/action-lattice.test.ts` (governance modes, hook aliases, `within_range`, `filterAsync`).
+**Tests:** `AEP-Components/dynAEP/typescript/dynaep/tests/lattice/action-lattice.test.ts` (governance modes, hook aliases, `within_range`, `filterAsync`).
 
 Build all SDKs:
 
 ```bash
-node AEP-User-Experience/scripts/produce-aep-sdks.mjs
+node AEP-User-Experience/scripts/not-a-product
 ```
 
 Registry component IDs: `aep-dynaep-typescript`, `aep-dynaep-python`, `dynaep-core` (protocol only), `dynAEP-hook-loader`, `dynAEP-cca-bridge-config`.
@@ -761,14 +761,14 @@ Runtime bridge bootstrap:
 
 ```javascript
 import { buildBridgeConfigFromDynaep, listDynaepObserverSpecs } from
-  "AEP-Components/cca/lib/dynaep-bridge-config.mjs";
+  "AEP-CCA-Central-Setup-Agent/lib/dynaep-bridge-config.mjs";
 
 const bridgeCfg = buildBridgeConfigFromDynaep(config.dynaep, repoRoot);
 const observers = listDynaepObserverSpecs(config.dynaep);
 // Pass bridgeCfg to DynAEPBridge constructor; start enabled ObserverAdapters.
 ```
 
-See `AEP-Components/cca/lib/dynaep-context.mjs` and the public conformance runner at `AEP-Components/conformance/runner/run.sh`.
+See `AEP-CCA-Central-Setup-Agent/lib/dynaep-context.mjs` and the public conformance runner at `AEP-Components/conformance/runner/run.sh`.
 
 ---
 

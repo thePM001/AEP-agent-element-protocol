@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "lattice-crypto",
-  "version": "2.8.0",
+  "version": "2.8.5",
   "kind": "library",
   "path": "AEP-Components/lattice-crypto/",
   "description": "Post-quantum PQEncryptedCapsule (ML-KEM-768 + ML-DSA-65 + AES-256-GCM).",
@@ -29,5 +29,6 @@
   },
   "implementation": {
     "crate": "AEP-Components/lattice-crypto/crate"
-  }
+  },
+  "role": "kernel"
 }

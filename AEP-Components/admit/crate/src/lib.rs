@@ -230,8 +230,48 @@ pub use compile_lattice::{
     LatticeCompileInput, PolicySets,
 };
 
-pub mod compile_trust;
-pub use compile_trust::{
-    compile_agent_may_wall, compile_node_agent_may_wall, fold_agent_may_into_admit,
-    agent_may_from_admit, agent_may_wall_id, AgentMayGrant, WALL_AGENT_MAY,
+pub mod compile_permission;
+pub use compile_permission::{
+    compile_agent_permission_wall, compile_agent_permission_wall_from, compile_node_agent_permission_wall, fold_agent_permission_into_admit,
+    agent_permission_from_admit, agent_permission_wall_id, agent_has_permission, agent_permission,
+    AgentPermission, AgentPermissionLookup, WALL_AGENT_PERMISSION, DENY_NO_PERMISSION,
 };
+
+/// Compiled kernel pulse. Pulse is PULSE_MS 1000.
+pub const PULSE_MS: i64 = 1000;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Pulse {
+    pub ms: i64,
+}
+
+impl Pulse {
+    pub fn compiled() -> Self {
+        Self { ms: PULSE_MS }
+    }
+}
+
+
+/// Wave 4 kernel facade. ClosedWall and DenyReport are the dock Deny types.
+/// Envelope and process_sealed live on envelope and base-node binds.
+pub use aep_wall_set_backpressure::{ClosedWall, DenyReport};
+
+#[cfg(test)]
+mod kernel_facade_tests {
+    #[test]
+    fn pulse_is_compiled_1000() {
+        assert_eq!(crate::Pulse::compiled().ms, crate::PULSE_MS);
+        assert_eq!(crate::PULSE_MS, 1000);
+    }
+
+    #[test]
+    fn closed_wall_and_deny_report_are_public() {
+        let wall = crate::ClosedWall::new("gap.agent_permission", crate::DENY_NO_PERMISSION);
+        assert_eq!(wall.id.as_str(), "gap.agent_permission");
+        let _n = std::any::type_name::<crate::DenyReport>();
+        let _a = std::any::type_name::<crate::AdmitResult>();
+        let closed = crate::agent_permission("agent-a", "action:write", &[]);
+        assert_eq!(closed.closed, true);
+        assert_eq!(closed.reason, crate::DENY_NO_PERMISSION);
+    }
+}

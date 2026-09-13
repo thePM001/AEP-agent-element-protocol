@@ -19,7 +19,7 @@ const REGISTRY_ROOT = join(__dirname, "..");
 const REPO_ROOT = join(REGISTRY_ROOT, "../..");
 
 export const DEFAULT_COMPONENTS_REPO =
-  "https://github.com/thePM001/AEP-agent-element-protocol";
+  "";
 
 export function resolveComponentsRepo(env = process.env) {
   return String(env.AEP_COMPONENTS_REPO || DEFAULT_COMPONENTS_REPO).replace(/\/$/, "");
@@ -217,9 +217,6 @@ const COMPOSER_PALETTE_SKIP = new Set([
   "aep-base-node",
   "cca",
   "epscom-signatures",
-  "aep-typescript-sdk",
-  "aep-dynaep-typescript",
-  "aep-python-sdk",
   "session",
   "policy-engine",
   "evidence-ledger",

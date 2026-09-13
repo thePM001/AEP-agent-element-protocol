@@ -60,7 +60,6 @@
             intent: serde_json::json!({"op": "dock-test"}),
             trust: TaskManifestTrust {
                 tier: "system".into(),
-                max_trust_score: 1000,
             },
             agentmesh: None,
             provisional: false,
@@ -73,7 +72,7 @@
     }
 
     fn dock_lattice_yaml() -> &'static str {
-        "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_may: []\n"
+        "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n"
     }
     fn admit_ok_payload() -> &'static [u8] {
         br#"{"type":"PING","action_path":"root:ping","payload":{"ok":true},"timestamp":1000000,"target_id":"scene-a","_sequenceNumber":1}"#

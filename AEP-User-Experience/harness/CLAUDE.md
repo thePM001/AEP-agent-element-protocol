@@ -26,7 +26,7 @@ Before editing ANY file:
 - LRPs register on the regulation dock. dynAEP events record on the validation dock.
 - Activate via `setup-agent` or `docker exec <container> aep-setup-agent`
 - Config: `~/.aep/base-node.json` or `/data/aep/base-node.json` in Docker
-- CAW Framework: `aep-caw` for all shell exec when `caw_framework.enabled` in config (default true). Build: `cd AEP-Components/caw-framework && make build`
+- CAW Framework: `aep-caw` for all shell exec when `caw_framework.enabled` in config (default true). Build: `cd AEP-CAW && make build`
 
 ## Core AEP Rules (inherited 2.75e)
 

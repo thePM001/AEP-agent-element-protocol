@@ -21,7 +21,7 @@ fi
 
 cat > "$DATA/base-node.json" <<EOF
 {
-  "version": "2.8.0",
+  "version": "2.8.5",
   "base_node": {
     "socket_base": "$SOCK",
     "lattice_db": "$DATA/action-lattice.db",

@@ -136,20 +136,11 @@ pub struct DynAepEventInput {
     pub session_id: Option<String>,
     #[serde(default)]
     pub docking_port: DockingPortWire,
-    /// Isolation telemetry. Live Admit does not use this field as a wall.
-    /// Isolation telemetry. Live Admit does not use this field as a wall.
-    #[serde(default = "default_trust_score")]
-    pub trust_score: u16,
     pub payload: Value,
 }
 
 fn default_contract() -> String {
     "dynaep-action-lattice".into()
-}
-
-fn default_trust_score() -> u16 {
-    // Fail-closed: omitted ingest score is least privilege.
-    0
 }
 
 fn resolve_action_path(input: &DynAepEventInput) -> String {
@@ -275,7 +266,7 @@ fn build_sealed_frame(
     let ts_ms = (now as i64).saturating_mul(1000);
     let bundle = create_bundle(
         &input.agent_id,
-        input.trust_score,
+        0,
         &sign.public,
         vec!["dynaep.validate".into(), "dynaep.lattice".into()],
         now,
@@ -431,7 +422,7 @@ mod tests {
     }
 
     fn lattice_yaml() -> &'static str {
-        "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_may: []\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_may: [\"dynaep-bridge\"]\n"
+        "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_permission: [\"dynaep-bridge\"]\n"
     }
 
     fn plant_lattice(dir: &std::path::Path) {
@@ -454,7 +445,6 @@ mod tests {
             action_path: action_path.into(),
             session_id: Some("sess-1".into()),
             docking_port: DockingPortWire::ValidationEngine,
-            trust_score: 700,
             payload: serde_json::json!({ "target_id": "CP-00001", "z": 26 }),
         }
     }
@@ -543,10 +533,20 @@ mod tests {
     }
 
     #[test]
-    fn omitted_trust_score_is_least_privilege() {
-        let raw = r#"{"agent_id":"a","channel_id":"c","event_type":"X","payload":{}}"#;
-        let input: DynAepEventInput = serde_json::from_str(raw).expect("parse");
-        assert_eq!(input.trust_score, 0);
+    fn live_input_has_no_numeric_score_field() {
+        let src = include_str!("lattice_log.rs");
+        let start = match src.find("pub struct DynAepEventInput") {
+            Some(v) => v,
+            None => panic!("DynAepEventInput missing"),
+        };
+        let rest = &src[start..];
+        let end = match rest.find("fn default_contract") {
+            Some(v) => v,
+            None => rest.len(),
+        };
+        let body = &rest[..end];
+        let needle = ["trust", "_score"].concat();
+        assert_eq!(body.contains(&needle), false);
     }
 
     #[test]

@@ -32,7 +32,7 @@ node harness/aep-validate.js
 node ../aep-base-node-preflight.mjs
 
 # Full activation (Docker or local)
-node ../../AEP-Components/cca/setup-agent.mjs
+node ../../AEP-CCA-Central-Setup-Agent/setup-agent.mjs
 # or: docker exec <container> aep-setup-agent
 ```
 

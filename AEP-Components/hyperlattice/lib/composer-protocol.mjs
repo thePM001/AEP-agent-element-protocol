@@ -6,7 +6,7 @@
  */
 
 import { NODE_PALETTE } from "../../../AEP-Composer-Lite/lib/graph-store.mjs";
-import { CANVAS_SKIP_COMPONENT_IDS } from "../../../AEP-Components/cca/lib/component-catalog.mjs";
+import { CANVAS_SKIP_COMPONENT_IDS } from "../../../AEP-CCA-Central-Setup-Agent/lib/component-catalog.mjs";
 
 export const COMPOSER_PROTOCOL_VERSION = "2.8.0";
 export const COMPOSER_PROTOCOL_ID = "aep.composer-lite.protocol.v1";

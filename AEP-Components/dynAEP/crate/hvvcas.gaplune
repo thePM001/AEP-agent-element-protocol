@@ -11,7 +11,7 @@ component:
   name: dynaep_process_event
   domain: dynaep
   component_type: service
-  intent: Judge an event against Action Lattice membership, parent closure and agent_may then stamp bridge time.
+  intent: Judge an event against Action Lattice membership, parent closure and agent permission then stamp bridge time.
   input:
     name: event
     type: String

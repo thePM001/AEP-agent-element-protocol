@@ -52,7 +52,7 @@ export function buildBaseNodeConfig({
   signaturesPath = null,
 }) {
   const config = {
-    version: "2.8.0",
+    version: "2.8.5",
     base_node: {
       socket_base: socketBase,
       lattice_db: latticeDb,
@@ -67,8 +67,6 @@ export function buildBaseNodeConfig({
     epscom_signatures: {
       enabled: true,
       path: signaturesPath ?? "AEP-Base-Node/signatures",
-      trust_bundle: "trust-bundle/manifest.json",
-      sync_interval_hours: 24,
     },
   };
   if (inferenceEngine) {

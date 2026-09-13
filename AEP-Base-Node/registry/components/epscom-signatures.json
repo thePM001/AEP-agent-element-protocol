@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "epscom-signatures",
-  "version": "2.8.0",
+  "version": "2.8.5",
   "kind": "library",
   "path": "AEP-Base-Node/signatures/",
   "description": "EPSCOM-curated detection signatures and SHA-256 structure trust bundle. ML-DSA is not claimed.",
@@ -56,12 +56,13 @@
     "module": "AEP-Base-Node/signatures/lib/signatures-registry.mjs",
     "context": "AEP-Base-Node/signatures/lib/signatures-context.mjs",
     "trust_bundle": "AEP-Base-Node/signatures/trust-bundle/manifest.json",
-    "ci_gate": "scripts/gate-aep28-env-063.sh"
+    "ci_gate": "internal-export-area/scripts/gate-aep28-env-063.sh"
   },
   "conformance": {
     "tests": [
       "AEP-Components/conformance/runner/run.sh",
       "AEP-Components/conformance/tests/manifest.json"
     ]
-  }
+  },
+  "role": "kernel"
 }

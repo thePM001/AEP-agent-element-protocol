@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "hipaa",
-  "version": "2.8.0",
+  "version": "2.8.5",
   "kind": "compliance",
   "path": "AEP-Policy-System/reference/",
   "description": "HIPAA compliance pack (GAP reference).",
@@ -62,5 +62,6 @@
   },
   "implementation": {
     "gap_ref": "AEP-Policy-System/reference/hipaa.gap"
-  }
+  },
+  "role": "companion"
 }

@@ -1,13 +1,11 @@
 {
   "manifest_version": "1",
   "id": "telemetry",
-  "version": "2.8.0",
+  "version": "2.8.5",
   "kind": "library",
   "path": "AEP-Components/telemetry/",
   "description": "OpenTelemetry span and event exporter for AEP.",
-  "requires": [
-    "aep-typescript-sdk"
-  ],
+  "requires": [],
   "capabilities": [
     "telemetry:otel",
     "telemetry:export"
@@ -30,5 +28,6 @@
   },
   "implementation": {
     "module": "AEP-Components/telemetry/lib/otel-exporter.ts"
-  }
+  },
+  "role": "companion"
 }

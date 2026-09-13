@@ -7,8 +7,6 @@ use crate::scanner::ScannerId;
 pub enum PredicateError {
     #[error("unknown predicate profile {0}")]
     UnknownProfile(String),
-    #[error("paper005-vsa is off unless named and a hypervector binding is installed")]
-    Paper005Off,
     #[error("P_P provenance missing or digest mismatch")]
     Provenance,
     #[error("P_S payload empty or content-type refused")]

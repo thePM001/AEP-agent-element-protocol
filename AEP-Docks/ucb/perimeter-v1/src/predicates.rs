@@ -50,10 +50,6 @@ pub fn validate_ingest(
     view: &IngestView<'_>,
     pack: &impl ScannerPack,
 ) -> PredicateVerdict {
-    // Named paper005-vsa stays off without a hypervector binding. It is not a substitute for manifests, signatures and SSRF controls.
-    if matches!(profile, PredicateProfile::Paper005Vsa) {
-        return fail("profile", None, PredicateError::Paper005Off.to_string());
-    }
     match check_pp(view).and_then(|_| check_ps(view)).and_then(|_| check_pc(view, pack)).and_then(|_| check_pr(view)) {
         Ok(()) => PredicateVerdict { ok: true, predicate: None, scanner_id: None, error: None },
         Err((pred, scan, msg)) => fail(pred, scan, msg),

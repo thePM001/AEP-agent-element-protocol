@@ -65,7 +65,7 @@ mod tests {
     }
 
     fn writing_gap_star() -> String {
-        String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"invariants\": [\n      {\"expr\": \"no_em_dashes\", \"description\": \"Zero em-dashes\"}\n    ]\n  },\n  \"metadata\": {\"agent_may\": [\"*\"]}\n}")
+        String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"invariants\": [\n      {\"expr\": \"no_em_dashes\", \"description\": \"Zero em-dashes\"}\n    ]\n  },\n  \"metadata\": {\"agent_permission\": [\"*\"]}\n}")
     }
 
     fn writing_gap_rank() -> String {
@@ -73,7 +73,7 @@ mod tests {
     }
 
     fn writing_gap_star_rank() -> String {
-        String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"invariants\": [\n      {\"expr\": \"no_em_dashes\", \"description\": \"Zero em-dashes\"}\n    ]\n  },\n  \"metadata\": {\"agent_may\": [\"*\"], \"trust_ring\": \"user\"}\n}")
+        String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"invariants\": [\n      {\"expr\": \"no_em_dashes\", \"description\": \"Zero em-dashes\"}\n    ]\n  },\n  \"metadata\": {\"agent_permission\": [\"*\"], \"trust_ring\": \"user\"}\n}")
     }
 
     fn security_gap() -> String {
@@ -81,7 +81,7 @@ mod tests {
     }
 
     fn security_gap_star() -> String {
-        String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"invariants\": [\n      {\"expr\": \"no_pii_detected\", \"description\": \"no pii\"}\n    ]\n  },\n  \"metadata\": {\"agent_may\": [\"*\"]}\n}")
+        String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"invariants\": [\n      {\"expr\": \"no_pii_detected\", \"description\": \"no pii\"}\n    ]\n  },\n  \"metadata\": {\"agent_permission\": [\"*\"]}\n}")
     }
 
     fn net_gap() -> String {
@@ -142,7 +142,7 @@ mod tests {
         let mut hit = false;
         let mut i = 0usize;
         while i < walls.len() {
-            if walls[i].id.starts_with(aep_gap_schema_profile_v13::WALL_AGENT_MAY) && walls[i].closed {
+            if walls[i].id.starts_with(aep_gap_schema_profile_v13::WALL_AGENT_PERMISSION) && walls[i].closed {
                 hit = true;
             }
             i += 1;
@@ -154,7 +154,7 @@ mod tests {
     }
 
     #[test]
-    fn agent_may_star_allows_named_agent() {
+    fn agent_permission_star_allows_named_agent() {
         let tmp = std::env::temp_dir().join("gap-285-p15-star");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
@@ -167,7 +167,7 @@ mod tests {
         must(
             walls
                 .iter()
-                .any(|w| w.id.starts_with(aep_gap_schema_profile_v13::WALL_AGENT_MAY) && w.closed)
+                .any(|w| w.id.starts_with(aep_gap_schema_profile_v13::WALL_AGENT_PERMISSION) && w.closed)
                 == false,
         );
         must(walls.iter().any(|w| w.id.starts_with("policy:writing:")));
@@ -188,7 +188,7 @@ mod tests {
         let net_file = crate::join_parts(&["reference/network-egress-no-", "smt", "p", ".gap"]);
         let mut s = String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"wrap\": \"finance\",\n    \"invariants\": [\n      {\"expr\": \"");
         s.push_str(&expr);
-        s.push_str("\", \"description\": \"no mta url\"}\n    ]\n  },\n  \"metadata\": {\"trust_ring\": \"user\", \"agent_may\": [\"*\"]}\n}");
+        s.push_str("\", \"description\": \"no mta url\"}\n    ]\n  },\n  \"metadata\": {\"trust_ring\": \"user\", \"agent_permission\": [\"*\"]}\n}");
         std::fs::write(tmp.join(&net_file), s).expect("n");
         let mut inventory = PolicySystemCompileInput::default();
         inventory.wrap = String::from("inventory");
@@ -239,7 +239,7 @@ mod tests {
         let net_file = crate::join_parts(&["reference/network-egress-no-", "smt", "p", ".gap"]);
         let mut s = String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"prefix\": \"finance:\",\n    \"invariants\": [\n      {\"expr\": \"");
         s.push_str(&expr);
-        s.push_str("\", \"description\": \"no mta url\"}\n    ]\n  },\n  \"metadata\": {\"agent_may\": [\"*\"]}\n}");
+        s.push_str("\", \"description\": \"no mta url\"}\n    ]\n  },\n  \"metadata\": {\"agent_permission\": [\"*\"]}\n}");
         std::fs::write(tmp.join(&net_file), s).expect("n");
         let mut miss = PolicySystemCompileInput::default();
         miss.text = crate::join_parts(&["relay ", "smt", "p://mail.example.invalid"]);
@@ -281,7 +281,7 @@ mod tests {
         must(
             svc.walls
                 .iter()
-                .any(|w| w.id.starts_with(aep_gap_schema_profile_v13::WALL_AGENT_MAY) && w.closed)
+                .any(|w| w.id.starts_with(aep_gap_schema_profile_v13::WALL_AGENT_PERMISSION) && w.closed)
                 == false,
         );
     }

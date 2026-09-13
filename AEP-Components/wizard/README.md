@@ -31,7 +31,7 @@ See `wizard/lrp/catalog.json`. EPSCOM is always mandatory with priority 255.
 
 ### Core LRPs
 
-Runtime governance: dynAEP Action Lattice, lattice channel contract, 2.75 eval chain, optional GAP scanners and commerce subprotocol.
+Runtime governance: dynAEP Action Lattice, lattice channel contract, 2.75 eval chain, optional GAP scanners.
 
 ### Compliance modules
 

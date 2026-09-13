@@ -5,7 +5,7 @@
 // tokens: 0
 // AEP28-ENV-041: standalone Rust dynAEP. Action Lattice membership, parent
 // AEP28-ENV-066: wall_time closes on missing timestamps.
-// closure and agent_may match the kernel.
+// closure and agent_permission match the kernel.
 // AEP28-ENV-043: partition satisfied_actions by agent or session so parent closure cannot leak across agents. Temporal authority and perception
 // governance sit on the same collect-all Admit. No Base Node dependency.
 
@@ -18,7 +18,7 @@ pub const TICKET: &str = "AEP28-ENV-041";
 pub const KERNEL_TICKET_LANDED: &str = "AEP28-ENV-025";
 
 /// Event that enters the Action Lattice filter.
-/// Who-may is agent_may. There is no rank field.
+/// Agent permission is agent_permission. There is no rank field.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LatticeEvent {
     #[serde(default)]
@@ -186,7 +186,7 @@ pub struct LatticeNode {
     #[serde(default)]
     pub parents: Vec<String>,
     #[serde(default)]
-    pub agent_may: Vec<String>,
+    pub agent_permission: Vec<String>,
     #[serde(default)]
     pub category: String,
 }
@@ -264,7 +264,7 @@ fn all_walls(event: &LatticeEvent, snap: &Snapshot) -> Vec<WallVerdict> {
     vec![
         wall_membership(event, snap),
         wall_parents(event, snap),
-        wall_agent_may(event, snap),
+        wall_agent_permission(event, snap),
         wall_time(event, snap),
         wall_perception(event),
     ]
@@ -316,55 +316,38 @@ fn wall_parents(event: &LatticeEvent, snap: &Snapshot) -> WallVerdict {
     }
 }
 
-fn wall_agent_may(event: &LatticeEvent, snap: &Snapshot) -> WallVerdict {
+fn wall_agent_permission(event: &LatticeEvent, snap: &Snapshot) -> WallVerdict {
     if snap.lattice_nodes.is_empty() {
-        return wall("gap.agent_may", "gap", true, "membership wall covers miss");
+        return wall("gap.agent_permission", "gap", false, "empty lattice closes agent_permission");
     }
     let Some(node) = snap.lattice_nodes.get(&event.action_path) else {
-        return wall("gap.agent_may", "gap", true, "membership wall covers miss");
+        return wall("gap.agent_permission", "gap", true, "membership wall covers miss");
     };
-    let systemish = node.category == "system_event" || node.category == "external_event";
-    if node.agent_may.is_empty() {
-        if systemish {
-            return wall(
-                "gap.agent_may",
-                "gap",
-                true,
-                "system event has no agent actor",
-            );
-        }
+    if node.agent_permission.is_empty() {
         return wall(
-            "gap.agent_may",
+            "gap.agent_permission",
             "gap",
             false,
-            "GAP dimension agent_may closed: empty grants fail closed",
+            "this agent does not have permission for this action",
         );
     }
-    let granted = node.agent_may.iter().any(|g| {
-        if g == "*" {
+    let allowed = node.agent_permission.iter().any(|item| {
+        if item == "*" {
             event.agent_id.is_empty() == false
-        } else if g == "unbound" {
+        } else if item == "unbound" {
             event.agent_id.is_empty()
         } else {
-            g == &event.agent_id
+            item == &event.agent_id
         }
     });
-    if granted {
-        wall("gap.agent_may", "gap", true, "agent may action")
+    if allowed {
+        wall("gap.agent_permission", "gap", true, "agent permission listed")
     } else {
-        let who = if event.agent_id.is_empty() {
-            "unbound"
-        } else {
-            event.agent_id.as_str()
-        };
         wall(
-            "gap.agent_may",
+            "gap.agent_permission",
             "gap",
             false,
-            &format!(
-                "GAP dimension agent_may closed: agent '{}' may not '{}'",
-                who, event.action_path
-            ),
+            "this agent does not have permission for this action",
         )
     }
 }
@@ -545,7 +528,7 @@ struct YamlNode {
     #[serde(default)]
     children: Vec<String>,
     #[serde(default)]
-    agent_may: Vec<String>,
+    agent_permission: Vec<String>,
 }
 
 fn mapping_colon(rest: &str) -> Option<usize> {
@@ -607,7 +590,7 @@ pub fn load_lattice_yaml(text: &str) -> Result<HashMap<String, LatticeNode>, Lat
             LatticeNode {
                 action_path: id,
                 parents: n.parents,
-                agent_may: n.agent_may,
+                agent_permission: n.agent_permission,
                 category: n.category,
             },
         );
@@ -699,7 +682,7 @@ mod tests {
             LatticeNode {
                 action_path: path.to_string(),
                 parents: parents.iter().map(|s| s.to_string()).collect(),
-                agent_may: may.iter().map(|s| s.to_string()).collect(),
+                agent_permission: may.iter().map(|s| s.to_string()).collect(),
                 category: category.into(),
             },
         )
@@ -758,42 +741,55 @@ mod tests {
     }
 
     #[test]
-    fn agent_may_wrong_agent_closes() {
+    fn agent_permission_wrong_agent_closes() {
         let mut snap = base_snap();
         snap.lattice_nodes
             .get_mut("action:write")
             .unwrap()
-            .agent_may = vec!["agent-b".into()];
+            .agent_permission = vec!["agent-b".into()];
         let r = admit(&act("action:write"), &snap);
         assert!(!r.allow);
-        assert!(closed_names(&r).contains("gap.agent_may"));
+        assert!(closed_names(&r).contains("gap.agent_permission"));
     }
 
     #[test]
-    fn empty_grants_fail_closed_for_agent_action() {
+    fn empty_list_refuses_agent_action() {
         let mut snap = base_snap();
         snap.lattice_nodes
             .get_mut("action:write")
             .unwrap()
-            .agent_may
+            .agent_permission
             .clear();
         let r = admit(&act("action:write"), &snap);
         assert!(!r.allow);
-        assert!(closed_names(&r).contains("gap.agent_may"));
+        assert!(closed_names(&r).contains("gap.agent_permission"));
     }
 
     #[test]
-    fn system_event_empty_grants_open() {
+    fn empty_list_refuses_system_event() {
         let mut snap = base_snap();
         snap.lattice_nodes
             .get_mut("root:ping")
             .unwrap()
-            .agent_may
+            .agent_permission
             .clear();
         let mut a = act("root:ping");
         a.agent_id.clear();
         let r = admit(&a, &snap);
-        assert!(r.allow);
+        assert_eq!(r.allow, false);
+        assert_eq!(closed_names(&r).contains("gap.agent_permission"), true);
+        assert_eq!(r.closed_walls.iter().any(|w| w.id == "gap.agent_permission" && w.reason == "this agent does not have permission for this action"), true);
+    }
+
+    #[test]
+    fn empty_list_refuses_external_event() {
+        let mut snap = base_snap();
+        snap.lattice_nodes.extend([sample_node("webhook:incoming", &[], &[], "external_event")]);
+        let mut a = act("webhook:incoming");
+        a.agent_id.clear();
+        let r = admit(&a, &snap);
+        assert_eq!(r.allow, false);
+        assert_eq!(closed_names(&r).contains("gap.agent_permission"), true);
     }
 
     #[test]
@@ -803,16 +799,16 @@ mod tests {
         a.agent_id.clear();
         let r = admit(&a, &snap);
         assert!(!r.allow);
-        assert!(closed_names(&r).contains("gap.agent_may"));
+        assert!(closed_names(&r).contains("gap.agent_permission"));
     }
 
     #[test]
-    fn unbound_grant_requires_empty_agent() {
+    fn unbound_permission_requires_empty_agent() {
         let mut snap = base_snap();
         snap.lattice_nodes
             .get_mut("action:write")
             .unwrap()
-            .agent_may = vec!["unbound".into()];
+            .agent_permission = vec!["unbound".into()];
         let mut a = act("action:write");
         a.agent_id.clear();
         let r = admit(&a, &snap);
@@ -820,7 +816,7 @@ mod tests {
         a.agent_id = "agent-a".into();
         let r2 = admit(&a, &snap);
         assert!(!r2.allow);
-        assert!(closed_names(&r2).contains("gap.agent_may"));
+        assert!(closed_names(&r2).contains("gap.agent_permission"));
     }
 
     #[test]
@@ -829,6 +825,7 @@ mod tests {
         let r = admit(&act("root:ping"), &snap);
         assert!(!r.allow);
         assert!(closed_names(&r).contains("dag.membership"));
+        assert!(closed_names(&r).contains("gap.agent_permission"));
     }
 
     #[test]
@@ -913,13 +910,13 @@ mod tests {
 
     #[test]
     fn loads_colon_keys() {
-        let yaml = "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_may: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_may: [\"agent-a\"]\n";
+        let yaml = "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_permission: [\"agent-a\"]\n";
         let nodes = load_lattice_yaml(yaml).expect("load");
         assert!(nodes.contains_key("root:ping"));
         assert!(nodes.contains_key("action:write"));
         assert_eq!(nodes.get("action:write").unwrap().parents[0], "root:ping");
         assert_eq!(
-            nodes.get("action:write").unwrap().agent_may,
+            nodes.get("action:write").unwrap().agent_permission,
             vec![String::from("agent-a")]
         );
     }
@@ -952,17 +949,17 @@ mod tests {
     }
 
     #[test]
-    fn collect_all_keeps_membership_and_agent_may() {
+    fn collect_all_keeps_membership_and_agent_permission() {
         let mut snap = base_snap();
         snap.lattice_nodes
             .get_mut("action:write")
             .unwrap()
-            .agent_may = vec!["agent-b".into()];
+            .agent_permission = vec!["agent-b".into()];
         let r = admit(&act("bogus:path"), &snap);
         assert!(!r.allow);
         let names = closed_names(&r);
         assert!(names.contains("dag.membership"));
-        assert_eq!(names.contains("gap.agent_may"), false);
+        assert_eq!(names.contains("gap.agent_permission"), false);
     }
 
     #[test]
@@ -1011,4 +1008,91 @@ mod tests {
         assert_eq!(compact.contains("false,\"notimestamps\""), true);
     }
 
+}
+
+/// Standalone dynAEP engine used by the CLI surface.
+/// A missing lattice file, a bad lattice or a bad event is Deny.
+#[derive(Debug, Clone)]
+pub struct DynAep {
+    snap: Snapshot,
+}
+
+/// Rejection record for a denied event.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Reject {
+    pub target_id: String,
+    pub error: String,
+}
+
+/// Result of one event pass.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ProcessOut {
+    Event(serde_json::Value),
+    Reject(Reject),
+}
+
+impl Default for DynAep {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl DynAep {
+    /// Empty lattice.
+    pub fn new() -> Self {
+        Self {
+            snap: Snapshot {
+                lattice_nodes: HashMap::new(),
+                satisfied_actions: BTreeSet::new(),
+                session_id: String::new(),
+                bridge_ts_ms: 0,
+                max_drift_ms: default_drift(),
+                max_age_ms: default_age(),
+                max_future_ms: default_future(),
+            },
+        }
+    }
+
+    /// Load the Action Lattice from a YAML file.
+    pub fn from_yaml_file(path: &std::path::Path) -> Result<Self, String> {
+        let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+        let nodes = load_lattice_yaml(&text).map_err(|e| e.to_string())?;
+        let mut engine = Self::new();
+        engine.snap.lattice_nodes = nodes;
+        Ok(engine)
+    }
+
+    /// Lattice nodes held by this engine.
+    pub fn nodes(&self) -> &HashMap<String, LatticeNode> {
+        &self.snap.lattice_nodes
+    }
+
+    /// One event pass: Admit, then Apply when allow holds.
+    pub fn process_event(&mut self, value: serde_json::Value) -> ProcessOut {
+        let event: LatticeEvent = match serde_json::from_value(value.clone()) {
+            Ok(e) => e,
+            Err(e) => {
+                return ProcessOut::Reject(Reject {
+                    target_id: String::new(),
+                    error: format!("event: {e}"),
+                })
+            }
+        };
+        let result = admit(&event, &self.snap);
+        if result.allow == false {
+            let reason = result
+                .closed_walls
+                .iter()
+                .map(|w| format!("{}: {}", w.id, w.reason))
+                .collect::<Vec<String>>()
+                .join("; ");
+            return ProcessOut::Reject(Reject {
+                target_id: event.action_path.clone(),
+                error: reason,
+            });
+        }
+        let plan = plan_apply(&result);
+        apply_admit(&mut self.snap, &event, &plan);
+        ProcessOut::Event(value)
+    }
 }

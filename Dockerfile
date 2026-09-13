@@ -14,7 +14,7 @@ COPY AEP-Components/agentmesh/crate ./AEP-Components/agentmesh/crate
 COPY AEP-Base-Node/potomitan/crate ./AEP-Base-Node/potomitan/crate
 COPY AEP-Components/lattice-memory/crate ./AEP-Components/lattice-memory/crate
 COPY AEP-Base-Node/crate ./AEP-Base-Node/crate
-COPY AEP-Components/wasm/crate ./AEP-Components/wasm/crate
+COPY AEP-Composer-Lite/wasm-sandbox/crate ./AEP-Composer-Lite/wasm-sandbox/crate
 COPY AEP-Docks/ucb/crate ./AEP-Docks/ucb/crate
 COPY AEP-Components/conformance/crate ./AEP-Components/conformance/crate
 RUN cargo build --release -p aep-base-node -p aep-lattice-memory -p aep-wasm-sandbox -p aep-ucb
@@ -48,14 +48,14 @@ COPY AEP-Base-Node/ ./AEP-Base-Node/
 COPY AEP-User-Experience/ ./AEP-User-Experience/
 COPY docker/entrypoint.sh /usr/local/bin/aep-entrypoint.sh
 
-RUN chmod +x /opt/aep/AEP-Components/cca/cca.mjs \
-    && chmod +x /opt/aep/AEP-Components/cca/setup-agent.mjs \
+RUN chmod +x /opt/aep/AEP-CCA-Central-Setup-Agent/cca.mjs \
+    && chmod +x /opt/aep/AEP-CCA-Central-Setup-Agent/setup-agent.mjs \
     && chmod +x /opt/aep/AEP-Composer-Lite/server.mjs \
     && chmod +x /opt/aep/AEP-Docks/ucb/server.mjs \
     && chmod +x /usr/local/bin/aep-entrypoint.sh \
-    && printf '%s\n' '#!/bin/sh' 'exec node /opt/aep/AEP-Components/cca/setup-agent.mjs "$@"' > /usr/local/bin/aep-setup-agent \
+    && printf '%s\n' '#!/bin/sh' 'exec node /opt/aep/AEP-CCA-Central-Setup-Agent/setup-agent.mjs "$@"' > /usr/local/bin/aep-setup-agent \
     && chmod +x /usr/local/bin/aep-setup-agent \
-    && printf '%s\n' '#!/bin/sh' 'exec node /opt/aep/AEP-Components/cca/cca.mjs "$@"' > /usr/local/bin/aep-cca \
+    && printf '%s\n' '#!/bin/sh' 'exec node /opt/aep/AEP-CCA-Central-Setup-Agent/cca.mjs "$@"' > /usr/local/bin/aep-cca \
     && chmod +x /usr/local/bin/aep-cca
 
 ENV AEP_DATA=/data/aep \

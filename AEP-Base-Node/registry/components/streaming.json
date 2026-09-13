@@ -1,14 +1,13 @@
 {
   "manifest_version": "1",
   "id": "streaming",
-  "version": "2.8.0",
+  "version": "2.8.5",
   "kind": "library",
   "path": "AEP-Components/streaming/",
   "description": "Stream validator and middleware for governed output.",
   "requires": [
     "scanners",
-    "policy-engine",
-    "aep-typescript-sdk"
+    "policy-engine"
   ],
   "capabilities": [
     "stream:validate",
@@ -33,5 +32,6 @@
   },
   "implementation": {
     "module": "AEP-Components/streaming/lib/validator.ts"
-  }
+  },
+  "role": "companion"
 }

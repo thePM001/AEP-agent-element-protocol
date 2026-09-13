@@ -1,13 +1,12 @@
 {
   "manifest_version": "1",
   "id": "policy-builder",
-  "version": "2.8.0",
+  "version": "2.8.5",
   "kind": "tooling",
   "path": "AEP-Policy-System/policy-builder/",
   "description": "Invariant detection and Rego rule generation from schema analysis.",
   "requires": [
-    "schema-builder",
-    "aep-typescript-sdk"
+    "schema-builder"
   ],
   "depends_on": [
     "schema-builder"
@@ -53,5 +52,6 @@
       "AEP-Components/conformance/runner/run.sh",
       "AEP-Components/conformance/tests/manifest.json"
     ]
-  }
+  },
+  "role": "companion"
 }

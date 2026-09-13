@@ -1,18 +1,21 @@
+// @PAD: gaplune-creation-pad emit ( zero-LLM )
+// @GCDE: gaplune-decode hmac-sha256:cd31580fdc8a4eb41bc9a8890eee65b76510f26c9387358adf4e98ff2ccdb7d4
 // crate: gap-schema-profile-v13
 // GAP-285-P1 classic GAP v1.3 live Admit profile. GAP-285-P8 one-law: presence of trust_ring is Deny.
 use serde_json::{Map, Value};
 
 pub const TICKET: &str = "GAP-285-P1";
 pub const PROFILE: &str = "v1.3";
-pub const WALL_TRUST_RING_RANK: &str = "gap:trust_ring:rank";
-pub const WALL_AGENT_MAY: &str = "gap:agent_may";
+pub const WALL_LEFTOVER_RANK_FIELD: &str = "gap:leftover_rank_field";
+pub const WALL_TRUST_RING_RANK: &str = WALL_LEFTOVER_RANK_FIELD;
+pub const WALL_AGENT_PERMISSION: &str = "gap:agent_permission";
 pub const WALL_WRAP_BIND: &str = "gap:wrap:bind";
 pub const WALL_PATTERN_GUARD: &str = "gap:pattern:guard";
 pub const RANK_SANDBOX: &str = "sandbox";
 pub const RANK_USER: &str = "user";
 pub const RANK_SYSTEM: &str = "system";
 pub const RANK_ENTERPRISE: &str = "enterprise";
-pub const SCHEMA_V13_CONTRACT: &str = "GAP Instruction Meta-Schema v1.3\nagent_may\nwrap\naction_path_prefix\noneOf\nload-time\nPresence of trust_ring is Deny.\nPresence of rank is Deny.\nEvery non-empty rank value is Deny.\ncovenants\nscanners\n";
+pub const SCHEMA_V13_CONTRACT: &str = "GAP Instruction Meta-Schema v1.3\nagent_permission\nwrap\naction_path_prefix\noneOf\nload-time\nPresence of trust_ring is Deny.\nPresence of rank is Deny.\nEvery non-empty rank value is Deny.\ncovenants\nscanners\n";
 
 pub fn schema_v13_body(out: &mut String) {
     out.clear();
@@ -88,7 +91,7 @@ pub fn admit_collect_all(walls: &[AdmitWall], out: &mut AdmitResult) {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AgentMayGrant {
+pub struct AgentPermission {
     pub agent_id: String,
     pub action: String,
 }
@@ -156,10 +159,16 @@ fn value_is_non_empty(v: &Value, out: &mut bool) {
     }
 }
 
-pub fn compile_trust_ring_rank_wall(doc: &Value, wall: &mut AdmitWall) {
+pub fn compile_leftover_rank_field_wall(doc: &Value, wall: &mut AdmitWall) {
     let meta = meta_of(doc);
     let mut present = false;
     field_present(meta, "trust_ring", &mut present);
+    let mut score_present = false;
+    field_present(meta, "trust_score", &mut score_present);
+    let mut tier_present = false;
+    field_present(meta, "trust_tier", &mut tier_present);
+    if score_present { present = true; }
+    if tier_present { present = true; }
     let mut rank_key = false;
     field_present(meta, "rank", &mut rank_key);
     let mut ring = String::new();
@@ -202,7 +211,7 @@ pub fn compile_trust_ring_rank_wall(doc: &Value, wall: &mut AdmitWall) {
     if present || rank_key || nonempty || is_rank {
         AdmitWall::close_into(
             WALL_TRUST_RING_RANK,
-            "presence of trust_ring is Deny; who-may is agent_may",
+            "leftover rank field is Deny; agent permission is agent_permission",
             wall,
         );
         return;
@@ -211,7 +220,7 @@ pub fn compile_trust_ring_rank_wall(doc: &Value, wall: &mut AdmitWall) {
 }
 
 
-fn grant_from_value(v: &Value, out: &mut AgentMayGrant, ok: &mut bool) {
+fn permission_from_value(v: &Value, out: &mut AgentPermission, ok: &mut bool) {
     *ok = false;
     if let Some(s) = v.as_str() {
         let s = s.trim();
@@ -247,18 +256,18 @@ fn grant_from_value(v: &Value, out: &mut AgentMayGrant, ok: &mut bool) {
     }
 }
 
-pub fn grants_from_doc(doc: &Value, out: &mut Vec<AgentMayGrant>) {
+pub fn permissions_from_doc(doc: &Value, out: &mut Vec<AgentPermission>) {
     out.clear();
     let meta = meta_of(doc);
-    if let Some(arr) = meta.get("agent_may").and_then(|x| x.as_array()) {
+    if let Some(arr) = meta.get("agent_permission").and_then(|x| x.as_array()) {
         let mut i = 0usize;
         while i < arr.len() {
-            let mut g = AgentMayGrant {
+            let mut g = AgentPermission {
                 agent_id: String::new(),
                 action: String::new(),
             };
             let mut ok = false;
-            grant_from_value(&arr[i], &mut g, &mut ok);
+            permission_from_value(&arr[i], &mut g, &mut ok);
             if ok {
                 out.push(g);
             }
@@ -267,21 +276,21 @@ pub fn grants_from_doc(doc: &Value, out: &mut Vec<AgentMayGrant>) {
     }
 }
 
-fn grant_matches(grant: &AgentMayGrant, agent_id: &str, action: &str, out: &mut bool) {
-    let star = grant.agent_id == "*" && agent_id.is_empty() == false;
-    let named = agent_id.is_empty() == false && grant.agent_id == agent_id;
-    let unbound = grant.agent_id == "unbound" && agent_id.is_empty();
+fn permission_matches(record: &AgentPermission, agent_id: &str, action: &str, out: &mut bool) {
+    let star = record.agent_id == "*" && agent_id.is_empty() == false;
+    let named = agent_id.is_empty() == false && record.agent_id == agent_id;
+    let unbound = record.agent_id == "unbound" && agent_id.is_empty();
     let agent_ok = star || named || unbound;
-    let action_ok = grant.action == "*" || grant.action == action;
+    let action_ok = record.action == "*" || record.action == action;
     *out = agent_ok && action_ok;
 }
 
-pub fn agent_is_granted(agent_id: &str, action: &str, grants: &[AgentMayGrant], out: &mut bool) {
+pub fn agent_has_permission(agent_id: &str, action: &str, records: &[AgentPermission], out: &mut bool) {
     *out = false;
     let mut i = 0usize;
-    while i < grants.len() {
+    while i < records.len() {
         let mut hit = false;
-        grant_matches(&grants[i], agent_id, action, &mut hit);
+        permission_matches(&records[i], agent_id, action, &mut hit);
         if hit {
             *out = true;
             return;
@@ -290,9 +299,9 @@ pub fn agent_is_granted(agent_id: &str, action: &str, grants: &[AgentMayGrant], 
     }
 }
 
-pub fn agent_may_wall_id(agent: &str, action: &str, out: &mut String) {
+pub fn agent_permission_wall_id(agent: &str, action: &str, out: &mut String) {
     out.clear();
-    out.push_str(WALL_AGENT_MAY);
+    out.push_str(WALL_AGENT_PERMISSION);
     out.push(char::from(58));
     if agent.is_empty() {
         out.push_str("unbound");
@@ -304,40 +313,39 @@ pub fn agent_may_wall_id(agent: &str, action: &str, out: &mut String) {
 }
 
 
-pub fn compile_agent_may_profile_wall(doc: &Value, req: &LiveAdmitRequest, wall: &mut AdmitWall) {
+pub fn compile_agent_permission_profile_wall(doc: &Value, req: &LiveAdmitRequest, wall: &mut AdmitWall) {
     let agent_id = req.agent_id.trim();
     let action = req.action.trim();
     if agent_id.is_empty() && action.is_empty() {
-        AdmitWall::open_into(WALL_AGENT_MAY, wall);
+        AdmitWall::open_into(WALL_AGENT_PERMISSION, wall);
         return;
     }
-    let mut grants: Vec<AgentMayGrant> = Vec::new();
-    grants_from_doc(doc, &mut grants);
+    let meta = meta_of(doc);
+    let mut declared = false;
+    field_present(meta, "agent_permission", &mut declared);
+    if declared == false {
+        AdmitWall::open_into(WALL_AGENT_PERMISSION, wall);
+        return;
+    }
+    let mut records: Vec<AgentPermission> = Vec::new();
+    permissions_from_doc(doc, &mut records);
     let mut id = String::new();
-    agent_may_wall_id(agent_id, action, &mut id);
-    if grants.is_empty() {
+    agent_permission_wall_id(agent_id, action, &mut id);
+    if records.is_empty() {
         AdmitWall::close_into(
             &id,
-            "GAP dimension agent_may closed: empty grants DENY on miss when an agent action is judged",
+            "this agent does not have permission for this action",
             wall,
         );
         return;
     }
-    let mut granted = false;
-    agent_is_granted(agent_id, action, &grants, &mut granted);
-    if granted {
+    let mut allowed = false;
+    agent_has_permission(agent_id, action, &records, &mut allowed);
+    if allowed {
         AdmitWall::open_into(&id, wall);
         return;
     }
-    let mut reason = String::from("GAP dimension agent_may closed: agent ");
-    if agent_id.is_empty() {
-        reason.push_str("unbound");
-    } else {
-        reason.push_str(agent_id);
-    }
-    reason.push_str(" may not ");
-    reason.push_str(action);
-    AdmitWall::close_into(&id, &reason, wall);
+    AdmitWall::close_into(&id, "this agent does not have permission for this action", wall);
 }
 
 pub fn action_path_matches_prefix(action_path: &str, prefix: &str, out: &mut bool) {
@@ -656,8 +664,8 @@ pub fn live_admit_gap_profile(source: &str, req: &LiveAdmitRequest, out: &mut Ad
     let mut w2 = w1.clone();
     let mut w3 = w1.clone();
     let mut w4 = w1.clone();
-    compile_trust_ring_rank_wall(&doc, &mut w1);
-    compile_agent_may_profile_wall(&doc, req, &mut w2);
+    compile_leftover_rank_field_wall(&doc, &mut w1);
+    compile_agent_permission_profile_wall(&doc, req, &mut w2);
     compile_wrap_prefix_bind(&doc, req, &mut w3);
     compile_guard_wall(&doc, &mut w4);
     walls.push(w1);
@@ -743,7 +751,7 @@ mod tests {
     }
 
     fn sample_yaml_profile() -> String {
-        String::from("address:\n  domain: com.example.live\n  id: profile-doc\npattern:\n  guard:\n    expr: wrap == finance\n    lang: gapdsl\naction:\n  type: template\n  content: hello\nweight: 1.0\ncomposition:\n  type: atomic\nmetadata:\n  provenance: system.seed\n  version: 1.0.0\n  stability: experimental\n  agent_may:\n    - agent_id: agent-a\n      action: write\n  wrap: finance\n  action_path_prefix: finance\nenabled: false\n")
+        String::from("address:\n  domain: com.example.live\n  id: profile-doc\npattern:\n  guard:\n    expr: wrap == finance\n    lang: gapdsl\naction:\n  type: template\n  content: hello\nweight: 1.0\ncomposition:\n  type: atomic\nmetadata:\n  provenance: system.seed\n  version: 1.0.0\n  stability: experimental\n  agent_permission:\n    - agent_id: agent-a\n      action: write\n  wrap: finance\n  action_path_prefix: finance\nenabled: false\n")
     }
 
     #[test]
@@ -819,11 +827,11 @@ mod tests_more {
     use super::*;
 
     fn profile() -> String {
-        String::from("address:\n  domain: com.example.live\n  id: profile-doc\npattern:\n  guard:\n    expr: wrap == finance\n    lang: gapdsl\naction:\n  type: template\n  content: hello\nweight: 1.0\ncomposition:\n  type: atomic\nmetadata:\n  provenance: system.seed\n  version: 1.0.0\n  stability: experimental\n  agent_may:\n    - agent_id: agent-a\n      action: write\n  wrap: finance\n  action_path_prefix: finance\nenabled: false\n")
+        String::from("address:\n  domain: com.example.live\n  id: profile-doc\npattern:\n  guard:\n    expr: wrap == finance\n    lang: gapdsl\naction:\n  type: template\n  content: hello\nweight: 1.0\ncomposition:\n  type: atomic\nmetadata:\n  provenance: system.seed\n  version: 1.0.0\n  stability: experimental\n  agent_permission:\n    - agent_id: agent-a\n      action: write\n  wrap: finance\n  action_path_prefix: finance\nenabled: false\n")
     }
 
     #[test]
-    fn enabled_false_still_evaluates_agent_may() {
+    fn enabled_false_still_evaluates_agent_permission() {
         let req = LiveAdmitRequest {
             agent_id: String::from("agent-b"),
             action: String::from("write"),
@@ -836,7 +844,7 @@ mod tests_more {
         assert_eq ! (err.as_str(), "");
         assert_eq ! (result.allow, false);
         let mut may_id = String::new();
-        agent_may_wall_id("agent-b", "write", &mut may_id);
+        agent_permission_wall_id("agent-b", "write", &mut may_id);
         let mut hit = false;
         let mut i = 0usize;
         while i < result.closed.len() {
@@ -862,8 +870,8 @@ mod tests_more {
         assert_eq ! (err.as_str(), "");
         let mut a = AdmitWall { id: String::new(), closed: false, reason: String::new() };
         let mut b = a.clone();
-        compile_agent_may_profile_wall(&doc, &LiveAdmitRequest { agent_id: String::from("agent-a"), action: String::from("write"), wrap: String::from("finance"), action_path: String::from("finance/pay") }, &mut a);
-        compile_agent_may_profile_wall(&doc, &LiveAdmitRequest { agent_id: String::from("agent-b"), action: String::from("write"), wrap: String::from("finance"), action_path: String::from("finance/pay") }, &mut b);
+        compile_agent_permission_profile_wall(&doc, &LiveAdmitRequest { agent_id: String::from("agent-a"), action: String::from("write"), wrap: String::from("finance"), action_path: String::from("finance/pay") }, &mut a);
+        compile_agent_permission_profile_wall(&doc, &LiveAdmitRequest { agent_id: String::from("agent-b"), action: String::from("write"), wrap: String::from("finance"), action_path: String::from("finance/pay") }, &mut b);
         assert_eq ! (a.closed, false);
         assert_eq ! (b.closed, true);
     }
@@ -886,7 +894,7 @@ mod tests_more {
     fn schema_v13_body_contains_required_fields() {
         let mut body = String::new();
         schema_v13_body(&mut body);
-        assert_eq ! (body.contains("agent_may"), true);
+        assert_eq ! (body.contains("agent_permission"), true);
         assert_eq ! (body.contains("action_path_prefix"), true);
         assert_eq ! (body.contains("wrap"), true);
         assert_eq ! (body.contains("oneOf"), true);
@@ -923,7 +931,7 @@ mod tests_more {
         assert_eq ! (body.contains("Not a live Admit floor"), false);
         assert_eq ! (body.contains("unused at Admit"), false);
         assert_eq ! (body.contains("\"enum\": [\"sandbox\", \"user\", \"system\", \"enterprise\"]"), false);
-        assert_eq ! (body.contains("agent_may"), true);
+        assert_eq ! (body.contains("agent_permission"), true);
     }
 
     fn yaml_trust_ring(value: &str) -> String {
@@ -946,7 +954,7 @@ mod tests_more {
         parse_gap_source(src, &mut doc, &mut err);
         assert_eq ! (err.as_str(), "");
         let mut wall = AdmitWall { id: String::new(), closed: false, reason: String::new() };
-        compile_trust_ring_rank_wall(&doc, &mut wall);
+        compile_leftover_rank_field_wall(&doc, &mut wall);
         assert_eq ! (wall.closed, true);
         assert_eq ! (wall.id.as_str(), WALL_TRUST_RING_RANK);
         let mut result = AdmitResult { allow: true, closed: Vec::new() };
@@ -997,6 +1005,12 @@ mod tests_more {
     }
 
     #[test]
+    fn leftover_score_and_tier_fields_close() {
+        assert_rank_wall_closed(&json_meta_extra(",\"trust_score\":1"));
+        assert_rank_wall_closed(&json_meta_extra(",\"trust_tier\":\"high\""));
+    }
+
+    #[test]
     fn presence_of_ring_ceiling_rank_keeps_compiled_wall_deny() {
         let src = String::from("address:\n  domain: com.example.old\n  id: rank-doc\npattern: old pattern\naction:\n  type: template\n  content: hello\nweight: 1.0\ncomposition:\n  type: atomic\nmetadata:\n  provenance: system.seed\n  version: 1.0.0\n  stability: experimental\n  fleet:\n    spawn:\n      ring_ceiling: user\n");
         assert_rank_wall_closed(&src);
@@ -1004,8 +1018,8 @@ mod tests_more {
     }
 
     #[test]
-        fn empty_grants_deny_on_miss_for_agent_action() {
-        let src = String::from("address:\n  domain: com.example.live\n  id: empty-grants\npattern: p\naction:\n  type: template\n  content: c\nweight: 1.0\ncomposition:\n  type: atomic\nmetadata:\n  provenance: system.seed\n  version: 1.0.0\n  stability: experimental\n");
+        fn empty_list_refuses_on_miss_for_agent_action() {
+        let src = String::from("address:\n  domain: com.example.live\n  id: empty-list\npattern: p\naction:\n  type: template\n  content: c\nweight: 1.0\ncomposition:\n  type: atomic\nmetadata:\n  provenance: system.seed\n  version: 1.0.0\n  stability: experimental\n");
         let mut result = AdmitResult { allow: true, closed: Vec::new() };
         let mut err = String::new();
         live_admit_gap_profile(&src, &LiveAdmitRequest { agent_id: String::from("agent-a"), action: String::from("write"), wrap: String::new(), action_path: String::new() }, &mut result, &mut err);
@@ -1014,7 +1028,7 @@ mod tests_more {
         let mut hit = false;
         let mut i = 0usize;
         while i < result.closed.len() {
-            if result.closed[i].id.starts_with(WALL_AGENT_MAY) {
+            if result.closed[i].id.starts_with(WALL_AGENT_PERMISSION) {
                 hit = true;
             }
             i += 1;

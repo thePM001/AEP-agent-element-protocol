@@ -2,7 +2,7 @@ package dynaep.lattice
 
 # ===========================================================================
 # Lattice Governance Policy
-# Enforces action lattice rules: GAP agent-may dimensions, partial-order
+# Enforces action lattice rules: GAP agent permission, partial-order
 # validation, forbidden sequences, rate limits, and cross-modality
 # constraints for output actions.
 #
@@ -11,7 +11,7 @@ package dynaep.lattice
 # Expected input fields (supplied by the TypeScript LatticeFilter bridge):
 #   input.action_path       - Lattice path (e.g. "market:trade:execute")
 #   input.agent_id          - Originating agent ID (string)
-#   input.agent_may         - Agents granted this action (GAP dimension)
+#   input.agent_permission         - Agents listed for this action (GAP dimension)
 #   input.category          - Action category string
 #   input.payload           - Event payload (object)
 #   input.agent_id          - Originating agent ID (string)
@@ -33,20 +33,20 @@ package dynaep.lattice
 # HELPER RULES
 # ---------------------------------------------------------------------------
 
-# Agent-may: Agent A may X. No rank.
-agent_is_granted {
+# Agent permission: agent id plus action. No rank.
+agent_has_permission {
     some i
-    input.agent_may[i] == input.agent_id
+    input.agent_permission[i] == input.agent_id
     input.agent_id != ""
 }
 
-agent_is_granted {
+agent_has_permission {
     some i
-    input.agent_may[i] == "*"
+    input.agent_permission[i] == "*"
     input.agent_id != ""
 }
 
-# Critical action paths that require a granted agent
+# Critical action paths that require a listed agent
 critical_actions := {
     "market:trade:execute",
     "agent:email:send",
@@ -96,14 +96,10 @@ deny_lattice[msg] {
     )
 }
 
-# Rule 2: Who-may-do-what is GAP dimension Conjunction. Empty grants fail closed for agent_action.
+# Rule 2: Agent permission is GAP dimension Conjunction. Empty list refuses.
 deny_lattice[msg] {
-    input.category == "agent_action"
-    not agent_is_granted
-    msg := sprintf(
-        "GAP dimension agent_may closed: agent '%v' may not '%v'",
-        [input.agent_id, input.action_path]
-    )
+    not agent_has_permission
+    msg := "this agent does not have permission for this action"
 }
 
 # Rule 5: Partial-order violation
@@ -153,15 +149,8 @@ deny_lattice[msg] {
     )
 }
 
-# Rule 9: output category also uses GAP agent-may. Empty grants fail closed.
-deny_lattice[msg] {
-    input.category == "output"
-    not agent_is_granted
-    msg := sprintf(
-        "GAP dimension agent_may closed: agent '%v' may not '%v'",
-        [input.agent_id, input.action_path]
-    )
-}
+# Rule 9: output category also uses GAP agent permission. Empty list refuses.
+
 
 # ---------------------------------------------------------------------------
 # SOFT VIOLATIONS: Warn but allow

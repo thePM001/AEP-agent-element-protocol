@@ -6,4 +6,4 @@ Pre/post action intercept hooks.
 - **Path:** `intercept/`
 - **Manifest:** `AEP-Base-Node/registry/components/intercept.json`
 
-Re-exported by `typescript-sdk/` for programmatic access. Runtime code lives in `lib/`.
+Runtime code lives in `lib/`.

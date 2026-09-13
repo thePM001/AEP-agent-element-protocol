@@ -1,9 +1,3 @@
 # Permissions
 
-Capability permission checks for agent actions.
-
-- **Component ID:** `permissions`
-- **Path:** `permissions/`
-- **Manifest:** `AEP-Base-Node/registry/components/permissions.json`
-
-Re-exported by `typescript-sdk/` for programmatic access. Runtime code lives in `lib/`.
+This folder is a pointer to kernel agent permission. Checks live in the kernel permission wall rather than in a TypeScript client or a separate product. Agent permission is judged by agent_permission on the kernel Admit path so an empty agent_permission list refuses. See AEP-Components/admit for the kernel crate.

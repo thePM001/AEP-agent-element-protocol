@@ -10,4 +10,4 @@ path: AEP-Components/gap-schema-profile-v13/
 ticket: GAP-285-P15
 requires: aep-admit
 capability: admit.gap-schema-profile-v13.compile
-note: Classic GAP v1.3 live Admit profile. Workspace member. Kernel collect-all compiles rank-presence and who-may from the instruction object. Who-may is agent_may. Empty grants Deny. wrap and action_path_prefix bind. Writing and security stay always-on. trust_ring rank is not a live Admit floor. enabled is load-time and is not Admit skip. Keep v1 and v1.2 for old documents.
+note: Classic GAP v1.3 live Admit profile. Workspace member. Kernel collect-all compiles rank-presence leftover closer and agent permission from the instruction object. Agent permission is agent_permission. Empty list is Deny. wrap and action_path_prefix bind. Writing and security stay always-on. trust_ring rank is not a live Admit floor. enabled is load-time and is not Admit skip. Keep v1 and v1.2 for old documents.

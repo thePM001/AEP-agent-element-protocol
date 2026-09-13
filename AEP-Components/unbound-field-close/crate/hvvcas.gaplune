@@ -95,7 +95,7 @@ component:
   name: scan_env042_stays
   domain: envelope
   component_type: service
-  intent: Fail if empty lattice no longer closes dag.membership and gap.agent_may
+  intent: Fail if empty lattice no longer closes dag.membership and gap.agent_permission
   input:
     name: src
     type: String

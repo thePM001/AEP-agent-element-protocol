@@ -123,17 +123,17 @@ Recommended loop: audit -> fix Phase 1 -> targeted retest -> fix Phase 2 -> ...
 
 ## AEP 2.8 Phase-1 instance (paste after 2026-07-27 re-audit)
 
-Project root: [PFAD to AEP-agent-element-protocol clone]
+Project root: [PFAD to AEP-2.8.5 clone]
 Scorecard: [path to AEP-2.8-THREAT-MODEL-SCORECARD.md]
 Audit: [path to AEP-2.8-FULL-SECURITY-QUALITY-AUDIT-2026-07-27.md]
 Scope: Phase 1 only - CRITICAL and HIGH ELS
 
 Work queue in order:
-1. TM-15 CRITICAL - internal-sdk/AEP-SDKs/typescript/dynaep/src/bridge.ts near LatticeFilter init catch. Pattern P1. Fail closed if lattice registry configured and governance is not disabled. processEvent must not skip action_path lattice when lattice is null under governance.
-2. TM-04 HIGH - AEP-Components/caw-framework/internal/netmonitor/unix/handler.go path resolve fail path. Pattern P2. Resolve failure must NotifRespondDeny under enforce for mutating ops at minimum.
+1. TM-15 CRITICAL - AEP-Components/dynAEP/typescript/dynaep/src/bridge.ts near LatticeFilter init catch. Pattern P1. Fail closed if lattice registry configured and governance is not disabled. processEvent must not skip action_path lattice when lattice is null under governance.
+2. TM-04 HIGH - AEP-CAW/internal/netmonitor/unix/handler.go path resolve fail path. Pattern P2. Resolve failure must NotifRespondDeny under enforce for mutating ops at minimum.
 3. TM-05 HIGH - same handler.go unix sockaddr path and nil pol branch. Pattern P2 and P3. Default deny on sockaddr failure; deny when pol is nil in ServeNotifyWithExecve.
-4. TM-08 HIGH - AEP-Components/caw-framework/internal/platform/policy_adapter.go nil checks. Pattern P3. DecisionDeny when adapter or engine is nil. Flip tests.
-5. TM-07 HIGH - AEP-Components/caw-framework/internal/netmonitor/unix/file_handler.go soft_delete handling. Pattern P4. soft_delete without trash backend must deny.
+4. TM-08 HIGH - AEP-CAW/internal/platform/policy_adapter.go nil checks. Pattern P3. DecisionDeny when adapter or engine is nil. Flip tests.
+5. TM-07 HIGH - AEP-CAW/internal/netmonitor/unix/file_handler.go soft_delete handling. Pattern P4. soft_delete without trash backend must deny.
 6. TM-06 residual HIGH - file_syscalls resolvePathAt. Pattern P5. Port ptrace resolveViaProc into seccomp resolution.
 
 After each item: test plus scorecard status update.

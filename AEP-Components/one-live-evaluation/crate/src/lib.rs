@@ -37,6 +37,7 @@ pub fn attach_live_walls(live: &mut LiveEntry, event: &Value, dock: &LiveDockCon
     live.extra_walls = walls;
     let scene = event.get("target_id").and_then(|v| v.as_str()).unwrap_or("");
     live.bind_opened_frame(scene, &dock.docking_port);
+    live.opened_agent_id = dock.agent_id.clone();
 }
 
 /// One Admit function for the opened frame. Wall-crate walls plus envelope walls. One AND.
@@ -46,7 +47,10 @@ pub fn admit_opened_frame(
     dock: &LiveDockContext,
 ) -> aep_envelope::AdmitResult {
     let extra = compile_live_walls(live, event, dock);
-    let action = action_from_event(event, &dock.docking_port);
+    let mut action = action_from_event(event, &dock.docking_port);
+    if action.agent_id.is_empty() && dock.agent_id.is_empty() == false {
+        action.agent_id = dock.agent_id.clone();
+    }
     admit_with_extra(&action, &live.snapshot, extra)
 }
 
@@ -288,7 +292,7 @@ mod tests {
     use super::*;
 
     fn yaml() -> &'static str {
-        "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_may: []\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_may: [\"agent-a\"]\n"
+        "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_permission: [\"agent-a\"]\n"
     }
 
     fn must(cond: bool) {

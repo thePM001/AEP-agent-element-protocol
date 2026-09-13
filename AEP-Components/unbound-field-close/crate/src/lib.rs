@@ -214,7 +214,7 @@ fn bound_snap() -> Snapshot {
         aep_envelope::LatticeNode {
             action_path: String::from("action:write"),
             parents: Vec::new(),
-            agent_may: vec![String::from("agent-a")],
+            agent_permission: vec![String::from("agent-a")],
             category: String::from("agent_action"),
             wrap: String::new(),
         },
@@ -280,10 +280,10 @@ pub fn scan_env034_stays(src: &str) -> Result<String, String> {
     Ok(String::from("ok AEP28-ENV-034 live-entry Deny stays"))
 }
 
-/// Fail if empty lattice no longer closes dag.membership and gap.agent_may.
+/// Fail if empty lattice no longer closes dag.membership and gap.agent_permission.
 pub fn scan_env042_stays(src: &str) -> Result<String, String> {
     let dag = extract_fn(src, "fn wall_dag");
-    let may = extract_fn(src, "fn wall_agent_may");
+    let may = extract_fn(src, "fn wall_agent_permission");
     if dag.is_empty() || may.is_empty() {
         return Err(String::from("AEP28-ENV-042 walls missing"));
     }
@@ -293,13 +293,13 @@ pub fn scan_env042_stays(src: &str) -> Result<String, String> {
         return Err(String::from("AEP28-ENV-042 wall_dag reopened"));
     }
     if may_c.contains("true,\"nolatticeconfigured\"") {
-        return Err(String::from("AEP28-ENV-042 wall_agent_may reopened"));
+        return Err(String::from("AEP28-ENV-042 wall_agent_permission reopened"));
     }
     if dag_c.contains("is_empty(){returnwall(\"dag.membership\",\"dag\",false") == false {
         return Err(String::from("AEP28-ENV-042 wall_dag empty close is gone"));
     }
-    if may_c.contains("is_empty(){returnwall(\"gap.agent_may\",\"gap\",false") == false {
-        return Err(String::from("AEP28-ENV-042 wall_agent_may empty close is gone"));
+    if may_c.contains("is_empty(){returnwall(\"gap.agent_permission\",\"gap\",false") == false {
+        return Err(String::from("AEP28-ENV-042 wall_agent_permission empty close is gone"));
     }
     Ok(String::from("ok AEP28-ENV-042 empty lattice close stays"))
 }

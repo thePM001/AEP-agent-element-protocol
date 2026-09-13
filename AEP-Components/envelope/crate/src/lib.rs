@@ -2,8 +2,8 @@
 //! Evaluation is pure. Apply mutates snapshot state after Admit.
 //! @PAD: gaplune-pad-transform encode
 //! @GCDE: gaplune-decode hmac-sha256:9f7de97867e86cc6d506eb08b203375fb20d7ca308541da6a01700a70ff1ce53
-//! AEP28-ENV-038: EnvelopeAction has no rank field. Who-may is agent_may.
-//! AEP28-ENV-042: empty lattice closes dag.membership and gap.agent_may. Do not reopen AEP28-ENV-034.
+//! AEP28-ENV-038: EnvelopeAction has no rank field. Agent permission is agent_permission.
+//! AEP28-ENV-042: empty lattice closes dag.membership and gap.agent_permission. Do not reopen AEP28-ENV-034.
 //! AEP28-ENV-066: unbound scene, channel, time and sequence close. dest_dock may bind from the opened frame docking port. Missing scene_id, timestamps or sequence_number is Deny. Do not reopen AEP28-ENV-034 or AEP28-ENV-042.
 //! AEP28-ENV-065: max_drift_ms stays 50 against the frozen seal snapshot. Do not set max_drift_ms to 1000 as the pulse length.
 //! AEP28-ENV-043: partition satisfied_actions by agent or session so parent closure cannot leak across agents.
@@ -16,7 +16,9 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 mod seq_walls;
 mod lattice_yaml;
 pub use lattice_yaml::{apply_admit, closed_reasons, load_lattice_yaml, load_lattice_yaml_file, snapshot_from_nodes, EnvelopeError};
-pub use aep_admit::AdmitWall;
+pub use aep_admit::{AdmitWall, agent_permission, agent_has_permission, AgentPermission, Pulse, PULSE_MS, DENY_NO_PERMISSION, ClosedWall, DenyReport};
+
+pub type Envelope = EnvelopeAction;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct EnvelopeAction {
@@ -62,10 +64,6 @@ pub struct Snapshot {
     pub max_age_ms: i64,
     #[serde(default)]
     pub allowed_docks: BTreeSet<String>,
-    /// Isolation telemetry. Walls must not read this field.
-    /// Isolation telemetry. Walls must not read this field.
-    #[serde(default)]
-    pub trust_score: u32,
     #[serde(default)]
     pub simultaneous_outputs: u32,
     #[serde(default)]
@@ -113,7 +111,6 @@ impl Default for Snapshot {
             max_drift_ms: 50,
             max_age_ms: 5000,
             allowed_docks: BTreeSet::new(),
-            trust_score: 500,
             simultaneous_outputs: 0,
             event_rate: 0,
             event_rate_max: 200,
@@ -218,7 +215,7 @@ pub struct LatticeNode {
     #[serde(default)]
     pub parents: Vec<String>,
     #[serde(default)]
-    pub agent_may: Vec<String>,
+    pub agent_permission: Vec<String>,
     #[serde(default)]
     pub category: String,
     /// Policy wrap. Empty means the node does not bind wrap-scoped GAP items.
@@ -326,7 +323,7 @@ pub fn dest_dock_from_opened_frame(event_dest_dock: &str, docking_port: &str) ->
 fn all_walls(action: &EnvelopeAction, snap: &Snapshot) -> Vec<WallVerdict> {
     vec![
         wall_dag(action, snap),
-        wall_agent_may(action, snap),
+        wall_agent_permission(action, snap),
         wall_gap(action, snap),
         wall_scene(action, snap),
         wall_time(action, snap),
@@ -381,50 +378,38 @@ fn wall_parents(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
     }
 }
 
-fn wall_agent_may(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
+fn wall_agent_permission(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
     if snap.lattice_nodes.is_empty() {
-        return wall("gap.agent_may", "gap", false, "empty lattice closes agent_may");
+        return wall("gap.agent_permission", "gap", false, "empty lattice closes agent_permission");
     }
     let Some(node) = snap.lattice_nodes.get(&action.action_path) else {
-        return wall("gap.agent_may", "gap", true, "membership wall covers miss");
+        return wall("gap.agent_permission", "gap", true, "membership wall covers miss");
     };
-    let systemish = node.category == "system_event" || node.category == "external_event";
-    if node.agent_may.is_empty() {
-        if systemish {
-            return wall("gap.agent_may", "gap", true, "system event has no agent actor");
-        }
+    if node.agent_permission.is_empty() {
         return wall(
-            "gap.agent_may",
+            "gap.agent_permission",
             "gap",
             false,
-            "GAP dimension agent_may closed: empty grants fail closed",
+            "this agent does not have permission for this action",
         );
     }
-    let granted = node.agent_may.iter().any(|g| {
-        if g == "*" {
+    let allowed = node.agent_permission.iter().any(|item| {
+        if item == "*" {
             action.agent_id.is_empty() == false
-        } else if g == "unbound" {
+        } else if item == "unbound" {
             action.agent_id.is_empty()
         } else {
-            g == &action.agent_id
+            item == &action.agent_id
         }
     });
-    if granted {
-        wall("gap.agent_may", "gap", true, "agent may action")
+    if allowed {
+        wall("gap.agent_permission", "gap", true, "agent permission listed")
     } else {
-        let who = if action.agent_id.is_empty() {
-            "unbound"
-        } else {
-            action.agent_id.as_str()
-        };
         wall(
-            "gap.agent_may",
+            "gap.agent_permission",
             "gap",
             false,
-            &format!(
-                "GAP dimension agent_may closed: agent '{}' may not '{}'",
-                who, action.action_path
-            ),
+            "this agent does not have permission for this action",
         )
     }
 }
@@ -599,18 +584,18 @@ fn wall_restricted_rego(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict
     }
     if critical_actions().contains(action.action_path.as_str()) {
         let node = snap.lattice_nodes.get(&action.action_path);
-        let granted = match node {
-            Some(n) => n.agent_may.iter().any(|g| {
+        let listed = match node {
+            Some(n) => n.agent_permission.iter().any(|g| {
                 (g == "*" && action.agent_id.is_empty() == false) || g == &action.agent_id
             }),
             None => false,
         };
-        if granted == false {
+        if listed == false {
             return wall(
                 "rego.restricted",
                 "rego",
                 false,
-                "critical path needs a granted agent",
+                "this agent does not have permission for this action",
             );
         }
     }
@@ -677,7 +662,7 @@ mod tests {
             LatticeNode {
                 action_path: path.to_string(),
                 parents: parents.iter().map(|s| s.to_string()).collect(),
-                agent_may: may.iter().map(|s| s.to_string()).collect(),
+                agent_permission: may.iter().map(|s| s.to_string()).collect(),
                 category: category.into(),
                 wrap: String::new(),
             },
@@ -716,7 +701,7 @@ mod tests {
         let n = LatticeNode {
             action_path: String::from("inventory:ping"),
             parents: Vec::new(),
-            agent_may: vec![String::from("*")],
+            agent_permission: vec![String::from("*")],
             category: String::from("system_event"),
             wrap: String::from("inventory"),
         };
@@ -744,19 +729,19 @@ mod tests {
     }
 
     #[test]
-    fn dual_gap_and_agent_may_both_listed() {
+    fn dual_gap_and_agent_permission_both_listed() {
         let mut snap = base_snap();
         snap.lattice_nodes
             .get_mut("action:write")
             .unwrap()
-            .agent_may = vec!["agent-b".into()];
+            .agent_permission = vec!["agent-b".into()];
         let mut a = act("action:write");
         a.payload = serde_json::json!({"text": "foo, and bar"});
         let r = admit(&a, &snap);
         assert!(!r.allow);
         let names = closed_names(&r);
         assert!(names.contains("gap.writing"), "gap missing: {:?}", names);
-        assert!(names.contains("gap.agent_may"), "agent_may missing: {:?}", names);
+        assert!(names.contains("gap.agent_permission"), "agent_permission missing: {:?}", names);
     }
 
     #[test]
@@ -765,7 +750,7 @@ mod tests {
         snap.lattice_nodes
             .get_mut("action:write")
             .unwrap()
-            .agent_may = vec!["agent-b".into()];
+            .agent_permission = vec!["agent-b".into()];
         let mut a = act("action:write");
         a.payload = serde_json::json!({"text": "foo, or bar"});
         let first = closed_names(&admit(&a, &snap));
@@ -910,13 +895,13 @@ mod tests {
     }
 
     #[test]
-    fn empty_lattice_closes_membership_and_agent_may() {
+    fn empty_lattice_closes_membership_and_agent_permission() {
         let snap = Snapshot::default();
         let r = admit(&act("action:write"), &snap);
         assert_eq!(r.allow, false);
         let names = closed_names(&r);
         assert_eq!(names.contains("dag.membership"), true);
-        assert_eq!(names.contains("gap.agent_may"), true);
+        assert_eq!(names.contains("gap.agent_permission"), true);
     }
 
     #[test]
@@ -962,7 +947,7 @@ mod tests {
     }
 
     #[test]
-    fn env043_system_parent_visible_to_granted_agent() {
+    fn env043_system_parent_visible_to_listed_agent() {
         let snap = base_snap();
         let r = admit(&act("action:write"), &snap);
         assert!(r.allow);
@@ -1087,5 +1072,37 @@ mod tests {
         a.agent_ts_ms = 1_000_051;
         assert_eq!(admit(&a, &snap).allow, false);
         assert_eq!(closed_names(&admit(&a, &snap)).contains("time.authority"), true);
+    }
+    #[test]
+    fn empty_list_refuses_system_event() {
+        let mut snap = base_snap();
+        snap.lattice_nodes.get_mut("root:ping").unwrap().agent_permission.clear();
+        let mut a = act("root:ping");
+        a.agent_id.clear();
+        let r = admit(&a, &snap);
+        assert_eq!(r.allow, false);
+        assert_eq!(closed_names(&r).contains("gap.agent_permission"), true);
+        assert_eq!(r.closed_walls.iter().any(|w| w.id == "gap.agent_permission" && w.reason == "this agent does not have permission for this action"), true);
+    }
+
+    #[test]
+    fn empty_list_refuses_external_event() {
+        let mut snap = base_snap();
+        snap.lattice_nodes.extend([sample_node("webhook:incoming", &[], &[], "external_event")]);
+        let mut a = act("webhook:incoming");
+        a.agent_id.clear();
+        let r = admit(&a, &snap);
+        assert_eq!(r.allow, false);
+        assert_eq!(closed_names(&r).contains("gap.agent_permission"), true);
+    }
+
+    #[test]
+    fn agent_a_write_does_not_give_agent_b_write() {
+        let snap = base_snap();
+        let mut b = act("action:write");
+        b.agent_id = "agent-b".into();
+        let r = admit(&b, &snap);
+        assert_eq!(r.allow, false);
+        assert_eq!(closed_names(&r).contains("gap.agent_permission"), true);
     }
 }

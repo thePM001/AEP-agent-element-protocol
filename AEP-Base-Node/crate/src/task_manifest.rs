@@ -26,7 +26,6 @@ pub enum SynthesizedBy {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskManifestTrust {
     pub tier: String,
-    pub max_trust_score: u16,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -252,7 +251,7 @@ mod tests {
     fn sample_manifest(
         agent_id: &str,
         provisional: bool,
-        max_trust: u16,
+        _max_trust: u16,
         session_id: Option<&str>,
     ) -> TaskManifestV1 {
         TaskManifestV1 {
@@ -263,7 +262,6 @@ mod tests {
             intent: json!({"op": "test"}),
             trust: TaskManifestTrust {
                 tier: "system".into(),
-                max_trust_score: max_trust,
             },
             agentmesh: None,
             provisional,

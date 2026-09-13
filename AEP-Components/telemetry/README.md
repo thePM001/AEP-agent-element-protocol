@@ -6,4 +6,4 @@ OpenTelemetry span and event exporter for AEP.
 - **Path:** `telemetry/`
 - **Manifest:** `AEP-Base-Node/registry/components/telemetry.json`
 
-Re-exported by `typescript-sdk/` for programmatic access. Runtime code lives in `lib/`.
+Runtime code lives in `lib/`.

@@ -183,7 +183,7 @@ pub fn compile_live_walls(
     let node = live.snapshot.lattice_nodes.get(&action_path);
     let category = node.map(|n| n.category.clone()).unwrap_or_default();
     let parents = node.map(|n| n.parents.clone()).unwrap_or_default();
-    let agent_may = node.map(|n| n.agent_may.clone()).unwrap_or_default();
+    let agent_permission = node.map(|n| n.agent_permission.clone()).unwrap_or_default();
     let wrap = node.map(|n| n.wrap.clone()).unwrap_or_default();
     let all_actions: Vec<String> = live.snapshot.lattice_nodes.keys().cloned().collect();
     let satisfied: Vec<String> = live.snapshot.satisfied_actions.iter().cloned().collect();
@@ -231,7 +231,7 @@ pub fn compile_live_walls(
     lattice_in.action_path = action_path;
     lattice_in.category = category;
     lattice_in.agent_id = agent_id;
-    lattice_in.agent_may = agent_may;
+    lattice_in.agent_permission = agent_permission;
     lattice_in.satisfied_actions = satisfied;
     lattice_in.parents_of = parents.clone();
     lattice_in.is_root = parents.is_empty();
@@ -484,7 +484,7 @@ pub fn scan_envelope_admit_one_live_evaluation(src: &str) -> Result<String, Stri
     Ok(String::from("ok one live evaluation"))
 }
 /// Fail if a product Admit wall crate is a workspace member and not on the live dock path.
-pub fn unused_wall_crate_gate(root: &Path) -> Result<String, String> {
+pub fn live_path_wall_gate(root: &Path) -> Result<String, String> {
     let ws = read_text(&root.join("Cargo.toml"));
     if ws.is_empty() {
         return Err(String::from("workspace Cargo.toml missing"));
@@ -578,7 +578,7 @@ pub fn unused_wall_crate_gate(root: &Path) -> Result<String, String> {
 
 pub fn run_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
-    let proof = unused_wall_crate_gate(&root) ?;
+    let proof = live_path_wall_gate(&root) ?;
     let mut line = String::from("aep-admit-live-dock ");
     line.push_str(&proof);
     line.push('\n');
@@ -627,7 +627,7 @@ mod tests {
     use aep_admit::writing_wall_id;
 
     fn yaml() -> &'static str {
-        "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_may: []\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_may: [\"agent-a\"]\n"
+        "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_permission: [\"agent-a\"]\n"
     }
 
     fn must(cond: bool) {
@@ -733,7 +733,7 @@ mod tests {
             "[package]\nname = \"aep-admit-trust-floor\"\nversion = \"0.1.0\"\n",
         )
         .expect("pkg");
-        let err = unused_wall_crate_gate(&tmp).expect_err("deny");
+        let err = live_path_wall_gate(&tmp).expect_err("deny");
         must(err.contains("admit-trust-floor") || err.contains("dropped"));
         let _ = fs::remove_dir_all(&tmp);
     }
@@ -800,7 +800,7 @@ mod tests {
             "use aep_admit_live_dock::live_collect_all;\n",
         )
         .expect("src");
-        let err = unused_wall_crate_gate(&tmp).expect_err("deny");
+        let err = live_path_wall_gate(&tmp).expect_err("deny");
         must(err.contains("not imported on live dock"));
         let _ = fs::remove_dir_all(&tmp);
     }
@@ -808,7 +808,7 @@ mod tests {
     #[test]
     fn live_workspace_unused_wall_gate() {
         let root = walk_to_workspace();
-        match unused_wall_crate_gate(&root) {
+        match live_path_wall_gate(&root) {
             Ok(proof) => must(proof.contains("ok live-path=")),
             Err(e) => {
                 let _ = std::io::stderr().write_all(e.as_bytes());

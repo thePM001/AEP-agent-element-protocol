@@ -1163,7 +1163,7 @@ fn gap_profile_binds(gap: &LoadedGap, input: &PolicySystemCompileInput) -> bool 
     wrap_or_prefix_binds(&gap.wrap, &gap.prefix, &input.wrap, &input.action_path)
 }
 
-/// GAP-285-P15. Rank-presence and who-may from the instruction object.
+/// GAP-285-P15. Leftover rank field and agent permission from the instruction object.
 pub fn compile_instruction_profile_walls(
     source: &str,
     input: &PolicySystemCompileInput,
@@ -1179,7 +1179,7 @@ pub fn compile_instruction_profile_walls(
         return walls;
     }
     let mut rank = empty_profile_wall();
-    aep_gap_schema_profile_v13::compile_trust_ring_rank_wall(&doc, &mut rank);
+    aep_gap_schema_profile_v13::compile_leftover_rank_field_wall(&doc, &mut rank);
     if let Some(w) = closed_profile_wall(&rank) {
         walls.push(w);
     }
@@ -1190,7 +1190,7 @@ pub fn compile_instruction_profile_walls(
         action_path: input.action_path.clone(),
     };
     let mut may = empty_profile_wall();
-    aep_gap_schema_profile_v13::compile_agent_may_profile_wall(&doc, &req, &mut may);
+    aep_gap_schema_profile_v13::compile_agent_permission_profile_wall(&doc, &req, &mut may);
     if let Some(w) = closed_profile_wall(&may) {
         walls.push(w);
     }
@@ -1200,8 +1200,8 @@ pub fn compile_instruction_profile_walls(
 pub fn scan_policy_loader_compiles_profile(src: &str) -> Result<String, String> {
     for needle in [
         "compile_instruction_profile_walls",
-        "compile_trust_ring_rank_wall",
-        "compile_agent_may_profile_wall",
+        "compile_leftover_rank_field_wall",
+        "compile_agent_permission_profile_wall",
         "aep_gap_schema_profile_v13",
     ] {
         if src.contains(needle) == false {
@@ -1210,7 +1210,7 @@ pub fn scan_policy_loader_compiles_profile(src: &str) -> Result<String, String> 
             return Err(msg);
         }
     }
-    Ok(String::from("ok policy loader compiles rank-presence and who-may"))
+    Ok(String::from("ok policy loader compiles leftover rank field and agent permission"))
 }
 
 pub fn scan_workspace_includes_gap_profile(src: &str) -> Result<String, String> {

@@ -79,7 +79,7 @@ at arrival time.
 | payload | object | yes | Carries the event data. Structure is action-specific |
 | bridge_timestamp | number | yes | Authoritative time of arrival set by the bridge at ingest time |
 | agent_id | string | no | Identifies the originating agent. Null for external events and system events |
-| trust_tier | number | no | Conveys the agent current authorization level. Set by the bridge. Range 1-5 |
+| trust_tier | number | no | Client claim. Refused. Never a floor. Set by the bridge. Range 1-5 |
 
 **Example Payload:**
 
@@ -1769,7 +1769,7 @@ Manager). Consumed by Agent SDKs and the Perception Governance Engine.
 
 ## Appendix B: SDK Type Aliases
 
-The TypeScript SDK defines the following type aliases for perception
+The in-tree TypeScript lattice defines the following type aliases for perception
 events. These are accepted as equivalent to the specification type
 names.
 

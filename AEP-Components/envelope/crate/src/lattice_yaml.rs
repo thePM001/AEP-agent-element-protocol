@@ -49,7 +49,7 @@ struct YamlNode {
     #[serde(default)]
     children: Vec<String>,
     #[serde(default)]
-    agent_may: Vec<String>,
+    agent_permission: Vec<String>,
     #[serde(default)]
     wrap: String,
 }
@@ -106,7 +106,7 @@ pub fn load_lattice_yaml(text: &str) -> Result<HashMap<String, LatticeNode>, Env
             LatticeNode {
                 action_path: id,
                 parents: n.parents,
-                agent_may: n.agent_may,
+                agent_permission: n.agent_permission,
                 category: n.category,
                 wrap: n.wrap,
             },
@@ -231,18 +231,18 @@ mod tests {
 
     #[test]
     fn loads_colon_keys() {
-        let yaml = "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_may: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_may: [\"agent-a\"]\n";
+        let yaml = "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_permission: [\"agent-a\"]\n";
         let nodes = load_lattice_yaml(yaml).expect("load");
         must(nodes.contains_key("root:ping"));
         must(nodes.contains_key("action:write"));
         must(nodes.get("action:write").unwrap().parents[0] == "root:ping");
-        must(nodes.get("action:write").unwrap().agent_may == vec![String::from("agent-a")]);
+        must(nodes.get("action:write").unwrap().agent_permission == vec![String::from("agent-a")]);
         must(nodes.get("action:write").unwrap().wrap.is_empty());
     }
 
     #[test]
     fn loads_wrap_on_lattice_node() {
-        let yaml = "actions:\n  inventory:ping:\n    category: system_event\n    wrap: inventory\n    parents: []\n    children: []\n    agent_may: [\"*\"]\n  finance:pay:\n    category: agent_action\n    wrap: finance\n    parents: [\"inventory:ping\"]\n    children: []\n    agent_may: [\"agent-a\"]\n";
+        let yaml = "actions:\n  inventory:ping:\n    category: system_event\n    wrap: inventory\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n  finance:pay:\n    category: agent_action\n    wrap: finance\n    parents: [\"inventory:ping\"]\n    children: []\n    agent_permission: [\"agent-a\"]\n";
         let nodes = load_lattice_yaml(yaml).expect("load");
         must(nodes.get("inventory:ping").unwrap().wrap == "inventory");
         must(nodes.get("finance:pay").unwrap().wrap == "finance");

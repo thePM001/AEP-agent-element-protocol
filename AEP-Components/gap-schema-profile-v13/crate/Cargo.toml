@@ -4,7 +4,7 @@
 name = "aep-gap-schema-profile-v13"
 version = "0.1.0"
 edition = "2021"
-description = "GAP-285-P1 GAP-285-P15. Classic GAP v1.3 live Admit profile. Workspace member. Kernel collect-all compiles rank-presence and who-may from the instruction object."
+description = "GAP-285-P1 GAP-285-P15. Classic GAP v1.3 live Admit profile. Workspace member. Kernel collect-all compiles rank-presence leftover closer and agent permission from the instruction object."
 license = "UNLICENSED"
 publish = false
 

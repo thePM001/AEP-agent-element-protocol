@@ -43,7 +43,7 @@ export function admit(action, snap) {
 
   if (!Object.keys(nodes).length) {
     walls.push(W("dag.membership", "dag", false, "empty lattice closes membership"));
-    walls.push(W("gap.agent_may", "gap", false, "empty lattice closes agent_may"));
+    walls.push(W("gap.agent_permission", "gap", false, "empty lattice closes agent_permission"));
   } else if (nodes[action.action_path]) {
     walls.push(W("dag.membership", "dag", true, "node exists"));
   } else {
@@ -62,10 +62,21 @@ export function admit(action, snap) {
     }
   }
 
-  const floor = node ? node.trust_floor || 1 : 1;
-  const tier = action.agent_id ? Math.max(action.trust_tier || 1, 1) : 1;
-  if (tier >= floor) walls.push(W("trust.floor", "trust", true, "tier meets floor"));
-  else walls.push(W("trust.floor", "trust", false, "tier " + tier + " below floor " + floor));
+  if (!Object.keys(nodes).length) {
+    walls.push(W("gap.agent_permission", "gap", false, "empty lattice closes agent_permission"));
+  } else if (!node) {
+    walls.push(W("gap.agent_permission", "gap", true, "membership wall covers miss"));
+  } else if (!(node.agent_permission || []).length) {
+    walls.push(W("gap.agent_permission", "gap", false, "this agent does not have permission for this action"));
+  } else {
+    const listed = (node.agent_permission || []).some((item) => {
+      if (item === "*") return !!action.agent_id;
+      if (item === "unbound") return !action.agent_id;
+      return item === action.agent_id;
+    });
+    if (listed) walls.push(W("gap.agent_permission", "gap", true, "agent permission listed"));
+    else walls.push(W("gap.agent_permission", "gap", false, "this agent does not have permission for this action"));
+  }
 
   if (s.gap_scan_payload === false) {
     walls.push(W("gap.writing", "gap", true, "gap scan off"));
@@ -142,8 +153,8 @@ export function admit(action, snap) {
     walls.push(W("rego.restricted", "rego", true, "no lattice"));
   } else if (!nodes[action.action_path]) {
     walls.push(W("rego.restricted", "rego", false, "path not in lattice"));
-  } else if (CRITICAL.has(action.action_path) && (action.trust_tier || 0) < 5) {
-    walls.push(W("rego.restricted", "rego", false, "critical path needs tier 5"));
+  } else if (CRITICAL.has(action.action_path) && !((nodes[action.action_path].agent_permission || []).some((item) => (item === "*" && action.agent_id) || item === action.agent_id))) {
+    walls.push(W("rego.restricted", "rego", false, "this agent does not have permission for this action"));
   } else if ((s.event_rate || 0) >= (s.event_rate_max ?? 200)) {
     walls.push(W("rego.restricted", "rego", false, "event rate closed"));
   } else {
@@ -190,11 +201,10 @@ export function admit(action, snap) {
 
 export function planApply(result, snap) {
   if (result.allow) {
-    return { increment_rate: true, penalize_trust: false, ledger_allow: true };
+    return { increment_rate: true, ledger_allow: true };
   }
   return {
     increment_rate: false,
-    penalize_trust: !!(snap && snap.deny_penalize_trust),
     ledger_allow: false,
   };
 }
@@ -203,8 +213,5 @@ export function applySnapshot(snap, plan) {
   if (plan.increment_rate) {
     snap.actions_last_minute = (snap.actions_last_minute || 0) + 1;
     snap.event_rate = (snap.event_rate || 0) + 1;
-  }
-  if (plan.penalize_trust) {
-    snap.trust_score = Math.max(0, (snap.trust_score || 0) - 10);
   }
 }

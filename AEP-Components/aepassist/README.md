@@ -6,4 +6,4 @@ Interactive assistant, presets and slash-command generators.
 - **Path:** `aepassist/`
 - **Manifest:** `AEP-Base-Node/registry/components/aepassist.json`
 
-Re-exported by `typescript-sdk/` for programmatic access. Runtime code lives in `lib/`.
+Runtime code lives in `lib/`.

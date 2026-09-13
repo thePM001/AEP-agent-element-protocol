@@ -1,13 +1,12 @@
 {
   "manifest_version": "1",
   "id": "eval",
-  "version": "2.8.0",
+  "version": "2.8.5",
   "kind": "library",
   "path": "AEP-Components/eval/",
   "description": "Eval runner, rule generator, and ML metrics.",
   "requires": [
-    "datasets",
-    "aep-typescript-sdk"
+    "datasets"
   ],
   "capabilities": [
     "eval:run",
@@ -32,5 +31,6 @@
   },
   "implementation": {
     "module": "AEP-Components/eval/lib/runner.ts"
-  }
+  },
+  "role": "companion"
 }

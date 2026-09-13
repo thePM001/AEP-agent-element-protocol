@@ -163,8 +163,8 @@ export function materializeCawRuntimeFromGap(dataDir, repoRoot) {
   const cawRoot = join(dataDir, "caw-framework");
   const configPath = join(cawRoot, "server-config.yaml");
   const policiesDir = join(cawRoot, "policies");
-  const bundledConfig = join(root, "AEP-Components/caw-framework/configs/server-config.yaml");
-  const bundledPolicies = join(root, "AEP-Components/caw-framework/configs/policies");
+  const bundledConfig = join(root, "AEP-CAW/configs/server-config.yaml");
+  const bundledPolicies = join(root, "AEP-CAW/configs/policies");
 
   mkdirSync(cawRoot, { recursive: true });
   mkdirSync(policiesDir, { recursive: true });

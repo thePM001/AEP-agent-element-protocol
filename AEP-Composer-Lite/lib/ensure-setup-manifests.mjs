@@ -8,7 +8,7 @@ import {
 } from "../../AEP-Components/coding-governance/lib/task-manifest.mjs";
 import { ensureCcaTaskManifest } from "./ensure-cca-task-manifest.mjs";
 import { bindAgentMeshToManifest } from "./agent-sign-keys.mjs";
-import { flushManifestRegistry } from "../../AEP-Components/cca/lib/setup/reload.mjs";
+import { flushManifestRegistry } from "../../AEP-CCA-Central-Setup-Agent/lib/setup/reload.mjs";
 
 const BASE_NODE_MANIFEST = {
   manifest_version: "1",

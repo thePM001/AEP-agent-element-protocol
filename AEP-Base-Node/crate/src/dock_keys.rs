@@ -215,7 +215,7 @@ pub fn try_load_or_create_dock_kem(data_dir: &Path) -> Result<KemKeypair, BaseNo
         if !perms_ok {
             tracing::error!(
                 path = %path.display(),
-                "dock-kem.json permissions too open; attempting load without silent regen"
+                "dock-kem.json world/group-readable; refusing load"
             );
         }
         if let Ok(raw) = fs::read_to_string(&path) {

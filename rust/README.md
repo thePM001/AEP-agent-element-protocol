@@ -1,32 +1,20 @@
-# AEP 2.8 Rust workspace
+# AEP 2.8.5 Rust workspace
 
-The AEP 2.8 Rust workspace root is the **repository** `Cargo.toml`. Component crates live in their own folders (`AEP-Base-Node/crate`, `AEP-Components/*/crate`, etc.).
+This is the Rust workspace note. It is not the product front page. The workspace root is Cargo.toml at the tree root. Component crates live under AEP-Base-Node/crate and AEP-Components.
 
-Build output is directed here via `.cargo/config.toml`:
+Build output is directed here via .cargo/config.toml:
 
-```
-rust/target/release/aep-base-node
-rust/target/release/aep-lattice-log
-rust/target/release/aep-memory
-rust/target/release/aep-wasm-sandbox
-rust/target/release/aep-conformance
-rust/target/release/aep-ucb
-rust/target/release/aep-subprotocol
-```
+    rust/target/release/aep-base-node
+    rust/target/release/aep-lattice-log
+    rust/target/release/aep-memory
+    rust/target/release/aep-wasm-sandbox
+    rust/target/release/aep-conformance
+    rust/target/release/aep-ucb
 
-## Subprotocol crates (`internal-sdk/AEP-Subprotocols/`)
+From the repository root:
 
-See [internal-sdk/AEP-Subprotocols/README.md](../internal-sdk/AEP-Subprotocols/README.md) and [AEP-User-Experience/docs/SUBPROTOCOLS.md](../AEP-User-Experience/docs/SUBPROTOCOLS.md).
+    cargo test --workspace
+    cargo build --release -p aep-base-node -p aep-lattice-memory -p aep-wasm-sandbox -p aep-ucb
+    ./rust/target/release/aep-base-node --self-test
 
-The `aep-subprotocol` binary is the unified CLI for all domain subprotocol validators.
-
-## Build
-
-```bash
-# from repository root
-cargo test --workspace
-cargo build --release -p aep-base-node -p aep-lattice-memory -p aep-wasm-sandbox -p aep-ucb -p aep-subprotocol
-./rust/target/release/aep-base-node --self-test
-```
-
-See each component README for crate-specific docs: `AEP-Base-Node/`, `lattice-channel/`, `lattice-crypto/`, `lattice-memory/`, `agentmesh/`, `potomitan/`, `wasm/`, `conformance/`, `ucb/`.
+See each component README for crate-specific docs under AEP-Base-Node, lattice-channels, lattice-crypto, lattice-memory, agentmesh, potomitan, wasm, conformance and ucb.

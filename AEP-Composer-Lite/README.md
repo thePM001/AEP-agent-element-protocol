@@ -13,7 +13,7 @@
 
 ## CAW sandboxes (execution layer)
 
-Composer Lite is the planning and canvas surface. **Host enforcement** for coding agents is **CAW** (`AEP-Components/caw-framework/`, binary `aep-caw`):
+Composer Lite is the planning and canvas surface. **Host enforcement** for coding agents is **CAW** (`AEP-CAW/`, binary `aep-caw`):
 
 | Piece | Role |
 |-------|------|
@@ -22,7 +22,7 @@ Composer Lite is the planning and canvas surface. **Host enforcement** for codin
 | Runtime | `aep-caw session create`, `aep-caw wrap`, `aep-caw exec` |
 | CCA | Deployment plans auto-enable `caw-framework`; see root README [GAP-centric policies and CAW sandboxes](../README.md#gap-centric-policies-and-caw-sandboxes) |
 
-**Operator rule:** agents with shell access must run via `aep-caw exec`, not raw bash. Full operator guide: [`AEP-Components/caw-framework/README.md`](../AEP-Components/caw-framework/README.md).
+**Operator rule:** agents with shell access must run via `aep-caw exec`, not raw bash. Full operator guide: [`AEP-CAW/README.md`](../AEP-CAW/README.md).
 
 ## Service
 

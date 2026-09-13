@@ -404,7 +404,7 @@ flowchart LR
 |-------|------------|----------------|
 | **Kernel** | Mandatory local governance daemon | [`AEP-Base-Node/`](AEP-Base-Node/) |
 | **Protocol** | Runtime protocol components (dynAEP, lattice-channels, graph-engine). Not CAW | [`AEP-Components/`](AEP-Components/) |
-| **Execution companion** | CAW host sandboxes. Not a protocol component | [`AEP-Components/caw-framework/`](AEP-Components/caw-framework/) |
+| **Execution companion** | CAW host sandboxes. Not a protocol component | [`AEP-CAW/`](AEP-CAW/) |
 
 The library is counted by this layer table. Folder count is not the library count.
 
@@ -418,7 +418,7 @@ The library is counted by this layer table. Folder count is not the library coun
 | Connectors | Application connectors | [`internal-sdk/AEP-Connectors/`](internal-sdk/AEP-Connectors/) |
 | Coding governance | Propose a change then lock it | [`AEP-Components/coding-governance/`](AEP-Components/coding-governance/) |
 | HCSE parser | aep-hcse parser MCP | [`AEP-Components/hcse/`](AEP-Components/hcse/) |
-| CCA agent | Central Setup Agent | [`AEP-Components/cca/`](AEP-Components/cca/) |
+| CCA agent | Central Setup Agent | [`AEP-CCA-Central-Setup-Agent/`](AEP-CCA-Central-Setup-Agent/) |
 | Operators | Agent Composer Lite and harness | [`AEP-Composer-Lite/`](AEP-Composer-Lite/) |
 | Policy | GAP nodes and subprotocol validators | [`AEP-Policy-System/`](AEP-Policy-System/) |
 | Multi-base-node (2.8b) | Federate multiple Base Node kernels | [`AEP-Base-Node/multi-base-node/`](AEP-Base-Node/multi-base-node/) |
@@ -472,7 +472,7 @@ Coding governance proposes a change, measures how far that change reaches and on
 |-----------|------|
 | [`AEP-Base-Node/`](AEP-Base-Node/) | Kernel: daemon, registry, POTOMITAN, agent-control-extreme |
 | [`AEP-Components/`](AEP-Components/) | Protocol components (dynAEP, lattice-channels, graph-engine, aep-comm, economics, scanners, fleet) |
-| [`AEP-Components/caw-framework/`](AEP-Components/caw-framework/) | Execution companion: CAW host sandboxes. Not a protocol component |
+| [`AEP-CAW/`](AEP-CAW/) | Execution companion: CAW host sandboxes. Not a protocol component |
 | [`AEP-Composer-Lite/`](AEP-Composer-Lite/) | Agent Composer (Composer Lite): WASM visual canvas on port: 8424 |
 | [`AEP-User-Experience/`](AEP-User-Experience/) | Harness, operator scripts, AEP-main-skill |
 | [`internal-sdk/AEP-Connectors/`](internal-sdk/AEP-Connectors/) | Application connectors (Slack, Jira, AWS, …) |
@@ -577,13 +577,13 @@ A builder who wants a different wait rebuilds Base Node with a different compile
 | **POTOMITAN** | `AEP-Base-Node/potomitan/` | Mesh fallback when normal internet is unavailable |
 | **dynAEP 1.0** | `AEP-Components/dynAEP/` | Hyperlattice runtime: `action_path` filter, temporal authority, bridge (merged from standalone repo) |
 | **Installation Wizard** | `AEP-Components/wizard/install-wizard.mjs` + **visual UI** at `/install` on Composer Lite | Phase 1 Base Node installer (CLI + web wizard) |
-| **Setup Agent** | `AEP-Components/cca/setup-agent.mjs` | Post-install activation and inference config |
+| **Setup Agent** | `AEP-CCA-Central-Setup-Agent/setup-agent.mjs` | Post-install activation and inference config |
 | **Agent Composer (Composer Lite)** | `AEP-Composer-Lite/` | Experimental WASM composer canvas (`:8424`) for operator extension |
 | **Component registry** | `AEP-Base-Node/registry/` | Offline catalog + optional extension merge |
 | **Conformance runner** | `AEP-Components/conformance/` | CC-01..CC-15 public tier compliance battery |
-| **WASM sandbox** | `AEP-Components/wasm/crate/` | Policy eval via lattice socket (no HTTP bypass) |
+| **WASM sandbox** | `AEP-Composer-Lite/wasm-sandbox/crate/` | Policy eval via lattice socket (no HTTP bypass) |
 | **UCB (optional)** | `AEP-Docks/ucb/` | Universal Connect Bridge for **foreign** stacks only (`:8412`). Native AEP skips UCB. Set `UCB=0` to disable. |
-| **CAW framework** | `AEP-Components/caw-framework/` | Execution-layer sandbox (`aep-caw`); profiles authored in GAP, compiled locally |
+| **CAW framework** | `AEP-CAW/` | Execution-layer sandbox (`aep-caw`); profiles authored in GAP, compiled locally |
 | **GAP language** | `AEP-Components/gap/` | Governed Agentic Programming: policies, sandbox profiles, manifest/plan templates |
 
 ---
@@ -624,7 +624,7 @@ The tables below name working protocol parts a builder can attach. They are comp
 | Fleet governance (limits, cost caps, drift) | `AEP-Components/fleet/` |
 | Multi-agent collaboration (supervisor, debate, delegation) | `AEP-Components/fleet/lib/collaboration/` |
 | Model gateway (governed LLM calls, streaming abort) | `AEP-Components/model-gateway/` |
-| CAW execution sandboxes (shell, file, network, LLM proxy) | `AEP-Components/caw-framework/` |
+| CAW execution sandboxes (shell, file, network, LLM proxy) | `AEP-CAW/` |
 | Recovery engine (soft violation retry) | `AEP-Components/recovery/` |
 | Interactive assistant | `AEP-Components/aepassist/` |
 
@@ -1012,7 +1012,7 @@ Manifest: `AEP-Components/conformance/tests/manifest.json` (CC-01 through CC-15)
 ## GAP-centric policies and CAW sandboxes
 
 
-AEP 2.8 treats **GAP** (Governed Agentic Programming) as the single authoring language for policies and agent payloads. **CAW** (`aep-caw`, `AEP-Components/caw-framework/`) is the execution-layer sandbox that enforces those policies on the host (file rules, command shims, seccomp, LLM proxy, lattice audit). You do not maintain parallel YAML policy stacks: you author in GAP, compile locally, and CAW runs the result.
+AEP 2.8 treats **GAP** (Governed Agentic Programming) as the single authoring language for policies and agent payloads. **CAW** (`aep-caw`, `AEP-CAW/`) is the execution-layer sandbox that enforces those policies on the host (file rules, command shims, seccomp, LLM proxy, lattice audit). You do not maintain parallel YAML policy stacks: you author in GAP, compile locally, and CAW runs the result.
 
 ### How GAP and CAW relate
 
@@ -1122,7 +1122,7 @@ GAP template authority: `AEP-Components/gap/policies/reference/task-manifest-v1.
 | Doc | Topic |
 |-----|-------|
 | [`AEP-Base-Node/README.md`](AEP-Base-Node/README.md) | Base Node operator guide |
-| [`AEP-Components/caw-framework/README.md`](AEP-Components/caw-framework/README.md) | **CAW execution sandboxes** (`aep-caw`, shell shim, policy engine, CCA integration) |
+| [`AEP-CAW/README.md`](AEP-CAW/README.md) | **CAW execution sandboxes** (`aep-caw`, shell shim, policy engine, CCA integration) |
 | [`AEP-Components/gap/README.md`](AEP-Components/gap/README.md) | GAP language, compile pipeline, CAW profile authoring |
 | [`AEP-Base-Node/agent-control-extreme/README.md`](AEP-Base-Node/agent-control-extreme/README.md) | GAP capability profiles and CAW sandbox routing on Base Node |
 | [`AEP-Components/dynAEP/README.md`](AEP-Components/dynAEP/README.md) | dynAEP 1.0 hyperlattice runtime protocol |

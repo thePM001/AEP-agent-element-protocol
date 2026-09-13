@@ -24,7 +24,7 @@ done
 
 cat > "$DATA/base-node.json" <<EOF
 {
-  "version": "2.8.0",
+  "version": "2.8.5",
   "base_node": {
     "socket_base": "$SOCK",
     "lattice_db": "$DATA/action-lattice.db",
@@ -70,7 +70,7 @@ curl -sf --max-time 2 "http://127.0.0.1:${UCB_PORT}/health" | grep -q "ucb-unive
 }
 
 CAPS="$(curl -sf --max-time 5 "http://127.0.0.1:${UCB_PORT}/ucb/v1/capabilities")"
-echo "$CAPS" | grep -q '"bridge"[[:space:]]*:[[:space:]]*"ucb/2.8.0"' || { echo "FAIL: capabilities"; exit 1; }
+echo "$CAPS" | grep -q '"bridge"[[:space:]]*:[[:space:]]*"ucb/2.8.5"' || { echo "FAIL: capabilities"; exit 1; }
 echo "$CAPS" | grep -q '"implementation"[[:space:]]*:[[:space:]]*"rust"' || { echo "FAIL: expected rust implementation"; exit 1; }
 
 INGEST_CODE="$(curl -s --max-time 15 -o /tmp/ucb-ingest.json -w "%{http_code}" \

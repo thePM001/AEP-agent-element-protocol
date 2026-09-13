@@ -210,17 +210,6 @@ mod tests {
         assert_eq!(r.predicate, Some("P_P"));
     }
 
-    #[test]
-    fn paper005_named_stays_off() {
-        let body = ForeignIngestBody {
-            provenance: Some(Provenance::bound("langgraph", "1.0", "sess-1")),
-            payload: serde_json::json!({"subject": "x", "predicate": "y", "object": "z"}),
-            ..Default::default()
-        };
-        let r = validate_foreign_ingest_with_profile(&body, &[], PredicateProfile::Paper005Vsa);
-        assert!(!r.ok);
-        assert_eq!(r.predicate, Some("profile"));
-    }
 
     #[test]
     fn trust_fields_on_body_are_detected() {

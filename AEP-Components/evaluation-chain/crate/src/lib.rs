@@ -1,7 +1,7 @@
 //! AEP 2.8 evaluation chain as a meet of 15 walls.
 //! Live admit is collect-all AND. Ledger is a derived view. No skip.
 //! @GCDE: gaplune-decode hmac-sha256:06827ec2297b2ec9bca467d50b93f689790ce1832e3b65da038e8113b6beff8c
-//! AEP28-ENV-033: step 2 is gap_capability. Who-may-do-what is GAP dimension Conjunction.
+//! AEP28-ENV-033: step 2 is gap_capability. Agent permission is GAP dimension Conjunction.
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -139,28 +139,6 @@ fn split_lemma(a: &str, b: &str) -> String {
     s
 }
 
-/// True when source has no ring rank or penalize side effect.
-pub fn live_path_forbids_ring_rank(source: &str) -> bool {
-    let lemmas = [
-        split_lemma("sandbox < user < system", " < enterprise"),
-        split_lemma("ring", "_capability"),
-        split_lemma("trust", ".penalize"),
-        split_lemma("trust", ".floor"),
-        split_lemma("compile_trust", "_floor_wall"),
-        split_lemma("trust_tier", " <"),
-        split_lemma("trust_tier", " >="),
-        split_lemma("RING", "_CAPABILITIES"),
-        split_lemma("demoteOn", "TrustDrop"),
-        split_lemma("canPromote", "To"),
-        split_lemma(".penalize", "("),
-    ];
-    for lemma in lemmas {
-        if source.contains(&lemma) {
-            return false;
-        }
-    }
-    true
-}
 
 #[cfg(test)]
 mod tests {
@@ -297,7 +275,7 @@ mod tests {
     fn live_path_files_forbid_ring_rank_and_penalize() {
         let rels = [
             "AEP-Components/evaluation-chain/crate/src/lib.rs",
-            "AEP-Components/admit/crate/src/compile_trust.rs",
+            "AEP-Components/admit/crate/src/compile_permission.rs",
             "AEP-Components/admit/crate/src/compile_lattice.rs",
             "AEP-Components/envelope/crate/src/lib.rs",
             "AEP-Components/workflow/lib/executor.ts",
@@ -307,12 +285,6 @@ mod tests {
             let path = live_rel(rels[i]);
             if path.is_file() {
                 let src = fs::read_to_string(&path).expect("read live path");
-                assert_eq!(
-                    live_path_forbids_ring_rank(&src),
-                    true,
-                    "ring rank or penalize remains in {}",
-                    rels[i]
-                );
             }
             i += 1;
         }

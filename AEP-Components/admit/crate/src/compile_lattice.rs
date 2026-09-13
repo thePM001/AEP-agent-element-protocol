@@ -1,9 +1,11 @@
+// @PAD: gaplune-creation-pad emit ( zero-LLM )
+// @GCDE: gaplune-decode hmac-sha256:cd31580fdc8a4eb41bc9a8890eee65b76510f26c9387358adf4e98ff2ccdb7d4
 // HVVCAS: compile_lattice_walls domain:policy type:library
 // Compile lattice-policy.rego deny_lattice into Admit walls.
 // Live action_path uses these walls. OPA evaluate is lab only.
-// AEP28-ENV-033: who-may-do-what is GAP dimension Conjunction. No trust rank.
+// AEP28-ENV-033: agent permission is GAP dimension Conjunction. No rank.
 
-use super::compile_trust::{agent_is_granted, AgentMayGrant};
+use super::compile_permission::{agent_has_permission, AgentPermission};
 use super::AdmitWall;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -13,7 +15,7 @@ pub struct LatticeCompileInput {
     pub action_path: String,
     pub category: String,
     pub agent_id: String,
-    pub agent_may: Vec<String>,
+    pub agent_permission: Vec<String>,
     pub satisfied_actions: Vec<String>,
     pub parents_of: Vec<String>,
     pub is_root: bool,
@@ -185,10 +187,10 @@ fn close_wall(id: &str, reason: String, out: &mut CompiledPolicy) {
     out.walls.push(AdmitWall::close(id, reason));
 }
 
-fn grants_from_allowed(allowed: &[String]) -> Vec<AgentMayGrant> {
+fn permissions_from_allowed(allowed: &[String]) -> Vec<AgentPermission> {
     allowed
         .iter()
-        .map(|a| AgentMayGrant {
+        .map(|a| AgentPermission {
             agent_id: a.clone(),
             action: String::from("*"),
         })
@@ -206,21 +208,13 @@ pub fn compile_lattice_policy(input: &LatticeCompileInput, sets: &PolicySets) ->
         close_wall("lattice.unknown_path", reason, &mut out);
     }
 
-    let systemish = input.category == "external_event" || input.category == "system_event";
-    if input.agent_may.is_empty() == false || systemish == false {
-        let grants = grants_from_allowed(&input.agent_may);
-        if agent_is_granted(&input.agent_id, &input.action_path, &grants) == false {
-            let mut reason = String::from("GAP dimension agent_may closed: agent '");
-            if input.agent_id.is_empty() {
-                reason.push_str("unbound");
-            } else {
-                reason.push_str(&input.agent_id);
-            }
-            reason.push_str("' may not '");
-            reason.push_str(&input.action_path);
-            reason.push('\'');
-            close_wall("lattice.agent_may", reason, &mut out);
-        }
+    let records = permissions_from_allowed(&input.agent_permission);
+    if agent_has_permission(&input.agent_id, &input.action_path, &records) == false {
+        close_wall(
+            "lattice.agent_permission",
+            String::from("this agent does not have permission for this action"),
+            &mut out,
+        );
     }
 
     if input.is_root == false && input.parents_of.is_empty() == false {
@@ -317,7 +311,7 @@ pub fn prove_rego_source(rego: &str) -> Result<String, String> {
         "Partial-order violation",
         "Rate limit exceeded",
         "Cross-modality ceiling",
-        "agent_may",
+        "agent_permission",
     ];
     let mut missing = Vec::new();
     for n in needles {
@@ -416,50 +410,81 @@ mod tests {
     }
 
     #[test]
-    fn agent_may_denied_closes() -> Result<(), String> {
+    fn agent_permission_denied_closes() -> Result<(), String> {
         let mut input = LatticeCompileInput::default();
         input.action_path = String::from("webhook:incoming");
         input.category = String::from("agent_action");
         input.agent_id = String::from("agent-b");
-        input.agent_may.push(String::from("agent-a"));
+        input.agent_permission.push(String::from("agent-a"));
         input.all_actions.push(String::from("webhook:incoming"));
         input.is_root = true;
         let compiled = compile_lattice_policy(&input, &sample_sets());
         if compiled
             .walls
             .iter()
-            .any(|w| w.closed && w.id == "lattice.agent_may")
+            .any(|w| w.closed && w.id == "lattice.agent_permission")
             == false
         {
-            return Err(String::from("expected closed lattice.agent_may wall"));
+            return Err(String::from("expected closed lattice.agent_permission wall"));
         }
         if compiled
             .deny
             .iter()
-            .any(|d| d.contains("may not"))
+            .any(|d| d == "this agent does not have permission for this action")
             == false
         {
-            return Err(String::from("expected GAP dimension deny"));
+            return Err(String::from("expected agent permission deny"));
         }
         Ok(())
     }
 
     #[test]
-    fn granted_agent_does_not_close_agent_may() -> Result<(), String> {
+    fn listed_agent_does_not_close_agent_permission() -> Result<(), String> {
         let mut input = LatticeCompileInput::default();
         input.action_path = String::from("webhook:incoming");
         input.category = String::from("agent_action");
         input.agent_id = String::from("agent-a");
-        input.agent_may.push(String::from("agent-a"));
+        input.agent_permission.push(String::from("agent-a"));
         input.all_actions.push(String::from("webhook:incoming"));
         input.is_root = true;
         let compiled = compile_lattice_policy(&input, &sample_sets());
         if compiled
             .walls
             .iter()
-            .any(|w| w.closed && w.id == "lattice.agent_may")
+            .any(|w| w.closed && w.id == "lattice.agent_permission")
         {
-            return Err(String::from("granted agent must not close agent_may"));
+            return Err(String::from("listed agent must not close agent_permission"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn empty_list_refuses_system_event() -> Result<(), String> {
+        let mut input = LatticeCompileInput::default();
+        input.action_path = String::from("root:ping");
+        input.category = String::from("system_event");
+        input.all_actions.push(String::from("root:ping"));
+        input.is_root = true;
+        let compiled = compile_lattice_policy(&input, &sample_sets());
+        if compiled.walls.iter().any(|w| w.closed && w.id == "lattice.agent_permission") == false {
+            return Err(String::from("empty list must close lattice.agent_permission for system_event"));
+        }
+        if compiled.deny.iter().any(|d| d == "this agent does not have permission for this action") == false {
+            return Err(String::from("expected exact deny text"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn empty_list_refuses_external_event() -> Result<(), String> {
+        let mut input = LatticeCompileInput::default();
+        input.action_path = String::from("webhook:incoming");
+        input.category = String::from("external_event");
+        input.all_actions.push(String::from("webhook:incoming"));
+        input.is_root = true;
+        let compiled = compile_lattice_policy(&input, &sample_sets());
+        if compiled.walls.iter().any(|w| w.closed && w.id == "lattice.agent_permission") == false {
+            return Err(String::from("empty list must close lattice.agent_permission for external_event"));
         }
         Ok(())
     }

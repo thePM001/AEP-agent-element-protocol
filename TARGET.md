@@ -20,4 +20,4 @@ GPU is no because Admit does not use a GPU.
 
 ## RSS and latency
 
-RSS floor for Base Node plus UCB is 256 MiB and RSS ceiling is 512 MiB, while dock collect latency after the compiled 1000 ms pulse is 50 ms p99 ceiling and hot path p99 is 1 ms ceiling. Above-floor design is a defect.
+The memory and latency floors and ceilings are internal design targets. They live in the internal target file under internal-export-area, because the public tree does not carry a measurement harness. A design that needs more than the floor stays a defect of the design. The public conformance suite in CI is the gate that has to pass before any release claim.

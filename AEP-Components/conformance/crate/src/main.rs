@@ -4,7 +4,7 @@
 
 use aep_agentmesh::{create_bundle, rotate_on_trust_change};
 use aep_base_node::{open_lattice_db, process_request, DockingRuntime};
-use aep_lattice_channel::{build_frame, open_frame, ContractRegistry, DockingPort};
+use aep_lattice_channel::{build_frame, build_frame_for_dock, open_frame, ContractRegistry, DockingPort};
 use aep_lattice_crypto::{generate_kem_keypair, generate_sign_keypair, open, seal};
 use aep_potomitan::{detect_network_mode, MemoryFabric, MeshMode, MeshPeer, MeshSupervisor};
 use serde::Serialize;
@@ -121,6 +121,97 @@ fn conformance_frame(
         sent_at,
     )
     .map_err(|e| e.to_string())
+}
+
+
+/// Build a frame sealed to the dock recipient key and signed by the agent key.
+/// A fresh exchange key would not open, so the dock key comes from the runtime.
+#[allow(clippy::too_many_arguments)]
+fn conformance_frame_for_dock(
+    channel_id: &str,
+    agent_id: &str,
+    port: DockingPort,
+    contract_id: &str,
+    payload: &[u8],
+    sent_at: u64,
+    dock_kem_public: &[u8],
+    sign: &aep_lattice_crypto::SignKeypair,
+) -> Result<aep_lattice_channel::LatticeChannelFrame, String> {
+    build_frame_for_dock(
+        channel_id,
+        agent_id,
+        "sess-conformance",
+        port,
+        contract_id,
+        payload,
+        dock_kem_public,
+        sign,
+        sent_at,
+    )
+    .map_err(|e| e.to_string())
+}
+
+/// Register the agent sign key in the runtime store and return it.
+/// The docking verifier accepts a frame only when the inline key matches a
+/// registered key, so a test agent must be provisioned before it sends.
+fn provision_agent_sign_key(
+    rt: &DockingRuntime,
+    agent_id: &str,
+) -> Result<aep_lattice_crypto::SignKeypair, String> {
+    let mut store = rt.agent_sign_keys.lock().map_err(|e| e.to_string())?;
+    store.provision(agent_id).map_err(|e| e.to_string())
+}
+
+fn to_hex(bytes: &[u8]) -> String {
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
+        out.push_str(&format!("{:02x}", b));
+    }
+    out
+}
+
+/// Arm a test agent: mint its sign key, write a strict-mode task manifest that
+/// binds the conformance session, then activate the contracts the ports need.
+fn arm_test_agent(
+    rt: &DockingRuntime,
+    agent_id: &str,
+    contracts: &[&str],
+) -> Result<aep_lattice_crypto::SignKeypair, String> {
+    let sign = provision_agent_sign_key(rt, agent_id)?;
+    let (dir, session_id) = {
+        let store = rt.manifests.lock().map_err(|e| e.to_string())?;
+        (store.manifest_dir().to_path_buf(), "sess-conformance".to_string())
+    };
+    let manifest = serde_json::json!({
+        "manifest_version": "task-manifest.v1",
+        "id": format!("conf-{agent_id}"),
+        "agent_id": agent_id,
+        "session_id": session_id,
+        "intent": { "kind": "conformance" },
+        "trust": { "tier": "system" },
+        "agentmesh": { "did": { "verification_key_hex": to_hex(&sign.public) } },
+        "provisional": false,
+        "synthesized_by": "aep-conformance"
+    });
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    std::fs::write(
+        dir.join(format!("{agent_id}.json")),
+        serde_json::to_string_pretty(&manifest).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
+    rt.manifests.lock().map_err(|e| e.to_string())?.reload();
+    let mut reg = rt.contracts.lock().map_err(|e| e.to_string())?;
+    for c in contracts {
+        reg.register(*c);
+    }
+    Ok(sign)
+}
+
+fn now_unix() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 fn cc_pq_capsule_roundtrip() -> Result<(), String> {
@@ -271,13 +362,16 @@ fn temp_docking_runtime() -> Result<(tempfile::TempDir, DockingRuntime), String>
 
 fn cc_docking_lattice_health() -> Result<(), String> {
     let (_dir, rt) = temp_docking_runtime()?;
-    let frame = conformance_frame(
+    let sign = arm_test_agent(&rt, "AG-PING-CONF", &["dynaep-action-lattice"])?;
+    let frame = conformance_frame_for_dock(
         "ch-lattice-health",
         "AG-PING-CONF",
         DockingPort::ValidationEngine,
         "dynaep-action-lattice",
         b"lattice-health-ping",
-        1,
+        now_unix(),
+        rt.dock_kem.public.as_slice(),
+        &sign,
     )?;
     let line = serde_json::json!({ "frame": frame }).to_string();
     let resp = process_request(&rt, &DockingPort::ValidationEngine, &line);
@@ -344,7 +438,7 @@ fn cc_docking_rate_limit() -> Result<(), String> {
         b"x",
         &kem,
         &sign,
-        1,
+        now_unix(),
     )
     .map_err(|e| e.to_string())?;
     let line = serde_json::json!({ "frame": frame }).to_string();
@@ -357,26 +451,31 @@ fn cc_docking_rate_limit() -> Result<(), String> {
 
 fn cc_lrp_registration_flow() -> Result<(), String> {
     let (_dir, rt) = temp_docking_runtime()?;
-    let reg_frame = conformance_frame(
+    let sign = arm_test_agent(&rt, "AG-LRP-CONF", &["conf-lrp", "dynaep-action-lattice"])?;
+    let reg_frame = conformance_frame_for_dock(
         "ch-lrp-reg",
         "AG-LRP-CONF",
         DockingPort::RegulationModule,
         "conf-lrp",
         b"register-lrp",
-        1,
+        now_unix(),
+        rt.dock_kem.public.as_slice(),
+        &sign,
     )?;
     let reg_line = serde_json::json!({ "frame": reg_frame }).to_string();
     let reg = process_request(&rt, &DockingPort::RegulationModule, &reg_line);
     if !reg.ok {
         return Err(format!("LRP lattice registration failed: {:?}", reg.error));
     }
-    let event_frame = conformance_frame(
+    let event_frame = conformance_frame_for_dock(
         "ch-lrp-conf",
         "AG-LRP-CONF",
         DockingPort::ValidationEngine,
         "conf-lrp",
         b"lrp-bound",
-        2,
+        now_unix() + 1,
+        rt.dock_kem.public.as_slice(),
+        &sign,
     )?;
     let event_line = serde_json::json!({ "frame": event_frame }).to_string();
     let resp = process_request(&rt, &DockingPort::ValidationEngine, &event_line);

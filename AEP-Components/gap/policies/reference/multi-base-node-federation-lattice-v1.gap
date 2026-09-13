@@ -20,7 +20,7 @@ metadata:
   provenance: aep-agent-element-protocol
   version: 1.0.0
   stability: experimental
-  agent_may:
+  agent_permission:
     - agent_id: grok-build
       action: write
     - agent_id: grok-build

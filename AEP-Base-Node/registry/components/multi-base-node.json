@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "multi-base-node",
-  "version": "2.8.0",
+  "version": "2.8.5",
   "status": "built",
   "built": true,
   "kind": "daemon",
@@ -64,5 +64,6 @@
     "gap_sync_channel": "aep.gap_sync",
     "docs": "AEP-Base-Node/multi-base-node/docs/multi-base-node-28b.md",
     "artifact_manifest": "AEP-Base-Node/multi-base-node/docs/multi-base-node-artifact-manifest.json"
-  }
+  },
+  "role": "kernel"
 }
