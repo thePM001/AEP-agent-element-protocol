@@ -14,7 +14,7 @@ openssl rand -hex 32
 
 docker compose -f docker-compose.public.yml up -d --build
 
-After the container is up, open the install wizard on loopback port 8424 and send X-AEP-Setup-Token on API calls. UCB starts when UCB=1. Set UCB=0 when foreign attach is not wanted. Default Predicate Profile is perimeter-v1. Public UCB compiles provided GAP text or JSON with the local gap-manifest-v1 compiler.
+After the container is up, open the install wizard on loopback port 8424 and send X-AEP-Setup-Token on API calls. UCB starts when UCB=1 and stays off when you set UCB=0 because foreign attach is optional; the Default Predicate Profile is perimeter-v1. Public UCB compiles provided GAP text or JSON with the local gap-manifest-v1 compiler.
 
 ## Source build (secondary)
 
@@ -32,7 +32,7 @@ Admit is the collect-all wall pass after the compiled pulse, Apply runs only aft
 
 ## Operator docs
 
-Read docs/ERROR-CATALOG.md for deny dialect and BaseNodeError. Read docs/WHAT-IS-COMPILED.md for pulse constants. Read docs/LATTICE-MEMORY.md for sqlite, memory and optional Polygres backends. Read docs/FOREIGN-ATTACH.md for manifest and session refuses. Read docs/TREE.md for Kernel, Protocol, Execution, UX and Policy. Read TARGET.md for ISA, RAM, disk, GPU, RSS and latency floors. Read examples/minimal-wrap for a documented command that returns allow true.
+Read docs/ERROR-CATALOG.md for deny dialect and BaseNodeError. Read docs/WHAT-IS-COMPILED.md for pulse constants. Read docs/LATTICE-MEMORY.md for sqlite, memory and optional Polygres backends. Read docs/FOREIGN-ATTACH.md for manifest and session refuses. Read docs/TREE.md for Kernel, Protocol, Execution, UX and Policy. Read TARGET.md for ISA, RAM, disk, GPU, RSS and latency floors. Read AEP-User-Experience/examples/minimal-wrap for a documented command that returns allow true.
 
 ## Keys that look like crypto death
 

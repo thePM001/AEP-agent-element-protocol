@@ -6,6 +6,10 @@ This project now keeps CHANGELOG.md at the repository root.
 A dated entry that names the ticket id is required before that ticket can close.
 Write DENY on miss. Policy nla-server-aep-ticket-close-changelog-mandatory.
 
+## [2.8.6] - 2026-09-13 - Minimal wrap example home
+
+Move the minimal wrap example from the root examples folder into AEP-User-Experience, because the example is operator facing and AEP-User-Experience is the operator UX home. The crate keeps its own manifest and lock file, the read path in the operator note and the named path list now point at the new home and the old folder is gone. The move landed as one commit on main.
+
 ## [2.8.6] - 2026-09-13 - WASM sandbox home
 
 Move the WASM sandbox under the Composer Lite canvas, because the canvas is its only caller: the canvas offers a WASM Policy node, the composer route for wasm evaluate forwards to the sandbox socket and the composer library builds the sealed frame. The crate dependencies and the twelve path references were updated in the same commit and the workspace check passes.

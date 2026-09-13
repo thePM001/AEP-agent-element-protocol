@@ -1,6 +1,6 @@
 # AEP User Experience
 
-Operator-facing tooling: harness, agent skill, validation shortcuts, and manual modification scripts.
+Operator-facing tooling: harness, agent skill, validation shortcuts and manual modification scripts.
 
 ## Harness
 
@@ -18,7 +18,7 @@ Slash commands: `.claude/commands/aep-preflight.md`, `aep-validate.md`, `aep-reg
 
 Path: `AEP-User-Experience/scripts/`
 
-Manual repo modifications, layout migrations, connector scaffolding, and E2E smoke checks.
+Manual repo modifications, layout migrations, connector scaffolding and E2E smoke checks.
 
 ```bash
 # E2E protocol smoke (from repo root)
@@ -39,6 +39,12 @@ npm run validate
 node AEP-User-Experience/aep-validate.js
 node AEP-User-Experience/aep-base-node-preflight.mjs
 ```
+
+## Example
+
+Path: `AEP-User-Experience/examples/minimal-wrap/`
+
+A single documented run that prints the allow decision, the sealed payload roundtrip, the compiled pulse and the deny report.
 
 ## Legacy 2.75 harness
 
