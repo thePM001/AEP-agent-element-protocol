@@ -14,9 +14,9 @@
 
 ---
 
-## AEP CAW execution companion
+## AEP CAW execution layer
 
-**CAW (Containerized Agentic Workflows)** is host execution-layer security. It is an execution companion (`caw-framework`). CAW is not a protocol component. Runtime binary is `aep-caw`.
+**CAW (Containerized Agentic Workflows)** is host execution-layer security and the execution layer that this stack requires for coding agents and containerized agentic workflows. The catalog ships `caw-framework` default enabled, so CCA enables it in every coding-agent plan. CAW is not a second evaluator because the walls belong to Base Node. Runtime binary is `aep-caw`.
 
 | Layer | Component | Role |
 |-------|-----------|------|

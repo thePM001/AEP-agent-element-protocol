@@ -1,6 +1,6 @@
 # AEP CAW Framework
 
-**CAW (Containerized Agentic Workflows)** is AEP 2.8 Execution-Layer Security (ELS). It is an execution companion (`caw-framework`) that enforces policy on shell, file, network, process, database wire and LLM traffic at runtime. CAW is not a protocol component.
+**CAW (Containerized Agentic Workflows)** is AEP 2.8 Execution-Layer Security (ELS). It is the execution layer that this stack requires for coding agents and containerized agentic workflows: it enforces policy on shell, file, network, process, database wire and LLM traffic at runtime and it confines the host process that runs an agent command. The catalog ships the component default enabled, so a setup agent enables it for every coding agent plan. CAW is not a second evaluator because the walls belong to Base Node.
 
 See [NOTICE](./NOTICE) for Apache 2.0 terms.
 
@@ -32,7 +32,7 @@ User / coding agent
   CCA + Composer         plan generation, topology, activation
 ```
 
-**Two layers, one stack:** CAW governs what runs on the host. AEP governs protocol compliance and audit.
+**Two layers, one stack:** Base Node admits the envelope and keeps protocol compliance and the audit ledger, while CAW is the required execution layer that confines the command. A coding agent run needs both layers, because a wall pass on its own is not process governance and CAW is not optional in the shipped stack.
 
 Every execution path probes the Base Node kernel dock before a command starts. The Base Node is the admission authority, so a host admission with a silent dock is not governance: CAW refuses the run and names the silent dock. See [Kernel dock gate](#kernel-dock-gate).
 
@@ -40,7 +40,7 @@ Every execution path probes the Base Node kernel dock before a command starts. T
 
 ## CCA integration (mandatory for shell workloads)
 
-CCA treats `caw-framework` as an execution companion:
+CCA treats `caw-framework` as the required execution layer for coding agents and containerized agentic workflows. The setup agent prompt enables it for every coding agent plan, sets the enforce mode with the shell shim and routes agent shell calls through `aep-caw exec` rather than a raw shell, so the readme and the setup agent describe one product:
 
 | Stage | Behavior |
 |-------|----------|

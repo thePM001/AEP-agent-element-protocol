@@ -4,6 +4,46 @@ Mandatory local governance **kernel** for every AEP 2.8 installation.
 
 Lives at the **repository root** (`AEP-Base-Node/`), not under `AEP-Components/`. Every other component docks into Base Node; it is not a palette component.
 
+## Architecture shape
+
+The Base Node is a pyramid with its tip cut off. Each plane carries the one above it, so the planes widen downward. The tip is cut off because the kernel pass does not sit above the tree as an authority. It is the floor that every component docks into.
+
+```text
+            /                                            \
+           /           intake and dock plane            \
+           +--------------------------------------------+
+         /                                                  \
+        /                kernel pulse pass                 \
+        +--------------------------------------------------+
+      /                                                        \
+     /                        wall set                        \
+     +--------------------------------------------------------+
+   /                                                              \
+  /                         record plane                         \
+  +--------------------------------------------------------------+
+```
+
+The four planes, top to bottom:
+
+| Plane | What it carries |
+|-------|-----------------|
+| Intake and dock plane | Docking listeners on the inference, validation, regulation and future sockets, sealed frame verify, the freshness window, the replay guard and side channel events |
+| Kernel pulse pass | Freeze at seal, the compiled 1000 ms pulse and one collect-all run of every written wall |
+| Wall set | Agent permission, lattice membership, writing walls, temporal bounds, envelope walls and wall set back pressure |
+| Record plane | Derived ledger rows, the SQLite lattice log, the component registry and the signature set |
+
+The path a frame takes through those planes:
+
+```mermaid
+flowchart TB
+  F[Sealed capsule arrives on a dock socket] --> V[Frame verify, freshness window and replay guard]
+  V --> K[Kernel freeze at seal and the compiled 1000 ms pulse]
+  K --> W[Collect-all run of every written wall]
+  W --> A[Apply only after the pass admits]
+  A --> L[Ledger row and lattice log record]
+  L --> X[Executor runs the admitted action]
+```
+
 ## What lives here
 
 Base Node **is** the local agent control kernel. Governance code, registry, mesh, and agent profiles live under `AEP-Base-Node/`:
