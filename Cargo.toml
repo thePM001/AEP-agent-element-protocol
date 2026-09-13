@@ -29,7 +29,6 @@ members = [
     "AEP-Components/policy-leftover-skins/crate",
     "AEP-Components/lattice-gated-fetch/crate",
     "AEP-Components/agentmesh-local-issuance/crate",
-    "AEP-Components/epscom-trust-bundle-mode/crate",
     "AEP-Components/caw-cve-demo-trees/crate",
     "AEP-Components/unbound-field-close/crate",
     "AEP-Components/base-node-pulse/crate",
