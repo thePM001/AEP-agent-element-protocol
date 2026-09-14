@@ -1,5 +1,5 @@
 {
-  "version": "2.8.5",
+  "version": "2.8.6",
   "description": "Legacy Regulation Providers (LRPs) are sovereign states, regional unions, and international bodies and their regulations. Platform kernel contracts and CORRECTWRITING_EN policies are NOT LRPs.",
   "correctwriting_en": {
     "id": "correctwriting-en",
@@ -23,7 +23,7 @@
     },
     {
       "id": "aep-275-eval-chain",
-      "name": "AEP 2.75 15-Step Evaluation Chain",
+      "name": "AEP 2.8.6 15-Step Evaluation Chain",
       "kind": "platform_feature",
       "description": "Optional validation-engine eval chain. Enable via base_node.lrps when using a validation dock. Not an LRP."
     },

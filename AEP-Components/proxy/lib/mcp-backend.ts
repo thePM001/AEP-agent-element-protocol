@@ -215,7 +215,7 @@ function forwardStdio(
           params: {
             protocolVersion: "2024-11-05",
             capabilities: {},
-            clientInfo: { name: "aep-mcp-proxy", version: "2.8.0" },
+            clientInfo: { name: "aep-mcp-proxy", version: "2.8.6" },
           },
         })
       );
@@ -325,7 +325,7 @@ async function forwardHttp(
       params: {
         protocolVersion: "2024-11-05",
         capabilities: {},
-        clientInfo: { name: "aep-mcp-proxy", version: "2.8.0" },
+        clientInfo: { name: "aep-mcp-proxy", version: "2.8.6" },
       },
     };
     const initRes = await postJson(url, initBody, sid, timeoutMs);

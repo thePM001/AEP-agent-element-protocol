@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "eu-ai-act",
-  "version": "2.8.5",
+  "version": "2.8.6",
   "kind": "compliance",
   "path": "AEP-Policy-System/reference/",
   "description": "EU AI Act compliance pack (GAP reference).",

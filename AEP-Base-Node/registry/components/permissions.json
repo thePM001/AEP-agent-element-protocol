@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "permissions",
-  "version": "2.8.5",
+  "version": "2.8.6",
   "kind": "library",
   "path": "AEP-Components/permissions/",
   "description": "Kernel agent permission facade crate. It re-exports the permission wall names from the admit crate.",

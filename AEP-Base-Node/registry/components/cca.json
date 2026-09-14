@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "cca",
-  "version": "2.8.5",
+  "version": "2.8.6",
   "kind": "agent",
   "path": "AEP-CCA-Central-Setup-Agent/",
   "description": "Unified CCA Setup Agent: probe, registry knowledge, plan generation, execution, and Base Node activation.",

@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "aep-base-node",
-  "version": "2.8.5",
+  "version": "2.8.6",
   "kind": "daemon",
   "path": "AEP-Base-Node/",
   "description": "Mandatory local governance daemon with lattice-gated docking ports.",

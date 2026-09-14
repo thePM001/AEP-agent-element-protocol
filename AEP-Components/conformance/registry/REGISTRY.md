@@ -22,7 +22,7 @@ cd rust && cargo run --release -p aep-conformance > /tmp/aep28-report.json
 {
  "submitter": "your-org",
  "implementation": "product-name",
- "aep_version": "2.8.0",
+ "aep_version": "2.8.6",
  "report_generated_at": "2026-06-15T00:00:00Z",
  "suite": "aep-2.8-public",
  "passed": 9,

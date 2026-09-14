@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "nist-ai-rmf",
-  "version": "2.8.5",
+  "version": "2.8.6",
   "kind": "compliance",
   "path": "AEP-Policy-System/reference/",
   "description": "NIST AI RMF compliance pack (GAP reference).",

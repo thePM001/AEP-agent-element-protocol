@@ -1,8 +1,8 @@
-# AEP 2.75 Agent Harness - dynAEP-TA Temporal Authority Update
+# AEP 2.8.6 Agent Harness - dynAEP-TA Temporal Authority Update
 
 ## What Changed
 
-The AEP 2.75 agent harness now recognizes dynAEP-TA (Temporal Authority) and dynAEP-TA-P (Perceptual Temporal Governance) as protocol stack layers. When dynAEP-TA is available, the harness enforces that all temporal operations go through the bridge clock rather than local time sources.
+The AEP 2.8.6 agent harness now recognizes dynAEP-TA (Temporal Authority) and dynAEP-TA-P (Perceptual Temporal Governance) as protocol stack layers. When dynAEP-TA is available, the harness enforces that all temporal operations go through the bridge clock rather than local time sources.
 
 ## New /aepassist Commands
 
@@ -128,10 +128,10 @@ forbid temporal.exceed_modality_ceiling # never allow more than N simultaneous m
 
 ## Configuration
 
-Add to your AEP 2.75 policy file:
+Add to your AEP 2.8.6 policy file:
 
 ```yaml
-version: "2.75"
+version: "2.8.6"
 
 temporal_authority:
  enabled: true
@@ -152,7 +152,7 @@ temporal_authority:
  export_perception_spans: true
 ```
 
-## Migration from v2.75 without Temporal Authority
+## Migration from v2.8.6 without Temporal Authority
 
 Adding temporal authority is non-breaking. All temporal features default to enabled where safe and disabled where they require external dependencies:
 

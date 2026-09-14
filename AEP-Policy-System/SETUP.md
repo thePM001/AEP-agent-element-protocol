@@ -1,4 +1,4 @@
-# AEP 2.75 Policy Lattice - Quick Setup
+# AEP 2.8.6 Policy Lattice - Quick Setup
 
 ## 1. Initialize your policy lattice
 ```bash
@@ -9,7 +9,7 @@ This creates a policy lattice with the reference policies as templates.
 ## 2. Add your policies
 Create YAML policy files in `./my-policies/custom/`:
 ```yaml
-version: "2.75"
+version: "2.8.6"
 domain: security
 patterns:
  - name: block_production_deletes
@@ -44,7 +44,7 @@ my-policies/
 
 ## Policy Format
 Policies use YAML format with these fields:
-- `version`: AEP version (2.75)
+- `version`: AEP version (2.8.6)
 - `domain`: security, deployment, writing, governance or custom
 - `patterns`: list of policy rules with guard, effect, severity
 - `covenants`: human-readable policy descriptions

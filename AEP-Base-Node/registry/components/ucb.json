@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "ucb",
-  "version": "2.8.5",
+  "version": "2.8.6",
   "kind": "bridge",
   "path": "AEP-Docks/ucb/",
   "description": "Rust secured dock :8412 for foreign ingress + internet egress only.",

@@ -6,7 +6,7 @@
  */
 export function planToGraph(plan) {
   return {
-    version: "2.8.5",
+    version: "2.8.6",
     composer: "composer-lite",
     updated_at: new Date().toISOString(),
     plan_id: plan.created_at,

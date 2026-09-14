@@ -8,7 +8,7 @@ import { join, isAbsolute } from "node:path";
 
 /**
  * @param {object} dynaepConfig - config.dynaep from Base Node JSON
- * @param {string} repoRoot - absolute path to AEP 2.8.5 repo root
+ * @param {string} repoRoot - absolute path to AEP 2.8.6 repo root
  * @returns {import("../../DynAEP TypeScript SDK/typescript/dynaep/src/bridge.js").DynAEPBridgeConfig | null}
  */
 export function buildBridgeConfigFromDynaep(dynaepConfig, repoRoot) {

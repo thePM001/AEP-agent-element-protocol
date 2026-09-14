@@ -2,7 +2,7 @@
  * Task Lifecycle - Google A2A-compatible task management.
  * Extends AEP-Comm DelegateResolver with formal task states,
  * cancellation support, push notifications, and history.
- * Part of AEP-Comm v2.75 - Universal Orchestration.
+ * Part of AEP-Comm v2.8.6 - Universal Orchestration.
  */
 
 export type TaskState =

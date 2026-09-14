@@ -1,7 +1,7 @@
 /**
  * Prompt Templates - Parameterized prompt construction with validation.
  * Ensures consistent prompt building across agents.
- * Part of AEP-Comm v2.75. Matches Anthropic MCP prompt template protocol.
+ * Part of AEP-Comm v2.8.6. Matches Anthropic MCP prompt template protocol.
  */
 
 export interface PromptArgument {

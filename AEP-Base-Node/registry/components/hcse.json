@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "hcse",
-  "version": "2.8.5",
+  "version": "2.8.6",
   "kind": "tooling",
   "path": "AEP-Components/hcse/",
   "description": "AEP-HCS-External optional code graph parser. CCA downloads DeusData/codebase-memory-mcp and rebrands to aep-hcse on install.",

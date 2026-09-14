@@ -1,4 +1,4 @@
-// AEP 2.75 - Content Scanner Types
+// AEP 2.8.6 - Content Scanner Types
 // Shared types for the content scanner pipeline.
 
 import type { ViolationSeverity } from "../../recovery/lib/types.js";

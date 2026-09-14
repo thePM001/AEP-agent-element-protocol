@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "gap-capability-dimensions",
-  "version": "2.8.5",
+  "version": "2.8.6",
   "kind": "library",
   "path": "AEP-Components/admit/crate",
   "description": "Agent permission is the GAP dimension Conjunction. The dimension compiles in the admit permission wall.",

@@ -1,5 +1,5 @@
 // HVVCAS: compile_agent_permission_wall domain:admit type:library
-// AEP 2.8.5: agent permission is agent id plus action. No rank. No score.
+// AEP 2.8.6: agent permission is agent id plus action. No rank. No score.
 
 use super::{admit_collect_all, AdmitResult, AdmitWall};
 

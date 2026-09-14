@@ -1,4 +1,4 @@
-// AEP 2.75 - Ollama Provider Adapter
+// AEP 2.8.6 - Ollama Provider Adapter
 // Lattice-gated fetch via inference_engine dock.
 
 import type { ProviderAdapter, ModelConfig, ModelRequest, ModelResponse } from "../types.js";

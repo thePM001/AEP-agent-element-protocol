@@ -31,7 +31,7 @@ export async function buildSetupWizardCatalog(env = process.env) {
   const catalog = loadLrpCatalog();
   const registry = await loadComponentRegistry(env);
   return {
-    version: "2.8.0",
+    version: "2.8.6",
     install_methods: INSTALL_METHODS,
     validation_engines: VALIDATION_ENGINE_MODES.map((m) => ({
       id: m.id,

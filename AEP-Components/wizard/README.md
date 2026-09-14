@@ -31,7 +31,7 @@ See `wizard/lrp/catalog.json`. CORRECTWRITING_EN is always mandatory with priori
 
 ### Core LRPs
 
-Runtime governance: dynAEP Action Lattice, lattice channel contract, 2.75 eval chain, optional GAP scanners.
+Runtime governance: dynAEP Action Lattice, lattice channel contract, 2.8.6 eval chain, optional GAP scanners.
 
 ### Compliance modules
 

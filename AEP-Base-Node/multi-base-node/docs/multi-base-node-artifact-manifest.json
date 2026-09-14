@@ -3,7 +3,7 @@
   "feature_id": "multi-base-node",
   "maturity": "experimental",
   "default_build": false,
-  "repo": "AEP-2.8.5",
+  "repo": "AEP-2.8.6",
   "reviewed_at": "2026-07-09",
   "artifacts": [
     {

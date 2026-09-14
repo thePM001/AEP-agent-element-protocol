@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "soc2-type2",
-  "version": "2.8.5",
+  "version": "2.8.6",
   "kind": "compliance",
   "path": "AEP-Policy-System/reference/",
   "description": "SOC 2 Type II compliance pack (GAP reference).",

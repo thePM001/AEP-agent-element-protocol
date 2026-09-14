@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "wasm-policy-sandbox",
-  "version": "2.8.5",
+  "version": "2.8.6",
   "kind": "wasm",
   "path": "AEP-Composer-Lite/wasm-sandbox/",
   "description": "WASM policy evaluation via lattice socket wasm_sandbox.",

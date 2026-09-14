@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "admit",
-  "version": "2.8.5",
+  "version": "2.8.6",
   "kind": "library",
   "path": "AEP-Components/admit/",
   "description": "Admit walls: AND collect-all live evaluator. Rust crate is the spec. JS admit.mjs is the live dynAEP path.",

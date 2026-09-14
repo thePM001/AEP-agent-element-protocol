@@ -1,4 +1,4 @@
-// AEP 2.75 - Anthropic Provider Adapter
+// AEP 2.8.6 - Anthropic Provider Adapter
 // Lattice-gated fetch via inference_engine dock.
 
 import type { ProviderAdapter, ModelConfig, ModelRequest, ModelResponse } from "../types.js";

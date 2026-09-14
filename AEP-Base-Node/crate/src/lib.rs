@@ -1,4 +1,4 @@
-//! AEP Base Node - mandatory local governance kernel for AEP 2.8.5.
+//! AEP Base Node - mandatory local governance kernel for AEP 2.8.6.
 
 pub mod dock_keys;
 pub mod docking;
@@ -474,7 +474,7 @@ mod tests {
     #[test]
     fn health_reports_offline_when_isolated() {
         let report = health(
-            "2.8.0-alpha.1",
+            "2.8.6-alpha.1",
             0,
             false,
             "/tmp/sock",

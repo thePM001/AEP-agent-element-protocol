@@ -1,6 +1,6 @@
 # AEP 2.8 Agent Harness
 
-Version 2.8.0 | June 2026
+Version 2.8.6 | June 2026
 Author: thePM001
 Licence: Apache 2.0
 Public repository: https://github.com/thePM001/AEP-agent-element-protocol

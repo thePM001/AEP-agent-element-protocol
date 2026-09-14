@@ -5,7 +5,7 @@ All docking traffic uses **Lattice Channels** with **PQEncryptedCapsule** (ML-KE
 | Port ID | Name | Priority | Socket suffix | Purpose |
 |---------|------|----------|---------------|---------|
 | `inference_engine` | Inference Engine Dock | 200 | `/inference` | AEP Inference Engines |
-| `validation_engine` | Validation Engine Dock | 200 | `/validation` | AEP validation engines (2.75e Docker / future) |
+| `validation_engine` | Validation Engine Dock | 200 | `/validation` | AEP validation engines (2.8.6 Docker / future) |
 | `future_features` | Future Features Dock | 200 | `/future` | Reserved internal plugins (not foreign ingress) |
 | `regulation_module` | Regulation Module Dock | 150 | `/regulation` | Legacy Regulation Providers (LRPs) |
 

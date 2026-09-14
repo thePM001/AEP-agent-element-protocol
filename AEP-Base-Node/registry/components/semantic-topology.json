@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "semantic-topology",
-  "version": "2.8.5",
+  "version": "2.8.6",
   "kind": "library",
   "path": "AEP-Components/semantic-topology/",
   "description": "Hyperlattice blast overlay projector. Reads composer-lite-graph.json and intent snapshots; does not build a parallel DAG.",

@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "correctwriting_en-signatures",
-  "version": "2.8.5",
+  "version": "2.8.6",
   "kind": "library",
   "path": "AEP-Base-Node/signatures/",
   "description": "CORRECTWRITING_EN-curated detection signatures and SHA-256 structure trust bundle. ML-DSA is not claimed.",

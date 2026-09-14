@@ -1,7 +1,7 @@
 /**
  * Human-in-the-Loop - Approval gates for agent task pipelines.
  * Tasks requiring human approval are held until explicitly approved or rejected.
- * Part of AEP-Comm v2.75 - Universal Orchestration.
+ * Part of AEP-Comm v2.8.6 - Universal Orchestration.
  */
 
 import { randomUUID } from 'node:crypto';

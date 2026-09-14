@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * AEP 2.75 Safety Guard
+ * AEP 2.8.6 Safety Guard
  * 
  * Monitors and blocks dangerous AI agent behaviors:
  * - Disabling sandbox/safety flags
@@ -66,7 +66,7 @@ const SAFETY_RULES = {
             '.claude/commands/aep-register.md',
             '.gitignore',                   // Prevent agent from hiding files
             '.git/hooks/pre-commit',        // Prevent agent from removing hooks
-            '.claude/aep-evidence.jsonl',   // Evidence ledger is append-only (AEP 2.75)
+            '.claude/aep-evidence.jsonl',   // Evidence ledger is append-only (AEP 2.8.6)
         ],
         action: 'BLOCK_AND_ALERT',
     },
@@ -177,7 +177,7 @@ const SAFETY_RULES = {
     },
 
     // -----------------------------------------------------------------------
-    // RULE 8: NO TRUST SCORE MANIPULATION (AEP 2.75)
+    // RULE 8: NO TRUST SCORE MANIPULATION (AEP 2.8.6)
     // -----------------------------------------------------------------------
     NO_TRUST_MANIPULATION: {
         severity: 'CRITICAL',
@@ -196,7 +196,7 @@ const SAFETY_RULES = {
     },
 
     // -----------------------------------------------------------------------
-    // RULE 9: NO KILL SWITCH BYPASS (AEP 2.75)
+    // RULE 9: NO KILL SWITCH BYPASS (AEP 2.8.6)
     // -----------------------------------------------------------------------
     NO_KILL_SWITCH_BYPASS: {
         severity: 'CRITICAL',
@@ -212,7 +212,7 @@ const SAFETY_RULES = {
     },
 
     // -----------------------------------------------------------------------
-    // RULE 10: NO FLEET MANIPULATION (AEP 2.75)
+    // RULE 10: NO FLEET MANIPULATION (AEP 2.8.6)
     // -----------------------------------------------------------------------
     NO_FLEET_MANIPULATION: {
         severity: 'CRITICAL',
@@ -363,7 +363,7 @@ class SafetyGuard {
             }
         }
 
-        // Check NO_TRUST_MANIPULATION (AEP 2.75)
+        // Check NO_TRUST_MANIPULATION (AEP 2.8.6)
         for (const pattern of SAFETY_RULES.NO_TRUST_MANIPULATION.patterns) {
             pattern.lastIndex = 0;
             let match;
@@ -375,7 +375,7 @@ class SafetyGuard {
             }
         }
 
-        // Check NO_KILL_SWITCH_BYPASS (AEP 2.75)
+        // Check NO_KILL_SWITCH_BYPASS (AEP 2.8.6)
         for (const pattern of SAFETY_RULES.NO_KILL_SWITCH_BYPASS.patterns) {
             pattern.lastIndex = 0;
             let match;
@@ -387,7 +387,7 @@ class SafetyGuard {
             }
         }
 
-        // Check NO_FLEET_MANIPULATION (AEP 2.75)
+        // Check NO_FLEET_MANIPULATION (AEP 2.8.6)
         for (const pattern of SAFETY_RULES.NO_FLEET_MANIPULATION.patterns) {
             pattern.lastIndex = 0;
             let match;

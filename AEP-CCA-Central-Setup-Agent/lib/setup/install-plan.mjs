@@ -57,7 +57,7 @@ export const VALIDATION_ENGINE_MODES = [
     id: "none",
     label: "Try without a dedicated validation engine",
     advantages: [
-      "Fastest path to explore AEP 2.8.5 and Composer Lite",
+      "Fastest path to explore AEP 2.8.6 and Composer Lite",
       "Base Node self-test, lattice memory and inference dock still work",
       "Good for local development and learning dynAEP wiring",
       "No extra binary or license to procure before first run",

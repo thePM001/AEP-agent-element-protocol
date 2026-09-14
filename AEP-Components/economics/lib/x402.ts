@@ -1,7 +1,7 @@
 /**
  * AEP Economics - X402 Nanopayments Gateway
  * HTTP 402 Payment Required integration for nanopayment-enabled API calls
- * AEP 2.75e
+ * AEP 2.8.6
  */
 
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';

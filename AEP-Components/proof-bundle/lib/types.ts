@@ -47,7 +47,7 @@ export const ML_RELIABILITY_WEIGHTS: ReliabilityWeights = {
 
 export interface ProofBundle {
   bundleId: string;
-  version: "2.75";
+  version: "2.8.6";
   createdAt: string;
   agent: AgentIdentity;
   covenant: CovenantSpec | null;

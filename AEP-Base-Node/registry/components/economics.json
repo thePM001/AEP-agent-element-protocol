@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "economics",
-  "version": "2.8.5",
+  "version": "2.8.6",
   "kind": "regulation",
   "path": "AEP-Components/economics/",
   "description": "Pricing, budget caps, cost estimation, X402 nanopayments.",

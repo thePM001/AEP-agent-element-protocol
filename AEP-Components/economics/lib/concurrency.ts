@@ -1,7 +1,7 @@
 /**
  * AEP Economics - Concurrency Limiter
  * Limits simultaneous in-flight requests with queuing
- * AEP 2.75e
+ * AEP 2.8.6
  */
 
 export class ConcurrencyLimiter {

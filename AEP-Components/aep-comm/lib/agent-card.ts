@@ -1,7 +1,7 @@
 /**
  * Agent Card - Google A2A-compatible agent capability description.
  * Published at /.well-known/agent.json for discovery.
- * Part of AEP-Comm v2.75 - Universal Orchestration.
+ * Part of AEP-Comm v2.8.6 - Universal Orchestration.
  */
 
 export interface AgentSkill {

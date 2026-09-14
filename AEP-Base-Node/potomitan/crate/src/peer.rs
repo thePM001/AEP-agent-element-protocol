@@ -41,7 +41,7 @@ pub struct MeshPeerFile {
 impl Default for MeshPeerFile {
     fn default() -> Self {
         Self {
-            version: "2.8.5".into(),
+            version: "2.8.6".into(),
             peers: Vec::new(),
             updated_at: None,
         }
@@ -80,7 +80,7 @@ impl PeerRegistry {
             fs::create_dir_all(parent)?;
         }
         let file = MeshPeerFile {
-            version: "2.8.5".into(),
+            version: "2.8.6".into(),
             peers: self.peers.values().cloned().collect(),
             updated_at: Some(chrono_lite_now()),
         };

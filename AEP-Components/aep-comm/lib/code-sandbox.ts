@@ -1,7 +1,7 @@
 /**
  * Code Execution Sandbox - Isolated execution environment for agent-generated code.
  * Routes optional lattice record through WASM lattice channel socket.
- * Part of AEP-Comm v2.75. Matches AutoGen code execution capability.
+ * Part of AEP-Comm v2.8.6. Matches AutoGen code execution capability.
  */
 
 import { createHash } from "node:crypto";

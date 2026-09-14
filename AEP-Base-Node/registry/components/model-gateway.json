@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "model-gateway",
-  "version": "2.8.5",
+  "version": "2.8.6",
   "kind": "library",
   "path": "AEP-Components/model-gateway/",
   "description": "Governed multi-provider LLM gateway with adapters.",

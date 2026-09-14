@@ -52,7 +52,7 @@ export function buildBaseNodeConfig({
   signaturesPath = null,
 }) {
   const config = {
-    version: "2.8.5",
+    version: "2.8.6",
     base_node: {
       socket_base: socketBase,
       lattice_db: latticeDb,

@@ -1,5 +1,5 @@
 /**
- * AEP 2.75e Economics Harness
+ * AEP 2.8.6 Economics Harness
  * Wires cost-aware routing, budgeting, nanopayments, and spend control
  */
 

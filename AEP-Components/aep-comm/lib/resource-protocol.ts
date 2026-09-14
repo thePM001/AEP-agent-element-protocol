@@ -1,7 +1,7 @@
 /**
  * Resource Protocol - Standardized resource listing and access.
  * Enables agents to discover and read data sources through a uniform interface.
- * Part of AEP-Comm v2.75. Matches Anthropic MCP resource protocol.
+ * Part of AEP-Comm v2.8.6. Matches Anthropic MCP resource protocol.
  */
 
 export interface Resource {

@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "wizard",
-  "version": "2.8.5",
+  "version": "2.8.6",
   "kind": "wizard",
   "path": "AEP-Components/wizard/",
   "description": "Developer install wizard for local-source builds (not customer Docker path).",

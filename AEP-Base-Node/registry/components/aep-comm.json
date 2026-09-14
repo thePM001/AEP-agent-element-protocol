@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "aep-comm",
-  "version": "2.8.5",
+  "version": "2.8.6",
   "kind": "library",
   "path": "AEP-Components/aep-comm/",
   "description": "Inter-agent communication helpers.",

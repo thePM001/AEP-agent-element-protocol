@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "lattice-channels",
-  "version": "2.8.5",
+  "version": "2.8.6",
   "kind": "library",
   "path": "AEP-Components/lattice-channels/",
   "description": "Unified lattice transport and Rust channel crate.",

@@ -34,7 +34,7 @@ Path: `AEP-User-Experience/examples/end-to-end-run/`
 
 A single documented run that walks every layer twice. The refuse path runs first and every layer fails closed. The pass path runs second and the same layers allow, with a ledger row at the end. The transcript of the run is committed beside the note.
 
-## Legacy 2.75 harness
+## Legacy 2.8.6 harness
 
 Retained at repo root for reference only.
 ## Secure deployment

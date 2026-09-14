@@ -21,16 +21,16 @@ export function meshPeersPath(dataDir) {
 export function loadMeshPeers(dataDir) {
   const path = meshPeersPath(dataDir);
   if (!existsSync(path)) {
-    return { version: "2.8.5", peers: [], updated_at: null };
+    return { version: "2.8.6", peers: [], updated_at: null };
   }
   try {
     const parsed = JSON.parse(readFileSync(path, "utf8"));
     if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.peers)) {
-      return { version: "2.8.5", peers: [], updated_at: null };
+      return { version: "2.8.6", peers: [], updated_at: null };
     }
     return parsed;
   } catch {
-    return { version: "2.8.5", peers: [], updated_at: null };
+    return { version: "2.8.6", peers: [], updated_at: null };
   }
 }
 
@@ -38,7 +38,7 @@ export function saveMeshPeers(dataDir, peers) {
   const path = meshPeersPath(dataDir);
   mkdirSync(dirname(path), { recursive: true });
   const record = {
-    version: "2.8.5",
+    version: "2.8.6",
     peers,
     updated_at: new Date().toISOString(),
   };

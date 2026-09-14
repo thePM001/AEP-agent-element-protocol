@@ -1,6 +1,6 @@
 // =============================================================================
 // Action Lattice protocol (AEP-Components/dynAEP/bridge/lattice/index.ts)
-// In-tree Action Lattice for AEP 2.8.5.
+// In-tree Action Lattice for AEP 2.8.6.
 //
 // Each node in the lattice represents a system action with:
 // - category (external_event, system_event, agent_action, output)

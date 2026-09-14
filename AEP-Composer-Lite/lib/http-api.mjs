@@ -251,7 +251,7 @@ export async function handleComposerLiteRequest(req, res) {
       service: "aep-composer-lite",
       wasm_composer: true,
       status: baseNode.status === "ok" ? "ok" : baseNode.status ?? "ok",
-      version: "2.8.0",
+      version: "2.8.6",
       port_policy: "AEP-84xx",
       standalone: true,
       internal_agent_composer: false,

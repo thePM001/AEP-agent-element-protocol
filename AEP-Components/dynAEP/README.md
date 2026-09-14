@@ -4,7 +4,7 @@
 **Author:** thePM_001
 **License:** Apache-2.0
 
-**Canonical source (AEP 2.8):** `AEP-Components/dynAEP/` in [https://github.com/thePM001/AEP-2.8.5-library](https://github.com/thePM001/AEP-2.8.5-library). Standalone mirror: https://github.com/thePM001/dynAEP
+**Canonical source (AEP 2.8.6):** `AEP-Components/dynAEP/` in [https://github.com/thePM001/AEP-agent-element-protocol](https://github.com/thePM001/AEP-agent-element-protocol). There is no standalone mirror. The reserved-name conformance suite is at [https://github.com/thePM001/aep-conformance](https://github.com/thePM001/aep-conformance).
 
 dynAEP 1.0 is an open-source protocol for governing real-time events in multi-agent AI systems. Events that carry an `action_path` and match an active lattice governance mode pass through the Action Lattice before downstream pipeline stages. The lattice validates partial-order dependencies, enforces constraints and routes matching events to interested agents. UI mutations, external events (webhooks, blockchain, email, sensors), agent actions and human-facing outputs share the same bridge architecture; lattice gating applies per `lattice.governance` and event shape (see §11).
 

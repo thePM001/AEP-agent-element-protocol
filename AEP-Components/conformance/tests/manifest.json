@@ -1,6 +1,6 @@
 {
  "suite": "aep-2.8-public",
- "version": "2.8.0",
+ "version": "2.8.6",
  "description": "Mandatory checks for AEP 2.8 public-tier compliance claims",
  "runner": "conformance/runner/run.sh",
  "checks": [

@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * UCB 2.8.5 setup notes and env. UCB is an optional attach gateway.
+ * UCB 2.8.6 setup notes and env. UCB is an optional attach gateway.
  * It is not a second evaluator. No remote GAP engine URL.
  */
 
 import { writeFileSync, chmodSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
-export const UCB_PROTOCOL_VERSION = "2.8.5";
+export const UCB_PROTOCOL_VERSION = "2.8.6";
 export const UCB_PREDICATE_PROFILE = "perimeter-v1";
 export const UCB_OPERATOR_KEY_ENV = "UCB_API_KEY";
 
