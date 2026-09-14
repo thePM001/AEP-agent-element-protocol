@@ -8,57 +8,12 @@
 // Writing.gap rules compile into Admit walls on the same collect-all pass.
 // LatticeFilter and PolicyEvaluator sequential stacks are lab-only.
 
-/// One compiled Admit wall.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AdmitWall {
-    pub id: String,
-    pub closed: bool,
-    pub reason: String,
-}
-
-impl AdmitWall {
-    pub fn open(id: impl Into<String>) -> Self {
-        Self {
-            id: id.into(),
-            closed: false,
-            reason: String::new(),
-        }
-    }
-
-    pub fn close(id: impl Into<String>, reason: impl Into<String>) -> Self {
-        Self {
-            id: id.into(),
-            closed: true,
-            reason: reason.into(),
-        }
-    }
-}
-
-/// Admit result. allow is AND of every wall (true iff no closed wall).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AdmitResult {
-    pub allow: bool,
-    pub closed: Vec<AdmitWall>,
-}
-
-impl AdmitResult {
-    /// Canonical closed-set identity. Order of input walls does not change this.
-    pub fn closed_set_key(&self) -> String {
-        let mut rows: Vec<String> = self
-            .closed
-            .iter()
-            .map(|w| {
-                let mut s = w.id.clone();
-                s.push('\u{1f}');
-                s.push_str(&w.reason);
-                s
-            })
-            .collect();
-        rows.sort();
-        rows.dedup();
-        rows.join("\n")
-    }
-}
+// the public kernel type set lives in aep-kernel-types,
+// so this crate re-exports the one definition site of every public type.
+pub use aep_kernel_types::{
+    AgentPermission, AgentPermissionLookup, AdmitResult, AdmitWall, Pulse, DENY_NO_PERMISSION,
+    PULSE_MS, WALL_AGENT_PERMISSION,
+};
 
 // @PAD: gaplune-creation-pad emit ( zero-LLM )
 // HVVCAS: admit_wall domain:policy type:library
@@ -73,13 +28,8 @@ pub mod admit_collect_all {
 
     /// AND of compiled walls. Collect every closed wall. Do not stop at the first close.
     pub fn admit_collect_all(walls: &[AdmitWall]) -> AdmitResult {
-        let mut closed: Vec<AdmitWall> = walls.iter().filter(|w| w.closed).cloned().collect();
-        closed.sort_by(|a, b| a.id.cmp(&b.id).then(a.reason.cmp(&b.reason)));
-        closed.dedup_by(|a, b| a.id == b.id && a.reason == b.reason);
-        AdmitResult {
-            allow: closed.is_empty(),
-            closed,
-        }
+        // one collect-all shape for every caller.
+        AdmitResult::from_walls(walls)
     }
 }
 
@@ -234,23 +184,7 @@ pub mod compile_permission;
 pub use compile_permission::{
     compile_agent_permission_wall, compile_agent_permission_wall_from, compile_node_agent_permission_wall, fold_agent_permission_into_admit,
     agent_permission_from_admit, agent_permission_wall_id, agent_has_permission, agent_permission,
-    AgentPermission, AgentPermissionLookup, WALL_AGENT_PERMISSION, DENY_NO_PERMISSION,
 };
-
-/// Compiled kernel pulse. Pulse is PULSE_MS 1000.
-pub const PULSE_MS: i64 = 1000;
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Pulse {
-    pub ms: i64,
-}
-
-impl Pulse {
-    pub fn compiled() -> Self {
-        Self { ms: PULSE_MS }
-    }
-}
-
 
 /// Wave 4 kernel facade. ClosedWall and DenyReport are the dock Deny types.
 /// Envelope and process_sealed live on envelope and base-node binds.

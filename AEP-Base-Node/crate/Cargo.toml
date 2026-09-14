@@ -16,6 +16,7 @@ name = "aep-lattice-log"
 path = "src/bin/aep-lattice-log.rs"
 
 [dependencies]
+aep-kernel-types = { path = "../../AEP-Components/kernel-types/crate" }
 aep-lattice-channel = { path = "../../AEP-Components/lattice-channels/crate" }
 aep-lattice-crypto = { path = "../../AEP-Components/lattice-crypto/crate" }
 aep-agentmesh = { path = "../../AEP-Components/agentmesh/crate" }
@@ -45,6 +46,7 @@ rustls.workspace = true
 tokio-rustls.workspace = true
 
 [dev-dependencies]
+aep-kernel-types = { path = "../../AEP-Components/kernel-types/crate" }
 
 anyhow.workspace = true
 aep-admit = { path = "../../AEP-Components/admit/crate" }

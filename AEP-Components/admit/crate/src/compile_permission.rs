@@ -5,26 +5,11 @@
 
 use super::{admit_collect_all, AdmitResult, AdmitWall};
 
-/// Closed-set id family for GAP agent permission walls. Not a rank.
-pub const WALL_AGENT_PERMISSION: &str = "gap:agent_permission";
-
-/// Exact Deny text when the permission wall closes.
-pub const DENY_NO_PERMISSION: &str = "this agent does not have permission for this action";
-
-/// Record of one agent id plus one action.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AgentPermission {
-    pub agent_id: String,
-    pub action: String,
-}
-
-/// Lookup input for the permission wall.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct AgentPermissionLookup {
-    pub agent_id: String,
-    pub action: String,
-    pub records: Vec<AgentPermission>,
-}
+// the agent permission public type set is defined once in
+// aep-kernel-types and re-exported here.
+pub use aep_kernel_types::{
+    AgentPermission, AgentPermissionLookup, DENY_NO_PERMISSION, WALL_AGENT_PERMISSION,
+};
 
 pub fn agent_permission_wall_id(agent: &str, action: &str) -> String {
     let mut id = String::from(WALL_AGENT_PERMISSION);

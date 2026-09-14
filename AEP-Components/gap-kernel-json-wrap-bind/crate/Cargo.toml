@@ -15,4 +15,5 @@ name = "aep-gap-kernel-json-wrap-bind"
 path = "src/main.rs"
 
 [dependencies]
+aep-kernel-types = { path = "../../kernel-types/crate" }
 serde_json = "1"

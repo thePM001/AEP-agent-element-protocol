@@ -36,7 +36,7 @@ pub use dock_pulse::{pulse_beat, DockingRuntime, PulseState};
 pub use dock_serve::{drain_docking_servers, run_docking_servers, sockets_exist, unlink_sockets};
 
 use dock_apply::{
-    attested_trust_score, enforce_epscom_on_payload, is_lrp_allowlisted, reject_side_channel,
+    attested_trust_score, enforce_correctwriting_en_on_payload, is_lrp_allowlisted, reject_side_channel,
     resolve_agent_bundle, resolve_signer_public,
 };
 use dock_freshness::frame_is_fresh;
@@ -375,17 +375,17 @@ fn handle_frame(
         }
     }
 
-    if let Err(err) = enforce_epscom_on_payload(&plaintext) {
+    if let Err(err) = enforce_correctwriting_en_on_payload(&plaintext) {
         let detail = err.to_string();
         let db = dock_lock!(&runtime.db, "db");
         let _ = record_side_channel_anomaly(
             &db,
-            SideChannelAnomalyKind::EpscomViolationRejected,
+            SideChannelAnomalyKind::CorrectwritingEnViolationRejected,
             &frame.agent_id,
             expected_port,
             detail.clone(),
         );
-        return deny_closed(None, detail, "writing:epscom", CLASS_WRITING);
+        return deny_closed(None, detail, "writing:correctwriting_en", CLASS_WRITING);
     }
 
     // AEP28-ENV-065: freeze and enqueue after digest replay. Admit collect-all then Apply runs on pulse_beat.

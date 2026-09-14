@@ -1,7 +1,7 @@
 use aep_base_node::{
     bootstrap_contracts_from_lrps, health, now_unix, open_lattice_db, record_lattice_event,
     drain_docking_servers, run_docking_servers, sockets_exist, DockingRuntime, ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV,
-    COMPONENT_ID, EPSCOM_PRIORITY,
+    COMPONENT_ID, CORRECTWRITING_EN_PRIORITY,
 };
 use aep_base_node::dock_keys::{load_or_create_dock_kem, AgentSignKeyStore};
 use aep_lattice_channel::{build_frame_for_dock, frame_digest, DockingPort};
@@ -18,7 +18,7 @@ struct BaseNodeConfigFile {
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct EpscomSignaturesSection {
+struct CorrectwritingEnSignaturesSection {
     #[serde(default = "default_true")]
     enabled: bool,
     #[serde(default)]
@@ -56,9 +56,9 @@ struct BaseNodeConfigSection {
     socket_base: String,
     lattice_db: String,
     #[serde(default)]
-    epscom_priority: u8,
+    correctwriting_en_priority: u8,
     #[serde(default)]
-    epscom_signatures: Option<EpscomSignaturesSection>,
+    correctwriting_en_signatures: Option<CorrectwritingEnSignaturesSection>,
     #[serde(default)]
     lrps: Vec<String>,
     #[serde(default)]
@@ -103,10 +103,10 @@ struct ResolvedConfig {
     lattice_db: PathBuf,
     internet_up: bool,
     mesh_peers: u32,
-    epscom_priority: u8,
-    epscom_signatures_enabled: bool,
-    epscom_signatures_count: Option<u32>,
-    epscom_signatures_path: Option<PathBuf>,
+    correctwriting_en_priority: u8,
+    correctwriting_en_signatures_enabled: bool,
+    correctwriting_en_signatures_count: Option<u32>,
+    correctwriting_en_signatures_path: Option<PathBuf>,
     lrps: Vec<String>,
 }
 
@@ -129,10 +129,10 @@ fn resolve_config(cli: &Cli) -> Result<ResolvedConfig, Box<dyn std::error::Error
         lattice_db: cli.lattice_db.clone(),
         internet_up: cli.internet_up,
         mesh_peers: cli.mesh_peers,
-        epscom_priority: EPSCOM_PRIORITY,
-        epscom_signatures_enabled: true,
-        epscom_signatures_count: None,
-        epscom_signatures_path: None,
+        correctwriting_en_priority: CORRECTWRITING_EN_PRIORITY,
+        correctwriting_en_signatures_enabled: true,
+        correctwriting_en_signatures_count: None,
+        correctwriting_en_signatures_path: None,
         lrps: Vec::new(),
     };
 
@@ -142,13 +142,13 @@ fn resolve_config(cli: &Cli) -> Result<ResolvedConfig, Box<dyn std::error::Error
         resolved.lattice_db = PathBuf::from(file.base_node.lattice_db);
         resolved.internet_up = file.base_node.internet_up;
         resolved.mesh_peers = file.base_node.mesh_peers;
-        if file.base_node.epscom_priority > 0 {
-            resolved.epscom_priority = file.base_node.epscom_priority;
+        if file.base_node.correctwriting_en_priority > 0 {
+            resolved.correctwriting_en_priority = file.base_node.correctwriting_en_priority;
         }
-        if let Some(sig) = &file.base_node.epscom_signatures {
-            resolved.epscom_signatures_enabled = sig.enabled;
+        if let Some(sig) = &file.base_node.correctwriting_en_signatures {
+            resolved.correctwriting_en_signatures_enabled = sig.enabled;
             if let Some(path) = &sig.path {
-                resolved.epscom_signatures_path = Some(PathBuf::from(path));
+                resolved.correctwriting_en_signatures_path = Some(PathBuf::from(path));
             }
         }
         resolved.lrps = file.base_node.lrps;
@@ -305,10 +305,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let data_dir = cfg.lattice_db.parent();
     let (mesh_peers, mesh_routes, mesh_load_error) =
         aep_base_node::resolve_mesh_peers(data_dir, cfg.internet_up, cfg.mesh_peers);
-    let sig_count = cfg.epscom_signatures_count.or_else(|| {
+    let sig_count = cfg.correctwriting_en_signatures_count.or_else(|| {
         let candidates = [
-            cfg.epscom_signatures_path.clone(),
-            std::env::var("AEP_EPSCOM_SIGNATURES_PATH")
+            cfg.correctwriting_en_signatures_path.clone(),
+            std::env::var("AEP_CORRECTWRITING_EN_SIGNATURES_PATH")
                 .ok()
                 .map(PathBuf::from),
             Some(PathBuf::from("AEP-Base-Node/signatures")),
@@ -317,7 +317,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .into_iter()
             .flatten()
             .find(|p| p.join("trust-bundle/manifest.json").exists())
-            .and_then(|p| aep_base_node::count_epscom_signature_entries(&p))
+            .and_then(|p| aep_base_node::count_correctwriting_en_signature_entries(&p))
     });
     let report = health(
         env!("CARGO_PKG_VERSION"),
@@ -325,8 +325,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         cfg.internet_up,
         &cfg.socket_base,
         events,
-        cfg.epscom_priority,
-        if cfg.epscom_signatures_enabled {
+        cfg.correctwriting_en_priority,
+        if cfg.correctwriting_en_signatures_enabled {
             Some(true)
         } else {
             Some(false)

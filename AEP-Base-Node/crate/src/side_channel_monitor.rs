@@ -25,7 +25,7 @@ pub enum SideChannelAnomalyKind {
     CryptoVerificationFailed,
     FrameReplayRejected,
     StaleFrameRejected,
-    EpscomViolationRejected,
+    CorrectwritingEnViolationRejected,
     LrpNotAllowlisted,
     EnvelopeAdmitRejected,
 }

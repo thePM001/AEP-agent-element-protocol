@@ -26,7 +26,7 @@ pub(crate) fn is_lrp_allowlisted(runtime: &DockingRuntime, contract_id: &str) ->
     runtime.lrps.iter().any(|lrp| lrp == contract_id)
 }
 
-pub(crate) fn enforce_epscom_on_payload(plaintext: &[u8]) -> Result<(), BaseNodeError> {
+pub(crate) fn enforce_correctwriting_en_on_payload(plaintext: &[u8]) -> Result<(), BaseNodeError> {
     let Ok(value) = serde_json::from_slice::<Value>(plaintext) else {
         return Ok(());
     };
@@ -37,7 +37,7 @@ pub(crate) fn enforce_epscom_on_payload(plaintext: &[u8]) -> Result<(), BaseNode
     };
     let enforced = enforce_writing_value(target);
     if value_has_writing_violations(&enforced) {
-        return Err(BaseNodeError::EpscomWriting);
+        return Err(BaseNodeError::CorrectwritingEnWriting);
     }
     Ok(())
 }

@@ -5,7 +5,7 @@ pub mod docking;
 // AEP28-ENV-079: dock_freshness, dock_pulse, dock_rate, dock_serve and dock_apply are docking facade modules.
 pub mod envelope_admit;
 pub mod error;
-pub mod epscom;
+pub mod correctwriting_en;
 pub mod lattice_log;
 pub mod side_channel_monitor;
 pub mod task_manifest;
@@ -37,17 +37,21 @@ use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const COMPONENT_ID: &str = "aep-base-node";
-pub const EPSCOM_PRIORITY: u8 = 255;
+pub const CORRECTWRITING_EN_PRIORITY: u8 = 255;
 
 pub use error::{AdmitDeny, BaseNodeError};
-pub use aep_wall_set_backpressure::{ClosedWall, DenyReport};
-pub use aep_base_node_pulse::PULSE_MS;
-pub use aep_live_entry::{AdmitResult, Envelope, Pulse, agent_permission, AgentPermission, DENY_NO_PERMISSION};
+// the Base Node facades the one public kernel type set.
+// Every name below is a re-export of the single definition site in aep-kernel-types.
+pub use aep_kernel_types::{
+    AdmitResult, AdmitWall, AgentPermission, AgentPermissionLookup, ClosedWall, DenyReport,
+    Envelope, ProcessSealed, Pulse, DENY_NO_PERMISSION, PULSE_MS, WALL_AGENT_PERMISSION,
+};
+pub use aep_live_entry::agent_permission;
 pub use envelope_admit::admit_sealed_payload as process_sealed;
 
-pub use epscom::{
+pub use correctwriting_en::{
     enforce_writing_text, enforce_writing_value, lint_writing_prose, value_has_writing_violations,
-    WritingEnforceResult, WritingViolation, EPSCOM_CORE_ID, WRITING_GAP_DOMAIN,
+    WritingEnforceResult, WritingViolation, CORRECTWRITING_EN_CORE_ID, WRITING_GAP_DOMAIN,
     WRITING_RULE_IDS, WRITING_RULE_NO_DASH_SUBSTITUTES, WRITING_RULE_NO_DOUBLE_HYPHEN,
     WRITING_RULE_NO_EM_DASHES, WRITING_RULE_NO_EN_DASHES, WRITING_RULE_NO_MINUS_AS_DASH,
     WRITING_RULE_NO_OXFORD_COMMA,
@@ -72,11 +76,11 @@ pub struct BaseNodeHealth {
     pub mesh_reachable: bool,
     pub mesh_routes: u32,
     pub potomitan_config: String,
-    pub epscom_priority: u8,
+    pub correctwriting_en_priority: u8,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub epscom_signatures_enabled: Option<bool>,
+    pub correctwriting_en_signatures_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub epscom_signatures_count: Option<u32>,
+    pub correctwriting_en_signatures_count: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mesh_peers_load_error: Option<String>,
     pub docking_ports: Vec<DockingPortSpec>,
@@ -373,7 +377,7 @@ pub fn resolve_mesh_peers(
     (fallback, fallback, None)
 }
 
-pub fn count_epscom_signature_entries(signatures_root: &Path) -> Option<u32> {
+pub fn count_correctwriting_en_signature_entries(signatures_root: &Path) -> Option<u32> {
     let bundle_path = signatures_root.join("trust-bundle/manifest.json");
     let raw = std::fs::read_to_string(bundle_path).ok()?;
     let parsed: serde_json::Value = serde_json::from_str(&raw).ok()?;
@@ -390,9 +394,9 @@ pub fn health(
     internet_up: bool,
     base_socket: &str,
     lattice_events: u64,
-    epscom_priority: u8,
-    epscom_signatures_enabled: Option<bool>,
-    epscom_signatures_count: Option<u32>,
+    correctwriting_en_priority: u8,
+    correctwriting_en_signatures_enabled: Option<bool>,
+    correctwriting_en_signatures_count: Option<u32>,
     mesh_peers_load_error: Option<String>,
     lattice_memory_attractors: u64,
     lattice_memory_dim: u32,
@@ -416,9 +420,9 @@ pub fn health(
         mesh_reachable: mesh.reachable,
         mesh_routes,
         potomitan_config,
-        epscom_priority,
-        epscom_signatures_enabled,
-        epscom_signatures_count,
+        correctwriting_en_priority,
+        correctwriting_en_signatures_enabled,
+        correctwriting_en_signatures_count,
         mesh_peers_load_error,
         docking_ports: docking_port_specs(base_socket),
         docking_ports_listening,
@@ -447,7 +451,7 @@ pub fn bootstrap_contracts_from_lrps(lrps: &[String]) -> ContractRegistry {
     for lrp in lrps {
         registry.register(lrp);
     }
-    registry.register("epscom-core");
+    registry.register("correctwriting-en");
     registry.register("dynaep-action-lattice");
     registry.register("lattice-channel-default");
     registry
@@ -462,7 +466,7 @@ mod tests {
         let lrps = vec!["aep-275-eval-chain".into()];
         let registry = bootstrap_contracts_from_lrps(&lrps);
         assert!(registry.is_active("aep-275-eval-chain"));
-        assert!(registry.is_active("epscom-core"));
+        assert!(registry.is_active("correctwriting-en"));
         assert!(registry.is_active("dynaep-action-lattice"));
         assert!(registry.is_active("lattice-channel-default"));
     }
@@ -475,7 +479,7 @@ mod tests {
             false,
             "/tmp/sock",
             0,
-            EPSCOM_PRIORITY,
+            CORRECTWRITING_EN_PRIORITY,
             Some(true),
             Some(4),
             None,

@@ -17,62 +17,34 @@ pub const RANK_SYSTEM: &str = "system";
 pub const RANK_ENTERPRISE: &str = "enterprise";
 pub const SCHEMA_V13_CONTRACT: &str = "GAP Instruction Meta-Schema v1.3\nagent_permission\nwrap\naction_path_prefix\noneOf\nload-time\nPresence of trust_ring is Deny.\nPresence of rank is Deny.\nEvery non-empty rank value is Deny.\ncovenants\nscanners\n";
 
+// the public kernel type set is defined once in aep-kernel-types.
+// Out-param helpers below keep this crate's calling style with no second definition.
+pub use aep_kernel_types::{AdmitResult, AdmitWall, AgentPermission};
+
+pub fn open_into(id: &str, wall: &mut AdmitWall) {
+    *wall = AdmitWall::open(id);
+}
+
+pub fn close_into(id: &str, reason: &str, wall: &mut AdmitWall) {
+    *wall = AdmitWall::close(id, reason);
+}
+
 pub fn schema_v13_body(out: &mut String) {
     out.clear();
     out.push_str(SCHEMA_V13_CONTRACT);
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AdmitWall {
-    pub id: String,
-    pub closed: bool,
-    pub reason: String,
-}
 
-impl AdmitWall {
-    pub fn open_into(id: &str, wall: &mut AdmitWall) {
-        wall.id = String::from(id);
-        wall.closed = false;
-        wall.reason = String::new();
-    }
-    pub fn close_into(id: &str, reason: &str, wall: &mut AdmitWall) {
-        wall.id = String::from(id);
-        wall.closed = true;
-        wall.reason = String::from(reason);
-    }
-}
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AdmitResult {
-    pub allow: bool,
-    pub closed: Vec<AdmitWall>,
-}
 
-impl AdmitResult {
-    pub fn closed_set_key(self_ref: &AdmitResult, out: &mut String) {
-        out.clear();
-        let mut rows: Vec<String> = Vec::new();
-        let mut i = 0usize;
-        while i < self_ref.closed.len() {
-            let w = &self_ref.closed[i];
-            let mut s = w.id.clone();
-            s.push(char::from(31));
-            s.push_str(&w.reason);
-            rows.push(s);
-            i += 1;
-        }
-        rows.sort();
-        rows.dedup();
-        let mut j = 0usize;
-        while j < rows.len() {
-            if 0 < j {
-                out.push(char::from(10));
-            }
-            out.push_str(&rows[j]);
-            j += 1;
-        }
-    }
-}
+
+
+
+
+
+
+
+
 
 
 pub fn admit_collect_all(walls: &[AdmitWall], out: &mut AdmitResult) {
@@ -86,15 +58,12 @@ pub fn admit_collect_all(walls: &[AdmitWall], out: &mut AdmitResult) {
     }
     closed.sort_by(|a, b| a.id.cmp(&b.id).then(a.reason.cmp(&b.reason)));
     closed.dedup_by(|a, b| a.id == b.id && a.reason == b.reason);
-    out.allow = closed.is_empty();
-    out.closed = closed;
+    let open: Vec<AdmitWall> = walls.iter().filter(|w| w.closed == false).cloned().collect();
+    *out = AdmitResult::new(closed, open);
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AgentPermission {
-    pub agent_id: String,
-    pub action: String,
-}
+
+
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct LiveAdmitRequest {
@@ -209,14 +178,14 @@ pub fn compile_leftover_rank_field_wall(doc: &Value, wall: &mut AdmitWall) {
         }
     }
     if present || rank_key || nonempty || is_rank {
-        AdmitWall::close_into(
+        close_into(
             WALL_TRUST_RING_RANK,
             "leftover rank field is Deny; agent permission is agent_permission",
             wall,
         );
         return;
     }
-    AdmitWall::open_into(WALL_TRUST_RING_RANK, wall);
+    open_into(WALL_TRUST_RING_RANK, wall);
 }
 
 
@@ -317,14 +286,14 @@ pub fn compile_agent_permission_profile_wall(doc: &Value, req: &LiveAdmitRequest
     let agent_id = req.agent_id.trim();
     let action = req.action.trim();
     if agent_id.is_empty() && action.is_empty() {
-        AdmitWall::open_into(WALL_AGENT_PERMISSION, wall);
+        open_into(WALL_AGENT_PERMISSION, wall);
         return;
     }
     let meta = meta_of(doc);
     let mut declared = false;
     field_present(meta, "agent_permission", &mut declared);
     if declared == false {
-        AdmitWall::open_into(WALL_AGENT_PERMISSION, wall);
+        open_into(WALL_AGENT_PERMISSION, wall);
         return;
     }
     let mut records: Vec<AgentPermission> = Vec::new();
@@ -332,7 +301,7 @@ pub fn compile_agent_permission_profile_wall(doc: &Value, req: &LiveAdmitRequest
     let mut id = String::new();
     agent_permission_wall_id(agent_id, action, &mut id);
     if records.is_empty() {
-        AdmitWall::close_into(
+        close_into(
             &id,
             "this agent does not have permission for this action",
             wall,
@@ -342,10 +311,10 @@ pub fn compile_agent_permission_profile_wall(doc: &Value, req: &LiveAdmitRequest
     let mut allowed = false;
     agent_has_permission(agent_id, action, &records, &mut allowed);
     if allowed {
-        AdmitWall::open_into(&id, wall);
+        open_into(&id, wall);
         return;
     }
-    AdmitWall::close_into(&id, "this agent does not have permission for this action", wall);
+    close_into(&id, "this agent does not have permission for this action", wall);
 }
 
 pub fn action_path_matches_prefix(action_path: &str, prefix: &str, out: &mut bool) {
@@ -392,15 +361,15 @@ pub fn compile_wrap_prefix_bind(doc: &Value, req: &LiveAdmitRequest, wall: &mut 
     json_str(meta, "wrap", &mut wrap);
     json_str(meta, "action_path_prefix", &mut prefix);
     if wrap.is_empty() && prefix.is_empty() {
-        AdmitWall::open_into(WALL_WRAP_BIND, wall);
+        open_into(WALL_WRAP_BIND, wall);
         return;
     }
     let mut binds = false;
     wrap_or_prefix_binds(&wrap, &prefix, &req.wrap, &req.action_path, &mut binds);
     if binds {
-        AdmitWall::open_into(WALL_WRAP_BIND, wall);
+        open_into(WALL_WRAP_BIND, wall);
     } else {
-        AdmitWall::close_into(
+        close_into(
             WALL_WRAP_BIND,
             "wrap or action_path_prefix does not bind this action_path",
             wall,
@@ -412,34 +381,34 @@ pub fn compile_wrap_prefix_bind(doc: &Value, req: &LiveAdmitRequest, wall: &mut 
 pub fn compile_guard_wall(doc: &Value, wall: &mut AdmitWall) {
     let p = doc.get("pattern");
     if p.is_none() {
-        AdmitWall::open_into(WALL_PATTERN_GUARD, wall);
+        open_into(WALL_PATTERN_GUARD, wall);
         return;
     }
     let p = p.unwrap();
     if p.is_string() {
-        AdmitWall::open_into(WALL_PATTERN_GUARD, wall);
+        open_into(WALL_PATTERN_GUARD, wall);
         return;
     }
     let g = p.get("guard");
     if g.is_none() {
-        AdmitWall::open_into(WALL_PATTERN_GUARD, wall);
+        open_into(WALL_PATTERN_GUARD, wall);
         return;
     }
     let g = g.unwrap();
     if g.is_string() {
-        AdmitWall::open_into(WALL_PATTERN_GUARD, wall);
+        open_into(WALL_PATTERN_GUARD, wall);
         return;
     }
     if g.is_object() {
         let expr = g.get("expr").and_then(|x| x.as_str()).unwrap_or("").trim();
         if expr.is_empty() {
-            AdmitWall::close_into(WALL_PATTERN_GUARD, "structured pattern.guard requires expr", wall);
+            close_into(WALL_PATTERN_GUARD, "structured pattern.guard requires expr", wall);
         } else {
-            AdmitWall::open_into(WALL_PATTERN_GUARD, wall);
+            open_into(WALL_PATTERN_GUARD, wall);
         }
         return;
     }
-    AdmitWall::close_into(WALL_PATTERN_GUARD, "pattern.guard must be a string or a structured object", wall);
+    close_into(WALL_PATTERN_GUARD, "pattern.guard must be a string or a structured object", wall);
 }
 
 fn parse_scalar(raw: &str, out: &mut Value) {
@@ -656,11 +625,8 @@ pub fn live_admit_gap_profile(source: &str, req: &LiveAdmitRequest, out: &mut Ad
         return;
     }
     let mut walls: Vec<AdmitWall> = Vec::new();
-    let mut w1 = AdmitWall {
-        id: String::new(),
-        closed: false,
-        reason: String::new(),
-    };
+    // the wall row is the public AdmitWall row.
+    let mut w1 = AdmitWall::open("");
     let mut w2 = w1.clone();
     let mut w3 = w1.clone();
     let mut w4 = w1.clone();
@@ -709,10 +675,7 @@ pub mod live_admit_gap_profile {
             Self {
                 source: String::new(),
                 request: LiveAdmitRequest::default(),
-                result: AdmitResult {
-                    allow: true,
-                    closed: Vec::new(),
-                },
+                result: AdmitResult::new(Vec::new(), Vec::new()),
                 err: String::new(),
             }
         }
@@ -784,7 +747,7 @@ mod tests {
         let mut err = String::new();
         parse_gap_source(&sample_yaml_profile(), &mut doc, &mut err);
         assert_eq ! (err.as_str(), "");
-        let mut wall = AdmitWall { id: String::new(), closed: false, reason: String::new() };
+        let mut wall = AdmitWall::open("");
         compile_guard_wall(&doc, &mut wall);
         assert_eq ! (wall.closed, false);
         let g = doc["pattern"]["guard"]["expr"].as_str().unwrap_or("");
@@ -805,7 +768,7 @@ mod tests {
     #[test]
     fn trust_ring_user_fails_live_admit() {
         let req = LiveAdmitRequest::default();
-        let mut result = AdmitResult { allow: true, closed: Vec::new() };
+        let mut result = AdmitResult::new(Vec::new(), Vec::new());
         let mut err = String::new();
         live_admit_gap_profile(&sample_yaml_rank(), &req, &mut result, &mut err);
         assert_eq ! (err.as_str(), "");
@@ -838,7 +801,7 @@ mod tests_more {
             wrap: String::from("finance"),
             action_path: String::from("finance/pay"),
         };
-        let mut result = AdmitResult { allow: true, closed: Vec::new() };
+        let mut result = AdmitResult::new(Vec::new(), Vec::new());
         let mut err = String::new();
         live_admit_gap_profile(&profile(), &req, &mut result, &mut err);
         assert_eq ! (err.as_str(), "");
@@ -868,7 +831,7 @@ mod tests_more {
         let mut err = String::new();
         parse_gap_source(&profile(), &mut doc, &mut err);
         assert_eq ! (err.as_str(), "");
-        let mut a = AdmitWall { id: String::new(), closed: false, reason: String::new() };
+        let mut a = AdmitWall::open("");
         let mut b = a.clone();
         compile_agent_permission_profile_wall(&doc, &LiveAdmitRequest { agent_id: String::from("agent-a"), action: String::from("write"), wrap: String::from("finance"), action_path: String::from("finance/pay") }, &mut a);
         compile_agent_permission_profile_wall(&doc, &LiveAdmitRequest { agent_id: String::from("agent-b"), action: String::from("write"), wrap: String::from("finance"), action_path: String::from("finance/pay") }, &mut b);
@@ -882,7 +845,7 @@ mod tests_more {
         let mut err = String::new();
         parse_gap_source(&profile(), &mut doc, &mut err);
         assert_eq ! (err.as_str(), "");
-        let mut okw = AdmitWall { id: String::new(), closed: false, reason: String::new() };
+        let mut okw = AdmitWall::open("");
         let mut bad = okw.clone();
         compile_wrap_prefix_bind(&doc, &LiveAdmitRequest { agent_id: String::from("agent-a"), action: String::from("write"), wrap: String::from("finance"), action_path: String::from("finance/pay") }, &mut okw);
         compile_wrap_prefix_bind(&doc, &LiveAdmitRequest { agent_id: String::from("agent-a"), action: String::from("write"), wrap: String::from("inventory"), action_path: String::from("inventory/stock") }, &mut bad);
@@ -953,11 +916,11 @@ mod tests_more {
         let mut err = String::new();
         parse_gap_source(src, &mut doc, &mut err);
         assert_eq ! (err.as_str(), "");
-        let mut wall = AdmitWall { id: String::new(), closed: false, reason: String::new() };
+        let mut wall = AdmitWall::open("");
         compile_leftover_rank_field_wall(&doc, &mut wall);
         assert_eq ! (wall.closed, true);
         assert_eq ! (wall.id.as_str(), WALL_TRUST_RING_RANK);
-        let mut result = AdmitResult { allow: true, closed: Vec::new() };
+        let mut result = AdmitResult::new(Vec::new(), Vec::new());
         live_admit_gap_profile(src, &LiveAdmitRequest::default(), &mut result, &mut err);
         assert_eq ! (err.as_str(), "");
         assert_eq ! (result.allow, false);
@@ -1020,7 +983,7 @@ mod tests_more {
     #[test]
         fn empty_list_refuses_on_miss_for_agent_action() {
         let src = String::from("address:\n  domain: com.example.live\n  id: empty-list\npattern: p\naction:\n  type: template\n  content: c\nweight: 1.0\ncomposition:\n  type: atomic\nmetadata:\n  provenance: system.seed\n  version: 1.0.0\n  stability: experimental\n");
-        let mut result = AdmitResult { allow: true, closed: Vec::new() };
+        let mut result = AdmitResult::new(Vec::new(), Vec::new());
         let mut err = String::new();
         live_admit_gap_profile(&src, &LiveAdmitRequest { agent_id: String::from("agent-a"), action: String::from("write"), wrap: String::new(), action_path: String::new() }, &mut result, &mut err);
         assert_eq ! (err.as_str(), "");
@@ -1074,7 +1037,7 @@ mod tests_aep_admit {
     #[test]
     fn rank_closed_folds_into_aep_admit() {
         let req = LiveAdmitRequest::default();
-        let mut result = AdmitResult { allow: true, closed: Vec::new() };
+        let mut result = AdmitResult::new(Vec::new(), Vec::new());
         let mut err = String::new();
         let src = String::from("address:\n  domain: com.example.old\n  id: rank-doc\npattern: old pattern\naction:\n  type: template\n  content: hello\nweight: 1.0\ncomposition:\n  type: atomic\nmetadata:\n  provenance: system.seed\n  version: 1.0.0\n  stability: experimental\n  trust_ring: user\n");
         live_admit_gap_profile(&src, &req, &mut result, &mut err);

@@ -192,22 +192,10 @@ pub struct LatticeNode {
 }
 
 /// One collect-all wall.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct WallVerdict {
-    pub id: String,
-    pub family: String,
-    pub open: bool,
-    #[serde(default)]
-    pub reason: String,
-}
+
 
 /// Collect-all Admit result. allow is AND of every wall.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct AdmitResult {
-    pub allow: bool,
-    pub closed_walls: Vec<WallVerdict>,
-    pub open_walls: Vec<WallVerdict>,
-}
+
 
 /// Alias used by HVVCAS filter output.
 pub type FilterResult = AdmitResult;
@@ -218,14 +206,13 @@ pub struct ApplyPlan {
     pub ledger_allow: bool,
 }
 
-pub fn wall(id: &str, family: &str, open: bool, reason: &str) -> WallVerdict {
-    WallVerdict {
-        id: id.to_string(),
-        family: family.to_string(),
-        open,
-        reason: reason.to_string(),
-    }
+pub fn wall(id: &str, family: &str, open: bool, reason: &str) -> AdmitWall {
+    // the wall row is the kernel AdmitWall, not a local copy.
+    AdmitWall::verdict(id, family, open, reason)
 }
+
+// the public kernel type set is defined once in aep-kernel-types.
+pub use aep_kernel_types::{AdmitResult, AdmitWall};
 
 /// One Admit combinator. Collect every wall then AND.
 pub fn admit(event: &LatticeEvent, snap: &Snapshot) -> AdmitResult {
@@ -234,16 +221,17 @@ pub fn admit(event: &LatticeEvent, snap: &Snapshot) -> AdmitResult {
     let mut closed = Vec::new();
     let mut open = Vec::new();
     for w in walls {
-        if w.open {
-            open.push(w);
-        } else {
+        if w.closed {
             closed.push(w);
+        } else {
+            open.push(w);
         }
     }
+    // one AdmitResult shape, allow is AND of every wall.
     AdmitResult {
         allow: closed.is_empty(),
-        closed_walls: closed,
-        open_walls: open,
+        closed,
+        open,
     }
 }
 
@@ -260,7 +248,7 @@ pub fn apply_admit(snap: &mut Snapshot, event: &LatticeEvent, plan: &ApplyPlan) 
     }
 }
 
-fn all_walls(event: &LatticeEvent, snap: &Snapshot) -> Vec<WallVerdict> {
+fn all_walls(event: &LatticeEvent, snap: &Snapshot) -> Vec<AdmitWall> {
     vec![
         wall_membership(event, snap),
         wall_parents(event, snap),
@@ -270,7 +258,7 @@ fn all_walls(event: &LatticeEvent, snap: &Snapshot) -> Vec<WallVerdict> {
     ]
 }
 
-fn wall_membership(event: &LatticeEvent, snap: &Snapshot) -> WallVerdict {
+fn wall_membership(event: &LatticeEvent, snap: &Snapshot) -> AdmitWall {
     if snap.lattice_nodes.is_empty() {
         return wall(
             "dag.membership",
@@ -294,7 +282,7 @@ fn wall_membership(event: &LatticeEvent, snap: &Snapshot) -> WallVerdict {
     }
 }
 
-fn wall_parents(event: &LatticeEvent, snap: &Snapshot) -> WallVerdict {
+fn wall_parents(event: &LatticeEvent, snap: &Snapshot) -> AdmitWall {
     let Some(node) = snap.lattice_nodes.get(&event.action_path) else {
         return wall("dag.parents", "dag", true, "membership wall covers miss");
     };
@@ -316,7 +304,7 @@ fn wall_parents(event: &LatticeEvent, snap: &Snapshot) -> WallVerdict {
     }
 }
 
-fn wall_agent_permission(event: &LatticeEvent, snap: &Snapshot) -> WallVerdict {
+fn wall_agent_permission(event: &LatticeEvent, snap: &Snapshot) -> AdmitWall {
     if snap.lattice_nodes.is_empty() {
         return wall("gap.agent_permission", "gap", false, "empty lattice closes agent_permission");
     }
@@ -352,7 +340,7 @@ fn wall_agent_permission(event: &LatticeEvent, snap: &Snapshot) -> WallVerdict {
     }
 }
 
-fn wall_time(event: &LatticeEvent, snap: &Snapshot) -> WallVerdict {
+fn wall_time(event: &LatticeEvent, snap: &Snapshot) -> AdmitWall {
     if event.agent_ts_ms == 0 || snap.bridge_ts_ms == 0 {
         return wall("time.authority", "time", false, "no timestamps");
     }
@@ -375,7 +363,7 @@ fn wall_time(event: &LatticeEvent, snap: &Snapshot) -> WallVerdict {
     wall("time.authority", "time", true, "time ok")
 }
 
-fn wall_perception(event: &LatticeEvent) -> WallVerdict {
+fn wall_perception(event: &LatticeEvent) -> AdmitWall {
     let p = &event.perception;
     if p.modality.is_empty()
         && p.syllable_rate.is_none()
@@ -484,12 +472,12 @@ fn wall_perception(event: &LatticeEvent) -> WallVerdict {
 }
 
 pub fn closed_names(result: &AdmitResult) -> BTreeSet<String> {
-    result.closed_walls.iter().map(|w| w.id.clone()).collect()
+    result.closed.iter().map(|w| w.id.clone()).collect()
 }
 
 pub fn closed_reasons(result: &AdmitResult) -> Vec<String> {
     result
-        .closed_walls
+        .closed
         .iter()
         .map(|w| {
             if w.reason.is_empty() {
@@ -720,7 +708,7 @@ mod tests {
         let snap = base_snap();
         let r = admit(&act("action:write"), &snap);
         assert!(r.allow);
-        assert!(r.closed_walls.is_empty());
+        assert!(r.closed.is_empty());
     }
 
     #[test]
@@ -778,7 +766,7 @@ mod tests {
         let r = admit(&a, &snap);
         assert_eq!(r.allow, false);
         assert_eq!(closed_names(&r).contains("gap.agent_permission"), true);
-        assert_eq!(r.closed_walls.iter().any(|w| w.id == "gap.agent_permission" && w.reason == "this agent does not have permission for this action"), true);
+        assert_eq!(r.closed.iter().any(|w| w.id == "gap.agent_permission" && w.reason == "this agent does not have permission for this action"), true);
     }
 
     #[test]
@@ -1081,7 +1069,7 @@ impl DynAep {
         let result = admit(&event, &self.snap);
         if result.allow == false {
             let reason = result
-                .closed_walls
+                .closed
                 .iter()
                 .map(|w| format!("{}: {}", w.id, w.reason))
                 .collect::<Vec<String>>()

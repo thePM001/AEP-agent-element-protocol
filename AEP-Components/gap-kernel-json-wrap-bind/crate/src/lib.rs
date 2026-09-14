@@ -16,28 +16,25 @@ pub const WALL_PATTERN_GUARD: &str = "gap:pattern:guard";
 pub const WALL_ALWAYS_ON: &str = "gap:stem:always-on";
 pub const README_CONTRACT: &str = "Live kernel policies may be JSON-encoded GAP instructions. YAML remains valid GAP source. Writing and security are always-on stems. Other GAP walls bind to a wrap or prefix.\n";
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AdmitWall {
-    pub id: String,
-    pub closed: bool,
-    pub reason: String,
+
+
+
+
+
+
+// the public kernel wall row is defined once in aep-kernel-types.
+pub use aep_kernel_types::AdmitWall;
+
+pub fn open_into(id: &str, wall: &mut AdmitWall) {
+    *wall = AdmitWall::open(id);
 }
 
-impl AdmitWall {
-    pub fn open_into(id: &str, wall: &mut AdmitWall) {
-        wall.id = String::from(id);
-        wall.closed = false;
-        wall.reason = String::new();
-    }
-    pub fn close_into(id: &str, reason: &str, wall: &mut AdmitWall) {
-        wall.id = String::from(id);
-        wall.closed = true;
-        wall.reason = String::from(reason);
-    }
+pub fn close_into(id: &str, reason: &str, wall: &mut AdmitWall) {
+    *wall = AdmitWall::close(id, reason);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AdmitResult {
+pub struct WrapBindResult {
     pub allow: bool,
     pub closed: Vec<AdmitWall>,
     pub applies: bool,
@@ -45,7 +42,7 @@ pub struct AdmitResult {
     pub skin: String,
 }
 
-impl Default for AdmitResult {
+impl Default for WrapBindResult {
     fn default() -> Self {
         Self {
             allow: true,
@@ -57,7 +54,7 @@ impl Default for AdmitResult {
     }
 }
 
-pub fn admit_collect_all(walls: &[AdmitWall], out: &mut AdmitResult) {
+pub fn admit_collect_all(walls: &[AdmitWall], out: &mut WrapBindResult) {
     let mut closed: Vec<AdmitWall> = Vec::new();
     let mut i = 0usize;
     while i < walls.len() {
@@ -328,19 +325,19 @@ pub fn parse_gap_instruction(src: &str, out: &mut Instruction, err: &mut String)
 pub fn compile_guard_wall(instr: &Instruction, wall: &mut AdmitWall) {
     let g = instr.guard.trim();
     if g.is_empty() || g == "true" {
-        AdmitWall::open_into(WALL_PATTERN_GUARD, wall);
+        open_into(WALL_PATTERN_GUARD, wall);
         return;
     }
     if g == "false" {
-        AdmitWall::close_into(WALL_PATTERN_GUARD, "pattern.guard is false", wall);
+        close_into(WALL_PATTERN_GUARD, "pattern.guard is false", wall);
         return;
     }
-    AdmitWall::open_into(WALL_PATTERN_GUARD, wall);
+    open_into(WALL_PATTERN_GUARD, wall);
 }
 
-pub fn live_admit_json_kernel(source: &str, req: &BindRequest, out: &mut AdmitResult, err: &mut String) {
+pub fn live_admit_json_kernel(source: &str, req: &BindRequest, out: &mut WrapBindResult, err: &mut String) {
     err.clear();
-    *out = AdmitResult::default();
+    *out = WrapBindResult::default();
     let mut instr = Instruction::default();
     parse_gap_instruction(source, &mut instr, err);
     if err.is_empty() == false {
@@ -349,7 +346,7 @@ pub fn live_admit_json_kernel(source: &str, req: &BindRequest, out: &mut AdmitRe
             closed: false,
             reason: String::new(),
         };
-        AdmitWall::close_into(WALL_SKIN, err, &mut w);
+        close_into(WALL_SKIN, err, &mut w);
         out.allow = false;
         out.closed.clear();
         out.closed.push(w);
@@ -389,7 +386,7 @@ pub fn live_admit_json_kernel(source: &str, req: &BindRequest, out: &mut AdmitRe
             closed: false,
             reason: String::new(),
         };
-        AdmitWall::open_into(WALL_ALWAYS_ON, &mut aw);
+        open_into(WALL_ALWAYS_ON, &mut aw);
         walls.push(aw);
     }
     admit_collect_all(&walls, out);
@@ -420,11 +417,11 @@ pub mod parse_gap_instruction {
 }
 
 pub mod live_admit_json_kernel {
-    use super::{AdmitResult, BindRequest};
+    use super::{WrapBindResult, BindRequest};
     pub struct LiveAdmitJsonKernel {
         pub source: String,
         pub request: BindRequest,
-        pub result: AdmitResult,
+        pub result: WrapBindResult,
         pub err: String,
     }
     impl LiveAdmitJsonKernel {
@@ -432,7 +429,7 @@ pub mod live_admit_json_kernel {
             Self {
                 source: String::new(),
                 request: BindRequest::default(),
-                result: AdmitResult::default(),
+                result: WrapBindResult::default(),
                 err: String::new(),
             }
         }
@@ -555,7 +552,7 @@ mod tests {
 
     #[test]
     fn writing_stem_always_on_inventory_ping() {
-        let mut result = AdmitResult::default();
+        let mut result = WrapBindResult::default();
         let mut err = String::new();
         live_admit_json_kernel(&json_writing(), &inv(), &mut result, &mut err);
         must(err.as_str() == "");
@@ -567,7 +564,7 @@ mod tests {
 
     #[test]
     fn security_stem_always_on_finance_ping() {
-        let mut result = AdmitResult::default();
+        let mut result = WrapBindResult::default();
         let mut err = String::new();
         live_admit_json_kernel(&json_security(), &fin(), &mut result, &mut err);
         must(err.as_str() == "");
@@ -578,7 +575,7 @@ mod tests {
 
     #[test]
     fn finance_wrap_does_not_close_inventory_ping() {
-        let mut result = AdmitResult::default();
+        let mut result = WrapBindResult::default();
         let mut err = String::new();
         live_admit_json_kernel(&json_finance(), &inv(), &mut result, &mut err);
         must(err.as_str() == "");
@@ -589,7 +586,7 @@ mod tests {
 
     #[test]
     fn finance_wrap_binds_finance_ping() {
-        let mut result = AdmitResult::default();
+        let mut result = WrapBindResult::default();
         let mut err = String::new();
         live_admit_json_kernel(&yaml_finance(), &fin(), &mut result, &mut err);
         must(err.as_str() == "");
@@ -600,7 +597,7 @@ mod tests {
 
     #[test]
     fn empty_wrap_other_does_not_fold_onto_every_event() {
-        let mut result = AdmitResult::default();
+        let mut result = WrapBindResult::default();
         let mut err = String::new();
         live_admit_json_kernel(&yaml_empty_wrap(), &inv(), &mut result, &mut err);
         must(err.as_str() == "");
@@ -613,7 +610,7 @@ mod tests {
 
     #[test]
     fn prefix_binds_matching_action_path() {
-        let mut result = AdmitResult::default();
+        let mut result = WrapBindResult::default();
         let mut err = String::new();
         let req = BindRequest {
             wrap: String::from("other"),

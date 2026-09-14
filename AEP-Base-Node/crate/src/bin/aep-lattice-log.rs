@@ -2,7 +2,7 @@ use aep_base_node::{
     bootstrap_contracts_from_lrps, build_transport_frame, default_aep_data_dir,
     default_lattice_db_path, enforce_writing_text, enforce_writing_value, event_count,
     export_dynaep_events, open_lattice_db, record_dynaep_event, DynAepEventInput,
-    ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV, EPSCOM_CORE_ID,
+    ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV, CORRECTWRITING_EN_CORE_ID,
 };
 use aep_lattice_channel::LatticeChannelFrame;
 use clap::{Parser, Subcommand};
@@ -39,9 +39,9 @@ enum Commands {
     Count,
     /// Build a LatticeChannelFrame JSON envelope for docking transport (no DB write)
     BuildFrame,
-    /// EPSCOM kernel writing.gap enforcement for prose text
+    /// CORRECTWRITING_EN kernel writing.gap enforcement for prose text
     ValidateWriting,
-    /// EPSCOM kernel writing.gap enforcement for arbitrary JSON values
+    /// CORRECTWRITING_EN kernel writing.gap enforcement for arbitrary JSON values
     EnforceWritingValue,
 }
 
@@ -169,7 +169,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "{}",
                 serde_json::json!({
                     "ok": result.ok,
-                    "authority": EPSCOM_CORE_ID,
+                    "authority": CORRECTWRITING_EN_CORE_ID,
                     "text": result.text,
                     "violations_corrected": result.violations_corrected,
                     "violations": result.violations,
@@ -188,7 +188,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "{}",
                 serde_json::json!({
                     "ok": ok,
-                    "authority": EPSCOM_CORE_ID,
+                    "authority": CORRECTWRITING_EN_CORE_ID,
                     "value": enforced,
                 })
             );

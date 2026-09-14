@@ -18,28 +18,10 @@ mod lattice_yaml;
 pub use lattice_yaml::{apply_admit, closed_reasons, load_lattice_yaml, load_lattice_yaml_file, snapshot_from_nodes, EnvelopeError};
 pub use aep_admit::{AdmitWall, agent_permission, agent_has_permission, AgentPermission, Pulse, PULSE_MS, DENY_NO_PERMISSION, ClosedWall, DenyReport};
 
-pub type Envelope = EnvelopeAction;
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct EnvelopeAction {
-    pub action_path: String,
-    #[serde(default)]
-    pub agent_id: String,
-    #[serde(default)]
-    pub payload: serde_json::Value,
-    #[serde(default)]
-    pub tool: String,
-    #[serde(default)]
-    pub dest_dock: String,
-    #[serde(default)]
-    pub scene_id: String,
-    #[serde(default)]
-    pub agent_ts_ms: i64,
-    #[serde(default)]
-    pub sequence_number: i64,
-    #[serde(default)]
-    pub anomaly_score: f64,
-}
+// the public kernel type set is defined once in aep-kernel-types.
+// EnvelopeAction stays as an alias so no caller changes and no second definition exists.
+pub use aep_kernel_types::{AdmitResult, Envelope};
+pub type EnvelopeAction = aep_kernel_types::Envelope;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Snapshot {
@@ -223,21 +205,9 @@ pub struct LatticeNode {
     pub wrap: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct WallVerdict {
-    pub id: String,
-    pub family: String,
-    pub open: bool,
-    #[serde(default)]
-    pub reason: String,
-}
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct AdmitResult {
-    pub allow: bool,
-    pub closed_walls: Vec<WallVerdict>,
-    pub open_walls: Vec<WallVerdict>,
-}
+
+
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ApplyPlan {
@@ -258,10 +228,10 @@ pub fn admit_with_extra(
 ) -> AdmitResult {
     let mut walls = all_walls(action, snap);
     for w in extra {
-        walls.push(WallVerdict {
+        walls.push(AdmitWall {
             id: w.id,
             family: String::from("dock"),
-            open: w.closed == false,
+            closed: w.closed,
             reason: w.reason,
         });
     }
@@ -269,16 +239,17 @@ pub fn admit_with_extra(
     let mut closed = Vec::new();
     let mut open = Vec::new();
     for w in walls {
-        if w.open {
-            open.push(w);
-        } else {
+        if w.closed {
             closed.push(w);
+        } else {
+            open.push(w);
         }
     }
+    // one AdmitResult shape, allow is AND of every wall.
     AdmitResult {
         allow: closed.is_empty(),
-        closed_walls: closed,
-        open_walls: open,
+        closed,
+        open,
     }
 }
 
@@ -303,13 +274,9 @@ pub fn apply(snap: &mut Snapshot, plan: &ApplyPlan) {
     }
 }
 
-fn wall(id: &str, family: &str, open: bool, reason: &str) -> WallVerdict {
-    WallVerdict {
-        id: id.to_string(),
-        family: family.to_string(),
-        open,
-        reason: reason.to_string(),
-    }
+fn wall(id: &str, family: &str, open: bool, reason: &str) -> AdmitWall {
+    // the wall row is the kernel AdmitWall, not a local copy.
+    AdmitWall::verdict(id, family, open, reason)
 }
 
 /// dest_dock may bind from the opened frame docking port when the event field is empty.
@@ -320,7 +287,7 @@ pub fn dest_dock_from_opened_frame(event_dest_dock: &str, docking_port: &str) ->
     docking_port.to_string()
 }
 
-fn all_walls(action: &EnvelopeAction, snap: &Snapshot) -> Vec<WallVerdict> {
+fn all_walls(action: &EnvelopeAction, snap: &Snapshot) -> Vec<AdmitWall> {
     vec![
         wall_dag(action, snap),
         wall_agent_permission(action, snap),
@@ -340,7 +307,7 @@ fn all_walls(action: &EnvelopeAction, snap: &Snapshot) -> Vec<WallVerdict> {
     ]
 }
 
-fn wall_dag(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
+fn wall_dag(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     if snap.lattice_nodes.is_empty() {
         return wall("dag.membership", "dag", false, "empty lattice closes membership");
     }
@@ -356,7 +323,7 @@ fn wall_dag(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
     }
 }
 
-fn wall_parents(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
+fn wall_parents(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     let Some(node) = snap.lattice_nodes.get(&action.action_path) else {
         return wall("dag.parents", "dag", true, "membership wall covers miss");
     };
@@ -378,7 +345,7 @@ fn wall_parents(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
     }
 }
 
-fn wall_agent_permission(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
+fn wall_agent_permission(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     if snap.lattice_nodes.is_empty() {
         return wall("gap.agent_permission", "gap", false, "empty lattice closes agent_permission");
     }
@@ -414,7 +381,7 @@ fn wall_agent_permission(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdic
     }
 }
 
-fn wall_gap(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
+fn wall_gap(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     if !snap.gap_scan_payload {
         return wall("gap.writing", "gap", true, "gap scan off");
     }
@@ -449,7 +416,7 @@ fn collect_strings(v: &serde_json::Value, out: &mut Vec<String>) {
     }
 }
 
-fn wall_scene(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
+fn wall_scene(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     if action.scene_id.is_empty() {
         return wall("scene.membership", "scene", false, "no scene bound");
     }
@@ -473,7 +440,7 @@ fn wall_scene(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
     }
 }
 
-fn wall_time(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
+fn wall_time(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     if action.agent_ts_ms == 0 || snap.bridge_ts_ms == 0 {
         return wall("time.authority", "time", false, "no timestamps");
     }
@@ -496,7 +463,7 @@ fn wall_time(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
     wall("time.authority", "time", true, "time ok")
 }
 
-fn wall_channel(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
+fn wall_channel(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     if action.dest_dock.is_empty() {
         return wall("channel.dock", "channel", false, "no dock bound");
     }
@@ -520,7 +487,7 @@ fn wall_channel(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
     }
 }
 
-fn wall_rate(_action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
+fn wall_rate(_action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     if snap.actions_last_minute >= snap.max_actions_per_minute {
         wall("rate.session", "rate", false, "would exceed session rate")
     } else {
@@ -528,7 +495,7 @@ fn wall_rate(_action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
     }
 }
 
-fn wall_scanner(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
+fn wall_scanner(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     if snap.scanner_needles.is_empty() {
         return wall("scanner.bundle", "scanner", true, "no needles");
     }
@@ -575,7 +542,7 @@ fn forbidden_pairs() -> Vec<(&'static str, &'static str)> {
     ]
 }
 
-fn wall_restricted_rego(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
+fn wall_restricted_rego(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     if snap.lattice_nodes.is_empty() {
         return wall("rego.restricted", "rego", true, "no lattice");
     }
@@ -605,7 +572,7 @@ fn wall_restricted_rego(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict
     wall("rego.restricted", "rego", true, "restricted fragment open")
 }
 
-fn wall_forbidden_seq(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
+fn wall_forbidden_seq(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     for (parent, child) in forbidden_pairs() {
         if action.action_path == child && parent_is_satisfied(snap, parent, &action.agent_id) {
             return wall(
@@ -619,7 +586,7 @@ fn wall_forbidden_seq(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
     wall("rego.forbidden_seq", "rego", true, "no forbidden sequence")
 }
 
-fn wall_output_ceiling(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
+fn wall_output_ceiling(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     if output_actions().contains(action.action_path.as_str()) && snap.simultaneous_outputs > 3 {
         wall(
             "rego.output_ceiling",
@@ -632,7 +599,7 @@ fn wall_output_ceiling(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict 
     }
 }
 
-fn wall_covenant(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
+fn wall_covenant(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     if action.tool.is_empty() && snap.forbid_tools.is_empty() {
         return wall("covenant.tools", "covenant", true, "no tool bound");
     }
@@ -649,7 +616,7 @@ fn wall_covenant(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
 }
 
 pub fn closed_names(result: &AdmitResult) -> BTreeSet<String> {
-    result.closed_walls.iter().map(|w| w.id.clone()).collect()
+    result.closed.iter().map(|w| w.id.clone()).collect()
 }
 
 #[cfg(test)]
@@ -715,7 +682,7 @@ mod tests {
         let snap = base_snap();
         let r = admit(&act("action:write"), &snap);
         assert!(r.allow);
-        assert!(r.closed_walls.is_empty());
+        assert!(r.closed.is_empty());
     }
 
     #[test]
@@ -1082,7 +1049,7 @@ mod tests {
         let r = admit(&a, &snap);
         assert_eq!(r.allow, false);
         assert_eq!(closed_names(&r).contains("gap.agent_permission"), true);
-        assert_eq!(r.closed_walls.iter().any(|w| w.id == "gap.agent_permission" && w.reason == "this agent does not have permission for this action"), true);
+        assert_eq!(r.closed.iter().any(|w| w.id == "gap.agent_permission" && w.reason == "this agent does not have permission for this action"), true);
     }
 
     #[test]

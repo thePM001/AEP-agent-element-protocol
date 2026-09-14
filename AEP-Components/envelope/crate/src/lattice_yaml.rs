@@ -207,7 +207,7 @@ pub fn apply_admit(snap: &mut Snapshot, action: &EnvelopeAction, plan: &ApplyPla
 
 pub fn closed_reasons(result: &crate::AdmitResult) -> Vec<String> {
     result
-        .closed_walls
+        .closed
         .iter()
         .map(|w| {
             if w.reason.is_empty() {

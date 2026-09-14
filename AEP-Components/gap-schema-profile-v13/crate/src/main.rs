@@ -37,10 +37,8 @@ fn main() {
             continue;
         }
     }
-    let mut result = AdmitResult {
-        allow: true,
-        closed: Vec::new(),
-    };
+    // one AdmitResult constructor for every caller.
+    let mut result = AdmitResult::new(Vec::new(), Vec::new());
     let mut err = String::new();
     live_admit_gap_profile(&source, &req, &mut result, &mut err);
     if err.is_empty() == false {

@@ -21,8 +21,8 @@ impl AdmitDeny {
 pub enum BaseNodeError {
     #[error("{0}")]
     Admit(AdmitDeny),
-    #[error("EPSCOM writing violations remain after enforcement")]
-    EpscomWriting,
+    #[error("CORRECTWRITING_EN writing violations remain after enforcement")]
+    CorrectwritingEnWriting,
     #[error("frame stale: sent_at_unix={sent_at_unix} older than {max_age}s")]
     FrameStale { sent_at_unix: u64, max_age: u64 },
     #[error("frame clock skew: sent_at_unix={sent_at_unix} too far in future")]

@@ -17,7 +17,7 @@ name = "aep-dynaep"
 path = "src/main.rs"
 
 [dependencies]
-aep-envelope = { path = "../../envelope/crate" }
+aep-kernel-types = { path = "../../kernel-types/crate" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = "0.9"

@@ -14,6 +14,7 @@ name = "aep-envelope"
 path = "src/main.rs"
 
 [dependencies]
+aep-kernel-types = { path = "../../kernel-types/crate" }
 clap = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

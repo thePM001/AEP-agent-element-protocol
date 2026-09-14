@@ -52,7 +52,7 @@ Base Node **is** the local agent control kernel. Governance code, registry, mesh
 |--------|------|------|
 | Docking servers | `crate/src/docking.rs` | inference / validation / regulation / future Unix sockets |
 | Task manifests | `crate/src/task_manifest.rs` | UCB agent contracts (`AEP_TASK_MANIFEST_DIR`) |
-| CORRECTWRITING_EN kernel | `crate/src/epscom.rs` | writing.gap enforcement (`no_em_dashes`, `no_en_dashes`, `no_dash_substitutes`, `no_minus_as_dash`, `no_double_hyphen`, `no_oxford_comma`) |
+| CORRECTWRITING_EN kernel | `crate/src/correctwriting_en.rs` | writing.gap enforcement (`no_em_dashes`, `no_en_dashes`, `no_dash_substitutes`, `no_minus_as_dash`, `no_double_hyphen`, `no_oxford_comma`) |
 | Side-channel monitor | `crate/src/side_channel_monitor.rs` | Anomaly events on validation dock |
 | Lattice log | `crate/src/lattice_log.rs` | dynAEP event export + `aep-lattice-log` CLI |
 
@@ -67,7 +67,7 @@ Register new components in **`AEP-Base-Node/registry/catalog.json`** + **`AEP-Ba
 | `multi-base-node/` | Multi-base-node (2.8b) mode: federate multiple Base Node kernels (optional experimental surface, not in the default build) |
 | `potomitan/` | POTOMITAN mesh peer registry (`aep-potomitan` crate) |
 | `agent-control-hub/` | Agent Control Hub: mount profiles for multi-mount sessions |
-| `signatures/` | EPSCOM detection signatures + trust bundle (default wired, CCA accessible) |
+| `signatures/` | CORRECTWRITING_EN detection signatures + trust bundle (default wired, CCA accessible) |
 | `AEP-Components/dynAEP/NAME-POLICY.md` | Reserved-name policy |
 
 ## Docking ports

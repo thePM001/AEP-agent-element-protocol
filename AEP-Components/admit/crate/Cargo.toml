@@ -11,4 +11,5 @@ name = "aep-admit"
 path = "src/main.rs"
 
 [dependencies]
+aep-kernel-types = { path = "../../kernel-types/crate" }
 aep-wall-set-backpressure = { path = "../../wall-set-backpressure/crate" }

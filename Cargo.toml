@@ -1,6 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
+    "AEP-Components/kernel-types/crate",
+    "AEP-Components/isolation/crate",
     "AEP-Components/lattice-crypto/crate",
     "AEP-Components/lattice-channels/crate",
     "AEP-Components/agentmesh/crate",

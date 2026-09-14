@@ -4,11 +4,11 @@
 // AEP28-ENV-068: wall_forecast uses live anomaly_score only. Cached snapshot score is not a wall verdict.
 use crate::EnvelopeAction;
 use crate::Snapshot;
-use crate::WallVerdict;
-fn wall(id: &str, family: &str, open: bool, reason: &str) -> WallVerdict {
-  WallVerdict { id: id.to_string(), family: family.to_string(), open, reason: reason.to_string() }
+use crate::AdmitWall;
+fn wall(id: &str, family: &str, open: bool, reason: &str) -> AdmitWall {
+  AdmitWall::verdict(id, family, open, reason)
 }
-pub fn wall_causal(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
+pub fn wall_causal(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
   if action.sequence_number == 0 {
     return wall("causal.sequence", "causal", false, "no sequence bound");
   }
@@ -17,7 +17,7 @@ pub fn wall_causal(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
     _ => wall("causal.sequence", "causal", true, "causal open"),
   }
 }
-pub fn wall_forecast(action: &EnvelopeAction, snap: &Snapshot) -> WallVerdict {
+pub fn wall_forecast(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
   if snap.forecast_require_approval == false {
     return wall("forecast.anomaly", "forecast", true, "approval not required");
   }

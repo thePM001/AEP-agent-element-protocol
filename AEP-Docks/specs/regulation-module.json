@@ -3,7 +3,7 @@
   "name": "Regulation Module Dock",
   "priority": 150,
   "socket_suffix": "/regulation",
-  "purpose": "Legacy Regulation Providers (LRPs); EPSCOM priority 255",
+  "purpose": "Legacy Regulation Providers (LRPs); CORRECTWRITING_EN priority 255",
   "transport": "lattice-channel",
   "implementation": "AEP-Base-Node/crate/src/docking.rs"
 }

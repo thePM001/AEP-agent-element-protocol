@@ -27,14 +27,14 @@
         "socket_base",
         "lattice_db",
         "binary_path",
-        "epscom_priority",
+        "correctwriting_en_priority",
         "lrps"
       ],
       "properties": {
         "socket_base": { "type": "string" },
         "lattice_db": { "type": "string" },
         "binary_path": { "type": "string" },
-        "epscom_priority": { "type": "integer", "minimum": 1, "maximum": 255 },
+        "correctwriting_en_priority": { "type": "integer", "minimum": 1, "maximum": 255 },
         "lrps": { "type": "array", "items": { "type": "string" } },
         "lattice_kem": { "type": "string", "const": "ML-KEM-768" },
         "lattice_signature": { "type": "string", "const": "ML-DSA-65" },

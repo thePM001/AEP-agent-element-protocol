@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::Path;
 
-use crate::{enforce_writing_value, init_action_lattice_db, now_unix, EPSCOM_PRIORITY};
+use crate::{enforce_writing_value, init_action_lattice_db, now_unix, CORRECTWRITING_EN_PRIORITY};
 use crate::BaseNodeError;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
@@ -420,8 +420,8 @@ pub fn default_lrps() -> Vec<String> {
     Vec::new()
 }
 
-pub fn epscom_priority() -> u8 {
-    EPSCOM_PRIORITY
+pub fn correctwriting_en_priority() -> u8 {
+    CORRECTWRITING_EN_PRIORITY
 }
 
 #[cfg(test)]

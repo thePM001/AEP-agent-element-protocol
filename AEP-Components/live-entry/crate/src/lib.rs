@@ -238,15 +238,8 @@ impl LiveEntry {
         };
         if result.allow == false {
             let reasons = closed_reasons(&result);
-            let closed: Vec<AdmitWall> = result
-                .closed_walls
-                .iter()
-                .map(|w| AdmitWall {
-                    id: w.id.clone(),
-                    closed: true,
-                    reason: w.reason.clone(),
-                })
-                .collect();
+            // the AdmitResult rows are the public AdmitWall rows.
+            let closed: Vec<AdmitWall> = result.closed.clone();
             return ProcessOut::Reject(Rejection {
                 target_id: action_path,
                 error: s("Admit collect-all walls then Apply: ", &reasons.join("; ")),

@@ -1,0 +1,13 @@
+@PAD: aep-isolation-registration-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.component-registration.v1
+format: gaplune
+json_prohibited: true
+id: aep-isolation
+version: 2.8.6
+kind: library
+path: AEP-Components/isolation/
+ticket: kernel type set
+requires: aep-kernel-types
+capability: kernel.process-isolation
+note: The process isolation package returns to the protocol crate graph. It seals one process against one isolation specification and it refuses a second seal for the same process. The seal test ships with the crate.

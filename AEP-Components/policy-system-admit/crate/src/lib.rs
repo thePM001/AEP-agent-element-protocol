@@ -1141,11 +1141,8 @@ fn wall_for(gap: &LoadedGap, item: &GapItem, closed: bool) -> AdmitWall {
 
 
 fn empty_profile_wall() -> aep_gap_schema_profile_v13::AdmitWall {
-    aep_gap_schema_profile_v13::AdmitWall {
-        id: String::new(),
-        closed: false,
-        reason: String::new(),
-    }
+    // the profile wall is the public AdmitWall row.
+    aep_gap_schema_profile_v13::AdmitWall::open("")
 }
 
 fn closed_profile_wall(w: &aep_gap_schema_profile_v13::AdmitWall) -> Option<AdmitWall> {

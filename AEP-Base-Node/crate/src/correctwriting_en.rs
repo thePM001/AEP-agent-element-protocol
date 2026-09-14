@@ -1,13 +1,13 @@
-//! EPSCOM kernel writing conventions (writing.gap).
+//! CORRECTWRITING_EN kernel writing conventions (writing.gap).
 //! Enforced by Base Node for all governed prose - not LRP, not validation dock.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-pub const EPSCOM_CORE_ID: &str = "epscom-core";
+pub const CORRECTWRITING_EN_CORE_ID: &str = "correctwriting-en";
 pub const WRITING_GAP_DOMAIN: &str = "aep.reference.writing";
 
-/// EPSCOM writing.gap rule ids enforced by the Base Node kernel.
+/// CORRECTWRITING_EN writing.gap rule ids enforced by the Base Node kernel.
 pub const WRITING_RULE_NO_EM_DASHES: &str = "no_em_dashes";
 pub const WRITING_RULE_NO_EN_DASHES: &str = "no_en_dashes";
 pub const WRITING_RULE_NO_DASH_SUBSTITUTES: &str = "no_dash_substitutes";
@@ -270,7 +270,7 @@ pub fn enforce_writing_text(text: &str) -> WritingEnforceResult {
     let after = lint_writing_prose(&fixed);
     WritingEnforceResult {
         ok: after.is_empty(),
-        authority: EPSCOM_CORE_ID,
+        authority: CORRECTWRITING_EN_CORE_ID,
         text: fixed,
         violations_corrected: before.len(),
         violations: after,

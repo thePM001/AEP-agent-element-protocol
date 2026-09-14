@@ -13,5 +13,6 @@ name = "aep-gap-schema-profile-v13"
 path = "src/main.rs"
 
 [dependencies]
+aep-kernel-types = { path = "../../kernel-types/crate" }
 aep-admit = { path = "../../admit/crate" }
 serde_json = "1"
