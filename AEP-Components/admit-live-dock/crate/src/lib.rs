@@ -704,7 +704,7 @@ mod tests {
 
     #[test]
     fn unused_gate_fails_trust_floor_member() {
-        let tmp = std::env::temp_dir().join("aep28-env-032-trust-floor");
+        let tmp = std::env::temp_dir().join("aep-test-032-trust-floor");
         let _ = fs::remove_dir_all(&tmp);
         fs::create_dir_all(tmp.join("AEP-Components/admit/crate")).expect("mkdir");
         fs::write(
@@ -725,7 +725,7 @@ mod tests {
 
     #[test]
     fn unused_gate_fails_wall_not_on_live_dock() {
-        let tmp = std::env::temp_dir().join("aep28-env-032-missing-dep");
+        let tmp = std::env::temp_dir().join("aep-test-032-missing-dep");
         let _ = fs::remove_dir_all(&tmp);
         fs::create_dir_all(tmp.join("AEP-Components/admit/crate")).expect("mkdir");
         fs::create_dir_all(tmp.join("AEP-Components/admit-writing-walls/crate")).expect("mkdir");
