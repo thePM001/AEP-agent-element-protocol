@@ -1,5 +1,5 @@
 // crate: aep-kernel-types
-// Ticket NOSHIP-286-P1. One public kernel type set for the AEP 2.8.x protocol tree.
+// One public kernel type set for the AEP 2.8.x protocol tree.
 // One definition site per public type: Envelope, AdmitResult, DenyReport, ClosedWall,
 // Pulse, AgentPermission and ProcessSealed. Every other crate re-exports from here.
 // The type shapes were taken from aep-admit, aep-wall-set-backpressure and aep-envelope

@@ -7,7 +7,7 @@ id: aep-isolation
 version: 2.8.6
 kind: library
 path: AEP-Components/isolation/
-ticket: NOSHIP-286-P1
+ticket: the kernel type set
 requires: aep-kernel-types
 capability: kernel.process-isolation
 note: The process isolation package returns to the protocol crate graph. It seals one process against one isolation specification and it refuses a second seal for the same process. The seal test ships with the crate.
