@@ -2,7 +2,7 @@
 
 **Location:** `AEP-Base-Node/signatures/` (Base Node kernel adjunct, default wired, CCA accessible)
 
-Detection signatures for the Agent Element Protocol (AEP). Authored and curated by **CORRECTWRITING_EN** (Eudaimonic Earth Post-Scarcity Committee). Part of NLA structure - not an optional root-level folder.
+Detection signatures for the Agent Element Protocol (AEP). Authored and curated by **CORRECTWRITING_EN** (Eudaimonic Earth Post-Scarcity Committee). Part of the AEP structure - not an optional root-level folder.
 
 ## Layout
 

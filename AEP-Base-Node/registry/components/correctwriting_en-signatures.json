@@ -55,8 +55,7 @@
   "implementation": {
     "module": "AEP-Base-Node/signatures/lib/signatures-registry.mjs",
     "context": "AEP-Base-Node/signatures/lib/signatures-context.mjs",
-    "trust_bundle": "AEP-Base-Node/signatures/trust-bundle/manifest.json",
-    "ci_gate": "internal-export-area/scripts/gate-aep28-env-063.sh"
+    "trust_bundle": "AEP-Base-Node/signatures/trust-bundle/manifest.json"
   },
   "conformance": {
     "tests": [

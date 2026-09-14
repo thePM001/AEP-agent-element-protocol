@@ -89,8 +89,7 @@
     "shim": "AEP-CAW/cmd/aep-caw-shell-shim",
     "build": "make -C AEP-CAW build",
     "bridge": "AEP-CAW/lib/lattice-bridge.mjs",
-    "service": "AEP-CAW/lib/caw-service.mjs",
-    "notice": "AEP-CAW/NOTICE"
+    "service": "AEP-CAW/lib/caw-service.mjs"
   },
   "conformance": {
     "tests": [

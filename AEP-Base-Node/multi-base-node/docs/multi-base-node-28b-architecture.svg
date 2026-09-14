@@ -1,6 +1,6 @@
-<!-- @generated-by: nla-aep-docs v2 -->
+<!-- @generated-by: aep-docs v2 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" width="960" height="720" role="img" aria-labelledby="title desc">
-  <metadata>nla-aep-docs/multi-base-node-28b-architecture/v2</metadata>
+  <metadata>aep-docs/multi-base-node-28b-architecture/v2</metadata>
   <title id="title">AEP 2.8b Multi-Base-Node architecture</title>
   <desc id="desc">Registry-driven federation of Base Node kernels over lattice channels. Agentstream is optional.</desc>
   <defs>

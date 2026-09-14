@@ -415,7 +415,6 @@ The library is counted by this layer table. Folder count is not the library coun
 | Hyperlattice wrap | One mechanism per system | [`AEP-Components/hyperlattice/`](AEP-Components/hyperlattice/) |
 | Docks | UCD egress airlock and optional UCB | [`AEP-Docks/`](AEP-Docks/) |
 | UCB airlock (optional) | Foreign MCP or HTTP attach only | [`AEP-Docks/ucb/`](AEP-Docks/ucb/) |
-| Connectors | Application connectors | [`internal-sdk/AEP-Connectors/`](internal-sdk/AEP-Connectors/) |
 | Coding governance | Propose a change then lock it | [`AEP-Components/coding-governance/`](AEP-Components/coding-governance/) |
 | HCSE parser | aep-hcse parser MCP | [`AEP-Components/hcse/`](AEP-Components/hcse/) |
 | CCA agent | Central Setup Agent | [`AEP-CCA-Central-Setup-Agent/`](AEP-CCA-Central-Setup-Agent/) |
@@ -475,7 +474,6 @@ Coding governance proposes a change, measures how far that change reaches and on
 | [`AEP-CAW/`](AEP-CAW/) | Execution companion: CAW host sandboxes. Not a protocol component |
 | [`AEP-Composer-Lite/`](AEP-Composer-Lite/) | Agent Composer (Composer Lite): WASM visual canvas on port: 8424 |
 | [`AEP-User-Experience/`](AEP-User-Experience/) | Harness, operator scripts, AEP-main-skill |
-| [`internal-sdk/AEP-Connectors/`](internal-sdk/AEP-Connectors/) | Application connectors (Slack, Jira, AWS, …) |
 | [`AEP-Docks/`](AEP-Docks/) | UCB + UCD socket dock specs and servers |
 | [`AEP-Policy-System/`](AEP-Policy-System/) | GAP policies, presets, policy-builder, schema-builder |
 | [`AEP-Research-Paper/`](https://github.com/thePM001/AEP-agent-element-protocol/blob/main/AEP-Research-Paper/) | DAL-AEP research paper assets (PDF + OTS proof) |
@@ -837,7 +835,7 @@ docker compose -f docker-compose.public.yml exec aep aep assist kill
 
 | Service | Default port | Notes |
 |---------|--------------|-------|
-| Agent Composer (Composer Lite) | `8424` | Public WASM canvas and install wizard. **Not** the separate internal NLA deployment (`/composer-internal`, `:8415`/`:8416`) |
+| Agent Composer (Composer Lite) | `8424` | Public WASM canvas and install wizard |
 | UCB | `8412` | **Optional.** Foreign attach only. Disable with `UCB=0`. See [UCB section](#ucb-universal-connect-bridge--optional-foreign-attach) |
 | WASM sandbox | `wasm_sandbox` socket | Set `WASM_SANDBOX=1` in Docker |
 | Base Node sockets | `/data/aep/sockets` | Inference, validation, future, regulation docks |
@@ -886,7 +884,7 @@ Optional synthesis tiers (strict priority, first success wins):
 
 | Tier | Mechanism | Env var |
 |------|-----------|---------|
-| 1 | GAP constrained decoding | `UCB_GAP_ENGINE_URL` (NLA internal / licensed only) |
+| 1 | GAP constrained decoding | `UCB_GAP_ENGINE_URL` (endpoint you host yourself) |
 | 2 | Other constrained decoding (e.g. dottxt-compatible) | `UCB_CONSTRAINED_DECODER_URL` |
 | 3 | LLM structured output | `UCB_LLM_SYNTHESIS_URL` |
 
@@ -1103,7 +1101,7 @@ Further detail: [`AEP-Components/gap/README.md`](AEP-Components/gap/README.md), 
 Full UCB semantics (optional bridge, refuse on miss ingest, no fallback): see [UCB section](#ucb-universal-connect-bridge--optional-foreign-attach) above.
 
 ```bash
-# Tier 1 (NLA / licensed - production GAP engine URL provided by NLA)
+# Tier 1 (GAP constrained decoding engine, endpoint you host yourself)
 export UCB_GAP_ENGINE_URL=https://<your-licensed-gap-engine>/synthesize
 
 # Tier 2 (constrained decoder, e.g. dottxt-style HTTP service)
@@ -1135,7 +1133,6 @@ GAP template authority: `AEP-Components/gap/policies/reference/task-manifest-v1.
 | [`AEP-Policy-System/schema-builder/README.md`](AEP-Policy-System/schema-builder/README.md) | Schema Builder |
 | [`AEP-Policy-System/policy-builder/README.md`](AEP-Policy-System/policy-builder/README.md) | Policy Builder |
 | [`AEP-User-Experience/README.md`](AEP-User-Experience/README.md) | Harness and operator scripts |
-| [`internal-sdk/AEP-Connectors/README.md`](internal-sdk/AEP-Connectors/README.md) | Application connectors |
 | [`AEP-Docks/README.md`](AEP-Docks/README.md) | UCB / UCD docks |
 | [`AEP-Research-Paper/README.md`](https://github.com/thePM001/AEP-agent-element-protocol/blob/main/AEP-Research-Paper/README.md) | DAL-AEP paper + OTS proof |
 | [`rust/README.md`](rust/README.md) | Rust workspace build |

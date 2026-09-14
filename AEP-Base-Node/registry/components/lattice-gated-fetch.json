@@ -34,8 +34,7 @@
     ]
   },
   "implementation": {
-    "crate": "AEP-Components/lattice-gated-fetch/crate",
-    "ci_gate": "internal-export-area/scripts/gate-aep28-env-061.sh"
+    "crate": "AEP-Components/lattice-gated-fetch/crate"
   },
   "role": "kernel"
 }

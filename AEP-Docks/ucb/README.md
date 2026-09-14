@@ -8,7 +8,7 @@ UCB is optional. Native AEP components talk to Base Node directly. UCB exists fo
 
 | UCB is | UCB is not |
 |--------|------------|
-| Optional attach gateway on NLA port 8412 | A second evaluator |
+| Optional attach gateway on port 8412 | A second evaluator |
 | Manifest gate at ingest | A synthesizer of contracts |
 | DenyReport in kernel shape | A trust rank service |
 | Capabilities ingest, delegate, health, rollback, egress, compile-manifest and mcp | A protocol member list of foreign frameworks |

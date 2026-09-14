@@ -1,6 +1,6 @@
 # AEP Composer Lite (WASM Visual Canvas)
 
-**Composer Lite IS the WASM Composer** for AEP 2.8 public tier. Dark blue futuristic canvas where users define nodes, place them and wire connections. **This is NOT the internal NLA Agent Composer** (`:8415`/`:8416`).
+**Composer Lite IS the WASM Composer** for AEP 2.8 public tier. Dark blue futuristic canvas where users define nodes, place them and wire connections.
 
 ## Features
 

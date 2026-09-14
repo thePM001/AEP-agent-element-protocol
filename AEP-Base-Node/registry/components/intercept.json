@@ -29,7 +29,7 @@
     "pairs_with": []
   },
   "implementation": {
-    "module": "AEP-Components/intercept/lib/index.ts"
+    "module": "AEP-Components/intercept/lib/proxy.ts"
   },
   "role": "companion"
 }

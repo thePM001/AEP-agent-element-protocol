@@ -6,7 +6,7 @@ The optional Universal Connect Bridge uses Predicate Profile perimeter-v1 by def
 
 Validate runs under a two-slot pool. On Unix the worker is a forked child. The 2 second timeout kills that child and frees the slot. Acquire timeout returns validate busy. Join timeout returns validate timeout. Collect-all Admit deny, missing dock and silent dock fixtures stay in the crate tests.
 
-Composer uses NLA_GAP_ENGINE_URL only when set and does not invent a docker gateway. MCP JSON-RPC on POST /ucb/v1/mcp uses the same auth as ingest. Malformed tool arguments are refused.
+Composer uses a GAP engine URL from the environment only when one is set and does not invent a docker gateway. MCP JSON-RPC on POST /ucb/v1/mcp uses the same auth as ingest. Malformed tool arguments are refused.
 
 CCA setup writes protocol 2.8.6 and strips trust fields. Base Node health always runs. Enqueue is not Admit.
 

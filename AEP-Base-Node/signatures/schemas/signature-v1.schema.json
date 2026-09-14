@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://nla.correctwriting_en/signatures/signature-v1.schema.json",
+  "$id": "https://aep.dev/schemas/signature-v1.schema.json",
   "title": "CORRECTWRITING_EN Detection Signature v1",
   "type": "object",
   "required": ["signature_version", "id", "authority", "severity", "category", "detection"],
