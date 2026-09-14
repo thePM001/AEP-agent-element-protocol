@@ -211,7 +211,7 @@ pub fn wall(id: &str, family: &str, open: bool, reason: &str) -> AdmitWall {
     AdmitWall::verdict(id, family, open, reason)
 }
 
-// the public kernel type set is defined once in aep-kernel-types.
+// The public kernel type set is defined once in aep-kernel-types.
 pub use aep_kernel_types::{AdmitResult, AdmitWall};
 
 /// One Admit combinator. Collect every wall then AND.

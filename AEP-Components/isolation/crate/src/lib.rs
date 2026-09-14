@@ -12,7 +12,7 @@ use aep_kernel_types::{seal_digest, ProcessSealed};
 use serde::{Deserialize, Serialize};
 
 pub const COMPONENT_ID: &str = "aep-isolation";
-pub const TICKET: &str = "kernel type set";
+pub const TICKET: &str = "AEP28-ENV-090";
 pub const ALGORITHM_SEALED: &str = "sha256";
 
 /// One process isolation specification. Every field is a mechanical limit,

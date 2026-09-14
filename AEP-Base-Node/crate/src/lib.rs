@@ -40,7 +40,7 @@ pub const COMPONENT_ID: &str = "aep-base-node";
 pub const CORRECTWRITING_EN_PRIORITY: u8 = 255;
 
 pub use error::{AdmitDeny, BaseNodeError};
-// the Base Node facades the one public kernel type set.
+// The Base Node facades the one public kernel type set.
 // Every name below is a re-export of the single definition site in aep-kernel-types.
 pub use aep_kernel_types::{
     AdmitResult, AdmitWall, AgentPermission, AgentPermissionLookup, ClosedWall, DenyReport,

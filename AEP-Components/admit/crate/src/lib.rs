@@ -8,7 +8,7 @@
 // Writing.gap rules compile into Admit walls on the same collect-all pass.
 // LatticeFilter and PolicyEvaluator sequential stacks are lab-only.
 
-// the public kernel type set lives in aep-kernel-types,
+// The public kernel type set lives in aep-kernel-types,
 // so this crate re-exports the one definition site of every public type.
 pub use aep_kernel_types::{
     AgentPermission, AgentPermissionLookup, AdmitResult, AdmitWall, Pulse, DENY_NO_PERMISSION,

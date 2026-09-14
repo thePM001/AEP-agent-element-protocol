@@ -17,7 +17,7 @@ pub const RANK_SYSTEM: &str = "system";
 pub const RANK_ENTERPRISE: &str = "enterprise";
 pub const SCHEMA_V13_CONTRACT: &str = "GAP Instruction Meta-Schema v1.3\nagent_permission\nwrap\naction_path_prefix\noneOf\nload-time\nPresence of trust_ring is Deny.\nPresence of rank is Deny.\nEvery non-empty rank value is Deny.\ncovenants\nscanners\n";
 
-// the public kernel type set is defined once in aep-kernel-types.
+// The public kernel type set is defined once in aep-kernel-types.
 // Out-param helpers below keep this crate's calling style with no second definition.
 pub use aep_kernel_types::{AdmitResult, AdmitWall, AgentPermission};
 
