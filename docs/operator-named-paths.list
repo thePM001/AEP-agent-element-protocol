@@ -4,7 +4,6 @@ docs/WHAT-IS-COMPILED.md
 docs/LATTICE-MEMORY.md
 docs/FOREIGN-ATTACH.md
 docs/TREE.md
-TARGET.md
 AEP-User-Experience/examples/minimal-wrap/README.md
 AEP-User-Experience/examples/end-to-end-run/README.md
 AEP-User-Experience/examples/end-to-end-run/run.sh

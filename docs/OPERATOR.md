@@ -32,7 +32,7 @@ Admit is the collect-all wall pass after the compiled pulse, Apply runs only aft
 
 ## Operator docs
 
-Read docs/ERROR-CATALOG.md for deny dialect and BaseNodeError. Read docs/WHAT-IS-COMPILED.md for pulse constants. Read docs/LATTICE-MEMORY.md for sqlite, memory and optional Polygres backends. Read docs/FOREIGN-ATTACH.md for manifest and session refuses. Read docs/TREE.md for Kernel, Protocol, Execution, UX and Policy. Read TARGET.md for ISA, RAM, disk, GPU, RSS and latency floors. Read AEP-User-Experience/examples/minimal-wrap for a documented command that returns allow true. Read AEP-User-Experience/examples/end-to-end-run for one documented command that prints the refuse path and then the pass path across the kernel, the execution layer and the dock, with a ledger row at the end.
+Read docs/ERROR-CATALOG.md for deny dialect and BaseNodeError. Read docs/WHAT-IS-COMPILED.md for pulse constants. Read docs/LATTICE-MEMORY.md for sqlite, memory and optional Polygres backends. Read docs/FOREIGN-ATTACH.md for manifest and session refuses. Read docs/TREE.md for Kernel, Protocol, Execution, UX and Policy. Read AEP-User-Experience/examples/minimal-wrap for a documented command that returns allow true. Read AEP-User-Experience/examples/end-to-end-run for one documented command that prints the refuse path and then the pass path across the kernel, the execution layer and the dock, with a ledger row at the end.
 
 ## Keys that look like crypto death
 
