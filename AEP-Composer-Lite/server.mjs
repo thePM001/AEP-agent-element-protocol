@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * AEP 2.8 Composer Lite - WASM visual canvas (node graph + optional CCA).
- * Composer Lite IS the public WASM Composer. Not the internal NLA Agent Composer.
+ * Composer Lite IS the public WASM Composer of this tree.
  *
  * Fail-closed publish: non-loopback bind requires COMPOSER_LITE_SETUP_TOKEN.
  */

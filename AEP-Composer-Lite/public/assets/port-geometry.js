@@ -1,4 +1,4 @@
-/** Port perimeter placement (parity with NLA Agent Composer lattice canvas). */
+/** Port perimeter placement for the lattice canvas. */
 
 const PORT_FLOAT_OFFSET = 16;
 
@@ -190,7 +190,7 @@ export function portWorldPosition(node, layout, kind) {
   return { x: node.x + local.x, y: node.y + local.y };
 }
 
-/** Edge anchor on node perimeter (no port float offset). Matches NLA Agent Composer. */
+/** Edge anchor on node perimeter (no port float offset). */
 export function portConnectWorldPosition(node, layout, kind) {
   const { hw, hh } = shapeHalfExtents(layout);
   const shape = shapeFromLayout(layout);

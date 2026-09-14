@@ -1,4 +1,4 @@
-/** CCA bottom pane: Composer chat + xterm terminal (from NLA Agent Composer). */
+/** CCA bottom pane: Composer chat and xterm terminal. */
 
 import { authFetch } from "./setup-auth.js";
 

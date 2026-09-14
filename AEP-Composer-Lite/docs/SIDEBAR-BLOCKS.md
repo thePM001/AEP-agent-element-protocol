@@ -71,7 +71,7 @@ await loadBlocksFromUrls([
 }
 ```
 
-`node.data` holds per-node metadata (Lite uses `data`; internal composer uses `meta`).
+`node.data` holds per-node metadata (`data` is the metadata field of this composer).
 
 ## Global API
 

@@ -1912,7 +1912,7 @@ body.lite-settings-open .hl-action-bar {
   cursor: crosshair;
 }
 
-/* Action Lattice Hub (NT-00002) - funnel scaffold like NLA Agent Composer */
+/* Action Lattice Hub (NT-00002) - funnel scaffold node. */
 .graph-node.shape-funnel {
   width: 210px;
   min-height: 140px;

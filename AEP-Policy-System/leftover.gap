@@ -1,4 +1,4 @@
-schema_id: gap.nla.leftover-not-admit.v1
+schema_id: gap.aep.leftover-not-admit.v1
 format: gap
 json_prohibited: true
 id: leftover-not-admit

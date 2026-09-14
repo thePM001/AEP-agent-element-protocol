@@ -1,4 +1,4 @@
-/** Lattice stage policy manager popup (Composer Lite) - parity with internal composer. */
+/** Lattice stage policy manager popup for Composer Lite. */
 
 import * as Catalog from "./policy-catalog.js";
 import { LiteLatticeStore, liteApiBase } from "./lite-lattice-store.js";

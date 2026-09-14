@@ -1,5 +1,5 @@
 // BL-04: use in-tree AgentGateway (SDK), not missing ../gateway.js
-import { AgentGateway, type AEPElement } from "../../../internal-export-area/AEP-SDKs/typescript/aep-protocol/src/gateway.js";
+import { AgentGateway, type AEPElement } from "../../../AEP-SDKs/typescript/aep-protocol/src/gateway.js";
 import type { AgentAction, Policy } from "../../policy-engine/lib/policy/types.js";
 import type { Session } from "../../session/lib/session.js";
 import { AEPassistant } from "../../aepassist/lib/aepassist/assistant.js";

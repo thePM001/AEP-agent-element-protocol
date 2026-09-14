@@ -2,7 +2,7 @@
 name = "aep-kernel-types"
 version = "2.8.6"
 edition = "2021"
-description = "The one public kernel type set: Envelope, AdmitResult, DenyReport, ClosedWall, Pulse, agent permission and process-sealed. ."
+description = "The one public kernel type set: Envelope, AdmitResult, DenyReport, ClosedWall, Pulse, agent permission and process-sealed. Ticket NOSHIP-286-P1."
 license = "Apache-2.0"
 publish = false
 

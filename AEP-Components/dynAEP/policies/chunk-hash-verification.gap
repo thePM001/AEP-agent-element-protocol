@@ -1,5 +1,5 @@
 address:
-  domain: com.nla.policy
+  domain: aep.policy
   id: chunk-hash-verification.v1
 pattern:
   guard: deployment of JavaScript or CSS chunks to Cloudflare CDN
@@ -33,7 +33,7 @@ composition:
   type: sequence
   steps:
     - address:
-        domain: com.nla.policy
+        domain: aep.policy
         id: chunk-hash-verification.v1
 metadata:
   provenance: Created after Turbopack dev server served stale v2.6 chunk for 24+ hours despite source being v2.75, causing hydration revert on every load.

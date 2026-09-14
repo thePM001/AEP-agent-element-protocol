@@ -1,6 +1,6 @@
 import type { SessionManager } from "./session-manager.js";
 import type { SessionReport } from "./session.js";
-import type { TrustManager } from "../../../internal-export-area/retired/trust-rings/lib/trust/manager.js";
+import type { TrustManager } from "../../trust-rings/lib/trust/manager.js";
 import type { RollbackManager } from "../../evidence-ledger/lib/rollback/manager.js";
 
 export interface KillResult {
