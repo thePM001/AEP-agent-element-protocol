@@ -37,3 +37,14 @@ Read docs/ERROR-CATALOG.md for deny dialect and BaseNodeError. Read docs/WHAT-IS
 ## Keys that look like crypto death
 
 SealKey, DockKem and SignKey refuses are often mode and provision repairs. chmod 0600 on dock-seal.key, dock-kem and agent-sign-keys. Provision a missing sign key with aep-base-node --provision-agent-sign-key --agent-id AGENT_ID. See docs/ERROR-CATALOG.md.
+
+
+## Kernel type set
+
+The kernel ships one public type set from `AEP-Components/kernel-types`. The set is `Envelope`, `AdmitResult`, `DenyReport`, `ClosedWall`, `Pulse`, the agent permission record and `ProcessSealed`. Every other crate re-exports those names, so a builder can depend on the small crate and still name one shape per type.
+
+The Base Node facades the whole set, and the facade test `AEP-Base-Node/crate/tests/public_type_set.rs` imports every public name from the Base Node crate. Run it with `cargo test -p aep-base-node --test public_type_set`.
+
+Process isolation lives in `AEP-Components/isolation`. The crate seals one operating system process against one isolation specification and refuses a second seal for the same process, so a reused process id cannot satisfy an old seal. Its seal test runs with `cargo test -p aep-isolation`.
+
+The writing wall kernel module is `correctwriting_en` and the core id is `correctwriting-en`. Writing walls stay protocol law at priority 255 and they are not transport security.

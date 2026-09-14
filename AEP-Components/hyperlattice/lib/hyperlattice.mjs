@@ -240,7 +240,7 @@ export function buildHyperlatticeView(opts = {}) {
     platform_contracts: policyView.platform_contracts,
     active_regulation_lrps: policyView.active_regulation_lrps,
     compliance_modules: policyView.compliance_modules,
-    epscom: policyView.epscom,
+    correctwriting_en: policyView.correctwriting_en,
     node_counts: {
       gap_policy: gap_policy_nodes.length,
       event: event_nodes.length,

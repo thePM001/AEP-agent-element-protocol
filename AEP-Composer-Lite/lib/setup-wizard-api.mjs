@@ -40,7 +40,7 @@ export async function buildSetupWizardCatalog(env = process.env) {
       advantages: m.advantages ?? [],
       limitations: m.limitations ?? [],
     })),
-    epscom: catalog.epscom,
+    correctwriting_en: catalog.correctwriting_en,
     platform_contracts: listPlatformContracts(catalog),
     compliance_lrps: listComplianceModules(catalog),
     components: registry.components

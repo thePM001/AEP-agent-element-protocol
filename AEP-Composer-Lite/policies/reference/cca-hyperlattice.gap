@@ -12,7 +12,7 @@
       "action_path_composer_lite_cca_topology_validate",
       "policy_writing_gap",
       "policy_composer_protocol",
-      "policy_epscom_core"
+      "policy_correctwriting_en_core"
     ],
     "invariants": [
       {

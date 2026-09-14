@@ -2,7 +2,7 @@
 
 import { buildRegistryContext } from "./registry-context.mjs";
 import { validatePlanAgainstRegistry } from "./plan-schema.mjs";
-import { epscomEnforceWritingValue } from "../../lattice-channels/lib/lattice-transport.mjs";
+import { correctwriting_enEnforceWritingValue } from "../../lattice-channels/lib/lattice-transport.mjs";
 import {
   matchIntentFromCatalog,
   buildPlanComponents,
@@ -93,7 +93,7 @@ export async function generatePlanFromIntent(userIntent, dataDir, env = process.
     plan.warnings = [...(plan.warnings   ??   []), ...validation.errors.map((e) => `validation: ${e}`)];
   }
 
-  const enforcedPlan = epscomEnforceWritingValue(plan);
+  const enforcedPlan = correctwriting_enEnforceWritingValue(plan);
   return { plan: enforcedPlan, context, validation };
 }
 

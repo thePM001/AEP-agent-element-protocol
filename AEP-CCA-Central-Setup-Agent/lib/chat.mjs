@@ -13,8 +13,8 @@ import { generatePlanFromIntent, extractPlanFromLlmReply } from "./plan-generato
 import { validatePlanAgainstRegistry } from "./plan-schema.mjs";
 import { planToGraph } from "./plan-to-graph.mjs";
 import {
-  epscomEnforceWritingValue,
-  EPSCOM_WRITING_RULES,
+  correctwriting_enEnforceWritingValue,
+  CORRECTWRITING_EN_WRITING_RULES,
 } from "../../lattice-channels/lib/lattice-transport.mjs";
 import { assertCcaChatWritingDraft } from "../../../AEP-Composer-Lite/lib/hyperlattice/cca-writing-validator.mjs";
 import {
@@ -32,7 +32,7 @@ function resolveWritingRetryMax(env = process.env) {
 }
 
 function formatViolationFeedback(violations = []) {
-  if (!violations.length) return "- release_blocked: output failed EPSCOM writing.gap";
+  if (!violations.length) return "- release_blocked: output failed CORRECTWRITING_EN writing.gap";
   const seen = new Set();
   return violations
     .filter((v) => {
@@ -68,10 +68,10 @@ const WRITING_MODE_RULE_FIXES = {
   no_double_hyphen: 'Remove double-hyphen separators. Use a hyphen or rewrite.',
 };
 
-/** Per-violation EPSCOM writing mode fix instructions sent to the LLM on retry. */
+/** Per-violation CORRECTWRITING_EN writing mode fix instructions sent to the LLM on retry. */
 export function formatWritingModeViolationCorrections(violations = [], opts = {}) {
   const lines = [
-    "HOW TO WRITE CORRECTLY (EPSCOM writing mode - apply on this retry):",
+    "HOW TO WRITE CORRECTLY (CORRECTWRITING_EN writing mode - apply on this retry):",
     "- Put one space BEFORE ? ! [ ] ( ) and one space AFTER them before the next word or bracket content.",
     "- Commas, semicolons and :: are exceptions: attach directly (foo, bar not foo , bar).",
     '- Translations: "Hello [ hola ]."',
@@ -100,7 +100,7 @@ export function buildWritingRetryUserMessage(draft, violations, opts = {}) {
     ? "Keep the ImplementationPlan JSON block intact and valid. Fix violations only in human-readable prose outside the JSON fence."
     : "Plain conversational prose only. No JSON blocks.";
   return [
-    "HYPERLATTICE REJECTED your previous CCA output. EPSCOM writing.gap validation failed.",
+    "HYPERLATTICE REJECTED your previous CCA output. CORRECTWRITING_EN writing.gap validation failed.",
     "",
     formatWritingModeViolationCorrections(violations, { isWritingHelp, userMessage }),
     "",
@@ -110,7 +110,7 @@ export function buildWritingRetryUserMessage(draft, violations, opts = {}) {
     modeRules,
     "End with declarative prose (Tell me what you would like to do.) never a closing question (What would you like to do?).",
     "",
-    EPSCOM_WRITING_RULES,
+    CORRECTWRITING_EN_WRITING_RULES,
     "",
     "Rejected draft:",
     draft,
@@ -145,14 +145,14 @@ function blockedCcaResult({
     writing_correction_guide: correctionGuide,
     writing_validation: writingValidation ?? {
       ok: false,
-      authority: "epscom-core",
+      authority: "correctwriting_en-core",
       violations,
     },
     hyperlattice_validation: hyperlatticeValidation ?? {
       ok: false,
       topology: "hyperlattice",
       agent_id: "cca",
-      governed_by: ["writing.gap", "epscom-core", "validation_engine_dock"],
+      governed_by: ["writing.gap", "correctwriting_en-core", "validation_engine_dock"],
       error,
       dock_audit_ok: false,
     },
@@ -176,7 +176,7 @@ const CASUAL_READY_RE =
 
 /** Questions about rules, punctuation, or how things work - chat, not deployment plan. */
 const CHAT_QUESTION_RE =
-  /\b(how do (you|i|we) write|how (to|do i) write|what (is|are)|explain|tell me (about|how)|describe|correctly|punctuation|writing\.gap|epscom|em[\s-]?dash|oxford comma|exclamation|question mark|!\s*and\s*\?)\b/i;
+  /\b(how do (you|i|we) write|how (to|do i) write|what (is|are)|explain|tell me (about|how)|describe|correctly|punctuation|writing\.gap|correctwriting_en|em[\s-]?dash|oxford comma|exclamation|question mark|!\s*and\s*\?)\b/i;
 
 export function classifyCcaMessage(message) {
   const text = String(message ?? "").trim();
@@ -238,7 +238,7 @@ function formatChatGraphContext(graph, { greeting = false } = {}) {
 const GREETING_RESPONSE_HINT =
   "\n\nThis is a casual greeting. Reply in one or two short sentences only. Be warm and ready. Use your own wording, not a canned script. Do not list or summarize canvas nodes, the lattice hub, docks, agents, UCB or storage. Do not use plan-mode phrases like \"governed for secure building\". Do not echo or repeat the user's slang or joke phrases. End with a brief declarative invite to continue.";
 
-/** Detect EPSCOM spacing issues in the user's message (for writing-help context only). */
+/** Detect CORRECTWRITING_EN spacing issues in the user's message (for writing-help context only). */
 export function detectUserPunctuationIssues(message) {
   const text = String(message ?? "");
   const issues = [];
@@ -268,13 +268,13 @@ export function formatUserPunctuationIssueNote(message) {
   return `\n\n[User message spacing issues: ${issues.join("; ")}.]`;
 }
 
-/** User asked how to write ? ! [ ] ( ) spacing (EPSCOM writing mode). */
+/** User asked how to write ? ! [ ] ( ) spacing (CORRECTWRITING_EN writing mode). */
 export function isCcaPunctuationSignQuestion(message) {
   return /[?!\[\]\(\)]|question mark|exclamation|bracket|parenthes/i.test(String(message ?? ""));
 }
 
 /**
- * Deterministic EPSCOM punctuation help. No LLM: governed text built from rules,
+ * Deterministic CORRECTWRITING_EN punctuation help. No LLM: governed text built from rules,
  * then released only through hyperlattice + kernel validation.
  */
 export function buildCcaPunctuationHelpReply(message) {
@@ -285,9 +285,9 @@ export function buildCcaPunctuationHelpReply(message) {
       ? "Your message was missing a space after a sign before the next word. "
       : issues.length
         ? ""
-        : "Your sign spacing in that message already matches EPSCOM writing mode. ";
+        : "Your sign spacing in that message already matches CORRECTWRITING_EN writing mode. ";
   return [
-    "EPSCOM writing mode puts a single space before `?` `!` `[` `]` `(` `)` and after them before the next word or bracket content.",
+    "CORRECTWRITING_EN writing mode puts a single space before `?` `!` `[` `]` `(` `)` and after them before the next word or bracket content.",
     "Commas, semicolons and double colons (`::`) are exceptions: attach them directly to the preceding word with no space before.",
     "Translations go in brackets with spaces: \"Hello [ hola ].\"",
     issuePart.trim(),
@@ -440,7 +440,7 @@ export async function runCcaChat(
   let plan = null;
   let usedLlm = false;
   let writingRetries = 0;
-  let writingValidation = { ok: true, authority: "epscom-core", violations: [] };
+  let writingValidation = { ok: true, authority: "correctwriting_en-core", violations: [] };
   let hyperlatticeValidation = null;
   const writingRetryMax = resolveWritingRetryMax(env);
 
@@ -517,14 +517,14 @@ export async function runCcaChat(
               userMessage: message.trim(),
               writingValidation: {
                 ok: false,
-                authority: "epscom-core",
+                authority: "correctwriting_en-core",
                 violations,
               },
               hyperlatticeValidation: {
                 ok: false,
                 topology: "hyperlattice",
                 agent_id: "cca",
-                governed_by: ["writing.gap", "epscom-core"],
+                governed_by: ["writing.gap", "correctwriting_en-core"],
                 error: err.message,
                 dock_audit_ok: false,
               },
@@ -597,7 +597,7 @@ export async function runCcaChat(
   }
 
   if (plan) {
-    plan = epscomEnforceWritingValue(plan);
+    plan = correctwriting_enEnforceWritingValue(plan);
   }
 
   if (!reply?.trim()) {

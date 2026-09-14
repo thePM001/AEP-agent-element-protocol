@@ -28,7 +28,7 @@ const DOCK_BY_CONTRACT = {
   "aep-275-eval-chain": "validation_engine",
   "gap-runtime-scanners": "regulation_module",
   "commerce-subprotocol": "regulation_module",
-  "epscom-core": "regulation_module",
+  "correctwriting_en-core": "regulation_module",
   "eu-ai-act": "regulation_module",
   gdpr: "regulation_module",
   "soc2-type2": "regulation_module",
@@ -53,15 +53,15 @@ export function buildPolicyLatticeView(activeRegulationLrps = []) {
 
   const channelBindings = [
     {
-      lrp_id: catalog.epscom.id,
-      contract_id: catalog.epscom.id,
-      channel_id: `ch-${catalog.epscom.id}`,
-      docking_port: DOCK_BY_CONTRACT[catalog.epscom.id] ?? "regulation_module",
-      priority: catalog.epscom.priority,
+      lrp_id: catalog.correctwriting_en.id,
+      contract_id: catalog.correctwriting_en.id,
+      channel_id: `ch-${catalog.correctwriting_en.id}`,
+      docking_port: DOCK_BY_CONTRACT[catalog.correctwriting_en.id] ?? "regulation_module",
+      priority: catalog.correctwriting_en.priority,
       pq_capsule: true,
       agentmesh_required: true,
-      epscom_supremacy: false,
-      kind: "epscom",
+      correctwriting_en_supremacy: false,
+      kind: "correctwriting_en",
     },
     ...platformContracts
       .filter((c) => c.kind === "kernel_contract")
@@ -73,7 +73,7 @@ export function buildPolicyLatticeView(activeRegulationLrps = []) {
         priority: 200,
         pq_capsule: true,
         agentmesh_required: true,
-        epscom_supremacy: true,
+        correctwriting_en_supremacy: true,
         kind: "kernel_contract",
       })),
     ...regulationLrps.map((lrpId) => {
@@ -86,7 +86,7 @@ export function buildPolicyLatticeView(activeRegulationLrps = []) {
         priority: meta?.priority ?? 150,
         pq_capsule: true,
         agentmesh_required: true,
-        epscom_supremacy: true,
+        correctwriting_en_supremacy: true,
         kind: "regulation_lrp",
       };
     }),
@@ -95,7 +95,7 @@ export function buildPolicyLatticeView(activeRegulationLrps = []) {
   return {
     hierarchy: LATTICE_HIERARCHY,
     reference_policies: referencePolicies,
-    epscom: catalog.epscom,
+    correctwriting_en: catalog.correctwriting_en,
     platform_contracts: platformContracts,
     platform_mandatory_policies: platformMandatoryPolicies,
     active_regulation_lrps: regulationLrps.map((id) => {
@@ -119,7 +119,7 @@ export function buildPolicyLatticeView(activeRegulationLrps = []) {
         name: meta?.name ?? id,
         priority: meta?.priority ?? 0,
         mandatory: false,
-        epscom_priority: catalog.epscom.priority,
+        correctwriting_en_priority: catalog.correctwriting_en.priority,
         category: "compliance",
         framework: meta?.framework ?? null,
         gap_ref: meta?.gap_ref ?? null,
@@ -129,7 +129,7 @@ export function buildPolicyLatticeView(activeRegulationLrps = []) {
     }),
     compliance_modules: complianceModules,
     channel_bindings: channelBindings,
-    epscom_priority: catalog.epscom.priority,
+    correctwriting_en_priority: catalog.correctwriting_en.priority,
   };
 }
 

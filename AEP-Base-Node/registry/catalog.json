@@ -68,14 +68,14 @@
       "role": "kernel"
     },
     {
-      "id": "epscom-signatures",
-      "name": "EPSCOM Detection Signatures",
+      "id": "correctwriting_en-signatures",
+      "name": "CORRECTWRITING_EN Detection Signatures",
       "kind": "library",
       "bundled": true,
       "default_enabled": true,
       "path": "AEP-Base-Node/signatures/",
-      "description": "EPSCOM-curated detection signatures and trust bundle (Base Node kernel adjunct).",
-      "manifest": "AEP-Base-Node/registry/components/epscom-signatures.json",
+      "description": "CORRECTWRITING_EN-curated detection signatures and trust bundle (Base Node kernel adjunct).",
+      "manifest": "AEP-Base-Node/registry/components/correctwriting_en-signatures.json",
       "role": "kernel"
     },
     {

@@ -27,7 +27,7 @@ Run daemon (Phase 4 docking ports): `aep-base-node --daemon --config ~/.aep/base
 
 ## LRP catalog
 
-See `wizard/lrp/catalog.json`. EPSCOM is always mandatory with priority 255.
+See `wizard/lrp/catalog.json`. CORRECTWRITING_EN is always mandatory with priority 255.
 
 ### Core LRPs
 

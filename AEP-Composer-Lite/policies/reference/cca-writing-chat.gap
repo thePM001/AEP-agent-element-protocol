@@ -82,7 +82,7 @@
   },
   "action": {
     "type": "template",
-    "content": "Enforce EPSCOM writing.gap on all CCA chat output before hyperlattice release."
+    "content": "Enforce CORRECTWRITING_EN writing.gap on all CCA chat output before hyperlattice release."
   },
   "weight": 1.0,
   "composition": {

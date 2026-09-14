@@ -22,7 +22,7 @@ actions:
     agent_permission: ["*"]
 
   composer-lite:cca:validate_writing:
-    label: "EPSCOM writing.gap validation before CCA reply release"
+    label: "CORRECTWRITING_EN writing.gap validation before CCA reply release"
     category: system_event
     parents: [composer-lite:cca:chat]
     children: [composer-lite:cca:release]
@@ -33,7 +33,7 @@ actions:
       - type: policy_binding
         policy: writing.gap
         gap_ref: AEP-Policy-System/reference/writing.gap
-        description: "Mandatory hyperlattice writing.gap (EPSCOM kernel) before release"
+        description: "Mandatory hyperlattice writing.gap (CORRECTWRITING_EN kernel) before release"
     agent_permission: ["*"]
 
   composer-lite:cca:release:

@@ -26,7 +26,7 @@ function skipSpacedSignAfterContext(raw, index) {
   return prev === "/" || prev === "=" || prev === "&";
 }
 
-/** EPSCOM writing mode: space before ? ! [ ] ( ) (e.g. "building ?" not "building?"). */
+/** CORRECTWRITING_EN writing mode: space before ? ! [ ] ( ) (e.g. "building ?" not "building?"). */
 export function lintMissingSpaceBeforeSentencePunct(text) {
   const violations = [];
   const raw = stripLintExemptRegions(text);
@@ -93,7 +93,7 @@ export function lintSpaceBeforeDoubleColon(text) {
 }
 
 const INSTRUCTION_ECHO_RE =
-  /\b(use words like|when describing the rule itself|describe mistakes in words instead|compliant example sentences|reply in chat mode only|no json blocks|no implementationplan|canvas inventory|epscom writing\.gap punctuation or style rules|explain the rule in plain language)\b/i;
+  /\b(use words like|when describing the rule itself|describe mistakes in words instead|compliant example sentences|reply in chat mode only|no json blocks|no implementationplan|canvas inventory|correctwriting_en writing\.gap punctuation or style rules|explain the rule in plain language)\b/i;
 
 /** Reject replies that parrot internal CCA prompt instructions to the user. */
 export function lintCcaInstructionEcho(text) {
@@ -170,7 +170,7 @@ export function lintCcaGreetingOutput(text) {
 
 /**
  * Full CCA chat writing validation for hyperlattice validate_writing stage.
- * No auto-fix. Fail-closed on any constraint from cca-writing-chat.gap + EPSCOM.
+ * No auto-fix. Fail-closed on any constraint from cca-writing-chat.gap + CORRECTWRITING_EN.
  */
 export function validateCcaChatWritingDraft(text, opts = {}) {
   const violations = [
@@ -201,7 +201,7 @@ export function validateCcaChatWritingDraft(text, opts = {}) {
 
   return {
     ok: unique.length === 0,
-    authority: "epscom-core",
+    authority: "correctwriting_en-core",
     violations: unique,
     rules_checked: [
       "space_before_spaced_signs",

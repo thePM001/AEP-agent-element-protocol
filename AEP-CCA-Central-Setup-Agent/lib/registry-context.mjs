@@ -71,7 +71,7 @@ export async function buildRegistryContext(dataDir, env = process.env) {
 
   const gap = loadGapContext(REPO_ROOT);
   const coding_governance = loadCodingGovernanceContext(REPO_ROOT);
-  const epscom_signatures = loadSignaturesContext(REPO_ROOT, env);
+  const correctwriting_en_signatures = loadSignaturesContext(REPO_ROOT, env);
   const policy_system = loadPolicySystemContext(REPO_ROOT);
   const dynaep = loadDynaepContext(REPO_ROOT);
 
@@ -82,7 +82,7 @@ export async function buildRegistryContext(dataDir, env = process.env) {
     components,
     gap,
     coding_governance,
-    epscom_signatures,
+    correctwriting_en_signatures,
     policy_system,
     dynaep,
     docks: DOCK_IDS.map((d) => ({
@@ -147,7 +147,7 @@ export function formatContextForPrompt(context) {
   lines.push(
     "",
     "Security: All agent traffic MUST use lattice channels. No raw HTTP between AEP nodes.",
-    "Writing rules are enforced by EPSCOM kernel (epscom-core platform authority, not an LRP), not validation dock.",
+    "Writing rules are enforced by CORRECTWRITING_EN kernel (correctwriting_en-core platform authority, not an LRP), not validation dock.",
     "Output: human summary + ```json ImplementationPlan ``` block with plan_version 1.",
     "Full-stack intents (all components, 100% coverage) must enable every bundled catalog entry.",
   );
@@ -160,8 +160,8 @@ export function formatContextForPrompt(context) {
     lines.push(formatCodingGovernanceForPrompt(context.coding_governance));
   }
 
-  if (context.epscom_signatures) {
-    lines.push(formatSignaturesForPrompt(context.epscom_signatures));
+  if (context.correctwriting_en_signatures) {
+    lines.push(formatSignaturesForPrompt(context.correctwriting_en_signatures));
   }
 
   if (context.policy_system) {

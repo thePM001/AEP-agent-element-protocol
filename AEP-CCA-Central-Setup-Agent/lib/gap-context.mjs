@@ -135,7 +135,7 @@ export function loadGapContext(repoRoot = REPO_ROOT) {
       policy_overrides_key: "gap",
       pairs_with: ["coding-governance", "dynaep-core", "wasm-policy-sandbox", "policy-engine"],
       do_not_confuse: {
-        writing_gap: "writing.gap is EPSCOM prose lint, not the GAP instruction language",
+        writing_gap: "writing.gap is CORRECTWRITING_EN prose lint, not the GAP instruction language",
         lrp: "GAP reference policies are not nation-state LRP slots unless wrapped as regulation packs",
       },
     },
@@ -180,7 +180,7 @@ export function formatGapForPrompt(gap) {
     "- dynAEP Action Lattice evaluates GAP instructions; do not route GAP through validation dock unless a validation engine is installed.",
     "",
     "Distinction:",
-    "- `writing.gap` = EPSCOM prose style lint (em-dash ban). NOT the GAP language.",
+    "- `writing.gap` = CORRECTWRITING_EN prose style lint (em-dash ban). NOT the GAP language.",
     "- GAP `.gap` files = governed agent instructions with patterns, actions, composition, metadata.",
   );
 

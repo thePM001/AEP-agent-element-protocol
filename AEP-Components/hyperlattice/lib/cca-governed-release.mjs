@@ -157,7 +157,7 @@ function recordCcaLatticeStage(socketBase, stage, payload, opts = {}) {
       action_path: spec.action_path,
       topology: "hyperlattice",
       gap_policy: stage === "validate_writing" ? CCA_WRITING_GAP_POLICY : undefined,
-      epscom_authority: "epscom-core",
+      correctwriting_en_authority: "correctwriting_en-core",
       ...payload,
     },
   };
@@ -191,7 +191,7 @@ function recordCcaLatticeStage(socketBase, stage, payload, opts = {}) {
 
 /**
  * DENY on miss CCA reply release through the Composer Lite hyperlattice wrap.
- * EPSCOM writing.gap (kernel) + lattice validation_engine audit before UI release.
+ * CORRECTWRITING_EN writing.gap (kernel) + lattice validation_engine audit before UI release.
  */
 export async function releaseCcaReplyViaHyperlattice(text, opts = {}) {
   const stages = [];
@@ -274,7 +274,7 @@ export async function releaseCcaReplyViaHyperlattice(text, opts = {}) {
         topology: "hyperlattice",
         mechanism: "one",
         agent_id: "cca",
-        governed_by: ["writing.gap", "epscom-core", "gapc_validated", "validation_engine_dock"],
+        governed_by: ["writing.gap", "correctwriting_en-core", "gapc_validated", "validation_engine_dock"],
         gap_policy: {
           ...CCA_WRITING_GAP_POLICY,
           cca_gap_address:
@@ -297,7 +297,7 @@ export async function releaseCcaReplyViaHyperlattice(text, opts = {}) {
       topology: "hyperlattice",
       mechanism: "one",
       agent_id: "cca",
-      governed_by: ["writing.gap", "epscom-core", "validation_engine_dock"],
+      governed_by: ["writing.gap", "correctwriting_en-core", "validation_engine_dock"],
       action_paths: [
         CCA_HYPERLATTICE_ACTIONS.chat,
         CCA_HYPERLATTICE_ACTIONS.validateWriting,
@@ -316,7 +316,7 @@ export async function releaseCcaReplyViaHyperlattice(text, opts = {}) {
     error.hyperlattice_validation = blocked;
     error.writing_validation = {
       ok: false,
-      authority: "epscom-core",
+      authority: "correctwriting_en-core",
       violations:
         err.violations  ?.  length > 0
           ? err.violations
@@ -428,7 +428,7 @@ export function recordCcaChatInference(meta, opts = {}) {
 
 /**
  * Mandatory chat-box release gate. ALL CCA agent text must pass through this before
- * the UI may render it: inference_engine dock + EPSCOM writing.gap + validation_engine dock.
+ * the UI may render it: inference_engine dock + CORRECTWRITING_EN writing.gap + validation_engine dock.
  * Throws DENY on miss on any validation or dock audit failure.
  */
 export async function releaseCcaTextToChatBox(text, opts = {}) {
@@ -465,19 +465,19 @@ export async function releaseCcaTextToChatBox(text, opts = {}) {
   }
   if (wv  ?.  ok !== true || hl  ?.  ok !== true || hl  ?.  dock_audit_ok === false) {
     const err = new Error(
-      "CCA reply blocked: EPSCOM writing.gap or hyperlattice validation did not pass (DENY on miss)",
+      "CCA reply blocked: CORRECTWRITING_EN writing.gap or hyperlattice validation did not pass (DENY on miss)",
     );
     err.violations = wv  ?.  violations   ??   [{ rule: "release_blocked", message: err.message }];
     err.writing_validation = wv   ??   {
       ok: false,
-      authority: "epscom-core",
+      authority: "correctwriting_en-core",
       violations: err.violations,
     };
     err.hyperlattice_validation = hl   ??   {
       ok: false,
       topology: "hyperlattice",
       agent_id: "cca",
-      governed_by: ["writing.gap", "epscom-core", "validation_engine_dock"],
+      governed_by: ["writing.gap", "correctwriting_en-core", "validation_engine_dock"],
       error: err.message,
       dock_audit_ok: false,
     };

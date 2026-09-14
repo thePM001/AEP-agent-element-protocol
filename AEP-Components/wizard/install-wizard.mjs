@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * AEP 2.8 Installation Wizard (Phase 1)
- * Configures Base Node paths, LRPs, EPSCOM priority and lattice channel PQ profile.
+ * Configures Base Node paths, LRPs, CORRECTWRITING_EN priority and lattice channel PQ profile.
  */
 
 import { createInterface } from "node:readline/promises";
@@ -171,7 +171,7 @@ async function main() {
       socket_base: socketBase,
       lattice_db: latticeDb,
       binary_path: binaryPath,
-      epscom_priority: catalog.epscom.priority,
+      correctwriting_en_priority: catalog.correctwriting_en.priority,
       lrps,
       lattice_kem: "ML-KEM-768",
       lattice_signature: "ML-DSA-65",

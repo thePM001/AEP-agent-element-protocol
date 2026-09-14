@@ -254,7 +254,7 @@ export async function executeImplementationPlan(plan, options = {}) {
   const inference = plan.inference   ??   resolveInferenceConfig(env, dataDir);
 
   const signaturesPath =
-    env.AEP_EPSCOM_SIGNATURES_PATH   ??  
+    env.AEP_CORRECTWRITING_EN_SIGNATURES_PATH   ??  
     join(dirname(fileURLToPath(import.meta.url)), "../../../AEP-Base-Node/signatures");
 
   let config = buildBaseNodeConfig({
@@ -269,12 +269,12 @@ export async function executeImplementationPlan(plan, options = {}) {
     signaturesPath,
   });
 
-  config.epscom_signatures = {
+  config.correctwriting_en_signatures = {
     enabled: true,
     path: signaturesPath,
     trust_bundle: "trust-bundle/manifest.json",
     sync_interval_hours: 24,
-    signature_ids: (context.epscom_signatures  ?.  signatures   ??   []).map((s) => s.id),
+    signature_ids: (context.correctwriting_en_signatures  ?.  signatures   ??   []).map((s) => s.id),
   };
 
   config = applyValidationEngineToConfig(config, validationEnginePlan);

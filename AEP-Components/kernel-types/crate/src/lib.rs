@@ -244,9 +244,9 @@ pub fn classify_wall(id: &str, reason: &str) -> String {
         || id_l == "writing.gap"
         || id_l == "writing:correctwriting_en"
         // Legacy id kept so an older capsule still classifies as a writing wall.
-        || id_l == "writing:epscom"
+        || id_l == "writing:correctwriting_en"
         || reason_l.contains("correctwriting_en")
-        || reason_l.contains("epscom")
+        || reason_l.contains("correctwriting_en")
         || reason_l.contains("writing.gap")
         || reason_l.contains("writing violation")
         || reason_l.contains("em dash")
@@ -742,7 +742,7 @@ fn walls_from_error(error: &str) -> Vec<ClosedWall> {
     if error.contains("poisoned lock") {
         return vec![ClosedWall::with_class("lock.poison", error, CLASS_POISON)];
     }
-    if error.contains("EPSCOM writing") || error.contains("writing violations") {
+    if error.contains("CORRECTWRITING_EN writing") || error.contains("writing violations") {
         return vec![ClosedWall::with_class("writing:correctwriting_en", error, CLASS_WRITING)];
     }
     if error.contains("frame stale") {

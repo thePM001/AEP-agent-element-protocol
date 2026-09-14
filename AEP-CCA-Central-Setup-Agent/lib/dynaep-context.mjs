@@ -141,7 +141,7 @@ export function loadDynaepContext(repoRoot = REPO_ROOT) {
     taxonomy: {
       protocol_component: "dynaep-core",
       kernel_contract: "dynaep-action-lattice",
-      not_lrp: ["dynaep-action-lattice", "epscom-core", "lattice-channel-default"],
+      not_lrp: ["dynaep-action-lattice", "correctwriting_en-core", "lattice-channel-default"],
     },
     cca_guidance: {
       always_enable: true,
@@ -241,7 +241,7 @@ export function formatDynaepForPrompt(ctx) {
     "CCA planning rules:",
     "- dynaep-core is default_enabled on every deployment. Pair with gap for GAP instruction evaluation on the lattice.",
     "- plan.lrps = regulation LRPs only (eu-ai-act, gdpr, hipaa, soc2-type2, nist-ai-rmf, iso-42001).",
-    "- gap-runtime-scanners, commerce-subprotocol, epscom-core are platform features - enable as components, not plan.lrps.",
+    "- gap-runtime-scanners, commerce-subprotocol, correctwriting_en-core are platform features - enable as components, not plan.lrps.",
     "- GAP evaluates instructions; dynAEP Action Lattice evaluates runtime events. Do not route dynAEP through validation dock unless a validation engine is installed.",
   );
 

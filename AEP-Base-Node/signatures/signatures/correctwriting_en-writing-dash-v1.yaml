@@ -1,6 +1,6 @@
 signature_version: "1"
-id: epscom-writing-dash-v1
-authority: EPSCOM
+id: correctwriting_en-writing-dash-v1
+authority: CORRECTWRITING_EN
 name: Forbidden typographic dash characters
 description: Block U+2014 em dash, U+2013 en dash, U+2015 horizontal bar, U+2E3A/U+2E3B multi-em dashes, and U+2212 minus-as-dash in governed prose (writing.gap kernel alignment).
 severity: medium
@@ -15,8 +15,8 @@ response:
   action: block
   dock: regulation_module
 metadata:
-  authored_by: EPSCOM
+  authored_by: CORRECTWRITING_EN
   revision: "2026-06-23"
   references:
-    - AEP-Base-Node/crate/src/epscom.rs
+    - AEP-Base-Node/crate/src/correctwriting_en.rs
     - AEP-Policy-System/reference/writing.gap

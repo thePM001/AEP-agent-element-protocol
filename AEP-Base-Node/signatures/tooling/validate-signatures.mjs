@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Validate EPSCOM trust bundle + signature files. */
+/** Validate CORRECTWRITING_EN trust bundle + signature files. */
 
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -27,8 +27,8 @@ try {
         errors++;
       }
     }
-    if (sig.authority !== "EPSCOM") {
-      console.error(`FAIL: ${sig.id} authority must be EPSCOM`);
+    if (sig.authority !== "CORRECTWRITING_EN") {
+      console.error(`FAIL: ${sig.id} authority must be CORRECTWRITING_EN`);
       errors++;
     }
     if (!sig.detection?.patterns?.length) {
@@ -64,7 +64,7 @@ try {
   }
 
   if (errors === 0) {
-    console.log(`OK: ${reg.enabled_count} EPSCOM signatures validated at ${root}`);
+    console.log(`OK: ${reg.enabled_count} CORRECTWRITING_EN signatures validated at ${root}`);
     process.exit(0);
   }
 } catch (err) {

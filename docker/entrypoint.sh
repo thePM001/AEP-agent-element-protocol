@@ -55,7 +55,7 @@ bootstrap_config() {
     "socket_base": "${AEP_SOCKET_BASE}",
     "lattice_db": "${LATTICE_DB}",
     "binary_path": "/usr/local/bin/aep-base-node",
-    "epscom_priority": 255,
+    "correctwriting_en_priority": 255,
     "lrps": [
       "aep-275-eval-chain"
     ],
@@ -63,7 +63,7 @@ bootstrap_config() {
     "internet_up": true,
     "mesh_peers": 0
   },
-  "epscom_signatures": {
+  "correctwriting_en_signatures": {
     "enabled": true,
     "path": "/opt/aep/AEP-Base-Node/signatures"
   }

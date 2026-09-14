@@ -21,7 +21,7 @@
 | Layer | Component | Role |
 |-------|-----------|------|
 | Execution | `aep-caw` | Shell, file, network, process, DB wire enforcement |
-| Protocol | Base Node + lattice | LRP, evidence ledger, EPSCOM |
+| Protocol | Base Node + lattice | LRP, evidence ledger, CORRECTWRITING_EN |
 | Planning | CCA | Enables CAW in every coding-agent plan |
 
 See `AEP-CAW/README.md`.
@@ -53,7 +53,7 @@ flowchart TB
   Executor --> Graph[composer-lite-graph.json]
   Plan <-->|plan_sync| Composer[Composer Lite :8424]
   Executor --> Lattice[Lattice Channel / Action Lattice]
-  EPSCOM[EPSCOM kernel LRP] --> Lattice
+  CORRECTWRITING_EN[CORRECTWRITING_EN kernel LRP] --> Lattice
 ```
 
 ### Default deployment model
@@ -62,7 +62,7 @@ flowchart TB
 |-------|--------------------------------|
 | Validation engine | `validation_engine.mode = "none"` - no dedicated validation engine unless operator opts in |
 | CCA dock placement | CCA is **not** permanently on the validation dock |
-| Writing rules | Enforced by **EPSCOM kernel** (`epscom-core` LRP, priority 255) via `aep-lattice-log` |
+| Writing rules | Enforced by **CORRECTWRITING_EN kernel** (`correctwriting_en-core` LRP, priority 255) via `aep-lattice-log` |
 | `writing.gap` | Documentation lint (CC-16) and kernel enforcement (CC-17) - **not** an LRP slot |
 | LRP slots | Legacy nation-state regulation providers only (GDPR, HIPAA, EU AI Act, commerce, etc.) |
 | Inter-node traffic | Lattice channels only - `security.lattice_strict` must be `true` |
@@ -273,7 +273,7 @@ Activation dock event is not Admit. Enqueue is not Admit. Ping is not Admit. Mem
 | `lib/plan-to-graph.mjs` | ImplementationPlan to Composer graph |
 | `lib/graph-to-plan.mjs` | Composer graph edits back to plan |
 | `lib/chat.mjs` | LLM chat with rule-based fallback |
-| `lib/cca-prompt.mjs` | System prompt builder with GAP + EPSCOM writing rules |
+| `lib/cca-prompt.mjs` | System prompt builder with GAP + CORRECTWRITING_EN writing rules |
 | `lib/gap-context.mjs` | GAP meta-schema, reference policies, prompt section |
 | `lib/dynaep-context.mjs` | dynAEP protocol layout, SDK paths, observers, lattice registry |
 | `lib/policy-system-context.mjs` | AEP-Policy-System reference GAPs and regulation LRP catalog |
@@ -293,15 +293,15 @@ Configure via Composer `/api/inference` or `{AEP_DATA}/inference-engine.env`.
 
 ---
 
-## EPSCOM writing enforcement
+## CORRECTWRITING_EN writing enforcement
 
-All CCA prose output (chat replies, plan strings) passes through EPSCOM kernel lint via `aep-lattice-log`:
+All CCA prose output (chat replies, plan strings) passes through CORRECTWRITING_EN kernel lint via `aep-lattice-log`:
 
 - No em-dashes, en-dashes or Unicode dash substitutes
 - No double-hyphen (` -- `) as a sentence separator in prose
 - No Oxford commas (`foo, bar, and baz` becomes `foo, bar and baz`)
 
-This is kernel-level enforcement (`epscom-core`), not validation-dock routing and not an LRP registration.
+This is kernel-level enforcement (`correctwriting_en-core`), not validation-dock routing and not an LRP registration.
 
 ---
 
@@ -332,7 +332,7 @@ cd AEP-Components/conformance/harness && npm install
 | `Plan validation failed` | Unknown component or RAM too low | `aep-cca validate` for errors; adjust intent |
 | Graph edits lost in plan | `plan_sync` not sent | Composer sends `plan_sync: true` on save (default since 2.8.5) |
 | Commerce disabled after execute | Policy default `enabled: false` | Fixed: executor sets `commerce.enabled: true` when commerce LRP active |
-| Writing lint failures | EPSCOM kernel | Remove em-dashes and Oxford commas from output strings |
+| Writing lint failures | CORRECTWRITING_EN kernel | Remove em-dashes and Oxford commas from output strings |
 
 ---
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { formatContextForPrompt } from "./registry-context.mjs";
-import { EPSCOM_WRITING_RULES } from "../../lattice-channels/lib/lattice-transport.mjs";
+import { CORRECTWRITING_EN_WRITING_RULES } from "../../lattice-channels/lib/lattice-transport.mjs";
 import { formatComposerProtocolForPrompt } from "../../../AEP-Composer-Lite/lib/hyperlattice/composer-protocol.mjs";
 import {
   loadCcaGapPolicies,
@@ -48,10 +48,10 @@ AEP CAW Framework (caw-framework) is a core capability (default_enabled: true). 
 
 For Postgres: enable connector-postgres and add connector node with storage_backend postgres wired to lattice hub via evidence_export channel.
 
-EPSCOM Detection Signatures (AEP-Base-Node/signatures/, default wired):
-- Component epscom-signatures is default_enabled with Base Node (not optional).
+CORRECTWRITING_EN Detection Signatures (AEP-Base-Node/signatures/, default wired):
+- Component correctwriting_en-signatures is default_enabled with Base Node (not optional).
 - Trust bundle at trust-bundle/manifest.json indexes YAML detection rules.
-- Categories: writing, injection, lattice bypass, exfiltration. CCA plans MUST keep epscom_signatures.enabled true in base-node.json.
+- Categories: writing, injection, lattice bypass, exfiltration. CCA plans MUST keep correctwriting_en_signatures.enabled true in base-node.json.
 
 GAP and AEP Policy System (AEP-Policy-System/):
 - Canonical reference GAP policies: AEP-Policy-System/reference/*.gap (governance, deployment, security, writing, compliance LRPs).
@@ -64,10 +64,10 @@ GAP and AEP Policy System (AEP-Policy-System/):
 - Set policy_overrides.gap.reference_policies to AEP-Policy-System/reference paths. Set policy_overrides.policy_lattice on every plan.
 - Subprotocols attach at metadata.subprotocols for lattice Step 3.5.
 - For coding agents: enable coding-governance, intent-ledger, semantic-topology and set policy_overrides.coding_governance.
-- writing.gap is EPSCOM prose lint only - not the GAP instruction language.
+- writing.gap is CORRECTWRITING_EN prose lint only - not the GAP instruction language.
 - Runtime policy lattice: GET /api/policy-lattice (Composer Lite).
 
-${EPSCOM_WRITING_RULES}
+${CORRECTWRITING_EN_WRITING_RULES}
 
 ${formatComposerProtocolForPrompt()}
 
@@ -91,9 +91,9 @@ const LITE_SURFACE = `Composer Lite (public WASM canvas, port 8424):
 - wasm_policy is not in the Lite catalog; use lattice stage policies instead.
 `;
 
-const WRITING_HELP_CHAT_INSTRUCTIONS = `Writing-help mode (user asked about EPSCOM writing mode punctuation):
+const WRITING_HELP_CHAT_INSTRUCTIONS = `Writing-help mode (user asked about CORRECTWRITING_EN writing mode punctuation):
 - Answer in two to four short sentences of natural prose. Never repeat or quote these instructions.
-- EPSCOM writing mode (taskstar writing_rules.md): single space BEFORE \`?\` \`!\` \`[\` \`]\` \`(\` \`)\`, single space AFTER them before the next word or bracket content.
+- CORRECTWRITING_EN writing mode (taskstar writing_rules.md): single space BEFORE \`?\` \`!\` \`[\` \`]\` \`(\` \`)\`, single space AFTER them before the next word or bracket content.
 - Commas, semicolons and double colons (\`::\`) are exceptions: attach directly to the preceding word (foo, bar not foo , bar).
 - Translations: \"Hello [ hola ].\" with spaces inside the brackets.
 - Name each discussed sign with backtick refs (\`?\` \`!\` \`[\` \`]\` etc.).
@@ -123,10 +123,10 @@ You help users navigate the canvas, policies, nodes, and AEP components in plain
 - When a canvas node is selected, reference it naturally if relevant.
 - Use plain prose. Prefer colons or short sentences instead of dash-separated clauses.
 - Lists are fine with hyphen bullets; do not use "foo - bar" inline clause separators.
-- EPSCOM writing mode: space before ? ! [ ] ( ) and space after before the next word. Commas, semicolons and :: attach directly. Translations use [ hola ] spacing.
+- CORRECTWRITING_EN writing mode: space before ? ! [ ] ( ) and space after before the next word. Commas, semicolons and :: attach directly. Translations use [ hola ] spacing.
 - Prefer declarative closings over questions ("Tell me what you would like to do." not "What would you like to do?").
 
-${EPSCOM_WRITING_RULES}
+${CORRECTWRITING_EN_WRITING_RULES}
 
 ${formatComposerProtocolForPrompt()}
 

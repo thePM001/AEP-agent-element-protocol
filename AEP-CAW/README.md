@@ -26,7 +26,7 @@ User / coding agent
   aep-caw exec (ELS)     file, network, process, subprocess, DB wire, LLM proxy
         |
         v
-  AEP Base Node          lattice channels, LRPs, EPSCOM, evidence ledger
+  AEP Base Node          lattice channels, LRPs, CORRECTWRITING_EN, evidence ledger
         |
         v
   CCA + Composer         plan generation, topology, activation

@@ -1,6 +1,6 @@
 signature_version: "1"
-id: epscom-lattice-bypass-v1
-authority: EPSCOM
+id: correctwriting_en-lattice-bypass-v1
+authority: CORRECTWRITING_EN
 name: Lattice channel bypass attempt
 description: Detect raw HTTP/fetch calls that circumvent lattice-gated transport and UCB egress.
 severity: critical
@@ -19,5 +19,5 @@ response:
   action: block
   dock: validation_engine
 metadata:
-  authored_by: EPSCOM
+  authored_by: CORRECTWRITING_EN
   revision: "2026-06-23"

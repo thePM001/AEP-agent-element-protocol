@@ -32,4 +32,4 @@ aep-caw wrap --profile coding-agent -- <agent-binary>
 
 - `profiles/mount-profiles.yaml` - deprecated stub; do not edit (see file header)
 - Registry authority: `AEP-Base-Node/registry/`
-- Kernel: `AEP-Base-Node/crate/` (docking, task_manifest, epscom, side_channel_monitor, lattice_log)
+- Kernel: `AEP-Base-Node/crate/` (docking, task_manifest, correctwriting_en, side_channel_monitor, lattice_log)

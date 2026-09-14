@@ -98,7 +98,7 @@ export function loadPolicySystemContext(repoRoot = REPO_ROOT) {
     compliance_modules: listComplianceModules(catalog),
     platform_contracts: listPlatformContracts(catalog),
     platform_mandatory_policies: listPlatformMandatoryPolicies(catalog),
-    epscom: catalog.epscom,
+    correctwriting_en: catalog.correctwriting_en,
   };
 }
 
@@ -144,7 +144,7 @@ export function formatPolicySystemForPrompt(ctx) {
   const lines = [
     "",
     "AEP Policy System (canonical: AEP-Policy-System/):",
-    `EPSCOM (${ctx.epscom.id}, priority ${ctx.epscom.priority}) is supreme platform authority - not an LRP.`,
+    `CORRECTWRITING_EN (${ctx.correctwriting_en.id}, priority ${ctx.correctwriting_en.priority}) is supreme platform authority - not an LRP.`,
     "",
     "Policy lattice hierarchy (most permissive → most restrictive):",
     ctx.hierarchy.map((h) => `- ${h.label}`).join("\n"),
@@ -176,7 +176,7 @@ export function formatPolicySystemForPrompt(ctx) {
   if (ctx.platform_mandatory_policies?.length) {
     lines.push(
       "",
-      "Platform mandatory policies (EPSCOM/platform authority; NOT LRPs; not selectable in plan.lrps):",
+      "Platform mandatory policies (CORRECTWRITING_EN/platform authority; NOT LRPs; not selectable in plan.lrps):",
     );
     for (const p of ctx.platform_mandatory_policies) {
       const gap = p.gap_ref ? ` -> ${p.gap_ref}` : "";
@@ -205,7 +205,7 @@ export function formatPolicySystemForPrompt(ctx) {
     "- Enable regulation LRP IDs in plan.lrps when user requests compliance (eu-ai-act, gdpr, hipaa, etc.).",
     "- Set policy_overrides.regulation_lrps.modules with gap_ref paths from the table above.",
     "- Set policy_overrides.gap.reference_policies to AEP-Policy-System/reference/*.gap paths.",
-    "- writing.gap is EPSCOM prose lint enforced by Base Node kernel - distinct from GAP instruction language.",
+    "- writing.gap is CORRECTWRITING_EN prose lint enforced by Base Node kernel - distinct from GAP instruction language.",
     "- Composer Lite exposes GET /api/policy-lattice for runtime policy lattice view.",
   );
 

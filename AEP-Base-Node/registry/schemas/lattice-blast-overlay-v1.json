@@ -42,7 +42,7 @@
           "gap_ref": { "type": "string" },
           "reason": {
             "type": "string",
-            "enum": ["component_in_blast", "gap_stack", "epscom_governance", "registry_neighbor"]
+            "enum": ["component_in_blast", "gap_stack", "correctwriting_en_governance", "registry_neighbor"]
           }
         }
       },

@@ -51,9 +51,9 @@ Only when the operator explicitly chooses `nla-built`, `build-own` or `third-par
 |---------|------------|
 | **LRP** | Legacy nation-state regulation provider (GDPR, HIPAA, EU AI Act, commerce-subprotocol, soc2-type2, etc.) |
 | **writing.gap** | Style lint rules (em-dash ban, Oxford comma ban, double-hyphen ban) |
-| **EPSCOM** | Kernel-level enforcement of writing.gap via `epscom-core` LRP (priority 255) in Base Node |
+| **CORRECTWRITING_EN** | Kernel-level enforcement of writing.gap via `correctwriting_en-core` LRP (priority 255) in Base Node |
 
-Never register `writing.gap` as an LRP slot. Never route writing enforcement through the validation dock. Enforcement happens in the Base Node kernel (`AEP-Base-Node/crate/src/epscom.rs`, `aep-lattice-log validate-writing` / `enforce-writing-value`) before governed output is released.
+Never register `writing.gap` as an LRP slot. Never route writing enforcement through the validation dock. Enforcement happens in the Base Node kernel (`AEP-Base-Node/crate/src/correctwriting_en.rs`, `aep-lattice-log validate-writing` / `enforce-writing-value`) before governed output is released.
 
 ### 3. Lattice channels are mandatory
 
@@ -62,14 +62,14 @@ Never register `writing.gap` as an LRP slot. Never route writing enforcement thr
 - CCA LLM calls use `latticeGatedFetch` (see `lib/chat.mjs`)
 - All inter-node edges use lattice channel IDs (default: `lattice-channel-default`)
 
-### 4. EPSCOM enforces writing on all CCA output
+### 4. CORRECTWRITING_EN enforces writing on all CCA output
 
 Before returning plans or chat replies, CCA calls:
 
-- `epscomEnforceWritingValue(plan)` on plan objects
-- `epscomEnforceWriting(reply)` on prose
+- `correctwriting_enEnforceWritingValue(plan)` on plan objects
+- `correctwriting_enEnforceWriting(reply)` on prose
 
-Agents generating CCA-facing text must follow writing.gap rules proactively so EPSCOM does not rewrite their output.
+Agents generating CCA-facing text must follow writing.gap rules proactively so CORRECTWRITING_EN does not rewrite their output.
 
 ---
 
@@ -81,7 +81,7 @@ Agents generating CCA-facing text must follow writing.gap rules proactively so E
 - Never use Oxford commas: write "foo, bar and baz" not "foo, bar, and baz". Same rule for "or".
 ```
 
-Source of truth: `AEP-Components/lattice-channels/lib/lattice-transport.mjs` (`EPSCOM_WRITING_RULES`).
+Source of truth: `AEP-Components/lattice-channels/lib/lattice-transport.mjs` (`CORRECTWRITING_EN_WRITING_RULES`).
 
 ---
 
@@ -107,7 +107,7 @@ CCA **must** understand GAP when planning governed deployments.
 4. Set `policy_overrides.gap.reference_policies` to bundled policy paths when user mentions GAP.
 5. For coding agents with pre-change intent, enable `coding-governance` and set `policy_overrides.coding_governance` with `require_propose`, `git_integration`, `auto_git_refs`, `semantic_strict` (CCA plan-generator does this automatically).
 6. Plan execute writes `$AEP_DATA/coding-agent-workflow.md` with propose/solidify/git loop for deployed agents.
-6. **`writing.gap` is NOT GAP** - it is EPSCOM prose lint (em-dash ban). Never conflate them.
+6. **`writing.gap` is NOT GAP** - it is CORRECTWRITING_EN prose lint (em-dash ban). Never conflate them.
 
 GAP knowledge is injected into every LLM system prompt via `formatGapForPrompt()` in `registry-context.mjs`.
 
@@ -128,7 +128,7 @@ CCA must inject `dynaep` into registry context and set on every governed plan:
 - `dynaep-core` component (default_enabled) for protocol
 - `aep-dynaep-typescript` / `aep-dynaep-python` when user needs compiled client libraries
 
-**Taxonomy:** `dynaep-action-lattice` is a kernel contract (Base Node bootstrap), **not** an LRP. Do not put `epscom-core`, `dynaep-action-lattice`, `gap-runtime-scanners` or `commerce-subprotocol` in `plan.lrps`. Regulation LRPs only: entries from `catalog.lrps`.
+**Taxonomy:** `dynaep-action-lattice` is a kernel contract (Base Node bootstrap), **not** an LRP. Do not put `correctwriting_en-core`, `dynaep-action-lattice`, `gap-runtime-scanners` or `commerce-subprotocol` in `plan.lrps`. Regulation LRPs only: entries from `catalog.lrps`.
 
 ### AEP Policy System (mandatory CCA knowledge)
 
@@ -173,7 +173,7 @@ Every bundled component has a `cca` block with `summary`, `use_when`, `avoid_whe
 Selection is implemented in `lib/component-catalog.mjs`:
 
 1. **Base set** - all `default_enabled` and already `installed` components
-2. **Kernel contracts (not LRPs)** - `epscom-core`, `dynaep-action-lattice`, `lattice-channel-default` (Base Node bootstrap). **Regulation LRPs** are sovereign/regional/international frameworks only (`eu-ai-act`, `gdpr`, etc. via `base_node.lrps`).
+2. **Kernel contracts (not LRPs)** - `correctwriting_en-core`, `dynaep-action-lattice`, `lattice-channel-default` (Base Node bootstrap). **Regulation LRPs** are sovereign/regional/international frameworks only (`eu-ai-act`, `gdpr`, etc. via `base_node.lrps`).
 3. **Intent rules** - dynamic regex from each manifest's `cca.use_when`, capabilities, name and id
 4. **Full stack** - phrases matching `FULL_STACK_PATTERN` enable all 58 bundled non-template components
 5. **Pairs** - when a component matches, its `cca.pairs_with` are also enabled
@@ -214,7 +214,7 @@ Add LRP ids to `plan.lrps` only when user requests a **regulation** compliance p
 
 - `eu-ai-act`, `gdpr`, `hipaa`, `soc2-type2`, `nist-ai-rmf`, `iso-42001` (from `catalog.lrps`)
 
-Do **not** add kernel contracts (`epscom-core`, `dynaep-action-lattice`, `lattice-channel-default`), platform features (`gap-runtime-scanners`, `commerce-subprotocol`) or `writing.gap` to `plan.lrps`. Enable those as **components**; executor syncs dock registration via `syncLrpsFromComponents`.
+Do **not** add kernel contracts (`correctwriting_en-core`, `dynaep-action-lattice`, `lattice-channel-default`), platform features (`gap-runtime-scanners`, `commerce-subprotocol`) or `writing.gap` to `plan.lrps`. Enable those as **components**; executor syncs dock registration via `syncLrpsFromComponents`.
 
 ### Topology
 
@@ -244,7 +244,7 @@ Respect `environment-probe` constraints:
 2. If LLM is configured and API key present, send `buildCcaSystemPrompt(context)` as system message
 3. If LLM returns valid plan JSON, use it; otherwise keep rule-based plan and note validation errors
 4. On LLM failure, return rule-based summary (CCA never blocks on LLM)
-5. Apply EPSCOM enforcement to final plan and reply
+5. Apply CORRECTWRITING_EN enforcement to final plan and reply
 
 Agents modifying chat behavior must preserve this fallback chain.
 
@@ -295,8 +295,8 @@ Do not change executor to default validation engine to `nla-built` without expli
 
 | File | Why |
 |------|-----|
-| `AEP-Base-Node/crate/src/epscom.rs` | Kernel writing enforcement |
-| `lattice-channels/lib/lattice-transport.mjs` | EPSCOM bridge and lattice gate |
+| `AEP-Base-Node/crate/src/correctwriting_en.rs` | Kernel writing enforcement |
+| `lattice-channels/lib/lattice-transport.mjs` | CORRECTWRITING_EN bridge and lattice gate |
 | `AEP-Base-Node/registry/schemas/implementation-plan-v1.json` | Plan contract |
 | `conformance/runner/run.sh` | CI gate |
 
@@ -316,10 +316,10 @@ cd AEP-Components/conformance/harness
   ../../../AEP-Components/conformance/runner/run.sh
 ```
 
-For Rust EPSCOM changes:
+For Rust CORRECTWRITING_EN changes:
 
 ```bash
-cargo test -p aep-base-node epscom
+cargo test -p aep-base-node correctwriting_en
 ```
 
 ---
@@ -328,7 +328,7 @@ cargo test -p aep-base-node epscom
 
 | Mistake | Correct behavior |
 |---------|------------------|
-| Register `writing.gap` as LRP | Use EPSCOM kernel only |
+| Register `writing.gap` as LRP | Use CORRECTWRITING_EN kernel only |
 | Route CCA through validation dock | CCA uses inference dock for LLM; validation dock is optional |
 | Hardcode 14 intent rules | Use `component-catalog.mjs` dynamic rules |
 | Set `lattice_strict: false` | Always true |
@@ -374,7 +374,7 @@ From `AEP-Base-Node/registry/components/cca.json`:
 - `cca:validate-plan`
 - `cca:plan-to-graph`
 - `cca:graph-to-plan`
-- `cca:epscom-writing-enforced`
+- `cca:correctwriting_en-writing-enforced`
 
 When adding new CCA features, update the manifest capabilities and this file.
 
@@ -385,7 +385,7 @@ When adding new CCA features, update the manifest capabilities and this file.
 | ID | Test file | What it proves |
 |----|-----------|----------------|
 | CC-16 | `lint-writing-gap.mjs` | Documentation writing.gap lint |
-| CC-17 | `epscom-writing-kernel.test.mjs` | EPSCOM kernel enforcement |
+| CC-17 | `correctwriting_en-writing-kernel.test.mjs` | CORRECTWRITING_EN kernel enforcement |
 | CC-18 | `cca-full-coverage.test.mjs` | All 58 components reachable, graph sync |
 | CC-19 | `plan-execution.test.mjs` | Hooks, commerce, connectors |
 

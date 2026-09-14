@@ -35,8 +35,8 @@ const MANIFESTS = {
     kind: "daemon",
     path: "AEP-Base-Node/",
     description: "Mandatory local governance daemon with lattice-gated docking ports.",
-    requires: ["lattice-channels", "lattice-crypto", "epscom-signatures"],
-    depends_on: ["lattice-channels", "lattice-crypto", "epscom-signatures"],
+    requires: ["lattice-channels", "lattice-crypto", "correctwriting_en-signatures"],
+    depends_on: ["lattice-channels", "lattice-crypto", "correctwriting_en-signatures"],
     capabilities: [
       "dock:inference_engine",
       "dock:validation_engine",
@@ -74,20 +74,20 @@ const MANIFESTS = {
     conformance: { tests: ["AEP-Components/conformance/runner/run.sh", "AEP-Components/conformance/tests/manifest.json"] },
   },
 
-  "epscom-signatures": {
+  "correctwriting_en-signatures": {
     manifest_version: "1",
-    id: "epscom-signatures",
+    id: "correctwriting_en-signatures",
     version: "2.8.0",
     kind: "library",
     path: "AEP-Base-Node/signatures/",
-    description: "EPSCOM-curated detection signatures and trust bundle (Base Node kernel adjunct).",
+    description: "CORRECTWRITING_EN-curated detection signatures and trust bundle (Base Node kernel adjunct).",
     requires: [],
     bundled_with: "aep-base-node",
     capabilities: [
-      "epscom:detection-signatures",
-      "epscom:trust-bundle",
-      "epscom:signature-scan",
-      "epscom:writing-alignment",
+      "correctwriting_en:detection-signatures",
+      "correctwriting_en:trust-bundle",
+      "correctwriting_en:signature-scan",
+      "correctwriting_en:writing-alignment",
     ],
     actions: [
       {
@@ -99,17 +99,17 @@ const MANIFESTS = {
     ],
     setup_hooks: [
       {
-        id: "epscom_signatures_default",
-        policy_section: "epscom_signatures",
+        id: "correctwriting_en_signatures_default",
+        policy_section: "correctwriting_en_signatures",
         default: { enabled: true, sync_interval_hours: 24 },
       },
     ],
     resource_requirements: RR(16, 5),
     cca: CCA(
-      "EPSCOM detection signatures bundled with Base Node. Trust bundle + YAML rules.",
-      ["every AEP deployment", "EPSCOM governance", "detection signatures", "prompt injection"],
+      "CORRECTWRITING_EN detection signatures bundled with Base Node. Trust bundle + YAML rules.",
+      ["every AEP deployment", "CORRECTWRITING_EN governance", "detection signatures", "prompt injection"],
       [],
-      ["aep-base-node", "gap-runtime-scanners", "epscom-core"],
+      ["aep-base-node", "gap-runtime-scanners", "correctwriting_en-core"],
     ),
     implementation: {
       module: "AEP-Base-Node/signatures/lib/signatures-registry.mjs",

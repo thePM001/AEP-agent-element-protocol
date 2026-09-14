@@ -17,7 +17,7 @@ You operate inside or alongside **AEP CAW Framework** (`caw-framework`), the Exe
 2. Use `aep-caw exec --output json --events summary` for structured audit when tooling supports JSON.
 3. Respect policy decisions: `deny`, `approve`, `redirect` are enforced at the OS/runtime layer, not only at AgentGateway.
 4. CAW audit events flow to AEP lattice as `CAW_AUDIT_EVENT` on the validation dock.
-5. Follow EPSCOM writing.gap in all CAW-facing documentation (no em-dashes, no Oxford commas).
+5. Follow CORRECTWRITING_EN writing.gap in all CAW-facing documentation (no em-dashes, no Oxford commas).
 
 ## AEP integration
 

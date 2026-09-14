@@ -60,8 +60,8 @@ function resolvePolicyBindings(componentIds, neighborIds, activeLrps) {
   }
 
   if (componentSet.has("coding-governance") || componentSet.has("cca")) {
-    const epscom = policyView.active_lrps?.find((l) => l.mandatory || l.category === "epscom");
-    if (epscom) push(epscom.id, "epscom_governance");
+    const correctwriting_en = policyView.active_lrps?.find((l) => l.mandatory || l.category === "correctwriting_en");
+    if (correctwriting_en) push(correctwriting_en.id, "correctwriting_en_governance");
   }
 
   for (const lrp of policyView.active_lrps ?? []) {

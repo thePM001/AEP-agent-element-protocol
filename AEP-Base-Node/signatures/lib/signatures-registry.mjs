@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * EPSCOM detection signature registry (Base Node kernel adjunct).
+ * CORRECTWRITING_EN detection signature registry (Base Node kernel adjunct).
  * Loads trust-bundle manifest and YAML signature files from AEP-Base-Node/signatures/.
  */
 
@@ -29,8 +29,8 @@ export const DEFAULT_SIGNATURES_ROOT = join(__dirname, "..");
  * @param {string} [repoRoot]
  */
 export function resolveSignaturesRoot(repoRoot, env = process.env) {
-  if (env.AEP_EPSCOM_SIGNATURES_PATH) {
-    return String(env.AEP_EPSCOM_SIGNATURES_PATH).replace(/\/$/, "");
+  if (env.AEP_CORRECTWRITING_EN_SIGNATURES_PATH) {
+    return String(env.AEP_CORRECTWRITING_EN_SIGNATURES_PATH).replace(/\/$/, "");
   }
   if (repoRoot) {
     const candidate = join(repoRoot, "AEP-Base-Node/signatures");
@@ -162,7 +162,7 @@ export function loadTrustBundle(root = DEFAULT_SIGNATURES_ROOT, opts = {}) {
 }
 
 /**
- * Minimal YAML parser for flat EPSCOM signature files.
+ * Minimal YAML parser for flat CORRECTWRITING_EN signature files.
  * @param {string} raw
  */
 function unescapeYamlString(value) {
@@ -289,7 +289,7 @@ export function loadSignaturesRegistry(root = DEFAULT_SIGNATURES_ROOT) {
   const signatures = loadSignatureFiles(root);
   const enabled = signatures.filter((s) => s.enabled !== false);
   return {
-    authority: "EPSCOM",
+    authority: "CORRECTWRITING_EN",
     root,
     trust_bundle: trust.ok ? trust.bundle : null,
     signatures,
@@ -300,7 +300,7 @@ export function loadSignaturesRegistry(root = DEFAULT_SIGNATURES_ROOT) {
 }
 
 /**
- * Scan text against loaded EPSCOM detection signatures.
+ * Scan text against loaded CORRECTWRITING_EN detection signatures.
  * @param {string} text
  * @param {string} [root]
  */
@@ -323,7 +323,7 @@ export function scanWithSignatures(text, root = DEFAULT_SIGNATURES_ROOT) {
           break;
         }
       } catch (err) {
-        if (process.env.AEP_EPSCOM_SIGNATURES_STRICT !== "0") {
+        if (process.env.AEP_CORRECTWRITING_EN_SIGNATURES_STRICT !== "0") {
           throw new Error(`invalid regex in ${sig.id ?? sig.file}: ${pattern} (${err})`);
         }
       }

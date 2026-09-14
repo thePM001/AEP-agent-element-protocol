@@ -60,7 +60,7 @@ async function promptLrpGroup(rl, promptYesNo, label, lrps, selected) {
 export async function selectLrpsInteractive(catalog, rl, promptYesNo) {
   const selected = [];
   console.log(
-    `\nEPSCOM: ${catalog.epscom.name} (mandatory platform authority, priority ${catalog.epscom.priority}; not an LRP)`,
+    `\nCORRECTWRITING_EN: ${catalog.correctwriting_en.name} (mandatory platform authority, priority ${catalog.correctwriting_en.priority}; not an LRP)`,
   );
 
   const platform = listPlatformContracts(catalog);
@@ -82,7 +82,7 @@ export async function selectLrpsInteractive(catalog, rl, promptYesNo) {
   return selected;
 }
 
-/** Returns enabled regulation LRP IDs only. EPSCOM and kernel contracts are not LRPs. */
+/** Returns enabled regulation LRP IDs only. CORRECTWRITING_EN and kernel contracts are not LRPs. */
 export function selectLrpsDefault(catalog) {
   return (catalog.lrps ?? [])
     .filter((l) => l.default_enabled)

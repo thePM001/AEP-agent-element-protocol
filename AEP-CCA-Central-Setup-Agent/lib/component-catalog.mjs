@@ -22,7 +22,7 @@ export const HCSE_INTENT_PATTERN =
 
 /** Kernel lattice contracts - always registered by Base Node bootstrap. NOT regulation LRPs. */
 export const KERNEL_LATTICE_CONTRACTS = [
-  "epscom-core",
+  "correctwriting_en-core",
   "dynaep-action-lattice",
   "lattice-channel-default",
 ];
@@ -56,7 +56,7 @@ export const CANVAS_SKIP_COMPONENT_IDS = new Set([
   "aep-base-node",
   "composer-lite",
   "cca",
-  "epscom-signatures",
+  "correctwriting_en-signatures",
     "aep-dynaep-typescript",
     "session",
   "policy-engine",
