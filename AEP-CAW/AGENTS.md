@@ -9,7 +9,7 @@ You operate inside or alongside **AEP CAW Framework** (`caw-framework`), the Exe
 | `aep-caw detect` | Probe seccomp, Landlock, eBPF and other primitives |
 | `aep-caw session create` | Create enforced workspace session |
 | `aep-caw exec $SID -- <cmd>` | Run command under policy |
-| `aep-caw server` | Start CAW gateway (auto-started by shim unless `AEP_CAW_NO_AUTO=1`) |
+| `aep-caw server` | Start CAW gateway (auto-started by adapter unless `AEP_CAW_NO_AUTO=1`) |
 
 ## Mandatory rules for agents
 
@@ -44,4 +44,4 @@ You operate inside or alongside **AEP CAW Framework** (`caw-framework`), the Exe
 
 ## Attribution
 
-Apache 2.0. See NOTICE.
+Apache 2.0. See LICENSE.

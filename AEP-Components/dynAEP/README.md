@@ -10,7 +10,7 @@ dynAEP 1.0 is an open-source protocol for governing real-time events in multi-ag
 
 ## Kernel pulse is not a dynAEP setting
 
-Base Node owns the kernel pulse. After a sealed capsule is opened the kernel freezes the clock at seal, waits 1000 ms, then runs every check together. TypeScript dynAEP stays a standalone component. This tree does not own that wait.
+Base Node owns the kernel pulse. After a sealed capsule is opened the kernel freezes the clock at seal, waits 1000 ms, then runs every check together. TypeScript dynAEP remains a standalone component that does not own that wait.
 
 `dynaep-config.yaml` has no `pulse_ms` key. `timekeeping.max_drift_ms` (default 50) is NTP drift between the TypeScript bridge clock and its time source. Clock corrections above 1000 ms in dynAEP-TA are LARGE_STEP NTP steps, not the kernel wait.
 
@@ -42,7 +42,7 @@ dynAEP-TA proves you can govern time deterministically.
 dynAEP-TA-P proves you can govern human temporal perception deterministically.
 The Action Lattice proves you can govern event ordering deterministically.
 
-The existence of this protocol stack proves that AI hallucination is an engineering problem in any domain where ground truth can be precompiled into a deterministic registry. Structure, behaviour, time, perception and event ordering are all governable by architecture.
+The existence of this protocol stack proves that AI hallucination is an engineering problem in any domain in which ground truth can be precompiled into a deterministic registry. Structure, behaviour, time, perception and event ordering are all governable by architecture.
 
 ---
 
@@ -105,13 +105,13 @@ The dynAEP bridge sits between all event sources and all event consumers. Lattic
  | +=================================================================+ |
  | | ACTION LATTICE FILTER | |
  | | | |
- | | 1. Lattice membership - does the action path exist? | |
- | | 2. Trust floor check - does the agent have sufficient trust? | |
- | | 3. Partial order - have all parent actions occurred? | |
- | | 4. Constraint eval - required fields, thresholds, auth? | |
- | | 5. Custom hooks - pluggable validators (MLE, etc.) | |
- | | 6. Agent interest - which agents watch this path? | |
- | | 7. Next actions - which children may follow? | |
+ | | 1. Lattice membership checks that the action path exists | |
+ | | 2. Trust floor checks that the agent holds sufficient trust | |
+ | | 3. Partial order checks that all parent actions occurred | |
+ | | 4. Constraint evaluation checks required fields, thresholds and authority | |
+ | | 5. Custom hooks run the pluggable validators such as MLE | |
+ | | 6. Agent interest lists the agents that watch this path | |
+ | | 7. Next actions list the children that may follow | |
  | +=================================================================+ |
  | | |
  | | LatticeFilterResult |
@@ -174,7 +174,7 @@ The Action Lattice is the central governance mechanism in dynAEP 1.0. It is a pa
 
 Every action in the lattice has these properties:
 
-- **path**: dot-delimited identifier (e.g. `market:trade:execute`)
+- **path**: dot-delimited identifier (e.g. `venue:trade:execute`)
 - **category**: one of `external_event`, `system_event`, `agent_action`, `output`
 - **parents**: list of action paths that must be satisfied before this action can fire
 - **children**: list of action paths that may follow after this action
@@ -295,8 +295,8 @@ actions:
  agent:trade:propose:
  label: "Agent proposes a trade"
  category: agent_action
- parents: [market:price:analyze]
- children: [market:trade:validate]
+ parents: [venue:price:analyze]
+ children: [venue:trade:validate]
  constraints:
  - type: threshold
  field: amount
@@ -323,7 +323,7 @@ actions:
  output:notify:
  label: "Send notification to user"
  category: output
- parents: [action:route, market:trade:execute]
+ parents: [action:route, venue:trade:execute]
  children: []
  constraints:
  - type: threshold
@@ -348,8 +348,8 @@ actions:
 
 Trust tiers (1-5) govern which agents can propose which actions. The mapping is:
 
-Who-may-do-what is GAP dimension Conjunction. Agent A may X. Agent B may Y. No rank.
-Each node lists agent_permission grants. Empty grants fail closed for agent_action and output. Star grants any bound agent. Unbound grant matches empty agent_id. Isolation is not a trust rank.
+Who-may-do-what maps to the GAP dimension Conjunction, so agent A may do X while agent B may do Y. No rank.
+Each node lists agent_permission grants. Empty grants refuse on miss for agent_action and output. A star grants any bound agent while an unbound grant matches an empty agent_id while isolation is not a trust rank.
 
 The agent_permission wall is checked on the same collect-all Admit as every other wall. If the bound agent is not granted the action, the event is rejected before Apply.
 
@@ -421,7 +421,7 @@ Agents declare interest in lattice paths via `DynAEPBridge.registerAgentInterest
  "type": "CUSTOM",
  "dynaep_type": "LATTICE_REGISTER",
  "agent_id": "trader-alpha",
- "watch_paths": ["market:*", "agent:trade:*"],
+ "watch_paths": ["venue:*", "agent:trade:*"],
  "notify": "wake",
  "max_rate": "10/min",
  "constraints": { "min_confidence": 0.7 }
@@ -459,9 +459,7 @@ dynAEP-TA temporal authority is unchanged from v0.4. The bridge clock remains th
 
 The BridgeClock synchronizes to an external reference and provides monotonically increasing timestamps. Sync hierarchy with automatic fallback:
 
-1. **PTP** (IEEE 1588): microsecond precision for mission-critical industrial deployments.
-2. **NTP** (default): millisecond precision via SNTP. Sufficient for most deployments.
-3. **System clock**: fallback when network sync is unavailable. Logs a warning.
+The bridge prefers **PTP** (IEEE 1588) for microsecond precision in mission-critical industrial deployments, falls back to **NTP** as the default for millisecond precision via SNTP and uses the **System clock** as a last resort when network sync is unavailable, in which case it logs a warning.
 
 The bridge re-syncs at configurable intervals (default: every 30 seconds). Clock health is available via the `dynaep_temporal_query` tool.
 
@@ -488,7 +486,7 @@ Four primitives use bridge-authoritative time instead of system clocks: Temporal
 
 ### Bridge Recovery Protocol (v0.4)
 
-Three-phase recovery for graceful bridge restarts: Phase 1 announces recovery, Phase 2 agents re-register their sequence counters, Phase 3 replays the persisted reorder buffer. The protocol detects the storage backend automatically.
+Three-phase recovery for graceful bridge restarts: First stage announces recovery, Second stage agents re-register their sequence counters, Third stage replays the persisted reorder buffer. The protocol detects the storage backend automatically.
 
 ---
 
@@ -571,7 +569,7 @@ To create a custom hook:
 1. Import `ValidationHook` and `HookResult` from `hooks/interface.ts`.
 2. Import `LatticeEvent`, `ActionLattice`, `LatticeNode` from the bridge lattice module.
 3. Export an object conforming to `ValidationHook`.
-4. Register via `HookRegistry.register()` before bridge init, or extend `registerBuiltinHooks()`.
+4. Register via `HookRegistry.register()` before bridge init or extend `registerBuiltinHooks()`.
 
 Hooks may be synchronous or async. The bridge awaits each hook's `validate()` method inside `filterAsync()` and records results in `constraints_passed` / `constraints_failed` (e.g. `hook:mle-validator:0.92`).
 
@@ -627,7 +625,7 @@ watch_paths:
  type: array
  items: string
  required: true
- description: "Glob patterns matching action paths, e.g. 'market:*', 'email:incoming'"
+ description: "Glob patterns matching action paths, e.g. 'venue:*', 'email:incoming'"
 notify:
  type: string
  enum: [wake, queue, log]
@@ -648,7 +646,7 @@ constraints:
 The bridge supports three glob pattern levels:
 
 - **Exact match**: `email:incoming` matches only that exact path.
-- **Single-segment wildcard**: `market:*` matches any single-level path under market (e.g. `market:price:update` does NOT match, `market:price` matches).
+- **Single-segment wildcard**: `venue:*` matches any single-level path under venue (e.g. `venue:price:update` does NOT match, `venue:price` matches).
 - **Multi-segment wildcard**: `email:**` matches any path under email at any depth (e.g. `email:incoming`, `email:classify`, `email:draft_reply`).
 
 ### Notification Modes
@@ -718,7 +716,7 @@ For the full configuration reference including temporal authority, causal orderi
 
 ### Standalone Rust crate
 
-A builder can attach crate `aep-dynaep` at `AEP-Components/dynAEP/crate`. The crate is a Cargo workspace member. Collect-all Admit covers Action Lattice membership, parent closure, GAP dimension agent_permission, temporal authority and perception bounds. Empty lattice is Deny. Empty action_path is Deny. TypeScript sources stay as the TypeScript form of this component. Base Node crate stays.
+A builder can attach crate `aep-dynaep` at `AEP-Components/dynAEP/crate`. The crate is a Cargo workspace member. Collect-all Admit covers Action Lattice membership, parent closure, GAP dimension agent_permission, temporal authority and perception bounds. An empty lattice is a refusal. An empty action_path is a refusal. TypeScript sources remain the TypeScript form of this component. The Base Node crate remains.
 
 ```toml
 [dependencies]
@@ -730,7 +728,7 @@ cargo test -p aep-dynaep --lib
 ```
 
 
-**This component ships no SDK tree.** The protocol source of truth is `AEP-Components/dynAEP/` and the crate beside it. The reference action checker is the Base Node kernel Admit pass, and there is no package registry distribution for this component.
+**This component ships no SDK tree.** The protocol source of truth is `AEP-Components/dynAEP/` and the crate beside it. The reference action checker is the Base Node kernel Admit pass and there is no package registry distribution for this component.
 
 ### 13.1 CCA and Base Node integration
 
@@ -753,7 +751,7 @@ See `AEP-CCA-Central-Setup-Agent/lib/dynaep-context.mjs` and the public conforma
 
 ## 14. License
 
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for the full text and [NOTICE](NOTICE) for attribution.
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for the full text.
 
 The names **AEP**, **Agent Element Protocol**, **AEP-compliant** and **dynAEP** are reserved. See [NAME-POLICY.md](NAME-POLICY.md) for permitted and prohibited uses. Apache 2.0 covers the code; the reserved-name policy covers the identifiers.
 

@@ -2,14 +2,14 @@
 
 **CAW (Containerized Agentic Workflows)** is AEP 2.8 Execution-Layer Security (ELS). It is the execution layer that this stack requires for coding agents and containerized agentic workflows: it enforces policy on shell, file, network, process, database wire and LLM traffic at runtime and it confines the host process that runs an agent command. The catalog ships the component default enabled, so a setup agent enables it for every coding agent plan. CAW is not a second evaluator because the walls belong to Base Node.
 
-See [NOTICE](./NOTICE) for Apache 2.0 terms.
+See [LICENSE](../LICENSE) for Apache 2.0 terms.
 
 | Property | Value |
 |----------|-------|
 | Component ID | `caw-framework` |
 | Kind | `daemon` |
 | Binary | `aep-caw` |
-| Shell shim | `aep-caw-shell-shim` |
+| Shell adapter | `aep-caw-shell-adapter` |
 | Go module | `github.com/nla-aep/aep-caw-framework` |
 | Manifest | `AEP-Base-Node/registry/components/caw-framework.json` |
 | Config (runtime) | `{AEP_DATA}/caw-framework/server-config.yaml` |
@@ -40,7 +40,7 @@ Every execution path probes the Base Node kernel dock before a command starts. T
 
 ## CCA integration (mandatory for shell workloads)
 
-CCA treats `caw-framework` as the required execution layer for coding agents and containerized agentic workflows. The setup agent prompt enables it for every coding agent plan, sets the enforce mode with the shell shim and routes agent shell calls through `aep-caw exec` rather than a raw shell, so the readme and the setup agent describe one product:
+CCA treats `caw-framework` as the required execution layer for coding agents and containerized agentic workflows. The setup agent prompt enables it for every coding agent plan, sets the enforce mode with the shell adapter and routes agent shell calls through `aep-caw exec` rather than a raw shell, so the readme and the setup agent describe one product:
 
 | Stage | Behavior |
 |-------|----------|
@@ -78,7 +78,7 @@ go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 cd AEP-CAW
 export PATH="$(go env GOPATH)/bin:$PATH"
 make proto    # regenerate pty protobuf (required after clone)
-make build    # bin/aep-caw + bin/aep-caw-shell-shim
+make build    # bin/aep-caw + bin/aep-caw-shell-adapter
 ```
 
 ### Smoke test
