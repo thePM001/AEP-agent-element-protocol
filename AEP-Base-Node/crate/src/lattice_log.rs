@@ -1,5 +1,5 @@
 //! dynAEP Action Lattice event logging for Base Node forensic store.
-//! AEP28-ENV-044: aep-lattice-log Record must go through dock Admit or stop being a kernel write path.
+//! aep-lattice-log Record must go through dock Admit or stop being a kernel write path.
 
 use aep_agentmesh::{create_bundle, AgentMeshBundle};
 use aep_lattice_channel::{
@@ -272,7 +272,7 @@ fn build_sealed_frame(
     let sign = sign_store.get(&input.agent_id)?;
 
     let now = now_unix();
-    // AEP28-ENV-065: the sealed stamp is milliseconds. A stamp truncated to the
+    // The sealed stamp is milliseconds. A stamp truncated to the
     // second drifts up to 999 ms and closes the 50 ms temporal wall on the dock
     // Admit for most of every second.
     let ts_ms = now_unix_ms();
@@ -284,8 +284,8 @@ fn build_sealed_frame(
         now,
     );
 
-    // AEP28-ENV-044: sealed inner bytes are an Admit event. Dock Admit reads action_path here.
-    // AEP28-ENV-066: scene, time and sequence stay bound on the sealed event so unbound fields cannot fail-open.
+    // Sealed inner bytes are an Admit event. Dock Admit reads action_path here.
+    // Scene, time and sequence stay bound on the sealed event so unbound fields cannot fail-open.
     let scene_id = governed
         .payload
         .get("target_id")
@@ -333,10 +333,10 @@ pub fn record_dynaep_event(
     let digest = frame_digest(&frame);
     let recorded_at = frame.sent_at_unix;
 
-    // AEP28-ENV-044: kernel write only after dock Admit. Deny does not INSERT.
+    // Kernel write only after dock Admit. Deny does not INSERT.
     let keys_dir = resolve_keys_dir(db_path);
     let mut live = crate::envelope_admit::load_live_entry(&keys_dir);
-    // AEP28-ENV-065: the kernel clock freezes at the seal, which is the stamp the
+    // The kernel clock freezes at the seal, which is the stamp the
     // sealed event carries, so a locally sealed frame carries no drift.
     live.set_clock_ms(sealed_ts);
     let dock = aep_admit_live_dock::LiveDockContext::from_open_frame(

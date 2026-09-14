@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/client"
-	"github.com/nla-aep/aep-caw-framework/internal/report"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/report"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // TestReportEndToEnd tests the full flow:

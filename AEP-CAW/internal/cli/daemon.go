@@ -59,7 +59,7 @@ func newDaemonInstallCmd() *cobra.Command {
 On Linux, this creates a systemd user service at ~/.config/systemd/user/aep-caw.service
 that starts automatically on user login.
 
-On macOS, this creates a launchd plist at ~/Library/LaunchAgents/ai.nla-aep.aep-caw.daemon.plist.`,
+On macOS, this creates a launchd plist at ~/Library/LaunchAgents/io.github.thepm001.aep-caw.daemon.plist.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			w := cmd.OutOrStdout()
 
@@ -200,7 +200,7 @@ This stops the current daemon, clears session state, and starts a new session.`,
 
 const systemdServiceTemplate = `[Unit]
 Description=aep-caw daemon - Agent shell security monitoring
-Documentation=https://github.com/nla-aep/aep-caw-framework
+Documentation=https://github.com/thePM001/AEP-agent-element-protocol/AEP-CAW
 After=network.target
 
 [Service]
@@ -354,7 +354,7 @@ const launchdPlistTemplate = `<?xml version="1.0" encoding="UTF-8"?>
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>ai.nla-aep.aep-caw.daemon</string>
+    <string>io.github.thepm001.aep-caw.daemon</string>
     <key>ProgramArguments</key>
     <array>
         <string>%s</string>
@@ -383,7 +383,7 @@ const launchdPlistTemplate = `<?xml version="1.0" encoding="UTF-8"?>
 
 func getLaunchdPlistPath() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, "Library", "LaunchAgents", "ai.nla-aep.aep-caw.daemon.plist")
+	return filepath.Join(home, "Library", "LaunchAgents", "io.github.thepm001.aep-caw.daemon.plist")
 }
 
 func installLaunchdService(cmd *cobra.Command, force bool) error {
@@ -521,7 +521,7 @@ func getCurrentSession(cmd *cobra.Command) (*PNACLSession, error) {
 		}
 	case "darwin":
 		output, err := exec.Command("launchctl", "list").Output()
-		if err == nil && strings.Contains(string(output), "ai.nla-aep.aep-caw.daemon") {
+		if err == nil && strings.Contains(string(output), "io.github.thepm001.aep-caw.daemon") {
 			session.Status = "running"
 		} else {
 			session.Status = "stopped"

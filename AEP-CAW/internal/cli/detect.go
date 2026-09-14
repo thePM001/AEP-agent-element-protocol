@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/nla-aep/aep-caw-framework/internal/capabilities"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/capabilities"
 	"github.com/spf13/cobra"
 )
 

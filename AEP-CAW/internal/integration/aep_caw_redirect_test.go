@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/client"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 func TestCommandRedirectExecutesTargetAndLogsEvent(t *testing.T) {

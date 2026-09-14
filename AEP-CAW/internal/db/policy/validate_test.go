@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	rootpolicy "github.com/nla-aep/aep-caw-framework/internal/policy"
+	rootpolicy "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 
 // helperValidate runs validate against the decoded shapes; tests construct

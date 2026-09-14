@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/wraphandoff"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/wraphandoff"
 )
 
 func TestStripEnvKey(t *testing.T) {

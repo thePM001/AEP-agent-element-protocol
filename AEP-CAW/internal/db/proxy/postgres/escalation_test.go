@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/events"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/events"
 )
 
 // escalationPolicyYAML returns a policy YAML that has:

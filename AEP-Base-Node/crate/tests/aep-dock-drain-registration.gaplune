@@ -7,7 +7,6 @@ id: aep-dock-drain
 version: 0.1.0
 kind: kernel
 path: AEP-Base-Node/crate/src/dock_serve.rs
-ticket: AEP28-ENV-080
 requires: aep-base-node aep-dock-request-poison
 capability: kernel.dock.drain
 note: After stop, serve loops stop accepting, dock tasks join, sockets unlink and SQLite closes. Production mutex poison returns a deny. Gate greps crate src excluding tests for lock expect.

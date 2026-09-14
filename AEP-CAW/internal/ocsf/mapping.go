@@ -7,7 +7,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // Mapping declares how a single aep-caw ev.Type is projected into OCSF.

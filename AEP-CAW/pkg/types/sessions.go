@@ -144,7 +144,7 @@ type WrapInitRequest struct {
 // EnvPolicyWire carries the resolved env allow/deny for the client (shell adapter
 // / CLI wrap) to filter the executed command's inherited environment.
 //
-// Fail-closed (AEP28-ENV-026): nil/omitted is Deny on the client. Never inherit
+// Fail-closed : nil/omitted is Deny on the client. Never inherit
 // the unfiltered base. Current servers send an empty wire when the wrap env
 // policy flag is off so default-secret-deny still applies. Mixed-version old
 // servers that omit the field cause the client to Deny wrap.
@@ -188,6 +188,6 @@ type WrapInitResponse struct {
 	EnvInject map[string]string `json:"env_inject,omitempty"`
 	// EnvPolicy carries the resolved env allow/deny for the client to
 	// filter the executed command's inherited environment. Nil is Deny
-	// (AEP28-ENV-026). Issue #379.
+	//. Issue #379.
 	EnvPolicy *EnvPolicyWire `json:"env_policy,omitempty"`
 }

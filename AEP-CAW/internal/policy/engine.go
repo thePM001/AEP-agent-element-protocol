@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/gobwas/glob"
-	"github.com/nla-aep/aep-caw-framework/internal/shellparse"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/shellparse"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // maxShellCDeriveDepth bounds how many nested `sh -c "…"` forms CheckCommand

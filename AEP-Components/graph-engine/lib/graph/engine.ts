@@ -1,6 +1,6 @@
 // @PAD: gaplune-creation-pad via gaplune-pad-transform encode
 // @GCDE: gaplune-decode hmac-sha256:8583772670252907d4a956d894c4c0319a9f09c78b0c4d1d08ad9e453da14614
-// AEP28-ENV-069: admitGate defaults to deny. executeNode calls admitGate before nodeExecutor.
+// AdmitGate defaults to deny. executeNode calls admitGate before nodeExecutor.
 // tickVectorClock only after allow. Local vector clock is not kernel Admit.
 import type {
   AdmitGate,

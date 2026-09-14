@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/policy/ancestry"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy/ancestry"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

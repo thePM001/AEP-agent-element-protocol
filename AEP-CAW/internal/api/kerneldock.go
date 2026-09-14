@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nla-aep/aep-caw-framework/internal/events"
-	"github.com/nla-aep/aep-caw-framework/internal/kerneldock"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/kerneldock"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // kernelDockGate refuses the run when the Base Node kernel dock stays silent.

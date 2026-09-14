@@ -5,7 +5,7 @@ package capabilities
 import (
 	"context"
 
-	"github.com/nla-aep/aep-caw-framework/internal/limits"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/limits"
 	"golang.org/x/sys/unix"
 )
 

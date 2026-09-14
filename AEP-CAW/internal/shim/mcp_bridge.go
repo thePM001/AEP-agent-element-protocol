@@ -2,7 +2,7 @@
 package shim
 
 import (
-	"github.com/nla-aep/aep-caw-framework/internal/mcpinspect"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/mcpinspect"
 )
 
 // MCPBridge connects the shim's stdio wrapper to the mcpinspect package.

@@ -3,9 +3,9 @@ package api
 import (
 	"context"
 
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
-	"github.com/nla-aep/aep-caw-framework/internal/session"
-	"github.com/nla-aep/aep-caw-framework/internal/tor"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/tor"
 )
 
 // policyEngineFor returns the effective policy engine to consult for the given

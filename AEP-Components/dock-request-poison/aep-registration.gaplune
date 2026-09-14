@@ -7,7 +7,6 @@ id: aep-dock-request-poison
 version: 0.1.0
 kind: library
 path: AEP-Components/dock-request-poison/
-ticket: AEP28-ENV-048
 requires: aep-base-node
 capability: lattice.dock-request-poison
 note: Dock request path returns ok false on poisoned locks. Do not abort the process.

@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/client"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"

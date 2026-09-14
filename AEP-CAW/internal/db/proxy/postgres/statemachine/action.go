@@ -5,8 +5,8 @@ package statemachine
 import (
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
-	"github.com/nla-aep/aep-caw-framework/internal/db/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
 )
 
 // Action is a single thing the dispatcher must execute after a Transition.

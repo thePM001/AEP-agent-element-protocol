@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/auth"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/auth"
 	"github.com/go-webauthn/webauthn/protocol"
 )
 

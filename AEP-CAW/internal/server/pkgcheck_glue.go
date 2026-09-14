@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	"github.com/nla-aep/aep-caw-framework/internal/pkgcheck"
-	"github.com/nla-aep/aep-caw-framework/internal/pkgcheck/provider"
-	"github.com/nla-aep/aep-caw-framework/internal/pkgcheck/resolver"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/pkgcheck"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/pkgcheck/provider"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/pkgcheck/resolver"
 )
 
 // errMissingAPIKeyValue is returned by requireAPIKey when the env var name is

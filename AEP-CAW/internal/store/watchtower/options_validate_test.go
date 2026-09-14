@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/audit"
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/compact"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/audit"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower/compact"
 )
 
 func TestValidate_CredentialSourceAndClientCertMutuallyExclusive(t *testing.T) {

@@ -9,13 +9,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	"github.com/nla-aep/aep-caw-framework/internal/events"
-	"github.com/nla-aep/aep-caw-framework/internal/metrics"
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
-	"github.com/nla-aep/aep-caw-framework/internal/session"
-	"github.com/nla-aep/aep-caw-framework/internal/store/composite"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/metrics"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/composite"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 func TestExec_IncludeEventsNone_ReturnsCountsOnly(t *testing.T) {

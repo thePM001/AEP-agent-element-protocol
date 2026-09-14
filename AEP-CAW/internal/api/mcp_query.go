@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/nla-aep/aep-caw-framework/internal/store/sqlite"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/sqlite"
 )
 
 // listMCPTools returns MCP tools, optionally filtered by server and/or detections.

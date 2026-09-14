@@ -336,7 +336,7 @@ export class PolicyEvaluator {
       );
     }
 
-    // AEP28-ENV-033: Agent permission is GAP dimension Conjunction. No rank compare.
+ // Agent permission is GAP dimension Conjunction. No rank compare.
 
     // Step 10: Budget/limit check
     const limits = this.policy.limits;

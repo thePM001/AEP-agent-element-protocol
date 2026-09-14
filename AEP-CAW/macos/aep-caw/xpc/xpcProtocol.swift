@@ -158,4 +158,4 @@ import Foundation
 }
 
 /// XPC Service identifier.
-let xpcServiceIdentifier = "ai.nla-aep.aep-caw.xpc"
+let xpcServiceIdentifier = "io.github.thepm001.aep-caw.xpc"

@@ -10,7 +10,7 @@ import (
 
 	keyringlib "github.com/zalando/go-keyring"
 
-	secrets "github.com/nla-aep/aep-caw-framework/internal/proxy/secrets"
+	secrets "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets"
 )
 
 // Provider is an OS-keyring-backed secrets.SecretProvider.

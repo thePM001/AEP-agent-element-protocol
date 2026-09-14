@@ -1,6 +1,6 @@
 //! Lattice Channel is the only permitted communication path in AEP 2.8.
 //!
-//! AEP28-ENV-047: frame header binding is length-prefixed. Ids must not contain 0x7c.
+//! Frame header binding is length-prefixed. Ids must not contain 0x7c.
 
 use aep_lattice_crypto::{
     open_with_binding, seal_with_binding, KemKeypair, PQEncryptedCapsule, SignKeypair,
@@ -22,7 +22,7 @@ pub const REJECT_NON_FRAME_DOCKING: bool = true;
 /// Lattice scene validation is mandatory for every system topology (not UI-only).
 pub const LATTICE_SCENE_VALIDATION_MANDATORY: bool = true;
 
-/// Length-prefixed LatticeChannelFrame header binding magic (AEP28-ENV-047).
+/// Length-prefixed LatticeChannelFrame header binding magic.
 pub const FRAME_BINDING_MAGIC: &[u8] = b"aep-frame-v2\0";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -148,7 +148,7 @@ fn push_len_prefixed(out: &mut Vec<u8>, bytes: &[u8]) {
 /// Canonical binding over LatticeChannelFrame headers (excludes capsule).
 /// Included in ML-DSA signature + AES-GCM AAD so headers cannot be rebound.
 ///
-/// AEP28-ENV-047: each field is u32 big-endian length-prefixed. Ids that contain
+/// Each field is u32 big-endian length-prefixed. Ids that contain
 /// delimiter 0x7c are rejected so a join cannot splice fields.
 pub fn frame_header_binding(
     channel_id: &str,

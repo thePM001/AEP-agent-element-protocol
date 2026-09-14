@@ -4,7 +4,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/nla-aep/aep-caw-framework/internal/policy/pattern"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy/pattern"
 )
 
 // Classifier determines the ProcessClass for process names.

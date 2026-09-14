@@ -4,7 +4,6 @@ schema_id: gaplune.hvvcas.v1
 format: gaplune
 json: prohibited
 crate: aep-one-live-evaluation
-ticket: AEP28-ENV-037
 note: Durable HVVCAS is GAPLUNE. One Admit function judges the opened frame.
 
 component:

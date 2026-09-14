@@ -7,8 +7,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/nla-aep/aep-caw-framework/internal/proxy/credsub"
-	"github.com/nla-aep/aep-caw-framework/internal/proxy/secrets"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/credsub"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets"
 )
 
 // envVarKey returns the map key for duplicate env-var detection.

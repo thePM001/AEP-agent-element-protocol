@@ -25,11 +25,11 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	classify_pg "github.com/nla-aep/aep-caw-framework/internal/db/classify/postgres"
-	"github.com/nla-aep/aep-caw-framework/internal/db/events"
-	"github.com/nla-aep/aep-caw-framework/internal/db/policy"
-	"github.com/nla-aep/aep-caw-framework/internal/db/service"
-	"github.com/nla-aep/aep-caw-framework/internal/db/tlsleaf"
+	classify_pg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/classify/postgres"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/events"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/service"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/tlsleaf"
 )
 
 // Service is the proxy-internal flattened view of one db_service. The proxy

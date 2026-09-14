@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
 )
 
 const approveTimeoutMax = 600 * time.Second

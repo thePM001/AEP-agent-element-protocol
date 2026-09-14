@@ -366,7 +366,7 @@ jobs:
 
           # System Extension (Xcode names the product with the full bundle ID)
           mkdir -p "build/AepCaw.app/Contents/Library/SystemExtensions"
-          cp -R "${PRODUCTS}/ai.nla-aep.aep-caw.SysExt.systemextension" \
+          cp -R "${PRODUCTS}/io.github.thepm001.aep-caw.SysExt.systemextension" \
             "build/AepCaw.app/Contents/Library/SystemExtensions/"
 
           # XPC Service
@@ -400,7 +400,7 @@ jobs:
           codesign --force --sign "$SIGNING_IDENTITY" \
             --entitlements macos/AepCaw/SysExt.entitlements \
             --options runtime --timestamp \
-            "build/AepCaw.app/Contents/Library/SystemExtensions/ai.nla-aep.aep-caw.SysExt.systemextension"
+            "build/AepCaw.app/Contents/Library/SystemExtensions/io.github.thepm001.aep-caw.SysExt.systemextension"
 
           # 2. XPC Service
           codesign --force --sign "$SIGNING_IDENTITY" \

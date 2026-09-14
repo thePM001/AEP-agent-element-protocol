@@ -35,7 +35,7 @@ func NewSysExtManager() *SysExtManager {
 
 	return &SysExtManager{
 		bundlePath: bundlePath,
-		bundleID:   "ai.nla-aep.aep-caw.SysExt",
+		bundleID:   "io.github.thepm001.aep-caw.SysExt",
 	}
 }
 

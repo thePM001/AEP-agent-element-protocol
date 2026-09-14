@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/wraphandoff"
-	"github.com/nla-aep/aep-caw-framework/internal/wrapperlog"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/wraphandoff"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/wrapperlog"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // makeWrapInitHandler returns an http.HandlerFunc that serves the given

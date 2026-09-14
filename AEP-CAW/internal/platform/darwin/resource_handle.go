@@ -6,7 +6,7 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/nla-aep/aep-caw-framework/internal/platform"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform"
 )
 
 // RlimitAS is the syscall constant for RLIMIT_AS (address space limit).

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/transport"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower/transport"
 )
 
 // TestBackoff_ExponentialWithJitter verifies the per-attempt sleep grows

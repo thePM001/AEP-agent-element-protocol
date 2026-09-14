@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/audit"
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower"
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/compact"
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/testserver"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
-	wtpv1 "github.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/audit"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower/compact"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower/testserver"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
+	wtpv1 "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1"
 )
 
 func skipLossCarrierOnWindows(t *testing.T) {

@@ -7,7 +7,6 @@ id: aep-admit-channel-order-walls
 version: 0.1.0
 kind: library
 path: AEP-Components/admit-channel-order-walls/
-ticket: AEP28-ENV-004
 requires: aep-admit
 capability: admit.channel-order-walls.compile
 note: Fold lattice channel and partial-order into Admit walls on the same collect-all pass.

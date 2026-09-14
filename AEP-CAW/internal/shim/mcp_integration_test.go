@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/mcpinspect"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/mcpinspect"
 )
 
 func TestMCPIntegration_FullPipeline(t *testing.T) {

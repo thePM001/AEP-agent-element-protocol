@@ -362,7 +362,7 @@ const file_aepcaw_wtp_v1_ocsf_http_activity_proto_rawDesc = "" +
 	"statusCode\x88\x01\x01\x12\x1b\n" +
 	"\x06length\x18\x02 \x01(\x04H\x01R\x06length\x88\x01\x01B\x0e\n" +
 	"\f_status_codeB\t\n" +
-	"\a_lengthBFZDgithub.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1/ocsf;ocsfpbb\x06proto3"
+	"\a_lengthBFZDgithub.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1/ocsf;ocsfpbb\x06proto3"
 
 var (
 	file_aepcaw_wtp_v1_ocsf_http_activity_proto_rawDescOnce sync.Once

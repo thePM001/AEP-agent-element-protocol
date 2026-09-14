@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 )
 
 // Direction indicates whether a message is a request or response.

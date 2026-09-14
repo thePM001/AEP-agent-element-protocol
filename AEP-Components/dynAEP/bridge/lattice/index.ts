@@ -102,7 +102,7 @@ export interface LatticeEvent {
   trust_tier?: number;
 }
 
-/** AEP28-ENV-028: drop client trust_tier. Agent permission is agent_permission. */
+/** Drop client trust_tier. Agent permission is agent_permission. */
 export function ignoreClientTrustTier(_tier?: number): undefined {
   return undefined;
 }

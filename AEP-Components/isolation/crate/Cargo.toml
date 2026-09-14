@@ -4,7 +4,7 @@
 name = "aep-isolation"
 version = "2.8.6"
 edition = "2021"
-description = "Process isolation contract for the AEP 2.8.x protocol crate graph. Seals one process against one isolation specification. ."
+description = "Process isolation contract for the AEP 2.8.x protocol crate graph. Seals one process against one isolation specification. Ticket NOSHIP-286-P1."
 license = "Apache-2.0"
 publish = false
 

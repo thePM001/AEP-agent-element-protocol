@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/trash"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/trash"
 )
 
 // TestEndToEnd_QuarantineRoundTrip drops the malicious fixture into a temp

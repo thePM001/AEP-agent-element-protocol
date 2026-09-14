@@ -4,16 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nla-aep/aep-caw-framework/internal/approvals"
-	"github.com/nla-aep/aep-caw-framework/internal/pty"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/approvals"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/pty"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 type ptyStartParams struct {

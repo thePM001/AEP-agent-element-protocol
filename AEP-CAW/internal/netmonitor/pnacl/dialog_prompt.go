@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/approval/dialog"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/approval/dialog"
 )
 
 // DialogPromptProvider implements PromptProvider using native OS dialogs.

@@ -3,7 +3,7 @@ package transport
 import (
 	"testing"
 
-	wtpv1 "github.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1"
+	wtpv1 "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1"
 )
 
 func TestSessionInit_CarriesDecisionContext(t *testing.T) {

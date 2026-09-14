@@ -4,9 +4,9 @@ package api
 import (
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
-	"github.com/nla-aep/aep-caw-framework/internal/tor"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/tor"
 )
 
 func newDenyTorPolicy(t *testing.T) *tor.Policy {

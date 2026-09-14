@@ -5,9 +5,9 @@ package api
 import (
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	unixmon "github.com/nla-aep/aep-caw-framework/internal/netmonitor/unix"
-	seccompkg "github.com/nla-aep/aep-caw-framework/internal/seccomp"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	unixmon "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/unix"
+	seccompkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
 	"github.com/stretchr/testify/require"
 	gounix "golang.org/x/sys/unix"
 )

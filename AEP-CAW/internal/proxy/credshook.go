@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/nla-aep/aep-caw-framework/internal/proxy/credsub"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/credsub"
 )
 
 // CredsSubHook performs credential substitution using a credsub.Table.

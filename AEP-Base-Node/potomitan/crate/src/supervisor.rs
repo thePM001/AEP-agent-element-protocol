@@ -1,5 +1,5 @@
 //! POTOMITAN mesh supervisor: failover when internet is unavailable.
-//! AEP28-ENV-055: binds the mesh packet plane when mesh transport is selected.
+//! Binds the mesh packet plane when mesh transport is selected.
 
 use crate::packet::MeshPacket;
 use crate::peer::{PeerRegistry, MESH_PEERS_FILE};

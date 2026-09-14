@@ -14,10 +14,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/catalog"
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
-	"github.com/nla-aep/aep-caw-framework/internal/db/proxy/postgres/preparedcache"
-	"github.com/nla-aep/aep-caw-framework/internal/db/proxy/postgres/statemachine"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/catalog"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/proxy/postgres/preparedcache"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/proxy/postgres/statemachine"
 )
 
 func TestCatalogSnapshotStore_LoadOrGetCachesByServiceDatabaseUser(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/policy/pattern"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy/pattern"
 )
 
 // DetectionSignal represents a signal source for agent detection.

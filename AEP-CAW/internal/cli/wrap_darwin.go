@@ -8,7 +8,7 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // platformSetupWrap on macOS sets up ES-based interception.

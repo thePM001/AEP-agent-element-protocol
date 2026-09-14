@@ -11,8 +11,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets"
 
-	secrets "github.com/nla-aep/aep-caw-framework/internal/proxy/secrets"
-	"github.com/nla-aep/aep-caw-framework/internal/proxy/secrets/secretstest"
+	secrets "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets/secretstest"
 )
 
 type mockKVClient struct {

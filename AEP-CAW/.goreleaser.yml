@@ -252,7 +252,7 @@ nfpms:
       - archlinux
     bindir: /usr/bin
     vendor: AepCaw
-    homepage: https://github.com/nla-aep/aep-caw-framework
+    homepage: https://github.com/thePM001/AEP-agent-element-protocol
     maintainer: AepCaw Team <team@aep-caw.dev>
     description: |
       Secure sandboxed shell for AI agents.

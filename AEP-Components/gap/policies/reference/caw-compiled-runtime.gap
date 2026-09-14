@@ -29,7 +29,7 @@ metadata:
       action: write
   wrap: caw
   action_path_prefix: caw
-  platform:
+  fscale:
     required.0.alias: nla-policy-scan
     required.0.id: FS.0.128.172
     required.1.alias: nla-lattice-api-route

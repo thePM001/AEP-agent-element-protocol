@@ -6,7 +6,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/nla-aep/aep-caw-framework/internal/signal"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/signal"
 )
 
 // startSignalHandler is a no-op on non-Linux platforms.

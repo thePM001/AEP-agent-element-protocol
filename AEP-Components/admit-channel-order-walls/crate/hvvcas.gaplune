@@ -42,4 +42,3 @@ component:
     name: result
     type: AdmitResult
 
-ticket: AEP28-ENV-004

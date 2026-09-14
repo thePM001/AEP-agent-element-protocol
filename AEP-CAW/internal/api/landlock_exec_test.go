@@ -5,8 +5,8 @@ package api
 import (
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/capabilities"
-	"github.com/nla-aep/aep-caw-framework/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/capabilities"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 )
 
 func TestMakeLandlockPostStartHook(t *testing.T) {

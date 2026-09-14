@@ -2,14 +2,14 @@
 //! Evaluation is pure. Apply mutates snapshot state after Admit.
 //! @PAD: gaplune-pad-transform encode
 //! @GCDE: gaplune-decode hmac-sha256:9f7de97867e86cc6d506eb08b203375fb20d7ca308541da6a01700a70ff1ce53
-//! AEP28-ENV-038: EnvelopeAction has no rank field. Agent permission is agent_permission.
-//! AEP28-ENV-042: empty lattice closes dag.membership and gap.agent_permission. Do not reopen AEP28-ENV-034.
-//! AEP28-ENV-066: unbound scene, channel, time and sequence close. dest_dock may bind from the opened frame docking port. Missing scene_id, timestamps or sequence_number is Deny. Do not reopen AEP28-ENV-034 or AEP28-ENV-042.
-//! AEP28-ENV-065: max_drift_ms stays 50 against the frozen seal snapshot. Do not set max_drift_ms to 1000 as the pulse length.
-//! AEP28-ENV-043: partition satisfied_actions by agent or session so parent closure cannot leak across agents.
-//! AEP28-ENV-049: one Admit function and one id vocabulary. extra_walls is AdmitWall. Drop conversion from a second admit_collect_all.
-//! AEP28-ENV-067: LatticeNode.wrap binds policy-system GAP walls. writing and security stay always-on. Do not reopen AEP28-ENV-056.
-//! AEP28-ENV-068: wall_forecast uses live anomaly_score only. Cached forecast score is not a wall verdict. Attractors do not skip Admit. Do not reopen AEP28-ENV-025.
+//! EnvelopeAction has no rank field. Agent permission is agent_permission.
+//! Empty lattice closes dag.membership and gap.agent_permission. Do not reopen the earlier law change.
+//! Unbound scene, channel, time and sequence close. dest_dock may bind from the opened frame docking port. Missing scene_id, timestamps or sequence_number is Deny. Do not reopen the earlier law change or the earlier law change.
+//! Max_drift_ms stays 50 against the frozen seal snapshot. Do not set max_drift_ms to 1000 as the pulse length.
+//! Partition satisfied_actions by agent or session so parent closure cannot leak across agents.
+//! One Admit function and one id vocabulary. extra_walls is AdmitWall. Drop conversion from a second admit_collect_all.
+//! LatticeNode.wrap binds policy-system GAP walls. writing and security stay always-on. Do not reopen the earlier law change.
+//! Wall_forecast uses live anomaly_score only. Cached forecast score is not a wall verdict. Attractors do not skip Admit. Do not reopen the earlier law change.
 
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -18,7 +18,7 @@ mod lattice_yaml;
 pub use lattice_yaml::{apply_admit, closed_reasons, load_lattice_yaml, load_lattice_yaml_file, snapshot_from_nodes, EnvelopeError};
 pub use aep_admit::{AdmitWall, agent_permission, agent_has_permission, AgentPermission, Pulse, PULSE_MS, DENY_NO_PERMISSION, ClosedWall, DenyReport};
 
-// The public kernel type set is defined once in aep-kernel-types.
+// the public kernel type set is defined once in aep-kernel-types.
 // EnvelopeAction stays as an alias so no caller changes and no second definition exists.
 pub use aep_kernel_types::{AdmitResult, Envelope};
 pub type EnvelopeAction = aep_kernel_types::Envelope;
@@ -245,7 +245,7 @@ pub fn admit_with_extra(
             open.push(w);
         }
     }
-    // one AdmitResult shape, allow is AND of every wall.
+ // one AdmitResult shape, allow is AND of every wall.
     AdmitResult {
         allow: closed.is_empty(),
         closed,
@@ -275,7 +275,7 @@ pub fn apply(snap: &mut Snapshot, plan: &ApplyPlan) {
 }
 
 fn wall(id: &str, family: &str, open: bool, reason: &str) -> AdmitWall {
-    // the wall row is the kernel AdmitWall, not a local copy.
+ // the wall row is the kernel AdmitWall, not a local copy.
     AdmitWall::verdict(id, family, open, reason)
 }
 

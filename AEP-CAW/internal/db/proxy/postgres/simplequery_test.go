@@ -13,9 +13,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/events"
-	"github.com/nla-aep/aep-caw-framework/internal/db/policy"
-	"github.com/nla-aep/aep-caw-framework/internal/db/service"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/events"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/service"
 )
 
 // newSimpleQueryFixture builds a *proxyConn wired to a client-side net.Pipe.

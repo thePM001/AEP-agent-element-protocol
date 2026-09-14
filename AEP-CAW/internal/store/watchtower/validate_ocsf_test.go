@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/audit"
-	"github.com/nla-aep/aep-caw-framework/internal/ocsf"
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/compact"
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/transport"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/audit"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/ocsf"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower/compact"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower/transport"
 )
 
 // minimalValidOpts returns an Options that satisfies validate() so that

@@ -5,7 +5,7 @@ package policy
 import (
 	"fmt"
 
-	"github.com/nla-aep/aep-caw-framework/internal/signal"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/signal"
 )
 
 // compileSignalRules compiles signal rules into a signal engine.

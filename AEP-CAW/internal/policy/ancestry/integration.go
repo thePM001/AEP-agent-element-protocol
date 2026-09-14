@@ -1,7 +1,7 @@
 package ancestry
 
 import (
-	"github.com/nla-aep/aep-caw-framework/internal/process"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/process"
 )
 
 // ProcessTreeIntegration bridges ProcessTree events to TaintCache.

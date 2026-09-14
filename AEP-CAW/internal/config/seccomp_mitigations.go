@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/nla-aep/aep-caw-framework/internal/seccomp"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
 	"gopkg.in/yaml.v3"
 )
 

@@ -3,7 +3,7 @@ package mcpinspect
 import (
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 )
 
 func TestRateLimiterRegistry_DefaultLimits(t *testing.T) {

@@ -347,8 +347,8 @@ func (c *HelmChart) writeChartYAML(chartDir string) error {
 		"version":     "0.1.0",
 		"appVersion":  "1.0.0",
 		"keywords":    []string{"ai", "agent", "sandbox", "security", "policy"},
-		"home":        "https://github.com/nla-aep/aep-caw-framework",
-		"sources":     []string{"https://github.com/nla-aep/aep-caw-framework"},
+		"home":        "https://github.com/thePM001/AEP-agent-element-protocol/AEP-CAW",
+		"sources":     []string{"https://github.com/thePM001/AEP-agent-element-protocol/AEP-CAW"},
 		"maintainers": []map[string]string{
 			{"name": "aep-caw", "email": "maintainers@aep-caw.io"},
 		},

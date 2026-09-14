@@ -31,8 +31,8 @@ build-macwrap:
 
 proto:
 	protoc -I proto \
-	  --go_out=. --go_opt=module=github.com/nla-aep/aep-caw-framework \
-	  --go-grpc_out=. --go-grpc_opt=module=github.com/nla-aep/aep-caw-framework \
+	  --go_out=. --go_opt=module=github.com/thePM001/AEP-agent-element-protocol/AEP-CAW \
+	  --go-grpc_out=. --go-grpc_opt=module=github.com/thePM001/AEP-agent-element-protocol/AEP-CAW \
 	  proto/aepcaw/v1/pty.proto
 
 test:

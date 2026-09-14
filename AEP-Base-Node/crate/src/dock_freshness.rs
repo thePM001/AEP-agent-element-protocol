@@ -1,4 +1,4 @@
-//! Wire sent_at freshness. AEP28-ENV-079.
+//! Wire sent_at freshness.
 //! Constants come from aep-base-node-pulse.
 
 use aep_base_node_pulse::{MAX_FRAME_AGE_SECS, MAX_FRAME_FUTURE_SKEW_SECS};

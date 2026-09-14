@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 )
 
 // TestIntegration_FullFlowAnthropic verifies the complete proxy flow for Anthropic:

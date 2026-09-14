@@ -234,7 +234,7 @@ const file_aepcaw_wtp_v1_ocsf_process_activity_proto_rawDesc = "" +
 	"\x0f_unwrapped_fromB\x12\n" +
 	"\x10_payload_commandB\f\n" +
 	"\n" +
-	"_truncatedBFZDgithub.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1/ocsf;ocsfpbb\x06proto3"
+	"_truncatedBFZDgithub.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1/ocsf;ocsfpbb\x06proto3"
 
 var (
 	file_aepcaw_wtp_v1_ocsf_process_activity_proto_rawDescOnce sync.Once

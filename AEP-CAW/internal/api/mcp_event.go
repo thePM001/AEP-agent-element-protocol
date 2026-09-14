@@ -3,8 +3,8 @@ package api
 import (
 	"strings"
 
-	"github.com/nla-aep/aep-caw-framework/internal/mcpinspect"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/mcpinspect"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"github.com/google/uuid"
 )
 

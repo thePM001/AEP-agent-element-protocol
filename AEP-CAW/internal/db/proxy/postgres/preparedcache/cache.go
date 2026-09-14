@@ -12,8 +12,8 @@ import (
 	"container/list"
 	"sync"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
-	"github.com/nla-aep/aep-caw-framework/internal/db/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
 )
 
 const DefaultCapacity = 4096

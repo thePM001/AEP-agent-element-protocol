@@ -15,7 +15,7 @@ class ProcessHierarchy {
     private var childrenMap: [pid_t: Set<pid_t>] = [:]
 
     /// Serial queue for thread-safe access
-    private let queue = DispatchQueue(label: "ai.nla-aep.aep-caw.processhierarchy")
+    private let queue = DispatchQueue(label: "io.github.thepm001.aep-caw.processhierarchy")
 
     private init() {}
 

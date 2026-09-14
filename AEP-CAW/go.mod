@@ -1,4 +1,4 @@
-module github.com/nla-aep/aep-caw-framework
+module github.com/thePM001/AEP-agent-element-protocol/AEP-CAW
 
 go 1.25.0
 

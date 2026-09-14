@@ -5,7 +5,7 @@
 
 use super::{admit_collect_all, AdmitResult, AdmitWall};
 
-// the agent permission public type set is defined once in
+// Ticket NOSHIP-286-P1: the agent permission public type set is defined once in
 // aep-kernel-types and re-exported here.
 pub use aep_kernel_types::{
     AgentPermission, AgentPermissionLookup, DENY_NO_PERMISSION, WALL_AGENT_PERMISSION,

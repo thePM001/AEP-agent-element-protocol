@@ -7,8 +7,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
-	"github.com/nla-aep/aep-caw-framework/internal/db/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
 )
 
 type fakeRedirectPlanner struct {

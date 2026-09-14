@@ -7,7 +7,6 @@ id: aep-policy-system-admit
 version: 0.1.0
 kind: library
 path: AEP-Components/policy-system-admit/
-ticket: AEP28-ENV-056 AEP28-ENV-067
 requires: aep-admit aep-admit-live-dock
 capability: admit.policy-system.compile
 note: Load AEP-Policy-System GAP files as live Admit walls. Bind item walls to LatticeNode.wrap or an action_path prefix. writing and security stay always-on.

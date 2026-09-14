@@ -6,7 +6,7 @@ import (
 	pg_query "github.com/pganalyze/pg_query_go/v6"
 	pgquery_wasm "github.com/wasilibs/go-pgquery"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
 )
 
 func newParser(d Dialect) Parser {

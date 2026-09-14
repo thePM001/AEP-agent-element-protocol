@@ -4,7 +4,7 @@
 name = "aep-wall-set-backpressure"
 version = "0.1.0"
 edition = "2021"
-description = "AEP28-ENV-070 plus AEP28-ENV-076. Dock Deny returns closed-wall ids, class and mechanical repair. Writing walls stay protocol law at priority 255."
+description = "the earlier law change plus. Dock Deny returns closed-wall ids, class and mechanical repair. Writing walls stay protocol law at priority 255."
 license = "UNLICENSED"
 publish = false
 

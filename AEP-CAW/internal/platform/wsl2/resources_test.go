@@ -5,7 +5,7 @@ package wsl2
 import (
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/platform"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform"
 )
 
 func TestNewResourceLimiter(t *testing.T) {

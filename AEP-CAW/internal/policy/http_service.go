@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/nla-aep/aep-caw-framework/internal/proxy/secrets"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets"
 	"github.com/gobwas/glob"
 	"gopkg.in/yaml.v3"
 )

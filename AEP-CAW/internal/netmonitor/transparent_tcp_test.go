@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	dbevents "github.com/nla-aep/aep-caw-framework/internal/db/events"
-	dbservice "github.com/nla-aep/aep-caw-framework/internal/db/service"
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
-	"github.com/nla-aep/aep-caw-framework/internal/session"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	dbevents "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/events"
+	dbservice "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/service"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // Pure policy/netEvent helpers coverage; doesn't open sockets.

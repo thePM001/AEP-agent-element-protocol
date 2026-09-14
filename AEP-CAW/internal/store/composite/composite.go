@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/audit"
-	"github.com/nla-aep/aep-caw-framework/internal/store"
-	"github.com/nla-aep/aep-caw-framework/internal/store/sqlite"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/audit"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/sqlite"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // Store fans an event out to a primary EventStore plus zero-or-more chained

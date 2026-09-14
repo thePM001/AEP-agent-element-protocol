@@ -4,7 +4,6 @@ schema_id: gaplune.hvvcas.v1
 format: gaplune
 json: prohibited
 crate: aep-dock-post-beat-collect
-ticket: AEP28-ENV-071
 note: Durable HVVCAS is GAPLUNE. Dock client collects post-beat Admit by digest. DenyReport.closed and allow event_id return on the wire.
 
 component:

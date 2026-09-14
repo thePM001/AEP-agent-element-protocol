@@ -1,7 +1,7 @@
 package skillcheck
 
 import (
-	"github.com/nla-aep/aep-caw-framework/internal/trash"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/trash"
 )
 
 // trashQuarantiner adapts internal/trash to the Quarantiner interface.

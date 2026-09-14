@@ -5,7 +5,7 @@ package postgres
 import (
 	"fmt"
 
-	classify_pg "github.com/nla-aep/aep-caw-framework/internal/db/classify/postgres"
+	classify_pg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/classify/postgres"
 )
 
 // buildClassifierMap constructs one Parser per distinct dialect across the

@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/pkgcheck"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/pkgcheck"
 )
 
 // Key identifies a cached entry by provider, ecosystem, package, and version.

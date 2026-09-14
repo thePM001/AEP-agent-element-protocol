@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/nla-aep/aep-caw-framework/internal/capabilities"
-	"github.com/nla-aep/aep-caw-framework/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/capabilities"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 )
 
 // DetectAndValidateSecurityMode detects security capabilities and selects the appropriate mode.

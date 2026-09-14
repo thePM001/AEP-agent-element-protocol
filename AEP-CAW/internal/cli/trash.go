@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	"github.com/nla-aep/aep-caw-framework/internal/trash"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/trash"
 	"github.com/spf13/cobra"
 )
 

@@ -11,8 +11,8 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/platform/darwin/policysock"
-	"github.com/nla-aep/aep-caw-framework/internal/stub"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform/darwin/policysock"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/stub"
 	"golang.org/x/sys/unix"
 )
 

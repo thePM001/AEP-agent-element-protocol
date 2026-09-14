@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	"github.com/nla-aep/aep-caw-framework/internal/events"
-	"github.com/nla-aep/aep-caw-framework/internal/metrics"
-	"github.com/nla-aep/aep-caw-framework/internal/session"
-	"github.com/nla-aep/aep-caw-framework/internal/store/composite"
-	"github.com/nla-aep/aep-caw-framework/internal/store/sqlite"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/metrics"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/composite"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/sqlite"
 )
 
 func newMCPTestApp(t *testing.T, st *sqlite.Store) http.Handler {

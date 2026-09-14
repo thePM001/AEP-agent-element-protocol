@@ -4,7 +4,6 @@ schema_id: gaplune.hvvcas.v1
 format: gaplune
 json: prohibited
 crate: aep-admit-live-dock
-ticket: AEP28-ENV-032
 note: Fold product Admit wall crates into the live dock collect-all pass.
 
 component:

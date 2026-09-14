@@ -10,8 +10,8 @@ import (
 
 	keyringlib "github.com/zalando/go-keyring"
 
-	secrets "github.com/nla-aep/aep-caw-framework/internal/proxy/secrets"
-	"github.com/nla-aep/aep-caw-framework/internal/proxy/secrets/secretstest"
+	secrets "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets/secretstest"
 )
 
 // skipIfUnavailable constructs a Provider and skips the test if

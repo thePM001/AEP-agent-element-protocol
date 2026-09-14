@@ -15,15 +15,15 @@ cask "aep-caw" do
   binary "#{appdir}/AepCaw.app/Contents/MacOS/aep-caw-shell-shim"
   binary "#{appdir}/AepCaw.app/Contents/MacOS/aep-caw-stub"
 
-  uninstall quit:      "ai.nla-aep.aep-caw",
+  uninstall quit:      "io.github.thepm001.aep-caw",
             signal:    ["TERM", "aep-caw"],
-            launchctl: "ai.nla-aep.aep-caw.daemon"
+            launchctl: "io.github.thepm001.aep-caw.daemon"
 
   zap trash: [
     "~/Library/Application Support/aep-caw",
-    "~/Library/Preferences/ai.nla-aep.aep-caw.plist",
-    "~/Library/Caches/ai.nla-aep.aep-caw",
-    "~/Library/LaunchAgents/ai.nla-aep.aep-caw.daemon.plist",
+    "~/Library/Preferences/io.github.thepm001.aep-caw.plist",
+    "~/Library/Caches/io.github.thepm001.aep-caw",
+    "~/Library/LaunchAgents/io.github.thepm001.aep-caw.daemon.plist",
   ]
 
   postflight do

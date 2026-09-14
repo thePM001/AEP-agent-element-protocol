@@ -21,7 +21,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower"
 )
 
 func TestOptions_LogGoawayMessage_WireThrough(t *testing.T) {

@@ -7,9 +7,9 @@ import (
 
 	"pgregory.net/rapid"
 
-	rootpolicy "github.com/nla-aep/aep-caw-framework/internal/policy"
+	rootpolicy "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
 )
 
 // cachedRules is built once for property tests; rebuilding per iteration is slow.

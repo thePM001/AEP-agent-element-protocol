@@ -2121,7 +2121,7 @@ const file_aepcaw_wtp_v1_wtp_proto_rawDesc = "" +
 	"\x1cCLIENT_SHUTDOWN_REASON_FATAL\x10\x032V\n" +
 	"\n" +
 	"Watchtower\x12H\n" +
-	"\x06Stream\x12\x1c.aepcaw.wtp.v1.ClientMessage\x1a\x1c.aepcaw.wtp.v1.ServerMessage(\x010\x01B@Z>github.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1;wtpv1b\x06proto3"
+	"\x06Stream\x12\x1c.aepcaw.wtp.v1.ClientMessage\x1a\x1c.aepcaw.wtp.v1.ServerMessage(\x010\x01B@Z>github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1;wtpv1b\x06proto3"
 
 var (
 	file_aepcaw_wtp_v1_wtp_proto_rawDescOnce sync.Once

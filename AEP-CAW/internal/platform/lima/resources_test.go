@@ -5,7 +5,7 @@ package lima
 import (
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/platform"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform"
 )
 
 func TestResourceLimiter_Available(t *testing.T) {

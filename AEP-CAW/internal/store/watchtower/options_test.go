@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/audit"
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower"
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/chain"
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/compact"
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/transport"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/audit"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower/chain"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower/compact"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower/transport"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // testHMACKey is a fixed 32-byte HMAC key used across watchtower tests.

@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	unixmon "github.com/nla-aep/aep-caw-framework/internal/netmonitor/unix"
-	"github.com/nla-aep/aep-caw-framework/internal/wrapperlog"
+	unixmon "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/unix"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/wrapperlog"
 	"golang.org/x/sys/unix"
 )
 

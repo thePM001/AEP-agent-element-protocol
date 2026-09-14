@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/pkgcheck"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/pkgcheck"
 )
 
 // localProvider checks package metadata locally without any network calls.

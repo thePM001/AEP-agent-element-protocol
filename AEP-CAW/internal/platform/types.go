@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // Capabilities describes what security features this platform supports.

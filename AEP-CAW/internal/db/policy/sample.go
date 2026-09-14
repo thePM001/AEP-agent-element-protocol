@@ -5,7 +5,7 @@ import (
 	_ "embed"
 	"fmt"
 
-	rootpolicy "github.com/nla-aep/aep-caw-framework/internal/policy"
+	rootpolicy "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 
 //go:embed testdata/sample-policy.yaml

@@ -3,7 +3,6 @@
 schema_id: gaplune.hvvcas.v1
 format: gaplune
 crate: aep-named-surfaces
-ticket: AEP28-ENV-057
 note: Named surfaces execute so CodeSandbox runs agent code while policy transpilers emit GAP and MCP backend transport forwards allowed calls.
 
 component:

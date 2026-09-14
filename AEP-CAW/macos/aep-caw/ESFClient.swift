@@ -3,7 +3,7 @@ import Foundation
 import EndpointSecurity
 import os.log
 
-private let esLog = OSLog(subsystem: "ai.nla-aep.aep-caw.SysExt", category: "ESF")
+private let esLog = OSLog(subsystem: "io.github.thepm001.aep-caw.SysExt", category: "ESF")
 
 /// Handles Endpoint Security Framework events.
 class ESFClient {
@@ -19,7 +19,7 @@ class ESFClient {
 
     /// Cache of PID -> audit_token_t for muting
     private var auditTokenCache: [pid_t: audit_token_t] = [:]
-    private let cacheQueue = DispatchQueue(label: "ai.nla-aep.aep-caw.audittokencache")
+    private let cacheQueue = DispatchQueue(label: "io.github.thepm001.aep-caw.audittokencache")
 
     private init(client: OpaquePointer) {
         self.client = client

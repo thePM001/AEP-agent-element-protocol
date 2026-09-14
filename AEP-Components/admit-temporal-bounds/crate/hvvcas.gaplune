@@ -4,8 +4,7 @@ schema_id: gaplune.hvvcas.v1
 format: gaplune
 json: prohibited
 crate: aep-admit-temporal-bounds
-note: Durable HVVCAS is GAPLUNE. Ticket AEP28-ENV-005.
-ticket: AEP28-ENV-005
+note: Durable HVVCAS is GAPLUNE..
 
 component:
   name: compile_temporal_walls

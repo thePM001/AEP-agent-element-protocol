@@ -7,7 +7,6 @@ id: aep-named-surfaces
 version: 0.1.0
 kind: library
 path: AEP-Components/named-surfaces/
-ticket: AEP28-ENV-057
 requires: none
 capability: named-surfaces.execute
 note: Named surfaces execute so CodeSandbox runs agent code while policy transpilers emit GAP and MCP backend transport forwards allowed calls.

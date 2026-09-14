@@ -1,7 +1,7 @@
 package awssm
 
 import (
-	secrets "github.com/nla-aep/aep-caw-framework/internal/proxy/secrets"
+	secrets "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets"
 )
 
 // Config configures the AWS Secrets Manager provider.

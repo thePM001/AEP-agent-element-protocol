@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"sync"
 
-	"github.com/nla-aep/aep-caw-framework/internal/platform"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform"
 )
 
 // Network implements platform.NetworkInterceptor for macOS using pf (packet filter).

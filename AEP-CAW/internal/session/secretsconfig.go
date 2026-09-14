@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
-	"github.com/nla-aep/aep-caw-framework/internal/proxy/secrets"
-	"github.com/nla-aep/aep-caw-framework/internal/proxy/secrets/awssm"
-	"github.com/nla-aep/aep-caw-framework/internal/proxy/secrets/azurekv"
-	"github.com/nla-aep/aep-caw-framework/internal/proxy/secrets/gcpsm"
-	"github.com/nla-aep/aep-caw-framework/internal/proxy/secrets/keyring"
-	"github.com/nla-aep/aep-caw-framework/internal/proxy/secrets/onepassword"
-	"github.com/nla-aep/aep-caw-framework/internal/proxy/secrets/vault"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets/awssm"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets/azurekv"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets/gcpsm"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets/keyring"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets/onepassword"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets/vault"
 	"gopkg.in/yaml.v3"
 )
 

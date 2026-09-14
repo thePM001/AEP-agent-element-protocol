@@ -7,7 +7,6 @@ id: aep-dynaep
 version: 2.8.0
 kind: library
 path: AEP-Components/dynAEP/crate
-ticket: AEP28-ENV-041
 requires: none
 capability: dynaep.action-lattice
 note: Standalone Rust dynAEP crate. A builder can depend on only this crate. TypeScript dynAEP stays as the TypeScript form. Base Node is unchanged.

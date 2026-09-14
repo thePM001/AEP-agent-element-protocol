@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/stub"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/stub"
 	"golang.org/x/sys/unix"
 )
 

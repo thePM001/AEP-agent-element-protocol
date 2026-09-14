@@ -17,10 +17,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	"github.com/nla-aep/aep-caw-framework/internal/mcpinspect"
-	"github.com/nla-aep/aep-caw-framework/internal/mcpregistry"
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/mcpinspect"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/mcpregistry"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 
 // tpmFallbackTokenCharge is the conservative token charge applied when TPM

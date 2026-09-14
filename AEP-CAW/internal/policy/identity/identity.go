@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/nla-aep/aep-caw-framework/internal/policy/pattern"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy/pattern"
 )
 
 // ProcessIdentity defines how to identify a process across platforms.

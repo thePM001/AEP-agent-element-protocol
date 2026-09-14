@@ -4,7 +4,7 @@
 name = "aep-dock-line-reader"
 version = "0.1.0"
 edition = "2021"
-description = "AEP28-ENV-053. Dock line reader must not read one byte per await up to 4MiB."
+description = "Dock line reader must not read one byte per await up to 4MiB."
 license = "UNLICENSED"
 publish = false
 

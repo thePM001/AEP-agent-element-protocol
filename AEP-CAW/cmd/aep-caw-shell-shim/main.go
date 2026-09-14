@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/shim"
-	"github.com/nla-aep/aep-caw-framework/internal/shim/kernelinstall"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/shim"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/shim/kernelinstall"
 	"golang.org/x/term"
 )
 

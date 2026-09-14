@@ -6,10 +6,10 @@ package netmonitor
 import (
 	"errors"
 
-	"github.com/nla-aep/aep-caw-framework/internal/approvals"
-	dbevents "github.com/nla-aep/aep-caw-framework/internal/db/events"
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
-	"github.com/nla-aep/aep-caw-framework/internal/session"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/approvals"
+	dbevents "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/events"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
 )
 
 type TransparentTCP struct{}

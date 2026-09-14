@@ -33,7 +33,7 @@ pub fn default_filter_ts() -> PathBuf {
     let here = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::from(".")));
     let candidates = [
         here.join("../../dynAEP/bridge/hyperlattice/HyperlatticeFilter.ts"),
-        here.join("../../../NLA-AEP-v2.8-open-source/AEP-Components/dynAEP/bridge/hyperlattice/HyperlatticeFilter.ts"),
+        here.join("../../../AEP-agent-element-protocol/AEP-Components/dynAEP/bridge/hyperlattice/HyperlatticeFilter.ts"),
     ];
     for p in candidates {
         if p.is_file() {

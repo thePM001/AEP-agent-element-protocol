@@ -6,10 +6,10 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/nla-aep/aep-caw-framework/internal/capabilities"
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	unixmon "github.com/nla-aep/aep-caw-framework/internal/netmonitor/unix"
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/capabilities"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	unixmon "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/unix"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 
 var (

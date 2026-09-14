@@ -6,8 +6,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/wrapenv"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/wrapenv"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // Issue #379: filtering applies to the inherited base BEFORE aep-caw markers and

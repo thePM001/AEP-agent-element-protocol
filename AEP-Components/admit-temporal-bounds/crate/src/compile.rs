@@ -1,6 +1,6 @@
 // @PAD: gaplune-creation-pad via gaplune-pad-transform encode
 // @GCDE: gaplune-decode hmac-sha256:b478d503a6842ab07413e7268f7c2ef74fb5f5e348059a3dcfd911e126da8cd9
-// AEP28-ENV-005 compile temporal bounds into Admit walls.
+// the earlier law change compile temporal bounds into Admit walls.
 
 use aep_admit::{admit_collect_all, AdmitResult, AdmitWall};
 

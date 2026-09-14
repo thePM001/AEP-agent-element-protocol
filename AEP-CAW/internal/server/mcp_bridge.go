@@ -1,8 +1,8 @@
 package server
 
 import (
-	"github.com/nla-aep/aep-caw-framework/internal/mcpregistry"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/mcpregistry"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // bridgeEventToRegistry updates the enforcement registry when the shim reports

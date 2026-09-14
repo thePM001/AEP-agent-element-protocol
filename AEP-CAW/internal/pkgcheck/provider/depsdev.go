@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/pkgcheck"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/pkgcheck"
 )
 
 const (

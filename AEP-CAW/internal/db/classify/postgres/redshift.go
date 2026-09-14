@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
 )
 
 // Redshift first-keyword fallback (spec §7.3, §7.7). libpg_query rejects

@@ -5,7 +5,7 @@ package policysock
 import (
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 
 func TestPolicyAdapter_CheckFile_Allow(t *testing.T) {

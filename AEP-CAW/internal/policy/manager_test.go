@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/policy/signing"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy/signing"
 )
 
 func TestManager_SelectsAllowedEnv(t *testing.T) {

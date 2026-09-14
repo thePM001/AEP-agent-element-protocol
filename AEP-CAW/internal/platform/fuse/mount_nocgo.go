@@ -6,7 +6,7 @@ package fuse
 import (
 	"fmt"
 
-	"github.com/nla-aep/aep-caw-framework/internal/platform"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform"
 )
 
 // Mount returns an error when CGO is disabled.

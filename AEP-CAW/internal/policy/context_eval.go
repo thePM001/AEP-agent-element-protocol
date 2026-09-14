@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/nla-aep/aep-caw-framework/internal/policy/ancestry"
-	"github.com/nla-aep/aep-caw-framework/internal/policy/identity"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy/ancestry"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy/identity"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"github.com/gobwas/glob"
 )
 

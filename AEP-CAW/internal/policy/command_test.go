@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 func TestEngine_CheckCommand_BasenameMatch(t *testing.T) {

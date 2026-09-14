@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/nla-aep/aep-caw-framework/internal/platform"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform"
 )
 
 // SandboxManager implements platform.SandboxManager for WSL2.

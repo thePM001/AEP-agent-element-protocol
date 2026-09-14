@@ -7,7 +7,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/nla-aep/aep-caw-framework/internal/trash"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/trash"
 )
 
 // CLI implements the `aep-caw skillcheck` subcommand.

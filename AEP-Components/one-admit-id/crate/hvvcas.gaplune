@@ -4,7 +4,6 @@ schema_id: gaplune.hvvcas.v1
 format: gaplune
 json: prohibited
 crate: aep-one-admit-id
-ticket: AEP28-ENV-049
 note: Durable HVVCAS is GAPLUNE. Keep one Admit function and one id vocabulary. Drop extra_walls conversion from a second admit_collect_all.
 
 component:

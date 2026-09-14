@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/nla-aep/aep-caw-framework/internal/policy/pattern"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy/pattern"
 )
 
 // ChainCondition represents conditions for evaluating process chains.

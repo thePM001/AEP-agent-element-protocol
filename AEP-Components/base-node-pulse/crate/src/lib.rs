@@ -6,9 +6,6 @@ use std::collections::HashSet;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
-pub const TICKET: &str = "AEP28-ENV-065";
-pub const PARENT_TICKET_ENV066: &str = "AEP28-ENV-066";
-pub const TICKET_ENV074: &str = "AEP28-ENV-074";
 pub const PULSE_MS: i64 = 1000;
 pub const MAX_DRIFT_MS: i64 = 50;
 pub const MAX_AGE_MS: i64 = 5000;
@@ -204,9 +201,6 @@ mod tests {
     }
     #[test]
     fn ticket_and_bounds() {
-        must(TICKET == "AEP28-ENV-065");
-        must(PARENT_TICKET_ENV066 == "AEP28-ENV-066");
-        must(TICKET_ENV074 == "AEP28-ENV-074");
         must(PULSE_MS == 1000 && MAX_DRIFT_MS == 50 && MAX_AGE_MS == 5000);
         must(MAX_FRAME_AGE_SECS == 300 && MAX_FRAME_FUTURE_SKEW_SECS == 60);
         must(QUEUE_CAP_CAPSULES == 256 && QUEUE_CAP_BYTES == 262144);

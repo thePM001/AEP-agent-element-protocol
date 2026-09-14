@@ -1,4 +1,4 @@
-//! Typed kernel errors for Base Node. AEP28-ENV-081.
+//! Typed kernel errors for Base Node.
 //! Display text stays the prior String so DenyReport wall mapping still matches.
 
 use aep_wall_set_backpressure::{ClosedWall, DenyReport};

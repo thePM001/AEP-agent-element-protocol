@@ -448,7 +448,7 @@ class AEPValidator {
     }
 
     // -----------------------------------------------------------------------
-    // Check 10: GAP agent_permission violations (AEP28-ENV-033)
+ // Check 10: GAP agent_permission violations 
     // -----------------------------------------------------------------------
     checkTrustViolations() {
         const ledgerPath = path.join(this.srcDir, '..', '.claude', 'aep-evidence.jsonl');

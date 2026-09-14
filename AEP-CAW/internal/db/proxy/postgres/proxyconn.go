@@ -11,10 +11,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/events"
-	"github.com/nla-aep/aep-caw-framework/internal/db/policy"
-	"github.com/nla-aep/aep-caw-framework/internal/db/proxy/postgres/preparedcache"
-	"github.com/nla-aep/aep-caw-framework/internal/db/proxy/postgres/statemachine"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/events"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/proxy/postgres/preparedcache"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/proxy/postgres/statemachine"
 )
 
 // connState is the per-connection state carried through the 04b handshake.

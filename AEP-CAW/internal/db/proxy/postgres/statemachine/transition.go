@@ -5,9 +5,9 @@ package statemachine
 import (
 	"time"
 
-	classify_pg "github.com/nla-aep/aep-caw-framework/internal/db/classify/postgres"
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
-	"github.com/nla-aep/aep-caw-framework/internal/db/policy"
+	classify_pg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/classify/postgres"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
 )
 
 // PolicyClassifier is the minimal classifier surface Transition needs at the

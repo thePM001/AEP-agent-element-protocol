@@ -7,9 +7,9 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	classifybuiltins "github.com/nla-aep/aep-caw-framework/internal/db/classify/postgres/builtins"
-	"github.com/nla-aep/aep-caw-framework/internal/db/service"
-	rootpolicy "github.com/nla-aep/aep-caw-framework/internal/policy"
+	classifybuiltins "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/classify/postgres/builtins"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/service"
+	rootpolicy "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 
 // Decode turns a parsed *internal/policy.Policy into a fully validated and

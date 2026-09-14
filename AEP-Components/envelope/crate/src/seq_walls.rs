@@ -1,7 +1,7 @@
 // @PAD: aep-envelope-seq-walls-v1
 // @GCDE: gaplune.policy.v1
-// AEP28-ENV-022: fold causal and forecast denies into envelope walls.
-// AEP28-ENV-068: wall_forecast uses live anomaly_score only. Cached snapshot score is not a wall verdict.
+// Fold causal and forecast denies into envelope walls.
+// Wall_forecast uses live anomaly_score only. Cached snapshot score is not a wall verdict.
 use crate::EnvelopeAction;
 use crate::Snapshot;
 use crate::AdmitWall;

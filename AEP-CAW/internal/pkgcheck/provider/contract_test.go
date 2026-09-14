@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/pkgcheck"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/pkgcheck"
 )
 
 // providerFactory builds a CheckProvider configured to talk to the given baseURL.

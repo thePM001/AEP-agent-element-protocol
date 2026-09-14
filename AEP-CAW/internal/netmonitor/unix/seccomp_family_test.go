@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	seccompkg "github.com/nla-aep/aep-caw-framework/internal/seccomp"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	seccompkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	gounix "golang.org/x/sys/unix"
 )
 

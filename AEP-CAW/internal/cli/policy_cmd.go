@@ -9,12 +9,12 @@ import (
 	"sort"
 	"strings"
 
-	dbpolicy "github.com/nla-aep/aep-caw-framework/internal/db/policy"
-	"github.com/nla-aep/aep-caw-framework/internal/db/policyexplain"
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
-	"github.com/nla-aep/aep-caw-framework/internal/policy/signing"
-	"github.com/nla-aep/aep-caw-framework/internal/policygen"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	dbpolicy "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policyexplain"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy/signing"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policygen"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"github.com/spf13/cobra"
 )
 

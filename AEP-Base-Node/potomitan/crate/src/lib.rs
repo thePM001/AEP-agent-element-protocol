@@ -1,6 +1,6 @@
 //! POTOMITAN provides mesh fallback when normal internet is unavailable.
 //!
-//! AEP28-ENV-055: this crate ships a mesh packet plane (encode, decode, hop_limit,
+//! This crate ships a mesh packet plane (encode, decode, hop_limit,
 //! transport, send, recv and forward). It is not registry-plus-mode.
 //!
 //! Adaptation source: https://github.com/yggdrasil-network/yggdrasil-go (MIT)

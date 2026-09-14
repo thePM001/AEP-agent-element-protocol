@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	secrets "github.com/nla-aep/aep-caw-framework/internal/proxy/secrets"
+	secrets "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets"
 )
 
 func TestNewMemoryProvider_CopiesSeed(t *testing.T) {

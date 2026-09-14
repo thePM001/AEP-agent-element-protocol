@@ -29,7 +29,7 @@ metadata:
       action: propose
   wrap: coding
   action_path_prefix: coding
-  platform:
+  fscale:
     required.0.alias: nla-policy-scan
     required.0.id: FS.0.128.172
     required.1.alias: nla-lattice-api-route

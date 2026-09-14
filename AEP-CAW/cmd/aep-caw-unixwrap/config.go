@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	seccompkg "github.com/nla-aep/aep-caw-framework/internal/seccomp"
+	seccompkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
 )
 
 // WrapperConfig is the configuration passed via AEP_CAW_SECCOMP_CONFIG env var.

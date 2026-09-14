@@ -9,7 +9,7 @@ syntax = "proto3";
 
 package aepcaw.wtp.v1.ocsf;
 
-option go_package = "github.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1/ocsf;ocsfpb";
+option go_package = "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1/ocsf;ocsfpb";
 
 // Metadata is OCSF's per-record metadata object. Every class message
 // embeds a Metadata.

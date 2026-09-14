@@ -4,7 +4,6 @@ schema_id: gaplune.hvvcas.v1
 format: gaplune
 json: prohibited
 crate: aep-graph-engine-admit-gate
-ticket: AEP28-ENV-069
 note: Durable HVVCAS is GAPLUNE. Fail if engine.ts invokes nodeExecutor without admitGate.
 
 component:

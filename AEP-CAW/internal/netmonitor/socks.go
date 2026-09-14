@@ -8,7 +8,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/tor"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/tor"
 )
 
 // SOCKS5 reply / command codes (RFC 1928) and Tor's RESOLVE extension.

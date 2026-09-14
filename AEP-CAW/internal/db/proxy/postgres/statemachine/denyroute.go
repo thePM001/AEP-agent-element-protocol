@@ -3,7 +3,7 @@
 package statemachine
 
 import (
-	"github.com/nla-aep/aep-caw-framework/internal/db/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
 )
 
 // DenyRoute returns the Action sequence implementing the spec §14.3 + §14.4

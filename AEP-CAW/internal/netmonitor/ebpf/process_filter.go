@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/netmonitor/pnacl"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/pnacl"
 )
 
 // ProcessFilter implements system-wide process network filtering using eBPF.

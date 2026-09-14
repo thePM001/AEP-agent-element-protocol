@@ -1,8 +1,8 @@
 package cli
 
 import (
-	"github.com/nla-aep/aep-caw-framework/internal/skillcheck"
-	"github.com/nla-aep/aep-caw-framework/internal/skillcheck/provider"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/skillcheck"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/skillcheck/provider"
 	"github.com/spf13/cobra"
 )
 

@@ -4,8 +4,7 @@ schema_id: gaplune.hvvcas.v1
 format: gaplune
 json: prohibited
 crate: aep-unbound-field-close
-ticket: AEP28-ENV-066
-note: Durable HVVCAS is GAPLUNE. Unbound scene, channel, time and sequence close. dest_dock may bind from the opened frame docking port. Do not reopen AEP28-ENV-034 or AEP28-ENV-042.
+note: Durable HVVCAS is GAPLUNE. Unbound scene, channel, time and sequence close. dest_dock may bind from the opened frame docking port. Do not reopen the earlier law change or the earlier law change.
 
 component:
   name: scan_wall_scene_missing
@@ -83,7 +82,7 @@ component:
   name: scan_env034_stays
   domain: envelope
   component_type: service
-  intent: Fail if AEP28-ENV-034 empty lattice Deny at live entry is gone
+ intent: Fail if the earlier law change empty lattice Deny at live entry is gone
   input:
     name: src
     type: String

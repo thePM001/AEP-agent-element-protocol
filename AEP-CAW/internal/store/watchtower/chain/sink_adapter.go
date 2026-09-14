@@ -1,6 +1,6 @@
 package chain
 
-import "github.com/nla-aep/aep-caw-framework/internal/audit"
+import "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/audit"
 
 // WatchtowerSink adapts *audit.SinkChain to the watchtower-local
 // SinkChainAPI. The adapter is a pure pass-through for Compute, Commit,

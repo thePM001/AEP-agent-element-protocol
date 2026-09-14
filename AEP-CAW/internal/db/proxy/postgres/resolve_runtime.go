@@ -5,9 +5,9 @@ package postgres
 import (
 	"strings"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/catalog"
-	classify_pg "github.com/nla-aep/aep-caw-framework/internal/db/classify/postgres"
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/catalog"
+	classify_pg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/classify/postgres"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
 )
 
 const catalogSessionStateChangedReason = "session_state_changed"

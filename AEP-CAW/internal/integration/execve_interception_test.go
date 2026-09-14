@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	unixmon "github.com/nla-aep/aep-caw-framework/internal/netmonitor/unix"
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
+	unixmon "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/unix"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 
 // TestExecveInterception_HandlerLogic tests the handler without actual seccomp

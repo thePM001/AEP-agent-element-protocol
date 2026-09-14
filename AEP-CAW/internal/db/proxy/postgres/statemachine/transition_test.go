@@ -9,9 +9,9 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	rootpolicy "github.com/nla-aep/aep-caw-framework/internal/policy"
+	rootpolicy "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
 )
 
 func dummyRules(t *testing.T) *policy.RuleSet {

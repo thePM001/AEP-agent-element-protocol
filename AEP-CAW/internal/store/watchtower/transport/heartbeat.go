@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	wtpv1 "github.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1"
+	wtpv1 "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1"
 )
 
 // HeartbeatSender is the subset of Conn that RunHeartbeat needs.

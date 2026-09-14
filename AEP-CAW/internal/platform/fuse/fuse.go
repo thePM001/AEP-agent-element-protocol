@@ -3,7 +3,7 @@ package fuse
 import (
 	"runtime"
 
-	"github.com/nla-aep/aep-caw-framework/internal/platform"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform"
 )
 
 // Config holds FUSE mount configuration.

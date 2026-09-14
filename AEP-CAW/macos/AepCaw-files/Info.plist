@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>ai.nla-aep.aep-caw</string>
+    <string>io.github.thepm001.aep-caw</string>
     <key>CFBundleName</key>
     <string>AepCaw</string>
     <key>CFBundleExecutable</key>

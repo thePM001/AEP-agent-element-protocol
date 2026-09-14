@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/seccomp"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
 	"github.com/stretchr/testify/require"
 )
 

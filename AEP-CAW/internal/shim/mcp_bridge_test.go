@@ -4,7 +4,7 @@ package shim
 import (
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/mcpinspect"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/mcpinspect"
 )
 
 func TestMCPBridge_ProcessToolsListResponse(t *testing.T) {

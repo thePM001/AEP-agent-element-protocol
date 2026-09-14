@@ -10,13 +10,13 @@ import (
 
 	"github.com/cilium/ebpf"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	"github.com/nla-aep/aep-caw-framework/internal/events"
-	"github.com/nla-aep/aep-caw-framework/internal/limits"
-	"github.com/nla-aep/aep-caw-framework/internal/metrics"
-	ebpftrace "github.com/nla-aep/aep-caw-framework/internal/netmonitor/ebpf"
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/limits"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/metrics"
+	ebpftrace "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/ebpf"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"github.com/google/uuid"
 )
 

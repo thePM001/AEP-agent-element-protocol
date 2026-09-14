@@ -5,7 +5,7 @@ package unix
 import (
 	"testing"
 
-	seccompkg "github.com/nla-aep/aep-caw-framework/internal/seccomp"
+	seccompkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
 	seccomp "github.com/seccomp/libseccomp-golang"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"

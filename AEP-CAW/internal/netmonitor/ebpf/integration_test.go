@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/limits"
-	"github.com/nla-aep/aep-caw-framework/internal/netmonitor/ebpf"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/limits"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/ebpf"
 )
 
 // Integration test: attach BPF to a temp cgroup, populate allowlist, attempt a denied connect via nc.

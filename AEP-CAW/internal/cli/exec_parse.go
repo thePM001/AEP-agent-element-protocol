@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 func parseExecInput(args []string, jsonStr string, timeoutFlag string, stream bool) (sessionID string, req types.ExecRequest, err error) {

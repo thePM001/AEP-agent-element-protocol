@@ -1,6 +1,6 @@
 package policy
 
-import "github.com/nla-aep/aep-caw-framework/internal/db/effects"
+import "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
 
 // EvaluateConnection applies connection-rule policy to a candidate connection.
 // Returns implicit deny if no rule matches.

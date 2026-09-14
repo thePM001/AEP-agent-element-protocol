@@ -1,7 +1,7 @@
 package gcpsm
 
 import (
-	secrets "github.com/nla-aep/aep-caw-framework/internal/proxy/secrets"
+	secrets "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets"
 )
 
 // Config configures the GCP Secret Manager provider.

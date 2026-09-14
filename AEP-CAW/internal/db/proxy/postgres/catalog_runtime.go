@@ -11,9 +11,9 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"golang.org/x/sync/singleflight"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/catalog"
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
-	"github.com/nla-aep/aep-caw-framework/internal/db/events"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/catalog"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/events"
 )
 
 type catalogRuntimeContext struct {

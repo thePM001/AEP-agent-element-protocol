@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"strings"
 
-	classify_pg "github.com/nla-aep/aep-caw-framework/internal/db/classify/postgres"
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
-	"github.com/nla-aep/aep-caw-framework/internal/db/events"
-	"github.com/nla-aep/aep-caw-framework/internal/db/policy"
+	classify_pg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/classify/postgres"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/events"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
 )
 
 // buildArgs collects the inputs to buildStatementEvent. Keeping them in a

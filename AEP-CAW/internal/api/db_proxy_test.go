@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/events"
-	dbpolicy "github.com/nla-aep/aep-caw-framework/internal/db/policy"
-	dbservice "github.com/nla-aep/aep-caw-framework/internal/db/service"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/events"
+	dbpolicy "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
+	dbservice "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/service"
 )
 
 type testDBSessionResolver map[int32]string

@@ -4,7 +4,7 @@
 name = "aep-policy-system-admit"
 version = "0.1.0"
 edition = "2021"
-description = "AEP28-ENV-056 AEP28-ENV-067. Load AEP-Policy-System GAP files as live Admit walls bound to wrap or prefix."
+description = "the earlier law change. Load AEP-Policy-System GAP files as live Admit walls bound to wrap or prefix."
 license = "UNLICENSED"
 publish = false
 

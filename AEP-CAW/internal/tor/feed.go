@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/ipset"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/ipset"
 )
 
 const maxOnionooSize = 200 * 1024 * 1024 // 200 MB; onionoo details is large

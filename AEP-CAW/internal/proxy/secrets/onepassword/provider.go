@@ -12,7 +12,7 @@ import (
 	"github.com/1Password/connect-sdk-go/connect"
 	opSDK "github.com/1Password/connect-sdk-go/onepassword"
 
-	secrets "github.com/nla-aep/aep-caw-framework/internal/proxy/secrets"
+	secrets "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets"
 )
 
 // opClient is the interface the provider uses for 1Password operations.

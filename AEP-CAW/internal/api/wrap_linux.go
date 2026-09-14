@@ -18,12 +18,12 @@ import (
 	"strings"
 	"time"
 
-	unixmon "github.com/nla-aep/aep-caw-framework/internal/netmonitor/unix"
-	"github.com/nla-aep/aep-caw-framework/internal/ptrace"
-	"github.com/nla-aep/aep-caw-framework/internal/session"
-	"github.com/nla-aep/aep-caw-framework/internal/signal"
-	"github.com/nla-aep/aep-caw-framework/internal/wraphandoff"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	unixmon "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/unix"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/ptrace"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/signal"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/wraphandoff"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"golang.org/x/sys/unix"
 )
 

@@ -1,6 +1,6 @@
 // AEP 2.75 - Default Step Activation Profile
 // Defines the 15-step evaluation chain with activation modes and preconditions.
-// AEP28-ENV-033: step 2 is gap_capability. Who-may-do-what is GAP dimension Conjunction.
+// Step 2 is gap_capability. Who-may-do-what is GAP dimension Conjunction.
 
 import { StepActivationMode, type StepActivationProfile } from "./types.js";
 

@@ -5,8 +5,8 @@ package api
 import (
 	"log/slog"
 
-	"github.com/nla-aep/aep-caw-framework/internal/platform/darwin"
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform/darwin"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 
 // compileDarwinSandboxProfile compiles a policy-driven SBPL profile and populates

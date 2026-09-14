@@ -3,8 +3,8 @@ package policyexplain
 import (
 	"strings"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/catalog"
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/catalog"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
 )
 
 const catalogSessionStateChangedReason = "session_state_changed"

@@ -4,7 +4,7 @@
 name = "aep-one-admit-id"
 version = "0.1.0"
 edition = "2021"
-description = "AEP28-ENV-049. Keep one Admit function and one id vocabulary. Drop extra_walls conversion from a second admit_collect_all."
+description = "Keep one Admit function and one id vocabulary. Drop extra_walls conversion from a second admit_collect_all."
 license = "UNLICENSED"
 publish = false
 

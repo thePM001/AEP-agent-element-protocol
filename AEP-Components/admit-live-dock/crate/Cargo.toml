@@ -4,7 +4,7 @@
 name = "aep-admit-live-dock"
 version = "0.1.0"
 edition = "2021"
-description = "AEP28-ENV-032. Fold product Admit wall crates into envelope_admit collect-all. AEP28-ENV-059 removed the CI wall inventory binary."
+description = "Fold product Admit wall crates into envelope_admit collect-all. The earlier law change removed the CI wall inventory binary."
 license = "UNLICENSED"
 publish = false
 

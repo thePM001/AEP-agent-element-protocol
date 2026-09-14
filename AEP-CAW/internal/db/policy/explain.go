@@ -1,6 +1,6 @@
 package policy
 
-import "github.com/nla-aep/aep-caw-framework/internal/db/effects"
+import "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
 
 type StatementExplanation struct {
 	Decision        Decision

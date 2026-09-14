@@ -1,4 +1,4 @@
-//! Signer and process-wide dock rate limits. AEP28-ENV-079.
+//! Signer and process-wide dock rate limits.
 
 use super::{deny_resp, dock_lock, DockFrameResponse, DockingRuntime};
 use aep_lattice_channel::DockingPort;

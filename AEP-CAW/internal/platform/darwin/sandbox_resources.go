@@ -9,7 +9,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/nla-aep/aep-caw-framework/internal/platform"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform"
 )
 
 // rlimitExecWrapper is the name of the wrapper binary for applying rlimits.

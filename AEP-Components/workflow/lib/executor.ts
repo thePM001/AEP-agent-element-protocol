@@ -143,7 +143,7 @@ export class WorkflowExecutor {
       }
 
       case "skip": {
-        // AEP28-ENV-033: skip does not mutate trust during evaluation.
+ // Skip does not mutate trust during evaluation.
 
         // Move to next phase
         const nextIdx = idx + 1;

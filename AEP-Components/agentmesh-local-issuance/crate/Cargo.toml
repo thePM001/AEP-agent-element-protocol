@@ -4,7 +4,7 @@
 name = "aep-agentmesh-local-issuance"
 version = "0.1.0"
 edition = "2021"
-description = "AEP28-ENV-062. AgentMesh docs must say local issuance. Do not sell zero-trust mesh attestation for a local cert."
+description = "AgentMesh docs must say local issuance. Do not sell zero-trust mesh attestation for a local cert."
 license = "UNLICENSED"
 publish = false
 

@@ -4,7 +4,6 @@ schema_id: gaplune.hvvcas.v1
 format: gaplune
 json: prohibited
 crate: aep-policy-system-admit
-ticket: AEP28-ENV-056 AEP28-ENV-067 GAP-285-P15
 note: Load AEP-Policy-System GAP files as live Admit walls. Bind to wrap or prefix. writing and security stay always-on. Compile rank-presence leftover closer and agent permission from the instruction object.
 
 component:

@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	secrets "github.com/nla-aep/aep-caw-framework/internal/proxy/secrets"
-	secretstest "github.com/nla-aep/aep-caw-framework/internal/proxy/secrets/secretstest"
+	secrets "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets"
+	secretstest "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets/secretstest"
 )
 
 func TestConfig_TypeName(t *testing.T) {

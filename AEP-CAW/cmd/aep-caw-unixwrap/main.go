@@ -20,10 +20,10 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/nla-aep/aep-caw-framework/internal/landlock"
-	unixmon "github.com/nla-aep/aep-caw-framework/internal/netmonitor/unix"
-	seccompkg "github.com/nla-aep/aep-caw-framework/internal/seccomp"
-	"github.com/nla-aep/aep-caw-framework/internal/signal"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/landlock"
+	unixmon "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/unix"
+	seccompkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/signal"
 	"golang.org/x/sys/unix"
 )
 

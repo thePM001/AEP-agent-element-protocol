@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 
 func (a *App) mergeEnvInjectForSession(ctx context.Context, sessionID string, pol *policy.Engine) map[string]string {

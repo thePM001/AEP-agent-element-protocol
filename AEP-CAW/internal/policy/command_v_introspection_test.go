@@ -3,7 +3,7 @@ package policy
 import (
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // Issue #377: `command -v NAME` must be allowed (introspection), not denied as

@@ -4,8 +4,7 @@ schema_id: gaplune.hvvcas.v1
 format: gaplune
 json: prohibited
 crate: aep-live-entry
-ticket: AEP28-ENV-036
-note: Durable HVVCAS is GAPLUNE for crate aep-live-entry on ticket AEP28-ENV-036 so a template target_id is not a skip and every opened frame still runs collect-all Admit then Apply.
+note: Durable HVVCAS is GAPLUNE for crate aep-live-entry on so a template target_id is not a skip and every opened frame still runs collect-all Admit then Apply.
 
 component:
   name: live_entry

@@ -272,7 +272,7 @@ const file_aepcaw_wtp_v1_ocsf_dns_activity_proto_rawDesc = "" +
 	"\x05_typeB\f\n" +
 	"\n" +
 	"_type_nameB\b\n" +
-	"\x06_classBFZDgithub.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1/ocsf;ocsfpbb\x06proto3"
+	"\x06_classBFZDgithub.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1/ocsf;ocsfpbb\x06proto3"
 
 var (
 	file_aepcaw_wtp_v1_ocsf_dns_activity_proto_rawDescOnce sync.Once

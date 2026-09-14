@@ -15,11 +15,11 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/nla-aep/aep-caw-framework/internal/envinject"
-	"github.com/nla-aep/aep-caw-framework/internal/wrapenv"
-	"github.com/nla-aep/aep-caw-framework/internal/wraphandoff"
-	"github.com/nla-aep/aep-caw-framework/internal/wrapperlog"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/envinject"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/wrapenv"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/wraphandoff"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/wrapperlog"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"golang.org/x/sys/unix"
 )
 
@@ -141,7 +141,7 @@ func platformSetupWrap(ctx context.Context, wrapResp types.WrapInitResponse, ses
 		}
 	}
 
-	// Fail-closed env filter before any socket resources (AEP28-ENV-026).
+	// Fail-closed env filter before any socket resources.
 	filtered, ferr := wrapenv.Filter(os.Environ(), wrapResp.EnvPolicy)
 	if ferr != nil {
 		return nil, fmt.Errorf("wrap env policy: %w", ferr)

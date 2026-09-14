@@ -1,6 +1,6 @@
 // Package wrapenv applies env_policy filtering to the inherited environment on
 // the client-spawned wrap path (shell adapter / kernel-install / aep-caw wrap),
-// the counterpart to server-side buildPolicyEnv. Issue #379. AEP28-ENV-026.
+// the counterpart to server-side buildPolicyEnv. Issue #379.
 package wrapenv
 
 import (
@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // ErrNilWire is returned when Filter is called with a nil env policy wire.
@@ -22,7 +22,7 @@ var buildEnv = policy.BuildEnv
 // Filter applies the wrapped command's env policy subtractively over the
 // inherited base environment.
 //
-// Fail-closed (AEP28-ENV-026):
+// Fail-closed :
 //   - A nil wire returns an empty env and ErrNilWire. Never the inherited base.
 //   - A BuildEnv error returns an empty env and that error. Never the unfiltered base.
 //

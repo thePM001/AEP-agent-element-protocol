@@ -12,10 +12,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 
-	classify_pg "github.com/nla-aep/aep-caw-framework/internal/db/classify/postgres"
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
-	"github.com/nla-aep/aep-caw-framework/internal/db/policy"
-	"github.com/nla-aep/aep-caw-framework/internal/db/proxy/postgres/statemachine"
+	classify_pg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/classify/postgres"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/proxy/postgres/statemachine"
 )
 
 var (

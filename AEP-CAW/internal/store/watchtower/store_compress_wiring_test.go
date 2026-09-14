@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	watchtower "github.com/nla-aep/aep-caw-framework/internal/store/watchtower"
-	wtpv1 "github.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1"
+	watchtower "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower"
+	wtpv1 "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1"
 )
 
 // TestOptions_Compression_WireThrough verifies that

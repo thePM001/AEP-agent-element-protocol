@@ -2,7 +2,7 @@
 
 package policy
 
-import "github.com/nla-aep/aep-caw-framework/internal/signal"
+import "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/signal"
 
 // compileSignalRules is a no-op on Windows (signal interception not supported).
 func compileSignalRules(rules []SignalRule) (*signal.Engine, error) {

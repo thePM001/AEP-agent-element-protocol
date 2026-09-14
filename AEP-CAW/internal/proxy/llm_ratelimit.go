@@ -1,8 +1,8 @@
 package proxy
 
 import (
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	"github.com/nla-aep/aep-caw-framework/pkg/ratelimit"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/ratelimit"
 )
 
 // LLMRateLimiter enforces RPM (requests per minute) and TPM (tokens per minute)

@@ -3,7 +3,7 @@ package policy
 import (
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 func TestCheckExecveMostSpecificAllowBeatsCatchAllDeny(t *testing.T) {

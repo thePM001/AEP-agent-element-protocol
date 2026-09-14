@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	"github.com/nla-aep/aep-caw-framework/internal/server"
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/compact"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/server"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower/compact"
 )
 
 // TestBuildWatchtowerStore_DisabledReturnsNil verifies that the disabled

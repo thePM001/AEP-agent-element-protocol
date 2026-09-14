@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/approvals"
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	"github.com/nla-aep/aep-caw-framework/internal/skillcheck"
-	"github.com/nla-aep/aep-caw-framework/internal/skillcheck/provider"
-	"github.com/nla-aep/aep-caw-framework/internal/store/composite"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/approvals"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/skillcheck"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/skillcheck/provider"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/composite"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // buildSkillcheckProviders constructs a ProviderEntry map from the config.

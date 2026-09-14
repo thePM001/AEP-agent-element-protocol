@@ -221,7 +221,7 @@ const file_aepcaw_wtp_v1_ocsf_file_activity_proto_rawDesc = "" +
 	"_operationB\x12\n" +
 	"\x10_policy_decisionB\x0e\n" +
 	"\f_policy_ruleB\x0f\n" +
-	"\r_soft_deletedBFZDgithub.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1/ocsf;ocsfpbb\x06proto3"
+	"\r_soft_deletedBFZDgithub.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1/ocsf;ocsfpbb\x06proto3"
 
 var (
 	file_aepcaw_wtp_v1_ocsf_file_activity_proto_rawDescOnce sync.Once

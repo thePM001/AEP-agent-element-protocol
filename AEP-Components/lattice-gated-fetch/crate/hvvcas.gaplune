@@ -4,7 +4,6 @@ schema_id: gaplune.hvvcas.v1
 format: gaplune
 json: prohibited
 crate: aep-lattice-gated-fetch
-ticket: AEP28-ENV-061
 note: After dock allow lattice-gated-fetch must not fall through to ordinary fetch. Dock returns bound http. Client consumes dock http.
 
 component:
@@ -59,7 +58,7 @@ component:
   name: run_gate
   domain: lattice
   component_type: service
-  intent: Run live AEP28-ENV-061 gate on docking.rs and lattice-gated-fetch twins
+ intent: Run live the earlier law change gate on docking.rs and lattice-gated-fetch twins
   input:
     name: src
     type: String

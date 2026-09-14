@@ -4,7 +4,7 @@
 name = "aep-base-node-pulse"
 version = "0.1.0"
 edition = "2021"
-description = "AEP28-ENV-065 AEP28-ENV-074. Base Node 1000 ms tic tac pulse with freeze temporal snapshot at seal. Queue cap 256 capsules and 262144 bytes. Overflow Deny. Drift 50 ms against freeze. Age 5000 ms. Wire sent_at freshness MAX_FRAME_AGE_SECS 300 and MAX_FRAME_FUTURE_SKEW_SECS 60. aep-dynaep is not a second pulse owner."
+description = "the earlier law change. Base Node 1000 ms tic tac pulse with freeze temporal snapshot at seal. Queue cap 256 capsules and 262144 bytes. Overflow Deny. Drift 50 ms against freeze. Age 5000 ms. Wire sent_at freshness MAX_FRAME_AGE_SECS 300 and MAX_FRAME_FUTURE_SKEW_SECS 60. aep-dynaep is not a second pulse owner."
 license = "UNLICENSED"
 publish = false
 

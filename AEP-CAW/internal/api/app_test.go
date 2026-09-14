@@ -3,8 +3,8 @@ package api
 import (
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	"github.com/nla-aep/aep-caw-framework/internal/tor"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/tor"
 )
 
 func TestApp_torGateway(t *testing.T) {

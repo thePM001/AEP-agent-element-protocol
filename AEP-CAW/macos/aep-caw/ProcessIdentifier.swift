@@ -202,7 +202,7 @@ final class ProcessIdentifier {
 /// Thread-safe cache for ProcessInfo lookups.
 private final class ProcessInfoCache {
     private var storage: [pid_t: ProcessInfo] = [:]
-    private let queue = DispatchQueue(label: "ai.nla-aep.aep-caw.processidentifier.cache", attributes: .concurrent)
+    private let queue = DispatchQueue(label: "io.github.thepm001.aep-caw.processidentifier.cache", attributes: .concurrent)
 
     func get(pid: pid_t) -> ProcessInfo? {
         return queue.sync {

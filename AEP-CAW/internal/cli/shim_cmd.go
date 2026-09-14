@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/nla-aep/aep-caw-framework/internal/shim"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/shim"
 	"github.com/spf13/cobra"
 )
 

@@ -1,6 +1,6 @@
 // @PAD: aep-dock-request-poison-cli-v1
 // @GCDE: gaplune-decode hmac-sha256:51b44641c50993fa411406a0562967e5c38f5420ba7f220c86e6066dc17990be
-// CLI: AEP28-ENV-048 dock request poisoned lock gate.
+// CLI: the earlier law change dock request poisoned lock gate.
 fn main() {
     match aep_dock_request_poison::run_gate() {
         Ok(_) => std::process::exit(0),

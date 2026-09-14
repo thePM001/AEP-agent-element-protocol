@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/nla-aep/aep-caw-framework/internal/netmonitor/ebpf"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/ebpf"
 )
 
 // Canary program used by probeEBPF. Exposed as package-level identifiers so

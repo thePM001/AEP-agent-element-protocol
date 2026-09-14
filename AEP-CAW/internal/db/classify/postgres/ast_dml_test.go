@@ -3,7 +3,7 @@ package postgres
 import (
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
 )
 
 // classifyOne is a thin test helper that runs the classifier and asserts a

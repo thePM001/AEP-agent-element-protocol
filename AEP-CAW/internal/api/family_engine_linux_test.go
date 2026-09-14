@@ -6,9 +6,9 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/capabilities"
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	seccompkg "github.com/nla-aep/aep-caw-framework/internal/seccomp"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/capabilities"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	seccompkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
 )
 
 func oneFamilySlice() []seccompkg.BlockedFamily {

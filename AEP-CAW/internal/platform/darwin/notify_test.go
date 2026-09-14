@@ -12,7 +12,7 @@ func TestNotifyPolicyUpdated(t *testing.T) {
 }
 
 func TestNotifyName(t *testing.T) {
-	if PolicyUpdatedNotification != "ai.nla-aep.aep-caw.policy-updated" {
+	if PolicyUpdatedNotification != "io.github.thepm001.aep-caw.policy-updated" {
 		t.Fatalf("unexpected notification name: %s", PolicyUpdatedNotification)
 	}
 }

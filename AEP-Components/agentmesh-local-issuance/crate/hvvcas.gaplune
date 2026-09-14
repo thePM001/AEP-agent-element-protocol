@@ -4,7 +4,6 @@ schema_id: gaplune.hvvcas.v1
 format: gaplune
 json: prohibited
 crate: aep-agentmesh-local-issuance
-ticket: AEP28-ENV-062
 note: AgentMesh docs must say local issuance. Do not sell zero-trust mesh attestation for a local cert.
 
 component:

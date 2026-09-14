@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
 )

@@ -2,7 +2,7 @@ package metrics
 
 import (
 	"context"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"net/http"
 	"net/http/httptest"
 	"strings"

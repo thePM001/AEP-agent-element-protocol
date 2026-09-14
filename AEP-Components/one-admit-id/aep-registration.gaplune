@@ -7,7 +7,6 @@ id: aep-one-admit-id
 version: 0.1.0
 kind: library
 path: AEP-Components/one-admit-id/
-ticket: AEP28-ENV-049
 requires: aep-envelope aep-live-entry aep-one-live-evaluation aep-dynaep
 capability: admit.one-admit-id
 note: Keep one Admit function and one id vocabulary. extra_walls is AdmitWall. Drop conversion from a second admit_collect_all.

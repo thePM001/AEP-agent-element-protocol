@@ -4,7 +4,7 @@
 // capabilities required by aep-caw sandbox features.
 package capabilities
 
-import "github.com/nla-aep/aep-caw-framework/internal/config"
+import "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 
 // CheckResult represents the result of a single capability check.
 type CheckResult struct {

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/netmonitor/pnacl"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/pnacl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

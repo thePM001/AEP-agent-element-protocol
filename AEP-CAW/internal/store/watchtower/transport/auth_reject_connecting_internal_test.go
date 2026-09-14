@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/metrics"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/metrics"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

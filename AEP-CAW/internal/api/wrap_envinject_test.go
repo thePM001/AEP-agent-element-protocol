@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // TestWrapInit_ResponseCarriesEnvInject is the regression guard for issue #374:

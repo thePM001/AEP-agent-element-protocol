@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 
 const (

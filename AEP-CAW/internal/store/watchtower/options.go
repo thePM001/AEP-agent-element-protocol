@@ -7,13 +7,13 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/audit"
-	"github.com/nla-aep/aep-caw-framework/internal/metrics"
-	"github.com/nla-aep/aep-caw-framework/internal/store/eventfilter"
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/chain"
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/compact"
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/transport"
-	wtpv1 "github.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/audit"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/metrics"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/eventfilter"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower/chain"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower/compact"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower/transport"
+	wtpv1 "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1"
 )
 
 // Options configures a watchtower Store.

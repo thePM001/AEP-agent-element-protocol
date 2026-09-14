@@ -5,8 +5,8 @@ package postgres
 import (
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/policy"
-	rootpolicy "github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
+	rootpolicy "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 
 // loadRuleSet decodes a YAML policy via the same path the supervisor uses.

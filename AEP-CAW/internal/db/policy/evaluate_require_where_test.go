@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
-	rootpolicy "github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
+	rootpolicy "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 
 func mutationStmt(group effects.Group, hasWhere bool) effects.ClassifiedStatement {

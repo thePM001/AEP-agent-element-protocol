@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/wal"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower/wal"
 )
 
 // TestSetAppendInjector_CleanFailureDoesNotLatch verifies the test-only

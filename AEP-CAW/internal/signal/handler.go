@@ -8,7 +8,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/events"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
 )
 
 // EventEmitter is an interface for emitting audit events.

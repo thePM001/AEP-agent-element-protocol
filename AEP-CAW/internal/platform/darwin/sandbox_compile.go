@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/nla-aep/aep-caw-framework/internal/platform/darwin/sbpl"
-	"github.com/nla-aep/aep-caw-framework/internal/platform/darwin/sandboxext"
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform/darwin/sbpl"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform/darwin/sandboxext"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 
 // SandboxConfig holds the compiled SBPL profile and extension tokens.

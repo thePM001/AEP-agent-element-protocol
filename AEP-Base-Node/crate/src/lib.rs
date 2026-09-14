@@ -2,7 +2,7 @@
 
 pub mod dock_keys;
 pub mod docking;
-// AEP28-ENV-079: dock_freshness, dock_pulse, dock_rate, dock_serve and dock_apply are docking facade modules.
+// dock_freshness, dock_pulse, dock_rate, dock_serve and dock_apply are docking facade modules.
 pub mod envelope_admit;
 pub mod error;
 pub mod correctwriting_en;
@@ -40,7 +40,7 @@ pub const COMPONENT_ID: &str = "aep-base-node";
 pub const CORRECTWRITING_EN_PRIORITY: u8 = 255;
 
 pub use error::{AdmitDeny, BaseNodeError};
-// The Base Node facades the one public kernel type set.
+// the Base Node facades the one public kernel type set.
 // Every name below is a re-export of the single definition site in aep-kernel-types.
 pub use aep_kernel_types::{
     AdmitResult, AdmitWall, AgentPermission, AgentPermissionLookup, ClosedWall, DenyReport,

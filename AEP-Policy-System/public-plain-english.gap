@@ -6,7 +6,7 @@ rules:
   - id: aep28-public-plain-english-reader
     description: Public AEP copy MUST make sense to a builder or user who does not know the kernel. First sentences say what changed in ordinary English. Ticket ids, file names and crate names are not the story.
   - id: aep28-public-no-ticket-dump
-    description: Public AEP copy MUST NOT lead with ticket ids (AEP28-ENV-025 and kin), test names, crate spray lists or file paths. Those belong in tickets and code review, not on X.
+ description: Public AEP copy MUST NOT lead with ticket ids (the earlier law change and kin), test names, crate spray lists or file paths. Those belong in tickets and code review, not on X.
   - id: aep28-public-no-slogan-cut
     description: Forbidden public slogans include honesty cut, crate spray, collect-all AND and unexplained wrapenv. Say the real event in words a stranger can follow.
   - id: aep28-public-define-or-drop

@@ -1,6 +1,6 @@
 syntax = "proto3";
 package aepcaw.wtp.v1.ocsf;
-option go_package = "github.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1/ocsf;ocsfpb";
+option go_package = "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1/ocsf;ocsfpb";
 import "aepcaw/wtp/v1/ocsf/common.proto";
 
 // FileSystemActivity (class_uid 1001). OCSF v1.8.0 subset.

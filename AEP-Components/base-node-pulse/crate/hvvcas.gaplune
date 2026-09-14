@@ -4,7 +4,6 @@ schema_id: gaplune.hvvcas.v1
 format: gaplune
 json: prohibited
 crate: aep-base-node-pulse
-ticket: AEP28-ENV-065
 note: Durable HVVCAS is GAPLUNE. Base Node 1000 ms tic tac pulse with freeze at seal. Overflow is Deny. Drift stays 50 ms against freeze. Wire sent_at freshness MAX_FRAME_AGE_SECS 300 and MAX_FRAME_FUTURE_SKEW_SECS 60 are compiled beside pulse hold. aep-dynaep is not a second pulse owner.
 
 component:

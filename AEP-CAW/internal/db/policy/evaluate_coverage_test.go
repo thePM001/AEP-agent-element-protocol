@@ -3,8 +3,8 @@ package policy
 import (
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
-	rootpolicy "github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
+	rootpolicy "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 
 // loadRules is a tiny helper used across evaluator tests.

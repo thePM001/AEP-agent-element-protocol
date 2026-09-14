@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 
-	"github.com/nla-aep/aep-caw-framework/internal/client"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
 	"github.com/spf13/cobra"
 )
 

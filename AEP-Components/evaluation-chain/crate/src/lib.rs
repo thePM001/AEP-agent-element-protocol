@@ -1,7 +1,7 @@
 //! AEP 2.8 evaluation chain as a meet of 15 walls.
 //! Live admit is collect-all AND. Ledger is a derived view. No skip.
 //! @GCDE: gaplune-decode hmac-sha256:06827ec2297b2ec9bca467d50b93f689790ce1832e3b65da038e8113b6beff8c
-//! AEP28-ENV-033: step 2 is gap_capability. Agent permission is GAP dimension Conjunction.
+//! Step 2 is gap_capability. Agent permission is GAP dimension Conjunction.
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;

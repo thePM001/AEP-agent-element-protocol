@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/audit"
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/chain"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/audit"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower/chain"
 )
 
 func testKey() []byte { return bytes.Repeat([]byte("a"), 32) }

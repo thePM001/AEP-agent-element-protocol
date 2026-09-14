@@ -4,7 +4,7 @@
 name = "aep-live-entry"
 version = "0.1.0"
 edition = "2021"
-description = "AEP28-ENV-036 Rust live entry with in-process aep_envelope admit, YAML load, structural apply and ID mint, while a template target still meets Admit."
+description = "the earlier law change Rust live entry with in-process aep_envelope admit, YAML load, structural apply and ID mint, while a template target still meets Admit."
 license = "UNLICENSED"
 publish = false
 

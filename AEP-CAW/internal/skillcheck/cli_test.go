@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/trash"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/trash"
 )
 
 func TestCLI_ScanReportsVerdict(t *testing.T) {

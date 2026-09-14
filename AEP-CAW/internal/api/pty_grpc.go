@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/nla-aep/aep-caw-framework/pkg/ptygrpc"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/ptygrpc"
 )
 
 type ptyGRPCServer struct {

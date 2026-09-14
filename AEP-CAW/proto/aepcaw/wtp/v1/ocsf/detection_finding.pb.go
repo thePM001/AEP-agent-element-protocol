@@ -293,7 +293,7 @@ const file_aepcaw_wtp_v1_ocsf_detection_finding_proto_rawDesc = "" +
 	"\x06_titleB\a\n" +
 	"\x05_descB\x0e\n" +
 	"\f_finding_uidB\b\n" +
-	"\x06_typesBFZDgithub.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1/ocsf;ocsfpbb\x06proto3"
+	"\x06_typesBFZDgithub.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1/ocsf;ocsfpbb\x06proto3"
 
 var (
 	file_aepcaw_wtp_v1_ocsf_detection_finding_proto_rawDescOnce sync.Once

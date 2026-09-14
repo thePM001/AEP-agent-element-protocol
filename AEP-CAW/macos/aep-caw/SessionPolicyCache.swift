@@ -1,8 +1,8 @@
 import Foundation
 
 /// Darwin notification name posted by Go server when policy changes.
-private let policyUpdatedNotification = "ai.nla-aep.aep-caw.policy-updated"
-private let sessionRegisteredNotification = "ai.nla-aep.aep-caw.session-registered"
+private let policyUpdatedNotification = "io.github.thepm001.aep-caw.policy-updated"
+private let sessionRegisteredNotification = "io.github.thepm001.aep-caw.session-registered"
 
 // SECTION: - Rule Types
 
@@ -83,7 +83,7 @@ class SessionPolicyCache {
     private var sessions: [String: SessionCache] = [:]  // sessionID -> cache
     private var pidToSession: [pid_t: String] = [:]      // fast PID -> sessionID lookup
     private var execDepths: [pid_t: Int] = [:]
-    private let queue = DispatchQueue(label: "ai.nla-aep.aep-caw.policycache",
+    private let queue = DispatchQueue(label: "io.github.thepm001.aep-caw.policycache",
                                        attributes: .concurrent)
 
     /// Lock-free flag for the hot path. Updated under barrier writes.
@@ -520,5 +520,5 @@ extension SessionCache {
 // SECTION: - Notification Name
 
 extension Notification.Name {
-    static let policyCacheNeedsRefresh = Notification.Name("ai.nla-aep.aep-caw.policyCacheNeedsRefresh")
+    static let policyCacheNeedsRefresh = Notification.Name("io.github.thepm001.aep-caw.policyCacheNeedsRefresh")
 }

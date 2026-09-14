@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/transport"
-	"github.com/nla-aep/aep-caw-framework/internal/store/watchtower/wal"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower/transport"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower/wal"
 )
 
 func mkRec(seq uint64, gen uint32, sz int) wal.Record {

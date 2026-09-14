@@ -3,9 +3,9 @@ package api
 import (
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 func newWrapEnvTestApp(t *testing.T, enabled bool, p *policy.Policy) *App {
@@ -56,7 +56,7 @@ func TestWrapEnvPolicyWire_PopulatedWhenEnabled(t *testing.T) {
 }
 
 // Fail-closed: flag on but no policy engine available => nil wire so the
-// client Denies wrap. AEP28-ENV-026.
+// client Denies wrap.
 func TestWrapEnvPolicyWire_NilWhenNoEngine(t *testing.T) {
 	cfg := &config.Config{}
 	cfg.Sandbox.WrapEnvPolicy.Enabled = true

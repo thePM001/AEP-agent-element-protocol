@@ -5,7 +5,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 
 // Evaluator applies policy rules to findings and produces a Verdict.

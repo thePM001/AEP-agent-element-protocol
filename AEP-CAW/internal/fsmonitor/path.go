@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/nla-aep/aep-caw-framework/internal/pathutil"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/pathutil"
 )
 
 // resolveRealPathUnderRoot maps a virtual path (under virtualRoot) to a real path under realRoot and verifies

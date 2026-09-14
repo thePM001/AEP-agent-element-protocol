@@ -4,7 +4,7 @@ package events
 import (
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
 )
 
 // DBEvent is the normalized audit event emitted per database statement, per §8.

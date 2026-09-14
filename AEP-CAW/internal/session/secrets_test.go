@@ -6,8 +6,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/proxy/credsub"
-	"github.com/nla-aep/aep-caw-framework/internal/proxy/secrets"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/credsub"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets"
 )
 
 // memoryProvider implements SecretFetcher for testing.

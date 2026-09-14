@@ -330,8 +330,8 @@ func TestExhaustiveness_DetectsStringConversionForm(t *testing.T) {
 			name: "qualified events.EventX in composite literal",
 			src: `package x
 import (
-	"github.com/nla-aep/aep-caw-framework/internal/events"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 var _ = types.Event{Type: string(events.EventCgroupMode)}
 `,
@@ -341,8 +341,8 @@ var _ = types.Event{Type: string(events.EventCgroupMode)}
 			name: "qualified events.EventX in ev.Type assignment",
 			src: `package x
 import (
-	"github.com/nla-aep/aep-caw-framework/internal/events"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 func f(ev *types.Event) { ev.Type = string(events.EventCgroupMode) }
 `,
@@ -377,7 +377,7 @@ var _ = Event{Type: string(EventCgroupMode)}
 // in `string(...)`) are NOT recorded by the conversion-form branch.
 func TestExhaustiveness_DoesNotOverDetect(t *testing.T) {
 	src := `package x
-import "github.com/nla-aep/aep-caw-framework/internal/events"
+import "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
 var _ = events.EventCgroupMode
 `
 	consts := loadEventConstants(t, repoRoot(t))

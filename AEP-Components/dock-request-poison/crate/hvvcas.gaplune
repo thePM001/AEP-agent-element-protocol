@@ -4,7 +4,6 @@ schema_id: gaplune.hvvcas.v1
 format: gaplune
 json: prohibited
 crate: aep-dock-request-poison
-ticket: AEP28-ENV-048
 note: Durable HVVCAS is GAPLUNE. Dock request path returns ok false on poisoned locks. Do not abort the process.
 
 component:

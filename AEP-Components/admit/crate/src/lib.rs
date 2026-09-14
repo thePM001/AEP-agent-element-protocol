@@ -8,7 +8,7 @@
 // Writing.gap rules compile into Admit walls on the same collect-all pass.
 // LatticeFilter and PolicyEvaluator sequential stacks are lab-only.
 
-// The public kernel type set lives in aep-kernel-types,
+// Ticket NOSHIP-286-P1: the public kernel type set lives in aep-kernel-types,
 // so this crate re-exports the one definition site of every public type.
 pub use aep_kernel_types::{
     AgentPermission, AgentPermissionLookup, AdmitResult, AdmitWall, Pulse, DENY_NO_PERMISSION,
@@ -28,7 +28,7 @@ pub mod admit_collect_all {
 
     /// AND of compiled walls. Collect every closed wall. Do not stop at the first close.
     pub fn admit_collect_all(walls: &[AdmitWall]) -> AdmitResult {
-        // one collect-all shape for every caller.
+        // Ticket NOSHIP-286-P1: one collect-all shape for every caller.
         AdmitResult::from_walls(walls)
     }
 }

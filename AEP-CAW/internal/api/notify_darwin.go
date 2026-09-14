@@ -2,7 +2,7 @@
 
 package api
 
-import "github.com/nla-aep/aep-caw-framework/internal/platform/darwin"
+import "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform/darwin"
 
 func notifySessionRegistered() {
 	darwin.NotifySessionRegistered()

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	classify_pg "github.com/nla-aep/aep-caw-framework/internal/db/classify/postgres"
+	classify_pg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/classify/postgres"
 )
 
 func TestBuildClassifierMap_PerDialect(t *testing.T) {

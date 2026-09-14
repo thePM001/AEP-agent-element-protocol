@@ -4,7 +4,7 @@
 name = "aep-dock-request-poison"
 version = "0.1.0"
 edition = "2021"
-description = "AEP28-ENV-048. Dock request path returns ok false on poisoned locks. Do not abort the process."
+description = "Dock request path returns ok false on poisoned locks. Do not abort the process."
 license = "UNLICENSED"
 publish = false
 

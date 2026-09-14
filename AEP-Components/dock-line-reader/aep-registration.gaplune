@@ -7,7 +7,6 @@ id: aep-dock-line-reader
 version: 0.1.0
 kind: library
 path: AEP-Components/dock-line-reader/
-ticket: AEP28-ENV-053
 requires: aep-base-node
 capability: lattice.dock-line-reader
 note: Dock line reader must not read one byte per await up to 4MiB. Use fill_buf and consume.

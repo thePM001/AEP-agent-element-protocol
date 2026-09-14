@@ -7,7 +7,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/nla-aep/aep-caw-framework/internal/skillcheck"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/skillcheck"
 )
 
 type localProvider struct{}

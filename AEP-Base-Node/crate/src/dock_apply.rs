@@ -1,4 +1,4 @@
-//! Collect-all Admit then Apply for held dock capsules. AEP28-ENV-079.
+//! Collect-all Admit then Apply for held dock capsules.
 
 use super::{
     attach_gateway_http_after_allow, deny_resp, deny_resp_report, dock_lock, lock_or_deny,

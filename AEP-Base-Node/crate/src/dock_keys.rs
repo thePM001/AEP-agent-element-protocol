@@ -405,7 +405,7 @@ impl AgentSignKeyStore {
     }
 
     /// Lookup a provisioned agent sign key. Does not mint.
-    /// AEP28-ENV-046: first-mint is not the identity issuer.
+    /// first-mint is not the identity issuer.
     pub fn get(&self, agent_id: &str) -> Result<SignKeypair, BaseNodeError> {
         Self::validate_agent_id(agent_id)?;
         if let Some(existing) = self.keys.get(agent_id) {
@@ -421,7 +421,7 @@ impl AgentSignKeyStore {
         Err(BaseNodeError::SignKeyMissing { agent_id: agent_id.to_string() })
     }
 
-    /// Operator provision: the only mint path for agent sign keys (AEP28-ENV-046).
+ /// Operator provision: the only mint path for agent sign keys.
     /// Idempotent when the agent already has a key unless AEP_AGENT_SIGN_KEYS_FORCE_REGEN=1.
     pub fn provision(&mut self, agent_id: &str) -> Result<SignKeypair, BaseNodeError> {
         Self::validate_agent_id(agent_id)?;
@@ -451,7 +451,7 @@ impl AgentSignKeyStore {
         Ok(sign)
     }
 
-    /// Lookup only. First-mint is not the identity issuer (AEP28-ENV-046).
+ /// Lookup only. First-mint is not the identity issuer.
     pub fn get_or_create(&mut self, agent_id: &str) -> Result<SignKeypair, BaseNodeError> {
         self.get(agent_id)
     }

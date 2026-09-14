@@ -7,7 +7,6 @@ id: aep-lattice-gated-fetch
 version: 0.1.0
 kind: library
 path: AEP-Components/lattice-gated-fetch/
-ticket: AEP28-ENV-061
 requires: aep-base-node
 capability: lattice.gated-fetch
 note: After dock allow lattice-gated-fetch must not fall through to ordinary fetch. Dock executes bound HTTP and returns http. Client consumes dock http.

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/nla-aep/aep-caw-framework/internal/platform/darwin"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform/darwin"
 	"golang.org/x/sys/unix"
 )
 

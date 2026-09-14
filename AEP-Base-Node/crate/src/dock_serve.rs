@@ -1,4 +1,4 @@
-//! Dock listeners plus drain. AEP28-ENV-079 facade split. AEP28-ENV-080 drain.
+//! Dock listeners plus drain. The earlier law change facade split. The earlier law change drain.
 
 use super::dock_pulse::{collect_applied, pulse_beat, DockingRuntime};
 use super::{

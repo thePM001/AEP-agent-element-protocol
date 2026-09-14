@@ -17,9 +17,9 @@ import (
 	"testing"
 	"time"
 
-	unixmon "github.com/nla-aep/aep-caw-framework/internal/netmonitor/unix"
-	seccompkg "github.com/nla-aep/aep-caw-framework/internal/seccomp"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	unixmon "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/unix"
+	seccompkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
 )

@@ -11,7 +11,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 )
 
 const maxFeedSize = 100 * 1024 * 1024 // 100 MB

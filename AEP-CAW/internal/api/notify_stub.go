@@ -6,9 +6,9 @@ import (
 	"context"
 	"os"
 
-	"github.com/nla-aep/aep-caw-framework/internal/approvals"
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/approvals"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 
 // createExecveHandler is a no-op on non-Linux platforms.

@@ -3,8 +3,8 @@ package netmonitor
 import (
 	"sync"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	"github.com/nla-aep/aep-caw-framework/pkg/ratelimit"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/ratelimit"
 )
 
 // DomainRateLimiter manages rate limits for network domains.

@@ -6,7 +6,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // ShutdownConfig configures graceful shutdown behavior.

@@ -3,7 +3,7 @@ package policy
 import (
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
 )
 
 // Each row mirrors one example from spec §10.2. Effects are constructed

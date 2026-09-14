@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/nla-aep/aep-caw-framework/internal/cli"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/cli"
 )
 
 var version = "dev"

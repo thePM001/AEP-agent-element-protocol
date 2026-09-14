@@ -10,7 +10,7 @@ See [LICENSE](../LICENSE) for Apache 2.0 terms.
 | Kind | `daemon` |
 | Binary | `aep-caw` |
 | Shell adapter | `aep-caw-shell-adapter` |
-| Go module | `github.com/nla-aep/aep-caw-framework` |
+| Go module | `github.com/thePM001/AEP-agent-element-protocol/AEP-CAW` |
 | Manifest | `AEP-Base-Node/registry/components/caw-framework.json` |
 | Config (runtime) | `{AEP_DATA}/caw-framework/server-config.yaml` |
 | Base Node block | `base-node.json` -> `caw_framework` |

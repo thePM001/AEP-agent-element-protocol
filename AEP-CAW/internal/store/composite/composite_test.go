@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/audit"
-	storepkg "github.com/nla-aep/aep-caw-framework/internal/store"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/audit"
+	storepkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 type fakeEventStore struct {

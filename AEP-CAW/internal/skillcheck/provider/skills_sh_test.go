@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/skillcheck"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/skillcheck"
 )
 
 func TestSkillsSh_NoOriginNoSignal(t *testing.T) {

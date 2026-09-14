@@ -5,7 +5,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 )
 
 // PolicyDecision represents the result of a policy evaluation.

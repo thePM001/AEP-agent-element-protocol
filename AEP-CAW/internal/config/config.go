@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/kerneldock"
-	seccompPkg "github.com/nla-aep/aep-caw-framework/internal/seccomp"
-	secretspkg "github.com/nla-aep/aep-caw-framework/pkg/secrets"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/kerneldock"
+	seccompPkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
+	secretspkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/secrets"
 	"gopkg.in/yaml.v3"
 )
 

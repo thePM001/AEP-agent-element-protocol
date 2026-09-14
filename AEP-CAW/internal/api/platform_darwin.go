@@ -3,4 +3,4 @@
 package api
 
 // Import Darwin platform to trigger init() registration
-import _ "github.com/nla-aep/aep-caw-framework/internal/platform/darwin"
+import _ "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform/darwin"

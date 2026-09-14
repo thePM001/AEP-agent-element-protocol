@@ -3,7 +3,7 @@ package report
 import (
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // Level specifies the detail level of a report.

@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/events"
-	"github.com/nla-aep/aep-caw-framework/internal/netmonitor/redirect"
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/redirect"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/ringbuf"
 )

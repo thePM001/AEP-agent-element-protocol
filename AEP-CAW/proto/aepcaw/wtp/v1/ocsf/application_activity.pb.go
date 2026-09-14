@@ -235,7 +235,7 @@ const file_aepcaw_wtp_v1_ocsf_application_activity_proto_rawDesc = "" +
 	"\x06_actorB\v\n" +
 	"\t_app_nameB\x0f\n" +
 	"\r_resource_uidB\x11\n" +
-	"\x0f_agent_internalBFZDgithub.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1/ocsf;ocsfpbb\x06proto3"
+	"\x0f_agent_internalBFZDgithub.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1/ocsf;ocsfpbb\x06proto3"
 
 var (
 	file_aepcaw_wtp_v1_ocsf_application_activity_proto_rawDescOnce sync.Once

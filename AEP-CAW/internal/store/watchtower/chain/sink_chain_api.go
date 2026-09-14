@@ -1,6 +1,6 @@
 package chain
 
-import "github.com/nla-aep/aep-caw-framework/internal/audit"
+import "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/audit"
 
 // SinkChainAPI is the test-substitutable surface that watchtower.Store
 // consumes. Production callers wire *WatchtowerSink (which wraps

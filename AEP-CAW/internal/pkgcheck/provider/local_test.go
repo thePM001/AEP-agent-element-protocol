@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/pkgcheck"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/pkgcheck"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -19,8 +19,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/nla-aep/aep-caw-framework/internal/audit/kms"
-	"github.com/nla-aep/aep-caw-framework/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/audit/kms"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 )
 
 // IntegrityMetadata contains the tamper-proof chain fields for an audit entry.

@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	secretspkg "github.com/nla-aep/aep-caw-framework/pkg/secrets"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	secretspkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/secrets"
 )
 
 func bootstrapSecretManager(cfg *config.Config) (*secretspkg.Manager, error) {

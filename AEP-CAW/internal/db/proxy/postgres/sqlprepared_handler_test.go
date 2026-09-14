@@ -11,7 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/events"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/events"
 )
 
 // preparePolicyYAML returns a policy that allows all reads but denies DELETE.

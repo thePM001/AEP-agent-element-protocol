@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package aepcaw.v1;
 
-option go_package = "github.com/nla-aep/aep-caw-framework/pkg/ptygrpc;ptygrpc";
+option go_package = "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/ptygrpc;ptygrpc";
 
 // AepCawPTY provides interactive PTY execution (stdin/stdout bytes, resize, signals).
 service AepCawPTY {

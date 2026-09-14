@@ -16,7 +16,7 @@ import (
 	approleauth "github.com/hashicorp/vault/api/auth/approle"
 	kubeauth "github.com/hashicorp/vault/api/auth/kubernetes"
 
-	secrets "github.com/nla-aep/aep-caw-framework/internal/proxy/secrets"
+	secrets "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets"
 )
 
 // Provider is a Vault-backed secrets.SecretProvider using KV v2.

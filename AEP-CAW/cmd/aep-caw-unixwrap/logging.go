@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/wrapperlog"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/wrapperlog"
 	"golang.org/x/sys/unix"
 )
 

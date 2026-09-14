@@ -16,12 +16,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/client"
-	"github.com/nla-aep/aep-caw-framework/internal/envinject"
-	"github.com/nla-aep/aep-caw-framework/internal/wrapenv"
-	"github.com/nla-aep/aep-caw-framework/internal/wraphandoff"
-	"github.com/nla-aep/aep-caw-framework/internal/wrapperlog"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/envinject"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/wrapenv"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/wraphandoff"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/wrapperlog"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"golang.org/x/sys/unix"
 )
 

@@ -12,7 +12,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/nla-aep/aep-caw-framework/internal/policy/signing"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy/signing"
 )
 
 // Manager selects and loads a policy once, based on config and env.

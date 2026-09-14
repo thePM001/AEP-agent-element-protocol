@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	dbservice "github.com/nla-aep/aep-caw-framework/internal/db/service"
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	dbservice "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/service"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 type captureAuditEmitter struct {

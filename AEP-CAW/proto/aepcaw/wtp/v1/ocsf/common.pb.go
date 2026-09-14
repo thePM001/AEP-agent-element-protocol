@@ -600,7 +600,7 @@ const file_aepcaw_wtp_v1_ocsf_common_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x15\n" +
 	"\x03uid\x18\x02 \x01(\rH\x01R\x03uid\x88\x01\x01B\a\n" +
 	"\x05_nameB\x06\n" +
-	"\x04_uidBFZDgithub.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1/ocsf;ocsfpbb\x06proto3"
+	"\x04_uidBFZDgithub.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1/ocsf;ocsfpbb\x06proto3"
 
 var (
 	file_aepcaw_wtp_v1_ocsf_common_proto_rawDescOnce sync.Once

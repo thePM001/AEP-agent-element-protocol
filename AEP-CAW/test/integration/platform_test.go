@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/platform"
-	_ "github.com/nla-aep/aep-caw-framework/internal/platform/linux"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform"
+	_ "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform/linux"
 )
 
 // TestPlatformCapabilities verifies platform detection and capability reporting.

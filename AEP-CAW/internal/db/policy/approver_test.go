@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
 )
 
 func TestNopApprover_Timeout_ReturnsFalseNoError(t *testing.T) {

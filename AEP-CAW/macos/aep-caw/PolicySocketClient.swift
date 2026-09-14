@@ -8,7 +8,7 @@ class PolicySocketClient {
     static let shared = PolicySocketClient()
 
     private let socketPath = "/tmp/aep-caw-policy.sock"
-    private let sendQueue = DispatchQueue(label: "ai.nla-aep.aep-caw.policysocket")
+    private let sendQueue = DispatchQueue(label: "io.github.thepm001.aep-caw.policysocket")
     private let timeout: TimeInterval = 5.0
 
     /// Whether we believe the server is reachable. Updated on connect/disconnect.
@@ -17,7 +17,7 @@ class PolicySocketClient {
 
     // SECTION: - Event Stream
     private var streamFD: Int32 = -1
-    private let streamQueue = DispatchQueue(label: "ai.nla-aep.aep-caw.eventstream")
+    private let streamQueue = DispatchQueue(label: "io.github.thepm001.aep-caw.eventstream")
     private var eventBuffer: [[String: Any]] = []
     private let maxBufferSize = 1024
     private var reconnectDelay: TimeInterval = 1.0

@@ -6,11 +6,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/events"
-	dbpolicy "github.com/nla-aep/aep-caw-framework/internal/db/policy"
-	"github.com/nla-aep/aep-caw-framework/internal/db/proxy/postgres"
-	dbservice "github.com/nla-aep/aep-caw-framework/internal/db/service"
-	rootpolicy "github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/events"
+	dbpolicy "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/proxy/postgres"
+	dbservice "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/service"
+	rootpolicy "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 
 // dbProxyService is the per-service input to startDBProxy. The api layer

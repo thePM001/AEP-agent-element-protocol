@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/events"
-	"github.com/nla-aep/aep-caw-framework/internal/mcpregistry"
-	"github.com/nla-aep/aep-caw-framework/internal/store/composite"
-	"github.com/nla-aep/aep-caw-framework/internal/store/sqlite"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/mcpregistry"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/composite"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/sqlite"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 func TestBridgeEventToRegistry_ToolSeen(t *testing.T) {

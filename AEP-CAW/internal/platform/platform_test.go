@@ -5,9 +5,9 @@ package platform_test
 import (
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/platform"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform"
 	// Import linux package to trigger init() registration
-	_ "github.com/nla-aep/aep-caw-framework/internal/platform/linux"
+	_ "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform/linux"
 )
 
 func TestNew_ReturnsLinuxOnLinux(t *testing.T) {

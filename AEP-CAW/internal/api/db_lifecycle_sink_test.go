@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	dbevents "github.com/nla-aep/aep-caw-framework/internal/db/events"
-	appevents "github.com/nla-aep/aep-caw-framework/internal/events"
-	"github.com/nla-aep/aep-caw-framework/internal/store/composite"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	dbevents "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/events"
+	appevents "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/composite"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 type failingEventStore struct {

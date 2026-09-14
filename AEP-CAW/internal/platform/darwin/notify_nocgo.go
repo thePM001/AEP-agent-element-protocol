@@ -2,12 +2,12 @@
 
 package darwin
 
-const PolicyUpdatedNotification = "ai.nla-aep.aep-caw.policy-updated"
+const PolicyUpdatedNotification = "io.github.thepm001.aep-caw.policy-updated"
 
 // NotifyPolicyUpdated is a no-op when CGO is disabled.
 func NotifyPolicyUpdated() {}
 
-const SessionRegisteredNotification = "ai.nla-aep.aep-caw.session-registered"
+const SessionRegisteredNotification = "io.github.thepm001.aep-caw.session-registered"
 
 // NotifySessionRegistered is a no-op when CGO is disabled.
 func NotifySessionRegistered() {}

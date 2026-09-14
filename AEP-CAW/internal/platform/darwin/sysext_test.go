@@ -11,8 +11,8 @@ func TestNewSysExtManager(t *testing.T) {
 	if m == nil {
 		t.Fatal("NewSysExtManager() returned nil")
 	}
-	if m.bundleID != "ai.nla-aep.aep-caw.SysExt" {
-		t.Errorf("bundleID = %q, want %q", m.bundleID, "ai.nla-aep.aep-caw.SysExt")
+	if m.bundleID != "io.github.thepm001.aep-caw.SysExt" {
+		t.Errorf("bundleID = %q, want %q", m.bundleID, "io.github.thepm001.aep-caw.SysExt")
 	}
 }
 
@@ -26,8 +26,8 @@ func TestSysExtManager_Status(t *testing.T) {
 	if status == nil {
 		t.Fatal("Status() returned nil status")
 	}
-	if status.BundleID != "ai.nla-aep.aep-caw.SysExt" {
-		t.Errorf("BundleID = %q, want %q", status.BundleID, "ai.nla-aep.aep-caw.SysExt")
+	if status.BundleID != "io.github.thepm001.aep-caw.SysExt" {
+		t.Errorf("BundleID = %q, want %q", status.BundleID, "io.github.thepm001.aep-caw.SysExt")
 	}
 }
 
@@ -35,7 +35,7 @@ func TestSysExtManager_Status_NeverReturnsError(t *testing.T) {
 	// The Status method should never return an error - errors go in status.Error field
 	m := &SysExtManager{
 		bundlePath: "",
-		bundleID:   "ai.nla-aep.aep-caw.SysExt",
+		bundleID:   "io.github.thepm001.aep-caw.SysExt",
 	}
 
 	status, err := m.Status()
@@ -50,7 +50,7 @@ func TestSysExtManager_Status_NeverReturnsError(t *testing.T) {
 func TestSysExtManager_Install_NoBundleError(t *testing.T) {
 	m := &SysExtManager{
 		bundlePath: "",
-		bundleID:   "ai.nla-aep.aep-caw.SysExt",
+		bundleID:   "io.github.thepm001.aep-caw.SysExt",
 	}
 
 	err := m.Install()
@@ -159,13 +159,13 @@ func TestContains(t *testing.T) {
 		},
 		{
 			name:   "real systemextensionsctl output with bundle ID",
-			s:      "1 extension(s)\n--- com.apple.system_extension.endpoint_security\nai.nla-aep.aep-caw.SysExt	team_id	activated enabled",
-			substr: "ai.nla-aep.aep-caw.SysExt",
+			s:      "1 extension(s)\n--- com.apple.system_extension.endpoint_security\nio.github.thepm001.aep-caw.SysExt	team_id	activated enabled",
+			substr: "io.github.thepm001.aep-caw.SysExt",
 			want:   true,
 		},
 		{
 			name:   "real systemextensionsctl output check running state",
-			s:      "ai.nla-aep.aep-caw.SysExt	team_id	activated enabled",
+			s:      "io.github.thepm001.aep-caw.SysExt	team_id	activated enabled",
 			substr: "activated enabled",
 			want:   true,
 		},
@@ -187,7 +187,7 @@ func TestSysExtStatus_JSONTags(t *testing.T) {
 		Installed:   true,
 		Running:     true,
 		Version:     "1.0.0",
-		BundleID:    "ai.nla-aep.aep-caw.SysExt",
+		BundleID:    "io.github.thepm001.aep-caw.SysExt",
 		ExtensionID: "ext-123",
 		Error:       "",
 	}
@@ -202,7 +202,7 @@ func TestSysExtStatus_JSONTags(t *testing.T) {
 	if status.Version != "1.0.0" {
 		t.Error("Version mismatch")
 	}
-	if status.BundleID != "ai.nla-aep.aep-caw.SysExt" {
+	if status.BundleID != "io.github.thepm001.aep-caw.SysExt" {
 		t.Error("BundleID mismatch")
 	}
 	if status.ExtensionID != "ext-123" {

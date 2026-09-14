@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/session"
-	"github.com/nla-aep/aep-caw-framework/internal/store/composite"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/composite"
 )
 
 func TestCreateSession_RequestTooLargeReturns413(t *testing.T) {

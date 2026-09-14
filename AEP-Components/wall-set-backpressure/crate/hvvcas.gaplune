@@ -4,7 +4,6 @@ schema_id: gaplune.hvvcas.v1
 format: gaplune
 json: prohibited
 crate: aep-wall-set-backpressure
-ticket: AEP28-ENV-070
 note: Durable HVVCAS is GAPLUNE. Dock Deny returns closed-wall ids and mechanical repair.
 
 component:

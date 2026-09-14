@@ -19,13 +19,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/nla-aep/aep-caw-framework/internal/config"
-	"github.com/nla-aep/aep-caw-framework/internal/landlock"
-	"github.com/nla-aep/aep-caw-framework/internal/limits"
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
-	seccomppkg "github.com/nla-aep/aep-caw-framework/internal/seccomp"
-	"github.com/nla-aep/aep-caw-framework/internal/session"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/landlock"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/limits"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
+	seccomppkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 var (
@@ -522,7 +522,7 @@ func (a *App) wrapInitCore(s *session.Session, sessionID string, req types.WrapI
 // wrapEnvPolicyWire resolves the env policy for the wrapped command and returns
 // it as a wire value for the client to filter the inherited environment.
 //
-// Fail-closed (AEP28-ENV-026): a nil wire makes the client Deny wrap.
+// Fail-closed : a nil wire makes the client Deny wrap.
 // When sandbox.wrap_env_policy.enabled is off, return an empty non-nil wire so
 // the client still applies default-secret-deny and wrap can proceed.
 // When no engine is available, return nil so the client Denies wrap.

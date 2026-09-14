@@ -1,16 +1,16 @@
 //! Live action_path admit for Base Node docks.
 //! @PAD: aep28-env-035-deny-before-apply-v1
 //! @GCDE: gaplune-decode hmac-sha256:46457904cdfc05cde59672f9e4882546ccd3815135b3464b1a962c5eff8ae626
-//! AEP28-ENV-025: fail-closed Admit on live dock. No skip for non-JSON or missing action_path.
-//! AEP28-ENV-031: Product live path is Rust LiveEntry. TypeScript processEvent is not a second product Admit.
-//! AEP28-ENV-034: missing lattice, unreadable lattice YAML and empty action_path on an empty lattice are Deny.
-//! AEP28-ENV-035: collect-all Deny for empty action_path runs before Apply. process_event must not mutate LiveEntry then return Event.
-//! AEP28-ENV-037: one Admit function. attach_live_walls then process_event. live_collect_all is not a second combinator.
-//! AEP28-ENV-042: empty lattice closes dag.membership and gap.agent_permission. Do not reopen AEP28-ENV-034.
-//! AEP28-ENV-066: unbound scene, channel, time and sequence close. dest_dock may bind from the opened frame docking port.
-//! AEP28-ENV-065: Admit collect-all then Apply runs on the Base Node pulse beat against the frozen seal snapshot.
-//! AEP28-ENV-044: aep-lattice-log Record must call admit_sealed_payload_on_live_dock before kernel INSERT.
-//! AEP28-ENV-076: every ClosedWall construction sets class. Writing walls stay on the Admit pass.
+//! Fail-closed Admit on live dock. No skip for non-JSON or missing action_path.
+//! Product live path is Rust LiveEntry. TypeScript processEvent is not a second product Admit.
+//! Missing lattice, unreadable lattice YAML and empty action_path on an empty lattice are Deny.
+//! Collect-all Deny for empty action_path runs before Apply. process_event must not mutate LiveEntry then return Event.
+//! One Admit function. attach_live_walls then process_event. live_collect_all is not a second combinator.
+//! Empty lattice closes dag.membership and gap.agent_permission. Do not reopen the earlier law change.
+//! Unbound scene, channel, time and sequence close. dest_dock may bind from the opened frame docking port.
+//! Admit collect-all then Apply runs on the Base Node pulse beat against the frozen seal snapshot.
+//! aep-lattice-log Record must call admit_sealed_payload_on_live_dock before kernel INSERT.
+//! Every ClosedWall construction sets class. Writing walls stay on the Admit pass.
 use aep_admit_live_dock::LiveDockContext;
 use aep_one_live_evaluation::attach_live_walls;
 use aep_live_entry::{Element, LiveEntry, ProcessOut};
@@ -24,7 +24,7 @@ pub fn load_live_entry(data_dir: &Path) -> LiveEntry {
     load_live_entry_from_paths(env_path.as_deref().map(Path::new), data_dir)
 }
 
-/// AEP28-ENV-034: a set env path that is missing or unreadable is Deny. Do not fall through to data_dir.
+/// A set env path that is missing or unreadable is Deny. Do not fall through to data_dir.
 pub fn load_live_entry_from_paths(env_yaml: Option<&Path>, data_dir: &Path) -> LiveEntry {
     if let Some(p) = env_yaml {
         return match LiveEntry::from_yaml_file(p) {
@@ -79,7 +79,7 @@ pub fn admit_sealed_payload_report(
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
-    // AEP28-ENV-035: empty action_path is collect-all Deny before Apply.
+ // Empty action_path is collect-all Deny before Apply.
     if action_path.is_empty() {
         return Err(DenyReport::from_error_and_closed(
             "Admit collect-all walls then Apply: missing action_path",

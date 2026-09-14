@@ -7,10 +7,10 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/effects"
-	"github.com/nla-aep/aep-caw-framework/internal/db/policy"
-	"github.com/nla-aep/aep-caw-framework/internal/db/proxy/postgres/preparedcache"
-	"github.com/nla-aep/aep-caw-framework/internal/db/proxy/postgres/statemachine"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/proxy/postgres/preparedcache"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/proxy/postgres/statemachine"
 )
 
 func TestSQLPrepared_Prepare_Allow_PopulatesCacheAndReturnsNotHandled(t *testing.T) {

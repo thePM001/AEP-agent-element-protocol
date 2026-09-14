@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	secrets "github.com/nla-aep/aep-caw-framework/internal/proxy/secrets"
+	secrets "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/secrets"
 )
 
 // MemoryProvider is an in-memory secrets.SecretProvider for use in

@@ -1,7 +1,7 @@
 package resolver
 
 import (
-	"github.com/nla-aep/aep-caw-framework/internal/pkgcheck"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/pkgcheck"
 )
 
 // Registry holds a set of resolvers and finds the appropriate one for a command.

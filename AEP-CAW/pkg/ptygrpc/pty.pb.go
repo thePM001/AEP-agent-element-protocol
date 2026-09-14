@@ -668,7 +668,7 @@ const file_aepcaw_v1_pty_proto_rawDesc = "" +
 	"\x05error\x18\x03 \x01(\v2\x17.aepcaw.v1.ExecPTYErrorH\x00R\x05errorB\x05\n" +
 	"\x03msg2T\n" +
 	"\tAepCawPTY\x12G\n" +
-	"\aExecPTY\x12\x1b.aepcaw.v1.ExecPTYClientMsg\x1a\x1b.aepcaw.v1.ExecPTYServerMsg(\x010\x01B:Z8github.com/nla-aep/aep-caw-framework/pkg/ptygrpc;ptygrpcb\x06proto3"
+	"\aExecPTY\x12\x1b.aepcaw.v1.ExecPTYClientMsg\x1a\x1b.aepcaw.v1.ExecPTYServerMsg(\x010\x01B:Z8github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/ptygrpc;ptygrpcb\x06proto3"
 
 var (
 	file_aepcaw_v1_pty_proto_rawDescOnce sync.Once

@@ -4,7 +4,7 @@
 name = "aep-one-live-evaluation"
 version = "0.1.0"
 edition = "2021"
-description = "AEP28-ENV-037. One live evaluation. One Admit function judges the opened frame."
+description = "One live evaluation. One Admit function judges the opened frame."
 license = "UNLICENSED"
 publish = false
 

@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/nla-aep/aep-caw-framework/internal/signal"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/signal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

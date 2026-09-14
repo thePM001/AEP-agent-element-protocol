@@ -3,7 +3,7 @@ package tor
 import (
 	"net"
 
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 
 // PolicyAdapter adapts *Policy to policy.TorChecker (policy→tor would be

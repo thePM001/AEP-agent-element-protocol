@@ -4,8 +4,8 @@ import (
 	"errors"
 	"reflect"
 
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
-	wtpv1 "github.com/nla-aep/aep-caw-framework/proto/aepcaw/wtp/v1"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
+	wtpv1 "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1"
 )
 
 // ErrInvalidMapper is returned when m is untyped nil or a typed-nil pointer

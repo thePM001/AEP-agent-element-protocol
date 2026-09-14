@@ -4,7 +4,7 @@
 name = "aep-named-surfaces"
 version = "0.1.0"
 edition = "2021"
-description = "AEP28-ENV-057. Named surfaces execute: CodeSandbox, transpilers and MCP backend transport."
+description = "Named surfaces execute: CodeSandbox, transpilers and MCP backend transport."
 license = "UNLICENSED"
 publish = false
 

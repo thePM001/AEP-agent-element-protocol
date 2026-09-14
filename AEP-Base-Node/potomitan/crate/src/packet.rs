@@ -1,5 +1,5 @@
 //! POTOMITAN mesh packet wire format (Yggdrasil-inspired switch payload).
-//! AEP28-ENV-055: this crate ships a mesh packet plane.
+//! This crate ships a mesh packet plane.
 
 use thiserror::Error;
 

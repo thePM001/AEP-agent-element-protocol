@@ -1,4 +1,4 @@
-//! Pulse queue enqueue and beat. AEP28-ENV-079.
+//! Pulse queue enqueue and beat.
 
 use super::dock_apply::apply_held_capsule;
 use super::dock_rate::{GLOBAL_RATE_LIMIT, SIGNER_RATE_LIMIT};

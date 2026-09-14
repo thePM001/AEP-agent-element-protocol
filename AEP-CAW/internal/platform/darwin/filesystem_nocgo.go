@@ -3,8 +3,8 @@
 package darwin
 
 import (
-	"github.com/nla-aep/aep-caw-framework/internal/platform"
-	"github.com/nla-aep/aep-caw-framework/internal/platform/fuse"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform/fuse"
 )
 
 // Mount delegates to the shared fuse package, which returns an error when CGO is disabled.

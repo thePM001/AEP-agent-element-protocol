@@ -10,8 +10,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/seccomp"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"golang.org/x/sys/unix"
 )
 

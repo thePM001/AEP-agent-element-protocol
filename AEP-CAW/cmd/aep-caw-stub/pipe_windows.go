@@ -8,7 +8,7 @@ import (
 	"time"
 
 	winio "github.com/Microsoft/go-winio"
-	"github.com/nla-aep/aep-caw-framework/internal/stub"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/stub"
 )
 
 func runWithPipe(pipeName string) int {

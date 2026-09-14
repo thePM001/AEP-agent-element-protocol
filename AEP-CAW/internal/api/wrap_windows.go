@@ -19,12 +19,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/policy"
-	"github.com/nla-aep/aep-caw-framework/internal/session"
-	"github.com/nla-aep/aep-caw-framework/pkg/types"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"github.com/google/uuid"
 
-	winplat "github.com/nla-aep/aep-caw-framework/internal/platform/windows"
+	winplat "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform/windows"
 )
 
 var (

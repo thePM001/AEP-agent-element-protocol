@@ -1,5 +1,5 @@
 //! Unix socket listeners for AEP 2.8 Base Node docking ports (Phase 4).
-//! AEP28-ENV-079 facade. Split modules: dock_freshness, dock_pulse, dock_rate, dock_serve, dock_apply.
+//! The earlier law change facade. Split modules: dock_freshness, dock_pulse, dock_rate, dock_serve, dock_apply.
 
 use aep_lattice_channel::{
     frame_digest, ContractRegistry, DockingPort, LatticeChannelFrame,
@@ -388,7 +388,7 @@ fn handle_frame(
         return deny_closed(None, detail, "writing:correctwriting_en", CLASS_WRITING);
     }
 
-    // AEP28-ENV-065: freeze and enqueue after digest replay. Admit collect-all then Apply runs on pulse_beat.
+    // Freeze and enqueue after digest replay. Admit collect-all then Apply runs on pulse_beat.
     let digest = frame_digest(frame);
     {
         let db = dock_lock!(&runtime.db, "db");

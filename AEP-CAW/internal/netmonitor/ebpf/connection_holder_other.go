@@ -7,7 +7,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/netmonitor/pnacl"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/pnacl"
 )
 
 // ConnectionHolder is not supported on non-Linux platforms.

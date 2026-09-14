@@ -5,7 +5,7 @@ package postgres
 import (
 	"context"
 
-	"github.com/nla-aep/aep-caw-framework/internal/db/policy"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
 )
 
 // evaluateConnection runs Plan 02's connection-rule evaluator with the

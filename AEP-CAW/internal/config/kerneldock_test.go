@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nla-aep/aep-caw-framework/internal/kerneldock"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/kerneldock"
 )
 
 func writeKernelDockConfig(t *testing.T, body string) string {

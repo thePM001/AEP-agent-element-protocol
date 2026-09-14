@@ -3,7 +3,7 @@
 // HVVCAS: compile_lattice_walls domain:policy type:library
 // Compile lattice-policy.rego deny_lattice into Admit walls.
 // Live action_path uses these walls. OPA evaluate is lab only.
-// AEP28-ENV-033: agent permission is GAP dimension Conjunction. No rank.
+// Agent permission is GAP dimension Conjunction. No rank.
 
 use super::compile_permission::{agent_has_permission, AgentPermission};
 use super::AdmitWall;

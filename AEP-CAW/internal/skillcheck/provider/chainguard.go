@@ -3,7 +3,7 @@ package provider
 import (
 	"context"
 
-	"github.com/nla-aep/aep-caw-framework/internal/skillcheck"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/skillcheck"
 )
 
 type chainguardStub struct{}

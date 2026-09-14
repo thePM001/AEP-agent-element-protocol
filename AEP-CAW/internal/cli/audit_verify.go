@@ -10,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/nla-aep/aep-caw-framework/internal/audit"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/audit"
 	"github.com/spf13/cobra"
 )
 

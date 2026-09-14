@@ -7,7 +7,6 @@ id: aep-graph-engine-admit-gate
 version: 0.1.0
 kind: library
 path: AEP-Components/graph-engine-admit-gate/
-ticket: AEP28-ENV-069
 requires: graph-engine
 capability: graph-engine.admit-gate
 note: Fail if engine.ts invokes nodeExecutor without admitGate. Default deny. Tick only after allow.

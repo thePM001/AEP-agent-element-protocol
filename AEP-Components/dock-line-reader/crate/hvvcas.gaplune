@@ -4,7 +4,6 @@ schema_id: gaplune.hvvcas.v1
 format: gaplune
 json: prohibited
 crate: aep-dock-line-reader
-ticket: AEP28-ENV-053
 note: Durable HVVCAS is GAPLUNE. Dock line reader must not read one byte per await up to 4MiB. Use fill_buf and consume.
 
 component:

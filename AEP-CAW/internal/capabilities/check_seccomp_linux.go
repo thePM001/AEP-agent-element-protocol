@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	unixmon "github.com/nla-aep/aep-caw-framework/internal/netmonitor/unix"
+	unixmon "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/unix"
 )
 
 // probeSeccompBasic checks whether the seccomp() syscall supports BPF filtering
