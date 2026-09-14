@@ -8,6 +8,6 @@ rules:
   - id: aep28-no-coding-completion-claim
     description: MUST NOT write a coding-completion claim. MUST NOT write that ticket close is not coding close.
   - id: aep28-crate-gates-are-acceptance
-    description: nla-policy-scan gate coding-completion and project-completion-bac MAY run as crate acceptance on the same product ticket. That is not a coding-completion claim.
+    description: the policy scan gate coding-completion and project-completion-bac MAY run as crate acceptance on the same product ticket. That is not a coding-completion claim.
   - id: aep28-ticket-close-is-coding-close-gate
-    description: Enforcement is nla-policy-scan deliver and gate aep-ticket-close-is-coding-close.
+    description: Enforcement is the policy scan deliver and gate aep-ticket-close-is-coding-close.

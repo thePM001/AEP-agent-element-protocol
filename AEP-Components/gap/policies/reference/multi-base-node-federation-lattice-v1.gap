@@ -27,11 +27,6 @@ metadata:
       action: federate
   wrap: federation
   action_path_prefix: federation
-  fscale:
-    required.0.alias: nla-policy-scan
-    required.0.id: FS.0.128.172
-    required.1.alias: nla-lattice-api-route
-    required.1.id: FS.0.128.22
   covenants:
     - "Cross-node IO MUST use lattice-channel.v1 not raw HTTP localhost bypass [hard]"
     - "Agentstream is optional; agentstream_topology applies only when deployed [hard]"

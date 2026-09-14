@@ -29,11 +29,6 @@ metadata:
       action: plan
   wrap: cca
   action_path_prefix: cca
-  fscale:
-    required.0.alias: nla-policy-scan
-    required.0.id: FS.0.128.172
-    required.1.alias: nla-lattice-api-route
-    required.1.id: FS.0.128.22
   aspect: procedural
 
 subprotocols:

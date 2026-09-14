@@ -8,6 +8,6 @@ rules:
   - id: aep28-no-not-a-product-hole-tickets
     description: MUST NOT file a ticket whose notes say it is not a product hole. If there is no product hole, there is no ticket.
   - id: aep28-bac-on-same-ticket
-    description: A product ticket MAY require nla-policy-scan gate coding-completion and project-completion-bac as acceptance on that same ticket. That is not a journal ticket.
+    description: A product ticket MAY require the policy scan gate coding-completion and project-completion-bac as acceptance on that same ticket. That is not a journal ticket.
   - id: aep28-no-journal-tickets-gate
-    description: Enforcement is nla-policy-scan gate aep-no-journal-tickets plus write-content on governed ticket files. Open or backlog journal-only tickets are Deny. Closed historical files may stay.
+    description: Enforcement is the policy scan gate aep-no-journal-tickets plus write-content on governed ticket files. Open or backlog journal-only tickets are Deny. Closed historical files may stay.

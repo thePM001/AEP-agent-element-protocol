@@ -10,4 +10,4 @@ rules:
   - id: aep28-closed-ticket-id-public-dump
     description: Operator reports MUST name the title. Public X posts MUST NOT dump ticket titles.
   - id: aep28-closed-ticket-id-gate
-    description: Enforcement is nla-policy-scan deliver and gate aep-closed-ticket-id-mandatory. Policy nla-server-aep-closed-ticket-id-mandatory.
+    description: Enforcement is the policy scan deliver and gate aep-closed-ticket-id-mandatory. Policy nla-server-aep-closed-ticket-id-mandatory.

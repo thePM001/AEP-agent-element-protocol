@@ -10,4 +10,4 @@ rules:
   - id: aep28-finished-ticket-id-coding-close
     description: Ticket close is coding close. The dedicated sentence is the close report naming.
   - id: aep28-finished-ticket-id-gate
-    description: Enforcement is nla-policy-scan deliver and gate aep-finished-ticket-id-mandatory. Policy nla-server-aep-finished-ticket-id-mandatory.
+    description: Enforcement is the policy scan deliver and gate aep-finished-ticket-id-mandatory. Policy nla-server-aep-finished-ticket-id-mandatory.

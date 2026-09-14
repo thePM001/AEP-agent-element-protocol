@@ -14,4 +14,4 @@ rules:
   - id: aep28-public-no-telegram-cadence
     description: Public AEP copy MUST read like a person talking to a person. Do not stack tiny verdict sentences. Three short punches in a row is Deny. Connect the thought. A competent engineer posting on X is the bar, not a status log.
   - id: aep28-public-gate
-    description: Enforcement is nla-policy-scan deliver plus gate aep-public-plain-english. A public post that fails is Deny. Rewrite until a stranger can read it and a person would actually post it.
+    description: Enforcement is the policy scan deliver plus gate aep-public-plain-english. A public post that fails is Deny. Rewrite until a stranger can read it and a person would actually post it.

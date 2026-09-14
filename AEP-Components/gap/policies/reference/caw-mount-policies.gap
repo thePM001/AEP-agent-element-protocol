@@ -28,11 +28,6 @@ metadata:
       action: write
   wrap: caw
   action_path_prefix: caw
-  fscale:
-    required.0.alias: nla-policy-scan
-    required.0.id: FS.0.128.172
-    required.1.alias: nla-lattice-api-route
-    required.1.id: FS.0.128.22
   aspect: objective
 
 subprotocols:

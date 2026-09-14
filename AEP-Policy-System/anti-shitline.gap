@@ -16,4 +16,4 @@ rules:
   - id: aep28-anti-shitline-not-telegram
     description: Stacked tiny verdict sentences stay under public-plain-english. This rule catches the opposite failure: one overloaded dump.
   - id: aep28-anti-shitline-gate
-    description: Enforcement is nla-policy-scan deliver plus gate aep-anti-shitline. Write DENY on miss.
+    description: Enforcement is the policy scan deliver plus gate aep-anti-shitline. Write DENY on miss.

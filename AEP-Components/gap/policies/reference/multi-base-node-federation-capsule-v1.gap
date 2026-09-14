@@ -28,11 +28,6 @@ metadata:
       action: federate
   wrap: federation
   action_path_prefix: federation
-  fscale:
-    required.0.alias: nla-policy-scan
-    required.0.id: FS.0.128.172
-    required.1.alias: nla-lattice-api-route
-    required.1.id: FS.0.128.22
   covenants:
     - "capsule_prefix MUST be multi-base-node-sync [hard]"
     - "gap_sync and federated_search MUST emit trail entries when audit enabled [hard]"
