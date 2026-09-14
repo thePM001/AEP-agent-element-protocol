@@ -1,5 +1,5 @@
 // crate: aep-isolation
-// Ticket NOSHIP-286-P1. The protocol crate graph carries a process isolation
+// The protocol crate graph carries a process isolation
 // package again. Process isolation shipped with CAW only, so this crate returns
 // the contract to the AEP 2.8.x protocol graph and proves it with a seal test.
 //
@@ -12,7 +12,7 @@ use aep_kernel_types::{seal_digest, ProcessSealed};
 use serde::{Deserialize, Serialize};
 
 pub const COMPONENT_ID: &str = "aep-isolation";
-pub const TICKET: &str = "NOSHIP-286-P1";
+pub const TICKET: &str = "AEP28-ENV-090";
 pub const ALGORITHM_SEALED: &str = "sha256";
 
 /// One process isolation specification. Every field is a mechanical limit,

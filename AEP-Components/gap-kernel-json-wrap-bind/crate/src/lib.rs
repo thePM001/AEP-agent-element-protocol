@@ -19,7 +19,7 @@ pub const README_CONTRACT: &str = "Live kernel policies may be JSON-encoded GAP 
 
 
 
-// Ticket NOSHIP-286-P1: the public kernel wall row is defined once in aep-kernel-types.
+// the public kernel wall row is defined once in aep-kernel-types.
 pub use aep_kernel_types::AdmitWall;
 
 pub fn open_into(id: &str, wall: &mut AdmitWall) {
