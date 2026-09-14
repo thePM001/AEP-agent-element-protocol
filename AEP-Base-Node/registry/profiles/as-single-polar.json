@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "profile_id": "as-single-polar",
-  "description": "Single-node default profile: one primary Base Node kernel with federation disabled.",
+  "description": "Single-node default profile on the AEP 2.8.6 release line: one primary Base Node kernel with federation disabled.",
   "deployment": {
     "topology": "as-single",
     "default_role": "primary",

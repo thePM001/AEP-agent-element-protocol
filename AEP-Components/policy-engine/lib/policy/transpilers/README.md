@@ -1,6 +1,6 @@
 # AEP Policy Transpilers
 
-Bidirectional transpilation between GAP, OPA Rego and Cedar policy formats.
+Bidirectional transpilation between GAP, OPA Rego and Cedar policy formats on the AEP 2.8.6 release line.
 
 ## Transpilers
 

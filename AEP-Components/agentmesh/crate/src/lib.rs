@@ -1,4 +1,4 @@
-//! AgentMesh provides local issuance identity for Lattice Channel transport in AEP 2.8.
+//! AgentMesh provides local issuance identity for Lattice Channel transport in AEP 2.8.6.
 //! Local X.509 issuance is not mesh attestation.
 
 pub mod tls;

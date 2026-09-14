@@ -1,6 +1,6 @@
 # AEP Multi-Agent Collaboration Primitives
 
-Role-based agent team coordination with GAP-native role and handoff declarations.
+Role-based agent team coordination with GAP-native role and handoff declarations on the AEP 2.8.6 release line.
 
 ## Patterns
 
