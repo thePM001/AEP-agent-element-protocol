@@ -18,3 +18,12 @@ CCA and the setup agent resolve component paths via `AEP-Base-Node/registry/cata
 ## Kernel pulse owner
 
 The kernel pulse (the 1000 ms wait after freeze-at-seal) is owned by Base Node at `AEP-Base-Node/` with constants in `AEP-Components/base-node-pulse/`. TypeScript dynAEP does not own it. `dynaep-config.yaml` has no `pulse_ms` key. Palette READMEs that do not mention the wait are not a second pulse owner. To change the wait in theory, rebuild Base Node after editing compiled `PULSE_MS`. Keep freeze-at-seal. Do not set kernel drift to the wait length. Keep age longer than the wait.
+
+
+## Kernel public type set
+
+`kernel-types/` owns the one public type set: `Envelope`, `AdmitResult`, `DenyReport`, `ClosedWall`, `Pulse`, the agent permission record and `ProcessSealed`. Every other crate re-exports those names, so each public type has exactly one definition site. The Base Node facades the same set.
+
+`isolation/` owns process isolation for the protocol crate graph. It seals one process against one isolation specification and refuses a second seal for the same process.
+
+The writing wall kernel module is `correctwriting_en`. Writing walls stay protocol law at priority 255 and they are not transport security.
