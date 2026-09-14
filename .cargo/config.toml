@@ -1,2 +1,4 @@
+# AEP 2.8.6 workspace build output directory.
+
 [build]
 target-dir = "rust/target"
