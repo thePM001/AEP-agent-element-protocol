@@ -6,7 +6,7 @@
  * Fail-closed publish: non-loopback bind requires COMPOSER_LITE_SETUP_TOKEN.
  */
 
-import { resolveComposerLitePort } from "./lib/nla-ports.mjs";
+import { resolveComposerLitePort } from "./lib/aep-ports.mjs";
 import { createComposerLiteServer } from "./lib/http-api.mjs";
 import { assertComposerLitePublishSafe } from "./lib/composer-lite-auth.mjs";
 

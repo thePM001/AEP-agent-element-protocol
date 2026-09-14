@@ -3,7 +3,7 @@
 /**
  * Lattice Memory intent knots: dual-backend storage.
  * - Canonical: Lattice Memory via aep-memory CLI (SQLite 3.46.0 bundled + sqlite-vec 0.1.9 vec0 + USearch 2.25.3)
- * - Optional: Agentstream mirror (NLA paid connector)
+ * - Optional: Agentstream mirror (paid connector)
  *
  * File ledger (intent-provenance.jsonl) remains source of truth; knots are searchable attractors.
  */

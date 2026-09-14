@@ -1,14 +1,14 @@
-/** NLA-style confirm dialog (no browser confirm()). */
+/** AEP style confirm dialog (no browser confirm()). */
 
 let instance = null;
 
 class LiteConfirm {
   constructor() {
-    this.root = document.getElementById("nla-confirm-dialog");
-    this.titleEl = document.getElementById("nla-confirm-title");
-    this.bodyEl = document.getElementById("nla-confirm-body");
-    this.okBtn = document.getElementById("nla-confirm-ok");
-    this.cancelBtn = document.getElementById("nla-confirm-cancel");
+    this.root = document.getElementById("aep-confirm-dialog");
+    this.titleEl = document.getElementById("aep-confirm-title");
+    this.bodyEl = document.getElementById("aep-confirm-body");
+    this.okBtn = document.getElementById("aep-confirm-ok");
+    this.cancelBtn = document.getElementById("aep-confirm-cancel");
     this._resolve = null;
     this._onKey = (e) => {
       if (e.key === "Escape") this._finish(false);

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Validate CCA GAP policies against the NLA gapc engine (schema + grammar).
+ * Validate CCA GAP policies against the AEP writing engine (schema + grammar).
  * No external LLM APIs. Policies live under AEP-Composer-Lite/policies/reference/.
- * Requires NLA_GAP_ENGINE_URL. Refuses when that variable is unset.
+ * Requires AEP_GAP_ENGINE_URL. Refuses when that variable is unset.
  */
 
 import { join, dirname } from "node:path";
@@ -21,7 +21,7 @@ if (health && (health.skipped || health.configured === false)) {
     JSON.stringify(
       {
         ok: false,
-        error: "NLA_GAP_ENGINE_URL is unset",
+        error: "AEP_GAP_ENGINE_URL is unset",
         reason: (health && health.reason) || "remote GAP engine is not called",
       },
       null,

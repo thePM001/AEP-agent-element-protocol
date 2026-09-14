@@ -45,7 +45,7 @@ services:
       AEP_SETUP_LLM_BASE_URL: "${AEP_SETUP_LLM_BASE_URL:-https://openrouter.ai/api/v1}"
       OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-}"
       UCB_GAP_ENGINE_URL: "${UCB_GAP_ENGINE_URL:-}"
-      NLA_GAP_ENGINE_URL: "${NLA_GAP_ENGINE_URL:-}"
+      AEP_GAP_ENGINE_URL: "${AEP_GAP_ENGINE_URL:-}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

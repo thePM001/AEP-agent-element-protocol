@@ -19,6 +19,6 @@ mod tests {
     fn node_channel_is_template_based() {
         assert_eq!(node_channel("primary"), "aep.node.primary");
         assert_eq!(node_channel("edge-replica"), "aep.node.edge-replica");
-        assert!(!node_channel("primary").contains("nla-"));
+        assert!(node_channel("primary").starts_with("aep.node."));
     }
 }

@@ -30,16 +30,16 @@ export const INSTALL_METHODS = [
 
 export const VALIDATION_ENGINE_MODES = [
   {
-    id: "nla-built",
-    label: "Acquire NLA-built AEP Validation Engine",
+    id: "aep-built",
+    label: "Acquire the AEP Validation Engine",
     advantages: [
       "Admit collect-all walls then Apply",
       "Conformance-certified against CC-01..CC-12 public tier checks",
       "Full scanner bundle and policy lattice integration out of the box",
-      "Operator support and upgrade path from NLA",
+      "Operator support and upgrade path from AEP",
       "Highest trust score defaults for dynAEP wire events",
     ],
-    note: "Contact NLA for acquisition. Dock via validation_engine per AEP-Docks/docs/DOCKING-PORTS.md.",
+    note: "Contact AEP for acquisition. Dock via validation_engine per AEP-Docks/docs/DOCKING-PORTS.md.",
   },
   {
     id: "build-own",
@@ -67,7 +67,7 @@ export const VALIDATION_ENGINE_MODES = [
       "Reduced policy depth on validation dock (dynAEP events only)",
       "Not suitable for production governance without adding an engine later",
     ],
-    note: "You can add an NLA-built or custom engine later without reinstalling Base Node.",
+    note: "You can add an AEP built or custom engine later without reinstalling Base Node.",
   },
 ];
 

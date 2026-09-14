@@ -24,13 +24,13 @@ const SRC = readFileSync(
 );
 
 describe("resolveGapEngineUrl", () => {
-  it("uses NLA_GAP_ENGINE_URL when set and strips a trailing slash", () => {
-    const url = resolveGapEngineUrl({ NLA_GAP_ENGINE_URL: "http://127.0.0.1:9999/" });
+  it("uses AEP_GAP_ENGINE_URL when set and strips a trailing slash", () => {
+    const url = resolveGapEngineUrl({ AEP_GAP_ENGINE_URL: "http://127.0.0.1:9999/" });
     assert.equal(url, "http://127.0.0.1:9999");
-    assert.equal(gapEngineConfigured({ NLA_GAP_ENGINE_URL: "http://127.0.0.1:9999/" }), true);
+    assert.equal(gapEngineConfigured({ AEP_GAP_ENGINE_URL: "http://127.0.0.1:9999/" }), true);
   });
 
-  it("ignores UCB_GAP_ENGINE_URL when NLA_GAP_ENGINE_URL is unset", () => {
+  it("ignores UCB_GAP_ENGINE_URL when AEP_GAP_ENGINE_URL is unset", () => {
     const url = resolveGapEngineUrl({
       UCB_GAP_ENGINE_URL: "http://127.0.0.1:8407",
     });
@@ -46,14 +46,14 @@ describe("resolveGapEngineUrl", () => {
     assert.equal(gapEngineConfigured({}), false);
   });
 
-  it("treats blank NLA_GAP_ENGINE_URL as unset", () => {
-    assert.equal(resolveGapEngineUrl({ NLA_GAP_ENGINE_URL: "   " }), null);
-    assert.equal(resolveGapEngineUrl({ NLA_GAP_ENGINE_URL: "" }), null);
+  it("treats blank AEP_GAP_ENGINE_URL as unset", () => {
+    assert.equal(resolveGapEngineUrl({ AEP_GAP_ENGINE_URL: "   " }), null);
+    assert.equal(resolveGapEngineUrl({ AEP_GAP_ENGINE_URL: "" }), null);
   });
 
-  it("prefers NLA_GAP_ENGINE_URL and still ignores UCB_GAP_ENGINE_URL", () => {
+  it("prefers AEP_GAP_ENGINE_URL and still ignores UCB_GAP_ENGINE_URL", () => {
     const url = resolveGapEngineUrl({
-      NLA_GAP_ENGINE_URL: "http://10.0.0.8:9",
+      AEP_GAP_ENGINE_URL: "http://10.0.0.8:9",
       UCB_GAP_ENGINE_URL: "http://127.0.0.1:8407",
     });
     assert.equal(url, "http://10.0.0.8:9");
@@ -70,7 +70,7 @@ describe("product source does not keep the UCB fallback", () => {
 });
 
 describe("gapEngineHealth and validateGapDocument", () => {
-  it("skips fetch when NLA_GAP_ENGINE_URL is unset", async () => {
+  it("skips fetch when AEP_GAP_ENGINE_URL is unset", async () => {
     let called = 0;
     const orig = globalThis.fetch;
     globalThis.fetch = async () => {
@@ -108,7 +108,7 @@ describe("gapEngineHealth and validateGapDocument", () => {
     }
   });
 
-  it("calls NLA_GAP_ENGINE_URL health when configured", async () => {
+  it("calls AEP_GAP_ENGINE_URL health when configured", async () => {
     const seen = [];
     const orig = globalThis.fetch;
     globalThis.fetch = async (url) => {
@@ -117,7 +117,7 @@ describe("gapEngineHealth and validateGapDocument", () => {
     };
     try {
       const health = await gapEngineHealth({
-        NLA_GAP_ENGINE_URL: "http://10.0.0.8:9",
+        AEP_GAP_ENGINE_URL: "http://10.0.0.8:9",
         UCB_GAP_ENGINE_URL: "http://127.0.0.1:8407",
       });
       assert.equal(seen.length, 1);
@@ -132,7 +132,7 @@ describe("gapEngineHealth and validateGapDocument", () => {
 });
 
 describe("validateCcaGapPolicies", () => {
-  it("refuses remote validate without NLA_GAP_ENGINE_URL and does not fetch", async () => {
+  it("refuses remote validate without AEP_GAP_ENGINE_URL and does not fetch", async () => {
     let called = 0;
     const orig = globalThis.fetch;
     globalThis.fetch = async () => {

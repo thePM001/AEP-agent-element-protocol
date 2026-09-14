@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Optional Agentstream mirror for intent knots (paid NLA connector).
+ * Optional Agentstream mirror for intent knots (paid connector).
  * Lattice Memory (sqlite-vec + USearch via aep-memory) remains the canonical open-source path.
  */
 

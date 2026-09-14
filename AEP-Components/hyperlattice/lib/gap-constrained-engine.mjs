@@ -2,7 +2,7 @@
 
 /**
  * CCA GAP policies for Composer Lite hyperlattice.
- * No external LLM. Optional remote schema validate uses NLA_GAP_ENGINE_URL only when set.
+ * No external LLM. Optional remote schema validate uses AEP_GAP_ENGINE_URL only when set.
  * When that variable is unset, health and validate skip the network and do not invent a URL.
  * Public UCB compile is local gap-manifest-v1 and is not this path.
  */
@@ -25,7 +25,7 @@ export const CCA_GAP_POLICY_FILES = [
 ];
 
 export const GAP_ENGINE_UNSET_REASON =
-  "NLA_GAP_ENGINE_URL is unset; remote GAP engine is not called";
+  "AEP_GAP_ENGINE_URL is unset; remote GAP engine is not called";
 
 function trimEngineUrl(raw) {
   if (typeof raw !== "string") return "";
@@ -38,8 +38,8 @@ function envValue(env, key) {
 }
 
 export function resolveGapEngineUrl(env = process.env) {
-  const nla = trimEngineUrl(envValue(env, "NLA_GAP_ENGINE_URL"));
-  if (nla) return nla;
+  const engineUrl = trimEngineUrl(envValue(env, "AEP_GAP_ENGINE_URL"));
+  if (engineUrl) return engineUrl;
   return null;
 }
 
@@ -160,7 +160,7 @@ export function ccaWritingConstraintsFromGap(policies = []) {
 }
 
 export function formatCcaGapPoliciesForPrompt(policies = []) {
-  const lines = ["CCA GAP policies (NLA gapc engine, schema-validated, no external LLM):"];
+  const lines = ["CCA GAP policies (AEP writing engine, schema-validated, no external LLM):"];
   for (const p of policies) {
     const addr =
       p.address && p.address.domain && p.address.id

@@ -252,7 +252,7 @@ export async function handleComposerLiteRequest(req, res) {
       wasm_composer: true,
       status: baseNode.status === "ok" ? "ok" : baseNode.status ?? "ok",
       version: "2.8.0",
-      port_policy: "NLA-84xx",
+      port_policy: "AEP-84xx",
       standalone: true,
       internal_agent_composer: false,
       base_node: baseNode,

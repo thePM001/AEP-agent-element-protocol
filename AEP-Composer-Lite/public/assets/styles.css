@@ -2727,7 +2727,7 @@ body.lite-settings-open .hl-action-bar {
 }
 
 /* Confirm dialog */
-.nla-confirm-dialog {
+.aep-confirm-dialog {
   position: fixed;
   inset: 0;
   z-index: 10060;
@@ -2739,9 +2739,9 @@ body.lite-settings-open .hl-action-bar {
   -webkit-backdrop-filter: blur(6px);
 }
 
-.nla-confirm-dialog[hidden] { display: none !important; }
+.aep-confirm-dialog[hidden] { display: none !important; }
 
-.nla-confirm-card {
+.aep-confirm-card {
   width: min(420px, calc(100vw - 32px));
   padding: 18px 20px;
   border-radius: 14px;
@@ -2750,7 +2750,7 @@ body.lite-settings-open .hl-action-bar {
   box-shadow: 0 20px 56px rgba(0, 0, 0, 0.7), 0 0 32px rgba(61, 232, 255, 0.08);
 }
 
-.nla-confirm-title {
+.aep-confirm-title {
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
@@ -2760,7 +2760,7 @@ body.lite-settings-open .hl-action-bar {
   margin-bottom: 10px;
 }
 
-.nla-confirm-body {
+.aep-confirm-body {
   margin: 0 0 16px;
   font-family: var(--font-ui);
   font-size: 13px;
@@ -2768,13 +2768,13 @@ body.lite-settings-open .hl-action-bar {
   color: var(--text);
 }
 
-.nla-confirm-actions {
+.aep-confirm-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
 }
 
-.nla-confirm-btn {
+.aep-confirm-btn {
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
@@ -2788,15 +2788,15 @@ body.lite-settings-open .hl-action-bar {
   color: var(--text);
 }
 
-.nla-confirm-btn.cancel:hover { border-color: rgba(61, 232, 255, 0.35); }
+.aep-confirm-btn.cancel:hover { border-color: rgba(61, 232, 255, 0.35); }
 
-.nla-confirm-btn.confirm {
+.aep-confirm-btn.confirm {
   border-color: rgba(61, 232, 255, 0.45);
   background: rgba(61, 232, 255, 0.12);
   color: var(--accent);
 }
 
-.nla-confirm-btn.confirm:hover { background: rgba(61, 232, 255, 0.2); }
+.aep-confirm-btn.confirm:hover { background: rgba(61, 232, 255, 0.2); }
 
 /* Shared glass panel (inventory, picker) */
 .lite-glass {

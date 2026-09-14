@@ -43,7 +43,7 @@ validation_engine.mode = "none"
 
 CCA plans may include `dock_validation` topology nodes for visualization. That does **not** mean a validation engine is installed or that CCA routes through the validation dock at runtime.
 
-Only when the operator explicitly chooses `nla-built`, `build-own` or `third-party` validation engine modes does a real validation engine dock onto the lattice.
+Only when the operator explicitly chooses `aep-built`, `build-own` or `third-party` validation engine modes does a real validation engine dock onto the lattice.
 
 ### 2. `writing.gap` is NOT an LRP
 
@@ -273,7 +273,7 @@ Graph nodes enable components when `data.component_id` or `data.registry_id` is 
 - Default validation engine: `{ id: "none" }`
 - Runs conformance runner when `conformance-runner` component is enabled
 
-Do not change executor to default validation engine to `nla-built` without explicit operator choice.
+Do not change executor to default validation engine to `aep-built` without explicit operator choice.
 
 ---
 
