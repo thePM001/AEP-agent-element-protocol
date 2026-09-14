@@ -1,4 +1,3 @@
-// @PAD: /root/dynAEP/benchmarks/bench-006-causal-ordering.ts
 // ===========================================================================
 // Benchmark: OPT-005 Causal Ordering Subtree Partitioning
 //

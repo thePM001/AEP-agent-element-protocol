@@ -1,5 +1,3 @@
-// @PAD: aep-unbound-field-close-cli-v1
-// @GCDE: gaplune-decode hmac-sha256:615cf338f18f3708585d0278d6bb15e18b1d30b83dfde8b3cdbe9c45cbdbe3a1
 // CLI: the earlier law change unbound field close gate.
 fn main() {
     match aep_unbound_field_close::run_gate() {

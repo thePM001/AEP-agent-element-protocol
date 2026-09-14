@@ -7,7 +7,6 @@
  *   token is required even for loopback peers (unless opt-in TRUST_LOOPBACK=1).
  * Publish safety: non-loopback bind without token refuses to start.
  *
- * @PAD: aep28-composer-lite-auth-fail-closed-v2
  */
 
 import { createHash, timingSafeEqual } from "node:crypto";

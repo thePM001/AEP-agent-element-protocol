@@ -3,8 +3,6 @@
  * Tasks requiring human approval are held until explicitly approved or rejected.
  * Part of AEP-Comm v2.75 - Universal Orchestration.
  */
-// @PAD: p0-v275-h1-hitl-unique-approval-id-v1
-// @GCDE: document_sha256=p0-v275-h1-approval-uuid
 
 import { randomUUID } from 'node:crypto';
 

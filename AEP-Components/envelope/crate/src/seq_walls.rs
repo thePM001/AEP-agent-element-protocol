@@ -1,5 +1,3 @@
-// @PAD: aep-envelope-seq-walls-v1
-// @GCDE: gaplune.policy.v1
 // Fold causal and forecast denies into envelope walls.
 // Wall_forecast uses live anomaly_score only. Cached snapshot score is not a wall verdict.
 use crate::EnvelopeAction;

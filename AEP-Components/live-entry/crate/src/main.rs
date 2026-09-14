@@ -1,5 +1,3 @@
-// @PAD: aep-live-entry-cli-v1
-// @GCDE: gaplune.policy.v1
 // CLI: the earlier law change live entry. YAML lattice plus event on stdin.
 use aep_live_entry::{LiveEntry, ProcessOut};
 use serde_json::Value;

@@ -1,5 +1,3 @@
-// @PAD: aep-dynaep-cli-v1
-// @GCDE: gaplune.policy.v1
 // CLI: standalone dynAEP. YAML lattice plus event on stdin.
 use aep_dynaep::{DynAep, ProcessOut};
 use serde_json::Value;

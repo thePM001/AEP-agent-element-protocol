@@ -1,5 +1,3 @@
-// @PAD: p0-v275-sec24-kill-switch-cap-v1
-// @GCDE: document_sha256=p0-v275-sec24-kill-trust-cap
 import type { SessionManager } from "./session-manager.js";
 import type { SessionReport } from "./session.js";
 import type { TrustManager } from "../../../internal-export-area/retired/trust-rings/lib/trust/manager.js";

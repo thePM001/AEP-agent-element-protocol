@@ -1,5 +1,3 @@
-// @PAD: aep-admit-writing-walls-cli-v1
-// @GCDE: gaplune.policy.v1
 // CLI: stdin prose compiled to Admit walls then collect-all with optional extra walls.
 
 use aep_admit::{admit_collect_all, compile_writing_walls, AdmitWall};

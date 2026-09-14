@@ -1,5 +1,3 @@
-# @PAD: aep28-env-053-dock-line-reader-v1
-# @GCDE: gaplune-decode hmac-sha256:c7a5bde171368ad75ecb4f65d65e64a03bb6687e937a073199a57e7ac0700016
 [package]
 name = "aep-dock-line-reader"
 version = "0.1.0"

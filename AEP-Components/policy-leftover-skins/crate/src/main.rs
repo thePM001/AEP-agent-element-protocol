@@ -1,5 +1,3 @@
-// @PAD: gap-285-p10-policy-leftover-skins-cli-v1
-// @GCDE: gaplune.policy.v1
 // GAP-285-P10 CLI. Print leftover files and collect-all GAP paths.
 
 use aep_policy_leftover_skins::{

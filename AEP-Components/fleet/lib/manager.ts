@@ -1,5 +1,3 @@
-// @PAD: p0-v275-h-sec3-fleet-pause-hourly-v1
-// @GCDE: document_sha256=p0-v275-sec3-h14-h15-fleet
 import type { AgentGateway } from "../gateway.js";
 import type {
   FleetPolicy,

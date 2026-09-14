@@ -10,7 +10,7 @@ rules:
   - id: aep28-anti-shitline-heuristic
     description: Match by exact normalized seed, by identifier-set Jaccard against the example corpus and by an independent fingerprint so a similar dump fails before it is added as an example.
   - id: aep28-anti-shitline-corpus
-    description: Additional examples are added gradually to anti-shitline-examples.gaplune. Seed specimens stay in the corpus and in scanner tests. Do not paste a forbidden specimen into operator-facing prose.
+    description: Additional examples are added gradually to the reference corpus. Seed specimens stay in the corpus and in scanner tests. Do not paste a forbidden specimen into operator-facing prose.
   - id: aep28-anti-shitline-impl-spray
     description: Repeating the same internal name, dumping source file paths or reciting a spec in operator-facing prose is Deny. A ticket locator and one short product-hole sentence stay allowed.
   - id: aep28-anti-shitline-not-telegram

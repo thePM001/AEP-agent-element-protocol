@@ -1,5 +1,3 @@
-// @PAD: p0-v275-h34-h35-rollback-safe-v1
-// @GCDE: document_sha256=p0-v275-h34-h35-rollback
 import { createHash } from "node:crypto";
 import type { CompensationPlan, RollbackResult } from "./types.js";
 import type { EvidenceLedger } from "../ledger/ledger.js";

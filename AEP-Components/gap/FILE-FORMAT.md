@@ -1,5 +1,3 @@
-@PAD: gap-285-p9-file-format-v2
-@GCDE: gaplune.policy.v1
 
 # GAP file format for AEP 2.8.6 collect-all Admit
 

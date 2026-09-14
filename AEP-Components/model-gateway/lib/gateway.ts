@@ -1,5 +1,3 @@
-// @PAD: p0-v275-h24-h25-h26-model-gateway-v1
-// @GCDE: document_sha256=p0-v275-h24-h26-gateway
 // AEP 2.75 - Governed Model Gateway
 // Wraps every LLM call with the full AEP evaluation chain:
 // input scanning, prompt optimisation, model dispatch, output scanning,

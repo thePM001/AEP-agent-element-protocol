@@ -1,5 +1,3 @@
-# @PAD: aep28-env-049-one-admit-id-v1
-# @GCDE: gaplune-decode hmac-sha256:a17097a41a00e185a9e75595aac4c8fbfc2f7cae1cbdc548bf35daf4f82990d9
 [package]
 name = "aep-one-admit-id"
 version = "0.1.0"

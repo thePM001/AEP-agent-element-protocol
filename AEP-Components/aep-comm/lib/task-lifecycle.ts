@@ -1,6 +1,3 @@
-// @PAD: p0-v275-h2-prune-terminal-only-v1
-// @GCDE: document_sha256=p0-v275-h2-h54-lifecycle
-// @PAD: p0-v275-h54-task-history-v1
 /**
  * Task Lifecycle - Google A2A-compatible task management.
  * Extends AEP-Comm DelegateResolver with formal task states,

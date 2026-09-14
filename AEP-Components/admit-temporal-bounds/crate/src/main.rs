@@ -1,5 +1,3 @@
-// @PAD: aep-admit-temporal-bounds-cli-v1
-// @GCDE: gaplune-decode hmac-sha256:b478d503a6842ab07413e7268f7c2ef74fb5f5e348059a3dcfd911e126da8cd9
 // stdin temporal records compiled to Admit walls then collect-all. Soft warn stays warn.
 
 use aep_admit_temporal_bounds::{

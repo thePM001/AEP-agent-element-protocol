@@ -1,4 +1,3 @@
-// @PAD: /root/dynAEP/observers/poll/index.ts
 // =============================================================================
 // observers/poll/index.ts
 // Poll-based observer adapter.

@@ -1,4 +1,3 @@
-// @PAD: /root/dynAEP/benchmarks/bench-005-scanner-throughput.ts
 // ===========================================================================
 // Benchmark: OPT-003 Content Scanner Multi-Pattern Automaton
 //

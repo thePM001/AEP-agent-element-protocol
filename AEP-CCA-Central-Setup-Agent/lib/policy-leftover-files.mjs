@@ -1,5 +1,3 @@
-// @PAD: gap-285-p10-policy-leftover-files-v1
-// @GCDE: gaplune.policy.v1
 // Leftover yaml and rego files sit beside live GAP reference docs and are not live Admit skins.
 
 export const LEFTOVER_LIVE_ADMIT = false;

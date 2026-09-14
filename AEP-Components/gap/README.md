@@ -304,7 +304,7 @@ Migrate incrementally because each rung adds governance without rewriting existi
 
 ## Repository files
 
-This OSS snapshot does not include `GAP v1 spec sheet.md` or `BIOSECURITY.md` because those files live in the GAPLUNE tree and are not copied here.
+This OSS snapshot does not include `GAP v1 spec sheet.md` or `BIOSECURITY.md` because those files are held outside this snapshot and are not copied here.
 
 - `README.md` is this file. It teaches live evaluation plus vendor compile notes.
 - `FILE-FORMAT.md` holds file format notes. Keep `.gap` as GAP source. Collect-all Admit collects by capsule hash. Live hash bundle mode is sha256-structure. Presence of trust_ring is Deny. Who-may is agent_permission.

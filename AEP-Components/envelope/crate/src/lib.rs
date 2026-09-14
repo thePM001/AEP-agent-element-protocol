@@ -1,7 +1,5 @@
 //! AEP 2.8 Envelope Admit: order-independent wall meet.
 //! Evaluation is pure. Apply mutates snapshot state after Admit.
-//! @PAD: gaplune-pad-transform encode
-//! @GCDE: gaplune-decode hmac-sha256:9f7de97867e86cc6d506eb08b203375fb20d7ca308541da6a01700a70ff1ce53
 //! EnvelopeAction has no rank field. Agent permission is agent_permission.
 //! Empty lattice closes dag.membership and gap.agent_permission. Do not reopen the earlier law change.
 //! Unbound scene, channel, time and sequence close. dest_dock may bind from the opened frame docking port. Missing scene_id, timestamps or sequence_number is Deny. Do not reopen the earlier law change or the earlier law change.

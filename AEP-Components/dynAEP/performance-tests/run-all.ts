@@ -1,4 +1,3 @@
-// @PAD: /root/dynAEP/performance-tests/run-all.ts
 // ===========================================================================
 // run-all.ts - Consolidated Performance Test Runner
 // Runs all benchmarks in sequence, outputs consolidated results.

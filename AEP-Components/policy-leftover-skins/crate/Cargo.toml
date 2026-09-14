@@ -1,5 +1,3 @@
-# @PAD: gap-285-p10-policy-leftover-skins-v1
-# @GCDE: gaplune.policy.v1
 [package]
 name = "aep-policy-leftover-skins"
 version = "0.1.0"

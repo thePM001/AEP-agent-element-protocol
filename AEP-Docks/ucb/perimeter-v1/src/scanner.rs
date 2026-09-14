@@ -1,5 +1,3 @@
-//! @PAD: gaplune-creation-pad emit ( zero-LLM )
-//! @GCDE: gaplune.policy.v1
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ScannerId {

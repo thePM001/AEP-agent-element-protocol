@@ -1,5 +1,3 @@
-// @PAD: p0-v275-h27-h28-policy-evaluator-v1
-// @GCDE: document_sha256=p0-v275-h27-h28-evaluator
 import { randomUUID, createHash, verify as cryptoVerify, createPublicKey } from "node:crypto";
 import type {
   Policy,

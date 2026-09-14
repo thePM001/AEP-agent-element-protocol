@@ -1,5 +1,3 @@
-// @PAD: p0-v275-c4-proof-bundle-fail-closed-v1
-// @GCDE: document_sha256=p0-v275-c4-no-hex-soft-sig
 import { createHash, verify } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { ProofBundle, BundleVerification } from "./types.js";

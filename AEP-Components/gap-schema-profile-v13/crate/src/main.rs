@@ -1,4 +1,3 @@
-// @PAD: gap-285-p1-schema-profile-v13-cli
 // GAP-285-P1 CLI. source= then agent_id= action= wrap= action_path=. Collect-all live Admit.
 
 use aep_gap_schema_profile_v13::{
@@ -37,7 +36,7 @@ fn main() {
             continue;
         }
     }
-    // one AdmitResult constructor for every caller.
+    // Ticket NOSHIP-286-P1: one AdmitResult constructor for every caller.
     let mut result = AdmitResult::new(Vec::new(), Vec::new());
     let mut err = String::new();
     live_admit_gap_profile(&source, &req, &mut result, &mut err);

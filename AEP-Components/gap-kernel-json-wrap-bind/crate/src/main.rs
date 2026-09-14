@@ -1,5 +1,3 @@
-// @PAD: gap-285-p5-kernel-json-wrap-bind-cli
-// @GCDE: gaplune.policy.v1
 // GAP-285-P5 CLI. source= then wrap= action_path=.
 
 use aep_gap_kernel_json_wrap_bind::{live_admit_json_kernel, AdmitResult, BindRequest};

@@ -1,5 +1,3 @@
-// @PAD: aep-ucb-public-contract-2.8.5
-// @GCDE: gaplune-decode hmac-sha256:ab54811d1526a0253fdd14253ff4ed74c94aafc36362f2c29fc94a24eef11c06
 //! Per-agent UCB keys. Operator key is UCB_API_KEY.
 
 use aep_ucb_perimeter_v1::{AgentKey, AuthError, AuthIdentity, AuthRegistry, Scope};

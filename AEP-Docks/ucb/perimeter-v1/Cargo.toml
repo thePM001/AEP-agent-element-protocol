@@ -1,5 +1,3 @@
-# @PAD: gaplune-creation-pad emit ( zero-LLM )
-# @GCDE: gaplune.policy.v1
 [package]
 name = "aep-ucb-perimeter-v1"
 description = "AEP 2.8.6 UCB perimeter-v1 scanner-backed predicates per-agent keys signed manifests and hash-chained journal"

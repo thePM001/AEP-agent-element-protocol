@@ -1,5 +1,3 @@
-// @PAD: p0-v275-h4-h5-h6-aepassist-xss-path-v1
-// @GCDE: document_sha256=p0-v275-aepassist-sanitize
 // /aepassist interactive assistant
 // Invoked via /aepassist in Claude Code, Cursor or any MCP-connected agent
 

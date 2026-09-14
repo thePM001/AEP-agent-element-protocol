@@ -1,4 +1,3 @@
-// @PAD: /root/dynAEP/benchmarks/bench-009-timesfm-decoupling.ts
 // ===========================================================================
 // Benchmark: OPT-001 - TimesFM Async Sidecar Decoupling
 // Measures per-event latency with forecast enabled (async cache) vs disabled.

@@ -1,4 +1,3 @@
-// @PAD: /root/dynAEP/observers/sse/index.ts
 // =============================================================================
 // observers/sse/index.ts
 // SSE (Server-Sent Events) consumer adapter.

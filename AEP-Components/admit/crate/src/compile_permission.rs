@@ -1,11 +1,9 @@
-// @PAD: gaplune-creation-pad emit ( zero-LLM )
-// @GCDE: gaplune-decode hmac-sha256:cd31580fdc8a4eb41bc9a8890eee65b76510f26c9387358adf4e98ff2ccdb7d4
 // HVVCAS: compile_agent_permission_wall domain:admit type:library
 // AEP 2.8.5: agent permission is agent id plus action. No rank. No score.
 
 use super::{admit_collect_all, AdmitResult, AdmitWall};
 
-// the agent permission public type set is defined once in
+// Ticket NOSHIP-286-P1: the agent permission public type set is defined once in
 // aep-kernel-types and re-exported here.
 pub use aep_kernel_types::{
     AgentPermission, AgentPermissionLookup, DENY_NO_PERMISSION, WALL_AGENT_PERMISSION,

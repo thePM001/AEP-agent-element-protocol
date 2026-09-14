@@ -1,5 +1,3 @@
-// @PAD: p0-v275-c3-quantum-mldsa65-real-v1
-// @GCDE: document_sha256=p0-v275-c3-real-ml-dsa-65
 // Real ML-DSA-65 (FIPS 204) via aep-lattice-crypto / aep-ml-dsa CLI (pqcrypto-mldsa).
 // No HMAC sim. No AEP_ALLOW_QUANTUM_SIM gate. Public-key-only verify is supported.
 

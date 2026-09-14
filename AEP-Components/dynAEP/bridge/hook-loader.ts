@@ -1,4 +1,3 @@
-// @PAD: AEP-Components/dynAEP/bridge/hook-loader.ts
 // =============================================================================
 // Built-in validation hook registration for dynAEP Action Lattice.
 // Resolves config aliases (e.g. "mle" -> "mle-validator") and registers

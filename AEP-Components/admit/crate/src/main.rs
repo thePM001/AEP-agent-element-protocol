@@ -1,5 +1,3 @@
-// @PAD: aep-admit-cli-v1
-// @GCDE: gaplune.policy.v1
 // CLI: one wall per line id=<id> closed=<true|false> reason=<text>
 // writing_text=<prose> compiles writing.gap into Admit walls on this pass.
 // agent_id= action= permission=agent:action compile the GAP agent permission wall on this pass.

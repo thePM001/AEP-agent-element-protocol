@@ -1,5 +1,3 @@
-// @PAD: p0-v275-h21-tsa-no-silent-offline-v1
-// @GCDE: document_sha256=p0-v275-h21-tsa
 export interface TimestampRequest {
   entryHash: string;
   queuedAt: number;

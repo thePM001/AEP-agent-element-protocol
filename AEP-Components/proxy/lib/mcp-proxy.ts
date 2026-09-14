@@ -1,5 +1,3 @@
-// @PAD: p0-v275-h31-mcp-proxy-session-lock-v1
-// @GCDE: document_sha256=p0-v275-h31-proxy
 // BL-04: use in-tree AgentGateway (SDK), not missing ../gateway.js
 import { AgentGateway, type AEPElement } from "../../../internal-export-area/AEP-SDKs/typescript/aep-protocol/src/gateway.js";
 import type { AgentAction, Policy } from "../../policy-engine/lib/policy/types.js";

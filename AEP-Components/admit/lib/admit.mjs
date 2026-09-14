@@ -1,5 +1,3 @@
-// @PAD: aep-admit-js-v1
-// @GCDE: gaplune-decode hmac-sha256:cf615d8461e660d9232bafbcaf9738eb8182be543ef75c52ed30ded45d595edc
 // Canonical JS Admit. Live crossing: Admit collect-all walls then Apply.
 // Writing.gap compiles into Admit walls on the same collect-all pass.
 // Sequential LatticeFilter and PolicyEvaluator are lab-only.

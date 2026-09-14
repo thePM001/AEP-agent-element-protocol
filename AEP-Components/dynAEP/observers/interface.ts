@@ -1,4 +1,3 @@
-// @PAD: /root/dynAEP/observers/interface.ts
 // =============================================================================
 // observers/interface.ts
 // Observer adapter interface for the dynAEP event ecosystem.

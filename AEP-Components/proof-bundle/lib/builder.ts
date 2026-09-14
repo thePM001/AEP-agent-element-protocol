@@ -1,5 +1,3 @@
-// @PAD: p0-v275-c4-proof-builder-no-soft-sig-v1
-// @GCDE: document_sha256=p0-v275-sec10-no-hash-sig
 import { createHash, sign, randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import type { ProofBundle, TrustScore, ReliabilityIndex, ReliabilityWeights } from "./types.js";

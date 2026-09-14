@@ -1,5 +1,3 @@
-// @PAD: gaplune-creation-pad emit ( zero-LLM )
-// @GCDE: gaplune-decode hmac-sha256:cd31580fdc8a4eb41bc9a8890eee65b76510f26c9387358adf4e98ff2ccdb7d4
 // HVVCAS: compile_lattice_walls domain:policy type:library
 // Compile lattice-policy.rego deny_lattice into Admit walls.
 // Live action_path uses these walls. OPA evaluate is lab only.

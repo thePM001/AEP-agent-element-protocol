@@ -1,5 +1,3 @@
-// @PAD: p0-v275-c1-identity-sign-verify-v1
-// @GCDE: document_sha256=p0-v275-c1-identity-fail-closed-ed25519
 import { createPublicKey, generateKeyPairSync, sign, verify, randomUUID } from "node:crypto";
 import type { AgentIdentity, CompactIdentity } from "./types.js";
 

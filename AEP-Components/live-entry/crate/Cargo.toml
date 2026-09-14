@@ -1,5 +1,3 @@
-# @PAD: aep-live-entry-cargo-v1
-# @GCDE: gaplune.policy.v1
 [package]
 name = "aep-live-entry"
 version = "0.1.0"

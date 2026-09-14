@@ -3,8 +3,6 @@
  * HTTP 402 Payment Required integration for nanopayment-enabled API calls
  * AEP 2.75e
  */
-// @PAD: p0-v275-sec22-x402-verify-sig-v1
-// @GCDE: document_sha256=p0-v275-sec22-sec28-h10-x402
 
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { ProviderId } from './types.js';

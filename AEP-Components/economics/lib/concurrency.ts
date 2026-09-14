@@ -3,8 +3,6 @@
  * Limits simultaneous in-flight requests with queuing
  * AEP 2.75e
  */
-// @PAD: p0-v275-h9-concurrency-permit-leak-v1
-// @GCDE: document_sha256=p0-v275-h9-release
 
 export class ConcurrencyLimiter {
   private maxConcurrent: number;

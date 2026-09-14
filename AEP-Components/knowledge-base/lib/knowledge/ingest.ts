@@ -1,5 +1,3 @@
-// @PAD: p0-v275-h23-ingest-fail-closed-v1
-// @GCDE: document_sha256=p0-v275-h23-ingest
 // AEP 2.75 - Knowledge Ingestor
 // Splits content into chunks and runs each through the scanner pipeline.
 // Hard failures are rejected, soft failures are flagged, clean chunks are validated.

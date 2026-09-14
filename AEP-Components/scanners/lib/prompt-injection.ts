@@ -1,5 +1,3 @@
-// @PAD: p0-v275-h36-scanner-lastindex-v1
-// @GCDE: document_sha256=p0-v275-h36-lastindex
 import type { Scanner, Finding } from "./types.js";
 
 const patterns: Array<{ name: string; regex: RegExp }> = [

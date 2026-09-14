@@ -1,5 +1,3 @@
-# @PAD: aep28-env-032-admit-live-dock-v1
-# @GCDE: gaplune-decode hmac-sha256:5b032c78617c9ca5a3f2a172bd7790a8f7639f1c4af21652fb9b48cd41b2f829
 [package]
 name = "aep-admit-live-dock"
 version = "0.1.0"

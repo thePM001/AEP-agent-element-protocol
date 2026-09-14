@@ -1,5 +1,3 @@
-# @PAD: aep28-env-037-one-live-evaluation-v1
-# @GCDE: gaplune-decode hmac-sha256:115db0ea8965777b6809965c71d2c898a7da12b87f5315d93c95021dedacf5cc
 [package]
 name = "aep-one-live-evaluation"
 version = "0.1.0"

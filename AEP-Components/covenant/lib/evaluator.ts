@@ -1,5 +1,3 @@
-// @PAD: p0-v275-h7-h8-covenant-condition-v1
-// @GCDE: document_sha256=p0-v275-h7-h8-covenant
 import { createPublicKey, verify as cryptoVerify } from "node:crypto";
 import type { CovenantSpec, CovenantRule, Condition } from "./types.js";
 

@@ -1,4 +1,3 @@
-// @PAD: /root/dynAEP/benchmarks/bench-012-async-clock.ts
 // ===========================================================================
 // Benchmark: OPT-008 Async Bridge Clock - now() Latency
 //

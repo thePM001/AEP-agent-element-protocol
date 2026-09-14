@@ -1,5 +1,3 @@
-// @PAD: aep-ucb-public-contract-2.8.5
-// @GCDE: gaplune-decode hmac-sha256:ab54811d1526a0253fdd14253ff4ed74c94aafc36362f2c29fc94a24eef11c06
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};

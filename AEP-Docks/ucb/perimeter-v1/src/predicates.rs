@@ -1,5 +1,3 @@
-//! @PAD: gaplune-creation-pad emit ( zero-LLM )
-//! @GCDE: gaplune.policy.v1
 
 use crate::error::PredicateError;
 use crate::profile::PredicateProfile;

@@ -1,4 +1,3 @@
-// @PAD: /root/dynAEP/benchmarks/bench-011-buffered-ledger.ts
 // ===========================================================================
 // Benchmark: OPT-006 Buffered Evidence Ledger
 //

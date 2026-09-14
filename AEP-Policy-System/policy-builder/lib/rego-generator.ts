@@ -1,5 +1,3 @@
-// @PAD: p0-v275-h29-h30-rego-generator-v1
-// @GCDE: document_sha256=p0-v275-h29-h30-rego
 // Rego Generator - generates Rego deny rules from invariants, MLE outliers, and spectral gaps
 // Produces syntactically valid Rego deny[msg] blocks
 

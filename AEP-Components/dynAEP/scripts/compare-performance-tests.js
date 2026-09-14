@@ -1,4 +1,3 @@
-// @PAD: /root/dynAEP/scripts/compare-performance-tests.js
 #!/usr/bin/env node
 // ===========================================================================
 // compare-performance-tests.js

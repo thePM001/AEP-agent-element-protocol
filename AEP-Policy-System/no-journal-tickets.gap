@@ -10,4 +10,4 @@ rules:
   - id: aep28-bac-on-same-ticket
     description: A product ticket MAY require nla-policy-scan gate coding-completion and project-completion-bac as acceptance on that same ticket. That is not a journal ticket.
   - id: aep28-no-journal-tickets-gate
-    description: Enforcement is nla-policy-scan gate aep-no-journal-tickets plus write-content on GAPLUNE ticket files. Open or backlog journal-only tickets are Deny. Closed historical files may stay.
+    description: Enforcement is nla-policy-scan gate aep-no-journal-tickets plus write-content on governed ticket files. Open or backlog journal-only tickets are Deny. Closed historical files may stay.

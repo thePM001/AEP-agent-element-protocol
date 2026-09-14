@@ -1,5 +1,3 @@
-// @PAD: p0-v275-h22-merkle-odd-rehash-v1
-// @GCDE: document_sha256=p0-v275-h22-merkle
 import { createHash } from "node:crypto";
 
 export class MerkleTree {

@@ -1,5 +1,3 @@
-// @PAD: p0-v275-l1-sandbox-catch-v1
-// @GCDE: document_sha256=p0-v275-l1
 /**
  * Code Execution Sandbox - Isolated execution environment for agent-generated code.
  * Routes optional lattice record through WASM lattice channel socket.

@@ -1,5 +1,3 @@
-// @PAD: gaplune-creation-pad via gaplune-pad-transform encode
-// @GCDE: gaplune-decode hmac-sha256:b478d503a6842ab07413e7268f7c2ef74fb5f5e348059a3dcfd911e126da8cd9
 // Prove filterCrossing folds temporal walls. Soft warn stays warn.
 
 use crate::compile::{

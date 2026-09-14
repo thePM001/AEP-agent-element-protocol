@@ -1,4 +1,3 @@
-// @PAD: /root/dynAEP/performance-tests/bench-001-event-throughput.ts
 // ===========================================================================
 // Benchmark: bench-001 - Maximum Event Throughput
 // Measures the maximum events/second the validation pipeline can sustain

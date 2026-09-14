@@ -1,4 +1,3 @@
-// @PAD: /root/dynAEP/hooks/interface.ts
 // =============================================================================
 // hooks/interface.ts
 // Validation Hook Interface for dynAEP Lattice Events.

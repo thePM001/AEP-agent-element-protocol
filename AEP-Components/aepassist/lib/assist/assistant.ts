@@ -1,5 +1,3 @@
-// @PAD: p0-v275-m4-settings-scoped-replace-v1
-// @GCDE: document_sha256=p0-v275-m4-settings
 // AEP Interactive Assistant
 // Conversational interface over existing AEP capabilities
 

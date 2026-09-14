@@ -1,6 +1,3 @@
-// @PAD: gaplune-creation-pad emit ( zero-LLM )
-// @GCDE: gaplune-decode hmac-sha256:cd31580fdc8a4eb41bc9a8890eee65b76510f26c9387358adf4e98ff2ccdb7d4
-// crate: gap-schema-profile-v13
 // GAP-285-P1 classic GAP v1.3 live Admit profile. GAP-285-P8 one-law: presence of trust_ring is Deny.
 use serde_json::{Map, Value};
 
@@ -17,7 +14,7 @@ pub const RANK_SYSTEM: &str = "system";
 pub const RANK_ENTERPRISE: &str = "enterprise";
 pub const SCHEMA_V13_CONTRACT: &str = "GAP Instruction Meta-Schema v1.3\nagent_permission\nwrap\naction_path_prefix\noneOf\nload-time\nPresence of trust_ring is Deny.\nPresence of rank is Deny.\nEvery non-empty rank value is Deny.\ncovenants\nscanners\n";
 
-// the public kernel type set is defined once in aep-kernel-types.
+// Ticket NOSHIP-286-P1: the public kernel type set is defined once in aep-kernel-types.
 // Out-param helpers below keep this crate's calling style with no second definition.
 pub use aep_kernel_types::{AdmitResult, AdmitWall, AgentPermission};
 
@@ -625,7 +622,7 @@ pub fn live_admit_gap_profile(source: &str, req: &LiveAdmitRequest, out: &mut Ad
         return;
     }
     let mut walls: Vec<AdmitWall> = Vec::new();
-    // the wall row is the public AdmitWall row.
+    // Ticket NOSHIP-286-P1: the wall row is the public AdmitWall row.
     let mut w1 = AdmitWall::open("");
     let mut w2 = w1.clone();
     let mut w3 = w1.clone();

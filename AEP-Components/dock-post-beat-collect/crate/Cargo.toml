@@ -1,5 +1,3 @@
-# @PAD: gaplune-creation-pad via gaplune-pad-transform encode
-# @GCDE: gaplune-decode hmac-sha256:8a3068fb058a6d3cc15fc083e1bcc70897169a87d050ce2a56baf8fc9b0fdd92
 [package]
 name = "aep-dock-post-beat-collect"
 version = "0.1.0"

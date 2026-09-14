@@ -1,5 +1,3 @@
-//! @PAD: gaplune-creation-pad emit ( zero-LLM )
-//! @GCDE: gaplune.policy.v1
 //!
 //! AEP 2.8.6 UCB perimeter-v1 library. Default profile is signed provenance,
 //! schema plus byte caps, scanner-backed P_C, replay window, per-agent keys,

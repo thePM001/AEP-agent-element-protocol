@@ -1,5 +1,3 @@
-// @PAD: p0-v275-h37-supply-chain-lastindex-v1
-// @GCDE: document_sha256=p0-v275-h37-lastindex
 import type { Scanner, Finding } from "./types.js";
 
 export const supplyChainScanner: Scanner = {

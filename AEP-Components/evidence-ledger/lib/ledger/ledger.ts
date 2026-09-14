@@ -1,5 +1,3 @@
-// @PAD: p0-v275-h20-ledger-parse-safe-v1
-// @GCDE: document_sha256=p0-v275-h20-ledger
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, appendFileSync } from "node:fs";
 import { join } from "node:path";

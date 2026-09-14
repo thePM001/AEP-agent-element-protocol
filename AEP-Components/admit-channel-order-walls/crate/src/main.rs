@@ -1,5 +1,3 @@
-// @PAD: aep-admit-channel-order-walls-cli-v1
-// @GCDE: gaplune-decode hmac-sha256:1f6d134b766c19e7dc857cb9da49651ce3cdc26f44a9c332c5a5eadb00c35e3e
 // CLI: stdin channel plus order records compiled to Admit walls then collect-all.
 
 use aep_admit_channel_order_walls::{

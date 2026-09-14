@@ -1,4 +1,3 @@
-// @PAD: /root/dynAEP/benchmarks/bench-004-rego-evaluation.ts
 // ===========================================================================
 // Benchmark: OPT-002 Unified Rego WASM Bundle with Decision Cache
 //

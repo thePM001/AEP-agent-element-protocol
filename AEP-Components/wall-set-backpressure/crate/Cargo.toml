@@ -1,5 +1,3 @@
-# @PAD: aep28-env-070-wall-set-backpressure-v1
-# @GCDE: gaplune-decode hmac-sha256:ad13793624b6ff030a8a9ef87ec82ddd25671b6afe2864f91d65b0e13f9a9603
 [package]
 name = "aep-wall-set-backpressure"
 version = "0.1.0"

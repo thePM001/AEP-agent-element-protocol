@@ -1,4 +1,3 @@
-// @PAD: /root/dynAEP/observers/webhook/index.ts
 // =============================================================================
 // observers/webhook/index.ts
 // Webhook listener adapter.

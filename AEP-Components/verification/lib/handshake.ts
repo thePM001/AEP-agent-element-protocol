@@ -1,5 +1,3 @@
-// @PAD: p0-v275-h-sec2-handshake-covenant-v1
-// @GCDE: document_sha256=p0-v275-sec2-sec36-handshake
 import { AgentIdentityManager } from "../../identity/lib/manager.js";
 import { MerkleTree } from "../../evidence-ledger/lib/ledger/merkle.js";
 import type { ProofBundle, HandshakeResult, CovenantRequirement } from "./types.js";

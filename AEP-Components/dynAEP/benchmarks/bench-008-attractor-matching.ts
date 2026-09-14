@@ -1,4 +1,3 @@
-// @PAD: /root/dynAEP/benchmarks/bench-008-attractor-matching.ts
 // ===========================================================================
 // Benchmark: OPT-007 Attractor Matching - LSH vs Brute Force
 //

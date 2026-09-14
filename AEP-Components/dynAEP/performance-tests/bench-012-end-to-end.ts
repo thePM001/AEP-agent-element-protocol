@@ -1,4 +1,3 @@
-// @PAD: /root/dynAEP/performance-tests/bench-012-end-to-end.ts
 // ===========================================================================
 // Benchmark: OPT-BENCH - End-to-End Performance Test Suite
 // Validates all 10 optimizations together under 5 realistic workload profiles.

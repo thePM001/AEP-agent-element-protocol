@@ -1,5 +1,3 @@
-// @PAD: aep-envelope-walls-cli-v1
-// @GCDE: gaplune-decode hmac-sha256:2ee744a3c426fd286a3c23e56f4ee990cf6949391c205275d0afc352e33797d3
 
 use aep_envelope_walls::{default_filter_ts, run_gate};
 use aep_admit::default_rego_path;

@@ -1,6 +1,3 @@
-// @PAD: gaplune-creation-pad via gaplune-pad-transform encode
-// @GCDE: gaplune.policy.v1
-// crate: aep-gap-kernel-json-wrap-bind
 // GAP-285-P5. JSON-encoded kernel policies are legal GAP instructions.
 // YAML remains valid GAP source. The kernel reads the instruction object not the skin.
 use serde_json::Value;
@@ -22,7 +19,7 @@ pub const README_CONTRACT: &str = "Live kernel policies may be JSON-encoded GAP 
 
 
 
-// the public kernel wall row is defined once in aep-kernel-types.
+// Ticket NOSHIP-286-P1: the public kernel wall row is defined once in aep-kernel-types.
 pub use aep_kernel_types::AdmitWall;
 
 pub fn open_into(id: &str, wall: &mut AdmitWall) {

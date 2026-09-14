@@ -1,5 +1,3 @@
-// @PAD: aep-dock-post-beat-collect-cli-v1
-// @GCDE: gaplune-decode hmac-sha256:8a3068fb058a6d3cc15fc083e1bcc70897169a87d050ce2a56baf8fc9b0fdd92
 // CLI: the earlier law change dock post-beat collect gate.
 fn main() {
     match aep_dock_post_beat_collect::run_gate() {

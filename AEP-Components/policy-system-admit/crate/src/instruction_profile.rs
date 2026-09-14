@@ -1,4 +1,3 @@
-// @PAD: gap-285-p15-instruction-profile-v1
 // GAP-285-P15 HVVCAS process wrapper for instruction profile walls.
 use super::{compile_instruction_profile_walls, PolicySystemCompileInput};
 use aep_admit::AdmitWall;

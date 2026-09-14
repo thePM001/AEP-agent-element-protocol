@@ -1,4 +1,3 @@
-// @PAD: /root/dynAEP/benchmarks/bench-010-template-fast-exit.ts
 // ===========================================================================
 // Benchmark: OPT-009 - Template Node Validation Fast-Exit
 // Measures per-event latency for template instance fast-exit vs full

@@ -1,5 +1,3 @@
-# @PAD: gap-285-p15-aep-gap-schema-profile-v13
-# @GCDE: gaplune.policy.v1
 [package]
 name = "aep-gap-schema-profile-v13"
 version = "0.1.0"

@@ -1,4 +1,3 @@
-// @PAD: /root/dynAEP/performance-tests/bench-003-hot-path-latency.ts
 // ===========================================================================
 // Benchmark: bench-003 - Hot Path (Lattice Memory) Latency
 // Measures Lattice Memory fast-path latency in isolation with

@@ -1,5 +1,3 @@
-// @PAD: p0-v275-h48-h49-h50-workflow-executor-v1
-// @GCDE: document_sha256=p0-v275-h48-h50-workflow
 // AEP 2.75 - Workflow Executor
 // Manages sequential workflow phases with typed verdicts.
 

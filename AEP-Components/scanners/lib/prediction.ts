@@ -1,5 +1,3 @@
-// @PAD: p0-v275-h38-prediction-local-qualifier-v1
-// @GCDE: document_sha256=p0-v275-h38-prediction
 // AEP 2.75 - Prediction Validator Scanner
 // Detects prediction/forecast patterns and validates against configurable bounds.
 

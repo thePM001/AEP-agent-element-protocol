@@ -1,5 +1,3 @@
-// @PAD: p0-v275-h43-h44-streaming-validator-v1
-// @GCDE: document_sha256=p0-v275-h43-h44-stream
 import type { CovenantSpec } from "../../covenant/lib/types.js";
 import type { Policy } from "../../policy-engine/lib/policy/types.js";
 import type { StreamVerdict, StreamValidator } from "./types.js";

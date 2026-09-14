@@ -1,6 +1,4 @@
 //! Live action_path admit for Base Node docks.
-//! @PAD: aep28-env-035-deny-before-apply-v1
-//! @GCDE: gaplune-decode hmac-sha256:46457904cdfc05cde59672f9e4882546ccd3815135b3464b1a962c5eff8ae626
 //! Fail-closed Admit on live dock. No skip for non-JSON or missing action_path.
 //! Product live path is Rust LiveEntry. TypeScript processEvent is not a second product Admit.
 //! Missing lattice, unreadable lattice YAML and empty action_path on an empty lattice are Deny.

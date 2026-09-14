@@ -1,5 +1,3 @@
-@PAD: gap-285-p10-leftover-v1
-@GCDE: gap.policy.v1
 schema_id: gap.nla.leftover-not-admit.v1
 format: gap
 json_prohibited: true

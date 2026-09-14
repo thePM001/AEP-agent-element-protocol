@@ -1,4 +1,3 @@
-// @PAD: /root/dynAEP/benchmarks/bench-002-cold-path-latency.ts
 // ===========================================================================
 // Benchmark: OPT-004 Cold-Path Latency (Sequential vs Parallel Chain)
 //
