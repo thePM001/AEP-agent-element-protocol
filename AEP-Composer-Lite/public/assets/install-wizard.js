@@ -150,7 +150,7 @@ function renderPanel() {
     const dataDir = escapeHtml(state.status.paths?.data_dir ?? "/data/aep");
     panel.innerHTML = `
       <h2>Environment probe</h2>
-      <p class="lead">This wizard activates Base Node on a fresh Docker volume. EPSCOM, hyperlattice docks and CAW sandboxes wire in through the setup agent.</p>
+      <p class="lead">This wizard activates Base Node on a fresh Docker volume. CORRECTWRITING_EN, hyperlattice docks and CAW sandboxes wire in through the setup agent.</p>
       <div class="metrics">
         <div class="metric"><span>Base Node health</span><strong>${health}</strong></div>
         <div class="metric"><span>Docking ports</span><strong>${dockOk} / ${state.status.docking?.length ?? 0}</strong></div>
@@ -178,7 +178,7 @@ function renderPanel() {
   if (state.step === 1) {
     panel.innerHTML = `
       <h2>Compliance LRPs</h2>
-      <p class="lead">EPSCOM is always mandatory (priority 255). Select regulation modules to bind on the hyperlattice wrap.</p>
+      <p class="lead">CORRECTWRITING_EN is always mandatory (priority 255). Select regulation modules to bind on the hyperlattice wrap.</p>
       ${checkboxCards(state.catalog.compliance_lrps, state.lrps)}`;
     bindCheckboxes(panel, state.lrps);
     return;

@@ -414,7 +414,7 @@ export class ComposerCcaPane {
       } else if (result?.reply) {
         this.pushMessage(
           "system",
-          "CCA reply withheld: text did not pass EPSCOM writing.gap and hyperlattice release gate (fail-closed).",
+          "CCA reply withheld: text did not pass CORRECTWRITING_EN writing.gap and hyperlattice release gate (fail-closed).",
         );
       }
       const planMode = result?.mode === "plan";

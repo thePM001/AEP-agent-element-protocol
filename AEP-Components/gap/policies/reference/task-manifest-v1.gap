@@ -28,7 +28,7 @@ metadata:
       action: manifest
   wrap: ucb
   action_path_prefix: ucb
-  fscale:
+  platform:
     required.0.alias: nla-policy-scan
     required.0.id: FS.0.128.172
     required.1.alias: nla-lattice-api-route
