@@ -1,5 +1,5 @@
 /**
- * writing.gap documentation linter for AEP 2.8 conformance (CC-16).
+ * writing.gap documentation linter for AEP 2.8.6 conformance (CC-16).
  * Enforces reference policy AEP-Policy-System/reference/writing.gap.
  */
 

@@ -1,6 +1,6 @@
 # Lattice Memory
 
-Attractor store for AEP 2.8 (sqlite-vec + USearch).
+Attractor store for AEP 2.8.6 (sqlite-vec + USearch).
 
 ## Implementation
 

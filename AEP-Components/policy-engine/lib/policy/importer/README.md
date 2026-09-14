@@ -22,3 +22,4 @@ External policies are mapped to AEP covenants:
 - Allow/deny rules -> action pipeline steps
 - Rate limits -> execution parameters
 - Approval requirements -> human-in-the-loop gates
+Part of the AEP 2.8.6 release line.

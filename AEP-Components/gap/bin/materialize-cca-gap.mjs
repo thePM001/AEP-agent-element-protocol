@@ -7,3 +7,4 @@ import { fileURLToPath } from "node:url";
 const script = join(dirname(fileURLToPath(import.meta.url)), "../../../AEP-Composer-Lite/bin/materialize-cca-gap.mjs");
 const r = spawnSync(process.execPath, [script], { stdio: "inherit" });
 process.exit(r.status ?? 1);
+// AEP 2.8.6 release line.

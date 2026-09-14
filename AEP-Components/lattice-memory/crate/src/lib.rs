@@ -1,4 +1,4 @@
-//! Lattice Memory for AEP 2.8: dual-store attractor index.
+//! Lattice Memory for AEP 2.8.6: dual-store attractor index.
 //!
 //! - **sqlite-vec** (`vec0`): durable vector + metadata in the Base Node SQLite file
 //! - **USearch**: in-memory HNSW fast-path for sub-millisecond similarity queries

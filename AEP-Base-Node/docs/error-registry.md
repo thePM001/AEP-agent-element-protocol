@@ -1,5 +1,7 @@
 # Error registry (Base Node governance)
 
+Covers the AEP 2.8.6 release line.
+
 Structured error mapping for AEP-governed agents. Consulted by recovery flows when the Base Node kernel or harness detects violations.
 
 ## Fields

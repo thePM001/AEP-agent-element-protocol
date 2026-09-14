@@ -1,6 +1,6 @@
 [package]
 name = "aep-lattice-memory"
-description = "AEP 2.8 Lattice Memory: sqlite-vec persistence + USearch fast-path"
+description = "AEP 2.8.6 Lattice Memory: sqlite-vec persistence + USearch fast-path"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

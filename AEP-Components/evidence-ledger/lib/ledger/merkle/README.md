@@ -35,3 +35,4 @@ Compatible audit log format for enterprise integration:
 ```bash
 aep verify-chain --from <entry_id> --to <entry_id>
 ```
+Part of the AEP 2.8.6 release line.

@@ -1,4 +1,4 @@
-# HVVCAS spec for multi-base-node-core
+# HVVCAS spec for multi-base-node-core on the AEP 2.8.6 release line
 components:
   - name: node_registry
     domain: aep.multi-base-node

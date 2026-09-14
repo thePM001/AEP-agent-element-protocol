@@ -18,3 +18,4 @@ const { violations, scanned } = lintWritingGapTree(root);
 console.log(`writing.gap lint: scanned ${scanned} files under ${root}`);
 console.log(formatWritingGapReport(violations));
 process.exit(violations.length > 0 ? 1 : 0);
+// AEP 2.8.6 release line.

@@ -689,3 +689,4 @@ The author declares no conflicts of interest
 
 ## Use of AI-Assisted Tools
 Portions of this manuscript were drafted with the assistance of large language models: Claude Opus 4.6 (Anthropic), Gemini 3.1 Pro (Google) and Grok 4.2 SuperGrok (xAI). These tools were used for cognitive simplification, prose generation, mathematical exposition and document formatting. All theoretical content, definitions, theorem statements, proof strategies and architectural decisions are the sole intellectual contribution of the author. The author has reviewed the full text for correctness, verified all mathematical claims independently and takes full responsibility for the content of this paper. This disclosure is made in accordance with the COPE position statement on AI-assisted authorship tools.
+Part of the AEP 2.8.6 release line.

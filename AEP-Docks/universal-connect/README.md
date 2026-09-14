@@ -35,3 +35,4 @@ Native AEP components continue to use `lattice-channels` against Base Node Unix 
 - Base Node socket docks: `AEP-Docks/specs/`
 - UCB bridge: `AEP-Docks/ucb/`
 - Protocol: [`../docs/DOCKING-PORTS.md`](../docs/DOCKING-PORTS.md)
+Part of the AEP 2.8.6 release line.
