@@ -222,7 +222,7 @@ Load the GAP file with the policy lattice (`AEP-Policy-System/SETUP.md` and `AEP
 
 Every crossing of the wrap is a sealed encrypted lattice-channel capsule. Native AEP clients seal the frame and hand it to Base Node docks. Foreign stacks may use the optional UCB airlock with a task manifest. They must not open raw dock sockets and they must not send unsealed work. A missing dock, timestamp or sequence fails automatically.
 
-See [`AEP-Docks/README.md`](AEP-Docks/README.md) and [`AEP-Components/lattice-channels/`](AEP-Components/lattice-channels/) for the wire. This how-to does not replace those specs and only states the wrap rule: no dock channel, no wrap.
+See [`AEP-Docks/README.md`](../../AEP-Docks/README.md) and [`AEP-Components/lattice-channels/README.md`](../lattice-channels/README.md) for the wire. This how-to does not replace those specs and only states the wrap rule: no dock channel, no wrap.
 
 ### The attach pattern
 

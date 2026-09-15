@@ -759,7 +759,7 @@ See `AEP-CCA-Central-Setup-Agent/lib/dynaep-context.mjs` and the public conforma
 
 ## 14. License
 
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for the full text.
+Licensed under the Apache License, Version 2.0. See [LICENSE](../../LICENSE) for the full text.
 
 The names **AEP**, **Agent Element Protocol**, **AEP-compliant** and **dynAEP** are reserved. See [NAME-POLICY.md](NAME-POLICY.md) for permitted and prohibited uses. Apache 2.0 covers the code; the reserved-name policy covers the identifiers.
 

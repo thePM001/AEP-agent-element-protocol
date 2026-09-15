@@ -161,7 +161,7 @@ In environments where seccomp user-notify is unavailable (e.g. AWS Fargate, rest
 - Small race window between fork and ptrace auto-attach
 - Requires `SYS_PTRACE` capability (Linux-only)
 
-**Configuration:** See [Security Modes - Ptrace Configuration](docs/security-modes.md#ptrace-configuration).
+**Configuration:** The security modes guide, which covers the ptrace configuration, is internal-only and does not ship with this repository.
 
 ### Environment Variables
 
@@ -231,7 +231,7 @@ aep-caw intercepts signal delivery between processes using seccomp user-notify, 
 - **macOS**: Audit only via Endpoint Security Framework
 - **Windows**: Partial blocking via ETW
 
-See [Policy Documentation](docs/operations/policies.md#signal-rules) for configuration examples.
+For configuration examples see the operations policy documentation, which is internal-only and does not ship with this repository.
 
 ### Approval Workflows
 
@@ -249,7 +249,7 @@ Risky operations can require human approval before execution. aep-caw supports m
 - Credential separation prevents agents from self-approving
 - WebAuthn provides cryptographic proof of human presence
 
-See [Approval Authentication](docs/approval-auth.md) for detailed configuration.
+For detailed configuration see the approval authentication note, which is internal-only and does not ship with this repository.
 
 ### Checkpoint and Rollback
 
@@ -529,7 +529,7 @@ aep-caw includes an embedded HTTP proxy that intercepts all LLM API requests fro
 - Regex patterns may miss obfuscated PII
 - Agent could theoretically bypass proxy (combine with network rules for defense in depth)
 
-See [LLM Proxy Documentation](docs/llm-proxy.md) for configuration and usage details.
+For configuration and usage details see the LLM proxy documentation, which is internal-only and does not ship with this repository.
 
 ## Known Limitations
 
@@ -605,7 +605,7 @@ When running with ESF entitlements (requires Apple approval) and Network Extensi
 - XPC bridge connects the System Extension to the Go policy engine
 - Session tracking maps processes to aep-caw sessions for policy scoping
 
-See [macOS ESF+NE Architecture](docs/macos-esf-ne-architecture.md) for deployment details.
+For deployment details see the macOS ESF+NE architecture note, which is internal-only and does not ship with this repository.
 
 **sandbox-exec Process Sandboxing:**
 
@@ -696,7 +696,7 @@ sandbox:
         - "com.apple.accessibility."
 ```
 
-Default allow list includes essential services: system logger, CoreServices, launch services, SecurityServer, and cfprefsd. See [macOS XPC Sandbox](docs/macos-xpc-sandbox.md) for full documentation.
+Default allow list includes essential services: system logger, CoreServices, launch services, SecurityServer, and cfprefsd. For full documentation see the macOS XPC sandbox note, which is internal-only and does not ship with this repository.
 
 **Recommendations for macOS deployments:**
 - **ESF+NE (Alpha):** Install via `brew tap thePM001/tap && brew install --cask aep-caw` for full enforcement
@@ -902,7 +902,7 @@ WindowsSandboxOptions{
 
 **Implementation:** See `internal/platform/windows/sandbox.go` and `internal/platform/windows/appcontainer.go`.
 
-See [Windows Driver Deployment Guide](docs/windows-driver-deployment.md) for installation and configuration.
+For installation and configuration see the Windows driver deployment guide, which is internal-only and does not ship with this repository.
 
 ### Windows WSL2
 

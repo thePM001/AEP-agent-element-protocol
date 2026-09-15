@@ -341,12 +341,12 @@ cd AEP-Components/conformance/harness && npm install
 | Document | Topic |
 |----------|-------|
 | [AGENTS.md](./AGENTS.md) | Agent operating instructions for AI assistants |
-| [../composer-lite/README.md](../composer-lite/README.md) | Visual canvas and API |
-| [../setup-agent/README.md](../setup-agent/README.md) | Legacy interactive setup flow |
+| [../AEP-Composer-Lite/README.md](../AEP-Composer-Lite/README.md) | Visual canvas and API |
+| [setup-agent.mjs](./setup-agent.mjs) | Legacy interactive setup flow |
 
 
-| [../../AEP-Base-Node/registry/README.md](../../AEP-Base-Node/registry/README.md) | Component registry |
-| [../../plans/PHASE-10-CCA-COMPONENT-PLATFORM.md](../../plans/PHASE-10-CCA-COMPONENT-PLATFORM.md) | Implementation history |
+| [../AEP-Base-Node/registry/README.md](../AEP-Base-Node/registry/README.md) | Component registry |
+| Component platform plan, which is internal-only and does not ship with this repository | Implementation history |
 
 ---
 

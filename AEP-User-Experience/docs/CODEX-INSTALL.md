@@ -7,4 +7,4 @@
 
 Creates `AGENTS.md`, `agent.policy.yaml` and `.codex/config.toml` with `npx aep proxy --policy ./agent.policy.yaml`.
 
-See also [`AEP-SDKs/typescript/aep-protocol/README.md`](../../AEP-SDKs/typescript/aep-protocol/README.md).
+See also the TypeScript protocol client readme, which is internal-only and does not ship with this repository.
