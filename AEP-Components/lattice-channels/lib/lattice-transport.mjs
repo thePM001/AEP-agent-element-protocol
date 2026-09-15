@@ -5,8 +5,9 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defaultPaths } from "../../wizard/lib/paths.mjs";
 
 export const DOCK_SUFFIXES = [
@@ -37,372 +38,6 @@ export function latticeStrictEnabled(env = process.env) {
     );
   }
   return true;
-}
-
-function ssrfPolicyFromEnv(env = process.env) {
-  return {
-    allowLoopback: env.AEP_LATTICE_ALLOW_LOOPBACK === "1",
-    allowPrivate: env.AEP_LATTICE_ALLOW_PRIVATE === "1",
-  };
-}
-
-function parseIpv4NumericPart(part) {
-  if (!part) return null;
-  if (/^0x[0-9a-f]+$/i.test(part)) {
-    const n = Number.parseInt(part.slice(2), 16);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  if (part.length > 1 && part.startsWith("0") && /^[0-7]+$/.test(part)) {
-    const n = Number.parseInt(part, 8);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  if (/^\d+$/.test(part)) {
-    const n = Number.parseInt(part, 10);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  return null;
-}
-
-function parseWeirdIpv4(host) {
-  if (!host || host.includes(":")) return null;
-  const parts = host.split(".");
-  if (parts.length < 1 || parts.length > 4) return null;
-  const nums = parts.map(parseIpv4NumericPart);
-  if (nums.some((n) => n === null)) return null;
-  const typed = nums;
-  if (typed.length === 1) {
-    const n = typed[0] >>> 0;
-    return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255];
-  }
-  if (typed.length === 2) {
-    const [a, b] = typed;
-    if (a > 255 || b > 0xffffff) return null;
-    return [a, (b >>> 16) & 255, (b >>> 8) & 255, b & 255];
-  }
-  if (typed.length === 3) {
-    const [a, b, c] = typed;
-    if (a > 255 || b > 255 || c > 0xffff) return null;
-    return [a, b, (c >>> 8) & 255, c & 255];
-  }
-  const [a, b, c, d] = typed;
-  if (a > 255 || b > 255 || c > 255 || d > 255) return null;
-  return [a, b, c, d];
-}
-
-function classifyV4(octets) {
-  const a = octets[0];
-  const b = octets[1];
-  if (a === 0) return "unspecified";
-  if (a === 127) return "loopback";
-  if (a === 169 && b === 254) return "linklocal";
-  if (a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31)) return "private";
-  if (a === 255 && b === 255 && octets[2] === 255 && octets[3] === 255) return "private";
-  return "public";
-}
-
-function parseIpv6MappedV4(host) {
-  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
-  const dotted = h.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
-  if (dotted) return parseWeirdIpv4(dotted[1]);
-  const hex = h.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
-  if (hex) {
-    const hi = Number.parseInt(hex[1], 16);
-    const lo = Number.parseInt(hex[2], 16);
-    return [(hi >> 8) & 255, hi & 255, (lo >> 8) & 255, lo & 255];
-  }
-  return null;
-}
-
-function classifyIpv6(host) {
-  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
-  const mapped = parseIpv6MappedV4(h);
-  if (mapped) return classifyV4(mapped);
-  if (h === "::1") return "loopback";
-  if (h === "::" || h === "0:0:0:0:0:0:0:0") return "unspecified";
-  if (/^f[cd][0-9a-f]{2}:/i.test(h)) return "private";
-  if (/^fe[89ab][0-9a-f]:/i.test(h)) return "linklocal";
-  return "public";
-}
-
-function denyClass(cls, policy) {
-  if (cls === "public") return;
-  if (cls === "loopback" || cls === "unspecified") {
-    if (!policy.allowLoopback) throw new Error("lattice-gated-fetch: loopback blocked");
-    return;
-  }
-  if (!policy.allowPrivate) throw new Error("lattice-gated-fetch: private/metadata host blocked");
-}
-
-function isMetadataName(host) {
-  const h = host.replace(/\.+$/, "").toLowerCase();
-  return h === "metadata" || h === "metadata.google.internal" || h.endsWith(".internal") || h.endsWith(".local");
-}
-
-function defaultLookup(host) {
-  const script =
-    "const dns=require('node:dns');dns.lookup(" +
-    JSON.stringify(host) +
-    ",{all:true,verbatim:true},(err,addrs)=>{if(err){process.stderr.write(String(err.message||err));process.exit(2);}process.stdout.write(JSON.stringify((addrs||[]).map(a=>a.address)));});";
-  try {
-    const out = execFileSync(process.execPath, ["-e", script], { encoding: "utf8", maxBuffer: 1024 * 1024 });
-    const parsed = JSON.parse(String(out).trim());
-    if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("empty");
-    return parsed.map(String);
-  } catch {
-    throw new Error("lattice-gated-fetch: DNS resolve failed");
-  }
-}
-
-function classifyAddressString(addr) {
-  const a = addr.toLowerCase().replace(/^\[|\]$/g, "");
-  if (a.includes(":")) return classifyIpv6(a);
-  const v4 = parseWeirdIpv4(a);
-  if (v4) return classifyV4(v4);
-  throw new Error("lattice-gated-fetch: DNS resolve failed");
-}
-
-export function ssrfPolicyFromEnv(env = process.env) {
-  return {
-    allowLoopback: env.AEP_LATTICE_ALLOW_LOOPBACK === "1",
-    allowPrivate: env.AEP_LATTICE_ALLOW_PRIVATE === "1",
-  };
-}
-
-function parseIpv4NumericPart(part) {
-  if (!part) return null;
-  if (/^0x[0-9a-f]+$/i.test(part)) {
-    const n = Number.parseInt(part.slice(2), 16);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  if (part.length > 1 && part.startsWith("0") && /^[0-7]+$/.test(part)) {
-    const n = Number.parseInt(part, 8);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  if (/^\d+$/.test(part)) {
-    const n = Number.parseInt(part, 10);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  return null;
-}
-
-function parseWeirdIpv4(host) {
-  if (!host || host.includes(":")) return null;
-  const parts = host.split(".");
-  if (parts.length < 1 || parts.length > 4) return null;
-  const nums = parts.map(parseIpv4NumericPart);
-  if (nums.some((n) => n === null)) return null;
-  const typed = nums;
-  if (typed.length === 1) {
-    const n = typed[0] >>> 0;
-    return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255];
-  }
-  if (typed.length === 2) {
-    const [a, b] = typed;
-    if (a > 255 || b > 0xffffff) return null;
-    return [a, (b >>> 16) & 255, (b >>> 8) & 255, b & 255];
-  }
-  if (typed.length === 3) {
-    const [a, b, c] = typed;
-    if (a > 255 || b > 255 || c > 0xffff) return null;
-    return [a, b, (c >>> 8) & 255, c & 255];
-  }
-  const [a, b, c, d] = typed;
-  if (a > 255 || b > 255 || c > 255 || d > 255) return null;
-  return [a, b, c, d];
-}
-
-function classifyV4(octets) {
-  const a = octets[0];
-  const b = octets[1];
-  if (a === 0) return "unspecified";
-  if (a === 127) return "loopback";
-  if (a === 169 && b === 254) return "linklocal";
-  if (a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31)) return "private";
-  if (a === 255 && b === 255 && octets[2] === 255 && octets[3] === 255) return "private";
-  return "public";
-}
-
-function parseIpv6MappedV4(host) {
-  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
-  const dotted = h.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
-  if (dotted) return parseWeirdIpv4(dotted[1]);
-  const hex = h.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
-  if (hex) {
-    const hi = Number.parseInt(hex[1], 16);
-    const lo = Number.parseInt(hex[2], 16);
-    return [(hi >> 8) & 255, hi & 255, (lo >> 8) & 255, lo & 255];
-  }
-  return null;
-}
-
-function classifyIpv6(host) {
-  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
-  const mapped = parseIpv6MappedV4(h);
-  if (mapped) return classifyV4(mapped);
-  if (h === "::1") return "loopback";
-  if (h === "::" || h === "0:0:0:0:0:0:0:0") return "unspecified";
-  if (/^f[cd][0-9a-f]{2}:/i.test(h)) return "private";
-  if (/^fe[89ab][0-9a-f]:/i.test(h)) return "linklocal";
-  return "public";
-}
-
-function denyClass(cls, policy) {
-  if (cls === "public") return;
-  if (cls === "loopback" || cls === "unspecified") {
-    if (!policy.allowLoopback) throw new Error("lattice-gated-fetch: loopback blocked");
-    return;
-  }
-  if (!policy.allowPrivate) throw new Error("lattice-gated-fetch: private/metadata host blocked");
-}
-
-function isMetadataName(host) {
-  const h = host.replace(/\.+$/, "").toLowerCase();
-  return h === "metadata" || h === "metadata.google.internal" || h.endsWith(".internal") || h.endsWith(".local");
-}
-
-function defaultLookup(host) {
-  const script =
-    "const dns=require('node:dns');dns.lookup(" +
-    JSON.stringify(host) +
-    ",{all:true,verbatim:true},(err,addrs)=>{if(err){process.stderr.write(String(err.message||err));process.exit(2);}process.stdout.write(JSON.stringify((addrs||[]).map(a=>a.address)));});";
-  try {
-    const out = execFileSync(process.execPath, ["-e", script], { encoding: "utf8", maxBuffer: 1024 * 1024 });
-    const parsed = JSON.parse(String(out).trim());
-    if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("empty");
-    return parsed.map(String);
-  } catch {
-    throw new Error("lattice-gated-fetch: DNS resolve failed");
-  }
-}
-
-function classifyAddressString(addr) {
-  const a = addr.toLowerCase().replace(/^\[|\]$/g, "");
-  if (a.includes(":")) return classifyIpv6(a);
-  const v4 = parseWeirdIpv4(a);
-  if (v4) return classifyV4(v4);
-  throw new Error("lattice-gated-fetch: DNS resolve failed");
-}
-
-function ssrfPolicyFromEnv(env = process.env) {
-  return {
-    allowLoopback: env.AEP_LATTICE_ALLOW_LOOPBACK === "1",
-    allowPrivate: env.AEP_LATTICE_ALLOW_PRIVATE === "1",
-  };
-}
-
-function parseIpv4NumericPart(part) {
-  if (!part) return null;
-  if (/^0x[0-9a-f]+$/i.test(part)) {
-    const n = Number.parseInt(part.slice(2), 16);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  if (part.length > 1 && part.startsWith("0") && /^[0-7]+$/.test(part)) {
-    const n = Number.parseInt(part, 8);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  if (/^\d+$/.test(part)) {
-    const n = Number.parseInt(part, 10);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  return null;
-}
-
-function parseWeirdIpv4(host) {
-  if (!host || host.includes(":")) return null;
-  const parts = host.split(".");
-  if (parts.length < 1 || parts.length > 4) return null;
-  const nums = parts.map(parseIpv4NumericPart);
-  if (nums.some((n) => n === null)) return null;
-  const typed = nums;
-  if (typed.length === 1) {
-    const n = typed[0] >>> 0;
-    return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255];
-  }
-  if (typed.length === 2) {
-    const [a, b] = typed;
-    if (a > 255 || b > 0xffffff) return null;
-    return [a, (b >>> 16) & 255, (b >>> 8) & 255, b & 255];
-  }
-  if (typed.length === 3) {
-    const [a, b, c] = typed;
-    if (a > 255 || b > 255 || c > 0xffff) return null;
-    return [a, b, (c >>> 8) & 255, c & 255];
-  }
-  const [a, b, c, d] = typed;
-  if (a > 255 || b > 255 || c > 255 || d > 255) return null;
-  return [a, b, c, d];
-}
-
-function classifyV4(octets) {
-  const a = octets[0];
-  const b = octets[1];
-  if (a === 0) return "unspecified";
-  if (a === 127) return "loopback";
-  if (a === 169 && b === 254) return "linklocal";
-  if (a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31)) return "private";
-  if (a === 255 && b === 255 && octets[2] === 255 && octets[3] === 255) return "private";
-  return "public";
-}
-
-function parseIpv6MappedV4(host) {
-  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
-  const dotted = h.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
-  if (dotted) return parseWeirdIpv4(dotted[1]);
-  const hex = h.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
-  if (hex) {
-    const hi = Number.parseInt(hex[1], 16);
-    const lo = Number.parseInt(hex[2], 16);
-    return [(hi >> 8) & 255, hi & 255, (lo >> 8) & 255, lo & 255];
-  }
-  return null;
-}
-
-function classifyIpv6(host) {
-  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
-  const mapped = parseIpv6MappedV4(h);
-  if (mapped) return classifyV4(mapped);
-  if (h === "::1") return "loopback";
-  if (h === "::" || h === "0:0:0:0:0:0:0:0") return "unspecified";
-  if (/^f[cd][0-9a-f]{2}:/i.test(h)) return "private";
-  if (/^fe[89ab][0-9a-f]:/i.test(h)) return "linklocal";
-  return "public";
-}
-
-function denyClass(cls, policy) {
-  if (cls === "public") return;
-  if (cls === "loopback" || cls === "unspecified") {
-    if (!policy.allowLoopback) throw new Error("lattice-gated-fetch: loopback blocked");
-    return;
-  }
-  if (!policy.allowPrivate) throw new Error("lattice-gated-fetch: private/metadata host blocked");
-}
-
-function isMetadataName(host) {
-  const h = host.replace(/\.+$/, "").toLowerCase();
-  return h === "metadata" || h === "metadata.google.internal" || h.endsWith(".internal") || h.endsWith(".local");
-}
-
-function defaultLookup(host) {
-  const script =
-    "const dns=require('node:dns');dns.lookup(" +
-    JSON.stringify(host) +
-    ",{all:true,verbatim:true},(err,addrs)=>{if(err){process.stderr.write(String(err.message||err));process.exit(2);}process.stdout.write(JSON.stringify((addrs||[]).map(a=>a.address)));});";
-  try {
-    const out = execFileSync(process.execPath, ["-e", script], { encoding: "utf8", maxBuffer: 1024 * 1024 });
-    const parsed = JSON.parse(String(out).trim());
-    if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("empty");
-    return parsed.map(String);
-  } catch {
-    throw new Error("lattice-gated-fetch: DNS resolve failed");
-  }
-}
-
-function classifyAddressString(addr) {
-  const a = addr.toLowerCase().replace(/^\[|\]$/g, "");
-  if (a.includes(":")) return classifyIpv6(a);
-  const v4 = parseWeirdIpv4(a);
-  if (v4) return classifyV4(v4);
-  throw new Error("lattice-gated-fetch: DNS resolve failed");
 }
 
 export function ssrfPolicyFromEnv(env = process.env) {
@@ -598,7 +233,7 @@ export function wasmSandboxSocket(socketBase, env = process.env) {
   return env.WASM_SANDBOX_SOCKET || join(socketBase, "wasm_sandbox");
 }
 
-function runCorrectwritingEnValidateWriting(text, { configPath, latticeLogBin } = {}) {
+function runEpscomValidateWriting(text, { configPath, latticeLogBin } = {}) {
   const bin = latticeLogBin ?? resolveLatticeLogBin();
   const args = [];
   if (configPath) args.push("--config", configPath);
@@ -611,12 +246,12 @@ function runCorrectwritingEnValidateWriting(text, { configPath, latticeLogBin } 
   return JSON.parse(out);
 }
 
-/** CORRECTWRITING_EN kernel writing.gap enforcement (Base Node aep-lattice-log). */
-export function correctwriting_enEnforceWriting(text, { configPath, latticeLogBin } = {}) {
-  const parsed = runCorrectwritingEnValidateWriting(text, { configPath, latticeLogBin });
+/** EPSCOM kernel writing.gap enforcement (Base Node aep-lattice-log). */
+export function epscomEnforceWriting(text, { configPath, latticeLogBin } = {}) {
+  const parsed = runEpscomValidateWriting(text, { configPath, latticeLogBin });
   if (!parsed.ok) {
     const detail = parsed.violations?.map((v) => v.rule).join(", ") || "writing.gap";
-    throw new Error(`CORRECTWRITING_EN writing enforcement failed: ${detail}`);
+    throw new Error(`EPSCOM writing enforcement failed: ${detail}`);
   }
   return parsed;
 }
@@ -631,11 +266,11 @@ export function lintGovernedProseStrict(text, opts = {}) {
   if (violations.length) return violations;
 
   try {
-    const kernel = runCorrectwritingEnValidateWriting(raw, opts);
+    const kernel = runEpscomValidateWriting(raw, opts);
     if (!kernel.ok) {
       return (kernel.violations ?? []).map((v) => ({
-        rule: v.rule ?? "correctwriting_en_kernel",
-        message: v.message ?? "CORRECTWRITING_EN kernel rejected draft",
+        rule: v.rule ?? "epscom_kernel",
+        message: v.message ?? "EPSCOM kernel rejected draft",
         line: v.line ?? null,
       }));
     }
@@ -644,19 +279,19 @@ export function lintGovernedProseStrict(text, opts = {}) {
         ? lintGovernedProse(raw, opts)
         : [
             {
-              rule: "correctwriting_en_kernel",
-              message: `CORRECTWRITING_EN kernel required ${kernel.violations_corrected} correction(s) on raw draft`,
+              rule: "epscom_kernel",
+              message: `EPSCOM kernel required ${kernel.violations_corrected} correction(s) on raw draft`,
             },
           ];
     }
   } catch (e) {
-    if (process.env.AEP_CORRECTWRITING_EN_ALLOW_JS_FALLBACK === "1") {
+    if (process.env.AEP_EPSCOM_ALLOW_JS_FALLBACK === "1") {
       return lintGovernedProse(raw, opts);
     }
     return [
       {
-        rule: "correctwriting_en_kernel_unavailable",
-        message: "CORRECTWRITING_EN kernel validation failed closed: " + (e && e.message ? e.message : String(e)),
+        rule: "epscom_kernel_unavailable",
+        message: "EPSCOM kernel validation failed closed: " + (e && e.message ? e.message : String(e)),
         line: null,
       },
     ];
@@ -669,14 +304,14 @@ export function assertGovernedProseDraft(text, opts = {}) {
   const violations = lintGovernedProseStrict(text, opts);
   if (!violations.length) return String(text ?? "");
   const err = new Error(
-    `CORRECTWRITING_EN writing.gap blocked draft: ${violations.map((v) => v.rule).join(", ")}`,
+    `EPSCOM writing.gap blocked draft: ${violations.map((v) => v.rule).join(", ")}`,
   );
   err.violations = violations;
   throw err;
 }
 
-/** CORRECTWRITING_EN kernel writing.gap enforcement for JSON plan/object values. */
-export function correctwriting_enEnforceWritingValue(value, { configPath, latticeLogBin } = {}) {
+/** EPSCOM kernel writing.gap enforcement for JSON plan/object values. */
+export function epscomEnforceWritingValue(value, { configPath, latticeLogBin } = {}) {
   const bin = latticeLogBin ?? resolveLatticeLogBin();
   const args = [];
   if (configPath) args.push("--config", configPath);
@@ -688,12 +323,12 @@ export function correctwriting_enEnforceWritingValue(value, { configPath, lattic
   }).trim();
   const parsed = JSON.parse(out);
   if (!parsed.ok || parsed.value === undefined) {
-    throw new Error("CORRECTWRITING_EN enforce-writing-value failed");
+    throw new Error("EPSCOM enforce-writing-value failed");
   }
   return parsed.value;
 }
 
-export const CORRECTWRITING_EN_WRITING_RULES = `Writing conventions (CORRECTWRITING_EN writing mode / writing.gap - mandatory):
+export const EPSCOM_WRITING_RULES = `Writing conventions (EPSCOM writing mode / writing.gap - mandatory):
 - Never use em-dashes, en-dashes or Unicode dash substitutes; use a plain hyphen (-) or rewrite.
 - Never use double-hyphen ( -- ) as a sentence separator in prose; use a hyphen (-) or rewrite.
 - Never use spaced hyphen as a clause separator ("foo - bar"); use a colon, period or rewrite.
@@ -702,7 +337,7 @@ export const CORRECTWRITING_EN_WRITING_RULES = `Writing conventions (CORRECTWRIT
 - Commas, semicolons and double colons (::) are exceptions: attach them directly with no space before.
 - Good: "Are you ready ? I am here." "Great ! Let me help." "Hello [ hola ]." and "foo, bar and baz".
 - Bad: "Are you ready? I am here." "Hello[hola]." and "foo , bar".
-- CORRECTWRITING_EN enforces these rules in the Base Node kernel before governed output is released.`;
+- EPSCOM enforces these rules in the Base Node kernel before governed output is released.`;
 
 const SENTENCE_PUNCT_CHARS = new Set(["?", "!", "\uFF1F", "\uFF01"]);
 
@@ -751,15 +386,6 @@ export function fixPunctuationWordSpacing(text) {
   }
   return out;
 }
-
-const FORBIDDEN_DASH_CHARS = [
-  { char: "\u2014", rule: "no_em_dashes" },
-  { char: "\u2013", rule: "no_en_dashes" },
-  { char: "\u2015", rule: "no_dash_substitutes" },
-  { char: "\u2e3a", rule: "no_dash_substitutes" },
-  { char: "\u2e3b", rule: "no_dash_substitutes" },
-  { char: "\u2212", rule: "no_minus_as_dash" },
-];
 
 const CCA_CLOSING_QUESTION_RE =
   /\b(what would you like|how can i help|what can i help|what should we|anything else|anything specific|is there anything|would you like to|like to work on|like to build|like to configure|need help with|want to (?:do|build|configure|work on))\b[^.!?\n]*\?/i;
@@ -820,45 +446,67 @@ function lintCcaDeclarativeClosings(text) {
   return violations;
 }
 
-/** Lint governed prose (JS mirror of CORRECTWRITING_EN kernel + Composer fixes). */
+/** The writing rule source ships in the tree. The rule set of this mirror is read
+ * from that one source, so this file declares no rule family of its own. */
+export function writingRuleTable() {
+  const source = readWritingRuleSource();
+  const ids = [];
+  const m = source.match(/"constraints"\s*:\s*\[([\s\S]*?)\]/);
+  if (m) {
+    for (const part of m[1].split(",")) {
+      const id = part.trim().replace(/^"|"$/g, "");
+      if (id) ids.push(id);
+    }
+  }
+  return ids;
+}
+
+function readWritingRuleSource() {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    join(process.cwd(), "AEP-Policy-System/reference/writing.gap"),
+    join(here, "../../../AEP-Policy-System/reference/writing.gap"),
+  ];
+  for (const candidate of candidates) {
+    try {
+      return readFileSync(candidate, "utf8");
+    } catch (e) {
+      continue;
+    }
+  }
+  return "";
+}
+
+/** A writing rule applies only when the one source names it. */
+export function writingRuleNamed(rule) {
+  const table = writingRuleTable();
+  if (!table.length) return true;
+  return table.includes(rule);
+}
+
+/** Lint governed prose (JS mirror of EPSCOM kernel + Composer fixes). */
 export function lintGovernedProse(text, opts = {}) {
   const violations = [];
-  const lines = String(text ?? "").split("\n");
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (/[├└│┌┐┘┬┴┤┼]/.test(line) || /^\s*[|`]/.test(line)) continue;
-    for (const dash of FORBIDDEN_DASH_CHARS) {
-      if (line.includes(dash.char)) {
-        violations.push({
-          rule: dash.rule,
-          message: `forbidden dash ${dash.char}`,
-          line: i + 1,
-        });
-      }
+  const raw = String(text ?? "");
+  // The writing rule family lives in one compiled wall set. This mirror asks the
+  // kernel for that decision and keeps no writing matcher of its own.
+  try {
+    const kernel = runEpscomValidateWriting(raw, opts);
+    for (const v of kernel.violations ?? []) {
+      violations.push({
+        rule: v.rule ?? "epscom_kernel",
+        message: v.message ?? "writing rule closed",
+        line: v.line ?? null,
+      });
     }
-    if (line.includes(", and ")) {
-      violations.push({ rule: "no_oxford_comma", message: 'Oxford comma before "and"', line: i + 1 });
-    }
-    if (line.includes(", or ")) {
-      violations.push({ rule: "no_oxford_comma", message: 'Oxford comma before "or"', line: i + 1 });
-    }
-    if (line.includes(" -- ") && !/\bgit\b.*\bcheckout\b/.test(line) && !/\b(cargo|npm|node)\b/.test(line)) {
-      violations.push({ rule: "no_double_hyphen", message: "double-hyphen prose separator", line: i + 1 });
-    }
-    for (let j = 0; j < line.length - 1; j += 1) {
-      if (punctuationSpacingViolationAt(line, j)) {
-        const ch = line[j];
-        violations.push({
-          rule: "punctuation_word_space",
-          message:
-            ch === "."
-              ? "missing space after sentence punctuation before next word"
-              : "missing space after ? or ! before word",
-          line: i + 1,
-        });
-        break;
-      }
-    }
+  } catch (e) {
+    violations.push({
+      rule: "epscom_kernel_unavailable",
+      message:
+        "writing rules need the Base Node kernel: " +
+        (e && e.message ? e.message : String(e)),
+      line: null,
+    });
   }
   if (opts.ccaChat) {
     violations.push(...lintCcaDeclarativeClosings(text));
@@ -886,7 +534,7 @@ function applyGovernedProseFixes(text, opts = {}) {
   }
   current = fixPunctuationWordSpacing(current);
   current = fixSpacedHyphenClauseSeparators(current);
-  current = correctwriting_enEnforceWriting(current, opts).text;
+  current = epscomEnforceWriting(current, opts).text;
   return current;
 }
 
@@ -900,7 +548,7 @@ export function releaseGovernedProseStrict(text, opts = {}) {
     text: String(text ?? ""),
     validation: {
       ok: true,
-      authority: "correctwriting_en-core",
+      authority: "epscom-core",
       violations: [],
       passes: 0,
       strict: true,
@@ -909,7 +557,7 @@ export function releaseGovernedProseStrict(text, opts = {}) {
 }
 
 /**
- * Polish + mandatory CORRECTWRITING_EN validation before CCA releases prose.
+ * Polish + mandatory EPSCOM validation before CCA releases prose.
  * Throws if violations remain after fix passes (fail-closed).
  * @deprecated For CCA chat use releaseGovernedProseStrict (no silent auto-fix).
  */
@@ -929,7 +577,7 @@ export function releaseGovernedProse(text, opts = {}) {
 
   if (violations.length) {
     const err = new Error(
-      `CORRECTWRITING_EN writing.gap blocked release: ${violations.map((v) => v.rule).join(", ")}`,
+      `EPSCOM writing.gap blocked release: ${violations.map((v) => v.rule).join(", ")}`,
     );
     err.violations = violations;
     err.corrected_text = current;
@@ -940,7 +588,7 @@ export function releaseGovernedProse(text, opts = {}) {
     text: current,
     validation: {
       ok: true,
-      authority: "correctwriting_en-core",
+      authority: "epscom-core",
       violations: [],
       passes: passesUsed,
     },

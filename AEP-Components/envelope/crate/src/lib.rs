@@ -387,11 +387,17 @@ fn wall_gap(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     collect_strings(&action.payload, &mut texts);
     texts.push(action.action_path.clone());
     for t in &texts {
-        if t.chars().any(|c| matches!(c, '\u{2014}' | '\u{2013}' | '\u{2015}' | '\u{2212}')) {
-            return wall("gap.writing", "gap", false, "forbidden dash in payload");
-        }
-        if t.contains(", and ") || t.contains(", or ") {
-            return wall("gap.writing", "gap", false, "oxford comma in payload");
+        // The writing family lives in one compiled wall set. This gate reads it and
+        // keeps no matcher of its own.
+        let closed: Vec<String> = aep_admit::compile_writing_walls(t)
+            .into_iter()
+            .filter(|w| w.closed)
+            .map(|w| w.id)
+            .collect();
+        if closed.is_empty() == false {
+            let mut reason = String::from("writing wall closed in payload: ");
+            reason.push_str(&closed.join(","));
+            return wall("gap.writing", "gap", false, &reason);
         }
     }
     wall("gap.writing", "gap", true, "writing ok")

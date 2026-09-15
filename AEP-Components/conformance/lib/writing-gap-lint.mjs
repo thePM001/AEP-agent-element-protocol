@@ -3,6 +3,7 @@
  * Enforces reference policy AEP-Policy-System/reference/writing.gap.
  */
 
+import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
@@ -161,57 +162,43 @@ export function lintWritingGapContent(content, rel, kind = "markdown") {
   const violations = [];
   const prose = kind === "markdown" ? stripMarkdownCode(content) : content;
   const proseLines = prose.split("\n");
-
-  for (let i = 0; i < proseLines.length; i++) {
-    const line = proseLines[i];
-    if (isTreeDiagramLine(line)) continue;
-    for (const dash of FORBIDDEN_DASH_CHARS) {
-      let idx = 0;
-      while ((idx = line.indexOf(dash.char, idx)) !== -1) {
-        violations.push({
-          file: rel,
-          line: i + 1,
-          rule: dash.rule,
-          message: `${dash.name} (${dash.code}) forbidden by writing.gap`,
-          snippet: line.trim().slice(Math.max(0, idx - 24), idx + 24),
-        });
-        idx += 1;
-      }
-    }
+  let kernel = [];
+  try {
+    kernel = kernelWritingViolations(prose);
+  } catch (err) {
+    violations.push({
+      file: rel,
+      line: 0,
+      rule: "epscom_kernel_unavailable",
+      message: `writing rules need the Base Node kernel: ${err instanceof Error ? err.message : String(err)}`,
+      snippet: "",
+    });
+    return violations;
   }
-
-  for (let i = 0; i < proseLines.length; i++) {
-    const line = proseLines[i];
-    if (line.includes(", and ")) {
-      violations.push({
-        file: rel,
-        line: i + 1,
-        rule: "no_oxford_comma",
-        message: "Oxford comma before \"and\" forbidden by writing.gap",
-        snippet: line.trim().slice(0, 80),
-      });
-    }
-    if (line.includes(", or ")) {
-      violations.push({
-        file: rel,
-        line: i + 1,
-        rule: "no_oxford_comma",
-        message: "Oxford comma before \"or\" forbidden by writing.gap",
-        snippet: line.trim().slice(0, 80),
-      });
-    }
-    if (line.includes(" -- ") && !isAllowedDoubleHyphenLine(line)) {
-      violations.push({
-        file: rel,
-        line: i + 1,
-        rule: "no_double_hyphen",
-        message: "Double-hyphen word separator forbidden by writing.gap",
-        snippet: line.trim().slice(0, 80),
-      });
-    }
+  for (const v of kernel) {
+    const lineNumber = v.line ?? 0;
+    const text = lineNumber > 0 && proseLines[lineNumber - 1] ? proseLines[lineNumber - 1].trim() : "";
+    violations.push({
+      file: rel,
+      line: lineNumber,
+      rule: v.rule ?? "writing",
+      message: v.message ?? "writing rule closed",
+      snippet: text.slice(0, 80),
+    });
   }
-
   return violations;
+}
+
+/** Ask the Base Node kernel for the one compiled writing wall set. */
+function kernelWritingViolations(text) {
+  const bin = process.env.AEP_LATTICE_LOG_BIN || "aep-lattice-log";
+  const out = execFileSync(bin, ["validate-writing"], {
+    input: JSON.stringify({ text: String(text ?? "") }),
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+  }).trim();
+  const parsed = JSON.parse(out);
+  return parsed.violations ?? [];
 }
 
 /**

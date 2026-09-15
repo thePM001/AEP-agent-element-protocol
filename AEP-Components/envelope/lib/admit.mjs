@@ -1,4 +1,23 @@
 // AEP 2.8 Envelope Admit (Node). Must match aep-envelope crate walls.
+// The writing family lives in the one compiled set, so this gate asks the kernel.
+
+import { execFileSync } from "node:child_process";
+
+/** Ask the Base Node kernel for the one compiled writing wall set. */
+function kernelClosedWritingRules(text) {
+  const bin = process.env.AEP_LATTICE_LOG_BIN || "aep-lattice-log";
+  try {
+    const out = execFileSync(bin, ["validate-writing"], {
+      input: JSON.stringify({ text: String(text ?? "") }),
+      encoding: "utf8",
+      maxBuffer: 8 * 1024 * 1024,
+    }).trim();
+    const parsed = JSON.parse(out);
+    return (parsed.violations ?? []).map((v) => String(v.rule));
+  } catch (e) {
+    return ["writing_kernel_unavailable"];
+  }
+}
 
 function collectStrings(v, out) {
   if (typeof v === "string") {
@@ -84,20 +103,19 @@ export function admit(action, snap) {
     const texts = [];
     collectStrings(action.payload, texts);
     texts.push(action.action_path || "");
-    let gapOk = true;
+    let closed = null;
     for (const t of texts) {
-      if (/[\u2014\u2013\u2015\u2212]/.test(t)) {
-        walls.push(W("gap.writing", "gap", false, "forbidden dash in payload"));
-        gapOk = false;
-        break;
-      }
-      if (t.includes(", and ") || t.includes(", or ")) {
-        walls.push(W("gap.writing", "gap", false, "oxford comma in payload"));
-        gapOk = false;
+      const rules = kernelClosedWritingRules(t);
+      if (rules.length) {
+        closed = rules;
         break;
       }
     }
-    if (gapOk) walls.push(W("gap.writing", "gap", true, "writing ok"));
+    if (closed) {
+      walls.push(W("gap.writing", "gap", false, "writing wall closed in payload: " + closed.join(",")));
+    } else {
+      walls.push(W("gap.writing", "gap", true, "writing ok"));
+    }
   }
 
   const scenes = new Set(s.proven_scene_ids || []);

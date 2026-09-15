@@ -5,7 +5,10 @@
 // (package dynaep.lattice, deny_lattice collect-all). Admit does not carry a restricted
 // Rego subset. HyperlatticeFilter.filterCrossing remains Admit collect-all walls then Apply.
 
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { pathToFileURL } from "node:url";
 
 export function labLatticeFilterEnabled() {
@@ -62,35 +65,54 @@ export function writingWallId(rule) {
   return `writing:${rule}`;
 }
 
-function hasChar(text, ch) {
-  return String(text ?? "").includes(ch);
-}
-
-function oxfordAndPattern() {
-  return "," + " " + "and ";
-}
-
-function oxfordOrPattern() {
-  return "," + " " + "or ";
-}
-
-function hasOxfordComma(text) {
-  const t = String(text ?? "");
-  return t.includes(oxfordAndPattern()) || t.includes(oxfordOrPattern());
-}
-
-function hasDoubleHyphenProse(text) {
-  return String(text ?? "").includes(" " + "-" + "-" + " ");
-}
-
-function hasPunctWordSpaceFail(text) {
-  const t = String(text ?? "");
-  for (let i = 0; i < t.length - 1; i++) {
-    const ch = t[i];
-    const next = t[i + 1];
-    if ((ch === "?" || ch === "!") && /[A-Za-z0-9]/.test(next)) return true;
+/** The writing rule source ships in the tree. The rule set of this library is read
+ * from that one source, so this file declares no rule family of its own. */
+export function writingRuleTable() {
+  let source = "";
+  const here = dirname(fileURLToPath(import.meta.url));
+  for (const candidate of [
+    join(process.cwd(), "AEP-Policy-System/reference/writing.gap"),
+    join(here, "../../../AEP-Policy-System/reference/writing.gap"),
+  ]) {
+    try {
+      source = readFileSync(candidate, "utf8");
+      break;
+    } catch (e) {
+      continue;
+    }
   }
-  return false;
+  const ids = [];
+  const m = source.match(/"constraints"\s*:\s*\[([\s\S]*?)\]/);
+  if (m) {
+    for (const part of m[1].split(",")) {
+      const id = part.trim().replace(/^"|"$/g, "");
+      if (id) ids.push(id);
+    }
+  }
+  return ids.filter((id) => id.startsWith("no_") || id.startsWith("punctuation") || id.startsWith("space_before") || id.startsWith("attach_"));
+}
+
+const WRITING_RULES = [
+  WRITING_RULE_NO_EM_DASHES,
+  WRITING_RULE_NO_EN_DASHES,
+  WRITING_RULE_NO_DASH_SUBSTITUTES,
+  WRITING_RULE_NO_BOX_DRAWING_DASHES,
+  WRITING_RULE_NO_MINUS_AS_DASH,
+  WRITING_RULE_NO_DOUBLE_HYPHEN,
+  WRITING_RULE_NO_OXFORD_COMMA,
+  WRITING_RULE_PUNCTUATION_WORD_SPACE,
+];
+
+/** Ask the Base Node kernel for the one compiled writing wall set. */
+function kernelClosedRules(text) {
+  const bin = process.env.AEP_LATTICE_LOG_BIN || "aep-lattice-log";
+  const out = execFileSync(bin, ["validate-writing"], {
+    input: JSON.stringify({ text: String(text ?? "") }),
+    encoding: "utf8",
+    maxBuffer: 8 * 1024 * 1024,
+  }).trim();
+  const parsed = JSON.parse(out);
+  return new Set((parsed.violations ?? []).map((v) => String(v.rule)));
 }
 
 function writingWall(rule, closed, reason) {
@@ -99,67 +121,17 @@ function writingWall(rule, closed, reason) {
 }
 
 export function compileWritingWalls(text) {
-  const t = String(text ?? "");
-  const walls = [];
-  walls.push(
-    writingWall(
-      WRITING_RULE_NO_EM_DASHES,
-      hasChar(t, "\u2014"),
-      "Em dash U+2014 forbidden by writing.gap",
-    ),
+  let closed;
+  try {
+    closed = kernelClosedRules(text);
+  } catch (e) {
+    return WRITING_RULES.map((rule) =>
+      writingWall(rule, true, "writing rules need the Base Node kernel: " + (e && e.message ? e.message : String(e))),
+    );
+  }
+  return WRITING_RULES.map((rule) =>
+    writingWall(rule, closed.has(rule), `writing.gap rule ${rule} decided by the Base Node kernel`),
   );
-  walls.push(
-    writingWall(
-      WRITING_RULE_NO_EN_DASHES,
-      hasChar(t, "\u2013"),
-      "En dash U+2013 forbidden by writing.gap",
-    ),
-  );
-  const subst = hasChar(t, "\u2015") || hasChar(t, "\u2e3a") || hasChar(t, "\u2e3b");
-  walls.push(
-    writingWall(
-      WRITING_RULE_NO_DASH_SUBSTITUTES,
-      subst,
-      "Dash substitute U+2015 U+2E3A U+2E3B forbidden by writing.gap",
-    ),
-  );
-  const boxd = hasChar(t, "\u2500") || hasChar(t, "\u2501");
-  walls.push(
-    writingWall(
-      WRITING_RULE_NO_BOX_DRAWING_DASHES,
-      boxd,
-      "Box drawing dash U+2500 U+2501 forbidden by writing.gap",
-    ),
-  );
-  walls.push(
-    writingWall(
-      WRITING_RULE_NO_MINUS_AS_DASH,
-      hasChar(t, "\u2212"),
-      "Minus sign U+2212 used as dash forbidden by writing.gap",
-    ),
-  );
-  walls.push(
-    writingWall(
-      WRITING_RULE_NO_DOUBLE_HYPHEN,
-      hasDoubleHyphenProse(t),
-      "Double hyphen prose separator forbidden by writing.gap",
-    ),
-  );
-  walls.push(
-    writingWall(
-      WRITING_RULE_NO_OXFORD_COMMA,
-      hasOxfordComma(t),
-      "Oxford comma forbidden by writing.gap",
-    ),
-  );
-  walls.push(
-    writingWall(
-      WRITING_RULE_PUNCTUATION_WORD_SPACE,
-      hasPunctWordSpaceFail(t),
-      "Space after ? or ! before the next word required by writing.gap",
-    ),
-  );
-  return walls;
 }
 
 export function writingViolationsFromWalls(walls) {

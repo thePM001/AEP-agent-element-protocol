@@ -14,6 +14,9 @@
       "no_double_hyphen",
       "no_oxford_comma",
       "punctuation_word_space",
+      "space_before_spaced_signs",
+      "attach_comma_semicolon",
+      "attach_double_colon",
       "min_brightness_f0f0f0"
     ],
     "invariants": [
@@ -74,6 +77,27 @@
         "description": "Space after question or bang before the next word"
       },
       {
+        "expr": "space_before_spaced_signs",
+        "lang": "gapdsl",
+        "severity": "hard",
+        "validator": "range_check",
+        "description": "Space before ? ! [ ] ( ) required"
+      },
+      {
+        "expr": "attach_comma_semicolon",
+        "lang": "gapdsl",
+        "severity": "hard",
+        "validator": "range_check",
+        "description": "Comma and semicolon attach to the word before them"
+      },
+      {
+        "expr": "attach_double_colon",
+        "lang": "gapdsl",
+        "severity": "hard",
+        "validator": "range_check",
+        "description": "Double colon attaches to the word before it"
+      },
+      {
         "expr": "min_brightness_f0f0f0",
         "lang": "gapdsl",
         "severity": "hard",
@@ -92,7 +116,7 @@
   },
   "metadata": {
     "provenance": "AEP 2.8.6",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "stability": "stable",
     "aspect": "objective",
     "agent_permission": [

@@ -24,6 +24,7 @@ aep-potomitan = { path = "../potomitan/crate" }
 aep-lattice-memory = { path = "../../AEP-Components/lattice-memory/crate" }
 aep-live-entry = { path = "../../AEP-Components/live-entry/crate" }
 aep-admit-live-dock = { path = "../../AEP-Components/admit-live-dock/crate" }
+aep-admit = { path = "../../AEP-Components/admit/crate" }
 aep-one-live-evaluation = { path = "../../AEP-Components/one-live-evaluation/crate" }
 aep-dock-request-poison = { path = "../../AEP-Components/dock-request-poison/crate" }
 aep-dock-line-reader = { path = "../../AEP-Components/dock-line-reader/crate" }
@@ -49,7 +50,6 @@ tokio-rustls.workspace = true
 aep-kernel-types = { path = "../../AEP-Components/kernel-types/crate" }
 
 anyhow.workspace = true
-aep-admit = { path = "../../AEP-Components/admit/crate" }
 aep-admit-channel-order-walls = { path = "../../AEP-Components/admit-channel-order-walls/crate" }
 aep-admit-temporal-bounds = { path = "../../AEP-Components/admit-temporal-bounds/crate" }
 aep-envelope = { path = "../../AEP-Components/envelope/crate" }

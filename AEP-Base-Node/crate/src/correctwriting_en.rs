@@ -1,28 +1,46 @@
 //! CORRECTWRITING_EN kernel writing conventions (writing.gap).
 //! Enforced by Base Node for all governed prose - not LRP, not validation dock.
+//!
+//! The rule family lives in one compiled wall set in aep-admit. This module keeps the
+//! fix helper and turns the compiled set into kernel violations. No matcher sits here.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+pub use aep_admit::{
+    compile_writing_walls_line, is_allowed_double_hyphen_line, is_tree_diagram_line,
+    line_closes_rule, writing_rule_ids, WritingRule, WRITING_GAP_SOURCE, WRITING_RULES,
+    RULE_ATTACH_COMMA_SEMICOLON, RULE_ATTACH_DOUBLE_COLON, RULE_NO_BOX_DRAWING_DASHES,
+    RULE_NO_DASH_SUBSTITUTES, RULE_NO_DOUBLE_HYPHEN, RULE_NO_EM_DASHES, RULE_NO_EN_DASHES,
+    RULE_NO_MINUS_AS_DASH, RULE_NO_OXFORD_COMMA, RULE_PUNCTUATION_WORD_SPACE,
+    RULE_SPACE_BEFORE_SPACED_SIGNS, RULE_SPACED_SIGN_WORD_SPACE,
+};
+
 pub const CORRECTWRITING_EN_CORE_ID: &str = "correctwriting-en";
 pub const WRITING_GAP_DOMAIN: &str = "aep.reference.writing";
 
-/// CORRECTWRITING_EN writing.gap rule ids enforced by the Base Node kernel.
-pub const WRITING_RULE_NO_EM_DASHES: &str = "no_em_dashes";
-pub const WRITING_RULE_NO_EN_DASHES: &str = "no_en_dashes";
-pub const WRITING_RULE_NO_DASH_SUBSTITUTES: &str = "no_dash_substitutes";
-pub const WRITING_RULE_NO_MINUS_AS_DASH: &str = "no_minus_as_dash";
-pub const WRITING_RULE_NO_DOUBLE_HYPHEN: &str = "no_double_hyphen";
-pub const WRITING_RULE_NO_OXFORD_COMMA: &str = "no_oxford_comma";
-pub const WRITING_RULE_SPACED_SIGN_WORD_SPACE: &str = "spaced_sign_word_space";
-pub const WRITING_RULE_SPACE_BEFORE_SPACED_SIGNS: &str = "space_before_spaced_signs";
-pub const WRITING_RULE_ATTACH_COMMA_SEMICOLON: &str = "attach_comma_semicolon";
-pub const WRITING_RULE_ATTACH_DOUBLE_COLON: &str = "attach_double_colon";
+/// The rule source of the kernel writing family. It compiles into the one wall set.
+pub const WRITING_GAP_SOURCE_TEXT: &str = WRITING_GAP_SOURCE;
+
+/// CORRECTWRITING_EN writing.gap rule ids enforced by the Base Node kernel. Each id is
+/// the id of the one compiled wall set.
+pub const WRITING_RULE_NO_EM_DASHES: &str = RULE_NO_EM_DASHES;
+pub const WRITING_RULE_NO_EN_DASHES: &str = RULE_NO_EN_DASHES;
+pub const WRITING_RULE_NO_DASH_SUBSTITUTES: &str = RULE_NO_DASH_SUBSTITUTES;
+pub const WRITING_RULE_NO_BOX_DRAWING_DASHES: &str = RULE_NO_BOX_DRAWING_DASHES;
+pub const WRITING_RULE_NO_MINUS_AS_DASH: &str = RULE_NO_MINUS_AS_DASH;
+pub const WRITING_RULE_NO_DOUBLE_HYPHEN: &str = RULE_NO_DOUBLE_HYPHEN;
+pub const WRITING_RULE_NO_OXFORD_COMMA: &str = RULE_NO_OXFORD_COMMA;
+pub const WRITING_RULE_SPACED_SIGN_WORD_SPACE: &str = RULE_SPACED_SIGN_WORD_SPACE;
+pub const WRITING_RULE_SPACE_BEFORE_SPACED_SIGNS: &str = RULE_SPACE_BEFORE_SPACED_SIGNS;
+pub const WRITING_RULE_ATTACH_COMMA_SEMICOLON: &str = RULE_ATTACH_COMMA_SEMICOLON;
+pub const WRITING_RULE_ATTACH_DOUBLE_COLON: &str = RULE_ATTACH_DOUBLE_COLON;
 
 pub const WRITING_RULE_IDS: &[&str] = &[
     WRITING_RULE_NO_EM_DASHES,
     WRITING_RULE_NO_EN_DASHES,
     WRITING_RULE_NO_DASH_SUBSTITUTES,
+    WRITING_RULE_NO_BOX_DRAWING_DASHES,
     WRITING_RULE_NO_MINUS_AS_DASH,
     WRITING_RULE_NO_DOUBLE_HYPHEN,
     WRITING_RULE_NO_OXFORD_COMMA,
@@ -30,15 +48,6 @@ pub const WRITING_RULE_IDS: &[&str] = &[
     WRITING_RULE_SPACE_BEFORE_SPACED_SIGNS,
     WRITING_RULE_ATTACH_COMMA_SEMICOLON,
     WRITING_RULE_ATTACH_DOUBLE_COLON,
-];
-
-const FORBIDDEN_DASH_CHARS: &[(char, &str, &str)] = &[
-    ('\u{2014}', "U+2014", WRITING_RULE_NO_EM_DASHES),
-    ('\u{2013}', "U+2013", WRITING_RULE_NO_EN_DASHES),
-    ('\u{2015}', "U+2015", WRITING_RULE_NO_DASH_SUBSTITUTES),
-    ('\u{2e3a}', "U+2E3A", WRITING_RULE_NO_DASH_SUBSTITUTES),
-    ('\u{2e3b}', "U+2E3B", WRITING_RULE_NO_DASH_SUBSTITUTES),
-    ('\u{2212}', "U+2212", WRITING_RULE_NO_MINUS_AS_DASH),
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -59,33 +68,12 @@ pub struct WritingEnforceResult {
     pub violations: Vec<WritingViolation>,
 }
 
-fn is_tree_diagram_line(line: &str) -> bool {
-    line.chars().any(|c| "├└│┌┐┘┬┴┤┼".contains(c)) || line.starts_with('|') || line.starts_with('`')
-}
-
-fn is_allowed_double_hyphen_line(line: &str) -> bool {
-    if line.contains("-->") {
-        return true;
-    }
-    if line.trim().chars().all(|c| c == '-' || c.is_whitespace()) {
-        return true;
-    }
-    if line.split_whitespace().any(|tok| {
-        tok.chars().filter(|c| *c == '-').count() >= 2
-            && tok.chars().any(|c| c.is_ascii_digit())
-    }) {
-        return true;
-    }
-    let lower = line.to_ascii_lowercase();
-    if lower.contains("git") && lower.contains("checkout") && line.contains(" -- ") {
-        return true;
-    }
-    for cmd in ["cargo", "npm", "node"] {
-        if lower.contains(cmd) && line.contains(" -- ") {
-            return true;
-        }
-    }
-    false
+fn rule_description(rule: &str) -> &'static str {
+    WRITING_RULES
+        .iter()
+        .find(|r| r.id == rule)
+        .map(|r| r.description)
+        .unwrap_or("writing rule closed")
 }
 
 fn is_spaced_sign(ch: char) -> bool {
@@ -108,83 +96,24 @@ fn dash_replacement(ch: char) -> &'static str {
     }
 }
 
+/// Kernel violations of one line, read from the one compiled wall set.
 pub fn lint_writing_prose_line(line: &str) -> Vec<WritingViolation> {
-    let mut violations = Vec::new();
-    if is_tree_diagram_line(line) {
-        return violations;
-    }
-    for (ch, code, rule) in FORBIDDEN_DASH_CHARS {
-        if line.contains(*ch) {
-            violations.push(WritingViolation {
-                rule: (*rule).into(),
-                message: format!("forbidden dash {code}"),
+    compile_writing_walls_line(line)
+        .into_iter()
+        .filter(|wall| wall.closed)
+        .map(|wall| {
+            let rule = wall
+                .id
+                .strip_prefix("writing:")
+                .unwrap_or(wall.id.as_str())
+                .to_string();
+            WritingViolation {
+                message: rule_description(&rule).to_string(),
+                rule,
                 line: None,
-            });
-        }
-    }
-    if line.contains(", and ") {
-        violations.push(WritingViolation {
-            rule: WRITING_RULE_NO_OXFORD_COMMA.into(),
-            message: "Oxford comma before \"and\"".into(),
-            line: None,
-        });
-    }
-    if line.contains(", or ") {
-        violations.push(WritingViolation {
-            rule: WRITING_RULE_NO_OXFORD_COMMA.into(),
-            message: "Oxford comma before \"or\"".into(),
-            line: None,
-        });
-    }
-    if line.contains(" -- ") && !is_allowed_double_hyphen_line(line) {
-        violations.push(WritingViolation {
-            rule: WRITING_RULE_NO_DOUBLE_HYPHEN.into(),
-            message: "double-hyphen prose separator".into(),
-            line: None,
-        });
-    }
-    if line.contains(" ,") || line.contains(" ;") {
-        violations.push(WritingViolation {
-            rule: WRITING_RULE_ATTACH_COMMA_SEMICOLON.into(),
-            message: "attach comma or semicolon directly to the preceding word (no space before)".into(),
-            line: None,
-        });
-    }
-    if line.contains(" ::") {
-        violations.push(WritingViolation {
-            rule: WRITING_RULE_ATTACH_DOUBLE_COLON.into(),
-            message: "attach double colon directly to the preceding word (no space before ::)".into(),
-            line: None,
-        });
-    }
-    let chars: Vec<char> = line.chars().collect();
-    for i in 1..chars.len() {
-        let ch = chars[i];
-        if is_spaced_sign(ch) && chars[i - 1].is_ascii_alphanumeric() {
-            violations.push(WritingViolation {
-                rule: WRITING_RULE_SPACE_BEFORE_SPACED_SIGNS.into(),
-                message: "add space before ? ! [ ] ( ) (write \"building ?\" or \"word [ note ]\" not \"building?\" or \"word[note]\")".into(),
-                line: None,
-            });
-            break;
-        }
-    }
-    for i in 0..chars.len().saturating_sub(1) {
-        let ch = chars[i];
-        let next = chars[i + 1];
-        if is_spaced_sign(ch) && next.is_ascii_alphanumeric() {
-            if skip_spaced_sign_after_context(&chars, i) {
-                continue;
             }
-            violations.push(WritingViolation {
-                rule: WRITING_RULE_SPACED_SIGN_WORD_SPACE.into(),
-                message: format!("missing space after '{ch}' before word"),
-                line: None,
-            });
-            break;
-        }
-    }
-    violations
+        })
+        .collect()
 }
 
 pub fn lint_writing_prose(text: &str) -> Vec<WritingViolation> {
@@ -203,16 +132,18 @@ pub fn fix_writing_prose_line(line: &str) -> String {
         return line.to_string();
     }
     let mut out = line.to_string();
-    for (ch, _, _) in FORBIDDEN_DASH_CHARS {
-        if out.contains(*ch) {
-            out = out.replace(*ch, dash_replacement(*ch));
+    for ch in ['\u{2014}', '\u{2013}', '\u{2015}', '\u{2e3a}', '\u{2e3b}', '\u{2212}'] {
+        if out.contains(ch) {
+            out = out.replace(ch, dash_replacement(ch));
+        }
+    }
+    for ch in ['\u{2500}', '\u{2501}'] {
+        if out.contains(ch) {
+            out = out.replace(ch, "-");
         }
     }
     out = out.replace(", and ", " and ");
     out = out.replace(", or ", " or ");
-    if !is_allowed_double_hyphen_line(&out) && out.contains(" -- ") {
-        out = out.replace(" -- ", " - ");
-    }
     out = out.replace(" ,", ",");
     out = out.replace(" ;", ";");
     out = out.replace(" ::", "::");
@@ -319,6 +250,22 @@ mod tests {
         let violations = lint_writing_prose(text);
         assert!(violations.iter().any(|v| v.rule == WRITING_RULE_NO_EN_DASHES));
         assert!(!violations.iter().any(|v| v.rule == WRITING_RULE_NO_EM_DASHES));
+    }
+
+    #[test]
+    fn the_kernel_ids_are_the_compiled_ids() {
+        let mut kernel: Vec<&str> = WRITING_RULE_IDS.to_vec();
+        let mut compiled = writing_rule_ids();
+        assert_eq!(compiled.len(), kernel.len());
+        kernel.sort();
+        compiled.sort();
+        assert_eq!(kernel, compiled);
+    }
+
+    #[test]
+    fn the_rule_source_compiles_into_the_kernel_family() {
+        assert!(aep_admit::writing_source_compiles());
+        assert!(WRITING_GAP_SOURCE_TEXT.contains(WRITING_RULE_NO_OXFORD_COMMA));
     }
 
     #[test]

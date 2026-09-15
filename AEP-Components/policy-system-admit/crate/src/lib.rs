@@ -560,41 +560,6 @@ fn contains_char(text: &str, ch: char) -> bool {
     text.chars().any(|c| c == ch)
 }
 
-fn has_double_hyphen_prose(text: &str) -> bool {
-    let sep: String = [' ', '-', '-', ' '].iter().collect();
-    text.contains(&sep)
-}
-
-fn oxford_and_pattern() -> String {
-    let mut pat = String::from(",");
-    pat.push(' ');
-    pat.push_str("and ");
-    pat
-}
-
-fn oxford_or_pattern() -> String {
-    let mut pat = String::from(",");
-    pat.push(' ');
-    pat.push_str("or ");
-    pat
-}
-
-fn has_oxford_comma(text: &str) -> bool {
-    text.contains(&oxford_and_pattern()) || text.contains(&oxford_or_pattern())
-}
-
-fn has_punct_word_space_fail(text: &str) -> bool {
-    let chars: Vec<char> = text.chars().collect();
-    for i in 0..chars.len().saturating_sub(1) {
-        let ch = chars[i];
-        let next = chars[i + 1];
-        if (ch == char::from(63) || ch == char::from(33)) && next.is_ascii_alphanumeric() {
-            return true;
-        }
-    }
-    false
-}
-
 fn has_email(text: &str) -> bool {
     let chars: Vec<char> = text.chars().collect();
     let n = chars.len();
@@ -991,6 +956,15 @@ fn lrp_enabled(gap: &LoadedGap, input: &PolicySystemCompileInput) -> bool {
     false
 }
 
+/// Every writing rule decision comes from the one compiled wall set in aep-admit.
+/// This crate keeps no copy of a writing matcher.
+fn writing_rule_closed(slug: &str, text: &str) -> bool {
+    if slug == "min_brightness_f0f0f0" {
+        return false;
+    }
+    text.lines().any(|line| aep_admit::line_closes_rule(slug, line))
+}
+
 fn evaluate_closed(gap: &LoadedGap, item: &GapItem, input: &PolicySystemCompileInput) -> bool {
     if guard_active(gap, input) == false {
         return false;
@@ -998,24 +972,7 @@ fn evaluate_closed(gap: &LoadedGap, item: &GapItem, input: &PolicySystemCompileI
     let slug = expr_slug(&item.expr);
     let text = &input.text;
     match gap.stem.as_str() {
-        "writing" => match slug.as_str() {
-            "no_em_dashes" => contains_char(text, '\u{2014}'),
-            "no_en_dashes" => contains_char(text, '\u{2013}'),
-            "no_dash_substitutes" => {
-                contains_char(text, '\u{2015}')
-                    || contains_char(text, '\u{2e3a}')
-                    || contains_char(text, '\u{2e3b}')
-            }
-            "no_box_drawing_dashes" => {
-                contains_char(text, '\u{2500}') || contains_char(text, '\u{2501}')
-            }
-            "no_minus_as_dash" => contains_char(text, '\u{2212}'),
-            "no_double_hyphen" => has_double_hyphen_prose(text),
-            "no_oxford_comma" => has_oxford_comma(text),
-            "punctuation_word_space" => has_punct_word_space_fail(text),
-            "min_brightness_f0f0f0" => false,
-            _ => false,
-        },
+        "writing" => writing_rule_closed(slug.as_str(), text),
         "security" => match slug.as_str() {
             "no_pii_detected" => {
                 has_email(text) || has_ssn(text) || has_credit_card(text) || has_phone(text)

@@ -1,6 +1,15 @@
 #!/usr/bin/env node
 
-import { lintGovernedProseStrict } from "../../../AEP-Components/lattice-channels/lib/lattice-transport.mjs";
+import {
+  lintGovernedProseStrict,
+  writingRuleNamed,
+  writingRuleTable,
+} from "../../../AEP-Components/lattice-channels/lib/lattice-transport.mjs";
+
+/** The writing rule family is read from the one source, writing.gap. */
+export function writingRuleIds() {
+  return writingRuleTable();
+}
 
 const GREETING_SLANG_RE = /\b(biosecure|unvaccinated)\b/i;
 const CANVAS_INVENTORY_RE =
@@ -26,7 +35,7 @@ function skipSpacedSignAfterContext(raw, index) {
   return prev === "/" || prev === "=" || prev === "&";
 }
 
-/** CORRECTWRITING_EN writing mode: space before ? ! [ ] ( ) (e.g. "building ?" not "building?"). */
+/** EPSCOM writing mode: space before ? ! [ ] ( ) (e.g. "building ?" not "building?"). */
 export function lintMissingSpaceBeforeSentencePunct(text) {
   const violations = [];
   const raw = stripLintExemptRegions(text);
@@ -35,7 +44,7 @@ export function lintMissingSpaceBeforeSentencePunct(text) {
     const prev = raw[i - 1];
     if (SPACED_SIGN_CHARS.has(ch) && /[A-Za-z0-9]/.test(prev)) {
       violations.push({
-        rule: "space_before_spaced_signs",
+        rule: writingRuleNamed("space_before_spaced_signs") ? "space_before_spaced_signs" : "writing_rule_not_in_source",
         message: "add space before ? ! [ ] ( ) (write \"building ?\" or \"word [ note ]\" not \"building?\" or \"word[note]\")",
         line: 1,
       });
@@ -55,7 +64,7 @@ export function lintMissingSpaceAfterSentencePunct(text) {
     if (SPACED_SIGN_CHARS.has(ch) && /[A-Za-z0-9]/.test(next)) {
       if (skipSpacedSignAfterContext(raw, i)) continue;
       violations.push({
-        rule: "spaced_sign_word_space",
+        rule: writingRuleNamed("spaced_sign_word_space") ? "spaced_sign_word_space" : "writing_rule_not_in_source",
         message: `missing space after "${normalizeSpacedSign(ch)}" before next word`,
         line: 1,
         snippet: raw.slice(Math.max(0, i - 12), i + 14),
@@ -72,7 +81,7 @@ export function lintSpaceBeforeCommaSemicolon(text) {
   if (!/\s[,;]/.test(raw)) return [];
   return [
     {
-      rule: "attach_comma_semicolon",
+      rule: writingRuleNamed("attach_comma_semicolon") ? "attach_comma_semicolon" : "writing_rule_not_in_source",
       message: "attach comma or semicolon directly to the preceding word (no space before)",
       line: 1,
     },
@@ -85,7 +94,7 @@ export function lintSpaceBeforeDoubleColon(text) {
   if (!/\s::/.test(raw)) return [];
   return [
     {
-      rule: "attach_double_colon",
+      rule: writingRuleNamed("attach_double_colon") ? "attach_double_colon" : "writing_rule_not_in_source",
       message: "attach double colon directly to the preceding word (no space before ::)",
       line: 1,
     },
@@ -93,7 +102,7 @@ export function lintSpaceBeforeDoubleColon(text) {
 }
 
 const INSTRUCTION_ECHO_RE =
-  /\b(use words like|when describing the rule itself|describe mistakes in words instead|compliant example sentences|reply in chat mode only|no json blocks|no implementationplan|canvas inventory|correctwriting_en writing\.gap punctuation or style rules|explain the rule in plain language)\b/i;
+  /\b(use words like|when describing the rule itself|describe mistakes in words instead|compliant example sentences|reply in chat mode only|no json blocks|no implementationplan|canvas inventory|epscom writing\.gap punctuation or style rules|explain the rule in plain language)\b/i;
 
 /** Reject replies that parrot internal CCA prompt instructions to the user. */
 export function lintCcaInstructionEcho(text) {
@@ -170,7 +179,7 @@ export function lintCcaGreetingOutput(text) {
 
 /**
  * Full CCA chat writing validation for hyperlattice validate_writing stage.
- * No auto-fix. Fail-closed on any constraint from cca-writing-chat.gap + CORRECTWRITING_EN.
+ * No auto-fix. Fail-closed on any constraint from cca-writing-chat.gap + EPSCOM.
  */
 export function validateCcaChatWritingDraft(text, opts = {}) {
   const violations = [
@@ -201,7 +210,7 @@ export function validateCcaChatWritingDraft(text, opts = {}) {
 
   return {
     ok: unique.length === 0,
-    authority: "correctwriting_en-core",
+    authority: "epscom-core",
     violations: unique,
     rules_checked: [
       "space_before_spaced_signs",
