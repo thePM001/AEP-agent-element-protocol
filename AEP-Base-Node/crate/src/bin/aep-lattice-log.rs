@@ -1,6 +1,7 @@
 use aep_base_node::{
     bootstrap_contracts_from_lrps, build_transport_frame, default_aep_data_dir,
     default_lattice_db_path, enforce_writing_text, enforce_writing_value, event_count,
+    lint_writing_prose,
     export_dynaep_events, open_lattice_db, record_dynaep_event, DynAepEventInput,
     ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV, CORRECTWRITING_EN_CORE_ID,
 };
@@ -43,6 +44,8 @@ enum Commands {
     ValidateWriting,
     /// CORRECTWRITING_EN kernel writing.gap enforcement for arbitrary JSON values
     EnforceWritingValue,
+    /// CORRECTWRITING_EN kernel writing.gap findings for prose text, before any fix
+    LintWriting,
 }
 
 fn read_stdin_json<T: serde::de::DeserializeOwned>() -> Result<T, Box<dyn std::error::Error>> {
@@ -173,6 +176,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "text": result.text,
                     "violations_corrected": result.violations_corrected,
                     "violations": result.violations,
+                })
+            );
+        }
+        Commands::LintWriting => {
+            #[derive(serde::Deserialize)]
+            struct LintWritingInput {
+                text: String,
+            }
+            let input: LintWritingInput = read_stdin_json()?;
+            let violations = lint_writing_prose(&input.text);
+            println!(
+                "{}",
+                serde_json::json!({
+                    "ok": violations.is_empty(),
+                    "authority": CORRECTWRITING_EN_CORE_ID,
+                    "violations": violations,
                 })
             );
         }

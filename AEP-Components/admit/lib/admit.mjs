@@ -6,7 +6,7 @@
 // Rego subset. HyperlatticeFilter.filterCrossing remains Admit collect-all walls then Apply.
 
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { pathToFileURL } from "node:url";
@@ -105,7 +105,7 @@ const WRITING_RULES = [
 
 /** Ask the Base Node kernel for the one compiled writing wall set. */
 function kernelClosedRules(text) {
-  const bin = process.env.AEP_LATTICE_LOG_BIN || "aep-lattice-log";
+  const bin = resolveWritingKernel();
   const out = execFileSync(bin, ["validate-writing"], {
     input: JSON.stringify({ text: String(text ?? "") }),
     encoding: "utf8",

@@ -4,8 +4,40 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
+
+
+/** Resolve the Base Node kernel binary for the one compiled wall set. */
+function resolveWritingKernel() {
+  if (process.env.AEP_LATTICE_LOG_BIN) return process.env.AEP_LATTICE_LOG_BIN;
+  const here = dirname(fileURLToPath(import.meta.url));
+  const root = join(here, "../../..");
+  for (const rel of [
+    "rust/target/release/aep-lattice-log",
+    "rust/target/debug/aep-lattice-log",
+    "target/release/aep-lattice-log",
+    "target/debug/aep-lattice-log",
+  ]) {
+    const candidate = join(root, rel);
+    try {
+      if (existsSync(candidate)) return candidate;
+    } catch (e) {
+      continue;
+    }
+  }
+  return "aep-lattice-log";
+}
+
+const DOC_WRITING_RULES = [
+  "no_em_dashes",
+  "no_en_dashes",
+  "no_dash_substitutes",
+  "no_minus_as_dash",
+  "no_double_hyphen",
+  "no_oxford_comma",
+];
 
 const SKIP_DIRS = new Set(["node_modules", ".git", "target", "dist", "build"]);
 
@@ -169,13 +201,17 @@ export function lintWritingGapContent(content, rel, kind = "markdown") {
     violations.push({
       file: rel,
       line: 0,
-      rule: "correctwriting_en_kernel_unavailable",
+      rule: "epscom_kernel_unavailable",
       message: `writing rules need the Base Node kernel: ${err instanceof Error ? err.message : String(err)}`,
       snippet: "",
     });
     return violations;
   }
+  /* The documentation lint owns the dash and comma rules of the family. The
+   * decision comes from the one compiled set, and the wider kernel rules stay
+   * with the kernel because markdown section syntax carries brackets. */
   for (const v of kernel) {
+    if (!DOC_WRITING_RULES.includes(v.rule)) continue;
     const lineNumber = v.line ?? 0;
     const text = lineNumber > 0 && proseLines[lineNumber - 1] ? proseLines[lineNumber - 1].trim() : "";
     violations.push({
@@ -191,8 +227,8 @@ export function lintWritingGapContent(content, rel, kind = "markdown") {
 
 /** Ask the Base Node kernel for the one compiled writing wall set. */
 function kernelWritingViolations(text) {
-  const bin = process.env.AEP_LATTICE_LOG_BIN || "aep-lattice-log";
-  const out = execFileSync(bin, ["validate-writing"], {
+  const bin = resolveWritingKernel();
+  const out = execFileSync(bin, ["lint-writing"], {
     input: JSON.stringify({ text: String(text ?? "") }),
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
