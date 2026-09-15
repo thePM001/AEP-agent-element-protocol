@@ -12,7 +12,7 @@
 
 **How to best explore the basics of AEP ? - Simply copy the repo URL into your LLM chat of choice that has internet search capability (Grok, Gemini, ChatGPT, Opus, etc.) and let the AI explain it to you.**
 
-**[AEP secure deployment guide](AEP-User-Experience/https://github.com/thePM001/AEP-agent-element-protocol/blob/main/docs/AEP-2.8-SECURE-DEPLOYMENT-GUIDE.md)**
+**[AEP secure deployment guide](AEP-User-Experience/docs/AEP-2.8-SECURE-DEPLOYMENT-GUIDE.md)**
 
 ---
 
@@ -490,7 +490,7 @@ Govern multiple AEP Base Node kernels from a single `nodes.json` v2 registry: ro
 
 | Resource | Path |
 | --- | --- |
-| Feature guide | [`AEP-Base-Node/multi-base-node/https://github.com/thePM001/AEP-agent-element-protocol/blob/main/docs/multi-base-node-28b.md`](AEP-Base-Node/multi-base-node/https://github.com/thePM001/AEP-agent-element-protocol/blob/main/docs/multi-base-node-28b.md) |
+| Feature guide | [`AEP-Base-Node/multi-base-node/docs/multi-base-node-28b.md`](AEP-Base-Node/multi-base-node/docs/multi-base-node-28b.md) |
 | Architecture diagram | [`AEP-Base-Node/multi-base-node/docs/multi-base-node-28b-architecture.svg`](AEP-Base-Node/multi-base-node/docs/multi-base-node-28b-architecture.svg) |
 | Registry schema | [`AEP-Base-Node/registry/schemas/nodes-registry-v2.json`](AEP-Base-Node/registry/schemas/nodes-registry-v2.json) |
 | Rust crate | [`AEP-Base-Node/multi-base-node/crate/`](AEP-Base-Node/multi-base-node/crate/) |
@@ -991,7 +991,7 @@ Each element type has a fixed depth band so a shell, a panel and a tooltip canno
 | Connector | Application bridge into AEP |
 | Storage Import / Export | Data intake and egress backends |
 
-Implementation details: [`AEP-Composer-Lite/README.md`](AEP-Composer-Lite/README.md). Sidebar extension guide: [`AEP-Composer-Lite/https://github.com/thePM001/AEP-agent-element-protocol/blob/main/docs/SIDEBAR-BLOCKS.md`](AEP-Composer-Lite/https://github.com/thePM001/AEP-agent-element-protocol/blob/main/docs/SIDEBAR-BLOCKS.md).
+Implementation details: [`AEP-Composer-Lite/README.md`](AEP-Composer-Lite/README.md). Sidebar extension guide: [`AEP-Composer-Lite/docs/SIDEBAR-BLOCKS.md`](AEP-Composer-Lite/docs/SIDEBAR-BLOCKS.md).
 
 ---
 
