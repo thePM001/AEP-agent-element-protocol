@@ -1,12 +1,11 @@
 import type { AgentIdentity } from "../../identity/lib/types.js";
 import type { CovenantSpec } from "../../covenant/lib/types.js";
 import type { SessionReport } from "../../session/lib/session.js";
-import type { TrustTier } from "../../trust-rings/lib/trust/types.js";
 import type { TaskTree } from "../../decomposition/lib/types.js";
 
 export interface TrustScore {
   score: number;
-  tier: TrustTier;
+  tier: string;
 }
 
 export interface ReliabilityIndex {

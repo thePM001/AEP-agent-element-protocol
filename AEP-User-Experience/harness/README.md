@@ -42,7 +42,7 @@ Agents operate under GAP-based capability profiles. Authoritative source: `AEP-C
 
 ## Evaluation Chain
 
-After a sealed lattice frame, Base Node kernel runs collect-all Admit then Apply. Fifteen named rows are a derived ledger. Closed set does not depend on definition order. TypeScript evaluation-chain runners are removed. Scanners, trust rings, covenants and SHA-256 evidence ledger with Merkle proofs still apply. Base Node records dynAEP events on the validation dock.
+After a sealed lattice frame, Base Node kernel runs collect-all Admit then Apply. Fifteen named rows are a derived ledger. Closed set does not depend on definition order. TypeScript evaluation-chain runners are removed. Scanners, covenants and the SHA-256 evidence ledger with Merkle proofs still apply. Base Node records dynAEP events on the validation dock.
 
 ## Component Registry
 

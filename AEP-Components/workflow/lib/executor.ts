@@ -11,7 +11,8 @@ import type {
 } from "./types.js";
 import type { AgentGateway } from "../gateway.js";
 import type { EvidenceLedger } from "../../evidence-ledger/lib/ledger/ledger.js";
-import type { TrustManager } from "../../trust-rings/lib/trust/manager.js";
+
+type TrustManager = { reward: (reason: string, amount?: number) => void };
 
 export class WorkflowExecutor {
   private definition: WorkflowDefinition;

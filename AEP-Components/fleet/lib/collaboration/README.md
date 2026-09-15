@@ -6,7 +6,7 @@ Role-based agent team coordination with GAP-native role and handoff declarations
 
 ### Supervisor Pattern
 One agent governs sub-agents. Supervisor assigns tasks, validates outputs, enforces policies.
-Sub-agents inherit supervisor's trust ring (monotonic safety).
+Sub-agents inherit the supervisor rank and cannot exceed it (monotonic safety).
 
 ### Debate Pattern
 Agents cross-validate each other's outputs. Disagreements escalate to evidence ledger.

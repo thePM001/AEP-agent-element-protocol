@@ -1,5 +1,5 @@
 // BL-X1: real multi-agent collaboration manager (no silent no-op)
-// Patterns: supervisor, debate, task delegation with monotonic trust ring safety.
+// Patterns: supervisor, debate, task delegation with a monotonic rank guard.
 
 export type CollaborationPattern = "supervisor" | "debate" | "delegation";
 

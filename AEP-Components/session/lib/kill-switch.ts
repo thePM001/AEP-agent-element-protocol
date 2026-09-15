@@ -1,6 +1,5 @@
 import type { SessionManager } from "./session-manager.js";
 import type { SessionReport } from "./session.js";
-import type { TrustManager } from "../../trust-rings/lib/trust/manager.js";
 import type { RollbackManager } from "../../evidence-ledger/lib/rollback/manager.js";
 
 export interface KillResult {
@@ -9,6 +8,8 @@ export interface KillResult {
   rollbacksAttempted: boolean;
   trustReset: boolean;
 }
+
+type TrustManager = { getScore: () => number; penalize: (reason: string, amount?: number) => void };
 
 export class KillSwitch {
   private sessionManager: SessionManager;
