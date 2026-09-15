@@ -2,7 +2,9 @@ use std::collections::HashSet;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
-pub const PULSE_MS: i64 = 1000;
+// One owner of the pulse constant is aep-kernel-types, so this crate imports it
+// and re-exports it for the callers that read the beat interval from here.
+pub use aep_kernel_types::PULSE_MS;
 pub const MAX_DRIFT_MS: i64 = 50;
 pub const MAX_AGE_MS: i64 = 5000;
 pub const MAX_FRAME_AGE_SECS: u64 = 300;

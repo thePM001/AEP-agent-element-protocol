@@ -3,10 +3,15 @@
 // package again. Process isolation shipped with CAW only, so this crate returns
 // the contract to the AEP 2.8.x protocol graph and proves it with a seal test.
 //
-// The crate owns one job. It seals one operating system process against one
-// isolation specification and it hands back the public ProcessSealed type.
+// The crate owns one job. It records one operating system process against one
+// isolation specification and it hands back the public ProcessSealed record.
 // A seal binds pid, algorithm and specification digest, so a reused pid with a
 // different specification can never satisfy the seal.
+//
+// This crate is a seal record contract and it is not an enforcer. It applies no
+// restriction of its own, because it makes no system call. The host sandbox
+// under AEP-CAW carries the real restrictions and it is the only enforcer in the
+// shipped stack. A seal on its own is a record and not confinement.
 
 use aep_kernel_types::{seal_digest, ProcessSealed};
 use serde::{Deserialize, Serialize};
@@ -15,8 +20,9 @@ pub const COMPONENT_ID: &str = "aep-isolation";
 pub const TICKET: &str = "kernel-type-set";
 pub const ALGORITHM_SEALED: &str = "sha256";
 
-/// One process isolation specification. Every field is a mechanical limit,
-/// so the specification digest is the whole contract.
+/// One isolation specification as recorded data. Every field is a mechanical
+/// limit and the specification digest is the whole contract. The host sandbox
+/// reads those limits and applies them, because this crate applies nothing.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IsolationSpec {
     pub address_space_bytes: u64,
@@ -137,9 +143,21 @@ pub fn seal_once(
     Ok(sealed)
 }
 
+// The tests state the seal record contract. This crate records one seal and it
+// does not enforce one, because the host sandbox under AEP-CAW is the only
+// enforcer in the shipped stack.
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_seal_is_a_record_and_not_an_enforcement() {
+        let spec = IsolationSpec::default();
+        let sealed = seal_process(4300, &spec, 2).expect("seal");
+        assert_eq!(sealed.pid, 4300);
+        assert_eq!(sealed.spec_digest.as_str(), spec.digest().as_str());
+        assert_eq!(sealed.seal.is_empty(), false);
+    }
 
     #[test]
     fn seal_binds_the_process_and_the_specification() {

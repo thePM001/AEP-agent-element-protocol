@@ -1,7 +1,10 @@
 // AEP 2.8.6 - Injection Scanner
 // Detects SQL injection, XSS, SSTI and command injection patterns.
+// The patterns come from the one scan rule table, which the Admit policy crate
+// also reads. This module holds no private copy of a rule.
 
 import type { Finding, Scanner, ScannerConfig } from "./types.js";
+import { scanRulesForClass } from "./admit-rule-table.js";
 
 interface InjectionPattern {
   name: string;
@@ -13,34 +16,11 @@ interface InjectionPattern {
  * BM-16: heuristic denylist only - not complete injection coverage.
  * Combine with fail-closed policy; do not claim complete security from this list alone.
  */
-const INJECTION_PATTERNS: InjectionPattern[] = [
-  // SQL injection
-  { name: "sql_drop", pattern: /\bDROP\s+TABLE\b/gi, category: "injection:sql" },
-  { name: "sql_union_select", pattern: /\bUNION\s+SELECT\b/gi, category: "injection:sql" },
-  { name: "sql_or_tautology", pattern: /\bOR\s+1\s*=\s*1\b/gi, category: "injection:sql" },
-  { name: "sql_comment", pattern: /'\s*--/g, category: "injection:sql" },
-  { name: "sql_semicolon", pattern: /;\s*DROP\b/gi, category: "injection:sql" },
-  { name: "sql_sleep", pattern: /\bSLEEP\s*\(/gi, category: "injection:sql" },
-
-  // XSS
-  { name: "xss_script", pattern: /<script[\s>]/gi, category: "injection:xss" },
-  { name: "xss_onerror", pattern: /\bonerror\s*=/gi, category: "injection:xss" },
-  { name: "xss_onload", pattern: /\bonload\s*=/gi, category: "injection:xss" },
-  { name: "xss_javascript", pattern: /javascript\s*:/gi, category: "injection:xss" },
-  { name: "xss_img_src", pattern: /<img[^>]+src\s*=\s*["']?javascript/gi, category: "injection:xss" },
-  { name: "xss_svg_onload", pattern: /<svg[^>]+onload\s*=/gi, category: "injection:xss" },
-
-  // Server-Side Template Injection (SSTI)
-  { name: "ssti_double_curly", pattern: /\{\{.*\}\}/g, category: "injection:ssti" },
-  { name: "ssti_block", pattern: /\{%.*%\}/g, category: "injection:ssti" },
-
-  // Command injection
-  { name: "cmd_semicolon_rm", pattern: /;\s*rm\s/g, category: "injection:command" },
-  { name: "cmd_pipe_cat", pattern: /\|\s*cat\s/g, category: "injection:command" },
-  { name: "cmd_backtick", pattern: /`[^`]+`/g, category: "injection:command" },
-  { name: "cmd_dollar_paren", pattern: /\$\([^)]+\)/g, category: "injection:command" },
-  { name: "cmd_and_curl", pattern: /&&\s*curl\s/gi, category: "injection:command" },
-];
+const INJECTION_PATTERNS: InjectionPattern[] = scanRulesForClass("injection").map((rule) => ({
+  name: rule.id,
+  pattern: new RegExp(rule.ts?.pattern ?? "", rule.ts?.flags ?? "g"),
+  category: rule.category,
+}));
 
 export const INJECTION_SCANNER_HEURISTIC_ONLY = true;
 

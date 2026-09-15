@@ -1,3 +1,11 @@
+// The canvas graph projection for Composer Lite.
+//
+// This module holds the projection of the live graph that the composer canvas
+// reads, and it serializes that projection into the canvas graph file in
+// AEP_DATA. The live graph state is owned by the dynamic engine at
+// AEP-Components/dynAEP/, so this store keeps a projection and not a private
+// state copy.
+
 import {
   readFileSync,
   writeFileSync,

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Composer Lite CCA bridge - delegates to cca/ component.
+ * Composer Lite CCA bridge - delegates to the AEP-CCA-Central-Setup-Agent component.
  */
 
 export {

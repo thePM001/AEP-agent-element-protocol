@@ -1,24 +1,10 @@
 // AEP 2.8.6 - PII Scanner
 // Detects personally identifiable information in agent output.
-// Regex-based detection - no LLM needed.
+// The patterns come from the one scan rule table, which the Admit policy crate
+// also reads. This module holds no private copy of a rule.
 
 import type { Finding, Scanner, ScannerConfig } from "./types.js";
-
-const EMAIL_PATTERN = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-
-const PHONE_PATTERN = /(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g;
-
-// Luhn-valid credit card number patterns (13-19 digits with optional separators)
-const CREDIT_CARD_PATTERN = /\b(?:\d{4}[-\s]?){3,4}\d{1,4}\b/g;
-
-// US Social Security Number
-const SSN_PATTERN = /\b\d{3}-\d{2}-\d{4}\b/g;
-
-// Spanish NIF/NIE
-const NIF_PATTERN = /\b[XYZ]?\d{7,8}[A-Z]\b/g;
-
-// UK National Insurance Number
-const NINO_PATTERN = /\b[A-CEGHJ-PR-TW-Z]{2}\d{6}[A-D]\b/g;
+import { scanRulesForClass } from "./admit-rule-table.js";
 
 interface PIIPattern {
   name: string;
@@ -26,14 +12,11 @@ interface PIIPattern {
   category: string;
 }
 
-const PII_PATTERNS: PIIPattern[] = [
-  { name: "email", pattern: EMAIL_PATTERN, category: "email" },
-  { name: "phone", pattern: PHONE_PATTERN, category: "phone" },
-  { name: "credit_card", pattern: CREDIT_CARD_PATTERN, category: "credit_card" },
-  { name: "ssn", pattern: SSN_PATTERN, category: "national_id" },
-  { name: "nif", pattern: NIF_PATTERN, category: "national_id" },
-  { name: "nino", pattern: NINO_PATTERN, category: "national_id" },
-];
+const PII_PATTERNS: PIIPattern[] = scanRulesForClass("pii").map((rule) => ({
+  name: rule.id,
+  pattern: new RegExp(rule.ts?.pattern ?? "", rule.ts?.flags ?? "g"),
+  category: rule.category,
+}));
 
 function luhnCheck(num: string): boolean {
   // M-25: real Luhn validation for card-like digit sequences
@@ -76,7 +59,7 @@ export class PIIScanner implements Scanner {
           severity: this.severity,
           match: match[0],
           position: match.index,
-          category: `pii:${category}`,
+          category,
         });
       }
     }

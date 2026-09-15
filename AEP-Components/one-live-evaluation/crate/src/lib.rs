@@ -1,5 +1,7 @@
 // One live evaluation. live_collect_all is not a second combinator beside aep_envelope::admit.
 // Extra_walls is AdmitWall id. Drop extra_walls conversion from a second admit_collect_all.
+// The source check in this crate is a conformance check named
+// conformance_check_one_live_evaluation_source. It is not a second admit path.
 use aep_admit_live_dock::{compile_live_walls, LiveDockContext};
 use aep_envelope::{admit_with_extra, dest_dock_from_opened_frame, EnvelopeAction};
 use aep_live_entry::{LiveEntry, ProcessOut};
@@ -120,8 +122,10 @@ fn compact(src: &str) -> String {
     src.chars().filter(|c| c.is_whitespace() == false).collect()
 }
 
-/// CI: fail if envelope_admit.rs calls both live_collect_all and process_event Admit on the same plaintext.
-pub fn scan_dual_combinator(src: &str) -> Result<String, String> {
+/// Conformance check: fail if envelope_admit.rs calls both live_collect_all and
+/// process_event Admit on the same plaintext. This is a source conformance check,
+/// so it admits no traffic and it decides no verdict.
+pub fn conformance_check_one_live_evaluation_source(src: &str) -> Result<String, String> {
     let body = extract_after(src, "fn admit_sealed_payload_on_live_dock");
     if body.is_empty() {
         return Err(String::from("admit_sealed_payload_on_live_dock not found"));
@@ -174,7 +178,7 @@ pub fn run_gate() -> Result<i32, String> {
     if src.is_empty() {
         return Err(String::from("empty envelope_admit.rs"));
     }
-    let proof = scan_dual_combinator(&src)?;
+    let proof = conformance_check_one_live_evaluation_source(&src)?;
     let mut line = String::from("aep-one-live-evaluation ok proof=");
     line.push_str(&proof);
     line.push('\n');
@@ -250,16 +254,16 @@ pub mod admit_opened_frame {
     }
 }
 
-// HVVCAS: scan_dual_combinator domain:admit type:service
-pub mod scan_dual_combinator {
-    use super::scan_dual_combinator;
+// HVVCAS: conformance_check_one_live_evaluation_source domain:admit type:service
+pub mod conformance_check_one_live_evaluation_source {
+    use super::conformance_check_one_live_evaluation_source;
 
-    pub struct ScanDualCombinator {
+    pub struct ConformanceCheckOneLiveEvaluationSource {
         pub src: String,
         pub scan: String,
     }
 
-    impl ScanDualCombinator {
+    impl ConformanceCheckOneLiveEvaluationSource {
         pub fn new() -> Self {
             Self {
                 src: String::new(),
@@ -269,7 +273,7 @@ pub mod scan_dual_combinator {
 
         /// Fail if envelope_admit.rs calls both live_collect_all and process_event Admit on the same plaintext.
         pub fn process(&mut self) -> anyhow::Result<()> {
-            match scan_dual_combinator(&self.src) {
+            match conformance_check_one_live_evaluation_source(&self.src) {
                 Ok(v) => self.scan = v,
                 Err(e) => self.scan = e,
             }
@@ -294,7 +298,7 @@ mod tests {
     #[test]
     fn dual_call_fails() {
         let bad = "pub fn admit_sealed_payload_on_live_dock() { live_collect_all(live, &value, dock)?; match live.process_event(value) { _ => {} } }";
-        match scan_dual_combinator(bad) {
+        match conformance_check_one_live_evaluation_source(bad) {
             Err(e) => must(e.contains("both live_collect_all and process_event")),
             Ok(_) => std::process::abort(),
         }
@@ -303,7 +307,7 @@ mod tests {
     #[test]
     fn one_admit_then_apply_passes() {
         let good = "pub fn admit_sealed_payload_on_live_dock() { attach_live_walls(live, &value, dock); match live.process_event(value) { _ => {} } }";
-        match scan_dual_combinator(good) {
+        match conformance_check_one_live_evaluation_source(good) {
             Ok(v) => must(v.contains("ok one live evaluation")),
             Err(_) => std::process::abort(),
         }
@@ -311,7 +315,7 @@ mod tests {
 
     #[test]
     fn missing_fn_fails() {
-        match scan_dual_combinator("fn other() {}") {
+        match conformance_check_one_live_evaluation_source("fn other() {}") {
             Err(e) => must(e.contains("not found")),
             Ok(_) => std::process::abort(),
         }
@@ -319,7 +323,7 @@ mod tests {
 
     #[test]
     fn hvvc_scan_process() {
-        let mut st = scan_dual_combinator::ScanDualCombinator::new();
+        let mut st = conformance_check_one_live_evaluation_source::ConformanceCheckOneLiveEvaluationSource::new();
         st.src = String::from("pub fn admit_sealed_payload_on_live_dock() { live_collect_all(a); live.process_event(b); }");
         must(st.process().is_ok());
         must(st.scan.contains("both live_collect_all and process_event"));

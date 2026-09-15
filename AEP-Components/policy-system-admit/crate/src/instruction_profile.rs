@@ -88,7 +88,7 @@ mod tests {
     }
 
     fn lattice_gap() -> String {
-        String::from("rules:\n  - id: lattice-channel-only-transport\n")
+        String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"invariants\": [\n      {\"expr\": \"lattice-channel-only-transport\", \"description\": \"lattice transport\"}\n    ]\n  }\n}")
     }
 
     fn gov_gap() -> String {

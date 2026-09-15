@@ -1,11 +1,18 @@
-//! AEP 2.8 evaluation chain as a meet of 15 walls.
+//! AEP 2.8 evaluation chain, a derived ledger over the one live admit result.
+//! This crate never decides live traffic. The one live admit closer is
+//! aep_envelope::admit_with_extra and it returns the admit result. The fifteen
+//! chain rows are observations that are projected onto that one result.
 //! Live admit is collect-all AND. Ledger is a derived view. No skip.
 //! Step 2 is gap_capability. Agent permission is GAP dimension Conjunction.
 
+use aep_kernel_types::{AdmitResult, AdmitWall};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 pub const CHAIN_STEP_COUNT: usize = 15;
+
+/// The one live admit closer. This crate only derives a ledger over its result.
+pub const LIVE_ADMIT_CLOSER: &str = "aep_envelope::admit_with_extra";
 
 pub const STEP_NAMES: [&str; CHAIN_STEP_COUNT] = [
     "task_scope",
@@ -33,12 +40,29 @@ pub struct Wall {
     pub reason: String,
 }
 
+fn empty_admit() -> AdmitResult {
+    AdmitResult::new(Vec::new(), Vec::new())
+}
+
+fn derived_true() -> bool {
+    true
+}
+
+/// Derived ledger over the one admit result. This surface states that it is derived
+/// and it reads the allow flag from the admit result instead of deciding traffic.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MeetResult {
+    /// Read from the one admit result. This crate does not compute the verdict.
     pub allow: bool,
     pub closed: Vec<Wall>,
     pub open_walls: Vec<Wall>,
     pub ledger: Vec<Wall>,
+    /// The one admit result that the ledger is derived from.
+    #[serde(default = "empty_admit")]
+    pub admit: AdmitResult,
+    /// True because this surface is a derived ledger, not a live meet.
+    #[serde(default = "derived_true")]
+    pub derived: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
@@ -55,6 +79,29 @@ pub fn closed_set_key(closed: &[Wall]) -> String {
     names.join("|")
 }
 
+/// Project the fifteen chain rows onto the one admit result shape, so the allow
+/// rule has its one definition site in the kernel type crate.
+fn derived_admit(rows: &[Wall]) -> AdmitResult {
+    let mut closed = Vec::new();
+    let mut open_rows = Vec::new();
+    for w in rows {
+        let row = AdmitWall {
+            id: format!("chain.{}", w.name),
+            family: String::from("evaluation-chain"),
+            closed: w.open == false,
+            reason: w.reason.clone(),
+        };
+        if row.closed {
+            closed.push(row);
+        } else {
+            open_rows.push(row);
+        }
+    }
+    AdmitResult::new(closed, open_rows)
+}
+
+/// Derived ledger over the one admit result. The rows are validated here and the
+/// allow flag is read from the admit result, so this function decides nothing.
 pub fn meet(mut walls: Vec<Wall>) -> Result<MeetResult, EvaluationChainError> {
     if walls.len() != CHAIN_STEP_COUNT {
         return Err(EvaluationChainError::WrongLen { expected: CHAIN_STEP_COUNT, got: walls.len() });
@@ -76,11 +123,14 @@ pub fn meet(mut walls: Vec<Wall>) -> Result<MeetResult, EvaluationChainError> {
     }
     closed.sort_by(|a, b| a.name.cmp(&b.name));
     open_walls.sort_by(|a, b| a.name.cmp(&b.name));
+    let admit = derived_admit(&walls);
     Ok(MeetResult {
-        allow: closed.is_empty(),
+        allow: admit.allow,
         closed,
         open_walls,
         ledger: walls,
+        admit,
+        derived: true,
     })
 }
 
@@ -247,6 +297,27 @@ mod tests {
         if closed != 2 {
             std::process::abort();
         }
+    }
+
+    #[test]
+    fn derived_ledger_reads_the_one_admit_result() {
+        let mut open = all_open();
+        open[4] = false;
+        let mut reasons = reasons_ok();
+        reasons[4] = "rate closed";
+        let r = meet_named(open, reasons);
+        assert_eq!(r.derived, true);
+        assert_eq!(r.allow, r.admit.allow);
+        assert_eq!(r.closed.len(), 1);
+        assert_eq!(r.admit.closed.len(), 1);
+    }
+
+    #[test]
+    fn chain_does_not_compute_allow_locally() {
+        let src = include_str!("lib.rs");
+        let needle = ["allow: closed", ".is_empty()"].concat();
+        assert_eq!(src.contains(&needle), false);
+        assert_eq!(src.contains(LIVE_ADMIT_CLOSER), true);
     }
 
     #[test]

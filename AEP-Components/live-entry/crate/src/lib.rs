@@ -9,7 +9,7 @@
 // Collect-all Deny for empty action_path runs before Apply. process_event must not mutate LiveEntry then return Event.
 // A template target_id is not a skip. Every opened frame runs collect-all Admit then Apply.
 use aep_envelope::{
-    action_is_satisfied, admit, admit_with_extra, apply_admit, closed_reasons, dest_dock_from_opened_frame, load_lattice_yaml, load_lattice_yaml_file, plan_apply,
+    action_is_satisfied, admit_with_extra, apply_admit, closed_reasons, dest_dock_from_opened_frame, load_lattice_yaml, load_lattice_yaml_file, plan_apply,
     snapshot_from_nodes, AdmitWall, EnvelopeAction, Snapshot,
 };
 pub use aep_envelope::{agent_permission, AgentPermission, AdmitResult, Envelope, Pulse, PULSE_MS, DENY_NO_PERMISSION};
@@ -216,12 +216,9 @@ impl LiveEntry {
         if action.agent_id.is_empty() && self.opened_agent_id.is_empty() == false {
             action.agent_id = self.opened_agent_id.clone();
         }
-        let extra = pending_extra;
-        let result = if extra.is_empty() {
-            admit(&action, &self.snapshot)
-        } else {
-            admit_with_extra(&action, &self.snapshot, extra)
-        };
+ // One live admit call. The one live closer is aep_envelope::admit_with_extra and
+ // this facade carries the extra dock walls into it and then reads its result.
+        let result = admit_with_extra(&action, &self.snapshot, pending_extra);
         if result.allow == false {
             let reasons = closed_reasons(&result);
  // the AdmitResult rows are the public AdmitWall rows.
@@ -481,7 +478,7 @@ fn action_from_event(event: &Value, opened_dest_dock: &str) -> EnvelopeAction {
     }
 }
 pub fn journal_product_landed(src: &str) -> bool {
-    src.contains("admit(&action, &self.snapshot)") && src.contains("load_lattice_yaml")
+    src.contains("admit_with_extra(&action, &self.snapshot, pending_extra)") && src.contains("load_lattice_yaml")
 }
 pub fn product_source_has_no_seq_deniers(src: &str) -> bool {
     let compact: String = src.chars().filter(|c| c.is_whitespace() == false).collect();
@@ -778,7 +775,7 @@ mod tests {
             Some(v) => v,
             None => std::process::abort(),
         };
-        let admit = match src[start..].find("admit(&action, &self.snapshot)") {
+        let admit = match src[start..].find("admit_with_extra(&action, &self.snapshot, pending_extra)") {
             Some(v) => v,
             None => std::process::abort(),
         };
@@ -864,13 +861,13 @@ mod tests {
     }
     #[test]
     fn source_has_in_process_admit() {
-        let src = TICKET;
+        let src = include_str!("lib.rs");
         must(product_source_has_no_seq_deniers("admit apply_admit load_lattice_yaml mint_element_id"));
-        must(journal_product_landed("admit(&action, &self.snapshot) load_lattice_yaml"));
+        must(journal_product_landed("admit_with_extra(&action, &self.snapshot, pending_extra) load_lattice_yaml"));
     }
     #[test]
     fn env031_one_live_entry_language() {
-        must(journal_product_landed("admit(&action, &self.snapshot) load_lattice_yaml"));
+        must(journal_product_landed("admit_with_extra(&action, &self.snapshot, pending_extra) load_lattice_yaml"));
         must(product_source_has_no_seq_deniers("admit apply_admit load_lattice_yaml mint_element_id"));
     }
     #[test]

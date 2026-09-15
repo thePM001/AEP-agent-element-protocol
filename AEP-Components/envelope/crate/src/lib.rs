@@ -213,11 +213,15 @@ pub struct ApplyPlan {
     pub ledger_allow: bool,
 }
 
+/// Reader of the one live closer. This entry carries no verdict of its own, it
+/// calls the one live closer with an empty extra wall set and returns its result.
 pub fn admit(action: &EnvelopeAction, snap: &Snapshot) -> AdmitResult {
     admit_with_extra(action, snap, Vec::new())
 }
 
-/// One Admit combinator. Envelope walls plus extra dock walls. AND of every closed wall.
+/// The one live admit closer. This is the only live function that decides traffic
+/// and returns the admit result that every other caller reads.
+/// Envelope walls plus extra dock walls. AND of every closed wall.
 /// Extra walls keep AdmitWall id. Do not convert extra_walls from a second admit_collect_all.
 pub fn admit_with_extra(
     action: &EnvelopeAction,
@@ -234,21 +238,9 @@ pub fn admit_with_extra(
         });
     }
     walls.sort_by(|a, b| a.id.cmp(&b.id));
-    let mut closed = Vec::new();
-    let mut open = Vec::new();
-    for w in walls {
-        if w.closed {
-            closed.push(w);
-        } else {
-            open.push(w);
-        }
-    }
- // one AdmitResult shape, allow is AND of every wall.
-    AdmitResult {
-        allow: closed.is_empty(),
-        closed,
-        open,
-    }
+ // The one collect all shape lives in the kernel type crate, so the allow rule has
+ // one definition site and every closer reads that result.
+    AdmitResult::from_walls(&walls)
 }
 
 pub fn plan_apply(result: &AdmitResult, _snap: &Snapshot) -> ApplyPlan {

@@ -136,6 +136,7 @@ dependencies = [
 name = "aep-base-node-pulse"
 version = "0.1.0"
 dependencies = [
+ "aep-kernel-types",
  "anyhow",
  "serde",
  "serde_json",
@@ -174,6 +175,7 @@ dependencies = [
 name = "aep-dock-post-beat-collect"
 version = "0.1.0"
 dependencies = [
+ "aep-kernel-types",
  "anyhow",
  "serde_json",
 ]
@@ -222,6 +224,7 @@ dependencies = [
 name = "aep-evaluation-chain"
 version = "0.1.0"
 dependencies = [
+ "aep-kernel-types",
  "serde",
  "serde_json",
  "thiserror 2.0.19",

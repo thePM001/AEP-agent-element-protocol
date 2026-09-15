@@ -1,3 +1,6 @@
+//! The one runtime ledger. This is the SQLite lattice log of the Base Node and it
+//! records the runtime sequence. Every other ledger surface is a derived view or a
+//! capability that reads this record.
 //! dynAEP Action Lattice event logging for Base Node forensic store.
 //! aep-lattice-log Record must go through dock Admit or stop being a kernel write path.
 

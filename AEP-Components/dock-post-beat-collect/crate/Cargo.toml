@@ -11,5 +11,7 @@ name = "aep-dock-post-beat-collect"
 path = "src/main.rs"
 
 [dependencies]
+# The one owner of the pulse constant.
+aep-kernel-types = { path = "../../kernel-types/crate" }
 anyhow = "1"
 serde_json = "1"

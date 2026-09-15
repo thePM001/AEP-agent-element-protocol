@@ -2,7 +2,7 @@
 name = "aep-isolation"
 version = "2.8.6"
 edition = "2021"
-description = "Process isolation contract for the AEP 2.8.x protocol crate graph. Seals one process against one isolation specification. ."
+description = "Seal record contract for the AEP 2.8.x protocol crate graph. Records one process against one isolation specification and applies no restriction of its own, because the host sandbox is the only enforcer."
 license = "Apache-2.0"
 publish = false
 

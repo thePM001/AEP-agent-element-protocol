@@ -1,0 +1,13 @@
+{
+  "schema": "aep.writing-rules.v1",
+  "rules": [
+    {"id": "no_em_dashes", "wall_id": "writing:no_em_dashes", "reason": "Em dash U+2014 forbidden by writing.gap", "detector": "table", "code_points": [8212], "patterns": []},
+    {"id": "no_en_dashes", "wall_id": "writing:no_en_dashes", "reason": "En dash U+2013 forbidden by writing.gap", "detector": "table", "code_points": [8211], "patterns": []},
+    {"id": "no_dash_substitutes", "wall_id": "writing:no_dash_substitutes", "reason": "Dash substitute U+2015 U+2E3A U+2E3B forbidden by writing.gap", "detector": "table", "code_points": [8213, 11834, 11835], "patterns": []},
+    {"id": "no_box_drawing_dashes", "wall_id": "writing:no_box_drawing_dashes", "reason": "Box drawing dash U+2500 U+2501 forbidden by writing.gap", "detector": "table", "code_points": [9472, 9473], "patterns": []},
+    {"id": "no_minus_as_dash", "wall_id": "writing:no_minus_as_dash", "reason": "Minus sign U+2212 used as dash forbidden by writing.gap", "detector": "table", "code_points": [8722], "patterns": []},
+    {"id": "no_double_hyphen", "wall_id": "writing:no_double_hyphen", "reason": "Double hyphen prose separator forbidden by writing.gap", "detector": "table", "code_points": [], "patterns": [" -- "]},
+    {"id": "no_oxford_comma", "wall_id": "writing:no_oxford_comma", "reason": "Oxford comma forbidden by writing.gap", "detector": "table", "code_points": [], "patterns": [", and ", ", or "]},
+    {"id": "punctuation_word_space", "wall_id": "writing:punctuation_word_space", "reason": "Space after ? or ! before the next word required by writing.gap", "detector": "punct_word_space", "code_points": [], "patterns": []}
+  ]
+}

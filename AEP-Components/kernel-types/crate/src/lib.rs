@@ -11,6 +11,7 @@ use sha2::{Digest, Sha256};
 pub const COMPONENT_ID: &str = "aep-kernel-types";
 
 /// Compiled kernel pulse. Pulse is PULSE_MS 1000.
+/// This is the one definition site of the pulse constant. Every other crate imports it.
 pub const PULSE_MS: i64 = 1000;
 
 /// Closed-set id family for GAP agent permission walls. Not a rank.

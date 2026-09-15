@@ -22,5 +22,5 @@ Optional code graph parser for external AEP 2.8 users.
 
 - `coding-governance/lib/propose.mjs` - symbol impact via `detect_changes`
 - `coding-governance/lib/solidify.mjs` - `hcse_artifact` hash on solidify
-- `cca/lib/plan-executor.mjs` - download on plan execute
-- `cca/lib/component-catalog.mjs` - intent keyword match
+- `AEP-CCA-Central-Setup-Agent/lib/plan-executor.mjs` - download on plan execute
+- `AEP-CCA-Central-Setup-Agent/lib/component-catalog.mjs` - intent keyword match

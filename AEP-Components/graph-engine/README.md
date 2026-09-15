@@ -15,4 +15,6 @@ GraphEngine is the workflow runner with checkpoints on the AEP scene graph, mean
 - Retry policies: linear, exponential, fibonacci backoff
 - Decision branching via `policyEvaluator` + `branches` map. That evaluator is not Admit.
 
+GraphEngine is a projection helper and a workflow runner over the live graph. It owns no graph state, because the live graph state is owned by the dynamic engine at `AEP-Components/dynAEP/`.
+
 Tests: `./AEP-Components/conformance/runner/run.sh`

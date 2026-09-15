@@ -4,7 +4,9 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 
-pub const PULSE_MS: i64 = 1000;
+// One owner of the pulse constant is aep-kernel-types, so this crate imports it
+// and re-exports it for the callers that read the beat interval from here.
+pub use aep_kernel_types::PULSE_MS;
 
 /// Build the unix dock collect-by-digest line from a capsule digest.
 pub fn collect_line(digest: &str) -> String {

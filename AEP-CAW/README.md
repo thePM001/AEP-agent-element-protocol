@@ -32,9 +32,15 @@ User / coding agent
   CCA + Composer         plan generation, topology, activation
 ```
 
-**Two layers, one stack:** Base Node admits the envelope and keeps protocol compliance and the audit ledger, while CAW is the required execution layer that confines the command. A coding agent run needs both layers, because a wall pass on its own is not process governance and CAW is not optional in the shipped stack.
+**Two layers, one stack:** Base Node admits the envelope and keeps protocol compliance and the runtime ledger, which is the SQLite lattice log named in the base node, while CAW is the required execution layer that confines the command. The CAW host audit log is a derived view that records what the enforcer did, so it is not a second runtime ledger. A coding agent run needs both layers, because a wall pass on its own is not process governance and CAW is not optional in the shipped stack.
 
 Every execution path probes the Base Node kernel dock before a command starts. The Base Node is the admission authority, so a host admission with a silent dock is not governance: CAW refuses the run and names the silent dock. See [Kernel dock gate](#kernel-dock-gate).
+
+---
+
+## One enforcer and one seal record
+
+CAW is the only enforcement implementation in the shipped stack. The protocol crate `AEP-Components/isolation/` holds a seal record, so it records one process against one isolation specification and applies no restriction of its own. Its readme and its tests say the same. A seal without a CAW session is a record and not confinement.
 
 ---
 
@@ -240,6 +246,6 @@ See `docs/platform-comparison.md` for details.
 ## Related
 
 - [AGENTS.md](./AGENTS.md) - AI agent operating instructions
-- [../cca/README.md](../cca/README.md) - CCA deployment planner
-- [../cca/AGENTS.md](../cca/AGENTS.md) - CCA agent rules including CAW
+- [../AEP-CCA-Central-Setup-Agent/README.md](../AEP-CCA-Central-Setup-Agent/README.md) - CCA deployment planner
+- [../AEP-CCA-Central-Setup-Agent/AGENTS.md](../AEP-CCA-Central-Setup-Agent/AGENTS.md) - CCA agent rules including CAW
 - Feature docs in `docs/`

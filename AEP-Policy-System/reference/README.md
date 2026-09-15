@@ -10,6 +10,9 @@ Writing and security stay always on for every action. Other walls bind to a wrap
 
 Loaded as live Admit walls on the kernel collect-all pass.
 
+GAP is the only authoring form that reaches the Admit layer. The loader reads
+GAP only, so a file in another form is refused instead of loaded.
+
 Leftover yaml and rego files sit beside this directory and are not live Admit skins. Collect-all loads only GAP reference docs under AEP-Policy-System/reference. Operators use the reference GAP files from GAP-285-P6. See AEP-Policy-System/leftover.gap.
 
 

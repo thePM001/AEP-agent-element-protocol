@@ -30,7 +30,7 @@ The four planes, top to bottom:
 | Intake and dock plane | Docking listeners on the inference, validation, regulation and future sockets, sealed frame verify, the freshness window, the replay guard and side channel events |
 | Kernel pulse pass | Freeze at seal, the compiled 1000 ms pulse and one collect-all run of every written wall |
 | Wall set | Agent permission, lattice membership, writing walls, temporal bounds, envelope walls and wall set back pressure |
-| Record plane | Derived ledger rows, the SQLite lattice log, the component registry and the signature set |
+| Record plane | The runtime ledger, which is the SQLite lattice log, plus derived ledger rows, the component registry and the signature set |
 
 The path a frame takes through those planes:
 
@@ -54,7 +54,7 @@ Base Node **is** the local agent control kernel. Governance code, registry, mesh
 | Task manifests | `crate/src/task_manifest.rs` | UCB agent contracts (`AEP_TASK_MANIFEST_DIR`) |
 | CORRECTWRITING_EN kernel | `crate/src/correctwriting_en.rs` | writing.gap enforcement (`no_em_dashes`, `no_en_dashes`, `no_dash_substitutes`, `no_minus_as_dash`, `no_double_hyphen`, `no_oxford_comma`) |
 | Side-channel monitor | `crate/src/side_channel_monitor.rs` | Anomaly events on validation dock |
-| Lattice log | `crate/src/lattice_log.rs` | dynAEP event export + `aep-lattice-log` CLI |
+| Runtime ledger | `crate/src/lattice_log.rs` | The one named runtime ledger. dynAEP event export over the `action-lattice.db` store plus the `aep-lattice-log` CLI. Every other ledger surface is a derived view or a capability |
 
 Register new components in **`AEP-Base-Node/registry/catalog.json`** + **`AEP-Base-Node/registry/components/*.json`**. See [`registry/README.md`](registry/README.md) for manifest schema and error categories.
 

@@ -20,6 +20,14 @@ Edit the compiled `PULSE_MS` constant in Base Node pulse code and rebuild the ke
 
 ---
 
+## Graph state owner is the Action Lattice
+
+The dynamic engine owns the live graph state. The Action Lattice in TypeScript dynAEP is the one live graph, so the runtime graph state lives in this package and no second package owns a copy of it.
+
+The other graph surfaces are projections. The hyperlattice under `AEP-Components/hyperlattice/` is the JavaScript view of the live graph. The graph engine under `AEP-Components/graph-engine/` is a workflow runner and a projection helper. The composer canvas reads the projection that `AEP-Composer-Lite/lib/graph-store.mjs` holds, so the canvas keeps a projection and not the live state.
+
+---
+
 ## 1. What Is dynAEP 1.0
 
 dynAEP (Dynamic Agent Element Protocol) is the fusion of deterministic event governance and real-time multi-agent coordination. It extends the original AEP (Agent Element Protocol) frontend governance model to cover ALL agent-system interactions, not just UI mutations.

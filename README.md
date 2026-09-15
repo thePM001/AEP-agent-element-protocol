@@ -769,7 +769,7 @@ cargo test -p aep-base-node --lib
 docker compose up -d --build
 ```
 
-Docker is the packaged run path. The conformance runner is the public-tier battery.
+The gate-aep-test scripts live under `scripts/`. Docker is the packaged run path. The conformance runner is the public-tier battery.
 
 
 ## Quick start

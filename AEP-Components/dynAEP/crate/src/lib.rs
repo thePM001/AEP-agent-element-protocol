@@ -211,21 +211,9 @@ pub use aep_kernel_types::{AdmitResult, AdmitWall};
 pub fn admit(event: &LatticeEvent, snap: &Snapshot) -> AdmitResult {
     let mut walls = all_walls(event, snap);
     walls.sort_by(|a, b| a.id.cmp(&b.id));
-    let mut closed = Vec::new();
-    let mut open = Vec::new();
-    for w in walls {
-        if w.closed {
-            closed.push(w);
-        } else {
-            open.push(w);
-        }
-    }
- // one AdmitResult shape, allow is AND of every wall.
-    AdmitResult {
-        allow: closed.is_empty(),
-        closed,
-        open,
-    }
+    // One AdmitResult shape. The kernel type decides allow, so this lattice
+    // filter reads the same closure rule as the envelope closer.
+    AdmitResult::from_walls(&walls)
 }
 
 pub fn plan_apply(result: &AdmitResult) -> ApplyPlan {

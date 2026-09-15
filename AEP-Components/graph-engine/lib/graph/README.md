@@ -35,3 +35,7 @@ The GraphEngine local vector clock is metadata after allow. It is not live Admit
 ## Persistence
 
 State is persisted to the lattice memory fabric so a run can resume from checkpoints after restart. The local vector clock ticks only after admitGate allow.
+
+## Standing
+
+This package is a projection helper and a workflow runner. It owns no graph state, because the live graph state is owned by the dynamic engine at `AEP-Components/dynAEP/` and the composer canvas reads a projection.

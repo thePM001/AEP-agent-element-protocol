@@ -10,4 +10,4 @@ Canonical hyperlattice implementation for AEP 2.8 Composer Lite and CCA.
 | `lib/cca-writing-validator.mjs` | CORRECTWRITING_EN writing.gap enforcement on CCA output |
 | `lib/cca-governed-release.mjs` | Governed release pipeline for CCA chat/topology |
 
-Composer Lite re-exports from this package. Canvas graph state still lives in `AEP-Composer-Lite/lib/graph-store.mjs`.
+Composer Lite re-exports from this package. This package is the JavaScript projection of the live graph, because the live graph state is owned by the dynamic engine at `AEP-Components/dynAEP/`. The composer canvas reads the projection held by `AEP-Composer-Lite/lib/graph-store.mjs`, so no second package owns a private state copy.

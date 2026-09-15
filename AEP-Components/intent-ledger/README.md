@@ -2,6 +2,10 @@
 
 Append-only **Intent Provenance Ledger** for coding governance. Stores `SolidifyRecord` entries. Validation lives in kernel Admit plus GAP reference policies.
 
+## Standing
+
+This component is a derived provenance view over coding intent. It is not the runtime ledger. The named runtime ledger is the SQLite lattice log in Base Node (`AEP-Base-Node/crate/src/lattice_log.rs` over the `action-lattice.db` store).
+
 ## Storage
 
 | Path | Format |

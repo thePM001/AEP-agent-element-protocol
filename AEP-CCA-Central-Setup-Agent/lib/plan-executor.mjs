@@ -45,11 +45,11 @@ import { validatePlanAgainstRegistry } from "./plan-schema.mjs";
 import { buildRegistryContext } from "./registry-context.mjs";
 import { planToGraph } from "./plan-to-graph.mjs";
 import { saveGraph } from "../../../AEP-Composer-Lite/lib/graph-store.mjs";
-import { ensureCawConfig, probeCawHost } from "../../caw-framework/lib/caw-service.mjs";
+import { ensureCawConfig, probeCawHost } from "../AEP-CAW/lib/caw-service.mjs";
 import {
   buildCawFrameworkConfig,
   recordCawLatticeEvent,
-} from "../../caw-framework/lib/lattice-bridge.mjs";
+} from "../AEP-CAW/lib/lattice-bridge.mjs";
 import { runHcseInstallIfNeeded } from "../../hcse/lib/install.mjs";
 import { buildRegulationPolicySections } from "./policy-sections.mjs";
 import { synthesizeTaskManifestsFromPlan } from "./task-manifest-synthesis.mjs";

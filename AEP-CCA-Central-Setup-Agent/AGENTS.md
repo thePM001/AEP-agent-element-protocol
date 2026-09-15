@@ -95,8 +95,8 @@ CCA **must** understand GAP when planning governed deployments.
 | Meta-schemas | `gap/schemas/gap-meta-schema-v1.2.json` |
 | Reference policies (canonical) | `AEP-Policy-System/reference/*.gap` |
 | Coding-governance GAPs | `AEP-Components/gap/policies/reference/*.gap` |
-| Policy system loader | `cca/lib/policy-system-context.mjs` |
-| CCA loader | `cca/lib/gap-context.mjs` |
+| Policy system loader | `lib/policy-system-context.mjs` |
+| CCA loader | `lib/gap-context.mjs` |
 | CLI summary | `aep-cca gap` |
 
 ### Rules for agents editing CCA or generating {AEP_DATA}/plans
@@ -120,7 +120,7 @@ GAP knowledge is injected into every LLM system prompt via `formatGapForPrompt()
 | Lattice registry | `AEP-Components/dynAEP/registries/aep-lattice.yaml` |
 | Bridge config | `AEP-Components/dynAEP/dynaep-config.yaml` (lattice.governance) |
 | Observer adapters | `AEP-Components/dynAEP/observers/` (webhook, SSE, poll, blockchain example) |
-| dynAEP context loader | `cca/lib/dynaep-context.mjs` |
+| dynAEP context loader | `lib/dynaep-context.mjs` |
 
 CCA must inject `dynaep` into registry context and set on every governed plan:
 
@@ -138,8 +138,8 @@ CCA must inject `dynaep` into registry context and set on every governed plan:
 | Agent YAML presets | `AEP-Policy-System/*.policy.yaml` |
 | Lattice mandatory rules | `AEP-Policy-System/lattice-channel-mandatory.gap` |
 | Regulation LRP catalog | `AEP-Components/wizard/lrp/catalog.json` (`lrps[]` only) |
-| Policy context loader | `cca/lib/policy-system-context.mjs` |
-| Policy sections builder | `cca/lib/policy-sections.mjs` |
+| Policy context loader | `lib/policy-system-context.mjs` |
+| Policy sections builder | `lib/policy-sections.mjs` |
 | Runtime lattice API | Composer Lite `GET /api/policy-lattice` |
 
 CCA must inject `policy_system` into registry context and set on every plan:
@@ -161,9 +161,9 @@ CCA loads the full catalog at runtime via `buildRegistryContext()`:
 | Catalog index | `AEP-Base-Node/registry/catalog.json` (59 entries, 58 bundled) |
 | Manifests | `AEP-Base-Node/registry/components/*.json` |
 | Plan schema | `AEP-Base-Node/registry/schemas/implementation-plan-v1.json` |
-| GAP context | `cca/lib/gap-context.mjs` (also in `context.gap` JSON field) |
-| Policy system | `cca/lib/policy-system-context.mjs` (also in `context.policy_system`) |
-| dynAEP | `cca/lib/dynaep-context.mjs` (also in `context.dynaep`) |
+| GAP context | `lib/gap-context.mjs` (also in `context.gap` JSON field) |
+| Policy system | `lib/policy-system-context.mjs` (also in `context.policy_system`) |
+| dynAEP | `lib/dynaep-context.mjs` (also in `context.dynaep`) |
 | Installed extensions | `{AEP_DATA}/extensions/installed.json` |
 
 Every bundled component has a `cca` block with `summary`, `use_when`, `avoid_when` and `pairs_with`. The prompt formatter (`formatContextForPrompt`) includes **full** metadata: all capabilities, actions, setup_hooks and requires. Do not truncate when building prompts.

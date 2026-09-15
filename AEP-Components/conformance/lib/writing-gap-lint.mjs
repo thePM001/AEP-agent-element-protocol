@@ -169,7 +169,7 @@ export function lintWritingGapContent(content, rel, kind = "markdown") {
     violations.push({
       file: rel,
       line: 0,
-      rule: "epscom_kernel_unavailable",
+      rule: "correctwriting_en_kernel_unavailable",
       message: `writing rules need the Base Node kernel: ${err instanceof Error ? err.message : String(err)}`,
       snippet: "",
     });

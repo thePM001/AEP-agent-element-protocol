@@ -73,13 +73,15 @@ function loadYamlPresets(repoRoot) {
 function loadLatticeMandatoryRules(repoRoot) {
   const path = join(repoRoot, POLICY_SYSTEM_ROOT, "lattice-channel-mandatory.gap");
   if (!existsSync(path)) return [];
-  const raw = readFileSync(path, "utf8");
-  const rules = [];
-  for (const line of raw.split("\n")) {
-    const m = line.match(/^\s*-\s*id:\s*(\S+)/);
-    if (m) rules.push(m[1]);
+  try {
+    // The lattice policy carries the single GAP form. The invariant expr is the rule id.
+    const parsed = JSON.parse(readFileSync(path, "utf8"));
+    return (parsed?.pattern?.invariants ?? [])
+      .map((inv) => inv?.expr)
+      .filter((expr) => typeof expr === "string" && expr.length > 0);
+  } catch {
+    return [];
   }
-  return rules;
 }
 
 /**

@@ -63,12 +63,12 @@ import {
   recommendedLrpAdjustments,
   VALIDATION_ENGINE_MODES,
 } from "./lib/setup/install-plan.mjs";
-import { generatePlanFromIntent } from "../cca/lib/plan-generator.mjs";
+import { generatePlanFromIntent } from "./lib/plan-generator.mjs";
 import {
   executeImplementationPlan,
   loadActivePlan,
   writeActivePlan,
-} from "../cca/lib/plan-executor.mjs";
+} from "./lib/plan-executor.mjs";
 
 
 function parseCsvArg(argv, prefix) {
