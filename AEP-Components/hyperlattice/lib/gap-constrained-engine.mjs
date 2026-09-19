@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * CCA GAP policies for Composer Lite hyperlattice.
+ * CCA GAP policies for hyperlattice hyperlattice.
  * No external LLM. Optional remote schema validate uses AEP_GAP_ENGINE_URL only when set.
  * When that variable is unset, health and validate skip the network and do not invent a URL.
  * Public UCB compile is local gap-manifest-v1 and is not this path.

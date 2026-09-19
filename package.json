@@ -3,6 +3,7 @@
   "version": "2.8.6",
   "private": true,
   "type": "module",
+  "scripts": { "check": "node aep-check.mjs" },
   "devDependencies": {
     "js-yaml": "^4.3.0",
     "yaml": "^2.9.0"

@@ -25,7 +25,7 @@ export function pingDock(socketPath, opts = {}) {
   const dockPort = opts.dockPort ?? "validation_engine";
   const sealed = buildLatticeFrame(
     {
-      agent_id: opts.agentId ?? "setup-agent",
+      agent_id: opts.agentId ?? "wizard",
       channel_id: "ch-lattice-health",
       contract_id: "lattice-channel-default",
       event_type: "LATTICE_HEALTH_PING",
@@ -75,7 +75,7 @@ export async function waitForDocks(socketBase, timeoutMs = 30000, intervalMs = 5
   return false;
 }
 
-export function recordActivationEvent(socketBase, agentId = "setup-agent", opts = {}) {
+export function recordActivationEvent(socketBase, agentId = "wizard", opts = {}) {
   return latticeDockRequest(
     socketBase,
     "validation_engine",

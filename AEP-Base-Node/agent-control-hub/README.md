@@ -11,7 +11,7 @@ Sandbox and mount profiles are **GAP instructions**, not hand-authored YAML:
 | `AEP-Components/gap/policies/reference/caw-*.gap` | CAW sandbox profiles (`aep.caw.profile` runtime docs) |
 | `AEP-Components/gap/policies/reference/caw-mount-policies.gap` | Per-mount policy compile targets |
 | `AEP-Components/gap/policies/reference/task-manifest-v1.gap` | UCB task manifest synthesis template |
-| `AEP-Components/gap/policies/reference/implementation-plan-v1.gap` | CCA plan GAP template |
+| `AEP-Components/gap/policies/reference/implementation-plan-v1.gap` | plan GAP template |
 | `lib/gap-profiles.mjs` | Loader: resolve profile, materialize CAW runtime |
 
 Compile locally (no remote install):
@@ -32,4 +32,4 @@ aep-caw wrap --profile coding-agent -- <agent-binary>
 
 - `profiles/mount-profiles.yaml` - deprecated stub; do not edit (see file header)
 - Registry authority: `AEP-Base-Node/registry/`
-- Kernel: `AEP-Base-Node/crate/` (docking, task_manifest, correctwriting_en, side_channel_monitor, lattice_log)
+- Kernel: `AEP-Base-Node/crate/` (docking, task_manifest, epscom, side_channel_monitor, lattice_log)

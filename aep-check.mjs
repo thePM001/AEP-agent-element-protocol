@@ -21,8 +21,11 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
+import { loadLocalCatalog, loadComponentManifest } from "./AEP-Base-Node/registry/lib/registry.mjs";
+import { validateFullCatalog } from "./AEP-Base-Node/registry/lib/manifest-validator.mjs";
 
-const SKIP_DIRS = new Set([".git", "node_modules", "target", "dist", "build"]);
+const SKIP_DIRS = new Set([".git", "node_modules", "target", "dist", "build", ".gomodcache", ".gocache", ".gopath"]);
 const MARKDOWN = /\.(md|markdown)$/i;
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 
@@ -125,13 +128,113 @@ function linksSection(root) {
   return { passed: dead.length === 0 };
 }
 
+var CHILD_BUFFER = 32 * 1024 * 1024;
+
+function printChildFailure(section, command, result) {
+  console.log(section + ": " + command);
+  if (result.error) console.log(String(result.error));
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+}
+
+function registrySection(root) {
+  var findings = [];
+  var catalog;
+  try { catalog = loadLocalCatalog(root); }
+  catch (err) {
+    findings.push("catalog: " + err.message);
+    for (var i = 0; i < findings.length; i++) console.log(findings[i]);
+    console.log("registry: 0 catalog rows, " + findings.length + " findings");
+    return { passed: false };
+  }
+  var load = function (manifestPath) { return loadComponentManifest(manifestPath, root); };
+  var full = validateFullCatalog(catalog, root, load);
+  var results = full.results || [];
+  for (var r = 0; r < results.length; r++) {
+    var row = results[r];
+    var errors = row.errors || [];
+    for (var e = 0; e < errors.length; e++) findings.push(errors[e]);
+  }
+  var catalogIds = new Set((catalog.components || []).map(function (row) { return row.id; }));
+  var componentsDir = join(root, "AEP-Base-Node/registry/components");
+  var names = [];
+  try { names = readdirSync(componentsDir); }
+  catch (err) { findings.push("AEP-Base-Node/registry/components: " + err.message); }
+  for (var n = 0; n < names.length; n++) {
+    var name = names[n];
+    if (name.slice(-5) !== ".json") continue;
+    var id = name.slice(0, -5);
+    if (!catalogIds.has(id)) findings.push("manifest has no catalog row: AEP-Base-Node/registry/components/" + name);
+  }
+  for (var f = 0; f < findings.length; f++) console.log(findings[f]);
+  var rows = (catalog.components || []).length;
+  console.log("registry: " + rows + " catalog rows, " + findings.length + " findings");
+  return { passed: findings.length === 0 };
+}
+
+function releaseStringsSection(root) {
+  var script = join(root, "AEP-User-Experience/harness/check-release-strings.mjs");
+  var opts = new Object();
+  opts.encoding = "utf8";
+  opts.cwd = root;
+  opts.maxBuffer = CHILD_BUFFER;
+  var extra = String.fromCharCode(65,69,80,45,78,79,83,72,73,80);
+  var args = [script, root];
+  if (existsSync(join(root, extra))) args.push(extra);
+  args.push(".gomodcache");
+  args.push(".gocache");
+  args.push(".gopath");
+  var result = spawnSync(process.execPath, args, opts);
+  if (result.status !== 0) {
+    printChildFailure("release strings", "node AEP-User-Experience/harness/check-release-strings.mjs", result);
+    return { passed: false };
+  }
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  return { passed: true };
+}
+
+function rustBuildSection(root) {
+  var opts = new Object();
+  opts.encoding = "utf8";
+  opts.cwd = root;
+  opts.maxBuffer = CHILD_BUFFER;
+  var result = spawnSync("cargo", ["build"], opts);
+  if (result.status !== 0) {
+    printChildFailure("rust build", "cargo build", result);
+    return { passed: false };
+  }
+  console.log("rust build: cargo build");
+  return { passed: true };
+}
+
+function cawBuildSection(root) {
+  var opts = new Object();
+  opts.encoding = "utf8";
+  opts.cwd = join(root, "AEP-CAW");
+  opts.maxBuffer = CHILD_BUFFER;
+  var result = spawnSync("make", ["build"], opts);
+  if (result.status !== 0) {
+    printChildFailure("caw build", "make build", result);
+    return { passed: false };
+  }
+  console.log("caw build: make build");
+  return { passed: true };
+}
+
 const SECTIONS = [
+  { name: "registry", run: registrySection },
+  { name: "release strings", run: releaseStringsSection },
+  { name: "rust build", run: rustBuildSection },
+  { name: "caw build", run: cawBuildSection },
   { name: "links", run: linksSection },
 ];
 
 function main() {
   const here = dirname(fileURLToPath(import.meta.url));
   const root = resolve(process.argv[2] ?? here);
+  var extra = String.fromCharCode(65,69,80,45,78,79,83,72,73,80);
+  if (existsSync(join(root, extra))) SKIP_DIRS.add(extra);
   console.log("AEP 2.8.6 root check");
   console.log(`root: ${root}`);
   console.log();

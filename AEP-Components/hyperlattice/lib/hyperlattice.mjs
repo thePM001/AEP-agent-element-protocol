@@ -2,11 +2,11 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { loadGraph } from "../../../AEP-Composer-Lite/lib/graph-store.mjs";
+import { loadGraph } from "./graph-store.mjs";
 import yaml from "yaml";
-import { buildPolicyLatticeView } from "../../../AEP-Composer-Lite/lib/policy-lattice.mjs";
-import { buildDynaepPolicyOverrides, loadDynaepContext } from "../../../AEP-CCA-Central-Setup-Agent/lib/dynaep-context.mjs";
-import { loadPolicySystemContext } from "../../../AEP-CCA-Central-Setup-Agent/lib/policy-system-context.mjs";
+import { buildPolicyLatticeView } from "./policy-lattice.mjs";
+import { buildDynaepPolicyOverrides, loadDynaepContext } from "./dynaep-context.mjs";
+import { loadPolicySystemContext } from "./policy-system-context.mjs";
 import {
   buildComposerProtocolSpec,
   validateComposerTopology,
@@ -54,21 +54,21 @@ export function loadActionLatticeRegistry(repoRoot, relativePath) {
 }
 
 /**
- * Load Composer Lite CCA action paths (canonical hyperlattice for CCA).
+ * Load hyperlattice optional action paths.
  * @param {string} repoRoot
  */
 export function loadComposerCcaLatticeRegistry(repoRoot) {
   const rel = COMPOSER_CCA_LATTICE_REGISTRY;
   const abs = join(repoRoot, rel);
   if ( ! existsSync(abs)) {
-    throw new Error(`hyperlattice: missing Composer CCA registry ${rel}`);
+  return parseActionRegistryDoc(null, rel);
   }
   const doc = yaml.parse(readFileSync(abs, "utf8"));
   return parseActionRegistryDoc(doc, rel);
 }
 
 /**
- * Merge base dynAEP registry with Composer CCA registry (CCA paths win on collision).
+ * Merge base dynAEP registry with the optional action lattice registry (optional paths win on collision).
  * @param {object} baseRegistry
  * @param {object} ccaRegistry
  */
@@ -240,7 +240,7 @@ export function buildHyperlatticeView(opts = {}) {
     platform_contracts: policyView.platform_contracts,
     active_regulation_lrps: policyView.active_regulation_lrps,
     compliance_modules: policyView.compliance_modules,
-    correctwriting_en: policyView.correctwriting_en,
+    epscom: policyView.epscom,
     node_counts: {
       gap_policy: gap_policy_nodes.length,
       event: event_nodes.length,
@@ -351,11 +351,6 @@ export function validateHyperlatticeOnBoot(config, repoRoot, opts = {}) {
     }
   }
 
-  const ccaRegistryPath = hyper  ?.  composer_cca_registry   ??   COMPOSER_CCA_LATTICE_REGISTRY;
-  const ccaAbs = join(repoRoot, ccaRegistryPath);
-  if ( ! existsSync(ccaAbs)) {
-    errors.push(`hyperlattice: missing composer_cca_registry ${ccaRegistryPath}`);
-  }
 
   const latticePolicyRel =
     hyper  ?.  dynaep  ?.  bridge  ?.  rego  ?.  separate_policy_paths  ?.  lattice   ??  

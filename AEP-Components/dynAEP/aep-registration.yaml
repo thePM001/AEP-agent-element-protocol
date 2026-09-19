@@ -90,7 +90,7 @@ dynAEP-cca-bridge-config:
   description: "Maps config.dynaep from CCA plan-executor to DynAEPBridgeConfig for runtime activation."
   agent_permission: ["*"]
   version: "1.0.0"
-  location: "AEP-CCA-Central-Setup-Agent/lib/dynaep-bridge-config.mjs"
+  location: "AEP-Components/hyperlattice/lib/dynaep-bridge-config.mjs"
   dependencies: ["dynAEP-lattice"]
   interfaces:
     - "buildBridgeConfigFromDynaep(dynaepConfig, repoRoot) -> DynAEPBridgeConfig"

@@ -102,7 +102,7 @@
   },
   {
    "id": "CC-17",
-   "name": "CORRECTWRITING_EN kernel writing.gap enforcement (aep-lattice-log)",
+   "name": "EPSCOM kernel writing.gap enforcement (aep-lattice-log)",
    "runner": "vitest",
    "file": "AEP-Components/conformance/runner/run.sh"
   },

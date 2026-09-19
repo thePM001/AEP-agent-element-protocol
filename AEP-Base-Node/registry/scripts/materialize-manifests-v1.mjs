@@ -35,8 +35,8 @@ const MANIFESTS = {
     kind: "daemon",
     path: "AEP-Base-Node/",
     description: "Mandatory local governance daemon with lattice-gated docking ports.",
-    requires: ["lattice-channels", "lattice-crypto", "correctwriting_en-signatures"],
-    depends_on: ["lattice-channels", "lattice-crypto", "correctwriting_en-signatures"],
+    requires: ["lattice-channels", "lattice-crypto", "epscom-signatures"],
+    depends_on: ["lattice-channels", "lattice-crypto", "epscom-signatures"],
     capabilities: [
       "dock:inference_engine",
       "dock:validation_engine",
@@ -74,20 +74,20 @@ const MANIFESTS = {
     conformance: { tests: ["AEP-Components/conformance/runner/run.sh", "AEP-Components/conformance/tests/manifest.json"] },
   },
 
-  "correctwriting_en-signatures": {
+  "epscom-signatures": {
     manifest_version: "1",
-    id: "correctwriting_en-signatures",
+    id: "epscom-signatures",
     version: "2.8.6",
     kind: "library",
     path: "AEP-Base-Node/signatures/",
-    description: "CORRECTWRITING_EN-curated detection signatures and trust bundle (Base Node kernel adjunct).",
+    description: "EPSCOM-curated detection signatures and trust bundle (Base Node kernel adjunct).",
     requires: [],
     bundled_with: "aep-base-node",
     capabilities: [
-      "correctwriting_en:detection-signatures",
-      "correctwriting_en:trust-bundle",
-      "correctwriting_en:signature-scan",
-      "correctwriting_en:writing-alignment",
+      "epscom:detection-signatures",
+      "epscom:trust-bundle",
+      "epscom:signature-scan",
+      "epscom:writing-alignment",
     ],
     actions: [
       {
@@ -99,17 +99,17 @@ const MANIFESTS = {
     ],
     setup_hooks: [
       {
-        id: "correctwriting_en_signatures_default",
-        policy_section: "correctwriting_en_signatures",
+        id: "epscom_signatures_default",
+        policy_section: "epscom_signatures",
         default: { enabled: true, sync_interval_hours: 24 },
       },
     ],
     resource_requirements: RR(16, 5),
     cca: CCA(
-      "CORRECTWRITING_EN detection signatures bundled with Base Node. Trust bundle + YAML rules.",
-      ["every AEP deployment", "CORRECTWRITING_EN governance", "detection signatures", "prompt injection"],
+      "EPSCOM detection signatures bundled with Base Node. Trust bundle + YAML rules.",
+      ["every AEP deployment", "EPSCOM governance", "detection signatures", "prompt injection"],
       [],
-      ["aep-base-node", "gap-runtime-scanners", "correctwriting_en-core"],
+      ["aep-base-node", "gap-runtime-scanners", "epscom-core"],
     ),
     implementation: {
       module: "AEP-Base-Node/signatures/lib/signatures-registry.mjs",
@@ -139,7 +139,7 @@ const MANIFESTS = {
     resource_requirements: RR(32, 5),
     cca: CCA(
       "Single lattice stack: latticeGatedFetch, TS client, aep-lattice-channel crate.",
-      ["any JS/MJS/TS client", "Composer Lite", "UCB", "CCA"],
+      ["any JS/MJS/TS client", "UCB"],
       ["never bypass with raw fetch for governed traffic"],
       ["lattice-crypto", "aep-base-node", "agentmesh"],
     ),
@@ -277,42 +277,6 @@ const MANIFESTS = {
     },
   },
 
-  "composer-lite": {
-    manifest_version: "1",
-    id: "composer-lite",
-    version: "2.8.6",
-    kind: "ui",
-    path: "AEP-Composer-Lite/",
-    description: "WASM visual composer on :8424; graph planning alternative to CCA chat.",
-    requires: ["aep-base-node", "lattice-channels", "cca"],
-    capabilities: [
-      "ui:wasm-canvas",
-      "ui:graph-edit",
-      "api:registry",
-      "api:cca-chat",
-      "api:wasm-evaluate",
-    ],
-    actions: [
-      { id: "serve", description: "Start Composer Lite HTTP server", runtime: "daemon", method: "server.mjs" },
-      { id: "install_component", description: "Enable registry component", runtime: "api", method: "POST /api/registry/install" },
-    ],
-    setup_hooks: [],
-    composer: { palette: true, node_type: null },
-    resource_requirements: RR(256, 100),
-    cca: CCA(
-      "Visual drag-and-drop planner for agent governance graphs. Alternative to CCA chat planning.",
-      ["user prefers visual planning", "WASM policy evaluation on canvas"],
-      ["headless server-only deployments with no UI"],
-      ["cca", "wasm-policy-sandbox"],
-    ),
-    implementation: {
-      port: 8424,
-      health: "/api/health",
-      graph_api: "/api/graph",
-      lattice_transport: "AEP-Components/lattice-channels/lib/lattice-transport.mjs",
-    },
-  },
-
   "ucb": {
     manifest_version: "1",
     id: "ucb",
@@ -357,64 +321,6 @@ const MANIFESTS = {
     conformance: { tests: ["AEP-Components/conformance/runner/run.sh", "AEP-Components/conformance/tests/manifest.json"] },
   },
 
-  "cca": {
-    manifest_version: "1",
-    id: "cca",
-    version: "2.8.6",
-    kind: "agent",
-    path: "AEP-CCA-Central-Setup-Agent/",
-    description: "Unified CCA Setup Agent: probe, registry knowledge, plan generation, execution, and Base Node activation.",
-    requires: ["aep-base-node", "lattice-channels"],
-    capabilities: [
-      "cca:probe-environment",
-      "cca:registry-context",
-      "cca:generate-plan",
-      "cca:execute-plan",
-      "cca:validate-plan",
-      "cca:plan-to-graph",
-      "cca:graph-to-plan",
-      "setup:activate",
-      "setup:register-lrps",
-      "setup:write-config",
-      "setup:inference-registration",
-    ],
-    actions: [
-      { id: "probe", description: "Probe hardware and environment limits", runtime: "cli", method: "aep-cca probe" },
-      { id: "generate_plan", description: "Generate ImplementationPlan from user intent", runtime: "api", method: "POST /api/cca/chat" },
-      { id: "execute_plan", description: "Execute validated ImplementationPlan", runtime: "api", method: "POST /api/cca/plan/execute" },
-      { id: "activate", description: "Activate Base Node configuration", runtime: "cli", method: "aep-cca activate" },
-      { id: "setup_execute", description: "Execute plan via setup runner", runtime: "cli", method: "aep-cca setup-agent --from-plan" },
-    ],
-    setup_hooks: [],
-    resource_requirements: RR(256, 50, true),
-    cca: CCA(
-      "Unified setup agent. Detects environment, understands all AEP components, devises and executes lattice-secured deployment plans.",
-      ["post-Docker activation", "user describes agent deployment requirements", "optimal component selection", "non-interactive Docker bootstrap"],
-      [],
-      ["aep-base-node", "composer-lite", "gap", "coding-governance", "caw-framework"],
-    ),
-    implementation: {
-      cli: "AEP-CCA-Central-Setup-Agent/cca.mjs",
-      entry: "AEP-CCA-Central-Setup-Agent/setup-agent.mjs",
-      modules: [
-        "AEP-CCA-Central-Setup-Agent/lib/environment-probe.mjs",
-        "AEP-CCA-Central-Setup-Agent/lib/registry-context.mjs",
-        "AEP-CCA-Central-Setup-Agent/lib/plan-generator.mjs",
-        "AEP-CCA-Central-Setup-Agent/lib/plan-executor.mjs",
-        "AEP-CCA-Central-Setup-Agent/lib/setup/inference.mjs",
-        "AEP-CCA-Central-Setup-Agent/lib/setup/register.mjs",
-        "AEP-CCA-Central-Setup-Agent/lib/setup/install-plan.mjs",
-        "AEP-CCA-Central-Setup-Agent/lib/setup/reload.mjs",
-      ],
-    },
-    conformance: {
-      tests: [
-        "AEP-Components/conformance/tests/manifest.json",
-        "AEP-Components/conformance/tests/manifest.json",
-      ],
-    },
-  },
-
   "wizard": {
     manifest_version: "1",
     id: "wizard",
@@ -428,32 +334,12 @@ const MANIFESTS = {
     setup_hooks: [],
     resource_requirements: RR(64, 20),
     cca: CCA(
-      "Local development install helper. Docker users should use CCA instead.",
+      "Local development install helper for source trees.",
       ["local-source build from git clone"],
       ["Docker production deployments"],
-      ["cca"],
+      ["aep-base-node"],
     ),
     implementation: { entry: "AEP-Components/wizard/install-wizard.mjs" },
-  },
-
-  "wasm-policy-sandbox": {
-    manifest_version: "1",
-    id: "wasm-policy-sandbox",
-    version: "2.8.6",
-    kind: "wasm",
-    path: "AEP-Composer-Lite/wasm-sandbox/",
-    description: "WASM policy evaluation via lattice socket wasm_sandbox.",
-    requires: ["aep-base-node"],
-    capabilities: ["wasm:evaluate", "wasm:sandbox-socket"],
-    actions: [{ id: "evaluate", description: "Evaluate GAP policy in WASM", runtime: "socket", method: "wasm_sandbox" }],
-    setup_hooks: [],
-    resource_requirements: RR(128, 30),
-    cca: CCA(
-      "Isolated WASM sandbox for GAP policy evaluation.",
-      ["WASM policy nodes on canvas", "GAP evaluation without HTTP bypass"],
-      ["policy evaluation not needed"],
-    ),
-    implementation: { crate: "AEP-Composer-Lite/wasm-sandbox/crate", binary: "aep-wasm-sandbox", socket: "wasm_sandbox" },
   },
 
   "conformance-runner": {
@@ -590,7 +476,7 @@ const MANIFESTS = {
     kind: "connector",
     path: "AEP-Docks/universal-connect/",
     description: "Lattice-gated Postgres connector via NT-00006 bridge (public tier).",
-    requires: ["aep-base-node", "lattice-channels", "composer-lite"],
+    requires: ["aep-base-node", "lattice-channels"],
     capabilities: ["connector:postgres", "storage:import", "storage:export", "evidence:persist"],
     actions: [
       { id: "wire_postgres", description: "Wire Postgres connector to graph", runtime: "plan", method: "connector_config" },
@@ -618,35 +504,10 @@ const MANIFESTS = {
       "Connect Postgres for evidence persistence and data import/export via lattice-gated bridge.",
       ["user needs SQL database", "evidence persistence", "Postgres mentioned"],
       ["SQLite/local-only sufficient", "air-gapped with no database"],
-      ["composer-lite", "aep-base-node"],
+      ["aep-base-node"],
       "Enable connector-postgres and add connector node with storage_backend postgres",
     ),
     implementation: { module: "AEP-Docks/universal-connect/lib/postgres-connector.mjs" },
-  },
-
-  "wasm-policy-node": {
-    manifest_version: "1",
-    id: "wasm-policy-node",
-    version: "2.8.6",
-    kind: "wasm_extension",
-    path: "AEP-Composer-Lite/wasm-sandbox/",
-    description: "Composer palette node for WASM GAP policy evaluation.",
-    requires: ["wasm-policy-sandbox", "composer-lite"],
-    capabilities: ["composer:wasm-policy-node"],
-    actions: [],
-    setup_hooks: [],
-    composer: { palette: true, node_type: "wasm_policy" },
-    composer_node: {
-      type: "wasm_policy",
-      label: "WASM Policy",
-      short: "WP",
-      color: "#a78bfa",
-      description: "Evaluate GAP policies through the local WASM sandbox",
-      registry_id: "wasm-policy-node",
-    },
-    resource_requirements: RR(64, 10),
-    cca: CCA("WASM policy evaluation node on Composer canvas.", ["visual GAP policy evaluation"], []),
-    implementation: { requires_components: ["wasm-policy-sandbox"] },
   },
 
   "evaluation-chain": {

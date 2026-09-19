@@ -3,7 +3,7 @@
 import { loadSignaturesRegistry, resolveSignaturesRoot } from "./signatures-registry.mjs";
 
 /**
- * CORRECTWRITING_EN signatures knowledge bundle for CCA.
+ * EPSCOM signatures knowledge bundle for CCA.
  * @param {string} [repoRoot]
  * @param {object} [env]
  */
@@ -12,7 +12,7 @@ export function loadSignaturesContext(repoRoot, env = process.env) {
   const registry = loadSignaturesRegistry(root);
   return {
     root,
-    authority: "CORRECTWRITING_EN",
+    authority: "EPSCOM",
     enabled_by_default: true,
     trust_bundle: registry.trust_bundle?.bundle_version ?? null,
     signature_count: registry.total_count,
@@ -26,9 +26,9 @@ export function loadSignaturesContext(repoRoot, env = process.env) {
       action: s.response?.action,
     })),
     principles: [
-      "CORRECTWRITING_EN-authored detection signatures ship with Base Node (not optional slop).",
+      "EPSCOM-authored detection signatures ship with Base Node (not optional slop).",
       "Trust bundle manifest indexes all signature files; subscribers verify before load.",
-      "Writing, injection, lattice-bypass, and exfiltration categories align with CORRECTWRITING_EN kernel.",
+      "Writing, injection, lattice-bypass, and exfiltration categories align with EPSCOM kernel.",
       "Scanners and validation dock consume signatures from AEP-Base-Node/signatures/.",
     ],
   };
@@ -41,7 +41,7 @@ export function formatSignaturesForPrompt(ctx) {
   if (!ctx) return "";
   const lines = [
     "",
-    "CORRECTWRITING_EN Detection Signatures (AEP-Base-Node/signatures/, default wired):",
+    "EPSCOM Detection Signatures (AEP-Base-Node/signatures/, default wired):",
     `Authority: ${ctx.authority} | root: ${ctx.root}`,
     `Loaded: ${ctx.enabled_count}/${ctx.signature_count} | categories: ${ctx.categories.join(", ")}`,
     "Signatures:",

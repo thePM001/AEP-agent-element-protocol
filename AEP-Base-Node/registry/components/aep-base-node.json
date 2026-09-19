@@ -8,12 +8,12 @@
   "requires": [
     "lattice-channels",
     "lattice-crypto",
-    "correctwriting_en-signatures"
+    "epscom-signatures"
   ],
   "depends_on": [
     "lattice-channels",
     "lattice-crypto",
-    "correctwriting_en-signatures"
+    "epscom-signatures"
   ],
   "capabilities": [
     "dock:inference_engine",

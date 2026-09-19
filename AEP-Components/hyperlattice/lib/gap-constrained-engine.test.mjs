@@ -1,5 +1,5 @@
 /**
- * Composer CCA GAP engine URL resolution.
+ * Hyperlattice GAP engine URL resolution.
  * Run: node --test AEP-Components/hyperlattice/lib/gap-constrained-engine.test.mjs
  */
 

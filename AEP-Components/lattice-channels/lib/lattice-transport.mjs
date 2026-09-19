@@ -233,7 +233,7 @@ export function wasmSandboxSocket(socketBase, env = process.env) {
   return env.WASM_SANDBOX_SOCKET || join(socketBase, "wasm_sandbox");
 }
 
-function runCorrectwritingEnValidateWriting(text, { configPath, latticeLogBin } = {}) {
+function runEpscomValidateWriting(text, { configPath, latticeLogBin } = {}) {
   const bin = latticeLogBin ?? resolveLatticeLogBin();
   const args = [];
   if (configPath) args.push("--config", configPath);
@@ -246,12 +246,12 @@ function runCorrectwritingEnValidateWriting(text, { configPath, latticeLogBin } 
   return JSON.parse(out);
 }
 
-/** CORRECTWRITING_EN kernel writing.gap enforcement (Base Node aep-lattice-log). */
-export function correctwriting_enEnforceWriting(text, { configPath, latticeLogBin } = {}) {
-  const parsed = runCorrectwritingEnValidateWriting(text, { configPath, latticeLogBin });
+/** EPSCOM kernel writing.gap enforcement (Base Node aep-lattice-log). */
+export function epscomEnforceWriting(text, { configPath, latticeLogBin } = {}) {
+  const parsed = runEpscomValidateWriting(text, { configPath, latticeLogBin });
   if (!parsed.ok) {
     const detail = parsed.violations?.map((v) => v.rule).join(", ") || "writing.gap";
-    throw new Error(`CORRECTWRITING_EN writing enforcement failed: ${detail}`);
+    throw new Error(`EPSCOM writing enforcement failed: ${detail}`);
   }
   return parsed;
 }
@@ -266,11 +266,11 @@ export function lintGovernedProseStrict(text, opts = {}) {
   if (violations.length) return violations;
 
   try {
-    const kernel = runCorrectwritingEnValidateWriting(raw, opts);
+    const kernel = runEpscomValidateWriting(raw, opts);
     if (!kernel.ok) {
       return (kernel.violations ?? []).map((v) => ({
-        rule: v.rule ?? "correctwriting_en_kernel",
-        message: v.message ?? "CORRECTWRITING_EN kernel rejected draft",
+        rule: v.rule ?? "epscom_kernel",
+        message: v.message ?? "EPSCOM kernel rejected draft",
         line: v.line ?? null,
       }));
     }
@@ -279,19 +279,19 @@ export function lintGovernedProseStrict(text, opts = {}) {
         ? lintGovernedProse(raw, opts)
         : [
             {
-              rule: "correctwriting_en_kernel",
-              message: `CORRECTWRITING_EN kernel required ${kernel.violations_corrected} correction(s) on raw draft`,
+              rule: "epscom_kernel",
+              message: `EPSCOM kernel required ${kernel.violations_corrected} correction(s) on raw draft`,
             },
           ];
     }
   } catch (e) {
-    if (process.env.AEP_CORRECTWRITING_EN_ALLOW_JS_FALLBACK === "1") {
+    if (process.env.AEP_EPSCOM_ALLOW_JS_FALLBACK === "1") {
       return lintGovernedProse(raw, opts);
     }
     return [
       {
-        rule: "correctwriting_en_kernel_unavailable",
-        message: "CORRECTWRITING_EN kernel validation failed closed: " + (e && e.message ? e.message : String(e)),
+        rule: "epscom_kernel_unavailable",
+        message: "EPSCOM kernel validation failed closed: " + (e && e.message ? e.message : String(e)),
         line: null,
       },
     ];
@@ -304,14 +304,14 @@ export function assertGovernedProseDraft(text, opts = {}) {
   const violations = lintGovernedProseStrict(text, opts);
   if (!violations.length) return String(text ?? "");
   const err = new Error(
-    `CORRECTWRITING_EN writing.gap blocked draft: ${violations.map((v) => v.rule).join(", ")}`,
+    `EPSCOM writing.gap blocked draft: ${violations.map((v) => v.rule).join(", ")}`,
   );
   err.violations = violations;
   throw err;
 }
 
-/** CORRECTWRITING_EN kernel writing.gap enforcement for JSON plan/object values. */
-export function correctwriting_enEnforceWritingValue(value, { configPath, latticeLogBin } = {}) {
+/** EPSCOM kernel writing.gap enforcement for JSON plan/object values. */
+export function epscomEnforceWritingValue(value, { configPath, latticeLogBin } = {}) {
   const bin = latticeLogBin ?? resolveLatticeLogBin();
   const args = [];
   if (configPath) args.push("--config", configPath);
@@ -323,12 +323,12 @@ export function correctwriting_enEnforceWritingValue(value, { configPath, lattic
   }).trim();
   const parsed = JSON.parse(out);
   if (!parsed.ok || parsed.value === undefined) {
-    throw new Error("CORRECTWRITING_EN enforce-writing-value failed");
+    throw new Error("EPSCOM enforce-writing-value failed");
   }
   return parsed.value;
 }
 
-export const CORRECTWRITING_EN_WRITING_RULES = `Writing conventions (CORRECTWRITING_EN writing mode / writing.gap - mandatory):
+export const EPSCOM_WRITING_RULES = `Writing conventions (EPSCOM writing mode / writing.gap - mandatory):
 - Never use em-dashes, en-dashes or Unicode dash substitutes; use a plain hyphen (-) or rewrite.
 - Never use double-hyphen ( -- ) as a sentence separator in prose; use a hyphen (-) or rewrite.
 - Never use spaced hyphen as a clause separator ("foo - bar"); use a colon, period or rewrite.
@@ -337,7 +337,7 @@ export const CORRECTWRITING_EN_WRITING_RULES = `Writing conventions (CORRECTWRIT
 - Commas, semicolons and double colons (::) are exceptions: attach them directly with no space before.
 - Good: "Are you ready ? I am here." "Great ! Let me help." "Hello [ hola ]." and "foo, bar and baz".
 - Bad: "Are you ready? I am here." "Hello[hola]." and "foo , bar".
-- CORRECTWRITING_EN enforces these rules in the Base Node kernel before governed output is released.`;
+- EPSCOM enforces these rules in the Base Node kernel before governed output is released.`;
 
 const SENTENCE_PUNCT_CHARS = new Set(["?", "!", "\uFF1F", "\uFF01"]);
 
@@ -484,24 +484,24 @@ export function writingRuleNamed(rule) {
   return table.includes(rule);
 }
 
-/** Lint governed prose (JS mirror of CORRECTWRITING_EN kernel + Composer fixes). */
+/** Lint governed prose (JS mirror of EPSCOM kernel + Composer fixes). */
 export function lintGovernedProse(text, opts = {}) {
   const violations = [];
   const raw = String(text ?? "");
   // The writing rule family lives in one compiled wall set. This mirror asks the
   // kernel for that decision and keeps no writing matcher of its own.
   try {
-    const kernel = runCorrectwritingEnValidateWriting(raw, opts);
+    const kernel = runEpscomValidateWriting(raw, opts);
     for (const v of kernel.violations ?? []) {
       violations.push({
-        rule: v.rule ?? "correctwriting_en_kernel",
+        rule: v.rule ?? "epscom_kernel",
         message: v.message ?? "writing rule closed",
         line: v.line ?? null,
       });
     }
   } catch (e) {
     violations.push({
-      rule: "correctwriting_en_kernel_unavailable",
+      rule: "epscom_kernel_unavailable",
       message:
         "writing rules need the Base Node kernel: " +
         (e && e.message ? e.message : String(e)),
@@ -534,7 +534,7 @@ function applyGovernedProseFixes(text, opts = {}) {
   }
   current = fixPunctuationWordSpacing(current);
   current = fixSpacedHyphenClauseSeparators(current);
-  current = correctwriting_enEnforceWriting(current, opts).text;
+  current = epscomEnforceWriting(current, opts).text;
   return current;
 }
 
@@ -548,7 +548,7 @@ export function releaseGovernedProseStrict(text, opts = {}) {
     text: String(text ?? ""),
     validation: {
       ok: true,
-      authority: "correctwriting_en-core",
+      authority: "epscom-core",
       violations: [],
       passes: 0,
       strict: true,
@@ -557,7 +557,7 @@ export function releaseGovernedProseStrict(text, opts = {}) {
 }
 
 /**
- * Polish + mandatory CORRECTWRITING_EN validation before CCA releases prose.
+ * Polish + mandatory EPSCOM validation before CCA releases prose.
  * Throws if violations remain after fix passes (fail-closed).
  * @deprecated For CCA chat use releaseGovernedProseStrict (no silent auto-fix).
  */
@@ -577,7 +577,7 @@ export function releaseGovernedProse(text, opts = {}) {
 
   if (violations.length) {
     const err = new Error(
-      `CORRECTWRITING_EN writing.gap blocked release: ${violations.map((v) => v.rule).join(", ")}`,
+      `EPSCOM writing.gap blocked release: ${violations.map((v) => v.rule).join(", ")}`,
     );
     err.violations = violations;
     err.corrected_text = current;
@@ -588,7 +588,7 @@ export function releaseGovernedProse(text, opts = {}) {
     text: current,
     validation: {
       ok: true,
-      authority: "correctwriting_en-core",
+      authority: "epscom-core",
       violations: [],
       passes: passesUsed,
     },

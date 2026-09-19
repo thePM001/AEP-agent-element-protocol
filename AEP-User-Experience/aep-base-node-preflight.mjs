@@ -101,7 +101,7 @@ function main() {
       }
     }
   } else {
-    console.log(`Config: not found at ${configPath} (run wizard or setup-agent)`);
+    console.log(`Config: not found at ${configPath} (run wizard)`);
   }
 
   const activationPath = join(dataDir, "activation.json");

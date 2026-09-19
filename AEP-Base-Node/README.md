@@ -67,7 +67,7 @@ Register new components in **`AEP-Base-Node/registry/catalog.json`** + **`AEP-Ba
 | `multi-base-node/` | Multi-base-node (2.8b) mode: federate multiple Base Node kernels (optional experimental surface, not in the default build) |
 | `potomitan/` | POTOMITAN mesh peer registry (`aep-potomitan` crate) |
 | `agent-control-hub/` | Agent Control Hub: mount profiles for multi-mount sessions |
-| `signatures/` | CORRECTWRITING_EN detection signatures + trust bundle (default wired, CCA accessible) |
+| `signatures/` | CORRECTWRITING_EN detection signatures + trust bundle (default wired, operator accessible) |
 | `AEP-Components/dynAEP/NAME-POLICY.md` | Reserved-name policy |
 
 ## Docking ports

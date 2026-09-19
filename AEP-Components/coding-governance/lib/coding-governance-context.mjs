@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Coding governance + git integration knowledge for CCA agent builders.
+ * Coding governance + git integration knowledge for hyperlattice agent builders.
  */
 
 import { dirname, join } from "node:path";
@@ -31,7 +31,7 @@ export function loadCodingGovernanceContext(repoRoot = REPO_ROOT) {
       siee: "semantic impact envelope in propose",
       solidify: "aep solidify + intent-ledger hash chain",
       announce: "aep announce + task manifest + lattice frame",
-      visualize: "Composer hyperlattice blast overlay (not a parallel DAG)",
+      visualize: "Hyperlattice blast overlay (not a parallel DAG)",
       git: "git_refs auto-captured at propose and solidify; PR/commits unchanged",
     },
     git_integration: {
@@ -94,14 +94,14 @@ export function formatCodingGovernanceForPrompt(cg) {
   }
   lines.push(
     "",
-    "Mandatory workflow for CCA-built coding agents:",
+    "Mandatory workflow for plan-built coding agents:",
   );
   for (const step of cg.workflow_cli) {
     lines.push(`  ${step}`);
   }
   lines.push(
     "",
-    "CCA plan policy_overrides.coding_governance MUST include:",
+    "Plan policy_overrides.coding_governance MUST include:",
     JSON.stringify(cg.policy_overrides_template, null, 2),
   );
   return lines.join("\n");

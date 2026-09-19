@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 
 /**
- * Canonical AEP Composer Lite protocol: allowed node types and lattice interactions.
- * Encoded into the CCA hyperlattice so the setup agent cannot ship ungoverned topology.
+ * Canonical AEP hyperlattice protocol: allowed node types and lattice interactions.
+ * Encoded into the hyperlattice so ungoverned topology cannot ship.
  */
 
-import { NODE_PALETTE } from "../../../AEP-Composer-Lite/lib/graph-store.mjs";
-import { CANVAS_SKIP_COMPONENT_IDS } from "../../../AEP-CCA-Central-Setup-Agent/lib/component-catalog.mjs";
+import { NODE_PALETTE } from "./graph-store.mjs";
+import { CANVAS_SKIP_COMPONENT_IDS } from "./component-catalog.mjs";
 
 export const COMPOSER_PROTOCOL_VERSION = "2.8.6";
 export const COMPOSER_PROTOCOL_ID = "aep.composer-lite.protocol.v1";
 
-/** Edge kinds permitted on Composer Lite canvas (AEP lattice channel semantics). */
+/** Edge kinds permitted on hyperlattice canvas (AEP lattice channel semantics). */
 export const ALLOWED_EDGE_KINDS = [
   "action",
   "policy",
@@ -229,7 +229,7 @@ export function formatComposerProtocolForPrompt(spec = buildComposerProtocolSpec
     .slice(0, 14)
     .map((i) => `  ${i.from} -> ${i.to}: ${i.kinds.join("|")} (default ${i.default_kind})`);
   return [
-    "AEP Composer Lite protocol (hyperlattice composer_protocol node family):",
+    "AEP hyperlattice protocol (hyperlattice composer_protocol node family):",
     `Allowed node types: ${types}`,
     `Allowed edge kinds: ${kinds}`,
     `Edge flows: ${spec.edge_flows.join(", ")}`,

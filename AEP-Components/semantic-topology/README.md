@@ -6,23 +6,23 @@
 
 | Source | Path | Role |
 |--------|------|------|
-| Composer hyperlattice canvas | `composer-lite-graph.json` in `AEP_DATA` | Canonical visual node/edge graph (`catalog_id` on nodes) |
-| Policy lattice | `composer-lite/lib/policy-lattice.mjs` | GAP hierarchy + LRP dock bindings |
+| Hyperlattice canvas | hyperlattice graph file in `AEP_DATA` | Canonical visual node/edge graph (`catalog_id` on nodes) |
+| Policy lattice | `AEP-Components/hyperlattice/lib/policy-lattice.mjs` | GAP hierarchy + LRP dock bindings |
 | Registry | `AEP-Base-Node/registry/catalog.json`, `AEP-Base-Node/registry/components/*.json` | Component IDs, `pairs_with` neighbors |
 | Intent snapshots | `intent-ledger` (`intents/<id>/blast-radius.json`) | Active blast radius component set |
 
-AEP hyperlattice scene graphs are the topological substrate. `validateLatticeScene()` is boot-time structural proof, not runtime Admit. This component only annotates the Composer canvas layer.
+AEP hyperlattice scene graphs are the topological substrate. `validateLatticeScene()` is boot-time structural proof, not runtime Admit. This component only annotates the hyperlattice canvas layer.
 
 ## Outputs
 
 - `LatticeBlastOverlay v1` (`AEP-Base-Node/registry/schemas/lattice-blast-overlay-v1.json`)
-- Consumed by Composer Lite `GET /api/graph/blast-overlay?intent_id=...`
+- Consumed by hyperlattice `GET /api/graph/blast-overlay?intent_id=...`
 
 ## Phase 11B deliverables
 
-- `lib/lattice-overlay.mjs` - project intent blast radius onto composer graph nodes
-- Composer route delegates here (thin proxy in `composer-lite/lib/http-api.mjs`)
-- Canvas highlight toggle in `composer-lite/public/assets/canvas.js`
+- `lib/lattice-overlay.mjs` - project intent blast radius onto hyperlattice graph nodes
+- Hyperlattice overlay is consumed by GET /api/graph/blast-overlay
+- Remaining public importers live under hyperlattice and wizard
 
 ## Explicit non-goals
 

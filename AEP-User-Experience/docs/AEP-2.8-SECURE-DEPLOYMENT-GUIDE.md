@@ -8,7 +8,7 @@
 
 ## 1. Mental model (read first)
 
-AEP 2.8.6 is the public open-source Agent Element Protocol. **Base Node is the kernel.** TypeScript dynAEP is not product Admit. **CAW** is host execution-layer security for shell and file. **Composer Lite** is the operator / CCA plane. CAW is an execution companion and is not a protocol component.
+AEP 2.8.6 is the public open-source Agent Element Protocol. **Base Node is the kernel.** TypeScript dynAEP is not product Admit. **CAW** is host execution-layer security for shell and file. **hyperlattice** is the operator plane. CAW is an execution companion and is not a protocol component.
 
 You do **not** invent a second protocol kernel. You run Base Node as the local kernel. TypeScript processEvent is not product Admit. Foreign agent frameworks (LangGraph, CrewAI, custom MCP and similar) are optional attach surfaces. They connect into AEP. They are not a substitute for Base Node Admit.
 
@@ -20,7 +20,7 @@ Canonical AEP 2.8.6 stack layout (operator surfaces, Path B UCB, lattice transpo
   <a href="architecture/aep-28-architecture.png" target="_blank" rel="noopener" title="Click to open full-size AEP 2.8 architecture diagram">
     <img
       src="architecture/aep-28-architecture.png"
-      alt="AEP 2.8 architecture diagram: Composer Lite, CCA, UCB, lattice-transport, docks, hyperlattice wrap, Base Node, dynAEP"
+      alt="AEP 2.8 architecture diagram: hyperlattice, UCB, lattice-transport, docks, hyperlattice wrap, Base Node, dynAEP"
       width="100%"
       style="background-color:#ffffff;cursor:zoom-in;"
     />
@@ -34,7 +34,7 @@ Canonical AEP 2.8.6 stack layout (operator surfaces, Path B UCB, lattice transpo
 
 How to read it for secure deploy:
 
-1. **Operator plane** (Composer Lite, CCA, harness, wizard) is not the foreign-agent API surface.
+1. **Operator plane** (hyperlattice, harness and wizard) is not the foreign-agent API surface.
 2. **Path B** is UCB only (ingress/egress airlock), then lattice-transport. Never raw docks to foreign stacks.
 3. **Path A** is Base Node plus lattice-gated SDK clients sealing frames on lattice-transport into Base Node docks. TypeScript dynAEP is not product Admit.
 4. **One hyperlattice wrap** plus Base Node kernel and protocol components is the admit path. Nothing bypasses sealed LatticeChannel frames in production.
@@ -53,7 +53,7 @@ flowchart TB
   BR --> DOCK[Base Node docks Unix sockets registered key verify PQ sealed frames only]
   DOCK --> CAW[CAW ELS shell/file]
   DOCK --> AUD[evidence / CORRECTWRITING_EN / ledger]
-  OP[Operator UI Composer Lite loopback] -.->|not foreign dock surface| DOCK
+  OP[Operator UI hyperlattice loopback] -.->|not foreign dock surface| DOCK
 ```
 
 ASCII fallback (same model):
@@ -81,7 +81,7 @@ ASCII fallback (same model):
   CAW ELS          evidence / CORRECTWRITING_EN / ledger
   (shell/file)     (audit plane)
 
- Operator UI: Composer Lite (loopback; not foreign dock surface)
+ Operator UI: hyperlattice (loopback; not foreign dock surface)
 ```
 
 **Rules of the road:**
@@ -90,7 +90,7 @@ ASCII fallback (same model):
 2. **Base Node is mandatory** as the local kernel for docks, identity and sealed lattice transport.
 3. **Connect workers via Path A or B** (section 2.2). Never hand foreign stacks raw dock sockets.
 4. **CAW** confines host shell/file when coding or shell workloads are in scope.
-5. **Composer Lite** is for operators and CCA, not the internet agent API.
+5. **hyperlattice** is for operators, not the internet agent API.
 6. Keep lattice strict; do not disable sealed-frame docking requirements.
 
 Canonical kernel and protocol material in this tree:
@@ -163,11 +163,11 @@ Process schedulers, LLM vendor SDKs and generic orchestrators are **not** the AE
 
 | Service | Secure default | Notes |
 | --- | --- | --- |
-| Composer Lite | `127.0.0.1` | Compose files default to loopback; only open `0.0.0.0` behind a reverse proxy with auth |
+| hyperlattice | `127.0.0.1` | Compose files default to loopback; only open `0.0.0.0` behind a reverse proxy with auth |
 | UCB | `127.0.0.1` (Rust default) | Do not run deprecated JS UCB server on all interfaces |
 | Docks | Unix sockets | Not HTTP on the public interface |
 
-### 2.5 Composer Lite
+### 2.5 hyperlattice
 
 ```bash
 export COMPOSER_LITE_HOST=127.0.0.1
@@ -194,7 +194,7 @@ export UCB_API_KEY=...
 
 ### 2.7 CAW (execution layer)
 
-- Enable CAW for coding agents / shell workloads via CCA plans (`default_enabled` in catalog).
+- Enable CAW for coding agents / shell workloads via catalog plans (`default_enabled` in catalog).
 - Prefer enforce mode with a non-nil policy engine.
 - Seccomp path resolve failures **deny** (fail closed).
 - soft_delete without FUSE/ptrace trash **denies** destructive ops on seccomp-only path.
@@ -212,7 +212,6 @@ export UCB_API_KEY=...
 ### Profile A: Lab / single operator laptop
 
 - **Base Node** on the local host (Path A). TypeScript dynAEP is not product Admit.
-- Composer on loopback.
 - UCB off unless testing foreign attach (Path B).
 - CAW on for any shell agent work.
 - Interactive shell feature off.
@@ -222,7 +221,6 @@ export UCB_API_KEY=...
 - **Base Node** as kernel. Docks private. TypeScript dynAEP is not product Admit.
 - Workers on **Path A** only.
 - UCB **disabled**.
-- Composer loopback or reverse proxy with token.
 - CAW enforce for coding agents.
 - Lattice strict on.
 
@@ -240,10 +238,10 @@ export UCB_API_KEY=...
 2. Skip Base Node and expect protocol admit without docks and sealed frames.
 3. Run agents free on the host with no Path A or Path B into AEP.
 4. Mount Base Node dock sockets into a foreign stack to skip UCB.
-5. Bind Composer or UCB to all interfaces without auth and network policy.
+5. Bind UCB to all interfaces without auth and network policy.
 6. Give foreign agents raw lattice socket paths.
 7. Treat client-supplied wire trust_score as authorization (BM-07 forbids this).
-8. Enable Composer interactive shell on a multi-user host without Origin policy and token.
+8. Run an interactive shell on a multi-user host without Origin policy and token.
 9. Claim ML-DSA trust-bundle authenticity without configured crypto verify.
 10. Disable CAW for coding agents and still claim host ELS.
 
@@ -253,9 +251,7 @@ export UCB_API_KEY=...
 # Base Node kernel path is active for lattice-addressed events. TypeScript dynAEP is not product Admit
 # Base Node docks refuse plain ping
 # Workers reach AEP only via Path A (Base Node/lattice) or Path B (UCB)
-# Composer loopback
 # UCB without key returns 401 when UCB is enabled
-# Composer without token from non-loopback returns 403 for mutating routes
 # CAW: resolve-fail and soft_delete paths deny under enforce
 ```
 

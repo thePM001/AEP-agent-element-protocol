@@ -100,7 +100,7 @@ const GRAPH_OWNER_FILES = ["AEP-Components/README.md"];
 const GRAPH_PROJECTION_FILES = [
   "AEP-Components/hyperlattice/README.md",
   "AEP-Components/graph-engine/README.md",
-  "AEP-Composer-Lite/lib/graph-store.mjs",
+  "AEP-Components/hyperlattice/lib/graph-store.mjs",
 ];
 const OWNS_RUNTIME_STATE = /one live graph owns (the )?state/i;
 

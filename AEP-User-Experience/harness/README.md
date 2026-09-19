@@ -11,8 +11,6 @@ Public repository: https://github.com/thePM001/AEP-agent-element-protocol
 - **dynAEP merged** into main repo (Action Lattice, PAD router)
 - **Lattice Channels** PQEncryptedCapsule transport
 - **AgentMesh** local issuance identity on lattice frames
-- **Composer Lite** WASM visual canvas on port 8424
-- **Setup agent** post-install activation and inference registration
 - **Component registry** offline catalog plus optional GitHub extension merge
 - **Compliance LRP modules** EU AI Act, GDPR, SOC 2, HIPAA, NIST AI RMF, ISO 42001
 - **Conformance runner** CC-01 through CC-12 public tier battery
@@ -32,8 +30,6 @@ node harness/aep-validate.js
 node ../aep-base-node-preflight.mjs
 
 # Full activation (Docker or local)
-node ../../AEP-CCA-Central-Setup-Agent/setup-agent.mjs
-# or: docker exec <container> aep-setup-agent
 ```
 
 ## Capability Profiles
@@ -46,14 +42,12 @@ After a sealed lattice frame, Base Node kernel runs collect-all Admit then Apply
 
 ## Component Registry
 
-Enable optional modules via setup-agent or Composer Lite `POST /api/registry/install`. Catalog: `AEP-Base-Node/registry/catalog.json`.
+Enable optional modules from the catalog: `AEP-Base-Node/registry/catalog.json`.
 
 ## Docker Quick Start
 
 ```bash
 docker compose -f docker-compose.public.yml up -d
-docker compose -f docker-compose.public.yml exec aep aep-setup-agent
-open http://localhost:8424
 ```
 
 ## Scripts

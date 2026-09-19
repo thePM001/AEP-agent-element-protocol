@@ -24,7 +24,7 @@ aep propose --intent "..." --paths ...
 aep solidify --intent-id INT-... [--session-id <gateway-session>]   # auto git_refs from HEAD
 aep solidify --intent-id INT-... --no-git                            # skip git capture
 aep solidify --intent-id INT-... --git-commit sha                    # manual override
-aep semantic explain INT-... [--lrps correctwriting_en-core,gap-runtime-scanners]
+aep semantic explain INT-... [--lrps epscom-core,gap-runtime-scanners]
 aep semantic list [--limit 20]
 aep semantic knot INT-...              Search lattice memory knots (sqlite-vec + USearch; optional Agentstream)
 aep semantic knot INT-... --phase propose   Re-record knot for a governance phase

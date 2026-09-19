@@ -24,7 +24,7 @@ Edit the compiled `PULSE_MS` constant in Base Node pulse code and rebuild the ke
 
 The dynamic engine owns the live graph state. The Action Lattice in TypeScript dynAEP is the one live graph, so the runtime graph state lives in this package and no second package owns a copy of it.
 
-The other graph surfaces are projections. The hyperlattice under `AEP-Components/hyperlattice/` is the JavaScript view of the live graph. The graph engine under `AEP-Components/graph-engine/` is a workflow runner and a projection helper. The composer canvas reads the projection that `AEP-Composer-Lite/lib/graph-store.mjs` holds, so the canvas keeps a projection and not the live state.
+The other graph surfaces are projections. The hyperlattice under `AEP-Components/hyperlattice/` is the JavaScript view of the live graph. The graph engine under `AEP-Components/graph-engine/` is a workflow runner and a projection helper. The composer canvas reads the projection that `AEP-Components/hyperlattice/lib/graph-store.mjs` holds, so the canvas keeps a projection and not the live state.
 
 ---
 
@@ -738,22 +738,22 @@ cargo test -p aep-dynaep --lib
 
 **This component ships no SDK tree.** The protocol source of truth is `AEP-Components/dynAEP/` and the crate beside it. The reference action checker is the Base Node kernel Admit pass and there is no package registry distribution for this component.
 
-### 13.1 CCA and Base Node integration
+### 13.1 Hyperlattice and Base Node integration
 
-CCA `plan-executor` persists full `policy_overrides.dynaep` (governance, observers, `validation_hook`, lattice registry path, SDK paths) into Base Node `config.dynaep`.
+Plan execute persists full `policy_overrides.dynaep` (governance, observers, `validation_hook`, lattice registry path, SDK paths) into Base Node `config.dynaep`.
 
 Runtime bridge bootstrap:
 
 ```javascript
 import { buildBridgeConfigFromDynaep, listDynaepObserverSpecs } from
-  "AEP-CCA-Central-Setup-Agent/lib/dynaep-bridge-config.mjs";
+  "AEP-Components/hyperlattice/lib/dynaep-bridge-config.mjs";
 
 const bridgeCfg = buildBridgeConfigFromDynaep(config.dynaep, repoRoot);
 const observers = listDynaepObserverSpecs(config.dynaep);
 // Pass bridgeCfg to DynAEPBridge constructor; start enabled ObserverAdapters.
 ```
 
-See `AEP-CCA-Central-Setup-Agent/lib/dynaep-context.mjs` and the public conformance runner at `AEP-Components/conformance/runner/run.sh`.
+See `AEP-Components/hyperlattice/lib/dynaep-context.mjs` and the public conformance runner at `AEP-Components/conformance/runner/run.sh`.
 
 ---
 

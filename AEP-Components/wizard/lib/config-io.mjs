@@ -57,14 +57,14 @@ export function buildBaseNodeConfig({
       socket_base: socketBase,
       lattice_db: latticeDb,
       binary_path: binaryPath,
-      correctwriting_en_priority: catalog.correctwriting_en.priority,
+      epscom_priority: catalog.epscom.priority,
       lrps,
       lattice_kem: "ML-KEM-768",
       lattice_signature: "ML-DSA-65",
       internet_up: internetUp,
       mesh_peers: meshPeers,
     },
-    correctwriting_en_signatures: {
+    epscom_signatures: {
       enabled: true,
       path: signaturesPath ?? "AEP-Base-Node/signatures",
     },

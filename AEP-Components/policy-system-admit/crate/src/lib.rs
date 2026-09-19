@@ -1654,7 +1654,7 @@ mod tests {
 
     #[test]
     fn file_sourced_writing_closes_on_em_dash() {
-        let tmp = std::env::temp_dir().join("aep-test-056-writing");
+        let tmp = std::env::temp_dir().join("aep28-env-056-writing");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
         let mut input = PolicySystemCompileInput::default();
@@ -1667,7 +1667,7 @@ mod tests {
 
     #[test]
     fn file_sourced_writing_closes_on_oxford_and_double_hyphen() {
-        let tmp = std::env::temp_dir().join("aep-test-056-oxford");
+        let tmp = std::env::temp_dir().join("aep28-env-056-oxford");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
         let mut input = PolicySystemCompileInput::default();
@@ -1682,7 +1682,7 @@ mod tests {
 
     #[test]
     fn clean_ping_allows_always_on_gaps() {
-        let tmp = std::env::temp_dir().join("aep-test-056-clean");
+        let tmp = std::env::temp_dir().join("aep28-env-056-clean");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
         let input = PolicySystemCompileInput::default();
@@ -1700,7 +1700,7 @@ mod tests {
 
     #[test]
     fn mta_url_closes_network_wall() {
-        let tmp = std::env::temp_dir().join("aep-test-067-mta");
+        let tmp = std::env::temp_dir().join("aep28-env-067-mta");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
         let stem = super::join_parts(&["network-egress-no-", "smt", "p"]);
@@ -1725,7 +1725,7 @@ mod tests {
 
     #[test]
     fn plain_ping_wire_closes_lattice_wall() {
-        let tmp = std::env::temp_dir().join("aep-test-067-wire");
+        let tmp = std::env::temp_dir().join("aep28-env-067-wire");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
         std::fs::write(
@@ -1747,7 +1747,7 @@ mod tests {
 
     #[test]
     fn deployment_guard_skips_until_attempt() {
-        let tmp = std::env::temp_dir().join("aep-test-056-deploy");
+        let tmp = std::env::temp_dir().join("aep28-env-056-deploy");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
         let input = PolicySystemCompileInput::default();
@@ -1772,7 +1772,7 @@ mod tests {
 
     #[test]
     fn lrp_evaluates_only_when_enabled() {
-        let tmp = std::env::temp_dir().join("aep-test-056-lrp");
+        let tmp = std::env::temp_dir().join("aep28-env-056-lrp");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
         let mut off = PolicySystemCompileInput::default();
@@ -1791,7 +1791,7 @@ mod tests {
 
     #[test]
     fn pii_always_on_from_security_gap() {
-        let tmp = std::env::temp_dir().join("aep-test-056-pii");
+        let tmp = std::env::temp_dir().join("aep28-env-056-pii");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
         let mut input = PolicySystemCompileInput::default();
@@ -1853,7 +1853,7 @@ mod tests {
 
     #[test]
     fn writing_and_security_evaluate_on_every_action_path() {
-        let tmp = std::env::temp_dir().join("aep-test-067-always-on");
+        let tmp = std::env::temp_dir().join("aep28-env-067-always-on");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
         let mut input = PolicySystemCompileInput::default();
@@ -1870,7 +1870,7 @@ mod tests {
 
     #[test]
     fn finance_wrap_gap_does_not_close_inventory_wrap_ping() {
-        let tmp = std::env::temp_dir().join("aep-test-067-finance-inventory");
+        let tmp = std::env::temp_dir().join("aep28-env-067-finance-inventory");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
         let stem = super::join_parts(&["network-egress-no-", "smt", "p"]);
@@ -1894,7 +1894,7 @@ mod tests {
 
     #[test]
     fn empty_wrap_non_always_on_does_not_fold() {
-        let tmp = std::env::temp_dir().join("aep-test-067-empty-wrap");
+        let tmp = std::env::temp_dir().join("aep28-env-067-empty-wrap");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
         let mut input = PolicySystemCompileInput::default();
@@ -1918,7 +1918,7 @@ mod tests {
 
     #[test]
     fn action_path_prefix_binds_without_wrap() {
-        let tmp = std::env::temp_dir().join("aep-test-067-prefix");
+        let tmp = std::env::temp_dir().join("aep28-env-067-prefix");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
         let stem = super::join_parts(&["network-egress-no-", "smt", "p"]);

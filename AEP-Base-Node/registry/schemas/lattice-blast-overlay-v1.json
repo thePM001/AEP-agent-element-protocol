@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://aep.dev/schemas/lattice-blast-overlay-v1.json",
   "title": "LatticeBlastOverlay",
-  "description": "Projection of coding-governance blast radius onto the existing Composer hyperlattice canvas. Not a standalone graph.",
+  "description": "Projection of coding-governance blast radius onto the existing hyperlattice canvas. Not a standalone graph.",
   "type": "object",
   "required": ["overlay_version", "intent_id", "component_ids", "highlighted_node_ids"],
   "properties": {
@@ -17,7 +17,7 @@
     "highlighted_node_ids": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "composer-lite-graph.json node ids whose data.catalog_id matches component_ids"
+      "description": "hyperlattice graph node ids whose data.catalog_id matches component_ids"
     },
     "registry_neighbors": {
       "type": "array",
@@ -42,7 +42,7 @@
           "gap_ref": { "type": "string" },
           "reason": {
             "type": "string",
-            "enum": ["component_in_blast", "gap_stack", "correctwriting_en_governance", "registry_neighbor"]
+            "enum": ["component_in_blast", "gap_stack", "epscom_governance", "registry_neighbor"]
           }
         }
       },

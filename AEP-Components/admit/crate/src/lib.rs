@@ -104,6 +104,42 @@ pub mod compile_writing_walls {
         },
     ];
 
+    /// The one writing rule table as JSON text. The JavaScript surfaces read this
+    /// text, so no JavaScript surface holds a private copy of the rule family.
+    pub fn writing_rules_manifest_json() -> String {
+        let mut out = String::from("{\"schema\":\"aep.writing-rules.v1\",\"rules\":[");
+        let mut first = true;
+        for rule in WRITING_RULES.iter() {
+            if first == false {
+                out.push(',');
+            }
+            first = false;
+            out.push_str("{\"id\":\"");
+            out.push_str(&json_escape(rule.id));
+            out.push_str("\",\"description\":\"");
+            out.push_str(&json_escape(rule.description));
+            out.push_str("\"}");
+        }
+        out.push_str("]}");
+        out
+    }
+
+    fn json_escape(value: &str) -> String {
+        let mut out = String::new();
+        for ch in value.chars() {
+            match ch {
+                '"' => out.push_str("\\\""),
+                '\\' => out.push_str("\\\\"),
+                '\n' => out.push_str("\\n"),
+                '\r' => out.push_str("\\r"),
+                '\t' => out.push_str("\\t"),
+                c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+                c => out.push(c),
+            }
+        }
+        out
+    }
+
     /// The rule ids of the one compiled wall set, in table order.
     pub fn writing_rule_ids() -> Vec<&'static str> {
         WRITING_RULES.iter().map(|r| r.id).collect()
@@ -367,8 +403,8 @@ pub use admit_collect_all::admit_collect_all;
 pub use compile_writing_walls::{
     collect_payload_strings, compile_writing_walls, compile_writing_walls_for_strings,
     compile_writing_walls_line, is_allowed_double_hyphen_line, is_tree_diagram_line,
-    line_closes_rule, writing_rule_ids, writing_rule_ids_from_source, writing_source_compiles,
-    writing_wall_id, WritingRule, WRITING_GAP_SOURCE, WRITING_RULES,
+    line_closes_rule, writing_rule_ids, writing_rule_ids_from_source, writing_rules_manifest_json,
+    writing_source_compiles, writing_wall_id, WritingRule, WRITING_GAP_SOURCE, WRITING_RULES,
     RULE_ATTACH_COMMA_SEMICOLON, RULE_ATTACH_DOUBLE_COLON, RULE_NO_BOX_DRAWING_DASHES,
     RULE_NO_DASH_SUBSTITUTES, RULE_NO_DOUBLE_HYPHEN, RULE_NO_EM_DASHES, RULE_NO_EN_DASHES,
     RULE_NO_MINUS_AS_DASH, RULE_NO_OXFORD_COMMA, RULE_PUNCTUATION_WORD_SPACE,

@@ -1,11 +1,11 @@
 # Universal Connect Dock (UCD)
 
-UCB-regulated dock for **optional external modules** that need controlled internet egress. Use for CCA-driven downloads (HCSE, future third-party binaries) instead of raw `fetch` or unscoped lattice hops.
+UCB-regulated dock for **optional external modules** that need controlled internet egress. Use for plan-driven downloads (HCSE, future third-party binaries) instead of raw `fetch` or unscoped lattice requests.
 
 ## Architecture
 
 ```
-CCA / HCSE install hook
+HCSE install hook
         |
         v
 +---------------------------+

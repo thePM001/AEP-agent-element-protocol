@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://aep.dev/schemas/signature-v1.schema.json",
-  "title": "CORRECTWRITING_EN Detection Signature v1",
+  "title": "EPSCOM Detection Signature v1",
   "type": "object",
   "required": ["signature_version", "id", "authority", "severity", "category", "detection"],
   "additionalProperties": false,
   "properties": {
     "signature_version": { "type": "string", "const": "1" },
-    "id": { "type": "string", "pattern": "^correctwriting_en-[a-z0-9-]+$" },
-    "authority": { "type": "string", "const": "CORRECTWRITING_EN" },
+    "id": { "type": "string", "pattern": "^epscom-[a-z0-9-]+$" },
+    "authority": { "type": "string", "const": "EPSCOM" },
     "name": { "type": "string", "minLength": 3 },
     "description": { "type": "string" },
     "severity": { "type": "string", "enum": ["info", "low", "medium", "high", "critical"] },

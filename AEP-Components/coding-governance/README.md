@@ -8,7 +8,7 @@ Thin **component folder** for the coding-governance domain. Canonical checks liv
 | Provenance store | `AEP-Components/intent-ledger/` |
 | Hyperlattice overlay | `AEP-Components/semantic-topology/` |
 | Git integration | `lib/git-integration.mjs` |
-| CCA agent builder context | `lib/coding-governance-context.mjs` |
+| Hyperlattice agent builder context | `lib/coding-governance-context.mjs` |
 
 ## Git integration (nool-compatible)
 
@@ -21,8 +21,8 @@ Git stays the VCS. AEP links governance records to git state:
 
 Solidify includes `since_propose` diff when propose git snapshot exists.
 
-## CCA-built coding agents
+## Plan-built coding agents
 
-When CCA enables `coding-governance`, `plan-generator.mjs` sets `policy_overrides.coding_governance` with `git_integration`, `auto_git_refs`, `semantic_strict`, and `require_propose`. `plan-executor.mjs` writes `$AEP_DATA/coding-agent-workflow.md` and `base-node.json` `policy_sections.coding_governance`.
+When a plan enables `coding-governance`, policy_overrides.coding_governance is set with git_integration, auto_git_refs, semantic_strict and require_propose. The plan writes `$AEP_DATA/coding-agent-workflow.md` and `base-node.json` policy_sections.coding_governance.
 
 No validation logic in this folder beyond bridges. Registry manifest points agents to GAP policies.

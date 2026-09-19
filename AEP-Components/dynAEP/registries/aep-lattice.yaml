@@ -405,7 +405,6 @@ actions:
         description: "Must carry a valid mutation delta"
     agent_permission: ["*"]
 
-  # Composer Lite / CCA action paths: AEP-Composer-Lite/registries/composer-cca-lattice.yaml
 
   output:speech:
     label: "Produce speech output to user"

@@ -7,13 +7,12 @@ Runtime code for each component lives in that component folder. Client libraries
 Infrastructure and top-level surfaces outside this folder:
 
 - `AEP-Base-Node/` - **mandatory AEP governance kernel** (not a bundled palette component)
-- `AEP-Composer-Lite/` - WASM visual canvas (:8424), not a protocol component subfolder
 - `AEP-Docks/` - socket dock specs, UCB bridge, Universal Connect Dock (UCD)
 - `AEP-Policy-System/` - policy YAML/REGO plus `policy-builder/` and `schema-builder/`
 - `docker/` - container entrypoint and runtime deps
 - `rust/` - build artifact target directory
 
-CCA and the setup agent resolve component paths via `AEP-Base-Node/registry/catalog.json` (`repository.components_root`).
+The catalog resolves component paths via `AEP-Base-Node/registry/catalog.json` (`repository.components_root`).
 
 ## Kernel pulse owner
 
@@ -23,7 +22,7 @@ The kernel pulse (the 1000 ms wait after freeze-at-seal) is owned by Base Node a
 
 One live graph owns state, which is the Action Lattice under `AEP-Components/dynAEP/`. TypeScript dynAEP holds the live runtime graph state and it is the only state owner.
 
-The other graph surfaces are projections. The hyperlattice under `AEP-Components/hyperlattice/` is the JavaScript view of the live graph. The graph engine under `AEP-Components/graph-engine/` is a workflow runner and a projection helper. The composer canvas reads the projection that `AEP-Composer-Lite/lib/graph-store.mjs` holds, so the canvas store keeps a projection and not a private state copy.
+The other graph surfaces are projections. The hyperlattice under `AEP-Components/hyperlattice/` is the JavaScript view of the live graph. The graph engine under `AEP-Components/graph-engine/` is a workflow runner and a projection helper. The composer canvas reads the projection that `AEP-Components/hyperlattice/lib/graph-store.mjs` holds, so the canvas store keeps a projection and not a private state copy.
 
 ## Runtime ledger
 

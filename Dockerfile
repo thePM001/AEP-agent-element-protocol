@@ -14,10 +14,9 @@ COPY AEP-Components/agentmesh/crate ./AEP-Components/agentmesh/crate
 COPY AEP-Base-Node/potomitan/crate ./AEP-Base-Node/potomitan/crate
 COPY AEP-Components/lattice-memory/crate ./AEP-Components/lattice-memory/crate
 COPY AEP-Base-Node/crate ./AEP-Base-Node/crate
-COPY AEP-Composer-Lite/wasm-sandbox/crate ./AEP-Composer-Lite/wasm-sandbox/crate
 COPY AEP-Docks/ucb/crate ./AEP-Docks/ucb/crate
 COPY AEP-Components/conformance/crate ./AEP-Components/conformance/crate
-RUN cargo build --release -p aep-base-node -p aep-lattice-memory -p aep-wasm-sandbox -p aep-ucb
+RUN cargo build --release -p aep-base-node -p aep-lattice-memory -p aep-ucb
 
 FROM debian:bookworm-slim AS node-deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -35,29 +34,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=rust-builder /build/rust/target/release/aep-base-node /usr/local/bin/
 COPY --from=rust-builder /build/rust/target/release/aep-lattice-log /usr/local/bin/
 COPY --from=rust-builder /build/rust/target/release/aep-memory /usr/local/bin/
-COPY --from=rust-builder /build/rust/target/release/aep-wasm-sandbox /usr/local/bin/
 COPY --from=rust-builder /build/rust/target/release/aep-ucb /usr/local/bin/
 
 WORKDIR /opt/aep
 COPY --from=node-deps /deps/node_modules ./node_modules
 COPY AEP-Components/ ./AEP-Components/
-COPY AEP-Composer-Lite/ ./AEP-Composer-Lite/
 COPY AEP-Docks/ ./AEP-Docks/
 COPY AEP-Policy-System/ ./AEP-Policy-System/
 COPY AEP-Base-Node/ ./AEP-Base-Node/
 COPY AEP-User-Experience/ ./AEP-User-Experience/
 COPY docker/entrypoint.sh /usr/local/bin/aep-entrypoint.sh
 
-RUN chmod +x /opt/aep/AEP-CCA-Central-Setup-Agent/cca.mjs \
-    && chmod +x /opt/aep/AEP-CCA-Central-Setup-Agent/setup-agent.mjs \
-    && chmod +x /opt/aep/AEP-Composer-Lite/server.mjs \
-    && chmod +x /opt/aep/AEP-Docks/ucb/server.mjs \
-    && chmod +x /usr/local/bin/aep-entrypoint.sh \
-    && printf '%s\n' '#!/bin/sh' 'exec node /opt/aep/AEP-CCA-Central-Setup-Agent/setup-agent.mjs "$@"' > /usr/local/bin/aep-setup-agent \
-    && chmod +x /usr/local/bin/aep-setup-agent \
-    && printf '%s\n' '#!/bin/sh' 'exec node /opt/aep/AEP-CCA-Central-Setup-Agent/cca.mjs "$@"' > /usr/local/bin/aep-cca \
-    && chmod +x /usr/local/bin/aep-cca
-
+RUN chmod +x /opt/aep/AEP-Docks/ucb/server.mjs && chmod +x /usr/local/bin/aep-entrypoint.sh
 ENV AEP_DATA=/data/aep \
     AEP_SOCKET_BASE=/data/aep/sockets \
     AEP_TASK_MANIFEST_DIR=/data/aep/ucb/manifests \
@@ -66,15 +54,8 @@ ENV AEP_DATA=/data/aep \
     AEP_LATTICE_LOG_BIN=/usr/local/bin/aep-lattice-log \
     AEP_MEMORY_BIN=/usr/local/bin/aep-memory \
     AEP_LATTICE_STRICT=1 \
-    COMPOSER_LITE=1 \
-    COMPOSER_LITE_HOST=0.0.0.0 \
-    COMPOSER_LITE_PORT=8424 \
-    COMPOSER_LITE_TERMINAL=0 \
-    COMPOSER_LITE_BASE_PATH= \
     UCB_PORT=8412 \
     UCB=1 \
-    WASM_SANDBOX=1 \
-    WASM_SANDBOX_SOCKET=/data/aep/sockets/wasm_sandbox \
     AEP_IN_DOCKER=1 \
     AEP_DAEMON_PIDFILE=/run/aep/daemon.pid \
     AEP_TRUST_DOMAIN=aep.protocol.local \
@@ -82,7 +63,7 @@ ENV AEP_DATA=/data/aep \
     NODE_PATH="/opt/aep/node_modules" \
     PATH="/usr/local/bin:${PATH}"
 
-EXPOSE 8424 8412
+EXPOSE 8412
 VOLUME ["/data/aep"]
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \

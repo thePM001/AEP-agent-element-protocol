@@ -10,6 +10,6 @@
 
 PII, prompt injection, toxicity, secrets, regulatory, brand, temporal, prediction, jailbreak, supply-chain, URLs.
 
-## Enable via CCA
+## Enable via catalog
 
 Mention "content scanners" or "GAP runtime" in your deployment intent or enable `gap-runtime-scanners` in the ImplementationPlan.

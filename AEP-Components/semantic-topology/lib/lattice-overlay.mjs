@@ -3,8 +3,8 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { explainIntent } from "../../intent-ledger/lib/ledger.mjs";
-import { loadGraph } from "../../../AEP-Composer-Lite/lib/graph-store.mjs";
-import { buildPolicyLatticeView } from "../../../AEP-Composer-Lite/lib/policy-lattice.mjs";
+import { loadGraph } from "../../hyperlattice/lib/graph-store.mjs";
+import { buildPolicyLatticeView } from "../../hyperlattice/lib/policy-lattice.mjs";
 import { invokeCodingGovernanceRust } from "../../../AEP-SDKs/typescript/aep-protocol/lib/subprotocol-rust.mjs";
 import { resolveRepoRoot } from "../../coding-governance/lib/paths.mjs";
 
@@ -60,8 +60,8 @@ function resolvePolicyBindings(componentIds, neighborIds, activeLrps) {
   }
 
   if (componentSet.has("coding-governance") || componentSet.has("cca")) {
-    const correctwriting_en = policyView.active_lrps?.find((l) => l.mandatory || l.category === "correctwriting_en");
-    if (correctwriting_en) push(correctwriting_en.id, "correctwriting_en_governance");
+    const epscom = policyView.active_lrps?.find((l) => l.mandatory || l.category === "epscom");
+    if (epscom) push(epscom.id, "epscom_governance");
   }
 
   for (const lrp of policyView.active_lrps ?? []) {
@@ -75,7 +75,7 @@ function resolvePolicyBindings(componentIds, neighborIds, activeLrps) {
 }
 
 /**
- * Project blast radius onto the existing Composer hyperlattice canvas.
+ * Project blast radius onto the existing hyperlattice canvas.
  * @param {object} opts
  * @param {string} opts.intentId
  * @param {string} opts.dataDir - AEP_DATA (composer graph + intent snapshots)

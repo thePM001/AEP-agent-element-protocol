@@ -3,7 +3,7 @@
 Optional code graph parser for external AEP 2.8 users.
 ## Flow
 
-1. CCA enables `hcse` in the ImplementationPlan.
+1. A plan enables `hcse` in the ImplementationPlan.
 2. `install.mjs` downloads [DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) from GitHub Releases (lattice-gated).
 3. `rebrand.mjs` renames the install to **aep-hcse** (opaque to the user).
 4. `mcp-config.mjs` wires MCP for detected coding agents.
@@ -22,5 +22,3 @@ Optional code graph parser for external AEP 2.8 users.
 
 - `coding-governance/lib/propose.mjs` - symbol impact via `detect_changes`
 - `coding-governance/lib/solidify.mjs` - `hcse_artifact` hash on solidify
-- `AEP-CCA-Central-Setup-Agent/lib/plan-executor.mjs` - download on plan execute
-- `AEP-CCA-Central-Setup-Agent/lib/component-catalog.mjs` - intent keyword match

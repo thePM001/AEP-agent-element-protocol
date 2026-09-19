@@ -389,7 +389,7 @@ AEP 2.8 is a **reference protocol library**: a set of working components that a 
 
 ```mermaid
 flowchart LR
-  UI[Composer Lite]
+  UI[Harness]
   LT[sealed encrypted frame]
   BN[Base Node kernel]
   EVAL[wait one second then every check then carry out]
@@ -417,8 +417,6 @@ The library is counted by this layer table. Folder count is not the library coun
 | UCB airlock (optional) | Foreign MCP or HTTP attach only | [`AEP-Docks/ucb/`](AEP-Docks/ucb/) |
 | Coding governance | Propose a change then lock it | [`AEP-Components/coding-governance/`](AEP-Components/coding-governance/) |
 | HCSE parser | aep-hcse parser MCP | [`AEP-Components/hcse/`](AEP-Components/hcse/) |
-| CCA agent | Central Setup Agent | internal only, not in the public snapshot |
-| Operators | Agent Composer Lite and harness | [`AEP-Composer-Lite/`](AEP-Composer-Lite/) |
 | Policy | GAP nodes and subprotocol validators | [`AEP-Policy-System/`](AEP-Policy-System/) |
 | Multi-base-node (2.8b) | Federate multiple Base Node kernels (optional experimental surface) | [`AEP-Base-Node/multi-base-node/`](AEP-Base-Node/multi-base-node/) |
 
@@ -450,13 +448,13 @@ The table below is that derived fifteen-row ledger.
 
 ### How a builder uses it
 
-The installation wizard starts Base Node first so the setup agent has a kernel to talk to.
+The installation wizard starts Base Node first so a builder has a kernel to talk to.
 
 After a sealed capsule is opened, that kernel waits then runs every check together. See [Kernel pulse](#kernel-pulse) for the compiled wait and how it can be changed in theory.
 
-Composer Lite (the visual canvas) and the setup agent seal each message as an encrypted capsule on the wire. The setup agent reads the list of attachable components, writes a deployment plan and turns those components on under one wrap so scene, action path, written policy and channels are checked together.
+The harness and the wizard seal each message as an encrypted capsule on the wire. The catalog lists attachable components so scene, action path, written policy and channels are checked together.
 
-CAW sandboxes, the AEP-native host execution boxes for coding agents and all other agentic processes apply those written policy profiles on the machine. See [GAP-centric policies and CAW sandboxes](#gap-centric-policies-and-caw-sandboxes). Host command work can run inside those boxes when the setup agent enables them; they are not a substitute for dynAEP, the standalone hyperlattice runtime component.
+CAW sandboxes, the AEP-native host execution boxes for coding agents and all other agentic processes apply those written policy profiles on the machine. See [GAP-centric policies and CAW sandboxes](#gap-centric-policies-and-caw-sandboxes). Host command work can run inside those boxes when the operator enables them; they are not a substitute for dynAEP, the standalone hyperlattice runtime component.
 
 Connectors and language clients use that same sealed transport. The Universal Connect Bridge (UCB) is an optional inbound data airlock for foreign tools and it checks the tool contract before anything enters. The HCSE parser, which builds a symbol graph of the code, arrives through the outbound airlock.
 
@@ -472,7 +470,6 @@ Coding governance proposes a change, measures how far that change reaches and on
 | [`AEP-Base-Node/`](AEP-Base-Node/) | Kernel: daemon, registry, POTOMITAN, agent-control-hub |
 | [`AEP-Components/`](AEP-Components/) | Protocol components (dynAEP, lattice-channels, graph-engine, aep-comm, economics, scanners, fleet) |
 | [`AEP-CAW/`](AEP-CAW/) | Execution companion: CAW host sandboxes. Not a protocol component |
-| [`AEP-Composer-Lite/`](AEP-Composer-Lite/) | Agent Composer (Composer Lite): WASM visual canvas on port: 8424 |
 | [`AEP-User-Experience/`](AEP-User-Experience/) | Harness, operator scripts, AEP-main-skill |
 | [`AEP-Docks/`](AEP-Docks/) | UCB + UCD socket dock specs and servers |
 | [`AEP-Policy-System/`](AEP-Policy-System/) | GAP policies, presets, policy-builder, schema-builder |
@@ -503,7 +500,7 @@ cargo test -p multi-base-node-core
 
 ## LatticeChannel security (mandatory)
 
-Every software development kit, editor, wizard, setup agent and runtime module talks to protocol components only through Lattice Channels: docking sockets carry sealed encrypted capsules and nothing else.
+Every software development kit, editor, wizard and runtime module talks to protocol components only through Lattice Channels: docking sockets carry sealed encrypted capsules and nothing else.
 
 A plain ping, event or register message on the wire is rejected and logged as a side-channel anomaly, meaning an attempt to skip the sealed capsule.
 
@@ -519,7 +516,7 @@ A missing scene, dock, timestamp or sequence fails the check. The destination do
 
 When the dock denies, the report names the closed walls and the reasons plus a mechanical repair for missing fields and writing. Grant lists stay off that report. A retry must seal a new capsule because replay is keyed when the capsule is first queued.
 
-Writing walls govern output shape and are not transport security. CORRECTWRITING_EN writing walls stay protocol law at priority 255. Closed walls carry a class of writing, security, temporal, capability, poison or structural so a writing deny is not read as a transport failure.
+Writing walls govern output shape and are not transport security. EPSCOM writing walls stay protocol law at priority 255. Closed walls carry a class of writing, security, temporal, capability, poison or structural so a writing deny is not read as a transport failure.
 
 Putting a capsule on the dock is not the check. After the one-second wait the client asks for the result by the capsule hash on the same dock so a deny names the closed walls and an allow returns an event id.
 
@@ -527,15 +524,13 @@ Base Node can run in a container or sit next to an AEP Validation Engine module.
 
 ```mermaid
 flowchart LR
-  UI[Composer Lite]
-  CCA[setup agent]
+  UI[Harness]
   UCB[optional foreign airlock]
   LT[sealed encrypted capsule]
   BN[Base Node kernel]
   EVAL[wait one second then every check then carry out]
   LEDGER[derived fifteen-row record]
   UI --> LT
-  CCA --> LT
   UCB --> LT
   LT --> BN
   BN --> EVAL
@@ -575,12 +570,9 @@ A builder who wants a different wait rebuilds Base Node with a different compile
 | **Lattice Memory** | `AEP-Components/lattice-memory/crate/` | Attractor store (sqlite-vec + USearch) for forensic and health telemetry. Attractors do not skip Admit |
 | **POTOMITAN** | `AEP-Base-Node/potomitan/` | Mesh fallback when normal internet is unavailable |
 | **dynAEP 1.0** | `AEP-Components/dynAEP/` | Hyperlattice runtime: `action_path` filter, temporal authority, bridge (merged from standalone repo) |
-| **Installation Wizard** | `AEP-Components/wizard/install-wizard.mjs` + **visual UI** at `/install` on Composer Lite | First stage Base Node installer (CLI + web wizard) |
-| **Setup Agent** | internal only | Post-install activation and inference config |
-| **Agent Composer (Composer Lite)** | `AEP-Composer-Lite/` | Experimental WASM composer canvas (`:8424`) for operator extension |
+| **Installation Wizard** | `AEP-Components/wizard/install-wizard.mjs` | First stage Base Node installer (CLI) |
 | **Component registry** | `AEP-Base-Node/registry/` | Offline catalog + optional extension merge |
 | **Conformance runner** | `AEP-Components/conformance/` | CC-01..CC-15 public tier compliance battery |
-| **WASM sandbox** | `AEP-Composer-Lite/wasm-sandbox/crate/` | Policy eval via lattice socket (no HTTP bypass) |
 | **UCB (optional)** | `AEP-Docks/ucb/` | Universal Connect Bridge for **foreign** stacks only (`:8412`). Native AEP skips UCB. Set `UCB=0` to disable. |
 | **CAW framework** | `AEP-CAW/` | Execution-layer sandbox (`aep-caw`); profiles authored in GAP, compiled locally |
 | **GAP language** | `AEP-Components/gap/` | Governed Agentic Programming: policies, sandbox profiles, manifest/plan templates |
@@ -609,7 +601,7 @@ The tables below name working protocol parts a builder can attach. They are comp
 |---------|------|
 | Live Admit GAP files | `AEP-Policy-System/reference/` |
 | Policy Builder (invariant detection, Rego generation) | `AEP-Policy-System/policy-builder/` |
-| Schema Builder (optional study tool; not wired to the CCA agent or Docker) | `AEP-Policy-System/schema-builder/` |
+| Schema Builder (optional study tool; not wired to Docker) | `AEP-Policy-System/schema-builder/` |
 | OPA Rego + Cedar transpilers | `AEP-Components/policy-engine/` |
 | YAML policy importer | `AEP-Components/policy-engine/lib/policy/importer/` |
 | Built-in presets (strict, standard, relaxed, audit) | `AEP-Policy-System/*.policy.yaml` |
@@ -752,8 +744,8 @@ The component lives at [`AEP-Components/aep-comm/`](AEP-Components/aep-comm/). E
 | AEP-Graph | 6 | Action, decision, wait, parallel, loop nodes, checkpoints, admitGate default deny |
 | AEP-Comm | 14 | Agent cards, discovery, messaging, task hand-off, human gate and isolated code execution |
 | Security | 4 | Hash-chained ledger, proof bundles, OTEL, reliability index (theta) |
-| Builders | 2 | Schema Builder (not wired to the CCA agent or Docker), Policy Builder |
-| **2.8 kernel additions** | 13 | Base Node, Lattice Channels, AgentMesh, Lattice Memory, POTOMITAN, dynAEP merge, wizard, setup agent, Composer Lite, registry, conformance, WASM sandbox and UCB |
+| Builders | 2 | Schema Builder (not wired to Docker), Policy Builder |
+| **2.8 kernel additions** | 13 | Base Node, Lattice Channels, AgentMesh, Lattice Memory, POTOMITAN, dynAEP merge, wizard, registry, conformance and UCB |
 
 ---
 
@@ -769,7 +761,7 @@ cargo test -p aep-base-node --lib
 docker compose up -d --build
 ```
 
-The gate-aep-test scripts live under `scripts/`. Docker is the packaged run path. The conformance runner is the public-tier battery.
+The gate-aep28-env scripts live under `scripts/`. Docker is the packaged run path. The conformance runner is the public-tier battery.
 
 
 ## Quick start
@@ -780,10 +772,9 @@ The gate-aep-test scripts live under `scripts/`. Docker is the packaged run path
 ```bash
 cp .env.example .env
 docker compose up -d --build
-open http://$AEP_HOST:8424/install
 ```
 
-The **Agent Composer** serves the WASM visual canvas at `/` and the install wizard at `/install`. The setup agent configures inference and the hyperlattice wrap (GAP nodes, `action_path` registry, governance mode, dock channels).
+The install wizard configures Base Node from the catalog. Lattice transport, the registry and conformance stay on the public path.
 
 ### Coding agents (Claude Code, Cursor, Codex)
 
@@ -810,9 +801,6 @@ node AEP-Components/wizard/install-wizard.mjs --non-interactive --config=/tmp/ae
 docker compose -f docker-compose.test-fresh.yml up -d --build
 open http://$AEP_HOST:8524/install
 
-# Composer Lite
-AEP_DATA=/tmp/aep-data node AEP-Composer-Lite/server.mjs
-open http://$AEP_HOST:8424/install
 
 # Conformance battery
 ./AEP-Components/conformance/runner/run.sh
@@ -835,7 +823,6 @@ docker compose -f docker-compose.public.yml exec aep aep assist kill
 
 | Service | Default port | Notes |
 |---------|--------------|-------|
-| Agent Composer (Composer Lite) | `8424` | Public WASM canvas and install wizard |
 | UCB | `8412` | **Optional.** Foreign attach only. Disable with `UCB=0`. See [UCB section](#ucb-universal-connect-bridge--optional-foreign-attach) |
 | WASM sandbox | `wasm_sandbox` socket | Set `WASM_SANDBOX=1` in Docker |
 | Base Node sockets | `/data/aep/sockets` | Inference, validation, future, regulation docks |
@@ -847,7 +834,7 @@ docker compose -f docker-compose.public.yml exec aep aep assist kill
 
 UCB is **not** part of the mandatory AEP kernel path. It exists for one purpose: let operators **safely attach non-AEP systems** (LangGraph, MCP servers, AutoGen, CrewAI, custom HTTP agents, etc.) to an AEP hyperlattice without giving those stacks raw lattice socket access.
 
-**If you do not need foreign attach, do not run UCB.** Native AEP components (Composer Lite, CCA and CAW) use `lattice-transport` directly against Base Node docks. Skipping UCB is valid. Attaching foreign agents without UCB or without a task manifest is **at your own risk** - AEP will not invent a contract for you.
+**If you do not need foreign attach, do not run UCB.** Native AEP components (CAW) use `lattice-transport` directly against Base Node docks. Skipping UCB is valid. Attaching foreign agents without UCB or without a task manifest is **at your own risk** - AEP will not invent a contract for you.
 
 ### What UCB does
 
@@ -936,7 +923,7 @@ curl -s -H "Authorization: Bearer $UCB_API_KEY" \
 ### Disable UCB entirely
 
 ```bash
-# Docker: foreign attach off, Composer Lite + Base Node still run
+# Docker: foreign attach off, Base Node still runs
 UCB=0 docker compose -f docker-compose.public.yml up -d
 
 # Bare metal: simply do not start aep-ucb
@@ -946,54 +933,6 @@ Canonical implementation: [`AEP-Docks/ucb/README.md`](AEP-Docks/ucb/README.md). 
 
 ---
 
-## Agent Composer (Composer Lite)
-
-
-The **Agent Composer** is the operator-facing visual shell for wiring agents, docks, connectors and hyperlattice nodes on a WASM canvas. In this open-source repository it is implemented as **Composer Lite** under [`AEP-Composer-Lite/`](AEP-Composer-Lite/) and listens on port **8424**.
-
-**Experimental by design.** The Agent Composer is a scaffold, not a finished product surface. We ship a working canvas, graph API, optional CCA chat, install wizard and registry hooks so you can **extend it on your own stack**: custom node types, sidebar blocks, integrations, themes, deployment flows and operator UX. **We do not maintain or evolve those extensions for you.** Fork the repo, build on the graph and HTTP APIs and treat Composer Lite as your lab environment.
-
-What we do maintain in the public tier: Base Node, lattice transport, registry, setup agent, conformance and the minimal Composer Lite core that activates against a governed Base Node.
-
-### Canvas files (adjustable)
-
-The visual canvas can split scene, behaviour and look into separate files a builder can adjust. Changing one file need not change the others. How to attach those files is [Custom sub-lattices inside the AEP hyperlattice](AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md).
-
-| Layer | Responsibility |
-|-------|----------------|
-| Structure | Scene graph: what exists, its position and its depth band |
-| Behaviour | Registry of operations, types, fields and constraints |
-| Skin | Look only and must not carry authority |
-
-Each element type has a fixed depth band so a shell, a panel and a tooltip cannot steal one another depth band and a violation is rejected.
-
-| You extend | We maintain |
-|------------|-------------|
-| Custom canvas nodes, palettes, operator workflows | Kernel, docks, GAP, CAW, registry loader |
-| Your branding, auth, multi-tenant UI | `lattice-transport`, task manifests, install wizard API |
-| Foreign agent attach via UCB (optional) | Conformance battery and component installers |
-
-**Run it**
-
-| URL | Purpose |
-|-----|---------|
-| `http://$AEP_HOST:8424/` | WASM node canvas |
-| `http://$AEP_HOST:8424/install` | Visual Base Node install wizard |
-
-**Built-in node types (starting set)**
-
-| Type | Role |
-|------|------|
-| Agent | Autonomous agent with template and PAD Transform stage |
-| Hyperlattice Hub | dynAEP funnel / PAD Transform router on the one canvas graph |
-| AEP Validation Engine Dock | Validation engine on lattice channel |
-| Inference Dock | LLM routing dock |
-| Connector | Application bridge into AEP |
-| Storage Import / Export | Data intake and egress backends |
-
-Implementation details: [`AEP-Composer-Lite/README.md`](AEP-Composer-Lite/README.md). Sidebar extension guide: [`AEP-Composer-Lite/docs/SIDEBAR-BLOCKS.md`](AEP-Composer-Lite/docs/SIDEBAR-BLOCKS.md).
-
----
 
 ## Conformance
 
@@ -1062,19 +1001,19 @@ flowchart LR
 
 ### CAW sandbox profiles (GAP source)
 
-Each profile is one `.gap` file with address `dev.aep.caw/<id>`. CCA picks a profile from deployment intent; you can also pass `--profile` on the CAW CLI.
+Each profile is one `.gap` file with address `dev.aep.caw/<id>`. Operator picks a profile from deployment intent; you can also pass `--profile` on the CAW CLI.
 
 | GAP file | Address | Use when |
 |----------|---------|----------|
 | `caw-agent-sandbox.gap` | `dev.aep.caw/agent-sandbox.v1` | Untrusted or unknown agent code; strict `agent-sandbox` base policy |
-| `caw-coding-agent.gap` | `dev.aep.caw/coding-agent.v1` | **Governed coding agent** (Hermes, CCA runners, any AEP agent; see below) |
+| `caw-coding-agent.gap` | `dev.aep.caw/coding-agent.v1` | **Governed coding agent** (Hermes, harness runners, any AEP agent; see below) |
 | `caw-restricted.gap` | `dev.aep.caw/restricted.v1` | Single project directory only, minimal base policy |
 | `caw-dev-multi-repo.gap` | `dev.aep.caw/dev-multi-repo.v1` | Multiple repos with different mount tiers |
 | `caw-compiled-runtime.gap` | `dev.aep.caw/compiled-runtime.v1` | Plan-once execute-many: LLM proxy **off**, deterministic runtime |
 
 #### What is `coding-agent` ?
 
-Default GAP profile for **any governed coding agent** (Hermes, CCA-launched runners, custom binaries). Agent-agnostic mount layout:
+Default GAP profile for **any governed coding agent** (Hermes, harness runners, custom binaries). Agent-agnostic mount layout:
 
 1. **Workspace (`${PROJECT_ROOT}`):** read-write via `workspace-rw`. The agent edits the repo it was started in.
 2. **Agent config (`${AEP_AGENT_CONFIG_DIR}`, `${HOME}/.config/agent`, `${HOME}/.local/share/agent`):** read-only via `config-readonly`. The agent can read its config to run, but cannot rewrite or exfiltrate through those paths.
@@ -1082,7 +1021,7 @@ Default GAP profile for **any governed coding agent** (Hermes, CCA-launched runn
 4. **Who may do what:** more capable than the untrusted sandbox profile, still lattice-governed.
 5. **LLM proxy on:** model calls through audited CAW proxy when enabled.
 
-CCA maps intents like "coding agent", "Hermes" or "governed agent" to this profile. Use `agent-sandbox` for untrusted code; `compiled-runtime` when the LLM proxy must stay off.
+Catalog maps intents like "coding agent", "Hermes" or "governed agent" to this profile. Use `agent-sandbox` for untrusted code; `compiled-runtime` when the LLM proxy must stay off.
 
 ```bash
 node AEP-Components/gap/lib/gap-compile.mjs --list-profiles
@@ -1111,7 +1050,7 @@ export UCB_CONSTRAINED_DECODER_URL=http://$AEP_HOST:8080/v1/constrained/task-man
 export UCB_LLM_SYNTHESIS_URL=http://$AEP_HOST:8080/v1/structured/task-manifest
 ```
 
-GAP template authority: `AEP-Components/gap/policies/reference/task-manifest-v1.gap`. Materialized JSON matches `task-manifest-v1.json`. Manifests land in `AEP_TASK_MANIFEST_DIR` (`$AEP_DATA/ucb/manifests/`). CCA plan execution can also write manifests with `synthesized_by: cca_plan`.
+GAP template authority: `AEP-Components/gap/policies/reference/task-manifest-v1.gap`. Materialized JSON matches `task-manifest-v1.json`. Manifests land in `AEP_TASK_MANIFEST_DIR` (`$AEP_DATA/ucb/manifests/`). Plan execution can also write manifests.
 
 ---
 
@@ -1121,13 +1060,12 @@ GAP template authority: `AEP-Components/gap/policies/reference/task-manifest-v1.
 | Doc | Topic |
 |-----|-------|
 | [`AEP-Base-Node/README.md`](AEP-Base-Node/README.md) | Base Node operator guide |
-| [`AEP-CAW/README.md`](AEP-CAW/README.md) | **CAW execution sandboxes** (`aep-caw`, shell adapter, policy engine, CCA integration) |
+| [`AEP-CAW/README.md`](AEP-CAW/README.md) | **CAW execution sandboxes** (`aep-caw`, shell adapter, policy engine, host integration) |
 | [`AEP-Components/gap/README.md`](AEP-Components/gap/README.md) | GAP language, compile pipeline, CAW profile authoring |
 | [`AEP-Base-Node/agent-control-hub/README.md`](AEP-Base-Node/agent-control-hub/README.md) | GAP capability profiles and CAW sandbox routing on Base Node |
 | [`AEP-Components/dynAEP/README.md`](AEP-Components/dynAEP/README.md) | dynAEP 1.0 hyperlattice runtime protocol |
 | [`AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md`](AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md) | How to attach a custom sub-lattice |
 | [`AEP-Components/dynAEP/CONFIG.md`](AEP-Components/dynAEP/CONFIG.md) | dynAEP configuration reference |
-| [`AEP-Composer-Lite/README.md`](AEP-Composer-Lite/README.md) | WASM canvas + CCA |
 | [`AEP-Docks/ucb/README.md`](AEP-Docks/ucb/README.md) | **UCB optional foreign attach** (manifest gate, no fallback) |
 | [`AEP-Policy-System/SETUP.md`](AEP-Policy-System/SETUP.md) | Live Admit GAP node setup |
 | [`AEP-Policy-System/schema-builder/README.md`](AEP-Policy-System/schema-builder/README.md) | Schema Builder |

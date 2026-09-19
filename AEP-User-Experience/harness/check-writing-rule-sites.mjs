@@ -2,7 +2,7 @@
 /*
  * check-writing-rule-sites.mjs
  *
- * Counts the definition sites of the writing rule family. The policy for this check is the writing rule consolidation.
+ * Counts the definition sites of the writing rule family. Policy DUP-286-P1.
  *
  * A definition site is a code file that decides a writing rule on its own, which
  * means it carries a matcher for a family rule and it does not read the one
@@ -31,11 +31,11 @@ const FAMILY = [
 
 const READS_THE_SET = [
   'line_closes_rule', 'compile_writing_walls', 'compileWritingWalls',
-  'writingRuleNamed', 'writingRuleTable', 'kernelClosedRules', 'runCorrectwritingEnValidateWriting',
+  'writingRuleNamed', 'writingRuleTable', 'kernelClosedRules', 'runEpscomValidateWriting',
 ];
 const CODE_EXT = new Set(['.rs', '.mjs', '.js', '.ts', '.tsx', '.mts', '.cjs']);
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'target', 'dist', 'build']);
-const DOC_EXT = new Set(['.md', '.gap', '.gap-format', '.json', '.yaml', '.yml', '.txt', '.html']);
+const DOC_EXT = new Set(['.md', '.gap', '.gaplune', '.json', '.yaml', '.yml', '.txt', '.html']);
 
 function walk(dir, out) {
   for (const name of readdirSync(dir)) {

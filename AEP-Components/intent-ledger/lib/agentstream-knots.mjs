@@ -6,7 +6,7 @@
  */
 
 import { latticeGatedFetch } from "../../lattice-channels/lib/lattice-transport.mjs";
-import { resolveAgentstreamUrl } from "../../../AEP-Composer-Lite/lib/integrations.mjs";
+import { resolveAgentstreamUrl } from "../../hyperlattice/lib/integrations.mjs";
 import { defaultPaths } from "../../wizard/lib/paths.mjs";
 
 const DEFAULT_CAPSULE = "aep-intent-knots";

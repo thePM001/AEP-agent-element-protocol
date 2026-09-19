@@ -207,7 +207,6 @@ export function syncLrpsFromComponents(componentIds, components, existingLrps = 
 }
 
 const COMPOSER_PALETTE_SKIP = new Set([
-  "composer-lite",
   "community-extension-template",
   "dynaep-core",
   "lattice-channels",
@@ -215,8 +214,7 @@ const COMPOSER_PALETTE_SKIP = new Set([
   "lattice-crypto",
   "lattice-memory",
   "aep-base-node",
-  "cca",
-  "correctwriting_en-signatures",
+  "epscom-signatures",
   "session",
   "policy-engine",
   "evidence-ledger",

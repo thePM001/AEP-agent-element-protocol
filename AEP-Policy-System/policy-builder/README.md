@@ -17,4 +17,4 @@
 
 ## Integration status
 
-Gateway and AEPassistant expose validation APIs. **Not yet wired** to setup-agent, CCA or Docker activation path.
+Gateway and AEPassistant expose validation APIs. **Not yet wired** to the wizard or Docker activation path.

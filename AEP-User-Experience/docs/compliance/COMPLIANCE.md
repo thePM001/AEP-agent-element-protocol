@@ -57,4 +57,4 @@ This document maps AEP features to requirements in the EU AI Act, SOC 2 Type II,
 
 ---
 
-Note: AEP 2.8.6 provides the governance framework and enforcement mechanisms. Organisations must still configure policies, identity requirements and evidence retention periods appropriate to their specific compliance obligations. Policy Builder can validate written policy. Schema Builder stays an optional study tool and is not wired to the CCA agent or Docker.
+Note: AEP 2.8.6 provides the governance framework and enforcement mechanisms. Organisations must still configure policies, identity requirements and evidence retention periods appropriate to their specific compliance obligations. Policy Builder can validate written policy. Schema Builder stays an optional study tool and is not wired to the wizard or Docker.

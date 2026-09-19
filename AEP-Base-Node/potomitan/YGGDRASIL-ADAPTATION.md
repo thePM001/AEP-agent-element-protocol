@@ -11,6 +11,6 @@ Packet plane is MeshPacketPlane send, poll and forward.
 Datagram transports are MemoryTransport and UdpTransport.
 Mesh supervisor is MeshSupervisor failover when internet_up=false plus a bound packet plane.
 
-Persistence: AEP_DATA/mesh-peers.json (shared with Composer Lite /api/mesh).
+Persistence: AEP_DATA/mesh-peers.json (shared with hyperlattice /api/mesh).
 
 Rust crate: potomitan/crate

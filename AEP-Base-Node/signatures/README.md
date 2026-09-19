@@ -1,8 +1,8 @@
-# CORRECTWRITING_EN Detection Signatures
+# EPSCOM Detection Signatures
 
-**Location:** `AEP-Base-Node/signatures/` (Base Node kernel adjunct, default wired, CCA accessible)
+**Location:** `AEP-Base-Node/signatures/` (Base Node kernel adjunct, default wired, operator accessible)
 
-Detection signatures for the Agent Element Protocol (AEP). Authored and curated by **CORRECTWRITING_EN** (Eudaimonic Earth Post-Scarcity Committee). Part of the AEP structure - not an optional root-level folder.
+Detection signatures for the Agent Element Protocol (AEP). Authored and curated by **EPSCOM** (Eudaimonic Earth Post-Scarcity Committee). Part of the AEP structure - not an optional root-level folder.
 
 ## Layout
 
@@ -11,16 +11,16 @@ AEP-Base-Node/signatures/
   signatures/       # YAML detection rules (one file per rule)
   trust-bundle/     # SHA-256 structure index. Mode sha256-structure. ML-DSA is not claimed.
   schemas/          # signature-v1.schema.json
-  lib/              # signatures-registry.mjs, signatures-context.mjs (CCA)
+  lib/              # signatures-registry.mjs, signatures-context.mjs (hyperlattice)
   tooling/          # validate-signatures.mjs
   docs/             # authoring guides
 ```
 
 ## Default wiring
 
-- **Docker/bootstrap:** `base-node.json` -> `correctwriting_en_signatures.enabled: true`
-- **CCA:** `loadSignaturesContext()` in registry knowledge bundle
-- **Registry:** `correctwriting_en-signatures` component (`default_enabled: true`)
+- **Docker/bootstrap:** `base-node.json` -> `epscom_signatures.enabled: true`
+- **Hyperlattice:** `loadSignaturesContext()` in registry knowledge bundle
+- **Registry:** `epscom-signatures` component (`default_enabled: true`)
 - **Scanners:** consume via `scanWithSignatures()` from `lib/signatures-registry.mjs`
 
 ## Trust bundle

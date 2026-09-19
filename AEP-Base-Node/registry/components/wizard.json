@@ -21,7 +21,7 @@
     "gpu_required": false
   },
   "cca": {
-    "summary": "Local development install helper. Docker users should use CCA instead.",
+    "summary": "Local development install helper. For local-source builds from a git clone.",
     "use_when": [
       "local-source build from git clone"
     ],
@@ -29,7 +29,6 @@
       "Docker production deployments"
     ],
     "pairs_with": [
-      "cca"
     ]
   },
   "implementation": {

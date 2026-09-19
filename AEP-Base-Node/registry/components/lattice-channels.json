@@ -27,9 +27,7 @@
     "summary": "Single lattice stack: latticeGatedFetch and aep-lattice-channel crate.",
     "use_when": [
       "any JS/MJS/TS client",
-      "Composer Lite",
-      "UCB",
-      "CCA"
+      "UCB"
     ],
     "avoid_when": [
       "never bypass with raw fetch for governed traffic"

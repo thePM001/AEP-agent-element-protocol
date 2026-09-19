@@ -1,6 +1,6 @@
 # AEP CAW Framework
 
-**CAW (Containerized Agentic Workflows)** is AEP 2.8 Execution-Layer Security (ELS). It is the execution layer that this stack requires for coding agents and containerized agentic workflows: it enforces policy on shell, file, network, process, database wire and LLM traffic at runtime and it confines the host process that runs an agent command. The catalog ships the component default enabled, so a setup agent enables it for every coding agent plan. CAW is not a second evaluator because the walls belong to Base Node.
+**CAW (Containerized Agentic Workflows)** is AEP 2.8 Execution-Layer Security (ELS). It is the execution layer that this stack requires for coding agents and containerized agentic workflows: it enforces policy on shell, file, network, process, database wire and LLM traffic at runtime and it confines the host process that runs an agent command. The catalog ships the component default enabled, so the catalog default enables it for every coding agent plan. CAW is not a second evaluator because the walls belong to Base Node.
 
 See [LICENSE](../LICENSE) for Apache 2.0 terms.
 
@@ -26,10 +26,10 @@ User / coding agent
   aep-caw exec (ELS)     file, network, process, subprocess, DB wire, LLM proxy
         |
         v
-  AEP Base Node          lattice channels, LRPs, CORRECTWRITING_EN, evidence ledger
+  AEP Base Node          lattice channels, LRPs, EPSCOM, evidence ledger
         |
         v
-  CCA + Composer         plan generation, topology, activation
+  Hyperlattice           plan generation, topology, activation
 ```
 
 **Two layers, one stack:** Base Node admits the envelope and keeps protocol compliance and the runtime ledger, which is the SQLite lattice log named in the base node, while CAW is the required execution layer that confines the command. The CAW host audit log is a derived view that records what the enforcer did, so it is not a second runtime ledger. A coding agent run needs both layers, because a wall pass on its own is not process governance and CAW is not optional in the shipped stack.
@@ -44,25 +44,21 @@ CAW is the only enforcement implementation in the shipped stack. The protocol cr
 
 ---
 
-## CCA integration (mandatory for shell workloads)
+## Catalog default for coding agents
 
-CCA treats `caw-framework` as the required execution layer for coding agents and containerized agentic workflows. The setup agent prompt enables it for every coding agent plan, sets the enforce mode with the shell adapter and routes agent shell calls through `aep-caw exec` rather than a raw shell, so the readme and the setup agent describe one product:
+The catalog treats `caw-framework` as the required execution layer for coding agents and containerized agentic workflows. A coding agent plan enables it, sets the enforce mode with the shell adapter and routes agent shell calls through `aep-caw exec` rather than a raw shell:
 
 | Stage | Behavior |
 |-------|----------|
 | **Default plan** | Enabled via `default_enabled: true` in catalog |
 | **Intent rules** | Coding agents, CAW, shell enforcement intents auto-enable CAW + proxy + session + mcp-security |
-| **LLM prompt** | `cca-prompt.mjs` instructs always enable CAW for coding agents |
-| **Plan execute** | `plan-executor.mjs` writes `policy_sections.caw_framework` and `config.caw_framework` |
+| **LLM prompt** | Coding agent plans always enable CAW |
+| **Plan execute** | Writes `policy_sections.caw_framework` and `config.caw_framework` |
 | **Lattice audit** | `CAW_HOST_DETECT` event on validation dock after `aep-caw detect` |
-| **Pairs** | `cca.json` pairs_with includes caw-framework |
+| **Pairs** | Catalog pairs_with includes caw-framework |
 
-### CCA example intent
+### Coding agent plan
 
-```bash
-aep-cca plan --intent "3 coding agents with CAW shell enforcement and Postgres evidence"
-aep-cca execute
-```
 
 Generated plan includes `caw-framework` in `components[]` and `caw_framework` policy block.
 
@@ -103,7 +99,7 @@ SID=$(./bin/aep-caw session create --workspace . --json | jq -r .id)
 export AEP_DATA=/data/aep
 export AEP_CAW_BIN=$PWD/bin/aep-caw
 
-# CCA activates CAW on plan execute; manual probe:
+# Catalog default activates CAW on plan execute.
 node -e "
 import { probeCawHost } from './lib/caw-service.mjs';
 console.log(await probeCawHost(process.env));
@@ -212,7 +208,7 @@ cd AEP-Components/conformance/harness
 ./node_modules/.bin/vitest run ../../../tests/conformance/caw-framework.test.mjs
 ```
 
-Includes: catalog registration, manifest capabilities, CCA plan wiring, binary resolve, config defaults, live `aep-caw detect` when binary built.
+Includes: catalog registration, manifest capabilities, plan wiring, binary resolve, config defaults, live `aep-caw detect` when binary built.
 
 ---
 
@@ -226,7 +222,7 @@ Includes: catalog registration, manifest capabilities, CCA plan wiring, binary r
 | Binary not found | Not built | `make build`, set `AEP_CAW_BIN` |
 | libseccomp missing | Build dep | `apt-get install libseccomp-dev` |
 | Low protection score | Minimal seccomp mode | Expected in containers; use `aep-caw detect config` |
-| CCA plan missing CAW | Intent without coding/CAW keywords | CAW still default_enabled; check catalog |
+| Plan missing CAW | Intent without coding/CAW keywords | CAW still default_enabled; check catalog |
 
 ---
 
@@ -246,4 +242,4 @@ See `docs/platform-comparison.md` for details.
 ## Related
 
 - [AGENTS.md](./AGENTS.md) - AI agent operating instructions
-- Setup Agent - internal only, not in the public snapshot
+- Feature docs in `docs/`

@@ -35,7 +35,7 @@ All reference policies are pre-validated with zero structural errors. Validate y
 
 ## Platform mandatory policies (not LRPs)
 
-LRPs are sovereign states, regional unions and international bodies and their regulations. Platform policies live under CORRECTWRITING_EN hyperlattice mandatory rules.
+LRPs are sovereign states, regional unions and international bodies and their regulations. Platform policies live under EPSCOM hyperlattice mandatory rules.
 
 ## Compliance reference policies (LRPs)
 

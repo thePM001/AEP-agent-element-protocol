@@ -1,9 +1,6 @@
 # Fresh AEP 2.8.6 test stack - isolated volume, no production data.
-# Visual install wizard: http://localhost:8524/install
-# Composer Lite canvas:    http://localhost:8524/
 #
 #   docker compose -f docker-compose.test-fresh.yml up -d --build
-#   open http://localhost:8524/install
 
 services:
   aep-test:
@@ -14,25 +11,16 @@ services:
     container_name: aep-base-node-test
     restart: unless-stopped
     ports:
- - "${AEP_TEST_COMPOSER_PORT:-8524}:8424"
  - "${AEP_TEST_UCB_PORT:-8512}:8412"
     environment:
       AEP_DATA: /data/aep
       AEP_LATTICE_STRICT: "1"
       AEP_SOCKET_BASE: /data/aep/sockets
-      COMPOSER_LITE: "1"
-      COMPOSER_LITE_HOST: "0.0.0.0"
-      COMPOSER_LITE_PORT: "8424"
-      COMPOSER_LITE_BASE_PATH: "${AEP_TEST_BASE_PATH:-/aep-test}"
-      COMPOSER_LITE_TERMINAL: "0"
       AEP_IN_DOCKER: "1"
       AEP_TASK_MANIFEST_DIR: "/data/aep/ucb/manifests"
       AEP_MANIFEST_RELOAD_INTERVAL_SECS: "0"
       UCB: "${UCB:-1}"
       UCB_PORT: "8412"
-      WASM_SANDBOX: "1"
-      WASM_SANDBOX_SOCKET: "/data/aep/sockets/wasm_sandbox"
-      AEP_AUTO_SETUP: "0"
       AEP_COMPONENTS_FETCH: "0"
       AEP_SETUP_LLM_PROVIDER: "${AEP_SETUP_LLM_PROVIDER:-openrouter}"
       AEP_SETUP_LLM_MODEL: "${AEP_SETUP_LLM_MODEL:-anthropic/claude-sonnet-4}"
@@ -48,7 +36,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'node -e "fetch(\"http://127.0.0.1:8424/api/health\").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+          'test -S /data/aep/sockets/validation',
         ]
       interval: 30s
       timeout: 10s

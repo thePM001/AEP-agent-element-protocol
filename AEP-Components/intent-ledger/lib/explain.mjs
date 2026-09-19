@@ -2,7 +2,7 @@
 
 import { explainIntent, verifyChain } from "./ledger.mjs";
 import { buildLatticeBlastOverlay } from "../../semantic-topology/lib/lattice-overlay.mjs";
-import { buildPolicyLatticeView } from "../../../AEP-Composer-Lite/lib/policy-lattice.mjs";
+import { buildPolicyLatticeView } from "../../hyperlattice/lib/policy-lattice.mjs";
 import {
   resolveEvidenceLedgerDir,
   summarizeEvidenceSession,

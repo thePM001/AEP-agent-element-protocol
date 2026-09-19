@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 
 /**
- * Validate EU AI Act control pack is present on disk (setup-agent / plan enable).
+ * Validate EU AI Act control pack is present on disk (wizard / plan enable).
  * @param {string} repoRoot
  */
 export function validateEuAiActPack(repoRoot) {

@@ -1,4 +1,4 @@
-//! Inference engine config resolution (mirrors setup-agent/lib/inference.mjs).
+//! Inference engine config resolution (resolves inference engine config).
 
 use serde::Deserialize;
 use std::collections::HashMap;

@@ -68,14 +68,14 @@
       "role": "kernel"
     },
     {
-      "id": "correctwriting_en-signatures",
-      "name": "CORRECTWRITING_EN Detection Signatures",
+      "id": "epscom-signatures",
+      "name": "EPSCOM Detection Signatures",
       "kind": "library",
       "bundled": true,
       "default_enabled": true,
       "path": "AEP-Base-Node/signatures/",
-      "description": "CORRECTWRITING_EN-curated detection signatures and trust bundle (Base Node kernel adjunct).",
-      "manifest": "AEP-Base-Node/registry/components/correctwriting_en-signatures.json",
+      "description": "EPSCOM-curated detection signatures and trust bundle (Base Node kernel adjunct).",
+      "manifest": "AEP-Base-Node/registry/components/epscom-signatures.json",
       "role": "kernel"
     },
     {
@@ -134,17 +134,6 @@
       "role": "companion"
     },
     {
-      "id": "composer-lite",
-      "name": "Composer Lite WASM Canvas",
-      "kind": "ui",
-      "bundled": true,
-      "default_enabled": true,
-      "path": "AEP-Composer-Lite/",
-      "description": "Visual composer on port 8424; alternative to CCA chat planning.",
-      "manifest": "AEP-Base-Node/registry/components/composer-lite.json",
-      "role": "companion"
-    },
-    {
       "id": "ucb",
       "name": "Universal Connect Bridge",
       "kind": "bridge",
@@ -154,17 +143,6 @@
       "description": "Secured dock (:8412) for non-AEP agent protocols.",
       "manifest": "AEP-Base-Node/registry/components/ucb.json",
       "role": "companion"
-    },
-    {
-      "id": "wasm-policy-sandbox",
-      "name": "WASM Policy Sandbox",
-      "kind": "wasm",
-      "bundled": true,
-      "default_enabled": false,
-      "path": "AEP-Composer-Lite/wasm-sandbox/",
-      "description": "Policy evaluation via lattice socket wasm_sandbox.",
-      "manifest": "AEP-Base-Node/registry/components/wasm-policy-sandbox.json",
-      "role": "kernel"
     },
     {
       "id": "conformance-runner",
@@ -300,18 +278,6 @@
       "manifest": "AEP-Base-Node/registry/components/iso-42001.json",
       "role": "companion",
       "description": "ISO 42001 Compliance"
-    },
-    {
-      "id": "wasm-policy-node",
-      "name": "WASM Policy Node",
-      "kind": "wasm_extension",
-      "bundled": true,
-      "default_enabled": false,
-      "composer_palette": true,
-      "path": "AEP-Composer-Lite/wasm-sandbox/",
-      "description": "Composer palette node for WASM GAP evaluation.",
-      "manifest": "AEP-Base-Node/registry/components/wasm-policy-node.json",
-      "role": "companion"
     },
     {
       "id": "community-extension-template",
@@ -686,6 +652,17 @@
       "description": "Semantic DAG builder for features, invariants, and blast-radius visualization.",
       "manifest": "AEP-Base-Node/registry/components/semantic-topology.json",
       "role": "companion"
+    },
+    {
+     "id": "admit",
+     "name": "Admit",
+     "kind": "library",
+     "bundled": true,
+     "default_enabled": true,
+     "path": "AEP-Components/admit/",
+     "description": "Admit walls: AND collect-all live evaluator. Rust crate is the spec. JS admit.mjs is the live dynAEP path.",
+     "manifest": "AEP-Base-Node/registry/components/admit.json",
+     "role": "kernel"
     },
     {
       "id": "hcse",
