@@ -139,7 +139,7 @@
       "kind": "bridge",
       "bundled": true,
       "default_enabled": true,
-      "path": "AEP-Docks/ucb/",
+      "path": "AEP-Base-Node/AEP-Docks/ucb/",
       "description": "Secured dock (:8412) for non-AEP agent protocols.",
       "manifest": "AEP-Base-Node/registry/components/ucb.json",
       "role": "companion"

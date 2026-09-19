@@ -14,7 +14,8 @@ COPY AEP-Components/agentmesh/crate ./AEP-Components/agentmesh/crate
 COPY AEP-Base-Node/potomitan/crate ./AEP-Base-Node/potomitan/crate
 COPY AEP-Components/lattice-memory/crate ./AEP-Components/lattice-memory/crate
 COPY AEP-Base-Node/crate ./AEP-Base-Node/crate
-COPY AEP-Docks/ucb/crate ./AEP-Docks/ucb/crate
+COPY AEP-Base-Node/AEP-Docks/ucb/crate ./AEP-Base-Node/AEP-Docks/ucb/crate
+COPY AEP-Base-Node/AEP-Docks/ucb/perimeter-v1 ./AEP-Base-Node/AEP-Docks/ucb/perimeter-v1
 COPY AEP-Components/conformance/crate ./AEP-Components/conformance/crate
 RUN cargo build --release -p aep-base-node -p aep-lattice-memory -p aep-ucb
 
@@ -39,13 +40,13 @@ COPY --from=rust-builder /build/rust/target/release/aep-ucb /usr/local/bin/
 WORKDIR /opt/aep
 COPY --from=node-deps /deps/node_modules ./node_modules
 COPY AEP-Components/ ./AEP-Components/
-COPY AEP-Docks/ ./AEP-Docks/
+COPY AEP-Base-Node/AEP-Docks/ ./AEP-Base-Node/AEP-Docks/
 COPY AEP-Policy-System/ ./AEP-Policy-System/
 COPY AEP-Base-Node/ ./AEP-Base-Node/
 COPY AEP-User-Experience/ ./AEP-User-Experience/
 COPY docker/entrypoint.sh /usr/local/bin/aep-entrypoint.sh
 
-RUN chmod +x /opt/aep/AEP-Docks/ucb/server.mjs && chmod +x /usr/local/bin/aep-entrypoint.sh
+RUN chmod +x /opt/aep/AEP-Base-Node/AEP-Docks/ucb/server.mjs && chmod +x /usr/local/bin/aep-entrypoint.sh
 ENV AEP_DATA=/data/aep \
     AEP_SOCKET_BASE=/data/aep/sockets \
     AEP_TASK_MANIFEST_DIR=/data/aep/ucb/manifests \

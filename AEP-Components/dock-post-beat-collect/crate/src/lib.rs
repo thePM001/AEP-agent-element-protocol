@@ -198,7 +198,7 @@ fn read_text(path: &PathBuf) -> String {
 pub fn run_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
     let dock = read_text(&root.join("AEP-Base-Node/crate/src/docking.rs"));
-    let ucb = read_text(&root.join("AEP-Docks/ucb/crate/src/lattice.rs"));
+    let ucb = read_text(&root.join("AEP-Base-Node/AEP-Docks/ucb/crate/src/lattice.rs"));
     let proofs = [
         scan_dock_collect_variant(&dock)?,
         scan_process_request_collect(&dock)?,

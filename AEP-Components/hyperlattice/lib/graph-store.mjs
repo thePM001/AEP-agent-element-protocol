@@ -52,7 +52,7 @@ export function starterGraph() {
       {
         id: "dock-validation",
         type: "dock_validation",
-        label: "AEP Validation Engine Dock",
+        label: "kernel admit dock",
         x: 120,
         y: 140,
         data: {
@@ -126,7 +126,7 @@ function normalizeGraphNode(node) {
     node?.type === "dock_validation"
     && (!node.label || node.label === "Validation Dock")
   ) {
-    return { ...node, label: "AEP Validation Engine Dock" };
+    return { ...node, label: "kernel admit dock" };
   }
   return node;
 }
@@ -268,10 +268,10 @@ export const NODE_PALETTE = [
   },
   {
     type: "dock_validation",
-    label: "AEP Validation Engine Dock",
+    label: "kernel admit dock",
     short: "VD",
     color: "#4af2c8",
-    description: "AEP Validation Engine dock on the Lattice Channel",
+    description: "kernel admit dock on the Lattice Channel",
   },
   {
     type: "dock_inference",

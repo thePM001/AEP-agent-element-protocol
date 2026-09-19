@@ -3,7 +3,7 @@
   "id": "ucb",
   "version": "2.8.6",
   "kind": "bridge",
-  "path": "AEP-Docks/ucb/",
+  "path": "AEP-Base-Node/AEP-Docks/ucb/",
   "description": "Rust secured dock :8412 for foreign ingress + internet egress only.",
   "requires": [
     "aep-base-node",
@@ -69,7 +69,7 @@
   "implementation": {
     "language": "rust",
     "binary": "aep-ucb",
-    "crate": "AEP-Docks/ucb/crate/",
+    "crate": "AEP-Base-Node/AEP-Docks/ucb/crate/",
     "port": 8412,
     "health": "/health",
     "capabilities_path": "/ucb/v1/capabilities",

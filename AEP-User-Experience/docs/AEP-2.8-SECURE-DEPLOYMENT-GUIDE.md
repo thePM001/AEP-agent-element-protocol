@@ -138,7 +138,7 @@ Use when a **non-AEP** framework must attach and must not receive raw lattice so
 4. Foreign traffic enters UCB; UCB uses lattice transport internally toward Base Node. Do not bypass UCB by mounting dock sockets into the foreign stack.
 5. If you do not need foreign attach: `UCB=0` and do not run UCB.
 
-UCB surface: `AEP-Docks/ucb/`.
+UCB surface: `AEP-Base-Node/AEP-Docks/ucb/`.
 
 #### Choosing a path
 
@@ -266,7 +266,7 @@ export UCB_API_KEY=...
 | BM-07 trust | `attested_trust_score` in docking.rs |
 | Lattice client | `AEP-Components/lattice-channels/lib/lattice-transport.mjs` |
 
-| UCB auth | `AEP-Docks/ucb/crate/src/auth.rs`, `http.rs` |
+| UCB auth | `AEP-Base-Node/AEP-Docks/ucb/crate/src/auth.rs`, `http.rs` |
 | CAW file/unix fail-closed | `AEP-CAW/internal/netmonitor/unix/` |
 | Policy | `AEP-Policy-System/lattice-channel-mandatory.gap` |
 

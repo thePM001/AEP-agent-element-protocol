@@ -73,7 +73,7 @@
     "artifact_dir": ".aep-hcse",
     "mcp_name": "aep-hcse",
     "rebrand_on_install": true,
-    "ucd_spec": "AEP-Docks/universal-connect/modules/hcse.json"
+    "ucd_spec": "AEP-Base-Node/AEP-Docks/universal-connect/modules/hcse.json"
   },
   "implementation": {
     "module": "AEP-Components/hcse/lib/hcse-bridge.mjs",

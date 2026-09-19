@@ -16,7 +16,7 @@ import { join } from "node:path";
 import {
   ucdDownload,
   ucdFetchJson,
-} from "../../../AEP-Docks/universal-connect/lib/ucd-client.mjs";
+} from "../../../AEP-Base-Node/AEP-Docks/universal-connect/lib/ucd-client.mjs";
 import { defaultPaths } from "../../wizard/lib/paths.mjs";
 import { applyHcseRebrand } from "./rebrand.mjs";
 import { wireHcseMcpConfigs } from "./mcp-config.mjs";

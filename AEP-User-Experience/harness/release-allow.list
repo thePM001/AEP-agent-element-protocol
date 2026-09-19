@@ -7,17 +7,6 @@
 # Tool: AEP-User-Experience/harness/check-release-strings.mjs
 #
 
-AEP-Docks/ucb/CHANGELOG.md	## [2.8.5] - 2026-09-12 - UCB perimeter-v1 attach gateway	a changelog heading of an earlier release
-AEP-Docks/ucb/CHANGELOG.md	## [2.8.5] - 2026-09-12 - UCB-285-P0	a changelog heading of an earlier release
-AEP-Docks/ucb/CHANGELOG.md	## [2.8.5] - 2026-09-12 - UCB-285-P1	a changelog heading of an earlier release
-AEP-Docks/ucb/CHANGELOG.md	## [2.8.5] - 2026-09-12 - UCB-285-P2	a changelog heading of an earlier release
-AEP-Docks/ucb/CHANGELOG.md	## [2.8.5] - 2026-09-12 - UCB-285-P3	a changelog heading of an earlier release
-AEP-Docks/ucb/CHANGELOG.md	## [2.8.5] - 2026-09-12 - UCB-285-P4	a changelog heading of an earlier release
-AEP-Docks/ucb/CHANGELOG.md	## [2.8.5] - 2026-09-12 - UCB-285-P5	a changelog heading of an earlier release
-AEP-Docks/ucb/CHANGELOG.md	## [2.8.5] - 2026-09-12 - UCB-285-P6	a changelog heading of an earlier release
-AEP-Docks/ucb/CHANGELOG.md	## [2.8.5] - 2026-09-12 - UCB-285-P7	a changelog heading of an earlier release
-AEP-Docks/ucb/CHANGELOG.md	## [2.8.5] - 2026-09-12 - UCB-285-P8	a changelog heading of an earlier release
-AEP-Docks/ucb/CHANGELOG.md	## [2.8.5] - 2026-09-12 - UCB-285-P9	a changelog heading of an earlier release
 README.md	## What is new in 2.8 compared to 2.75 (from May 2026)	a heading that compares this release with the 2.75 release
 AEP-Components/gap/README.md	- Fit analysis of classic GAP against AEP 2.8.6 evaluation lives at docs/CLASSIC-GAP-VS-AEP-2.8.5.md on thePM001/GAP.	the name of an upstream analysis document
 AEP-Components/dynAEP/policies/chunk-hash-verification.gap	  provenance: Created after Turbopack dev server served stale v2.6 chunk for 24+ hours despite source being v2.75, causing hydration revert on every load.	a provenance note about an incident in the 2.75 release

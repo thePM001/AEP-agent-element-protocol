@@ -204,7 +204,7 @@ pub fn run_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
     let dock = read_text(&root.join("AEP-Base-Node/crate/src/docking.rs"));
     let live = read_text(&root.join("AEP-Components/live-entry/crate/src/lib.rs"));
-    let ucb = read_text(&root.join("AEP-Docks/ucb/crate/src/lattice.rs"));
+    let ucb = read_text(&root.join("AEP-Base-Node/AEP-Docks/ucb/crate/src/lattice.rs"));
     let self_src = read_text(&root.join("AEP-Components/wall-set-backpressure/crate/src/lib.rs"));
     let proofs = [
         scan_dock_deny_field(&dock)?,

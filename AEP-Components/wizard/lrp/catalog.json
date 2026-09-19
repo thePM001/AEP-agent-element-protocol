@@ -25,7 +25,7 @@
       "id": "aep-275-eval-chain",
       "name": "AEP 2.8.6 15-Step Evaluation Chain",
       "kind": "platform_feature",
-      "description": "Optional validation-engine eval chain. Enable via base_node.lrps when using a validation dock. Not an LRP."
+      "description": "Optional kernel admit eval chain. Enable via base_node.lrps when using a kernel admit dock. Not an LRP."
     },
     {
       "id": "gap-runtime-scanners",

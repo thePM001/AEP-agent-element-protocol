@@ -6,7 +6,7 @@
   "description": "UCB-regulated dock for optional external modules (HCSE, future CCA downloads). Internet egress only through UCB manifest-scoped routes.",
   "regulator": {
     "component": "ucb",
-    "path": "AEP-Docks/ucb/",
+    "path": "AEP-Base-Node/AEP-Docks/ucb/",
     "port": 8412,
     "egress_path": "/ucb/v1/egress"
   },
@@ -21,6 +21,6 @@
     "future_features",
     "regulation_module"
   ],
-  "client": "AEP-Docks/universal-connect/lib/ucd-client.mjs",
-  "modules_dir": "AEP-Docks/universal-connect/modules/"
+  "client": "AEP-Base-Node/AEP-Docks/universal-connect/lib/ucd-client.mjs",
+  "modules_dir": "AEP-Base-Node/AEP-Docks/universal-connect/modules/"
 }

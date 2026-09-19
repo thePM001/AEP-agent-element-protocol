@@ -8,7 +8,7 @@ Infrastructure and top-level surfaces outside this folder:
 
 - `AEP-Base-Node/` - **mandatory AEP governance kernel** (not a bundled palette component)
 - `AEP-CAW/` - CAW host sandboxes. An incorporated part of AEP that runs on the host
-- `AEP-Docks/` - socket dock specs, UCB bridge, Universal Connect Dock (UCD)
+- `AEP-Base-Node/AEP-Docks/` - socket dock specs, UCB bridge, Universal Connect Dock (UCD)
 - `AEP-Policy-System/` - policy YAML/REGO plus `policy-builder/` and `schema-builder/`
 - `docker/` - container entrypoint and runtime deps
 - `rust/` - build artifact target directory

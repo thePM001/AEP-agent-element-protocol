@@ -316,7 +316,7 @@ Load the GAP file with the policy lattice (`AEP-Policy-System/SETUP.md` and `AEP
 
 Every crossing of the wrap is a sealed encrypted lattice-channel capsule. Native AEP clients seal the frame and hand it to Base Node docks. Foreign stacks may use the optional UCB airlock with a task manifest. They must not open raw dock sockets and they must not send unsealed work. A missing dock, timestamp or sequence fails automatically.
 
-See [`AEP-Docks/README.md`](AEP-Docks/README.md) and [`AEP-Components/lattice-channels/`](AEP-Components/lattice-channels/) for the wire. This how-to does not replace those specs and only states the wrap rule: no dock channel, no wrap.
+See [`AEP-Base-Node/AEP-Docks/README.md`](AEP-Base-Node/AEP-Docks/README.md) and [`AEP-Components/lattice-channels/`](AEP-Components/lattice-channels/) for the wire. This how-to does not replace those specs and only states the wrap rule: no dock channel, no wrap.
 
 ### The attach pattern
 
@@ -403,8 +403,8 @@ flowchart LR
 | Layer | What it is | Canonical path |
 |-------|------------|----------------|
 | **Kernel** | Mandatory local governance daemon | [`AEP-Base-Node/`](AEP-Base-Node/) |
-| **Protocol** | Runtime protocol components (dynAEP, lattice-channels, graph-engine). Not CAW | [`AEP-Components/`](AEP-Components/) |
-| **Execution companion** | CAW host sandboxes. Not a protocol component | [`AEP-CAW/`](AEP-CAW/) |
+| **Protocol** | Runtime protocol components (dynAEP, lattice-channels, graph-engine) plus the CAW execution companion | [`AEP-Components/`](AEP-Components/) |
+| **Execution companion** | CAW host sandboxes. An incorporated part of AEP that runs on the host | [`AEP-CAW/`](AEP-CAW/) |
 
 The library is counted by this layer table. Folder count is not the library count.
 
@@ -413,8 +413,8 @@ The library is counted by this layer table. Folder count is not the library coun
 | Surface | What it is | Path |
 |---------|------------|------|
 | Hyperlattice wrap | One mechanism per system | [`AEP-Components/hyperlattice/`](AEP-Components/hyperlattice/) |
-| Docks | UCD egress airlock and optional UCB | [`AEP-Docks/`](AEP-Docks/) |
-| UCB airlock (optional) | Foreign MCP or HTTP attach only | [`AEP-Docks/ucb/`](AEP-Docks/ucb/) |
+| Docks | UCD egress airlock and optional UCB | [`AEP-Base-Node/AEP-Docks/`](AEP-Base-Node/AEP-Docks/) |
+| UCB airlock (optional) | Foreign MCP or HTTP attach only | [`AEP-Base-Node/AEP-Docks/ucb/`](AEP-Base-Node/AEP-Docks/ucb/) |
 | Coding governance | Propose a change then lock it | [`AEP-Components/coding-governance/`](AEP-Components/coding-governance/) |
 | HCSE parser | aep-hcse parser MCP | [`AEP-Components/hcse/`](AEP-Components/hcse/) |
 | Policy | GAP nodes and subprotocol validators | [`AEP-Policy-System/`](AEP-Policy-System/) |
@@ -469,9 +469,9 @@ Coding governance proposes a change, measures how far that change reaches and on
 |-----------|------|
 | [`AEP-Base-Node/`](AEP-Base-Node/) | Kernel: daemon, registry, POTOMITAN, agent-control-hub |
 | [`AEP-Components/`](AEP-Components/) | Protocol components (dynAEP, lattice-channels, graph-engine, aep-comm, economics, scanners, fleet) |
-| [`AEP-CAW/`](AEP-CAW/) | Execution companion: CAW host sandboxes. Not a protocol component |
+| [`AEP-CAW/`](AEP-CAW/) | Execution companion: CAW host sandboxes. An incorporated part of AEP that runs on the host |
 | [`AEP-User-Experience/`](AEP-User-Experience/) | Harness, operator scripts, AEP-main-skill |
-| [`AEP-Docks/`](AEP-Docks/) | UCB + UCD socket dock specs and servers |
+| [`AEP-Base-Node/AEP-Docks/`](AEP-Base-Node/AEP-Docks/) | UCB + UCD socket dock specs and servers |
 | [`AEP-Policy-System/`](AEP-Policy-System/) | GAP policies, presets, policy-builder, schema-builder |
 | [`AEP-Research-Paper/`](https://github.com/thePM001/AEP-agent-element-protocol/blob/main/AEP-Research-Paper/) | DAL-AEP research paper assets (PDF + OTS proof) |
 
@@ -573,7 +573,7 @@ A builder who wants a different wait rebuilds Base Node with a different compile
 | **Installation Wizard** | `AEP-Components/wizard/install-wizard.mjs` | First stage Base Node installer (CLI) |
 | **Component registry** | `AEP-Base-Node/registry/` | Offline catalog + optional extension merge |
 | **Conformance runner** | `AEP-Components/conformance/` | CC-01..CC-15 public tier compliance battery |
-| **UCB (optional)** | `AEP-Docks/ucb/` | Universal Connect Bridge for **foreign** stacks only (`:8412`). Native AEP skips UCB. Set `UCB=0` to disable. |
+| **UCB (optional)** | `AEP-Base-Node/AEP-Docks/ucb/` | Universal Connect Bridge for **foreign** stacks only (`:8412`). Native AEP skips UCB. Set `UCB=0` to disable. |
 | **CAW framework** | `AEP-CAW/` | Execution-layer sandbox (`aep-caw`); profiles authored in GAP, compiled locally |
 | **GAP language** | `AEP-Components/gap/` | Governed Agentic Programming: policies, sandbox profiles, manifest/plan templates |
 
@@ -929,7 +929,7 @@ UCB=0 docker compose -f docker-compose.public.yml up -d
 # Bare metal: simply do not start aep-ucb
 ```
 
-Canonical implementation: [`AEP-Docks/ucb/README.md`](AEP-Docks/ucb/README.md). GAP manifest template: [`AEP-Components/gap/policies/reference/task-manifest-v1.gap`](AEP-Components/gap/policies/reference/task-manifest-v1.gap).
+Canonical implementation: [`AEP-Base-Node/AEP-Docks/ucb/README.md`](AEP-Base-Node/AEP-Docks/ucb/README.md). GAP manifest template: [`AEP-Components/gap/policies/reference/task-manifest-v1.gap`](AEP-Components/gap/policies/reference/task-manifest-v1.gap).
 
 ---
 
@@ -1066,12 +1066,12 @@ GAP template authority: `AEP-Components/gap/policies/reference/task-manifest-v1.
 | [`AEP-Components/dynAEP/README.md`](AEP-Components/dynAEP/README.md) | dynAEP 1.0 hyperlattice runtime protocol |
 | [`AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md`](AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md) | How to attach a custom sub-lattice |
 | [`AEP-Components/dynAEP/CONFIG.md`](AEP-Components/dynAEP/CONFIG.md) | dynAEP configuration reference |
-| [`AEP-Docks/ucb/README.md`](AEP-Docks/ucb/README.md) | **UCB optional foreign attach** (manifest gate, no fallback) |
+| [`AEP-Base-Node/AEP-Docks/ucb/README.md`](AEP-Base-Node/AEP-Docks/ucb/README.md) | **UCB optional foreign attach** (manifest gate, no fallback) |
 | [`AEP-Policy-System/SETUP.md`](AEP-Policy-System/SETUP.md) | Live Admit GAP node setup |
 | [`AEP-Policy-System/schema-builder/README.md`](AEP-Policy-System/schema-builder/README.md) | Schema Builder |
 | [`AEP-Policy-System/policy-builder/README.md`](AEP-Policy-System/policy-builder/README.md) | Policy Builder |
 | [`AEP-User-Experience/README.md`](AEP-User-Experience/README.md) | Harness and operator scripts |
-| [`AEP-Docks/README.md`](AEP-Docks/README.md) | UCB / UCD docks |
+| [`AEP-Base-Node/AEP-Docks/README.md`](AEP-Base-Node/AEP-Docks/README.md) | UCB / UCD docks |
 | [`AEP-Research-Paper/README.md`](https://github.com/thePM001/AEP-agent-element-protocol/blob/main/AEP-Research-Paper/README.md) | DAL-AEP paper + OTS proof |
 | [`rust/README.md`](rust/README.md) | Rust workspace build |
 

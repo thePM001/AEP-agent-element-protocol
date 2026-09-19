@@ -10,8 +10,8 @@ name = "aep-ucb"
 path = "src/main.rs"
 
 [dependencies]
-aep-agentmesh = { path = "../../../AEP-Components/agentmesh/crate" }
-aep-wall-set-backpressure = { path = "../../../AEP-Components/wall-set-backpressure/crate" }
+aep-agentmesh = { path = "../../../../AEP-Components/agentmesh/crate" }
+aep-wall-set-backpressure = { path = "../../../../AEP-Components/wall-set-backpressure/crate" }
 aep-ucb-perimeter-v1 = { path = "../perimeter-v1" }
 serde.workspace = true
 serde_json.workspace = true

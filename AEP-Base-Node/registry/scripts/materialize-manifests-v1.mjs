@@ -282,7 +282,7 @@ const MANIFESTS = {
     id: "ucb",
     version: "2.8.6",
     kind: "bridge",
-    path: "AEP-Docks/ucb/",
+    path: "AEP-Base-Node/AEP-Docks/ucb/",
     description: "Rust secured dock :8412 for foreign ingress + internet egress only.",
     requires: ["aep-base-node", "lattice-channels"],
     capabilities: [
@@ -310,7 +310,7 @@ const MANIFESTS = {
     implementation: {
       language: "rust",
       binary: "aep-ucb",
-      crate: "AEP-Docks/ucb/crate/",
+      crate: "AEP-Base-Node/AEP-Docks/ucb/crate/",
       port: 8412,
       health: "/health",
       capabilities_path: "/ucb/v1/capabilities",
@@ -474,7 +474,7 @@ const MANIFESTS = {
     id: "connector-postgres",
     version: "2.8.6",
     kind: "connector",
-    path: "AEP-Docks/universal-connect/",
+    path: "AEP-Base-Node/AEP-Docks/universal-connect/",
     description: "Lattice-gated Postgres connector via NT-00006 bridge (public tier).",
     requires: ["aep-base-node", "lattice-channels"],
     capabilities: ["connector:postgres", "storage:import", "storage:export", "evidence:persist"],
@@ -507,7 +507,7 @@ const MANIFESTS = {
       ["aep-base-node"],
       "Enable connector-postgres and add connector node with storage_backend postgres",
     ),
-    implementation: { module: "AEP-Docks/universal-connect/lib/postgres-connector.mjs" },
+    implementation: { module: "AEP-Base-Node/AEP-Docks/universal-connect/lib/postgres-connector.mjs" },
   },
 
   "evaluation-chain": {

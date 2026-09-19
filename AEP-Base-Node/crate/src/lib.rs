@@ -103,7 +103,7 @@ pub fn docking_port_specs(base_socket: &str) -> Vec<DockingPortSpec> {
         },
         DockingPortSpec {
             port: DockingPort::ValidationEngine,
-            name: "validation-engine-dock",
+            name: "kernel-admit-dock",
             priority: 200,
             listen_path: format!("{base_socket}/validation"),
         },

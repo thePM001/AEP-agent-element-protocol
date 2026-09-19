@@ -5,10 +5,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createWriteStream } from "node:fs";
 import { pipeline } from "node:stream/promises";
-import { latticeGatedFetch } from "../../../AEP-Components/lattice-channels/lib/lattice-transport.mjs";
+import { latticeGatedFetch } from "../../../../AEP-Components/lattice-channels/lib/lattice-transport.mjs";
 
-const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../..");
-const MODULES_DIR = join(REPO_ROOT, "AEP-Docks/universal-connect/modules");
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../../..");
+const MODULES_DIR = join(REPO_ROOT, "AEP-Base-Node/AEP-Docks/universal-connect/modules");
 
 function safeAgentFilename(agentId) {
   return `${agentId.replace(/[^a-zA-Z0-9_-]/g, "_")}.json`;
