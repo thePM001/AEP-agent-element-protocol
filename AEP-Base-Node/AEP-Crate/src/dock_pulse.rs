@@ -10,6 +10,7 @@ use aep_base_node_pulse::{freeze_temporal_snapshot, BeatRelease, PulseQueue, Que
 use aep_lattice_channel::{ContractRegistry, DockingPort, LatticeChannelFrame, RateLimiter};
 use aep_lattice_crypto::KemKeypair;
 use aep_live_entry::LiveEntry;
+use aep_agent_control_hub::{AgentControlHub, resolve_gap_root};
 use aep_wall_set_backpressure::CLASS_TEMPORAL;
 use crate::dock_keys::{load_or_create_dock_kem, AgentSignKeyStore};
 use crate::envelope_admit::load_live_entry;
@@ -65,6 +66,7 @@ pub struct DockingRuntime {
     pub agent_sign_keys: Arc<Mutex<AgentSignKeyStore>>,
     pub replay_guard: Arc<Mutex<ReplayGuard>>,
     pub live_entry: Arc<Mutex<LiveEntry>>,
+    pub hub: Arc<AgentControlHub>,
     pub pulse: Arc<Mutex<PulseState>>,
     pub(crate) connection_limit: Arc<Semaphore>,
     pub(crate) stop: watch::Sender<bool>,
@@ -116,6 +118,13 @@ impl DockingRuntime {
             agent_sign_keys: Arc::new(Mutex::new(AgentSignKeyStore::load(data_dir))),
             replay_guard: Arc::new(Mutex::new(ReplayGuard::default())),
             live_entry: Arc::new(Mutex::new(load_live_entry(data_dir))),
+            hub: {
+                let loaded = match AgentControlHub::load_from_gap(&resolve_gap_root()) {
+                    Ok(h) => h,
+                    Err(_) => AgentControlHub::empty(),
+                };
+                Arc::new(loaded)
+            },
             pulse: Arc::new(Mutex::new(PulseState::default())),
             connection_limit: Arc::new(Semaphore::new(MAX_CONNECTIONS)),
             stop: watch::channel(false).0,

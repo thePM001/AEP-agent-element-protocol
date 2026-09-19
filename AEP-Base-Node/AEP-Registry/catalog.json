@@ -68,17 +68,6 @@
       "role": "kernel"
     },
     {
-      "id": "epscom-signatures",
-      "name": "EPSCOM Detection Signatures",
-      "kind": "library",
-      "bundled": true,
-      "default_enabled": true,
-      "path": "AEP-Base-Node/AEP-Signatures/",
-      "description": "EPSCOM-curated detection signatures and trust bundle (Base Node kernel adjunct).",
-      "manifest": "AEP-Base-Node/AEP-Registry/components/epscom-signatures.json",
-      "role": "kernel"
-    },
-    {
       "id": "lattice-memory",
       "name": "Lattice Memory",
       "kind": "library",
@@ -109,6 +98,17 @@
       "path": "AEP-Base-Node/AEP-Potomitan/",
       "description": "Mesh peer registry and routing fallback.",
       "manifest": "AEP-Base-Node/AEP-Registry/components/potomitan.json",
+      "role": "kernel"
+    },
+    {
+      "id": "aep-agent-control-hub",
+      "name": "Agent Control Hub",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Base-Node/AEP-Agent-Control-Hub/",
+      "description": "Kernel extension that binds GAP session, mount and agent-permission state.",
+      "manifest": "AEP-Base-Node/AEP-Registry/components/aep-agent-control-hub.json",
       "role": "kernel"
     },
     {

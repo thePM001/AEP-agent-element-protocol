@@ -30,7 +30,7 @@ The four planes, top to bottom:
 | Intake and dock plane | Docking listeners on the inference, validation, regulation and future sockets, sealed frame verify, the freshness window, the replay guard and side channel events |
 | Kernel pulse pass | Freeze at seal, the compiled 1000 ms pulse and one collect-all run of every written wall |
 | Wall set | Agent permission, lattice membership, writing walls, temporal bounds, envelope walls and wall set back pressure |
-| Record plane | The runtime ledger, which is the SQLite lattice log, plus derived ledger rows, the component registry and the signature set |
+| Record plane | The runtime ledger, which is the SQLite lattice log, plus derived ledger rows and the component registry |
 
 The path a frame takes through those planes:
 
@@ -62,13 +62,12 @@ Register new components in **`AEP-Base-Node/AEP-Registry/catalog.json`** + **`AE
 
 | Path | Contents |
 |------|----------|
-| `AEP-Crate/` | `aep-base-node` Rust crate + `aep-lattice-log` CLI binary |
-| `AEP-Registry/` | Component catalog + manifests (`catalog.json`, `components/*.json`) |
-| `AEP-Multi-Base-Node/` | Multi-base-node (2.8b) mode: federate multiple Base Node kernels (optional experimental surface, not in the default build) |
+| `AEP-Crate/` | `aep-base-node` Rust crate + `aep-lattice-log` CLI binary. Nested rust leaf crate/ under a product stays. |
+| `AEP-Docks/` | Live dock products ucb and universal-connect. Spec table names kernel admit dock. |
 | `AEP-Potomitan/` | POTOMITAN mesh peer registry (`aep-potomitan` crate) |
-| `AEP-Agent-Control-Hub/` | Agent Control Hub: mount profiles for multi-mount sessions |
-| `AEP-Signatures/` | CORRECTWRITING_EN detection signatures + trust bundle (default wired, operator accessible) |
-| `AEP-Components/dynAEP/NAME-POLICY.md` | Reserved-name policy |
+| `AEP-Multi-Base-Node/` | Multi-base-node (2.8b) mode: federate multiple Base Node kernels (optional experimental surface, not in the default build) |
+| `AEP-Registry/` | Component catalog + manifests (`catalog.json`, `components/*.json`) |
+| `AEP-Agent-Control-Hub/` | Kernel extension. The daemon loads the crate and binds GAP session, mount and agent-permission state. |
 
 ## Docking ports
 

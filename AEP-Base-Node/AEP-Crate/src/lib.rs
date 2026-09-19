@@ -77,10 +77,10 @@ pub struct BaseNodeHealth {
     pub mesh_routes: u32,
     pub potomitan_config: String,
     pub correctwriting_en_priority: u8,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub correctwriting_en_signatures_enabled: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub correctwriting_en_signatures_count: Option<u32>,
+    pub hub_loaded: bool,
+    pub hub_sessions: u32,
+    pub hub_mounts: u32,
+    pub hub_permissions: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mesh_peers_load_error: Option<String>,
     pub docking_ports: Vec<DockingPortSpec>,
@@ -377,15 +377,6 @@ pub fn resolve_mesh_peers(
     (fallback, fallback, None)
 }
 
-pub fn count_correctwriting_en_signature_entries(signatures_root: &Path) -> Option<u32> {
-    let bundle_path = signatures_root.join("trust-bundle/manifest.json");
-    let raw = std::fs::read_to_string(bundle_path).ok()?;
-    let parsed: serde_json::Value = serde_json::from_str(&raw).ok()?;
-    parsed
-        .get("entries")
-        .and_then(|v| v.as_array())
-        .map(|a| a.len() as u32)
-}
 
 #[allow(clippy::too_many_arguments)]
 pub fn health(
@@ -395,8 +386,10 @@ pub fn health(
     base_socket: &str,
     lattice_events: u64,
     correctwriting_en_priority: u8,
-    correctwriting_en_signatures_enabled: Option<bool>,
-    correctwriting_en_signatures_count: Option<u32>,
+    hub_loaded: bool,
+    hub_sessions: u32,
+    hub_mounts: u32,
+    hub_permissions: u32,
     mesh_peers_load_error: Option<String>,
     lattice_memory_attractors: u64,
     lattice_memory_dim: u32,
@@ -421,8 +414,10 @@ pub fn health(
         mesh_routes,
         potomitan_config,
         correctwriting_en_priority,
-        correctwriting_en_signatures_enabled,
-        correctwriting_en_signatures_count,
+        hub_loaded,
+        hub_sessions,
+        hub_mounts,
+        hub_permissions,
         mesh_peers_load_error,
         docking_ports: docking_port_specs(base_socket),
         docking_ports_listening,
@@ -480,8 +475,10 @@ mod tests {
             "/tmp/sock",
             0,
             CORRECTWRITING_EN_PRIORITY,
-            Some(true),
-            Some(4),
+            false,
+            0,
+            0,
+            0,
             None,
             0,
             128,

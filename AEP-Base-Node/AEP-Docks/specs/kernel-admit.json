@@ -1,0 +1,10 @@
+{
+  "port_id": "validation_engine",
+  "name": "kernel admit dock",
+  "priority": 200,
+  "socket_suffix": "/validation",
+  "purpose": "Kernel admit dock for sealed capsule Admit",
+  "transport": "lattice-channel",
+  "implementation": "AEP-Base-Node/AEP-Crate/src/docking.rs",
+  "crate_display_name": "kernel-admit-dock"
+}

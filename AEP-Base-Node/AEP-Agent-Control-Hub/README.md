@@ -1,35 +1,9 @@
-# Agent Control Hub Extreme
+# Agent Control Hub
 
-Base Node agent control kernel extension. GAP capability profiles and CAW sandbox routing live here.
+Base Node kernel extension. The daemon loads this crate. GAP profile language lives in AEP-Components/gap. This crate binds those instructions into kernel-owned session, mount and agent-permission state.
 
-## GAP-centric profiles (authoritative)
+## Crate
 
-Sandbox and mount profiles are **GAP instructions**, not hand-authored YAML:
+The workspace crate is AEP-Base-Node/AEP-Agent-Control-Hub/crate (package aep-agent-control-hub). DockingRuntime holds the loaded hub. Health JSON reports hub_loaded, hub_sessions, hub_mounts and hub_permissions.
 
-| Path | Role |
-|------|------|
-| `AEP-Components/gap/policies/reference/caw-*.gap` | CAW sandbox profiles (`aep.caw.profile` runtime docs) |
-| `AEP-Components/gap/policies/reference/caw-mount-policies.gap` | Per-mount policy compile targets |
-| `AEP-Components/gap/policies/reference/task-manifest-v1.gap` | UCB task manifest synthesis template |
-| `AEP-Components/gap/policies/reference/implementation-plan-v1.gap` | plan GAP template |
-| `lib/gap-profiles.mjs` | Loader: resolve profile, materialize CAW runtime |
-
-Compile locally (no remote install):
-
-```bash
-node AEP-Components/gap/lib/gap-compile.mjs --list-profiles
-node AEP-Components/gap/lib/gap-compile.mjs --materialize /data/aep
-```
-
-CAW CLI:
-
-```bash
-aep-caw profiles list
-aep-caw session create --profile coding-agent
-aep-caw run --profile agent-sandbox -- echo ok
-aep-caw wrap --profile coding-agent -- <agent-binary>
-```
-
-- `profiles/mount-profiles.yaml` - deprecated stub; do not edit (see file header)
-- Registry authority: `AEP-Base-Node/AEP-Registry/`
-- Kernel: `AEP-Base-Node/AEP-Crate/` (docking, task_manifest, epscom, side_channel_monitor, lattice_log)
+Load path is AEP_GAP_ROOT or AEP-Components/gap. This is not a compiler re-export and not a YAML mount-profile tree.

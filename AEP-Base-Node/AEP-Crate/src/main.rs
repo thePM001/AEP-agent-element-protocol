@@ -10,23 +10,12 @@ use clap::Parser;
 use rand::RngCore;
 use std::path::PathBuf;
 use tracing::info;
+use aep_agent_control_hub::{AgentControlHub, resolve_gap_root};
 
 #[derive(Debug, serde::Deserialize)]
 struct BaseNodeConfigFile {
     version: String,
     base_node: BaseNodeConfigSection,
-}
-
-#[derive(Debug, serde::Deserialize)]
-struct CorrectwritingEnSignaturesSection {
-    #[serde(default = "default_true")]
-    enabled: bool,
-    #[serde(default)]
-    path: Option<String>,
-}
-
-fn default_true() -> bool {
-    true
 }
 
 fn default_aep_data_dir() -> PathBuf {
@@ -57,8 +46,6 @@ struct BaseNodeConfigSection {
     lattice_db: String,
     #[serde(default)]
     correctwriting_en_priority: u8,
-    #[serde(default)]
-    correctwriting_en_signatures: Option<CorrectwritingEnSignaturesSection>,
     #[serde(default)]
     lrps: Vec<String>,
     #[serde(default)]
@@ -104,9 +91,6 @@ struct ResolvedConfig {
     internet_up: bool,
     mesh_peers: u32,
     correctwriting_en_priority: u8,
-    correctwriting_en_signatures_enabled: bool,
-    correctwriting_en_signatures_count: Option<u32>,
-    correctwriting_en_signatures_path: Option<PathBuf>,
     lrps: Vec<String>,
 }
 
@@ -130,9 +114,6 @@ fn resolve_config(cli: &Cli) -> Result<ResolvedConfig, Box<dyn std::error::Error
         internet_up: cli.internet_up,
         mesh_peers: cli.mesh_peers,
         correctwriting_en_priority: CORRECTWRITING_EN_PRIORITY,
-        correctwriting_en_signatures_enabled: true,
-        correctwriting_en_signatures_count: None,
-        correctwriting_en_signatures_path: None,
         lrps: Vec::new(),
     };
 
@@ -144,12 +125,6 @@ fn resolve_config(cli: &Cli) -> Result<ResolvedConfig, Box<dyn std::error::Error
         resolved.mesh_peers = file.base_node.mesh_peers;
         if file.base_node.correctwriting_en_priority > 0 {
             resolved.correctwriting_en_priority = file.base_node.correctwriting_en_priority;
-        }
-        if let Some(sig) = &file.base_node.correctwriting_en_signatures {
-            resolved.correctwriting_en_signatures_enabled = sig.enabled;
-            if let Some(path) = &sig.path {
-                resolved.correctwriting_en_signatures_path = Some(PathBuf::from(path));
-            }
         }
         resolved.lrps = file.base_node.lrps;
     }
@@ -305,20 +280,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let data_dir = cfg.lattice_db.parent();
     let (mesh_peers, mesh_routes, mesh_load_error) =
         aep_base_node::resolve_mesh_peers(data_dir, cfg.internet_up, cfg.mesh_peers);
-    let sig_count = cfg.correctwriting_en_signatures_count.or_else(|| {
-        let candidates = [
-            cfg.correctwriting_en_signatures_path.clone(),
-            std::env::var("AEP_CORRECTWRITING_EN_SIGNATURES_PATH")
-                .ok()
-                .map(PathBuf::from),
-            Some(PathBuf::from("AEP-Base-Node/AEP-Signatures")),
-        ];
-        candidates
-            .into_iter()
-            .flatten()
-            .find(|p| p.join("trust-bundle/manifest.json").exists())
-            .and_then(|p| aep_base_node::count_correctwriting_en_signature_entries(&p))
-    });
+    let hub = match AgentControlHub::load_from_gap(&resolve_gap_root()) {
+        Ok(h) => h,
+        Err(_) => AgentControlHub::empty(),
+    };
     let report = health(
         env!("CARGO_PKG_VERSION"),
         mesh_peers,
@@ -326,12 +291,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         &cfg.socket_base,
         events,
         cfg.correctwriting_en_priority,
-        if cfg.correctwriting_en_signatures_enabled {
-            Some(true)
-        } else {
-            Some(false)
-        },
-        sig_count,
+        hub.is_loaded(),
+        hub.sessions.len() as u32,
+        hub.mounts.len() as u32,
+        hub.permissions.len() as u32,
         mesh_load_error,
         attractors,
         memory.embedding_dim() as u32,

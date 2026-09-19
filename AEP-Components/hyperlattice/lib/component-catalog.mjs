@@ -56,7 +56,6 @@ export const CANVAS_SKIP_COMPONENT_IDS = new Set([
   "aep-base-node",
   "composer-lite",
   "cca",
-  "epscom-signatures",
     "aep-dynaep-typescript",
     "session",
   "policy-engine",

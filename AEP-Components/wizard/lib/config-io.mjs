@@ -49,7 +49,6 @@ export function buildBaseNodeConfig({
   internetUp,
   meshPeers = 0,
   inferenceEngine = null,
-  signaturesPath = null,
 }) {
   const config = {
     version: "2.8.6",
@@ -63,10 +62,6 @@ export function buildBaseNodeConfig({
       lattice_signature: "ML-DSA-65",
       internet_up: internetUp,
       mesh_peers: meshPeers,
-    },
-    epscom_signatures: {
-      enabled: true,
-      path: signaturesPath ?? "AEP-Base-Node/AEP-Signatures",
     },
   };
   if (inferenceEngine) {

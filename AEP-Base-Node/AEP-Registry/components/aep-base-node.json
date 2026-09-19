@@ -7,13 +7,11 @@
   "description": "Mandatory local governance daemon with lattice-gated docking ports.",
   "requires": [
     "lattice-channels",
-    "lattice-crypto",
-    "epscom-signatures"
+    "lattice-crypto"
   ],
   "depends_on": [
     "lattice-channels",
-    "lattice-crypto",
-    "epscom-signatures"
+    "lattice-crypto"
   ],
   "capabilities": [
     "dock:inference_engine",

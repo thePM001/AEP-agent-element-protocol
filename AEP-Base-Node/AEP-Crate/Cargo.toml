@@ -21,6 +21,7 @@ aep-lattice-channel = { path = "../../AEP-Components/lattice-channels/crate" }
 aep-lattice-crypto = { path = "../../AEP-Components/lattice-crypto/crate" }
 aep-agentmesh = { path = "../../AEP-Components/agentmesh/crate" }
 aep-potomitan = { path = "../AEP-Potomitan/crate" }
+aep-agent-control-hub = { path = "../AEP-Agent-Control-Hub/crate" }
 aep-lattice-memory = { path = "../../AEP-Components/lattice-memory/crate" }
 aep-live-entry = { path = "../../AEP-Components/live-entry/crate" }
 aep-admit-live-dock = { path = "../../AEP-Components/admit-live-dock/crate" }

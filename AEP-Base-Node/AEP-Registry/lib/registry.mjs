@@ -214,7 +214,6 @@ const COMPOSER_PALETTE_SKIP = new Set([
   "lattice-crypto",
   "lattice-memory",
   "aep-base-node",
-  "epscom-signatures",
   "session",
   "policy-engine",
   "evidence-ledger",

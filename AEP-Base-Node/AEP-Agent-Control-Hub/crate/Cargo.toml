@@ -1,0 +1,13 @@
+[package]
+name = "aep-agent-control-hub"
+description = "AEP Base Node agent control kernel extension. Binds GAP session, mount and agent-permission state."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

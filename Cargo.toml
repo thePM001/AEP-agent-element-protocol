@@ -10,6 +10,7 @@ members = [
     "AEP-Components/lattice-memory/crate",
     "AEP-Base-Node/AEP-Multi-Base-Node/crate",
     "AEP-Base-Node/AEP-Crate",
+    "AEP-Base-Node/AEP-Agent-Control-Hub/crate",
     "AEP-Components/conformance/crate",
     "AEP-Base-Node/AEP-Docks/ucb/crate",
     "AEP-Base-Node/AEP-Docks/ucb/perimeter-v1",

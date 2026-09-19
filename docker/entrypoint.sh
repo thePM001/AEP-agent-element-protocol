@@ -46,10 +46,6 @@ bootstrap_config() {
     "lattice_channel_secret": "${SECRET}",
     "internet_up": true,
     "mesh_peers": 0
-  },
-  "epscom_signatures": {
-    "enabled": true,
-    "path": "/opt/aep/AEP-Base-Node/AEP-Signatures"
   }
 }
 EOF

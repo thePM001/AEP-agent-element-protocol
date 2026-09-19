@@ -35,8 +35,8 @@ const MANIFESTS = {
     kind: "daemon",
     path: "AEP-Base-Node/",
     description: "Mandatory local governance daemon with lattice-gated docking ports.",
-    requires: ["lattice-channels", "lattice-crypto", "epscom-signatures"],
-    depends_on: ["lattice-channels", "lattice-crypto", "epscom-signatures"],
+    requires: ["lattice-channels", "lattice-crypto"],
+    depends_on: ["lattice-channels", "lattice-crypto"],
     capabilities: [
       "dock:inference_engine",
       "dock:validation_engine",
@@ -71,51 +71,6 @@ const MANIFESTS = {
       ["lattice-channels", "lattice-channels", "dynaep-core"],
     ),
     implementation: { crate: "AEP-Base-Node/AEP-Crate", binary: "aep-base-node" },
-    conformance: { tests: ["AEP-Components/conformance/runner/run.sh", "AEP-Components/conformance/tests/manifest.json"] },
-  },
-
-  "epscom-signatures": {
-    manifest_version: "1",
-    id: "epscom-signatures",
-    version: "2.8.6",
-    kind: "library",
-    path: "AEP-Base-Node/AEP-Signatures/",
-    description: "EPSCOM-curated detection signatures and trust bundle (Base Node kernel adjunct).",
-    requires: [],
-    bundled_with: "aep-base-node",
-    capabilities: [
-      "epscom:detection-signatures",
-      "epscom:trust-bundle",
-      "epscom:signature-scan",
-      "epscom:writing-alignment",
-    ],
-    actions: [
-      {
-        id: "validate_bundle",
-        description: "Validate trust bundle and signature YAML files",
-        runtime: "cli",
-        method: "node AEP-Base-Node/AEP-Signatures/tooling/validate-signatures.mjs",
-      },
-    ],
-    setup_hooks: [
-      {
-        id: "epscom_signatures_default",
-        policy_section: "epscom_signatures",
-        default: { enabled: true, sync_interval_hours: 24 },
-      },
-    ],
-    resource_requirements: RR(16, 5),
-    cca: CCA(
-      "EPSCOM detection signatures bundled with Base Node. Trust bundle + YAML rules.",
-      ["every AEP deployment", "EPSCOM governance", "detection signatures", "prompt injection"],
-      [],
-      ["aep-base-node", "gap-runtime-scanners", "epscom-core"],
-    ),
-    implementation: {
-      module: "AEP-Base-Node/AEP-Signatures/lib/signatures-registry.mjs",
-      context: "AEP-Base-Node/AEP-Signatures/lib/signatures-context.mjs",
-      trust_bundle: "AEP-Base-Node/AEP-Signatures/trust-bundle/manifest.json",
-    },
     conformance: { tests: ["AEP-Components/conformance/runner/run.sh", "AEP-Components/conformance/tests/manifest.json"] },
   },
 
