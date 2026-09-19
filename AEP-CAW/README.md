@@ -246,6 +246,4 @@ See `docs/platform-comparison.md` for details.
 ## Related
 
 - [AGENTS.md](./AGENTS.md) - AI agent operating instructions
-- [../AEP-CCA-Central-Setup-Agent/README.md](../AEP-CCA-Central-Setup-Agent/README.md) - CCA deployment planner
-- [../AEP-CCA-Central-Setup-Agent/AGENTS.md](../AEP-CCA-Central-Setup-Agent/AGENTS.md) - CCA agent rules including CAW
-- Feature docs in `docs/`
+- Setup Agent - internal only, not in the public snapshot

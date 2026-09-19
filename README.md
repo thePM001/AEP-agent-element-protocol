@@ -417,7 +417,7 @@ The library is counted by this layer table. Folder count is not the library coun
 | UCB airlock (optional) | Foreign MCP or HTTP attach only | [`AEP-Docks/ucb/`](AEP-Docks/ucb/) |
 | Coding governance | Propose a change then lock it | [`AEP-Components/coding-governance/`](AEP-Components/coding-governance/) |
 | HCSE parser | aep-hcse parser MCP | [`AEP-Components/hcse/`](AEP-Components/hcse/) |
-| CCA agent | Central Setup Agent | [`AEP-CCA-Central-Setup-Agent/`](AEP-CCA-Central-Setup-Agent/) |
+| CCA agent | Central Setup Agent | internal only, not in the public snapshot |
 | Operators | Agent Composer Lite and harness | [`AEP-Composer-Lite/`](AEP-Composer-Lite/) |
 | Policy | GAP nodes and subprotocol validators | [`AEP-Policy-System/`](AEP-Policy-System/) |
 | Multi-base-node (2.8b) | Federate multiple Base Node kernels (optional experimental surface) | [`AEP-Base-Node/multi-base-node/`](AEP-Base-Node/multi-base-node/) |
@@ -576,7 +576,7 @@ A builder who wants a different wait rebuilds Base Node with a different compile
 | **POTOMITAN** | `AEP-Base-Node/potomitan/` | Mesh fallback when normal internet is unavailable |
 | **dynAEP 1.0** | `AEP-Components/dynAEP/` | Hyperlattice runtime: `action_path` filter, temporal authority, bridge (merged from standalone repo) |
 | **Installation Wizard** | `AEP-Components/wizard/install-wizard.mjs` + **visual UI** at `/install` on Composer Lite | First stage Base Node installer (CLI + web wizard) |
-| **Setup Agent** | `AEP-CCA-Central-Setup-Agent/setup-agent.mjs` | Post-install activation and inference config |
+| **Setup Agent** | internal only | Post-install activation and inference config |
 | **Agent Composer (Composer Lite)** | `AEP-Composer-Lite/` | Experimental WASM composer canvas (`:8424`) for operator extension |
 | **Component registry** | `AEP-Base-Node/registry/` | Offline catalog + optional extension merge |
 | **Conformance runner** | `AEP-Components/conformance/` | CC-01..CC-15 public tier compliance battery |

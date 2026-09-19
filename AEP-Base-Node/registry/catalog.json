@@ -123,17 +123,6 @@
       "role": "kernel"
     },
     {
-      "id": "cca",
-      "name": "CCA Setup Agent",
-      "kind": "agent",
-      "bundled": true,
-      "default_enabled": true,
-      "path": "AEP-CCA-Central-Setup-Agent/",
-      "description": "Unified CCA Setup Agent: probe, registry knowledge, plan generation and execution.",
-      "manifest": "AEP-Base-Node/registry/components/cca.json",
-      "role": "companion"
-    },
-    {
       "id": "wizard",
       "name": "Install Wizard",
       "kind": "wizard",
