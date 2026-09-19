@@ -3,7 +3,7 @@
 **Economics is a distinct AEP 2.8 component.** Pricing catalogs, budget enforcement, cost estimation, provider balancing and X402 nanopayment negotiation.
 
 - **Implementation:** `economics/lib/`
-- **Registry:** `AEP-Base-Node/registry/components/economics.json`
+- **Registry:** `AEP-Base-Node/AEP-Registry/components/economics.json`
 
 ## Modules
 

@@ -22,8 +22,8 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { loadLocalCatalog, loadComponentManifest } from "./AEP-Base-Node/registry/lib/registry.mjs";
-import { validateFullCatalog } from "./AEP-Base-Node/registry/lib/manifest-validator.mjs";
+import { loadLocalCatalog, loadComponentManifest } from "./AEP-Base-Node/AEP-Registry/lib/registry.mjs";
+import { validateFullCatalog } from "./AEP-Base-Node/AEP-Registry/lib/manifest-validator.mjs";
 
 const SKIP_DIRS = new Set([".git", "node_modules", "target", "dist", "build", ".gomodcache", ".gocache", ".gopath"]);
 const MARKDOWN = /\.(md|markdown)$/i;
@@ -156,15 +156,15 @@ function registrySection(root) {
     for (var e = 0; e < errors.length; e++) findings.push(errors[e]);
   }
   var catalogIds = new Set((catalog.components || []).map(function (row) { return row.id; }));
-  var componentsDir = join(root, "AEP-Base-Node/registry/components");
+  var componentsDir = join(root, "AEP-Base-Node/AEP-Registry/components");
   var names = [];
   try { names = readdirSync(componentsDir); }
-  catch (err) { findings.push("AEP-Base-Node/registry/components: " + err.message); }
+  catch (err) { findings.push("AEP-Base-Node/AEP-Registry/components: " + err.message); }
   for (var n = 0; n < names.length; n++) {
     var name = names[n];
     if (name.slice(-5) !== ".json") continue;
     var id = name.slice(0, -5);
-    if (!catalogIds.has(id)) findings.push("manifest has no catalog row: AEP-Base-Node/registry/components/" + name);
+    if (!catalogIds.has(id)) findings.push("manifest has no catalog row: AEP-Base-Node/AEP-Registry/components/" + name);
   }
   for (var f = 0; f < findings.length; f++) console.log(findings[f]);
   var rows = (catalog.components || []).length;

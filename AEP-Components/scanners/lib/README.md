@@ -2,7 +2,7 @@
 
 **GAP Runtime Scanners** (`gap-runtime-scanners`) - optional 11-scanner content safety bundle.
 
-- **Registry:** `AEP-Base-Node/registry/components/gap-runtime-scanners.json`
+- **Registry:** `AEP-Base-Node/AEP-Registry/components/gap-runtime-scanners.json`
 - **LRP:** `gap-runtime-scanners` on `regulation_module` dock
 - **Implementation:** this directory (extraction to `aep-scanners/` planned Phase 10D)
 

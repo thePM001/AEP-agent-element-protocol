@@ -5,5 +5,5 @@
   "socket_suffix": "/regulation",
   "purpose": "Legacy Regulation Providers (LRPs); CORRECTWRITING_EN priority 255",
   "transport": "lattice-channel",
-  "implementation": "AEP-Base-Node/crate/src/docking.rs"
+  "implementation": "AEP-Base-Node/AEP-Crate/src/docking.rs"
 }

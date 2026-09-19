@@ -42,7 +42,7 @@ After a sealed lattice frame, Base Node kernel runs collect-all Admit then Apply
 
 ## Component Registry
 
-Enable optional modules from the catalog: `AEP-Base-Node/registry/catalog.json`.
+Enable optional modules from the catalog: `AEP-Base-Node/AEP-Registry/catalog.json`.
 
 ## Docker Quick Start
 

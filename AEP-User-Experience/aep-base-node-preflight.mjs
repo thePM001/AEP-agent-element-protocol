@@ -74,9 +74,9 @@ function main() {
     }
   }
 
-  const catalogPath = join(REPO, "AEP-Base-Node/registry/catalog.json");
+  const catalogPath = join(REPO, "AEP-Base-Node/AEP-Registry/catalog.json");
   if (!existsSync(catalogPath)) {
-    failures.push("AEP-Base-Node/registry/catalog.json missing");
+    failures.push("AEP-Base-Node/AEP-Registry/catalog.json missing");
   } else {
     const catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
     console.log(`Registry: ${catalog.components?.length ?? 0} components (offline)`);

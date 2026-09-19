@@ -6,7 +6,7 @@ Reference component. AEP 2.8 is a reference protocol library. This crate is not 
 
 Derived 15-row meet result. Crate `aep-evaluation-chain` at `AEP-Components/evaluation-chain/crate`. Not a second live combinator and not the runtime ledger.
 
-The named runtime ledger is the SQLite lattice log in Base Node (`AEP-Base-Node/crate/src/lattice_log.rs` over the `action-lattice.db` store). The meet result is a derived view over the live closer and it keeps the `MeetResult` name that callers read.
+The named runtime ledger is the SQLite lattice log in Base Node (`AEP-Base-Node/AEP-Crate/src/lattice_log.rs` over the `action-lattice.db` store). The meet result is a derived view over the live closer and it keeps the `MeetResult` name that callers read.
 
 All 15 walls are judged together. If two fail, both are listed. Order of walls does not change yes/no. Skip is not used.
 

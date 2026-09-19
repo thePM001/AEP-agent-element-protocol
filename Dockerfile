@@ -11,9 +11,9 @@ COPY .cargo/ ./.cargo/
 COPY AEP-Components/lattice-crypto/crate ./AEP-Components/lattice-crypto/crate
 COPY AEP-Components/lattice-channels/crate ./AEP-Components/lattice-channels/crate
 COPY AEP-Components/agentmesh/crate ./AEP-Components/agentmesh/crate
-COPY AEP-Base-Node/potomitan/crate ./AEP-Base-Node/potomitan/crate
+COPY AEP-Base-Node/AEP-Potomitan/crate ./AEP-Base-Node/AEP-Potomitan/crate
 COPY AEP-Components/lattice-memory/crate ./AEP-Components/lattice-memory/crate
-COPY AEP-Base-Node/crate ./AEP-Base-Node/crate
+COPY AEP-Base-Node/AEP-Crate ./AEP-Base-Node/AEP-Crate
 COPY AEP-Base-Node/AEP-Docks/ucb/crate ./AEP-Base-Node/AEP-Docks/ucb/crate
 COPY AEP-Base-Node/AEP-Docks/ucb/perimeter-v1 ./AEP-Base-Node/AEP-Docks/ucb/perimeter-v1
 COPY AEP-Components/conformance/crate ./AEP-Components/conformance/crate

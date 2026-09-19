@@ -8,14 +8,14 @@
 |--------|------|------|
 | Hyperlattice canvas | hyperlattice graph file in `AEP_DATA` | Canonical visual node/edge graph (`catalog_id` on nodes) |
 | Policy lattice | `AEP-Components/hyperlattice/lib/policy-lattice.mjs` | GAP hierarchy + LRP dock bindings |
-| Registry | `AEP-Base-Node/registry/catalog.json`, `AEP-Base-Node/registry/components/*.json` | Component IDs, `pairs_with` neighbors |
+| Registry | `AEP-Base-Node/AEP-Registry/catalog.json`, `AEP-Base-Node/AEP-Registry/components/*.json` | Component IDs, `pairs_with` neighbors |
 | Intent snapshots | `intent-ledger` (`intents/<id>/blast-radius.json`) | Active blast radius component set |
 
 AEP hyperlattice scene graphs are the topological substrate. `validateLatticeScene()` is boot-time structural proof, not runtime Admit. This component only annotates the hyperlattice canvas layer.
 
 ## Outputs
 
-- `LatticeBlastOverlay v1` (`AEP-Base-Node/registry/schemas/lattice-blast-overlay-v1.json`)
+- `LatticeBlastOverlay v1` (`AEP-Base-Node/AEP-Registry/schemas/lattice-blast-overlay-v1.json`)
 - Consumed by hyperlattice `GET /api/graph/blast-overlay?intent_id=...`
 
 ## Phase 11B deliverables

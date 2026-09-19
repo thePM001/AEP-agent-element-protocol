@@ -166,7 +166,7 @@ fn walk_to_workspace() -> PathBuf {
     let mut dir = if let Ok(m) = std::env::var("CARGO_MANIFEST_DIR") { PathBuf::from(m) } else { std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")) };
     let mut i = 0usize;
     while i < 12 {
-        if dir.join("AEP-Base-Node/crate/src/docking.rs").is_file() { return dir; }
+        if dir.join("AEP-Base-Node/AEP-Crate/src/docking.rs").is_file() { return dir; }
         match dir.parent() { Some(parent) => dir = parent.to_path_buf(), None => break }
         i = i.saturating_add(1);
     }
@@ -178,7 +178,7 @@ fn read_src(path: &PathBuf, label: &str) -> Result<String, String> {
 }
 pub fn run_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
-    let dock_src = read_src(&root.join("AEP-Base-Node/crate/src/docking.rs"), "docking")?;
+    let dock_src = read_src(&root.join("AEP-Base-Node/AEP-Crate/src/docking.rs"), "docking")?;
     let dyn_src = read_src(&root.join("AEP-Components/dynAEP/crate/src/lib.rs"), "dynaep")?;
     let env_src = read_src(&root.join("AEP-Components/envelope/crate/src/lib.rs"), "envelope")?;
     let live_src = read_src(&root.join("AEP-Components/live-entry/crate/src/lib.rs"), "live-entry")?;
@@ -258,7 +258,7 @@ mod tests {
         must(scan_docking_no_local_wire_clocks("const MAX_FRAME_AGE_SECS: u64 = 300;\nconst MAX_FRAME_FUTURE_SKEW_SECS: u64 = 60;").is_err());
         must(scan_docking_no_local_wire_clocks("use aep_base_node_pulse::{MAX_FRAME_AGE_SECS, MAX_FRAME_FUTURE_SKEW_SECS};").is_ok());
         let root = walk_to_workspace();
-        let dock_src = read_src(&root.join("AEP-Base-Node/crate/src/docking.rs"), "docking").expect("docking.rs");
+        let dock_src = read_src(&root.join("AEP-Base-Node/AEP-Crate/src/docking.rs"), "docking").expect("docking.rs");
         must(scan_docking_no_local_wire_clocks(&dock_src).is_ok());
     }
 }

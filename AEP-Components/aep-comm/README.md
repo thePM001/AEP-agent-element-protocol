@@ -4,7 +4,7 @@ AEP-Comm is the agent-to-agent orchestration layer. Agents use it to find each o
 
 - **Component ID:** `aep-comm`
 - **Path:** `AEP-Components/aep-comm/`
-- **Manifest:** `AEP-Base-Node/registry/components/aep-comm.json`
+- **Manifest:** `AEP-Base-Node/AEP-Registry/components/aep-comm.json`
 - **Harness:** `AEP-User-Experience/aep-comm-harness.ts`
 
 ## Find other agents

@@ -8,5 +8,5 @@ description = "AEP 2.8.6 minimal wrap. Seals a payload, pulses, collects every w
 [workspace]
 
 [dependencies]
-aep-base-node = { path = "../../../AEP-Base-Node/crate" }
+aep-base-node = { path = "../../../AEP-Base-Node/AEP-Crate" }
 aep-lattice-crypto = { path = "../../../AEP-Components/lattice-crypto/crate" }

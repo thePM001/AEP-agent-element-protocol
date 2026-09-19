@@ -49,7 +49,7 @@ bootstrap_config() {
   },
   "epscom_signatures": {
     "enabled": true,
-    "path": "/opt/aep/AEP-Base-Node/signatures"
+    "path": "/opt/aep/AEP-Base-Node/AEP-Signatures"
   }
 }
 EOF

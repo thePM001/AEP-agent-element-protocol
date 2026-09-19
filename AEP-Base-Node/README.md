@@ -46,28 +46,28 @@ flowchart TB
 
 ## What lives here
 
-Base Node **is** the local agent control kernel. Governance code, registry, mesh, and agent profiles live under `AEP-Base-Node/`:
+Base Node **is** the local agent control kernel. Governance code, registry, mesh and agent profiles live under `AEP-Base-Node/`:
 
 | Module | Path | Role |
 |--------|------|------|
-| Docking servers | `crate/src/docking.rs` | inference / validation / regulation / future Unix sockets |
-| Task manifests | `crate/src/task_manifest.rs` | UCB agent contracts (`AEP_TASK_MANIFEST_DIR`) |
-| CORRECTWRITING_EN kernel | `crate/src/correctwriting_en.rs` | writing.gap enforcement (`no_em_dashes`, `no_en_dashes`, `no_dash_substitutes`, `no_minus_as_dash`, `no_double_hyphen`, `no_oxford_comma`) |
-| Side-channel monitor | `crate/src/side_channel_monitor.rs` | Anomaly events on validation dock |
-| Runtime ledger | `crate/src/lattice_log.rs` | The one named runtime ledger. dynAEP event export over the `action-lattice.db` store plus the `aep-lattice-log` CLI. Every other ledger surface is a derived view or a capability |
+| Docking servers | `AEP-Crate/src/docking.rs` | inference / validation / regulation / future Unix sockets |
+| Task manifests | `AEP-Crate/src/task_manifest.rs` | UCB agent contracts (`AEP_TASK_MANIFEST_DIR`) |
+| CORRECTWRITING_EN kernel | `AEP-Crate/src/correctwriting_en.rs` | writing.gap enforcement (`no_em_dashes`, `no_en_dashes`, `no_dash_substitutes`, `no_minus_as_dash`, `no_double_hyphen`, `no_oxford_comma`) |
+| Side-channel monitor | `AEP-Crate/src/side_channel_monitor.rs` | Anomaly events on validation dock |
+| Runtime ledger | `AEP-Crate/src/lattice_log.rs` | The one named runtime ledger. dynAEP event export over the `action-lattice.db` store plus the `aep-lattice-log` CLI. Every other ledger surface is a derived view or a capability |
 
-Register new components in **`AEP-Base-Node/registry/catalog.json`** + **`AEP-Base-Node/registry/components/*.json`**. See [`registry/README.md`](registry/README.md) for manifest schema and error categories.
+Register new components in **`AEP-Base-Node/AEP-Registry/catalog.json`** + **`AEP-Base-Node/AEP-Registry/components/*.json`**. See [`AEP-Registry/README.md`](AEP-Registry/README.md) for manifest schema and error categories.
 
 ## Component layout
 
 | Path | Contents |
 |------|----------|
-| `crate/` | `aep-base-node` Rust crate + `aep-lattice-log` CLI binary |
-| `registry/` | Component catalog + manifests (`catalog.json`, `components/*.json`) |
-| `multi-base-node/` | Multi-base-node (2.8b) mode: federate multiple Base Node kernels (optional experimental surface, not in the default build) |
-| `potomitan/` | POTOMITAN mesh peer registry (`aep-potomitan` crate) |
-| `agent-control-hub/` | Agent Control Hub: mount profiles for multi-mount sessions |
-| `signatures/` | CORRECTWRITING_EN detection signatures + trust bundle (default wired, operator accessible) |
+| `AEP-Crate/` | `aep-base-node` Rust crate + `aep-lattice-log` CLI binary |
+| `AEP-Registry/` | Component catalog + manifests (`catalog.json`, `components/*.json`) |
+| `AEP-Multi-Base-Node/` | Multi-base-node (2.8b) mode: federate multiple Base Node kernels (optional experimental surface, not in the default build) |
+| `AEP-Potomitan/` | POTOMITAN mesh peer registry (`aep-potomitan` crate) |
+| `AEP-Agent-Control-Hub/` | Agent Control Hub: mount profiles for multi-mount sessions |
+| `AEP-Signatures/` | CORRECTWRITING_EN detection signatures + trust bundle (default wired, operator accessible) |
 | `AEP-Components/dynAEP/NAME-POLICY.md` | Reserved-name policy |
 
 ## Docking ports

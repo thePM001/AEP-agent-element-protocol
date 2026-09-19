@@ -418,7 +418,7 @@ The library is counted by this layer table. Folder count is not the library coun
 | Coding governance | Propose a change then lock it | [`AEP-Components/coding-governance/`](AEP-Components/coding-governance/) |
 | HCSE parser | aep-hcse parser MCP | [`AEP-Components/hcse/`](AEP-Components/hcse/) |
 | Policy | GAP nodes and subprotocol validators | [`AEP-Policy-System/`](AEP-Policy-System/) |
-| Multi-base-node (2.8b) | Federate multiple Base Node kernels (optional experimental surface) | [`AEP-Base-Node/multi-base-node/`](AEP-Base-Node/multi-base-node/) |
+| Multi-base-node (2.8b) | Federate multiple Base Node kernels (optional experimental surface) | [`AEP-Base-Node/AEP-Multi-Base-Node/`](AEP-Base-Node/AEP-Multi-Base-Node/) |
 
 ### How a message is judged
 
@@ -487,10 +487,10 @@ Govern multiple AEP Base Node kernels from a single `nodes.json` v2 registry: ro
 
 | Resource | Path |
 | --- | --- |
-| Feature guide | [`AEP-Base-Node/multi-base-node/docs/multi-base-node-28b.md`](AEP-Base-Node/multi-base-node/docs/multi-base-node-28b.md) |
-| Architecture diagram | [`AEP-Base-Node/multi-base-node/docs/multi-base-node-28b-architecture.svg`](AEP-Base-Node/multi-base-node/docs/multi-base-node-28b-architecture.svg) |
-| Registry schema | [`AEP-Base-Node/registry/schemas/nodes-registry-v2.json`](AEP-Base-Node/registry/schemas/nodes-registry-v2.json) |
-| Rust crate | [`AEP-Base-Node/multi-base-node/crate/`](AEP-Base-Node/multi-base-node/crate/) |
+| Feature guide | [`AEP-Base-Node/AEP-Multi-Base-Node/docs/multi-base-node-28b.md`](AEP-Base-Node/AEP-Multi-Base-Node/docs/multi-base-node-28b.md) |
+| Architecture diagram | [`AEP-Base-Node/AEP-Multi-Base-Node/docs/multi-base-node-28b-architecture.svg`](AEP-Base-Node/AEP-Multi-Base-Node/docs/multi-base-node-28b-architecture.svg) |
+| Registry schema | [`AEP-Base-Node/AEP-Registry/schemas/nodes-registry-v2.json`](AEP-Base-Node/AEP-Registry/schemas/nodes-registry-v2.json) |
+| Rust crate | [`AEP-Base-Node/AEP-Multi-Base-Node/crate/`](AEP-Base-Node/AEP-Multi-Base-Node/crate/) |
 
 ```bash
 cargo test -p multi-base-node-core
@@ -564,14 +564,14 @@ A builder who wants a different wait rebuilds Base Node with a different compile
 
 | Component | Path | Purpose |
 |-----------|------|---------|
-| **AEP Base Node** | `AEP-Base-Node/crate/` | Mandatory local governance daemon with docking ports, compiled 1000 ms kernel pulse (not a dynAEP yaml key) and freeze-at-seal time |
+| **AEP Base Node** | `AEP-Base-Node/AEP-Crate/` | Mandatory local governance daemon with docking ports, compiled 1000 ms kernel pulse (not a dynAEP yaml key) and freeze-at-seal time |
 | **Lattice Channels** | `AEP-Components/lattice-channels/crate/` | PQEncryptedCapsule frames (ML-KEM + AES-256-GCM + ML-DSA) |
 | **AgentMesh** | `AEP-Components/agentmesh/crate/` | Local issuance X.509, DID and mTLS identity on lattice transport |
 | **Lattice Memory** | `AEP-Components/lattice-memory/crate/` | Attractor store (sqlite-vec + USearch) for forensic and health telemetry. Attractors do not skip Admit |
-| **POTOMITAN** | `AEP-Base-Node/potomitan/` | Mesh fallback when normal internet is unavailable |
+| **POTOMITAN** | `AEP-Base-Node/AEP-Potomitan/` | Mesh fallback when normal internet is unavailable |
 | **dynAEP 1.0** | `AEP-Components/dynAEP/` | Hyperlattice runtime: `action_path` filter, temporal authority, bridge (merged from standalone repo) |
 | **Installation Wizard** | `AEP-Components/wizard/install-wizard.mjs` | First stage Base Node installer (CLI) |
-| **Component registry** | `AEP-Base-Node/registry/` | Offline catalog + optional extension merge |
+| **Component registry** | `AEP-Base-Node/AEP-Registry/` | Offline catalog + optional extension merge |
 | **Conformance runner** | `AEP-Components/conformance/` | CC-01..CC-15 public tier compliance battery |
 | **UCB (optional)** | `AEP-Base-Node/AEP-Docks/ucb/` | Universal Connect Bridge for **foreign** stacks only (`:8412`). Native AEP skips UCB. Set `UCB=0` to disable. |
 | **CAW framework** | `AEP-CAW/` | Execution-layer sandbox (`aep-caw`); profiles authored in GAP, compiled locally |
@@ -1033,7 +1033,7 @@ aep-caw wrap --profile coding-agent -- <your-agent-binary>
 
 Per-mount policy templates (`workspace-rw`, `config-readonly`, etc.) are defined in `caw-mount-policies.gap` and compiled into `$AEP_DATA/caw-framework/policies/`.
 
-Further detail: [`AEP-Components/gap/README.md`](AEP-Components/gap/README.md), [`AEP-Base-Node/agent-control-hub/README.md`](AEP-Base-Node/agent-control-hub/README.md).
+Further detail: [`AEP-Components/gap/README.md`](AEP-Components/gap/README.md), [`AEP-Base-Node/AEP-Agent-Control-Hub/README.md`](AEP-Base-Node/AEP-Agent-Control-Hub/README.md).
 
 ### UCB manifest synthesis env vars (optional tiers)
 
@@ -1062,7 +1062,7 @@ GAP template authority: `AEP-Components/gap/policies/reference/task-manifest-v1.
 | [`AEP-Base-Node/README.md`](AEP-Base-Node/README.md) | Base Node operator guide |
 | [`AEP-CAW/README.md`](AEP-CAW/README.md) | **CAW execution sandboxes** (`aep-caw`, shell adapter, policy engine, host integration) |
 | [`AEP-Components/gap/README.md`](AEP-Components/gap/README.md) | GAP language, compile pipeline, CAW profile authoring |
-| [`AEP-Base-Node/agent-control-hub/README.md`](AEP-Base-Node/agent-control-hub/README.md) | GAP capability profiles and CAW sandbox routing on Base Node |
+| [`AEP-Base-Node/AEP-Agent-Control-Hub/README.md`](AEP-Base-Node/AEP-Agent-Control-Hub/README.md) | GAP capability profiles and CAW sandbox routing on Base Node |
 | [`AEP-Components/dynAEP/README.md`](AEP-Components/dynAEP/README.md) | dynAEP 1.0 hyperlattice runtime protocol |
 | [`AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md`](AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md) | How to attach a custom sub-lattice |
 | [`AEP-Components/dynAEP/CONFIG.md`](AEP-Components/dynAEP/CONFIG.md) | dynAEP configuration reference |

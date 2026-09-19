@@ -1,6 +1,6 @@
 # AEP-Docks
 
-Canonical dock definitions for AEP 2.8. Socket docks are implemented in `AEP-Base-Node/crate/src/docking.rs`; HTTP/regulated docks live here.
+Canonical dock definitions for AEP 2.8. Socket docks are implemented in `AEP-Base-Node/AEP-Crate/src/docking.rs`; HTTP/regulated docks live here.
 
 ## Base Node socket docks
 

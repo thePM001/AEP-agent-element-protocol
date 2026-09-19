@@ -1,0 +1,55 @@
+{
+  "manifest_version": "1",
+  "feature_id": "multi-base-node",
+  "maturity": "experimental",
+  "default_build": false,
+  "repo": "AEP-2.8.6",
+  "reviewed_at": "2026-07-09",
+  "artifacts": [
+    {
+      "id": "mode-root",
+      "path": "AEP-Base-Node/AEP-Multi-Base-Node/",
+      "status": "experimental"
+    },
+    {
+      "id": "nodes-json-v2",
+      "path": "AEP-Base-Node/AEP-Registry/nodes.json",
+      "status": "experimental"
+    },
+    {
+      "id": "nodes-registry-schema",
+      "path": "AEP-Base-Node/AEP-Registry/schemas/nodes-registry-v2.json",
+      "status": "experimental"
+    },
+    {
+      "id": "single-node-profile",
+      "path": "AEP-Base-Node/AEP-Registry/profiles/as-single-polar.json",
+      "status": "experimental"
+    },
+    {
+      "id": "multi-base-node-core-crate",
+      "path": "AEP-Base-Node/AEP-Multi-Base-Node/crate/",
+      "status": "experimental"
+    },
+    {
+      "id": "component-manifest",
+      "path": "AEP-Base-Node/AEP-Registry/components/multi-base-node.json",
+      "status": "experimental"
+    },
+    {
+      "id": "docs-multi-base-node-28b",
+      "path": "AEP-Base-Node/AEP-Multi-Base-Node/docs/multi-base-node-28b.md",
+      "status": "experimental"
+    },
+    {
+      "id": "docs-architecture-svg",
+      "path": "AEP-Base-Node/AEP-Multi-Base-Node/docs/multi-base-node-28b-architecture.svg",
+      "status": "experimental"
+    },
+    {
+      "id": "federation-policies",
+      "path": "AEP-Components/gap/policies/reference/multi-base-node-federation-*.gap",
+      "status": "experimental"
+    }
+  ]
+}

@@ -3,7 +3,7 @@
 **Policy Builder is a distinct AEP 2.8 component** (Capability 13). Invariant detection from data, Rego rule generation, coverage tracking and spectral impact projection.
 
 - **Implementation:** `policy-builder/lib/`
-- **Registry:** `AEP-Base-Node/registry/components/policy-builder.json`
+- **Registry:** `AEP-Base-Node/AEP-Registry/components/policy-builder.json`
 - **Depends on:** `schema-builder/` (MLE + spectral analysis)
 - **Runtime hook:** `AgentGateway.validatePolicyProposal()`
 

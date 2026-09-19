@@ -6,10 +6,10 @@ members = [
     "AEP-Components/lattice-crypto/crate",
     "AEP-Components/lattice-channels/crate",
     "AEP-Components/agentmesh/crate",
-    "AEP-Base-Node/potomitan/crate",
+    "AEP-Base-Node/AEP-Potomitan/crate",
     "AEP-Components/lattice-memory/crate",
-    "AEP-Base-Node/multi-base-node/crate",
-    "AEP-Base-Node/crate",
+    "AEP-Base-Node/AEP-Multi-Base-Node/crate",
+    "AEP-Base-Node/AEP-Crate",
     "AEP-Components/conformance/crate",
     "AEP-Base-Node/AEP-Docks/ucb/crate",
     "AEP-Base-Node/AEP-Docks/ucb/perimeter-v1",
@@ -42,7 +42,7 @@ members = [
 # optional experimental surface and it is not a default member, so a plain
 # build does not compile it. Build it on purpose with:
 #   cargo build -p multi-base-node-core
-default-members = ["AEP-Base-Node/crate"]
+default-members = ["AEP-Base-Node/AEP-Crate"]
 
 [workspace.package]
 version = "2.8.6"

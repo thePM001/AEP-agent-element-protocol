@@ -14,7 +14,7 @@ export function resolveRepoRoot() {
   ].filter(Boolean);
 
   for (const c of candidates) {
-    if (existsSync(join(c, "AEP-Base-Node/registry/catalog.json"))) return c;
+    if (existsSync(join(c, "AEP-Base-Node/AEP-Registry/catalog.json"))) return c;
   }
   return candidates[0] ?? ".";
 }

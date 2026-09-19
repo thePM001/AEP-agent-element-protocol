@@ -13,8 +13,8 @@ path = "src/main.rs"
 aep-lattice-crypto = { path = "../../lattice-crypto/crate" }
 aep-lattice-channel = { path = "../../lattice-channels/crate" }
 aep-agentmesh = { path = "../../agentmesh/crate" }
-aep-potomitan = { path = "../../../AEP-Base-Node/potomitan/crate" }
-aep-base-node = { path = "../../../AEP-Base-Node/crate" }
+aep-potomitan = { path = "../../../AEP-Base-Node/AEP-Potomitan/crate" }
+aep-base-node = { path = "../../../AEP-Base-Node/AEP-Crate" }
 serde.workspace = true
 serde_json.workspace = true
 tempfile = "3"

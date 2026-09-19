@@ -5,7 +5,7 @@ GraphEngine is the workflow runner with checkpoints on the AEP scene graph, mean
 - **Component ID:** `graph-engine`
 - **Path:** `AEP-Components/graph-engine/`
 - **Module:** `lib/graph/index.ts`
-- **Manifest:** `AEP-Base-Node/registry/components/graph-engine`
+- **Manifest:** `AEP-Base-Node/AEP-Registry/components/graph-engine`
 
 ## API
 

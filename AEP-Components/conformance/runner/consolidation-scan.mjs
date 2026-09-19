@@ -106,7 +106,7 @@ const OWNS_RUNTIME_STATE = /one live graph owns (the )?state/i;
 
 // 8. Runtime ledger names.
 const LEDGER_SURFACES = [
-  "AEP-Base-Node/crate/src/lattice_log.rs",
+  "AEP-Base-Node/AEP-Crate/src/lattice_log.rs",
   "AEP-Components/evidence-ledger/README.md",
   "AEP-Components/intent-ledger/README.md",
   "AEP-Components/evaluation-chain/crate/src/lib.rs",

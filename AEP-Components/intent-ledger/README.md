@@ -4,7 +4,7 @@ Append-only **Intent Provenance Ledger** for coding governance. Stores `Solidify
 
 ## Standing
 
-This component is a derived provenance view over coding intent. It is not the runtime ledger. The named runtime ledger is the SQLite lattice log in Base Node (`AEP-Base-Node/crate/src/lattice_log.rs` over the `action-lattice.db` store).
+This component is a derived provenance view over coding intent. It is not the runtime ledger. The named runtime ledger is the SQLite lattice log in Base Node (`AEP-Base-Node/AEP-Crate/src/lattice_log.rs` over the `action-lattice.db` store).
 
 ## Storage
 
@@ -50,4 +50,4 @@ Intent knots are searchable attractors in lattice memory. The file ledger remain
 | `lib/agentstream-knots.mjs` | Optional Agentstream mirror for knots |
 | `lib/embedding.mjs` | Deterministic embeddings for knot search |
 
-Schemas: `AEP-Base-Node/registry/schemas/solidify-record-v1.json`, `AEP-Base-Node/registry/schemas/intent-knot-v1.json`
+Schemas: `AEP-Base-Node/AEP-Registry/schemas/solidify-record-v1.json`, `AEP-Base-Node/AEP-Registry/schemas/intent-knot-v1.json`

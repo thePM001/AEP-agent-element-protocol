@@ -9,7 +9,7 @@ import { invokeCodingGovernanceRust } from "../../../AEP-SDKs/typescript/aep-pro
 import { resolveRepoRoot } from "../../coding-governance/lib/paths.mjs";
 
 function catalogComponentIds(repoRoot) {
-  const catalogPath = join(repoRoot, "AEP-Base-Node/registry/catalog.json");
+  const catalogPath = join(repoRoot, "AEP-Base-Node/AEP-Registry/catalog.json");
   if (!existsSync(catalogPath)) return new Set();
   const catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
   return new Set((catalog.components ?? []).map((c) => c.id).filter(Boolean));

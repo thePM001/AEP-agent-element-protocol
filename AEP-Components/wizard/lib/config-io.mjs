@@ -66,7 +66,7 @@ export function buildBaseNodeConfig({
     },
     epscom_signatures: {
       enabled: true,
-      path: signaturesPath ?? "AEP-Base-Node/signatures",
+      path: signaturesPath ?? "AEP-Base-Node/AEP-Signatures",
     },
   };
   if (inferenceEngine) {

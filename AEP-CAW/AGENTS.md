@@ -21,7 +21,7 @@ You operate inside or alongside **AEP CAW Framework** (`caw-framework`), the Exe
 
 ## AEP integration
 
-- Registry: `AEP-Base-Node/registry/components/caw-framework.json`
+- Registry: `AEP-Base-Node/AEP-Registry/components/caw-framework.json`
 - Catalog enables by default (`default_enabled: true`)
 - Plan executor sets `policy_sections.caw_framework` and `config.caw_framework` in `base-node.json`
 - Pairs with: `proxy`, `session`, `mcp-security`, `evidence-ledger`, `gap-runtime-scanners`

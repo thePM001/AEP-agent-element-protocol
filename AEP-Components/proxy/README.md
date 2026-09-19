@@ -4,7 +4,7 @@ MCP and shell proxy servers under lattice governance.
 
 - **Component ID:** `proxy`
 - **Path:** `proxy/`
-- **Manifest:** `AEP-Base-Node/registry/components/proxy.json`
+- **Manifest:** `AEP-Base-Node/AEP-Registry/components/proxy.json`
 
 Runtime code lives in `lib/`.
 

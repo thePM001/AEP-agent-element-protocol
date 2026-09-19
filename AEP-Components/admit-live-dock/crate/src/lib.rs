@@ -506,7 +506,7 @@ pub fn live_path_wall_gate(root: &Path) -> Result<String, String> {
     }
     let live_dock_cargo = read_text(&root.join("AEP-Components/admit-live-dock/crate/Cargo.toml"));
     let live_dock_deps = dep_names(&live_dock_cargo);
-    let base_deps = dep_names(&read_text(&root.join("AEP-Base-Node/crate/Cargo.toml")));
+    let base_deps = dep_names(&read_text(&root.join("AEP-Base-Node/AEP-Crate/Cargo.toml")));
     let live_entry_deps = dep_names(&read_text(
         &root.join("AEP-Components/live-entry/crate/Cargo.toml"),
     ));
@@ -554,9 +554,9 @@ pub fn live_path_wall_gate(root: &Path) -> Result<String, String> {
             }
         }
     }
-    let admit_src = read_text(&root.join("AEP-Base-Node/crate/src/envelope_admit.rs"));
+    let admit_src = read_text(&root.join("AEP-Base-Node/AEP-Crate/src/envelope_admit.rs"));
     scan_envelope_admit_one_live_evaluation(&admit_src) ?;
-    let base_cargo = dep_names(&read_text(&root.join("AEP-Base-Node/crate/Cargo.toml")));
+    let base_cargo = dep_names(&read_text(&root.join("AEP-Base-Node/AEP-Crate/Cargo.toml")));
     if set_has(&base_cargo, "aep-admit-live-dock") == false {
         return Err(String::from("aep-base-node missing aep-admit-live-dock"));
     }
@@ -733,7 +733,7 @@ mod tests {
         fs::create_dir_all(tmp.join("AEP-Components/admit-temporal-bounds/crate")).expect("mkdir");
         fs::create_dir_all(tmp.join("AEP-Components/envelope-walls/crate")).expect("mkdir");
         fs::create_dir_all(tmp.join("AEP-Components/admit-live-dock/crate")).expect("mkdir");
-        fs::create_dir_all(tmp.join("AEP-Base-Node/crate/src")).expect("mkdir");
+        fs::create_dir_all(tmp.join("AEP-Base-Node/AEP-Crate/src")).expect("mkdir");
         fs::create_dir_all(tmp.join("AEP-Components/live-entry/crate")).expect("mkdir");
         fs::write(
             tmp.join("Cargo.toml"),
@@ -771,7 +771,7 @@ mod tests {
         )
         .expect("pkg");
         fs::write(
-            tmp.join("AEP-Base-Node/crate/Cargo.toml"),
+            tmp.join("AEP-Base-Node/AEP-Crate/Cargo.toml"),
             "[package]\nname = \"aep-base-node\"\nversion = \"0.1.0\"\n[dependencies]\naep-admit-live-dock = { path = \"x\" }\n",
         )
         .expect("pkg");
@@ -781,7 +781,7 @@ mod tests {
         )
         .expect("pkg");
         fs::write(
-            tmp.join("AEP-Base-Node/crate/src/envelope_admit.rs"),
+            tmp.join("AEP-Base-Node/AEP-Crate/src/envelope_admit.rs"),
             "use aep_admit_live_dock::live_collect_all;\n",
         )
         .expect("src");

@@ -1,6 +1,6 @@
 # AEP Protocol Components
 
-All bundled AEP protocol components live under this directory. Each subfolder is a first-class component with its own `README.md`, registry manifest (`AEP-Base-Node/registry/components/{id}.json`) and `lib/` or `crate/` implementation.
+All bundled AEP protocol components live under this directory. Each subfolder is a first-class component with its own `README.md`, registry manifest (`AEP-Base-Node/AEP-Registry/components/{id}.json`) and `lib/` or `crate/` implementation.
 
 Runtime code for each component lives in that component folder. Client libraries are not a product of AEP 2.8.6.
 
@@ -13,7 +13,7 @@ Infrastructure and top-level surfaces outside this folder:
 - `docker/` - container entrypoint and runtime deps
 - `rust/` - build artifact target directory
 
-The catalog resolves component paths via `AEP-Base-Node/registry/catalog.json` (`repository.components_root`).
+The catalog resolves component paths via `AEP-Base-Node/AEP-Registry/catalog.json` (`repository.components_root`).
 
 ## Kernel pulse owner
 
@@ -27,7 +27,7 @@ The other graph surfaces are projections. The hyperlattice under `AEP-Components
 
 ## Runtime ledger
 
-One runtime ledger is named. The runtime ledger is the SQLite lattice log in Base Node, which is `AEP-Base-Node/crate/src/lattice_log.rs` with the `aep-lattice-log` CLI over the `action-lattice.db` store.
+One runtime ledger is named. The runtime ledger is the SQLite lattice log in Base Node, which is `AEP-Base-Node/AEP-Crate/src/lattice_log.rs` with the `aep-lattice-log` CLI over the `action-lattice.db` store.
 
 Every other ledger surface is a derived view or a capability that calls the runtime ledger.
 

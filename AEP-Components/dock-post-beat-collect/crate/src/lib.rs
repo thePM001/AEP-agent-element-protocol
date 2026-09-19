@@ -178,7 +178,7 @@ fn walk_to_workspace() -> PathBuf {
     };
     let mut i = 0usize;
     while i < 16 {
-        let dock = dir.join("AEP-Base-Node/crate/src/docking.rs");
+        let dock = dir.join("AEP-Base-Node/AEP-Crate/src/docking.rs");
         if dock.is_file() {
             return dir;
         }
@@ -197,7 +197,7 @@ fn read_text(path: &PathBuf) -> String {
 
 pub fn run_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
-    let dock = read_text(&root.join("AEP-Base-Node/crate/src/docking.rs"));
+    let dock = read_text(&root.join("AEP-Base-Node/AEP-Crate/src/docking.rs"));
     let ucb = read_text(&root.join("AEP-Base-Node/AEP-Docks/ucb/crate/src/lattice.rs"));
     let proofs = [
         scan_dock_collect_variant(&dock)?,

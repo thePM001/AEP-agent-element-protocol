@@ -9,7 +9,7 @@ publish = false
 [workspace]
 
 [dependencies]
-aep-base-node = { path = "../../../AEP-Base-Node/crate" }
+aep-base-node = { path = "../../../AEP-Base-Node/AEP-Crate" }
 aep-base-node-pulse = { path = "../../../AEP-Components/base-node-pulse/crate" }
 aep-envelope = { path = "../../../AEP-Components/envelope/crate" }
 aep-lattice-crypto = { path = "../../../AEP-Components/lattice-crypto/crate" }

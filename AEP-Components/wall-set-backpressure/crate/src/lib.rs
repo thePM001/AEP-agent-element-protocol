@@ -183,7 +183,7 @@ fn walk_to_workspace() -> PathBuf {
     };
     let mut i = 0usize;
     while i < 16 {
-        let dock = dir.join("AEP-Base-Node/crate/src/docking.rs");
+        let dock = dir.join("AEP-Base-Node/AEP-Crate/src/docking.rs");
         if dock.is_file() {
             return dir;
         }
@@ -202,7 +202,7 @@ fn read_text(path: &PathBuf) -> String {
 
 pub fn run_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
-    let dock = read_text(&root.join("AEP-Base-Node/crate/src/docking.rs"));
+    let dock = read_text(&root.join("AEP-Base-Node/AEP-Crate/src/docking.rs"));
     let live = read_text(&root.join("AEP-Components/live-entry/crate/src/lib.rs"));
     let ucb = read_text(&root.join("AEP-Base-Node/AEP-Docks/ucb/crate/src/lattice.rs"));
     let self_src = read_text(&root.join("AEP-Components/wall-set-backpressure/crate/src/lib.rs"));
@@ -214,7 +214,7 @@ pub fn run_gate() -> Result<i32, String> {
         scan_repairs_have_no_grant_lists()?,
         scan_closed_wall_has_class(&self_src)?,
         scan_docking_sets_class(&dock)?,
-        scan_admit_sets_class(&root.join("AEP-Base-Node/crate/src/envelope_admit.rs"))?,
+        scan_admit_sets_class(&root.join("AEP-Base-Node/AEP-Crate/src/envelope_admit.rs"))?,
     ];
     for proof in proofs {
         let mut line = String::from("aep-wall-set-backpressure ok proof=");

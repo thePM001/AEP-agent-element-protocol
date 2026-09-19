@@ -149,7 +149,7 @@ fn walk_to_workspace() -> PathBuf {
     };
     let mut i = 0usize;
     while i < 10 {
-        let admit = dir.join("AEP-Base-Node/crate/src/envelope_admit.rs");
+        let admit = dir.join("AEP-Base-Node/AEP-Crate/src/envelope_admit.rs");
         if admit.is_file() {
             return dir;
         }
@@ -163,7 +163,7 @@ fn walk_to_workspace() -> PathBuf {
 }
 
 pub fn default_envelope_admit() -> PathBuf {
-    walk_to_workspace().join("AEP-Base-Node/crate/src/envelope_admit.rs")
+    walk_to_workspace().join("AEP-Base-Node/AEP-Crate/src/envelope_admit.rs")
 }
 
 pub fn run_gate() -> Result<i32, String> {

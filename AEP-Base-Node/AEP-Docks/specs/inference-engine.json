@@ -5,5 +5,5 @@
   "socket_suffix": "/inference",
   "purpose": "AEP Inference Engines and lattice-gated LLM delegation",
   "transport": "lattice-channel",
-  "implementation": "AEP-Base-Node/crate/src/docking.rs"
+  "implementation": "AEP-Base-Node/AEP-Crate/src/docking.rs"
 }
