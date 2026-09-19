@@ -41,12 +41,14 @@ flowchart TB
   K --> W[Collect-all run of every written wall]
   W --> A[Apply only after the pass admits]
   A --> L[Ledger row and lattice log record]
-  L --> X[Executor runs the admitted action]
+  L --> X[CAW runs the admitted action]
 ```
+
+The executor after admit is CAW at AEP-CAW/.
 
 ## What lives here
 
-Base Node **is** the local agent control kernel. Governance code, registry, mesh and agent profiles live under `AEP-Base-Node/`:
+Base Node **is** the local agent control kernel. Governance code, registry, mesh and the Hub crate live under `AEP-Base-Node/`:
 
 | Module | Path | Role |
 |--------|------|------|
@@ -55,6 +57,7 @@ Base Node **is** the local agent control kernel. Governance code, registry, mesh
 | CORRECTWRITING_EN kernel | `AEP-Crate/src/correctwriting_en.rs` | writing.gap enforcement (`no_em_dashes`, `no_en_dashes`, `no_dash_substitutes`, `no_minus_as_dash`, `no_double_hyphen`, `no_oxford_comma`) |
 | Side-channel monitor | `AEP-Crate/src/side_channel_monitor.rs` | Anomaly events on validation dock |
 | Runtime ledger | `AEP-Crate/src/lattice_log.rs` | The one named runtime ledger. dynAEP event export over the `action-lattice.db` store plus the `aep-lattice-log` CLI. Every other ledger surface is a derived view or a capability |
+| Agent Control Hub | `AEP-Agent-Control-Hub/crate` | Kernel extension. The daemon loads the crate and binds GAP session, mount and agent-permission state. |
 
 Register new components in **`AEP-Base-Node/AEP-Registry/catalog.json`** + **`AEP-Base-Node/AEP-Registry/components/*.json`**. See [`AEP-Registry/README.md`](AEP-Registry/README.md) for manifest schema and error categories.
 
