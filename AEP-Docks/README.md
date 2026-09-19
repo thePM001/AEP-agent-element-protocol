@@ -7,7 +7,6 @@ Canonical dock definitions for AEP 2.8. Socket docks are implemented in `AEP-Bas
 | Port ID | Socket suffix | Spec |
 |---------|---------------|------|
 | `inference_engine` | `/inference` | `specs/inference-engine.json` |
-| `validation_engine` | `/validation` | `specs/validation-engine.json` |
 | `future_features` | `/future` | `specs/future-features.json` |
 | `regulation_module` | `/regulation` | `specs/regulation-module.json` |
 

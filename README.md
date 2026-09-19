@@ -520,7 +520,7 @@ Writing walls govern output shape and are not transport security. EPSCOM writing
 
 Putting a capsule on the dock is not the check. After the one-second wait the client asks for the result by the capsule hash on the same dock so a deny names the closed walls and an allow returns an event id.
 
-Base Node can run in a container or sit next to an AEP Validation Engine module. Language clients share one sealer for that capsule; they do not open a private route.
+Base Node can run in a container. Language clients share one sealer for that capsule and do not open a private route.
 
 ```mermaid
 flowchart LR

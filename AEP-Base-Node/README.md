@@ -75,7 +75,7 @@ Register new components in **`AEP-Base-Node/registry/catalog.json`** + **`AEP-Ba
 | Port | Path suffix | Priority |
 |------|-------------|----------|
 | Inference Engine | `/inference` | High |
-| Validation Engine | `/validation` | High |
+| kernel admit | `/validation` | High |
 | Future Features (reserved internal) | `/future` | High |
 | Regulation Module (LRPs) | `/regulation` | Medium |
 
