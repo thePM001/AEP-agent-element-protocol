@@ -61,6 +61,10 @@ pub struct DockFrameResponse {
     pub deny: Option<DenyReport>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pending: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub http_queued: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub projection: Option<Value>,
 }
 
 fn poisoned_lock_response(name: &'static str) -> DockFrameResponse {
@@ -92,6 +96,7 @@ pub fn port_event_type(port: &DockingPort) -> &'static str {
     match port {
         DockingPort::InferenceEngine => "docking_inference_engine",
         DockingPort::ValidationEngine => "docking_validation_engine",
+        DockingPort::DisplaySurface => "docking_display_surface",
         DockingPort::FutureFeatures => "docking_future_features",
         DockingPort::RegulationModule => "docking_regulation_module",
     }
@@ -126,6 +131,8 @@ pub(crate) fn deny_resp_report(
         http: None,
         deny: Some(deny),
         pending: None,
+        http_queued: None,
+        projection: None,
     }
 }
 
@@ -139,6 +146,8 @@ pub(crate) fn pending_held_response(digest: String) -> DockFrameResponse {
         http: None,
         deny: None,
         pending: Some(true),
+        http_queued: None,
+        projection: None,
     }
 }
 
@@ -146,15 +155,15 @@ pub(crate) fn attach_gateway_http_after_allow(plaintext: &[u8], resp: &mut DockF
     let Some(spec) = gateway_spec_from_plaintext(plaintext) else {
         return;
     };
-    match execute_bound_http_after_allow(&spec) {
-        Ok(http) => {
-            resp.http = Some(http);
+    match tokio::runtime::Handle::try_current() {
+        Ok(handle) => { resp.http_queued = Some(true);
+            handle.spawn(async move { execute_bound_http_after_allow(&spec).ok() });
         }
         Err(detail) => {
-            resp.ok = false;
-            resp.error = Some(detail.clone());
+            resp.http_queued = None;
+            let _ = &detail;
             resp.http = None;
-            resp.deny = Some(DenyReport::from_error(&detail));
+            let _ = &detail;
         }
     }
 }
@@ -164,6 +173,18 @@ pub fn process_request(
     port: &DockingPort,
     line: &str,
 ) -> DockFrameResponse {
+    if port == &DockingPort::DisplaySurface {
+        if crate::dock_display::looks_like_http(line) {
+            return deny_resp(None, String::from("JSON body that skips the sealed frame is refused"));
+        }
+        if let Ok(v) = serde_json::from_str::<Value>(line) {
+            if v.get("frame").is_none() {
+                if v.get("collect").is_none() {
+                    return deny_resp(None, String::from("JSON body that skips the sealed frame is refused"));
+                }
+            }
+        }
+    }
     let req: DockRequest = match serde_json::from_str(line) {
         Ok(v) => v,
         Err(e) => {
@@ -288,6 +309,7 @@ fn handle_frame(
     }
 
     let allow_inactive = expected_port == &DockingPort::RegulationModule;
+    let allow_inactive = allow_inactive && is_lrp_allowlisted(runtime, &frame.contract_id);
     let plaintext = if allow_inactive {
         match crate::verify_inbound_dock_frame(
             frame,
@@ -369,15 +391,13 @@ fn handle_frame(
                     );
                     return deny_resp(None, detail);
                 }
-                let mut contracts = dock_lock!(&runtime.contracts, "contracts");
-                contracts.register(&frame.contract_id);
             }
         }
     }
 
     {
         let contracts = dock_lock!(&runtime.contracts, "contracts");
-        if !contracts.is_active(&frame.contract_id) {
+        if match serde_json::from_slice::<Value>(&plaintext) { Ok(value) => match value.get("action") { Some(x) => match x.as_str() { Some("register_lrp") => false, _ => !contracts.is_active(&frame.contract_id) }, None => !contracts.is_active(&frame.contract_id) }, Err(_) => !contracts.is_active(&frame.contract_id) } {
             let db = dock_lock!(&runtime.db, "db");
             let detail = format!("contract inactive: {}", frame.contract_id);
             let _ = record_side_channel_anomaly(
@@ -411,7 +431,7 @@ fn handle_frame(
         // Fail closed: DB error treated as replay reject (do not admit frame).
         let seen = match frame_digest_exists(&db, &digest) {
             Ok(v) => v,
-            Err(_) => true,
+            Err(_) => return deny_closed(Some(digest.clone()), String::from("ledger unavailable"), "ledger.unavailable", "ledger.unavailable"),
         };
         if seen {
             let detail = format!("frame replay rejected: {digest}");
@@ -422,7 +442,7 @@ fn handle_frame(
                 expected_port,
                 detail.clone(),
             );
-            return deny_closed(None, detail, "digest.replay", CLASS_SECURITY);
+            return deny_closed(None, detail, "digest.replay", "frame.replay");
         }
     }
     {
@@ -437,7 +457,7 @@ fn handle_frame(
                 expected_port,
                 detail.clone(),
             );
-            return deny_closed(None, detail, "digest.replay", CLASS_SECURITY);
+            return deny_closed(None, detail, "digest.replay", "frame.replay");
         }
     }
 

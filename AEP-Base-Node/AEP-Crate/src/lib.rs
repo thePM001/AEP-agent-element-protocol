@@ -2,6 +2,7 @@
 
 pub mod dock_keys;
 pub mod docking;
+pub mod dock_display;
 // dock_freshness, dock_pulse, dock_rate, dock_serve and dock_apply are docking facade modules.
 pub mod envelope_admit;
 pub mod error;
@@ -34,7 +35,7 @@ use aep_potomitan::{detect_network_mode, status, MeshMode, MeshSupervisor, MESH_
 use rusqlite::{Connection, params};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 pub const COMPONENT_ID: &str = "aep-base-node";
 pub const CORRECTWRITING_EN_PRIORITY: u8 = 255;
@@ -119,6 +120,12 @@ pub fn docking_port_specs(base_socket: &str) -> Vec<DockingPortSpec> {
             priority: 150,
             listen_path: format!("{base_socket}/regulation"),
         },
+        DockingPortSpec {
+            port: DockingPort::DisplaySurface,
+            name: "display-surface-dock",
+            priority: 150,
+            listen_path: format!("{base_socket}/display"),
+        },
     ]
 }
 
@@ -132,6 +139,9 @@ pub fn init_action_lattice_db(path: &Path) -> rusqlite::Result<Connection> {
         }
     }
     let conn = Connection::open(path)?;
+    conn.pragma_update(None, "journal_mode", "WAL")?;
+    conn.busy_timeout(Duration::from_millis(5000))?;
+    conn.execute("CREATE TABLE IF NOT EXISTS held_frame_digests (frame_digest TEXT PRIMARY KEY, held_at_unix INTEGER NOT NULL)", [])?;
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS action_lattice_events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -225,7 +235,7 @@ mod replay_guard_tests {
 
 pub fn frame_digest_exists(conn: &Connection, digest: &str) -> rusqlite::Result<bool> {
     let count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM action_lattice_events WHERE frame_digest = ?1",
+        "SELECT (SELECT COUNT(*) FROM action_lattice_events WHERE frame_digest = ?1) + (SELECT COUNT(*) FROM held_frame_digests WHERE frame_digest = ?1)",
         [digest],
         |r| r.get(0),
     )?;
@@ -262,7 +272,11 @@ pub fn record_channel_frame(
             ));
         }
     }
-    if frame_digest_exists(conn, &digest)? {
+    let applied: i64 = match conn.query_row("SELECT COUNT(*) FROM action_lattice_events WHERE frame_digest = ?1", [digest.as_str()], |r| r.get(0)) {
+        Ok(v) => v,
+        Err(e) => return Err(e),
+    };
+    if applied > 0 {
         return Err(rusqlite::Error::SqliteFailure(
             rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CONSTRAINT_UNIQUE),
             Some("frame replay rejected".into()),
@@ -295,6 +309,7 @@ pub fn record_channel_frame(
             agentmesh_json,
         ],
     )?;
+    let _ = conn.execute("DELETE FROM held_frame_digests WHERE frame_digest = ?1", params![digest]);
     Ok(conn.last_insert_rowid())
 }
 
@@ -430,6 +445,10 @@ pub fn health(
     }
 }
 
+pub fn persist_held_digest(conn: &Connection, digest: &str, at_unix: i64) -> rusqlite::Result<()> {
+    conn.execute("INSERT OR IGNORE INTO held_frame_digests (frame_digest, held_at_unix) VALUES (?1, ?2)", params![digest, at_unix])?;
+    Ok(())
+}
 pub fn now_unix() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -448,6 +467,7 @@ pub fn bootstrap_contracts_from_lrps(lrps: &[String]) -> ContractRegistry {
     }
     registry.register("correctwriting-en");
     registry.register("dynaep-action-lattice");
+    registry.register("aep-display-surface");
     registry.register("lattice-channel-default");
     registry
 }

@@ -19,6 +19,7 @@ pub(crate) fn dock_port_name(port: &DockingPort) -> &'static str {
         DockingPort::ValidationEngine => "validation_engine",
         DockingPort::FutureFeatures => "future_features",
         DockingPort::RegulationModule => "regulation_module",
+        DockingPort::DisplaySurface => "display_surface",
     }
 }
 
@@ -190,7 +191,7 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
         }
         Err(resp) => {
             if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
-                pulse.last_applied.insert(cap.digest.clone(), resp);
+                if pulse.last_applied.len() >= 4096 { pulse.last_applied.clear(); pulse.last_applied_at.clear() } { drop(pulse.last_applied_at.insert(cap.digest.clone(), crate::now_unix() as i64)) } pulse.last_applied.insert(cap.digest.clone(), resp);
             }
             return;
         }
@@ -207,12 +208,69 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
             );
         }
         if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
-            pulse.last_applied.insert(
+            if pulse.last_applied.len() >= 4096 { pulse.last_applied.clear(); pulse.last_applied_at.clear() } { drop(pulse.last_applied_at.insert(cap.digest.clone(), crate::now_unix() as i64)) } pulse.last_applied.insert(
                 cap.digest.clone(),
                 deny_resp_report(Some(cap.digest.clone()), detail, report),
             );
         }
         return;
+    }
+    let mut projection = None;
+    if runtime.hub.permissions.is_empty() == false {
+        let action = match serde_json::from_slice::<Value>(&held.plaintext) {
+            Ok(v) => match v.get("action_path") {
+                Some(x) => match x.as_str() {
+                    Some(p) => String::from(p),
+                    None => String::new(),
+                },
+                None => String::new(),
+            },
+            Err(_) => String::new(),
+        };
+        if action.is_empty() == false {
+            if runtime.hub.agent_may(&held.frame.agent_id, &action) == false {
+                if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
+                    if pulse.last_applied.len() >= 4096 { pulse.last_applied.clear(); pulse.last_applied_at.clear() } { drop(pulse.last_applied_at.insert(cap.digest.clone(), crate::now_unix() as i64)) } pulse.last_applied.insert(cap.digest.clone(), deny_resp(Some(cap.digest.clone()), String::from("hub permission denied")));
+                }
+                return;
+            }
+        }
+    }
+    if held.expected_port == DockingPort::RegulationModule {
+        match serde_json::from_slice::<Value>(&held.plaintext) {
+            Ok(value) => match value.get("action") {
+                Some(x) => match x.as_str() {
+                    Some("register_lrp") => match lock_or_deny(&runtime.contracts, "contracts") {
+                        Ok(mut contracts) => contracts.register(&held.frame.contract_id),
+                        Err(_) => (),
+                    },
+                    _ => (),
+                },
+                None => (),
+            },
+            Err(_) => (),
+        }
+    }
+    if held.expected_port == DockingPort::DisplaySurface {
+        let mut staging = match lock_or_deny(&runtime.display, "display") {
+            Ok(g) => g,
+            Err(resp) => {
+                if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
+                    if pulse.last_applied.len() >= 4096 { pulse.last_applied.clear(); pulse.last_applied_at.clear() } { drop(pulse.last_applied_at.insert(cap.digest.clone(), crate::now_unix() as i64)) } pulse.last_applied.insert(cap.digest.clone(), resp);
+                }
+                return;
+            }
+        };
+        match crate::dock_display::apply_display_plaintext(&mut staging, &held.frame.agent_id, &held.plaintext) {
+            Ok(p) => projection = p,
+            Err(e) => {
+                drop(staging);
+                if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
+                    if pulse.last_applied.len() >= 4096 { pulse.last_applied.clear(); pulse.last_applied_at.clear() } { drop(pulse.last_applied_at.insert(cap.digest.clone(), crate::now_unix() as i64)) } pulse.last_applied.insert(cap.digest.clone(), deny_resp(Some(cap.digest.clone()), e));
+                }
+                return;
+            }
+        }
     }
     let event_type = if held.expected_port == DockingPort::RegulationModule {
         "docking_regulation_lattice"
@@ -223,7 +281,7 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
         Ok(db) => record_channel_frame(&db, &held.frame, event_type, &held.bundle, None),
         Err(resp) => {
             if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
-                pulse.last_applied.insert(cap.digest.clone(), resp);
+                if pulse.last_applied.len() >= 4096 { pulse.last_applied.clear(); pulse.last_applied_at.clear() } { drop(pulse.last_applied_at.insert(cap.digest.clone(), crate::now_unix() as i64)) } pulse.last_applied.insert(cap.digest.clone(), resp);
             }
             return;
         }
@@ -239,6 +297,8 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
                 http: None,
                 deny: None,
                 pending: None,
+            projection,
+            http_queued: None,
             };
             attach_gateway_http_after_allow(&held.plaintext, &mut resp);
             resp
@@ -246,6 +306,6 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
         Err(e) => deny_resp(None, e.to_string()),
     };
     if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
-        pulse.last_applied.insert(cap.digest.clone(), resp);
+        if pulse.last_applied.len() >= 4096 { pulse.last_applied.clear(); pulse.last_applied_at.clear() } { drop(pulse.last_applied_at.insert(cap.digest.clone(), crate::now_unix() as i64)) } pulse.last_applied.insert(cap.digest.clone(), resp);
     }
 }

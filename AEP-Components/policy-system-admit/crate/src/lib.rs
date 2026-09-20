@@ -1203,7 +1203,17 @@ fn compile_loaded_gaps(gaps: &[LoadedGap], input: &PolicySystemCompileInput) -> 
             walls.push(wall_for(gap, item, closed));
         }
         if gap_profile_binds(gap, input) {
-            walls.extend(compile_instruction_profile_walls(&gap.source, input));
+            let mut profile = compile_instruction_profile_walls(&gap.source, input);
+            if always_on_eval_stem(&gap.stem) {
+                let mut kept = Vec::new();
+                for w in profile {
+                    if w.id.starts_with(aep_gap_schema_profile_v13::WALL_AGENT_PERMISSION) == false {
+                        kept.push(w);
+                    }
+                }
+                profile = kept;
+            }
+            walls.extend(profile);
         }
     }
     walls

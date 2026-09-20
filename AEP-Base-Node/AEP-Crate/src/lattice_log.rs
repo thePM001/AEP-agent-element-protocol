@@ -438,7 +438,7 @@ mod tests {
     }
 
     fn lattice_yaml() -> &'static str {
-        "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_permission: [\"dynaep-bridge\"]\n"
+        "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_permission: [\"agent-a\"]\n"
     }
 
     fn plant_lattice(dir: &std::path::Path) {
@@ -454,7 +454,7 @@ mod tests {
 
     fn sample_input(action_path: &str) -> DynAepEventInput {
         DynAepEventInput {
-            agent_id: "dynaep-bridge".into(),
+            agent_id: "agent-a".into(),
             channel_id: "ch-local-test".into(),
             contract_id: "dynaep-action-lattice".into(),
             event_type: "STATE_DELTA".into(),
@@ -469,7 +469,7 @@ mod tests {
     fn record_and_export_dynaep_event() {
         let (dir, path) = temp_db();
         plant_lattice(dir.path());
-        provision_agent(dir.path(), "dynaep-bridge");
+        provision_agent(dir.path(), "agent-a");
         let conn = open_lattice_db(&path).expect("open");
         let input = sample_input("root:ping");
         let contracts = crate::bootstrap_contracts_from_lrps(&[]);
@@ -480,7 +480,7 @@ mod tests {
         let exported = export_dynaep_events(&conn, Some(10)).expect("export");
         assert_eq!(exported.len(), 1);
         assert_eq!(exported[0].event_type, "STATE_DELTA");
-        assert_eq!(exported[0].agent_id, "dynaep-bridge");
+        assert_eq!(exported[0].agent_id, "agent-a");
         // Must match capsule bundle, not a stale placeholder key.
         assert_ne!(
             exported[0].agentmesh["did"]["verification_key_hex"].as_str(),
@@ -492,7 +492,7 @@ mod tests {
     fn record_without_action_path_does_not_write() {
         let (dir, path) = temp_db();
         plant_lattice(dir.path());
-        provision_agent(dir.path(), "dynaep-bridge");
+        provision_agent(dir.path(), "agent-a");
         let conn = open_lattice_db(&path).expect("open");
         let input = sample_input("");
         let contracts = crate::bootstrap_contracts_from_lrps(&[]);
@@ -505,7 +505,7 @@ mod tests {
     #[test]
     fn record_without_lattice_does_not_write() {
         let (dir, path) = temp_db();
-        provision_agent(dir.path(), "dynaep-bridge");
+        provision_agent(dir.path(), "agent-a");
         let conn = open_lattice_db(&path).expect("open");
         let input = sample_input("root:ping");
         let contracts = crate::bootstrap_contracts_from_lrps(&[]);
@@ -521,7 +521,7 @@ mod tests {
     fn record_unknown_path_does_not_write() {
         let (dir, path) = temp_db();
         plant_lattice(dir.path());
-        provision_agent(dir.path(), "dynaep-bridge");
+        provision_agent(dir.path(), "agent-a");
         let conn = open_lattice_db(&path).expect("open");
         let input = sample_input("bogus:path");
         let contracts = crate::bootstrap_contracts_from_lrps(&[]);

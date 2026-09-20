@@ -57,7 +57,9 @@ pub(crate) fn prepare_socket_dir(socket_base: &str) -> std::io::Result<()> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let _ = std::fs::set_permissions(socket_base, std::fs::Permissions::from_mode(0o700));
+        std::fs::set_permissions(socket_base, std::fs::Permissions::from_mode(0o700))?;
+        let mode = std::fs::metadata(socket_base)?.permissions().mode() & 0o777;
+        if mode != 0o700 { return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, String::from("socket dir mode must be 0700"))); }
     }
     Ok(())
 }
@@ -71,13 +73,15 @@ pub(crate) fn bind_listener(path: &str) -> std::io::Result<UnixListener> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;
+        let mode = std::fs::metadata(path)?.permissions().mode() & 0o777;
+        if mode != 0o600 { return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, String::from("socket mode must be 0600"))); }
     }
     Ok(listener)
 }
 
 fn is_collect_pending(resp: &DockFrameResponse) -> bool {
-    resp.ok && resp.event_id.is_none() && resp.deny.is_none() && resp.error.is_none() && resp.digest.is_some()
+    resp.pending == Some(true) && resp.event_id.is_none()
 }
 
 fn line_is_collect(line: &str) -> bool {
@@ -249,6 +253,7 @@ fn tls_dock_port(port: DockingPort) -> u16 {
     match port {
         DockingPort::InferenceEngine => 28425,
         DockingPort::ValidationEngine => 28426,
+        DockingPort::DisplaySurface => 28429,
         DockingPort::FutureFeatures => 28427,
         DockingPort::RegulationModule => 28428,
     }
@@ -297,7 +302,7 @@ async fn serve_tls_port(
                         warn!(error = %e, "docking TLS connection closed with error");
                     }
                 }
-                Err(e) => warn!(error = %e, "docking TLS handshake failed"),
+                Err(_) => { rt.request_stop() },
             }
         });
         runtime.track_task(handle);
@@ -340,8 +345,8 @@ pub async fn run_docking_servers(
             .map_err(std::io::Error::other)?;
         let acceptor = TlsAcceptor::from(server_cfg);
         let host = std::env::var("AEP_LATTICE_TLS_BIND").unwrap_or_else(|_| "127.0.0.1".into());
+        let mut tls_bound = Vec::new();
         for spec in shared.port_specs() {
-            let rt = shared.clone();
             let port = spec.port;
             let tcp_port = tls_dock_port(port);
             let bind_addr = format!("{host}:{tcp_port}");
@@ -349,8 +354,11 @@ pub async fn run_docking_servers(
                 warn!(error = %e, addr = %bind_addr, port = %format!("{port:?}"), "docking TLS bind failed");
                 e
             })?;
+            tls_bound.push((port, listener, bind_addr));
+        }
+        for (port, listener, addr) in tls_bound {
+            let rt = shared.clone();
             let acceptor = acceptor.clone();
-            let addr = bind_addr.clone();
             handles.push(tokio::spawn(async move {
                 if let Err(e) = serve_tls_port(rt, port, listener, acceptor, addr).await {
                     warn!(error = %e, port = %format!("{port:?}"), "docking TLS listener exited");
@@ -358,14 +366,18 @@ pub async fn run_docking_servers(
             }));
         }
     }
+    let mut unix_bound = Vec::new();
     for spec in shared.port_specs() {
-        let rt = shared.clone();
         let listen_path = spec.listen_path.clone();
         let port = spec.port;
         let listener = bind_listener(&listen_path).map_err(|e| {
             warn!(error = %e, path = %listen_path, port = %format!("{port:?}"), "docking port bind failed");
             e
         })?;
+            unix_bound.push((port, listener, listen_path));
+    }
+    for (port, listener, listen_path) in unix_bound {
+        let rt = shared.clone();
         handles.push(tokio::spawn(async move {
             if let Err(e) = serve_port(rt, port, listener, listen_path).await {
                 warn!(error = %e, port = %format!("{port:?}"), "docking port listener exited");

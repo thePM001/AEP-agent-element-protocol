@@ -40,6 +40,7 @@ pub struct PulseState {
     pub(crate) held: HashMap<String, HeldCapsule>,
     pub(crate) clock_ms: Option<i64>,
     pub(crate) last_applied: HashMap<String, DockFrameResponse>,
+    pub(crate) last_applied_at: HashMap<String, i64>,
 }
 
 impl Default for PulseState {
@@ -48,6 +49,7 @@ impl Default for PulseState {
             queue: PulseQueue::new(),
             held: HashMap::new(),
             clock_ms: None,
+            last_applied_at: HashMap::new(),
             last_applied: HashMap::new(),
         }
     }
@@ -69,6 +71,7 @@ pub struct DockingRuntime {
     pub live_entry: Arc<Mutex<LiveEntry>>,
     pub hub: Arc<AgentControlHub>,
     pub pulse: Arc<Mutex<PulseState>>,
+    pub display: Arc<Mutex<crate::dock_display::DisplayStaging>>,
     pub(crate) connection_limit: Arc<Semaphore>,
     pub(crate) stop: watch::Sender<bool>,
     pub(crate) inflight: Arc<Mutex<Vec<JoinHandle<()>>>>,
@@ -122,11 +125,12 @@ impl DockingRuntime {
             hub: {
                 let loaded = match AgentControlHub::load_from_gap(&resolve_gap_root()) {
                     Ok(h) => h,
-                    Err(_) => AgentControlHub::empty(),
+                    Err(_) => if std::env::var("AEP_HUB_STRICT").is_ok() { panic!("GAP root missing") } else { AgentControlHub::empty() },
                 };
                 Arc::new(loaded)
             },
             pulse: Arc::new(Mutex::new(PulseState::default())),
+            display: Arc::new(Mutex::new(crate::dock_display::DisplayStaging::new())),
             connection_limit: Arc::new(Semaphore::new(MAX_CONNECTIONS)),
             stop: watch::channel(false).0,
             inflight: Arc::new(Mutex::new(Vec::new())),
@@ -215,7 +219,12 @@ pub(crate) fn collect_applied(runtime: &DockingRuntime, digest: &str) -> DockFra
         return deny_resp(None, String::from("collect requires digest"));
     }
     let _ = pulse_beat(runtime);
-    let pulse = dock_lock!(&runtime.pulse, "pulse");
+    let mut pulse = dock_lock!(&runtime.pulse, "pulse");
+    if let Some(&at) = pulse.last_applied_at.get(digest) {
+        if crate::now_unix() as i64 - at > 600 {
+            drop((pulse.last_applied.remove(digest), pulse.last_applied_at.remove(digest)))
+        }
+    }
     if let Some(resp) = pulse.last_applied.get(digest) {
         if resp.ok && resp.event_id.is_none() {
             return deny_closed(
@@ -276,15 +285,23 @@ pub(crate) fn pulse_enqueue(
             },
         );
     }
+    {
+        let db = dock_lock!(&runtime.db, "db");
+        if let Err(e) = crate::persist_held_digest(&db, &digest, crate::now_unix() as i64) {
+            return deny_closed(Some(digest), format!("ledger unavailable: {e}"), "ledger.unavailable", "ledger.unavailable");
+        }
+    }
     DockFrameResponse {
-        ok: true,
+        ok: false,
         event_id: None,
         digest: Some(digest),
         error: None,
         pong: None,
         http: None,
         deny: None,
-        pending: None,
+        pending: Some(true),
+        http_queued: None,
+        projection: None,
     }
 }
 
@@ -310,7 +327,7 @@ fn finish_aged(runtime: &DockingRuntime, cap: &QueuedCapsule) {
     let detail = String::from("pulse capsule aged out");
     if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
         pulse.held.remove(&cap.digest);
-        pulse.last_applied.insert(
+        if pulse.last_applied.len() >= 4096 { pulse.last_applied.clear(); pulse.last_applied_at.clear() } { drop(pulse.last_applied_at.insert(cap.digest.clone(), crate::now_unix() as i64)) } pulse.last_applied.insert(
             cap.digest.clone(),
             deny_closed(
                 Some(cap.digest.clone()),

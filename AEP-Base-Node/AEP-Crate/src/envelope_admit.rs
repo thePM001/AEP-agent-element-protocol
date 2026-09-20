@@ -27,17 +27,17 @@ pub fn load_live_entry_from_paths(env_yaml: Option<&Path>, data_dir: &Path) -> L
     if let Some(p) = env_yaml {
         return match LiveEntry::from_yaml_file(p) {
             Ok(le) => le,
-            Err(_) => LiveEntry::new(),
+            Err(_) => if std::env::var("AEP_LATTICE_STRICT").is_ok() { panic!("unreadable lattice yaml") } else { LiveEntry::new() },
         };
     }
     let p = data_dir.join("lattice.yaml");
     if p.is_file() {
         return match LiveEntry::from_yaml_file(&p) {
             Ok(le) => le,
-            Err(_) => LiveEntry::new(),
+            Err(_) => if std::env::var("AEP_LATTICE_STRICT").is_ok() { panic!("unreadable lattice yaml") } else { LiveEntry::new() },
         };
     }
-    LiveEntry::new()
+    if std::env::var("AEP_LATTICE_STRICT").is_ok() { panic!("missing lattice yaml") } else { LiveEntry::new() }
 }
 
 pub fn admit_sealed_payload(live: &mut LiveEntry, plaintext: &[u8]) -> Result<(), BaseNodeError> {

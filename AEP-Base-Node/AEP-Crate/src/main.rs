@@ -67,7 +67,7 @@ struct Cli {
     lattice_db: PathBuf,
     /// Test flag. Allows a world-writable parent of lattice_db.
     #[arg(long, default_value_t = false)]
-    allow_world_writable_lattice_parent: bool,
+    #[cfg(test)] allow_world_writable_lattice_parent: bool,
     #[arg(long, default_value_t = false)]
     internet_up: bool,
     #[arg(long, default_value_t = 0)]
@@ -156,18 +156,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = rustls::crypto::ring::default_provider().install_default();
 
     let cli = Cli::parse();
-    if cli.allow_world_writable_lattice_parent {
+    #[cfg(test)] if cli.allow_world_writable_lattice_parent {
         std::env::set_var(ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV, "1");
     }
     let cfg = resolve_config(&cli)?;
+    let lattice_db = if cli.self_test {
+        let tmp = std::env::temp_dir().join(format!("aep-base-node-self-test-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&tmp);
+        tmp.join("aep-action-lattice.db")
+    } else {
+        cfg.lattice_db.clone()
+    };
 
     if cli.provision_agent_sign_key {
         let agent_id = cli.agent_id.as_deref().unwrap_or("").trim();
         if agent_id.is_empty() {
             return Err("provision-agent-sign-key requires --agent-id".into());
         }
-        let data_dir = cfg
-            .lattice_db
+        let data_dir = lattice_db
             .parent()
             .map(PathBuf::from)
             .unwrap_or_else(default_aep_data_dir);
@@ -182,9 +188,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if cli.daemon {
-        let conn = open_lattice_db(&cfg.lattice_db)?;
-        let data_dir = cfg
-            .lattice_db
+        std::env::set_var("AEP_LATTICE_STRICT", "1");
+        std::env::set_var("AEP_HUB_STRICT", "1");
+        let conn = open_lattice_db(&lattice_db)?;
+        let data_dir = lattice_db
             .parent()
             .map(PathBuf::from)
             .unwrap_or_else(default_aep_data_dir);
@@ -205,26 +212,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             ports = handles.len(),
             "AEP Base Node daemon listening on docking ports"
         );
-        tokio::signal::ctrl_c().await?;
+        let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
+        let mut sigint = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())?;
+        tokio::select! {
+            _ = sigterm.recv() => {}
+            _ = sigint.recv() => {}
+        }
         info!("AEP Base Node daemon shutting down");
         drain_docking_servers(&runtime, handles).await;
         return Ok(());
     }
 
-    let conn = open_lattice_db(&cfg.lattice_db)?;
-    let mut memory = LatticeMemoryStore::open_default(&cfg.lattice_db)?;
+    let conn = open_lattice_db(&lattice_db)?;
+    let mut memory = LatticeMemoryStore::open_default(&lattice_db)?;
     let contracts = bootstrap_contracts_from_lrps(&cfg.lrps);
 
     if cli.self_test {
-        let data_dir = cfg
-            .lattice_db
+        let data_dir = lattice_db
             .parent()
             .map(PathBuf::from)
             .unwrap_or_else(default_aep_data_dir);
         let dock_kem = load_or_create_dock_kem(&data_dir);
-        let sign_store = AgentSignKeyStore::load(&data_dir);
+        let mut sign_store = AgentSignKeyStore::load(&data_dir);
         let sign = sign_store
-            .get("AG-BOOT")
+            .provision("AG-BOOT")
             .map_err(|e| format!("self-test: {e}"))?;
         let frame = build_frame_for_dock(
             "ch-selftest",
@@ -277,12 +288,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let events = aep_base_node::event_count(&conn)?;
     let attractors = memory.attractor_count()?;
     let listening = sockets_exist(&cfg.socket_base);
-    let data_dir = cfg.lattice_db.parent();
+    let data_dir = lattice_db.parent();
     let (mesh_peers, mesh_routes, mesh_load_error) =
         aep_base_node::resolve_mesh_peers(data_dir, cfg.internet_up, cfg.mesh_peers);
     let hub = match AgentControlHub::load_from_gap(&resolve_gap_root()) {
         Ok(h) => h,
-        Err(_) => AgentControlHub::empty(),
+        Err(_) => if std::env::var("AEP_HUB_STRICT").is_ok() { panic!("GAP root missing") } else { AgentControlHub::empty() },
     };
     let report = health(
         env!("CARGO_PKG_VERSION"),

@@ -72,7 +72,7 @@
     }
 
     fn dock_lattice_yaml() -> &'static str {
-        "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n"
+        "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\", \"AG-DOCK\", \"AG-MESH\", \"AG-PULSE\", \"AG-COL\", \"AG-LRP\", \"AG-SEQ\", \"AG-SOCKC\", \"AG-DRIFT\", \"AG-BOUND\", \"dynaep-bridge\"]\n"
     }
     fn admit_ok_payload() -> &'static [u8] {
         br#"{"type":"PING","action_path":"root:ping","payload":{"ok":true},"timestamp":1000000,"target_id":"scene-a","_sequenceNumber":1}"#
@@ -86,14 +86,17 @@
     fn through_pulse(rt: &DockingRuntime, port: &DockingPort, line: &str) -> DockFrameResponse {
         set_pulse_clock(rt, 1_000_000);
         let enq = process_request(rt, port, line);
-        if enq.ok == false {
-            return enq;
+        let digest = match enq.digest.clone() {
+            Some(d) => d,
+            None => return enq,
+        };
+        if enq.pending == Some(true) {
+            set_pulse_clock(rt, 1_000_000 + PULSE_MS);
+            let _ = pulse_beat(rt);
+            let collect = format!("{{\"collect\":\"{digest}\"}}");
+            return process_request(rt, port, &collect);
         }
-        let digest = enq.digest.clone().unwrap_or_default();
-        set_pulse_clock(rt, 1_000_000 + PULSE_MS);
-        let _ = pulse_beat(rt);
-        let collect = format!("{{\"collect\":\"{digest}\"}}");
-        process_request(rt, port, &collect)
+        enq
     }
     fn plant_lattice(dir: &std::path::Path) {
         std::fs::write(dir.join("lattice.yaml"), dock_lattice_yaml()).expect("lattice");
@@ -358,7 +361,8 @@
             1,
         );
         let resp1 = process_request(&rt, &DockingPort::ValidationEngine, &line_high);
-        assert!(resp1.ok, "{:?}", resp1.error);
+        assert_eq!(resp1.ok, false);
+        assert_eq!(resp1.pending, Some(true));
         let fp1 = rt
             .agent_bundles
             .lock()
@@ -380,7 +384,8 @@
             2,
         );
         let resp2 = process_request(&rt, &DockingPort::ValidationEngine, &line_low);
-        assert!(resp2.ok, "{:?}", resp2.error);
+        assert_eq!(resp2.ok, false);
+        assert_eq!(resp2.pending, Some(true));
         let fp2 = rt
             .agent_bundles
             .lock()
@@ -418,7 +423,8 @@
         let mut wire = serde_json::from_str::<serde_json::Value>(&line).unwrap();
         wire["trust_score"] = serde_json::json!(999);
         let resp = process_request(&rt, &DockingPort::ValidationEngine, &wire.to_string());
-        assert!(resp.ok, "{:?}", resp.error);
+        assert_eq!(resp.ok, false);
+        assert_eq!(resp.pending, Some(true));
         let score = *rt
             .agent_trust
             .lock()
@@ -462,12 +468,13 @@
             1,
         );
         let resp1 = process_request(&rt, &DockingPort::ValidationEngine, &line);
-        assert!(resp1.ok, "{:?}", resp1.error);
+        assert_eq!(resp1.ok, false);
+        assert_eq!(resp1.pending, Some(true));
         let resp2 = process_request(&rt, &DockingPort::ValidationEngine, &line);
         assert!(!resp2.ok);
         assert!(resp2.error.clone().unwrap().contains("replay"));
         let deny = resp2.deny.expect("deny report");
-        assert!(deny.closed.iter().any(|w| w.class == "security" && w.id == "digest.replay"));
+        assert!(deny.closed.iter().any(|w| w.class == "frame.replay" && w.id == "digest.replay"));
     }
 
     #[tokio::test]
@@ -509,7 +516,8 @@
             .await
             .unwrap();
         let resp: DockFrameResponse = serde_json::from_str(buf.trim()).unwrap();
-        assert!(resp.ok, "{:?}", resp.error);
+        assert_eq!(resp.ok, false);
+        assert_eq!(resp.pending, Some(true));
         assert!(resp.digest.is_some());
         let _ = dir;
     }
@@ -554,7 +562,8 @@
             reader.read_line(&mut buf).await.unwrap();
         }
         let enq: DockFrameResponse = serde_json::from_str(buf.trim()).unwrap();
-        assert!(enq.ok, "{:?}", enq.error);
+        assert_eq!(enq.ok, false);
+        assert_eq!(enq.pending, Some(true));
         assert!(enq.event_id.is_none());
         let digest = enq.digest.clone().unwrap();
         set_pulse_clock(&shared, 1_000_000 + PULSE_MS);
@@ -684,7 +693,8 @@
         );
         // Sanity: legitimate bound wire key still works.
         let ok_resp = process_request(&rt, &DockingPort::ValidationEngine, &line);
-        assert!(ok_resp.ok, "bound key path must succeed: {:?}", ok_resp.error);
+        assert_eq!(ok_resp.ok, false);
+        assert_eq!(ok_resp.pending, Some(true));
     }
 
     #[test]
@@ -768,7 +778,7 @@
         assert!(!resp.ok, "{:?}", resp.error);
         let err = resp.error.unwrap_or_default();
         assert!(
-            err.contains("not allowlisted") || err.contains("allowlist"),
+            err.contains("not allowlisted") || err.contains("inactive"),
             "expected LRP allowlist deny: {err}"
         );
     }
@@ -964,7 +974,8 @@
             1,
         );
         let enq = process_request(&rt, &DockingPort::ValidationEngine, &line);
-        assert!(enq.ok, "{:?}", enq.error);
+        assert_eq!(enq.ok, false);
+        assert_eq!(enq.pending, Some(true));
         assert!(enq.digest.is_some());
         assert!(enq.event_id.is_none());
         set_pulse_clock(&rt, 1_000_000 + PULSE_MS);
@@ -992,7 +1003,8 @@
             1,
         );
         let enq = process_request(&rt, &DockingPort::ValidationEngine, &line);
-        assert!(enq.ok, "{:?}", enq.error);
+        assert_eq!(enq.ok, false);
+        assert_eq!(enq.pending, Some(true));
         assert!(enq.event_id.is_none());
         let digest = enq.digest.clone().unwrap();
         let pending = process_request(
@@ -1032,7 +1044,8 @@
             1,
         );
         let enq = process_request(&rt, &DockingPort::ValidationEngine, &line);
-        assert!(enq.ok, "{:?}", enq.error);
+        assert_eq!(enq.ok, false);
+        assert_eq!(enq.pending, Some(true));
         assert!(enq.event_id.is_none());
         let digest = enq.digest.clone().unwrap();
         set_pulse_clock(&rt, 1_000_000 + PULSE_MS);
@@ -1076,7 +1089,8 @@
             1,
         );
         let enq = process_request(&rt, &DockingPort::ValidationEngine, &line);
-        assert!(enq.ok, "{:?}", enq.error);
+        assert_eq!(enq.ok, false);
+        assert_eq!(enq.pending, Some(true));
         assert!(enq.event_id.is_none());
         let digest = enq.digest.clone().unwrap();
         let held = process_request(
@@ -1124,7 +1138,8 @@
             1,
         );
         let enq = process_request(&rt, &DockingPort::ValidationEngine, &line);
-        assert!(enq.ok, "{:?}", enq.error);
+        assert_eq!(enq.ok, false);
+        assert_eq!(enq.pending, Some(true));
         let digest = enq.digest.clone().unwrap();
         let held = process_request(
             &rt,
@@ -1179,7 +1194,8 @@
         );
         set_pulse_clock(&rt, 1_000_000);
         let enq = process_request(&rt, &DockingPort::ValidationEngine, &line);
-        assert!(enq.ok, "{:?}", enq.error);
+        assert_eq!(enq.ok, false);
+        assert_eq!(enq.pending, Some(true));
         set_pulse_clock(&rt, 1_001_000);
         let _ = pulse_beat(&rt);
         let digest = enq.digest.clone().unwrap();
@@ -1204,7 +1220,8 @@
         );
         set_pulse_clock(&rt, 1_000_000);
         let enq = process_request(&rt, &DockingPort::ValidationEngine, &line);
-        assert!(enq.ok, "{:?}", enq.error);
+        assert_eq!(enq.ok, false);
+        assert_eq!(enq.pending, Some(true));
         set_pulse_clock(&rt, 1_000_000 + MAX_AGE_MS + 1);
         let rel = pulse_beat(&rt);
         assert_eq!(rel.aged.len(), 1);
@@ -1296,7 +1313,10 @@
         );
         let e2 = process_request(&rt, &DockingPort::ValidationEngine, &line2);
         let e1 = process_request(&rt, &DockingPort::ValidationEngine, &line1);
-        assert!(e2.ok && e1.ok, "{:?} {:?}", e2.error, e1.error);
+        assert_eq!(e2.ok, false);
+        assert_eq!(e1.ok, false);
+        assert_eq!(e2.pending, Some(true));
+        assert_eq!(e1.pending, Some(true));
         set_pulse_clock(&rt, 1_001_000);
         let rel = pulse_beat(&rt);
         let seqs: Vec<i64> = rel.ready.iter().map(|c| c.sequence_number).collect();
@@ -1325,7 +1345,8 @@
             1,
         );
         let r1 = process_request(&rt, &DockingPort::ValidationEngine, &line);
-        assert!(r1.ok, "{:?}", r1.error);
+        assert_eq!(r1.ok, false);
+        assert_eq!(r1.pending, Some(true));
         let r2 = process_request(&rt, &DockingPort::ValidationEngine, &line);
         assert_eq!(r2.ok, false);
         assert!(r2.error.unwrap_or_default().contains("replay"));
@@ -1343,4 +1364,118 @@
         assert_eq!(sockets_exist(&sock_base), false);
         assert_eq!(shared.sqlite_is_closed(), true);
         let _ = dir;
+    }
+    fn plant_display_lattice(dir: &std::path::Path) {
+        let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../AEP-Components/display-grant-walls/lattice.yaml");
+        std::fs::copy(&src, dir.join("lattice.yaml")).expect("display lattice");
+    }
+    fn seed_display_parents(rt: &DockingRuntime) {
+        let mut live = rt.live_entry.lock().expect("live");
+        live.snapshot.satisfied_actions.insert(String::from("root:ping"));
+        live.snapshot.satisfied_actions.insert(String::from("agt|agent-a|root:ping"));
+        live.snapshot.satisfied_actions.insert(String::from("agt|agent-a|display:surface:attach"));
+        live.snapshot.satisfied_actions.insert(String::from("agt|agent-a|display:source:ingest"));
+        live.snapshot.satisfied_actions.insert(String::from("agt|agent-a|display:sector:stage"));
+        live.snapshot.satisfied_actions.insert(String::from("agt|agent-a|display:view:request"));
+    }
+    fn temp_display_runtime() -> (tempfile::TempDir, DockingRuntime) {
+        let dir = tempfile::tempdir().expect("tempdir");
+        plant_display_lattice(dir.path());
+        let (dir, rt) = runtime_in(dir);
+        {
+            let mut contracts = rt.contracts.lock().expect("contracts");
+            contracts.register("aep-display-surface");
+        }
+        seed_display_parents(&rt);
+        (dir, rt)
+    }
+    fn display_payload(action: &str, view: &str, source: &str, sector: &str, payload: &str, seq: i64) -> Vec<u8> {
+        format!("{{\"kind\":\"display\",\"type\":\"PING\",\"agent_id\":\"agent-a\",\"action_path\":\"{action}\",\"view\":\"{view}\",\"source\":\"{source}\",\"sector\":\"{sector}\",\"payload\":{payload},\"timestamp\":1000000,\"target_id\":\"scene-a\",\"_sequenceNumber\":{seq}}}").into_bytes()
+    }
+    fn grant_alpha(rt: &DockingRuntime) {
+        let mut d = rt.display.lock().expect("display");
+        d.add_grant("agent-a", "source.alpha", "sector.one");
+        d.add_grant("agent-a", "source.alpha", "sector.two");
+    }
+    fn display_line(rt: &DockingRuntime, payload: &[u8]) -> String {
+        install_agent_manifest(rt, "agent-a", "sess-1");
+        let (_f, line) = build_test_frame(rt, "ch-disp", "agent-a", "sess-1", DockingPort::DisplaySurface, "aep-display-surface", payload, 1);
+        line
+    }
+    #[test]
+    fn unknown_view_denies_on_miss() {
+        let (_dir, rt) = temp_display_runtime();
+        grant_alpha(&rt);
+        let line = display_line(&rt, &display_payload("display:view:project", "view.unknown", "source.alpha", "sector.one", "{}", 1));
+        let resp = through_pulse(&rt, &DockingPort::DisplaySurface, &line);
+        assert_eq!(resp.ok, false);
+        assert!(resp.error.unwrap_or_default().contains("unknown view DENY on miss"));
+    }
+    #[test]
+    fn unknown_source_denies_on_miss() {
+        let (_dir, rt) = temp_display_runtime();
+        grant_alpha(&rt);
+        let line = display_line(&rt, &display_payload("display:source:ingest", "view.alpha", "source.unknown", "sector.one", "{}", 1));
+        let resp = through_pulse(&rt, &DockingPort::DisplaySurface, &line);
+        assert_eq!(resp.ok, false);
+        assert!(resp.error.unwrap_or_default().contains("unknown source DENY on miss"));
+    }
+    #[test]
+    fn unknown_sector_denies_on_miss() {
+        let (_dir, rt) = temp_display_runtime();
+        grant_alpha(&rt);
+        let line = display_line(&rt, &display_payload("display:source:ingest", "view.alpha", "source.alpha", "sector.unknown", "{}", 1));
+        let resp = through_pulse(&rt, &DockingPort::DisplaySurface, &line);
+        assert_eq!(resp.ok, false);
+        assert!(resp.error.unwrap_or_default().contains("unknown sector DENY on miss"));
+    }
+    #[test]
+    fn empty_grant_list_refuses() {
+        let (_dir, rt) = temp_display_runtime();
+        let line = display_line(&rt, &display_payload("display:source:ingest", "view.alpha", "source.alpha", "sector.one", "{}", 1));
+        let resp = through_pulse(&rt, &DockingPort::DisplaySurface, &line);
+        assert_eq!(resp.ok, false);
+        assert!(resp.error.unwrap_or_default().contains("empty grant list refuses"));
+    }
+    #[test]
+    fn display_json_roundtrip_returns_projection_after_admit() {
+        let (_dir, rt) = temp_display_runtime();
+        grant_alpha(&rt);
+        let ingest = display_line(&rt, &display_payload("display:source:ingest", "view.alpha", "source.alpha", "sector.one", "{\"n\":1}", 1));
+        let ing = through_pulse(&rt, &DockingPort::DisplaySurface, &ingest);
+        assert!(ing.ok, "{:?}", ing.error);
+        let proj = display_line(&rt, &display_payload("display:view:project", "view.alpha", "source.alpha", "sector.one", "{}", 2));
+        let resp = through_pulse(&rt, &DockingPort::DisplaySurface, &proj);
+        assert!(resp.ok, "{:?}", resp.error);
+        assert_eq!(resp.projection, Some(serde_json::json!({"n":1})));
+    }
+    #[test]
+    fn pre_staging_holds_two_sectors() {
+        let (_dir, rt) = temp_display_runtime();
+        grant_alpha(&rt);
+        let one = display_line(&rt, &display_payload("display:source:ingest", "view.alpha", "source.alpha", "sector.one", "{\"k\":1}", 1));
+        assert!(through_pulse(&rt, &DockingPort::DisplaySurface, &one).ok);
+        let two = display_line(&rt, &display_payload("display:source:ingest", "view.beta", "source.alpha", "sector.two", "{\"k\":2}", 2));
+        assert!(through_pulse(&rt, &DockingPort::DisplaySurface, &two).ok);
+        let p1 = display_line(&rt, &display_payload("display:view:project", "view.alpha", "source.alpha", "sector.one", "{}", 3));
+        let r1 = through_pulse(&rt, &DockingPort::DisplaySurface, &p1);
+        let p2 = display_line(&rt, &display_payload("display:view:project", "view.beta", "source.alpha", "sector.two", "{}", 4));
+        let r2 = through_pulse(&rt, &DockingPort::DisplaySurface, &p2);
+        assert_eq!(r1.projection, Some(serde_json::json!({"k":1})));
+        assert_eq!(r2.projection, Some(serde_json::json!({"k":2})));
+    }
+    #[test]
+    fn json_body_without_sealed_frame_is_refused() {
+        let (_dir, rt) = temp_display_runtime();
+        let resp = process_request(&rt, &DockingPort::DisplaySurface, "{\"kind\":\"display\"}");
+        assert_eq!(resp.ok, false);
+        assert!(resp.error.unwrap_or_default().contains("JSON body that skips the sealed frame is refused"));
+    }
+    #[test]
+    fn http_json_without_frame_is_refused() {
+        let (_dir, rt) = temp_display_runtime();
+        let raw = "POST /display HTTP/1.1\r\n\r\n{\"kind\":\"display\"}";
+        let resp = process_request(&rt, &DockingPort::DisplaySurface, raw);
+        assert_eq!(resp.ok, false);
+        assert!(resp.error.unwrap_or_default().contains("JSON body that skips the sealed frame is refused"));
     }

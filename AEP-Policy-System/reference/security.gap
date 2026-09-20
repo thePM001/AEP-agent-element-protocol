@@ -76,7 +76,7 @@
     "aspect": "objective",
     "agent_permission": [
       {
-        "agent_id": "agent-a",
+        "agent_id": "*",
         "action": "*"
       }
     ],
