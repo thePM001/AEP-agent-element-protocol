@@ -238,6 +238,7 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
                 pong: None,
                 http: None,
                 deny: None,
+                pending: None,
             };
             attach_gateway_http_after_allow(&held.plaintext, &mut resp);
             resp

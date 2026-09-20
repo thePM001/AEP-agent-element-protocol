@@ -4,13 +4,14 @@ use super::dock_apply::apply_held_capsule;
 use super::dock_rate::{GLOBAL_RATE_LIMIT, SIGNER_RATE_LIMIT};
 use super::dock_serve::MAX_CONNECTIONS;
 use super::{
-    deny_closed, deny_resp, dock_lock, lock_or_deny, DockFrameResponse,
+    deny_closed, deny_resp, dock_lock, lock_or_deny, pending_held_response, DockFrameResponse,
 };
 use aep_base_node_pulse::{freeze_temporal_snapshot, BeatRelease, PulseQueue, QueuedCapsule};
 use aep_lattice_channel::{ContractRegistry, DockingPort, LatticeChannelFrame, RateLimiter};
 use aep_lattice_crypto::KemKeypair;
 use aep_live_entry::LiveEntry;
 use aep_agent_control_hub::{AgentControlHub, resolve_gap_root};
+use aep_wall_set_backpressure::CLASS_SECURITY;
 use aep_wall_set_backpressure::CLASS_TEMPORAL;
 use crate::dock_keys::{load_or_create_dock_kem, AgentSignKeyStore};
 use crate::envelope_admit::load_live_entry;
@@ -216,18 +217,18 @@ pub(crate) fn collect_applied(runtime: &DockingRuntime, digest: &str) -> DockFra
     let _ = pulse_beat(runtime);
     let pulse = dock_lock!(&runtime.pulse, "pulse");
     if let Some(resp) = pulse.last_applied.get(digest) {
+        if resp.ok && resp.event_id.is_none() {
+            return deny_closed(
+                Some(String::from(digest)),
+                String::from("collect allow missing event_id"),
+                "collect.event_id",
+                CLASS_SECURITY,
+            );
+        }
         return resp.clone();
     }
     if pulse.held.contains_key(digest) {
-        return DockFrameResponse {
-            ok: true,
-            event_id: None,
-            digest: Some(String::from(digest)),
-            error: None,
-            pong: None,
-            http: None,
-            deny: None,
-        };
+        return pending_held_response(String::from(digest));
     }
     deny_resp(
         Some(String::from(digest)),
@@ -283,6 +284,7 @@ pub(crate) fn pulse_enqueue(
         pong: None,
         http: None,
         deny: None,
+        pending: None,
     }
 }
 

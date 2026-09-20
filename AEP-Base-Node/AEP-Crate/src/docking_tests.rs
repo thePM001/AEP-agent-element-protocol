@@ -1000,7 +1000,8 @@
             &DockingPort::ValidationEngine,
             &format!("{{\"collect\":\"{digest}\"}}"),
         );
-        assert!(pending.ok);
+        assert_eq!(pending.ok, false);
+        assert_eq!(pending.pending, Some(true));
         assert!(pending.event_id.is_none());
         assert!(pending.deny.is_none());
         set_pulse_clock(&rt, 1_000_000 + PULSE_MS);
@@ -1059,6 +1060,94 @@
         assert!(applied.error.unwrap_or_default().contains("unknown digest"));
         assert!(applied.deny.is_some());
     }
+    #[test]
+    fn collect_held_is_pending_until_last_applied_allow() {
+        let (_dir, rt) = temp_runtime();
+        install_agent_manifest(&rt, "AG-HELD", "sess-held");
+        set_pulse_clock(&rt, 1_000_000);
+        let (_frame, line) = build_test_frame(
+            &rt,
+            "ch-held",
+            "AG-HELD",
+            "sess-held",
+            DockingPort::ValidationEngine,
+            "dynaep-action-lattice",
+            admit_ok_payload(),
+            1,
+        );
+        let enq = process_request(&rt, &DockingPort::ValidationEngine, &line);
+        assert!(enq.ok, "{:?}", enq.error);
+        assert!(enq.event_id.is_none());
+        let digest = enq.digest.clone().unwrap();
+        let held = process_request(
+            &rt,
+            &DockingPort::ValidationEngine,
+            &format!("{{\"collect\":\"{digest}\"}}"),
+        );
+        assert_eq!(held.ok, false);
+        assert_eq!(held.pending, Some(true));
+        assert!(held.event_id.is_none());
+        assert!(held.deny.is_none());
+        assert_eq!(held.digest.as_deref(), Some(digest.as_str()));
+        set_pulse_clock(&rt, 1_000_000 + PULSE_MS);
+        let _ = pulse_beat(&rt);
+        let applied = process_request(
+            &rt,
+            &DockingPort::ValidationEngine,
+            &format!("{{\"collect\":\"{digest}\"}}"),
+        );
+        assert_eq!(applied.pending, None);
+        assert_eq!(applied.digest.as_deref(), Some(digest.as_str()));
+        if applied.ok {
+            assert!(applied.event_id.is_some());
+        } else {
+            let deny = applied.deny.expect("deny report");
+            assert_eq!(deny.closed.is_empty(), false);
+            assert!(applied.event_id.is_none());
+        }
+
+    }
+
+    #[test]
+    fn collect_held_then_deny_names_walls() {
+        let (_dir, rt) = temp_runtime();
+        install_agent_manifest(&rt, "AG-HELDD", "sess-heldd");
+        set_pulse_clock(&rt, 1_000_000);
+        let (_frame, line) = build_test_frame(
+            &rt,
+            "ch-heldd",
+            "AG-HELDD",
+            "sess-heldd",
+            DockingPort::ValidationEngine,
+            "dynaep-action-lattice",
+            br#"{"type":"PING"}"#,
+            1,
+        );
+        let enq = process_request(&rt, &DockingPort::ValidationEngine, &line);
+        assert!(enq.ok, "{:?}", enq.error);
+        let digest = enq.digest.clone().unwrap();
+        let held = process_request(
+            &rt,
+            &DockingPort::ValidationEngine,
+            &format!("{{\"collect\":\"{digest}\"}}"),
+        );
+        assert_eq!(held.ok, false);
+        assert_eq!(held.pending, Some(true));
+        assert!(held.event_id.is_none());
+        set_pulse_clock(&rt, 1_000_000 + PULSE_MS);
+        let _ = pulse_beat(&rt);
+        let applied = process_request(
+            &rt,
+            &DockingPort::ValidationEngine,
+            &format!("{{\"collect\":\"{digest}\"}}"),
+        );
+        assert_eq!(applied.ok, false);
+        let deny = applied.deny.expect("deny report");
+        assert_eq!(deny.closed.is_empty(), false);
+        assert!(applied.event_id.is_none());
+        assert_eq!(applied.pending, None);
+    }
+
 
     fn must_drift_not_pulse() {
         assert_ne!(MAX_DRIFT_MS, PULSE_MS);

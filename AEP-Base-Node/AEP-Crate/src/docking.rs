@@ -59,6 +59,8 @@ pub struct DockFrameResponse {
     pub http: Option<DockHttp>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deny: Option<DenyReport>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pending: Option<bool>,
 }
 
 fn poisoned_lock_response(name: &'static str) -> DockFrameResponse {
@@ -123,6 +125,20 @@ pub(crate) fn deny_resp_report(
         pong: None,
         http: None,
         deny: Some(deny),
+        pending: None,
+    }
+}
+
+pub(crate) fn pending_held_response(digest: String) -> DockFrameResponse {
+    DockFrameResponse {
+        ok: false,
+        event_id: None,
+        digest: Some(digest),
+        error: None,
+        pong: None,
+        http: None,
+        deny: None,
+        pending: Some(true),
     }
 }
 
