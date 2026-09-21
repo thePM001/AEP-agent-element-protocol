@@ -1,0 +1,20 @@
+@PAD: gaplune-pad-transform encode
+@GCDE: gaplune-decode hmac-sha256:3efeaf869cffd594473d18810aca43e2efff1db5809fd1caf6fb426f98d6e05f
+schema_id: gaplune.nla.dock-spec.v1
+format: gaplune
+json: prohibited
+port_id: display_surface
+name: display surface dock
+priority: 200
+socket_suffix: /display
+tls_port: 28429
+purpose: JSON display dock with in-kernel pre-staging after Admit
+transport: lattice-channel
+implementation: AEP-Base-Node/AEP-Crate/src/dock_display.rs
+crate_display_name: display-surface-dock
+known_views: view.alpha view.beta
+known_sources: source.alpha source.beta
+known_sectors: sector.one sector.two
+actions: display:source:ingest display:sector:stage display:view:request display:view:project
+http_adapter: json-body-requires-sealed-frame
+ticket: DISPLAY-API-003

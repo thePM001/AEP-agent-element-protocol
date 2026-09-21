@@ -17,7 +17,7 @@ const DOCKING_PORTS: &[&str] = &[
     "inference_engine",
     "validation_engine",
     "future_features",
-    "regulation_module",
+    "regulation_module", "display_surface",
 ];
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

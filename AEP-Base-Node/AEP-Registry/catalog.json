@@ -51,8 +51,19 @@
       "bundled": true,
       "default_enabled": true,
       "path": "AEP-Base-Node/",
-      "description": "Mandatory local governance daemon with docking ports.",
+      "description": "Mandatory local governance daemon with docking ports including display surface.",
       "manifest": "AEP-Base-Node/AEP-Registry/components/aep-base-node.json",
+      "role": "kernel"
+    },
+    {
+      "id": "display-surface",
+      "name": "Display Surface",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Base-Node/AEP-Docks/specs/display-surface.json",
+      "description": "Governed JSON display dock with in-kernel pre-staging.",
+      "manifest": "AEP-Base-Node/AEP-Registry/components/display-surface.json",
       "role": "kernel"
     },
     {

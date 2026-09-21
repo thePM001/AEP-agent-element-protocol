@@ -16,11 +16,12 @@ use aep_wall_set_backpressure::CLASS_TEMPORAL;
 use crate::dock_keys::{load_or_create_dock_kem, AgentSignKeyStore};
 use crate::envelope_admit::load_live_entry;
 use crate::{
-    docking_port_specs, record_side_channel_anomaly, DockingPortSpec, ReplayGuard,
+    docking_port_specs, record_side_channel_anomaly, DockingPortSpec, BaseNodeError, ReplayGuard,
     SideChannelAnomalyKind,
 };
 use rusqlite::Connection;
 use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -41,6 +42,7 @@ pub struct PulseState {
     pub(crate) clock_ms: Option<i64>,
     pub(crate) last_applied: HashMap<String, DockFrameResponse>,
     pub(crate) last_applied_at: HashMap<String, i64>,
+    pub(crate) last_applied_order: VecDeque<String>,
 }
 
 impl Default for PulseState {
@@ -50,10 +52,24 @@ impl Default for PulseState {
             held: HashMap::new(),
             clock_ms: None,
             last_applied_at: HashMap::new(),
+            last_applied_order: VecDeque::new(),
             last_applied: HashMap::new(),
         }
     }
 }
+    pub(crate) fn remember_applied(pulse: &mut PulseState, digest: String, resp: DockFrameResponse) {
+        while pulse.last_applied.len() >= 4096 {
+            let Some(old) = pulse.last_applied_order.pop_front() else {
+                break;
+            };
+            pulse.last_applied.remove(&old);
+            pulse.last_applied_at.remove(&old);
+        }
+        pulse.last_applied_at.insert(digest.clone(), crate::now_unix() as i64);
+        pulse.last_applied.insert(digest.clone(), resp);
+        pulse.last_applied_order.push_back(digest);
+    }
+
 
 pub struct DockingRuntime {
     pub socket_base: String,
@@ -79,7 +95,7 @@ pub struct DockingRuntime {
 }
 
 impl DockingRuntime {
-    pub fn new(socket_base: impl Into<String>, conn: Connection, lrps: &[String]) -> Self {
+    pub fn new(socket_base: impl Into<String>, conn: Connection, lrps: &[String]) -> Result<Self, BaseNodeError> {
         let data_dir = conn
             .path()
             .and_then(|p| Path::new(p).parent().map(Path::to_path_buf))
@@ -92,8 +108,9 @@ impl DockingRuntime {
         conn: Connection,
         lrps: &[String],
         data_dir: &Path,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, BaseNodeError> {
+    let live_entry = load_live_entry(data_dir)?;
+        Ok(Self {
             socket_base: socket_base.into(),
             lrps: lrps.to_vec(),
             db: Arc::new(Mutex::new(conn)),
@@ -121,11 +138,14 @@ impl DockingRuntime {
             dock_kem: Arc::new(load_or_create_dock_kem(data_dir)),
             agent_sign_keys: Arc::new(Mutex::new(AgentSignKeyStore::load(data_dir))),
             replay_guard: Arc::new(Mutex::new(ReplayGuard::default())),
-            live_entry: Arc::new(Mutex::new(load_live_entry(data_dir))),
+            live_entry: Arc::new(Mutex::new(live_entry)),
             hub: {
-                let loaded = match AgentControlHub::load_from_gap(&resolve_gap_root()) {
+                let loaded = match AgentControlHub::load_from_gap(&data_dir.join("gap")) {
                     Ok(h) => h,
-                    Err(_) => if std::env::var("AEP_HUB_STRICT").is_ok() { panic!("GAP root missing") } else { AgentControlHub::empty() },
+                    Err(_) => match AgentControlHub::load_from_gap(&resolve_gap_root()) {
+                    Ok(h) => h,
+                    Err(e) => return Err(BaseNodeError::HubLoad(e.to_string())),
+            },
                 };
                 Arc::new(loaded)
             },
@@ -135,7 +155,7 @@ impl DockingRuntime {
             stop: watch::channel(false).0,
             inflight: Arc::new(Mutex::new(Vec::new())),
             sqlite_closed: AtomicBool::new(false),
-        }
+        })
     }
 
     pub fn port_specs(&self) -> Vec<DockingPortSpec> {
@@ -327,9 +347,7 @@ fn finish_aged(runtime: &DockingRuntime, cap: &QueuedCapsule) {
     let detail = String::from("pulse capsule aged out");
     if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
         pulse.held.remove(&cap.digest);
-        if pulse.last_applied.len() >= 4096 { pulse.last_applied.clear(); pulse.last_applied_at.clear() } { drop(pulse.last_applied_at.insert(cap.digest.clone(), crate::now_unix() as i64)) } pulse.last_applied.insert(
-            cap.digest.clone(),
-            deny_closed(
+        remember_applied(&mut pulse, cap.digest.clone(), deny_closed(
                 Some(cap.digest.clone()),
                 detail.clone(),
                 "time.authority",

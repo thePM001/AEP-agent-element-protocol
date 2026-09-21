@@ -200,7 +200,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             conn,
             &cfg.lrps,
             &data_dir,
-        );
+        )?;
         let (runtime, handles) = run_docking_servers(runtime).await?;
         if !sockets_exist(&cfg.socket_base) {
             drain_docking_servers(&runtime, handles).await;
@@ -293,7 +293,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         aep_base_node::resolve_mesh_peers(data_dir, cfg.internet_up, cfg.mesh_peers);
     let hub = match AgentControlHub::load_from_gap(&resolve_gap_root()) {
         Ok(h) => h,
-        Err(_) => if std::env::var("AEP_HUB_STRICT").is_ok() { panic!("GAP root missing") } else { AgentControlHub::empty() },
+        Err(e) => return Err(e.to_string().into()),
     };
     let report = health(
         env!("CARGO_PKG_VERSION"),

@@ -39,6 +39,11 @@ pub fn default_lattice_db_path() -> PathBuf {
     default_aep_data_dir().join("aep-action-lattice.db")
 }
 
+#[cfg(not(test))]
+pub fn world_writable_lattice_parent_allowed() -> bool {
+    false
+}
+#[cfg(test)]
 pub fn world_writable_lattice_parent_allowed() -> bool {
     match std::env::var(ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV) {
         Ok(v) => {
@@ -338,7 +343,7 @@ pub fn record_dynaep_event(
 
     // Kernel write only after dock Admit. Deny does not INSERT.
     let keys_dir = resolve_keys_dir(db_path);
-    let mut live = crate::envelope_admit::load_live_entry(&keys_dir);
+    let mut live = crate::envelope_admit::load_live_entry(&keys_dir)?;
     // The kernel clock freezes at the seal, which is the stamp the
     // sealed event carries, so a locally sealed frame carries no drift.
     live.set_clock_ms(sealed_ts);
@@ -511,7 +516,7 @@ mod tests {
         let contracts = crate::bootstrap_contracts_from_lrps(&[]);
         let err = record_dynaep_event(&conn, &input, &contracts, &path).expect_err("deny");
         assert!(
-            err.to_string().contains("Admit collect-all walls then Apply") || err.to_string().contains("Lattice required")
+            err.to_string().contains("Admit collect-all walls then Apply") || err.to_string().contains("lattice yaml missing")
         );
         let exported = export_dynaep_events(&conn, Some(10)).expect("export");
         assert_eq!(exported.len(), 0);

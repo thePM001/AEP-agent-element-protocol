@@ -17,27 +17,27 @@ use serde_json::Value;
 use std::path::Path;
 use crate::BaseNodeError;
 
-pub fn load_live_entry(data_dir: &Path) -> LiveEntry {
+pub fn load_live_entry(data_dir: &Path) -> Result<LiveEntry, BaseNodeError> {
     let env_path = std::env::var("AEP_LATTICE_YAML").ok().filter(|p| p.is_empty() == false);
     load_live_entry_from_paths(env_path.as_deref().map(Path::new), data_dir)
 }
 
 /// A set env path that is missing or unreadable is Deny. Do not fall through to data_dir.
-pub fn load_live_entry_from_paths(env_yaml: Option<&Path>, data_dir: &Path) -> LiveEntry {
+pub fn load_live_entry_from_paths(env_yaml: Option<&Path>, data_dir: &Path) -> Result<LiveEntry, BaseNodeError> {
     if let Some(p) = env_yaml {
         return match LiveEntry::from_yaml_file(p) {
-            Ok(le) => le,
-            Err(_) => if std::env::var("AEP_LATTICE_STRICT").is_ok() { panic!("unreadable lattice yaml") } else { LiveEntry::new() },
+            Ok(le) => Ok(le),
+            Err(_) => Err(BaseNodeError::LatticeYamlUnreadable),
         };
     }
     let p = data_dir.join("lattice.yaml");
     if p.is_file() {
         return match LiveEntry::from_yaml_file(&p) {
-            Ok(le) => le,
-            Err(_) => if std::env::var("AEP_LATTICE_STRICT").is_ok() { panic!("unreadable lattice yaml") } else { LiveEntry::new() },
+            Ok(le) => Ok(le),
+            Err(_) => Err(BaseNodeError::LatticeYamlUnreadable),
         };
     }
-    if std::env::var("AEP_LATTICE_STRICT").is_ok() { panic!("missing lattice yaml") } else { LiveEntry::new() }
+    Err(BaseNodeError::LatticeYamlMissing)
 }
 
 pub fn admit_sealed_payload(live: &mut LiveEntry, plaintext: &[u8]) -> Result<(), BaseNodeError> {
@@ -258,38 +258,29 @@ mod tests {
         );
     }
     #[test]
-    fn missing_lattice_is_deny() {
+    fn missing_lattice_is_start_failure() {
         let dir = tempfile::tempdir().expect("tmp");
-        let mut le = load_live_entry(dir.path());
-        deny_empty_lattice(&mut le, br#"{"type":"STATE_DELTA"}"#);
-        deny_empty_lattice(&mut le, br#"{"type":"PING"}"#);
-        match le.process_event(serde_json::from_str(r#"{"type":"STATE_DELTA"}"#).unwrap()) {
-            ProcessOut::Reject(r) => assert!(r.error.contains("Lattice required")),
-            ProcessOut::Event(_) => panic!("missing lattice must Deny"),
-        }
+        let loaded = load_live_entry(dir.path());
+        let err = match loaded { Ok(_) => panic!("deny"), Err(e) => e };
+        assert!(err.to_string().contains("lattice yaml missing"));
     }
     #[test]
-    fn unreadable_lattice_yaml_is_deny() {
+    fn unreadable_lattice_yaml_is_start_failure() {
         let dir = tempfile::tempdir().expect("tmp");
         std::fs::write(dir.path().join("lattice.yaml"), "{{ not a lattice").expect("bad yaml");
-        let mut le = load_live_entry(dir.path());
-        deny_empty_lattice(&mut le, br#"{"type":"PING","action_path":"root:ping"}"#);
-        match le.process_event(serde_json::from_str(r#"{"type":"PING"}"#).unwrap()) {
-            ProcessOut::Reject(r) => assert!(r.error.contains("Lattice required")),
-            ProcessOut::Event(_) => panic!("unreadable lattice must Deny"),
-        }
+        let loaded = load_live_entry(dir.path());
+        let err = match loaded { Ok(_) => panic!("deny"), Err(e) => e };
+        assert!(err.to_string().contains("unreadable lattice yaml"));
     }
     #[test]
-    fn env_yaml_unreadable_does_not_fall_through() {
+    fn env_yaml_unreadable_is_start_failure() {
         let dir = tempfile::tempdir().expect("tmp");
         std::fs::write(dir.path().join("lattice.yaml"), yaml()).expect("good yaml");
         let bad = dir.path().join("bad.yaml");
         std::fs::write(&bad, "{{ not a lattice").expect("bad yaml");
-        let mut le = load_live_entry_from_paths(Some(&bad), dir.path());
-        match le.process_event(serde_json::from_str(r#"{"type":"PING","action_path":"root:ping"}"#).unwrap()) {
-            ProcessOut::Reject(r) => assert!(r.error.contains("Lattice required")),
-            ProcessOut::Event(_) => panic!("unreadable env lattice must Deny"),
-        }
+        let loaded = load_live_entry_from_paths(Some(&bad), dir.path());
+        let err = match loaded { Ok(_) => panic!("deny"), Err(e) => e };
+        assert!(err.to_string().contains("unreadable lattice yaml"));
     }
     #[test]
     fn empty_action_path_on_empty_lattice_is_deny() {

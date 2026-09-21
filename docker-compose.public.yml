@@ -15,6 +15,7 @@ services:
     restart: unless-stopped
     ports:
       - "${UCB_PORT:-8412}:8412"
+      - "${DISPLAY_PORT:-28429}:28429"
     environment:
       AEP_DATA: /data/aep
       AEP_IN_DOCKER: "1"
@@ -24,6 +25,9 @@ services:
       AEP_MANIFEST_RELOAD_INTERVAL_SECS: "0"
       UCB: "${UCB:-1}"
       UCB_PORT: "8412"
+      AEP_LATTICE_TRANSPORT: "${AEP_LATTICE_TRANSPORT:-tls}"
+      AEP_LATTICE_TLS_BIND: "${AEP_LATTICE_TLS_BIND:-0.0.0.0}"
+      DISPLAY_PORT: "28429"
       UCB_API_KEY: "${UCB_API_KEY:-}"
       AEP_TRUST_DOMAIN: "${AEP_TRUST_DOMAIN:-aep.protocol.local}"
       AEP_COMPONENTS_FETCH: "0"
@@ -41,7 +45,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'test -S /data/aep/sockets/validation',
+          'test -S /data/aep/sockets/validation && test -S /data/aep/sockets/display',
         ]
       interval: 30s
       timeout: 10s

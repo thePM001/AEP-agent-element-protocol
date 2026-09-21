@@ -40,3 +40,5 @@ Retained at repo root for reference only.
 ## Secure deployment
 
 - [AEP 2.8 Secure Deployment Guide](docs/AEP-2.8-SECURE-DEPLOYMENT-GUIDE.md)
+## JSON display API
+- [JSON display API](docs/DISPLAY-API.md)

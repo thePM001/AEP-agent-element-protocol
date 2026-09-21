@@ -74,6 +74,9 @@
     fn dock_lattice_yaml() -> &'static str {
         "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\", \"AG-DOCK\", \"AG-MESH\", \"AG-PULSE\", \"AG-COL\", \"AG-LRP\", \"AG-SEQ\", \"AG-SOCKC\", \"AG-DRIFT\", \"AG-BOUND\", \"dynaep-bridge\"]\n"
     }
+    fn hub_gap_text() -> &'static str {
+        "metadata:\n  wrap: caw\n  agent_permission:\n    - agent_id: AG-DOCK\n      action: root:ping\n    - agent_id: AG-MESH\n      action: root:ping\n    - agent_id: AG-LRP\n      action: root:ping\n    - agent_id: AG-PULSE\n      action: root:ping\n    - agent_id: AG-COL\n      action: root:ping\n    - agent_id: AG-SEQ\n      action: root:ping\n    - agent_id: AG-SOCKC\n      action: root:ping\n    - agent_id: AG-DRIFT\n      action: root:ping\n    - agent_id: AG-BOUND\n      action: root:ping\n    - agent_id: AG-PING\n      action: root:ping\n    - agent_id: AG-NJ\n      action: root:ping\n    - agent_id: AG-BURST\n      action: root:ping\n    - agent_id: AG-FUT\n      action: root:ping\n    - agent_id: AG-SESSMIS\n      action: root:ping\n    - agent_id: AG-LRP-DENY\n      action: root:ping\n    - agent_id: AG-PING-R\n      action: root:ping\n    - agent_id: AG-TRUST\n      action: root:ping\n    - agent_id: AG-WIRE\n      action: root:ping\n    - agent_id: AG-REPLAY\n      action: root:ping\n    - agent_id: AG-SOCK\n      action: root:ping\n    - agent_id: AG-BADSIG\n      action: root:ping\n    - agent_id: AG-STALE\n      action: root:ping\n    - agent_id: AG-AGE\n      action: root:ping\n    - agent_id: AG-OVF\n      action: root:ping\n    - agent_id: AG-OVB\n      action: root:ping\n    - agent_id: AG-DUP\n      action: root:ping\n    - agent_id: AG-COLD\n      action: root:ping\n    - agent_id: AG-HELD\n      action: root:ping\n    - agent_id: AG-HELDD\n      action: root:ping\n    - agent_id: AG-POISON-KEYS\n      action: root:ping\n    - agent_id: AG-POISON-RATE\n      action: root:ping\n    - agent_id: AG-POISON-LIVE\n      action: root:ping\n    - agent_id: AG-POISON-MAN\n      action: root:ping\n    - agent_id: AG-POISON-RL\n      action: root:ping\n    - agent_id: AG-POISON-CON\n      action: root:ping\n    - agent_id: AG-POISON-REPLAY\n      action: root:ping\n    - agent_id: AG-POISON-TRUST\n      action: root:ping\n    - agent_id: AG-POISON-BUN\n      action: root:ping\n    - agent_id: AG-ENV034-MISS\n      action: root:ping\n    - agent_id: AG-ENV034-PING\n      action: root:ping\n    - agent_id: AG-ENV034-BAD\n      action: root:ping\n    - agent_id: agent-a\n      action: root:ping\n    - agent_id: agent-a\n      action: display:source:ingest\n    - agent_id: agent-a\n      action: display:view:project\n    - agent_id: agent-a\n      action: display:sector:stage\n    - agent_id: agent-a\n      action: display:view:request\n"
+    }
     fn admit_ok_payload() -> &'static [u8] {
         br#"{"type":"PING","action_path":"root:ping","payload":{"ok":true},"timestamp":1000000,"target_id":"scene-a","_sequenceNumber":1}"#
     }
@@ -101,6 +104,10 @@
     fn plant_lattice(dir: &std::path::Path) {
         std::fs::write(dir.join("lattice.yaml"), dock_lattice_yaml()).expect("lattice");
     }
+    fn plant_hub_gap(dir: &std::path::Path) {
+        std::fs::create_dir_all(dir.join("gap").join("policies").join("reference")).expect("hub dir");
+        std::fs::write(dir.join("gap").join("policies").join("reference").join("caw-test.gap"), hub_gap_text()).expect("hub");
+    }
     fn temp_runtime() -> (tempfile::TempDir, DockingRuntime) {
         let dir = tempfile::tempdir().expect("tempdir");
         plant_lattice(dir.path());
@@ -111,37 +118,9 @@
         let db_path = dir.path().join("dock.db");
         let conn = open_lattice_db(&db_path).expect("db");
         let sock_base = dir.path().join("sockets").to_string_lossy().to_string();
-        let rt = DockingRuntime::with_data_dir(sock_base, conn, &[], dir.path());
+        plant_hub_gap(dir.path());
+        let rt = DockingRuntime::with_data_dir(sock_base, conn, &[], dir.path()).expect("runtime");
         (dir, rt)
-    }
-    fn temp_runtime_missing_lattice() -> (tempfile::TempDir, DockingRuntime) {
-        let dir = tempfile::tempdir().expect("tempdir");
-        runtime_in(dir)
-    }
-    fn temp_runtime_unreadable_lattice() -> (tempfile::TempDir, DockingRuntime) {
-        let dir = tempfile::tempdir().expect("tempdir");
-        std::fs::write(dir.path().join("lattice.yaml"), "{{ not a lattice").expect("bad yaml");
-        runtime_in(dir)
-    }
-    fn opened_frame_is_admit_deny(rt: &DockingRuntime, agent_id: &str, payload: &[u8]) {
-        install_agent_manifest(rt, agent_id, "sess-1");
-        let (_frame, line) = build_test_frame(
-            rt,
-            "ch-env034",
-            agent_id,
-            "sess-1",
-            DockingPort::ValidationEngine,
-            "dynaep-action-lattice",
-            payload,
-            1,
-        );
-        let resp = through_pulse(rt, &DockingPort::ValidationEngine, &line);
-        assert_eq!(resp.ok, false);
-        let err = resp.error.unwrap_or_default();
-        assert!(
-            err.contains("Admit collect-all walls then Apply") || err.contains("Lattice required"),
-            "expected Admit Deny, got {err}"
-        );
     }
 
     #[test]
@@ -299,12 +278,13 @@
         let conn = open_lattice_db(&db_path).expect("db");
         let sock_base = dir.path().join("sockets").to_string_lossy().to_string();
         plant_lattice(dir.path());
+        plant_hub_gap(dir.path());
         let rt = DockingRuntime::with_data_dir(
             sock_base,
             conn,
             &["runtime-lrp".to_string()],
-            dir.path(),
-        );
+            dir.path()).expect("runtime")
+         ;
         // Manifest binds sess-reg; both regulation and validation frames use it.
         install_agent_manifest(&rt, "AG-LRP", "sess-reg");
         let (_reg_frame, reg_line) = build_test_frame(
@@ -757,12 +737,14 @@
         let conn = open_lattice_db(&db_path).expect("db");
         let sock_base = dir.path().join("sockets").to_string_lossy().to_string();
         // Only "allowed-lrp" is in config; register_lrp uses "evil-lrp" (TASK-A28-H04).
+        plant_lattice(dir.path());
+        plant_hub_gap(dir.path());
         let rt = DockingRuntime::with_data_dir(
             sock_base,
             conn,
             &["allowed-lrp".to_string()],
-            dir.path(),
-        );
+            dir.path()).expect("runtime")
+         ;
         install_agent_manifest(&rt, "AG-LRP-DENY", "sess-1");
         let (_frame, line) = build_test_frame(
             &rt,
@@ -809,28 +791,51 @@
 
     #[test]
     fn missing_lattice_opened_state_delta_is_admit_deny() {
-        let (_dir, rt) = temp_runtime_missing_lattice();
-        opened_frame_is_admit_deny(
-            &rt,
-            "AG-ENV034-MISS",
-            br#"{"type":"STATE_DELTA"}"#,
-        );
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_path = dir.path().join("dock.db");
+        let conn = open_lattice_db(&db_path).expect("db");
+        let sock_base = dir.path().join("sockets").to_string_lossy().to_string();
+        plant_hub_gap(dir.path());
+        let loaded = DockingRuntime::with_data_dir(
+            sock_base,
+            conn,
+            &[],
+            dir.path())
+         ;
+        assert_eq!(loaded.is_err(), true);
     }
 
     #[test]
     fn missing_lattice_opened_ping_is_admit_deny() {
-        let (_dir, rt) = temp_runtime_missing_lattice();
-        opened_frame_is_admit_deny(&rt, "AG-ENV034-PING", br#"{"type":"PING"}"#);
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_path = dir.path().join("dock.db");
+        let conn = open_lattice_db(&db_path).expect("db");
+        let sock_base = dir.path().join("sockets").to_string_lossy().to_string();
+        plant_hub_gap(dir.path());
+        let loaded = DockingRuntime::with_data_dir(
+            sock_base,
+            conn,
+            &[],
+            dir.path())
+         ;
+        assert_eq!(loaded.is_err(), true);
     }
 
     #[test]
     fn unreadable_lattice_opened_frame_is_admit_deny() {
-        let (_dir, rt) = temp_runtime_unreadable_lattice();
-        opened_frame_is_admit_deny(
-            &rt,
-            "AG-ENV034-BAD",
-            br#"{"type":"PING","action_path":"root:ping","payload":{"ok":true}}"#,
-        );
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_path = dir.path().join("dock.db");
+        let conn = open_lattice_db(&db_path).expect("db");
+        let sock_base = dir.path().join("sockets").to_string_lossy().to_string();
+        plant_hub_gap(dir.path());
+        std::fs::write(dir.path().join("lattice.yaml"), "{{ not a lattice").expect("bad yaml");
+        let loaded = DockingRuntime::with_data_dir(
+            sock_base,
+            conn,
+            &[],
+            dir.path())
+         ;
+        assert_eq!(loaded.is_err(), true);
     }
 
     fn poison_std_mutex<T>(m: &std::sync::Mutex<T>) {

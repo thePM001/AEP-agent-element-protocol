@@ -1,0 +1,80 @@
+aep_version: "2.8.6"
+dynaep_version: "1.0.0"
+lattice_revision: 1
+actions:
+  root:ping:
+    label: ping
+    category: system_event
+    wrap: kernel
+    parents: []
+    children:
+      - action:write
+      - display:surface:attach
+    constraints: []
+    agent_permission: []
+  action:write:
+    label: write
+    category: agent_action
+    wrap: kernel
+    parents:
+      - root:ping
+    children: []
+    constraints: []
+    agent_permission:
+      - agent-a
+  display:surface:attach:
+    label: Attach to the display surface
+    category: agent_action
+    wrap: display
+    parents:
+      - root:ping
+    children:
+      - display:source:ingest
+      - display:view:request
+    constraints: []
+    agent_permission:
+      - agent-a
+  display:source:ingest:
+    label: Ingest a named display source
+    category: agent_action
+    wrap: display
+    parents:
+      - display:surface:attach
+    children:
+      - display:sector:stage
+    constraints: []
+    agent_permission:
+      - agent-a
+  display:sector:stage:
+    label: Stage a named display sector
+    category: agent_action
+    wrap: display
+    parents:
+      - display:source:ingest
+    children:
+      - display:view:project
+    constraints: []
+    agent_permission:
+      - agent-a
+  display:view:request:
+    label: Request a named display view
+    category: agent_action
+    wrap: display
+    parents:
+      - display:surface:attach
+    children:
+      - display:view:project
+    constraints: []
+    agent_permission:
+      - agent-a
+  display:view:project:
+    label: Project a named display view
+    category: output
+    wrap: display
+    parents:
+      - display:view:request
+      - display:sector:stage
+    children: []
+    constraints: []
+    agent_permission:
+      - agent-a

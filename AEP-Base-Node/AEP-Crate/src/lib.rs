@@ -140,8 +140,10 @@ pub fn init_action_lattice_db(path: &Path) -> rusqlite::Result<Connection> {
     }
     let conn = Connection::open(path)?;
     conn.pragma_update(None, "journal_mode", "WAL")?;
+    conn.pragma_update(None, "synchronous", "NORMAL")?;
+    conn.pragma_update(None, "foreign_keys", "ON")?;
     conn.busy_timeout(Duration::from_millis(5000))?;
-    conn.execute("CREATE TABLE IF NOT EXISTS held_frame_digests (frame_digest TEXT PRIMARY KEY, held_at_unix INTEGER NOT NULL)", [])?;
+    conn.execute("CREATE TABLE IF NOT EXISTS held_frame_digests (frame_digest TEXT PRIMARY KEY, held_at_unix INTEGER NOT NULL, row_class TEXT NOT NULL DEFAULT 'held')", [])?;
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS action_lattice_events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -90,6 +90,12 @@ pub enum BaseNodeError {
     Sqlite(String),
     #[error("{0}")]
     Channel(String),
+    #[error("lattice yaml missing")]
+    LatticeYamlMissing,
+    #[error("unreadable lattice yaml")]
+    LatticeYamlUnreadable,
+    #[error("hub load failed: {0}")]
+    HubLoad(String),
 }
 
 impl BaseNodeError {

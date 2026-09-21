@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
-use thiserror::Error;
+use thiserror::Error; mod display; pub use display::*;
 
 pub const CHANNEL_VERSION: &str = "2.8.6";
 
@@ -31,7 +31,7 @@ pub enum DockingPort {
     InferenceEngine,
     ValidationEngine,
     FutureFeatures,
-    RegulationModule,
+    RegulationModule,DisplaySurface,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,7 +54,7 @@ pub enum ChannelError {
     #[error("delimiter 0x7c forbidden in lattice id {0}")]
     PipeInId(String),
     #[error("crypto: {0}")]
-    Crypto(#[from] aep_lattice_crypto::CryptoError),
+    Crypto(#[from] aep_lattice_crypto::CryptoError), #[error("display plaintext: {0}")] DisplayPlaintext(String),
 }
 
 #[derive(Debug, Clone)]
@@ -128,7 +128,7 @@ fn docking_port_label(docking_port: DockingPort) -> &'static str {
         DockingPort::InferenceEngine => "inference_engine",
         DockingPort::ValidationEngine => "validation_engine",
         DockingPort::FutureFeatures => "future_features",
-        DockingPort::RegulationModule => "regulation_module",
+        DockingPort::RegulationModule => "regulation_module", DockingPort::DisplaySurface => "display_surface",
     }
 }
 

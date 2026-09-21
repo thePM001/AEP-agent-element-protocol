@@ -40,7 +40,7 @@ use dock_apply::{
     resolve_agent_bundle, resolve_signer_public,
 };
 use dock_freshness::frame_is_fresh;
-use dock_pulse::{collect_applied, pulse_enqueue};
+use dock_pulse::{collect_applied, pulse_enqueue, remember_applied};
 use dock_rate::rate_limit_response;
 use dock_serve::DockRequest;
 
@@ -155,15 +155,14 @@ pub(crate) fn attach_gateway_http_after_allow(plaintext: &[u8], resp: &mut DockF
     let Some(spec) = gateway_spec_from_plaintext(plaintext) else {
         return;
     };
-    match tokio::runtime::Handle::try_current() {
-        Ok(handle) => { resp.http_queued = Some(true);
-            handle.spawn(async move { execute_bound_http_after_allow(&spec).ok() });
+    match execute_bound_http_after_allow(&spec) {
+        Ok(http) => { resp.http = Some(http);
+            resp.http_queued = None;
         }
         Err(detail) => {
             resp.http_queued = None;
-            let _ = &detail;
-            resp.http = None;
-            let _ = &detail;
+            resp.ok = false;
+            resp.error = Some(detail);
         }
     }
 }
@@ -309,7 +308,7 @@ fn handle_frame(
     }
 
     let allow_inactive = expected_port == &DockingPort::RegulationModule;
-    let allow_inactive = allow_inactive && is_lrp_allowlisted(runtime, &frame.contract_id);
+    let allow_inactive = allow_inactive && is_lrp_allowlisted(runtime, &frame.contract_id) && !dock_lock!(&runtime.contracts, "contracts").is_active(&frame.contract_id);
     let plaintext = if allow_inactive {
         match crate::verify_inbound_dock_frame(
             frame,
@@ -407,7 +406,7 @@ fn handle_frame(
                 expected_port,
                 detail.clone(),
             );
-            return deny_resp(None, detail);
+            return deny_closed(None, detail, "regulation.inactive_action", CLASS_SECURITY);
         }
     }
 

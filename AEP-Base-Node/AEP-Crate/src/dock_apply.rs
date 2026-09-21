@@ -1,10 +1,11 @@
 //! Collect-all Admit then Apply for held dock capsules.
 
 use super::{
-    attach_gateway_http_after_allow, deny_resp, deny_resp_report, dock_lock, lock_or_deny,
+    attach_gateway_http_after_allow, remember_applied, deny_closed, deny_resp, deny_resp_report, dock_lock, lock_or_deny,
     port_event_type, DockFrameResponse, DockingRuntime,
 };
 use aep_lattice_channel::DockingPort;
+use aep_wall_set_backpressure::CLASS_CAPABILITY;
 use crate::dock_keys::decode_signer_public_hex;
 use crate::envelope_admit::admit_sealed_payload_report;
 use crate::{
@@ -191,7 +192,7 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
         }
         Err(resp) => {
             if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
-                if pulse.last_applied.len() >= 4096 { pulse.last_applied.clear(); pulse.last_applied_at.clear() } { drop(pulse.last_applied_at.insert(cap.digest.clone(), crate::now_unix() as i64)) } pulse.last_applied.insert(cap.digest.clone(), resp);
+                remember_applied(&mut pulse, cap.digest.clone(), resp);
             }
             return;
         }
@@ -208,15 +209,12 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
             );
         }
         if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
-            if pulse.last_applied.len() >= 4096 { pulse.last_applied.clear(); pulse.last_applied_at.clear() } { drop(pulse.last_applied_at.insert(cap.digest.clone(), crate::now_unix() as i64)) } pulse.last_applied.insert(
-                cap.digest.clone(),
-                deny_resp_report(Some(cap.digest.clone()), detail, report),
-            );
+                remember_applied(&mut pulse, cap.digest.clone(), deny_resp_report(Some(cap.digest.clone()), detail, report));
         }
         return;
     }
     let mut projection = None;
-    if runtime.hub.permissions.is_empty() == false {
+    if true {
         let action = match serde_json::from_slice::<Value>(&held.plaintext) {
             Ok(v) => match v.get("action_path") {
                 Some(x) => match x.as_str() {
@@ -230,7 +228,7 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
         if action.is_empty() == false {
             if runtime.hub.agent_may(&held.frame.agent_id, &action) == false {
                 if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
-                    if pulse.last_applied.len() >= 4096 { pulse.last_applied.clear(); pulse.last_applied_at.clear() } { drop(pulse.last_applied_at.insert(cap.digest.clone(), crate::now_unix() as i64)) } pulse.last_applied.insert(cap.digest.clone(), deny_resp(Some(cap.digest.clone()), String::from("hub permission denied")));
+                    remember_applied(&mut pulse, cap.digest.clone(), deny_closed(Some(cap.digest.clone()), String::from("hub permission denied"), "gap.agent_permission", CLASS_CAPABILITY));
                 }
                 return;
             }
@@ -251,12 +249,40 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
             Err(_) => (),
         }
     }
+    let event_type = if held.expected_port == DockingPort::RegulationModule {
+        "docking_regulation_lattice"
+    } else {
+        port_event_type(&held.expected_port)
+    };
+            let mut http_resp = DockFrameResponse {
+                ok: true,
+                event_id: None,
+                digest: Some(cap.digest.clone()),
+                error: None,
+                pong: None,
+                http: None,
+                deny: None,
+                pending: None,
+            projection: None,
+            http_queued: None,
+            };
+            attach_gateway_http_after_allow(&held.plaintext, &mut http_resp);
+    if http_resp.ok {
+            let recorded = match lock_or_deny(&runtime.db, "db") {
+        Ok(db) => record_channel_frame(&db, &held.frame, event_type, &held.bundle, None),
+        Err(resp) => {
+            if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
+                remember_applied(&mut pulse, cap.digest.clone(), resp);
+            }
+            return;
+        }
+    };
     if held.expected_port == DockingPort::DisplaySurface {
         let mut staging = match lock_or_deny(&runtime.display, "display") {
             Ok(g) => g,
             Err(resp) => {
                 if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
-                    if pulse.last_applied.len() >= 4096 { pulse.last_applied.clear(); pulse.last_applied_at.clear() } { drop(pulse.last_applied_at.insert(cap.digest.clone(), crate::now_unix() as i64)) } pulse.last_applied.insert(cap.digest.clone(), resp);
+                    remember_applied(&mut pulse, cap.digest.clone(), resp);
                 }
                 return;
             }
@@ -266,46 +292,36 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
             Err(e) => {
                 drop(staging);
                 if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
-                    if pulse.last_applied.len() >= 4096 { pulse.last_applied.clear(); pulse.last_applied_at.clear() } { drop(pulse.last_applied_at.insert(cap.digest.clone(), crate::now_unix() as i64)) } pulse.last_applied.insert(cap.digest.clone(), deny_resp(Some(cap.digest.clone()), e));
+                    remember_applied(&mut pulse, cap.digest.clone(), deny_resp(Some(cap.digest.clone()), e));
                 }
                 return;
             }
         }
     }
-    let event_type = if held.expected_port == DockingPort::RegulationModule {
-        "docking_regulation_lattice"
-    } else {
-        port_event_type(&held.expected_port)
-    };
-    let recorded = match lock_or_deny(&runtime.db, "db") {
-        Ok(db) => record_channel_frame(&db, &held.frame, event_type, &held.bundle, None),
-        Err(resp) => {
-            if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
-                if pulse.last_applied.len() >= 4096 { pulse.last_applied.clear(); pulse.last_applied_at.clear() } { drop(pulse.last_applied_at.insert(cap.digest.clone(), crate::now_unix() as i64)) } pulse.last_applied.insert(cap.digest.clone(), resp);
-            }
-            return;
-        }
-    };
     let resp = match recorded {
         Ok(event_id) => {
-            let mut resp = DockFrameResponse {
+            let resp = DockFrameResponse {
                 ok: true,
                 event_id: Some(event_id),
                 digest: Some(cap.digest.clone()),
                 error: None,
                 pong: None,
-                http: None,
+                http: http_resp.http,
                 deny: None,
                 pending: None,
             projection,
             http_queued: None,
             };
-            attach_gateway_http_after_allow(&held.plaintext, &mut resp);
             resp
         }
         Err(e) => deny_resp(None, e.to_string()),
     };
     if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
-        if pulse.last_applied.len() >= 4096 { pulse.last_applied.clear(); pulse.last_applied_at.clear() } { drop(pulse.last_applied_at.insert(cap.digest.clone(), crate::now_unix() as i64)) } pulse.last_applied.insert(cap.digest.clone(), resp);
+        remember_applied(&mut pulse, cap.digest.clone(), resp);
+    }
+    } else {
+    if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
+        remember_applied(&mut pulse, cap.digest.clone(), http_resp);
     }
 }
+    }

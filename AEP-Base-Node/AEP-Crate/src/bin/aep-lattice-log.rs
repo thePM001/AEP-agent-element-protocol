@@ -22,7 +22,7 @@ struct Cli {
     config: Option<PathBuf>,
     /// Test flag. Allows a world-writable parent of the lattice db.
     #[arg(long, default_value_t = false)]
-    allow_world_writable_lattice_parent: bool,
+    #[cfg(test)] allow_world_writable_lattice_parent: bool,
     #[command(subcommand)]
     command: Commands,
 }
@@ -120,7 +120,7 @@ fn resolve_lrps(cli: &Cli) -> Vec<String> {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
-    if cli.allow_world_writable_lattice_parent {
+    #[cfg(test)] if cli.allow_world_writable_lattice_parent {
         std::env::set_var(ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV, "1");
     }
     let db_path = resolve_db(&cli)?;
