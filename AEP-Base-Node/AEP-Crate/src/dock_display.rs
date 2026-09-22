@@ -1,5 +1,3 @@
-// @PAD: gaplune-pad-transform encode
-// @GCDE: gaplune-decode hmac-sha256:3efeaf869cffd594473d18810aca43e2efff1db5809fd1caf6fb426f98d6e05f
 //! In-kernel display pre-staging store, display action paths and JSON HTTP adapter.
 use crate::docking::{deny_resp, DockFrameResponse};
 use aep_lattice_channel::decode_display_plaintext;
