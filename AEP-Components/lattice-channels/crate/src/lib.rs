@@ -31,7 +31,7 @@ pub enum DockingPort {
     InferenceEngine,
     ValidationEngine,
     FutureFeatures,
-    RegulationModule,DisplaySurface,
+    RegulationModule,DisplayApi,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -128,7 +128,7 @@ fn docking_port_label(docking_port: DockingPort) -> &'static str {
         DockingPort::InferenceEngine => "inference_engine",
         DockingPort::ValidationEngine => "validation_engine",
         DockingPort::FutureFeatures => "future_features",
-        DockingPort::RegulationModule => "regulation_module", DockingPort::DisplaySurface => "display_surface",
+        DockingPort::RegulationModule => "regulation_module", DockingPort::DisplayApi => "display_api",
     }
 }
 

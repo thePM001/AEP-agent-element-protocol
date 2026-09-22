@@ -11,6 +11,53 @@ DAEMON_PID=""
 DAEMON_PIDFILE="/run/aep/daemon.pid"
 
 mkdir -p "${AEP_DATA}" "${AEP_SOCKET_BASE}" /run/aep
+LATTICE_YAML="${AEP_DATA}/lattice.yaml"
+GRANTS_GAP="${AEP_DATA}/display-grants.gap"
+export AEP_LATTICE_YAML="${LATTICE_YAML}"
+export AEP_DISPLAY_GRANTS="${GRANTS_GAP}"
+install_display_catalog() {
+  here=$(pwd)
+  if cd AEP-Components
+  then
+    if cd display-api
+    then
+      if [ ! -f "${LATTICE_YAML}" ]
+      then
+        if [ -f lattice.yaml ]
+        then
+          cp lattice.yaml "${LATTICE_YAML}"
+        fi
+      fi
+      if [ ! -f "${GRANTS_GAP}" ]
+      then
+        if [ -f display-grants.gap ]
+        then
+          cp display-grants.gap "${GRANTS_GAP}"
+        fi
+      fi
+      for f in source.alpha.json source.beta.json
+      do
+        if [ -f "$f" ]
+        then
+          if [ ! -f "${AEP_DATA}/$f" ]
+          then
+            cp "$f" "${AEP_DATA}/$f"
+          fi
+        fi
+      done
+      if [ -f display-client.manifest.json ]
+      then
+        mkdir -p "${AEP_TASK_MANIFEST_DIR}"
+        if [ ! -f "${AEP_TASK_MANIFEST_DIR}/display-client.json" ]
+        then
+          cp display-client.manifest.json "${AEP_TASK_MANIFEST_DIR}/display-client.json"
+        fi
+      fi
+    fi
+    cd "$here"
+  fi
+}
+install_display_catalog
 
 
 if [ "${1:-}" = "ucb" ]; then
@@ -60,7 +107,7 @@ process_alive() {
 wait_for_docks() {
   i=0
   while [ "$i" -lt 30 ]; do
-    if [ -S "${AEP_SOCKET_BASE}/validation" ]; then
+    if [ -S "${AEP_SOCKET_BASE}/validation" ] && [ -S "${AEP_SOCKET_BASE}/display" ]; then
       return 0
     fi
     i=$((i + 1))
@@ -114,6 +161,11 @@ fi
 
 start_daemon() {
   bootstrap_config
+  aep-base-node --provision-agent-sign-key --agent-id display-client --lattice-db "${LATTICE_DB}"
+  if [ "${AEP_LATTICE_TRANSPORT:-}" = "tls" ]; then
+    aep-base-node --issue-mesh-identity --agent-id display-client --lattice-db "${LATTICE_DB}" >/dev/null
+    echo "display client identity: ${AEP_DATA}/agentmesh/clients/display-client.cert.pem" >&2
+  fi
   aep-base-node --daemon --config "${CONFIG}" &
   DAEMON_PID=$!
   echo "${DAEMON_PID}" > "${DAEMON_PIDFILE}"
@@ -133,7 +185,7 @@ trap cleanup INT TERM
 start_daemon
 
 if ! wait_for_docks; then
-  echo "ERROR: Base Node daemon failed to open validation dock at ${AEP_SOCKET_BASE}/validation" >&2
+  echo "ERROR: Base Node daemon failed to open the validation dock or the display dock at ${AEP_SOCKET_BASE}" >&2
   exit 1
 fi
 

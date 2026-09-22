@@ -1,6 +1,7 @@
 //! Pulse queue enqueue and beat.
 
 use super::dock_apply::apply_held_capsule;
+use super::dock_apply::apply_display_after_admit;
 use super::dock_rate::{GLOBAL_RATE_LIMIT, SIGNER_RATE_LIMIT};
 use super::dock_serve::MAX_CONNECTIONS;
 use super::{
@@ -43,6 +44,7 @@ pub struct PulseState {
     pub(crate) last_applied: HashMap<String, DockFrameResponse>,
     pub(crate) last_applied_at: HashMap<String, i64>,
     pub(crate) last_applied_order: VecDeque<String>,
+    pub(crate) pending_display: HashMap<String, (String, Vec<u8>)>,
 }
 
 impl Default for PulseState {
@@ -54,6 +56,7 @@ impl Default for PulseState {
             last_applied_at: HashMap::new(),
             last_applied_order: VecDeque::new(),
             last_applied: HashMap::new(),
+            pending_display: HashMap::new(),
         }
     }
 }
@@ -109,7 +112,9 @@ impl DockingRuntime {
         lrps: &[String],
         data_dir: &Path,
     ) -> Result<Self, BaseNodeError> {
-    let live_entry = load_live_entry(data_dir)?;
+    let mut live_entry = load_live_entry(data_dir)?;
+    let display = crate::dock_display::DisplayStaging::load(data_dir)?;
+    crate::dock_display::seed_pre_staged_display_actions(&mut live_entry, &display);
         Ok(Self {
             socket_base: socket_base.into(),
             lrps: lrps.to_vec(),
@@ -150,7 +155,7 @@ impl DockingRuntime {
                 Arc::new(loaded)
             },
             pulse: Arc::new(Mutex::new(PulseState::default())),
-            display: Arc::new(Mutex::new(crate::dock_display::DisplayStaging::new())),
+            display: Arc::new(Mutex::new(display)),
             connection_limit: Arc::new(Semaphore::new(MAX_CONNECTIONS)),
             stop: watch::channel(false).0,
             inflight: Arc::new(Mutex::new(Vec::new())),
@@ -234,11 +239,40 @@ pub(crate) fn pulse_now_ms(runtime: &DockingRuntime) -> Result<i64, DockFrameRes
     Ok(live.now_ms())
 }
 
+/// Seal stamp in milliseconds for a frame that carries one.
+///
+/// The kernel freezes the bridge clock at the seal, so a frame that carries its
+/// own seal stamp is admitted against that stamp rather than against the time
+/// the kernel happened to read the frame. The stamp must sit in the same second
+/// as the frame seal, so the frame freshness walls still bound the frame and a
+/// stamp that disagrees with the frame is ignored here.
+fn seal_stamp_ms(frame: &LatticeChannelFrame, plaintext: &[u8]) -> Option<i64> {
+    seal_stamp_in_second(frame.sent_at_unix, plaintext)
+}
+
+/// Seal stamp in milliseconds when it sits in the given frame second.
+pub(crate) fn seal_stamp_in_second(frame_sec: u64, plaintext: &[u8]) -> Option<i64> {
+    let value: serde_json::Value = serde_json::from_slice(plaintext).ok()?;
+    let ms = value.get("timestamp")?.as_i64()?;
+    if ms <= 0 {
+        return None;
+    }
+    let frame_sec = frame_sec as i64;
+    if frame_sec <= 0 {
+        return None;
+    }
+    if (ms / 1000 - frame_sec).abs() > 1 {
+        return None;
+    }
+    Some(ms)
+}
+
 pub(crate) fn collect_applied(runtime: &DockingRuntime, digest: &str) -> DockFrameResponse {
     if digest.is_empty() {
         return deny_resp(None, String::from("collect requires digest"));
     }
     let _ = pulse_beat(runtime);
+    apply_display_after_admit(runtime, digest);
     let mut pulse = dock_lock!(&runtime.pulse, "pulse");
     if let Some(&at) = pulse.last_applied_at.get(digest) {
         if crate::now_unix() as i64 - at > 600 {
@@ -273,10 +307,13 @@ pub(crate) fn pulse_enqueue(
     digest: String,
     bundle: aep_agentmesh::AgentMeshBundle,
 ) -> DockFrameResponse {
-    let freeze_ms = match pulse_now_ms(runtime) {
+    let mut freeze_ms = match pulse_now_ms(runtime) {
         Ok(ms) => ms,
         Err(resp) => return resp,
     };
+    if let Some(ms) = seal_stamp_ms(frame, plaintext) {
+        freeze_ms = ms;
+    }
     {
         let live = dock_lock!(&runtime.live_entry, "live_entry");
         let _ = live.now_ms();
@@ -322,6 +359,18 @@ pub(crate) fn pulse_enqueue(
         pending: Some(true),
         http_queued: None,
         projection: None,
+    }
+}
+
+/// Clear the per-second action counters for the whole live entry.
+///
+/// The periodic beat calls this once per PULSE_MS, so the lattice rate wall
+/// reads the actions of the last second rather than a counter that never falls.
+/// The per-request beat does not call this, so a burst inside one second still
+/// reaches the wall.
+pub fn pulse_decay_rate(runtime: &DockingRuntime) {
+    if let Ok(mut live) = lock_or_deny(&runtime.live_entry, "live_entry") {
+        live.snapshot.event_rate = 0;
     }
 }
 

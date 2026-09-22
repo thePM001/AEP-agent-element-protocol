@@ -66,6 +66,15 @@ pub struct Element {
 pub struct Rejection { pub target_id: String, pub error: String, pub closed: Vec<AdmitWall> }
 #[derive(Debug, Clone)]
 pub enum ProcessOut { Event(Value), Reject(Rejection) }
+/// Record one action as satisfied for one agent.
+///
+/// The kernel calls this when it performs work that the lattice parents expect,
+/// such as loading a packaged source into display pre-staging at boot. The key
+/// shape stays owned by the envelope crate, so no caller builds it by hand.
+pub fn seed_satisfied_action(live: &mut LiveEntry, agent_id: &str, path: &str) {
+    aep_envelope::record_satisfied(&mut live.snapshot, path, agent_id);
+}
+
 pub struct LiveEntry {
     pub event: String, pub result: String, pub snapshot: Snapshot,
     pub live: HashMap<String, Element>, pub versions: HashMap<String, u64>,
@@ -119,7 +128,7 @@ impl LiveEntry {
             self.snapshot.proven_scene_ids.insert(String::from(scene));
         }
     }
-    pub fn set_clock_ms(&mut self, ms: i64) {
+pub fn set_clock_ms(&mut self, ms: i64) {
         self.clock_override_ms = Some(ms);
         if self.frozen_bridge_ts_ms.is_none() {
             self.snapshot.bridge_ts_ms = ms;

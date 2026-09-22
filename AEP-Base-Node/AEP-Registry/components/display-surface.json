@@ -1,1 +1,0 @@
-{"manifest_version":"1","id":"display-surface","version":"2.8.6","kind":"library","path":"AEP-Base-Node/AEP-Docks/specs/display-surface.json","description":"Governed JSON display dock with in-kernel pre-staging.","requires":["aep-base-node","lattice-channels"],"capabilities":["dock:display_surface"],"actions":[],"setup_hooks":[],"role":"kernel"}

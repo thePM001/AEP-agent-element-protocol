@@ -1,0 +1,16 @@
+{
+  "manifest_version": "1",
+  "id": "display-client",
+  "agent_id": "display-client",
+  "session_id": "display-session",
+  "intent": {
+    "summary": "Reference display client reads the governed display API.",
+    "op": "display"
+  },
+  "trust": {
+    "tier": "operator"
+  },
+  "provisional": false,
+  "synthesized_by": "provided",
+  "promotion_required": []
+}

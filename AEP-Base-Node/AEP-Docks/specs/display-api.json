@@ -1,0 +1,22 @@
+{
+  "port_id": "display_api",
+  "name": "Display API Dock",
+  "priority": 200,
+  "socket_suffix": "/display",
+  "tls_port": 28429,
+  "purpose": "Governed JSON display projections from in-kernel pre-staging after Admit",
+  "transport": "lattice-channel",
+  "http_adapter": "json-body-requires-sealed-frame",
+  "implementation": "AEP-Base-Node/AEP-Crate/src/dock_display.rs",
+  "catalog": "AEP-Components/display-api/lattice.yaml",
+  "grant_wall": "AEP-Components/display-api/display-grants.gap",
+  "actions": [
+    "display-api:source:ingest",
+    "display-api:sector:stage",
+    "display-api:view:request",
+    "display-api:view:project",
+    "display-api:catalog:list"
+  ],
+  "source_locator": "each named source carries a locator that loads JSON into pre-staging at boot",
+  "catalog_list": "a granted agent lists loaded views sources and sectors on the same JSON wire"
+}

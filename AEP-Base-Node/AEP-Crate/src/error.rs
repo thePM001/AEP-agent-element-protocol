@@ -94,6 +94,12 @@ pub enum BaseNodeError {
     LatticeYamlMissing,
     #[error("unreadable lattice yaml")]
     LatticeYamlUnreadable,
+    #[error("display grant wall missing")]
+    DisplayGrantWallMissing,
+    #[error("unreadable display grant wall")]
+    DisplayGrantWallUnreadable,
+    #[error("missing locator DENY on miss")]
+    DisplayLocatorMissing,
     #[error("hub load failed: {0}")]
     HubLoad(String),
 }

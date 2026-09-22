@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use crate::ChannelError;
-pub const DISPLAY_CONTRACT_ID: &str = "aep-display-surface";
-pub const DISPLAY_SURFACE_CONTRACT_ID: &str = "aep-display-surface";
+pub const DISPLAY_CONTRACT_ID: &str = "aep-display-api";
+pub const DISPLAY_API_CONTRACT_ID: &str = "aep-display-api";
 pub const DISPLAY_PLAINTEXT_KIND: &str = "display";
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DisplayPlaintext {
@@ -76,18 +76,18 @@ let err = decode_display_plaintext(b"not-json").unwrap_err();
 match err { ChannelError::DisplayPlaintext(_) => {} _ => panic!("ad-hoc bytes must deny") }
 }
 #[test]
-fn seal_open_display_surface_contract() {
+fn seal_open_display_api_contract() {
 let kem = aep_lattice_crypto::generate_kem_keypair();
 let sign = generate_sign_keypair();
 let body = DisplayPlaintext::new("demo.action", "demo.view").unwrap();
 let plaintext = encode_display_plaintext(&body).unwrap();
-let frame = build_frame("ch-display", "AG-00001", "sess-display", DockingPort::DisplaySurface, DISPLAY_SURFACE_CONTRACT_ID, &plaintext, &kem, &sign, 1).unwrap();
+let frame = build_frame("ch-display", "AG-00001", "sess-display", DockingPort::DisplayApi, DISPLAY_API_CONTRACT_ID, &plaintext, &kem, &sign, 1).unwrap();
 let mut contracts = ContractRegistry::default();
-contracts.register(DISPLAY_SURFACE_CONTRACT_ID);
+contracts.register(DISPLAY_API_CONTRACT_ID);
 let opened = open_frame(&frame, &kem, &sign.public, &contracts).unwrap();
 let got = decode_display_plaintext(&opened).unwrap();
 assert_eq!(got, body);
-assert_eq!(frame.contract_id, DISPLAY_SURFACE_CONTRACT_ID);
-assert_eq!(frame.docking_port, DockingPort::DisplaySurface);
+assert_eq!(frame.contract_id, DISPLAY_API_CONTRACT_ID);
+assert_eq!(frame.docking_port, DockingPort::DisplayApi);
 }
 }

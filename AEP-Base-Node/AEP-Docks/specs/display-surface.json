@@ -1,9 +1,0 @@
-{
-  "port_id": "display_surface",
-  "name": "Display Surface Dock",
-  "priority": 200,
-  "socket_suffix": "/display",
-  "purpose": "Governed JSON display projections from in-kernel pre-staging after Admit",
-  "transport": "lattice-channel",
-  "implementation": "AEP-Base-Node/AEP-Crate/src/dock_display.rs"
-}

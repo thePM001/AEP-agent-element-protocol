@@ -19,6 +19,10 @@ The catalog resolves component paths via `AEP-Base-Node/AEP-Registry/catalog.jso
 
 The kernel pulse (the 1000 ms wait after freeze-at-seal) is owned by Base Node at `AEP-Base-Node/` with constants in `AEP-Components/base-node-pulse/`. TypeScript dynAEP does not own it. `dynaep-config.yaml` has no `pulse_ms` key. Palette READMEs that do not mention the wait are not a second pulse owner. To change the wait in theory, rebuild Base Node after editing compiled `PULSE_MS`. Keep freeze-at-seal. Do not set kernel drift to the wait length. Keep age longer than the wait.
 
+## Display API
+
+The governed display API for arbitrary frontends is the display API and its data lives at `AEP-Components/display-api/`. That folder carries the display catalog, the grant wall, the source locator files and the default client manifest. The dock that reads them is kernel code at `AEP-Base-Node/AEP-Crate/src/dock_display.rs`. A frontend reads a JSON projection over HTTP JSON or over the JSON line protocol, on TLS with a client certificate and every read is a sealed lattice channel frame. Base Node holds the pre-staging area, so several sectors of one named source stage side by side and each view projects its own pair after Admit. The reference clients and their tests live at `AEP-Components/lattice-channels/client/display-api/` and the operator document is at `AEP-User-Experience/docs/DISPLAY-API.md`.
+
 ## Graph state owner
 
 One live graph owns state, which is the Action Lattice under `AEP-Components/dynAEP/`. TypeScript dynAEP holds the live runtime graph state and it is the only state owner.

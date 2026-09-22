@@ -468,7 +468,7 @@ Coding governance proposes a change, measures how far that change reaches and on
 | Directory | Role |
 |-----------|------|
 | [`AEP-Base-Node/`](AEP-Base-Node/) | Kernel: daemon, registry, POTOMITAN, agent-control-hub |
-| [`AEP-Components/`](AEP-Components/) | Protocol components (dynAEP, lattice-channels, graph-engine, aep-comm, economics, scanners, fleet) |
+| [`AEP-Components/`](AEP-Components/) | Protocol components (dynAEP, lattice-channels, graph-engine, aep-comm, economics, scanners, fleet, display-api) |
 | [`AEP-CAW/`](AEP-CAW/) | Execution companion: CAW host sandboxes. An incorporated part of AEP that runs on the host |
 | [`AEP-User-Experience/`](AEP-User-Experience/) | Harness, operator scripts, AEP-main-skill |
 | [`AEP-Base-Node/AEP-Docks/`](AEP-Base-Node/AEP-Docks/) | UCB + UCD socket dock specs and servers |
@@ -618,6 +618,19 @@ The tables below name working protocol parts a builder can attach. They are comp
 | CAW execution sandboxes (shell, file, network, LLM proxy) | `AEP-CAW/` |
 | Recovery engine (soft violation retry) | `AEP-Components/recovery/` |
 | Interactive assistant | `AEP-Components/aepassist/` |
+
+### Display API
+
+The governed display API gives any frontend a JSON view of Base Node data. A frontend binds the display API and reads a JSON projection. Every read is a sealed lattice channel frame, served as HTTP JSON or as a JSON line, on TLS with a client certificate.
+
+| Feature | Path |
+|---------|------|
+| Display catalog and grant wall | [`AEP-Components/display-api/`](AEP-Components/display-api/) |
+| Display dock and pre-staging store (kernel) | `AEP-Base-Node/AEP-Crate/src/dock_display.rs` |
+| Reference clients and tests | [`AEP-Components/lattice-channels/client/display-api/`](AEP-Components/lattice-channels/client/display-api/) |
+| Operator document | [`AEP-User-Experience/docs/DISPLAY-API.md`](AEP-User-Experience/docs/DISPLAY-API.md) |
+
+Named sources stage from a locator at boot, so several sectors of one store stage side by side and each named view projects its own pair after Admit. An unknown view, source or sector is refused at the miss.
 
 ### Cost economics
 

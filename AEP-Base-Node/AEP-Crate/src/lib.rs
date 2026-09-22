@@ -121,9 +121,9 @@ pub fn docking_port_specs(base_socket: &str) -> Vec<DockingPortSpec> {
             listen_path: format!("{base_socket}/regulation"),
         },
         DockingPortSpec {
-            port: DockingPort::DisplaySurface,
-            name: "display-surface-dock",
-            priority: 150,
+            port: DockingPort::DisplayApi,
+            name: "display-api-dock",
+            priority: 200,
             listen_path: format!("{base_socket}/display"),
         },
     ]
@@ -469,7 +469,7 @@ pub fn bootstrap_contracts_from_lrps(lrps: &[String]) -> ContractRegistry {
     }
     registry.register("correctwriting-en");
     registry.register("dynaep-action-lattice");
-    registry.register("aep-display-surface");
+    registry.register("aep-display-api");
     registry.register("lattice-channel-default");
     registry
 }

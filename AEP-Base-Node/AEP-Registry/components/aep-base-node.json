@@ -17,7 +17,7 @@
     "dock:inference_engine",
     "dock:validation_engine",
     "dock:regulation_module",
-    "dock:future_features","dock:display_surface",
+    "dock:future_features","dock:display_api",
     "lattice:enforce"
   ],
   "actions": [
@@ -41,7 +41,7 @@
       "inference_engine",
       "validation_engine",
       "regulation_module",
-      "future_features","display_surface"
+      "future_features","display_api"
     ]
   },
   "resource_requirements": {
@@ -51,7 +51,7 @@
     "gpu_required": false
   },
   "cca": {
-    "summary": "Mandatory governance kernel exposing lattice-gated docking ports including display surface.",
+    "summary": "Mandatory governance kernel exposing lattice-gated docking ports including display API.",
     "use_when": [
       "every AEP deployment",
       "local agent governance",

@@ -83,6 +83,12 @@ struct Cli {
     /// Agent id for --provision-agent-sign-key.
     #[arg(long)]
     agent_id: Option<String>,
+    /// Seal display plaintext from stdin. Missing material DENY on miss.
+    #[arg(long, default_value_t = false)]
+    seal_display: bool,
+    /// Issue an AgentMesh client identity for an agent. Missing material DENY on miss.
+    #[arg(long, default_value_t = false)]
+    issue_mesh_identity: bool,
 }
 
 struct ResolvedConfig {
@@ -187,6 +193,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
+    if cli.seal_display {
+        let agent_id = cli.agent_id.as_deref().unwrap_or("").trim();
+        let data_dir = lattice_db.parent().map(PathBuf::from).unwrap_or_else(default_aep_data_dir);
+        match seal_display_from_stdin(&data_dir, agent_id) {
+            Ok(()) => return Ok(()),
+            Err(text) => return Err(text.into()),
+        }
+    }
+    if cli.issue_mesh_identity {
+        let agent_id = cli.agent_id.as_deref().unwrap_or("").trim();
+        let data_dir = lattice_db.parent().map(PathBuf::from).unwrap_or_else(default_aep_data_dir);
+        match issue_mesh_identity(&data_dir, agent_id) {
+            Ok(()) => return Ok(()),
+            Err(text) => return Err(text.into()),
+        }
+    }
     if cli.daemon {
         std::env::set_var("AEP_LATTICE_STRICT", "1");
         std::env::set_var("AEP_HUB_STRICT", "1");
@@ -319,4 +341,141 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         info!(component = COMPONENT_ID, events, listening, "AEP Base Node ready");
     }
     Ok(())
+}
+
+fn seal_display_from_stdin(data_dir: &std::path::Path, agent_id: &str) -> Result<(), String> {
+    if agent_id.is_empty() {
+        return Err(String::from("missing seal material DENY on miss"));
+    }
+    let kem = match aep_base_node::dock_keys::try_load_or_create_dock_kem(data_dir) {
+        Ok(value) => value,
+        Err(_) => return Err(String::from("missing seal material DENY on miss")),
+    };
+    let mut sign_store = AgentSignKeyStore::load(data_dir);
+    let sign = match sign_store.provision(agent_id) {
+        Ok(value) => value,
+        Err(_) => return Err(String::from("missing seal material DENY on miss")),
+    };
+    if sign_store.flush().is_err() {
+        return Err(String::from("missing seal material DENY on miss"));
+    }
+    let mut stdin_buf = String::new();
+    if std::io::Read::read_to_string(&mut std::io::stdin(), &mut stdin_buf).is_err() {
+        return Err(String::from("missing seal material DENY on miss"));
+    }
+    let mut parsed: serde_json::Value = match serde_json::from_str(stdin_buf.trim()) {
+        Ok(value) => value,
+        Err(_) => return Err(String::from("missing seal material DENY on miss")),
+    };
+    if let Some(obj) = parsed.as_object_mut() {
+        fill_display_envelope(obj, agent_id);
+    }
+    let plaintext = match serde_json::to_vec(&parsed) {
+        Ok(bytes) => bytes,
+        Err(_) => return Err(String::from("missing seal material DENY on miss")),
+    };
+    let frame = match build_frame_for_dock("ch-display", agent_id, "display-session", DockingPort::DisplayApi, "aep-display-api", &plaintext, &kem.public, &sign, now_unix()) {
+        Ok(built) => built,
+        Err(_) => return Err(String::from("missing seal material DENY on miss")),
+    };
+    let signer_public_hex = hex::encode(&sign.public);
+    let out = serde_json::json!({ "frame": frame, "signer_public_hex": signer_public_hex });
+    match serde_json::to_string(&out) {
+        Ok(text) => {
+            println!("{text}");
+            Ok(())
+        }
+        Err(_) => Err(String::from("missing seal material DENY on miss")),
+    }
+}
+
+/// Fill the envelope fields the live entry reads when the caller left them out.
+///
+/// The display plaintext carries the display fields and the envelope fields in
+/// one JSON object. A display field a caller did not set is not the business of
+/// this function, so only the envelope keys are filled.
+fn fill_display_envelope(obj: &mut serde_json::Map<String, serde_json::Value>, agent_id: &str) {
+    let missing = |obj: &serde_json::Map<String, serde_json::Value>, key: &str| match obj.get(key) {
+        Some(v) => v.is_null(),
+        None => true,
+    };
+    if missing(obj, "type") {
+        obj.insert(String::from("type"), serde_json::Value::String(String::from("CUSTOM")));
+    }
+    if missing(obj, "agent_id") {
+        obj.insert(String::from("agent_id"), serde_json::Value::String(agent_id.to_string()));
+    }
+    if missing(obj, "timestamp") {
+        obj.insert(String::from("timestamp"), serde_json::Value::from(now_ms()));
+    }
+    if missing(obj, "target_id") {
+        obj.insert(String::from("target_id"), serde_json::Value::String(String::from("display-api")));
+    }
+    if missing(obj, "_sequenceNumber") {
+        obj.insert(String::from("_sequenceNumber"), serde_json::Value::from(1));
+    }
+}
+
+/// Wall clock in milliseconds. The live entry reads an agent stamp in this unit.
+fn now_ms() -> i64 {
+    match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+        Ok(d) => d.as_millis() as i64,
+        Err(_) => 0,
+    }
+}
+
+fn issue_mesh_identity(data_dir: &std::path::Path, agent_id: &str) -> Result<(), String> {
+    if agent_id.is_empty() {
+        return Err(String::from("missing agent id DENY on miss"));
+    }
+    let (ca_pem, ca_key_pem) = match aep_agentmesh::tls::ensure_mesh_ca(data_dir) {
+        Ok(value) => value,
+        Err(_) => return Err(String::from("missing mesh ca DENY on miss")),
+    };
+    let identity = match aep_agentmesh::tls::issue_signed_identity(&ca_pem, &ca_key_pem, agent_id) {
+        Ok(value) => value,
+        Err(_) => return Err(String::from("missing mesh identity DENY on miss")),
+    };
+    let dir = data_dir.join("agentmesh").join("clients");
+    if std::fs::create_dir_all(&dir).is_err() {
+        return Err(String::from("missing mesh identity DENY on miss"));
+    }
+    let cert_path = dir.join(format!("{agent_id}.cert.pem"));
+    let key_path = dir.join(format!("{agent_id}.key.pem"));
+    let ca_path = data_dir.join("agentmesh").join("tls").join("ca.pem");
+    if std::fs::write(&cert_path, &identity.cert_pem).is_err() {
+        return Err(String::from("missing mesh identity DENY on miss"));
+    }
+    if std::fs::write(&key_path, &identity.key_pem).is_err() {
+        return Err(String::from("missing mesh identity DENY on miss"));
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).is_err() {
+            return Err(String::from("missing mesh identity DENY on miss"));
+        }
+        if std::fs::set_permissions(&cert_path, std::fs::Permissions::from_mode(0o600)).is_err() {
+            return Err(String::from("missing mesh identity DENY on miss"));
+        }
+        if std::fs::set_permissions(&key_path, std::fs::Permissions::from_mode(0o600)).is_err() {
+            return Err(String::from("missing mesh identity DENY on miss"));
+        }
+    }
+    let out = serde_json::json!({
+        "agent_id": agent_id,
+        "ca_pem": ca_pem,
+        "cert_pem": identity.cert_pem,
+        "key_pem": identity.key_pem,
+        "ca_path": ca_path.to_string_lossy(),
+        "cert_path": cert_path.to_string_lossy(),
+        "key_path": key_path.to_string_lossy(),
+    });
+    match serde_json::to_string(&out) {
+        Ok(text) => {
+            println!("{text}");
+            Ok(())
+        }
+        Err(_) => Err(String::from("missing mesh identity DENY on miss")),
+    }
 }
