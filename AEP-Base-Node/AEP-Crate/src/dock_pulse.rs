@@ -350,7 +350,6 @@ pub(crate) fn pulse_enqueue(
         deny: None,
         pending: Some(true),
         http_queued: None,
-        projection: None,
     }
 }
 
