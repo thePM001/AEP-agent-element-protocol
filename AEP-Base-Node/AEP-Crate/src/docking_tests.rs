@@ -6,7 +6,7 @@
     use crate::{docking_port_specs, open_lattice_db};
     use std::sync::Arc;
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-    use tokio::net::{UnixListener, UnixStream};
+    use tokio::net::{UnixStream};
 
 
     fn build_test_frame(
@@ -75,7 +75,7 @@
         "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\", \"AG-DOCK\", \"AG-MESH\", \"AG-PULSE\", \"AG-COL\", \"AG-LRP\", \"AG-SEQ\", \"AG-SOCKC\", \"AG-DRIFT\", \"AG-BOUND\", \"dynaep-bridge\"]\n"
     }
     fn hub_gap_text() -> &'static str {
-        "metadata:\n  wrap: caw\n  agent_permission:\n    - agent_id: AG-DOCK\n      action: root:ping\n    - agent_id: AG-MESH\n      action: root:ping\n    - agent_id: AG-LRP\n      action: root:ping\n    - agent_id: AG-PULSE\n      action: root:ping\n    - agent_id: AG-COL\n      action: root:ping\n    - agent_id: AG-SEQ\n      action: root:ping\n    - agent_id: AG-SOCKC\n      action: root:ping\n    - agent_id: AG-DRIFT\n      action: root:ping\n    - agent_id: AG-BOUND\n      action: root:ping\n    - agent_id: AG-PING\n      action: root:ping\n    - agent_id: AG-NJ\n      action: root:ping\n    - agent_id: AG-BURST\n      action: root:ping\n    - agent_id: AG-FUT\n      action: root:ping\n    - agent_id: AG-SESSMIS\n      action: root:ping\n    - agent_id: AG-LRP-DENY\n      action: root:ping\n    - agent_id: AG-PING-R\n      action: root:ping\n    - agent_id: AG-TRUST\n      action: root:ping\n    - agent_id: AG-WIRE\n      action: root:ping\n    - agent_id: AG-REPLAY\n      action: root:ping\n    - agent_id: AG-SOCK\n      action: root:ping\n    - agent_id: AG-BADSIG\n      action: root:ping\n    - agent_id: AG-STALE\n      action: root:ping\n    - agent_id: AG-AGE\n      action: root:ping\n    - agent_id: AG-OVF\n      action: root:ping\n    - agent_id: AG-OVB\n      action: root:ping\n    - agent_id: AG-DUP\n      action: root:ping\n    - agent_id: AG-COLD\n      action: root:ping\n    - agent_id: AG-HELD\n      action: root:ping\n    - agent_id: AG-HELDD\n      action: root:ping\n    - agent_id: AG-POISON-KEYS\n      action: root:ping\n    - agent_id: AG-POISON-RATE\n      action: root:ping\n    - agent_id: AG-POISON-LIVE\n      action: root:ping\n    - agent_id: AG-POISON-MAN\n      action: root:ping\n    - agent_id: AG-POISON-RL\n      action: root:ping\n    - agent_id: AG-POISON-CON\n      action: root:ping\n    - agent_id: AG-POISON-REPLAY\n      action: root:ping\n    - agent_id: AG-POISON-TRUST\n      action: root:ping\n    - agent_id: AG-POISON-BUN\n      action: root:ping\n    - agent_id: AG-ENV034-MISS\n      action: root:ping\n    - agent_id: AG-ENV034-PING\n      action: root:ping\n    - agent_id: AG-ENV034-BAD\n      action: root:ping\n    - agent_id: agent-a\n      action: root:ping\n    - agent_id: agent-a\n      action: display-api:source:ingest\n    - agent_id: agent-a\n      action: display-api:view:project\n    - agent_id: agent-a\n      action: display-api:sector:stage\n    - agent_id: agent-a\n      action: display-api:view:request\n"
+        "metadata:\n  wrap: caw\n  agent_permission:\n    - agent_id: AG-DOCK\n      action: root:ping\n    - agent_id: AG-MESH\n      action: root:ping\n    - agent_id: AG-LRP\n      action: root:ping\n    - agent_id: AG-PULSE\n      action: root:ping\n    - agent_id: AG-COL\n      action: root:ping\n    - agent_id: AG-SEQ\n      action: root:ping\n    - agent_id: AG-SOCKC\n      action: root:ping\n    - agent_id: AG-DRIFT\n      action: root:ping\n    - agent_id: AG-BOUND\n      action: root:ping\n    - agent_id: AG-PING\n      action: root:ping\n    - agent_id: AG-NJ\n      action: root:ping\n    - agent_id: AG-BURST\n      action: root:ping\n    - agent_id: AG-FUT\n      action: root:ping\n    - agent_id: AG-SESSMIS\n      action: root:ping\n    - agent_id: AG-LRP-DENY\n      action: root:ping\n    - agent_id: AG-PING-R\n      action: root:ping\n    - agent_id: AG-TRUST\n      action: root:ping\n    - agent_id: AG-WIRE\n      action: root:ping\n    - agent_id: AG-REPLAY\n      action: root:ping\n    - agent_id: AG-SOCK\n      action: root:ping\n    - agent_id: AG-BADSIG\n      action: root:ping\n    - agent_id: AG-STALE\n      action: root:ping\n    - agent_id: AG-AGE\n      action: root:ping\n    - agent_id: AG-OVF\n      action: root:ping\n    - agent_id: AG-OVB\n      action: root:ping\n    - agent_id: AG-DUP\n      action: root:ping\n    - agent_id: AG-COLD\n      action: root:ping\n    - agent_id: AG-HELD\n      action: root:ping\n    - agent_id: AG-HELDD\n      action: root:ping\n    - agent_id: AG-POISON-KEYS\n      action: root:ping\n    - agent_id: AG-POISON-RATE\n      action: root:ping\n    - agent_id: AG-POISON-LIVE\n      action: root:ping\n    - agent_id: AG-POISON-MAN\n      action: root:ping\n    - agent_id: AG-POISON-RL\n      action: root:ping\n    - agent_id: AG-POISON-CON\n      action: root:ping\n    - agent_id: AG-POISON-REPLAY\n      action: root:ping\n    - agent_id: AG-POISON-TRUST\n      action: root:ping\n    - agent_id: AG-POISON-BUN\n      action: root:ping\n    - agent_id: AG-ENV034-MISS\n      action: root:ping\n    - agent_id: AG-ENV034-PING\n      action: root:ping\n    - agent_id: AG-ENV034-BAD\n      action: root:ping\n    - agent_id: agent-a\n      action: root:ping\n"
     }
     fn admit_ok_payload() -> &'static [u8] {
         br#"{"type":"PING","action_path":"root:ping","payload":{"ok":true},"timestamp":1000000,"target_id":"scene-a","_sequenceNumber":1}"#
@@ -106,8 +106,7 @@
     }
     fn plant_hub_gap(dir: &std::path::Path) {
         std::fs::create_dir_all(dir.join("gap").join("policies").join("reference")).expect("hub dir");
-        let extra = "    - agent_id: agent-a\n      action: display-api:catalog:list\n    - agent_id: display-client\n      action: root:ping\n    - agent_id: display-client\n      action: display-api:attach\n    - agent_id: display-client\n      action: display-api:source:ingest\n    - agent_id: display-client\n      action: display-api:view:project\n    - agent_id: display-client\n      action: display-api:sector:stage\n    - agent_id: display-client\n      action: display-api:view:request\n    - agent_id: display-client\n      action: display-api:catalog:list\n";
-        std::fs::write(dir.join("gap").join("policies").join("reference").join("caw-test.gap"), format!("{}{}", hub_gap_text(), extra)).expect("hub");
+        std::fs::write(dir.join("gap").join("policies").join("reference").join("caw-test.gap"), hub_gap_text()).expect("hub");
     }
     fn temp_runtime() -> (tempfile::TempDir, DockingRuntime) {
         let dir = tempfile::tempdir().expect("tempdir");
@@ -120,9 +119,6 @@
         let conn = open_lattice_db(&db_path).expect("db");
         let sock_base = dir.path().join("sockets").to_string_lossy().to_string();
         plant_hub_gap(dir.path());
-        if dir.path().join("display-grants.gap").is_file()==false {
-            drop(std::fs::write(dir.path().join("display-grants.gap"), "grants:"))
-        }
         let rt = DockingRuntime::with_data_dir(sock_base, conn, &[], dir.path()).expect("runtime");
         (dir, rt)
     }
@@ -283,9 +279,6 @@
         let sock_base = dir.path().join("sockets").to_string_lossy().to_string();
         plant_lattice(dir.path());
         plant_hub_gap(dir.path());
-        if dir.path().join("display-grants.gap").is_file()==false {
-            drop(std::fs::write(dir.path().join("display-grants.gap"), "grants:"))
-        }
         let rt = DockingRuntime::with_data_dir(
             sock_base,
             conn,
@@ -746,9 +739,6 @@
         // Only "allowed-lrp" is in config; register_lrp uses "evil-lrp" (TASK-A28-H04).
         plant_lattice(dir.path());
         plant_hub_gap(dir.path());
-        if dir.path().join("display-grants.gap").is_file()==false {
-            drop(std::fs::write(dir.path().join("display-grants.gap"), "grants:"))
-        }
         let rt = DockingRuntime::with_data_dir(
             sock_base,
             conn,
@@ -1380,430 +1370,22 @@
         assert_eq!(shared.sqlite_is_closed(), true);
         let _ = dir;
     }
-    fn plant_display_lattice(dir: &std::path::Path) {
-        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../AEP-Components/display-api");
-        std::fs::copy(root.join("lattice.yaml"), dir.join("lattice.yaml")).expect("display lattice");
-        std::fs::copy(root.join("display-grants.gap"), dir.join("display-grants.gap")).expect("display grants");
-        std::fs::copy(root.join("source.alpha.json"), dir.join("source.alpha.json")).expect("source alpha");
-        std::fs::copy(root.join("source.beta.json"), dir.join("source.beta.json")).expect("source beta");
-    }
-    fn seed_display_parents(rt: &DockingRuntime) {
-        let mut live = rt.live_entry.lock().expect("live");
-        live.snapshot.satisfied_actions.insert(String::from("root:ping"));
-        live.snapshot.satisfied_actions.insert(String::from("agt|agent-a|root:ping"));
-        live.snapshot.satisfied_actions.insert(String::from("agt|agent-a|display-api:attach"));
-        live.snapshot.satisfied_actions.insert(String::from("agt|agent-a|display-api:source:ingest"));
-        live.snapshot.satisfied_actions.insert(String::from("agt|agent-a|display-api:sector:stage"));
-        live.snapshot.satisfied_actions.insert(String::from("agt|agent-a|display-api:view:request"));
-        live.snapshot.satisfied_actions.insert(String::from("agt|agent-a|display-api:catalog:list"));
-        live.snapshot.satisfied_actions.insert(String::from("agt|display-client|root:ping"));
-        live.snapshot.satisfied_actions.insert(String::from("agt|display-client|display-api:attach"));
-        live.snapshot.satisfied_actions.insert(String::from("agt|display-client|display-api:source:ingest"));
-        live.snapshot.satisfied_actions.insert(String::from("agt|display-client|display-api:sector:stage"));
-        live.snapshot.satisfied_actions.insert(String::from("agt|display-client|display-api:view:request"));
-        live.snapshot.satisfied_actions.insert(String::from("agt|display-client|display-api:catalog:list"));
-    }
-    fn temp_display_runtime() -> (tempfile::TempDir, DockingRuntime) {
-        let dir = tempfile::tempdir().expect("tempdir");
-        plant_display_lattice(dir.path());
-        let (dir, rt) = runtime_in(dir);
-        {
-            let mut contracts = rt.contracts.lock().expect("contracts");
-            contracts.register("aep-display-api");
-        }
-        seed_display_parents(&rt);
-        (dir, rt)
-    }
-    fn display_payload(action: &str, view: &str, source: &str, sector: &str, payload: &str, seq: i64) -> Vec<u8> {
-        format!("{{\"kind\":\"display\",\"type\":\"PING\",\"agent_id\":\"agent-a\",\"action_path\":\"{action}\",\"view\":\"{view}\",\"source\":\"{source}\",\"sector\":\"{sector}\",\"payload\":{payload},\"timestamp\":1000000,\"target_id\":\"scene-a\",\"_sequenceNumber\":{seq}}}").into_bytes()
-    }
-    fn grant_alpha(rt: &DockingRuntime) {
-        let mut d = rt.display.lock().expect("display");
-        d.add_grant("agent-a", "source.alpha", "sector.one");
-        d.add_grant("agent-a", "source.alpha", "sector.two");
-    }
-    fn display_line(rt: &DockingRuntime, payload: &[u8]) -> String {
-        install_agent_manifest(rt, "agent-a", "sess-1");
-        let (_f, line) = build_test_frame(rt, "ch-disp", "agent-a", "sess-1", DockingPort::DisplayApi, "aep-display-api", payload, 1);
-        line
-    }
-    #[test]
-    fn unknown_view_denies_on_miss() {
-        let (_dir, rt) = temp_display_runtime();
-        let line = display_line(&rt, &display_payload("display-api:view:project", "view.unknown", "source.alpha", "sector.one", "{}", 1));
-        let resp = through_pulse(&rt, &DockingPort::DisplayApi, &line);
-        assert_eq!(resp.ok, false);
-        assert!(resp.error.unwrap_or_default().contains("unknown view DENY on miss"));
-    }
-    #[test]
-    fn unknown_source_denies_on_miss() {
-        let (_dir, rt) = temp_display_runtime();
-        let line = display_line(&rt, &display_payload("display-api:source:ingest", "view.alpha", "source.unknown", "sector.one", "{}", 1));
-        let resp = through_pulse(&rt, &DockingPort::DisplayApi, &line);
-        assert_eq!(resp.ok, false);
-        assert!(resp.error.unwrap_or_default().contains("unknown source DENY on miss"));
-    }
-    #[test]
-    fn unknown_sector_denies_on_miss() {
-        let (_dir, rt) = temp_display_runtime();
-        let line = display_line(&rt, &display_payload("display-api:source:ingest", "view.alpha", "source.alpha", "sector.unknown", "{}", 1));
-        let resp = through_pulse(&rt, &DockingPort::DisplayApi, &line);
-        assert_eq!(resp.ok, false);
-        assert!(resp.error.unwrap_or_default().contains("unknown sector DENY on miss"));
-    }
-    fn temp_display_runtime_empty_grants() -> (tempfile::TempDir, DockingRuntime) {
-        let dir = tempfile::tempdir().expect("tempdir");
-        plant_display_lattice(dir.path());
-        std::fs::write(dir.path().join("display-grants.gap"), "grants:").expect("empty grants");
-        let (dir, rt) = runtime_in(dir);
-        {
-            let mut contracts = rt.contracts.lock().expect("contracts");
-            contracts.register("aep-display-api");
-        }
-        seed_display_parents(&rt);
-        (dir, rt)
-    }
-    #[test]
-    fn empty_grant_list_refuses() {
-        let (_dir, rt) = temp_display_runtime_empty_grants();
-        let line = display_line(&rt, &display_payload("display-api:source:ingest", "view.alpha", "source.alpha", "sector.one", "{}", 1));
-        let resp = through_pulse(&rt, &DockingPort::DisplayApi, &line);
-        assert_eq!(resp.ok, false);
-        assert!(resp.error.unwrap_or_default().contains("empty grant list refuses"));
-    }
-    #[test]
-    fn display_json_roundtrip_returns_projection_after_admit() {
-        let (_dir, rt) = temp_display_runtime();
-        let ingest = display_line(&rt, &display_payload("display-api:source:ingest", "view.alpha", "source.alpha", "sector.one", "{\"n\":1}", 1));
-        let ing = through_pulse(&rt, &DockingPort::DisplayApi, &ingest);
-        assert!(ing.ok, "{:?}", ing.error);
-        let proj = display_line(&rt, &display_payload("display-api:view:project", "view.alpha", "source.alpha", "sector.one", "{}", 2));
-        let resp = through_pulse(&rt, &DockingPort::DisplayApi, &proj);
-        assert!(resp.ok, "{:?}", resp.error);
-        assert_eq!(resp.projection, Some(serde_json::json!({"n":1})));
-    }
-    #[test]
-    fn pre_staging_holds_two_sectors() {
-        let (_dir, rt) = temp_display_runtime();
-        let one = display_line(&rt, &display_payload("display-api:source:ingest", "view.alpha", "source.alpha", "sector.one", "{\"k\":1}", 1));
-        assert!(through_pulse(&rt, &DockingPort::DisplayApi, &one).ok);
-        let two = display_line(&rt, &display_payload("display-api:source:ingest", "view.beta", "source.alpha", "sector.two", "{\"k\":2}", 2));
-        assert!(through_pulse(&rt, &DockingPort::DisplayApi, &two).ok);
-        let p1 = display_line(&rt, &display_payload("display-api:view:project", "view.alpha", "source.alpha", "sector.one", "{}", 3));
-        let r1 = through_pulse(&rt, &DockingPort::DisplayApi, &p1);
-        let p2 = display_line(&rt, &display_payload("display-api:view:project", "view.beta", "source.alpha", "sector.two", "{}", 4));
-        let r2 = through_pulse(&rt, &DockingPort::DisplayApi, &p2);
-        assert_eq!(r1.projection, Some(serde_json::json!({"k":1})));
-        assert_eq!(r2.projection, Some(serde_json::json!({"k":2})));
-    }
-    #[test]
-    fn json_body_without_sealed_frame_is_refused() {
-        let (_dir, rt) = temp_display_runtime();
-        let resp = process_request(&rt, &DockingPort::DisplayApi, "{\"kind\":\"display\"}");
-        assert_eq!(resp.ok, false);
-        assert!(resp.error.unwrap_or_default().contains("JSON body that skips the sealed frame is refused"));
-    }
-    #[test]
-    fn http_json_without_frame_is_refused() {
-        let (_dir, rt) = temp_display_runtime();
-        let raw = "POST /display HTTP/1.1\r\n\r\n{\"kind\":\"display\"}";
-        let resp = process_request(&rt, &DockingPort::DisplayApi, raw);
-        assert_eq!(resp.ok, false);
-        assert!(resp.error.unwrap_or_default().contains("JSON body that skips the sealed frame is refused"));
-    }
-    #[test]
-    fn boot_loads_gap_grants() {
-        let (_dir, rt) = temp_display_runtime();
-        assert!(rt.display.lock().expect("display").grant_len() > 0);
-    }
-    #[test]
-    fn missing_staged_json_denies_on_miss() {
-        let (_dir, rt) = temp_display_runtime();
-        rt.display.lock().expect("display").clear_staged();
-        let line = display_line(&rt, &display_payload("display-api:view:project", "view.alpha", "source.alpha", "sector.one", "{}", 1));
-        let resp = through_pulse(&rt, &DockingPort::DisplayApi, &line);
-        assert_eq!(resp.ok, false);
-        assert!(resp.error.unwrap_or_default().contains("missing staged JSON DENY on miss"));
-    }
-    #[test]
-    fn unknown_action_denies_on_miss() {
-        let (_dir, rt) = temp_display_runtime();
-        let err = rt.display.lock().expect("display").apply("agent-a", "display:view:unknown", "view.alpha", Some("source.alpha"), Some("sector.one"), None).expect_err("unknown action");
-        assert!(err.contains("unknown action DENY on miss"));
-    }
-    #[test]
-    fn persist_under_aep_data_dir() {
-        let (dir, rt) = temp_display_runtime();
-        let ingest = display_line(&rt, &display_payload("display-api:source:ingest", "view.alpha", "source.alpha", "sector.one", "{\"n\":1}", 1));
-        assert!(through_pulse(&rt, &DockingPort::DisplayApi, &ingest).ok);
-        let path = dir.path().join("display-staging").join("source.alpha__sector.one.json");
-        assert!(path.exists());
-    }
-    #[test]
-    fn http_json_with_sealed_frame_is_accepted() {
-        let (_dir, rt) = temp_display_runtime();
-        let ingest = display_line(&rt, &display_payload("display-api:source:ingest", "view.alpha", "source.alpha", "sector.one", "{\"n\":1}", 1));
-        let raw = format!("POST /display HTTP/1.1\r\n\r\n{ingest}");
-        let resp = through_pulse(&rt, &DockingPort::DisplayApi, &raw);
-        assert!(resp.ok, "{:?}", resp.error);
-    }
-
-    fn display_payload_for(agent: &str, action: &str, view: &str, source: &str, sector: &str, payload: &str, seq: i64) -> Vec<u8> {
-        format!("{{\"kind\":\"display\",\"type\":\"PING\",\"agent_id\":\"{agent}\",\"action_path\":\"{action}\",\"view\":\"{view}\",\"source\":\"{source}\",\"sector\":\"{sector}\",\"payload\":{payload},\"timestamp\":1000000,\"target_id\":\"scene-a\",\"_sequenceNumber\":{seq}}}").into_bytes()
-    }
-    fn display_line_for(rt: &DockingRuntime, agent: &str, payload: &[u8], seq: u64) -> String {
-        install_agent_manifest(rt, agent, "sess-1");
-        let (_f, line) = build_test_frame(rt, "ch-disp", agent, "sess-1", DockingPort::DisplayApi, "aep-display-api", payload, seq);
-        line
-    }
-    #[test]
-    fn catalog_locator_loads_two_sectors_without_client_ingest() {
-        let (_dir, rt) = temp_display_runtime();
-        assert_eq!(rt.display.lock().expect("display").staged_len(), 2);
-        let one = display_line_for(&rt, "agent-a", &display_payload_for("agent-a", "display-api:view:project", "view.alpha", "source.alpha", "sector.one", "{}", 1), 1);
-        let r1 = through_pulse(&rt, &DockingPort::DisplayApi, &one);
-        assert!(r1.ok, "{:?}", r1.error);
-        assert_eq!(r1.projection, Some(serde_json::json!({"label":"one"})));
-        let two = display_line_for(&rt, "agent-a", &display_payload_for("agent-a", "display-api:view:project", "view.beta", "source.alpha", "sector.two", "{}", 2), 2);
-        let r2 = through_pulse(&rt, &DockingPort::DisplayApi, &two);
-        assert!(r2.ok, "{:?}", r2.error);
-        assert_eq!(r2.projection, Some(serde_json::json!({"label":"two"})));
-    }
-    #[test]
-    fn catalog_list_returns_granted_views() {
-        let (_dir, rt) = temp_display_runtime();
-        let line = display_line_for(&rt, "display-client", &display_payload_for("display-client", "display-api:catalog:list", "view.alpha", "", "", "{}", 1), 1);
-        let resp = through_pulse(&rt, &DockingPort::DisplayApi, &line);
-        assert!(resp.ok, "{:?}", resp.error);
-        let body = resp.projection.expect("catalog body");
-        let views = body.get("views").and_then(|v| v.as_array()).expect("views");
-        let names: Vec<String> = views.iter().filter_map(|v| v.as_str()).map(|s| s.to_string()).collect();
-        assert!(names.contains(&String::from("view.alpha")), "{:?}", names);
-        assert!(names.contains(&String::from("view.beta")), "{:?}", names);
-        let sources = body.get("sources").and_then(|v| v.as_array()).expect("sources");
-        assert!(sources.iter().any(|v| v.as_str() == Some("source.alpha")), "{:?}", sources);
-    }
-    #[test]
-    fn missing_locator_denies_at_boot() {
-        match tempfile::tempdir() {
-            Err(_) => panic!("tempdir"),
-            Ok(dir) => {
-                let catalog = "display_views:\n  view.alpha:\n    source: source.alpha\n    sector: sector.one\ndisplay_sources:\n  - id: source.alpha\n    locator: absent.json\n    sectors:\n      - sector.one\ndisplay_sectors:\n  - sector.one\n";
-                std::fs::write(dir.path().join("lattice.yaml"), catalog).expect("lattice");
-                std::fs::write(dir.path().join("display-grants.gap"), "grants:\n  - agent_id: agent-a\n    source_id: source.alpha\n    sector_id: sector.one\n").expect("grants");
-                plant_hub_gap(dir.path());
-                match open_lattice_db(&dir.path().join("dock.db")) {
-                    Err(_) => panic!("db"),
-                    Ok(conn) => match DockingRuntime::with_data_dir(dir.path().join("sockets").to_string_lossy().to_string(), conn, &[], dir.path()) {
-                        Ok(_) => panic!("missing locator must DENY on miss"),
-                        Err(e) => assert!(e.to_string().contains("missing locator DENY on miss")),
-                    },
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn boot_seeds_pre_staged_actions_for_granted_agents() {
-        let dir = tempfile::tempdir().expect("tempdir");
-        plant_display_lattice(dir.path());
-        let staging = crate::dock_display::DisplayStaging::load(dir.path()).expect("staging");
-        let mut live = crate::envelope_admit::load_live_entry(dir.path()).expect("live");
-        crate::dock_display::seed_pre_staged_display_actions(&mut live, &staging);
-        let keys = live.snapshot.satisfied_actions.clone();
-        assert!(keys.contains("agt|display-client|display-api:attach"), "{:?}", keys);
-        assert!(keys.contains("agt|display-client|display-api:source:ingest"), "{:?}", keys);
-        assert!(keys.contains("agt|display-client|display-api:sector:stage"), "{:?}", keys);
-        assert!(keys.contains("agt|agent-a|display-api:sector:stage"), "{:?}", keys);
-        assert_eq!(keys.contains("agt|display-client|display-api:view:project"), false);
-        let _ = dir;
-    }
     #[test]
     fn seal_stamp_is_adopted_only_within_the_frame_second() {
-        let body = br#"{"kind":"display","action_path":"display-api:catalog:list","view":"view.alpha","timestamp":1700000000500}"#;
+        let body = br#"{"type":"PING","action_path":"root:ping","timestamp":1700000000500}"#;
         assert_eq!(super::dock_pulse::seal_stamp_in_second(1700000000, body), Some(1700000000500));
-        let far = br#"{"kind":"display","action_path":"display-api:catalog:list","view":"view.alpha","timestamp":1600000000000}"#;
+        let far = br#"{"type":"PING","action_path":"root:ping","timestamp":1600000000000}"#;
         assert_eq!(super::dock_pulse::seal_stamp_in_second(1700000000, far), None);
-        let none = br#"{"kind":"display","action_path":"display-api:catalog:list","view":"view.alpha"}"#;
+        let none = br#"{"type":"PING","action_path":"root:ping"}"#;
         assert_eq!(super::dock_pulse::seal_stamp_in_second(1700000000, none), None);
     }
     #[test]
     fn pulse_decay_rate_clears_the_second_counter() {
-        let (_dir, rt) = temp_display_runtime();
+        let (_dir, rt) = temp_runtime();
         {
             let mut live = rt.live_entry.lock().expect("live");
             live.snapshot.event_rate = 12;
         }
         super::dock_pulse::pulse_decay_rate(&rt);
         assert_eq!(rt.live_entry.lock().expect("live").snapshot.event_rate, 0);
-    }
-    #[test]
-    fn http_json_reply_is_http_json() {
-        let body = "{\"ok\":true,\"projection\":{\"n\":1}}";
-        let reply = crate::dock_display::http_json_reply(true, body);
-        assert!(reply.starts_with("HTTP/1.1 200 OK\r\n"));
-        assert!(reply.contains("Content-Type: application/json"));
-        assert!(reply.ends_with(body));
-        let refused = crate::dock_display::http_json_reply(false, "{\"ok\":false}");
-        assert!(refused.starts_with("HTTP/1.1 403 Forbidden\r\n"));
-    }
-    #[test]
-    fn apply_does_not_mutate_display() {
-        let (dir, rt) = temp_display_runtime();
-        let line = display_line(&rt, &display_payload("display-api:source:ingest", "view.alpha", "source.alpha", "sector.one", "{\"n\":1}", 1));
-        set_pulse_clock(&rt, 1_000_000);
-        let enq = process_request(&rt, &DockingPort::DisplayApi, &line);
-        let digest = enq.digest.clone().expect("digest");
-        let cap = {
-            let pulse = rt.pulse.lock().expect("pulse");
-            let held = pulse.held.get(&digest).expect("held");
-            QueuedCapsule {
-                digest: digest.clone(),
-                agent_id: held.frame.agent_id.clone(),
-                sequence_number: 1,
-                byte_len: held.plaintext.len(),
-                freeze: freeze_temporal_snapshot(1_000_000, 0),
-            }
-        };
-        let before = rt.display.lock().expect("display").staged_len();
-        super::dock_apply::apply_held_capsule(&rt, &cap);
-        assert_eq!(rt.display.lock().expect("display").staged_len(), before);
-        super::dock_apply::apply_display_after_admit(&rt, &digest);
-        let path = dir.path().join("display-staging").join("source.alpha__sector.one.json");
-        let text = std::fs::read_to_string(&path).expect("staged file");
-        assert!(text.contains(r#""n":1"#));
-    }
-    #[test]
-    fn request_returns_json_body() {
-        let (_dir, rt) = temp_display_runtime();
-        let ingest = display_line(&rt, &display_payload("display-api:source:ingest", "view.alpha", "source.alpha", "sector.one", "{\"n\":1}", 1));
-        assert!(through_pulse(&rt, &DockingPort::DisplayApi, &ingest).ok);
-        let req = display_line(&rt, &display_payload("display-api:view:request", "view.alpha", "source.alpha", "sector.one", "{}", 2));
-        let resp = through_pulse(&rt, &DockingPort::DisplayApi, &req);
-        assert!(resp.ok, "{:?}", resp.error);
-        assert_eq!(resp.projection, Some(serde_json::json!({"n":1})));
-    }
-    #[test]
-    fn tls_display_port_is_28429() {
-        assert_eq!(super::dock_serve::tls_dock_port(DockingPort::DisplayApi), 28429);
-    }
-    #[test]
-    fn display_client_tls_json_wire() {
-        assert_eq!(super::dock_serve::tls_dock_port(DockingPort::DisplayApi), 28429);
-        let (_dir, rt) = temp_display_runtime();
-        let denied = process_request(&rt, &DockingPort::DisplayApi, "{\"kind\":\"display\"}");
-        assert!(denied.error.unwrap_or_default().contains("JSON body that skips the sealed frame is refused"));
-    }
-    #[test]
-    fn pulse_beat_ready_loop_does_not_apply_display() {
-        let (dir, rt) = temp_display_runtime();
-        let line = display_line(&rt, &display_payload("display-api:source:ingest", "view.alpha", "source.alpha", "sector.one", "{\"n\":1}", 1));
-        set_pulse_clock(&rt, 1_000_000);
-        let enq = process_request(&rt, &DockingPort::DisplayApi, &line);
-        let digest = enq.digest.clone().expect("digest");
-        set_pulse_clock(&rt, 1_000_000 + PULSE_MS);
-        let _cap = {
-            let pulse = rt.pulse.lock().expect("pulse");
-            let held = pulse.held.get(&digest).expect("held");
-            QueuedCapsule {
-                digest: digest.clone(),
-                agent_id: held.frame.agent_id.clone(),
-                sequence_number: 1,
-                byte_len: held.plaintext.len(),
-                freeze: freeze_temporal_snapshot(1_000_000, 0),
-            }
-        };
-        let before = rt.display.lock().expect("display").staged_len();
-        let _ = pulse_beat(&rt);
-        assert_eq!(rt.display.lock().expect("display").staged_len(), before);
-        let _ = collect_applied(&rt, &digest);
-        let path = dir.path().join("display-staging").join("source.alpha__sector.one.json");
-        let text = std::fs::read_to_string(&path).expect("staged file");
-        assert!(text.contains(r#""n":1"#));
-    }
-    #[test]
-    fn missing_grant_file_denies_at_boot() {
-        match tempfile::tempdir() {
-            Ok(dir) => match (plant_lattice(dir.path()), plant_hub_gap(dir.path()), open_lattice_db(&dir.path().join("dock.db"))) {
-                ((), (), Ok(conn)) => match DockingRuntime::with_data_dir(dir.path().join("sockets").to_string_lossy().to_string(), conn, &[], dir.path()) {
-                    Ok(_) => panic!("missing grant must DENY on miss"),
-                    Err(e) => assert!(e.to_string().contains("display grant wall missing"))
-                },
-                _ => panic!("db")
-            },
-            Err(_) => panic!("tempdir")
-        }
-    }
-    #[test]
-    fn missing_lattice_file_denies_at_runtime_boot() {
-        match tempfile::tempdir() {
-            Ok(dir) => match (plant_hub_gap(dir.path()), std::fs::write(dir.path().join("display-grants.gap"), "grants:"), open_lattice_db(&dir.path().join("dock.db"))) {
-                ((), Ok(()), Ok(conn)) => match DockingRuntime::with_data_dir(dir.path().join("sockets").to_string_lossy().to_string(), conn, &[], dir.path()) {
-                    Ok(_) => panic!("missing lattice must DENY on miss"),
-                    Err(e) => assert!(e.to_string().contains("lattice yaml missing"))
-                },
-                _ => panic!("setup")
-            },
-            Err(_) => panic!("tempdir")
-        }
-    }
-    #[tokio::test]
-    async fn display_client_opens_tls_json_wire() {
-        match rustls::crypto::ring::default_provider().install_default() {
-            _ => match tempfile::tempdir() {
-                Err(_) => panic!("tmp"),
-                Ok(dir) => match aep_agentmesh::tls::ensure_mesh_ca(dir.path()) {
-                    Err(_) => panic!("ca"),
-                    Ok((ca_pem, ca_key)) => match aep_agentmesh::tls::ensure_dock_server_identity(dir.path()) {
-                        Err(_) => panic!("server"),
-                        Ok(server) => match aep_agentmesh::tls::issue_signed_identity(&ca_pem, &ca_key, "display-client") {
-                            Err(_) => panic!("client"),
-                            Ok(client) => match aep_agentmesh::tls::build_server_config(&ca_pem, &server.cert_pem, &server.key_pem) {
-                                Err(_) => panic!("server cfg"),
-                                Ok(server_cfg) => match aep_agentmesh::tls::build_client_config(&ca_pem, &client.cert_pem, &client.key_pem) {
-                                    Err(_) => panic!("client cfg"),
-                                    Ok(client_cfg) => match tokio::net::TcpListener::bind("127.0.0.1:0").await {
-                                        Err(_) => panic!("bind"),
-                                        Ok(listener) => match listener.local_addr() {
-                                            Err(_) => panic!("addr"),
-                                            Ok(addr) => match tokio::spawn(async move {
-                                                match listener.accept().await {
-                                                    Err(_) => panic!("accept"),
-                                                    Ok((tcp, _)) => match tokio_rustls::TlsAcceptor::from(server_cfg).accept(tcp).await {
-                                                        Err(_) => panic!("tls accept"),
-                                                        Ok(mut tls) => match tokio::io::AsyncWriteExt::write_all(&mut tls, b"{\"ok\":true,\"projection\":{\"tls\":true}}\n").await {
-                                                            Err(_) => panic!("server write"),
-                                                            Ok(()) => true
-                                                        }
-                                                    }
-                                                }
-                                            }) {
-                                                server_task => match tokio::net::TcpStream::connect(addr).await {
-                                                    Err(_) => panic!("connect"),
-                                                    Ok(tcp) => match rustls::pki_types::ServerName::try_from("aep-dock-server") {
-                                                        Err(_) => panic!("sni"),
-                                                        Ok(name) => match tokio_rustls::TlsConnector::from(client_cfg).connect(name, tcp).await {
-                                                            Err(_) => panic!("tls connect"),
-                                                            Ok(mut tls) => match String::from("x").repeat(512).into_bytes() {
-                                                                mut buf => match tokio::io::AsyncReadExt::read(&mut tls, &mut buf).await {
-                                                                    Err(_) => panic!("client read"),
-                                                                    Ok(n) => match (n > 0, String::from_utf8_lossy(&buf[..n]).contains("tls"), server_task.await) {
-                                                                        (true, true, Ok(_)) => assert_eq!(super::dock_serve::tls_dock_port(DockingPort::DisplayApi), 28429),
-                                                                        _ => panic!("tls json roundtrip failed")
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }

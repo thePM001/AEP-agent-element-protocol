@@ -13,7 +13,7 @@ use serde::Deserialize;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, UnixListener};
 use tokio::task::JoinHandle;
 use tokio_rustls::TlsAcceptor;
@@ -107,8 +107,7 @@ async fn wait_collect_if_needed(
     line: &str,
 ) -> DockFrameResponse {
     let first = process_request(runtime, port, line);
-    let http_pending = crate::dock_display::looks_like_http(line) && first.pending == Some(true);
-    if line_is_collect(line) == false && http_pending == false {
+    if line_is_collect(line) == false {
         return first;
     }
     if is_collect_pending(&first) == false {
@@ -200,20 +199,8 @@ where
                 break;
             }
         };
-        let inbound = if port == DockingPort::DisplayApi && crate::dock_display::looks_like_http(&line) {
-            match read_http_display_message(&mut reader, &line).await {
-                Ok(msg) => msg,
-                Err(_) => {
-                    let resp = deny_resp(None, String::from("JSON body that skips the sealed frame is refused"));
-                    write_display_reply(&mut writer, &line, &resp).await?;
-                    break;
-                }
-            }
-        } else {
-            line
-        };
-        let resp = wait_collect_if_needed(&runtime, &port, &inbound).await;
-        write_display_reply(&mut writer, &inbound, &resp).await?;
+        let resp = wait_collect_if_needed(&runtime, &port, &line).await;
+        write_response_line(&mut writer, &resp).await?;
     }
     Ok(())
 }
@@ -266,7 +253,6 @@ pub(crate) fn tls_dock_port(port: DockingPort) -> u16 {
     match port {
         DockingPort::InferenceEngine => 28425,
         DockingPort::ValidationEngine => 28426,
-        DockingPort::DisplayApi => 28429,
         DockingPort::FutureFeatures => 28427,
         DockingPort::RegulationModule => 28428,
     }
@@ -439,74 +425,4 @@ pub async fn drain_docking_servers(runtime: &DockingRuntime, handles: Vec<JoinHa
     join_or_abort(runtime.take_inflight()).await;
     unlink_sockets(&runtime.socket_base);
     runtime.close_sqlite();
-}
-fn http_content_length(raw: &str) -> Option<usize> {
-    for line in raw.lines() {
-        let lower = line.to_ascii_lowercase();
-        if lower.starts_with("content-length:") == false {
-            continue;
-        }
-        let mut parts = line.split(':');
-        let _name = parts.next();
-        match parts.next() {
-            Some(value) => return value.trim().parse().ok(),
-            None => return None,
-        }
-    }
-    None
-}
-async fn read_http_display_message<R>(reader: &mut R, first: &str) -> std::io::Result<String>
-where
-    R: tokio::io::AsyncBufRead + Unpin,
-{
-    let mut raw = first.trim_end_matches('\r').to_string();
-    loop {
-        match read_line_limited(reader, MAX_LINE_BYTES).await {
-            Ok(Some(next)) => {
-                let trimmed = next.trim_end_matches('\r');
-                raw.push('\n');
-                raw.push_str(trimmed);
-                if trimmed.is_empty() {
-                    break;
-                }
-            }
-            Ok(None) => break,
-            Err(err) => return Err(err),
-        }
-    }
-    match http_content_length(&raw) {
-        Some(n) => {
-            let mut body = vec![0u8; n];
-            match tokio::io::AsyncReadExt::read_exact(reader, &mut body).await {
-                Ok(_) => match String::from_utf8(body) {
-                    Ok(text) => {
-                        raw.push('\n');
-                        raw.push_str(&text);
-                    }
-                    Err(_) => return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "http body")),
-                },
-                Err(err) => return Err(err),
-            }
-        }
-        None => match read_line_limited(reader, MAX_LINE_BYTES).await {
-            Ok(Some(next)) => {
-                raw.push('\n');
-                raw.push_str(next.trim_end_matches('\r'));
-            }
-            Ok(None) => {}
-            Err(err) => return Err(err),
-        },
-    }
-    Ok(raw)
-}
-async fn write_display_reply(writer: &mut (impl tokio::io::AsyncWrite + Unpin), inbound: &str, resp: &DockFrameResponse) -> std::io::Result<()> {
-    if crate::dock_display::looks_like_http(inbound) {
-        let json = match serde_json::to_string(resp) {
-            Ok(text) => text,
-            Err(_) => String::from("{\"ok\":false,\"error\":\"internal response serialization failed\"}"),
-        };
-        let http = crate::dock_display::http_json_reply(resp.ok, &json);
-        return writer.write_all(http.as_bytes()).await;
-    }
-    write_response_line(writer, resp).await
 }

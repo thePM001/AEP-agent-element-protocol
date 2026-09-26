@@ -20,7 +20,6 @@ pub(crate) fn dock_port_name(port: &DockingPort) -> &'static str {
         DockingPort::ValidationEngine => "validation_engine",
         DockingPort::FutureFeatures => "future_features",
         DockingPort::RegulationModule => "regulation_module",
-        DockingPort::DisplayApi => "display_api",
     }
 }
 
@@ -213,7 +212,6 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
         }
         return;
     }
-    let mut projection = None;
     if true {
         let action = match serde_json::from_slice::<Value>(&held.plaintext) {
             Ok(v) => match v.get("action_path") {
@@ -277,11 +275,6 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
             return;
         }
     };
-    if held.expected_port == DockingPort::DisplayApi {
-        if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
-            pulse.pending_display.insert(cap.digest.clone(), (held.frame.agent_id.clone(), held.plaintext.clone()));
-        }
-    }
 
     let resp = match recorded {
         Ok(event_id) => {
@@ -294,7 +287,7 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
                 http: http_resp.http,
                 deny: None,
                 pending: None,
-            projection,
+            projection: None,
             http_queued: None,
             };
             resp
@@ -310,35 +303,3 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
     }
 }
     }
-pub(crate) fn apply_display_after_admit(runtime: &DockingRuntime, digest: &str) {
-    let pending = match lock_or_deny(&runtime.pulse, "pulse") {
-        Ok(mut pulse) => pulse.pending_display.remove(digest),
-        Err(_) => return,
-    };
-    let Some(pending) = pending else { return };
-    let mut staging = match lock_or_deny(&runtime.display, "display") {
-        Ok(g) => g,
-        Err(resp) => {
-            if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
-                remember_applied(&mut pulse, digest.to_string(), resp);
-            }
-            return;
-        }
-    };
-    match crate::dock_display::apply_display_plaintext(&mut staging, &pending.0, &pending.1) {
-        Ok(p) => {
-            drop(staging);
-            if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
-                if let Some(resp) = pulse.last_applied.get_mut(digest) {
-                    resp.projection = p;
-                }
-            }
-        }
-        Err(e) => {
-            drop(staging);
-            if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
-                remember_applied(&mut pulse, digest.to_string(), deny_resp(Some(digest.to_string()), e));
-            }
-        }
-    }
-}

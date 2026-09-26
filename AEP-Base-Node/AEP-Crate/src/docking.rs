@@ -96,7 +96,6 @@ pub fn port_event_type(port: &DockingPort) -> &'static str {
     match port {
         DockingPort::InferenceEngine => "docking_inference_engine",
         DockingPort::ValidationEngine => "docking_validation_engine",
-        DockingPort::DisplayApi => "docking_display_api",
         DockingPort::FutureFeatures => "docking_future_features",
         DockingPort::RegulationModule => "docking_regulation_module",
     }
@@ -172,21 +171,6 @@ pub fn process_request(
     port: &DockingPort,
     line: &str,
 ) -> DockFrameResponse {
-    if port == &DockingPort::DisplayApi {
-        if crate::dock_display::looks_like_http(line) {
-            match crate::dock_display::extract_json_body_from_http(line) {
-                Ok(body) => return process_request(runtime, port, &body),
-                Err(e) => return deny_resp(None, e),
-            }
-        }
-        if let Ok(v) = serde_json::from_str::<Value>(line) {
-            if v.get("frame").is_none() {
-                if v.get("collect").is_none() {
-                    return deny_resp(None, String::from("JSON body that skips the sealed frame is refused"));
-                }
-            }
-        }
-    }
     let req: DockRequest = match serde_json::from_str(line) {
         Ok(v) => v,
         Err(e) => {

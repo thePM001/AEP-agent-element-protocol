@@ -1,7 +1,6 @@
 //! Pulse queue enqueue and beat.
 
 use super::dock_apply::apply_held_capsule;
-use super::dock_apply::apply_display_after_admit;
 use super::dock_rate::{GLOBAL_RATE_LIMIT, SIGNER_RATE_LIMIT};
 use super::dock_serve::MAX_CONNECTIONS;
 use super::{
@@ -44,7 +43,6 @@ pub struct PulseState {
     pub(crate) last_applied: HashMap<String, DockFrameResponse>,
     pub(crate) last_applied_at: HashMap<String, i64>,
     pub(crate) last_applied_order: VecDeque<String>,
-    pub(crate) pending_display: HashMap<String, (String, Vec<u8>)>,
 }
 
 impl Default for PulseState {
@@ -56,7 +54,6 @@ impl Default for PulseState {
             last_applied_at: HashMap::new(),
             last_applied_order: VecDeque::new(),
             last_applied: HashMap::new(),
-            pending_display: HashMap::new(),
         }
     }
 }
@@ -90,7 +87,6 @@ pub struct DockingRuntime {
     pub live_entry: Arc<Mutex<LiveEntry>>,
     pub hub: Arc<AgentControlHub>,
     pub pulse: Arc<Mutex<PulseState>>,
-    pub display: Arc<Mutex<crate::dock_display::DisplayStaging>>,
     pub(crate) connection_limit: Arc<Semaphore>,
     pub(crate) stop: watch::Sender<bool>,
     pub(crate) inflight: Arc<Mutex<Vec<JoinHandle<()>>>>,
@@ -112,9 +108,7 @@ impl DockingRuntime {
         lrps: &[String],
         data_dir: &Path,
     ) -> Result<Self, BaseNodeError> {
-    let mut live_entry = load_live_entry(data_dir)?;
-    let display = crate::dock_display::DisplayStaging::load(data_dir)?;
-    crate::dock_display::seed_pre_staged_display_actions(&mut live_entry, &display);
+    let live_entry = load_live_entry(data_dir)?;
         Ok(Self {
             socket_base: socket_base.into(),
             lrps: lrps.to_vec(),
@@ -155,7 +149,6 @@ impl DockingRuntime {
                 Arc::new(loaded)
             },
             pulse: Arc::new(Mutex::new(PulseState::default())),
-            display: Arc::new(Mutex::new(display)),
             connection_limit: Arc::new(Semaphore::new(MAX_CONNECTIONS)),
             stop: watch::channel(false).0,
             inflight: Arc::new(Mutex::new(Vec::new())),
@@ -272,7 +265,6 @@ pub(crate) fn collect_applied(runtime: &DockingRuntime, digest: &str) -> DockFra
         return deny_resp(None, String::from("collect requires digest"));
     }
     let _ = pulse_beat(runtime);
-    apply_display_after_admit(runtime, digest);
     let mut pulse = dock_lock!(&runtime.pulse, "pulse");
     if let Some(&at) = pulse.last_applied_at.get(digest) {
         if crate::now_unix() as i64 - at > 600 {
