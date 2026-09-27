@@ -41,6 +41,8 @@ jobs:
           go-version-file: AEP-CAW/go.mod
           cache-dependency-path: AEP-CAW/go.sum
       - uses: Swatinem/rust-cache@v2
+      - name: install libseccomp for the CAW build
+        run: sudo apt-get update && sudo apt-get install -y libseccomp-dev
       - name: node aep-check.mjs
         run: node aep-check.mjs
       - name: conformance runner
