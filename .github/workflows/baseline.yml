@@ -1,0 +1,70 @@
+name: baseline
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  rust-workspace:
+    name: cargo test --workspace
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: AEP-CAW/go.mod
+          cache-dependency-path: AEP-CAW/go.sum
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo test --workspace
+        run: cargo test --workspace
+
+  live-set:
+    name: aep-check and conformance
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: AEP-CAW/go.mod
+          cache-dependency-path: AEP-CAW/go.sum
+      - uses: Swatinem/rust-cache@v2
+      - name: node aep-check.mjs
+        run: node aep-check.mjs
+      - name: conformance runner
+        run: bash AEP-Components/conformance/runner/run.sh
+
+  format-report:
+    name: format report
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: AEP-CAW/go.mod
+          cache: false
+      # This job reports format drift and never fails the build.
+      - name: cargo fmt --all --check
+        run: cargo fmt --all --check || echo "::warning::cargo fmt reports drift"
+      - name: gofmt -l AEP-CAW
+        run: |
+          out=$(gofmt -l AEP-CAW || true)
+          if [ -n "$out" ]; then
+            echo "$out"
+            echo "::warning::gofmt reports drift"
+          fi

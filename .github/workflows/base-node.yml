@@ -42,13 +42,20 @@ jobs:
           fi
       - name: health JSON carries the rollup
         run: |
-          python3 - <<'PY'
-          import json
-          with open("/tmp/health.json") as f:
-              body = json.load(f)
-          assert body["status"] in ("ok", "degraded", "error"), body["status"]
-          assert "sqlite_closed" in body, "sqlite_closed missing"
-          print("status", body["status"], "sqlite_closed", body["sqlite_closed"])
-          PY
+          jq -e ".status == \"ok\" or .status == \"degraded\" or .status == \"error\"" /tmp/health.json
+          jq -e "has(\"sqlite_closed\")" /tmp/health.json
+          jq -r "\"status \" + .status + \" sqlite_closed \" + (.sqlite_closed | tostring)" /tmp/health.json
       - name: Display API folder is absent
         run: test ! -d AEP-Components/display-api
+
+  self-test:
+    name: aep-base-node --self-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo build -p aep-base-node --bin aep-base-node
+        run: cargo build -p aep-base-node --bin aep-base-node
+      - name: aep-base-node --self-test
+        run: ./rust/target/debug/aep-base-node --self-test
