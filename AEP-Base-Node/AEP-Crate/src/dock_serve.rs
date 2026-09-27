@@ -258,6 +258,10 @@ pub(crate) fn tls_dock_port(port: DockingPort) -> u16 {
     }
 }
 
+pub(crate) fn note_tls_handshake_err(_runtime: &DockingRuntime, error: impl std::fmt::Display) {
+    warn!(error = %error, "docking TLS handshake refused")
+}
+
 async fn serve_tls_port(
     runtime: Arc<DockingRuntime>,
     port: DockingPort,
@@ -301,7 +305,7 @@ async fn serve_tls_port(
                         warn!(error = %e, "docking TLS connection closed with error");
                     }
                 }
-                Err(_) => { rt.request_stop() },
+                Err(e) => note_tls_handshake_err(&rt, e),
             }
         });
         runtime.track_task(handle);

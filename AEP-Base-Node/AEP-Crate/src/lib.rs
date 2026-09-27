@@ -388,6 +388,25 @@ pub fn resolve_mesh_peers(
 }
 
 
+pub fn rollup_status(
+    docking_ports_listening: bool,
+    hub_loaded: bool,
+    mesh_peers_load_error: Option<&str>,
+    sqlite_closed: bool,
+) -> &'static str {
+    if sqlite_closed {
+        "error"
+    } else if docking_ports_listening == false {
+        "degraded"
+    } else if hub_loaded == false {
+        "degraded"
+    } else if mesh_peers_load_error.is_some() {
+        "degraded"
+    } else {
+        "ok"
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn health(
     version: &str,
@@ -428,6 +447,7 @@ pub fn health(
         hub_sessions,
         hub_mounts,
         hub_permissions,
+        status: rollup_status(docking_ports_listening, hub_loaded, mesh_peers_load_error.as_deref(), false),
         mesh_peers_load_error,
         docking_ports: docking_port_specs(base_socket),
         docking_ports_listening,
@@ -436,7 +456,6 @@ pub fn health(
         lattice_memory_dim,
         vector_store: "sqlite-vec+usearch",
         sqlite_vec_version,
-        status: "ok",
     }
 }
 
@@ -522,4 +541,74 @@ mod tests {
         .expect("record");
         assert_eq!(event_count(&conn).expect("count"), 1);
     }
+
+    #[test]
+    fn health_status_ok_when_docks_and_hub_ready() {
+        assert_eq!(
+            health(
+                "2.8.6-alpha.1",
+                1,
+                true,
+                "/tmp/sock",
+                0,
+                CORRECTWRITING_EN_PRIORITY,
+                true,
+                1,
+                1,
+                1,
+                None,
+                0,
+                128,
+                None,
+                true,
+                1,
+                None,
+            )
+            .status,
+            "ok",
+        )
+    }
+
+    #[test]
+    fn health_status_degraded_when_isolated() {
+        assert_eq!(
+            health(
+                "2.8.6-alpha.1",
+                0,
+                false,
+                "/tmp/sock",
+                0,
+                CORRECTWRITING_EN_PRIORITY,
+                false,
+                0,
+                0,
+                0,
+                None,
+                0,
+                128,
+                None,
+                false,
+                0,
+                None,
+            )
+            .status,
+            "degraded",
+        )
+    }
+
+    #[test]
+    fn rollup_status_error_when_sqlite_closed() {
+        assert_eq!(rollup_status(true, true, None, true), "error")
+    }
+
+    #[test]
+    fn rollup_status_degraded_when_mesh_peers_load_error() {
+        assert_eq!(rollup_status(true, true, Some("load failed"), false), "degraded")
+    }
+
+    #[test]
+    fn rollup_status_ok_when_ready() {
+        assert_eq!(rollup_status(true, true, None, false), "ok")
+    }
+
 }

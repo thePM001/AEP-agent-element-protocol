@@ -1,6 +1,6 @@
     use super::*;
     use super::dock_rate::SIGNER_RATE_LIMIT;
-    use super::dock_serve::{bind_listener, drain_docking_servers, prepare_socket_dir, run_docking_servers, serve_connection, sockets_exist};
+    use super::dock_serve::{bind_listener, drain_docking_servers, prepare_socket_dir, run_docking_servers, serve_connection, sockets_exist, note_tls_handshake_err};
     use aep_base_node_pulse::{freeze_temporal_snapshot, EnqueueDeny, QueuedCapsule, MAX_AGE_MS, MAX_DRIFT_MS, PULSE_MS, QUEUE_CAP_BYTES, QUEUE_CAP_CAPSULES};
     use aep_lattice_channel::build_frame_for_dock;
     use crate::{docking_port_specs, open_lattice_db};
@@ -1388,4 +1388,12 @@
         }
         super::dock_pulse::pulse_decay_rate(&rt);
         assert_eq!(rt.live_entry.lock().expect("live").snapshot.event_rate, 0);
+    }
+
+    #[test]
+    fn tls_handshake_err_does_not_request_stop() {
+        let (_dir, rt) = temp_runtime();
+        assert_eq!(rt.is_stopping(), false);
+        note_tls_handshake_err(&rt, "refused");
+        assert_eq!(rt.is_stopping(), false)
     }
