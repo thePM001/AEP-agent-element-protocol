@@ -105,7 +105,7 @@ A builder who wants a different wait edits the compiled `PULSE_MS` constant and 
 
 The status comes from one rollup that the daemon ready log and the Data Dock `GET /health` share. It is `error` when the lattice ledger is closed and `degraded` when the dock sockets are missing, the Agent Control Hub is not loaded or the mesh peer file failed to load. Any other state is `ok`. The report also carries `sqlite_closed`, `last_tls_handshake_err` and `drain_aborted_tasks`.
 
-The daemon listens on four unix docks for inference, validation, regulation and future. UCB remains on 8412 and Data Dock serves HTTP JSON on 8413 as a surface in front of those docks rather than a fifth dock. Data Dock binds loopback by default and needs `DATA_DOCK_API_KEY` on any other host. `DATA_DOCK=0` turns the HTTP surface off. See [`DATA-DOCK.md`](../AEP-User-Experience/docs/DATA-DOCK.md) for the routes.
+The daemon listens on four unix docks for inference, validation, regulation and future. UCB remains on 8412 and Data Dock serves HTTP JSON on 8413 as a surface in front of those docks rather than a fifth dock. Data Dock binds loopback by default and needs `DATA_DOCK_API_KEY` on any other host. The operator generates that key with `openssl rand -hex 32` as described in the Data Dock guide. `DATA_DOCK=0` turns the HTTP surface off. See [`DATA-DOCK.md`](../AEP-User-Experience/docs/DATA-DOCK.md) for the routes.
 
 The daemon logs ready only when the status is ok. A bind failure or an error status after bind drains the docks and exits 2. SIGTERM or SIGINT drains, which joins tasks for up to 2 seconds and aborts the rest, removes the sockets, closes SQLite and exits 0. A refused TLS handshake is logged and stored for health but never stops the daemon.
 

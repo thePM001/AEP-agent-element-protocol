@@ -20,6 +20,31 @@ Data Dock binds to loopback by default, even inside the Docker image. To reach i
 
 On first start the daemon mints a signing key for the server agent `data-dock` and writes the task manifest `data-dock.json` into the UCB manifest folder. A later boot reuses that key, so a restart never rotates it. The lattice policy must grant `data-dock` the action paths that frontends are allowed to write.
 
+## Generate a key
+
+The key is yours to make. AEP does not issue it and no central service knows it. Whoever deploys the node creates one random secret, puts it in the deployment environment and hands the same value to the frontends that call Data Dock.
+
+1. Create a 32 byte random key as 64 hex characters.
+
+   ```bash
+   openssl rand -hex 32
+   ```
+
+   Without openssl the same result comes from `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+
+2. Put it in `.env` next to `docker-compose.yml` together with the host that opens the listener.
+
+   ```text
+   DATA_DOCK_HOST=0.0.0.0
+   DATA_DOCK_API_KEY=<the 64 hex characters>
+   ```
+
+3. Restart the node with `docker compose up -d` so the daemon reads the new values.
+
+4. Give the key to each frontend as a server side secret and send it on every `/v1` call as `Authorization: Bearer <key>`. Never ship it inside browser code that users can read.
+
+To rotate the key, generate a new one, update `.env`, restart the node and update the frontends. The old key stops working at the restart. A node that listens on loopback only needs no key.
+
 ## Authorization
 
 When `DATA_DOCK_API_KEY` is set every `/v1` route requires it. Send it in one of two headers.
