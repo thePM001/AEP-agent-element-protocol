@@ -224,12 +224,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "AEP Base Node daemon listening on docking ports"
         );
         let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
+        let data_dock_cfg = aep_base_node::data_dock::DataDockConfig::from_env();
+        let mut data_dock_handle = None;
+        if data_dock_cfg.enabled {
+            if let Err(e) = aep_base_node::data_dock::provision_server_identity(&runtime, &data_dir) {
+                drain_docking_servers(&runtime, handles).await;
+                return Err(format!("Data Dock identity: {e}").into());
+            }
+            let state = aep_base_node::data_dock::DataDockState {
+                runtime: runtime.clone(),
+                listen_port: data_dock_cfg.listen_port,
+            };
+            match aep_base_node::data_dock::serve(
+                state,
+                data_dock_cfg.listen_host.clone(),
+                data_dock_cfg.listen_port,
+            )
+            .await
+            {
+                Ok(h) => {
+                    info!(
+                        port = data_dock_cfg.listen_port,
+                        "Data Dock HTTP listening"
+                    );
+                    data_dock_handle = Some(h);
+                }
+                Err(e) => {
+                    drain_docking_servers(&runtime, handles).await;
+                    return Err(format!("Data Dock bind failed: {e}").into());
+                }
+            }
+        }
         let mut sigint = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())?;
         tokio::select! {
             _ = sigterm.recv() => {}
             _ = sigint.recv() => {}
         }
         info!("AEP Base Node daemon shutting down");
+        if let Some(h) = data_dock_handle {
+            h.abort();
+        }
         drain_docking_servers(&runtime, handles).await;
         return Ok(());
     }

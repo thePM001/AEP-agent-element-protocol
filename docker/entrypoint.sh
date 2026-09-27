@@ -87,6 +87,22 @@ wait_for_ucb() {
   return 1
 }
 
+wait_for_data_dock() {
+  if [ "${DATA_DOCK:-1}" = "0" ]; then
+    return 0
+  fi
+  i=0
+  while [ "$i" -lt 30 ]; do
+    if node -e "fetch('http://127.0.0.1:${DATA_DOCK_PORT:-8413}/health').then(()=>process.exit(0)).catch(()=>process.exit(1))" 2>/dev/null; then
+      return 0
+    fi
+    i=$((i + 1))
+    sleep 1
+  done
+  return 1
+}
+
+
 
 start_ucb() {
   if [ "${UCB:-1}" = "0" ]; then
@@ -139,9 +155,12 @@ if ! wait_for_docks; then
   exit 1
 fi
 
-
+echo "AEP Data Dock: http://127.0.0.1:${DATA_DOCK_PORT:-8413}" >&2
+if ! wait_for_data_dock; then
+  echo "ERROR: Data Dock failed to start on port ${DATA_DOCK_PORT:-8413}" >&2
+  exit 1
+fi
 start_ucb || exit 1
-
 echo "AEP Base Node ready." >&2
 if [ -f "${AEP_DATA}/ucb-api-key.recovery.txt" ]; then
   echo "  UCB API key recovery: docker compose exec aep cat /data/aep/ucb-api-key.recovery.txt" >&2
@@ -152,8 +171,9 @@ while true; do
     echo "Base Node daemon exited; restarting with current config..." >&2
     start_daemon
     wait_for_docks || exit 1
-  fi
 
+    wait_for_data_dock || exit 1
+  fi
 
   if [ "${UCB:-1}" != "0" ] && ! process_alive "${UCB_PID}"; then
     echo "UCB exited; restarting..." >&2

@@ -10,6 +10,7 @@ pub mod correctwriting_en;
 pub mod lattice_log;
 pub mod side_channel_monitor;
 pub mod task_manifest;
+pub mod data_dock;
 
 use aep_agentmesh::{create_bundle, AgentMeshBundle};
 use aep_lattice_channel::{

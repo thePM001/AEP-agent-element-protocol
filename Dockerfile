@@ -56,6 +56,9 @@ ENV AEP_DATA=/data/aep \
     AEP_MEMORY_BIN=/usr/local/bin/aep-memory \
     AEP_LATTICE_STRICT=1 \
     UCB_PORT=8412 \
+    DATA_DOCK_PORT=8413 \
+    DATA_DOCK_HOST=0.0.0.0 \
+    DATA_DOCK=1 \
     UCB=1 \
     AEP_IN_DOCKER=1 \
     AEP_DAEMON_PIDFILE=/run/aep/daemon.pid \
@@ -64,7 +67,7 @@ ENV AEP_DATA=/data/aep \
     NODE_PATH="/opt/aep/node_modules" \
     PATH="/usr/local/bin:${PATH}"
 
-EXPOSE 8412
+EXPOSE 8412 8413
 VOLUME ["/data/aep"]
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \

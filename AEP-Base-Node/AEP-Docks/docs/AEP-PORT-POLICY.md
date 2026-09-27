@@ -13,5 +13,6 @@ All AEP 2.8 public tier services MUST bind to the **84xx service mesh** range (`
 | Service | Port | Env override | Health |
 |---------|------|--------------|--------|
 | **UCB** | **`8412`** | **`UCB_PORT`** | **`GET /health`** |
+| **Data Dock** | **`8413`** | **`DATA_DOCK_PORT`** | **`GET /health`** |
 
-Docker maps host ports via `.env`; container internals stay at `8412`.
+Docker maps host ports via `.env`; container internals remain at `8412` and `8413`.

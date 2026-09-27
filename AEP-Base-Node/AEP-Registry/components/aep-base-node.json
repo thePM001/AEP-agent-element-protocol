@@ -4,7 +4,7 @@
   "version": "2.8.6",
   "kind": "daemon",
   "path": "AEP-Base-Node/",
-  "description": "Mandatory local governance daemon with lattice-gated docking ports.",
+  "description": "Mandatory local governance daemon with lattice-gated docking ports and Data Dock HTTP on 8413.",
   "requires": [
     "lattice-channels",
     "lattice-crypto"
@@ -18,6 +18,7 @@
     "dock:validation_engine",
     "dock:regulation_module",
     "dock:future_features",
+    "http:data-dock",
     "lattice:enforce"
   ],
   "actions": [
@@ -51,7 +52,7 @@
     "gpu_required": false
   },
   "cca": {
-    "summary": "Mandatory governance kernel exposing lattice-gated docking ports.",
+    "summary": "Mandatory governance kernel exposing lattice-gated docking ports and Data Dock HTTP on 8413.",
     "use_when": [
       "every AEP deployment",
       "local agent governance",

@@ -35,7 +35,7 @@ aep-wall-set-backpressure = { path = "../../AEP-Components/wall-set-backpressure
 serde.workspace = true
 serde_json.workspace = true
 rusqlite.workspace = true
-tokio = { workspace = true, features = ["sync", "time"] }
+tokio = { workspace = true, features = ["sync", "time", "net", "macros", "rt-multi-thread"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
 clap.workspace = true
@@ -46,6 +46,8 @@ sha2.workspace = true
 aes-gcm.workspace = true
 rustls.workspace = true
 tokio-rustls.workspace = true
+axum.workspace = true
+tower-http.workspace = true
 
 [dev-dependencies]
 aep-kernel-types = { path = "../../AEP-Components/kernel-types/crate" }
@@ -56,4 +58,5 @@ aep-admit-temporal-bounds = { path = "../../AEP-Components/admit-temporal-bounds
 aep-envelope = { path = "../../AEP-Components/envelope/crate" }
 aep-evaluation-chain = { path = "../../AEP-Components/evaluation-chain/crate" }
 tempfile = "3"
+tower = { version = "0.5", features = ["util"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "io-util"] }

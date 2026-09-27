@@ -2,6 +2,9 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.8.x public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.8.6] - 2026-09-27 - Data Dock HTTP
+Data Dock listens on 8413 so frontends can read already-admitted lattice records as JSON while governed writes are sealed on the server before they enter the four existing Base Node docks. UCB remains on 8412 and port 28429 is never bound. The full route guide is AEP-User-Experience/docs/DATA-DOCK.md and independent verification is cargo test -p aep-base-node.
+
 ## [2.8.6] - 2026-09-27
 Base Node DockingRuntime is five owned parts (io, keys, defence, admit and record). Same docks, same process, no UCB change.
 
@@ -17,7 +20,7 @@ The root README now names CAW as an incorporated part of AEP that runs on the ho
 ## [2.8.5] - 2026-09-12
 
 Optional Universal Connect Bridge uses Predicate Profile perimeter-v1 by default and content checks call the scanner pack. Ingest uses a 256 KiB default cap and a 2 MiB hard cap with dock wait of 5 seconds and journal rotation at a byte cap. Operator key remains UCB_API_KEY and foreign agents use per-agent keys. Task manifests carry a digest and a signature so unsigned or provisional manifests cannot enable egress. The journal is hash-chained and ingest waits for collect-all Admit allow before the journal is persisted. CAW runtime identifiers use aep-caw and origin helper docs are gone from the public tree.
-Validate runs under a two-slot pool with a forked child on Unix so the 2 second timeout kills that child and frees the slot. Composer uses a GAP engine URL only when set and does not invent a docker gateway. MCP JSON-RPC on the UCB MCP route uses the same auth as ingest and malformed tool arguments are refused. CCA setup writes protocol 2.8.5 and strips trust fields. Egress writes an audit row and isolates caller Authorization plus connection headers. Paper 005 VSA stays off unless named.
+Validate runs under a two-slot pool with a forked child on Unix so the 2 second timeout kills that child and frees the slot. Composer uses a GAP engine URL only when set and does not invent a docker gateway. MCP JSON-RPC on the UCB MCP route uses the same auth as ingest and malformed tool arguments are refused. CCA setup writes protocol 2.8.5 and strips trust fields. Egress writes an audit row and isolates caller Authorization plus connection headers. Paper 005 VSA remains off unless named.
 CAW CVE demo trees are not in the attachable component set while EPSCOM trust bundle mode is sha256-structure and ML-DSA is not claimed. AgentMesh docs say local issuance and a local cert is not mesh attestation.
 ## [2.8.x] - 2026-09-05 - ClosedWall dock collect and unbound fields
 DenyReport closed walls now carry a class of writing, security, temporal, capability, poison or structural so a writing deny is not a transport failure. After enqueue the client collects the applied response by digest and enqueue is not Admit. Unbound scene, channel, time and sequence close Admit. GAP walls bind to a wrap or prefix except writing and security which stay always-on and GraphEngine does not run a node until admitGate allows.
@@ -25,7 +28,7 @@ DenyReport closed walls now carry a class of writing, security, temporal, capabi
 AEP-Policy-System GAP files load as live Admit walls on the kernel collect-all pass. CodeSandbox executes python, javascript, typescript and bash under the AEP data sandbox. Cedar and Rego transpilers emit GAP and reverse GAP exports emit Cedar and Rego. MCP proxy forwards policy-allowed tool calls through stdio JSON-RPC and SSE HTTP. Slack chat posts go through UCB egress and Jira creates issues through UCB egress. The advertised Python SDK now ships aep-protocol and dynaep clients. After dock allow the kernel executes bound HTTP and returns http on the dock response.
 ## [2.8.0] - 2026-09-04
 
-The AEP 2.8 library now treats Base Node as the kernel: after a sealed lattice frame is opened the kernel freezes the clock at seal waits 1000 ms then runs the check that every opened message is supposed to meet. A missing scene dock timestamp or sequence fails those checks. Universal Connect Bridge stays an optional attach for foreign stacks.
+The AEP 2.8 library now treats Base Node as the kernel: after a sealed lattice frame is opened the kernel freezes the clock at seal waits 1000 ms then runs the check that every opened message is supposed to meet. A missing scene dock timestamp or sequence fails those checks. Universal Connect Bridge remains an optional attach for foreign stacks.
 
 ## [2.8.0] - 2026-06-23
 
