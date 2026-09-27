@@ -66,8 +66,8 @@ process_alive() {
   [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null
 }
 
-# A daemon that exits 2 refused its own configuration, for example Data Dock on
-# a host other than loopback without DATA_DOCK_API_KEY. Restarting cannot fix
+# A daemon that exits 2 refused its own configuration, for example a Data Dock
+# key file that is too short or readable by others. Restarting cannot fix
 # that, so the container stops with the same code and the log names the reason.
 stop_on_config_error() {
   if process_alive "${DAEMON_PID:-}"; then

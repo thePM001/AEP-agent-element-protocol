@@ -83,5 +83,3 @@ rustls = { version = "0.23", default-features = false, features = ["ring", "std"
 # PEM parsing lives in rustls-pki-types (rustls-pemfile is unmaintained).
 rustls-pki-types = { version = "1", features = ["std"] }
 tokio-rustls = "0.26"
-# WASM sandbox: pin CVE-fixed line; lean features drop unmaintained fxhash (via profiling).
-wasmtime = { version = "36.0.13", default-features = false, features = ["cranelift", "runtime", "std", "wat"] }

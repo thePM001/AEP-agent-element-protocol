@@ -17,3 +17,38 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: cargo test -p aep-base-node --lib
         run: cargo test -p aep-base-node --lib
+
+  probe:
+    name: aep-base-node --health
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo build -p aep-base-node --bin aep-base-node
+        run: cargo build -p aep-base-node --bin aep-base-node
+      # The workspace target dir is rust/target (see .cargo/config.toml).
+      # No dock binds and no daemon starts, so exit 1 for degraded is expected.
+      - name: aep-base-node --health
+        run: |
+          set +e
+          ./rust/target/debug/aep-base-node --health > /tmp/health.json
+          code=$?
+          set -e
+          echo "exit code ${code}"
+          if [ "${code}" != "0" ] && [ "${code}" != "1" ]; then
+            cat /tmp/health.json
+            exit 1
+          fi
+      - name: health JSON carries the rollup
+        run: |
+          python3 - <<'PY'
+          import json
+          with open("/tmp/health.json") as f:
+              body = json.load(f)
+          assert body["status"] in ("ok", "degraded", "error"), body["status"]
+          assert "sqlite_closed" in body, "sqlite_closed missing"
+          print("status", body["status"], "sqlite_closed", body["sqlite_closed"])
+          PY
+      - name: Display API folder is absent
+        run: test ! -d AEP-Components/display-api

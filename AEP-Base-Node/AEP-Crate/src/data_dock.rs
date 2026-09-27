@@ -53,13 +53,58 @@ const FORBIDDEN_WIRE_KEYS: &[&str] = &[
     "agentmesh",
 ];
 
+/// Folder under the data dir that holds the Data Dock HTTP key file.
+pub const HTTP_KEY_DIR: &str = "keys";
+/// The Data Dock HTTP key file. This is not the data-dock sign key.
+pub const HTTP_KEY_FILE: &str = "data-dock.http-key";
+/// Shortest key accepted from the key file, in hex characters.
+pub const HTTP_KEY_MIN_HEX: usize = 32;
+
+/// Where the Data Dock HTTP key came from. The key itself is never stored here.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum KeySource {
+    /// Loopback without a key.
+    None,
+    /// DATA_DOCK_API_KEY from the environment.
+    Env,
+    /// Loaded from an existing key file.
+    File(PathBuf),
+    /// Minted on this boot and written to the key file.
+    Minted(PathBuf),
+}
+
+impl KeySource {
+    pub fn label(&self) -> &'static str {
+        match self {
+            KeySource::None => "none",
+            KeySource::Env => "env",
+            KeySource::File(_) => "file",
+            KeySource::Minted(_) => "minted",
+        }
+    }
+
+    pub fn path(&self) -> Option<&Path> {
+        match self {
+            KeySource::File(p) | KeySource::Minted(p) => Some(p.as_path()),
+            _ => None,
+        }
+    }
+}
+
+/// `$AEP_DATA/keys/data-dock.http-key`.
+pub fn http_key_path(data_dir: &Path) -> PathBuf {
+    data_dir.join(HTTP_KEY_DIR).join(HTTP_KEY_FILE)
+}
+
 #[derive(Clone)]
 pub struct DataDockConfig {
     pub enabled: bool,
     pub listen_host: String,
     pub listen_port: u16,
-    /// DATA_DOCK_API_KEY. Required when the host is not loopback.
+    /// DATA_DOCK_API_KEY or the key file. Required when the host is not loopback.
     pub api_key: Option<String>,
+    /// Where `api_key` came from. Logged as a label and a path only.
+    pub key_source: KeySource,
 }
 
 impl std::fmt::Debug for DataDockConfig {
@@ -69,6 +114,7 @@ impl std::fmt::Debug for DataDockConfig {
             .field("listen_host", &self.listen_host)
             .field("listen_port", &self.listen_port)
             .field("api_key", &self.api_key.as_ref().map(|_| "set"))
+            .field("key_source", &self.key_source)
             .finish()
     }
 }
@@ -94,8 +140,46 @@ impl DataDockConfig {
                 .ok()
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(DATA_DOCK_PORT),
+            key_source: if api_key.is_some() { KeySource::Env } else { KeySource::None },
             api_key,
         }
+    }
+
+    /// Chooses the HTTP key before Data Dock listens.
+    ///
+    /// Loopback listens without a key. Otherwise DATA_DOCK_API_KEY wins and the
+    /// key file is left alone. Without it an existing key file of 32 or more hex
+    /// characters is loaded. Without that file 32 random bytes are minted as hex
+    /// into `$AEP_DATA/keys/data-dock.http-key` with mode 0600 in a 0700 folder.
+    /// A world-writable parent or a mint that cannot write mode 0600 is refused.
+    /// There is no automatic rotation.
+    pub fn resolve_key(mut self, data_dir: &Path) -> Result<Self, String> {
+        if host_is_loopback(&self.listen_host) {
+            return Ok(self);
+        }
+        if self.api_key.is_some() {
+            self.key_source = KeySource::Env;
+            return Ok(self);
+        }
+        refuse_world_writable_parent(data_dir)?;
+        let path = http_key_path(data_dir);
+        if path.exists() {
+            let key = load_http_key(&path)?;
+            self.api_key = Some(key);
+            self.key_source = KeySource::File(path);
+            return Ok(self);
+        }
+        let key = mint_http_key(&path)?;
+        dock_event!(
+            info,
+            DockEvent::DataDockBind,
+            key_source = "minted",
+            key_path = %path.display(),
+            "Data Dock HTTP key minted"
+        );
+        self.api_key = Some(key);
+        self.key_source = KeySource::Minted(path);
+        Ok(self)
     }
 
     /// Refuses a listen on any host other than loopback without an API key.
@@ -108,6 +192,107 @@ impl DataDockConfig {
             self.listen_host
         ))
     }
+}
+
+fn nearest_existing(path: &Path) -> PathBuf {
+    let mut cur = path.to_path_buf();
+    loop {
+        if cur.exists() {
+            return cur;
+        }
+        match cur.parent() {
+            Some(p) if p.as_os_str().is_empty() == false => cur = p.to_path_buf(),
+            _ => return PathBuf::from("."),
+        }
+    }
+}
+
+fn refuse_world_writable_parent(data_dir: &Path) -> Result<(), String> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let parent = nearest_existing(data_dir);
+        let mode = std::fs::metadata(&parent)
+            .map_err(|e| format!("Data Dock key parent {}: {e}", parent.display()))?
+            .permissions()
+            .mode();
+        if mode & 0o002 != 0 {
+            return Err(format!(
+                "Data Dock refuses a key under world-writable {}",
+                parent.display()
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn load_http_key(path: &Path) -> Result<String, String> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(path)
+            .map_err(|e| format!("Data Dock key file {}: {e}", path.display()))?
+            .permissions()
+            .mode();
+        if mode & 0o077 != 0 {
+            return Err(format!(
+                "Data Dock key file {} must be mode 0600",
+                path.display()
+            ));
+        }
+    }
+    let raw = std::fs::read_to_string(path)
+        .map_err(|e| format!("Data Dock key file {}: {e}", path.display()))?;
+    let key = raw.trim();
+    if key.len() < HTTP_KEY_MIN_HEX || key.chars().all(|c| c.is_ascii_hexdigit()) == false {
+        return Err(format!(
+            "Data Dock key file {} must hold {HTTP_KEY_MIN_HEX} or more hex characters",
+            path.display()
+        ));
+    }
+    Ok(key.to_string())
+}
+
+fn mint_http_key(path: &Path) -> Result<String, String> {
+    use rand::RngCore;
+    use std::io::Write;
+    let dir = match path.parent() {
+        Some(d) => d,
+        None => return Err(String::from("Data Dock key file has no parent folder")),
+    };
+    std::fs::create_dir_all(dir).map_err(|e| format!("Data Dock key folder {}: {e}", dir.display()))?;
+    let mut bytes = [0u8; 32];
+    rand::thread_rng().fill_bytes(&mut bytes);
+    let key = hex::encode(bytes);
+    let mut opts = std::fs::OpenOptions::new();
+    opts.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))
+            .map_err(|e| format!("Data Dock key folder {}: {e}", dir.display()))?;
+        opts.mode(0o600);
+    }
+    let mut file = opts
+        .open(path)
+        .map_err(|e| format!("Data Dock key file {}: {e}", path.display()))?;
+    file.write_all(key.as_bytes())
+        .and_then(|_| file.write_all(b"\n"))
+        .and_then(|_| file.sync_all())
+        .map_err(|e| format!("Data Dock key file {}: {e}", path.display()))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let file_mode = std::fs::metadata(path).map_err(|e| e.to_string())?.permissions().mode() & 0o777;
+        let dir_mode = std::fs::metadata(dir).map_err(|e| e.to_string())?.permissions().mode() & 0o777;
+        if file_mode != 0o600 || dir_mode != 0o700 {
+            return Err(format!(
+                "Data Dock key file {} could not be written with mode 0600 in a 0700 folder",
+                path.display()
+            ));
+        }
+    }
+    Ok(key)
 }
 
 /// True for 127.0.0.0/8, ::1 and localhost.
@@ -264,7 +449,15 @@ pub async fn serve(
     let addr = format!("{}:{}", cfg.listen_host, cfg.listen_port);
     let listener = TcpListener::bind(&addr).await?;
     let local = listener.local_addr()?;
-    dock_event!(info, DockEvent::DataDockBind, addr = %local, key_required = state.key_required(), "Data Dock HTTP listening");
+    dock_event!(
+        info,
+        DockEvent::DataDockBind,
+        addr = %local,
+        key_required = state.key_required(),
+        key_source = cfg.key_source.label(),
+        key_path = %cfg.key_source.path().map(|p| p.display().to_string()).unwrap_or_default(),
+        "Data Dock HTTP listening"
+    );
     let app = build_router(state);
     Ok((
         tokio::spawn(async move {
@@ -769,8 +962,25 @@ mod tests {
             enabled: true,
             listen_host: String::from(host),
             listen_port: port,
+            key_source: if key.is_some() { KeySource::Env } else { KeySource::None },
             api_key: key.map(String::from),
         }
+    }
+
+    #[cfg(unix)]
+    fn mode_of(path: &Path) -> u32 {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::metadata(path).expect("metadata").permissions().mode() & 0o777
+    }
+
+    fn private_data_dir() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().expect("tempdir");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o700)).expect("chmod 700");
+        }
+        dir
     }
 
     fn state_for(runtime: Arc<DockingRuntime>, dir: &Path, key: Option<&str>) -> DataDockState {
@@ -1059,6 +1269,126 @@ mod tests {
         assert_eq!(after, before);
         assert_eq!(held_after, held_before);
         assert!(runtime.record.pulse.lock().expect("pulse").held.is_empty());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn non_loopback_mints_http_key_file_0600() {
+        let data = private_data_dir();
+        let resolved = cfg("0.0.0.0", 0, None).resolve_key(data.path()).expect("mint");
+        let path = http_key_path(data.path());
+        assert_eq!(resolved.key_source, KeySource::Minted(path.clone()));
+        let key = resolved.api_key.clone().expect("minted key");
+        assert_eq!(key.len(), 64);
+        assert!(key.chars().all(|c| c.is_ascii_hexdigit()));
+        assert_eq!(std::fs::read_to_string(&path).expect("read").trim(), key);
+        assert_eq!(mode_of(&path), 0o600);
+        assert_eq!(mode_of(path.parent().expect("dir")), 0o700);
+        assert!(resolved.check_bind().is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn second_boot_reuses_http_key_file() {
+        let data = private_data_dir();
+        let first = cfg("0.0.0.0", 0, None).resolve_key(data.path()).expect("first boot");
+        let second = cfg("0.0.0.0", 0, None).resolve_key(data.path()).expect("second boot");
+        assert_eq!(first.api_key, second.api_key);
+        assert_eq!(second.key_source, KeySource::File(http_key_path(data.path())));
+        assert_eq!(mode_of(&http_key_path(data.path())), 0o600);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn env_key_wins_over_file() {
+        let data = private_data_dir();
+        let minted = cfg("0.0.0.0", 0, None).resolve_key(data.path()).expect("mint");
+        let on_disk = std::fs::read_to_string(http_key_path(data.path())).expect("read");
+        let env = cfg("0.0.0.0", 0, Some("k-env-wins-over-the-file-0123456789"))
+            .resolve_key(data.path())
+            .expect("env key");
+        assert_eq!(env.key_source, KeySource::Env);
+        assert_eq!(env.api_key.as_deref(), Some("k-env-wins-over-the-file-0123456789"));
+        assert_ne!(env.api_key, minted.api_key);
+        assert_eq!(std::fs::read_to_string(http_key_path(data.path())).expect("read"), on_disk);
+    }
+
+    #[test]
+    fn loopback_does_not_require_file() {
+        let data = private_data_dir();
+        for host in ["127.0.0.1", "::1", "localhost"] {
+            let resolved = cfg(host, 0, None).resolve_key(data.path()).expect("loopback");
+            assert_eq!(resolved.api_key, None);
+            assert_eq!(resolved.key_source, KeySource::None);
+            assert!(resolved.check_bind().is_ok());
+        }
+        assert_eq!(data.path().join(HTTP_KEY_DIR).exists(), false);
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn minted_secret_never_appears_in_dock_log_events() {
+        // A thread-scoped subscriber races the shared callsite interest cache
+        // when tests run in parallel, so this test installs one process-wide
+        // capture once and then looks only for its own unique key path.
+        let buf = global_log_capture();
+        let (dir, runtime) = fixture_runtime();
+        let data = private_data_dir();
+        let resolved = cfg("0.0.0.0", 0, None).resolve_key(data.path()).expect("mint");
+        let key = resolved.api_key.clone().expect("key");
+        let state = DataDockState::new(runtime, &resolved, dir.path().to_path_buf(), false);
+        let (handle, _addr) = serve(state, &resolved).await.expect("listen after mint");
+        handle.abort();
+        let key_path = http_key_path(data.path()).display().to_string();
+        let text = buf.text();
+        let ours: Vec<&str> = text.lines().filter(|l| l.contains(&key_path)).collect();
+        assert!(ours.len() >= 2, "expected mint and bind events for {key_path}: {text}");
+        assert!(ours.iter().all(|l| l.contains("data_dock.bind")), "{ours:?}");
+        assert!(ours.iter().any(|l| l.contains("minted")), "{ours:?}");
+        assert_eq!(text.contains(&key), false, "minted key leaked into the dock log");
+    }
+
+    fn global_log_capture() -> crate::dock_log::SharedBuffer {
+        use crate::dock_log::{layer_for, SharedBuffer};
+        use tracing_subscriber::layer::SubscriberExt;
+        static CAPTURE: std::sync::OnceLock<SharedBuffer> = std::sync::OnceLock::new();
+        CAPTURE
+            .get_or_init(|| {
+                let buf = SharedBuffer::default();
+                let subscriber =
+                    tracing_subscriber::registry().with(vec![layer_for("info", true, false, buf.clone())]);
+                tracing::subscriber::set_global_default(subscriber).expect("one global test subscriber");
+                buf
+            })
+            .clone()
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn world_writable_parent_refuses_mint() {
+        use std::os::unix::fs::PermissionsExt;
+        let data = tempfile::tempdir().expect("tempdir");
+        std::fs::set_permissions(data.path(), std::fs::Permissions::from_mode(0o777)).expect("chmod 777");
+        let err = cfg("0.0.0.0", 0, None).resolve_key(data.path()).expect_err("must refuse");
+        assert!(err.contains("world-writable"), "{err}");
+        assert_eq!(http_key_path(data.path()).exists(), false);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn short_or_open_key_file_is_refused() {
+        use std::os::unix::fs::PermissionsExt;
+        let data = private_data_dir();
+        let path = http_key_path(data.path());
+        std::fs::create_dir_all(path.parent().expect("dir")).expect("dir");
+        std::fs::write(&path, "abc123").expect("write");
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).expect("chmod");
+        let err = cfg("0.0.0.0", 0, None).resolve_key(data.path()).expect_err("short key");
+        assert!(err.contains("hex characters"), "{err}");
+        std::fs::write(&path, "a".repeat(64)).expect("write");
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).expect("chmod");
+        let err = cfg("0.0.0.0", 0, None).resolve_key(data.path()).expect_err("open mode");
+        assert!(err.contains("0600"), "{err}");
     }
 
     #[test]

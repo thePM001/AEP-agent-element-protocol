@@ -2,6 +2,9 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.8.x public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.8.6] - 2026-09-27 - Base Node nine to ten
+Workspace no longer pins wasmtime. No wasm sandbox crate. Data Dock off loopback without DATA_DOCK_API_KEY now mints $AEP_DATA/keys/data-dock.http-key with mode 0600 on first boot and reuses it after that, while an env key still wins over the file and the log names only the file path. The base-node workflow gains a probe job that builds aep-base-node and checks the --health JSON. Verify with cargo test -p aep-base-node --lib.
+
 ## [2.8.6] - 2026-09-27 - Base Node ten of ten
 Data Dock on 8413 requires DATA_DOCK_API_KEY when it is not on loopback. It binds loopback by default even in Docker, answers 401 on a missing or wrong key and 429 over the DockDefence limits before any frame is built. Health status is one rollup used by aep-base-node --health with exit codes 0, 1 and 2 and by GET /health, where a closed ledger now reads as error. The official aep-base-node log lives in dock_log.rs with a closed set of event ids and redaction of keys and seal material. Drain aborts and counts late tasks, DockingRuntime remains five parts and Display API remains gone. Verify with cargo test -p aep-base-node --lib.
 

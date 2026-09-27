@@ -288,8 +288,17 @@ fn daemon_health(
 async fn run_daemon(cfg: &ResolvedConfig, lattice_db: &Path) -> Result<u8, Box<dyn std::error::Error>> {
     std::env::set_var("AEP_LATTICE_STRICT", "1");
     std::env::set_var("AEP_HUB_STRICT", "1");
-    let data_dock_cfg = aep_base_node::data_dock::DataDockConfig::from_env();
+    let mut data_dock_cfg = aep_base_node::data_dock::DataDockConfig::from_env();
     if data_dock_cfg.enabled {
+        // Off loopback without DATA_DOCK_API_KEY the key file is loaded or minted
+        // here, before any dock binds.
+        data_dock_cfg = match data_dock_cfg.resolve_key(&data_dir_for(lattice_db)) {
+            Ok(c) => c,
+            Err(e) => {
+                dock_event!(error, DockEvent::BootError, error = %e, "Data Dock key refused");
+                return Ok(EXIT_BOOT_ERROR);
+            }
+        };
         if let Err(e) = data_dock_cfg.check_bind() {
             dock_event!(error, DockEvent::BootError, error = %e, "Data Dock refused to listen");
             return Ok(EXIT_BOOT_ERROR);

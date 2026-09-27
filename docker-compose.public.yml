@@ -27,8 +27,9 @@ services:
       UCB_PORT: "8412"
       DATA_DOCK: "${DATA_DOCK:-1}"
       DATA_DOCK_PORT: "8413"
-      # Loopback by default. Set DATA_DOCK_HOST=0.0.0.0 plus DATA_DOCK_API_KEY in .env
-      # to reach Data Dock on the published 8413. Without a key the daemon exits 2.
+      # Loopback by default. Set DATA_DOCK_HOST=0.0.0.0 in .env to reach Data Dock
+      # on the published 8413. Without DATA_DOCK_API_KEY the first boot mints
+      # /data/aep/keys/data-dock.http-key with mode 0600 and the env key wins over it.
       DATA_DOCK_HOST: "${DATA_DOCK_HOST:-127.0.0.1}"
       DATA_DOCK_API_KEY: "${DATA_DOCK_API_KEY:-}"
       AEP_LATTICE_TRANSPORT: "${AEP_LATTICE_TRANSPORT:-tls}"

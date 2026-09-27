@@ -13,16 +13,22 @@ The daemon reads these environment variables at start.
 | `DATA_DOCK` | `1` | Set to `0` to turn Data Dock off |
 | `DATA_DOCK_PORT` | `8413` | TCP port for the HTTP listener |
 | `DATA_DOCK_HOST` | `127.0.0.1` | Bind address for the listener, loopback in every environment including Docker |
-| `DATA_DOCK_API_KEY` | empty | Shared key for every `/v1` route and required whenever the host is not loopback |
+| `DATA_DOCK_API_KEY` | empty | Shared key for every `/v1` route. It wins over the key file whenever it is set |
 | `UCB_PORT` | `8412` | Reported as `ucb_port` in the health body |
 
-Data Dock binds to loopback by default, even inside the Docker image. To reach it from outside the container set `DATA_DOCK_HOST=0.0.0.0` together with a `DATA_DOCK_API_KEY`, for example one made with `openssl rand -hex 32`. A host other than loopback without a key is refused before anything listens and the daemon exits with code 2.
+Data Dock binds to loopback by default even inside the Docker image. On loopback the key is optional. On any other host a key is always in force before the listener opens, chosen in this order.
+
+1. `DATA_DOCK_API_KEY` from the environment. The key file is left untouched.
+2. The key file `$AEP_DATA/keys/data-dock.http-key` when it holds 32 or more hex characters with mode 0600.
+3. Otherwise the daemon mints 32 random bytes as 64 hex characters, writes them to that file with mode 0600 inside a 0700 folder and then listens. The log records the file path but never the key.
+
+The daemon refuses to listen and exits with code 2 when the data folder is world-writable, when the key file is shorter than 32 hex characters or readable by others and when a minted key cannot be written with mode 0600. This file is the HTTP key and is separate from the `data-dock` signing key. There is no automatic rotation. To rotate, delete the file or set `DATA_DOCK_API_KEY` and restart the node.
 
 On first start the daemon mints a signing key for the server agent `data-dock` and writes the task manifest `data-dock.json` into the UCB manifest folder. A later boot reuses that key, so a restart never rotates it. The lattice policy must grant `data-dock` the action paths that frontends are allowed to write.
 
 ## Generate a key
 
-The key is yours to make. AEP does not issue it and no central service knows it. Whoever deploys the node creates one random secret, puts it in the deployment environment and hands the same value to the frontends that call Data Dock.
+The key is yours to make and no central service knows it. The simplest route is to set `DATA_DOCK_HOST=0.0.0.0` and let the first boot mint the key file, then read it with `docker compose exec aep cat /data/aep/keys/data-dock.http-key` and hand that value to the frontends. To choose the key yourself instead, generate it as below and set it in the deployment environment, where it wins over the file.
 
 1. Create a 32 byte random key as 64 hex characters.
 
@@ -47,7 +53,7 @@ To rotate the key, generate a new one, update `.env`, restart the node and updat
 
 ## Authorization
 
-When `DATA_DOCK_API_KEY` is set every `/v1` route requires it. Send it in one of two headers.
+When a key is in force, from `DATA_DOCK_API_KEY` or from the key file, every `/v1` route requires it. Send it in one of two headers.
 
 ```text
 Authorization: Bearer <key>
@@ -165,4 +171,4 @@ Data Dock writes to the official Base Node log with the event ids `data_dock.bin
 
 ## Verification
 
-Run `cargo test -p aep-base-node --lib` from the repository root. The Data Dock tests check the health rollup, the refusal of an open bind without a key, loopback without a key, 401 on every `/v1` route without the key, the strip of seal fields with a valid key, 429 over the limit without a ledger row and that a second boot keeps the `data-dock` key.
+Run `cargo test -p aep-base-node --lib` from the repository root. The Data Dock tests check the health rollup, the refusal of an open bind without a key, loopback without a key, 401 on every `/v1` route without the key, the strip of seal fields with a valid key, 429 over the limit without a ledger row and that a second boot keeps the `data-dock` key. The key tests check that a host other than loopback mints the key file with mode 0600, that a second boot reuses it, that an env key wins over the file, that loopback needs no file and that the minted key never appears in a log event. The base-node workflow also runs `aep-base-node --health` and checks the JSON status.
