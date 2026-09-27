@@ -162,11 +162,46 @@ pub fn scan_compile_live_walls_freeze(src: &str) -> Result<String, String> {
     if code.contains("wall_bridge_ts_ms") == false { return Err(String::from("compile_live_walls has no freeze bind")); }
     Ok(String::from("ok extra walls measure drift against freeze"))
 }
+/// Production source of the Base Node docking module: mod.rs, then each child
+/// file in AEP-Crate/src/docking in name order, without the test file. Each
+/// file is cut at its own test tail so no child is lost behind mod.rs tests.
+fn read_docking_module(base_node: &std::path::Path) -> Result<String, String> {
+    let dir = base_node.join("AEP-Crate").join("src").join("docking");
+    let entries = match std::fs::read_dir(&dir) {
+        Ok(rd) => rd,
+        Err(e) => return Err(format!("missing docking module: {e}")),
+    };
+    let mut names: Vec<String> = entries
+        .filter_map(|e| e.ok())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|n| n.ends_with(".rs") && n != "tests.rs")
+        .collect();
+    names.sort_by(|a, b| (a != "mod.rs").cmp(&(b != "mod.rs")).then(a.cmp(b)));
+    let mut out = String::new();
+    for n in names {
+        match std::fs::read_to_string(dir.join(&n)) {
+            Ok(text) => {
+                let prod = match text.find("#[cfg(test)]") {
+                    Some(i) => &text[..i],
+                    None => text.as_str(),
+                };
+                out.push_str(prod);
+                out.push('\n');
+            }
+            Err(e) => return Err(e.to_string()),
+        }
+    }
+    if out.trim().is_empty() {
+        return Err(String::from("empty docking module"));
+    }
+    Ok(out)
+}
+
 fn walk_to_workspace() -> PathBuf {
     let mut dir = if let Ok(m) = std::env::var("CARGO_MANIFEST_DIR") { PathBuf::from(m) } else { std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")) };
     let mut i = 0usize;
     while i < 12 {
-        if dir.join("AEP-Base-Node/AEP-Crate/src/docking.rs").is_file() { return dir; }
+        if dir.join("AEP-Base-Node/AEP-Crate/src/docking/mod.rs").is_file() { return dir; }
         match dir.parent() { Some(parent) => dir = parent.to_path_buf(), None => break }
         i = i.saturating_add(1);
     }
@@ -178,7 +213,7 @@ fn read_src(path: &PathBuf, label: &str) -> Result<String, String> {
 }
 pub fn run_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
-    let dock_src = read_src(&root.join("AEP-Base-Node/AEP-Crate/src/docking.rs"), "docking")?;
+    let dock_src = read_docking_module(&root.join("AEP-Base-Node"))?;
     let dyn_src = read_src(&root.join("AEP-Components/dynAEP/crate/src/lib.rs"), "dynaep")?;
     let env_src = read_src(&root.join("AEP-Components/envelope/crate/src/lib.rs"), "envelope")?;
     let live_src = read_src(&root.join("AEP-Components/live-entry/crate/src/lib.rs"), "live-entry")?;
@@ -258,7 +293,7 @@ mod tests {
         must(scan_docking_no_local_wire_clocks("const MAX_FRAME_AGE_SECS: u64 = 300;\nconst MAX_FRAME_FUTURE_SKEW_SECS: u64 = 60;").is_err());
         must(scan_docking_no_local_wire_clocks("use aep_base_node_pulse::{MAX_FRAME_AGE_SECS, MAX_FRAME_FUTURE_SKEW_SECS};").is_ok());
         let root = walk_to_workspace();
-        let dock_src = read_src(&root.join("AEP-Base-Node/AEP-Crate/src/docking.rs"), "docking").expect("docking.rs");
+        let dock_src = read_docking_module(&root.join("AEP-Base-Node")).expect("docking module");
         must(scan_docking_no_local_wire_clocks(&dock_src).is_ok());
     }
 }

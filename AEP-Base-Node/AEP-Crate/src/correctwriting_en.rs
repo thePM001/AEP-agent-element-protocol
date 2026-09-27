@@ -180,7 +180,7 @@ pub fn fix_writing_prose_line(line: &str) -> String {
         let normalized = match ch {
             '\u{FF1F}' => '?',
             '\u{FF01}' => '!',
-            other => ch,
+            other => other,
         };
         fixed.push(normalized);
         i += 1;

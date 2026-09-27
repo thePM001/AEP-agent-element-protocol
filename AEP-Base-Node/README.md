@@ -52,7 +52,10 @@ Base Node **is** the local agent control kernel. Governance code, registry, mesh
 
 | Module | Path | Role |
 |--------|------|------|
-| Docking servers | `AEP-Crate/src/docking.rs` | inference / validation / regulation / future Unix sockets |
+| Docking servers | `AEP-Crate/src/docking/` | The facade `mod.rs` with the children serve, apply, pulse, freshness and rate for the inference, validation, regulation and future Unix sockets |
+| Runtime parts | `AEP-Crate/src/dock_parts.rs` | DockingRuntime as five owned parts named io, keys, defence, admit and record |
+| Dock keys | `AEP-Crate/src/dock_keys.rs` | Facade over `dock_keys_store.rs` for load, permissions and the refusal of a silent regen and `dock_keys_provision.rs` for the operator mint and the first mint of the data-dock key. Secret files are mode 0600 |
+| Official log | `AEP-Crate/src/dock_log.rs` | The one aep-base-node log with a closed set of event ids and redaction of keys, seal material and grants |
 | Task manifests | `AEP-Crate/src/task_manifest.rs` | UCB agent contracts (`AEP_TASK_MANIFEST_DIR`) |
 | CORRECTWRITING_EN kernel | `AEP-Crate/src/correctwriting_en.rs` | writing.gap enforcement (`no_em_dashes`, `no_en_dashes`, `no_dash_substitutes`, `no_minus_as_dash`, `no_double_hyphen`, `no_oxford_comma`) |
 | Side-channel monitor | `AEP-Crate/src/side_channel_monitor.rs` | Anomaly events on validation dock |
@@ -96,6 +99,18 @@ The wait is the compiled constant `PULSE_MS` in `AEP-Components/base-node-pulse/
 
 A builder who wants a different wait edits the compiled `PULSE_MS` constant and rebuilds Base Node. Freeze-at-seal must stay so the hold is judged against the freeze rather than a moving clock. Allowed drift must not be set to the wait length: crate tests require `MAX_DRIFT_MS != PULSE_MS` and reject a 1000 ms drift default so `MAX_DRIFT_MS` must not be set to 1000. Age must stay longer than the wait because if `PULSE_MS` were greater than `MAX_AGE_MS` (5000) capsules would expire before they became ready so pulse age 5000 must not be replaced with 300 seconds. Current crate tests also pin `PULSE_MS == 1000` so a theoretical rebuild must update those pins. This is a kernel rebuild rather than a yaml or env toggle.
 
+## Operator
+
+`aep-base-node --health` prints the BaseNodeHealth JSON without binding any dock. The exit code is 0 for ok, 1 for degraded and 2 for error, so a script can gate on it. The flag cannot be combined with `--daemon` or `--self-test`.
+
+The status comes from one rollup that the daemon ready log and the Data Dock `GET /health` share. It is `error` when the lattice ledger is closed and `degraded` when the dock sockets are missing, the Agent Control Hub is not loaded or the mesh peer file failed to load. Any other state is `ok`. The report also carries `sqlite_closed`, `last_tls_handshake_err` and `drain_aborted_tasks`.
+
+The daemon listens on four unix docks for inference, validation, regulation and future. UCB remains on 8412 and Data Dock serves HTTP JSON on 8413 as a surface in front of those docks rather than a fifth dock. Data Dock binds loopback by default and needs `DATA_DOCK_API_KEY` on any other host. `DATA_DOCK=0` turns the HTTP surface off. See [`DATA-DOCK.md`](../AEP-User-Experience/docs/DATA-DOCK.md) for the routes.
+
+The daemon logs ready only when the status is ok. A bind failure or an error status after bind drains the docks and exits 2. SIGTERM or SIGINT drains, which joins tasks for up to 2 seconds and aborts the rest, removes the sockets, closes SQLite and exits 0. A refused TLS handshake is logged and stored for health but never stops the daemon.
+
+The official log reads its filter from `AEP_LOG`, then `RUST_LOG` and falls back to `info`. It always writes to stderr. `AEP_LOG_JSON=1` switches to JSON lines and `AEP_LOG_FILE=1` also appends to `$AEP_DATA/log/aep-base-node.log` with mode 0600 in a 0700 folder, refusing a world-writable parent the same way as the lattice database.
+
 ## Build
 
 ```bash
@@ -104,3 +119,5 @@ cargo build --release -p aep-base-node
 ```
 
 The default build is the single Base Node kernel. Other workspace crates, such as the multi base node, are built on purpose and they are not part of the default build or the default deployment.
+
+Verify the kernel with `cargo test -p aep-base-node --lib`. The same command runs in `.github/workflows/base-node.yml` on every push and pull request.

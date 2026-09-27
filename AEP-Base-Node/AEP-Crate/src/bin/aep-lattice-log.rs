@@ -3,7 +3,7 @@ use aep_base_node::{
     default_lattice_db_path, enforce_writing_text, enforce_writing_value, event_count,
     lint_writing_prose,
     export_dynaep_events, open_lattice_db, record_dynaep_event, DynAepEventInput,
-    ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV, CORRECTWRITING_EN_CORE_ID,
+    CORRECTWRITING_EN_CORE_ID,
 };
 use aep_lattice_channel::LatticeChannelFrame;
 use clap::{Parser, Subcommand};
@@ -121,7 +121,7 @@ fn resolve_lrps(cli: &Cli) -> Vec<String> {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
     #[cfg(test)] if cli.allow_world_writable_lattice_parent {
-        std::env::set_var(ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV, "1");
+        std::env::set_var(aep_base_node::ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV, "1");
     }
     let db_path = resolve_db(&cli)?;
     let lrps = resolve_lrps(&cli);

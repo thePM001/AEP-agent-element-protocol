@@ -158,7 +158,7 @@ fn provision_agent_sign_key(
     rt: &DockingRuntime,
     agent_id: &str,
 ) -> Result<aep_lattice_crypto::SignKeypair, String> {
-    let mut store = rt.agent_sign_keys.lock().map_err(|e| e.to_string())?;
+    let mut store = rt.keys.agent_sign_keys.lock().map_err(|e| e.to_string())?;
     store.provision(agent_id).map_err(|e| e.to_string())
 }
 
@@ -179,7 +179,7 @@ fn arm_test_agent(
 ) -> Result<aep_lattice_crypto::SignKeypair, String> {
     let sign = provision_agent_sign_key(rt, agent_id)?;
     let (dir, session_id) = {
-        let store = rt.manifests.lock().map_err(|e| e.to_string())?;
+        let store = rt.admit.manifests.lock().map_err(|e| e.to_string())?;
         (store.manifest_dir().to_path_buf(), "sess-conformance".to_string())
     };
     let manifest = serde_json::json!({
@@ -199,8 +199,8 @@ fn arm_test_agent(
         serde_json::to_string_pretty(&manifest).map_err(|e| e.to_string())?,
     )
     .map_err(|e| e.to_string())?;
-    rt.manifests.lock().map_err(|e| e.to_string())?.reload();
-    let mut reg = rt.contracts.lock().map_err(|e| e.to_string())?;
+    rt.admit.manifests.lock().map_err(|e| e.to_string())?.reload();
+    let mut reg = rt.admit.contracts.lock().map_err(|e| e.to_string())?;
     for c in contracts {
         reg.register(*c);
     }
@@ -356,7 +356,7 @@ fn temp_docking_runtime() -> Result<(tempfile::TempDir, DockingRuntime), String>
     let sock_base = dir.path().join("sockets").to_string_lossy().to_string();
     Ok((
         dir,
-        DockingRuntime::new(sock_base, conn, &["dynaep-action-lattice".into()]),
+        DockingRuntime::new(sock_base, conn, &["dynaep-action-lattice".into()]).map_err(|e| e.to_string())?,
     ))
 }
 
@@ -370,7 +370,7 @@ fn cc_docking_lattice_health() -> Result<(), String> {
         "dynaep-action-lattice",
         b"lattice-health-ping",
         now_unix(),
-        rt.dock_kem.public.as_slice(),
+        rt.keys.dock_kem.public.as_slice(),
         &sign,
     )?;
     let line = serde_json::json!({ "frame": frame }).to_string();
@@ -422,7 +422,7 @@ fn cc_plain_event_rejected() -> Result<(), String> {
 fn cc_docking_rate_limit() -> Result<(), String> {
     let (_dir, rt) = temp_docking_runtime()?;
     {
-        let mut limiter = rt.rate_limiter.lock().expect("rate limiter lock");
+        let mut limiter = rt.defence.rate_limiter.lock().expect("rate limiter lock");
         for _ in 0..120 {
             limiter.check("AG-RATE-CONF").map_err(|e| e.to_string())?;
         }
@@ -459,7 +459,7 @@ fn cc_lrp_registration_flow() -> Result<(), String> {
         "conf-lrp",
         b"register-lrp",
         now_unix(),
-        rt.dock_kem.public.as_slice(),
+        rt.keys.dock_kem.public.as_slice(),
         &sign,
     )?;
     let reg_line = serde_json::json!({ "frame": reg_frame }).to_string();
@@ -474,7 +474,7 @@ fn cc_lrp_registration_flow() -> Result<(), String> {
         "conf-lrp",
         b"lrp-bound",
         now_unix() + 1,
-        rt.dock_kem.public.as_slice(),
+        rt.keys.dock_kem.public.as_slice(),
         &sign,
     )?;
     let event_line = serde_json::json!({ "frame": event_frame }).to_string();

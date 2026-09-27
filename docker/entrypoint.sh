@@ -93,7 +93,8 @@ wait_for_data_dock() {
   fi
   i=0
   while [ "$i" -lt 30 ]; do
-    if node -e "fetch('http://127.0.0.1:${DATA_DOCK_PORT:-8413}/health').then(()=>process.exit(0)).catch(()=>process.exit(1))" 2>/dev/null; then
+    # Ready means GET /health answers 200 with a status other than error.
+    if /usr/local/bin/aep-health-probe 2>/dev/null; then
       return 0
     fi
     i=$((i + 1))

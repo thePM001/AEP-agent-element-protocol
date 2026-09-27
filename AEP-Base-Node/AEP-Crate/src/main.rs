@@ -1,14 +1,17 @@
 use aep_base_node::{
     bootstrap_contracts_from_lrps, health, now_unix, open_lattice_db, record_lattice_event,
-    drain_docking_servers, run_docking_servers, sockets_exist, DockingRuntime, ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV,
-    COMPONENT_ID, CORRECTWRITING_EN_PRIORITY,
+    drain_docking_servers, run_docking_servers, sockets_exist, BaseNodeHealth, DockingRuntime,
+    HealthInput, COMPONENT_ID, CORRECTWRITING_EN_PRIORITY,
 };
 use aep_base_node::dock_keys::{load_or_create_dock_kem, AgentSignKeyStore};
 use aep_lattice_channel::{build_frame_for_dock, frame_digest, DockingPort};
 use aep_lattice_memory::{AttractorRecord, LatticeMemoryStore};
 use clap::Parser;
 use rand::RngCore;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::process::ExitCode;
+use aep_base_node::dock_event;
+use aep_base_node::dock_log::{DockEvent, LogConfig};
 use tracing::info;
 use aep_agent_control_hub::{AgentControlHub, resolve_gap_root};
 
@@ -74,6 +77,9 @@ struct Cli {
     mesh_peers: u32,
     #[arg(long, default_value_t = false)]
     self_test: bool,
+    /// Print BaseNodeHealth JSON without binding any dock. Exit 0 ok, 1 degraded, 2 error.
+    #[arg(long, default_value_t = false, conflicts_with_all = ["daemon", "self_test"])]
+    health: bool,
     /// Run as daemon with Unix socket docking port listeners (Phase 4).
     #[arg(long, default_value_t = false)]
     daemon: bool,
@@ -148,19 +154,315 @@ fn resolve_config(cli: &Cli) -> Result<ResolvedConfig, Box<dyn std::error::Error
     Ok(resolved)
 }
 
+/// Exit code for a daemon that could not reach a healthy bind.
+const EXIT_BOOT_ERROR: u8 = 2;
+
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tracing_subscriber::fmt()
-        .with_env_filter("info")
-        .with_writer(std::io::stderr)
-        .init();
+async fn main() -> ExitCode {
+    match run().await {
+        Ok(code) => ExitCode::from(code),
+        Err(e) => {
+            eprintln!("Error: {e}");
+            ExitCode::from(1)
+        }
+    }
+}
+
+fn data_dir_for(lattice_db: &Path) -> PathBuf {
+    lattice_db
+        .parent()
+        .map(PathBuf::from)
+        .unwrap_or_else(default_aep_data_dir)
+}
+
+fn load_hub(data_dir: &Path) -> Option<AgentControlHub> {
+    match AgentControlHub::load_from_gap(&data_dir.join("gap")) {
+        Ok(h) => Some(h),
+        Err(_) => AgentControlHub::load_from_gap(&resolve_gap_root()).ok(),
+    }
+}
+
+/// Health of a node that is not running here. Nothing binds. A lattice
+/// database that cannot be opened reads as a closed ledger.
+fn offline_health(cfg: &ResolvedConfig, lattice_db: &Path) -> BaseNodeHealth {
+    let data_dir = data_dir_for(lattice_db);
+    let (events, mut sqlite_closed) = match open_lattice_db(lattice_db) {
+        Ok(conn) => match aep_base_node::event_count(&conn) {
+            Ok(n) => (n, false),
+            Err(_) => (0, true),
+        },
+        Err(_) => (0, true),
+    };
+    let (attractors, dim, vec_version) = match LatticeMemoryStore::open_default(lattice_db) {
+        Ok(memory) => match memory.attractor_count() {
+            Ok(n) => (n, memory.embedding_dim() as u32, memory.sqlite_vec_version()),
+            Err(_) => {
+                sqlite_closed = true;
+                (0, memory.embedding_dim() as u32, memory.sqlite_vec_version())
+            }
+        },
+        Err(_) => {
+            sqlite_closed = true;
+            (0, 0, None)
+        }
+    };
+    let (mesh_peers, mesh_routes, mesh_load_error) =
+        aep_base_node::resolve_mesh_peers(Some(&data_dir), cfg.internet_up, cfg.mesh_peers);
+    let hub = load_hub(&data_dir);
+    health(HealthInput {
+        version: env!("CARGO_PKG_VERSION"),
+        mesh_peers,
+        internet_up: cfg.internet_up,
+        base_socket: &cfg.socket_base,
+        lattice_events: events,
+        correctwriting_en_priority: cfg.correctwriting_en_priority,
+        hub_loaded: hub.as_ref().map(|h| h.is_loaded()).unwrap_or(false),
+        hub_sessions: hub.as_ref().map(|h| h.sessions.len() as u32).unwrap_or(0),
+        hub_mounts: hub.as_ref().map(|h| h.mounts.len() as u32).unwrap_or(0),
+        hub_permissions: hub.as_ref().map(|h| h.permissions.len() as u32).unwrap_or(0),
+        mesh_peers_load_error: mesh_load_error,
+        lattice_memory_attractors: attractors,
+        lattice_memory_dim: dim,
+        sqlite_vec_version: vec_version,
+        docking_ports_listening: sockets_exist(&cfg.socket_base),
+        mesh_routes,
+        data_dir: Some(&data_dir),
+        sqlite_closed,
+        last_tls_handshake_err: None,
+        drain_aborted_tasks: 0,
+    })
+}
+
+/// Health of the running daemon from its live parts. The same object drives
+/// the ready log and the Data Dock health route.
+fn daemon_health(
+    runtime: &DockingRuntime,
+    cfg: &ResolvedConfig,
+    data_dir: &Path,
+    lattice_db: &Path,
+) -> BaseNodeHealth {
+    let sqlite_closed = runtime.sqlite_is_closed();
+    let events = if sqlite_closed {
+        0
+    } else {
+        match runtime.record.db.lock() {
+            Ok(db) => aep_base_node::event_count(&db).unwrap_or(0),
+            Err(p) => aep_base_node::event_count(&p.into_inner()).unwrap_or(0),
+        }
+    };
+    let (attractors, dim, vec_version) = match LatticeMemoryStore::open_default(lattice_db) {
+        Ok(memory) => (
+            memory.attractor_count().unwrap_or(0),
+            memory.embedding_dim() as u32,
+            memory.sqlite_vec_version(),
+        ),
+        Err(_) => (0, 0, None),
+    };
+    let (mesh_peers, mesh_routes, mesh_load_error) =
+        aep_base_node::resolve_mesh_peers(Some(data_dir), cfg.internet_up, cfg.mesh_peers);
+    let hub = &runtime.admit.hub;
+    health(HealthInput {
+        version: env!("CARGO_PKG_VERSION"),
+        mesh_peers,
+        internet_up: cfg.internet_up,
+        base_socket: &cfg.socket_base,
+        lattice_events: events,
+        correctwriting_en_priority: cfg.correctwriting_en_priority,
+        hub_loaded: hub.is_loaded(),
+        hub_sessions: hub.sessions.len() as u32,
+        hub_mounts: hub.mounts.len() as u32,
+        hub_permissions: hub.permissions.len() as u32,
+        mesh_peers_load_error: mesh_load_error,
+        lattice_memory_attractors: attractors,
+        lattice_memory_dim: dim,
+        sqlite_vec_version: vec_version,
+        docking_ports_listening: runtime.docking_ports_listening(),
+        mesh_routes,
+        data_dir: Some(data_dir),
+        sqlite_closed,
+        last_tls_handshake_err: runtime.last_tls_handshake_err(),
+        drain_aborted_tasks: runtime.drain_aborted_tasks(),
+    })
+}
+
+async fn run_daemon(cfg: &ResolvedConfig, lattice_db: &Path) -> Result<u8, Box<dyn std::error::Error>> {
+    std::env::set_var("AEP_LATTICE_STRICT", "1");
+    std::env::set_var("AEP_HUB_STRICT", "1");
+    let data_dock_cfg = aep_base_node::data_dock::DataDockConfig::from_env();
+    if data_dock_cfg.enabled {
+        if let Err(e) = data_dock_cfg.check_bind() {
+            dock_event!(error, DockEvent::BootError, error = %e, "Data Dock refused to listen");
+            return Ok(EXIT_BOOT_ERROR);
+        }
+    }
+    let conn = match open_lattice_db(lattice_db) {
+        Ok(c) => c,
+        Err(e) => {
+            dock_event!(error, DockEvent::BootError, error = %e, "lattice database open failed");
+            return Ok(EXIT_BOOT_ERROR);
+        }
+    };
+    let data_dir = data_dir_for(lattice_db);
+    let runtime = match DockingRuntime::with_data_dir(cfg.socket_base.clone(), conn, &cfg.lrps, &data_dir) {
+        Ok(r) => r,
+        Err(e) => {
+            dock_event!(error, DockEvent::BootError, error = %e, "docking runtime failed");
+            return Ok(EXIT_BOOT_ERROR);
+        }
+    };
+    let (runtime, handles) = match run_docking_servers(runtime).await {
+        Ok(v) => v,
+        Err(e) => {
+            dock_event!(error, DockEvent::BootError, error = %e, "docking bind failed");
+            return Ok(EXIT_BOOT_ERROR);
+        }
+    };
+    if !sockets_exist(&cfg.socket_base) {
+        dock_event!(error, DockEvent::BootError, socket_base = %cfg.socket_base, "docking sockets not present after bind");
+        drain_docking_servers(&runtime, handles).await;
+        return Ok(EXIT_BOOT_ERROR);
+    }
+    info!(
+        component = COMPONENT_ID,
+        socket_base = %cfg.socket_base,
+        ports = handles.len(),
+        "AEP Base Node daemon listening on docking ports"
+    );
+    let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
+    let mut sigint = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())?;
+    let mut data_dock_handle = None;
+    if data_dock_cfg.enabled {
+        if let Err(e) = aep_base_node::data_dock::provision_server_identity(&runtime, &data_dir) {
+            dock_event!(error, DockEvent::BootError, error = %e, "Data Dock identity failed");
+            drain_docking_servers(&runtime, handles).await;
+            return Ok(EXIT_BOOT_ERROR);
+        }
+        let state = aep_base_node::data_dock::DataDockState::new(
+            runtime.clone(),
+            &data_dock_cfg,
+            data_dir.clone(),
+            cfg.internet_up,
+        );
+        match aep_base_node::data_dock::serve(state, &data_dock_cfg).await {
+            Ok((h, addr)) => {
+                info!(addr = %addr, "Data Dock HTTP listening");
+                data_dock_handle = Some(h);
+            }
+            Err(e) => {
+                dock_event!(error, DockEvent::BootError, error = %e, "Data Dock bind failed");
+                drain_docking_servers(&runtime, handles).await;
+                return Ok(EXIT_BOOT_ERROR);
+            }
+        }
+    }
+    let report = daemon_health(&runtime, cfg, &data_dir, lattice_db);
+    match report.status {
+        "ok" => dock_event!(info, DockEvent::BootReady, component = COMPONENT_ID, status = report.status, "AEP Base Node ready"),
+        "degraded" => dock_event!(
+            warn,
+            DockEvent::BootDegraded,
+            component = COMPONENT_ID,
+            status = report.status,
+            hub_loaded = report.hub_loaded,
+            "AEP Base Node running degraded"
+        ),
+        _ => {
+            dock_event!(error, DockEvent::BootError, component = COMPONENT_ID, status = report.status, "AEP Base Node health is error after bind");
+            if let Some(h) = data_dock_handle.take() {
+                h.abort();
+            }
+            drain_docking_servers(&runtime, handles).await;
+            return Ok(EXIT_BOOT_ERROR);
+        }
+    }
+    let signal = tokio::select! {
+        _ = sigterm.recv() => "SIGTERM",
+        _ = sigint.recv() => "SIGINT",
+    };
+    dock_event!(info, DockEvent::StopSignal, signal, "AEP Base Node daemon shutting down");
+    if let Some(h) = data_dock_handle {
+        h.abort();
+    }
+    drain_docking_servers(&runtime, handles).await;
+    Ok(0)
+}
+
+fn run_self_test(lattice_db: &Path, contracts: &aep_lattice_channel::ContractRegistry) -> Result<(), Box<dyn std::error::Error>> {
+    let conn = open_lattice_db(lattice_db)?;
+    let mut memory = LatticeMemoryStore::open_default(lattice_db)?;
+    let data_dir = data_dir_for(lattice_db);
+    let dock_kem = load_or_create_dock_kem(&data_dir);
+    let mut sign_store = AgentSignKeyStore::load(&data_dir);
+    let sign = sign_store
+        .provision("AG-BOOT")
+        .map_err(|e| format!("self-test: {e}"))?;
+    let frame = build_frame_for_dock(
+        "ch-selftest",
+        "AG-BOOT",
+        "boot-session",
+        DockingPort::ValidationEngine,
+        "dynaep-action-lattice",
+        b"AEP-Base-Node-self-test",
+        &dock_kem.public,
+        &sign,
+        now_unix(),
+    )?;
+    let digest = frame_digest(&frame);
+    record_lattice_event(
+        &conn,
+        &frame.agent_id,
+        &frame.channel_id,
+        &frame.contract_id,
+        &digest,
+        frame.sent_at_unix,
+    )?;
+    info!(digest, "self-test lattice frame recorded");
+    if !contracts.is_active("dynaep-action-lattice") {
+        return Err("self-test failed: dynaep-action-lattice contract inactive".into());
+    }
+
+    let mut probe = vec![0.0_f32; memory.embedding_dim()];
+    probe[0] = 1.0;
+    let mut nonce = [0u8; 4];
+    rand::thread_rng().fill_bytes(&mut nonce);
+    memory.record(AttractorRecord {
+        entry_id: format!("selftest-{}-{}", now_unix(), hex::encode(nonce)),
+        element_id: "AG-BOOT".into(),
+        domain: "event".into(),
+        outcome: "accepted".into(),
+        recorded_at_unix: now_unix(),
+        embedding: probe,
+    })?;
+    let hits = memory.search(&[1.0, 0.0, 0.0], 1)?;
+    if hits.is_empty() {
+        return Err("self-test failed: lattice memory vector search returned no hits".into());
+    }
+    info!(
+        attractors = memory.attractor_count()?,
+        sqlite_vec = ?memory.sqlite_vec_version(),
+        "self-test lattice memory index ok"
+    );
+    Ok(())
+}
+
+async fn run() -> Result<u8, Box<dyn std::error::Error>> {
+    let log_cfg = LogConfig::from_env();
+    let log_file = aep_base_node::dock_log::init(&log_cfg)?;
+    dock_event!(
+        info,
+        DockEvent::BootStart,
+        version = env!("CARGO_PKG_VERSION"),
+        json = log_cfg.json,
+        log_file = %log_file.as_ref().map(|p| p.display().to_string()).unwrap_or_default(),
+        "aep-base-node start"
+    );
 
     // rustls 0.23 requires an explicit process-wide provider when both ring/aws-lc are linked.
     let _ = rustls::crypto::ring::default_provider().install_default();
 
     let cli = Cli::parse();
     #[cfg(test)] if cli.allow_world_writable_lattice_parent {
-        std::env::set_var(ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV, "1");
+        std::env::set_var(aep_base_node::ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV, "1");
     }
     let cfg = resolve_config(&cli)?;
     let lattice_db = if cli.self_test {
@@ -176,194 +478,47 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if agent_id.is_empty() {
             return Err("provision-agent-sign-key requires --agent-id".into());
         }
-        let data_dir = lattice_db
-            .parent()
-            .map(PathBuf::from)
-            .unwrap_or_else(default_aep_data_dir);
-        let mut sign_store = AgentSignKeyStore::load(&data_dir);
-        let sign = sign_store.provision(agent_id)?;
-        sign_store.flush()?;
+        let data_dir = data_dir_for(&lattice_db);
+        let sign = aep_base_node::dock_keys::provision_agent_sign_key(&data_dir, agent_id)?;
         println!(
             "provisioned agent_id={agent_id} public_hex={}",
             hex::encode(&sign.public)
         );
-        return Ok(());
+        return Ok(0);
     }
 
     if cli.issue_mesh_identity {
         let agent_id = cli.agent_id.as_deref().unwrap_or("").trim();
-        let data_dir = lattice_db.parent().map(PathBuf::from).unwrap_or_else(default_aep_data_dir);
+        let data_dir = data_dir_for(&lattice_db);
         match issue_mesh_identity(&data_dir, agent_id) {
-            Ok(()) => return Ok(()),
+            Ok(()) => return Ok(0),
             Err(text) => return Err(text.into()),
         }
     }
     if cli.daemon {
-        std::env::set_var("AEP_LATTICE_STRICT", "1");
-        std::env::set_var("AEP_HUB_STRICT", "1");
-        let conn = open_lattice_db(&lattice_db)?;
-        let data_dir = lattice_db
-            .parent()
-            .map(PathBuf::from)
-            .unwrap_or_else(default_aep_data_dir);
-        let runtime = DockingRuntime::with_data_dir(
-            cfg.socket_base.clone(),
-            conn,
-            &cfg.lrps,
-            &data_dir,
-        )?;
-        let (runtime, handles) = run_docking_servers(runtime).await?;
-        if !sockets_exist(&cfg.socket_base) {
-            drain_docking_servers(&runtime, handles).await;
-            return Err("daemon failed: docking sockets not present after bind".into());
-        }
-        info!(
-            component = COMPONENT_ID,
-            socket_base = %cfg.socket_base,
-            ports = handles.len(),
-            "AEP Base Node daemon listening on docking ports"
-        );
-        let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
-        let data_dock_cfg = aep_base_node::data_dock::DataDockConfig::from_env();
-        let mut data_dock_handle = None;
-        if data_dock_cfg.enabled {
-            if let Err(e) = aep_base_node::data_dock::provision_server_identity(&runtime, &data_dir) {
-                drain_docking_servers(&runtime, handles).await;
-                return Err(format!("Data Dock identity: {e}").into());
-            }
-            let state = aep_base_node::data_dock::DataDockState {
-                runtime: runtime.clone(),
-                listen_port: data_dock_cfg.listen_port,
-            };
-            match aep_base_node::data_dock::serve(
-                state,
-                data_dock_cfg.listen_host.clone(),
-                data_dock_cfg.listen_port,
-            )
-            .await
-            {
-                Ok(h) => {
-                    info!(
-                        port = data_dock_cfg.listen_port,
-                        "Data Dock HTTP listening"
-                    );
-                    data_dock_handle = Some(h);
-                }
-                Err(e) => {
-                    drain_docking_servers(&runtime, handles).await;
-                    return Err(format!("Data Dock bind failed: {e}").into());
-                }
-            }
-        }
-        let mut sigint = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())?;
-        tokio::select! {
-            _ = sigterm.recv() => {}
-            _ = sigint.recv() => {}
-        }
-        info!("AEP Base Node daemon shutting down");
-        if let Some(h) = data_dock_handle {
-            h.abort();
-        }
-        drain_docking_servers(&runtime, handles).await;
-        return Ok(());
+        return run_daemon(&cfg, &lattice_db).await;
     }
-
-    let conn = open_lattice_db(&lattice_db)?;
-    let mut memory = LatticeMemoryStore::open_default(&lattice_db)?;
-    let contracts = bootstrap_contracts_from_lrps(&cfg.lrps);
 
     if cli.self_test {
-        let data_dir = lattice_db
-            .parent()
-            .map(PathBuf::from)
-            .unwrap_or_else(default_aep_data_dir);
-        let dock_kem = load_or_create_dock_kem(&data_dir);
-        let mut sign_store = AgentSignKeyStore::load(&data_dir);
-        let sign = sign_store
-            .provision("AG-BOOT")
-            .map_err(|e| format!("self-test: {e}"))?;
-        let frame = build_frame_for_dock(
-            "ch-selftest",
-            "AG-BOOT",
-            "boot-session",
-            DockingPort::ValidationEngine,
-            "dynaep-action-lattice",
-            b"AEP-Base-Node-self-test",
-            &dock_kem.public,
-            &sign,
-            now_unix(),
-        )?;
-        let digest = frame_digest(&frame);
-        record_lattice_event(
-            &conn,
-            &frame.agent_id,
-            &frame.channel_id,
-            &frame.contract_id,
-            &digest,
-            frame.sent_at_unix,
-        )?;
-        info!(digest, "self-test lattice frame recorded");
-        if !contracts.is_active("dynaep-action-lattice") {
-            return Err("self-test failed: dynaep-action-lattice contract inactive".into());
-        }
+        let contracts = bootstrap_contracts_from_lrps(&cfg.lrps);
+        run_self_test(&lattice_db, &contracts)?;
+    }
 
-        let mut probe = vec![0.0_f32; memory.embedding_dim()];
-        probe[0] = 1.0;
-        let mut nonce = [0u8; 4];
-        rand::thread_rng().fill_bytes(&mut nonce);
-        memory.record(AttractorRecord {
-            entry_id: format!("selftest-{}-{}", now_unix(), hex::encode(nonce)),
-            element_id: "AG-BOOT".into(),
-            domain: "event".into(),
-            outcome: "accepted".into(),
-            recorded_at_unix: now_unix(),
-            embedding: probe,
-        })?;
-        let hits = memory.search(&[1.0, 0.0, 0.0], 1)?;
-        if hits.is_empty() {
-            return Err("self-test failed: lattice memory vector search returned no hits".into());
-        }
+    let report = offline_health(&cfg, &lattice_db);
+    println!("{}", serde_json::to_string_pretty(&report)?);
+    if cli.health {
+        dock_event!(info, DockEvent::HealthProbe, component = COMPONENT_ID, status = report.status, "health probe");
+        return Ok(report.exit_code());
+    }
+    if !cli.self_test {
         info!(
-            attractors = memory.attractor_count()?,
-            sqlite_vec = ?memory.sqlite_vec_version(),
-            "self-test lattice memory index ok"
+            component = COMPONENT_ID,
+            events = report.action_lattice_events,
+            listening = report.docking_ports_listening,
+            "AEP Base Node ready"
         );
     }
-
-    let events = aep_base_node::event_count(&conn)?;
-    let attractors = memory.attractor_count()?;
-    let listening = sockets_exist(&cfg.socket_base);
-    let data_dir = lattice_db.parent();
-    let (mesh_peers, mesh_routes, mesh_load_error) =
-        aep_base_node::resolve_mesh_peers(data_dir, cfg.internet_up, cfg.mesh_peers);
-    let hub = match AgentControlHub::load_from_gap(&resolve_gap_root()) {
-        Ok(h) => h,
-        Err(e) => return Err(e.to_string().into()),
-    };
-    let report = health(
-        env!("CARGO_PKG_VERSION"),
-        mesh_peers,
-        cfg.internet_up,
-        &cfg.socket_base,
-        events,
-        cfg.correctwriting_en_priority,
-        hub.is_loaded(),
-        hub.sessions.len() as u32,
-        hub.mounts.len() as u32,
-        hub.permissions.len() as u32,
-        mesh_load_error,
-        attractors,
-        memory.embedding_dim() as u32,
-        memory.sqlite_vec_version(),
-        listening,
-        mesh_routes,
-        data_dir,
-    );
-    println!("{}", serde_json::to_string_pretty(&report)?);
-    if !cli.self_test {
-        info!(component = COMPONENT_ID, events, listening, "AEP Base Node ready");
-    }
-    Ok(())
+    Ok(0)
 }
 
 

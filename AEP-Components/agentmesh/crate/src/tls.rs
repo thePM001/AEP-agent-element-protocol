@@ -313,6 +313,9 @@ mod tests {
 
     #[test]
     fn workload_identity_roundtrip() {
+        // Tests share one process, so install the provider here instead of
+        // relying on another test to have done it first.
+        let _ = rustls::crypto::ring::default_provider().install_default();
         let id = issue_workload_identity("AG-TLS-TEST").expect("identity");
         assert!(id.cert_pem.contains("BEGIN CERTIFICATE"));
         assert!(id.key_pem.contains("BEGIN PRIVATE KEY"));

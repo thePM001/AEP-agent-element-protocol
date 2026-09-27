@@ -1,127 +1,14 @@
     use super::*;
-    use super::dock_rate::SIGNER_RATE_LIMIT;
-    use super::dock_serve::{bind_listener, drain_docking_servers, prepare_socket_dir, run_docking_servers, serve_connection, sockets_exist, note_tls_handshake_err};
+    use super::rate::SIGNER_RATE_LIMIT;
+    use super::serve::{bind_listener, drain_docking_servers, prepare_socket_dir, run_docking_servers, serve_connection, sockets_exist, note_tls_handshake_err};
     use aep_base_node_pulse::{freeze_temporal_snapshot, EnqueueDeny, QueuedCapsule, MAX_AGE_MS, MAX_DRIFT_MS, PULSE_MS, QUEUE_CAP_BYTES, QUEUE_CAP_CAPSULES};
     use aep_lattice_channel::build_frame_for_dock;
     use crate::{docking_port_specs, open_lattice_db};
+    use crate::docking_fixtures::*;
     use std::sync::Arc;
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
     use tokio::net::{UnixStream};
 
-
-    fn build_test_frame(
-        runtime: &DockingRuntime,
-        channel_id: &str,
-        agent_id: &str,
-        session_id: &str,
-        port: DockingPort,
-        contract_id: &str,
-        payload: &[u8],
-        _seq: u64,
-    ) -> (LatticeChannelFrame, String) {
-        let mut keys = runtime.keys.agent_sign_keys.lock().expect("keys lock");
-        let sign = keys.provision(agent_id).expect("test key");
-        let sign_hex = hex::encode(&sign.public);
-        keys.flush().ok();
-        drop(keys);
-        let sent_at = crate::now_unix();
-        let frame = build_frame_for_dock(
-            channel_id,
-            agent_id,
-            session_id,
-            port,
-            contract_id,
-            payload,
-            runtime.dock_kem_public(),
-            &sign,
-            sent_at,
-        )
-        .unwrap();
-        let line = serde_json::json!({
-            "frame": frame,
-            "signer_public_hex": sign_hex,
-        })
-        .to_string();
-        (frame, line)
-    }
-
-    fn install_agent_manifest(rt: &DockingRuntime, agent_id: &str, session_id: &str) {
-        use crate::task_manifest::{TaskManifestTrust, TaskManifestV1};
-        let dir = {
-            let m = rt.admit.manifests.lock().expect("manifests");
-            m.manifest_dir().to_path_buf()
-        };
-        std::fs::create_dir_all(&dir).expect("manifest dir");
-        let manifest = TaskManifestV1 {
-            manifest_version: "1".into(),
-            id: format!("m-{agent_id}"),
-            agent_id: agent_id.into(),
-            session_id: Some(session_id.into()),
-            intent: serde_json::json!({"op": "dock-test"}),
-            trust: TaskManifestTrust {
-                tier: "system".into(),
-            },
-            agentmesh: None,
-            provisional: false,
-            synthesized_by: "provided".into(),
-            promotion_required: vec![],
-        };
-        let path = dir.join(format!("{agent_id}.json"));
-        std::fs::write(path, serde_json::to_string_pretty(&manifest).unwrap()).unwrap();
-        rt.admit.manifests.lock().expect("manifests").reload();
-    }
-
-    fn dock_lattice_yaml() -> &'static str {
-        "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\", \"AG-DOCK\", \"AG-MESH\", \"AG-PULSE\", \"AG-COL\", \"AG-LRP\", \"AG-SEQ\", \"AG-SOCKC\", \"AG-DRIFT\", \"AG-BOUND\", \"dynaep-bridge\"]\n"
-    }
-    fn hub_gap_text() -> &'static str {
-        "metadata:\n  wrap: caw\n  agent_permission:\n    - agent_id: AG-DOCK\n      action: root:ping\n    - agent_id: AG-MESH\n      action: root:ping\n    - agent_id: AG-LRP\n      action: root:ping\n    - agent_id: AG-PULSE\n      action: root:ping\n    - agent_id: AG-COL\n      action: root:ping\n    - agent_id: AG-SEQ\n      action: root:ping\n    - agent_id: AG-SOCKC\n      action: root:ping\n    - agent_id: AG-DRIFT\n      action: root:ping\n    - agent_id: AG-BOUND\n      action: root:ping\n    - agent_id: AG-PING\n      action: root:ping\n    - agent_id: AG-NJ\n      action: root:ping\n    - agent_id: AG-BURST\n      action: root:ping\n    - agent_id: AG-FUT\n      action: root:ping\n    - agent_id: AG-SESSMIS\n      action: root:ping\n    - agent_id: AG-LRP-DENY\n      action: root:ping\n    - agent_id: AG-PING-R\n      action: root:ping\n    - agent_id: AG-TRUST\n      action: root:ping\n    - agent_id: AG-WIRE\n      action: root:ping\n    - agent_id: AG-REPLAY\n      action: root:ping\n    - agent_id: AG-SOCK\n      action: root:ping\n    - agent_id: AG-BADSIG\n      action: root:ping\n    - agent_id: AG-STALE\n      action: root:ping\n    - agent_id: AG-AGE\n      action: root:ping\n    - agent_id: AG-OVF\n      action: root:ping\n    - agent_id: AG-OVB\n      action: root:ping\n    - agent_id: AG-DUP\n      action: root:ping\n    - agent_id: AG-COLD\n      action: root:ping\n    - agent_id: AG-HELD\n      action: root:ping\n    - agent_id: AG-HELDD\n      action: root:ping\n    - agent_id: AG-POISON-KEYS\n      action: root:ping\n    - agent_id: AG-POISON-RATE\n      action: root:ping\n    - agent_id: AG-POISON-LIVE\n      action: root:ping\n    - agent_id: AG-POISON-MAN\n      action: root:ping\n    - agent_id: AG-POISON-RL\n      action: root:ping\n    - agent_id: AG-POISON-CON\n      action: root:ping\n    - agent_id: AG-POISON-REPLAY\n      action: root:ping\n    - agent_id: AG-POISON-TRUST\n      action: root:ping\n    - agent_id: AG-POISON-BUN\n      action: root:ping\n    - agent_id: AG-ENV034-MISS\n      action: root:ping\n    - agent_id: AG-ENV034-PING\n      action: root:ping\n    - agent_id: AG-ENV034-BAD\n      action: root:ping\n    - agent_id: agent-a\n      action: root:ping\n"
-    }
-    fn admit_ok_payload() -> &'static [u8] {
-        br#"{"type":"PING","action_path":"root:ping","payload":{"ok":true},"timestamp":1000000,"target_id":"scene-a","_sequenceNumber":1}"#
-    }
-    fn admit_ok_payload_seq(seq: i64) -> Vec<u8> {
-        format!("{{\"type\":\"PING\",\"action_path\":\"root:ping\",\"payload\":{{\"ok\":true}},\"timestamp\":1000000,\"target_id\":\"scene-a\",\"_sequenceNumber\":{seq}}}").into_bytes()
-    }
-    fn set_pulse_clock(rt: &DockingRuntime, ms: i64) {
-        rt.record.pulse.lock().expect("pulse").clock_ms = Some(ms);
-    }
-    fn through_pulse(rt: &DockingRuntime, port: &DockingPort, line: &str) -> DockFrameResponse {
-        set_pulse_clock(rt, 1_000_000);
-        let enq = process_request(rt, port, line);
-        let digest = match enq.digest.clone() {
-            Some(d) => d,
-            None => return enq,
-        };
-        if enq.pending == Some(true) {
-            set_pulse_clock(rt, 1_000_000 + PULSE_MS);
-            let _ = pulse_beat(rt);
-            let collect = format!("{{\"collect\":\"{digest}\"}}");
-            return process_request(rt, port, &collect);
-        }
-        enq
-    }
-    fn plant_lattice(dir: &std::path::Path) {
-        std::fs::write(dir.join("lattice.yaml"), dock_lattice_yaml()).expect("lattice");
-    }
-    fn plant_hub_gap(dir: &std::path::Path) {
-        std::fs::create_dir_all(dir.join("gap").join("policies").join("reference")).expect("hub dir");
-        std::fs::write(dir.join("gap").join("policies").join("reference").join("caw-test.gap"), hub_gap_text()).expect("hub");
-    }
-    fn temp_runtime() -> (tempfile::TempDir, DockingRuntime) {
-        let dir = tempfile::tempdir().expect("tempdir");
-        plant_lattice(dir.path());
-        runtime_in(dir)
-    }
-    fn runtime_in(dir: tempfile::TempDir) -> (tempfile::TempDir, DockingRuntime) {
-        // Identity gate is always strict: tests install real manifests (TASK-A28-H01).
-        let db_path = dir.path().join("dock.db");
-        let conn = open_lattice_db(&db_path).expect("db");
-        let sock_base = dir.path().join("sockets").to_string_lossy().to_string();
-        plant_hub_gap(dir.path());
-        let rt = DockingRuntime::with_data_dir(sock_base, conn, &[], dir.path()).expect("runtime");
-        (dir, rt)
-    }
 
     #[test]
     fn plain_ping_is_rejected() {
@@ -1174,7 +1061,7 @@
         assert_eq!(MAX_DRIFT_MS, 50);
         assert_eq!(PULSE_MS, 1000);
         assert_eq!(MAX_AGE_MS, 5000);
-        let src = include_str!("docking.rs");
+        let src = include_str!("mod.rs");
         let compact: String = src.chars().filter(|c| c.is_whitespace() == false).collect();
         let n1 = ["max_drift_ms=", "1000"].concat();
         let n2 = ["max_drift_ms:", "1000"].concat();
@@ -1373,11 +1260,11 @@
     #[test]
     fn seal_stamp_is_adopted_only_within_the_frame_second() {
         let body = br#"{"type":"PING","action_path":"root:ping","timestamp":1700000000500}"#;
-        assert_eq!(super::dock_pulse::seal_stamp_in_second(1700000000, body), Some(1700000000500));
+        assert_eq!(super::pulse::seal_stamp_in_second(1700000000, body), Some(1700000000500));
         let far = br#"{"type":"PING","action_path":"root:ping","timestamp":1600000000000}"#;
-        assert_eq!(super::dock_pulse::seal_stamp_in_second(1700000000, far), None);
+        assert_eq!(super::pulse::seal_stamp_in_second(1700000000, far), None);
         let none = br#"{"type":"PING","action_path":"root:ping"}"#;
-        assert_eq!(super::dock_pulse::seal_stamp_in_second(1700000000, none), None);
+        assert_eq!(super::pulse::seal_stamp_in_second(1700000000, none), None);
     }
     #[test]
     fn pulse_decay_rate_clears_the_second_counter() {
@@ -1386,7 +1273,7 @@
             let mut live = rt.admit.live_entry.lock().expect("live");
             live.snapshot.event_rate = 12;
         }
-        super::dock_pulse::pulse_decay_rate(&rt);
+        super::pulse::pulse_decay_rate(&rt);
         assert_eq!(rt.admit.live_entry.lock().expect("live").snapshot.event_rate, 0);
     }
 
@@ -1394,8 +1281,71 @@
     fn tls_handshake_err_does_not_request_stop() {
         let (_dir, rt) = temp_runtime();
         assert_eq!(rt.is_stopping(), false);
+        assert_eq!(rt.last_tls_handshake_err(), None);
         note_tls_handshake_err(&rt, "refused");
-        assert_eq!(rt.is_stopping(), false)
+        assert_eq!(rt.is_stopping(), false);
+        assert_eq!(rt.last_tls_handshake_err().as_deref(), Some("refused"));
+    }
+
+    #[test]
+    fn replay_ram_eviction_still_denied_by_sqlite() {
+        let (_dir, rt) = temp_runtime();
+        install_agent_manifest(&rt, "AG-REPLAY", "sess-1");
+        let (frame, line) = build_test_frame(
+            &rt,
+            "ch-replay-evict",
+            "AG-REPLAY",
+            "sess-1",
+            DockingPort::ValidationEngine,
+            "dynaep-action-lattice",
+            admit_ok_payload(),
+            1,
+        );
+        let admitted = through_pulse(&rt, &DockingPort::ValidationEngine, &line);
+        assert!(admitted.ok, "first frame must be admitted: {admitted:?}");
+        assert!(admitted.event_id.is_some());
+        let digest = aep_lattice_channel::frame_digest(&frame);
+        // Simulate RAM eviction: the in-memory guard no longer knows the digest.
+        *rt.defence.replay_guard.lock().expect("replay") = crate::ReplayGuard::default();
+        assert!(rt.defence.replay_guard.lock().expect("replay").check_and_record("probe", 1));
+        let replay = process_request(&rt, &DockingPort::ValidationEngine, &line);
+        assert_eq!(replay.ok, false);
+        assert_eq!(replay.pending, None);
+        let deny = replay.deny.expect("deny report");
+        assert!(
+            deny.closed.iter().any(|w| w.class == "frame.replay" && w.id == "digest.replay"),
+            "{deny:?}"
+        );
+        let rows: i64 = rt
+            .record
+            .db
+            .lock()
+            .expect("db")
+            .query_row(
+                "SELECT COUNT(*) FROM action_lattice_events WHERE frame_digest = ?1",
+                [digest.as_str()],
+                |r| r.get(0),
+            )
+            .expect("count");
+        assert_eq!(rows, 1);
+    }
+
+    #[tokio::test]
+    async fn drain_aborts_and_counts_late_tasks() {
+        let (_dir, rt) = temp_runtime();
+        let quick = tokio::spawn(async {});
+        let stuck = tokio::spawn(async {
+            tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+        });
+        rt.track_task(tokio::spawn(async {
+            tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+        }));
+        let started = std::time::Instant::now();
+        drain_docking_servers(&rt, vec![quick, stuck]).await;
+        assert!(started.elapsed() < std::time::Duration::from_secs(4));
+        assert_eq!(rt.drain_aborted_tasks(), 2);
+        assert_eq!(rt.sqlite_is_closed(), true);
+        assert_eq!(rt.is_stopping(), true);
     }
     #[test]
     fn docking_runtime_parts_are_distinct_owners() {

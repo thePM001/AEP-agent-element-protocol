@@ -124,7 +124,7 @@ Canonical client entry points:
 
 - `AEP-Components/dynAEP/`
 - `AEP-Components/lattice-channels/lib/lattice-transport.mjs`
-- Base Node dock verify: `AEP-Base-Node/AEP-Crate/src/docking.rs`
+- Base Node dock verify: `AEP-Base-Node/AEP-Crate/src/docking/mod.rs`
 
 **Do not:** open dock Unix sockets as raw JSON side-channels (`{"ping":true}`, plain `event`, plain `register_lrp`). Those are rejected by design.
 
@@ -262,8 +262,8 @@ export UCB_API_KEY=...
 | Reference architecture diagram | `AEP-User-Experience/docs/architecture/aep-28-architecture.png` (source `.mmd`) |
 | Base Node kernel. TypeScript dynAEP is not product Admit | `AEP-Base-Node/`, `AEP-Components/dynAEP/` |
 | dynAEP config | `AEP-Components/dynAEP/CONFIG.md` |
-| Dock admit / plain reject | `AEP-Base-Node/AEP-Crate/src/docking.rs` |
-| BM-07 trust | `attested_trust_score` in docking.rs |
+| Dock admit / plain reject | `AEP-Base-Node/AEP-Crate/src/docking/mod.rs` |
+| BM-07 trust | `attested_trust_score` in docking/apply.rs |
 | Lattice client | `AEP-Components/lattice-channels/lib/lattice-transport.mjs` |
 
 | UCB auth | `AEP-Base-Node/AEP-Docks/ucb/crate/src/auth.rs`, `http.rs` |

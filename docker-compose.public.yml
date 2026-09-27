@@ -27,7 +27,10 @@ services:
       UCB_PORT: "8412"
       DATA_DOCK: "${DATA_DOCK:-1}"
       DATA_DOCK_PORT: "8413"
-      DATA_DOCK_HOST: "0.0.0.0"
+      # Loopback by default. Set DATA_DOCK_HOST=0.0.0.0 plus DATA_DOCK_API_KEY in .env
+      # to reach Data Dock on the published 8413. Without a key the daemon exits 2.
+      DATA_DOCK_HOST: "${DATA_DOCK_HOST:-127.0.0.1}"
+      DATA_DOCK_API_KEY: "${DATA_DOCK_API_KEY:-}"
       AEP_LATTICE_TRANSPORT: "${AEP_LATTICE_TRANSPORT:-tls}"
       AEP_LATTICE_TLS_BIND: "${AEP_LATTICE_TLS_BIND:-0.0.0.0}"
       UCB_API_KEY: "${UCB_API_KEY:-}"
@@ -44,11 +47,7 @@ services:
     volumes:
       - aep-data:/data/aep
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          'test -S /data/aep/sockets/validation',
-        ]
+      test: ["CMD", "/usr/local/bin/aep-health-probe"]
       interval: 30s
       timeout: 10s
       start_period: 30s

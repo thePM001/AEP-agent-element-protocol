@@ -441,6 +441,41 @@ pub fn scan_dock_attaches_bound_http(src: &str) -> Result<String, String> {
     Ok(String::from("ok dock allow attaches bound http"))
 }
 
+/// Production source of the Base Node docking module: mod.rs, then each child
+/// file in AEP-Crate/src/docking in name order, without the test file. Each
+/// file is cut at its own test tail so no child is lost behind mod.rs tests.
+fn read_docking_module(base_node: &std::path::Path) -> Result<String, String> {
+    let dir = base_node.join("AEP-Crate").join("src").join("docking");
+    let entries = match std::fs::read_dir(&dir) {
+        Ok(rd) => rd,
+        Err(e) => return Err(format!("missing docking module: {e}")),
+    };
+    let mut names: Vec<String> = entries
+        .filter_map(|e| e.ok())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|n| n.ends_with(".rs") && n != "tests.rs")
+        .collect();
+    names.sort_by(|a, b| (a != "mod.rs").cmp(&(b != "mod.rs")).then(a.cmp(b)));
+    let mut out = String::new();
+    for n in names {
+        match std::fs::read_to_string(dir.join(&n)) {
+            Ok(text) => {
+                let prod = match text.find("#[cfg(test)]") {
+                    Some(i) => &text[..i],
+                    None => text.as_str(),
+                };
+                out.push_str(prod);
+                out.push('\n');
+            }
+            Err(e) => return Err(e.to_string()),
+        }
+    }
+    if out.trim().is_empty() {
+        return Err(String::from("empty docking module"));
+    }
+    Ok(out)
+}
+
 fn walk_to_workspace() -> PathBuf {
     let mut dir = if let Ok(m) = std::env::var("CARGO_MANIFEST_DIR") {
         PathBuf::from(m)
@@ -450,8 +485,7 @@ fn walk_to_workspace() -> PathBuf {
     let mut i = 0usize;
     while i < 12 {
         let hangar = ["AEP", "Base", "Node"].join("-");
-        let crate_src = ["crate", "src"].join("/");
-        let probe = dir.join(&hangar).join(&crate_src).join("docking.rs");
+        let probe = dir.join(&hangar).join("AEP-Crate").join("src").join("docking").join("mod.rs");
         if probe.is_file() {
             return dir;
         }
@@ -585,8 +619,7 @@ pub fn run_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
     repair_python_twin(&root)?;
     let hangar = ["AEP", "Base", "Node"].join("-");
-    let dock_path = root.join(&hangar).join("crate").join("src").join("docking.rs");
-    let dock_src = read_src(&dock_path, "docking.rs")?;
+    let dock_src = read_docking_module(&root.join(&hangar))?;
     let dock = scan_dock_attaches_bound_http(&dock_src)?;
     let mut proofs: Vec<String> = Vec::new();
     proofs.push(dock);

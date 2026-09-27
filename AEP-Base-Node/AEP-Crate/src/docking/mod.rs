@@ -1,5 +1,5 @@
 //! Unix socket listeners for AEP 2.8 Base Node docking ports (Phase 4).
-//! The earlier law change facade. Split modules: dock_freshness, dock_pulse, dock_rate, dock_serve, dock_apply.
+//! The docking facade. Children: freshness, pulse, rate, serve and apply in src/docking.
 
 use aep_lattice_channel::{
     frame_digest, ContractRegistry, DockingPort, LatticeChannelFrame,
@@ -21,28 +21,23 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Mutex;
 
-#[path = "dock_freshness.rs"]
-mod dock_freshness;
-#[path = "dock_pulse.rs"]
-mod dock_pulse;
-#[path = "dock_rate.rs"]
-mod dock_rate;
-#[path = "dock_serve.rs"]
-mod dock_serve;
-#[path = "dock_apply.rs"]
-mod dock_apply;
+mod apply;
+mod freshness;
+mod pulse;
+mod rate;
+mod serve;
 
-pub use dock_pulse::{pulse_beat, DockingRuntime, PulseState};
-pub use dock_serve::{drain_docking_servers, run_docking_servers, sockets_exist, unlink_sockets};
+pub use pulse::{pulse_beat, DockingRuntime, PulseState};
+pub use serve::{drain_docking_servers, run_docking_servers, sockets_exist, unlink_sockets};
 
-use dock_apply::{
+use apply::{
     attested_trust_score, enforce_correctwriting_en_on_payload, is_lrp_allowlisted, reject_side_channel,
     resolve_agent_bundle, resolve_signer_public,
 };
-use dock_freshness::frame_is_fresh;
-use dock_pulse::{collect_applied, pulse_enqueue, remember_applied};
-use dock_rate::rate_limit_response;
-use dock_serve::DockRequest;
+use freshness::frame_is_fresh;
+use pulse::{collect_applied, pulse_enqueue, remember_applied};
+use rate::rate_limit_response;
+use serve::DockRequest;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DockFrameResponse {
@@ -189,7 +184,9 @@ pub fn process_request(
             signer_public_hex,
         } => {
             let _ = pulse_beat(runtime);
-            handle_frame(runtime, port, &frame, trust_score, signer_public_hex)
+            let resp = handle_frame(runtime, port, &frame, trust_score, signer_public_hex);
+            log_frame_outcome(port, &resp);
+            resp
         }
         DockRequest::Ping { .. } => reject_side_channel(
             runtime,
@@ -217,6 +214,30 @@ pub fn process_request(
                 register_lrp.lrp_id
             ),
         ),
+    }
+}
+
+/// One kernel event per frame outcome. Only the digest and the deny text are
+/// logged, never the frame, the capsule or the signer key.
+fn log_frame_outcome(port: &DockingPort, resp: &DockFrameResponse) {
+    use crate::dock_log::DockEvent;
+    if resp.pending == Some(true) {
+        crate::dock_event!(debug, DockEvent::FramePending, port = port_event_type(port), digest = resp.digest.as_deref().unwrap_or(""), "frame held for the pulse");
+        return;
+    }
+    if resp.ok {
+        return;
+    }
+    let replay = resp
+        .deny
+        .as_ref()
+        .map(|d| d.closed.iter().any(|w| w.class == "frame.replay"))
+        .unwrap_or(false);
+    let detail = resp.error.as_deref().unwrap_or("");
+    if replay {
+        crate::dock_event!(info, DockEvent::FrameReplay, port = port_event_type(port), error = detail, "frame replay refused");
+    } else {
+        crate::dock_event!(info, DockEvent::FrameDeny, port = port_event_type(port), error = detail, "frame denied");
     }
 }
 
@@ -315,8 +336,22 @@ fn handle_frame(
             }
         }
     } else {
-        let contracts = dock_lock!(&runtime.admit.contracts, "contracts");
-        if !contracts.is_active(&frame.contract_id) {
+        // Lock order: the contracts guard is released before record.db is taken.
+        let verified = {
+            let contracts = dock_lock!(&runtime.admit.contracts, "contracts");
+            if contracts.is_active(&frame.contract_id) {
+                Some(crate::verify_inbound_dock_frame(
+                    frame,
+                    &runtime.keys.dock_kem,
+                    &signer_public,
+                    &contracts,
+                    false,
+                ))
+            } else {
+                None
+            }
+        };
+        let Some(verified) = verified else {
             let db = dock_lock!(&runtime.record.db, "db");
             let detail = format!("contract inactive: {}", frame.contract_id);
             let _ = record_side_channel_anomaly(
@@ -327,14 +362,8 @@ fn handle_frame(
                 detail.clone(),
             );
             return deny_resp(None, detail);
-        }
-        match crate::verify_inbound_dock_frame(
-            frame,
-            &runtime.keys.dock_kem,
-            &signer_public,
-            &contracts,
-            false,
-        ) {
+        };
+        match verified {
             Ok(p) => p,
             Err(err) => {
                 let detail = err.to_string();
@@ -377,9 +406,17 @@ fn handle_frame(
         }
     }
 
+    let register_lrp = matches!(
+        serde_json::from_slice::<Value>(&plaintext)
+            .ok()
+            .and_then(|v| v.get("action").and_then(|x| x.as_str()).map(String::from))
+            .as_deref(),
+        Some("register_lrp")
+    );
+    let inactive_action = register_lrp == false
+        && dock_lock!(&runtime.admit.contracts, "contracts").is_active(&frame.contract_id) == false;
     {
-        let contracts = dock_lock!(&runtime.admit.contracts, "contracts");
-        if match serde_json::from_slice::<Value>(&plaintext) { Ok(value) => match value.get("action") { Some(x) => match x.as_str() { Some("register_lrp") => false, _ => !contracts.is_active(&frame.contract_id) }, None => !contracts.is_active(&frame.contract_id) }, Err(_) => !contracts.is_active(&frame.contract_id) } {
+        if inactive_action {
             let db = dock_lock!(&runtime.record.db, "db");
             let detail = format!("contract inactive: {}", frame.contract_id);
             let _ = record_side_channel_anomaly(
@@ -427,9 +464,10 @@ fn handle_frame(
             return deny_closed(None, detail, "digest.replay", "frame.replay");
         }
     }
+    // Lock order: the replay guard is released before record.db is taken.
+    let fresh_in_ram = dock_lock!(&runtime.defence.replay_guard, "replay").check_and_record(&digest, frame.sent_at_unix);
     {
-        let mut replay = dock_lock!(&runtime.defence.replay_guard, "replay");
-        if !replay.check_and_record(&digest, frame.sent_at_unix) {
+        if fresh_in_ram == false {
             let db = dock_lock!(&runtime.record.db, "db");
             let detail = format!("frame replay rejected: {digest}");
             let _ = record_side_channel_anomaly(
@@ -443,11 +481,14 @@ fn handle_frame(
         }
     }
 
-    {
+    // Lock order: the manifests guard is released before record.db is taken.
+    let manifest_check = {
         let mut manifests = dock_lock!(&runtime.admit.manifests, "manifests");
         manifests.reload_if_stale();
-        if let Err(err) =
-            manifests.validate_agent(&frame.agent_id, trust_score, Some(frame.session_id.as_str()))
+        manifests.validate_agent(&frame.agent_id, trust_score, Some(frame.session_id.as_str()))
+    };
+    {
+        if let Err(err) = manifest_check
         {
             let detail = err.to_string();
             let kind = match &err {
@@ -481,5 +522,4 @@ fn handle_frame(
 }
 
 #[cfg(test)]
-#[path = "docking_tests.rs"]
 mod tests;

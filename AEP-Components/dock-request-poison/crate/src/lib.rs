@@ -139,6 +139,41 @@ pub fn scan_ok_false_on_poison(src: &str) -> Result<String, String> {
     ))
 }
 
+/// Production source of the Base Node docking module: mod.rs, then each child
+/// file in AEP-Crate/src/docking in name order, without the test file. Each
+/// file is cut at its own test tail so no child is lost behind mod.rs tests.
+fn read_docking_module(base_node: &std::path::Path) -> Result<String, String> {
+    let dir = base_node.join("AEP-Crate").join("src").join("docking");
+    let entries = match std::fs::read_dir(&dir) {
+        Ok(rd) => rd,
+        Err(e) => return Err(format!("missing docking module: {e}")),
+    };
+    let mut names: Vec<String> = entries
+        .filter_map(|e| e.ok())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|n| n.ends_with(".rs") && n != "tests.rs")
+        .collect();
+    names.sort_by(|a, b| (a != "mod.rs").cmp(&(b != "mod.rs")).then(a.cmp(b)));
+    let mut out = String::new();
+    for n in names {
+        match std::fs::read_to_string(dir.join(&n)) {
+            Ok(text) => {
+                let prod = match text.find("#[cfg(test)]") {
+                    Some(i) => &text[..i],
+                    None => text.as_str(),
+                };
+                out.push_str(prod);
+                out.push('\n');
+            }
+            Err(e) => return Err(e.to_string()),
+        }
+    }
+    if out.trim().is_empty() {
+        return Err(String::from("empty docking module"));
+    }
+    Ok(out)
+}
+
 fn walk_to_workspace() -> PathBuf {
     let mut dir = if let Ok(m) = std::env::var("CARGO_MANIFEST_DIR") {
         PathBuf::from(m)
@@ -148,8 +183,7 @@ fn walk_to_workspace() -> PathBuf {
     let mut i = 0usize;
     while i < 12 {
         let hangar = ["AEP", "Base", "Node"].join("-");
-        let crate_src = ["crate", "src"].join("/");
-        let probe = dir.join(&hangar).join(&crate_src).join("docking.rs");
+        let probe = dir.join(&hangar).join("AEP-Crate").join("src").join("docking").join("mod.rs");
         if probe.is_file() {
             return dir;
         }
@@ -181,9 +215,7 @@ fn read_src(path: &PathBuf, label: &str) -> Result<String, String> {
 pub fn run_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
     let hangar = ["AEP", "Base", "Node"].join("-");
-    let crate_src = ["crate", "src"].join("/");
-    let dock = root.join(&hangar).join(&crate_src).join("docking.rs");
-    let src = read_src(&dock, "docking")?;
+    let src = read_docking_module(&root.join(&hangar))?;
     let proofs = [
         scan_prod_no_lock_expect(&src)?,
         scan_ok_false_on_poison(&src)?,
@@ -355,7 +387,7 @@ mod tests {
 
     #[test]
     fn scan_prod_lock_expect_fails() {
-        let bad = "pub fn process_request() { let db = runtime.db.lock().expect(\"db lock\"); }";
+        let bad = "pub fn process_request() { let db = runtime.record.db.lock().expect(\"db lock\"); }";
         match scan_prod_no_lock_expect(bad) {
             Err(e) => must(e.contains("lock expect")),
             Ok(_) => std::process::abort(),
@@ -364,7 +396,7 @@ mod tests {
 
     #[test]
     fn scan_prod_lock_ok() {
-        let good = "pub fn process_request() { let db = dock_lock!(&runtime.db, \"db\"); } #[cfg(test)]\nmod tests { let db = runtime.db.lock().expect(\"db lock\"); }";
+        let good = "pub fn process_request() { let db = dock_lock!(&runtime.record.db, \"db\"); } #[cfg(test)]\nmod tests { let db = runtime.record.db.lock().expect(\"db lock\"); }";
         match scan_prod_no_lock_expect(good) {
             Ok(v) => must(v.contains("does not abort on lock")),
             Err(_) => std::process::abort(),
@@ -381,7 +413,7 @@ mod tests {
 
     #[test]
     fn scan_ok_false_good_passes() {
-        let good = "pub fn process_request() { let db = lock_or_deny(&runtime.db, \"db\"); return poisoned_lock_response(\"db\"); DockFrameResponse { ok: false, error: Some(poisoned_lock_message(\"db\")) } }";
+        let good = "pub fn process_request() { let db = lock_or_deny(&runtime.record.db, \"db\"); return poisoned_lock_response(\"db\"); DockFrameResponse { ok: false, error: Some(poisoned_lock_message(\"db\")) } }";
         match scan_ok_false_on_poison(good) {
             Ok(v) => must(v.contains("ok false on poisoned locks")),
             Err(_) => std::process::abort(),

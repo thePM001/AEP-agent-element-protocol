@@ -4,7 +4,7 @@
   "version": "2.8.6",
   "kind": "daemon",
   "path": "AEP-Base-Node/",
-  "description": "Mandatory local governance daemon with lattice-gated docking ports and Data Dock HTTP on 8413.",
+  "description": "Mandatory local governance daemon with lattice-gated docking ports, one health rollup and Data Dock HTTP on 8413 that needs a key off loopback.",
   "requires": [
     "lattice-channels",
     "lattice-crypto"
@@ -33,6 +33,12 @@
       "description": "Run Base Node self-test health JSON",
       "runtime": "cli",
       "method": "aep-base-node --self-test"
+    },
+    {
+      "id": "health_probe",
+      "description": "Print the health rollup without binding a dock. Exit 0 ok, 1 degraded, 2 error",
+      "runtime": "cli",
+      "method": "aep-base-node --health"
     }
   ],
   "setup_hooks": [],

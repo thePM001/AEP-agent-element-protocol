@@ -12,17 +12,28 @@ The daemon reads these environment variables at start.
 |----------|---------|---------|
 | `DATA_DOCK` | `1` | Set to `0` to turn Data Dock off |
 | `DATA_DOCK_PORT` | `8413` | TCP port for the HTTP listener |
-| `DATA_DOCK_HOST` | loopback outside Docker and `0.0.0.0` inside Docker | Bind address for the listener |
+| `DATA_DOCK_HOST` | `127.0.0.1` | Bind address for the listener, loopback in every environment including Docker |
+| `DATA_DOCK_API_KEY` | empty | Shared key for every `/v1` route and required whenever the host is not loopback |
+| `UCB_PORT` | `8412` | Reported as `ucb_port` in the health body |
 
-Outside Docker the listener binds to the loopback interface only. The Docker image sets `DATA_DOCK_HOST=0.0.0.0` and both compose files publish port 8413 next to UCB on 8412. The container entrypoint waits for `GET /health` on the Data Dock before it reports the node as ready.
+Data Dock binds to loopback by default, even inside the Docker image. To reach it from outside the container set `DATA_DOCK_HOST=0.0.0.0` together with a `DATA_DOCK_API_KEY`, for example one made with `openssl rand -hex 32`. A host other than loopback without a key is refused before anything listens and the daemon exits with code 2.
 
-On first start the daemon provisions a signing key for the server agent `data-dock` and writes the task manifest `data-dock.json` into the UCB manifest folder. The lattice policy must grant `data-dock` the action paths that frontends are allowed to write.
+On first start the daemon mints a signing key for the server agent `data-dock` and writes the task manifest `data-dock.json` into the UCB manifest folder. A later boot reuses that key, so a restart never rotates it. The lattice policy must grant `data-dock` the action paths that frontends are allowed to write.
 
-## Routes
+## Authorization
 
-### GET /health and GET /v1/health
+When `DATA_DOCK_API_KEY` is set every `/v1` route requires it. Send it in one of two headers.
 
-These return the service health as JSON.
+```text
+Authorization: Bearer <key>
+X-AEP-DATA-KEY: <key>
+```
+
+The server compares a SHA-256 digest of the presented key with the digest of the configured key in constant time. A missing or wrong key gets HTTP 401 with `{ "ok": false, "error": "unauthorized" }` and the key never appears in the log. `GET /health` needs no key and returns no ledger rows, so container probes can run without it. With no key configured on a loopback host the `/v1` routes answer without a header.
+
+## Health
+
+`GET /health` is open. `GET /v1/health` returns the same body behind the key.
 
 ```json
 {
@@ -34,9 +45,19 @@ These return the service health as JSON.
   "ucb_port": 8412,
   "docks": 4,
   "display_api": false,
-  "bind_28429": false
+  "bind_28429": false,
+  "sqlite_closed": false,
+  "last_tls_handshake_err": null,
+  "drain_aborted_tasks": 0,
+  "docking_ports_listening": true,
+  "hub_loaded": true,
+  "key_required": true
 }
 ```
+
+The `status` field comes from the same rollup that drives `aep-base-node --health` and the daemon ready log. It is `error` when the lattice ledger is closed, `degraded` when the dock sockets are missing, the Agent Control Hub is not loaded or the mesh peer file failed to load. Any other state reads `ok`. The `ok` field is true whenever the status is not `error`. The container probe counts the node as ready when this route answers HTTP 200 with a status other than `error`.
+
+## Routes
 
 ### GET /v1/ledger
 
@@ -67,6 +88,14 @@ This returns the same rows as `/v1/ledger` under the key `events` and takes the 
 
 This accepts one governed write as plain JSON.
 
+```text
+POST /v1/actions
+Authorization: Bearer $DATA_DOCK_API_KEY
+Content-Type: application/json
+
+{ "action_path": "root:ping", "payload": {} }
+```
+
 | Field | Required | Meaning |
 |-------|----------|---------|
 | `action_path` | yes | Lattice action path such as `root:ping` |
@@ -76,7 +105,7 @@ This accepts one governed write as plain JSON.
 | `docking_port` | no | One of `validation_engine`, `inference_engine`, `regulation_module` or `future_features` with `validation_engine` as the default |
 | `event_type` | no | Event type that defaults to `STATE_DELTA` |
 
-The server builds the transport frame, signs it as `data-dock` and submits it to the chosen dock. It then waits up to three pulse beats for admission. An admitted write returns the ledger row.
+Before anything is sealed the server checks the DockDefence fleet limiter and the per-signer limiter for the `data-dock` signer. That check does not spend a slot, so the dock counts each action once. A request over the limit gets HTTP 429 and no frame is built. Otherwise the server builds the transport frame, signs it as `data-dock` and submits it to the chosen dock, then waits up to three pulse beats for admission without blocking the runtime. An admitted write returns the ledger row.
 
 ```json
 { "ok": true, "row": { "id": 13, "event_type": "STATE_DELTA", "frame_digest": "4b1e...", "recorded_at_unix": 1790516010, "channel_id": "ch-data-dock", "contract_id": "dynaep-action-lattice", "payload": { "action_path": "root:ping" } } }
@@ -88,20 +117,27 @@ A denied write returns HTTP 422 with the deny payload from the dock.
 { "ok": false, "error": "Admit denied", "deny": { } }
 ```
 
-## Frontend contract
+## No seal on the frontend
 
-The frontend never seals anything. A request that carries any of `agent_id`, `grants`, `agent_permission`, `frame`, `sealed`, `signer_public_hex`, `trust_score`, `capsule`, `lattice_frame` or `agentmesh` at any depth is refused with HTTP 400. The same keys are stripped from every row before it leaves the server, so public JSON never shows a sealed frame, an agent id or a grant.
+The frontend never seals anything and only adds the key header. A request that carries any of `agent_id`, `grants`, `agent_permission`, `frame`, `sealed`, `signer_public_hex`, `trust_score`, `capsule`, `lattice_frame` or `agentmesh` at any depth is refused with HTTP 400. The same keys are stripped from every row before it leaves the server, so public JSON never shows a sealed frame, an agent id or a grant.
 
-## Errors
+## Status codes
 
 | Status | When |
 |--------|------|
-| 400 | Refused frontend field, missing `action_path`, a payload that is not an object or an unknown `docking_port` |
+| 200 | Health, ledger and events reads plus an admitted write |
+| 400 | Refused frontend seal field, missing `action_path`, a payload that is not an object or an unknown `docking_port` |
+| 401 | Missing or wrong key on a `/v1` route while a key is configured |
 | 422 | Frame build failure, missing signing key, dock denial or a dock that did not admit |
+| 429 | The fleet or the `data-dock` signer limit is reached, so no frame is built |
 | 500 | The lattice log could not be read |
 
 Every error body has `ok` set to false and an `error` string.
 
+## Log
+
+Data Dock writes to the official Base Node log with the event ids `data_dock.bind`, `data_dock.auth_fail`, `data_dock.ledger_read`, `data_dock.action_accept`, `data_dock.action_deny` and `data_dock.rate_limited`. Keys, seal material and grants are redacted before any line is written.
+
 ## Verification
 
-Run `cargo test -p aep-base-node` from the repository root. The Data Dock tests check that health and ledger answer as JSON without seal fields, that public rows lose agent ids and grants, that seal fields on a request or its payload are refused and that a server-sealed write returns either an admitted row or a deny payload. They also check that the four docks remain and that no Display API folder exists.
+Run `cargo test -p aep-base-node --lib` from the repository root. The Data Dock tests check the health rollup, the refusal of an open bind without a key, loopback without a key, 401 on every `/v1` route without the key, the strip of seal fields with a valid key, 429 over the limit without a ledger row and that a second boot keeps the `data-dock` key.

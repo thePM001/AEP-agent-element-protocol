@@ -175,6 +175,41 @@ pub fn scan_repairs_have_no_grant_lists() -> Result<String, String> {
     Ok(String::from("ok repairs omit grant lists"))
 }
 
+/// Production source of the Base Node docking module: mod.rs, then each child
+/// file in AEP-Crate/src/docking in name order, without the test file. Each
+/// file is cut at its own test tail so no child is lost behind mod.rs tests.
+fn read_docking_module(base_node: &std::path::Path) -> Result<String, String> {
+    let dir = base_node.join("AEP-Crate").join("src").join("docking");
+    let entries = match std::fs::read_dir(&dir) {
+        Ok(rd) => rd,
+        Err(e) => return Err(format!("missing docking module: {e}")),
+    };
+    let mut names: Vec<String> = entries
+        .filter_map(|e| e.ok())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|n| n.ends_with(".rs") && n != "tests.rs")
+        .collect();
+    names.sort_by(|a, b| (a != "mod.rs").cmp(&(b != "mod.rs")).then(a.cmp(b)));
+    let mut out = String::new();
+    for n in names {
+        match std::fs::read_to_string(dir.join(&n)) {
+            Ok(text) => {
+                let prod = match text.find("#[cfg(test)]") {
+                    Some(i) => &text[..i],
+                    None => text.as_str(),
+                };
+                out.push_str(prod);
+                out.push('\n');
+            }
+            Err(e) => return Err(e.to_string()),
+        }
+    }
+    if out.trim().is_empty() {
+        return Err(String::from("empty docking module"));
+    }
+    Ok(out)
+}
+
 fn walk_to_workspace() -> PathBuf {
     let mut dir = if let Ok(m) = std::env::var("CARGO_MANIFEST_DIR") {
         PathBuf::from(m)
@@ -183,7 +218,7 @@ fn walk_to_workspace() -> PathBuf {
     };
     let mut i = 0usize;
     while i < 16 {
-        let dock = dir.join("AEP-Base-Node/AEP-Crate/src/docking.rs");
+        let dock = dir.join("AEP-Base-Node/AEP-Crate/src/docking/mod.rs");
         if dock.is_file() {
             return dir;
         }
@@ -202,7 +237,7 @@ fn read_text(path: &PathBuf) -> String {
 
 pub fn run_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
-    let dock = read_text(&root.join("AEP-Base-Node/AEP-Crate/src/docking.rs"));
+    let dock = read_docking_module(&root.join("AEP-Base-Node")).unwrap_or_default();
     let live = read_text(&root.join("AEP-Components/live-entry/crate/src/lib.rs"));
     let ucb = read_text(&root.join("AEP-Base-Node/AEP-Docks/ucb/crate/src/lattice.rs"));
     let self_src = read_text(&root.join("AEP-Components/wall-set-backpressure/crate/src/lib.rs"));

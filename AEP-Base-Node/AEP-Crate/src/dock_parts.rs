@@ -6,7 +6,7 @@ use aep_agent_control_hub::AgentControlHub;
 use crate::dock_keys::AgentSignKeyStore;
 use rusqlite::Connection;
 use std::collections::HashMap;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::{Arc, Mutex};
 use tokio::sync::{watch, Semaphore};
 use tokio::task::JoinHandle;
@@ -15,6 +15,10 @@ pub struct DockIo {
     pub connection_limit: Arc<Semaphore>,
     pub stop: watch::Sender<bool>,
     pub inflight: Arc<Mutex<Vec<JoinHandle<()>>>>,
+    /// Last refused TLS handshake. Stored for health and never a stop signal.
+    pub last_tls_handshake_err: Mutex<Option<String>>,
+    /// Tasks the last drain had to abort after DRAIN_JOIN_TIMEOUT.
+    pub drain_aborted_tasks: AtomicU64,
 }
 pub struct DockKeys {
     pub dock_kem: Arc<KemKeypair>,
@@ -41,7 +45,7 @@ pub struct DockRecord {
 }
 impl DockIo {
     pub fn request_stop(&self) {
-        let _ = self.stop.send(true);
+        self.stop.send_replace(true);
     }
     pub fn is_stopping(&self) -> bool {
         *self.stop.borrow()

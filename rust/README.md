@@ -1,6 +1,6 @@
 # AEP 2.8.6 Rust workspace
 
-This is the Rust workspace note. It is not the product front page. The workspace root is Cargo.toml at the tree root. Component crates live under AEP-Base-Node/AEP-Crate and AEP-Components.
+This is the Rust workspace note. It is not the product front page. The workspace root is Cargo.toml at the tree root. The Base Node kernel crate lives only at AEP-Base-Node/AEP-Crate and it is the one default member. Component crates live under AEP-Components.
 
 Build output is directed here via .cargo/config.toml:
 
@@ -13,6 +13,7 @@ Build output is directed here via .cargo/config.toml:
 
 From the repository root:
 
+    cargo test -p aep-base-node --lib
     cargo test --workspace
     cargo build --release -p aep-base-node -p aep-lattice-memory -p aep-wasm-sandbox -p aep-ucb
     ./rust/target/release/aep-base-node --self-test

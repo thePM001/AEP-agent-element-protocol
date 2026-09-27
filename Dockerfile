@@ -45,8 +45,9 @@ COPY AEP-Policy-System/ ./AEP-Policy-System/
 COPY AEP-Base-Node/ ./AEP-Base-Node/
 COPY AEP-User-Experience/ ./AEP-User-Experience/
 COPY docker/entrypoint.sh /usr/local/bin/aep-entrypoint.sh
+COPY docker/health-probe.sh /usr/local/bin/aep-health-probe
 
-RUN chmod +x /opt/aep/AEP-Base-Node/AEP-Docks/ucb/server.mjs && chmod +x /usr/local/bin/aep-entrypoint.sh
+RUN chmod +x /opt/aep/AEP-Base-Node/AEP-Docks/ucb/server.mjs && chmod +x /usr/local/bin/aep-entrypoint.sh /usr/local/bin/aep-health-probe
 ENV AEP_DATA=/data/aep \
     AEP_SOCKET_BASE=/data/aep/sockets \
     AEP_TASK_MANIFEST_DIR=/data/aep/ucb/manifests \
@@ -57,7 +58,7 @@ ENV AEP_DATA=/data/aep \
     AEP_LATTICE_STRICT=1 \
     UCB_PORT=8412 \
     DATA_DOCK_PORT=8413 \
-    DATA_DOCK_HOST=0.0.0.0 \
+    DATA_DOCK_HOST=127.0.0.1 \
     DATA_DOCK=1 \
     UCB=1 \
     AEP_IN_DOCKER=1 \
@@ -70,8 +71,10 @@ ENV AEP_DATA=/data/aep \
 EXPOSE 8412 8413
 VOLUME ["/data/aep"]
 
+# Healthy while GET /health on the Data Dock answers 200 with a status other
+# than error. With DATA_DOCK=0 the probe falls back to aep-base-node --health.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-  CMD sh -c 'aep-base-node --config "${AEP_DATA}/base-node.json" 2>/dev/null | grep -q "\"status\": \"ok\"" || aep-base-node --socket-base "${AEP_SOCKET_BASE}" --lattice-db "${AEP_DATA}/action-lattice.db" --internet-up 2>/dev/null | grep -q "\"status\": \"ok\""'
+  CMD ["/usr/local/bin/aep-health-probe"]
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/aep-entrypoint.sh"]
 CMD []

@@ -2,6 +2,9 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.8.x public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.8.6] - 2026-09-27 - Base Node ten of ten
+Data Dock on 8413 requires DATA_DOCK_API_KEY when it is not on loopback. It binds loopback by default even in Docker, answers 401 on a missing or wrong key and 429 over the DockDefence limits before any frame is built. Health status is one rollup used by aep-base-node --health with exit codes 0, 1 and 2 and by GET /health, where a closed ledger now reads as error. The official aep-base-node log lives in dock_log.rs with a closed set of event ids and redaction of keys and seal material. Drain aborts and counts late tasks, DockingRuntime remains five parts and Display API remains gone. Verify with cargo test -p aep-base-node --lib.
+
 ## [2.8.6] - 2026-09-27 - Data Dock HTTP
 Data Dock listens on 8413 so frontends can read already-admitted lattice records as JSON while governed writes are sealed on the server before they enter the four existing Base Node docks. UCB remains on 8412 and port 28429 is never bound. The full route guide is AEP-User-Experience/docs/DATA-DOCK.md and independent verification is cargo test -p aep-base-node.
 

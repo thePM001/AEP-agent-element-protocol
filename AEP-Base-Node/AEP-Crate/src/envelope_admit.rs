@@ -11,8 +11,8 @@
 //! Every ClosedWall construction sets class. Writing walls stay on the Admit pass.
 use aep_admit_live_dock::LiveDockContext;
 use aep_one_live_evaluation::attach_live_walls;
-use aep_live_entry::{Element, LiveEntry, ProcessOut};
-use aep_wall_set_backpressure::{classify_wall, ClosedWall, DenyReport, CLASS_STRUCTURAL, CLASS_WRITING, CLASS_CAPABILITY};
+use aep_live_entry::{LiveEntry, ProcessOut};
+use aep_wall_set_backpressure::{classify_wall, ClosedWall, DenyReport, CLASS_STRUCTURAL};
 use serde_json::Value;
 use std::path::Path;
 use crate::BaseNodeError;
@@ -105,6 +105,8 @@ pub fn admit_sealed_payload_report(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aep_live_entry::Element;
+    use aep_wall_set_backpressure::{CLASS_CAPABILITY, CLASS_WRITING};
     fn yaml() -> &'static str {
         "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_permission: [\"agent-a\"]\n"
     }

@@ -100,6 +100,26 @@ impl RateLimiter {
         entry.0 += 1;
         Ok(())
     }
+
+    /// Read-only form of `check`. Reports whether one more request under this
+    /// key would pass without spending a slot, so an HTTP front can refuse a
+    /// request before it builds a frame that the dock would count again.
+    pub fn would_allow(&self, agent_id: &str) -> bool {
+        let now = Instant::now();
+        match self.counts.get(agent_id) {
+            Some((count, started)) => {
+                now.duration_since(*started) > self.window || *count < self.max_per_window
+            }
+            None => {
+                let live = self
+                    .counts
+                    .values()
+                    .filter(|(_, started)| now.duration_since(*started) <= self.window)
+                    .count();
+                live < self.max_keys
+            }
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -294,6 +314,19 @@ pub fn open_frame(
 mod tests {
     use super::*;
     use aep_lattice_crypto::generate_sign_keypair;
+
+    #[test]
+    fn rate_limiter_would_allow_does_not_spend() {
+        let mut limiter = RateLimiter::new(2, Duration::from_secs(60));
+        assert!(limiter.would_allow("a"));
+        assert!(limiter.would_allow("a"));
+        assert!(limiter.check("a").is_ok());
+        assert!(limiter.would_allow("a"));
+        assert!(limiter.check("a").is_ok());
+        assert_eq!(limiter.would_allow("a"), false);
+        assert!(limiter.check("a").is_err());
+        assert!(limiter.would_allow("b"));
+    }
 
     #[test]
     fn rate_limiter_blocks_burst() {

@@ -1,6 +1,6 @@
 //! Dock listeners plus drain. The earlier law change facade split. The earlier law change drain.
 
-use super::dock_pulse::{collect_applied, pulse_beat, pulse_decay_rate, DockingRuntime};
+use super::pulse::{collect_applied, pulse_beat, pulse_decay_rate, DockingRuntime};
 use super::{
     deny_resp, lock_or_deny, process_request, DockFrameResponse,
 };
@@ -17,7 +17,9 @@ use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader
 use tokio::net::{TcpListener, UnixListener};
 use tokio::task::JoinHandle;
 use tokio_rustls::TlsAcceptor;
-use tracing::{info, warn};
+use crate::dock_event;
+use crate::dock_log::DockEvent;
+use tracing::warn;
 
 pub(crate) const MAX_CONNECTIONS: usize = 64;
 const DRAIN_JOIN_TIMEOUT: Duration = Duration::from_secs(2);
@@ -211,7 +213,7 @@ async fn serve_port(
     listener: UnixListener,
     listen_path: String,
 ) -> std::io::Result<()> {
-    info!(port = %format!("{port:?}"), path = %listen_path, "docking port listening");
+    dock_event!(info, DockEvent::DockBind, port = %format!("{port:?}"), path = %listen_path, "docking port listening");
     let mut stop_rx = runtime.io.stop.subscribe();
     loop {
         if runtime.is_stopping() {
@@ -258,8 +260,10 @@ pub(crate) fn tls_dock_port(port: DockingPort) -> u16 {
     }
 }
 
-pub(crate) fn note_tls_handshake_err(_runtime: &DockingRuntime, error: impl std::fmt::Display) {
-    warn!(error = %error, "docking TLS handshake refused")
+pub(crate) fn note_tls_handshake_err(runtime: &DockingRuntime, error: impl std::fmt::Display) {
+    let detail = error.to_string();
+    dock_event!(warn, DockEvent::DockTlsHandshakeRefused, error = %detail, "docking TLS handshake refused");
+    runtime.note_last_tls_handshake_err(detail);
 }
 
 async fn serve_tls_port(
@@ -269,7 +273,7 @@ async fn serve_tls_port(
     acceptor: TlsAcceptor,
     bind_addr: String,
 ) -> std::io::Result<()> {
-    info!(port = %format!("{port:?}"), addr = %bind_addr, "docking TLS port listening");
+    dock_event!(info, DockEvent::DockBind, port = %format!("{port:?}"), addr = %bind_addr, "docking TLS port listening");
     let mut stop_rx = runtime.io.stop.subscribe();
     loop {
         if runtime.is_stopping() {
@@ -302,7 +306,7 @@ async fn serve_tls_port(
                 Ok(tls) => {
                     let (reader, writer) = tokio::io::split(tls);
                     if let Err(e) = serve_connection(rt, port, reader, writer).await {
-                        warn!(error = %e, "docking TLS connection closed with error");
+                        dock_event!(warn, DockEvent::DockTlsConnectionClosed, error = %e, "docking TLS connection closed with error");
                     }
                 }
                 Err(e) => note_tls_handshake_err(&rt, e),
@@ -408,25 +412,46 @@ pub fn unlink_sockets(socket_base: &str) {
     }
 }
 
-async fn join_or_abort(handles: Vec<JoinHandle<()>>) {
-    if handles.is_empty() {
-        return;
-    }
-    let wait = async move {
-        for handle in handles {
+/// Joins each task until the shared deadline. A task still running at the
+/// deadline is aborted, because dropping a tokio JoinHandle only detaches it.
+/// Returns (joined, aborted).
+pub(crate) async fn join_or_abort(
+    handles: Vec<JoinHandle<()>>,
+    deadline: tokio::time::Instant,
+) -> (u64, u64) {
+    let mut joined = 0u64;
+    let mut aborted = 0u64;
+    for mut handle in handles {
+        if handle.is_finished() {
             let _ = handle.await;
+            joined += 1;
+            continue;
         }
-    };
-    if tokio::time::timeout(DRAIN_JOIN_TIMEOUT, wait).await.is_err() {
-        // Remaining JoinHandle values drop with the wait future and abort.
+        match tokio::time::timeout_at(deadline, &mut handle).await {
+            Ok(_) => joined += 1,
+            Err(_) => {
+                handle.abort();
+                let _ = handle.await;
+                aborted += 1;
+            }
+        }
     }
+    (joined, aborted)
 }
 
 pub async fn drain_docking_servers(runtime: &DockingRuntime, handles: Vec<JoinHandle<()>>) {
-    info!("docking drain: stop accept, join tasks, unlink sockets, close sqlite");
     runtime.request_stop();
-    join_or_abort(handles).await;
-    join_or_abort(runtime.take_inflight()).await;
+    let deadline = tokio::time::Instant::now() + DRAIN_JOIN_TIMEOUT;
+    let (joined_listeners, aborted_listeners) = join_or_abort(handles, deadline).await;
+    let (joined_inflight, aborted_inflight) = join_or_abort(runtime.take_inflight(), deadline).await;
+    let joined = joined_listeners + joined_inflight;
+    let aborted = aborted_listeners + aborted_inflight;
+    runtime
+        .io
+        .drain_aborted_tasks
+        .store(aborted, std::sync::atomic::Ordering::SeqCst);
+    dock_event!(info, DockEvent::DockDrain, joined, aborted, "docking drain: stop accept, join tasks, remove sockets, close sqlite");
     unlink_sockets(&runtime.io.socket_base);
     runtime.close_sqlite();
+    dock_event!(info, DockEvent::SqliteClose, closed = runtime.sqlite_is_closed(), "lattice sqlite closed");
 }

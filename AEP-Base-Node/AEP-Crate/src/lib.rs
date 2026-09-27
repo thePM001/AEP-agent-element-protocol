@@ -1,9 +1,14 @@
 //! AEP Base Node - mandatory local governance kernel for AEP 2.8.6.
 
 pub mod dock_keys;
+mod dock_keys_provision;
+mod dock_keys_store;
+pub mod dock_log;
 pub mod dock_parts;
 pub mod docking;
-// dock_freshness, dock_pulse, dock_rate, dock_serve and dock_apply are docking facade modules.
+#[cfg(test)]
+mod docking_fixtures;
+// docking/ holds the facade children freshness, pulse, rate, serve and apply.
 pub mod envelope_admit;
 pub mod error;
 pub mod correctwriting_en;
@@ -92,7 +97,52 @@ pub struct BaseNodeHealth {
     pub lattice_memory_dim: u32,
     pub vector_store: &'static str,
     pub sqlite_vec_version: Option<String>,
+    pub sqlite_closed: bool,
+    pub last_tls_handshake_err: Option<String>,
+    pub drain_aborted_tasks: u64,
     pub status: &'static str,
+}
+
+impl BaseNodeHealth {
+    /// Process exit code for `aep-base-node --health`: 0 ok, 1 degraded, 2 error.
+    pub fn exit_code(&self) -> u8 {
+        status_exit_code(self.status)
+    }
+}
+
+/// Exit code for a rollup status: 0 ok, 1 degraded, 2 error.
+pub fn status_exit_code(status: &str) -> u8 {
+    match status {
+        "ok" => 0,
+        "degraded" => 1,
+        _ => 2,
+    }
+}
+
+/// Live inputs for one health report. Every field is read from the running
+/// node, so the rollup never sees a literal default.
+#[derive(Debug, Clone)]
+pub struct HealthInput<'a> {
+    pub version: &'a str,
+    pub mesh_peers: u32,
+    pub internet_up: bool,
+    pub base_socket: &'a str,
+    pub lattice_events: u64,
+    pub correctwriting_en_priority: u8,
+    pub hub_loaded: bool,
+    pub hub_sessions: u32,
+    pub hub_mounts: u32,
+    pub hub_permissions: u32,
+    pub mesh_peers_load_error: Option<String>,
+    pub lattice_memory_attractors: u64,
+    pub lattice_memory_dim: u32,
+    pub sqlite_vec_version: Option<String>,
+    pub docking_ports_listening: bool,
+    pub mesh_routes: u32,
+    pub data_dir: Option<&'a Path>,
+    pub sqlite_closed: bool,
+    pub last_tls_handshake_err: Option<String>,
+    pub drain_aborted_tasks: u64,
 }
 
 pub fn docking_port_specs(base_socket: &str) -> Vec<DockingPortSpec> {
@@ -329,17 +379,11 @@ pub fn record_lattice_event(
     let mesh = SelfTestLedgerKind {
         kind: String::from("agentmesh"),
     };
-    let payload_ser = serde_json::to_string(&payload);
-    if payload_ser.is_err() {
-        return Err(rusqlite::Error::ToSqlConversionFailure(Box::new(payload_ser.unwrap_err())));
-    }
-    let payload_json = payload_ser.unwrap();
-    let mesh_ser = serde_json::to_string(&mesh);
-    if mesh_ser.is_err() {
-        return Err(rusqlite::Error::ToSqlConversionFailure(Box::new(mesh_ser.unwrap_err())));
-    }
-    let agentmesh_json = mesh_ser.unwrap();
-    let exec_r = conn.execute(
+    let payload_json = serde_json::to_string(&payload)
+        .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
+    let agentmesh_json = serde_json::to_string(&mesh)
+        .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
+    conn.execute(
         "INSERT INTO action_lattice_events
          (agent_id, channel_id, contract_id, frame_digest, recorded_at_unix, event_type, payload_json, agentmesh_json)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
@@ -353,10 +397,7 @@ pub fn record_lattice_event(
             payload_json,
             agentmesh_json,
         ],
-    );
-    if exec_r.is_err() {
-        return Err(exec_r.unwrap_err());
-    }
+    )?;
     Ok(())
 }
 
@@ -409,56 +450,57 @@ pub fn rollup_status(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn health(
-    version: &str,
-    mesh_peers: u32,
-    internet_up: bool,
-    base_socket: &str,
-    lattice_events: u64,
-    correctwriting_en_priority: u8,
-    hub_loaded: bool,
-    hub_sessions: u32,
-    hub_mounts: u32,
-    hub_permissions: u32,
-    mesh_peers_load_error: Option<String>,
-    lattice_memory_attractors: u64,
-    lattice_memory_dim: u32,
-    sqlite_vec_version: Option<String>,
-    docking_ports_listening: bool,
-    mesh_routes: u32,
-    data_dir: Option<&Path>,
-) -> BaseNodeHealth {
-    let mesh_mode = detect_network_mode(internet_up, mesh_peers);
-    let mesh = status(mesh_mode, mesh_peers);
-    let potomitan_config = data_dir
+pub fn health(input: HealthInput<'_>) -> BaseNodeHealth {
+    let mesh_mode = detect_network_mode(input.internet_up, input.mesh_peers);
+    let mesh = status(mesh_mode, input.mesh_peers);
+    let potomitan_config = input
+        .data_dir
         .map(|d| d.join(MESH_PEERS_FILE).to_string_lossy().to_string())
         .unwrap_or_else(|| MESH_PEERS_FILE.to_string());
+    let status = rollup_status(
+        input.docking_ports_listening,
+        input.hub_loaded,
+        input.mesh_peers_load_error.as_deref(),
+        input.sqlite_closed,
+    );
     BaseNodeHealth {
         component: COMPONENT_ID.into(),
-        version: version.into(),
+        version: input.version.into(),
         channel_version: CHANNEL_VERSION.into(),
         mesh_mode,
-        mesh_peers,
-        internet_up,
+        mesh_peers: input.mesh_peers,
+        internet_up: input.internet_up,
         mesh_reachable: mesh.reachable,
-        mesh_routes,
+        mesh_routes: input.mesh_routes,
         potomitan_config,
-        correctwriting_en_priority,
-        hub_loaded,
-        hub_sessions,
-        hub_mounts,
-        hub_permissions,
-        status: rollup_status(docking_ports_listening, hub_loaded, mesh_peers_load_error.as_deref(), false),
-        mesh_peers_load_error,
-        docking_ports: docking_port_specs(base_socket),
-        docking_ports_listening,
-        action_lattice_events: lattice_events,
-        lattice_memory_attractors,
-        lattice_memory_dim,
+        correctwriting_en_priority: input.correctwriting_en_priority,
+        hub_loaded: input.hub_loaded,
+        hub_sessions: input.hub_sessions,
+        hub_mounts: input.hub_mounts,
+        hub_permissions: input.hub_permissions,
+        status,
+        mesh_peers_load_error: input.mesh_peers_load_error,
+        docking_ports: docking_port_specs(input.base_socket),
+        docking_ports_listening: input.docking_ports_listening,
+        action_lattice_events: input.lattice_events,
+        lattice_memory_attractors: input.lattice_memory_attractors,
+        lattice_memory_dim: input.lattice_memory_dim,
         vector_store: "sqlite-vec+usearch",
-        sqlite_vec_version,
+        sqlite_vec_version: input.sqlite_vec_version,
+        sqlite_closed: input.sqlite_closed,
+        last_tls_handshake_err: input.last_tls_handshake_err,
+        drain_aborted_tasks: input.drain_aborted_tasks,
     }
+}
+
+/// Rollup status of a running node from its live parts.
+pub fn runtime_status(runtime: &DockingRuntime, mesh_peers_load_error: Option<&str>) -> &'static str {
+    rollup_status(
+        runtime.docking_ports_listening(),
+        runtime.admit.hub.is_loaded(),
+        mesh_peers_load_error,
+        runtime.sqlite_is_closed(),
+    )
 }
 
 pub fn persist_held_digest(conn: &Connection, digest: &str, at_unix: i64) -> rusqlite::Result<()> {
@@ -501,27 +543,48 @@ mod tests {
         assert!(registry.is_active("lattice-channel-default"));
     }
 
+    fn isolated_input() -> HealthInput<'static> {
+        HealthInput {
+            version: "2.8.6-alpha.1",
+            mesh_peers: 0,
+            internet_up: false,
+            base_socket: "/tmp/sock",
+            lattice_events: 0,
+            correctwriting_en_priority: CORRECTWRITING_EN_PRIORITY,
+            hub_loaded: false,
+            hub_sessions: 0,
+            hub_mounts: 0,
+            hub_permissions: 0,
+            mesh_peers_load_error: None,
+            lattice_memory_attractors: 0,
+            lattice_memory_dim: 128,
+            sqlite_vec_version: None,
+            docking_ports_listening: false,
+            mesh_routes: 0,
+            data_dir: None,
+            sqlite_closed: false,
+            last_tls_handshake_err: None,
+            drain_aborted_tasks: 0,
+        }
+    }
+
+    fn ready_input() -> HealthInput<'static> {
+        HealthInput {
+            mesh_peers: 1,
+            internet_up: true,
+            hub_loaded: true,
+            hub_sessions: 1,
+            hub_mounts: 1,
+            hub_permissions: 1,
+            docking_ports_listening: true,
+            mesh_routes: 1,
+            ..isolated_input()
+        }
+    }
+
     #[test]
     fn health_reports_offline_when_isolated() {
-        let report = health(
-            "2.8.6-alpha.1",
-            0,
-            false,
-            "/tmp/sock",
-            0,
-            CORRECTWRITING_EN_PRIORITY,
-            false,
-            0,
-            0,
-            0,
-            None,
-            0,
-            128,
-            None,
-            false,
-            0,
-            None,
-        );
+        let report = health(isolated_input());
         assert_eq!(report.mesh_mode, MeshMode::Offline);
         assert!(!report.mesh_reachable);
         assert!(!report.internet_up);
@@ -546,56 +609,39 @@ mod tests {
 
     #[test]
     fn health_status_ok_when_docks_and_hub_ready() {
-        assert_eq!(
-            health(
-                "2.8.6-alpha.1",
-                1,
-                true,
-                "/tmp/sock",
-                0,
-                CORRECTWRITING_EN_PRIORITY,
-                true,
-                1,
-                1,
-                1,
-                None,
-                0,
-                128,
-                None,
-                true,
-                1,
-                None,
-            )
-            .status,
-            "ok",
-        )
+        let report = health(ready_input());
+        assert_eq!(report.status, "ok");
+        assert_eq!(report.exit_code(), 0);
     }
 
     #[test]
     fn health_status_degraded_when_isolated() {
-        assert_eq!(
-            health(
-                "2.8.6-alpha.1",
-                0,
-                false,
-                "/tmp/sock",
-                0,
-                CORRECTWRITING_EN_PRIORITY,
-                false,
-                0,
-                0,
-                0,
-                None,
-                0,
-                128,
-                None,
-                false,
-                0,
-                None,
-            )
-            .status,
-            "degraded",
-        )
+        let report = health(isolated_input());
+        assert_eq!(report.status, "degraded");
+        assert_eq!(report.exit_code(), 1);
+    }
+
+    #[test]
+    fn health_status_error_when_sqlite_closed() {
+        let report = health(HealthInput {
+            sqlite_closed: true,
+            ..ready_input()
+        });
+        assert_eq!(report.status, "error");
+        assert_eq!(report.sqlite_closed, true);
+        assert_eq!(report.exit_code(), 2);
+    }
+
+    #[test]
+    fn health_carries_tls_and_drain_state() {
+        let report = health(HealthInput {
+            last_tls_handshake_err: Some(String::from("refused")),
+            drain_aborted_tasks: 3,
+            ..ready_input()
+        });
+        assert_eq!(report.status, "ok");
+        assert_eq!(report.last_tls_handshake_err.as_deref(), Some("refused"));
+        assert_eq!(report.drain_aborted_tasks, 3);
     }
 
     #[test]

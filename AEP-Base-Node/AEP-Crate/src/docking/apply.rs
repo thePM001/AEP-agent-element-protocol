@@ -277,6 +277,7 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
 
     let resp = match recorded {
         Ok(event_id) => {
+            crate::dock_event!(debug, crate::dock_log::DockEvent::FrameApply, event_id, digest = %cap.digest, "frame applied");
             let resp = DockFrameResponse {
                 ok: true,
                 event_id: Some(event_id),

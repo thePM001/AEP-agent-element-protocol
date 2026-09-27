@@ -1,8 +1,8 @@
 //! Pulse queue enqueue and beat.
 
-use super::dock_apply::apply_held_capsule;
-use super::dock_rate::{GLOBAL_RATE_LIMIT, SIGNER_RATE_LIMIT};
-use super::dock_serve::MAX_CONNECTIONS;
+use super::apply::apply_held_capsule;
+use super::rate::{GLOBAL_RATE_LIMIT, SIGNER_RATE_LIMIT};
+use super::serve::MAX_CONNECTIONS;
 use super::{
     deny_closed, deny_resp, dock_lock, lock_or_deny, pending_held_response, DockFrameResponse,
 };
@@ -21,7 +21,7 @@ use rusqlite::Connection;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::sync::{watch, Semaphore};
@@ -99,6 +99,8 @@ impl DockingRuntime {
             connection_limit: Arc::new(Semaphore::new(MAX_CONNECTIONS)),
             stop: watch::channel(false).0,
             inflight: Arc::new(Mutex::new(Vec::new())),
+            last_tls_handshake_err: Mutex::new(None),
+            drain_aborted_tasks: AtomicU64::new(0),
             },
             keys: crate::dock_parts::DockKeys {
             dock_kem: Arc::new(load_or_create_dock_kem(data_dir)),
@@ -158,7 +160,7 @@ impl DockingRuntime {
     }
 
     pub fn request_stop(&self) {
-        let _ = self.io.stop.send(true);
+        self.io.stop.send_replace(true);
     }
 
     pub fn is_stopping(&self) -> bool {
@@ -167,6 +169,29 @@ impl DockingRuntime {
 
     pub fn sqlite_is_closed(&self) -> bool {
         self.record.sqlite_closed.load(Ordering::SeqCst)
+    }
+
+    /// True when all four unix dock sockets exist on disk.
+    pub fn docking_ports_listening(&self) -> bool {
+        super::serve::sockets_exist(&self.io.socket_base)
+    }
+
+    pub fn last_tls_handshake_err(&self) -> Option<String> {
+        match self.io.last_tls_handshake_err.lock() {
+            Ok(g) => g.clone(),
+            Err(p) => p.into_inner().clone(),
+        }
+    }
+
+    pub(crate) fn note_last_tls_handshake_err(&self, detail: String) {
+        match self.io.last_tls_handshake_err.lock() {
+            Ok(mut g) => *g = Some(detail),
+            Err(p) => *p.into_inner() = Some(detail),
+        }
+    }
+
+    pub fn drain_aborted_tasks(&self) -> u64 {
+        self.io.drain_aborted_tasks.load(Ordering::SeqCst)
     }
 
     pub(crate) fn track_task(&self, handle: JoinHandle<()>) {

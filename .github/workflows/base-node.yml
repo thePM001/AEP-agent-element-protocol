@@ -1,0 +1,19 @@
+name: base-node
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: cargo test -p aep-base-node --lib
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo test -p aep-base-node --lib
+        run: cargo test -p aep-base-node --lib

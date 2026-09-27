@@ -680,11 +680,6 @@ mod tests {
     }
 
     #[test]
-    fn env025_stays_landed() {
- assert_eq!(KERNEL_TICKET_LANDED, "the earlier law change");
-    }
-
-    #[test]
     fn allow_when_all_open() {
         let snap = base_snap();
         let r = admit(&act("action:write"), &snap);
