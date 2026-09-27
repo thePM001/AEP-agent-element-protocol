@@ -519,6 +519,9 @@ func TestAgentDefault_CommandDecisions(t *testing.T) {
 }
 
 func TestAgentDefault_FileDecisions(t *testing.T) {
+	// The default-allow-reads rows need the read opt-in. Without it an
+	// unmatched read is denied, which TestAgentDefault_UnmatchedReadDeniedWithoutOptIn locks.
+	t.Setenv("AEP_CAW_DEFAULT_ALLOW_READS", "1")
 	e := loadAgentDefaultEngine(t)
 
 	tests := []struct {
@@ -705,11 +708,11 @@ func TestAgentDefault_FileDecisions(t *testing.T) {
 
 		// /dev access
 		{
-			name:     "read /dev/null via allow-dev-write",
+			name:     "read /dev/null via allow-system-read",
 			path:     "/dev/null",
 			op:       "open",
 			wantDec:  types.DecisionAllow,
-			wantRule: "allow-dev-write",
+			wantRule: "allow-system-read",
 		},
 		{
 			name:     "write /dev/null via allow-dev-write",
@@ -781,6 +784,16 @@ func TestAgentDefault_FileDecisions(t *testing.T) {
 			assert.Equal(t, tt.wantDec, dec.PolicyDecision, "decision mismatch")
 			assert.Equal(t, tt.wantRule, dec.Rule, "rule mismatch")
 		})
+	}
+}
+
+func TestAgentDefault_UnmatchedReadDeniedWithoutOptIn(t *testing.T) {
+	t.Setenv("AEP_CAW_DEFAULT_ALLOW_READS", "")
+	e := loadAgentDefaultEngine(t)
+	for _, p := range []string{"/some/random/path", "/proc/self/status", "/home/user/other/file.txt"} {
+		dec := e.CheckFile(p, "read")
+		assert.Equal(t, types.DecisionDeny, dec.PolicyDecision, p)
+		assert.Equal(t, "default-deny-files", dec.Rule, p)
 	}
 }
 

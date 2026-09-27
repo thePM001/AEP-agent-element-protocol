@@ -167,6 +167,9 @@ func (m *mockWrapClient) CreateSessionWithRequest(ctx context.Context, req types
 func (m *mockWrapClient) ListSessions(ctx context.Context) ([]types.Session, error) {
 	return nil, nil
 }
+func (m *mockWrapClient) ListProfiles(ctx context.Context) (client.ProfilesResponse, error) {
+	return client.ProfilesResponse{}, nil
+}
 func (m *mockWrapClient) GetSession(ctx context.Context, id string) (types.Session, error) {
 	m.getSessionCalled = true
 	if m.getSessionFn != nil {
@@ -241,6 +244,7 @@ func TestSetupWrapInterception_CallsWrapInit(t *testing.T) {
 
 	mc := &mockWrapClient{
 		wrapInitResp: types.WrapInitResponse{
+			EnvPolicy: &types.EnvPolicyWire{},
 			WrapperBinary: "/bin/true",
 			SeccompConfig: `{"unix_socket_enabled":true}`,
 			NotifySocket:  "/tmp/aep-caw-notify-test.sock",
@@ -294,6 +298,7 @@ func TestSetupWrapInterception_EmptyWrapperBinary(t *testing.T) {
 
 	mc := &mockWrapClient{
 		wrapInitResp: types.WrapInitResponse{
+			EnvPolicy: &types.EnvPolicyWire{},
 			WrapperBinary: "",
 		},
 	}
@@ -389,19 +394,19 @@ func TestBuildWrapEnv_ReplacesInheritedAepCawVarsWhenBypassEnabled(t *testing.T)
 func TestBuildWrapEnv_StripsInheritedMixedCaseAepCawVarsWhenBypassDisabled(t *testing.T) {
 	env := buildWrapEnv([]string{
 		"PATH=/usr/bin",
-		"aep-caw_session_id=stale-session",
-		"AepCaw_Server=http://stale",
-		"aep-caw_in_session=1",
+		"aep_caw_session_id=stale-session",
+		"Aep_Caw_Server=http://stale",
+		"aep_caw_in_session=1",
 	}, "sess-123", "http://127.0.0.1:18080", false)
 
 	for _, e := range env {
-		if e == "aep-caw_in_session=1" {
+		if e == "aep_caw_in_session=1" {
 			t.Fatal("did not expect mixed-case inherited AEP_CAW_IN_SESSION when bypass is disabled")
 		}
-		if e == "aep-caw_session_id=stale-session" {
+		if e == "aep_caw_session_id=stale-session" {
 			t.Fatal("did not expect mixed-case stale AEP_CAW_SESSION_ID to remain in env")
 		}
-		if e == "AepCaw_Server=http://stale" {
+		if e == "Aep_Caw_Server=http://stale" {
 			t.Fatal("did not expect mixed-case stale AEP_CAW_SERVER to remain in env")
 		}
 	}
@@ -418,9 +423,9 @@ func TestBuildWrapEnv_StripsInheritedMixedCaseAepCawVarsWhenBypassDisabled(t *te
 func TestBuildWrapEnv_ReplacesInheritedMixedCaseAepCawVarsWhenBypassEnabled(t *testing.T) {
 	env := buildWrapEnv([]string{
 		"PATH=/usr/bin",
-		"aep-caw_session_id=stale-session",
-		"AepCaw_Server=http://stale",
-		"aep-caw_in_session=1",
+		"aep_caw_session_id=stale-session",
+		"Aep_Caw_Server=http://stale",
+		"aep_caw_in_session=1",
 	}, "sess-123", "http://127.0.0.1:18080", true)
 
 	envMap := make(map[string]int)
@@ -431,9 +436,9 @@ func TestBuildWrapEnv_ReplacesInheritedMixedCaseAepCawVarsWhenBypassEnabled(t *t
 	assert.Equal(t, 1, envMap["AEP_CAW_SESSION_ID=sess-123"])
 	assert.Equal(t, 1, envMap["AEP_CAW_SERVER=http://127.0.0.1:18080"])
 	assert.Equal(t, 1, envMap["AEP_CAW_IN_SESSION=1"])
-	assert.Equal(t, 0, envMap["aep-caw_session_id=stale-session"])
-	assert.Equal(t, 0, envMap["AepCaw_Server=http://stale"])
-	assert.Equal(t, 0, envMap["aep-caw_in_session=1"])
+	assert.Equal(t, 0, envMap["aep_caw_session_id=stale-session"])
+	assert.Equal(t, 0, envMap["Aep_Caw_Server=http://stale"])
+	assert.Equal(t, 0, envMap["aep_caw_in_session=1"])
 }
 
 func envSliceToMap(env []string) map[string]string {
@@ -560,6 +565,7 @@ func TestWrapLaunchConfig_EnvContainsSessionAndWrapper(t *testing.T) {
 
 	mc := &mockWrapClient{
 		wrapInitResp: types.WrapInitResponse{
+			EnvPolicy: &types.EnvPolicyWire{},
 			WrapperBinary: "/bin/true",
 			SeccompConfig: `{"unix_socket_enabled":true}`,
 			NotifySocket:  "/tmp/aep-caw-notify-test.sock",
@@ -603,6 +609,7 @@ func TestWrapLaunchConfig_AppliesEnvInject(t *testing.T) {
 
 	mc := &mockWrapClient{
 		wrapInitResp: types.WrapInitResponse{
+			EnvPolicy: &types.EnvPolicyWire{},
 			WrapperBinary: "/bin/true",
 			NotifySocket:  "/tmp/aep-caw-notify-test.sock",
 			WrapperEnv: map[string]string{
@@ -640,6 +647,7 @@ func TestWrapLaunchConfig_AppliesEnvInject_PtraceMode(t *testing.T) {
 
 	mc := &mockWrapClient{
 		wrapInitResp: types.WrapInitResponse{
+			EnvPolicy: &types.EnvPolicyWire{},
 			PtraceMode:   true,
 			NotifySocket: "/tmp/aep-caw-ptrace-test.sock",
 			EnvInject: map[string]string{
@@ -674,6 +682,7 @@ func TestWrapLaunchConfig_EnvIncludesInSessionWhenSafe(t *testing.T) {
 
 	mc := &mockWrapClient{
 		wrapInitResp: types.WrapInitResponse{
+			EnvPolicy: &types.EnvPolicyWire{},
 			WrapperBinary:         "/bin/true",
 			NotifySocket:          "/tmp/aep-caw-notify-test.sock",
 			SafeToBypassShellShim: true,
@@ -707,6 +716,7 @@ func TestWrapLaunchConfig_EnvOmitsInSessionWhenUnsafe(t *testing.T) {
 
 	mc := &mockWrapClient{
 		wrapInitResp: types.WrapInitResponse{
+			EnvPolicy: &types.EnvPolicyWire{},
 			WrapperBinary:         "/bin/true",
 			NotifySocket:          "/tmp/aep-caw-notify-test.sock",
 			SafeToBypassShellShim: false,

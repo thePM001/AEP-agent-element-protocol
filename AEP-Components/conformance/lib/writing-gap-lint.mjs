@@ -69,9 +69,28 @@ export const WRITING_GAP_AGENT_RULES = `Writing conventions (writing.gap - manda
  * @param {string} root
  * @param {{ extensions?: Array<{ ext: string, kind: string, under?: string }> }} [options]
  */
+/**
+ * Top-level folders that ship, read from AEP-User-Experience/harness/shipped-roots.list.
+ * The public conformance lint reads only these and every file at the tree root.
+ * Returns null when the list is absent, which keeps the whole tree in scope.
+ * @param {string} root
+ */
+function readShippedRoots(root) {
+  const listPath = join(root, "AEP-User-Experience", "harness", "shipped-roots.list");
+  if (!existsSync(listPath)) return null;
+  const roots = new Set();
+  for (const raw of readFileSync(listPath, "utf8").split("\n")) {
+    const row = raw.trim();
+    if (row.length === 0 || row.startsWith("#")) continue;
+    roots.add(row);
+  }
+  return roots;
+}
+
 export function collectWritingGapFiles(root, options = {}) {
   const specs = options.extensions ?? DEFAULT_GLOBS;
   const files = [];
+  const shipped = readShippedRoots(root);
 
   function walk(dir) {
     let entries;
@@ -84,6 +103,7 @@ export function collectWritingGapFiles(root, options = {}) {
       if (SKIP_DIRS.has(entry.name)) continue;
       const full = join(dir, entry.name);
       if (entry.isDirectory()) {
+        if (shipped !== null && dir === root && !shipped.has(entry.name)) continue;
         walk(full);
         continue;
       }

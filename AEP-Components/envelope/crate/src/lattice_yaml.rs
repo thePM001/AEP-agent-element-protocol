@@ -44,7 +44,10 @@ struct YamlNode {
     category: String,
     #[serde(default)]
     parents: Vec<String>,
+    /// Accepted so lattice files that list children still parse. The graph is
+    /// built from parents, so this field is never read.
     #[serde(default)]
+    #[allow(dead_code)]
     children: Vec<String>,
     #[serde(default)]
     agent_permission: Vec<String>,

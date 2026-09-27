@@ -16,5 +16,7 @@ nothing. The arm64-VM reproducer remains the manual release gate (see
 
 Build and run:
 
-    go build -o sigurg_probe scripts/docker-test/sigurg_probe.go
-    unixwrap -- ./sigurg_probe
+```sh
+go build -o sigurg_probe scripts/docker-test/sigurg_probe.go
+unixwrap -- ./sigurg_probe
+```

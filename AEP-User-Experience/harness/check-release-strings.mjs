@@ -24,6 +24,7 @@
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, extname } from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 const RELEASE = '2.8.6';
 const STALE = ['2.8.5', '2.75', '2.8.0'];
@@ -152,9 +153,85 @@ const exportIgnore = readExportIgnore(ROOT);
 for (const name of exportIgnore) SKIP_DIRS.add(name);
 for (const name of SKIP_ARGS) SKIP_DIRS.add(name);
 
-const files = [];
-walk(ROOT, files);
+/* Only the shipped roots describe the product. Files at the tree root always
+ * ship. The list lives in shipped-roots.list so every check reads one set. */
+function readShippedRoots(root) {
+  let text = '';
+  try {
+    text = readFileSync(join(root, 'AEP-User-Experience/harness/shipped-roots.list'), 'utf8');
+  } catch (err) {
+    return null;
+  }
+  const roots = new Set();
+  for (const raw of text.split('\n')) {
+    const row = raw.trim();
+    if (row.length === 0 || row[0] === '#') continue;
+    roots.add(row);
+  }
+  return roots;
+}
+
+function isShipped(rel, roots) {
+  if (roots === null) return true;
+  const slash = rel.indexOf('/');
+  if (slash < 0) return true;
+  return roots.has(rel.slice(0, slash));
+}
+
+/* In a git checkout the tracked files are what ships, so ignored build output
+ * such as Go caches or a local bin folder is never read. Outside a checkout the
+ * walk with the skip rules above is the fallback. */
+function trackedFiles(root) {
+  try {
+    const out = execFileSync('git', ['-C', root, 'ls-files', '-z'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    return out.split('\u0000').filter((p) => p.length > 0);
+  } catch (err) {
+    return null;
+  }
+}
+
+function keepFile(rel) {
+  const parts = rel.split('/');
+  for (const part of parts.slice(0, -1)) {
+    if (SKIP_DIRS.has(part)) return false;
+  }
+  for (const skip of SKIP_DIRS) {
+    if (rel === skip || rel.startsWith(skip + '/')) return false;
+  }
+  if (SKIP_FILES.has(rel)) return false;
+  if (SKIP_EXT.has(extname(rel).toLowerCase())) return false;
+  try {
+    const st = statSync(join(ROOT, rel));
+    if (!st.isFile() || st.size > 4000000) return false;
+  } catch (err) {
+    return false;
+  }
+  return true;
+}
+
+const shippedRoots = readShippedRoots(ROOT);
+const tracked = trackedFiles(ROOT);
+let files = [];
+if (tracked === null) {
+  walk(ROOT, files);
+} else {
+  files = tracked.filter(keepFile);
+}
+files = files.filter((rel) => isShipped(rel, shippedRoots));
 files.sort();
+
+/* CHANGELOG.md keeps the release history, so only sections under the current
+ * release heading are checked. Older sections name older releases on purpose. */
+function changelogHistoryLines(rows) {
+  const history = new Set();
+  let inHistory = false;
+  for (let i = 0; i < rows.length; i += 1) {
+    const m = /^##\s*\[([^\]]+)\]/.exec(rows[i]);
+    if (m) inHistory = m[1] !== RELEASE;
+    if (inHistory) history.add(i);
+  }
+  return history;
+}
 
 let scanned = 0;
 for (const rel of files) {
@@ -166,7 +243,9 @@ for (const rel of files) {
   }
   scanned += 1;
   const rows = text.split('\n');
+  const history = rel === 'CHANGELOG.md' ? changelogHistoryLines(rows) : new Set();
   for (let i = 0; i < rows.length; i += 1) {
+    if (history.has(i)) continue;
     const line = rows[i].replace(/\r$/, '');
     let hit = false;
     for (const token of STALE) {

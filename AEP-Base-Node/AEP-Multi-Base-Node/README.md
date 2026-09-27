@@ -33,6 +33,6 @@ Source: [`docs/multi-base-node-28b-architecture.svg`](./docs/multi-base-node-28b
 cargo test -p multi-base-node-core
 ```
 
-That command is the only thing that builds the crate. Nothing in the default path depends on it, and no default run uses it.
+That command is the only thing that builds the crate. Nothing in the default path depends on it and no default run uses it.
 
 Agentstream is optional. Federation uses lattice-channel.v1 transport.

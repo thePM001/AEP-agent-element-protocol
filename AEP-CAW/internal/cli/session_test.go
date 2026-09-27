@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"github.com/spf13/cobra"
 )
@@ -30,6 +31,9 @@ func (m *mockCLIClient) CreateSessionWithRequest(ctx context.Context, req types.
 }
 func (m *mockCLIClient) ListSessions(ctx context.Context) ([]types.Session, error) {
 	return []types.Session{m.session}, nil
+}
+func (m *mockCLIClient) ListProfiles(ctx context.Context) (client.ProfilesResponse, error) {
+	return client.ProfilesResponse{}, nil
 }
 func (m *mockCLIClient) GetSession(ctx context.Context, id string) (types.Session, error) {
 	return m.session, nil

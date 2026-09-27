@@ -3,7 +3,7 @@
 //! Exit 0 = all mandatory checks passed. Used by `conformance/runner/run.sh`.
 
 use aep_agentmesh::{create_bundle, rotate_on_trust_change};
-use aep_base_node::{open_lattice_db, process_request, DockingRuntime};
+use aep_base_node::{open_lattice_db, process_request, pulse_beat, DockFrameResponse, DockingRuntime};
 use aep_lattice_channel::{build_frame, build_frame_for_dock, open_frame, ContractRegistry, DockingPort};
 use aep_lattice_crypto::{generate_kem_keypair, generate_sign_keypair, open, seal};
 use aep_potomitan::{detect_network_mode, MemoryFabric, MeshMode, MeshPeer, MeshSupervisor};
@@ -98,31 +98,6 @@ const CHECKS: &[Check] = &[
         run: cc_potomitan_packet_plane,
     },
 ];
-
-fn conformance_frame(
-    channel_id: &str,
-    agent_id: &str,
-    port: DockingPort,
-    contract_id: &str,
-    payload: &[u8],
-    sent_at: u64,
-) -> Result<aep_lattice_channel::LatticeChannelFrame, String> {
-    let kem = generate_kem_keypair();
-    let sign = generate_sign_keypair();
-    build_frame(
-        channel_id,
-        agent_id,
-        "sess-conformance",
-        port,
-        contract_id,
-        payload,
-        &kem,
-        &sign,
-        sent_at,
-    )
-    .map_err(|e| e.to_string())
-}
-
 
 /// Build a frame sealed to the dock recipient key and signed by the agent key.
 /// A fresh exchange key would not open, so the dock key comes from the runtime.
@@ -349,34 +324,83 @@ fn cc_mesh_supervisor_routing() -> Result<(), String> {
     Ok(())
 }
 
+/// The Base Node refuses to start without an action lattice, so the fixture
+/// plants a minimal one in the data dir that DockingRuntime::new reads.
+const CONFORMANCE_LATTICE: &str = "aep_version: \"2.8.6\"\ndynaep_version: \"1.0.0\"\nlattice_revision: 1\nactions:\n  root:ping:\n    label: ping\n    category: system_event\n    parents: []\n    children: []\n    constraints: []\n    agent_permission: [\"*\"]\n";
+
+/// Agent permission for the conformance agents that the Agent Control Hub reads.
+const CONFORMANCE_HUB_GAP: &str = "metadata:\n  wrap: caw\n  agent_permission:\n    - agent_id: AG-PING-CONF\n      action: root:ping\n    - agent_id: AG-LRP-CONF\n      action: root:ping\n";
+
+/// The LRP that CC-09 registers through the regulation dock.
+const CONFORMANCE_LRP: &str = "conf-lrp";
+
+/// Admit JSON for root:ping. The timestamp is the seal stamp in milliseconds and
+/// sits in the same second as the frame, so the kernel freezes at the seal.
+fn admit_payload(extra: &str, seq: u64, sent_at: u64) -> Vec<u8> {
+    format!(
+        "{{{extra}\"type\":\"PING\",\"action_path\":\"root:ping\",\"payload\":{{\"ok\":true}},\"timestamp\":{},\"target_id\":\"scene-a\",\"_sequenceNumber\":{seq}}}",
+        sent_at * 1000
+    )
+    .into_bytes()
+}
+
+/// Sends one frame and collects its outcome after the pulse. A frame is held at
+/// the seal and applied on a beat, so the reply to the frame itself is pending.
+fn admit_through_pulse(rt: &DockingRuntime, port: &DockingPort, line: &str) -> DockFrameResponse {
+    let first = process_request(rt, port, line);
+    if first.pending != Some(true) {
+        return first;
+    }
+    let digest = match first.digest.clone() {
+        Some(d) => d,
+        None => return first,
+    };
+    let collect = serde_json::json!({ "collect": digest }).to_string();
+    let mut last = first;
+    for _ in 0..40 {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        let _ = pulse_beat(rt);
+        last = process_request(rt, &DockingPort::ValidationEngine, &collect);
+        if last.pending != Some(true) {
+            return last;
+        }
+    }
+    last
+}
+
 fn temp_docking_runtime() -> Result<(tempfile::TempDir, DockingRuntime), String> {
     let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
+    std::fs::write(dir.path().join("lattice.yaml"), CONFORMANCE_LATTICE).map_err(|e| e.to_string())?;
+    let hub = dir.path().join("gap").join("policies").join("reference");
+    std::fs::create_dir_all(&hub).map_err(|e| e.to_string())?;
+    // The hub reads only caw-*.gap files from policies/reference.
+    std::fs::write(hub.join("caw-conformance.gap"), CONFORMANCE_HUB_GAP).map_err(|e| e.to_string())?;
     let db_path = dir.path().join("conf.db");
     let conn = open_lattice_db(&db_path).map_err(|e| e.to_string())?;
     let sock_base = dir.path().join("sockets").to_string_lossy().to_string();
-    Ok((
-        dir,
-        DockingRuntime::new(sock_base, conn, &["dynaep-action-lattice".into()]).map_err(|e| e.to_string())?,
-    ))
+    let lrps = [String::from("dynaep-action-lattice"), String::from(CONFORMANCE_LRP)];
+    let rt = DockingRuntime::with_data_dir(sock_base, conn, &lrps, dir.path()).map_err(|e| e.to_string())?;
+    Ok((dir, rt))
 }
 
 fn cc_docking_lattice_health() -> Result<(), String> {
     let (_dir, rt) = temp_docking_runtime()?;
     let sign = arm_test_agent(&rt, "AG-PING-CONF", &["dynaep-action-lattice"])?;
+    let sent_at = now_unix();
     let frame = conformance_frame_for_dock(
         "ch-lattice-health",
         "AG-PING-CONF",
         DockingPort::ValidationEngine,
         "dynaep-action-lattice",
-        b"lattice-health-ping",
-        now_unix(),
+        &admit_payload("", 1, sent_at),
+        sent_at,
         rt.keys.dock_kem.public.as_slice(),
         &sign,
     )?;
     let line = serde_json::json!({ "frame": frame }).to_string();
-    let resp = process_request(&rt, &DockingPort::ValidationEngine, &line);
-    if !resp.ok {
-        return Err(format!("lattice health frame failed: {:?}", resp.error));
+    let resp = admit_through_pulse(&rt, &DockingPort::ValidationEngine, &line);
+    if !resp.ok || resp.event_id.is_none() {
+        return Err(format!("lattice health frame failed: {:?} deny={:?}", resp.error, resp.deny));
     }
     Ok(())
 }
@@ -451,35 +475,39 @@ fn cc_docking_rate_limit() -> Result<(), String> {
 
 fn cc_lrp_registration_flow() -> Result<(), String> {
     let (_dir, rt) = temp_docking_runtime()?;
-    let sign = arm_test_agent(&rt, "AG-LRP-CONF", &["conf-lrp", "dynaep-action-lattice"])?;
+    // The LRP is allowlisted on the runtime but not active, so the regulation
+    // frame is what registers it before the validation frame uses it.
+    let sign = arm_test_agent(&rt, "AG-LRP-CONF", &["dynaep-action-lattice"])?;
+    let reg_at = now_unix();
     let reg_frame = conformance_frame_for_dock(
-        "ch-lrp-reg",
+        "ch-lrp",
         "AG-LRP-CONF",
         DockingPort::RegulationModule,
-        "conf-lrp",
-        b"register-lrp",
-        now_unix(),
+        CONFORMANCE_LRP,
+        &admit_payload("\"action\":\"register_lrp\",", 1, reg_at),
+        reg_at,
         rt.keys.dock_kem.public.as_slice(),
         &sign,
     )?;
     let reg_line = serde_json::json!({ "frame": reg_frame }).to_string();
-    let reg = process_request(&rt, &DockingPort::RegulationModule, &reg_line);
-    if !reg.ok {
-        return Err(format!("LRP lattice registration failed: {:?}", reg.error));
+    let reg = admit_through_pulse(&rt, &DockingPort::RegulationModule, &reg_line);
+    if !reg.ok || reg.event_id.is_none() {
+        return Err(format!("LRP lattice registration failed: {:?} deny={:?}", reg.error, reg.deny));
     }
+    let event_at = now_unix();
     let event_frame = conformance_frame_for_dock(
-        "ch-lrp-conf",
+        "ch-lrp",
         "AG-LRP-CONF",
         DockingPort::ValidationEngine,
-        "conf-lrp",
-        b"lrp-bound",
-        now_unix() + 1,
+        CONFORMANCE_LRP,
+        &admit_payload("\"event_type\":\"LRP_BOUND\",", 2, event_at),
+        event_at,
         rt.keys.dock_kem.public.as_slice(),
         &sign,
     )?;
     let event_line = serde_json::json!({ "frame": event_frame }).to_string();
-    let resp = process_request(&rt, &DockingPort::ValidationEngine, &event_line);
-    if !resp.ok {
+    let resp = admit_through_pulse(&rt, &DockingPort::ValidationEngine, &event_line);
+    if !resp.ok || resp.event_id.is_none() {
         return Err(format!(
             "validation lattice frame after LRP register failed: {:?}",
             resp.error

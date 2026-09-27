@@ -21,7 +21,7 @@ The shims intercept standard library functions for environment variable access:
 - **Windows**: `GetEnvironmentVariableA/W`, `SetEnvironmentVariableA/W`, `GetEnvironmentStringsA/W`
 
 When a blocked variable is accessed, the shim returns NULL (or empty) as if the
-variable doesn't exist, and emits an event to the aep-caw daemon.
+variable doesn't exist and emits an event to the aep-caw daemon.
 
 ## Configuration
 

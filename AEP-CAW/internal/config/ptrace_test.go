@@ -36,8 +36,8 @@ func TestDefaultPtraceConfig(t *testing.T) {
 	if cfg.MaskTracerPid != "off" {
 		t.Errorf("mask_tracer_pid: got %q, want %q", cfg.MaskTracerPid, "off")
 	}
-	if cfg.OnAttachFailure != "fail_open" {
-		t.Errorf("on_attach_failure: got %q, want %q", cfg.OnAttachFailure, "fail_open")
+	if cfg.OnAttachFailure != "fail_closed" {
+		t.Errorf("on_attach_failure: got %q, want %q", cfg.OnAttachFailure, "fail_closed")
 	}
 }
 

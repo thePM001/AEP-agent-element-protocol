@@ -43,9 +43,14 @@ func TestNewEngineWithVariables(t *testing.T) {
 	decision = engine.CheckFile("/home/user/.config/app/settings.json", "read")
 	assert.Equal(t, "allow", string(decision.PolicyDecision))
 
-	// Should allow reads outside (no deny rule, engine defaults reads to allow)
+	// Unmatched reads fail closed unless the read opt-in is set
+	t.Setenv("AEP_CAW_DEFAULT_ALLOW_READS", "")
+	decision = engine.CheckFile("/etc/passwd", "read")
+	assert.Equal(t, "deny", string(decision.PolicyDecision))
+	t.Setenv("AEP_CAW_DEFAULT_ALLOW_READS", "1")
 	decision = engine.CheckFile("/etc/passwd", "read")
 	assert.Equal(t, "allow", string(decision.PolicyDecision))
+	t.Setenv("AEP_CAW_DEFAULT_ALLOW_READS", "")
 
 	// Should deny writes outside (engine defaults writes to deny)
 	decision = engine.CheckFile("/etc/passwd", "write")

@@ -1,6 +1,5 @@
 // Dock request path returns ok false on poisoned locks.
 // Do not abort the process.
-use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard};
@@ -194,22 +193,6 @@ fn walk_to_workspace() -> PathBuf {
         i = i.saturating_add(1);
     }
     PathBuf::from(".")
-}
-
-fn read_src(path: &PathBuf, label: &str) -> Result<String, String> {
-    if path.is_file() == false {
-        return Err(format!("missing {label} source"));
-    }
-    match fs::read_to_string(path) {
-        Ok(v) => {
-            if v.is_empty() {
-                Err(format!("empty {label} source"))
-            } else {
-                Ok(v)
-            }
-        }
-        Err(e) => Err(e.to_string()),
-    }
 }
 
 pub fn run_gate() -> Result<i32, String> {

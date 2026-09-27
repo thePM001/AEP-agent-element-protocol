@@ -523,101 +523,21 @@ fn twin_at(root: &Path, parts: &[&str]) -> PathBuf {
     p
 }
 
+/// Client twins that ship in the public tree. The SDK twins moved out of the
+/// public tree, so the gate checks the lattice-channels client library only.
 fn client_twins(root: &Path) -> Vec<(String, PathBuf)> {
+    let lib = ["AEP-Components", "lattice-channels", "lib"];
     let mut out = Vec::new();
-    out.push((String::from("lattice-channels-ts"), twin_at(root, &["AEP-Components","lattice-channels","lib","lattice-gated-fetch.ts"])));
-    out.push((String::from("lattice-channels-mjs"), twin_at(root, &["AEP-Components","lattice-channels","lib","lattice-gated-fetch.mjs"])));
-    out.push((String::from("lattice-transport-mjs"), twin_at(root, &["AEP-Components","lattice-channels","lib","lattice-transport.mjs"])));
-    out.push((String::from("dynaep-ts"), twin_at(root, &["AEP-SDKs","typescript","dynaep","src","transport","lattice-gated-fetch.ts"])));
-    out.push((String::from("javascript-mjs"), twin_at(root, &["AEP-SDKs","javascript","lattice-gated-fetch.mjs"])));
-    out.push((String::from("html-css-js"), twin_at(root, &["AEP-SDKs","html-css","lattice_client.js"])));
-    out.push((String::from("python-client"), twin_at(root, &["AEP-SDKs","python","aep-protocol","aep","lattice_client.py"])));
-    out.push((String::from("python-dist"), twin_at(root, &["AEP-SDKs","dist","python","aep-protocol","aep","lattice_client.py"])));
-    out.push((String::from("rust-sdk"), twin_at(root, &["AEP-SDKs","rust","src","lattice.rs"])));
+    out.push((String::from("lattice-channels-ts"), twin_at(root, &[lib[0], lib[1], lib[2], "lattice-gated-fetch.ts"])));
+    out.push((String::from("lattice-channels-mjs"), twin_at(root, &[lib[0], lib[1], lib[2], "lattice-gated-fetch.mjs"])));
+    out.push((String::from("lattice-channels-js"), twin_at(root, &[lib[0], lib[1], lib[2], "lattice-gated-fetch.js"])));
+    out.push((String::from("lattice-transport-mjs"), twin_at(root, &[lib[0], lib[1], lib[2], "lattice-transport.mjs"])));
     out
-}
-
-fn scan_python_dock_returns_resp(src: &str) -> Result<String, String> {
-    let start = match src.find("def lattice_dock_request") {
-        Some(i) => i,
-        None => return Err(String::from("python missing lattice_dock_request")),
-    };
-    let rest = &src[start..];
-    let end = rest.find("\ndef lattice_gated_fetch").unwrap_or(rest.len());
-    let body = &rest[..end];
-    if body.contains("\n    return resp\n") == false {
-        return Err(String::from("python lattice_dock_request does not return resp"));
-    }
-    Ok(String::from("ok python dock returns resp"))
-}
-
-fn repair_python_twin(root: &Path) -> Result<(), String> {
-    for (label, path) in client_twins(root) {
-        if label.starts_with("python") == false {
-            continue;
-        }
-        let mut src = read_src(&path, &label)?;
-        let uo = ["url", "open", "("].join("");
-        if src.contains("http_from_dock_allow") && src.contains(&uo) == false && src.contains("\n    return resp\n") {
-            continue;
-        }
-        let imp = ["import ", "base64"].join("");
-        if src.contains(&imp) == false {
-            src = src.replacen("import json", &format!("{imp}\nimport json"), 1);
-        }
-        src = src.replacen(") -> None:", "):", 1);
-        let needle = "        raise RuntimeError(resp.get(\"error\") or \"lattice frame rejected\")\n";
-        let with_ret = "        raise RuntimeError(resp.get(\"error\") or \"lattice frame rejected\")\n    return resp\n";
-        if src.contains("\n    return resp\n") == false {
-            src = src.replacen(&needle, &with_ret, 1);
-        }
-        if src.contains("http_from_dock_allow") == false {
-            let helper = [
-                "def http_from_dock_allow(resp):\n",
-                "    http = resp.get(\"http\")\n",
-                "    if not http:\n",
-                "        raise RuntimeError(\"lattice-gated-fetch: dock allow did not return http\")\n",
-                "    raw = http.get(\"body_b64\") or \"\"\n",
-                "    return __import__(\"base64\").b64decode(raw) if raw else b\"\"\n\n\n",
-            ].join("");
-            src = src.replacen("def lattice_gated_fetch(", &format!("{helper}def lattice_gated_fetch("), 1);
-        }
-        if src.contains(&uo) {
-            let dock = ["lattice", "_dock_request(base"].join("");
-            if let Some(i) = src.find(&dock) {
-                let rest = &src[i..];
-                if let Some(rel) = rest.find(&uo) {
-                    let start = i;
-                    let mut end = i + rel;
-                    let from_exc = ["from ", "exc"].join("");
-                    if let Some(rel2) = src[end..].find(&from_exc) {
-                        end = end + rel2 + from_exc.len();
-                        if src[end..].starts_with("\n") {
-                            end += 1;
-                        }
-                    } else if let Some(nl) = src[end..].find("\n") {
-                        end = end + nl + 1;
-                    }
-                    let patched = "    resp = lattice_dock_request(base, \"inference_engine\", event)\n    return http_from_dock_allow(resp)\n";
-                    src.replace_range(start..end, patched);
-                }
-            }
-        }
-        let nested = "        resp = lattice_dock_request";
-        let aligned = "    resp = lattice_dock_request";
-        src = src.replace(nested, aligned);
-        if src.contains("\n    return resp\n") == false {
-            src = src.replacen("def http_from_dock_allow", "    return resp\n\ndef http_from_dock_allow", 1);
-        }
-        fs::write(&path, src).map_err(|e| e.to_string())?;
-    }
-    Ok(())
 }
 
 /// Run live the earlier law change gate on docking.rs and lattice-gated-fetch twins.
 pub fn run_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
-    repair_python_twin(&root)?;
     let hangar = ["AEP", "Base", "Node"].join("-");
     let dock_src = read_docking_module(&root.join(&hangar))?;
     let dock = scan_dock_attaches_bound_http(&dock_src)?;
@@ -626,10 +546,6 @@ pub fn run_gate() -> Result<i32, String> {
     for (label, path) in client_twins(&root) {
         let src = read_src(&path, &label)?;
         let scan = scan_no_ordinary_fetch_after_dock_allow(&src)?;
-        if label.starts_with("python") {
-            let py = scan_python_dock_returns_resp(&src)?;
-            proofs.push(py);
-        }
         let mut line = String::from("ok twin=");
         line.push_str(&label);
         line.push(char::from(32));

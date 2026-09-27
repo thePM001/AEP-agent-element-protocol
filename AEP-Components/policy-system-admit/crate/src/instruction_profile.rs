@@ -63,6 +63,13 @@ mod tests {
         String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"invariants\": [\n      {\"expr\": \"no_em_dashes\", \"description\": \"Zero em-dashes\"}\n    ]\n  }\n}")
     }
 
+    /// A deployment GAP with a declared but empty grant list. An undeclared list
+    /// keeps the wall open and always-on stems drop the permission wall, so the
+    /// grant list sits on a GAP that binds by prefix.
+    fn deploy_gap_empty_grants() -> String {
+        String::from("{\n  \"pattern\": {\n    \"guard\": \"deployment_attempt\",\n    \"prefix\": \"ops:\",\n    \"invariants\": [\n      {\"expr\": \"human_approval_required == true\", \"description\": \"approval\"}\n    ]\n  },\n  \"metadata\": {\"agent_permission\": []}\n}")
+    }
+
     fn writing_gap_star() -> String {
         String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"invariants\": [\n      {\"expr\": \"no_em_dashes\", \"description\": \"Zero em-dashes\"}\n    ]\n  },\n  \"metadata\": {\"agent_permission\": [\"*\"]}\n}")
     }
@@ -134,9 +141,11 @@ mod tests {
         let tmp = std::env::temp_dir().join("gap-285-p15-empty-grants");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
+        std::fs::write(tmp.join("reference/deployment.gap"), deploy_gap_empty_grants()).expect("d");
         let mut input = PolicySystemCompileInput::default();
         input.agent_id = String::from("agent-a");
         input.action = String::from("write");
+        input.action_path = String::from("ops:deploy");
         let walls = compile_policy_system_walls_from(Some(&tmp), &input);
         let mut hit = false;
         let mut i = 0usize;

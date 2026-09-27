@@ -1,0 +1,16 @@
+# AEP shipped roots
+# Top-level folders that ship in the public tree. Files that sit directly at the
+# tree root always ship. Checks that describe the shipped product read only these
+# folders, so a local folder at the top level is out of their scope.
+# The three runtime roots come first, then the support trees.
+# Readers: AEP-User-Experience/harness/check-release-strings.mjs and aep-check.mjs
+AEP-Base-Node
+AEP-CAW
+AEP-Components
+AEP-Policy-System
+AEP-User-Experience
+AEP-Research-Paper
+docker
+rust
+.github
+.cargo

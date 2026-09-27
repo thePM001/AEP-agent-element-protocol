@@ -1393,6 +1393,10 @@ mod tests {
 
     #[test]
     fn second_boot_does_not_rotate_data_dock_key() {
+        // Key tests set AEP_AGENT_SIGN_KEYS_FORCE_REGEN under this lock. Holding
+        // it keeps a parallel test from turning this boot into a rotation.
+        let _guard = crate::dock_keys::KEYS_ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::remove_var("AEP_AGENT_SIGN_KEYS_FORCE_REGEN");
         let (dir, first) = fixture_runtime();
         provision_server_identity(&first, dir.path()).expect("first boot");
         let first_key = signer_public_hex(&first, DATA_DOCK_AGENT).expect("first key");

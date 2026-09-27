@@ -1,10 +1,10 @@
 # Security
 
-This document describes the threat model, security mechanisms, and known limitations of aep-caw.
+This document describes the threat model, security mechanisms and known limitations of aep-caw.
 
 ## Overview
 
-aep-caw is a security sandbox for AI agent command execution. It interposes between an AI agent and the host system to enforce policies on file access, network connections, command execution, and environment variables.
+aep-caw is a security sandbox for AI agent command execution. It interposes between an AI agent and the host system to enforce policies on file access, network connections, command execution and environment variables.
 
 ## Threat Model
 
@@ -85,7 +85,7 @@ aep-caw is **not** a full security sandbox like a VM or container with seccomp. 
 
 #### Deferred FUSE Mounting
 
-In some environments (E2B, Firecracker, or other snapshot-based sandboxes), `/dev/fuse` is not accessible at session creation time but becomes available later at runtime. Deferred FUSE mounting delays the mount until the first `exec` call, then mounts idempotently.
+In some environments (E2B, Firecracker or other snapshot-based sandboxes), `/dev/fuse` is not accessible at session creation time but becomes available later at runtime. Deferred FUSE mounting delays the mount until the first `exec` call, then mounts idempotently.
 
 **When to use:**
 - Snapshot-restore environments where device permissions change at runtime
@@ -120,7 +120,7 @@ sandbox:
 ### Network Control (eBPF)
 
 - Attaches to process cgroup before execution begins
-- Filters connections by domain, CIDR, and port
+- Filters connections by domain, CIDR and port
 - DNS resolution for domain-based rules (with timeout)
 
 **Race condition mitigation:** Processes start in ptrace-stopped state; eBPF attaches before process resumes.
@@ -157,7 +157,7 @@ In environments where seccomp user-notify is unavailable (e.g. AWS Fargate, rest
 - Path resolution: relative paths and fd-based paths are resolved to absolute paths for policy evaluation
 
 **Limitations:**
-- Currently intercepts execve/execveat only (Phase 1); file, network, and signal syscalls are classified but auto-allowed
+- Currently intercepts execve/execveat only (Phase 1); file, network and signal syscalls are classified but auto-allowed
 - Small race window between fork and ptrace auto-attach
 - Requires `SYS_PTRACE` capability (Linux-only)
 
@@ -204,7 +204,7 @@ aep-caw intercepts signal delivery between processes using seccomp user-notify, 
 **Implementation:**
 - Uses `SECCOMP_RET_USER_NOTIF` to trap signal syscalls (`kill`, `tkill`, `tgkill`, etc.)
 - PID registry tracks all processes in the session for target classification
-- Policy rules evaluated based on signal, sender, and target relationship
+- Policy rules evaluated based on signal, sender and target relationship
 
 **Target Classification:**
 
@@ -385,7 +385,7 @@ audit:
 **Authentication:**
 - **AWS**: Uses default credential chain (env vars, shared config, IAM role)
 - **Azure**: Uses DefaultAzureCredential (managed identity, CLI, env vars)
-- **Vault**: Supports token, Kubernetes, and AppRole authentication
+- **Vault**: Supports token, Kubernetes and AppRole authentication
 - **GCP**: Uses Application Default Credentials
 
 **Key Caching:**
@@ -506,7 +506,7 @@ aep-caw includes an embedded HTTP proxy that intercepts all LLM API requests fro
 **Architecture:**
 - Proxy starts automatically with each session on a random port
 - Agent environment is configured to route through proxy (`ANTHROPIC_BASE_URL`, `OPENAI_BASE_URL`)
-- Requests are intercepted, processed, and forwarded to upstream LLM providers
+- Requests are intercepted, processed and forwarded to upstream LLM providers
 
 **DLP Redaction:**
 - Request bodies are scanned for PII using regex patterns
@@ -537,7 +537,7 @@ For configuration and usage details see the LLM proxy documentation, which is in
 
 File policy is checked when a file is opened. Between open and subsequent reads/writes, the underlying file could theoretically change (e.g., via hard links from outside the sandbox). This is inherent to userspace filesystem interception.
 
-**Mitigation:** The window is small, and the agent cannot create hard links to files outside `/workspace`.
+**Mitigation:** The window is small and the agent cannot create hard links to files outside `/workspace`.
 
 ### DNS Rebinding
 
@@ -696,7 +696,7 @@ sandbox:
         - "com.apple.accessibility."
 ```
 
-Default allow list includes essential services: system logger, CoreServices, launch services, SecurityServer, and cfprefsd. For full documentation see the macOS XPC sandbox note, which is internal-only and does not ship with this repository.
+Default allow list includes essential services: system logger, CoreServices, launch services, SecurityServer and cfprefsd. For full documentation see the macOS XPC sandbox note, which is internal-only and does not ship with this repository.
 
 **Recommendations for macOS deployments:**
 - **ESF+NE (Alpha):** Install via `brew tap thePM001/tap && brew install --cask aep-caw` for full enforcement
@@ -767,7 +767,7 @@ Windows now has **kernel-level enforcement** via a mini filter driver, providing
 The driver provides comprehensive registry protection:
 
 - **Operation interception:** Query, set, delete, create, rename keys and values
-- **Policy enforcement:** Allow, deny, or require approval based on registry rules
+- **Policy enforcement:** Allow, deny or require approval based on registry rules
 - **High-risk path detection:** Automatic detection and blocking of persistence/security paths
 - **MITRE ATT&CK mapping:** Events include technique IDs for security monitoring
 

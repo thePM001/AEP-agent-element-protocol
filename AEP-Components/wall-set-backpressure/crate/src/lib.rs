@@ -110,7 +110,10 @@ pub fn scan_live_entry_closed(src: &str) -> Result<String, String> {
     }
     let proc = extract_fn(src, "pub fn process_event");
     let pcode = prod_src(&proc);
-    if pcode.contains("closed_walls") == false {
+    // process_event copies the admit result walls into Rejection.closed. Older
+    // source named the copy closed_walls, so both forms count.
+    let copies_walls = pcode.contains("closed_walls") || pcode.contains("result.closed.clone()");
+    if copies_walls == false {
         return Err(String::from("process_event does not copy closed_walls onto Rejection"));
     }
     Ok(String::from("ok Rejection carries closed walls"))
@@ -247,7 +250,7 @@ pub fn run_gate() -> Result<i32, String> {
         scan_ucb_deny_field(&ucb)?,
         scan_no_lookup(&self_src)?,
         scan_repairs_have_no_grant_lists()?,
-        scan_closed_wall_has_class(&self_src)?,
+        scan_closed_wall_has_class(&read_text(&root.join("AEP-Components/kernel-types/crate/src/lib.rs")))?,
         scan_docking_sets_class(&dock)?,
         scan_admit_sets_class(&root.join("AEP-Base-Node/AEP-Crate/src/envelope_admit.rs"))?,
     ];
@@ -644,7 +647,7 @@ mod tests {
 
     #[test]
     fn closed_wall_struct_has_class() {
-        match scan_closed_wall_has_class(include_str!("lib.rs")) {
+        match scan_closed_wall_has_class(include_str!("../../../kernel-types/crate/src/lib.rs")) {
             Ok(v) => must(v.contains("ok ClosedWall carries class")),
             Err(_) => std::process::abort(),
         }

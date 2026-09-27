@@ -9,7 +9,7 @@
 // Collect-all Deny for empty action_path runs before Apply. process_event must not mutate LiveEntry then return Event.
 // A template target_id is not a skip. Every opened frame runs collect-all Admit then Apply.
 use aep_envelope::{
-    action_is_satisfied, admit_with_extra, apply_admit, closed_reasons, dest_dock_from_opened_frame, load_lattice_yaml, load_lattice_yaml_file, plan_apply,
+    admit_with_extra, apply_admit, closed_reasons, dest_dock_from_opened_frame, load_lattice_yaml, load_lattice_yaml_file, plan_apply,
     snapshot_from_nodes, AdmitWall, EnvelopeAction, Snapshot,
 };
 pub use aep_envelope::{agent_permission, AgentPermission, AdmitResult, Envelope, Pulse, PULSE_MS, DENY_NO_PERMISSION};
@@ -501,6 +501,7 @@ pub mod live_entry { pub use super::LiveEntry; }
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aep_envelope::action_is_satisfied;
     fn must(cond: bool) { if cond == false { std::process::abort(); } }
     fn yaml() -> &'static str {
         "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_permission: [\"agent-a\"]\n"
@@ -870,9 +871,13 @@ mod tests {
     }
     #[test]
     fn source_has_in_process_admit() {
+        // Scan only the production code above the checkers, because the
+        // checkers name the patterns they look for in their own bodies.
         let src = include_str!("lib.rs");
-        must(product_source_has_no_seq_deniers("admit apply_admit load_lattice_yaml mint_element_id"));
-        must(journal_product_landed("admit_with_extra(&action, &self.snapshot, pending_extra) load_lattice_yaml"));
+        let end = src.find("pub fn journal_product_landed").unwrap_or(src.len());
+        let product = &src[..end];
+        must(product_source_has_no_seq_deniers(product));
+        must(journal_product_landed(product));
     }
     #[test]
     fn env031_one_live_entry_language() {

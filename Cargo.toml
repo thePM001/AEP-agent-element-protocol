@@ -29,6 +29,7 @@ members = [
     "AEP-Components/dock-request-poison/crate",
     "AEP-Components/dock-line-reader/crate",
     "AEP-Components/policy-system-admit/crate",
+    "AEP-Components/gap-schema-profile-v13/crate",
     "AEP-Components/policy-leftover-skins/crate",
     "AEP-Components/lattice-gated-fetch/crate",
     "AEP-Components/agentmesh-local-issuance/crate",

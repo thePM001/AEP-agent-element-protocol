@@ -979,7 +979,9 @@ mod tests_more {
 
     #[test]
         fn empty_list_refuses_on_miss_for_agent_action() {
-        let src = String::from("address:\n  domain: com.example.live\n  id: empty-list\npattern: p\naction:\n  type: template\n  content: c\nweight: 1.0\ncomposition:\n  type: atomic\nmetadata:\n  provenance: system.seed\n  version: 1.0.0\n  stability: experimental\n");
+        // A declared but empty agent_permission list refuses on miss. An
+        // undeclared list keeps the wall open, see compile_agent_permission_profile_wall.
+        let src = String::from("address:\n  domain: com.example.live\n  id: empty-list\npattern: p\naction:\n  type: template\n  content: c\nweight: 1.0\ncomposition:\n  type: atomic\nmetadata:\n  provenance: system.seed\n  version: 1.0.0\n  stability: experimental\n  agent_permission: []\n");
         let mut result = AdmitResult::new(Vec::new(), Vec::new());
         let mut err = String::new();
         live_admit_gap_profile(&src, &LiveAdmitRequest { agent_id: String::from("agent-a"), action: String::from("write"), wrap: String::new(), action_path: String::new() }, &mut result, &mut err);

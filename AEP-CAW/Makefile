@@ -10,9 +10,11 @@ VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null || echo dev)
 COMMIT := $(shell git rev-parse --short=7 HEAD 2>/dev/null || echo unknown)
 LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT)"
 
-GOCACHE ?= $(CURDIR)/.gocache
-GOMODCACHE ?= $(CURDIR)/.gomodcache
-GOPATH ?= $(CURDIR)/.gopath
+# Go keeps its build and module caches in the user cache by default, outside the
+# source tree, so tree checks never read them. Set these to pin a different path.
+GOCACHE ?= $(shell go env GOCACHE)
+GOMODCACHE ?= $(shell go env GOMODCACHE)
+GOPATH ?= $(shell go env GOPATH)
 
 build:
 	mkdir -p bin $(GOCACHE) $(GOMODCACHE) $(GOPATH)
@@ -33,7 +35,7 @@ proto:
 	protoc -I proto \
 	  --go_out=. --go_opt=module=github.com/thePM001/AEP-agent-element-protocol/AEP-CAW \
 	  --go-grpc_out=. --go-grpc_opt=module=github.com/thePM001/AEP-agent-element-protocol/AEP-CAW \
-	  proto/aepcaw/v1/pty.proto
+	  proto/aepcaw/v1/pty.proto proto/aepcaw/wtp/v1/wtp.proto proto/aepcaw/wtp/v1/ocsf/*.proto
 
 test:
 	mkdir -p $(GOCACHE) $(GOMODCACHE) $(GOPATH)
