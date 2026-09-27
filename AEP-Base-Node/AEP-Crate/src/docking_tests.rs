@@ -19,7 +19,7 @@
         payload: &[u8],
         _seq: u64,
     ) -> (LatticeChannelFrame, String) {
-        let mut keys = runtime.agent_sign_keys.lock().expect("keys lock");
+        let mut keys = runtime.keys.agent_sign_keys.lock().expect("keys lock");
         let sign = keys.provision(agent_id).expect("test key");
         let sign_hex = hex::encode(&sign.public);
         keys.flush().ok();
@@ -48,7 +48,7 @@
     fn install_agent_manifest(rt: &DockingRuntime, agent_id: &str, session_id: &str) {
         use crate::task_manifest::{TaskManifestTrust, TaskManifestV1};
         let dir = {
-            let m = rt.manifests.lock().expect("manifests");
+            let m = rt.admit.manifests.lock().expect("manifests");
             m.manifest_dir().to_path_buf()
         };
         std::fs::create_dir_all(&dir).expect("manifest dir");
@@ -68,7 +68,7 @@
         };
         let path = dir.join(format!("{agent_id}.json"));
         std::fs::write(path, serde_json::to_string_pretty(&manifest).unwrap()).unwrap();
-        rt.manifests.lock().expect("manifests").reload();
+        rt.admit.manifests.lock().expect("manifests").reload();
     }
 
     fn dock_lattice_yaml() -> &'static str {
@@ -84,7 +84,7 @@
         format!("{{\"type\":\"PING\",\"action_path\":\"root:ping\",\"payload\":{{\"ok\":true}},\"timestamp\":1000000,\"target_id\":\"scene-a\",\"_sequenceNumber\":{seq}}}").into_bytes()
     }
     fn set_pulse_clock(rt: &DockingRuntime, ms: i64) {
-        rt.pulse.lock().expect("pulse").clock_ms = Some(ms);
+        rt.record.pulse.lock().expect("pulse").clock_ms = Some(ms);
     }
     fn through_pulse(rt: &DockingRuntime, port: &DockingPort, line: &str) -> DockFrameResponse {
         set_pulse_clock(rt, 1_000_000);
@@ -229,7 +229,7 @@
         let resp = through_pulse(&rt, &DockingPort::ValidationEngine, &line);
         assert!(resp.ok, "{:?}", resp.error);
 
-        let db = rt.db.lock().expect("db lock");
+        let db = rt.record.db.lock().expect("db lock");
         let exported = crate::export_dynaep_events(&db, Some(1)).expect("export");
         assert_eq!(exported.len(), 1);
         assert_eq!(exported[0].agentmesh["agent_id"], "AG-MESH");
@@ -241,13 +241,13 @@
         let (_dir, rt) = temp_runtime();
         install_agent_manifest(&rt, "AG-BURST", "sess-1");
         let sign = rt
-            .agent_sign_keys
+            .keys.agent_sign_keys
             .lock()
             .expect("keys")
             .provision("AG-BURST").expect("burst key");
         let rate_key = signer_rate_key(&sign.public);
         {
-            let mut limiter = rt.rate_limiter.lock().expect("lock");
+            let mut limiter = rt.defence.rate_limiter.lock().expect("lock");
             for _ in 0..SIGNER_RATE_LIMIT {
                 limiter.check(&rate_key).unwrap();
             }
@@ -266,7 +266,7 @@
         let resp = process_request(&rt, &DockingPort::ValidationEngine, &line);
         assert!(!resp.ok);
 
-        let db = rt.db.lock().expect("db lock");
+        let db = rt.record.db.lock().expect("db lock");
         let exported = crate::export_dynaep_events(&db, Some(10)).expect("export");
         assert!(exported.iter().any(|e| e.event_type == crate::SIDE_CHANNEL_EVENT_TYPE));
     }
@@ -344,7 +344,7 @@
         assert_eq!(resp1.ok, false);
         assert_eq!(resp1.pending, Some(true));
         let fp1 = rt
-            .agent_bundles
+            .keys.agent_bundles
             .lock()
             .expect("lock")
             .get("AG-TRUST")
@@ -367,7 +367,7 @@
         assert_eq!(resp2.ok, false);
         assert_eq!(resp2.pending, Some(true));
         let fp2 = rt
-            .agent_bundles
+            .keys.agent_bundles
             .lock()
             .expect("lock")
             .get("AG-TRUST")
@@ -377,7 +377,7 @@
             .clone();
         assert_eq!(fp1, fp2);
         let score = rt
-            .agent_bundles
+            .keys.agent_bundles
             .lock()
             .expect("lock")
             .get("AG-TRUST")
@@ -406,7 +406,7 @@
         assert_eq!(resp.ok, false);
         assert_eq!(resp.pending, Some(true));
         let score = *rt
-            .agent_trust
+            .keys.agent_trust
             .lock()
             .expect("lock")
             .get("AG-WIRE")
@@ -461,7 +461,7 @@
     async fn socket_roundtrip() {
         let (dir, runtime) = temp_runtime();
         install_agent_manifest(&runtime, "AG-SOCK", "sess-sock");
-        let sock_base = runtime.socket_base.clone();
+        let sock_base = runtime.io.socket_base.clone();
         let shared = Arc::new(runtime);
         let spec = docking_port_specs(&sock_base)
             .into_iter()
@@ -507,7 +507,7 @@
         let (dir, runtime) = temp_runtime();
         install_agent_manifest(&runtime, "AG-SOCKC", "sess-sockc");
         set_pulse_clock(&runtime, 1_000_000);
-        let sock_base = runtime.socket_base.clone();
+        let sock_base = runtime.io.socket_base.clone();
         let shared = Arc::new(runtime);
         let spec = docking_port_specs(&sock_base)
             .into_iter()
@@ -573,7 +573,7 @@
         payload: &[u8],
         sent_at: u64,
     ) -> (LatticeChannelFrame, String) {
-        let mut keys = runtime.agent_sign_keys.lock().expect("keys lock");
+        let mut keys = runtime.keys.agent_sign_keys.lock().expect("keys lock");
         let sign = keys.provision(agent_id).expect("test key");
         let sign_hex = hex::encode(&sign.public);
         keys.flush().ok();
@@ -877,7 +877,7 @@
     fn poisoned_db_lock_returns_ok_false_without_abort() {
         let (_dir, rt) = temp_runtime();
         let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            let _g = rt.db.lock().expect("db");
+            let _g = rt.record.db.lock().expect("db");
             panic!("poison dock db");
         }));
         let resp = process_request(&rt, &DockingPort::ValidationEngine, r#"{"ping":true}"#);
@@ -895,7 +895,7 @@
     fn poisoned_sign_keys_lock_returns_ok_false_without_abort() {
         let (_dir, rt) = temp_runtime();
         poisoned_ok_false_on_frame(&rt, "AG-POISON-KEYS", "agent_sign_keys", |rt| {
-            poison_std_mutex(&rt.agent_sign_keys);
+            poison_std_mutex(&rt.keys.agent_sign_keys);
         });
     }
 
@@ -903,7 +903,7 @@
     fn poisoned_fleet_rate_lock_returns_ok_false_without_abort() {
         let (_dir, rt) = temp_runtime();
         poisoned_ok_false_on_frame(&rt, "AG-POISON-RATE", "fleet_rate", |rt| {
-            poison_std_mutex(&rt.global_rate_limiter);
+            poison_std_mutex(&rt.defence.global_rate_limiter);
         });
     }
 
@@ -911,7 +911,7 @@
     fn poisoned_live_entry_lock_returns_ok_false_without_abort() {
         let (_dir, rt) = temp_runtime();
         poisoned_ok_false_on_frame(&rt, "AG-POISON-LIVE", "live_entry", |rt| {
-            poison_std_mutex(&rt.live_entry);
+            poison_std_mutex(&rt.admit.live_entry);
         });
     }
 
@@ -919,7 +919,7 @@
     fn poisoned_manifests_lock_returns_ok_false_without_abort() {
         let (_dir, rt) = temp_runtime();
         poisoned_ok_false_on_frame(&rt, "AG-POISON-MAN", "manifests", |rt| {
-            poison_std_mutex(&rt.manifests);
+            poison_std_mutex(&rt.admit.manifests);
         });
     }
 
@@ -927,7 +927,7 @@
     fn poisoned_rate_limiter_lock_returns_ok_false_without_abort() {
         let (_dir, rt) = temp_runtime();
         poisoned_ok_false_on_frame(&rt, "AG-POISON-RL", "rate_limiter", |rt| {
-            poison_std_mutex(&rt.rate_limiter);
+            poison_std_mutex(&rt.defence.rate_limiter);
         });
     }
 
@@ -935,7 +935,7 @@
     fn poisoned_contracts_lock_returns_ok_false_without_abort() {
         let (_dir, rt) = temp_runtime();
         poisoned_ok_false_on_frame(&rt, "AG-POISON-CON", "contracts", |rt| {
-            poison_std_mutex(&rt.contracts);
+            poison_std_mutex(&rt.admit.contracts);
         });
     }
 
@@ -943,7 +943,7 @@
     fn poisoned_replay_lock_returns_ok_false_without_abort() {
         let (_dir, rt) = temp_runtime();
         poisoned_ok_false_on_frame(&rt, "AG-POISON-REPLAY", "replay", |rt| {
-            poison_std_mutex(&rt.replay_guard);
+            poison_std_mutex(&rt.defence.replay_guard);
         });
     }
 
@@ -951,7 +951,7 @@
     fn poisoned_agent_trust_lock_returns_ok_false_without_abort() {
         let (_dir, rt) = temp_runtime();
         poisoned_ok_false_on_frame(&rt, "AG-POISON-TRUST", "agent_trust", |rt| {
-            poison_std_mutex(&rt.agent_trust);
+            poison_std_mutex(&rt.keys.agent_trust);
         });
     }
 
@@ -959,7 +959,7 @@
     fn poisoned_agent_bundles_lock_returns_ok_false_without_abort() {
         let (_dir, rt) = temp_runtime();
         poisoned_ok_false_on_frame(&rt, "AG-POISON-BUN", "agent_bundles", |rt| {
-            poison_std_mutex(&rt.agent_bundles);
+            poison_std_mutex(&rt.keys.agent_bundles);
         });
     }
 
@@ -986,7 +986,7 @@
         set_pulse_clock(&rt, 1_000_000 + PULSE_MS);
         let _ = pulse_beat(&rt);
         let digest = enq.digest.clone().unwrap();
-        let applied = rt.pulse.lock().expect("pulse").last_applied.get(&digest).cloned().expect("applied");
+        let applied = rt.record.pulse.lock().expect("pulse").last_applied.get(&digest).cloned().expect("applied");
         assert!(applied.ok, "{:?}", applied.error);
         assert!(applied.event_id.is_some());
         must_drift_not_pulse();
@@ -1204,7 +1204,7 @@
         set_pulse_clock(&rt, 1_001_000);
         let _ = pulse_beat(&rt);
         let digest = enq.digest.clone().unwrap();
-        let applied = rt.pulse.lock().expect("pulse").last_applied.get(&digest).cloned().expect("applied");
+        let applied = rt.record.pulse.lock().expect("pulse").last_applied.get(&digest).cloned().expect("applied");
         assert!(applied.ok, "held 1000 ms must still meet 50 ms drift against freeze: {:?}", applied.error);
         assert!(applied.event_id.is_some());
     }
@@ -1231,10 +1231,10 @@
         let rel = pulse_beat(&rt);
         assert_eq!(rel.aged.len(), 1);
         let digest = enq.digest.clone().unwrap();
-        let applied = rt.pulse.lock().expect("pulse").last_applied.get(&digest).cloned().expect("aged");
+        let applied = rt.record.pulse.lock().expect("pulse").last_applied.get(&digest).cloned().expect("aged");
         assert_eq!(applied.ok, false);
         assert!(applied.error.unwrap_or_default().contains("aged"));
-        let db = rt.db.lock().expect("db");
+        let db = rt.record.db.lock().expect("db");
         let exported = crate::export_dynaep_events(&db, Some(10)).expect("export");
         assert_eq!(exported.iter().any(|e| e.event_type.starts_with("docking_")), false);
     }
@@ -1243,7 +1243,7 @@
     fn pulse_overflow_capsules_is_deny() {
         let (_dir, rt) = temp_runtime();
         {
-            let mut pulse = rt.pulse.lock().expect("pulse");
+            let mut pulse = rt.record.pulse.lock().expect("pulse");
             for i in 0..QUEUE_CAP_CAPSULES {
                 pulse.queue.enqueue(QueuedCapsule {
                     digest: format!("pre-{i}"),
@@ -1275,7 +1275,7 @@
     fn pulse_overflow_bytes_is_deny() {
         let (_dir, rt) = temp_runtime();
         {
-            let mut pulse = rt.pulse.lock().expect("pulse");
+            let mut pulse = rt.record.pulse.lock().expect("pulse");
             pulse.queue.enqueue(QueuedCapsule {
                 digest: String::from("big"),
                 agent_id: String::from("ag"),
@@ -1328,8 +1328,8 @@
         assert_eq!(seqs, vec![1, 2]);
         let d1 = e1.digest.unwrap();
         let d2 = e2.digest.unwrap();
-        let a1 = rt.pulse.lock().expect("pulse").last_applied.get(&d1).cloned().unwrap();
-        let a2 = rt.pulse.lock().expect("pulse").last_applied.get(&d2).cloned().unwrap();
+        let a1 = rt.record.pulse.lock().expect("pulse").last_applied.get(&d1).cloned().unwrap();
+        let a2 = rt.record.pulse.lock().expect("pulse").last_applied.get(&d2).cloned().unwrap();
         assert!(a1.ok && a2.ok, "{:?} {:?}", a1.error, a2.error);
         assert!(a1.event_id.unwrap() < a2.event_id.unwrap());
     }
@@ -1360,7 +1360,7 @@
     #[tokio::test]
     async fn stop_drains_dock_tasks_unlinks_sockets_and_closes_sqlite() {
         let (dir, runtime) = temp_runtime();
-        let sock_base = runtime.socket_base.clone();
+        let sock_base = runtime.io.socket_base.clone();
         let (shared, handles) = run_docking_servers(runtime).await.expect("bind docks");
         assert!(sockets_exist(&sock_base), "sockets should exist after bind");
         assert_eq!(shared.sqlite_is_closed(), false);
@@ -1383,15 +1383,31 @@
     fn pulse_decay_rate_clears_the_second_counter() {
         let (_dir, rt) = temp_runtime();
         {
-            let mut live = rt.live_entry.lock().expect("live");
+            let mut live = rt.admit.live_entry.lock().expect("live");
             live.snapshot.event_rate = 12;
         }
         super::dock_pulse::pulse_decay_rate(&rt);
-        assert_eq!(rt.live_entry.lock().expect("live").snapshot.event_rate, 0);
+        assert_eq!(rt.admit.live_entry.lock().expect("live").snapshot.event_rate, 0);
     }
 
     #[test]
     fn tls_handshake_err_does_not_request_stop() {
+        let (_dir, rt) = temp_runtime();
+        assert_eq!(rt.is_stopping(), false);
+        note_tls_handshake_err(&rt, "refused");
+        assert_eq!(rt.is_stopping(), false)
+    }
+    #[test]
+    fn docking_runtime_parts_are_distinct_owners() {
+        let (_dir, rt) = temp_runtime();
+            let _limiter = rt.defence.rate_limiter.lock().expect("lock");
+            let _g = rt.record.db.lock().expect("db");
+        let _keys = rt.keys.agent_sign_keys.lock().expect("keys lock");
+            let _contracts = rt.admit.contracts.lock().expect("lock");
+        assert_eq!(rt.is_stopping(), false);
+    }
+    #[test]
+    fn tls_handshake_err_still_does_not_request_stop() {
         let (_dir, rt) = temp_runtime();
         assert_eq!(rt.is_stopping(), false);
         note_tls_handshake_err(&rt, "refused");

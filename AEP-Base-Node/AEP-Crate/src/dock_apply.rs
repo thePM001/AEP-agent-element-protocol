@@ -24,7 +24,7 @@ pub(crate) fn dock_port_name(port: &DockingPort) -> &'static str {
 }
 
 pub(crate) fn is_lrp_allowlisted(runtime: &DockingRuntime, contract_id: &str) -> bool {
-    runtime.lrps.iter().any(|lrp| lrp == contract_id)
+    runtime.admit.lrps.iter().any(|lrp| lrp == contract_id)
 }
 
 pub(crate) fn enforce_correctwriting_en_on_payload(plaintext: &[u8]) -> Result<(), BaseNodeError> {
@@ -50,7 +50,7 @@ pub(crate) fn reject_side_channel(
     kind: SideChannelAnomalyKind,
     detail: String,
 ) -> DockFrameResponse {
-    let db = dock_lock!(&runtime.db, "db");
+    let db = dock_lock!(&runtime.record.db, "db");
     let _ = record_side_channel_anomaly(&db, kind, agent_id, port, detail.clone());
     deny_resp(None, detail)
 }
@@ -64,12 +64,12 @@ pub(crate) fn resolve_signer_public(
     signer_public_hex: Option<String>,
 ) -> Result<Option<Vec<u8>>, DockFrameResponse> {
     let registered = {
-        let from_store = match lock_or_deny(&runtime.agent_sign_keys, "agent_sign_keys") {
+        let from_store = match lock_or_deny(&runtime.keys.agent_sign_keys, "agent_sign_keys") {
             Ok(g) => g.public_for(agent_id),
             Err(resp) => return Err(resp),
         };
         let from_manifest = {
-            let manifests = match lock_or_deny(&runtime.manifests, "manifests") {
+            let manifests = match lock_or_deny(&runtime.admit.manifests, "manifests") {
                 Ok(g) => g,
                 Err(resp) => return Err(resp),
             };
@@ -144,18 +144,18 @@ pub(crate) fn resolve_agent_bundle(
     let score = match trust_score {
         Some(s) => s,
         None => {
-            let map = match lock_or_deny(&runtime.agent_trust, "agent_trust") {
+            let map = match lock_or_deny(&runtime.keys.agent_trust, "agent_trust") {
                 Ok(g) => g,
                 Err(resp) => return Err(resp),
             };
             map.get(agent_id).copied().unwrap_or(0)
         }
     };
-    let mut bundles = match lock_or_deny(&runtime.agent_bundles, "agent_bundles") {
+    let mut bundles = match lock_or_deny(&runtime.keys.agent_bundles, "agent_bundles") {
         Ok(g) => g,
         Err(resp) => return Err(resp),
     };
-    let mut trust_map = match lock_or_deny(&runtime.agent_trust, "agent_trust") {
+    let mut trust_map = match lock_or_deny(&runtime.keys.agent_trust, "agent_trust") {
         Ok(g) => g,
         Err(resp) => return Err(resp),
     };
@@ -168,7 +168,7 @@ pub(crate) fn resolve_agent_bundle(
 }
 
 pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_pulse::QueuedCapsule) {
-    let held = match lock_or_deny(&runtime.pulse, "pulse") {
+    let held = match lock_or_deny(&runtime.record.pulse, "pulse") {
         Ok(mut pulse) => match pulse.held.remove(&cap.digest) {
             Some(h) => h,
             None => return,
@@ -182,7 +182,7 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
         dock_port_name(&held.expected_port),
         &held.frame.contract_id,
     );
-    let admit_res = match lock_or_deny(&runtime.live_entry, "live_entry") {
+    let admit_res = match lock_or_deny(&runtime.admit.live_entry, "live_entry") {
         Ok(mut live) => {
             live.freeze_temporal_snapshot(cap.freeze.bridge_ts_ms);
             let r = admit_sealed_payload_report(&mut live, &held.plaintext, &dock);
@@ -190,7 +190,7 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
             r
         }
         Err(resp) => {
-            if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
+            if let Ok(mut pulse) = lock_or_deny(&runtime.record.pulse, "pulse") {
                 remember_applied(&mut pulse, cap.digest.clone(), resp);
             }
             return;
@@ -198,7 +198,7 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
     };
     if let Err(report) = admit_res {
         let detail = report.error.clone();
-        if let Ok(db) = lock_or_deny(&runtime.db, "db") {
+        if let Ok(db) = lock_or_deny(&runtime.record.db, "db") {
             let _ = record_side_channel_anomaly(
                 &db,
                 SideChannelAnomalyKind::EnvelopeAdmitRejected,
@@ -207,7 +207,7 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
                 detail.clone(),
             );
         }
-        if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
+        if let Ok(mut pulse) = lock_or_deny(&runtime.record.pulse, "pulse") {
                 remember_applied(&mut pulse, cap.digest.clone(), deny_resp_report(Some(cap.digest.clone()), detail, report));
         }
         return;
@@ -224,8 +224,8 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
             Err(_) => String::new(),
         };
         if action.is_empty() == false {
-            if runtime.hub.agent_may(&held.frame.agent_id, &action) == false {
-                if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
+            if runtime.admit.hub.agent_may(&held.frame.agent_id, &action) == false {
+                if let Ok(mut pulse) = lock_or_deny(&runtime.record.pulse, "pulse") {
                     remember_applied(&mut pulse, cap.digest.clone(), deny_closed(Some(cap.digest.clone()), String::from("hub permission denied"), "gap.agent_permission", CLASS_CAPABILITY));
                 }
                 return;
@@ -236,7 +236,7 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
         match serde_json::from_slice::<Value>(&held.plaintext) {
             Ok(value) => match value.get("action") {
                 Some(x) => match x.as_str() {
-                    Some("register_lrp") => match lock_or_deny(&runtime.contracts, "contracts") {
+                    Some("register_lrp") => match lock_or_deny(&runtime.admit.contracts, "contracts") {
                         Ok(mut contracts) => contracts.register(&held.frame.contract_id),
                         Err(_) => (),
                     },
@@ -265,10 +265,10 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
             };
             attach_gateway_http_after_allow(&held.plaintext, &mut http_resp);
     if http_resp.ok {
-            let recorded = match lock_or_deny(&runtime.db, "db") {
+            let recorded = match lock_or_deny(&runtime.record.db, "db") {
         Ok(db) => record_channel_frame(&db, &held.frame, event_type, &held.bundle, None),
         Err(resp) => {
-            if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
+            if let Ok(mut pulse) = lock_or_deny(&runtime.record.pulse, "pulse") {
                 remember_applied(&mut pulse, cap.digest.clone(), resp);
             }
             return;
@@ -292,11 +292,11 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
         }
         Err(e) => deny_resp(None, e.to_string()),
     };
-    if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
+    if let Ok(mut pulse) = lock_or_deny(&runtime.record.pulse, "pulse") {
         remember_applied(&mut pulse, cap.digest.clone(), resp);
     }
     } else {
-    if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
+    if let Ok(mut pulse) = lock_or_deny(&runtime.record.pulse, "pulse") {
         remember_applied(&mut pulse, cap.digest.clone(), http_resp);
     }
 }

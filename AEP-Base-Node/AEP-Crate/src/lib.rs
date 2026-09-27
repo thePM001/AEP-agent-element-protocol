@@ -1,6 +1,7 @@
 //! AEP Base Node - mandatory local governance kernel for AEP 2.8.6.
 
 pub mod dock_keys;
+pub mod dock_parts;
 pub mod docking;
 // dock_freshness, dock_pulse, dock_rate, dock_serve and dock_apply are docking facade modules.
 pub mod envelope_admit;

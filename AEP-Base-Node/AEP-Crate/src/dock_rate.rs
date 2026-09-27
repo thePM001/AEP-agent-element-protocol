@@ -13,7 +13,7 @@ pub(crate) fn rate_limit_response(
     agent_id: &str,
     detail: String,
 ) -> DockFrameResponse {
-    let db = dock_lock!(&runtime.db, "db");
+    let db = dock_lock!(&runtime.record.db, "db");
     let _ = record_side_channel_anomaly(
         &db,
         SideChannelAnomalyKind::RateLimited,

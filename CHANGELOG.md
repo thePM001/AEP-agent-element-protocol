@@ -2,6 +2,9 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.8.x public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.8.6] - 2026-09-27
+Base Node DockingRuntime is five owned parts (io, keys, defence, admit and record). Same docks, same process, no UCB change.
+
 ## [2.8.6] - 2026-09-26 - Base Node kernel
 Base Node isolates self-test from production database memory and keys so a held digest persists only after remaining walls and immediately before insert never on a seen digest. Bound HTTP fetches before INSERT and cannot flip Admit. Production refuses a world-writable lattice parent. Replay deny carries class frame.replay and inactive contract deny carries class contract.inactive on every inactive path. Independent verification is cargo test -p aep-base-node.
 

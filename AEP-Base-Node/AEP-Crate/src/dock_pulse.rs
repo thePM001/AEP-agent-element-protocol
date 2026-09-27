@@ -7,9 +7,7 @@ use super::{
     deny_closed, deny_resp, dock_lock, lock_or_deny, pending_held_response, DockFrameResponse,
 };
 use aep_base_node_pulse::{freeze_temporal_snapshot, BeatRelease, PulseQueue, QueuedCapsule};
-use aep_lattice_channel::{ContractRegistry, DockingPort, LatticeChannelFrame, RateLimiter};
-use aep_lattice_crypto::KemKeypair;
-use aep_live_entry::LiveEntry;
+use aep_lattice_channel::{DockingPort, LatticeChannelFrame, RateLimiter};
 use aep_agent_control_hub::{AgentControlHub, resolve_gap_root};
 use aep_wall_set_backpressure::CLASS_SECURITY;
 use aep_wall_set_backpressure::CLASS_TEMPORAL;
@@ -72,25 +70,11 @@ impl Default for PulseState {
 
 
 pub struct DockingRuntime {
-    pub socket_base: String,
-    pub lrps: Vec<String>,
-    pub db: Arc<Mutex<Connection>>,
-    pub contracts: Arc<Mutex<ContractRegistry>>,
-    pub rate_limiter: Arc<Mutex<RateLimiter>>,
-    pub global_rate_limiter: Arc<Mutex<RateLimiter>>,
-    pub agent_trust: Arc<Mutex<HashMap<String, u16>>>,
-    pub agent_bundles: Arc<Mutex<HashMap<String, aep_agentmesh::AgentMeshBundle>>>,
-    pub manifests: Arc<Mutex<crate::task_manifest::ManifestRegistry>>,
-    pub dock_kem: Arc<KemKeypair>,
-    pub agent_sign_keys: Arc<Mutex<AgentSignKeyStore>>,
-    pub replay_guard: Arc<Mutex<ReplayGuard>>,
-    pub live_entry: Arc<Mutex<LiveEntry>>,
-    pub hub: Arc<AgentControlHub>,
-    pub pulse: Arc<Mutex<PulseState>>,
-    pub(crate) connection_limit: Arc<Semaphore>,
-    pub(crate) stop: watch::Sender<bool>,
-    pub(crate) inflight: Arc<Mutex<Vec<JoinHandle<()>>>>,
-    sqlite_closed: AtomicBool,
+    pub io: crate::dock_parts::DockIo,
+    pub keys: crate::dock_parts::DockKeys,
+    pub defence: crate::dock_parts::DockDefence,
+    pub admit: crate::dock_parts::DockAdmit,
+    pub record: crate::dock_parts::DockRecord,
 }
 
 impl DockingRuntime {
@@ -110,10 +94,19 @@ impl DockingRuntime {
     ) -> Result<Self, BaseNodeError> {
     let live_entry = load_live_entry(data_dir)?;
         Ok(Self {
+            io: crate::dock_parts::DockIo {
             socket_base: socket_base.into(),
-            lrps: lrps.to_vec(),
-            db: Arc::new(Mutex::new(conn)),
-            contracts: Arc::new(Mutex::new(crate::bootstrap_contracts_from_lrps(lrps))),
+            connection_limit: Arc::new(Semaphore::new(MAX_CONNECTIONS)),
+            stop: watch::channel(false).0,
+            inflight: Arc::new(Mutex::new(Vec::new())),
+            },
+            keys: crate::dock_parts::DockKeys {
+            dock_kem: Arc::new(load_or_create_dock_kem(data_dir)),
+            agent_sign_keys: Arc::new(Mutex::new(AgentSignKeyStore::load(data_dir))),
+            agent_bundles: Arc::new(Mutex::new(HashMap::new())),
+            agent_trust: Arc::new(Mutex::new(HashMap::new())),
+            },
+            defence: crate::dock_parts::DockDefence {
             rate_limiter: Arc::new(Mutex::new(RateLimiter::new(
                 SIGNER_RATE_LIMIT,
                 Duration::from_secs(60),
@@ -122,8 +115,11 @@ impl DockingRuntime {
                 GLOBAL_RATE_LIMIT,
                 Duration::from_secs(60),
             ))),
-            agent_trust: Arc::new(Mutex::new(HashMap::new())),
-            agent_bundles: Arc::new(Mutex::new(HashMap::new())),
+            replay_guard: Arc::new(Mutex::new(ReplayGuard::default())),
+            },
+            admit: crate::dock_parts::DockAdmit {
+            contracts: Arc::new(Mutex::new(crate::bootstrap_contracts_from_lrps(lrps))),
+            lrps: lrps.to_vec(),
             manifests: {
                 let manifest_dir = std::env::var("AEP_TASK_MANIFEST_DIR")
                     .map(std::path::PathBuf::from)
@@ -134,9 +130,6 @@ impl DockingRuntime {
                     true,
                 )))
             },
-            dock_kem: Arc::new(load_or_create_dock_kem(data_dir)),
-            agent_sign_keys: Arc::new(Mutex::new(AgentSignKeyStore::load(data_dir))),
-            replay_guard: Arc::new(Mutex::new(ReplayGuard::default())),
             live_entry: Arc::new(Mutex::new(live_entry)),
             hub: {
                 let loaded = match AgentControlHub::load_from_gap(&data_dir.join("gap")) {
@@ -148,36 +141,36 @@ impl DockingRuntime {
                 };
                 Arc::new(loaded)
             },
+            },
+            record: crate::dock_parts::DockRecord {
+            db: Arc::new(Mutex::new(conn)),
             pulse: Arc::new(Mutex::new(PulseState::default())),
-            connection_limit: Arc::new(Semaphore::new(MAX_CONNECTIONS)),
-            stop: watch::channel(false).0,
-            inflight: Arc::new(Mutex::new(Vec::new())),
             sqlite_closed: AtomicBool::new(false),
+            },
         })
     }
-
     pub fn port_specs(&self) -> Vec<DockingPortSpec> {
-        docking_port_specs(&self.socket_base)
+        docking_port_specs(&self.io.socket_base)
     }
 
     pub fn dock_kem_public(&self) -> &[u8] {
-        &self.dock_kem.public
+        &self.keys.dock_kem.public
     }
 
     pub fn request_stop(&self) {
-        let _ = self.stop.send(true);
+        let _ = self.io.stop.send(true);
     }
 
     pub fn is_stopping(&self) -> bool {
-        *self.stop.borrow()
+        *self.io.stop.borrow()
     }
 
     pub fn sqlite_is_closed(&self) -> bool {
-        self.sqlite_closed.load(Ordering::SeqCst)
+        self.record.sqlite_closed.load(Ordering::SeqCst)
     }
 
     pub(crate) fn track_task(&self, handle: JoinHandle<()>) {
-        match self.inflight.lock() {
+        match self.io.inflight.lock() {
             Ok(mut g) => g.push(handle),
             Err(p) => {
                 let mut g = p.into_inner();
@@ -187,17 +180,17 @@ impl DockingRuntime {
     }
 
     pub(crate) fn take_inflight(&self) -> Vec<JoinHandle<()>> {
-        match self.inflight.lock() {
+        match self.io.inflight.lock() {
             Ok(mut g) => std::mem::take(&mut *g),
             Err(p) => std::mem::take(&mut *p.into_inner()),
         }
     }
 
     pub fn close_sqlite(&self) {
-        if self.sqlite_closed.swap(true, Ordering::SeqCst) {
+        if self.record.sqlite_closed.swap(true, Ordering::SeqCst) {
             return;
         }
-        let mut g = match self.db.lock() {
+        let mut g = match self.record.db.lock() {
             Ok(g) => g,
             Err(p) => p.into_inner(),
         };
@@ -223,12 +216,12 @@ fn sequence_from_plaintext(plaintext: &[u8]) -> i64 {
 }
 
 pub(crate) fn pulse_now_ms(runtime: &DockingRuntime) -> Result<i64, DockFrameResponse> {
-    let pulse = lock_or_deny(&runtime.pulse, "pulse")?;
+    let pulse = lock_or_deny(&runtime.record.pulse, "pulse")?;
     if let Some(ms) = pulse.clock_ms {
         return Ok(ms);
     }
     drop(pulse);
-    let live = lock_or_deny(&runtime.live_entry, "live_entry")?;
+    let live = lock_or_deny(&runtime.admit.live_entry, "live_entry")?;
     Ok(live.now_ms())
 }
 
@@ -265,7 +258,7 @@ pub(crate) fn collect_applied(runtime: &DockingRuntime, digest: &str) -> DockFra
         return deny_resp(None, String::from("collect requires digest"));
     }
     let _ = pulse_beat(runtime);
-    let mut pulse = dock_lock!(&runtime.pulse, "pulse");
+    let mut pulse = dock_lock!(&runtime.record.pulse, "pulse");
     if let Some(&at) = pulse.last_applied_at.get(digest) {
         if crate::now_unix() as i64 - at > 600 {
             drop((pulse.last_applied.remove(digest), pulse.last_applied_at.remove(digest)))
@@ -307,7 +300,7 @@ pub(crate) fn pulse_enqueue(
         freeze_ms = ms;
     }
     {
-        let live = dock_lock!(&runtime.live_entry, "live_entry");
+        let live = dock_lock!(&runtime.admit.live_entry, "live_entry");
         let _ = live.now_ms();
     }
     let seq = sequence_from_plaintext(plaintext);
@@ -320,7 +313,7 @@ pub(crate) fn pulse_enqueue(
         freeze,
     };
     {
-        let mut pulse = dock_lock!(&runtime.pulse, "pulse");
+        let mut pulse = dock_lock!(&runtime.record.pulse, "pulse");
         if let Err(e) = pulse.queue.enqueue(cap) {
             return deny_resp(None, String::from(e.as_str()));
         }
@@ -335,7 +328,7 @@ pub(crate) fn pulse_enqueue(
         );
     }
     {
-        let db = dock_lock!(&runtime.db, "db");
+        let db = dock_lock!(&runtime.record.db, "db");
         if let Err(e) = crate::persist_held_digest(&db, &digest, crate::now_unix() as i64) {
             return deny_closed(Some(digest), format!("ledger unavailable: {e}"), "ledger.unavailable", "ledger.unavailable");
         }
@@ -360,7 +353,7 @@ pub(crate) fn pulse_enqueue(
 /// The per-request beat does not call this, so a burst inside one second still
 /// reaches the wall.
 pub fn pulse_decay_rate(runtime: &DockingRuntime) {
-    if let Ok(mut live) = lock_or_deny(&runtime.live_entry, "live_entry") {
+    if let Ok(mut live) = lock_or_deny(&runtime.admit.live_entry, "live_entry") {
         live.snapshot.event_rate = 0;
     }
 }
@@ -370,7 +363,7 @@ pub fn pulse_beat(runtime: &DockingRuntime) -> BeatRelease {
         Ok(ms) => ms,
         Err(_) => return BeatRelease::default(),
     };
-    let release = match lock_or_deny(&runtime.pulse, "pulse") {
+    let release = match lock_or_deny(&runtime.record.pulse, "pulse") {
         Ok(mut pulse) => pulse.queue.beat(now),
         Err(_) => return BeatRelease::default(),
     };
@@ -385,7 +378,7 @@ pub fn pulse_beat(runtime: &DockingRuntime) -> BeatRelease {
 
 fn finish_aged(runtime: &DockingRuntime, cap: &QueuedCapsule) {
     let detail = String::from("pulse capsule aged out");
-    if let Ok(mut pulse) = lock_or_deny(&runtime.pulse, "pulse") {
+    if let Ok(mut pulse) = lock_or_deny(&runtime.record.pulse, "pulse") {
         pulse.held.remove(&cap.digest);
         remember_applied(&mut pulse, cap.digest.clone(), deny_closed(
                 Some(cap.digest.clone()),
@@ -395,7 +388,7 @@ fn finish_aged(runtime: &DockingRuntime, cap: &QueuedCapsule) {
             ),
         );
     }
-    if let Ok(db) = lock_or_deny(&runtime.db, "db") {
+    if let Ok(db) = lock_or_deny(&runtime.record.db, "db") {
         let _ = record_side_channel_anomaly(
             &db,
             SideChannelAnomalyKind::EnvelopeAdmitRejected,

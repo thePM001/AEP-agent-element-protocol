@@ -170,7 +170,7 @@ pub fn process_request(
     let req: DockRequest = match serde_json::from_str(line) {
         Ok(v) => v,
         Err(e) => {
-            let db = dock_lock!(&runtime.db, "db");
+            let db = dock_lock!(&runtime.record.db, "db");
             let _ = record_side_channel_anomaly(
                 &db,
                 SideChannelAnomalyKind::InvalidJson,
@@ -228,7 +228,7 @@ fn handle_frame(
     signer_public_hex: Option<String>,
 ) -> DockFrameResponse {
     if &frame.docking_port != expected_port {
-        let db = dock_lock!(&runtime.db, "db");
+        let db = dock_lock!(&runtime.record.db, "db");
         let detail = format!(
             "docking_port mismatch: frame={:?} listener={:?}",
             frame.docking_port, expected_port
@@ -247,7 +247,7 @@ fn handle_frame(
         Err(resp) => return resp,
         Ok(Some(pk)) => pk,
         Ok(None) => {
-            let db = dock_lock!(&runtime.db, "db");
+            let db = dock_lock!(&runtime.record.db, "db");
             let detail = format!(
                 "signer public key unknown for agent_id={}",
                 frame.agent_id
@@ -264,18 +264,18 @@ fn handle_frame(
     };
 
     let rate_key = signer_rate_key(&signer_public);
-    if let Err(e) = dock_lock!(&runtime.global_rate_limiter, "fleet_rate").check("global")
+    if let Err(e) = dock_lock!(&runtime.defence.global_rate_limiter, "fleet_rate").check("global")
     {
         return rate_limit_response(runtime, expected_port, &frame.agent_id, e.to_string());
     }
-    if let Err(e) = dock_lock!(&runtime.rate_limiter, "rate_limiter").check(&rate_key)
+    if let Err(e) = dock_lock!(&runtime.defence.rate_limiter, "rate_limiter").check(&rate_key)
     {
         return rate_limit_response(runtime, expected_port, &frame.agent_id, e.to_string());
     }
 
     if let Err(err) = frame_is_fresh(frame.sent_at_unix) {
         let detail = err.to_string();
-        let db = dock_lock!(&runtime.db, "db");
+        let db = dock_lock!(&runtime.record.db, "db");
         let _ = record_side_channel_anomaly(
             &db,
             SideChannelAnomalyKind::StaleFrameRejected,
@@ -291,11 +291,11 @@ fn handle_frame(
     }
 
     let allow_inactive = expected_port == &DockingPort::RegulationModule;
-    let allow_inactive = allow_inactive && is_lrp_allowlisted(runtime, &frame.contract_id) && !dock_lock!(&runtime.contracts, "contracts").is_active(&frame.contract_id);
+    let allow_inactive = allow_inactive && is_lrp_allowlisted(runtime, &frame.contract_id) && !dock_lock!(&runtime.admit.contracts, "contracts").is_active(&frame.contract_id);
     let plaintext = if allow_inactive {
         match crate::verify_inbound_dock_frame(
             frame,
-            &runtime.dock_kem,
+            &runtime.keys.dock_kem,
             &signer_public,
             &ContractRegistry::default(),
             true,
@@ -303,7 +303,7 @@ fn handle_frame(
             Ok(p) => p,
             Err(err) => {
                 let detail = err.to_string();
-                let db = dock_lock!(&runtime.db, "db");
+                let db = dock_lock!(&runtime.record.db, "db");
                 let _ = record_side_channel_anomaly(
                     &db,
                     SideChannelAnomalyKind::CryptoVerificationFailed,
@@ -315,9 +315,9 @@ fn handle_frame(
             }
         }
     } else {
-        let contracts = dock_lock!(&runtime.contracts, "contracts");
+        let contracts = dock_lock!(&runtime.admit.contracts, "contracts");
         if !contracts.is_active(&frame.contract_id) {
-            let db = dock_lock!(&runtime.db, "db");
+            let db = dock_lock!(&runtime.record.db, "db");
             let detail = format!("contract inactive: {}", frame.contract_id);
             let _ = record_side_channel_anomaly(
                 &db,
@@ -330,7 +330,7 @@ fn handle_frame(
         }
         match crate::verify_inbound_dock_frame(
             frame,
-            &runtime.dock_kem,
+            &runtime.keys.dock_kem,
             &signer_public,
             &contracts,
             false,
@@ -338,7 +338,7 @@ fn handle_frame(
             Ok(p) => p,
             Err(err) => {
                 let detail = err.to_string();
-                let db = dock_lock!(&runtime.db, "db");
+                let db = dock_lock!(&runtime.record.db, "db");
                 let _ = record_side_channel_anomaly(
                     &db,
                     SideChannelAnomalyKind::CryptoVerificationFailed,
@@ -359,7 +359,7 @@ fn handle_frame(
         if let Ok(value) = serde_json::from_slice::<Value>(&plaintext) {
             if value.get("action").and_then(|v| v.as_str()) == Some("register_lrp") {
                 if !is_lrp_allowlisted(runtime, &frame.contract_id) {
-                    let db = dock_lock!(&runtime.db, "db");
+                    let db = dock_lock!(&runtime.record.db, "db");
                     let detail = format!(
                         "lrp {} not allowlisted in AEP-Base-Node config lrps[]",
                         frame.contract_id
@@ -378,9 +378,9 @@ fn handle_frame(
     }
 
     {
-        let contracts = dock_lock!(&runtime.contracts, "contracts");
+        let contracts = dock_lock!(&runtime.admit.contracts, "contracts");
         if match serde_json::from_slice::<Value>(&plaintext) { Ok(value) => match value.get("action") { Some(x) => match x.as_str() { Some("register_lrp") => false, _ => !contracts.is_active(&frame.contract_id) }, None => !contracts.is_active(&frame.contract_id) }, Err(_) => !contracts.is_active(&frame.contract_id) } {
-            let db = dock_lock!(&runtime.db, "db");
+            let db = dock_lock!(&runtime.record.db, "db");
             let detail = format!("contract inactive: {}", frame.contract_id);
             let _ = record_side_channel_anomaly(
                 &db,
@@ -395,7 +395,7 @@ fn handle_frame(
 
     if let Err(err) = enforce_correctwriting_en_on_payload(&plaintext) {
         let detail = err.to_string();
-        let db = dock_lock!(&runtime.db, "db");
+        let db = dock_lock!(&runtime.record.db, "db");
         let _ = record_side_channel_anomaly(
             &db,
             SideChannelAnomalyKind::CorrectwritingEnViolationRejected,
@@ -409,7 +409,7 @@ fn handle_frame(
     // Freeze and enqueue after digest replay. Admit collect-all then Apply runs on pulse_beat.
     let digest = frame_digest(frame);
     {
-        let db = dock_lock!(&runtime.db, "db");
+        let db = dock_lock!(&runtime.record.db, "db");
         // Fail closed: DB error treated as replay reject (do not admit frame).
         let seen = match frame_digest_exists(&db, &digest) {
             Ok(v) => v,
@@ -428,9 +428,9 @@ fn handle_frame(
         }
     }
     {
-        let mut replay = dock_lock!(&runtime.replay_guard, "replay");
+        let mut replay = dock_lock!(&runtime.defence.replay_guard, "replay");
         if !replay.check_and_record(&digest, frame.sent_at_unix) {
-            let db = dock_lock!(&runtime.db, "db");
+            let db = dock_lock!(&runtime.record.db, "db");
             let detail = format!("frame replay rejected: {digest}");
             let _ = record_side_channel_anomaly(
                 &db,
@@ -444,7 +444,7 @@ fn handle_frame(
     }
 
     {
-        let mut manifests = dock_lock!(&runtime.manifests, "manifests");
+        let mut manifests = dock_lock!(&runtime.admit.manifests, "manifests");
         manifests.reload_if_stale();
         if let Err(err) =
             manifests.validate_agent(&frame.agent_id, trust_score, Some(frame.session_id.as_str()))
@@ -454,7 +454,7 @@ fn handle_frame(
                 BaseNodeError::ManifestProvisional { .. } => SideChannelAnomalyKind::ProvisionalManifestRejected,
                 _ => SideChannelAnomalyKind::MissingTaskManifest,
             };
-            let db = dock_lock!(&runtime.db, "db");
+            let db = dock_lock!(&runtime.record.db, "db");
             let _ = record_side_channel_anomaly(
                 &db,
                 kind,

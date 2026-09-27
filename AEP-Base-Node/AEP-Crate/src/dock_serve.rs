@@ -145,7 +145,7 @@ where
     W: AsyncWrite + Unpin,
 {
     let mut reader = BufReader::with_capacity(READ_CHUNK, reader);
-    let mut stop_rx = runtime.stop.subscribe();
+    let mut stop_rx = runtime.io.stop.subscribe();
     loop {
         if runtime.is_stopping() {
             break;
@@ -182,7 +182,7 @@ where
                 if pending == false {
                     break;
                 }
-                let resp = match lock_or_deny(&runtime.db, "db") {
+                let resp = match lock_or_deny(&runtime.record.db, "db") {
                     Ok(db) => {
                         let _ = record_side_channel_anomaly(
                             &db,
@@ -212,7 +212,7 @@ async fn serve_port(
     listen_path: String,
 ) -> std::io::Result<()> {
     info!(port = %format!("{port:?}"), path = %listen_path, "docking port listening");
-    let mut stop_rx = runtime.stop.subscribe();
+    let mut stop_rx = runtime.io.stop.subscribe();
     loop {
         if runtime.is_stopping() {
             break;
@@ -222,7 +222,7 @@ async fn serve_port(
             _ = async { let _ = stop_rx.wait_for(|v| *v).await; } => {
                 break;
             }
-            p = runtime.connection_limit.clone().acquire_owned() => {
+            p = runtime.io.connection_limit.clone().acquire_owned() => {
                 p.map_err(|e| std::io::Error::other(e.to_string()))?
             }
         };
@@ -270,7 +270,7 @@ async fn serve_tls_port(
     bind_addr: String,
 ) -> std::io::Result<()> {
     info!(port = %format!("{port:?}"), addr = %bind_addr, "docking TLS port listening");
-    let mut stop_rx = runtime.stop.subscribe();
+    let mut stop_rx = runtime.io.stop.subscribe();
     loop {
         if runtime.is_stopping() {
             break;
@@ -280,7 +280,7 @@ async fn serve_tls_port(
             _ = async { let _ = stop_rx.wait_for(|v| *v).await; } => {
                 break;
             }
-            p = runtime.connection_limit.clone().acquire_owned() => {
+            p = runtime.io.connection_limit.clone().acquire_owned() => {
                 p.map_err(|e| std::io::Error::other(e.to_string()))?
             }
         };
@@ -314,7 +314,7 @@ async fn serve_tls_port(
 }
 
 fn spawn_pulse_task(runtime: Arc<DockingRuntime>) -> JoinHandle<()> {
-    let mut stop_rx = runtime.stop.subscribe();
+    let mut stop_rx = runtime.io.stop.subscribe();
     tokio::spawn(async move {
         loop {
             if runtime.is_stopping() {
@@ -335,7 +335,7 @@ fn spawn_pulse_task(runtime: Arc<DockingRuntime>) -> JoinHandle<()> {
 pub async fn run_docking_servers(
     runtime: DockingRuntime,
 ) -> std::io::Result<(Arc<DockingRuntime>, Vec<JoinHandle<()>>)> {
-    prepare_socket_dir(&runtime.socket_base)?;
+    prepare_socket_dir(&runtime.io.socket_base)?;
     let shared = Arc::new(runtime);
     let mut handles = Vec::new();
     handles.push(spawn_pulse_task(shared.clone()));
@@ -427,6 +427,6 @@ pub async fn drain_docking_servers(runtime: &DockingRuntime, handles: Vec<JoinHa
     runtime.request_stop();
     join_or_abort(handles).await;
     join_or_abort(runtime.take_inflight()).await;
-    unlink_sockets(&runtime.socket_base);
+    unlink_sockets(&runtime.io.socket_base);
     runtime.close_sqlite();
 }
