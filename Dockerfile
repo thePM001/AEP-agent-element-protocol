@@ -8,15 +8,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 COPY Cargo.toml Cargo.lock ./
 COPY .cargo/ ./.cargo/
-COPY AEP-Components/lattice-crypto/crate ./AEP-Components/lattice-crypto/crate
-COPY AEP-Components/lattice-channels/crate ./AEP-Components/lattice-channels/crate
-COPY AEP-Components/agentmesh/crate ./AEP-Components/agentmesh/crate
-COPY AEP-Base-Node/AEP-Potomitan/crate ./AEP-Base-Node/AEP-Potomitan/crate
-COPY AEP-Components/lattice-memory/crate ./AEP-Components/lattice-memory/crate
-COPY AEP-Base-Node/AEP-Crate ./AEP-Base-Node/AEP-Crate
-COPY AEP-Base-Node/AEP-Docks/ucb/crate ./AEP-Base-Node/AEP-Docks/ucb/crate
-COPY AEP-Base-Node/AEP-Docks/ucb/perimeter-v1 ./AEP-Base-Node/AEP-Docks/ucb/perimeter-v1
-COPY AEP-Components/conformance/crate ./AEP-Components/conformance/crate
+# Cargo loads every workspace member before it builds one package, so the
+# builder needs the whole AEP-Base-Node and AEP-Components trees. aep-admit
+# embeds AEP-Policy-System/reference/writing.gap at compile time.
+COPY AEP-Base-Node ./AEP-Base-Node
+COPY AEP-Components ./AEP-Components
+COPY AEP-Policy-System ./AEP-Policy-System
 RUN cargo build --release -p aep-base-node -p aep-lattice-memory -p aep-ucb
 
 FROM debian:bookworm-slim AS node-deps
@@ -46,8 +43,9 @@ COPY AEP-Base-Node/ ./AEP-Base-Node/
 COPY AEP-User-Experience/ ./AEP-User-Experience/
 COPY docker/entrypoint.sh /usr/local/bin/aep-entrypoint.sh
 COPY docker/health-probe.sh /usr/local/bin/aep-health-probe
+COPY docker/lattice.default.yaml /opt/aep/lattice.default.yaml
 
-RUN chmod +x /opt/aep/AEP-Base-Node/AEP-Docks/ucb/server.mjs && chmod +x /usr/local/bin/aep-entrypoint.sh /usr/local/bin/aep-health-probe
+RUN chmod +x /usr/local/bin/aep-entrypoint.sh /usr/local/bin/aep-health-probe
 ENV AEP_DATA=/data/aep \
     AEP_SOCKET_BASE=/data/aep/sockets \
     AEP_TASK_MANIFEST_DIR=/data/aep/ucb/manifests \

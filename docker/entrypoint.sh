@@ -13,6 +13,13 @@ DAEMON_PIDFILE="/run/aep/daemon.pid"
 mkdir -p "${AEP_DATA}" "${AEP_SOCKET_BASE}" /run/aep
 LATTICE_YAML="${AEP_DATA}/lattice.yaml"
 export AEP_LATTICE_YAML="${LATTICE_YAML}"
+# The Base Node refuses to start without a lattice. Seed the shipped default on a
+# fresh volume and never overwrite a lattice the operator already placed.
+if [ ! -f "${LATTICE_YAML}" ] && [ -f /opt/aep/lattice.default.yaml ]; then
+  cp /opt/aep/lattice.default.yaml "${LATTICE_YAML}"
+  chmod 600 "${LATTICE_YAML}" 2>/dev/null || true
+  echo "Seeded default lattice at ${LATTICE_YAML}. Replace it with the lattice of this deployment." >&2
+fi
 
 
 if [ "${1:-}" = "ucb" ]; then
@@ -59,12 +66,28 @@ process_alive() {
   [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null
 }
 
+# A daemon that exits 2 refused its own configuration, for example Data Dock on
+# a host other than loopback without DATA_DOCK_API_KEY. Restarting cannot fix
+# that, so the container stops with the same code and the log names the reason.
+stop_on_config_error() {
+  if process_alive "${DAEMON_PID:-}"; then
+    return 0
+  fi
+  code=0
+  wait "${DAEMON_PID}" 2>/dev/null || code=$?
+  if [ "${code}" = "2" ]; then
+    echo "ERROR: Base Node daemon refused its configuration (exit 2). Check DATA_DOCK_HOST and DATA_DOCK_API_KEY." >&2
+    exit 2
+  fi
+}
+
 wait_for_docks() {
   i=0
   while [ "$i" -lt 30 ]; do
     if [ -S "${AEP_SOCKET_BASE}/validation" ]; then
       return 0
     fi
+    stop_on_config_error
     i=$((i + 1))
     sleep 1
   done
@@ -169,6 +192,7 @@ fi
 
 while true; do
   if ! process_alive "${DAEMON_PID}"; then
+    stop_on_config_error
     echo "Base Node daemon exited; restarting with current config..." >&2
     start_daemon
     wait_for_docks || exit 1

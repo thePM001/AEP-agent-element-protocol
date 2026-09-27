@@ -1,0 +1,29 @@
+# AEP 2.8.6 default action lattice for a fresh container.
+#
+# The entrypoint copies this file to $AEP_DATA/lattice.yaml only when no lattice
+# exists yet, so an operator lattice is never overwritten. Replace it with the
+# lattice of your deployment. The Base Node refuses to start without a lattice.
+aep_version: "2.8.6"
+dynaep_version: "1.0.0"
+lattice_revision: 1
+actions:
+  root:ping:
+    label: ping
+    category: system_event
+    wrap: kernel
+    parents: []
+    children:
+      - action:write
+    constraints: []
+    agent_permission:
+      - data-dock
+  action:write:
+    label: write
+    category: agent_action
+    wrap: kernel
+    parents:
+      - root:ping
+    children: []
+    constraints: []
+    agent_permission:
+      - data-dock
