@@ -16,6 +16,7 @@ pub mod lattice_log;
 pub mod side_channel_monitor;
 pub mod task_manifest;
 pub mod data_dock;
+pub mod caw_kernel_dock;
 
 use aep_agentmesh::{create_bundle, AgentMeshBundle};
 use aep_lattice_channel::{

@@ -68,9 +68,22 @@ type KernelDockConfig struct {
 	// validation_engine, the dock that carries the admission decision.
 	Dock string `yaml:"dock" json:"dock,omitempty"`
 
-	// Timeout is the dial and read deadline for one ping as a Go duration.
-	// Empty means 2s.
+	// Timeout bounds one whole probe as a Go duration: sealing the root:ping,
+	// the send and the collect after the pulse. Empty means 5s.
 	Timeout string `yaml:"timeout" json:"timeout,omitempty"`
+
+	// LatticeLogBin is the aep-lattice-log binary that seals the root:ping.
+	// Empty means AEP_LATTICE_LOG_BIN, else aep-lattice-log on PATH.
+	LatticeLogBin string `yaml:"lattice_log_bin" json:"lattice_log_bin,omitempty"`
+
+	// LatticeDB is the Base Node lattice database whose key store signs the
+	// ping. Empty means AEP_LATTICE_DB, else AEP_DATA/action-lattice.db, else
+	// action-lattice.db next to the socket base.
+	LatticeDB string `yaml:"lattice_db" json:"lattice_db,omitempty"`
+
+	// AgentID signs the sealed root:ping. Empty means caw-kernel-dock, the
+	// identity the Base Node provisions at boot.
+	AgentID string `yaml:"agent_id" json:"agent_id,omitempty"`
 }
 
 // KernelDockEnabled reports whether the execution path runs the dock check.

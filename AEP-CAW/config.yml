@@ -383,7 +383,8 @@ policies:
 # unless the whole product runs with no kernel.
 
 kernel_dock:
-  # Refuse the run while the dock does not answer. Absent means on.
+  # Refuse the run unless the dock admits one sealed root:ping signed as
+  # caw-kernel-dock. The docks refuse a plain ping. Absent means on.
   enabled: true
 
   # Directory that holds the dock sockets. Empty means AEP_SOCKET_BASE, else
@@ -395,8 +396,22 @@ kernel_dock:
   # regulation_module.
   dock: "validation_engine"
 
-  # Dial and read deadline for one ping. The dock answers a ping with a pong.
-  timeout: "2s"
+  # Deadline for the whole probe: sealing the root:ping, the send and the
+  # collect after the pulse.
+  timeout: "5s"
+
+  # The aep-lattice-log binary that seals the ping. Empty means
+  # AEP_LATTICE_LOG_BIN, else aep-lattice-log on PATH.
+  lattice_log_bin: ""
+
+  # The Base Node lattice database whose key store signs the ping. Empty means
+  # AEP_LATTICE_DB, else AEP_DATA/action-lattice.db, else action-lattice.db
+  # next to the socket base.
+  lattice_db: ""
+
+  # Agent that signs the ping. The Base Node provisions caw-kernel-dock at
+  # boot. The lattice and a caw-*.gap hub policy grant it root:ping.
+  agent_id: "caw-kernel-dock"
 
 # =============================================================================
 # MOUNT PROFILES (for multi-mount sessions)

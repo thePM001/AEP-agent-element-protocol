@@ -24,8 +24,9 @@ import (
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
-// startKernelDockStub binds the validation dock of a socket base and answers
-// one ping with the pong the Base Node dock documents.
+// startKernelDockStub binds the validation dock of a socket base. It holds the
+// sealed root:ping for the pulse and admits it on the collect, the way a live
+// Base Node dock answers.
 func startKernelDockStub(t *testing.T, socketBase string) string {
 	t.Helper()
 	if err := os.MkdirAll(socketBase, 0o700); err != nil {
@@ -49,13 +50,29 @@ func startKernelDockStub(t *testing.T, socketBase string) string {
 			}
 			go func(c net.Conn) {
 				defer c.Close()
-				buf := make([]byte, 256)
-				_, _ = c.Read(buf)
-				_, _ = c.Write([]byte("{\"ok\":true,\"pong\":true}\n"))
+				buf := make([]byte, 4096)
+				n, _ := c.Read(buf)
+				if bytes.Contains(buf[:n], []byte("\"collect\"")) {
+					_, _ = c.Write([]byte("{\"ok\":true,\"event_id\":1,\"digest\":\"d\"}\n"))
+					return
+				}
+				_, _ = c.Write([]byte("{\"ok\":false,\"pending\":true,\"digest\":\"d\"}\n"))
 			}(conn)
 		}
 	}()
 	return path
+}
+
+// writeFakeSealer writes a stand-in for aep-lattice-log build-frame that
+// prints one sealed frame envelope.
+func writeFakeSealer(t *testing.T) string {
+	t.Helper()
+	bin := filepath.Join(t.TempDir(), "aep-lattice-log")
+	script := "#!/bin/sh\ncat >/dev/null\necho '{\"frame\":{\"sealed\":\"stub\"},\"signer_public_hex\":\"abcd\"}'\n"
+	if err := os.WriteFile(bin, []byte(script), 0o700); err != nil {
+		t.Fatalf("write fake sealer: %v", err)
+	}
+	return bin
 }
 
 // kernelDockFixture wires an App that runs the kernel dock check over a chosen
@@ -103,6 +120,8 @@ func newKernelDockFixture(t *testing.T, enabled bool, socketBase string) *kernel
 	cfg.KernelDock.SocketBase = socketBase
 	cfg.KernelDock.Dock = kerneldock.DefaultDock
 	cfg.KernelDock.Timeout = "300ms"
+	cfg.KernelDock.LatticeLogBin = writeFakeSealer(t)
+	cfg.KernelDock.LatticeDB = filepath.Join(t.TempDir(), "action-lattice.db")
 
 	app := NewApp(cfg, mgr, store, engine, events.NewBroker(), nil, nil, nil, nil, nil, nil, nil)
 	s, err := mgr.Create(t.TempDir(), "default")

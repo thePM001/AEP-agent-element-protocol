@@ -339,6 +339,12 @@ async fn run_daemon(cfg: &ResolvedConfig, lattice_db: &Path) -> Result<u8, Box<d
     );
     let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
     let mut sigint = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())?;
+    // The CAW kernel dock probe signs its sealed root:ping as caw-kernel-dock.
+    if let Err(e) = aep_base_node::caw_kernel_dock::provision_caw_kernel_dock_identity(&runtime, &data_dir) {
+        dock_event!(error, DockEvent::BootError, error = %e, "CAW kernel dock identity failed");
+        drain_docking_servers(&runtime, handles).await;
+        return Ok(EXIT_BOOT_ERROR);
+    }
     let mut data_dock_handle = None;
     if data_dock_cfg.enabled {
         if let Err(e) = aep_base_node::data_dock::provision_server_identity(&runtime, &data_dir) {

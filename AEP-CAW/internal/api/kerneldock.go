@@ -27,9 +27,12 @@ func (a *App) kernelDockGate(ctx context.Context, sessionID string, cmdID string
 		return nil
 	}
 	err := kerneldock.Probe(kerneldock.Options{
-		SocketBase: kc.SocketBase,
-		Dock:       kc.Dock,
-		Timeout:    kc.KernelDockTimeout(),
+		SocketBase:    kc.SocketBase,
+		Dock:          kc.Dock,
+		Timeout:       kc.KernelDockTimeout(),
+		LatticeLogBin: kc.LatticeLogBin,
+		LatticeDB:     kc.LatticeDB,
+		AgentID:       kc.AgentID,
 	})
 	if err == nil {
 		return nil

@@ -201,7 +201,7 @@ fn build_kernel(ctx: &Ctx, ts_ms: i64) -> Result<Kernel, String> {
     let pass_admit = admit(&pass_action, &snap);
     let pass_plan = plan_apply(&pass_admit, &snap);
     apply(&mut snap, &pass_plan);
-    let applied_rate = snap.actions_last_minute;
+    let applied_rate = snap.event_rate;
     Ok(Kernel {
         snap,
         refuse_admit,

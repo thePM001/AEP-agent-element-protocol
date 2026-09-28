@@ -32,8 +32,12 @@ pub struct Snapshot {
     /// Session partition. Empty keeps agent keys without a session prefix.
     #[serde(default)]
     pub session_id: String,
+    /// Retired session admit counter (BASE-NODE-OP-020). Kept for snapshot compatibility.
+    /// Admit never counts into it and no wall reads it, so no count of admitted writes
+    /// closes a session. The per-second event_rate that the pulse decays is the rate limit.
     #[serde(default)]
     pub actions_last_minute: u32,
+    /// Retired with actions_last_minute. Read by no wall.
     #[serde(default = "default_max_actions")]
     pub max_actions_per_minute: u32,
     #[serde(default)]
@@ -259,7 +263,6 @@ pub fn plan_apply(result: &AdmitResult, _snap: &Snapshot) -> ApplyPlan {
 
 pub fn apply(snap: &mut Snapshot, plan: &ApplyPlan) {
     if plan.increment_rate {
-        snap.actions_last_minute = snap.actions_last_minute.saturating_add(1);
         snap.event_rate = snap.event_rate.saturating_add(1);
     }
 }
@@ -483,12 +486,11 @@ fn wall_channel(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     }
 }
 
-fn wall_rate(_action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
-    if snap.actions_last_minute >= snap.max_actions_per_minute {
-        wall("rate.session", "rate", false, "would exceed session rate")
-    } else {
-        wall("rate.session", "rate", true, "rate open")
-    }
+/// The rate.session wall no longer caps a session (BASE-NODE-OP-020). It closed on a
+/// counter that only counted up, so a Base Node refused every write after 200 admits.
+/// The wall row is kept so wall lists and their order do not change.
+fn wall_rate(_action: &EnvelopeAction, _snap: &Snapshot) -> AdmitWall {
+    wall("rate.session", "rate", true, "no session admit cap")
 }
 
 fn wall_scanner(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
@@ -737,14 +739,40 @@ mod tests {
     }
 
     #[test]
-    fn allow_increments_rate() {
+    fn allow_increments_event_rate_only() {
         let snap = base_snap();
         let r = admit(&act("action:write"), &snap);
         assert!(r.allow);
         let plan = plan_apply(&r, &snap);
         let mut s2 = snap.clone();
         apply(&mut s2, &plan);
-        assert_eq!(s2.actions_last_minute, 1);
+        assert_eq!(s2.event_rate, snap.event_rate + 1);
+        assert_eq!(s2.actions_last_minute, snap.actions_last_minute);
+    }
+
+    #[test]
+    fn session_admits_past_two_hundred_with_no_rate_wall() {
+        let mut snap = base_snap();
+        let a = act("action:write");
+        for i in 0..1000 {
+            let r = admit(&a, &snap);
+            assert!(r.allow, "admit {i} refused: {:?}", closed_names(&r));
+            let plan = plan_apply(&r, &snap);
+            apply(&mut snap, &plan);
+            // The pulse clears the per-second counter each beat.
+            snap.event_rate = 0;
+        }
+        assert_eq!(snap.actions_last_minute, 0);
+    }
+
+    #[test]
+    fn rate_wall_ignores_a_full_legacy_counter() {
+        let mut snap = base_snap();
+        snap.actions_last_minute = u32::MAX;
+        snap.max_actions_per_minute = 1;
+        let r = admit(&act("action:write"), &snap);
+        assert!(r.allow);
+        assert!(!closed_names(&r).iter().any(|n| n.contains("rate.session")));
     }
 
     #[test]

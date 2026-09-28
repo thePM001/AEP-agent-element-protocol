@@ -277,6 +277,7 @@ mod tests {
         let key = crate::agent_record_key("", "agent-a", "root:ping");
         must(snap.satisfied_actions.contains(&key));
         must(snap.last_seq_by_agent.get("agent-a") == Some(&3));
-        must(snap.actions_last_minute == 1);
+        must(snap.actions_last_minute == 0);
+        must(snap.event_rate == 1);
     }
 }

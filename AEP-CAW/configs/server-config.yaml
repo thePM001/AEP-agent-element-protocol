@@ -58,15 +58,21 @@ dlp:
     ssn: true
     api_keys: true
 
-# Base Node kernel dock check. Every execution path probes the dock before a
-# command starts and refuses the run with the named rule kernel-dock-silent
-# while the dock stays silent. The check is on unless enabled is false.
+# Base Node kernel dock check. Every execution path seals one root:ping as
+# caw-kernel-dock before a command starts and refuses the run with the named
+# rule kernel-dock-silent unless the dock admits it. The check is on unless
+# enabled is false.
 kernel_dock:
   enabled: true
   # Empty means AEP_SOCKET_BASE, else AEP_DATA/sockets, else $HOME/.aep/sockets.
   socket_base: ""
   dock: "validation_engine"
-  timeout: "2s"
+  timeout: "5s"
+  # Empty means AEP_LATTICE_LOG_BIN, else aep-lattice-log on PATH.
+  lattice_log_bin: ""
+  # Empty means AEP_LATTICE_DB, else AEP_DATA/action-lattice.db.
+  lattice_db: ""
+  agent_id: "caw-kernel-dock"
 
 policies:
   dir: "/etc/aep-caw/policies"

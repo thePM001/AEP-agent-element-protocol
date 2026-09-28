@@ -157,26 +157,54 @@ Default policy: `configs/policies/default.yaml`. Server config: `configs/server-
 
 ## Kernel dock gate
 
-The Base Node kernel publishes one Unix socket dock per port under the socket base and answers a newline delimited JSON ping with a pong. CAW runs the host workload, so every execution path checks that dock before a command starts. The check sits in the execution path itself rather than in a separate operator script, so a wrapped agent cannot run a command while the kernel that admits it is silent.
+The Base Node kernel publishes one Unix socket dock per port under the socket base. The docks accept only sealed LatticeChannelFrames and refuse a plain ping as a side channel. CAW runs the host workload, so every execution path checks the dock before a command starts. The check sits in the execution path itself rather than in a separate operator script, so a wrapped agent cannot run a command while the kernel that admits it is silent.
+
+The probe talks to the dock the same way every other caller does. It seals one `root:ping` as the agent `caw-kernel-dock` with `aep-lattice-log build-frame`, sends the frame to the dock and collects the outcome after the pulse. The run starts only when the dock admits that frame. A dock that does not answer, answers late or refuses the frame refuses the run.
 
 The check is on unless the config turns it off. It covers the plain exec, the streamed exec and the PTY start, so no entry point bypasses it.
 
 | Setting | Default | Meaning |
 |---------|---------|---------|
-| `kernel_dock.enabled` | on | Refuse the run while the dock does not answer. Absent key means on. |
+| `kernel_dock.enabled` | on | Refuse the run unless the dock admits the sealed ping. Absent key means on. |
 | `kernel_dock.socket_base` | resolved | Directory that holds the dock sockets. Empty means `AEP_SOCKET_BASE`, else `AEP_DATA/sockets`, else `$HOME/.aep/sockets`. |
 | `kernel_dock.dock` | `validation_engine` | Dock the execution path probes. The validation dock carries the admission decision. |
-| `kernel_dock.timeout` | `2s` | Dial and read deadline for one ping. |
+| `kernel_dock.timeout` | `5s` | Deadline for the whole probe: sealing the ping, the send and the collect after the pulse. |
+| `kernel_dock.lattice_log_bin` | resolved | The `aep-lattice-log` binary that seals the ping. Empty means `AEP_LATTICE_LOG_BIN`, else `aep-lattice-log` on `PATH`. |
+| `kernel_dock.lattice_db` | resolved | The Base Node lattice database whose key store signs the ping. Empty means `AEP_LATTICE_DB`, else `AEP_DATA/action-lattice.db`, else `action-lattice.db` next to the socket base. |
+| `kernel_dock.agent_id` | `caw-kernel-dock` | Agent that signs the sealed ping. |
+
+### Base Node side
+
+The Base Node provisions the `caw-kernel-dock` identity on every boot. It mints one agent sign key once and reuses it after that. It also writes a system tier task manifest. The identity grants nothing by itself. The operator grants `root:ping` to `caw-kernel-dock` in the lattice and in a `caw-*.gap` hub policy under `gap/policies/reference`:
+
+```yaml
+# lattice.yaml
+actions:
+  root:ping:
+    agent_permission:
+      - caw-kernel-dock
+```
+
+```yaml
+# gap/policies/reference/caw-kernel-dock.gap
+metadata:
+  wrap: caw
+  agent_permission:
+    - agent_id: caw-kernel-dock
+      action: root:ping
+```
+
+Every probe writes one admitted `root:ping` row on channel `ch-caw-kernel-dock` to the ledger, so each governed run leaves proof that a live kernel admitted it. CAW needs the same access to the Base Node data folder that UCB has, because the sealing tool reads the Base Node key store.
 
 ### Refusal
 
-A silent dock refuses the run with one named refusal on stderr and an HTTP 503 from the server:
+A silent dock or a refused ping refuses the run with one named refusal on stderr and an HTTP 503 from the server:
 
 ```
 aep-caw: kernel dock silent (rule=kernel-dock-silent dock=validation_engine socket=/data/aep/sockets/validation): dial unix /data/aep/sockets/validation: connect: no such file or directory
 ```
 
-The refusal names the rule, the dock and the socket path, so the operator reads which dock stayed silent. The server also records a `kernel_dock_refused` event with the rule, the dock, the socket and the error text, so the refusal is part of the session evidence rather than only a line on a terminal.
+The refusal names the rule, the dock and the socket path, so the operator reads which dock stayed silent. When the dock answers but refuses the sealed ping, the refusal carries the dock deny text, for example a missing `root:ping` grant. The server also records a `kernel_dock_refused` event with the rule, the dock, the socket and the error text, so the refusal is part of the session evidence rather than only a line on a terminal.
 
 ```bash
 # Stop the kernel dock and run a wrapped command: the command is refused.
