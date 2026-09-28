@@ -1811,7 +1811,7 @@ func (l *DefaultPolicyLoader) Load(name string) (*policy.Engine, error) {
 		}
 	}
 
-	p, err := policy.LoadFromBytes(policyBytes)
+	p, err := policy.LoadFromBytesNamed(policyBytes, name)
 	if err != nil {
 		return nil, fmt.Errorf("load policy %q: %w", name, err)
 	}

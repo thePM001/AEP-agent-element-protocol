@@ -2,6 +2,9 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.8.x public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.8.6] - 2026-09-28 - Lattice and CAW config as GAP
+The Base Node reads its action lattice from a GAP file as well as from YAML. A lattice path that ends in .gap is read as GAP. Without AEP_LATTICE_YAML the data folder lattice.yaml wins over lattice.gap. The lattice sits in a kind: aep.lattice document with the same keys as lattice.yaml and goes through the same loader, so Admit decides alike on both. CAW reads a policy from the policy field of a kind: aep.caw.mount_policy document and its server config from the config field of a kind: aep.caw.server_config document. Both use the same strict decoder as YAML. A policy name resolves to name.yaml, then name.yml, then name.gap. The config search also tries config.gap. YAML remains fully supported. Verify with cargo test -p aep-envelope -p aep-base-node and go test ./internal/gapdoc/... ./internal/policy/... ./internal/config/... in AEP-CAW.
+
 ## [2.8.6] - 2026-09-28 - CAW kernel dock sealed ping
 The CAW kernel dock probe no longer sends a plain ping, which every dock refuses as a side channel. It seals one root:ping as the agent caw-kernel-dock with aep-lattice-log build-frame and sends it to the validation dock. After the pulse it collects the outcome and lets the command start only when the dock admits the frame. A silent dock still refuses the run with kernel-dock-silent. The Base Node provisions the caw-kernel-dock sign key and a system task manifest on every boot. The operator grants it root:ping in the lattice and in a caw-*.gap hub policy. The probe timeout default is now 5s and CAW gains the kernel_dock settings lattice_log_bin, lattice_db and agent_id. Every other caller still gets a plain ping refused. Verify with go test ./internal/kerneldock/... in AEP-CAW and cargo test -p aep-base-node.
 

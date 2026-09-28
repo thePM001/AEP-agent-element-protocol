@@ -23,19 +23,23 @@ pub fn load_live_entry(data_dir: &Path) -> Result<LiveEntry, BaseNodeError> {
 }
 
 /// A set env path that is missing or unreadable is Deny. Do not fall through to data_dir.
+/// A path that ends in .gap is read as a GAP lattice (BASE-NODE-OP-040). Without an
+/// env path the data dir lattice.yaml wins and lattice.gap is read when it is absent.
 pub fn load_live_entry_from_paths(env_yaml: Option<&Path>, data_dir: &Path) -> Result<LiveEntry, BaseNodeError> {
     if let Some(p) = env_yaml {
-        return match LiveEntry::from_yaml_file(p) {
+        return match LiveEntry::from_lattice_file(p) {
             Ok(le) => Ok(le),
             Err(_) => Err(BaseNodeError::LatticeYamlUnreadable),
         };
     }
-    let p = data_dir.join("lattice.yaml");
-    if p.is_file() {
-        return match LiveEntry::from_yaml_file(&p) {
-            Ok(le) => Ok(le),
-            Err(_) => Err(BaseNodeError::LatticeYamlUnreadable),
-        };
+    for name in ["lattice.yaml", "lattice.gap"] {
+        let p = data_dir.join(name);
+        if p.is_file() {
+            return match LiveEntry::from_lattice_file(&p) {
+                Ok(le) => Ok(le),
+                Err(_) => Err(BaseNodeError::LatticeYamlUnreadable),
+            };
+        }
     }
     Err(BaseNodeError::LatticeYamlMissing)
 }
@@ -283,6 +287,47 @@ mod tests {
         let loaded = load_live_entry_from_paths(Some(&bad), dir.path());
         let err = match loaded { Ok(_) => panic!("deny"), Err(e) => e };
         assert!(err.to_string().contains("unreadable lattice yaml"));
+    }
+    fn gap_of(yaml_text: &str) -> String {
+        format!("address:\n  domain: aep.lattice\n  id: test.v1\npattern: test lattice\n---\nkind: aep.lattice\n{yaml_text}")
+    }
+    fn node_ids(le: &LiveEntry) -> Vec<String> {
+        let mut ids: Vec<String> = le.snapshot.lattice_nodes.keys().cloned().collect();
+        ids.sort();
+        ids
+    }
+    #[test]
+    fn data_dir_lattice_gap_boots_like_its_yaml_twin() {
+        let yaml_dir = tempfile::tempdir().expect("tmp");
+        std::fs::write(yaml_dir.path().join("lattice.yaml"), yaml()).expect("yaml");
+        let gap_dir = tempfile::tempdir().expect("tmp");
+        std::fs::write(gap_dir.path().join("lattice.gap"), gap_of(&yaml())).expect("gap");
+        let from_yaml = load_live_entry_from_paths(None, yaml_dir.path()).expect("yaml boot");
+        let from_gap = load_live_entry_from_paths(None, gap_dir.path()).expect("gap boot");
+        assert!(!node_ids(&from_gap).is_empty());
+        assert_eq!(node_ids(&from_yaml), node_ids(&from_gap));
+    }
+    #[test]
+    fn env_gap_path_is_read_as_gap() {
+        let dir = tempfile::tempdir().expect("tmp");
+        let g = dir.path().join("cluster-lattice.gap");
+        std::fs::write(&g, gap_of(&yaml())).expect("gap");
+        let le = load_live_entry_from_paths(Some(&g), dir.path()).expect("env gap boot");
+        assert!(!node_ids(&le).is_empty());
+    }
+    #[test]
+    fn gap_without_lattice_document_is_start_failure() {
+        let dir = tempfile::tempdir().expect("tmp");
+        std::fs::write(dir.path().join("lattice.gap"), "address:\n  id: x\npattern: none\n").expect("gap");
+        let err = match load_live_entry_from_paths(None, dir.path()) { Ok(_) => panic!("deny"), Err(e) => e };
+        assert!(err.to_string().contains("unreadable lattice yaml"));
+    }
+    #[test]
+    fn data_dir_yaml_wins_over_gap() {
+        let dir = tempfile::tempdir().expect("tmp");
+        std::fs::write(dir.path().join("lattice.yaml"), yaml()).expect("yaml");
+        std::fs::write(dir.path().join("lattice.gap"), "address:\n  id: x\n").expect("gap");
+        assert!(load_live_entry_from_paths(None, dir.path()).is_ok());
     }
     #[test]
     fn empty_action_path_on_empty_lattice_is_deny() {

@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashMap, HashSet};
 mod seq_walls;
 mod lattice_yaml;
-pub use lattice_yaml::{apply_admit, closed_reasons, load_lattice_yaml, load_lattice_yaml_file, snapshot_from_nodes, EnvelopeError};
+pub use lattice_yaml::{apply_admit, closed_reasons, is_gap_lattice_path, lattice_document_from_gap, load_lattice_file, load_lattice_gap, load_lattice_gap_file, load_lattice_yaml, load_lattice_yaml_file, snapshot_from_nodes, EnvelopeError, LATTICE_GAP_KIND};
 pub use aep_admit::{AdmitWall, agent_permission, agent_has_permission, AgentPermission, Pulse, PULSE_MS, DENY_NO_PERMISSION, ClosedWall, DenyReport};
 
 // the public kernel type set is defined once in aep-kernel-types.

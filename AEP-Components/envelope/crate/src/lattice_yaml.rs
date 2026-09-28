@@ -123,6 +123,80 @@ pub fn load_lattice_yaml_file(path: &Path) -> Result<HashMap<String, LatticeNode
     load_lattice_yaml(&raw)
 }
 
+/// GAP document kind that carries an action lattice. The document holds the
+/// same keys as lattice.yaml next to `kind: aep.lattice`.
+pub const LATTICE_GAP_KIND: &str = "aep.lattice";
+
+/// Split GAP source into its `---` separated documents, dropping empty ones.
+fn gap_documents(text: &str) -> Vec<String> {
+    let mut docs = Vec::new();
+    let mut cur = String::new();
+    for line in text.lines() {
+        if line.trim_end() == "---" {
+            docs.push(std::mem::take(&mut cur));
+            continue;
+        }
+        cur.push_str(line);
+        cur.push('\n');
+    }
+    docs.push(cur);
+    docs.into_iter()
+        .filter(|d| d.lines().any(|l| {
+            let t = l.trim();
+            t.is_empty() == false && t.starts_with('#') == false
+        }))
+        .collect()
+}
+
+/// The top-level `kind:` value of one GAP document, unquoted.
+fn gap_document_kind(doc: &str) -> Option<String> {
+    for line in doc.lines() {
+        if let Some(rest) = line.strip_prefix("kind:") {
+            let v = rest.trim().trim_matches('"').trim_matches('\'');
+            return Some(String::from(v));
+        }
+    }
+    None
+}
+
+/// The one `kind: aep.lattice` document of a GAP file. None or more than one is an error.
+pub fn lattice_document_from_gap(text: &str) -> Result<String, EnvelopeError> {
+    let mut found: Vec<String> = gap_documents(text)
+        .into_iter()
+        .filter(|d| gap_document_kind(d).as_deref() == Some(LATTICE_GAP_KIND))
+        .collect();
+    match found.len() {
+        1 => Ok(found.remove(0)),
+        0 => Err(EnvelopeError::Yaml(format!("GAP source has no kind: {LATTICE_GAP_KIND} document"))),
+        n => Err(EnvelopeError::Yaml(format!("GAP source has {n} kind: {LATTICE_GAP_KIND} documents, want one"))),
+    }
+}
+
+/// Load a lattice written as GAP. The lattice document is read by the same
+/// loader as lattice.yaml, so a GAP lattice and its YAML twin admit alike.
+pub fn load_lattice_gap(text: &str) -> Result<HashMap<String, LatticeNode>, EnvelopeError> {
+    load_lattice_yaml(&lattice_document_from_gap(text)?)
+}
+
+pub fn load_lattice_gap_file(path: &Path) -> Result<HashMap<String, LatticeNode>, EnvelopeError> {
+    let raw = std::fs::read_to_string(path).map_err(|e| EnvelopeError::Io(e.to_string()))?;
+    load_lattice_gap(&raw)
+}
+
+/// True when a lattice path names a GAP file.
+pub fn is_gap_lattice_path(path: &Path) -> bool {
+    path.extension().and_then(|e| e.to_str()).map(|e| e.eq_ignore_ascii_case("gap")) == Some(true)
+}
+
+/// Load a lattice file as GAP when it ends in .gap and as YAML otherwise.
+pub fn load_lattice_file(path: &Path) -> Result<HashMap<String, LatticeNode>, EnvelopeError> {
+    if is_gap_lattice_path(path) {
+        load_lattice_gap_file(path)
+    } else {
+        load_lattice_yaml_file(path)
+    }
+}
+
 fn validate_refs(nodes: &HashMap<String, LatticeNode>) -> Result<(), EnvelopeError> {
     for (id, node) in nodes {
         for p in &node.parents {
@@ -279,5 +353,63 @@ mod tests {
         must(snap.last_seq_by_agent.get("agent-a") == Some(&3));
         must(snap.actions_last_minute == 0);
         must(snap.event_rate == 1);
+    }
+
+    const TWIN_YAML: &str = "aep_version: \"2.8.6\"\nactions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_permission: [\"agent-a\"]\n";
+
+    fn twin_gap() -> String {
+        format!(
+            "address:\n  domain: aep.lattice\n  id: twin.v1\npattern: |\n  Test lattice written as GAP.\nweight: 1.0\ncomposition:\n  type: atomic\nmetadata:\n  wrap: kernel\n---\nkind: aep.lattice\n{TWIN_YAML}"
+        )
+    }
+
+    fn sorted(nodes: &HashMap<String, LatticeNode>) -> Vec<(String, Vec<String>, Vec<String>, String)> {
+        let mut v: Vec<_> = nodes
+            .values()
+            .map(|n| (n.action_path.clone(), n.parents.clone(), n.agent_permission.clone(), n.category.clone()))
+            .collect();
+        v.sort();
+        v
+    }
+
+    #[test]
+    fn gap_lattice_loads_the_same_nodes_as_its_yaml_twin() {
+        let yaml = load_lattice_yaml(TWIN_YAML).expect("yaml twin");
+        let gap = load_lattice_gap(&twin_gap()).expect("gap twin");
+        must(sorted(&yaml) == sorted(&gap));
+        must(gap.contains_key("root:ping") && gap.contains_key("action:write"));
+    }
+
+    #[test]
+    fn gap_without_a_lattice_document_is_refused() {
+        let only_instruction = "address:\n  id: x\npattern: none\n";
+        must(load_lattice_gap(only_instruction).is_err());
+    }
+
+    #[test]
+    fn gap_with_two_lattice_documents_is_refused() {
+        let two = format!("{}\n---\nkind: aep.lattice\n{TWIN_YAML}", twin_gap());
+        must(load_lattice_gap(&two).is_err());
+    }
+
+    #[test]
+    fn gap_lattice_keeps_the_yaml_validation() {
+        let bad = "---\nkind: aep.lattice\nactions:\n  action:write:\n    category: agent_action\n    parents: [\"root:missing\"]\n    agent_permission: [\"agent-a\"]\n";
+        must(load_lattice_gap(bad).is_err());
+    }
+
+    #[test]
+    fn lattice_file_dispatches_on_the_extension() {
+        let dir = std::env::temp_dir().join(format!("gap-lattice-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let g = dir.join("lattice.gap");
+        let y = dir.join("lattice.yaml");
+        std::fs::write(&g, twin_gap()).expect("write gap");
+        std::fs::write(&y, TWIN_YAML).expect("write yaml");
+        must(is_gap_lattice_path(&g) && is_gap_lattice_path(&y) == false);
+        let a = load_lattice_file(&g).expect("gap file");
+        let b = load_lattice_file(&y).expect("yaml file");
+        let _ = std::fs::remove_dir_all(&dir);
+        must(sorted(&a) == sorted(&b));
     }
 }

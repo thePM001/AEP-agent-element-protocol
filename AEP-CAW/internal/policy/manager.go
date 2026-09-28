@@ -10,8 +10,6 @@ import (
 	"regexp"
 	"sync"
 
-	"gopkg.in/yaml.v3"
-
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy/signing"
 )
 
@@ -134,16 +132,7 @@ func (m *Manager) loadLocked() (*Policy, error) {
 			fmt.Fprintf(os.Stderr, "WARNING: policy signing verification failed: %v\n", err)
 		}
 	}
-	dec := yaml.NewDecoder(bytes.NewReader(data))
-	dec.KnownFields(true)
-	var p Policy
-	if err := dec.Decode(&p); err != nil {
-		return nil, fmt.Errorf("parse policy: %w", err)
-	}
-	if err := p.Validate(); err != nil {
-		return nil, fmt.Errorf("validate policy: %w", err)
-	}
-	return &p, nil
+	return LoadFromBytesNamed(data, m.selectedName)
 }
 
 func (m *Manager) verifySigning(path string, data []byte) error {

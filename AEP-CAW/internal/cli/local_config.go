@@ -22,7 +22,7 @@ func findConfigPath() (string, config.ConfigSource) {
 
 	// 2. Check user-local config
 	userConfigDir := config.GetUserConfigDir()
-	for _, name := range []string{"config.yaml", "config.yml"} {
+	for _, name := range []string{"config.yaml", "config.yml", "config.gap"} {
 		userConfig := filepath.Join(userConfigDir, name)
 		if _, err := os.Stat(userConfig); err == nil {
 			return userConfig, config.ConfigSourceUser
@@ -31,7 +31,7 @@ func findConfigPath() (string, config.ConfigSource) {
 
 	// 3. Check system-wide config
 	systemConfigDir := config.GetConfigDir()
-	for _, name := range []string{"config.yaml", "config.yml"} {
+	for _, name := range []string{"config.yaml", "config.yml", "config.gap"} {
 		systemConfig := filepath.Join(systemConfigDir, name)
 		if _, err := os.Stat(systemConfig); err == nil {
 			return systemConfig, config.ConfigSourceSystem
@@ -40,7 +40,7 @@ func findConfigPath() (string, config.ConfigSource) {
 
 	// 4. Check macOS app bundle Resources
 	if bundleDir := config.GetBundleResourcesDir(); bundleDir != "" {
-		for _, name := range []string{"config.yaml", "config.yml"} {
+		for _, name := range []string{"config.yaml", "config.yml", "config.gap"} {
 			bundleConfig := filepath.Join(bundleDir, name)
 			if _, err := os.Stat(bundleConfig); err == nil {
 				return bundleConfig, config.ConfigSourceBundle

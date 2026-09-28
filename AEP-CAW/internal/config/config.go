@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/gapdoc"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/kerneldock"
 	seccompPkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
 	secretspkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/secrets"
@@ -1458,6 +1459,20 @@ func (w *AuditWatchtowerConfig) validate() error {
 	return nil
 }
 
+// gapConfigPayload returns the server config of a GAP file: the config field of
+// its kind: aep.caw.server_config document. A plain YAML config is returned as
+// it is. The payload then goes through the same checks and decode as YAML.
+func gapConfigPayload(expanded string) (string, error) {
+	payload, isGAP, err := gapdoc.Extract([]byte(expanded), gapdoc.KindCawServerConfig, "config", "")
+	if err != nil {
+		return "", fmt.Errorf("parse config: %w", err)
+	}
+	if !isGAP {
+		return expanded, nil
+	}
+	return string(payload), nil
+}
+
 func Load(path string) (*Config, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -1466,6 +1481,10 @@ func Load(path string) (*Config, error) {
 
 	// Expand environment variables in config content (e.g., $HOME, ${HOME})
 	expanded := os.ExpandEnv(string(b))
+	expanded, err = gapConfigPayload(expanded)
+	if err != nil {
+		return nil, err
+	}
 	if err := rejectRemovedConfigKeys([]byte(expanded)); err != nil {
 		return nil, err
 	}
@@ -1605,6 +1624,10 @@ func LoadWithSource(path string, source ConfigSource) (*Config, ConfigSource, er
 
 	// Expand environment variables in config content (e.g., $HOME, ${HOME})
 	expanded := os.ExpandEnv(string(b))
+	expanded, err = gapConfigPayload(expanded)
+	if err != nil {
+		return nil, source, err
+	}
 	if err := rejectRemovedConfigKeys([]byte(expanded)); err != nil {
 		return nil, source, err
 	}

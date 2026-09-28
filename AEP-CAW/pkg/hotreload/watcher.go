@@ -458,5 +458,5 @@ func stagingPolicyPath(path string) string {
 // isPolicyFile checks if a file is a policy file.
 func isPolicyFile(path string) bool {
 	ext := filepath.Ext(path)
-	return ext == ".yaml" || ext == ".yml" || ext == ".json"
+	return ext == ".yaml" || ext == ".yml" || ext == ".json" || ext == ".gap"
 }

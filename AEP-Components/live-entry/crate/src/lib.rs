@@ -9,7 +9,7 @@
 // Collect-all Deny for empty action_path runs before Apply. process_event must not mutate LiveEntry then return Event.
 // A template target_id is not a skip. Every opened frame runs collect-all Admit then Apply.
 use aep_envelope::{
-    admit_with_extra, apply_admit, closed_reasons, dest_dock_from_opened_frame, load_lattice_yaml, load_lattice_yaml_file, plan_apply,
+    admit_with_extra, apply_admit, closed_reasons, dest_dock_from_opened_frame, load_lattice_file, load_lattice_gap, load_lattice_yaml, load_lattice_yaml_file, plan_apply,
     snapshot_from_nodes, AdmitWall, EnvelopeAction, Snapshot,
 };
 pub use aep_envelope::{agent_permission, AgentPermission, AdmitResult, Envelope, Pulse, PULSE_MS, DENY_NO_PERMISSION};
@@ -111,6 +111,28 @@ impl LiveEntry {
     }
     pub fn from_yaml_file(path: &Path) -> Result<Self, LiveEntryError> {
         let nodes = match load_lattice_yaml_file(path) {
+            Ok(v) => v,
+            Err(e) => return Err(LiveEntryError::Envelope(e.to_string())),
+        };
+        let mut st = Self::new();
+        let now = st.now_ms();
+        st.snapshot = snapshot_from_nodes(nodes, BTreeSet::new(), now);
+        Ok(st)
+    }
+    /// Lattice written as GAP: the one kind aep.lattice document of the source.
+    pub fn from_gap(text: &str) -> Result<Self, LiveEntryError> {
+        let nodes = match load_lattice_gap(text) {
+            Ok(v) => v,
+            Err(e) => return Err(LiveEntryError::Envelope(e.to_string())),
+        };
+        let mut st = Self::new();
+        let now = st.now_ms();
+        st.snapshot = snapshot_from_nodes(nodes, BTreeSet::new(), now);
+        Ok(st)
+    }
+    /// Lattice file read as GAP when it ends in .gap and as YAML otherwise.
+    pub fn from_lattice_file(path: &Path) -> Result<Self, LiveEntryError> {
+        let nodes = match load_lattice_file(path) {
             Ok(v) => v,
             Err(e) => return Err(LiveEntryError::Envelope(e.to_string())),
         };

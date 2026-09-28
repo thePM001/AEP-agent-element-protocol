@@ -153,6 +153,35 @@ Per-operation decisions: `allow`, `deny`, `approve`, `redirect`, `audit`, `soft_
 
 Default policy: `configs/policies/default.yaml`. Server config: `configs/server-config.yaml`.
 
+### Policies and config as GAP
+
+A policy or the server config may be a GAP file instead of YAML. GAP source is YAML 1.2 with one instruction document first and typed data documents after it. CAW reads the policy from the `policy` field of a `kind: aep.caw.mount_policy` document and the server config from the `config` field of a `kind: aep.caw.server_config` document. It decodes that payload with the same strict decoder as a YAML file, so a GAP file and its YAML twin decide alike.
+
+```yaml
+address:
+  domain: dev.aep.caw
+  id: worker-policy.v1
+pattern: |
+  Worker policy written as GAP.
+weight: 1.0
+composition:
+  type: atomic
+metadata:
+  wrap: caw
+---
+kind: aep.caw.mount_policy
+name: worker
+policy:
+  version: 1
+  name: worker
+  command_rules:
+    - name: worker
+      commands: [/usr/local/bin/worker]
+      decision: allow
+```
+
+A policy named `worker` resolves to `worker.yaml`, then `worker.yml`, then `worker.gap`. When a GAP file holds several policy documents, the policy name picks the one whose `name` matches. The config search tries `config.yaml`, `config.yml` and `config.gap`. YAML remains fully supported.
+
 ---
 
 ## Kernel dock gate

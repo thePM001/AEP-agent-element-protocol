@@ -47,7 +47,7 @@ func newPolicyCmd() *cobra.Command {
 					continue
 				}
 				n := e.Name()
-				if strings.HasSuffix(n, ".yml") || strings.HasSuffix(n, ".yaml") {
+				if strings.HasSuffix(n, ".yml") || strings.HasSuffix(n, ".yaml") || strings.HasSuffix(n, ".gap") {
 					names = append(names, n)
 				}
 			}
@@ -308,7 +308,7 @@ func resolvePolicyPath(dir, nameOrPath string) (string, error) {
 	if nameOrPath == "" {
 		return "", fmt.Errorf("policy name/path is required")
 	}
-	if strings.ContainsRune(nameOrPath, os.PathSeparator) || strings.HasSuffix(nameOrPath, ".yml") || strings.HasSuffix(nameOrPath, ".yaml") {
+	if strings.ContainsRune(nameOrPath, os.PathSeparator) || strings.HasSuffix(nameOrPath, ".yml") || strings.HasSuffix(nameOrPath, ".yaml") || strings.HasSuffix(nameOrPath, ".gap") {
 		p := nameOrPath
 		if !filepath.IsAbs(p) {
 			p = filepath.Clean(p)
