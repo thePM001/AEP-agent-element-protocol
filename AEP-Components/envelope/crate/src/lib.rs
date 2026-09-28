@@ -32,7 +32,7 @@ pub struct Snapshot {
     /// Session partition. Empty keeps agent keys without a session prefix.
     #[serde(default)]
     pub session_id: String,
-    /// Retired session admit counter (BASE-NODE-OP-020). Kept for snapshot compatibility.
+    /// Retired session admit counter. Kept for snapshot compatibility.
     /// Admit never counts into it and no wall reads it, so no count of admitted writes
     /// closes a session. The per-second event_rate that the pulse decays is the rate limit.
     #[serde(default)]
@@ -486,7 +486,7 @@ fn wall_channel(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     }
 }
 
-/// The rate.session wall no longer caps a session (BASE-NODE-OP-020). It closed on a
+/// The rate.session wall no longer caps a session. It closed on a
 /// counter that only counted up, so a Base Node refused every write after 200 admits.
 /// The wall row is kept so wall lists and their order do not change.
 fn wall_rate(_action: &EnvelopeAction, _snap: &Snapshot) -> AdmitWall {

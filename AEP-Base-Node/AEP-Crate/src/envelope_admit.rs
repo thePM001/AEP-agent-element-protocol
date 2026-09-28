@@ -23,7 +23,7 @@ pub fn load_live_entry(data_dir: &Path) -> Result<LiveEntry, BaseNodeError> {
 }
 
 /// A set env path that is missing or unreadable is Deny. Do not fall through to data_dir.
-/// A path that ends in .gap is read as a GAP lattice (BASE-NODE-OP-040). Without an
+/// A path that ends in .gap is read as a GAP lattice. Without an
 /// env path the data dir lattice.yaml wins and lattice.gap is read when it is absent.
 pub fn load_live_entry_from_paths(env_yaml: Option<&Path>, data_dir: &Path) -> Result<LiveEntry, BaseNodeError> {
     if let Some(p) = env_yaml {

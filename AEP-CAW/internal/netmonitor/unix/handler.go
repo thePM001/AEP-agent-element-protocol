@@ -76,7 +76,11 @@ func ServeNotify(ctx context.Context, fd *os.File, sessID string, pol *policy.En
 		// socket/listen often have no usable sockaddr; allow only those without path policy surface.
 		if ctxReq.Syscall == seccomp.ScmpSyscall(unix.SYS_SOCKET) || ctxReq.Syscall == seccomp.ScmpSyscall(unix.SYS_LISTEN) {
 			allow = true
-		} else if raw, err := ReadSockaddr(ctxReq.PID, ctxReq.AddrPtr, ctxReq.AddrLen); err == nil {
+		} else if scope, raw, err := sockaddrTrapScope(ctxReq.Syscall, ctxReq.AddrPtr, ctxReq.AddrLen, func() ([]byte, error) {
+			return ReadSockaddr(ctxReq.PID, ctxReq.AddrPtr, ctxReq.AddrLen)
+		}); scope == trapContinue {
+			allow = true
+		} else if scope == trapPolicy {
 			if p, abs, perr := ParseSockaddr(raw); perr == nil {
 				path, abstract = p, abs
 				dec := pol.CheckUnixSocket(path, op)
@@ -89,7 +93,7 @@ func ServeNotify(ctx context.Context, fd *os.File, sessID string, pol *policy.En
 				slog.Debug("unix socket: ParseSockaddr failed, denying", "session_id", sessID, "error", perr)
 			}
 		} else {
-			slog.Debug("unix socket: ReadSockaddr failed, denying", "session_id", sessID, "error", err)
+			slog.Debug("unix socket: sockaddr unreadable, denying", "session_id", sessID, "error", err)
 		}
 		if allow {
 			if err := NotifRespondContinue(int(scmpFD), req.ID); err != nil {
@@ -107,6 +111,42 @@ func ServeNotify(ctx context.Context, fd *os.File, sessID string, pol *policy.En
 			emit.Publish(*ev)
 		}
 	}
+}
+
+// trapScope says what the notify loop does with one trapped socket syscall.
+type trapScope int
+
+const (
+	// trapDeny fails closed: the address could not be read.
+	trapDeny trapScope = iota
+	// trapContinue lets the syscall run. It carries no AF_UNIX address, so
+	// unix socket policy has nothing to judge.
+	trapContinue
+	// trapPolicy judges the AF_UNIX address with unix socket policy.
+	trapPolicy
+)
+
+// sockaddrTrapScope classifies a trapped connect, bind or sendto. The filter
+// traps these syscalls for every socket family because seccomp cannot read
+// the address, but only an AF_UNIX address is under unix socket policy. A
+// sendto without an address writes to a socket that is already connected and
+// was judged at connect. An address of any other family belongs to the network
+// policy. Both continue. An address that cannot be read fails closed.
+func sockaddrTrapScope(sc seccomp.ScmpSyscall, addrPtr, addrLen uint64, read func() ([]byte, error)) (trapScope, []byte, error) {
+	if sc == seccomp.ScmpSyscall(unix.SYS_SENDTO) && (addrPtr == 0 || addrLen == 0) {
+		return trapContinue, nil, nil
+	}
+	raw, err := read()
+	if err != nil {
+		return trapDeny, nil, err
+	}
+	if len(raw) < 2 {
+		return trapDeny, raw, fmt.Errorf("short sockaddr")
+	}
+	if *(*uint16)(unsafe.Pointer(&raw[0])) != unix.AF_UNIX {
+		return trapContinue, raw, nil
+	}
+	return trapPolicy, raw, nil
 }
 
 func isUnixSocketSyscall(sc seccomp.ScmpSyscall) bool {
@@ -320,7 +360,11 @@ func ServeNotifyWithExecve(ctx context.Context, fd *os.File, sessID string, pol 
 		op := syscallName(ctxReq.Syscall)
 		if ctxReq.Syscall == seccomp.ScmpSyscall(unix.SYS_SOCKET) || ctxReq.Syscall == seccomp.ScmpSyscall(unix.SYS_LISTEN) {
 			allow = true
-		} else if raw, err := ReadSockaddr(ctxReq.PID, ctxReq.AddrPtr, ctxReq.AddrLen); err == nil {
+		} else if scope, raw, err := sockaddrTrapScope(ctxReq.Syscall, ctxReq.AddrPtr, ctxReq.AddrLen, func() ([]byte, error) {
+			return ReadSockaddr(ctxReq.PID, ctxReq.AddrPtr, ctxReq.AddrLen)
+		}); scope == trapContinue {
+			allow = true
+		} else if scope == trapPolicy {
 			if p, abs, perr := ParseSockaddr(raw); perr == nil {
 				path, abstract = p, abs
 				dec := pol.CheckUnixSocket(path, op)
@@ -333,7 +377,7 @@ func ServeNotifyWithExecve(ctx context.Context, fd *os.File, sessID string, pol 
 				slog.Debug("unix socket: ParseSockaddr failed, denying", "session_id", sessID, "error", perr)
 			}
 		} else {
-			slog.Debug("unix socket: ReadSockaddr failed, denying", "session_id", sessID, "error", err)
+			slog.Debug("unix socket: sockaddr unreadable, denying", "session_id", sessID, "error", err)
 		}
 		if allow {
 			if err := NotifRespondContinue(int(scmpFD), req.ID); err != nil {

@@ -2,6 +2,9 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.8.x public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.8.6] - 2026-09-28 - CAW socket wrapper lets network calls through
+aep-caw-unixwrap traps connect, bind and sendto for every socket family because seccomp cannot read the address. Its handler judged only AF_UNIX addresses and refused everything else with EACCES and no audit row. Every TCP connect and every DNS query of a wrapped command failed. So did every send on a connected socket because such a send passes no address. The handler now lets a sendto without an address through. It lets an address of any other family through to the network policy. An AF_UNIX address still meets unix socket policy and an address that cannot be read still fails closed. The file rules, the command rules and the blocked socket families are unchanged. Verify with go test ./internal/netmonitor/unix/ in AEP-CAW.
+
 ## [2.8.6] - 2026-09-28 - Lattice and CAW config as GAP
 The Base Node reads its action lattice from a GAP file as well as from YAML. A lattice path that ends in .gap is read as GAP. Without AEP_LATTICE_YAML the data folder lattice.yaml wins over lattice.gap. The lattice sits in a kind: aep.lattice document with the same keys as lattice.yaml and goes through the same loader, so Admit decides alike on both. CAW reads a policy from the policy field of a kind: aep.caw.mount_policy document and its server config from the config field of a kind: aep.caw.server_config document. Both use the same strict decoder as YAML. A policy name resolves to name.yaml, then name.yml, then name.gap. The config search also tries config.gap. YAML remains fully supported. Verify with cargo test -p aep-envelope -p aep-base-node and go test ./internal/gapdoc/... ./internal/policy/... ./internal/config/... in AEP-CAW.
 
