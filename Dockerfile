@@ -10,10 +10,13 @@ COPY Cargo.toml Cargo.lock ./
 COPY .cargo/ ./.cargo/
 # Cargo loads every workspace member before it builds one package, so the
 # builder needs the whole AEP-Base-Node and AEP-Components trees. aep-admit
-# embeds AEP-Policy-System/reference/writing.gap at compile time.
+# embeds AEP-Policy-System/reference/writing.gap at compile time. The end to
+# end example is a workspace member too, so its manifest and source come along.
 COPY AEP-Base-Node ./AEP-Base-Node
 COPY AEP-Components ./AEP-Components
 COPY AEP-Policy-System ./AEP-Policy-System
+COPY AEP-User-Experience/examples/end-to-end-run/Cargo.toml ./AEP-User-Experience/examples/end-to-end-run/Cargo.toml
+COPY AEP-User-Experience/examples/end-to-end-run/src ./AEP-User-Experience/examples/end-to-end-run/src
 RUN cargo build --release -p aep-base-node -p aep-lattice-memory -p aep-ucb
 
 FROM debian:bookworm-slim AS node-deps

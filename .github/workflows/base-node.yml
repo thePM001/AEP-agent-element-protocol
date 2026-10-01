@@ -18,6 +18,18 @@ jobs:
       - name: cargo test -p aep-base-node --lib
         run: cargo test -p aep-base-node --lib
 
+  end-to-end-example:
+    name: cargo check -p aep-end-to-end-run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      # The end to end example is a workspace member, so a kernel type change
+      # that breaks it fails here by name.
+      - name: cargo check -p aep-end-to-end-run
+        run: cargo check -p aep-end-to-end-run
+
   probe:
     name: aep-base-node --health
     runs-on: ubuntu-latest

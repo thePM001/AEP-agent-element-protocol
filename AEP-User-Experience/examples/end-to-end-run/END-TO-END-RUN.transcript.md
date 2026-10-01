@@ -16,17 +16,17 @@ This note records one observed run of the end to end example in this folder. The
 > REFUSE 5 apply: collect all admit refused, so the plan holds no ledger allowance and no rate step and no row is written
 > REFUSE 6 caw exec: the wrapped command refused with exit 126: aep-caw: command denied by policy (rule=approve-curl-wget)
 > REFUSE 7 dock attach: the ingest refused with HTTP 422 and the DenyReport error is ManifestMissing and the closed walls are ucb.manifest=structural
-> REFUSE 8 ledger row: the refuse path wrote no row and the ledger count stays 0
+> REFUSE 8 ledger row: the refuse path wrote no row and the ledger count stays 2
 > 
 > == pass path
-> PASS 1 caw session: the session session-a1f5883d-f607-424d-8f65-0ec9f0e69f63 holds the workspace
+> PASS 1 caw session: the session session-fd02b572-7f58-453d-ace7-db9c12e5b898 holds the workspace
 > PASS 2 sealed capsule: the recipient key opened the capsule and the payload is aep-2.8.6-end-to-end-run
 > PASS 3 pulse: the seal stamp drifts 0 ms inside the 50 ms bound, the capsule waits at the seal beat and turns ready 1000 ms later
 > PASS 4 collect all: collect all ran every wall on the path and 0 walls closed
 > PASS 5 apply: the plan carries the ledger allowance and the rate step and the applied snapshot rate is 1
 > PASS 6 caw exec: the wrapped command returned exit 0 and the output is aep-2.8.6-end-to-end-pass
-> PASS 7 dock attach: the ingest returned status integrated and the admit row is event_id 1 allow true digest 30aae3f751b1...
-> PASS 8 ledger row: the pass path moved the ledger count from 0 to 2 and the newest row is id 2 agent agent-a event_type UCB_INGEST frame_digest 5235ccab3117...
+> PASS 7 dock attach: the ingest returned status integrated and the admit row is event_id 3 allow true digest ee32a2afa3a2...
+> PASS 8 ledger row: the pass path moved the ledger count from 2 to 4 and the newest row is id 4 agent agent-a event_type UCB_INGEST frame_digest 2ee4a9666b31...
 > 
 > == verdict
 > RESULT refuse path first and pass path second with the ledger row

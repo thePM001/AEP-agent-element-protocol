@@ -6,8 +6,6 @@ license = "Apache-2.0"
 description = "AEP 2.8.6 end to end run. One command walks every layer twice: the refuse path first and the pass path second."
 publish = false
 
-[workspace]
-
 [dependencies]
 aep-base-node = { path = "../../../AEP-Base-Node/AEP-Crate" }
 aep-base-node-pulse = { path = "../../../AEP-Components/base-node-pulse/crate" }

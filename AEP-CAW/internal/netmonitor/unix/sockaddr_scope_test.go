@@ -53,3 +53,35 @@ func TestSockaddrTrapScope(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractContextReadsTheAddressArgumentsOfEachSyscall(t *testing.T) {
+	req := func(sc int, args ...uint64) *seccomp.ScmpNotifReq {
+		r := &seccomp.ScmpNotifReq{Pid: 7}
+		r.Data.Syscall = seccomp.ScmpSyscall(sc)
+		r.Data.Args = make([]uint64, 6)
+		copy(r.Data.Args, args)
+		return r
+	}
+	// A one byte send on a connected socketpair, the asyncio loop wake-up:
+	// buf and len sit in arg1 and arg2, the destination is NULL.
+	send := ExtractContext(req(unix.SYS_SENDTO, 3, 0xbeef, 1, 0, 0, 0))
+	if send.AddrPtr != 0 || send.AddrLen != 0 {
+		t.Fatalf("sendto address = %#x/%d, want the NULL destination", send.AddrPtr, send.AddrLen)
+	}
+	if got, _, _ := sockaddrTrapScope(send.Syscall, send.AddrPtr, send.AddrLen, func() ([]byte, error) {
+		t.Fatal("payload read as a sockaddr")
+		return nil, nil
+	}); got != trapContinue {
+		t.Fatalf("connected sendto scope = %d, want trapContinue", got)
+	}
+	dest := ExtractContext(req(unix.SYS_SENDTO, 3, 0xbeef, 1, 0, 0xcafe, 16))
+	if dest.AddrPtr != 0xcafe || dest.AddrLen != 16 {
+		t.Fatalf("sendto destination = %#x/%d, want 0xcafe/16", dest.AddrPtr, dest.AddrLen)
+	}
+	for _, sc := range []int{unix.SYS_CONNECT, unix.SYS_BIND} {
+		c := ExtractContext(req(sc, 3, 0xcafe, 20))
+		if c.AddrPtr != 0xcafe || c.AddrLen != 20 || c.PID != 7 {
+			t.Fatalf("syscall %d context = %+v, want 0xcafe/20 for pid 7", sc, c)
+		}
+	}
+}

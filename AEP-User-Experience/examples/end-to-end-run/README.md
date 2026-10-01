@@ -5,9 +5,12 @@ One command walks every layer of the stack twice. The refuse path runs first and
 ## Run it
 
 - From the repository root run the script at `AEP-User-Experience/examples/end-to-end-run/run.sh`.
-- The first run builds the kernel binaries, the dock gateway and the execution layer binaries. Later runs reuse them.
+- The first run builds the kernel binaries, the dock gateway and the execution layer binaries. Later runs rebuild only what changed.
+- The run is a member of the root Cargo workspace, so `cargo build --workspace` and `cargo test --workspace` compile it and a kernel type change that breaks it fails the root build.
 - The run uses release binaries because the temporal wall measures the gap between the seal and the dock enqueue, so an unoptimized build signs slowly enough to cross the fifty millisecond bound.
 - The run writes its transcript into a quoted note beside this one, with the run directory and the two loopback ports replaced by tokens.
+- The run grants `root:ping` to `caw-kernel-dock` in its lattice and in a hub policy of its data folder, because the execution layer starts a command only after the validation dock admits that sealed ping. The same hub grants the attach agent its ingest path.
+- The run gives the Data Dock a free loopback port, so it does not collide with a Base Node that already serves on 8413.
 
 ## Layer order
 

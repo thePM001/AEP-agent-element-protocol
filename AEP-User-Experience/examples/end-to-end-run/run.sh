@@ -33,23 +33,27 @@ TRANSCRIPT="$HERE/END-TO-END-RUN.transcript.md"
 ATTACH_AGENT="agent-a"
 ATTACH_ACTION="ucb:ingest"
 ATTACH_SCENE="scene-ucb"
+KERNEL_DOCK_AGENT="caw-kernel-dock"
 
 log() {
   printf '%s\n' "$*" >&2
 }
 
 need_binaries() {
-  local missing=0
+  # Cargo rebuilds only what changed, so the run never uses a stale binary.
+  # The run is a member of the root workspace and shares its target dir.
+  log "building the kernel, the dock gateway and the run ($PROFILE)"
+  local profile_flag="--release"
+  if [ "$PROFILE" = "debug" ]; then
+    profile_flag=""
+  fi
+  ( cd "$ROOT" && cargo build $profile_flag -p aep-base-node --bins -p aep-ucb -p aep-end-to-end-run )
   for name in aep-base-node aep-lattice-log aep-ucb aep-end-to-end-run; do
     if [ ! -x "$BIN/$name" ]; then
-      missing=1
+      log "missing $BIN/$name after the build"
+      exit 1
     fi
   done
-  if [ "$missing" = "1" ]; then
-    log "building the kernel, the dock gateway and the run ($PROFILE)"
-    ( cd "$ROOT" && cargo build --release -p aep-base-node --bins -p aep-ucb )
-    ( cd "$ROOT" && cargo build --release --manifest-path "$HERE/Cargo.toml" )
-  fi
   if [ ! -x "$CAW_BIN" ]; then
     log "building CAW"
     ( cd "$CAW_DIR" && make build )
@@ -101,8 +105,17 @@ cat > "$RUN_DIR/base-node.json" <<JSON
 }
 JSON
 
+# The CAW kernel dock gate seals one root:ping as caw-kernel-dock before every
+# exec and lets the command start only when the validation dock admits it. The
+# run grants that ping in the lattice and in a hub policy of its data folder.
+# Once the data folder holds a hub, Admit reads every grant from it.
 cat > "$RUN_DIR/lattice.yaml" <<YAML
 actions:
+  root:ping:
+    category: system_event
+    parents: []
+    children: []
+    agent_permission: ["$KERNEL_DOCK_AGENT"]
   $ATTACH_ACTION:
     category: external_event
     parents: []
@@ -110,11 +123,76 @@ actions:
     agent_permission: ["$ATTACH_AGENT"]
 YAML
 
+mkdir -p "$RUN_DIR/gap/policies/reference"
+cat > "$RUN_DIR/gap/policies/reference/caw-kernel-dock.gap" <<GAP
+address:
+  domain: e2e.aep.caw
+  id: e2e-kernel-dock.v1
+
+pattern: |
+  The kernel dock grant of the end to end run. The CAW server seals one
+  root:ping as $KERNEL_DOCK_AGENT before every exec and the exec starts only
+  when the validation dock admits that ping.
+
+weight: 1.0
+
+composition:
+  type: atomic
+
+metadata:
+  provenance: "aep-end-to-end-run"
+  version: "1.0.0"
+  stability: stable
+  wrap: caw
+  agent_permission:
+    - agent_id: $KERNEL_DOCK_AGENT
+      action: root:ping
+---
+kind: aep.caw.profile
+profile_id: e2e-kernel-dock
+name: e2e-kernel-dock
+GAP
+
+# The hub of the data folder also grants the attach agent its ingest path, so
+# the pass ingest is admitted and the refuse ingest still fails on its manifest.
+cat > "$RUN_DIR/gap/policies/reference/caw-e2e-attach.gap" <<GAP
+address:
+  domain: e2e.aep.caw
+  id: e2e-attach.v1
+
+pattern: |
+  The attach grant of the end to end run. The dock gateway ingests one fact as
+  $ATTACH_AGENT on $ATTACH_ACTION and Admit lets it through only on this grant.
+
+weight: 1.0
+
+composition:
+  type: atomic
+
+metadata:
+  provenance: "aep-end-to-end-run"
+  version: "1.0.0"
+  stability: stable
+  wrap: caw
+  agent_permission:
+    - agent_id: $ATTACH_AGENT
+      action: $ATTACH_ACTION
+---
+kind: aep.caw.profile
+profile_id: e2e-attach
+name: e2e-attach
+GAP
+
 export AEP_DATA="$RUN_DIR"
 export AEP_SOCKET_BASE="$SOCK"
 export AEP_TASK_MANIFEST_DIR="$MANIFESTS"
 export AEP_LATTICE_LOG_BIN="$BIN/aep-lattice-log"
 export AEP_POLICY_SYSTEM_DIR="$POLICY_DIR"
+# The walk does not use the Data Dock, but the daemon binds it on boot. A free
+# loopback port keeps the run clear of a Base Node already serving on 8413.
+DATA_DOCK_PORT="$(free_port)"
+export DATA_DOCK_HOST=127.0.0.1
+export DATA_DOCK_PORT
 
 log "provisioning the attach agent sign key"
 "$BIN/aep-base-node" --config "$RUN_DIR/base-node.json" \

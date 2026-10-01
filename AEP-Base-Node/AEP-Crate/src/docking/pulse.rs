@@ -27,6 +27,7 @@ use std::time::Duration;
 use tokio::sync::{watch, Semaphore};
 use tokio::task::JoinHandle;
 
+#[derive(Clone)]
 pub(crate) struct HeldCapsule {
     pub(crate) frame: LatticeChannelFrame,
     pub(crate) plaintext: Vec<u8>,
@@ -68,6 +69,14 @@ impl Default for PulseState {
         pulse.last_applied_order.push_back(digest);
     }
 
+    /// Record the answer for a held digest and drop it from the held map in one step.
+    ///
+    /// A digest must sit in `held` or in `last_applied` at every instant that the
+    /// pulse lock is free, so a collect never finds it nowhere.
+    pub(crate) fn settle_held(pulse: &mut PulseState, digest: &str, resp: DockFrameResponse) {
+        pulse.held.remove(digest);
+        remember_applied(pulse, String::from(digest), resp);
+    }
 
 pub struct DockingRuntime {
     pub io: crate::dock_parts::DockIo,
@@ -404,8 +413,7 @@ pub fn pulse_beat(runtime: &DockingRuntime) -> BeatRelease {
 fn finish_aged(runtime: &DockingRuntime, cap: &QueuedCapsule) {
     let detail = String::from("pulse capsule aged out");
     if let Ok(mut pulse) = lock_or_deny(&runtime.record.pulse, "pulse") {
-        pulse.held.remove(&cap.digest);
-        remember_applied(&mut pulse, cap.digest.clone(), deny_closed(
+        settle_held(&mut pulse, &cap.digest, deny_closed(
                 Some(cap.digest.clone()),
                 detail.clone(),
                 "time.authority",

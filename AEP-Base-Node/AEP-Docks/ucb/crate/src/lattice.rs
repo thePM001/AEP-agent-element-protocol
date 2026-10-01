@@ -165,7 +165,7 @@ impl LatticeRuntime {
                     .await
                     .map_err(|e| LatticeDeny::msg(e.to_string()))?;
                 resp = serde_json::from_str(line.trim()).map_err(|e| LatticeDeny::msg(e.to_string()))?;
-                if resp.ok && resp.deny.is_none() && resp.event_id.is_none() {
+                if admit_pending(&resp) || (resp.ok && resp.deny.is_none() && resp.event_id.is_none()) {
                     tokio::time::sleep(Duration::from_millis(50)).await;
                 }
             }
@@ -207,8 +207,15 @@ pub fn admit_allow(resp: &DockResponse) -> bool {
     resp.ok && resp.deny.is_none() && resp.event_id.is_some()
 }
 
+pub fn admit_pending(resp: &DockResponse) -> bool {
+    resp.pending == Some(true) && resp.deny.is_none() && resp.event_id.is_none()
+}
+
 pub fn admit_deny(resp: &DockResponse) -> bool {
-    resp.ok == false || resp.deny.is_some()
+    if resp.deny.is_some() {
+        return true;
+    }
+    resp.ok == false && admit_pending(resp) == false
 }
 
 fn collect_digest(resp: &DockResponse) -> Option<String> {
@@ -255,6 +262,10 @@ pub struct DockResponse {
     pub deny: Option<DenyReport>,
     #[serde(default)]
     pub allow: Option<Value>,
+    /// Set while the frame waits for the pulse. The dock answers ok false with
+    /// no deny until Admit runs, so a pending answer is not a refusal.
+    #[serde(default)]
+    pub pending: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -360,6 +371,7 @@ mod tests {
             error: None,
             deny: None,
             allow: None,
+            pending: None,
         };
         assert_eq!(admit_allow(&resp), false);
         assert_eq!(admit_deny(&resp), false);
@@ -375,9 +387,32 @@ mod tests {
             error: None,
             deny: None,
             allow: None,
+            pending: None,
         };
         assert!(admit_allow(&resp));
         assert_eq!(admit_deny(&resp), false);
+    }
+
+    #[test]
+    fn held_frame_pending_is_not_admit_deny() {
+        // The dock answers a frame held for the pulse with ok false, no deny
+        // and pending true. That answer asks for a collect and is not a refusal.
+        let resp: DockResponse = serde_json::from_str(
+            r#"{"ok":false,"event_id":null,"digest":"abc","error":null,"deny":null,"pending":true}"#,
+        )
+        .expect("pending answer");
+        assert!(admit_pending(&resp));
+        assert_eq!(admit_allow(&resp), false);
+        assert_eq!(admit_deny(&resp), false);
+        assert_eq!(collect_digest(&resp).as_deref(), Some("abc"));
+    }
+
+    #[test]
+    fn ok_false_without_pending_is_admit_deny() {
+        let resp: DockResponse =
+            serde_json::from_str(r#"{"ok":false,"digest":"abc","error":"collect unknown digest"}"#).expect("deny answer");
+        assert_eq!(admit_pending(&resp), false);
+        assert!(admit_deny(&resp));
     }
 
     #[test]
@@ -389,6 +424,7 @@ mod tests {
             error: Some(String::from("closed")),
             deny: Some(DenyReport::from_error("closed")),
             allow: None,
+            pending: None,
         };
         assert_eq!(admit_allow(&resp), false);
         assert!(admit_deny(&resp));
@@ -483,6 +519,7 @@ mod tests {
             error: Some(err.error.clone()),
             deny: err.deny.clone(),
             allow: err.allow.clone(),
+            pending: None,
         };
         assert_eq!(admit_allow(&resp), false);
         assert!(admit_deny(&resp));

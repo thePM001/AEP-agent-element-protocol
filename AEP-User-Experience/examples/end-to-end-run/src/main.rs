@@ -553,7 +553,7 @@ fn run_main() -> Result<(), String> {
 
     let refuse_closed: Vec<ClosedWall> = kernel
         .refuse_admit
-        .closed_walls
+        .closed
         .iter()
         .map(|w| ClosedWall::new(w.id.clone(), w.reason.clone()))
         .collect();
@@ -716,7 +716,7 @@ fn run_main() -> Result<(), String> {
 
     let pass_closed: Vec<String> = kernel
         .pass_admit
-        .closed_walls
+        .closed
         .iter()
         .map(|w| w.id.clone())
         .collect();

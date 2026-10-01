@@ -411,6 +411,7 @@ fn ingest_from_lattice_deny(e: LatticeDeny) -> Value {
         error: Some(e.error.clone()),
         deny: e.deny.clone(),
         allow: e.allow.clone(),
+        pending: None,
     };
     let rows = vec![admit_ledger_row(&docked)];
     let body = if let Some(deny) = e.deny {
@@ -675,6 +676,7 @@ mod tests {
             error: None,
             deny: None,
             allow: None,
+            pending: None,
         }
     }
 
@@ -686,6 +688,7 @@ mod tests {
             error: None,
             deny: None,
             allow: Some(Value::Bool(true)),
+            pending: None,
         }
     }
 
@@ -697,6 +700,7 @@ mod tests {
             error: Some(String::from("Admit denied")),
             deny: Some(DenyReport::from_error("Admit denied")),
             allow: Some(Value::Bool(false)),
+            pending: None,
         }
     }
 

@@ -1,11 +1,12 @@
 //! Collect-all Admit then Apply for held dock capsules.
 
+use super::pulse::{settle_held, HeldCapsule};
 use super::{
-    attach_gateway_http_after_allow, remember_applied, deny_closed, deny_resp, deny_resp_report, dock_lock, lock_or_deny,
+    attach_gateway_http_after_allow, deny_closed, deny_resp, deny_resp_report, dock_lock, lock_or_deny,
     port_event_type, DockFrameResponse, DockingRuntime,
 };
 use aep_lattice_channel::DockingPort;
-use aep_wall_set_backpressure::CLASS_CAPABILITY;
+use aep_wall_set_backpressure::{CLASS_CAPABILITY, CLASS_SECURITY};
 use crate::dock_keys::decode_signer_public_hex;
 use crate::envelope_admit::admit_sealed_payload_report;
 use crate::{
@@ -167,14 +168,67 @@ pub(crate) fn resolve_agent_bundle(
     Ok(entry.clone())
 }
 
+/// Settles a held digest with a Deny when the apply step ends before it recorded an answer.
+///
+/// The frame remains in the held map while Admit runs. If the step unwinds, this
+/// guard moves the digest out of the held map with a closed answer, so a caller
+/// that collects later reads a Deny and never waits on a frame nobody will finish.
+pub(crate) struct HeldGuard<'a> {
+    runtime: &'a DockingRuntime,
+    digest: &'a str,
+    settled: bool,
+}
+
+impl<'a> HeldGuard<'a> {
+    pub(crate) fn new(runtime: &'a DockingRuntime, digest: &'a str) -> Self {
+        Self { runtime, digest, settled: false }
+    }
+
+    pub(crate) fn settle(&mut self, resp: DockFrameResponse) {
+        self.settled = true;
+        if let Ok(mut pulse) = lock_or_deny(&self.runtime.record.pulse, "pulse") {
+            settle_held(&mut pulse, self.digest, resp);
+        }
+    }
+}
+
+impl Drop for HeldGuard<'_> {
+    fn drop(&mut self) {
+        if self.settled {
+            return;
+        }
+        self.settle(deny_closed(
+            Some(String::from(self.digest)),
+            String::from("apply ended before the answer was recorded"),
+            "apply.interrupted",
+            CLASS_SECURITY,
+        ));
+    }
+}
+
+/// Run Admit then Apply for one released capsule.
+///
+/// The frame is copied out of the held map and remains there while Admit runs.
+/// The answer is recorded and the frame leaves the held map in the same pulse
+/// lock step, so a collect that arrives at any moment reads pending or the answer.
 pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_pulse::QueuedCapsule) {
     let held = match lock_or_deny(&runtime.record.pulse, "pulse") {
-        Ok(mut pulse) => match pulse.held.remove(&cap.digest) {
-            Some(h) => h,
+        Ok(pulse) => match pulse.held.get(&cap.digest) {
+            Some(h) => h.clone(),
             None => return,
         },
         Err(_) => return,
     };
+    let mut guard = HeldGuard::new(runtime, &cap.digest);
+    let resp = answer_held_capsule(runtime, cap, &held);
+    guard.settle(resp);
+}
+
+fn answer_held_capsule(
+    runtime: &DockingRuntime,
+    cap: &aep_base_node_pulse::QueuedCapsule,
+    held: &HeldCapsule,
+) -> DockFrameResponse {
     let dock = aep_admit_live_dock::LiveDockContext::from_open_frame(
         &held.frame.channel_id,
         &held.frame.agent_id,
@@ -189,12 +243,7 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
             live.clear_temporal_freeze();
             r
         }
-        Err(resp) => {
-            if let Ok(mut pulse) = lock_or_deny(&runtime.record.pulse, "pulse") {
-                remember_applied(&mut pulse, cap.digest.clone(), resp);
-            }
-            return;
-        }
+        Err(resp) => return resp,
     };
     if let Err(report) = admit_res {
         let detail = report.error.clone();
@@ -207,29 +256,21 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
                 detail.clone(),
             );
         }
-        if let Ok(mut pulse) = lock_or_deny(&runtime.record.pulse, "pulse") {
-                remember_applied(&mut pulse, cap.digest.clone(), deny_resp_report(Some(cap.digest.clone()), detail, report));
-        }
-        return;
+        return deny_resp_report(Some(cap.digest.clone()), detail, report);
     }
-    if true {
-        let action = match serde_json::from_slice::<Value>(&held.plaintext) {
-            Ok(v) => match v.get("action_path") {
-                Some(x) => match x.as_str() {
-                    Some(p) => String::from(p),
-                    None => String::new(),
-                },
+    let action = match serde_json::from_slice::<Value>(&held.plaintext) {
+        Ok(v) => match v.get("action_path") {
+            Some(x) => match x.as_str() {
+                Some(p) => String::from(p),
                 None => String::new(),
             },
-            Err(_) => String::new(),
-        };
-        if action.is_empty() == false {
-            if runtime.admit.hub.agent_may(&held.frame.agent_id, &action) == false {
-                if let Ok(mut pulse) = lock_or_deny(&runtime.record.pulse, "pulse") {
-                    remember_applied(&mut pulse, cap.digest.clone(), deny_closed(Some(cap.digest.clone()), String::from("hub permission denied"), "gap.agent_permission", CLASS_CAPABILITY));
-                }
-                return;
-            }
+            None => String::new(),
+        },
+        Err(_) => String::new(),
+    };
+    if action.is_empty() == false {
+        if runtime.admit.hub.agent_may(&held.frame.agent_id, &action) == false {
+            return deny_closed(Some(cap.digest.clone()), String::from("hub permission denied"), "gap.agent_permission", CLASS_CAPABILITY);
         }
     }
     if held.expected_port == DockingPort::RegulationModule {
@@ -252,33 +293,29 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
     } else {
         port_event_type(&held.expected_port)
     };
-            let mut http_resp = DockFrameResponse {
-                ok: true,
-                event_id: None,
-                digest: Some(cap.digest.clone()),
-                error: None,
-                pong: None,
-                http: None,
-                deny: None,
-                pending: None,
-            http_queued: None,
-            };
-            attach_gateway_http_after_allow(&held.plaintext, &mut http_resp);
-    if http_resp.ok {
-            let recorded = match lock_or_deny(&runtime.record.db, "db") {
-        Ok(db) => record_channel_frame(&db, &held.frame, event_type, &held.bundle, None),
-        Err(resp) => {
-            if let Ok(mut pulse) = lock_or_deny(&runtime.record.pulse, "pulse") {
-                remember_applied(&mut pulse, cap.digest.clone(), resp);
-            }
-            return;
-        }
+    let mut http_resp = DockFrameResponse {
+        ok: true,
+        event_id: None,
+        digest: Some(cap.digest.clone()),
+        error: None,
+        pong: None,
+        http: None,
+        deny: None,
+        pending: None,
+        http_queued: None,
     };
-
-    let resp = match recorded {
+    attach_gateway_http_after_allow(&held.plaintext, &mut http_resp);
+    if http_resp.ok == false {
+        return http_resp;
+    }
+    let recorded = match lock_or_deny(&runtime.record.db, "db") {
+        Ok(db) => record_channel_frame(&db, &held.frame, event_type, &held.bundle, None),
+        Err(resp) => return resp,
+    };
+    match recorded {
         Ok(event_id) => {
             crate::dock_event!(debug, crate::dock_log::DockEvent::FrameApply, event_id, digest = %cap.digest, "frame applied");
-            let resp = DockFrameResponse {
+            DockFrameResponse {
                 ok: true,
                 event_id: Some(event_id),
                 digest: Some(cap.digest.clone()),
@@ -287,18 +324,9 @@ pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_p
                 http: http_resp.http,
                 deny: None,
                 pending: None,
-            http_queued: None,
-            };
-            resp
+                http_queued: None,
+            }
         }
         Err(e) => deny_resp(None, e.to_string()),
-    };
-    if let Ok(mut pulse) = lock_or_deny(&runtime.record.pulse, "pulse") {
-        remember_applied(&mut pulse, cap.digest.clone(), resp);
-    }
-    } else {
-    if let Ok(mut pulse) = lock_or_deny(&runtime.record.pulse, "pulse") {
-        remember_applied(&mut pulse, cap.digest.clone(), http_resp);
     }
 }
-    }

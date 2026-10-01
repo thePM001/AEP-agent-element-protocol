@@ -191,11 +191,19 @@ type Context struct {
 
 // ExtractContext maps a notify request to our simplified context.
 func ExtractContext(req *seccomp.ScmpNotifReq) Context {
+	// connect(fd, addr, addrlen) and bind(fd, addr, addrlen) carry the
+	// sockaddr in arg1 and arg2. sendto(fd, buf, len, flags, dest_addr,
+	// addrlen) carries it in arg4 and arg5: arg1 and arg2 are the payload, so
+	// reading them would judge the bytes sent instead of the destination.
+	addrPtr, addrLen := req.Data.Args[1], req.Data.Args[2]
+	if req.Data.Syscall == seccomp.ScmpSyscall(unix.SYS_SENDTO) {
+		addrPtr, addrLen = req.Data.Args[4], req.Data.Args[5]
+	}
 	return Context{
 		PID:     int(req.Pid),
 		Syscall: req.Data.Syscall,
-		AddrPtr: req.Data.Args[1], // for connect/bind/sendto: arg1 = sockaddr
-		AddrLen: req.Data.Args[2],
+		AddrPtr: addrPtr,
+		AddrLen: addrLen,
 	}
 }
 

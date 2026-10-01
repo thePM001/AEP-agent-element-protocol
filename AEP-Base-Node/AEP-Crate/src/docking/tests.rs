@@ -1055,6 +1055,187 @@
         assert_eq!(applied.pending, None);
     }
 
+    fn collect_line(digest: &str) -> String {
+        format!("{{\"collect\":\"{digest}\"}}")
+    }
+
+    fn answer_is_pending(resp: &DockFrameResponse) -> bool {
+        resp.pending == Some(true) && resp.event_id.is_none()
+    }
+
+    fn plant_race_agents(dir: &std::path::Path, agents: &[String]) {
+        let mut text = String::from("metadata:\n  wrap: caw\n  agent_permission:\n");
+        for agent in agents {
+            text.push_str(&format!("    - agent_id: {agent}\n      action: root:ping\n"));
+        }
+        let reference = dir.join("gap").join("policies").join("reference");
+        std::fs::create_dir_all(&reference).expect("hub dir");
+        std::fs::write(reference.join("caw-race.gap"), text).expect("race hub");
+    }
+
+    #[test]
+    fn collect_while_admit_runs_reads_pending_never_unknown_digest() {
+        let (_dir, rt) = temp_runtime();
+        install_agent_manifest(&rt, "AG-HELD", "sess-held");
+        set_pulse_clock(&rt, 1_000_000);
+        let (_frame, line) = build_test_frame(
+            &rt,
+            "ch-admit-gap",
+            "AG-HELD",
+            "sess-held",
+            DockingPort::ValidationEngine,
+            "dynaep-action-lattice",
+            admit_ok_payload(),
+            1,
+        );
+        let enq = process_request(&rt, &DockingPort::ValidationEngine, &line);
+        assert_eq!(enq.pending, Some(true));
+        let digest = enq.digest.clone().unwrap();
+        set_pulse_clock(&rt, 1_000_000 + PULSE_MS);
+        // Holding the live entry parks the apply step inside Admit, which is the
+        // gap where another client used to find the digest nowhere.
+        let parked = rt.admit.live_entry.lock().expect("live entry");
+        let mid_answers = std::thread::scope(|scope| {
+            let beat = scope.spawn(|| pulse_beat(&rt));
+            let limit = std::time::Instant::now() + std::time::Duration::from_secs(10);
+            while rt.record.pulse.lock().expect("pulse").queue.is_empty() == false {
+                assert!(std::time::Instant::now() < limit, "the beat never released the capsule");
+                std::thread::yield_now();
+            }
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            let mut seen = Vec::new();
+            for _ in 0..20 {
+                seen.push(process_request(&rt, &DockingPort::ValidationEngine, &collect_line(&digest)));
+            }
+            drop(parked);
+            beat.join().expect("beat");
+            seen
+        });
+        for mid in &mid_answers {
+            assert_eq!(mid.error, None, "collect in the Admit gap answered {:?}", mid.error);
+            assert!(mid.deny.is_none());
+            assert!(answer_is_pending(mid));
+            assert_eq!(mid.digest.as_deref(), Some(digest.as_str()));
+        }
+        let applied = process_request(&rt, &DockingPort::ValidationEngine, &collect_line(&digest));
+        assert!(applied.ok, "{:?}", applied.error);
+        assert!(applied.event_id.is_some());
+        assert_eq!(applied.digest.as_deref(), Some(digest.as_str()));
+        assert!(rt.record.pulse.lock().expect("pulse").held.is_empty());
+    }
+
+    #[test]
+    fn held_guard_answers_a_frame_whose_apply_ended_early() {
+        let (_dir, rt) = temp_runtime();
+        install_agent_manifest(&rt, "AG-HELD", "sess-held");
+        set_pulse_clock(&rt, 1_000_000);
+        let (_frame, line) = build_test_frame(
+            &rt,
+            "ch-guard",
+            "AG-HELD",
+            "sess-held",
+            DockingPort::ValidationEngine,
+            "dynaep-action-lattice",
+            admit_ok_payload(),
+            1,
+        );
+        let enq = process_request(&rt, &DockingPort::ValidationEngine, &line);
+        let digest = enq.digest.clone().unwrap();
+        {
+            let _guard = super::apply::HeldGuard::new(&rt, &digest);
+        }
+        let answer = process_request(&rt, &DockingPort::ValidationEngine, &collect_line(&digest));
+        assert_eq!(answer.ok, false);
+        assert_eq!(answer.pending, None);
+        let deny = answer.deny.expect("deny report");
+        assert!(deny.closed.iter().any(|w| w.id == "apply.interrupted"));
+        assert!(rt.record.pulse.lock().expect("pulse").held.is_empty());
+    }
+
+    #[test]
+    fn many_parallel_writers_each_collect_their_admit_answer() {
+        const WRITERS: usize = 16;
+        const ROUNDS: usize = 8;
+        let agents: Vec<String> = (0..WRITERS).map(|i| format!("AG-RACE-{i}")).collect();
+        let dir = tempfile::tempdir().expect("tempdir");
+        plant_lattice(dir.path());
+        plant_race_agents(dir.path(), &agents);
+        let (_dir, rt) = runtime_in(dir);
+        for (i, agent) in agents.iter().enumerate() {
+            install_agent_manifest(&rt, agent, &format!("sess-race-{i}"));
+        }
+        let port = DockingPort::ValidationEngine;
+        for round in 0..ROUNDS {
+            set_pulse_clock(&rt, 1_000_000);
+            let lines: Vec<String> = agents
+                .iter()
+                .enumerate()
+                .map(|(i, agent)| {
+                    let payload = admit_ok_payload_seq(round as i64 + 1);
+                    build_test_frame(
+                        &rt,
+                        &format!("ch-race-{i}"),
+                        agent,
+                        &format!("sess-race-{i}"),
+                        DockingPort::ValidationEngine,
+                        "dynaep-action-lattice",
+                        &payload,
+                        round as u64 + 1,
+                    )
+                    .1
+                })
+                .collect();
+            let start = std::sync::Barrier::new(WRITERS);
+            let digests: Vec<String> = std::thread::scope(|scope| {
+                let handles: Vec<_> = lines
+                    .iter()
+                    .map(|line| {
+                        let (rt, start, port) = (&rt, &start, &port);
+                        scope.spawn(move || {
+                            start.wait();
+                            let enq = process_request(rt, port, line);
+                            assert_eq!(enq.pending, Some(true), "{:?}", enq.error);
+                            enq.digest.expect("digest")
+                        })
+                    })
+                    .collect();
+                handles.into_iter().map(|h| h.join().expect("writer")).collect()
+            });
+            set_pulse_clock(&rt, 1_000_000 + PULSE_MS);
+            let start = std::sync::Barrier::new(WRITERS);
+            let answers: Vec<DockFrameResponse> = std::thread::scope(|scope| {
+                let handles: Vec<_> = digests
+                    .iter()
+                    .map(|digest| {
+                        let (rt, start, port) = (&rt, &start, &port);
+                        scope.spawn(move || {
+                            start.wait();
+                            let request = collect_line(digest);
+                            let limit = std::time::Instant::now() + std::time::Duration::from_secs(60);
+                            loop {
+                                let resp = process_request(rt, port, &request);
+                                if answer_is_pending(&resp) == false {
+                                    return resp;
+                                }
+                                assert!(std::time::Instant::now() < limit, "collect was still pending");
+                                std::thread::yield_now();
+                            }
+                        })
+                    })
+                    .collect();
+                handles.into_iter().map(|h| h.join().expect("collector")).collect()
+            });
+            for (digest, answer) in digests.iter().zip(answers.iter()) {
+                let error = answer.error.clone().unwrap_or_default();
+                assert!(error.contains("unknown digest") == false, "round {round}: {error}");
+                assert!(answer.ok, "round {round}: {error}");
+                assert!(answer.event_id.is_some());
+                assert_eq!(answer.digest.as_deref(), Some(digest.as_str()));
+            }
+            super::pulse::pulse_decay_rate(&rt);
+        }
+        assert!(rt.record.pulse.lock().expect("pulse").held.is_empty());
+    }
 
     fn must_drift_not_pulse() {
         assert_ne!(MAX_DRIFT_MS, PULSE_MS);

@@ -35,7 +35,7 @@ use apply::{
     resolve_agent_bundle, resolve_signer_public,
 };
 use freshness::frame_is_fresh;
-use pulse::{collect_applied, pulse_enqueue, remember_applied};
+use pulse::{collect_applied, pulse_enqueue};
 use rate::rate_limit_response;
 use serve::DockRequest;
 
