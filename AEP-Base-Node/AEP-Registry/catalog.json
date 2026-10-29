@@ -544,17 +544,6 @@
       "role": "companion"
     },
     {
-      "id": "aep-comm",
-      "name": "AEP Communication",
-      "kind": "library",
-      "bundled": true,
-      "default_enabled": false,
-      "path": "AEP-Components/aep-comm/",
-      "description": "Inter-agent communication helpers.",
-      "manifest": "AEP-Base-Node/AEP-Registry/components/aep-comm.json",
-      "role": "companion"
-    },
-    {
       "id": "eval",
       "name": "Eval Lifecycle",
       "kind": "library",

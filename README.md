@@ -467,7 +467,7 @@ Coding governance proposes a change, measures how far that change reaches and on
 | Directory | Role |
 |-----------|------|
 | [`AEP-Base-Node/`](AEP-Base-Node/) | Kernel: daemon, registry, POTOMITAN, agent-control-hub |
-| [`AEP-Components/`](AEP-Components/) | Protocol components (dynAEP, lattice-channels, graph-engine, aep-comm, economics, scanners, fleet) |
+| [`AEP-Components/`](AEP-Components/) | Protocol components (dynAEP, lattice-channels, graph-engine, economics, scanners, fleet) |
 | [`AEP-CAW/`](AEP-CAW/) | Execution companion: CAW host sandboxes. An incorporated part of AEP that runs on the host |
 | [`AEP-User-Experience/`](AEP-User-Experience/) | Harness, operator scripts, AEP-main-skill |
 | [`AEP-Base-Node/AEP-Docks/`](AEP-Base-Node/AEP-Docks/) | UCB + UCD socket dock specs and servers |
@@ -699,28 +699,6 @@ await graph.execute({ input: context });
 
 With no gate, execute refuses to run the node and does not tick the local clock.
 
-## AEP-Comm universal orchestration
-
-AEP-Comm is the agent-to-agent orchestration layer. Agents use it to find each other, send work and hand a task to another agent with retry. It is a protocol component, not a second kernel. TypeScript dynAEP remains a standalone component.
-
-### Find other agents
-
-Each agent publishes a card that names what it can do. A registry holds those cards. A distributed hash table (an in-memory lookup that expires stale entries) plus a periodic health exchange keep the set of live peers current.
-
-### Send work
-
-Messages travel as a JSON-LD envelope, meaning a typed JSON document with linked-data fields, through a router that uses the lattice action path. Each agent has a priority inbox. Live sockets use WebSocket. When a socket cannot stay open, a server-sent-events path (a one-way event stream from server to client) with a POST fallback carries the same envelope.
-
-### Hand off a task
-
-A task moves through eight states and can push a notification when the state changes. Sensitive steps can wait for a human. Delegation picks another agent by a named capability and retries if that agent fails. Isolated code execution sits behind written policy.
-
-### Resources and prompts
-
-Tool resources and parameterized prompts follow the same orchestration so a tool list and a prompt template are not a side channel around the kernel check.
-
-The component lives at [`AEP-Components/aep-comm/`](AEP-Components/aep-comm/). Evidence can sit on an optional paid Agentstream backend.
-
 ---
 
 ## Capability inventory
@@ -741,7 +719,6 @@ The component lives at [`AEP-Components/aep-comm/`](AEP-Components/aep-comm/). E
 | Commerce | 3 | 12 governed actions, merchant registry, spend tracking |
 | **AEP Hyperlattice** | 17 | Scene validation, GAP policy nodes, `action_path` event nodes, temporal authority, causal ordering, perception gov, observer adapters, compliance LRP docks, join/meet, who may do what per agent, Lattice Channel wrap |
 | AEP-Graph | 6 | Action, decision, wait, parallel, loop nodes, checkpoints, admitGate default deny |
-| AEP-Comm | 14 | Agent cards, discovery, messaging, task hand-off, human gate and isolated code execution |
 | Security | 4 | Hash-chained ledger, proof bundles, OTEL, reliability index (theta) |
 | Builders | 2 | Schema Builder (not wired to Docker), Policy Builder |
 | **2.8 kernel additions** | 13 | Base Node, Lattice Channels, AgentMesh, Lattice Memory, POTOMITAN, dynAEP merge, wizard, registry, conformance and UCB |

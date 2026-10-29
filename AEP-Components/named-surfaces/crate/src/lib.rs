@@ -1,4 +1,4 @@
-// Named surfaces execute so CodeSandbox runs agent code while transpilers emit GAP and MCP backend transport forwards allowed calls.
+// Named surfaces execute so transpilers emit GAP and MCP backend transport forwards allowed calls.
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
@@ -14,9 +14,8 @@ fn walk_to_workspace() -> PathBuf {
     while i < 12 {
         let probe = dir
             .join("AEP-Components")
-            .join("aep-comm")
-            .join("lib")
-            .join("code-sandbox.ts");
+            .join("named-surfaces")
+            .join("README.md");
         if probe.is_file() {
             return dir;
         }
@@ -147,11 +146,6 @@ fn must_read(root: &PathBuf, parts: &[&str], label: &str) -> Result<String, Stri
 
 pub fn run_named_surface_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
-    let sandbox_src = must_read(&root, &["AEP-Components", "aep-comm", "lib", "code-sandbox.ts"], "code-sandbox");
-    let sandbox_src = match sandbox_src {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
     let cedar_src = match must_read(&root, &["AEP-Components", "policy-engine", "lib", "policy", "transpilers", "cedar-to-gap.ts"], "cedar-to-gap") {
         Ok(v) => v,
         Err(e) => return Err(e),
@@ -180,10 +174,6 @@ pub fn run_named_surface_gate() -> Result<i32, String> {
         Ok(v) => v,
         Err(e) => return Err(e),
     };
-    let comm_readme_src = match must_read(&root, &["AEP-Components", "aep-comm", "README.md"], "aep-comm README") {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
     let proxy_readme_src = match must_read(&root, &["AEP-Components", "proxy", "README.md"], "proxy README") {
         Ok(v) => v,
         Err(e) => return Err(e),
@@ -193,10 +183,6 @@ pub fn run_named_surface_gate() -> Result<i32, String> {
         Err(e) => return Err(e),
     };
     let mut proofs: Vec<String> = Vec::new();
-    match scan_code_sandbox_executes(&sandbox_src) {
-        Ok(v) => proofs.push(v),
-        Err(e) => return Err(e),
-    }
     match scan_transpilers_emit_gap(&cedar_src) {
         Ok(v) => proofs.push(v),
         Err(e) => return Err(e),
@@ -225,10 +211,6 @@ pub fn run_named_surface_gate() -> Result<i32, String> {
         Ok(v) => proofs.push(v),
         Err(e) => return Err(e),
     }
-    if comm_readme_src.to_ascii_lowercase().contains("codesandbox") == false || comm_readme_src.to_ascii_lowercase().contains("execut") == false {
-        return Err(String::from("aep-comm README missing CodeSandbox execute"));
-    }
-    proofs.push(String::from("ok aep-comm README"));
     if proxy_readme_src.to_ascii_lowercase().contains("mcp") == false || proxy_readme_src.to_ascii_lowercase().contains("forward") == false {
         return Err(String::from("proxy README missing MCP forward"));
     }

@@ -1,6 +1,4 @@
-import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { CodeSandbox } from "../aep-comm/lib/code-sandbox.ts";
 import { transpileCedarToGap } from "../policy-engine/lib/policy/transpilers/cedar-to-gap.ts";
 import { transpileRegoToGap } from "../policy-engine/lib/policy/transpilers/rego-to-gap.ts";
 import { transpileGapToCedar } from "../policy-engine/lib/policy/transpilers/gap-to-cedar.ts";
@@ -8,66 +6,6 @@ import { transpileGapToRego } from "../policy-engine/lib/policy/transpilers/gap-
 import { forwardMcpCall } from "../proxy/lib/mcp-backend.ts";
 
 async function main(): Promise<void> {
-  const data = join(process.cwd(), ".aep-named-surfaces-data");
-  mkdirSync(data, { recursive: true });
-  process.env.AEP_DATA = data;
-
-  const box = new CodeSandbox({ maxTimeoutMs: 20000 });
-  const bash = await box.execute({
-    code: "echo sandbox-live",
-    language: "bash",
-    timeoutMs: 9000,
-  });
-  if (bash.exitCode !== 0 || bash.stdout.indexOf("sandbox-live") < 0) {
-    throw new Error("bash execute failed: " + bash.stderr + bash.stdout);
-  }
-
-  const py = await box.execute({
-    code: "print(2+2)",
-    language: "python",
-    timeoutMs: 9000,
-  });
-  if (py.exitCode !== 0 || py.stdout.indexOf("4") < 0) {
-    throw new Error("python execute failed: " + py.stderr + py.stdout);
-  }
-
-  const js = await box.execute({
-    code: "console.log(3)",
-    language: "javascript",
-    timeoutMs: 9000,
-  });
-  if (js.exitCode !== 0 || js.stdout.indexOf("3") < 0) {
-    throw new Error("javascript execute failed: " + js.stderr + js.stdout);
-  }
-
-  const ts = await box.execute({
-    code: "const x: number = 1;\nconsole.log(x);\n",
-    language: "typescript",
-    timeoutMs: 9000,
-  });
-  if (ts.exitCode !== 0 || ts.stdout.indexOf("1") < 0) {
-    throw new Error("typescript execute failed: " + ts.stderr + ts.stdout);
-  }
-
-  const empty = await box.execute({
-    code: "   ",
-    language: "bash",
-    timeoutMs: 2000,
-  });
-  if (empty.exitCode === 0 || empty.stderr.indexOf("empty code refused") < 0) {
-    throw new Error("empty code must be refused");
-  }
-
-  const escape = await box.execute({
-    code: "echo no",
-    language: "bash",
-    timeoutMs: 2000,
-    files: { "../escape.txt": "nope" },
-  });
-  if (escape.exitCode === 0 || escape.stderr.indexOf("path escape refused") < 0) {
-    throw new Error("path escape must be refused");
-  }
-
   let emptyCedarThrew = false;
   try {
     transpileCedarToGap("  ");
