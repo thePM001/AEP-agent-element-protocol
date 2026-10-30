@@ -5,12 +5,12 @@ This page is the public documentation. Docs live only here.
 
 ## Models
 
-AdmitConjunction lives at AEP-Policy-System/tla.
+AdmitConjunction lives at AEP-Components/verification/tla.
 Every Admit is the conjunction of the named invariants. Dropping one conjunct is a counterexample.
-DockPulse lives at AEP-Base-Node/specs/tla. The kernel order is seal, freeze, wait, collect every Admit, then Apply.
-WrapComplete lives at AEP-Base-Node/specs/tla. A wrap succeeds only when scene, action paths, written policy and dock channels are all present.
-TemporalBounds lives at AEP-Base-Node/specs/tla. Time windows match the temporal bounds crate under AEP-Components.
-LastApplied lives at AEP-Base-Node/specs/tla. The last applied map is monotonic and bounded.
+DockPulse lives at AEP-Components/verification/tla. The kernel order is seal, freeze, wait, collect every Admit, then Apply.
+WrapComplete lives at AEP-Components/verification/tla. A wrap succeeds only when scene, action paths, written policy and dock channels are all present.
+TemporalBounds lives at AEP-Components/verification/tla. Time windows match the temporal bounds crate under AEP-Components.
+LastApplied lives at AEP-Components/verification/tla. The last applied map is monotonic and bounded.
 Each model is a named MODULE with a sibling cfg file.
 
 ## Checker
@@ -27,4 +27,4 @@ GAP remains the one form for writing Admit. A TLA plus pass never replaces GAP.
 
 cargo test -p aep-tla-verify
 
-/* nla-type-salt: 8 */
+/* nla-type-salt: 9 */
