@@ -39,7 +39,7 @@ members = [
     "AEP-Components/graph-engine-admit-gate/crate",
     "AEP-Components/wall-set-backpressure/crate",
     "AEP-Components/dock-post-beat-collect/crate",
-    "AEP-Components/verification/tla",
+    "AEP-Components/tla",
     # The end to end example is a member so the workspace build and CI compile it.
     "AEP-User-Experience/examples/end-to-end-run",
 ]
