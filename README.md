@@ -7,7 +7,8 @@
 **Licence:** Apache-2.0  
 **Public repository:** [https://github.com/thePM001/AEP-agent-element-protocol](https://github.com/thePM001/AEP-agent-element-protocol)
 
-**AEP already had 32 Github stars before Grok "accidentally" deleted them on 22.07.2026 ! Because Grok is evil.**
+**AEP already had 32 Github stars before Grok "accidentally" deleted them on 22.07.2026 !**
+**AEP 2.9 is estimated for completion approximately in September 2026 with many new changes and additional features.**
 
 **How to best explore the basics of AEP ? - Simply copy the repo URL into your LLM chat of choice that has internet search capability (Grok, Gemini, ChatGPT, Opus, etc.) and let the AI explain it to you.**
 
@@ -89,7 +90,7 @@ Operator rule: one hyperlattice declaration per governed system. Scene plus acti
 
 ### One kernel sequence
 
-The kernel sequence is seal, freeze, wait, collect-all Admit then Apply so live-entry is the worked scene. TypeScript processEvent is not product Admit and CodeSandbox executes agent code as a named live surface. The domain you attach is not a second kernel so the instruction is the next section.
+The kernel sequence is seal, freeze, wait, collect-all Admit then Apply so live-entry is the worked scene. TypeScript processEvent is not product Admit. The domain you attach is not a second kernel so the instruction is the next section.
 
 ## Custom sub-lattices inside the AEP hyperlattice
 
@@ -325,7 +326,7 @@ First, name the valid operations, types, fields and constraints in the registry 
 
 Keep the registry stateless. The caller passes execution state in (the current record, the current cart, the current graph). Your checker does not hold the live store.
 
-Your domain check may reject a payload before it is sealed. That is useful because an unknown `action_path` should never waste a capsule. The domain check may not skip Admit so execution happens only after Base Node allows the output. TypeScript `processEvent` is not product Admit and CodeSandbox executes agent code as a named live surface rather than a second kernel.
+Your domain check may reject a payload before it is sealed. That is useful because an unknown `action_path` should never waste a capsule. The domain check may not skip Admit so execution happens only after Base Node allows the output. TypeScript `processEvent` is not product Admit.
 
 Rejection bodies should be specific:
 
@@ -477,6 +478,10 @@ Coding governance proposes a change, measures how far that change reaches and on
 Root keeps only workspace tooling: `Cargo.toml`, `Dockerfile`, `docker-compose.yml`, `docker-compose.public.yml`, `.env.example`, `LICENSE`, `BIOSECURITY.md`, `vitest.config.ts`.
 
 ---
+
+## TLA plus kit
+
+AEP 2.8.6 ships five named MODULE models and the aep-tla-verify checker. Public documentation lives at AEP-Components/verification/tla/TLA-PLUS.md. AdmitConjunction lives at AEP-Policy-System/tla. DockPulse plus WrapComplete plus TemporalBounds plus LastApplied live at AEP-Base-Node/specs/tla. Profile AEP_TLA_PROFILE accepts off, warn and strict. Run cargo test -p aep-tla-verify. Public Docker does not install TLC or Apalache. GAP remains the one form for writing Admit.
 
 ## Multi-base-node (2.8b)
 
@@ -699,7 +704,6 @@ await graph.execute({ input: context });
 
 With no gate, execute refuses to run the node and does not tick the local clock.
 
----
 
 ## Capability inventory
 
