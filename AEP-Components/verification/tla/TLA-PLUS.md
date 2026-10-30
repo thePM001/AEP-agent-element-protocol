@@ -1,4 +1,4 @@
-# TLA plus kit
+# TLA+
 
 AEP 2.8.6 ships five named MODULE models and the aep-tla-verify checker.
 This page is the public documentation. Docs live only here.
