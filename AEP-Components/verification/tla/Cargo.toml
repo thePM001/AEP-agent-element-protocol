@@ -1,0 +1,17 @@
+[package]
+name = "aep-tla-verify"
+version = "0.1.0"
+edition = "2021"
+description = "TLA plus checker with profile off warn strict and L0 MODULE shape"
+license = "Apache-2.0"
+publish = false
+
+[[bin]]
+name = "aep-tla-verify"
+path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+sha2 = "0.10"
