@@ -713,7 +713,6 @@ With no gate, execute refuses to run the node and does not tick the local clock.
 | Fleet / multi-agent | 6 | Identity, fleet limits, spawn governance, message scanning, verification handshake, fleet API |
 | Model gateway | 4 | Anthropic, OpenAI, Ollama, custom OpenAI-compatible |
 | Cost economics | 9 | Balance routing, pricing catalog, budget, x402, concurrency, fallback, gateway integration |
-| Knowledge base | 4 | Governed ingestion, scoped retrieval, anti-context-rot, CLI |
 | Eval / datasets | 4 | Eval runner, versioned datasets, rule generator, prompt hashing |
 | Workflow | 3 | Phased verdicts, rework limits, fine-tuning template |
 | Commerce | 3 | 12 governed actions, merchant registry, spend tracking |

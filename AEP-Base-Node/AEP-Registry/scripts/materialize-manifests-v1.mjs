@@ -577,22 +577,6 @@ const MANIFESTS = {
     implementation: { module: "AEP-Components/covenant/lib/parser.ts" },
   },
 
-  "knowledge-base": {
-    manifest_version: "1",
-    id: "knowledge-base",
-    version: "2.8.6",
-    kind: "library",
-    path: "AEP-Components/knowledge-base/",
-    description: "Lattice-governed knowledge ingest and retrieval.",
-    requires: ["policy-engine"],
-    capabilities: ["knowledge:ingest", "knowledge:retrieve", "knowledge:search"],
-    actions: [],
-    setup_hooks: [],
-    resource_requirements: RR(256, 100),
-    cca: CCA("RAG knowledge base under lattice governance.", ["retrieval-augmented agents"], []),
-    implementation: { module: "AEP-Components/knowledge-base/lib/knowledge/manager.ts" },
-  },
-
   "proof-bundle": {
     manifest_version: "1",
     id: "proof-bundle",

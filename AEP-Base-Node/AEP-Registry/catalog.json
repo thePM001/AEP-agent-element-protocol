@@ -368,17 +368,6 @@
       "role": "companion"
     },
     {
-      "id": "knowledge-base",
-      "name": "Knowledge Base",
-      "kind": "library",
-      "bundled": true,
-      "default_enabled": false,
-      "path": "AEP-Components/knowledge-base/",
-      "description": "Lattice-governed knowledge ingest and retrieval.",
-      "manifest": "AEP-Base-Node/AEP-Registry/components/knowledge-base.json",
-      "role": "companion"
-    },
-    {
       "id": "gap-capability-dimensions",
       "name": "GAP capability dimensions",
       "kind": "library",
