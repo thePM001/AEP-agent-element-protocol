@@ -50,7 +50,7 @@ type Config struct {
 // KernelDockConfig configures the Base Node kernel dock check that the
 // execution path runs before a command is allowed to start.
 //
-// AEP 2.8 treats the Base Node as the local governance kernel. The kernel
+// AEP 2.9 treats the Base Node as the local governance kernel. The kernel
 // publishes one Unix socket dock per port under the socket base, so CAW
 // refuses to run a command while the probed dock stays silent. applyDefaults
 // turns the check on for every loaded config, so the refusal is the default.

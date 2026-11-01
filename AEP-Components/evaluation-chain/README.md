@@ -1,6 +1,6 @@
 # Evaluation Chain
 
-Reference component. AEP 2.8 is a reference protocol library. This crate is not a factory.
+Reference component. AEP 2.9 is a reference protocol library. This crate is not a factory.
 
 ## What it is
 

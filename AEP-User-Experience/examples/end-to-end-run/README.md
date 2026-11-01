@@ -1,4 +1,4 @@
-# End to end run (AEP 2.8.6)
+# End to end run (AEP 2.9)
 
 One command walks every layer of the stack twice. The refuse path runs first and every layer fails closed. The pass path runs second and the same layers allow. The observed transcript sits beside this note.
 

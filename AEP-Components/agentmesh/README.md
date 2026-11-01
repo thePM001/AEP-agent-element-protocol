@@ -1,6 +1,6 @@
 # AgentMesh
 
-Local issuance identity layer for AEP 2.8 Lattice Channels.
+Local issuance identity layer for AEP 2.9 Lattice Channels.
 
 ## Component layout
 

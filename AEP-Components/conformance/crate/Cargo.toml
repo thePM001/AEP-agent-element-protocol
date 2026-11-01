@@ -1,6 +1,6 @@
 [package]
 name = "aep-conformance"
-description = "AEP 2.8 public-tier conformance test runner"
+description = "AEP 2.9 public-tier conformance test runner"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

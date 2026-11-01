@@ -1,4 +1,4 @@
-# AEP 2.8 ticket close is coding close
+# AEP 2.9 ticket close is coding close
 # severity: critical
 # description: Ticket status closed is coding close. Agents MUST NOT write a coding-completion claim or say ticket close is not coding close.
 

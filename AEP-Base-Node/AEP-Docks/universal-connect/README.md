@@ -33,4 +33,4 @@ A module spec is the file `modules/<module-id>.json`. The public tree ships no m
 - Base Node socket docks: `AEP-Base-Node/AEP-Docks/specs/`
 - UCB bridge: `AEP-Base-Node/AEP-Docks/ucb/`
 - Protocol: [`../docs/DOCKING-PORTS.md`](../docs/DOCKING-PORTS.md)
-Part of the AEP 2.8.6 release line.
+Part of the AEP 2.9 release line.

@@ -1,4 +1,4 @@
-//! Lattice Channel is the only permitted communication path in AEP 2.8.
+//! Lattice Channel is the only permitted communication path in AEP 2.9.
 //!
 //! Frame header binding is length-prefixed. Ids must not contain 0x7c.
 
@@ -10,9 +10,9 @@ use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::time::{Duration, Instant}; use thiserror::Error;
 
-pub const CHANNEL_VERSION: &str = "2.8.6";
+pub const CHANNEL_VERSION: &str = "2.9";
 
-/// AEP 2.8 security invariant: no component may bypass Lattice Channels.
+/// AEP 2.9 security invariant: no component may bypass Lattice Channels.
 pub const LATTICE_CHANNEL_ONLY: bool = true;
 
 /// When true (default in Base Node + Docker), non-frame docking wire formats are rejected.

@@ -1,4 +1,4 @@
-# Foreign attach (AEP 2.8.6)
+# Foreign attach (AEP 2.9)
 
 Send a task manifest when you attach a foreign stack through the optional Universal Connect Bridge. The bridge checks the contract and then docks the sealed capsule so Base Node can evaluate it. Do not omit the manifest, do not send trust fields and do not expect the bridge to invent a contract. Foreign frameworks stay fixtures rather than protocol members.
 
@@ -6,7 +6,7 @@ Present the manifest together with a sealed capsule. Base Node freezes the clock
 
 ## Perimeter profile
 
-The default Predicate Profile is perimeter-v1, which checks signed provenance, schema plus byte caps, the scanner pack and a replay window. Paper 005 VSA stays off unless the operator names that profile. Public UCB compiles provided GAP text or JSON with the local gap-manifest-v1 compiler and does not advertise a restricted remote GAP engine. POST /ucb/v1/compile-manifest is the public compile path. Rollback names the tail journal record after Base Node ACK. When collect-all Admit refuses, ingest reports ok false and the journal is not persisted. Unsigned or provisional contracts cannot inject credentials on egress. Operator key is UCB_API_KEY and foreign agents use per-agent keys.
+The default Predicate Profile is perimeter-v1, which checks signed provenance, schema plus byte caps, the scanner pack and a replay window. Paper 005 VSA remains off unless the operator names that profile. Public UCB compiles provided GAP text or JSON with the local gap-manifest-v1 compiler and does not advertise a restricted remote GAP engine. POST /ucb/v1/compile-manifest is the public compile path. Rollback names the tail journal record after Base Node ACK. When collect-all Admit refuses, ingest reports ok false and the journal is not persisted. Unsigned or provisional contracts cannot inject credentials on egress. Operator key is UCB_API_KEY and foreign agents use per-agent keys.
 
 
 ## MCP

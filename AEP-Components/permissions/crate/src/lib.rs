@@ -1,4 +1,4 @@
-//! Kernel agent permission facade for AEP 2.8.6.
+//! Kernel agent permission facade for AEP 2.9.
 //! The permission check lives in the admit crate on the collect-all Admit path.
 //! This crate re-exports the public permission names so an attach reader imports
 //! one crate, and the field name is agent_permission everywhere.

@@ -1,4 +1,4 @@
-//! Unix socket listeners for AEP 2.8 Base Node docking ports (Phase 4).
+//! Unix socket listeners for AEP 2.9 Base Node docking ports (Phase 4).
 //! The docking facade. Children: freshness, pulse, rate, serve and apply in src/docking.
 
 use aep_lattice_channel::{

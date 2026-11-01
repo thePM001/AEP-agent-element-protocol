@@ -77,7 +77,7 @@
     "type": "atomic"
   },
   "metadata": {
-    "provenance": "AEP 2.8.6 Reference",
+    "provenance": "AEP 2.9 Reference",
     "version": "1.1.0",
     "stability": "stable",
     "aspect": "procedural",
@@ -87,7 +87,7 @@
         "action": "*"
       }
     ],
-    "aep_version": "2.8.6",
+    "aep_version": "2.9.0",
     "wrap": "deployment",
     "action_path_prefix": "ops:"
   }

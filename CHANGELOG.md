@@ -1,6 +1,9 @@
 # Changelog
 
-This file is the EXTERNAL changelog. Public product notes for the AEP 2.8.x public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
+This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
+
+## [2.9.0] - 2026-11-01 - The public tree presents itself as AEP 2.9
+The public AEP tree now names its current version 2.9. The package versions in Cargo.toml and package.json read 2.9.0 because Cargo and npm need three numbers. The README, the docs, the registry manifests, the compose files and the docker files name the protocol AEP 2.9. The secure deployment guide moved to AEP-2.9-SECURE-DEPLOYMENT-GUIDE.md. No code behavior changed. Earlier entries below keep the version they were written for.
 
 ## [2.8.6] - 2026-09-30 - Base Node dock keeps every frame answerable under concurrent writers
 When two clients wrote to a dock at nearly the same moment a collect could answer unknown digest for a frame that was on its way through Admit. The apply step took the frame out of the held map and ran Admit before it recorded the answer. A collect that landed in that gap found the digest in neither place. The caller could not tell whether Admit had decided and a run open could be refused without being judged. The apply step now leaves the frame in the held map while Admit runs. It records the answer and drops the frame from the held map in one step under the pulse lock. A collect in the gap reads pending and the socket and Data Dock collect loops wait for the answer. A guard covers an apply step that ends early by recording a closed Deny for the digest. The new tests park Admit while a second client collects and run sixteen parallel writers for eight rounds. Both answered collect unknown digest on the previous code. Verify with cargo test -p aep-base-node.

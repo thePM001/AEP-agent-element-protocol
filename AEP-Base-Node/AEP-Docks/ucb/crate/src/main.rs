@@ -9,7 +9,7 @@ use std::sync::Arc;
 use tracing_subscriber::EnvFilter;
 
 #[derive(Debug, Parser)]
-#[command(name = "aep-ucb", about = "AEP 2.8.6 Universal Connect Bridge (Rust)")]
+#[command(name = "aep-ucb", about = "AEP 2.9 Universal Connect Bridge (Rust)")]
 struct Cli {
     #[arg(long, env = "UCB_HOST")]
     host: Option<String>,

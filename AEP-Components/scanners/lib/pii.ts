@@ -1,4 +1,4 @@
-// AEP 2.8.6 - PII Scanner
+// AEP 2.9 - PII Scanner
 // Detects personally identifiable information in agent output.
 // The patterns come from the one scan rule table, which the Admit policy crate
 // also reads. This module holds no private copy of a rule.

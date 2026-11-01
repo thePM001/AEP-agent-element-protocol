@@ -1,9 +1,9 @@
 [package]
 name = "aep-end-to-end-run"
-version = "2.8.6"
+version = "2.9.0"
 edition = "2021"
 license = "Apache-2.0"
-description = "AEP 2.8.6 end to end run. One command walks every layer twice: the refuse path first and the pass path second."
+description = "AEP 2.9 end to end run. One command walks every layer twice: the refuse path first and the pass path second."
 publish = false
 
 [dependencies]

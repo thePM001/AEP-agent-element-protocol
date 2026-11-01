@@ -1,4 +1,4 @@
-//! AEP 2.8 public-tier conformance runner.
+//! AEP 2.9 public-tier conformance runner.
 //!
 //! Exit 0 = all mandatory checks passed. Used by `conformance/runner/run.sh`.
 
@@ -326,7 +326,7 @@ fn cc_mesh_supervisor_routing() -> Result<(), String> {
 
 /// The Base Node refuses to start without an action lattice, so the fixture
 /// plants a minimal one in the data dir that DockingRuntime::new reads.
-const CONFORMANCE_LATTICE: &str = "aep_version: \"2.8.6\"\ndynaep_version: \"1.0.0\"\nlattice_revision: 1\nactions:\n  root:ping:\n    label: ping\n    category: system_event\n    parents: []\n    children: []\n    constraints: []\n    agent_permission: [\"*\"]\n";
+const CONFORMANCE_LATTICE: &str = "aep_version: \"2.9.0\"\ndynaep_version: \"1.0.0\"\nlattice_revision: 1\nactions:\n  root:ping:\n    label: ping\n    category: system_event\n    parents: []\n    children: []\n    constraints: []\n    agent_permission: [\"*\"]\n";
 
 /// Agent permission for the conformance agents that the Agent Control Hub reads.
 const CONFORMANCE_HUB_GAP: &str = "metadata:\n  wrap: caw\n  agent_permission:\n    - agent_id: AG-PING-CONF\n      action: root:ping\n    - agent_id: AG-LRP-CONF\n      action: root:ping\n";

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Container and host path resolution for AEP 2.8.
+ * Container and host path resolution for AEP 2.9.
  */
 
 import { homedir } from "node:os";

@@ -1,4 +1,4 @@
-//! AEP 2.8.6 Universal Connect Bridge (UCB).
+//! AEP 2.9 Universal Connect Bridge (UCB).
 //!
 //! UCB is an attach gateway. It is not a second evaluator. Base Node is the
 //! only live evaluator. Public capabilities are ingest, delegate, health, rollback, egress and
@@ -23,6 +23,6 @@ pub mod mcp;
 pub mod store;
 pub mod translator;
 
-pub const UCB_VERSION: &str = "2.8.6";
-pub const BRIDGE_ID: &str = "ucb/2.8.6";
+pub const UCB_VERSION: &str = "2.9";
+pub const BRIDGE_ID: &str = "ucb/2.9";
 pub const DOCK_WIRE_SCORE: u16 = 0;

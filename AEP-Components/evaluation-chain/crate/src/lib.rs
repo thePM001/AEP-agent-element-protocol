@@ -1,4 +1,4 @@
-//! AEP 2.8 evaluation chain, a derived ledger over the one live admit result.
+//! AEP 2.9 evaluation chain, a derived ledger over the one live admit result.
 //! This crate never decides live traffic. The one live admit closer is
 //! aep_envelope::admit_with_extra and it returns the admit result. The fifteen
 //! chain rows are observations that are projected onto that one result.

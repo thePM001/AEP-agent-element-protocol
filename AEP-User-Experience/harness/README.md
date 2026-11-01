@@ -1,6 +1,6 @@
-# AEP 2.8 Agent Harness
+# AEP 2.9 Agent Harness
 
-Version 2.8.6 | June 2026
+Version 2.9 | June 2026
 Author: thePM001
 Licence: Apache 2.0
 Public repository: https://github.com/thePM001/AEP-agent-element-protocol
@@ -8,7 +8,7 @@ Public repository: https://github.com/thePM001/AEP-agent-element-protocol
 ## What's New in 2.8
 
 - **AEP Base Node** mandatory local daemon with four docking ports
-- **dynAEP merged** into main repo (Action Lattice, PAD router)
+- **dynAEP merged** into main repo (Action Lattice, action path router)
 - **Lattice Channels** PQEncryptedCapsule transport
 - **AgentMesh** local issuance identity on lattice frames
 - **Component registry** offline catalog plus optional GitHub extension merge
@@ -20,7 +20,7 @@ Inherited: derived 15-row ledger (`aep-evaluation-chain`), 11 scanners, evidence
 
 ## Boot Registration
 
-Every AEP 2.8 agent session must register before work:
+Every AEP 2.9 agent session must register before work:
 
 ```bash
 # UI / registry validation

@@ -1,6 +1,6 @@
 // Package kerneldock probes the AEP Base Node kernel dock.
 //
-// AEP 2.8 treats the Base Node as the local governance kernel. The kernel
+// AEP 2.9 treats the Base Node as the local governance kernel. The kernel
 // publishes one Unix socket dock per port under the socket base. CAW runs the
 // host workload, so the execution path refuses to start a command while the
 // probed dock is silent: a host admission with no live kernel behind it is not

@@ -1,6 +1,6 @@
 # AEP Base Node
 
-Mandatory local governance **kernel** for every AEP 2.8 installation.
+Mandatory local governance **kernel** for every AEP 2.9 installation.
 
 Lives at the **repository root** (`AEP-Base-Node/`), not under `AEP-Components/`. Every other component docks into Base Node; it is not a palette component.
 
@@ -69,7 +69,7 @@ Register new components in **`AEP-Base-Node/AEP-Registry/catalog.json`** + **`AE
 
 | Path | Contents |
 |------|----------|
-| `AEP-Crate/` | `aep-base-node` Rust crate + `aep-lattice-log` CLI binary. Nested rust leaf crate/ under a product stays. |
+| `AEP-Crate/` | `aep-base-node` Rust crate + `aep-lattice-log` CLI binary. Nested rust leaf crate/ under a product remains. |
 | `AEP-Docks/` | Live dock products ucb and universal-connect. Spec table names kernel admit dock. |
 | `AEP-Potomitan/` | POTOMITAN mesh peer registry (`aep-potomitan` crate) |
 | `AEP-Multi-Base-Node/` | Multi-base-node (2.8b) mode: federate multiple Base Node kernels (optional experimental surface, not in the default build) |

@@ -1,4 +1,4 @@
-//! AEP 2.8 Envelope Admit: order-independent wall meet.
+//! AEP 2.9 Envelope Admit: order-independent wall meet.
 //! Evaluation is pure. Apply mutates snapshot state after Admit.
 //! EnvelopeAction has no rank field. Agent permission is agent_permission.
 //! Empty lattice closes dag.membership and gap.agent_permission. Do not reopen the earlier law change.

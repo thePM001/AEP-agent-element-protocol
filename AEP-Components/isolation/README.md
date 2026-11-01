@@ -1,6 +1,6 @@
 # AEP Isolation
 
-Seal record contract for the AEP 2.8.x protocol crate graph.
+Seal record contract for the AEP 2.9 protocol crate graph.
 
 - **Crate:** `AEP-Components/isolation/crate`
 - **Crate name:** `aep-isolation`

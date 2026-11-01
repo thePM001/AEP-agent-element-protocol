@@ -1,4 +1,4 @@
-// AEP 2.8.6 - Secrets Scanner
+// AEP 2.9 - Secrets Scanner
 // Detects API keys, private keys and credential patterns in agent output.
 // The patterns come from the one scan rule table, which the Admit policy crate
 // also reads. This module holds no private copy of a rule.

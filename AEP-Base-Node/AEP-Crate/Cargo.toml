@@ -1,6 +1,6 @@
 [package]
 name = "aep-base-node"
-description = "AEP 2.8.6 local governance daemon"
+description = "AEP 2.9 local governance daemon"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

@@ -1,4 +1,4 @@
-// AEP 2.8.6 - Injection Scanner
+// AEP 2.9 - Injection Scanner
 // Detects SQL injection, XSS, SSTI and command injection patterns.
 // The patterns come from the one scan rule table, which the Admit policy crate
 // also reads. This module holds no private copy of a rule.

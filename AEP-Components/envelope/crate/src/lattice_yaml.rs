@@ -355,7 +355,7 @@ mod tests {
         must(snap.event_rate == 1);
     }
 
-    const TWIN_YAML: &str = "aep_version: \"2.8.6\"\nactions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_permission: [\"agent-a\"]\n";
+    const TWIN_YAML: &str = "aep_version: \"2.9.0\"\nactions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_permission: [\"agent-a\"]\n";
 
     fn twin_gap() -> String {
         format!(

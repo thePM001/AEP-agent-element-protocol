@@ -1,6 +1,6 @@
 {
-  "version": "2.8.6",
-  "protocol_version": "2.8.6",
+  "version": "2.9.0",
+  "protocol_version": "2.9.0",
   "bundled_offline": true,
   "repository": {
     "source_of_truth": "canonical tree",
@@ -118,7 +118,7 @@
       "bundled": true,
       "default_enabled": true,
       "path": "AEP-Components/dynAEP/",
-      "description": "Real-time event governance protocol merged into AEP 2.8.",
+      "description": "Real-time event governance protocol merged into AEP 2.9.",
       "manifest": "AEP-Base-Node/AEP-Registry/components/dynaep-core.json",
       "role": "kernel"
     },

@@ -9,7 +9,7 @@ This document maps AEP features to requirements in the EU AI Act, SOC 2 Type II,
 
 ## EU AI Act
 
-| EU AI Act Requirement | AEP 2.8.6 Feature |
+| EU AI Act Requirement | AEP 2.9 Feature |
 |----------------------|-----------------|
 | Art. 9 - Risk Management System | Evidence Ledger with session reports, Kill Switch and Intent drift detection |
 | Art. 13 - Transparency and Provision of Information | Evidence Ledger with full action audit trail and session reports; Merkle-Tree Audit Records with cryptographic proof bundles |
@@ -20,7 +20,7 @@ This document maps AEP features to requirements in the EU AI Act, SOC 2 Type II,
 
 ## SOC 2 Type II
 
-| SOC 2 Trust Service Criteria | AEP 2.8.6 Feature |
+| SOC 2 Trust Service Criteria | AEP 2.9 Feature |
 |------------------------------|-----------------|
 | CC6.1 - Logical and Physical Access Controls | Execution Rings, Agent Identity; MCP Security Gateway with tool-level blocking |
 | CC6.2 - Prior to Issuing Credentials | Agent Identity Manager with key pair generation and expiry |
@@ -32,7 +32,7 @@ This document maps AEP features to requirements in the EU AI Act, SOC 2 Type II,
 
 ## HIPAA
 
-| HIPAA Safeguard | AEP 2.8.6 Feature |
+| HIPAA Safeguard | AEP 2.9 Feature |
 |----------------|-----------------|
 | 164.312(a) - Access Control | Execution Rings, Capability Scoping; MCP Intercept Proxy with policy-based tool blocking |
 | 164.312(b) - Audit Controls | Evidence Ledger (SHA-256 hash-chained), Merkle Proofs; Proof Bundles with ML-DSA-65 post-quantum signatures |
@@ -43,18 +43,18 @@ This document maps AEP features to requirements in the EU AI Act, SOC 2 Type II,
 
 ---
 
-## AEP 2.8.6 Compliance Enhancements Over v2.2
+## AEP 2.9 Compliance Enhancements Over v2.2
 
-| Capability | v2.2 | v2.8.6 |
+| Capability | v2.2 | v2.9 |
 |---|---|---|
 | Audit trail | Hash-chained ledger | Merkle-Tree Audit Records with cryptographic proof bundles |
-| Constraint validation | Forbidden Patterns (regex) | Policy Builder (invariant detection + Rego generation). Schema Builder stays an optional study tool and is not a live Art. 9 or Art. 15 control |
+| Constraint validation | Forbidden Patterns (regex) | Policy Builder (invariant detection + Rego generation). Schema Builder remains an optional study tool and is not a live Art. 9 or Art. 15 control |
 | Tool security | Capability Scoping | MCP Security Gateway (poisoning, typosquatting, drift detection) + Intercept Proxy |
 | Workflow governance | Escalation Rules | Graph Orchestration with persistent stateful checkpoints |
 | Multi-agent | Cross-Agent Verification | Supervisor, debate and delegation collaboration primitives |
 | Policy formats | GAP + Rego | GAP + Rego + Cedar transpilers + Reference Policy Lattice |
-| Content scanners | Not present (v2.2) | 11 content scanners (v2.5) expanded to 12 (v2.8.6) |
+| Content scanners | Not present (v2.2) | 11 content scanners (v2.5) expanded to 12 (v2.9) |
 
 ---
 
-Note: AEP 2.8.6 provides the governance framework and enforcement mechanisms. Organisations must still configure policies, identity requirements and evidence retention periods appropriate to their specific compliance obligations. Policy Builder can validate written policy. Schema Builder stays an optional study tool and is not wired to the wizard or Docker.
+Note: AEP 2.9 provides the governance framework and enforcement mechanisms. Organisations must still configure policies, identity requirements and evidence retention periods appropriate to their specific compliance obligations. Policy Builder can validate written policy. Schema Builder remains an optional study tool and is not wired to the wizard or Docker.

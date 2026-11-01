@@ -2,7 +2,7 @@
 
 All bundled AEP protocol components live under this directory. Each subfolder is a first-class component with its own `README.md`, registry manifest (`AEP-Base-Node/AEP-Registry/components/{id}.json`) and `lib/` or `crate/` implementation.
 
-Runtime code for each component lives in that component folder. Client libraries are not a product of AEP 2.8.6.
+Runtime code for each component lives in that component folder. Client libraries are not a product of AEP 2.9.
 
 Infrastructure and top-level surfaces outside this folder:
 

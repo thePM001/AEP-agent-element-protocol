@@ -1,6 +1,6 @@
-# Error catalog (AEP 2.8.6)
+# Error catalog (AEP 2.9)
 
-This catalog is the public deny dialect for AEP 2.8.6. Base Node is the only live evaluator. UCB is an attach gateway and CAW is an execution companion so neither one is a second evaluator. Enqueue is not Admit. TypeScript processEvent is not product Admit. The theme yaml file has no Admit authority. Lattice Memory never admits and looking similar to a past allow is not allow.
+This catalog is the public deny dialect for AEP 2.9. Base Node is the only live evaluator. UCB is an attach gateway and CAW is an execution companion so neither one is a second evaluator. Enqueue is not Admit. TypeScript processEvent is not product Admit. The theme yaml file has no Admit authority. Lattice Memory never admits and looking similar to a past allow is not allow.
 
 The builder presents a manifest and a sealed capsule. Base Node freezes the clock at seal, waits the compiled 1000 ms pulse, runs every written wall together, records the ledger and applies only after Admit. A closed wall is a refuse. An empty agent permission list refuses.
 

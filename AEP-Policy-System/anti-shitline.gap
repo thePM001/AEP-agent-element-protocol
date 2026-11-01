@@ -1,4 +1,4 @@
-# AEP 2.8 anti-shitline
+# AEP 2.9 anti-shitline
 # severity: critical
 # description: Operator-facing AEP prose must state the situation in ordinary connected English a person can act on. An overloaded run-on that dumps test names, crate names, gate names and verdicts is Deny.
 

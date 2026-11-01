@@ -1,5 +1,5 @@
 /**
- * MCP security scanners and tool-policy helpers (AEP 2.8.6).
+ * MCP security scanners and tool-policy helpers (AEP 2.9).
  * Fail-closed defaults: unknown tools deny; empty policy denies all tools.
  */
 

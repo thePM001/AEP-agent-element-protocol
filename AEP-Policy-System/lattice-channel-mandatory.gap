@@ -19,8 +19,8 @@
       {"expr": "ucb-secured-perimeter-dock", "lang": "gapdsl", "severity": "critical", "description": "Non AEP agent stacks integrate only via UCB :8412 and UCB uses lattice transport internally"},
       {"expr": "ucb-auth-required", "lang": "gapdsl", "severity": "critical", "description": "UCB ingest, delegate, rollback and MCP require an API key while lattice sockets stay non HTTP"},
       {"expr": "dynaep-observers-lattice-gate", "lang": "gapdsl", "severity": "critical", "description": "dynAEP poll, SSE and blockchain observers use observerLatticeFetch via the inference_engine dock"},
-      {"expr": "dynaep-forecast-lattice-gate", "lang": "gapdsl", "severity": "critical", "description": "TimesFM forecast sidecar health and predict HTTP gated via latticeGatedFetch"},
-      {"expr": "lattice-transport-canonical-surface", "lang": "gapdsl", "severity": "critical", "description": "Lattice transport stays canonical in lattice-transport"},
+      {"expr": "dynaep-forecast-lattice-gate", "lang": "gapdsl", "severity": "critical", "description": "TimesFM forecast companion process health and predict HTTP gated via latticeGatedFetch"},
+      {"expr": "lattice-transport-canonical-surface", "lang": "gapdsl", "severity": "critical", "description": "Lattice transport remains canonical in lattice-transport"},
       {"expr": "no-smtp-mail-transport-libraries", "lang": "gapdsl", "severity": "critical", "description": "Governed code must not ship SMTP mail clients such as nodemailer, smtplib, sendmail or createTransport"}
     ]
   },
@@ -36,11 +36,11 @@
     "type": "atomic"
   },
   "metadata": {
-    "provenance": "AEP 2.8.6 Policy Lattice Reference",
+    "provenance": "AEP 2.9 Policy Lattice Reference",
     "version": "2.0.0",
     "stability": "stable",
     "aspect": "objective",
     "mandatory": true,
-    "aep_version": "2.8.6"
+    "aep_version": "2.9.0"
   }
 }

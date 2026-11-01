@@ -453,7 +453,7 @@ mod tests {
         s.push_str("\"pattern\":{\"guard\":\"true\"},");
         s.push_str("\"action\":{\"type\":\"reference\"},\"weight\":1.0,");
         s.push_str("\"composition\":{\"type\":\"atomic\"},");
-        s.push_str("\"metadata\":{\"provenance\":\"AEP 2.8.6\",\"version\":\"1.0.0\",\"stability\":\"stable\"}");
+        s.push_str("\"metadata\":{\"provenance\":\"AEP 2.9\",\"version\":\"1.0.0\",\"stability\":\"stable\"}");
         s.push('}');
         s
     }
@@ -465,7 +465,7 @@ mod tests {
         s.push_str("\"pattern\":{\"guard\":\"true\"},");
         s.push_str("\"action\":{\"type\":\"reference\"},\"weight\":1.0,");
         s.push_str("\"composition\":{\"type\":\"atomic\"},");
-        s.push_str("\"metadata\":{\"provenance\":\"AEP 2.8.6\",\"version\":\"1.0.0\",\"stability\":\"stable\"}");
+        s.push_str("\"metadata\":{\"provenance\":\"AEP 2.9\",\"version\":\"1.0.0\",\"stability\":\"stable\"}");
         s.push('}');
         s
     }

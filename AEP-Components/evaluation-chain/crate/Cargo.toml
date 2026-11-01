@@ -2,7 +2,7 @@
 name = "aep-evaluation-chain"
 version = "0.1.0"
 edition = "2021"
-description = "AEP 2.8 evaluation chain meet. All 15 walls. Collect-all. No skip on live admit."
+description = "AEP 2.9 evaluation chain meet. All 15 walls. Collect-all. No skip on live admit."
 license = "Apache-2.0"
 publish = false
 

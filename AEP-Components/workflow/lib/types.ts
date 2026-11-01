@@ -1,4 +1,4 @@
-// AEP 2.8.6 - Workflow Phases with Typed Verdicts
+// AEP 2.9 - Workflow Phases with Typed Verdicts
 // Sequential workflow phases on top of task decomposition.
 
 import type { CompletionCriterion } from "../../decomposition/lib/types.js";

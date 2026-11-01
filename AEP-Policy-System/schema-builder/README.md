@@ -1,6 +1,6 @@
 # Schema Builder
 
-**Schema Builder is a distinct AEP 2.8 component** (Capability 12). Data-driven schema creation and validation using MLE estimation, graph spectral analysis, permissiveness scoring and Louvain modularity detection.
+**Schema Builder is a distinct AEP 2.9 component** (Capability 12). Data-driven schema creation and validation using MLE estimation, graph spectral analysis, permissiveness scoring and Louvain modularity detection.
 
 - **Implementation:** `schema-builder/lib/`
 - **Registry:** `AEP-Base-Node/AEP-Registry/components/schema-builder.json`

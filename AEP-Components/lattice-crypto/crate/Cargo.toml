@@ -1,6 +1,6 @@
 [package]
 name = "aep-lattice-crypto"
-description = "PQEncryptedCapsule for AEP 2.8 Lattice Channels (ML-KEM-768 + AES-256-GCM + ML-DSA-65)"
+description = "PQEncryptedCapsule for AEP 2.9 Lattice Channels (ML-KEM-768 + AES-256-GCM + ML-DSA-65)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

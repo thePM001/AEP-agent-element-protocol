@@ -1,8 +1,8 @@
-# AEP v 2.8.6 - Agent Element Protocol
+# AEP v 2.9 - Agent Element Protocol
 
 **Total AI Output Control - Vertically integrated protocol for all agentic setups**
 
-**Version 2.8.6**
+**Version 2.9**
 **Author:** thePM_001 ([https://x.com/thePM_001](https://x.com/thePM_001))  
 **Licence:** Apache-2.0  
 **Public repository:** [https://github.com/thePM001/AEP-agent-element-protocol](https://github.com/thePM001/AEP-agent-element-protocol)
@@ -12,7 +12,7 @@
 
 **How to best explore the basics of AEP ? - Copy the repo URL into your LLM chat of choice that has internet search capability (Grok, Gemini, ChatGPT, Opus, etc.) and let the AI explain it to you.**
 
-**[AEP secure deployment guide](AEP-User-Experience/docs/AEP-2.8-SECURE-DEPLOYMENT-GUIDE.md)**
+**[AEP secure deployment guide](AEP-User-Experience/docs/AEP-2.9-SECURE-DEPLOYMENT-GUIDE.md)**
 
 ---
 
@@ -138,7 +138,7 @@ Every element except the root shell must name a parent that already exists in th
 
 ```json
 {
-  "aep_version": "2.8.6",
+  "aep_version": "2.9.0",
   "schema_revision": 1,
   "elements": {
     "SH-00001": {
@@ -182,7 +182,7 @@ The registry names every valid operation, type, field and constraint. It contain
 Each entry needs a label, a category, a function, a parent when it is a scene element, a `skin_binding` when it renders, the states it may occupy, the actions it may emit and the constraints it must keep. Template entries cover repeating rows so you prove the mould once rather than every instance.
 
 ```yaml
-aep_version: "2.8.6"
+aep_version: "2.9.0"
 schema_revision: 1
 
 create_record:
@@ -213,7 +213,7 @@ When a proposal fails, return a specific error so the agent can correct that fie
 The theme file holds colours, fonts, spacing, borders and motion. Components reference it through `skin_binding`. The theme must not name operations, who may act, parents or docks. If a colour file can allow or deny an action, authority has leaked into skin and the wrap is broken.
 
 ```yaml
-aep_version: "2.8.6"
+aep_version: "2.9.0"
 schema_revision: 1
 theme_name: "Records quiet"
 
@@ -236,7 +236,7 @@ To rebrand, swap the theme and leave scene and registry untouched.
 Every move an agent may propose is an `action_path` node. The lattice says which actions exist, what must happen before each action (parents), which constraints apply at arrival and which agents may perform the action. An action cannot proceed until every parent has been satisfied. That partial order is how you stop archive-before-create, pay-before-risk or apply-before-Admit.
 
 ```yaml
-aep_version: "2.8.6"
+aep_version: "2.9.0"
 lattice_revision: 1
 
 actions:
@@ -385,7 +385,7 @@ Do not stand up a parallel runtime that opens unsealed work and do not treat ext
 
 **Base Node is the kernel and everything else is a runtime installer or a protocol component.**
 
-AEP 2.8 is a **reference protocol library**: a set of working components that a builder can take and attach, not a live wired product that runs by itself. The work those components describe is performed in the Base Node, the local kernel that opens each message and runs the checks. Messages travel as a sealed lattice frame, an encrypted capsule on the lattice channel transport wire. After that capsule is opened, the Base Node freezes the clock at seal time, waits 1000 MS, then runs every check together and only then carries out the allowed action. A derived ledger of fifteen named rows records that evaluation so a later reader can see what was checked; that ledger is not a second pass which can skip the wait.
+AEP 2.9 is a **reference protocol library**: a set of working components that a builder can take and attach, not a live wired product that runs by itself. The work those components describe is performed in the Base Node, the local kernel that opens each message and runs the checks. Messages travel as a sealed lattice frame, an encrypted capsule on the lattice channel transport wire. After that capsule is opened, the Base Node freezes the clock at seal time, waits 1000 MS, then runs every check together and only then carries out the allowed action. A derived ledger of fifteen named rows records that evaluation so a later reader can see what was checked; that ledger is not a second pass which can skip the wait.
 
 ```mermaid
 flowchart LR
@@ -461,7 +461,7 @@ Coding governance proposes a change, measures how far that change reaches and on
 
 ---
 
-## Canonical repository layout (2.8.6)
+## Canonical repository layout (2.9)
 
 
 | Directory | Role |
@@ -480,7 +480,7 @@ Root keeps only workspace tooling: `Cargo.toml`, `Dockerfile`, `docker-compose.y
 
 ## TLA+
 
-AEP 2.8.6 ships five named MODULE models and the aep-tla-verify checker. Public documentation lives at AEP-Components/tla/TLA-PLUS.md. AdmitConjunction lives at AEP-Components/tla. DockPulse plus WrapComplete plus TemporalBounds plus LastApplied live at AEP-Components/tla. Profile AEP_TLA_PROFILE accepts off, warn and strict. Run cargo test -p aep-tla-verify. Public Docker does not install TLC or Apalache. GAP remains the one form for writing Admit.
+AEP 2.9 ships five named MODULE models and the aep-tla-verify checker. Public documentation lives at AEP-Components/tla/TLA-PLUS.md. AdmitConjunction lives at AEP-Components/tla. DockPulse plus WrapComplete plus TemporalBounds plus LastApplied live at AEP-Components/tla. Profile AEP_TLA_PROFILE accepts off, warn and strict. Run cargo test -p aep-tla-verify. Public Docker does not install TLC or Apalache. GAP remains the one form for writing Admit.
 
 ## Multi-base-node (2.8b)
 
@@ -914,7 +914,7 @@ Manifest: `AEP-Components/conformance/tests/manifest.json` (CC-01 through CC-15)
 ## GAP-centric policies and CAW sandboxes
 
 
-AEP 2.8 treats **GAP** (Governed Agentic Programming) as the single authoring language for policies and agent payloads. **CAW** (`aep-caw`, `AEP-CAW/`) is the execution-layer sandbox that enforces those policies on the host (file rules, command adapters, seccomp, LLM proxy, lattice audit). You do not maintain parallel YAML policy stacks: you author in GAP, compile locally and CAW runs the result.
+AEP 2.9 treats **GAP** (Governed Agentic Programming) as the single authoring language for policies and agent payloads. **CAW** (`aep-caw`, `AEP-CAW/`) is the execution-layer sandbox that enforces those policies on the host (file rules, command adapters, seccomp, LLM proxy, lattice audit). You do not maintain parallel YAML policy stacks: you author in GAP, compile locally and CAW runs the result.
 
 ### How GAP and CAW relate
 

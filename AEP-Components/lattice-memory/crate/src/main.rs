@@ -7,7 +7,7 @@ use std::io::{self, Read};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
-#[command(name = "aep-memory", about = "AEP 2.8 Lattice Memory CLI (sqlite-vec + USearch)")]
+#[command(name = "aep-memory", about = "AEP 2.9 Lattice Memory CLI (sqlite-vec + USearch)")]
 struct Cli {
     #[arg(long)]
     db: Option<PathBuf>,

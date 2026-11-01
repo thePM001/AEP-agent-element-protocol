@@ -74,7 +74,7 @@ export function formatCodingGovernanceForPrompt(cg) {
     "Coding governance (nool-style control plane, git-compatible):",
     `Subprotocol: ${cg.subprotocol}`,
     "",
-    "nool parity (shipped in AEP 2.8 Phase 11):",
+    "nool parity (shipped in AEP 2.9 Phase 11):",
   ];
   for (const [k, v] of Object.entries(cg.nool_parity)) {
     lines.push(`- ${k}: ${v}`);

@@ -1,4 +1,4 @@
-//! AEP Base Node - mandatory local governance kernel for AEP 2.8.6.
+//! AEP Base Node - mandatory local governance kernel for AEP 2.9.
 
 pub mod dock_keys;
 mod dock_keys_provision;
@@ -546,7 +546,7 @@ mod tests {
 
     fn isolated_input() -> HealthInput<'static> {
         HealthInput {
-            version: "2.8.6-alpha.1",
+            version: "2.9.0-alpha.1",
             mesh_peers: 0,
             internet_up: false,
             base_socket: "/tmp/sock",

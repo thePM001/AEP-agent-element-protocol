@@ -1,4 +1,4 @@
-// AEP 2.8.6 - OpenAI Provider Adapter
+// AEP 2.9 - OpenAI Provider Adapter
 // Lattice-gated fetch to api.openai.com via inference_engine dock.
 
 import type { ProviderAdapter, ModelConfig, ModelRequest, ModelResponse } from "../types.js";

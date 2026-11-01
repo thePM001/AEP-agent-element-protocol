@@ -1,6 +1,6 @@
 [package]
 name = "aep-ucb-perimeter-v1"
-description = "AEP 2.8.6 UCB perimeter-v1 scanner-backed predicates per-agent keys signed manifests and hash-chained journal"
+description = "AEP 2.9 UCB perimeter-v1 scanner-backed predicates per-agent keys signed manifests and hash-chained journal"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

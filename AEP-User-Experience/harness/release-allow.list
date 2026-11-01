@@ -1,9 +1,9 @@
 # AEP release string allow list
-# Release string: 2.8.6
+# Release string: 2.9.0
 # Policy: VERSION-286-P0. One product release string describes this tree.
-# Every entry below is a stale release string that stays on purpose, because it is
+# Every entry below is a stale release string that remains on purpose, because it is
 # historical or because it pins a third party package.
-# Format: repository path, one tab, the exact line that stays, one tab, the reason.
+# Format: repository path, one tab, the exact line that remains, one tab, the reason.
 # Tool: AEP-User-Experience/harness/check-release-strings.mjs
 #
 
@@ -12,3 +12,8 @@ AEP-Components/gap/README.md	- Fit analysis of classic GAP against AEP 2.8.6 eva
 AEP-Components/dynAEP/policies/chunk-hash-verification.gap	  provenance: Created after Turbopack dev server served stale v2.6 chunk for 24+ hours despite source being v2.75, causing hydration revert on every load.	a provenance note about an incident in the 2.75 release
 AEP-Components/telemetry/lib/otel-exporter.ts	        // Short-circuit chain attributes (added by v2.75 chain runner)	a note that the 2.75 chain runner added an attribute
 docker/runtime-deps.package.json	    "yaml": "^2.8.0"	a third party dependency pin for the yaml package
+AEP-Base-Node/AEP-Docks/ucb/HISTORY.md	# UCB attach notes (AEP 2.8.6)	the heading of the attach record written for release 2.8.6
+AEP-Base-Node/AEP-Docks/ucb/HISTORY.md	This page is the public attach record for AEP 2.8.6.	the attach record names the release it was written for
+AEP-Base-Node/AEP-Docks/ucb/HISTORY.md	Catalog setup writes protocol 2.8.6 and strips trust fields. Base Node health always runs. Enqueue is not Admit.	the attach record states what the 2.8.6 release did
+AEP-Base-Node/AEP-Docks/ucb/HISTORY.md	Public product version is 2.8.6.	the attach record states the version it describes
+AEP-Research-Paper/README.md	Part of the AEP 2.8.6 release line.	the research paper cites the release it was written against

@@ -1,7 +1,7 @@
 /**
  * AEP Economics - Core Types
  * Cost-aware routing, budgeting, and spend control
- * AEP 2.8.6
+ * AEP 2.9
  */
 
 export type ProviderId = string;

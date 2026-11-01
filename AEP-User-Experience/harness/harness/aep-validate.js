@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * AEP 2.8 Agent Harness - Automated Validation Script
+ * AEP 2.9 Agent Harness - Automated Validation Script
  * 
  * Scans the project source files and checks every rendered element
  * against the AEP registry, scene graph and theme.
@@ -342,7 +342,7 @@ class AEPValidator {
     validate() {
         const files = walkDir(this.srcDir, FILE_EXTENSIONS);
         
-        console.log(`AEP 2.8.6 Validation`);
+        console.log(`AEP 2.9 Validation`);
         console.log(`  Source: ${this.srcDir}`);
         console.log(`  Files: ${files.length}`);
         console.log(`  Registry entries: ${this.registryXids.size}`);
@@ -390,13 +390,13 @@ class AEPValidator {
         // Also validate cross-references between config files
         this.checkCrossReferences();
 
-        // AEP 2.8.6: Validate evidence ledger integrity
+        // AEP 2.9: Validate evidence ledger integrity
         this.checkEvidenceLedger();
 
-        // AEP 2.8.6: Validate trust, ring, covenant and drift constraints
+        // AEP 2.9: Validate trust, ring, covenant and drift constraints
         this.checkTrustViolations();
 
-        // AEP 2.8.6: Validate recovery and scanner entries
+        // AEP 2.9: Validate recovery and scanner entries
         this.checkRecoveryAndScanners();
 
         return this.violations;
@@ -423,7 +423,7 @@ class AEPValidator {
     }
     
     // -----------------------------------------------------------------------
-    // Check 9: Evidence ledger integrity (AEP 2.8.6)
+    // Check 9: Evidence ledger integrity (AEP 2.9)
     // -----------------------------------------------------------------------
     checkEvidenceLedger() {
         const ledgerPath = path.join(this.srcDir, '..', '.claude', 'aep-evidence.jsonl');
@@ -507,7 +507,7 @@ class AEPValidator {
     }
 
     // -----------------------------------------------------------------------
-    // Check 11: Recovery and scanner entries (AEP 2.8.6)
+    // Check 11: Recovery and scanner entries (AEP 2.9)
     // -----------------------------------------------------------------------
     checkRecoveryAndScanners() {
         const ledgerPath = path.join(this.srcDir, '..', '.claude', 'aep-evidence.jsonl');

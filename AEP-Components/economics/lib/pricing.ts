@@ -1,7 +1,7 @@
 /**
  * AEP Economics - Price Catalog
  * Provider/model price lookup for cost-aware routing
- * AEP 2.8.6
+ * AEP 2.9
  */
 
 import { PriceCatalogEntry, ModelPrice, ProviderId } from './types.js';

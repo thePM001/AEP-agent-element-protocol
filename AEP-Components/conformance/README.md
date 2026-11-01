@@ -4,7 +4,7 @@ Test battery that determines who gets to claim AEP-compliance for the **2.8 publ
 
 ## Status
 
-**Active** - runner ships with AEP 2.8 Phase 5.
+**Active** - runner ships with AEP 2.9.
 
 ## License
 
@@ -43,7 +43,7 @@ See [`tests/manifest.json`](tests/manifest.json) for the full CC-01 through CC-1
 | ID | Area |
 |----|------|
 | CC-01 - CC-09 | Rust mandatory (crypto, channel, mesh, docking) |
-| CC-10 | POTOMITAN failover health E2E |
+| CC-10 | POTOMITAN mesh fallback health E2E |
 | CC-11 | AgentMesh trust rotation |
 | CC-12 | PQ capsule bridge roundtrip |
 | CC-13 - CC-14 | Plain ping/event side-channel rejection |

@@ -8,7 +8,7 @@
 import { NODE_PALETTE } from "./graph-store.mjs";
 import { CANVAS_SKIP_COMPONENT_IDS } from "./component-catalog.mjs";
 
-export const COMPOSER_PROTOCOL_VERSION = "2.8.6";
+export const COMPOSER_PROTOCOL_VERSION = "2.9";
 export const COMPOSER_PROTOCOL_ID = "aep.composer-lite.protocol.v1";
 
 /** Edge kinds permitted on hyperlattice canvas (AEP lattice channel semantics). */
@@ -39,7 +39,7 @@ export const REQUIRED_EDGE_CHANNEL = "lattice-channel-default";
 
 /**
  * Allowed (fromType -> toType) interactions and default edge kind.
- * Mirrors canvas inferEdgeKind() and AEP 2.8 wiring conventions.
+ * Mirrors canvas inferEdgeKind() and AEP 2.9 wiring conventions.
  */
 export const INTERACTION_MATRIX = [
   { from: "dock_validation", to: "lattice", kinds: ["validation", "action", "policy"], default_kind: "validation" },

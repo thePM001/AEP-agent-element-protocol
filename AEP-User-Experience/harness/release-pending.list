@@ -1,0 +1,22 @@
+# AEP release pending files
+# AEP29-VER-010. Each file below still carries the old release string because the node scan law refuses a new landing of the file.
+# Format: repository path, one tab, the number of stale lines that remain, one tab, the reason.
+# The check passes only when the file holds exactly that number. Remove a row when the file changes.
+
+AEP-Base-Node/AEP-Docks/docs/AEP-PORT-POLICY.md	3	the node scan law refuses this file because a prohibited port number holds a banned digit pair
+AEP-Components/agentmesh/crate/src/lib.rs	1	the node scan law refuses this file because of a test fixture
+AEP-Components/conformance/lib/writing-gap-lint.mjs	1	the node scan law refuses a new landing of this file because it spawns a process
+AEP-Components/dynAEP/README.md	2	the node scan law refuses this file for a banned word
+AEP-Components/envelope/lib/admit.mjs	1	the node scan law refuses a new landing of this file because it spawns a process
+AEP-Components/eval/lib/metrics.ts	1	the node scan law refuses a new landing of this file because it spawns a process
+AEP-Components/lattice-channels/lib/lattice-gated-fetch.mjs	1	the node scan law refuses a new landing of this file because it spawns a process
+AEP-Components/lattice-channels/lib/lattice-gated-fetch.ts	1	the node scan law refuses a new landing of this file because it spawns a process
+AEP-Components/lattice-channels/lib/lattice-transport.mjs	1	the node scan law refuses a new landing of this file because it spawns a process
+AEP-Components/proxy/lib/mcp-backend.ts	2	the node scan law refuses a new landing of this file because it spawns a process
+AEP-User-Experience/aep-base-node-preflight.mjs	2	the node scan law refuses a new landing of this file because it spawns a process
+AEP-User-Experience/aep-validate.js	1	the node scan law refuses a new landing of this file because it spawns a process
+AEP-User-Experience/harness/harness/aep-safety-guard.js	8	the node scan law refuses a new landing of this file because it spawns a process
+AEP-User-Experience/harness/protocols/AEP-2.6-Anti-Stub-Protocol.md	5	the node scan law refuses this file for banned words
+aep-check.mjs	2	the node scan law refuses a new landing of this file because it spawns a process
+AEP-Policy-System/public-plain-english.gap	1	the node scan law refuses this file because the policy names a banned word
+AEP-Policy-System/reference/eu-ai-act.gap	1	the node scan law refuses this file because it holds a banned key

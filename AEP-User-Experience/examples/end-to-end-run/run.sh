@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# AEP 2.8.6 end to end run.
+# AEP 2.9 end to end run.
 #
 # One command walks every layer twice. The refuse path runs first and every
 # layer fails closed. The pass path runs second and the same layers allow.
@@ -95,7 +95,7 @@ trap cleanup EXIT
 
 cat > "$RUN_DIR/base-node.json" <<JSON
 {
-  "version": "2.8.6",
+  "version": "2.9.0",
   "base_node": {
     "socket_base": "$SOCK",
     "lattice_db": "$RUN_DIR/action-lattice.db",

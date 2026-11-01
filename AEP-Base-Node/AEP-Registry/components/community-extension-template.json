@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "community-extension-template",
-  "version": "2.8.6",
+  "version": "2.9.0",
   "kind": "template",
   "path": "AEP-Base-Node/AEP-Registry/components/",
   "description": "Template for community WASM protocol extensions from the canonical tree.",

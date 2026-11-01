@@ -1,6 +1,6 @@
 # Lattice Crypto
 
-Post-quantum cryptography for AEP 2.8 Lattice Channels.
+Post-quantum cryptography for AEP 2.9 Lattice Channels.
 
 ## Implementation
 

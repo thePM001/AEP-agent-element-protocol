@@ -34,7 +34,7 @@
     ],
     "lrp_id": "iso-42001",
     "framework": "ISO/IEC 42001",
-    "aep_version": "2.8.6",
+    "aep_version": "2.9.0",
     "wrap": "iso-42001"
   }
 }

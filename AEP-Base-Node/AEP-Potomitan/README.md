@@ -1,6 +1,6 @@
 # Potomitan
 
-Mesh fallback for AEP 2.8 when normal internet is unavailable.
+Mesh fallback for AEP 2.9 when normal internet is unavailable.
 
 aep-potomitan ships a mesh packet plane. Packets encode to POTM wire bytes, hop_limit governs forward, MemoryTransport and UdpTransport send datagrams and MeshPacketPlane delivers or forwards via the routing table. This crate is not registry-plus-mode.
 

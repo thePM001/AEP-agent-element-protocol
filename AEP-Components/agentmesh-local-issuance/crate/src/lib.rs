@@ -394,13 +394,13 @@ mod tests {
 
     fn honest_readme() -> String {
         String::from(
-            "Local issuance identity layer for AEP 2.8 Lattice Channels. Local issuance is not mesh attestation.",
+            "Local issuance identity layer for AEP 2.9 Lattice Channels. Local issuance is not mesh attestation.",
         )
     }
 
     fn honest_crate() -> String {
         String::from(
-            "//! AgentMesh provides local issuance identity for Lattice Channel transport in AEP 2.8.\n//! Local X.509 issuance is not mesh attestation.\n\npub fn spiffe_cryptographically_enforced() -> bool { false }\n/// Local X.509 issuance alone does not claim Workload API enforcement.\nfn issue_workload_identity() {}\npub enum IssuanceKind { LocalX509 }\n",
+            "//! AgentMesh provides local issuance identity for Lattice Channel transport in AEP 2.9.\n//! Local X.509 issuance is not mesh attestation.\n\npub fn spiffe_cryptographically_enforced() -> bool { false }\n/// Local X.509 issuance alone does not claim Workload API enforcement.\nfn issue_workload_identity() {}\npub enum IssuanceKind { LocalX509 }\n",
         )
     }
 

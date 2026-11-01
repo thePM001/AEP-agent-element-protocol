@@ -1,6 +1,6 @@
 # AEP Hyperlattice
 
-Canonical hyperlattice implementation for AEP 2.8.
+Canonical hyperlattice implementation for AEP 2.9.
 
 | Module | Purpose |
 |--------|---------|

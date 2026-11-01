@@ -1,7 +1,7 @@
 /**
  * AEP Economics - Model Mapping
  * Resolves canonical model names to provider-specific model IDs
- * AEP 2.8.6
+ * AEP 2.9
  */
 
 import { ModelMapping, ModelId, ProviderId } from './types.js';

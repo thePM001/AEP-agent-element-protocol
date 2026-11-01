@@ -20,7 +20,7 @@ export const GRAPH_FILE = "composer-lite-graph.json";
 const LEGACY_GRAPH_FILE = "wasm-composer-graph.json";
 
 const EMPTY_GRAPH = () => ({
-  version: "2.8.6",
+  version: "2.9.0",
   composer: "composer-lite",
   updated_at: null,
   nodes: [],
@@ -185,7 +185,7 @@ export function saveGraph(dataDir, graph) {
   mkdirSync(dirname(path), { recursive: true });
   const record = {
     ...graph,
-    version: "2.8.6",
+    version: "2.9.0",
     composer: "composer-lite",
     updated_at: new Date().toISOString(),
   };

@@ -1,6 +1,6 @@
 [package]
 name = "aep-lattice-channel"
-description = "AEP 2.8 Lattice Channel frames with rate limiting and contract enforcement hooks"
+description = "AEP 2.9 Lattice Channel frames with rate limiting and contract enforcement hooks"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

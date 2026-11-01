@@ -1,4 +1,4 @@
-# AEP 2.8.6 Policy Lattice - Quick Setup
+# AEP 2.9 Policy Lattice - Quick Setup
 
 ## 1. The one authoring form for the Admit layer
 
@@ -15,7 +15,7 @@ reference form lives in `AEP-Policy-System/reference/`.
       { "expr": "no_em_dashes", "lang": "gapdsl", "severity": "hard" }
     ]
   },
-  "action": { "type": "template", "content": "Apply AEP 2.8.6 writing conventions." }
+  "action": { "type": "template", "content": "Apply AEP 2.9 writing conventions." }
 }
 ```
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# AEP 2.8 public-tier conformance runner.
+# AEP 2.9 public-tier conformance runner.
 # Usage: ./conformance/runner/run.sh [repo-root]
 set -euo pipefail
 
@@ -7,7 +7,7 @@ ROOT="${1:-$(cd "$(dirname "$0")/../../.." && pwd)}"
 HARNESS="$ROOT/AEP-Components/conformance/harness"
 cd "$ROOT"
 
-echo "== AEP 2.8 conformance runner (Phase 8) =="
+echo "== AEP 2.9 conformance runner (Phase 8) =="
 echo "Root: $ROOT"
 echo
 

@@ -25,4 +25,4 @@ Agent -> aep intercept -> MCP Server
 ```
 
 Every tool call passes through the policy lattice before reaching the MCP server.
-Part of the AEP 2.8.6 release line.
+Part of the AEP 2.9 release line.

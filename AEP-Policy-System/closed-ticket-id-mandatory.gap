@@ -1,4 +1,4 @@
-# AEP 2.8 closed ticket title is mandatory
+# AEP 2.9 closed ticket title is mandatory
 # severity: critical
 # description: If a ticket is closed the operator close report MUST name that ticket title. Any real ticket title is legal. Omitting the title is Deny.
 

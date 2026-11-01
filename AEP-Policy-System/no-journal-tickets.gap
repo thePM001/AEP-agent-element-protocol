@@ -1,4 +1,4 @@
-# AEP 2.8 no journal-only tickets
+# AEP 2.9 no journal-only tickets
 # severity: critical
 # description: AEP tickets must name a product hole. A ticket whose only job is coding-completion or project-completion-bac journals after other work is Deny.
 

@@ -43,7 +43,7 @@ bootstrap_config() {
   SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
   cat > "${CONFIG}" <<EOF
 {
-  "version": "2.8.6",
+  "version": "2.9.0",
   "base_node": {
     "socket_base": "${AEP_SOCKET_BASE}",
     "lattice_db": "${LATTICE_DB}",

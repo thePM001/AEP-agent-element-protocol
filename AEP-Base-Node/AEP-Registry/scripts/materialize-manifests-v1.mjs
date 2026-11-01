@@ -31,7 +31,7 @@ const MANIFESTS = {
   "aep-base-node": {
     manifest_version: "1",
     id: "aep-base-node",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "daemon",
     path: "AEP-Base-Node/",
     description: "Mandatory local governance daemon with lattice-gated docking ports.",
@@ -77,7 +77,7 @@ const MANIFESTS = {
   "lattice-channels": {
     manifest_version: "1",
     id: "lattice-channels",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/lattice-channels/",
     description: "Unified lattice transport (MJS), TypeScript client, and Rust channel crate.",
@@ -110,7 +110,7 @@ const MANIFESTS = {
   "lattice-crypto": {
     manifest_version: "1",
     id: "lattice-crypto",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/lattice-crypto/",
     description: "Post-quantum PQEncryptedCapsule (ML-KEM-768 + ML-DSA-65 + AES-256-GCM).",
@@ -126,7 +126,7 @@ const MANIFESTS = {
   "lattice-memory": {
     manifest_version: "1",
     id: "lattice-memory",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/lattice-memory/",
     description: "sqlite-vec persistence and USearch fast-path attractors for validation memory.",
@@ -155,7 +155,7 @@ const MANIFESTS = {
   "agentmesh": {
     manifest_version: "1",
     id: "agentmesh",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/agentmesh/",
     description: "SPIFFE/DID/mTLS identity layer for lattice channel transport.",
@@ -176,7 +176,7 @@ const MANIFESTS = {
   "potomitan": {
     manifest_version: "1",
     id: "potomitan",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Base-Node/AEP-Potomitan/",
     description: "Mesh peer registry and routing fallback (Yggdrasil adaptation).",
@@ -203,7 +203,7 @@ const MANIFESTS = {
   "dynaep-core": {
     manifest_version: "1",
     id: "dynaep-core",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "protocol",
     path: "AEP-Components/dynAEP/",
     description: "Real-time dynAEP Action Lattice event governance protocol.",
@@ -235,7 +235,7 @@ const MANIFESTS = {
   "ucb": {
     manifest_version: "1",
     id: "ucb",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "bridge",
     path: "AEP-Base-Node/AEP-Docks/ucb/",
     description: "Rust secured dock :8412 for foreign ingress + internet egress only.",
@@ -279,7 +279,7 @@ const MANIFESTS = {
   "conformance-runner": {
     manifest_version: "1",
     id: "conformance-runner",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "tooling",
     path: "AEP-Components/conformance/",
     description: "Conformance battery CC-01..CC-16 (Rust + vitest).",
@@ -295,7 +295,7 @@ const MANIFESTS = {
   "gap-runtime-scanners": {
     manifest_version: "1",
     id: "gap-runtime-scanners",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "regulation",
     path: "AEP-Components/scanners/",
     description: "Optional 11-scanner GAP runtime bundle.",
@@ -330,7 +330,7 @@ const MANIFESTS = {
   "economics": {
     manifest_version: "1",
     id: "economics",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "regulation",
     path: "AEP-Components/economics/",
     description: "Pricing, budget caps, cost estimation, X402 nanopayments.",
@@ -357,7 +357,7 @@ const MANIFESTS = {
   "schema-builder": {
     manifest_version: "1",
     id: "schema-builder",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "tooling",
     path: "AEP-Policy-System/schema-builder/",
     description: "Data-driven schema validation (MLE, spectral, permissiveness, modularity).",
@@ -381,7 +381,7 @@ const MANIFESTS = {
   "policy-builder": {
     manifest_version: "1",
     id: "policy-builder",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "tooling",
     path: "AEP-Policy-System/policy-builder/",
     description: "Invariant detection and Rego rule generation from schema analysis.",
@@ -406,7 +406,7 @@ const MANIFESTS = {
   "connector-postgres": {
     manifest_version: "1",
     id: "connector-postgres",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "connector",
     path: "AEP-Base-Node/AEP-Docks/universal-connect/",
     description: "Lattice-gated Postgres connector via NT-00006 bridge (public tier).",
@@ -447,7 +447,7 @@ const MANIFESTS = {
   "evaluation-chain": {
     manifest_version: "1",
     id: "evaluation-chain",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/evaluation-chain/",
     description: "Lab-only evaluation-chain runner. Live path is Admit collect-all walls then Apply.",
@@ -463,7 +463,7 @@ const MANIFESTS = {
   "session": {
     manifest_version: "1",
     id: "session",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/session/",
     description: "Agent session lifecycle, kill switch, and session manager.",
@@ -479,7 +479,7 @@ const MANIFESTS = {
   "policy-engine": {
     manifest_version: "1",
     id: "policy-engine",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/policy-engine/",
     description: "YAML policy loading, validation, and evaluation.",
@@ -495,7 +495,7 @@ const MANIFESTS = {
   "evidence-ledger": {
     manifest_version: "1",
     id: "evidence-ledger",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/evidence-ledger/",
     description: "Merkle evidence ledger, rollback, and quantum timestamps.",
@@ -511,7 +511,7 @@ const MANIFESTS = {
   "model-gateway": {
     manifest_version: "1",
     id: "model-gateway",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/model-gateway/",
     description: "Governed multi-provider LLM gateway with adapters.",
@@ -527,7 +527,7 @@ const MANIFESTS = {
   "fleet": {
     manifest_version: "1",
     id: "fleet",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/fleet/",
     description: "Multi-agent fleet manager, spawn governance, message scanning.",
@@ -543,7 +543,7 @@ const MANIFESTS = {
   "covenant": {
     manifest_version: "1",
     id: "covenant",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/covenant/",
     description: "Parse, evaluate, and compile behavioral covenant specs.",
@@ -559,7 +559,7 @@ const MANIFESTS = {
   "proof-bundle": {
     manifest_version: "1",
     id: "proof-bundle",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/proof-bundle/",
     description: "Build and verify session proof bundles with reliability index.",
@@ -575,7 +575,7 @@ const MANIFESTS = {
   "recovery": {
     manifest_version: "1",
     id: "recovery",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/recovery/",
     description: "Violation detection and governed recovery attempts.",
@@ -591,7 +591,7 @@ const MANIFESTS = {
   "workflow": {
     manifest_version: "1",
     id: "workflow",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/workflow/",
     description: "Multi-phase workflow executor and fine-tuning templates.",
@@ -607,7 +607,7 @@ const MANIFESTS = {
   "identity": {
     manifest_version: "1",
     id: "identity",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/identity/",
     description: "Agent identity manager and compact identity types.",
@@ -623,7 +623,7 @@ const MANIFESTS = {
   "intent": {
     manifest_version: "1",
     id: "intent",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/intent/",
     description: "Intent baseline and drift detection.",
@@ -639,7 +639,7 @@ const MANIFESTS = {
   "decomposition": {
     manifest_version: "1",
     id: "decomposition",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/decomposition/",
     description: "Governed task tree decomposition and completion gates.",
@@ -655,7 +655,7 @@ const MANIFESTS = {
   "telemetry": {
     manifest_version: "1",
     id: "telemetry",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/telemetry/",
     description: "OpenTelemetry span and event exporter for AEP.",
@@ -671,7 +671,7 @@ const MANIFESTS = {
   "proxy": {
     manifest_version: "1",
     id: "proxy",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/proxy/",
     description: "MCP and shell proxy servers under lattice governance.",
@@ -687,7 +687,7 @@ const MANIFESTS = {
   "datasets": {
     manifest_version: "1",
     id: "datasets",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/datasets/",
     description: "Governed dataset management for eval and training.",
@@ -703,7 +703,7 @@ const MANIFESTS = {
   "graph-engine": {
     manifest_version: "1",
     id: "graph-engine",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/graph-engine/",
     description: "Agent governance graph engine and scene registry.",
@@ -719,7 +719,7 @@ const MANIFESTS = {
   "verification": {
     manifest_version: "1",
     id: "verification",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/verification/",
     description: "Handshake proofs and counterparty verification.",
@@ -735,7 +735,7 @@ const MANIFESTS = {
   "streaming": {
     manifest_version: "1",
     id: "streaming",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/streaming/",
     description: "Stream validator and middleware for governed output.",
@@ -751,7 +751,7 @@ const MANIFESTS = {
   "mcp-security": {
     manifest_version: "1",
     id: "mcp-security",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "regulation",
     path: "AEP-Components/mcp-security/",
     description: "MCP security scanners and policies.",
@@ -767,7 +767,7 @@ const MANIFESTS = {
   "aep-comm": {
     manifest_version: "1",
     id: "aep-comm",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/aep-comm/",
     description: "Inter-agent communication helpers.",
@@ -783,7 +783,7 @@ const MANIFESTS = {
   "eval": {
     manifest_version: "1",
     id: "eval",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/eval/",
     description: "Eval runner, rule generator, and ML metrics.",
@@ -799,7 +799,7 @@ const MANIFESTS = {
   "optimization": {
     manifest_version: "1",
     id: "optimization",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/optimization/",
     description: "Governed prompt optimizer and version manager.",
@@ -815,7 +815,7 @@ const MANIFESTS = {
   "permissions": {
     manifest_version: "1",
     id: "permissions",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/permissions/",
     description: "Kernel agent permission facade crate.",
@@ -831,7 +831,7 @@ const MANIFESTS = {
   "gap-capability-dimensions": {
     manifest_version: "1",
     id: "gap-capability-dimensions",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/admit/crate",
     description: "Agent permission is the GAP dimension Conjunction. The dimension compiles in the admit permission wall.",
@@ -847,7 +847,7 @@ const MANIFESTS = {
   "intercept": {
     manifest_version: "1",
     id: "intercept",
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "library",
     path: "AEP-Components/intercept/",
     description: "Pre/post action intercept hooks.",
@@ -903,7 +903,7 @@ for (const [id, name, gap_ref] of COMPLIANCE) {
   MANIFESTS[id] = {
     manifest_version: "1",
     id,
-    version: "2.8.6",
+    version: "2.9.0",
     kind: "compliance",
     path: "AEP-Policy-System/reference/",
     description: `${name} compliance pack (GAP reference).`,

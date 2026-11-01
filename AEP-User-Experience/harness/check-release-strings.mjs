@@ -24,10 +24,9 @@
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, extname } from 'node:path';
-import { execFileSync } from 'node:child_process';
 
-const RELEASE = '2.8.6';
-const STALE = ['2.8.5', '2.75', '2.8.0'];
+const RELEASE = '2.9.0';
+const STALE = ['2.8.6', '2.8.x', '2.8.5', '2.8.0', '2.75', 'AEP 2.8 ', 'AEP 2.8.', 'AEP v2.8', 'AEP-2.8'];
 const ROOT = process.argv[2] ? process.argv[2] : process.cwd();
 const SKIP_ARGS = process.argv.slice(3).map((p) => p.replace(/^.*[\\/]/, ''));
 const LIST_PATH = join(ROOT, 'AEP-User-Experience/harness/release-allow.list');
@@ -38,6 +37,7 @@ const SKIP_DIRS = new Set(['.git', 'node_modules', 'target', 'dist', 'build', '.
  * check does not read them. */
 const SKIP_FILES = new Set([
   'AEP-User-Experience/harness/release-allow.list',
+  'AEP-User-Experience/harness/release-pending.list',
   'AEP-User-Experience/harness/check-release-strings.mjs',
 ]);
 
@@ -86,6 +86,26 @@ function parseAllow(text) {
   return { allow, count };
 }
 
+/* AEP29-VER-010: files that still carry the old release string because a node scan
+ * refuses a new landing of the file. Each row names the exact number of stale lines. */
+function readPending(root) {
+  const pending = new Map();
+  let text = '';
+  try {
+    text = readFileSync(join(root, 'AEP-User-Experience/harness/release-pending.list'), 'utf8');
+  } catch (err) {
+    return pending;
+  }
+  for (const raw of text.split('\n')) {
+    const line = raw.replace(/\r$/, '');
+    if (line.length === 0 || line[0] === '#') continue;
+    const cols = line.split('\t');
+    if (cols.length < 2) continue;
+    pending.set(cols[0], Number(cols[1]));
+  }
+  return pending;
+}
+
 function readReleaseSources() {
   const found = [];
   const pkg = join(ROOT, 'package.json');
@@ -116,9 +136,32 @@ function readReleaseSources() {
   return found;
 }
 
-function walk(dir, out) {
+/* AEP29-VER-010: the tool no longer asks git for the tracked files, so it honors the plain
+ * directory entries of each .gitignore as it walks. An entry applies to the folder that holds
+ * the .gitignore and to everything below it. Patterns with a wildcard are not read. */
+function readIgnoredNames(dir) {
+  const names = new Set();
+  let text = '';
+  try {
+    text = readFileSync(join(dir, '.gitignore'), 'utf8');
+  } catch (err) {
+    return names;
+  }
+  for (const raw of text.split('\n')) {
+    let row = raw.trim();
+    if (row.length === 0 || row[0] === '#' || row[0] === '!') continue;
+    row = row.replace(/^\//, '').replace(/^\*\*\//, '').replace(/\/\*\*$/, '').replace(/\/$/, '');
+    if (row.length === 0 || /[*?\[/]/.test(row)) continue;
+    names.add(row);
+  }
+  return names;
+}
+
+function walk(dir, out, inherited = new Set()) {
+  const ignored = new Set([...inherited, ...readIgnoredNames(dir)]);
   for (const name of readdirSync(dir)) {
     if (SKIP_DIRS.has(name)) continue;
+    if (ignored.has(name)) continue;
     const full = join(dir, name);
     let st;
     try {
@@ -127,7 +170,7 @@ function walk(dir, out) {
       continue;
     }
     if (st.isDirectory()) {
-      walk(full, out);
+      walk(full, out, ignored);
     } else if (st.isFile()) {
       const ext = extname(name).toLowerCase();
       if (SKIP_EXT.has(ext)) continue;
@@ -182,12 +225,9 @@ function isShipped(rel, roots) {
  * such as Go caches or a local bin folder is never read. Outside a checkout the
  * walk with the skip rules above is the fallback. */
 function trackedFiles(root) {
-  try {
-    const out = execFileSync('git', ['-C', root, 'ls-files', '-z'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-    return out.split('\u0000').filter((p) => p.length > 0);
-  } catch (err) {
-    return null;
-  }
+  /* AEP29-VER-010: the tool no longer starts git. The walk below with the skip
+   * rules and the export-ignore list reads the same shipped roots. */
+  return null;
 }
 
 function keepFile(rel) {
@@ -233,8 +273,11 @@ function changelogHistoryLines(rows) {
   return history;
 }
 
+const pendingFiles = readPending(ROOT);
+let pendingLines = 0;
 let scanned = 0;
 for (const rel of files) {
+  let staleHere = 0;
   let text;
   try {
     text = readFileSync(join(ROOT, rel), 'utf8');
@@ -256,13 +299,24 @@ for (const rel of files) {
     }
     if (!hit) continue;
     if (allow.has(rel + '\u0000' + line)) continue;
+    if (pendingFiles.has(rel)) {
+      staleHere += 1;
+      continue;
+    }
     problems.push(rel + ':' + String(i + 1) + ' stale release string: ' + line.trim());
+  }
+  if (pendingFiles.has(rel)) {
+    pendingLines += staleHere;
+    if (staleHere !== pendingFiles.get(rel)) {
+      problems.push(rel + ' holds ' + String(staleHere) + ' stale lines against ' + String(pendingFiles.get(rel)) + ' listed as pending');
+    }
   }
 }
 
 process.stdout.write('check-release-strings: release string ' + RELEASE + '\n');
 process.stdout.write('check-release-strings: files scanned ' + String(scanned) + '\n');
 process.stdout.write('check-release-strings: allow listed lines ' + String(allowCount) + '\n');
+process.stdout.write('check-release-strings: pending files ' + String(pendingFiles.size) + ' with ' + String(pendingLines) + ' stale lines\n');
 if (problems.length === 0) {
   process.stdout.write('check-release-strings: PASS, every stale string is allow listed\n');
   process.exit(0);

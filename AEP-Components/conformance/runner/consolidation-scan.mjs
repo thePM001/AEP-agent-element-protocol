@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Consolidation scan for the AEP 2.8.x public tree.
+// Consolidation scan for the AEP 2.9 public tree.
 //
 // One script counts definition sites per concern and prints a table. The plan is
 // done when every count equals one, apart from the derived surfaces which must
@@ -238,7 +238,7 @@ for (const dead of DEAD_PATHS) {
 }
 
 const width = Math.max(...rows.map((row) => row.concern.length));
-console.log("AEP 2.8.x consolidation scan");
+console.log("AEP 2.9 consolidation scan");
 console.log(`Root: ${ROOT}`);
 console.log("");
 console.log(`${"concern".padEnd(width)}  count  expect  state`);

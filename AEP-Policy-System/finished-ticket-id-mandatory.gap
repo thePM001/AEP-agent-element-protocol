@@ -1,4 +1,4 @@
-# AEP 2.8 finished ticket title is mandatory
+# AEP 2.9 finished ticket title is mandatory
 # severity: critical
 # description: If work on a ticket is finished the operator report MUST contain the dedicated sentence The finished ticket is {ID}. {ID} is the real ticket title. Any real ticket title is legal. Locator form alone is Deny.
 

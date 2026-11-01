@@ -1,4 +1,4 @@
-# Lattice Memory (AEP 2.8.6)
+# Lattice Memory (AEP 2.9)
 
 Lattice Memory stores forensic attractors and health telemetry and it never admits, because looking similar to a past allow is not allow and Base Node is the only live evaluator. Attractors do not skip the compiled pulse or collect-all walls. Writing walls use CORRECTWRITING_EN and writing:* ids.
 

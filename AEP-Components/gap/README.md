@@ -2,9 +2,9 @@
 
 GAP is the native instructions language for governed agency in the Agent Element Protocol and an instruction is the atomic unit so agents, workflows, validators, compositions and governance rules are all instructions that generate further instructions.
 
-Live evaluation follows AEP 2.8.6: seal a lattice-channel capsule, freeze the clock at seal, wait 1000 ms, run every check together as collect-all Admit and then Apply the allowed action. After the wait the client collects by capsule hash and live AEP 2.8.6 EPSCOM trust bundle mode is sha256-structure. Presence of trust_ring is Deny. Who-may is agent_permission.
+Live evaluation follows AEP 2.9: seal a lattice-channel capsule, freeze the clock at seal, wait 1000 ms, run every check together as collect-all Admit and then Apply the allowed action. After the wait the client collects by capsule hash and live AEP 2.9 EPSCOM trust bundle mode is sha256-structure. Presence of trust_ring is Deny. Who-may is agent_permission.
 
-## AEP 2.8 vendor tree
+## AEP 2.9 vendor tree
 
 This tree vendors classic GAP into `AEP-Components/gap/` from github.com/thePM001/gap.
 
@@ -39,7 +39,7 @@ GAP uses three layers and no layer requires the LLM to have seen GAP during trai
 
 ## Live evaluation
 
-The AEP 2.8.6 live path seals a lattice-channel capsule, freezes the clock at seal and waits 1000 ms for the compiled Base Node kernel pulse. Every check then runs together as collect-all Admit and the allowed action is Applied.
+The AEP 2.9 live path seals a lattice-channel capsule, freezes the clock at seal and waits 1000 ms for the compiled Base Node kernel pulse. Every check then runs together as collect-all Admit and the allowed action is Applied.
 
 - `PULSE_MS` is a kernel constant rather than a dynAEP YAML key.
 - Putting a capsule on the dock is a transport step.
@@ -66,7 +66,7 @@ Fifteen named rows are a derived ledger of that evaluation and the ledger is a f
 - Row 6 Escalation: higher authority required.
 - Row 7 Covenant evaluation: permit, forbid and require rules.
 - Row 8 Pattern check: environment forbidden patterns.
-- Row 9 Capability: written capabilities. Who-may stays agent_permission. A numeric trust score is evidence on the derived ledger.
+- Row 9 Capability: written capabilities. Who-may remains agent_permission. A numeric trust score is evidence on the derived ledger.
 - Row 10 Budget: token, cost and time limits.
 - Row 11 Gate: human or webhook approval.
 - Row 12 Cross-agent: counterparty identity handshake.
@@ -84,17 +84,17 @@ Pulse hold is the wait after a sealed capsule is opened. Base Node freezes the c
 - The wire window is wider because it covers transit.
 - Pulse age covers hold after freeze.
 - A builder who wants a different wait rebuilds Base Node with a different compiled pulse length.
-- Freeze-at-seal stays.
-- Allowed drift stays independent of the wait length.
-- Pulse age stays longer than the wait.
+- Freeze-at-seal remains.
+- Allowed drift remains independent of the wait length.
+- Pulse age remains longer than the wait.
 - Unbound scene, dock, timestamp or sequence closes Admit because those fields must be bound before collect-all.
 
 ### Live trust bundle
 
-- Live AEP 2.8.6 EPSCOM trust bundle mode is sha256-structure.
+- Live AEP 2.9 EPSCOM trust bundle mode is sha256-structure.
 - Optional proof algorithms may still name Ed25519 or ML-DSA-65.
 - The signatures loader denies an ML-DSA claim on sha256-structure.
-- Signed proof is not the default live AEP 2.8.6 attach.
+- Signed proof is not the default live AEP 2.9 attach.
 - Collect-all Admit collects by capsule hash on that same path.
 - Presence of trust_ring is Deny.
 - Presence of trust_ring on a live GAP document is Deny.
@@ -112,7 +112,7 @@ Keep `.gap` as GAP source because collect-all Admit collects by capsule hash and
 - Syntax: YAML 1.2 source. Live kernel policies may be JSON-encoded GAP instructions. YAML remains valid GAP source. The kernel reads the instruction object not the skin.
 - One instruction per document. Multi-instruction families use YAML multi-document syntax (`---` separators).
 - Keep `.gap` as GAP source.
-- Collect-all Admit collects by capsule hash. Live AEP 2.8.6 EPSCOM trust bundle mode is sha256-structure.
+- Collect-all Admit collects by capsule hash. Live AEP 2.9 EPSCOM trust bundle mode is sha256-structure.
 - Writing and security are always-on stems and they evaluate on every action path.
 - Other GAP walls bind to a wrap or prefix.
 - A finance wrap GAP item does not close an inventory wrap ping.
@@ -144,7 +144,7 @@ Keep `.gap` as GAP source because collect-all Admit collects by capsule hash and
 
 ### JSON-encoded kernel policy
 
-AEP 2.8.6 reference policies are JSON objects with pattern.guard and the same instruction fields. The source below is legal GAP because the kernel reads the instruction object not the skin.
+AEP 2.9 reference policies are JSON objects with pattern.guard and the same instruction fields. The source below is legal GAP because the kernel reads the instruction object not the skin.
 
 > ```json
 > {
@@ -153,7 +153,7 @@ AEP 2.8.6 reference policies are JSON objects with pattern.guard and the same in
 >   "action": {"type": "reference"},
 >   "weight": 1.0,
 >   "composition": {"type": "atomic"},
->   "metadata": {"provenance": "AEP 2.8.6", "version": "1.0.0", "stability": "stable"}
+>   "metadata": {"provenance": "AEP 2.9", "version": "1.0.0", "stability": "stable"}
 > }
 > ```
 
@@ -228,7 +228,7 @@ AEP 2.8.6 reference policies are JSON objects with pattern.guard and the same in
 > ```
 
 - The proof.algorithm field names an optional proof algorithm.
-- Live AEP 2.8.6 EPSCOM trust bundle mode is sha256-structure so Ed25519 and ML-DSA-65 stay optional rather than the default live bundle.
+- Live AEP 2.9 EPSCOM trust bundle mode is sha256-structure so Ed25519 and ML-DSA-65 stay optional rather than the default live bundle.
 - Who-may is `agent_permission` so Agent A may X and Agent B may Y.
 - Empty grants close an agent action when the grant list is empty.
 - Presence of trust_ring is Deny.
@@ -264,7 +264,7 @@ AEP 2.8.6 reference policies are JSON objects with pattern.guard and the same in
 - scanners: PII, Injection, Secrets, Jailbreak, Toxicity, URL, Data Profiler, Prediction, Brand, Regulatory and Temporal.
 - covenants: behavioural constraints with `[hard]` or `[soft]` severity.
 - budget: token and cost limits recorded on the derived ledger.
-- proof: live AEP 2.8.6 EPSCOM trust bundle mode is sha256-structure. Optional proof algorithms may name Ed25519.
+- proof: live AEP 2.9 EPSCOM trust bundle mode is sha256-structure. Optional proof algorithms may name Ed25519.
 - fleet: multi-instance governance with spawn policy.
 - knowledge: scoped knowledge base with anti-context-rot.
 - tools: allowed and forbidden tool lists.
@@ -278,7 +278,7 @@ This vendor tree holds classic GAP source under `AEP-Components/gap/` and `.gap`
 - Live Admit still waits for freeze-at-seal, the 1000 ms kernel pulse and collect-all walls.
 - Who-may is agent_permission.
 - Presence of trust_ring is Deny.
-- Live AEP 2.8.6 EPSCOM trust bundle mode is sha256-structure.
+- Live AEP 2.9 EPSCOM trust bundle mode is sha256-structure.
 - Compile CAW profiles with `lib/gap-compile.mjs`.
 - The live classic GAP binary gap-schema-profile-v13 lives on thePM001/GAP and is not copied into this vendor tree.
 - This snapshot does not ship `gapc` and there is no `structural` CLI here.
@@ -325,14 +325,14 @@ dottxt constrains tokens to match JSON Schema, regex or CFG at the logits level 
 - A derived fifteen-row ledger of that evaluation
 - agent_permission who-may grants
 - Behavioural covenants
-- Live AEP 2.8.6 EPSCOM trust bundle mode is sha256-structure with optional proof algorithms
+- Live AEP 2.9 EPSCOM trust bundle mode is sha256-structure with optional proof algorithms
 - Self-generating instructions that evolve specialized variants
 - dottxt's structural constraint capability is equivalent to one action flag in GAP: `structured_generation: true`
 - GAP covers that authoring gate plus live collect-all Admit. Constrained decoding is not Admit. This vendor tree does not ship a wired Layer 1 Admit engine
 
 ## License
 
-- License Apache-2.0. GAP is Governed Agentic Programming, language specification v1.1 aligned to AEP 2.8.6 live evaluation, part of the Agent Element Protocol ecosystem, author thePM_001.
+- License Apache-2.0. GAP is Governed Agentic Programming, language specification v1.1 aligned to AEP 2.9 live evaluation, part of the Agent Element Protocol ecosystem, author thePM_001.
 
 ## AI-eligibility status
 

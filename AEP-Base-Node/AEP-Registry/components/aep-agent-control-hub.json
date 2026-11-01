@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "id": "aep-agent-control-hub",
-  "version": "2.8.6",
+  "version": "2.9.0",
   "kind": "library",
   "path": "AEP-Base-Node/AEP-Agent-Control-Hub/",
   "description": "Kernel extension that binds GAP session, mount and agent-permission state.",

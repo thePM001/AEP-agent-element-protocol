@@ -70,7 +70,7 @@ The server compares a SHA-256 digest of the presented key with the digest of the
 {
   "ok": true,
   "service": "aep-data-dock",
-  "version": "2.8.6",
+  "version": "2.9.0",
   "status": "ok",
   "port": 8413,
   "ucb_port": 8412,

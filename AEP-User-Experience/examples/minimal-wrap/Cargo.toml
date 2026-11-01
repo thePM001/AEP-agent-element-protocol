@@ -1,9 +1,9 @@
 [package]
 name = "aep-minimal-wrap"
-version = "2.8.6"
+version = "2.9.0"
 edition = "2021"
 license = "Apache-2.0"
-description = "AEP 2.8.6 minimal wrap. Seals a payload, pulses, collects every wall and prints a deny report."
+description = "AEP 2.9 minimal wrap. Seals a payload, pulses, collects every wall and prints a deny report."
 
 [workspace]
 

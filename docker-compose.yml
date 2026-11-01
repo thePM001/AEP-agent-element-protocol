@@ -1,4 +1,4 @@
-# AEP 2.8.6 - Docker deploy (copy .env.example to .env first)
+# AEP 2.9 - Docker deploy (copy .env.example to .env first)
 #
 #   cp .env.example .env
 #   docker compose up -d --build
@@ -12,7 +12,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: aep-base-node:2.8.6
+    image: aep-base-node:2.9.0
     container_name: aep-base-node
     restart: unless-stopped
     ports:

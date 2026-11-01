@@ -1,7 +1,7 @@
 /**
  * AEP Economics - Budget Enforcer
  * Tracks spend, enforces hard caps, warns at soft thresholds
- * AEP 2.8.6
+ * AEP 2.9
  */
 
 import { BudgetConfig, BudgetStatus, CostEstimate } from './types.js';

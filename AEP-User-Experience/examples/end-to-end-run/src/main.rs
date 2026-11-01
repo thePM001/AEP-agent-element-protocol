@@ -1,4 +1,4 @@
-//! AEP 2.8.6 end to end run.
+//! AEP 2.9 end to end run.
 //!
 //! One command walks every layer twice. The refuse path runs first and every
 //! layer fails closed. The pass path runs second and the same layers allow.
@@ -28,7 +28,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
-const PAYLOAD: &[u8] = b"aep-2.8.6-end-to-end-run";
+const PAYLOAD: &[u8] = b"aep-2.9-end-to-end-run";
 const CAW_POLICY_REFUSE: &str = "aep-e2e-missing-policy";
 const CAW_DENIED_BINARY: &str = "/usr/bin/curl";
 const PROVENANCE_SOURCE: &str = "mcp";
@@ -456,7 +456,7 @@ fn run_main() -> Result<(), String> {
                 "--",
                 "sh",
                 "-c",
-                "printf aep-2.8.6-end-to-end-pass",
+                "printf aep-2.9-end-to-end-pass",
             ],
             &[("AEP_CAW_SERVER", ctx.caw_server.clone())],
         );

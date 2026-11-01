@@ -1,7 +1,7 @@
 // crate: aep-isolation
 // The protocol crate graph carries a process isolation
 // package again. Process isolation shipped with CAW only, so this crate returns
-// the contract to the AEP 2.8.x protocol graph and proves it with a seal test.
+// the contract to the AEP 2.9 protocol graph and proves it with a seal test.
 //
 // The crate owns one job. It records one operating system process against one
 // isolation specification and it hands back the public ProcessSealed record.

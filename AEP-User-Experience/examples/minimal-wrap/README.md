@@ -1,4 +1,4 @@
-# Minimal wrap (AEP 2.8.6)
+# Minimal wrap (AEP 2.9)
 
 This wrap imports the public kernel names from Base Node. Base Node is the only live evaluator and the wrap is not a second evaluator. An empty agent permission list refuses. The compiled pulse is 1000 ms. Writing walls use the CORRECTWRITING_EN rule name and the writing class ids.
 

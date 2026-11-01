@@ -8,7 +8,7 @@ fn main() {
     } else {
         println!("allow false");
     }
-    match seal_and_open(b"aep-2.8.6-minimal-wrap") {
+    match seal_and_open(b"aep-2.9-minimal-wrap") {
         Ok(opened) => println!("sealed roundtrip ok: {}", String::from_utf8_lossy(&opened)),
         Err(e) => println!("sealed roundtrip failed: {e}"),
     }

@@ -1,6 +1,6 @@
 # Custom sub-lattices inside the AEP hyperlattice
 
-A custom sub-lattice is the domain you attach onto one AEP hyperlattice wrap so Base Node can judge what an agent may propose in your field of work. Total AI output control stays the product and Base Node stays the local kernel, which means a domain folder is not a second kernel and is not a shipped UI product, commerce engine, workflow runner, REST server, events bus, IaC product or MCP product. You write the domain because the kernel already exists so this section is the instruction to follow in order and a missing piece is a broken wrap rather than a style choice.
+A custom sub-lattice is the domain you attach onto one AEP hyperlattice wrap so Base Node can judge what an agent may propose in your field of work. Total AI output control remains the product and Base Node remains the local kernel, which means a domain folder is not a second kernel and is not a shipped UI product, commerce engine, workflow runner, REST server, events bus, IaC product or MCP product. You write the domain because the kernel already exists so this section is the instruction to follow in order and a missing piece is a broken wrap rather than a style choice.
 
 ### One wrap per governed system
 
@@ -44,7 +44,7 @@ Every element except the root shell must name a parent that already exists in th
 
 ```json
 {
-  "aep_version": "2.8.6",
+  "aep_version": "2.9.0",
   "schema_revision": 1,
   "elements": {
     "SH-00001": {
@@ -88,7 +88,7 @@ The registry names every valid operation, type, field and constraint. It contain
 Each entry needs a label, a category, a function, a parent when it is a scene element, a `skin_binding` when it renders, the states it may occupy, the actions it may emit and the constraints it must keep. Template entries cover repeating rows so you prove the mould once rather than every instance.
 
 ```yaml
-aep_version: "2.8.6"
+aep_version: "2.9.0"
 schema_revision: 1
 
 create_record:
@@ -119,7 +119,7 @@ When a proposal fails, return a specific error so the agent can correct that fie
 The theme file holds colours, fonts, spacing, borders and motion. Components reference it through `skin_binding`. The theme must not name operations, who may act, parents or docks. If a colour file can allow or deny an action, authority has leaked into skin and the wrap is broken.
 
 ```yaml
-aep_version: "2.8.6"
+aep_version: "2.9.0"
 schema_revision: 1
 theme_name: "Records quiet"
 
@@ -142,7 +142,7 @@ To rebrand, swap the theme and leave scene and registry untouched.
 Every move an agent may propose is an `action_path` node. The lattice says which actions exist, what must happen before each action (parents), which constraints apply at arrival and which agents may perform the action. An action cannot proceed until every parent has been satisfied. That partial order is how you stop archive-before-create, pay-before-risk or apply-before-Admit.
 
 ```yaml
-aep_version: "2.8.6"
+aep_version: "2.9.0"
 lattice_revision: 1
 
 actions:
@@ -178,7 +178,7 @@ actions:
 
 GAP is the written instruction that becomes a live Admit wall after a sealed capsule. Keep `.gap` as UTF-8 source with one instruction per document. Writing and security are always-on stems and they evaluate on every action path. Other walls bind to a wrap or to an `action_path_prefix` so a records wall does not close a payments ping.
 
-Who-may is `agent_permission` so an empty grant list closes that agent's action. `trust_ring` is a documentary label and rank use warns then denies while who-may stays `agent_permission`.
+Who-may is `agent_permission` so an empty grant list closes that agent's action. `trust_ring` is a documentary label and rank use warns then denies while who-may remains `agent_permission`.
 
 ```yaml
 address:
@@ -282,7 +282,7 @@ Do not stand up a parallel runtime that opens unsealed work and do not treat ext
 - [ ] Writing and security stems stay on
 - [ ] Dock channels take sealed capsules only
 - [ ] Domain checker returns specific errors
-- [ ] Registry stays stateless
+- [ ] Registry remains stateless
 - [ ] Execution runs only after Base Node Admit
 - [ ] `aep_sources` points at your folder
 - [ ] A missing title, a skipped parent, a wrong agent and a skipped Admit each fail in test

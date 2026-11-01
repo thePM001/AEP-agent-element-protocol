@@ -1,7 +1,7 @@
 /**
  * AEP Economics - Cost Estimator
  * Token count estimation and micro-USD cost computation
- * AEP 2.8.6
+ * AEP 2.9
  */
 
 import { CostEstimate, PriceCatalogEntry, ProviderId } from './types.js';

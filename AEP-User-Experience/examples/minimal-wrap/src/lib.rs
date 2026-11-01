@@ -1,4 +1,4 @@
-//! AEP 2.8.6 minimal wrap. Uses the public kernel names from Base Node.
+//! AEP 2.9 minimal wrap. Uses the public kernel names from Base Node.
 //! Base Node is the only live evaluator and this wrap is not a second evaluator.
 //! The wrap seals its payload, reports the compiled pulse, collects every wall
 //! on the path and prints a deny report when a wall closes.
@@ -83,8 +83,8 @@ mod tests {
     #[test]
     fn sealed_payload_roundtrip() {
         assert_eq!(
-            seal_and_open(b"aep-2.8.6-minimal-wrap").expect("roundtrip"),
-            b"aep-2.8.6-minimal-wrap".to_vec()
+            seal_and_open(b"aep-2.9-minimal-wrap").expect("roundtrip"),
+            b"aep-2.9-minimal-wrap".to_vec()
         );
     }
     #[test]

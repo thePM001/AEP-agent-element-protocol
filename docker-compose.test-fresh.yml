@@ -1,4 +1,4 @@
-# Fresh AEP 2.8.6 test stack - isolated volume, no production data.
+# Fresh AEP 2.9 test stack - isolated volume, no production data.
 #
 #   docker compose -f docker-compose.test-fresh.yml up -d --build
 
@@ -7,7 +7,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: aep-base-node:2.8.6-test
+    image: aep-base-node:2.9.0-test
     container_name: aep-base-node-test
     restart: unless-stopped
     ports:

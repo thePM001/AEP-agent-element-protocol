@@ -58,7 +58,7 @@ struct BaseNodeConfigSection {
 }
 
 #[derive(Debug, Parser)]
-#[command(name = "aep-base-node", about = "AEP 2.8 mandatory local governance daemon")]
+#[command(name = "aep-base-node", about = "AEP 2.9 mandatory local governance daemon")]
 struct Cli {
     #[arg(long)]
     config: Option<PathBuf>,
@@ -110,7 +110,7 @@ fn arg_present(flag: &str) -> bool {
 fn load_config_file(path: &PathBuf) -> Result<BaseNodeConfigFile, Box<dyn std::error::Error>> {
     let raw = std::fs::read_to_string(path)?;
     let parsed: BaseNodeConfigFile = serde_json::from_str(&raw)?;
-    if parsed.version != "2.8.6" {
+    if parsed.version != "2.9" {
         return Err(format!("unsupported config version: {}", parsed.version).into());
     }
     Ok(parsed)

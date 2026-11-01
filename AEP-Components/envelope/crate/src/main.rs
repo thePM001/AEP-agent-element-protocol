@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use std::io::{Read, Write};
 
 #[derive(Parser)]
-#[command(name = "aep-envelope", about = "AEP 2.8 Envelope Admit")]
+#[command(name = "aep-envelope", about = "AEP 2.9 Envelope Admit")]
 struct Cli {
     #[command(subcommand)]
     cmd: Cmd,

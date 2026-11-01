@@ -1,6 +1,6 @@
 # AEP CAW Framework
 
-**CAW (Containerized Agentic Workflows)** is AEP 2.8 Execution-Layer Security (ELS). It is the execution layer that this stack requires for coding agents and containerized agentic workflows: it enforces policy on shell, file, network, process, database wire and LLM traffic at runtime and it confines the host process that runs an agent command. The catalog ships the component default enabled, so the catalog default enables it for every coding agent plan. CAW is not a second evaluator because the walls belong to Base Node.
+**CAW (Containerized Agentic Workflows)** is AEP 2.9 Execution-Layer Security (ELS). It is the execution layer that this stack requires for coding agents and containerized agentic workflows: it enforces policy on shell, file, network, process, database wire and LLM traffic at runtime and it confines the host process that runs an agent command. The catalog ships the component default enabled, so the catalog default enables it for every coding agent plan. CAW is not a second evaluator because the walls belong to Base Node.
 
 See [LICENSE](../LICENSE) for Apache 2.0 terms.
 
@@ -88,7 +88,8 @@ make build    # bin/aep-caw + bin/aep-caw-shell-adapter
 ```bash
 ./bin/aep-caw detect
 SID=$(./bin/aep-caw session create --workspace . --json | jq -r .id)
-./bin/aep-caw exec "$SID" -- echo "CAW OK"
+./bin/aep-caw exec "$SID" \
+-- echo "CAW OK"
 ```
 
 ---
@@ -107,7 +108,8 @@ console.log(await probeCawHost(process.env));
 
 # Enforced session
 SID=$(./bin/aep-caw session create --workspace . --json | jq -r .id)
-./bin/aep-caw exec "$SID" -- ls -la
+./bin/aep-caw exec "$SID" \
+-- ls -la
 ```
 
 ---
@@ -237,7 +239,8 @@ The refusal names the rule, the dock and the socket path, so the operator reads 
 
 ```bash
 # Stop the kernel dock and run a wrapped command: the command is refused.
-aep-caw wrap -- bash -c 'echo hi'
+aep-caw wrap \
+-- bash -c 'echo hi'
 # aep-caw: kernel dock silent (rule=kernel-dock-silent dock=validation_engine socket=...)
 ```
 
@@ -247,7 +250,7 @@ An operator who runs the conformance suite or the smoke script with no kernel at
 
 When `caw-framework` is enabled in the active plan:
 
-1. Run shell via `aep-caw exec $SID -- <cmd>`, never raw bash/zsh
+1. Run shell via `aep-caw exec $SID` followed by `--` and the command, never raw bash/zsh
 2. Create session first: `aep-caw session create --workspace .`
 3. Use JSON output for tooling: `aep-caw exec --output json --events summary`
 4. CAW audit events flow to lattice as `CAW_AUDIT_EVENT`

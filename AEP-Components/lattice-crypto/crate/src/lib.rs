@@ -1,4 +1,4 @@
-//! Post-quantum capsule encryption for AEP 2.8 Lattice Channels.
+//! Post-quantum capsule encryption for AEP 2.9 Lattice Channels.
 //!
 //! Wire format carries `PQEncryptedCapsule` envelopes
 //! while using real ML-KEM-768 key encapsulation and ML-DSA-65 signatures

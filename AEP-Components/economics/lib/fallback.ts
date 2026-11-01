@@ -1,7 +1,7 @@
 /**
  * AEP Economics - Fallback Manager
  * Provider health tracking, circuit breaking, and retry logic
- * AEP 2.8.6
+ * AEP 2.9
  */
 
 import { ProviderHealth, FallbackConfig, ProviderId } from './types.js';
