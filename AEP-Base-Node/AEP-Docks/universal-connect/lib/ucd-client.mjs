@@ -39,8 +39,8 @@ export function resolveUcbApiKey(dataDir) {
   }
 }
 
-export function loadUcdModuleSpec(moduleId) {
-  const path = join(MODULES_DIR, `${moduleId}.json`);
+export function loadUcdModuleSpec(moduleId, modulesDir = MODULES_DIR) {
+  const path = join(modulesDir, `${moduleId}.json`);
   if (!existsSync(path)) {
     throw new Error(`UCD module spec not found: ${path}`);
   }
@@ -105,7 +105,7 @@ async function probeUcbHealth(ucbBase) {
  * Fetch via UCB egress (primary). Falls back to lattice-gated fetch when UCB unavailable.
  */
 export async function ucdFetch(moduleId, upstreamUrl, opts = {}) {
-  const moduleSpec = loadUcdModuleSpec(moduleId);
+  const moduleSpec = loadUcdModuleSpec(moduleId, opts.modulesDir);
   const dataDir = opts.dataDir;
   ensureUcdManifest(moduleSpec, dataDir);
 

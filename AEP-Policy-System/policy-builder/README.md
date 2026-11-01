@@ -17,4 +17,4 @@
 
 ## Integration status
 
-Gateway and AEPassistant expose validation APIs. **Not yet wired** to the wizard or Docker activation path.
+The gateway exposes validation APIs. **Not yet wired** to the Docker activation path.

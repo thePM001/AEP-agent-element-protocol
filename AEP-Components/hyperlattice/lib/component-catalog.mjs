@@ -17,9 +17,6 @@ export const GAP_INTENT_PATTERN =
 export const DYNAEP_INTENT_PATTERN =
   /\bdynaep\b|action\s*lattice|lattice\s*filter|event\s*governance|pad\s*router|causal\s*log|webhook\s*observer|sse\s*observer|poll\s*observer|blockchain\s*event/i;
 
-export const HCSE_INTENT_PATTERN =
-  /code\s*graph|codebase\s*parser|call\s*graph|symbol\s*blast|hcse|code\s*intelligence|codebase\s*memory|universal\s*codebase/i;
-
 /** Kernel lattice contracts - always registered by Base Node bootstrap. NOT regulation LRPs. */
 export const KERNEL_LATTICE_CONTRACTS = [
   "epscom-core",
@@ -222,11 +219,6 @@ export function matchIntentFromCatalog(userIntent, context) {
       matched.add("mcp-security");
       matched.add("gap");
       matched.add("coding-governance");
-    }
-    if (HCSE_INTENT_PATTERN.test(text)) {
-      matched.add("hcse");
-      matched.add("coding-governance");
-      matched.add("intent-ledger");
     }
     if (DYNAEP_INTENT_PATTERN.test(text)) {
       matched.add("dynaep-core");

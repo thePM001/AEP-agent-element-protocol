@@ -26,4 +26,4 @@ That is the entire EU AI Act checking surface. No multi-file control catalog.
 | `nist-ai-rmf` | NIST AI RMF 1.0 | `AEP-Policy-System/reference/nist-ai-rmf.gap` |
 | `iso-42001` | ISO/IEC 42001 | `AEP-Policy-System/reference/iso-42001.gap` |
 
-Module manifests: `AEP-Components/wizard/lrp/modules/*.json`.
+Module manifests: `AEP-Components/platform-core/lrp/modules/*.json`.

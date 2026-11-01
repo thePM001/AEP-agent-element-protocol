@@ -3,7 +3,7 @@
   "name": "Universal Connect Dock",
   "version": "1.0.0",
   "kind": "ucb-regulated-egress",
-  "description": "UCB-regulated dock for optional external modules (HCSE, future CCA downloads). Internet egress only through UCB manifest-scoped routes.",
+  "description": "UCB-regulated dock for optional external modules (future CCA downloads). Internet egress only through UCB manifest-scoped routes.",
   "regulator": {
     "component": "ucb",
     "path": "AEP-Base-Node/AEP-Docks/ucb/",

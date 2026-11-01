@@ -4,7 +4,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import yaml from "yaml";
-import { loadLrpCatalog, listPlatformContracts } from "../../wizard/lib/lrp.mjs";
+import { loadLrpCatalog, listPlatformContracts } from "../../platform-core/lib/lrp.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "../../..");

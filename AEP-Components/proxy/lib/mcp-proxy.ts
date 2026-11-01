@@ -2,7 +2,6 @@
 import { AgentGateway, type AEPElement } from "../../../AEP-SDKs/typescript/aep-protocol/src/gateway.js";
 import type { AgentAction, Policy } from "../../policy-engine/lib/policy/types.js";
 import type { Session } from "../../session/lib/session.js";
-import { AEPassistant } from "../../aepassist/lib/aepassist/assistant.js";
 import { scanToolCall } from "../../mcp-security/lib/mcp-security/index.js";
 import { forwardMcpCall } from "./mcp-backend.js";
 
@@ -75,7 +74,7 @@ export class AEPProxyServer {
       };
     }
 
-    // H-31: sequential lock applies to ALL tools including aepassist
+    // H-31: sequential lock applies to ALL tools
     if (this.processing) {
       return {
         content: [
@@ -99,7 +98,7 @@ export class AEPProxyServer {
         timestamp: new Date(),
       };
 
-      // Policy evaluation (HIGH: aepassist must not skip policy)
+      // Policy evaluation (HIGH: no tool may skip policy)
       const verdict = this.gateway.evaluate(this.session.id, action);
 
       if (verdict.decision === "deny") {
@@ -123,24 +122,6 @@ export class AEPProxyServer {
             },
           ],
           isError: true,
-        };
-      }
-
-      // aepassist runs only after policy allow (same path as other tools)
-      if (call.name === "aepassist") {
-        const input = typeof call.arguments.command === "string"
-          ? call.arguments.command
-          : typeof call.arguments.input === "string"
-            ? call.arguments.input
-            : "";
-        const assistant = new AEPassistant(this.gateway);
-        const response = assistant.handle(input);
-        this.gateway.recordResult(this.session.id, verdict.actionId, {
-          success: true,
-          output: { accepted: true, forwarded: false, tool: "aepassist" },
-        });
-        return {
-          content: [{ type: "text", text: JSON.stringify(response) }],
         };
       }
 

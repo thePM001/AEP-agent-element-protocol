@@ -7,7 +7,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { expandHome, defaultPaths } from "../../wizard/lib/paths.mjs";
+import { expandHome, defaultPaths } from "../../platform-core/lib/paths.mjs";
 import { signalManifestRegistryReload } from "./manifest-reload.mjs";
 
 export function resolveTaskManifestDir(dataDir) {

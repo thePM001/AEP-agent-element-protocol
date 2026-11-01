@@ -7,8 +7,7 @@ import { invokeCodingGovernanceRust } from "../../../AEP-SDKs/typescript/aep-pro
 import { saveIntentSnapshot } from "../../intent-ledger/lib/ledger.mjs";
 import { recordIntentKnot } from "../../intent-ledger/lib/intent-knots.mjs";
 import { enrichProposeWithGit } from "./git-integration.mjs";
-import { enrichProposeWithHcse } from "../../hcse/lib/hcse-integration.mjs";
-import { expandHome, defaultPaths } from "../../wizard/lib/paths.mjs";
+import { expandHome, defaultPaths } from "../../platform-core/lib/paths.mjs";
 
 /**
  * Declare coding intent, run blast radius, persist snapshot, return propose result.
@@ -64,11 +63,7 @@ export function runPropose({
       { dataDir },
     );
     const gitCapture = enrichProposeWithGit(dataDir, intentId, { skipGit, repoRoot });
-    const withHcse = enrichProposeWithHcse(
-      { ...detail, intent_knot: intentKnot, git: gitCapture.git },
-      { dataDir, paths, repoRoot },
-    );
-    result.detail = withHcse;
+    result.detail = { ...detail, intent_knot: intentKnot, git: gitCapture.git };
   }
 
   return result;

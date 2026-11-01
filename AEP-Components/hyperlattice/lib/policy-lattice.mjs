@@ -7,7 +7,7 @@ import {
   listPlatformContracts,
   listPlatformMandatoryPolicies,
   listComplianceModules,
-} from "../../wizard/lib/lrp.mjs";
+} from "../../platform-core/lib/lrp.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_POLICIES = join(__dirname, "../../..", "AEP-Policy-System");

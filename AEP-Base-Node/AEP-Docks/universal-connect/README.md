@@ -1,11 +1,11 @@
 # Universal Connect Dock (UCD)
 
-UCB-regulated dock for **optional external modules** that need controlled internet egress. Use for plan-driven downloads (HCSE, future third-party binaries) instead of raw `fetch` or unscoped lattice requests.
+UCB-regulated dock for **optional external modules** that need controlled internet egress. Use for plan-driven downloads (future third-party binaries) instead of raw `fetch` or unscoped lattice requests.
 
 ## Architecture
 
 ```
-HCSE install hook
+Module install hook
         |
         v
 +---------------------------+
@@ -26,9 +26,7 @@ Native AEP components continue to use `lattice-channels` against Base Node Unix 
 
 ## Module specs
 
-| Module | Spec | Component |
-|--------|------|-----------|
-| HCSE | `modules/hcse.json` | `AEP-Components/hcse/` |
+A module spec is the file `modules/<module-id>.json`. The public tree ships no module spec. A module that needs egress keeps its own spec folder and passes that folder to the client as the `modulesDir` option.
 
 ## Related
 

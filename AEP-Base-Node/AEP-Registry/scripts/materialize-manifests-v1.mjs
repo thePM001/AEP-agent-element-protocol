@@ -276,27 +276,6 @@ const MANIFESTS = {
     conformance: { tests: ["AEP-Components/conformance/runner/run.sh", "AEP-Components/conformance/tests/manifest.json"] },
   },
 
-  "wizard": {
-    manifest_version: "1",
-    id: "wizard",
-    version: "2.8.6",
-    kind: "wizard",
-    path: "AEP-Components/wizard/",
-    description: "Developer install wizard for local-source builds (not customer Docker path).",
-    requires: ["aep-base-node"],
-    capabilities: ["wizard:install", "wizard:config-io"],
-    actions: [],
-    setup_hooks: [],
-    resource_requirements: RR(64, 20),
-    cca: CCA(
-      "Local development install helper for source trees.",
-      ["local-source build from git clone"],
-      ["Docker production deployments"],
-      ["aep-base-node"],
-    ),
-    implementation: { entry: "AEP-Components/wizard/install-wizard.mjs" },
-  },
-
   "conformance-runner": {
     manifest_version: "1",
     id: "conformance-runner",
@@ -623,22 +602,6 @@ const MANIFESTS = {
     resource_requirements: RR(64, 20),
     cca: CCA("Phased workflows with per-phase verdicts.", ["multi-step training pipelines"], []),
     implementation: { module: "AEP-Components/workflow/lib/executor.ts" },
-  },
-
-  "aepassist": {
-    manifest_version: "1",
-    id: "aepassist",
-    version: "2.8.6",
-    kind: "agent",
-    path: "AEP-Components/aepassist/",
-    description: "Interactive assistant, presets, and slash-command generators.",
-    requires: ["policy-engine"],
-    capabilities: ["assist:presets", "assist:explain", "assist:slash-commands", "aepassist:interactive"],
-    actions: [],
-    setup_hooks: [],
-    resource_requirements: RR(64, 20),
-    cca: CCA("Developer assistant for policy presets and IDE integrations.", ["onboarding", "policy authoring help"], []),
-    implementation: { module: "AEP-Components/aepassist/lib/aepassist/assistant.ts" },
   },
 
   "identity": {

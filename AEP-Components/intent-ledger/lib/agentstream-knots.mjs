@@ -7,7 +7,7 @@
 
 import { latticeGatedFetch } from "../../lattice-channels/lib/lattice-transport.mjs";
 import { resolveAgentstreamUrl } from "../../hyperlattice/lib/integrations.mjs";
-import { defaultPaths } from "../../wizard/lib/paths.mjs";
+import { defaultPaths } from "../../platform-core/lib/paths.mjs";
 
 const DEFAULT_CAPSULE = "aep-intent-knots";
 const DEFAULT_TIMEOUT_MS = 5000;

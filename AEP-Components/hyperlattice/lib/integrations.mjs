@@ -1,7 +1,7 @@
 /** Paid / external connector probes for the open-source base node. */
 
 import { latticeGatedFetch } from "../../lattice-channels/lib/lattice-transport.mjs";
-import { defaultPaths } from "../../wizard/lib/paths.mjs";
+import { defaultPaths } from "../../platform-core/lib/paths.mjs";
 
 export function resolveAgentstreamUrl(runtime, env = process.env) {
   const fromEnv = String(env.AGENTSTREAM_URL || "").trim();
@@ -93,21 +93,5 @@ export async function getIntegrationsState(runtime, env = process.env) {
   const agentstream = await probeAgentstream(resolveAgentstreamUrl(runtime, env), {
     socketBase: runtime.socketBase,
   });
-  let hcse = {
-    id: "conn-hcse",
-    service: "hcse",
-    label: "AEP-HCSE",
-    configured: false,
-    connected: false,
-    online: false,
-    status: "not_installed",
-  };
-  try {
-    const { probeHcseLocal } = await import("../../hcse/lib/hcse-bridge.mjs");
-    const dataDir = runtime?.dataDir ?? env.AEP_DATA;
-    if (dataDir) hcse = probeHcseLocal(dataDir);
-  } catch {
-    /* hcse optional */
-  }
-  return { agentstream, hcse, generated_at: new Date().toISOString() };
+  return { agentstream, generated_at: new Date().toISOString() };
 }

@@ -18,4 +18,4 @@
 
 ## Integration status
 
-Gateway and AEPassistant expose validation APIs. Not wired to the wizard or Docker.
+The gateway exposes validation APIs. Not wired to Docker.

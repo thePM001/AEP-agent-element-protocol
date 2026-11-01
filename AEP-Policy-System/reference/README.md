@@ -39,9 +39,9 @@ LRPs are sovereign states, regional unions and international bodies and their re
 
 ## Compliance reference policies (LRPs)
 
-Regulation LRP modules ship starter GAP templates (enable via wizard or `base_node.lrps`).
+Regulation LRP modules ship starter GAP templates (enable via `base_node.lrps`).
 
-See AEP-Components/wizard/README.md for LRP install and dock wiring.
+See AEP-Components/platform-core/ for the LRP catalog and the module manifests.
 
 ## Validation
 

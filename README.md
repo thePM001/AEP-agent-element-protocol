@@ -10,7 +10,7 @@
 **AEP already had 32 Github stars before Grok "accidentally" deleted them on 22.07.2026 !**
 **AEP 2.9 is estimated for completion approximately in September 2026 with many new changes and additional features.**
 
-**How to best explore the basics of AEP ? - Simply copy the repo URL into your LLM chat of choice that has internet search capability (Grok, Gemini, ChatGPT, Opus, etc.) and let the AI explain it to you.**
+**How to best explore the basics of AEP ? - Copy the repo URL into your LLM chat of choice that has internet search capability (Grok, Gemini, ChatGPT, Opus, etc.) and let the AI explain it to you.**
 
 **[AEP secure deployment guide](AEP-User-Experience/docs/AEP-2.8-SECURE-DEPLOYMENT-GUIDE.md)**
 
@@ -20,7 +20,7 @@
 
 ### Total AI output control
 
-AEP (Agent Element Protocol) is an advanced deterministic mechanism for total control of AI output. An agent does not get to run a tool, change a screen, fire a workflow, call an API, move money or change infrastructure until the Base Node, the local kernel, allows that output. Unapproved model output stays unapproved and does not become a live action, when it violates the policies encoded in your AEP policy hyperlattice.
+AEP (Agent Element Protocol) is an advanced deterministic mechanism for total control of AI output. An agent does not get to run a tool, change a screen, fire a workflow, call an API, move money or change infrastructure until the Base Node, the local kernel, allows that output. Unapproved model output remains unapproved and does not become a live action, when it violates the policies encoded in your AEP policy hyperlattice.
 
 ### Every surface the agent can touch
 
@@ -272,7 +272,7 @@ actions:
 
 GAP is the written instruction that becomes a live Admit wall after a sealed capsule. Keep `.gap` as UTF-8 source with one instruction per document. Writing and security are always-on stems and they evaluate on every action path. Other walls bind to a wrap or to an `action_path_prefix` so a records wall does not close a payments ping.
 
-Who-may is `agent_permission` so an empty grant list closes that agent's action. `trust_ring` is a documentary label and rank use warns then denies while who-may stays `agent_permission`.
+Who-may is `agent_permission` so an empty grant list closes that agent's action. `trust_ring` is a documentary label and rank use warns then denies while who-may remains `agent_permission`.
 
 ```yaml
 address:
@@ -376,7 +376,7 @@ Do not stand up a parallel runtime that opens unsealed work and do not treat ext
 - [ ] Writing and security stems stay on
 - [ ] Dock channels take sealed capsules only
 - [ ] Domain checker returns specific errors
-- [ ] Registry stays stateless
+- [ ] Registry remains stateless
 - [ ] Execution runs only after Base Node Admit
 - [ ] `aep_sources` points at your folder
 - [ ] A missing title, a skipped parent, a wrong agent and a skipped Admit each fail in test
@@ -416,7 +416,6 @@ The library is counted by this layer table. Folder count is not the library coun
 | Docks | UCD egress airlock and optional UCB | [`AEP-Base-Node/AEP-Docks/`](AEP-Base-Node/AEP-Docks/) |
 | UCB airlock (optional) | Foreign MCP or HTTP attach only | [`AEP-Base-Node/AEP-Docks/ucb/`](AEP-Base-Node/AEP-Docks/ucb/) |
 | Coding governance | Propose a change then lock it | [`AEP-Components/coding-governance/`](AEP-Components/coding-governance/) |
-| HCSE parser | aep-hcse parser MCP | [`AEP-Components/hcse/`](AEP-Components/hcse/) |
 | Policy | GAP nodes and subprotocol validators | [`AEP-Policy-System/`](AEP-Policy-System/) |
 | Multi-base-node (2.8b) | Federate multiple Base Node kernels (optional experimental surface) | [`AEP-Base-Node/AEP-Multi-Base-Node/`](AEP-Base-Node/AEP-Multi-Base-Node/) |
 
@@ -424,7 +423,7 @@ The library is counted by this layer table. Folder count is not the library coun
 
 Every opened transport capsule must receive a positive or negative evaluation. The lattice memory stores those results as frozen records for forensic reading (a later audit) and for health telemetry, as well as for performance enhancement reasons. Looking similar to a past allow is not proof that this message is allowed. Those stored records do not skip the check. The research paper in this repository holds the formal specification.
 
-Schema Builder and Policy Builder study how rules connect and how complete they are so governance itself stays governed.
+Schema Builder and Policy Builder study how rules connect and how complete they are so governance itself remains governed.
 
 ### Evaluation chain (reference)
 
@@ -448,15 +447,15 @@ The table below is that derived fifteen-row ledger.
 
 ### How a builder uses it
 
-The installation wizard starts Base Node first so a builder has a kernel to talk to.
+Base Node starts first so a builder has a kernel to talk to.
 
 After a sealed capsule is opened, that kernel waits then runs every check together. See [Kernel pulse](#kernel-pulse) for the compiled wait and how it can be changed in theory.
 
-The harness and the wizard seal each message as an encrypted capsule on the wire. The catalog lists attachable components so scene, action path, written policy and channels are checked together.
+The harness seals each message as an encrypted capsule on the wire. The catalog lists attachable components so scene, action path, written policy and channels are checked together.
 
 CAW sandboxes, the AEP-native host execution boxes for coding agents and all other agentic processes apply those written policy profiles on the machine. See [GAP-centric policies and CAW sandboxes](#gap-centric-policies-and-caw-sandboxes). Host command work can run inside those boxes when the operator enables them; they are not a substitute for dynAEP, the standalone hyperlattice runtime component.
 
-Connectors and language clients use that same sealed transport. The Universal Connect Bridge (UCB) is an optional inbound data airlock for foreign tools and it checks the tool contract before anything enters. The HCSE parser, which builds a symbol graph of the code, arrives through the outbound airlock.
+Connectors and language clients use that same sealed transport. The Universal Connect Bridge (UCB) is an optional inbound data airlock for foreign tools and it checks the tool contract before anything enters.
 
 Coding governance proposes a change, measures how far that change reaches and only then locks it on the same wrap. Docks accept only sealed capsules because policy loads when Base Node starts and lattice paths plus docks refuse anything that is not a sealed frame.
 
@@ -504,7 +503,7 @@ cargo test -p multi-base-node-core
 
 ## LatticeChannel security (mandatory)
 
-Every software development kit, editor, wizard and runtime module talks to protocol components only through Lattice Channels: docking sockets carry sealed encrypted capsules and nothing else.
+Every software development kit, editor and runtime module talks to protocol components only through Lattice Channels: docking sockets carry sealed encrypted capsules and nothing else.
 
 A plain ping, event or register message on the wire is rejected and logged as a side-channel anomaly, meaning an attempt to skip the sealed capsule.
 
@@ -561,7 +560,7 @@ The wait is a compiled kernel constant of 1000 ms. It is not an environment vari
 
 ### How the wait can be changed in theory
 
-A builder who wants a different wait rebuilds Base Node with a different compiled pulse length. Freeze-at-seal stays so the hold is judged against the freeze rather than a moving clock. Allowed drift is not set to the wait length so `MAX_DRIFT_MS` must not be set to 1000. The five-second age stays longer than the wait or capsules would expire before they became ready so pulse age 5000 must not be replaced with 300 seconds. This is a kernel rebuild rather than a yaml or env toggle and the 300 second wire window stays a separate compiled pair.
+A builder who wants a different wait rebuilds Base Node with a different compiled pulse length. Freeze-at-seal remains so the hold is judged against the freeze rather than a moving clock. Allowed drift is not set to the wait length so `MAX_DRIFT_MS` must not be set to 1000. The five-second age remains longer than the wait or capsules would expire before they became ready so pulse age 5000 must not be replaced with 300 seconds. This is a kernel rebuild rather than a yaml or env toggle and the 300 second wire window remains a separate compiled pair.
 
 ## What is new in 2.8 compared to 2.75 (from May 2026)
 
@@ -574,7 +573,6 @@ A builder who wants a different wait rebuilds Base Node with a different compile
 | **Lattice Memory** | `AEP-Components/lattice-memory/crate/` | Attractor store (sqlite-vec + USearch) for forensic and health telemetry. Attractors do not skip Admit |
 | **POTOMITAN** | `AEP-Base-Node/AEP-Potomitan/` | Mesh fallback when normal internet is unavailable |
 | **dynAEP 1.0** | `AEP-Components/dynAEP/` | Hyperlattice runtime: `action_path` filter, temporal authority, bridge (merged from standalone repo) |
-| **Installation Wizard** | `AEP-Components/wizard/install-wizard.mjs` | First stage Base Node installer (CLI) |
 | **Component registry** | `AEP-Base-Node/AEP-Registry/` | Offline catalog + optional extension merge |
 | **Conformance runner** | `AEP-Components/conformance/` | CC-01..CC-15 public tier compliance battery |
 | **UCB (optional)** | `AEP-Base-Node/AEP-Docks/ucb/` | Universal Connect Bridge for **foreign** stacks only (`:8412`). Native AEP skips UCB. Set `UCB=0` to disable. |
@@ -621,7 +619,6 @@ The tables below name working protocol parts a builder can attach. They are comp
 | Model gateway (governed LLM calls, streaming abort) | `AEP-Components/model-gateway/` |
 | CAW execution sandboxes (shell, file, network, LLM proxy) | `AEP-CAW/` |
 | Recovery engine (soft violation retry) | `AEP-Components/recovery/` |
-| Interactive assistant | `AEP-Components/aepassist/` |
 
 ### Cost economics
 
@@ -724,7 +721,7 @@ With no gate, execute refuses to run the node and does not tick the local clock.
 | AEP-Graph | 6 | Action, decision, wait, parallel, loop nodes, checkpoints, admitGate default deny |
 | Security | 4 | Hash-chained ledger, proof bundles, OTEL, reliability index (theta) |
 | Builders | 2 | Schema Builder (not wired to Docker), Policy Builder |
-| **2.8 kernel additions** | 13 | Base Node, Lattice Channels, AgentMesh, Lattice Memory, POTOMITAN, dynAEP merge, wizard, registry, conformance and UCB |
+| **2.8 kernel additions** | 12 | Base Node, Lattice Channels, AgentMesh, Lattice Memory, POTOMITAN, dynAEP merge, registry, conformance and UCB |
 
 ---
 
@@ -753,7 +750,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-The install wizard configures Base Node from the catalog. Lattice transport, the registry and conformance stay on the public path.
+Lattice transport, the registry and conformance stay on the public path.
 
 ### Coding agents (Claude Code, Cursor, Codex)
 
@@ -771,10 +768,7 @@ docker compose -f docker-compose.public.yml exec aep aep init cursor
 # Rust workspace (artifacts in rust/target/)
 cargo test --workspace
 cargo build --release -p aep-base-node
-cargo run -p aep-base-node -- --self-test
-
-# Installation wizard smoke (CLI)
-node AEP-Components/wizard/install-wizard.mjs --non-interactive --config=/tmp/aep-wizard-test.json
+./rust/target/release/aep-base-node --self-test
 
 # Fresh Docker test stack (isolated volume, visual install wizard)
 docker compose -f docker-compose.test-fresh.yml up -d --build
@@ -784,15 +778,6 @@ open http://$AEP_HOST:8524/install
 # Conformance battery
 ./AEP-Components/conformance/runner/run.sh
 
-```
-
-### Using aepassist (inside Docker)
-
-```bash
-docker compose -f docker-compose.public.yml exec aep aep assist setup
-docker compose -f docker-compose.public.yml exec aep aep assist status
-docker compose -f docker-compose.public.yml exec aep aep assist preset strict
-docker compose -f docker-compose.public.yml exec aep aep assist kill
 ```
 
 ---
@@ -905,7 +890,7 @@ curl -s -H "Authorization: Bearer $UCB_API_KEY" \
 # Docker: foreign attach off, Base Node still runs
 UCB=0 docker compose -f docker-compose.public.yml up -d
 
-# Bare metal: simply do not start aep-ucb
+# Bare metal: do not start aep-ucb
 ```
 
 Canonical implementation: [`AEP-Base-Node/AEP-Docks/ucb/README.md`](AEP-Base-Node/AEP-Docks/ucb/README.md). GAP manifest template: [`AEP-Components/gap/policies/reference/task-manifest-v1.gap`](AEP-Components/gap/policies/reference/task-manifest-v1.gap).
@@ -1007,7 +992,8 @@ node AEP-Components/gap/lib/gap-compile.mjs --list-profiles
 node AEP-Components/gap/lib/gap-compile.mjs --materialize /data/aep
 aep-caw profiles list
 aep-caw session create --profile coding-agent
-aep-caw wrap --profile coding-agent -- <your-agent-binary>
+aep-caw wrap --profile coding-agent \
+-- <your-agent-binary>
 ```
 
 Per-mount policy templates (`workspace-rw`, `config-readonly`, etc.) are defined in `caw-mount-policies.gap` and compiled into `$AEP_DATA/caw-framework/policies/`.

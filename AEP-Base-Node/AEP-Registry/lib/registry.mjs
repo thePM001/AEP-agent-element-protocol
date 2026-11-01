@@ -11,7 +11,7 @@ import {
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { latticeGatedFetch } from "../../../AEP-Components/lattice-channels/lib/lattice-transport.mjs";
-import { defaultPaths } from "../../../AEP-Components/wizard/lib/paths.mjs";
+import { defaultPaths } from "../../../AEP-Components/platform-core/lib/paths.mjs";
 import { collectSetupHooks } from "./setup-hooks.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

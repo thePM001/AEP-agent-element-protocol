@@ -51,7 +51,7 @@
       "priority": 155,
       "default_enabled": false,
       "description": "EU AI Act compliance checking pack. One definition file, one gate. Not a legal certification.",
-      "module_manifest": "wizard/lrp/modules/eu-ai-act.json",
+      "module_manifest": "AEP-Components/platform-core/lrp/modules/eu-ai-act.json",
       "gap_ref": "AEP-Policy-System/reference/eu-ai-act.gap",
       "maturity": "enforced_v1",
       "checker": "eu-ai-act-checker",
@@ -67,7 +67,7 @@
       "priority": 154,
       "default_enabled": false,
       "description": "EU data protection: lawful basis, minimisation, subject rights and breach evidence.",
-      "module_manifest": "wizard/lrp/modules/gdpr.json",
+      "module_manifest": "AEP-Components/platform-core/lrp/modules/gdpr.json",
       "gap_ref": "AEP-Policy-System/reference/gdpr.gap"
     },
     {
@@ -79,7 +79,7 @@
       "priority": 153,
       "default_enabled": false,
       "description": "Trust service criteria for access control, monitoring, incident response and change management.",
-      "module_manifest": "wizard/lrp/modules/soc2-type2.json",
+      "module_manifest": "AEP-Components/platform-core/lrp/modules/soc2-type2.json",
       "gap_ref": "AEP-Policy-System/reference/soc2-type2.gap"
     },
     {
@@ -91,7 +91,7 @@
       "priority": 152,
       "default_enabled": false,
       "description": "US healthcare safeguards for access, audit, integrity, authentication and transmission.",
-      "module_manifest": "wizard/lrp/modules/hipaa.json",
+      "module_manifest": "AEP-Components/platform-core/lrp/modules/hipaa.json",
       "gap_ref": "AEP-Policy-System/reference/hipaa.gap"
     },
     {
@@ -103,7 +103,7 @@
       "priority": 151,
       "default_enabled": false,
       "description": "NIST AI Risk Management Framework govern, map, measure and manage functions.",
-      "module_manifest": "wizard/lrp/modules/nist-ai-rmf.json",
+      "module_manifest": "AEP-Components/platform-core/lrp/modules/nist-ai-rmf.json",
       "gap_ref": "AEP-Policy-System/reference/nist-ai-rmf.gap"
     },
     {
@@ -115,7 +115,7 @@
       "priority": 150,
       "default_enabled": false,
       "description": "AI management system requirements for documented controls and continual improvement.",
-      "module_manifest": "wizard/lrp/modules/iso-42001.json",
+      "module_manifest": "AEP-Components/platform-core/lrp/modules/iso-42001.json",
       "gap_ref": "AEP-Policy-System/reference/iso-42001.gap"
     }
   ]

@@ -8,8 +8,7 @@ import {
 } from "../../intent-ledger/lib/evidence-link.mjs";
 import { recordIntentKnot } from "../../intent-ledger/lib/intent-knots.mjs";
 import { enrichSolidifyRecordWithGit } from "./git-integration.mjs";
-import { enrichSolidifyWithHcseArtifact } from "../../hcse/lib/hcse-integration.mjs";
-import { expandHome, defaultPaths } from "../../wizard/lib/paths.mjs";
+import { expandHome, defaultPaths } from "../../platform-core/lib/paths.mjs";
 
 /**
  * @param {object} record - SolidifyRecord fields
@@ -29,10 +28,7 @@ export function runSolidify(record, opts = {}) {
       repoRoot: resolved.repoRoot,
     },
   );
-  const withHcse = enrichSolidifyWithHcseArtifact(enriched, {
-    repoRoot: resolved.repoRoot,
-  });
-  const payload = { ...withHcse };
+  const payload = { ...enriched };
 
   if (resolved.sessionId && !payload.evidence_ledger_ref) {
     const ledgerDir = resolveEvidenceLedgerDir(dataDir, resolved.ledgerDir);
