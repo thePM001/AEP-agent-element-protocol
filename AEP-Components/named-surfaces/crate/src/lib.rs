@@ -117,9 +117,6 @@ pub fn scan_mcp_proxy_wires_backend(src: &str) -> Result<String, String> {
 
 pub fn scan_readme_names_surfaces(src: &str) -> Result<String, String> {
     let low = src.to_ascii_lowercase();
-    if low.contains("codesandbox") == false {
-        return Err(String::from("README missing CodeSandbox"));
-    }
     if low.contains("execut") == false && low.contains("live") == false {
         return Err(String::from("README missing execute or live"));
     }

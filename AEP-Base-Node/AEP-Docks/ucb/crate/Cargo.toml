@@ -9,6 +9,10 @@ license.workspace = true
 name = "aep-ucb"
 path = "src/main.rs"
 
+[[bin]]
+name = "aep-ucb-validate"
+path = "src/bin/aep-ucb-validate.rs"
+
 [dependencies]
 aep-agentmesh = { path = "../../../../AEP-Components/agentmesh/crate" }
 aep-wall-set-backpressure = { path = "../../../../AEP-Components/wall-set-backpressure/crate" }
@@ -26,6 +30,9 @@ axum.workspace = true
 tower-http.workspace = true
 reqwest.workspace = true
 rand.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
 
 [dev-dependencies]
 tempfile = "3"

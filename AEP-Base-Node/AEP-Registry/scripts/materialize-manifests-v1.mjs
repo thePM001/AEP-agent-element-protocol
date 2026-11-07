@@ -265,6 +265,7 @@ const MANIFESTS = {
     implementation: {
       language: "rust",
       binary: "aep-ucb",
+      validator_binary: "aep-ucb-validate",
       crate: "AEP-Base-Node/AEP-Docks/ucb/crate/",
       port: 8412,
       health: "/health",
@@ -764,21 +765,6 @@ const MANIFESTS = {
     implementation: { module: "AEP-Components/mcp-security/lib/mcp-security/index.ts" },
   },
 
-  "aep-comm": {
-    manifest_version: "1",
-    id: "aep-comm",
-    version: "2.9.0",
-    kind: "library",
-    path: "AEP-Components/aep-comm/",
-    description: "Inter-agent communication helpers.",
-    requires: ["lattice-channels"],
-    capabilities: ["comm:inter-agent"],
-    actions: [],
-    setup_hooks: [],
-    resource_requirements: RR(32, 10),
-    cca: CCA("Typed inter-agent messaging over lattice.", ["multi-agent coordination"], []),
-    implementation: { module: "AEP-Components/aep-comm/lib/index.ts" },
-  },
 
   "eval": {
     manifest_version: "1",

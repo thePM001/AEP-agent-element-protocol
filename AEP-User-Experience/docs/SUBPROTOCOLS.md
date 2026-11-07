@@ -232,7 +232,7 @@ First, name the valid operations, types, fields and constraints in the registry 
 
 Keep the registry stateless. The caller passes execution state in (the current record, the current cart, the current graph). Your checker does not hold the live store.
 
-Your domain check may reject a payload before it is sealed. That is useful because an unknown `action_path` should never waste a capsule. The domain check may not skip Admit so execution happens only after Base Node allows the output. TypeScript `processEvent` is not product Admit and CodeSandbox executes agent code as a named live surface rather than a second kernel.
+Your domain check may reject a payload before it is sealed. That is useful because an unknown `action_path` should never waste a capsule. The domain check may not skip Admit so execution happens only after Base Node allows the output. TypeScript `processEvent` is not product Admit.
 
 Rejection bodies should be specific:
 

@@ -1,6 +1,6 @@
 # Universal Connect Bridge (UCB)
 
-To attach a foreign wrap, start aep-ucb on port 8412 with UCB_API_KEY set. Send ingest, delegate, rollback, egress, compile-manifest or mcp only with that key. Health and capabilities stay public. Every ingest needs a task manifest.
+To attach a foreign wrap, start aep-ucb on port 8412 with UCB_API_KEY set. Send ingest, delegate, rollback, egress, compile-manifest or mcp only with that key. Health and capabilities remain public. Every ingest needs a task manifest.
 
 ## What UCB is
 
@@ -15,15 +15,18 @@ UCB is optional. Native AEP components talk to Base Node directly. UCB exists fo
 
 ## Perimeter
 
-Default Predicate Profile is perimeter-v1. Content checks call the scanner pack and return a scanner id rather than four English phrases. Paper 005 VSA stays off unless the operator names profile paper005-vsa. That named profile is not a substitute for manifests, signatures and SSRF controls.
+Default Predicate Profile is perimeter-v1. Content checks call the scanner pack and return a scanner id rather than four English phrases. Paper 005 VSA remains off unless the operator names profile paper005-vsa. That named profile is not a substitute for manifests, signatures and SSRF controls.
 
 Ingest default body cap is 256 KiB, ingest hard cap is 2 MiB and egress default body cap is 1 MiB. Validate wait is 2 s, dock wait is 5 s, egress connect wait is 5 s and egress total wait is 15 s. The hash-chained journal rotates when it reaches 32 MiB.
+
+Every ingest check runs in its own aep-ucb-validate process, never inside aep-ucb. The validator confines itself with a seccomp filter before it reads the request. The filter allows reading the request, writing the result, memory management and exit. Any other system call kills the process, so a check cannot open files, reach the network or start processes. aep-ucb writes the request to the validator while it reads the result to the end and only then waits for the exit, so no request or result size can stall the pair. Two checks run at a time. A check that does not answer inside the validate wait is killed and the ingest is denied with validate timeout. A validator that is missing, fails or answers with an unreadable result denies the ingest with validate join refused. aep-ucb-validate must be installed beside aep-ucb.
 
 ## Service
 
 | Property | Value |
 |----------|-------|
 | Binary | aep-ucb |
+| Validator binary | aep-ucb-validate, installed beside aep-ucb |
 | Port | 8412 (UCB_PORT) |
 | Host | 127.0.0.1 (UCB_HOST) |
 | Health | GET /health or GET /ucb/v1/health |
@@ -46,7 +49,7 @@ Protected endpoints accept Authorization: Bearer KEY or X-UCB-API-Key: KEY. Oper
 
 ### Ingest
 
-Every ingest needs a task manifest. Provide task_manifest on the ingest body, store a non-provisional manifest for that agent or compile provided GAP text or JSON with the local compiler. If none exist, ingest refuses with ManifestMissing. A provisional stored manifest refuses with ManifestProvisional. Trust fields on the body or the manifest refuse. Synthesis URLs are not a public source and dock-first send stays while the journal persists only after collect-all Admit allow. When collect-all Admit refuses, ingest reports ok false, admit rows are on the reply and the journal is not persisted. Enqueue with a digest and no event_id is not Admit.
+Every ingest needs a task manifest. Provide task_manifest on the ingest body, store a non-provisional manifest for that agent or compile provided GAP text or JSON with the local compiler. If none exist, ingest refuses with ManifestMissing. A provisional stored manifest refuses with ManifestProvisional. Trust fields on the body or the manifest refuse. Synthesis URLs are not a public source and dock-first send remains while the journal persists only after collect-all Admit allow. When collect-all Admit refuses, ingest reports ok false, admit rows are on the reply and the journal is not persisted. Enqueue with a digest and no event_id is not Admit.
 
 Session bind:
 

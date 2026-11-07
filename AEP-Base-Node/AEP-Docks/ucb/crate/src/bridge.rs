@@ -1,102 +1,21 @@
 //! Ingest and rollback. UCB is not a second evaluator.
 
 use crate::config::UcbConfig;
-use crate::ingress::{validate_foreign_ingest_with_profile, ForeignIngestBody};
+use crate::ingress::ForeignIngestBody;
 use crate::journal::{persist_journal_if_admit, DiffJournal};
 use crate::lattice::{admit_allow, DockResponse, LatticeDeny, LatticeRuntime};
 use crate::manifest;
 use crate::store::ManifestStore;
 use crate::translator::translate_foreign_ingest;
-use aep_ucb_perimeter_v1::{reject_over_cap, ScannerId};
+use aep_ucb_perimeter_v1::reject_over_cap;
 use aep_wall_set_backpressure::DenyReport;
 use serde_json::Value;
+use crate::validate_process::{encode_request, ValidateWaitError, ValidatorProcess};
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Semaphore;
 
-const VALIDATE_SLOT_LIMIT: usize = 2;
-
-#[derive(Debug, PartialEq, Eq)]
-enum ValidateWaitError {
-    Busy,
-    Timeout,
-    Join,
-}
-
-#[cfg(unix)]
-mod validate_abort {
-    pub const SIGKILL: i32 = 9;
-
-    unsafe extern "C" {
-        pub fn fork() -> i32;
-        pub fn waitpid(pid: i32, status: *mut i32, options: i32) -> i32;
-        pub fn kill(pid: i32, sig: i32) -> i32;
-        pub fn _exit(code: i32);
-        pub fn pipe(pipefd: *mut i32) -> i32;
-        pub fn close(fd: i32) -> i32;
-        pub fn read(fd: i32, buf: *mut u8, n: usize) -> isize;
-        pub fn write(fd: i32, buf: *const u8, n: usize) -> isize;
-    }
-}
-
-fn encode_validation(v: &crate::ingress::ValidationResult) -> Vec<u8> {
-    serde_json::to_vec(v).unwrap_or_else(|_| Vec::from(b"{\"ok\":false}"))
-}
-
-fn intern_predicate(raw: &str) -> &'static str {
-    match raw {
-        "P_P" => "P_P",
-        "P_S" => "P_S",
-        "P_C" => "P_C",
-        "P_R" => "P_R",
-        "profile" => "profile",
-        _ => "unknown",
-    }
-}
-
-fn decode_scanner_id(v: &Value) -> Option<ScannerId> {
-    let raw = match v.get("scanner_id") {
-        Some(x) => match x.as_str() {
-            Some(s) => s,
-            None => return None,
-        },
-        None => return None,
-    };
-    match raw {
-        "Secrets" => Some(ScannerId::Secrets),
-        "Injection" => Some(ScannerId::Injection),
-        "Pii" => Some(ScannerId::Pii),
-        "DestructiveShell" => Some(ScannerId::DestructiveShell),
-        "PromptOverride" => Some(ScannerId::PromptOverride),
-        _ => None,
-    }
-}
-
-fn decode_validation(bytes: &[u8]) -> Option<crate::ingress::ValidationResult> {
-    let parsed = serde_json::from_slice(bytes);
-    let v: Value = match parsed {
-        Ok(val) => val,
-        Err(_) => return None,
-    };
-    let ok = match v.get("ok") {
-        Some(x) => x.as_bool().unwrap_or(false),
-        None => false,
-    };
-    let error = match v.get("error") {
-        Some(x) => x.as_str().map(str::to_string),
-        None => None,
-    };
-    let predicate = match v.get("predicate") {
-        Some(x) => x.as_str().map(intern_predicate),
-        None => None,
-    };
-    Some(crate::ingress::ValidationResult {
-        ok,
-        predicate,
-        scanner_id: decode_scanner_id(&v),
-        error,
-    })
-}
+/// Live validator processes at one time. A third check waits for a slot.
+pub const VALIDATE_SLOT_LIMIT: usize = 2;
 
 pub fn validation_to_deny(v: &crate::ingress::ValidationResult) -> Value {
     let mut report = DenyReport::from_error(
@@ -121,206 +40,14 @@ pub fn validation_to_deny(v: &crate::ingress::ValidationResult) -> Value {
     val
 }
 
-#[cfg(unix)]
-fn write_all_fd(fd: i32, bytes: &[u8]) -> bool {
-    let mut off = 0usize;
-    while off < bytes.len() {
-        let n = unsafe { validate_abort::write(fd, bytes.as_ptr().add(off), bytes.len() - off) };
-        if n <= 0 {
-            return false;
-        }
-        off += n as usize;
-    }
-    true
-}
-
-#[cfg(unix)]
-fn read_all_fd(fd: i32, max: usize) -> Vec<u8> {
-    let mut out = Vec::new();
-    let mut buf = [0u8; 4096];
-    loop {
-        let n = unsafe { validate_abort::read(fd, buf.as_mut_ptr(), buf.len()) };
-        if n <= 0 {
-            break;
-        }
-        out.extend_from_slice(&buf[..n as usize]);
-        if out.len() >= max {
-            break;
-        }
-    }
-    out
-}
-
-async fn run_bounded_validate<F>(
-    slots: Arc<Semaphore>,
-    timeout_ms: u64,
-    work: F,
-) -> Result<crate::ingress::ValidationResult, ValidateWaitError>
-where
-    F: FnOnce() -> crate::ingress::ValidationResult + Send + 'static,
-{
-    let wait = Duration::from_millis(timeout_ms);
-    let acquired = tokio::time::timeout(wait, slots.acquire_owned()).await;
-    let permit = match acquired {
-        Ok(Ok(p)) => p,
-        Ok(Err(_)) => return Err(ValidateWaitError::Busy),
-        Err(_) => return Err(ValidateWaitError::Busy),
-    };
-
-    #[cfg(not(unix))]
-    {
-        let (tx, rx) = tokio::sync::oneshot::channel();
-        let spawned = std::thread::Builder::new()
-            .name(String::from("ucb-validate"))
-            .spawn(move || {
-                let out = work();
-                let _ = tx.send(out);
-            });
-        if spawned.is_err() {
-            drop(permit);
-            return Err(ValidateWaitError::Join);
-        }
-        let joined = tokio::time::timeout(wait, rx).await;
-        match joined {
-            Ok(Ok(v)) => {
-                drop(permit);
-                Ok(v)
-            }
-            Ok(Err(_)) => {
-                drop(permit);
-                Err(ValidateWaitError::Join)
-            }
-            Err(_) => {
-                drop(permit);
-                Err(ValidateWaitError::Timeout)
-            }
-        }
-    }
-
-    #[cfg(unix)]
-    {
-        let mut fds = [0i32; 2];
-        if unsafe { validate_abort::pipe(fds.as_mut_ptr()) } != 0 {
-            drop(permit);
-            return Err(ValidateWaitError::Join);
-        }
-        let read_fd = fds[0];
-        let write_fd = fds[1];
-        let pid_slot = std::sync::Arc::new(std::sync::Mutex::new(None::<i32>));
-        let pid_worker = std::sync::Arc::clone(&pid_slot);
-        let (tx, rx) = tokio::sync::oneshot::channel::<Vec<u8>>();
-        let spawned = std::thread::Builder::new()
-            .name(String::from("ucb-validate"))
-            .spawn(move || {
-                let pid = unsafe { validate_abort::fork() };
-                if pid == 0 {
-                    unsafe {
-                        validate_abort::close(read_fd);
-                    }
-                    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(work));
-                    match result {
-                        Ok(v) => {
-                            let payload = encode_validation(&v);
-                            let mut framed = Vec::with_capacity(4 + payload.len());
-                            framed.extend_from_slice(&(payload.len() as u32).to_le_bytes());
-                            framed.extend_from_slice(&payload);
-                            let _ = write_all_fd(write_fd, &framed);
-                            unsafe {
-                                validate_abort::close(write_fd);
-                                validate_abort::_exit(0);
-                            }
-                            std::process::abort();
-                        }
-                        Err(_) => {
-                            unsafe {
-                                validate_abort::close(write_fd);
-                                validate_abort::_exit(2);
-                            }
-                            std::process::abort();
-                        },
-                    }
-                }
-                unsafe {
-                    validate_abort::close(write_fd);
-                }
-                if pid < 0 {
-                    unsafe {
-                        validate_abort::close(read_fd);
-                    }
-                    let _ = tx.send(Vec::new());
-                    return;
-                }
-                if let Ok(mut g) = pid_worker.lock() {
-                    *g = Some(pid);
-                }
-                let mut status = 0;
-                let _ = unsafe { validate_abort::waitpid(pid, &mut status, 0) };
-                let bytes = read_all_fd(read_fd, 1024 * 1024);
-                unsafe {
-                    validate_abort::close(read_fd);
-                }
-                let _ = tx.send(bytes);
-            });
-        if spawned.is_err() {
-            unsafe {
-                validate_abort::close(read_fd);
-                validate_abort::close(write_fd);
-            }
-            drop(permit);
-            return Err(ValidateWaitError::Join);
-        }
-        let joined = tokio::time::timeout(wait, rx).await;
-        match joined {
-            Ok(Ok(bytes)) => {
-                drop(permit);
-                if bytes.len() < 4 {
-                    return Err(ValidateWaitError::Join);
-                }
-                let n = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as usize;
-                if n > 1024 * 1024 {
-                    return Err(ValidateWaitError::Join);
-                }
-                if bytes.len() < 4 + n {
-                    return Err(ValidateWaitError::Join);
-                }
-                match decode_validation(&bytes[4..4 + n]) {
-                    Some(v) => Ok(v),
-                    None => Err(ValidateWaitError::Join),
-                }
-            }
-            Ok(Err(_)) => {
-                drop(permit);
-                Err(ValidateWaitError::Join)
-            }
-            Err(_) => {
-                let mut n = 0;
-                while n < 50 {
-                    let id = match pid_slot.lock() {
-                        Ok(g) => *g,
-                        Err(_) => None,
-                    };
-                    if let Some(pid) = id {
-                        unsafe {
-                            validate_abort::kill(pid, validate_abort::SIGKILL);
-                        }
-                        break;
-                    }
-                    std::thread::sleep(Duration::from_millis(1));
-                    n += 1;
-                }
-                drop(permit);
-                Err(ValidateWaitError::Timeout)
-            }
-        }
-    }
-}
-
 pub struct UcbRuntime {
     pub config: UcbConfig,
     pub lattice: LatticeRuntime,
     pub journal: DiffJournal,
     pub manifests: ManifestStore,
     pub validate_slots: Arc<Semaphore>,
+    /// Program that runs each ingest check in its own confined process.
+    pub validator: ValidatorProcess,
 }
 
 impl UcbRuntime {
@@ -334,6 +61,7 @@ impl UcbRuntime {
             journal,
             manifests,
             validate_slots: Arc::new(Semaphore::new(VALIDATE_SLOT_LIMIT)),
+            validator: ValidatorProcess::beside_current_exe(),
         })
     }
 }
@@ -447,13 +175,14 @@ pub async fn ingest_foreign_payload(rt: &Arc<UcbRuntime>, body: ForeignIngestBod
     }
     let prior = rt.journal.prior_fingerprints(200);
     let profile = rt.config.predicate_profile;
-    let body_for_validate = body.clone();
-    let validation = match run_bounded_validate(
-        Arc::clone(&rt.validate_slots),
-        rt.config.wire_limits.validate_timeout_ms,
-        move || validate_foreign_ingest_with_profile(&body_for_validate, &prior, profile),
-    )
-    .await
+    let request = match encode_request(&body, &prior, profile) {
+        Ok(r) => r,
+        Err(_) => return deny_to_value(DenyReport::from_error("validate join refused")),
+    };
+    let validation = match rt
+        .validator
+        .validate(&rt.validate_slots, rt.config.wire_limits.validate_timeout_ms, &request)
+        .await
     {
         Ok(v) => v,
         Err(ValidateWaitError::Busy) => {
@@ -662,6 +391,7 @@ mod tests {
     use super::*;
     use crate::ingress::{ForeignIngestBody, Provenance};
     use crate::journal::persist_after_admit;
+    use crate::validate_process::{decode_validation, encode_validation};
     use aep_ucb_perimeter_v1::{PredicateProfile, ScannerId, WireLimits};
     use std::os::unix::fs::PermissionsExt;
     use std::path::{Path, PathBuf};
@@ -795,28 +525,27 @@ mod tests {
     }
 
     #[test]
-    fn validate_timeout_uses_blocking_task() {
-        let src = include_str!("bridge.rs");
-        assert!(src.contains("validate_timeout_ms"));
-        assert!(src.contains("SIGKILL"));
-        assert!(src.contains("fork"));
-        assert!(src.contains("validate timeout"));
-        assert!(src.contains("validate busy"));
-        assert!(src.contains("Semaphore"));
-        assert!(src.contains("acquire_owned"));
-        assert!(src.contains("VALIDATE_SLOT_LIMIT"));
+    fn validate_runs_in_a_separate_validator_process() {
+        let bridge = include_str!("bridge.rs");
+        let process = include_str!("validate_process.rs");
+        assert!(bridge.contains("validate_timeout_ms"));
+        assert!(bridge.contains("validate timeout"));
+        assert!(bridge.contains("validate busy"));
+        assert!(bridge.contains("VALIDATE_SLOT_LIMIT"));
+        assert!(bridge.contains("ValidatorProcess::beside_current_exe"));
+        let extern_c = ["extern ", "\"C\""].concat();
+        assert!(!bridge.contains(&extern_c), "bridge declares no C functions");
+        assert!(!bridge.contains(&["fn ", "fork("].concat()));
+        assert!(process.contains("acquire_owned"));
+        assert!(process.contains("kill_on_drop(true)"));
+        assert!(process.contains("env_clear()"));
+        let drain = process.find("read_to_end(&mut out)").expect("drain");
+        let wait = process.find("child.wait().await").expect("wait");
+        assert!(drain < wait, "the result is read to the end before the exit is awaited");
         assert_eq!(VALIDATE_SLOT_LIMIT, 2);
         assert_eq!(WireLimits::default().validate_timeout_ms, 2000);
     }
 
-    fn sample_validation_ok() -> crate::ingress::ValidationResult {
-        crate::ingress::ValidationResult {
-            ok: true,
-            predicate: None,
-            scanner_id: None,
-            error: None,
-        }
-    }
     #[test]
     fn encode_decode_preserves_secrets_scanner() {
         let v = crate::ingress::ValidationResult {
@@ -864,48 +593,55 @@ mod tests {
     }
 
 
-    #[tokio::test]
-    async fn validate_join_timeout_returns_timeout() {
-        let slots = Arc::new(Semaphore::new(VALIDATE_SLOT_LIMIT));
-        let out = run_bounded_validate(slots, 40, || {
-            std::thread::sleep(Duration::from_millis(300));
-            sample_validation_ok()
-        })
-        .await;
-        assert_eq!(out.err(), Some(ValidateWaitError::Timeout));
+    #[cfg(unix)]
+    fn stand_in(script: &str) -> ValidatorProcess {
+        ValidatorProcess::with_args("/bin/sh", ["-c", script])
     }
 
+    #[cfg(unix)]
     #[tokio::test]
-    async fn validate_timeout_aborts_and_frees_slot() {
+    async fn validate_timeout_kills_the_validator_and_frees_the_slot() {
         let slots = Arc::new(Semaphore::new(VALIDATE_SLOT_LIMIT));
-        let out = run_bounded_validate(slots.clone(), 40, || {
-            std::thread::sleep(Duration::from_millis(300));
-            sample_validation_ok()
-        })
-        .await;
+        let out = stand_in("sleep 30").validate(&slots, 40, b"{}").await;
         assert_eq!(out.err(), Some(ValidateWaitError::Timeout));
-        let ok = run_bounded_validate(slots, 200, || sample_validation_ok()).await;
+        assert_eq!(slots.available_permits(), VALIDATE_SLOT_LIMIT);
+        let ok = stand_in("cat >/dev/null; printf '{\"ok\":true}'")
+            .validate(&slots, 2000, b"{}")
+            .await;
         assert_eq!(ok.as_ref().map(|v| v.ok), Ok(true));
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn validate_busy_when_two_slots_are_live() {
         let slots = Arc::new(Semaphore::new(VALIDATE_SLOT_LIMIT));
-        let a = tokio::spawn(run_bounded_validate(slots.clone(), 2000, || {
-            std::thread::sleep(Duration::from_millis(250));
-            sample_validation_ok()
-        }));
-        let b = tokio::spawn(run_bounded_validate(slots.clone(), 2000, || {
-            std::thread::sleep(Duration::from_millis(250));
-            sample_validation_ok()
-        }));
-        tokio::time::sleep(Duration::from_millis(80)).await;
-        let busy = run_bounded_validate(slots.clone(), 40, || sample_validation_ok()).await;
+        let slow = "cat >/dev/null; sleep 0.25; printf '{\"ok\":true}'";
+        let a = tokio::spawn({
+            let slots = slots.clone();
+            async move { stand_in(slow).validate(&slots, 2000, b"{}").await }
+        });
+        let b = tokio::spawn({
+            let slots = slots.clone();
+            async move { stand_in(slow).validate(&slots, 2000, b"{}").await }
+        });
+        tokio::time::sleep(std::time::Duration::from_millis(80)).await;
+        let busy = stand_in(slow).validate(&slots, 40, b"{}").await;
         assert_eq!(busy.err(), Some(ValidateWaitError::Busy));
         let ra = a.await.expect("slow a");
         let rb = b.await.expect("slow b");
         assert_eq!(ra.as_ref().map(|v| v.ok), Ok(true));
         assert_eq!(rb.as_ref().map(|v| v.ok), Ok(true));
+    }
+
+    #[tokio::test]
+    async fn missing_validator_denies_with_join_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut rt = UcbRuntime::new(sample_config(dir.path())).unwrap();
+        rt.validator = ValidatorProcess::new(dir.path().join("no-such-validator"));
+        let result = ingest_foreign_payload(&Arc::new(rt), sample_ingest_body()).await;
+        assert_ne!(result.get("ok"), Some(&Value::Bool(true)));
+        let err = result.get("error").and_then(|v| v.as_str()).unwrap_or("");
+        assert!(err.contains("validate join refused"), "{result}");
     }
 
     fn sample_config(dir: &Path) -> UcbConfig {

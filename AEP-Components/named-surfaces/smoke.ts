@@ -6,6 +6,7 @@ import { transpileGapToRego } from "../policy-engine/lib/policy/transpilers/gap-
 import { forwardMcpCall } from "../proxy/lib/mcp-backend.ts";
 
 async function main(): Promise<void> {
+
   let emptyCedarThrew = false;
   try {
     transpileCedarToGap("  ");

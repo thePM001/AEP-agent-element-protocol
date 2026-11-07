@@ -20,8 +20,10 @@ pub mod journal;
 pub mod lattice;
 pub mod manifest;
 pub mod mcp;
+pub mod sandbox;
 pub mod store;
 pub mod translator;
+pub mod validate_process;
 
 pub const UCB_VERSION: &str = "2.9";
 pub const BRIDGE_ID: &str = "ucb/2.9";

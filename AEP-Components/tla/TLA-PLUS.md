@@ -20,7 +20,6 @@ Named MODULE shape runs whenever a .tla file is present including profile off.
 When the profile is warn, TLC runs if installed and a missing tool writes a warning.
 When the profile is strict, a missing tool or a failed model check closes the lane.
 Public Docker does not install TLC or Apalache and GAP remains the one form for writing Admit so a TLA+ pass never replaces GAP.
-GAP remains the one form for writing Admit. A TLA+ pass never replaces GAP.
 
 ## Run
 

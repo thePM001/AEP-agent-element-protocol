@@ -36,6 +36,7 @@ COPY --from=rust-builder /build/rust/target/release/aep-base-node /usr/local/bin
 COPY --from=rust-builder /build/rust/target/release/aep-lattice-log /usr/local/bin/
 COPY --from=rust-builder /build/rust/target/release/aep-memory /usr/local/bin/
 COPY --from=rust-builder /build/rust/target/release/aep-ucb /usr/local/bin/
+COPY --from=rust-builder /build/rust/target/release/aep-ucb-validate /usr/local/bin/
 
 WORKDIR /opt/aep
 COPY --from=node-deps /deps/node_modules ./node_modules

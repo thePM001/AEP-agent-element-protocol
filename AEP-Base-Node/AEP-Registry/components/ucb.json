@@ -69,6 +69,7 @@
   "implementation": {
     "language": "rust",
     "binary": "aep-ucb",
+    "validator_binary": "aep-ucb-validate",
     "crate": "AEP-Base-Node/AEP-Docks/ucb/crate/",
     "port": 8412,
     "health": "/health",

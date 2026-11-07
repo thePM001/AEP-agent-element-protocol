@@ -28,3 +28,7 @@ This note tells operators how live GAP files are written and how collect-all Adm
 - Multi-instruction families use YAML multi-document syntax with `---` separators.
 
 - This note lives at AEP-Components/gap/FILE-FORMAT.md
+
+## Optional TLA plus sibling
+
+A GAP policy may carry metadata.tla_plus as a relative path to a sibling TLA plus file that ends in .tla. Absolute paths and parent directory tokens are rejected. The field is ignored when AEP_TLA_PROFILE is off. When the profile is warn a missing sibling writes a warning row and the checker exits 0. When the profile is strict a missing sibling closes the lane. MODULE shape still runs on every present TLA plus file.

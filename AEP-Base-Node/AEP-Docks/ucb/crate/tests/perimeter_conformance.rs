@@ -199,14 +199,15 @@ fn public_capabilities_compiler() {
 
 #[test]
 fn validate_slots_are_bounded_in_source() {
-    let src = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bridge.rs"));
-    assert!(src.contains("Semaphore"));
-    assert!(src.contains("acquire_owned"));
-    assert!(src.contains("SIGKILL"));
-    assert!(src.contains("fork"));
-    assert!(src.contains("VALIDATE_SLOT_LIMIT"));
-    assert!(src.contains("validate timeout"));
-    assert!(src.contains("validate busy"));
+    let bridge = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bridge.rs"));
+    let process = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/validate_process.rs"));
+    assert!(bridge.contains("Semaphore"));
+    assert!(bridge.contains("VALIDATE_SLOT_LIMIT"));
+    assert!(bridge.contains("validate timeout"));
+    assert!(bridge.contains("validate busy"));
+    assert!(process.contains("acquire_owned"));
+    assert!(process.contains("child.kill()"));
+    assert!(process.contains("aep-ucb-validate"));
 }
 
 #[test]
