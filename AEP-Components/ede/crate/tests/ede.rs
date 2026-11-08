@@ -21,6 +21,9 @@ fn setup(name: &str) -> PathBuf {
     let _ = fs::remove_dir_all(&base);
     fs::create_dir_all(&base).unwrap();
     std::env::set_var("AEP_EDE_ROOT", base.join("drafts"));
+    std::env::set_var("AEP_AGENT_ID", "test-agent");
+    std::env::remove_var("AEP_EDE_PROFILE");
+    aep_ede::profile::init("test-agent", &["owner/demo".to_string()]).unwrap();
     std::env::set_var("GIT_CONFIG_COUNT", "1");
     std::env::set_var("GIT_CONFIG_KEY_0", "core.hooksPath");
     std::env::set_var("GIT_CONFIG_VALUE_0", "/dev/null");
@@ -177,7 +180,7 @@ fn github_forge_pushes_a_branch_and_opens_a_pull_request() {
     assert!(req.contains("Authorization: Bearer test-token-value"), "{}", req);
     let branch = format!("aep-ede/{}", s.draft);
     assert!(req.contains(&format!("\"head\":\"{}\"", branch)) && req.contains("\"base\":\"main\""), "{}", req);
-    assert!(req.contains("\"title\":\"Open a pull request\"") && req.contains("\"body\":\"It adds pr.rs.\""), "{}", req);
+    assert!(req.contains("\"title\":\"Open a pull request\"") && req.contains("\"body\":\"It adds pr.rs.\\n\\nAEP-Agent: test-agent\""), "{}", req);
     let bare = base.join("remote/owner/demo.git");
     assert_eq!(sh(&base, &format!("git --git-dir={} show {}:pr.rs", bare.display(), branch)), "pub fn pr() {}");
     assert!(!tree(&s.draft).parent().unwrap().join("github-headers").exists(), "the header file with the token is gone");
@@ -190,4 +193,66 @@ fn added_lines_ignore_text_already_there() {
     assert_eq!(added, vec![(3, "x".to_string()), (5, "b".to_string())]);
     assert_eq!(aep_ede::forge::base64(b"x-access-token:abc"), "eC1hY2Nlc3MtdG9rZW46YWJj");
     assert_eq!(aep_ede::forge::json_field("{\"html_url\": \"u\"}", "html_url").as_deref(), Some("u"));
+}
+
+#[test]
+fn every_verb_runs_under_the_agent_profile() {
+    let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let base = setup("profile");
+    let forge = git_forge(&base);
+    let prof = aep_ede::profile::load().unwrap();
+    assert!(prof.summary().contains("grants seed scan promote for owner/demo"), "{}", prof.summary());
+    assert!(aep_ede::profile::init("test-agent", &["owner/demo".to_string()]).is_err(), "init keeps an existing profile");
+
+    std::env::set_var("AEP_AGENT_ID", "");
+    let none = aep_ede::seed(&forge, "owner/demo", "main");
+    assert_eq!(none.code, "profile_missing");
+    assert!(none.note.contains("AEP_AGENT_ID") && none.note.contains("aep-ede profile init"), "{}", none.note);
+    std::env::set_var("AEP_AGENT_ID", "test-agent");
+    let other_repo = aep_ede::seed(&forge, "owner/other", "main");
+    assert_eq!(other_repo.code, "profile_refused");
+    assert!(other_repo.note.contains("ede_repos"), "{}", other_repo.note);
+
+    let s = aep_ede::seed(&forge, "owner/demo", "main");
+    assert!(s.ok, "{}", s.render());
+    fs::write(tree(&s.draft).join("p.rs"), "pub fn p() {}\n").unwrap();
+
+    // Another agent with a full profile of its own cannot touch the draft.
+    aep_ede::profile::init("other-agent", &["*".to_string()]).unwrap();
+    std::env::set_var("AEP_AGENT_ID", "other-agent");
+    assert_eq!(aep_ede::scan(&s.draft).code, "draft_foreign_agent");
+
+    // A profile without ede.promote can seed and scan but not land.
+    std::env::set_var("AEP_AGENT_ID", "test-agent");
+    let limited = base.join("limited.gap");
+    let text = aep_ede::profile::template("test-agent", &["owner/demo".to_string()]).replace("      action: ede.promote\n", "      action: ede.read\n");
+    fs::write(&limited, text).unwrap();
+    std::env::set_var("AEP_EDE_PROFILE", &limited);
+    assert!(aep_ede::scan(&s.draft).ok);
+    let refused = aep_ede::promote(&forge, &s.draft, "Add p.rs");
+    assert_eq!(refused.code, "profile_refused");
+    assert!(refused.note.contains("ede.promote"), "{}", refused.note);
+    std::env::remove_var("AEP_EDE_PROFILE");
+
+    let p = aep_ede::promote(&forge, &s.draft, "Add p.rs");
+    assert!(p.ok, "{}", p.render());
+    let bare = base.join("remote/owner/demo.git");
+    let msg = sh(&base, &format!("git --git-dir={} log --format=%B -1 aep-ede/{}", bare.display(), s.draft));
+    assert_eq!(msg, "Add p.rs\n\nAEP-Agent: test-agent");
+
+    let (records, repos) = aep_ede::profile::parse("metadata:\n  agent_permission:\n  - agent_id: a\n    action: ede.seed\n  ede_repos: [o/r, \"o/s\"]\n");
+    assert_eq!(records.len(), 1);
+    assert_eq!(repos, vec!["o/r".to_string(), "o/s".to_string()]);
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn the_reference_profile_grants_the_three_verbs() {
+    let text = include_str!("../../../gap/policies/reference/ede-coding-agent.gap");
+    let (records, repos) = aep_ede::profile::parse(text);
+    let actions: Vec<&str> = records.iter().map(|r| r.action.as_str()).collect();
+    assert_eq!(actions, vec!["ede.seed", "ede.scan", "ede.promote"]);
+    assert!(records.iter().all(|r| r.agent_id == "example-coding-agent"));
+    assert_eq!(repos, vec!["owner/repo".to_string()]);
+    assert_eq!(aep_ede::profile::parse(&aep_ede::profile::template("example-coding-agent", &repos)).0, records);
 }

@@ -2,6 +2,9 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-08 - Agent profiles bind coding agents to the EDE
+The first release of aep-ede ran for anyone who called it. Now every verb runs under an agent profile: a GAP policy that names the agent in agent_permission records for ede.seed, ede.scan and ede.promote and lists its repositories in ede_repos. The agent permission wall of AEP Admit checks each verb. A draft belongs to the agent that seeded it and every promote commit carries the trailer AEP-Agent with the agent id. aep-ede profile init writes a profile and aep-ede profile check shows what it grants. AEP-Components/ede/README.md explains how to create a profile and bind an agent to it. The reference profile is AEP-Components/gap/policies/reference/ede-coding-agent.gap.
+
 ## [2.9.0] - 2026-11-08 - Enforced draft environments for coding agents
 A coding agent could push to a repository from any working copy and learned the rules of the review only after its push. The new component AEP-Components/ede gives it a draft instead: a clone with no push URL, a scan of the change set with the writing walls of AEP Admit and one promote that opens a pull request on GitHub or pushes a branch to a git remote. Scan names every finding at once and judges only the lines the change adds. Promote checks that the change set equals the scanned one, rebases the work on a moved branch and refuses a conflict with every conflicting path named. The token for GitHub never lands in a git config or on a command line. The tests run against local bare repositories and need no network.
 

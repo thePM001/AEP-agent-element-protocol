@@ -1,6 +1,80 @@
 # EDE: enforced draft environments for coding agents
 
-A coding agent changes a repository only through a draft. The draft is a clone with no push URL. The agent edits its tree. Every change set is scanned before it lands and lands in one step, as a pull request on GitHub or as a branch on any git remote.
+A coding agent changes a repository only through a draft. The draft is a clone with no push URL. The agent edits its tree. Every change set is scanned before it lands and lands in one step, as a pull request on GitHub or as a branch on any git remote. Every step runs under the agent profile of the agent that does the work.
+
+## 1. Create an agent profile
+
+An agent profile is a GAP policy. It names the agent in `agent_permission` records with one record per EDE action it may take. It lists the repositories the agent may change in `ede_repos`. The EDE checks it with the agent permission wall of AEP Admit, the same wall that every other AEP action passes.
+
+Create one per agent:
+
+```
+aep-ede profile init my-coding-agent owner/repo
+```
+
+This writes `~/.aep-ede/profiles/my-coding-agent.gap`:
+
+```yaml
+address:
+  domain: dev.aep.ede
+  id: my-coding-agent-coding.v1
+
+pattern: |
+  Agent profile of my-coding-agent for enforced draft environments.
+  The agent changes the listed repositories only through aep-ede drafts.
+
+weight: 1.0
+
+composition:
+  type: atomic
+
+metadata:
+  version: "1.0.0"
+  stability: stable
+  aspect: procedural
+  agent_permission:
+    - agent_id: my-coding-agent
+      action: ede.seed
+    - agent_id: my-coding-agent
+      action: ede.scan
+    - agent_id: my-coding-agent
+      action: ede.promote
+  ede_repos:
+    - owner/repo
+```
+
+Edit it like any GAP policy:
+
+- Remove the `ede.promote` record and the agent can prepare and scan drafts while a person lands them.
+- Add repositories to `ede_repos`. A `*` stands for every repository.
+- `agent_id: "*"` grants an action to every agent that uses the profile. Name each agent instead, so its commits stay traceable.
+- Keep the profile in your repository or your policy folder and point `AEP_EDE_PROFILE` at it to share it with a team.
+
+The reference copy is `AEP-Components/gap/policies/reference/ede-coding-agent.gap`.
+
+## 2. Bind the agent to its profile
+
+Set two variables in the environment the agent runs in: its launcher, its service unit or its CAW session (see `AEP-Components/gap/policies/reference/caw-coding-agent.gap` for the sandbox side).
+
+```
+export AEP_AGENT_ID=my-coding-agent
+export AEP_EDE_PROFILE=/path/to/my-coding-agent.gap   # optional, default ~/.aep-ede/profiles/<AEP_AGENT_ID>.gap
+```
+
+Check the binding:
+
+```
+aep-ede profile check
+agent my-coding-agent profile /home/me/.aep-ede/profiles/my-coding-agent.gap grants seed scan promote for owner/repo
+```
+
+From then on:
+
+- `seed`, `scan` and `promote` each pass the permission wall for `ede.seed`, `ede.scan` and `ede.promote`, plus the `ede_repos` scope. A missing identity, a missing profile or a missing grant is refused with the record to add.
+- A draft belongs to the agent that seeded it. Another agent cannot scan or promote it.
+- Every promote commit ends with the trailer `AEP-Agent: <agent id>`, so the history and the pull request name the agent.
+
+## 3. Work through drafts
 
 ```
 aep-ede seed owner/repo main        # clone, record the base commit, print the draft id

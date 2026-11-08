@@ -3,6 +3,8 @@
 use std::io::Write;
 
 const USAGE: &str = "usage: aep-ede seed <owner/repo> [ref] | diff <draft> | scan <draft> | promote <draft> -m <message> | refresh <draft> | status <draft> | path <draft> | expire <draft>
+       aep-ede profile init <agent-id> <owner/repo>... | profile check
+Every verb runs under the agent profile of AEP_AGENT_ID (AEP_EDE_PROFILE, else ~/.aep-ede/profiles/<agent-id>.gap).
 The forge comes from AEP_EDE_FORGE: github (the default, promote needs GITHUB_TOKEN) or git (with AEP_EDE_GIT_REMOTE).";
 
 fn main() {
@@ -10,6 +12,35 @@ fn main() {
     if args.len() < 2 {
         eprintln!("{}", USAGE);
         std::process::exit(2);
+    }
+    if args[0] == "profile" {
+        match args[1].as_str() {
+            "init" if args.len() >= 4 => match aep_ede::profile::init(&args[2], &args[3..]) {
+                Ok(p) => {
+                    println!("profile: {}", p.display());
+                    println!("next: export AEP_AGENT_ID={} in the environment the agent runs in", args[2]);
+                    return;
+                }
+                Err(e) => {
+                    eprintln!("refused: {}", e);
+                    std::process::exit(1);
+                }
+            },
+            "check" => match aep_ede::profile::load() {
+                Ok(p) => {
+                    println!("{}", p.summary());
+                    return;
+                }
+                Err(e) => {
+                    eprintln!("refused: {}", e);
+                    std::process::exit(1);
+                }
+            },
+            _ => {
+                eprintln!("{}", USAGE);
+                std::process::exit(2);
+            }
+        }
     }
     let forge = aep_ede::forge::from_env();
     let draft = args[1].as_str();

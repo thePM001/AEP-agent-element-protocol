@@ -18,6 +18,7 @@
 //! plain git remote. See the forge module.
 
 pub mod forge;
+pub mod profile;
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -155,6 +156,13 @@ pub fn seed(forge: &dyn forge::Forge, repo: &str, reference: &str) -> Report {
     if repo.is_empty() || repo.contains("..") || repo.contains(' ') {
         return Report::deny("seed_repo", "", "name the repository as owner/name");
     }
+    let prof = match profile::load() {
+        Ok(p) => p,
+        Err(e) => return Report::deny("profile_missing", "", &e),
+    };
+    if let Err(e) = prof.allow("seed", repo) {
+        return Report::deny("profile_refused", "", &e);
+    }
     let branch = if reference.is_empty() { "main" } else { reference };
     let draft = new_draft_id(repo);
     let d = root().join(&draft);
@@ -189,6 +197,7 @@ pub fn seed(forge: &dyn forge::Forge, repo: &str, reference: &str) -> Report {
     let _ = git(&tree, &[], &["checkout", "-q", "-B", "ede-work", &base]);
     let fields = [
         ("draft", draft.as_str()),
+        ("agent", prof.agent_id.as_str()),
         ("forge", forge.name()),
         ("repo", repo),
         ("branch", branch),
@@ -330,6 +339,9 @@ pub fn scan(draft: &str) -> Report {
         Some(d) => d,
         None => return Report::deny("draft_missing", draft, ""),
     };
+    if let Err(r) = agent_gate(&d, draft, "scan") {
+        return r;
+    }
     let quota = std::env::var("AEP_EDE_QUOTA").ok().and_then(|v| v.parse().ok()).unwrap_or(QUOTA_BYTES);
     let used = du_bytes(&d);
     if used > quota {
@@ -403,12 +415,18 @@ pub fn promote(forge: &dyn forge::Forge, draft: &str, message: &str) -> Report {
         Some(d) => d,
         None => return Report::deny("draft_missing", draft, ""),
     };
+    let prof = match agent_gate(&d, draft, "promote") {
+        Ok(p) => p,
+        Err(r) => return r,
+    };
     if field(&d, "state") != "scanned" {
         return Report::deny("promote_not_scanned", draft, "run aep-ede scan first");
     }
     if message.trim().is_empty() {
         return Report::deny("promote_message", draft, "promote needs -m <message>");
     }
+    let message = format!("{}\n\nAEP-Agent: {}", message.trim_end(), prof.agent_id);
+    let message = message.as_str();
     let list = match changes(&d) {
         Ok(l) => l,
         Err(e) => return Report::deny("scan_tree", draft, &e),
@@ -467,4 +485,16 @@ pub fn expire(draft: &str) -> Report {
         }
         None => Report::deny("draft_missing", draft, ""),
     }
+}
+
+/// The profile of the running agent, checked for ede.<verb> on the repository of
+/// the draft. A draft belongs to the agent that seeded it.
+fn agent_gate(d: &Path, draft: &str, verb: &str) -> Result<profile::Profile, Report> {
+    let prof = profile::load().map_err(|e| Report::deny("profile_missing", draft, &e))?;
+    prof.allow(verb, &field(d, "repo")).map_err(|e| Report::deny("profile_refused", draft, &e))?;
+    let owner = field(d, "agent");
+    if owner != prof.agent_id {
+        return Err(Report::deny("draft_foreign_agent", draft, &format!("the draft belongs to the agent {}", owner)));
+    }
+    Ok(prof)
 }
