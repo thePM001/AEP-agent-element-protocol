@@ -22,7 +22,8 @@ This section belongs in the root THREAT_MODEL.md once that file lands. Every mit
 | Receipt result edited | receipt_id and signature cover every field | ucm_redteam: result edited, resealed without key; ucm-receipt tampering_is_refused |
 | Receipt from another calculation reused | The field must equal the signed result | ucm_redteam: stale receipt, receipts swapped |
 | Forged receipt with a fresh key | Signer must be in AEP_UCM_TRUSTED_KEYS | ucm_redteam: untrusted signer, public key swapped |
-| Agent narrows the computed fields | UCB replaces payload.ucm.computed_fields with the manifest list | ucb bridge computed_fields_come_from_the_manifest_only |
+| Agent narrows the computed fields | UCB replaces ucm.computed_fields of the foreign payload with the manifest list | ucb bridge computed_fields_come_from_the_manifest_only, computed_fields_bind_on_the_translated_foreign_payload |
+| Text hidden from the PII and writing rules inside a receipt | Only a receipt signed by a trusted key is read as its agent view, which keeps literals, names, inputs and result. Any other receipt is read whole | ucm_claims findings_cover_every_kind |
 | Trivial program that echoes the number | A text result never backs a field. For wraps that need more, AEP_UCM_LIBRARY_ONLY_WRAPS accepts reviewed library formulas only | ucm_redteam: text echo, library only wrap |
 | Budget exhaustion of the service | Step, size, length and time budget, 1 MiB body limit, four evaluations at a time | props, http limits_and_errors |
 | Budget exhaustion of Admit by replay | Replay is opt in and capped at 1000000 steps | ucm_redteam replay |

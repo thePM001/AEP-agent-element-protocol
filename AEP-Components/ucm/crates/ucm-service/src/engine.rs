@@ -63,6 +63,10 @@ pub struct Config {
     pub lattice_record: bool,
     pub lattice_log_bin: PathBuf,
     pub lattice_db: Option<PathBuf>,
+    /// Lattice action of a receipt record. The deployment lattice must grant it to aep-ucm.
+    pub lattice_action_path: String,
+    /// Scene a receipt record binds. Dock Admit closes an unbound scene.
+    pub lattice_scene: String,
     pub max_concurrent: usize,
 }
 
@@ -101,6 +105,8 @@ impl Config {
                 .map(PathBuf::from)
                 .unwrap_or_else(|| PathBuf::from("aep-lattice-log")),
             lattice_db: env("AEP_LATTICE_DB").map(PathBuf::from),
+            lattice_action_path: env("UCM_LATTICE_ACTION_PATH").unwrap_or_else(|| "ucm:receipt".into()),
+            lattice_scene: env("UCM_LATTICE_SCENE").unwrap_or_else(|| "ucm-receipts".into()),
             max_concurrent: env_u64("UCM_MAX_CONCURRENT", 4) as usize,
         }
     }

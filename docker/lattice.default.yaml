@@ -27,3 +27,12 @@ actions:
     constraints: []
     agent_permission:
       - data-dock
+  ucm:receipt:
+    label: UCM receipt record
+    category: system_event
+    wrap: kernel
+    parents: []
+    children: []
+    constraints: []
+    agent_permission:
+      - aep-ucm

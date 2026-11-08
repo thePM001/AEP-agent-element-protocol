@@ -190,8 +190,19 @@ elif [ "${CAW:-0}" = "1" ]; then
   echo "WARN: CAW=1 set but aep-caw not on PATH in this image (host ELS expected outside container)." >&2
 fi
 
+# With UCM_LATTICE_RECORD=1 UCM records each receipt digest as agent aep-ucm on the
+# lattice action ucm:receipt. The daemon reads agent sign keys at boot, so the key is
+# provisioned first. Provisioning returns an existing key unchanged.
+provision_ucm_record_key() {
+  if [ "${UCM:-0}" = "1" ] && [ "${UCM_LATTICE_RECORD:-0}" = "1" ]; then
+    aep-base-node --config "${CONFIG}" --provision-agent-sign-key --agent-id aep-ucm >/dev/null 2>&1 \
+      || echo "WARN: could not provision the sign key of agent aep-ucm; UCM lattice records will fail" >&2
+  fi
+}
+
 start_daemon() {
   bootstrap_config
+  provision_ucm_record_key
   aep-base-node --daemon --config "${CONFIG}" &
   DAEMON_PID=$!
   echo "${DAEMON_PID}" > "${DAEMON_PIDFILE}"

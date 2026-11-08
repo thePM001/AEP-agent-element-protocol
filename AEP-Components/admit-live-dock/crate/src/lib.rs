@@ -181,7 +181,8 @@ pub fn compile_live_walls(
     let satisfied: Vec<String> = live.snapshot.satisfied_actions.iter().cloned().collect();
 
     let mut strings = Vec::new();
-    collect_strings(event, &mut strings);
+    // Signature material of trusted UCM receipts is not text. See ucm_claims::text_view.
+    collect_strings(&aep_policy_system_admit::ucm_claims::text_view(event), &mut strings);
     let writing_text = strings.join("\n");
     let writing_walls = aep_admit::compile_writing_walls(&writing_text);
     let folded = fold_writing_into_admit(&writing_text, &[]);

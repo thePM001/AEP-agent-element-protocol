@@ -255,7 +255,7 @@ A receipt validates against AEP-Base-Node/AEP-Registry/schemas/ucm-receipt-v1.js
 
 ## 12. Enforcement in AEP
 
-A task manifest MAY declare computed_fields, a list of JSON pointers into the action payload. UCB writes that list into payload.ucm.computed_fields at ingest and replaces whatever the agent sent. The agent puts one receipt per pointer into payload.ucm.receipts.
+A task manifest MAY declare computed_fields, a list of JSON pointers into the action payload. UCB writes that list into ucm.computed_fields of the foreign payload at ingest and replaces whatever the agent sent. UCB keeps the foreign payload under payload.raw of the lattice event, so Admit looks for the ucm block at payload.ucm, then at payload.raw.ucm, then on the event itself. It resolves the pointers against the object that holds the block. The agent puts one receipt per pointer into ucm.receipts next to the fields.
 
 The reference policy AEP-Policy-System/reference/ucm-computed-claims.gap adds three invariants that Admit conjoins with every other wall.
 
@@ -269,6 +269,9 @@ The reference policy AEP-Policy-System/reference/ucm-computed-claims.gap adds th
 - UCM-R-091. Admit MUST decide exactly as before for every action that names no computed field.
 - UCM-R-092. AEP_UCM_RECEIPT_VERIFY=replay adds a replay to every check, capped at 1000000 steps.
 - UCM-R-093. AEP_UCM_LIBRARY_ONLY_WRAPS names wraps whose computed fields need a library program.
+- UCM-R-094. Base Node writing normalization MUST leave ucm.receipts unchanged, because the signature covers every byte of a receipt.
+- UCM-R-095. The text walls of Admit (writing, PII and the other text rules) read a receipt that verifies against a trusted key as its agent view: the strings of the program other than operators, function names and types, the inputs and the result. Signature material and digests are not text. A receipt that does not verify is read whole.
+- UCM-R-096. A receipt record of agent aep-ucm on the lattice (event type UCM_RECEIPT) holds digests only. The text walls leave out its digest fields when each has its exact digest form.
 
 A field matches its result when it equals the result object. It also matches as the value or decimal text, with the currency or unit after a space for money and quantities. A JSON number matches when its text is that value or decimal text.
 

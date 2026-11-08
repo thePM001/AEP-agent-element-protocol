@@ -374,12 +374,30 @@ fn wall_agent_permission(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall 
     }
 }
 
+/// The payload without its signed UCM receipts. A receipt carries a program in code form,
+/// such as money[EUR], which the prose rules would refuse. The live dock writing walls read
+/// receipts through ucm_claims::text_view: what the agent chose in a receipt from a
+/// trusted node and the whole of any other receipt. This gate leaves them to that reader.
+fn without_ucm_receipts(payload: &serde_json::Value) -> std::borrow::Cow<'_, serde_json::Value> {
+    const RECEIPTS: &[&str] = &["/ucm/receipts", "/raw/ucm/receipts"];
+    if RECEIPTS.iter().all(|p| payload.pointer(p).is_none()) {
+        return std::borrow::Cow::Borrowed(payload);
+    }
+    let mut out = payload.clone();
+    for p in RECEIPTS {
+        if let Some(slot) = out.pointer_mut(p) {
+            *slot = serde_json::Value::Null;
+        }
+    }
+    std::borrow::Cow::Owned(out)
+}
+
 fn wall_gap(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     if !snap.gap_scan_payload {
         return wall("gap.writing", "gap", true, "gap scan off");
     }
     let mut texts = Vec::new();
-    collect_strings(&action.payload, &mut texts);
+    collect_strings(&without_ucm_receipts(&action.payload), &mut texts);
     texts.push(action.action_path.clone());
     for t in &texts {
         // The writing family lives in one compiled wall set. This gate reads it and
@@ -707,6 +725,20 @@ mod tests {
         let names = closed_names(&r);
         assert!(names.contains("gap.writing"), "gap missing: {:?}", names);
         assert!(names.contains("gap.agent_permission"), "agent_permission missing: {:?}", names);
+    }
+
+    #[test]
+    fn gap_writing_leaves_ucm_receipts_to_the_dock_reader() {
+        let snap = base_snap();
+        let receipt = serde_json::json!({ "program": { "inputs": [{ "name": "p", "type": "money[EUR]" }] } });
+        let mut a = act("action:write");
+        a.payload = serde_json::json!({ "total": "64.54", "raw": { "ucm": { "receipts": { "/total": receipt } } } });
+        let names = closed_names(&admit(&a, &snap));
+        assert!(!names.contains("gap.writing"), "receipt read as prose: {:?}", names);
+        // The rest of the payload is still read.
+        a.payload = serde_json::json!({ "note": "Low RAM\u{2014}use cloud", "ucm": { "receipts": {} } });
+        let names = closed_names(&admit(&a, &snap));
+        assert!(names.contains("gap.writing"), "gap missing: {:?}", names);
     }
 
     #[test]

@@ -90,6 +90,8 @@ Under strict, a missing receipt, an invalid or untrusted receipt and a field tha
 | UCM_BUDGET_CEILING_STEPS, _BITS, _LEN, _MILLIS | spec section 8 | Operator ceiling |
 | UCM_LOOKUP_RANKER_URL, UCM_LOOKUP_RANKER_MODEL, UCM_LOOKUP_RANKER_KEY_FILE | none | Optional System-1 tier two ranker, any OpenAI compatible chat endpoint such as model-gateway or Ollama |
 | UCM_LATTICE_RECORD, AEP_LATTICE_LOG_BIN, AEP_LATTICE_DB | off | Record each receipt digest in the Base Node lattice log |
+| UCM_LATTICE_SCENE | ucm-receipts | Scene that a receipt record binds |
+| UCM_LATTICE_ACTION_PATH | ucm:receipt | Lattice action of a receipt record. The deployment lattice must grant it to agent aep-ucm. The Docker entrypoint provisions the sign key of aep-ucm when UCM_LATTICE_RECORD=1 |
 | UCM_MAX_CONCURRENT | 4 | Evaluations at a time |
 
 ## Layout
