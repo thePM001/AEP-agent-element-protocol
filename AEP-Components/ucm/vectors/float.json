@@ -1,0 +1,64 @@
+{
+ "ucm": "ucm-vectors-v1",
+ "suite": "float",
+ "generator": "AEP-Components/ucm/scripts/gen_vectors.py",
+ "cases": [
+  {
+   "id": "float-sum",
+   "program": "float { 0.1 + 0.2 }",
+   "expect": {
+    "type": "float",
+    "value": "0.30000000000000004"
+   }
+  },
+  {
+   "id": "float-exact-back",
+   "program": "exact(float { 0.5 })",
+   "expect": {
+    "type": "rational",
+    "value": "1/2",
+    "decimal": "0.5"
+   }
+  },
+  {
+   "id": "float-exact-quarter",
+   "program": "exact(float { 0.25 })",
+   "expect": {
+    "type": "rational",
+    "value": "1/4",
+    "decimal": "0.25"
+   }
+  },
+  {
+   "id": "float-sqrt",
+   "program": "float { sqrt(2) }",
+   "expect": {
+    "type": "float",
+    "value": "1.4142135623730951"
+   }
+  },
+  {
+   "id": "float-fn-outside",
+   "program": "exp(1)",
+   "error": "type_error"
+  },
+  {
+   "id": "sqrt-one-arg-outside",
+   "program": "sqrt(2)",
+   "error": "type_error"
+  },
+  {
+   "id": "float-mix-outside",
+   "program": "float { 1.5 } + 1",
+   "error": "type_error"
+  },
+  {
+   "id": "float-cmp",
+   "program": "float { 0.1 + 0.2 > 0.3 }",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  }
+ ]
+}

@@ -40,6 +40,10 @@ members = [
     "AEP-Components/wall-set-backpressure/crate",
     "AEP-Components/dock-post-beat-collect/crate",
     "AEP-Components/tla",
+    "AEP-Components/ucm/crates/ucm-core",
+    "AEP-Components/ucm/crates/ucm-receipt",
+    "AEP-Components/ucm/crates/ucm-lookup",
+    "AEP-Components/ucm/crates/ucm-service",
     # The end to end example is a member so the workspace build and CI compile it.
     "AEP-User-Experience/examples/end-to-end-run",
 ]

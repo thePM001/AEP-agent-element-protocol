@@ -19,7 +19,7 @@ func convertToLogRecord(ev types.Event) otellog.Record {
 	var rec otellog.Record
 
 	rec.SetTimestamp(ev.Timestamp)
-	rec.SetBody(otellog.StringValue(eventBody(ev)))
+	rec.SetBody(attribute.StringValue(eventBody(ev)))
 	rec.SetSeverity(eventSeverity(ev))
 	rec.SetSeverityText(eventSeverity(ev).String())
 
@@ -92,58 +92,58 @@ func eventSeverity(ev types.Event) otellog.Severity {
 
 // eventAttributes builds OTEL log attributes from an event using semantic
 // conventions where applicable and the aep-caw.* namespace for custom fields.
-func eventAttributes(ev types.Event) []otellog.KeyValue {
-	var attrs []otellog.KeyValue
+func eventAttributes(ev types.Event) []attribute.KeyValue {
+	var attrs []attribute.KeyValue
 
 	// Semantic conventions: process.
 	if ev.PID != 0 {
-		attrs = append(attrs, otellog.Int("process.pid", ev.PID))
+		attrs = append(attrs, attribute.Int("process.pid", ev.PID))
 	}
 	if ev.ParentPID != 0 {
-		attrs = append(attrs, otellog.Int("process.parent_pid", ev.ParentPID))
+		attrs = append(attrs, attribute.Int("process.parent_pid", ev.ParentPID))
 	}
 	if ev.Filename != "" {
-		attrs = append(attrs, otellog.String("process.executable.path", ev.Filename))
+		attrs = append(attrs, attribute.String("process.executable.path", ev.Filename))
 	}
 
 	// aep-caw namespace.
-	attrs = append(attrs, otellog.String("aep-caw.product", "aep-caw"))
+	attrs = append(attrs, attribute.String("aep-caw.product", "aep-caw"))
 	if ev.ID != "" {
-		attrs = append(attrs, otellog.String("aep-caw.event.id", ev.ID))
+		attrs = append(attrs, attribute.String("aep-caw.event.id", ev.ID))
 	}
-	attrs = append(attrs, otellog.String("aep-caw.event.type", ev.Type))
+	attrs = append(attrs, attribute.String("aep-caw.event.type", ev.Type))
 	if ev.SessionID != "" {
-		attrs = append(attrs, otellog.String("aep-caw.session.id", ev.SessionID))
+		attrs = append(attrs, attribute.String("aep-caw.session.id", ev.SessionID))
 	}
 	if ev.CommandID != "" {
-		attrs = append(attrs, otellog.String("aep-caw.command.id", ev.CommandID))
+		attrs = append(attrs, attribute.String("aep-caw.command.id", ev.CommandID))
 	}
 	if ev.Source != "" {
-		attrs = append(attrs, otellog.String("aep-caw.source", ev.Source))
+		attrs = append(attrs, attribute.String("aep-caw.source", ev.Source))
 	}
 	if ev.Path != "" {
-		attrs = append(attrs, otellog.String("aep-caw.path", ev.Path))
+		attrs = append(attrs, attribute.String("aep-caw.path", ev.Path))
 	}
 	if ev.Domain != "" {
-		attrs = append(attrs, otellog.String("aep-caw.domain", ev.Domain))
+		attrs = append(attrs, attribute.String("aep-caw.domain", ev.Domain))
 	}
 	if ev.Remote != "" {
-		attrs = append(attrs, otellog.String("aep-caw.remote", ev.Remote))
+		attrs = append(attrs, attribute.String("aep-caw.remote", ev.Remote))
 	}
 	if ev.Operation != "" {
-		attrs = append(attrs, otellog.String("aep-caw.operation", ev.Operation))
+		attrs = append(attrs, attribute.String("aep-caw.operation", ev.Operation))
 	}
 	if ev.EffectiveAction != "" {
-		attrs = append(attrs, otellog.String("aep-caw.effective_action", ev.EffectiveAction))
+		attrs = append(attrs, attribute.String("aep-caw.effective_action", ev.EffectiveAction))
 	}
 
 	// Policy info.
 	if ev.Policy != nil {
 		if ev.Policy.Decision != "" {
-			attrs = append(attrs, otellog.String("aep-caw.decision", string(ev.Policy.Decision)))
+			attrs = append(attrs, attribute.String("aep-caw.decision", string(ev.Policy.Decision)))
 		}
 		if ev.Policy.Rule != "" {
-			attrs = append(attrs, otellog.String("aep-caw.policy.rule", ev.Policy.Rule))
+			attrs = append(attrs, attribute.String("aep-caw.policy.rule", ev.Policy.Rule))
 		}
 	}
 
@@ -162,14 +162,14 @@ func eventAttributes(ev types.Event) []otellog.KeyValue {
 			switch val := v.(type) {
 			case string:
 				if val != "" {
-					attrs = append(attrs, otellog.String("aep-caw."+key, val))
+					attrs = append(attrs, attribute.String("aep-caw."+key, val))
 				}
 			case int:
-				attrs = append(attrs, otellog.Int("aep-caw."+key, val))
+				attrs = append(attrs, attribute.Int("aep-caw."+key, val))
 			case int64:
-				attrs = append(attrs, otellog.Int64("aep-caw."+key, val))
+				attrs = append(attrs, attribute.Int64("aep-caw."+key, val))
 			case float64:
-				attrs = append(attrs, otellog.Float64("aep-caw."+key, val))
+				attrs = append(attrs, attribute.Float64("aep-caw."+key, val))
 			}
 		}
 	}

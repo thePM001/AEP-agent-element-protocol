@@ -299,6 +299,7 @@ mod tests {
             created_at_unix: 0,
             manifest_digest: String::new(),
             signature: None,
+            computed_fields: vec![],
         };
         let signed = signed_from_task(&m);
         assert!(egress_power_allowed(&signed, StrictMode::On).is_err());
@@ -321,6 +322,7 @@ mod tests {
             created_at_unix: 0,
             manifest_digest: String::new(),
             signature: Some("operator-sig".into()),
+            computed_fields: vec![],
         };
         m.manifest_digest = compute_manifest_digest(&m);
         let signed = signed_from_task(&m);

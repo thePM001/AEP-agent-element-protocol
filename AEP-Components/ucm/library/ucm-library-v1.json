@@ -1,0 +1,503 @@
+{
+  "ucm": "ucm-library-v1",
+  "version": "2026.11.1",
+  "constants": [
+    {
+      "id": "c",
+      "name": "speed of light in vacuum",
+      "aliases": [
+        "speed of light",
+        "light speed"
+      ],
+      "value": "299792458",
+      "unit": "m/s",
+      "exact": "true",
+      "citation": "SI Brochure, 9th edition (2019), BIPM, table 1: defining constant, exact"
+    },
+    {
+      "id": "h",
+      "name": "Planck constant",
+      "aliases": [
+        "planck"
+      ],
+      "value": "6.62607015e-34",
+      "unit": "J*s",
+      "exact": "true",
+      "citation": "SI Brochure, 9th edition (2019), BIPM, table 1: defining constant, exact"
+    },
+    {
+      "id": "e",
+      "name": "elementary charge",
+      "aliases": [
+        "electron charge",
+        "charge quantum"
+      ],
+      "value": "1.602176634e-19",
+      "unit": "C",
+      "exact": "true",
+      "citation": "SI Brochure, 9th edition (2019), BIPM, table 1: defining constant, exact"
+    },
+    {
+      "id": "k_B",
+      "name": "Boltzmann constant",
+      "aliases": [
+        "boltzmann"
+      ],
+      "value": "1.380649e-23",
+      "unit": "J/K",
+      "exact": "true",
+      "citation": "SI Brochure, 9th edition (2019), BIPM, table 1: defining constant, exact"
+    },
+    {
+      "id": "N_A",
+      "name": "Avogadro constant",
+      "aliases": [
+        "avogadro",
+        "avogadro number"
+      ],
+      "value": "6.02214076e23",
+      "unit": "1/mol",
+      "exact": "true",
+      "citation": "SI Brochure, 9th edition (2019), BIPM, table 1: defining constant, exact"
+    },
+    {
+      "id": "delta_nu_Cs",
+      "name": "hyperfine transition frequency of caesium 133",
+      "aliases": [
+        "caesium frequency",
+        "cesium frequency"
+      ],
+      "value": "9192631770",
+      "unit": "Hz",
+      "exact": "true",
+      "citation": "SI Brochure, 9th edition (2019), BIPM, table 1: defining constant, exact"
+    },
+    {
+      "id": "K_cd",
+      "name": "luminous efficacy of 540 THz radiation",
+      "aliases": [
+        "luminous efficacy"
+      ],
+      "value": "683",
+      "unit": "lm/W",
+      "exact": "true",
+      "citation": "SI Brochure, 9th edition (2019), BIPM, table 1: defining constant, exact"
+    },
+    {
+      "id": "R",
+      "name": "molar gas constant",
+      "aliases": [
+        "gas constant",
+        "universal gas constant"
+      ],
+      "value": "8.31446261815324",
+      "unit": "J/mol*K",
+      "exact": "true",
+      "citation": "Exact product N_A * k_B of two SI defining constants, SI Brochure 9th edition (2019); CODATA 2022 lists the same exact value"
+    },
+    {
+      "id": "F",
+      "name": "Faraday constant",
+      "aliases": [
+        "faraday"
+      ],
+      "value": "96485.3321233100184",
+      "unit": "C/mol",
+      "exact": "true",
+      "citation": "Exact product N_A * e of two SI defining constants, SI Brochure 9th edition (2019); CODATA 2022 lists the same exact value"
+    },
+    {
+      "id": "g_n",
+      "name": "standard acceleration of gravity",
+      "aliases": [
+        "standard gravity",
+        "g",
+        "gravity"
+      ],
+      "value": "9.80665",
+      "unit": "m/s^2",
+      "exact": "true",
+      "citation": "3rd CGPM (1901); exact by definition"
+    },
+    {
+      "id": "p_atm",
+      "name": "standard atmosphere",
+      "aliases": [
+        "atmospheric pressure",
+        "atm"
+      ],
+      "value": "101325",
+      "unit": "Pa",
+      "exact": "true",
+      "citation": "10th CGPM (1954), Resolution 4; exact by definition"
+    },
+    {
+      "id": "G",
+      "name": "Newtonian constant of gravitation",
+      "aliases": [
+        "gravitational constant",
+        "big g"
+      ],
+      "value": "6.67430e-11",
+      "unit": "m^3/kg*s^2",
+      "exact": "false",
+      "uncertainty": "0.00015e-11",
+      "citation": "CODATA 2022 recommended values, NIST; measured value with standard uncertainty"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "finance.compound_amount",
+      "name": "Compound amount",
+      "aliases": [
+        "compound interest",
+        "future value",
+        "fv"
+      ],
+      "description": "Future value of a principal after periods of compounding at a rate per period.",
+      "citation": "Standard time value of money identity, as in any corporate finance text such as Brealey, Myers and Allen, Principles of Corporate Finance",
+      "program": "input principal: money;\ninput rate: rational;\ninput periods: int;\nprincipal * (1 + rate) ^ periods",
+      "vectors": [
+        {
+          "inputs": {
+            "principal": "1000 EUR",
+            "rate": "5/100",
+            "periods": "2"
+          },
+          "expect": {
+            "type": "money",
+            "currency": "EUR",
+            "value": "2205/2",
+            "decimal": "1102.5"
+          }
+        }
+      ]
+    },
+    {
+      "id": "finance.present_value",
+      "name": "Present value",
+      "aliases": [
+        "discount",
+        "pv",
+        "discounted value"
+      ],
+      "description": "Value today of an amount received after periods at a discount rate per period.",
+      "citation": "Standard time value of money identity, as in any corporate finance text such as Brealey, Myers and Allen, Principles of Corporate Finance",
+      "program": "input amount: money;\ninput rate: rational;\ninput periods: int;\namount / (1 + rate) ^ periods",
+      "vectors": [
+        {
+          "inputs": {
+            "amount": "1210 USD",
+            "rate": "1/10",
+            "periods": "2"
+          },
+          "expect": {
+            "type": "money",
+            "currency": "USD",
+            "value": "1000",
+            "decimal": "1000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "finance.annuity_payment",
+      "name": "Annuity payment",
+      "aliases": [
+        "loan payment",
+        "mortgage payment",
+        "monthly payment",
+        "amortization",
+        "pmt"
+      ],
+      "description": "Level payment per period that repays a principal over periods at a rate per period. With rate 0 it is principal / periods.",
+      "citation": "Standard time value of money identity, as in any corporate finance text such as Brealey, Myers and Allen, Principles of Corporate Finance",
+      "program": "input principal: money;\ninput rate: rational;\ninput periods: int;\nif rate == 0 then principal / periods else principal * rate / (1 - (1 + rate) ^ (-periods))",
+      "vectors": [
+        {
+          "inputs": {
+            "principal": "1000 CHF",
+            "rate": "1/10",
+            "periods": "2"
+          },
+          "expect": {
+            "type": "money",
+            "currency": "CHF",
+            "value": "12100/21"
+          }
+        },
+        {
+          "inputs": {
+            "principal": "1200 CHF",
+            "rate": "0",
+            "periods": "12"
+          },
+          "expect": {
+            "type": "money",
+            "currency": "CHF",
+            "value": "100",
+            "decimal": "100"
+          }
+        }
+      ]
+    },
+    {
+      "id": "finance.npv",
+      "name": "Net present value",
+      "aliases": [
+        "npv",
+        "discounted cash flow",
+        "dcf"
+      ],
+      "description": "Sum of cash flows discounted at a rate per period, the first cash flow at period 0.",
+      "citation": "Standard time value of money identity, as in any corporate finance text such as Brealey, Myers and Allen, Principles of Corporate Finance",
+      "program": "input rate: rational;\ninput cashflows: vector[money];\nfold(range(0, len(cashflows)), at(cashflows, 0) * 0, (acc, t) => acc + at(cashflows, t) / (1 + rate) ^ t)",
+      "vectors": [
+        {
+          "inputs": {
+            "rate": "1/10",
+            "cashflows": [
+              "-1000 USD",
+              "300 USD",
+              "400 USD",
+              "500 USD"
+            ]
+          },
+          "expect": {
+            "type": "money",
+            "currency": "USD",
+            "value": "-28000/1331"
+          }
+        }
+      ]
+    },
+    {
+      "id": "finance.simple_interest",
+      "name": "Simple interest",
+      "aliases": [
+        "flat interest"
+      ],
+      "description": "Interest on a principal at a rate per period over periods, without compounding.",
+      "citation": "Standard time value of money identity, as in any corporate finance text such as Brealey, Myers and Allen, Principles of Corporate Finance",
+      "program": "input principal: money;\ninput rate: rational;\ninput periods: int;\nprincipal * rate * periods",
+      "vectors": [
+        {
+          "inputs": {
+            "principal": "2500.00 EUR",
+            "rate": "3/100",
+            "periods": "3"
+          },
+          "expect": {
+            "type": "money",
+            "currency": "EUR",
+            "value": "225",
+            "decimal": "225"
+          }
+        }
+      ]
+    },
+    {
+      "id": "finance.gross_from_net",
+      "name": "Gross from net with a tax rate",
+      "aliases": [
+        "vat",
+        "sales tax",
+        "add tax",
+        "gross price"
+      ],
+      "description": "Gross amount from a net amount and a tax rate, without rounding.",
+      "citation": "Definition of an ad valorem tax on a net amount",
+      "program": "input net: money;\ninput rate: rational;\nnet * (1 + rate)",
+      "vectors": [
+        {
+          "inputs": {
+            "net": "100.00 CHF",
+            "rate": "0.081"
+          },
+          "expect": {
+            "type": "money",
+            "currency": "CHF",
+            "value": "1081/10",
+            "decimal": "108.1"
+          }
+        }
+      ]
+    },
+    {
+      "id": "math.percent_change",
+      "name": "Percent change",
+      "aliases": [
+        "percentage change",
+        "growth rate",
+        "relative change"
+      ],
+      "description": "Change from an old value to a new value in percent of the old value.",
+      "citation": "Definition of relative change",
+      "program": "input old: rational;\ninput new: rational;\n(new - old) / old * 100",
+      "vectors": [
+        {
+          "inputs": {
+            "old": "100",
+            "new": "120"
+          },
+          "expect": {
+            "type": "rational",
+            "value": "20",
+            "decimal": "20"
+          }
+        }
+      ]
+    },
+    {
+      "id": "stats.weighted_mean",
+      "name": "Weighted mean",
+      "aliases": [
+        "weighted average"
+      ],
+      "description": "Mean of values weighted by non-negative weights.",
+      "citation": "Definition of the weighted arithmetic mean",
+      "program": "input values: vector[rational];\ninput weights: vector[rational];\ndot(values, weights) / sum(weights)",
+      "vectors": [
+        {
+          "inputs": {
+            "values": [
+              "2",
+              "3",
+              "5"
+            ],
+            "weights": [
+              "1",
+              "2",
+              "1"
+            ]
+          },
+          "expect": {
+            "type": "rational",
+            "value": "13/4",
+            "decimal": "3.25"
+          }
+        }
+      ]
+    },
+    {
+      "id": "physics.kinetic_energy",
+      "name": "Kinetic energy",
+      "aliases": [
+        "energy of motion"
+      ],
+      "description": "Kinetic energy m v^2 / 2 of a mass at a speed.",
+      "citation": "Classical mechanics, E = m v^2 / 2",
+      "program": "input m: quantity[kg];\ninput v: quantity[m/s];\nm * v ^ 2 / 2",
+      "vectors": [
+        {
+          "inputs": {
+            "m": "1200 kg",
+            "v": "90 km/h"
+          },
+          "expect": {
+            "type": "quantity",
+            "unit": "m^2*kg/s^2",
+            "value": "375000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "physics.gravitational_force",
+      "name": "Gravitational force",
+      "aliases": [
+        "newton gravity",
+        "attraction between masses"
+      ],
+      "description": "Newtonian attraction G m1 m2 / r^2 between two masses. G is a measured constant.",
+      "citation": "Newton's law of universal gravitation with CODATA 2022 G",
+      "program": "input m1: quantity[kg];\ninput m2: quantity[kg];\ninput r: quantity[m];\nconst(\"G\") * m1 * m2 / r ^ 2",
+      "vectors": [
+        {
+          "inputs": {
+            "m1": "1000 kg",
+            "m2": "1000 kg",
+            "r": "1 m"
+          },
+          "expect": {
+            "type": "quantity",
+            "unit": "m*kg/s^2",
+            "value": "66743/1000000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "physics.ideal_gas_pressure",
+      "name": "Ideal gas pressure",
+      "aliases": [
+        "gas law",
+        "pv nrt"
+      ],
+      "description": "Pressure n R T / V of an ideal gas.",
+      "citation": "Ideal gas law p V = n R T",
+      "program": "input n: quantity[mol];\ninput t: quantity[K];\ninput v: quantity[m^3];\nn * const(\"R\") * t / v",
+      "vectors": [
+        {
+          "inputs": {
+            "n": "2 mol",
+            "t": "300 K",
+            "v": "50 L"
+          },
+          "expect": {
+            "type": "quantity",
+            "unit": "kg/m*s^2",
+            "value": "623584696361493/6250000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "health.bmi",
+      "name": "Body mass index",
+      "aliases": [
+        "bmi"
+      ],
+      "description": "Body mass index in kg/m^2: mass divided by height squared.",
+      "citation": "World Health Organization definition of body mass index",
+      "program": "input mass: quantity[kg];\ninput height: quantity[m];\nto(mass / height ^ 2, \"kg/m^2\")",
+      "vectors": [
+        {
+          "inputs": {
+            "mass": "70 kg",
+            "height": "175 cm"
+          },
+          "expect": {
+            "type": "rational",
+            "value": "160/7"
+          }
+        }
+      ]
+    },
+    {
+      "id": "units.fuel_per_100km",
+      "name": "Fuel use per 100 km",
+      "aliases": [
+        "fuel consumption",
+        "litres per 100 km",
+        "fuel economy"
+      ],
+      "description": "Fuel volume per 100 km from a distance and the fuel used.",
+      "citation": "Definition of fuel consumption in L/100 km",
+      "program": "input distance: quantity[km];\ninput fuel: quantity[L];\nto(fuel / distance, \"L/km\") * 100",
+      "vectors": [
+        {
+          "inputs": {
+            "distance": "400 km",
+            "fuel": "26 L"
+          },
+          "expect": {
+            "type": "rational",
+            "value": "13/2",
+            "decimal": "6.5"
+          }
+        }
+      ]
+    }
+  ]
+}

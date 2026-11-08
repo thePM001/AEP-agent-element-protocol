@@ -19,6 +19,14 @@ echo "-- Rust mandatory checks (aep-conformance CC-01..CC-14) --"
 cargo run --release -p aep-conformance
 echo
 
+echo "-- UCM checks (CC-28..CC-34) --"
+cargo test --release -p aep-ucm-core --test vectors --test props
+cargo test --release -p aep-ucm-receipt
+cargo test --release -p aep-ucm-lookup
+cargo test --release -p aep-policy-system-admit --test ucm_redteam
+cargo test --release -p aep-ucm
+echo
+
 echo "-- writing.gap documentation lint (CC-16) --"
 node "$ROOT/AEP-Components/conformance/runner/lint-writing-gap.mjs" "$ROOT"
 echo

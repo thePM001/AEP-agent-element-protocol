@@ -39,7 +39,7 @@ jobs:
         platform: [x64]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Install Windows Driver Kit
         shell: powershell
@@ -139,7 +139,7 @@ jobs:
           }
 
       - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2.0.0
 
       - name: Build Driver
         working-directory: drivers/windows/aep-caw-minifilter
@@ -226,7 +226,7 @@ jobs:
           }
 
       - name: Upload driver artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: aep-caw-driver-${{ matrix.platform }}-${{ matrix.configuration }}
           path: |
@@ -239,7 +239,7 @@ jobs:
 
       - name: Upload installation scripts
         if: matrix.configuration == 'Release'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: aep-caw-driver-scripts
           path: |
@@ -253,10 +253,10 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2.0.0
 
       - name: Build ApprovalDialog
         shell: cmd
@@ -267,7 +267,7 @@ jobs:
           echo Build successful
 
       - name: Upload ApprovalDialog artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: aep-caw-approval-dialog-windows
           path: |

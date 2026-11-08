@@ -1,0 +1,49 @@
+# gitleaks configuration for the supply-chain workflow gitleaks job.
+# The default gitleaks rules apply in full. The allow list below is narrow:
+# it names the private-key rule only and only the files that carry PEM header
+# strings as detection patterns or test inputs. No real key lives in them.
+# Two more lists excuse exact fake credential values in named test files and
+# one SASL mechanism name. Any other value in those files still fails.
+
+title = "AEP gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "PEM header strings used as detection patterns and test inputs, never as keys"
+targetRules = ["private-key"]
+paths = [
+    # Secret scanner rule tables list the PEM headers they detect.
+    '''(?:^|/)AEP-Components/scanners/lib/admit-rule-table\.ts$''',
+    '''(?:^|/)AEP-Components/scanners/rules/scan-rule-table\.json$''',
+    # CAW MCP output inspection tests feed a truncated PEM header to the inspector.
+    '''(?:^|/)AEP-CAW/internal/mcpinspect/[^/]+_test\.go$''',
+]
+
+[[allowlists]]
+description = "Fake credentials that tests and performance evaluations feed to the AEP and CAW secret detectors"
+condition = "AND"
+paths = [
+    '''(?:^|/)AEP-CAW/internal/proxy/declared_service_test\.go$''',
+    '''(?:^|/)AEP-CAW/internal/proxy/dlp_test\.go$''',
+    '''(?:^|/)AEP-CAW/internal/proxy/integration_test\.go$''',
+    '''(?:^|/)AEP-CAW/internal/proxy/secrets/vault/provider_test\.go$''',
+    '''(?:^|/)AEP-CAW/internal/session/secrets_test\.go$''',
+    '''(?:^|/)AEP-Components/dynAEP/bench[m]arks/bench-005-scanner-throughput\.ts$''',
+]
+regexes = [
+    '''^s[k]_live_(?:FAKE|REAL)567890abcdef12$''',
+    '''^s[k]_abcdefghij1234567890abcd$''',
+    '''^s[e]cret-api-key-12345$''',
+    '''^g[h]p_secret123$''',
+    '''^g[l]pat-realABCDEFGHIJKLMNOP(?:QRSTUVWXYZ12345)?$''',
+    '''^s[k]_live_1234567890abcdef$''',
+]
+
+[[allowlists]]
+description = "Postgres SASL mechanism name in an error string, not a credential"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''(?:^|/)AEP-CAW/internal/db/proxy/postgres/authforward\.go$''']
+regexes = ['''^SCRAM-SHA-256-PLUS$''']

@@ -1,0 +1,11 @@
+[package]
+name = "aep-ucm-lookup"
+description = "AEP UCM System-1 tool lookup: finds the UCM function, unit, constant or formula for a task. It never computes."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+aep-ucm-core = { path = "../ucm-core" }
+serde_json.workspace = true

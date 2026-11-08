@@ -1,0 +1,102 @@
+{
+  "manifest_version": "1",
+  "id": "ucm",
+  "version": "2.9.0",
+  "kind": "daemon",
+  "path": "AEP-Components/ucm/",
+  "description": "Universal Computation Module: exact, budgeted calculation for agents with signed JSON receipts, Admit receipt checks and a System-1 tool lookup.",
+  "requires": [
+    "aep-base-node",
+    "lattice-crypto"
+  ],
+  "capabilities": [
+    "ucm:eval",
+    "ucm:verify",
+    "ucm:explain",
+    "ucm:lookup",
+    "ucm:mcp",
+    "ucm:receipt-log"
+  ],
+  "actions": [
+    {
+      "id": "eval",
+      "description": "Typecheck and evaluate a UCM-IR program, return the result with a signed receipt",
+      "runtime": "api",
+      "method": "POST /ucm/v1/eval"
+    },
+    {
+      "id": "verify",
+      "description": "Check a receipt signature; in replay mode also run the program again and compare the result digest",
+      "runtime": "api",
+      "method": "POST /ucm/v1/verify"
+    },
+    {
+      "id": "lookup",
+      "description": "System-1 lookup of the UCM function, unit, constant or formula for a task. It never computes.",
+      "runtime": "api",
+      "method": "POST /ucm/v1/lookup"
+    },
+    {
+      "id": "explain",
+      "description": "Typecheck a program and report its types without running it",
+      "runtime": "api",
+      "method": "POST /ucm/v1/explain"
+    },
+    {
+      "id": "mcp",
+      "description": "MCP tools ucm_lookup, ucm_eval, ucm_verify and ucm_explain over JSON-RPC",
+      "runtime": "api",
+      "method": "POST /ucm/v1/mcp"
+    }
+  ],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 64,
+    "min_disk_mb": 20,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Exact calculation for agents. Agents look up the right function, run a typed program and attach the signed receipt; Admit can require receipts for computed fields.",
+    "use_when": [
+      "an agent reports a number",
+      "money, tax or invoice totals",
+      "unit conversion",
+      "dates and time zones",
+      "statistics",
+      "linear algebra",
+      "a policy must check that a number was computed"
+    ],
+    "avoid_when": [
+      "fetching live data such as exchange rates",
+      "general purpose programs with IO"
+    ],
+    "pairs_with": [
+      "aep-base-node",
+      "lattice-crypto",
+      "policy-system-admit",
+      "model-gateway"
+    ]
+  },
+  "implementation": {
+    "language": "rust",
+    "binary": "aep-ucm",
+    "crate": "AEP-Components/ucm/crates/ucm-service/",
+    "port": 8414,
+    "health": "/health",
+    "capabilities_path": "/ucm/v1/capabilities",
+    "schemas": [
+      "AEP-Base-Node/AEP-Registry/schemas/ucm-program-v1.json",
+      "AEP-Base-Node/AEP-Registry/schemas/ucm-receipt-v1.json",
+      "AEP-Base-Node/AEP-Registry/schemas/ucm-catalog-v1.json"
+    ],
+    "policy": "AEP-Policy-System/reference/ucm-computed-claims.gap"
+  },
+  "conformance": {
+    "tests": [
+      "AEP-Components/ucm/vectors",
+      "AEP-Components/conformance/tests/manifest.json"
+    ]
+  },
+  "role": "companion"
+}

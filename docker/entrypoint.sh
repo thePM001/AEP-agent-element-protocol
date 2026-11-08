@@ -7,6 +7,7 @@ export AEP_TASK_MANIFEST_DIR="${AEP_TASK_MANIFEST_DIR:-${AEP_DATA}/ucb/manifests
 CONFIG="${AEP_DATA}/base-node.json"
 LATTICE_DB="${AEP_DATA}/action-lattice.db"
 UCB_PID=""
+UCM_PID=""
 DAEMON_PID=""
 DAEMON_PIDFILE="/run/aep/daemon.pid"
 
@@ -27,6 +28,11 @@ if [ "${1:-}" = "ucb" ]; then
   exec aep-ucb "$@"
 fi
 
+if [ "${1:-}" = "ucm" ]; then
+  shift
+  exec aep-ucm "$@"
+fi
+
 if [ "${1:-}" = "aep-base-node" ]; then
   shift
   exec aep-base-node "$@"
@@ -43,7 +49,7 @@ bootstrap_config() {
   SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
   cat > "${CONFIG}" <<EOF
 {
-  "version": "2.9.0",
+  "version": "2.9",
   "base_node": {
     "socket_base": "${AEP_SOCKET_BASE}",
     "lattice_db": "${LATTICE_DB}",
@@ -144,6 +150,36 @@ start_ucb() {
 }
 
 
+# The Universal Computation Module is off unless UCM=1. Its node key, receipts and
+# receipt log live under ${AEP_DATA}/ucm.
+wait_for_ucm() {
+  i=0
+  while [ "$i" -lt 30 ]; do
+    if node -e "fetch('http://127.0.0.1:${UCM_PORT:-8414}/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" 2>/dev/null; then
+      return 0
+    fi
+    i=$((i + 1))
+    sleep 1
+  done
+  return 1
+}
+
+start_ucm() {
+  if [ "${UCM:-0}" != "1" ]; then
+    UCM_PID=""
+    return 0
+  fi
+  export AEP_LATTICE_DB="${AEP_LATTICE_DB:-${LATTICE_DB}}"
+  aep-ucm serve >&2 &
+  UCM_PID=$!
+  echo "AEP Universal Computation Module (UCM): http://127.0.0.1:${UCM_PORT:-8414}" >&2
+  if ! wait_for_ucm; then
+    echo "ERROR: UCM failed to start on port ${UCM_PORT:-8414}" >&2
+    UCM_PID=""
+    return 1
+  fi
+}
+
 
 # CAW (execution-layer security) is host ELS. The public Docker image may not
 # ship aep-caw; coding agents on the host should enable CAW on the host.
@@ -169,6 +205,9 @@ cleanup() {
   if [ -n "${UCB_PID}" ]; then
     kill "${UCB_PID}" 2>/dev/null || true
   fi
+  if [ -n "${UCM_PID}" ]; then
+    kill "${UCM_PID}" 2>/dev/null || true
+  fi
 }
 trap cleanup INT TERM
 
@@ -185,6 +224,7 @@ if ! wait_for_data_dock; then
   exit 1
 fi
 start_ucb || exit 1
+start_ucm || exit 1
 echo "AEP Base Node ready." >&2
 if [ -f "${AEP_DATA}/ucb-api-key.recovery.txt" ]; then
   echo "  UCB API key recovery: docker compose exec aep cat /data/aep/ucb-api-key.recovery.txt" >&2
@@ -203,6 +243,11 @@ while true; do
   if [ "${UCB:-1}" != "0" ] && ! process_alive "${UCB_PID}"; then
     echo "UCB exited; restarting..." >&2
     start_ucb || exit 1
+  fi
+
+  if [ "${UCM:-0}" = "1" ] && ! process_alive "${UCM_PID}"; then
+    echo "UCM exited; restarting..." >&2
+    start_ucm || exit 1
   fi
 
 

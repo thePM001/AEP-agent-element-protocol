@@ -17,7 +17,7 @@ COPY AEP-Components ./AEP-Components
 COPY AEP-Policy-System ./AEP-Policy-System
 COPY AEP-User-Experience/examples/end-to-end-run/Cargo.toml ./AEP-User-Experience/examples/end-to-end-run/Cargo.toml
 COPY AEP-User-Experience/examples/end-to-end-run/src ./AEP-User-Experience/examples/end-to-end-run/src
-RUN cargo build --release -p aep-base-node -p aep-lattice-memory -p aep-ucb
+RUN cargo build --release -p aep-base-node -p aep-lattice-memory -p aep-ucb -p aep-ucm
 
 FROM debian:bookworm-slim AS node-deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -37,6 +37,7 @@ COPY --from=rust-builder /build/rust/target/release/aep-lattice-log /usr/local/b
 COPY --from=rust-builder /build/rust/target/release/aep-memory /usr/local/bin/
 COPY --from=rust-builder /build/rust/target/release/aep-ucb /usr/local/bin/
 COPY --from=rust-builder /build/rust/target/release/aep-ucb-validate /usr/local/bin/
+COPY --from=rust-builder /build/rust/target/release/aep-ucm /usr/local/bin/
 
 WORKDIR /opt/aep
 COPY --from=node-deps /deps/node_modules ./node_modules
@@ -63,6 +64,8 @@ ENV AEP_DATA=/data/aep \
     DATA_DOCK_HOST=127.0.0.1 \
     DATA_DOCK=1 \
     UCB=1 \
+    UCM=0 \
+    UCM_PORT=8414 \
     AEP_IN_DOCKER=1 \
     AEP_DAEMON_PIDFILE=/run/aep/daemon.pid \
     AEP_TRUST_DOMAIN=aep.protocol.local \
@@ -70,7 +73,7 @@ ENV AEP_DATA=/data/aep \
     NODE_PATH="/opt/aep/node_modules" \
     PATH="/usr/local/bin:${PATH}"
 
-EXPOSE 8412 8413
+EXPOSE 8412 8413 8414
 VOLUME ["/data/aep"]
 
 # Healthy while GET /health on the Data Dock answers 200 with a status other

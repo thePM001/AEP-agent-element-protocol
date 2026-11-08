@@ -1,0 +1,8 @@
+target
+artifacts
+coverage
+Cargo.lock
+# Only the named seeds and regression inputs are kept; fuzz runs add the rest.
+corpus/*/*
+!corpus/*/seed*
+!corpus/*/regression-*

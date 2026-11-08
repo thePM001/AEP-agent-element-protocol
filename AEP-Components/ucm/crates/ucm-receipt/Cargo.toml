@@ -1,0 +1,18 @@
+[package]
+name = "aep-ucm-receipt"
+description = "AEP UCM signed JSON receipts (schema ucm-receipt-v1) with ML-DSA-65 from aep-lattice-crypto"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+aep-ucm-core = { path = "../ucm-core" }
+aep-lattice-crypto = { path = "../../../lattice-crypto/crate" }
+serde_json.workspace = true
+thiserror.workspace = true
+hex.workspace = true
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+
+[dev-dependencies]
+jsonschema = { version = "0.30", default-features = false }

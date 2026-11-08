@@ -1,0 +1,148 @@
+{
+ "ucm": "ucm-vectors-v1",
+ "suite": "units",
+ "generator": "AEP-Components/ucm/scripts/gen_vectors.py",
+ "cases": [
+  {
+   "id": "mile-in-km",
+   "program": "to(q(1, \"mi\"), \"km\")",
+   "expect": {
+    "type": "rational",
+    "value": "25146/15625",
+    "decimal": "1.609344"
+   }
+  },
+  {
+   "id": "kmh-to-si",
+   "program": "q(90, \"km/h\")",
+   "expect": {
+    "type": "quantity",
+    "unit": "m/s",
+    "value": "25"
+   }
+  },
+  {
+   "id": "add-mismatch",
+   "program": "q(1, \"m\") + q(1, \"s\")",
+   "error": "type_error"
+  },
+  {
+   "id": "to-mismatch",
+   "program": "to(q(1, \"m\"), \"s\")",
+   "error": "unit_error"
+  },
+  {
+   "id": "unknown-unit",
+   "program": "q(1, \"furlong\")",
+   "error": "unit_error"
+  },
+  {
+   "id": "newton-from-parts",
+   "program": "to(q(2, \"kg\") * q(3, \"m/s^2\"), \"N\")",
+   "expect": {
+    "type": "rational",
+    "value": "6",
+    "decimal": "6"
+   }
+  },
+  {
+   "id": "dimensionless-ratio",
+   "program": "q(1, \"km\") / q(1, \"m\")",
+   "expect": {
+    "type": "rational",
+    "value": "1000",
+    "decimal": "1000"
+   }
+  },
+  {
+   "id": "psi-to-kpa",
+   "program": "to(q(1, \"psi\"), \"kPa\")",
+   "expect": {
+    "type": "rational",
+    "value": "8896443230521/1290320000000"
+   }
+  },
+  {
+   "id": "boiling-f",
+   "program": "to_fahrenheit(celsius(100))",
+   "expect": {
+    "type": "rational",
+    "value": "212",
+    "decimal": "212"
+   }
+  },
+  {
+   "id": "freezing-c",
+   "program": "to_celsius(fahrenheit(32))",
+   "expect": {
+    "type": "rational",
+    "value": "0",
+    "decimal": "0"
+   }
+  },
+  {
+   "id": "body-temp-k",
+   "program": "celsius(37)",
+   "expect": {
+    "type": "quantity",
+    "unit": "K",
+    "value": "6203/20"
+   }
+  },
+  {
+   "id": "pow-dims",
+   "program": "dimension(q(2, \"m\") ^ 3)",
+   "expect": {
+    "type": "text",
+    "value": "m^3"
+   }
+  },
+  {
+   "id": "input-qty",
+   "program": "input g: quantity[m/s^2];\nto(g * q(10, \"s\"), \"km/h\")",
+   "inputs": {
+    "g": "9.80665 m/s^2"
+   },
+   "expect": {
+    "type": "rational",
+    "value": "1765197/5000",
+    "decimal": "353.0394"
+   }
+  },
+  {
+   "id": "input-qty-wrong-dim",
+   "program": "input g: quantity[m/s^2];\ng",
+   "inputs": {
+    "g": "9 m/s"
+   },
+   "error": "input_error"
+  },
+  {
+   "id": "prefix-deca",
+   "program": "to(q(1, \"dam\"), \"m\")",
+   "expect": {
+    "type": "rational",
+    "value": "10",
+    "decimal": "10"
+   }
+  },
+  {
+   "id": "hectopascal",
+   "program": "to(q(1013.25, \"hPa\"), \"atm\")",
+   "expect": {
+    "type": "rational",
+    "value": "1",
+    "decimal": "1"
+   }
+  },
+  {
+   "id": "kwh-to-mj",
+   "program": "to(q(1, \"kWh\"), \"MJ\")",
+   "expect": {
+    "type": "rational",
+    "value": "18/5",
+    "decimal": "3.6"
+   }
+  }
+ ]
+}

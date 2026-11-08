@@ -1,0 +1,46 @@
+name: scorecard
+
+# OpenSSF Scorecard supply chain analysis of the default branch.
+# Results go to the repository code scanning page and to the public
+# Scorecard API. Every action is pinned to a commit SHA with its release tag
+# in a comment. Publishing results only accepts the trigger, job and step
+# shape of the upstream Scorecard template, so keep this file to that shape.
+
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: "41 4 * * 1"
+  push:
+    branches:
+      - main
+
+permissions: read-all
+
+jobs:
+  analysis:
+    name: scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      # Upload the results to code scanning.
+      security-events: write
+      # Publish the results and get a badge.
+      id-token: write
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: scorecard-sarif
+          path: results.sarif
+          retention-days: 5
+      - uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          sarif_file: results.sarif

@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aep.protocol.local/schemas/ucm-catalog-v1.json",
+  "title": "AEP UCM Catalog v1",
+  "description": "Catalog the System-1 lookup indexes: UCM functions, units, constants and formulas. A lookup reply carries entries of this shape and never a result.",
+  "type": "object",
+  "required": [
+    "ucm",
+    "engine_build",
+    "library_digest",
+    "entries"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "ucm": {
+      "const": "ucm-catalog-v1"
+    },
+    "engine_build": {
+      "type": "string"
+    },
+    "library_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/entry"
+      }
+    }
+  },
+  "definitions": {
+    "entry": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "name",
+        "category",
+        "signature",
+        "description",
+        "aliases",
+        "example"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^(fn|unit|const|formula)\\."
+        },
+        "kind": {
+          "enum": [
+            "function",
+            "unit",
+            "constant",
+            "formula"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "example": {
+          "type": "string"
+        },
+        "citation": {
+          "type": "string"
+        },
+        "library_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}

@@ -95,7 +95,7 @@ trap cleanup EXIT
 
 cat > "$RUN_DIR/base-node.json" <<JSON
 {
-  "version": "2.9.0",
+  "version": "2.9",
   "base_node": {
     "socket_base": "$SOCK",
     "lattice_db": "$RUN_DIR/action-lattice.db",

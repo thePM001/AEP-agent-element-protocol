@@ -23,18 +23,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
           ref: ${{ env.RELEASE_SOURCE_REF }}
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
           cache: false
 
       - name: Cache Go modules
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             ~/go/pkg/mod
@@ -124,7 +124,7 @@ jobs:
           fi
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         with:
           version: v2.13.1
           args: release --clean
@@ -133,7 +133,7 @@ jobs:
 
   # Build Alpine/musl binaries separately (requires different libc).
   #
-  # We intentionally do NOT use `container: golang:1.25.7-alpine` at the job
+  # We intentionally do NOT use `container: golang:1.26.10-alpine` at the job
   # level, because on arm64 GitHub runners this breaks JavaScript actions
   # (actions/checkout@v4): Node.js is not shipped for the Alpine-on-arm64
   # combo. Instead, the job runs on a plain ubuntu-* host, checkout happens
@@ -153,7 +153,7 @@ jobs:
             runs-on: ubuntu-24.04-arm
     runs-on: ${{ matrix.runs-on }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ env.RELEASE_SOURCE_REF }}
 
@@ -212,7 +212,7 @@ jobs:
             -w /workspace \
             -e VERSION \
             -e ARCH \
-            golang:1.25.7-alpine \
+            golang:1.26.10-alpine \
             /alpine-build.sh
 
           # Files created inside the container are root-owned on the host.
@@ -237,7 +237,7 @@ jobs:
     environment: build
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ env.RELEASE_SOURCE_REF }}
 
@@ -246,7 +246,7 @@ jobs:
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
           xcodebuild -version
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
 
@@ -518,7 +518,7 @@ jobs:
     if: ${{ !contains(github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name, '-') }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ env.RELEASE_SOURCE_REF }}
 
@@ -596,11 +596,11 @@ jobs:
             dockerfile: Dockerfile.test.rockylinux10
             docker_run_flags: ""
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ env.RELEASE_SOURCE_REF }}
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
           cache: false

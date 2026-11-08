@@ -1,0 +1,238 @@
+{
+ "ucm": "ucm-vectors-v1",
+ "suite": "number-theory",
+ "generator": "AEP-Components/ucm/scripts/gen_vectors.py",
+ "cases": [
+  {
+   "id": "gcd",
+   "program": "gcd(84, 36)",
+   "expect": {
+    "type": "int",
+    "value": "12"
+   }
+  },
+  {
+   "id": "lcm",
+   "program": "lcm(4, 6)",
+   "expect": {
+    "type": "int",
+    "value": "12"
+   }
+  },
+  {
+   "id": "mod-neg",
+   "program": "mod(-7, 3)",
+   "expect": {
+    "type": "int",
+    "value": "2"
+   }
+  },
+  {
+   "id": "mod-zero",
+   "program": "mod(7, 0)",
+   "error": "division_by_zero"
+  },
+  {
+   "id": "quot-neg",
+   "program": "quot(-7, 2)",
+   "expect": {
+    "type": "int",
+    "value": "-4"
+   }
+  },
+  {
+   "id": "factorial-20",
+   "program": "factorial(20)",
+   "expect": {
+    "type": "int",
+    "value": "2432902008176640000"
+   }
+  },
+  {
+   "id": "factorial-neg",
+   "program": "factorial(-1)",
+   "error": "domain_error"
+  },
+  {
+   "id": "binomial-52-5",
+   "program": "binomial(52, 5)",
+   "expect": {
+    "type": "int",
+    "value": "2598960"
+   }
+  },
+  {
+   "id": "binomial-k-above-n",
+   "program": "binomial(3, 5)",
+   "expect": {
+    "type": "int",
+    "value": "0"
+   }
+  },
+  {
+   "id": "isqrt-99",
+   "program": "isqrt(99)",
+   "expect": {
+    "type": "int",
+    "value": "9"
+   }
+  },
+  {
+   "id": "is-prime-yes",
+   "program": "is_prime(1000003)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "is-prime-no",
+   "program": "is_prime(1000001)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "is-prime-two",
+   "program": "is_prime(2)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "is-prime-one",
+   "program": "is_prime(1)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "sqrt2-0-half_even",
+   "program": "sqrt(2, 0, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "sqrt2-0-floor",
+   "program": "sqrt(2, 0, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "sqrt2-0-ceiling",
+   "program": "sqrt(2, 0, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2"
+   }
+  },
+  {
+   "id": "sqrt2-5-half_even",
+   "program": "sqrt(2, 5, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1.41421"
+   }
+  },
+  {
+   "id": "sqrt2-5-floor",
+   "program": "sqrt(2, 5, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1.41421"
+   }
+  },
+  {
+   "id": "sqrt2-5-ceiling",
+   "program": "sqrt(2, 5, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1.41422"
+   }
+  },
+  {
+   "id": "sqrt2-10-half_even",
+   "program": "sqrt(2, 10, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1.4142135624"
+   }
+  },
+  {
+   "id": "sqrt2-10-floor",
+   "program": "sqrt(2, 10, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1.4142135623"
+   }
+  },
+  {
+   "id": "sqrt2-10-ceiling",
+   "program": "sqrt(2, 10, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1.4142135624"
+   }
+  },
+  {
+   "id": "sqrt2-20-half_even",
+   "program": "sqrt(2, 20, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1.41421356237309504880"
+   }
+  },
+  {
+   "id": "sqrt2-20-floor",
+   "program": "sqrt(2, 20, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1.41421356237309504880"
+   }
+  },
+  {
+   "id": "sqrt2-20-ceiling",
+   "program": "sqrt(2, 20, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1.41421356237309504881"
+   }
+  },
+  {
+   "id": "sqrt-exact",
+   "program": "sqrt(9/4, 3, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1.500"
+   }
+  },
+  {
+   "id": "sqrt-tie",
+   "program": "sqrt(6.25, 0, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2"
+   }
+  },
+  {
+   "id": "sqrt-tie-up",
+   "program": "sqrt(6.25, 0, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "3"
+   }
+  },
+  {
+   "id": "sqrt-negative",
+   "program": "sqrt(-1, 2, \"half_even\")",
+   "error": "domain_error"
+  }
+ ]
+}

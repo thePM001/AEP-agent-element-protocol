@@ -1,0 +1,23 @@
+[package]
+name = "aep-ucm-core"
+description = "AEP Universal Computation Module core: UCM-IR parser, typechecker and exact evaluator"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+num-bigint = "0.4"
+num-rational = "0.4"
+num-traits = "0.2"
+num-integer = "0.1"
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+chrono-tz = "0.10"
+sha3 = "0.10"
+hex.workspace = true
+
+[dev-dependencies]
+proptest = "1"

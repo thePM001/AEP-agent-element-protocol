@@ -1,0 +1,2 @@
+input p: money[EUR];
+round(p * 1.081, 2, "half_even")

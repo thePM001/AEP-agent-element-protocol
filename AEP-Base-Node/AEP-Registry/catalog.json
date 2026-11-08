@@ -134,6 +134,17 @@
       "role": "companion"
     },
     {
+      "id": "ucm",
+      "name": "Universal Computation Module",
+      "kind": "daemon",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/ucm/",
+      "description": "Exact calculation engine for agents (:8414) with signed JSON receipts, Admit receipt checks and System-1 tool lookup.",
+      "manifest": "AEP-Base-Node/AEP-Registry/components/ucm.json",
+      "role": "companion"
+    },
+    {
       "id": "conformance-runner",
       "name": "Conformance Runner CC-01..CC-16",
       "kind": "tooling",

@@ -1,0 +1,8041 @@
+{
+ "ucm": "ucm-vectors-v1",
+ "suite": "generated-arithmetic",
+ "generator": "AEP-Components/ucm/scripts/gen_vectors.py",
+ "cases": [
+  {
+   "id": "g00000",
+   "program": "((-55.4) + ((-11) ^ (-1)))",
+   "expect": {
+    "type": "rational",
+    "value": "-3052/55"
+   }
+  },
+  {
+   "id": "g00001",
+   "program": "((-17) ^ 2) == (13 ^ (-1))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00002",
+   "program": "9",
+   "expect": {
+    "type": "int",
+    "value": "9"
+   }
+  },
+  {
+   "id": "g00003",
+   "program": "round(((-4) - 3), 1, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-7.0"
+   }
+  },
+  {
+   "id": "g00004",
+   "program": "((-79.3) * (1 ^ 0))",
+   "expect": {
+    "type": "decimal",
+    "value": "-79.3"
+   }
+  },
+  {
+   "id": "g00005",
+   "program": "0.907",
+   "expect": {
+    "type": "decimal",
+    "value": "0.907"
+   }
+  },
+  {
+   "id": "g00006",
+   "program": "(0.918 ^ (-2))",
+   "expect": {
+    "type": "rational",
+    "value": "250000/210681"
+   }
+  },
+  {
+   "id": "g00007",
+   "program": "(-(14 / 2)) <= ((5.96 * (-19)) / (-(-1)))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00008",
+   "program": "((-24.1) / 2)",
+   "expect": {
+    "type": "rational",
+    "value": "-241/20",
+    "decimal": "-12.05"
+   }
+  },
+  {
+   "id": "g00009",
+   "program": "round((((0.379 * 9) * ((-53.6) * 7)) * 9), 0, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-11518"
+   }
+  },
+  {
+   "id": "g00010",
+   "program": "((59.0 ^ (-2)) / ((0.231 ^ (-1)) * ((-19) + 4.91)))",
+   "expect": {
+    "type": "rational",
+    "value": "-231/49047290"
+   }
+  },
+  {
+   "id": "g00011",
+   "program": "20",
+   "expect": {
+    "type": "int",
+    "value": "20"
+   }
+  },
+  {
+   "id": "g00012",
+   "program": "(-7)",
+   "expect": {
+    "type": "int",
+    "value": "-7"
+   }
+  },
+  {
+   "id": "g00013",
+   "program": "round((-0.524), 4, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.5240"
+   }
+  },
+  {
+   "id": "g00014",
+   "program": "(((-9.45) / (-27.3)) / (10 ^ 0))",
+   "expect": {
+    "type": "rational",
+    "value": "9/26"
+   }
+  },
+  {
+   "id": "g00015",
+   "program": "((-((-20) - 20)) + 24.7)",
+   "expect": {
+    "type": "decimal",
+    "value": "64.7"
+   }
+  },
+  {
+   "id": "g00016",
+   "program": "((-0.55) ^ 1)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.55"
+   }
+  },
+  {
+   "id": "g00017",
+   "program": "((-15) * 80.1)",
+   "expect": {
+    "type": "decimal",
+    "value": "-1201.5"
+   }
+  },
+  {
+   "id": "g00018",
+   "program": "0.497",
+   "expect": {
+    "type": "decimal",
+    "value": "0.497"
+   }
+  },
+  {
+   "id": "g00019",
+   "program": "(-14)",
+   "expect": {
+    "type": "int",
+    "value": "-14"
+   }
+  },
+  {
+   "id": "g00020",
+   "program": "round((93.7 ^ 1), 3, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "93.700"
+   }
+  },
+  {
+   "id": "g00021",
+   "program": "((-9.77) ^ 1) >= ((-(-3.08)) * (-0.637))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00022",
+   "program": "(-12)",
+   "expect": {
+    "type": "int",
+    "value": "-12"
+   }
+  },
+  {
+   "id": "g00023",
+   "program": "((((-0.491) - 16) + (-(-14))) / (-(-17)))",
+   "expect": {
+    "type": "rational",
+    "value": "-2491/17000"
+   }
+  },
+  {
+   "id": "g00024",
+   "program": "(14 / (-4.59))",
+   "expect": {
+    "type": "rational",
+    "value": "-1400/459"
+   }
+  },
+  {
+   "id": "g00025",
+   "program": "(-11)",
+   "expect": {
+    "type": "int",
+    "value": "-11"
+   }
+  },
+  {
+   "id": "g00026",
+   "program": "((2 / ((-9.04) ^ 0)) - (2 ^ 1))",
+   "expect": {
+    "type": "rational",
+    "value": "0",
+    "decimal": "0"
+   }
+  },
+  {
+   "id": "g00027",
+   "program": "(-19.8)",
+   "expect": {
+    "type": "decimal",
+    "value": "-19.8"
+   }
+  },
+  {
+   "id": "g00028",
+   "program": "(1.47 + 3) <= (-(11 * (-15)))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00029",
+   "program": "((0.58 ^ (-1)) - ((7 ^ 3) - 6)) > (((-2) ^ 0) / (3.76 + 9))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00030",
+   "program": "((-2) * (-13))",
+   "expect": {
+    "type": "int",
+    "value": "26"
+   }
+  },
+  {
+   "id": "g00031",
+   "program": "15 == (5 ^ (-2))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00032",
+   "program": "round(0, 0, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "g00033",
+   "program": "((-99.1) * ((-1) + (-18)))",
+   "expect": {
+    "type": "decimal",
+    "value": "1882.9"
+   }
+  },
+  {
+   "id": "g00034",
+   "program": "(0 - ((-12) * (-8)))",
+   "expect": {
+    "type": "int",
+    "value": "-96"
+   }
+  },
+  {
+   "id": "g00035",
+   "program": "round((-((13 / 8) * (-19))), 1, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "30.9"
+   }
+  },
+  {
+   "id": "g00036",
+   "program": "round(((((-5.88) / 9) + 38.7) + (0.543 ^ (-2))), 4, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "41.4382"
+   }
+  },
+  {
+   "id": "g00037",
+   "program": "round((-3.16), 3, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-3.160"
+   }
+  },
+  {
+   "id": "g00038",
+   "program": "round((((-2) ^ 0) / (2 * 2.31)), 2, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.22"
+   }
+  },
+  {
+   "id": "g00039",
+   "program": "((((-13) + (-2.58)) * ((-64.7) / 5)) / ((-0.048) ^ 0)) == ((-12) - (-1))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00040",
+   "program": "round(((-8) * (-0.422)), 2, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "3.38"
+   }
+  },
+  {
+   "id": "g00041",
+   "program": "(-(-75.7))",
+   "expect": {
+    "type": "decimal",
+    "value": "75.7"
+   }
+  },
+  {
+   "id": "g00042",
+   "program": "((-6) + 3)",
+   "expect": {
+    "type": "int",
+    "value": "-3"
+   }
+  },
+  {
+   "id": "g00043",
+   "program": "((18 ^ 3) / (-18))",
+   "expect": {
+    "type": "rational",
+    "value": "-324",
+    "decimal": "-324"
+   }
+  },
+  {
+   "id": "g00044",
+   "program": "(23.0 - (-9.60)) < (-0.185)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00045",
+   "program": "(((18 * (-9)) - (-(-0.735))) - 17)",
+   "expect": {
+    "type": "decimal",
+    "value": "-179.735"
+   }
+  },
+  {
+   "id": "g00046",
+   "program": "(4 * 20)",
+   "expect": {
+    "type": "int",
+    "value": "80"
+   }
+  },
+  {
+   "id": "g00047",
+   "program": "(9.04 ^ 1) == 0.367",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00048",
+   "program": "round((-16), 4, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-16.0000"
+   }
+  },
+  {
+   "id": "g00049",
+   "program": "((-13) - (((-10) - 62.1) - (-(-0.662))))",
+   "expect": {
+    "type": "decimal",
+    "value": "59.762"
+   }
+  },
+  {
+   "id": "g00050",
+   "program": "(6.92 ^ (-2))",
+   "expect": {
+    "type": "rational",
+    "value": "625/29929"
+   }
+  },
+  {
+   "id": "g00051",
+   "program": "(((-5) - (-50.9)) * 17) <= (-(7.50 ^ 2))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00052",
+   "program": "(-48.6)",
+   "expect": {
+    "type": "decimal",
+    "value": "-48.6"
+   }
+  },
+  {
+   "id": "g00053",
+   "program": "(-8.76)",
+   "expect": {
+    "type": "decimal",
+    "value": "-8.76"
+   }
+  },
+  {
+   "id": "g00054",
+   "program": "4.10",
+   "expect": {
+    "type": "decimal",
+    "value": "4.10"
+   }
+  },
+  {
+   "id": "g00055",
+   "program": "round((((-7.8) + (-3)) / ((-15) * (-15))), 4, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.0480"
+   }
+  },
+  {
+   "id": "g00056",
+   "program": "(-0.751)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.751"
+   }
+  },
+  {
+   "id": "g00057",
+   "program": "((((-6) ^ (-2)) - 0.618) + ((6 * (-0.511)) + ((-0.457) * 1)))",
+   "expect": {
+    "type": "rational",
+    "value": "-37019/9000"
+   }
+  },
+  {
+   "id": "g00058",
+   "program": "((-51.2) - (-0.964)) < (-69.2)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00059",
+   "program": "(16 ^ 1)",
+   "expect": {
+    "type": "int",
+    "value": "16"
+   }
+  },
+  {
+   "id": "g00060",
+   "program": "((-20) ^ 2)",
+   "expect": {
+    "type": "int",
+    "value": "400"
+   }
+  },
+  {
+   "id": "g00061",
+   "program": "(11 - 0.759)",
+   "expect": {
+    "type": "decimal",
+    "value": "10.241"
+   }
+  },
+  {
+   "id": "g00062",
+   "program": "(0.40 / 1) != (8 * (-14))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00063",
+   "program": "((-0.011) ^ 3)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.000001331"
+   }
+  },
+  {
+   "id": "g00064",
+   "program": "(((-1) * 37.8) + (-1))",
+   "expect": {
+    "type": "decimal",
+    "value": "-38.8"
+   }
+  },
+  {
+   "id": "g00065",
+   "program": "(-((-94.4) - (-4))) >= 17",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00066",
+   "program": "(4 ^ 2)",
+   "expect": {
+    "type": "int",
+    "value": "16"
+   }
+  },
+  {
+   "id": "g00067",
+   "program": "round(((-72.8) * (-19)), 0, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1383"
+   }
+  },
+  {
+   "id": "g00068",
+   "program": "(0.36 / ((-5.92) + 9)) >= (-9.19)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00069",
+   "program": "(0.038 ^ (-1)) > ((-(-52.6)) - ((-2) - 0.947))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00070",
+   "program": "75.9",
+   "expect": {
+    "type": "decimal",
+    "value": "75.9"
+   }
+  },
+  {
+   "id": "g00071",
+   "program": "round(((-14) ^ 2), 2, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "196.00"
+   }
+  },
+  {
+   "id": "g00072",
+   "program": "round((8 + (-20)), 3, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-12.000"
+   }
+  },
+  {
+   "id": "g00073",
+   "program": "((-15) ^ (-2))",
+   "expect": {
+    "type": "rational",
+    "value": "1/225"
+   }
+  },
+  {
+   "id": "g00074",
+   "program": "(-20)",
+   "expect": {
+    "type": "int",
+    "value": "-20"
+   }
+  },
+  {
+   "id": "g00075",
+   "program": "(-76.1)",
+   "expect": {
+    "type": "decimal",
+    "value": "-76.1"
+   }
+  },
+  {
+   "id": "g00076",
+   "program": "((-86.9) / 73.4)",
+   "expect": {
+    "type": "rational",
+    "value": "-869/734"
+   }
+  },
+  {
+   "id": "g00077",
+   "program": "round((-((-10) / 3)), 2, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "3.34"
+   }
+  },
+  {
+   "id": "g00078",
+   "program": "((-5) + 0.168)",
+   "expect": {
+    "type": "decimal",
+    "value": "-4.832"
+   }
+  },
+  {
+   "id": "g00079",
+   "program": "((-7.26) - (-0.76))",
+   "expect": {
+    "type": "decimal",
+    "value": "-6.50"
+   }
+  },
+  {
+   "id": "g00080",
+   "program": "((-16) * 17)",
+   "expect": {
+    "type": "int",
+    "value": "-272"
+   }
+  },
+  {
+   "id": "g00081",
+   "program": "round((73.1 - (0.388 * ((-2.44) ^ (-1)))), 4, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "73.2590"
+   }
+  },
+  {
+   "id": "g00082",
+   "program": "(-0.13)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.13"
+   }
+  },
+  {
+   "id": "g00083",
+   "program": "(-(-0.844)) >= (38.5 + (7 / (-7)))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00084",
+   "program": "((-11) ^ 0)",
+   "expect": {
+    "type": "int",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g00085",
+   "program": "(((5 - 46.6) + (7 ^ 2)) / (((-0.618) + 5.71) / (79.8 / (-0.622))))",
+   "expect": {
+    "type": "rational",
+    "value": "-3885000/20837"
+   }
+  },
+  {
+   "id": "g00086",
+   "program": "0.418 <= (-(0.942 ^ (-2)))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00088",
+   "program": "round(16, 1, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "16.0"
+   }
+  },
+  {
+   "id": "g00089",
+   "program": "(-9)",
+   "expect": {
+    "type": "int",
+    "value": "-9"
+   }
+  },
+  {
+   "id": "g00090",
+   "program": "(-48.7) == (-(12 ^ 2))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00091",
+   "program": "(-10)",
+   "expect": {
+    "type": "int",
+    "value": "-10"
+   }
+  },
+  {
+   "id": "g00092",
+   "program": "8.39",
+   "expect": {
+    "type": "decimal",
+    "value": "8.39"
+   }
+  },
+  {
+   "id": "g00093",
+   "program": "(-8.60)",
+   "expect": {
+    "type": "decimal",
+    "value": "-8.60"
+   }
+  },
+  {
+   "id": "g00094",
+   "program": "(-3.86)",
+   "expect": {
+    "type": "decimal",
+    "value": "-3.86"
+   }
+  },
+  {
+   "id": "g00095",
+   "program": "(-((0.811 / (-11)) / ((-0.248) ^ 1)))",
+   "expect": {
+    "type": "rational",
+    "value": "-811/2728"
+   }
+  },
+  {
+   "id": "g00096",
+   "program": "((-88.1) - 2.00)",
+   "expect": {
+    "type": "decimal",
+    "value": "-90.10"
+   }
+  },
+  {
+   "id": "g00097",
+   "program": "(0.308 * (-9))",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.772"
+   }
+  },
+  {
+   "id": "g00098",
+   "program": "((-0.476) - (((-0.684) + 0.278) - (-2.92)))",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.990"
+   }
+  },
+  {
+   "id": "g00099",
+   "program": "((((-19) * (-7)) * (-(-10))) + ((-8.29) / 1.65))",
+   "expect": {
+    "type": "rational",
+    "value": "218621/165"
+   }
+  },
+  {
+   "id": "g00100",
+   "program": "((8 - 49.9) + ((-15) * 8))",
+   "expect": {
+    "type": "decimal",
+    "value": "-161.9"
+   }
+  },
+  {
+   "id": "g00101",
+   "program": "round((3.6 ^ 3), 1, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "46.7"
+   }
+  },
+  {
+   "id": "g00102",
+   "program": "round((-17), 4, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-17.0000"
+   }
+  },
+  {
+   "id": "g00103",
+   "program": "(0.885 / 0.28)",
+   "expect": {
+    "type": "rational",
+    "value": "177/56"
+   }
+  },
+  {
+   "id": "g00104",
+   "program": "((-1) ^ (-1))",
+   "expect": {
+    "type": "rational",
+    "value": "-1",
+    "decimal": "-1"
+   }
+  },
+  {
+   "id": "g00105",
+   "program": "(-7.22)",
+   "expect": {
+    "type": "decimal",
+    "value": "-7.22"
+   }
+  },
+  {
+   "id": "g00106",
+   "program": "(6 + 1.8)",
+   "expect": {
+    "type": "decimal",
+    "value": "7.8"
+   }
+  },
+  {
+   "id": "g00107",
+   "program": "86.3",
+   "expect": {
+    "type": "decimal",
+    "value": "86.3"
+   }
+  },
+  {
+   "id": "g00108",
+   "program": "(((-3) ^ (-1)) * ((-(-3)) - 7.86))",
+   "expect": {
+    "type": "rational",
+    "value": "81/50",
+    "decimal": "1.62"
+   }
+  },
+  {
+   "id": "g00109",
+   "program": "(-7.95)",
+   "expect": {
+    "type": "decimal",
+    "value": "-7.95"
+   }
+  },
+  {
+   "id": "g00110",
+   "program": "(98.8 / 0.863) < (((-18) + (-0.556)) - (-2))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00111",
+   "program": "(-(34.6 * 3.24)) < (-41.1)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00112",
+   "program": "round(0, 3, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.000"
+   }
+  },
+  {
+   "id": "g00113",
+   "program": "round((0.565 ^ 2), 1, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.3"
+   }
+  },
+  {
+   "id": "g00114",
+   "program": "round((-(-2.84)), 2, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2.84"
+   }
+  },
+  {
+   "id": "g00115",
+   "program": "((-(-10)) * (((-79.1) ^ (-2)) + 0.18))",
+   "expect": {
+    "type": "rational",
+    "value": "5636129/3128405"
+   }
+  },
+  {
+   "id": "g00116",
+   "program": "12",
+   "expect": {
+    "type": "int",
+    "value": "12"
+   }
+  },
+  {
+   "id": "g00117",
+   "program": "round((-1.06), 0, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-1"
+   }
+  },
+  {
+   "id": "g00118",
+   "program": "round((((-10) ^ (-2)) * ((-35.2) ^ 1)), 0, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "g00119",
+   "program": "((-0.251) / ((-3) * (-10))) >= (-9)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00120",
+   "program": "((-16) - 0.406)",
+   "expect": {
+    "type": "decimal",
+    "value": "-16.406"
+   }
+  },
+  {
+   "id": "g00121",
+   "program": "(-10) != (((-2.60) + (-15)) + (37.7 - (-11)))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00122",
+   "program": "(((-0.312) / (-(-7.36))) * 6.85) > (-0.263)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00123",
+   "program": "round((-3.40), 4, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-3.4000"
+   }
+  },
+  {
+   "id": "g00124",
+   "program": "(18.7 ^ 1)",
+   "expect": {
+    "type": "decimal",
+    "value": "18.7"
+   }
+  },
+  {
+   "id": "g00125",
+   "program": "(((-88.3) * (-8)) / (-0.927))",
+   "expect": {
+    "type": "rational",
+    "value": "-706400/927"
+   }
+  },
+  {
+   "id": "g00126",
+   "program": "((-6.43) ^ 0)",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g00127",
+   "program": "(0.424 + (-24.3)) > (((-4) * 0.742) + (-(-18)))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00128",
+   "program": "(96.9 - 0.001)",
+   "expect": {
+    "type": "decimal",
+    "value": "96.899"
+   }
+  },
+  {
+   "id": "g00129",
+   "program": "(5 ^ (-1))",
+   "expect": {
+    "type": "rational",
+    "value": "1/5",
+    "decimal": "0.2"
+   }
+  },
+  {
+   "id": "g00130",
+   "program": "round((64.0 * (-10)), 2, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-640.00"
+   }
+  },
+  {
+   "id": "g00131",
+   "program": "(-7.12) != ((17.6 + 9) / 3)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00132",
+   "program": "6",
+   "expect": {
+    "type": "int",
+    "value": "6"
+   }
+  },
+  {
+   "id": "g00133",
+   "program": "(0.322 - 16)",
+   "expect": {
+    "type": "decimal",
+    "value": "-15.678"
+   }
+  },
+  {
+   "id": "g00134",
+   "program": "((-5) / (20 / (-5.81))) < ((0.330 - 81.5) * (12 - (-70.1)))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00135",
+   "program": "3.42",
+   "expect": {
+    "type": "decimal",
+    "value": "3.42"
+   }
+  },
+  {
+   "id": "g00136",
+   "program": "round(((-19) ^ (-1)), 4, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.0526"
+   }
+  },
+  {
+   "id": "g00137",
+   "program": "((0.77 ^ (-1)) * (((-17.3) + (-4.63)) - (-96.5))) < ((-14) - ((-8.70) / 5.96))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00138",
+   "program": "round((19 - (-2)), 0, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "21"
+   }
+  },
+  {
+   "id": "g00139",
+   "program": "((((-80.7) ^ (-1)) / 7) + (7 + 0.4))",
+   "expect": {
+    "type": "rational",
+    "value": "208963/28245"
+   }
+  },
+  {
+   "id": "g00140",
+   "program": "((18 - (-38.3)) * (-17))",
+   "expect": {
+    "type": "decimal",
+    "value": "-957.1"
+   }
+  },
+  {
+   "id": "g00141",
+   "program": "15 >= (-(19 - (-0.570)))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00142",
+   "program": "(7.11 - (67.8 / 13))",
+   "expect": {
+    "type": "rational",
+    "value": "2463/1300"
+   }
+  },
+  {
+   "id": "g00143",
+   "program": "((-1.74) - (-15))",
+   "expect": {
+    "type": "decimal",
+    "value": "13.26"
+   }
+  },
+  {
+   "id": "g00144",
+   "program": "((-0.781) - (16 + 88.6))",
+   "expect": {
+    "type": "decimal",
+    "value": "-105.381"
+   }
+  },
+  {
+   "id": "g00145",
+   "program": "round(20, 1, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "20.0"
+   }
+  },
+  {
+   "id": "g00146",
+   "program": "round((-0.100), 3, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.100"
+   }
+  },
+  {
+   "id": "g00147",
+   "program": "round(((-20) * ((-0.463) / (-16.5))), 4, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.5612"
+   }
+  },
+  {
+   "id": "g00148",
+   "program": "((20 - ((-17) * (-4))) - 64.4)",
+   "expect": {
+    "type": "decimal",
+    "value": "-112.4"
+   }
+  },
+  {
+   "id": "g00149",
+   "program": "(-3) < 20",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00150",
+   "program": "(-0.920) <= (-(11 + (-4)))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00151",
+   "program": "(-9) != ((6 - 1.36) * ((-4.05) ^ (-2)))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00152",
+   "program": "(3 ^ 1)",
+   "expect": {
+    "type": "int",
+    "value": "3"
+   }
+  },
+  {
+   "id": "g00153",
+   "program": "(0.319 ^ (-2))",
+   "expect": {
+    "type": "rational",
+    "value": "1000000/101761"
+   }
+  },
+  {
+   "id": "g00154",
+   "program": "round(((-20) / (-4.35)), 1, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "4.6"
+   }
+  },
+  {
+   "id": "g00155",
+   "program": "(-3.18)",
+   "expect": {
+    "type": "decimal",
+    "value": "-3.18"
+   }
+  },
+  {
+   "id": "g00156",
+   "program": "((((-0.521) + 0.229) - (-19)) / (1 / (-0.944)))",
+   "expect": {
+    "type": "rational",
+    "value": "-275943/15625",
+    "decimal": "-17.660352"
+   }
+  },
+  {
+   "id": "g00157",
+   "program": "round(((-0.061) + ((-19) * (-2))), 3, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "37.939"
+   }
+  },
+  {
+   "id": "g00158",
+   "program": "(-(-15))",
+   "expect": {
+    "type": "int",
+    "value": "15"
+   }
+  },
+  {
+   "id": "g00159",
+   "program": "(-(18.0 + 3))",
+   "expect": {
+    "type": "decimal",
+    "value": "-21.0"
+   }
+  },
+  {
+   "id": "g00160",
+   "program": "(93.9 * (-0.406))",
+   "expect": {
+    "type": "decimal",
+    "value": "-38.1234"
+   }
+  },
+  {
+   "id": "g00161",
+   "program": "0.113",
+   "expect": {
+    "type": "decimal",
+    "value": "0.113"
+   }
+  },
+  {
+   "id": "g00162",
+   "program": "((-1.64) / 97.9)",
+   "expect": {
+    "type": "rational",
+    "value": "-82/4895"
+   }
+  },
+  {
+   "id": "g00163",
+   "program": "round((-0.374), 3, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.374"
+   }
+  },
+  {
+   "id": "g00164",
+   "program": "round(16, 2, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "16.00"
+   }
+  },
+  {
+   "id": "g00165",
+   "program": "((-7.78) ^ 3) <= ((6 + 2.46) * ((-12) + (-9)))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00166",
+   "program": "(3 ^ 2) != 0.215",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00167",
+   "program": "(-(-8.65))",
+   "expect": {
+    "type": "decimal",
+    "value": "8.65"
+   }
+  },
+  {
+   "id": "g00168",
+   "program": "(((-9.18) ^ 0) + (10 + 0.465))",
+   "expect": {
+    "type": "decimal",
+    "value": "11.465"
+   }
+  },
+  {
+   "id": "g00169",
+   "program": "((-70.7) * 0.88)",
+   "expect": {
+    "type": "decimal",
+    "value": "-62.216"
+   }
+  },
+  {
+   "id": "g00170",
+   "program": "(20.8 / 0.239)",
+   "expect": {
+    "type": "rational",
+    "value": "20800/239"
+   }
+  },
+  {
+   "id": "g00171",
+   "program": "round((-6), 3, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-6.000"
+   }
+  },
+  {
+   "id": "g00172",
+   "program": "4.25",
+   "expect": {
+    "type": "decimal",
+    "value": "4.25"
+   }
+  },
+  {
+   "id": "g00173",
+   "program": "(-8)",
+   "expect": {
+    "type": "int",
+    "value": "-8"
+   }
+  },
+  {
+   "id": "g00174",
+   "program": "((-5.04) + (-(-2.00)))",
+   "expect": {
+    "type": "decimal",
+    "value": "-3.04"
+   }
+  },
+  {
+   "id": "g00175",
+   "program": "((-(-1.36)) + (-8))",
+   "expect": {
+    "type": "decimal",
+    "value": "-6.64"
+   }
+  },
+  {
+   "id": "g00176",
+   "program": "((-0.05) + (-1.21))",
+   "expect": {
+    "type": "decimal",
+    "value": "-1.26"
+   }
+  },
+  {
+   "id": "g00177",
+   "program": "(0.651 / ((-0.576) ^ 3))",
+   "expect": {
+    "type": "rational",
+    "value": "-3390625/995328"
+   }
+  },
+  {
+   "id": "g00178",
+   "program": "(0.793 / (-0.273))",
+   "expect": {
+    "type": "rational",
+    "value": "-61/21"
+   }
+  },
+  {
+   "id": "g00179",
+   "program": "0.772",
+   "expect": {
+    "type": "decimal",
+    "value": "0.772"
+   }
+  },
+  {
+   "id": "g00180",
+   "program": "round((-13), 1, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-13.0"
+   }
+  },
+  {
+   "id": "g00181",
+   "program": "round((-((-0.218) - (-15))), 0, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-14"
+   }
+  },
+  {
+   "id": "g00182",
+   "program": "round((-(-2.58)), 0, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "3"
+   }
+  },
+  {
+   "id": "g00183",
+   "program": "(-4)",
+   "expect": {
+    "type": "int",
+    "value": "-4"
+   }
+  },
+  {
+   "id": "g00184",
+   "program": "2",
+   "expect": {
+    "type": "int",
+    "value": "2"
+   }
+  },
+  {
+   "id": "g00185",
+   "program": "(3.1 * ((0.622 / (-0.76)) / (14 * (-5.75))))",
+   "expect": {
+    "type": "rational",
+    "value": "9641/305900"
+   }
+  },
+  {
+   "id": "g00186",
+   "program": "(14 - (-2))",
+   "expect": {
+    "type": "int",
+    "value": "16"
+   }
+  },
+  {
+   "id": "g00188",
+   "program": "(-(11 * (-0.526)))",
+   "expect": {
+    "type": "decimal",
+    "value": "5.786"
+   }
+  },
+  {
+   "id": "g00189",
+   "program": "8",
+   "expect": {
+    "type": "int",
+    "value": "8"
+   }
+  },
+  {
+   "id": "g00190",
+   "program": "0",
+   "expect": {
+    "type": "int",
+    "value": "0"
+   }
+  },
+  {
+   "id": "g00191",
+   "program": "((-4) ^ 0)",
+   "expect": {
+    "type": "int",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g00192",
+   "program": "((-15) - 35.2)",
+   "expect": {
+    "type": "decimal",
+    "value": "-50.2"
+   }
+  },
+  {
+   "id": "g00193",
+   "program": "((-0.673) / (-0.732))",
+   "expect": {
+    "type": "rational",
+    "value": "673/732"
+   }
+  },
+  {
+   "id": "g00194",
+   "program": "9",
+   "expect": {
+    "type": "int",
+    "value": "9"
+   }
+  },
+  {
+   "id": "g00195",
+   "program": "round(32.4, 1, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "32.4"
+   }
+  },
+  {
+   "id": "g00196",
+   "program": "((-68.7) * (-49.1))",
+   "expect": {
+    "type": "decimal",
+    "value": "3373.17"
+   }
+  },
+  {
+   "id": "g00197",
+   "program": "(-5)",
+   "expect": {
+    "type": "int",
+    "value": "-5"
+   }
+  },
+  {
+   "id": "g00198",
+   "program": "((-((-5) ^ 0)) - ((-18) ^ 1))",
+   "expect": {
+    "type": "int",
+    "value": "17"
+   }
+  },
+  {
+   "id": "g00199",
+   "program": "((-7) ^ 1)",
+   "expect": {
+    "type": "int",
+    "value": "-7"
+   }
+  },
+  {
+   "id": "g00200",
+   "program": "(19 * ((83.9 ^ 3) - (-9)))",
+   "expect": {
+    "type": "decimal",
+    "value": "11221375.661"
+   }
+  },
+  {
+   "id": "g00201",
+   "program": "round(0.058, 2, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.05"
+   }
+  },
+  {
+   "id": "g00202",
+   "program": "(8 ^ 0)",
+   "expect": {
+    "type": "int",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g00203",
+   "program": "round((((-8) / (0.639 * (-14))) * (9 + ((-11) / 0.242))), 3, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-32.599"
+   }
+  },
+  {
+   "id": "g00204",
+   "program": "((0.53 * 19) + (8.47 + 0.859))",
+   "expect": {
+    "type": "decimal",
+    "value": "19.399"
+   }
+  },
+  {
+   "id": "g00205",
+   "program": "(((-0.526) ^ (-1)) * (7 / 91.0))",
+   "expect": {
+    "type": "rational",
+    "value": "-500/3419"
+   }
+  },
+  {
+   "id": "g00206",
+   "program": "(-19)",
+   "expect": {
+    "type": "int",
+    "value": "-19"
+   }
+  },
+  {
+   "id": "g00207",
+   "program": "(-1)",
+   "expect": {
+    "type": "int",
+    "value": "-1"
+   }
+  },
+  {
+   "id": "g00208",
+   "program": "round(((45.0 ^ (-2)) * (-98.6)), 1, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.0"
+   }
+  },
+  {
+   "id": "g00209",
+   "program": "(((-80.9) / 12.0) / (50.5 - (-5))) == 2.51",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00210",
+   "program": "(((-9) ^ (-1)) / ((1 + (-0.060)) / (57.8 + (-0.972))))",
+   "expect": {
+    "type": "rational",
+    "value": "-14207/2115"
+   }
+  },
+  {
+   "id": "g00211",
+   "program": "((((-20) * (-8)) + ((-20) - 19)) * (-2))",
+   "expect": {
+    "type": "int",
+    "value": "-242"
+   }
+  },
+  {
+   "id": "g00212",
+   "program": "round(((-8) / 16), 1, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.5"
+   }
+  },
+  {
+   "id": "g00213",
+   "program": "round((-((-0.454) * (-19))), 2, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-8.63"
+   }
+  },
+  {
+   "id": "g00214",
+   "program": "(8 ^ 2) < (-((-10) ^ 1))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00215",
+   "program": "round(((-2.44) - (-0.844)), 0, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2"
+   }
+  },
+  {
+   "id": "g00216",
+   "program": "(19 * 3.98)",
+   "expect": {
+    "type": "decimal",
+    "value": "75.62"
+   }
+  },
+  {
+   "id": "g00217",
+   "program": "(-(-18))",
+   "expect": {
+    "type": "int",
+    "value": "18"
+   }
+  },
+  {
+   "id": "g00218",
+   "program": "(-17)",
+   "expect": {
+    "type": "int",
+    "value": "-17"
+   }
+  },
+  {
+   "id": "g00219",
+   "program": "((-0.046) ^ 0)",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g00220",
+   "program": "round(((-0.334) * (-89.7)), 4, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "29.9598"
+   }
+  },
+  {
+   "id": "g00221",
+   "program": "round(((5 * 32.5) + (16 / (-0.446))), 1, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "126.6"
+   }
+  },
+  {
+   "id": "g00222",
+   "program": "(0.364 * (-3.31))",
+   "expect": {
+    "type": "decimal",
+    "value": "-1.20484"
+   }
+  },
+  {
+   "id": "g00223",
+   "program": "((3.00 ^ 1) * 4)",
+   "expect": {
+    "type": "decimal",
+    "value": "12.00"
+   }
+  },
+  {
+   "id": "g00224",
+   "program": "round((-19), 1, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-19.0"
+   }
+  },
+  {
+   "id": "g00225",
+   "program": "(-0.222)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.222"
+   }
+  },
+  {
+   "id": "g00226",
+   "program": "((8.16 + 4) * 10)",
+   "expect": {
+    "type": "decimal",
+    "value": "121.60"
+   }
+  },
+  {
+   "id": "g00227",
+   "program": "(((-7.45) * (-9)) + (10 * (-1)))",
+   "expect": {
+    "type": "decimal",
+    "value": "57.05"
+   }
+  },
+  {
+   "id": "g00228",
+   "program": "18",
+   "expect": {
+    "type": "int",
+    "value": "18"
+   }
+  },
+  {
+   "id": "g00229",
+   "program": "(-17)",
+   "expect": {
+    "type": "int",
+    "value": "-17"
+   }
+  },
+  {
+   "id": "g00230",
+   "program": "(-63.4)",
+   "expect": {
+    "type": "decimal",
+    "value": "-63.4"
+   }
+  },
+  {
+   "id": "g00231",
+   "program": "(-6)",
+   "expect": {
+    "type": "int",
+    "value": "-6"
+   }
+  },
+  {
+   "id": "g00232",
+   "program": "round(((-9) - (-12)), 4, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "3.0000"
+   }
+  },
+  {
+   "id": "g00233",
+   "program": "round(((-16) / (-9)), 4, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1.7778"
+   }
+  },
+  {
+   "id": "g00234",
+   "program": "(-(19 ^ 2))",
+   "expect": {
+    "type": "int",
+    "value": "-361"
+   }
+  },
+  {
+   "id": "g00235",
+   "program": "round((-10), 0, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-10"
+   }
+  },
+  {
+   "id": "g00236",
+   "program": "((-1.2) / 5) != (-(0.176 / 0.668))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00237",
+   "program": "(6.59 ^ 2) <= ((-5) / ((-17) + (-14)))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00238",
+   "program": "round(((0.801 ^ 0) - 15), 2, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-14.00"
+   }
+  },
+  {
+   "id": "g00239",
+   "program": "((((-5.32) - 8.0) / ((-2) * 19)) * ((-(-18)) + ((-1.36) ^ 0)))",
+   "expect": {
+    "type": "rational",
+    "value": "333/50",
+    "decimal": "6.66"
+   }
+  },
+  {
+   "id": "g00240",
+   "program": "(((-1.85) * 17) * (-0.192))",
+   "expect": {
+    "type": "decimal",
+    "value": "6.03840"
+   }
+  },
+  {
+   "id": "g00241",
+   "program": "(((10 - (-0.710)) - ((-3.85) * (-16))) + ((2 * (-17)) - ((-0.38) ^ (-2))))",
+   "expect": {
+    "type": "rational",
+    "value": "-3314529/36100"
+   }
+  },
+  {
+   "id": "g00242",
+   "program": "(-1)",
+   "expect": {
+    "type": "int",
+    "value": "-1"
+   }
+  },
+  {
+   "id": "g00243",
+   "program": "((((-11.9) + 0) - 2.75) + ((-96.6) + (-(-1))))",
+   "expect": {
+    "type": "decimal",
+    "value": "-110.25"
+   }
+  },
+  {
+   "id": "g00244",
+   "program": "round((-((-10) + 3)), 0, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "7"
+   }
+  },
+  {
+   "id": "g00245",
+   "program": "(41.3 ^ (-2))",
+   "expect": {
+    "type": "rational",
+    "value": "100/170569"
+   }
+  },
+  {
+   "id": "g00246",
+   "program": "((-8.25) / 0.775)",
+   "expect": {
+    "type": "rational",
+    "value": "-330/31"
+   }
+  },
+  {
+   "id": "g00247",
+   "program": "(-5)",
+   "expect": {
+    "type": "int",
+    "value": "-5"
+   }
+  },
+  {
+   "id": "g00248",
+   "program": "round((-0.311), 4, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.3110"
+   }
+  },
+  {
+   "id": "g00249",
+   "program": "9",
+   "expect": {
+    "type": "int",
+    "value": "9"
+   }
+  },
+  {
+   "id": "g00250",
+   "program": "(1 / ((-4) / (88.5 + 34.8)))",
+   "expect": {
+    "type": "rational",
+    "value": "-1233/40",
+    "decimal": "-30.825"
+   }
+  },
+  {
+   "id": "g00251",
+   "program": "((13 + 90.2) - (-0.579))",
+   "expect": {
+    "type": "decimal",
+    "value": "103.779"
+   }
+  },
+  {
+   "id": "g00252",
+   "program": "round(((-14) + ((16 - (-18)) + (-4.94))), 3, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "15.060"
+   }
+  },
+  {
+   "id": "g00253",
+   "program": "17",
+   "expect": {
+    "type": "int",
+    "value": "17"
+   }
+  },
+  {
+   "id": "g00254",
+   "program": "(5 * 0.935)",
+   "expect": {
+    "type": "decimal",
+    "value": "4.675"
+   }
+  },
+  {
+   "id": "g00255",
+   "program": "((-(-13)) * (11 ^ 1))",
+   "expect": {
+    "type": "int",
+    "value": "143"
+   }
+  },
+  {
+   "id": "g00256",
+   "program": "(-0.782)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.782"
+   }
+  },
+  {
+   "id": "g00257",
+   "program": "((((-4.71) / (-47.3)) + ((-62.1) / 6)) + ((-(-1)) * ((-46.9) - 42.9)))",
+   "expect": {
+    "type": "rational",
+    "value": "-946477/9460"
+   }
+  },
+  {
+   "id": "g00258",
+   "program": "(-28.6)",
+   "expect": {
+    "type": "decimal",
+    "value": "-28.6"
+   }
+  },
+  {
+   "id": "g00259",
+   "program": "(-((-9) - (-2.27)))",
+   "expect": {
+    "type": "decimal",
+    "value": "6.73"
+   }
+  },
+  {
+   "id": "g00260",
+   "program": "(((-10) * 0.731) - (-5.28))",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.030"
+   }
+  },
+  {
+   "id": "g00261",
+   "program": "round(((-17) / (1.22 + 2)), 2, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-5.28"
+   }
+  },
+  {
+   "id": "g00262",
+   "program": "round(((-9) * (9 + (-(-0.811)))), 1, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-88.3"
+   }
+  },
+  {
+   "id": "g00263",
+   "program": "round((-2.48), 2, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.48"
+   }
+  },
+  {
+   "id": "g00264",
+   "program": "(((-20) * ((-0.951) / (-7.45))) + 8.82) > ((-3) ^ 2)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00265",
+   "program": "(-(((-40.6) ^ 3) * ((-9) * (-38.8))))",
+   "expect": {
+    "type": "decimal",
+    "value": "23369656.8672"
+   }
+  },
+  {
+   "id": "g00266",
+   "program": "((-0.588) / (-0.052))",
+   "expect": {
+    "type": "rational",
+    "value": "147/13"
+   }
+  },
+  {
+   "id": "g00267",
+   "program": "8.44",
+   "expect": {
+    "type": "decimal",
+    "value": "8.44"
+   }
+  },
+  {
+   "id": "g00268",
+   "program": "(((-9) - ((-49.4) / (-14))) / ((-6.88) * ((-11) / (-2))))",
+   "expect": {
+    "type": "rational",
+    "value": "4385/13244"
+   }
+  },
+  {
+   "id": "g00269",
+   "program": "(((-0.733) * (-11)) * (((-4) * (-18)) / (0.188 - 0.463)))",
+   "expect": {
+    "type": "rational",
+    "value": "-52776/25",
+    "decimal": "-2111.04"
+   }
+  },
+  {
+   "id": "g00270",
+   "program": "((-0.41) / 0.586)",
+   "expect": {
+    "type": "rational",
+    "value": "-205/293"
+   }
+  },
+  {
+   "id": "g00271",
+   "program": "16",
+   "expect": {
+    "type": "int",
+    "value": "16"
+   }
+  },
+  {
+   "id": "g00272",
+   "program": "round((59.2 + (-20)), 3, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "39.200"
+   }
+  },
+  {
+   "id": "g00273",
+   "program": "round(9, 4, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "9.0000"
+   }
+  },
+  {
+   "id": "g00274",
+   "program": "(4 * (0.127 - 8))",
+   "expect": {
+    "type": "decimal",
+    "value": "-31.492"
+   }
+  },
+  {
+   "id": "g00275",
+   "program": "round((16 ^ 0), 0, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g00276",
+   "program": "round((((-20) * 1.65) * ((-12) + 2.85)), 1, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "302.0"
+   }
+  },
+  {
+   "id": "g00277",
+   "program": "(-11)",
+   "expect": {
+    "type": "int",
+    "value": "-11"
+   }
+  },
+  {
+   "id": "g00278",
+   "program": "round(((-0.880) ^ (-1)), 2, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-1.14"
+   }
+  },
+  {
+   "id": "g00279",
+   "program": "12",
+   "expect": {
+    "type": "int",
+    "value": "12"
+   }
+  },
+  {
+   "id": "g00280",
+   "program": "(2 / (16 * (-0.785)))",
+   "expect": {
+    "type": "rational",
+    "value": "-25/157"
+   }
+  },
+  {
+   "id": "g00281",
+   "program": "round((67.1 ^ (-1)), 1, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.1"
+   }
+  },
+  {
+   "id": "g00282",
+   "program": "0.166",
+   "expect": {
+    "type": "decimal",
+    "value": "0.166"
+   }
+  },
+  {
+   "id": "g00283",
+   "program": "(-2.05)",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.05"
+   }
+  },
+  {
+   "id": "g00284",
+   "program": "(-30.7)",
+   "expect": {
+    "type": "decimal",
+    "value": "-30.7"
+   }
+  },
+  {
+   "id": "g00285",
+   "program": "(-12)",
+   "expect": {
+    "type": "int",
+    "value": "-12"
+   }
+  },
+  {
+   "id": "g00286",
+   "program": "((-11) / (-0.517))",
+   "expect": {
+    "type": "rational",
+    "value": "1000/47"
+   }
+  },
+  {
+   "id": "g00288",
+   "program": "round((-(-((-10) - 38.1))), 4, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-48.1000"
+   }
+  },
+  {
+   "id": "g00289",
+   "program": "((-15) ^ (-2))",
+   "expect": {
+    "type": "rational",
+    "value": "1/225"
+   }
+  },
+  {
+   "id": "g00290",
+   "program": "((67.2 ^ 2) + (-8))",
+   "expect": {
+    "type": "decimal",
+    "value": "4507.84"
+   }
+  },
+  {
+   "id": "g00291",
+   "program": "round((((-2) + 10) * (19 - 15)), 0, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "32"
+   }
+  },
+  {
+   "id": "g00292",
+   "program": "3",
+   "expect": {
+    "type": "int",
+    "value": "3"
+   }
+  },
+  {
+   "id": "g00293",
+   "program": "(-((-3) ^ (-1)))",
+   "expect": {
+    "type": "rational",
+    "value": "1/3"
+   }
+  },
+  {
+   "id": "g00294",
+   "program": "((-17.3) / 1.42) > ((8.75 / (-10)) / (-20))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00295",
+   "program": "(-7)",
+   "expect": {
+    "type": "int",
+    "value": "-7"
+   }
+  },
+  {
+   "id": "g00296",
+   "program": "(-4)",
+   "expect": {
+    "type": "int",
+    "value": "-4"
+   }
+  },
+  {
+   "id": "g00297",
+   "program": "(11 ^ 3) != ((5.34 / (-13)) * (-1))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00298",
+   "program": "(-((-26.1) ^ 1))",
+   "expect": {
+    "type": "decimal",
+    "value": "26.1"
+   }
+  },
+  {
+   "id": "g00299",
+   "program": "(9.28 * 3)",
+   "expect": {
+    "type": "decimal",
+    "value": "27.84"
+   }
+  },
+  {
+   "id": "g00300",
+   "program": "((-4) ^ (-1))",
+   "expect": {
+    "type": "rational",
+    "value": "-1/4",
+    "decimal": "-0.25"
+   }
+  },
+  {
+   "id": "g00301",
+   "program": "round((((-80.4) * (-5.14)) - (9 - (-7.89))), 4, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "396.3660"
+   }
+  },
+  {
+   "id": "g00302",
+   "program": "(((-7) ^ 3) / ((-8) * ((-18) ^ 3)))",
+   "expect": {
+    "type": "rational",
+    "value": "-343/46656"
+   }
+  },
+  {
+   "id": "g00303",
+   "program": "round((-((-15) * ((-96.9) - 9))), 1, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-1588.5"
+   }
+  },
+  {
+   "id": "g00304",
+   "program": "(67.2 ^ 3)",
+   "expect": {
+    "type": "decimal",
+    "value": "303464.448"
+   }
+  },
+  {
+   "id": "g00305",
+   "program": "(-36.5)",
+   "expect": {
+    "type": "decimal",
+    "value": "-36.5"
+   }
+  },
+  {
+   "id": "g00306",
+   "program": "(-59.6)",
+   "expect": {
+    "type": "decimal",
+    "value": "-59.6"
+   }
+  },
+  {
+   "id": "g00307",
+   "program": "(-12)",
+   "expect": {
+    "type": "int",
+    "value": "-12"
+   }
+  },
+  {
+   "id": "g00308",
+   "program": "(((-14) / 36.0) / ((-19) / (3 + 44.3)))",
+   "expect": {
+    "type": "rational",
+    "value": "3311/3420"
+   }
+  },
+  {
+   "id": "g00309",
+   "program": "round((-3.02), 2, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-3.02"
+   }
+  },
+  {
+   "id": "g00310",
+   "program": "0",
+   "expect": {
+    "type": "int",
+    "value": "0"
+   }
+  },
+  {
+   "id": "g00311",
+   "program": "(-0.717)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.717"
+   }
+  },
+  {
+   "id": "g00312",
+   "program": "(-11)",
+   "expect": {
+    "type": "int",
+    "value": "-11"
+   }
+  },
+  {
+   "id": "g00313",
+   "program": "(-(-13))",
+   "expect": {
+    "type": "int",
+    "value": "13"
+   }
+  },
+  {
+   "id": "g00314",
+   "program": "((-18) + (-0.888))",
+   "expect": {
+    "type": "decimal",
+    "value": "-18.888"
+   }
+  },
+  {
+   "id": "g00315",
+   "program": "(0.555 + 8.5) < ((12.6 / (-8)) - ((-5) ^ (-1)))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00316",
+   "program": "round((((-0.102) + (1 * (-19))) + ((-0.825) / (-48.4))), 0, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-19"
+   }
+  },
+  {
+   "id": "g00317",
+   "program": "(-18)",
+   "expect": {
+    "type": "int",
+    "value": "-18"
+   }
+  },
+  {
+   "id": "g00318",
+   "program": "(-7) <= (-(14 ^ 3))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00319",
+   "program": "(((-0.074) ^ 1) - (-15)) < 7.74",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00320",
+   "program": "round((6.23 ^ (-2)), 0, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "g00321",
+   "program": "((-0.90) - (-4.02))",
+   "expect": {
+    "type": "decimal",
+    "value": "3.12"
+   }
+  },
+  {
+   "id": "g00322",
+   "program": "19",
+   "expect": {
+    "type": "int",
+    "value": "19"
+   }
+  },
+  {
+   "id": "g00323",
+   "program": "round(4, 2, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "4.00"
+   }
+  },
+  {
+   "id": "g00324",
+   "program": "(((-0.574) ^ (-2)) + 79.4)",
+   "expect": {
+    "type": "rational",
+    "value": "33950493/411845"
+   }
+  },
+  {
+   "id": "g00325",
+   "program": "((-(0.299 * (-16))) - 8) == (14.1 ^ 1)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00326",
+   "program": "round(((((-19) * (-9)) + (3.50 / 19)) - (-45.4)), 0, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "216"
+   }
+  },
+  {
+   "id": "g00327",
+   "program": "round(((-17) ^ (-1)), 3, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.059"
+   }
+  },
+  {
+   "id": "g00328",
+   "program": "(74.6 - ((-19) - 20))",
+   "expect": {
+    "type": "decimal",
+    "value": "113.6"
+   }
+  },
+  {
+   "id": "g00329",
+   "program": "(-(10 ^ 1))",
+   "expect": {
+    "type": "int",
+    "value": "-10"
+   }
+  },
+  {
+   "id": "g00330",
+   "program": "(((7 ^ 0) / 9.6) - (-(-2))) != ((-18) ^ (-2))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00331",
+   "program": "(7 / (-((-3.06) - 5)))",
+   "expect": {
+    "type": "rational",
+    "value": "350/403"
+   }
+  },
+  {
+   "id": "g00332",
+   "program": "8",
+   "expect": {
+    "type": "int",
+    "value": "8"
+   }
+  },
+  {
+   "id": "g00333",
+   "program": "(-(((-0.389) - (-10)) + 2)) != ((-61.4) + ((-51.8) * 11))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00334",
+   "program": "19 != 1.95",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00335",
+   "program": "((-0.330) + (92.1 ^ 3)) == (-10)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00336",
+   "program": "(5.58 - (-14))",
+   "expect": {
+    "type": "decimal",
+    "value": "19.58"
+   }
+  },
+  {
+   "id": "g00337",
+   "program": "7 <= (((-3) / 14) - 0.762)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00338",
+   "program": "round((8 ^ 3), 4, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "512.0000"
+   }
+  },
+  {
+   "id": "g00339",
+   "program": "((-0.628) / (-0.031))",
+   "expect": {
+    "type": "rational",
+    "value": "628/31"
+   }
+  },
+  {
+   "id": "g00340",
+   "program": "(-19) <= ((0.803 - 14) * (-18))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00341",
+   "program": "(-(-0.143))",
+   "expect": {
+    "type": "decimal",
+    "value": "0.143"
+   }
+  },
+  {
+   "id": "g00342",
+   "program": "round((-(-0.336)), 4, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.3360"
+   }
+  },
+  {
+   "id": "g00343",
+   "program": "((-50.7) ^ (-1)) <= (((-0.222) / 2) - 1)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00344",
+   "program": "round(((-7) + 0.564), 1, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-6.4"
+   }
+  },
+  {
+   "id": "g00345",
+   "program": "0.489",
+   "expect": {
+    "type": "decimal",
+    "value": "0.489"
+   }
+  },
+  {
+   "id": "g00346",
+   "program": "round((3 / (-8)), 0, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "g00347",
+   "program": "((-19) ^ 3)",
+   "expect": {
+    "type": "int",
+    "value": "-6859"
+   }
+  },
+  {
+   "id": "g00348",
+   "program": "(-18.5)",
+   "expect": {
+    "type": "decimal",
+    "value": "-18.5"
+   }
+  },
+  {
+   "id": "g00349",
+   "program": "(13 + (4 - (-3)))",
+   "expect": {
+    "type": "int",
+    "value": "20"
+   }
+  },
+  {
+   "id": "g00350",
+   "program": "round((((-2.78) / (-94.8)) / (-4.76)), 3, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.007"
+   }
+  },
+  {
+   "id": "g00351",
+   "program": "((-7.00) + ((44.1 * 5.80) / 93.3))",
+   "expect": {
+    "type": "rational",
+    "value": "-6622/1555"
+   }
+  },
+  {
+   "id": "g00352",
+   "program": "((2.69 + 15) - (-0)) == ((-19.0) * (9.93 / 8))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00353",
+   "program": "(9.0 + (-1.69))",
+   "expect": {
+    "type": "decimal",
+    "value": "7.31"
+   }
+  },
+  {
+   "id": "g00354",
+   "program": "round((((-9.17) * (0 / 3.3)) - 1), 1, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-1.0"
+   }
+  },
+  {
+   "id": "g00355",
+   "program": "((-7) + 3)",
+   "expect": {
+    "type": "int",
+    "value": "-4"
+   }
+  },
+  {
+   "id": "g00356",
+   "program": "((-8) ^ 1)",
+   "expect": {
+    "type": "int",
+    "value": "-8"
+   }
+  },
+  {
+   "id": "g00357",
+   "program": "(-5)",
+   "expect": {
+    "type": "int",
+    "value": "-5"
+   }
+  },
+  {
+   "id": "g00358",
+   "program": "round((-((-15) - 0.318)), 4, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "15.3180"
+   }
+  },
+  {
+   "id": "g00359",
+   "program": "(4.23 - (0 - 0.349))",
+   "expect": {
+    "type": "decimal",
+    "value": "4.579"
+   }
+  },
+  {
+   "id": "g00360",
+   "program": "(7.54 + ((0.150 + (-13)) - (-0.380)))",
+   "expect": {
+    "type": "decimal",
+    "value": "-4.930"
+   }
+  },
+  {
+   "id": "g00361",
+   "program": "round((((-1) + (-8)) - (-4)), 4, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-5.0000"
+   }
+  },
+  {
+   "id": "g00362",
+   "program": "0.858 > (-1.29)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00363",
+   "program": "(88.9 * 9.3)",
+   "expect": {
+    "type": "decimal",
+    "value": "826.77"
+   }
+  },
+  {
+   "id": "g00364",
+   "program": "((-6.55) + 0.485)",
+   "expect": {
+    "type": "decimal",
+    "value": "-6.065"
+   }
+  },
+  {
+   "id": "g00365",
+   "program": "round((((8.04 * 0.349) * ((-20) + (-17))) + (-10)), 4, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-113.8205"
+   }
+  },
+  {
+   "id": "g00366",
+   "program": "(42.3 + 0.751)",
+   "expect": {
+    "type": "decimal",
+    "value": "43.051"
+   }
+  },
+  {
+   "id": "g00367",
+   "program": "5.70 < (-16)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00368",
+   "program": "(-14)",
+   "expect": {
+    "type": "int",
+    "value": "-14"
+   }
+  },
+  {
+   "id": "g00369",
+   "program": "((0.74 * (-0.991)) - ((-3) / 18.9)) != 0.590",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00370",
+   "program": "(67.5 ^ 0)",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g00371",
+   "program": "4",
+   "expect": {
+    "type": "int",
+    "value": "4"
+   }
+  },
+  {
+   "id": "g00372",
+   "program": "round(15.5, 2, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "15.50"
+   }
+  },
+  {
+   "id": "g00373",
+   "program": "((-16) - (-14.7)) == ((-16) + (0.308 / 2))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00374",
+   "program": "round(15, 2, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "15.00"
+   }
+  },
+  {
+   "id": "g00375",
+   "program": "(9.78 - 20)",
+   "expect": {
+    "type": "decimal",
+    "value": "-10.22"
+   }
+  },
+  {
+   "id": "g00376",
+   "program": "round(((-(-9.48)) - ((-38.5) * (-92.5))), 4, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-3551.7700"
+   }
+  },
+  {
+   "id": "g00377",
+   "program": "round(12, 4, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "12.0000"
+   }
+  },
+  {
+   "id": "g00378",
+   "program": "(-(-20))",
+   "expect": {
+    "type": "int",
+    "value": "20"
+   }
+  },
+  {
+   "id": "g00379",
+   "program": "round(((((-3) * (-12)) + 10) / (((-20) ^ 3) - (-5))), 0, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "g00380",
+   "program": "((-0.754) ^ (-2))",
+   "expect": {
+    "type": "rational",
+    "value": "250000/142129"
+   }
+  },
+  {
+   "id": "g00381",
+   "program": "((3 / 3) - (-0.267))",
+   "expect": {
+    "type": "rational",
+    "value": "1267/1000",
+    "decimal": "1.267"
+   }
+  },
+  {
+   "id": "g00382",
+   "program": "(40.3 ^ (-1))",
+   "expect": {
+    "type": "rational",
+    "value": "10/403"
+   }
+  },
+  {
+   "id": "g00383",
+   "program": "(-((0.742 + 6.28) / ((-20) * 0.257)))",
+   "expect": {
+    "type": "rational",
+    "value": "3511/2570"
+   }
+  },
+  {
+   "id": "g00384",
+   "program": "((-83.0) + (17 ^ (-2))) < (((-15.6) - (-5)) / (-8))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00385",
+   "program": "(-17)",
+   "expect": {
+    "type": "int",
+    "value": "-17"
+   }
+  },
+  {
+   "id": "g00386",
+   "program": "(9 + (-11))",
+   "expect": {
+    "type": "int",
+    "value": "-2"
+   }
+  },
+  {
+   "id": "g00388",
+   "program": "(11 ^ (-1))",
+   "expect": {
+    "type": "rational",
+    "value": "1/11"
+   }
+  },
+  {
+   "id": "g00389",
+   "program": "(((-2) + 5.25) + (-43.2))",
+   "expect": {
+    "type": "decimal",
+    "value": "-39.95"
+   }
+  },
+  {
+   "id": "g00390",
+   "program": "round((-8.79), 1, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-8.8"
+   }
+  },
+  {
+   "id": "g00391",
+   "program": "round((-0.997), 1, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.9"
+   }
+  },
+  {
+   "id": "g00392",
+   "program": "((-0.849) ^ (-2))",
+   "expect": {
+    "type": "rational",
+    "value": "1000000/720801"
+   }
+  },
+  {
+   "id": "g00393",
+   "program": "((-(-77.1)) + 9)",
+   "expect": {
+    "type": "decimal",
+    "value": "86.1"
+   }
+  },
+  {
+   "id": "g00394",
+   "program": "(((-0.30) ^ 3) - 2)",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.027000"
+   }
+  },
+  {
+   "id": "g00395",
+   "program": "round((-20), 2, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-20.00"
+   }
+  },
+  {
+   "id": "g00396",
+   "program": "(-19)",
+   "expect": {
+    "type": "int",
+    "value": "-19"
+   }
+  },
+  {
+   "id": "g00397",
+   "program": "6 <= 0.21",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00398",
+   "program": "((-(-0.671)) + 10) >= 4",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00399",
+   "program": "50.4 < (-12)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00400",
+   "program": "((-20) + (-1))",
+   "expect": {
+    "type": "int",
+    "value": "-21"
+   }
+  },
+  {
+   "id": "g00401",
+   "program": "0.448",
+   "expect": {
+    "type": "decimal",
+    "value": "0.448"
+   }
+  },
+  {
+   "id": "g00402",
+   "program": "(1.72 - (-20)) < ((-20) ^ 3)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00403",
+   "program": "(-65.4)",
+   "expect": {
+    "type": "decimal",
+    "value": "-65.4"
+   }
+  },
+  {
+   "id": "g00404",
+   "program": "round((((10 * 8.6) / ((-6.97) ^ 2)) + ((-17) * (-4.39))), 0, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "77"
+   }
+  },
+  {
+   "id": "g00405",
+   "program": "round((-6), 2, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-6.00"
+   }
+  },
+  {
+   "id": "g00406",
+   "program": "(-((-0.565) * 7.37))",
+   "expect": {
+    "type": "decimal",
+    "value": "4.16405"
+   }
+  },
+  {
+   "id": "g00407",
+   "program": "14",
+   "expect": {
+    "type": "int",
+    "value": "14"
+   }
+  },
+  {
+   "id": "g00408",
+   "program": "76.9",
+   "expect": {
+    "type": "decimal",
+    "value": "76.9"
+   }
+  },
+  {
+   "id": "g00409",
+   "program": "(-(20 / (-4)))",
+   "expect": {
+    "type": "rational",
+    "value": "5",
+    "decimal": "5"
+   }
+  },
+  {
+   "id": "g00410",
+   "program": "((((-74.4) - 6.8) * (0.758 - (-7.44))) / (0.567 - (-58.1)))",
+   "expect": {
+    "type": "rational",
+    "value": "-16396/1445"
+   }
+  },
+  {
+   "id": "g00411",
+   "program": "(-0.45)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.45"
+   }
+  },
+  {
+   "id": "g00412",
+   "program": "round(13, 3, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "13.000"
+   }
+  },
+  {
+   "id": "g00413",
+   "program": "10",
+   "expect": {
+    "type": "int",
+    "value": "10"
+   }
+  },
+  {
+   "id": "g00414",
+   "program": "((5.79 * 20) + (6 - 8.60))",
+   "expect": {
+    "type": "decimal",
+    "value": "113.20"
+   }
+  },
+  {
+   "id": "g00415",
+   "program": "(-0.854)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.854"
+   }
+  },
+  {
+   "id": "g00416",
+   "program": "(-7) == ((-(-0.220)) * (5 / 13))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00417",
+   "program": "((7.72 - 10) - ((-68.7) * (-12)))",
+   "expect": {
+    "type": "decimal",
+    "value": "-826.68"
+   }
+  },
+  {
+   "id": "g00418",
+   "program": "round((8 ^ 1), 3, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "8.000"
+   }
+  },
+  {
+   "id": "g00419",
+   "program": "((4.31 / (-2.93)) + 0.843)",
+   "expect": {
+    "type": "rational",
+    "value": "-184001/293000"
+   }
+  },
+  {
+   "id": "g00420",
+   "program": "((-16) / (-10)) <= (0.147 ^ (-2))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00421",
+   "program": "(-30.9)",
+   "expect": {
+    "type": "decimal",
+    "value": "-30.9"
+   }
+  },
+  {
+   "id": "g00422",
+   "program": "(-54.5)",
+   "expect": {
+    "type": "decimal",
+    "value": "-54.5"
+   }
+  },
+  {
+   "id": "g00423",
+   "program": "(3.07 + 16)",
+   "expect": {
+    "type": "decimal",
+    "value": "19.07"
+   }
+  },
+  {
+   "id": "g00424",
+   "program": "(-2)",
+   "expect": {
+    "type": "int",
+    "value": "-2"
+   }
+  },
+  {
+   "id": "g00425",
+   "program": "((-(0.713 + 11)) + (((-19) + 15) + ((-14) ^ 2))) <= (6 / 3)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00426",
+   "program": "9",
+   "expect": {
+    "type": "int",
+    "value": "9"
+   }
+  },
+  {
+   "id": "g00427",
+   "program": "17",
+   "expect": {
+    "type": "int",
+    "value": "17"
+   }
+  },
+  {
+   "id": "g00428",
+   "program": "(-0.416)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.416"
+   }
+  },
+  {
+   "id": "g00429",
+   "program": "(10 + (-10.0)) == (-10)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00430",
+   "program": "(((-15) * (-2.30)) + (5.33 * (10 / 0.667))) <= 0.779",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00431",
+   "program": "(12 - ((-5.8) ^ (-1)))",
+   "expect": {
+    "type": "rational",
+    "value": "353/29"
+   }
+  },
+  {
+   "id": "g00432",
+   "program": "((-3) / (-2))",
+   "expect": {
+    "type": "rational",
+    "value": "3/2",
+    "decimal": "1.5"
+   }
+  },
+  {
+   "id": "g00433",
+   "program": "round((((-7) + ((-4.46) * (-5))) - (-8.73)), 2, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "24.03"
+   }
+  },
+  {
+   "id": "g00434",
+   "program": "((-20) / (-59.1))",
+   "expect": {
+    "type": "rational",
+    "value": "200/591"
+   }
+  },
+  {
+   "id": "g00435",
+   "program": "round((-0.039), 1, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.1"
+   }
+  },
+  {
+   "id": "g00436",
+   "program": "(0.400 ^ 0)",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g00437",
+   "program": "round((5.77 / ((16 ^ 2) - (2 + (-10)))), 0, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "g00438",
+   "program": "2",
+   "expect": {
+    "type": "int",
+    "value": "2"
+   }
+  },
+  {
+   "id": "g00439",
+   "program": "((-2) - (-0.592)) <= ((-12) * (9 / 7))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00440",
+   "program": "round((-19), 3, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-19.000"
+   }
+  },
+  {
+   "id": "g00441",
+   "program": "round((14 - (-3.76)), 3, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "17.760"
+   }
+  },
+  {
+   "id": "g00442",
+   "program": "(-1)",
+   "expect": {
+    "type": "int",
+    "value": "-1"
+   }
+  },
+  {
+   "id": "g00443",
+   "program": "(((-15) * ((-11) * 3)) - ((-16) / (16 ^ 1))) <= 4",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00444",
+   "program": "(0.434 / ((62.6 / (-16)) * (-0.29)))",
+   "expect": {
+    "type": "rational",
+    "value": "3472/9077"
+   }
+  },
+  {
+   "id": "g00445",
+   "program": "8",
+   "expect": {
+    "type": "int",
+    "value": "8"
+   }
+  },
+  {
+   "id": "g00446",
+   "program": "((-8) ^ 0)",
+   "expect": {
+    "type": "int",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g00447",
+   "program": "((-45.4) * 6)",
+   "expect": {
+    "type": "decimal",
+    "value": "-272.4"
+   }
+  },
+  {
+   "id": "g00448",
+   "program": "(1 * (3.39 ^ 1))",
+   "expect": {
+    "type": "decimal",
+    "value": "3.39"
+   }
+  },
+  {
+   "id": "g00449",
+   "program": "(-16)",
+   "expect": {
+    "type": "int",
+    "value": "-16"
+   }
+  },
+  {
+   "id": "g00450",
+   "program": "(6 * ((-(-10)) + ((-9) * (-4.39)))) >= (((-6.25) + 9.23) + 19)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00451",
+   "program": "((9.08 / 0.201) * (0.608 + 11))",
+   "expect": {
+    "type": "rational",
+    "value": "2635016/5025"
+   }
+  },
+  {
+   "id": "g00452",
+   "program": "(8.30 + 84.6)",
+   "expect": {
+    "type": "decimal",
+    "value": "92.90"
+   }
+  },
+  {
+   "id": "g00453",
+   "program": "(((-4) + (-0.698)) * ((-0.625) - 8.62)) != (-0.034)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00454",
+   "program": "(((-39.7) + (-2)) - 0.558)",
+   "expect": {
+    "type": "decimal",
+    "value": "-42.258"
+   }
+  },
+  {
+   "id": "g00455",
+   "program": "(0.734 + (-0.439))",
+   "expect": {
+    "type": "decimal",
+    "value": "0.295"
+   }
+  },
+  {
+   "id": "g00456",
+   "program": "(-13)",
+   "expect": {
+    "type": "int",
+    "value": "-13"
+   }
+  },
+  {
+   "id": "g00457",
+   "program": "(11 / (-0.635))",
+   "expect": {
+    "type": "rational",
+    "value": "-2200/127"
+   }
+  },
+  {
+   "id": "g00458",
+   "program": "((-0.461) ^ (-2))",
+   "expect": {
+    "type": "rational",
+    "value": "1000000/212521"
+   }
+  },
+  {
+   "id": "g00459",
+   "program": "(-6.18) < ((-0.264) + ((-20) ^ 2))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00460",
+   "program": "(-(((-91.8) - 12) - (77.7 ^ 3))) != 6",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00461",
+   "program": "(10 + (-7.17))",
+   "expect": {
+    "type": "decimal",
+    "value": "2.83"
+   }
+  },
+  {
+   "id": "g00462",
+   "program": "(((-9.00) / (-72.4)) * 10)",
+   "expect": {
+    "type": "rational",
+    "value": "225/181"
+   }
+  },
+  {
+   "id": "g00463",
+   "program": "((-4) ^ 1)",
+   "expect": {
+    "type": "int",
+    "value": "-4"
+   }
+  },
+  {
+   "id": "g00464",
+   "program": "((62.3 / 12) - (0.656 ^ 2))",
+   "expect": {
+    "type": "rational",
+    "value": "1785499/375000"
+   }
+  },
+  {
+   "id": "g00465",
+   "program": "19",
+   "expect": {
+    "type": "int",
+    "value": "19"
+   }
+  },
+  {
+   "id": "g00466",
+   "program": "((-6) / (-77.0)) > (-12)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00467",
+   "program": "round((0.798 ^ 3), 2, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.51"
+   }
+  },
+  {
+   "id": "g00468",
+   "program": "((-5.62) / 10)",
+   "expect": {
+    "type": "rational",
+    "value": "-281/500",
+    "decimal": "-0.562"
+   }
+  },
+  {
+   "id": "g00469",
+   "program": "round((-6.11), 0, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-6"
+   }
+  },
+  {
+   "id": "g00470",
+   "program": "(-0.391)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.391"
+   }
+  },
+  {
+   "id": "g00471",
+   "program": "(-85.2)",
+   "expect": {
+    "type": "decimal",
+    "value": "-85.2"
+   }
+  },
+  {
+   "id": "g00472",
+   "program": "(-11) == (-13)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00473",
+   "program": "(4 - 11)",
+   "expect": {
+    "type": "int",
+    "value": "-7"
+   }
+  },
+  {
+   "id": "g00474",
+   "program": "((0.434 + (-5)) + 2)",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.566"
+   }
+  },
+  {
+   "id": "g00475",
+   "program": "(-8) == ((-1.91) ^ (-2))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00476",
+   "program": "round(((-7) + (-0.371)), 4, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-7.3710"
+   }
+  },
+  {
+   "id": "g00477",
+   "program": "(-19)",
+   "expect": {
+    "type": "int",
+    "value": "-19"
+   }
+  },
+  {
+   "id": "g00478",
+   "program": "round((9 * (-16)), 3, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-144.000"
+   }
+  },
+  {
+   "id": "g00479",
+   "program": "5",
+   "expect": {
+    "type": "int",
+    "value": "5"
+   }
+  },
+  {
+   "id": "g00480",
+   "program": "(((-15) + 0.555) * ((-9) / 46.0))",
+   "expect": {
+    "type": "rational",
+    "value": "26001/9200"
+   }
+  },
+  {
+   "id": "g00481",
+   "program": "(((-0.793) ^ (-2)) * (8.49 / 0.092)) < (48.1 ^ 0)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00482",
+   "program": "round((0.09 + 0.684), 4, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.7740"
+   }
+  },
+  {
+   "id": "g00483",
+   "program": "(-((20 ^ 0) / (-16)))",
+   "expect": {
+    "type": "rational",
+    "value": "1/16",
+    "decimal": "0.0625"
+   }
+  },
+  {
+   "id": "g00484",
+   "program": "round((-6.76), 4, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-6.7600"
+   }
+  },
+  {
+   "id": "g00485",
+   "program": "((-0.950) ^ 1) < (((-3.08) / 0.532) + (-65.1))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00486",
+   "program": "((-10) ^ 3)",
+   "expect": {
+    "type": "int",
+    "value": "-1000"
+   }
+  },
+  {
+   "id": "g00488",
+   "program": "((-69.9) / 7) <= ((-3.00) * (-59.1))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00489",
+   "program": "(0.010 ^ 1)",
+   "expect": {
+    "type": "decimal",
+    "value": "0.010"
+   }
+  },
+  {
+   "id": "g00490",
+   "program": "round(14, 2, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "14.00"
+   }
+  },
+  {
+   "id": "g00491",
+   "program": "((8.27 - (-14)) + ((-14) / 18)) < (-14)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00492",
+   "program": "((-4.81) + (-4))",
+   "expect": {
+    "type": "decimal",
+    "value": "-8.81"
+   }
+  },
+  {
+   "id": "g00493",
+   "program": "(-9.32)",
+   "expect": {
+    "type": "decimal",
+    "value": "-9.32"
+   }
+  },
+  {
+   "id": "g00494",
+   "program": "(16 - (((-13) ^ (-1)) * ((-2.79) + (-0.960))))",
+   "expect": {
+    "type": "rational",
+    "value": "817/52"
+   }
+  },
+  {
+   "id": "g00495",
+   "program": "(-20)",
+   "expect": {
+    "type": "int",
+    "value": "-20"
+   }
+  },
+  {
+   "id": "g00496",
+   "program": "56.4",
+   "expect": {
+    "type": "decimal",
+    "value": "56.4"
+   }
+  },
+  {
+   "id": "g00497",
+   "program": "(-0.745)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.745"
+   }
+  },
+  {
+   "id": "g00498",
+   "program": "((-15) - 7)",
+   "expect": {
+    "type": "int",
+    "value": "-22"
+   }
+  },
+  {
+   "id": "g00499",
+   "program": "round((0.771 * 10), 2, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "7.71"
+   }
+  },
+  {
+   "id": "g00500",
+   "program": "round((-12), 3, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-12.000"
+   }
+  },
+  {
+   "id": "g00501",
+   "program": "round(((-0.896) ^ 2), 4, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.8029"
+   }
+  },
+  {
+   "id": "g00502",
+   "program": "(0.21 ^ 3)",
+   "expect": {
+    "type": "decimal",
+    "value": "0.009261"
+   }
+  },
+  {
+   "id": "g00503",
+   "program": "((((-2) ^ 2) * 2) * (2.26 ^ 1))",
+   "expect": {
+    "type": "decimal",
+    "value": "18.08"
+   }
+  },
+  {
+   "id": "g00504",
+   "program": "((-0.255) + ((-7.14) + (-1)))",
+   "expect": {
+    "type": "decimal",
+    "value": "-8.395"
+   }
+  },
+  {
+   "id": "g00505",
+   "program": "79.5",
+   "expect": {
+    "type": "decimal",
+    "value": "79.5"
+   }
+  },
+  {
+   "id": "g00506",
+   "program": "92.4",
+   "expect": {
+    "type": "decimal",
+    "value": "92.4"
+   }
+  },
+  {
+   "id": "g00507",
+   "program": "(-70.9)",
+   "expect": {
+    "type": "decimal",
+    "value": "-70.9"
+   }
+  },
+  {
+   "id": "g00508",
+   "program": "round((-12), 1, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-12.0"
+   }
+  },
+  {
+   "id": "g00509",
+   "program": "(18 ^ 0)",
+   "expect": {
+    "type": "int",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g00510",
+   "program": "round(((-94.7) + (-0.431)), 3, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-95.131"
+   }
+  },
+  {
+   "id": "g00511",
+   "program": "6 == ((-73.2) ^ 1)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00512",
+   "program": "(27.2 + 65.2)",
+   "expect": {
+    "type": "decimal",
+    "value": "92.4"
+   }
+  },
+  {
+   "id": "g00513",
+   "program": "round(12, 4, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "12.0000"
+   }
+  },
+  {
+   "id": "g00514",
+   "program": "round((((-4.68) ^ 1) + ((-80.9) * 13)), 3, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-1056.380"
+   }
+  },
+  {
+   "id": "g00515",
+   "program": "((19 + (-0.939)) * 57.2)",
+   "expect": {
+    "type": "decimal",
+    "value": "1033.0892"
+   }
+  },
+  {
+   "id": "g00516",
+   "program": "(0.2 / (-53.8))",
+   "expect": {
+    "type": "rational",
+    "value": "-1/269"
+   }
+  },
+  {
+   "id": "g00517",
+   "program": "3.47",
+   "expect": {
+    "type": "decimal",
+    "value": "3.47"
+   }
+  },
+  {
+   "id": "g00518",
+   "program": "(-((0.264 / (-0.534)) * (7.9 ^ 3)))",
+   "expect": {
+    "type": "rational",
+    "value": "5423429/22250"
+   }
+  },
+  {
+   "id": "g00519",
+   "program": "5.57",
+   "expect": {
+    "type": "decimal",
+    "value": "5.57"
+   }
+  },
+  {
+   "id": "g00520",
+   "program": "(40.7 + (-15))",
+   "expect": {
+    "type": "decimal",
+    "value": "25.7"
+   }
+  },
+  {
+   "id": "g00521",
+   "program": "(((0.748 ^ 2) - (0 + (-7.15))) - 2)",
+   "expect": {
+    "type": "decimal",
+    "value": "5.709504"
+   }
+  },
+  {
+   "id": "g00522",
+   "program": "((-19) / 0.669)",
+   "expect": {
+    "type": "rational",
+    "value": "-19000/669"
+   }
+  },
+  {
+   "id": "g00523",
+   "program": "round(((-5) - (3.6 ^ 0)), 3, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-6.000"
+   }
+  },
+  {
+   "id": "g00524",
+   "program": "(1.30 ^ (-1))",
+   "expect": {
+    "type": "rational",
+    "value": "10/13"
+   }
+  },
+  {
+   "id": "g00525",
+   "program": "round((-12), 0, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-12"
+   }
+  },
+  {
+   "id": "g00526",
+   "program": "((-0.335) * (-3))",
+   "expect": {
+    "type": "decimal",
+    "value": "1.005"
+   }
+  },
+  {
+   "id": "g00527",
+   "program": "(-6)",
+   "expect": {
+    "type": "int",
+    "value": "-6"
+   }
+  },
+  {
+   "id": "g00528",
+   "program": "17",
+   "expect": {
+    "type": "int",
+    "value": "17"
+   }
+  },
+  {
+   "id": "g00529",
+   "program": "(-4.00)",
+   "expect": {
+    "type": "decimal",
+    "value": "-4.00"
+   }
+  },
+  {
+   "id": "g00530",
+   "program": "((-4) + 14)",
+   "expect": {
+    "type": "int",
+    "value": "10"
+   }
+  },
+  {
+   "id": "g00531",
+   "program": "round(23.7, 1, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "23.7"
+   }
+  },
+  {
+   "id": "g00532",
+   "program": "((-0.579) - 13)",
+   "expect": {
+    "type": "decimal",
+    "value": "-13.579"
+   }
+  },
+  {
+   "id": "g00533",
+   "program": "((-7) ^ 1) <= (((-8) ^ 1) - (2.83 * (-17)))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00534",
+   "program": "(6.51 - 6.7)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.19"
+   }
+  },
+  {
+   "id": "g00535",
+   "program": "(-(9.68 / 9.14))",
+   "expect": {
+    "type": "rational",
+    "value": "-484/457"
+   }
+  },
+  {
+   "id": "g00536",
+   "program": "((-16) + ((-99.1) ^ 1)) > ((-17) ^ (-2))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00537",
+   "program": "(-40.2) > ((-4) / (-15))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00538",
+   "program": "round((-9), 4, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-9.0000"
+   }
+  },
+  {
+   "id": "g00539",
+   "program": "round(((-10.0) ^ (-1)), 0, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-1"
+   }
+  },
+  {
+   "id": "g00540",
+   "program": "(-14)",
+   "expect": {
+    "type": "int",
+    "value": "-14"
+   }
+  },
+  {
+   "id": "g00541",
+   "program": "(((10 + 0.598) - 65.7) - (((-0.488) / 0.372) * (-0.082))) < ((11 + 11) + (0.993 / (-99.9)))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00542",
+   "program": "(-5)",
+   "expect": {
+    "type": "int",
+    "value": "-5"
+   }
+  },
+  {
+   "id": "g00543",
+   "program": "24.9",
+   "expect": {
+    "type": "decimal",
+    "value": "24.9"
+   }
+  },
+  {
+   "id": "g00544",
+   "program": "((-35.5) / (-12.6))",
+   "expect": {
+    "type": "rational",
+    "value": "355/126"
+   }
+  },
+  {
+   "id": "g00545",
+   "program": "((-16) * 17) <= 0.363",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00546",
+   "program": "(-14)",
+   "expect": {
+    "type": "int",
+    "value": "-14"
+   }
+  },
+  {
+   "id": "g00547",
+   "program": "16",
+   "expect": {
+    "type": "int",
+    "value": "16"
+   }
+  },
+  {
+   "id": "g00548",
+   "program": "(-(-(-5.76)))",
+   "expect": {
+    "type": "decimal",
+    "value": "-5.76"
+   }
+  },
+  {
+   "id": "g00549",
+   "program": "0.253",
+   "expect": {
+    "type": "decimal",
+    "value": "0.253"
+   }
+  },
+  {
+   "id": "g00550",
+   "program": "(-(0.21 ^ 0)) <= (16.9 - ((-44.0) * (-93.0)))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00551",
+   "program": "(8 - ((-0.37) - (-17)))",
+   "expect": {
+    "type": "decimal",
+    "value": "-8.63"
+   }
+  },
+  {
+   "id": "g00552",
+   "program": "round((-12), 2, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-12.00"
+   }
+  },
+  {
+   "id": "g00553",
+   "program": "(-10)",
+   "expect": {
+    "type": "int",
+    "value": "-10"
+   }
+  },
+  {
+   "id": "g00554",
+   "program": "((-17) / (-12))",
+   "expect": {
+    "type": "rational",
+    "value": "17/12"
+   }
+  },
+  {
+   "id": "g00555",
+   "program": "(18 + 13)",
+   "expect": {
+    "type": "int",
+    "value": "31"
+   }
+  },
+  {
+   "id": "g00556",
+   "program": "(-((-2) ^ (-1))) == ((-(-10.4)) / ((-6.57) - (-2)))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00557",
+   "program": "(-0.369)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.369"
+   }
+  },
+  {
+   "id": "g00558",
+   "program": "11",
+   "expect": {
+    "type": "int",
+    "value": "11"
+   }
+  },
+  {
+   "id": "g00559",
+   "program": "round(0.127, 4, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.1270"
+   }
+  },
+  {
+   "id": "g00560",
+   "program": "7",
+   "expect": {
+    "type": "int",
+    "value": "7"
+   }
+  },
+  {
+   "id": "g00561",
+   "program": "(1 ^ 0) < (2.20 - (-8.28))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00562",
+   "program": "((-21.6) ^ 0)",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g00563",
+   "program": "0.695 == 7",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00564",
+   "program": "(-16) < (-0.245)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00565",
+   "program": "((-5) ^ 1)",
+   "expect": {
+    "type": "int",
+    "value": "-5"
+   }
+  },
+  {
+   "id": "g00566",
+   "program": "((-1.46) + 16)",
+   "expect": {
+    "type": "decimal",
+    "value": "14.54"
+   }
+  },
+  {
+   "id": "g00567",
+   "program": "(-(-4.31))",
+   "expect": {
+    "type": "decimal",
+    "value": "4.31"
+   }
+  },
+  {
+   "id": "g00568",
+   "program": "(4.83 * (-45.7))",
+   "expect": {
+    "type": "decimal",
+    "value": "-220.731"
+   }
+  },
+  {
+   "id": "g00569",
+   "program": "((-9.51) ^ 1)",
+   "expect": {
+    "type": "decimal",
+    "value": "-9.51"
+   }
+  },
+  {
+   "id": "g00570",
+   "program": "(-(-16)) < ((-0.210) ^ (-1))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00571",
+   "program": "(-(-11))",
+   "expect": {
+    "type": "int",
+    "value": "11"
+   }
+  },
+  {
+   "id": "g00572",
+   "program": "(((-1.95) / (-79.1)) / ((-41.2) + 8))",
+   "expect": {
+    "type": "rational",
+    "value": "-195/262612"
+   }
+  },
+  {
+   "id": "g00573",
+   "program": "((-13) + (-0.067))",
+   "expect": {
+    "type": "decimal",
+    "value": "-13.067"
+   }
+  },
+  {
+   "id": "g00574",
+   "program": "(-12)",
+   "expect": {
+    "type": "int",
+    "value": "-12"
+   }
+  },
+  {
+   "id": "g00575",
+   "program": "round(((-6.7) / (-9)), 1, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.7"
+   }
+  },
+  {
+   "id": "g00576",
+   "program": "9",
+   "expect": {
+    "type": "int",
+    "value": "9"
+   }
+  },
+  {
+   "id": "g00577",
+   "program": "0.819",
+   "expect": {
+    "type": "decimal",
+    "value": "0.819"
+   }
+  },
+  {
+   "id": "g00578",
+   "program": "round((0.889 * 8), 2, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "7.12"
+   }
+  },
+  {
+   "id": "g00579",
+   "program": "(14 + (-2.79))",
+   "expect": {
+    "type": "decimal",
+    "value": "11.21"
+   }
+  },
+  {
+   "id": "g00580",
+   "program": "(((-(-3)) * (13 - (-17))) / (-0.5)) <= 8.63",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00581",
+   "program": "((-5) + (-0.398))",
+   "expect": {
+    "type": "decimal",
+    "value": "-5.398"
+   }
+  },
+  {
+   "id": "g00582",
+   "program": "2.92",
+   "expect": {
+    "type": "decimal",
+    "value": "2.92"
+   }
+  },
+  {
+   "id": "g00583",
+   "program": "round((-8), 1, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-8.0"
+   }
+  },
+  {
+   "id": "g00584",
+   "program": "(-16)",
+   "expect": {
+    "type": "int",
+    "value": "-16"
+   }
+  },
+  {
+   "id": "g00585",
+   "program": "((14 * 0.988) - (-10))",
+   "expect": {
+    "type": "decimal",
+    "value": "23.832"
+   }
+  },
+  {
+   "id": "g00586",
+   "program": "(-0.99) >= (0 + (0.964 * (-3.84)))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00588",
+   "program": "round(((-12) - (-0.897)), 3, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-11.103"
+   }
+  },
+  {
+   "id": "g00589",
+   "program": "((18 ^ 0) * ((-2) + ((-0.696) - 7.81)))",
+   "expect": {
+    "type": "decimal",
+    "value": "-10.506"
+   }
+  },
+  {
+   "id": "g00590",
+   "program": "(13 - 79.7)",
+   "expect": {
+    "type": "decimal",
+    "value": "-66.7"
+   }
+  },
+  {
+   "id": "g00591",
+   "program": "(0 / (0.502 * ((-10.5) * 7)))",
+   "expect": {
+    "type": "rational",
+    "value": "0",
+    "decimal": "0"
+   }
+  },
+  {
+   "id": "g00592",
+   "program": "(-9.85)",
+   "expect": {
+    "type": "decimal",
+    "value": "-9.85"
+   }
+  },
+  {
+   "id": "g00593",
+   "program": "round(((-13) ^ 3), 2, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2197.00"
+   }
+  },
+  {
+   "id": "g00594",
+   "program": "round(((-0.074) ^ (-2)), 3, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "182.616"
+   }
+  },
+  {
+   "id": "g00595",
+   "program": "20",
+   "expect": {
+    "type": "int",
+    "value": "20"
+   }
+  },
+  {
+   "id": "g00596",
+   "program": "(((-7) ^ 1) - (-6))",
+   "expect": {
+    "type": "int",
+    "value": "-1"
+   }
+  },
+  {
+   "id": "g00597",
+   "program": "((4.31 / 14) * (10 - (-81.4))) <= (((-13) / 18) / ((-1) ^ 1))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00598",
+   "program": "round(((8.30 * 10) * 0), 2, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.00"
+   }
+  },
+  {
+   "id": "g00599",
+   "program": "((-0.163) ^ 0) > (((-0.41) * (-15)) + ((-5) ^ 3))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00600",
+   "program": "((-58.3) + 2)",
+   "expect": {
+    "type": "decimal",
+    "value": "-56.3"
+   }
+  },
+  {
+   "id": "g00601",
+   "program": "7.63",
+   "expect": {
+    "type": "decimal",
+    "value": "7.63"
+   }
+  },
+  {
+   "id": "g00602",
+   "program": "(-(-0.739))",
+   "expect": {
+    "type": "decimal",
+    "value": "0.739"
+   }
+  },
+  {
+   "id": "g00603",
+   "program": "((-(-0.07)) * (5.82 * (-81.7)))",
+   "expect": {
+    "type": "decimal",
+    "value": "-33.28458"
+   }
+  },
+  {
+   "id": "g00604",
+   "program": "(-(8.15 ^ (-2)))",
+   "expect": {
+    "type": "rational",
+    "value": "-400/26569"
+   }
+  },
+  {
+   "id": "g00605",
+   "program": "0",
+   "expect": {
+    "type": "int",
+    "value": "0"
+   }
+  },
+  {
+   "id": "g00606",
+   "program": "(-0.038)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.038"
+   }
+  },
+  {
+   "id": "g00607",
+   "program": "round((3.48 ^ 1), 0, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "3"
+   }
+  },
+  {
+   "id": "g00608",
+   "program": "round((-0.055), 4, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.0550"
+   }
+  },
+  {
+   "id": "g00609",
+   "program": "(3 - (((-42.6) + 20) * (7 - 0.406)))",
+   "expect": {
+    "type": "decimal",
+    "value": "152.0244"
+   }
+  },
+  {
+   "id": "g00610",
+   "program": "((-0.569) ^ 3)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.184220009"
+   }
+  },
+  {
+   "id": "g00611",
+   "program": "round(0.948, 1, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.9"
+   }
+  },
+  {
+   "id": "g00612",
+   "program": "((0.899 ^ 0) / ((-46.5) ^ 0))",
+   "expect": {
+    "type": "rational",
+    "value": "1",
+    "decimal": "1"
+   }
+  },
+  {
+   "id": "g00613",
+   "program": "(-63.5)",
+   "expect": {
+    "type": "decimal",
+    "value": "-63.5"
+   }
+  },
+  {
+   "id": "g00614",
+   "program": "(((-75.0) ^ 3) + (-9))",
+   "expect": {
+    "type": "decimal",
+    "value": "-421884.000"
+   }
+  },
+  {
+   "id": "g00615",
+   "program": "(8 + ((-14) * 3))",
+   "expect": {
+    "type": "int",
+    "value": "-34"
+   }
+  },
+  {
+   "id": "g00616",
+   "program": "(73.6 + (-(-6.43)))",
+   "expect": {
+    "type": "decimal",
+    "value": "80.03"
+   }
+  },
+  {
+   "id": "g00617",
+   "program": "((-11) * (73.4 - (-18))) >= (-4.19)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00618",
+   "program": "(-2)",
+   "expect": {
+    "type": "int",
+    "value": "-2"
+   }
+  },
+  {
+   "id": "g00619",
+   "program": "(0.769 ^ 2)",
+   "expect": {
+    "type": "decimal",
+    "value": "0.591361"
+   }
+  },
+  {
+   "id": "g00620",
+   "program": "((-9) * 21.2)",
+   "expect": {
+    "type": "decimal",
+    "value": "-190.8"
+   }
+  },
+  {
+   "id": "g00621",
+   "program": "(6 + ((12 + 48.9) / ((-17) * (-3.69))))",
+   "expect": {
+    "type": "rational",
+    "value": "14576/2091"
+   }
+  },
+  {
+   "id": "g00622",
+   "program": "round(((((-4.04) + (-0.685)) / ((-18) * (-2.65))) - (-6.74)), 3, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "6.641"
+   }
+  },
+  {
+   "id": "g00623",
+   "program": "(-7)",
+   "expect": {
+    "type": "int",
+    "value": "-7"
+   }
+  },
+  {
+   "id": "g00624",
+   "program": "(-((-(-6)) - 11)) <= ((-15) + (-8.99))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00625",
+   "program": "(-85.8)",
+   "expect": {
+    "type": "decimal",
+    "value": "-85.8"
+   }
+  },
+  {
+   "id": "g00626",
+   "program": "(-25.8)",
+   "expect": {
+    "type": "decimal",
+    "value": "-25.8"
+   }
+  },
+  {
+   "id": "g00627",
+   "program": "((-6) - (-0.630)) >= (-0.797)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00628",
+   "program": "(0.41 * (-0.608)) == (((-15) - 23.7) / (9.79 / 0.29))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00629",
+   "program": "((((-16.8) * (-7)) + (-8)) + ((-10) - (-5)))",
+   "expect": {
+    "type": "decimal",
+    "value": "104.6"
+   }
+  },
+  {
+   "id": "g00630",
+   "program": "0.783 >= (5.17 + ((-4) ^ 3))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00631",
+   "program": "((-0.90) - (-0.764))",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.136"
+   }
+  },
+  {
+   "id": "g00632",
+   "program": "round(((-10) ^ (-1)), 1, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.1"
+   }
+  },
+  {
+   "id": "g00633",
+   "program": "1",
+   "expect": {
+    "type": "int",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g00634",
+   "program": "((-2) ^ 0)",
+   "expect": {
+    "type": "int",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g00635",
+   "program": "(13 / 56.1)",
+   "expect": {
+    "type": "rational",
+    "value": "130/561"
+   }
+  },
+  {
+   "id": "g00636",
+   "program": "10",
+   "expect": {
+    "type": "int",
+    "value": "10"
+   }
+  },
+  {
+   "id": "g00637",
+   "program": "round((-18), 2, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-18.00"
+   }
+  },
+  {
+   "id": "g00638",
+   "program": "13",
+   "expect": {
+    "type": "int",
+    "value": "13"
+   }
+  },
+  {
+   "id": "g00639",
+   "program": "((1.73 ^ (-1)) * (-20))",
+   "expect": {
+    "type": "rational",
+    "value": "-2000/173"
+   }
+  },
+  {
+   "id": "g00640",
+   "program": "round((((-(-4)) + ((-1) / 14)) - ((9.48 ^ 3) * (26.5 / (-7)))), 1, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "3229.3"
+   }
+  },
+  {
+   "id": "g00641",
+   "program": "6 > (8 ^ 0)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00642",
+   "program": "(1.47 ^ (-1))",
+   "expect": {
+    "type": "rational",
+    "value": "100/147"
+   }
+  },
+  {
+   "id": "g00643",
+   "program": "round((((3 + (-2)) / ((-0.986) + (-0.630))) * (-((-0.926) / (-2.82)))), 2, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.20"
+   }
+  },
+  {
+   "id": "g00644",
+   "program": "round((0.9 / (-6)), 4, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.1500"
+   }
+  },
+  {
+   "id": "g00645",
+   "program": "((0.428 - (-0.221)) + (-17))",
+   "expect": {
+    "type": "decimal",
+    "value": "-16.351"
+   }
+  },
+  {
+   "id": "g00646",
+   "program": "((-52.3) / (11 + 10)) > (-14)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00647",
+   "program": "round((0.58 + (-(-53.6))), 0, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "54"
+   }
+  },
+  {
+   "id": "g00648",
+   "program": "round((-15), 4, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-15.0000"
+   }
+  },
+  {
+   "id": "g00649",
+   "program": "(0.050 ^ 1)",
+   "expect": {
+    "type": "decimal",
+    "value": "0.050"
+   }
+  },
+  {
+   "id": "g00650",
+   "program": "(-(-14))",
+   "expect": {
+    "type": "int",
+    "value": "14"
+   }
+  },
+  {
+   "id": "g00651",
+   "program": "((-6.57) + (-20))",
+   "expect": {
+    "type": "decimal",
+    "value": "-26.57"
+   }
+  },
+  {
+   "id": "g00652",
+   "program": "round((-9), 3, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-9.000"
+   }
+  },
+  {
+   "id": "g00653",
+   "program": "(20 + (-0.14))",
+   "expect": {
+    "type": "decimal",
+    "value": "19.86"
+   }
+  },
+  {
+   "id": "g00654",
+   "program": "round(8.02, 2, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "8.02"
+   }
+  },
+  {
+   "id": "g00655",
+   "program": "round((-6.70), 1, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-6.7"
+   }
+  },
+  {
+   "id": "g00656",
+   "program": "round(((69.0 ^ 0) + (-20)), 3, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-19.000"
+   }
+  },
+  {
+   "id": "g00657",
+   "program": "(-1.70)",
+   "expect": {
+    "type": "decimal",
+    "value": "-1.70"
+   }
+  },
+  {
+   "id": "g00658",
+   "program": "(20 - 67.6)",
+   "expect": {
+    "type": "decimal",
+    "value": "-47.6"
+   }
+  },
+  {
+   "id": "g00659",
+   "program": "round(((((-14) * 7.97) * (5 ^ 3)) - (((-2) / (-71.6)) / ((-50.8) ^ (-2)))), 4, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-14019.5850"
+   }
+  },
+  {
+   "id": "g00660",
+   "program": "7.91",
+   "expect": {
+    "type": "decimal",
+    "value": "7.91"
+   }
+  },
+  {
+   "id": "g00661",
+   "program": "round(((-2.94) / 28.0), 4, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.1050"
+   }
+  },
+  {
+   "id": "g00662",
+   "program": "(-16) > (9 ^ (-2))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00663",
+   "program": "(-(96.2 ^ 1))",
+   "expect": {
+    "type": "decimal",
+    "value": "-96.2"
+   }
+  },
+  {
+   "id": "g00664",
+   "program": "(22.8 * 5.46)",
+   "expect": {
+    "type": "decimal",
+    "value": "124.488"
+   }
+  },
+  {
+   "id": "g00665",
+   "program": "((-0.560) * 5.85)",
+   "expect": {
+    "type": "decimal",
+    "value": "-3.27600"
+   }
+  },
+  {
+   "id": "g00666",
+   "program": "(-7.34)",
+   "expect": {
+    "type": "decimal",
+    "value": "-7.34"
+   }
+  },
+  {
+   "id": "g00667",
+   "program": "0.162",
+   "expect": {
+    "type": "decimal",
+    "value": "0.162"
+   }
+  },
+  {
+   "id": "g00668",
+   "program": "(-((0.907 ^ (-2)) + ((-0.281) + 15))) >= (-2)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00669",
+   "program": "round(((15 ^ 3) + ((-3.47) * 8)), 1, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "3347.2"
+   }
+  },
+  {
+   "id": "g00670",
+   "program": "(-16)",
+   "expect": {
+    "type": "int",
+    "value": "-16"
+   }
+  },
+  {
+   "id": "g00671",
+   "program": "(((-7) ^ 1) + 1)",
+   "expect": {
+    "type": "int",
+    "value": "-6"
+   }
+  },
+  {
+   "id": "g00672",
+   "program": "(-(-7.12))",
+   "expect": {
+    "type": "decimal",
+    "value": "7.12"
+   }
+  },
+  {
+   "id": "g00673",
+   "program": "(0.356 ^ 1)",
+   "expect": {
+    "type": "decimal",
+    "value": "0.356"
+   }
+  },
+  {
+   "id": "g00674",
+   "program": "((-18) ^ 0)",
+   "expect": {
+    "type": "int",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g00675",
+   "program": "((-(-18)) - ((-2) - 17))",
+   "expect": {
+    "type": "int",
+    "value": "37"
+   }
+  },
+  {
+   "id": "g00676",
+   "program": "round(2, 4, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2.0000"
+   }
+  },
+  {
+   "id": "g00677",
+   "program": "20",
+   "expect": {
+    "type": "int",
+    "value": "20"
+   }
+  },
+  {
+   "id": "g00678",
+   "program": "round(12, 4, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "12.0000"
+   }
+  },
+  {
+   "id": "g00679",
+   "program": "round((-(-4)), 1, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "4.0"
+   }
+  },
+  {
+   "id": "g00680",
+   "program": "round((((-22.4) - 9.19) - ((-85.2) / (-8.27))), 3, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-41.892"
+   }
+  },
+  {
+   "id": "g00681",
+   "program": "4",
+   "expect": {
+    "type": "int",
+    "value": "4"
+   }
+  },
+  {
+   "id": "g00682",
+   "program": "((-82.9) + 8.98)",
+   "expect": {
+    "type": "decimal",
+    "value": "-73.92"
+   }
+  },
+  {
+   "id": "g00683",
+   "program": "(-0.476)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.476"
+   }
+  },
+  {
+   "id": "g00684",
+   "program": "(12 - (-0.027))",
+   "expect": {
+    "type": "decimal",
+    "value": "12.027"
+   }
+  },
+  {
+   "id": "g00685",
+   "program": "((((-10) * (-34.9)) / 0.764) * (-((-0.694) ^ 2)))",
+   "expect": {
+    "type": "rational",
+    "value": "-42022741/191000"
+   }
+  },
+  {
+   "id": "g00686",
+   "program": "(-((-1) / (-75.1)))",
+   "expect": {
+    "type": "rational",
+    "value": "-10/751"
+   }
+  },
+  {
+   "id": "g00688",
+   "program": "(-((0.452 + (-95.8)) + ((-2) - (-7))))",
+   "expect": {
+    "type": "decimal",
+    "value": "90.348"
+   }
+  },
+  {
+   "id": "g00689",
+   "program": "((-6) - (-99.9))",
+   "expect": {
+    "type": "decimal",
+    "value": "93.9"
+   }
+  },
+  {
+   "id": "g00690",
+   "program": "7.71",
+   "expect": {
+    "type": "decimal",
+    "value": "7.71"
+   }
+  },
+  {
+   "id": "g00691",
+   "program": "((46.3 / 13) - ((-3.49) ^ 3)) >= ((-16) ^ 3)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00692",
+   "program": "(-(-0.427))",
+   "expect": {
+    "type": "decimal",
+    "value": "0.427"
+   }
+  },
+  {
+   "id": "g00693",
+   "program": "(0.214 * (-6))",
+   "expect": {
+    "type": "decimal",
+    "value": "-1.284"
+   }
+  },
+  {
+   "id": "g00694",
+   "program": "(17 - ((54.9 * (-7.51)) - (0.194 ^ 2)))",
+   "expect": {
+    "type": "decimal",
+    "value": "429.336636"
+   }
+  },
+  {
+   "id": "g00695",
+   "program": "(12 - 0.777)",
+   "expect": {
+    "type": "decimal",
+    "value": "11.223"
+   }
+  },
+  {
+   "id": "g00696",
+   "program": "((13 ^ (-1)) - (-6)) < (66.3 ^ (-2))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00697",
+   "program": "((-15) * (-5.29))",
+   "expect": {
+    "type": "decimal",
+    "value": "79.35"
+   }
+  },
+  {
+   "id": "g00698",
+   "program": "(((-73.6) - 9) / 0.150)",
+   "expect": {
+    "type": "rational",
+    "value": "-1652/3"
+   }
+  },
+  {
+   "id": "g00699",
+   "program": "((-6) + 20)",
+   "expect": {
+    "type": "int",
+    "value": "14"
+   }
+  },
+  {
+   "id": "g00700",
+   "program": "round((-(-10)), 3, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "10.000"
+   }
+  },
+  {
+   "id": "g00701",
+   "program": "((79.9 + (-15)) / ((-6) * 11))",
+   "expect": {
+    "type": "rational",
+    "value": "-59/60"
+   }
+  },
+  {
+   "id": "g00702",
+   "program": "(11 * 0.896)",
+   "expect": {
+    "type": "decimal",
+    "value": "9.856"
+   }
+  },
+  {
+   "id": "g00703",
+   "program": "round((-6.34), 1, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-6.3"
+   }
+  },
+  {
+   "id": "g00704",
+   "program": "(6 + ((-0.497) - 0.7))",
+   "expect": {
+    "type": "decimal",
+    "value": "4.803"
+   }
+  },
+  {
+   "id": "g00705",
+   "program": "(41.1 + (-1))",
+   "expect": {
+    "type": "decimal",
+    "value": "40.1"
+   }
+  },
+  {
+   "id": "g00706",
+   "program": "(((-7) * (-1)) - ((-94.2) ^ 3))",
+   "expect": {
+    "type": "decimal",
+    "value": "835903.888"
+   }
+  },
+  {
+   "id": "g00707",
+   "program": "round(((-0.042) - (-99.7)), 2, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "99.66"
+   }
+  },
+  {
+   "id": "g00708",
+   "program": "((-10) * 3)",
+   "expect": {
+    "type": "int",
+    "value": "-30"
+   }
+  },
+  {
+   "id": "g00709",
+   "program": "(5 - 7) == (-(-58.3))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00710",
+   "program": "20",
+   "expect": {
+    "type": "int",
+    "value": "20"
+   }
+  },
+  {
+   "id": "g00711",
+   "program": "(((-7) ^ 1) + (4 - (-12)))",
+   "expect": {
+    "type": "int",
+    "value": "9"
+   }
+  },
+  {
+   "id": "g00712",
+   "program": "round(((-19) ^ 0), 4, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1.0000"
+   }
+  },
+  {
+   "id": "g00713",
+   "program": "(((0.151 / (-84.9)) + (6.97 * 8.0)) / (0.420 * (98.3 - 5))) >= (((-0.843) / 66.6) + 9.25)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00714",
+   "program": "(1 - 0.065)",
+   "expect": {
+    "type": "decimal",
+    "value": "0.935"
+   }
+  },
+  {
+   "id": "g00715",
+   "program": "round(((-9.73) ^ 1), 1, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-9.7"
+   }
+  },
+  {
+   "id": "g00716",
+   "program": "(-(((-0.66) / (-0.827)) * 10)) <= ((-2) - (0.39 / 6.79))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00717",
+   "program": "round((((-0.055) ^ (-1)) / ((-15) - 19.8)), 2, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.52"
+   }
+  },
+  {
+   "id": "g00718",
+   "program": "((-13) * 0)",
+   "expect": {
+    "type": "int",
+    "value": "0"
+   }
+  },
+  {
+   "id": "g00719",
+   "program": "0",
+   "expect": {
+    "type": "int",
+    "value": "0"
+   }
+  },
+  {
+   "id": "g00720",
+   "program": "((11 - 14) * (-(-0.908)))",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.724"
+   }
+  },
+  {
+   "id": "g00721",
+   "program": "(-(15 / (-0.478)))",
+   "expect": {
+    "type": "rational",
+    "value": "7500/239"
+   }
+  },
+  {
+   "id": "g00722",
+   "program": "(9 + 1)",
+   "expect": {
+    "type": "int",
+    "value": "10"
+   }
+  },
+  {
+   "id": "g00723",
+   "program": "(-0.443)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.443"
+   }
+  },
+  {
+   "id": "g00724",
+   "program": "(-(-3))",
+   "expect": {
+    "type": "int",
+    "value": "3"
+   }
+  },
+  {
+   "id": "g00725",
+   "program": "(-20)",
+   "expect": {
+    "type": "int",
+    "value": "-20"
+   }
+  },
+  {
+   "id": "g00726",
+   "program": "((-0.902) - 0.471) < (0.003 - ((-0.075) + (-20)))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00727",
+   "program": "((-14) * 2)",
+   "expect": {
+    "type": "int",
+    "value": "-28"
+   }
+  },
+  {
+   "id": "g00728",
+   "program": "(-3) < ((19 ^ (-1)) * (-2))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00729",
+   "program": "21.9",
+   "expect": {
+    "type": "decimal",
+    "value": "21.9"
+   }
+  },
+  {
+   "id": "g00730",
+   "program": "((-7) ^ (-2)) == (((-0.033) ^ 3) * (0.975 + 11))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00731",
+   "program": "(10 / (-(-20)))",
+   "expect": {
+    "type": "rational",
+    "value": "1/2",
+    "decimal": "0.5"
+   }
+  },
+  {
+   "id": "g00732",
+   "program": "(13 - 2.22)",
+   "expect": {
+    "type": "decimal",
+    "value": "10.78"
+   }
+  },
+  {
+   "id": "g00733",
+   "program": "7",
+   "expect": {
+    "type": "int",
+    "value": "7"
+   }
+  },
+  {
+   "id": "g00734",
+   "program": "round(((((-0.771) / (-9)) / (-(-11))) + ((-18) + ((-0.075) ^ 3))), 0, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-18"
+   }
+  },
+  {
+   "id": "g00735",
+   "program": "((-(0.270 * (-4.46))) + (-17))",
+   "expect": {
+    "type": "decimal",
+    "value": "-15.79580"
+   }
+  },
+  {
+   "id": "g00736",
+   "program": "(-(-66.4))",
+   "expect": {
+    "type": "decimal",
+    "value": "66.4"
+   }
+  },
+  {
+   "id": "g00737",
+   "program": "(33.5 / 20)",
+   "expect": {
+    "type": "rational",
+    "value": "67/40",
+    "decimal": "1.675"
+   }
+  },
+  {
+   "id": "g00738",
+   "program": "((-3.07) * (-20))",
+   "expect": {
+    "type": "decimal",
+    "value": "61.40"
+   }
+  },
+  {
+   "id": "g00739",
+   "program": "((-60.8) ^ 2)",
+   "expect": {
+    "type": "decimal",
+    "value": "3696.64"
+   }
+  },
+  {
+   "id": "g00740",
+   "program": "(2 + 0.630)",
+   "expect": {
+    "type": "decimal",
+    "value": "2.630"
+   }
+  },
+  {
+   "id": "g00741",
+   "program": "(13 / (-0.410)) > (8.53 + ((-12) * (-2.61)))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00742",
+   "program": "52.8 > (-8.03)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00743",
+   "program": "7.21",
+   "expect": {
+    "type": "decimal",
+    "value": "7.21"
+   }
+  },
+  {
+   "id": "g00744",
+   "program": "(7 / 0.606)",
+   "expect": {
+    "type": "rational",
+    "value": "3500/303"
+   }
+  },
+  {
+   "id": "g00745",
+   "program": "((-6) ^ (-1))",
+   "expect": {
+    "type": "rational",
+    "value": "-1/6"
+   }
+  },
+  {
+   "id": "g00746",
+   "program": "round(64.9, 4, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "64.9000"
+   }
+  },
+  {
+   "id": "g00747",
+   "program": "round((((-18) ^ 3) * (3 - (-18))), 0, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-122472"
+   }
+  },
+  {
+   "id": "g00748",
+   "program": "(13 ^ 1)",
+   "expect": {
+    "type": "int",
+    "value": "13"
+   }
+  },
+  {
+   "id": "g00749",
+   "program": "(11 + (((-59.3) * 72.7) + (-3.95)))",
+   "expect": {
+    "type": "decimal",
+    "value": "-4304.06"
+   }
+  },
+  {
+   "id": "g00750",
+   "program": "round(((20 + 0.468) + (-(-5.51))), 3, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "25.978"
+   }
+  },
+  {
+   "id": "g00751",
+   "program": "(18 ^ 0)",
+   "expect": {
+    "type": "int",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g00752",
+   "program": "((0.282 * (-11)) + (15.3 / (-68.0)))",
+   "expect": {
+    "type": "rational",
+    "value": "-3327/1000",
+    "decimal": "-3.327"
+   }
+  },
+  {
+   "id": "g00753",
+   "program": "round((-10), 1, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-10.0"
+   }
+  },
+  {
+   "id": "g00754",
+   "program": "round(((-2) - 2.27), 4, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-4.2700"
+   }
+  },
+  {
+   "id": "g00755",
+   "program": "round((-1), 3, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-1.000"
+   }
+  },
+  {
+   "id": "g00756",
+   "program": "((-43.1) / 5)",
+   "expect": {
+    "type": "rational",
+    "value": "-431/50",
+    "decimal": "-8.62"
+   }
+  },
+  {
+   "id": "g00757",
+   "program": "(-7.53)",
+   "expect": {
+    "type": "decimal",
+    "value": "-7.53"
+   }
+  },
+  {
+   "id": "g00758",
+   "program": "((-9.37) * ((-6) + 20.9))",
+   "expect": {
+    "type": "decimal",
+    "value": "-139.613"
+   }
+  },
+  {
+   "id": "g00759",
+   "program": "6.77 > 2",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00760",
+   "program": "((-6.40) + 9)",
+   "expect": {
+    "type": "decimal",
+    "value": "2.60"
+   }
+  },
+  {
+   "id": "g00761",
+   "program": "(-2)",
+   "expect": {
+    "type": "int",
+    "value": "-2"
+   }
+  },
+  {
+   "id": "g00762",
+   "program": "round(29.3, 1, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "29.3"
+   }
+  },
+  {
+   "id": "g00763",
+   "program": "round((((-(-7)) - (-19)) / ((19 ^ 3) * (0.192 + 0.979))), 1, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.0"
+   }
+  },
+  {
+   "id": "g00764",
+   "program": "(-1)",
+   "expect": {
+    "type": "int",
+    "value": "-1"
+   }
+  },
+  {
+   "id": "g00765",
+   "program": "(4 * (-17))",
+   "expect": {
+    "type": "int",
+    "value": "-68"
+   }
+  },
+  {
+   "id": "g00766",
+   "program": "(3 - 0.738)",
+   "expect": {
+    "type": "decimal",
+    "value": "2.262"
+   }
+  },
+  {
+   "id": "g00767",
+   "program": "(8.18 * (-3))",
+   "expect": {
+    "type": "decimal",
+    "value": "-24.54"
+   }
+  },
+  {
+   "id": "g00768",
+   "program": "round((((-13) / 11.1) / (-66.3)), 0, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "g00769",
+   "program": "round(((-46.0) + 0.797), 4, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-45.2030"
+   }
+  },
+  {
+   "id": "g00770",
+   "program": "(((-7.68) * (-0.675)) + (-18)) > (0.406 ^ 3)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00771",
+   "program": "round(6.70, 4, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "6.7000"
+   }
+  },
+  {
+   "id": "g00772",
+   "program": "((-8) + (52.7 ^ (-1)))",
+   "expect": {
+    "type": "rational",
+    "value": "-4206/527"
+   }
+  },
+  {
+   "id": "g00773",
+   "program": "(-(5 * 3)) != (-(9.24 / (-15)))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00774",
+   "program": "(((-3.15) - (-19)) / 2)",
+   "expect": {
+    "type": "rational",
+    "value": "317/40",
+    "decimal": "7.925"
+   }
+  },
+  {
+   "id": "g00775",
+   "program": "round(19, 3, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "19.000"
+   }
+  },
+  {
+   "id": "g00776",
+   "program": "round((-0.620), 1, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.7"
+   }
+  },
+  {
+   "id": "g00777",
+   "program": "(((-7) + 18) - (-21.3)) >= (-(9 + 4))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00778",
+   "program": "(((-8.33) + 14) * (-1.21))",
+   "expect": {
+    "type": "decimal",
+    "value": "-6.8607"
+   }
+  },
+  {
+   "id": "g00779",
+   "program": "((-(10 ^ (-1))) * (-((-8) - (-20))))",
+   "expect": {
+    "type": "rational",
+    "value": "6/5",
+    "decimal": "1.2"
+   }
+  },
+  {
+   "id": "g00780",
+   "program": "((-0.490) + ((-3) + 18))",
+   "expect": {
+    "type": "decimal",
+    "value": "14.510"
+   }
+  },
+  {
+   "id": "g00781",
+   "program": "(-(0.007 + 91.3))",
+   "expect": {
+    "type": "decimal",
+    "value": "-91.307"
+   }
+  },
+  {
+   "id": "g00782",
+   "program": "((-7.14) + (-(-14))) >= (-14)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00783",
+   "program": "((5 ^ 2) - (-14))",
+   "expect": {
+    "type": "int",
+    "value": "39"
+   }
+  },
+  {
+   "id": "g00784",
+   "program": "(63.1 - 6.48)",
+   "expect": {
+    "type": "decimal",
+    "value": "56.62"
+   }
+  },
+  {
+   "id": "g00785",
+   "program": "(48.4 * (-15)) != ((-12) ^ (-1))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00786",
+   "program": "(-(((-12) + 10) - (-15))) == (5.89 / (0.11 * (-20.5)))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00788",
+   "program": "19",
+   "expect": {
+    "type": "int",
+    "value": "19"
+   }
+  },
+  {
+   "id": "g00789",
+   "program": "round(((8 + 2.94) + (9.97 - 4.24)), 1, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "16.7"
+   }
+  },
+  {
+   "id": "g00790",
+   "program": "(-16)",
+   "expect": {
+    "type": "int",
+    "value": "-16"
+   }
+  },
+  {
+   "id": "g00791",
+   "program": "((-(-13)) / ((-6.5) * 0.952))",
+   "expect": {
+    "type": "rational",
+    "value": "-250/119"
+   }
+  },
+  {
+   "id": "g00792",
+   "program": "round(4.18, 2, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "4.18"
+   }
+  },
+  {
+   "id": "g00793",
+   "program": "((-0.986) / ((-43.6) / (-11)))",
+   "expect": {
+    "type": "rational",
+    "value": "-5423/21800"
+   }
+  },
+  {
+   "id": "g00794",
+   "program": "(-(1 - 14)) != (-8)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00795",
+   "program": "(((-14) * (-4)) / (-85.3)) == 0.367",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00796",
+   "program": "((-4) * 18)",
+   "expect": {
+    "type": "int",
+    "value": "-72"
+   }
+  },
+  {
+   "id": "g00797",
+   "program": "((-9.86) - 0.056)",
+   "expect": {
+    "type": "decimal",
+    "value": "-9.916"
+   }
+  },
+  {
+   "id": "g00798",
+   "program": "((-0.810) - (5 / 18))",
+   "expect": {
+    "type": "rational",
+    "value": "-979/900"
+   }
+  },
+  {
+   "id": "g00799",
+   "program": "(-(16 * (-58.9)))",
+   "expect": {
+    "type": "decimal",
+    "value": "942.4"
+   }
+  },
+  {
+   "id": "g00800",
+   "program": "(0.99 + (-18))",
+   "expect": {
+    "type": "decimal",
+    "value": "-17.01"
+   }
+  },
+  {
+   "id": "g00801",
+   "program": "(-(-9.5)) >= (7.29 + ((-7) / 9))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00802",
+   "program": "(8 - (-0.246))",
+   "expect": {
+    "type": "decimal",
+    "value": "8.246"
+   }
+  },
+  {
+   "id": "g00803",
+   "program": "(((-5) * (-55.8)) * (0.66 - 8))",
+   "expect": {
+    "type": "decimal",
+    "value": "-2047.860"
+   }
+  },
+  {
+   "id": "g00804",
+   "program": "((-70.1) ^ (-2))",
+   "expect": {
+    "type": "rational",
+    "value": "100/491401"
+   }
+  },
+  {
+   "id": "g00805",
+   "program": "(-8) >= (((-3) - 4.20) - ((-15) ^ (-1)))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00806",
+   "program": "round(5.33, 3, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "5.330"
+   }
+  },
+  {
+   "id": "g00807",
+   "program": "(8.36 + (-0.84))",
+   "expect": {
+    "type": "decimal",
+    "value": "7.52"
+   }
+  },
+  {
+   "id": "g00808",
+   "program": "((-2) - 3) >= (3.22 ^ 2)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00809",
+   "program": "(-(-53.3))",
+   "expect": {
+    "type": "decimal",
+    "value": "53.3"
+   }
+  },
+  {
+   "id": "g00810",
+   "program": "(((-(-8.46)) - (59.1 - 8)) + (-7))",
+   "expect": {
+    "type": "decimal",
+    "value": "-49.64"
+   }
+  },
+  {
+   "id": "g00811",
+   "program": "(15 / (42.6 / (18 * (-1.0))))",
+   "expect": {
+    "type": "rational",
+    "value": "-450/71"
+   }
+  },
+  {
+   "id": "g00812",
+   "program": "round((8 ^ 1), 0, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "8"
+   }
+  },
+  {
+   "id": "g00813",
+   "program": "15 >= (-0.705)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00814",
+   "program": "((6 ^ (-2)) / 6)",
+   "expect": {
+    "type": "rational",
+    "value": "1/216"
+   }
+  },
+  {
+   "id": "g00815",
+   "program": "((-1) ^ (-2))",
+   "expect": {
+    "type": "rational",
+    "value": "1",
+    "decimal": "1"
+   }
+  },
+  {
+   "id": "g00816",
+   "program": "(-(-0.429))",
+   "expect": {
+    "type": "decimal",
+    "value": "0.429"
+   }
+  },
+  {
+   "id": "g00817",
+   "program": "(13 / 16)",
+   "expect": {
+    "type": "rational",
+    "value": "13/16",
+    "decimal": "0.8125"
+   }
+  },
+  {
+   "id": "g00818",
+   "program": "3.35 > (((-4) ^ 2) - 4.58)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00819",
+   "program": "(-(-0.417)) == (-3.81)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00820",
+   "program": "(-12)",
+   "expect": {
+    "type": "int",
+    "value": "-12"
+   }
+  },
+  {
+   "id": "g00821",
+   "program": "10 > (((-6) ^ (-2)) + (-(-0.015)))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00822",
+   "program": "(-(((-7) ^ (-2)) + (0 + 0.298)))",
+   "expect": {
+    "type": "rational",
+    "value": "-7801/24500"
+   }
+  },
+  {
+   "id": "g00823",
+   "program": "round(8, 3, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "8.000"
+   }
+  },
+  {
+   "id": "g00824",
+   "program": "(16 ^ 3) != ((-73.7) / 8.20)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00825",
+   "program": "round((10 ^ 1), 3, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "10.000"
+   }
+  },
+  {
+   "id": "g00826",
+   "program": "84.4",
+   "expect": {
+    "type": "decimal",
+    "value": "84.4"
+   }
+  },
+  {
+   "id": "g00827",
+   "program": "((-10) ^ 2)",
+   "expect": {
+    "type": "int",
+    "value": "100"
+   }
+  },
+  {
+   "id": "g00828",
+   "program": "((-15) + 19)",
+   "expect": {
+    "type": "int",
+    "value": "4"
+   }
+  },
+  {
+   "id": "g00829",
+   "program": "round(4.55, 2, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "4.55"
+   }
+  },
+  {
+   "id": "g00830",
+   "program": "0.590",
+   "expect": {
+    "type": "decimal",
+    "value": "0.590"
+   }
+  },
+  {
+   "id": "g00831",
+   "program": "(-2)",
+   "expect": {
+    "type": "int",
+    "value": "-2"
+   }
+  },
+  {
+   "id": "g00832",
+   "program": "((11 + 18) / (13 ^ 2)) > 8",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00833",
+   "program": "1 >= ((0.024 * (-34.3)) + ((-14) + 8.57))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00834",
+   "program": "((-6.63) - 7)",
+   "expect": {
+    "type": "decimal",
+    "value": "-13.63"
+   }
+  },
+  {
+   "id": "g00835",
+   "program": "(10 + 2)",
+   "expect": {
+    "type": "int",
+    "value": "12"
+   }
+  },
+  {
+   "id": "g00836",
+   "program": "(4.06 - 2.54)",
+   "expect": {
+    "type": "decimal",
+    "value": "1.52"
+   }
+  },
+  {
+   "id": "g00837",
+   "program": "round((((-0.014) * 19) * ((-8) + 14)), 1, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-1.6"
+   }
+  },
+  {
+   "id": "g00838",
+   "program": "8",
+   "expect": {
+    "type": "int",
+    "value": "8"
+   }
+  },
+  {
+   "id": "g00839",
+   "program": "3.74",
+   "expect": {
+    "type": "decimal",
+    "value": "3.74"
+   }
+  },
+  {
+   "id": "g00840",
+   "program": "(((-14) - (-(-0.355))) + (-7)) < ((-1) * 19)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00841",
+   "program": "4",
+   "expect": {
+    "type": "int",
+    "value": "4"
+   }
+  },
+  {
+   "id": "g00842",
+   "program": "round(((-2.63) ^ 2), 4, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "6.9169"
+   }
+  },
+  {
+   "id": "g00843",
+   "program": "(((0.239 * 0.380) * (-9)) * ((-0.823) + ((-73.4) - 0.386))) < 11.8",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00844",
+   "program": "((((-0.025) - 0.441) + 10) / (((-0.526) / 6) / (17 - 1.96)))",
+   "expect": {
+    "type": "rational",
+    "value": "-10754352/6575"
+   }
+  },
+  {
+   "id": "g00845",
+   "program": "(71.3 + (-(-2)))",
+   "expect": {
+    "type": "decimal",
+    "value": "73.3"
+   }
+  },
+  {
+   "id": "g00846",
+   "program": "(-(-((-75.1) - (-6))))",
+   "expect": {
+    "type": "decimal",
+    "value": "-69.1"
+   }
+  },
+  {
+   "id": "g00847",
+   "program": "round((-0.936), 2, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.93"
+   }
+  },
+  {
+   "id": "g00848",
+   "program": "((61.7 + (-6.84)) * ((-29.3) - 9))",
+   "expect": {
+    "type": "decimal",
+    "value": "-2101.138"
+   }
+  },
+  {
+   "id": "g00849",
+   "program": "round(((49.6 ^ 2) * ((-98.2) / ((-18) + (-18)))), 1, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "6710.8"
+   }
+  },
+  {
+   "id": "g00850",
+   "program": "((-4) ^ 2)",
+   "expect": {
+    "type": "int",
+    "value": "16"
+   }
+  },
+  {
+   "id": "g00851",
+   "program": "((-15) ^ (-2))",
+   "expect": {
+    "type": "rational",
+    "value": "1/225"
+   }
+  },
+  {
+   "id": "g00852",
+   "program": "0.998",
+   "expect": {
+    "type": "decimal",
+    "value": "0.998"
+   }
+  },
+  {
+   "id": "g00853",
+   "program": "(-16)",
+   "expect": {
+    "type": "int",
+    "value": "-16"
+   }
+  },
+  {
+   "id": "g00854",
+   "program": "((-0.425) / (-81.7))",
+   "expect": {
+    "type": "rational",
+    "value": "17/3268"
+   }
+  },
+  {
+   "id": "g00855",
+   "program": "(6 / (-8))",
+   "expect": {
+    "type": "rational",
+    "value": "-3/4",
+    "decimal": "-0.75"
+   }
+  },
+  {
+   "id": "g00856",
+   "program": "(-2)",
+   "expect": {
+    "type": "int",
+    "value": "-2"
+   }
+  },
+  {
+   "id": "g00857",
+   "program": "18",
+   "expect": {
+    "type": "int",
+    "value": "18"
+   }
+  },
+  {
+   "id": "g00858",
+   "program": "((84.2 ^ 1) + (-((-10) + (-18)))) == (((-19) * 1.85) - (16 * 2))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00859",
+   "program": "59.1",
+   "expect": {
+    "type": "decimal",
+    "value": "59.1"
+   }
+  },
+  {
+   "id": "g00860",
+   "program": "(0.941 - 0.569)",
+   "expect": {
+    "type": "decimal",
+    "value": "0.372"
+   }
+  },
+  {
+   "id": "g00861",
+   "program": "(-8)",
+   "expect": {
+    "type": "int",
+    "value": "-8"
+   }
+  },
+  {
+   "id": "g00862",
+   "program": "(-((-7) ^ 2))",
+   "expect": {
+    "type": "int",
+    "value": "-49"
+   }
+  },
+  {
+   "id": "g00863",
+   "program": "(-40.0) < (-(-18))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00864",
+   "program": "round(9.94, 1, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "10.0"
+   }
+  },
+  {
+   "id": "g00865",
+   "program": "(-(-30.3)) > (-4)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00866",
+   "program": "(-((-25.6) ^ 2))",
+   "expect": {
+    "type": "decimal",
+    "value": "-655.36"
+   }
+  },
+  {
+   "id": "g00867",
+   "program": "(-20)",
+   "expect": {
+    "type": "int",
+    "value": "-20"
+   }
+  },
+  {
+   "id": "g00868",
+   "program": "round(3, 1, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "3.0"
+   }
+  },
+  {
+   "id": "g00869",
+   "program": "round((-0), 2, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.00"
+   }
+  },
+  {
+   "id": "g00880",
+   "program": "(-(-1.79)) >= (-8.39)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00881",
+   "program": "round((((-2) + (-17)) * ((-5) * 9)), 4, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "855.0000"
+   }
+  },
+  {
+   "id": "g00882",
+   "program": "(-79.8)",
+   "expect": {
+    "type": "decimal",
+    "value": "-79.8"
+   }
+  },
+  {
+   "id": "g00883",
+   "program": "(-66.4)",
+   "expect": {
+    "type": "decimal",
+    "value": "-66.4"
+   }
+  },
+  {
+   "id": "g00884",
+   "program": "((-14) ^ (-1)) >= (((-0.780) - 0.998) - ((-2.93) - (-0.811)))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00885",
+   "program": "(-2)",
+   "expect": {
+    "type": "int",
+    "value": "-2"
+   }
+  },
+  {
+   "id": "g00886",
+   "program": "((-0.078) - ((-3.86) * 26.4))",
+   "expect": {
+    "type": "decimal",
+    "value": "101.826"
+   }
+  },
+  {
+   "id": "g00888",
+   "program": "(3.44 + 10)",
+   "expect": {
+    "type": "decimal",
+    "value": "13.44"
+   }
+  },
+  {
+   "id": "g00889",
+   "program": "(-41.0)",
+   "expect": {
+    "type": "decimal",
+    "value": "-41.0"
+   }
+  },
+  {
+   "id": "g00890",
+   "program": "round(((-(-2)) + ((-0.662) / 0.812)), 2, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1.18"
+   }
+  },
+  {
+   "id": "g00891",
+   "program": "(99.3 ^ 0)",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g00892",
+   "program": "(-0.538)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.538"
+   }
+  },
+  {
+   "id": "g00893",
+   "program": "(-13)",
+   "expect": {
+    "type": "int",
+    "value": "-13"
+   }
+  },
+  {
+   "id": "g00894",
+   "program": "((-1) ^ (-2))",
+   "expect": {
+    "type": "rational",
+    "value": "1",
+    "decimal": "1"
+   }
+  },
+  {
+   "id": "g00895",
+   "program": "(-(-((-16) * 15)))",
+   "expect": {
+    "type": "int",
+    "value": "-240"
+   }
+  },
+  {
+   "id": "g00896",
+   "program": "12",
+   "expect": {
+    "type": "int",
+    "value": "12"
+   }
+  },
+  {
+   "id": "g00897",
+   "program": "12",
+   "expect": {
+    "type": "int",
+    "value": "12"
+   }
+  },
+  {
+   "id": "g00898",
+   "program": "10",
+   "expect": {
+    "type": "int",
+    "value": "10"
+   }
+  },
+  {
+   "id": "g00899",
+   "program": "(0.366 / 86.6)",
+   "expect": {
+    "type": "rational",
+    "value": "183/43300"
+   }
+  },
+  {
+   "id": "g00900",
+   "program": "(-13)",
+   "expect": {
+    "type": "int",
+    "value": "-13"
+   }
+  },
+  {
+   "id": "g00901",
+   "program": "8",
+   "expect": {
+    "type": "int",
+    "value": "8"
+   }
+  },
+  {
+   "id": "g00902",
+   "program": "round(((-89.4) - (-6.31)), 1, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-83.1"
+   }
+  },
+  {
+   "id": "g00903",
+   "program": "(((-30.5) ^ (-2)) * 7.85) < ((1.48 + 3.63) + 8)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00904",
+   "program": "round((-(((-9) + 4) + 2)), 0, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "3"
+   }
+  },
+  {
+   "id": "g00905",
+   "program": "(5 / 7.17)",
+   "expect": {
+    "type": "rational",
+    "value": "500/717"
+   }
+  },
+  {
+   "id": "g00906",
+   "program": "(((-0.513) / 3.43) * (0.96 / 0.936))",
+   "expect": {
+    "type": "rational",
+    "value": "-684/4459"
+   }
+  },
+  {
+   "id": "g00907",
+   "program": "(5.39 + 93.1)",
+   "expect": {
+    "type": "decimal",
+    "value": "98.49"
+   }
+  },
+  {
+   "id": "g00908",
+   "program": "20 == (((-20) ^ 1) - 10)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00909",
+   "program": "(0.47 + 0)",
+   "expect": {
+    "type": "decimal",
+    "value": "0.47"
+   }
+  },
+  {
+   "id": "g00910",
+   "program": "(((-9) ^ (-2)) / (-94.1))",
+   "expect": {
+    "type": "rational",
+    "value": "-10/76221"
+   }
+  },
+  {
+   "id": "g00911",
+   "program": "(12 / 8)",
+   "expect": {
+    "type": "rational",
+    "value": "3/2",
+    "decimal": "1.5"
+   }
+  },
+  {
+   "id": "g00912",
+   "program": "round((((-11) ^ (-1)) / (-(-17))), 2, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.01"
+   }
+  },
+  {
+   "id": "g00913",
+   "program": "(5 + (-2))",
+   "expect": {
+    "type": "int",
+    "value": "3"
+   }
+  },
+  {
+   "id": "g00914",
+   "program": "((-15) ^ 3)",
+   "expect": {
+    "type": "int",
+    "value": "-3375"
+   }
+  },
+  {
+   "id": "g00915",
+   "program": "((-4.26) ^ (-2))",
+   "expect": {
+    "type": "rational",
+    "value": "2500/45369"
+   }
+  },
+  {
+   "id": "g00916",
+   "program": "((-4) + (-0.210))",
+   "expect": {
+    "type": "decimal",
+    "value": "-4.210"
+   }
+  },
+  {
+   "id": "g00917",
+   "program": "(((15 - 8) - ((-9.7) + (-1.61))) * 16) == ((-15) ^ (-2))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00918",
+   "program": "0.168",
+   "expect": {
+    "type": "decimal",
+    "value": "0.168"
+   }
+  },
+  {
+   "id": "g00919",
+   "program": "round((-0.955), 4, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.9550"
+   }
+  },
+  {
+   "id": "g00920",
+   "program": "(4.24 / 16.7)",
+   "expect": {
+    "type": "rational",
+    "value": "212/835"
+   }
+  },
+  {
+   "id": "g00921",
+   "program": "13",
+   "expect": {
+    "type": "int",
+    "value": "13"
+   }
+  },
+  {
+   "id": "g00922",
+   "program": "(((3.67 * (-53.7)) + 5) - ((-(-86.9)) + ((-10) + 7.48)))",
+   "expect": {
+    "type": "decimal",
+    "value": "-276.459"
+   }
+  },
+  {
+   "id": "g00923",
+   "program": "((-1.55) ^ 0) == (-(27.1 + (-18)))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00924",
+   "program": "((15 ^ 1) / ((3 / 20.4) + (0.127 ^ 0))) <= 6",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00925",
+   "program": "((-15) ^ 1)",
+   "expect": {
+    "type": "int",
+    "value": "-15"
+   }
+  },
+  {
+   "id": "g00926",
+   "program": "(-17)",
+   "expect": {
+    "type": "int",
+    "value": "-17"
+   }
+  },
+  {
+   "id": "g00927",
+   "program": "(0.730 / 5)",
+   "expect": {
+    "type": "rational",
+    "value": "73/500",
+    "decimal": "0.146"
+   }
+  },
+  {
+   "id": "g00928",
+   "program": "(((-7.0) ^ (-1)) * (-1.09))",
+   "expect": {
+    "type": "rational",
+    "value": "109/700"
+   }
+  },
+  {
+   "id": "g00929",
+   "program": "((-1) / (-5)) > ((10 * (-36.1)) * (-0.578))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00930",
+   "program": "(-7.17) >= (0.29 ^ 2)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00931",
+   "program": "(-18)",
+   "expect": {
+    "type": "int",
+    "value": "-18"
+   }
+  },
+  {
+   "id": "g00932",
+   "program": "((-5) - 2.15)",
+   "expect": {
+    "type": "decimal",
+    "value": "-7.15"
+   }
+  },
+  {
+   "id": "g00933",
+   "program": "((-0.257) ^ (-2))",
+   "expect": {
+    "type": "rational",
+    "value": "1000000/66049"
+   }
+  },
+  {
+   "id": "g00934",
+   "program": "0",
+   "expect": {
+    "type": "int",
+    "value": "0"
+   }
+  },
+  {
+   "id": "g00935",
+   "program": "(((-13) * (-4)) + 4.77) >= 10",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00936",
+   "program": "(8 ^ (-1))",
+   "expect": {
+    "type": "rational",
+    "value": "1/8",
+    "decimal": "0.125"
+   }
+  },
+  {
+   "id": "g00937",
+   "program": "(3 / (-5))",
+   "expect": {
+    "type": "rational",
+    "value": "-3/5",
+    "decimal": "-0.6"
+   }
+  },
+  {
+   "id": "g00938",
+   "program": "round((((19 ^ (-2)) + (20 + 0.204)) / (4 + (18 ^ 0))), 1, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "4.0"
+   }
+  },
+  {
+   "id": "g00939",
+   "program": "((55.6 + (0.545 * 5)) + (((-0.254) + (-19)) + (-14)))",
+   "expect": {
+    "type": "decimal",
+    "value": "25.071"
+   }
+  },
+  {
+   "id": "g00940",
+   "program": "round((65.8 / (-1.32)), 3, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-49.848"
+   }
+  },
+  {
+   "id": "g00941",
+   "program": "((-3.76) / ((8 - (-0.226)) - (0.399 ^ 0)))",
+   "expect": {
+    "type": "rational",
+    "value": "-1880/3613"
+   }
+  },
+  {
+   "id": "g00942",
+   "program": "16",
+   "expect": {
+    "type": "int",
+    "value": "16"
+   }
+  },
+  {
+   "id": "g00943",
+   "program": "(-(-37.4)) == (((-6) + (-20)) * ((-5.97) ^ 0))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00944",
+   "program": "(3 * ((-1) + (5 ^ (-2))))",
+   "expect": {
+    "type": "rational",
+    "value": "-72/25",
+    "decimal": "-2.88"
+   }
+  },
+  {
+   "id": "g00945",
+   "program": "(((-4) ^ 1) - (((-7.77) + (-8.57)) * ((-11) - (-6.89))))",
+   "expect": {
+    "type": "decimal",
+    "value": "-71.1574"
+   }
+  },
+  {
+   "id": "g00946",
+   "program": "round((-0.885), 1, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.9"
+   }
+  },
+  {
+   "id": "g00947",
+   "program": "9",
+   "expect": {
+    "type": "int",
+    "value": "9"
+   }
+  },
+  {
+   "id": "g00948",
+   "program": "((-20) - 20)",
+   "expect": {
+    "type": "int",
+    "value": "-40"
+   }
+  },
+  {
+   "id": "g00949",
+   "program": "3.90",
+   "expect": {
+    "type": "decimal",
+    "value": "3.90"
+   }
+  },
+  {
+   "id": "g00950",
+   "program": "(-12)",
+   "expect": {
+    "type": "int",
+    "value": "-12"
+   }
+  },
+  {
+   "id": "g00951",
+   "program": "((-91.7) ^ 0) >= (6 * ((-10) ^ (-2)))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00952",
+   "program": "(6.26 / (-17))",
+   "expect": {
+    "type": "rational",
+    "value": "-313/850"
+   }
+  },
+  {
+   "id": "g00953",
+   "program": "((-8.41) ^ 0)",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g00954",
+   "program": "round((-9.1), 3, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-9.100"
+   }
+  },
+  {
+   "id": "g00955",
+   "program": "round(6.35, 2, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "6.35"
+   }
+  },
+  {
+   "id": "g00956",
+   "program": "(26.1 + (20 + (-0.903)))",
+   "expect": {
+    "type": "decimal",
+    "value": "45.197"
+   }
+  },
+  {
+   "id": "g00957",
+   "program": "round((-1.67), 2, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-1.67"
+   }
+  },
+  {
+   "id": "g00958",
+   "program": "round((-18), 2, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-18.00"
+   }
+  },
+  {
+   "id": "g00959",
+   "program": "(3 ^ (-2))",
+   "expect": {
+    "type": "rational",
+    "value": "1/9"
+   }
+  },
+  {
+   "id": "g00960",
+   "program": "(((19 * (-9)) * (-7)) + (((-3) - 0.218) + (-(-0.085))))",
+   "expect": {
+    "type": "decimal",
+    "value": "1193.867"
+   }
+  },
+  {
+   "id": "g00961",
+   "program": "(0.409 - 8) < (-5)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00962",
+   "program": "(-((-1) ^ 0)) != ((-4) ^ (-1))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00963",
+   "program": "((-0.520) - 0.207)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.727"
+   }
+  },
+  {
+   "id": "g00964",
+   "program": "(19 ^ (-2))",
+   "expect": {
+    "type": "rational",
+    "value": "1/361"
+   }
+  },
+  {
+   "id": "g00965",
+   "program": "(1 + (((-13) ^ 3) - (-41.9)))",
+   "expect": {
+    "type": "decimal",
+    "value": "-2154.1"
+   }
+  },
+  {
+   "id": "g00966",
+   "program": "round(3.19, 3, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "3.190"
+   }
+  },
+  {
+   "id": "g00967",
+   "program": "round((7 - (-0.318)), 4, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "7.3180"
+   }
+  },
+  {
+   "id": "g00968",
+   "program": "(7.61 - (15 * ((-0.308) - (-0.701)))) <= 10",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00969",
+   "program": "(((-5) ^ 1) / ((2.4 ^ 3) / (-0.062))) != ((-(-79.3)) - ((-10) / (-37.0)))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g00970",
+   "program": "((-11) ^ (-1)) == ((-11.1) ^ 0)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g00971",
+   "program": "(-(-15))",
+   "expect": {
+    "type": "int",
+    "value": "15"
+   }
+  },
+  {
+   "id": "g00972",
+   "program": "round((3.42 / (5 / 0.19)), 3, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.130"
+   }
+  },
+  {
+   "id": "g00973",
+   "program": "round((-(-4)), 4, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "4.0000"
+   }
+  },
+  {
+   "id": "g00974",
+   "program": "(-0.392)",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.392"
+   }
+  },
+  {
+   "id": "g00975",
+   "program": "round(6.79, 1, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "6.7"
+   }
+  },
+  {
+   "id": "g00976",
+   "program": "(-((13 * 17) + (0.993 / (-4))))",
+   "expect": {
+    "type": "rational",
+    "value": "-883007/4000",
+    "decimal": "-220.75175"
+   }
+  },
+  {
+   "id": "g00977",
+   "program": "((-2) ^ 0)",
+   "expect": {
+    "type": "int",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g00978",
+   "program": "round((-5), 2, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-5.00"
+   }
+  },
+  {
+   "id": "g00979",
+   "program": "((-13) * (-9.80))",
+   "expect": {
+    "type": "decimal",
+    "value": "127.40"
+   }
+  },
+  {
+   "id": "g00980",
+   "program": "(0.569 + 97.3)",
+   "expect": {
+    "type": "decimal",
+    "value": "97.869"
+   }
+  },
+  {
+   "id": "g00981",
+   "program": "(7.52 ^ (-2))",
+   "expect": {
+    "type": "rational",
+    "value": "625/35344"
+   }
+  },
+  {
+   "id": "g00982",
+   "program": "49.5",
+   "expect": {
+    "type": "decimal",
+    "value": "49.5"
+   }
+  },
+  {
+   "id": "g00983",
+   "program": "round(((-1.50) ^ (-1)), 3, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.667"
+   }
+  },
+  {
+   "id": "g00984",
+   "program": "(-40.5)",
+   "expect": {
+    "type": "decimal",
+    "value": "-40.5"
+   }
+  },
+  {
+   "id": "g00985",
+   "program": "((-18.8) * (((-1.38) ^ 1) * ((-8) + 11)))",
+   "expect": {
+    "type": "decimal",
+    "value": "77.832"
+   }
+  },
+  {
+   "id": "g00986",
+   "program": "round((2 - (1.4 ^ 2)), 1, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.1"
+   }
+  },
+  {
+   "id": "g00988",
+   "program": "(15.5 ^ (-1))",
+   "expect": {
+    "type": "rational",
+    "value": "2/31"
+   }
+  },
+  {
+   "id": "g00989",
+   "program": "(-6.10)",
+   "expect": {
+    "type": "decimal",
+    "value": "-6.10"
+   }
+  },
+  {
+   "id": "g00990",
+   "program": "((-6) * 14)",
+   "expect": {
+    "type": "int",
+    "value": "-84"
+   }
+  },
+  {
+   "id": "g00991",
+   "program": "round((11 - 0.697), 2, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "10.30"
+   }
+  },
+  {
+   "id": "g00992",
+   "program": "((-1.21) + 11)",
+   "expect": {
+    "type": "decimal",
+    "value": "9.79"
+   }
+  },
+  {
+   "id": "g00993",
+   "program": "((((-0.979) - (-2.68)) - (1 * (-15))) / (((-6) ^ (-2)) - (0.004 + 14)))",
+   "expect": {
+    "type": "rational",
+    "value": "-150309/125786"
+   }
+  },
+  {
+   "id": "g00994",
+   "program": "((0.775 + 0.986) * (-13))",
+   "expect": {
+    "type": "decimal",
+    "value": "-22.893"
+   }
+  },
+  {
+   "id": "g00995",
+   "program": "((-0.854) ^ 0)",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g00996",
+   "program": "((-20) - 16)",
+   "expect": {
+    "type": "int",
+    "value": "-36"
+   }
+  },
+  {
+   "id": "g00997",
+   "program": "17",
+   "expect": {
+    "type": "int",
+    "value": "17"
+   }
+  },
+  {
+   "id": "g00998",
+   "program": "round(((10 / (-8)) + (-11)), 3, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-12.250"
+   }
+  },
+  {
+   "id": "g00999",
+   "program": "((-52.4) ^ (-1)) > (-14)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g01000",
+   "program": "(0.064 ^ 3)",
+   "expect": {
+    "type": "decimal",
+    "value": "0.000262144"
+   }
+  },
+  {
+   "id": "g01001",
+   "program": "((11 * (0.404 + 10.6)) + (-8))",
+   "expect": {
+    "type": "decimal",
+    "value": "113.044"
+   }
+  },
+  {
+   "id": "g01002",
+   "program": "(-7)",
+   "expect": {
+    "type": "int",
+    "value": "-7"
+   }
+  },
+  {
+   "id": "g01003",
+   "program": "11",
+   "expect": {
+    "type": "int",
+    "value": "11"
+   }
+  },
+  {
+   "id": "g01004",
+   "program": "(-14)",
+   "expect": {
+    "type": "int",
+    "value": "-14"
+   }
+  },
+  {
+   "id": "g01005",
+   "program": "18 > (((-10) - (-0.593)) / ((-19) - 1.51))",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g01006",
+   "program": "(-96.1)",
+   "expect": {
+    "type": "decimal",
+    "value": "-96.1"
+   }
+  },
+  {
+   "id": "g01007",
+   "program": "((-1.68) ^ 1) == (7.45 + (-(-13.3)))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g01008",
+   "program": "(8 ^ 3)",
+   "expect": {
+    "type": "int",
+    "value": "512"
+   }
+  },
+  {
+   "id": "g01009",
+   "program": "1",
+   "expect": {
+    "type": "int",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g01010",
+   "program": "round((-(-0.477)), 0, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "g01011",
+   "program": "(-(-(-0.186))) <= ((-8) ^ 1)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g01012",
+   "program": "17",
+   "expect": {
+    "type": "int",
+    "value": "17"
+   }
+  },
+  {
+   "id": "g01013",
+   "program": "((5 * 0.660) / (((-18) - (-15)) - (-(-9.14))))",
+   "expect": {
+    "type": "rational",
+    "value": "-165/607"
+   }
+  },
+  {
+   "id": "g01014",
+   "program": "10",
+   "expect": {
+    "type": "int",
+    "value": "10"
+   }
+  },
+  {
+   "id": "g01015",
+   "program": "((-3) - 0.205) != 6.47",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "g01016",
+   "program": "(-(-16))",
+   "expect": {
+    "type": "int",
+    "value": "16"
+   }
+  },
+  {
+   "id": "g01017",
+   "program": "(((-(-19)) - (-20)) + (((-5.90) / (-0.179)) / (7 / 0.900)))",
+   "expect": {
+    "type": "rational",
+    "value": "54177/1253"
+   }
+  },
+  {
+   "id": "g01018",
+   "program": "(-17) == ((-(-1)) * ((-68.7) / (-10)))",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "g01019",
+   "program": "(2 ^ 1)",
+   "expect": {
+    "type": "int",
+    "value": "2"
+   }
+  }
+ ]
+}

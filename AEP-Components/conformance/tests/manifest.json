@@ -165,6 +165,48 @@
    "name": "Git integration auto-capture at propose and solidify for coding agents",
    "runner": "vitest",
    "file": "AEP-Components/conformance/runner/run.sh"
+  },
+  {
+   "id": "CC-28",
+   "name": "UCM conformance vectors and library formula vectors",
+   "runner": "rust",
+   "crate": "aep-ucm-core"
+  },
+  {
+   "id": "CC-29",
+   "name": "UCM algebraic, rounding, square root, unit and program round trip laws",
+   "runner": "rust",
+   "crate": "aep-ucm-core"
+  },
+  {
+   "id": "CC-30",
+   "name": "UCM receipts sign, verify, replay and refuse tampering",
+   "runner": "rust",
+   "crate": "aep-ucm-receipt"
+  },
+  {
+   "id": "CC-31",
+   "name": "UCM programs, receipts and catalog validate against the public JSON Schemas",
+   "runner": "rust",
+   "crate": "aep-ucm-receipt"
+  },
+  {
+   "id": "CC-32",
+   "name": "UCM System-1 lookup finds every entry and returns catalog entries only",
+   "runner": "rust",
+   "crate": "aep-ucm-lookup"
+  },
+  {
+   "id": "CC-33",
+   "name": "Admit ucm-computed-claims red team set denied under strict with Admit unchanged otherwise",
+   "runner": "rust",
+   "crate": "aep-policy-system-admit"
+  },
+  {
+   "id": "CC-34",
+   "name": "UCM HTTP and MCP surfaces with key auth and limits",
+   "runner": "rust",
+   "crate": "aep-ucm"
   }
  ]
 }

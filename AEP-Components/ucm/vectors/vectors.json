@@ -1,0 +1,306 @@
+{
+ "ucm": "ucm-vectors-v1",
+ "suite": "vectors",
+ "generator": "AEP-Components/ucm/scripts/gen_vectors.py",
+ "cases": [
+  {
+   "id": "len",
+   "program": "len([1, 2, 3])",
+   "expect": {
+    "type": "int",
+    "value": "3"
+   }
+  },
+  {
+   "id": "at",
+   "program": "at([10, 20, 30], 1)",
+   "expect": {
+    "type": "int",
+    "value": "20"
+   }
+  },
+  {
+   "id": "at-out",
+   "program": "at([10, 20, 30], 3)",
+   "error": "domain_error"
+  },
+  {
+   "id": "range",
+   "program": "range(0, 4)",
+   "expect": {
+    "type": "vector",
+    "items": [
+     {
+      "type": "int",
+      "value": "0"
+     },
+     {
+      "type": "int",
+      "value": "1"
+     },
+     {
+      "type": "int",
+      "value": "2"
+     },
+     {
+      "type": "int",
+      "value": "3"
+     }
+    ]
+   }
+  },
+  {
+   "id": "concat-join",
+   "program": "concat([1], [1/2])",
+   "expect": {
+    "type": "vector",
+    "items": [
+     {
+      "type": "rational",
+      "value": "1",
+      "decimal": "1"
+     },
+     {
+      "type": "rational",
+      "value": "1/2",
+      "decimal": "0.5"
+     }
+    ]
+   }
+  },
+  {
+   "id": "reverse",
+   "program": "reverse([1, 2, 3])",
+   "expect": {
+    "type": "vector",
+    "items": [
+     {
+      "type": "int",
+      "value": "3"
+     },
+     {
+      "type": "int",
+      "value": "2"
+     },
+     {
+      "type": "int",
+      "value": "1"
+     }
+    ]
+   }
+  },
+  {
+   "id": "sort",
+   "program": "sort([3, 1, 2])",
+   "expect": {
+    "type": "vector",
+    "items": [
+     {
+      "type": "int",
+      "value": "1"
+     },
+     {
+      "type": "int",
+      "value": "2"
+     },
+     {
+      "type": "int",
+      "value": "3"
+     }
+    ]
+   }
+  },
+  {
+   "id": "sum-thirds",
+   "program": "sum([1/3, 1/3, 1/3])",
+   "expect": {
+    "type": "rational",
+    "value": "1",
+    "decimal": "1"
+   }
+  },
+  {
+   "id": "sum-empty",
+   "program": "sum([])",
+   "expect": {
+    "type": "int",
+    "value": "0"
+   }
+  },
+  {
+   "id": "product",
+   "program": "product([2, 3, 4])",
+   "expect": {
+    "type": "int",
+    "value": "24"
+   }
+  },
+  {
+   "id": "mean",
+   "program": "mean([1, 2, 4])",
+   "expect": {
+    "type": "rational",
+    "value": "7/3"
+   }
+  },
+  {
+   "id": "median-even",
+   "program": "median([5, 1, 4, 2])",
+   "expect": {
+    "type": "rational",
+    "value": "3",
+    "decimal": "3"
+   }
+  },
+  {
+   "id": "mean-money",
+   "program": "mean([money(\"1\", \"EUR\"), money(\"2\", \"EUR\")])",
+   "expect": {
+    "type": "money",
+    "currency": "EUR",
+    "value": "3/2",
+    "decimal": "1.5"
+   }
+  },
+  {
+   "id": "variance",
+   "program": "variance([2, 4, 4, 4, 5, 5, 7, 9])",
+   "expect": {
+    "type": "rational",
+    "value": "4",
+    "decimal": "4"
+   }
+  },
+  {
+   "id": "stddev",
+   "program": "stddev([2, 4, 4, 4, 5, 5, 7, 9], 3, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2.000"
+   }
+  },
+  {
+   "id": "variance-sample",
+   "program": "variance_sample([1, 2, 3, 4])",
+   "expect": {
+    "type": "rational",
+    "value": "5/3"
+   }
+  },
+  {
+   "id": "stddev-sample",
+   "program": "stddev_sample([1, 2, 3, 4], 6, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1.290994"
+   }
+  },
+  {
+   "id": "percentile-linear",
+   "program": "percentile([15, 20, 35, 40, 50], 40, \"linear\")",
+   "expect": {
+    "type": "rational",
+    "value": "29",
+    "decimal": "29"
+   }
+  },
+  {
+   "id": "percentile-rank",
+   "program": "percentile([15, 20, 35, 40, 50], 40, \"nearest_rank\")",
+   "expect": {
+    "type": "rational",
+    "value": "20",
+    "decimal": "20"
+   }
+  },
+  {
+   "id": "map",
+   "program": "map([1, 2, 3], x => x * x)",
+   "expect": {
+    "type": "vector",
+    "items": [
+     {
+      "type": "int",
+      "value": "1"
+     },
+     {
+      "type": "int",
+      "value": "4"
+     },
+     {
+      "type": "int",
+      "value": "9"
+     }
+    ]
+   }
+  },
+  {
+   "id": "filter",
+   "program": "filter([1, 2, 3, 4], x => mod(x, 2) == 0)",
+   "expect": {
+    "type": "vector",
+    "items": [
+     {
+      "type": "int",
+      "value": "2"
+     },
+     {
+      "type": "int",
+      "value": "4"
+     }
+    ]
+   }
+  },
+  {
+   "id": "fold",
+   "program": "fold([1, 2, 3], 0, (acc, x) => acc + x)",
+   "expect": {
+    "type": "int",
+    "value": "6"
+   }
+  },
+  {
+   "id": "fold-widens",
+   "program": "fold([1, 2], 0, (acc, x) => acc + 1 / x)",
+   "expect": {
+    "type": "rational",
+    "value": "3/2",
+    "decimal": "1.5"
+   }
+  },
+  {
+   "id": "any",
+   "program": "any([1, 2, 3], x => x > 2)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "all",
+   "program": "all([1, 2, 3], x => x > 1)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "count",
+   "program": "count([1, 2, 3, 4], x => x > 2)",
+   "expect": {
+    "type": "int",
+    "value": "2"
+   }
+  },
+  {
+   "id": "range-too-long",
+   "program": "len(range(0, 200000))",
+   "error": "budget_exceeded"
+  },
+  {
+   "id": "mixed-kinds",
+   "program": "[1, money(1, \"EUR\")]",
+   "error": "type_error"
+  }
+ ]
+}

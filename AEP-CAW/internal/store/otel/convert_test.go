@@ -32,8 +32,8 @@ func TestConvertToLogRecord_BasicFields(t *testing.T) {
 
 	// Check body contains event type and path.
 	body := rec.Body()
-	if body.Kind() != otellog.KindString {
-		t.Fatalf("body kind = %v, want String", body.Kind())
+	if body.Type() != attribute.STRING {
+		t.Fatalf("body type = %v, want STRING", body.Type())
 	}
 	want := "file_write: /workspace/foo.txt"
 	if body.AsString() != want {
@@ -380,17 +380,17 @@ func TestBuildResource_NoExtras(t *testing.T) {
 
 // logRecordAttrs extracts attributes from a log record into a map keyed by
 // attribute name.
-func logRecordAttrs(rec otellog.Record) map[string]otellog.Value {
-	m := make(map[string]otellog.Value)
-	rec.WalkAttributes(func(kv otellog.KeyValue) bool {
-		m[kv.Key] = kv.Value
+func logRecordAttrs(rec otellog.Record) map[string]attribute.Value {
+	m := make(map[string]attribute.Value)
+	rec.WalkAttributes(func(kv attribute.KeyValue) bool {
+		m[string(kv.Key)] = kv.Value
 		return true
 	})
 	return m
 }
 
 // assertAttr asserts that an attribute exists with the expected value.
-func assertAttr(t *testing.T, attrs map[string]otellog.Value, key string, want any) {
+func assertAttr(t *testing.T, attrs map[string]attribute.Value, key string, want any) {
 	t.Helper()
 	v, ok := attrs[key]
 	if !ok {

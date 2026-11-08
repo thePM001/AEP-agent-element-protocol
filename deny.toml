@@ -1,0 +1,56 @@
+# cargo-deny configuration for the AEP workspace.
+# The supply-chain workflow runs `cargo deny --all-features --workspace check`
+# for advisories, bans, licenses and sources and fails the run on any error.
+
+[graph]
+all-features = true
+
+[output]
+feature-depth = 1
+
+[advisories]
+version = 2
+db-urls = ["https://github.com/rustsec/advisory-db"]
+# Vulnerabilities always fail. Unmaintained, unsound and yanked crates fail too.
+unmaintained = "all"
+unsound = "all"
+yanked = "deny"
+ignore = [
+    # serde_yaml 0.9 is archived and pulls unsafe-libyaml. No vulnerability is
+    # open against either crate. Moving dynAEP, envelope and live-entry to a
+    # maintained YAML crate is a code change tracked outside this gate.
+    { id = "RUSTSEC-2024-0449", reason = "unsafe-libyaml unmaintained via serde_yaml 0.9, no open vulnerability" },
+]
+
+[licenses]
+version = 2
+# Every license below is required by at least one crate in the graph.
+allow = [
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "CDLA-Permissive-2.0",
+    "ISC",
+    "MIT",
+    "Unicode-3.0",
+    "Zlib",
+]
+confidence-threshold = 0.93
+
+[licenses.private]
+# Workspace crates with publish = false are not distributed through a registry.
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+# Workspace path dependencies carry no version, which cargo-deny reads as a
+# wildcard. Registry wildcards are refused by the registry-wildcards step of
+# the cargo-deny job, so this check only warns.
+wildcards = "warn"
+allow-wildcard-paths = true
+highlight = "all"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

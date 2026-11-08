@@ -1,0 +1,192 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aep.protocol.local/schemas/ucm-receipt-v1.json",
+  "title": "AEP UCM Receipt v1",
+  "description": "Signed record of one UCM evaluation. Every value is a string, array or object, so the JSON Canonicalization Scheme (JCS) bytes are unambiguous. receipt_id is ucmr_ plus the first 32 hex digits of SHA3-256 over the JCS bytes of every field except receipt_id and signature. signature is ML-DSA-65 over the JCS bytes of every field except signature.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ucm",
+    "program",
+    "program_hash",
+    "inputs",
+    "input_digest",
+    "library_digests",
+    "engine_build",
+    "budget_limits",
+    "budget_used",
+    "float_used",
+    "program_source",
+    "result",
+    "result_digest",
+    "node_id",
+    "public_key",
+    "issued_at",
+    "receipt_id",
+    "signature"
+  ],
+  "properties": {
+    "ucm": {
+      "const": "ucm-receipt-v1"
+    },
+    "program": {
+      "$ref": "ucm-program-v1.json"
+    },
+    "program_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "array"
+          }
+        ]
+      }
+    },
+    "input_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "library_digests": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      }
+    },
+    "engine_build": {
+      "type": "string",
+      "pattern": "^aep-ucm/"
+    },
+    "budget_limits": {
+      "type": "object",
+      "required": [
+        "steps",
+        "bits",
+        "len",
+        "millis"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "steps": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "bits": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "len": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "millis": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        }
+      }
+    },
+    "budget_used": {
+      "type": "object",
+      "required": [
+        "steps",
+        "peak_bits",
+        "peak_len"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "steps": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "peak_bits": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "peak_len": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        }
+      }
+    },
+    "float_used": {
+      "enum": [
+        "true",
+        "false"
+      ]
+    },
+    "program_source": {
+      "enum": [
+        "agent",
+        "library"
+      ]
+    },
+    "result": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "int",
+            "rational",
+            "decimal",
+            "money",
+            "quantity",
+            "interval",
+            "float",
+            "bool",
+            "date",
+            "instant",
+            "text",
+            "vector"
+          ]
+        }
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "array"
+          }
+        ]
+      }
+    },
+    "result_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "node_id": {
+      "type": "string",
+      "pattern": "^ucm-node-[0-9a-f]{16}$"
+    },
+    "public_key": {
+      "type": "string",
+      "pattern": "^[0-9a-f]+$"
+    },
+    "issued_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "receipt_id": {
+      "type": "string",
+      "pattern": "^ucmr_[0-9a-f]{32}$"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]+$"
+    }
+  }
+}

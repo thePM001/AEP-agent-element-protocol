@@ -1,0 +1,1 @@
+{"ucm": "ucm-program-v1", "inputs": [{"name": "x", "type": "rational"}], "body": {"op": "*", "args": [{"var": "x"}, {"dec": "1.5"}]}}

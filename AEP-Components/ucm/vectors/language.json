@@ -1,0 +1,162 @@
+{
+ "ucm": "ucm-vectors-v1",
+ "suite": "language",
+ "generator": "AEP-Components/ucm/scripts/gen_vectors.py",
+ "cases": [
+  {
+   "id": "let-chain",
+   "program": "let a = 2;\nlet b = a * 3;\nb + a",
+   "expect": {
+    "type": "int",
+    "value": "8"
+   }
+  },
+  {
+   "id": "if",
+   "program": "if 1 < 2 then 1 else 1/2",
+   "expect": {
+    "type": "rational",
+    "value": "1",
+    "decimal": "1"
+   }
+  },
+  {
+   "id": "and-short-circuit",
+   "program": "let x = 0;\nx != 0 and 1 / x > 1",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "or",
+   "program": "false or true",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "not",
+   "program": "not (1 == 1)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "text-eq",
+   "program": "\"a\" == \"a\"",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "chain-cmp",
+   "program": "1 < 2 < 3",
+   "error": "parse_error"
+  },
+  {
+   "id": "unbound",
+   "program": "x + 1",
+   "error": "unbound_name"
+  },
+  {
+   "id": "unknown-fn",
+   "program": "frobnicate(1)",
+   "error": "unknown_function"
+  },
+  {
+   "id": "trailing",
+   "program": "1 2",
+   "error": "parse_error"
+  },
+  {
+   "id": "lambda-alone",
+   "program": "x => x",
+   "error": "parse_error"
+  },
+  {
+   "id": "missing-input",
+   "program": "input a: int;\na",
+   "error": "input_error"
+  },
+  {
+   "id": "extra-input",
+   "program": "1",
+   "inputs": {
+    "z": "1"
+   },
+   "error": "input_error"
+  },
+  {
+   "id": "input-vector",
+   "program": "input xs: vector[rational];\nsum(xs)",
+   "inputs": {
+    "xs": [
+     "1/2",
+     "1/3"
+    ]
+   },
+   "expect": {
+    "type": "rational",
+    "value": "5/6"
+   }
+  },
+  {
+   "id": "budget-bits",
+   "program": "2 ^ 100000",
+   "error": "budget_exceeded"
+  },
+  {
+   "id": "comment",
+   "program": "# a comment\n1 + 1 # another",
+   "expect": {
+    "type": "int",
+    "value": "2"
+   }
+  },
+  {
+   "id": "json-form",
+   "program": {
+    "ucm": "ucm-program-v1",
+    "inputs": [],
+    "body": {
+     "op": "+",
+     "args": [
+      {
+       "int": "2"
+      },
+      {
+       "dec": "0.50"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "type": "decimal",
+    "value": "2.50"
+   }
+  },
+  {
+   "id": "json-form-bad-op",
+   "program": {
+    "ucm": "ucm-program-v1",
+    "inputs": [],
+    "body": {
+     "op": "%",
+     "args": [
+      {
+       "int": "2"
+      },
+      {
+       "int": "3"
+      }
+     ]
+    }
+   },
+   "error": "form_error"
+  }
+ ]
+}

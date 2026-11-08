@@ -70,6 +70,29 @@ pub fn deny_to_value(report: DenyReport) -> Value {
     serde_json::to_value(&report).unwrap_or_else(|_| Value::Object(serde_json::Map::new()))
 }
 
+/// Write the manifest's computed field pointers into payload.ucm.computed_fields. Whatever
+/// the foreign agent put there is replaced. It is removed when the manifest declares none, so
+/// an agent can neither widen nor narrow the set of fields that need a UCM receipt.
+pub fn bind_computed_fields(payload: &mut Value, computed_fields: &[String]) {
+    let Some(obj) = payload.as_object_mut() else { return };
+    if computed_fields.is_empty() {
+        if let Some(ucm) = obj.get_mut("ucm").and_then(Value::as_object_mut) {
+            ucm.remove("computed_fields");
+        }
+        return;
+    }
+    let ucm = obj.entry("ucm").or_insert_with(|| Value::Object(serde_json::Map::new()));
+    if !ucm.is_object() {
+        *ucm = Value::Object(serde_json::Map::new());
+    }
+    if let Some(u) = ucm.as_object_mut() {
+        u.insert(
+            String::from("computed_fields"),
+            Value::Array(computed_fields.iter().cloned().map(Value::String).collect()),
+        );
+    }
+}
+
 fn ingest_ok(fields: serde_json::Map<String, Value>) -> Value {
     let mut m = fields;
     m.insert(String::from("ok"), Value::Bool(true));
@@ -215,6 +238,9 @@ pub async fn ingest_foreign_payload(rt: &Arc<UcbRuntime>, body: ForeignIngestBod
     if let Err(report) = manifest::bind_session(&manifest, &event.session_id) {
         return deny_to_value(report);
     }
+    // The task manifest, never the foreign agent, says which payload fields are computed.
+    // Admit checks each of them for a valid UCM receipt (policy ucm-computed-claims).
+    bind_computed_fields(&mut event.payload, &manifest.computed_fields);
     let socket_path = match rt.lattice.dock_path(&event.docking_port) {
         Ok(p) => p,
         Err(e) => return deny_to_value(DenyReport::from_error(&e)),
@@ -458,6 +484,20 @@ mod tests {
         assert_eq!(out.get("ok"), Some(&Value::Bool(false)));
         let rows = out.get("admit").and_then(|v| v.as_array()).unwrap();
         assert_eq!(rows.len(), 1);
+    }
+
+    #[test]
+    fn computed_fields_come_from_the_manifest_only() {
+        let mut p = serde_json::json!({ "amount": "64.54", "ucm": { "computed_fields": ["/other"], "receipts": {} } });
+        bind_computed_fields(&mut p, &["/amount".to_string()]);
+        assert_eq!(p["ucm"]["computed_fields"], serde_json::json!(["/amount"]));
+        assert!(p["ucm"]["receipts"].is_object());
+        let mut q = serde_json::json!({ "amount": "1", "ucm": { "computed_fields": ["/amount"] } });
+        bind_computed_fields(&mut q, &[]);
+        assert!(q["ucm"].get("computed_fields").is_none());
+        let mut r = serde_json::json!({ "amount": "1", "ucm": "not an object" });
+        bind_computed_fields(&mut r, &["/amount".to_string()]);
+        assert_eq!(r["ucm"]["computed_fields"], serde_json::json!(["/amount"]));
     }
 
     #[test]

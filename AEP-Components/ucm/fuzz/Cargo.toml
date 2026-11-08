@@ -1,0 +1,40 @@
+[package]
+name = "aep-ucm-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+license = "Apache-2.0"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+serde_json = "1"
+aep-ucm-core = { path = "../crates/ucm-core" }
+aep-ucm-receipt = { path = "../crates/ucm-receipt" }
+
+# Fuzzing needs nightly and cargo-fuzz, so this crate is its own workspace.
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "parse_text"
+path = "fuzz_targets/parse_text.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "decode_program_json"
+path = "fuzz_targets/decode_program_json.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "decode_receipt"
+path = "fuzz_targets/decode_receipt.rs"
+test = false
+doc = false
+bench = false

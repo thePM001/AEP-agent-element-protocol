@@ -1,0 +1,72 @@
+{
+ "ucm": "ucm-vectors-v1",
+ "suite": "interval",
+ "generator": "AEP-Components/ucm/scripts/gen_vectors.py",
+ "cases": [
+  {
+   "id": "mul",
+   "program": "let i = interval(1, 2) * interval(-1, 3);\n[lo(i), hi(i)]",
+   "expect": {
+    "type": "vector",
+    "items": [
+     {
+      "type": "rational",
+      "value": "-2",
+      "decimal": "-2"
+     },
+     {
+      "type": "rational",
+      "value": "6",
+      "decimal": "6"
+     }
+    ]
+   }
+  },
+  {
+   "id": "div-zero",
+   "program": "interval(1, 2) / interval(-1, 1)",
+   "error": "domain_error"
+  },
+  {
+   "id": "width",
+   "program": "width(interval(1, 5/2))",
+   "expect": {
+    "type": "rational",
+    "value": "3/2",
+    "decimal": "1.5"
+   }
+  },
+  {
+   "id": "contains",
+   "program": "contains(interval(1, 2), 3/2)",
+   "expect": {
+    "type": "bool",
+    "value": "true"
+   }
+  },
+  {
+   "id": "bad-order",
+   "program": "interval(2, 1)",
+   "error": "domain_error"
+  },
+  {
+   "id": "sq-even",
+   "program": "let i = interval(-2, 1) ^ 2;\n[lo(i), hi(i)]",
+   "expect": {
+    "type": "vector",
+    "items": [
+     {
+      "type": "rational",
+      "value": "0",
+      "decimal": "0"
+     },
+     {
+      "type": "rational",
+      "value": "4",
+      "decimal": "4"
+     }
+    ]
+   }
+  }
+ ]
+}

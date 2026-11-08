@@ -1,0 +1,45 @@
+{
+ "ucm": "ucm-vectors-v1",
+ "suite": "library",
+ "generator": "AEP-Components/ucm/scripts/gen_vectors.py",
+ "cases": [
+  {
+   "id": "const-c",
+   "program": "const(\"c\")",
+   "expect": {
+    "type": "quantity",
+    "unit": "m/s",
+    "value": "299792458"
+   }
+  },
+  {
+   "id": "const-unknown",
+   "program": "const(\"warp\")",
+   "error": "unbound_name"
+  },
+  {
+   "id": "formula-compound",
+   "program": "formula(\"finance.compound_amount\", money(\"1000\", \"EUR\"), 5/100, 2)",
+   "expect": {
+    "type": "money",
+    "currency": "EUR",
+    "value": "2205/2",
+    "decimal": "1102.5"
+   }
+  },
+  {
+   "id": "formula-int-arg",
+   "program": "formula(\"math.percent_change\", 100, 150)",
+   "expect": {
+    "type": "rational",
+    "value": "50",
+    "decimal": "50"
+   }
+  },
+  {
+   "id": "formula-wrong-arg",
+   "program": "formula(\"finance.compound_amount\", 1000, 5/100, 2)",
+   "error": "type_error"
+  }
+ ]
+}

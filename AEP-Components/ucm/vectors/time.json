@@ -1,0 +1,122 @@
+{
+ "ucm": "ucm-vectors-v1",
+ "suite": "time",
+ "generator": "AEP-Components/ucm/scripts/gen_vectors.py",
+ "cases": [
+  {
+   "id": "weekday",
+   "program": "weekday(date(\"2026-11-07\"))",
+   "expect": {
+    "type": "int",
+    "value": "6"
+   }
+  },
+  {
+   "id": "day-of-year",
+   "program": "day_of_year(date(\"2026-12-31\"))",
+   "expect": {
+    "type": "int",
+    "value": "365"
+   }
+  },
+  {
+   "id": "days-between",
+   "program": "days_between(date(\"2026-01-01\"), date(\"2026-11-07\"))",
+   "expect": {
+    "type": "int",
+    "value": "310"
+   }
+  },
+  {
+   "id": "add-months-clamp",
+   "program": "add_months(date(\"2026-01-31\"), 1)",
+   "expect": {
+    "type": "date",
+    "value": "2026-02-28"
+   }
+  },
+  {
+   "id": "add-months-leap",
+   "program": "add_months(date(\"2028-01-31\"), 1)",
+   "expect": {
+    "type": "date",
+    "value": "2028-02-29"
+   }
+  },
+  {
+   "id": "add-days",
+   "program": "add_days(date(\"2026-12-30\"), 3)",
+   "expect": {
+    "type": "date",
+    "value": "2027-01-02"
+   }
+  },
+  {
+   "id": "date-plus-qty",
+   "program": "date(\"2026-11-07\") + q(2, \"week\")",
+   "expect": {
+    "type": "date",
+    "value": "2026-11-21"
+   }
+  },
+  {
+   "id": "date-plus-part-day",
+   "program": "date(\"2026-11-07\") + q(1, \"h\")",
+   "error": "domain_error"
+  },
+  {
+   "id": "date-diff",
+   "program": "to(date(\"2026-11-07\") - date(\"2026-11-01\"), \"day\")",
+   "expect": {
+    "type": "rational",
+    "value": "6",
+    "decimal": "6"
+   }
+  },
+  {
+   "id": "bad-date",
+   "program": "date(\"2026-02-30\")",
+   "error": "input_error"
+  },
+  {
+   "id": "ymd",
+   "program": "date(2026, 2, 29)",
+   "error": "domain_error"
+  },
+  {
+   "id": "leap",
+   "program": "is_leap_year(2100)",
+   "expect": {
+    "type": "bool",
+    "value": "false"
+   }
+  },
+  {
+   "id": "dst-hour",
+   "program": "to(instant(\"2026-03-29T03:30\", \"Europe/Zurich\") - instant(\"2026-03-29T01:30\", \"Europe/Zurich\"), \"h\")",
+   "expect": {
+    "type": "rational",
+    "value": "1",
+    "decimal": "1"
+   }
+  },
+  {
+   "id": "dst-gap",
+   "program": "instant(\"2026-03-29T02:30\", \"Europe/Zurich\")",
+   "error": "domain_error"
+  },
+  {
+   "id": "local-date",
+   "program": "local_date(instant_utc(\"2026-11-07T23:30:00Z\"), \"Asia/Tokyo\")",
+   "expect": {
+    "type": "date",
+    "value": "2026-11-08"
+   }
+  },
+  {
+   "id": "bad-zone",
+   "program": "instant(\"2026-11-07T10:00\", \"Mars/Base\")",
+   "error": "domain_error"
+  }
+ ]
+}

@@ -116,6 +116,13 @@
  "items": { "enum": ["cca", "regulation_dock", "human"] }
  },
  "created_at_unix": { "type": "integer", "minimum": 0 },
- "expires_at_unix": { "type": "integer", "minimum": 0 }
+ "expires_at_unix": { "type": "integer", "minimum": 0 },
+ "computed_fields": {
+ "type": "array",
+ "description": "JSON pointers into the action payload whose values must carry a UCM receipt (policy ucm-computed-claims). UCB writes them to payload.ucm.computed_fields at ingest and replaces whatever the agent sent.",
+ "items": { "type": "string", "pattern": "^(/[^/]*)+$" },
+ "uniqueItems": true,
+ "maxItems": 64
+ }
  }
 }

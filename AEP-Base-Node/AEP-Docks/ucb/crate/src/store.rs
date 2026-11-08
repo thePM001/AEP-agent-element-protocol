@@ -28,6 +28,11 @@ pub struct TaskManifestV1 {
     pub manifest_digest: String,
     #[serde(default)]
     pub signature: Option<String>,
+    /// JSON pointers into the action payload whose values must carry a UCM receipt.
+    /// Empty means the manifest declares no computed field; it is then left out of the
+    /// serialized form, so the digest of every existing manifest remains the same.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub computed_fields: Vec<String>,
 }
 
 pub struct ManifestStore {

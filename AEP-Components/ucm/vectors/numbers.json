@@ -1,0 +1,1372 @@
+{
+ "ucm": "ucm-vectors-v1",
+ "suite": "numbers",
+ "generator": "AEP-Components/ucm/scripts/gen_vectors.py",
+ "cases": [
+  {
+   "id": "abs-neg-rational",
+   "program": "abs(-3/4)",
+   "expect": {
+    "type": "rational",
+    "value": "3/4",
+    "decimal": "0.75"
+   }
+  },
+  {
+   "id": "sign-neg",
+   "program": "sign(-2)",
+   "expect": {
+    "type": "int",
+    "value": "-1"
+   }
+  },
+  {
+   "id": "floor-half",
+   "program": "floor(7/2)",
+   "expect": {
+    "type": "int",
+    "value": "3"
+   }
+  },
+  {
+   "id": "floor-neg-half",
+   "program": "floor(-7/2)",
+   "expect": {
+    "type": "int",
+    "value": "-4"
+   }
+  },
+  {
+   "id": "ceil-neg-half",
+   "program": "ceil(-7/2)",
+   "expect": {
+    "type": "int",
+    "value": "-3"
+   }
+  },
+  {
+   "id": "trunc-neg-half",
+   "program": "trunc(-7/2)",
+   "expect": {
+    "type": "int",
+    "value": "-3"
+   }
+  },
+  {
+   "id": "round-2.5-0-half_even",
+   "program": "round(2.5, 0, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2"
+   }
+  },
+  {
+   "id": "round-2.5-1-half_even",
+   "program": "round(2.5, 1, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2.5"
+   }
+  },
+  {
+   "id": "round-2.5-2-half_even",
+   "program": "round(2.5, 2, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2.50"
+   }
+  },
+  {
+   "id": "round-2.5-0-half_up",
+   "program": "round(2.5, 0, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "3"
+   }
+  },
+  {
+   "id": "round-2.5-1-half_up",
+   "program": "round(2.5, 1, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2.5"
+   }
+  },
+  {
+   "id": "round-2.5-2-half_up",
+   "program": "round(2.5, 2, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2.50"
+   }
+  },
+  {
+   "id": "round-2.5-0-half_down",
+   "program": "round(2.5, 0, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2"
+   }
+  },
+  {
+   "id": "round-2.5-1-half_down",
+   "program": "round(2.5, 1, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2.5"
+   }
+  },
+  {
+   "id": "round-2.5-2-half_down",
+   "program": "round(2.5, 2, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2.50"
+   }
+  },
+  {
+   "id": "round-2.5-0-up",
+   "program": "round(2.5, 0, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "3"
+   }
+  },
+  {
+   "id": "round-2.5-1-up",
+   "program": "round(2.5, 1, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2.5"
+   }
+  },
+  {
+   "id": "round-2.5-2-up",
+   "program": "round(2.5, 2, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2.50"
+   }
+  },
+  {
+   "id": "round-2.5-0-down",
+   "program": "round(2.5, 0, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2"
+   }
+  },
+  {
+   "id": "round-2.5-1-down",
+   "program": "round(2.5, 1, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2.5"
+   }
+  },
+  {
+   "id": "round-2.5-2-down",
+   "program": "round(2.5, 2, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2.50"
+   }
+  },
+  {
+   "id": "round-2.5-0-floor",
+   "program": "round(2.5, 0, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2"
+   }
+  },
+  {
+   "id": "round-2.5-1-floor",
+   "program": "round(2.5, 1, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2.5"
+   }
+  },
+  {
+   "id": "round-2.5-2-floor",
+   "program": "round(2.5, 2, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2.50"
+   }
+  },
+  {
+   "id": "round-2.5-0-ceiling",
+   "program": "round(2.5, 0, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "3"
+   }
+  },
+  {
+   "id": "round-2.5-1-ceiling",
+   "program": "round(2.5, 1, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2.5"
+   }
+  },
+  {
+   "id": "round-2.5-2-ceiling",
+   "program": "round(2.5, 2, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "2.50"
+   }
+  },
+  {
+   "id": "round--2.5-0-half_even",
+   "program": "round(-2.5, 0, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2"
+   }
+  },
+  {
+   "id": "round--2.5-1-half_even",
+   "program": "round(-2.5, 1, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.5"
+   }
+  },
+  {
+   "id": "round--2.5-2-half_even",
+   "program": "round(-2.5, 2, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.50"
+   }
+  },
+  {
+   "id": "round--2.5-0-half_up",
+   "program": "round(-2.5, 0, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-3"
+   }
+  },
+  {
+   "id": "round--2.5-1-half_up",
+   "program": "round(-2.5, 1, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.5"
+   }
+  },
+  {
+   "id": "round--2.5-2-half_up",
+   "program": "round(-2.5, 2, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.50"
+   }
+  },
+  {
+   "id": "round--2.5-0-half_down",
+   "program": "round(-2.5, 0, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2"
+   }
+  },
+  {
+   "id": "round--2.5-1-half_down",
+   "program": "round(-2.5, 1, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.5"
+   }
+  },
+  {
+   "id": "round--2.5-2-half_down",
+   "program": "round(-2.5, 2, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.50"
+   }
+  },
+  {
+   "id": "round--2.5-0-up",
+   "program": "round(-2.5, 0, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-3"
+   }
+  },
+  {
+   "id": "round--2.5-1-up",
+   "program": "round(-2.5, 1, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.5"
+   }
+  },
+  {
+   "id": "round--2.5-2-up",
+   "program": "round(-2.5, 2, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.50"
+   }
+  },
+  {
+   "id": "round--2.5-0-down",
+   "program": "round(-2.5, 0, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2"
+   }
+  },
+  {
+   "id": "round--2.5-1-down",
+   "program": "round(-2.5, 1, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.5"
+   }
+  },
+  {
+   "id": "round--2.5-2-down",
+   "program": "round(-2.5, 2, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.50"
+   }
+  },
+  {
+   "id": "round--2.5-0-floor",
+   "program": "round(-2.5, 0, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-3"
+   }
+  },
+  {
+   "id": "round--2.5-1-floor",
+   "program": "round(-2.5, 1, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.5"
+   }
+  },
+  {
+   "id": "round--2.5-2-floor",
+   "program": "round(-2.5, 2, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.50"
+   }
+  },
+  {
+   "id": "round--2.5-0-ceiling",
+   "program": "round(-2.5, 0, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2"
+   }
+  },
+  {
+   "id": "round--2.5-1-ceiling",
+   "program": "round(-2.5, 1, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.5"
+   }
+  },
+  {
+   "id": "round--2.5-2-ceiling",
+   "program": "round(-2.5, 2, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-2.50"
+   }
+  },
+  {
+   "id": "round-0.125-0-half_even",
+   "program": "round(0.125, 0, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "round-0.125-1-half_even",
+   "program": "round(0.125, 1, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.1"
+   }
+  },
+  {
+   "id": "round-0.125-2-half_even",
+   "program": "round(0.125, 2, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.12"
+   }
+  },
+  {
+   "id": "round-0.125-0-half_up",
+   "program": "round(0.125, 0, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "round-0.125-1-half_up",
+   "program": "round(0.125, 1, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.1"
+   }
+  },
+  {
+   "id": "round-0.125-2-half_up",
+   "program": "round(0.125, 2, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.13"
+   }
+  },
+  {
+   "id": "round-0.125-0-half_down",
+   "program": "round(0.125, 0, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "round-0.125-1-half_down",
+   "program": "round(0.125, 1, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.1"
+   }
+  },
+  {
+   "id": "round-0.125-2-half_down",
+   "program": "round(0.125, 2, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.12"
+   }
+  },
+  {
+   "id": "round-0.125-0-up",
+   "program": "round(0.125, 0, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "round-0.125-1-up",
+   "program": "round(0.125, 1, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.2"
+   }
+  },
+  {
+   "id": "round-0.125-2-up",
+   "program": "round(0.125, 2, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.13"
+   }
+  },
+  {
+   "id": "round-0.125-0-down",
+   "program": "round(0.125, 0, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "round-0.125-1-down",
+   "program": "round(0.125, 1, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.1"
+   }
+  },
+  {
+   "id": "round-0.125-2-down",
+   "program": "round(0.125, 2, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.12"
+   }
+  },
+  {
+   "id": "round-0.125-0-floor",
+   "program": "round(0.125, 0, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "round-0.125-1-floor",
+   "program": "round(0.125, 1, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.1"
+   }
+  },
+  {
+   "id": "round-0.125-2-floor",
+   "program": "round(0.125, 2, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.12"
+   }
+  },
+  {
+   "id": "round-0.125-0-ceiling",
+   "program": "round(0.125, 0, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "round-0.125-1-ceiling",
+   "program": "round(0.125, 1, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.2"
+   }
+  },
+  {
+   "id": "round-0.125-2-ceiling",
+   "program": "round(0.125, 2, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.13"
+   }
+  },
+  {
+   "id": "round--0.135-0-half_even",
+   "program": "round(-0.135, 0, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "round--0.135-1-half_even",
+   "program": "round(-0.135, 1, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.1"
+   }
+  },
+  {
+   "id": "round--0.135-2-half_even",
+   "program": "round(-0.135, 2, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.14"
+   }
+  },
+  {
+   "id": "round--0.135-0-half_up",
+   "program": "round(-0.135, 0, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "round--0.135-1-half_up",
+   "program": "round(-0.135, 1, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.1"
+   }
+  },
+  {
+   "id": "round--0.135-2-half_up",
+   "program": "round(-0.135, 2, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.14"
+   }
+  },
+  {
+   "id": "round--0.135-0-half_down",
+   "program": "round(-0.135, 0, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "round--0.135-1-half_down",
+   "program": "round(-0.135, 1, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.1"
+   }
+  },
+  {
+   "id": "round--0.135-2-half_down",
+   "program": "round(-0.135, 2, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.13"
+   }
+  },
+  {
+   "id": "round--0.135-0-up",
+   "program": "round(-0.135, 0, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-1"
+   }
+  },
+  {
+   "id": "round--0.135-1-up",
+   "program": "round(-0.135, 1, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.2"
+   }
+  },
+  {
+   "id": "round--0.135-2-up",
+   "program": "round(-0.135, 2, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.14"
+   }
+  },
+  {
+   "id": "round--0.135-0-down",
+   "program": "round(-0.135, 0, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "round--0.135-1-down",
+   "program": "round(-0.135, 1, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.1"
+   }
+  },
+  {
+   "id": "round--0.135-2-down",
+   "program": "round(-0.135, 2, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.13"
+   }
+  },
+  {
+   "id": "round--0.135-0-floor",
+   "program": "round(-0.135, 0, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-1"
+   }
+  },
+  {
+   "id": "round--0.135-1-floor",
+   "program": "round(-0.135, 1, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.2"
+   }
+  },
+  {
+   "id": "round--0.135-2-floor",
+   "program": "round(-0.135, 2, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.14"
+   }
+  },
+  {
+   "id": "round--0.135-0-ceiling",
+   "program": "round(-0.135, 0, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "round--0.135-1-ceiling",
+   "program": "round(-0.135, 1, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.1"
+   }
+  },
+  {
+   "id": "round--0.135-2-ceiling",
+   "program": "round(-0.135, 2, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.13"
+   }
+  },
+  {
+   "id": "round-1o3-0-half_even",
+   "program": "round(1/3, 0, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "round-1o3-1-half_even",
+   "program": "round(1/3, 1, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.3"
+   }
+  },
+  {
+   "id": "round-1o3-2-half_even",
+   "program": "round(1/3, 2, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.33"
+   }
+  },
+  {
+   "id": "round-1o3-0-half_up",
+   "program": "round(1/3, 0, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "round-1o3-1-half_up",
+   "program": "round(1/3, 1, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.3"
+   }
+  },
+  {
+   "id": "round-1o3-2-half_up",
+   "program": "round(1/3, 2, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.33"
+   }
+  },
+  {
+   "id": "round-1o3-0-half_down",
+   "program": "round(1/3, 0, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "round-1o3-1-half_down",
+   "program": "round(1/3, 1, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.3"
+   }
+  },
+  {
+   "id": "round-1o3-2-half_down",
+   "program": "round(1/3, 2, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.33"
+   }
+  },
+  {
+   "id": "round-1o3-0-up",
+   "program": "round(1/3, 0, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "round-1o3-1-up",
+   "program": "round(1/3, 1, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.4"
+   }
+  },
+  {
+   "id": "round-1o3-2-up",
+   "program": "round(1/3, 2, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.34"
+   }
+  },
+  {
+   "id": "round-1o3-0-down",
+   "program": "round(1/3, 0, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "round-1o3-1-down",
+   "program": "round(1/3, 1, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.3"
+   }
+  },
+  {
+   "id": "round-1o3-2-down",
+   "program": "round(1/3, 2, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.33"
+   }
+  },
+  {
+   "id": "round-1o3-0-floor",
+   "program": "round(1/3, 0, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "round-1o3-1-floor",
+   "program": "round(1/3, 1, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.3"
+   }
+  },
+  {
+   "id": "round-1o3-2-floor",
+   "program": "round(1/3, 2, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.33"
+   }
+  },
+  {
+   "id": "round-1o3-0-ceiling",
+   "program": "round(1/3, 0, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "round-1o3-1-ceiling",
+   "program": "round(1/3, 1, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.4"
+   }
+  },
+  {
+   "id": "round-1o3-2-ceiling",
+   "program": "round(1/3, 2, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.34"
+   }
+  },
+  {
+   "id": "round-2o3-0-half_even",
+   "program": "round(2/3, 0, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "round-2o3-1-half_even",
+   "program": "round(2/3, 1, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.7"
+   }
+  },
+  {
+   "id": "round-2o3-2-half_even",
+   "program": "round(2/3, 2, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.67"
+   }
+  },
+  {
+   "id": "round-2o3-0-half_up",
+   "program": "round(2/3, 0, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "round-2o3-1-half_up",
+   "program": "round(2/3, 1, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.7"
+   }
+  },
+  {
+   "id": "round-2o3-2-half_up",
+   "program": "round(2/3, 2, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.67"
+   }
+  },
+  {
+   "id": "round-2o3-0-half_down",
+   "program": "round(2/3, 0, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "round-2o3-1-half_down",
+   "program": "round(2/3, 1, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.7"
+   }
+  },
+  {
+   "id": "round-2o3-2-half_down",
+   "program": "round(2/3, 2, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.67"
+   }
+  },
+  {
+   "id": "round-2o3-0-up",
+   "program": "round(2/3, 0, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "round-2o3-1-up",
+   "program": "round(2/3, 1, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.7"
+   }
+  },
+  {
+   "id": "round-2o3-2-up",
+   "program": "round(2/3, 2, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.67"
+   }
+  },
+  {
+   "id": "round-2o3-0-down",
+   "program": "round(2/3, 0, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "round-2o3-1-down",
+   "program": "round(2/3, 1, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.6"
+   }
+  },
+  {
+   "id": "round-2o3-2-down",
+   "program": "round(2/3, 2, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.66"
+   }
+  },
+  {
+   "id": "round-2o3-0-floor",
+   "program": "round(2/3, 0, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "round-2o3-1-floor",
+   "program": "round(2/3, 1, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.6"
+   }
+  },
+  {
+   "id": "round-2o3-2-floor",
+   "program": "round(2/3, 2, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.66"
+   }
+  },
+  {
+   "id": "round-2o3-0-ceiling",
+   "program": "round(2/3, 0, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "1"
+   }
+  },
+  {
+   "id": "round-2o3-1-ceiling",
+   "program": "round(2/3, 1, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.7"
+   }
+  },
+  {
+   "id": "round-2o3-2-ceiling",
+   "program": "round(2/3, 2, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0.67"
+   }
+  },
+  {
+   "id": "round--5o6-0-half_even",
+   "program": "round(-5/6, 0, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-1"
+   }
+  },
+  {
+   "id": "round--5o6-1-half_even",
+   "program": "round(-5/6, 1, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.8"
+   }
+  },
+  {
+   "id": "round--5o6-2-half_even",
+   "program": "round(-5/6, 2, \"half_even\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.83"
+   }
+  },
+  {
+   "id": "round--5o6-0-half_up",
+   "program": "round(-5/6, 0, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-1"
+   }
+  },
+  {
+   "id": "round--5o6-1-half_up",
+   "program": "round(-5/6, 1, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.8"
+   }
+  },
+  {
+   "id": "round--5o6-2-half_up",
+   "program": "round(-5/6, 2, \"half_up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.83"
+   }
+  },
+  {
+   "id": "round--5o6-0-half_down",
+   "program": "round(-5/6, 0, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-1"
+   }
+  },
+  {
+   "id": "round--5o6-1-half_down",
+   "program": "round(-5/6, 1, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.8"
+   }
+  },
+  {
+   "id": "round--5o6-2-half_down",
+   "program": "round(-5/6, 2, \"half_down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.83"
+   }
+  },
+  {
+   "id": "round--5o6-0-up",
+   "program": "round(-5/6, 0, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-1"
+   }
+  },
+  {
+   "id": "round--5o6-1-up",
+   "program": "round(-5/6, 1, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.9"
+   }
+  },
+  {
+   "id": "round--5o6-2-up",
+   "program": "round(-5/6, 2, \"up\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.84"
+   }
+  },
+  {
+   "id": "round--5o6-0-down",
+   "program": "round(-5/6, 0, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "round--5o6-1-down",
+   "program": "round(-5/6, 1, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.8"
+   }
+  },
+  {
+   "id": "round--5o6-2-down",
+   "program": "round(-5/6, 2, \"down\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.83"
+   }
+  },
+  {
+   "id": "round--5o6-0-floor",
+   "program": "round(-5/6, 0, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-1"
+   }
+  },
+  {
+   "id": "round--5o6-1-floor",
+   "program": "round(-5/6, 1, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.9"
+   }
+  },
+  {
+   "id": "round--5o6-2-floor",
+   "program": "round(-5/6, 2, \"floor\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.84"
+   }
+  },
+  {
+   "id": "round--5o6-0-ceiling",
+   "program": "round(-5/6, 0, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "0"
+   }
+  },
+  {
+   "id": "round--5o6-1-ceiling",
+   "program": "round(-5/6, 1, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.8"
+   }
+  },
+  {
+   "id": "round--5o6-2-ceiling",
+   "program": "round(-5/6, 2, \"ceiling\")",
+   "expect": {
+    "type": "decimal",
+    "value": "-0.83"
+   }
+  },
+  {
+   "id": "round-bad-mode",
+   "program": "round(1/3, 2, \"nearest\")",
+   "error": "domain_error"
+  },
+  {
+   "id": "min-join",
+   "program": "min(3, 1/2)",
+   "expect": {
+    "type": "rational",
+    "value": "1/2",
+    "decimal": "0.5"
+   }
+  },
+  {
+   "id": "max-vector",
+   "program": "max([1, 5, 3])",
+   "expect": {
+    "type": "int",
+    "value": "5"
+   }
+  },
+  {
+   "id": "numerator",
+   "program": "numerator(6/4)",
+   "expect": {
+    "type": "int",
+    "value": "3"
+   }
+  },
+  {
+   "id": "denominator",
+   "program": "denominator(6/4)",
+   "expect": {
+    "type": "int",
+    "value": "2"
+   }
+  },
+  {
+   "id": "rational-of-decimal",
+   "program": "rational(0.125)",
+   "expect": {
+    "type": "rational",
+    "value": "1/8",
+    "decimal": "0.125"
+   }
+  },
+  {
+   "id": "decimal-add",
+   "program": "0.1 + 0.2",
+   "expect": {
+    "type": "decimal",
+    "value": "0.3"
+   }
+  },
+  {
+   "id": "decimal-mul-scale",
+   "program": "1.10 * 2.0",
+   "expect": {
+    "type": "decimal",
+    "value": "2.200"
+   }
+  },
+  {
+   "id": "decimal-pow",
+   "program": "1.5 ^ 2",
+   "expect": {
+    "type": "decimal",
+    "value": "2.25"
+   }
+  },
+  {
+   "id": "decimal-div-is-rational",
+   "program": "1.0 / 3",
+   "expect": {
+    "type": "rational",
+    "value": "1/3"
+   }
+  },
+  {
+   "id": "int-div-is-rational",
+   "program": "10 / 4",
+   "expect": {
+    "type": "rational",
+    "value": "5/2",
+    "decimal": "2.5"
+   }
+  },
+  {
+   "id": "neg-pow-is-rational",
+   "program": "2 ^ -3",
+   "expect": {
+    "type": "rational",
+    "value": "1/8",
+    "decimal": "0.125"
+   }
+  },
+  {
+   "id": "pow-var-exponent",
+   "program": "let n = 3;\n2 ^ n",
+   "expect": {
+    "type": "rational",
+    "value": "8",
+    "decimal": "8"
+   }
+  },
+  {
+   "id": "unary-minus-pow",
+   "program": "-2 ^ 2",
+   "expect": {
+    "type": "int",
+    "value": "-4"
+   }
+  },
+  {
+   "id": "paren-neg-pow",
+   "program": "(-2) ^ 2",
+   "expect": {
+    "type": "int",
+    "value": "4"
+   }
+  },
+  {
+   "id": "div-zero",
+   "program": "1 / (2 - 2)",
+   "error": "division_by_zero"
+  },
+  {
+   "id": "zero-neg-pow",
+   "program": "0 ^ -1",
+   "error": "division_by_zero"
+  },
+  {
+   "id": "big-int",
+   "program": "2 ^ 200",
+   "expect": {
+    "type": "int",
+    "value": "1606938044258990275541962092341162602522202993782792835301376"
+   }
+  }
+ ]
+}

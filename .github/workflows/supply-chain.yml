@@ -1,0 +1,169 @@
+name: supply-chain
+
+# Blocking dependency, advisory, license, source and secret gates.
+# Every job here fails the run on a finding. The operator lists these job
+# names as required status checks on main (see the job names below).
+# Every action is pinned to a commit SHA with its release tag in a comment.
+# A version move updates the SHA and the tag comment together.
+
+on:
+  push:
+  pull_request:
+  schedule:
+    # New advisories land without a code change, so the gates also run weekly.
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cargo-deny:
+    name: cargo-deny
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CARGO_DENY_VERSION: 0.20.2
+      # SHA-256 of cargo-deny-0.20.2-x86_64-unknown-linux-musl.tar.gz as published on the release.
+      CARGO_DENY_SHA256: 9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: install cargo-deny
+        run: |
+          set -euo pipefail
+          name="cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl"
+          curl -sSfL -o "${RUNNER_TEMP}/${name}.tar.gz" \
+            "https://github.com/EmbarkStudios/cargo-deny/releases/download/${CARGO_DENY_VERSION}/${name}.tar.gz"
+          echo "${CARGO_DENY_SHA256}  ${RUNNER_TEMP}/${name}.tar.gz" | sha256sum --check --strict
+          tar -xzf "${RUNNER_TEMP}/${name}.tar.gz" -C "${RUNNER_TEMP}" --strip-components=1 "${name}/cargo-deny"
+          "${RUNNER_TEMP}/cargo-deny" --version
+      # Configuration lives in deny.toml at the repository root.
+      - name: cargo deny check advisories
+        run: '"${RUNNER_TEMP}/cargo-deny" --all-features --workspace --locked check advisories'
+      - name: cargo deny check bans licenses sources
+        if: ${{ !cancelled() }}
+        run: '"${RUNNER_TEMP}/cargo-deny" --all-features --workspace --locked check bans licenses sources'
+      # cargo-deny reads versionless workspace path dependencies as wildcards,
+      # so deny.toml only warns on wildcards. This step refuses a wildcard
+      # requirement on any registry dependency of a workspace crate.
+      - name: no wildcard registry dependency
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          cargo metadata --format-version 1 --locked --all-features --no-deps > "${RUNNER_TEMP}/metadata.json"
+          bad=$(jq -r '.packages[] | .name as $crate | .dependencies[]
+            | select(.path == null and (.req == "*" or (.req | test("^[<>=^~ ]*\\*$"))))
+            | "\($crate) -> \(.name) \(.req)"' "${RUNNER_TEMP}/metadata.json")
+          if [ -n "${bad}" ]; then
+            echo "${bad}"
+            echo "::error::wildcard version requirement on a registry dependency"
+            exit 1
+          fi
+          echo "no wildcard registry dependency"
+
+  govulncheck:
+    name: govulncheck AEP-CAW
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Pinned scanner release.
+      GOVULNCHECK_VERSION: v1.9.0
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: AEP-CAW/go.mod
+          cache-dependency-path: AEP-CAW/go.sum
+      # The same build packages as the CAW linux build: the cgo FUSE and
+      # seccomp packages fail to load without their headers.
+      - name: install CAW build headers
+        run: sudo apt-get update && sudo apt-get install -y libfuse-dev libfuse3-dev libseccomp-dev pkg-config
+      - name: install govulncheck
+        run: go install "golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}"
+      # setup-go installs the go line of AEP-CAW/go.mod. Inside AEP-CAW the go
+      # command then switches to the toolchain line, so govulncheck checks the
+      # standard library CAW actually ships with. Source mode reports only
+      # vulnerable symbols that CAW code can reach.
+      - name: toolchain in use
+        working-directory: AEP-CAW
+        run: go version
+      - name: govulncheck ./... (linux)
+        working-directory: AEP-CAW
+        run: govulncheck ./...
+      - name: govulncheck ./... (darwin)
+        working-directory: AEP-CAW
+        env:
+          GOOS: darwin
+          CGO_ENABLED: "0"
+        run: govulncheck ./...
+      - name: govulncheck ./... (windows)
+        working-directory: AEP-CAW
+        env:
+          GOOS: windows
+          CGO_ENABLED: "0"
+        run: govulncheck ./...
+
+  npm-audit:
+    name: npm audit (high)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      # npm audit reads package-lock.json and needs no install.
+      - name: npm audit --audit-level=high
+        run: npm audit --audit-level=high
+
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GITLEAKS_VERSION: 8.30.1
+      # SHA-256 of gitleaks_8.30.1_linux_x64.tar.gz as published on the release.
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: install gitleaks
+        run: |
+          set -euo pipefail
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -o "${RUNNER_TEMP}/${tarball}" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${tarball}"
+          echo "${GITLEAKS_SHA256}  ${RUNNER_TEMP}/${tarball}" | sha256sum --check --strict
+          tar -xzf "${RUNNER_TEMP}/${tarball}" -C "${RUNNER_TEMP}" gitleaks
+          "${RUNNER_TEMP}/gitleaks" version
+      # Configuration lives in .gitleaks.toml at the repository root.
+      - name: gitleaks dir (checked out tree)
+        run: '"${RUNNER_TEMP}/gitleaks" dir . --config .gitleaks.toml --redact --no-banner --exit-code 1'
+      - name: gitleaks git (commits in this push or pull request)
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          zero=0000000000000000000000000000000000000000
+          if [ "${EVENT_NAME}" = "pull_request" ]; then
+            range="${PR_BASE}..${GITHUB_SHA}"
+          elif [ "${EVENT_NAME}" = "push" ] && [ -n "${PUSH_BEFORE}" ] && [ "${PUSH_BEFORE}" != "${zero}" ] \
+            && git cat-file -e "${PUSH_BEFORE}^{commit}" 2>/dev/null; then
+            range="${PUSH_BEFORE}..${GITHUB_SHA}"
+          else
+            # New branch, forced push, schedule or manual run: scan the tip commit.
+            range="-1 ${GITHUB_SHA}"
+          fi
+          echo "scanning commits: ${range}"
+          "${RUNNER_TEMP}/gitleaks" git . --config .gitleaks.toml --redact --no-banner --exit-code 1 \
+            --log-opts="${range}"
