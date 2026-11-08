@@ -232,6 +232,23 @@ pub fn enforce_writing_value(value: &Value) -> Value {
     }
 }
 
+/// Where an action payload carries signed UCM receipts: on the payload itself or on the
+/// foreign payload that UCB keeps under raw.
+const UCM_RECEIPT_POINTERS: &[&str] = &["/ucm/receipts", "/raw/ucm/receipts"];
+
+/// enforce_writing_value for an action payload. Signed UCM receipts are machine data whose
+/// bytes the signature covers, so they pass unchanged. Admit still reads them: the dock text
+/// view keeps what the agent chose in a trusted receipt and the whole of any other receipt.
+pub fn enforce_writing_payload(payload: &Value) -> Value {
+    let mut out = enforce_writing_value(payload);
+    for ptr in UCM_RECEIPT_POINTERS {
+        if let (Some(orig), Some(slot)) = (payload.pointer(ptr), out.pointer_mut(ptr)) {
+            *slot = orig.clone();
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -364,5 +381,21 @@ mod tests {
         let intent = fixed["user_intent"].as_str().unwrap();
         assert!(!intent.contains('\u{2014}'));
         assert!(!intent.contains(", and "));
+    }
+
+    #[test]
+    fn enforce_payload_keeps_ucm_receipts_byte_for_byte() {
+        let receipt = serde_json::json!({ "program": { "inputs": [{ "name": "p", "type": "money[EUR]" }] } });
+        let value = serde_json::json!({
+            "note": "Low RAM\u{2014}use cloud",
+            "ucm": { "receipts": { "/total": receipt.clone() } },
+            "raw": { "ucm": { "receipts": { "/total": receipt.clone() } }, "text": "Low disk\u{2014}retry" }
+        });
+        let fixed = enforce_writing_payload(&value);
+        assert_eq!(fixed["ucm"]["receipts"]["/total"], receipt);
+        assert_eq!(fixed["raw"]["ucm"]["receipts"]["/total"], receipt);
+        assert!(!fixed["note"].as_str().unwrap().contains('\u{2014}'));
+        assert!(!fixed["raw"]["text"].as_str().unwrap().contains('\u{2014}'));
+        assert_ne!(enforce_writing_value(&value)["ucm"]["receipts"]["/total"], receipt);
     }
 }

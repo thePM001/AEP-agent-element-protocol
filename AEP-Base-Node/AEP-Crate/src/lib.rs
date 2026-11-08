@@ -58,7 +58,7 @@ pub use aep_live_entry::agent_permission;
 pub use envelope_admit::admit_sealed_payload as process_sealed;
 
 pub use correctwriting_en::{
-    enforce_writing_text, enforce_writing_value, lint_writing_prose, value_has_writing_violations,
+    enforce_writing_payload, enforce_writing_text, enforce_writing_value, lint_writing_prose, value_has_writing_violations,
     WritingEnforceResult, WritingViolation, CORRECTWRITING_EN_CORE_ID, WRITING_GAP_DOMAIN,
     WRITING_RULE_IDS, WRITING_RULE_NO_DASH_SUBSTITUTES, WRITING_RULE_NO_DOUBLE_HYPHEN,
     WRITING_RULE_NO_EM_DASHES, WRITING_RULE_NO_EN_DASHES, WRITING_RULE_NO_MINUS_AS_DASH,

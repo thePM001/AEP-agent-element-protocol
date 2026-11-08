@@ -93,6 +93,17 @@ pub fn bind_computed_fields(payload: &mut Value, computed_fields: &[String]) {
     }
 }
 
+/// Bind the manifest's computed fields on a translated UCB event payload. The translator keeps
+/// the foreign payload under raw, so the fields, their receipts and the pointers all live there.
+pub fn bind_manifest_computed_fields(event_payload: &mut Value, computed_fields: &[String]) {
+    let raw_is_object = event_payload.get("raw").map(Value::is_object).unwrap_or(false);
+    if raw_is_object {
+        bind_computed_fields(&mut event_payload["raw"], computed_fields);
+    } else {
+        bind_computed_fields(event_payload, computed_fields);
+    }
+}
+
 fn ingest_ok(fields: serde_json::Map<String, Value>) -> Value {
     let mut m = fields;
     m.insert(String::from("ok"), Value::Bool(true));
@@ -240,7 +251,7 @@ pub async fn ingest_foreign_payload(rt: &Arc<UcbRuntime>, body: ForeignIngestBod
     }
     // The task manifest, never the foreign agent, says which payload fields are computed.
     // Admit checks each of them for a valid UCM receipt (policy ucm-computed-claims).
-    bind_computed_fields(&mut event.payload, &manifest.computed_fields);
+    bind_manifest_computed_fields(&mut event.payload, &manifest.computed_fields);
     let socket_path = match rt.lattice.dock_path(&event.docking_port) {
         Ok(p) => p,
         Err(e) => return deny_to_value(DenyReport::from_error(&e)),
@@ -498,6 +509,29 @@ mod tests {
         let mut r = serde_json::json!({ "amount": "1", "ucm": "not an object" });
         bind_computed_fields(&mut r, &["/amount".to_string()]);
         assert_eq!(r["ucm"]["computed_fields"], serde_json::json!(["/amount"]));
+    }
+
+    #[test]
+    fn computed_fields_bind_on_the_translated_foreign_payload() {
+        let body = ForeignIngestBody {
+            protocol: Some(String::from("mcp")),
+            session_id: Some(String::from("s-ucm")),
+            payload: serde_json::json!({
+                "total": "64.54",
+                "ucm": { "computed_fields": ["/other"], "receipts": { "/total": {} } }
+            }),
+            ..Default::default()
+        };
+        let mut event = translate_foreign_ingest(&body).expect("translate");
+        bind_manifest_computed_fields(&mut event.payload, &["/total".to_string()]);
+        let raw = &event.payload["raw"];
+        assert_eq!(raw["ucm"]["computed_fields"], serde_json::json!(["/total"]));
+        assert!(raw["ucm"]["receipts"].get("/total").is_some());
+        assert_eq!(raw.pointer("/total"), Some(&serde_json::json!("64.54")));
+        assert!(event.payload.get("ucm").is_none());
+        let mut none = translate_foreign_ingest(&body).expect("translate");
+        bind_manifest_computed_fields(&mut none.payload, &[]);
+        assert!(none.payload["raw"]["ucm"].get("computed_fields").is_none());
     }
 
     #[test]

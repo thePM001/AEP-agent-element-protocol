@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::Path;
 
-use crate::{enforce_writing_value, init_action_lattice_db, now_unix, CORRECTWRITING_EN_PRIORITY};
+use crate::{enforce_writing_payload, init_action_lattice_db, now_unix, CORRECTWRITING_EN_PRIORITY};
 use crate::BaseNodeError;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
@@ -271,7 +271,7 @@ fn build_sealed_frame(
     }
 
     let mut governed = input.clone();
-    governed.payload = enforce_writing_value(&input.payload);
+    governed.payload = enforce_writing_payload(&input.payload);
     governed.action_path = resolve_action_path(&governed);
 
     let keys_dir = resolve_keys_dir(db_path);
@@ -357,7 +357,7 @@ pub fn record_dynaep_event(
     crate::envelope_admit::admit_sealed_payload_on_live_dock(&mut live, &plaintext, &dock)?;
 
     let payload_json =
-        serde_json::to_string(&enforce_writing_value(&input.payload))?;
+        serde_json::to_string(&enforce_writing_payload(&input.payload))?;
     let agentmesh_json = serde_json::to_string(&bundle)?;
 
     conn.execute(
