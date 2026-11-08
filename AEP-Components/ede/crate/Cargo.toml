@@ -1,0 +1,18 @@
+[package]
+name = "aep-ede"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Enforced draft environments for coding agents: seed a clone, scan the change set with AEP Admit, promote it as a pull request or a branch."
+publish = false
+
+[[bin]]
+name = "aep-ede"
+path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+aep-admit = { path = "../../admit/crate" }

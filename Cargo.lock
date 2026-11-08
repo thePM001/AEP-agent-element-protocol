@@ -204,6 +204,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "aep-ede"
+version = "2.9.0"
+dependencies = [
+ "aep-admit",
+]
+
+[[package]]
 name = "aep-end-to-end-run"
 version = "2.9.0"
 dependencies = [

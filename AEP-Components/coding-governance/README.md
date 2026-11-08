@@ -21,6 +21,10 @@ Git stays the VCS. AEP links governance records to git state:
 
 Solidify includes `since_propose` diff when propose git snapshot exists.
 
+## Enforced draft environments
+
+A coding agent lands changes through an EDE draft: a clone with no push URL, a scan of the change set with AEP Admit and one promote, as a pull request on GitHub or a branch on a git remote. See `AEP-Components/ede/README.md`.
+
 ## Plan-built coding agents
 
 When a plan enables `coding-governance`, policy_overrides.coding_governance is set with git_integration, auto_git_refs, semantic_strict and require_propose. The plan writes `$AEP_DATA/coding-agent-workflow.md` and `base-node.json` policy_sections.coding_governance.
