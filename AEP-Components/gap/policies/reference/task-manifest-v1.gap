@@ -30,11 +30,6 @@ metadata:
   action_path_prefix: ucb
   aspect: procedural
 
-subprotocols:
-  ucb:
-    validator: ucb
-    actions: [manifest_synthesize, ingress_validate]
-
 types:
   TaskManifestV1:
     format: json
@@ -53,6 +48,14 @@ types:
         fields:
           tier: string
           max_trust_score: integer
+
+extensions:
+  aep:
+    subprotocols:
+      ucb:
+        validator: ucb
+        actions: [manifest_synthesize, ingress_validate]
+
 ---
 kind: aep.task_manifest.template
 schema: task-manifest-v1

@@ -5,7 +5,6 @@
   },
   "pattern": {
     "guard": "true",
-    "wrap": "network",
     "input": {
       "type": "object",
       "schema": "aep.reference.security.network-egress-scan-schema.v1"
@@ -73,20 +72,24 @@
         "action": "*"
       }
     ],
-    "control_family": "network_egress",
     "aep_version": "2.9.0",
-    "added": "2026-07-21",
-    "title": "Network egress: no SMTP or mail submission ports",
-    "summary": "Standard security enhancement for AEP 2.9. Separates network egress from artifact placement. Blocks SMTP, SMTPS and message-submission ports and common mail client libraries.",
-    "pairs_with": [
-      "aep.reference.security.policy-lattice.v1",
-      "aep.reference.deployment"
-    ],
-    "notes": [
-      "CRM task types labeled EMAIL over HTTPS APIs are not SMTP.",
-      "mailto browser handoff is not server-side SMTP.",
-      "Operators should also drop host OUTPUT to SMTP, SMTPS and message-submission ports when running multi-tenant agent hosts."
-    ],
     "wrap": "network"
+  },
+  "extensions": {
+    "aep": {
+      "control_family": "network_egress",
+      "added": "2026-07-21",
+      "title": "Network egress: no SMTP or mail submission ports",
+      "summary": "Standard security enhancement for AEP 2.9. Separates network egress from artifact placement. Blocks SMTP, SMTPS and message-submission ports and common mail client libraries.",
+      "pairs_with": [
+        "aep.reference.security.policy-lattice.v1",
+        "aep.reference.deployment"
+      ],
+      "notes": [
+        "CRM task types labeled EMAIL over HTTPS APIs are not SMTP.",
+        "mailto browser handoff is not server-side SMTP.",
+        "Operators should also drop host OUTPUT to SMTP, SMTPS and message-submission ports when running multi-tenant agent hosts."
+      ]
+    }
   }
 }

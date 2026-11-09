@@ -30,10 +30,6 @@ metadata:
   wrap: coding
   action_path_prefix: coding
   aspect: procedural
-  subprotocols:
-    coding-governance:
-      validator: coding-governance
-      actions: [propose, blast_radius]
 
 types:
   ProposeIntent:
@@ -48,3 +44,10 @@ types:
           allowed_paths: array
           forbidden_paths: array
           semantic_tags: array
+
+extensions:
+  aep:
+    subprotocols:
+      coding-governance:
+        validator: coding-governance
+        actions: [propose, blast_radius]

@@ -30,17 +30,20 @@ metadata:
   action_path_prefix: caw
   aspect: procedural
 
-subprotocols:
-  caw:
-    validator: caw
-    actions: [session_create, mount_bind, policy_compile]
-
 types:
   CawSandboxProfile:
     format: json
     fields:
       profile_id: string
       mounts: array
+
+extensions:
+  aep:
+    subprotocols:
+      caw:
+        validator: caw
+        actions: [session_create, mount_bind, policy_compile]
+
 ---
 kind: aep.caw.profile
 profile_id: dev-multi-repo

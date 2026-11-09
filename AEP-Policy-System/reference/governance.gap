@@ -5,7 +5,6 @@
   },
   "pattern": {
     "guard": "true",
-    "wrap": "governance",
     "constraints": [
       "hard: no grep, search_files or read_file on source code",
       "hard: browser ops through isolated sandbox Firecracker microVM",

@@ -429,8 +429,9 @@ fn the_reference_profile_grants_the_three_verbs() {
     assert_eq!(actions, vec!["ede.seed", "ede.scan", "ede.promote"]);
     assert!(records.iter().all(|r| r.agent_id == "example-coding-agent"));
     assert_eq!(repos, vec!["owner/repo".to_string()]);
-    assert_eq!(
-        aep_ede::profile::parse(&aep_ede::profile::template("example-coding-agent", &repos)).0,
-        records
-    );
+    let generated = aep_ede::profile::template("example-coding-agent", &repos);
+    assert_eq!(aep_ede::profile::parse(&generated), (records, repos));
+    assert!(generated.contains("\nextensions:\n  aep:\n    ede_repos:\n      - owner/repo\n"));
+    assert!(generated.contains("\naction:\n  type: template\n"));
+    assert!(generated.contains("  provenance: "));
 }

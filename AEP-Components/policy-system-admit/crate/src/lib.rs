@@ -11,6 +11,8 @@ use std::path::{Path, PathBuf};
 pub const TICKET_GAP285_P15: &str = "GAP-285-P15";
 pub const WALL_SYSTEM_LOADED: &str = "policy:system:loaded";
 pub const WALL_SYSTEM_PARSED: &str = "policy:system:parsed";
+/// Closed when the instruction profile walls cannot be compiled because the GAP source does not parse.
+pub const WALL_PROFILE_PARSED: &str = "policy:profile:parsed";
 
 pub const ALWAYS_ON_STEMS: &[&str] = &[
     "writing",
@@ -37,8 +39,6 @@ pub const LRP_STEMS: &[&str] = &[
 pub struct GapItem {
     pub expr: String,
     pub description: String,
-    pub wrap: String,
-    pub prefix: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -51,6 +51,8 @@ pub struct LoadedGap {
     pub lrp_id: Option<String>,
     pub items: Vec<GapItem>,
     pub raw_ok: bool,
+    /// Why the source could not be read. Empty when raw_ok is true.
+    pub parse_error: String,
     pub source: String,
 }
 
@@ -145,21 +147,6 @@ fn extract_wrap(event: &Value) -> String {
     String::new()
 }
 
-fn yaml_scalar(line: &str, key: &str) -> Option<String> {
-    let t = line.trim();
-    if t.starts_with('-') {
-        return None;
-    }
-    let mut head = String::from(key);
-    head.push(':');
-    let rest = t.strip_prefix(&head)?;
-    let v = rest.trim().trim_matches('"').trim_matches('\'').trim();
-    if v.is_empty() {
-        return None;
-    }
-    Some(v.to_string())
-}
-
 pub fn always_on_eval_stem(stem: &str) -> bool {
     ALWAYS_ON_EVAL_STEMS.contains(&stem)
 }
@@ -201,7 +188,7 @@ pub fn wrap_or_prefix_binds(
     false
 }
 
-fn item_binds(gap: &LoadedGap, item: &GapItem, input: &PolicySystemCompileInput) -> bool {
+fn item_binds(gap: &LoadedGap, input: &PolicySystemCompileInput) -> bool {
     if always_on_eval_stem(&gap.stem) {
         return true;
     }
@@ -210,17 +197,7 @@ fn item_binds(gap: &LoadedGap, item: &GapItem, input: &PolicySystemCompileInput)
     if gap.stem == ucm_claims::STEM {
         return true;
     }
-    let wrap = if item.wrap.trim().is_empty() {
-        gap.wrap.as_str()
-    } else {
-        item.wrap.as_str()
-    };
-    let prefix = if item.prefix.trim().is_empty() {
-        gap.prefix.as_str()
-    } else {
-        item.prefix.as_str()
-    };
-    wrap_or_prefix_binds(wrap, prefix, &input.wrap, &input.action_path)
+    wrap_or_prefix_binds(&gap.wrap, &gap.prefix, &input.wrap, &input.action_path)
 }
 
 pub fn expr_slug(expr: &str) -> String {
@@ -333,80 +310,21 @@ fn list_gap_files(dir: &Path) -> Vec<(String, PathBuf)> {
     out
 }
 
-fn parse_json_gap(stem: &str, rel: &str, raw: &str) -> Result<LoadedGap, String> {
-    let v: Value = serde_json::from_str(raw).map_err(|e| e.to_string())?;
-    let pattern = v.get("pattern").cloned().unwrap_or(Value::Null);
-    let guard = pattern
-        .get("guard")
-        .and_then(|g| g.as_str())
-        .unwrap_or("true")
-        .to_string();
-    let mut wrap = pattern
-        .get("wrap")
-        .and_then(|g| g.as_str())
-        .unwrap_or("")
-        .to_string();
-    if wrap.is_empty() {
-        wrap = v
-            .get("wrap")
-            .and_then(|g| g.as_str())
-            .unwrap_or("")
-            .to_string();
-    }
-    let mut prefix = pattern
-        .get("prefix")
-        .and_then(|g| g.as_str())
-        .unwrap_or("")
-        .to_string();
-    if prefix.is_empty() {
-        prefix = pattern
-            .get("action_path_prefix")
-            .and_then(|g| g.as_str())
-            .unwrap_or("")
-            .to_string();
-    }
-    if prefix.is_empty() {
-        prefix = v
-            .get("prefix")
-            .and_then(|g| g.as_str())
-            .unwrap_or("")
-            .to_string();
-    }
-    let lrp_id = v
-        .get("metadata")
-        .and_then(|m| m.get("lrp_id"))
-        .and_then(|x| x.as_str())
-        .map(|s| s.to_string());
+fn str_at<'a>(v: &'a Value, key: &str) -> &'a str {
+    v.get(key).and_then(|x| x.as_str()).unwrap_or("")
+}
+
+/// The wall items of an instruction pattern: every invariant with an expr. A pattern without
+/// an invariant gives its constraint strings instead.
+fn items_of(pattern: &Value) -> Vec<GapItem> {
     let mut items = Vec::new();
     if let Some(arr) = pattern.get("invariants").and_then(|x| x.as_array()) {
         for inv in arr {
-            let expr = inv
-                .get("expr")
-                .and_then(|x| x.as_str())
-                .unwrap_or("")
-                .to_string();
-            let description = inv
-                .get("description")
-                .and_then(|x| x.as_str())
-                .unwrap_or("")
-                .to_string();
+            let expr = str_at(inv, "expr");
             if !expr.is_empty() {
-                let item_wrap = inv
-                    .get("wrap")
-                    .and_then(|x| x.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let item_prefix = inv
-                    .get("prefix")
-                    .and_then(|x| x.as_str())
-                    .or_else(|| inv.get("action_path_prefix").and_then(|x| x.as_str()))
-                    .unwrap_or("")
-                    .to_string();
                 items.push(GapItem {
-                    expr,
-                    description,
-                    wrap: item_wrap,
-                    prefix: item_prefix,
+                    expr: expr.to_string(),
+                    description: str_at(inv, "description").to_string(),
                 });
             }
         }
@@ -418,81 +336,66 @@ fn parse_json_gap(stem: &str, rel: &str, raw: &str) -> Result<LoadedGap, String>
                     items.push(GapItem {
                         expr: s.to_string(),
                         description: s.to_string(),
-                        wrap: String::new(),
-                        prefix: String::new(),
                     });
                 }
             }
         }
     }
+    items
+}
+
+/// Read one Policy-System GAP source. The pinned GAP profile crate is the only reader, so this
+/// loader judges the same instruction object as live Admit and gapc. wrap and
+/// action_path_prefix come from metadata and the LRP id from extensions.aep.lrp_id.
+pub fn parse_gap_text(stem: &str, rel: &str, raw: &str) -> Result<LoadedGap, String> {
+    let mut doc = Value::Null;
+    let mut err = String::new();
+    gap_schema_profile_v13::parse_gap_source(raw, &mut doc, &mut err);
+    if !err.is_empty() {
+        return Err(err);
+    }
+    if !doc.is_object() {
+        return Err(String::from("the GAP source is not an instruction object"));
+    }
+    let pattern = doc.get("pattern").cloned().unwrap_or(Value::Null);
+    let meta = doc.get("metadata").cloned().unwrap_or(Value::Null);
+    let guard = pattern
+        .get("guard")
+        .and_then(|g| g.as_str())
+        .unwrap_or("true")
+        .to_string();
+    let lrp_id = doc
+        .get("extensions")
+        .and_then(|e| e.get("aep"))
+        .and_then(|a| a.get("lrp_id"))
+        .and_then(|x| x.as_str())
+        .map(|s| s.to_string());
     Ok(LoadedGap {
         stem: stem.to_string(),
         rel_path: rel.to_string(),
         guard,
-        wrap,
-        prefix,
+        wrap: str_at(&meta, "wrap").to_string(),
+        prefix: str_at(&meta, "action_path_prefix").to_string(),
         lrp_id,
-        items,
+        items: items_of(&pattern),
         raw_ok: true,
+        parse_error: String::new(),
         source: String::from(raw),
     })
 }
 
-fn parse_yaml_gap(stem: &str, rel: &str, raw: &str) -> LoadedGap {
-    let mut items = Vec::new();
-    let mut guard = String::from("true");
-    let mut wrap = String::new();
-    let mut prefix = String::new();
-    for line in raw.lines() {
-        let t = line.trim();
-        if let Some(g) = yaml_scalar(t, "guard") {
-            guard = g;
-            continue;
-        }
-        if let Some(w) = yaml_scalar(t, "wrap") {
-            wrap = w;
-            continue;
-        }
-        if let Some(px) = yaml_scalar(t, "prefix") {
-            prefix = px;
-            continue;
-        }
-        if let Some(px) = yaml_scalar(t, "action_path_prefix") {
-            prefix = px;
-            continue;
-        }
-        if let Some(rest) = t.strip_prefix("- id:") {
-            let expr = rest.trim().to_string();
-            if !expr.is_empty() {
-                items.push(GapItem {
-                    expr: expr.clone(),
-                    description: expr,
-                    wrap: String::new(),
-                    prefix: String::new(),
-                });
-            }
-        }
-    }
-    let raw_ok = !items.is_empty();
+fn unreadable_gap(stem: String, rel: String, reason: String) -> LoadedGap {
     LoadedGap {
-        stem: stem.to_string(),
-        rel_path: rel.to_string(),
-        guard,
-        wrap,
-        prefix,
+        stem,
+        rel_path: rel,
+        guard: String::from("true"),
+        wrap: String::new(),
+        prefix: String::new(),
         lrp_id: None,
-        items,
-        raw_ok,
-        source: String::from(raw),
-    }
-}
-
-pub fn parse_gap_text(stem: &str, rel: &str, raw: &str) -> Result<LoadedGap, String> {
-    let trimmed = raw.trim_start();
-    if trimmed.starts_with('{') {
-        parse_json_gap(stem, rel, raw)
-    } else {
-        Ok(parse_yaml_gap(stem, rel, raw))
+        items: Vec::new(),
+        raw_ok: false,
+        parse_error: reason,
+        source: String::new(),
     }
 }
 
@@ -508,47 +411,15 @@ pub fn load_policy_system_gaps(dir: &Path) -> Result<Vec<LoadedGap>, String> {
             .map(|p2| p2.to_string_lossy().into_owned())
             .unwrap_or_else(|_| path.to_string_lossy().into_owned());
         match fs::read_to_string(&path) {
-            Ok(raw) => {
-                if raw.trim().is_empty() {
-                    out.push(LoadedGap {
-                        stem,
-                        rel_path: rel,
-                        guard: String::from("true"),
-                        wrap: String::new(),
-                        prefix: String::new(),
-                        lrp_id: None,
-                        items: Vec::new(),
-                        raw_ok: false,
-                        source: String::new(),
-                    });
-                } else {
-                    match parse_gap_text(&stem, &rel, &raw) {
-                        Ok(g) => out.push(g),
-                        Err(_) => out.push(LoadedGap {
-                            stem,
-                            rel_path: rel,
-                            guard: String::from("true"),
-                            wrap: String::new(),
-                            prefix: String::new(),
-                            lrp_id: None,
-                            items: Vec::new(),
-                            raw_ok: false,
-                            source: String::new(),
-                        }),
-                    }
-                }
+            Ok(raw) => match parse_gap_text(&stem, &rel, &raw) {
+                Ok(g) => out.push(g),
+                Err(e) => out.push(unreadable_gap(stem, rel, e)),
+            },
+            Err(e) => {
+                let mut reason = String::from("read failed: ");
+                reason.push_str(&e.to_string());
+                out.push(unreadable_gap(stem, rel, reason));
             }
-            Err(_) => out.push(LoadedGap {
-                stem,
-                rel_path: rel,
-                guard: String::from("true"),
-                wrap: String::new(),
-                prefix: String::new(),
-                lrp_id: None,
-                items: Vec::new(),
-                raw_ok: false,
-                source: String::new(),
-            }),
         }
     }
     Ok(out)
@@ -1128,13 +999,14 @@ pub fn compile_instruction_profile_walls(
     input: &PolicySystemCompileInput,
 ) -> Vec<AdmitWall> {
     let mut walls = Vec::new();
-    if source.trim().is_empty() {
-        return walls;
-    }
     let mut doc = Value::Null;
     let mut err = String::new();
     gap_schema_profile_v13::parse_gap_source(source, &mut doc, &mut err);
     if !err.is_empty() {
+        let mut reason =
+            String::from("GAP source does not parse, so its leftover rank and agent permission walls cannot open: ");
+        reason.push_str(&err);
+        walls.push(AdmitWall::close(WALL_PROFILE_PARSED, reason));
         return walls;
     }
     let mut rank = empty_profile_wall();
@@ -1194,6 +1066,10 @@ fn compile_loaded_gaps(gaps: &[LoadedGap], input: &PolicySystemCompileInput) -> 
         } else {
             let mut reason = String::from("required GAP missing or unreadable: ");
             reason.push_str(stem);
+            if let Some(g) = gaps.iter().find(|g| g.stem == *stem) {
+                reason.push_str(": ");
+                reason.push_str(&g.parse_error);
+            }
             walls.push(AdmitWall::close(loaded_wall_id(stem), reason));
         }
     }
@@ -1202,19 +1078,23 @@ fn compile_loaded_gaps(gaps: &[LoadedGap], input: &PolicySystemCompileInput) -> 
             if ALWAYS_ON_STEMS.contains(&gap.stem.as_str()) {
                 continue;
             }
-            if is_lrp(gap) && lrp_enabled(gap, input) {
-                walls.push(AdmitWall::close(
-                    loaded_wall_id(&gap.stem),
-                    "LRP GAP unreadable",
-                ));
+            // An LRP that this action does not enable does not apply. Every other source that
+            // does not parse closes, because its wrap, prefix and walls are unknown.
+            if is_lrp(gap) && !lrp_enabled(gap, input) {
+                continue;
             }
+            let mut reason = String::from("GAP ");
+            reason.push_str(&gap.rel_path);
+            reason.push_str(" does not parse: ");
+            reason.push_str(&gap.parse_error);
+            walls.push(AdmitWall::close(loaded_wall_id(&gap.stem), reason));
             continue;
         }
         if is_lrp(gap) && !lrp_enabled(gap, input) {
             continue;
         }
         for item in &gap.items {
-            if !item_binds(gap, item, input) {
+            if !item_binds(gap, input) {
                 continue;
             }
             let closed = evaluate_closed(gap, item, input);
@@ -1640,16 +1520,23 @@ mod tests {
 
     fn net_gap_with_wrap(wrap: &str) -> String {
         let expr = super::join_parts(&["no_", "smt", "p_url_scheme"]);
-        let mut s = String::from("{\n  \"address\": {\"domain\": \"aep.reference.security\", \"id\": \"network-egress-v1\"},\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"wrap\": \"");
-        s.push_str(wrap);
-        s.push_str("\",\n    \"invariants\": [\n      {\"expr\": \"");
+        let mut s = String::from("{\n  \"address\": {\"domain\": \"aep.reference.security\", \"id\": \"network-egress-v1\"},\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"invariants\": [\n      {\"expr\": \"");
         s.push_str(&expr);
-        s.push_str("\", \"lang\": \"gapdsl\", \"severity\": \"hard\", \"description\": \"no mta url\"}\n    ]\n  }\n}");
+        s.push_str("\", \"lang\": \"gapdsl\", \"severity\": \"hard\", \"description\": \"no mta url\"}\n    ]\n  },\n  \"metadata\": {\"wrap\": \"");
+        s.push_str(wrap);
+        s.push_str("\"}\n}");
         s
     }
 
     fn lattice_gap() -> String {
-        String::from("rules:\n  - id: lattice-channel-only-transport\n  - id: no-npm-registry-distribution\n")
+        lattice_gap_with_wrap("")
+    }
+
+    fn lattice_gap_with_wrap(wrap: &str) -> String {
+        let mut s = String::from("{\n  \"address\": {\"domain\": \"aep.reference.lattice\", \"id\": \"lattice-channel-mandatory.v1\"},\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"invariants\": [\n      {\"expr\": \"lattice-channel-only-transport\", \"lang\": \"gapdsl\", \"severity\": \"hard\"},\n      {\"expr\": \"no-npm-registry-distribution\", \"lang\": \"gapdsl\", \"severity\": \"hard\"}\n    ]\n  },\n  \"metadata\": {\"wrap\": \"");
+        s.push_str(wrap);
+        s.push_str("\"}\n}");
+        s
     }
 
     fn gov_gap() -> String {
@@ -1663,11 +1550,11 @@ mod tests {
     }
 
     fn deploy_gap() -> String {
-        String::from("{\n  \"address\": {\"domain\": \"aep.reference.deployment\", \"id\": \"gate-policy.v2\"},\n  \"pattern\": {\n    \"guard\": \"deployment_attempt\",\n    \"prefix\": \"ops:\",\n    \"invariants\": [\n      {\"expr\": \"human_approval_required == true\", \"lang\": \"gapdsl\", \"severity\": \"hard\", \"description\": \"approval\"}\n    ]\n  }\n}")
+        String::from("{\n  \"address\": {\"domain\": \"aep.reference.deployment\", \"id\": \"gate-policy.v2\"},\n  \"pattern\": {\n    \"guard\": \"deployment_attempt\",\n    \"invariants\": [\n      {\"expr\": \"human_approval_required == true\", \"lang\": \"gapdsl\", \"severity\": \"hard\", \"description\": \"approval\"}\n    ]\n  },\n  \"metadata\": {\"action_path_prefix\": \"ops:\"}\n}")
     }
 
     fn gdpr_gap() -> String {
-        String::from("{\n  \"address\": {\"domain\": \"aep.reference.compliance.gdpr\", \"id\": \"gdpr.v1\"},\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"wrap\": \"privacy\",\n    \"constraints\": [\"hard: block export of unredacted PII without explicit consent record\"]\n  },\n  \"metadata\": {\"lrp_id\": \"gdpr\"}\n}")
+        String::from("{\n  \"address\": {\"domain\": \"aep.reference.compliance.gdpr\", \"id\": \"gdpr.v1\"},\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"constraints\": [\"hard: block export of unredacted PII without explicit consent record\"]\n  },\n  \"metadata\": {\"wrap\": \"privacy\"},\n  \"extensions\": {\"aep\": {\"lrp_id\": \"gdpr\"}}\n}")
     }
 
     fn write_tree(tmp: &Path) {
@@ -1799,7 +1686,7 @@ mod tests {
         write_tree(&tmp);
         std::fs::write(
             tmp.join("lattice-channel-mandatory.gap"),
-            "wrap: lattice\nguard: true\nrules:\n  - id: lattice-channel-only-transport\n  - id: no-npm-registry-distribution\n",
+            lattice_gap_with_wrap("lattice"),
         )
         .expect("l");
         let input = PolicySystemCompileInput {
@@ -1934,12 +1821,136 @@ mod tests {
 
     #[test]
     fn yaml_gap_parse_reads_guard_and_wrap() {
-        let raw = "guard: deployment_attempt\nwrap: finance\nprefix: finance:\nrules:\n  - id: human_approval_required\n";
+        let raw = "address:\n  domain: aep.reference.deployment\n  id: gate-policy.v2\npattern:\n  guard: deployment_attempt\n  invariants:\n    - expr: human_approval_required\n      description: |\n        wrap: inventory\n        guard: true\nmetadata:\n  wrap: finance\n  action_path_prefix: \"finance:\"\nextensions:\n  aep:\n    lrp_id: gdpr\n";
         let g = parse_gap_text("deployment", "reference/deployment.gap", raw).expect("parse");
         must(g.guard == "deployment_attempt");
         must(g.wrap == "finance");
         must(g.prefix == "finance:");
+        must(g.lrp_id.as_deref() == Some("gdpr"));
         must(g.items.iter().any(|i| i.expr == "human_approval_required"));
+    }
+
+    #[test]
+    fn block_scalar_lines_do_not_set_fields() {
+        // The old line reader set wrap and guard from any line that read like a key, also
+        // inside a block scalar. The profile crate reads YAML, so prose stays prose.
+        let raw = "address:\n  domain: aep.reference.governance\n  id: governance.v1\npattern: |\n  wrap: finance\n  prefix: ops:\n  guard: deployment_attempt\nmetadata:\n  wrap: governance\n";
+        let g = parse_gap_text("governance", "reference/governance.gap", raw).expect("parse");
+        must(g.wrap == "governance");
+        must(g.prefix.is_empty());
+        must(g.guard == "true");
+    }
+
+    #[test]
+    fn pattern_wrap_is_not_a_binding() {
+        // GAP binds wrap and action_path_prefix in metadata only. The keys under pattern
+        // fail gapc check and the loader does not read them.
+        let raw = "{\"address\": {\"domain\": \"aep.reference.x\", \"id\": \"x.v1\"}, \"pattern\": {\"guard\": \"true\", \"wrap\": \"finance\", \"prefix\": \"ops:\"}}";
+        let g = parse_gap_text("x", "reference/x.gap", raw).expect("parse");
+        must(g.wrap.is_empty());
+        must(g.prefix.is_empty());
+    }
+
+    #[test]
+    fn unparsable_policy_closes_its_loaded_wall() {
+        let tmp = std::env::temp_dir().join("aep-tsf140-unparsable");
+        let _ = std::fs::remove_dir_all(&tmp);
+        write_tree(&tmp);
+        std::fs::write(
+            tmp.join("reference/ucm-computed-claims.gap"),
+            "{\"address\": {\"domain\": \"aep.reference.ucm\",",
+        )
+        .expect("u");
+        let input = PolicySystemCompileInput {
+            action_path: String::from("inventory:ping"),
+            wrap: String::from("inventory"),
+            ..Default::default()
+        };
+        let walls = compile_policy_system_walls_from(Some(&tmp), &input);
+        must(walls.iter().any(|w| {
+            w.id == "policy:ucm-computed-claims:loaded"
+                && w.closed
+                && w.reason.contains("does not parse")
+        }));
+        must(!admit_collect_all(&walls).allow);
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn unparsable_always_on_policy_names_the_parse_error() {
+        let tmp = std::env::temp_dir().join("aep-tsf140-unparsable-always-on");
+        let _ = std::fs::remove_dir_all(&tmp);
+        write_tree(&tmp);
+        std::fs::write(tmp.join("reference/governance.gap"), "pattern: [\n").expect("g");
+        let walls =
+            compile_policy_system_walls_from(Some(&tmp), &PolicySystemCompileInput::default());
+        must(walls.iter().any(|w| {
+            w.id == "policy:governance:loaded" && w.closed && w.reason.contains("YAML GAP source")
+        }));
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn unparsable_lrp_closes_only_when_enabled() {
+        let tmp = std::env::temp_dir().join("aep-tsf140-unparsable-lrp");
+        let _ = std::fs::remove_dir_all(&tmp);
+        write_tree(&tmp);
+        std::fs::write(tmp.join("reference/gdpr.gap"), "{").expect("gdpr");
+        let off =
+            compile_policy_system_walls_from(Some(&tmp), &PolicySystemCompileInput::default());
+        must(!off.iter().any(|w| w.id == "policy:gdpr:loaded"));
+        let on = PolicySystemCompileInput {
+            lrp_ids: vec![String::from("gdpr")],
+            ..Default::default()
+        };
+        let walls = compile_policy_system_walls_from(Some(&tmp), &on);
+        must(
+            walls
+                .iter()
+                .any(|w| w.id == "policy:gdpr:loaded" && w.closed),
+        );
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn unparsable_source_closes_the_profile_wall() {
+        let walls =
+            compile_instruction_profile_walls("pattern: [\n", &PolicySystemCompileInput::default());
+        must(
+            walls
+                .iter()
+                .any(|w| w.id == WALL_PROFILE_PARSED && w.closed),
+        );
+        let empty = compile_instruction_profile_walls("", &PolicySystemCompileInput::default());
+        must(
+            empty
+                .iter()
+                .any(|w| w.id == WALL_PROFILE_PARSED && w.closed),
+        );
+    }
+
+    #[test]
+    fn reference_policies_load_through_the_profile_crate() {
+        let root = walk_to_workspace();
+        let dir = root.join("AEP-Policy-System");
+        if !dir.is_dir() {
+            return;
+        }
+        let gaps = load_policy_system_gaps(&dir).expect("load");
+        for g in &gaps {
+            if !g.raw_ok {
+                panic!("{} does not parse: {}", g.rel_path, g.parse_error);
+            }
+        }
+        let gdpr = gaps.iter().find(|g| g.stem == "gdpr").expect("gdpr");
+        must(gdpr.wrap == "privacy");
+        must(gdpr.lrp_id.as_deref() == Some("gdpr"));
+        let deploy = gaps
+            .iter()
+            .find(|g| g.stem == "deployment")
+            .expect("deployment");
+        must(deploy.prefix == "ops:");
+        must(deploy.guard == "deployment_attempt");
     }
 
     #[test]
@@ -2030,9 +2041,9 @@ mod tests {
         let expr = super::join_parts(&["no_", "smt", "p_url_scheme"]);
         let id = policy_wall_id(&stem, &expr);
         let net_file = super::join_parts(&["reference/network-egress-no-", "smt", "p", ".gap"]);
-        let mut s = String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"prefix\": \"finance:\",\n    \"invariants\": [\n      {\"expr\": \"");
+        let mut s = String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"invariants\": [\n      {\"expr\": \"");
         s.push_str(&expr);
-        s.push_str("\", \"description\": \"no mta url\"}\n    ]\n  }\n}");
+        s.push_str("\", \"description\": \"no mta url\"}\n    ]\n  },\n  \"metadata\": {\"action_path_prefix\": \"finance:\"}\n}");
         std::fs::write(tmp.join(&net_file), s).expect("n");
         let miss = PolicySystemCompileInput {
             text: super::join_parts(&["relay ", "smt", "p://mail.example.invalid"]),

@@ -32,11 +32,6 @@ metadata:
   aspect: objective
   scanners: [secrets, injection]
 
-subprotocols:
-  caw:
-    validator: caw
-    actions: [session_create, policy_compile]
-
 types:
   CawSandboxProfile:
     format: json
@@ -44,6 +39,14 @@ types:
       profile_id: string
       compiled_runtime: boolean
       llm_proxy: boolean
+
+extensions:
+  aep:
+    subprotocols:
+      caw:
+        validator: caw
+        actions: [session_create, policy_compile]
+
 ---
 kind: aep.caw.profile
 profile_id: compiled-runtime

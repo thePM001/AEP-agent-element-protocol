@@ -32,11 +32,6 @@ metadata:
   aspect: procedural
   scanners: [secrets, injection]
 
-subprotocols:
-  caw:
-    validator: caw
-    actions: [session_create, mount_bind, policy_compile]
-
 types:
   CawSandboxProfile:
     format: json
@@ -44,6 +39,14 @@ types:
       profile_id: string
       base_policy: string
       mounts: array
+
+extensions:
+  aep:
+    subprotocols:
+      caw:
+        validator: caw
+        actions: [session_create, mount_bind, policy_compile]
+
 ---
 kind: aep.caw.profile
 profile_id: coding-agent

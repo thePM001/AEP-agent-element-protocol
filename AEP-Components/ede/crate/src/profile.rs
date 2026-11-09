@@ -1,8 +1,9 @@
 //! Agent profiles of the EDE.
 //!
 //! An agent works in the EDE only under an agent profile: a GAP policy whose
-//! metadata names the agent in agent_permission records and the repositories it
-//! may change in ede_repos. Every verb passes the agent permission wall of AEP
+//! metadata names the agent in agent_permission records and whose
+//! extensions.aep.ede_repos lists the repositories it may change. Every verb
+//! passes the agent permission wall of AEP
 //! Admit with the action ede.<verb>, so a profile grants seed, scan and promote
 //! one by one. A draft belongs to the agent that seeded it.
 //!
@@ -18,8 +19,10 @@
 //!       action: ede.scan
 //!     - agent_id: my-coding-agent
 //!       action: ede.promote
-//!   ede_repos:
-//!     - owner/repo
+//! extensions:
+//!   aep:
+//!     ede_repos:
+//!       - owner/repo
 //! ```
 
 use aep_admit::{compile_agent_permission_wall, AgentPermission};
@@ -202,7 +205,10 @@ pub fn template(agent_id: &str, repos: &[String]) -> String {
         agent_id
     ));
     s.push_str("  The agent changes the listed repositories only through aep-ede drafts.\n\n");
+    s.push_str("action:\n  type: template\n  content: |\n");
+    s.push_str("    Change the repositories listed in extensions.aep.ede_repos only through aep-ede drafts.\n\n");
     s.push_str("weight: 1.0\n\ncomposition:\n  type: atomic\n\nmetadata:\n");
+    s.push_str("  provenance: \"aep-ede profile init\"\n");
     s.push_str("  version: \"1.0.0\"\n  stability: stable\n  aspect: procedural\n");
     s.push_str("  agent_permission:\n");
     for v in VERBS {
@@ -211,9 +217,9 @@ pub fn template(agent_id: &str, repos: &[String]) -> String {
             agent_id, v
         ));
     }
-    s.push_str("  ede_repos:\n");
+    s.push_str("\nextensions:\n  aep:\n    ede_repos:\n");
     for r in repos {
-        s.push_str(&format!("    - {}\n", r));
+        s.push_str(&format!("      - {}\n", r));
     }
     s
 }

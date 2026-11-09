@@ -74,7 +74,7 @@ mod tests {
     /// keeps the wall open and always-on stems drop the permission wall, so the
     /// grant list sits on a GAP that binds by prefix.
     fn deploy_gap_empty_grants() -> String {
-        String::from("{\n  \"pattern\": {\n    \"guard\": \"deployment_attempt\",\n    \"prefix\": \"ops:\",\n    \"invariants\": [\n      {\"expr\": \"human_approval_required == true\", \"description\": \"approval\"}\n    ]\n  },\n  \"metadata\": {\"agent_permission\": []}\n}")
+        String::from("{\n  \"pattern\": {\n    \"guard\": \"deployment_attempt\",\n    \"invariants\": [\n      {\"expr\": \"human_approval_required == true\", \"description\": \"approval\"}\n    ]\n  },\n  \"metadata\": {\"action_path_prefix\": \"ops:\", \"agent_permission\": []}\n}")
     }
 
     fn writing_gap_star() -> String {
@@ -110,7 +110,7 @@ mod tests {
     }
 
     fn deploy_gap() -> String {
-        String::from("{\n  \"pattern\": {\n    \"guard\": \"deployment_attempt\",\n    \"prefix\": \"ops:\",\n    \"invariants\": [\n      {\"expr\": \"human_approval_required == true\", \"description\": \"approval\"}\n    ]\n  }\n}")
+        String::from("{\n  \"pattern\": {\n    \"guard\": \"deployment_attempt\",\n    \"invariants\": [\n      {\"expr\": \"human_approval_required == true\", \"description\": \"approval\"}\n    ]\n  },\n  \"metadata\": {\"action_path_prefix\": \"ops:\"}\n}")
     }
 
     fn write_tree(tmp: &Path) {
@@ -214,9 +214,9 @@ mod tests {
         std::fs::write(tmp.join("reference/security.gap"), security_gap_star()).expect("s");
         let expr = crate::join_parts(&["no_", "smt", "p_url_scheme"]);
         let net_file = crate::join_parts(&["reference/network-egress-no-", "smt", "p", ".gap"]);
-        let mut s = String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"wrap\": \"finance\",\n    \"invariants\": [\n      {\"expr\": \"");
+        let mut s = String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"invariants\": [\n      {\"expr\": \"");
         s.push_str(&expr);
-        s.push_str("\", \"description\": \"no mta url\"}\n    ]\n  },\n  \"metadata\": {\"trust_ring\": \"user\", \"agent_permission\": [\"*\"]}\n}");
+        s.push_str("\", \"description\": \"no mta url\"}\n    ]\n  },\n  \"metadata\": {\"wrap\": \"finance\", \"trust_ring\": \"user\", \"agent_permission\": [\"*\"]}\n}");
         std::fs::write(tmp.join(&net_file), s).expect("n");
         let inventory = PolicySystemCompileInput {
             wrap: String::from("inventory"),
@@ -285,9 +285,9 @@ mod tests {
         let expr = crate::join_parts(&["no_", "smt", "p_url_scheme"]);
         let id = policy_wall_id(&stem, &expr);
         let net_file = crate::join_parts(&["reference/network-egress-no-", "smt", "p", ".gap"]);
-        let mut s = String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"prefix\": \"finance:\",\n    \"invariants\": [\n      {\"expr\": \"");
+        let mut s = String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"invariants\": [\n      {\"expr\": \"");
         s.push_str(&expr);
-        s.push_str("\", \"description\": \"no mta url\"}\n    ]\n  },\n  \"metadata\": {\"agent_permission\": [\"*\"]}\n}");
+        s.push_str("\", \"description\": \"no mta url\"}\n    ]\n  },\n  \"metadata\": {\"action_path_prefix\": \"finance:\", \"agent_permission\": [\"*\"]}\n}");
         std::fs::write(tmp.join(&net_file), s).expect("n");
         let miss = PolicySystemCompileInput {
             text: crate::join_parts(&["relay ", "smt", "p://mail.example.invalid"]),

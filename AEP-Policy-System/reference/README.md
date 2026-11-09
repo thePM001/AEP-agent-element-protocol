@@ -24,7 +24,7 @@ Copy any policy to your project policies directory and customize.
 cp AEP-Policy-System/reference/security.gap my-project/policies/
 ```
 
-All reference policies are pre-validated with zero structural errors. Validate your own policies with `aep lint-policy`.
+Every reference policy passes `gapc check` against the live GAP meta schema v1.3 in the gap-pin CI job. Validate your own policies with `gapc check` from the pinned GAP commit or with `aep lint-policy`.
 
 ## Customization
 

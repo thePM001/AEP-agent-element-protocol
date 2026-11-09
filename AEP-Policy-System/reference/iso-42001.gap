@@ -1,11 +1,10 @@
 {
   "address": {
-    "domain": "aep.reference.compliance.iso-42001",
+    "domain": "aep.reference.compliance.iso42001",
     "id": "iso-42001.v1"
   },
   "pattern": {
     "guard": "true",
-    "wrap": "iso-42001",
     "constraints": [
       "hard: require documented AI impact assessment before production deployment",
       "hard: assign agent_permission grants based on agent competence and role",
@@ -23,7 +22,7 @@
     "type": "atomic"
   },
   "metadata": {
-    "provenance": "aep.reference.compliance.iso-42001",
+    "provenance": "aep.reference.compliance.iso42001",
     "version": "1.1.0",
     "stability": "stable",
     "agent_permission": [
@@ -32,9 +31,13 @@
         "action": "*"
       }
     ],
-    "lrp_id": "iso-42001",
-    "framework": "ISO/IEC 42001",
     "aep_version": "2.9.0",
     "wrap": "iso-42001"
+  },
+  "extensions": {
+    "aep": {
+      "lrp_id": "iso-42001",
+      "framework": "ISO/IEC 42001"
+    }
   }
 }

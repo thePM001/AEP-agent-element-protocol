@@ -38,12 +38,28 @@
       }
     ]
   },
+  "action": {
+    "type": "template",
+    "content": "Check every computed field of an action against its signed UCM receipt. Write DENY on a missing, invalid or mismatched receipt."
+  },
+  "weight": 1.0,
+  "composition": {
+    "type": "atomic"
+  },
   "metadata": {
-    "profile_env": "AEP_UCM_RECEIPT_PROFILE",
-    "profiles": "off (default), warn, strict",
-    "trusted_keys_env": "AEP_UCM_TRUSTED_KEYS",
-    "verify_env": "AEP_UCM_RECEIPT_VERIFY",
-    "library_only_wraps_env": "AEP_UCM_LIBRARY_ONLY_WRAPS",
-    "component": "ucm"
+    "provenance": "aep.reference.ucm",
+    "version": "1.0.0",
+    "stability": "stable",
+    "aep_version": "2.9.0"
+  },
+  "extensions": {
+    "aep": {
+      "profile_env": "AEP_UCM_RECEIPT_PROFILE",
+      "profiles": "off (default), warn, strict",
+      "trusted_keys_env": "AEP_UCM_TRUSTED_KEYS",
+      "verify_env": "AEP_UCM_RECEIPT_VERIFY",
+      "library_only_wraps_env": "AEP_UCM_LIBRARY_ONLY_WRAPS",
+      "component": "ucm"
+    }
   }
 }

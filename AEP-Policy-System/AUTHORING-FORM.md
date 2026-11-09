@@ -11,7 +11,8 @@ One authoring form feeds the Admit layer. That form is GAP.
 ## Why one form
 
 A loader that can pick up three forms cannot tell a reader which form is live.
-The Admit layer reads GAP and it compiles each invariant into an Admit wall. The
+The Admit layer reads GAP through the pinned GAP profile crate and it compiles each
+invariant into an Admit wall. A GAP file that does not parse closes a wall. The
 host layer keeps its own rules, because the host engine sits outside the Admit
 layer by design.
 
@@ -20,7 +21,11 @@ layer by design.
 1. Add an invariant to a GAP file under `AEP-Policy-System/reference/`.
 2. Name the wall owner. A writing rule reads the one writing rule table in
    `AEP-Components/admit/`.
-3. Run `cargo test -p aep-policy-system-admit` and the conformance runner.
+3. Bind the file with `metadata.wrap` or `metadata.action_path_prefix` and keep AEP keys
+   such as `lrp_id` under `extensions.aep`.
+4. Run `gapc check AEP-Policy-System/reference` with gapc from the GAP commit in
+   `AEP-Components/gap/gap-pin.txt`. The gap-pin CI job runs the same check.
+5. Run `cargo test -p aep-policy-system-admit` and the conformance runner.
 
 ## Where the writing rules live
 

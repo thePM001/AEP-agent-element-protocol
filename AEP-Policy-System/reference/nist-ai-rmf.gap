@@ -1,11 +1,10 @@
 {
   "address": {
-    "domain": "aep.reference.compliance.nist-ai-rmf",
+    "domain": "aep.reference.compliance.nistairmf",
     "id": "nist-ai-rmf.v1"
   },
   "pattern": {
     "guard": "true",
-    "wrap": "nist-ai-rmf",
     "constraints": [
       "hard: apply reference policy lattice govern function before agent start",
       "hard: map risk context and agent_permission grants at session registration",
@@ -23,7 +22,7 @@
     "type": "atomic"
   },
   "metadata": {
-    "provenance": "aep.reference.compliance.nist-ai-rmf",
+    "provenance": "aep.reference.compliance.nistairmf",
     "version": "1.1.0",
     "stability": "stable",
     "agent_permission": [
@@ -32,9 +31,13 @@
         "action": "*"
       }
     ],
-    "lrp_id": "nist-ai-rmf",
-    "framework": "NIST AI RMF 1.0",
     "aep_version": "2.9.0",
     "wrap": "nist-ai-rmf"
+  },
+  "extensions": {
+    "aep": {
+      "lrp_id": "nist-ai-rmf",
+      "framework": "NIST AI RMF 1.0"
+    }
   }
 }

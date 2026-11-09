@@ -4,7 +4,7 @@ A coding agent changes a repository only through a draft. The draft is a clone w
 
 ## 1. Create an agent profile
 
-An agent profile is a GAP policy. It names the agent in `agent_permission` records with one record per EDE action it may take. It lists the repositories the agent may change in `ede_repos`. The EDE checks it with the agent permission wall of AEP Admit, the same wall that every other AEP action passes.
+An agent profile is a GAP policy. It names the agent in `agent_permission` records with one record per EDE action it may take. It lists the repositories the agent may change in `extensions.aep.ede_repos`, the host block that GAP keeps for AEP data. The EDE checks it with the agent permission wall of AEP Admit, the same wall that every other AEP action passes.
 
 Create one per agent:
 
@@ -23,12 +23,18 @@ pattern: |
   Agent profile of my-coding-agent for enforced draft environments.
   The agent changes the listed repositories only through aep-ede drafts.
 
+action:
+  type: template
+  content: |
+    Change the repositories listed in extensions.aep.ede_repos only through aep-ede drafts.
+
 weight: 1.0
 
 composition:
   type: atomic
 
 metadata:
+  provenance: "aep-ede profile init"
   version: "1.0.0"
   stability: stable
   aspect: procedural
@@ -39,14 +45,18 @@ metadata:
       action: ede.scan
     - agent_id: my-coding-agent
       action: ede.promote
-  ede_repos:
-    - owner/repo
+
+extensions:
+  aep:
+    ede_repos:
+      - owner/repo
 ```
 
 Edit it like any GAP policy:
 
 - Remove the `ede.promote` record and the agent can prepare and scan drafts while a person lands them.
-- Add repositories to `ede_repos`. A `*` stands for every repository.
+- Add repositories to `extensions.aep.ede_repos`. A `*` stands for every repository.
+- `gapc check` from the GAP repository validates the profile like any other GAP policy.
 - `agent_id: "*"` grants an action to every agent that uses the profile. Name each agent instead, so its commits stay traceable.
 - Keep the profile in your repository or your policy folder and point `AEP_EDE_PROFILE` at it to share it with a team.
 

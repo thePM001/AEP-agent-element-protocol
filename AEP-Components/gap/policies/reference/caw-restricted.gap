@@ -31,17 +31,20 @@ metadata:
   aspect: procedural
   scanners: [secrets, injection, url, jailbreak]
 
-subprotocols:
-  caw:
-    validator: caw
-    actions: [session_create, mount_bind, policy_compile]
-
 types:
   CawSandboxProfile:
     format: json
     fields:
       profile_id: string
       base_policy: string
+
+extensions:
+  aep:
+    subprotocols:
+      caw:
+        validator: caw
+        actions: [session_create, mount_bind, policy_compile]
+
 ---
 kind: aep.caw.profile
 profile_id: restricted

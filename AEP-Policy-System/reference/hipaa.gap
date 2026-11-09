@@ -5,7 +5,6 @@
   },
   "pattern": {
     "guard": "true",
-    "wrap": "health",
     "constraints": [
       "hard: restrict PHI access to agents listed in agent_permission only",
       "hard: record immutable hash-chained audit entry for every PHI-touching action",
@@ -32,9 +31,13 @@
         "action": "*"
       }
     ],
-    "lrp_id": "hipaa",
-    "framework": "HIPAA",
     "aep_version": "2.9.0",
     "wrap": "health"
+  },
+  "extensions": {
+    "aep": {
+      "lrp_id": "hipaa",
+      "framework": "HIPAA"
+    }
   }
 }

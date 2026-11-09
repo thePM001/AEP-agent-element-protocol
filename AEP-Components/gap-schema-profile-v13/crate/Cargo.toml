@@ -4,7 +4,7 @@
 # this manifest, LICENSE and src. VERSIONING.md names the version rules.
 [package]
 name = "gap-schema-profile-v13"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 description = "Classic GAP v1.3 live Admit profile. Agent permission is agent_permission. Presence of trust_ring is Deny. enabled is load-time."
 license = "Apache-2.0"

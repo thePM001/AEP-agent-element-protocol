@@ -1,18 +1,17 @@
 {
   "address": {
-    "domain": "aep.reference.compliance.eu-ai-act",
+    "domain": "aep.reference.compliance.euaiact",
     "id": "eu-ai-act.v1"
   },
   "pattern": {
     "guard": "true",
-    "wrap": "eu-ai-act",
     "input": {
       "type": "object",
-      "schema": "aep.reference.compliance.eu-ai-act.request.v1"
+      "schema": "aep.reference.compliance.euaiact.request.v1"
     },
     "output": {
       "type": "object",
-      "schema": "aep.reference.compliance.eu-ai-act.decision.v1"
+      "schema": "aep.reference.compliance.euaiact.decision.v1"
     },
     "constraints": [
       "role_required",
@@ -152,7 +151,7 @@
     "type": "atomic"
   },
   "metadata": {
-    "provenance": "aep.reference.compliance.eu-ai-act",
+    "provenance": "aep.reference.compliance.euaiact",
     "version": "1.3.0",
     "stability": "stable",
     "agent_permission": [
@@ -161,13 +160,17 @@
         "action": "*"
       }
     ],
-    "lrp_id": "eu-ai-act",
-    "framework": "EU AI Act",
-    "maturity": "enforced_v1_phase_c",
-    "control_catalog": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
-    "checker": "eu-ai-act-checker",
-    "honesty": "compliance checking pack not legal certification",
     "aep_version": "2.8.6",
     "wrap": "eu-ai-act"
+  },
+  "extensions": {
+    "aep": {
+      "lrp_id": "eu-ai-act",
+      "framework": "EU AI Act",
+      "maturity": "enforced_v1_phase_c",
+      "control_catalog": "AEP-Components/eu-ai-act-checker/EU-AI-ACT-PACK.json",
+      "checker": "eu-ai-act-checker",
+      "honesty": "compliance checking pack not legal certification"
+    }
   }
 }

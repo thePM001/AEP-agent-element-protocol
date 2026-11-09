@@ -34,11 +34,6 @@ metadata:
     - "blast radius must be computed before any file write [hard]"
     - "envelope breach requires explicit justification [hard]"
 
-subprotocols:
-  coding-governance:
-    validator: coding-governance
-    actions: [siee_check]
-
 types:
   SieeVerdict:
     format: json
@@ -48,3 +43,10 @@ types:
         values: [allow, gate, deny]
       within_envelope: boolean
       errors: array
+
+extensions:
+  aep:
+    subprotocols:
+      coding-governance:
+        validator: coding-governance
+        actions: [siee_check]

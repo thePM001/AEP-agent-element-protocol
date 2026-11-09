@@ -116,6 +116,8 @@ Keep `.gap` as GAP source because collect-all Admit collects by capsule hash and
 - Collect-all Admit collects by capsule hash. Live AEP 2.9 EPSCOM trust bundle mode is sha256-structure.
 - Writing and security are always-on stems and they evaluate on every action path.
 - Other GAP walls bind to a wrap or prefix.
+- A GAP binds through `metadata.wrap` and `metadata.action_path_prefix`. A wrap or prefix under `pattern` is not a binding and fails `gapc check`.
+- AEP keeps its own keys under the top-level `extensions.aep` object, for example `lrp_id`, `framework`, `ede_repos` and the CAW `subprotocols` block. Metadata takes only the fields the GAP meta schema names.
 - A finance wrap GAP item does not close an inventory wrap ping.
 - A non-always-on GAP with empty wrap does not fold onto every event.
 - Kernel bind detail lives at docs/kernel-json-wrap.md on thePM001/GAP.

@@ -30,16 +30,19 @@ metadata:
   action_path_prefix: caw
   aspect: objective
 
-subprotocols:
-  caw:
-    validator: caw
-    actions: [policy_compile]
-
 types:
   CawMountPolicySet:
     format: json
     fields:
       policies: array
+
+extensions:
+  aep:
+    subprotocols:
+      caw:
+        validator: caw
+        actions: [policy_compile]
+
 ---
 kind: aep.caw.mount_policy
 name: workspace-rw

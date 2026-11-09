@@ -5,8 +5,6 @@
   },
   "pattern": {
     "guard": "deployment_attempt",
-    "action_path_prefix": "ops:",
-    "prefix": "ops:",
     "constraints": [
       "human_approval_required",
       "no_silent_builds",

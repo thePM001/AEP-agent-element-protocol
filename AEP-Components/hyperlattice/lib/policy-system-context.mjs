@@ -33,8 +33,8 @@ function parseGapJson(raw, file) {
       path: `${POLICY_SYSTEM_ROOT}/reference/${file}`,
       domain: parsed?.address?.domain ?? basename(file, ".gap"),
       id: parsed?.address?.id ?? null,
-      lrp_id: parsed?.metadata?.lrp_id ?? null,
-      framework: parsed?.metadata?.framework ?? null,
+      lrp_id: parsed?.extensions?.aep?.lrp_id ?? null,
+      framework: parsed?.extensions?.aep?.framework ?? null,
     };
   } catch {
     return {

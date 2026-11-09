@@ -1405,7 +1405,7 @@ dependencies = [
 
 [[package]]
 name = "gap-schema-profile-v13"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "serde_json",
  "yaml-rust2",

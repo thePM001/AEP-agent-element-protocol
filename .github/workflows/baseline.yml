@@ -75,6 +75,18 @@ jobs:
           persist-credentials: false
       - name: byte check against the pinned GAP commit
         run: node AEP-Components/gap/bin/check-gap-pin.mjs --gap gap-pinned
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      # gapc of the pinned GAP commit proves every AEP reference policy and the lattice
+      # policy that policy-system-admit loads against the live meta schema and the load
+      # time profile walls.
+      - name: build gapc at the pinned GAP commit
+        run: cargo build --locked --release -p gapc --manifest-path gap-pinned/packages/Cargo.toml
+      - name: gapc check of the AEP reference policies
+        run: >
+          gap-pinned/packages/target/release/gapc check
+          AEP-Policy-System/reference
+          AEP-Policy-System/lattice-channel-mandatory.gap
+          AEP-Components/gap/policies/reference
 
   format:
     name: format

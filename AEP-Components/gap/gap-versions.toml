@@ -3,6 +3,6 @@
 language_spec = "1.1"
 live_schema = "1.3"
 aep = "2.9.0"
-gap-schema-profile-v13 = "0.2.0"
+gap-schema-profile-v13 = "0.2.1"
 gap-closed-wall-deny = "0.1.0"
 gapc = "0.1.0"

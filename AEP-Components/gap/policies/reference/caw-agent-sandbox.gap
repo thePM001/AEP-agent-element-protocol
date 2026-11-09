@@ -32,11 +32,6 @@ metadata:
   aspect: procedural
   scanners: [secrets, injection, url]
 
-subprotocols:
-  caw:
-    validator: caw
-    actions: [session_create, mount_bind, policy_compile]
-
 types:
   CawSandboxProfile:
     format: json
@@ -48,6 +43,14 @@ types:
         values: [adapter, seccomp, landlock]
       llm_proxy: boolean
       compiled_runtime: boolean
+
+extensions:
+  aep:
+    subprotocols:
+      caw:
+        validator: caw
+        actions: [session_create, mount_bind, policy_compile]
+
 ---
 kind: aep.caw.profile
 profile_id: agent-sandbox

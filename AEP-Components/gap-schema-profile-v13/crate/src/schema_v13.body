@@ -99,6 +99,16 @@
       "type": "boolean",
       "default": true,
       "description": "Load-time flag. When false the instruction is still loaded. Live Admit still evaluates agent_permission, wrap, action_path_prefix and pattern.guard. enabled is not Admit skip."
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Host data that GAP does not read. Each key names one host such as aep and holds an object whose fields that host defines. gapc and live Admit ignore the content. A host keeps its own keys here instead of adding them to metadata or to the top level.",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "type": "object"
+      }
     }
   },
   "$defs": {

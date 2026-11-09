@@ -8,6 +8,12 @@ pattern: |
   seed a clone, scan the change set, promote it as a pull request or a branch.
   Copy this file per agent. aep-ede profile init <agent-id> <owner/repo> creates one as well.
 
+action:
+  type: template
+  content: |
+    Change the repositories listed in extensions.aep.ede_repos only through aep-ede drafts.
+    Every verb passes the agent permission wall with the action ede.<verb>.
+
 weight: 1.0
 
 composition:
@@ -25,5 +31,8 @@ metadata:
       action: ede.scan
     - agent_id: example-coding-agent
       action: ede.promote
-  ede_repos:
-    - owner/repo
+
+extensions:
+  aep:
+    ede_repos:
+      - owner/repo
