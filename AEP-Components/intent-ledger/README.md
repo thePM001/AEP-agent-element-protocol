@@ -38,7 +38,7 @@ Intent knots are searchable attractors in lattice memory. The file ledger remain
 
 | Backend | Required | Notes |
 |---------|----------|-------|
-| Lattice Memory (`aep-memory`) | Yes | SQLite **3.46.0** bundled + **sqlite-vec 0.1.9** `vec0` + **USearch 2.25.3** `.usearch` sidecar on `$AEP_LATTICE_DB` (`action-lattice.db`) |
+| Lattice Memory (`aep-memory`) | Yes | SQLite **3.54.1** bundled + **sqlite-vec 0.1.9** `vec0` + **USearch 2.25.3** `.usearch` companion file on `$AEP_LATTICE_DB` (`action-lattice.db`) |
 | Agentstream | No | Mirror when `AGENTSTREAM_URL` is set (capsule `aep-intent-knots`) |
 
 ## Library

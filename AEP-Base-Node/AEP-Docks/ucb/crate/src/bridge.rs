@@ -182,13 +182,13 @@ fn ingest_from_lattice_deny(e: LatticeDeny) -> Value {
         event_id: e.event_id,
         digest: e.digest.clone(),
         error: Some(e.error.clone()),
-        deny: e.deny.clone(),
+        deny: e.deny.as_deref().cloned(),
         allow: e.allow.clone(),
         pending: None,
     };
     let rows = vec![admit_ledger_row(&docked)];
     let body = if let Some(deny) = e.deny {
-        deny_to_value(deny)
+        deny_to_value(*deny)
     } else {
         deny_to_value(DenyReport::from_error(&e.error))
     };
@@ -422,7 +422,7 @@ pub async fn rollback_foreign_integrations(rt: &Arc<UcbRuntime>, diff_ids: Vec<S
         Ok(d) => d,
         Err(e) => {
             if let Some(deny) = e.deny {
-                return deny_to_value(deny);
+                return deny_to_value(*deny);
             }
             return deny_to_value(DenyReport::from_error(&e.error));
         }

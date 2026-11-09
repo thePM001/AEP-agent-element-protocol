@@ -67,10 +67,8 @@ pub(crate) fn resolve_signer_public(
     signer_public_hex: Option<String>,
 ) -> Result<Option<Vec<u8>>, DockFrameResponse> {
     let registered = {
-        let from_store = match lock_or_deny(&runtime.keys.agent_sign_keys, "agent_sign_keys") {
-            Ok(g) => g.public_for(agent_id),
-            Err(resp) => return Err(resp),
-        };
+        let from_store =
+            lock_or_deny(&runtime.keys.agent_sign_keys, "agent_sign_keys")?.public_for(agent_id);
         let from_manifest = {
             let manifests = lock_or_deny(&runtime.admit.manifests, "manifests")?;
             manifests

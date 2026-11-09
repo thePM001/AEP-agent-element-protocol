@@ -83,7 +83,7 @@ rand = "0.8"
 ml-kem = { version = "0.3", features = ["getrandom"] }
 ml-dsa = { version = "0.1", features = ["getrandom"] }
 base64 = "0.22"
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.41", features = ["bundled", "fallible_uint"] }
 sqlite-vec = "0.1.9"
 usearch = "2.26"
 # Pin soundness-fixed transitive deps (RUSTSEC-2026-0190 / RUSTSEC-2026-0202).

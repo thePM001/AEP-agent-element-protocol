@@ -120,7 +120,7 @@ func TestBuildEnvGlobPatterns(t *testing.T) {
 		"HOME=/home/user",
 		"MY_VAR=value1",
 		"MY_APP=value2",
-		"MY_SECRET_KEY=secret",
+		"MY_SECRET_KEY=v",
 		"OTHER_VAR=other",
 	}
 
@@ -139,8 +139,8 @@ func TestBuildEnvGlobPatterns(t *testing.T) {
 
 	// MY_SECRET_KEY and OTHER_VAR should NOT be in result
 	notExpected := map[string]bool{
-		"MY_SECRET_KEY=secret": true,
-		"OTHER_VAR=other":      true,
+		"MY_SECRET_KEY=v": true,
+		"OTHER_VAR=other": true,
 	}
 
 	for _, kv := range result {

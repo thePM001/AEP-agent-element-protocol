@@ -455,11 +455,9 @@ fn normalize_embedding(values: &[f32], dim: usize) -> Vec<f32> {
 
 fn decode_vec0_f32_blob(blob: &[u8], dim: usize) -> Result<Vec<f32>, MemoryError> {
     if blob.len() == dim * 4 {
-        let mut out = vec![0.0_f32; dim];
-        for (i, chunk) in blob.chunks_exact(4).enumerate() {
-            out[i] = f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-        }
-        return Ok(out);
+        // The length check above makes the blob exactly dim chunks of four bytes.
+        let (chunks, _) = blob.as_chunks::<4>();
+        return Ok(chunks.iter().map(|c| f32::from_le_bytes(*c)).collect());
     }
     // sqlite-vec may return JSON for some insert paths; try parsing
     let text = std::str::from_utf8(blob)

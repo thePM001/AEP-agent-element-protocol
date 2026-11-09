@@ -143,7 +143,7 @@ func TestBuildEnv_GlobPatterns(t *testing.T) {
 		"PATH=/usr/bin",
 		"HOME=/home/user",
 		"MY_VAR=value1",
-		"MY_SECRET_KEY=secret",
+		"MY_SECRET_KEY=v",
 		"OTHER_VAR=other",
 	}
 

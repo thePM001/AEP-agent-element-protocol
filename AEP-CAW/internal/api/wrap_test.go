@@ -1265,7 +1265,14 @@ func TestWrapInit_LongTMPDIR_LongSessionID(t *testing.T) {
 	// Use a TMPDIR that simulates macOS /var/folders nesting (~40 chars)
 	// while still leaving enough room for the socket path.
 	// Budget: 104 - len(TMPDIR) - ~25 (aep-caw-wrap-*) - 13 (fixed parts)
-	longDir := filepath.Join(t.TempDir(), "deep")
+	// The directory sits under /tmp so its length does not depend on GOTMPDIR,
+	// which t.TempDir follows and which CI sets to its own path.
+	base, err := os.MkdirTemp("/tmp", "aep-caw-folders-")
+	if err != nil {
+		t.Fatalf("create tmpdir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(base) })
+	longDir := filepath.Join(base, "T", "nesting")
 	if err := os.MkdirAll(longDir, 0700); err != nil {
 		t.Fatalf("create tmpdir: %v", err)
 	}

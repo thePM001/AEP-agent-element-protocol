@@ -1289,15 +1289,11 @@ pub fn run_gate() -> Result<i32, String> {
     let p5 = scan_workspace_includes_gap_profile(&ws);
     let p6 = scan_policy_loader_compiles_profile(&policy_lib);
     for proof in [p1, p2, p3, p4, p5, p6] {
-        match proof {
-            Ok(v) => {
-                let mut line = String::from("aep-policy-system-admit ok proof=");
-                line.push_str(&v);
-                line.push('\n');
-                let _ = std::io::stdout().write_all(line.as_bytes());
-            }
-            Err(e) => return Err(e),
-        }
+        let v = proof?;
+        let mut line = String::from("aep-policy-system-admit ok proof=");
+        line.push_str(&v);
+        line.push('\n');
+        let _ = std::io::stdout().write_all(line.as_bytes());
     }
     let input = PolicySystemCompileInput::default();
     let walls = compile_policy_system_walls(&input);

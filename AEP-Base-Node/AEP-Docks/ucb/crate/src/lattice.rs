@@ -275,8 +275,10 @@ pub struct DockResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LatticeDeny {
     pub error: String,
+    /// Boxed so the error variant of send_frame stays small. Serde writes a box like
+    /// its content, so the wire shape is unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub deny: Option<DenyReport>,
+    pub deny: Option<Box<DenyReport>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub event_id: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -299,7 +301,7 @@ impl LatticeDeny {
     pub fn from_dock(resp: DockResponse, fallback: &str) -> Self {
         Self {
             error: resp.error.clone().unwrap_or_else(|| String::from(fallback)),
-            deny: resp.deny,
+            deny: resp.deny.map(Box::new),
             event_id: resp.event_id,
             digest: resp.digest,
             allow: resp.allow,
@@ -528,7 +530,7 @@ mod tests {
             event_id: err.event_id,
             digest: err.digest.clone(),
             error: Some(err.error.clone()),
-            deny: err.deny.clone(),
+            deny: err.deny.as_deref().cloned(),
             allow: err.allow.clone(),
             pending: None,
         };

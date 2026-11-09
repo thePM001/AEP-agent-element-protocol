@@ -218,27 +218,13 @@ pub fn run_local_issuance_gate() -> Result<i32, String> {
             .join("README.md"),
         "harness readme",
     )?;
-    let mut proofs: Vec<String> = Vec::new();
-    match scan_agentmesh_readme(&mesh_readme) {
-        Ok(v) => proofs.push(v),
-        Err(e) => return Err(e),
-    }
-    match scan_crate_module_docs(&crate_src) {
-        Ok(v) => proofs.push(v),
-        Err(e) => return Err(e),
-    }
-    match scan_public_readme_row(&public_readme) {
-        Ok(v) => proofs.push(v),
-        Err(e) => return Err(e),
-    }
-    match scan_harness_readme_line(&harness_readme) {
-        Ok(v) => proofs.push(v),
-        Err(e) => return Err(e),
-    }
-    match require_honest_capability_flag(&crate_src) {
-        Ok(v) => proofs.push(v),
-        Err(e) => return Err(e),
-    }
+    let proofs: Vec<String> = vec![
+        scan_agentmesh_readme(&mesh_readme)?,
+        scan_crate_module_docs(&crate_src)?,
+        scan_public_readme_row(&public_readme)?,
+        scan_harness_readme_line(&harness_readme)?,
+        require_honest_capability_flag(&crate_src)?,
+    ];
     for proof in proofs {
         let mut line = String::from("aep-agentmesh-local-issuance ok proof=");
         line.push_str(&proof);
