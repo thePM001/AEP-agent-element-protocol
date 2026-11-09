@@ -12,11 +12,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/pathutil"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/proxy/credsub"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/google/uuid"
 )
 
 var (

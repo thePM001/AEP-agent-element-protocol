@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 	"github.com/spf13/cobra"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 )
 
 // sanitizeTarPath validates that a tar entry path doesn't escape the restore directory.

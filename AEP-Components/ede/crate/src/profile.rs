@@ -35,7 +35,8 @@ pub struct Profile {
     pub repos: Vec<String>,
 }
 
-const HOW: &str = "create one with aep-ede profile init <agent-id> <owner/repo> and set AEP_AGENT_ID";
+const HOW: &str =
+    "create one with aep-ede profile init <agent-id> <owner/repo> and set AEP_AGENT_ID";
 
 fn indent(line: &str) -> usize {
     line.len() - line.trim_start().len()
@@ -59,9 +60,7 @@ pub fn parse(text: &str) -> (Vec<AgentPermission>, Vec<String>) {
         }
         let ind = indent(line);
         if let Some((name, at)) = block {
-            if ind <= at && !line.trim_start().starts_with('-') {
-                block = None;
-            } else if ind < at {
+            if (ind <= at && !line.trim_start().starts_with('-')) || ind < at {
                 block = None;
             } else if name == "agent_permission" {
                 if let Some(a) = value(line, "agent_id") {
@@ -70,13 +69,21 @@ pub fn parse(text: &str) -> (Vec<AgentPermission>, Vec<String>) {
                 }
                 if let Some(act) = value(line, "action") {
                     if !agent.is_empty() {
-                        records.push(AgentPermission { agent_id: agent.clone(), action: act });
+                        records.push(AgentPermission {
+                            agent_id: agent.clone(),
+                            action: act,
+                        });
                     }
                     continue;
                 }
                 continue;
             } else {
-                let item = line.trim().trim_start_matches('-').trim().trim_matches('"').to_string();
+                let item = line
+                    .trim()
+                    .trim_start_matches('-')
+                    .trim()
+                    .trim_matches('"')
+                    .to_string();
                 if !item.is_empty() {
                     repos.push(item);
                 }
@@ -91,7 +98,12 @@ pub fn parse(text: &str) -> (Vec<AgentPermission>, Vec<String>) {
             block = Some(("ede_repos", ind));
         } else if let Some(inline) = t.strip_prefix("ede_repos:") {
             let inline = inline.trim().trim_start_matches('[').trim_end_matches(']');
-            repos.extend(inline.split(',').map(|s| s.trim().trim_matches('"').to_string()).filter(|s| !s.is_empty()));
+            repos.extend(
+                inline
+                    .split(',')
+                    .map(|s| s.trim().trim_matches('"').to_string())
+                    .filter(|s| !s.is_empty()),
+            );
         }
     }
     (records, repos)
@@ -99,17 +111,31 @@ pub fn parse(text: &str) -> (Vec<AgentPermission>, Vec<String>) {
 
 /// The profile of the agent that runs this process.
 pub fn load() -> Result<Profile, String> {
-    let agent_id = std::env::var("AEP_AGENT_ID").unwrap_or_default().trim().to_string();
+    let agent_id = std::env::var("AEP_AGENT_ID")
+        .unwrap_or_default()
+        .trim()
+        .to_string();
     if agent_id.is_empty() {
-        return Err(format!("AEP_AGENT_ID is empty: every agent works in the EDE under its own profile, {}", HOW));
+        return Err(format!(
+            "AEP_AGENT_ID is empty: every agent works in the EDE under its own profile, {}",
+            HOW
+        ));
     }
     let path = match std::env::var("AEP_EDE_PROFILE") {
         Ok(v) if !v.is_empty() => PathBuf::from(v),
-        _ => crate::root().join("profiles").join(format!("{}.gap", agent_id)),
+        _ => crate::root()
+            .join("profiles")
+            .join(format!("{}.gap", agent_id)),
     };
-    let text = fs::read_to_string(&path).map_err(|_| format!("no agent profile at {}: {}", path.display(), HOW))?;
+    let text = fs::read_to_string(&path)
+        .map_err(|_| format!("no agent profile at {}: {}", path.display(), HOW))?;
     let (records, repos) = parse(&text);
-    Ok(Profile { agent_id, path, records, repos })
+    Ok(Profile {
+        agent_id,
+        path,
+        records,
+        repos,
+    })
 }
 
 impl Profile {
@@ -129,7 +155,11 @@ impl Profile {
             ));
         }
         if !repo.is_empty() && !self.repos.iter().any(|r| r == "*" || r == repo) {
-            return Err(format!("the profile {} does not list {} in ede_repos", self.path.display(), repo));
+            return Err(format!(
+                "the profile {} does not list {} in ede_repos",
+                self.path.display(),
+                repo
+            ));
         }
         Ok(())
     }
@@ -138,14 +168,25 @@ impl Profile {
         let granted: Vec<&str> = VERBS
             .iter()
             .copied()
-            .filter(|v| !compile_agent_permission_wall(&self.agent_id, &format!("ede.{}", v), &self.records).closed)
+            .filter(|v| {
+                !compile_agent_permission_wall(&self.agent_id, &format!("ede.{}", v), &self.records)
+                    .closed
+            })
             .collect();
         format!(
             "agent {} profile {} grants {} for {}",
             self.agent_id,
             self.path.display(),
-            if granted.is_empty() { "nothing".to_string() } else { granted.join(" ") },
-            if self.repos.is_empty() { "no repository".to_string() } else { self.repos.join(" ") }
+            if granted.is_empty() {
+                "nothing".to_string()
+            } else {
+                granted.join(" ")
+            },
+            if self.repos.is_empty() {
+                "no repository".to_string()
+            } else {
+                self.repos.join(" ")
+            }
         )
     }
 }
@@ -156,13 +197,19 @@ pub fn template(agent_id: &str, repos: &[String]) -> String {
     s.push_str("address:\n  domain: dev.aep.ede\n");
     s.push_str(&format!("  id: {}-coding.v1\n\n", agent_id));
     s.push_str("pattern: |\n");
-    s.push_str(&format!("  Agent profile of {} for enforced draft environments.\n", agent_id));
+    s.push_str(&format!(
+        "  Agent profile of {} for enforced draft environments.\n",
+        agent_id
+    ));
     s.push_str("  The agent changes the listed repositories only through aep-ede drafts.\n\n");
     s.push_str("weight: 1.0\n\ncomposition:\n  type: atomic\n\nmetadata:\n");
     s.push_str("  version: \"1.0.0\"\n  stability: stable\n  aspect: procedural\n");
     s.push_str("  agent_permission:\n");
     for v in VERBS {
-        s.push_str(&format!("    - agent_id: {}\n      action: ede.{}\n", agent_id, v));
+        s.push_str(&format!(
+            "    - agent_id: {}\n      action: ede.{}\n",
+            agent_id, v
+        ));
     }
     s.push_str("  ede_repos:\n");
     for r in repos {
@@ -177,13 +224,18 @@ pub fn init(agent_id: &str, repos: &[String]) -> Result<PathBuf, String> {
         return Err("name the agent with one word, for example my-coding-agent".into());
     }
     if repos.is_empty() {
-        return Err("name at least one repository as owner/repo. A * stands for every repository".into());
+        return Err(
+            "name at least one repository as owner/repo. A * stands for every repository".into(),
+        );
     }
     let dir = crate::root().join("profiles");
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let path = dir.join(format!("{}.gap", agent_id));
     if path.exists() {
-        return Err(format!("{} exists: edit it or remove it first", path.display()));
+        return Err(format!(
+            "{} exists: edit it or remove it first",
+            path.display()
+        ));
     }
     fs::write(&path, template(agent_id, repos)).map_err(|e| e.to_string())?;
     Ok(path)

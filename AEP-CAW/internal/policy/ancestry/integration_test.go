@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/process"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/process"
 )
 
 func TestProcessTreeIntegration_TaintPropagation(t *testing.T) {
@@ -82,11 +82,11 @@ func TestProcessTreeIntegration_WithInfoProvider(t *testing.T) {
 		InfoProvider: func(pid int) (*ProcessInfo, error) {
 			infoCalled = true
 			return &ProcessInfo{
-				PID:      pid,
-				PPID:     1,
-				Comm:     "test_command",
-				ExePath:  "/usr/bin/test",
-				Cmdline:  []string{"/usr/bin/test", "--flag"},
+				PID:     pid,
+				PPID:    1,
+				Comm:    "test_command",
+				ExePath: "/usr/bin/test",
+				Cmdline: []string{"/usr/bin/test", "--flag"},
 			}, nil
 		},
 	}

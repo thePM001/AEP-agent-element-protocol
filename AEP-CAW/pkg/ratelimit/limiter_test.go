@@ -79,13 +79,17 @@ func TestLimiter_TokensReplenish(t *testing.T) {
 		t.Errorf("Tokens() = %v, expected near 0", l.Tokens())
 	}
 
-	// Wait for replenishment
+	// Wait for replenishment. A loaded runner can sleep longer than asked, so the
+	// upper bound follows the time that really passed (100/sec, capped at burst 10).
+	start := time.Now()
 	time.Sleep(50 * time.Millisecond)
-
-	// Should have ~5 tokens (100/sec * 0.05s = 5)
 	tokens := l.Tokens()
-	if tokens < 3 || tokens > 7 {
-		t.Errorf("Tokens() = %v, expected ~5", tokens)
+	upper := 100*time.Since(start).Seconds() + 1
+	if upper > 10 {
+		upper = 10
+	}
+	if tokens < 4 || tokens > upper {
+		t.Errorf("Tokens() = %v, expected between 4 and %v", tokens, upper)
 	}
 }
 

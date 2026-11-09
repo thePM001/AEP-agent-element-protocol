@@ -3,8 +3,8 @@ package redirect
 import (
 	"strings"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
 	pg_query "github.com/pganalyze/pg_query_go/v6"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 

@@ -41,9 +41,9 @@ type BaseEvent struct {
 	IPCBackend      string `json:"ipc_backend,omitempty"`
 
 	// Versioning
-	AepCawVersion     string `json:"aep-caw_version,omitempty"`
-	AepCawCommit      string `json:"aep-caw_commit,omitempty"`
-	AepCawBuildTime   string `json:"aep-caw_build_time,omitempty"`
+	AepCawVersion      string `json:"aep-caw_version,omitempty"`
+	AepCawCommit       string `json:"aep-caw_commit,omitempty"`
+	AepCawBuildTime    string `json:"aep-caw_build_time,omitempty"`
 	EventSchemaVersion string `json:"event_schema_version"`
 	PolicyVersion      string `json:"policy_version,omitempty"`
 	PolicyName         string `json:"policy_name,omitempty"`

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
 	"github.com/spf13/cobra"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
 )
 
 func newOutputCmd() *cobra.Command {

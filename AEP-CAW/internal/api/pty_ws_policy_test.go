@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/metrics"
@@ -16,7 +17,6 @@ import (
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/composite"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/gorilla/websocket"
 )
 
 func TestPTYWebSocket_RespectsCommandPolicyDeny(t *testing.T) {

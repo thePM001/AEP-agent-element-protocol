@@ -85,10 +85,10 @@ func (m *SandboxManager) Create(config platform.SandboxConfig) (platform.Sandbox
 	}
 
 	sandbox := &Sandbox{
-		id:            id,
-		config:        config,
-		wslWorkspace:  wslWorkspace,
-		platform:      m.platform,
+		id:             id,
+		config:         config,
+		wslWorkspace:   wslWorkspace,
+		platform:       m.platform,
 		isolationLevel: m.isolationLevel,
 	}
 

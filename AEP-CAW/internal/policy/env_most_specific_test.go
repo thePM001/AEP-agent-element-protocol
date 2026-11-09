@@ -69,4 +69,3 @@ func TestEngine_CheckEnv_CatchAllDenyOrderIndependent(t *testing.T) {
 		t.Fatalf("OTHER must close under catch-all deny")
 	}
 }
-

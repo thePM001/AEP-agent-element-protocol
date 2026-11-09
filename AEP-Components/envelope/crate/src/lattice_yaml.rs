@@ -55,11 +55,16 @@ struct YamlNode {
     wrap: String,
 }
 
-
 fn mapping_colon(rest: &str) -> Option<usize> {
-    if let Some(i) = rest.find(": ") { return Some(i); }
-    if let Some(i) = rest.find(":\t") { return Some(i); }
-    if rest.ends_with(':') { return Some(rest.len() - 1); }
+    if let Some(i) = rest.find(": ") {
+        return Some(i);
+    }
+    if let Some(i) = rest.find(":\t") {
+        return Some(i);
+    }
+    if rest.ends_with(':') {
+        return Some(rest.len() - 1);
+    }
     rest.find(':')
 }
 
@@ -98,8 +103,8 @@ fn quote_colon_keys(raw: &str) -> String {
 
 pub fn load_lattice_yaml(text: &str) -> Result<HashMap<String, LatticeNode>, EnvelopeError> {
     let quoted = quote_colon_keys(text);
-    let parsed: YamlLattice = serde_yaml::from_str(&quoted)
-        .map_err(|e| EnvelopeError::Yaml(e.to_string()))?;
+    let parsed: YamlLattice =
+        serde_yaml::from_str(&quoted).map_err(|e| EnvelopeError::Yaml(e.to_string()))?;
     let mut nodes: HashMap<String, LatticeNode> = HashMap::new();
     for (id, n) in parsed.actions {
         nodes.insert(
@@ -141,10 +146,12 @@ fn gap_documents(text: &str) -> Vec<String> {
     }
     docs.push(cur);
     docs.into_iter()
-        .filter(|d| d.lines().any(|l| {
-            let t = l.trim();
-            t.is_empty() == false && t.starts_with('#') == false
-        }))
+        .filter(|d| {
+            d.lines().any(|l| {
+                let t = l.trim();
+                !t.is_empty() && !t.starts_with('#')
+            })
+        })
         .collect()
 }
 
@@ -167,8 +174,12 @@ pub fn lattice_document_from_gap(text: &str) -> Result<String, EnvelopeError> {
         .collect();
     match found.len() {
         1 => Ok(found.remove(0)),
-        0 => Err(EnvelopeError::Yaml(format!("GAP source has no kind: {LATTICE_GAP_KIND} document"))),
-        n => Err(EnvelopeError::Yaml(format!("GAP source has {n} kind: {LATTICE_GAP_KIND} documents, want one"))),
+        0 => Err(EnvelopeError::Yaml(format!(
+            "GAP source has no kind: {LATTICE_GAP_KIND} document"
+        ))),
+        n => Err(EnvelopeError::Yaml(format!(
+            "GAP source has {n} kind: {LATTICE_GAP_KIND} documents, want one"
+        ))),
     }
 }
 
@@ -185,7 +196,10 @@ pub fn load_lattice_gap_file(path: &Path) -> Result<HashMap<String, LatticeNode>
 
 /// True when a lattice path names a GAP file.
 pub fn is_gap_lattice_path(path: &Path) -> bool {
-    path.extension().and_then(|e| e.to_str()).map(|e| e.eq_ignore_ascii_case("gap")) == Some(true)
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.eq_ignore_ascii_case("gap"))
+        == Some(true)
 }
 
 /// Load a lattice file as GAP when it ends in .gap and as YAML otherwise.
@@ -257,11 +271,12 @@ pub fn snapshot_from_nodes(
     satisfied: BTreeSet<String>,
     bridge_ts_ms: i64,
 ) -> Snapshot {
-    let mut snap = Snapshot::default();
-    snap.lattice_nodes = nodes;
-    snap.satisfied_actions = satisfied;
-    snap.bridge_ts_ms = bridge_ts_ms;
-    snap
+    Snapshot {
+        lattice_nodes: nodes,
+        satisfied_actions: satisfied,
+        bridge_ts_ms,
+        ..Default::default()
+    }
 }
 
 pub fn apply_admit(snap: &mut Snapshot, action: &EnvelopeAction, plan: &ApplyPlan) {
@@ -363,10 +378,19 @@ mod tests {
         )
     }
 
-    fn sorted(nodes: &HashMap<String, LatticeNode>) -> Vec<(String, Vec<String>, Vec<String>, String)> {
+    fn sorted(
+        nodes: &HashMap<String, LatticeNode>,
+    ) -> Vec<(String, Vec<String>, Vec<String>, String)> {
         let mut v: Vec<_> = nodes
             .values()
-            .map(|n| (n.action_path.clone(), n.parents.clone(), n.agent_permission.clone(), n.category.clone()))
+            .map(|n| {
+                (
+                    n.action_path.clone(),
+                    n.parents.clone(),
+                    n.agent_permission.clone(),
+                    n.category.clone(),
+                )
+            })
             .collect();
         v.sort();
         v
@@ -406,7 +430,7 @@ mod tests {
         let y = dir.join("lattice.yaml");
         std::fs::write(&g, twin_gap()).expect("write gap");
         std::fs::write(&y, TWIN_YAML).expect("write yaml");
-        must(is_gap_lattice_path(&g) && is_gap_lattice_path(&y) == false);
+        must(is_gap_lattice_path(&g) && !is_gap_lattice_path(&y));
         let a = load_lattice_file(&g).expect("gap file");
         let b = load_lattice_file(&y).expect("yaml file");
         let _ = std::fs::remove_dir_all(&dir);

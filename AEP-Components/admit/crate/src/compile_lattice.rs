@@ -151,7 +151,7 @@ fn parent_recorded(items: &[String], parent: &str, agent_id: &str) -> bool {
     if set_has(items, &key) {
         return true;
     }
-    if agent_id.is_empty() == false {
+    if !agent_id.is_empty() {
         let mut legacy = String::from(agent_id);
         legacy.push(':');
         legacy.push_str(parent);
@@ -164,13 +164,14 @@ fn parent_recorded(items: &[String], parent: &str, agent_id: &str) -> bool {
         s.push_str(parent);
         s
     };
-    let agent_scoped = items.iter().any(|s| s.contains("agt|") && s.ends_with(&suffix));
+    let agent_scoped = items
+        .iter()
+        .any(|s| s.contains("agt|") && s.ends_with(&suffix));
     if agent_scoped {
         return false;
     }
     set_has(items, parent)
 }
-
 
 fn rate_text(rate: f64) -> String {
     if rate.fract() == 0.0 {
@@ -199,7 +200,7 @@ pub fn compile_lattice_policy(input: &LatticeCompileInput, sets: &PolicySets) ->
     let mut out = CompiledPolicy::default();
     let known = set_has(&input.all_actions, &input.action_path);
 
-    if known == false {
+    if !known {
         let mut reason = String::from("Unknown action path: '");
         reason.push_str(&input.action_path);
         reason.push_str("' - not found in lattice registry");
@@ -207,7 +208,7 @@ pub fn compile_lattice_policy(input: &LatticeCompileInput, sets: &PolicySets) ->
     }
 
     let records = permissions_from_allowed(&input.agent_permission);
-    if agent_has_permission(&input.agent_id, &input.action_path, &records) == false {
+    if !agent_has_permission(&input.agent_id, &input.action_path, &records) {
         close_wall(
             "lattice.agent_permission",
             String::from("this agent does not have permission for this action"),
@@ -215,14 +216,14 @@ pub fn compile_lattice_policy(input: &LatticeCompileInput, sets: &PolicySets) ->
         );
     }
 
-    if input.is_root == false && input.parents_of.is_empty() == false {
+    if !input.is_root && !input.parents_of.is_empty() {
         let mut any_parent = false;
         for p in &input.parents_of {
             if parent_recorded(&input.satisfied_actions, p, &input.agent_id) {
                 any_parent = true;
             }
         }
-        if any_parent == false {
+        if !any_parent {
             let mut reason =
                 String::from("Partial-order violation: none of the parent actions for '");
             reason.push_str(&input.action_path);
@@ -234,7 +235,9 @@ pub fn compile_lattice_policy(input: &LatticeCompileInput, sets: &PolicySets) ->
     }
 
     for (parent, child) in &sets.forbidden_pairs {
-        if parent_recorded(&input.satisfied_actions, parent, &input.agent_id) && child == &input.action_path {
+        if parent_recorded(&input.satisfied_actions, parent, &input.agent_id)
+            && child == &input.action_path
+        {
             let mut reason = String::from("Forbidden sequence: '");
             reason.push_str(&input.action_path);
             reason.push_str("' must not follow '");
@@ -272,8 +275,9 @@ pub fn compile_lattice_policy(input: &LatticeCompileInput, sets: &PolicySets) ->
     }
 
     if set_has(&sets.output_actions, &input.action_path) && input.simultaneous_outputs == 3 {
-        out.warn
-            .push(String::from("Cross-modality at ceiling: 3 simultaneous outputs active"));
+        out.warn.push(String::from(
+            "Cross-modality at ceiling: 3 simultaneous outputs active",
+        ));
     }
 
     if input.payload_repeated_violation && input.event_rate > 10.0 {
@@ -285,7 +289,7 @@ pub fn compile_lattice_policy(input: &LatticeCompileInput, sets: &PolicySets) ->
         out.escalate.push(msg);
     }
 
-    if known == false && input.action_path.is_empty() == false {
+    if !known && !input.action_path.is_empty() {
         let mut msg = String::from("Unknown action path '");
         msg.push_str(&input.action_path);
         msg.push_str("' detected - possible agent hallucination, manual review recommended");
@@ -313,11 +317,11 @@ pub fn prove_rego_source(rego: &str) -> Result<String, String> {
     ];
     let mut missing = Vec::new();
     for n in needles {
-        if rego.contains(n) == false {
+        if !rego.contains(n) {
             missing.push(n);
         }
     }
-    if missing.is_empty() == false {
+    if !missing.is_empty() {
         let mut msg = String::from("lattice-policy.rego missing compiled-wall source: ");
         msg.push_str(&missing.join(","));
         return Err(msg);
@@ -355,9 +359,8 @@ pub fn prove_rego_source(rego: &str) -> Result<String, String> {
 }
 
 pub fn default_rego_path() -> PathBuf {
-    let mut p = PathBuf::from(
-        std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::from(".")),
-    );
+    let mut p =
+        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::from(".")));
     p.push("../../dynAEP/policies/lattice-policy.rego");
     p
 }
@@ -369,15 +372,12 @@ mod tests {
     fn sample_sets() -> PolicySets {
         let path = default_rego_path();
         load_policy_sets(&path).unwrap_or_else(|_| {
-            let mut critical_actions = Vec::new();
-            critical_actions.push(String::from("agent:email:send"));
-            let mut output_actions = Vec::new();
-            output_actions.push(String::from("output:notify"));
-            let mut forbidden_pairs = Vec::new();
-            forbidden_pairs.push((
+            let critical_actions = vec![String::from("agent:email:send")];
+            let output_actions = vec![String::from("output:notify")];
+            let forbidden_pairs = vec![(
                 String::from("system:shutdown"),
                 String::from("agent:register"),
-            ));
+            )];
             PolicySets {
                 critical_actions,
                 output_actions,
@@ -388,19 +388,24 @@ mod tests {
 
     #[test]
     fn unknown_path_reason_is_a_closed_wall() -> Result<(), String> {
-        let mut input = LatticeCompileInput::default();
-        input.action_path = String::from("bogus:path");
-        input.category = String::from("agent_action");
+        let mut input = LatticeCompileInput {
+            action_path: String::from("bogus:path"),
+            category: String::from("agent_action"),
+            ..Default::default()
+        };
         input.all_actions.push(String::from("webhook:incoming"));
         let compiled = compile_lattice_policy(&input, &sample_sets());
-        if compiled.deny.iter().any(|d| d.contains("Unknown action path")) == false {
+        if !compiled
+            .deny
+            .iter()
+            .any(|d| d.contains("Unknown action path"))
+        {
             return Err(String::from("expected unknown path deny"));
         }
-        if compiled
+        if !compiled
             .walls
             .iter()
             .any(|w| w.closed && w.id == "lattice.unknown_path")
-            == false
         {
             return Err(String::from("expected closed lattice.unknown_path wall"));
         }
@@ -409,27 +414,29 @@ mod tests {
 
     #[test]
     fn agent_permission_denied_closes() -> Result<(), String> {
-        let mut input = LatticeCompileInput::default();
-        input.action_path = String::from("webhook:incoming");
-        input.category = String::from("agent_action");
-        input.agent_id = String::from("agent-b");
+        let mut input = LatticeCompileInput {
+            action_path: String::from("webhook:incoming"),
+            category: String::from("agent_action"),
+            agent_id: String::from("agent-b"),
+            ..Default::default()
+        };
         input.agent_permission.push(String::from("agent-a"));
         input.all_actions.push(String::from("webhook:incoming"));
         input.is_root = true;
         let compiled = compile_lattice_policy(&input, &sample_sets());
-        if compiled
+        if !compiled
             .walls
             .iter()
             .any(|w| w.closed && w.id == "lattice.agent_permission")
-            == false
         {
-            return Err(String::from("expected closed lattice.agent_permission wall"));
+            return Err(String::from(
+                "expected closed lattice.agent_permission wall",
+            ));
         }
-        if compiled
+        if !compiled
             .deny
             .iter()
             .any(|d| d == "this agent does not have permission for this action")
-            == false
         {
             return Err(String::from("expected agent permission deny"));
         }
@@ -438,10 +445,12 @@ mod tests {
 
     #[test]
     fn listed_agent_does_not_close_agent_permission() -> Result<(), String> {
-        let mut input = LatticeCompileInput::default();
-        input.action_path = String::from("webhook:incoming");
-        input.category = String::from("agent_action");
-        input.agent_id = String::from("agent-a");
+        let mut input = LatticeCompileInput {
+            action_path: String::from("webhook:incoming"),
+            category: String::from("agent_action"),
+            agent_id: String::from("agent-a"),
+            ..Default::default()
+        };
         input.agent_permission.push(String::from("agent-a"));
         input.all_actions.push(String::from("webhook:incoming"));
         input.is_root = true;
@@ -458,16 +467,28 @@ mod tests {
 
     #[test]
     fn empty_list_refuses_system_event() -> Result<(), String> {
-        let mut input = LatticeCompileInput::default();
-        input.action_path = String::from("root:ping");
-        input.category = String::from("system_event");
+        let mut input = LatticeCompileInput {
+            action_path: String::from("root:ping"),
+            category: String::from("system_event"),
+            ..Default::default()
+        };
         input.all_actions.push(String::from("root:ping"));
         input.is_root = true;
         let compiled = compile_lattice_policy(&input, &sample_sets());
-        if compiled.walls.iter().any(|w| w.closed && w.id == "lattice.agent_permission") == false {
-            return Err(String::from("empty list must close lattice.agent_permission for system_event"));
+        if !compiled
+            .walls
+            .iter()
+            .any(|w| w.closed && w.id == "lattice.agent_permission")
+        {
+            return Err(String::from(
+                "empty list must close lattice.agent_permission for system_event",
+            ));
         }
-        if compiled.deny.iter().any(|d| d == "this agent does not have permission for this action") == false {
+        if !compiled
+            .deny
+            .iter()
+            .any(|d| d == "this agent does not have permission for this action")
+        {
             return Err(String::from("expected exact deny text"));
         }
         Ok(())
@@ -475,14 +496,22 @@ mod tests {
 
     #[test]
     fn empty_list_refuses_external_event() -> Result<(), String> {
-        let mut input = LatticeCompileInput::default();
-        input.action_path = String::from("webhook:incoming");
-        input.category = String::from("external_event");
+        let mut input = LatticeCompileInput {
+            action_path: String::from("webhook:incoming"),
+            category: String::from("external_event"),
+            ..Default::default()
+        };
         input.all_actions.push(String::from("webhook:incoming"));
         input.is_root = true;
         let compiled = compile_lattice_policy(&input, &sample_sets());
-        if compiled.walls.iter().any(|w| w.closed && w.id == "lattice.agent_permission") == false {
-            return Err(String::from("empty list must close lattice.agent_permission for external_event"));
+        if !compiled
+            .walls
+            .iter()
+            .any(|w| w.closed && w.id == "lattice.agent_permission")
+        {
+            return Err(String::from(
+                "empty list must close lattice.agent_permission for external_event",
+            ));
         }
         Ok(())
     }
@@ -490,7 +519,7 @@ mod tests {
     #[test]
     fn live_rego_source_proves() -> Result<(), String> {
         let path = default_rego_path();
-        if path.is_file() == false {
+        if !path.is_file() {
             return Ok(());
         }
         match fs::read_to_string(&path) {

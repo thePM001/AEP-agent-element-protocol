@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/cobra"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/spf13/cobra"
 )
 
 func newSessionCmd() *cobra.Command {
@@ -173,10 +173,10 @@ func newSessionUpdateCmd() *cobra.Command {
 type LogType string
 
 const (
-	LogTypeAll  LogType = ""    // Show all log types
-	LogTypeLLM  LogType = "llm" // LLM request/response logs
-	LogTypeFS   LogType = "fs"  // Filesystem access logs
-	LogTypeNet  LogType = "net" // Network access logs
+	LogTypeAll  LogType = ""     // Show all log types
+	LogTypeLLM  LogType = "llm"  // LLM request/response logs
+	LogTypeFS   LogType = "fs"   // Filesystem access logs
+	LogTypeNet  LogType = "net"  // Network access logs
 	LogTypeExec LogType = "exec" // Command execution logs
 )
 

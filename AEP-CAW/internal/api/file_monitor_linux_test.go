@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/metrics"
@@ -15,8 +17,6 @@ import (
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/composite"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func boolPtr(v bool) *bool { return &v }
@@ -44,13 +44,13 @@ func TestCreateFileHandler_NilPolicy(t *testing.T) {
 	h := createFileHandler(cfg, nil, nil, false)
 	require.NotNil(t, h)
 
-	// With nil policy, Handle should return ActionContinue
+	// With nil policy the file handler fails closed and denies.
 	result, _ := h.Handle(unixmon.FileRequest{
 		PID:       1,
 		Path:      "/any/path",
 		Operation: "open",
 	})
-	assert.Equal(t, unixmon.ActionContinue, result.Action)
+	assert.Equal(t, unixmon.ActionDeny, result.Action)
 }
 
 func TestCreateFileHandler_EnforceWithoutFUSE(t *testing.T) {
@@ -146,7 +146,16 @@ func TestFilePolicyEngineWrapper_CheckFile(t *testing.T) {
 		assert.Equal(t, "etc is off limits", dec.Message)
 	})
 
-	t.Run("default_allow_for_unmatched_read", func(t *testing.T) {
+	t.Run("default_deny_for_unmatched_read", func(t *testing.T) {
+		t.Setenv("AEP_CAW_DEFAULT_ALLOW_READS", "")
+		dec := w.CheckFile("/var/log/syslog", "open")
+		assert.Equal(t, "deny", dec.Decision)
+		assert.Equal(t, "deny", dec.EffectiveDecision)
+		assert.Equal(t, "default-deny-files", dec.Rule)
+	})
+
+	t.Run("default_allow_for_unmatched_read_with_opt_in", func(t *testing.T) {
+		t.Setenv("AEP_CAW_DEFAULT_ALLOW_READS", "1")
 		dec := w.CheckFile("/var/log/syslog", "open")
 		assert.Equal(t, "allow", dec.Decision)
 		assert.Equal(t, "allow", dec.EffectiveDecision)

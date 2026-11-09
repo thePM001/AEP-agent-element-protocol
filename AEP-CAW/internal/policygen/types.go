@@ -129,7 +129,7 @@ type GeneratedPolicy struct {
 
 	// MCP rules
 	MCPToolRules    []MCPToolRuleGen
-	MCPBlockedTools []MCPToolRuleGen   // Tools blocked by proxy (for comments)
+	MCPBlockedTools []MCPToolRuleGen // Tools blocked by proxy (for comments)
 	MCPServers      []MCPServerRuleGen
-	MCPConfig       *MCPPolicyConfig   // nil if no MCP activity
+	MCPConfig       *MCPPolicyConfig // nil if no MCP activity
 }

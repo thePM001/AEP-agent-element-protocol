@@ -152,12 +152,12 @@ func TestReader_AdvancesPastLiveSegmentAfterSizeRoll(t *testing.T) {
 // pre-14b shape ("one Reader sees both sides of the roll") is intentionally
 // removed. The replacement assertion is two-fold:
 //
-//   1. A gen=7 Reader opened BEFORE the roll observes the gen=7 record then
-//      hits EOF when the roll seals segment 0 - it MUST NOT pick up the gen=8
-//      record (that would defeat the segment-iteration generation filter).
-//   2. A gen=8 Reader opened AFTER the roll observes the gen=8 record (the
-//      same segment-rollover handling: the new live segment is found via
-//      rescan).
+//  1. A gen=7 Reader opened BEFORE the roll observes the gen=7 record then
+//     hits EOF when the roll seals segment 0 - it MUST NOT pick up the gen=8
+//     record (that would defeat the segment-iteration generation filter).
+//  2. A gen=8 Reader opened AFTER the roll observes the gen=8 record (the
+//     same segment-rollover handling: the new live segment is found via
+//     rescan).
 //
 // Together these preserve the original test's intent (segment rollover after
 // a generation roll is handled correctly) while honoring the new

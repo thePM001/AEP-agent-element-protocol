@@ -144,7 +144,12 @@ fn compile_object(value: Value) -> Result<TaskManifestV1, DenyReport> {
         computed_fields: obj
             .get("computed_fields")
             .and_then(Value::as_array)
-            .map(|arr| arr.iter().filter_map(Value::as_str).map(str::to_string).collect())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(Value::as_str)
+                    .map(str::to_string)
+                    .collect()
+            })
             .unwrap_or_default(),
     };
     compiled.manifest_digest = digest_of(&compiled);

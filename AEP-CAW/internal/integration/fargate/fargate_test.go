@@ -48,7 +48,7 @@ func TestFargateE2E(t *testing.T) {
 
 	taskDefInput := BuildTaskDefinition(TaskDefParams{
 		Family:           "aep-caw-e2e-" + runID,
-		AepCawImage:     aepCawImage,
+		AepCawImage:      aepCawImage,
 		WorkloadImage:    workloadImage,
 		ExecutionRoleARN: execRole,
 		LogGroup:         logGroup,

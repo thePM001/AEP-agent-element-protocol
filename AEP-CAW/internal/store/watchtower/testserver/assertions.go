@@ -8,8 +8,8 @@ import (
 	"io"
 	"time"
 
-	wtpv1 "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1"
 	"github.com/klauspost/compress/zstd"
+	wtpv1 "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1"
 	"google.golang.org/protobuf/proto"
 )
 

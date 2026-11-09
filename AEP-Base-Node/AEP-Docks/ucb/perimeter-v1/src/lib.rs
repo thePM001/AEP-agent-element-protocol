@@ -18,7 +18,9 @@ pub use auth::{AgentKey, AuthError, AuthIdentity, AuthRegistry, Scope};
 pub use error::PredicateError;
 pub use journal::{chain_append, rollback_named, verify_chain, ChainedDiffRecord, JournalError};
 pub use limits::{reject_over_cap, WireLimits};
-pub use manifest::{digest_canonical, egress_power_allowed, ManifestError, SignedManifest, StrictMode};
+pub use manifest::{
+    digest_canonical, egress_power_allowed, ManifestError, SignedManifest, StrictMode,
+};
 pub use predicates::{validate_ingest, IngestView, PredicateVerdict, Provenance};
 pub use profile::{parse_profile, PredicateProfile};
 pub use scanner::{DefaultScannerPack, ScannerFinding, ScannerId, ScannerPack};
@@ -83,7 +85,10 @@ mod tests {
             signature: None,
             provisional: false,
         };
-        assert!(matches!(egress_power_allowed(&m, StrictMode::On), Err(ManifestError::Unsigned)));
+        assert!(matches!(
+            egress_power_allowed(&m, StrictMode::On),
+            Err(ManifestError::Unsigned)
+        ));
     }
 
     #[test]
@@ -96,7 +101,10 @@ mod tests {
             signature: Some("operator-sig".into()),
             provisional: true,
         };
-        assert!(matches!(egress_power_allowed(&m, StrictMode::On), Err(ManifestError::ProvisionalEgress)));
+        assert!(matches!(
+            egress_power_allowed(&m, StrictMode::On),
+            Err(ManifestError::ProvisionalEgress)
+        ));
     }
 
     #[test]
@@ -109,8 +117,12 @@ mod tests {
             scopes: vec![Scope::Ingest],
         });
         assert!(reg.authorize("agent-secret", Scope::Ingest, false).is_ok());
-        assert!(reg.authorize("agent-secret", Scope::Rollback, false).is_err());
-        assert!(reg.authorize("operator-secret", Scope::Rollback, false).is_ok());
+        assert!(reg
+            .authorize("agent-secret", Scope::Rollback, false)
+            .is_err());
+        assert!(reg
+            .authorize("operator-secret", Scope::Rollback, false)
+            .is_ok());
     }
 
     #[test]

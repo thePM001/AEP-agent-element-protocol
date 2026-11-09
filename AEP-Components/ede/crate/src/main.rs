@@ -18,7 +18,10 @@ fn main() {
             "init" if args.len() >= 4 => match aep_ede::profile::init(&args[2], &args[3..]) {
                 Ok(p) => {
                     println!("profile: {}", p.display());
-                    println!("next: export AEP_AGENT_ID={} in the environment the agent runs in", args[2]);
+                    println!(
+                        "next: export AEP_AGENT_ID={} in the environment the agent runs in",
+                        args[2]
+                    );
                     return;
                 }
                 Err(e) => {
@@ -45,7 +48,11 @@ fn main() {
     let forge = aep_ede::forge::from_env();
     let draft = args[1].as_str();
     let report = match args[0].as_str() {
-        "seed" => aep_ede::seed(forge.as_ref(), draft, args.get(2).map(|s| s.as_str()).unwrap_or("")),
+        "seed" => aep_ede::seed(
+            forge.as_ref(),
+            draft,
+            args.get(2).map(|s| s.as_str()).unwrap_or(""),
+        ),
         "diff" => aep_ede::diff(draft),
         "scan" => aep_ede::scan(draft),
         "refresh" => aep_ede::refresh(forge.as_ref(), draft),

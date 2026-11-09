@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/sqlite"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/spf13/cobra"
 )
 
 func newEventsCmd() *cobra.Command {

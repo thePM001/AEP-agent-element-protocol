@@ -232,15 +232,15 @@ func (l *DarwinLimiter) Cleanup(pid int) error {
 // Capabilities implements ResourceLimiter.
 func (l *DarwinLimiter) Capabilities() LimiterCapabilities {
 	return LimiterCapabilities{
-		MemoryHard:    true,  // RLIMIT_AS (self only)
+		MemoryHard:    true, // RLIMIT_AS (self only)
 		MemorySoft:    false,
 		Swap:          false,
 		CPUQuota:      false,
-		CPUShares:     true,  // renice
-		ProcessCount:  true,  // RLIMIT_NPROC (self only)
-		CPUTime:       true,  // RLIMIT_CPU (self only)
+		CPUShares:     true, // renice
+		ProcessCount:  true, // RLIMIT_NPROC (self only)
+		CPUTime:       true, // RLIMIT_CPU (self only)
 		DiskIORate:    false,
-		DiskQuota:     true,  // RLIMIT_FSIZE (self only)
+		DiskQuota:     true, // RLIMIT_FSIZE (self only)
 		NetworkRate:   false,
 		ChildTracking: false, // Must track manually
 	}

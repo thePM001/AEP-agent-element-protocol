@@ -3,8 +3,8 @@ package tor
 import (
 	"time"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"github.com/google/uuid"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // BuildControlEvent constructs a tor_control audit event from a Verdict.

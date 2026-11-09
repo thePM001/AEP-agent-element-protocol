@@ -95,8 +95,8 @@ func TestDNSProxy_Allow(t *testing.T) {
 
 	ft := newFdTracker()
 	handler := &mockDNSNetworkHandler{result: NetworkResult{
-		Allow:             true,
-		RedirectUpstream:  upstream.LocalAddr().String(),
+		Allow:            true,
+		RedirectUpstream: upstream.LocalAddr().String(),
 	}}
 
 	proxy, err := newDNSProxy(handler, ft)

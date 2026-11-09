@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gobwas/glob"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy/ancestry"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy/identity"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/gobwas/glob"
 )
 
 // ContextEngine extends Engine with taint-aware policy evaluation.
@@ -31,8 +31,8 @@ type compiledContext struct {
 }
 
 type compiledOverride struct {
-	argsAllow []glob.Glob
-	argsDeny  []glob.Glob
+	argsAllow   []glob.Glob
+	argsDeny    []glob.Glob
 	defDecision string
 }
 

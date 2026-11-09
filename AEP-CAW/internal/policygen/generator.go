@@ -16,7 +16,7 @@ import (
 
 // Package-level compiled regexes for sanitizeName
 var (
-	sanitizeNameRe    = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
+	sanitizeNameRe     = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
 	sanitizeCollapseRe = regexp.MustCompile(`_+`)
 )
 
@@ -56,15 +56,15 @@ func (g *Generator) Generate(ctx context.Context, sess types.Session, opts Optio
 
 	// Categorize events
 	var (
-		allowedFileEvents   []types.Event
-		blockedFileEvents   []types.Event
-		allowedNetEvents    []types.Event
-		blockedNetEvents    []types.Event
-		allowedCmdEvents    []types.Event
-		blockedCmdEvents    []types.Event
-		allowedUnixEvents   []types.Event
-		blockedUnixEvents   []types.Event
-		mcpEvents           []types.Event
+		allowedFileEvents []types.Event
+		blockedFileEvents []types.Event
+		allowedNetEvents  []types.Event
+		blockedNetEvents  []types.Event
+		allowedCmdEvents  []types.Event
+		blockedCmdEvents  []types.Event
+		allowedUnixEvents []types.Event
+		blockedUnixEvents []types.Event
+		mcpEvents         []types.Event
 	)
 
 	// Track which commands made network calls or deleted files

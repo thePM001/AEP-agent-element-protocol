@@ -34,9 +34,7 @@ pub fn resolve_inference_config(data_dir: &Path) -> Result<InferenceConfig, Stri
             provider,
             model: saved.model.unwrap_or_else(|| defaults.0.to_string()),
             base_url: saved.base_url.unwrap_or_else(|| defaults.1.to_string()),
-            api_key_env: saved
-                .api_key_env
-                .or_else(|| defaults.2.map(str::to_string)),
+            api_key_env: saved.api_key_env.or_else(|| defaults.2.map(str::to_string)),
         }
     } else {
         let provider = normalize_provider(
@@ -61,9 +59,8 @@ pub fn resolve_inference_config(data_dir: &Path) -> Result<InferenceConfig, Stri
         }
     };
     // MEDIUM: SSRF-validate inference base_url (reuse egress gate)
-    crate::egress::validate_upstream_url(&cfg.base_url).map_err(|e| {
-        format!("inference base_url rejected by SSRF gate: {e}")
-    })?;
+    crate::egress::validate_upstream_url(&cfg.base_url)
+        .map_err(|e| format!("inference base_url rejected by SSRF gate: {e}"))?;
     Ok(cfg)
 }
 
@@ -142,7 +139,11 @@ fn provider_defaults(provider: &str) -> (&'static str, &'static str, Option<&'st
             "https://openrouter.ai/api/v1",
             Some("OPENROUTER_API_KEY"),
         ),
-        "custom" => ("default", "http://127.0.0.1:8080/v1", Some("AEP_INFERENCE_API_KEY")),
+        "custom" => (
+            "default",
+            "http://127.0.0.1:8080/v1",
+            Some("AEP_INFERENCE_API_KEY"),
+        ),
         _ => ("local", "http://127.0.0.1:8080/v1", None),
     }
 }

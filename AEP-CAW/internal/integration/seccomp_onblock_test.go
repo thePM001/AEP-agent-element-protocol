@@ -17,10 +17,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	unixmon "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/unix"
 	seccompkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
 )
 

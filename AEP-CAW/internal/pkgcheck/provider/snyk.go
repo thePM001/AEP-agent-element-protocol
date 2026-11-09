@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	defaultSnykBaseURL    = "https://api.snyk.io"
-	defaultSnykTimeout    = 30 * time.Second
+	defaultSnykBaseURL     = "https://api.snyk.io"
+	defaultSnykTimeout     = 30 * time.Second
 	defaultSnykConcurrency = 16
 )
 

@@ -26,15 +26,15 @@ type Config struct {
 
 // SessionLimits defines per-session rate limits.
 type SessionLimits struct {
-	FileOpsPerSecond     float64 `json:"file_ops_per_second" yaml:"file_ops_per_second"`
+	FileOpsPerSecond      float64 `json:"file_ops_per_second" yaml:"file_ops_per_second"`
 	NetworkConnsPerSecond float64 `json:"network_conns_per_second" yaml:"network_conns_per_second"`
-	DNSQueriesPerSecond  float64 `json:"dns_queries_per_second" yaml:"dns_queries_per_second"`
-	BurstMultiplier      float64 `json:"burst_multiplier" yaml:"burst_multiplier"`
+	DNSQueriesPerSecond   float64 `json:"dns_queries_per_second" yaml:"dns_queries_per_second"`
+	BurstMultiplier       float64 `json:"burst_multiplier" yaml:"burst_multiplier"`
 }
 
 // AgentLimits defines per-agent limits.
 type AgentLimits struct {
-	MaxConcurrentSessions    int   `json:"max_concurrent_sessions" yaml:"max_concurrent_sessions"`
+	MaxConcurrentSessions     int   `json:"max_concurrent_sessions" yaml:"max_concurrent_sessions"`
 	MaxTotalOperationsPerHour int64 `json:"max_total_operations_per_hour" yaml:"max_total_operations_per_hour"`
 }
 
@@ -53,9 +53,9 @@ type GlobalLimits struct {
 
 // ActionConfig defines actions when limits are exceeded.
 type ActionConfig struct {
-	FileOps     LimitAction `json:"file_ops" yaml:"file_ops"`
+	FileOps      LimitAction `json:"file_ops" yaml:"file_ops"`
 	NetworkConns LimitAction `json:"network_conns" yaml:"network_conns"`
-	DNSQueries  LimitAction `json:"dns_queries" yaml:"dns_queries"`
+	DNSQueries   LimitAction `json:"dns_queries" yaml:"dns_queries"`
 }
 
 // LimitAction defines what happens when a limit is exceeded.
@@ -84,12 +84,12 @@ func DefaultConfig() Config {
 			BurstMultiplier:       5,
 		},
 		Agent: AgentLimits{
-			MaxConcurrentSessions:    10,
+			MaxConcurrentSessions:     10,
 			MaxTotalOperationsPerHour: 1000000,
 		},
 		Tenant: TenantLimits{
 			MaxConcurrentSessions: 100,
-			MaxStorageBytes:       10 * 1024 * 1024 * 1024, // 10GB
+			MaxStorageBytes:       10 * 1024 * 1024 * 1024,  // 10GB
 			MaxNetworkBytesPerDay: 100 * 1024 * 1024 * 1024, // 100GB
 		},
 		Global: GlobalLimits{
@@ -117,21 +117,21 @@ func DefaultConfig() Config {
 type ResourceType string
 
 const (
-	ResourceFileOps     ResourceType = "file_ops"
+	ResourceFileOps      ResourceType = "file_ops"
 	ResourceNetworkConns ResourceType = "network_conns"
-	ResourceDNSQueries  ResourceType = "dns_queries"
-	ResourceOperations  ResourceType = "operations"
-	ResourceStorage     ResourceType = "storage"
+	ResourceDNSQueries   ResourceType = "dns_queries"
+	ResourceOperations   ResourceType = "operations"
+	ResourceStorage      ResourceType = "storage"
 	ResourceNetworkBytes ResourceType = "network_bytes"
 )
 
 // Limiter provides token bucket rate limiting.
 type Limiter struct {
-	rate      float64 // tokens per second
-	burst     int     // maximum burst size
-	tokens    float64
-	lastTime  time.Time
-	mu        sync.Mutex
+	rate     float64 // tokens per second
+	burst    int     // maximum burst size
+	tokens   float64
+	lastTime time.Time
+	mu       sync.Mutex
 }
 
 // NewLimiter creates a new rate limiter.

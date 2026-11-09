@@ -1,8 +1,8 @@
 //! Wire sent_at freshness.
 //! Constants come from aep-base-node-pulse.
 
-use aep_base_node_pulse::{MAX_FRAME_AGE_SECS, MAX_FRAME_FUTURE_SKEW_SECS};
 use crate::BaseNodeError;
+use aep_base_node_pulse::{MAX_FRAME_AGE_SECS, MAX_FRAME_FUTURE_SKEW_SECS};
 
 pub(crate) fn frame_is_fresh(sent_at_unix: u64) -> Result<(), BaseNodeError> {
     let now = crate::now_unix();

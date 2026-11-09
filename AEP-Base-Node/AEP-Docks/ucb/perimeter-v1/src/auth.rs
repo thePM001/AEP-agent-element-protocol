@@ -1,4 +1,3 @@
-
 use sha2::{Digest, Sha256};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,11 +39,17 @@ pub struct AuthRegistry {
 
 impl AuthRegistry {
     pub fn with_operator_key(operator_secret: &str) -> Self {
-        Self { operator_hash: Self::hash_key(operator_secret), agents: Vec::new() }
+        Self {
+            operator_hash: Self::hash_key(operator_secret),
+            agents: Vec::new(),
+        }
     }
 
     pub fn from_operator_hash(operator_hash: &str) -> Self {
-        Self { operator_hash: operator_hash.to_string(), agents: Vec::new() }
+        Self {
+            operator_hash: operator_hash.to_string(),
+            agents: Vec::new(),
+        }
     }
 
     pub fn insert(&mut self, key: AgentKey) {
@@ -57,7 +62,12 @@ impl AuthRegistry {
         hex::encode(h.finalize())
     }
 
-    pub fn authorize(&self, token: &str, needed: Scope, dual_control: bool) -> Result<AuthIdentity, AuthError> {
+    pub fn authorize(
+        &self,
+        token: &str,
+        needed: Scope,
+        dual_control: bool,
+    ) -> Result<AuthIdentity, AuthError> {
         if token.is_empty() {
             return Err(AuthError::Refused);
         }
@@ -74,6 +84,9 @@ impl AuthRegistry {
         if !agent.scopes.contains(&needed) {
             return Err(AuthError::Scope(needed));
         }
-        Ok(AuthIdentity::Agent { agent_id: agent.agent_id.clone(), key_id: agent.key_id.clone() })
+        Ok(AuthIdentity::Agent {
+            agent_id: agent.agent_id.clone(),
+            key_id: agent.key_id.clone(),
+        })
     }
 }

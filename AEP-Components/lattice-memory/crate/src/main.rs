@@ -7,7 +7,10 @@ use std::io::{self, Read};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
-#[command(name = "aep-memory", about = "AEP 2.9 Lattice Memory CLI (sqlite-vec + USearch)")]
+#[command(
+    name = "aep-memory",
+    about = "AEP 2.9 Lattice Memory CLI (sqlite-vec + USearch)"
+)]
 struct Cli {
     #[arg(long)]
     db: Option<PathBuf>,
@@ -84,10 +87,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::History => {
             let req: MemoryHistoryRequest = read_stdin_json()?;
-            let entries = store.history_entries(
-                &req.element_id,
-                req.result.as_deref(),
-            )?;
+            let entries = store.history_entries(&req.element_id, req.result.as_deref())?;
             println!("{}", serde_json::to_string(&entries)?);
         }
         Commands::Export => {

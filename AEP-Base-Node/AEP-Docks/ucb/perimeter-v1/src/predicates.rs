@@ -1,4 +1,3 @@
-
 use crate::error::PredicateError;
 use crate::profile::PredicateProfile;
 use crate::scanner::{ScannerId, ScannerPack};
@@ -44,12 +43,21 @@ pub struct PredicateVerdict {
 }
 
 pub fn validate_ingest(
-    profile: PredicateProfile,
+    _profile: PredicateProfile,
     view: &IngestView<'_>,
     pack: &impl ScannerPack,
 ) -> PredicateVerdict {
-    match check_pp(view).and_then(|_| check_ps(view)).and_then(|_| check_pc(view, pack)).and_then(|_| check_pr(view)) {
-        Ok(()) => PredicateVerdict { ok: true, predicate: None, scanner_id: None, error: None },
+    match check_pp(view)
+        .and_then(|_| check_ps(view))
+        .and_then(|_| check_pc(view, pack))
+        .and_then(|_| check_pr(view))
+    {
+        Ok(()) => PredicateVerdict {
+            ok: true,
+            predicate: None,
+            scanner_id: None,
+            error: None,
+        },
         Err((pred, scan, msg)) => fail(pred, scan, msg),
     }
 }
@@ -73,7 +81,13 @@ fn check_ps(view: &IngestView<'_>) -> Result<(), (&'static str, Option<ScannerId
     if ct != "application/json" && ct != "application/json; charset=utf-8" {
         return Err(("P_S", None, PredicateError::Structural.to_string()));
     }
-    if view.payload.as_object().map(|o| o.is_empty()).unwrap_or(true) && !view.payload.is_array() {
+    if view
+        .payload
+        .as_object()
+        .map(|o| o.is_empty())
+        .unwrap_or(true)
+        && !view.payload.is_array()
+    {
         return Err(("P_S", None, PredicateError::Structural.to_string()));
     }
     Ok(())
@@ -84,7 +98,13 @@ fn check_pc(
     pack: &impl ScannerPack,
 ) -> Result<(), (&'static str, Option<ScannerId>, String)> {
     let text = view.payload.to_string();
-    pack.scan(&text).map_err(|f| ("P_C", Some(f.scanner_id), PredicateError::Scanner(f.scanner_id).to_string()))
+    pack.scan(&text).map_err(|f| {
+        (
+            "P_C",
+            Some(f.scanner_id),
+            PredicateError::Scanner(f.scanner_id).to_string(),
+        )
+    })
 }
 
 fn check_pr(view: &IngestView<'_>) -> Result<(), (&'static str, Option<ScannerId>, String)> {
@@ -119,5 +139,10 @@ fn canonical_digest(source: &str, protocol: &str, session_id: &str) -> String {
 }
 
 fn fail(pred: &'static str, scan: Option<ScannerId>, msg: String) -> PredicateVerdict {
-    PredicateVerdict { ok: false, predicate: Some(pred), scanner_id: scan, error: Some(msg) }
+    PredicateVerdict {
+        ok: false,
+        predicate: Some(pred),
+        scanner_id: scan,
+        error: Some(msg),
+    }
 }

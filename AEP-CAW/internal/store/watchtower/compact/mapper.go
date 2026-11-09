@@ -60,7 +60,9 @@ func (StubMapper) Map(ev types.Event) (MappedEvent, error) {
 // or pointer form. Used by Store.validate() to reject the stub in production.
 //
 // Accepts: compact.StubMapper{}, &compact.StubMapper{}, and a typed-nil
-//          (*StubMapper)(nil) wrapped in a Mapper interface.
+//
+//	(*StubMapper)(nil) wrapped in a Mapper interface.
+//
 // Rejects: untyped nil (handled separately by validate()).
 //
 // The typed-nil case matters because a caller writing

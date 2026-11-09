@@ -11,10 +11,17 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashMap, HashSet};
-mod seq_walls;
 mod lattice_yaml;
-pub use lattice_yaml::{apply_admit, closed_reasons, is_gap_lattice_path, lattice_document_from_gap, load_lattice_file, load_lattice_gap, load_lattice_gap_file, load_lattice_yaml, load_lattice_yaml_file, snapshot_from_nodes, EnvelopeError, LATTICE_GAP_KIND};
-pub use aep_admit::{AdmitWall, agent_permission, agent_has_permission, AgentPermission, Pulse, PULSE_MS, DENY_NO_PERMISSION, ClosedWall, DenyReport};
+mod seq_walls;
+pub use aep_admit::{
+    agent_has_permission, agent_permission, AdmitWall, AgentPermission, ClosedWall, DenyReport,
+    Pulse, DENY_NO_PERMISSION, PULSE_MS,
+};
+pub use lattice_yaml::{
+    apply_admit, closed_reasons, is_gap_lattice_path, lattice_document_from_gap, load_lattice_file,
+    load_lattice_gap, load_lattice_gap_file, load_lattice_yaml, load_lattice_yaml_file,
+    snapshot_from_nodes, EnvelopeError, LATTICE_GAP_KIND,
+};
 
 // the public kernel type set is defined once in aep-kernel-types.
 // EnvelopeAction stays as an alias so no caller changes and no second definition exists.
@@ -75,12 +82,24 @@ pub struct Snapshot {
     pub forecast_cached_score: f64,
 }
 
-fn default_max_actions() -> u32 { 200 }
-fn default_drift() -> i64 { 50 }
-fn default_age() -> i64 { 5000 }
-fn default_future() -> i64 { 500 }
-fn default_anom() -> f64 { 3.0 }
-fn default_event_rate_max() -> u32 { 200 }
+fn default_max_actions() -> u32 {
+    200
+}
+fn default_drift() -> i64 {
+    50
+}
+fn default_age() -> i64 {
+    5000
+}
+fn default_future() -> i64 {
+    500
+}
+fn default_anom() -> f64 {
+    3.0
+}
+fn default_event_rate_max() -> u32 {
+    200
+}
 
 impl Default for Snapshot {
     fn default() -> Self {
@@ -191,7 +210,6 @@ pub fn action_is_satisfied(snap: &Snapshot, path: &str, agent_id: &str) -> bool 
     parent_is_satisfied(snap, path, agent_id)
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct LatticeNode {
     #[serde(default)]
@@ -206,10 +224,6 @@ pub struct LatticeNode {
     #[serde(default)]
     pub wrap: String,
 }
-
-
-
-
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ApplyPlan {
@@ -242,8 +256,8 @@ pub fn admit_with_extra(
         });
     }
     walls.sort_by(|a, b| a.id.cmp(&b.id));
- // The one collect all shape lives in the kernel type crate, so the allow rule has
- // one definition site and every closer reads that result.
+    // The one collect all shape lives in the kernel type crate, so the allow rule has
+    // one definition site and every closer reads that result.
     AdmitResult::from_walls(&walls)
 }
 
@@ -268,13 +282,13 @@ pub fn apply(snap: &mut Snapshot, plan: &ApplyPlan) {
 }
 
 fn wall(id: &str, family: &str, open: bool, reason: &str) -> AdmitWall {
- // the wall row is the kernel AdmitWall, not a local copy.
+    // the wall row is the kernel AdmitWall, not a local copy.
     AdmitWall::verdict(id, family, open, reason)
 }
 
 /// dest_dock may bind from the opened frame docking port when the event field is empty.
 pub fn dest_dock_from_opened_frame(event_dest_dock: &str, docking_port: &str) -> String {
-    if event_dest_dock.is_empty() == false {
+    if !event_dest_dock.is_empty() {
         return event_dest_dock.to_string();
     }
     docking_port.to_string()
@@ -302,7 +316,12 @@ fn all_walls(action: &EnvelopeAction, snap: &Snapshot) -> Vec<AdmitWall> {
 
 fn wall_dag(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     if snap.lattice_nodes.is_empty() {
-        return wall("dag.membership", "dag", false, "empty lattice closes membership");
+        return wall(
+            "dag.membership",
+            "dag",
+            false,
+            "empty lattice closes membership",
+        );
     }
     if snap.lattice_nodes.contains_key(&action.action_path) {
         wall("dag.membership", "dag", true, "node exists")
@@ -323,7 +342,7 @@ fn wall_parents(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     let missing: Vec<&str> = node
         .parents
         .iter()
-        .filter(|p| parent_is_satisfied(snap, p, &action.agent_id) == false)
+        .filter(|p| !parent_is_satisfied(snap, p, &action.agent_id))
         .map(|s| s.as_str())
         .collect();
     if missing.is_empty() {
@@ -340,10 +359,20 @@ fn wall_parents(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
 
 fn wall_agent_permission(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     if snap.lattice_nodes.is_empty() {
-        return wall("gap.agent_permission", "gap", false, "empty lattice closes agent_permission");
+        return wall(
+            "gap.agent_permission",
+            "gap",
+            false,
+            "empty lattice closes agent_permission",
+        );
     }
     let Some(node) = snap.lattice_nodes.get(&action.action_path) else {
-        return wall("gap.agent_permission", "gap", true, "membership wall covers miss");
+        return wall(
+            "gap.agent_permission",
+            "gap",
+            true,
+            "membership wall covers miss",
+        );
     };
     if node.agent_permission.is_empty() {
         return wall(
@@ -355,7 +384,7 @@ fn wall_agent_permission(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall 
     }
     let allowed = node.agent_permission.iter().any(|item| {
         if item == "*" {
-            action.agent_id.is_empty() == false
+            !action.agent_id.is_empty()
         } else if item == "unbound" {
             action.agent_id.is_empty()
         } else {
@@ -363,7 +392,12 @@ fn wall_agent_permission(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall 
         }
     });
     if allowed {
-        wall("gap.agent_permission", "gap", true, "agent permission listed")
+        wall(
+            "gap.agent_permission",
+            "gap",
+            true,
+            "agent permission listed",
+        )
     } else {
         wall(
             "gap.agent_permission",
@@ -407,7 +441,7 @@ fn wall_gap(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
             .filter(|w| w.closed)
             .map(|w| w.id)
             .collect();
-        if closed.is_empty() == false {
+        if !closed.is_empty() {
             let mut reason = String::from("writing wall closed in payload: ");
             reason.push_str(&closed.join(","));
             return wall("gap.writing", "gap", false, &reason);
@@ -518,12 +552,7 @@ fn wall_scanner(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     let blob = action.payload.to_string().to_lowercase();
     for n in &snap.scanner_needles {
         if blob.contains(&n.to_lowercase()) {
-            return wall(
-                "scanner.bundle",
-                "scanner",
-                false,
-                &format!("needle {}", n),
-            );
+            return wall("scanner.bundle", "scanner", false, &format!("needle {}", n));
         }
     }
     wall("scanner.bundle", "scanner", true, "clean")
@@ -568,12 +597,13 @@ fn wall_restricted_rego(action: &EnvelopeAction, snap: &Snapshot) -> AdmitWall {
     if critical_actions().contains(action.action_path.as_str()) {
         let node = snap.lattice_nodes.get(&action.action_path);
         let listed = match node {
-            Some(n) => n.agent_permission.iter().any(|g| {
-                (g == "*" && action.agent_id.is_empty() == false) || g == &action.agent_id
-            }),
+            Some(n) => n
+                .agent_permission
+                .iter()
+                .any(|g| (g == "*" && !action.agent_id.is_empty()) || g == &action.agent_id),
             None => false,
         };
-        if listed == false {
+        if !listed {
             return wall(
                 "rego.restricted",
                 "rego",
@@ -639,7 +669,12 @@ pub fn closed_names(result: &AdmitResult) -> BTreeSet<String> {
 mod tests {
     use super::*;
 
-    fn sample_node(path: &str, parents: &[&str], may: &[&str], category: &str) -> (String, LatticeNode) {
+    fn sample_node(
+        path: &str,
+        parents: &[&str],
+        may: &[&str],
+        category: &str,
+    ) -> (String, LatticeNode) {
         (
             path.to_string(),
             LatticeNode {
@@ -724,19 +759,29 @@ mod tests {
         assert!(!r.allow);
         let names = closed_names(&r);
         assert!(names.contains("gap.writing"), "gap missing: {:?}", names);
-        assert!(names.contains("gap.agent_permission"), "agent_permission missing: {:?}", names);
+        assert!(
+            names.contains("gap.agent_permission"),
+            "agent_permission missing: {:?}",
+            names
+        );
     }
 
     #[test]
     fn gap_writing_leaves_ucm_receipts_to_the_dock_reader() {
         let snap = base_snap();
-        let receipt = serde_json::json!({ "program": { "inputs": [{ "name": "p", "type": "money[EUR]" }] } });
+        let receipt =
+            serde_json::json!({ "program": { "inputs": [{ "name": "p", "type": "money[EUR]" }] } });
         let mut a = act("action:write");
         a.payload = serde_json::json!({ "total": "64.54", "raw": { "ucm": { "receipts": { "/total": receipt } } } });
         let names = closed_names(&admit(&a, &snap));
-        assert!(!names.contains("gap.writing"), "receipt read as prose: {:?}", names);
+        assert!(
+            !names.contains("gap.writing"),
+            "receipt read as prose: {:?}",
+            names
+        );
         // The rest of the payload is still read.
-        a.payload = serde_json::json!({ "note": "Low RAM\u{2014}use cloud", "ucm": { "receipts": {} } });
+        a.payload =
+            serde_json::json!({ "note": "Low RAM\u{2014}use cloud", "ucm": { "receipts": {} } });
         let names = closed_names(&admit(&a, &snap));
         assert!(names.contains("gap.writing"), "gap missing: {:?}", names);
     }
@@ -816,7 +861,10 @@ mod tests {
         a.forbid_tools.insert("shell".into());
         b.forbid_tools.insert("shell".into());
         let act = act("action:write");
-        assert_eq!(closed_names(&admit(&act, &a)), closed_names(&admit(&act, &b)));
+        assert_eq!(
+            closed_names(&admit(&act, &a)),
+            closed_names(&admit(&act, &b))
+        );
         assert_eq!(admit(&act, &a).allow, admit(&act, &b).allow);
     }
 
@@ -861,8 +909,8 @@ mod tests {
         let mut a = act("action:write");
         a.anomaly_score = 0.0;
         let r = admit(&a, &snap);
-        assert_eq!(r.allow, true);
-        assert_eq!(closed_names(&r).contains("forecast.anomaly"), false);
+        assert!(r.allow);
+        assert!(!closed_names(&r).contains("forecast.anomaly"));
     }
 
     #[test]
@@ -878,8 +926,8 @@ mod tests {
             None => rest.len(),
         };
         let body = &rest[..end];
-        assert_eq!(body.contains("forecast_cached_score"), false);
-        assert_eq!(body.contains("anomaly_score"), true);
+        assert!(!body.contains("forecast_cached_score"));
+        assert!(body.contains("anomaly_score"));
     }
 
     #[test]
@@ -887,8 +935,8 @@ mod tests {
         let snap = base_snap();
         let extra = vec![AdmitWall::close("dock.capsule", "capsule missing")];
         let r = admit_with_extra(&act("action:write"), &snap, extra);
-        assert_eq!(r.allow, false);
-        assert_eq!(closed_names(&r).contains("dock.capsule"), true);
+        assert!(!r.allow);
+        assert!(closed_names(&r).contains("dock.capsule"));
     }
 
     #[test]
@@ -905,7 +953,7 @@ mod tests {
         };
         let body = &rest[..end];
         let needle = ["trust", "_tier"].concat();
-        assert_eq!(body.contains(&needle), false);
+        assert!(!body.contains(&needle));
     }
 
     #[test]
@@ -913,28 +961,28 @@ mod tests {
         let snap = base_snap();
         let extra = vec![AdmitWall::open("dock.capsule")];
         let r = admit_with_extra(&act("action:write"), &snap, extra);
-        assert_eq!(r.allow, true);
-        assert_eq!(closed_names(&r).contains("dock.capsule"), false);
+        assert!(r.allow);
+        assert!(!closed_names(&r).contains("dock.capsule"));
     }
 
     #[test]
     fn empty_lattice_closes_membership_and_agent_permission() {
         let snap = Snapshot::default();
         let r = admit(&act("action:write"), &snap);
-        assert_eq!(r.allow, false);
+        assert!(!r.allow);
         let names = closed_names(&r);
-        assert_eq!(names.contains("dag.membership"), true);
-        assert_eq!(names.contains("gap.agent_permission"), true);
+        assert!(names.contains("dag.membership"));
+        assert!(names.contains("gap.agent_permission"));
     }
 
     #[test]
     fn empty_lattice_does_not_open_no_lattice_configured() {
         let src = include_str!("lib.rs");
-        let compact: String = src.chars().filter(|c| c.is_whitespace() == false).collect();
+        let compact: String = src.chars().filter(|c| !c.is_whitespace()).collect();
         let open_empty = ["true,", "\"nolatticeconfigured\""].concat();
-        assert_eq!(compact.contains(&open_empty), false);
+        assert!(!compact.contains(&open_empty));
         let spaced = ["true, ", "\"no lattice configured\""].concat();
-        assert_eq!(src.contains(&spaced), false);
+        assert!(!src.contains(&spaced));
     }
 
     #[test]
@@ -942,8 +990,18 @@ mod tests {
         let mut snap = Snapshot::default();
         snap.lattice_nodes.extend([
             sample_node("root:ping", &[], &["*"], "system_event"),
-            sample_node("action:prepare", &["root:ping"], &["agent-a", "agent-b"], "agent_action"),
-            sample_node("action:commit", &["action:prepare"], &["agent-a", "agent-b"], "agent_action"),
+            sample_node(
+                "action:prepare",
+                &["root:ping"],
+                &["agent-a", "agent-b"],
+                "agent_action",
+            ),
+            sample_node(
+                "action:commit",
+                &["action:prepare"],
+                &["agent-a", "agent-b"],
+                "agent_action",
+            ),
         ]);
         snap.satisfied_actions.insert("root:ping".into());
         snap.bridge_ts_ms = 1000;
@@ -996,8 +1054,8 @@ mod tests {
         let mut a = act("action:write");
         a.scene_id.clear();
         let r = admit(&a, &snap);
-        assert_eq!(r.allow, false);
-        assert_eq!(closed_names(&r).contains("scene.membership"), true);
+        assert!(!r.allow);
+        assert!(closed_names(&r).contains("scene.membership"));
     }
 
     #[test]
@@ -1005,8 +1063,8 @@ mod tests {
         let mut snap = base_snap();
         snap.proven_scene_ids.clear();
         let r = admit(&act("action:write"), &snap);
-        assert_eq!(r.allow, false);
-        assert_eq!(closed_names(&r).contains("scene.membership"), true);
+        assert!(!r.allow);
+        assert!(closed_names(&r).contains("scene.membership"));
     }
 
     #[test]
@@ -1015,8 +1073,8 @@ mod tests {
         let mut a = act("action:write");
         a.dest_dock.clear();
         let r = admit(&a, &snap);
-        assert_eq!(r.allow, false);
-        assert_eq!(closed_names(&r).contains("channel.dock"), true);
+        assert!(!r.allow);
+        assert!(closed_names(&r).contains("channel.dock"));
     }
 
     #[test]
@@ -1024,8 +1082,8 @@ mod tests {
         let mut snap = base_snap();
         snap.allowed_docks.clear();
         let r = admit(&act("action:write"), &snap);
-        assert_eq!(r.allow, false);
-        assert_eq!(closed_names(&r).contains("channel.dock"), true);
+        assert!(!r.allow);
+        assert!(closed_names(&r).contains("channel.dock"));
     }
 
     #[test]
@@ -1033,14 +1091,14 @@ mod tests {
         let mut snap = base_snap();
         snap.bridge_ts_ms = 0;
         let r = admit(&act("action:write"), &snap);
-        assert_eq!(r.allow, false);
-        assert_eq!(closed_names(&r).contains("time.authority"), true);
+        assert!(!r.allow);
+        assert!(closed_names(&r).contains("time.authority"));
         let snap = base_snap();
         let mut a = act("action:write");
         a.agent_ts_ms = 0;
         let r = admit(&a, &snap);
-        assert_eq!(r.allow, false);
-        assert_eq!(closed_names(&r).contains("time.authority"), true);
+        assert!(!r.allow);
+        assert!(closed_names(&r).contains("time.authority"));
     }
 
     #[test]
@@ -1049,8 +1107,8 @@ mod tests {
         let mut a = act("action:write");
         a.sequence_number = 0;
         let r = admit(&a, &snap);
-        assert_eq!(r.allow, false);
-        assert_eq!(closed_names(&r).contains("causal.sequence"), true);
+        assert!(!r.allow);
+        assert!(closed_names(&r).contains("causal.sequence"));
     }
 
     #[test]
@@ -1060,63 +1118,68 @@ mod tests {
         let keep = dest_dock_from_opened_frame("dock-b", "inference_engine");
         assert_eq!(keep.as_str(), "dock-b");
         let empty = dest_dock_from_opened_frame("", "");
-        assert_eq!(empty.is_empty(), true);
+        assert!(empty.is_empty());
     }
 
     #[test]
     fn env066_fail_open_literals_are_gone() {
         let src = include_str!("lib.rs");
-        let compact: String = src.chars().filter(|c| c.is_whitespace() == false).collect();
-        assert_eq!(compact.contains("true,\"noscenebound\""), false);
-        assert_eq!(compact.contains("true,\"notimestamps\""), false);
-        assert_eq!(compact.contains("true,\"nodockbound\""), false);
+        let compact: String = src.chars().filter(|c| !c.is_whitespace()).collect();
+        assert!(!compact.contains("true,\"noscenebound\""));
+        assert!(!compact.contains("true,\"notimestamps\""));
+        assert!(!compact.contains("true,\"nodockbound\""));
         let seq = include_str!("seq_walls.rs");
-        let seqc: String = seq.chars().filter(|c| c.is_whitespace() == false).collect();
-        assert_eq!(seqc.contains("true,\"nosequencebound\""), false);
-        assert_eq!(seqc.contains("false,\"nosequencebound\""), true);
+        let seqc: String = seq.chars().filter(|c| !c.is_whitespace()).collect();
+        assert!(!seqc.contains("true,\"nosequencebound\""));
+        assert!(seqc.contains("false,\"nosequencebound\""));
     }
-
 
     #[test]
     fn max_drift_is_not_pulse_length() {
         assert_eq!(Snapshot::default().max_drift_ms, 50);
         assert_ne!(Snapshot::default().max_drift_ms, 1000);
         let src = include_str!("lib.rs");
-        let compact: String = src.chars().filter(|c| c.is_whitespace() == false).collect();
+        let compact: String = src.chars().filter(|c| !c.is_whitespace()).collect();
         let needle = ["fn default_drift() -> i64 { ", "1000 }"].concat();
-        let compact_needle: String = needle.chars().filter(|c| c.is_whitespace() == false).collect();
-        assert_eq!(compact.contains(&compact_needle), false);
+        let compact_needle: String = needle.chars().filter(|c| !c.is_whitespace()).collect();
+        assert!(!compact.contains(&compact_needle));
         let mut snap = base_snap();
         snap.bridge_ts_ms = 1_000_000;
         snap.max_drift_ms = 50;
         let mut a = act("action:write");
         a.agent_ts_ms = 1_000_040;
-        assert_eq!(admit(&a, &snap).allow, true);
+        assert!(admit(&a, &snap).allow);
         a.agent_ts_ms = 1_000_051;
-        assert_eq!(admit(&a, &snap).allow, false);
-        assert_eq!(closed_names(&admit(&a, &snap)).contains("time.authority"), true);
+        assert!(!admit(&a, &snap).allow);
+        assert!(closed_names(&admit(&a, &snap)).contains("time.authority"));
     }
     #[test]
     fn empty_list_refuses_system_event() {
         let mut snap = base_snap();
-        snap.lattice_nodes.get_mut("root:ping").unwrap().agent_permission.clear();
+        snap.lattice_nodes
+            .get_mut("root:ping")
+            .unwrap()
+            .agent_permission
+            .clear();
         let mut a = act("root:ping");
         a.agent_id.clear();
         let r = admit(&a, &snap);
-        assert_eq!(r.allow, false);
-        assert_eq!(closed_names(&r).contains("gap.agent_permission"), true);
-        assert_eq!(r.closed.iter().any(|w| w.id == "gap.agent_permission" && w.reason == "this agent does not have permission for this action"), true);
+        assert!(!r.allow);
+        assert!(closed_names(&r).contains("gap.agent_permission"));
+        assert!(r.closed.iter().any(|w| w.id == "gap.agent_permission"
+            && w.reason == "this agent does not have permission for this action"));
     }
 
     #[test]
     fn empty_list_refuses_external_event() {
         let mut snap = base_snap();
-        snap.lattice_nodes.extend([sample_node("webhook:incoming", &[], &[], "external_event")]);
+        snap.lattice_nodes
+            .extend([sample_node("webhook:incoming", &[], &[], "external_event")]);
         let mut a = act("webhook:incoming");
         a.agent_id.clear();
         let r = admit(&a, &snap);
-        assert_eq!(r.allow, false);
-        assert_eq!(closed_names(&r).contains("gap.agent_permission"), true);
+        assert!(!r.allow);
+        assert!(closed_names(&r).contains("gap.agent_permission"));
     }
 
     #[test]
@@ -1125,7 +1188,7 @@ mod tests {
         let mut b = act("action:write");
         b.agent_id = "agent-b".into();
         let r = admit(&b, &snap);
-        assert_eq!(r.allow, false);
-        assert_eq!(closed_names(&r).contains("gap.agent_permission"), true);
+        assert!(!r.allow);
+        assert!(closed_names(&r).contains("gap.agent_permission"));
     }
 }

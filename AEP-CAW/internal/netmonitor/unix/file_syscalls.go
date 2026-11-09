@@ -44,6 +44,7 @@ func isFileSyscall(nr int32) bool {
 //   - openat2 has non-zero RESOLVE_* flags (the supervisor cannot replicate
 //     these resolution semantics).
 //   - O_TMPFILE is used (file has no path to open via /proc/<pid>/root).
+//
 // emulableFlagMask is the set of open flags the supervisor can faithfully replicate.
 const emulableFlagMask = unix.O_RDONLY | unix.O_WRONLY | unix.O_RDWR |
 	unix.O_APPEND | unix.O_TRUNC | unix.O_CREAT | unix.O_EXCL |
@@ -377,8 +378,10 @@ func fileSyscallName(nr int32) string {
 }
 
 // resolvePathAt reads a path string from tracee memory and resolves it
-// relative to the given dirfd. If the path is absolute, it is cleaned
-// and returned directly. If relative, it is resolved against:
+// relative to the given dirfd. An absolute path is cleaned and a relative
+// path is resolved against the directory below. The result then follows
+// symlinks through the tracee root (TM-06), so an existing path comes back
+// as its target. A relative path is resolved against:
 //   - /proc/<pid>/cwd when dirfd == AT_FDCWD (-100)
 //   - /proc/<pid>/fd/<dirfd> otherwise
 func resolvePathAt(pid int, dirfd int32, pathPtr uint64) (string, error) {

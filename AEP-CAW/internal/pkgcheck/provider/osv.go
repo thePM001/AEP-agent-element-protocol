@@ -80,11 +80,11 @@ type osvResult struct {
 }
 
 type osvVuln struct {
-	ID         string          `json:"id"`
-	Summary    string          `json:"summary"`
-	Details    string          `json:"details"`
-	Severity   []osvSeverity   `json:"severity,omitempty"`
-	References []osvReference  `json:"references,omitempty"`
+	ID         string         `json:"id"`
+	Summary    string         `json:"summary"`
+	Details    string         `json:"details"`
+	Severity   []osvSeverity  `json:"severity,omitempty"`
+	References []osvReference `json:"references,omitempty"`
 }
 
 type osvSeverity struct {

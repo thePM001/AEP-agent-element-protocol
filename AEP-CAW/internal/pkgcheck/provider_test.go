@@ -40,8 +40,8 @@ type mockResolver struct {
 	err        error
 }
 
-func (m *mockResolver) Name() string                          { return m.name }
-func (m *mockResolver) CanResolve(_ string, _ []string) bool  { return m.canResolve }
+func (m *mockResolver) Name() string                         { return m.name }
+func (m *mockResolver) CanResolve(_ string, _ []string) bool { return m.canResolve }
 func (m *mockResolver) Resolve(_ context.Context, _ string, _ []string) (*InstallPlan, error) {
 	if m.err != nil {
 		return nil, m.err

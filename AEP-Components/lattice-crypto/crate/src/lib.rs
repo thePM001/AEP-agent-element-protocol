@@ -14,8 +14,8 @@ use ml_dsa::{
 };
 use ml_kem::array::Array;
 use ml_kem::{
-    Ciphertext, Decapsulate, DecapsulationKey768, Encapsulate, EncapsulationKey768, Kem,
-    KeyExport, KeyInit, MlKem768, SharedKey, TryKeyInit,
+    Ciphertext, Decapsulate, DecapsulationKey768, Encapsulate, EncapsulationKey768, Kem, KeyExport,
+    KeyInit, MlKem768, SharedKey, TryKeyInit,
 };
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
@@ -122,8 +122,7 @@ pub fn generate_sign_keypair() -> SignKeypair {
 
 /// Detached ML-DSA-65 sign over an arbitrary message (ledger / identity use).
 pub fn mldsa65_sign_detached(message: &[u8], signer: &SignKeypair) -> Result<Vec<u8>, CryptoError> {
-    let sk = sk_from_secret(&signer.secret)
-        .map_err(|e| CryptoError::Encrypt(e.to_string()))?;
+    let sk = sk_from_secret(&signer.secret).map_err(|e| CryptoError::Encrypt(e.to_string()))?;
     let sig = sk
         .try_sign(message)
         .map_err(|e| CryptoError::Encrypt(format!("sign: {e}")))?;
@@ -138,7 +137,8 @@ pub fn mldsa65_verify_detached(
 ) -> Result<(), CryptoError> {
     let sig = Signature::<MlDsa65>::try_from(signature).map_err(|_| CryptoError::BadSignature)?;
     let vk = vk_from_public(public_key)?;
-    vk.verify(message, &sig).map_err(|_| CryptoError::BadSignature)
+    vk.verify(message, &sig)
+        .map_err(|_| CryptoError::BadSignature)
 }
 
 /// Derive public key bytes from a secret seed (FIPS seed form).
@@ -224,8 +224,8 @@ pub fn seal_with_binding(
     let ek = ek_from_public(recipient_kem_public)?;
     let (ct, ss) = ek.encapsulate();
     let aes_key = derive_aes_key_from_shared(&ss);
-    let cipher = Aes256Gcm::new_from_slice(&aes_key)
-        .map_err(|e| CryptoError::Encrypt(e.to_string()))?;
+    let cipher =
+        Aes256Gcm::new_from_slice(&aes_key).map_err(|e| CryptoError::Encrypt(e.to_string()))?;
     let nonce_bytes = random_nonce_12();
     let nonce = Nonce::from_slice(&nonce_bytes);
     // Bind frame AAD into AES-GCM (defense-in-depth with ML-DSA binding).
@@ -323,8 +323,8 @@ pub fn open_with_binding(
 
     let ss = dk.decapsulate(&ct);
     let aes_key = derive_aes_key_from_shared(&ss);
-    let cipher = Aes256Gcm::new_from_slice(&aes_key)
-        .map_err(|e| CryptoError::Decrypt(e.to_string()))?;
+    let cipher =
+        Aes256Gcm::new_from_slice(&aes_key).map_err(|e| CryptoError::Decrypt(e.to_string()))?;
     if capsule.nonce.len() != 12 {
         return Err(CryptoError::Decrypt("nonce must be 12 bytes".into()));
     }
@@ -389,8 +389,7 @@ pub fn envelope_to_capsule(envelope: &PqcEnvelope) -> Result<PQEncryptedCapsule,
         .map_err(|e| CryptoError::Decrypt(format!("ciphertext: {e}")))?;
     let signature = match &envelope.sig {
         Some(sig) => Some(
-            b64
-                .decode(sig)
+            b64.decode(sig)
                 .map_err(|e| CryptoError::Decrypt(format!("sig: {e}")))?,
         ),
         None => None,
@@ -427,10 +426,7 @@ mod tests {
         if let Some(b) = capsule.ciphertext.first_mut() {
             *b ^= 0xFF;
         }
-        assert!(matches!(
-            open(&capsule, &kem.secret, &kem.public, &sign.public),
-            Err(_)
-        ));
+        assert!(open(&capsule, &kem.secret, &kem.public, &sign.public).is_err());
     }
 
     #[test]

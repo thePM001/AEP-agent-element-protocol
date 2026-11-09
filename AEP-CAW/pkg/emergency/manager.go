@@ -73,9 +73,9 @@ func (m *Manager) KillSwitch() *KillSwitch {
 
 // Status returns the overall emergency status.
 type EmergencyStatus struct {
-	BreakGlass *BreakGlassState  `json:"break_glass"`
-	KillSwitch *KillSwitchState  `json:"kill_switch"`
-	Emergency  bool              `json:"emergency"`
+	BreakGlass *BreakGlassState `json:"break_glass"`
+	KillSwitch *KillSwitchState `json:"kill_switch"`
+	Emergency  bool             `json:"emergency"`
 }
 
 // Status returns the current emergency status.

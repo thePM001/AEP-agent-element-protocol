@@ -59,15 +59,15 @@ func NewAuditLogger(cfg AuditLoggerConfig) *AuditLogger {
 
 // LogEntry represents a structured log entry.
 type LogEntry struct {
-	Level     string            `json:"level"`
-	Timestamp string            `json:"ts"`
-	Message   string            `json:"msg"`
-	SessionID string            `json:"session_id,omitempty"`
-	AgentID   string            `json:"agent_id,omitempty"`
-	TenantID  string            `json:"tenant_id,omitempty"`
-	TraceID   string            `json:"trace_id,omitempty"`
-	SpanID    string            `json:"span_id,omitempty"`
-	Fields    map[string]any    `json:"-"`
+	Level     string         `json:"level"`
+	Timestamp string         `json:"ts"`
+	Message   string         `json:"msg"`
+	SessionID string         `json:"session_id,omitempty"`
+	AgentID   string         `json:"agent_id,omitempty"`
+	TenantID  string         `json:"tenant_id,omitempty"`
+	TraceID   string         `json:"trace_id,omitempty"`
+	SpanID    string         `json:"span_id,omitempty"`
+	Fields    map[string]any `json:"-"`
 }
 
 // MarshalJSON implements custom JSON marshaling to flatten Fields.

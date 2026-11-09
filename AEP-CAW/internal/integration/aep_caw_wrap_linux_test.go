@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 const wrapStrongTestConfigYAML = `

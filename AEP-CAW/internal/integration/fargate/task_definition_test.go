@@ -11,7 +11,7 @@ import (
 func TestBuildTaskDefinition(t *testing.T) {
 	params := TaskDefParams{
 		Family:           "aep-caw-e2e-test",
-		AepCawImage:     "123456789.dkr.ecr.us-east-1.amazonaws.com/aep-caw-test:abc123",
+		AepCawImage:      "123456789.dkr.ecr.us-east-1.amazonaws.com/aep-caw-test:abc123",
 		WorkloadImage:    "123456789.dkr.ecr.us-east-1.amazonaws.com/aep-caw-fargate-workload:abc123",
 		ExecutionRoleARN: "arn:aws:iam::123456789:role/ecsTaskExecutionRole",
 		LogGroup:         "/aep-caw/fargate-e2e",
@@ -44,16 +44,16 @@ func TestBuildTaskDefinition(t *testing.T) {
 	}
 
 	// Find containers by name
-	var aep-caw, workload *ecstypes.ContainerDefinition
+	var cawBin, workload *ecstypes.ContainerDefinition
 	for i := range input.ContainerDefinitions {
 		switch *input.ContainerDefinitions[i].Name {
 		case "aep-caw":
-			aep-caw = &input.ContainerDefinitions[i]
+			cawBin = &input.ContainerDefinitions[i]
 		case "workload":
 			workload = &input.ContainerDefinitions[i]
 		}
 	}
-	if aep-caw == nil {
+	if cawBin == nil {
 		t.Fatal("aep-caw container not found")
 	}
 	if workload == nil {
@@ -61,11 +61,11 @@ func TestBuildTaskDefinition(t *testing.T) {
 	}
 
 	// Verify aep-caw has SYS_PTRACE
-	if aep-caw.LinuxParameters == nil || aep-caw.LinuxParameters.Capabilities == nil {
+	if cawBin.LinuxParameters == nil || cawBin.LinuxParameters.Capabilities == nil {
 		t.Fatal("aep-caw missing linux parameters / capabilities")
 	}
 	hasPtrace := false
-	for _, cap := range aep-caw.LinuxParameters.Capabilities.Add {
+	for _, cap := range cawBin.LinuxParameters.Capabilities.Add {
 		if cap == "SYS_PTRACE" {
 			hasPtrace = true
 		}
@@ -83,7 +83,7 @@ func TestBuildTaskDefinition(t *testing.T) {
 	}
 
 	// Verify both containers mount the shared volume
-	for _, c := range []*ecstypes.ContainerDefinition{aep-caw, workload} {
+	for _, c := range []*ecstypes.ContainerDefinition{cawBin, workload} {
 		found := false
 		for _, mp := range c.MountPoints {
 			if *mp.SourceVolume == "shared" && *mp.ContainerPath == "/shared" {
@@ -106,7 +106,7 @@ func TestBuildTaskDefinition(t *testing.T) {
 		}
 	}
 	if !depFound {
-		t.Error("workload does not depend on aep-caw HEALTHY")
+		t.Error("workload does not depend on cawBin HEALTHY")
 	}
 
 	// Verify execution role
@@ -115,7 +115,7 @@ func TestBuildTaskDefinition(t *testing.T) {
 	}
 
 	// Verify both containers have CloudWatch logging
-	for _, c := range []*ecstypes.ContainerDefinition{aep-caw, workload} {
+	for _, c := range []*ecstypes.ContainerDefinition{cawBin, workload} {
 		if c.LogConfiguration == nil {
 			t.Errorf("container %q missing log configuration", *c.Name)
 			continue
@@ -133,7 +133,7 @@ func TestBuildTaskDefinition(t *testing.T) {
 	}
 
 	// Verify aep-caw marked essential
-	if aep-caw.Essential == nil || !*aep-caw.Essential {
+	if cawBin.Essential == nil || !*cawBin.Essential {
 		t.Error("aep-caw not marked essential")
 	}
 

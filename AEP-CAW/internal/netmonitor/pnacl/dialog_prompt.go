@@ -25,7 +25,7 @@ func NewDialogPromptProvider(fallback UserDecision) *DialogPromptProvider {
 func (p *DialogPromptProvider) Prompt(ctx context.Context, req ApprovalRequest) (ApprovalResponse, error) {
 	// Build dialog request
 	dialogReq := dialog.Request{
-		Title:   "Network Access Request",
+		Title: "Network Access Request",
 		Message: fmt.Sprintf("Process: %s (pid: %d)\nTarget: %s:%d (%s)",
 			req.ProcessName, req.PID, req.Target, req.Port, req.Protocol),
 		Timeout: time.Until(req.ExpiresAt),

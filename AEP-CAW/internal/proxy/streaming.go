@@ -87,12 +87,12 @@ type sseProxyTransport struct {
 	// Optional MCP interception fields. When registry and policy are both
 	// non-nil, SSE streams are processed through an SSEInterceptor instead
 	// of io.Copy, enabling real-time tool call blocking.
-	registry  *mcpregistry.Registry
-	policy    *mcpinspect.PolicyEvaluator
-	analyzer  *mcpinspect.SessionAnalyzer
-	dialect   Dialect
-	sessionID string
-	requestID string
+	registry      *mcpregistry.Registry
+	policy        *mcpinspect.PolicyEvaluator
+	analyzer      *mcpinspect.SessionAnalyzer
+	dialect       Dialect
+	sessionID     string
+	requestID     string
 	onEvent       func(mcpinspect.MCPToolCallInterceptedEvent)
 	logger        *slog.Logger
 	rateLimiter   *mcpinspect.RateLimiterRegistry

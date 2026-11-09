@@ -23,7 +23,7 @@ fn main() {
             }
         }
     }
-    let mut dyna = if yaml_path.as_os_str().is_empty() == false {
+    let mut dyna = if !yaml_path.as_os_str().is_empty() {
         match DynAep::from_yaml_file(&yaml_path) {
             Ok(v) => v,
             Err(e) => {

@@ -860,10 +860,10 @@ func TestHasFlag(t *testing.T) {
 
 func TestSkipGlobalFlags(t *testing.T) {
 	tests := []struct {
-		name      string
-		args      []string
-		wantSub   string
-		wantRest  []string
+		name     string
+		args     []string
+		wantSub  string
+		wantRest []string
 	}{
 		{
 			name:     "no flags",
@@ -914,9 +914,9 @@ func TestSkipGlobalFlags(t *testing.T) {
 
 func TestClassifyInstallCommand_WindowsExtensions(t *testing.T) {
 	tests := []struct {
-		name    string
-		command string
-		args    []string
+		name     string
+		command  string
+		args     []string
 		wantTool string
 	}{
 		{

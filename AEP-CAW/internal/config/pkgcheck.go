@@ -115,11 +115,11 @@ type ProviderConfig struct {
 type ResolverConfig struct {
 	// DryRunCommand is the path to the resolver binary.
 	// For additional args to prepend to the resolver-specific args, use DryRunArgs.
-	DryRunCommand string        `yaml:"dry_run_command" json:"dry_run_command"`
+	DryRunCommand string `yaml:"dry_run_command" json:"dry_run_command"`
 	// DryRunArgs contains args to prepend to the resolver-specific args.
 	// Each element is a single token (no shell splitting is performed).
-	DryRunArgs    []string      `yaml:"dry_run_args" json:"dry_run_args"`
-	Timeout       time.Duration `yaml:"timeout"`
+	DryRunArgs []string      `yaml:"dry_run_args" json:"dry_run_args"`
+	Timeout    time.Duration `yaml:"timeout"`
 }
 
 // Validate returns an error if the configuration is malformed.

@@ -10,19 +10,46 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 
-
 fn action_from_event(event: &Value, docking_port: &str) -> EnvelopeAction {
-    let raw_dock = event.get("dest_dock").and_then(|v| v.as_str()).unwrap_or("");
+    let raw_dock = event
+        .get("dest_dock")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
     EnvelopeAction {
-        action_path: event.get("action_path").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-        agent_id: event.get("agent_id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-        payload: event.get("payload").cloned().unwrap_or(Value::Object(serde_json::Map::new())),
-        tool: event.get("tool").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        action_path: event
+            .get("action_path")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        agent_id: event
+            .get("agent_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        payload: event
+            .get("payload")
+            .cloned()
+            .unwrap_or(Value::Object(serde_json::Map::new())),
+        tool: event
+            .get("tool")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
         dest_dock: dest_dock_from_opened_frame(raw_dock, docking_port),
-        scene_id: event.get("target_id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        scene_id: event
+            .get("target_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
         agent_ts_ms: event.get("timestamp").and_then(|v| v.as_i64()).unwrap_or(0),
-        sequence_number: event.get("_sequenceNumber").and_then(|v| v.as_i64()).unwrap_or(0),
-        anomaly_score: event.get("anomaly_score").and_then(|v| v.as_f64()).unwrap_or(0.0),
+        sequence_number: event
+            .get("_sequenceNumber")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0),
+        anomaly_score: event
+            .get("anomaly_score")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0),
     }
 }
 
@@ -31,7 +58,10 @@ fn action_from_event(event: &Value, docking_port: &str) -> EnvelopeAction {
 pub fn attach_live_walls(live: &mut LiveEntry, event: &Value, dock: &LiveDockContext) {
     let walls = compile_live_walls(live, event, dock);
     live.extra_walls = walls;
-    let scene = event.get("target_id").and_then(|v| v.as_str()).unwrap_or("");
+    let scene = event
+        .get("target_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
     live.bind_opened_frame(scene, &dock.docking_port);
     live.opened_agent_id = dock.agent_id.clone();
 }
@@ -44,7 +74,7 @@ pub fn admit_opened_frame(
 ) -> aep_envelope::AdmitResult {
     let extra = compile_live_walls(live, event, dock);
     let mut action = action_from_event(event, &dock.docking_port);
-    if action.agent_id.is_empty() && dock.agent_id.is_empty() == false {
+    if action.agent_id.is_empty() && !dock.agent_id.is_empty() {
         action.agent_id = dock.agent_id.clone();
     }
     admit_with_extra(&action, &live.snapshot, extra)
@@ -52,7 +82,7 @@ pub fn admit_opened_frame(
 
 fn deny_prefix(reasons: &[String]) -> String {
     let mut s = String::from("Admit collect-all walls then Apply");
-    if reasons.is_empty() == false {
+    if !reasons.is_empty() {
         s.push_str(": ");
         s.push_str(&reasons.join("; "));
     }
@@ -119,7 +149,7 @@ fn strip_line_comments(src: &str) -> String {
 }
 
 fn compact(src: &str) -> String {
-    src.chars().filter(|c| c.is_whitespace() == false).collect()
+    src.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
 /// Conformance check: fail if envelope_admit.rs calls both live_collect_all and
@@ -168,7 +198,7 @@ pub fn default_envelope_admit() -> PathBuf {
 
 pub fn run_gate() -> Result<i32, String> {
     let path = default_envelope_admit();
-    if path.is_file() == false {
+    if !path.is_file() {
         return Err(String::from("missing envelope_admit.rs"));
     }
     let src = match fs::read_to_string(&path) {
@@ -194,6 +224,12 @@ pub mod attach_live_walls {
     pub struct AttachLiveWalls {
         pub event: String,
         pub extra_walls: String,
+    }
+
+    impl Default for AttachLiveWalls {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl AttachLiveWalls {
@@ -230,6 +266,12 @@ pub mod admit_opened_frame {
         pub result: String,
     }
 
+    impl Default for AdmitOpenedFrame {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl AdmitOpenedFrame {
         pub fn new() -> Self {
             Self {
@@ -263,6 +305,12 @@ pub mod conformance_check_one_live_evaluation_source {
         pub scan: String,
     }
 
+    impl Default for ConformanceCheckOneLiveEvaluationSource {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ConformanceCheckOneLiveEvaluationSource {
         pub fn new() -> Self {
             Self {
@@ -291,7 +339,7 @@ mod tests {
     }
 
     fn must(cond: bool) {
-        if cond == false {
+        if !cond {
             std::process::abort();
         }
     }
@@ -348,7 +396,8 @@ mod tests {
             "{\"type\":\"CUSTOM\",\"action_path\":\"bogus:path\",\"payload\":{\"ok\":true},\"timestamp\":1000000}",
         )
         .unwrap();
-        let err = admit_then_apply(&mut live, event, &LiveDockContext::unit_open()).expect_err("deny");
+        let err =
+            admit_then_apply(&mut live, event, &LiveDockContext::unit_open()).expect_err("deny");
         must(err.contains("Admit collect-all walls then Apply"));
     }
 

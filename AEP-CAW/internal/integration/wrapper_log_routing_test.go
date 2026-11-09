@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/testcontainers/testcontainers-go"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/testcontainers/testcontainers-go"
 )
 
 // TestExecPath_WrapperLogRoutedOffCommandStderr is the end-to-end

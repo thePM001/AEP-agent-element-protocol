@@ -1,0 +1,16 @@
+version: "2"
+
+# The caw job in the root baseline workflow runs this set and fails the build on any new finding.
+# The findings already on main are the work of AEP-TSF-130. When that ticket lands it removes the
+# new-from-merge-base limit so the whole tree blocks.
+issues:
+  new-from-merge-base: main
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - gosec
+    - revive
+    - staticcheck

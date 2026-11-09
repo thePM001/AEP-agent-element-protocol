@@ -162,4 +162,3 @@ func TestPtraceSync_GoTimeout(t *testing.T) {
 	err = waitForACK(fdReader(fds[0]))
 	assert.Error(t, err, "should timeout when GO byte never arrives")
 }
-

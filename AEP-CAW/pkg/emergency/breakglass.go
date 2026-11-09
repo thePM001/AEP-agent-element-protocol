@@ -11,11 +11,11 @@ import (
 
 // BreakGlass manages emergency policy bypass.
 type BreakGlass struct {
-	config     BreakGlassConfig
-	state      *BreakGlassState
-	mu         sync.RWMutex
-	notifier   Notifier
-	auditLog   AuditLogger
+	config      BreakGlassConfig
+	state       *BreakGlassState
+	mu          sync.RWMutex
+	notifier    Notifier
+	auditLog    AuditLogger
 	mfaVerifier MFAVerifier
 }
 
@@ -33,10 +33,10 @@ type BreakGlassConfig struct {
 
 // Permissions defines what's allowed during break-glass.
 type Permissions struct {
-	AllowAllFiles      bool `yaml:"allow_all_files" json:"allow_all_files"`
-	AllowAllNetwork    bool `yaml:"allow_all_network" json:"allow_all_network"`
-	AllowSensitiveEnv  bool `yaml:"allow_sensitive_env" json:"allow_sensitive_env"`
-	LogEverything      bool `yaml:"log_everything" json:"log_everything"`
+	AllowAllFiles     bool `yaml:"allow_all_files" json:"allow_all_files"`
+	AllowAllNetwork   bool `yaml:"allow_all_network" json:"allow_all_network"`
+	AllowSensitiveEnv bool `yaml:"allow_sensitive_env" json:"allow_sensitive_env"`
+	LogEverything     bool `yaml:"log_everything" json:"log_everything"`
 }
 
 // BreakGlassState represents the current break-glass state.
@@ -352,11 +352,11 @@ func generateAuditID() string {
 // DefaultConfig returns a default break-glass configuration.
 func DefaultConfig() BreakGlassConfig {
 	return BreakGlassConfig{
-		Enabled:        false,
-		RequireMFA:     true,
-		MaxDuration:    time.Hour,
-		RequireReason:  true,
-		AutoExpire:     true,
+		Enabled:       false,
+		RequireMFA:    true,
+		MaxDuration:   time.Hour,
+		RequireReason: true,
+		AutoExpire:    true,
 		Permissions: Permissions{
 			AllowAllFiles:     true,
 			AllowAllNetwork:   true,

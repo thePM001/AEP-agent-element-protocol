@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
 	"github.com/spf13/cobra"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
 )
 
 func newCheckpointCmd() *cobra.Command {

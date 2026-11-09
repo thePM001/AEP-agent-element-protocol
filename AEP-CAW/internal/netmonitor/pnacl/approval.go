@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/approval/notify"
 	"github.com/google/uuid"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/approval/notify"
 )
 
 // ApprovalMode determines how network access approval is handled.
@@ -133,8 +133,8 @@ type PromptProvider interface {
 
 // ApprovalProvider handles network access approvals for PNACL.
 type ApprovalProvider struct {
-	config *ApprovalConfig
-	emit   EventEmitter
+	config  *ApprovalConfig
+	emit    EventEmitter
 	persist RulePersister
 	prompt  PromptProvider
 
@@ -428,18 +428,18 @@ func (ap *ApprovalProvider) Resolve(id string, decision UserDecision, reason str
 // This TTYPromptProvider is intentionally separate from internal/approvals/Manager
 // because PNACL network approval has fundamentally different requirements:
 //
-// 1. Decision granularity: PNACL needs 5 decision types (allow_once, allow_permanent,
-//    deny_once, deny_forever, skip) with different persistence behaviors.
-//    internal/approvals uses binary approved/denied.
+//  1. Decision granularity: PNACL needs 5 decision types (allow_once, allow_permanent,
+//     deny_once, deny_forever, skip) with different persistence behaviors.
+//     internal/approvals uses binary approved/denied.
 //
-// 2. Request context: PNACL prompts for network connections (process, host, port, protocol).
-//    internal/approvals prompts for session commands (SessionID, CommandID, Rule).
+//  2. Request context: PNACL prompts for network connections (process, host, port, protocol).
+//     internal/approvals prompts for session commands (SessionID, CommandID, Rule).
 //
-// 3. UX requirements: PNACL needs sub-second single-key responses for real-time network
-//    decisions. internal/approvals uses challenge-response (math, TOTP, WebAuthn).
+//  3. UX requirements: PNACL needs sub-second single-key responses for real-time network
+//     decisions. internal/approvals uses challenge-response (math, TOTP, WebAuthn).
 //
-// 4. Timeout semantics: PNACL supports configurable fallback (deny, allow, use_default).
-//    internal/approvals always denies on timeout.
+//  4. Timeout semantics: PNACL supports configurable fallback (deny, allow, use_default).
+//     internal/approvals always denies on timeout.
 //
 // Integration would require significant abstraction overhead without clear benefit
 // since the systems serve different security domains (network ACL vs. command approval).

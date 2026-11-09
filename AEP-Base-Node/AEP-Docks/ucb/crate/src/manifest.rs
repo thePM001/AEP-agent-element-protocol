@@ -2,8 +2,9 @@
 
 use crate::store::{value_has_trust_fields, ManifestStore, TaskManifestV1};
 use aep_ucb_perimeter_v1::{digest_canonical, SignedManifest, StrictMode};
-use aep_wall_set_backpressure::{ClosedWall, DenyReport, RepairHint, CLASS_CAPABILITY, CLASS_STRUCTURAL};
-
+use aep_wall_set_backpressure::{
+    ClosedWall, DenyReport, RepairHint, CLASS_CAPABILITY, CLASS_STRUCTURAL,
+};
 
 pub fn compute_manifest_digest(manifest: &TaskManifestV1) -> String {
     let mut value = serde_json::to_value(manifest).unwrap_or(serde_json::Value::Null);
@@ -52,14 +53,24 @@ pub fn egress_refused_unsigned() -> DenyReport {
 }
 
 pub fn strict_mode_from_env() -> StrictMode {
-    if std::env::var("UCB_MANIFEST_STRICT").map(|v| v == "0").unwrap_or(false) {
+    if std::env::var("UCB_MANIFEST_STRICT")
+        .map(|v| v == "0")
+        .unwrap_or(false)
+    {
         StrictMode::Off
     } else {
         StrictMode::On
     }
 }
 
-fn closed_report(error: &str, wall_id: &str, reason: &str, class: &str, field: &str, fix: &str) -> DenyReport {
+fn closed_report(
+    error: &str,
+    wall_id: &str,
+    reason: &str,
+    class: &str,
+    field: &str,
+    fix: &str,
+) -> DenyReport {
     let closed = vec![ClosedWall::with_class(wall_id, reason, class)];
     let mut report = DenyReport::from_error_and_closed(error, &closed);
     report.repairs = vec![RepairHint {
@@ -192,7 +203,9 @@ pub fn load_or_provided(
             m.manifest_digest = compute_manifest_digest(&m);
         }
         let strict = strict_mode_from_env();
-        if matches!(strict, StrictMode::On) && m.signature.as_ref().map(|s| s.is_empty()).unwrap_or(true) {
+        if matches!(strict, StrictMode::On)
+            && m.signature.as_ref().map(|s| s.is_empty()).unwrap_or(true)
+        {
             return Err(unsigned_manifest());
         }
         store.save(&m).map_err(|_| manifest_missing())?;
@@ -202,7 +215,9 @@ pub fn load_or_provided(
         Some(m) if m.provisional => Err(manifest_provisional()),
         Some(m) => {
             let strict = strict_mode_from_env();
-            if matches!(strict, StrictMode::On) && m.signature.as_ref().map(|s| s.is_empty()).unwrap_or(true) {
+            if matches!(strict, StrictMode::On)
+                && m.signature.as_ref().map(|s| s.is_empty()).unwrap_or(true)
+            {
                 return Err(unsigned_manifest());
             }
             Ok(m)
@@ -214,7 +229,7 @@ pub fn load_or_provided(
 pub fn bind_session(manifest: &TaskManifestV1, frame_session: &str) -> Result<(), DenyReport> {
     match (manifest.session_id.as_deref(), frame_session) {
         (None, s) if !s.is_empty() => Err(session_missing()),
-        (Some(_), s) if s.is_empty() => Err(session_required()),
+        (Some(_), "") => Err(session_required()),
         (Some(ms), fs) if ms != fs => Err(session_mismatch()),
         _ => Ok(()),
     }
@@ -228,12 +243,30 @@ mod tests {
 
     fn sample_provided(agent: &str) -> serde_json::Value {
         let mut m = serde_json::Map::new();
-        m.insert(String::from("manifest_version"), serde_json::Value::String(String::from("1")));
-        m.insert(String::from("id"), serde_json::Value::String(String::from("m1")));
-        m.insert(String::from("agent_id"), serde_json::Value::String(String::from(agent)));
-        m.insert(String::from("intent"), serde_json::Value::Object(serde_json::Map::new()));
-        m.insert(String::from("synthesized_by"), serde_json::Value::String(String::from("provided")));
-        m.insert(String::from("signature"), serde_json::Value::String(String::from("operator-sig")));
+        m.insert(
+            String::from("manifest_version"),
+            serde_json::Value::String(String::from("1")),
+        );
+        m.insert(
+            String::from("id"),
+            serde_json::Value::String(String::from("m1")),
+        );
+        m.insert(
+            String::from("agent_id"),
+            serde_json::Value::String(String::from(agent)),
+        );
+        m.insert(
+            String::from("intent"),
+            serde_json::Value::Object(serde_json::Map::new()),
+        );
+        m.insert(
+            String::from("synthesized_by"),
+            serde_json::Value::String(String::from("provided")),
+        );
+        m.insert(
+            String::from("signature"),
+            serde_json::Value::String(String::from("operator-sig")),
+        );
         serde_json::Value::Object(m)
     }
 
@@ -251,7 +284,13 @@ mod tests {
     fn provided_without_trust_loads() {
         let dir = tempdir().unwrap();
         let store = ManifestStore::new(dir.path().to_path_buf()).unwrap();
-        let m = load_or_provided(&store, "agent-a", "sess-1", Some(sample_provided("agent-a"))).unwrap();
+        let m = load_or_provided(
+            &store,
+            "agent-a",
+            "sess-1",
+            Some(sample_provided("agent-a")),
+        )
+        .unwrap();
         assert_eq!(m.agent_id, "agent-a");
         assert_eq!(m.synthesized_by, "provided");
     }
@@ -261,10 +300,9 @@ mod tests {
         let dir = tempdir().unwrap();
         let store = ManifestStore::new(dir.path().to_path_buf()).unwrap();
         let mut raw = sample_provided("agent-a");
-        raw.as_object_mut().unwrap().insert(
-            String::from("trust_score"),
-            serde_json::Value::from(9u64),
-        );
+        raw.as_object_mut()
+            .unwrap()
+            .insert(String::from("trust_score"), serde_json::Value::from(9u64));
         let err = load_or_provided(&store, "agent-a", "sess-1", Some(raw)).unwrap_err();
         assert!(err.error.contains("trust"));
     }
@@ -341,10 +379,15 @@ mod tests {
             "synthesized_by: provided\n",
             "signature: operator-sig\n",
         );
-        let m = load_or_provided(&store, "agent-a", "sess-1", Some(serde_json::Value::String(text.into()))).unwrap();
+        let m = load_or_provided(
+            &store,
+            "agent-a",
+            "sess-1",
+            Some(serde_json::Value::String(text.into())),
+        )
+        .unwrap();
         assert_eq!(m.synthesized_by, "provided");
         assert_eq!(m.agent_id, "agent-a");
         assert!(!m.manifest_digest.is_empty());
     }
-
 }

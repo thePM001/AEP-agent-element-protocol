@@ -1,4 +1,3 @@
-
 use crate::error::PredicateError;
 
 #[derive(Debug, Clone, Copy)]
@@ -30,10 +29,16 @@ impl Default for WireLimits {
 
 pub fn reject_over_cap(len: usize, limits: WireLimits) -> Result<(), PredicateError> {
     if len > limits.ingest_hard_bytes {
-        return Err(PredicateError::BodyHardCap { len, cap: limits.ingest_hard_bytes });
+        return Err(PredicateError::BodyHardCap {
+            len,
+            cap: limits.ingest_hard_bytes,
+        });
     }
     if len > limits.ingest_default_bytes {
-        return Err(PredicateError::BodyDefaultCap { len, cap: limits.ingest_default_bytes });
+        return Err(PredicateError::BodyDefaultCap {
+            len,
+            cap: limits.ingest_default_bytes,
+        });
     }
     Ok(())
 }

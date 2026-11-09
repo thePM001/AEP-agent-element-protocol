@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/metrics"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/ebpf"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/google/uuid"
 )
 
 // forwardConnectEvents transforms raw BPF connect events into aep-caw events.

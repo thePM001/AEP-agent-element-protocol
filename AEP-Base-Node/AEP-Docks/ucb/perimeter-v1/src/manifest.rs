@@ -1,4 +1,3 @@
-
 use sha2::{Digest, Sha256};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,8 +31,17 @@ pub fn digest_canonical(body: &serde_json::Value) -> String {
     hex::encode(h.finalize())
 }
 
-pub fn egress_power_allowed(manifest: &SignedManifest, strict: StrictMode) -> Result<(), ManifestError> {
-    if matches!(strict, StrictMode::On) && manifest.signature.as_ref().map(|s| s.is_empty()).unwrap_or(true) {
+pub fn egress_power_allowed(
+    manifest: &SignedManifest,
+    strict: StrictMode,
+) -> Result<(), ManifestError> {
+    if matches!(strict, StrictMode::On)
+        && manifest
+            .signature
+            .as_ref()
+            .map(|s| s.is_empty())
+            .unwrap_or(true)
+    {
         return Err(ManifestError::Unsigned);
     }
     let expect = digest_canonical(&manifest.body);

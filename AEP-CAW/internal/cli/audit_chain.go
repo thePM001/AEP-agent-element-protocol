@@ -15,11 +15,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/audit"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/jsonl"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/spf13/cobra"
 )
 
 func newAuditChainCmd() *cobra.Command {

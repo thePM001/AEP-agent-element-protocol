@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 )
 
 func TestOIDCAuth_PolicyForGroups(t *testing.T) {
@@ -412,4 +412,3 @@ func TestOIDCClosedToken(t *testing.T) {
 		t.Fatal("disclosed and admin must not score closed")
 	}
 }
-

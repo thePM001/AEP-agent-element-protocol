@@ -202,4 +202,3 @@ func TestMachMonitor_ConsistentResults(t *testing.T) {
 		t.Errorf("RSS values too different: %d vs %d", info1.ResidentSize, info2.ResidentSize)
 	}
 }
-

@@ -19,11 +19,11 @@ func TestRetentionIntegration_RealCleanup(t *testing.T) {
 		ageDays int
 		sizeMB  float64
 	}{
-		{"session-very-old", 60, 0.1},    // 60 days old, 100KB
-		{"session-old", 35, 0.2},          // 35 days old, 200KB
-		{"session-recent", 10, 0.15},      // 10 days old, 150KB
-		{"session-new", 1, 0.05},          // 1 day old, 50KB
-		{"session-current", 0, 0.1},       // current session
+		{"session-very-old", 60, 0.1}, // 60 days old, 100KB
+		{"session-old", 35, 0.2},      // 35 days old, 200KB
+		{"session-recent", 10, 0.15},  // 10 days old, 150KB
+		{"session-new", 1, 0.05},      // 1 day old, 50KB
+		{"session-current", 0, 0.1},   // current session
 	}
 
 	for _, s := range sessions {
@@ -112,9 +112,9 @@ func TestRetentionIntegration_SizeBasedCleanup(t *testing.T) {
 		ageDays int
 		sizeMB  float64
 	}{
-		{"session-a", 5, 0.5},   // oldest, 0.5MB
-		{"session-b", 3, 1.0},   // middle, 1MB
-		{"session-c", 1, 1.0},   // newest, 1MB
+		{"session-a", 5, 0.5}, // oldest, 0.5MB
+		{"session-b", 3, 1.0}, // middle, 1MB
+		{"session-c", 1, 1.0}, // newest, 1MB
 	}
 
 	for _, s := range sessions {

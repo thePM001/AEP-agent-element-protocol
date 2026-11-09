@@ -100,18 +100,23 @@ struct {
     __type(value, __u8);
 } default_deny SEC(".maps");
 
+// LPM trie keys are packed: the trie matches prefixlen bits of the bytes that
+// follow prefixlen, so cgroup_id, dport and addr must sit right after it with no
+// alignment padding. The port comes before the address so a rule can match an
+// exact cgroup and port and then a CIDR prefix; port 0 means any port (18 and 30 bytes). The Go keys in maps_linux.go marshal to
+// the same sizes through encoding/binary.
 struct lpm4_key {
-    __u32 prefixlen; // bits of (cgroup_id || addr || dport)
+    __u32 prefixlen; // bits of (cgroup_id || dport || addr)
     __u64 cgroup_id;
+    __u16 dport;
     __u32 addr;
-    __u16 dport;
-};
+} __attribute__((packed));
 struct lpm6_key {
-    __u32 prefixlen; // bits of (cgroup_id || addr || dport)
+    __u32 prefixlen; // bits of (cgroup_id || dport || addr)
     __u64 cgroup_id;
-    __u8 addr[16];
     __u16 dport;
-};
+    __u8 addr[16];
+} __attribute__((packed));
 
 struct {
     __uint(type, BPF_MAP_TYPE_LPM_TRIE);
@@ -203,13 +208,13 @@ static __always_inline bool is_denied(struct ctx_info *info, __u8 protocol) {
         lk.cgroup_id = key.cgroup_id;
         __builtin_memcpy(&lk.addr, &info->ipv4, 4);
         lk.dport = info->dport;
-        lk.prefixlen = 64 + 32 + 16; // include port
+        lk.prefixlen = 64 + 16 + 32; // cgroup, exact port, full address
         val = bpf_map_lookup_elem(&lpm4_deny, &lk);
         if (val)
             return true;
         // fallback to any-port prefix
-        lk.prefixlen = 64 + 32;
-        lk.dport = 0;
+        lk.dport = 0; // rules for any port are stored with port 0
+        lk.prefixlen = 64 + 16 + 32;
         val = bpf_map_lookup_elem(&lpm4_deny, &lk);
         if (val)
             return true;
@@ -218,12 +223,12 @@ static __always_inline bool is_denied(struct ctx_info *info, __u8 protocol) {
         lk.cgroup_id = key.cgroup_id;
         __builtin_memcpy(&lk.addr, info->ipv6, 16);
         lk.dport = info->dport;
-        lk.prefixlen = 64 + 128 + 16; // include port
+        lk.prefixlen = 64 + 16 + 128; // cgroup, exact port, full address
         val = bpf_map_lookup_elem(&lpm6_deny, &lk);
         if (val)
             return true;
-        lk.prefixlen = 64 + 128;
-        lk.dport = 0;
+        lk.dport = 0; // rules for any port are stored with port 0
+        lk.prefixlen = 64 + 16 + 128;
         val = bpf_map_lookup_elem(&lpm6_deny, &lk);
         if (val)
             return true;
@@ -262,13 +267,13 @@ static __always_inline bool allow(struct ctx_info *info, __u8 protocol) {
         lk.cgroup_id = key.cgroup_id;
         __builtin_memcpy(&lk.addr, &info->ipv4, 4);
         lk.dport = info->dport;
-        lk.prefixlen = 64 + 32 + 16; // include port
+        lk.prefixlen = 64 + 16 + 32; // cgroup, exact port, full address
         val = bpf_map_lookup_elem(&lpm4_allow, &lk);
         if (val)
             return true;
         // fallback to any-port prefix
-        lk.prefixlen = 64 + 32;
-        lk.dport = 0;
+        lk.dport = 0; // rules for any port are stored with port 0
+        lk.prefixlen = 64 + 16 + 32;
         val = bpf_map_lookup_elem(&lpm4_allow, &lk);
         if (val)
             return true;
@@ -277,12 +282,12 @@ static __always_inline bool allow(struct ctx_info *info, __u8 protocol) {
         lk.cgroup_id = key.cgroup_id;
         __builtin_memcpy(&lk.addr, info->ipv6, 16);
         lk.dport = info->dport;
-        lk.prefixlen = 64 + 128 + 16; // include port
+        lk.prefixlen = 64 + 16 + 128; // cgroup, exact port, full address
         val = bpf_map_lookup_elem(&lpm6_allow, &lk);
         if (val)
             return true;
-        lk.prefixlen = 64 + 128;
-        lk.dport = 0;
+        lk.dport = 0; // rules for any port are stored with port 0
+        lk.prefixlen = 64 + 16 + 128;
         val = bpf_map_lookup_elem(&lpm6_allow, &lk);
         if (val)
             return true;

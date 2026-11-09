@@ -770,6 +770,19 @@ cargo test --workspace
 cargo build --release -p aep-base-node
 ./rust/target/release/aep-base-node --self-test
 
+# Checks that block a merge
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+
+# AEP-CAW needs Go 1.26.10, the toolchain line in AEP-CAW/go.mod.
+# Install that Go and set GOTOOLCHAIN=local so the go command never downloads another toolchain.
+cd AEP-CAW
+export GOTOOLCHAIN=local
+gofmt -l .
+go test ./...
+go test -race ./...
+cd ..
+
 # Fresh Docker test stack (isolated volume, visual install wizard)
 docker compose -f docker-compose.test-fresh.yml up -d --build
 open http://$AEP_HOST:8524/install

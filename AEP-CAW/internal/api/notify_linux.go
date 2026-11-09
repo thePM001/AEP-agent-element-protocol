@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/approvals"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
@@ -21,13 +22,13 @@ import (
 	unixmon "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/unix"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/google/uuid"
 	"golang.org/x/sys/unix"
 )
 
 // recoverTimeout is the maximum time to spend persisting a panic event
 // in the recovery path. Prevents a slow store from blocking broker delivery.
 const recoverTimeout = 5 * time.Second
+
 // This prevents blocking forever if the wrapper fails to set up seccomp.
 const recvFDTimeout = 10 * time.Second
 

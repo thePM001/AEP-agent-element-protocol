@@ -15,3 +15,6 @@ path = "src/lib.rs"
 
 [dependencies]
 sha2 = "0.10"
+
+[lints]
+workspace = true

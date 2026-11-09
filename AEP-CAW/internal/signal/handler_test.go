@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
 )
 
 // mockEmitter records emitted events for testing.

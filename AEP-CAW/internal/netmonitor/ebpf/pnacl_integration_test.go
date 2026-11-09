@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/limits"
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/pnacl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/limits"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/pnacl"
 )
 
 // TestIntegration_PNACLMonitor_BasicOperation tests the full PNACL monitor flow.
@@ -441,7 +441,7 @@ func TestIntegration_PNACLMonitor_AllowOnceThenApprove(t *testing.T) {
 
 	mu.Lock()
 	t.Logf("Allow count: %d, Approval count: %d", allowCount, approvalCount)
-	assert.Equal(t, 2, allowCount) // Both allowed
+	assert.Equal(t, 2, allowCount)    // Both allowed
 	assert.Equal(t, 1, approvalCount) // Second required approval
 	mu.Unlock()
 }

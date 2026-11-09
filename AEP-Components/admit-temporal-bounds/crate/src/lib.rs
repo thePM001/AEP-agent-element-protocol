@@ -1,19 +1,22 @@
 // Fold temporal bounds into Admit walls.
 
 pub mod compile;
-pub mod parse;
 pub mod gate;
+pub mod parse;
 
 pub use compile::{
-    causal_parent_wall_id, compile_temporal_walls, compile_temporal_warns, fold_temporal_into_admit,
-    TemporalCompileInput, DEFAULT_MAX_DRIFT_MS, DEFAULT_MAX_FUTURE_MS, DEFAULT_MAX_STALENESS_MS,
-    WALL_TEMPORAL_CAUSAL_PARENT, WALL_TEMPORAL_DRIFT, WALL_TEMPORAL_FUTURE, WALL_TEMPORAL_STALE,
+    causal_parent_wall_id, compile_temporal_walls, compile_temporal_warns,
+    fold_temporal_into_admit, TemporalCompileInput, DEFAULT_MAX_DRIFT_MS, DEFAULT_MAX_FUTURE_MS,
+    DEFAULT_MAX_STALENESS_MS, WALL_TEMPORAL_CAUSAL_PARENT, WALL_TEMPORAL_DRIFT,
+    WALL_TEMPORAL_FUTURE, WALL_TEMPORAL_STALE,
 };
 pub use gate::{default_filter_ts, filter_folds_temporal, run_gate};
 pub use parse::{parse_extra_walls, parse_temporal_from_text};
 
 use aep_admit::AdmitWall;
-use compile::{compile_temporal_walls as compile_walls_fn, compile_temporal_warns as compile_warns_fn};
+use compile::{
+    compile_temporal_walls as compile_walls_fn, compile_temporal_warns as compile_warns_fn,
+};
 use parse::parse_temporal_from_text as parse_fn;
 
 // HVVCAS: compile_temporal_walls domain:admit type:service
@@ -23,6 +26,12 @@ pub mod compile_temporal_walls {
     pub struct CompileTemporalWalls {
         pub temporal: String,
         pub walls: Vec<AdmitWall>,
+    }
+
+    impl Default for CompileTemporalWalls {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl CompileTemporalWalls {
@@ -51,6 +60,12 @@ pub mod compile_temporal_warns {
         pub warns: Vec<String>,
     }
 
+    impl Default for CompileTemporalWarns {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl CompileTemporalWarns {
         pub fn new() -> Self {
             Self {
@@ -77,6 +92,12 @@ pub mod fold_temporal_into_admit {
     pub struct FoldTemporalIntoAdmit {
         pub extra: String,
         pub result: Option<AdmitResult>,
+    }
+
+    impl Default for FoldTemporalIntoAdmit {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl FoldTemporalIntoAdmit {

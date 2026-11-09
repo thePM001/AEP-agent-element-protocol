@@ -59,8 +59,12 @@ fn rpc_error(id: &J, code: i64, msg: &str) -> J {
 
 fn tool_result(r: ApiResult) -> J {
     match r {
-        Ok(v) => json!({ "content": [{ "type": "text", "text": v.to_string() }], "isError": false }),
-        Err(e) => json!({ "content": [{ "type": "text", "text": e.to_json().to_string() }], "isError": true }),
+        Ok(v) => {
+            json!({ "content": [{ "type": "text", "text": v.to_string() }], "isError": false })
+        }
+        Err(e) => {
+            json!({ "content": [{ "type": "text", "text": e.to_json().to_string() }], "isError": true })
+        }
     }
 }
 
@@ -68,7 +72,13 @@ async fn blocking(engine: &Arc<Engine>, args: J, f: fn(&Engine, &J) -> ApiResult
     let e = engine.clone();
     tokio::task::spawn_blocking(move || f(&e, &args))
         .await
-        .unwrap_or_else(|_| Err(crate::engine::ApiError::new("internal", "evaluation thread failed", 500)))
+        .unwrap_or_else(|_| {
+            Err(crate::engine::ApiError::new(
+                "internal",
+                "evaluation thread failed",
+                500,
+            ))
+        })
 }
 
 /// Handle one JSON-RPC message. Returns None for notifications.
@@ -85,8 +95,15 @@ pub async fn handle(engine: &Arc<Engine>, msg: &J) -> Option<J> {
     let params = msg.get("params").cloned().unwrap_or(json!({}));
     Some(match method {
         "initialize" => {
-            let asked = params.get("protocolVersion").and_then(|v| v.as_str()).unwrap_or(VERSIONS[2]);
-            let v = if VERSIONS.contains(&asked) { asked } else { VERSIONS[0] };
+            let asked = params
+                .get("protocolVersion")
+                .and_then(|v| v.as_str())
+                .unwrap_or(VERSIONS[2]);
+            let v = if VERSIONS.contains(&asked) {
+                asked
+            } else {
+                VERSIONS[0]
+            };
             reply(
                 &id,
                 json!({

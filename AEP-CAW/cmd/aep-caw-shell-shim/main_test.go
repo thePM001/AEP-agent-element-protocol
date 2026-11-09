@@ -285,6 +285,8 @@ func TestShimPipedStdin_PassesBinaryDataThrough(t *testing.T) {
 	cmd.Env = []string{
 		"PATH=/usr/bin:/bin",
 		"AEP_CAW_SESSION_ID=test-session",
+		// Non-interactive stdin enforces by default; this test covers the documented opt-out.
+		"AEP_CAW_SHIM_ALLOW_NONINTERACTIVE=1",
 		// aep-caw is not available - if the shim tries to go through aep-caw,
 		// it will fail. With the non-interactive bypass, it should exec sh.real directly.
 	}
@@ -321,6 +323,8 @@ func TestShimPipedStdin_PreservesExitCode(t *testing.T) {
 	cmd.Env = []string{
 		"PATH=/usr/bin:/bin",
 		"AEP_CAW_SESSION_ID=test-session",
+		// Non-interactive stdin enforces by default; this test covers the documented opt-out.
+		"AEP_CAW_SHIM_ALLOW_NONINTERACTIVE=1",
 	}
 
 	err := cmd.Run()
@@ -333,6 +337,43 @@ func TestShimPipedStdin_PreservesExitCode(t *testing.T) {
 	}
 	if ee.ExitCode() != 42 {
 		t.Fatalf("expected exit code 42, got %d", ee.ExitCode())
+	}
+}
+
+// TestShimPipedStdin_DefaultEnforces verifies the fail-closed default: without
+// AEP_CAW_SHIM_ALLOW_NONINTERACTIVE=1, piped stdin does not bypass to the real
+// shell. The shim goes on to the aep-caw exec path, which fails here because no
+// aep-caw binary is on PATH.
+func TestShimPipedStdin_DefaultEnforces(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-shim tests require Unix")
+	}
+
+	tmp := t.TempDir()
+	shimBin := buildShim(t, tmp)
+	if err := os.Symlink("/bin/sh", filepath.Join(tmp, "sh.real")); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command(shimBin, "-c", "echo bypassed") //nolint:gosec // G204: runs the shim this test just built
+	cmd.Stdin = strings.NewReader("")                   // piped (non-TTY)
+	cmd.Env = []string{
+		"PATH=/usr/bin:/bin",
+		"AEP_CAW_SESSION_ID=test-session",
+	}
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err == nil {
+		t.Fatalf("expected the shim to refuse the bypass, got success: %q", stdout.String())
+	}
+	if strings.Contains(stdout.String(), "bypassed") {
+		t.Fatalf("real shell ran without the opt-out: %q", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "resolve aep-caw") {
+		t.Fatalf("expected the aep-caw exec path, got stderr: %s", stderr.String())
 	}
 }
 
@@ -353,6 +394,8 @@ func TestShimPipedStdin_StderrNotContaminated(t *testing.T) {
 	cmd.Env = []string{
 		"PATH=/usr/bin:/bin",
 		"AEP_CAW_SESSION_ID=test-session",
+		// Non-interactive stdin enforces by default; this test covers the documented opt-out.
+		"AEP_CAW_SHIM_ALLOW_NONINTERACTIVE=1",
 	}
 
 	var stdout, stderr bytes.Buffer
@@ -672,12 +715,14 @@ func TestShimReadinessGate_ServerUnreachable_NonInteractiveBypass(t *testing.T) 
 		t.Fatal(err)
 	}
 
-	// No shim.conf, no AEP_CAW_SHIM_FORCE - default non-interactive bypass.
+	// No shim.conf, no AEP_CAW_SHIM_FORCE, bypass opted in with AEP_CAW_SHIM_ALLOW_NONINTERACTIVE=1.
 	cmd := exec.Command(shimBin, "-c", "echo non-interactive-ok")
 	cmd.Stdin = strings.NewReader("") // non-TTY
 	cmd.Env = []string{
 		"PATH=/usr/bin:/bin",
 		"AEP_CAW_SESSION_ID=test-session",
+		// Non-interactive stdin enforces by default; this test covers the documented opt-out.
+		"AEP_CAW_SHIM_ALLOW_NONINTERACTIVE=1",
 		"AEP_CAW_SERVER=http://127.0.0.1:1", // unreachable
 	}
 
@@ -841,7 +886,7 @@ func TestShimReadinessGate_GRPCTransport_ProbesGRPCAddr(t *testing.T) {
 		"AEP_CAW_TRANSPORT=grpc",
 		"AEP_CAW_GRPC_ADDR=" + ln.Addr().String(),
 		"AEP_CAW_SERVER=http://127.0.0.1:1", // unreachable - should be ignored
-		"AEP_CAW_BIN=/nonexistent/aep-caw",   // known-bad so enforcement fails deterministically
+		"AEP_CAW_BIN=/nonexistent/aep-caw",  // known-bad so enforcement fails deterministically
 	}
 
 	var stderr bytes.Buffer
@@ -1093,11 +1138,11 @@ func TestServerIsLocal(t *testing.T) {
 
 func TestServerIsLocal_HostnameResolution(t *testing.T) {
 	tests := []struct {
-		name   string
-		addr   string
-		addrs  []string
-		err    error
-		want   bool
+		name  string
+		addr  string
+		addrs []string
+		err   error
+		want  bool
 	}{
 		{
 			name:  "loopback alias",

@@ -10,10 +10,10 @@ import (
 	"syscall"
 	"testing"
 
-	seccompkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	libseccomp "github.com/seccomp/libseccomp-golang"
 	"github.com/stretchr/testify/require"
+	seccompkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	gounix "golang.org/x/sys/unix"
 )
 

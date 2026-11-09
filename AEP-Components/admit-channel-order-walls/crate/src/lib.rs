@@ -64,10 +64,10 @@ pub fn compile_channel_walls(input: &ChannelCompileInput) -> Vec<AdmitWall> {
     let mut walls = Vec::new();
     let wire = input.docking_wire.trim();
     let plain = wire_is_plain(wire);
-    let frame_ok = input.channel_id.trim().is_empty() == false && input.has_capsule && plain == false;
+    let frame_ok = !input.channel_id.trim().is_empty() && input.has_capsule && !plain;
     walls.push(emit(
         WALL_CHANNEL_LATTICE_ONLY,
-        frame_ok == false,
+        !frame_ok,
         "Lattice channel frame required. Missing channel_id or capsule",
     ));
     let non_frame_closed = plain;
@@ -87,7 +87,7 @@ pub fn compile_channel_walls(input: &ChannelCompileInput) -> Vec<AdmitWall> {
     let required_closed = input.agent_id.trim().is_empty()
         || input.session_id.trim().is_empty()
         || input.contract_id.trim().is_empty()
-        || port_ok == false;
+        || !port_ok;
     walls.push(emit(
         WALL_CHANNEL_REQUIRED,
         required_closed,
@@ -95,7 +95,7 @@ pub fn compile_channel_walls(input: &ChannelCompileInput) -> Vec<AdmitWall> {
     ));
     walls.push(emit(
         WALL_CHANNEL_CONTRACT,
-        input.contract_active == false,
+        !input.contract_active,
         "Lattice channel contract is not active",
     ));
     walls.push(emit(
@@ -107,7 +107,11 @@ pub fn compile_channel_walls(input: &ChannelCompileInput) -> Vec<AdmitWall> {
 }
 
 fn parent_satisfied(parent: &str, satisfied: &[String], agent_id: &str) -> bool {
-    let agt = if agent_id.is_empty() { "unbound" } else { agent_id };
+    let agt = if agent_id.is_empty() {
+        "unbound"
+    } else {
+        agent_id
+    };
     let mut key = String::from("agt|");
     key.push_str(agt);
     key.push('|');
@@ -115,7 +119,7 @@ fn parent_satisfied(parent: &str, satisfied: &[String], agent_id: &str) -> bool 
     if satisfied.iter().any(|s| s == &key) {
         return true;
     }
-    if agent_id.is_empty() == false {
+    if !agent_id.is_empty() {
         let mut legacy = String::from(agent_id);
         legacy.push(':');
         legacy.push_str(parent);
@@ -125,7 +129,9 @@ fn parent_satisfied(parent: &str, satisfied: &[String], agent_id: &str) -> bool 
     }
     let mut suffix = String::from("|");
     suffix.push_str(parent);
-    let agent_scoped = satisfied.iter().any(|s| s.contains("agt|") && s.ends_with(&suffix));
+    let agent_scoped = satisfied
+        .iter()
+        .any(|s| s.contains("agt|") && s.ends_with(&suffix));
     if agent_scoped {
         return false;
     }
@@ -192,7 +198,8 @@ pub fn parse_bool(raw: &str) -> bool {
 }
 
 fn kv_line(line: &str) -> Option<(String, String)> {
-    line.split_once('=').map(|(k, v)| (k.trim().to_string(), v.trim().to_string()))
+    line.split_once('=')
+        .map(|(k, v)| (k.trim().to_string(), v.trim().to_string()))
 }
 
 pub fn parse_channel_from_text(text: &str) -> ChannelCompileInput {
@@ -212,7 +219,7 @@ pub fn parse_channel_from_text(text: &str) -> ChannelCompileInput {
             "session_id" => input.session_id = v,
             "docking_port" => input.docking_port = v,
             "contract_id" => input.contract_id = v,
-            "capsule" | "has_capsule" => input.has_capsule = parse_bool(&v) || v.is_empty() == false,
+            "capsule" | "has_capsule" => input.has_capsule = parse_bool(&v) || !v.is_empty(),
             "contract_active" => input.contract_active = parse_bool(&v),
             "docking_wire" | "docking" => input.docking_wire = v,
             "rate_limited" => input.rate_limited = parse_bool(&v),
@@ -236,12 +243,12 @@ pub fn parse_order_from_text(text: &str) -> PartialOrderCompileInput {
         match k.as_str() {
             "action_path" => input.action_path = v,
             "parent" => {
-                if v.is_empty() == false {
+                if !v.is_empty() {
                     input.parents.push(v);
                 }
             }
             "satisfied" => {
-                if v.is_empty() == false {
+                if !v.is_empty() {
                     input.satisfied.push(v);
                 }
             }
@@ -259,7 +266,7 @@ pub fn parse_extra_walls(text: &str) -> Vec<AdmitWall> {
         if line.is_empty() || line.starts_with('#') || line.starts_with('@') {
             continue;
         }
-        if line.contains('\t') == false && line.starts_with("id=") == false {
+        if !line.contains('\t') && !line.starts_with("id=") {
             continue;
         }
         let mut id = String::new();
@@ -303,21 +310,24 @@ pub fn filter_folds_channel_and_order(filter_source: &str) -> Result<String, Str
     if body.is_empty() {
         return Err(String::from("filterCrossing not found"));
     }
-    if body.contains("compileChannelWalls") == false {
+    if !body.contains("compileChannelWalls") {
         return Err(String::from(
             "filterCrossing does not compile channel walls",
         ));
     }
-    if body.contains("compilePartialOrderWalls") == false {
+    if !body.contains("compilePartialOrderWalls") {
         return Err(String::from(
             "filterCrossing does not compile partial-order walls",
         ));
     }
-    Ok(String::from("ok filterCrossing folds channel and partial-order"))
+    Ok(String::from(
+        "ok filterCrossing folds channel and partial-order",
+    ))
 }
 
 pub fn default_filter_ts() -> PathBuf {
-    let mut p = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::from(".")));
+    let mut p =
+        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::from(".")));
     p.push("../../dynAEP/bridge/hyperlattice/HyperlatticeFilter.ts");
     p
 }
@@ -339,8 +349,10 @@ pub fn run_gate(filter: &Path) -> Result<i32, String> {
         docking_wire: String::from("ping"),
         rate_limited: false,
     };
-    let mut order = PartialOrderCompileInput::default();
-    order.action_path = String::from("agent:execute");
+    let mut order = PartialOrderCompileInput {
+        action_path: String::from("agent:execute"),
+        ..Default::default()
+    };
     order.parents.push(String::from("agent:propose_action"));
     order.agent_id = String::from("agent-a");
     let extra = vec![AdmitWall::close(
@@ -352,17 +364,17 @@ pub fn run_gate(filter: &Path) -> Result<i32, String> {
         return Err(String::from("expected closed walls"));
     }
     let ids: Vec<&str> = admit.closed.iter().map(|w| w.id.as_str()).collect();
-    if ids.contains(&WALL_CHANNEL_LATTICE_ONLY) == false {
+    if !ids.contains(&WALL_CHANNEL_LATTICE_ONLY) {
         return Err(String::from("channel lattice_only wall missing"));
     }
-    if ids.contains(&WALL_CHANNEL_NON_FRAME) == false {
+    if !ids.contains(&WALL_CHANNEL_NON_FRAME) {
         return Err(String::from("channel non_frame wall missing"));
     }
     let parent_id = order_parent_wall_id("agent:propose_action");
-    if ids.iter().any(|id| *id == parent_id.as_str()) == false {
+    if !ids.contains(&parent_id.as_str()) {
         return Err(String::from("partial-order parent wall missing"));
     }
-    if ids.contains(&"constraint:required_field:alpha") == false {
+    if !ids.contains(&"constraint:required_field:alpha") {
         return Err(String::from("extra constraint wall dropped"));
     }
     println!(
@@ -380,6 +392,12 @@ pub mod compile_channel_walls {
     pub struct CompileChannelWalls {
         pub frame: String,
         pub walls: Vec<AdmitWall>,
+    }
+
+    impl Default for CompileChannelWalls {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl CompileChannelWalls {
@@ -406,6 +424,12 @@ pub mod compile_partial_order_walls {
     pub struct CompilePartialOrderWalls {
         pub order: String,
         pub walls: Vec<AdmitWall>,
+    }
+
+    impl Default for CompilePartialOrderWalls {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl CompilePartialOrderWalls {
@@ -435,6 +459,12 @@ pub mod fold_channel_order {
     pub struct FoldChannelOrder {
         pub extra: String,
         pub result: Option<AdmitResult>,
+    }
+
+    impl Default for FoldChannelOrder {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl FoldChannelOrder {
@@ -478,8 +508,8 @@ mod tests {
     fn valid_frame_opens_channel_walls() {
         let walls = compile_channel_walls(&valid_channel());
         let admit = admit_collect_all(&walls);
-        assert_eq!(admit.allow, true);
-        assert_eq!(admit.closed.is_empty(), true);
+        assert!(admit.allow);
+        assert!(admit.closed.is_empty());
     }
 
     #[test]
@@ -489,10 +519,10 @@ mod tests {
         ch.docking_wire = String::from("ping");
         ch.channel_id = String::new();
         let admit = admit_collect_all(&compile_channel_walls(&ch));
-        assert_eq!(admit.allow, false);
+        assert!(!admit.allow);
         let ids: Vec<&str> = admit.closed.iter().map(|w| w.id.as_str()).collect();
-        assert_eq!(ids.contains(&WALL_CHANNEL_LATTICE_ONLY), true);
-        assert_eq!(ids.contains(&WALL_CHANNEL_NON_FRAME), true);
+        assert!(ids.contains(&WALL_CHANNEL_LATTICE_ONLY));
+        assert!(ids.contains(&WALL_CHANNEL_NON_FRAME));
     }
 
     #[test]
@@ -500,14 +530,8 @@ mod tests {
         let mut ch = valid_channel();
         ch.docking_wire = String::from("register_lrp");
         let admit = admit_collect_all(&compile_channel_walls(&ch));
-        assert_eq!(admit.allow, false);
-        assert_eq!(
-            admit
-                .closed
-                .iter()
-                .any(|w| w.id == WALL_CHANNEL_NON_FRAME),
-            true
-        );
+        assert!(!admit.allow);
+        assert!(admit.closed.iter().any(|w| w.id == WALL_CHANNEL_NON_FRAME));
     }
 
     #[test]
@@ -515,14 +539,8 @@ mod tests {
         let mut ch = valid_channel();
         ch.contract_active = false;
         let admit = admit_collect_all(&compile_channel_walls(&ch));
-        assert_eq!(admit.allow, false);
-        assert_eq!(
-            admit
-                .closed
-                .iter()
-                .any(|w| w.id == WALL_CHANNEL_CONTRACT),
-            true
-        );
+        assert!(!admit.allow);
+        assert!(admit.closed.iter().any(|w| w.id == WALL_CHANNEL_CONTRACT));
     }
 
     #[test]
@@ -534,7 +552,7 @@ mod tests {
             agent_id: String::from("agent-a"),
         };
         let admit = admit_collect_all(&compile_partial_order_walls(&order));
-        assert_eq!(admit.allow, true);
+        assert!(admit.allow);
     }
 
     #[test]
@@ -549,13 +567,13 @@ mod tests {
             agent_id: String::from("agent-a"),
         };
         let admit = admit_collect_all(&compile_partial_order_walls(&order));
-        assert_eq!(admit.allow, false);
+        assert!(!admit.allow);
         let ids: Vec<&str> = admit.closed.iter().map(|w| w.id.as_str()).collect();
         let missing = order_parent_wall_id("agent:validate");
         let ok_parent = order_parent_wall_id("agent:propose_action");
-        assert_eq!(ids.iter().any(|id| *id == missing.as_str()), true);
-        assert_eq!(ids.iter().any(|id| *id == ok_parent.as_str()), false);
-        assert_eq!(ids.contains(&WALL_ORDER_PARTIAL), true);
+        assert!(ids.contains(&missing.as_str()));
+        assert!(!ids.contains(&ok_parent.as_str()));
+        assert!(ids.contains(&WALL_ORDER_PARTIAL));
     }
 
     #[test]
@@ -567,7 +585,7 @@ mod tests {
             agent_id: String::from("agent-a"),
         };
         let admit = admit_collect_all(&compile_partial_order_walls(&order));
-        assert_eq!(admit.allow, true);
+        assert!(admit.allow);
     }
 
     #[test]
@@ -579,7 +597,7 @@ mod tests {
             agent_id: String::from("agent-b"),
         };
         let admit = admit_collect_all(&compile_partial_order_walls(&order));
-        assert_eq!(admit.allow, false);
+        assert!(!admit.allow);
     }
 
     #[test]
@@ -597,12 +615,12 @@ mod tests {
             "alpha required",
         )];
         let result = fold_channel_order_into_admit(&ch, &order, &extra);
-        assert_eq!(result.allow, false);
+        assert!(!result.allow);
         let ids: Vec<&str> = result.closed.iter().map(|w| w.id.as_str()).collect();
-        assert_eq!(ids.contains(&WALL_CHANNEL_NON_FRAME), true);
+        assert!(ids.contains(&WALL_CHANNEL_NON_FRAME));
         let parent_id = order_parent_wall_id("agent:propose_action");
-        assert_eq!(ids.iter().any(|id| *id == parent_id.as_str()), true);
-        assert_eq!(ids.contains(&"constraint:required_field:alpha"), true);
+        assert!(ids.contains(&parent_id.as_str()));
+        assert!(ids.contains(&"constraint:required_field:alpha"));
     }
 
     #[test]
@@ -628,18 +646,18 @@ mod tests {
         svc.frame = String::from("channel_id=\ndocking_wire=ping\nhas_capsule=false\n");
         svc.process().expect("process");
         let admit = admit_collect_all(&svc.walls);
-        assert_eq!(admit.allow, false);
+        assert!(!admit.allow);
     }
     #[test]
     fn filter_crossing_folds_channel_and_order() {
         let path = default_filter_ts();
-        if path.is_file() == false {
+        if !path.is_file() {
             return;
         }
         let src = fs::read_to_string(&path).unwrap_or_default();
         if src.is_empty() {
             return;
         }
-        assert_eq!(filter_folds_channel_and_order(&src).is_ok(), true);
+        assert!(filter_folds_channel_and_order(&src).is_ok());
     }
 }

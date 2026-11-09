@@ -59,4 +59,3 @@ func TestOptions_LogGoawayMessage_WireThrough(t *testing.T) {
 		})
 	}
 }
-

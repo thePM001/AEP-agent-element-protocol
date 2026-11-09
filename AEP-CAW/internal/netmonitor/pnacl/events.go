@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/google/uuid"
 )
 
 // Event types for PNACL
@@ -64,9 +64,9 @@ func (e *BrokerEventEmitter) EmitNetworkACLEvent(ctx context.Context, event Netw
 			"rule_source":  event.RuleSource,
 			"user_action":  event.UserAction,
 		},
-		Remote:   event.Target,
-		Domain:   event.Target,
-		Path:     event.ProcessPath,
+		Remote: event.Target,
+		Domain: event.Target,
+		Path:   event.ProcessPath,
 	}
 
 	// Set decision in policy if appropriate

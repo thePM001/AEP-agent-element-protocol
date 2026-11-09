@@ -18,15 +18,15 @@ type WindowsLimiter struct {
 
 // Job Object constants not in x/sys/windows
 const (
-	jobObjectCpuRateControlInformation         = 15
-	jobObjectBasicAndIoAccountingInformation   = 8
-	jobObjectExtendedLimitInformation          = 9
-	jobObjectCpuRateControlEnable              = 0x1
-	jobObjectCpuRateControlHardCap             = 0x4
-	jobObjectLimitJobMemory                    = 0x00000200
-	jobObjectLimitProcessMemory                = 0x00000100
-	jobObjectLimitProcessTime                  = 0x00000002
-	jobObjectLimitActiveProcess                = 0x00000008
+	jobObjectCpuRateControlInformation       = 15
+	jobObjectBasicAndIoAccountingInformation = 8
+	jobObjectExtendedLimitInformation        = 9
+	jobObjectCpuRateControlEnable            = 0x1
+	jobObjectCpuRateControlHardCap           = 0x4
+	jobObjectLimitJobMemory                  = 0x00000200
+	jobObjectLimitProcessMemory              = 0x00000100
+	jobObjectLimitProcessTime                = 0x00000002
+	jobObjectLimitActiveProcess              = 0x00000008
 )
 
 type jobObjectCpuRateControlInformationStruct struct {
@@ -66,7 +66,7 @@ type processMemoryCounters struct {
 }
 
 var (
-	modpsapi                = windows.NewLazySystemDLL("psapi.dll")
+	modpsapi                 = windows.NewLazySystemDLL("psapi.dll")
 	procGetProcessMemoryInfo = modpsapi.NewProc("GetProcessMemoryInfo")
 )
 
@@ -298,17 +298,17 @@ func (l *WindowsLimiter) Cleanup(pid int) error {
 // Capabilities implements ResourceLimiter.
 func (l *WindowsLimiter) Capabilities() LimiterCapabilities {
 	return LimiterCapabilities{
-		MemoryHard:    true,  // JobMemoryLimit
+		MemoryHard:    true, // JobMemoryLimit
 		MemorySoft:    false,
 		Swap:          false,
-		CPUQuota:      true,  // CpuRate (Windows 8+)
+		CPUQuota:      true, // CpuRate (Windows 8+)
 		CPUShares:     false,
-		ProcessCount:  true,  // ActiveProcessLimit
-		CPUTime:       true,  // PerProcessUserTimeLimit
+		ProcessCount:  true, // ActiveProcessLimit
+		CPUTime:       true, // PerProcessUserTimeLimit
 		DiskIORate:    false,
 		DiskQuota:     false,
 		NetworkRate:   false,
-		ChildTracking: true,  // Job objects track automatically
+		ChildTracking: true, // Job objects track automatically
 	}
 }
 

@@ -84,7 +84,7 @@ func (t *Tracer) handleNetwork(ctx context.Context, tid int, sc *SyscallContext)
 
 	// Sendto DNS redirect: if sendto targets port 53, rewrite destination to proxy
 	if t.dnsProxy != nil && nr == unix.SYS_SENDTO {
-		destAddrPtr := args[4] // sendto arg4 = dest_addr
+		destAddrPtr := args[4]      // sendto arg4 = dest_addr
 		destAddrLen := int(args[5]) // sendto arg5 = addrlen
 		if destAddrPtr != 0 && destAddrLen > 0 && destAddrLen <= 128 {
 			destBuf := make([]byte, destAddrLen)

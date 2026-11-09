@@ -20,6 +20,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/api"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/approvals"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/audit"
@@ -45,7 +46,6 @@ import (
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/threatfeed"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/tor"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"

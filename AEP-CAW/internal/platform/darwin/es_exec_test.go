@@ -7,9 +7,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform/darwin/policysock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform/darwin/policysock"
 )
 
 // mockPolicyChecker implements ESExecPolicyChecker for testing.

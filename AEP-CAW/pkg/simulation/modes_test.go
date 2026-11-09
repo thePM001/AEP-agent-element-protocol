@@ -20,8 +20,8 @@ func TestDefaultModeConfig(t *testing.T) {
 
 type mockLogger struct {
 	calls []struct {
-		op          *Operation
-		decision    Decision
+		op           *Operation
+		decision     Decision
 		wouldEnforce bool
 	}
 }

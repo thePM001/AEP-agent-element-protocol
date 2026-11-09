@@ -83,9 +83,21 @@ fn load_agent_keys(data_dir: &Path) -> Vec<AgentKey> {
     };
     let mut out = Vec::new();
     for item in arr {
-        let agent_id = item.get("agent_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        let key_id = item.get("key_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        let key_hash = item.get("key_hash").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let agent_id = item
+            .get("agent_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let key_id = item
+            .get("key_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let key_hash = item
+            .get("key_hash")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         if agent_id.is_empty() || key_id.is_empty() || key_hash.is_empty() {
             continue;
         }
@@ -141,7 +153,11 @@ fn load_or_create_operator(data_dir: &Path, env_key: Option<&str>) -> (String, A
         }
     }
     let key = format!("ucb_{}", hex::encode(rand_bytes(24)));
-    let preview = format!("{}…{}", &key[..8.min(key.len())], &key[key.len().saturating_sub(4)..]);
+    let preview = format!(
+        "{}…{}",
+        &key[..8.min(key.len())],
+        &key[key.len().saturating_sub(4)..]
+    );
     let material = serde_json::json!({
         "version": "2.9.0",
         "created_at": chrono_now_rfc3339(),
@@ -158,7 +174,13 @@ fn load_or_create_operator(data_dir: &Path, env_key: Option<&str>) -> (String, A
     {
         let _ = fs::create_dir_all(data_dir);
     }
-    let _ = fs::write(&path, format!("{}\n", serde_json::to_string_pretty(&material).unwrap_or_default()));
+    let _ = fs::write(
+        &path,
+        format!(
+            "{}\n",
+            serde_json::to_string_pretty(&material).unwrap_or_default()
+        ),
+    );
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;

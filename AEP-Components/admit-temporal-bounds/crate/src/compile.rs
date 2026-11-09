@@ -87,7 +87,7 @@ pub fn compile_temporal_walls(input: &TemporalCompileInput) -> Vec<AdmitWall> {
     let max_future = bound_or(input.max_future_ms, DEFAULT_MAX_FUTURE_MS);
     let max_stale = bound_or(input.max_staleness_ms, DEFAULT_MAX_STALENESS_MS);
     let drift = effective_drift(input);
-    if input.has_agent_time == false {
+    if !input.has_agent_time {
         walls.push(emit(WALL_TEMPORAL_DRIFT, true, "no timestamps"));
     } else {
         let skew_closed = drift > max_drift;
@@ -136,7 +136,7 @@ fn compile_causal_parent_walls(input: &TemporalCompileInput) -> Vec<AdmitWall> {
         let mut reason = String::new();
         if typed_missing {
             reason = String::from("Causal parent missing");
-            if input.event_id.is_empty() == false {
+            if !input.event_id.is_empty() {
                 reason.push_str(" for event ");
                 reason.push_str(&input.event_id);
             }
@@ -154,7 +154,7 @@ fn compile_causal_parent_walls(input: &TemporalCompileInput) -> Vec<AdmitWall> {
             let mut reason = String::from("Causal parent '");
             reason.push_str(parent);
             reason.push_str("' has not been delivered");
-            if input.event_id.is_empty() == false {
+            if !input.event_id.is_empty() {
                 reason.push_str(" for event ");
                 reason.push_str(&input.event_id);
             }
@@ -162,11 +162,11 @@ fn compile_causal_parent_walls(input: &TemporalCompileInput) -> Vec<AdmitWall> {
             missing.push(parent.clone());
         }
     }
-    if missing.is_empty() && typed_missing == false {
+    if missing.is_empty() && !typed_missing {
         walls.push(emit(WALL_TEMPORAL_CAUSAL_PARENT, false, ""));
     } else {
         let mut reason = String::from("Causal parent missing");
-        if missing.is_empty() == false {
+        if !missing.is_empty() {
             reason.push_str(": ");
             reason.push_str(&missing.join(", "));
         }
@@ -178,7 +178,7 @@ fn compile_causal_parent_walls(input: &TemporalCompileInput) -> Vec<AdmitWall> {
 /// Soft temporal warns. High drift below reject stays warn. Never a closed Admit wall.
 pub fn compile_temporal_warns(input: &TemporalCompileInput) -> Vec<String> {
     let mut warns = Vec::new();
-    if input.has_agent_time == false {
+    if !input.has_agent_time {
         return warns;
     }
     let max_drift = bound_or(input.max_drift_ms, DEFAULT_MAX_DRIFT_MS);

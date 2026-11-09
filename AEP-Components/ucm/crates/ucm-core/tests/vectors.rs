@@ -28,7 +28,8 @@ fn load_cases() -> Vec<Case> {
         .collect();
     files.sort();
     for f in files {
-        let v: Value = serde_json::from_str(&std::fs::read_to_string(&f).expect("read")).expect("json");
+        let v: Value =
+            serde_json::from_str(&std::fs::read_to_string(&f).expect("read")).expect("json");
         assert_eq!(v["ucm"], "ucm-vectors-v1", "{f:?}");
         let suite = v["suite"].as_str().expect("suite").to_string();
         for c in v["cases"].as_array().expect("cases") {
@@ -38,7 +39,10 @@ fn load_cases() -> Vec<Case> {
                 program: c["program"].clone(),
                 inputs: c.get("inputs").cloned().unwrap_or(json!({})),
                 expect: c.get("expect").cloned(),
-                error: c.get("error").and_then(|e| e.as_str()).map(|e| e.to_string()),
+                error: c
+                    .get("error")
+                    .and_then(|e| e.as_str())
+                    .map(|e| e.to_string()),
             });
         }
     }
@@ -118,6 +122,10 @@ fn library_vectors() {
     for k in &lib.constants {
         assert!(!k.citation.is_empty(), "constant {} has no citation", k.id);
     }
-    assert!(failures.is_empty(), "library vectors failed:\n{}", failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "library vectors failed:\n{}",
+        failures.join("\n")
+    );
     eprintln!("{n} library vectors passed");
 }

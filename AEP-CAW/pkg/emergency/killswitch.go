@@ -34,12 +34,12 @@ type KillSwitch struct {
 
 // KillSwitchState represents the kill switch state.
 type KillSwitchState struct {
-	Activated        bool      `json:"activated"`
-	ActivatedAt      time.Time `json:"activated_at,omitempty"`
-	ActivatedBy      string    `json:"activated_by,omitempty"`
-	Reason           string    `json:"reason,omitempty"`
-	SessionsKilled   int       `json:"sessions_killed"`
-	NotifyChannels   []string  `json:"-"`
+	Activated      bool      `json:"activated"`
+	ActivatedAt    time.Time `json:"activated_at,omitempty"`
+	ActivatedBy    string    `json:"activated_by,omitempty"`
+	Reason         string    `json:"reason,omitempty"`
+	SessionsKilled int       `json:"sessions_killed"`
+	NotifyChannels []string  `json:"-"`
 }
 
 // KillSwitchConfig configures the kill switch.

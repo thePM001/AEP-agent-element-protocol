@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/auth"
 	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/auth"
 )
 
 // WebAuthnChallenge represents a pending WebAuthn approval challenge.

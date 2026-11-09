@@ -469,10 +469,14 @@ func TestDispatcher_Retry(t *testing.T) {
 }
 
 func TestDispatcher_Headers(t *testing.T) {
-	var receivedHeaders http.Header
+	// The handler runs on the server goroutine, so the headers come back over a channel.
+	headersCh := make(chan http.Header, 1)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		receivedHeaders = r.Header.Clone()
+		select {
+		case headersCh <- r.Header.Clone():
+		default:
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -492,7 +496,12 @@ func TestDispatcher_Headers(t *testing.T) {
 	ctx := context.Background()
 	d.Dispatch(ctx, types.Event{Type: "file_read"})
 
-	time.Sleep(100 * time.Millisecond)
+	var receivedHeaders http.Header
+	select {
+	case receivedHeaders = <-headersCh:
+	case <-time.After(10 * time.Second):
+		t.Fatal("webhook was not delivered")
+	}
 
 	if receivedHeaders.Get("X-Custom-Header") != "custom-value" {
 		t.Errorf("X-Custom-Header = %s, want custom-value", receivedHeaders.Get("X-Custom-Header"))

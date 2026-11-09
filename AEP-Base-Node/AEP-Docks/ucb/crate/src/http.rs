@@ -2,15 +2,15 @@
 
 use crate::auth::{extract_bearer_or_header, AuthGuard};
 use crate::bridge::{ingest_foreign_payload, rollback_foreign_integrations, UcbRuntime};
-use crate::mcp::{handle_mcp_request, mcp_capabilities, parse_rollback_diff_ids};
 use crate::delegate::{delegate_to_foreign_model, DelegateBody};
 use crate::egress::{
-    audit_host, auth_token_env_denied, credential_inject_allowed, match_route, proxy_request_isolated,
-    strip_caller_headers, EgressAudit, EgressConfig,
+    audit_host, auth_token_env_denied, credential_inject_allowed, match_route,
+    proxy_request_isolated, strip_caller_headers, EgressAudit, EgressConfig,
 };
 use crate::gap_manifest::{compile_provided, compile_provided_json, LOCAL_PROFILE};
 use crate::ingress::ForeignIngestBody;
 use crate::manifest::{egress_refused_unsigned, signed_from_task};
+use crate::mcp::{handle_mcp_request, mcp_capabilities, parse_rollback_diff_ids};
 use crate::store::TaskManifestV1;
 use crate::{BRIDGE_ID, UCB_VERSION};
 use aep_ucb_perimeter_v1::{egress_power_allowed, Scope, StrictMode, WireLimits};
@@ -65,22 +65,49 @@ fn obj(pairs: Vec<(&str, Value)>) -> Value {
 async fn health_handler(State(state): State<AppState>) -> Json<Value> {
     let full = health_snapshot(&state.runtime).await;
     Json(obj(vec![
-        ("service", full.get("service").cloned().unwrap_or(Value::String(String::from("ucb-universal-connect-bridge")))),
-        ("version", full.get("version").cloned().unwrap_or(Value::String(String::from(UCB_VERSION)))),
-        ("status", full.get("status").cloned().unwrap_or(Value::String(String::from("unknown")))),
+        (
+            "service",
+            full.get("service")
+                .cloned()
+                .unwrap_or(Value::String(String::from("ucb-universal-connect-bridge"))),
+        ),
+        (
+            "version",
+            full.get("version")
+                .cloned()
+                .unwrap_or(Value::String(String::from(UCB_VERSION))),
+        ),
+        (
+            "status",
+            full.get("status")
+                .cloned()
+                .unwrap_or(Value::String(String::from("unknown"))),
+        ),
     ]))
 }
 
 pub async fn health_snapshot(rt: &Arc<UcbRuntime>) -> Value {
     let docks = rt.lattice.dock_status();
-    let listening = docks.iter().filter(|d| d.get("listening").and_then(|v| v.as_bool()) == Some(true)).count();
+    let listening = docks
+        .iter()
+        .filter(|d| d.get("listening").and_then(|v| v.as_bool()) == Some(true))
+        .count();
     let lattice = match rt.lattice.health_ping().await {
         Ok(ping) => obj(vec![
             ("ok", Value::Bool(true)),
-            ("digest", ping.digest.map(Value::String).unwrap_or(Value::Null)),
-            ("event_id", ping.event_id.map(Value::from).unwrap_or(Value::Null)),
+            (
+                "digest",
+                ping.digest.map(Value::String).unwrap_or(Value::Null),
+            ),
+            (
+                "event_id",
+                ping.event_id.map(Value::from).unwrap_or(Value::Null),
+            ),
         ]),
-        Err(e) => obj(vec![("ok", Value::Bool(false)), ("error", Value::String(e))]),
+        Err(e) => obj(vec![
+            ("ok", Value::Bool(false)),
+            ("error", Value::String(e)),
+        ]),
     };
     let status = if listening >= 4 && lattice.get("ok") == Some(&Value::Bool(true)) {
         "ok"
@@ -88,26 +115,35 @@ pub async fn health_snapshot(rt: &Arc<UcbRuntime>) -> Value {
         "degraded"
     };
     obj(vec![
-        ("service", Value::String(String::from("ucb-universal-connect-bridge"))),
+        (
+            "service",
+            Value::String(String::from("ucb-universal-connect-bridge")),
+        ),
         ("version", Value::String(String::from(UCB_VERSION))),
         ("status", Value::String(String::from(status))),
         ("implementation", Value::String(String::from("rust"))),
         ("lattice", lattice),
         ("docking_ports", Value::Array(docks)),
         ("docking_ports_listening", Value::Bool(listening >= 4)),
-        ("capabilities", Value::Array(vec![
-            Value::String(String::from("ingest")),
-            Value::String(String::from("delegate")),
-            Value::String(String::from("health")),
-            Value::String(String::from("rollback")),
-            Value::String(String::from("egress")),
-            Value::String(String::from("compile-manifest")),
-            Value::String(String::from("mcp")),
-        ])),
+        (
+            "capabilities",
+            Value::Array(vec![
+                Value::String(String::from("ingest")),
+                Value::String(String::from("delegate")),
+                Value::String(String::from("health")),
+                Value::String(String::from("rollback")),
+                Value::String(String::from("egress")),
+                Value::String(String::from("compile-manifest")),
+                Value::String(String::from("mcp")),
+            ]),
+        ),
         ("synthesis", Value::Bool(false)),
         ("trust_fields", Value::Bool(false)),
         ("gap_engine", Value::String(String::from(LOCAL_PROFILE))),
-        ("predicate_profile", Value::String(String::from("perimeter-v1"))),
+        (
+            "predicate_profile",
+            Value::String(String::from("perimeter-v1")),
+        ),
     ])
 }
 
@@ -117,36 +153,57 @@ pub fn capabilities_document() -> Value {
         ("perimeter", Value::String(String::from("attach-gateway"))),
         ("implementation", Value::String(String::from("rust"))),
         ("evaluator", Value::String(String::from("base-node-only"))),
-        ("operations", Value::Array(vec![
-            Value::String(String::from("ingest")),
-            Value::String(String::from("delegate")),
-            Value::String(String::from("health")),
-            Value::String(String::from("rollback")),
-            Value::String(String::from("egress")),
-            Value::String(String::from("compile-manifest")),
-            Value::String(String::from("mcp")),
-        ])),
-        ("mcp", mcp_capabilities()),
-        ("foreign_frameworks", Value::String(String::from("fixtures not protocol members"))),
-        ("task_manifest", obj(vec![
-            ("required_for_ingest", Value::Bool(true)),
-            ("synthesis", Value::Bool(false)),
-            ("trust_fields", Value::Bool(false)),
-            ("compiler", Value::String(String::from(LOCAL_PROFILE))),
-        ])),
-        ("deny_report", Value::String(String::from("kernel-shape"))),
-        ("auth", obj(vec![
-            ("schemes", Value::Array(vec![Value::String(String::from("Bearer")), Value::String(String::from("X-UCB-API-Key"))])),
-            ("required_for", Value::Array(vec![
+        (
+            "operations",
+            Value::Array(vec![
                 Value::String(String::from("ingest")),
                 Value::String(String::from("delegate")),
+                Value::String(String::from("health")),
                 Value::String(String::from("rollback")),
                 Value::String(String::from("egress")),
                 Value::String(String::from("compile-manifest")),
                 Value::String(String::from("mcp")),
-            ])),
-            ("model", Value::String(String::from("per-agent-keys"))),
-        ])),
+            ]),
+        ),
+        ("mcp", mcp_capabilities()),
+        (
+            "foreign_frameworks",
+            Value::String(String::from("fixtures not protocol members")),
+        ),
+        (
+            "task_manifest",
+            obj(vec![
+                ("required_for_ingest", Value::Bool(true)),
+                ("synthesis", Value::Bool(false)),
+                ("trust_fields", Value::Bool(false)),
+                ("compiler", Value::String(String::from(LOCAL_PROFILE))),
+            ]),
+        ),
+        ("deny_report", Value::String(String::from("kernel-shape"))),
+        (
+            "auth",
+            obj(vec![
+                (
+                    "schemes",
+                    Value::Array(vec![
+                        Value::String(String::from("Bearer")),
+                        Value::String(String::from("X-UCB-API-Key")),
+                    ]),
+                ),
+                (
+                    "required_for",
+                    Value::Array(vec![
+                        Value::String(String::from("ingest")),
+                        Value::String(String::from("delegate")),
+                        Value::String(String::from("rollback")),
+                        Value::String(String::from("egress")),
+                        Value::String(String::from("compile-manifest")),
+                        Value::String(String::from("mcp")),
+                    ]),
+                ),
+                ("model", Value::String(String::from("per-agent-keys"))),
+            ]),
+        ),
     ])
 }
 
@@ -167,7 +224,11 @@ async fn delegate_handler(
         return resp;
     }
     let result = delegate_to_foreign_model(&state.runtime, body).await;
-    let status = if is_ok_true(&result) { StatusCode::OK } else { StatusCode::UNPROCESSABLE_ENTITY };
+    let status = if is_ok_true(&result) {
+        StatusCode::OK
+    } else {
+        StatusCode::UNPROCESSABLE_ENTITY
+    };
     (status, Json(result)).into_response()
 }
 
@@ -180,7 +241,11 @@ async fn ingest_handler(
         return resp;
     }
     let result = ingest_foreign_payload(&state.runtime, body).await;
-    let status = if is_ok_true(&result) { StatusCode::OK } else { StatusCode::UNPROCESSABLE_ENTITY };
+    let status = if is_ok_true(&result) {
+        StatusCode::OK
+    } else {
+        StatusCode::UNPROCESSABLE_ENTITY
+    };
     (status, Json(result)).into_response()
 }
 
@@ -206,7 +271,11 @@ async fn rollback_handler(
         }
     };
     let result = rollback_foreign_integrations(&state.runtime, diff_ids).await;
-    let status = if is_ok_true(&result) { StatusCode::OK } else { StatusCode::UNPROCESSABLE_ENTITY };
+    let status = if is_ok_true(&result) {
+        StatusCode::OK
+    } else {
+        StatusCode::UNPROCESSABLE_ENTITY
+    };
     (status, Json(result)).into_response()
 }
 
@@ -231,7 +300,13 @@ async fn egress_handler(
     let Some(manifest) = state.runtime.manifests.load(&body.agent_id) else {
         return (
             StatusCode::UNPROCESSABLE_ENTITY,
-            Json(obj(vec![("ok", Value::Bool(false)), ("error", Value::String(String::from("task manifest missing")))])),
+            Json(obj(vec![
+                ("ok", Value::Bool(false)),
+                (
+                    "error",
+                    Value::String(String::from("task manifest missing")),
+                ),
+            ])),
         )
             .into_response();
     };
@@ -251,7 +326,10 @@ async fn egress_handler(
     let Some(route) = match_route(&cfg, &body.path) else {
         return (
             StatusCode::UNPROCESSABLE_ENTITY,
-            Json(obj(vec![("ok", Value::Bool(false)), ("error", Value::String(String::from("no egress route")))])),
+            Json(obj(vec![
+                ("ok", Value::Bool(false)),
+                ("error", Value::String(String::from("no egress route"))),
+            ])),
         )
             .into_response();
     };
@@ -261,13 +339,26 @@ async fn egress_handler(
             StatusCode::UNPROCESSABLE_ENTITY,
             Json(obj(vec![
                 ("ok", Value::Bool(false)),
-                ("error", Value::String(String::from("auth_token_env denied unless signed and non-provisional"))),
+                (
+                    "error",
+                    Value::String(String::from(
+                        "auth_token_env denied unless signed and non-provisional",
+                    )),
+                ),
             ])),
         )
             .into_response();
     }
     let bytes = body.body.as_ref().map(|s| s.as_bytes().to_vec());
-    let result = proxy_request_isolated(route, &body.method, &body.path, bytes, inject, Some(&isolated)).await;
+    let result = proxy_request_isolated(
+        route,
+        &body.method,
+        &body.path,
+        bytes,
+        inject,
+        Some(&isolated),
+    )
+    .await;
     match result {
         Ok(resp) => {
             let audit = EgressAudit {
@@ -280,8 +371,14 @@ async fn egress_handler(
                 manifest_digest: signed.digest.clone(),
             };
             let mut rec = serde_json::Map::new();
-            rec.insert(String::from("operation"), Value::String(String::from("egress_audit")));
-            rec.insert(String::from("snapshot"), serde_json::to_value(&audit).unwrap_or(Value::Null));
+            rec.insert(
+                String::from("operation"),
+                Value::String(String::from("egress_audit")),
+            );
+            rec.insert(
+                String::from("snapshot"),
+                serde_json::to_value(&audit).unwrap_or(Value::Null),
+            );
             let _ = state
                 .runtime
                 .journal
@@ -293,7 +390,10 @@ async fn egress_handler(
                     ("ok", Value::Bool(resp.status < 400)),
                     ("status", Value::from(resp.status)),
                     ("audit", serde_json::to_value(&audit).unwrap_or(Value::Null)),
-                    ("content_type", resp.content_type.map(Value::String).unwrap_or(Value::Null)),
+                    (
+                        "content_type",
+                        resp.content_type.map(Value::String).unwrap_or(Value::Null),
+                    ),
                     ("body_b64", Value::String(hex::encode(&resp.body))),
                 ])),
             )
@@ -301,12 +401,14 @@ async fn egress_handler(
         }
         Err(e) => (
             StatusCode::UNPROCESSABLE_ENTITY,
-            Json(obj(vec![("ok", Value::Bool(false)), ("error", Value::String(e))])),
+            Json(obj(vec![
+                ("ok", Value::Bool(false)),
+                ("error", Value::String(e)),
+            ])),
         )
             .into_response(),
     }
 }
-
 
 #[derive(Debug, Deserialize)]
 struct CompileBody {
@@ -322,7 +424,12 @@ async fn compile_handler(
     if let Some(resp) = require_auth(&state, &headers, Scope::Ingest) {
         return resp;
     }
-    let compiled: Result<TaskManifestV1, _> = if let Some(src) = body.source.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+    let compiled: Result<TaskManifestV1, _> = if let Some(src) = body
+        .source
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
         compile_provided(src)
     } else if let Some(value) = body.task_manifest {
         compile_provided_json(value)
@@ -331,7 +438,10 @@ async fn compile_handler(
             StatusCode::BAD_REQUEST,
             Json(obj(vec![
                 ("ok", Value::Bool(false)),
-                ("error", Value::String(String::from("supply source GAP text or task_manifest JSON"))),
+                (
+                    "error",
+                    Value::String(String::from("supply source GAP text or task_manifest JSON")),
+                ),
             ])),
         )
             .into_response();
@@ -342,7 +452,10 @@ async fn compile_handler(
             Json(obj(vec![
                 ("ok", Value::Bool(true)),
                 ("compiler", Value::String(String::from(LOCAL_PROFILE))),
-                ("task_manifest", serde_json::to_value(&m).unwrap_or(Value::Null)),
+                (
+                    "task_manifest",
+                    serde_json::to_value(&m).unwrap_or(Value::Null),
+                ),
             ])),
         )
             .into_response(),
@@ -383,21 +496,47 @@ async fn mcp_handler(
     (StatusCode::OK, Json(result)).into_response()
 }
 
-fn require_auth(state: &AppState, headers: &HeaderMap, scope: Scope) -> Option<axum::response::Response> {
-    let auth_hdr = headers.get(axum::http::header::AUTHORIZATION).and_then(|v| v.to_str().ok());
+fn require_auth(
+    state: &AppState,
+    headers: &HeaderMap,
+    scope: Scope,
+) -> Option<axum::response::Response> {
+    let auth_hdr = headers
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok());
     let api_hdr = headers.get("x-ucb-api-key").and_then(|v| v.to_str().ok());
     let token = extract_bearer_or_header(auth_hdr, api_hdr);
     let Some(token) = token else {
-        return Some((
-            StatusCode::UNAUTHORIZED,
-            Json(obj(vec![("ok", Value::Bool(false)), ("error", Value::String(String::from("UCB API key required (Authorization: Bearer or X-UCB-API-Key)")))])),
-        ).into_response());
+        return Some(
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(obj(vec![
+                    ("ok", Value::Bool(false)),
+                    (
+                        "error",
+                        Value::String(String::from(
+                            "UCB API key required (Authorization: Bearer or X-UCB-API-Key)",
+                        )),
+                    ),
+                ])),
+            )
+                .into_response(),
+        );
     };
     if state.auth.authorize(&token, scope).is_err() {
-        return Some((
-            StatusCode::FORBIDDEN,
-            Json(obj(vec![("ok", Value::Bool(false)), ("error", Value::String(String::from("invalid UCB API key or scope")))])),
-        ).into_response());
+        return Some(
+            (
+                StatusCode::FORBIDDEN,
+                Json(obj(vec![
+                    ("ok", Value::Bool(false)),
+                    (
+                        "error",
+                        Value::String(String::from("invalid UCB API key or scope")),
+                    ),
+                ])),
+            )
+                .into_response(),
+        );
     }
     None
 }
@@ -438,7 +577,9 @@ mod tests {
         assert!(parse_rollback_diff_ids(&serde_json::json!({"diff_ids": ["tail"]})).is_ok());
         let src = include_str!("http.rs");
         assert!(src.contains("parse_rollback_diff_ids"));
-        let parse_at = src.find("let diff_ids = match parse_rollback_diff_ids(&body)").expect("parser call");
+        let parse_at = src
+            .find("let diff_ids = match parse_rollback_diff_ids(&body)")
+            .expect("parser call");
         let call_at = src
             .find("rollback_foreign_integrations(&state.runtime, diff_ids)")
             .expect("rollback call");
@@ -463,12 +604,29 @@ mod tests {
 
     #[test]
     fn mcp_tool_scope_uses_mutating_scopes() {
-        assert_eq!(mcp_tool_scope(&serde_json::json!({"method": "tools/list"})), Scope::Ingest);
-        assert_eq!(mcp_tool_scope(&serde_json::json!({"method": "tools/call", "params": {"name": "ucb_rollback"}})), Scope::Rollback);
-        assert_eq!(mcp_tool_scope(&serde_json::json!({"method": "tools/call", "params": {"name": "ucb_delegate"}})), Scope::Delegate);
-        assert_eq!(mcp_tool_scope(&serde_json::json!({"method": "tools/call", "params": {"name": "ucb_ingest"}})), Scope::Ingest);
+        assert_eq!(
+            mcp_tool_scope(&serde_json::json!({"method": "tools/list"})),
+            Scope::Ingest
+        );
+        assert_eq!(
+            mcp_tool_scope(
+                &serde_json::json!({"method": "tools/call", "params": {"name": "ucb_rollback"}})
+            ),
+            Scope::Rollback
+        );
+        assert_eq!(
+            mcp_tool_scope(
+                &serde_json::json!({"method": "tools/call", "params": {"name": "ucb_delegate"}})
+            ),
+            Scope::Delegate
+        );
+        assert_eq!(
+            mcp_tool_scope(
+                &serde_json::json!({"method": "tools/call", "params": {"name": "ucb_ingest"}})
+            ),
+            Scope::Ingest
+        );
     }
-
 
     #[tokio::test]
     async fn mcp_http_requires_auth_and_refuses_malformed_args() {
@@ -491,15 +649,42 @@ mod tests {
 
         let runtime = std::sync::Arc::new(crate::bridge::UcbRuntime::new(config).unwrap());
         let (auth, _) = crate::auth::bootstrap_auth(dir.path(), Some("k"));
-        let app = build_router(AppState { runtime, auth, base_path: String::new() });
-        let unauth = app.clone().oneshot(
-            Request::builder().method("POST").uri("/ucb/v1/mcp").header("content-type", "application/json").body(Body::from("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}")).unwrap(),
-        ).await.unwrap();
+        let app = build_router(AppState {
+            runtime,
+            auth,
+            base_path: String::new(),
+        });
+        let unauth = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/ucb/v1/mcp")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}",
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
         assert_eq!(unauth.status(), StatusCode::UNAUTHORIZED);
 
-        let listed = app.clone().oneshot(
-            Request::builder().method("POST").uri("/ucb/v1/mcp").header("content-type", "application/json").header("x-ucb-api-key", "k").body(Body::from("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}")).unwrap(),
-        ).await.unwrap();
+        let listed = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/ucb/v1/mcp")
+                    .header("content-type", "application/json")
+                    .header("x-ucb-api-key", "k")
+                    .body(Body::from(
+                        "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}",
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
         assert_eq!(listed.status(), StatusCode::OK);
         let bad = app.oneshot(
             Request::builder().method("POST").uri("/ucb/v1/mcp").header("content-type", "application/json").header("x-ucb-api-key", "k").body(Body::from("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"ucb_ingest\",\"arguments\":\"bad\"}}")).unwrap(),
@@ -507,7 +692,9 @@ mod tests {
         assert_eq!(bad.status(), StatusCode::OK);
         let bytes = axum::body::to_bytes(bad.into_body(), 65536).await.unwrap();
         let v: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(v.get("error").and_then(|e| e.get("code")), Some(&Value::from(-32602)));
+        assert_eq!(
+            v.get("error").and_then(|e| e.get("code")),
+            Some(&Value::from(-32602))
+        );
     }
-
 }

@@ -6,14 +6,15 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/composite"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/go-chi/chi/v5"
 )
 
 // mockEventStore is a minimal event store for testing
@@ -237,68 +238,37 @@ func TestPolicyAPI_CreatePolicy(t *testing.T) {
 	r := chi.NewRouter()
 	r.Post("/policies", app.createPolicy)
 
-	tests := []struct {
-		name       string
-		body       CreatePolicyRequest
-		wantStatus int
-	}{
-		{
-			name: "valid policy",
-			body: CreatePolicyRequest{
-				Name: "Test Policy",
-				Type: "file",
-				Rules: []PolicyRule{
-					{Name: "allow-tmp", Paths: []string{"/tmp/**"}, Action: "allow"},
-				},
-			},
-			wantStatus: http.StatusCreated,
+	// Policy writes through the API never change enforcement: policies are edited
+	// on disk and reloaded, so create answers 501 for every body and stores nothing.
+	bodies := map[string]CreatePolicyRequest{
+		"valid_policy": {
+			Name:  "Test Policy",
+			Type:  "file",
+			Rules: []PolicyRule{{Name: "allow-tmp", Paths: []string{"/tmp"}, Action: "allow"}},
 		},
-		{
-			name: "missing name",
-			body: CreatePolicyRequest{
-				Type: "file",
-				Rules: []PolicyRule{
-					{Name: "rule1", Paths: []string{"/tmp"}, Action: "allow"},
-				},
-			},
-			wantStatus: http.StatusBadRequest,
-		},
-		{
-			name: "missing type",
-			body: CreatePolicyRequest{
-				Name: "Test",
-				Rules: []PolicyRule{
-					{Name: "rule1", Paths: []string{"/tmp"}, Action: "allow"},
-				},
-			},
-			wantStatus: http.StatusBadRequest,
-		},
-		{
-			name: "invalid rules",
-			body: CreatePolicyRequest{
-				Name: "Test",
-				Type: "file",
-				Rules: []PolicyRule{
-					{Paths: []string{"/tmp"}, Action: "allow"}, // missing name
-				},
-			},
-			wantStatus: http.StatusBadRequest,
-		},
+		"missing_name": {Type: "file"},
+		"missing_type": {Name: "Test"},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			body, _ := json.Marshal(tt.body)
-			req := httptest.NewRequest(http.MethodPost, "/policies", bytes.NewReader(body))
+	for name, body := range bodies {
+		t.Run(name, func(t *testing.T) {
+			raw, _ := json.Marshal(body)
+			req := httptest.NewRequest(http.MethodPost, "/policies", bytes.NewReader(raw))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
-
 			r.ServeHTTP(w, req)
-
-			if w.Code != tt.wantStatus {
-				t.Errorf("status = %d, want %d: %s", w.Code, tt.wantStatus, w.Body.String())
+			if w.Code != http.StatusNotImplemented {
+				t.Errorf("status = %d, want %d: %s", w.Code, http.StatusNotImplemented, w.Body.String())
+			}
+			if !strings.Contains(w.Body.String(), "edit on-disk policies and reload") {
+				t.Errorf("body should point to on-disk edits: %s", w.Body.String())
 			}
 		})
+	}
+	<-policyStoreMu
+	n := len(policyStore)
+	policyStoreMu <- struct{}{}
+	if n != 0 {
+		t.Errorf("create stored %d policies, want 0", n)
 	}
 }
 
@@ -368,22 +338,19 @@ func TestPolicyAPI_UpdatePolicy(t *testing.T) {
 	r := chi.NewRouter()
 	r.Put("/policies/{policyId}", app.updatePolicy)
 
-	// Update name
 	body, _ := json.Marshal(UpdatePolicyRequest{Name: "Updated Name"})
 	req := httptest.NewRequest(http.MethodPut, "/policies/policy-123", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
-
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Errorf("status = %d, want %d: %s", w.Code, http.StatusOK, w.Body.String())
+	// Update is fail closed: 501 and the stored policy is unchanged.
+	if w.Code != http.StatusNotImplemented {
+		t.Errorf("status = %d, want %d: %s", w.Code, http.StatusNotImplemented, w.Body.String())
 	}
-
-	// Verify update
 	got := app.findPolicyByID("policy-123")
-	if got.Name != "Updated Name" {
-		t.Errorf("Name = %s, want Updated Name", got.Name)
+	if got == nil || got.Name != "Original Name" {
+		t.Errorf("policy changed by update: %+v", got)
 	}
 }
 
@@ -403,22 +370,16 @@ func TestPolicyAPI_DeletePolicy(t *testing.T) {
 	r := chi.NewRouter()
 	r.Delete("/policies/{policyId}", app.deletePolicy)
 
-	// Delete existing
 	req := httptest.NewRequest(http.MethodDelete, "/policies/policy-123", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	// Delete is fail closed: 501 and the policy is still there.
+	if w.Code != http.StatusNotImplemented {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusNotImplemented)
 	}
-
-	// Delete again should fail
-	req = httptest.NewRequest(http.MethodDelete, "/policies/policy-123", nil)
-	w = httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusNotFound {
-		t.Errorf("second delete status = %d, want %d", w.Code, http.StatusNotFound)
+	if app.findPolicyByID("policy-123") == nil {
+		t.Errorf("policy removed by delete")
 	}
 }
 

@@ -9,23 +9,28 @@
 //! Admit collect-all then Apply runs on the Base Node pulse beat against the frozen seal snapshot.
 //! aep-lattice-log Record must call admit_sealed_payload_on_live_dock before kernel INSERT.
 //! Every ClosedWall construction sets class. Writing walls stay on the Admit pass.
+use crate::BaseNodeError;
 use aep_admit_live_dock::LiveDockContext;
-use aep_one_live_evaluation::attach_live_walls;
 use aep_live_entry::{LiveEntry, ProcessOut};
+use aep_one_live_evaluation::attach_live_walls;
 use aep_wall_set_backpressure::{classify_wall, ClosedWall, DenyReport, CLASS_STRUCTURAL};
 use serde_json::Value;
 use std::path::Path;
-use crate::BaseNodeError;
 
 pub fn load_live_entry(data_dir: &Path) -> Result<LiveEntry, BaseNodeError> {
-    let env_path = std::env::var("AEP_LATTICE_YAML").ok().filter(|p| p.is_empty() == false);
+    let env_path = std::env::var("AEP_LATTICE_YAML")
+        .ok()
+        .filter(|p| !p.is_empty());
     load_live_entry_from_paths(env_path.as_deref().map(Path::new), data_dir)
 }
 
 /// A set env path that is missing or unreadable is Deny. Do not fall through to data_dir.
 /// A path that ends in .gap is read as a GAP lattice. Without an
 /// env path the data dir lattice.yaml wins and lattice.gap is read when it is absent.
-pub fn load_live_entry_from_paths(env_yaml: Option<&Path>, data_dir: &Path) -> Result<LiveEntry, BaseNodeError> {
+pub fn load_live_entry_from_paths(
+    env_yaml: Option<&Path>,
+    data_dir: &Path,
+) -> Result<LiveEntry, BaseNodeError> {
     if let Some(p) = env_yaml {
         return match LiveEntry::from_lattice_file(p) {
             Ok(le) => Ok(le),
@@ -55,7 +60,7 @@ pub fn admit_sealed_payload_on_live_dock(
     live: &mut LiveEntry,
     plaintext: &[u8],
     dock: &LiveDockContext,
-)-> Result<(), BaseNodeError> {
+) -> Result<(), BaseNodeError> {
     match admit_sealed_payload_report(live, plaintext, dock) {
         Ok(()) => Ok(()),
         Err(r) => Err(BaseNodeError::from(r)),
@@ -72,7 +77,11 @@ pub fn admit_sealed_payload_report(
         Err(_) => {
             return Err(DenyReport::from_error_and_closed(
                 "Admit collect-all walls then Apply: plaintext is not JSON",
-                &[ClosedWall::with_class("payload.json", "plaintext is not JSON", CLASS_STRUCTURAL)],
+                &[ClosedWall::with_class(
+                    "payload.json",
+                    "plaintext is not JSON",
+                    CLASS_STRUCTURAL,
+                )],
             ));
         }
     };
@@ -81,11 +90,15 @@ pub fn admit_sealed_payload_report(
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
- // Empty action_path is collect-all Deny before Apply.
+    // Empty action_path is collect-all Deny before Apply.
     if action_path.is_empty() {
         return Err(DenyReport::from_error_and_closed(
             "Admit collect-all walls then Apply: missing action_path",
-            &[ClosedWall::with_class("action.path", "missing action_path", CLASS_STRUCTURAL)],
+            &[ClosedWall::with_class(
+                "action.path",
+                "missing action_path",
+                CLASS_STRUCTURAL,
+            )],
         ));
     }
     attach_live_walls(live, &value, dock);
@@ -95,11 +108,13 @@ pub fn admit_sealed_payload_report(
             let closed: Vec<ClosedWall> = r
                 .closed
                 .iter()
-                .map(|w| ClosedWall::with_class(
-                    w.id.clone(),
-                    w.reason.clone(),
-                    classify_wall(&w.id, &w.reason),
-                ))
+                .map(|w| {
+                    ClosedWall::with_class(
+                        w.id.clone(),
+                        w.reason.clone(),
+                        classify_wall(&w.id, &w.reason),
+                    )
+                })
                 .collect();
             Err(DenyReport::from_error_and_closed(&r.error, &closed))
         }
@@ -118,20 +133,26 @@ mod tests {
     fn denies_non_json() {
         let mut le = LiveEntry::new();
         let err = admit_sealed_payload(&mut le, b"not-json").expect_err("deny");
-        assert!(err.to_string().contains("Admit collect-all walls then Apply"));
+        assert!(err
+            .to_string()
+            .contains("Admit collect-all walls then Apply"));
     }
     #[test]
     fn denies_without_action_path() {
         let mut le = LiveEntry::new();
         let err = admit_sealed_payload(&mut le, br#"{"type":"PING"}"#).expect_err("deny");
-        assert!(err.to_string().contains("Admit collect-all walls then Apply"));
+        assert!(err
+            .to_string()
+            .contains("Admit collect-all walls then Apply"));
     }
     #[test]
     fn ping_meets_admit() {
         let mut le = LiveEntry::from_yaml(yaml()).expect("yaml");
         le.set_clock_ms(1000000);
         let err = admit_sealed_payload(&mut le, br#"{"type":"PING"}"#).expect_err("deny");
-        assert!(err.to_string().contains("Admit collect-all walls then Apply"));
+        assert!(err
+            .to_string()
+            .contains("Admit collect-all walls then Apply"));
     }
     #[test]
     fn ping_with_action_path_allows() {
@@ -146,13 +167,17 @@ mod tests {
         le.set_clock_ms(1000000);
         let body = br#"{"type":"CUSTOM","action_path":"bogus:path","payload":{"ok":true},"timestamp":1000000}"#;
         let err = admit_sealed_payload(&mut le, body).expect_err("deny");
-        assert!(err.to_string().contains("Admit collect-all walls then Apply"));
+        assert!(err
+            .to_string()
+            .contains("Admit collect-all walls then Apply"));
     }
     #[test]
     fn allows_known_path() {
         let mut le = LiveEntry::from_yaml(yaml()).expect("yaml");
         le.set_clock_ms(1000000);
-        le.snapshot.satisfied_actions.insert(String::from("root:ping"));
+        le.snapshot
+            .satisfied_actions
+            .insert(String::from("root:ping"));
         let body = br#"{"type":"CUSTOM","action_path":"action:write","agent_id":"agent-a","payload":{"ok":true},"timestamp":1000000,"target_id":"scene-a","_sequenceNumber":1}"#;
         assert!(admit_sealed_payload(&mut le, body).is_ok());
     }
@@ -162,20 +187,18 @@ mod tests {
         let a = ["skips", "_non_json"].concat();
         let b = ["skips", "_without_action_path"].concat();
         let c = ["Err(_) => return Ok", "(())"].concat();
-        assert_eq!(src.contains(&a), false);
-        assert_eq!(src.contains(&b), false);
-        assert_eq!(src.contains(&c), false);
+        assert!(!src.contains(&a));
+        assert!(!src.contains(&b));
+        assert!(!src.contains(&c));
     }
     #[test]
     fn live_dock_is_on_path() {
         let src = include_str!("envelope_admit.rs");
-        assert_eq!(src.contains("aep_admit_live_dock"), true);
-        assert_eq!(src.contains("aep_one_live_evaluation"), true);
-        assert_eq!(src.contains("attach_live_walls"), true);
-        assert_eq!(src.contains("process_event"), true);
-        let start = src
-            .find("pub fn admit_sealed_payload_report")
-            .expect("fn");
+        assert!(src.contains("aep_admit_live_dock"));
+        assert!(src.contains("aep_one_live_evaluation"));
+        assert!(src.contains("attach_live_walls"));
+        assert!(src.contains("process_event"));
+        let start = src.find("pub fn admit_sealed_payload_report").expect("fn");
         let rest = &src[start..];
         let brace = rest.find("{").expect("brace");
         let bytes = rest.as_bytes();
@@ -195,10 +218,10 @@ mod tests {
             i += 1;
         }
         let fn_body = &rest[..end];
-        let compact: String = fn_body.chars().filter(|c| c.is_whitespace() == false).collect();
-        assert_eq!(compact.contains("attach_live_walls"), true);
-        assert_eq!(compact.contains("process_event"), true);
-        assert_eq!(compact.contains("live_collect_all"), false);
+        let compact: String = fn_body.chars().filter(|c| !c.is_whitespace()).collect();
+        assert!(compact.contains("attach_live_walls"));
+        assert!(compact.contains("process_event"));
+        assert!(!compact.contains("live_collect_all"));
     }
     #[test]
     fn non_json_report_has_payload_wall() {
@@ -206,8 +229,11 @@ mod tests {
         let err = admit_sealed_payload_report(&mut le, b"not-json", &LiveDockContext::unit_open())
             .expect_err("deny");
         assert!(err.closed.iter().any(|w| w.id == "payload.json"));
-        assert!(err.closed.iter().any(|w| w.id == "payload.json" && w.class == "structural"));
-        assert_eq!(err.reseal_required, true);
+        assert!(err
+            .closed
+            .iter()
+            .any(|w| w.id == "payload.json" && w.class == "structural"));
+        assert!(err.reseal_required);
         assert!(err.repairs.iter().any(|h| h.kind == "reseal_new_capsule"));
     }
     #[test]
@@ -220,7 +246,10 @@ mod tests {
         )
         .expect_err("deny");
         assert!(err.closed.iter().any(|w| w.id == "action.path"));
-        assert!(err.closed.iter().any(|w| w.id == "action.path" && w.class == "structural"));
+        assert!(err
+            .closed
+            .iter()
+            .any(|w| w.id == "action.path" && w.class == "structural"));
         assert!(err.repairs.iter().any(|h| h.field == "action_path"));
     }
     #[test]
@@ -228,12 +257,21 @@ mod tests {
         let mut le = LiveEntry::new();
         let mut map = serde_json::Map::new();
         map.insert(String::from("type"), Value::String(String::from("PING")));
-        map.insert(String::from("action_path"), Value::String(String::from("root:ping")));
+        map.insert(
+            String::from("action_path"),
+            Value::String(String::from("root:ping")),
+        );
         let body = serde_json::to_vec(&Value::Object(map)).expect("body");
         let err = admit_sealed_payload_report(&mut le, &body, &LiveDockContext::unit_open())
             .expect_err("deny");
-        assert!(err.closed.iter().any(|w| w.id == "gap.agent_permission" && w.class == CLASS_CAPABILITY));
-        assert!(err.closed.iter().any(|w| w.id == "dag.membership" && w.class == CLASS_STRUCTURAL));
+        assert!(err
+            .closed
+            .iter()
+            .any(|w| w.id == "gap.agent_permission" && w.class == CLASS_CAPABILITY));
+        assert!(err
+            .closed
+            .iter()
+            .any(|w| w.id == "dag.membership" && w.class == CLASS_STRUCTURAL));
     }
     #[test]
     fn writing_wall_maps_to_writing_class() {
@@ -241,9 +279,15 @@ mod tests {
         le.set_clock_ms(1000000);
         let mut map = serde_json::Map::new();
         map.insert(String::from("type"), Value::String(String::from("PING")));
-        map.insert(String::from("action_path"), Value::String(String::from("root:ping")));
+        map.insert(
+            String::from("action_path"),
+            Value::String(String::from("root:ping")),
+        );
         map.insert(String::from("timestamp"), Value::from(1000000));
-        map.insert(String::from("target_id"), Value::String(String::from("scene-a")));
+        map.insert(
+            String::from("target_id"),
+            Value::String(String::from("scene-a")),
+        );
         map.insert(String::from("_sequenceNumber"), Value::from(1));
         let mut payload = serde_json::Map::new();
         let mut note = String::from("hello");
@@ -254,12 +298,16 @@ mod tests {
         let body = serde_json::to_vec(&Value::Object(map)).expect("body");
         let err = admit_sealed_payload_report(&mut le, &body, &LiveDockContext::unit_open())
             .expect_err("deny");
-        assert!(err.closed.iter().any(|w| w.id == "writing:no_em_dashes" && w.class == CLASS_WRITING));
+        assert!(err
+            .closed
+            .iter()
+            .any(|w| w.id == "writing:no_em_dashes" && w.class == CLASS_WRITING));
     }
     fn deny_empty_lattice(le: &mut LiveEntry, body: &[u8]) {
         let err = admit_sealed_payload(le, body).expect_err("deny");
         assert!(
-            err.to_string().contains("Admit collect-all walls then Apply")
+            err.to_string()
+                .contains("Admit collect-all walls then Apply")
                 || err.to_string().contains("Lattice required")
         );
     }
@@ -267,7 +315,10 @@ mod tests {
     fn missing_lattice_is_start_failure() {
         let dir = tempfile::tempdir().expect("tmp");
         let loaded = load_live_entry(dir.path());
-        let err = match loaded { Ok(_) => panic!("deny"), Err(e) => e };
+        let err = match loaded {
+            Ok(_) => panic!("deny"),
+            Err(e) => e,
+        };
         assert!(err.to_string().contains("lattice yaml missing"));
     }
     #[test]
@@ -275,7 +326,10 @@ mod tests {
         let dir = tempfile::tempdir().expect("tmp");
         std::fs::write(dir.path().join("lattice.yaml"), "{{ not a lattice").expect("bad yaml");
         let loaded = load_live_entry(dir.path());
-        let err = match loaded { Ok(_) => panic!("deny"), Err(e) => e };
+        let err = match loaded {
+            Ok(_) => panic!("deny"),
+            Err(e) => e,
+        };
         assert!(err.to_string().contains("unreadable lattice yaml"));
     }
     #[test]
@@ -285,7 +339,10 @@ mod tests {
         let bad = dir.path().join("bad.yaml");
         std::fs::write(&bad, "{{ not a lattice").expect("bad yaml");
         let loaded = load_live_entry_from_paths(Some(&bad), dir.path());
-        let err = match loaded { Ok(_) => panic!("deny"), Err(e) => e };
+        let err = match loaded {
+            Ok(_) => panic!("deny"),
+            Err(e) => e,
+        };
         assert!(err.to_string().contains("unreadable lattice yaml"));
     }
     fn gap_of(yaml_text: &str) -> String {
@@ -301,7 +358,7 @@ mod tests {
         let yaml_dir = tempfile::tempdir().expect("tmp");
         std::fs::write(yaml_dir.path().join("lattice.yaml"), yaml()).expect("yaml");
         let gap_dir = tempfile::tempdir().expect("tmp");
-        std::fs::write(gap_dir.path().join("lattice.gap"), gap_of(&yaml())).expect("gap");
+        std::fs::write(gap_dir.path().join("lattice.gap"), gap_of(yaml())).expect("gap");
         let from_yaml = load_live_entry_from_paths(None, yaml_dir.path()).expect("yaml boot");
         let from_gap = load_live_entry_from_paths(None, gap_dir.path()).expect("gap boot");
         assert!(!node_ids(&from_gap).is_empty());
@@ -311,15 +368,22 @@ mod tests {
     fn env_gap_path_is_read_as_gap() {
         let dir = tempfile::tempdir().expect("tmp");
         let g = dir.path().join("cluster-lattice.gap");
-        std::fs::write(&g, gap_of(&yaml())).expect("gap");
+        std::fs::write(&g, gap_of(yaml())).expect("gap");
         let le = load_live_entry_from_paths(Some(&g), dir.path()).expect("env gap boot");
         assert!(!node_ids(&le).is_empty());
     }
     #[test]
     fn gap_without_lattice_document_is_start_failure() {
         let dir = tempfile::tempdir().expect("tmp");
-        std::fs::write(dir.path().join("lattice.gap"), "address:\n  id: x\npattern: none\n").expect("gap");
-        let err = match load_live_entry_from_paths(None, dir.path()) { Ok(_) => panic!("deny"), Err(e) => e };
+        std::fs::write(
+            dir.path().join("lattice.gap"),
+            "address:\n  id: x\npattern: none\n",
+        )
+        .expect("gap");
+        let err = match load_live_entry_from_paths(None, dir.path()) {
+            Ok(_) => panic!("deny"),
+            Err(e) => e,
+        };
         assert!(err.to_string().contains("unreadable lattice yaml"));
     }
     #[test]
@@ -364,11 +428,13 @@ mod tests {
         let before_ts = le.snapshot.bridge_ts_ms;
         let body = br#"{"type":"STATE_DELTA","delta":[{"op":"replace","path":"/elements/CP-00001/z","value":21}]}"#;
         let err = admit_sealed_payload(&mut le, body).expect_err("deny");
-        assert!(err.to_string().contains("Admit collect-all walls then Apply"));
+        assert!(err
+            .to_string()
+            .contains("Admit collect-all walls then Apply"));
         assert!(err.to_string().contains("missing action_path"));
         assert_eq!(le.live.get("CP-00001").unwrap().z, 20);
         assert_eq!(le.snapshot.bridge_ts_ms, before_ts);
-        assert_eq!(le.forecast.contains_key("CP-00001"), false);
+        assert!(!le.forecast.contains_key("CP-00001"));
     }
     #[test]
     fn forecast_without_action_path_does_not_write_coordinates() {
@@ -377,8 +443,10 @@ mod tests {
         let before_ts = le.snapshot.bridge_ts_ms;
         let body = br#"{"type":"CUSTOM","dynaep_type":"AEP_RUNTIME_COORDINATES","target_id":"CP-00001","coordinates":{"x":1,"y":2}}"#;
         let err = admit_sealed_payload(&mut le, body).expect_err("deny");
-        assert!(err.to_string().contains("Admit collect-all walls then Apply"));
-        assert_eq!(le.forecast.contains_key("CP-00001"), false);
+        assert!(err
+            .to_string()
+            .contains("Admit collect-all walls then Apply"));
+        assert!(!le.forecast.contains_key("CP-00001"));
         assert_eq!(le.snapshot.bridge_ts_ms, before_ts);
     }
     #[test]
@@ -402,8 +470,8 @@ mod tests {
         assert_eq!(admit_live.live.get("CP-00001").unwrap().z, 20);
         assert_eq!(pe_live.snapshot.bridge_ts_ms, 1000000);
         assert_eq!(admit_live.snapshot.bridge_ts_ms, 1000000);
-        assert_eq!(pe_live.forecast.contains_key("CP-00001"), false);
-        assert_eq!(admit_live.forecast.contains_key("CP-00001"), false);
+        assert!(!pe_live.forecast.contains_key("CP-00001"));
+        assert!(!admit_live.forecast.contains_key("CP-00001"));
     }
     #[test]
     fn collect_all_deny_runs_before_process_event() {
@@ -414,9 +482,12 @@ mod tests {
         let body = &src[start..];
         let empty = body.find("action_path.is_empty()").expect("empty check");
         let pe = body.find("live.process_event").expect("process_event");
-        assert!(empty < pe, "empty action_path Deny must run before process_event");
-        let compact: String = src.chars().filter(|c| c.is_whitespace() == false).collect();
+        assert!(
+            empty < pe,
+            "empty action_path Deny must run before process_event"
+        );
+        let compact: String = src.chars().filter(|c| !c.is_whitespace()).collect();
         let a = ["ProcessOut::Event(_)=>", "{ifaction_path.is_empty()}"].concat();
-        assert_eq!(compact.contains(&a), false);
+        assert!(!compact.contains(&a));
     }
 }

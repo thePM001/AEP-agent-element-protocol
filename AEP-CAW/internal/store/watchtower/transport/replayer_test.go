@@ -39,14 +39,14 @@ func openTestWAL(t *testing.T) *wal.WAL {
 // replay either). Drain via NextBatch.
 //
 // Assertions:
-//  - First record surfaced is gen=1 seq=3 (within-window).
-//  - At most one over-tail RecordData surfaces (the boundary record), and if
-//    it does it must be gen=1 seq=4.
-//  - No record with Generation=2 is surfaced (the segment-iteration filter
-//    in Reader blocks gen=2 segments entirely).
-//  - done=true is returned.
-//  - LastReplayedSequence() returns (1, ∈{3,4}).
-//  - Tail() unchanged at (1, 3).
+//   - First record surfaced is gen=1 seq=3 (within-window).
+//   - At most one over-tail RecordData surfaces (the boundary record), and if
+//     it does it must be gen=1 seq=4.
+//   - No record with Generation=2 is surfaced (the segment-iteration filter
+//     in Reader blocks gen=2 segments entirely).
+//   - done=true is returned.
+//   - LastReplayedSequence() returns (1, ∈{3,4}).
+//   - Tail() unchanged at (1, 3).
 //
 // CRITICAL: under the round-12 design (scalar tailSeq=3), the Replayer would
 // compare rec.Sequence > 3 and surface gen=2's seq=4 as a within-window record

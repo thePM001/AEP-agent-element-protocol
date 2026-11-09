@@ -10,8 +10,18 @@ use std::sync::{Arc, Mutex};
 static LOCK: Mutex<()> = Mutex::new(());
 
 fn sh(dir: &Path, cmd: &str) -> String {
-    let o = Command::new("bash").arg("-c").arg(cmd).current_dir(dir).output().unwrap();
-    assert!(o.status.success(), "{}: {}", cmd, String::from_utf8_lossy(&o.stderr));
+    let o = Command::new("bash")
+        .arg("-c")
+        .arg(cmd)
+        .current_dir(dir)
+        .output()
+        .unwrap();
+    assert!(
+        o.status.success(),
+        "{}: {}",
+        cmd,
+        String::from_utf8_lossy(&o.stderr)
+    );
     String::from_utf8_lossy(&o.stdout).trim().to_string()
 }
 
@@ -32,26 +42,49 @@ fn setup(name: &str) -> PathBuf {
     sh(&bare, "git init -q --bare -b main .");
     let w = base.join("w");
     fs::create_dir_all(&w).unwrap();
-    fs::write(w.join("README.md"), "# Demo\n\nThe first line of the demo.\n").unwrap();
+    fs::write(
+        w.join("README.md"),
+        "# Demo\n\nThe first line of the demo.\n",
+    )
+    .unwrap();
     fs::write(w.join("notes.txt"), "alpha\nbeta\n").unwrap();
     sh(&w, &format!("git init -q -b main . && git add -A && git -c user.name=t -c user.email=t@t commit -q -m init && git push -q {} main", bare.display()));
     base
 }
 
 fn git_forge(base: &Path) -> GitForge {
-    GitForge { remote_base: format!("file://{}/remote", base.display()), direct: false }
+    GitForge {
+        remote_base: format!("file://{}/remote", base.display()),
+        direct: false,
+    }
 }
 
 fn land_outside(base: &Path, file: &str, body: &str) {
     let w = base.join(format!("outside-{}", file));
     let _ = fs::remove_dir_all(&w);
-    sh(base, &format!("git clone -q file://{}/remote/owner/demo.git {}", base.display(), w.display()));
+    sh(
+        base,
+        &format!(
+            "git clone -q file://{}/remote/owner/demo.git {}",
+            base.display(),
+            w.display()
+        ),
+    );
     fs::write(w.join(file), body).unwrap();
-    sh(&w, "git -c user.name=o -c user.email=o@o commit -q -am outside && git push -q origin main");
+    sh(
+        &w,
+        "git -c user.name=o -c user.email=o@o commit -q -am outside && git push -q origin main",
+    );
 }
 
 fn tree(draft: &str) -> PathBuf {
-    PathBuf::from(aep_ede::status(draft).note.split_whitespace().nth(1).unwrap())
+    PathBuf::from(
+        aep_ede::status(draft)
+            .note
+            .split_whitespace()
+            .nth(1)
+            .unwrap(),
+    )
 }
 
 #[test]
@@ -62,31 +95,77 @@ fn git_forge_seeds_scans_and_promotes_to_a_branch() {
     let s = aep_ede::seed(&forge, "owner/demo", "main");
     assert!(s.ok, "{}", s.render());
     let t = tree(&s.draft);
-    let push = Command::new("git").arg("-C").arg(&t).args(["push", "origin", "HEAD:main"]).output().unwrap();
+    let push = Command::new("git")
+        .arg("-C")
+        .arg(&t)
+        .args(["push", "origin", "HEAD:main"])
+        .output()
+        .unwrap();
     assert!(!push.status.success(), "a push from the draft must fail");
     assert_eq!(aep_ede::scan(&s.draft).code, "scan_empty");
-    fs::write(t.join("README.md"), "# Demo\n\nThe first line of the demo.\nA second line \u{2014} with a dash.\n").unwrap();
+    fs::write(
+        t.join("README.md"),
+        "# Demo\n\nThe first line of the demo.\nA second line \u{2014} with a dash.\n",
+    )
+    .unwrap();
     fs::write(t.join("src.rs"), "pub fn f() {}\n").unwrap();
     fs::remove_file(t.join("notes.txt")).unwrap();
     let w = aep_ede::scan(&s.draft);
     assert_eq!(w.code, "scan_writing", "{}", w.render());
     assert!(w.note.contains("README.md:4:"), "{}", w.note);
-    fs::write(t.join("README.md"), "# Demo\n\nThe first line of the demo.\nA second line without a dash.\n").unwrap();
+    fs::write(
+        t.join("README.md"),
+        "# Demo\n\nThe first line of the demo.\nA second line without a dash.\n",
+    )
+    .unwrap();
     let ok = aep_ede::scan(&s.draft);
     assert!(ok.ok, "{}", ok.render());
     assert!(ok.note.starts_with("3 changes:"), "{}", ok.note);
     fs::write(t.join("src.rs"), "pub fn f() { sneak() }\n").unwrap();
-    assert_eq!(aep_ede::promote(&forge, &s.draft, "m").code, "promote_changed_since_scan");
+    assert_eq!(
+        aep_ede::promote(&forge, &s.draft, "m").code,
+        "promote_changed_since_scan"
+    );
     assert!(aep_ede::scan(&s.draft).ok);
-    assert_eq!(aep_ede::promote(&forge, &s.draft, "").code, "promote_message");
+    assert_eq!(
+        aep_ede::promote(&forge, &s.draft, "").code,
+        "promote_message"
+    );
     let p = aep_ede::promote(&forge, &s.draft, "Add src.rs and drop notes");
     assert!(p.ok, "{}", p.render());
     let branch = format!("aep-ede/{}", s.draft);
-    assert!(p.note.starts_with(&format!("branch {}", branch)), "{}", p.note);
+    assert!(
+        p.note.starts_with(&format!("branch {}", branch)),
+        "{}",
+        p.note
+    );
     let bare = base.join("remote/owner/demo.git");
-    assert_eq!(sh(&base, &format!("git --git-dir={} show {}:src.rs", bare.display(), branch)), "pub fn f() { sneak() }");
-    assert_eq!(sh(&base, &format!("git --git-dir={} log --format=%s -1 {}", bare.display(), branch)), "Add src.rs and drop notes");
-    assert_eq!(sh(&base, &format!("git --git-dir={} log --format=%s -1 main", bare.display())), "init", "main is untouched");
+    assert_eq!(
+        sh(
+            &base,
+            &format!("git --git-dir={} show {}:src.rs", bare.display(), branch)
+        ),
+        "pub fn f() { sneak() }"
+    );
+    assert_eq!(
+        sh(
+            &base,
+            &format!(
+                "git --git-dir={} log --format=%s -1 {}",
+                bare.display(),
+                branch
+            )
+        ),
+        "Add src.rs and drop notes"
+    );
+    assert_eq!(
+        sh(
+            &base,
+            &format!("git --git-dir={} log --format=%s -1 main", bare.display())
+        ),
+        "init",
+        "main is untouched"
+    );
     assert!(aep_ede::expire(&s.draft).ok);
     let _ = fs::remove_dir_all(&base);
 }
@@ -95,7 +174,10 @@ fn git_forge_seeds_scans_and_promotes_to_a_branch() {
 fn promote_rebases_on_a_moved_branch_and_refuses_a_conflict() {
     let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let base = setup("tip");
-    let forge = GitForge { remote_base: format!("file://{}/remote", base.display()), direct: true };
+    let forge = GitForge {
+        remote_base: format!("file://{}/remote", base.display()),
+        direct: true,
+    };
     let s = aep_ede::seed(&forge, "owner/demo", "main");
     let t = tree(&s.draft);
     fs::write(t.join("new.rs"), "pub fn n() {}\n").unwrap();
@@ -104,8 +186,20 @@ fn promote_rebases_on_a_moved_branch_and_refuses_a_conflict() {
     let p = aep_ede::promote(&forge, &s.draft, "Add new.rs");
     assert!(p.ok, "{}", p.render());
     let bare = base.join("remote/owner/demo.git");
-    assert_eq!(sh(&base, &format!("git --git-dir={} show main:notes.txt", bare.display())), "alpha\nbeta\ngamma");
-    assert_eq!(sh(&base, &format!("git --git-dir={} show main:new.rs", bare.display())), "pub fn n() {}");
+    assert_eq!(
+        sh(
+            &base,
+            &format!("git --git-dir={} show main:notes.txt", bare.display())
+        ),
+        "alpha\nbeta\ngamma"
+    );
+    assert_eq!(
+        sh(
+            &base,
+            &format!("git --git-dir={} show main:new.rs", bare.display())
+        ),
+        "pub fn n() {}"
+    );
 
     let s2 = aep_ede::seed(&forge, "owner/demo", "main");
     let t2 = tree(&s2.draft);
@@ -115,7 +209,11 @@ fn promote_rebases_on_a_moved_branch_and_refuses_a_conflict() {
     let c = aep_ede::promote(&forge, &s2.draft, "Change notes");
     assert_eq!(c.code, "tip_conflict", "{}", c.render());
     assert!(c.note.contains("notes.txt"), "{}", c.note);
-    assert_eq!(fs::read_to_string(t2.join("notes.txt")).unwrap(), "alpha\nmine\n", "the work survives a conflict");
+    assert_eq!(
+        fs::read_to_string(t2.join("notes.txt")).unwrap(),
+        "alpha\nmine\n",
+        "the work survives a conflict"
+    );
     let _ = fs::remove_dir_all(&base);
 }
 
@@ -139,7 +237,11 @@ fn api_stub() -> (String, Arc<Mutex<String>>, std::thread::JoinHandle<()>) {
             if let Some(head_end) = text.find("\r\n\r\n") {
                 let len = text[..head_end]
                     .lines()
-                    .find_map(|l| l.to_ascii_lowercase().strip_prefix("content-length:").map(|v| v.trim().parse::<usize>().unwrap_or(0)))
+                    .find_map(|l| {
+                        l.to_ascii_lowercase()
+                            .strip_prefix("content-length:")
+                            .map(|v| v.trim().parse::<usize>().unwrap_or(0))
+                    })
                     .unwrap_or(0);
                 if buf.len() >= head_end + 4 + len {
                     break;
@@ -159,7 +261,11 @@ fn github_forge_pushes_a_branch_and_opens_a_pull_request() {
     let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let base = setup("gh");
     let web = format!("file://{}/remote", base.display());
-    let no_token = GitHubForge { web: web.clone(), api: "http://localhost:9".into(), token: String::new() };
+    let no_token = GitHubForge {
+        web: web.clone(),
+        api: "http://localhost:9".into(),
+        token: String::new(),
+    };
     let s = aep_ede::seed(&no_token, "owner/demo", "main");
     assert!(s.ok, "{}", s.render());
     fs::write(tree(&s.draft).join("pr.rs"), "pub fn pr() {}\n").unwrap();
@@ -169,21 +275,59 @@ fn github_forge_pushes_a_branch_and_opens_a_pull_request() {
     assert!(refused.note.contains("GITHUB_TOKEN"), "{}", refused.note);
     assert!(aep_ede::scan(&s.draft).ok, "a refused land keeps the work");
     let (api, seen, h) = api_stub();
-    let forge = GitHubForge { web, api, token: "test-token-value".into() };
-    assert!(forge.git_env().iter().any(|(k, v)| k == "GIT_CONFIG_VALUE_0" && v.starts_with("Authorization: Basic ")));
+    let forge = GitHubForge {
+        web,
+        api,
+        token: "test-token-value".into(),
+    };
+    assert!(forge
+        .git_env()
+        .iter()
+        .any(|(k, v)| k == "GIT_CONFIG_VALUE_0" && v.starts_with("Authorization: Basic ")));
     let p = aep_ede::promote(&forge, &s.draft, "Open a pull request\n\nIt adds pr.rs.");
     h.join().unwrap();
     assert!(p.ok, "{}", p.render());
-    assert!(p.note.starts_with("pull request https://github.com/owner/demo/pull/7"), "{}", p.note);
+    assert!(
+        p.note
+            .starts_with("pull request https://github.com/owner/demo/pull/7"),
+        "{}",
+        p.note
+    );
     let req = seen.lock().unwrap().clone();
     assert!(req.starts_with("POST /repos/owner/demo/pulls "), "{}", req);
-    assert!(req.contains("Authorization: Bearer test-token-value"), "{}", req);
+    assert!(
+        req.contains("Authorization: Bearer test-token-value"),
+        "{}",
+        req
+    );
     let branch = format!("aep-ede/{}", s.draft);
-    assert!(req.contains(&format!("\"head\":\"{}\"", branch)) && req.contains("\"base\":\"main\""), "{}", req);
-    assert!(req.contains("\"title\":\"Open a pull request\"") && req.contains("\"body\":\"It adds pr.rs.\\n\\nAEP-Agent: test-agent\""), "{}", req);
+    assert!(
+        req.contains(&format!("\"head\":\"{}\"", branch)) && req.contains("\"base\":\"main\""),
+        "{}",
+        req
+    );
+    assert!(
+        req.contains("\"title\":\"Open a pull request\"")
+            && req.contains("\"body\":\"It adds pr.rs.\\n\\nAEP-Agent: test-agent\""),
+        "{}",
+        req
+    );
     let bare = base.join("remote/owner/demo.git");
-    assert_eq!(sh(&base, &format!("git --git-dir={} show {}:pr.rs", bare.display(), branch)), "pub fn pr() {}");
-    assert!(!tree(&s.draft).parent().unwrap().join("github-headers").exists(), "the header file with the token is gone");
+    assert_eq!(
+        sh(
+            &base,
+            &format!("git --git-dir={} show {}:pr.rs", bare.display(), branch)
+        ),
+        "pub fn pr() {}"
+    );
+    assert!(
+        !tree(&s.draft)
+            .parent()
+            .unwrap()
+            .join("github-headers")
+            .exists(),
+        "the header file with the token is gone"
+    );
     let _ = fs::remove_dir_all(&base);
 }
 
@@ -191,8 +335,14 @@ fn github_forge_pushes_a_branch_and_opens_a_pull_request() {
 fn added_lines_ignore_text_already_there() {
     let added = aep_ede::added_lines("a\nb\nb\n", "a\nb\nx\nb\nb\n");
     assert_eq!(added, vec![(3, "x".to_string()), (5, "b".to_string())]);
-    assert_eq!(aep_ede::forge::base64(b"x-access-token:abc"), "eC1hY2Nlc3MtdG9rZW46YWJj");
-    assert_eq!(aep_ede::forge::json_field("{\"html_url\": \"u\"}", "html_url").as_deref(), Some("u"));
+    assert_eq!(
+        aep_ede::forge::base64(b"x-access-token:abc"),
+        "eC1hY2Nlc3MtdG9rZW46YWJj"
+    );
+    assert_eq!(
+        aep_ede::forge::json_field("{\"html_url\": \"u\"}", "html_url").as_deref(),
+        Some("u")
+    );
 }
 
 #[test]
@@ -201,13 +351,25 @@ fn every_verb_runs_under_the_agent_profile() {
     let base = setup("profile");
     let forge = git_forge(&base);
     let prof = aep_ede::profile::load().unwrap();
-    assert!(prof.summary().contains("grants seed scan promote for owner/demo"), "{}", prof.summary());
-    assert!(aep_ede::profile::init("test-agent", &["owner/demo".to_string()]).is_err(), "init keeps an existing profile");
+    assert!(
+        prof.summary()
+            .contains("grants seed scan promote for owner/demo"),
+        "{}",
+        prof.summary()
+    );
+    assert!(
+        aep_ede::profile::init("test-agent", &["owner/demo".to_string()]).is_err(),
+        "init keeps an existing profile"
+    );
 
     std::env::set_var("AEP_AGENT_ID", "");
     let none = aep_ede::seed(&forge, "owner/demo", "main");
     assert_eq!(none.code, "profile_missing");
-    assert!(none.note.contains("AEP_AGENT_ID") && none.note.contains("aep-ede profile init"), "{}", none.note);
+    assert!(
+        none.note.contains("AEP_AGENT_ID") && none.note.contains("aep-ede profile init"),
+        "{}",
+        none.note
+    );
     std::env::set_var("AEP_AGENT_ID", "test-agent");
     let other_repo = aep_ede::seed(&forge, "owner/other", "main");
     assert_eq!(other_repo.code, "profile_refused");
@@ -225,7 +387,8 @@ fn every_verb_runs_under_the_agent_profile() {
     // A profile without ede.promote can seed and scan but not land.
     std::env::set_var("AEP_AGENT_ID", "test-agent");
     let limited = base.join("limited.gap");
-    let text = aep_ede::profile::template("test-agent", &["owner/demo".to_string()]).replace("      action: ede.promote\n", "      action: ede.read\n");
+    let text = aep_ede::profile::template("test-agent", &["owner/demo".to_string()])
+        .replace("      action: ede.promote\n", "      action: ede.read\n");
     fs::write(&limited, text).unwrap();
     std::env::set_var("AEP_EDE_PROFILE", &limited);
     assert!(aep_ede::scan(&s.draft).ok);
@@ -237,7 +400,14 @@ fn every_verb_runs_under_the_agent_profile() {
     let p = aep_ede::promote(&forge, &s.draft, "Add p.rs");
     assert!(p.ok, "{}", p.render());
     let bare = base.join("remote/owner/demo.git");
-    let msg = sh(&base, &format!("git --git-dir={} log --format=%B -1 aep-ede/{}", bare.display(), s.draft));
+    let msg = sh(
+        &base,
+        &format!(
+            "git --git-dir={} log --format=%B -1 aep-ede/{}",
+            bare.display(),
+            s.draft
+        ),
+    );
     assert_eq!(msg, "Add p.rs\n\nAEP-Agent: test-agent");
 
     let (records, repos) = aep_ede::profile::parse("metadata:\n  agent_permission:\n  - agent_id: a\n    action: ede.seed\n  ede_repos: [o/r, \"o/s\"]\n");
@@ -254,5 +424,8 @@ fn the_reference_profile_grants_the_three_verbs() {
     assert_eq!(actions, vec!["ede.seed", "ede.scan", "ede.promote"]);
     assert!(records.iter().all(|r| r.agent_id == "example-coding-agent"));
     assert_eq!(repos, vec!["owner/repo".to_string()]);
-    assert_eq!(aep_ede::profile::parse(&aep_ede::profile::template("example-coding-agent", &repos)).0, records);
+    assert_eq!(
+        aep_ede::profile::parse(&aep_ede::profile::template("example-coding-agent", &repos)).0,
+        records
+    );
 }

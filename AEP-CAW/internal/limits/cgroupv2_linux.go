@@ -51,7 +51,6 @@ func CurrentCgroupDir() (string, error) {
 	return filepath.Join("/sys/fs/cgroup", strings.TrimPrefix(p, "/")), nil
 }
 
-
 func (c *CgroupV2) Close(ctx context.Context) error {
 	if c == nil || c.Path == "" {
 		return nil

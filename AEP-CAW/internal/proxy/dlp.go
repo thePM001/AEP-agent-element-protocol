@@ -19,8 +19,8 @@ type DLPProcessor struct {
 }
 
 type compiledPattern struct {
-	name    string         // Internal name for logs/tracking
-	display string         // Display name for LLM (shown in [REDACTED:display])
+	name    string // Internal name for logs/tracking
+	display string // Display name for LLM (shown in [REDACTED:display])
 	regex   *regexp.Regexp
 }
 

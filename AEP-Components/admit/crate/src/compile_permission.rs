@@ -23,8 +23,8 @@ pub fn agent_permission_wall_id(agent: &str, action: &str) -> String {
 }
 
 fn permission_matches(record: &AgentPermission, agent_id: &str, action: &str) -> bool {
-    let star = record.agent_id == "*" && agent_id.is_empty() == false;
-    let named = agent_id.is_empty() == false && record.agent_id == agent_id;
+    let star = record.agent_id == "*" && !agent_id.is_empty();
+    let named = !agent_id.is_empty() && record.agent_id == agent_id;
     let unbound = record.agent_id == "unbound" && agent_id.is_empty();
     let agent_ok = star || named || unbound;
     let action_ok = record.action == "*" || record.action == action;
@@ -98,15 +98,11 @@ pub fn agent_permission_from_admit(result: &AdmitResult) -> bool {
     result
         .closed
         .iter()
-        .all(|w| w.id.starts_with(WALL_AGENT_PERMISSION) == false)
+        .all(|w| !w.id.starts_with(WALL_AGENT_PERMISSION))
 }
 
 /// Public lookup used by every bind.
-pub fn agent_permission(
-    agent_id: &str,
-    action: &str,
-    records: &[AgentPermission],
-) -> AdmitWall {
+pub fn agent_permission(agent_id: &str, action: &str, records: &[AgentPermission]) -> AdmitWall {
     compile_agent_permission_wall(agent_id, action, records)
 }
 
@@ -125,22 +121,22 @@ mod tests {
     #[test]
     fn empty_list_refuses() {
         let wall = compile_agent_permission_wall("agent-a", "action:write", &[]);
-        assert_eq!(wall.closed, true);
+        assert!(wall.closed);
         assert_eq!(wall.reason, DENY_NO_PERMISSION);
-        assert_eq!(agent_has_permission("agent-a", "action:write", &[]), false);
+        assert!(!agent_has_permission("agent-a", "action:write", &[]));
     }
 
     #[test]
     fn empty_list_refuses_system_event_action() {
         let wall = compile_node_agent_permission_wall("agent-a", "root:ping", &[]);
-        assert_eq!(wall.closed, true);
+        assert!(wall.closed);
         assert_eq!(wall.reason, DENY_NO_PERMISSION);
     }
 
     #[test]
     fn empty_list_refuses_external_event_action() {
         let wall = compile_node_agent_permission_wall("", "webhook:incoming", &[]);
-        assert_eq!(wall.closed, true);
+        assert!(wall.closed);
         assert_eq!(wall.reason, DENY_NO_PERMISSION);
     }
 
@@ -149,17 +145,17 @@ mod tests {
         let records = vec![record("agent-a", "action:write")];
         let a = compile_agent_permission_wall("agent-a", "action:write", &records);
         let b = compile_agent_permission_wall("agent-b", "action:write", &records);
-        assert_eq!(a.closed, false);
-        assert_eq!(b.closed, true);
+        assert!(!a.closed);
+        assert!(b.closed);
         assert_eq!(b.reason, DENY_NO_PERMISSION);
-        assert_eq!(a.reason.contains(" < "), false);
+        assert!(!a.reason.contains(" < "));
     }
 
     #[test]
     fn miss_writes_deny_text() {
         let records = vec![record("agent-a", "action:read")];
         let wall = compile_agent_permission_wall("agent-a", "action:write", &records);
-        assert_eq!(wall.closed, true);
+        assert!(wall.closed);
         assert_eq!(wall.reason, DENY_NO_PERMISSION);
     }
 
@@ -171,27 +167,24 @@ mod tests {
         )];
         let records = vec![record("agent-a", "action:write")];
         let result = fold_agent_permission_into_admit("agent-b", "action:write", &records, &extra);
-        assert_eq!(result.allow, false);
-        assert_eq!(agent_permission_from_admit(&result), false);
+        assert!(!result.allow);
+        assert!(!agent_permission_from_admit(&result));
         let ids: Vec<&str> = result.closed.iter().map(|w| w.id.as_str()).collect();
         let perm_id = agent_permission_wall_id("agent-b", "action:write");
-        assert_eq!(ids.iter().any(|id| *id == perm_id.as_str()), true);
-        assert_eq!(ids.contains(&"constraint:required_field:alpha"), true);
-        assert_eq!(
-            result
-                .closed
-                .iter()
-                .any(|w| w.id == perm_id && w.reason == DENY_NO_PERMISSION),
-            true
-        );
+        assert!(ids.contains(&perm_id.as_str()));
+        assert!(ids.contains(&"constraint:required_field:alpha"));
+        assert!(result
+            .closed
+            .iter()
+            .any(|w| w.id == perm_id && w.reason == DENY_NO_PERMISSION));
     }
 
     #[test]
     fn listed_agent_opens() {
         let records = vec![record("agent-a", "action:write")];
         let result = fold_agent_permission_into_admit("agent-a", "action:write", &records, &[]);
-        assert_eq!(result.allow, true);
-        assert_eq!(agent_permission_from_admit(&result), true);
+        assert!(result.allow);
+        assert!(agent_permission_from_admit(&result));
     }
 
     #[test]
@@ -201,10 +194,10 @@ mod tests {
             Some(i) => &src[..i],
             None => src,
         };
-        assert_eq!(prod.contains("trust_score"), false);
-        assert_eq!(prod.contains("trust_tier"), false);
-        assert_eq!(prod.contains("trust_ring"), false);
-        assert_eq!(prod.contains("score >"), false);
-        assert_eq!(prod.contains("score >="), false);
+        assert!(!prod.contains("trust_score"));
+        assert!(!prod.contains("trust_tier"));
+        assert!(!prod.contains("trust_ring"));
+        assert!(!prod.contains("score >"));
+        assert!(!prod.contains("score >="));
     }
 }

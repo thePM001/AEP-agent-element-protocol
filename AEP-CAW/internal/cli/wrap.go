@@ -11,9 +11,9 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/spf13/cobra"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/spf13/cobra"
 )
 
 // ensureServerRunningFn is the auto-start hook used by fetchSessionForWrap.

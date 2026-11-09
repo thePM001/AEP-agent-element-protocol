@@ -34,8 +34,8 @@ type DurabilityError struct {
 	Err error
 }
 
-func (e *DurabilityError) Error() string { return "durability error: " + e.Err.Error() }
-func (e *DurabilityError) Unwrap() error { return e.Err }
+func (e *DurabilityError) Error() string        { return "durability error: " + e.Err.Error() }
+func (e *DurabilityError) Unwrap() error        { return e.Err }
 func (e *DurabilityError) IsPartialWrite() bool { return true }
 
 type Store struct {

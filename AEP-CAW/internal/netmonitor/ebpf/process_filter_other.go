@@ -15,12 +15,12 @@ type ProcessFilter struct{}
 
 // PendingConnection is not supported on non-Linux platforms.
 type PendingConnection struct {
-	ID        uint64
-	Process   *pnacl.ProcessInfo
-	Host      string
-	IP        net.IP
-	Port      int
-	Protocol  string
+	ID       uint64
+	Process  *pnacl.ProcessInfo
+	Host     string
+	IP       net.IP
+	Port     int
+	Protocol string
 }
 
 // ConnectionEvent is not supported on non-Linux platforms.

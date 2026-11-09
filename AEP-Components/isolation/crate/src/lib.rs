@@ -71,7 +71,11 @@ impl IsolationSpec {
         out.push_str(&self.landlock_ruleset);
         out.push('\n');
         out.push_str("network_egress_deny=");
-        out.push_str(if self.network_egress_deny { "true" } else { "false" });
+        out.push_str(if self.network_egress_deny {
+            "true"
+        } else {
+            "false"
+        });
         out.push('\n');
         out
     }
@@ -89,7 +93,7 @@ impl IsolationSpec {
         if self.landlock_ruleset.trim().is_empty() {
             return Err(String::from("isolation needs a landlock ruleset"));
         }
-        if self.no_new_privs == false {
+        if !self.no_new_privs {
             return Err(String::from("isolation needs no_new_privs"));
         }
         if self.address_space_bytes == 0 {
@@ -156,15 +160,15 @@ mod tests {
         let sealed = seal_process(4300, &spec, 2).expect("seal");
         assert_eq!(sealed.pid, 4300);
         assert_eq!(sealed.spec_digest.as_str(), spec.digest().as_str());
-        assert_eq!(sealed.seal.is_empty(), false);
+        assert!(!sealed.seal.is_empty());
     }
 
     #[test]
     fn seal_binds_the_process_and_the_specification() {
         let spec = IsolationSpec::default();
         let sealed = seal_process(4242, &spec, 1).expect("seal");
-        assert_eq!(sealed.is_sealed(), true);
-        assert_eq!(seal_holds(&sealed, 4242, &spec), true);
+        assert!(sealed.is_sealed());
+        assert!(seal_holds(&sealed, 4242, &spec));
         assert_eq!(sealed.algorithm.as_str(), ALGORITHM_SEALED);
     }
 
@@ -174,8 +178,8 @@ mod tests {
         let sealed = seal_process(4242, &spec, 1).expect("seal");
         let mut looser = spec.clone();
         looser.network_egress_deny = false;
-        assert_eq!(seal_holds(&sealed, 4242, &looser), false);
-        assert_eq!(seal_holds(&sealed, 4243, &spec), false);
+        assert!(!seal_holds(&sealed, 4242, &looser));
+        assert!(!seal_holds(&sealed, 4243, &spec));
     }
 
     #[test]
@@ -185,26 +189,30 @@ mod tests {
         assert_eq!(one.digest(), two.digest());
         let mut other = one.clone();
         other.open_files = 2048;
-        assert_eq!(one.digest() == other.digest(), false);
+        assert_ne!(one.digest(), other.digest());
     }
 
     #[test]
     fn an_unconfined_process_is_refused() {
-        let mut spec = IsolationSpec::default();
-        spec.no_new_privs = false;
-        assert_eq!(seal_process(7, &spec, 1).is_err(), true);
-        let mut empty = IsolationSpec::default();
-        empty.seccomp_profile = String::new();
-        assert_eq!(seal_process(7, &empty, 1).is_err(), true);
-        assert_eq!(seal_process(0, &IsolationSpec::default(), 1).is_err(), true);
+        let spec = IsolationSpec {
+            no_new_privs: false,
+            ..Default::default()
+        };
+        assert!(seal_process(7, &spec, 1).is_err());
+        let empty = IsolationSpec {
+            seccomp_profile: String::new(),
+            ..Default::default()
+        };
+        assert!(seal_process(7, &empty, 1).is_err());
+        assert!(seal_process(0, &IsolationSpec::default(), 1).is_err());
     }
 
     #[test]
     fn a_process_seals_once() {
         let spec = IsolationSpec::default();
         let mut seen: Vec<ProcessSealed> = Vec::new();
-        assert_eq!(seal_once(&mut seen, 99, &spec, 1).is_ok(), true);
-        assert_eq!(seal_once(&mut seen, 99, &spec, 2).is_err(), true);
+        assert!(seal_once(&mut seen, 99, &spec, 1).is_ok());
+        assert!(seal_once(&mut seen, 99, &spec, 2).is_err());
         assert_eq!(seen.len(), 1);
     }
 }

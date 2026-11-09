@@ -1,8 +1,8 @@
 //! Foreign ingest validation through perimeter-v1 scanner-backed predicates.
 
 use aep_ucb_perimeter_v1::{
-    parse_profile, validate_ingest, DefaultScannerPack, IngestView, PredicateProfile, Provenance as PerimeterProvenance,
-    ScannerId,
+    parse_profile, validate_ingest, DefaultScannerPack, IngestView, PredicateProfile,
+    Provenance as PerimeterProvenance, ScannerId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -215,7 +215,6 @@ mod tests {
         assert!(!r.ok);
         assert_eq!(r.predicate, Some("P_P"));
     }
-
 
     #[test]
     fn trust_fields_on_body_are_detected() {

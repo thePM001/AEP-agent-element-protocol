@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform/darwin"
 	"github.com/spf13/cobra"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform/darwin"
 )
 
 func newActivateExtensionCmd() *cobra.Command {

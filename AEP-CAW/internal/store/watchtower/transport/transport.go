@@ -49,11 +49,11 @@ type CompressMetrics interface {
 
 type noopMetrics struct{}
 
-func (noopMetrics) SetAckHighWatermark(int64)                            {}
-func (noopMetrics) IncAnomalousAck(string)                               {}
-func (noopMetrics) IncResendNeeded()                                     {}
-func (noopMetrics) IncAckRegressionLoss()                                {}
-func (noopMetrics) IncDroppedInvalidFrame(metrics.WTPInvalidFrameReason) {}
+func (noopMetrics) SetAckHighWatermark(int64)                              {}
+func (noopMetrics) IncAnomalousAck(string)                                 {}
+func (noopMetrics) IncResendNeeded()                                       {}
+func (noopMetrics) IncAckRegressionLoss()                                  {}
+func (noopMetrics) IncDroppedInvalidFrame(metrics.WTPInvalidFrameReason)   {}
 func (noopMetrics) IncSessionInitFailures(metrics.WTPSessionFailureReason) {}
 
 type noopCompressMetrics struct{}
@@ -385,6 +385,10 @@ type Transport struct {
 	// ErrTransportSingleUse rather than panicking on
 	// `close(t.runDone)`. Per Task 27c.
 	runStarted atomic.Bool
+
+	// inLive is true while runLive runs its select loop. Read only by the
+	// test seam InLiveForTest, so a test can order its Stop after Live entry.
+	inLive atomic.Bool
 
 	// recv holds the per-connection recv-multiplexer state per round-22
 	// plan §"Per-connection recv state". A new recvSession is created on

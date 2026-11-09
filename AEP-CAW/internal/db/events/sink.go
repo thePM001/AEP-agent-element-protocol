@@ -23,7 +23,7 @@ type Sink interface {
 // runtime that does not care about audit (tests of unrelated code).
 type NopSink struct{}
 
-func (NopSink) EmitStatement(context.Context, DBEvent) error      { return nil }
+func (NopSink) EmitStatement(context.Context, DBEvent) error        { return nil }
 func (NopSink) EmitLifecycle(context.Context, LifecycleEvent) error { return nil }
 
 // SyncSink buffers every emitted event in memory. Tests call DrainStatements

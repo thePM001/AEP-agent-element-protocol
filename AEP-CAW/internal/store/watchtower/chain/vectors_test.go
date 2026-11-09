@@ -17,11 +17,11 @@ import (
 
 type vectorEntry struct {
 	Name          string          `json:"name"`
-	Kind          string          `json:"kind"`           // "integrity_record" | "context_digest"
-	Input         json.RawMessage `json:"input,omitempty"` // for valid inputs, an object with canonical wire snake_case keys (e.g. format_version, sequence, session_id) - NOT Go field names. Each implementation maps the keys to its local struct fields inside its harness.
-	InputB64      string          `json:"input_b64,omitempty"` // base64-encoded raw struct field bytes for negative cases (non-UTF-8)
-	InputField    string          `json:"input_field,omitempty"` // canonical wire field name receiving InputB64 (e.g., "prev_hash", "session_id")
-	Expected      string          `json:"expected,omitempty"` // for valid: canonical bytes (integrity_record) or hex digest (context_digest)
+	Kind          string          `json:"kind"`                     // "integrity_record" | "context_digest"
+	Input         json.RawMessage `json:"input,omitempty"`          // for valid inputs, an object with canonical wire snake_case keys (e.g. format_version, sequence, session_id) - NOT Go field names. Each implementation maps the keys to its local struct fields inside its harness.
+	InputB64      string          `json:"input_b64,omitempty"`      // base64-encoded raw struct field bytes for negative cases (non-UTF-8)
+	InputField    string          `json:"input_field,omitempty"`    // canonical wire field name receiving InputB64 (e.g., "prev_hash", "session_id")
+	Expected      string          `json:"expected,omitempty"`       // for valid: canonical bytes (integrity_record) or hex digest (context_digest)
 	ExpectedError string          `json:"expected_error,omitempty"` // for negative: sentinel name (e.g., "ErrInvalidUTF8")
 }
 
@@ -362,8 +362,8 @@ func loadVectors(data []byte) ([]vectorEntry, error) {
 		// Decode the envelope into a struct that uses *int for schema_version
 		// so we can tell "field absent" from "field present and zero".
 		var env struct {
-			SchemaVersion *int            `json:"schema_version"`
-			Vectors       []vectorEntry   `json:"vectors"`
+			SchemaVersion *int          `json:"schema_version"`
+			Vectors       []vectorEntry `json:"vectors"`
 		}
 		dec := json.NewDecoder(bytes.NewReader(data))
 		dec.DisallowUnknownFields()

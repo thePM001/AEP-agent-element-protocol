@@ -11,13 +11,13 @@ import (
 
 // BPF instruction classes and fields.
 const (
-	bpfLD  = 0x00
-	bpfW   = 0x00
-	bpfABS = 0x20
-	bpfJMP = 0x05
-	bpfJEQ = 0x10
-	bpfK   = 0x00
-	bpfRET = 0x06
+	bpfLD   = 0x00
+	bpfW    = 0x00
+	bpfABS  = 0x20
+	bpfJMP  = 0x05
+	bpfJEQ  = 0x10
+	bpfK    = 0x00
+	bpfRET  = 0x06
 	bpfJSET = 0x40
 
 	seccompRetAllow = 0x7FFF0000

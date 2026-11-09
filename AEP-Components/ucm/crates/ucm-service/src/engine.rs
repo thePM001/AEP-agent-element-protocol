@@ -4,7 +4,9 @@ use crate::ranker::Ranker;
 use crate::store::Store;
 use aep_ucm_core::{evaluate, explain, load_program, Library, Limits, Program};
 use aep_ucm_lookup::Index;
-use aep_ucm_receipt::{issue, verify_replay, verify_signature, NodeKey, ProgramSource, ReceiptError};
+use aep_ucm_receipt::{
+    issue, verify_replay, verify_signature, NodeKey, ProgramSource, ReceiptError,
+};
 use serde_json::{json, Value as J};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -36,7 +38,11 @@ impl ApiError {
 
 impl From<aep_ucm_core::UcmError> for ApiError {
     fn from(e: aep_ucm_core::UcmError) -> Self {
-        let status = if e.code() == "budget_exceeded" { 422 } else { 400 };
+        let status = if e.code() == "budget_exceeded" {
+            422
+        } else {
+            400
+        };
         ApiError::new(e.code(), e.to_string(), status)
     }
 }
@@ -105,7 +111,8 @@ impl Config {
                 .map(PathBuf::from)
                 .unwrap_or_else(|| PathBuf::from("aep-lattice-log")),
             lattice_db: env("AEP_LATTICE_DB").map(PathBuf::from),
-            lattice_action_path: env("UCM_LATTICE_ACTION_PATH").unwrap_or_else(|| "ucm:receipt".into()),
+            lattice_action_path: env("UCM_LATTICE_ACTION_PATH")
+                .unwrap_or_else(|| "ucm:receipt".into()),
             lattice_scene: env("UCM_LATTICE_SCENE").unwrap_or_else(|| "ucm-receipts".into()),
             max_concurrent: env_u64("UCM_MAX_CONCURRENT", 4) as usize,
         }
@@ -128,7 +135,10 @@ fn program_from(req: &J) -> std::result::Result<Program, ApiError> {
     match (text, json_form) {
         (Some(t), None) => Ok(load_program(Some(t), None)?),
         (None, Some(j)) => Ok(load_program(None, Some(j))?),
-        _ => Err(ApiError::bad("form_error", "give exactly one of program (text) or program_json")),
+        _ => Err(ApiError::bad(
+            "form_error",
+            "give exactly one of program (text) or program_json",
+        )),
     }
 }
 
@@ -136,8 +146,10 @@ impl Engine {
     pub fn open(cfg: Config) -> Result<Arc<Engine>, String> {
         let lib = Library::builtin().map_err(|e| format!("library: {e}"))?;
         let index = Index::build(&lib);
-        std::fs::create_dir_all(&cfg.data_dir).map_err(|e| format!("{}: {e}", cfg.data_dir.display()))?;
-        let key = NodeKey::load_or_create(&cfg.data_dir.join("ucm-sign.key")).map_err(|e| e.to_string())?;
+        std::fs::create_dir_all(&cfg.data_dir)
+            .map_err(|e| format!("{}: {e}", cfg.data_dir.display()))?;
+        let key = NodeKey::load_or_create(&cfg.data_dir.join("ucm-sign.key"))
+            .map_err(|e| e.to_string())?;
         let store = Store::open(&cfg.data_dir).map_err(|e| format!("receipt store: {e}"))?;
         let mut trusted = vec![key.public_hex.clone()];
         if let Some(f) = &cfg.trusted_keys_file {
@@ -236,14 +248,16 @@ impl Engine {
 
     pub fn verify(&self, req: &J) -> ApiResult {
         let receipt = match req.get("receipt") {
-            Some(J::String(id)) => self
-                .store
-                .get(id)
-                .ok_or_else(|| ApiError::new("not_found", format!("no stored receipt {id}"), 404))?,
+            Some(J::String(id)) => self.store.get(id).ok_or_else(|| {
+                ApiError::new("not_found", format!("no stored receipt {id}"), 404)
+            })?,
             Some(r) => r.clone(),
             None => return Err(ApiError::bad("form_error", "missing receipt")),
         };
-        let mode = req.get("mode").and_then(|x| x.as_str()).unwrap_or("signature");
+        let mode = req
+            .get("mode")
+            .and_then(|x| x.as_str())
+            .unwrap_or("signature");
         let check = match mode {
             "signature" => verify_signature(&receipt, &self.trusted)?,
             "replay" => verify_replay(&receipt, &self.trusted, &self.lib)?,
@@ -289,12 +303,17 @@ impl Engine {
         if tier != "1" {
             if let Some(r) = &self.ranker {
                 match r.rank(query, &self.index, &shortlist, k).await {
-                    Ok(ranked) if !ranked.is_empty() => return Ok(self.index.reply(query, "tier2", &ranked)),
+                    Ok(ranked) if !ranked.is_empty() => {
+                        return Ok(self.index.reply(query, "tier2", &ranked))
+                    }
                     Ok(_) => {}
                     Err(e) => tracing::warn!("tier two ranker failed, tier one answers: {e}"),
                 }
             } else if tier == "2" {
-                return Err(ApiError::bad("ranker_off", "no tier two ranker is configured"));
+                return Err(ApiError::bad(
+                    "ranker_off",
+                    "no tier two ranker is configured",
+                ));
             }
         }
         let mut top = shortlist;

@@ -44,7 +44,11 @@ pub struct MeshPacket {
 }
 
 impl MeshPacket {
-    pub fn new(src: impl Into<String>, dst: impl Into<String>, payload: Vec<u8>) -> Result<Self, PacketError> {
+    pub fn new(
+        src: impl Into<String>,
+        dst: impl Into<String>,
+        payload: Vec<u8>,
+    ) -> Result<Self, PacketError> {
         let src = src.into();
         let dst = dst.into();
         Self::check_ids(&src, &dst)?;
@@ -93,7 +97,9 @@ impl MeshPacket {
         }
         let src = self.src.as_bytes();
         let dst = self.dst.as_bytes();
-        let mut out = Vec::with_capacity(4 + 1 + 1 + 8 + 1 + src.len() + 1 + dst.len() + 2 + self.payload.len());
+        let mut out = Vec::with_capacity(
+            4 + 1 + 1 + 8 + 1 + src.len() + 1 + dst.len() + 2 + self.payload.len(),
+        );
         out.extend_from_slice(&PACKET_MAGIC);
         out.push(self.version);
         out.push(self.hop_limit);
@@ -131,14 +137,16 @@ impl MeshPacket {
         if bytes.len() < i + src_len + 1 {
             return Err(PacketError::Truncated);
         }
-        let src = std::str::from_utf8(&bytes[i..i + src_len]).map_err(|_| PacketError::IdNotUtf8)?;
+        let src =
+            std::str::from_utf8(&bytes[i..i + src_len]).map_err(|_| PacketError::IdNotUtf8)?;
         i += src_len;
         let dst_len = bytes[i] as usize;
         i += 1;
         if bytes.len() < i + dst_len + 2 {
             return Err(PacketError::Truncated);
         }
-        let dst = std::str::from_utf8(&bytes[i..i + dst_len]).map_err(|_| PacketError::IdNotUtf8)?;
+        let dst =
+            std::str::from_utf8(&bytes[i..i + dst_len]).map_err(|_| PacketError::IdNotUtf8)?;
         i += dst_len;
         let plen = u16::from_be_bytes(
             bytes[i..i + 2]

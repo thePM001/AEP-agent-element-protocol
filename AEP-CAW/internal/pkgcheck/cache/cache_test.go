@@ -238,7 +238,7 @@ func TestTTLByType(t *testing.T) {
 		Dir:        dir,
 		DefaultTTL: 1 * time.Hour,
 		TTLByType: map[string]time.Duration{
-			"malware": 24 * time.Hour,
+			"malware":       24 * time.Hour,
 			"vulnerability": 2 * time.Hour,
 		},
 	})

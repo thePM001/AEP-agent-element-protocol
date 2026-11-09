@@ -14,11 +14,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // TestAlpineEnvInject_BashBuiltinDisabled verifies that on Alpine Linux (musl):
@@ -167,7 +167,7 @@ func TestAlpineEnvInject_BashBuiltinDisabled(t *testing.T) {
 
 // buildAlpineBinaries builds the aep-caw binaries using an Alpine container
 // to ensure they're statically linked against musl.
-func buildAlpineBinaries(t *testing.T) (aep-caw, unixwrap, startupScript string) {
+func buildAlpineBinaries(t *testing.T) (cawBin, unixwrap, startupScript string) {
 	t.Helper()
 
 	wd, err := os.Getwd()
@@ -297,7 +297,7 @@ func startAlpineServerContainer(t *testing.T, ctx context.Context, aepCawBin, un
 		Image:        "alpine:3.21",
 		ExposedPorts: []string{"18080/tcp"},
 		// Install bash for testing (Alpine uses ash by default)
-		Cmd: []string{"/bin/sh", "-c", "apk add --no-cache bash && /usr/local/bin/aep-caw server --config /config.yaml"},
+		Cmd:        []string{"/bin/sh", "-c", "apk add --no-cache bash && /usr/local/bin/aep-caw server --config /config.yaml"},
 		Mounts:     binds,
 		Privileged: true,
 		CapAdd:     []string{"SYS_ADMIN"},

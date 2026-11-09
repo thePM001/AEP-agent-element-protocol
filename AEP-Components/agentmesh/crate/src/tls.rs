@@ -1,7 +1,9 @@
 //! mTLS transport identities for Lattice Channel TCP endpoints.
 
+#![allow(unsafe_code)]
+
 use rcgen::{CertificateParams, DistinguishedName, DnType, KeyPair, SanType};
-use rustls::pki_types::{CertificateDer, PrivateKeyDer, pem::PemObject};
+use rustls::pki_types::{pem::PemObject, CertificateDer, PrivateKeyDer};
 use rustls::{ClientConfig, RootCertStore, ServerConfig};
 use sha2::{Digest, Sha256};
 use std::fs;
@@ -36,17 +38,16 @@ pub fn issue_workload_identity(agent_id: &str) -> Result<MtlsIdentity, TlsIdenti
     let key_pair = KeyPair::generate()?;
     let mut params = CertificateParams::new(vec![agent_id.to_string()])?;
     params.distinguished_name = DistinguishedName::new();
-    params
-        .distinguished_name
-        .push(DnType::CommonName, agent_id);
+    params.distinguished_name.push(DnType::CommonName, agent_id);
     params
         .distinguished_name
         .push(DnType::OrganizationName, "AEP AgentMesh");
     // SPIFFE URI SAN (X.509-SVID shape) plus DNS fallback for tooling.
     let spiffe_uri = format!("spiffe://aep.protocol.local/agent/{agent_id}");
-    let mut sans = vec![SanType::DnsName(agent_id.try_into().map_err(|e| {
-        TlsIdentityError::Other(format!("invalid SAN: {e}"))
-    })?)];
+    let mut sans =
+        vec![SanType::DnsName(agent_id.try_into().map_err(|e| {
+            TlsIdentityError::Other(format!("invalid SAN: {e}"))
+        })?)];
     if let Ok(uri) = spiffe_uri.as_str().try_into() {
         sans.push(SanType::URI(uri));
     }
@@ -138,13 +139,11 @@ pub fn ensure_mesh_ca(data_dir: &Path) -> Result<(String, String), TlsIdentityEr
             fs::read_to_string(&ca_key_path)?,
         ));
     }
-    if cert_exists || key_exists {
-        if !mesh_ca_force_regen() {
-            return Err(TlsIdentityError::Other(format!(
+    if (cert_exists || key_exists) && !mesh_ca_force_regen() {
+        return Err(TlsIdentityError::Other(format!(
                 "incomplete mesh CA pair at {}; refusing silent regeneration (set AEP_MESH_CA_FORCE_REGEN=1 to rotate)",
                 tls_dir.display()
             )));
-        }
     }
     mint_mesh_ca(&ca_cert_path, &ca_key_path)
 }
@@ -155,9 +154,8 @@ fn write_secret_pem(path: &std::path::Path, pem: &str) -> Result<(), TlsIdentity
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            fs::set_permissions(parent, fs::Permissions::from_mode(0o700)).map_err(|e| {
-                TlsIdentityError::Other(format!("chmod 0700 parent failed: {e}"))
-            })?;
+            fs::set_permissions(parent, fs::Permissions::from_mode(0o700))
+                .map_err(|e| TlsIdentityError::Other(format!("chmod 0700 parent failed: {e}")))?;
         }
     }
     fs::write(path, pem).map_err(|e| TlsIdentityError::Other(e.to_string()))?;
@@ -247,9 +245,10 @@ pub fn issue_signed_identity(
         .distinguished_name
         .push(DnType::OrganizationName, "AEP AgentMesh");
     let spiffe_uri = format!("spiffe://aep.protocol.local/agent/{common_name}");
-    let mut sans = vec![SanType::DnsName(common_name.try_into().map_err(|e| {
-        TlsIdentityError::Other(format!("invalid SAN: {e}"))
-    })?)];
+    let mut sans =
+        vec![SanType::DnsName(common_name.try_into().map_err(|e| {
+            TlsIdentityError::Other(format!("invalid SAN: {e}"))
+        })?)];
     if let Ok(uri) = spiffe_uri.as_str().try_into() {
         sans.push(SanType::URI(uri));
     }
@@ -279,13 +278,11 @@ pub fn ensure_dock_server_identity(data_dir: &Path) -> Result<MtlsIdentity, TlsI
             key_pem: fs::read_to_string(&key_path)?,
         });
     }
-    if cert_path.exists() || key_path.exists() {
-        if !mesh_ca_force_regen() {
-            return Err(TlsIdentityError::Other(format!(
+    if (cert_path.exists() || key_path.exists()) && !mesh_ca_force_regen() {
+        return Err(TlsIdentityError::Other(format!(
                 "incomplete dock server identity at {}; refusing silent regeneration (set AEP_MESH_CA_FORCE_REGEN=1 to rotate)",
                 tls_dir.display()
             )));
-        }
     }
     let (ca_pem, ca_key) = ensure_mesh_ca(data_dir)?;
     let identity = issue_signed_identity(&ca_pem, &ca_key, "aep-dock-server")?;
@@ -336,8 +333,16 @@ mod tests {
         assert!(key.contains("BEGIN PRIVATE KEY"));
         use std::os::unix::fs::PermissionsExt;
         let tls = dir.path().join("agentmesh").join("tls");
-        let ca_mode = fs::metadata(tls.join("ca.pem")).unwrap().permissions().mode() & 0o777;
-        let key_mode = fs::metadata(tls.join("ca-key.pem")).unwrap().permissions().mode() & 0o777;
+        let ca_mode = fs::metadata(tls.join("ca.pem"))
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777;
+        let key_mode = fs::metadata(tls.join("ca-key.pem"))
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777;
         assert_eq!(ca_mode, 0o600);
         assert_eq!(key_mode, 0o600);
         let again = ensure_mesh_ca(dir.path()).expect("reload 0600");

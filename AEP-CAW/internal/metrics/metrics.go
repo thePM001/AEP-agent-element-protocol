@@ -35,17 +35,17 @@ type Collector struct {
 	ebpfUnavailable atomic.Uint64
 
 	// WTP series
-	wtpEventsAppended      atomic.Uint64
-	wtpEventsAcked         atomic.Uint64
-	wtpBatchesSent         atomic.Uint64
-	wtpBytesSent           atomic.Uint64
-	wtpTransportLoss       atomic.Uint64
-	wtpReconnectsByReason  sync.Map
-	wtpSessionState        atomic.Int64
-	wtpWALSegments         atomic.Int64
-	wtpWALBytes            atomic.Int64
-	wtpAckHighWatermark    atomic.Int64
-	wtpWALCorruption       atomic.Uint64
+	wtpEventsAppended     atomic.Uint64
+	wtpEventsAcked        atomic.Uint64
+	wtpBatchesSent        atomic.Uint64
+	wtpBytesSent          atomic.Uint64
+	wtpTransportLoss      atomic.Uint64
+	wtpReconnectsByReason sync.Map
+	wtpSessionState       atomic.Int64
+	wtpWALSegments        atomic.Int64
+	wtpWALBytes           atomic.Int64
+	wtpAckHighWatermark   atomic.Int64
+	wtpWALCorruption      atomic.Uint64
 
 	// Task 22a sink-failure additions. Populated by AppendEvent
 	// (Task 23) for the unlabeled per-record drops, and by the

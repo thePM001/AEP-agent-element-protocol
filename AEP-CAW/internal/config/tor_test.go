@@ -13,7 +13,7 @@ func TestResolveTorConfig_AbsentBlockDeniesByDefault(t *testing.T) {
 	}
 	for name, on := range map[string]bool{
 		"processes": got.Vectors.Processes, "socks_ports": got.Vectors.SocksPorts,
-		"onion": got.Vectors.Onion,
+		"onion":     got.Vectors.Onion,
 		"relay_ips": got.Vectors.RelayIPs,
 	} {
 		if !on {

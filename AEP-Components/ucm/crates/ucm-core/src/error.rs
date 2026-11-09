@@ -5,7 +5,11 @@ use thiserror::Error;
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum UcmError {
     #[error("parse error at {line}:{col}: {msg}")]
-    Parse { line: usize, col: usize, msg: String },
+    Parse {
+        line: usize,
+        col: usize,
+        msg: String,
+    },
     #[error("type error: {0}")]
     Type(String),
     #[error("unknown name: {0}")]

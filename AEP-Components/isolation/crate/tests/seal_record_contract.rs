@@ -13,9 +13,12 @@ fn a_seal_records_the_process_and_the_specification() {
     let spec = IsolationSpec::default();
     let sealed = seal_process(5100, &spec, 7).expect("seal");
     assert_eq!(sealed.pid, 5100);
-    assert_eq!(sealed.spec_digest.as_str(), isolation_spec_digest(&spec).as_str());
-    assert_eq!(seal_holds(&sealed, 5100, &spec), true);
-    assert_eq!(seal_holds(&sealed, 5101, &spec), false);
+    assert_eq!(
+        sealed.spec_digest.as_str(),
+        isolation_spec_digest(&spec).as_str()
+    );
+    assert!(seal_holds(&sealed, 5100, &spec));
+    assert!(!seal_holds(&sealed, 5101, &spec));
 }
 
 #[test]
@@ -23,8 +26,8 @@ fn the_contract_records_a_seal_and_it_does_not_confine() {
     let spec = IsolationSpec::default();
     let mut seen = Vec::new();
     let sealed = seal_once(&mut seen, 5200, &spec, 11).expect("one seal");
-    assert_eq!(sealed.is_sealed(), true);
-    assert_eq!(seal_once(&mut seen, 5200, &spec, 12).is_err(), true);
+    assert!(sealed.is_sealed());
+    assert!(seal_once(&mut seen, 5200, &spec, 12).is_err());
     // Nothing in this crate applies the specification. The host sandbox applies
     // it at run time, so this crate stays a record.
     assert_eq!(seen.len(), 1);

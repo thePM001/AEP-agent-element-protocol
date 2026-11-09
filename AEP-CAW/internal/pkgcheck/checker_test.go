@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 
 func newTestChecker(resolvers []Resolver, providers map[string]ProviderEntry, rules []policy.PackageRule) *Checker {
@@ -343,8 +343,8 @@ type fakeResolver struct {
 	plan *InstallPlan
 }
 
-func (f *fakeResolver) Name() string                          { return "fake-resolver" }
-func (f *fakeResolver) CanResolve(_ string, _ []string) bool  { return true }
+func (f *fakeResolver) Name() string                         { return "fake-resolver" }
+func (f *fakeResolver) CanResolve(_ string, _ []string) bool { return true }
 func (f *fakeResolver) Resolve(_ context.Context, _ string, _ []string) (*InstallPlan, error) {
 	return f.plan, nil
 }

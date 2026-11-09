@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/fsnotify/fsnotify"
 )
 
 // FSEventsMonitor provides file monitoring using macOS FSEvents via fsnotify.

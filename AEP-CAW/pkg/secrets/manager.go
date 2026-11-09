@@ -113,11 +113,11 @@ type AWSConfig struct {
 
 // AzureConfig configures Azure Key Vault.
 type AzureConfig struct {
-	Enabled       bool     `yaml:"enabled" json:"enabled"`
-	VaultURL      string   `yaml:"vault_url" json:"vault_url"`
-	TenantID      string   `yaml:"tenant_id,omitempty" json:"tenant_id,omitempty"`
-	ClientID      string   `yaml:"client_id,omitempty" json:"client_id,omitempty"`
-	AllowedKeys   []string `yaml:"allowed_keys" json:"allowed_keys"`
+	Enabled     bool     `yaml:"enabled" json:"enabled"`
+	VaultURL    string   `yaml:"vault_url" json:"vault_url"`
+	TenantID    string   `yaml:"tenant_id,omitempty" json:"tenant_id,omitempty"`
+	ClientID    string   `yaml:"client_id,omitempty" json:"client_id,omitempty"`
+	AllowedKeys []string `yaml:"allowed_keys" json:"allowed_keys"`
 }
 
 // InjectConfig configures automatic secret injection.
@@ -173,14 +173,14 @@ type ApprovalService interface {
 
 // ApprovalRequest represents a secret access approval request.
 type ApprovalRequest struct {
-	ID            string    `json:"id"`
-	Type          string    `json:"type"`
-	Resource      string    `json:"resource"`
-	Requester     string    `json:"requester"`
-	Justification string    `json:"justification"`
+	ID            string        `json:"id"`
+	Type          string        `json:"type"`
+	Resource      string        `json:"resource"`
+	Requester     string        `json:"requester"`
+	Justification string        `json:"justification"`
 	TTL           time.Duration `json:"ttl"`
-	CreatedAt     time.Time `json:"created_at"`
-	ExpiresAt     time.Time `json:"expires_at"`
+	CreatedAt     time.Time     `json:"created_at"`
+	ExpiresAt     time.Time     `json:"expires_at"`
 }
 
 // ApprovalDecision represents an approval decision.
@@ -253,12 +253,12 @@ func (m *Manager) ListProviders() []string {
 
 // SecretRequest represents a request to access a secret.
 type SecretRequest struct {
-	Provider      string        `json:"provider"`
-	Path          string        `json:"path"`
-	AgentID       string        `json:"agent_id"`
-	Reason        string        `json:"reason"`
-	TTL           time.Duration `json:"ttl"`
-	BypassCache   bool          `json:"bypass_cache"`
+	Provider    string        `json:"provider"`
+	Path        string        `json:"path"`
+	AgentID     string        `json:"agent_id"`
+	Reason      string        `json:"reason"`
+	TTL         time.Duration `json:"ttl"`
+	BypassCache bool          `json:"bypass_cache"`
 }
 
 // Get retrieves a secret.

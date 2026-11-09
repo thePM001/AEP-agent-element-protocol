@@ -15,9 +15,9 @@ import (
 
 // JOBOBJECT_BASIC_PROCESS_ID_LIST for querying process IDs in a job.
 type jobObjectBasicProcessIDList struct {
-	NumberOfAssignedProcesses  uint32
-	NumberOfProcessIdsInList   uint32
-	ProcessIdList              [1]uintptr // Variable length array
+	NumberOfAssignedProcesses uint32
+	NumberOfProcessIdsInList  uint32
+	ProcessIdList             [1]uintptr // Variable length array
 }
 
 const jobObjectBasicProcessIdList = 3 // JobObjectBasicProcessIdList info class

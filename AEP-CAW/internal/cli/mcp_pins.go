@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/mcpinspect"
 	"github.com/spf13/cobra"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/mcpinspect"
 )
 
 func newMCPPinsCmd() *cobra.Command {

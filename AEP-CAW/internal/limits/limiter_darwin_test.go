@@ -417,11 +417,11 @@ func TestDarwinLimiter_CPUSharesNiceMapping(t *testing.T) {
 		shares       int64
 		expectedNice int
 	}{
-		{100, 0},  // 100% shares = nice 0 (highest priority)
-		{50, 10},  // 50% shares = nice 10
-		{0, 20},   // 0% shares = nice 20 (lowest priority)
-		{75, 5},   // 75% shares = nice 5
-		{25, 15},  // 25% shares = nice 15
+		{100, 0}, // 100% shares = nice 0 (highest priority)
+		{50, 10}, // 50% shares = nice 10
+		{0, 20},  // 0% shares = nice 20 (lowest priority)
+		{75, 5},  // 75% shares = nice 5
+		{25, 15}, // 25% shares = nice 15
 	}
 
 	for _, tc := range testCases {

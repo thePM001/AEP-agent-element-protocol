@@ -3,13 +3,12 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use usearch::{Index, IndexOptions, MetricKind, ScalarKind};
 
-use crate::entry::{MemoryEntryJson, MemoryMatchJson, parse_timestamp_unix};
+use crate::entry::{parse_timestamp_unix, MemoryEntryJson, MemoryMatchJson};
 use crate::error::MemoryError;
 use crate::sqlite::{
     attractor_count, count_by_element, embedding_to_json, ensure_schema, fetch_all_meta,
     fetch_history, fetch_meta_by_entry_id, fetch_meta_by_key, insert_meta, insert_vector,
-    open_connection, vec_table_name,
-    vec_version, AttractorMeta,
+    open_connection, vec_table_name, vec_version, AttractorMeta,
 };
 
 pub const DEFAULT_EMBEDDING_DIM: usize = 128;
@@ -111,7 +110,10 @@ impl LatticeMemoryStore {
 
     fn bootstrap_index(&mut self) -> Result<(), MemoryError> {
         if self.usearch_path.exists() {
-            if let Ok(()) = self.index.load(self.usearch_path.to_string_lossy().as_ref()) {
+            if let Ok(()) = self
+                .index
+                .load(self.usearch_path.to_string_lossy().as_ref())
+            {
                 self.next_key = self.max_key_from_sql()?.saturating_add(1);
                 self.ensure_index_capacity()?;
                 return Ok(());
@@ -126,11 +128,11 @@ impl LatticeMemoryStore {
     }
 
     fn max_key_from_sql(&self) -> Result<u64, MemoryError> {
-        let max_key: Option<i64> = self.conn.query_row(
-            "SELECT MAX(key) FROM lattice_memory_meta",
-            [],
-            |row| row.get(0),
-        )?;
+        let max_key: Option<i64> =
+            self.conn
+                .query_row("SELECT MAX(key) FROM lattice_memory_meta", [], |row| {
+                    row.get(0)
+                })?;
         Ok(max_key.unwrap_or(0) as u64)
     }
 
@@ -176,9 +178,9 @@ impl LatticeMemoryStore {
         key: u64,
     ) -> Result<Vec<f32>, MemoryError> {
         let sql = format!("SELECT embedding FROM {vec_table} WHERE rowid = ?1");
-        let blob: Vec<u8> = self.conn.query_row(&sql, rusqlite::params![key as i64], |row| {
-            row.get(0)
-        })?;
+        let blob: Vec<u8> = self
+            .conn
+            .query_row(&sql, rusqlite::params![key as i64], |row| row.get(0))?;
         decode_vec0_f32_blob(&blob, self.embedding_dim)
     }
 
@@ -198,11 +200,7 @@ impl LatticeMemoryStore {
         &self.db_path
     }
 
-    pub fn search(
-        &self,
-        query: &[f32],
-        limit: usize,
-    ) -> Result<Vec<AttractorMatch>, MemoryError> {
+    pub fn search(&self, query: &[f32], limit: usize) -> Result<Vec<AttractorMatch>, MemoryError> {
         self.search_with_options(query, limit, self.similarity_threshold, false)
     }
 
@@ -271,7 +269,11 @@ impl LatticeMemoryStore {
         Ok(key)
     }
 
-    fn record_internal(&mut self, record: AttractorRecord, payload_json: &str) -> Result<u64, MemoryError> {
+    fn record_internal(
+        &mut self,
+        record: AttractorRecord,
+        payload_json: &str,
+    ) -> Result<u64, MemoryError> {
         if self.attractor_count()? >= MAX_ATTRACTORS as u64 {
             return Err(MemoryError::Other(format!(
                 "attractor cap reached ({MAX_ATTRACTORS})"
@@ -474,7 +476,10 @@ mod tests {
 
     fn temp_db(name: &str) -> PathBuf {
         let mut path = std::env::temp_dir();
-        path.push(format!("aep-lattice-memory-{name}-{}.db", std::process::id()));
+        path.push(format!(
+            "aep-lattice-memory-{name}-{}.db",
+            std::process::id()
+        ));
         let _ = std::fs::remove_file(&path);
         let sidecar = LatticeMemoryStore::usearch_sidecar_path(&path);
         let _ = std::fs::remove_file(&sidecar);

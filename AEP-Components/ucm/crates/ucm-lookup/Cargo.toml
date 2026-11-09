@@ -9,3 +9,6 @@ publish = false
 [dependencies]
 aep-ucm-core = { path = "../ucm-core" }
 serde_json.workspace = true
+
+[lints]
+workspace = true

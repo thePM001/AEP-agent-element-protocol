@@ -46,9 +46,13 @@ pub fn normalize_protocol(value: Option<&str>) -> String {
     fixture_label(value)
 }
 
-pub fn translate_foreign_ingest(body: &crate::ingress::ForeignIngestBody) -> Result<LatticeEvent, String> {
+pub fn translate_foreign_ingest(
+    body: &crate::ingress::ForeignIngestBody,
+) -> Result<LatticeEvent, String> {
     let fixture = fixture_label(
-        body.protocol.as_deref().or(body.provenance.as_ref().map(|p| p.source.as_str())),
+        body.protocol
+            .as_deref()
+            .or(body.provenance.as_ref().map(|p| p.source.as_str())),
     );
     let session_id = body
         .session_id
@@ -62,18 +66,49 @@ pub fn translate_foreign_ingest(body: &crate::ingress::ForeignIngestBody) -> Res
     let dock = normalize_dock_port(body.docking_port.as_deref())?;
     let raw_payload = effective_payload(body);
     let mut translated = serde_json::Map::new();
-    translated.insert(String::from("foreign_fixture"), Value::String(fixture.clone()));
-    translated.insert(String::from("foreign_event_type"), Value::String(String::from("UCB_FOREIGN_INGEST")));
-    translated.insert(String::from("binding_fingerprint"), Value::from(binding_fingerprint(&raw_payload)));
+    translated.insert(
+        String::from("foreign_fixture"),
+        Value::String(fixture.clone()),
+    );
+    translated.insert(
+        String::from("foreign_event_type"),
+        Value::String(String::from("UCB_FOREIGN_INGEST")),
+    );
+    translated.insert(
+        String::from("binding_fingerprint"),
+        Value::from(binding_fingerprint(&raw_payload)),
+    );
     translated.insert(String::from("raw"), raw_payload.clone());
     let mut provenance = serde_json::Map::new();
-    provenance.insert(String::from("source"), Value::String(body.provenance.as_ref().map(|p| p.source.clone()).unwrap_or(fixture.clone())));
-    provenance.insert(String::from("protocol"), Value::String(body.provenance.as_ref().map(|p| p.protocol.clone()).unwrap_or_else(|| String::from("ucb/1.0"))));
-    provenance.insert(String::from("session_id"), Value::String(session_id.clone()));
+    provenance.insert(
+        String::from("source"),
+        Value::String(
+            body.provenance
+                .as_ref()
+                .map(|p| p.source.clone())
+                .unwrap_or(fixture.clone()),
+        ),
+    );
+    provenance.insert(
+        String::from("protocol"),
+        Value::String(
+            body.provenance
+                .as_ref()
+                .map(|p| p.protocol.clone())
+                .unwrap_or_else(|| String::from("ucb/1.0")),
+        ),
+    );
+    provenance.insert(
+        String::from("session_id"),
+        Value::String(session_id.clone()),
+    );
     provenance.insert(String::from("timestamp_ms"), Value::from(now_ms()));
-    provenance.insert(String::from("bridge"), Value::String(String::from(crate::BRIDGE_ID)));
+    provenance.insert(
+        String::from("bridge"),
+        Value::String(String::from(crate::BRIDGE_ID)),
+    );
     translated.insert(String::from("provenance"), Value::Object(provenance));
-    if let Some(scene) = body.target_id.clone().filter(|s| s.is_empty() == false) {
+    if let Some(scene) = body.target_id.clone().filter(|s| !s.is_empty()) {
         translated.insert(String::from("target_id"), Value::String(scene));
     }
     if let Some(f) = fact_from_structured(&raw_payload) {
@@ -98,10 +133,23 @@ pub fn translate_foreign_ingest(body: &crate::ingress::ForeignIngestBody) -> Res
 
 fn fact_from_structured(payload: &Value) -> Option<(String, String, String)> {
     let obj = payload.as_object()?;
-    let subject = obj.get("subject").or_else(|| obj.get("s")).and_then(|v| v.as_str())?;
-    let predicate = obj.get("predicate").or_else(|| obj.get("p")).and_then(|v| v.as_str())?;
-    let object = obj.get("object").or_else(|| obj.get("o")).and_then(|v| v.as_str())?;
-    Some((subject.to_string(), predicate.to_string(), object.to_string()))
+    let subject = obj
+        .get("subject")
+        .or_else(|| obj.get("s"))
+        .and_then(|v| v.as_str())?;
+    let predicate = obj
+        .get("predicate")
+        .or_else(|| obj.get("p"))
+        .and_then(|v| v.as_str())?;
+    let object = obj
+        .get("object")
+        .or_else(|| obj.get("o"))
+        .and_then(|v| v.as_str())?;
+    Some((
+        subject.to_string(),
+        predicate.to_string(),
+        object.to_string(),
+    ))
 }
 
 fn effective_payload(body: &crate::ingress::ForeignIngestBody) -> Value {

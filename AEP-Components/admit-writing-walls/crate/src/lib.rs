@@ -1,4 +1,3 @@
-
 use aep_admit::{admit_collect_all, AdmitResult, AdmitWall};
 
 pub use aep_admit::{
@@ -13,6 +12,12 @@ pub mod compile_writing_walls_svc {
     pub struct CompileWritingWalls {
         pub text: String,
         pub walls: Vec<AdmitWall>,
+    }
+
+    impl Default for CompileWritingWalls {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl CompileWritingWalls {
@@ -38,6 +43,12 @@ pub mod collect_payload_strings_svc {
         pub strings: Vec<String>,
     }
 
+    impl Default for CollectPayloadStrings {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl CollectPayloadStrings {
         pub fn new() -> Self {
             Self {
@@ -59,6 +70,12 @@ pub mod writing_wall_ids {
     pub struct WritingWallIds {
         pub rule: String,
         pub wall_id: String,
+    }
+
+    impl Default for WritingWallIds {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl WritingWallIds {
@@ -105,13 +122,16 @@ mod tests {
 
     #[test]
     fn fold_keeps_writing_and_constraint_on_one_pass() {
-        let extra = vec![AdmitWall::close("constraint:required_field:alpha", "alpha required")];
+        let extra = vec![AdmitWall::close(
+            "constraint:required_field:alpha",
+            "alpha required",
+        )];
         let result = fold_writing_into_admit(&em_sample(), &extra);
-        assert_eq!(result.allow, false);
+        assert!(!result.allow);
         let wid = writing_wall_id(RULE_NO_EM_DASHES);
         let ids: Vec<&str> = result.closed.iter().map(|w| w.id.as_str()).collect();
-        assert_eq!(ids.contains(&wid.as_str()), true);
-        assert_eq!(ids.contains(&"constraint:required_field:alpha"), true);
+        assert!(ids.contains(&wid.as_str()));
+        assert!(ids.contains(&"constraint:required_field:alpha"));
     }
 
     #[test]
@@ -120,12 +140,12 @@ mod tests {
         text.push('\n');
         text.push_str(&oxford_sample());
         let result = fold_writing_into_admit(&text, &[]);
-        assert_eq!(result.allow, false);
+        assert!(!result.allow);
         let em = writing_wall_id(RULE_NO_EM_DASHES);
         let ox = writing_wall_id(RULE_NO_OXFORD_COMMA);
         let ids: Vec<&str> = result.closed.iter().map(|w| w.id.as_str()).collect();
-        assert_eq!(ids.contains(&em.as_str()), true);
-        assert_eq!(ids.contains(&ox.as_str()), true);
+        assert!(ids.contains(&em.as_str()));
+        assert!(ids.contains(&ox.as_str()));
     }
 
     #[test]

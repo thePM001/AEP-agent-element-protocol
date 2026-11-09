@@ -132,12 +132,14 @@ impl DiffJournal {
     }
 
     pub fn verify_chain(&self) -> Result<(), String> {
-        let chained: Vec<ChainedDiffRecord> = read_entries(&self.path).iter().map(to_chained).collect();
+        let chained: Vec<ChainedDiffRecord> =
+            read_entries(&self.path).iter().map(to_chained).collect();
         verify_chained(&chained).map_err(|e| e.to_string())
     }
 
     pub fn check_rollback_named(&self, ids: &[String]) -> Result<(), String> {
-        let chained: Vec<ChainedDiffRecord> = read_entries(&self.path).iter().map(to_chained).collect();
+        let chained: Vec<ChainedDiffRecord> =
+            read_entries(&self.path).iter().map(to_chained).collect();
         verify_chained(&chained).map_err(|e| e.to_string())?;
         rollback_named(&chained, ids)
             .map(|_| ())
@@ -314,7 +316,15 @@ mod tests {
         let mut rec = j.list(10).pop().unwrap();
         rec.snapshot = Some(json!({"n": 99}));
         let line = serde_json::to_string(&rec).unwrap();
-        std::fs::write(j.path(), format!("{}\n{}\n", serde_json::to_string(&j.list(10)[0]).unwrap(), line)).unwrap();
+        std::fs::write(
+            j.path(),
+            format!(
+                "{}\n{}\n",
+                serde_json::to_string(&j.list(10)[0]).unwrap(),
+                line
+            ),
+        )
+        .unwrap();
         assert!(j.verify_chain().is_err());
     }
 
@@ -326,7 +336,9 @@ mod tests {
         let b = j.append(sample(2)).unwrap();
         let c = j.append(sample(3)).unwrap();
         assert!(j.rollback_tail(&b.diff_id).is_err());
-        assert!(j.check_rollback_named(&[b.diff_id.clone()]).is_err());
+        assert!(j
+            .check_rollback_named(std::slice::from_ref(&b.diff_id))
+            .is_err());
         assert_eq!(j.list(10).len(), 3);
         j.verify_chain().unwrap();
         let popped = j.rollback_tail(&c.diff_id).unwrap();

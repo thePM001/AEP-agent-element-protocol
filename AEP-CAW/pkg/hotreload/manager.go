@@ -163,8 +163,8 @@ func (m *ConfigManager) TriggerReload() error {
 
 // Status returns the current status of all managed components.
 type ConfigManagerStatus struct {
-	Running       bool           `json:"running"`
-	WatcherStats  *WatcherStats  `json:"watcher_stats,omitempty"`
+	Running       bool                   `json:"running"`
+	WatcherStats  *WatcherStats          `json:"watcher_stats,omitempty"`
 	RuntimeConfig *RuntimeConfigSnapshot `json:"runtime_config,omitempty"`
 }
 

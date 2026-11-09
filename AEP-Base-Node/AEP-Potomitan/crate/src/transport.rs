@@ -58,10 +58,13 @@ pub trait MeshTransport {
     fn recv_datagram(&mut self) -> Result<Option<(String, Vec<u8>)>, PlaneError>;
 }
 
+/// Queued (sender, payload) frames per endpoint name.
+type FabricQueues = HashMap<String, VecDeque<(String, Vec<u8>)>>;
+
 /// Shared in-process fabric so tests can run a mesh without sockets.
 #[derive(Clone, Default)]
 pub struct MemoryFabric {
-    inner: Arc<Mutex<HashMap<String, VecDeque<(String, Vec<u8>)>>>>,
+    inner: Arc<Mutex<FabricQueues>>,
 }
 
 impl MemoryFabric {

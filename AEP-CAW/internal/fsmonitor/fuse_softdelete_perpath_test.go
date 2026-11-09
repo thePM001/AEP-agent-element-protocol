@@ -6,6 +6,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
@@ -42,6 +43,8 @@ func TestFUSE_PerPathSoftDelete_UnderMonitorMode(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// NotifySoftDelete runs on the FUSE server goroutine, so the test reads under a lock.
+	var notifyMu sync.Mutex
 	var notifiedPath, notifiedToken string
 	enabled := true
 	hooks := &Hooks{
@@ -57,7 +60,9 @@ func TestFUSE_PerPathSoftDelete_UnderMonitorMode(t *testing.T) {
 				TrashPath: ".aep-caw_trash",
 			},
 			NotifySoftDelete: func(path, token string) {
+				notifyMu.Lock()
 				notifiedPath, notifiedToken = path, token
+				notifyMu.Unlock()
 			},
 		},
 	}
@@ -88,8 +93,11 @@ func TestFUSE_PerPathSoftDelete_UnderMonitorMode(t *testing.T) {
 		t.Fatal("expected trash dir to contain the soft-deleted file, found none")
 	}
 
-	if notifiedPath == "" || notifiedToken == "" {
-		t.Fatalf("expected NotifySoftDelete to fire; got path=%q token=%q", notifiedPath, notifiedToken)
+	notifyMu.Lock()
+	gotPath, gotToken := notifiedPath, notifiedToken
+	notifyMu.Unlock()
+	if gotPath == "" || gotToken == "" {
+		t.Fatalf("expected NotifySoftDelete to fire; got path=%q token=%q", gotPath, gotToken)
 	}
 }
 

@@ -44,14 +44,14 @@ type RegistryCallbacks struct {
 
 // Registry maps tool names to their MCP server metadata.
 type Registry struct {
-	mu    sync.RWMutex
-	tools map[string]*ToolEntry // keyed by tool name
-	addrs        map[string]string // server addr -> server ID (for network monitor)
-	pinnedHashes map[string]string // toolName -> first-seen hash (for version pinning)
+	mu           sync.RWMutex
+	tools        map[string]*ToolEntry // keyed by tool name
+	addrs        map[string]string     // server addr -> server ID (for network monitor)
+	pinnedHashes map[string]string     // toolName -> first-seen hash (for version pinning)
 
 	callbacks        *RegistryCallbacks
 	servers          map[string]struct{} // distinct server IDs seen
-	multiServerFired bool               // true after OnMultiServer has been called
+	multiServerFired bool                // true after OnMultiServer has been called
 }
 
 // NewRegistry creates an empty, ready-to-use registry.

@@ -8,8 +8,8 @@ use aep_base_node::{
 #[test]
 fn facade_hands_over_every_public_type() {
     let wall = AdmitWall::close("writing:no_em_dashes", "em dash");
-    let result = AdmitResult::from_walls(&[wall.clone()]);
-    assert_eq!(result.allow, false);
+    let result = AdmitResult::from_walls(std::slice::from_ref(&wall));
+    assert!(!result.allow);
     assert_eq!(result.closed.len(), 1);
 
     let envelope = Envelope {
@@ -27,17 +27,17 @@ fn facade_hands_over_every_public_type() {
     let closed = ClosedWall::new("writing:no_em_dashes", "em dash");
     let report = DenyReport::from_closed(&[closed]);
     assert_eq!(report.closed.len(), 1);
-    assert_eq!(report.reseal_required, true);
+    assert!(report.reseal_required);
 
     let pulse = Pulse::compiled();
     assert_eq!(pulse.ms, PULSE_MS);
 
     let sealed = ProcessSealed::seal(7, "sha256", "spec-a", 1);
-    assert_eq!(sealed.is_sealed(), true);
-    assert_eq!(sealed.matches(7, "sha256", "spec-a"), true);
-    assert_eq!(sealed.matches(8, "sha256", "spec-a"), false);
+    assert!(sealed.is_sealed());
+    assert!(sealed.matches(7, "sha256", "spec-a"));
+    assert!(!sealed.matches(8, "sha256", "spec-a"));
 
-    assert_eq!(std::mem::size_of_val(&result) > 0, true);
+    assert!(std::mem::size_of_val(&result) > 0);
 }
 
 #[test]

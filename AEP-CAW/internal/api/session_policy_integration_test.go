@@ -12,13 +12,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/composite"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/go-chi/chi/v5"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -76,6 +76,8 @@ func TestExecInSessionCore_PrecheckConsultsSessionPolicy(t *testing.T) {
 	broker := events.NewBroker()
 
 	cfg := &config.Config{}
+	// This test is about engine selection, not operator ownership.
+	cfg.Development.DisableAuth = true
 	app := NewApp(cfg, mgr, store, globalEngine, broker, nil, nil, nil, nil, nil, nil, nil)
 
 	s, err := mgr.Create(t.TempDir(), "default")
@@ -172,6 +174,8 @@ func newSessionPolicyFixture(t *testing.T) *sessionPolicyFixture {
 	broker := events.NewBroker()
 
 	cfg := &config.Config{}
+	// This test is about engine selection, not operator ownership.
+	cfg.Development.DisableAuth = true
 	app := NewApp(cfg, mgr, store, globalEngine, broker, nil, nil, nil, nil, nil, nil, nil)
 
 	s, err := mgr.Create(t.TempDir(), "default")
@@ -558,6 +562,8 @@ func TestPolicyTest_HonorsSessionID(t *testing.T) {
 	store := composite.New(captured, nil)
 	broker := events.NewBroker()
 	cfg := &config.Config{}
+	// This test is about engine selection, not operator ownership.
+	cfg.Development.DisableAuth = true
 	app := NewApp(cfg, mgr, store, globalEngine, broker, nil, nil, nil, nil, nil, nil, nil)
 
 	s, err := mgr.Create(t.TempDir(), "default")
@@ -661,6 +667,8 @@ func TestGRPCPolicyTest_HonorsSessionID(t *testing.T) {
 	store := composite.New(captured, nil)
 	broker := events.NewBroker()
 	cfg := &config.Config{}
+	// This test is about engine selection, not operator ownership.
+	cfg.Development.DisableAuth = true
 	app := NewApp(cfg, mgr, store, globalEngine, broker, nil, nil, nil, nil, nil, nil, nil)
 
 	s, err := mgr.Create(t.TempDir(), "default")

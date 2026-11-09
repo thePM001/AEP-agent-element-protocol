@@ -24,7 +24,8 @@ impl UcbConfig {
             .map(PathBuf::from)
             .unwrap_or_else(|_| data_dir.join("ucb/manifests"));
         let profile_raw = std::env::var("UCB_PREDICATE_PROFILE").ok();
-        let predicate_profile = parse_profile(profile_raw.as_deref()).unwrap_or(PredicateProfile::PerimeterV1);
+        let predicate_profile =
+            parse_profile(profile_raw.as_deref()).unwrap_or(PredicateProfile::PerimeterV1);
         let manifest_strict = std::env::var("UCB_MANIFEST_STRICT")
             .map(|v| v != "0")
             .unwrap_or(true);

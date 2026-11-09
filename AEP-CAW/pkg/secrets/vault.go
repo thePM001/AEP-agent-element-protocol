@@ -375,9 +375,9 @@ func (p *VaultProvider) RevokeToken(ctx context.Context) error {
 // Vault API response types
 type vaultSecretResponse struct {
 	Data struct {
-		Data     map[string]string      `json:"data"`
-		Metadata map[string]any         `json:"metadata"`
-		Raw      map[string]any         `json:"-"`
+		Data     map[string]string `json:"data"`
+		Metadata map[string]any    `json:"metadata"`
+		Raw      map[string]any    `json:"-"`
 	} `json:"data"`
 }
 

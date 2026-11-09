@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	dbevents "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/events"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
@@ -17,7 +18,6 @@ import (
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/composite"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/tor"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/google/uuid"
 )
 
 // ptraceHandlerRouter routes ptrace syscall events to session-level policy

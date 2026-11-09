@@ -36,11 +36,11 @@ type SignalFilter struct {
 
 // SignalContext holds information extracted from a signal syscall.
 type SignalContext struct {
-	PID       int                  // PID of the process making the syscall
-	Syscall   int                  // The syscall number (SYS_KILL, SYS_TGKILL, etc.)
-	TargetPID int                  // Target PID of the signal
-	TargetTID int                  // Target TID (for tgkill/tkill)
-	Signal    int                  // The signal number being sent
+	PID       int // PID of the process making the syscall
+	Syscall   int // The syscall number (SYS_KILL, SYS_TGKILL, etc.)
+	TargetPID int // Target PID of the signal
+	TargetTID int // Target TID (for tgkill/tkill)
+	Signal    int // The signal number being sent
 }
 
 // IsSignalSupportAvailable checks if seccomp user-notify is available (API >= 6).

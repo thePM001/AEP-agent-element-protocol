@@ -98,10 +98,10 @@ func (a *App) webauthnListCredentials(w http.ResponseWriter, r *http.Request) {
 	out := make([]map[string]any, 0, len(creds))
 	for _, c := range creds {
 		out = append(out, map[string]any{
-			"id":         c.ID,
-			"name":       c.Name,
-			"created_at": c.CreatedAt,
-			"last_used":  c.LastUsed,
+			"id":            c.ID,
+			"name":          c.Name,
+			"created_at":    c.CreatedAt,
+			"last_used":     c.LastUsed,
 			"credential_id": base64.RawURLEncoding.EncodeToString(c.CredentialID),
 		})
 	}

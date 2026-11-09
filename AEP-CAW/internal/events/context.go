@@ -43,9 +43,9 @@ type RuntimeContext struct {
 	IPCBackend      string
 
 	// Version
-	AepCawVersion     string
-	AepCawCommit      string
-	AepCawBuildTime   string
+	AepCawVersion      string
+	AepCawCommit       string
+	AepCawBuildTime    string
 	EventSchemaVersion string
 }
 

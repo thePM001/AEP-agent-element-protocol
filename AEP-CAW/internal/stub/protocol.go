@@ -9,10 +9,10 @@ import (
 // Wire protocol message types for the aep-caw stub <-> server communication.
 // Frame format: [1 byte type][4 bytes length big-endian][payload]
 const (
-	MsgReady  = byte(0x01) // stub -> server: ready to receive
-	MsgStdout = byte(0x02) // server -> stub: stdout data
-	MsgStderr = byte(0x03) // server -> stub: stderr data
-	MsgStdin  = byte(0x04) // stub -> server: stdin data
+	MsgReady      = byte(0x01) // stub -> server: ready to receive
+	MsgStdout     = byte(0x02) // server -> stub: stdout data
+	MsgStderr     = byte(0x03) // server -> stub: stderr data
+	MsgStdin      = byte(0x04) // stub -> server: stdin data
 	MsgExit       = byte(0x05) // server -> stub: exit code (4 bytes big-endian int32)
 	MsgError      = byte(0x06) // server -> stub: error message
 	MsgStdinClose = byte(0x07) // stub -> server: stdin EOF (no payload)

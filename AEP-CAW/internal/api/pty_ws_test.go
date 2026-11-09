@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/composite"
-	"github.com/gorilla/websocket"
 )
 
 func TestPTYWebSocket_RequiresUpgrade(t *testing.T) {

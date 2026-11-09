@@ -21,7 +21,7 @@ func TestCopyToEventBounds(t *testing.T) {
 func TestExtractDstIP_IPv4(t *testing.T) {
 	c := &Collector{}
 	ev := &ConnectEvent{
-		Family:  2, // AF_INET
+		Family:  2,          // AF_INET
 		DstIPv4: 0x0100007f, // 127.0.0.1 in little-endian
 	}
 

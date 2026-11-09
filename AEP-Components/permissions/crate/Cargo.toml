@@ -8,3 +8,6 @@ publish = false
 
 [dependencies]
 aep-admit = { path = "../../admit/crate" }
+
+[lints]
+workspace = true

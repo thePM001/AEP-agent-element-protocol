@@ -226,17 +226,17 @@ var defaultSecretDeny = []string{
 	"KUBECONFIG", "GITHUB_TOKEN", "GH_TOKEN",
 
 	// Linux dynamic linker - code injection vectors
-	"LD_PRELOAD",           // Force load shared libraries
-	"LD_LIBRARY_PATH",      // Override library search path
-	"LD_AUDIT",             // Load auditing libraries
-	"LD_DEBUG",             // Debug output (info leak)
-	"LD_DEBUG_OUTPUT",      // Redirect debug to file
-	"LD_DYNAMIC_WEAK",      // Weak symbol override
-	"LD_HWCAP_MASK",        // Hardware capability mask
-	"LD_ORIGIN_PATH",       // Override $ORIGIN
-	"LD_PROFILE",           // Enable profiling
-	"LD_PROFILE_OUTPUT",    // Profile output path
-	"LD_SHOW_AUXV",         // Show auxiliary vector
+	"LD_PRELOAD",              // Force load shared libraries
+	"LD_LIBRARY_PATH",         // Override library search path
+	"LD_AUDIT",                // Load auditing libraries
+	"LD_DEBUG",                // Debug output (info leak)
+	"LD_DEBUG_OUTPUT",         // Redirect debug to file
+	"LD_DYNAMIC_WEAK",         // Weak symbol override
+	"LD_HWCAP_MASK",           // Hardware capability mask
+	"LD_ORIGIN_PATH",          // Override $ORIGIN
+	"LD_PROFILE",              // Enable profiling
+	"LD_PROFILE_OUTPUT",       // Profile output path
+	"LD_SHOW_AUXV",            // Show auxiliary vector
 	"LD_TRACE_LOADED_OBJECTS", // Trace library loading
 
 	// macOS dynamic linker (dyld) - code injection vectors
@@ -268,13 +268,13 @@ var defaultSecretDeny = []string{
 	"NODE_OPTIONS", // Can enable inspector, load modules
 
 	// Shell behavior modifiers - injection vectors
-	"BASH_ENV",    // Startup file for non-interactive bash
-	"ENV",         // Startup file for sh
-	"SHELLOPTS",   // Shell options
-	"BASHOPTS",    // Bash-specific options
-	"CDPATH",      // cd search path (confusion attacks)
-	"GLOBIGNORE",  // Glob patterns to ignore
-	"MAILPATH",    // Can trigger code on mail check
+	"BASH_ENV",       // Startup file for non-interactive bash
+	"ENV",            // Startup file for sh
+	"SHELLOPTS",      // Shell options
+	"BASHOPTS",       // Bash-specific options
+	"CDPATH",         // cd search path (confusion attacks)
+	"GLOBIGNORE",     // Glob patterns to ignore
+	"MAILPATH",       // Can trigger code on mail check
 	"PROMPT_COMMAND", // Executed before each prompt
 
 	// Git - credential exposure

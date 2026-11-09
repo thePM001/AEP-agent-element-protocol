@@ -9,3 +9,6 @@ publish = false
 [[bin]]
 name = "aep-policy-leftover-skins"
 path = "src/main.rs"
+
+[lints]
+workspace = true

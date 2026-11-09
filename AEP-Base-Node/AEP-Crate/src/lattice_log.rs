@@ -4,24 +4,25 @@
 //! dynAEP Action Lattice event logging for Base Node forensic store.
 //! aep-lattice-log Record must go through dock Admit or stop being a kernel write path.
 
+use crate::dock_keys::{load_or_create_dock_kem, AgentSignKeyStore};
 use aep_agentmesh::{create_bundle, AgentMeshBundle};
 use aep_lattice_channel::{
     build_frame_for_dock, frame_digest, ContractRegistry, DockingPort, LatticeChannelFrame,
 };
-use crate::dock_keys::{load_or_create_dock_kem, AgentSignKeyStore};
-use rusqlite::{Connection, params};
+use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::Path;
 
-use crate::{enforce_writing_payload, init_action_lattice_db, now_unix, CORRECTWRITING_EN_PRIORITY};
 use crate::BaseNodeError;
+use crate::{
+    enforce_writing_payload, init_action_lattice_db, now_unix, CORRECTWRITING_EN_PRIORITY,
+};
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
 /// Test flag. When "1", "true" or "yes", a world-writable lattice db parent is allowed.
-pub const ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV: &str =
-    "AEP_ALLOW_WORLD_WRITABLE_LATTICE_PARENT";
+pub const ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV: &str = "AEP_ALLOW_WORLD_WRITABLE_LATTICE_PARENT";
 
 /// AEP data dir: $AEP_DATA or $HOME/.aep. Never a hardcoded tmp root.
 pub fn default_aep_data_dir() -> PathBuf {
@@ -108,7 +109,6 @@ pub fn refuse_world_writable_lattice_parent(path: &Path) -> rusqlite::Result<()>
     refuse_world_writable_lattice_parent_with_allow(path, world_writable_lattice_parent_allowed())
 }
 
-
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DockingPortWire {
@@ -152,7 +152,7 @@ fn default_contract() -> String {
 }
 
 fn resolve_action_path(input: &DynAepEventInput) -> String {
-    if input.action_path.is_empty() == false {
+    if !input.action_path.is_empty() {
         return input.action_path.clone();
     }
     match input.payload.get("action_path").and_then(|v| v.as_str()) {
@@ -356,8 +356,7 @@ pub fn record_dynaep_event(
     );
     crate::envelope_admit::admit_sealed_payload_on_live_dock(&mut live, &plaintext, &dock)?;
 
-    let payload_json =
-        serde_json::to_string(&enforce_writing_payload(&input.payload))?;
+    let payload_json = serde_json::to_string(&enforce_writing_payload(&input.payload))?;
     let agentmesh_json = serde_json::to_string(&bundle)?;
 
     conn.execute(
@@ -387,39 +386,36 @@ pub fn record_dynaep_event(
     })
 }
 
-pub fn export_dynaep_events(conn: &Connection, limit: Option<u32>) -> Result<Vec<DynAepEventExport>, BaseNodeError> {
+pub fn export_dynaep_events(
+    conn: &Connection,
+    limit: Option<u32>,
+) -> Result<Vec<DynAepEventExport>, BaseNodeError> {
     let lim = limit.unwrap_or(100).min(10_000);
-    let mut stmt = conn
-        .prepare(
-            "SELECT id, agent_id, channel_id, contract_id, event_type, frame_digest,
+    let mut stmt = conn.prepare(
+        "SELECT id, agent_id, channel_id, contract_id, event_type, frame_digest,
                     recorded_at_unix, payload_json, agentmesh_json
              FROM action_lattice_events
              ORDER BY id DESC
              LIMIT ?1",
-        )
-        ?;
+    )?;
 
-    let rows = stmt
-        .query_map([lim as i64], |row| {
-            let payload_raw: String = row.get(7)?;
-            let agentmesh_raw: String = row.get(8)?;
-            Ok(DynAepEventExport {
-                id: row.get(0)?,
-                agent_id: row.get(1)?,
-                channel_id: row.get(2)?,
-                contract_id: row.get(3)?,
-                event_type: row.get(4)?,
-                frame_digest: row.get(5)?,
-                recorded_at_unix: row.get::<_, i64>(6)? as u64,
-                payload: serde_json::from_str(&payload_raw).unwrap_or_else(|_| {
-                    serde_json::json!({ "_corrupt": true, "raw": payload_raw })
-                }),
-                agentmesh: serde_json::from_str(&agentmesh_raw).unwrap_or_else(|_| {
-                    serde_json::json!({ "_corrupt": true, "raw": agentmesh_raw })
-                }),
-            })
+    let rows = stmt.query_map([lim as i64], |row| {
+        let payload_raw: String = row.get(7)?;
+        let agentmesh_raw: String = row.get(8)?;
+        Ok(DynAepEventExport {
+            id: row.get(0)?,
+            agent_id: row.get(1)?,
+            channel_id: row.get(2)?,
+            contract_id: row.get(3)?,
+            event_type: row.get(4)?,
+            frame_digest: row.get(5)?,
+            recorded_at_unix: row.get::<_, i64>(6)? as u64,
+            payload: serde_json::from_str(&payload_raw)
+                .unwrap_or_else(|_| serde_json::json!({ "_corrupt": true, "raw": payload_raw })),
+            agentmesh: serde_json::from_str(&agentmesh_raw)
+                .unwrap_or_else(|_| serde_json::json!({ "_corrupt": true, "raw": agentmesh_raw })),
         })
-        ?;
+    })?;
 
     Ok(rows.collect::<Result<Vec<_>, _>>()?)
 }
@@ -430,6 +426,15 @@ pub fn default_lrps() -> Vec<String> {
 
 pub fn correctwriting_en_priority() -> u8 {
     CORRECTWRITING_EN_PRIORITY
+}
+
+pub fn build_transport_frame(
+    input: &DynAepEventInput,
+    contracts: &ContractRegistry,
+    db_path: &Path,
+) -> Result<LatticeChannelFrame, BaseNodeError> {
+    let (frame, _bundle, _plaintext, _sealed_ts) = build_sealed_frame(input, contracts, db_path)?;
+    Ok(frame)
 }
 
 #[cfg(test)]
@@ -455,7 +460,6 @@ mod tests {
         store.provision(agent_id).expect("provision");
         store.flush().expect("flush");
     }
-
 
     fn sample_input(action_path: &str) -> DynAepEventInput {
         DynAepEventInput {
@@ -502,7 +506,9 @@ mod tests {
         let input = sample_input("");
         let contracts = crate::bootstrap_contracts_from_lrps(&[]);
         let err = record_dynaep_event(&conn, &input, &contracts, &path).expect_err("deny");
-        assert!(err.to_string().contains("Admit collect-all walls then Apply"));
+        assert!(err
+            .to_string()
+            .contains("Admit collect-all walls then Apply"));
         let exported = export_dynaep_events(&conn, Some(10)).expect("export");
         assert_eq!(exported.len(), 0);
     }
@@ -516,7 +522,9 @@ mod tests {
         let contracts = crate::bootstrap_contracts_from_lrps(&[]);
         let err = record_dynaep_event(&conn, &input, &contracts, &path).expect_err("deny");
         assert!(
-            err.to_string().contains("Admit collect-all walls then Apply") || err.to_string().contains("lattice yaml missing")
+            err.to_string()
+                .contains("Admit collect-all walls then Apply")
+                || err.to_string().contains("lattice yaml missing")
         );
         let exported = export_dynaep_events(&conn, Some(10)).expect("export");
         assert_eq!(exported.len(), 0);
@@ -531,7 +539,9 @@ mod tests {
         let input = sample_input("bogus:path");
         let contracts = crate::bootstrap_contracts_from_lrps(&[]);
         let err = record_dynaep_event(&conn, &input, &contracts, &path).expect_err("deny");
-        assert!(err.to_string().contains("Admit collect-all walls then Apply"));
+        assert!(err
+            .to_string()
+            .contains("Admit collect-all walls then Apply"));
         let exported = export_dynaep_events(&conn, Some(10)).expect("export");
         assert_eq!(exported.len(), 0);
     }
@@ -567,7 +577,7 @@ mod tests {
         };
         let body = &rest[..end];
         let needle = ["trust", "_score"].concat();
-        assert_eq!(body.contains(&needle), false);
+        assert!(!body.contains(&needle));
     }
 
     #[test]
@@ -589,8 +599,7 @@ mod tests {
         let mode = std::fs::Permissions::from_mode(0o0777);
         std::fs::set_permissions(&wide, mode).expect("chmod");
         let db = wide.join("aep-action-lattice.db");
-        let err = refuse_world_writable_lattice_parent_with_allow(&db, false)
-            .expect_err("refuse");
+        let err = refuse_world_writable_lattice_parent_with_allow(&db, false).expect_err("refuse");
         let msg = err.to_string();
         assert!(msg.contains("world-writable lattice db parent refused"));
     }
@@ -603,8 +612,7 @@ mod tests {
         let mode = std::fs::Permissions::from_mode(0o0777);
         std::fs::set_permissions(&wide, mode).expect("chmod");
         let db = wide.join("no-such").join("aep-action-lattice.db");
-        let err = refuse_world_writable_lattice_parent_with_allow(&db, false)
-            .expect_err("refuse");
+        let err = refuse_world_writable_lattice_parent_with_allow(&db, false).expect_err("refuse");
         let msg = err.to_string();
         assert!(msg.contains("world-writable lattice db parent refused"));
     }
@@ -638,13 +646,4 @@ mod tests {
         let msg = err.to_string();
         assert!(msg.contains("world-writable lattice db parent refused"));
     }
-}
-
-pub fn build_transport_frame(
-    input: &DynAepEventInput,
-    contracts: &ContractRegistry,
-    db_path: &Path,
-) -> Result<LatticeChannelFrame, BaseNodeError> {
-    let (frame, _bundle, _plaintext, _sealed_ts) = build_sealed_frame(input, contracts, db_path)?;
-    Ok(frame)
 }

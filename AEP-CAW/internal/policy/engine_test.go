@@ -4,9 +4,9 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"gopkg.in/yaml.v3"
 )
 

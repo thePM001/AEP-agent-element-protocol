@@ -19,15 +19,15 @@ const (
 type OperationType string
 
 const (
-	OpFileRead    OperationType = "file_read"
-	OpFileWrite   OperationType = "file_write"
-	OpFileCreate  OperationType = "file_create"
-	OpFileDelete  OperationType = "file_delete"
-	OpNetConnect  OperationType = "net_connect"
-	OpDNSQuery    OperationType = "dns_query"
-	OpEnvRead     OperationType = "env_read"
-	OpEnvWrite    OperationType = "env_write"
-	OpExec        OperationType = "exec"
+	OpFileRead      OperationType = "file_read"
+	OpFileWrite     OperationType = "file_write"
+	OpFileCreate    OperationType = "file_create"
+	OpFileDelete    OperationType = "file_delete"
+	OpNetConnect    OperationType = "net_connect"
+	OpDNSQuery      OperationType = "dns_query"
+	OpEnvRead       OperationType = "env_read"
+	OpEnvWrite      OperationType = "env_write"
+	OpExec          OperationType = "exec"
 	OpRegistryRead  OperationType = "registry_read"
 	OpRegistryWrite OperationType = "registry_write"
 )

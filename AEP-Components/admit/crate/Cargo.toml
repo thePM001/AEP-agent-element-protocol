@@ -17,3 +17,6 @@ path = "src/bin/aep-writing-rules-manifest.rs"
 [dependencies]
 aep-kernel-types = { path = "../../kernel-types/crate" }
 aep-wall-set-backpressure = { path = "../../wall-set-backpressure/crate" }
+
+[lints]
+workspace = true

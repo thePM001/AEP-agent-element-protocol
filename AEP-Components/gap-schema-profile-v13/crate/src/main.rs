@@ -1,8 +1,6 @@
 // GAP-285-P1 CLI. source= then agent_id= action= wrap= action_path=. Collect-all live Admit.
 
-use aep_gap_schema_profile_v13::{
-    live_admit_gap_profile, AdmitResult, LiveAdmitRequest,
-};
+use gap_schema_profile_v13::{live_admit_gap_profile, AdmitResult, LiveAdmitRequest};
 use std::io::{self, Read};
 
 fn main() {
@@ -40,17 +38,17 @@ fn main() {
     let mut result = AdmitResult::new(Vec::new(), Vec::new());
     let mut err = String::new();
     live_admit_gap_profile(&source, &req, &mut result, &mut err);
-    if err.is_empty() == false {
+    if !err.is_empty() {
         print!("allow=false\nerror=");
         print!("{}", err);
-        print!("\n");
+        println!();
         return;
     }
     print!("allow=");
     if result.allow {
-        print!("true\n");
+        println!("true");
     } else {
-        print!("false\n");
+        println!("false");
     }
     let mut i = 0usize;
     while i < result.closed.len() {
@@ -58,7 +56,7 @@ fn main() {
         print!("{}", result.closed[i].id);
         print!("|");
         print!("{}", result.closed[i].reason);
-        print!("\n");
+        println!();
         i += 1;
     }
 }

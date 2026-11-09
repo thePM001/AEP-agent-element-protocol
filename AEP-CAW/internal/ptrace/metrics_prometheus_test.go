@@ -7,16 +7,18 @@ import (
 )
 
 type mockPrometheusCollector struct {
-	traceeCount    int
-	attachReasons  []string
-	timeouts       int
+	traceeCount     int
+	attachReasons   []string
+	timeouts        int
 	exitStopSkipped int
 }
 
-func (m *mockPrometheusCollector) SetPtraceTraceeCount(n int)      { m.traceeCount = n }
-func (m *mockPrometheusCollector) IncPtraceAttachFailure(r string) { m.attachReasons = append(m.attachReasons, r) }
-func (m *mockPrometheusCollector) IncPtraceTimeout()               { m.timeouts++ }
-func (m *mockPrometheusCollector) IncPtraceExitStopSkipped()       { m.exitStopSkipped++ }
+func (m *mockPrometheusCollector) SetPtraceTraceeCount(n int) { m.traceeCount = n }
+func (m *mockPrometheusCollector) IncPtraceAttachFailure(r string) {
+	m.attachReasons = append(m.attachReasons, r)
+}
+func (m *mockPrometheusCollector) IncPtraceTimeout()         { m.timeouts++ }
+func (m *mockPrometheusCollector) IncPtraceExitStopSkipped() { m.exitStopSkipped++ }
 
 func TestPrometheusMetrics(t *testing.T) {
 	mock := &mockPrometheusCollector{}

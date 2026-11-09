@@ -74,7 +74,11 @@ impl MeshSupervisor {
         )));
     }
 
-    pub fn open_udp_plane(&mut self, local_node_id: String, bind: &str) -> Result<String, PlaneError> {
+    pub fn open_udp_plane(
+        &mut self,
+        local_node_id: String,
+        bind: &str,
+    ) -> Result<String, PlaneError> {
         let transport = UdpTransport::bind(bind)?;
         let endpoint = transport.local_udp_endpoint().to_string();
         self.plane = Some(BoundPacketPlane::Udp(MeshPacketPlane::new(
@@ -86,7 +90,7 @@ impl MeshSupervisor {
     }
 
     pub fn send_packet(&mut self, dst: &str, payload: Vec<u8>) -> Result<u64, PlaneError> {
-        if self.should_use_mesh_transport() == false && self.plane.is_some() {
+        if !self.should_use_mesh_transport() && self.plane.is_some() {
             // Plane may still send while internet is up; supervisor prefers internet
             // only as a mode signal. Packet plane remains available when bound.
         }
@@ -105,7 +109,10 @@ impl MeshSupervisor {
         }
     }
 
-    pub fn upsert_peer(&mut self, peer: crate::peer::MeshPeer) -> Result<(), crate::peer::PeerError> {
+    pub fn upsert_peer(
+        &mut self,
+        peer: crate::peer::MeshPeer,
+    ) -> Result<(), crate::peer::PeerError> {
         self.registry.upsert(peer);
         self.routing = RoutingTable::rebuild_from_peers(&self.registry.list());
         self.sync_plane_routes();

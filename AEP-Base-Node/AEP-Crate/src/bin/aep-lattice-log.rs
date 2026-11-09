@@ -1,9 +1,8 @@
 use aep_base_node::{
     bootstrap_contracts_from_lrps, build_transport_frame, default_aep_data_dir,
     default_lattice_db_path, enforce_writing_text, enforce_writing_value, event_count,
-    lint_writing_prose,
-    export_dynaep_events, open_lattice_db, record_dynaep_event, DynAepEventInput,
-    CORRECTWRITING_EN_CORE_ID,
+    export_dynaep_events, lint_writing_prose, open_lattice_db, record_dynaep_event,
+    DynAepEventInput, CORRECTWRITING_EN_CORE_ID,
 };
 use aep_lattice_channel::LatticeChannelFrame;
 use clap::{Parser, Subcommand};
@@ -14,7 +13,10 @@ const MAX_STDIN_BYTES: usize = 4 * 1024 * 1024;
 const CONFIG_VERSION: &str = "2.9";
 
 #[derive(Debug, Parser)]
-#[command(name = "aep-lattice-log", about = "AEP 2.9 dynAEP Action Lattice event logger")]
+#[command(
+    name = "aep-lattice-log",
+    about = "AEP 2.9 dynAEP Action Lattice event logger"
+)]
 struct Cli {
     #[arg(long)]
     db: Option<PathBuf>,
@@ -22,7 +24,8 @@ struct Cli {
     config: Option<PathBuf>,
     /// Test flag. Allows a world-writable parent of the lattice db.
     #[arg(long, default_value_t = false)]
-    #[cfg(test)] allow_world_writable_lattice_parent: bool,
+    #[cfg(test)]
+    allow_world_writable_lattice_parent: bool,
     #[command(subcommand)]
     command: Commands,
 }
@@ -120,7 +123,8 @@ fn resolve_lrps(cli: &Cli) -> Vec<String> {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
-    #[cfg(test)] if cli.allow_world_writable_lattice_parent {
+    #[cfg(test)]
+    if cli.allow_world_writable_lattice_parent {
         std::env::set_var(aep_base_node::ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV, "1");
     }
     let db_path = resolve_db(&cli)?;

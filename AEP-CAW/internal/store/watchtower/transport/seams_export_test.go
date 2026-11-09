@@ -15,6 +15,10 @@ import (
 // production binary; the unexported fields on Transport remain unreachable
 // from outside the package except via these seams.
 
+// InLiveForTest reports whether the Transport is inside the Live state's
+// select loop.
+func InLiveForTest(t *Transport) bool { return t.inLive.Load() }
+
 // SetWALMarkAckedFnForTest swaps the test seam that applyServerAckTuple's
 // caller uses to drive wal.MarkAcked. Production callers MUST NOT touch
 // this - the only legitimate use is _test.go-only error injection.
@@ -276,6 +280,7 @@ func LogGoawayMessageForTest(t *Transport) bool {
 // integration tests can assert the round-22 lifecycle (cancel + nil
 // out the field) without touching unexported state.
 func TeardownRecvForTest(t *Transport) { t.teardownRecv() }
+
 // so external tests can exercise the drain path without driving the
 // full Run loop. Used by the roborev #6143 regression test that
 // verifies post-sentinel buffered records are NOT flushed during

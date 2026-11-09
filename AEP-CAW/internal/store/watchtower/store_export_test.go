@@ -54,4 +54,3 @@ func (s *Store) OptsCompressionAlgoForTest() string {
 func (s *Store) TransportCompressorAlgoForTest() wtpv1.Compression {
 	return s.tr.CompressorAlgo()
 }
-

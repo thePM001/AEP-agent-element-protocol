@@ -4,6 +4,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"os"
 	"runtime"
 	"testing"
@@ -43,8 +44,8 @@ func TestStartNotifyHandler_GracefulErrorExit(t *testing.T) {
 			t.Fatal("timed out waiting for goroutine to finish")
 		default:
 		}
-		// parentSock.Fd() returns ^0 (invalid) after the goroutine closes it.
-		if int(parentSock.Fd()) == -1 {
+		// The handler goroutine closes parentSock on exit; ask the kernel about the fd.
+		if fdClosed(fds[0]) {
 			break
 		}
 		time.Sleep(10 * time.Millisecond)
@@ -388,7 +389,7 @@ func TestNotifyHandler_CancellationGoroutineExitsOnEarlyReturn(t *testing.T) {
 			t.Fatal("timed out waiting for handler goroutine to exit")
 		default:
 		}
-		if int(parentSock.Fd()) == -1 {
+		if fdClosed(fds[0]) {
 			break
 		}
 		time.Sleep(10 * time.Millisecond)
@@ -455,9 +456,16 @@ func TestNotifyHandler_ContextCancelCleansUpFDs(t *testing.T) {
 			t.Fatal("timed out: handler didn't clean up parent socket")
 		default:
 		}
-		if int(parentSock.Fd()) == -1 {
+		if fdClosed(fds[0]) {
 			return
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
+}
+
+// fdClosed reports whether fd is closed. It asks the kernel instead of reading the
+// *os.File, which the handler goroutine closes concurrently.
+func fdClosed(fd int) bool {
+	_, err := unix.FcntlInt(uintptr(fd), unix.F_GETFD, 0)
+	return errors.Is(err, unix.EBADF)
 }

@@ -9,8 +9,8 @@ import (
 	"os"
 	"unsafe"
 
-	seccompkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
 	seccomp "github.com/seccomp/libseccomp-golang"
+	seccompkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
 	"golang.org/x/sys/unix"
 )
 

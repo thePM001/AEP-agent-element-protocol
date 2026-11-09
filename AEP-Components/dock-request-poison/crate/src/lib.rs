@@ -47,7 +47,7 @@ fn strip_line_comments(src: &str) -> String {
 }
 
 fn compact(src: &str) -> String {
-    src.chars().filter(|c| c.is_whitespace() == false).collect()
+    src.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
 fn prod_src(src: &str) -> String {
@@ -66,10 +66,7 @@ pub fn poisoned_lock_message(name: &str) -> String {
 }
 
 /// Map a poisoned mutex to an error string. Do not abort the process.
-pub fn lock_or_poison<'a, T>(
-    mutex: &'a Mutex<T>,
-    name: &str,
-) -> Result<MutexGuard<'a, T>, String> {
+pub fn lock_or_poison<'a, T>(mutex: &'a Mutex<T>, name: &str) -> Result<MutexGuard<'a, T>, String> {
     match mutex.lock() {
         Ok(g) => Ok(g),
         Err(_) => Err(poisoned_lock_message(name)),
@@ -106,32 +103,28 @@ pub fn scan_ok_false_on_poison(src: &str) -> Result<String, String> {
         return Err(String::from("process_request not found"));
     }
     let prod = compact(&strip_line_comments(&prod_src(src)));
-    if prod.contains("poisoned_lock_response") == false
-        && prod.contains("poisoned_lock_message") == false
-    {
+    if !prod.contains("poisoned_lock_response") && !prod.contains("poisoned_lock_message") {
         return Err(String::from(
             "dock request path does not name poisoned lock ok false",
         ));
     }
-    if prod.contains("lock_or_poison") == false && prod.contains("lock_or_deny") == false {
+    if !prod.contains("lock_or_poison") && !prod.contains("lock_or_deny") {
         return Err(String::from(
             "dock request path does not map poisoned locks",
         ));
     }
-    if prod.contains("ok:false") == false && prod.contains("ok: false") == false {
+    if !prod.contains("ok:false") && !prod.contains("ok: false") {
         let ok_false = prod.contains("ok:false") || src.contains("ok: false");
-        if ok_false == false && prod.contains("ok:false") == false {
-            if src.contains("ok: false") == false && src.contains("ok:false") == false {
-                return Err(String::from(
-                    "dock request path does not return ok false",
-                ));
-            }
+        if !ok_false
+            && !prod.contains("ok:false")
+            && !src.contains("ok: false")
+            && !src.contains("ok:false")
+        {
+            return Err(String::from("dock request path does not return ok false"));
         }
     }
-    if src.contains("ok: false") == false {
-        return Err(String::from(
-            "dock request path does not return ok false",
-        ));
+    if !src.contains("ok: false") {
+        return Err(String::from("dock request path does not return ok false"));
     }
     Ok(String::from(
         "ok dock request path returns ok false on poisoned locks",
@@ -182,7 +175,12 @@ fn walk_to_workspace() -> PathBuf {
     let mut i = 0usize;
     while i < 12 {
         let hangar = ["AEP", "Base", "Node"].join("-");
-        let probe = dir.join(&hangar).join("AEP-Crate").join("src").join("docking").join("mod.rs");
+        let probe = dir
+            .join(&hangar)
+            .join("AEP-Crate")
+            .join("src")
+            .join("docking")
+            .join("mod.rs");
         if probe.is_file() {
             return dir;
         }
@@ -217,6 +215,12 @@ pub mod lock_or_poison {
     pub struct LockOrPoison {
         pub name: String,
         pub result: String,
+    }
+
+    impl Default for LockOrPoison {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl LockOrPoison {
@@ -255,6 +259,12 @@ pub mod poisoned_lock_message {
         pub message: String,
     }
 
+    impl Default for PoisonedLockMessage {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl PoisonedLockMessage {
         pub fn new() -> Self {
             Self {
@@ -283,6 +293,12 @@ pub mod scan_prod_no_lock_expect {
         pub scan: String,
     }
 
+    impl Default for ScanProdNoLockExpect {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanProdNoLockExpect {
         pub fn new() -> Self {
             Self {
@@ -309,6 +325,12 @@ pub mod scan_ok_false_on_poison {
         pub scan: String,
     }
 
+    impl Default for ScanOkFalseOnPoison {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanOkFalseOnPoison {
         pub fn new() -> Self {
             Self {
@@ -333,7 +355,7 @@ mod tests {
     use super::*;
 
     fn must(cond: bool) {
-        if cond == false {
+        if !cond {
             std::process::abort();
         }
     }
@@ -370,7 +392,8 @@ mod tests {
 
     #[test]
     fn scan_prod_lock_expect_fails() {
-        let bad = "pub fn process_request() { let db = runtime.record.db.lock().expect(\"db lock\"); }";
+        let bad =
+            "pub fn process_request() { let db = runtime.record.db.lock().expect(\"db lock\"); }";
         match scan_prod_no_lock_expect(bad) {
             Err(e) => must(e.contains("lock expect")),
             Ok(_) => std::process::abort(),

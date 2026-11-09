@@ -9,29 +9,53 @@
 // Collect-all Deny for empty action_path runs before Apply. process_event must not mutate LiveEntry then return Event.
 // A template target_id is not a skip. Every opened frame runs collect-all Admit then Apply.
 use aep_envelope::{
-    admit_with_extra, apply_admit, closed_reasons, dest_dock_from_opened_frame, load_lattice_file, load_lattice_gap, load_lattice_yaml, load_lattice_yaml_file, plan_apply,
-    snapshot_from_nodes, AdmitWall, EnvelopeAction, Snapshot,
+    admit_with_extra, apply_admit, closed_reasons, dest_dock_from_opened_frame, load_lattice_file,
+    load_lattice_gap, load_lattice_yaml, load_lattice_yaml_file, plan_apply, snapshot_from_nodes,
+    AdmitWall, EnvelopeAction, Snapshot,
 };
-pub use aep_envelope::{agent_permission, AgentPermission, AdmitResult, Envelope, Pulse, PULSE_MS, DENY_NO_PERMISSION};
+pub use aep_envelope::{
+    agent_permission, AdmitResult, AgentPermission, Envelope, Pulse, DENY_NO_PERMISSION, PULSE_MS,
+};
 use serde_json::Value;
-use thiserror::Error;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
+use thiserror::Error;
 const TYPE_TO_PREFIX: &[(&str, &str)] = &[
-    ("shell", "SH"), ("panel", "PN"), ("component", "CP"), ("navigation", "NV"),
-    ("cell_zone", "CZ"), ("cell_node", "CN"), ("toolbar", "TB"), ("widget", "WD"),
-    ("overlay", "OV"), ("modal", "MD"), ("dropdown", "DD"), ("tooltip", "TT"),
-    ("form", "FM"), ("icon", "IC"),
+    ("shell", "SH"),
+    ("panel", "PN"),
+    ("component", "CP"),
+    ("navigation", "NV"),
+    ("cell_zone", "CZ"),
+    ("cell_node", "CN"),
+    ("toolbar", "TB"),
+    ("widget", "WD"),
+    ("overlay", "OV"),
+    ("modal", "MD"),
+    ("dropdown", "DD"),
+    ("tooltip", "TT"),
+    ("form", "FM"),
+    ("icon", "IC"),
 ];
 pub fn z_band_for_prefix(prefix: &str) -> (i64, i64) {
     match prefix {
-        "SH" => (0, 9), "PN" | "NV" => (10, 19), "CP" | "FM" | "IC" => (20, 29),
-        "CZ" | "CN" => (30, 39), "TB" => (40, 49), "WD" => (50, 59), "OV" => (60, 69),
-        "MD" | "DD" => (70, 79), "TT" => (80, 89), _ => (0, 99),
+        "SH" => (0, 9),
+        "PN" | "NV" => (10, 19),
+        "CP" | "FM" | "IC" => (20, 29),
+        "CZ" | "CN" => (30, 39),
+        "TB" => (40, 49),
+        "WD" => (50, 59),
+        "OV" => (60, 69),
+        "MD" | "DD" => (70, 79),
+        "TT" => (80, 89),
+        _ => (0, 99),
     }
 }
-fn s(a: &str, b: &str) -> String { let mut o = String::from(a); o.push_str(b); o }
+fn s(a: &str, b: &str) -> String {
+    let mut o = String::from(a);
+    o.push_str(b);
+    o
+}
 #[derive(Debug, Clone, Error)]
 pub enum LiveEntryError {
     #[error("{0}")]
@@ -53,19 +77,34 @@ fn pad5(n: u32) -> String {
     let raw = n.to_string();
     let mut o = String::new();
     let mut i = raw.len();
-    while i < 5 { o.push('0'); i += 1; }
+    while i < 5 {
+        o.push('0');
+        i += 1;
+    }
     o.push_str(&raw);
     o
 }
 #[derive(Debug, Clone)]
 pub struct Element {
-    pub id: String, pub kind: String, pub z: i64, pub parent: Option<String>,
-    pub children: Vec<String>, pub visible: bool, pub layout: Value,
+    pub id: String,
+    pub kind: String,
+    pub z: i64,
+    pub parent: Option<String>,
+    pub children: Vec<String>,
+    pub visible: bool,
+    pub layout: Value,
 }
 #[derive(Debug, Clone)]
-pub struct Rejection { pub target_id: String, pub error: String, pub closed: Vec<AdmitWall> }
+pub struct Rejection {
+    pub target_id: String,
+    pub error: String,
+    pub closed: Vec<AdmitWall>,
+}
 #[derive(Debug, Clone)]
-pub enum ProcessOut { Event(Value), Reject(Rejection) }
+pub enum ProcessOut {
+    Event(Value),
+    Reject(Rejection),
+}
 /// Record one action as satisfied for one agent.
 ///
 /// The kernel calls this when it performs work that the lattice parents expect,
@@ -76,27 +115,51 @@ pub fn seed_satisfied_action(live: &mut LiveEntry, agent_id: &str, path: &str) {
 }
 
 pub struct LiveEntry {
-    pub event: String, pub result: String, pub snapshot: Snapshot,
-    pub live: HashMap<String, Element>, pub versions: HashMap<String, u64>,
-    pub id_counters: HashMap<String, u32>, pub registry: HashSet<String>,
-    pub styles: HashSet<String>, pub templates: HashSet<String>,
-    pub forecast: HashMap<String, Value>, pub overwrite_timestamps: bool,
-    pub jit_on_every_delta: bool, pub conflict_mode: String,
+    pub event: String,
+    pub result: String,
+    pub snapshot: Snapshot,
+    pub live: HashMap<String, Element>,
+    pub versions: HashMap<String, u64>,
+    pub id_counters: HashMap<String, u32>,
+    pub registry: HashSet<String>,
+    pub styles: HashSet<String>,
+    pub templates: HashSet<String>,
+    pub forecast: HashMap<String, Value>,
+    pub overwrite_timestamps: bool,
+    pub jit_on_every_delta: bool,
+    pub conflict_mode: String,
     clock_override_ms: Option<i64>,
     frozen_bridge_ts_ms: Option<i64>,
     pub extra_walls: Vec<AdmitWall>,
     pub opened_dest_dock: String,
     pub opened_agent_id: String,
 }
-impl Default for LiveEntry { fn default() -> Self { Self::new() } }
+impl Default for LiveEntry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl LiveEntry {
     pub fn new() -> Self {
         Self {
-            event: String::new(), result: String::new(), snapshot: Snapshot::default(),
-            live: HashMap::new(), versions: HashMap::new(), id_counters: HashMap::new(),
-            registry: HashSet::new(), styles: HashSet::new(), templates: HashSet::new(),
-            forecast: HashMap::new(), overwrite_timestamps: true, jit_on_every_delta: true,
-            conflict_mode: String::from("last_write_wins"), clock_override_ms: None, frozen_bridge_ts_ms: None, extra_walls: Vec::new(), opened_dest_dock: String::new(), opened_agent_id: String::new(),
+            event: String::new(),
+            result: String::new(),
+            snapshot: Snapshot::default(),
+            live: HashMap::new(),
+            versions: HashMap::new(),
+            id_counters: HashMap::new(),
+            registry: HashSet::new(),
+            styles: HashSet::new(),
+            templates: HashSet::new(),
+            forecast: HashMap::new(),
+            overwrite_timestamps: true,
+            jit_on_every_delta: true,
+            conflict_mode: String::from("last_write_wins"),
+            clock_override_ms: None,
+            frozen_bridge_ts_ms: None,
+            extra_walls: Vec::new(),
+            opened_dest_dock: String::new(),
+            opened_agent_id: String::new(),
         }
     }
     pub fn from_yaml(text: &str) -> Result<Self, LiveEntryError> {
@@ -143,14 +206,14 @@ impl LiveEntry {
     }
     pub fn bind_opened_frame(&mut self, scene: &str, dock: &str) {
         self.opened_dest_dock = String::from(dock);
-        if dock.is_empty() == false {
+        if !dock.is_empty() {
             self.snapshot.allowed_docks.insert(String::from(dock));
         }
-        if scene.is_empty() == false {
+        if !scene.is_empty() {
             self.snapshot.proven_scene_ids.insert(String::from(scene));
         }
     }
-pub fn set_clock_ms(&mut self, ms: i64) {
+    pub fn set_clock_ms(&mut self, ms: i64) {
         self.clock_override_ms = Some(ms);
         if self.frozen_bridge_ts_ms.is_none() {
             self.snapshot.bridge_ts_ms = ms;
@@ -173,14 +236,20 @@ pub fn set_clock_ms(&mut self, ms: i64) {
         }
     }
     pub fn now_ms(&self) -> i64 {
-        if let Some(ms) = self.clock_override_ms { return ms; }
+        if let Some(ms) = self.clock_override_ms {
+            return ms;
+        }
         match SystemTime::now().duration_since(UNIX_EPOCH) {
             Ok(d) => d.as_millis() as i64,
             Err(_) => 0,
         }
     }
     pub fn mint_element_id(&mut self, element_type: &str) -> Result<String, LiveEntryError> {
-        let prefix = match TYPE_TO_PREFIX.iter().find(|(t, _)| *t == element_type).map(|(_, p)| *p) {
+        let prefix = match TYPE_TO_PREFIX
+            .iter()
+            .find(|(t, _)| *t == element_type)
+            .map(|(_, p)| *p)
+        {
             Some(p) => p,
             None => return Err(LiveEntryError::UnknownElementType(element_type.to_string())),
         };
@@ -200,15 +269,22 @@ pub fn set_clock_ms(&mut self, ms: i64) {
             ProcessOut::Event(v) => self.result = v.to_string(),
             ProcessOut::Reject(r) => {
                 let mut m = serde_json::Map::new();
-                m.insert(String::from("dynaep_type"), Value::String(String::from("DYNAEP_REJECTION")));
+                m.insert(
+                    String::from("dynaep_type"),
+                    Value::String(String::from("DYNAEP_REJECTION")),
+                );
                 m.insert(String::from("target_id"), Value::String(r.target_id));
                 m.insert(String::from("error"), Value::String(r.error.clone()));
-                let closed_vals: Vec<Value> = r.closed.iter().map(|w| {
-                    let mut row = serde_json::Map::new();
-                    row.insert(String::from("id"), Value::String(w.id.clone()));
-                    row.insert(String::from("reason"), Value::String(w.reason.clone()));
-                    Value::Object(row)
-                }).collect();
+                let closed_vals: Vec<Value> = r
+                    .closed
+                    .iter()
+                    .map(|w| {
+                        let mut row = serde_json::Map::new();
+                        row.insert(String::from("id"), Value::String(w.id.clone()));
+                        row.insert(String::from("reason"), Value::String(w.reason.clone()));
+                        Value::Object(row)
+                    })
+                    .collect();
                 m.insert(String::from("closed"), Value::Array(closed_vals));
                 self.result = Value::Object(m).to_string();
             }
@@ -217,19 +293,26 @@ pub fn set_clock_ms(&mut self, ms: i64) {
     }
     pub fn process_event(&mut self, mut event: Value) -> ProcessOut {
         let pending_extra = std::mem::take(&mut self.extra_walls);
-        let action_path = event.get("action_path").and_then(|v| v.as_str()).unwrap_or("").to_string();
- // Empty lattice is Deny for every opened frame, including empty action_path.
+        let action_path = event
+            .get("action_path")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        // Empty lattice is Deny for every opened frame, including empty action_path.
         if self.snapshot.lattice_nodes.is_empty() {
             return ProcessOut::Reject(Rejection {
                 target_id: action_path,
                 error: String::from("Lattice required but ActionLattice is not initialised"),
                 closed: vec![
                     AdmitWall::close("dag.membership", "empty lattice closes membership"),
-                    AdmitWall::close("gap.agent_permission", "empty lattice closes agent_permission"),
+                    AdmitWall::close(
+                        "gap.agent_permission",
+                        "empty lattice closes agent_permission",
+                    ),
                 ],
             });
         }
- // Collect-all Deny before Apply. Empty action_path must not mutate LiveEntry.
+        // Collect-all Deny before Apply. Empty action_path must not mutate LiveEntry.
         if action_path.is_empty() {
             return ProcessOut::Reject(Rejection {
                 target_id: action_path,
@@ -237,22 +320,22 @@ pub fn set_clock_ms(&mut self, ms: i64) {
                 closed: vec![AdmitWall::close("action.path", "missing action_path")],
             });
         }
- // A template target_id is not a skip. Fall through to collect-all Admit then Apply.
- // Collect-all AND for every opened frame. No empty-path skip when lattice is loaded.
+        // A template target_id is not a skip. Fall through to collect-all Admit then Apply.
+        // Collect-all AND for every opened frame. No empty-path skip when lattice is loaded.
         self.snapshot.bridge_ts_ms = match self.frozen_bridge_ts_ms {
             Some(ms) => ms,
             None => self.now_ms(),
         };
         let mut action = action_from_event(&event, &self.opened_dest_dock);
-        if action.agent_id.is_empty() && self.opened_agent_id.is_empty() == false {
+        if action.agent_id.is_empty() && !self.opened_agent_id.is_empty() {
             action.agent_id = self.opened_agent_id.clone();
         }
- // One live admit call. The one live closer is aep_envelope::admit_with_extra and
- // this facade carries the extra dock walls into it and then reads its result.
+        // One live admit call. The one live closer is aep_envelope::admit_with_extra and
+        // this facade carries the extra dock walls into it and then reads its result.
         let result = admit_with_extra(&action, &self.snapshot, pending_extra);
-        if result.allow == false {
+        if !result.allow {
             let reasons = closed_reasons(&result);
- // the AdmitResult rows are the public AdmitWall rows.
+            // the AdmitResult rows are the public AdmitWall rows.
             let closed: Vec<AdmitWall> = result.closed.clone();
             return ProcessOut::Reject(Rejection {
                 target_id: action_path,
@@ -260,7 +343,7 @@ pub fn set_clock_ms(&mut self, ms: i64) {
                 closed,
             });
         }
-        if action_path.is_empty() == false {
+        if !action_path.is_empty() {
             let plan = plan_apply(&result, &self.snapshot);
             apply_admit(&mut self.snapshot, &action, &plan);
         }
@@ -272,10 +355,16 @@ pub fn set_clock_ms(&mut self, ms: i64) {
             }
         }
         let ty = event.get("type").and_then(|v| v.as_str()).unwrap_or("");
-        let dt = event.get("dynaep_type").and_then(|v| v.as_str()).unwrap_or("");
+        let dt = event
+            .get("dynaep_type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
         if ty == "CUSTOM" && dt == "AEP_RUNTIME_COORDINATES" {
             if let (Some(tid), Some(coords)) = (
-                event.get("target_id").and_then(|v| v.as_str()).map(|x| x.to_string()),
+                event
+                    .get("target_id")
+                    .and_then(|v| v.as_str())
+                    .map(|x| x.to_string()),
                 event.get("coordinates").cloned(),
             ) {
                 self.forecast.insert(tid, coords);
@@ -285,7 +374,7 @@ pub fn set_clock_ms(&mut self, ms: i64) {
         let dyna = dt.to_string();
         let out = if et == "STATE_DELTA" {
             self.apply_state_delta(event)
-        } else if et == "CUSTOM" && dyna.is_empty() == false {
+        } else if et == "CUSTOM" && !dyna.is_empty() {
             self.apply_dynaep_event(event)
         } else {
             ProcessOut::Event(event)
@@ -306,25 +395,34 @@ pub fn set_clock_ms(&mut self, ms: i64) {
         }
     }
     fn apply_state_delta(&mut self, event: Value) -> ProcessOut {
-        if self.jit_on_every_delta == false { return ProcessOut::Event(event); }
+        if !self.jit_on_every_delta {
+            return ProcessOut::Event(event);
+        }
         let deltas = match event.get("delta").and_then(|v| v.as_array()).cloned() {
             Some(d) => d,
             None => return ProcessOut::Event(event),
         };
         for op in &deltas {
             let path = op.get("path").and_then(|v| v.as_str()).unwrap_or("");
-            let parts: Vec<&str> = path.split('/').filter(|p| p.is_empty() == false).collect();
-            if parts.len() < 2 { continue; }
+            let parts: Vec<&str> = path.split('/').filter(|p| !p.is_empty()).collect();
+            if parts.len() < 2 {
+                continue;
+            }
             let layer = parts[0];
             let target_id = parts[1];
-            let field = if parts.len() > 2 { Some(parts[2]) } else { None };
+            let field = if parts.len() > 2 {
+                Some(parts[2])
+            } else {
+                None
+            };
             let value = op.get("value").cloned().unwrap_or(Value::Null);
             if layer == "elements" {
-                match self.validate_structure_delta(target_id, field, &value) {
-                    Err(err) => {
-                        return ProcessOut::Reject(Rejection { target_id: target_id.to_string(), error: err.to_string(), closed: Vec::new(), });
-                    }
-                    Ok(()) => {}
+                if let Err(err) = self.validate_structure_delta(target_id, field, &value) {
+                    return ProcessOut::Reject(Rejection {
+                        target_id: target_id.to_string(),
+                        error: err.to_string(),
+                        closed: Vec::new(),
+                    });
                 }
                 if self.conflict_mode == "optimistic_locking" {
                     if let Some(exp) = event.get("expected_version").and_then(|v| v.as_u64()) {
@@ -333,32 +431,41 @@ pub fn set_clock_ms(&mut self, ms: i64) {
                             return ProcessOut::Reject(Rejection {
                                 target_id: target_id.to_string(),
                                 error: s("Optimistic lock conflict on ", target_id),
-                             closed: Vec::new(), });
+                                closed: Vec::new(),
+                            });
                         }
                     }
                 }
-            } else if layer == "registry" {
-                if self.registry.contains(target_id) == false && target_id.starts_with("CN-") == false {
-                    return ProcessOut::Reject(Rejection {
-                        target_id: target_id.to_string(),
-                        error: s("Cannot mutate behaviour: ", target_id),
-                     closed: Vec::new(), });
-                }
+            } else if layer == "registry"
+                && !self.registry.contains(target_id)
+                && !target_id.starts_with("CN-")
+            {
+                return ProcessOut::Reject(Rejection {
+                    target_id: target_id.to_string(),
+                    error: s("Cannot mutate behaviour: ", target_id),
+                    closed: Vec::new(),
+                });
             }
         }
         for op in &deltas {
             let path = op.get("path").and_then(|v| v.as_str()).unwrap_or("");
-            let parts: Vec<&str> = path.split('/').filter(|p| p.is_empty() == false).collect();
+            let parts: Vec<&str> = path.split('/').filter(|p| !p.is_empty()).collect();
             if parts.len() >= 3 && parts[0] == "elements" {
                 if let Some(el) = self.live.get_mut(parts[1]) {
                     if parts[2] == "z" {
-                        if let Some(z) = op.get("value").and_then(|v| v.as_i64()) { el.z = z; }
+                        if let Some(z) = op.get("value").and_then(|v| v.as_i64()) {
+                            el.z = z;
+                        }
                     }
                     if parts[2] == "parent" {
-                        if let Some(p) = op.get("value").and_then(|v| v.as_str()) { el.parent = Some(p.to_string()); }
+                        if let Some(p) = op.get("value").and_then(|v| v.as_str()) {
+                            el.parent = Some(p.to_string());
+                        }
                     }
                     if parts[2] == "visible" {
-                        if let Some(v) = op.get("value").and_then(|v| v.as_bool()) { el.visible = v; }
+                        if let Some(v) = op.get("value").and_then(|v| v.as_bool()) {
+                            el.visible = v;
+                        }
                     }
                     *self.versions.entry(parts[1].to_string()).or_insert(0) += 1;
                 }
@@ -366,20 +473,31 @@ pub fn set_clock_ms(&mut self, ms: i64) {
         }
         ProcessOut::Event(event)
     }
-    fn validate_structure_delta(&self, target_id: &str, field: Option<&str>, value: &Value) -> Result<(), LiveEntryError> {
-        if self.live.contains_key(target_id) == false && target_id.starts_with("CN-") == false {
+    fn validate_structure_delta(
+        &self,
+        target_id: &str,
+        field: Option<&str>,
+        value: &Value,
+    ) -> Result<(), LiveEntryError> {
+        if !self.live.contains_key(target_id) && !target_id.starts_with("CN-") {
             return Err(LiveEntryError::UnregisteredElement(target_id.to_string()));
         }
         if field == Some("z") {
             if let Some(z) = value.as_i64() {
-                let prefix = if target_id.len() >= 2 { &target_id[..2] } else { "" };
+                let prefix = if target_id.len() >= 2 {
+                    &target_id[..2]
+                } else {
+                    ""
+                };
                 let (lo, hi) = z_band_for_prefix(prefix);
-                if z < lo || z > hi { return Err(LiveEntryError::ZBand(target_id.to_string())); }
+                if z < lo || z > hi {
+                    return Err(LiveEntryError::ZBand(target_id.to_string()));
+                }
             }
         }
         if field == Some("parent") {
             if let Some(p) = value.as_str() {
-                if self.live.contains_key(p) == false {
+                if !self.live.contains_key(p) {
                     return Err(LiveEntryError::MissingParentField(p.to_string()));
                 }
             }
@@ -387,7 +505,10 @@ pub fn set_clock_ms(&mut self, ms: i64) {
         Ok(())
     }
     fn apply_dynaep_event(&mut self, event: Value) -> ProcessOut {
-        let dt = event.get("dynaep_type").and_then(|v| v.as_str()).unwrap_or("");
+        let dt = event
+            .get("dynaep_type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
         match dt {
             "AEP_MUTATE_STRUCTURE" => self.mutate_structure(event),
             "AEP_MUTATE_BEHAVIOUR" => self.mutate_behaviour(event),
@@ -397,43 +518,78 @@ pub fn set_clock_ms(&mut self, ms: i64) {
         }
     }
     fn mutate_structure(&mut self, event: Value) -> ProcessOut {
-        let tid = event.get("target_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        if self.live.contains_key(&tid) == false && tid.starts_with("CN-") == false {
-            return ProcessOut::Reject(Rejection { target_id: tid.clone(), error: s("Unknown element: ", &tid), closed: Vec::new(), });
+        let tid = event
+            .get("target_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        if !self.live.contains_key(&tid) && !tid.starts_with("CN-") {
+            return ProcessOut::Reject(Rejection {
+                target_id: tid.clone(),
+                error: s("Unknown element: ", &tid),
+                closed: Vec::new(),
+            });
         }
         if let Some(parent) = event.pointer("/mutation/parent").and_then(|v| v.as_str()) {
-            if self.live.contains_key(parent) == false {
-                return ProcessOut::Reject(Rejection { target_id: tid.clone(), error: s("Cannot move; parent missing: ", parent), closed: Vec::new(), });
+            if !self.live.contains_key(parent) {
+                return ProcessOut::Reject(Rejection {
+                    target_id: tid.clone(),
+                    error: s("Cannot move; parent missing: ", parent),
+                    closed: Vec::new(),
+                });
             }
             let old = self.live.get(&tid).and_then(|e| e.parent.clone());
             if let Some(op) = old {
-                if let Some(p) = self.live.get_mut(&op) { p.children.retain(|c| c != &tid); }
+                if let Some(p) = self.live.get_mut(&op) {
+                    p.children.retain(|c| c != &tid);
+                }
             }
             if let Some(p) = self.live.get_mut(parent) {
-                if p.children.iter().any(|c| c == &tid) == false { p.children.push(tid.clone()); }
+                if !p.children.iter().any(|c| c == &tid) {
+                    p.children.push(tid.clone());
+                }
             }
-            if let Some(el) = self.live.get_mut(&tid) { el.parent = Some(parent.to_string()); }
+            if let Some(el) = self.live.get_mut(&tid) {
+                el.parent = Some(parent.to_string());
+            }
         }
         *self.versions.entry(tid).or_insert(0) += 1;
         ProcessOut::Event(event)
     }
     fn mutate_behaviour(&self, event: Value) -> ProcessOut {
-        let tid = event.get("target_id").and_then(|v| v.as_str()).unwrap_or("");
-        if self.registry.contains(tid) == false && tid.starts_with("CN-") == false {
-            return ProcessOut::Reject(Rejection { target_id: tid.into(), error: s("Cannot mutate behaviour: ", tid), closed: Vec::new(), });
+        let tid = event
+            .get("target_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        if !self.registry.contains(tid) && !tid.starts_with("CN-") {
+            return ProcessOut::Reject(Rejection {
+                target_id: tid.into(),
+                error: s("Cannot mutate behaviour: ", tid),
+                closed: Vec::new(),
+            });
         }
         ProcessOut::Event(event)
     }
     fn mutate_skin(&self, event: Value) -> ProcessOut {
-        let tid = event.get("target_id").and_then(|v| v.as_str()).unwrap_or("");
-        if self.styles.is_empty() == false && self.styles.contains(tid) == false {
-            return ProcessOut::Reject(Rejection { target_id: tid.into(), error: s("Cannot mutate skin: ", tid), closed: Vec::new(), });
+        let tid = event
+            .get("target_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        if !self.styles.is_empty() && !self.styles.contains(tid) {
+            return ProcessOut::Reject(Rejection {
+                target_id: tid.into(),
+                error: s("Cannot mutate skin: ", tid),
+                closed: Vec::new(),
+            });
         }
         ProcessOut::Event(event)
     }
     fn handle_query(&self, event: &Value) -> Value {
         let q = event.get("query").and_then(|v| v.as_str()).unwrap_or("");
-        let tid = event.get("target_id").and_then(|v| v.as_str()).unwrap_or("");
+        let tid = event
+            .get("target_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
         let el = self.live.get(tid);
         let result = match q {
             "children_of" => Value::from(el.map(|e| e.children.clone()).unwrap_or_default()),
@@ -444,9 +600,7 @@ pub fn set_clock_ms(&mut self, ms: i64) {
             "z_band_of" => {
                 let p = if tid.len() >= 2 { &tid[..2] } else { "" };
                 let b = z_band_for_prefix(p);
-                let mut arr = Vec::new();
-                arr.push(Value::from(b.0));
-                arr.push(Value::from(b.1));
+                let arr = vec![Value::from(b.0), Value::from(b.1)];
                 Value::Array(arr)
             }
             "next_available_id" => {
@@ -460,71 +614,147 @@ pub fn set_clock_ms(&mut self, ms: i64) {
         };
         let mut m = serde_json::Map::new();
         m.insert(String::from("type"), Value::String(String::from("CUSTOM")));
-        m.insert(String::from("dynaep_type"), Value::String(String::from("AEP_QUERY_RESULT")));
+        m.insert(
+            String::from("dynaep_type"),
+            Value::String(String::from("AEP_QUERY_RESULT")),
+        );
         m.insert(String::from("target_id"), Value::String(tid.to_string()));
         m.insert(String::from("result"), result);
         Value::Object(m)
     }
-    pub fn add_element(&mut self, kind: &str, parent: &str, z: i64) -> Result<String, LiveEntryError> {
-        if TYPE_TO_PREFIX.iter().all(|(t, _)| *t != kind) { return Err(LiveEntryError::UnknownElementType(kind.to_string())); }
-        if self.live.contains_key(parent) == false { return Err(LiveEntryError::ParentMissing(parent.to_string())); }
-        let prefix = match TYPE_TO_PREFIX.iter().find(|(t, _)| *t == kind).map(|(_, p)| *p) {
+    pub fn add_element(
+        &mut self,
+        kind: &str,
+        parent: &str,
+        z: i64,
+    ) -> Result<String, LiveEntryError> {
+        if TYPE_TO_PREFIX.iter().all(|(t, _)| *t != kind) {
+            return Err(LiveEntryError::UnknownElementType(kind.to_string()));
+        }
+        if !self.live.contains_key(parent) {
+            return Err(LiveEntryError::ParentMissing(parent.to_string()));
+        }
+        let prefix = match TYPE_TO_PREFIX
+            .iter()
+            .find(|(t, _)| *t == kind)
+            .map(|(_, p)| *p)
+        {
             Some(p) => p,
             None => return Err(LiveEntryError::UnknownElementType(kind.to_string())),
         };
         let (lo, hi) = z_band_for_prefix(prefix);
-        if z < lo || z > hi { return Err(LiveEntryError::ZOutsideBand(kind.to_string())); }
-        let id = match self.mint_element_id(kind) {
-            Ok(v) => v,
-            Err(e) => return Err(e),
-        };
-        self.live.insert(id.clone(), Element {
-            id: id.clone(), kind: kind.into(), z, parent: Some(parent.into()),
-            children: Vec::new(), visible: true, layout: Value::Object(serde_json::Map::new()),
-        });
-        if let Some(p) = self.live.get_mut(parent) { p.children.push(id.clone()); }
+        if z < lo || z > hi {
+            return Err(LiveEntryError::ZOutsideBand(kind.to_string()));
+        }
+        let id = self.mint_element_id(kind)?;
+        self.live.insert(
+            id.clone(),
+            Element {
+                id: id.clone(),
+                kind: kind.into(),
+                z,
+                parent: Some(parent.into()),
+                children: Vec::new(),
+                visible: true,
+                layout: Value::Object(serde_json::Map::new()),
+            },
+        );
+        if let Some(p) = self.live.get_mut(parent) {
+            p.children.push(id.clone());
+        }
         Ok(id)
     }
     pub fn seed_shell(&mut self) {
-        self.live.insert(String::from("SH-00001"), Element {
-            id: String::from("SH-00001"), kind: String::from("shell"), z: 0, parent: None,
-            children: Vec::new(), visible: true, layout: Value::Object(serde_json::Map::new()),
-        });
+        self.live.insert(
+            String::from("SH-00001"),
+            Element {
+                id: String::from("SH-00001"),
+                kind: String::from("shell"),
+                z: 0,
+                parent: None,
+                children: Vec::new(),
+                visible: true,
+                layout: Value::Object(serde_json::Map::new()),
+            },
+        );
         self.id_counters.insert(String::from("SH"), 1);
         self.registry.insert(String::from("SH-00001"));
     }
 }
 fn action_from_event(event: &Value, opened_dest_dock: &str) -> EnvelopeAction {
-    let raw_dock = event.get("dest_dock").and_then(|v| v.as_str()).unwrap_or("");
+    let raw_dock = event
+        .get("dest_dock")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
     EnvelopeAction {
-        action_path: event.get("action_path").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-        agent_id: event.get("agent_id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-        payload: event.get("payload").cloned().unwrap_or(Value::Object(serde_json::Map::new())),
-        tool: event.get("tool").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        action_path: event
+            .get("action_path")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        agent_id: event
+            .get("agent_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        payload: event
+            .get("payload")
+            .cloned()
+            .unwrap_or(Value::Object(serde_json::Map::new())),
+        tool: event
+            .get("tool")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
         dest_dock: dest_dock_from_opened_frame(raw_dock, opened_dest_dock),
-        scene_id: event.get("target_id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        scene_id: event
+            .get("target_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
         agent_ts_ms: event.get("timestamp").and_then(|v| v.as_i64()).unwrap_or(0),
-        sequence_number: event.get("_sequenceNumber").and_then(|v| v.as_i64()).unwrap_or(0),
-        anomaly_score: event.get("anomaly_score").and_then(|v| v.as_f64()).unwrap_or(0.0),
+        sequence_number: event
+            .get("_sequenceNumber")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0),
+        anomaly_score: event
+            .get("anomaly_score")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0),
     }
 }
 pub fn journal_product_landed(src: &str) -> bool {
-    src.contains("admit_with_extra(&action, &self.snapshot, pending_extra)") && src.contains("load_lattice_yaml")
+    src.contains("admit_with_extra(&action, &self.snapshot, pending_extra)")
+        && src.contains("load_lattice_yaml")
 }
 pub fn product_source_has_no_seq_deniers(src: &str) -> bool {
-    let compact: String = src.chars().filter(|c| c.is_whitespace() == false).collect();
-    if compact.contains("TemporalValidator") { return false; }
-    if compact.contains("UnifiedRegoEvaluator") { return false; }
-    if compact.contains("UnifiedScanner") { return false; }
-    if compact.contains("CausalOrderingEngine") { return false; }
+    let compact: String = src.chars().filter(|c| !c.is_whitespace()).collect();
+    if compact.contains("TemporalValidator") {
+        return false;
+    }
+    if compact.contains("UnifiedRegoEvaluator") {
+        return false;
+    }
+    if compact.contains("UnifiedScanner") {
+        return false;
+    }
+    if compact.contains("CausalOrderingEngine") {
+        return false;
+    }
     true
 }
-pub mod live_entry { pub use super::LiveEntry; }
+pub mod live_entry {
+    pub use super::LiveEntry;
+}
 #[cfg(test)]
 mod tests {
     use super::*;
     use aep_envelope::action_is_satisfied;
-    fn must(cond: bool) { if cond == false { std::process::abort(); } }
+    fn must(cond: bool) {
+        if !cond {
+            std::process::abort();
+        }
+    }
     fn yaml() -> &'static str {
         "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_permission: [\"agent-a\"]\n"
     }
@@ -539,7 +769,9 @@ mod tests {
         let mut le = LiveEntry::from_yaml(yaml()).expect("yaml");
         le.set_clock_ms(1000000);
         bind_allow(&mut le, "scene-a");
-        le.snapshot.satisfied_actions.insert(String::from("root:ping"));
+        le.snapshot
+            .satisfied_actions
+            .insert(String::from("root:ping"));
         match le.process_event(ev_allow()) {
             ProcessOut::Event(_) => {}
             ProcessOut::Reject(_) => std::process::abort(),
@@ -576,32 +808,60 @@ mod tests {
     }
     fn ev_state_delta(z: i64) -> Value {
         let mut m = serde_json::Map::new();
-        m.insert(String::from("type"), Value::String(String::from("STATE_DELTA")));
-        m.insert(String::from("action_path"), Value::String(String::from("root:ping")));
-        m.insert(String::from("agent_id"), Value::String(String::from("agent-a")));
-        m.insert(String::from("payload"), Value::Object({
-            let mut p = serde_json::Map::new();
-            p.insert(String::from("ok"), Value::from(true));
-            p
-        }));
+        m.insert(
+            String::from("type"),
+            Value::String(String::from("STATE_DELTA")),
+        );
+        m.insert(
+            String::from("action_path"),
+            Value::String(String::from("root:ping")),
+        );
+        m.insert(
+            String::from("agent_id"),
+            Value::String(String::from("agent-a")),
+        );
+        m.insert(
+            String::from("payload"),
+            Value::Object({
+                let mut p = serde_json::Map::new();
+                p.insert(String::from("ok"), Value::from(true));
+                p
+            }),
+        );
         m.insert(String::from("timestamp"), Value::from(1000000));
-        m.insert(String::from("target_id"), Value::String(String::from("scene-a")));
-        m.insert(String::from("dest_dock"), Value::String(String::from("inference_engine")));
+        m.insert(
+            String::from("target_id"),
+            Value::String(String::from("scene-a")),
+        );
+        m.insert(
+            String::from("dest_dock"),
+            Value::String(String::from("inference_engine")),
+        );
         m.insert(String::from("_sequenceNumber"), Value::from(1));
         let mut op = serde_json::Map::new();
         op.insert(String::from("op"), Value::String(String::from("replace")));
-        op.insert(String::from("path"), Value::String(String::from("/elements/CP-00001/z")));
+        op.insert(
+            String::from("path"),
+            Value::String(String::from("/elements/CP-00001/z")),
+        );
         op.insert(String::from("value"), Value::from(z));
         m.insert(String::from("delta"), Value::Array(vec![Value::Object(op)]));
         Value::Object(m)
     }
     fn seed_component(le: &mut LiveEntry) {
         le.seed_shell();
-        le.live.insert(String::from("CP-00001"), Element {
-            id: String::from("CP-00001"), kind: String::from("component"), z: 20,
-            parent: Some(String::from("SH-00001")), children: Vec::new(), visible: true,
-            layout: Value::Object(serde_json::Map::new()),
-        });
+        le.live.insert(
+            String::from("CP-00001"),
+            Element {
+                id: String::from("CP-00001"),
+                kind: String::from("component"),
+                z: 20,
+                parent: Some(String::from("SH-00001")),
+                children: Vec::new(),
+                visible: true,
+                layout: Value::Object(serde_json::Map::new()),
+            },
+        );
     }
     #[test]
     fn structural_apply_z() {
@@ -671,7 +931,7 @@ mod tests {
             ProcessOut::Reject(r) => must(r.error.contains("Lattice required")),
             ProcessOut::Event(_) => std::process::abort(),
         }
-        must(le.forecast.contains_key("CP-00001") == false);
+        must(!le.forecast.contains_key("CP-00001"));
     }
     #[test]
     fn forecast_ingest_with_lattice() {
@@ -704,24 +964,23 @@ mod tests {
         }
     }
     #[test]
-    fn env035_ticket() {
-    }
+    fn env035_ticket() {}
     #[test]
-    fn env037_ticket() {
-    }
+    fn env037_ticket() {}
     #[test]
     fn env049_ticket() {
         let src = include_str!("lib.rs");
         must(src.contains("pub extra_walls: Vec<AdmitWall>"));
         let conv = ["wall_verdicts_from_admit", "_walls"].concat();
-        must(src.contains(&conv) == false);
+        must(!src.contains(&conv));
     }
     #[test]
     fn extra_closed_wall_denies_and_clears() {
         let mut le = LiveEntry::from_yaml(yaml()).expect("yaml");
         le.set_clock_ms(1000000);
         bind_allow(&mut le, "scene-a");
-        le.extra_walls.push(AdmitWall::close("dock.capsule", "capsule missing"));
+        le.extra_walls
+            .push(AdmitWall::close("dock.capsule", "capsule missing"));
         let ev = serde_json::json!({
             "type": "PING",
             "action_path": "root:ping",
@@ -757,7 +1016,9 @@ mod tests {
     fn template_target_known_path_admits_and_applies() {
         let mut le = LiveEntry::from_yaml(yaml()).expect("yaml");
         le.set_clock_ms(1000000);
-        le.snapshot.satisfied_actions.insert(String::from("root:ping"));
+        le.snapshot
+            .satisfied_actions
+            .insert(String::from("root:ping"));
         le.templates.insert(String::from("tpl-a"));
         bind_allow(&mut le, "tpl-a");
         match le.process_event(ev_template_allow()) {
@@ -780,7 +1041,7 @@ mod tests {
             ProcessOut::Reject(r) => must(r.error.contains("missing action_path")),
             ProcessOut::Event(_) => std::process::abort(),
         }
-        must(le.forecast.contains_key("tpl-a") == false);
+        must(!le.forecast.contains_key("tpl-a"));
         must(le.snapshot.bridge_ts_ms == before_ts);
     }
     #[test]
@@ -792,7 +1053,10 @@ mod tests {
         bind_allow(&mut le, "CP-00001");
         let mut ev = ev_state_delta(21);
         if let Some(obj) = ev.as_object_mut() {
-            obj.insert(String::from("target_id"), Value::String(String::from("CP-00001")));
+            obj.insert(
+                String::from("target_id"),
+                Value::String(String::from("CP-00001")),
+            );
         }
         match le.process_event(ev) {
             ProcessOut::Event(_) => {}
@@ -807,23 +1071,30 @@ mod tests {
             Some(v) => v,
             None => std::process::abort(),
         };
-        let admit = match src[start..].find("admit_with_extra(&action, &self.snapshot, pending_extra)") {
-            Some(v) => v,
-            None => std::process::abort(),
-        };
+        let admit =
+            match src[start..].find("admit_with_extra(&action, &self.snapshot, pending_extra)") {
+                Some(v) => v,
+                None => std::process::abort(),
+            };
         let slice = &src[start..start + admit];
-        must(slice.contains("fast_exit") == false);
-        let compact: String = slice.chars().filter(|c| c.is_whitespace() == false).collect();
-        must(compact.contains("templates.contains") == false);
-        must(compact.contains("returnProcessOut::Event") == false);
+        must(!slice.contains("fast_exit"));
+        let compact: String = slice.chars().filter(|c| !c.is_whitespace()).collect();
+        must(!compact.contains("templates.contains"));
+        must(!compact.contains("returnProcessOut::Event"));
     }
     fn ev_state_delta_no_path(z: i64) -> Value {
         let mut m = serde_json::Map::new();
-        m.insert(String::from("type"), Value::String(String::from("STATE_DELTA")));
+        m.insert(
+            String::from("type"),
+            Value::String(String::from("STATE_DELTA")),
+        );
         m.insert(String::from("timestamp"), Value::from(1000000));
         let mut op = serde_json::Map::new();
         op.insert(String::from("op"), Value::String(String::from("replace")));
-        op.insert(String::from("path"), Value::String(String::from("/elements/CP-00001/z")));
+        op.insert(
+            String::from("path"),
+            Value::String(String::from("/elements/CP-00001/z")),
+        );
         op.insert(String::from("value"), Value::from(z));
         m.insert(String::from("delta"), Value::Array(vec![Value::Object(op)]));
         Value::Object(m)
@@ -851,7 +1122,7 @@ mod tests {
             ProcessOut::Reject(r) => must(r.error.contains("missing action_path")),
             ProcessOut::Event(_) => std::process::abort(),
         }
-        must(le.forecast.contains_key("CP-00001") == false);
+        must(!le.forecast.contains_key("CP-00001"));
         must(le.snapshot.bridge_ts_ms == before_ts);
     }
     #[test]
@@ -896,25 +1167,33 @@ mod tests {
         // Scan only the production code above the checkers, because the
         // checkers name the patterns they look for in their own bodies.
         let src = include_str!("lib.rs");
-        let end = src.find("pub fn journal_product_landed").unwrap_or(src.len());
+        let end = src
+            .find("pub fn journal_product_landed")
+            .unwrap_or(src.len());
         let product = &src[..end];
         must(product_source_has_no_seq_deniers(product));
         must(journal_product_landed(product));
     }
     #[test]
     fn env031_one_live_entry_language() {
-        must(journal_product_landed("admit_with_extra(&action, &self.snapshot, pending_extra) load_lattice_yaml"));
-        must(product_source_has_no_seq_deniers("admit apply_admit load_lattice_yaml mint_element_id"));
+        must(journal_product_landed(
+            "admit_with_extra(&action, &self.snapshot, pending_extra) load_lattice_yaml",
+        ));
+        must(product_source_has_no_seq_deniers(
+            "admit apply_admit load_lattice_yaml mint_element_id",
+        ));
     }
     #[test]
     fn hvvc_as_process_json() {
         let mut le = LiveEntry::from_yaml(yaml()).expect("yaml");
         le.set_clock_ms(1000000);
         bind_allow(&mut le, "scene-a");
-        le.snapshot.satisfied_actions.insert(String::from("root:ping"));
+        le.snapshot
+            .satisfied_actions
+            .insert(String::from("root:ping"));
         le.event = ev_allow().to_string();
         must(le.process().is_ok());
-        must(le.result.contains("DYNAEP_REJECTION") == false);
+        must(!le.result.contains("DYNAEP_REJECTION"));
     }
     #[test]
     fn freeze_keeps_bridge_after_clock_advance() {
@@ -922,7 +1201,9 @@ mod tests {
         le.set_clock_ms(1000000);
         le.freeze_temporal_snapshot(1000000);
         bind_allow(&mut le, "scene-a");
-        le.snapshot.satisfied_actions.insert(String::from("root:ping"));
+        le.snapshot
+            .satisfied_actions
+            .insert(String::from("root:ping"));
         le.set_clock_ms(1001000);
         match le.process_event(ev_allow()) {
             ProcessOut::Event(_) => {}

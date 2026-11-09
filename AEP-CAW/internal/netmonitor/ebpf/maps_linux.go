@@ -73,8 +73,8 @@ func PopulateAllowlist(coll *ebpf.Collection, cgroupID uint64, allow []AllowKey,
 		type lpm4Key struct {
 			Prefixlen uint32
 			CgroupID  uint64
-			Addr      [4]byte
 			Dport     uint16
+			Addr      [4]byte
 		}
 		iter := lpm4.Iterate()
 		var k lpm4Key
@@ -92,8 +92,8 @@ func PopulateAllowlist(coll *ebpf.Collection, cgroupID uint64, allow []AllowKey,
 		type lpm6Key struct {
 			Prefixlen uint32
 			CgroupID  uint64
-			Addr      [16]byte
 			Dport     uint16
+			Addr      [16]byte
 		}
 		iter := lpm6.Iterate()
 		var k lpm6Key
@@ -172,15 +172,13 @@ func PopulateAllowlist(coll *ebpf.Collection, cgroupID uint64, allow []AllowKey,
 			type lpm4Key struct {
 				Prefixlen uint32
 				CgroupID  uint64
-				Addr      [4]byte
 				Dport     uint16
+				Addr      [4]byte
 			}
 			var key lpm4Key
-			if c.Dport != 0 {
-				key.Prefixlen = 64 + c.PrefixLen + 16
-			} else {
-				key.Prefixlen = 64 + c.PrefixLen
-			}
+			// Key order is cgroup || port || addr. Port 0 stores a rule for any port,
+			// which the BPF program finds with its second lookup.
+			key.Prefixlen = 64 + 16 + c.PrefixLen
 			key.CgroupID = cgroupID
 			copy(key.Addr[:], c.Addr[:4])
 			key.Dport = c.Dport
@@ -193,15 +191,13 @@ func PopulateAllowlist(coll *ebpf.Collection, cgroupID uint64, allow []AllowKey,
 			type lpm6Key struct {
 				Prefixlen uint32
 				CgroupID  uint64
-				Addr      [16]byte
 				Dport     uint16
+				Addr      [16]byte
 			}
 			var key lpm6Key
-			if c.Dport != 0 {
-				key.Prefixlen = 64 + c.PrefixLen + 16
-			} else {
-				key.Prefixlen = 64 + c.PrefixLen
-			}
+			// Key order is cgroup || port || addr. Port 0 stores a rule for any port,
+			// which the BPF program finds with its second lookup.
+			key.Prefixlen = 64 + 16 + c.PrefixLen
 			key.CgroupID = cgroupID
 			copy(key.Addr[:], c.Addr[:])
 			key.Dport = c.Dport
@@ -217,8 +213,8 @@ func PopulateAllowlist(coll *ebpf.Collection, cgroupID uint64, allow []AllowKey,
 		type lpm4Key struct {
 			Prefixlen uint32
 			CgroupID  uint64
-			Addr      [4]byte
 			Dport     uint16
+			Addr      [4]byte
 		}
 		iter := lpm4.Iterate()
 		var k lpm4Key
@@ -231,8 +227,8 @@ func PopulateAllowlist(coll *ebpf.Collection, cgroupID uint64, allow []AllowKey,
 		type lpm6Key struct {
 			Prefixlen uint32
 			CgroupID  uint64
-			Addr      [16]byte
 			Dport     uint16
+			Addr      [16]byte
 		}
 		iter := lpm6.Iterate()
 		var k lpm6Key
@@ -246,15 +242,13 @@ func PopulateAllowlist(coll *ebpf.Collection, cgroupID uint64, allow []AllowKey,
 			type lpm4Key struct {
 				Prefixlen uint32
 				CgroupID  uint64
-				Addr      [4]byte
 				Dport     uint16
+				Addr      [4]byte
 			}
 			var key lpm4Key
-			if c.Dport != 0 {
-				key.Prefixlen = 64 + c.PrefixLen + 16
-			} else {
-				key.Prefixlen = 64 + c.PrefixLen
-			}
+			// Key order is cgroup || port || addr. Port 0 stores a rule for any port,
+			// which the BPF program finds with its second lookup.
+			key.Prefixlen = 64 + 16 + c.PrefixLen
 			key.CgroupID = cgroupID
 			copy(key.Addr[:], c.Addr[:4])
 			key.Dport = c.Dport
@@ -267,15 +261,13 @@ func PopulateAllowlist(coll *ebpf.Collection, cgroupID uint64, allow []AllowKey,
 			type lpm6Key struct {
 				Prefixlen uint32
 				CgroupID  uint64
-				Addr      [16]byte
 				Dport     uint16
+				Addr      [16]byte
 			}
 			var key lpm6Key
-			if c.Dport != 0 {
-				key.Prefixlen = 64 + c.PrefixLen + 16
-			} else {
-				key.Prefixlen = 64 + c.PrefixLen
-			}
+			// Key order is cgroup || port || addr. Port 0 stores a rule for any port,
+			// which the BPF program finds with its second lookup.
+			key.Prefixlen = 64 + 16 + c.PrefixLen
 			key.CgroupID = cgroupID
 			copy(key.Addr[:], c.Addr[:])
 			key.Dport = c.Dport
@@ -290,8 +282,8 @@ func PopulateAllowlist(coll *ebpf.Collection, cgroupID uint64, allow []AllowKey,
 		type lpm4Key struct {
 			Prefixlen uint32
 			CgroupID  uint64
-			Addr      [4]byte
 			Dport     uint16
+			Addr      [4]byte
 		}
 		iter := lpm4deny.Iterate()
 		var k lpm4Key
@@ -304,8 +296,8 @@ func PopulateAllowlist(coll *ebpf.Collection, cgroupID uint64, allow []AllowKey,
 		type lpm6Key struct {
 			Prefixlen uint32
 			CgroupID  uint64
-			Addr      [16]byte
 			Dport     uint16
+			Addr      [16]byte
 		}
 		iter := lpm6deny.Iterate()
 		var k lpm6Key
@@ -360,8 +352,8 @@ func CleanupAllowlist(coll *ebpf.Collection, cgroupID uint64) error {
 		type lpm4Key struct {
 			Prefixlen uint32
 			CgroupID  uint64
-			Addr      [4]byte
 			Dport     uint16
+			Addr      [4]byte
 		}
 		iter := lpm4.Iterate()
 		var k lpm4Key
@@ -379,8 +371,8 @@ func CleanupAllowlist(coll *ebpf.Collection, cgroupID uint64) error {
 		type lpm6Key struct {
 			Prefixlen uint32
 			CgroupID  uint64
-			Addr      [16]byte
 			Dport     uint16
+			Addr      [16]byte
 		}
 		iter := lpm6.Iterate()
 		var k lpm6Key

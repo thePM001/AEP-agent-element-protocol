@@ -71,13 +71,7 @@ impl AgentControlHub {
             };
             let path = entry.path();
             let os_name = path.file_name();
-            let name = match os_name {
-                Some(s) => match s.to_str() {
-                    Some(n) => n,
-                    None => "",
-                },
-                None => "",
-            };
+            let name = os_name.and_then(|s| s.to_str()).unwrap_or_default();
             if !name.starts_with("caw-") {
                 continue;
             }
@@ -96,12 +90,10 @@ impl AgentControlHub {
     }
 
     pub fn session(&self, profile_id: &str) -> Option<&HubSession> {
-        for s in &self.sessions {
-            if s.profile_id == profile_id {
-                return Some(s);
-            }
-        }
-        None
+        self.sessions
+            .iter()
+            .find(|&s| s.profile_id == profile_id)
+            .map(|v| v as _)
     }
 
     pub fn mounts_for(&self, profile_id: &str) -> Vec<&HubMount> {
@@ -116,10 +108,8 @@ impl AgentControlHub {
 
     pub fn agent_may(&self, agent_id: &str, action: &str) -> bool {
         for p in &self.permissions {
-            if p.agent_id == agent_id {
-                if p.action == action {
-                    return true;
-                }
+            if p.agent_id == agent_id && p.action == action {
+                return true;
             }
         }
         false
@@ -131,14 +121,11 @@ impl AgentControlHub {
 }
 
 pub fn resolve_gap_root() -> PathBuf {
-    match std::env::var("AEP_GAP_ROOT") {
-        Ok(raw) => {
-            let trimmed = raw.trim();
-            if !trimmed.is_empty() {
-                return PathBuf::from(trimmed);
-            }
+    if let Ok(raw) = std::env::var("AEP_GAP_ROOT") {
+        let trimmed = raw.trim();
+        if !trimmed.is_empty() {
+            return PathBuf::from(trimmed);
         }
-        Err(_) => {}
     }
     PathBuf::from("AEP-Components/gap")
 }
@@ -192,10 +179,8 @@ fn bind_gap_text(hub: &mut AgentControlHub, text: &str) {
             if !current_profile.is_empty() {
                 let name = value_after(line);
                 for s in &mut hub.sessions {
-                    if s.profile_id == current_profile {
-                        if !name.is_empty() {
-                            s.name = name.clone();
-                        }
+                    if s.profile_id == current_profile && !name.is_empty() {
+                        s.name = name.clone();
                     }
                 }
             }
@@ -251,18 +236,16 @@ fn bind_gap_text(hub: &mut AgentControlHub, text: &str) {
             if line.starts_with("action:") {
                 if let Some(agent_id) = pending_agent.take() {
                     let action = value_after(line);
-                    if !agent_id.is_empty() {
-                        if !action.is_empty() {
-                            let row = HubAgentPermission { agent_id: agent_id, action: action };
-                            let mut exists = false;
-                            for p in &hub.permissions {
-                                if p == &row {
-                                    exists = true;
-                                }
+                    if !agent_id.is_empty() && !action.is_empty() {
+                        let row = HubAgentPermission { agent_id, action };
+                        let mut exists = false;
+                        for p in &hub.permissions {
+                            if p == &row {
+                                exists = true;
                             }
-                            if !exists {
-                                hub.permissions.push(row);
-                            }
+                        }
+                        if !exists {
+                            hub.permissions.push(row);
                         }
                     }
                 }
@@ -286,14 +269,12 @@ fn bind_gap_text(hub: &mut AgentControlHub, text: &str) {
                     if profile_id.is_empty() {
                         profile_id = String::from("mount-policy");
                     }
-                    if !path_template.is_empty() {
-                        if !policy.is_empty() {
-                            hub.mounts.push(HubMount {
-                                profile_id: profile_id,
-                                path_template: path_template,
-                                policy: policy,
-                            });
-                        }
+                    if !path_template.is_empty() && !policy.is_empty() {
+                        hub.mounts.push(HubMount {
+                            profile_id,
+                            path_template,
+                            policy,
+                        });
                     }
                 }
                 continue;
@@ -315,15 +296,11 @@ fn unquote(raw: &str) -> String {
         let bytes = t.as_bytes();
         let first = bytes[0];
         let last = bytes[t.len() - 1];
-        if first == 34 {
-            if last == 34 {
-                return t[1..t.len() - 1].to_string();
-            }
+        if first == 34 && last == 34 {
+            return t[1..t.len() - 1].to_string();
         }
-        if first == 39 {
-            if last == 39 {
-                return t[1..t.len() - 1].to_string();
-            }
+        if first == 39 && last == 39 {
+            return t[1..t.len() - 1].to_string();
         }
     }
     t.to_string()
@@ -399,8 +376,13 @@ mod tests {
     #[test]
     fn loads_seed_gap_profiles_when_tree_present() {
         let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let gap = manifest_dir.join("..").join("..").join("..").join("AEP-Components").join("gap");
-        if gap.join("policies").join("reference").is_dir() == false {
+        let gap = manifest_dir
+            .join("..")
+            .join("..")
+            .join("..")
+            .join("AEP-Components")
+            .join("gap");
+        if !gap.join("policies").join("reference").is_dir() {
             return;
         }
         match AgentControlHub::load_from_gap(&gap) {

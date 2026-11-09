@@ -26,9 +26,9 @@ func envVarKey(name string) string {
 // substitution. Plan 5 uses this struct directly; future plans will
 // parse it from YAML policy files.
 type ServiceConfig struct {
-	Name      string            // logical service name (e.g. "github")
-	SecretRef secrets.SecretRef  // where to fetch the real credential
-	FakeFormat string           // fake template (e.g. "ghp_{rand:36}")
+	Name       string            // logical service name (e.g. "github")
+	SecretRef  secrets.SecretRef // where to fetch the real credential
+	FakeFormat string            // fake template (e.g. "ghp_{rand:36}")
 }
 
 // SecretFetcher is the subset of secrets.SecretProvider that

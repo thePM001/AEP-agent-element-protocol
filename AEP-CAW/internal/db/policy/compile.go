@@ -6,8 +6,8 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
 	"github.com/gobwas/glob"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/effects"
 )
 
 const defaultApproveTimeout = 60 * time.Second

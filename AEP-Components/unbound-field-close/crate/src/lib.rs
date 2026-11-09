@@ -6,7 +6,6 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 
-
 fn extract_fn(src: &str, needle: &str) -> String {
     let start = match src.find(needle) {
         Some(v) => v,
@@ -48,7 +47,7 @@ fn strip_line_comments(src: &str) -> String {
 }
 
 fn compact(src: &str) -> String {
-    src.chars().filter(|c| c.is_whitespace() == false).collect()
+    src.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
 /// Fail if wall_scene still opens scene.membership when scene_id is empty.
@@ -63,13 +62,15 @@ pub fn scan_wall_scene_missing(src: &str) -> Result<String, String> {
             "wall_scene still opens scene.membership when scene_id is empty",
         ));
     }
-    if code.contains("false,\"noscenebound\"") == false {
+    if !code.contains("false,\"noscenebound\"") {
         return Err(String::from(
             "wall_scene does not close scene.membership when scene_id is empty",
         ));
     }
-    if code.contains("proven_scene_ids.is_empty()") == false {
-        return Err(String::from("wall_scene does not close empty proven scene set"));
+    if !code.contains("proven_scene_ids.is_empty()") {
+        return Err(String::from(
+            "wall_scene does not close empty proven scene set",
+        ));
     }
     Ok(String::from("ok wall_scene closes on unbound scene"))
 }
@@ -86,7 +87,7 @@ pub fn scan_wall_time_missing(src: &str) -> Result<String, String> {
             "wall_time still opens time.authority when timestamps are missing",
         ));
     }
-    if code.contains("false,\"notimestamps\"") == false {
+    if !code.contains("false,\"notimestamps\"") {
         return Err(String::from(
             "wall_time does not close time.authority when timestamps are missing",
         ));
@@ -106,13 +107,15 @@ pub fn scan_wall_channel_missing(src: &str) -> Result<String, String> {
             "wall_channel still opens channel.dock when dest_dock is empty",
         ));
     }
-    if code.contains("false,\"nodockbound\"") == false {
+    if !code.contains("false,\"nodockbound\"") {
         return Err(String::from(
             "wall_channel does not close channel.dock when dest_dock is empty",
         ));
     }
-    if code.contains("allowed_docks.is_empty()") == false {
-        return Err(String::from("wall_channel does not close empty allowed docks"));
+    if !code.contains("allowed_docks.is_empty()") {
+        return Err(String::from(
+            "wall_channel does not close empty allowed docks",
+        ));
     }
     Ok(String::from("ok wall_channel closes on unbound dock"))
 }
@@ -129,7 +132,7 @@ pub fn scan_wall_causal_missing(src: &str) -> Result<String, String> {
             "wall_causal still opens causal.sequence when sequence_number is 0",
         ));
     }
-    if code.contains("false,\"nosequencebound\"") == false {
+    if !code.contains("false,\"nosequencebound\"") {
         return Err(String::from(
             "wall_causal does not close causal.sequence when sequence_number is 0",
         ));
@@ -149,12 +152,14 @@ pub fn scan_dynaep_wall_time_missing(src: &str) -> Result<String, String> {
             "aep-dynaep wall_time still opens time.authority when timestamps are missing",
         ));
     }
-    if code.contains("false,\"notimestamps\"") == false {
+    if !code.contains("false,\"notimestamps\"") {
         return Err(String::from(
             "aep-dynaep wall_time does not close time.authority when timestamps are missing",
         ));
     }
-    Ok(String::from("ok aep-dynaep wall_time closes on missing timestamps"))
+    Ok(String::from(
+        "ok aep-dynaep wall_time closes on missing timestamps",
+    ))
 }
 
 /// Fail if compile_temporal_walls still opens when has_agent_time is false.
@@ -164,17 +169,19 @@ pub fn scan_temporal_unbound(src: &str) -> Result<String, String> {
         return Err(String::from("compile_temporal_walls not found"));
     }
     let code = compact(&strip_line_comments(&body));
-    if code.contains("has_agent_time==false") == false {
+    if !code.contains("has_agent_time==false") {
         return Err(String::from(
             "compile_temporal_walls does not close when has_agent_time is false",
         ));
     }
-    if code.contains("true,\"notimestamps\"") == false {
+    if !code.contains("true,\"notimestamps\"") {
         return Err(String::from(
             "compile_temporal_walls does not close unbound agent time",
         ));
     }
-    Ok(String::from("ok compile_temporal_walls closes when has_agent_time is false"))
+    Ok(String::from(
+        "ok compile_temporal_walls closes when has_agent_time is false",
+    ))
 }
 
 /// dest_dock binds from the opened frame docking port when the event field is empty.
@@ -197,8 +204,10 @@ fn sample_action(action_path: &str) -> EnvelopeAction {
 }
 
 fn bound_snap() -> Snapshot {
-    let mut snap = Snapshot::default();
-    snap.bridge_ts_ms = 1000;
+    let mut snap = Snapshot {
+        bridge_ts_ms: 1000,
+        ..Default::default()
+    };
     snap.proven_scene_ids.insert(String::from("scene-a"));
     snap.allowed_docks.insert(String::from("inference_engine"));
     snap.lattice_nodes.insert(
@@ -223,8 +232,10 @@ pub fn admit_unbound_fields() -> Result<String, String> {
     if r.allow {
         return Err(String::from("missing scene_id allowed"));
     }
-    if closed_names(&r).contains("scene.membership") == false {
-        return Err(String::from("missing scene_id did not close scene.membership"));
+    if !closed_names(&r).contains("scene.membership") {
+        return Err(String::from(
+            "missing scene_id did not close scene.membership",
+        ));
     }
     let mut a = sample_action("action:write");
     a.agent_ts_ms = 0;
@@ -232,8 +243,10 @@ pub fn admit_unbound_fields() -> Result<String, String> {
     if r.allow {
         return Err(String::from("missing timestamps allowed"));
     }
-    if closed_names(&r).contains("time.authority") == false {
-        return Err(String::from("missing timestamps did not close time.authority"));
+    if !closed_names(&r).contains("time.authority") {
+        return Err(String::from(
+            "missing timestamps did not close time.authority",
+        ));
     }
     let mut a = sample_action("action:write");
     a.sequence_number = 0;
@@ -241,8 +254,10 @@ pub fn admit_unbound_fields() -> Result<String, String> {
     if r.allow {
         return Err(String::from("missing sequence_number allowed"));
     }
-    if closed_names(&r).contains("causal.sequence") == false {
-        return Err(String::from("missing sequence_number did not close causal.sequence"));
+    if !closed_names(&r).contains("causal.sequence") {
+        return Err(String::from(
+            "missing sequence_number did not close causal.sequence",
+        ));
     }
     let mut a = sample_action("action:write");
     a.dest_dock.clear();
@@ -250,26 +265,30 @@ pub fn admit_unbound_fields() -> Result<String, String> {
     if r.allow {
         return Err(String::from("empty dest_dock allowed"));
     }
-    if closed_names(&r).contains("channel.dock") == false {
+    if !closed_names(&r).contains("channel.dock") {
         return Err(String::from("empty dest_dock did not close channel.dock"));
     }
-    Ok(String::from("ok missing scene, time, sequence and dest_dock Deny"))
+    Ok(String::from(
+        "ok missing scene, time, sequence and dest_dock Deny",
+    ))
 }
 
 /// Fail if the earlier law change empty-lattice Deny at live entry is gone.
 pub fn scan_env034_stays(src: &str) -> Result<String, String> {
     let code = compact(&strip_line_comments(src));
-    if code.contains("lattice_nodes.is_empty()") == false {
+    if !code.contains("lattice_nodes.is_empty()") {
         return Err(String::from(
- "the earlier law change live-entry empty lattice Deny is gone",
+            "the earlier law change live-entry empty lattice Deny is gone",
         ));
     }
-    if code.contains("LatticerequiredbutActionLatticeisnotinitialised") == false {
+    if !code.contains("LatticerequiredbutActionLatticeisnotinitialised") {
         return Err(String::from(
- "the earlier law change live-entry empty lattice Deny is gone",
+            "the earlier law change live-entry empty lattice Deny is gone",
         ));
     }
- Ok(String::from("ok the earlier law change live-entry Deny stays"))
+    Ok(String::from(
+        "ok the earlier law change live-entry Deny stays",
+    ))
 }
 
 /// Fail if empty lattice no longer closes dag.membership and gap.agent_permission.
@@ -277,23 +296,31 @@ pub fn scan_env042_stays(src: &str) -> Result<String, String> {
     let dag = extract_fn(src, "fn wall_dag");
     let may = extract_fn(src, "fn wall_agent_permission");
     if dag.is_empty() || may.is_empty() {
- return Err(String::from("the earlier law change walls missing"));
+        return Err(String::from("the earlier law change walls missing"));
     }
     let dag_c = compact(&strip_line_comments(&dag));
     let may_c = compact(&strip_line_comments(&may));
     if dag_c.contains("true,\"nolatticeconfigured\"") {
- return Err(String::from("the earlier law change wall_dag reopened"));
+        return Err(String::from("the earlier law change wall_dag reopened"));
     }
     if may_c.contains("true,\"nolatticeconfigured\"") {
- return Err(String::from("the earlier law change wall_agent_permission reopened"));
+        return Err(String::from(
+            "the earlier law change wall_agent_permission reopened",
+        ));
     }
-    if dag_c.contains("is_empty(){returnwall(\"dag.membership\",\"dag\",false") == false {
- return Err(String::from("the earlier law change wall_dag empty close is gone"));
+    if !dag_c.contains("is_empty(){returnwall(\"dag.membership\",\"dag\",false") {
+        return Err(String::from(
+            "the earlier law change wall_dag empty close is gone",
+        ));
     }
-    if may_c.contains("is_empty(){returnwall(\"gap.agent_permission\",\"gap\",false") == false {
- return Err(String::from("the earlier law change wall_agent_permission empty close is gone"));
+    if !may_c.contains("is_empty(){returnwall(\"gap.agent_permission\",\"gap\",false") {
+        return Err(String::from(
+            "the earlier law change wall_agent_permission empty close is gone",
+        ));
     }
- Ok(String::from("ok the earlier law change empty lattice close stays"))
+    Ok(String::from(
+        "ok the earlier law change empty lattice close stays",
+    ))
 }
 
 fn walk_to_workspace() -> PathBuf {
@@ -318,7 +345,7 @@ fn walk_to_workspace() -> PathBuf {
 }
 
 fn read_src(path: &PathBuf, label: &str) -> Result<String, String> {
-    if path.is_file() == false {
+    if !path.is_file() {
         return Err(format!("missing {label} source"));
     }
     match fs::read_to_string(path) {
@@ -358,7 +385,9 @@ pub fn run_gate() -> Result<i32, String> {
     ];
     let bound = bind_dest_dock_from_opened_frame("", "inference_engine");
     if bound.as_str() != "inference_engine" {
-        return Err(String::from("dest_dock did not bind from opened frame docking port"));
+        return Err(String::from(
+            "dest_dock did not bind from opened frame docking port",
+        ));
     }
     for proof in proofs {
         let mut line = String::from("aep-unbound-field-close ok proof=");
@@ -375,9 +404,18 @@ pub mod scan_wall_scene_missing {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanWallSceneMissing {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanWallSceneMissing {
         pub fn new() -> Self {
-            Self { src: String::new(), scan: String::new() }
+            Self {
+                src: String::new(),
+                scan: String::new(),
+            }
         }
         pub fn process(&mut self) -> anyhow::Result<()> {
             match super::scan_wall_scene_missing(&self.src) {
@@ -395,9 +433,18 @@ pub mod scan_wall_time_missing {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanWallTimeMissing {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanWallTimeMissing {
         pub fn new() -> Self {
-            Self { src: String::new(), scan: String::new() }
+            Self {
+                src: String::new(),
+                scan: String::new(),
+            }
         }
         pub fn process(&mut self) -> anyhow::Result<()> {
             match super::scan_wall_time_missing(&self.src) {
@@ -415,9 +462,18 @@ pub mod scan_wall_channel_missing {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanWallChannelMissing {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanWallChannelMissing {
         pub fn new() -> Self {
-            Self { src: String::new(), scan: String::new() }
+            Self {
+                src: String::new(),
+                scan: String::new(),
+            }
         }
         pub fn process(&mut self) -> anyhow::Result<()> {
             match super::scan_wall_channel_missing(&self.src) {
@@ -435,9 +491,18 @@ pub mod scan_wall_causal_missing {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanWallCausalMissing {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanWallCausalMissing {
         pub fn new() -> Self {
-            Self { src: String::new(), scan: String::new() }
+            Self {
+                src: String::new(),
+                scan: String::new(),
+            }
         }
         pub fn process(&mut self) -> anyhow::Result<()> {
             match super::scan_wall_causal_missing(&self.src) {
@@ -455,9 +520,18 @@ pub mod scan_dynaep_wall_time_missing {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanDynaepWallTimeMissing {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanDynaepWallTimeMissing {
         pub fn new() -> Self {
-            Self { src: String::new(), scan: String::new() }
+            Self {
+                src: String::new(),
+                scan: String::new(),
+            }
         }
         pub fn process(&mut self) -> anyhow::Result<()> {
             match super::scan_dynaep_wall_time_missing(&self.src) {
@@ -476,6 +550,12 @@ pub mod dest_dock_from_opened_frame {
         pub docking_port: String,
         pub dest_dock: String,
     }
+    impl Default for DestDockFromOpenedFrame {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl DestDockFromOpenedFrame {
         pub fn new() -> Self {
             Self {
@@ -485,10 +565,8 @@ pub mod dest_dock_from_opened_frame {
             }
         }
         pub fn process(&mut self) -> anyhow::Result<()> {
-            self.dest_dock = super::bind_dest_dock_from_opened_frame(
-                &self.event_dest_dock,
-                &self.docking_port,
-            );
+            self.dest_dock =
+                super::bind_dest_dock_from_opened_frame(&self.event_dest_dock, &self.docking_port);
             Ok(())
         }
     }
@@ -500,9 +578,18 @@ pub mod scan_env034_stays {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanEnv034Stays {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanEnv034Stays {
         pub fn new() -> Self {
-            Self { src: String::new(), scan: String::new() }
+            Self {
+                src: String::new(),
+                scan: String::new(),
+            }
         }
         pub fn process(&mut self) -> anyhow::Result<()> {
             match super::scan_env034_stays(&self.src) {
@@ -520,9 +607,18 @@ pub mod scan_env042_stays {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanEnv042Stays {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanEnv042Stays {
         pub fn new() -> Self {
-            Self { src: String::new(), scan: String::new() }
+            Self {
+                src: String::new(),
+                scan: String::new(),
+            }
         }
         pub fn process(&mut self) -> anyhow::Result<()> {
             match super::scan_env042_stays(&self.src) {
@@ -539,7 +635,7 @@ mod tests {
     use super::*;
 
     fn must(cond: bool) {
-        if cond == false {
+        if !cond {
             std::process::abort();
         }
     }

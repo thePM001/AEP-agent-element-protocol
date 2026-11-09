@@ -1005,8 +1005,8 @@ func TestValidateHTTPServices(t *testing.T) {
 			wantErr: "",
 		},
 		{
-			name: "empty http_services list is valid",
-			svcs: []HTTPService{},
+			name:    "empty http_services list is valid",
+			svcs:    []HTTPService{},
 			wantErr: "",
 		},
 	}

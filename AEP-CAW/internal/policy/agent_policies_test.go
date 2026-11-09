@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 // findProjectRoot walks up from the current directory to find go.mod.
@@ -708,11 +708,12 @@ func TestAgentDefault_FileDecisions(t *testing.T) {
 
 		// /dev access
 		{
-			name:     "read /dev/null via allow-system-read",
+			// Most specific wins: the exact /dev/null path beats /dev/**.
+			name:     "open /dev/null via allow-dev-write",
 			path:     "/dev/null",
 			op:       "open",
 			wantDec:  types.DecisionAllow,
-			wantRule: "allow-system-read",
+			wantRule: "allow-dev-write",
 		},
 		{
 			name:     "write /dev/null via allow-dev-write",

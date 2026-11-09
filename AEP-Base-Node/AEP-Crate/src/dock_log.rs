@@ -147,8 +147,12 @@ impl LogConfig {
     pub fn from_env() -> Self {
         let filter = std::env::var("AEP_LOG")
             .ok()
-            .filter(|v| v.trim().is_empty() == false)
-            .or_else(|| std::env::var("RUST_LOG").ok().filter(|v| v.trim().is_empty() == false))
+            .filter(|v| !v.trim().is_empty())
+            .or_else(|| {
+                std::env::var("RUST_LOG")
+                    .ok()
+                    .filter(|v| !v.trim().is_empty())
+            })
             .unwrap_or_else(|| String::from("info"));
         let json = std::env::var("AEP_LOG_JSON").ok().as_deref() == Some("1");
         let file = if std::env::var("AEP_LOG_FILE").ok().as_deref() == Some("1") {
@@ -167,7 +171,7 @@ fn nearest_existing(path: &Path) -> PathBuf {
             return cur;
         }
         match cur.parent() {
-            Some(p) if p.as_os_str().is_empty() == false => cur = p.to_path_buf(),
+            Some(p) if !p.as_os_str().is_empty() => cur = p.to_path_buf(),
             _ => return PathBuf::from("."),
         }
     }
@@ -228,12 +232,19 @@ impl JsonVisitor {
     fn put(&mut self, field: &Field, value: serde_json::Value) {
         let name = field.name();
         if is_redacted(name) {
-            self.fields
-                .insert(name.to_string(), serde_json::Value::String(String::from(REDACTED)));
+            self.fields.insert(
+                name.to_string(),
+                serde_json::Value::String(String::from(REDACTED)),
+            );
             return;
         }
         match name {
-            "message" => self.message = value.as_str().map(String::from).or_else(|| Some(value.to_string())),
+            "message" => {
+                self.message = value
+                    .as_str()
+                    .map(String::from)
+                    .or_else(|| Some(value.to_string()))
+            }
             "event" => self.event = value.as_str().map(String::from),
             _ => {
                 self.fields.insert(name.to_string(), value);
@@ -268,7 +279,12 @@ where
     S: Subscriber + for<'a> LookupSpan<'a>,
     N: for<'a> FormatFields<'a> + 'static,
 {
-    fn format_event(&self, _ctx: &FmtContext<'_, S, N>, mut writer: Writer<'_>, event: &Event<'_>) -> fmt::Result {
+    fn format_event(
+        &self,
+        _ctx: &FmtContext<'_, S, N>,
+        mut writer: Writer<'_>,
+        event: &Event<'_>,
+    ) -> fmt::Result {
         let mut v = JsonVisitor::default();
         event.record(&mut v);
         let meta = event.metadata();
@@ -278,18 +294,25 @@ where
             .unwrap_or(0);
         let mut line = serde_json::Map::new();
         line.insert(String::from("ts_ms"), serde_json::Value::from(ts_ms));
-        line.insert(String::from("level"), serde_json::Value::String(meta.level().to_string()));
-        line.insert(String::from("target"), serde_json::Value::String(meta.target().to_string()));
+        line.insert(
+            String::from("level"),
+            serde_json::Value::String(meta.level().to_string()),
+        );
+        line.insert(
+            String::from("target"),
+            serde_json::Value::String(meta.target().to_string()),
+        );
         if let Some(ev) = v.event {
             line.insert(String::from("event"), serde_json::Value::String(ev));
         }
         if let Some(msg) = v.message {
             line.insert(String::from("message"), serde_json::Value::String(msg));
         }
-        if v.fields.is_empty() == false {
+        if !v.fields.is_empty() {
             line.insert(String::from("fields"), serde_json::Value::Object(v.fields));
         }
-        let text = serde_json::to_string(&serde_json::Value::Object(line)).map_err(|_| fmt::Error)?;
+        let text =
+            serde_json::to_string(&serde_json::Value::Object(line)).map_err(|_| fmt::Error)?;
         writeln!(writer, "{text}")
     }
 }
@@ -312,16 +335,18 @@ where
             .with_filter(env_filter(filter))
             .boxed()
     } else {
-        let fields = tracing_subscriber::fmt::format::debug_fn(|w: &mut Writer<'_>, field: &Field, value: &dyn fmt::Debug| {
-            let name = field.name();
-            if name == "message" {
-                write!(w, "{value:?}")
-            } else if is_redacted(name) {
-                write!(w, "{name}={REDACTED}")
-            } else {
-                write!(w, "{name}={value:?}")
-            }
-        })
+        let fields = tracing_subscriber::fmt::format::debug_fn(
+            |w: &mut Writer<'_>, field: &Field, value: &dyn fmt::Debug| {
+                let name = field.name();
+                if name == "message" {
+                    write!(w, "{value:?}")
+                } else if is_redacted(name) {
+                    write!(w, "{name}={REDACTED}")
+                } else {
+                    write!(w, "{name}={value:?}")
+                }
+            },
+        )
         .delimited(" ");
         tracing_subscriber::fmt::layer()
             .with_ansi(ansi)
@@ -334,7 +359,7 @@ where
 
 /// Installs the official log. Returns the log file path when one was opened.
 pub fn init(cfg: &LogConfig) -> Result<Option<PathBuf>, String> {
-    let mut layers: Vec<BoxedLayer> = vec![layer_for(&cfg.filter, cfg.json, cfg.json == false, io::stderr)];
+    let mut layers: Vec<BoxedLayer> = vec![layer_for(&cfg.filter, cfg.json, !cfg.json, io::stderr)];
     let mut file_path = None;
     if let Some(data_dir) = &cfg.file {
         let file = open_log_file(data_dir).map_err(|e| format!("official log file: {e}"))?;
@@ -408,10 +433,14 @@ mod tests {
         std::fs::set_permissions(&data, std::fs::Permissions::from_mode(0o777)).expect("chmod 777");
         let err = open_log_file(&data).expect_err("world-writable parent must refuse");
         assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
-        assert_eq!(data.join(LOG_DIR_NAME).exists(), false);
+        assert!(!data.join(LOG_DIR_NAME).exists());
         std::fs::set_permissions(&data, std::fs::Permissions::from_mode(0o700)).expect("chmod 700");
         let _file = open_log_file(&data).expect("private parent opens");
-        let dir_mode = std::fs::metadata(data.join(LOG_DIR_NAME)).expect("dir").permissions().mode() & 0o777;
+        let dir_mode = std::fs::metadata(data.join(LOG_DIR_NAME))
+            .expect("dir")
+            .permissions()
+            .mode()
+            & 0o777;
         let file_mode = std::fs::metadata(data.join(LOG_DIR_NAME).join(LOG_FILE_NAME))
             .expect("file")
             .permissions()
@@ -425,7 +454,12 @@ mod tests {
     fn log_omits_seal_material() {
         for json in [true, false] {
             let buf = SharedBuffer::default();
-            let subscriber = tracing_subscriber::registry().with(vec![layer_for("info", json, false, buf.clone())]);
+            let subscriber = tracing_subscriber::registry().with(vec![layer_for(
+                "info",
+                json,
+                false,
+                buf.clone(),
+            )]);
             tracing::subscriber::with_default(subscriber, || {
                 crate::dock_event!(
                     info,
@@ -439,8 +473,16 @@ mod tests {
                 );
             });
             let text = buf.text();
-            for secret in ["deadbeefcafe", "k-secret-value", "capsule-bytes-xyz", "grant-root"] {
-                assert_eq!(text.contains(secret), false, "json={json} leaked {secret}: {text}");
+            for secret in [
+                "deadbeefcafe",
+                "k-secret-value",
+                "capsule-bytes-xyz",
+                "grant-root",
+            ] {
+                assert!(
+                    !text.contains(secret),
+                    "json={json} leaked {secret}: {text}"
+                );
             }
             assert!(text.contains("frame.deny"), "json={json}: {text}");
             assert!(text.contains("digest-visible"), "json={json}: {text}");
@@ -448,7 +490,10 @@ mod tests {
             if json {
                 let v: serde_json::Value = serde_json::from_str(text.trim()).expect("json line");
                 assert_eq!(v.get("event").and_then(|e| e.as_str()), Some("frame.deny"));
-                assert_eq!(v.get("message").and_then(|e| e.as_str()), Some("frame denied"));
+                assert_eq!(
+                    v.get("message").and_then(|e| e.as_str()),
+                    Some("frame denied")
+                );
             }
         }
     }

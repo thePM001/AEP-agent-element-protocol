@@ -411,6 +411,8 @@ func TestShellShim_NonInteractiveBypass_BinaryStdinPassthrough(t *testing.T) {
 	cmd.Env = []string{
 		"PATH=/usr/bin:/bin",
 		"AEP_CAW_SESSION_ID=test-session",
+		// Non-interactive stdin enforces by default; this test covers the documented opt-out.
+		"AEP_CAW_SHIM_ALLOW_NONINTERACTIVE=1",
 		// No AEP_CAW_BIN - the bypass should exec sh.real directly.
 	}
 
@@ -464,6 +466,8 @@ func TestShellShim_NonInteractiveBypass_ExecRealShellNotAepCaw(t *testing.T) {
 		"PATH=/usr/bin:/bin",
 		"AEP_CAW_BIN=" + fakeAepCaw,
 		"AEP_CAW_SESSION_ID=test-session",
+		// Non-interactive stdin enforces by default; this test covers the documented opt-out.
+		"AEP_CAW_SHIM_ALLOW_NONINTERACTIVE=1",
 		"FAKE_AEP_CAW_LOG=" + logPath,
 	}
 	out, err := cmd.CombinedOutput()

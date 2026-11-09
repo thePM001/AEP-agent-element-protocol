@@ -85,7 +85,7 @@ impl<T: MeshTransport> MeshPacketPlane<T> {
             self.inbox.push(pkt);
             return Ok(ForwardOutcome::DeliveredLocal);
         }
-        if hop_limit_allows_forward(pkt.hop_limit) == false {
+        if !hop_limit_allows_forward(pkt.hop_limit) {
             return Ok(ForwardOutcome::DroppedHopLimit);
         }
         let mut fwd = pkt;
@@ -221,8 +221,8 @@ mod tests {
 
     #[test]
     fn udp_plane_delivers_localhost() {
-        use crate::transport::UdpTransport;
         use crate::routing::RouteEntry;
+        use crate::transport::UdpTransport;
         let ta = UdpTransport::bind("127.0.0.1:0").expect("bind a");
         let tb = UdpTransport::bind("127.0.0.1:0").expect("bind b");
         let ea = ta.local_udp_endpoint().to_string();

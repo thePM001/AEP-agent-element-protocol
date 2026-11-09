@@ -22,7 +22,11 @@ pub struct AppState {
 fn respond(r: ApiResult) -> Response {
     match r {
         Ok(v) => (StatusCode::OK, Json(v)).into_response(),
-        Err(e) => (StatusCode::from_u16(e.status).unwrap_or(StatusCode::BAD_REQUEST), Json(e.to_json())).into_response(),
+        Err(e) => (
+            StatusCode::from_u16(e.status).unwrap_or(StatusCode::BAD_REQUEST),
+            Json(e.to_json()),
+        )
+            .into_response(),
     }
 }
 
@@ -36,7 +40,9 @@ fn same(a: &[u8], b: &[u8]) -> bool {
 }
 
 fn authorized(st: &AppState, h: &HeaderMap) -> Result<(), ApiError> {
-    let Some(want) = &st.engine.cfg.api_key else { return Ok(()) };
+    let Some(want) = &st.engine.cfg.api_key else {
+        return Ok(());
+    };
     let given = h
         .get("authorization")
         .and_then(|v| v.to_str().ok())
@@ -46,12 +52,17 @@ fn authorized(st: &AppState, h: &HeaderMap) -> Result<(), ApiError> {
     if same(given.as_bytes(), want.as_bytes()) {
         Ok(())
     } else {
-        Err(ApiError::new("unauthorized", "missing or wrong UCM API key", 401))
+        Err(ApiError::new(
+            "unauthorized",
+            "missing or wrong UCM API key",
+            401,
+        ))
     }
 }
 
 fn parse(body: &Bytes) -> Result<J, ApiError> {
-    let v: J = serde_json::from_slice(body).map_err(|e| ApiError::bad("form_error", format!("body is not JSON: {e}")))?;
+    let v: J = serde_json::from_slice(body)
+        .map_err(|e| ApiError::bad("form_error", format!("body is not JSON: {e}")))?;
     if !v.is_object() {
         return Err(ApiError::bad("form_error", "body must be a JSON object"));
     }
@@ -71,7 +82,9 @@ async fn run_blocking(st: &AppState, req: J, f: fn(&Engine, &J) -> ApiResult) ->
 }
 
 async fn health(State(st): State<AppState>) -> Json<J> {
-    Json(json!({ "ok": true, "service": "aep-ucm", "engine_build": aep_ucm_core::engine_build(), "node_id": st.engine.key.node_id }))
+    Json(
+        json!({ "ok": true, "service": "aep-ucm", "engine_build": aep_ucm_core::engine_build(), "node_id": st.engine.key.node_id }),
+    )
 }
 
 async fn capabilities(State(st): State<AppState>) -> Json<J> {

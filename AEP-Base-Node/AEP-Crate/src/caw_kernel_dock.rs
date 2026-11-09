@@ -11,8 +11,8 @@
 //! identity grants nothing by itself. Admit still needs root:ping granted to
 //! caw-kernel-dock in the lattice and in a caw-*.gap hub policy.
 
-use crate::task_manifest::{TaskManifestTrust, TaskManifestV1};
 use crate::docking::DockingRuntime;
+use crate::task_manifest::{TaskManifestTrust, TaskManifestV1};
 use serde_json::json;
 use std::path::{Path, PathBuf};
 
@@ -37,9 +37,8 @@ pub fn provision_caw_kernel_dock_identity(
     let manifest_dir = std::env::var("AEP_TASK_MANIFEST_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|_| data_dir.join("ucb").join("manifests"));
-    std::fs::create_dir_all(&manifest_dir).map_err(|e| {
-        crate::BaseNodeError::Io(format!("caw-kernel-dock manifest dir: {e}"))
-    })?;
+    std::fs::create_dir_all(&manifest_dir)
+        .map_err(|e| crate::BaseNodeError::Io(format!("caw-kernel-dock manifest dir: {e}")))?;
     let manifest = TaskManifestV1 {
         manifest_version: String::from("1"),
         id: String::from("m-caw-kernel-dock"),
@@ -55,12 +54,10 @@ pub fn provision_caw_kernel_dock_identity(
         promotion_required: Vec::new(),
     };
     let path = manifest_dir.join("caw-kernel-dock.json");
-    let text = serde_json::to_string_pretty(&manifest).map_err(|e| {
-        crate::BaseNodeError::Io(format!("caw-kernel-dock manifest encode: {e}"))
-    })?;
-    std::fs::write(&path, text).map_err(|e| {
-        crate::BaseNodeError::Io(format!("caw-kernel-dock manifest write: {e}"))
-    })?;
+    let text = serde_json::to_string_pretty(&manifest)
+        .map_err(|e| crate::BaseNodeError::Io(format!("caw-kernel-dock manifest encode: {e}")))?;
+    std::fs::write(&path, text)
+        .map_err(|e| crate::BaseNodeError::Io(format!("caw-kernel-dock manifest write: {e}")))?;
     let mut manifests = match runtime.admit.manifests.lock() {
         Ok(g) => g,
         Err(p) => p.into_inner(),
@@ -77,18 +74,26 @@ mod tests {
 
     fn public_hex(runtime: &DockingRuntime) -> String {
         let store = runtime.keys.agent_sign_keys.lock().expect("keys");
-        hex::encode(store.public_for(CAW_KERNEL_DOCK_AGENT).expect("caw-kernel-dock key"))
+        hex::encode(
+            store
+                .public_for(CAW_KERNEL_DOCK_AGENT)
+                .expect("caw-kernel-dock key"),
+        )
     }
 
     #[test]
     fn boot_provisions_key_and_system_manifest() {
-        let _guard = crate::dock_keys::KEYS_ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = crate::dock_keys::KEYS_ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         std::env::remove_var("AEP_AGENT_SIGN_KEYS_FORCE_REGEN");
         let (dir, runtime) = fixture_runtime();
         provision_caw_kernel_dock_identity(&runtime, dir.path()).expect("provision");
         assert!(!public_hex(&runtime).is_empty());
         let manifests = runtime.admit.manifests.lock().expect("manifests");
-        let m = manifests.get(CAW_KERNEL_DOCK_AGENT).expect("manifest loaded");
+        let m = manifests
+            .get(CAW_KERNEL_DOCK_AGENT)
+            .expect("manifest loaded");
         assert_eq!(m.trust.tier, "system");
         assert_eq!(m.session_id.as_deref(), Some(CAW_KERNEL_DOCK_SESSION));
         assert!(!m.provisional);
@@ -96,7 +101,9 @@ mod tests {
 
     #[test]
     fn second_boot_does_not_rotate_the_key() {
-        let _guard = crate::dock_keys::KEYS_ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = crate::dock_keys::KEYS_ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         std::env::remove_var("AEP_AGENT_SIGN_KEYS_FORCE_REGEN");
         let (dir, first) = fixture_runtime();
         provision_caw_kernel_dock_identity(&first, dir.path()).expect("first boot");

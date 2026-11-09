@@ -156,11 +156,12 @@ func TestRun_ReturnsTerminalErrorOnSessionRejection(t *testing.T) {
 // just "any number of dials >= 2".
 //
 // Sequence:
-//   attempt 1: dial returns error    → backoff, retry
-//   attempt 2: dial returns conn,    → SessionInit + accepted SessionAck
-//                                       → StateReplaying
-//                                     → rdrFactory fails               → StateConnecting
-//   attempt 3: dial returns conn,    → SessionInit observed; cancel
+//
+//	attempt 1: dial returns error    → backoff, retry
+//	attempt 2: dial returns conn,    → SessionInit + accepted SessionAck
+//	                                    → StateReplaying
+//	                                  → rdrFactory fails               → StateConnecting
+//	attempt 3: dial returns conn,    → SessionInit observed; cancel
 //
 // Without this end-to-end shape, a regression where Replaying-failure
 // fails to regress to Connecting (or fails to re-dial) would still

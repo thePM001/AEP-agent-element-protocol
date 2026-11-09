@@ -15,3 +15,6 @@ path = "src/main.rs"
 aep-kernel-types = { path = "../../kernel-types/crate" }
 anyhow = "1"
 serde_json = "1"
+
+[lints]
+workspace = true

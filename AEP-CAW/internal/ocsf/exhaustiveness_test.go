@@ -248,8 +248,8 @@ func TestLoadEventConstants_FindsEventCgroupMode(t *testing.T) {
 	// Spot-check a few siblings to confirm the walker isn't accidentally
 	// over-narrow.
 	wantSamples := map[string]string{
-		"EventCgroupMode":              "cgroup_mode",
-		"EventCgroupOrphansReaped":     "cgroup_orphans_reaped",
+		"EventCgroupMode":               "cgroup_mode",
+		"EventCgroupOrphansReaped":      "cgroup_orphans_reaped",
 		"EventCgroupUnavailableRefusal": "cgroup_unavailable_refusal",
 	}
 	for name, want := range wantSamples {

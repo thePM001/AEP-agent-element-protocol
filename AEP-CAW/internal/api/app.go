@@ -1,9 +1,9 @@
 package api
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -17,6 +17,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/approvals"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/auth"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
@@ -39,8 +41,6 @@ import (
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/tor"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/trash"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
 )
 

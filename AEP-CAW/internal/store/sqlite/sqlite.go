@@ -51,11 +51,11 @@ type Store struct {
 	flushCh   chan chan struct{} // Flush() sends ack channel; flushLoop closes it when done
 	stopCh    chan struct{}      // signals flushLoop to stop (never receives data)
 	done      chan struct{}      // closed when flushLoop exits
-	closeMu   sync.Mutex        // serializes Close vs AppendEvent
+	closeMu   sync.Mutex         // serializes Close vs AppendEvent
 	closed    bool               // true after Close() initiates shutdown (guarded by closeMu)
 	closeOnce sync.Once
-	inflight  sync.WaitGroup    // tracks in-flight AppendEvent calls for clean shutdown
-	lastErr   atomic.Value      // stores errHolder for health checks
+	inflight  sync.WaitGroup // tracks in-flight AppendEvent calls for clean shutdown
+	lastErr   atomic.Value   // stores errHolder for health checks
 }
 
 // errHolder wraps an error for atomic.Value (which cannot store nil interfaces).

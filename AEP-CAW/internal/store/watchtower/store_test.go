@@ -540,6 +540,7 @@ func TestStore_CloseSafetyNetReturnsSentinel(t *testing.T) {
 		t.Fatalf("Err() after Close = %v, want closeErr=%v", got, closeErr)
 	}
 }
+
 // shutdown(): when the cooperative tr.Stop drain does not complete
 // within DrainDeadline, runCancel is the fallback that unblocks the
 // run loop within closeRunCancelGrace.

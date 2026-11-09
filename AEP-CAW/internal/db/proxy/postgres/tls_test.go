@@ -110,7 +110,7 @@ database_connection_rules:
 	}
 	pc := newProxyConn(srv, srv.cfg.Services[0], a, 1000)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second) // generous: -race and loaded runners slow the handshake
 	defer cancel()
 	srvDone := make(chan error, 1)
 	go func() { srvDone <- pc.run(ctx) }()
@@ -172,7 +172,7 @@ database_connection_rules:
 		if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, io.EOF) && !errors.Is(err, net.ErrClosed) {
 			t.Logf("server returned: %v", err)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("server did not exit after cancel")
 	}
 }

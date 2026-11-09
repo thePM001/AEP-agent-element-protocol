@@ -111,7 +111,9 @@ fn deny_addr(ip: IpAddr, policy: &SsrfPolicy) -> Result<(), String> {
             if policy.allow_private {
                 Ok(())
             } else {
-                Err(String::from("lattice-gated-fetch: private/metadata host blocked"))
+                Err(String::from(
+                    "lattice-gated-fetch: private/metadata host blocked",
+                ))
             }
         }
     }
@@ -134,7 +136,9 @@ fn lookup_ips(host: &str) -> Result<Vec<IpAddr>, String> {
     ips.sort();
     ips.dedup();
     if ips.is_empty() {
-        return Err(String::from("lattice-gated-fetch: DNS resolve returned no addresses"));
+        return Err(String::from(
+            "lattice-gated-fetch: DNS resolve returned no addresses",
+        ));
     }
     Ok(ips)
 }
@@ -142,19 +146,23 @@ fn lookup_ips(host: &str) -> Result<Vec<IpAddr>, String> {
 pub fn assert_url_not_ssrf(raw: &str, policy: &SsrfPolicy) -> Result<(), String> {
     let parsed = Url::parse(raw).map_err(|_| String::from("lattice-gated-fetch: invalid URL"))?;
     if parsed.scheme() != "http" && parsed.scheme() != "https" {
-        return Err(String::from("lattice-gated-fetch: blocked or invalid URL scheme"));
+        return Err(String::from(
+            "lattice-gated-fetch: blocked or invalid URL scheme",
+        ));
     }
-    if parsed.username().is_empty() == false || parsed.password().is_some() {
-        return Err(String::from("lattice-gated-fetch: userinfo host spoof blocked"));
+    if !parsed.username().is_empty() || parsed.password().is_some() {
+        return Err(String::from(
+            "lattice-gated-fetch: userinfo host spoof blocked",
+        ));
     }
     match parsed.host() {
         Some(url::Host::Ipv4(v4)) => {
             deny_addr(IpAddr::V4(v4), policy)?;
-            return Ok(());
+            Ok(())
         }
         Some(url::Host::Ipv6(v6)) => {
             deny_addr(IpAddr::V6(v6), policy)?;
-            return Ok(());
+            Ok(())
         }
         Some(url::Host::Domain(d)) => {
             let host = d.to_ascii_lowercase();
@@ -165,7 +173,9 @@ pub fn assert_url_not_ssrf(raw: &str, policy: &SsrfPolicy) -> Result<(), String>
                 if policy.allow_private {
                     return Ok(());
                 }
-                return Err(String::from("lattice-gated-fetch: private/metadata host blocked"));
+                return Err(String::from(
+                    "lattice-gated-fetch: private/metadata host blocked",
+                ));
             }
             let ips = lookup_ips(&host)?;
             for ip in ips {
@@ -180,7 +190,10 @@ pub fn assert_url_not_ssrf(raw: &str, policy: &SsrfPolicy) -> Result<(), String>
 /// Parse dock plaintext for a LATTICE_GATEWAY_REQUEST url and method.
 pub fn gateway_spec_from_plaintext(plaintext: &[u8]) -> Option<GatewaySpec> {
     let value: Value = serde_json::from_slice(plaintext).ok()?;
-    let event_type = value.get("event_type").and_then(|v| v.as_str()).unwrap_or("");
+    let event_type = value
+        .get("event_type")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
     let payload = value.get("payload").cloned().unwrap_or(Value::Null);
     let url = payload
         .get("url")
@@ -207,7 +220,7 @@ pub fn gateway_spec_from_plaintext(plaintext: &[u8]) -> Option<GatewaySpec> {
     }
     let mut body = Vec::new();
     if let Some(b64s) = payload.get("body_b64").and_then(|v| v.as_str()) {
-        if b64s.is_empty() == false {
+        if !b64s.is_empty() {
             body = b64().decode(b64s).unwrap_or_default();
         }
     } else if let Some(s) = payload.get("body").and_then(|v| v.as_str()) {
@@ -254,7 +267,7 @@ pub fn execute_bound_http_after_allow_with_policy(
         }
         rb = rb.header(k, v);
     }
-    if spec.body.is_empty() == false {
+    if !spec.body.is_empty() {
         rb = rb.body(spec.body.clone());
     }
     let resp = rb
@@ -291,16 +304,15 @@ pub fn http_from_dock_allow(dock_json: &str) -> Result<DockHttp, String> {
             .into());
     }
     let http = match v.get("http") {
-        Some(h) if h.is_null() == false => h,
+        Some(h) if !h.is_null() => h,
         _ => {
             return Err(String::from(
                 "lattice-gated-fetch: dock allow did not return http",
             ))
         }
     };
-    serde_json::from_value::<DockHttp>(http.clone()).map_err(|_| {
-        String::from("lattice-gated-fetch: dock allow did not return http")
-    })
+    serde_json::from_value::<DockHttp>(http.clone())
+        .map_err(|_| String::from("lattice-gated-fetch: dock allow did not return http"))
 }
 
 fn extract_fn(src: &str, needle: &str) -> String {
@@ -344,7 +356,7 @@ fn strip_line_comments(src: &str) -> String {
 }
 
 fn compact(src: &str) -> String {
-    src.chars().filter(|c| c.is_whitespace() == false).collect()
+    src.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
 fn prod_src(src: &str) -> String {
@@ -383,11 +395,11 @@ fn after_dock_region(src: &str) -> String {
         return after_dock_in(&body[i..]);
     }
     let js = extract_fn(&body, "function latticeGatedFetch");
-    if js.is_empty() == false {
+    if !js.is_empty() {
         return after_dock_in(&js);
     }
     let rs = extract_fn(&body, "fn lattice_gated_fetch_url");
-    if rs.is_empty() == false {
+    if !rs.is_empty() {
         return after_dock_in(&rs);
     }
     after_dock_in(&body)
@@ -429,13 +441,13 @@ pub fn scan_no_ordinary_fetch_after_dock_allow(src: &str) -> Result<String, Stri
 /// Fail if production docking.rs does not attach bound http after allow.
 pub fn scan_dock_attaches_bound_http(src: &str) -> Result<String, String> {
     let prod = compact(&strip_line_comments(&prod_src(src)));
-    if prod.contains("execute_bound_http_after_allow") == false {
+    if !prod.contains("execute_bound_http_after_allow") {
         return Err(String::from("dock allow path does not execute bound http"));
     }
-    if prod.contains("gateway_spec_from_plaintext") == false {
+    if !prod.contains("gateway_spec_from_plaintext") {
         return Err(String::from("dock allow path does not parse gateway spec"));
     }
-    if src.contains("http:") == false {
+    if !src.contains("http:") {
         return Err(String::from("DockFrameResponse missing http field"));
     }
     Ok(String::from("ok dock allow attaches bound http"))
@@ -485,7 +497,12 @@ fn walk_to_workspace() -> PathBuf {
     let mut i = 0usize;
     while i < 12 {
         let hangar = ["AEP", "Base", "Node"].join("-");
-        let probe = dir.join(&hangar).join("AEP-Crate").join("src").join("docking").join("mod.rs");
+        let probe = dir
+            .join(&hangar)
+            .join("AEP-Crate")
+            .join("src")
+            .join("docking")
+            .join("mod.rs");
         if probe.is_file() {
             return dir;
         }
@@ -499,7 +516,7 @@ fn walk_to_workspace() -> PathBuf {
 }
 
 fn read_src(path: &Path, label: &str) -> Result<String, String> {
-    if path.is_file() == false {
+    if !path.is_file() {
         return Err(format!("missing {label} source"));
     }
     match fs::read_to_string(path) {
@@ -514,7 +531,6 @@ fn read_src(path: &Path, label: &str) -> Result<String, String> {
     }
 }
 
-
 fn twin_at(root: &Path, parts: &[&str]) -> PathBuf {
     let mut p = root.to_path_buf();
     for part in parts {
@@ -527,11 +543,24 @@ fn twin_at(root: &Path, parts: &[&str]) -> PathBuf {
 /// public tree, so the gate checks the lattice-channels client library only.
 fn client_twins(root: &Path) -> Vec<(String, PathBuf)> {
     let lib = ["AEP-Components", "lattice-channels", "lib"];
-    let mut out = Vec::new();
-    out.push((String::from("lattice-channels-ts"), twin_at(root, &[lib[0], lib[1], lib[2], "lattice-gated-fetch.ts"])));
-    out.push((String::from("lattice-channels-mjs"), twin_at(root, &[lib[0], lib[1], lib[2], "lattice-gated-fetch.mjs"])));
-    out.push((String::from("lattice-channels-js"), twin_at(root, &[lib[0], lib[1], lib[2], "lattice-gated-fetch.js"])));
-    out.push((String::from("lattice-transport-mjs"), twin_at(root, &[lib[0], lib[1], lib[2], "lattice-transport.mjs"])));
+    let out = vec![
+        (
+            String::from("lattice-channels-ts"),
+            twin_at(root, &[lib[0], lib[1], lib[2], "lattice-gated-fetch.ts"]),
+        ),
+        (
+            String::from("lattice-channels-mjs"),
+            twin_at(root, &[lib[0], lib[1], lib[2], "lattice-gated-fetch.mjs"]),
+        ),
+        (
+            String::from("lattice-channels-js"),
+            twin_at(root, &[lib[0], lib[1], lib[2], "lattice-gated-fetch.js"]),
+        ),
+        (
+            String::from("lattice-transport-mjs"),
+            twin_at(root, &[lib[0], lib[1], lib[2], "lattice-transport.mjs"]),
+        ),
+    ];
     out
 }
 
@@ -566,9 +595,18 @@ pub mod gateway_spec_from_plaintext {
         pub plaintext: String,
         pub spec: String,
     }
+    impl Default for GatewaySpecFromPlaintext {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl GatewaySpecFromPlaintext {
         pub fn new() -> Self {
-            Self { plaintext: String::new(), spec: String::new() }
+            Self {
+                plaintext: String::new(),
+                spec: String::new(),
+            }
         }
         /// Parse dock plaintext for a LATTICE_GATEWAY_REQUEST url and method
         pub fn process(&mut self) -> anyhow::Result<()> {
@@ -586,9 +624,18 @@ pub mod execute_bound_http_after_allow {
         pub spec: String,
         pub http: String,
     }
+    impl Default for ExecuteBoundHttpAfterAllow {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ExecuteBoundHttpAfterAllow {
         pub fn new() -> Self {
-            Self { spec: String::new(), http: String::new() }
+            Self {
+                spec: String::new(),
+                http: String::new(),
+            }
         }
         /// After dock allow execute bound HTTP for the admitted url
         pub fn process(&mut self) -> anyhow::Result<()> {
@@ -609,9 +656,18 @@ pub mod http_from_dock_allow {
         pub dock_json: String,
         pub http: String,
     }
+    impl Default for HttpFromDockAllow {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl HttpFromDockAllow {
         pub fn new() -> Self {
-            Self { dock_json: String::new(), http: String::new() }
+            Self {
+                dock_json: String::new(),
+                http: String::new(),
+            }
         }
         /// Client consumes dock http after allow. Missing http is Deny
         pub fn process(&mut self) -> anyhow::Result<()> {
@@ -629,9 +685,18 @@ pub mod scan_no_ordinary_fetch_after_dock_allow {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanNoOrdinaryFetchAfterDockAllow {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanNoOrdinaryFetchAfterDockAllow {
         pub fn new() -> Self {
-            Self { src: String::new(), scan: String::new() }
+            Self {
+                src: String::new(),
+                scan: String::new(),
+            }
         }
         /// Fail if latticeGatedFetch still calls ordinary fetch after dock allow
         pub fn process(&mut self) -> anyhow::Result<()> {
@@ -649,11 +714,20 @@ pub mod run_gate {
         pub src: String,
         pub scan: String,
     }
+    impl Default for RunGate {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl RunGate {
         pub fn new() -> Self {
-            Self { src: String::new(), scan: String::new() }
+            Self {
+                src: String::new(),
+                scan: String::new(),
+            }
         }
- /// Run live the earlier law change gate on docking.rs and lattice-gated-fetch twins
+        /// Run live the earlier law change gate on docking.rs and lattice-gated-fetch twins
         pub fn process(&mut self) -> anyhow::Result<()> {
             self.scan = match super::run_gate() {
                 Ok(_) => String::from("ok"),
@@ -669,8 +743,7 @@ mod tests {
     use super::*;
 
     fn fail() {
-        let none: Option<i32> = None;
-        let _ = none.unwrap();
+        panic!("test check failed");
     }
 
     #[test]
@@ -698,7 +771,7 @@ mod tests {
     fn missing_http_is_deny() {
         match http_from_dock_allow("{\"ok\":true}") {
             Err(e) => {
-                if e.contains("did not return http") == false {
+                if !e.contains("did not return http") {
                     fail();
                 }
             }
@@ -724,7 +797,7 @@ mod tests {
         let src = "function latticeGatedFetch(url){ latticeDockRequest(); return fetch(url); }";
         match scan_no_ordinary_fetch_after_dock_allow(src) {
             Err(e) => {
-                if e.contains("ordinary fetch") == false {
+                if !e.contains("ordinary fetch") {
                     fail();
                 }
             }
@@ -758,10 +831,13 @@ mod tests {
             headers: Vec::new(),
             body: Vec::new(),
         };
-        let policy = SsrfPolicy { allow_loopback: false, allow_private: false };
+        let policy = SsrfPolicy {
+            allow_loopback: false,
+            allow_private: false,
+        };
         match execute_bound_http_after_allow_with_policy(&spec, &policy) {
             Err(e) => {
-                if e.contains("loopback") == false {
+                if !e.contains("loopback") {
                     fail();
                 }
             }
@@ -791,7 +867,9 @@ mod tests {
             if let Ok((mut s, _)) = listener.accept() {
                 let mut buf = [0u8; 512];
                 let _ = s.read(&mut buf);
-                let _ = s.write_all(b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                let _ = s.write_all(
+                    b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                );
             }
         });
         let spec = GatewaySpec {
@@ -800,7 +878,10 @@ mod tests {
             headers: Vec::new(),
             body: Vec::new(),
         };
-        let policy = SsrfPolicy { allow_loopback: true, allow_private: false };
+        let policy = SsrfPolicy {
+            allow_loopback: true,
+            allow_private: false,
+        };
         match execute_bound_http_after_allow_with_policy(&spec, &policy) {
             Ok(h) => {
                 if h.status != 204 {

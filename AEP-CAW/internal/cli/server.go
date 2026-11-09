@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/server"
 	"github.com/spf13/cobra"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/server"
 )
 
 func newServerCmd() *cobra.Command {

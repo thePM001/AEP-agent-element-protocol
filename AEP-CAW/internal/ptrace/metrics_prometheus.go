@@ -25,7 +25,7 @@ func NewPrometheusMetrics(c PtraceMetricsCollector) Metrics {
 	return &prometheusMetrics{c: c}
 }
 
-func (m *prometheusMetrics) SetTraceeCount(n int)          { m.c.SetPtraceTraceeCount(n) }
+func (m *prometheusMetrics) SetTraceeCount(n int)           { m.c.SetPtraceTraceeCount(n) }
 func (m *prometheusMetrics) IncAttachFailure(reason string) { m.c.IncPtraceAttachFailure(reason) }
 func (m *prometheusMetrics) IncTimeout()                    { m.c.IncPtraceTimeout() }
 func (m *prometheusMetrics) IncExitStopSkipped()            { m.c.IncPtraceExitStopSkipped() }

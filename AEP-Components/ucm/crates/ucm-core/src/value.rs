@@ -73,7 +73,8 @@ impl Ty {
     /// Parse a declared input type such as money[USD], quantity[m/s^2] or vector[rational].
     pub fn parse(s: &str) -> Result<Ty> {
         let t = s.trim();
-        let inner = |p: &str| -> Option<&str> { t.strip_prefix(p).and_then(|r| r.strip_suffix(']')) };
+        let inner =
+            |p: &str| -> Option<&str> { t.strip_prefix(p).and_then(|r| r.strip_suffix(']')) };
         if let Some(c) = inner("money[") {
             return Ok(Ty::Money(Some(check_currency(c)?)));
         }
@@ -116,7 +117,9 @@ pub fn check_currency(c: &str) -> Result<String> {
     if c.len() == 3 && c.chars().all(|ch| ch.is_ascii_uppercase()) {
         Ok(c.to_string())
     } else {
-        Err(UcmError::Type(format!("currency must be a three letter ISO 4217 code, got {c}")))
+        Err(UcmError::Type(format!(
+            "currency must be a three letter ISO 4217 code, got {c}"
+        )))
     }
 }
 
@@ -176,14 +179,22 @@ impl Value {
                 }
                 o
             }
-            Value::Qty(r, d) => json!({ "type": "quantity", "unit": dim_render(d), "value": render_rat(r) }),
-            Value::Interval(a, b) => json!({ "type": "interval", "lo": render_rat(a), "hi": render_rat(b) }),
+            Value::Qty(r, d) => {
+                json!({ "type": "quantity", "unit": dim_render(d), "value": render_rat(r) })
+            }
+            Value::Interval(a, b) => {
+                json!({ "type": "interval", "lo": render_rat(a), "hi": render_rat(b) })
+            }
             Value::Float(f) => json!({ "type": "float", "value": render_float(*f) }),
             Value::Bool(b) => json!({ "type": "bool", "value": if *b { "true" } else { "false" } }),
             Value::Date(d) => json!({ "type": "date", "value": d.format("%Y-%m-%d").to_string() }),
-            Value::Instant(s) => json!({ "type": "instant", "value": crate::time::render_instant(s), "seconds": render_rat(s) }),
+            Value::Instant(s) => {
+                json!({ "type": "instant", "value": crate::time::render_instant(s), "seconds": render_rat(s) })
+            }
             Value::Text(t) => json!({ "type": "text", "value": t }),
-            Value::Vec(items) => json!({ "type": "vector", "items": items.iter().map(|v| v.to_json()).collect::<Vec<_>>() }),
+            Value::Vec(items) => {
+                json!({ "type": "vector", "items": items.iter().map(|v| v.to_json()).collect::<Vec<_>>() })
+            }
         }
     }
 
@@ -191,7 +202,9 @@ impl Value {
         use crate::num::rat_bits;
         match self {
             Value::Int(i) => i.bits(),
-            Value::Rat(r) | Value::Money(r, _) | Value::Qty(r, _) | Value::Instant(r) => rat_bits(r),
+            Value::Rat(r) | Value::Money(r, _) | Value::Qty(r, _) | Value::Instant(r) => {
+                rat_bits(r)
+            }
             Value::Dec(d) => d.unscaled.bits() + (d.scale as u64) * 4,
             Value::Interval(a, b) => rat_bits(a).max(rat_bits(b)),
             Value::Vec(items) => items.iter().map(|v| v.bits()).max().unwrap_or(0),
@@ -221,7 +234,11 @@ pub fn parse_input(ty: &Ty, v: &J) -> Result<Value> {
     let bad = |msg: &str| UcmError::Input(format!("{msg} for type {}", ty.name()));
     if let Ty::Vector(el) = ty {
         let arr = v.as_array().ok_or_else(|| bad("expected an array"))?;
-        return Ok(Value::Vec(arr.iter().map(|x| parse_input(el, x)).collect::<Result<Vec<_>>>()?));
+        return Ok(Value::Vec(
+            arr.iter()
+                .map(|x| parse_input(el, x))
+                .collect::<Result<Vec<_>>>()?,
+        ));
     }
     if let (Ty::Bool, Some(b)) = (ty, v.as_bool()) {
         return Ok(Value::Bool(b));
@@ -235,17 +252,23 @@ pub fn parse_input(ty: &Ty, v: &J) -> Result<Value> {
         Ty::Rational => Value::Rat(parse_rat(s)?),
         Ty::Decimal => Value::Dec(parse_decimal(s)?),
         Ty::Money(cur) => {
-            let (amt, c) = s.rsplit_once(' ').ok_or_else(|| bad("expected \"amount CODE\""))?;
+            let (amt, c) = s
+                .rsplit_once(' ')
+                .ok_or_else(|| bad("expected \"amount CODE\""))?;
             let c = check_currency(c.trim())?;
             if let Some(want) = cur {
                 if &c != want {
-                    return Err(UcmError::Input(format!("currency {c} where {want} is declared")));
+                    return Err(UcmError::Input(format!(
+                        "currency {c} where {want} is declared"
+                    )));
                 }
             }
             Value::Money(parse_rat(amt)?, c)
         }
         Ty::Quantity(dim) => {
-            let (num, unit) = s.split_once(' ').ok_or_else(|| bad("expected \"value unit\""))?;
+            let (num, unit) = s
+                .split_once(' ')
+                .ok_or_else(|| bad("expected \"value unit\""))?;
             let u = parse_unit(unit)?;
             if &u.dim != dim {
                 return Err(UcmError::Input(format!(
@@ -261,7 +284,9 @@ pub fn parse_input(ty: &Ty, v: &J) -> Result<Value> {
                 .strip_prefix('[')
                 .and_then(|x| x.strip_suffix(']'))
                 .ok_or_else(|| bad("expected \"[lo, hi]\""))?;
-            let (a, b) = inner.split_once(',').ok_or_else(|| bad("expected \"[lo, hi]\""))?;
+            let (a, b) = inner
+                .split_once(',')
+                .ok_or_else(|| bad("expected \"[lo, hi]\""))?;
             let (lo, hi) = (parse_rat(a)?, parse_rat(b)?);
             if lo > hi {
                 return Err(bad("lo above hi"));

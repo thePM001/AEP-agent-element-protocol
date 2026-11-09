@@ -136,7 +136,7 @@ type ChainAnalysis struct {
 	HasAgent          bool // Contains an agent process
 	HasLanguageServer bool // Contains a language server
 
-	ConsecutiveShells int // Count of consecutive shell processes
+	ConsecutiveShells int  // Count of consecutive shell processes
 	ShellLaundering   bool // Detected shell laundering pattern
 
 	// First occurrences (indices, -1 if not found)

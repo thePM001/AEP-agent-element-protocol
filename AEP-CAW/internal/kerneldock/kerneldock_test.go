@@ -202,7 +202,10 @@ func TestProbeRefusesAPingPendingPastTheDeadline(t *testing.T) {
 		return "{\"ok\":false,\"pending\":true,\"digest\":\"d3\"}\n"
 	})
 	bin, _, _ := fakeSealer(t, goodEnvelope, 0)
-	err := Probe(baseOptions(t, base, bin, 500*time.Millisecond))
+	// One budget covers sealing and the pending loop. It must leave the fake
+	// sealer process time to start on a loaded runner, or the refusal names the
+	// killed sealer instead of the pending ping.
+	err := Probe(baseOptions(t, base, bin, 3*time.Second))
 	ref := assertRefusal(t, err, "validation_engine", want)
 	if !strings.Contains(ref.Error(), "pending") {
 		t.Fatalf("refusal = %q, want a pending complaint", ref.Error())

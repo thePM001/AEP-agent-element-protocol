@@ -21,14 +21,14 @@ import (
 // mid-stream. It replaces the previous io.Copy approach where SSE interception
 // was audit-only.
 type SSEInterceptor struct {
-	registry  *mcpregistry.Registry
-	policy    *mcpinspect.PolicyEvaluator
-	analyzer  *mcpinspect.SessionAnalyzer
-	dialect   Dialect
-	sessionID string
-	requestID string
-	onEvent   func(mcpinspect.MCPToolCallInterceptedEvent)
-	logger    *slog.Logger
+	registry      *mcpregistry.Registry
+	policy        *mcpinspect.PolicyEvaluator
+	analyzer      *mcpinspect.SessionAnalyzer
+	dialect       Dialect
+	sessionID     string
+	requestID     string
+	onEvent       func(mcpinspect.MCPToolCallInterceptedEvent)
+	logger        *slog.Logger
 	rateLimiter   *mcpinspect.RateLimiterRegistry
 	versionPinCfg *config.MCPVersionPinningConfig
 
@@ -576,16 +576,16 @@ func (s *SSEInterceptor) processOpenAIEvent(originalLine string) []string {
 
 // openAIChunk is the minimal structure we need to parse and rewrite OpenAI SSE chunks.
 type openAIChunk struct {
-	ID      string             `json:"id"`
-	Object  string             `json:"object"`
+	ID      string              `json:"id"`
+	Object  string              `json:"object"`
 	Choices []openAIChunkChoice `json:"choices"`
 	// Preserve other fields via raw message.
 }
 
 type openAIChunkChoice struct {
-	Index        int                    `json:"index"`
-	Delta        openAIChunkDelta       `json:"delta"`
-	FinishReason *string                `json:"finish_reason"`
+	Index        int              `json:"index"`
+	Delta        openAIChunkDelta `json:"delta"`
+	FinishReason *string          `json:"finish_reason"`
 }
 
 type openAIChunkDelta struct {
@@ -595,9 +595,9 @@ type openAIChunkDelta struct {
 }
 
 type openAIChunkToolCall struct {
-	Index    int                        `json:"index"`
-	ID       string                     `json:"id,omitempty"`
-	Type     string                     `json:"type,omitempty"`
+	Index    int                         `json:"index"`
+	ID       string                      `json:"id,omitempty"`
+	Type     string                      `json:"type,omitempty"`
 	Function openAIChunkToolCallFunction `json:"function"`
 }
 

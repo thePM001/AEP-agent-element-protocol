@@ -569,10 +569,10 @@ func TestSuspendedProcessMessageEncoding(t *testing.T) {
 	binary.LittleEndian.PutUint64(msg[8:16], requestId)
 
 	// Body
-	binary.LittleEndian.PutUint64(msg[16:24], 0xCAFEBABE)  // sessionToken
-	binary.LittleEndian.PutUint32(msg[24:28], 4321)         // pid
-	binary.LittleEndian.PutUint32(msg[28:32], 1111)         // parentPid
-	binary.LittleEndian.PutUint64(msg[32:40], 0xABCDEF01)  // createTime
+	binary.LittleEndian.PutUint64(msg[16:24], 0xCAFEBABE) // sessionToken
+	binary.LittleEndian.PutUint32(msg[24:28], 4321)       // pid
+	binary.LittleEndian.PutUint32(msg[28:32], 1111)       // parentPid
+	binary.LittleEndian.PutUint64(msg[32:40], 0xABCDEF01) // createTime
 	// padding at [40:48] is zero
 
 	// imagePath as UTF-16LE

@@ -160,4 +160,3 @@ func (ft *fdTracker) domainForIP(ip string) (string, bool) {
 	ft.mu.Unlock()
 	return domain, ok
 }
-

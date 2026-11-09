@@ -177,10 +177,10 @@ func TestCouldContainBinaries(t *testing.T) {
 	}{
 		{"/bin", true},
 		{"/sbin", true},
-		{"/usr", true},          // parent of /usr/bin
+		{"/usr", true}, // parent of /usr/bin
 		{"/usr/bin", true},
 		{"/usr/sbin", true},
-		{"/usr/local", true},    // parent of /usr/local/bin
+		{"/usr/local", true}, // parent of /usr/local/bin
 		{"/usr/local/bin", true},
 		{"/usr/local/sbin", true},
 		{"/lib", false},
@@ -190,7 +190,7 @@ func TestCouldContainBinaries(t *testing.T) {
 		{"/opt", false},
 		{"/tmp", false},
 		{"/home/user", false},
-		{"/", false},           // root - filtered out by caller, but function itself returns false
+		{"/", false}, // root - filtered out by caller, but function itself returns false
 	}
 	for _, tt := range tests {
 		t.Run(tt.dir, func(t *testing.T) {

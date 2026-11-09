@@ -9,11 +9,11 @@ use serde_json::Value;
 
 pub use aep_admit::{
     compile_writing_walls_line, is_allowed_double_hyphen_line, is_tree_diagram_line,
-    line_closes_rule, writing_rule_ids, WritingRule, WRITING_GAP_SOURCE, WRITING_RULES,
-    RULE_ATTACH_COMMA_SEMICOLON, RULE_ATTACH_DOUBLE_COLON, RULE_NO_BOX_DRAWING_DASHES,
-    RULE_NO_DASH_SUBSTITUTES, RULE_NO_DOUBLE_HYPHEN, RULE_NO_EM_DASHES, RULE_NO_EN_DASHES,
-    RULE_NO_MINUS_AS_DASH, RULE_NO_OXFORD_COMMA, RULE_PUNCTUATION_WORD_SPACE,
-    RULE_SPACE_BEFORE_SPACED_SIGNS, RULE_SPACED_SIGN_WORD_SPACE,
+    line_closes_rule, writing_rule_ids, WritingRule, RULE_ATTACH_COMMA_SEMICOLON,
+    RULE_ATTACH_DOUBLE_COLON, RULE_NO_BOX_DRAWING_DASHES, RULE_NO_DASH_SUBSTITUTES,
+    RULE_NO_DOUBLE_HYPHEN, RULE_NO_EM_DASHES, RULE_NO_EN_DASHES, RULE_NO_MINUS_AS_DASH,
+    RULE_NO_OXFORD_COMMA, RULE_PUNCTUATION_WORD_SPACE, RULE_SPACED_SIGN_WORD_SPACE,
+    RULE_SPACE_BEFORE_SPACED_SIGNS, WRITING_GAP_SOURCE, WRITING_RULES,
 };
 
 pub const CORRECTWRITING_EN_CORE_ID: &str = "correctwriting-en";
@@ -77,7 +77,10 @@ fn rule_description(rule: &str) -> &'static str {
 }
 
 fn is_spaced_sign(ch: char) -> bool {
-    matches!(ch, '?' | '!' | '[' | ']' | '(' | ')' | '\u{FF1F}' | '\u{FF01}')
+    matches!(
+        ch,
+        '?' | '!' | '[' | ']' | '(' | ')' | '\u{FF1F}' | '\u{FF01}'
+    )
 }
 
 fn skip_spaced_sign_after_context(chars: &[char], index: usize) -> bool {
@@ -132,7 +135,9 @@ pub fn fix_writing_prose_line(line: &str) -> String {
         return line.to_string();
     }
     let mut out = line.to_string();
-    for ch in ['\u{2014}', '\u{2013}', '\u{2015}', '\u{2e3a}', '\u{2e3b}', '\u{2212}'] {
+    for ch in [
+        '\u{2014}', '\u{2013}', '\u{2015}', '\u{2e3a}', '\u{2e3b}', '\u{2212}',
+    ] {
         if out.contains(ch) {
             out = out.replace(ch, dash_replacement(ch));
         }
@@ -257,16 +262,24 @@ mod tests {
     fn detects_em_dash_and_oxford_comma() {
         let text = "Bad\u{2014}text, foo, bar, and baz.";
         let violations = lint_writing_prose(text);
-        assert!(violations.iter().any(|v| v.rule == WRITING_RULE_NO_EM_DASHES));
-        assert!(violations.iter().any(|v| v.rule == WRITING_RULE_NO_OXFORD_COMMA));
+        assert!(violations
+            .iter()
+            .any(|v| v.rule == WRITING_RULE_NO_EM_DASHES));
+        assert!(violations
+            .iter()
+            .any(|v| v.rule == WRITING_RULE_NO_OXFORD_COMMA));
     }
 
     #[test]
     fn detects_en_dash_as_separate_rule() {
         let text = "Range\u{2013}style dash.";
         let violations = lint_writing_prose(text);
-        assert!(violations.iter().any(|v| v.rule == WRITING_RULE_NO_EN_DASHES));
-        assert!(!violations.iter().any(|v| v.rule == WRITING_RULE_NO_EM_DASHES));
+        assert!(violations
+            .iter()
+            .any(|v| v.rule == WRITING_RULE_NO_EN_DASHES));
+        assert!(!violations
+            .iter()
+            .any(|v| v.rule == WRITING_RULE_NO_EM_DASHES));
     }
 
     #[test]
@@ -385,7 +398,8 @@ mod tests {
 
     #[test]
     fn enforce_payload_keeps_ucm_receipts_byte_for_byte() {
-        let receipt = serde_json::json!({ "program": { "inputs": [{ "name": "p", "type": "money[EUR]" }] } });
+        let receipt =
+            serde_json::json!({ "program": { "inputs": [{ "name": "p", "type": "money[EUR]" }] } });
         let value = serde_json::json!({
             "note": "Low RAM\u{2014}use cloud",
             "ucm": { "receipts": { "/total": receipt.clone() } },
@@ -396,6 +410,9 @@ mod tests {
         assert_eq!(fixed["raw"]["ucm"]["receipts"]["/total"], receipt);
         assert!(!fixed["note"].as_str().unwrap().contains('\u{2014}'));
         assert!(!fixed["raw"]["text"].as_str().unwrap().contains('\u{2014}'));
-        assert_ne!(enforce_writing_value(&value)["ucm"]["receipts"]["/total"], receipt);
+        assert_ne!(
+            enforce_writing_value(&value)["ucm"]["receipts"]["/total"],
+            receipt
+        );
     }
 }

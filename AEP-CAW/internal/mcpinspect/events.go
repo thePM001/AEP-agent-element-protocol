@@ -98,15 +98,15 @@ type MCPToolResultInspectedEvent struct {
 
 // MCPSamplingRequestEvent is logged when a sampling/createMessage request is observed.
 type MCPSamplingRequestEvent struct {
-	Type         string    `json:"type"` // "mcp_sampling_request"
-	Timestamp    time.Time `json:"timestamp"`
-	SessionID    string    `json:"session_id"`
-	ServerID     string    `json:"server_id"`
-	ModelHint    string    `json:"model_hint,omitempty"`
-	MaxTokens    int       `json:"max_tokens"`
-	MessageCount int       `json:"message_count"`
+	Type         string            `json:"type"` // "mcp_sampling_request"
+	Timestamp    time.Time         `json:"timestamp"`
+	SessionID    string            `json:"session_id"`
+	ServerID     string            `json:"server_id"`
+	ModelHint    string            `json:"model_hint,omitempty"`
+	MaxTokens    int               `json:"max_tokens"`
+	MessageCount int               `json:"message_count"`
 	Detections   []DetectionResult `json:"detections,omitempty"`
-	Action       string    `json:"action"` // "allow" | "alert" | "block"
+	Action       string            `json:"action"` // "allow" | "alert" | "block"
 }
 
 // MCPDetectionEvent is logged when suspicious patterns are detected.
@@ -129,7 +129,7 @@ type MCPDetectionEvent struct {
 // MCPToolCallInterceptedEvent is logged when the LLM proxy detects a
 // tool_use/tool_calls block that matches a registered MCP tool.
 type MCPToolCallInterceptedEvent struct {
-	Type      string    `json:"type"`       // "mcp_tool_call_intercepted"
+	Type      string    `json:"type"` // "mcp_tool_call_intercepted"
 	Timestamp time.Time `json:"timestamp"`
 	SessionID string    `json:"session_id"`
 	RequestID string    `json:"request_id"` // LLM proxy request ID
@@ -147,7 +147,7 @@ type MCPToolCallInterceptedEvent struct {
 	ToolHash   string `json:"tool_hash"`
 
 	// Policy decision
-	Action string `json:"action"`           // "allow" | "block"
+	Action string `json:"action"` // "allow" | "block"
 	Reason string `json:"reason,omitempty"`
 
 	// Cross-server detection metadata (populated when blocked by a cross-server rule).
@@ -159,7 +159,7 @@ type MCPToolCallInterceptedEvent struct {
 // MCPCrossServerEvent is logged when a cross-server pattern is detected and
 // a tool call is blocked due to suspicious multi-server interaction.
 type MCPCrossServerEvent struct {
-	Type      string    `json:"type"`       // "mcp_cross_server_blocked"
+	Type      string    `json:"type"` // "mcp_cross_server_blocked"
 	Timestamp time.Time `json:"timestamp"`
 	SessionID string    `json:"session_id"`
 

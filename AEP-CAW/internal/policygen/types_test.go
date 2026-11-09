@@ -25,7 +25,7 @@ func TestProvenance_String(t *testing.T) {
 
 func TestProvenance_String_ZeroTimes(t *testing.T) {
 	p := Provenance{
-		EventCount:  3,
+		EventCount: 3,
 		// FirstSeen and LastSeen are zero values
 	}
 	s := p.String()

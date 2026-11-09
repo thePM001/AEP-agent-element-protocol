@@ -54,6 +54,10 @@ members = [
 #   cargo build -p multi-base-node-core
 default-members = ["AEP-Base-Node/AEP-Crate"]
 
+# Lint levels for every member. A file that needs unsafe carries a local allow.
+[workspace.lints.rust]
+unsafe_code = "deny"
+
 [workspace.package]
 version = "2.9.0"
 edition = "2021"

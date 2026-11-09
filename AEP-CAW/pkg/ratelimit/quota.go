@@ -331,9 +331,9 @@ func (q *QuotaManager) ResetQuota(scope, id string, resource ResourceType) {
 
 // SessionCounter tracks concurrent session counts.
 type SessionCounter struct {
-	config  Config
-	counts  map[string]int // key -> count
-	mu      sync.Mutex
+	config Config
+	counts map[string]int // key -> count
+	mu     sync.Mutex
 }
 
 // NewSessionCounter creates a new session counter.

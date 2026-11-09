@@ -11,7 +11,9 @@ fn lib() -> Library {
 
 fn run(src: &str) -> Value {
     let p = load_program(Some(src), None).expect("parse");
-    evaluate(&p, &json!({}), Limits::DEFAULT, &lib()).expect("eval").result_json()
+    evaluate(&p, &json!({}), Limits::DEFAULT, &lib())
+        .expect("eval")
+        .result_json()
 }
 
 fn run_bool(src: &str) -> bool {
@@ -32,7 +34,15 @@ fn num() -> impl Strategy<Value = String> {
     ]
 }
 
-const MODES: [&str; 7] = ["half_even", "half_up", "half_down", "up", "down", "floor", "ceiling"];
+const MODES: [&str; 7] = [
+    "half_even",
+    "half_up",
+    "half_down",
+    "up",
+    "down",
+    "floor",
+    "ceiling",
+];
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(256))]

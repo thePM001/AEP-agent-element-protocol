@@ -38,3 +38,6 @@ libc = "0.2"
 tempfile = "3"
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tower = { version = "0.5", features = ["util"] }
+
+[lints]
+workspace = true

@@ -26,7 +26,8 @@ struct Token {
 pub const MAX_SOURCE: usize = 1 << 20;
 
 const SYMS: [&str; 22] = [
-    "=>", "==", "!=", "<=", ">=", "+", "-", "*", "/", "^", "(", ")", "[", "]", "{", "}", ",", ";", ":", "=", "<", ">",
+    "=>", "==", "!=", "<=", ">=", "+", "-", "*", "/", "^", "(", ")", "[", "]", "{", "}", ",", ";",
+    ":", "=", "<", ">",
 ];
 
 fn lex(src: &str) -> Result<Vec<Token>> {
@@ -56,7 +57,9 @@ fn lex(src: &str) -> Result<Vec<Token>> {
             continue;
         }
         let (sl, sc, start) = (line, col, i);
-        if c.is_ascii_digit() || (c == '.' && i + 1 < b.len() && (b[i + 1] as char).is_ascii_digit()) {
+        if c.is_ascii_digit()
+            || (c == '.' && i + 1 < b.len() && (b[i + 1] as char).is_ascii_digit())
+        {
             while i < b.len() && ((b[i] as char).is_ascii_digit() || b[i] == b'.' || b[i] == b'_') {
                 i += 1;
             }
@@ -100,7 +103,10 @@ fn lex(src: &str) -> Result<Vec<Token>> {
                     return Err(err(sl, sc, "newline in string".into()));
                 }
                 if ch == '\\' {
-                    let nx = src[i + 1..].chars().next().ok_or_else(|| err(sl, sc, "bad escape".into()))?;
+                    let nx = src[i + 1..]
+                        .chars()
+                        .next()
+                        .ok_or_else(|| err(sl, sc, "bad escape".into()))?;
                     match nx {
                         '"' => s.push('"'),
                         '\\' => s.push('\\'),
@@ -122,7 +128,9 @@ fn lex(src: &str) -> Result<Vec<Token>> {
             continue;
         }
         if c.is_ascii_alphabetic() || c == '_' {
-            while i < b.len() && ((b[i] as char).is_ascii_alphanumeric() || b[i] == b'_' || b[i] == b'.') {
+            while i < b.len()
+                && ((b[i] as char).is_ascii_alphanumeric() || b[i] == b'_' || b[i] == b'.')
+            {
                 i += 1;
             }
             col += i - start;
@@ -157,7 +165,9 @@ fn lex(src: &str) -> Result<Vec<Token>> {
     Ok(out)
 }
 
-const KEYWORDS: [&str; 11] = ["input", "let", "if", "then", "else", "and", "or", "not", "true", "false", "float"];
+const KEYWORDS: [&str; 11] = [
+    "input", "let", "if", "then", "else", "and", "or", "not", "true", "false", "float",
+];
 
 struct Parser<'a> {
     src: &'a str,
@@ -263,7 +273,10 @@ impl<'a> Parser<'a> {
                     self.bump();
                 }
                 let end = self.here().start;
-                let ty: String = self.src[start..end].split_whitespace().collect::<Vec<_>>().join("");
+                let ty: String = self.src[start..end]
+                    .split_whitespace()
+                    .collect::<Vec<_>>()
+                    .join("");
                 if ty.is_empty() {
                     return self.err("missing input type");
                 }
@@ -548,7 +561,9 @@ impl<'a> Parser<'a> {
                 self.expect_sym("}")?;
                 Ok(Expr::Float(Box::new(e)))
             }
-            Tok::Ident(w) if KEYWORDS.contains(&w.as_str()) => self.err(format!("unexpected keyword {w}")),
+            Tok::Ident(w) if KEYWORDS.contains(&w.as_str()) => {
+                self.err(format!("unexpected keyword {w}"))
+            }
             Tok::Ident(w) => {
                 self.bump();
                 if self.is_sym("(") {

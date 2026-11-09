@@ -22,3 +22,6 @@ thiserror = { workspace = true }
 
 serde_yaml = "0.9"
 aep-admit = { path = "../../admit/crate" }
+
+[lints]
+workspace = true

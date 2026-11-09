@@ -1,12 +1,12 @@
 package main
 
 import (
-    "fmt"
-    "os"
+	"fmt"
+	"os"
 )
 
 func main() {
-    for _, kv := range os.Environ() {
-        fmt.Println(kv)
-    }
+	for _, kv := range os.Environ() {
+		fmt.Println(kv)
+	}
 }

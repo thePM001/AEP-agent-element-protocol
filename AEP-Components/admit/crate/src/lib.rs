@@ -6,7 +6,7 @@
 // the public kernel type set lives in aep-kernel-types,
 // so this crate re-exports the one definition site of every public type.
 pub use aep_kernel_types::{
-    AgentPermission, AgentPermissionLookup, AdmitResult, AdmitWall, Pulse, DENY_NO_PERMISSION,
+    AdmitResult, AdmitWall, AgentPermission, AgentPermissionLookup, Pulse, DENY_NO_PERMISSION,
     PULSE_MS, WALL_AGENT_PERMISSION,
 };
 
@@ -110,7 +110,7 @@ pub mod compile_writing_walls {
         let mut out = String::from("{\"schema\":\"aep.writing-rules.v1\",\"rules\":[");
         let mut first = true;
         for rule in WRITING_RULES.iter() {
-            if first == false {
+            if !first {
                 out.push(',');
             }
             first = false;
@@ -227,7 +227,10 @@ pub mod compile_writing_walls {
     }
 
     fn is_spaced_sign(ch: char) -> bool {
-        matches!(ch, '?' | '!' | '[' | ']' | '(' | ')' | '\u{FF1F}' | '\u{FF01}')
+        matches!(
+            ch,
+            '?' | '!' | '[' | ']' | '(' | ')' | '\u{FF1F}' | '\u{FF01}'
+        )
     }
 
     fn skip_spaced_sign_after_context(chars: &[char], index: usize) -> bool {
@@ -260,9 +263,7 @@ pub mod compile_writing_walls {
                 contains_char(line, '\u{2500}') || contains_char(line, '\u{2501}')
             }
             RULE_NO_MINUS_AS_DASH => contains_char(line, '\u{2212}'),
-            RULE_NO_DOUBLE_HYPHEN => {
-                line.contains(" -- ") && !is_allowed_double_hyphen_line(line)
-            }
+            RULE_NO_DOUBLE_HYPHEN => line.contains(" -- ") && !is_allowed_double_hyphen_line(line),
             RULE_NO_OXFORD_COMMA => line.contains(", and ") || line.contains(", or "),
             RULE_PUNCTUATION_WORD_SPACE => {
                 let chars: Vec<char> = line.chars().collect();
@@ -388,12 +389,24 @@ pub mod compile_writing_walls {
 
         #[test]
         fn spaced_sign_rules_close_and_open_as_documented() {
-            assert!(line_closes_rule(RULE_SPACE_BEFORE_SPACED_SIGNS, "ready for building?"));
-            assert!(line_closes_rule(RULE_PUNCTUATION_WORD_SPACE, "ready?I am here"));
-            assert!(!line_closes_rule(RULE_PUNCTUATION_WORD_SPACE, "Hello [ hola ]."));
+            assert!(line_closes_rule(
+                RULE_SPACE_BEFORE_SPACED_SIGNS,
+                "ready for building?"
+            ));
+            assert!(line_closes_rule(
+                RULE_PUNCTUATION_WORD_SPACE,
+                "ready?I am here"
+            ));
+            assert!(!line_closes_rule(
+                RULE_PUNCTUATION_WORD_SPACE,
+                "Hello [ hola ]."
+            ));
             assert!(line_closes_rule(RULE_NO_DOUBLE_HYPHEN, "words -- words"));
             assert!(!line_closes_rule(RULE_NO_DOUBLE_HYPHEN, "Bad - text"));
-            assert!(line_closes_rule(RULE_ATTACH_COMMA_SEMICOLON, "words , here"));
+            assert!(line_closes_rule(
+                RULE_ATTACH_COMMA_SEMICOLON,
+                "words , here"
+            ));
             assert!(line_closes_rule(RULE_ATTACH_DOUBLE_COLON, "word :: here"));
         }
     }
@@ -404,24 +417,24 @@ pub use compile_writing_walls::{
     collect_payload_strings, compile_writing_walls, compile_writing_walls_for_strings,
     compile_writing_walls_line, is_allowed_double_hyphen_line, is_tree_diagram_line,
     line_closes_rule, writing_rule_ids, writing_rule_ids_from_source, writing_rules_manifest_json,
-    writing_source_compiles, writing_wall_id, WritingRule, WRITING_GAP_SOURCE, WRITING_RULES,
-    RULE_ATTACH_COMMA_SEMICOLON, RULE_ATTACH_DOUBLE_COLON, RULE_NO_BOX_DRAWING_DASHES,
-    RULE_NO_DASH_SUBSTITUTES, RULE_NO_DOUBLE_HYPHEN, RULE_NO_EM_DASHES, RULE_NO_EN_DASHES,
-    RULE_NO_MINUS_AS_DASH, RULE_NO_OXFORD_COMMA, RULE_PUNCTUATION_WORD_SPACE,
-    RULE_SPACE_BEFORE_SPACED_SIGNS, RULE_SPACED_SIGN_WORD_SPACE,
+    writing_source_compiles, writing_wall_id, WritingRule, RULE_ATTACH_COMMA_SEMICOLON,
+    RULE_ATTACH_DOUBLE_COLON, RULE_NO_BOX_DRAWING_DASHES, RULE_NO_DASH_SUBSTITUTES,
+    RULE_NO_DOUBLE_HYPHEN, RULE_NO_EM_DASHES, RULE_NO_EN_DASHES, RULE_NO_MINUS_AS_DASH,
+    RULE_NO_OXFORD_COMMA, RULE_PUNCTUATION_WORD_SPACE, RULE_SPACED_SIGN_WORD_SPACE,
+    RULE_SPACE_BEFORE_SPACED_SIGNS, WRITING_GAP_SOURCE, WRITING_RULES,
 };
 
 pub mod compile_lattice;
 pub use compile_lattice::{
-    compile_lattice_policy, compile_lattice_walls, default_rego_path,
-    load_policy_sets, parse_policy_sets, prove_rego_source, CompiledPolicy,
-    LatticeCompileInput, PolicySets,
+    compile_lattice_policy, compile_lattice_walls, default_rego_path, load_policy_sets,
+    parse_policy_sets, prove_rego_source, CompiledPolicy, LatticeCompileInput, PolicySets,
 };
 
 pub mod compile_permission;
 pub use compile_permission::{
-    compile_agent_permission_wall, compile_agent_permission_wall_from, compile_node_agent_permission_wall, fold_agent_permission_into_admit,
-    agent_permission_from_admit, agent_permission_wall_id, agent_has_permission, agent_permission,
+    agent_has_permission, agent_permission, agent_permission_from_admit, agent_permission_wall_id,
+    compile_agent_permission_wall, compile_agent_permission_wall_from,
+    compile_node_agent_permission_wall, fold_agent_permission_into_admit,
 };
 
 /// Wave 4 kernel facade. ClosedWall and DenyReport are the dock Deny types.
@@ -443,7 +456,7 @@ mod kernel_facade_tests {
         let _n = std::any::type_name::<crate::DenyReport>();
         let _a = std::any::type_name::<crate::AdmitResult>();
         let closed = crate::agent_permission("agent-a", "action:write", &[]);
-        assert_eq!(closed.closed, true);
+        assert!(closed.closed);
         assert_eq!(closed.reason, crate::DENY_NO_PERMISSION);
     }
 }

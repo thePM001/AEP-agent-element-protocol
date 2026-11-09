@@ -4,11 +4,13 @@
 //! The listener defaults to loopback. Any other host needs DATA_DOCK_API_KEY and every
 //! /v1 route checks that key in constant time.
 
-use crate::lattice_log::{export_dynaep_events, DynAepEventExport, DynAepEventInput, DockingPortWire};
-use crate::task_manifest::{TaskManifestTrust, TaskManifestV1};
 use crate::dock_event;
 use crate::dock_keys::signer_rate_key;
 use crate::dock_log::DockEvent;
+use crate::lattice_log::{
+    export_dynaep_events, DockingPortWire, DynAepEventExport, DynAepEventInput,
+};
+use crate::task_manifest::{TaskManifestTrust, TaskManifestV1};
 use crate::{
     bootstrap_contracts, build_transport_frame, default_lattice_db_path, docking_port_specs,
     process_request, pulse_beat, resolve_mesh_peers, runtime_status, DockFrameResponse,
@@ -22,9 +24,9 @@ use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
 use std::net::{IpAddr, SocketAddr};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -126,11 +128,11 @@ impl DataDockConfig {
             Err(_) => true,
         };
         let listen_host = match std::env::var("DATA_DOCK_HOST") {
-            Ok(h) if h.trim().is_empty() == false => h.trim().to_string(),
+            Ok(h) if !h.trim().is_empty() => h.trim().to_string(),
             _ => String::from(DATA_DOCK_DEFAULT_HOST),
         };
         let api_key = match std::env::var("DATA_DOCK_API_KEY") {
-            Ok(k) if k.trim().is_empty() == false => Some(k.trim().to_string()),
+            Ok(k) if !k.trim().is_empty() => Some(k.trim().to_string()),
             _ => None,
         };
         Self {
@@ -140,7 +142,11 @@ impl DataDockConfig {
                 .ok()
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(DATA_DOCK_PORT),
-            key_source: if api_key.is_some() { KeySource::Env } else { KeySource::None },
+            key_source: if api_key.is_some() {
+                KeySource::Env
+            } else {
+                KeySource::None
+            },
             api_key,
         }
     }
@@ -201,7 +207,7 @@ fn nearest_existing(path: &Path) -> PathBuf {
             return cur;
         }
         match cur.parent() {
-            Some(p) if p.as_os_str().is_empty() == false => cur = p.to_path_buf(),
+            Some(p) if !p.as_os_str().is_empty() => cur = p.to_path_buf(),
             _ => return PathBuf::from("."),
         }
     }
@@ -244,7 +250,7 @@ fn load_http_key(path: &Path) -> Result<String, String> {
     let raw = std::fs::read_to_string(path)
         .map_err(|e| format!("Data Dock key file {}: {e}", path.display()))?;
     let key = raw.trim();
-    if key.len() < HTTP_KEY_MIN_HEX || key.chars().all(|c| c.is_ascii_hexdigit()) == false {
+    if key.len() < HTTP_KEY_MIN_HEX || !key.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(format!(
             "Data Dock key file {} must hold {HTTP_KEY_MIN_HEX} or more hex characters",
             path.display()
@@ -260,7 +266,8 @@ fn mint_http_key(path: &Path) -> Result<String, String> {
         Some(d) => d,
         None => return Err(String::from("Data Dock key file has no parent folder")),
     };
-    std::fs::create_dir_all(dir).map_err(|e| format!("Data Dock key folder {}: {e}", dir.display()))?;
+    std::fs::create_dir_all(dir)
+        .map_err(|e| format!("Data Dock key folder {}: {e}", dir.display()))?;
     let mut bytes = [0u8; 32];
     rand::thread_rng().fill_bytes(&mut bytes);
     let key = hex::encode(bytes);
@@ -283,8 +290,16 @@ fn mint_http_key(path: &Path) -> Result<String, String> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let file_mode = std::fs::metadata(path).map_err(|e| e.to_string())?.permissions().mode() & 0o777;
-        let dir_mode = std::fs::metadata(dir).map_err(|e| e.to_string())?.permissions().mode() & 0o777;
+        let file_mode = std::fs::metadata(path)
+            .map_err(|e| e.to_string())?
+            .permissions()
+            .mode()
+            & 0o777;
+        let dir_mode = std::fs::metadata(dir)
+            .map_err(|e| e.to_string())?
+            .permissions()
+            .mode()
+            & 0o777;
         if file_mode != 0o600 || dir_mode != 0o700 {
             return Err(format!(
                 "Data Dock key file {} could not be written with mode 0600 in a 0700 folder",
@@ -321,7 +336,10 @@ fn digests_equal(a: &[u8; 32], b: &[u8; 32]) -> bool {
 }
 
 fn presented_key(headers: &HeaderMap) -> Option<String> {
-    if let Some(v) = headers.get(axum::http::header::AUTHORIZATION).and_then(|v| v.to_str().ok()) {
+    if let Some(v) = headers
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+    {
         let v = v.trim();
         if v.len() > 7 && v[..7].eq_ignore_ascii_case("bearer ") {
             return Some(v[7..].trim().to_string());
@@ -444,7 +462,10 @@ pub async fn serve(
     cfg: &DataDockConfig,
 ) -> Result<(JoinHandle<()>, SocketAddr), std::io::Error> {
     if let Err(detail) = cfg.check_bind() {
-        return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, detail));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::PermissionDenied,
+            detail,
+        ));
     }
     let addr = format!("{}:{}", cfg.listen_host, cfg.listen_port);
     let listener = TcpListener::bind(&addr).await?;
@@ -483,9 +504,8 @@ pub fn provision_server_identity(
     let manifest_dir = std::env::var("AEP_TASK_MANIFEST_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|_| data_dir.join("ucb").join("manifests"));
-    std::fs::create_dir_all(&manifest_dir).map_err(|e| {
-        crate::BaseNodeError::Io(format!("data-dock manifest dir: {e}"))
-    })?;
+    std::fs::create_dir_all(&manifest_dir)
+        .map_err(|e| crate::BaseNodeError::Io(format!("data-dock manifest dir: {e}")))?;
     let manifest = TaskManifestV1 {
         manifest_version: String::from("1"),
         id: String::from("m-data-dock"),
@@ -501,12 +521,10 @@ pub fn provision_server_identity(
         promotion_required: Vec::new(),
     };
     let path = manifest_dir.join("data-dock.json");
-    let text = serde_json::to_string_pretty(&manifest).map_err(|e| {
-        crate::BaseNodeError::Io(format!("data-dock manifest encode: {e}"))
-    })?;
-    std::fs::write(&path, text).map_err(|e| {
-        crate::BaseNodeError::Io(format!("data-dock manifest write: {e}"))
-    })?;
+    let text = serde_json::to_string_pretty(&manifest)
+        .map_err(|e| crate::BaseNodeError::Io(format!("data-dock manifest encode: {e}")))?;
+    std::fs::write(&path, text)
+        .map_err(|e| crate::BaseNodeError::Io(format!("data-dock manifest write: {e}")))?;
     let mut manifests = match runtime.admit.manifests.lock() {
         Ok(g) => g,
         Err(p) => p.into_inner(),
@@ -603,7 +621,10 @@ pub fn public_row_from_export(row: DynAepEventExport) -> DataDockLedgerRow {
     }
 }
 
-fn read_public_rows(runtime: &DockingRuntime, limit: u32) -> Result<Vec<DataDockLedgerRow>, String> {
+fn read_public_rows(
+    runtime: &DockingRuntime,
+    limit: u32,
+) -> Result<Vec<DataDockLedgerRow>, String> {
     let db = match runtime.record.db.lock() {
         Ok(g) => g,
         Err(p) => p.into_inner(),
@@ -618,15 +639,20 @@ async fn ledger_handler(
 ) -> impl IntoResponse {
     match read_public_rows(&state.runtime, clamp_limit(q.limit)) {
         Ok(rows) => {
-            dock_event!(debug, DockEvent::DataDockLedgerRead, rows = rows.len(), "Data Dock ledger read");
+            dock_event!(
+                debug,
+                DockEvent::DataDockLedgerRead,
+                rows = rows.len(),
+                "Data Dock ledger read"
+            );
             (
-            StatusCode::OK,
-            Json(json!({
-                "ok": true,
-                "rows": rows
-            })),
-        )
-            .into_response()
+                StatusCode::OK,
+                Json(json!({
+                    "ok": true,
+                    "rows": rows
+                })),
+            )
+                .into_response()
         }
         Err(error) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -645,15 +671,20 @@ async fn events_handler(
 ) -> impl IntoResponse {
     match read_public_rows(&state.runtime, clamp_limit(q.limit)) {
         Ok(rows) => {
-            dock_event!(debug, DockEvent::DataDockLedgerRead, rows = rows.len(), "Data Dock ledger read");
+            dock_event!(
+                debug,
+                DockEvent::DataDockLedgerRead,
+                rows = rows.len(),
+                "Data Dock ledger read"
+            );
             (
-            StatusCode::OK,
-            Json(json!({
-                "ok": true,
-                "events": rows
-            })),
-        )
-            .into_response()
+                StatusCode::OK,
+                Json(json!({
+                    "ok": true,
+                    "events": rows
+                })),
+            )
+                .into_response()
         }
         Err(error) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -713,20 +744,23 @@ fn http_rate_gate(runtime: &DockingRuntime, signer_hex: &str) -> Result<(), Stri
         Ok(g) => g.would_allow("global"),
         Err(_) => false,
     };
-    if global_ok == false {
+    if !global_ok {
         return Err(String::from("rate limited: fleet limit reached"));
     }
     let signer_ok = match runtime.defence.rate_limiter.lock() {
         Ok(g) => g.would_allow(&rate_key),
         Err(_) => false,
     };
-    if signer_ok == false {
+    if !signer_ok {
         return Err(String::from("rate limited: data-dock signer limit reached"));
     }
     Ok(())
 }
 
-async fn submit_action(runtime: &DockingRuntime, body: Value) -> Result<DataDockLedgerRow, (StatusCode, Value)> {
+async fn submit_action(
+    runtime: &DockingRuntime,
+    body: Value,
+) -> Result<DataDockLedgerRow, (StatusCode, Value)> {
     if let Some(hit) = first_forbidden(&body) {
         return Err((
             StatusCode::BAD_REQUEST,
@@ -817,7 +851,11 @@ async fn submit_action(runtime: &DockingRuntime, body: Value) -> Result<DataDock
         }
     };
     if let Err(detail) = http_rate_gate(runtime, &signer) {
-        dock_event!(warn, DockEvent::DataDockRateLimited, "Data Dock action over the defence limit");
+        dock_event!(
+            warn,
+            DockEvent::DataDockRateLimited,
+            "Data Dock action over the defence limit"
+        );
         return Err((
             StatusCode::TOO_MANY_REQUESTS,
             json!({ "ok": false, "error": detail }),
@@ -855,7 +893,7 @@ async fn submit_action(runtime: &DockingRuntime, body: Value) -> Result<DataDock
             }),
         ));
     }
-    if resp.ok == false || resp.event_id.is_none() {
+    if !resp.ok || resp.event_id.is_none() {
         return Err((
             StatusCode::UNPROCESSABLE_ENTITY,
             json!({
@@ -930,17 +968,22 @@ async fn actions_handler(
         Ok(row) => {
             dock_event!(info, DockEvent::DataDockActionAccept, digest = %row.frame_digest, "Data Dock action admitted");
             (
-            StatusCode::OK,
-            Json(json!({
-                "ok": true,
-                "row": row
-            })),
-        )
-            .into_response()
+                StatusCode::OK,
+                Json(json!({
+                    "ok": true,
+                    "row": row
+                })),
+            )
+                .into_response()
         }
         Err((status, payload)) => {
             if status == StatusCode::UNPROCESSABLE_ENTITY {
-                dock_event!(info, DockEvent::DataDockActionDeny, status = status.as_u16(), "Data Dock action denied");
+                dock_event!(
+                    info,
+                    DockEvent::DataDockActionDeny,
+                    status = status.as_u16(),
+                    "Data Dock action denied"
+                );
             }
             (status, Json(payload)).into_response()
         }
@@ -962,7 +1005,11 @@ mod tests {
             enabled: true,
             listen_host: String::from(host),
             listen_port: port,
-            key_source: if key.is_some() { KeySource::Env } else { KeySource::None },
+            key_source: if key.is_some() {
+                KeySource::Env
+            } else {
+                KeySource::None
+            },
             api_key: key.map(String::from),
         }
     }
@@ -970,7 +1017,11 @@ mod tests {
     #[cfg(unix)]
     fn mode_of(path: &Path) -> u32 {
         use std::os::unix::fs::PermissionsExt;
-        std::fs::metadata(path).expect("metadata").permissions().mode() & 0o777
+        std::fs::metadata(path)
+            .expect("metadata")
+            .permissions()
+            .mode()
+            & 0o777
     }
 
     fn private_data_dir() -> tempfile::TempDir {
@@ -978,13 +1029,19 @@ mod tests {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o700)).expect("chmod 700");
+            std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o700))
+                .expect("chmod 700");
         }
         dir
     }
 
     fn state_for(runtime: Arc<DockingRuntime>, dir: &Path, key: Option<&str>) -> DataDockState {
-        DataDockState::new(runtime, &cfg("127.0.0.1", DATA_DOCK_PORT, key), dir.to_path_buf(), false)
+        DataDockState::new(
+            runtime,
+            &cfg("127.0.0.1", DATA_DOCK_PORT, key),
+            dir.to_path_buf(),
+            false,
+        )
     }
 
     fn app(runtime: Arc<DockingRuntime>) -> Router {
@@ -997,7 +1054,9 @@ mod tests {
     }
 
     async fn body_text(res: axum::response::Response) -> String {
-        let bytes = axum::body::to_bytes(res.into_body(), 1 << 20).await.unwrap();
+        let bytes = axum::body::to_bytes(res.into_body(), 1 << 20)
+            .await
+            .unwrap();
         String::from_utf8(bytes.to_vec()).unwrap()
     }
 
@@ -1049,11 +1108,11 @@ mod tests {
         };
         let row = public_row_from_export(export);
         let text = serde_json::to_string(&row).expect("json");
-        assert_eq!(text.contains("agent_id"), false);
-        assert_eq!(text.contains("grants"), false);
-        assert_eq!(text.contains("agent_permission"), false);
-        assert_eq!(text.contains("agentmesh"), false);
-        assert_eq!(text.contains("secret-agent"), false);
+        assert!(!text.contains("agent_id"));
+        assert!(!text.contains("grants"));
+        assert!(!text.contains("agent_permission"));
+        assert!(!text.contains("agentmesh"));
+        assert!(!text.contains("secret-agent"));
         assert_eq!(row.payload.get("ok"), Some(&Value::Bool(true)));
         assert_eq!(row.frame_digest, "abc");
     }
@@ -1072,32 +1131,38 @@ mod tests {
                 "regulation-module-dock"
             ]
         );
-        assert_eq!(specs.iter().any(|s| s.listen_path.contains("display")), false);
-        assert_eq!(specs.iter().any(|s| s.listen_path.contains("data-dock")), false);
+        assert!(!specs.iter().any(|s| s.listen_path.contains("display")));
+        assert!(!specs.iter().any(|s| s.listen_path.contains("data-dock")));
         let public_compose = include_str!("../../../docker-compose.public.yml");
         assert!(public_compose.contains("8413"));
-        assert_eq!(public_compose.contains("28429"), false);
+        assert!(!public_compose.contains("28429"));
         let compose = include_str!("../../../docker-compose.yml");
         assert!(compose.contains("8413"));
-        assert_eq!(compose.contains("28429"), false);
+        assert!(!compose.contains("28429"));
     }
 
     #[test]
     fn no_display_api_folder() {
         let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
         let display_folder = ["display", "api"].join("-");
-        assert_eq!(crate_dir.join("../../AEP-Components").join(display_folder).exists(), false);
-        assert_eq!(crate_dir.join("../crate").exists(), false);
+        assert!(!crate_dir
+            .join("../../AEP-Components")
+            .join(display_folder)
+            .exists());
+        assert!(!crate_dir.join("../crate").exists());
         let docking_src = include_str!("docking/mod.rs");
         assert!(docking_src.contains("pub struct DockFrameResponse"));
-        assert_eq!(docking_src.contains("display"), false);
+        assert!(!docking_src.contains("display"));
     }
 
     #[tokio::test]
     async fn data_dock_health_status_matches_rollup() {
         let (dir, runtime) = fixture_runtime();
         let router = build_router(state_for(runtime.clone(), dir.path(), None));
-        let v: Value = serde_json::from_str(&body_text(router.clone().oneshot(get("/health")).await.unwrap()).await).unwrap();
+        let v: Value = serde_json::from_str(
+            &body_text(router.clone().oneshot(get("/health")).await.unwrap()).await,
+        )
+        .unwrap();
         let expected = crate::rollup_status(
             runtime.docking_ports_listening(),
             runtime.admit.hub.is_loaded(),
@@ -1105,10 +1170,15 @@ mod tests {
             runtime.sqlite_is_closed(),
         );
         assert_eq!(v.get("status").and_then(Value::as_str), Some(expected));
-        assert_eq!(v.get("ok").and_then(Value::as_bool), Some(expected != "error"));
+        assert_eq!(
+            v.get("ok").and_then(Value::as_bool),
+            Some(expected != "error")
+        );
         assert_eq!(v.get("sqlite_closed").and_then(Value::as_bool), Some(false));
         runtime.close_sqlite();
-        let v: Value = serde_json::from_str(&body_text(router.oneshot(get("/health")).await.unwrap()).await).unwrap();
+        let v: Value =
+            serde_json::from_str(&body_text(router.oneshot(get("/health")).await.unwrap()).await)
+                .unwrap();
         assert_eq!(v.get("status").and_then(Value::as_str), Some("error"));
         assert_eq!(v.get("ok").and_then(Value::as_bool), Some(false));
         assert_eq!(v.get("sqlite_closed").and_then(Value::as_bool), Some(true));
@@ -1121,10 +1191,14 @@ mod tests {
         let open = cfg("0.0.0.0", port, None);
         assert!(open.check_bind().is_err());
         let state = DataDockState::new(runtime, &open, dir.path().to_path_buf(), false);
-        let err = serve(state, &open).await.expect_err("open bind without key must refuse");
+        let err = serve(state, &open)
+            .await
+            .expect_err("open bind without key must refuse");
         assert_eq!(err.kind(), std::io::ErrorKind::PermissionDenied);
         assert!(err.to_string().contains("DATA_DOCK_API_KEY"));
-        assert!(tokio::net::TcpStream::connect(("127.0.0.1", port)).await.is_err());
+        assert!(tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .is_err());
         assert!(cfg("0.0.0.0", port, Some("k-open")).check_bind().is_ok());
         assert!(cfg("::1", port, None).check_bind().is_ok());
         assert!(cfg("localhost", port, None).check_bind().is_ok());
@@ -1165,25 +1239,36 @@ mod tests {
             .header("authorization", "Bearer k-test-bad")
             .body(Body::empty())
             .unwrap();
-        assert_eq!(router.clone().oneshot(wrong).await.unwrap().status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            router.clone().oneshot(wrong).await.unwrap().status(),
+            StatusCode::UNAUTHORIZED
+        );
         let wrong_header = Request::builder()
             .uri("/v1/ledger")
             .header(DATA_KEY_HEADER, "k-test-bad")
             .body(Body::empty())
             .unwrap();
-        assert_eq!(router.clone().oneshot(wrong_header).await.unwrap().status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            router.clone().oneshot(wrong_header).await.unwrap().status(),
+            StatusCode::UNAUTHORIZED
+        );
         let post = Request::builder()
             .method("POST")
             .uri("/v1/actions")
             .header("content-type", "application/json")
-            .body(Body::from(json!({ "action_path": "root:ping" }).to_string()))
+            .body(Body::from(
+                json!({ "action_path": "root:ping" }).to_string(),
+            ))
             .unwrap();
-        assert_eq!(router.clone().oneshot(post).await.unwrap().status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            router.clone().oneshot(post).await.unwrap().status(),
+            StatusCode::UNAUTHORIZED
+        );
         let health = router.oneshot(get("/health")).await.unwrap();
         assert_eq!(health.status(), StatusCode::OK);
         let text = body_text(health).await;
-        assert_eq!(text.contains("\"rows\""), false);
-        assert_eq!(text.contains("k-test-good"), false);
+        assert!(!text.contains("\"rows\""));
+        assert!(!text.contains("k-test-good"));
     }
 
     #[tokio::test]
@@ -1199,8 +1284,16 @@ mod tests {
         let res = router.clone().oneshot(bearer).await.unwrap();
         assert_eq!(res.status(), StatusCode::OK);
         let text = body_text(res).await;
-        for key in ["agent_id", "grants", "\"frame\"", "sealed", "signer_public_hex", "capsule", "secret-agent"] {
-            assert_eq!(text.contains(key), false, "{key} leaked: {text}");
+        for key in [
+            "agent_id",
+            "grants",
+            "\"frame\"",
+            "sealed",
+            "signer_public_hex",
+            "capsule",
+            "secret-agent",
+        ] {
+            assert!(!text.contains(key), "{key} leaked: {text}");
         }
         assert!(text.contains("digest-strip"));
         let header_key = Request::builder()
@@ -1210,15 +1303,20 @@ mod tests {
             .unwrap();
         let res = router.clone().oneshot(header_key).await.unwrap();
         assert_eq!(res.status(), StatusCode::OK);
-        assert_eq!(body_text(res).await.contains("grants"), false);
+        assert!(!body_text(res).await.contains("grants"));
         let refused = Request::builder()
             .method("POST")
             .uri("/v1/actions")
             .header("authorization", "Bearer k-test-good")
             .header("content-type", "application/json")
-            .body(Body::from(json!({ "action_path": "root:ping", "payload": { "sealed": "x" } }).to_string()))
+            .body(Body::from(
+                json!({ "action_path": "root:ping", "payload": { "sealed": "x" } }).to_string(),
+            ))
             .unwrap();
-        assert_eq!(router.oneshot(refused).await.unwrap().status(), StatusCode::BAD_REQUEST);
+        assert_eq!(
+            router.oneshot(refused).await.unwrap().status(),
+            StatusCode::BAD_REQUEST
+        );
     }
 
     #[tokio::test]
@@ -1250,7 +1348,9 @@ mod tests {
                     .method("POST")
                     .uri("/v1/actions")
                     .header("content-type", "application/json")
-                    .body(Body::from(json!({ "action_path": "root:ping", "payload": {} }).to_string()))
+                    .body(Body::from(
+                        json!({ "action_path": "root:ping", "payload": {} }).to_string(),
+                    ))
                     .unwrap(),
             )
             .await
@@ -1275,7 +1375,9 @@ mod tests {
     #[test]
     fn non_loopback_mints_http_key_file_0600() {
         let data = private_data_dir();
-        let resolved = cfg("0.0.0.0", 0, None).resolve_key(data.path()).expect("mint");
+        let resolved = cfg("0.0.0.0", 0, None)
+            .resolve_key(data.path())
+            .expect("mint");
         let path = http_key_path(data.path());
         assert_eq!(resolved.key_source, KeySource::Minted(path.clone()));
         let key = resolved.api_key.clone().expect("minted key");
@@ -1291,10 +1393,17 @@ mod tests {
     #[test]
     fn second_boot_reuses_http_key_file() {
         let data = private_data_dir();
-        let first = cfg("0.0.0.0", 0, None).resolve_key(data.path()).expect("first boot");
-        let second = cfg("0.0.0.0", 0, None).resolve_key(data.path()).expect("second boot");
+        let first = cfg("0.0.0.0", 0, None)
+            .resolve_key(data.path())
+            .expect("first boot");
+        let second = cfg("0.0.0.0", 0, None)
+            .resolve_key(data.path())
+            .expect("second boot");
         assert_eq!(first.api_key, second.api_key);
-        assert_eq!(second.key_source, KeySource::File(http_key_path(data.path())));
+        assert_eq!(
+            second.key_source,
+            KeySource::File(http_key_path(data.path()))
+        );
         assert_eq!(mode_of(&http_key_path(data.path())), 0o600);
     }
 
@@ -1302,27 +1411,37 @@ mod tests {
     #[test]
     fn env_key_wins_over_file() {
         let data = private_data_dir();
-        let minted = cfg("0.0.0.0", 0, None).resolve_key(data.path()).expect("mint");
+        let minted = cfg("0.0.0.0", 0, None)
+            .resolve_key(data.path())
+            .expect("mint");
         let on_disk = std::fs::read_to_string(http_key_path(data.path())).expect("read");
         let env = cfg("0.0.0.0", 0, Some("k-env-wins-over-the-file-0123456789"))
             .resolve_key(data.path())
             .expect("env key");
         assert_eq!(env.key_source, KeySource::Env);
-        assert_eq!(env.api_key.as_deref(), Some("k-env-wins-over-the-file-0123456789"));
+        assert_eq!(
+            env.api_key.as_deref(),
+            Some("k-env-wins-over-the-file-0123456789")
+        );
         assert_ne!(env.api_key, minted.api_key);
-        assert_eq!(std::fs::read_to_string(http_key_path(data.path())).expect("read"), on_disk);
+        assert_eq!(
+            std::fs::read_to_string(http_key_path(data.path())).expect("read"),
+            on_disk
+        );
     }
 
     #[test]
     fn loopback_does_not_require_file() {
         let data = private_data_dir();
         for host in ["127.0.0.1", "::1", "localhost"] {
-            let resolved = cfg(host, 0, None).resolve_key(data.path()).expect("loopback");
+            let resolved = cfg(host, 0, None)
+                .resolve_key(data.path())
+                .expect("loopback");
             assert_eq!(resolved.api_key, None);
             assert_eq!(resolved.key_source, KeySource::None);
             assert!(resolved.check_bind().is_ok());
         }
-        assert_eq!(data.path().join(HTTP_KEY_DIR).exists(), false);
+        assert!(!data.path().join(HTTP_KEY_DIR).exists());
     }
 
     #[cfg(unix)]
@@ -1334,7 +1453,9 @@ mod tests {
         let buf = global_log_capture();
         let (dir, runtime) = fixture_runtime();
         let data = private_data_dir();
-        let resolved = cfg("0.0.0.0", 0, None).resolve_key(data.path()).expect("mint");
+        let resolved = cfg("0.0.0.0", 0, None)
+            .resolve_key(data.path())
+            .expect("mint");
         let key = resolved.api_key.clone().expect("key");
         let state = DataDockState::new(runtime, &resolved, dir.path().to_path_buf(), false);
         let (handle, _addr) = serve(state, &resolved).await.expect("listen after mint");
@@ -1342,10 +1463,16 @@ mod tests {
         let key_path = http_key_path(data.path()).display().to_string();
         let text = buf.text();
         let ours: Vec<&str> = text.lines().filter(|l| l.contains(&key_path)).collect();
-        assert!(ours.len() >= 2, "expected mint and bind events for {key_path}: {text}");
-        assert!(ours.iter().all(|l| l.contains("data_dock.bind")), "{ours:?}");
+        assert!(
+            ours.len() >= 2,
+            "expected mint and bind events for {key_path}: {text}"
+        );
+        assert!(
+            ours.iter().all(|l| l.contains("data_dock.bind")),
+            "{ours:?}"
+        );
         assert!(ours.iter().any(|l| l.contains("minted")), "{ours:?}");
-        assert_eq!(text.contains(&key), false, "minted key leaked into the dock log");
+        assert!(!text.contains(&key), "minted key leaked into the dock log");
     }
 
     fn global_log_capture() -> crate::dock_log::SharedBuffer {
@@ -1355,9 +1482,14 @@ mod tests {
         CAPTURE
             .get_or_init(|| {
                 let buf = SharedBuffer::default();
-                let subscriber =
-                    tracing_subscriber::registry().with(vec![layer_for("info", true, false, buf.clone())]);
-                tracing::subscriber::set_global_default(subscriber).expect("one global test subscriber");
+                let subscriber = tracing_subscriber::registry().with(vec![layer_for(
+                    "info",
+                    true,
+                    false,
+                    buf.clone(),
+                )]);
+                tracing::subscriber::set_global_default(subscriber)
+                    .expect("one global test subscriber");
                 buf
             })
             .clone()
@@ -1368,10 +1500,13 @@ mod tests {
     fn world_writable_parent_refuses_mint() {
         use std::os::unix::fs::PermissionsExt;
         let data = tempfile::tempdir().expect("tempdir");
-        std::fs::set_permissions(data.path(), std::fs::Permissions::from_mode(0o777)).expect("chmod 777");
-        let err = cfg("0.0.0.0", 0, None).resolve_key(data.path()).expect_err("must refuse");
+        std::fs::set_permissions(data.path(), std::fs::Permissions::from_mode(0o777))
+            .expect("chmod 777");
+        let err = cfg("0.0.0.0", 0, None)
+            .resolve_key(data.path())
+            .expect_err("must refuse");
         assert!(err.contains("world-writable"), "{err}");
-        assert_eq!(http_key_path(data.path()).exists(), false);
+        assert!(!http_key_path(data.path()).exists());
     }
 
     #[cfg(unix)]
@@ -1383,11 +1518,15 @@ mod tests {
         std::fs::create_dir_all(path.parent().expect("dir")).expect("dir");
         std::fs::write(&path, "abc123").expect("write");
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).expect("chmod");
-        let err = cfg("0.0.0.0", 0, None).resolve_key(data.path()).expect_err("short key");
+        let err = cfg("0.0.0.0", 0, None)
+            .resolve_key(data.path())
+            .expect_err("short key");
         assert!(err.contains("hex characters"), "{err}");
         std::fs::write(&path, "a".repeat(64)).expect("write");
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).expect("chmod");
-        let err = cfg("0.0.0.0", 0, None).resolve_key(data.path()).expect_err("open mode");
+        let err = cfg("0.0.0.0", 0, None)
+            .resolve_key(data.path())
+            .expect_err("open mode");
         assert!(err.contains("0600"), "{err}");
     }
 
@@ -1395,7 +1534,9 @@ mod tests {
     fn second_boot_does_not_rotate_data_dock_key() {
         // Key tests set AEP_AGENT_SIGN_KEYS_FORCE_REGEN under this lock. Holding
         // it keeps a parallel test from turning this boot into a rotation.
-        let _guard = crate::dock_keys::KEYS_ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = crate::dock_keys::KEYS_ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         std::env::remove_var("AEP_AGENT_SIGN_KEYS_FORCE_REGEN");
         let (dir, first) = fixture_runtime();
         provision_server_identity(&first, dir.path()).expect("first boot");
@@ -1446,7 +1587,10 @@ mod tests {
             .await
             .unwrap();
         let v: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(v.get("service").and_then(Value::as_str), Some(DATA_DOCK_SERVICE));
+        assert_eq!(
+            v.get("service").and_then(Value::as_str),
+            Some(DATA_DOCK_SERVICE)
+        );
         assert_eq!(v.get("port").and_then(Value::as_u64), Some(8413));
         assert_eq!(v.get("ucb_port").and_then(Value::as_u64), Some(8412));
         assert_eq!(v.get("docks").and_then(Value::as_u64), Some(4));
@@ -1467,8 +1611,8 @@ mod tests {
             .await
             .unwrap();
         let text = String::from_utf8(bytes.to_vec()).unwrap();
-        assert_eq!(text.contains("agent_id"), false);
-        assert_eq!(text.contains("grants"), false);
+        assert!(!text.contains("agent_id"));
+        assert!(!text.contains("grants"));
         let v: Value = serde_json::from_str(&text).unwrap();
         assert_eq!(v.get("ok").and_then(Value::as_bool), Some(true));
         let rows = v.get("rows").and_then(Value::as_array).cloned().unwrap();
@@ -1502,9 +1646,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
-        let bytes = axum::body::to_bytes(res.into_body(), 65536)
-            .await
-            .unwrap();
+        let bytes = axum::body::to_bytes(res.into_body(), 65536).await.unwrap();
         let v: Value = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(v.get("ok").and_then(Value::as_bool), Some(false));
         let err = v.get("error").and_then(Value::as_str).unwrap_or("");
@@ -1533,9 +1675,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
-        let bytes = axum::body::to_bytes(res.into_body(), 65536)
-            .await
-            .unwrap();
+        let bytes = axum::body::to_bytes(res.into_body(), 65536).await.unwrap();
         let v: Value = serde_json::from_slice(&bytes).unwrap();
         let err = v.get("error").and_then(Value::as_str).unwrap_or("");
         assert!(err.contains("grants"), "{err}");
@@ -1564,13 +1704,11 @@ mod tests {
             .await
             .unwrap();
         let status = res.status();
-        let bytes = axum::body::to_bytes(res.into_body(), 65536)
-            .await
-            .unwrap();
+        let bytes = axum::body::to_bytes(res.into_body(), 65536).await.unwrap();
         let text = String::from_utf8(bytes.to_vec()).unwrap();
-        assert_eq!(text.contains("\"agent_id\""), false);
-        assert_eq!(text.contains("\"grants\""), false);
-        assert_eq!(text.contains("\"frame\""), false);
+        assert!(!text.contains("\"agent_id\""));
+        assert!(!text.contains("\"grants\""));
+        assert!(!text.contains("\"frame\""));
         let v: Value = serde_json::from_str(&text).unwrap();
         assert!(
             status == StatusCode::OK || status == StatusCode::UNPROCESSABLE_ENTITY,

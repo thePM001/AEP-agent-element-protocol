@@ -226,8 +226,8 @@ type fakeFileInfo struct {
 	isDir bool
 }
 
-func (f *fakeFileInfo) Name() string      { return f.name }
-func (f *fakeFileInfo) Size() int64       { return f.size }
+func (f *fakeFileInfo) Name() string { return f.name }
+func (f *fakeFileInfo) Size() int64  { return f.size }
 func (f *fakeFileInfo) Mode() os.FileMode {
 	if f.isDir {
 		return os.ModeDir | 0o755
@@ -243,8 +243,8 @@ type fakeDirEntry struct {
 	isDir bool
 }
 
-func (d *fakeDirEntry) Name() string               { return d.name }
-func (d *fakeDirEntry) IsDir() bool                { return d.isDir }
+func (d *fakeDirEntry) Name() string { return d.name }
+func (d *fakeDirEntry) IsDir() bool  { return d.isDir }
 func (d *fakeDirEntry) Type() os.FileMode {
 	if d.isDir {
 		return os.ModeDir

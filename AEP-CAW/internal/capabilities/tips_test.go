@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/ebpf"
 	"github.com/stretchr/testify/assert"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/ebpf"
 )
 
 func TestGenerateTips_Linux(t *testing.T) {

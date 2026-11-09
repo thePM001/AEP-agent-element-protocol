@@ -43,24 +43,24 @@ func LoadPolicyFilesWithVersion(dir string) (*PolicyState, error) {
 
 // PolicyFiles represents policy configuration loaded from separate files.
 type PolicyFiles struct {
-	Env      *EnvProtectionPolicy `yaml:"env_protection"`
-	File     *FilePolicyConfig    `yaml:"file_policy"`
-	Network  *NetworkPolicyConfig `yaml:"network_policy"`
-	DNS      *DNSPolicyConfig     `yaml:"dns_policy"`
+	Env      *EnvProtectionPolicy  `yaml:"env_protection"`
+	File     *FilePolicyConfig     `yaml:"file_policy"`
+	Network  *NetworkPolicyConfig  `yaml:"network_policy"`
+	DNS      *DNSPolicyConfig      `yaml:"dns_policy"`
 	Registry *RegistryPolicyConfig `yaml:"registry_policy"` // Windows only
 }
 
 // EnvProtectionPolicy configures environment variable protection.
 type EnvProtectionPolicy struct {
-	Enabled           bool     `yaml:"enabled"`
-	Mode              string   `yaml:"mode"` // "allowlist" or "blocklist"
-	Allowlist         []string `yaml:"allowlist"`
-	Blocklist         []string `yaml:"blocklist"`
-	SensitivePatterns []string `yaml:"sensitive_patterns"`
-	RedactInsteadOfRemove bool   `yaml:"redact_instead_of_remove"`
-	RedactPlaceholder     string `yaml:"redact_placeholder"`
-	LogAccess             bool   `yaml:"log_access"`
-	AlertOnSensitive      bool   `yaml:"alert_on_sensitive"`
+	Enabled               bool     `yaml:"enabled"`
+	Mode                  string   `yaml:"mode"` // "allowlist" or "blocklist"
+	Allowlist             []string `yaml:"allowlist"`
+	Blocklist             []string `yaml:"blocklist"`
+	SensitivePatterns     []string `yaml:"sensitive_patterns"`
+	RedactInsteadOfRemove bool     `yaml:"redact_instead_of_remove"`
+	RedactPlaceholder     string   `yaml:"redact_placeholder"`
+	LogAccess             bool     `yaml:"log_access"`
+	AlertOnSensitive      bool     `yaml:"alert_on_sensitive"`
 }
 
 // FilePolicyConfig configures file access policy.
@@ -71,11 +71,11 @@ type FilePolicyConfig struct {
 
 // FilePolicyRule defines a file access rule.
 type FilePolicyRule struct {
-	Name           string   `yaml:"name"`
-	Paths          []string `yaml:"paths"`
-	Operations     []string `yaml:"operations"` // read, write, create, delete, rename, stat
-	Action         string   `yaml:"action"`     // allow, deny, approve, redirect
-	TimeoutSeconds int      `yaml:"timeout_seconds,omitempty"`
+	Name           string              `yaml:"name"`
+	Paths          []string            `yaml:"paths"`
+	Operations     []string            `yaml:"operations"` // read, write, create, delete, rename, stat
+	Action         string              `yaml:"action"`     // allow, deny, approve, redirect
+	TimeoutSeconds int                 `yaml:"timeout_seconds,omitempty"`
 	Redirect       *FileRedirectConfig `yaml:"redirect,omitempty"`
 }
 
@@ -92,12 +92,12 @@ type NetworkPolicyConfig struct {
 
 // NetworkPolicyRule defines a network access rule.
 type NetworkPolicyRule struct {
-	Name           string   `yaml:"name"`
-	Domains        []string `yaml:"domains,omitempty"`
-	CIDRs          []string `yaml:"cidrs,omitempty"`
-	Ports          []int    `yaml:"ports,omitempty"`
-	Action         string   `yaml:"action"` // allow, deny, approve, redirect
-	TimeoutSeconds int      `yaml:"timeout_seconds,omitempty"`
+	Name           string                 `yaml:"name"`
+	Domains        []string               `yaml:"domains,omitempty"`
+	CIDRs          []string               `yaml:"cidrs,omitempty"`
+	Ports          []int                  `yaml:"ports,omitempty"`
+	Action         string                 `yaml:"action"` // allow, deny, approve, redirect
+	TimeoutSeconds int                    `yaml:"timeout_seconds,omitempty"`
 	Redirect       *NetworkRedirectConfig `yaml:"redirect,omitempty"`
 }
 
@@ -114,9 +114,9 @@ type DNSPolicyConfig struct {
 
 // DNSPolicyRule defines a DNS policy rule.
 type DNSPolicyRule struct {
-	Name     string   `yaml:"name"`
-	Patterns []string `yaml:"patterns"` // glob patterns like "*.malware.com"
-	Action   string   `yaml:"action"`   // allow, deny, redirect
+	Name     string             `yaml:"name"`
+	Patterns []string           `yaml:"patterns"` // glob patterns like "*.malware.com"
+	Action   string             `yaml:"action"`   // allow, deny, redirect
 	Redirect *DNSRedirectConfig `yaml:"redirect,omitempty"`
 }
 
@@ -137,9 +137,9 @@ type RegistryPolicyConfig struct {
 // RegistryPolicyRule defines a Windows registry access rule.
 type RegistryPolicyRule struct {
 	Name           string                  `yaml:"name"`
-	Paths          []string                `yaml:"paths"` // e.g., "HKLM\\SOFTWARE\\..."
+	Paths          []string                `yaml:"paths"`      // e.g., "HKLM\\SOFTWARE\\..."
 	Operations     []string                `yaml:"operations"` // read, write, create, delete
-	Action         string                  `yaml:"action"` // allow, deny, approve, redirect
+	Action         string                  `yaml:"action"`     // allow, deny, approve, redirect
 	Priority       int                     `yaml:"priority"`
 	CacheTTL       int                     `yaml:"cache_ttl"` // seconds, 0 = use default
 	TimeoutSeconds int                     `yaml:"timeout_seconds,omitempty"`

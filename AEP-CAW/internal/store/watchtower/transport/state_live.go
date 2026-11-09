@@ -2,6 +2,7 @@ package transport
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -11,6 +12,11 @@ import (
 	wtpv1 "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1"
 	"google.golang.org/protobuf/proto"
 )
+
+// errLiveGenerationMoved ends a Live pass whose stream already carries frames of
+// an older WAL generation; the Run loop reconnects and the replay path walks the
+// generations in order.
+var errLiveGenerationMoved = errors.New("transport: WAL generation moved past the live reader")
 
 // encoderMetrics is the metrics collector the encoder uses to record
 // loss-marker bookkeeping (currently: wtp_loss_unknown_reason_total).
@@ -136,6 +142,8 @@ func (t *Transport) runLive(ctx context.Context, rdr *wal.Reader, opts LiveOptio
 		t.teardownRecv()
 		t.conn = nil
 	}
+	// sentOnStream records whether this Live pass put any frame on the wire.
+	sentOnStream := false
 	sendBatch := func(outBatch *Batch) error {
 		if outBatch == nil {
 			return nil
@@ -148,11 +156,40 @@ func (t *Transport) runLive(ctx context.Context, rdr *wal.Reader, opts LiveOptio
 			if err := t.conn.Send(msg); err != nil {
 				return fmt.Errorf("send EventBatch: %w", err)
 			}
+			sentOnStream = true
 			t.logEmittedLossIfApplicable(ctx, msg)
 			gen, seq := extractWireHighWatermark(msg)
 			inflight.Push(gen, seq)
 		}
 		return nil
+	}
+	// leaveForNewGeneration runs after drainAvailable has read every record of
+	// the reader's generation. The reader is pinned to one generation and skips
+	// the segments of any other, so once the WAL holds a newer generation this
+	// Live pass must end or the newer records would never be sent. The common
+	// case is a fresh WAL: the transport reaches Live before the first append,
+	// opens its reader at generation 0 and the first events land in a
+	// generation 1 segment.
+	leaveForNewGeneration := func() (State, bool, error) {
+		if t.wal == nil || t.wal.HighGeneration() <= rdr.Generation() {
+			return StateLive, false, nil
+		}
+		if out := b.Drain(); out != nil {
+			if err := sendBatch(out); err != nil {
+				teardownForReconnect()
+				return StateConnecting, true, err
+			}
+		}
+		if !sentOnStream && inflight.Len() == 0 {
+			// Nothing of the older generation went out on this stream, so
+			// the Run loop reopens the reader at the new generation on the
+			// same stream.
+			return StateLive, true, nil
+		}
+		// Frames of the older generation are on the wire. Reconnect so the
+		// replay path walks the generations in order.
+		teardownForReconnect()
+		return StateConnecting, true, errLiveGenerationMoved
 	}
 	drainAvailable := func() error {
 		for inflight.Len() < opts.MaxInflight {
@@ -175,7 +212,12 @@ func (t *Transport) runLive(ctx context.Context, rdr *wal.Reader, opts LiveOptio
 		teardownForReconnect()
 		return StateConnecting, err
 	}
+	if next, leave, err := leaveForNewGeneration(); leave {
+		return next, err
+	}
 
+	t.inLive.Store(true)
+	defer t.inLive.Store(false)
 	for {
 		select {
 		case <-ctx.Done():
@@ -274,6 +316,9 @@ func (t *Transport) runLive(ctx context.Context, rdr *wal.Reader, opts LiveOptio
 			if err := drainAvailable(); err != nil {
 				teardownForReconnect()
 				return StateConnecting, err
+			}
+			if next, leave, err := leaveForNewGeneration(); leave {
+				return next, err
 			}
 		case now := <-tick.C:
 			// Gate the tick-driven flush on available inflight

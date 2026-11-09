@@ -54,7 +54,17 @@ pub async fn delegate_to_foreign_model(rt: &Arc<UcbRuntime>, body: DelegateBody)
         .or(body.scope)
         .unwrap_or_else(|| "read-only-delegation".into());
 
-    if let Err(e) = lattice_gate_delegate(rt, &inference, &protocol, &agent_id, &session_id, &prompt, &capability_scope).await {
+    if let Err(e) = lattice_gate_delegate(
+        rt,
+        &inference,
+        &protocol,
+        &agent_id,
+        &session_id,
+        &prompt,
+        &capability_scope,
+    )
+    .await
+    {
         return json!({
             "ok": false,
             "error": e,
@@ -62,7 +72,14 @@ pub async fn delegate_to_foreign_model(rt: &Arc<UcbRuntime>, body: DelegateBody)
         });
     }
 
-    let model_output = match call_openai_compatible(&inference, api_key.as_deref(), &prompt, schema.as_ref()).await {
+    let model_output = match call_openai_compatible(
+        &inference,
+        api_key.as_deref(),
+        &prompt,
+        schema.as_ref(),
+    )
+    .await
+    {
         Ok(v) => v,
         Err(e) => {
             return json!({
@@ -79,7 +96,11 @@ pub async fn delegate_to_foreign_model(rt: &Arc<UcbRuntime>, body: DelegateBody)
             protocol: Some(protocol.clone()),
             session_id: Some(session_id.clone()),
             agent_id: Some(agent_id.clone()),
-            provenance: Some(crate::ingress::Provenance::bound(&protocol, "ucb/1.0", &session_id)),
+            provenance: Some(crate::ingress::Provenance::bound(
+                &protocol,
+                "ucb/1.0",
+                &session_id,
+            )),
             payload: if model_output.is_object() {
                 model_output.clone()
             } else {
@@ -185,11 +206,7 @@ async fn call_openai_compatible(
     if let Some(key) = api_key {
         req = req.header("Authorization", format!("Bearer {key}"));
     }
-    let res = req
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
+    let res = req.json(&body).send().await.map_err(|e| e.to_string())?;
     let status = res.status();
     if !status.is_success() {
         let text = res.text().await.unwrap_or_default();
@@ -204,10 +221,8 @@ async fn call_openai_compatible(
         .and_then(|v| v.as_str())
         .unwrap_or("");
     if schema.is_some() {
-        let parsed: Value =
-            serde_json::from_str(content).map_err(|_| {
-                "delegate LLM returned non-JSON content for schema request".to_string()
-            })?;
+        let parsed: Value = serde_json::from_str(content)
+            .map_err(|_| "delegate LLM returned non-JSON content for schema request".to_string())?;
         return Ok(parsed);
     }
     Ok(json!({ "content": content, "raw": data }))

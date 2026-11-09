@@ -22,7 +22,7 @@ const (
 
 // WindowsShimConfig configures Windows shell shim installation.
 type WindowsShimConfig struct {
-	Strategy      WindowsShimStrategy
+	Strategy     WindowsShimStrategy
 	AepCawBinary string
 }
 

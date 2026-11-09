@@ -203,9 +203,9 @@ func TestDenyProcessExec_Literal(t *testing.T) {
 
 func TestAllowNetworkOutbound_InvalidProto_Dropped(t *testing.T) {
 	p := New()
-	p.AllowNetworkOutbound("TCP", "*:443")  // uppercase = invalid
-	p.AllowNetworkOutbound("t1p", "*:80")   // digit = invalid
-	p.AllowNetworkOutbound("tcp)", "*:80")  // paren = invalid
+	p.AllowNetworkOutbound("TCP", "*:443") // uppercase = invalid
+	p.AllowNetworkOutbound("t1p", "*:80")  // digit = invalid
+	p.AllowNetworkOutbound("tcp)", "*:80") // paren = invalid
 	out, _ := p.Build()
 	if strings.Contains(out, "network-outbound") {
 		t.Error("invalid proto should be silently dropped, but found network-outbound rule")

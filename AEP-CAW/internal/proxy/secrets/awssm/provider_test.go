@@ -34,9 +34,9 @@ type mockAPIError struct {
 }
 
 func (e *mockAPIError) Error() string                 { return e.message }
-func (e *mockAPIError) ErrorCode() string              { return e.code }
-func (e *mockAPIError) ErrorMessage() string           { return e.message }
-func (e *mockAPIError) ErrorFault() smithy.ErrorFault  { return smithy.FaultServer }
+func (e *mockAPIError) ErrorCode() string             { return e.code }
+func (e *mockAPIError) ErrorMessage() string          { return e.message }
+func (e *mockAPIError) ErrorFault() smithy.ErrorFault { return smithy.FaultServer }
 
 func TestName(t *testing.T) {
 	p := &Provider{}

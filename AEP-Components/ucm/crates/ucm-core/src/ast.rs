@@ -121,12 +121,20 @@ impl Expr {
             Expr::Lit(Lit::Text(t)) => json!({ "text": t }),
             Expr::Lit(Lit::Bool(b)) => json!({ "bool": if *b { "true" } else { "false" } }),
             Expr::Var(v) => json!({ "var": v }),
-            Expr::Op(op, args) => json!({ "op": op.symbol(), "args": args.iter().map(|a| a.to_json()).collect::<Vec<_>>() }),
-            Expr::Call(f, args) => json!({ "call": f, "args": args.iter().map(|a| a.to_json()).collect::<Vec<_>>() }),
+            Expr::Op(op, args) => {
+                json!({ "op": op.symbol(), "args": args.iter().map(|a| a.to_json()).collect::<Vec<_>>() })
+            }
+            Expr::Call(f, args) => {
+                json!({ "call": f, "args": args.iter().map(|a| a.to_json()).collect::<Vec<_>>() })
+            }
             Expr::If(c, a, b) => json!({ "if": [c.to_json(), a.to_json(), b.to_json()] }),
-            Expr::Let(n, v, body) => json!({ "let": n, "value": v.to_json(), "in": body.to_json() }),
+            Expr::Let(n, v, body) => {
+                json!({ "let": n, "value": v.to_json(), "in": body.to_json() })
+            }
             Expr::Lambda(ps, body) => json!({ "lambda": ps, "body": body.to_json() }),
-            Expr::Vec(items) => json!({ "vec": items.iter().map(|a| a.to_json()).collect::<Vec<_>>() }),
+            Expr::Vec(items) => {
+                json!({ "vec": items.iter().map(|a| a.to_json()).collect::<Vec<_>>() })
+            }
             Expr::Float(e) => json!({ "float": e.to_json() }),
         }
     }
@@ -139,7 +147,9 @@ impl Expr {
         if depth > MAX_DEPTH {
             return Err(UcmError::Form("program nesting too deep".into()));
         }
-        let o = v.as_object().ok_or_else(|| UcmError::Form("expression must be an object".into()))?;
+        let o = v
+            .as_object()
+            .ok_or_else(|| UcmError::Form("expression must be an object".into()))?;
         let s = |k: &str| -> Result<String> {
             o.get(k)
                 .and_then(|x| x.as_str())
@@ -155,19 +165,28 @@ impl Expr {
                 .collect()
         };
         let sub = |k: &str| -> Result<Expr> {
-            Self::from_json_depth(o.get(k).ok_or_else(|| UcmError::Form(format!("missing field {k}")))?, depth + 1)
+            Self::from_json_depth(
+                o.get(k)
+                    .ok_or_else(|| UcmError::Form(format!("missing field {k}")))?,
+                depth + 1,
+            )
         };
         let only = |keys: &[&str]| -> Result<()> {
             if o.keys().all(|k| keys.contains(&k.as_str())) {
                 Ok(())
             } else {
-                Err(UcmError::Form(format!("unexpected fields, allowed: {}", keys.join(", "))))
+                Err(UcmError::Form(format!(
+                    "unexpected fields, allowed: {}",
+                    keys.join(", ")
+                )))
             }
         };
         if o.contains_key("int") {
             only(&["int"])?;
             let t = s("int")?;
-            let i: BigInt = t.parse().map_err(|_| UcmError::Form(format!("bad int {t}")))?;
+            let i: BigInt = t
+                .parse()
+                .map_err(|_| UcmError::Form(format!("bad int {t}")))?;
             return Ok(Expr::Lit(Lit::Int(i)));
         }
         if o.contains_key("dec") {
@@ -195,10 +214,14 @@ impl Expr {
         if o.contains_key("op") {
             only(&["op", "args"])?;
             let sym = s("op")?;
-            let op = Op::from_symbol(&sym).ok_or_else(|| UcmError::Form(format!("unknown op {sym}")))?;
+            let op =
+                Op::from_symbol(&sym).ok_or_else(|| UcmError::Form(format!("unknown op {sym}")))?;
             let args = list("args")?;
             if args.len() != op.arity() {
-                return Err(UcmError::Form(format!("op {sym} takes {} arguments", op.arity())));
+                return Err(UcmError::Form(format!(
+                    "op {sym} takes {} arguments",
+                    op.arity()
+                )));
             }
             return Ok(Expr::Op(op, args));
         }
@@ -222,7 +245,11 @@ impl Expr {
         }
         if o.contains_key("let") {
             only(&["let", "value", "in"])?;
-            return Ok(Expr::Let(s("let")?, Box::new(sub("value")?), Box::new(sub("in")?)));
+            return Ok(Expr::Let(
+                s("let")?,
+                Box::new(sub("value")?),
+                Box::new(sub("in")?),
+            ));
         }
         if o.contains_key("lambda") {
             only(&["lambda", "body"])?;
@@ -289,7 +316,9 @@ impl Expr {
     }
 
     fn text_bare(&self) -> String {
-        let bin = |a: &[Expr], sym: &str, l: u8, r: u8| format!("{} {} {}", a[0].text_at(l), sym, a[1].text_at(r));
+        let bin = |a: &[Expr], sym: &str, l: u8, r: u8| {
+            format!("{} {} {}", a[0].text_at(l), sym, a[1].text_at(r))
+        };
         match self {
             Expr::Lit(Lit::Int(i)) => i.to_string(),
             Expr::Lit(Lit::Dec(d)) => {
@@ -300,7 +329,9 @@ impl Expr {
                 }
                 r
             }
-            Expr::Lit(Lit::Text(t)) => format!("\"{}\"", t.replace('\\', "\\\\").replace('"', "\\\"")),
+            Expr::Lit(Lit::Text(t)) => {
+                format!("\"{}\"", t.replace('\\', "\\\\").replace('"', "\\\""))
+            }
             Expr::Lit(Lit::Bool(b)) => b.to_string(),
             Expr::Var(v) => v.clone(),
             Expr::Op(Op::Neg, a) => format!("-{}", a[0].text_at(7)),
@@ -309,12 +340,26 @@ impl Expr {
                 let p = if *op == Op::Or { 1 } else { 2 };
                 bin(a, op.symbol(), p, p + 1)
             }
-            Expr::Op(op @ (Op::Eq | Op::Ne | Op::Lt | Op::Le | Op::Gt | Op::Ge), a) => bin(a, op.symbol(), 5, 5),
+            Expr::Op(op @ (Op::Eq | Op::Ne | Op::Lt | Op::Le | Op::Gt | Op::Ge), a) => {
+                bin(a, op.symbol(), 5, 5)
+            }
             Expr::Op(op @ (Op::Add | Op::Sub), a) => bin(a, op.symbol(), 5, 6),
             Expr::Op(op @ (Op::Mul | Op::Div), a) => bin(a, op.symbol(), 6, 7),
             Expr::Op(Op::Pow, a) => bin(a, "^", 9, 7),
-            Expr::Call(f, args) => format!("{}({})", f, args.iter().map(|a| a.text_at(0)).collect::<Vec<_>>().join(", ")),
-            Expr::If(c, a, b) => format!("if {} then {} else {}", c.text_at(0), a.text_at(0), b.text_at(0)),
+            Expr::Call(f, args) => format!(
+                "{}({})",
+                f,
+                args.iter()
+                    .map(|a| a.text_at(0))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Expr::If(c, a, b) => format!(
+                "if {} then {} else {}",
+                c.text_at(0),
+                a.text_at(0),
+                b.text_at(0)
+            ),
             Expr::Let(n, v, body) => format!("let {} = {};\n{}", n, v.text_at(0), body.text_at(0)),
             Expr::Lambda(ps, body) => {
                 if ps.len() == 1 {
@@ -323,7 +368,14 @@ impl Expr {
                     format!("({}) => {}", ps.join(", "), body.text_at(0))
                 }
             }
-            Expr::Vec(items) => format!("[{}]", items.iter().map(|a| a.text_at(0)).collect::<Vec<_>>().join(", ")),
+            Expr::Vec(items) => format!(
+                "[{}]",
+                items
+                    .iter()
+                    .map(|a| a.text_at(0))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
             Expr::Float(e) => format!("float {{ {} }}", e.text_at(0)),
         }
     }
@@ -355,7 +407,11 @@ impl Expr {
 
 impl Program {
     pub fn to_json(&self) -> J {
-        let inputs: Vec<J> = self.inputs.iter().map(|i| json!({ "name": i.name, "type": i.ty })).collect();
+        let inputs: Vec<J> = self
+            .inputs
+            .iter()
+            .map(|i| json!({ "name": i.name, "type": i.ty }))
+            .collect();
         let mut m = Map::new();
         m.insert("ucm".into(), J::String(PROGRAM_SCHEMA.into()));
         m.insert("inputs".into(), J::Array(inputs));
@@ -364,16 +420,25 @@ impl Program {
     }
 
     pub fn from_json(v: &J) -> Result<Program> {
-        let o = v.as_object().ok_or_else(|| UcmError::Form("program must be an object".into()))?;
+        let o = v
+            .as_object()
+            .ok_or_else(|| UcmError::Form("program must be an object".into()))?;
         if o.get("ucm").and_then(|x| x.as_str()) != Some(PROGRAM_SCHEMA) {
-            return Err(UcmError::Form(format!("field ucm must be {PROGRAM_SCHEMA}")));
+            return Err(UcmError::Form(format!(
+                "field ucm must be {PROGRAM_SCHEMA}"
+            )));
         }
-        if o.keys().any(|k| !["ucm", "inputs", "body"].contains(&k.as_str())) {
+        if o.keys()
+            .any(|k| !["ucm", "inputs", "body"].contains(&k.as_str()))
+        {
             return Err(UcmError::Form("unexpected program field".into()));
         }
         let mut inputs = Vec::new();
         if let Some(arr) = o.get("inputs") {
-            for i in arr.as_array().ok_or_else(|| UcmError::Form("inputs must be an array".into()))? {
+            for i in arr
+                .as_array()
+                .ok_or_else(|| UcmError::Form("inputs must be an array".into()))?
+            {
                 let name = i
                     .get("name")
                     .and_then(|x| x.as_str())
@@ -388,7 +453,10 @@ impl Program {
                 });
             }
         }
-        let body = Expr::from_json(o.get("body").ok_or_else(|| UcmError::Form("missing body".into()))?)?;
+        let body = Expr::from_json(
+            o.get("body")
+                .ok_or_else(|| UcmError::Form("missing body".into()))?,
+        )?;
         Ok(Program { inputs, body })
     }
 

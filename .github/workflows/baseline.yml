@@ -48,8 +48,36 @@ jobs:
       - name: conformance runner
         run: bash AEP-Components/conformance/runner/run.sh
 
-  format-report:
-    name: format report
+  gap-pin:
+    name: GAP byte pin and version check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      # GAP-OPEN-SOURCE is the one source of the profile crate, the meta schemas and
+      # gap-versions.toml. AEP-Components/gap/gap-pin.txt names the GAP commit and the bytes.
+      - name: byte check and version check
+        run: node AEP-Components/gap/bin/check-gap-pin.mjs
+      - name: read the pinned GAP commit
+        id: pin
+        run: |
+          repo=$(awk '$1 == "gap_repository" {print $2}' AEP-Components/gap/gap-pin.txt)
+          commit=$(awk '$1 == "gap_commit" {print $2}' AEP-Components/gap/gap-pin.txt)
+          echo "repository=${repo#https://github.com/}" >> "$GITHUB_OUTPUT"
+          echo "commit=${commit}" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: ${{ steps.pin.outputs.repository }}
+          ref: ${{ steps.pin.outputs.commit }}
+          path: gap-pinned
+          persist-credentials: false
+      - name: byte check against the pinned GAP commit
+        run: node AEP-Components/gap/bin/check-gap-pin.mjs --gap gap-pinned
+
+  format:
+    name: format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -60,13 +88,64 @@ jobs:
         with:
           go-version-file: AEP-CAW/go.mod
           cache: false
-      # This job reports format drift and never fails the build.
+      # Format drift fails the build.
       - name: cargo fmt --all --check
-        run: cargo fmt --all --check || echo "::warning::cargo fmt reports drift"
+        run: cargo fmt --all --check
       - name: gofmt -l AEP-CAW
         run: |
-          out=$(gofmt -l AEP-CAW || true)
+          out=$(gofmt -l AEP-CAW)
           if [ -n "$out" ]; then
             echo "$out"
-            echo "::warning::gofmt reports drift"
+            echo "::error::gofmt reports drift"
+            exit 1
           fi
+
+  clippy:
+    name: cargo clippy --workspace
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      # The lint levels live in the workspace lints table of the root Cargo.toml.
+      - name: cargo clippy --workspace --all-targets
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+  caw:
+    name: AEP-CAW go test, race and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: AEP-CAW
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: AEP-CAW/go.mod
+          cache-dependency-path: AEP-CAW/go.sum
+      - name: install build deps
+        run: sudo apt-get update && sudo apt-get install -y libfuse-dev libfuse3-dev libseccomp-dev pkg-config
+      - name: free disk space
+        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell
+      - name: go test ./...
+        run: |
+          mkdir -p "$GOTMPDIR"
+          go test -p 2 ./...
+        env:
+          GOTMPDIR: ${{ runner.temp }}/go-tmp
+      - name: go test -race ./...
+        run: |
+          mkdir -p "$GOTMPDIR"
+          go test -race -p 2 ./...
+        env:
+          GOTMPDIR: ${{ runner.temp }}/go-tmp
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+          working-directory: AEP-CAW

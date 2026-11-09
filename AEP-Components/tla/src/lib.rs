@@ -87,26 +87,33 @@ fn digest_hex(bytes: &[u8]) -> String {
     s
 }
 
-pub fn audit_row(profile: &str, model: &str, tool: &str, verdict: &str, reason: &str, digest: &str) -> String {
+pub fn audit_row(
+    profile: &str,
+    model: &str,
+    tool: &str,
+    verdict: &str,
+    reason: &str,
+    digest: &str,
+) -> String {
     let mut row = String::new();
     row.push_str("profile: ");
     row.push_str(profile);
-    row.push_str("\n");
+    row.push('\n');
     row.push_str("model: ");
     row.push_str(model);
-    row.push_str("\n");
+    row.push('\n');
     row.push_str("tool: ");
     row.push_str(tool);
-    row.push_str("\n");
+    row.push('\n');
     row.push_str("verdict: ");
     row.push_str(verdict);
-    row.push_str("\n");
+    row.push('\n');
     row.push_str("reason: ");
     row.push_str(reason);
-    row.push_str("\n");
+    row.push('\n');
     row.push_str("digest: ");
     row.push_str(digest);
-    row.push_str("\n");
+    row.push('\n');
     row
 }
 
@@ -139,14 +146,9 @@ fn gather_dir(dir: &Path, out: &mut Vec<PathBuf>) {
         let p = ent.path();
         if p.is_dir() {
             gather_dir(&p, out);
-        } else {
-            match p.extension() {
-                Some(e) => {
-                    if e == "tla" {
-                        out.push(p);
-                    }
-                }
-                None => {}
+        } else if let Some(e) = p.extension() {
+            if e == "tla" {
+                out.push(p);
             }
         }
     }
@@ -156,11 +158,8 @@ fn write_audit(row: &str) {
     let dir = PathBuf::from("target").join("aep-tla-verify");
     let _ = fs::create_dir_all(&dir);
     let path = dir.join("audit.gaplune");
-    match fs::OpenOptions::new().create(true).append(true).open(path) {
-        Ok(mut f) => {
-            let _ = f.write_all(row.as_bytes());
-        }
-        Err(_) => {}
+    if let Ok(mut f) = fs::OpenOptions::new().create(true).append(true).open(path) {
+        let _ = f.write_all(row.as_bytes());
     }
 }
 pub fn run(args: Vec<String>) -> i32 {
@@ -174,13 +173,20 @@ pub fn run(args: Vec<String>) -> i32 {
     };
     let files = collect_files(&args);
     if files.is_empty() {
-        let row = audit_row(profile.label(), "-", "aep-tla-verify", "allow", "no-files", "-");
+        let row = audit_row(
+            profile.label(),
+            "-",
+            "aep-tla-verify",
+            "allow",
+            "no-files",
+            "-",
+        );
         write_audit(&row);
         return 0;
     }
     let mut denied = false;
     for path in &files {
-        let bytes = match fs::read(&path) {
+        let bytes = match fs::read(path) {
             Ok(b) => b,
             Err(_) => {
                 denied = true;
@@ -200,11 +206,25 @@ pub fn run(args: Vec<String>) -> i32 {
             None => String::from("-"),
         };
         if named_module(&text) {
-            let row = audit_row(profile.label(), &model, "aep-tla-verify", "allow", "l0-module", &digest);
+            let row = audit_row(
+                profile.label(),
+                &model,
+                "aep-tla-verify",
+                "allow",
+                "l0-module",
+                &digest,
+            );
             write_audit(&row);
         } else {
             denied = true;
-            let row = audit_row(profile.label(), &model, "aep-tla-verify", "deny", "malformed-module", &digest);
+            let row = audit_row(
+                profile.label(),
+                &model,
+                "aep-tla-verify",
+                "deny",
+                "malformed-module",
+                &digest,
+            );
             write_audit(&row);
         }
     }

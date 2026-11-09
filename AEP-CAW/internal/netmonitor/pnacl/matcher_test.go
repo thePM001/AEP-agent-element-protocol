@@ -121,7 +121,7 @@ func TestProcessMatcher_FlexibleMode(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "no criteria no match",
+			name:     "no criteria no match",
 			criteria: ProcessMatchCriteria{},
 			info: ProcessInfo{
 				Name: "claude-code",

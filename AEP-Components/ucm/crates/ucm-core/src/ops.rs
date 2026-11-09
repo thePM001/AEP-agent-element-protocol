@@ -44,7 +44,9 @@ pub fn num_join(a: &Ty, b: &Ty) -> Option<Ty> {
 
 fn money_cur(a: &Option<String>, b: &Option<String>) -> Result<Option<String>> {
     match (a, b) {
-        (Some(x), Some(y)) if x != y => type_err(format!("money in {x} and {y} do not mix, use convert")),
+        (Some(x), Some(y)) if x != y => {
+            type_err(format!("money in {x} and {y} do not mix, use convert"))
+        }
         (Some(x), _) | (_, Some(x)) => Ok(Some(x.clone())),
         _ => Ok(None),
     }
@@ -61,7 +63,12 @@ pub fn op_ty(op: Op, a: &[Ty], float_mode: bool, pow_lit: Option<i64>) -> Result
         },
         Op::And | Op::Or => match (&a[0], &a[1]) {
             (Bool, Bool) => Ok(Bool),
-            (x, y) => type_err(format!("{} needs bool and bool, got {} and {}", op.symbol(), x.name(), y.name())),
+            (x, y) => type_err(format!(
+                "{} needs bool and bool, got {} and {}",
+                op.symbol(),
+                x.name(),
+                y.name()
+            )),
         },
         Op::Neg => match &a[0] {
             t if f(t) => Ok(Float),
@@ -85,7 +92,12 @@ pub fn op_ty(op: Op, a: &[Ty], float_mode: bool, pow_lit: Option<i64>) -> Result
             if ok {
                 Ok(Bool)
             } else {
-                type_err(format!("cannot compare {} with {} using {}", a[0].name(), a[1].name(), op.symbol()))
+                type_err(format!(
+                    "cannot compare {} with {} using {}",
+                    a[0].name(),
+                    a[1].name(),
+                    op.symbol()
+                ))
             }
         }
         Op::Add | Op::Sub => {
@@ -107,7 +119,12 @@ pub fn op_ty(op: Op, a: &[Ty], float_mode: bool, pow_lit: Option<i64>) -> Result
                 (Instant, Quantity(d)) if *d == TIME => Ok(Instant),
                 (Quantity(d), Instant) if *d == TIME && op == Op::Add => Ok(Instant),
                 (Instant, Instant) if op == Op::Sub => Ok(Quantity(TIME)),
-                _ => type_err(format!("cannot apply {} to {} and {}", op.symbol(), x.name(), y.name())),
+                _ => type_err(format!(
+                    "cannot apply {} to {} and {}",
+                    op.symbol(),
+                    x.name(),
+                    y.name()
+                )),
             }
         }
         Op::Mul => {
@@ -244,7 +261,9 @@ fn whole_days(secs: &Rat) -> Result<i64> {
 pub fn compare(x: &Value, y: &Value) -> Result<Ordering> {
     use Value::*;
     Ok(match (x, y) {
-        (Float(a), Float(b)) => a.partial_cmp(b).ok_or_else(|| UcmError::Domain("nan does not compare".into()))?,
+        (Float(a), Float(b)) => a
+            .partial_cmp(b)
+            .ok_or_else(|| UcmError::Domain("nan does not compare".into()))?,
         (Money(a, c), Money(b, d)) => {
             if c != d {
                 return type_err(format!("money in {c} and {d} do not compare"));
@@ -265,7 +284,13 @@ pub fn compare(x: &Value, y: &Value) -> Result<Ordering> {
 
 /// Apply an operator to already evaluated values. `pow_lit_nonneg` says the exponent is a
 /// non-negative int literal, which keeps int and decimal powers in their own type.
-pub fn apply(op: Op, args: &[Value], float_mode: bool, pow_lit_nonneg: bool, max_exp: u64) -> Result<Value> {
+pub fn apply(
+    op: Op,
+    args: &[Value],
+    float_mode: bool,
+    pow_lit_nonneg: bool,
+    max_exp: u64,
+) -> Result<Value> {
     use Value::*;
     let x = &args[0];
     let fl = |v: &Value| matches!(v, Float(_)) || (float_mode && v.as_rat().is_some());
@@ -318,7 +343,9 @@ pub fn apply(op: Op, args: &[Value], float_mode: bool, pow_lit_nonneg: bool, max
                 let (a, b) = (to_float(x)?, to_float(y)?);
                 return Ok(Float(if sub { a - b } else { a + b }));
             }
-            let (io, ro): (fn(&BigInt, &BigInt) -> BigInt, fn(&Q, &Q) -> Q) = if sub {
+            type IntOp = fn(&BigInt, &BigInt) -> BigInt;
+            type RatOp = fn(&Q, &Q) -> Q;
+            let (io, ro): (IntOp, RatOp) = if sub {
                 (|a, b| a - b, |a, b| a - b)
             } else {
                 (|a, b| a + b, |a, b| a + b)
@@ -349,10 +376,15 @@ pub fn apply(op: Op, args: &[Value], float_mode: bool, pow_lit_nonneg: bool, max
                     let n = whole_days(s)?;
                     Ok(Date(crate::time::add_days(d, if sub { -n } else { n })?))
                 }
-                (Qty(s, dim), Date(d)) if *dim == TIME && !sub => Ok(Date(crate::time::add_days(d, whole_days(s)?)?)),
+                (Qty(s, dim), Date(d)) if *dim == TIME && !sub => {
+                    Ok(Date(crate::time::add_days(d, whole_days(s)?)?))
+                }
                 (Date(a), Date(b)) if sub => {
                     let days = crate::time::days_from_epoch(a) - crate::time::days_from_epoch(b);
-                    Ok(Qty(crate::num::Rat::from_integer(BigInt::from(days) * BigInt::from(86400)), TIME))
+                    Ok(Qty(
+                        crate::num::Rat::from_integer(BigInt::from(days) * BigInt::from(86400)),
+                        TIME,
+                    ))
                 }
                 (Instant(t), Qty(s, dim)) if *dim == TIME => Ok(Instant(ro(t, s))),
                 (Qty(s, dim), Instant(t)) if *dim == TIME && !sub => Ok(Instant(t + s)),
@@ -369,9 +401,13 @@ pub fn apply(op: Op, args: &[Value], float_mode: bool, pow_lit_nonneg: bool, max
                 return Ok(v);
             }
             match (x, y) {
-                (Money(a, c), n) | (n, Money(a, c)) if n.as_rat().is_some() => Ok(Money(a * n.as_rat().unwrap_or_default(), c.clone())),
+                (Money(a, c), n) | (n, Money(a, c)) if n.as_rat().is_some() => {
+                    Ok(Money(a * n.as_rat().unwrap_or_default(), c.clone()))
+                }
                 (Qty(a, p), Qty(b, q)) => Ok(qty(a * b, dim_add(p, q)?)),
-                (Qty(a, p), n) | (n, Qty(a, p)) if n.as_rat().is_some() => Ok(Qty(a * n.as_rat().unwrap_or_default(), *p)),
+                (Qty(a, p), n) | (n, Qty(a, p)) if n.as_rat().is_some() => {
+                    Ok(Qty(a * n.as_rat().unwrap_or_default(), *p))
+                }
                 (Interval(..), _) | (_, Interval(..)) => match (as_interval(x), as_interval(y)) {
                     (Some(a), Some(b)) => {
                         let (lo, hi) = interval_mul((&a.0, &a.1), (&b.0, &b.1));
@@ -444,7 +480,9 @@ pub fn apply(op: Op, args: &[Value], float_mode: bool, pow_lit_nonneg: bool, max
                 return Ok(Float(to_float(x)?.powf(to_float(y)?)));
             }
             let n = match y {
-                Int(i) => i.to_i64().ok_or_else(|| UcmError::BudgetExceeded { what: "exponent".into() })?,
+                Int(i) => i.to_i64().ok_or_else(|| UcmError::BudgetExceeded {
+                    what: "exponent".into(),
+                })?,
                 _ => return type_err("exponent must be int"),
             };
             if n.unsigned_abs() > max_exp {
@@ -456,8 +494,10 @@ pub fn apply(op: Op, args: &[Value], float_mode: bool, pow_lit_nonneg: bool, max
                 Int(b) if pow_lit_nonneg => Ok(Int(num_traits::pow(b.clone(), n as usize))),
                 Dec(d) if pow_lit_nonneg => Ok(Dec(Decimal {
                     unscaled: num_traits::pow(d.unscaled.clone(), n as usize),
-                    scale: d.scale.checked_mul(n as u32).ok_or_else(|| UcmError::BudgetExceeded {
-                        what: "decimal scale".into(),
+                    scale: d.scale.checked_mul(n as u32).ok_or_else(|| {
+                        UcmError::BudgetExceeded {
+                            what: "decimal scale".into(),
+                        }
                     })?,
                 })),
                 Int(_) | Rat(_) | Dec(_) => Ok(Rat(pow_rat(&x.as_rat().unwrap_or_default(), n)?)),

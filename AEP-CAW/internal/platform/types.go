@@ -151,8 +151,8 @@ type InterceptedOperation struct {
 	Redirect *RedirectTarget `json:"redirect,omitempty"`
 
 	// Timing
-	HeldAt    time.Time  `json:"held_at"`
-	DecidedAt *time.Time `json:"decided_at,omitempty"`
+	HeldAt    time.Time     `json:"held_at"`
+	DecidedAt *time.Time    `json:"decided_at,omitempty"`
 	Timeout   time.Duration `json:"timeout"`
 
 	// For manual approval
@@ -271,10 +271,10 @@ type IOEvent struct {
 	Type EventType `json:"type"`
 
 	// File operations
-	Path        string        `json:"path,omitempty"`
-	Operation   FileOperation `json:"operation,omitempty"`
-	BytesCount  int64         `json:"bytes,omitempty"`
-	TargetPath  string        `json:"target_path,omitempty"` // For rename/link
+	Path       string        `json:"path,omitempty"`
+	Operation  FileOperation `json:"operation,omitempty"`
+	BytesCount int64         `json:"bytes,omitempty"`
+	TargetPath string        `json:"target_path,omitempty"` // For rename/link
 
 	// Network operations
 	Protocol   string `json:"protocol,omitempty"`

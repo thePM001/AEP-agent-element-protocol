@@ -11,9 +11,9 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/pkgcheck"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/pkgcheck"
 )
 
 func testdataPath(name string) string {

@@ -1,19 +1,19 @@
+use aep_agent_control_hub::{resolve_gap_root, AgentControlHub};
+use aep_base_node::dock_event;
+use aep_base_node::dock_keys::{load_or_create_dock_kem, AgentSignKeyStore};
+use aep_base_node::dock_log::{DockEvent, LogConfig};
 use aep_base_node::{
-    bootstrap_contracts_from_lrps, health, now_unix, open_lattice_db, record_lattice_event,
-    drain_docking_servers, run_docking_servers, sockets_exist, BaseNodeHealth, DockingRuntime,
+    bootstrap_contracts_from_lrps, drain_docking_servers, health, now_unix, open_lattice_db,
+    record_lattice_event, run_docking_servers, sockets_exist, BaseNodeHealth, DockingRuntime,
     HealthInput, COMPONENT_ID, CORRECTWRITING_EN_PRIORITY,
 };
-use aep_base_node::dock_keys::{load_or_create_dock_kem, AgentSignKeyStore};
 use aep_lattice_channel::{build_frame_for_dock, frame_digest, DockingPort};
 use aep_lattice_memory::{AttractorRecord, LatticeMemoryStore};
 use clap::Parser;
 use rand::RngCore;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
-use aep_base_node::dock_event;
-use aep_base_node::dock_log::{DockEvent, LogConfig};
 use tracing::info;
-use aep_agent_control_hub::{AgentControlHub, resolve_gap_root};
 
 #[derive(Debug, serde::Deserialize)]
 struct BaseNodeConfigFile {
@@ -58,7 +58,10 @@ struct BaseNodeConfigSection {
 }
 
 #[derive(Debug, Parser)]
-#[command(name = "aep-base-node", about = "AEP 2.9 mandatory local governance daemon")]
+#[command(
+    name = "aep-base-node",
+    about = "AEP 2.9 mandatory local governance daemon"
+)]
 struct Cli {
     #[arg(long)]
     config: Option<PathBuf>,
@@ -70,7 +73,8 @@ struct Cli {
     lattice_db: PathBuf,
     /// Test flag. Allows a world-writable parent of lattice_db.
     #[arg(long, default_value_t = false)]
-    #[cfg(test)] allow_world_writable_lattice_parent: bool,
+    #[cfg(test)]
+    allow_world_writable_lattice_parent: bool,
     #[arg(long, default_value_t = false)]
     internet_up: bool,
     #[arg(long, default_value_t = 0)]
@@ -195,10 +199,18 @@ fn offline_health(cfg: &ResolvedConfig, lattice_db: &Path) -> BaseNodeHealth {
     };
     let (attractors, dim, vec_version) = match LatticeMemoryStore::open_default(lattice_db) {
         Ok(memory) => match memory.attractor_count() {
-            Ok(n) => (n, memory.embedding_dim() as u32, memory.sqlite_vec_version()),
+            Ok(n) => (
+                n,
+                memory.embedding_dim() as u32,
+                memory.sqlite_vec_version(),
+            ),
             Err(_) => {
                 sqlite_closed = true;
-                (0, memory.embedding_dim() as u32, memory.sqlite_vec_version())
+                (
+                    0,
+                    memory.embedding_dim() as u32,
+                    memory.sqlite_vec_version(),
+                )
             }
         },
         Err(_) => {
@@ -219,7 +231,10 @@ fn offline_health(cfg: &ResolvedConfig, lattice_db: &Path) -> BaseNodeHealth {
         hub_loaded: hub.as_ref().map(|h| h.is_loaded()).unwrap_or(false),
         hub_sessions: hub.as_ref().map(|h| h.sessions.len() as u32).unwrap_or(0),
         hub_mounts: hub.as_ref().map(|h| h.mounts.len() as u32).unwrap_or(0),
-        hub_permissions: hub.as_ref().map(|h| h.permissions.len() as u32).unwrap_or(0),
+        hub_permissions: hub
+            .as_ref()
+            .map(|h| h.permissions.len() as u32)
+            .unwrap_or(0),
         mesh_peers_load_error: mesh_load_error,
         lattice_memory_attractors: attractors,
         lattice_memory_dim: dim,
@@ -285,7 +300,10 @@ fn daemon_health(
     })
 }
 
-async fn run_daemon(cfg: &ResolvedConfig, lattice_db: &Path) -> Result<u8, Box<dyn std::error::Error>> {
+async fn run_daemon(
+    cfg: &ResolvedConfig,
+    lattice_db: &Path,
+) -> Result<u8, Box<dyn std::error::Error>> {
     std::env::set_var("AEP_LATTICE_STRICT", "1");
     std::env::set_var("AEP_HUB_STRICT", "1");
     let mut data_dock_cfg = aep_base_node::data_dock::DataDockConfig::from_env();
@@ -312,13 +330,14 @@ async fn run_daemon(cfg: &ResolvedConfig, lattice_db: &Path) -> Result<u8, Box<d
         }
     };
     let data_dir = data_dir_for(lattice_db);
-    let runtime = match DockingRuntime::with_data_dir(cfg.socket_base.clone(), conn, &cfg.lrps, &data_dir) {
-        Ok(r) => r,
-        Err(e) => {
-            dock_event!(error, DockEvent::BootError, error = %e, "docking runtime failed");
-            return Ok(EXIT_BOOT_ERROR);
-        }
-    };
+    let runtime =
+        match DockingRuntime::with_data_dir(cfg.socket_base.clone(), conn, &cfg.lrps, &data_dir) {
+            Ok(r) => r,
+            Err(e) => {
+                dock_event!(error, DockEvent::BootError, error = %e, "docking runtime failed");
+                return Ok(EXIT_BOOT_ERROR);
+            }
+        };
     let (runtime, handles) = match run_docking_servers(runtime).await {
         Ok(v) => v,
         Err(e) => {
@@ -340,7 +359,9 @@ async fn run_daemon(cfg: &ResolvedConfig, lattice_db: &Path) -> Result<u8, Box<d
     let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
     let mut sigint = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())?;
     // The CAW kernel dock probe signs its sealed root:ping as caw-kernel-dock.
-    if let Err(e) = aep_base_node::caw_kernel_dock::provision_caw_kernel_dock_identity(&runtime, &data_dir) {
+    if let Err(e) =
+        aep_base_node::caw_kernel_dock::provision_caw_kernel_dock_identity(&runtime, &data_dir)
+    {
         dock_event!(error, DockEvent::BootError, error = %e, "CAW kernel dock identity failed");
         drain_docking_servers(&runtime, handles).await;
         return Ok(EXIT_BOOT_ERROR);
@@ -372,7 +393,13 @@ async fn run_daemon(cfg: &ResolvedConfig, lattice_db: &Path) -> Result<u8, Box<d
     }
     let report = daemon_health(&runtime, cfg, &data_dir, lattice_db);
     match report.status {
-        "ok" => dock_event!(info, DockEvent::BootReady, component = COMPONENT_ID, status = report.status, "AEP Base Node ready"),
+        "ok" => dock_event!(
+            info,
+            DockEvent::BootReady,
+            component = COMPONENT_ID,
+            status = report.status,
+            "AEP Base Node ready"
+        ),
         "degraded" => dock_event!(
             warn,
             DockEvent::BootDegraded,
@@ -382,7 +409,13 @@ async fn run_daemon(cfg: &ResolvedConfig, lattice_db: &Path) -> Result<u8, Box<d
             "AEP Base Node running degraded"
         ),
         _ => {
-            dock_event!(error, DockEvent::BootError, component = COMPONENT_ID, status = report.status, "AEP Base Node health is error after bind");
+            dock_event!(
+                error,
+                DockEvent::BootError,
+                component = COMPONENT_ID,
+                status = report.status,
+                "AEP Base Node health is error after bind"
+            );
             if let Some(h) = data_dock_handle.take() {
                 h.abort();
             }
@@ -394,7 +427,12 @@ async fn run_daemon(cfg: &ResolvedConfig, lattice_db: &Path) -> Result<u8, Box<d
         _ = sigterm.recv() => "SIGTERM",
         _ = sigint.recv() => "SIGINT",
     };
-    dock_event!(info, DockEvent::StopSignal, signal, "AEP Base Node daemon shutting down");
+    dock_event!(
+        info,
+        DockEvent::StopSignal,
+        signal,
+        "AEP Base Node daemon shutting down"
+    );
     if let Some(h) = data_dock_handle {
         h.abort();
     }
@@ -402,7 +440,10 @@ async fn run_daemon(cfg: &ResolvedConfig, lattice_db: &Path) -> Result<u8, Box<d
     Ok(0)
 }
 
-fn run_self_test(lattice_db: &Path, contracts: &aep_lattice_channel::ContractRegistry) -> Result<(), Box<dyn std::error::Error>> {
+fn run_self_test(
+    lattice_db: &Path,
+    contracts: &aep_lattice_channel::ContractRegistry,
+) -> Result<(), Box<dyn std::error::Error>> {
     let conn = open_lattice_db(lattice_db)?;
     let mut memory = LatticeMemoryStore::open_default(lattice_db)?;
     let data_dir = data_dir_for(lattice_db);
@@ -476,12 +517,14 @@ async fn run() -> Result<u8, Box<dyn std::error::Error>> {
     let _ = rustls::crypto::ring::default_provider().install_default();
 
     let cli = Cli::parse();
-    #[cfg(test)] if cli.allow_world_writable_lattice_parent {
+    #[cfg(test)]
+    if cli.allow_world_writable_lattice_parent {
         std::env::set_var(aep_base_node::ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV, "1");
     }
     let cfg = resolve_config(&cli)?;
     let lattice_db = if cli.self_test {
-        let tmp = std::env::temp_dir().join(format!("aep-base-node-self-test-{}", std::process::id()));
+        let tmp =
+            std::env::temp_dir().join(format!("aep-base-node-self-test-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&tmp);
         tmp.join("aep-action-lattice.db")
     } else {
@@ -522,7 +565,13 @@ async fn run() -> Result<u8, Box<dyn std::error::Error>> {
     let report = offline_health(&cfg, &lattice_db);
     println!("{}", serde_json::to_string_pretty(&report)?);
     if cli.health {
-        dock_event!(info, DockEvent::HealthProbe, component = COMPONENT_ID, status = report.status, "health probe");
+        dock_event!(
+            info,
+            DockEvent::HealthProbe,
+            component = COMPONENT_ID,
+            status = report.status,
+            "health probe"
+        );
         return Ok(report.exit_code());
     }
     if !cli.self_test {
@@ -535,7 +584,6 @@ async fn run() -> Result<u8, Box<dyn std::error::Error>> {
     }
     Ok(0)
 }
-
 
 fn issue_mesh_identity(data_dir: &std::path::Path, agent_id: &str) -> Result<(), String> {
     if agent_id.is_empty() {

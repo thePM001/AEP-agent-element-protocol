@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/pnacl"
 	"github.com/spf13/cobra"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/pnacl"
 )
 
 func newNetworkACLCmd() *cobra.Command {

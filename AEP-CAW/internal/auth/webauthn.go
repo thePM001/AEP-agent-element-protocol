@@ -95,9 +95,9 @@ func NewWebAuthnService(rpID, rpName string, rpOrigins []string, userVerificatio
 	}
 
 	cfg := &webauthn.Config{
-		RPID:                  rpID,
-		RPDisplayName:         rpName,
-		RPOrigins:             rpOrigins,
+		RPID:          rpID,
+		RPDisplayName: rpName,
+		RPOrigins:     rpOrigins,
 		AuthenticatorSelection: protocol.AuthenticatorSelection{
 			UserVerification: uv,
 		},

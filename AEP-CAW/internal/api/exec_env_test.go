@@ -246,8 +246,8 @@ func TestBuildPolicyEnv_BothProxiesSetIndependently(t *testing.T) {
 	}
 
 	// Set both proxies with different URLs
-	sess.SetProxy("http://127.0.0.1:8080", func() error { return nil })     // Network proxy
-	sess.SetLLMProxy("http://127.0.0.1:9090", func() error { return nil })  // LLM proxy
+	sess.SetProxy("http://127.0.0.1:8080", func() error { return nil })    // Network proxy
+	sess.SetLLMProxy("http://127.0.0.1:9090", func() error { return nil }) // LLM proxy
 
 	gotMap := envSliceToMapMust(buildPolicyEnv(policy.ResolvedEnvPolicy{}, nil, sess, nil))
 

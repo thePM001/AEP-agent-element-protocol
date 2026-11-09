@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/ringbuf"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/redirect"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
-	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/ringbuf"
 )
 
 // ConnectEvent matches the struct emitted by the BPF program.

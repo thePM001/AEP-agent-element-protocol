@@ -35,10 +35,12 @@ func newProbeTestApp(t *testing.T) *App {
 	return app
 }
 
-// TestInitPtraceTracer_DegradesWhenNotInjectable verifies that when the probe
-// reports injection is unreliable, initPtraceTracer does NOT start the tracer,
-// sets ptraceDegraded, and does NOT set ptraceFailed (degrade, not fail-closed).
-func TestInitPtraceTracer_DegradesWhenNotInjectable(t *testing.T) {
+// TestInitPtraceTracer_FailsClosedWhenNotInjectable verifies that when the probe
+// reports injection is unreliable while sandbox.ptrace.enabled is true,
+// initPtraceTracer does NOT start the tracer and fails closed: ptraceDegraded and
+// ptraceFailed are both set, so exec refuses to run without enforcement. Operators
+// who accept running without ptrace set sandbox.ptrace.enabled to false.
+func TestInitPtraceTracer_FailsClosedWhenNotInjectable(t *testing.T) {
 	orig := ptraceInjectProbe
 	t.Cleanup(func() { ptraceInjectProbe = orig })
 	ptraceInjectProbe = func() bool { return false } // injection unreliable
@@ -51,8 +53,8 @@ func TestInitPtraceTracer_DegradesWhenNotInjectable(t *testing.T) {
 	if !a.ptraceDegraded.Load() {
 		t.Fatal("ptraceDegraded must be set on degrade")
 	}
-	if a.ptraceFailed.Load() {
-		t.Fatal("must NOT fail-closed on degrade (ptraceFailed must stay false)")
+	if !a.ptraceFailed.Load() {
+		t.Fatal("ptraceFailed must be set: ptrace enabled without working injection fails closed")
 	}
 }
 

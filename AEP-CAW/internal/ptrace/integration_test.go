@@ -63,7 +63,7 @@ type testMetrics struct {
 	exitStopSkipped *atomic.Int64
 }
 
-func (m *testMetrics) SetTraceeCount(int)     {}
+func (m *testMetrics) SetTraceeCount(int)      {}
 func (m *testMetrics) IncAttachFailure(string) {}
 func (m *testMetrics) IncTimeout()             {}
 func (m *testMetrics) IncExitStopSkipped()     { m.exitStopSkipped.Add(1) }
@@ -724,7 +724,7 @@ type mockSignalHandler struct {
 	calls          []mockSignalCall
 	defaultAllow   bool
 	defaultErrno   int32
-	redirectSignal int // if > 0, redirect to this signal
+	redirectSignal int           // if > 0, redirect to this signal
 	denySignals    map[int]int32 // signal → errno
 }
 

@@ -791,12 +791,12 @@ func TestStartLLMProxy_MCPOnlyWithoutPolicy(t *testing.T) {
 		mcpCfg   config.SandboxMCPConfig
 	}{
 		{
-			name: "mcp-only mode alone",
+			name:     "mcp-only mode alone",
 			proxyCfg: config.ProxyConfig{Mode: "mcp-only"},
 			mcpCfg:   config.SandboxMCPConfig{EnforcePolicy: false},
 		},
 		{
-			name: "rate limits alone",
+			name:     "rate limits alone",
 			proxyCfg: config.ProxyConfig{Mode: "embedded"},
 			mcpCfg: config.SandboxMCPConfig{
 				EnforcePolicy: false,
@@ -804,7 +804,7 @@ func TestStartLLMProxy_MCPOnlyWithoutPolicy(t *testing.T) {
 			},
 		},
 		{
-			name: "version pinning alone",
+			name:     "version pinning alone",
 			proxyCfg: config.ProxyConfig{Mode: "embedded"},
 			mcpCfg: config.SandboxMCPConfig{
 				EnforcePolicy:  false,

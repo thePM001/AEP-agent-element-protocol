@@ -22,7 +22,8 @@ pub fn join(a: &Ty, b: &Ty) -> Result<Ty> {
         },
         (Ty::Text(_), Ty::Text(_)) => Ok(Ty::Text(None)),
         (Ty::Vector(x), Ty::Vector(y)) => Ok(Ty::Vector(Box::new(join(x, y)?))),
-        _ => num_join(a, b).ok_or_else(|| UcmError::Type(format!("{} and {} do not join", a.name(), b.name()))),
+        _ => num_join(a, b)
+            .ok_or_else(|| UcmError::Type(format!("{} and {} do not join", a.name(), b.name()))),
     }
 }
 
@@ -92,13 +93,20 @@ impl<'a> Checker<'a> {
                 Some(Expr::Lit(Lit::Text(s))) => s.clone(),
                 _ => return type_err("formula needs a text literal id as its first argument"),
             };
-            let fm = self.lib.formula(&id).ok_or_else(|| UcmError::Unbound(format!("formula {id}")))?;
+            let fm = self
+                .lib
+                .formula(&id)
+                .ok_or_else(|| UcmError::Unbound(format!("formula {id}")))?;
             if args.len() != fm.input_types.len() + 1 {
-                return type_err(format!("formula {id} takes {} arguments after the id", fm.input_types.len()));
+                return type_err(format!(
+                    "formula {id} takes {} arguments after the id",
+                    fm.input_types.len()
+                ));
             }
             for (i, (a, want_ty)) in args[1..].iter().zip(&fm.input_types).enumerate() {
                 let t = self.check(a)?;
-                let ok = t.conforms(want_ty) || (t.is_exact_num() && num_join(&t, want_ty).as_ref() == Some(want_ty));
+                let ok = t.conforms(want_ty)
+                    || (t.is_exact_num() && num_join(&t, want_ty).as_ref() == Some(want_ty));
                 if !ok {
                     return type_err(format!(
                         "formula {id} argument {} needs {}, got {}",
@@ -110,7 +118,10 @@ impl<'a> Checker<'a> {
             }
             return Ok(fm.result_ty.clone());
         }
-        let v = self.check(args.first().ok_or_else(|| UcmError::Type(format!("{f} needs a vector")))?)?;
+        let v = self.check(
+            args.first()
+                .ok_or_else(|| UcmError::Type(format!("{f} needs a vector")))?,
+        )?;
         let el = match &v {
             Ty::Vector(e) => (**e).clone(),
             t => return type_err(format!("{f} needs a vector, got {}", t.name())),
@@ -163,10 +174,15 @@ impl<'a> Checker<'a> {
             Expr::Lit(Lit::Bool(_)) => Ok(Ty::Bool),
             Expr::Var(n) => self.var(n),
             Expr::Op(op, args) => {
-                let tys = args.iter().map(|a| self.check(a)).collect::<Result<Vec<_>>>()?;
+                let tys = args
+                    .iter()
+                    .map(|a| self.check(a))
+                    .collect::<Result<Vec<_>>>()?;
                 let pow_lit = match (op, args.get(1)) {
                     (Op::Pow, Some(Expr::Lit(Lit::Int(i)))) => {
-                        Some(num_traits::ToPrimitive::to_i64(i).ok_or_else(|| UcmError::Type("exponent literal out of range".into()))?)
+                        Some(num_traits::ToPrimitive::to_i64(i).ok_or_else(|| {
+                            UcmError::Type("exponent literal out of range".into())
+                        })?)
                     }
                     _ => None,
                 };
@@ -178,7 +194,9 @@ impl<'a> Checker<'a> {
                 }
                 let b = lookup(f).ok_or_else(|| UcmError::UnknownFunction(f.clone()))?;
                 if b.float_only && !self.float_mode {
-                    return type_err(format!("{f} is a binary64 function, call it inside float {{ }}"));
+                    return type_err(format!(
+                        "{f} is a binary64 function, call it inside float {{ }}"
+                    ));
                 }
                 let mut tys = Vec::with_capacity(args.len());
                 for a in args {
@@ -210,7 +228,9 @@ impl<'a> Checker<'a> {
                 self.scopes.truncate(saved_len);
                 r
             }
-            Expr::Lambda(..) => type_err("a lambda is only allowed as an argument of map, filter, fold, any, all or count"),
+            Expr::Lambda(..) => type_err(
+                "a lambda is only allowed as an argument of map, filter, fold, any, all or count",
+            ),
             Expr::Vec(items) => {
                 let mut t = Ty::Empty;
                 for i in items {
@@ -229,7 +249,10 @@ impl<'a> Checker<'a> {
                 match t? {
                     t if t.is_exact_num() || t == Ty::Float => Ok(Ty::Float),
                     Ty::Bool => Ok(Ty::Bool),
-                    other => type_err(format!("a float block gives a number or bool, got {}", other.name())),
+                    other => type_err(format!(
+                        "a float block gives a number or bool, got {}",
+                        other.name()
+                    )),
                 }
             }
         }
@@ -237,7 +260,11 @@ impl<'a> Checker<'a> {
 }
 
 /// Check a whole program. Returns the input types and the result type.
-pub fn check_program(p: &Program, lib: &Library, no_formula: bool) -> Result<(Vec<(String, Ty)>, Ty)> {
+pub fn check_program(
+    p: &Program,
+    lib: &Library,
+    no_formula: bool,
+) -> Result<(Vec<(String, Ty)>, Ty)> {
     let mut c = Checker::new(lib);
     c.no_formula = no_formula;
     let mut inputs = Vec::new();

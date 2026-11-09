@@ -243,7 +243,6 @@ func (t *Tracer) redirectExec(ctx context.Context, tid int, regs Regs, result Ex
 	}
 }
 
-
 // injectFDIntoTracee injects a file descriptor from the tracer into the tracee
 // at the specified fd number, using pidfd_open + pidfd_getfd + dup3.
 // If dstFDNum was already in use, it is saved via dup and the saved fd number

@@ -34,7 +34,8 @@ pub fn dim_scale(a: &Dim, n: i64) -> Result<Dim> {
     let mut out = [0i8; 7];
     for i in 0..7 {
         let v = (a[i] as i64) * n;
-        out[i] = i8::try_from(v).map_err(|_| UcmError::Unit("dimension exponent overflow".into()))?;
+        out[i] =
+            i8::try_from(v).map_err(|_| UcmError::Unit("dimension exponent overflow".into()))?;
     }
     Ok(out)
 }
@@ -59,7 +60,11 @@ pub fn dim_render(d: &Dim) -> String {
             });
         }
     }
-    let n = if num.is_empty() { "1".to_string() } else { num.join("*") };
+    let n = if num.is_empty() {
+        "1".to_string()
+    } else {
+        num.join("*")
+    };
     if den.is_empty() {
         n
     } else {
@@ -592,7 +597,14 @@ pub fn parse_unit(s: &str) -> Result<Unit> {
 pub fn unit_catalog() -> Vec<(String, String, String, String)> {
     ATOMS
         .iter()
-        .map(|a| (a.sym.to_string(), a.name.to_string(), dim_render(&a.dim), a.factor.to_string()))
+        .map(|a| {
+            (
+                a.sym.to_string(),
+                a.name.to_string(),
+                dim_render(&a.dim),
+                a.factor.to_string(),
+            )
+        })
         .collect()
 }
 
@@ -606,10 +618,19 @@ mod tests {
         assert_eq!(n.dim, parse_unit("N").expect("N").dim);
         let kmh = parse_unit("km/h").expect("km/h");
         assert_eq!(kmh.factor, Rat::new(BigInt::from(5), BigInt::from(18)));
-        assert_eq!(parse_unit("mm").expect("mm").factor, Rat::new(BigInt::from(1), BigInt::from(1000)));
-        assert_eq!(parse_unit("dam").expect("dam").factor, Rat::from_integer(BigInt::from(10)));
+        assert_eq!(
+            parse_unit("mm").expect("mm").factor,
+            Rat::new(BigInt::from(1), BigInt::from(1000))
+        );
+        assert_eq!(
+            parse_unit("dam").expect("dam").factor,
+            Rat::from_integer(BigInt::from(10))
+        );
         assert!(parse_unit("furlong").is_err());
-        assert_eq!(dim_render(&parse_unit("J/s").expect("J/s").dim), "m^2*kg/s^3");
+        assert_eq!(
+            dim_render(&parse_unit("J/s").expect("J/s").dim),
+            "m^2*kg/s^3"
+        );
     }
 
     #[test]

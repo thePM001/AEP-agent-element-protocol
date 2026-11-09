@@ -100,19 +100,19 @@ type PNACLEventRequest struct {
 
 // Server listens on a Unix socket for policy queries.
 type Server struct {
-	sockPath           string
-	handler            PolicyHandler
-	pnaclHandler       PNACLHandler
-	execHandler        ExecHandler
-	sessionRegistrar   SessionRegistrar
-	eventHandler       EventHandler
-	snapshotBuilder    SnapshotBuilder
-	teamID             string
-	listener           net.Listener
-	mu                 sync.Mutex
-	wg                 sync.WaitGroup
-	ready              chan struct{} // closed when server startup completes (check startErr)
-	startErr           error        // non-nil if Run failed during startup
+	sockPath         string
+	handler          PolicyHandler
+	pnaclHandler     PNACLHandler
+	execHandler      ExecHandler
+	sessionRegistrar SessionRegistrar
+	eventHandler     EventHandler
+	snapshotBuilder  SnapshotBuilder
+	teamID           string
+	listener         net.Listener
+	mu               sync.Mutex
+	wg               sync.WaitGroup
+	ready            chan struct{} // closed when server startup completes (check startErr)
+	startErr         error         // non-nil if Run failed during startup
 }
 
 // NewServer creates a new policy socket server.

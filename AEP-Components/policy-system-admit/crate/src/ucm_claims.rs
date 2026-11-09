@@ -25,7 +25,10 @@ pub enum Profile {
 }
 
 pub fn profile() -> Profile {
-    match std::env::var("AEP_UCM_RECEIPT_PROFILE").unwrap_or_default().trim() {
+    match std::env::var("AEP_UCM_RECEIPT_PROFILE")
+        .unwrap_or_default()
+        .trim()
+    {
         "strict" => Profile::Strict,
         "warn" => Profile::Warn,
         _ => Profile::Off,
@@ -87,7 +90,11 @@ fn result_texts(r: &Value) -> Vec<String> {
     let s = |k: &str| r.get(k).and_then(|x| x.as_str()).map(|x| x.to_string());
     let mut out = Vec::new();
     for v in [s("value"), s("decimal")].into_iter().flatten() {
-        match (r.get("type").and_then(|t| t.as_str()), s("currency"), s("unit")) {
+        match (
+            r.get("type").and_then(|t| t.as_str()),
+            s("currency"),
+            s("unit"),
+        ) {
             (Some("money"), Some(c), _) => {
                 out.push(format!("{v} {c}"));
                 out.push(v);
@@ -112,7 +119,8 @@ fn value_matches(field: &Value, result: &Value) -> bool {
         Value::Number(n) => result_texts(result).iter().any(|x| *x == n.to_string()),
         Value::Bool(b) => {
             result.get("type").and_then(|x| x.as_str()) == Some("bool")
-                && result.get("value").and_then(|x| x.as_str()) == Some(if *b { "true" } else { "false" })
+                && result.get("value").and_then(|x| x.as_str())
+                    == Some(if *b { "true" } else { "false" })
         }
         other => other == result,
     }
@@ -192,7 +200,11 @@ const RECORD_DIGEST_FIELDS: &[(&str, &str)] = &[
 fn prefixed_hex(v: &Value, prefix: &str) -> bool {
     v.as_str()
         .and_then(|s| s.strip_prefix(prefix))
-        .map(|h| !h.is_empty() && h.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)))
+        .map(|h| {
+            !h.is_empty()
+                && h.bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+        })
         .unwrap_or(false)
 }
 
@@ -201,15 +213,22 @@ fn prefixed_hex(v: &Value, prefix: &str) -> bool {
 /// The dock binds the agent to its provisioned sign key and the lattice grants the record
 /// action to aep-ucm alone.
 fn record_view(event: &Value) -> Option<Value> {
-    let kind = event.get("event_type").or_else(|| event.get("type")).and_then(Value::as_str);
-    if kind != Some(RECORD_EVENT) || event.get("agent_id").and_then(Value::as_str) != Some(RECORD_AGENT) {
+    let kind = event
+        .get("event_type")
+        .or_else(|| event.get("type"))
+        .and_then(Value::as_str);
+    if kind != Some(RECORD_EVENT)
+        || event.get("agent_id").and_then(Value::as_str) != Some(RECORD_AGENT)
+    {
         return None;
     }
     let payload = event.get("payload")?.as_object()?;
-    if RECORD_DIGEST_FIELDS
-        .iter()
-        .any(|(k, pre)| payload.get(*k).map(|v| !prefixed_hex(v, pre)).unwrap_or(false))
-    {
+    if RECORD_DIGEST_FIELDS.iter().any(|(k, pre)| {
+        payload
+            .get(*k)
+            .map(|v| !prefixed_hex(v, pre))
+            .unwrap_or(false)
+    }) {
         return None;
     }
     let mut out = event.clone();
@@ -256,7 +275,10 @@ pub fn text_view(event: &Value) -> std::borrow::Cow<'_, Value> {
         .and_then(Value::as_object_mut);
     if let Some(receipts) = receipts {
         for receipt in receipts.values_mut() {
-            if verify_signature(receipt, &trusted).map(|c| c.trusted).unwrap_or(false) {
+            if verify_signature(receipt, &trusted)
+                .map(|c| c.trusted)
+                .unwrap_or(false)
+            {
                 *receipt = agent_view(receipt);
             }
         }
@@ -265,12 +287,18 @@ pub fn text_view(event: &Value) -> std::borrow::Cow<'_, Value> {
 }
 
 pub fn findings(event: &Value, wrap: &str) -> Vec<Finding> {
-    let Some(holder) = container(event) else { return Vec::new() };
+    let Some(holder) = container(event) else {
+        return Vec::new();
+    };
     let ucm = &holder["ucm"];
     let fields: Vec<String> = ucm
         .get("computed_fields")
         .and_then(|x| x.as_array())
-        .map(|a| a.iter().filter_map(|x| x.as_str().map(|y| y.to_string())).collect())
+        .map(|a| {
+            a.iter()
+                .filter_map(|x| x.as_str().map(|y| y.to_string()))
+                .collect()
+        })
         .unwrap_or_default();
     if fields.is_empty() {
         return Vec::new();
@@ -280,7 +308,10 @@ pub fn findings(event: &Value, wrap: &str) -> Vec<Finding> {
         .map(|v| v.trim() == "replay")
         .unwrap_or(false);
     let library_only = std::env::var("AEP_UCM_LIBRARY_ONLY_WRAPS")
-        .map(|v| v.split(',').any(|w| !w.trim().is_empty() && w.trim() == wrap))
+        .map(|v| {
+            v.split(',')
+                .any(|w| !w.trim().is_empty() && w.trim() == wrap)
+        })
         .unwrap_or(false);
     let mut out = Vec::new();
     for ptr in fields {
@@ -302,7 +333,10 @@ pub fn findings(event: &Value, wrap: &str) -> Vec<Finding> {
                         .and_then(|x| x.parse::<u64>().ok())
                     {
                         if steps > REPLAY_MAX_STEPS {
-                            out.push(Finding::Invalid(ptr, "replay budget above the Admit cap".into()));
+                            out.push(Finding::Invalid(
+                                ptr,
+                                "replay budget above the Admit cap".into(),
+                            ));
                             continue;
                         }
                     }
@@ -328,8 +362,12 @@ pub fn findings(event: &Value, wrap: &str) -> Vec<Finding> {
             }
             Ok(_) => {}
         }
-        if library_only && receipt.get("program_source").and_then(|x| x.as_str()) != Some("library") {
-            out.push(Finding::Invalid(ptr, "wrap requires a library program".into()));
+        if library_only && receipt.get("program_source").and_then(|x| x.as_str()) != Some("library")
+        {
+            out.push(Finding::Invalid(
+                ptr,
+                "wrap requires a library program".into(),
+            ));
             continue;
         }
         if !value_matches(value, &receipt["result"]) {
@@ -345,7 +383,10 @@ pub fn wall_closed(slug: &str, event: &Value, wrap: &str) -> bool {
     if p == Profile::Off {
         return false;
     }
-    let hits: Vec<Finding> = findings(event, wrap).into_iter().filter(|f| f.slug() == slug).collect();
+    let hits: Vec<Finding> = findings(event, wrap)
+        .into_iter()
+        .filter(|f| f.slug() == slug)
+        .collect();
     if hits.is_empty() {
         return false;
     }
@@ -396,7 +437,8 @@ mod tests {
 
     #[test]
     fn matching_rules() {
-        let r = json!({ "type": "money", "currency": "EUR", "value": "3227/50", "decimal": "64.54" });
+        let r =
+            json!({ "type": "money", "currency": "EUR", "value": "3227/50", "decimal": "64.54" });
         assert!(value_matches(&json!("64.54"), &r));
         assert!(value_matches(&json!("64.54 EUR"), &r));
         assert!(value_matches(&json!(64.54), &r));
@@ -421,32 +463,49 @@ mod tests {
         let ok = json!({ "payload": { "amount": "64.54", "ucm": { "computed_fields": ["/amount"], "receipts": { "/amount": good } } } });
         assert!(findings(&ok, "").is_empty());
 
-        let missing = json!({ "payload": { "amount": "64.54", "ucm": { "computed_fields": ["/amount"] } } });
-        assert_eq!(findings(&missing, ""), vec![Finding::Missing("/amount".into())]);
+        let missing =
+            json!({ "payload": { "amount": "64.54", "ucm": { "computed_fields": ["/amount"] } } });
+        assert_eq!(
+            findings(&missing, ""),
+            vec![Finding::Missing("/amount".into())]
+        );
 
         let wrong = json!({ "payload": { "amount": "65.00", "ucm": { "computed_fields": ["/amount"], "receipts": { "/amount": good } } } });
-        assert_eq!(findings(&wrong, ""), vec![Finding::Mismatch("/amount".into())]);
+        assert_eq!(
+            findings(&wrong, ""),
+            vec![Finding::Mismatch("/amount".into())]
+        );
 
         let mut forged = good.clone();
         forged["result"]["decimal"] = json!("65.00");
         let bad = json!({ "payload": { "amount": "65.00", "ucm": { "computed_fields": ["/amount"], "receipts": { "/amount": forged } } } });
-        assert!(matches!(findings(&bad, "").as_slice(), [Finding::Invalid(..)]));
+        assert!(matches!(
+            findings(&bad, "").as_slice(),
+            [Finding::Invalid(..)]
+        ));
 
         let stranger = receipt(&NodeKey::generate(), "64.54", json!({}));
-        let untrusted =
-            json!({ "payload": { "amount": "64.54", "ucm": { "computed_fields": ["/amount"], "receipts": { "/amount": stranger } } } });
-        assert!(matches!(findings(&untrusted, "").as_slice(), [Finding::Invalid(_, why)] if why == "receipt_untrusted_signer"));
+        let untrusted = json!({ "payload": { "amount": "64.54", "ucm": { "computed_fields": ["/amount"], "receipts": { "/amount": stranger } } } });
+        assert!(
+            matches!(findings(&untrusted, "").as_slice(), [Finding::Invalid(_, why)] if why == "receipt_untrusted_signer")
+        );
 
         let none = json!({ "payload": { "amount": "65.00" } });
         assert!(findings(&none, "").is_empty());
 
         // UCB keeps the foreign payload under payload.raw and binds computed_fields there.
         let ucb_missing = json!({ "payload": { "foreign_fixture": "mcp", "raw": { "amount": "64.54", "ucm": { "computed_fields": ["/amount"] } } } });
-        assert_eq!(findings(&ucb_missing, ""), vec![Finding::Missing("/amount".into())]);
+        assert_eq!(
+            findings(&ucb_missing, ""),
+            vec![Finding::Missing("/amount".into())]
+        );
         let ucb_ok = json!({ "payload": { "foreign_fixture": "mcp", "raw": { "amount": "64.54", "ucm": { "computed_fields": ["/amount"], "receipts": { "/amount": good } } } } });
         assert!(findings(&ucb_ok, "").is_empty());
         let ucb_wrong = json!({ "payload": { "raw": { "amount": "1.00", "ucm": { "computed_fields": ["/amount"], "receipts": { "/amount": good } } } } });
-        assert_eq!(findings(&ucb_wrong, ""), vec![Finding::Mismatch("/amount".into())]);
+        assert_eq!(
+            findings(&ucb_wrong, ""),
+            vec![Finding::Mismatch("/amount".into())]
+        );
 
         // The text view drops signature material of trusted receipts only.
         fn strings(v: &Value, out: &mut Vec<String>) {
@@ -464,12 +523,27 @@ mod tests {
         }
         assert_eq!(r["inputs"], json!({ "p": "19.90 EUR" }));
         assert_eq!(r["result"]["decimal"], json!("64.54"));
-        let ps: Vec<&str> = r["program_strings"].as_array().unwrap().iter().filter_map(|x| x.as_str()).collect();
-        assert!(ps.contains(&"half_even") && ps.contains(&"p") && ps.contains(&"1.081"), "{ps:?}");
-        assert!(!ps.iter().any(|s| s.contains('[') || *s == "round" || *s == "*"), "{ps:?}");
+        let ps: Vec<&str> = r["program_strings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|x| x.as_str())
+            .collect();
+        assert!(
+            ps.contains(&"half_even") && ps.contains(&"p") && ps.contains(&"1.081"),
+            "{ps:?}"
+        );
+        assert!(
+            !ps.iter()
+                .any(|s| s.contains('[') || *s == "round" || *s == "*"),
+            "{ps:?}"
+        );
         let mut text = Vec::new();
         strings(&view, &mut text);
-        assert!(text.iter().all(|t| !super::super::has_phone(t)), "receipt text still reads as a phone number");
+        assert!(
+            text.iter().all(|t| !super::super::has_phone(t)),
+            "receipt text still reads as a phone number"
+        );
         // An agent that writes a phone number into a text literal is still seen.
         let leaky = receipt(&key, "\"call 5551234567 now\"", json!({}));
         let leaky_event = json!({ "payload": { "raw": { "note": "x", "ucm": { "receipts": { "/note": leaky } } } } });

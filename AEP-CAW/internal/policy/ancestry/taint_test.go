@@ -212,9 +212,9 @@ func TestTaintCache_OnSpawn_MaxDepth(t *testing.T) {
 
 	// Spawn chain: cursor → bash → npm → node
 	cache.OnSpawn(1000, 1, &ProcessInfo{Comm: "cursor"})
-	cache.OnSpawn(1001, 1000, &ProcessInfo{Comm: "bash"})  // depth 1
-	cache.OnSpawn(1002, 1001, &ProcessInfo{Comm: "npm"})   // depth 2 (at limit)
-	cache.OnSpawn(1003, 1002, &ProcessInfo{Comm: "node"})  // depth 3 (exceeds limit)
+	cache.OnSpawn(1001, 1000, &ProcessInfo{Comm: "bash"}) // depth 1
+	cache.OnSpawn(1002, 1001, &ProcessInfo{Comm: "npm"})  // depth 2 (at limit)
+	cache.OnSpawn(1003, 1002, &ProcessInfo{Comm: "node"}) // depth 3 (exceeds limit)
 
 	// First three should be tainted
 	assert.NotNil(t, cache.IsTainted(1000))

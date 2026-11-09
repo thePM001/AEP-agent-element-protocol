@@ -1,13 +1,15 @@
 //! Dock listeners plus drain. The earlier law change facade split. The earlier law change drain.
 
 use super::pulse::{collect_applied, pulse_beat, pulse_decay_rate, DockingRuntime};
-use super::{
-    deny_resp, lock_or_deny, process_request, DockFrameResponse,
+use super::{deny_resp, lock_or_deny, process_request, DockFrameResponse};
+use crate::dock_event;
+use crate::dock_log::DockEvent;
+use crate::{
+    docking_port_specs, record_side_channel_anomaly, DynAepEventInput, SideChannelAnomalyKind,
 };
 use aep_base_node_pulse::PULSE_MS;
 use aep_dock_line_reader::{read_line_limited, MAX_LINE_BYTES, READ_CHUNK};
 use aep_lattice_channel::DockingPort;
-use crate::{docking_port_specs, record_side_channel_anomaly, DynAepEventInput, SideChannelAnomalyKind};
 use aep_lattice_channel::LatticeChannelFrame;
 use serde::Deserialize;
 use std::path::Path;
@@ -17,8 +19,6 @@ use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader
 use tokio::net::{TcpListener, UnixListener};
 use tokio::task::JoinHandle;
 use tokio_rustls::TlsAcceptor;
-use crate::dock_event;
-use crate::dock_log::DockEvent;
 use tracing::warn;
 
 pub(crate) const MAX_CONNECTIONS: usize = 64;
@@ -61,7 +61,12 @@ pub(crate) fn prepare_socket_dir(socket_base: &str) -> std::io::Result<()> {
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(socket_base, std::fs::Permissions::from_mode(0o700))?;
         let mode = std::fs::metadata(socket_base)?.permissions().mode() & 0o777;
-        if mode != 0o700 { return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, String::from("socket dir mode must be 0700"))); }
+        if mode != 0o700 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                String::from("socket dir mode must be 0700"),
+            ));
+        }
     }
     Ok(())
 }
@@ -77,7 +82,12 @@ pub(crate) fn bind_listener(path: &str) -> std::io::Result<UnixListener> {
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;
         let mode = std::fs::metadata(path)?.permissions().mode() & 0o777;
-        if mode != 0o600 { return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, String::from("socket mode must be 0600"))); }
+        if mode != 0o600 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                String::from("socket mode must be 0600"),
+            ));
+        }
     }
     Ok(listener)
 }
@@ -109,10 +119,10 @@ async fn wait_collect_if_needed(
     line: &str,
 ) -> DockFrameResponse {
     let first = process_request(runtime, port, line);
-    if line_is_collect(line) == false {
+    if !line_is_collect(line) {
         return first;
     }
-    if is_collect_pending(&first) == false {
+    if !is_collect_pending(&first) {
         return first;
     }
     let digest = match first.digest.clone() {
@@ -130,7 +140,7 @@ async fn wait_collect_if_needed(
         tokio::time::sleep(Duration::from_millis(25)).await;
         let _ = pulse_beat(runtime);
         let resp = collect_applied(runtime, &digest);
-        if is_collect_pending(&resp) == false {
+        if !is_collect_pending(&resp) {
             return resp;
         }
     }
@@ -169,19 +179,16 @@ where
                 // the cap the same way, so probe the stream. Pending bytes mean
                 // the line crossed the cap. An empty probe means the peer
                 // closed, which is not a side channel anomaly.
-                let pending = match tokio::time::timeout(
-                    Duration::from_millis(250),
-                    reader.fill_buf(),
-                )
-                .await
-                {
-                    Ok(Ok(buf)) => buf.is_empty() == false,
-                    // A read error or a quiet stream after a full cap is not a
-                    // clean close, so the line counts as over the cap.
-                    Ok(Err(_)) => true,
-                    Err(_) => true,
-                };
-                if pending == false {
+                let pending =
+                    match tokio::time::timeout(Duration::from_millis(250), reader.fill_buf()).await
+                    {
+                        Ok(Ok(buf)) => !buf.is_empty(),
+                        // A read error or a quiet stream after a full cap is not a
+                        // clean close, so the line counts as over the cap.
+                        Ok(Err(_)) => true,
+                        Err(_) => true,
+                    };
+                if !pending {
                     break;
                 }
                 let resp = match lock_or_deny(&runtime.record.db, "db") {
@@ -347,10 +354,12 @@ pub async fn run_docking_servers(
         let data_dir = std::env::var("AEP_DATA").unwrap_or_else(|_| "/data/aep".into());
         let (ca_pem, _) = aep_agentmesh::tls::ensure_mesh_ca(std::path::Path::new(&data_dir))
             .map_err(std::io::Error::other)?;
-        let server = aep_agentmesh::tls::ensure_dock_server_identity(std::path::Path::new(&data_dir))
-            .map_err(std::io::Error::other)?;
-        let server_cfg = aep_agentmesh::tls::build_server_config(&ca_pem, &server.cert_pem, &server.key_pem)
-            .map_err(std::io::Error::other)?;
+        let server =
+            aep_agentmesh::tls::ensure_dock_server_identity(std::path::Path::new(&data_dir))
+                .map_err(std::io::Error::other)?;
+        let server_cfg =
+            aep_agentmesh::tls::build_server_config(&ca_pem, &server.cert_pem, &server.key_pem)
+                .map_err(std::io::Error::other)?;
         let acceptor = TlsAcceptor::from(server_cfg);
         let host = std::env::var("AEP_LATTICE_TLS_BIND").unwrap_or_else(|_| "127.0.0.1".into());
         let mut tls_bound = Vec::new();
@@ -382,7 +391,7 @@ pub async fn run_docking_servers(
             warn!(error = %e, path = %listen_path, port = %format!("{port:?}"), "docking port bind failed");
             e
         })?;
-            unix_bound.push((port, listener, listen_path));
+        unix_bound.push((port, listener, listen_path));
     }
     for (port, listener, listen_path) in unix_bound {
         let rt = shared.clone();
@@ -443,15 +452,27 @@ pub async fn drain_docking_servers(runtime: &DockingRuntime, handles: Vec<JoinHa
     runtime.request_stop();
     let deadline = tokio::time::Instant::now() + DRAIN_JOIN_TIMEOUT;
     let (joined_listeners, aborted_listeners) = join_or_abort(handles, deadline).await;
-    let (joined_inflight, aborted_inflight) = join_or_abort(runtime.take_inflight(), deadline).await;
+    let (joined_inflight, aborted_inflight) =
+        join_or_abort(runtime.take_inflight(), deadline).await;
     let joined = joined_listeners + joined_inflight;
     let aborted = aborted_listeners + aborted_inflight;
     runtime
         .io
         .drain_aborted_tasks
         .store(aborted, std::sync::atomic::Ordering::SeqCst);
-    dock_event!(info, DockEvent::DockDrain, joined, aborted, "docking drain: stop accept, join tasks, remove sockets, close sqlite");
+    dock_event!(
+        info,
+        DockEvent::DockDrain,
+        joined,
+        aborted,
+        "docking drain: stop accept, join tasks, remove sockets, close sqlite"
+    );
     unlink_sockets(&runtime.io.socket_base);
     runtime.close_sqlite();
-    dock_event!(info, DockEvent::SqliteClose, closed = runtime.sqlite_is_closed(), "lattice sqlite closed");
+    dock_event!(
+        info,
+        DockEvent::SqliteClose,
+        closed = runtime.sqlite_is_closed(),
+        "lattice sqlite closed"
+    );
 }

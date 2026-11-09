@@ -280,11 +280,11 @@ func HashBody(body []byte) string {
 
 // ProxyStats contains aggregated statistics from the proxy log.
 type ProxyStats struct {
-	TotalRequests          int   `json:"total_requests"`
-	RequestsWithRedactions int   `json:"requests_with_redactions"`
-	TotalInputTokens       int   `json:"total_input_tokens"`
-	TotalOutputTokens      int   `json:"total_output_tokens"`
-	TotalRedactions        int   `json:"total_redactions"`
+	TotalRequests          int `json:"total_requests"`
+	RequestsWithRedactions int `json:"requests_with_redactions"`
+	TotalInputTokens       int `json:"total_input_tokens"`
+	TotalOutputTokens      int `json:"total_output_tokens"`
+	TotalRedactions        int `json:"total_redactions"`
 }
 
 // GetStats reads the log file and computes aggregated statistics.

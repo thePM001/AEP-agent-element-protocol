@@ -13,7 +13,7 @@ type recordingProvider struct {
 }
 
 func (r *recordingProvider) Name() string                { return r.name }
-func (r *recordingProvider) Capabilities() []FindingType  { return nil }
+func (r *recordingProvider) Capabilities() []FindingType { return nil }
 func (r *recordingProvider) CheckBatch(ctx context.Context, req CheckRequest) (*CheckResponse, error) {
 	r.last = append([]PackageRef(nil), req.Packages...)
 	return &CheckResponse{Provider: r.name}, nil

@@ -1,21 +1,21 @@
 //! Unix socket listeners for AEP 2.9 Base Node docking ports (Phase 4).
 //! The docking facade. Children: freshness, pulse, rate, serve and apply in src/docking.
 
-use aep_lattice_channel::{
-    frame_digest, ContractRegistry, DockingPort, LatticeChannelFrame,
-};
-use aep_lattice_gated_fetch::{execute_bound_http_after_allow, gateway_spec_from_plaintext, DockHttp};
-use aep_dock_request_poison::{lock_or_poison, poisoned_lock_message};
-use aep_wall_set_backpressure::{
-    ClosedWall, DenyReport, CLASS_POISON, CLASS_SECURITY, CLASS_TEMPORAL, CLASS_WRITING,
-};
-#[allow(unused_imports)]
-use aep_base_node_pulse::{MAX_FRAME_AGE_SECS, MAX_FRAME_FUTURE_SKEW_SECS};
 use crate::dock_keys::signer_rate_key;
 #[allow(unused_imports)]
 use crate::envelope_admit::admit_sealed_payload_report;
 use crate::{
     frame_digest_exists, record_side_channel_anomaly, BaseNodeError, SideChannelAnomalyKind,
+};
+#[allow(unused_imports)]
+use aep_base_node_pulse::{MAX_FRAME_AGE_SECS, MAX_FRAME_FUTURE_SKEW_SECS};
+use aep_dock_request_poison::{lock_or_poison, poisoned_lock_message};
+use aep_lattice_channel::{frame_digest, ContractRegistry, DockingPort, LatticeChannelFrame};
+use aep_lattice_gated_fetch::{
+    execute_bound_http_after_allow, gateway_spec_from_plaintext, DockHttp,
+};
+use aep_wall_set_backpressure::{
+    ClosedWall, DenyReport, CLASS_POISON, CLASS_SECURITY, CLASS_TEMPORAL, CLASS_WRITING,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -31,8 +31,8 @@ pub use pulse::{pulse_beat, DockingRuntime, PulseState};
 pub use serve::{drain_docking_servers, run_docking_servers, sockets_exist, unlink_sockets};
 
 use apply::{
-    attested_trust_score, enforce_correctwriting_en_on_payload, is_lrp_allowlisted, reject_side_channel,
-    resolve_agent_bundle, resolve_signer_public,
+    attested_trust_score, enforce_correctwriting_en_on_payload, is_lrp_allowlisted,
+    reject_side_channel, resolve_agent_bundle, resolve_signer_public,
 };
 use freshness::frame_is_fresh;
 use pulse::{collect_applied, pulse_enqueue};
@@ -65,6 +65,8 @@ fn poisoned_lock_response(name: &'static str) -> DockFrameResponse {
     deny_closed(None, detail, "lock.poison", CLASS_POISON)
 }
 
+// DockFrameResponse is the reply the node sends as is, so the deny path returns it unboxed.
+#[allow(clippy::result_large_err)]
 pub(crate) fn lock_or_deny<'a, T>(
     mutex: &'a Mutex<T>,
     name: &'static str,
@@ -94,7 +96,12 @@ pub fn port_event_type(port: &DockingPort) -> &'static str {
     }
 }
 
-pub(crate) fn deny_closed(digest: Option<String>, error: String, id: &str, class: &str) -> DockFrameResponse {
+pub(crate) fn deny_closed(
+    digest: Option<String>,
+    error: String,
+    id: &str,
+    class: &str,
+) -> DockFrameResponse {
     deny_resp_report(
         digest,
         error.clone(),
@@ -146,7 +153,8 @@ pub(crate) fn attach_gateway_http_after_allow(plaintext: &[u8], resp: &mut DockF
         return;
     };
     match execute_bound_http_after_allow(&spec) {
-        Ok(http) => { resp.http = Some(http);
+        Ok(http) => {
+            resp.http = Some(http);
             resp.http_queued = None;
         }
         Err(detail) => {
@@ -222,7 +230,13 @@ pub fn process_request(
 fn log_frame_outcome(port: &DockingPort, resp: &DockFrameResponse) {
     use crate::dock_log::DockEvent;
     if resp.pending == Some(true) {
-        crate::dock_event!(debug, DockEvent::FramePending, port = port_event_type(port), digest = resp.digest.as_deref().unwrap_or(""), "frame held for the pulse");
+        crate::dock_event!(
+            debug,
+            DockEvent::FramePending,
+            port = port_event_type(port),
+            digest = resp.digest.as_deref().unwrap_or(""),
+            "frame held for the pulse"
+        );
         return;
     }
     if resp.ok {
@@ -235,9 +249,21 @@ fn log_frame_outcome(port: &DockingPort, resp: &DockFrameResponse) {
         .unwrap_or(false);
     let detail = resp.error.as_deref().unwrap_or("");
     if replay {
-        crate::dock_event!(info, DockEvent::FrameReplay, port = port_event_type(port), error = detail, "frame replay refused");
+        crate::dock_event!(
+            info,
+            DockEvent::FrameReplay,
+            port = port_event_type(port),
+            error = detail,
+            "frame replay refused"
+        );
     } else {
-        crate::dock_event!(info, DockEvent::FrameDeny, port = port_event_type(port), error = detail, "frame denied");
+        crate::dock_event!(
+            info,
+            DockEvent::FrameDeny,
+            port = port_event_type(port),
+            error = detail,
+            "frame denied"
+        );
     }
 }
 
@@ -269,10 +295,7 @@ fn handle_frame(
         Ok(Some(pk)) => pk,
         Ok(None) => {
             let db = dock_lock!(&runtime.record.db, "db");
-            let detail = format!(
-                "signer public key unknown for agent_id={}",
-                frame.agent_id
-            );
+            let detail = format!("signer public key unknown for agent_id={}", frame.agent_id);
             let _ = record_side_channel_anomaly(
                 &db,
                 SideChannelAnomalyKind::CryptoVerificationFailed,
@@ -285,12 +308,10 @@ fn handle_frame(
     };
 
     let rate_key = signer_rate_key(&signer_public);
-    if let Err(e) = dock_lock!(&runtime.defence.global_rate_limiter, "fleet_rate").check("global")
-    {
+    if let Err(e) = dock_lock!(&runtime.defence.global_rate_limiter, "fleet_rate").check("global") {
         return rate_limit_response(runtime, expected_port, &frame.agent_id, e.to_string());
     }
-    if let Err(e) = dock_lock!(&runtime.defence.rate_limiter, "rate_limiter").check(&rate_key)
-    {
+    if let Err(e) = dock_lock!(&runtime.defence.rate_limiter, "rate_limiter").check(&rate_key) {
         return rate_limit_response(runtime, expected_port, &frame.agent_id, e.to_string());
     }
 
@@ -312,7 +333,9 @@ fn handle_frame(
     }
 
     let allow_inactive = expected_port == &DockingPort::RegulationModule;
-    let allow_inactive = allow_inactive && is_lrp_allowlisted(runtime, &frame.contract_id) && !dock_lock!(&runtime.admit.contracts, "contracts").is_active(&frame.contract_id);
+    let allow_inactive = allow_inactive
+        && is_lrp_allowlisted(runtime, &frame.contract_id)
+        && !dock_lock!(&runtime.admit.contracts, "contracts").is_active(&frame.contract_id);
     let plaintext = if allow_inactive {
         match crate::verify_inbound_dock_frame(
             frame,
@@ -386,22 +409,22 @@ fn handle_frame(
 
     if expected_port == &DockingPort::RegulationModule {
         if let Ok(value) = serde_json::from_slice::<Value>(&plaintext) {
-            if value.get("action").and_then(|v| v.as_str()) == Some("register_lrp") {
-                if !is_lrp_allowlisted(runtime, &frame.contract_id) {
-                    let db = dock_lock!(&runtime.record.db, "db");
-                    let detail = format!(
-                        "lrp {} not allowlisted in AEP-Base-Node config lrps[]",
-                        frame.contract_id
-                    );
-                    let _ = record_side_channel_anomaly(
-                        &db,
-                        SideChannelAnomalyKind::LrpNotAllowlisted,
-                        &frame.agent_id,
-                        expected_port,
-                        detail.clone(),
-                    );
-                    return deny_resp(None, detail);
-                }
+            if value.get("action").and_then(|v| v.as_str()) == Some("register_lrp")
+                && !is_lrp_allowlisted(runtime, &frame.contract_id)
+            {
+                let db = dock_lock!(&runtime.record.db, "db");
+                let detail = format!(
+                    "lrp {} not allowlisted in AEP-Base-Node config lrps[]",
+                    frame.contract_id
+                );
+                let _ = record_side_channel_anomaly(
+                    &db,
+                    SideChannelAnomalyKind::LrpNotAllowlisted,
+                    &frame.agent_id,
+                    expected_port,
+                    detail.clone(),
+                );
+                return deny_resp(None, detail);
             }
         }
     }
@@ -413,8 +436,8 @@ fn handle_frame(
             .as_deref(),
         Some("register_lrp")
     );
-    let inactive_action = register_lrp == false
-        && dock_lock!(&runtime.admit.contracts, "contracts").is_active(&frame.contract_id) == false;
+    let inactive_action = !register_lrp
+        && !dock_lock!(&runtime.admit.contracts, "contracts").is_active(&frame.contract_id);
     {
         if inactive_action {
             let db = dock_lock!(&runtime.record.db, "db");
@@ -450,7 +473,14 @@ fn handle_frame(
         // Fail closed: DB error treated as replay reject (do not admit frame).
         let seen = match frame_digest_exists(&db, &digest) {
             Ok(v) => v,
-            Err(_) => return deny_closed(Some(digest.clone()), String::from("ledger unavailable"), "ledger.unavailable", "ledger.unavailable"),
+            Err(_) => {
+                return deny_closed(
+                    Some(digest.clone()),
+                    String::from("ledger unavailable"),
+                    "ledger.unavailable",
+                    "ledger.unavailable",
+                )
+            }
         };
         if seen {
             let detail = format!("frame replay rejected: {digest}");
@@ -465,9 +495,10 @@ fn handle_frame(
         }
     }
     // Lock order: the replay guard is released before record.db is taken.
-    let fresh_in_ram = dock_lock!(&runtime.defence.replay_guard, "replay").check_and_record(&digest, frame.sent_at_unix);
+    let fresh_in_ram = dock_lock!(&runtime.defence.replay_guard, "replay")
+        .check_and_record(&digest, frame.sent_at_unix);
     {
-        if fresh_in_ram == false {
+        if !fresh_in_ram {
             let db = dock_lock!(&runtime.record.db, "db");
             let detail = format!("frame replay rejected: {digest}");
             let _ = record_side_channel_anomaly(
@@ -485,14 +516,19 @@ fn handle_frame(
     let manifest_check = {
         let mut manifests = dock_lock!(&runtime.admit.manifests, "manifests");
         manifests.reload_if_stale();
-        manifests.validate_agent(&frame.agent_id, trust_score, Some(frame.session_id.as_str()))
+        manifests.validate_agent(
+            &frame.agent_id,
+            trust_score,
+            Some(frame.session_id.as_str()),
+        )
     };
     {
-        if let Err(err) = manifest_check
-        {
+        if let Err(err) = manifest_check {
             let detail = err.to_string();
             let kind = match &err {
-                BaseNodeError::ManifestProvisional { .. } => SideChannelAnomalyKind::ProvisionalManifestRejected,
+                BaseNodeError::ManifestProvisional { .. } => {
+                    SideChannelAnomalyKind::ProvisionalManifestRejected
+                }
                 _ => SideChannelAnomalyKind::MissingTaskManifest,
             };
             let db = dock_lock!(&runtime.record.db, "db");
@@ -511,14 +547,7 @@ fn handle_frame(
         Ok(b) => b,
         Err(resp) => return resp,
     };
-    pulse_enqueue(
-        runtime,
-        frame,
-        &plaintext,
-        expected_port,
-        digest,
-        bundle,
-    )
+    pulse_enqueue(runtime, frame, &plaintext, expected_port, digest, bundle)
 }
 
 #[cfg(test)]

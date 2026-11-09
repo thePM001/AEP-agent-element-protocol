@@ -13,9 +13,9 @@ import (
 	"time"
 	"unsafe"
 
+	seccomp "github.com/seccomp/libseccomp-golang"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	seccomp "github.com/seccomp/libseccomp-golang"
 	"golang.org/x/sys/unix"
 )
 

@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/fsnotify/fsnotify"
 )
 
 func TestNewFSEventsMonitor(t *testing.T) {
@@ -123,10 +123,10 @@ func TestFSEventsMonitor_StartStop(t *testing.T) {
 
 func TestFSEventsMonitor_handleEvent(t *testing.T) {
 	tests := []struct {
-		name      string
-		fsEvent   fsnotify.Event
-		wantType  string
-		wantOp    string
+		name     string
+		fsEvent  fsnotify.Event
+		wantType string
+		wantOp   string
 	}{
 		{
 			name:     "create",

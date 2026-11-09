@@ -48,10 +48,7 @@ pub fn names_leftover_not_admit(src: &str) -> bool {
 }
 
 pub fn leftover_not_admit(path: &Path) -> Result<String, String> {
-    let name = path
-        .file_name()
-        .and_then(|s| s.to_str())
-        .unwrap_or("");
+    let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
     if leftover_suffix(name) {
         return Err(String::from(
             "leftover yaml or rego is not a live Admit skin",
@@ -126,10 +123,7 @@ pub fn collect_all_gap_paths(dir: &Path) -> Vec<PathBuf> {
         let mut files: Vec<PathBuf> = rd.filter_map(|e| e.ok().map(|e| e.path())).collect();
         files.sort();
         for pth in files {
-            let name = pth
-                .file_name()
-                .and_then(|s| s.to_str())
-                .unwrap_or("");
+            let name = pth.file_name().and_then(|s| s.to_str()).unwrap_or("");
             if leftover_suffix(name) {
                 continue;
             }
@@ -158,19 +152,16 @@ pub fn scan_leftover_naming(dir: &Path) -> Result<String, String> {
                 return Err(e);
             }
         };
-        if names_leftover_not_admit(&text) == false {
+        if !names_leftover_not_admit(&text) {
             let mut e = String::from("leftover file ");
             e.push_str(name);
             e.push_str(" missing leftover naming");
             return Err(e);
         }
-        match leftover_not_admit(&p) {
-            Ok(_) => {
-                return Err(String::from(
-                    "leftover yaml or rego was treated as a live Admit skin",
-                ))
-            }
-            Err(_) => {}
+        if leftover_not_admit(&p).is_ok() {
+            return Err(String::from(
+                "leftover yaml or rego was treated as a live Admit skin",
+            ));
         }
         i = i.saturating_add(1);
     }
@@ -184,10 +175,7 @@ pub fn scan_collect_all_gap_only(dir: &Path) -> Result<String, String> {
     }
     let mut i = 0usize;
     while i < gaps.len() {
-        let name = gaps[i]
-            .file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or("");
+        let name = gaps[i].file_name().and_then(|s| s.to_str()).unwrap_or("");
         if leftover_suffix(name) {
             return Err(String::from(
                 "collect-all loaded leftover yaml or rego as Admit",
@@ -211,7 +199,7 @@ pub fn scan_p6_pointer() -> Result<String, String> {
     }
     let mut i = 0usize;
     while i < refs.len() {
-        if refs[i].contains("AEP-Policy-System/reference/") == false {
+        if !refs[i].contains("AEP-Policy-System/reference/") {
             return Err(String::from("P6 pointer missed reference GAP path"));
         }
         i = i.saturating_add(1);
@@ -226,15 +214,9 @@ pub fn run_gate() -> Result<(), String> {
         Some(d) => d,
         None => return Err(String::from("AEP-Policy-System missing")),
     };
-    if let Err(e) = scan_leftover_naming(&dir) {
-        return Err(e);
-    }
-    if let Err(e) = scan_collect_all_gap_only(&dir) {
-        return Err(e);
-    }
-    if let Err(e) = scan_p6_pointer() {
-        return Err(e);
-    }
+    scan_leftover_naming(&dir)?;
+    scan_collect_all_gap_only(&dir)?;
+    scan_p6_pointer()?;
     Ok(())
 }
 
@@ -245,6 +227,12 @@ pub mod leftover_inventory {
         pub policy_system_dir: String,
         pub leftover: Vec<String>,
     }
+    impl Default for LeftoverInventory {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl LeftoverInventory {
         pub fn new() -> Self {
             Self {
@@ -275,27 +263,27 @@ mod tests {
 
     #[test]
     fn leftover_suffix_yaml_and_rego() {
-        assert ! (leftover_suffix("aep-builder.policy.yaml"));
-        assert ! (leftover_suffix("aep-policy.rego"));
-        assert ! (leftover_suffix("writing.gap") == false);
+        assert!(leftover_suffix("aep-builder.policy.yaml"));
+        assert!(leftover_suffix("aep-policy.rego"));
+        assert!(!leftover_suffix("writing.gap"));
     }
 
     #[test]
     fn leftover_not_admit_denies_yaml_rego() {
         let y = PathBuf::from("aep-builder.policy.yaml");
-        assert ! (leftover_not_admit(&y).is_err());
+        assert!(leftover_not_admit(&y).is_err());
         let r = PathBuf::from("aep-policy.rego");
-        assert ! (leftover_not_admit(&r).is_err());
+        assert!(leftover_not_admit(&r).is_err());
         let g = PathBuf::from("writing.gap");
-        assert ! (leftover_not_admit(&g).is_ok());
+        assert!(leftover_not_admit(&g).is_ok());
     }
 
     #[test]
     fn p6_pointer_names_reference_gaps() {
         scan_p6_pointer().expect("p6");
         let refs = p6_reference_paths();
-        assert ! (refs.iter().any(|s| s.ends_with("writing.gap")));
-        assert ! (refs.iter().any(|s| s.ends_with("security.gap")));
+        assert!(refs.iter().any(|s| s.ends_with("writing.gap")));
+        assert!(refs.iter().any(|s| s.ends_with("security.gap")));
     }
 
     #[test]
@@ -303,7 +291,7 @@ mod tests {
         let mut inv = leftover_inventory::LeftoverInventory::new();
         inv.policy_system_dir = String::from("/tmp/ps");
         inv.process().expect("inv");
-        assert_eq ! (inv.leftover.len(), LEFTOVER_FILES.len());
+        assert_eq!(inv.leftover.len(), LEFTOVER_FILES.len());
     }
 
     #[test]
@@ -312,18 +300,16 @@ mod tests {
         scan_leftover_naming(&dir).expect("naming");
         scan_collect_all_gap_only(&dir).expect("collect-all");
         let gaps = collect_all_gap_paths(&dir);
-        assert ! (gaps.iter().any(|p| p.file_name().unwrap() == "writing.gap"));
-        assert ! (
-            gaps.iter()
-                .any(|p| p.file_name().and_then(|s| s.to_str()) == Some("aep-builder.policy.yaml"))
-                == false
-        );
+        assert!(gaps.iter().any(|p| p.file_name().unwrap() == "writing.gap"));
+        assert!(!gaps
+            .iter()
+            .any(|p| p.file_name().and_then(|s| s.to_str()) == Some("aep-builder.policy.yaml")));
     }
 
     #[test]
     fn naming_text_is_connected_prose() {
-        assert ! (names_leftover_not_admit(LEFTOVER_NAMING));
-        assert ! (COLLECT_ALL_ONLY_GAP.contains("Collect-all"));
-        assert ! (P6_POINTER.contains("GAP-285-P6"));
+        assert!(names_leftover_not_admit(LEFTOVER_NAMING));
+        assert!(COLLECT_ALL_ONLY_GAP.contains("Collect-all"));
+        assert!(P6_POINTER.contains("GAP-285-P6"));
     }
 }

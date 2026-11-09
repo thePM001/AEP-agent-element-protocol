@@ -15,11 +15,11 @@ import (
 	"time"
 	"unsafe"
 
+	seccomp "github.com/seccomp/libseccomp-golang"
+	"github.com/stretchr/testify/require"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 	seccompkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	seccomp "github.com/seccomp/libseccomp-golang"
-	"github.com/stretchr/testify/require"
 	gounix "golang.org/x/sys/unix"
 )
 

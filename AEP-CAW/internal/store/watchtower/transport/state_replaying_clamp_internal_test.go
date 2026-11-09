@@ -175,10 +175,10 @@ func TestComputeReplayStart_FullyGCdServerBehindPersistedAck_EmitsLoss(t *testin
 // Both should return prefixLoss == nil.
 func TestComputeReplayStart_FullyGCdServerAtOrPastPersistedAckIsNoOp(t *testing.T) {
 	cases := []struct {
-		name              string
-		remoteReplayCsr   AckCursor
-		persistedAckCsr   AckCursor
-		wantReaderStart   uint64
+		name            string
+		remoteReplayCsr AckCursor
+		persistedAckCsr AckCursor
+		wantReaderStart uint64
 	}{
 		{
 			name:            "boundary_gapStart_equals_persistedAck_plus_1",

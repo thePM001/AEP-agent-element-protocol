@@ -6,8 +6,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
 	"github.com/stretchr/testify/require"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
 )
 
 func TestEffectiveSeccompRules_BuiltInDirtyFrag(t *testing.T) {

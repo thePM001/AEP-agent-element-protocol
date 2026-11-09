@@ -28,7 +28,7 @@ func (e *countingLogExporter) Export(_ context.Context, records []sdklog.Record)
 	return nil
 }
 
-func (e *countingLogExporter) Shutdown(_ context.Context) error { return nil }
+func (e *countingLogExporter) Shutdown(_ context.Context) error   { return nil }
 func (e *countingLogExporter) ForceFlush(_ context.Context) error { return nil }
 
 func (e *countingLogExporter) Count() int64 {

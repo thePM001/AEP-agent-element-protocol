@@ -18,7 +18,7 @@ pub fn collect_line(digest: &str) -> String {
 
 /// True when the wire line is enqueue ok with digest and no event_id.
 pub fn is_enqueue_ack(ok: bool, has_digest: bool, has_event_id: bool, has_deny: bool) -> bool {
-    ok && has_digest && has_event_id == false && has_deny == false
+    ok && has_digest && !has_event_id && !has_deny
 }
 
 /// True when the collected line carries allow event_id.
@@ -75,13 +75,13 @@ fn strip_line_comments(src: &str) -> String {
         } else {
             out.push_str(line);
         }
-        out.push_str("\n");
+        out.push('\n');
     }
     out
 }
 
 fn compact(src: &str) -> String {
-    src.chars().filter(|c| c.is_whitespace() == false).collect()
+    src.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
 fn prod_src(src: &str) -> String {
@@ -95,7 +95,7 @@ pub fn scan_dock_collect_variant(src: &str) -> Result<String, String> {
         return Err(String::from("DockRequest not found"));
     }
     let code = prod_src(&body);
-    if code.contains("Collect{collect:String,}") == false && code.contains("collect:String") == false {
+    if !code.contains("Collect{collect:String,}") && !code.contains("collect:String") {
         return Err(String::from("DockRequest lacks collect digest variant"));
     }
     Ok(String::from("ok DockRequest collect variant"))
@@ -108,13 +108,13 @@ pub fn scan_process_request_collect(src: &str) -> Result<String, String> {
         return Err(String::from("process_request not found"));
     }
     let code = prod_src(&body);
-    if code.contains("DockRequest::Collect") == false {
+    if !code.contains("DockRequest::Collect") {
         return Err(String::from("process_request does not match Collect"));
     }
-    if src.contains("last_applied") == false {
+    if !src.contains("last_applied") {
         return Err(String::from("docking.rs missing last_applied"));
     }
-    if src.contains("fn collect_applied") == false && src.contains("fn collect_by_digest") == false {
+    if !src.contains("fn collect_applied") && !src.contains("fn collect_by_digest") {
         return Err(String::from("docking.rs missing collect_applied"));
     }
     Ok(String::from("ok process_request collects last_applied"))
@@ -127,10 +127,10 @@ pub fn scan_ucb_collect(src: &str) -> Result<String, String> {
         return Err(String::from("UCB send_frame not found"));
     }
     let code = prod_src(&body);
-    if code.contains("collect") == false {
+    if !code.contains("collect") {
         return Err(String::from("UCB send_frame skips collect-by-digest"));
     }
-    if code.contains("event_id") == false {
+    if !code.contains("event_id") {
         return Err(String::from("UCB send_frame does not inspect event_id"));
     }
     Ok(String::from("ok UCB collect-by-digest"))
@@ -139,14 +139,17 @@ pub fn scan_ucb_collect(src: &str) -> Result<String, String> {
 /// Fail if collect skips the 1000 ms pulse or adds a second in-process Admit.
 pub fn scan_pulse_untouched(src: &str) -> Result<String, String> {
     let code = prod_src(src);
-    if code.contains("PULSE_MS") == false {
+    if !code.contains("PULSE_MS") {
         return Err(String::from("docking.rs missing PULSE_MS"));
     }
     let skip_a = ["skip", "the", "1000"].concat();
     if code.contains("skip_pulse") || code.contains(&skip_a) {
         return Err(String::from("collect must not skip the 1000 ms pulse"));
     }
-    if code.contains("TypeScript") && code.contains("processEvent") && code.contains("in-processAdmit") {
+    if code.contains("TypeScript")
+        && code.contains("processEvent")
+        && code.contains("in-processAdmit")
+    {
         return Err(String::from("do not add a second in-process Admit"));
     }
     Ok(String::from("ok pulse untouched"))
@@ -154,16 +157,16 @@ pub fn scan_pulse_untouched(src: &str) -> Result<String, String> {
 
 /// Fail if serve_connection does not wait collect-by-digest until beat.
 pub fn scan_wait_collect(src: &str) -> Result<String, String> {
-    if src.contains("fn wait_collect_if_needed") == false {
+    if !src.contains("fn wait_collect_if_needed") {
         return Err(String::from("docking.rs missing wait_collect_if_needed"));
     }
-    if src.contains("wait_collect_if_needed(&runtime, &port, &line)") == false
-        && src.contains("wait_collect_if_needed(&runtime, &port, &line).await") == false
+    if !src.contains("wait_collect_if_needed(&runtime, &port, &line)")
+        && !src.contains("wait_collect_if_needed(&runtime, &port, &line).await")
     {
-        if src.contains("serve_connection") == false {
+        if !src.contains("serve_connection") {
             return Err(String::from("docking.rs missing serve_connection"));
         }
-        if src.contains("wait_collect_if_needed") == false {
+        if !src.contains("wait_collect_if_needed") {
             return Err(String::from("serve_connection does not wait collect"));
         }
     }
@@ -244,7 +247,7 @@ pub fn run_gate() -> Result<i32, String> {
     for proof in proofs {
         let mut line = String::from("aep-dock-post-beat-collect ok proof=");
         line.push_str(&proof);
-        line.push_str("\n");
+        line.push('\n');
         let _ = std::io::stdout().write_all(line.as_bytes());
     }
     Ok(0)
@@ -256,6 +259,12 @@ pub mod collect_line {
         pub digest: String,
         pub line: String,
     }
+    impl Default for CollectLine {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl CollectLine {
         pub fn new() -> Self {
             Self {
@@ -277,6 +286,12 @@ pub mod is_enqueue_ack {
         pub ok: String,
         pub enqueue: String,
     }
+    impl Default for IsEnqueueAck {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl IsEnqueueAck {
         pub fn new() -> Self {
             Self {
@@ -303,6 +318,12 @@ pub mod is_applied_allow {
         pub event_id: String,
         pub allow: String,
     }
+    impl Default for IsAppliedAllow {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl IsAppliedAllow {
         pub fn new() -> Self {
             Self {
@@ -312,7 +333,7 @@ pub mod is_applied_allow {
         }
         /// True when the collected line carries allow event_id
         pub fn process(&mut self) -> anyhow::Result<()> {
-            self.allow = if super::is_applied_allow(self.event_id.is_empty() == false) {
+            self.allow = if super::is_applied_allow(!self.event_id.is_empty()) {
                 String::from("allow")
             } else {
                 String::from("not-allow")
@@ -328,6 +349,12 @@ pub mod is_applied_deny {
         pub closed: String,
         pub deny: String,
     }
+    impl Default for IsAppliedDeny {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl IsAppliedDeny {
         pub fn new() -> Self {
             Self {
@@ -354,6 +381,12 @@ pub mod scan_dock_collect_variant {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanDockCollectVariant {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanDockCollectVariant {
         pub fn new() -> Self {
             Self {
@@ -378,6 +411,12 @@ pub mod scan_process_request_collect {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanProcessRequestCollect {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanProcessRequestCollect {
         pub fn new() -> Self {
             Self {
@@ -402,6 +441,12 @@ pub mod scan_ucb_collect {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanUcbCollect {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanUcbCollect {
         pub fn new() -> Self {
             Self {
@@ -426,6 +471,12 @@ pub mod scan_pulse_untouched {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanPulseUntouched {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanPulseUntouched {
         pub fn new() -> Self {
             Self {
@@ -449,7 +500,7 @@ mod tests {
     use super::*;
 
     fn must(cond: bool) {
-        if cond == false {
+        if !cond {
             std::process::abort();
         }
     }
@@ -468,21 +519,21 @@ mod tests {
     #[test]
     fn enqueue_ack_has_digest_and_no_event_id() {
         must(is_enqueue_ack(true, true, false, false));
-        must(is_enqueue_ack(true, true, true, false) == false);
-        must(is_enqueue_ack(true, true, false, true) == false);
-        must(is_enqueue_ack(false, true, false, false) == false);
+        must(!is_enqueue_ack(true, true, true, false));
+        must(!is_enqueue_ack(true, true, false, true));
+        must(!is_enqueue_ack(false, true, false, false));
     }
 
     #[test]
     fn applied_allow_needs_event_id() {
         must(is_applied_allow(true));
-        must(is_applied_allow(false) == false);
+        must(!is_applied_allow(false));
     }
 
     #[test]
     fn applied_deny_needs_closed() {
         must(is_applied_deny(1));
-        must(is_applied_deny(0) == false);
+        must(!is_applied_deny(0));
     }
 
     #[test]
@@ -505,7 +556,8 @@ mod tests {
 
     #[test]
     fn scan_ucb_requires_collect() {
-        let src = "pub async fn send_frame() { let collect = json!({ \"collect\": digest }); event_id }";
+        let src =
+            "pub async fn send_frame() { let collect = json!({ \"collect\": digest }); event_id }";
         match scan_ucb_collect(src) {
             Ok(v) => must(v.contains("ok")),
             Err(_) => std::process::abort(),

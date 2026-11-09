@@ -68,13 +68,13 @@ fn strip_line_comments(src: &str) -> String {
         } else {
             out.push_str(line);
         }
-        out.push_str("\n");
+        out.push('\n');
     }
     out
 }
 
 fn compact(src: &str) -> String {
-    src.chars().filter(|c| c.is_whitespace() == false).collect()
+    src.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
 fn prod_src(src: &str) -> String {
@@ -87,13 +87,15 @@ pub fn scan_dock_deny_field(src: &str) -> Result<String, String> {
         return Err(String::from("DockFrameResponse not found"));
     }
     let code = prod_src(&body);
-    if code.contains("pubdeny:Option") == false {
+    if !code.contains("pubdeny:Option") {
         return Err(String::from("DockFrameResponse missing deny field"));
     }
-    if src.contains("admit_sealed_payload_report") == false {
-        return Err(String::from("docking.rs does not call admit_sealed_payload_report"));
+    if !src.contains("admit_sealed_payload_report") {
+        return Err(String::from(
+            "docking.rs does not call admit_sealed_payload_report",
+        ));
     }
-    if src.contains("deny_resp_report") == false {
+    if !src.contains("deny_resp_report") {
         return Err(String::from("docking.rs missing deny_resp_report"));
     }
     Ok(String::from("ok DockFrameResponse carries deny"))
@@ -105,7 +107,7 @@ pub fn scan_live_entry_closed(src: &str) -> Result<String, String> {
         return Err(String::from("Rejection not found"));
     }
     let code = prod_src(&body);
-    if code.contains("pubclosed:Vec<AdmitWall>") == false {
+    if !code.contains("pubclosed:Vec<AdmitWall>") {
         return Err(String::from("Rejection missing closed walls"));
     }
     let proc = extract_fn(src, "pub fn process_event");
@@ -113,8 +115,10 @@ pub fn scan_live_entry_closed(src: &str) -> Result<String, String> {
     // process_event copies the admit result walls into Rejection.closed. Older
     // source named the copy closed_walls, so both forms count.
     let copies_walls = pcode.contains("closed_walls") || pcode.contains("result.closed.clone()");
-    if copies_walls == false {
-        return Err(String::from("process_event does not copy closed_walls onto Rejection"));
+    if !copies_walls {
+        return Err(String::from(
+            "process_event does not copy closed_walls onto Rejection",
+        ));
     }
     Ok(String::from("ok Rejection carries closed walls"))
 }
@@ -125,10 +129,10 @@ pub fn scan_ucb_deny_field(src: &str) -> Result<String, String> {
         return Err(String::from("UCB DockResponse not found"));
     }
     let code = prod_src(&body);
-    if code.contains("pubdeny:Option") == false {
+    if !code.contains("pubdeny:Option") {
         return Err(String::from("UCB DockResponse missing deny field"));
     }
-    if src.contains("LatticeDeny") == false {
+    if !src.contains("LatticeDeny") {
         return Err(String::from("UCB missing LatticeDeny"));
     }
     Ok(String::from("ok UCB forwards deny"))
@@ -140,7 +144,9 @@ pub fn scan_no_lookup(src: &str) -> Result<String, String> {
     let c = ["lattice", "-", "memory"].concat();
     let code = prod_src(src);
     if code.contains(&a) {
-        return Err(String::from("crate must not look up forensic store entries"));
+        return Err(String::from(
+            "crate must not look up forensic store entries",
+        ));
     }
     if code.contains(&b) {
         return Err(String::from("crate must not score forensic store entries"));
@@ -250,19 +256,20 @@ pub fn run_gate() -> Result<i32, String> {
         scan_ucb_deny_field(&ucb)?,
         scan_no_lookup(&self_src)?,
         scan_repairs_have_no_grant_lists()?,
-        scan_closed_wall_has_class(&read_text(&root.join("AEP-Components/kernel-types/crate/src/lib.rs")))?,
+        scan_closed_wall_has_class(&read_text(
+            &root.join("AEP-Components/kernel-types/crate/src/lib.rs"),
+        ))?,
         scan_docking_sets_class(&dock)?,
         scan_admit_sets_class(&root.join("AEP-Base-Node/AEP-Crate/src/envelope_admit.rs"))?,
     ];
     for proof in proofs {
         let mut line = String::from("aep-wall-set-backpressure ok proof=");
         line.push_str(&proof);
-        line.push_str("\n");
+        line.push('\n');
         let _ = std::io::stdout().write_all(line.as_bytes());
     }
     Ok(0)
 }
-
 
 pub fn scan_closed_wall_has_class(src: &str) -> Result<String, String> {
     let body = extract_fn(src, "pub struct ClosedWall");
@@ -270,33 +277,37 @@ pub fn scan_closed_wall_has_class(src: &str) -> Result<String, String> {
         return Err(String::from("ClosedWall not found"));
     }
     let code = prod_src(&body);
-    if code.contains("pubclass:String") == false {
+    if !code.contains("pubclass:String") {
         return Err(String::from("ClosedWall missing class"));
     }
     Ok(String::from("ok ClosedWall carries class"))
 }
 
 pub fn scan_docking_sets_class(src: &str) -> Result<String, String> {
-    if src.contains("ClosedWall") == false {
+    if !src.contains("ClosedWall") {
         return Err(String::from("docking.rs has no ClosedWall construction"));
     }
-    if src.contains("CLASS_WRITING") == false
-        || src.contains("CLASS_SECURITY") == false
-        || src.contains("CLASS_TEMPORAL") == false
-        || src.contains("CLASS_POISON") == false
+    if !src.contains("CLASS_WRITING")
+        || !src.contains("CLASS_SECURITY")
+        || !src.contains("CLASS_TEMPORAL")
+        || !src.contains("CLASS_POISON")
     {
         return Err(String::from("docking.rs does not set ClosedWall class"));
     }
     if src.contains("mod docking") {
         return Err(String::from("docking.rs must stay one file"));
     }
-    Ok(String::from("ok docking.rs sets ClosedWall class and stays one file"))
+    Ok(String::from(
+        "ok docking.rs sets ClosedWall class and stays one file",
+    ))
 }
 
 pub fn scan_admit_sets_class(path: &PathBuf) -> Result<String, String> {
     let src = read_text(path);
-    if src.contains("class:") == false && src.contains("classify_wall") == false && src.contains("CLASS_") == false {
-        return Err(String::from("envelope_admit.rs does not set ClosedWall class"));
+    if !src.contains("class:") && !src.contains("classify_wall") && !src.contains("CLASS_") {
+        return Err(String::from(
+            "envelope_admit.rs does not set ClosedWall class",
+        ));
     }
     Ok(String::from("ok envelope_admit.rs sets ClosedWall class"))
 }
@@ -307,6 +318,12 @@ pub mod from_closed {
         pub src: String,
         pub report: String,
     }
+    impl Default for FromClosed {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl FromClosed {
         pub fn new() -> Self {
             Self {
@@ -333,6 +350,12 @@ pub mod repairs_for {
         pub src: String,
         pub repairs: String,
     }
+    impl Default for RepairsFor {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl RepairsFor {
         pub fn new() -> Self {
             Self {
@@ -363,6 +386,12 @@ pub mod scan_dock_deny_field {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanDockDenyField {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanDockDenyField {
         pub fn new() -> Self {
             Self {
@@ -386,6 +415,12 @@ pub mod scan_live_entry_closed {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanLiveEntryClosed {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanLiveEntryClosed {
         pub fn new() -> Self {
             Self {
@@ -409,6 +444,12 @@ pub mod scan_ucb_deny_field {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanUcbDenyField {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanUcbDenyField {
         pub fn new() -> Self {
             Self {
@@ -432,6 +473,12 @@ pub mod scan_no_lookup {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanNoLookup {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanNoLookup {
         pub fn new() -> Self {
             Self {
@@ -454,7 +501,7 @@ mod tests {
     use super::*;
 
     fn must(cond: bool) {
-        if cond == false {
+        if !cond {
             std::process::abort();
         }
     }
@@ -467,7 +514,11 @@ mod tests {
         )]);
         must(r.reseal_required);
         must(r.closed.iter().any(|w| w.id == "scene.membership"));
-        must(r.repairs.iter().any(|h| h.field == "target_id" && h.kind == KIND_BIND_FIELD));
+        must(
+            r.repairs
+                .iter()
+                .any(|h| h.field == "target_id" && h.kind == KIND_BIND_FIELD),
+        );
         must(r.repairs.iter().any(|h| h.kind == KIND_RESEAL_NEW_CAPSULE));
     }
 
@@ -478,7 +529,11 @@ mod tests {
             "no dock bound",
             CLASS_STRUCTURAL,
         )]);
-        must(r.repairs.iter().any(|h| h.field == "dest_dock" && h.kind == KIND_BIND_FIELD));
+        must(
+            r.repairs
+                .iter()
+                .any(|h| h.field == "dest_dock" && h.kind == KIND_BIND_FIELD),
+        );
     }
 
     #[test]
@@ -488,7 +543,11 @@ mod tests {
             "no timestamps",
             CLASS_TEMPORAL,
         )]);
-        must(r.repairs.iter().any(|h| h.field == "timestamp" && h.kind == KIND_BIND_FIELD));
+        must(
+            r.repairs
+                .iter()
+                .any(|h| h.field == "timestamp" && h.kind == KIND_BIND_FIELD),
+        );
         must(r.repairs.iter().any(|h| h.fix.contains("50 ms drift")));
     }
 
@@ -499,7 +558,11 @@ mod tests {
             "no sequence bound",
             CLASS_STRUCTURAL,
         )]);
-        must(r.repairs.iter().any(|h| h.field == "_sequenceNumber" && h.kind == KIND_BIND_FIELD));
+        must(
+            r.repairs
+                .iter()
+                .any(|h| h.field == "_sequenceNumber" && h.kind == KIND_BIND_FIELD),
+        );
     }
 
     #[test]
@@ -509,7 +572,11 @@ mod tests {
             "Em dash U+2014 forbidden by writing.gap",
             CLASS_WRITING,
         )]);
-        must(r.repairs.iter().any(|h| h.kind == KIND_REWRITE_WRITING && h.fix.contains("U+2014")));
+        must(
+            r.repairs
+                .iter()
+                .any(|h| h.kind == KIND_REWRITE_WRITING && h.fix.contains("U+2014")),
+        );
     }
 
     #[test]
@@ -574,7 +641,11 @@ mod tests {
             "Em dash U+2014 forbidden by writing.gap",
             CLASS_WRITING,
         )]);
-        must(r.closed.iter().any(|w| w.id == "writing:no_em_dashes" && w.class == CLASS_WRITING));
+        must(
+            r.closed
+                .iter()
+                .any(|w| w.id == "writing:no_em_dashes" && w.class == CLASS_WRITING),
+        );
         let oxford = from_closed(&[ClosedWall::with_class(
             "writing:no_oxford_comma",
             "Oxford comma forbidden by writing.gap",
@@ -582,15 +653,28 @@ mod tests {
         )]);
         must(oxford.closed.iter().any(|w| w.class == CLASS_WRITING));
         let writing = from_error("CORRECTWRITING_EN writing violations remain after enforcement");
-        must(writing.closed.iter().any(|w| w.class == CLASS_WRITING && w.id == "writing:correctwriting_en"));
+        must(
+            writing
+                .closed
+                .iter()
+                .any(|w| w.class == CLASS_WRITING && w.id == "writing:correctwriting_en"),
+        );
     }
 
     #[test]
     fn replay_and_kem_class_is_security() {
         let r = from_error("frame replay rejected: abc");
-        must(r.closed.iter().any(|w| w.id == "digest.replay" && w.class == CLASS_SECURITY));
+        must(
+            r.closed
+                .iter()
+                .any(|w| w.id == "digest.replay" && w.class == CLASS_SECURITY),
+        );
         let kem = from_error("decrypt failed: kem secret must be 64-byte seed");
-        must(kem.closed.iter().any(|w| w.id == "kem.open" && w.class == CLASS_SECURITY));
+        must(
+            kem.closed
+                .iter()
+                .any(|w| w.id == "kem.open" && w.class == CLASS_SECURITY),
+        );
         must(classify_wall("kem.open", "signature invalid") == CLASS_SECURITY);
     }
 
@@ -605,22 +689,43 @@ mod tests {
         let age = from_error("pulse capsule aged out");
         must(age.closed.iter().any(|w| w.class == CLASS_TEMPORAL));
         let fresh = from_error("frame stale: sent_at_unix=1 older than 300s");
-        must(fresh.closed.iter().any(|w| w.class == CLASS_TEMPORAL && w.id == "temporal:wire_freshness"));
+        must(
+            fresh
+                .closed
+                .iter()
+                .any(|w| w.class == CLASS_TEMPORAL && w.id == "temporal:wire_freshness"),
+        );
         let skew = from_error("frame clock skew: sent_at_unix=9 too far in future");
-        must(skew.closed.iter().any(|w| w.class == CLASS_TEMPORAL && w.id == "temporal:future_skew"));
+        must(
+            skew.closed
+                .iter()
+                .any(|w| w.class == CLASS_TEMPORAL && w.id == "temporal:future_skew"),
+        );
     }
 
     #[test]
     fn agent_permission_class_is_capability() {
         let r = from_error("Lattice required but ActionLattice is not initialised");
-        must(r.closed.iter().any(|w| w.id == "gap.agent_permission" && w.class == CLASS_CAPABILITY));
-        must(r.closed.iter().any(|w| w.id == "dag.membership" && w.class == CLASS_STRUCTURAL));
+        must(
+            r.closed
+                .iter()
+                .any(|w| w.id == "gap.agent_permission" && w.class == CLASS_CAPABILITY),
+        );
+        must(
+            r.closed
+                .iter()
+                .any(|w| w.id == "dag.membership" && w.class == CLASS_STRUCTURAL),
+        );
     }
 
     #[test]
     fn mutex_poison_class_is_poison() {
         let r = from_error("poisoned lock: db");
-        must(r.closed.iter().any(|w| w.id == "lock.poison" && w.class == CLASS_POISON));
+        must(
+            r.closed
+                .iter()
+                .any(|w| w.id == "lock.poison" && w.class == CLASS_POISON),
+        );
     }
 
     #[test]
@@ -660,4 +765,3 @@ mod tests {
         must(w.class != CLASS_SECURITY);
     }
 }
-

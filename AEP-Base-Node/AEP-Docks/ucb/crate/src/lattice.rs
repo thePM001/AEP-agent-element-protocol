@@ -117,16 +117,17 @@ impl LatticeRuntime {
             "trust_score": dock_wire_score,
             "signer_public_hex": hex,
         });
-        let mut payload = serde_json::to_string(&wire).map_err(|e| LatticeDeny::msg(e.to_string()))?;
+        let mut payload =
+            serde_json::to_string(&wire).map_err(|e| LatticeDeny::msg(e.to_string()))?;
         if !payload.ends_with('\n') {
             payload.push('\n');
         }
-        let mut stream = UnixStream::connect(socket_path)
-            .await
-            .map_err(|e| LatticeDeny::msg(format!(
+        let mut stream = UnixStream::connect(socket_path).await.map_err(|e| {
+            LatticeDeny::msg(format!(
                 "lattice socket not found: {} ({e})",
                 socket_path.display()
-            )))?;
+            ))
+        })?;
         timeout(dock_timeout(), async {
             stream
                 .write_all(payload.as_bytes())
@@ -151,7 +152,7 @@ impl LatticeRuntime {
                     return Err(LatticeDeny::from_dock(resp, "enqueue is not Admit"));
                 };
                 let mut collect = serde_json::json!({ "collect": digest }).to_string();
-                if collect.ends_with('\n') == false {
+                if !collect.ends_with('\n') {
                     collect.push('\n');
                 }
                 reader
@@ -164,8 +165,11 @@ impl LatticeRuntime {
                     .read_line(&mut line)
                     .await
                     .map_err(|e| LatticeDeny::msg(e.to_string()))?;
-                resp = serde_json::from_str(line.trim()).map_err(|e| LatticeDeny::msg(e.to_string()))?;
-                if admit_pending(&resp) || (resp.ok && resp.deny.is_none() && resp.event_id.is_none()) {
+                resp = serde_json::from_str(line.trim())
+                    .map_err(|e| LatticeDeny::msg(e.to_string()))?;
+                if admit_pending(&resp)
+                    || (resp.ok && resp.deny.is_none() && resp.event_id.is_none())
+                {
                     tokio::time::sleep(Duration::from_millis(50)).await;
                 }
             }
@@ -215,14 +219,14 @@ pub fn admit_deny(resp: &DockResponse) -> bool {
     if resp.deny.is_some() {
         return true;
     }
-    resp.ok == false && admit_pending(resp) == false
+    !resp.ok && !admit_pending(resp)
 }
 
 fn collect_digest(resp: &DockResponse) -> Option<String> {
     resp.digest
         .as_ref()
         .map(|s| s.trim())
-        .filter(|s| s.is_empty() == false)
+        .filter(|s| !s.is_empty())
         .map(|s| s.to_string())
 }
 
@@ -294,10 +298,7 @@ impl LatticeDeny {
 
     pub fn from_dock(resp: DockResponse, fallback: &str) -> Self {
         Self {
-            error: resp
-                .error
-                .clone()
-                .unwrap_or_else(|| String::from(fallback)),
+            error: resp.error.clone().unwrap_or_else(|| String::from(fallback)),
             deny: resp.deny,
             event_id: resp.event_id,
             digest: resp.digest,
@@ -373,8 +374,8 @@ mod tests {
             allow: None,
             pending: None,
         };
-        assert_eq!(admit_allow(&resp), false);
-        assert_eq!(admit_deny(&resp), false);
+        assert!(!admit_allow(&resp));
+        assert!(!admit_deny(&resp));
         assert_eq!(collect_digest(&resp).as_deref(), Some("abc"));
     }
 
@@ -390,7 +391,7 @@ mod tests {
             pending: None,
         };
         assert!(admit_allow(&resp));
-        assert_eq!(admit_deny(&resp), false);
+        assert!(!admit_deny(&resp));
     }
 
     #[test]
@@ -402,16 +403,17 @@ mod tests {
         )
         .expect("pending answer");
         assert!(admit_pending(&resp));
-        assert_eq!(admit_allow(&resp), false);
-        assert_eq!(admit_deny(&resp), false);
+        assert!(!admit_allow(&resp));
+        assert!(!admit_deny(&resp));
         assert_eq!(collect_digest(&resp).as_deref(), Some("abc"));
     }
 
     #[test]
     fn ok_false_without_pending_is_admit_deny() {
         let resp: DockResponse =
-            serde_json::from_str(r#"{"ok":false,"digest":"abc","error":"collect unknown digest"}"#).expect("deny answer");
-        assert_eq!(admit_pending(&resp), false);
+            serde_json::from_str(r#"{"ok":false,"digest":"abc","error":"collect unknown digest"}"#)
+                .expect("deny answer");
+        assert!(!admit_pending(&resp));
         assert!(admit_deny(&resp));
     }
 
@@ -426,7 +428,7 @@ mod tests {
             allow: None,
             pending: None,
         };
-        assert_eq!(admit_allow(&resp), false);
+        assert!(!admit_allow(&resp));
         assert!(admit_deny(&resp));
     }
 
@@ -449,7 +451,10 @@ mod tests {
             });
             let mut out = enqueue.to_string();
             out.push('\n');
-            writer.write_all(out.as_bytes()).await.expect("enqueue write");
+            writer
+                .write_all(out.as_bytes())
+                .await
+                .expect("enqueue write");
             line.clear();
             reader.read_line(&mut line).await.expect("collect line");
             assert!(line.contains("abc"), "{line}");
@@ -494,7 +499,10 @@ mod tests {
             let enqueue = serde_json::json!({"ok": true, "digest": "abc"});
             let mut out = enqueue.to_string();
             out.push(10 as char);
-            writer.write_all(out.as_bytes()).await.expect("enqueue write");
+            writer
+                .write_all(out.as_bytes())
+                .await
+                .expect("enqueue write");
             line.clear();
             reader.read_line(&mut line).await.expect("collect line");
             assert!(line.contains("abc"), "{line}");
@@ -511,7 +519,10 @@ mod tests {
             lattice_log_bin: PathBuf::from("aep-lattice-log"),
         };
         let frame = serde_json::json!({"kind": "fixture"});
-        let err = rt.send_frame(&sock, frame, crate::DOCK_WIRE_SCORE, Some("ab")).await.expect_err("admit deny");
+        let err = rt
+            .send_frame(&sock, frame, crate::DOCK_WIRE_SCORE, Some("ab"))
+            .await
+            .expect_err("admit deny");
         let resp = DockResponse {
             ok: false,
             event_id: err.event_id,
@@ -521,7 +532,7 @@ mod tests {
             allow: err.allow.clone(),
             pending: None,
         };
-        assert_eq!(admit_allow(&resp), false);
+        assert!(!admit_allow(&resp));
         assert!(admit_deny(&resp));
         assert!(err.deny.is_some());
         server.await.expect("fixture task");
@@ -544,7 +555,10 @@ mod tests {
         };
         let started = std::time::Instant::now();
         let frame = serde_json::json!({"kind": "fixture"});
-        let err = rt.send_frame(&sock, frame, crate::DOCK_WIRE_SCORE, Some("ab")).await.expect_err("silent dock");
+        let err = rt
+            .send_frame(&sock, frame, crate::DOCK_WIRE_SCORE, Some("ab"))
+            .await
+            .expect_err("silent dock");
         let elapsed = started.elapsed();
         assert_eq!(err.error, "lattice socket timeout");
         assert!(elapsed >= Duration::from_millis(4000), "{elapsed:?}");
@@ -563,8 +577,14 @@ mod tests {
             lattice_log_bin: PathBuf::from("aep-lattice-log"),
         };
         let frame = serde_json::json!({"kind": "fixture"});
-        let err = rt.send_frame(&sock, frame, crate::DOCK_WIRE_SCORE, Some("ab")).await.expect_err("missing dock");
-        assert!(err.error.contains("lattice socket not found"), "{}", err.error);
+        let err = rt
+            .send_frame(&sock, frame, crate::DOCK_WIRE_SCORE, Some("ab"))
+            .await
+            .expect_err("missing dock");
+        assert!(
+            err.error.contains("lattice socket not found"),
+            "{}",
+            err.error
+        );
     }
-
 }

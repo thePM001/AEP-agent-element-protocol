@@ -27,7 +27,10 @@ pub fn agentmesh_json(agent_id: &str) -> Value {
     m.insert(String::from("agent_id"), Value::String(b.agent_id));
     m.insert(String::from("spiffe_id"), Value::String(b.spiffe.spiffe_id));
     m.insert(String::from("did"), Value::String(b.did.id));
-    m.insert(String::from("mtls_fingerprint"), Value::String(b.mtls.cert_fingerprint));
+    m.insert(
+        String::from("mtls_fingerprint"),
+        Value::String(b.mtls.cert_fingerprint),
+    );
     Value::Object(m)
 }
 

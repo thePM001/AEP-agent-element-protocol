@@ -12,3 +12,6 @@ aep-base-node-pulse = { path = "../../../AEP-Components/base-node-pulse/crate" }
 aep-envelope = { path = "../../../AEP-Components/envelope/crate" }
 aep-lattice-crypto = { path = "../../../AEP-Components/lattice-crypto/crate" }
 serde_json = "1"
+
+[lints]
+workspace = true

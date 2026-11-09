@@ -17,13 +17,13 @@ import (
 )
 
 type dnsProxy struct {
-	handler            NetworkHandler
-	fds                *fdTracker
-	udpConn4           *net.UDPConn
-	udpConn6           *net.UDPConn
-	port4              int
-	port6              int
-	upstreamResolvers  []string // from /etc/resolv.conf, "ip:53" format
+	handler           NetworkHandler
+	fds               *fdTracker
+	udpConn4          *net.UDPConn
+	udpConn6          *net.UDPConn
+	port4             int
+	port6             int
+	upstreamResolvers []string // from /etc/resolv.conf, "ip:53" format
 }
 
 func newDNSProxy(handler NetworkHandler, fds *fdTracker) (*dnsProxy, error) {

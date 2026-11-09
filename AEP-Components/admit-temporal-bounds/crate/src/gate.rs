@@ -21,14 +21,17 @@ pub fn filter_folds_temporal(filter_source: &str) -> Result<String, String> {
     if body.is_empty() {
         return Err(String::from("filterCrossing not found"));
     }
-    if body.contains("compileTemporalWalls") == false {
-        return Err(String::from("filterCrossing does not compile temporal walls"));
+    if !body.contains("compileTemporalWalls") {
+        return Err(String::from(
+            "filterCrossing does not compile temporal walls",
+        ));
     }
     Ok(String::from("ok filterCrossing folds temporal bounds"))
 }
 
 pub fn default_filter_ts() -> PathBuf {
-    let here = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::from(".")));
+    let here =
+        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::from(".")));
     let candidates = [
         here.join("../../dynAEP/bridge/hyperlattice/HyperlatticeFilter.ts"),
         here.join("../../../AEP-agent-element-protocol/AEP-Components/dynAEP/bridge/hyperlattice/HyperlatticeFilter.ts"),
@@ -52,16 +55,19 @@ pub fn run_gate(filter: &Path) -> Result<i32, String> {
     skew.max_drift_ms = 50;
     skew.causal_parents.push(String::from("evt-parent"));
     skew.event_id = String::from("evt-child");
-    let extra = vec![AdmitWall::close("constraint:required_field:alpha", "alpha required")];
+    let extra = vec![AdmitWall::close(
+        "constraint:required_field:alpha",
+        "alpha required",
+    )];
     let admit = fold_temporal_into_admit(&skew, &extra);
     if admit.allow {
         return Err(String::from("expected closed walls"));
     }
     let ids: Vec<&str> = admit.closed.iter().map(|w| w.id.as_str()).collect();
-    if ids.contains(&WALL_TEMPORAL_DRIFT) == false {
+    if !ids.contains(&WALL_TEMPORAL_DRIFT) {
         return Err(String::from("clock skew wall missing"));
     }
-    if ids.contains(&WALL_TEMPORAL_CAUSAL_PARENT) == false {
+    if !ids.contains(&WALL_TEMPORAL_CAUSAL_PARENT) {
         return Err(String::from("causal parent wall missing"));
     }
     let mut soft = TemporalCompileInput::with_defaults();
@@ -72,10 +78,15 @@ pub fn run_gate(filter: &Path) -> Result<i32, String> {
     if warns.is_empty() {
         return Err(String::from("soft warn missing"));
     }
-    if fold_temporal_into_admit(&soft, &[]).allow == false {
+    if !fold_temporal_into_admit(&soft, &[]).allow {
         return Err(String::from("soft warn closed a wall"));
     }
-    println!("aep-admit-temporal-bounds ok proof={} closed={} warns={}", proof, admit.closed.len(), warns.len());
+    println!(
+        "aep-admit-temporal-bounds ok proof={} closed={} warns={}",
+        proof,
+        admit.closed.len(),
+        warns.len()
+    );
     Ok(0)
 }
 
@@ -86,15 +97,14 @@ mod tests {
     #[test]
     fn filter_source_folds_temporal() {
         let path = default_filter_ts();
-        if path.is_file() == false {
+        if !path.is_file() {
             return;
         }
         let src = fs::read_to_string(&path).unwrap_or_default();
         if src.is_empty() {
             return;
         }
-        assert_eq!(filter_folds_temporal(&src).is_ok(), true);
+        assert!(filter_folds_temporal(&src).is_ok());
         let _ = run_gate(&path).expect("run_gate");
     }
 }
-

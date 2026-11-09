@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 	dbpolicy "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
 	dbservice "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/service"
@@ -25,7 +26,6 @@ import (
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/composite"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/go-chi/chi/v5"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 

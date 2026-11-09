@@ -123,7 +123,7 @@ func TestFilter_Combined(t *testing.T) {
 		want      bool
 	}{
 		{"file_write", "file", true},
-		{"file_stat", "file", false},        // excluded by type
+		{"file_stat", "file", false}, // excluded by type
 		{"net_connect", "network", true},
 		{"process_start", "process", false}, // not in included categories
 	}

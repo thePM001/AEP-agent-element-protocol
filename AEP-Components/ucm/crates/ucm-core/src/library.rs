@@ -58,7 +58,11 @@ fn s(o: &J, k: &str) -> Result<String> {
 fn list(o: &J, k: &str) -> Vec<String> {
     o.get(k)
         .and_then(|x| x.as_array())
-        .map(|a| a.iter().filter_map(|x| x.as_str().map(|y| y.to_string())).collect())
+        .map(|a| {
+            a.iter()
+                .filter_map(|x| x.as_str().map(|y| y.to_string()))
+                .collect()
+        })
         .unwrap_or_default()
 }
 
@@ -77,9 +81,12 @@ impl Library {
     }
 
     pub fn from_json_text(text: &str) -> Result<Library> {
-        let v: J = serde_json::from_str(text).map_err(|e| UcmError::Form(format!("library is not JSON: {e}")))?;
+        let v: J = serde_json::from_str(text)
+            .map_err(|e| UcmError::Form(format!("library is not JSON: {e}")))?;
         if v.get("ucm").and_then(|x| x.as_str()) != Some(LIBRARY_SCHEMA) {
-            return Err(UcmError::Form(format!("library field ucm must be {LIBRARY_SCHEMA}")));
+            return Err(UcmError::Form(format!(
+                "library field ucm must be {LIBRARY_SCHEMA}"
+            )));
         }
         let digest = crate::canon::digest(&v)?;
         let mut lib = Library {
@@ -88,7 +95,12 @@ impl Library {
             constants: Vec::new(),
             formulas: Vec::new(),
         };
-        for c in v.get("constants").and_then(|x| x.as_array()).cloned().unwrap_or_default() {
+        for c in v
+            .get("constants")
+            .and_then(|x| x.as_array())
+            .cloned()
+            .unwrap_or_default()
+        {
             let unit = s(&c, "unit")?;
             let u = parse_unit(&unit)?;
             let value_text = s(&c, "value")?;
@@ -105,16 +117,26 @@ impl Library {
                 unit,
                 dim: u.dim,
                 exact: s(&c, "exact")? == "true",
-                uncertainty: c.get("uncertainty").and_then(|x| x.as_str()).map(|x| x.to_string()),
+                uncertainty: c
+                    .get("uncertainty")
+                    .and_then(|x| x.as_str())
+                    .map(|x| x.to_string()),
                 citation: s(&c, "citation")?,
             });
         }
         let mut formulas = Vec::new();
-        for f in v.get("formulas").and_then(|x| x.as_array()).cloned().unwrap_or_default() {
+        for f in v
+            .get("formulas")
+            .and_then(|x| x.as_array())
+            .cloned()
+            .unwrap_or_default()
+        {
             let id = s(&f, "id")?;
             let program_text = s(&f, "program")?;
-            let program = crate::parse::parse_program(&program_text).map_err(|e| UcmError::Form(format!("formula {id}: {e}")))?;
-            let (inputs, result_ty) = check_program(&program, &lib, true).map_err(|e| UcmError::Form(format!("formula {id}: {e}")))?;
+            let program = crate::parse::parse_program(&program_text)
+                .map_err(|e| UcmError::Form(format!("formula {id}: {e}")))?;
+            let (inputs, result_ty) = check_program(&program, &lib, true)
+                .map_err(|e| UcmError::Form(format!("formula {id}: {e}")))?;
             if formulas.iter().any(|x: &Formula| x.id == id) {
                 return Err(UcmError::Form(format!("formula {id} listed twice")));
             }
@@ -128,7 +150,11 @@ impl Library {
                 program,
                 input_types: inputs.into_iter().map(|(_, t)| t).collect(),
                 result_ty,
-                vectors: f.get("vectors").and_then(|x| x.as_array()).cloned().unwrap_or_default(),
+                vectors: f
+                    .get("vectors")
+                    .and_then(|x| x.as_array())
+                    .cloned()
+                    .unwrap_or_default(),
             });
         }
         lib.formulas = formulas;

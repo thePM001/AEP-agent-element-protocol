@@ -5,13 +5,13 @@
 //! - validate_agent covers missing / provisional / session mismatch.
 //! - Docking tests must install real manifests (no silent bypass).
 
+use crate::BaseNodeError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime};
 use tracing::warn;
-use crate::BaseNodeError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -202,7 +202,7 @@ impl ManifestRegistry {
         agent_id: &str,
         trust_score: Option<u16>,
         session_id: Option<&str>,
-    )-> Result<(), BaseNodeError> {
+    ) -> Result<(), BaseNodeError> {
         if !self.strict {
             // Non-strict only via ManifestRegistry::new(..., false) for isolated unit fixtures.
             // Production from_env() never sets strict=false.
@@ -210,26 +210,46 @@ impl ManifestRegistry {
         }
         let manifest = self
             .get(agent_id)
-            .ok_or_else(|| BaseNodeError::ManifestMissing { agent_id: agent_id.to_string() })?;
+            .ok_or_else(|| BaseNodeError::ManifestMissing {
+                agent_id: agent_id.to_string(),
+            })?;
 
         if manifest.provisional {
-            return Err(BaseNodeError::ManifestProvisional { agent_id: agent_id.to_string(), required: manifest.promotion_required.clone() });
+            return Err(BaseNodeError::ManifestProvisional {
+                agent_id: agent_id.to_string(),
+                required: manifest.promotion_required.clone(),
+            });
         }
 
         let _ = trust_score;
 
         // LOW: production strict mode requires session_id on manifests
-        if self.strict && manifest.session_id.as_deref().map(str::is_empty).unwrap_or(true) {
-            return Err(BaseNodeError::SessionMissing { agent_id: agent_id.to_string() });
+        if self.strict
+            && manifest
+                .session_id
+                .as_deref()
+                .map(str::is_empty)
+                .unwrap_or(true)
+        {
+            return Err(BaseNodeError::SessionMissing {
+                agent_id: agent_id.to_string(),
+            });
         }
         if let Some(bound) = manifest.session_id.as_deref() {
             match session_id {
                 Some(got) if got == bound => {}
                 Some(got) => {
-                    return Err(BaseNodeError::SessionMismatch { agent_id: agent_id.to_string(), got: got.to_string(), bound: bound.to_string() });
+                    return Err(BaseNodeError::SessionMismatch {
+                        agent_id: agent_id.to_string(),
+                        got: got.to_string(),
+                        bound: bound.to_string(),
+                    });
                 }
                 None => {
-                    return Err(BaseNodeError::SessionRequired { agent_id: agent_id.to_string(), bound: bound.to_string() });
+                    return Err(BaseNodeError::SessionRequired {
+                        agent_id: agent_id.to_string(),
+                        bound: bound.to_string(),
+                    });
                 }
             }
         }
@@ -327,7 +347,10 @@ mod tests {
         let err = reg
             .validate_agent("AG-SESS", Some(50), Some("sess-other"))
             .unwrap_err();
-        assert!(err.to_string().contains("session registration mismatch"), "{err}");
+        assert!(
+            err.to_string().contains("session registration mismatch"),
+            "{err}"
+        );
     }
 
     #[test]
@@ -339,7 +362,10 @@ mod tests {
         );
         let reg = ManifestRegistry::new(dir.path().to_path_buf(), true);
         let err = reg.validate_agent("AG-NEED", Some(50), None).unwrap_err();
-        assert!(err.to_string().contains("session registration required"), "{err}");
+        assert!(
+            err.to_string().contains("session registration required"),
+            "{err}"
+        );
     }
 
     #[test]

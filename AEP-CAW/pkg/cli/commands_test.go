@@ -12,16 +12,16 @@ import (
 
 // mockClient implements Client for testing.
 type mockClient struct {
-	sessions       []SessionInfo
-	sessionDetail  *SessionDetail
-	events         []Event
-	status         *Status
-	metrics        *Metrics
-	config         map[string]any
-	validationErr  error
-	testResults    *TestResults
-	policyDiff     *PolicyDiff
-	lintIssues     []LintIssue
+	sessions         []SessionInfo
+	sessionDetail    *SessionDetail
+	events           []Event
+	status           *Status
+	metrics          *Metrics
+	config           map[string]any
+	validationErr    error
+	testResults      *TestResults
+	policyDiff       *PolicyDiff
+	lintIssues       []LintIssue
 	simulationResult *SimulationResult
 }
 
@@ -99,8 +99,8 @@ func (m *mockClient) GetMetrics(ctx context.Context) (*Metrics, error) {
 		return m.metrics, nil
 	}
 	return &Metrics{
-		SessionsTotal:  100,
-		SessionsActive: 5,
+		SessionsTotal:   100,
+		SessionsActive:  5,
 		OperationsTotal: 10000,
 	}, nil
 }

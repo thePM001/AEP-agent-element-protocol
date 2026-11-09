@@ -11,7 +11,10 @@ pub struct PromotionResult {
     pub new_role: String,
 }
 
-pub fn promote_replica(registry: &mut NodesRegistryV2, from_node_id: &str) -> Result<PromotionResult> {
+pub fn promote_replica(
+    registry: &mut NodesRegistryV2,
+    from_node_id: &str,
+) -> Result<PromotionResult> {
     let candidate_idx = registry
         .nodes
         .iter()
@@ -40,7 +43,9 @@ pub fn promote_replica(registry: &mut NodesRegistryV2, from_node_id: &str) -> Re
         .ok_or_else(|| RegistryError::Invalid("no primary node in registry".into()))?;
 
     if primary_idx == candidate_idx {
-        return Err(RegistryError::Invalid("cannot promote primary over itself".into()));
+        return Err(RegistryError::Invalid(
+            "cannot promote primary over itself".into(),
+        ));
     }
 
     let demoted_node_id = registry.nodes[primary_idx].node_id.clone();
@@ -69,7 +74,10 @@ mod tests {
         NodeRecord {
             node_id: id.into(),
             role,
-            base_node_url: format!("http://127.0.0.1:780{}", if id.contains("edge") { 1 } else { 0 }),
+            base_node_url: format!(
+                "http://127.0.0.1:780{}",
+                if id.contains("edge") { 1 } else { 0 }
+            ),
             lattice_channel: format!("aep.node.{id}"),
             isolation_class: "operator".into(),
             agentstream_topology: AgentstreamTopology::AsFederated,

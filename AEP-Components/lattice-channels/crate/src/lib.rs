@@ -8,7 +8,8 @@ use aep_lattice_crypto::{
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use std::time::{Duration, Instant}; use thiserror::Error;
+use std::time::{Duration, Instant};
+use thiserror::Error;
 
 pub const CHANNEL_VERSION: &str = "2.9";
 
@@ -152,7 +153,7 @@ fn docking_port_label(docking_port: DockingPort) -> &'static str {
 }
 
 fn reject_pipe_in_id(id: &str, field: &'static str) -> Result<(), ChannelError> {
-    if id.as_bytes().iter().any(|b| *b == 0x7c) {
+    if id.as_bytes().contains(&0x7c) {
         return Err(ChannelError::PipeInId(field.to_string()));
     }
     Ok(())
@@ -323,7 +324,7 @@ mod tests {
         assert!(limiter.check("a").is_ok());
         assert!(limiter.would_allow("a"));
         assert!(limiter.check("a").is_ok());
-        assert_eq!(limiter.would_allow("a"), false);
+        assert!(!limiter.would_allow("a"));
         assert!(limiter.check("a").is_err());
         assert!(limiter.would_allow("b"));
     }
@@ -439,24 +440,10 @@ mod tests {
 
     #[test]
     fn length_prefix_is_unambiguous() {
-        let left = frame_header_binding(
-            "ab",
-            "c",
-            "s",
-            DockingPort::ValidationEngine,
-            "k",
-            1,
-        )
-        .unwrap();
-        let right = frame_header_binding(
-            "a",
-            "bc",
-            "s",
-            DockingPort::ValidationEngine,
-            "k",
-            1,
-        )
-        .unwrap();
+        let left =
+            frame_header_binding("ab", "c", "s", DockingPort::ValidationEngine, "k", 1).unwrap();
+        let right =
+            frame_header_binding("a", "bc", "s", DockingPort::ValidationEngine, "k", 1).unwrap();
         assert_ne!(left, right);
         assert!(left.starts_with(FRAME_BINDING_MAGIC));
         assert!(right.starts_with(FRAME_BINDING_MAGIC));
@@ -495,6 +482,9 @@ mod tests {
         let needle = b"aep-frame-v1";
         assert!(!b.windows(needle.len()).any(|w| w == needle));
         let ch_len = 4u32.to_be_bytes();
-        assert_eq!(&b[FRAME_BINDING_MAGIC.len()..FRAME_BINDING_MAGIC.len() + 4], &ch_len);
+        assert_eq!(
+            &b[FRAME_BINDING_MAGIC.len()..FRAME_BINDING_MAGIC.len() + 4],
+            &ch_len
+        );
     }
 }

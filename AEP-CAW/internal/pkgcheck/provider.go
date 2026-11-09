@@ -27,8 +27,8 @@ type LocalProvider interface {
 
 // CheckRequest describes what to check.
 type CheckRequest struct {
-	Ecosystem Ecosystem    `json:"ecosystem" yaml:"ecosystem"`
-	Packages  []PackageRef `json:"packages" yaml:"packages"`
+	Ecosystem Ecosystem         `json:"ecosystem" yaml:"ecosystem"`
+	Packages  []PackageRef      `json:"packages" yaml:"packages"`
 	Config    map[string]string `json:"config,omitempty" yaml:"config,omitempty"`
 }
 

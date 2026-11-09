@@ -37,10 +37,10 @@ type shadowInfo struct {
 // sliding window and burst tracking state. Shadow tool tracking (via
 // NotifyOverwrite) is always active regardless of activation state.
 type SessionAnalyzer struct {
-	mu        sync.Mutex
-	active    bool   // flipped by Activate()
-	sessionID string
-	cfg       config.CrossServerConfig
+	mu         sync.Mutex
+	active     bool // flipped by Activate()
+	sessionID  string
+	cfg        config.CrossServerConfig
 	classifier *ToolClassifier
 
 	// Sliding window -- only allocated on Activate()

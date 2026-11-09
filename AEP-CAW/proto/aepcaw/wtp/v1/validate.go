@@ -31,7 +31,8 @@ var ErrPayloadTooLarge = errors.New("wtp: payload too large")
 // label to internal/metrics' WTPInvalidFrameReason enum (Task 22a).
 //
 // Note: decompress_error and classifier_bypass are NOT ValidationReasons
-//  -  both are metrics-only (see internal/metrics): decompress_error is
+//   - both are metrics-only (see internal/metrics): decompress_error is
+//
 // emitted by streaming decompression downstream of the validator, and
 // classifier_bypass is emitted by the receiver-side defense-in-depth
 // errors.As-false guard and by the metrics-side invalid-label collapse.

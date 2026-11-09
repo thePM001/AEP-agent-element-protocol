@@ -17,18 +17,18 @@ type PrometheusCollector struct {
 	startedAt time.Time
 
 	// Session metrics
-	sessionsActive  atomic.Int64
-	sessionsCreated sync.Map // key: "state:tenant_id" -> *atomic.Uint64
+	sessionsActive   atomic.Int64
+	sessionsCreated  sync.Map // key: "state:tenant_id" -> *atomic.Uint64
 	sessionDurations []sessionDuration
 	sessionDurMu     sync.Mutex
 
 	// Operation metrics
-	operationsTotal   sync.Map // key: "type:decision" -> *atomic.Uint64
+	operationsTotal    sync.Map // key: "type:decision" -> *atomic.Uint64
 	operationLatencies []operationLatency
 	operationLatMu     sync.Mutex
 
 	// Approval metrics
-	approvalsPending   atomic.Int64
+	approvalsPending  atomic.Int64
 	approvalLatencies []time.Duration
 	approvalLatMu     sync.Mutex
 

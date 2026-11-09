@@ -152,12 +152,12 @@ var subtypeTable = map[Subtype]subtypeInfo{
 	SubtypeCopyToStdout: {"copy_to_stdout", GroupBulkExport},
 	SubtypeUnloadToS3:   {"unload_to_s3", GroupBulkExport},
 
-	SubtypeFunctionCallProtocol: {"function_call_protocol", GroupProcedural},
+	SubtypeFunctionCallProtocol:  {"function_call_protocol", GroupProcedural},
 	SubtypeEscalatedFunctionCall: {"escalated_function_call", GroupProcedural},
-	SubtypeCall:                 {"call", GroupProcedural},
-	SubtypeDo:                   {"do", GroupProcedural},
-	SubtypeAnonymousBlock:       {"anonymous_block", GroupProcedural},
-	SubtypeDoOrAnon:             {"do_or_anon", GroupProcedural},
+	SubtypeCall:                  {"call", GroupProcedural},
+	SubtypeDo:                    {"do", GroupProcedural},
+	SubtypeAnonymousBlock:        {"anonymous_block", GroupProcedural},
+	SubtypeDoOrAnon:              {"do_or_anon", GroupProcedural},
 
 	SubtypeCreateSubscription: {"create_subscription", GroupUnsafeIO},
 	SubtypeAlterSubscription:  {"alter_subscription", GroupUnsafeIO},

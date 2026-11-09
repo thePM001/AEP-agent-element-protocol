@@ -13,13 +13,16 @@ pub fn tzdb_version() -> &'static str {
 }
 
 pub fn parse_date(s: &str) -> Result<NaiveDate> {
-    NaiveDate::parse_from_str(s.trim(), "%Y-%m-%d").map_err(|_| UcmError::Input(format!("bad date {s}, expected YYYY-MM-DD")))
+    NaiveDate::parse_from_str(s.trim(), "%Y-%m-%d")
+        .map_err(|_| UcmError::Input(format!("bad date {s}, expected YYYY-MM-DD")))
 }
 
 pub fn date_from_ymd(y: i64, m: i64, d: i64) -> Result<NaiveDate> {
     let (y, m, d) = (i32::try_from(y), u32::try_from(m), u32::try_from(d));
     match (y, m, d) {
-        (Ok(y), Ok(m), Ok(d)) => NaiveDate::from_ymd_opt(y, m, d).ok_or_else(|| UcmError::Domain("no such date".into())),
+        (Ok(y), Ok(m), Ok(d)) => {
+            NaiveDate::from_ymd_opt(y, m, d).ok_or_else(|| UcmError::Domain("no such date".into()))
+        }
         _ => domain_err("date part out of range"),
     }
 }
@@ -30,8 +33,11 @@ pub fn days_from_epoch(d: &NaiveDate) -> i64 {
 }
 
 pub fn add_days(d: &NaiveDate, n: i64) -> Result<NaiveDate> {
-    d.checked_add_signed(chrono::Duration::try_days(n).ok_or_else(|| UcmError::Domain("day count out of range".into()))?)
-        .ok_or_else(|| UcmError::Domain("date out of range".into()))
+    d.checked_add_signed(
+        chrono::Duration::try_days(n)
+            .ok_or_else(|| UcmError::Domain("day count out of range".into()))?,
+    )
+    .ok_or_else(|| UcmError::Domain("date out of range".into()))
 }
 
 /// Add calendar months. A day past the end of the target month clamps to its last day.
@@ -64,8 +70,8 @@ fn secs_rat(dt: &DateTime<Utc>) -> Rat {
 
 /// Parse an RFC 3339 instant with an explicit offset, for example 2026-11-07T10:00:00Z.
 pub fn parse_instant_utc(s: &str) -> Result<Rat> {
-    let dt =
-        DateTime::parse_from_rfc3339(s.trim()).map_err(|_| UcmError::Input(format!("bad instant {s}, expected RFC 3339 with offset")))?;
+    let dt = DateTime::parse_from_rfc3339(s.trim())
+        .map_err(|_| UcmError::Input(format!("bad instant {s}, expected RFC 3339 with offset")))?;
     Ok(secs_rat(&dt.with_timezone(&Utc)))
 }
 
@@ -75,7 +81,11 @@ pub fn instant_in_zone(local: &str, zone: &str) -> Result<Rat> {
     let t = local.trim();
     let naive = NaiveDateTime::parse_from_str(t, "%Y-%m-%dT%H:%M:%S")
         .or_else(|_| NaiveDateTime::parse_from_str(t, "%Y-%m-%dT%H:%M"))
-        .map_err(|_| UcmError::Input(format!("bad local time {local}, expected YYYY-MM-DDTHH:MM[:SS]")))?;
+        .map_err(|_| {
+            UcmError::Input(format!(
+                "bad local time {local}, expected YYYY-MM-DDTHH:MM[:SS]"
+            ))
+        })?;
     match z.from_local_datetime(&naive) {
         LocalResult::Single(dt) => Ok(secs_rat(&dt.with_timezone(&Utc))),
         LocalResult::Ambiguous(..) => domain_err(format!("{local} is ambiguous in {zone}")),
@@ -86,7 +96,9 @@ pub fn instant_in_zone(local: &str, zone: &str) -> Result<Rat> {
 fn utc_of(secs: &Rat) -> Result<DateTime<Utc>> {
     let whole = secs.floor().to_integer();
     let frac = secs - Rat::from_integer(whole.clone());
-    let ns = (frac * Rat::from_integer(BigInt::from(1_000_000_000u64))).floor().to_integer();
+    let ns = (frac * Rat::from_integer(BigInt::from(1_000_000_000u64)))
+        .floor()
+        .to_integer();
     let (w, n) = (whole.to_i64(), ns.to_u32());
     match (w, n) {
         (Some(w), Some(n)) => Utc
@@ -102,7 +114,10 @@ pub fn local_date(secs: &Rat, zone: &str) -> Result<NaiveDate> {
 }
 
 pub fn local_text(secs: &Rat, zone: &str) -> Result<String> {
-    Ok(utc_of(secs)?.with_timezone(&tz(zone)?).format("%Y-%m-%dT%H:%M:%S%:z").to_string())
+    Ok(utc_of(secs)?
+        .with_timezone(&tz(zone)?)
+        .format("%Y-%m-%dT%H:%M:%S%:z")
+        .to_string())
 }
 
 pub fn render_instant(secs: &Rat) -> String {

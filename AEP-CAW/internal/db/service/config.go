@@ -48,8 +48,8 @@ var (
 		"cockroachdb":     true,
 	}
 	validTLSModes = map[string]bool{
-		"terminate_reissue":           true,
-		"passthrough":                 true,
+		"terminate_reissue":            true,
+		"passthrough":                  true,
 		"terminate_plaintext_upstream": true,
 	}
 	validListenKinds = map[string]bool{"unix": true, "tcp": true}

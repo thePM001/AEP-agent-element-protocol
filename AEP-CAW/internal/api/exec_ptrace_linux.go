@@ -74,7 +74,12 @@ func ptraceExecAttach(tracer any, pid int, sessionID, commandID string, keepStop
 		return ptraceExecResult{
 			exitCode:  code,
 			resources: resourcesFromRusage(status.Rusage),
-			err:       func() error { if status.Reason == ptrace.ExitTracerDown { return fmt.Errorf("tracer shut down") }; return nil }(),
+			err: func() error {
+				if status.Reason == ptrace.ExitTracerDown {
+					return fmt.Errorf("tracer shut down")
+				}
+				return nil
+			}(),
 		}
 	}
 

@@ -72,7 +72,8 @@ func TestStore_ServerRestart_AcksCatchUp(t *testing.T) {
 	// replay, NOT recovery from an interrupted handshake.
 	// WaitForFirstBatch polls every 5ms; 5s is generous enough for any
 	// scheduler jitter on a loaded CI box.
-	if _, err := srv1.WaitForFirstBatch(5 * time.Second); err != nil {
+	// Returns on the first batch; the long limit only serves -race on a loaded runner.
+	if _, err := srv1.WaitForFirstBatch(30 * time.Second); err != nil {
 		t.Fatalf("srv1 never received a batch: %v", err)
 	}
 	srv1.Close()

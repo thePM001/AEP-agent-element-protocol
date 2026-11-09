@@ -2,17 +2,17 @@
 
 use super::pulse::{settle_held, HeldCapsule};
 use super::{
-    attach_gateway_http_after_allow, deny_closed, deny_resp, deny_resp_report, dock_lock, lock_or_deny,
-    port_event_type, DockFrameResponse, DockingRuntime,
+    attach_gateway_http_after_allow, deny_closed, deny_resp, deny_resp_report, dock_lock,
+    lock_or_deny, port_event_type, DockFrameResponse, DockingRuntime,
 };
-use aep_lattice_channel::DockingPort;
-use aep_wall_set_backpressure::{CLASS_CAPABILITY, CLASS_SECURITY};
 use crate::dock_keys::decode_signer_public_hex;
 use crate::envelope_admit::admit_sealed_payload_report;
 use crate::{
     enforce_writing_value, record_channel_frame, record_side_channel_anomaly,
     value_has_writing_violations, BaseNodeError, SideChannelAnomalyKind,
 };
+use aep_lattice_channel::DockingPort;
+use aep_wall_set_backpressure::{CLASS_CAPABILITY, CLASS_SECURITY};
 use serde_json::Value;
 
 pub(crate) fn dock_port_name(port: &DockingPort) -> &'static str {
@@ -59,6 +59,8 @@ pub(crate) fn reject_side_channel(
 /// Bind dock verify key to the registered agent key only.
 /// Wire `signer_public_hex` is never trusted alone (CRITICAL: impersonation).
 /// If both registered and wire keys are present they must match; mismatch fails closed.
+// DockFrameResponse is the reply the node sends as is, so the deny path returns it unboxed.
+#[allow(clippy::result_large_err)]
 pub(crate) fn resolve_signer_public(
     runtime: &DockingRuntime,
     agent_id: &str,
@@ -70,10 +72,7 @@ pub(crate) fn resolve_signer_public(
             Err(resp) => return Err(resp),
         };
         let from_manifest = {
-            let manifests = match lock_or_deny(&runtime.admit.manifests, "manifests") {
-                Ok(g) => g,
-                Err(resp) => return Err(resp),
-            };
+            let manifests = lock_or_deny(&runtime.admit.manifests, "manifests")?;
             manifests
                 .signer_public_hex(agent_id)
                 .and_then(|hex_str| decode_signer_public_hex(&hex_str))
@@ -122,7 +121,10 @@ fn signer_public_keys_equal(a: &[u8], b: &[u8]) -> bool {
 }
 
 /// BM-07: derive trust only from signed plaintext; ignore unbound wire field.
-pub(crate) fn attested_trust_score(plaintext: &[u8], _wire_trust_score: Option<u16>) -> Option<u16> {
+pub(crate) fn attested_trust_score(
+    plaintext: &[u8],
+    _wire_trust_score: Option<u16>,
+) -> Option<u16> {
     let Ok(value) = serde_json::from_slice::<Value>(plaintext) else {
         return None;
     };
@@ -136,6 +138,8 @@ pub(crate) fn attested_trust_score(plaintext: &[u8], _wire_trust_score: Option<u
     Some(t as u16)
 }
 
+// DockFrameResponse is the reply the node sends as is, so the deny path returns it unboxed.
+#[allow(clippy::result_large_err)]
 pub(crate) fn resolve_agent_bundle(
     runtime: &DockingRuntime,
     agent_id: &str,
@@ -145,21 +149,12 @@ pub(crate) fn resolve_agent_bundle(
     let score = match trust_score {
         Some(s) => s,
         None => {
-            let map = match lock_or_deny(&runtime.keys.agent_trust, "agent_trust") {
-                Ok(g) => g,
-                Err(resp) => return Err(resp),
-            };
+            let map = lock_or_deny(&runtime.keys.agent_trust, "agent_trust")?;
             map.get(agent_id).copied().unwrap_or(0)
         }
     };
-    let mut bundles = match lock_or_deny(&runtime.keys.agent_bundles, "agent_bundles") {
-        Ok(g) => g,
-        Err(resp) => return Err(resp),
-    };
-    let mut trust_map = match lock_or_deny(&runtime.keys.agent_trust, "agent_trust") {
-        Ok(g) => g,
-        Err(resp) => return Err(resp),
-    };
+    let mut bundles = lock_or_deny(&runtime.keys.agent_bundles, "agent_bundles")?;
+    let mut trust_map = lock_or_deny(&runtime.keys.agent_trust, "agent_trust")?;
     trust_map.insert(agent_id.to_string(), score);
     let entry = bundles
         .entry(agent_id.to_string())
@@ -181,7 +176,11 @@ pub(crate) struct HeldGuard<'a> {
 
 impl<'a> HeldGuard<'a> {
     pub(crate) fn new(runtime: &'a DockingRuntime, digest: &'a str) -> Self {
-        Self { runtime, digest, settled: false }
+        Self {
+            runtime,
+            digest,
+            settled: false,
+        }
     }
 
     pub(crate) fn settle(&mut self, resp: DockFrameResponse) {
@@ -211,7 +210,10 @@ impl Drop for HeldGuard<'_> {
 /// The frame is copied out of the held map and remains there while Admit runs.
 /// The answer is recorded and the frame leaves the held map in the same pulse
 /// lock step, so a collect that arrives at any moment reads pending or the answer.
-pub(crate) fn apply_held_capsule(runtime: &DockingRuntime, cap: &aep_base_node_pulse::QueuedCapsule) {
+pub(crate) fn apply_held_capsule(
+    runtime: &DockingRuntime,
+    cap: &aep_base_node_pulse::QueuedCapsule,
+) {
     let held = match lock_or_deny(&runtime.record.pulse, "pulse") {
         Ok(pulse) => match pulse.held.get(&cap.digest) {
             Some(h) => h.clone(),
@@ -268,24 +270,23 @@ fn answer_held_capsule(
         },
         Err(_) => String::new(),
     };
-    if action.is_empty() == false {
-        if runtime.admit.hub.agent_may(&held.frame.agent_id, &action) == false {
-            return deny_closed(Some(cap.digest.clone()), String::from("hub permission denied"), "gap.agent_permission", CLASS_CAPABILITY);
-        }
+    if !action.is_empty() && !runtime.admit.hub.agent_may(&held.frame.agent_id, &action) {
+        return deny_closed(
+            Some(cap.digest.clone()),
+            String::from("hub permission denied"),
+            "gap.agent_permission",
+            CLASS_CAPABILITY,
+        );
     }
     if held.expected_port == DockingPort::RegulationModule {
-        match serde_json::from_slice::<Value>(&held.plaintext) {
-            Ok(value) => match value.get("action") {
-                Some(x) => match x.as_str() {
-                    Some("register_lrp") => match lock_or_deny(&runtime.admit.contracts, "contracts") {
-                        Ok(mut contracts) => contracts.register(&held.frame.contract_id),
-                        Err(_) => (),
-                    },
-                    _ => (),
-                },
-                None => (),
-            },
-            Err(_) => (),
+        if let Ok(value) = serde_json::from_slice::<Value>(&held.plaintext) {
+            if let Some(x) = value.get("action") {
+                if let Some("register_lrp") = x.as_str() {
+                    if let Ok(mut contracts) = lock_or_deny(&runtime.admit.contracts, "contracts") {
+                        contracts.register(&held.frame.contract_id)
+                    }
+                }
+            }
         }
     }
     let event_type = if held.expected_port == DockingPort::RegulationModule {
@@ -305,7 +306,7 @@ fn answer_held_capsule(
         http_queued: None,
     };
     attach_gateway_http_after_allow(&held.plaintext, &mut http_resp);
-    if http_resp.ok == false {
+    if !http_resp.ok {
         return http_resp;
     }
     let recorded = match lock_or_deny(&runtime.record.db, "db") {

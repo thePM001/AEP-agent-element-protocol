@@ -340,7 +340,6 @@ func (o *OIDCAuth) RoleForClaims(claims *OIDCClaims) string {
 	return "agent"
 }
 
-
 func (a *OIDCAuth) Issuer() string {
 	return a.issuer
 }

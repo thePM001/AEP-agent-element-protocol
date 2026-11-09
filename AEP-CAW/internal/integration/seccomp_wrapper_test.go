@@ -15,12 +15,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 func TestCreateSessionWithRetry_RetriesTransientTransportErrors(t *testing.T) {
@@ -545,7 +545,7 @@ func TestSeccompWrapperDisabled_WrapInitRefuses_WithPolicyLimits(t *testing.T) {
 	}
 }
 
-func buildSeccompBinaries(t *testing.T) (aep-caw, unixwrap string) {
+func buildSeccompBinaries(t *testing.T) (cawBin, unixwrap string) {
 	t.Helper()
 
 	tempDir := t.TempDir()

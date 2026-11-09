@@ -489,12 +489,12 @@ func NewBehaviorDetector(cfg BehaviorDetectorConfig) *BehaviorDetector {
 		netAccess:  make(map[int][]NetworkEvent),
 		window:     window,
 		llmDomains: map[string]bool{
-			"api.anthropic.com":    true,
-			"api.openai.com":       true,
+			"api.anthropic.com":                 true,
+			"api.openai.com":                    true,
 			"generativelanguage.googleapis.com": true,
-			"claude.ai":            true,
-			"chat.openai.com":      true,
-			"api.cohere.ai":        true,
+			"claude.ai":                         true,
+			"chat.openai.com":                   true,
+			"api.cohere.ai":                     true,
 		},
 	}
 }

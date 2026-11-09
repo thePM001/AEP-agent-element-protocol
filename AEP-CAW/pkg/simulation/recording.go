@@ -286,13 +286,13 @@ func LoadRecording(path string) ([]RecordedEvent, error) {
 
 // RecordingStats returns statistics about a recording.
 type RecordingStats struct {
-	EventCount    int                  `json:"event_count"`
-	Duration      time.Duration        `json:"duration"`
-	FirstEvent    time.Time            `json:"first_event"`
-	LastEvent     time.Time            `json:"last_event"`
-	EventsByType  map[string]int       `json:"events_by_type"`
-	DecisionCount map[string]int       `json:"decisions"`
-	SessionID     string               `json:"session_id,omitempty"`
+	EventCount    int            `json:"event_count"`
+	Duration      time.Duration  `json:"duration"`
+	FirstEvent    time.Time      `json:"first_event"`
+	LastEvent     time.Time      `json:"last_event"`
+	EventsByType  map[string]int `json:"events_by_type"`
+	DecisionCount map[string]int `json:"decisions"`
+	SessionID     string         `json:"session_id,omitempty"`
 }
 
 // GetRecordingStats returns statistics about a recording file.

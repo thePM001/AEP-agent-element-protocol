@@ -162,7 +162,11 @@ mod tests {
     fn admit_keeps_closed_wall_ids() {
         let report = DenyReport::from_error_and_closed(
             "Admit collect-all walls then Apply: missing action_path",
-            &[ClosedWall::with_class("action.path", "missing action_path", "structural")],
+            &[ClosedWall::with_class(
+                "action.path",
+                "missing action_path",
+                "structural",
+            )],
         );
         let err = BaseNodeError::from(report);
         assert!(err.to_string().contains("missing action_path"));

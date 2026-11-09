@@ -129,10 +129,10 @@ func TestRedshiftFirstKeyword_Unknown(t *testing.T) {
 		"WUT IS THIS",
 		"",
 		"   ",
-		"SELECT 1",                              // valid pg syntax - never reaches the fallback in practice, but it's not Redshift-specific so fallback returns false
-		"COPY events FROM 'localfile.csv'",      // not s3://
-		"COPY events TO 's3://bucket/key'",      // not FROM
-		"UNLOADX ('select 1') to 's3://x/y'",    // not exactly UNLOAD
+		"SELECT 1",                           // valid pg syntax - never reaches the fallback in practice, but it's not Redshift-specific so fallback returns false
+		"COPY events FROM 'localfile.csv'",   // not s3://
+		"COPY events TO 's3://bucket/key'",   // not FROM
+		"UNLOADX ('select 1') to 's3://x/y'", // not exactly UNLOAD
 	}
 	for _, sql := range cases {
 		if _, ok := redshiftFirstKeyword(sql, effects.ParserBackendLibPgQuery); ok {

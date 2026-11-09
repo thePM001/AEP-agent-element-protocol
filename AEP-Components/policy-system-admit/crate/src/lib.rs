@@ -3,7 +3,6 @@
 pub mod ucm_claims;
 
 use aep_admit::{admit_collect_all, AdmitResult, AdmitWall};
-use aep_gap_schema_profile_v13;
 use serde_json::Value;
 use std::fs;
 use std::io::Write;
@@ -112,7 +111,7 @@ fn value_string_list(v: &Value) -> Vec<String> {
         Value::String(s) => s
             .split(',')
             .map(|x| x.trim().to_string())
-            .filter(|x| x.is_empty() == false)
+            .filter(|x| !x.is_empty())
             .collect(),
         _ => Vec::new(),
     }
@@ -153,7 +152,7 @@ fn yaml_scalar(line: &str, key: &str) -> Option<String> {
     }
     let mut head = String::from(key);
     head.push(':');
-    let rest = t.strip_prefix(&head) ?;
+    let rest = t.strip_prefix(&head)?;
     let v = rest.trim().trim_matches('"').trim_matches('\'').trim();
     if v.is_empty() {
         return None;
@@ -162,7 +161,7 @@ fn yaml_scalar(line: &str, key: &str) -> Option<String> {
 }
 
 pub fn always_on_eval_stem(stem: &str) -> bool {
-    ALWAYS_ON_EVAL_STEMS.iter().any(|s| *s == stem)
+    ALWAYS_ON_EVAL_STEMS.contains(&stem)
 }
 
 pub fn action_path_matches_prefix(action_path: &str, prefix: &str) -> bool {
@@ -174,7 +173,7 @@ pub fn action_path_matches_prefix(action_path: &str, prefix: &str) -> bool {
     if a == p {
         return true;
     }
-    if a.starts_with(p) == false {
+    if !a.starts_with(p) {
         return false;
     }
     if p.ends_with(':') || p.ends_with('/') {
@@ -184,14 +183,19 @@ pub fn action_path_matches_prefix(action_path: &str, prefix: &str) -> bool {
     rest.starts_with(':') || rest.starts_with('/')
 }
 
-pub fn wrap_or_prefix_binds(gap_wrap: &str, gap_prefix: &str, node_wrap: &str, action_path: &str) -> bool {
+pub fn wrap_or_prefix_binds(
+    gap_wrap: &str,
+    gap_prefix: &str,
+    node_wrap: &str,
+    action_path: &str,
+) -> bool {
     let w = gap_wrap.trim();
     let nw = node_wrap.trim();
-    if w.is_empty() == false && w == nw {
+    if !w.is_empty() && w == nw {
         return true;
     }
     let pref = gap_prefix.trim();
-    if pref.is_empty() == false && action_path_matches_prefix(action_path, pref) {
+    if !pref.is_empty() && action_path_matches_prefix(action_path, pref) {
         return true;
     }
     false
@@ -219,7 +223,6 @@ fn item_binds(gap: &LoadedGap, item: &GapItem, input: &PolicySystemCompileInput)
     wrap_or_prefix_binds(wrap, prefix, &input.wrap, &input.action_path)
 }
 
-
 pub fn expr_slug(expr: &str) -> String {
     let cut = expr.split("==").next().unwrap_or(expr);
     let cut = cut.trim();
@@ -228,10 +231,11 @@ pub fn expr_slug(expr: &str) -> String {
     for c in cut.chars() {
         if c.is_ascii_alphanumeric() || c == '_' || c == '-' {
             s.push(c);
-        } else if (c == ' ' || c == ',' || c == '/' || c == '.') && s.is_empty() == false {
-            if s.ends_with('_') == false {
-                s.push('_');
-            }
+        } else if (c == ' ' || c == ',' || c == '/' || c == '.')
+            && !s.is_empty()
+            && !s.ends_with('_')
+        {
+            s.push('_');
         }
     }
     while s.ends_with('_') {
@@ -303,19 +307,6 @@ pub fn discover_policy_system_dir() -> Option<PathBuf> {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 fn stem_of(path: &Path) -> String {
     path.file_stem()
         .and_then(|s| s.to_str())
@@ -343,7 +334,7 @@ fn list_gap_files(dir: &Path) -> Vec<(String, PathBuf)> {
 }
 
 fn parse_json_gap(stem: &str, rel: &str, raw: &str) -> Result<LoadedGap, String> {
-    let v: Value = serde_json::from_str(raw).map_err(|e| e.to_string()) ?;
+    let v: Value = serde_json::from_str(raw).map_err(|e| e.to_string())?;
     let pattern = v.get("pattern").cloned().unwrap_or(Value::Null);
     let guard = pattern
         .get("guard")
@@ -399,7 +390,7 @@ fn parse_json_gap(stem: &str, rel: &str, raw: &str) -> Result<LoadedGap, String>
                 .and_then(|x| x.as_str())
                 .unwrap_or("")
                 .to_string();
-            if expr.is_empty() == false {
+            if !expr.is_empty() {
                 let item_wrap = inv
                     .get("wrap")
                     .and_then(|x| x.as_str())
@@ -472,7 +463,7 @@ fn parse_yaml_gap(stem: &str, rel: &str, raw: &str) -> LoadedGap {
         }
         if let Some(rest) = t.strip_prefix("- id:") {
             let expr = rest.trim().to_string();
-            if expr.is_empty() == false {
+            if !expr.is_empty() {
                 items.push(GapItem {
                     expr: expr.clone(),
                     description: expr,
@@ -482,7 +473,7 @@ fn parse_yaml_gap(stem: &str, rel: &str, raw: &str) -> LoadedGap {
             }
         }
     }
-    let raw_ok = items.is_empty() == false;
+    let raw_ok = !items.is_empty();
     LoadedGap {
         stem: stem.to_string(),
         rel_path: rel.to_string(),
@@ -585,7 +576,8 @@ fn has_email(text: &str) -> bool {
             }
             let mut r = i + 1;
             let mut dot = false;
-            while r < n && (chars[r].is_ascii_alphanumeric() || chars[r] == '.' || chars[r] == '-') {
+            while r < n && (chars[r].is_ascii_alphanumeric() || chars[r] == '.' || chars[r] == '-')
+            {
                 if chars[r] == '.' {
                     dot = true;
                 }
@@ -641,7 +633,7 @@ fn luhn_ok(digits: &[u8]) -> bool {
         sum += n;
         alt = !alt;
     }
-    sum % 10 == 0
+    sum.is_multiple_of(10)
 }
 
 fn has_credit_card(text: &str) -> bool {
@@ -657,7 +649,7 @@ fn has_credit_card(text: &str) -> bool {
                 if ch.is_ascii_digit() {
                     digits.push((ch as u8) - b'0');
                     j += 1;
-                } else if (ch == ' ' || ch == '-') && digits.is_empty() == false {
+                } else if (ch == ' ' || ch == '-') && !digits.is_empty() {
                     j += 1;
                 } else {
                     break;
@@ -725,7 +717,9 @@ fn has_secret(text: &str) -> bool {
     if text.contains(&join_parts(&["xo", "xb-"])) || text.contains(&join_parts(&["xo", "xp-"])) {
         return true;
     }
-    if text.contains(&join_parts(&["sk_", "live_"])) || text.contains(&join_parts(&["sk_", "test_"])) {
+    if text.contains(&join_parts(&["sk_", "live_"]))
+        || text.contains(&join_parts(&["sk_", "test_"]))
+    {
         return true;
     }
     let pw = join_parts(&["password", "="]);
@@ -809,9 +803,7 @@ fn has_submission_port(text: &str) -> bool {
 
 fn has_npm_registry(text: &str) -> bool {
     let low = text.to_ascii_lowercase();
-    low.contains("registry.npmjs")
-        || low.contains("npm install")
-        || low.contains("npm publish")
+    low.contains("registry.npmjs") || low.contains("npm install") || low.contains("npm publish")
 }
 
 fn plain_docking_wire(wire: &str) -> bool {
@@ -819,13 +811,16 @@ fn plain_docking_wire(wire: &str) -> bool {
     w == "ping" || w == "event" || w == "register_lrp" || w == "plain"
 }
 
-
 fn tool_name(event: &Value) -> String {
     for key in ["tool", "tool_name", "name", "action"] {
         if let Some(s) = event.get(key).and_then(|v| v.as_str()) {
             return s.to_string();
         }
-        if let Some(s) = event.get("payload").and_then(|pl| pl.get(key)).and_then(|v| v.as_str()) {
+        if let Some(s) = event
+            .get("payload")
+            .and_then(|pl| pl.get(key))
+            .and_then(|v| v.as_str())
+        {
             return s.to_string();
         }
     }
@@ -838,7 +833,11 @@ fn path_looks_source(event: &Value, text: &str) -> bool {
         if let Some(s) = event.get(key).and_then(|v| v.as_str()) {
             paths.push(s.to_string());
         }
-        if let Some(s) = event.get("payload").and_then(|pl| pl.get(key)).and_then(|v| v.as_str()) {
+        if let Some(s) = event
+            .get("payload")
+            .and_then(|pl| pl.get(key))
+            .and_then(|v| v.as_str())
+        {
             paths.push(s.to_string());
         }
     }
@@ -871,12 +870,15 @@ fn json_str(event: &Value, key: &str) -> Option<String> {
     if let Some(s) = event.get(key).and_then(|v| v.as_str()) {
         return Some(s.to_string());
     }
-    if let Some(s) = event.get("payload").and_then(|pl| pl.get(key)).and_then(|v| v.as_str()) {
+    if let Some(s) = event
+        .get("payload")
+        .and_then(|pl| pl.get(key))
+        .and_then(|v| v.as_str())
+    {
         return Some(s.to_string());
     }
     None
 }
-
 
 fn has_raw_ip(text: &str) -> bool {
     let chars: Vec<char> = text.chars().collect();
@@ -947,7 +949,7 @@ fn is_lrp(gap: &LoadedGap) -> bool {
     if gap.lrp_id.is_some() {
         return true;
     }
-    LRP_STEMS.iter().any(|s| *s == gap.stem.as_str())
+    LRP_STEMS.contains(&gap.stem.as_str())
 }
 
 fn lrp_enabled(gap: &LoadedGap, input: &PolicySystemCompileInput) -> bool {
@@ -971,11 +973,12 @@ fn writing_rule_closed(slug: &str, text: &str) -> bool {
     if slug == "min_brightness_f0f0f0" {
         return false;
     }
-    text.lines().any(|line| aep_admit::line_closes_rule(slug, line))
+    text.lines()
+        .any(|line| aep_admit::line_closes_rule(slug, line))
 }
 
 fn evaluate_closed(gap: &LoadedGap, item: &GapItem, input: &PolicySystemCompileInput) -> bool {
-    if guard_active(gap, input) == false {
+    if !guard_active(gap, input) {
         return false;
     }
     let slug = expr_slug(&item.expr);
@@ -1089,7 +1092,7 @@ fn wall_for(gap: &LoadedGap, item: &GapItem, closed: bool) -> AdmitWall {
         reason.push_str(&gap.rel_path);
         reason.push(' ');
         reason.push_str(&item.expr);
-        if item.description.is_empty() == false {
+        if !item.description.is_empty() {
             reason.push(' ');
             reason.push_str(&item.description);
         }
@@ -1099,13 +1102,12 @@ fn wall_for(gap: &LoadedGap, item: &GapItem, closed: bool) -> AdmitWall {
     }
 }
 
-
-fn empty_profile_wall() -> aep_gap_schema_profile_v13::AdmitWall {
- // the profile wall is the public AdmitWall row.
-    aep_gap_schema_profile_v13::AdmitWall::open("")
+fn empty_profile_wall() -> gap_schema_profile_v13::AdmitWall {
+    // the profile wall is the public AdmitWall row.
+    gap_schema_profile_v13::AdmitWall::open("")
 }
 
-fn closed_profile_wall(w: &aep_gap_schema_profile_v13::AdmitWall) -> Option<AdmitWall> {
+fn closed_profile_wall(w: &gap_schema_profile_v13::AdmitWall) -> Option<AdmitWall> {
     if w.closed {
         Some(AdmitWall::close(w.id.clone(), w.reason.clone()))
     } else {
@@ -1131,23 +1133,23 @@ pub fn compile_instruction_profile_walls(
     }
     let mut doc = Value::Null;
     let mut err = String::new();
-    aep_gap_schema_profile_v13::parse_gap_source(source, &mut doc, &mut err);
-    if err.is_empty() == false {
+    gap_schema_profile_v13::parse_gap_source(source, &mut doc, &mut err);
+    if !err.is_empty() {
         return walls;
     }
     let mut rank = empty_profile_wall();
-    aep_gap_schema_profile_v13::compile_leftover_rank_field_wall(&doc, &mut rank);
+    gap_schema_profile_v13::compile_leftover_rank_field_wall(&doc, &mut rank);
     if let Some(w) = closed_profile_wall(&rank) {
         walls.push(w);
     }
-    let req = aep_gap_schema_profile_v13::LiveAdmitRequest {
+    let req = gap_schema_profile_v13::LiveAdmitRequest {
         agent_id: input.agent_id.clone(),
         action: input.action.clone(),
         wrap: input.wrap.clone(),
         action_path: input.action_path.clone(),
     };
     let mut may = empty_profile_wall();
-    aep_gap_schema_profile_v13::compile_agent_permission_profile_wall(&doc, &req, &mut may);
+    gap_schema_profile_v13::compile_agent_permission_profile_wall(&doc, &req, &mut may);
     if let Some(w) = closed_profile_wall(&may) {
         walls.push(w);
     }
@@ -1159,22 +1161,28 @@ pub fn scan_policy_loader_compiles_profile(src: &str) -> Result<String, String> 
         "compile_instruction_profile_walls",
         "compile_leftover_rank_field_wall",
         "compile_agent_permission_profile_wall",
-        "aep_gap_schema_profile_v13",
+        "gap_schema_profile_v13",
     ] {
-        if src.contains(needle) == false {
+        if !src.contains(needle) {
             let mut msg = String::from("policy loader missing ");
             msg.push_str(needle);
             return Err(msg);
         }
     }
-    Ok(String::from("ok policy loader compiles leftover rank field and agent permission"))
+    Ok(String::from(
+        "ok policy loader compiles leftover rank field and agent permission",
+    ))
 }
 
 pub fn scan_workspace_includes_gap_profile(src: &str) -> Result<String, String> {
-    if src.contains("AEP-Components/gap-schema-profile-v13/crate") == false {
-        return Err(String::from("workspace members omit GAP v1.3 profile package"));
+    if !src.contains("AEP-Components/gap-schema-profile-v13/crate") {
+        return Err(String::from(
+            "workspace members omit GAP v1.3 profile package",
+        ));
     }
-    Ok(String::from("ok workspace members include the GAP v1.3 profile package"))
+    Ok(String::from(
+        "ok workspace members include the GAP v1.3 profile package",
+    ))
 }
 
 fn compile_loaded_gaps(gaps: &[LoadedGap], input: &PolicySystemCompileInput) -> Vec<AdmitWall> {
@@ -1190,8 +1198,8 @@ fn compile_loaded_gaps(gaps: &[LoadedGap], input: &PolicySystemCompileInput) -> 
         }
     }
     for gap in gaps {
-        if gap.raw_ok == false {
-            if ALWAYS_ON_STEMS.iter().any(|s| *s == gap.stem.as_str()) {
+        if !gap.raw_ok {
+            if ALWAYS_ON_STEMS.contains(&gap.stem.as_str()) {
                 continue;
             }
             if is_lrp(gap) && lrp_enabled(gap, input) {
@@ -1202,11 +1210,11 @@ fn compile_loaded_gaps(gaps: &[LoadedGap], input: &PolicySystemCompileInput) -> 
             }
             continue;
         }
-        if is_lrp(gap) && lrp_enabled(gap, input) == false {
+        if is_lrp(gap) && !lrp_enabled(gap, input) {
             continue;
         }
         for item in &gap.items {
-            if item_binds(gap, item, input) == false {
+            if !item_binds(gap, item, input) {
                 continue;
             }
             let closed = evaluate_closed(gap, item, input);
@@ -1217,7 +1225,10 @@ fn compile_loaded_gaps(gaps: &[LoadedGap], input: &PolicySystemCompileInput) -> 
             if always_on_eval_stem(&gap.stem) {
                 let mut kept = Vec::new();
                 for w in profile {
-                    if w.id.starts_with(aep_gap_schema_profile_v13::WALL_AGENT_PERMISSION) == false {
+                    if !w
+                        .id
+                        .starts_with(gap_schema_profile_v13::WALL_AGENT_PERMISSION)
+                    {
                         kept.push(w);
                     }
                 }
@@ -1254,7 +1265,7 @@ pub fn compile_policy_system_walls_from(
         ));
         return walls;
     };
-    if dir.is_dir() == false {
+    if !dir.is_dir() {
         walls.push(AdmitWall::close(
             WALL_SYSTEM_LOADED,
             "AEP-Policy-System directory missing",
@@ -1284,7 +1295,7 @@ pub fn fold_policy_system_into_admit(
 }
 
 fn compact(src: &str) -> String {
-    src.chars().filter(|c| c.is_whitespace() == false).collect()
+    src.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
 fn strip_line_comments(src: &str) -> String {
@@ -1307,21 +1318,23 @@ pub fn scan_kernel_loads_policy_system(src: &str) -> Result<String, String> {
         "compile_policy_system_walls",
         "aep-policy-system-admit",
     ] {
-        let n: String = needle.chars().filter(|c| c.is_whitespace() == false).collect();
-        if prod.contains(&n) == false && src.contains(needle) == false {
+        let n: String = needle.chars().filter(|c| !c.is_whitespace()).collect();
+        if !prod.contains(&n) && !src.contains(needle) {
             let mut msg = String::from("missing ");
             msg.push_str(needle);
             return Err(msg);
         }
     }
-    Ok(String::from("ok kernel loads AEP-Policy-System GAP as live Admit"))
+    Ok(String::from(
+        "ok kernel loads AEP-Policy-System GAP as live Admit",
+    ))
 }
 
 pub fn scan_readme_live_admit(src: &str) -> Result<String, String> {
-    if src.contains("Loaded as live Admit walls on the kernel collect-all pass") == false {
+    if !src.contains("Loaded as live Admit walls on the kernel collect-all pass") {
         return Err(String::from("README missing live Admit GAP lemma"));
     }
-    if src.contains("Live Admit GAP files") == false {
+    if !src.contains("Live Admit GAP files") {
         return Err(String::from("README missing Live Admit GAP files row"));
     }
     let join_meet = join_parts(&["join", "/", "meet"]);
@@ -1332,7 +1345,7 @@ pub fn scan_readme_live_admit(src: &str) -> Result<String, String> {
 }
 
 pub fn scan_setup_live_admit(src: &str) -> Result<String, String> {
-    if src.contains("live Admit") == false && src.contains("Live Admit") == false {
+    if !src.contains("live Admit") && !src.contains("Live Admit") {
         return Err(String::from("SETUP missing live Admit copy"));
     }
     let join_meet = join_parts(&["join", "/", "meet"]);
@@ -1343,7 +1356,7 @@ pub fn scan_setup_live_admit(src: &str) -> Result<String, String> {
 }
 
 fn read_src(path: &PathBuf, label: &str) -> Result<String, String> {
-    if path.is_file() == false {
+    if !path.is_file() {
         let mut msg = String::from("missing ");
         msg.push_str(label);
         msg.push_str(" source");
@@ -1364,54 +1377,31 @@ fn read_src(path: &PathBuf, label: &str) -> Result<String, String> {
     }
 }
 
-
-
 pub fn run_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
-    let dock_lib = match read_src(
+    let dock_lib = read_src(
         &root.join("AEP-Components/admit-live-dock/crate/src/lib.rs"),
         "live-dock lib",
-    ) {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
-    let dock_cargo = match read_src(
+    )?;
+    let dock_cargo = read_src(
         &root.join("AEP-Components/admit-live-dock/crate/Cargo.toml"),
         "live-dock cargo",
-    ) {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
-    let readme = match read_src(&root.join("README.md"), "README") {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
-    let setup = match read_src(&root.join("AEP-Policy-System/SETUP.md"), "SETUP") {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
-    let ref_readme = match read_src(
+    )?;
+    let readme = read_src(&root.join("README.md"), "README")?;
+    let setup = read_src(&root.join("AEP-Policy-System/SETUP.md"), "SETUP")?;
+    let ref_readme = read_src(
         &root.join("AEP-Policy-System/reference/README.md"),
         "policy reference README",
-    ) {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
+    )?;
     let mut blob = String::new();
     blob.push_str(&dock_lib);
     blob.push('\n');
     blob.push_str(&dock_cargo);
-    let ws = match read_src(&root.join("Cargo.toml"), "workspace cargo") {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
-    let policy_lib = match read_src(
+    let ws = read_src(&root.join("Cargo.toml"), "workspace cargo")?;
+    let policy_lib = read_src(
         &root.join("AEP-Components/policy-system-admit/crate/src/lib.rs"),
         "policy lib",
-    ) {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
+    )?;
     let p1 = scan_kernel_loads_policy_system(&blob);
     let p2 = scan_readme_live_admit(&readme);
     let p3 = scan_setup_live_admit(&setup);
@@ -1431,12 +1421,14 @@ pub fn run_gate() -> Result<i32, String> {
     }
     let input = PolicySystemCompileInput::default();
     let walls = compile_policy_system_walls(&input);
-    let loaded = walls.iter().any(|w| w.id == WALL_SYSTEM_LOADED && w.closed == false);
-    if loaded == false {
+    let loaded = walls
+        .iter()
+        .any(|w| w.id == WALL_SYSTEM_LOADED && !w.closed);
+    if !loaded {
         return Err(String::from("policy:system:loaded closed on workspace"));
     }
     let writing = walls.iter().any(|w| w.id.starts_with("policy:writing:"));
-    if writing == false {
+    if !writing {
         return Err(String::from("writing.gap did not compile into Admit walls"));
     }
     Ok(0)
@@ -1446,9 +1438,17 @@ pub mod discover_policy_system_dir {
     pub struct DiscoverPolicySystemDir {
         pub path: String,
     }
+    impl Default for DiscoverPolicySystemDir {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl DiscoverPolicySystemDir {
         pub fn new() -> Self {
-            Self { path: String::new() }
+            Self {
+                path: String::new(),
+            }
         }
         pub fn process(&mut self) -> anyhow::Result<()> {
             match super::discover_policy_system_dir() {
@@ -1466,6 +1466,12 @@ pub mod load_policy_system_gaps {
         pub dir: String,
         pub count: usize,
     }
+    impl Default for LoadPolicySystemGaps {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl LoadPolicySystemGaps {
         pub fn new() -> Self {
             Self {
@@ -1497,6 +1503,12 @@ pub mod compile_policy_system_walls {
         pub text: String,
         pub walls: Vec<AdmitWall>,
     }
+    impl Default for CompilePolicySystemWalls {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl CompilePolicySystemWalls {
         pub fn new() -> Self {
             Self {
@@ -1505,8 +1517,10 @@ pub mod compile_policy_system_walls {
             }
         }
         pub fn process(&mut self) -> anyhow::Result<()> {
-            let mut input = PolicySystemCompileInput::default();
-            input.text = self.text.clone();
+            let input = PolicySystemCompileInput {
+                text: self.text.clone(),
+                ..Default::default()
+            };
             self.walls = compile_policy_system_walls(&input);
             Ok(())
         }
@@ -1519,6 +1533,12 @@ pub mod fold_policy_system_into_admit {
         pub text: String,
         pub result: String,
     }
+    impl Default for FoldPolicySystemIntoAdmit {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl FoldPolicySystemIntoAdmit {
         pub fn new() -> Self {
             Self {
@@ -1527,8 +1547,10 @@ pub mod fold_policy_system_into_admit {
             }
         }
         pub fn process(&mut self) -> anyhow::Result<()> {
-            let mut input = PolicySystemCompileInput::default();
-            input.text = self.text.clone();
+            let input = PolicySystemCompileInput {
+                text: self.text.clone(),
+                ..Default::default()
+            };
             let r = fold_policy_system_into_admit(&input, &[]);
             if r.allow {
                 self.result = String::from("allow");
@@ -1545,6 +1567,12 @@ pub mod scan_kernel_loads_policy_system {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanKernelLoadsPolicySystem {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanKernelLoadsPolicySystem {
         pub fn new() -> Self {
             Self {
@@ -1562,7 +1590,6 @@ pub mod scan_kernel_loads_policy_system {
     }
 }
 
-
 #[path = "instruction_profile.rs"]
 pub mod compile_instruction_profile_walls;
 
@@ -1572,7 +1599,7 @@ mod tests {
     use std::path::Path;
 
     fn must(cond: bool) {
-        if cond == false {
+        if !cond {
             std::process::abort();
         }
     }
@@ -1669,7 +1696,7 @@ mod tests {
         );
         must(walls.iter().any(|w| w.id == WALL_SYSTEM_LOADED && w.closed));
         let r = admit_collect_all(&walls);
-        must(r.allow == false);
+        must(!r.allow);
     }
 
     #[test]
@@ -1677,8 +1704,10 @@ mod tests {
         let tmp = std::env::temp_dir().join("aep28-env-056-writing");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
-        let mut input = PolicySystemCompileInput::default();
-        input.text = em_sample();
+        let input = PolicySystemCompileInput {
+            text: em_sample(),
+            ..Default::default()
+        };
         let walls = compile_policy_system_walls_from(Some(&tmp), &input);
         let id = policy_wall_id("writing", "no_em_dashes");
         must(walls.iter().any(|w| w.id == id && w.closed));
@@ -1690,13 +1719,23 @@ mod tests {
         let tmp = std::env::temp_dir().join("aep28-env-056-oxford");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
-        let mut input = PolicySystemCompileInput::default();
-        input.text = oxford_sample();
+        let mut input = PolicySystemCompileInput {
+            text: oxford_sample(),
+            ..Default::default()
+        };
         input.text.push('\n');
         input.text.push_str(&double_hyphen_sample());
         let walls = compile_policy_system_walls_from(Some(&tmp), &input);
-        must(walls.iter().any(|w| w.id == policy_wall_id("writing", "no_oxford_comma") && w.closed));
-        must(walls.iter().any(|w| w.id == policy_wall_id("writing", "no_double_hyphen") && w.closed));
+        must(
+            walls
+                .iter()
+                .any(|w| w.id == policy_wall_id("writing", "no_oxford_comma") && w.closed),
+        );
+        must(
+            walls
+                .iter()
+                .any(|w| w.id == policy_wall_id("writing", "no_double_hyphen") && w.closed),
+        );
         let _ = std::fs::remove_dir_all(&tmp);
     }
 
@@ -1711,10 +1750,18 @@ mod tests {
         must(r.allow);
         must(walls.iter().any(|w| w.id.starts_with("policy:writing:")));
         must(walls.iter().any(|w| w.id.starts_with("policy:security:")));
-        must(walls.iter().any(|w| w.id.starts_with("policy:lattice-channel-mandatory:")));
-        must(walls.iter().any(|w| w.id == WALL_SYSTEM_LOADED && w.closed == false));
+        must(
+            walls
+                .iter()
+                .any(|w| w.id.starts_with("policy:lattice-channel-mandatory:")),
+        );
+        must(
+            walls
+                .iter()
+                .any(|w| w.id == WALL_SYSTEM_LOADED && !w.closed),
+        );
         let gdpr_present = walls.iter().any(|w| w.id.starts_with("policy:gdpr:"));
-        must(gdpr_present == false);
+        must(!gdpr_present);
         let _ = std::fs::remove_dir_all(&tmp);
     }
 
@@ -1729,12 +1776,14 @@ mod tests {
         let net_file = super::join_parts(&["reference/network-egress-no-", "smt", "p", ".gap"]);
         let wrapped = net_gap_with_wrap("finance");
         std::fs::write(tmp.join(&net_file), wrapped).expect("n");
-        let mut inventory = PolicySystemCompileInput::default();
-        inventory.text = super::join_parts(&["relay ", "smt", "p://mail.example.invalid"]);
-        inventory.action_path = String::from("inventory:ping");
-        inventory.wrap = String::from("inventory");
+        let inventory = PolicySystemCompileInput {
+            text: super::join_parts(&["relay ", "smt", "p://mail.example.invalid"]),
+            action_path: String::from("inventory:ping"),
+            wrap: String::from("inventory"),
+            ..Default::default()
+        };
         let walls = compile_policy_system_walls_from(Some(&tmp), &inventory);
-        must(walls.iter().any(|w| w.id == id && w.closed) == false);
+        must(!walls.iter().any(|w| w.id == id && w.closed));
         let mut finance = inventory.clone();
         finance.wrap = String::from("finance");
         finance.action_path = String::from("finance:pay");
@@ -1753,14 +1802,18 @@ mod tests {
             "wrap: lattice\nguard: true\nrules:\n  - id: lattice-channel-only-transport\n  - id: no-npm-registry-distribution\n",
         )
         .expect("l");
-        let mut input = PolicySystemCompileInput::default();
-        input.docking_wire = String::from("ping");
-        input.wrap = String::from("lattice");
-        input.action_path = String::from("lattice:ping");
+        let input = PolicySystemCompileInput {
+            docking_wire: String::from("ping"),
+            wrap: String::from("lattice"),
+            action_path: String::from("lattice:ping"),
+            ..Default::default()
+        };
         let walls = compile_policy_system_walls_from(Some(&tmp), &input);
         must(walls.iter().any(|w| {
-            w.id == policy_wall_id("lattice-channel-mandatory", "lattice-channel-only-transport")
-                && w.closed
+            w.id == policy_wall_id(
+                "lattice-channel-mandatory",
+                "lattice-channel-only-transport",
+            ) && w.closed
         }));
         let _ = std::fs::remove_dir_all(&tmp);
     }
@@ -1773,10 +1826,12 @@ mod tests {
         let input = PolicySystemCompileInput::default();
         let walls = compile_policy_system_walls_from(Some(&tmp), &input);
         let id = policy_wall_id("deployment", "human_approval_required == true");
-        must(walls.iter().any(|w| w.id == id) == false);
-        let mut deploy = PolicySystemCompileInput::default();
-        deploy.action_path = String::from("ops:deploy");
-        deploy.event_type = String::from("DEPLOY");
+        must(!walls.iter().any(|w| w.id == id));
+        let deploy = PolicySystemCompileInput {
+            action_path: String::from("ops:deploy"),
+            event_type: String::from("DEPLOY"),
+            ..Default::default()
+        };
         let closed = compile_policy_system_walls_from(Some(&tmp), &deploy);
         must(closed.iter().any(|w| w.id == id && w.closed));
         let mut approved = deploy.clone();
@@ -1786,7 +1841,7 @@ mod tests {
         outer.insert(String::from("payload"), Value::Object(inner));
         approved.event = Value::Object(outer);
         let open = compile_policy_system_walls_from(Some(&tmp), &approved);
-        must(open.iter().any(|w| w.id == id && w.closed == false));
+        must(open.iter().any(|w| w.id == id && !w.closed));
         let _ = std::fs::remove_dir_all(&tmp);
     }
 
@@ -1795,17 +1850,22 @@ mod tests {
         let tmp = std::env::temp_dir().join("aep28-env-056-lrp");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
-        let mut off = PolicySystemCompileInput::default();
-        off.text = String::from("user@example.invalid");
+        let off = PolicySystemCompileInput {
+            text: String::from("user@example.invalid"),
+            ..Default::default()
+        };
         let walls_off = compile_policy_system_walls_from(Some(&tmp), &off);
-        must(walls_off.iter().any(|w| w.id.starts_with("policy:gdpr:")) == false);
+        must(!walls_off.iter().any(|w| w.id.starts_with("policy:gdpr:")));
         let mut on = off.clone();
-        let mut ids = Vec::new();
-        ids.push(String::from("gdpr"));
+        let ids = vec![String::from("gdpr")];
         on.lrp_ids = ids;
         on.wrap = String::from("privacy");
         let walls_on = compile_policy_system_walls_from(Some(&tmp), &on);
-        must(walls_on.iter().any(|w| w.id.starts_with("policy:gdpr:") && w.closed));
+        must(
+            walls_on
+                .iter()
+                .any(|w| w.id.starts_with("policy:gdpr:") && w.closed),
+        );
         let _ = std::fs::remove_dir_all(&tmp);
     }
 
@@ -1814,10 +1874,16 @@ mod tests {
         let tmp = std::env::temp_dir().join("aep28-env-056-pii");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
-        let mut input = PolicySystemCompileInput::default();
-        input.text = String::from("user@example.invalid");
+        let input = PolicySystemCompileInput {
+            text: String::from("user@example.invalid"),
+            ..Default::default()
+        };
         let walls = compile_policy_system_walls_from(Some(&tmp), &input);
-        must(walls.iter().any(|w| w.id == policy_wall_id("security", "no_pii_detected") && w.closed));
+        must(
+            walls
+                .iter()
+                .any(|w| w.id == policy_wall_id("security", "no_pii_detected") && w.closed),
+        );
         let _ = std::fs::remove_dir_all(&tmp);
     }
 
@@ -1841,7 +1907,8 @@ mod tests {
             Err(e) => must(e.contains("README")),
             Ok(_) => std::process::abort(),
         }
-        let good = "Live Admit GAP files\nLoaded as live Admit walls on the kernel collect-all pass";
+        let good =
+            "Live Admit GAP files\nLoaded as live Admit walls on the kernel collect-all pass";
         match scan_readme_live_admit(good) {
             Ok(v) => must(v.contains("ok README")),
             Err(_) => std::process::abort(),
@@ -1853,7 +1920,11 @@ mod tests {
         if let Some(dir) = discover_policy_system_dir() {
             let input = PolicySystemCompileInput::default();
             let walls = compile_policy_system_walls_from(Some(&dir), &input);
-            must(walls.iter().any(|w| w.id == WALL_SYSTEM_LOADED && w.closed == false));
+            must(
+                walls
+                    .iter()
+                    .any(|w| w.id == WALL_SYSTEM_LOADED && !w.closed),
+            );
             must(walls.iter().any(|w| w.id.starts_with("policy:writing:")));
             must(walls.iter().any(|w| w.id.starts_with("policy:security:")));
             let r = admit_collect_all(&walls);
@@ -1876,15 +1947,25 @@ mod tests {
         let tmp = std::env::temp_dir().join("aep28-env-067-always-on");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
-        let mut input = PolicySystemCompileInput::default();
-        input.action_path = String::from("inventory:ping");
-        input.wrap = String::from("inventory");
-        input.text = em_sample();
+        let mut input = PolicySystemCompileInput {
+            action_path: String::from("inventory:ping"),
+            wrap: String::from("inventory"),
+            text: em_sample(),
+            ..Default::default()
+        };
         input.text.push('\n');
         input.text.push_str("user@example.invalid");
         let walls = compile_policy_system_walls_from(Some(&tmp), &input);
-        must(walls.iter().any(|w| w.id == policy_wall_id("writing", "no_em_dashes") && w.closed));
-        must(walls.iter().any(|w| w.id == policy_wall_id("security", "no_pii_detected") && w.closed));
+        must(
+            walls
+                .iter()
+                .any(|w| w.id == policy_wall_id("writing", "no_em_dashes") && w.closed),
+        );
+        must(
+            walls
+                .iter()
+                .any(|w| w.id == policy_wall_id("security", "no_pii_detected") && w.closed),
+        );
         let _ = std::fs::remove_dir_all(&tmp);
     }
 
@@ -1898,12 +1979,14 @@ mod tests {
         let id = policy_wall_id(&stem, &expr);
         let net_file = super::join_parts(&["reference/network-egress-no-", "smt", "p", ".gap"]);
         std::fs::write(tmp.join(&net_file), net_gap_with_wrap("finance")).expect("n");
-        let mut ping = PolicySystemCompileInput::default();
-        ping.text = super::join_parts(&["relay ", "smt", "p://mail.example.invalid"]);
-        ping.action_path = String::from("inventory:ping");
-        ping.wrap = String::from("inventory");
+        let ping = PolicySystemCompileInput {
+            text: super::join_parts(&["relay ", "smt", "p://mail.example.invalid"]),
+            action_path: String::from("inventory:ping"),
+            wrap: String::from("inventory"),
+            ..Default::default()
+        };
         let walls = compile_policy_system_walls_from(Some(&tmp), &ping);
-        must(walls.iter().any(|w| w.id == id && w.closed) == false);
+        must(!walls.iter().any(|w| w.id == id && w.closed));
         let mut pay = ping.clone();
         pay.wrap = String::from("finance");
         pay.action_path = String::from("finance:pay");
@@ -1917,20 +2000,22 @@ mod tests {
         let tmp = std::env::temp_dir().join("aep28-env-067-empty-wrap");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
-        let mut input = PolicySystemCompileInput::default();
-        input.action_path = String::from("root:ping");
-        input.text = super::join_parts(&["relay ", "smt", "p://mail.example.invalid"]);
+        let input = PolicySystemCompileInput {
+            action_path: String::from("root:ping"),
+            text: super::join_parts(&["relay ", "smt", "p://mail.example.invalid"]),
+            ..Default::default()
+        };
         let walls = compile_policy_system_walls_from(Some(&tmp), &input);
         let stem = super::join_parts(&["network-egress-no-", "smt", "p"]);
         let expr = super::join_parts(&["no_", "smt", "p_url_scheme"]);
         let id = policy_wall_id(&stem, &expr);
-        must(walls.iter().any(|w| w.id == id) == false);
-        must(
-            walls
-                .iter()
-                .any(|w| w.id == policy_wall_id("lattice-channel-mandatory", "lattice-channel-only-transport"))
-                == false,
-        );
+        must(!walls.iter().any(|w| w.id == id));
+        must(!walls.iter().any(|w| {
+            w.id == policy_wall_id(
+                "lattice-channel-mandatory",
+                "lattice-channel-only-transport",
+            )
+        }));
         must(walls.iter().any(|w| w.id.starts_with("policy:writing:")));
         must(walls.iter().any(|w| w.id.starts_with("policy:security:")));
         let _ = std::fs::remove_dir_all(&tmp);
@@ -1949,11 +2034,13 @@ mod tests {
         s.push_str(&expr);
         s.push_str("\", \"description\": \"no mta url\"}\n    ]\n  }\n}");
         std::fs::write(tmp.join(&net_file), s).expect("n");
-        let mut miss = PolicySystemCompileInput::default();
-        miss.text = super::join_parts(&["relay ", "smt", "p://mail.example.invalid"]);
-        miss.action_path = String::from("inventory:ping");
+        let miss = PolicySystemCompileInput {
+            text: super::join_parts(&["relay ", "smt", "p://mail.example.invalid"]),
+            action_path: String::from("inventory:ping"),
+            ..Default::default()
+        };
         let open = compile_policy_system_walls_from(Some(&tmp), &miss);
-        must(open.iter().any(|w| w.id == id && w.closed) == false);
+        must(!open.iter().any(|w| w.id == id && w.closed));
         let mut hit = miss.clone();
         hit.action_path = String::from("finance:pay");
         let closed = compile_policy_system_walls_from(Some(&tmp), &hit);

@@ -5,8 +5,13 @@
 
 #![forbid(unsafe_code)]
 
-use aep_lattice_crypto::{generate_sign_keypair, mldsa65_public_from_secret, mldsa65_sign_detached, mldsa65_verify_detached, SignKeypair};
-use aep_ucm_core::{canon, evaluate, input_digest, program_hash, Library, Limits, Outcome, Program};
+use aep_lattice_crypto::{
+    generate_sign_keypair, mldsa65_public_from_secret, mldsa65_sign_detached,
+    mldsa65_verify_detached, SignKeypair,
+};
+use aep_ucm_core::{
+    canon, evaluate, input_digest, program_hash, Library, Limits, Outcome, Program,
+};
 use serde_json::{json, Map, Value as J};
 use std::path::Path;
 use thiserror::Error;
@@ -62,7 +67,9 @@ pub struct NodeKey {
 
 impl std::fmt::Debug for NodeKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("NodeKey").field("node_id", &self.node_id).finish_non_exhaustive()
+        f.debug_struct("NodeKey")
+            .field("node_id", &self.node_id)
+            .finish_non_exhaustive()
     }
 }
 
@@ -85,18 +92,24 @@ impl NodeKey {
     }
 
     pub fn from_secret_hex(secret_hex: &str) -> Result<NodeKey> {
-        let secret = hex::decode(secret_hex.trim()).map_err(|_| ReceiptError::Key("secret is not hex".into()))?;
-        let public = mldsa65_public_from_secret(&secret).map_err(|e| ReceiptError::Key(e.to_string()))?;
+        let secret = hex::decode(secret_hex.trim())
+            .map_err(|_| ReceiptError::Key("secret is not hex".into()))?;
+        let public =
+            mldsa65_public_from_secret(&secret).map_err(|e| ReceiptError::Key(e.to_string()))?;
         Ok(Self::from_keypair(SignKeypair { public, secret }))
     }
 
     /// Load the key file. Create it with mode 0600 when it does not exist.
     pub fn load_or_create(path: &Path) -> Result<NodeKey> {
         if path.exists() {
-            let raw = std::fs::read_to_string(path).map_err(|e| ReceiptError::Key(format!("{}: {e}", path.display())))?;
-            let v: J = serde_json::from_str(&raw).map_err(|e| ReceiptError::Key(format!("key file is not JSON: {e}")))?;
+            let raw = std::fs::read_to_string(path)
+                .map_err(|e| ReceiptError::Key(format!("{}: {e}", path.display())))?;
+            let v: J = serde_json::from_str(&raw)
+                .map_err(|e| ReceiptError::Key(format!("key file is not JSON: {e}")))?;
             if v.get("ucm").and_then(|x| x.as_str()) != Some(KEY_SCHEMA) {
-                return Err(ReceiptError::Key(format!("key file field ucm must be {KEY_SCHEMA}")));
+                return Err(ReceiptError::Key(format!(
+                    "key file field ucm must be {KEY_SCHEMA}"
+                )));
             }
             let secret = v
                 .get("secret")
@@ -105,19 +118,25 @@ impl NodeKey {
             return Self::from_secret_hex(secret);
         }
         if let Some(dir) = path.parent() {
-            std::fs::create_dir_all(dir).map_err(|e| ReceiptError::Key(format!("{}: {e}", dir.display())))?;
+            std::fs::create_dir_all(dir)
+                .map_err(|e| ReceiptError::Key(format!("{}: {e}", dir.display())))?;
         }
         let k = Self::generate();
         let body = json!({ "ucm": KEY_SCHEMA, "node_id": k.node_id, "public": k.public_hex, "secret": hex::encode(&k.keypair.secret) });
-        write_private(path, &serde_json::to_string_pretty(&body).unwrap_or_default())?;
+        write_private(
+            path,
+            &serde_json::to_string_pretty(&body).unwrap_or_default(),
+        )?;
         let pub_path = path.with_extension("pub");
-        std::fs::write(&pub_path, format!("{}\n", k.public_hex)).map_err(|e| ReceiptError::Key(format!("{}: {e}", pub_path.display())))?;
+        std::fs::write(&pub_path, format!("{}\n", k.public_hex))
+            .map_err(|e| ReceiptError::Key(format!("{}: {e}", pub_path.display())))?;
         Ok(k)
     }
 
     fn sign(&self, msg: &[u8]) -> Result<String> {
         Ok(hex::encode(
-            mldsa65_sign_detached(msg, &self.keypair).map_err(|e| ReceiptError::Key(e.to_string()))?,
+            mldsa65_sign_detached(msg, &self.keypair)
+                .map_err(|e| ReceiptError::Key(e.to_string()))?,
         ))
     }
 }
@@ -132,7 +151,8 @@ fn write_private(path: &Path, text: &str) -> Result<()> {
         .mode(0o600)
         .open(path)
         .map_err(|e| ReceiptError::Key(format!("{}: {e}", path.display())))?;
-    f.write_all(text.as_bytes()).map_err(|e| ReceiptError::Key(e.to_string()))
+    f.write_all(text.as_bytes())
+        .map_err(|e| ReceiptError::Key(e.to_string()))
 }
 
 #[cfg(not(unix))]
@@ -159,7 +179,9 @@ impl ProgramSource {
         match s {
             "agent" => Ok(ProgramSource::Agent),
             "library" => Ok(ProgramSource::Library),
-            other => Err(ReceiptError::Form(format!("program_source must be agent or library, got {other}"))),
+            other => Err(ReceiptError::Form(format!(
+                "program_source must be agent or library, got {other}"
+            ))),
         }
     }
 }
@@ -177,13 +199,27 @@ fn body_of(r: &Map<String, J>) -> Map<String, J> {
 }
 
 /// Build and sign a receipt for an evaluation that already ran.
-pub fn issue(key: &NodeKey, program: &Program, inputs: &J, outcome: &Outcome, lib: &Library, source: ProgramSource) -> Result<J> {
+pub fn issue(
+    key: &NodeKey,
+    program: &Program,
+    inputs: &J,
+    outcome: &Outcome,
+    lib: &Library,
+    source: ProgramSource,
+) -> Result<J> {
     let result = outcome.result_json();
     let mut body = Map::new();
     body.insert("ucm".into(), J::String(RECEIPT_SCHEMA.into()));
     body.insert("program".into(), program.to_json());
     body.insert("program_hash".into(), J::String(program_hash(program)?));
-    body.insert("inputs".into(), if inputs.is_null() { json!({}) } else { inputs.clone() });
+    body.insert(
+        "inputs".into(),
+        if inputs.is_null() {
+            json!({})
+        } else {
+            inputs.clone()
+        },
+    );
     body.insert("input_digest".into(), J::String(input_digest(inputs)?));
     body.insert(
         "library_digests".into(),
@@ -193,7 +229,10 @@ pub fn issue(key: &NodeKey, program: &Program, inputs: &J, outcome: &Outcome, li
             Vec::new()
         }),
     );
-    body.insert("engine_build".into(), J::String(aep_ucm_core::engine_build()));
+    body.insert(
+        "engine_build".into(),
+        J::String(aep_ucm_core::engine_build()),
+    );
     body.insert("budget_limits".into(), outcome.limits.to_json());
     body.insert("budget_used".into(), outcome.budget_used.clone());
     body.insert("float_used".into(), bool_text(outcome.float_used));
@@ -257,7 +296,9 @@ pub fn verify_signature(receipt: &J, trusted_keys: &[String]) -> Result<Signatur
         .as_object()
         .ok_or_else(|| ReceiptError::Form("receipt must be an object".into()))?;
     if field(r, "ucm")? != RECEIPT_SCHEMA {
-        return Err(ReceiptError::Form(format!("field ucm must be {RECEIPT_SCHEMA}")));
+        return Err(ReceiptError::Form(format!(
+            "field ucm must be {RECEIPT_SCHEMA}"
+        )));
     }
     for k in r.keys() {
         if !FIELDS.contains(&k.as_str()) {
@@ -270,28 +311,52 @@ pub fn verify_signature(receipt: &J, trusted_keys: &[String]) -> Result<Signatur
     if receipt_id != format!("ucmr_{}", &id_digest[..32]) {
         return Err(ReceiptError::IdMismatch);
     }
-    let program = Program::from_json(r.get("program").ok_or_else(|| ReceiptError::Form("missing program".into()))?)?;
+    let program = Program::from_json(
+        r.get("program")
+            .ok_or_else(|| ReceiptError::Form("missing program".into()))?,
+    )?;
     if program_hash(&program)? != field(r, "program_hash")? {
-        return Err(ReceiptError::Form("program_hash does not match program".into()));
+        return Err(ReceiptError::Form(
+            "program_hash does not match program".into(),
+        ));
     }
-    if input_digest(r.get("inputs").ok_or_else(|| ReceiptError::Form("missing inputs".into()))?)? != field(r, "input_digest")? {
-        return Err(ReceiptError::Form("input_digest does not match inputs".into()));
+    if input_digest(
+        r.get("inputs")
+            .ok_or_else(|| ReceiptError::Form("missing inputs".into()))?,
+    )? != field(r, "input_digest")?
+    {
+        return Err(ReceiptError::Form(
+            "input_digest does not match inputs".into(),
+        ));
     }
-    if canon::digest(r.get("result").ok_or_else(|| ReceiptError::Form("missing result".into()))?)? != field(r, "result_digest")? {
-        return Err(ReceiptError::Form("result_digest does not match result".into()));
+    if canon::digest(
+        r.get("result")
+            .ok_or_else(|| ReceiptError::Form("missing result".into()))?,
+    )? != field(r, "result_digest")?
+    {
+        return Err(ReceiptError::Form(
+            "result_digest does not match result".into(),
+        ));
     }
     ProgramSource::parse(field(r, "program_source")?)?;
     let public_hex = field(r, "public_key")?;
     if node_id_for(public_hex) != field(r, "node_id")? {
-        return Err(ReceiptError::Form("node_id does not match public_key".into()));
+        return Err(ReceiptError::Form(
+            "node_id does not match public_key".into(),
+        ));
     }
-    let public = hex::decode(public_hex).map_err(|_| ReceiptError::Form("public_key is not hex".into()))?;
-    let sig = hex::decode(field(r, "signature")?).map_err(|_| ReceiptError::Form("signature is not hex".into()))?;
+    let public =
+        hex::decode(public_hex).map_err(|_| ReceiptError::Form("public_key is not hex".into()))?;
+    let sig = hex::decode(field(r, "signature")?)
+        .map_err(|_| ReceiptError::Form("signature is not hex".into()))?;
     let mut signed = body;
     signed.insert("receipt_id".into(), J::String(receipt_id.clone()));
     let msg = canon::canonical(&J::Object(signed))?;
-    mldsa65_verify_detached(msg.as_bytes(), &sig, &public).map_err(|_| ReceiptError::BadSignature)?;
-    let trusted = trusted_keys.iter().any(|k| k.trim().eq_ignore_ascii_case(public_hex));
+    mldsa65_verify_detached(msg.as_bytes(), &sig, &public)
+        .map_err(|_| ReceiptError::BadSignature)?;
+    let trusted = trusted_keys
+        .iter()
+        .any(|k| k.trim().eq_ignore_ascii_case(public_hex));
     Ok(SignatureCheck {
         receipt_id,
         node_id: field(r, "node_id")?.to_string(),
@@ -316,7 +381,11 @@ fn limits_from(v: &J) -> Result<Limits> {
 
 /// Check the signature, then run the program again on this engine and compare result digests.
 /// The replay refuses when this engine build differs from the one that issued the receipt.
-pub fn verify_replay(receipt: &J, trusted_keys: &[String], lib: &Library) -> Result<SignatureCheck> {
+pub fn verify_replay(
+    receipt: &J,
+    trusted_keys: &[String],
+    lib: &Library,
+) -> Result<SignatureCheck> {
     let check = verify_signature(receipt, trusted_keys)?;
     let r = receipt
         .as_object()
@@ -332,15 +401,21 @@ pub fn verify_replay(receipt: &J, trusted_keys: &[String], lib: &Library) -> Res
         .get("library_digests")
         .and_then(|x| x.as_array())
         .ok_or_else(|| ReceiptError::Form("library_digests".into()))?;
-    if digests.iter().any(|d| d.as_str() != Some(lib.digest.as_str())) {
-        return Err(ReceiptError::Replay("receipt used a different library".into()));
+    if digests
+        .iter()
+        .any(|d| d.as_str() != Some(lib.digest.as_str()))
+    {
+        return Err(ReceiptError::Replay(
+            "receipt used a different library".into(),
+        ));
     }
     let program = Program::from_json(&r["program"])?;
     // Wall time may differ between hosts, so the replay keeps the step, bit and length limits
     // and allows the ceiling for time.
     let mut limits = limits_from(&r["budget_limits"])?;
     limits.millis = Limits::CEILING.millis;
-    let outcome = evaluate(&program, &r["inputs"], limits, lib).map_err(|e| ReceiptError::Replay(e.to_string()))?;
+    let outcome = evaluate(&program, &r["inputs"], limits, lib)
+        .map_err(|e| ReceiptError::Replay(e.to_string()))?;
     if canon::digest(&outcome.result_json())? != field(r, "result_digest")? {
         return Err(ReceiptError::ResultMismatch);
     }
@@ -358,7 +433,11 @@ mod tests {
     use aep_ucm_core::load_program;
 
     fn sample(key: &NodeKey, lib: &Library) -> J {
-        let p = load_program(Some("input p: money[EUR];\nround(p * 1.081, 2, \"half_even\")"), None).expect("p");
+        let p = load_program(
+            Some("input p: money[EUR];\nround(p * 1.081, 2, \"half_even\")"),
+            None,
+        )
+        .expect("p");
         let inputs = json!({ "p": "19.90 EUR" });
         let o = evaluate(&p, &inputs, Limits::DEFAULT, lib).expect("eval");
         issue(key, &p, &inputs, &o, lib, ProgramSource::Agent).expect("issue")
@@ -398,7 +477,10 @@ mod tests {
         c["result_digest"] = J::String(canon::digest(&c["result"]).expect("d"));
         let id = canon::digest(&J::Object(body_of(c.as_object().expect("o")))).expect("d");
         c["receipt_id"] = J::String(format!("ucmr_{}", &id[..32]));
-        assert!(matches!(verify_signature(&c, &trusted), Err(ReceiptError::BadSignature)));
+        assert!(matches!(
+            verify_signature(&c, &trusted),
+            Err(ReceiptError::BadSignature)
+        ));
 
         // A receipt from another key verifies as a signature but is not trusted.
         let other = NodeKey::generate();

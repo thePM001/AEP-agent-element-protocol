@@ -9,7 +9,7 @@ use crate::dock_keys_store::AgentSignKeyStore;
 use crate::BaseNodeError;
 
 impl AgentSignKeyStore {
- /// Operator provision: the only mint path for agent sign keys.
+    /// Operator provision: the only mint path for agent sign keys.
     /// Idempotent when the agent already has a key unless AEP_AGENT_SIGN_KEYS_FORCE_REGEN=1.
     pub fn provision(&mut self, agent_id: &str) -> Result<SignKeypair, BaseNodeError> {
         Self::validate_agent_id(agent_id)?;
@@ -41,7 +41,10 @@ impl AgentSignKeyStore {
 }
 
 /// Operator CLI mint for `aep-base-node --provision-agent-sign-key`.
-pub fn provision_agent_sign_key(data_dir: &Path, agent_id: &str) -> Result<SignKeypair, BaseNodeError> {
+pub fn provision_agent_sign_key(
+    data_dir: &Path,
+    agent_id: &str,
+) -> Result<SignKeypair, BaseNodeError> {
     let mut store = AgentSignKeyStore::load(data_dir);
     let sign = store.provision(agent_id)?;
     store.flush()?;
@@ -50,7 +53,10 @@ pub fn provision_agent_sign_key(data_dir: &Path, agent_id: &str) -> Result<SignK
 
 /// First mint for the Data Dock server agent. A key that already exists is
 /// returned unchanged, so a second boot does not rotate it.
-pub fn first_mint_data_dock(store: &mut AgentSignKeyStore, agent_id: &str) -> Result<SignKeypair, BaseNodeError> {
+pub fn first_mint_data_dock(
+    store: &mut AgentSignKeyStore,
+    agent_id: &str,
+) -> Result<SignKeypair, BaseNodeError> {
     let sign = store.provision(agent_id)?;
     store.flush()?;
     Ok(sign)
@@ -146,7 +152,11 @@ mod tests {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let mode = fs::metadata(agent_sign_keys_path(dir.path())).expect("meta").permissions().mode() & 0o777;
+            let mode = fs::metadata(agent_sign_keys_path(dir.path()))
+                .expect("meta")
+                .permissions()
+                .mode()
+                & 0o777;
             assert_eq!(mode, 0o600);
         }
     }

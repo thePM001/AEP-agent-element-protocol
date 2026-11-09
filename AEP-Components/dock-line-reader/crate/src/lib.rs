@@ -92,7 +92,7 @@ fn strip_line_comments(src: &str) -> String {
 }
 
 fn compact(src: &str) -> String {
-    src.chars().filter(|c| c.is_whitespace() == false).collect()
+    src.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
 fn prod_src(src: &str) -> String {
@@ -190,7 +190,12 @@ fn walk_to_workspace() -> PathBuf {
     let mut i = 0usize;
     while i < 12 {
         let hangar = ["AEP", "Base", "Node"].join("-");
-        let probe = dir.join(&hangar).join("AEP-Crate").join("src").join("docking").join("mod.rs");
+        let probe = dir
+            .join(&hangar)
+            .join("AEP-Crate")
+            .join("src")
+            .join("docking")
+            .join("mod.rs");
         if probe.is_file() {
             return dir;
         }
@@ -204,7 +209,7 @@ fn walk_to_workspace() -> PathBuf {
 }
 
 fn read_src(path: &PathBuf, label: &str) -> Result<String, String> {
-    if path.is_file() == false {
+    if !path.is_file() {
         return Err(format!("missing {label} source"));
     }
     match fs::read_to_string(path) {
@@ -222,7 +227,9 @@ fn read_src(path: &PathBuf, label: &str) -> Result<String, String> {
 pub fn run_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
     let hangar = ["AEP", "Base", "Node"].join("-");
-    let self_lib = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src").join("lib.rs");
+    let self_lib = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("src")
+        .join("lib.rs");
     let dock_src = read_docking_module(&root.join(&hangar))?;
     let lib_src = read_src(&self_lib, "dock-line-reader lib")?;
     let proofs = [
@@ -250,6 +257,12 @@ pub mod read_line_limited {
         pub line: String,
     }
 
+    impl Default for ReadLineLimited {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ReadLineLimited {
         pub fn new() -> Self {
             Self {
@@ -260,10 +273,15 @@ pub mod read_line_limited {
 
         /// Read one dock line using fill_buf and consume. Cap at max_bytes. Do not await one byte.
         pub fn process(&mut self) -> anyhow::Result<()> {
-            let max = self.max_bytes.parse::<usize>().unwrap_or(super::MAX_LINE_BYTES);
+            let max = self
+                .max_bytes
+                .parse::<usize>()
+                .unwrap_or(super::MAX_LINE_BYTES);
             let data = b"ok-line\n";
             let mut cursor = tokio::io::BufReader::new(&data[..]);
-            let rt = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()?;
             match rt.block_on(super::read_line_limited(&mut cursor, max)) {
                 Ok(Some(l)) => self.line = l,
                 Ok(None) => self.line = String::from("none"),
@@ -279,6 +297,12 @@ pub mod scan_no_one_byte_await {
     pub struct ScanNoOneByteAwait {
         pub src: String,
         pub scan: String,
+    }
+
+    impl Default for ScanNoOneByteAwait {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl ScanNoOneByteAwait {
@@ -305,6 +329,12 @@ pub mod scan_fill_buf_consume {
     pub struct ScanFillBufConsume {
         pub src: String,
         pub scan: String,
+    }
+
+    impl Default for ScanFillBufConsume {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl ScanFillBufConsume {
@@ -335,7 +365,7 @@ mod tests {
     use tokio::io::ReadBuf;
 
     fn must(cond: bool) {
-        if cond == false {
+        if !cond {
             std::process::abort();
         }
     }

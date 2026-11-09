@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/pnacl"
 	"github.com/cilium/ebpf"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/pnacl"
 )
 
 // ConnectionHolder manages connections that are being held for approval decisions.

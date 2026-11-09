@@ -6,17 +6,17 @@ use super::serve::MAX_CONNECTIONS;
 use super::{
     deny_closed, deny_resp, dock_lock, lock_or_deny, pending_held_response, DockFrameResponse,
 };
-use aep_base_node_pulse::{freeze_temporal_snapshot, BeatRelease, PulseQueue, QueuedCapsule};
-use aep_lattice_channel::{DockingPort, LatticeChannelFrame, RateLimiter};
-use aep_agent_control_hub::{AgentControlHub, resolve_gap_root};
-use aep_wall_set_backpressure::CLASS_SECURITY;
-use aep_wall_set_backpressure::CLASS_TEMPORAL;
 use crate::dock_keys::{load_or_create_dock_kem, AgentSignKeyStore};
 use crate::envelope_admit::load_live_entry;
 use crate::{
-    docking_port_specs, record_side_channel_anomaly, DockingPortSpec, BaseNodeError, ReplayGuard,
+    docking_port_specs, record_side_channel_anomaly, BaseNodeError, DockingPortSpec, ReplayGuard,
     SideChannelAnomalyKind,
 };
+use aep_agent_control_hub::{resolve_gap_root, AgentControlHub};
+use aep_base_node_pulse::{freeze_temporal_snapshot, BeatRelease, PulseQueue, QueuedCapsule};
+use aep_lattice_channel::{DockingPort, LatticeChannelFrame, RateLimiter};
+use aep_wall_set_backpressure::CLASS_SECURITY;
+use aep_wall_set_backpressure::CLASS_TEMPORAL;
 use rusqlite::Connection;
 use std::collections::HashMap;
 use std::collections::VecDeque;
@@ -56,27 +56,29 @@ impl Default for PulseState {
         }
     }
 }
-    pub(crate) fn remember_applied(pulse: &mut PulseState, digest: String, resp: DockFrameResponse) {
-        while pulse.last_applied.len() >= 4096 {
-            let Some(old) = pulse.last_applied_order.pop_front() else {
-                break;
-            };
-            pulse.last_applied.remove(&old);
-            pulse.last_applied_at.remove(&old);
-        }
-        pulse.last_applied_at.insert(digest.clone(), crate::now_unix() as i64);
-        pulse.last_applied.insert(digest.clone(), resp);
-        pulse.last_applied_order.push_back(digest);
+pub(crate) fn remember_applied(pulse: &mut PulseState, digest: String, resp: DockFrameResponse) {
+    while pulse.last_applied.len() >= 4096 {
+        let Some(old) = pulse.last_applied_order.pop_front() else {
+            break;
+        };
+        pulse.last_applied.remove(&old);
+        pulse.last_applied_at.remove(&old);
     }
+    pulse
+        .last_applied_at
+        .insert(digest.clone(), crate::now_unix() as i64);
+    pulse.last_applied.insert(digest.clone(), resp);
+    pulse.last_applied_order.push_back(digest);
+}
 
-    /// Record the answer for a held digest and drop it from the held map in one step.
-    ///
-    /// A digest must sit in `held` or in `last_applied` at every instant that the
-    /// pulse lock is free, so a collect never finds it nowhere.
-    pub(crate) fn settle_held(pulse: &mut PulseState, digest: &str, resp: DockFrameResponse) {
-        pulse.held.remove(digest);
-        remember_applied(pulse, String::from(digest), resp);
-    }
+/// Record the answer for a held digest and drop it from the held map in one step.
+///
+/// A digest must sit in `held` or in `last_applied` at every instant that the
+/// pulse lock is free, so a collect never finds it nowhere.
+pub(crate) fn settle_held(pulse: &mut PulseState, digest: &str, resp: DockFrameResponse) {
+    pulse.held.remove(digest);
+    remember_applied(pulse, String::from(digest), resp);
+}
 
 pub struct DockingRuntime {
     pub io: crate::dock_parts::DockIo,
@@ -87,7 +89,11 @@ pub struct DockingRuntime {
 }
 
 impl DockingRuntime {
-    pub fn new(socket_base: impl Into<String>, conn: Connection, lrps: &[String]) -> Result<Self, BaseNodeError> {
+    pub fn new(
+        socket_base: impl Into<String>,
+        conn: Connection,
+        lrps: &[String],
+    ) -> Result<Self, BaseNodeError> {
         let data_dir = conn
             .path()
             .and_then(|p| Path::new(p).parent().map(Path::to_path_buf))
@@ -101,62 +107,62 @@ impl DockingRuntime {
         lrps: &[String],
         data_dir: &Path,
     ) -> Result<Self, BaseNodeError> {
-    let live_entry = load_live_entry(data_dir)?;
+        let live_entry = load_live_entry(data_dir)?;
         Ok(Self {
             io: crate::dock_parts::DockIo {
-            socket_base: socket_base.into(),
-            connection_limit: Arc::new(Semaphore::new(MAX_CONNECTIONS)),
-            stop: watch::channel(false).0,
-            inflight: Arc::new(Mutex::new(Vec::new())),
-            last_tls_handshake_err: Mutex::new(None),
-            drain_aborted_tasks: AtomicU64::new(0),
+                socket_base: socket_base.into(),
+                connection_limit: Arc::new(Semaphore::new(MAX_CONNECTIONS)),
+                stop: watch::channel(false).0,
+                inflight: Arc::new(Mutex::new(Vec::new())),
+                last_tls_handshake_err: Mutex::new(None),
+                drain_aborted_tasks: AtomicU64::new(0),
             },
             keys: crate::dock_parts::DockKeys {
-            dock_kem: Arc::new(load_or_create_dock_kem(data_dir)),
-            agent_sign_keys: Arc::new(Mutex::new(AgentSignKeyStore::load(data_dir))),
-            agent_bundles: Arc::new(Mutex::new(HashMap::new())),
-            agent_trust: Arc::new(Mutex::new(HashMap::new())),
+                dock_kem: Arc::new(load_or_create_dock_kem(data_dir)),
+                agent_sign_keys: Arc::new(Mutex::new(AgentSignKeyStore::load(data_dir))),
+                agent_bundles: Arc::new(Mutex::new(HashMap::new())),
+                agent_trust: Arc::new(Mutex::new(HashMap::new())),
             },
             defence: crate::dock_parts::DockDefence {
-            rate_limiter: Arc::new(Mutex::new(RateLimiter::new(
-                SIGNER_RATE_LIMIT,
-                Duration::from_secs(60),
-            ))),
-            global_rate_limiter: Arc::new(Mutex::new(RateLimiter::new(
-                GLOBAL_RATE_LIMIT,
-                Duration::from_secs(60),
-            ))),
-            replay_guard: Arc::new(Mutex::new(ReplayGuard::default())),
+                rate_limiter: Arc::new(Mutex::new(RateLimiter::new(
+                    SIGNER_RATE_LIMIT,
+                    Duration::from_secs(60),
+                ))),
+                global_rate_limiter: Arc::new(Mutex::new(RateLimiter::new(
+                    GLOBAL_RATE_LIMIT,
+                    Duration::from_secs(60),
+                ))),
+                replay_guard: Arc::new(Mutex::new(ReplayGuard::default())),
             },
             admit: crate::dock_parts::DockAdmit {
-            contracts: Arc::new(Mutex::new(crate::bootstrap_contracts_from_lrps(lrps))),
-            lrps: lrps.to_vec(),
-            manifests: {
-                let manifest_dir = std::env::var("AEP_TASK_MANIFEST_DIR")
-                    .map(std::path::PathBuf::from)
-                    .unwrap_or_else(|_| data_dir.join("ucb").join("manifests"));
-                let _ = std::fs::create_dir_all(&manifest_dir);
-                Arc::new(Mutex::new(crate::task_manifest::ManifestRegistry::new(
-                    manifest_dir,
-                    true,
-                )))
-            },
-            live_entry: Arc::new(Mutex::new(live_entry)),
-            hub: {
-                let loaded = match AgentControlHub::load_from_gap(&data_dir.join("gap")) {
-                    Ok(h) => h,
-                    Err(_) => match AgentControlHub::load_from_gap(&resolve_gap_root()) {
-                    Ok(h) => h,
-                    Err(e) => return Err(BaseNodeError::HubLoad(e.to_string())),
-            },
-                };
-                Arc::new(loaded)
-            },
+                contracts: Arc::new(Mutex::new(crate::bootstrap_contracts_from_lrps(lrps))),
+                lrps: lrps.to_vec(),
+                manifests: {
+                    let manifest_dir = std::env::var("AEP_TASK_MANIFEST_DIR")
+                        .map(std::path::PathBuf::from)
+                        .unwrap_or_else(|_| data_dir.join("ucb").join("manifests"));
+                    let _ = std::fs::create_dir_all(&manifest_dir);
+                    Arc::new(Mutex::new(crate::task_manifest::ManifestRegistry::new(
+                        manifest_dir,
+                        true,
+                    )))
+                },
+                live_entry: Arc::new(Mutex::new(live_entry)),
+                hub: {
+                    let loaded = match AgentControlHub::load_from_gap(&data_dir.join("gap")) {
+                        Ok(h) => h,
+                        Err(_) => match AgentControlHub::load_from_gap(&resolve_gap_root()) {
+                            Ok(h) => h,
+                            Err(e) => return Err(BaseNodeError::HubLoad(e.to_string())),
+                        },
+                    };
+                    Arc::new(loaded)
+                },
             },
             record: crate::dock_parts::DockRecord {
-            db: Arc::new(Mutex::new(conn)),
-            pulse: Arc::new(Mutex::new(PulseState::default())),
-            sqlite_closed: AtomicBool::new(false),
+                db: Arc::new(Mutex::new(conn)),
+                pulse: Arc::new(Mutex::new(PulseState::default())),
+                sqlite_closed: AtomicBool::new(false),
             },
         })
     }
@@ -249,6 +255,8 @@ fn sequence_from_plaintext(plaintext: &[u8]) -> i64 {
         .unwrap_or(0)
 }
 
+// DockFrameResponse is the reply the node sends as is, so the deny path returns it unboxed.
+#[allow(clippy::result_large_err)]
 pub(crate) fn pulse_now_ms(runtime: &DockingRuntime) -> Result<i64, DockFrameResponse> {
     let pulse = lock_or_deny(&runtime.record.pulse, "pulse")?;
     if let Some(ms) = pulse.clock_ms {
@@ -295,7 +303,10 @@ pub(crate) fn collect_applied(runtime: &DockingRuntime, digest: &str) -> DockFra
     let mut pulse = dock_lock!(&runtime.record.pulse, "pulse");
     if let Some(&at) = pulse.last_applied_at.get(digest) {
         if crate::now_unix() as i64 - at > 600 {
-            drop((pulse.last_applied.remove(digest), pulse.last_applied_at.remove(digest)))
+            drop((
+                pulse.last_applied.remove(digest),
+                pulse.last_applied_at.remove(digest),
+            ))
         }
     }
     if let Some(resp) = pulse.last_applied.get(digest) {
@@ -364,7 +375,12 @@ pub(crate) fn pulse_enqueue(
     {
         let db = dock_lock!(&runtime.record.db, "db");
         if let Err(e) = crate::persist_held_digest(&db, &digest, crate::now_unix() as i64) {
-            return deny_closed(Some(digest), format!("ledger unavailable: {e}"), "ledger.unavailable", "ledger.unavailable");
+            return deny_closed(
+                Some(digest),
+                format!("ledger unavailable: {e}"),
+                "ledger.unavailable",
+                "ledger.unavailable",
+            );
         }
     }
     DockFrameResponse {
@@ -413,7 +429,10 @@ pub fn pulse_beat(runtime: &DockingRuntime) -> BeatRelease {
 fn finish_aged(runtime: &DockingRuntime, cap: &QueuedCapsule) {
     let detail = String::from("pulse capsule aged out");
     if let Ok(mut pulse) = lock_or_deny(&runtime.record.pulse, "pulse") {
-        settle_held(&mut pulse, &cap.digest, deny_closed(
+        settle_held(
+            &mut pulse,
+            &cap.digest,
+            deny_closed(
                 Some(cap.digest.clone()),
                 detail.clone(),
                 "time.authority",

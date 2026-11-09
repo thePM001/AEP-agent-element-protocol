@@ -84,9 +84,9 @@ func restoreChainFromWAL(innerChain *audit.SinkChain, w *wal.WAL, opts Options) 
 	defer rdr.Close()
 
 	var (
-		replayed         int
+		replayed          int
 		lastSeenEventHash string
-		lastSeenGen      uint32
+		lastSeenGen       uint32
 	)
 	for {
 		rec, err := rdr.Next()

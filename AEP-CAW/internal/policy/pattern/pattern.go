@@ -47,10 +47,10 @@ func (t PatternType) String() string {
 
 // Pattern represents a compiled pattern for matching strings.
 type Pattern struct {
-	Raw     string      // Original pattern string
-	Type    PatternType // Type of pattern
+	Raw      string      // Original pattern string
+	Type     PatternType // Type of pattern
 	compiled interface{} // *regexp.Regexp or glob.Glob
-	class   string       // For class patterns, the class name without @
+	class    string      // For class patterns, the class name without @
 }
 
 // CompileOptions configures pattern compilation.

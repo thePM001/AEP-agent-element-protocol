@@ -186,7 +186,7 @@ func (v VerdictAction) String() string {
 
 // PackageVerdict holds the verdict for a single package.
 type PackageVerdict struct {
-	Package  PackageRef `json:"package" yaml:"package"`
+	Package  PackageRef    `json:"package" yaml:"package"`
 	Action   VerdictAction `json:"action" yaml:"action"`
 	Findings []Finding     `json:"findings,omitempty" yaml:"findings,omitempty"`
 }

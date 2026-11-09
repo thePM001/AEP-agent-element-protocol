@@ -17,3 +17,6 @@ aep-live-entry = { path = "../../live-entry/crate" }
 anyhow = "1"
 serde_json = "1"
 aep-policy-system-admit = { path = "../../policy-system-admit/crate" }
+
+[lints]
+workspace = true

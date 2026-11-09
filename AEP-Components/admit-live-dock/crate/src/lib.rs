@@ -4,18 +4,18 @@
 // Pass LatticeNode.wrap into policy-system compile.
 use aep_admit::{admit_collect_all, AdmitWall, LatticeCompileInput};
 use aep_admit_channel_order_walls::{
-    compile_channel_walls, compile_partial_order_walls, ChannelCompileInput, PartialOrderCompileInput,
+    compile_channel_walls, compile_partial_order_walls, ChannelCompileInput,
+    PartialOrderCompileInput,
 };
 use aep_admit_temporal_bounds::{compile_temporal_walls, TemporalCompileInput};
 use aep_admit_writing_walls::fold_writing_into_admit;
 use aep_envelope_walls::compile_live_lattice_walls;
-use aep_policy_system_admit::{compile_policy_system_walls, PolicySystemCompileInput};
 use aep_live_entry::LiveEntry;
+use aep_policy_system_admit::{compile_policy_system_walls, PolicySystemCompileInput};
 use serde_json::Value;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-
 
 pub const PRODUCT_WALL_CRATES: &[&str] = &[
     "aep-admit",
@@ -99,7 +99,7 @@ impl LiveDockContext {
 
 fn deny_prefix(reasons: &[String]) -> String {
     let mut s = String::from("Admit collect-all walls then Apply");
-    if reasons.is_empty() == false {
+    if !reasons.is_empty() {
         s.push_str(": ");
         s.push_str(&reasons.join("; "));
     }
@@ -182,20 +182,19 @@ pub fn compile_live_walls(
 
     let mut strings = Vec::new();
     // Signature material of trusted UCM receipts is not text. See ucm_claims::text_view.
-    collect_strings(&aep_policy_system_admit::ucm_claims::text_view(event), &mut strings);
+    collect_strings(
+        &aep_policy_system_admit::ucm_claims::text_view(event),
+        &mut strings,
+    );
     let writing_text = strings.join("\n");
     let writing_walls = aep_admit::compile_writing_walls(&writing_text);
     let folded = fold_writing_into_admit(&writing_text, &[]);
     let _ = aep_admit_writing_walls::writing_wall_id(aep_admit::RULE_NO_EM_DASHES);
 
     let mut walls: Vec<AdmitWall> = writing_walls;
-    if folded.allow == false {
+    if !folded.allow {
         for w in folded.closed {
-            if walls
-                .iter()
-                .any(|x| x.id == w.id && x.reason == w.reason)
-                == false
-            {
+            if !walls.iter().any(|x| x.id == w.id && x.reason == w.reason) {
                 walls.push(w);
             }
         }
@@ -220,34 +219,37 @@ pub fn compile_live_walls(
     temporal.agent_id = agent_id.clone();
     walls.extend(compile_temporal_walls(&temporal));
 
-    let mut lattice_in = LatticeCompileInput::default();
-    lattice_in.action_path = action_path;
-    lattice_in.category = category;
-    lattice_in.agent_id = agent_id;
-    lattice_in.agent_permission = agent_permission;
-    lattice_in.satisfied_actions = satisfied;
-    lattice_in.parents_of = parents.clone();
-    lattice_in.is_root = parents.is_empty();
-    lattice_in.all_actions = all_actions;
-    lattice_in.simultaneous_outputs = live.snapshot.simultaneous_outputs;
-    lattice_in.event_rate = live.snapshot.event_rate as f64;
-    lattice_in.payload_empty = payload_empty(event);
-    lattice_in.payload_repeated_violation = false;
+    let lattice_in = LatticeCompileInput {
+        action_path,
+        category,
+        agent_id,
+        agent_permission,
+        satisfied_actions: satisfied,
+        parents_of: parents.clone(),
+        is_root: parents.is_empty(),
+        all_actions,
+        simultaneous_outputs: live.snapshot.simultaneous_outputs,
+        event_rate: live.snapshot.event_rate as f64,
+        payload_empty: payload_empty(event),
+        payload_repeated_violation: false,
+    };
     walls.extend(compile_live_lattice_walls(&lattice_in));
-    let mut policy_in = PolicySystemCompileInput::default();
-    policy_in.text = writing_text;
-    policy_in.action_path = lattice_in.action_path.clone();
-    policy_in.docking_wire = dock.docking_wire.clone();
-    policy_in.docking_port = dock.docking_port.clone();
-    policy_in.event_type = event
-        .get("type")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
-    policy_in.wrap = wrap;
-    policy_in.agent_id = lattice_in.agent_id.clone();
-    policy_in.action = lattice_in.action_path.clone();
-    policy_in.event = event.clone();
+    let policy_in = PolicySystemCompileInput {
+        text: writing_text,
+        action_path: lattice_in.action_path.clone(),
+        docking_wire: dock.docking_wire.clone(),
+        docking_port: dock.docking_port.clone(),
+        event_type: event
+            .get("type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        wrap,
+        agent_id: lattice_in.agent_id.clone(),
+        action: lattice_in.action_path.clone(),
+        event: event.clone(),
+        ..Default::default()
+    };
     walls.extend(compile_policy_system_walls(&policy_in));
     walls
 }
@@ -282,7 +284,7 @@ fn quoted_strings(text: &str) -> Vec<String> {
             }
             if i <= bytes.len() && start <= i {
                 if let Ok(s) = std::str::from_utf8(&bytes[start..i]) {
-                    if s.is_empty() == false {
+                    if !s.is_empty() {
                         out.push(s.to_string());
                     }
                 }
@@ -329,7 +331,7 @@ fn dep_names(cargo: &str) -> Vec<String> {
             in_deps = false;
             continue;
         }
-        if in_deps == false || t.is_empty() || t.starts_with('#') {
+        if !in_deps || t.is_empty() || t.starts_with('#') {
             continue;
         }
         if let Some((k, _)) = t.split_once('=') {
@@ -394,13 +396,13 @@ fn classify_admit_package(name: &str) -> &'static str {
     if name == "aep-admit-live-dock" {
         return "live-dock";
     }
-    if PRODUCT_WALL_CRATES.iter().any(|c| *c == name) {
+    if PRODUCT_WALL_CRATES.contains(&name) {
         return "wall";
     }
-    if CI_ONLY_ADMIT_CRATES.iter().any(|c| *c == name) {
+    if CI_ONLY_ADMIT_CRATES.contains(&name) {
         return "ci-only";
     }
-    if DROPPED_WALL_CRATES.iter().any(|c| *c == name) {
+    if DROPPED_WALL_CRATES.contains(&name) {
         return "dropped";
     }
     "unknown"
@@ -447,21 +449,23 @@ fn strip_line_comments(src: &str) -> String {
 }
 
 fn compact_src(src: &str) -> String {
-    src.chars().filter(|c| c.is_whitespace() == false).collect()
+    src.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
 /// CI: envelope_admit is one Admit then Apply. Not live_collect_all beside process_event.
 pub fn scan_envelope_admit_one_live_evaluation(src: &str) -> Result<String, String> {
-    if src.contains("aep_admit_live_dock") == false {
+    if !src.contains("aep_admit_live_dock") {
         return Err(String::from("envelope_admit missing aep_admit_live_dock"));
     }
-    if src.contains("aep_one_live_evaluation") == false {
-        return Err(String::from("envelope_admit missing aep_one_live_evaluation"));
+    if !src.contains("aep_one_live_evaluation") {
+        return Err(String::from(
+            "envelope_admit missing aep_one_live_evaluation",
+        ));
     }
-    if src.contains("attach_live_walls") == false {
+    if !src.contains("attach_live_walls") {
         return Err(String::from("envelope_admit missing attach_live_walls"));
     }
-    if src.contains("process_event") == false {
+    if !src.contains("process_event") {
         return Err(String::from("envelope_admit missing process_event"));
     }
     let body = extract_after(src, "fn admit_sealed_payload_on_live_dock");
@@ -487,7 +491,7 @@ pub fn live_path_wall_gate(root: &Path) -> Result<String, String> {
     for rel in &members {
         let cargo = root.join(rel).join("Cargo.toml");
         let name = package_name(&read_text(&cargo));
-        if name.is_empty() == false {
+        if !name.is_empty() {
             member_names.push(name);
         }
     }
@@ -519,26 +523,26 @@ pub fn live_path_wall_gate(root: &Path) -> Result<String, String> {
     union.dedup();
 
     for wall in PRODUCT_WALL_CRATES {
-        if member_names.iter().any(|n| n == wall) == false {
+        if !member_names.iter().any(|n| n == wall) {
             let mut msg = String::from("product wall crate missing from workspace: ");
             msg.push_str(wall);
             return Err(msg);
         }
-        if set_has(&live_dock_deps, wall) == false {
+        if !set_has(&live_dock_deps, wall) {
             let mut msg = String::from("product wall crate not imported on live dock: ");
             msg.push_str(wall);
             return Err(msg);
         }
     }
     for live in LIVE_PATH_CRATES {
-        if set_has(&union, live) == false {
+        if !set_has(&union, live) {
             let mut msg = String::from("live-path crate missing from dock union: ");
             msg.push_str(live);
             return Err(msg);
         }
     }
     for name in &member_names {
-        if name.starts_with("aep-admit") == false && name != "aep-envelope-walls" {
+        if !name.starts_with("aep-admit") && name != "aep-envelope-walls" {
             continue;
         }
         match classify_admit_package(name) {
@@ -556,13 +560,15 @@ pub fn live_path_wall_gate(root: &Path) -> Result<String, String> {
         }
     }
     let admit_src = read_text(&root.join("AEP-Base-Node/AEP-Crate/src/envelope_admit.rs"));
-    scan_envelope_admit_one_live_evaluation(&admit_src) ?;
+    scan_envelope_admit_one_live_evaluation(&admit_src)?;
     let base_cargo = dep_names(&read_text(&root.join("AEP-Base-Node/AEP-Crate/Cargo.toml")));
-    if set_has(&base_cargo, "aep-admit-live-dock") == false {
+    if !set_has(&base_cargo, "aep-admit-live-dock") {
         return Err(String::from("aep-base-node missing aep-admit-live-dock"));
     }
-    if set_has(&base_cargo, "aep-one-live-evaluation") == false {
-        return Err(String::from("aep-base-node missing aep-one-live-evaluation"));
+    if !set_has(&base_cargo, "aep-one-live-evaluation") {
+        return Err(String::from(
+            "aep-base-node missing aep-one-live-evaluation",
+        ));
     }
     let mut proof = String::from("ok live-path=");
     proof.push_str(&LIVE_PATH_CRATES.join(","));
@@ -571,7 +577,7 @@ pub fn live_path_wall_gate(root: &Path) -> Result<String, String> {
 
 pub fn run_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
-    let proof = live_path_wall_gate(&root) ?;
+    let proof = live_path_wall_gate(&root)?;
     let mut line = String::from("aep-admit-live-dock ");
     line.push_str(&proof);
     line.push('\n');
@@ -587,6 +593,12 @@ pub mod live_collect_all {
     pub struct LiveCollectAll {
         pub event: String,
         pub result: String,
+    }
+
+    impl Default for LiveCollectAll {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl LiveCollectAll {
@@ -623,7 +635,7 @@ mod tests {
     }
 
     fn must(cond: bool) {
-        if cond == false {
+        if !cond {
             std::process::abort();
         }
     }
@@ -730,7 +742,8 @@ mod tests {
         let _ = fs::remove_dir_all(&tmp);
         fs::create_dir_all(tmp.join("AEP-Components/admit/crate")).expect("mkdir");
         fs::create_dir_all(tmp.join("AEP-Components/admit-writing-walls/crate")).expect("mkdir");
-        fs::create_dir_all(tmp.join("AEP-Components/admit-channel-order-walls/crate")).expect("mkdir");
+        fs::create_dir_all(tmp.join("AEP-Components/admit-channel-order-walls/crate"))
+            .expect("mkdir");
         fs::create_dir_all(tmp.join("AEP-Components/admit-temporal-bounds/crate")).expect("mkdir");
         fs::create_dir_all(tmp.join("AEP-Components/envelope-walls/crate")).expect("mkdir");
         fs::create_dir_all(tmp.join("AEP-Components/admit-live-dock/crate")).expect("mkdir");
@@ -813,7 +826,7 @@ mod tests {
             "timestamp": 1000000
         });
         let walls = compile_live_walls(&live, &event, &LiveDockContext::unit_open());
-        must(walls.is_empty() == false);
+        must(!walls.is_empty());
     }
 
     #[test]
@@ -826,19 +839,31 @@ mod tests {
         let walls = compile_live_walls(&live, &event, &LiveDockContext::unit_open());
         let mut saw = false;
         for w in &walls {
-            if w.id == "temporal:drift_exceeded" { saw = true; must(w.closed == false); }
-            if w.id == "temporal:stale_event" { must(w.closed == false); }
+            if w.id == "temporal:drift_exceeded" {
+                saw = true;
+                must(!w.closed);
+            }
+            if w.id == "temporal:stale_event" {
+                must(!w.closed);
+            }
         }
         must(saw);
-        let compact: String = include_str !("lib.rs").chars().filter(|c| c.is_whitespace() == false).collect();
+        let compact: String = include_str!("lib.rs")
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect();
         must(compact.contains("live.wall_bridge_ts_ms()"));
         let bad = ["letbridge=live.now_ms", "()"].concat();
-        must(compact.contains(&bad) == false);
+        must(!compact.contains(&bad));
         let mut live2 = LiveEntry::from_yaml(yaml()).expect("yaml");
         live2.set_clock_ms(1001000);
         let event2 = serde_json::json !({"type":"PING","action_path":"root:ping","payload":{"ok":true},"timestamp":1000000,"target_id":"scene-a","_sequenceNumber":1});
         let walls2 = compile_live_walls(&live2, &event2, &LiveDockContext::unit_open());
-        must(walls2.iter().any(|w| w.id == "temporal:drift_exceeded" && w.closed));
+        must(
+            walls2
+                .iter()
+                .any(|w| w.id == "temporal:drift_exceeded" && w.closed),
+        );
     }
 
     #[test]
@@ -861,9 +886,9 @@ mod tests {
 
     #[test]
     fn compile_live_walls_passes_agent_and_action_into_policy() {
-        let compact: String = include_str ! ("lib.rs")
+        let compact: String = include_str!("lib.rs")
             .chars()
-            .filter(|c| c.is_whitespace() == false)
+            .filter(|c| !c.is_whitespace())
             .collect();
         must(compact.contains("policy_in.agent_id=lattice_in.agent_id.clone()"));
         must(compact.contains("policy_in.action=lattice_in.action_path.clone()"));

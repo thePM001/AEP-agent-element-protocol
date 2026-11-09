@@ -768,10 +768,10 @@ func TestStore_RestartRestoresChainState_IgnoresTrailingLossMarker(t *testing.T)
 // TestStore_CloseGatesAppendEvent regresses roborev #5957 Medium #1:
 // once Close begins, new AppendEvent calls MUST be rejected so
 // transport drain is not polluted by late records. Sequencing:
-//   1. Start Store.
-//   2. Call Close (completes fully).
-//   3. Call AppendEvent - MUST return errStoreClosing, NOT land a
-//      record in the WAL.
+//  1. Start Store.
+//  2. Call Close (completes fully).
+//  3. Call AppendEvent - MUST return errStoreClosing, NOT land a
+//     record in the WAL.
 //
 // Appends that had already acquired appendMu before Close ran
 // complete normally (by design); that path is exercised implicitly

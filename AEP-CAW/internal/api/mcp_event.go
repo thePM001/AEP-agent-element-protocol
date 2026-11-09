@@ -3,9 +3,9 @@ package api
 import (
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/mcpinspect"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/google/uuid"
 )
 
 // mcpInterceptedToEvent converts an MCPToolCallInterceptedEvent from the LLM
@@ -21,13 +21,13 @@ func mcpInterceptedToEvent(ev mcpinspect.MCPToolCallInterceptedEvent) types.Even
 	rule := "mcp-" + ev.Action // "mcp-allow" or "mcp-block"
 
 	return types.Event{
-		ID:        uuid.NewString(),
-		Timestamp: ev.Timestamp,
-		Type:      "mcp_tool_call_intercepted",
-		SessionID: ev.SessionID,
-		Source:    "llm_proxy",
-		Path:      ev.ToolName,
-		Domain:    ev.ServerID,
+		ID:              uuid.NewString(),
+		Timestamp:       ev.Timestamp,
+		Type:            "mcp_tool_call_intercepted",
+		SessionID:       ev.SessionID,
+		Source:          "llm_proxy",
+		Path:            ev.ToolName,
+		Domain:          ev.ServerID,
 		EffectiveAction: ev.Action,
 		Policy: &types.PolicyInfo{
 			Decision:          decision,
@@ -36,16 +36,16 @@ func mcpInterceptedToEvent(ev mcpinspect.MCPToolCallInterceptedEvent) types.Even
 			Message:           ev.Reason,
 		},
 		Fields: map[string]any{
-			"request_id":  ev.RequestID,
-			"dialect":     ev.Dialect,
-			"tool_name":   ev.ToolName,
+			"request_id":   ev.RequestID,
+			"dialect":      ev.Dialect,
+			"tool_name":    ev.ToolName,
 			"tool_call_id": ev.ToolCallID,
-			"server_id":   ev.ServerID,
-			"server_type": ev.ServerType,
-			"server_addr": ev.ServerAddr,
-			"tool_hash":   ev.ToolHash,
-			"action":      ev.Action,
-			"reason":      ev.Reason,
+			"server_id":    ev.ServerID,
+			"server_type":  ev.ServerType,
+			"server_addr":  ev.ServerAddr,
+			"tool_hash":    ev.ToolHash,
+			"action":       ev.Action,
+			"reason":       ev.Reason,
 		},
 	}
 }

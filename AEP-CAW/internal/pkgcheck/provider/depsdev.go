@@ -15,15 +15,15 @@ import (
 )
 
 const (
-	defaultDepsDevBaseURL = "https://api.deps.dev"
-	defaultDepsDevTimeout = 30 * time.Second
+	defaultDepsDevBaseURL     = "https://api.deps.dev"
+	defaultDepsDevTimeout     = 30 * time.Second
 	defaultScorecardThreshold = 4.0
 )
 
 // DepsDevConfig configures the deps.dev provider.
 type DepsDevConfig struct {
-	BaseURL           string
-	Timeout           time.Duration
+	BaseURL            string
+	Timeout            time.Duration
 	ScorecardThreshold float64 // minimum acceptable OpenSSF Scorecard score (default 4.0)
 }
 
@@ -71,9 +71,9 @@ type depsDevVersionResponse struct {
 		Name    string `json:"name"`
 		Version string `json:"version"`
 	} `json:"versionKey"`
-	Licenses      []string `json:"licenses"`
-	PublishedAt   string   `json:"publishedAt,omitempty"`
-	ScorecardV2   *depsDevScorecard `json:"scorecardV2,omitempty"`
+	Licenses    []string          `json:"licenses"`
+	PublishedAt string            `json:"publishedAt,omitempty"`
+	ScorecardV2 *depsDevScorecard `json:"scorecardV2,omitempty"`
 }
 
 type depsDevScorecard struct {

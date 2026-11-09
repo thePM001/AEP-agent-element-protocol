@@ -840,4 +840,3 @@ func TestApprovalUIConfig_GetTimeout(t *testing.T) {
 		})
 	}
 }
-

@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/shim"
 	"github.com/spf13/cobra"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/shim"
 )
 
 func newShimCmd() *cobra.Command {

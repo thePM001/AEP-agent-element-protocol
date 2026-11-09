@@ -60,7 +60,7 @@ func cases() []sampleCase {
 			want:    VerbDeny,
 		},
 		{
-			name:    "CREATE SUBSCRIPTION - DANGEROUS rule fires",
+			name: "CREATE SUBSCRIPTION - DANGEROUS rule fires",
 			stmt: effects.ClassifiedStatement{Effects: []effects.Effect{
 				{Group: effects.GroupUnsafeIO, Subtype: effects.SubtypeCreateSubscription,
 					Objects: []effects.ObjectRef{

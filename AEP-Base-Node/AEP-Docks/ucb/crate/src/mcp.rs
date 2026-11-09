@@ -2,8 +2,8 @@
 
 use crate::bridge::{ingest_foreign_payload, rollback_foreign_integrations, UcbRuntime};
 use crate::delegate::{delegate_to_foreign_model, DelegateBody};
-use crate::ingress::ForeignIngestBody;
 use crate::http::health_snapshot;
+use crate::ingress::ForeignIngestBody;
 use serde_json::{json, Value};
 use std::sync::Arc;
 
@@ -157,8 +157,10 @@ fn parse_tool_args(params: &Value, required: bool) -> Result<Value, String> {
 }
 
 /// BM-04: shared validation with HTTP rollback (1..=100).
+// The unit error is the public contract of this check: callers only need out of range or not.
+#[allow(clippy::result_unit_err)]
 pub fn clamp_rollback_steps(raw: u64) -> Result<usize, ()> {
-    if raw < 1 || raw > 100 {
+    if !(1..=100).contains(&raw) {
         return Err(());
     }
     Ok(raw as usize)
@@ -254,7 +256,9 @@ fn tool_defs() -> Vec<Value> {
 
 #[cfg(test)]
 mod tests {
-    use super::{clamp_rollback_steps, parse_rollback_diff_ids, parse_tool_args, handle_mcp_request};
+    use super::{
+        clamp_rollback_steps, handle_mcp_request, parse_rollback_diff_ids, parse_tool_args,
+    };
     use serde_json::json;
 
     #[test]
@@ -290,7 +294,6 @@ mod tests {
         assert!(empty.as_object().unwrap().is_empty());
     }
 
-
     #[tokio::test]
     async fn mcp_ingest_malformed_arguments_are_jsonrpc_invalid_params() {
         let dir = tempfile::tempdir().unwrap();
@@ -315,7 +318,10 @@ mod tests {
             "params": { "name": "ucb_ingest", "arguments": "bad" }
         });
         let out = handle_mcp_request(&rt, body).await;
-        assert_eq!(out.get("error").and_then(|e| e.get("code")), Some(&json!(-32602)));
+        assert_eq!(
+            out.get("error").and_then(|e| e.get("code")),
+            Some(&json!(-32602))
+        );
         assert!(out.get("result").is_none());
         let missing = json!({
             "jsonrpc": "2.0",
@@ -324,7 +330,9 @@ mod tests {
             "params": { "name": "ucb_ingest" }
         });
         let out = handle_mcp_request(&rt, missing).await;
-        assert_eq!(out.get("error").and_then(|e| e.get("code")), Some(&json!(-32602)));
+        assert_eq!(
+            out.get("error").and_then(|e| e.get("code")),
+            Some(&json!(-32602))
+        );
     }
-
 }

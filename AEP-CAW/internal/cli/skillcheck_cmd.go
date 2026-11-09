@@ -1,9 +1,9 @@
 package cli
 
 import (
+	"github.com/spf13/cobra"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/skillcheck"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/skillcheck/provider"
-	"github.com/spf13/cobra"
 )
 
 // skillcheckConfig holds optional overrides for the skillcheck cobra layer,

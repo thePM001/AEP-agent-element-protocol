@@ -4,7 +4,8 @@
 // Prints allow= and closed=<id>|<reason> lines. Closed set is sorted.
 
 use aep_admit::{
-    admit_collect_all, compile_agent_permission_wall, compile_writing_walls, AdmitWall, AgentPermission,
+    admit_collect_all, compile_agent_permission_wall, compile_writing_walls, AdmitWall,
+    AgentPermission,
 };
 use std::io::{self, Read};
 
@@ -75,7 +76,7 @@ fn main() {
         }
         walls.extend(parse_line(line));
     }
-    if action.is_empty() == false {
+    if !action.is_empty() {
         walls.push(compile_agent_permission_wall(&agent_id, &action, &records));
     }
     let result = admit_collect_all(&walls);

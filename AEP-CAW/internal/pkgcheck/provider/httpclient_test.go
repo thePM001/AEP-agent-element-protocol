@@ -286,9 +286,9 @@ func TestRetryClient_CtxCancelOnFinalAttemptIsNotMaxAttempts(t *testing.T) {
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, srv2.URL, nil)
 
 	go func() {
-		<-srvHits         // first attempt landed at server
-		<-srvHits         // second (final) attempt landed; handler is blocked
-		cancel()          // ensure ctx is cancelled before final return reads ctx.Err()
+		<-srvHits          // first attempt landed at server
+		<-srvHits          // second (final) attempt landed; handler is blocked
+		cancel()           // ensure ctx is cancelled before final return reads ctx.Err()
 		close(secondReady) // unblock handler so client.Do returns 500
 	}()
 

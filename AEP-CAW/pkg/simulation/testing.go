@@ -56,11 +56,11 @@ type PolicyTestFile struct {
 
 // TestResults contains the results of running policy tests.
 type TestResults struct {
-	Passed  int            `json:"passed"`
-	Failed  int            `json:"failed"`
-	Skipped int            `json:"skipped"`
-	Total   int            `json:"total"`
-	Errors  []TestFailure  `json:"errors,omitempty"`
+	Passed  int           `json:"passed"`
+	Failed  int           `json:"failed"`
+	Skipped int           `json:"skipped"`
+	Total   int           `json:"total"`
+	Errors  []TestFailure `json:"errors,omitempty"`
 }
 
 // TestFailure describes a failed test.

@@ -436,7 +436,7 @@ const (
 //   - script is tokenized by tokenizeSimpleScript into an argv of
 //     narrow-allowlisted atoms. Unquoted bytes must be from
 //     [A-Za-z0-9_./-]; `'...'` spans accumulate literally; `"..."`
-//     spans accumulate iff they contain no `$`, `` ` ``, or `\`.
+//     spans accumulate iff they contain no `$`, “ ` “, or `\`.
 //     Anything else (metachars, globs, expansions, unterminated
 //     quotes) is opaque.
 //   - after stripping transparent wrappers, the first token is NOT a shell
@@ -670,7 +670,7 @@ func valueBytesAllowed(value string) bool {
 //     runs).
 //
 //   - `"..."`: double-quoted spans are safe ONLY when they contain no
-//     `$`, `` ` ``, or `\` - those bytes invoke parameter expansion,
+//     `$`, “ ` “, or `\` - those bytes invoke parameter expansion,
 //     command substitution, or C-style escapes whose expansions could
 //     resolve to anything. Anything else (spaces, metachars, `=`, `:`,
 //     `!`, etc.) is literal inside `"..."` and accumulates into the

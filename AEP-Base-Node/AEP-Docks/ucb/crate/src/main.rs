@@ -60,9 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = build_router(state);
     let addr = format!("{}:{}", config.listen_host, config.listen_port);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
-    eprintln!(
-        "AEP Universal Connect Bridge (UCB) listening on http://{addr} [rust]"
-    );
+    eprintln!("AEP Universal Connect Bridge (UCB) listening on http://{addr} [rust]");
     eprintln!("Secured dock: foreign ingress + internet egress only (no internal lattice attach)");
 
     axum::serve(listener, app).await?;

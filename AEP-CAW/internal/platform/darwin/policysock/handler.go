@@ -189,9 +189,9 @@ func (a *PolicyAdapter) BuildPolicySnapshot(sessionID string, clientVersion uint
 		RootPID:         rootPID,
 		SnapshotVersion: 1, // Will be replaced by SessionVersions counter in Task 4
 		FileRules:       fileRules,
-		NetworkRules:      networkRules,
-		DNSRules:          dnsRules,
-		Defaults:          &defaults,
+		NetworkRules:    networkRules,
+		DNSRules:        dnsRules,
+		Defaults:        &defaults,
 	}
 }
 

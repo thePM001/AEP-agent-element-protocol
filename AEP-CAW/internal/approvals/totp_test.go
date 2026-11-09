@@ -47,9 +47,9 @@ func TestValidateTOTPCode(t *testing.T) {
 	}
 
 	tests := []struct {
-		name   string
-		code   string
-		want   bool
+		name string
+		code string
+		want bool
 	}{
 		{"valid code", code, true},
 		{"invalid code", "000000", false},

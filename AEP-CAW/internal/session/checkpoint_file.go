@@ -47,10 +47,10 @@ type FileDiff struct {
 
 // FileCheckpointStorage provides persistent checkpoint storage with file backup.
 type FileCheckpointStorage struct {
-	mu         sync.RWMutex
-	baseDir    string
-	maxSizeMB  int   // Max size per checkpoint (0 = unlimited)
-	maxFileMB  int64 // Max individual file size (default 100MB)
+	mu        sync.RWMutex
+	baseDir   string
+	maxSizeMB int   // Max size per checkpoint (0 = unlimited)
+	maxFileMB int64 // Max individual file size (default 100MB)
 }
 
 // NewFileCheckpointStorage creates a new file-based checkpoint storage.

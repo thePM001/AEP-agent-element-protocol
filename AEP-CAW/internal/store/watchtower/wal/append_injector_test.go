@@ -131,7 +131,6 @@ func TestSetAppendInjector_NilReturnContinuesToRealAppend(t *testing.T) {
 	}
 }
 
-
 // TestSetAppendInjector_AmbiguousFailureLatchesFatal verifies the
 // injector's ambiguous path latches w.fatalErr identically to a real
 // I/O-ambiguous failure: subsequent Appends surface ErrFatal even

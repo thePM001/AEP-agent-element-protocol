@@ -1,8 +1,8 @@
 // Compile lattice-policy.rego into Admit walls. Stop live OPA on action_path.
 
 use aep_admit::{
-    admit_collect_all, compile_lattice_policy, default_rego_path,
-    load_policy_sets, prove_rego_source, AdmitWall, LatticeCompileInput, PolicySets,
+    admit_collect_all, compile_lattice_policy, default_rego_path, load_policy_sets,
+    prove_rego_source, AdmitWall, LatticeCompileInput, PolicySets,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -25,9 +25,7 @@ pub fn live_opa_absent(filter_source: &str) -> Result<String, String> {
             "filterCrossing still calls live OPA evaluate on action_path",
         ));
     }
-    if body.contains("compileLatticePolicy") == false
-        && body.contains("compileLatticeWalls") == false
-    {
+    if !body.contains("compileLatticePolicy") && !body.contains("compileLatticeWalls") {
         return Err(String::from(
             "filterCrossing does not compile lattice-policy walls",
         ));
@@ -36,9 +34,8 @@ pub fn live_opa_absent(filter_source: &str) -> Result<String, String> {
 }
 
 pub fn default_filter_ts() -> PathBuf {
-    let mut p = PathBuf::from(
-        std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::from(".")),
-    );
+    let mut p =
+        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::from(".")));
     p.push("../../dynAEP/bridge/hyperlattice/HyperlatticeFilter.ts");
     p
 }
@@ -55,20 +52,21 @@ pub fn run_gate(rego: &Path, filter: &Path) -> Result<i32, String> {
     };
     let absent = live_opa_absent(&filter_src)?;
     let sets = load_policy_sets(rego)?;
-    let mut input = LatticeCompileInput::default();
-    input.action_path = String::from("bogus:path");
-    input.category = String::from("agent_action");
+    let mut input = LatticeCompileInput {
+        action_path: String::from("bogus:path"),
+        category: String::from("agent_action"),
+        ..Default::default()
+    };
     input.all_actions.push(String::from("webhook:incoming"));
     let compiled = compile_lattice_policy(&input, &sets);
     let admit = admit_collect_all(&compiled.walls);
     if admit.allow {
         return Err(String::from("unknown path must close compiled walls"));
     }
-    if compiled
+    if !compiled
         .deny
         .iter()
         .any(|d| d.contains("Unknown action path"))
-        == false
     {
         return Err(String::from("former Rego unknown-path deny missing"));
     }
@@ -91,7 +89,7 @@ fn empty_policy_sets() -> PolicySets {
 
 fn load_live_policy_sets() -> PolicySets {
     if let Ok(p) = std::env::var("AEP_LATTICE_REGO") {
-        if p.is_empty() == false {
+        if !p.is_empty() {
             if let Ok(sets) = load_policy_sets(Path::new(&p)) {
                 return sets;
             }
@@ -100,7 +98,8 @@ fn load_live_policy_sets() -> PolicySets {
     if let Ok(sets) = load_policy_sets(&default_rego_path()) {
         return sets;
     }
-    let mut dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::from(".")));
+    let mut dir =
+        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::from(".")));
     let mut i = 0usize;
     while i < 8 {
         let p = dir.join("AEP-Components/dynAEP/policies/lattice-policy.rego");
@@ -132,6 +131,12 @@ pub mod compile_lattice_walls {
         pub scan: String,
     }
 
+    impl Default for CompileLatticeWalls {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl CompileLatticeWalls {
         pub fn new() -> Self {
             Self {
@@ -148,8 +153,10 @@ pub mod compile_lattice_walls {
                 PathBuf::from(&self.source)
             };
             let sets = load_policy_sets(&path).map_err(anyhow::Error::msg)?;
-            let mut input = LatticeCompileInput::default();
-            input.action_path = String::from("bogus:path");
+            let mut input = LatticeCompileInput {
+                action_path: String::from("bogus:path"),
+                ..Default::default()
+            };
             input.all_actions.push(String::from("webhook:incoming"));
             let compiled = compile_lattice_policy(&input, &sets);
             let admit = admit_collect_all(&compiled.walls);
@@ -168,6 +175,12 @@ pub mod prove_rego_source {
     pub struct ProveRegoSource {
         pub policy_path: String,
         pub proof: String,
+    }
+
+    impl Default for ProveRegoSource {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl ProveRegoSource {
@@ -201,6 +214,12 @@ pub mod live_opa_absent {
         pub scan: String,
     }
 
+    impl Default for LiveOpaAbsent {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl LiveOpaAbsent {
         pub fn new() -> Self {
             Self {
@@ -231,20 +250,21 @@ mod tests {
     #[test]
     fn unknown_path_former_rego_reason_is_closed_wall() -> Result<(), String> {
         let sets = load_policy_sets(&default_rego_path())?;
-        let mut input = LatticeCompileInput::default();
-        input.action_path = String::from("bogus:path");
-            input.category = String::from("agent_action");
+        let mut input = LatticeCompileInput {
+            action_path: String::from("bogus:path"),
+            category: String::from("agent_action"),
+            ..Default::default()
+        };
         input.all_actions.push(String::from("webhook:incoming"));
         let compiled = compile_lattice_policy(&input, &sets);
         let admit = admit_collect_all(&compiled.walls);
         if admit.allow {
             return Err(String::from("expected closed walls"));
         }
-        if admit
+        if !admit
             .closed
             .iter()
             .any(|w| w.reason.contains("Unknown action path"))
-            == false
         {
             return Err(String::from("former Rego deny missing as closed wall"));
         }
@@ -254,7 +274,7 @@ mod tests {
     #[test]
     fn filter_crossing_does_not_call_evaluate() -> Result<(), String> {
         let path = default_filter_ts();
-        if path.is_file() == false {
+        if !path.is_file() {
             return Ok(());
         }
         let src = fs::read_to_string(&path).map_err(|e| e.to_string())?;
@@ -269,20 +289,21 @@ mod tests {
 
     #[test]
     fn live_lattice_walls_unknown_path_closes() -> Result<(), String> {
-        let mut input = LatticeCompileInput::default();
-        input.action_path = String::from("bogus:path");
-        input.category = String::from("agent_action");
+        let mut input = LatticeCompileInput {
+            action_path: String::from("bogus:path"),
+            category: String::from("agent_action"),
+            ..Default::default()
+        };
         input.all_actions.push(String::from("webhook:incoming"));
         let walls = compile_live_lattice_walls(&input);
         let admit = admit_collect_all(&walls);
         if admit.allow {
             return Err(String::from("expected closed live lattice walls"));
         }
-        if admit
+        if !admit
             .closed
             .iter()
             .any(|w| w.reason.contains("Unknown action path"))
-            == false
         {
             return Err(String::from("live lattice walls missing unknown path"));
         }

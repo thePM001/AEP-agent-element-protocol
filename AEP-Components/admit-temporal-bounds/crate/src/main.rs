@@ -36,19 +36,18 @@ fn main() {
     let warns = compile_temporal_warns(&temporal);
     let mut out = String::from("allow=");
     out.push_str(if result.allow { "true" } else { "false" });
-    out.push_str("\n");
+    out.push('\n');
     for wall in &result.closed {
         out.push_str("closed=");
         out.push_str(&wall.id);
         out.push('|');
         out.push_str(&wall.reason);
-        out.push_str("\n");
+        out.push('\n');
     }
     for warn in &warns {
         out.push_str("warn=");
         out.push_str(warn);
-        out.push_str("\n");
+        out.push('\n');
     }
     print!("{}", out);
 }
-

@@ -26,7 +26,7 @@ func (m *mockNotifier) Messages() []string {
 }
 
 type mockAuditLogger struct {
-	mu         sync.Mutex
+	mu          sync.Mutex
 	activations []string
 }
 

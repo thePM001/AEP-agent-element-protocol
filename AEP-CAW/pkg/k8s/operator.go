@@ -100,11 +100,11 @@ const (
 
 // SessionStats contains session statistics.
 type SessionStats struct {
-	FileOperations    int64 `json:"fileOperations"`
-	NetworkRequests   int64 `json:"networkRequests"`
-	CommandsExecuted  int64 `json:"commandsExecuted"`
-	PolicyViolations  int64 `json:"policyViolations"`
-	DurationSeconds   int64 `json:"durationSeconds"`
+	FileOperations   int64 `json:"fileOperations"`
+	NetworkRequests  int64 `json:"networkRequests"`
+	CommandsExecuted int64 `json:"commandsExecuted"`
+	PolicyViolations int64 `json:"policyViolations"`
+	DurationSeconds  int64 `json:"durationSeconds"`
 }
 
 // AepCawSessionList contains a list of AepCawSessions.

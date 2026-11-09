@@ -10,8 +10,8 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform"
 	"github.com/google/uuid"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform"
 )
 
 // SandboxManager implements platform.SandboxManager for Linux.
@@ -109,8 +109,8 @@ func (m *SandboxManager) Create(config platform.SandboxConfig) (platform.Sandbox
 	}
 
 	sandbox := &Sandbox{
-		id:            id,
-		config:        config,
+		id:             id,
+		config:         config,
 		isolationLevel: m.isolationLevel,
 	}
 

@@ -61,9 +61,9 @@ func TestThreatFeedsConfigStruct(t *testing.T) {
 			{Name: "test", URL: "https://example.com/hosts", Format: "hostfile"},
 		},
 		LocalLists:   []string{"/etc/aep-caw/blocklist.txt"},
-		Allowlist:     []string{"safe.example.com"},
-		SyncInterval:  6 * time.Hour,
-		CacheDir:      "/tmp/feeds",
+		Allowlist:    []string{"safe.example.com"},
+		SyncInterval: 6 * time.Hour,
+		CacheDir:     "/tmp/feeds",
 		Realtime: RealtimeConfig{
 			Provider:  "virustotal",
 			APIKey:    "test-key",

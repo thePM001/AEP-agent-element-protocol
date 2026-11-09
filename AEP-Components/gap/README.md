@@ -8,7 +8,8 @@ Live evaluation follows AEP 2.9: seal a lattice-channel capsule, freeze the cloc
 
 This tree vendors classic GAP into `AEP-Components/gap/` from github.com/thePM001/gap.
 
-- `schemas/` holds GAP meta-schema v1.3 as the live Layer 1 authoring constraint mask. v1 and v1.2 remain as historical masks.
+- `schemas/` holds GAP meta-schema v1.3 as the live Layer 1 authoring constraint mask. v1.1 and v1.2 remain as historical masks. The schemas are byte copies of GAP-OPEN-SOURCE pinned in `gap-pin.txt`.
+- `gap-pin.txt` names the GAP commit that the schemas, `gap-versions.toml` and the profile crate in `AEP-Components/gap-schema-profile-v13/` come from. `bin/check-gap-pin.mjs` checks every pinned byte and that the pinned GAP version values name this AEP release.
 - `policies/reference/` holds reference `.gap` instructions for coding governance, CAW sandbox profiles, task manifests and implementation plans.
 - `lib/gap-compile.mjs` compiles GAP profiles to CAW mount_profiles and per-mount policies for local use.
 - Coding governance validation runs in Rust on the AEP vendor tree.
@@ -280,8 +281,8 @@ This vendor tree holds classic GAP source under `AEP-Components/gap/` and `.gap`
 - Presence of trust_ring is Deny.
 - Live AEP 2.9 EPSCOM trust bundle mode is sha256-structure.
 - Compile CAW profiles with `lib/gap-compile.mjs`.
-- The live classic GAP binary gap-schema-profile-v13 lives on thePM001/GAP and is not copied into this vendor tree.
-- This snapshot does not ship `gapc` and there is no `structural` CLI here.
+- The live classic GAP profile crate gap-schema-profile-v13 has its one source on thePM001/GAP. `AEP-Components/gap-schema-profile-v13/crate` holds a byte pinned copy and policy-system-admit consumes it from there.
+- `gapc` checks and compiles GAP source. It ships on thePM001/GAP in `packages/gapc` and there is no `structural` CLI here.
 
 ## GAP commands
 
@@ -289,6 +290,12 @@ This vendor tree holds classic GAP source under `AEP-Components/gap/` and `.gap`
 > node lib/gap-compile.mjs --list-profiles
 > node lib/gap-compile.mjs --materialize /data/aep
 > aep-caw wrap --profile coding-agent
+> ```
+
+Check the GAP pin from the repository root:
+
+> ```
+> node AEP-Components/gap/bin/check-gap-pin.mjs
 > ```
 
 ## Adoption ladder
@@ -309,10 +316,12 @@ This OSS snapshot does not include `GAP v1 spec sheet.md` or `BIOSECURITY.md` be
 - `README.md` is this file. It teaches live evaluation plus vendor compile notes.
 - `FILE-FORMAT.md` holds file format notes. Keep `.gap` as GAP source. Collect-all Admit collects by capsule hash. Live hash bundle mode is sha256-structure. Presence of trust_ring is Deny. Who-may is agent_permission.
 - `schemas/gap-meta-schema-v1.3.json` is the live JSON Schema 2020-12 Layer 1 authoring constraint mask.
-- `schemas/gap-meta-schema-v1.json` is a historical JSON Schema 2020-12 optional Layer 1 authoring constraint mask artifact.
+- `schemas/gap-meta-schema-v1.1.json` is a historical JSON Schema 2020-12 optional Layer 1 authoring constraint mask artifact. Its `$id` names v1.1.
+- `schemas/gap-meta-schema-v1.json` is a byte copy of `schemas/gap-meta-schema-v1.1.json` kept under its old name for one release.
 - `schemas/gap-meta-schema-v1.2.json` is the updated meta schema with v1.1 additions.
 - `policies/reference/` holds reference `.gap` instructions for CAW profiles and coding governance.
 - `lib/gap-compile.mjs` compiles GAP profiles to CAW mount_profiles.
+- `gap-pin.txt`, `gap-versions.toml` and `bin/check-gap-pin.mjs` hold and check the GAP byte pin. VERSIONING.md on thePM001/GAP states the version rules.
 - Fit analysis of classic GAP against AEP 2.8.6 evaluation lives at docs/CLASSIC-GAP-VS-AEP-2.8.5.md on thePM001/GAP.
 - Product tickets live in the internal platform ticket lane rather than in this tree.
 

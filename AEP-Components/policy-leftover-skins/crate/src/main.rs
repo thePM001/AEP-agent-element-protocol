@@ -1,8 +1,8 @@
 // GAP-285-P10 CLI. Print leftover files and collect-all GAP paths.
 
 use aep_policy_leftover_skins::{
-    collect_all_gap_paths, discover_policy_system_dir, leftover_paths, run_gate, COLLECT_ALL_ONLY_GAP,
-    LEFTOVER_NAMING, P6_POINTER, TICKET,
+    collect_all_gap_paths, discover_policy_system_dir, leftover_paths, run_gate,
+    COLLECT_ALL_ONLY_GAP, LEFTOVER_NAMING, P6_POINTER, TICKET,
 };
 use std::io::{self, Write};
 

@@ -9,7 +9,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
-
 /// Event that enters the Action Lattice filter.
 /// Agent permission is agent_permission. There is no rank field.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -171,7 +170,6 @@ pub fn action_is_satisfied(snap: &Snapshot, path: &str, agent_id: &str) -> bool 
     parent_is_satisfied(snap, path, agent_id)
 }
 
-
 /// One Action Lattice node.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LatticeNode {
@@ -184,12 +182,6 @@ pub struct LatticeNode {
     pub category: String,
 }
 
-/// One collect-all wall.
-
-
-/// Collect-all Admit result. allow is AND of every wall.
-
-
 /// Alias used by HVVCAS filter output.
 pub type FilterResult = AdmitResult;
 
@@ -200,7 +192,7 @@ pub struct ApplyPlan {
 }
 
 pub fn wall(id: &str, family: &str, open: bool, reason: &str) -> AdmitWall {
- // the wall row is the kernel AdmitWall, not a local copy.
+    // the wall row is the kernel AdmitWall, not a local copy.
     AdmitWall::verdict(id, family, open, reason)
 }
 
@@ -270,7 +262,7 @@ fn wall_parents(event: &LatticeEvent, snap: &Snapshot) -> AdmitWall {
     let missing: Vec<&str> = node
         .parents
         .iter()
-        .filter(|p| parent_is_satisfied(snap, p, &event.agent_id) == false)
+        .filter(|p| !parent_is_satisfied(snap, p, &event.agent_id))
         .map(|s| s.as_str())
         .collect();
     if missing.is_empty() {
@@ -287,10 +279,20 @@ fn wall_parents(event: &LatticeEvent, snap: &Snapshot) -> AdmitWall {
 
 fn wall_agent_permission(event: &LatticeEvent, snap: &Snapshot) -> AdmitWall {
     if snap.lattice_nodes.is_empty() {
-        return wall("gap.agent_permission", "gap", false, "empty lattice closes agent_permission");
+        return wall(
+            "gap.agent_permission",
+            "gap",
+            false,
+            "empty lattice closes agent_permission",
+        );
     }
     let Some(node) = snap.lattice_nodes.get(&event.action_path) else {
-        return wall("gap.agent_permission", "gap", true, "membership wall covers miss");
+        return wall(
+            "gap.agent_permission",
+            "gap",
+            true,
+            "membership wall covers miss",
+        );
     };
     if node.agent_permission.is_empty() {
         return wall(
@@ -302,7 +304,7 @@ fn wall_agent_permission(event: &LatticeEvent, snap: &Snapshot) -> AdmitWall {
     }
     let allowed = node.agent_permission.iter().any(|item| {
         if item == "*" {
-            event.agent_id.is_empty() == false
+            !event.agent_id.is_empty()
         } else if item == "unbound" {
             event.agent_id.is_empty()
         } else {
@@ -310,7 +312,12 @@ fn wall_agent_permission(event: &LatticeEvent, snap: &Snapshot) -> AdmitWall {
         }
     });
     if allowed {
-        wall("gap.agent_permission", "gap", true, "agent permission listed")
+        wall(
+            "gap.agent_permission",
+            "gap",
+            true,
+            "agent permission listed",
+        )
     } else {
         wall(
             "gap.agent_permission",
@@ -357,7 +364,12 @@ fn wall_perception(event: &LatticeEvent) -> AdmitWall {
         && p.tempo_bpm.is_none()
         && p.pitch_range.is_none()
     {
-        return wall("perception.bounds", "perception", true, "no perception payload");
+        return wall(
+            "perception.bounds",
+            "perception",
+            true,
+            "no perception payload",
+        );
     }
     if !p.modality.is_empty()
         && p.modality != "speech"
@@ -443,12 +455,7 @@ fn wall_perception(event: &LatticeEvent) -> AdmitWall {
     if closed.is_empty() {
         wall("perception.bounds", "perception", true, "perception ok")
     } else {
-        wall(
-            "perception.bounds",
-            "perception",
-            false,
-            &closed.join(", "),
-        )
+        wall("perception.bounds", "perception", false, &closed.join(", "))
     }
 }
 
@@ -569,7 +576,9 @@ pub fn load_lattice_yaml(text: &str) -> Result<HashMap<String, LatticeNode>, Lat
     Ok(nodes)
 }
 
-pub fn load_lattice_yaml_file(path: &std::path::Path) -> Result<HashMap<String, LatticeNode>, LatticeError> {
+pub fn load_lattice_yaml_file(
+    path: &std::path::Path,
+) -> Result<HashMap<String, LatticeNode>, LatticeError> {
     let raw = std::fs::read_to_string(path).map_err(|e| LatticeError::Io(e.to_string()))?;
     load_lattice_yaml(&raw)
 }
@@ -634,18 +643,24 @@ pub fn snapshot_from_nodes(
     satisfied: BTreeSet<String>,
     bridge_ts_ms: i64,
 ) -> Snapshot {
-    let mut snap = Snapshot::default();
-    snap.lattice_nodes = nodes;
-    snap.satisfied_actions = satisfied;
-    snap.bridge_ts_ms = bridge_ts_ms;
-    snap
+    Snapshot {
+        lattice_nodes: nodes,
+        satisfied_actions: satisfied,
+        bridge_ts_ms,
+        ..Default::default()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn sample_node(path: &str, parents: &[&str], may: &[&str], category: &str) -> (String, LatticeNode) {
+    fn sample_node(
+        path: &str,
+        parents: &[&str],
+        may: &[&str],
+        category: &str,
+    ) -> (String, LatticeNode) {
         (
             path.to_string(),
             LatticeNode {
@@ -740,20 +755,22 @@ mod tests {
         let mut a = act("root:ping");
         a.agent_id.clear();
         let r = admit(&a, &snap);
-        assert_eq!(r.allow, false);
-        assert_eq!(closed_names(&r).contains("gap.agent_permission"), true);
-        assert_eq!(r.closed.iter().any(|w| w.id == "gap.agent_permission" && w.reason == "this agent does not have permission for this action"), true);
+        assert!(!r.allow);
+        assert!(closed_names(&r).contains("gap.agent_permission"));
+        assert!(r.closed.iter().any(|w| w.id == "gap.agent_permission"
+            && w.reason == "this agent does not have permission for this action"));
     }
 
     #[test]
     fn empty_list_refuses_external_event() {
         let mut snap = base_snap();
-        snap.lattice_nodes.extend([sample_node("webhook:incoming", &[], &[], "external_event")]);
+        snap.lattice_nodes
+            .extend([sample_node("webhook:incoming", &[], &[], "external_event")]);
         let mut a = act("webhook:incoming");
         a.agent_id.clear();
         let r = admit(&a, &snap);
-        assert_eq!(r.allow, false);
-        assert_eq!(closed_names(&r).contains("gap.agent_permission"), true);
+        assert!(!r.allow);
+        assert!(closed_names(&r).contains("gap.agent_permission"));
     }
 
     #[test]
@@ -860,16 +877,16 @@ mod tests {
         };
         let body = &rest[..end];
         let needle = ["trust", "_tier"].concat();
-        assert_eq!(body.contains(&needle), false);
-        assert_eq!(body.contains("rank"), false);
+        assert!(!body.contains(&needle));
+        assert!(!body.contains("rank"));
     }
 
     #[test]
     fn crate_has_no_base_node_or_envelope_path() {
         let cargo = include_str!("../Cargo.toml");
-        assert_eq!(cargo.contains("aep-base-node"), false);
-        assert_eq!(cargo.contains("aep-envelope"), false);
-        assert_eq!(cargo.contains("aep-live-entry"), false);
+        assert!(!cargo.contains("aep-base-node"));
+        assert!(!cargo.contains("aep-envelope"));
+        assert!(!cargo.contains("aep-live-entry"));
     }
 
     #[test]
@@ -923,7 +940,7 @@ mod tests {
         assert!(!r.allow);
         let names = closed_names(&r);
         assert!(names.contains("dag.membership"));
-        assert_eq!(names.contains("gap.agent_permission"), false);
+        assert!(!names.contains("gap.agent_permission"));
     }
 
     #[test]
@@ -931,8 +948,18 @@ mod tests {
         let mut snap = Snapshot::default();
         snap.lattice_nodes.extend([
             sample_node("root:ping", &[], &["*"], "system_event"),
-            sample_node("action:prepare", &["root:ping"], &["agent-a", "agent-b"], "agent_action"),
-            sample_node("action:commit", &["action:prepare"], &["agent-a", "agent-b"], "agent_action"),
+            sample_node(
+                "action:prepare",
+                &["root:ping"],
+                &["agent-a", "agent-b"],
+                "agent_action",
+            ),
+            sample_node(
+                "action:commit",
+                &["action:prepare"],
+                &["agent-a", "agent-b"],
+                "agent_action",
+            ),
         ]);
         snap.satisfied_actions.insert("root:ping".into());
         snap.bridge_ts_ms = 1000;
@@ -967,11 +994,10 @@ mod tests {
     #[test]
     fn env066_fail_open_time_literal_gone() {
         let src = include_str!("lib.rs");
-        let compact: String = src.chars().filter(|c| c.is_whitespace() == false).collect();
-        assert_eq!(compact.contains("true,\"notimestamps\""), false);
-        assert_eq!(compact.contains("false,\"notimestamps\""), true);
+        let compact: String = src.chars().filter(|c| !c.is_whitespace()).collect();
+        assert!(!compact.contains("true,\"notimestamps\""));
+        assert!(compact.contains("false,\"notimestamps\""));
     }
-
 }
 
 /// Standalone dynAEP engine used by the CLI surface.
@@ -1043,7 +1069,7 @@ impl DynAep {
             }
         };
         let result = admit(&event, &self.snap);
-        if result.allow == false {
+        if !result.allow {
             let reason = result
                 .closed
                 .iter()

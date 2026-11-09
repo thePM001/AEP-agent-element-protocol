@@ -20,9 +20,9 @@ type RuntimeConfig struct {
 	customValues map[string]any
 
 	// Callbacks for when values change
-	onLogLevelChange     func(level string)
-	onRateLimitsChange   func(config RateLimitConfig)
-	onFeatureFlagChange  func(flag string, enabled bool)
+	onLogLevelChange    func(level string)
+	onRateLimitsChange  func(config RateLimitConfig)
+	onFeatureFlagChange func(flag string, enabled bool)
 
 	// Update tracking
 	updateCount atomic.Int64
@@ -183,10 +183,10 @@ func (c *RuntimeConfig) LastUpdate() time.Time {
 
 // RuntimeConfigUpdate represents an update request.
 type RuntimeConfigUpdate struct {
-	LogLevel     *string            `json:"log_level,omitempty"`
-	RateLimits   *RateLimitConfig   `json:"rate_limits,omitempty"`
-	FeatureFlags map[string]bool    `json:"feature_flags,omitempty"`
-	CustomValues map[string]any     `json:"custom_values,omitempty"`
+	LogLevel     *string          `json:"log_level,omitempty"`
+	RateLimits   *RateLimitConfig `json:"rate_limits,omitempty"`
+	FeatureFlags map[string]bool  `json:"feature_flags,omitempty"`
+	CustomValues map[string]any   `json:"custom_values,omitempty"`
 }
 
 // Apply applies an update to the runtime configuration.

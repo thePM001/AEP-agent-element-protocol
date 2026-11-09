@@ -159,10 +159,10 @@ func TestBuildProviderEntries_MissingAPIKeySkipsProvider(t *testing.T) {
 	t.Setenv(missingEnvVar, "") // ensure it's empty
 
 	_, err := buildProviderEntry("snyk", config.ProviderConfig{
-		Enabled:    true,
-		APIKeyEnv:  missingEnvVar,
-		OnFailure:  "warn",
-		Options:    map[string]any{"org_id": "test-org"},
+		Enabled:   true,
+		APIKeyEnv: missingEnvVar,
+		OnFailure: "warn",
+		Options:   map[string]any{"org_id": "test-org"},
 	})
 	if err == nil {
 		t.Fatal("expected error for missing API key, got nil")

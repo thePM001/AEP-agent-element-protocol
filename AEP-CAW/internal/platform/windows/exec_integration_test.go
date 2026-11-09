@@ -92,11 +92,11 @@ func TestExecPipeline_DriverMessageRoundtrip(t *testing.T) {
 	binary.LittleEndian.PutUint64(msg[8:16], 42) // requestId
 
 	// Body
-	binary.LittleEndian.PutUint64(msg[16:24], 0xCAFEBABE)   // sessionToken
-	binary.LittleEndian.PutUint32(msg[24:28], 5678)          // processId
-	binary.LittleEndian.PutUint32(msg[28:32], 1234)          // parentId
-	binary.LittleEndian.PutUint64(msg[32:40], 9999)          // createTime
-	binary.LittleEndian.PutUint64(msg[40:48], 0)             // padding
+	binary.LittleEndian.PutUint64(msg[16:24], 0xCAFEBABE) // sessionToken
+	binary.LittleEndian.PutUint32(msg[24:28], 5678)       // processId
+	binary.LittleEndian.PutUint32(msg[28:32], 1234)       // parentId
+	binary.LittleEndian.PutUint64(msg[32:40], 9999)       // createTime
+	binary.LittleEndian.PutUint64(msg[40:48], 0)          // padding
 
 	// ImagePath as UTF-16LE
 	imgPath := `C:\Windows\notepad.exe`

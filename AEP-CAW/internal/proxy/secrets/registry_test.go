@@ -455,9 +455,11 @@ func TestRegistry_Provider_AfterClose(t *testing.T) {
 // broadened nil guard (covers map, slice, func, chan kinds).
 type mapProvider map[string]string
 
-func (mapProvider) Name() string                                              { return "map" }
-func (mapProvider) Fetch(_ context.Context, _ SecretRef) (SecretValue, error) { return SecretValue{}, nil }
-func (mapProvider) Close() error                                              { return nil }
+func (mapProvider) Name() string { return "map" }
+func (mapProvider) Fetch(_ context.Context, _ SecretRef) (SecretValue, error) {
+	return SecretValue{}, nil
+}
+func (mapProvider) Close() error { return nil }
 
 func TestNewRegistry_NonPointerTypedNilProvider_ReturnsError(t *testing.T) {
 	configs := map[string]ProviderConfig{

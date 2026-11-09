@@ -1,4 +1,3 @@
-
 use sha2::{Digest, Sha256};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -69,15 +68,19 @@ pub fn rollback_named(
     Ok(records[..records.len() - 1].to_vec())
 }
 
-fn digest_record(diff_id: &str, prev: &str, operation: &str, payload: &serde_json::Value) -> String {
+fn digest_record(
+    diff_id: &str,
+    prev: &str,
+    operation: &str,
+    payload: &serde_json::Value,
+) -> String {
     let mut h = Sha256::new();
     h.update(diff_id.as_bytes());
     h.update(prev.as_bytes());
     h.update(operation.as_bytes());
-    h.update(&serde_json::to_vec(payload).unwrap_or_default());
+    h.update(serde_json::to_vec(payload).unwrap_or_default());
     hex::encode(h.finalize())
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -89,7 +92,7 @@ mod tests {
         let a = chain_append(None, "d1", "ingest", json!({"n": 1})).unwrap();
         let b = chain_append(None, "d1", "ingest", json!({"n": 2})).unwrap();
         assert_ne!(a.record_digest, b.record_digest);
-        verify_chain(&[a.clone()]).unwrap();
+        verify_chain(std::slice::from_ref(&a)).unwrap();
         let mut broken = a.clone();
         broken.payload = json!({"n": 2});
         assert!(verify_chain(&[broken]).is_err());

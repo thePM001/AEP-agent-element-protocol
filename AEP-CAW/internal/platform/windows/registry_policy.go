@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 	"github.com/gobwas/glob"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 )
 
 // RegistryPolicyResponse contains the policy decision for a registry operation.

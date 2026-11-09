@@ -294,11 +294,11 @@ func TestEnforceRedirects_ShadowVsEnforced(t *testing.T) {
 		Name:    "test",
 		CommandRules: []CommandRule{
 			{
-				Name:     "redirect-git-force",
-				Commands: []string{"git"},
+				Name:         "redirect-git-force",
+				Commands:     []string{"git"},
 				ArgsPatterns: []string{`push\s+--force|push\s+-f`},
-				Decision: "redirect",
-				Message:  "force push redirected",
+				Decision:     "redirect",
+				Message:      "force push redirected",
 				RedirectTo: &CommandRedirect{
 					Command: "aep-caw-stub",
 					Args:    []string{"--deny"},
@@ -1146,8 +1146,8 @@ func TestEvaluateDnsRedirect_CaseNormalization(t *testing.T) {
 		{"Example.COM", true},
 		{"EXAMPLE.COM", true},
 		{"Example.Com", true},
-		{"example.com.", true},   // trailing dot (FQDN)
-		{"Example.COM.", true},   // mixed case + trailing dot
+		{"example.com.", true},    // trailing dot (FQDN)
+		{"Example.COM.", true},    // mixed case + trailing dot
 		{"  example.com  ", true}, // whitespace
 		{"other.com", false},
 	}
@@ -1188,8 +1188,8 @@ func TestEvaluateConnectRedirect_CaseNormalization(t *testing.T) {
 		{"Example.COM:443", true},
 		{"EXAMPLE.COM:443", true},
 		{"Example.Com:443", true},
-		{"example.com.:443", true},   // trailing dot
-		{"Example.COM.:443", true},   // mixed case + trailing dot
+		{"example.com.:443", true},    // trailing dot
+		{"Example.COM.:443", true},    // mixed case + trailing dot
 		{"  example.com:443  ", true}, // whitespace
 		{"other.com:443", false},
 	}

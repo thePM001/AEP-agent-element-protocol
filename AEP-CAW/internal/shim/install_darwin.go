@@ -263,12 +263,12 @@ func removeHookFromFile(path string) error {
 
 // DarwinShimStatus reports the status of macOS shim installation.
 type DarwinShimStatus struct {
-	PATHInstalled    bool     `json:"path_installed"`
-	PATHDir          string   `json:"path_dir"`
-	PATHShells       []string `json:"path_shells"`
-	PATHInPath       bool     `json:"path_in_path"`
-	ProfileZsh       bool     `json:"profile_zsh"`
-	ProfileBash      bool     `json:"profile_bash"`
+	PATHInstalled bool     `json:"path_installed"`
+	PATHDir       string   `json:"path_dir"`
+	PATHShells    []string `json:"path_shells"`
+	PATHInPath    bool     `json:"path_in_path"`
+	ProfileZsh    bool     `json:"profile_zsh"`
+	ProfileBash   bool     `json:"profile_bash"`
 }
 
 // GetDarwinShimStatus checks the current installation status.

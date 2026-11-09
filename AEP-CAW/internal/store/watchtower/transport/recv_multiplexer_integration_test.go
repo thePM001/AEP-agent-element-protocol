@@ -24,12 +24,12 @@ import (
 // no-ops returning nil; tests should NOT exercise the send path through
 // this fake.
 type recvFakeConn struct {
-	mu       sync.Mutex
-	queue    []*wtpv1.ServerMessage
-	cond     *sync.Cond
-	closed   bool
-	eofErr   error
-	recvErr  error
+	mu      sync.Mutex
+	queue   []*wtpv1.ServerMessage
+	cond    *sync.Cond
+	closed  bool
+	eofErr  error
+	recvErr error
 }
 
 func newRecvFakeConn() *recvFakeConn {
@@ -208,14 +208,15 @@ func TestRecvMultiplexer_PreservesWireOrderingAcrossBatchAckAndHeartbeat(t *test
 // round-22 Finding 2 (strengthened by round-23 Finding 3). Start one
 // recvSession, drain it, tear it down, start a fresh recvSession.
 // Asserts:
-//   (a) the OLD session's ctx is cancelled and its goroutine has fully
-//       exited (the done channel is closed, proving the goroutine
-//       returned from runRecv);
-//   (b) the new session's ctx is alive AND its eventCh is empty;
-//   (c) channel identity is isolated - the new session's eventCh is a
-//       distinct allocation from the old session's eventCh;
-//   (d) a stale send attempted on the OLD session's eventCh after
-//       teardown does NOT bleed into the NEW session's eventCh.
+//
+//	(a) the OLD session's ctx is cancelled and its goroutine has fully
+//	    exited (the done channel is closed, proving the goroutine
+//	    returned from runRecv);
+//	(b) the new session's ctx is alive AND its eventCh is empty;
+//	(c) channel identity is isolated - the new session's eventCh is a
+//	    distinct allocation from the old session's eventCh;
+//	(d) a stale send attempted on the OLD session's eventCh after
+//	    teardown does NOT bleed into the NEW session's eventCh.
 //
 // Round-23 Finding 3: the old session's `eventCh` is captured via the
 // RecvSessionHandle BEFORE teardown so the test can attempt a

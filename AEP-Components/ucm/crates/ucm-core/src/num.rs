@@ -59,7 +59,11 @@ impl Decimal {
         let body = if s == 0 {
             digits
         } else if digits.len() > s {
-            format!("{}.{}", &digits[..digits.len() - s], &digits[digits.len() - s..])
+            format!(
+                "{}.{}",
+                &digits[..digits.len() - s],
+                &digits[digits.len() - s..]
+            )
         } else {
             format!("0.{}{}", "0".repeat(s - digits.len()), digits)
         };
@@ -97,7 +101,15 @@ impl RoundMode {
         })
     }
 
-    pub const NAMES: [&'static str; 7] = ["half_even", "half_up", "half_down", "up", "down", "floor", "ceiling"];
+    pub const NAMES: [&'static str; 7] = [
+        "half_even",
+        "half_up",
+        "half_down",
+        "up",
+        "down",
+        "floor",
+        "ceiling",
+    ];
 }
 
 /// Round a rational to an integer with the given mode.
@@ -176,8 +188,14 @@ pub fn round_to_scale(r: &Rat, scale: u32, mode: RoundMode) -> Result<Decimal> {
 pub fn parse_rat(s: &str) -> Result<Rat> {
     let t = s.trim();
     if let Some((n, d)) = t.split_once('/') {
-        let n: BigInt = n.trim().parse().map_err(|_| UcmError::Input(format!("bad rational {t}")))?;
-        let d: BigInt = d.trim().parse().map_err(|_| UcmError::Input(format!("bad rational {t}")))?;
+        let n: BigInt = n
+            .trim()
+            .parse()
+            .map_err(|_| UcmError::Input(format!("bad rational {t}")))?;
+        let d: BigInt = d
+            .trim()
+            .parse()
+            .map_err(|_| UcmError::Input(format!("bad rational {t}")))?;
         if d.is_zero() {
             return Err(UcmError::DivisionByZero);
         }
@@ -292,7 +310,10 @@ pub fn sqrt_round(r: &Rat, scale: u32, mode: RoundMode) -> Result<Decimal> {
     let fl = isqrt(&y.floor().to_integer());
     let fl_r = Rat::from_integer(fl.clone());
     if &fl_r * &fl_r == y {
-        return Ok(Decimal { unscaled: fl, scale });
+        return Ok(Decimal {
+            unscaled: fl,
+            scale,
+        });
     }
     // Irrational or non-exact root lies strictly between fl and fl + 1.
     let half = Rat::new(BigInt::one(), BigInt::from(2));
@@ -361,9 +382,18 @@ mod tests {
 
     #[test]
     fn decimal_parse_and_render() {
-        assert_eq!(parse_decimal("12.50").map(|d| d.render()), Ok("12.50".into()));
-        assert_eq!(parse_decimal("-0.05").map(|d| d.render()), Ok("-0.05".into()));
-        assert_eq!(parse_decimal("1.5e-3").map(|d| d.render()), Ok("0.0015".into()));
+        assert_eq!(
+            parse_decimal("12.50").map(|d| d.render()),
+            Ok("12.50".into())
+        );
+        assert_eq!(
+            parse_decimal("-0.05").map(|d| d.render()),
+            Ok("-0.05".into())
+        );
+        assert_eq!(
+            parse_decimal("1.5e-3").map(|d| d.render()),
+            Ok("0.0015".into())
+        );
         assert_eq!(parse_decimal("2E3").map(|d| d.render()), Ok("2000".into()));
         assert!(parse_decimal("1.2.3").is_err());
     }
@@ -371,10 +401,19 @@ mod tests {
     #[test]
     fn sqrt_rounding() {
         let two = Rat::from_integer(BigInt::from(2));
-        assert_eq!(sqrt_round(&two, 5, RoundMode::HalfEven).map(|d| d.render()), Ok("1.41421".into()));
-        assert_eq!(sqrt_round(&two, 5, RoundMode::Ceiling).map(|d| d.render()), Ok("1.41422".into()));
+        assert_eq!(
+            sqrt_round(&two, 5, RoundMode::HalfEven).map(|d| d.render()),
+            Ok("1.41421".into())
+        );
+        assert_eq!(
+            sqrt_round(&two, 5, RoundMode::Ceiling).map(|d| d.render()),
+            Ok("1.41422".into())
+        );
         let nine = Rat::from_integer(BigInt::from(9));
-        assert_eq!(sqrt_round(&nine, 2, RoundMode::Floor).map(|d| d.render()), Ok("3.00".into()));
+        assert_eq!(
+            sqrt_round(&nine, 2, RoundMode::Floor).map(|d| d.render()),
+            Ok("3.00".into())
+        );
     }
 
     #[test]
@@ -383,6 +422,9 @@ mod tests {
             terminating_decimal(&Rat::new(BigInt::from(1), BigInt::from(8))),
             Some("0.125".into())
         );
-        assert_eq!(terminating_decimal(&Rat::new(BigInt::from(1), BigInt::from(3))), None);
+        assert_eq!(
+            terminating_decimal(&Rat::new(BigInt::from(1), BigInt::from(3))),
+            None
+        );
     }
 }

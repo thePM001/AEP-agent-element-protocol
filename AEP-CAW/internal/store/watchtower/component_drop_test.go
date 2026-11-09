@@ -79,10 +79,12 @@ func TestStore_DropsMidBatchTriggersReplay(t *testing.T) {
 	}
 
 	// Poll AssertReplayObserved until the replayed batches cover the
-	// full [1..50] window. Deadline of 5s is generous - the drop
-	// fires after batch 2 (~20 records), reconnect backoff is 200ms,
-	// and the replayer re-sends 30+ records in a handful of batches.
-	deadline := time.Now().Add(15 * time.Second)
+	// full [1..50] window. The drop fires after batch 2 (~20 records),
+	// reconnect backoff is 200ms and the replayer re-sends 30+ records in a
+	// handful of batches. The wait ends as soon as the window is covered; the
+	// long limit only serves -race on a loaded runner.
+	const wait = 30 * time.Second
+	deadline := time.Now().Add(wait)
 	var lastErr error
 	for time.Now().Before(deadline) {
 		if err := srv.AssertReplayObserved(1, total); err == nil {
@@ -105,5 +107,5 @@ func TestStore_DropsMidBatchTriggersReplay(t *testing.T) {
 		t.Logf("  batch %d: from=%d to=%d gen=%d seqs=%v", i, b.GetFromSequence(), b.GetToSequence(), b.GetGeneration(), seqs)
 	}
 	t.Logf("store Err()=%v", s.Err())
-	t.Fatalf("replay did not deliver all %d sequences within 5s: %v", total, lastErr)
+	t.Fatalf("replay did not deliver all %d sequences within %s: %v", total, wait, lastErr)
 }

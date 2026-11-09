@@ -36,12 +36,13 @@ impl Limits {
             millis: base.millis.min(ceiling.millis),
         };
         let Some(r) = req else { return Ok(out) };
-        let o = r.as_object().ok_or_else(|| UcmError::Input("budget must be an object".into()))?;
+        let o = r
+            .as_object()
+            .ok_or_else(|| UcmError::Input("budget must be an object".into()))?;
         for (k, v) in o {
-            let n: u64 = v
-                .as_str()
-                .and_then(|s| s.parse().ok())
-                .ok_or_else(|| UcmError::Input(format!("budget field {k} must be a decimal string")))?;
+            let n: u64 = v.as_str().and_then(|s| s.parse().ok()).ok_or_else(|| {
+                UcmError::Input(format!("budget field {k} must be a decimal string"))
+            })?;
             let slot = match k.as_str() {
                 "steps" => &mut out.steps,
                 "bits" => &mut out.bits,
@@ -94,7 +95,7 @@ impl Budget {
                 what: format!("steps above {}", self.limits.steps),
             });
         }
-        if self.steps % 1024 == 0 && self.started.elapsed() > self.deadline {
+        if self.steps.is_multiple_of(1024) && self.started.elapsed() > self.deadline {
             return Err(UcmError::BudgetExceeded {
                 what: format!("wall time above {} ms", self.limits.millis),
             });

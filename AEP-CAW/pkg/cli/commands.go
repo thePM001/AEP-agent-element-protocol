@@ -76,13 +76,13 @@ type SessionDetail struct {
 
 // ResourceUsage tracks resource consumption.
 type ResourceUsage struct {
-	CPUPercent    float64 `json:"cpu_percent"`
-	MemoryMB      int64   `json:"memory_mb"`
-	DiskReadMB    int64   `json:"disk_read_mb"`
-	DiskWriteMB   int64   `json:"disk_write_mb"`
-	NetworkRxMB   int64   `json:"network_rx_mb"`
-	NetworkTxMB   int64   `json:"network_tx_mb"`
-	ProcessCount  int     `json:"process_count"`
+	CPUPercent   float64 `json:"cpu_percent"`
+	MemoryMB     int64   `json:"memory_mb"`
+	DiskReadMB   int64   `json:"disk_read_mb"`
+	DiskWriteMB  int64   `json:"disk_write_mb"`
+	NetworkRxMB  int64   `json:"network_rx_mb"`
+	NetworkTxMB  int64   `json:"network_tx_mb"`
+	ProcessCount int     `json:"process_count"`
 }
 
 // Event is an operation event.
@@ -160,14 +160,14 @@ type Status struct {
 
 // Metrics contains operational metrics.
 type Metrics struct {
-	SessionsTotal     int64              `json:"sessions_total"`
-	SessionsActive    int64              `json:"sessions_active"`
-	OperationsTotal   int64              `json:"operations_total"`
-	OperationsByType  map[string]int64   `json:"operations_by_type"`
-	DecisionsByType   map[string]int64   `json:"decisions_by_type"`
-	AvgLatencyMs      float64            `json:"avg_latency_ms"`
-	PolicyReloads     int64              `json:"policy_reloads"`
-	ErrorsTotal       int64              `json:"errors_total"`
+	SessionsTotal    int64            `json:"sessions_total"`
+	SessionsActive   int64            `json:"sessions_active"`
+	OperationsTotal  int64            `json:"operations_total"`
+	OperationsByType map[string]int64 `json:"operations_by_type"`
+	DecisionsByType  map[string]int64 `json:"decisions_by_type"`
+	AvgLatencyMs     float64          `json:"avg_latency_ms"`
+	PolicyReloads    int64            `json:"policy_reloads"`
+	ErrorsTotal      int64            `json:"errors_total"`
 }
 
 // Commander executes CLI commands.

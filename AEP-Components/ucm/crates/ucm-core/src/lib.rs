@@ -36,7 +36,10 @@ pub const ENGINE_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const RULES_VERSION: &str = "ucm-rules-1";
 
 pub fn engine_build() -> String {
-    format!("{ENGINE_NAME}/{ENGINE_VERSION}/{RULES_VERSION}/tzdb-{}", time::tzdb_version())
+    format!(
+        "{ENGINE_NAME}/{ENGINE_VERSION}/{RULES_VERSION}/tzdb-{}",
+        time::tzdb_version()
+    )
 }
 
 /// Parse a program from its text form or its JSON form.
@@ -44,7 +47,9 @@ pub fn load_program(text: Option<&str>, json_form: Option<&J>) -> Result<Program
     match (text, json_form) {
         (Some(t), None) => parse::parse_program(t),
         (None, Some(j)) => Program::from_json(j),
-        _ => Err(UcmError::Form("give exactly one of program text or program JSON".into())),
+        _ => Err(UcmError::Form(
+            "give exactly one of program text or program JSON".into(),
+        )),
     }
 }
 
@@ -98,7 +103,9 @@ pub fn evaluate(p: &Program, inputs: &J, limits: Limits, lib: &Library) -> Resul
     };
     let mut ev = interp::Evaluator::new(&mut ctx);
     for (n, t) in &decls {
-        let raw = given.get(n).ok_or_else(|| UcmError::Input(format!("input {n} is missing")))?;
+        let raw = given
+            .get(n)
+            .ok_or_else(|| UcmError::Input(format!("input {n} is missing")))?;
         let v = value::parse_input(t, raw)?;
         ev.bind(n, v);
     }
@@ -184,7 +191,12 @@ pub fn catalog(lib: &Library) -> Vec<J> {
         }));
     }
     for f in &lib.formulas {
-        let args: Vec<String> = f.program.inputs.iter().map(|i| format!("{}: {}", i.name, i.ty)).collect();
+        let args: Vec<String> = f
+            .program
+            .inputs
+            .iter()
+            .map(|i| format!("{}: {}", i.name, i.ty))
+            .collect();
         out.push(json!({
             "id": format!("formula.{}", f.id),
             "kind": "formula",

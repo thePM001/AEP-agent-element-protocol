@@ -1,8 +1,8 @@
 //! Signer and process-wide dock rate limits.
 
 use super::{deny_resp, dock_lock, DockFrameResponse, DockingRuntime};
-use aep_lattice_channel::DockingPort;
 use crate::{record_side_channel_anomaly, SideChannelAnomalyKind};
+use aep_lattice_channel::DockingPort;
 
 pub(crate) const GLOBAL_RATE_LIMIT: u32 = 600;
 pub(crate) const SIGNER_RATE_LIMIT: u32 = 120;

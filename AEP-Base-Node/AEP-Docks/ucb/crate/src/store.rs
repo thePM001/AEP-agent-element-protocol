@@ -63,18 +63,22 @@ impl ManifestStore {
         let path = self.path_for(&manifest.agent_id);
         let mut persist = manifest.clone();
         persist.manifest_digest = crate::manifest::compute_manifest_digest(&persist);
-        let mut value = serde_json::to_value(&persist).map_err(|e| {
-            std::io::Error::new(std::io::ErrorKind::InvalidData, e)
-        })?;
+        let mut value = serde_json::to_value(&persist)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
         if let Some(obj) = value.as_object_mut() {
             let mut trust = serde_json::Map::new();
-            trust.insert(String::from("tier"), serde_json::Value::String(String::from("none")));
-            trust.insert(String::from("max_trust_score"), serde_json::Value::from(0u64));
+            trust.insert(
+                String::from("tier"),
+                serde_json::Value::String(String::from("none")),
+            );
+            trust.insert(
+                String::from("max_trust_score"),
+                serde_json::Value::from(0u64),
+            );
             obj.insert(String::from("trust"), serde_json::Value::Object(trust));
         }
-        let text = serde_json::to_string_pretty(&value).map_err(|e| {
-            std::io::Error::new(std::io::ErrorKind::InvalidData, e)
-        })?;
+        let text = serde_json::to_string_pretty(&value)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
         fs::write(path, format!("{text}\n"))
     }
 

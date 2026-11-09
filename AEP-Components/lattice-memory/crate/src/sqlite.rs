@@ -1,5 +1,7 @@
-use rusqlite::{Connection, OptionalExtension, params};
+#![allow(unsafe_code)]
+
 use rusqlite::ffi::sqlite3_auto_extension;
+use rusqlite::{params, Connection, OptionalExtension};
 use sqlite_vec::sqlite3_vec_init;
 use std::path::Path;
 
@@ -142,15 +144,16 @@ pub fn insert_vector(
 }
 
 pub fn attractor_count(conn: &Connection) -> Result<u64, MemoryError> {
-    let count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM lattice_memory_meta",
-        [],
-        |row| row.get(0),
-    )?;
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM lattice_memory_meta", [], |row| {
+        row.get(0)
+    })?;
     Ok(count as u64)
 }
 
-pub fn fetch_meta_by_key(conn: &Connection, key: u64) -> Result<Option<AttractorMeta>, MemoryError> {
+pub fn fetch_meta_by_key(
+    conn: &Connection,
+    key: u64,
+) -> Result<Option<AttractorMeta>, MemoryError> {
     let row = conn
         .query_row(
             "SELECT key, entry_id, element_id, domain, outcome, recorded_at_unix, payload_json

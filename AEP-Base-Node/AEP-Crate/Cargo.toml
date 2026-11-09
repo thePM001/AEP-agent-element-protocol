@@ -60,3 +60,6 @@ aep-evaluation-chain = { path = "../../AEP-Components/evaluation-chain/crate" }
 tempfile = "3"
 tower = { version = "0.5", features = ["util"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "io-util"] }
+
+[lints]
+workspace = true

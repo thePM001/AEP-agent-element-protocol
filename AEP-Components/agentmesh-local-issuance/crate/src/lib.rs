@@ -3,7 +3,6 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-
 fn walk_to_workspace() -> PathBuf {
     let mut dir = if let Ok(m) = std::env::var("CARGO_MANIFEST_DIR") {
         PathBuf::from(m)
@@ -44,7 +43,7 @@ fn sells_zero_trust_identity(src: &str) -> bool {
 }
 
 fn read_text(path: &Path, label: &str) -> Result<String, String> {
-    if path.is_file() == false {
+    if !path.is_file() {
         return Err(format!("missing {label}"));
     }
     match fs::read_to_string(path) {
@@ -61,7 +60,7 @@ fn read_text(path: &Path, label: &str) -> Result<String, String> {
 
 /// Require AgentMesh README to say local issuance and refuse zero-trust identity selling.
 pub fn scan_agentmesh_readme(src: &str) -> Result<String, String> {
-    if has_local_issuance(src) == false {
+    if !has_local_issuance(src) {
         return Err(String::from("AgentMesh README missing local issuance"));
     }
     if sells_zero_trust_identity(src) {
@@ -92,8 +91,10 @@ fn crate_rustdoc(src: &str) -> String {
 /// Require AgentMesh crate rustdoc to say local issuance and refuse zero-trust identity selling.
 pub fn scan_crate_module_docs(src: &str) -> Result<String, String> {
     let docs = crate_rustdoc(src);
-    if has_local_issuance(&docs) == false {
-        return Err(String::from("AgentMesh crate rustdoc missing local issuance"));
+    if !has_local_issuance(&docs) {
+        return Err(String::from(
+            "AgentMesh crate rustdoc missing local issuance",
+        ));
     }
     if sells_zero_trust_identity(&docs) {
         return Err(String::from(
@@ -121,11 +122,8 @@ fn agentmesh_row(src: &str) -> Result<String, String> {
 
 /// Require public README AgentMesh row to say local issuance.
 pub fn scan_public_readme_row(src: &str) -> Result<String, String> {
-    let row = match agentmesh_row(src) {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
-    if has_local_issuance(&row) == false {
+    let row = agentmesh_row(src)?;
+    if !has_local_issuance(&row) {
         return Err(String::from(
             "public README AgentMesh row missing local issuance",
         ));
@@ -151,11 +149,8 @@ fn harness_agentmesh_line(src: &str) -> Result<String, String> {
 
 /// Require harness README AgentMesh line to say local issuance.
 pub fn scan_harness_readme_line(src: &str) -> Result<String, String> {
-    let line = match harness_agentmesh_line(src) {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
-    if has_local_issuance(&line) == false {
+    let line = harness_agentmesh_line(src)?;
+    if !has_local_issuance(&line) {
         return Err(String::from(
             "harness README AgentMesh line missing local issuance",
         ));
@@ -170,26 +165,28 @@ pub fn scan_harness_readme_line(src: &str) -> Result<String, String> {
 
 /// Require spiffe_cryptographically_enforced so local X.509 is not sold as Workload API.
 pub fn require_honest_capability_flag(src: &str) -> Result<String, String> {
-    if src.contains("spiffe_cryptographically_enforced") == false {
+    if !src.contains("spiffe_cryptographically_enforced") {
         return Err(String::from(
             "AgentMesh crate missing spiffe_cryptographically_enforced",
         ));
     }
-    if src.contains("does not claim Workload API") == false {
+    if !src.contains("does not claim Workload API") {
         return Err(String::from(
             "AgentMesh crate missing honest Workload API claim bound",
         ));
     }
-    if src.contains("issue_workload_identity") == false {
+    if !src.contains("issue_workload_identity") {
         return Err(String::from(
             "AgentMesh crate missing local issue_workload_identity",
         ));
     }
-    if src.contains("IssuanceKind") == false {
+    if !src.contains("IssuanceKind") {
         return Err(String::from("AgentMesh crate missing IssuanceKind"));
     }
-    if src.contains("LocalX509") == false {
-        return Err(String::from("AgentMesh crate missing LocalX509 issuance kind"));
+    if !src.contains("LocalX509") {
+        return Err(String::from(
+            "AgentMesh crate missing LocalX509 issuance kind",
+        ));
     }
     Ok(String::from("ok honest capability flag"))
 }
@@ -197,17 +194,14 @@ pub fn require_honest_capability_flag(src: &str) -> Result<String, String> {
 /// Run live AgentMesh local issuance docs gate on the workspace.
 pub fn run_local_issuance_gate() -> Result<i32, String> {
     let root = walk_to_workspace();
-    let mesh_readme = match read_text(
+    let mesh_readme = read_text(
         &root
             .join("AEP-Components")
             .join("agentmesh")
             .join("README.md"),
         "agentmesh readme",
-    ) {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
-    let crate_src = match read_text(
+    )?;
+    let crate_src = read_text(
         &root
             .join("AEP-Components")
             .join("agentmesh")
@@ -215,24 +209,15 @@ pub fn run_local_issuance_gate() -> Result<i32, String> {
             .join("src")
             .join("lib.rs"),
         "agentmesh crate",
-    ) {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
-    let public_readme = match read_text(&root.join("README.md"), "public readme") {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
-    let harness_readme = match read_text(
+    )?;
+    let public_readme = read_text(&root.join("README.md"), "public readme")?;
+    let harness_readme = read_text(
         &root
             .join("AEP-User-Experience")
             .join("harness")
             .join("README.md"),
         "harness readme",
-    ) {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
+    )?;
     let mut proofs: Vec<String> = Vec::new();
     match scan_agentmesh_readme(&mesh_readme) {
         Ok(v) => proofs.push(v),
@@ -269,6 +254,12 @@ pub mod scan_agentmesh_readme {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanAgentmeshReadme {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanAgentmeshReadme {
         pub fn new() -> Self {
             Self {
@@ -293,6 +284,12 @@ pub mod scan_crate_module_docs {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanCrateModuleDocs {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanCrateModuleDocs {
         pub fn new() -> Self {
             Self {
@@ -317,6 +314,12 @@ pub mod scan_public_readme_row {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanPublicReadmeRow {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanPublicReadmeRow {
         pub fn new() -> Self {
             Self {
@@ -341,6 +344,12 @@ pub mod require_honest_capability_flag {
         pub src: String,
         pub scan: String,
     }
+    impl Default for RequireHonestCapabilityFlag {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl RequireHonestCapabilityFlag {
         pub fn new() -> Self {
             Self {
@@ -365,6 +374,12 @@ pub mod run_local_issuance_gate {
         pub src: String,
         pub scan: String,
     }
+    impl Default for RunLocalIssuanceGate {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl RunLocalIssuanceGate {
         pub fn new() -> Self {
             Self {
@@ -388,8 +403,7 @@ mod tests {
     use super::*;
 
     fn fail() {
-        let none: Option<i32> = None;
-        let _ = none.unwrap();
+        panic!("test check failed");
     }
 
     fn honest_readme() -> String {
@@ -414,7 +428,7 @@ mod tests {
     fn readme_requires_local_issuance() {
         match scan_agentmesh_readme("no claim here") {
             Err(e) => {
-                if e.contains("local issuance") == false {
+                if !e.contains("local issuance") {
                     fail();
                 }
             }
@@ -428,11 +442,9 @@ mod tests {
 
     #[test]
     fn readme_denies_zero_trust_sell() {
-        match scan_agentmesh_readme(
-            "Zero-trust identity layer. local issuance",
-        ) {
+        match scan_agentmesh_readme("Zero-trust identity layer. local issuance") {
             Err(e) => {
-                if e.contains("zero-trust") == false {
+                if !e.contains("zero-trust") {
                     fail();
                 }
             }
@@ -454,10 +466,11 @@ mod tests {
 
     #[test]
     fn public_row_requires_local_issuance() {
-        match scan_public_readme_row("| **AgentMesh** | `AEP-Components/agentmesh/crate/` | SPIFFE identity |")
-        {
+        match scan_public_readme_row(
+            "| **AgentMesh** | `AEP-Components/agentmesh/crate/` | SPIFFE identity |",
+        ) {
             Err(e) => {
-                if e.contains("local issuance") == false {
+                if !e.contains("local issuance") {
                     fail();
                 }
             }

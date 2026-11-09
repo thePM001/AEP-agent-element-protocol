@@ -47,7 +47,6 @@ type Provider struct {
 	client smClient
 }
 
-
 // testFetchPreLockHook is a test-only seam invoked (when non-nil)
 // between Fetch's fast-path closed check and its RLock acquisition.
 var testFetchPreLockHook func()

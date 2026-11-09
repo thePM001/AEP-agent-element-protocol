@@ -119,13 +119,13 @@ func TestIsWindowsStyleFlag(t *testing.T) {
 	assert.True(t, isWindowsStyleFlag("/k"))
 	assert.True(t, isWindowsStyleFlag("/S"))
 	assert.True(t, isWindowsStyleFlag("/C"))
-	assert.False(t, isWindowsStyleFlag("/Cmd"))       // multi-char, not matched
-	assert.False(t, isWindowsStyleFlag("/usr/bin"))    // path, not a flag
-	assert.False(t, isWindowsStyleFlag("/usr"))        // 3 chars after /, too long
-	assert.False(t, isWindowsStyleFlag("-c"))          // not / prefix
-	assert.False(t, isWindowsStyleFlag("/"))           // no char after /
-	assert.False(t, isWindowsStyleFlag("/1"))          // non-alpha
-	assert.False(t, isWindowsStyleFlag("/Command"))    // multi-char
+	assert.False(t, isWindowsStyleFlag("/Cmd"))     // multi-char, not matched
+	assert.False(t, isWindowsStyleFlag("/usr/bin")) // path, not a flag
+	assert.False(t, isWindowsStyleFlag("/usr"))     // 3 chars after /, too long
+	assert.False(t, isWindowsStyleFlag("-c"))       // not / prefix
+	assert.False(t, isWindowsStyleFlag("/"))        // no char after /
+	assert.False(t, isWindowsStyleFlag("/1"))       // non-alpha
+	assert.False(t, isWindowsStyleFlag("/Command")) // multi-char
 }
 
 func TestIsTransparentCommand(t *testing.T) {

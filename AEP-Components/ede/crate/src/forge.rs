@@ -23,7 +23,14 @@ pub trait Forge {
     /// Extra environment for git calls that reach the forge.
     fn git_env(&self) -> Vec<(String, String)>;
     /// Land the commit at HEAD of `tree`. Returns the branch or pull request it landed as.
-    fn land(&self, tree: &Path, repo: &str, base_branch: &str, draft: &str, message: &str) -> Result<String, String>;
+    fn land(
+        &self,
+        tree: &Path,
+        repo: &str,
+        base_branch: &str,
+        draft: &str,
+        message: &str,
+    ) -> Result<String, String>;
 }
 
 fn env_or(key: &str, dflt: &str) -> String {
@@ -35,7 +42,10 @@ fn env_or(key: &str, dflt: &str) -> String {
 
 fn git_out(tree: &Path, env: &[(String, String)], args: &[&str]) -> Result<String, String> {
     let mut c = Command::new("git");
-    c.arg("-C").arg(tree).args(args).env("GIT_TERMINAL_PROMPT", "0");
+    c.arg("-C")
+        .arg(tree)
+        .args(args)
+        .env("GIT_TERMINAL_PROMPT", "0");
     for (k, v) in env {
         c.env(k, v);
     }
@@ -52,12 +62,24 @@ pub fn base64(data: &[u8]) -> String {
     const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::new();
     for chunk in data.chunks(3) {
-        let b = [chunk[0], *chunk.get(1).unwrap_or(&0), *chunk.get(2).unwrap_or(&0)];
+        let b = [
+            chunk[0],
+            *chunk.get(1).unwrap_or(&0),
+            *chunk.get(2).unwrap_or(&0),
+        ];
         let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | b[2] as u32;
         out.push(T[(n >> 18) as usize & 63] as char);
         out.push(T[(n >> 12) as usize & 63] as char);
-        out.push(if chunk.len() > 1 { T[(n >> 6) as usize & 63] as char } else { '=' });
-        out.push(if chunk.len() > 2 { T[n as usize & 63] as char } else { '=' });
+        out.push(if chunk.len() > 1 {
+            T[(n >> 6) as usize & 63] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            T[n as usize & 63] as char
+        } else {
+            '='
+        });
     }
     out
 }
@@ -90,9 +112,29 @@ impl Forge for GitForge {
     fn git_env(&self) -> Vec<(String, String)> {
         Vec::new()
     }
-    fn land(&self, tree: &Path, _repo: &str, base_branch: &str, draft: &str, _message: &str) -> Result<String, String> {
-        let target = if self.direct { base_branch.to_string() } else { format!("aep-ede/{}", draft) };
-        git_out(tree, &[], &["push", "-q", "ede-land", &format!("HEAD:refs/heads/{}", target)])?;
+    fn land(
+        &self,
+        tree: &Path,
+        _repo: &str,
+        base_branch: &str,
+        draft: &str,
+        _message: &str,
+    ) -> Result<String, String> {
+        let target = if self.direct {
+            base_branch.to_string()
+        } else {
+            format!("aep-ede/{}", draft)
+        };
+        git_out(
+            tree,
+            &[],
+            &[
+                "push",
+                "-q",
+                "ede-land",
+                &format!("HEAD:refs/heads/{}", target),
+            ],
+        )?;
         Ok(format!("branch {}", target))
     }
 }
@@ -117,7 +159,11 @@ impl GitHubForge {
 pub fn json_field(body: &str, key: &str) -> Option<String> {
     let at = body.find(&format!("\"{}\"", key))?;
     let rest = &body[at + key.len() + 2..];
-    let rest = rest.trim_start().strip_prefix(':')?.trim_start().strip_prefix('"')?;
+    let rest = rest
+        .trim_start()
+        .strip_prefix(':')?
+        .trim_start()
+        .strip_prefix('"')?;
     Some(rest.chars().take_while(|c| *c != '"').collect())
 }
 
@@ -153,15 +199,34 @@ impl Forge for GitHubForge {
         vec![
             ("GIT_CONFIG_COUNT".into(), "1".into()),
             ("GIT_CONFIG_KEY_0".into(), "http.extraHeader".into()),
-            ("GIT_CONFIG_VALUE_0".into(), format!("Authorization: Basic {}", basic)),
+            (
+                "GIT_CONFIG_VALUE_0".into(),
+                format!("Authorization: Basic {}", basic),
+            ),
         ]
     }
-    fn land(&self, tree: &Path, repo: &str, base_branch: &str, draft: &str, message: &str) -> Result<String, String> {
+    fn land(
+        &self,
+        tree: &Path,
+        repo: &str,
+        base_branch: &str,
+        draft: &str,
+        message: &str,
+    ) -> Result<String, String> {
         if self.token.is_empty() {
             return Err("GITHUB_TOKEN is empty: a pull request needs a token with contents and pull request write access".into());
         }
         let branch = format!("aep-ede/{}", draft);
-        git_out(tree, &self.git_env(), &["push", "-q", "ede-land", &format!("HEAD:refs/heads/{}", branch)])?;
+        git_out(
+            tree,
+            &self.git_env(),
+            &[
+                "push",
+                "-q",
+                "ede-land",
+                &format!("HEAD:refs/heads/{}", branch),
+            ],
+        )?;
         let mut lines = message.lines();
         let title = lines.next().unwrap_or("aep-ede promote").trim().to_string();
         let body: Vec<&str> = lines.collect();
@@ -204,9 +269,21 @@ impl Forge for GitHubForge {
         let text = String::from_utf8_lossy(&o.stdout).to_string();
         let code = text.lines().last().unwrap_or("").trim().to_string();
         if code != "201" {
-            return Err(format!("the pull request was refused with HTTP {}: {}", code, text.lines().next().unwrap_or("").chars().take(200).collect::<String>()));
+            return Err(format!(
+                "the pull request was refused with HTTP {}: {}",
+                code,
+                text.lines()
+                    .next()
+                    .unwrap_or("")
+                    .chars()
+                    .take(200)
+                    .collect::<String>()
+            ));
         }
-        Ok(format!("pull request {}", json_field(&text, "html_url").unwrap_or(branch)))
+        Ok(format!(
+            "pull request {}",
+            json_field(&text, "html_url").unwrap_or(branch)
+        ))
     }
 }
 

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 )
 
 func TestCheckAll_NoConfig(t *testing.T) {
@@ -494,12 +494,12 @@ func TestCheckAll_ErrorFormat(t *testing.T) {
 // Table-driven test for single feature checks
 func TestCheckAll_SingleFeatureChecks(t *testing.T) {
 	tests := []struct {
-		name          string
-		setupMocks    func()
-		config        *config.Config
-		wantErr       bool
-		errContains   []string
-		cleanupMocks  func()
+		name         string
+		setupMocks   func()
+		config       *config.Config
+		wantErr      bool
+		errContains  []string
+		cleanupMocks func()
 	}{
 		{
 			name: "unix_sockets enabled, seccomp available",

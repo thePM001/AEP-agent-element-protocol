@@ -38,7 +38,7 @@ const (
 type Token struct {
 	Path   string
 	Class  ExtClass
-	Value  string    // opaque token string from sandbox_extension_issue_file
+	Value  string // opaque token string from sandbox_extension_issue_file
 	Issued time.Time
 	handle int64 // internal handle from consume, -1 if not consumed
 }

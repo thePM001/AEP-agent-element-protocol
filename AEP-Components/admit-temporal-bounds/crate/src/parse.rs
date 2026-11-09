@@ -44,12 +44,12 @@ pub fn parse_temporal_from_text(text: &str) -> TemporalCompileInput {
             "max_staleness_ms" => input.max_staleness_ms = parse_i64(&v, DEFAULT_MAX_STALENESS_MS),
             "has_agent_time" => input.has_agent_time = parse_bool(&v),
             "causal_parent" | "causal_dependency" => {
-                if v.is_empty() == false {
+                if !v.is_empty() {
                     input.causal_parents.push(v);
                 }
             }
             "causal_satisfied" | "delivered" => {
-                if v.is_empty() == false {
+                if !v.is_empty() {
                     input.causal_satisfied.push(v);
                 }
             }
@@ -70,7 +70,7 @@ pub fn parse_extra_walls(text: &str) -> Vec<AdmitWall> {
         if line.is_empty() || line.starts_with('#') || line.starts_with('@') {
             continue;
         }
-        if line.contains('\t') == false && line.starts_with("id=") == false {
+        if !line.contains('\t') && !line.starts_with("id=") {
             continue;
         }
         let mut id = String::new();

@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/pkgcheck"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/pkgcheck"
 )
 
 func TestSocketProvider_Name(t *testing.T) {
@@ -238,7 +238,6 @@ func TestSocketProvider_BreakerOpensAfterRepeatedFailures(t *testing.T) {
 	assert.Equal(t, "circuit breaker open", resp3.Metadata.Error)
 	assert.Equal(t, hitsAfterTwoCalls, serverHits, "third call must not hit the server")
 }
-
 
 func TestSocketProvider_MalformedResponseTripsBreaker(t *testing.T) {
 	// Server always returns 200 with garbage body - every CheckBatch fails

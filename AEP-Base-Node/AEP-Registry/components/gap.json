@@ -18,6 +18,12 @@
       "description": "Validate a GAP document against meta-schema",
       "runtime": "cli",
       "method": "gap validate"
+    },
+    {
+      "id": "check_gap_pin",
+      "description": "Byte check and version check of the GAP files pinned from GAP-OPEN-SOURCE",
+      "runtime": "cli",
+      "method": "node AEP-Components/gap/bin/check-gap-pin.mjs"
     }
   ],
   "setup_hooks": [],
@@ -28,8 +34,9 @@
     "gpu_required": false
   },
   "schemas": [
-    "AEP-Components/gap/schemas/gap-meta-schema-v1.json",
-    "AEP-Components/gap/schemas/gap-meta-schema-v1.2.json"
+    "AEP-Components/gap/schemas/gap-meta-schema-v1.1.json",
+    "AEP-Components/gap/schemas/gap-meta-schema-v1.2.json",
+    "AEP-Components/gap/schemas/gap-meta-schema-v1.3.json"
   ],
   "cca": {
     "summary": "GAP Governed Agentic Programming: .gap YAML instructions and meta-schema.",

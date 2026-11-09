@@ -17,8 +17,8 @@ import (
 
 // DiagnosticCollector collects diagnostic information.
 type DiagnosticCollector struct {
-	client       Client
-	output       io.Writer
+	client        Client
+	output        io.Writer
 	redactSecrets bool
 }
 
@@ -44,25 +44,25 @@ func NewDiagnosticCollector(config DiagnosticConfig) *DiagnosticCollector {
 
 // DiagnosticReport contains all diagnostic information.
 type DiagnosticReport struct {
-	GeneratedAt   time.Time         `json:"generated_at"`
-	Version       string            `json:"version"`
-	SystemInfo    SystemInfo        `json:"system_info"`
-	Status        *Status           `json:"status,omitempty"`
-	Metrics       *Metrics          `json:"metrics,omitempty"`
-	Config        map[string]any    `json:"config,omitempty"`
-	Sessions      []SessionInfo     `json:"sessions,omitempty"`
-	RecentEvents  []Event           `json:"recent_events,omitempty"`
-	Errors        []string          `json:"errors,omitempty"`
+	GeneratedAt  time.Time      `json:"generated_at"`
+	Version      string         `json:"version"`
+	SystemInfo   SystemInfo     `json:"system_info"`
+	Status       *Status        `json:"status,omitempty"`
+	Metrics      *Metrics       `json:"metrics,omitempty"`
+	Config       map[string]any `json:"config,omitempty"`
+	Sessions     []SessionInfo  `json:"sessions,omitempty"`
+	RecentEvents []Event        `json:"recent_events,omitempty"`
+	Errors       []string       `json:"errors,omitempty"`
 }
 
 // SystemInfo contains system information.
 type SystemInfo struct {
-	OS           string `json:"os"`
-	Arch         string `json:"arch"`
-	NumCPU       int    `json:"num_cpu"`
-	GoVersion    string `json:"go_version"`
-	Hostname     string `json:"hostname,omitempty"`
-	WorkingDir   string `json:"working_dir,omitempty"`
+	OS         string `json:"os"`
+	Arch       string `json:"arch"`
+	NumCPU     int    `json:"num_cpu"`
+	GoVersion  string `json:"go_version"`
+	Hostname   string `json:"hostname,omitempty"`
+	WorkingDir string `json:"working_dir,omitempty"`
 }
 
 // Collect gathers diagnostic information.

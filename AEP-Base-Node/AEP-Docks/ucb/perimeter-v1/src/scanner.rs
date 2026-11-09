@@ -1,4 +1,3 @@
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ScannerId {
     Secrets,
@@ -27,19 +26,34 @@ impl ScannerPack for DefaultScannerPack {
             || t.contains("aws_secret_access_key")
             || t.contains("-----begin rsa")
         {
-            return Err(ScannerFinding { scanner_id: ScannerId::Secrets, reason: "secrets" });
+            return Err(ScannerFinding {
+                scanner_id: ScannerId::Secrets,
+                reason: "secrets",
+            });
         }
         if t.contains("union select") || t.contains("; wget ") || t.contains("&& curl ") {
-            return Err(ScannerFinding { scanner_id: ScannerId::Injection, reason: "injection" });
+            return Err(ScannerFinding {
+                scanner_id: ScannerId::Injection,
+                reason: "injection",
+            });
         }
         if t.contains("ssn:") || t.contains("social security") {
-            return Err(ScannerFinding { scanner_id: ScannerId::Pii, reason: "pii" });
+            return Err(ScannerFinding {
+                scanner_id: ScannerId::Pii,
+                reason: "pii",
+            });
         }
         if t.contains("rm -rf") || t.contains("drop table") || t.contains(":(){:|:&};:") {
-            return Err(ScannerFinding { scanner_id: ScannerId::DestructiveShell, reason: "destructive-shell" });
+            return Err(ScannerFinding {
+                scanner_id: ScannerId::DestructiveShell,
+                reason: "destructive-shell",
+            });
         }
         if t.contains("ignore all previous") || t.contains("system prompt override") {
-            return Err(ScannerFinding { scanner_id: ScannerId::PromptOverride, reason: "prompt-override" });
+            return Err(ScannerFinding {
+                scanner_id: ScannerId::PromptOverride,
+                reason: "prompt-override",
+            });
         }
         Ok(())
     }

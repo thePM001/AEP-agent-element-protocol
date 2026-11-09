@@ -18,3 +18,6 @@ aep-base-node = { path = "../../../AEP-Base-Node/AEP-Crate" }
 serde.workspace = true
 serde_json.workspace = true
 tempfile = "3"
+
+[lints]
+workspace = true

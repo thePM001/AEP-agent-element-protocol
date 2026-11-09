@@ -29,7 +29,7 @@ func TestAsString(t *testing.T) {
 		{name: "int", input: int(42), want: "42", wantErr: false},
 		{name: "int negative", input: int(-7), want: "-7", wantErr: false},
 		{name: "int32", input: int32(100), want: "100", wantErr: false},
-		{name: "int64", input: int64(1<<40), want: "1099511627776", wantErr: false},
+		{name: "int64", input: int64(1 << 40), want: "1099511627776", wantErr: false},
 		{name: "uint", input: uint(9), want: "9", wantErr: false},
 		{name: "uint32", input: uint32(math.MaxUint32), want: "4294967295", wantErr: false},
 		{name: "uint64", input: uint64(math.MaxUint64), want: "18446744073709551615", wantErr: false},
@@ -89,7 +89,7 @@ func TestAsUint32(t *testing.T) {
 
 		// int64 out of range
 		{name: "int64 negative", input: int64(-1), want: nil, wantErr: true},
-		{name: "int64 overflow", input: int64(1<<32), want: nil, wantErr: true},
+		{name: "int64 overflow", input: int64(1 << 32), want: nil, wantErr: true},
 
 		// int32
 		{name: "int32 positive", input: int32(255), want: uint32(255), wantErr: false},
@@ -101,7 +101,7 @@ func TestAsUint32(t *testing.T) {
 
 		// uint64 in range and overflow
 		{name: "uint64 in range", input: uint64(100), want: uint32(100), wantErr: false},
-		{name: "uint64 overflow", input: uint64(1<<32), want: nil, wantErr: true},
+		{name: "uint64 overflow", input: uint64(1 << 32), want: nil, wantErr: true},
 		{name: "uint64 max", input: uint64(math.MaxUint64), want: nil, wantErr: true},
 
 		// float64
@@ -148,7 +148,7 @@ func TestAsUint64(t *testing.T) {
 
 		// int
 		{name: "int zero", input: int(0), want: uint64(0), wantErr: false},
-		{name: "int positive", input: int(1<<30), want: uint64(1 << 30), wantErr: false},
+		{name: "int positive", input: int(1 << 30), want: uint64(1 << 30), wantErr: false},
 		{name: "int negative", input: int(-1), want: nil, wantErr: true},
 
 		// int64

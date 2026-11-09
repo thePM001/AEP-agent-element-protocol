@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform/darwin/sbpl"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform/darwin/sandboxext"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/platform/darwin/sbpl"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
 

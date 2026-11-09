@@ -2,8 +2,7 @@
 // Default deny. tickVectorClock only after allow.
 use std::fs;
 use std::io::Write;
-use std::path::PathBuf;
-
+use std::path::{Path, PathBuf};
 
 fn extract_fn(src: &str, needle: &str) -> String {
     let start = match src.find(needle) {
@@ -46,7 +45,7 @@ fn strip_line_comments(src: &str) -> String {
 }
 
 fn compact(src: &str) -> String {
-    src.chars().filter(|c| c.is_whitespace() == false).collect()
+    src.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
 fn prod_src(src: &str) -> String {
@@ -83,25 +82,31 @@ pub fn scan_admit_gate_before_executor(src: &str) -> Result<String, String> {
             "executeNode invokes nodeExecutor without admitGate first",
         ));
     }
-    if code.contains("if(!admitted)") == false && code.contains("if(admitted==false)") == false {
-        return Err(String::from("executeNode does not deny when admitGate is false"));
+    if !code.contains("if(!admitted)") && !code.contains("if(admitted==false)") {
+        return Err(String::from(
+            "executeNode does not deny when admitGate is false",
+        ));
     }
-    Ok(String::from("ok executeNode calls admitGate before nodeExecutor"))
+    Ok(String::from(
+        "ok executeNode calls admitGate before nodeExecutor",
+    ))
 }
 
 /// Fail if admitGate is missing and execute still runs nodeExecutor.
 pub fn scan_default_deny(src: &str) -> Result<String, String> {
     let code = prod_src(src);
-    if code.contains("admitGate") == false {
+    if !code.contains("admitGate") {
         return Err(String::from("engine.ts missing admitGate"));
     }
-    if code.contains("defaultAdmitGate") == false {
+    if !code.contains("defaultAdmitGate") {
         return Err(String::from("engine.ts missing defaultAdmitGate"));
     }
-    if code.contains("this.options.admitGate??defaultAdmitGate") == false {
-        return Err(String::from("executeNode does not default admitGate to deny"));
+    if !code.contains("this.options.admitGate??defaultAdmitGate") {
+        return Err(String::from(
+            "executeNode does not default admitGate to deny",
+        ));
     }
-    if code.contains("constdefaultAdmitGate:AdmitGate=async()=>false") == false {
+    if !code.contains("constdefaultAdmitGate:AdmitGate=async()=>false") {
         return Err(String::from("defaultAdmitGate does not deny"));
     }
     if code.contains("async()=>true") {
@@ -132,9 +137,12 @@ pub fn scan_tick_after_allow(src: &str) -> Result<String, String> {
         return Err(String::from("executeNode missing admit deny return"));
     }
     if prod_src(&deny_block).contains("tickVectorClock") {
-        return Err(String::from("tickVectorClock still runs when admitGate denies"));
+        return Err(String::from(
+            "tickVectorClock still runs when admitGate denies",
+        ));
     }
-    let admit_at = match first_idx(&node_code, "awaitadmitGate").or_else(|| first_idx(&node_code, "admitGate("))
+    let admit_at = match first_idx(&node_code, "awaitadmitGate")
+        .or_else(|| first_idx(&node_code, "admitGate("))
     {
         Some(v) => v,
         None => return Err(String::from("executeNode does not invoke admitGate")),
@@ -150,7 +158,7 @@ pub fn scan_tick_after_allow(src: &str) -> Result<String, String> {
     if tick_at < admit_at {
         return Err(String::from("tickVectorClock runs before admitGate"));
     }
-    if node_code.contains("error:\"admit_denied\"") == false {
+    if !node_code.contains("error:\"admit_denied\"") {
         return Err(String::from("executeNode deny path missing admit_denied"));
     }
     Ok(String::from("ok tickVectorClock only after allow"))
@@ -177,9 +185,9 @@ fn walk_to_workspace() -> PathBuf {
     PathBuf::from(".")
 }
 
-fn read_engine(root: &PathBuf) -> Result<String, String> {
+fn read_engine(root: &Path) -> Result<String, String> {
     let path = root.join("AEP-Components/graph-engine/lib/graph/engine.ts");
-    if path.is_file() == false {
+    if !path.is_file() {
         return Err(String::from("missing graph-engine engine.ts"));
     }
     match fs::read_to_string(&path) {
@@ -217,6 +225,12 @@ pub mod scan_admit_gate_before_executor {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanAdmitGateBeforeExecutor {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanAdmitGateBeforeExecutor {
         pub fn new() -> Self {
             Self {
@@ -241,6 +255,12 @@ pub mod scan_default_deny {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanDefaultDeny {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanDefaultDeny {
         pub fn new() -> Self {
             Self {
@@ -265,6 +285,12 @@ pub mod scan_tick_after_allow {
         pub src: String,
         pub scan: String,
     }
+    impl Default for ScanTickAfterAllow {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl ScanTickAfterAllow {
         pub fn new() -> Self {
             Self {
@@ -288,7 +314,7 @@ mod tests {
     use super::*;
 
     fn must(cond: bool) {
-        if cond == false {
+        if !cond {
             std::process::abort();
         }
     }

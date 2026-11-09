@@ -564,6 +564,7 @@ func (e *Engine) CheckNetworkIP(domain string, ip net.IP, port int) (dec Decisio
 		ips = []net.IP{parsed}
 	}
 
+	var netHits []scoredHit
 	for _, r := range e.compiledNetworkRules {
 		if len(r.ports) > 0 {
 			if _, ok := r.ports[port]; !ok {
@@ -603,20 +604,16 @@ func (e *Engine) CheckNetworkIP(domain string, ip net.IP, port int) (dec Decisio
 		}
 
 		dec = e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, nil)
-		if threatResult != nil {
-			dec.ThreatFeed = threatResult.FeedName
-			dec.ThreatMatch = threatResult.MatchedDomain
-			dec.ThreatAction = "audit"
-		}
+		dec = attachThreat(dec, threatResult)
+		netHits = append(netHits, scoredHit{dec: dec, spec: scoreNetworkRule(r, domain, ips)})
+	}
+	if len(netHits) > 0 {
+		dec = e.pickMostSpecific(netHits, e.wrapDecision(string(types.DecisionDeny), "default-deny-network", "", nil))
+		dec = attachThreat(dec, threatResult)
 		return dec
 	}
-
 	dec = e.wrapDecision(string(types.DecisionDeny), "default-deny-network", "", nil)
-	if threatResult != nil {
-		dec.ThreatFeed = threatResult.FeedName
-		dec.ThreatMatch = threatResult.MatchedDomain
-		dec.ThreatAction = "audit"
-	}
+	dec = attachThreat(dec, threatResult)
 	return dec
 }
 
@@ -808,6 +805,7 @@ func (e *Engine) matchCommandRules(command string, args []string) (Decision, boo
 	// shellparse.basenameLower); apply the same normalization to the
 	// basename match here so policy entries written without `.real`
 	// continue to match after a shim install.
+	var cmdHits []scoredHit
 	cmdBaseNorm := strings.TrimSuffix(cmdBase, ".real")
 
 	for _, r := range e.compiledCommandRules {
@@ -884,11 +882,13 @@ func (e *Engine) matchCommandRules(command string, args []string) (Decision, boo
 			}
 		}
 
-		dec := e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, r.rule.RedirectTo)
-		dec.EnvPolicy = MergeEnvPolicy(e.policy.EnvPolicy, r.rule)
-		return dec, true
+		hitDec := e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, r.rule.RedirectTo)
+		hitDec.EnvPolicy = MergeEnvPolicy(e.policy.EnvPolicy, r.rule)
+		cmdHits = append(cmdHits, scoredHit{dec: hitDec, spec: scoreCommandRule(r, command, cmdLower, cmdBase)})
 	}
-	// Default deny (consistent with file_rules, network_rules, and unix_socket_rules).
+	if len(cmdHits) > 0 {
+		return e.pickMostSpecific(cmdHits, e.wrapDecision(string(types.DecisionDeny), "default-deny-commands", "", nil)), true
+	}
 	dec := e.wrapDecision(string(types.DecisionDeny), "default-deny-commands", "", nil)
 	dec.EnvPolicy = MergeEnvPolicy(e.policy.EnvPolicy, CommandRule{})
 	return dec, false
@@ -926,29 +926,278 @@ func (e *Engine) HasSoftDeleteFileRule() bool {
 	return false
 }
 
+type specScore struct {
+	exact  int
+	base   int
+	prefix int
+	wild   int
+}
+
+func scoreGlob(p string) specScore {
+	wild := strings.Count(p, "*") + strings.Count(p, "?")
+	idx := strings.IndexAny(p, "*?[")
+	base := 0
+	last := filepath.Base(p)
+	if last != "" && !strings.ContainsAny(last, "*?[") {
+		base = 1
+	}
+	if idx < 0 {
+		return specScore{exact: 1, base: base, prefix: len(p), wild: 0}
+	}
+	return specScore{exact: 0, base: base, prefix: idx, wild: -wild}
+}
+
+func specBetter(a, b specScore) bool {
+	if a.exact != b.exact {
+		return a.exact > b.exact
+	}
+	if a.base != b.base {
+		return a.base > b.base
+	}
+	if a.prefix != b.prefix {
+		return a.prefix > b.prefix
+	}
+	return a.wild > b.wild
+}
+
+func scoreRegex(p string) specScore {
+	lit := 0
+	wild := 0
+	for i := 0; i < len(p); i++ {
+		if p[i] == '\\' && i+1 < len(p) {
+			lit++
+			i++
+			continue
+		}
+		switch p[i] {
+		case '.', '*', '+', 63, '|': // 63 is the question mark
+			wild++
+		case '(', ')', '[', ']', '{', '}', '^', '$':
+			// Grouping and anchors add no literal and no wildcard.
+		default:
+			lit++
+		}
+	}
+	exact := 0
+	if wild == 0 {
+		exact = 1
+	}
+	return specScore{exact: exact, prefix: lit, wild: -wild}
+}
+
+func scoreCommandRule(r compiledCommandRule, filename, cmdLower, cmdBase string) specScore {
+	cmds := r.rule.Commands
+	if len(cmds) == 0 {
+		return specScore{exact: 0, prefix: 0, wild: -1000}
+	}
+	best := specScore{exact: 0, prefix: -1, wild: -100000}
+	found := false
+	cmdBaseNorm := strings.TrimSuffix(cmdBase, ".real")
+	baseName := filepath.Base(filename)
+	for _, c := range cmds {
+		c = strings.TrimSpace(c)
+		if c == "" {
+			continue
+		}
+		cl := strings.ToLower(c)
+		matched := false
+		if strings.Contains(c, "/") {
+			if strings.ContainsAny(c, "*?[") {
+				for _, g := range r.pathGlobs {
+					if g.Match(cmdLower) || g.Match(filename) {
+						matched = true
+						break
+					}
+				}
+			} else if _, ok := r.fullPaths[cl]; ok && cl == cmdLower {
+				matched = true
+			}
+		} else if strings.ContainsAny(c, "*?[") {
+			for _, g := range r.basenameGlobs {
+				if g.Match(cmdBase) || g.Match(baseName) || (cmdBaseNorm != cmdBase && g.Match(cmdBaseNorm)) {
+					matched = true
+					break
+				}
+			}
+		} else if _, ok := r.basenames[cl]; ok && (cl == cmdBase || cl == cmdBaseNorm) {
+			matched = true
+		}
+		if !matched {
+			continue
+		}
+		s := scoreGlob(cl)
+		if len(r.argsRegexes) > 0 {
+			s.prefix += 100
+		}
+		if !found || specBetter(s, best) {
+			best = s
+			found = true
+		}
+	}
+	if !found {
+		return specScore{exact: 0, prefix: 0, wild: -1000}
+	}
+	return best
+}
+
+func scoreNetworkRule(r compiledNetworkRule, domain string, ips []net.IP) specScore {
+	best := specScore{exact: 0, prefix: 0, wild: -10000}
+	found := false
+	for i, g := range r.domainGlobs {
+		if domain == "" || !g.Match(domain) {
+			continue
+		}
+		pat := "*"
+		if i < len(r.rule.Domains) {
+			pat = strings.ToLower(r.rule.Domains[i])
+		}
+		s := scoreGlob(pat)
+		if s.exact == 0 {
+			lit := 0
+			for _, ch := range pat {
+				if ch != '*' && ch != '?' && ch != '[' && ch != ']' {
+					lit++
+				}
+			}
+			if lit > s.prefix {
+				s.prefix = lit
+			}
+		}
+		if !found || specBetter(s, best) {
+			best = s
+			found = true
+		}
+	}
+	for _, n := range r.cidrs {
+		ok := false
+		for _, ip := range ips {
+			if ip != nil && n.Contains(ip) {
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			continue
+		}
+		ones, bits := n.Mask.Size()
+		s := specScore{exact: 0, prefix: ones, wild: 0}
+		if bits > 0 && ones == bits {
+			s.exact = 1
+		}
+		if !found || specBetter(s, best) {
+			best = s
+			found = true
+		}
+	}
+	if found {
+		return best
+	}
+	if len(r.ports) > 0 && len(r.domainGlobs) == 0 && len(r.cidrs) == 0 {
+		return specScore{exact: 0, prefix: 1, wild: 0}
+	}
+	return specScore{exact: 0, prefix: 0, wild: -1000}
+}
+
+func attachThreat(dec Decision, threatResult *ThreatCheckResult) Decision {
+	if threatResult != nil {
+		dec.ThreatFeed = threatResult.FeedName
+		dec.ThreatMatch = threatResult.MatchedDomain
+		dec.ThreatAction = "audit"
+	}
+	return dec
+}
+
+func (e *Engine) collectHits(hits []Decision, fallback Decision) Decision {
+	if len(hits) == 0 {
+		return fallback
+	}
+	var denials []Decision
+	for _, h := range hits {
+		if h.PolicyDecision == types.DecisionDeny {
+			denials = append(denials, h)
+		}
+	}
+	if len(denials) > 0 {
+		names := make([]string, 0, len(denials))
+		msgs := make([]string, 0, len(denials))
+		for _, d := range denials {
+			if d.Rule != "" {
+				names = append(names, d.Rule)
+			}
+			if d.Message != "" {
+				msgs = append(msgs, d.Message)
+			}
+		}
+		out := denials[0]
+		out.Rule = strings.Join(names, ",")
+		out.Message = strings.Join(msgs, "; ")
+		out.PolicyDecision = types.DecisionDeny
+		out.EffectiveDecision = types.DecisionDeny
+		return out
+	}
+	best := hits[0]
+	bestS := decisionStrictness(best.PolicyDecision)
+	for _, h := range hits[1:] {
+		if s := decisionStrictness(h.PolicyDecision); s > bestS {
+			best = h
+			bestS = s
+		}
+	}
+	return best
+}
+
+type scoredHit struct {
+	dec  Decision
+	spec specScore
+}
+
+func (e *Engine) pickMostSpecific(hits []scoredHit, fallback Decision) Decision {
+	if len(hits) == 0 {
+		return fallback
+	}
+	best := hits[0].spec
+	for _, h := range hits[1:] {
+		if specBetter(h.spec, best) {
+			best = h.spec
+		}
+	}
+	var top []Decision
+	for _, h := range hits {
+		if h.spec == best {
+			top = append(top, h.dec)
+		}
+	}
+	return e.collectHits(top, fallback)
+}
+
 func (e *Engine) CheckFile(p string, operation string) Decision {
 	operation = strings.ToLower(operation)
+	var hits []scoredHit
 	for _, r := range e.compiledFileRules {
 		if !matchOp(r.ops, operation) {
 			continue
 		}
-		for _, g := range r.globs {
+		for i, g := range r.globs {
 			if g.Match(p) {
 				dec := e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, nil)
-
-				// Handle file redirect if configured
 				if r.redirectTo != "" && dec.PolicyDecision == types.DecisionRedirect {
 					dec.FileRedirect = computeFileRedirect(p, operation, r.redirectTo, r.preserveTree, r.rule.Message)
 				}
-
-				return dec
+				pat := p
+				if i < len(r.rule.Paths) {
+					pat = r.rule.Paths[i]
+				}
+				hits = append(hits, scoredHit{dec: dec, spec: scoreGlob(pat)})
 			}
 		}
 	}
+	if len(hits) > 0 {
+		return e.pickMostSpecific(hits, e.wrapDecision(string(types.DecisionDeny), "default-deny-files", "", nil))
+	}
 	// No rule matched - use operation-aware default.
 	// Write operations default to deny (safety net for unrecognized paths).
-	// Read operations default to allow (reads can't modify files;
-	// sensitive reads are caught by explicit deny rules above).
+	// Read operations fail closed too unless the operator opts in with
+	// AEP_CAW_DEFAULT_ALLOW_READS=1.
 	if isReadOperation(operation) && strings.EqualFold(os.Getenv("AEP_CAW_DEFAULT_ALLOW_READS"), "1") {
 		return e.wrapDecision(string(types.DecisionAllow), "default-allow-reads", "", nil)
 	}
@@ -978,15 +1227,24 @@ func computeFileRedirect(originalPath, operation, targetBase string, preserveTre
 // Paths for abstract sockets should be passed as "@name".
 func (e *Engine) CheckUnixSocket(path string, operation string) Decision {
 	operation = strings.ToLower(strings.TrimSpace(operation))
+	var hits []scoredHit
 	for _, r := range e.compiledUnixRules {
 		if !matchOp(r.ops, operation) {
 			continue
 		}
-		for _, g := range r.paths {
+		for i, g := range r.paths {
 			if g.Match(path) {
-				return e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, nil)
+				dec := e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, nil)
+				pat := path
+				if i < len(r.rule.Paths) {
+					pat = r.rule.Paths[i]
+				}
+				hits = append(hits, scoredHit{dec: dec, spec: scoreGlob(pat)})
 			}
 		}
+	}
+	if len(hits) > 0 {
+		return e.pickMostSpecific(hits, e.wrapDecision(string(types.DecisionDeny), "default-deny-unix", "", nil))
 	}
 	return e.wrapDecision(string(types.DecisionDeny), "default-deny-unix", "", nil)
 }
@@ -998,16 +1256,24 @@ func (e *Engine) CheckRegistry(path string, operation string) Decision {
 	}
 	operation = strings.ToLower(operation)
 	pathUpper := strings.ToUpper(path)
-
+	var hits []scoredHit
 	for _, r := range e.compiledRegistryRules {
 		if !matchOp(r.ops, operation) {
 			continue
 		}
-		for _, g := range r.globs {
+		for i, g := range r.globs {
 			if g.Match(path) || g.Match(pathUpper) {
-				return e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, nil)
+				dec := e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, nil)
+				pat := path
+				if i < len(r.rule.Paths) {
+					pat = r.rule.Paths[i]
+				}
+				hits = append(hits, scoredHit{dec: dec, spec: scoreGlob(pat)})
 			}
 		}
+	}
+	if len(hits) > 0 {
+		return e.pickMostSpecific(hits, e.wrapDecision(string(types.DecisionDeny), "default-deny-registry", "", nil))
 	}
 	return e.wrapDecision(string(types.DecisionDeny), "default-deny-registry", "", nil)
 }
@@ -1217,6 +1483,7 @@ func (e *Engine) CheckNetworkCtx(ctx context.Context, domain string, port int) (
 		}
 	}
 
+	var netHits []scoredHit
 	for _, r := range e.compiledNetworkRules {
 		if len(r.ports) > 0 {
 			if _, ok := r.ports[port]; !ok {
@@ -1260,20 +1527,16 @@ func (e *Engine) CheckNetworkCtx(ctx context.Context, domain string, port int) (
 
 		// If rule has no selectors, it matches (e.g., approve unknown https by port only).
 		dec = e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, nil)
-		if threatResult != nil {
-			dec.ThreatFeed = threatResult.FeedName
-			dec.ThreatMatch = threatResult.MatchedDomain
-			dec.ThreatAction = "audit"
-		}
+		dec = attachThreat(dec, threatResult)
+		netHits = append(netHits, scoredHit{dec: dec, spec: scoreNetworkRule(r, domain, ips)})
+	}
+	if len(netHits) > 0 {
+		dec = e.pickMostSpecific(netHits, e.wrapDecision(string(types.DecisionDeny), "default-deny-network", "", nil))
+		dec = attachThreat(dec, threatResult)
 		return dec
 	}
-
 	dec = e.wrapDecision(string(types.DecisionDeny), "default-deny-network", "", nil)
-	if threatResult != nil {
-		dec.ThreatFeed = threatResult.FeedName
-		dec.ThreatMatch = threatResult.MatchedDomain
-		dec.ThreatAction = "audit"
-	}
+	dec = attachThreat(dec, threatResult)
 	return dec
 }
 
@@ -1399,24 +1662,37 @@ type DnsRedirectResult struct {
 // to ensure case-insensitive matching consistent with DNS semantics.
 func (e *Engine) EvaluateDnsRedirect(hostname string) *DnsRedirectResult {
 	hostname = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(hostname)), ".")
+	var best specScore
+	var bestRes *DnsRedirectResult
+	found := false
 	for _, r := range e.dnsRedirectRules {
-		if r.pattern.MatchString(hostname) {
-			visibility := r.rule.Visibility
-			if visibility == "" {
-				visibility = "audit_only"
-			}
-			onFailure := r.rule.OnFailure
-			if onFailure == "" {
-				onFailure = "fail_closed"
-			}
-			return &DnsRedirectResult{
-				Matched:    true,
-				Rule:       r.rule.Name,
-				ResolveTo:  r.rule.ResolveTo,
-				Visibility: visibility,
-				OnFailure:  onFailure,
-			}
+		if !r.pattern.MatchString(hostname) {
+			continue
 		}
+		visibility := r.rule.Visibility
+		if visibility == "" {
+			visibility = "audit_only"
+		}
+		onFailure := r.rule.OnFailure
+		if onFailure == "" {
+			onFailure = "fail_closed"
+		}
+		res := &DnsRedirectResult{
+			Matched:    true,
+			Rule:       r.rule.Name,
+			ResolveTo:  r.rule.ResolveTo,
+			Visibility: visibility,
+			OnFailure:  onFailure,
+		}
+		s := scoreRegex(r.rule.Match)
+		if !found || specBetter(s, best) {
+			best = s
+			bestRes = res
+			found = true
+		}
+	}
+	if found {
+		return bestRes
 	}
 	return &DnsRedirectResult{Matched: false}
 }
@@ -1445,42 +1721,55 @@ func (e *Engine) EvaluateConnectRedirect(hostPort string) *ConnectRedirectResult
 	} else {
 		hostPort = strings.TrimSuffix(strings.ToLower(hostPort), ".")
 	}
+	var best specScore
+	var bestRes *ConnectRedirectResult
+	found := false
 	for _, r := range e.connectRedirectRules {
-		if r.pattern.MatchString(hostPort) {
-			visibility := r.rule.Visibility
-			if visibility == "" {
-				visibility = "audit_only"
-			}
-			onFailure := r.rule.OnFailure
-			if onFailure == "" {
-				onFailure = "fail_closed"
-			}
-			tlsMode := "passthrough"
-			sni := ""
-			if r.rule.TLS != nil {
-				if r.rule.TLS.Mode != "" {
-					tlsMode = r.rule.TLS.Mode
-				}
-				sni = r.rule.TLS.SNI
-			}
-			return &ConnectRedirectResult{
-				Matched:        true,
-				Rule:           r.rule.Name,
-				RedirectTo:     r.rule.RedirectTo,
-				RedirectToUnix: r.rule.RedirectToUnix,
-				TLSMode:        tlsMode,
-				SNI:            sni,
-				Visibility:     visibility,
-				Message:        r.rule.Message,
-				OnFailure:      onFailure,
-			}
+		if !r.pattern.MatchString(hostPort) {
+			continue
 		}
+		visibility := r.rule.Visibility
+		if visibility == "" {
+			visibility = "audit_only"
+		}
+		onFailure := r.rule.OnFailure
+		if onFailure == "" {
+			onFailure = "fail_closed"
+		}
+		tlsMode := "passthrough"
+		sni := ""
+		if r.rule.TLS != nil {
+			if r.rule.TLS.Mode != "" {
+				tlsMode = r.rule.TLS.Mode
+			}
+			sni = r.rule.TLS.SNI
+		}
+		res := &ConnectRedirectResult{
+			Matched:        true,
+			Rule:           r.rule.Name,
+			RedirectTo:     r.rule.RedirectTo,
+			RedirectToUnix: r.rule.RedirectToUnix,
+			TLSMode:        tlsMode,
+			SNI:            sni,
+			Visibility:     visibility,
+			Message:        r.rule.Message,
+			OnFailure:      onFailure,
+		}
+		s := scoreRegex(r.rule.Match)
+		if !found || specBetter(s, best) {
+			best = s
+			bestRes = res
+			found = true
+		}
+	}
+	if found {
+		return bestRes
 	}
 	return &ConnectRedirectResult{Matched: false}
 }
 
 // CheckExecve evaluates an execve call against command rules with depth context support.
-// Returns the decision from the first matching rule, or default deny if none match.
+// Collects matching command rules. Most specific selector wins.
 // The depth parameter represents the ancestry depth: 0 = direct (user-typed), 1+ = nested (script-spawned).
 func (e *Engine) CheckExecve(filename string, argv []string, depth int) (dec Decision) {
 	if e.torChecker != nil {
@@ -1495,6 +1784,7 @@ func (e *Engine) CheckExecve(filename string, argv []string, depth int) (dec Dec
 			defer func() { dec.Tor = &tv }() // audit: attach, don't loosen
 		}
 	}
+	var execHits []scoredHit
 	cmdLower := strings.ToLower(filename)
 	cmdBase := strings.ToLower(filepath.Base(filename))
 
@@ -1563,12 +1853,14 @@ func (e *Engine) CheckExecve(filename string, argv []string, depth int) (dec Dec
 			}
 		}
 
-		dec = e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, r.rule.RedirectTo)
-		dec.EnvPolicy = MergeEnvPolicy(e.policy.EnvPolicy, r.rule)
+		hitDec := e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, r.rule.RedirectTo)
+		hitDec.EnvPolicy = MergeEnvPolicy(e.policy.EnvPolicy, r.rule)
+		execHits = append(execHits, scoredHit{dec: hitDec, spec: scoreCommandRule(r, filename, cmdLower, cmdBase)})
+	}
+	if len(execHits) > 0 {
+		dec = e.pickMostSpecific(execHits, e.wrapDecision(string(types.DecisionDeny), "default-deny-execve", "", nil))
 		return dec
 	}
-
-	// Default deny (consistent with other Check* methods)
 	dec = e.wrapDecision(string(types.DecisionDeny), "default-deny-execve", "", nil)
 	dec.EnvPolicy = MergeEnvPolicy(e.policy.EnvPolicy, CommandRule{})
 	return dec

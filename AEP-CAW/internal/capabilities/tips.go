@@ -157,9 +157,9 @@ func GenerateTips(platform string, caps map[string]any) []Tip {
 // before less-specific ones (e.g. "kernel version unknown" before "kernel").
 var tipsByBackend = map[string][]reasonTip{
 	// Linux
-	"fuse":           {{Tip: Tip{Feature: "fuse", Impact: "Fine-grained filesystem control disabled", Action: "Install FUSE3: apt install fuse3 (Debian/Ubuntu), dnf install fuse3 (Fedora)"}}},
-	"seccomp-execve": {{Tip: Tip{Feature: "seccomp", Impact: "Syscall filtering disabled (likely nested container)", Action: "Run in privileged container or on host for full seccomp support"}}},
-	"seccomp-notify": {{Tip: Tip{Feature: "seccomp-notify", Impact: "Seccomp-based file enforcement disabled", Action: "Run in privileged container or on host for seccomp support"}}},
+	"fuse":             {{Tip: Tip{Feature: "fuse", Impact: "Fine-grained filesystem control disabled", Action: "Install FUSE3: apt install fuse3 (Debian/Ubuntu), dnf install fuse3 (Fedora)"}}},
+	"seccomp-execve":   {{Tip: Tip{Feature: "seccomp", Impact: "Syscall filtering disabled (likely nested container)", Action: "Run in privileged container or on host for full seccomp support"}}},
+	"seccomp-notify":   {{Tip: Tip{Feature: "seccomp-notify", Impact: "Seccomp-based file enforcement disabled", Action: "Run in privileged container or on host for seccomp support"}}},
 	"landlock-network": {{Tip: Tip{Feature: "landlock-network", Impact: "Kernel-level network restrictions disabled", Action: "Requires kernel 6.7+ (Landlock ABI v4)"}}},
 	"ebpf": {
 		{Contains: ebpf.ReasonBTFNotPresent, Tip: Tip{Feature: "ebpf", Impact: "Network monitoring disabled", Action: "Kernel was built without CONFIG_DEBUG_INFO_BTF=y; cilium/ebpf CO-RE programs cannot relocate types without BTF. Rebuild the kernel with CONFIG_DEBUG_INFO_BTF=y (and ideally CONFIG_DEBUG_INFO_BTF_MODULES=y)."}},
@@ -168,12 +168,12 @@ var tipsByBackend = map[string][]reasonTip{
 		{Contains: ebpf.ReasonKernelTooOld, Tip: Tip{Feature: "ebpf", Impact: "Network monitoring disabled", Action: "eBPF network monitoring requires kernel 5.8+ for BPF ring buffer and CO-RE support. Upgrade your kernel."}},
 		{Tip: Tip{Feature: "ebpf", Impact: "Network monitoring disabled", Action: "Requires CAP_BPF (or CAP_SYS_ADMIN) and cgroups v2. Run as root or with elevated privileges."}},
 	},
-	"cgroups-v2":               {{Tip: Tip{Feature: "cgroups-v2", Impact: "Resource limits unavailable", Action: "Enable cgroups v2 in kernel or container runtime"}}},
+	"cgroups-v2":                 {{Tip: Tip{Feature: "cgroups-v2", Impact: "Resource limits unavailable", Action: "Enable cgroups v2 in kernel or container runtime"}}},
 	"cgroups_v2_resource_limits": {{Tip: Tip{Feature: "cgroups_v2_resource_limits", Impact: "Resource limits (memory/cpu/pids) cannot be enforced for sessions", Action: "Required only if you want resource limits. On stock Docker, add a docker.service drop-in:\n  # /etc/systemd/system/docker.service.d/cgroup-delegate.conf\n  [Service]\n  Delegate=memory pids cpu\nThen `systemctl daemon-reload && systemctl restart docker`. eBPF network enforcement does NOT require this."}}},
 	"ebpf_cgroup_attach":         {{Tip: Tip{Feature: "ebpf_cgroup_attach", Impact: "Network rules (domain-based denies) won't enforce against subprocesses", Action: "eBPF cgroup_connect requires CAP_BPF (or CAP_SYS_ADMIN), /sys/fs/bpf mounted, and kernel CONFIG_CGROUP_BPF. Check `aep-caw detect` output for the specific blocker."}}},
-	"ptrace":          {{Tip: Tip{Feature: "ptrace", Impact: "Syscall-level enforcement via ptrace unavailable", Action: "Add SYS_PTRACE capability"}}},
-	"pid-namespace":   {{Tip: Tip{Feature: "pid-namespace", Impact: "Process isolation unavailable", Action: "Run in a PID namespace (docker run --pid=host or unshare -p)"}}},
-	"capability-drop": {{Tip: Tip{Feature: "capability-drop", Impact: "Process retains full Linux capabilities (privilege reduction inactive)", Action: "Start the process with a reduced capability set using systemd CapabilityBoundingSet= + User=, docker run --cap-drop=ALL, or an unprivileged user. Note: capabilities.DropCapabilities() only narrows the bounding set for exec'd children via PR_CAPBSET_DROP and does not lower the running process's permitted/effective sets, so calling it from inside the server is not a substitute for the startup-time mechanisms above."}}},
+	"ptrace":                     {{Tip: Tip{Feature: "ptrace", Impact: "Syscall-level enforcement via ptrace unavailable", Action: "Add SYS_PTRACE capability"}}},
+	"pid-namespace":              {{Tip: Tip{Feature: "pid-namespace", Impact: "Process isolation unavailable", Action: "Run in a PID namespace (docker run --pid=host or unshare -p)"}}},
+	"capability-drop":            {{Tip: Tip{Feature: "capability-drop", Impact: "Process retains full Linux capabilities (privilege reduction inactive)", Action: "Start the process with a reduced capability set using systemd CapabilityBoundingSet= + User=, docker run --cap-drop=ALL, or an unprivileged user. Note: capabilities.DropCapabilities() only narrows the bounding set for exec'd children via PR_CAPBSET_DROP and does not lower the running process's permitted/effective sets, so calling it from inside the server is not a substitute for the startup-time mechanisms above."}}},
 	// Darwin
 	"esf":               {{Tip: Tip{Feature: "esf", Impact: "Endpoint Security Framework unavailable", Action: "Install the aep-caw macOS app bundle with system extension"}}},
 	"network-extension": {{Tip: Tip{Feature: "network-extension", Impact: "Network filtering unavailable", Action: "Requires network extension entitlement from Apple"}}},

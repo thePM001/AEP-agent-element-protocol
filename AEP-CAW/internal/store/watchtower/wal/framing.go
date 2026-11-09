@@ -122,10 +122,11 @@ var ErrCorruptFrame = errors.New("wal: corrupt record frame")
 // WriteRecord writes a length-prefixed, CRC32C-protected record to w.
 //
 // Frame layout:
-//   offset  size      field
-//   0       4         length     (uint32 BE; bytes after this field, excluding CRC, including payload)
-//   4       4         crc32c     (Castagnoli, computed over payload)
-//   8       length-4  payload
+//
+//	offset  size      field
+//	0       4         length     (uint32 BE; bytes after this field, excluding CRC, including payload)
+//	4       4         crc32c     (Castagnoli, computed over payload)
+//	8       length-4  payload
 //
 // Note: the length field encodes len(payload)+4 (the payload bytes plus the
 // 4-byte CRC). This matches spec §"Record framing".

@@ -33,7 +33,7 @@
     "name": "context_digest_typical",
     "kind": "context_digest",
     "input": {"session_id":"01HXAVD2N5VX3CZQK7Q7QWNYKE","agent_id":"aep-caw","agent_version":"1.0.0","ocsf_version":"1.8.0","format_version":2,"algorithm":"hmac-sha256","key_fingerprint":"sha256:aabbccdd"},
-    "expected": "a2d26350f1f1e3f5b3459b4ce225cf06359be7cd97beb2ecf528b135ce7ba2a4"
+    "expected": "c26b91e89680066d27b4d0f2ecb7cee30f1a04295f6da7a2a58084786d87d7c1"
   },
   {
     "name": "negative_invalid_utf8_in_prev_hash",

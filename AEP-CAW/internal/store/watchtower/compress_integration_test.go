@@ -15,8 +15,8 @@ import (
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower/compact"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/watchtower/testserver"
-	wtpv1 "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
+	wtpv1 "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/proto/aepcaw/wtp/v1"
 	"google.golang.org/protobuf/proto"
 )
 

@@ -68,7 +68,9 @@ enum Cmd {
 fn read_source(file: &str) -> Result<String, String> {
     if file == "-" {
         let mut s = String::new();
-        std::io::stdin().read_to_string(&mut s).map_err(|e| e.to_string())?;
+        std::io::stdin()
+            .read_to_string(&mut s)
+            .map_err(|e| e.to_string())?;
         Ok(s)
     } else {
         std::fs::read_to_string(file).map_err(|e| format!("{file}: {e}"))
@@ -110,7 +112,10 @@ fn main() -> ExitCode {
     let result: Result<ExitCode, String> = (|| match cli.cmd {
         Cmd::Serve => {
             tracing_subscriber::fmt()
-                .with_env_filter(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()))
+                .with_env_filter(
+                    tracing_subscriber::EnvFilter::try_from_default_env()
+                        .unwrap_or_else(|_| "info".into()),
+                )
                 .init();
             let e = open()?;
             let addr = format!("{}:{}", e.cfg.host, e.cfg.port);
@@ -138,7 +143,8 @@ fn main() -> ExitCode {
                 .enable_all()
                 .build()
                 .map_err(|x| x.to_string())?;
-            rt.block_on(mcp::serve_stdio(e)).map_err(|x| x.to_string())?;
+            rt.block_on(mcp::serve_stdio(e))
+                .map_err(|x| x.to_string())?;
             Ok(ExitCode::SUCCESS)
         }
         Cmd::Eval {
@@ -152,11 +158,16 @@ fn main() -> ExitCode {
             if let Some(i) = inputs {
                 req["inputs"] = serde_json::from_str(&i).map_err(|x| format!("inputs: {x}"))?;
             }
-            Ok(finish(if no_receipt { e.evaluate_unsigned(&req) } else { e.evaluate(&req) }))
+            Ok(finish(if no_receipt {
+                e.evaluate_unsigned(&req)
+            } else {
+                e.evaluate(&req)
+            }))
         }
         Cmd::Verify { file, replay } => {
             let e = open()?;
-            let receipt: J = serde_json::from_str(&read_source(&file)?).map_err(|x| format!("receipt: {x}"))?;
+            let receipt: J =
+                serde_json::from_str(&read_source(&file)?).map_err(|x| format!("receipt: {x}"))?;
             Ok(finish(e.verify(
                 &json!({ "receipt": receipt, "mode": if replay { "replay" } else { "signature" } }),
             )))
@@ -167,9 +178,9 @@ fn main() -> ExitCode {
                 .enable_all()
                 .build()
                 .map_err(|x| x.to_string())?;
-            Ok(finish(
-                rt.block_on(e.lookup(&json!({ "query": query.join(" "), "k": k.to_string() }))),
-            ))
+            Ok(finish(rt.block_on(e.lookup(
+                &json!({ "query": query.join(" "), "k": k.to_string() }),
+            ))))
         }
         Cmd::Explain { file } => {
             let e = open()?;
@@ -201,7 +212,9 @@ fn main() -> ExitCode {
         }
         Cmd::Key => {
             let e = open()?;
-            print(&json!({ "node_id": e.key.node_id, "public_key": e.key.public_hex, "key_file": e.cfg.data_dir.join("ucm-sign.key") }));
+            print(
+                &json!({ "node_id": e.key.node_id, "public_key": e.key.public_hex, "key_file": e.cfg.data_dir.join("ucm-sign.key") }),
+            );
             Ok(ExitCode::SUCCESS)
         }
         Cmd::VerifyLog => {

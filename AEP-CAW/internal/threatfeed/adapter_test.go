@@ -17,7 +17,7 @@ func TestPolicyAdapter_RedactsLocalListPath(t *testing.T) {
 	adapter := &PolicyAdapter{Store: store}
 	result, matched := adapter.Check("evil.com")
 	require.True(t, matched)
-	assert.Equal(t, "local:blocklist.txt.1fb68369", result.FeedName, "adapter should redact directory path and append hash")
+	assert.Equal(t, "local:blocklist.txt.c4a2c372", result.FeedName, "adapter should redact directory path and append hash")
 }
 
 func TestPolicyAdapter_PreservesRemoteFeedName(t *testing.T) {

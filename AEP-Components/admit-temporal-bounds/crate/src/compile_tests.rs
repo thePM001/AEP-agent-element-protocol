@@ -17,8 +17,8 @@ mod tests {
     #[test]
     fn clock_skew_closes_drift_wall() {
         let admit = admit_collect_all(&compile_temporal_walls(&skew_input()));
-        assert_eq!(admit.allow, false);
-        assert_eq!(admit.closed.iter().any(|w| w.id == WALL_TEMPORAL_DRIFT), true);
+        assert!(!admit.allow);
+        assert!(admit.closed.iter().any(|w| w.id == WALL_TEMPORAL_DRIFT));
     }
 
     #[test]
@@ -30,8 +30,8 @@ mod tests {
         t.drift_ms = 10;
         t.max_drift_ms = 50;
         let admit = admit_collect_all(&compile_temporal_walls(&t));
-        assert_eq!(admit.allow, true);
-        assert_eq!(compile_temporal_warns(&t).is_empty(), true);
+        assert!(admit.allow);
+        assert!(compile_temporal_warns(&t).is_empty());
     }
 
     #[test]
@@ -43,10 +43,10 @@ mod tests {
         t.agent_time_ms = 10_030;
         t.bridge_time_ms = 10_000;
         let warns = compile_temporal_warns(&t);
-        assert_eq!(warns.is_empty(), false);
+        assert!(!warns.is_empty());
         let admit = fold_temporal_into_admit(&t, &[]);
-        assert_eq!(admit.allow, true);
-        assert_eq!(admit.closed.is_empty(), true);
+        assert!(admit.allow);
+        assert!(admit.closed.is_empty());
     }
 
     #[test]
@@ -59,8 +59,8 @@ mod tests {
         t.max_drift_ms = 10_000;
         t.max_staleness_ms = 10_000;
         let admit = admit_collect_all(&compile_temporal_walls(&t));
-        assert_eq!(admit.allow, false);
-        assert_eq!(admit.closed.iter().any(|w| w.id == WALL_TEMPORAL_FUTURE), true);
+        assert!(!admit.allow);
+        assert!(admit.closed.iter().any(|w| w.id == WALL_TEMPORAL_FUTURE));
     }
 
     #[test]
@@ -72,8 +72,8 @@ mod tests {
         t.max_staleness_ms = 5_000;
         t.max_drift_ms = 1_000_000;
         let admit = admit_collect_all(&compile_temporal_walls(&t));
-        assert_eq!(admit.allow, false);
-        assert_eq!(admit.closed.iter().any(|w| w.id == WALL_TEMPORAL_STALE), true);
+        assert!(!admit.allow);
+        assert!(admit.closed.iter().any(|w| w.id == WALL_TEMPORAL_STALE));
     }
 
     #[test]
@@ -85,11 +85,11 @@ mod tests {
         t.causal_parents.push(String::from("evt-parent"));
         t.event_id = String::from("evt-child");
         let admit = admit_collect_all(&compile_temporal_walls(&t));
-        assert_eq!(admit.allow, false);
+        assert!(!admit.allow);
         let ids: Vec<&str> = admit.closed.iter().map(|w| w.id.as_str()).collect();
-        assert_eq!(ids.contains(&WALL_TEMPORAL_CAUSAL_PARENT), true);
+        assert!(ids.contains(&WALL_TEMPORAL_CAUSAL_PARENT));
         let parent_id = causal_parent_wall_id("evt-parent");
-        assert_eq!(ids.iter().any(|id| *id == parent_id.as_str()), true);
+        assert!(ids.contains(&parent_id.as_str()));
     }
 
     #[test]
@@ -101,7 +101,7 @@ mod tests {
         t.causal_parents.push(String::from("evt-parent"));
         t.causal_satisfied.push(String::from("evt-parent"));
         let admit = admit_collect_all(&compile_temporal_walls(&t));
-        assert_eq!(admit.allow, true);
+        assert!(admit.allow);
     }
 
     #[test]
@@ -113,8 +113,8 @@ mod tests {
         t.causal_violation_type = String::from("missing_dependency");
         t.event_id = String::from("evt-x");
         let admit = admit_collect_all(&compile_temporal_walls(&t));
-        assert_eq!(admit.allow, false);
-        assert_eq!(admit.closed.iter().any(|w| w.id == WALL_TEMPORAL_CAUSAL_PARENT), true);
+        assert!(!admit.allow);
+        assert!(admit.closed.iter().any(|w| w.id == WALL_TEMPORAL_CAUSAL_PARENT));
     }
 
     #[test]
@@ -123,11 +123,11 @@ mod tests {
         t.causal_parents.push(String::from("evt-parent"));
         let extra = vec![AdmitWall::close("constraint:required_field:alpha", "alpha required")];
         let result = fold_temporal_into_admit(&t, &extra);
-        assert_eq!(result.allow, false);
+        assert!(!result.allow);
         let ids: Vec<&str> = result.closed.iter().map(|w| w.id.as_str()).collect();
-        assert_eq!(ids.contains(&WALL_TEMPORAL_DRIFT), true);
-        assert_eq!(ids.contains(&WALL_TEMPORAL_CAUSAL_PARENT), true);
-        assert_eq!(ids.contains(&"constraint:required_field:alpha"), true);
+        assert!(ids.contains(&WALL_TEMPORAL_DRIFT));
+        assert!(ids.contains(&WALL_TEMPORAL_CAUSAL_PARENT));
+        assert!(ids.contains(&"constraint:required_field:alpha"));
     }
 
     #[test]
@@ -144,9 +144,9 @@ mod tests {
     fn unbound_agent_time_closes() {
         let t = TemporalCompileInput::with_defaults();
         let admit = admit_collect_all(&compile_temporal_walls(&t));
-        assert_eq!(admit.allow, false);
-        assert_eq!(admit.closed.iter().any(|w| w.id == WALL_TEMPORAL_DRIFT), true);
-        assert_eq!(admit.closed.iter().any(|w| w.reason == "no timestamps"), true);
+        assert!(!admit.allow);
+        assert!(admit.closed.iter().any(|w| w.id == WALL_TEMPORAL_DRIFT));
+        assert!(admit.closed.iter().any(|w| w.reason == "no timestamps"));
     }
 }
 

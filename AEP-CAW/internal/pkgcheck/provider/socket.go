@@ -91,10 +91,10 @@ type socketResponse struct {
 }
 
 type socketPackageResult struct {
-	Name    string         `json:"name"`
-	Version string         `json:"version"`
-	Alerts  []socketAlert  `json:"alerts,omitempty"`
-	Score   *socketScore   `json:"score,omitempty"`
+	Name    string        `json:"name"`
+	Version string        `json:"version"`
+	Alerts  []socketAlert `json:"alerts,omitempty"`
+	Score   *socketScore  `json:"score,omitempty"`
 }
 
 type socketAlert struct {
@@ -106,12 +106,12 @@ type socketAlert struct {
 }
 
 type socketScore struct {
-	Overall      float64 `json:"overall"`
-	Supply       float64 `json:"supply"`
-	Quality      float64 `json:"quality"`
-	Maintenance  float64 `json:"maintenance"`
+	Overall       float64 `json:"overall"`
+	Supply        float64 `json:"supply"`
+	Quality       float64 `json:"quality"`
+	Maintenance   float64 `json:"maintenance"`
 	Vulnerability float64 `json:"vulnerability"`
-	License      float64 `json:"license"`
+	License       float64 `json:"license"`
 }
 
 func (p *socketProvider) CheckBatch(ctx context.Context, req pkgcheck.CheckRequest) (*pkgcheck.CheckResponse, error) {

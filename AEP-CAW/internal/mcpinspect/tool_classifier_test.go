@@ -140,8 +140,8 @@ func TestToolClassifier_CaseInsensitive(t *testing.T) {
 	c := NewToolClassifier()
 
 	tests := []struct {
-		tool     string
-		wantCat  string
+		tool    string
+		wantCat string
 	}{
 		{"Read_File", CategoryRead},
 		{"GET_USER", CategoryRead},

@@ -10,8 +10,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/audit"
 	"github.com/spf13/cobra"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/audit"
 )
 
 type verifyOptions struct {

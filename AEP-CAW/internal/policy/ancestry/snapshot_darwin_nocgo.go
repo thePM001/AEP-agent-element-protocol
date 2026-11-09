@@ -15,9 +15,9 @@ import (
 // LIMITATION: StartTime has only second-level precision.
 // This implementation calculates StartTime from `ps -o etime=` (elapsed time),
 // which only has second-level precision. This means:
-// - Two calls for the same PID could return StartTime values differing by 1 second
-//   if they straddle a second boundary
-// - ValidateSnapshot() may have rare false positives (< 1 in 86400 per day of uptime)
+//   - Two calls for the same PID could return StartTime values differing by 1 second
+//     if they straddle a second boundary
+//   - ValidateSnapshot() may have rare false positives (< 1 in 86400 per day of uptime)
 //
 // For more reliable start times, build with cgo enabled to use sysctl directly.
 func captureSnapshotImpl(pid int) (*ProcessSnapshot, error) {

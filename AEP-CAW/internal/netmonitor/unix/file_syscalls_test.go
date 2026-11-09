@@ -356,9 +356,14 @@ func TestResolvePathAt_Absolute(t *testing.T) {
 	pid := os.Getpid()
 	ptr := pathToPtr(t, "/usr/bin/ls")
 
+	// TM-06: the result follows symlinks, and some hosts ship /usr/bin/ls as a symlink.
+	want, err := filepath.EvalSymlinks("/usr/bin/ls")
+	if err != nil {
+		t.Skipf("/usr/bin/ls not present: %v", err)
+	}
 	result, err := resolvePathAt(pid, -100, ptr)
 	assert.NoError(t, err)
-	assert.Equal(t, "/usr/bin/ls", result)
+	assert.Equal(t, want, result)
 }
 
 func TestResolvePathAt_AbsoluteClean(t *testing.T) {
@@ -591,7 +596,6 @@ func TestIsReadOnlyFileOp(t *testing.T) {
 		})
 	}
 }
-
 
 func TestResolveViaProcRoot_Symlink(t *testing.T) {
 	dir := t.TempDir()

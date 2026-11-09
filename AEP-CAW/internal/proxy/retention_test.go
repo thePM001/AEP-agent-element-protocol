@@ -79,13 +79,13 @@ func TestRunRetention_SizeBased_OldestFirst(t *testing.T) {
 
 	// Create sessions with different ages and sizes
 	sessions := []struct {
-		name    string
-		size    int64
+		name     string
+		size     int64
 		ageHours int
 	}{
-		{"session-oldest", 100 * 1024, 72},  // 100KB, 3 days old
-		{"session-middle", 200 * 1024, 48},  // 200KB, 2 days old
-		{"session-newest", 150 * 1024, 24},  // 150KB, 1 day old
+		{"session-oldest", 100 * 1024, 72}, // 100KB, 3 days old
+		{"session-middle", 200 * 1024, 48}, // 200KB, 2 days old
+		{"session-newest", 150 * 1024, 24}, // 150KB, 1 day old
 	}
 
 	for _, s := range sessions {

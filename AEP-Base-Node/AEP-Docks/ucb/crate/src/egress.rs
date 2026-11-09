@@ -37,18 +37,12 @@ pub fn auth_token_env_allowed(env_key: &str) -> bool {
     if key.contains('/') || key.contains('\\') || key.contains('\0') || key.contains('=') {
         return false;
     }
-    if !key
-        .chars()
-        .all(|c| c.is_ascii_alphanumeric() || c == '_')
-    {
+    if !key.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
         return false;
     }
     // Default allow: UCB inject prefix, UCB auth prefix, and AEP connector tokens
     // (AEP_SLACK_BOT_TOKEN, AEP_NOTION_TOKEN, ...). Never bare AWS_*/PATH/HOME.
-    if key.starts_with("UCB_EGRESS_")
-        || key.starts_with("UCB_AUTH_")
-        || key.starts_with("AEP_")
-    {
+    if key.starts_with("UCB_EGRESS_") || key.starts_with("UCB_AUTH_") || key.starts_with("AEP_") {
         return true;
     }
     if let Ok(list) = std::env::var("UCB_EGRESS_SECRET_ENV_ALLOWLIST") {
@@ -150,8 +144,7 @@ fn path_matches(pattern: &str, path: &str) -> bool {
     if pattern == path {
         return true;
     }
-    if pattern.ends_with("/**") {
-        let prefix = &pattern[..pattern.len() - 3];
+    if let Some(prefix) = pattern.strip_suffix("/**") {
         return path == prefix || path.starts_with(&format!("{prefix}/"));
     }
     if pattern.contains('*') {
@@ -210,7 +203,14 @@ pub fn response_over_cap(len: usize) -> bool {
 pub fn is_isolated_caller_header(name: &str) -> bool {
     matches!(
         name.to_ascii_lowercase().as_str(),
-        "authorization" | "connection" | "keep-alive" | "proxy-connection" | "transfer-encoding" | "upgrade" | "te" | "trailer"
+        "authorization"
+            | "connection"
+            | "keep-alive"
+            | "proxy-connection"
+            | "transfer-encoding"
+            | "upgrade"
+            | "te"
+            | "trailer"
     )
 }
 
@@ -284,9 +284,9 @@ fn is_blocked_socket_addr(addr: SocketAddr) -> bool {
                 || v6.is_unique_local()
                 || v6.is_unicast_link_local()
                 || v6.is_unspecified()
-                || v6.to_ipv4_mapped().is_some_and(|v4| {
-                    v4.is_loopback() || v4.is_private() || v4.is_link_local()
-                })
+                || v6
+                    .to_ipv4_mapped()
+                    .is_some_and(|v4| v4.is_loopback() || v4.is_private() || v4.is_link_local())
         }
     }
 }
@@ -326,11 +326,7 @@ pub async fn proxy_request_isolated(
     if upstream_path.contains("://") || upstream_path.contains('\\') {
         return Err("egress path contains forbidden characters".into());
     }
-    let url = format!(
-        "{}{}",
-        route.upstream.trim_end_matches('/'),
-        upstream_path
-    );
+    let url = format!("{}{}", route.upstream.trim_end_matches('/'), upstream_path);
     // Re-validate full URL after join (redirect target still blocked by no-redirect).
     validate_upstream_url(&url)?;
     // MEDIUM: pin DNS to first safe SocketAddr to reduce rebinding TOCTOU window
@@ -352,7 +348,8 @@ pub async fn proxy_request_isolated(
             pinned = Some(addr);
         }
     }
-    let pinned = pinned.ok_or_else(|| "upstream DNS re-resolve returned no addresses".to_string())?;
+    let pinned =
+        pinned.ok_or_else(|| "upstream DNS re-resolve returned no addresses".to_string())?;
     let limits = WireLimits::default();
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
@@ -400,10 +397,7 @@ pub async fn proxy_request_isolated(
     if let Some(b) = body {
         req = req.body(b);
     }
-    let res = req
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
+    let res = req.send().await.map_err(|e| e.to_string())?;
     let status = res.status().as_u16();
     let content_type = res
         .headers()

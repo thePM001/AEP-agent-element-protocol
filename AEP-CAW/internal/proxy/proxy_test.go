@@ -63,8 +63,8 @@ func TestProxy_AnthropicPassthrough(t *testing.T) {
 					"text": "Hello! How can I assist you today?",
 				},
 			},
-			"model":        "claude-sonnet-4-20250514",
-			"stop_reason":  "end_turn",
+			"model":         "claude-sonnet-4-20250514",
+			"stop_reason":   "end_turn",
 			"stop_sequence": nil,
 			"usage": map[string]int{
 				"input_tokens":  10,
@@ -1511,9 +1511,9 @@ func TestProxy_SSEBlocking_Integration(t *testing.T) {
 // TestProxy_CrossServerBlocking_Integration is an end-to-end test that verifies
 // the cross-server detection pipeline. It registers tools from two different MCP
 // servers, sends two sequential SSE streaming requests through the proxy:
-//   1. First request: tool_use for "query_database" (read from db-server) → ALLOWED
-//   2. Second request: tool_use for "send_email" (send from email-server) → BLOCKED
-//      by read-then-send cross-server rule
+//  1. First request: tool_use for "query_database" (read from db-server) → ALLOWED
+//  2. Second request: tool_use for "send_email" (send from email-server) → BLOCKED
+//     by read-then-send cross-server rule
 func TestProxy_CrossServerBlocking_Integration(t *testing.T) {
 	// SSE stream for request 1: query_database (read tool, should be allowed)
 	sseChunksRead := []string{

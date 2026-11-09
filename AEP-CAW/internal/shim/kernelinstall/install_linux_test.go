@@ -71,6 +71,7 @@ func serveNotifySetupStatus(ln net.Listener, okStatus bool) {
 func TestInstall_ModeOff_ReturnsSkip(t *testing.T) {
 	handler, calls := makeWrapInitHandler(200, types.WrapInitResponse{
 		WrapperBinary: "/usr/bin/aep-caw-unixwrap",
+		EnvPolicy:     &types.EnvPolicyWire{}, // a real server always sends the resolved env policy
 		NotifySocket:  "/tmp/notify.sock",
 	})
 	srv := httptest.NewServer(handler)
@@ -117,6 +118,7 @@ func TestInstall_ModeOff_ReturnsSkip(t *testing.T) {
 func TestInstall_AlreadyFiltered_ReturnsSkip(t *testing.T) {
 	handler, calls := makeWrapInitHandler(200, types.WrapInitResponse{
 		WrapperBinary: "/usr/bin/aep-caw-unixwrap",
+		EnvPolicy:     &types.EnvPolicyWire{}, // a real server always sends the resolved env policy
 		NotifySocket:  "/tmp/notify.sock",
 	})
 	srv := httptest.NewServer(handler)
@@ -153,6 +155,7 @@ func TestInstall_AlreadyFiltered_ReturnsSkip(t *testing.T) {
 func TestInstall_AlreadyFiltered_ModeOnAlsoSkips(t *testing.T) {
 	handler, calls := makeWrapInitHandler(200, types.WrapInitResponse{
 		WrapperBinary: "/usr/bin/aep-caw-unixwrap",
+		EnvPolicy:     &types.EnvPolicyWire{}, // a real server always sends the resolved env policy
 		NotifySocket:  "/tmp/notify.sock",
 	})
 	srv := httptest.NewServer(handler)
@@ -338,6 +341,7 @@ func TestInstall_StripsSignalSockFdFromPEnv(t *testing.T) {
 
 	wrapResp := types.WrapInitResponse{
 		WrapperBinary: wrapperBin,
+		EnvPolicy:     &types.EnvPolicyWire{}, // a real server always sends the resolved env policy
 		NotifySocket:  notifySockPath,
 		// WrapperEnv deliberately does NOT contain AEP_CAW_SIGNAL_SOCK_FD.
 		WrapperEnv: map[string]string{"FAKE_WRAPPER": "1"},
@@ -411,6 +415,7 @@ func TestInstall_PassesArgv0ToWrapper(t *testing.T) {
 
 	handler, _ := makeWrapInitHandler(200, types.WrapInitResponse{
 		WrapperBinary: wrapperBin,
+		EnvPolicy:     &types.EnvPolicyWire{}, // a real server always sends the resolved env policy
 		NotifySocket:  notifySockPath,
 		WrapperEnv:    map[string]string{},
 	})
@@ -464,6 +469,7 @@ func TestInstall_OmitsArgv0WhenEmpty(t *testing.T) {
 
 	handler, _ := makeWrapInitHandler(200, types.WrapInitResponse{
 		WrapperBinary: wrapperBin,
+		EnvPolicy:     &types.EnvPolicyWire{}, // a real server always sends the resolved env policy
 		NotifySocket:  notifySockPath,
 	})
 	srv := httptest.NewServer(handler)
@@ -519,6 +525,7 @@ func TestInstall_StripsStaleArgv0FromInheritedEnv(t *testing.T) {
 
 	handler, _ := makeWrapInitHandler(200, types.WrapInitResponse{
 		WrapperBinary: wrapperBin,
+		EnvPolicy:     &types.EnvPolicyWire{}, // a real server always sends the resolved env policy
 		NotifySocket:  notifySockPath,
 	})
 	srv := httptest.NewServer(handler)
@@ -693,6 +700,7 @@ func TestInstall_RelayForwardFail_NoACK_ResultFailClosed(t *testing.T) {
 	// NotifySocket so forwardNotifyFD will fail with "dial …: no such file".
 	wrapResp := types.WrapInitResponse{
 		WrapperBinary: wrapperBin,
+		EnvPolicy:     &types.EnvPolicyWire{}, // a real server always sends the resolved env policy
 		NotifySocket:  "/nonexistent/path/notify.sock",
 		WrapperEnv:    map[string]string{},
 	}
@@ -745,6 +753,7 @@ func TestInstall_RelayServerReject_NoACK_ResultFailClosed(t *testing.T) {
 
 	wrapResp := types.WrapInitResponse{
 		WrapperBinary: wrapperBin,
+		EnvPolicy:     &types.EnvPolicyWire{}, // a real server always sends the resolved env policy
 		NotifySocket:  notifySocket,
 		WrapperEnv:    map[string]string{},
 	}
@@ -801,6 +810,7 @@ func TestInstall_RelaySetupStatusTimeout_NoACK_ResultFailClosed(t *testing.T) {
 
 	wrapResp := types.WrapInitResponse{
 		WrapperBinary: wrapperBin,
+		EnvPolicy:     &types.EnvPolicyWire{}, // a real server always sends the resolved env policy
 		NotifySocket:  notifySocket,
 		WrapperEnv:    map[string]string{},
 	}
@@ -942,6 +952,7 @@ func TestInstall_RelayHappyPath(t *testing.T) {
 	// httptest server that returns a populated WrapInitResponse.
 	wrapResp := types.WrapInitResponse{
 		WrapperBinary: wrapperBin,
+		EnvPolicy:     &types.EnvPolicyWire{}, // a real server always sends the resolved env policy
 		NotifySocket:  notifySockPath,
 		WrapperEnv:    map[string]string{"FAKE_WRAPPER": "1"},
 	}
@@ -1093,6 +1104,7 @@ func TestInstall_PassesWrapperLogFDAndCreatesStateLogFile(t *testing.T) {
 
 	wrapResp := types.WrapInitResponse{
 		WrapperBinary: wrapperBin,
+		EnvPolicy:     &types.EnvPolicyWire{}, // a real server always sends the resolved env policy
 		NotifySocket:  notifySockPath,
 		WrapperEnv:    map[string]string{"FAKE_WRAPPER": "1"},
 	}
@@ -1187,6 +1199,7 @@ func TestInstall_PtraceModeACK(t *testing.T) {
 
 	handler, _ := makeWrapInitHandler(200, types.WrapInitResponse{
 		PtraceMode:   true,
+		EnvPolicy:    &types.EnvPolicyWire{}, // a real server always sends the resolved env policy
 		NotifySocket: notifySockPath,
 		// WrapperBinary deliberately empty - this is the ptrace-mode shape
 	})
@@ -1247,6 +1260,7 @@ func TestInstall_PtraceModeACK_ExitCode(t *testing.T) {
 
 	handler, _ := makeWrapInitHandler(200, types.WrapInitResponse{
 		PtraceMode:   true,
+		EnvPolicy:    &types.EnvPolicyWire{}, // a real server always sends the resolved env policy
 		NotifySocket: notifySockPath,
 	})
 	srv := httptest.NewServer(handler)
@@ -1298,6 +1312,7 @@ func TestInstall_PtraceModeNACK_ModeAuto(t *testing.T) {
 
 	handler, _ := makeWrapInitHandler(200, types.WrapInitResponse{
 		PtraceMode:   true,
+		EnvPolicy:    &types.EnvPolicyWire{}, // a real server always sends the resolved env policy
 		NotifySocket: notifySockPath,
 	})
 	srv := httptest.NewServer(handler)
@@ -1345,6 +1360,7 @@ func TestInstall_PtraceModeNACK_ModeOn(t *testing.T) {
 
 	handler, _ := makeWrapInitHandler(200, types.WrapInitResponse{
 		PtraceMode:   true,
+		EnvPolicy:    &types.EnvPolicyWire{}, // a real server always sends the resolved env policy
 		NotifySocket: notifySockPath,
 	})
 	srv := httptest.NewServer(handler)

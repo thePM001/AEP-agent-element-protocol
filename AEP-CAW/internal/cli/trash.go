@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/trash"
-	"github.com/spf13/cobra"
 )
 
 func newTrashCmd() *cobra.Command {

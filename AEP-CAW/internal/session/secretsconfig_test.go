@@ -77,10 +77,10 @@ func TestResolveServiceConfigs_FromHTTPService(t *testing.T) {
 	scrubTrue := true
 	svcs := []policy.HTTPService{
 		{
-			Name:     "github",
-			Upstream: "https://api.github.com",
-			Secret:   &policy.HTTPServiceSecret{Ref: "keyring://aep-caw/github_token", Format: "ghp_{rand:36}"},
-			Inject:   &policy.HTTPServiceInject{Header: &policy.HTTPServiceInjectHeader{Name: "Authorization", Template: "Bearer {{secret}}"}},
+			Name:          "github",
+			Upstream:      "https://api.github.com",
+			Secret:        &policy.HTTPServiceSecret{Ref: "keyring://aep-caw/github_token", Format: "ghp_{rand:36}"},
+			Inject:        &policy.HTTPServiceInject{Header: &policy.HTTPServiceInjectHeader{Name: "Authorization", Template: "Bearer {{secret}}"}},
 			ScrubResponse: &scrubTrue,
 		},
 		{

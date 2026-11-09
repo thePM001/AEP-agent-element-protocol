@@ -11,7 +11,7 @@ import (
 // TaskDefParams holds parameters for building the ECS task definition.
 type TaskDefParams struct {
 	Family           string
-	AepCawImage     string
+	AepCawImage      string
 	WorkloadImage    string
 	ExecutionRoleARN string
 	LogGroup         string

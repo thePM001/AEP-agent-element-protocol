@@ -3,12 +3,15 @@
 //! Exit 0 = all mandatory checks passed. Used by `conformance/runner/run.sh`.
 
 use aep_agentmesh::{create_bundle, rotate_on_trust_change};
-use aep_base_node::{open_lattice_db, process_request, pulse_beat, DockFrameResponse, DockingRuntime};
-use aep_lattice_channel::{build_frame, build_frame_for_dock, open_frame, ContractRegistry, DockingPort};
+use aep_base_node::{
+    open_lattice_db, process_request, pulse_beat, DockFrameResponse, DockingRuntime,
+};
+use aep_lattice_channel::{
+    build_frame, build_frame_for_dock, open_frame, ContractRegistry, DockingPort,
+};
 use aep_lattice_crypto::{generate_kem_keypair, generate_sign_keypair, open, seal};
 use aep_potomitan::{detect_network_mode, MemoryFabric, MeshMode, MeshPeer, MeshSupervisor};
 use serde::Serialize;
-
 
 #[derive(Serialize)]
 struct CheckResult {
@@ -155,7 +158,10 @@ fn arm_test_agent(
     let sign = provision_agent_sign_key(rt, agent_id)?;
     let (dir, session_id) = {
         let store = rt.admit.manifests.lock().map_err(|e| e.to_string())?;
-        (store.manifest_dir().to_path_buf(), "sess-conformance".to_string())
+        (
+            store.manifest_dir().to_path_buf(),
+            "sess-conformance".to_string(),
+        )
     };
     let manifest = serde_json::json!({
         "manifest_version": "task-manifest.v1",
@@ -174,7 +180,11 @@ fn arm_test_agent(
         serde_json::to_string_pretty(&manifest).map_err(|e| e.to_string())?,
     )
     .map_err(|e| e.to_string())?;
-    rt.admit.manifests.lock().map_err(|e| e.to_string())?.reload();
+    rt.admit
+        .manifests
+        .lock()
+        .map_err(|e| e.to_string())?
+        .reload();
     let mut reg = rt.admit.contracts.lock().map_err(|e| e.to_string())?;
     for c in contracts {
         reg.register(*c);
@@ -194,8 +204,8 @@ fn cc_pq_capsule_roundtrip() -> Result<(), String> {
     let sign = generate_sign_keypair();
     let plain = b"aep-2.8-conformance-pq-capsule";
     let capsule = seal(plain, &kem.public, &sign).map_err(|e| e.to_string())?;
-    let opened = open(&capsule, &kem.secret, &kem.public, &sign.public)
-        .map_err(|e| e.to_string())?;
+    let opened =
+        open(&capsule, &kem.secret, &kem.public, &sign.public).map_err(|e| e.to_string())?;
     if opened != plain {
         return Err("plaintext mismatch after open".into());
     }
@@ -243,7 +253,6 @@ fn cc_agentmesh_trust_rotation() -> Result<(), String> {
     Ok(())
 }
 
-
 fn cc_potomitan_packet_plane() -> Result<(), String> {
     let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
     std::fs::create_dir_all(dir.path().join("a")).map_err(|e| e.to_string())?;
@@ -267,7 +276,8 @@ fn cc_potomitan_packet_plane() -> Result<(), String> {
     .map_err(|e| e.to_string())?;
     a.open_memory_plane("a".into(), fabric.clone());
     b.open_memory_plane("b".into(), fabric);
-    a.send_packet("b", b"cc-plane".to_vec()).map_err(|e| e.to_string())?;
+    a.send_packet("b", b"cc-plane".to_vec())
+        .map_err(|e| e.to_string())?;
     let got = b
         .poll_packet()
         .map_err(|e| e.to_string())?
@@ -370,16 +380,22 @@ fn admit_through_pulse(rt: &DockingRuntime, port: &DockingPort, line: &str) -> D
 
 fn temp_docking_runtime() -> Result<(tempfile::TempDir, DockingRuntime), String> {
     let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
-    std::fs::write(dir.path().join("lattice.yaml"), CONFORMANCE_LATTICE).map_err(|e| e.to_string())?;
+    std::fs::write(dir.path().join("lattice.yaml"), CONFORMANCE_LATTICE)
+        .map_err(|e| e.to_string())?;
     let hub = dir.path().join("gap").join("policies").join("reference");
     std::fs::create_dir_all(&hub).map_err(|e| e.to_string())?;
     // The hub reads only caw-*.gap files from policies/reference.
-    std::fs::write(hub.join("caw-conformance.gap"), CONFORMANCE_HUB_GAP).map_err(|e| e.to_string())?;
+    std::fs::write(hub.join("caw-conformance.gap"), CONFORMANCE_HUB_GAP)
+        .map_err(|e| e.to_string())?;
     let db_path = dir.path().join("conf.db");
     let conn = open_lattice_db(&db_path).map_err(|e| e.to_string())?;
     let sock_base = dir.path().join("sockets").to_string_lossy().to_string();
-    let lrps = [String::from("dynaep-action-lattice"), String::from(CONFORMANCE_LRP)];
-    let rt = DockingRuntime::with_data_dir(sock_base, conn, &lrps, dir.path()).map_err(|e| e.to_string())?;
+    let lrps = [
+        String::from("dynaep-action-lattice"),
+        String::from(CONFORMANCE_LRP),
+    ];
+    let rt = DockingRuntime::with_data_dir(sock_base, conn, &lrps, dir.path())
+        .map_err(|e| e.to_string())?;
     Ok((dir, rt))
 }
 
@@ -400,7 +416,10 @@ fn cc_docking_lattice_health() -> Result<(), String> {
     let line = serde_json::json!({ "frame": frame }).to_string();
     let resp = admit_through_pulse(&rt, &DockingPort::ValidationEngine, &line);
     if !resp.ok || resp.event_id.is_none() {
-        return Err(format!("lattice health frame failed: {:?} deny={:?}", resp.error, resp.deny));
+        return Err(format!(
+            "lattice health frame failed: {:?} deny={:?}",
+            resp.error, resp.deny
+        ));
     }
     Ok(())
 }
@@ -492,7 +511,10 @@ fn cc_lrp_registration_flow() -> Result<(), String> {
     let reg_line = serde_json::json!({ "frame": reg_frame }).to_string();
     let reg = admit_through_pulse(&rt, &DockingPort::RegulationModule, &reg_line);
     if !reg.ok || reg.event_id.is_none() {
-        return Err(format!("LRP lattice registration failed: {:?} deny={:?}", reg.error, reg.deny));
+        return Err(format!(
+            "LRP lattice registration failed: {:?} deny={:?}",
+            reg.error, reg.deny
+        ));
     }
     let event_at = now_unix();
     let event_frame = conformance_frame_for_dock(
@@ -553,7 +575,10 @@ fn main() {
         failed,
         checks: results,
     };
-    println!("{}", serde_json::to_string_pretty(&report).expect("report json"));
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&report).expect("report json")
+    );
 
     if failed > 0 {
         std::process::exit(1);

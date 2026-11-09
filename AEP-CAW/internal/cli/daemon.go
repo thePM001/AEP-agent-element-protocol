@@ -541,7 +541,8 @@ func getCurrentSession(cmd *cobra.Command) (*PNACLSession, error) {
 }
 
 func getActiveIPs() []string {
-	var ips []string
+	// An empty list, not nil, so a host with no active interface reports [] in JSON.
+	ips := []string{}
 
 	interfaces, err := net.Interfaces()
 	if err != nil {

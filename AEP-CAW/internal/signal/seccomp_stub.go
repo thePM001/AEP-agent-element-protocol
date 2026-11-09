@@ -13,7 +13,7 @@ type SignalFilterConfig struct {
 // DefaultSignalFilterConfig returns a config for intercepting all signal syscalls.
 func DefaultSignalFilterConfig() SignalFilterConfig {
 	return SignalFilterConfig{
-		Enabled: false,
+		Enabled:  false,
 		Syscalls: nil,
 	}
 }

@@ -5,7 +5,6 @@ pub mod tls;
 
 use serde::{Deserialize, Serialize};
 
-
 pub const TRUST_DOMAIN: &str = "aep.protocol.local";
 pub const DID_METHOD: &str = "aep";
 const MTLS_TTL_SECS: u64 = 3600;
@@ -129,11 +128,7 @@ pub fn create_did(agent_id: &str, public_key: &[u8], capabilities: Vec<String>) 
     }
 }
 
-fn mtls_from_identity(
-    agent_id: &str,
-    now_unix: u64,
-    identity: tls::MtlsIdentity,
-) -> MtlsCertState {
+fn mtls_from_identity(agent_id: &str, now_unix: u64, identity: tls::MtlsIdentity) -> MtlsCertState {
     MtlsCertState {
         agent_id: agent_id.into(),
         cert_fingerprint: identity.cert_fingerprint,
@@ -162,14 +157,12 @@ pub fn create_bundle(
     capabilities: Vec<String>,
     now_unix: u64,
 ) -> AgentMeshBundle {
-    let identity = issue_agent_identity(agent_id).expect("workload identity required (fail closed)");
+    let identity =
+        issue_agent_identity(agent_id).expect("workload identity required (fail closed)");
     let spiffe_id = format!("spiffe://{TRUST_DOMAIN}/agent/{agent_id}");
     let expires = now_unix.saturating_add(MTLS_TTL_SECS);
     let spiffe = SpiffeIdentity {
-        svid: format!(
-            "x509-svid:{spiffe_id}:sha256:{}",
-            identity.cert_fingerprint
-        ),
+        svid: format!("x509-svid:{spiffe_id}:sha256:{}", identity.cert_fingerprint),
         spiffe_id,
         expires_at_unix: expires,
     };
@@ -196,7 +189,13 @@ mod tests {
 
     #[test]
     fn trust_score_does_not_rotate_mtls() {
-        let mut bundle = create_bundle("AG-00001", 850, b"pk", vec!["validate".into()], 1_700_000_000);
+        let mut bundle = create_bundle(
+            "AG-00001",
+            850,
+            b"pk",
+            vec!["validate".into()],
+            1_700_000_000,
+        );
         let old_fp = bundle.mtls.cert_fingerprint.clone();
         rotate_on_trust_change(&mut bundle, 500, 1_700_000_100);
         assert_eq!(bundle.mtls.cert_fingerprint, old_fp);
@@ -217,12 +216,15 @@ mod tests {
 
     #[test]
     fn create_bundle_binds_spiffe_fingerprint_to_mtls_cert() {
-        let bundle = create_bundle("AG-00001", 850, b"pk", vec!["validate".into()], 1_700_000_000);
+        let bundle = create_bundle(
+            "AG-00001",
+            850,
+            b"pk",
+            vec!["validate".into()],
+            1_700_000_000,
+        );
         assert!(
-            bundle
-                .spiffe
-                .svid
-                .contains(&bundle.mtls.cert_fingerprint),
+            bundle.spiffe.svid.contains(&bundle.mtls.cert_fingerprint),
             "SPIFFE svid must reference mtls cert fingerprint"
         );
         assert!(bundle.mtls.key_pem.is_some());

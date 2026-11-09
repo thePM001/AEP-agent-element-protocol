@@ -161,8 +161,8 @@ type pipReport struct {
 }
 
 type pipInstallItem struct {
-	Metadata pipMetadata `json:"metadata"`
-	Requested bool       `json:"requested"`
+	Metadata  pipMetadata `json:"metadata"`
+	Requested bool        `json:"requested"`
 }
 
 type pipMetadata struct {

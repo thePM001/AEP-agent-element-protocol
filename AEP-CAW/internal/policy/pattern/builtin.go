@@ -14,9 +14,9 @@ var BuiltinClasses = map[string][]string{
 	"shell": {
 		"bash", "zsh", "fish", "sh", "dash", "ksh", "tcsh", "csh",
 		"pwsh", "powershell", // PowerShell
-		"nu", "nushell",      // Nushell
-		"xonsh",              // Xonsh
-		"elvish",             // Elvish
+		"nu", "nushell", // Nushell
+		"xonsh",  // Xonsh
+		"elvish", // Elvish
 	},
 
 	// Code editors and IDEs
@@ -24,7 +24,7 @@ var BuiltinClasses = map[string][]string{
 		// Electron-based editors
 		"Cursor", "cursor",
 		"Code", "code", "code-oss", // VS Code
-		"codium",                   // VSCodium
+		"codium", // VSCodium
 		"Atom", "atom",
 		"Zed", "zed",
 		// Traditional editors
@@ -35,18 +35,18 @@ var BuiltinClasses = map[string][]string{
 		"helix", "hx",
 		"kakoune", "kak",
 		// IDEs
-		"idea", "idea64", "intellij*",          // IntelliJ
-		"goland", "goland64",                   // GoLand
-		"pycharm", "pycharm64",                 // PyCharm
-		"webstorm", "webstorm64",               // WebStorm
-		"clion", "clion64",                     // CLion
-		"rustrover",                            // RustRover
-		"rider", "rider64",                     // Rider
-		"eclipse",                              // Eclipse
-		"sublime_text", "subl",                 // Sublime Text
-		"TextMate",                             // TextMate
-		"notepad++",                            // Notepad++
-		"gedit", "kate", "geany", "mousepad",   // GTK/KDE editors
+		"idea", "idea64", "intellij*", // IntelliJ
+		"goland", "goland64", // GoLand
+		"pycharm", "pycharm64", // PyCharm
+		"webstorm", "webstorm64", // WebStorm
+		"clion", "clion64", // CLion
+		"rustrover",        // RustRover
+		"rider", "rider64", // Rider
+		"eclipse",              // Eclipse
+		"sublime_text", "subl", // Sublime Text
+		"TextMate",                           // TextMate
+		"notepad++",                          // Notepad++
+		"gedit", "kate", "geany", "mousepad", // GTK/KDE editors
 	},
 
 	// AI agents and assistants

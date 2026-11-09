@@ -15,8 +15,8 @@ type LLMLogEntry struct {
 	SessionID string `json:"session_id"`
 
 	// Request-specific fields
-	ID      string          `json:"id,omitempty"`
-	Dialect string          `json:"dialect,omitempty"`
+	ID      string `json:"id,omitempty"`
+	Dialect string `json:"dialect,omitempty"`
 	// ServiceKind discriminates LLM traffic from declared-service
 	// (http_service) traffic sharing the same JSONL file. Entries with
 	// ServiceKind=="http_service" are skipped by this parser so they

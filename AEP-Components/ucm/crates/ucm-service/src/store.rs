@@ -19,10 +19,19 @@ pub struct Store {
 }
 
 fn valid_id(id: &str) -> bool {
-    id.len() == 37 && id.starts_with("ucmr_") && id[5..].chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+    id.len() == 37
+        && id.starts_with("ucmr_")
+        && id[5..]
+            .chars()
+            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
 }
 
-fn line_digest(seq: u64, receipt_id: &str, receipt_digest: &str, prev: &str) -> Result<String, String> {
+fn line_digest(
+    seq: u64,
+    receipt_id: &str,
+    receipt_digest: &str,
+    prev: &str,
+) -> Result<String, String> {
     canon::digest(&json!({ "seq": seq.to_string(), "receipt_id": receipt_id, "receipt_digest": receipt_digest, "prev": prev }))
         .map_err(|e| e.to_string())
 }
@@ -44,7 +53,9 @@ pub fn verify_log(path: &Path) -> Result<(u64, String), String> {
                 .map(|x| x.to_string())
                 .ok_or_else(|| format!("line {}: missing {k}", i + 1))
         };
-        let seq: u64 = g("seq")?.parse().map_err(|_| format!("line {}: bad seq", i + 1))?;
+        let seq: u64 = g("seq")?
+            .parse()
+            .map_err(|_| format!("line {}: bad seq", i + 1))?;
         if seq != n + 1 {
             return Err(format!("line {}: seq {seq} where {} was due", i + 1, n + 1));
         }
@@ -94,7 +105,11 @@ impl Store {
         let digest = aep_ucm_receipt::receipt_digest(receipt).map_err(|e| e.to_string())?;
         let path = self.dir.join(format!("{id}.json"));
         let tmp = self.dir.join(format!(".{id}.tmp"));
-        std::fs::write(&tmp, serde_json::to_string(receipt).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+        std::fs::write(
+            &tmp,
+            serde_json::to_string(receipt).map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())?;
         std::fs::rename(&tmp, &path).map_err(|e| e.to_string())?;
         let (seq, line) = {
             let mut head = self.head.lock().map_err(|_| "receipt log lock poisoned")?;
@@ -116,7 +131,9 @@ impl Store {
         } else {
             "off".to_string()
         };
-        Ok(json!({ "log_seq": seq.to_string(), "log_line": line, "receipt_digest": digest, "lattice": lattice }))
+        Ok(
+            json!({ "log_seq": seq.to_string(), "log_line": line, "receipt_digest": digest, "lattice": lattice }),
+        )
     }
 }
 
@@ -164,7 +181,11 @@ fn record_in_lattice(cfg: &Config, receipt: &J, digest: &str) -> String {
         Ok(o) if o.status.success() => "recorded".into(),
         Ok(o) => format!(
             "failed: {}",
-            String::from_utf8_lossy(&o.stderr).trim().chars().take(200).collect::<String>()
+            String::from_utf8_lossy(&o.stderr)
+                .trim()
+                .chars()
+                .take(200)
+                .collect::<String>()
         ),
         Err(e) => format!("failed: {e}"),
     }

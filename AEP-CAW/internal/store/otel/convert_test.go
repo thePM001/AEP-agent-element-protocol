@@ -64,9 +64,9 @@ func TestConvertToLogRecord_BodyWithDecision(t *testing.T) {
 
 func TestConvertToLogRecord_BodyFallbackTargets(t *testing.T) {
 	tests := []struct {
-		name   string
-		ev     types.Event
-		want   string
+		name string
+		ev   types.Event
+		want string
 	}{
 		{
 			name: "domain target",
@@ -168,11 +168,11 @@ func TestConvertToLogRecord_FieldsAttributes(t *testing.T) {
 		Type:      "file_write",
 		SessionID: "s",
 		Fields: map[string]any{
-			"risk_level":    "high",
-			"agent_id":      "agent-1",
-			"latency_us":    int64(1500),
+			"risk_level":     "high",
+			"agent_id":       "agent-1",
+			"latency_us":     int64(1500),
 			"policy_eval_us": 250,
-			"error":         "permission denied",
+			"error":          "permission denied",
 			// Fields not in the well-known list should be ignored.
 			"custom_field": "ignored",
 		},

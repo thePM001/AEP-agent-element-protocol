@@ -1,4 +1,3 @@
-
 use crate::scanner::ScannerId;
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]

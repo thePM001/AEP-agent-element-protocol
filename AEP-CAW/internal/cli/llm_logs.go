@@ -14,16 +14,16 @@ import (
 // The type is determined by which fields are present.
 type LLMLogEntry struct {
 	// Request-specific fields
-	ID        string       `json:"id,omitempty"`
-	Timestamp time.Time    `json:"timestamp"`
-	Dialect   string       `json:"dialect,omitempty"`
+	ID        string    `json:"id,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
+	Dialect   string    `json:"dialect,omitempty"`
 	// ServiceKind discriminates LLM traffic from declared-service
 	// (http_service) traffic sharing the same JSONL file. Entries with
 	// ServiceKind=="http_service" are skipped by this reader so they
 	// don't show up as "unknown" LLM rows in session reports.
-	ServiceKind string       `json:"service_kind,omitempty"`
-	Request     *LLMRequest  `json:"request,omitempty"`
-	DLP         *LLMDLPInfo  `json:"dlp,omitempty"`
+	ServiceKind string      `json:"service_kind,omitempty"`
+	Request     *LLMRequest `json:"request,omitempty"`
+	DLP         *LLMDLPInfo `json:"dlp,omitempty"`
 
 	// Response-specific fields
 	RequestID  string       `json:"request_id,omitempty"`

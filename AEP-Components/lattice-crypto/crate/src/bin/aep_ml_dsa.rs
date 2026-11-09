@@ -13,7 +13,10 @@ use clap::{Parser, Subcommand};
 use serde::Serialize;
 
 #[derive(Parser, Debug)]
-#[command(name = "aep-ml-dsa", about = "AEP ML-DSA-65 detached sign/verify (real PQ)")]
+#[command(
+    name = "aep-ml-dsa",
+    about = "AEP ML-DSA-65 detached sign/verify (real PQ)"
+)]
 struct Cli {
     #[command(subcommand)]
     cmd: Cmd,
@@ -110,7 +113,7 @@ fn main() {
             let out = SignOut {
                 algorithm: SIGNATURE_LABEL.into(),
                 signature_hex: hex::encode(&sig),
-                public_hex: public_hex,
+                public_hex,
             };
             println!("{}", serde_json::to_string(&out).expect("json"));
         }

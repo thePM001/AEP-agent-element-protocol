@@ -7,6 +7,8 @@ use aep_lattice_channel::{build_frame_for_dock, DockingPort, LatticeChannelFrame
 use std::path::Path;
 use std::sync::Arc;
 
+// Test fixture: each argument is one field of the frame under test.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn build_test_frame(
     runtime: &DockingRuntime,
     channel_id: &str,
@@ -84,7 +86,11 @@ pub(crate) fn admit_ok_payload_seq(seq: i64) -> Vec<u8> {
 pub(crate) fn set_pulse_clock(rt: &DockingRuntime, ms: i64) {
     rt.record.pulse.lock().expect("pulse").clock_ms = Some(ms);
 }
-pub(crate) fn through_pulse(rt: &DockingRuntime, port: &DockingPort, line: &str) -> DockFrameResponse {
+pub(crate) fn through_pulse(
+    rt: &DockingRuntime,
+    port: &DockingPort,
+    line: &str,
+) -> DockFrameResponse {
     set_pulse_clock(rt, 1_000_000);
     let enq = process_request(rt, port, line);
     let digest = match enq.digest.clone() {
@@ -104,7 +110,14 @@ pub(crate) fn plant_lattice(dir: &std::path::Path) {
 }
 pub(crate) fn plant_hub_gap(dir: &std::path::Path) {
     std::fs::create_dir_all(dir.join("gap").join("policies").join("reference")).expect("hub dir");
-    std::fs::write(dir.join("gap").join("policies").join("reference").join("caw-test.gap"), hub_gap_text()).expect("hub");
+    std::fs::write(
+        dir.join("gap")
+            .join("policies")
+            .join("reference")
+            .join("caw-test.gap"),
+        hub_gap_text(),
+    )
+    .expect("hub");
 }
 pub(crate) fn temp_runtime() -> (tempfile::TempDir, DockingRuntime) {
     let dir = tempfile::tempdir().expect("tempdir");

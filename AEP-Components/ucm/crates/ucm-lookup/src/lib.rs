@@ -103,7 +103,11 @@ impl Index {
             let aliases: Vec<String> = e
                 .get("aliases")
                 .and_then(|x| x.as_array())
-                .map(|a| a.iter().filter_map(|x| x.as_str().map(|y| y.to_lowercase())).collect())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|x| x.as_str().map(|y| y.to_lowercase()))
+                        .collect()
+                })
                 .unwrap_or_default();
             let mut terms = HashMap::new();
             add_terms(&mut terms, &s("name").replace(['_', '.'], " "), 4.0);
@@ -130,7 +134,10 @@ impl Index {
                 *df.entry(t.clone()).or_insert(0.0) += 1.0;
             }
         }
-        let idf = df.into_iter().map(|(t, c)| (t, ((n + 1.0) / (c + 0.5)).ln())).collect();
+        let idf = df
+            .into_iter()
+            .map(|(t, c)| (t, ((n + 1.0) / (c + 0.5)).ln()))
+            .collect();
         Index {
             docs,
             idf,
@@ -178,7 +185,7 @@ impl Index {
                         s += 6.0;
                     }
                 }
-                if qt.iter().any(|t| *t == d.name) {
+                if qt.contains(&d.name) {
                     s += 5.0;
                 }
                 // A query that is exactly an entry name finds it even when the name is a stop
@@ -197,7 +204,10 @@ impl Index {
             })
             .collect();
         // A query that names a unit is about units: lift the unit conversion functions.
-        let unit_hits = scored.iter().filter(|(id, s)| id.starts_with("unit.") && *s >= 4.0).count();
+        let unit_hits = scored
+            .iter()
+            .filter(|(id, s)| id.starts_with("unit.") && *s >= 4.0)
+            .count();
         if unit_hits > 0 {
             for (id, bonus) in [("fn.to", 8.0), ("fn.q", 3.0)] {
                 match scored.iter_mut().find(|(x, _)| x == id) {
@@ -206,7 +216,11 @@ impl Index {
                 }
             }
         }
-        scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal).then(a.0.cmp(&b.0)));
+        scored.sort_by(|a, b| {
+            b.1.partial_cmp(&a.1)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(a.0.cmp(&b.0))
+        });
         scored.truncate(k);
         scored
     }
@@ -215,7 +229,10 @@ impl Index {
     pub fn reply(&self, query: &str, tier: &str, ranked: &[(String, f64)]) -> J {
         let entries: Vec<J> = ranked
             .iter()
-            .filter_map(|(id, score)| self.entry(id).map(|e| json!({ "score": format!("{score:.3}"), "entry": e })))
+            .filter_map(|(id, score)| {
+                self.entry(id)
+                    .map(|e| json!({ "score": format!("{score:.3}"), "entry": e }))
+            })
             .collect();
         json!({
             "ucm": REPLY_SCHEMA,
@@ -278,7 +295,10 @@ mod tests {
     fn finds_the_right_tool() {
         let ix = index();
         let cases = [
-            ("monthly mortgage payment on a loan", "formula.finance.annuity_payment"),
+            (
+                "monthly mortgage payment on a loan",
+                "formula.finance.annuity_payment",
+            ),
             ("convert 12 miles to kilometres", "fn.to"),
             ("standard deviation of a sample", "fn.stddev_sample"),
             ("split a bill into equal parts", "fn.allocate"),
@@ -295,7 +315,10 @@ mod tests {
         ];
         for (q, want) in cases {
             let got = top(&ix, q, 3);
-            assert!(got.iter().any(|g| g == want), "query {q:?}: want {want} in top 3, got {got:?}");
+            assert!(
+                got.iter().any(|g| g == want),
+                "query {q:?}: want {want} in top 3, got {got:?}"
+            );
         }
     }
 
@@ -316,7 +339,12 @@ mod tests {
                 }
             }
         }
-        assert!(misses.is_empty(), "{} lookups missed:\n{}", misses.len(), misses.join("\n"));
+        assert!(
+            misses.is_empty(),
+            "{} lookups missed:\n{}",
+            misses.len(),
+            misses.join("\n")
+        );
     }
 
     #[test]
@@ -328,10 +356,17 @@ mod tests {
         assert_eq!(keys.len(), 6);
         for e in r["entries"].as_array().expect("entries") {
             let id = e["entry"]["id"].as_str().expect("id");
-            assert_eq!(Some(&e["entry"]), ix.entry(id), "entry {id} differs from the catalog");
+            assert_eq!(
+                Some(&e["entry"]),
+                ix.entry(id),
+                "entry {id} differs from the catalog"
+            );
             assert_eq!(e.as_object().expect("o").len(), 2);
             let text = e["entry"].to_string();
-            assert!(!text.contains("1234.5"), "a request number leaked into {id}");
+            assert!(
+                !text.contains("1234.5"),
+                "a request number leaked into {id}"
+            );
         }
     }
 
@@ -345,7 +380,10 @@ mod tests {
             "fn.sqrt".to_string(),
         ];
         let got = ix.accept_ranked(&ids, 5);
-        assert_eq!(got.iter().map(|x| x.0.as_str()).collect::<Vec<_>>(), vec!["fn.round", "fn.sqrt"]);
+        assert_eq!(
+            got.iter().map(|x| x.0.as_str()).collect::<Vec<_>>(),
+            vec!["fn.round", "fn.sqrt"]
+        );
     }
 
     #[test]
@@ -372,6 +410,9 @@ mod tests {
         let p95 = times[times.len() * 95 / 100];
         // The gate is p95 under 5 ms on the reference runner in a release build; a debug
         // build remains well under 50 ms.
-        assert!(p95 < std::time::Duration::from_millis(50), "tier one p95 {p95:?}");
+        assert!(
+            p95 < std::time::Duration::from_millis(50),
+            "tier one p95 {p95:?}"
+        );
     }
 }

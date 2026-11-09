@@ -49,12 +49,18 @@ func MountWorkspace(ctx context.Context, backingDir string, mountPoint string, h
 	}
 	ch := make(chan mountResult, 1)
 	go func() {
-		server, err := fs.Mount(mountPoint, root, opts)
+		// The same steps as fs.Mount, done here because fs.Mount drops the server
+		// when WaitMount fails after the kernel mount already exists.
+		server, err := fuse.NewServer(fs.NewNodeFS(root, opts), mountPoint, &opts.MountOptions)
 		if err != nil {
 			ch <- mountResult{nil, err}
 			return
 		}
+		go server.Serve()
 		if err := server.WaitMount(); err != nil {
+			// Unmount so a failed start does not leave a live mount that no caller
+			// holds a handle to.
+			_ = server.Unmount()
 			ch <- mountResult{nil, err}
 			return
 		}
@@ -68,6 +74,13 @@ func MountWorkspace(ctx context.Context, backingDir string, mountPoint string, h
 		}
 		return &Mount{MountPoint: mountPoint, Server: res.server}, nil
 	case <-ctx.Done():
+		// The mount may still complete after the caller gave up. Unmount it then,
+		// since nobody holds the server.
+		go func() {
+			if res := <-ch; res.server != nil {
+				_ = res.server.Unmount()
+			}
+		}()
 		return nil, fmt.Errorf("FUSE mount timed out at %s (likely blocked by container runtime)", mountPoint)
 	}
 }

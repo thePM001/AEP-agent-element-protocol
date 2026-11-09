@@ -12,6 +12,8 @@
 //! seccomp (macOS and the other non-Linux targets) run the validator without a
 //! filter, which matches what those platforms offer.
 
+#![allow(unsafe_code)]
+
 use std::fmt;
 
 /// Confinement could not be installed. The validator must not run the check.

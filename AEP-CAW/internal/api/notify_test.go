@@ -5,6 +5,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
@@ -57,14 +58,25 @@ func TestStartNotifyHandler_NilPolicy_NoOp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create pipe: %v", err)
 	}
-	defer r.Close()
-	defer w.Close()
+	// The handler owns r and closes it on exit, so the test closes only w.
+	defer func() { _ = w.Close() }()
 
 	store := &notifyMockEventStore{}
 	broker := &notifyMockEventBroker{}
 
-	// Should close the socket and return without panic when policy is nil
-	startNotifyHandler(context.Background(), r, "test-session", nil, store, broker, nil, config.SandboxSeccompFileMonitorConfig{}, false, nil, nil)
+	// Should close the socket and return without panic when policy is nil.
+	// The handler signals ready on every exit path; wait for it so the test ends after the handler.
+	ready := make(chan error, 1)
+	startNotifyHandler(context.Background(), r, "test-session", nil, store, broker, nil, config.SandboxSeccompFileMonitorConfig{}, false, nil, ready)
+	select {
+	case err := <-ready:
+		// With no policy the handler stops before READY and reports that.
+		if err == nil {
+			t.Fatal("expected the handler to report an exit without READY")
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("notify handler did not exit")
+	}
 }
 
 func TestStartNotifyHandler_NilStore_NoOp(t *testing.T) {

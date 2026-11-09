@@ -59,7 +59,11 @@ pub fn register_node(registry: &mut NodesRegistryV2, record: NodeRecord) -> Resu
     Ok(())
 }
 
-pub fn update_gap_checkpoint(registry: &mut NodesRegistryV2, node_id: &str, bundle_entries: &[String]) -> Result<String> {
+pub fn update_gap_checkpoint(
+    registry: &mut NodesRegistryV2,
+    node_id: &str,
+    bundle_entries: &[String],
+) -> Result<String> {
     let root = merkle_root_hex(bundle_entries);
     let node = registry
         .nodes
@@ -119,7 +123,9 @@ pub fn validate_node(node: &NodeRecord) -> Result<()> {
             node.node_id
         )));
     }
-    if node.agentstream_topology == AgentstreamTopology::AsFederated && node.agentstream_peers.is_empty() {
+    if node.agentstream_topology == AgentstreamTopology::AsFederated
+        && node.agentstream_peers.is_empty()
+    {
         return Err(RegistryError::Invalid(format!(
             "as-federated requires agentstream_peers for {}",
             node.node_id
@@ -128,7 +134,9 @@ pub fn validate_node(node: &NodeRecord) -> Result<()> {
     Ok(())
 }
 
-pub fn node_record_from_map(map: &serde_json::Map<String, serde_json::Value>) -> Result<NodeRecord> {
+pub fn node_record_from_map(
+    map: &serde_json::Map<String, serde_json::Value>,
+) -> Result<NodeRecord> {
     let node_id = map
         .get("node_id")
         .and_then(|v| v.as_str())

@@ -97,7 +97,7 @@ impl AdmitWall {
         Self {
             id: id.into(),
             family: family.into(),
-            closed: open == false,
+            closed: !open,
             reason: reason.into(),
         }
     }
@@ -112,7 +112,7 @@ impl AdmitWall {
     }
 
     pub fn is_open(&self) -> bool {
-        self.closed == false
+        !self.closed
     }
 }
 
@@ -140,7 +140,7 @@ impl AdmitResult {
         let mut closed: Vec<AdmitWall> = walls.iter().filter(|w| w.closed).cloned().collect();
         closed.sort_by(|a, b| a.id.cmp(&b.id).then(a.reason.cmp(&b.reason)));
         closed.dedup_by(|a, b| a.id == b.id && a.reason == b.reason);
-        let mut open: Vec<AdmitWall> = walls.iter().filter(|w| w.closed == false).cloned().collect();
+        let mut open: Vec<AdmitWall> = walls.iter().filter(|w| !w.closed).cloned().collect();
         open.sort_by(|a, b| a.id.cmp(&b.id).then(a.reason.cmp(&b.reason)));
         open.dedup_by(|a, b| a.id == b.id && a.reason == b.reason);
         Self::new(closed, open)
@@ -367,7 +367,7 @@ impl ProcessSealed {
     }
 
     pub fn is_sealed(&self) -> bool {
-        self.seal.is_empty() == false
+        !self.seal.is_empty()
     }
 }
 
@@ -388,7 +388,6 @@ pub fn seal_digest(pid: u32, algorithm: &str, spec_digest: &str) -> String {
     }
     out
 }
-
 
 /// Repair kinds. A repair names one mechanical fix and never a grant list.
 pub const KIND_BIND_FIELD: &str = "bind_field";
@@ -431,7 +430,7 @@ fn error_line(closed: &[ClosedWall]) -> String {
         })
         .collect();
     let mut s = String::from("Admit collect-all walls then Apply");
-    if reasons.is_empty() == false {
+    if !reasons.is_empty() {
         s.push_str(": ");
         s.push_str(&reasons.join("; "));
     }
@@ -633,7 +632,7 @@ fn reseal_hint() -> RepairHint {
 
 pub fn repairs_for(closed: &[ClosedWall]) -> Vec<RepairHint> {
     let mut out: Vec<RepairHint> = closed.iter().map(repair_one).collect();
-    if out.iter().any(|h| h.kind == KIND_RESEAL_NEW_CAPSULE) == false {
+    if !out.iter().any(|h| h.kind == KIND_RESEAL_NEW_CAPSULE) {
         out.push(reseal_hint());
     }
     out
@@ -651,7 +650,9 @@ fn scrub_repairs(repairs: Vec<RepairHint>) -> Vec<RepairHint> {
         .into_iter()
         .map(|mut h| {
             if grant_leaks_in_fix(&h.fix) {
-                h.fix = String::from("closed wall id and reason only. Grant lists stay off this report.");
+                h.fix = String::from(
+                    "closed wall id and reason only. Grant lists stay off this report.",
+                );
                 h.kind = String::from(KIND_CLOSED_ONLY);
                 h.field = String::new();
             }
@@ -692,7 +693,7 @@ pub fn from_error_and_closed(error: &str, closed: &[ClosedWall]) -> DenyReport {
     } else {
         from_closed(closed)
     };
-    if error.is_empty() == false {
+    if !error.is_empty() {
         report.error = String::from(error);
     }
     report
@@ -738,22 +739,42 @@ fn walls_from_error(error: &str) -> Vec<ClosedWall> {
         return vec![ClosedWall::with_class("pulse.queue", error, CLASS_TEMPORAL)];
     }
     if error.contains("pulse capsule aged out") {
-        return vec![ClosedWall::with_class("time.authority", "stale event", CLASS_TEMPORAL)];
+        return vec![ClosedWall::with_class(
+            "time.authority",
+            "stale event",
+            CLASS_TEMPORAL,
+        )];
     }
     if error.contains("poisoned lock") {
         return vec![ClosedWall::with_class("lock.poison", error, CLASS_POISON)];
     }
     if error.contains("EPSCOM writing") || error.contains("writing violations") {
-        return vec![ClosedWall::with_class("writing:correctwriting_en", error, CLASS_WRITING)];
+        return vec![ClosedWall::with_class(
+            "writing:correctwriting_en",
+            error,
+            CLASS_WRITING,
+        )];
     }
     if error.contains("frame stale") {
-        return vec![ClosedWall::with_class("temporal:wire_freshness", error, CLASS_TEMPORAL)];
+        return vec![ClosedWall::with_class(
+            "temporal:wire_freshness",
+            error,
+            CLASS_TEMPORAL,
+        )];
     }
     if error.contains("frame clock skew") || error.contains("too far in future") {
-        return vec![ClosedWall::with_class("temporal:future_skew", error, CLASS_TEMPORAL)];
+        return vec![ClosedWall::with_class(
+            "temporal:future_skew",
+            error,
+            CLASS_TEMPORAL,
+        )];
     }
     if error.contains("drift") {
-        return vec![ClosedWall::with_class("temporal:drift_exceeded", error, CLASS_TEMPORAL)];
+        return vec![ClosedWall::with_class(
+            "temporal:drift_exceeded",
+            error,
+            CLASS_TEMPORAL,
+        )];
     }
     let el = error.to_ascii_lowercase();
     if el.contains("kem")
@@ -765,25 +786,40 @@ fn walls_from_error(error: &str) -> Vec<ClosedWall> {
         return vec![ClosedWall::with_class("kem.open", error, CLASS_SECURITY)];
     }
     if error.contains("no scene bound") || error.contains("scene.membership") {
-        return vec![ClosedWall::with_class("scene.membership", error, CLASS_STRUCTURAL)];
+        return vec![ClosedWall::with_class(
+            "scene.membership",
+            error,
+            CLASS_STRUCTURAL,
+        )];
     }
     if error.contains("no dock bound") || error.contains("channel.dock") {
-        return vec![ClosedWall::with_class("channel.dock", error, CLASS_STRUCTURAL)];
+        return vec![ClosedWall::with_class(
+            "channel.dock",
+            error,
+            CLASS_STRUCTURAL,
+        )];
     }
     if error.contains("no sequence bound") || error.contains("causal.sequence") {
-        return vec![ClosedWall::with_class("causal.sequence", error, CLASS_STRUCTURAL)];
+        return vec![ClosedWall::with_class(
+            "causal.sequence",
+            error,
+            CLASS_STRUCTURAL,
+        )];
     }
-    vec![ClosedWall::with_class("dock.deny", error, classify_wall("dock.deny", error))]
+    vec![ClosedWall::with_class(
+        "dock.deny",
+        error,
+        classify_wall("dock.deny", error),
+    )]
 }
 
 pub fn from_error(error: &str) -> DenyReport {
     let mut report = from_closed(&walls_from_error(error));
-    if error.is_empty() == false {
+    if !error.is_empty() {
         report.error = String::from(error);
     }
     report
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -796,19 +832,19 @@ mod tests {
             AdmitWall::open("writing:no_oxford_comma"),
         ];
         let result = AdmitResult::from_walls(&walls);
-        assert_eq!(result.allow, false);
+        assert!(!result.allow);
         assert_eq!(result.closed.len(), 1);
         assert_eq!(result.open.len(), 1);
-        assert_eq!(result.closed_set_key().is_empty(), false);
+        assert!(!result.closed_set_key().is_empty());
         assert_eq!(Pulse::compiled().ms, PULSE_MS);
-        assert_eq!(result.open[0].is_open(), true);
+        assert!(result.open[0].is_open());
     }
 
     #[test]
     fn closed_wall_keeps_the_class_and_the_set_key() {
         let wall = ClosedWall::new("writing:no_em_dashes", "em dash");
         assert_eq!(wall.class, CLASS_WRITING);
-        assert_eq!(seal_probe(), true);
+        assert!(seal_probe());
     }
 
     fn seal_probe() -> bool {

@@ -112,7 +112,8 @@ fn matrix_ty(name: &str, t: &Ty) -> Result<()> {
 // Value helpers.
 
 fn rat(v: &Value) -> Result<Rat> {
-    v.as_rat().ok_or_else(|| UcmError::Type("expected an exact number".into()))
+    v.as_rat()
+        .ok_or_else(|| UcmError::Type("expected an exact number".into()))
 }
 
 fn int(v: &Value) -> Result<BigInt> {
@@ -123,7 +124,9 @@ fn int(v: &Value) -> Result<BigInt> {
 }
 
 fn small(v: &Value, what: &str) -> Result<i64> {
-    int(v)?.to_i64().ok_or_else(|| UcmError::Domain(format!("{what} out of range")))
+    int(v)?
+        .to_i64()
+        .ok_or_else(|| UcmError::Domain(format!("{what} out of range")))
 }
 
 fn text(v: &Value) -> Result<String> {
@@ -169,14 +172,23 @@ fn add_all(ctx: &mut Ctx, items: &[Value]) -> Result<Value> {
     };
     for v in &items[1..] {
         ctx.budget.step()?;
-        acc = crate::ops::apply(crate::ast::Op::Add, &[acc, v.clone()], ctx.float_mode, false, 0)?;
+        acc = crate::ops::apply(
+            crate::ast::Op::Add,
+            &[acc, v.clone()],
+            ctx.float_mode,
+            false,
+            0,
+        )?;
         ctx.budget.bits(acc.bits())?;
     }
     Ok(acc)
 }
 
+/// Rebuilds a value of the same kind from a rational.
+type Rebuild = Box<dyn Fn(Rat) -> Value>;
+
 /// Split a numeric-like value into a rational and a constructor that rebuilds the same kind.
-fn scalar_parts(v: &Value) -> Result<(Rat, Box<dyn Fn(Rat) -> Value>)> {
+fn scalar_parts(v: &Value) -> Result<(Rat, Rebuild)> {
     Ok(match v {
         Value::Money(r, c) => {
             let c = c.clone();
@@ -206,11 +218,16 @@ fn same_kind(items: &[Value]) -> Result<()> {
     Ok(())
 }
 
-fn sorted_rats(items: &[Value]) -> Result<(Vec<Rat>, Box<dyn Fn(Rat) -> Value>)> {
+fn sorted_rats(items: &[Value]) -> Result<(Vec<Rat>, Rebuild)> {
     same_kind(items)?;
-    let first = items.first().ok_or_else(|| UcmError::Domain("empty vector".into()))?;
+    let first = items
+        .first()
+        .ok_or_else(|| UcmError::Domain("empty vector".into()))?;
     let (_, mk) = scalar_parts(first)?;
-    let mut rs = items.iter().map(|v| scalar_parts(v).map(|p| p.0)).collect::<Result<Vec<_>>>()?;
+    let mut rs = items
+        .iter()
+        .map(|v| scalar_parts(v).map(|p| p.0))
+        .collect::<Result<Vec<_>>>()?;
     rs.sort();
     Ok((rs, mk))
 }
@@ -235,7 +252,9 @@ fn var_ty(name: &str, a: &[Ty]) -> Result<Ty> {
     let e = elem(name, &a[0])?;
     match e {
         t if t.is_exact_num() || t == Ty::Empty => Ok(Ty::Rational),
-        Ty::Money(_) => type_err(format!("{name} of money has money squared units, use amount() first")),
+        Ty::Money(_) => type_err(format!(
+            "{name} of money has money squared units, use amount() first"
+        )),
         Ty::Quantity(d) => Ok(qty_ty(crate::units::dim_scale(&d, 2)?)),
         t => type_err(format!("{name} needs numbers, got {}", t.name())),
     }
@@ -263,7 +282,10 @@ fn meanable(name: &str, t: &Ty) -> Result<Ty> {
         Ty::Empty => type_err(format!("{name} of an empty vector")),
         t if t.is_exact_num() => Ok(Ty::Rational),
         Ty::Money(_) | Ty::Quantity(_) => Ok(t.clone()),
-        other => type_err(format!("{name} needs numbers, money or quantities, got {}", other.name())),
+        other => type_err(format!(
+            "{name} needs numbers, money or quantities, got {}",
+            other.name()
+        )),
     }
 }
 
@@ -282,11 +304,19 @@ fn to_matrix(v: &Value) -> Result<Vec<Vec<Rat>>> {
 }
 
 fn from_matrix(m: Vec<Vec<Rat>>) -> Value {
-    Value::Vec(m.into_iter().map(|r| Value::Vec(r.into_iter().map(Value::Rat).collect())).collect())
+    Value::Vec(
+        m.into_iter()
+            .map(|r| Value::Vec(r.into_iter().map(Value::Rat).collect()))
+            .collect(),
+    )
 }
 
 /// Gauss-Jordan elimination over rationals. Returns (reduced matrix, rank, determinant sign and product).
-fn eliminate(ctx: &mut Ctx, mut m: Vec<Vec<Rat>>, cols: usize) -> Result<(Vec<Vec<Rat>>, usize, Rat)> {
+fn eliminate(
+    ctx: &mut Ctx,
+    mut m: Vec<Vec<Rat>>,
+    cols: usize,
+) -> Result<(Vec<Vec<Rat>>, usize, Rat)> {
     let rows = m.len();
     let mut det = Rat::one();
     let mut r = 0usize;
@@ -294,7 +324,8 @@ fn eliminate(ctx: &mut Ctx, mut m: Vec<Vec<Rat>>, cols: usize) -> Result<(Vec<Ve
         if r >= rows {
             break;
         }
-        ctx.budget.charge((rows * m.first().map(|x| x.len()).unwrap_or(0)) as u64)?;
+        ctx.budget
+            .charge((rows * m.first().map(|x| x.len()).unwrap_or(0)) as u64)?;
         let Some(p) = (r..rows).find(|&i| !m[i][c].is_zero()) else {
             det = Rat::zero();
             continue;
@@ -305,17 +336,15 @@ fn eliminate(ctx: &mut Ctx, mut m: Vec<Vec<Rat>>, cols: usize) -> Result<(Vec<Ve
         }
         let pv = m[r][c].clone();
         det *= &pv;
-        let width = m[r].len();
-        for j in 0..width {
-            let x = &m[r][j] / &pv;
-            m[r][j] = x;
+        for x in m[r].iter_mut() {
+            *x = &*x / &pv;
         }
         for i in 0..rows {
             if i != r && !m[i][c].is_zero() {
                 let factor = m[i][c].clone();
-                for j in 0..width {
-                    let x = &m[i][j] - &factor * &m[r][j];
-                    m[i][j] = x;
+                let pivot_row = m[r].clone();
+                for (x, p) in m[i].iter_mut().zip(&pivot_row) {
+                    *x = &*x - &factor * p;
                 }
             }
         }
@@ -360,7 +389,9 @@ fn miller_rabin(n: &BigInt) -> Result<bool> {
     }
     // The first 12 primes as bases are deterministic below this bound (Sorenson and Webster 2015).
     // The code tests 13 bases, which is at least as strong.
-    let limit: BigInt = PRIME_LIMIT.parse().map_err(|_| UcmError::Domain("limit".into()))?;
+    let limit: BigInt = PRIME_LIMIT
+        .parse()
+        .map_err(|_| UcmError::Domain("limit".into()))?;
     if *n >= limit {
         return domain_err(format!("is_prime is exact below {PRIME_LIMIT} only"));
     }
@@ -946,12 +977,19 @@ fn min_max_ty(name: &str, a: &[Ty]) -> Result<Ty> {
         return Ok(t);
     }
     crate::ops::op_ty(crate::ast::Op::Lt, a, false, None)?;
-    Ok(crate::check::join(&a[0], &a[1])?)
+    crate::check::join(&a[0], &a[1])
 }
 
 fn min_max(c: &mut Ctx, a: &[Value], want: Ordering) -> Result<Value> {
-    let items: Vec<Value> = if a.len() == 1 { vecv(&a[0])?.clone() } else { a.to_vec() };
-    let mut best = items.first().cloned().ok_or_else(|| UcmError::Domain("empty vector".into()))?;
+    let items: Vec<Value> = if a.len() == 1 {
+        vecv(&a[0])?.clone()
+    } else {
+        a.to_vec()
+    };
+    let mut best = items
+        .first()
+        .cloned()
+        .ok_or_else(|| UcmError::Domain("empty vector".into()))?;
     for v in &items[1..] {
         c.budget.step()?;
         if compare(v, &best)? == want {
@@ -1021,7 +1059,9 @@ fn allocate(c: &mut Ctx, a: &[Value]) -> Result<Value> {
     let units = units.to_integer();
     let weights: Vec<Rat> = match &a[1] {
         Value::Int(n) => {
-            let n = n.to_usize().ok_or_else(|| UcmError::Domain("part count out of range".into()))?;
+            let n = n
+                .to_usize()
+                .ok_or_else(|| UcmError::Domain("part count out of range".into()))?;
             vec![Rat::one(); n]
         }
         Value::Vec(w) => w.iter().map(rat).collect::<Result<Vec<_>>>()?,
@@ -1036,8 +1076,14 @@ fn allocate(c: &mut Ctx, a: &[Value]) -> Result<Value> {
     if wsum.is_zero() {
         return domain_err("weights add up to zero");
     }
-    let shares: Vec<Rat> = weights.iter().map(|w| Rat::from_integer(units.clone()) * w / &wsum).collect();
-    let mut base: Vec<BigInt> = shares.iter().map(|s| round_rat_to_int(s, RoundMode::Floor)).collect();
+    let shares: Vec<Rat> = weights
+        .iter()
+        .map(|w| Rat::from_integer(units.clone()) * w / &wsum)
+        .collect();
+    let mut base: Vec<BigInt> = shares
+        .iter()
+        .map(|s| round_rat_to_int(s, RoundMode::Floor))
+        .collect();
     let assigned = base.iter().fold(BigInt::zero(), |s, b| s + b);
     let mut left = (&units - assigned).to_usize().unwrap_or(0);
     let mut order: Vec<usize> = (0..shares.len()).collect();

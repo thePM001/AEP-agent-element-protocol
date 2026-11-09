@@ -15,10 +15,10 @@ import (
 // Decode turns a parsed *internal/policy.Policy into a fully validated and
 // compiled *RuleSet. It performs three phases per the design doc §5:
 //
-//   A. Decode each yaml.Node (db_services, database_rules,
-//      database_connection_rules) into typed shapes with KnownFields(true).
-//   B. Validate the typed shapes (§9.4 errors + warnings).
-//   C. Compile validated rules into the evaluator-ready *RuleSet.
+//	A. Decode each yaml.Node (db_services, database_rules,
+//	   database_connection_rules) into typed shapes with KnownFields(true).
+//	B. Validate the typed shapes (§9.4 errors + warnings).
+//	C. Compile validated rules into the evaluator-ready *RuleSet.
 //
 // Decode returns (rs, warnings, nil) on success. On error, warnings collected
 // up to the point of failure are returned alongside the error.

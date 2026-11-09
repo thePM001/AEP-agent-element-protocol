@@ -4,24 +4,32 @@
 //! no computed field. One test function, because the profile is process wide.
 
 use aep_lattice_crypto as _;
-use aep_policy_system_admit::{compile_policy_system_walls_from, policy_wall_id, PolicySystemCompileInput};
+use aep_policy_system_admit::{
+    compile_policy_system_walls_from, policy_wall_id, PolicySystemCompileInput,
+};
 use aep_ucm_core::{canon, evaluate, load_program, Library, Limits};
 use aep_ucm_receipt::{issue, NodeKey, ProgramSource};
 use serde_json::{json, Value};
 use std::path::PathBuf;
 
 const STEM: &str = "ucm-computed-claims";
-const SLUGS: [&str; 3] = ["ucm_receipt_present", "ucm_receipt_valid", "ucm_result_matches"];
+const SLUGS: [&str; 3] = [
+    "ucm_receipt_present",
+    "ucm_receipt_valid",
+    "ucm_result_matches",
+];
 
 fn policy_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../AEP-Policy-System")
 }
 
 fn walls(event: &Value, wrap: &str) -> Vec<(String, bool)> {
-    let mut input = PolicySystemCompileInput::default();
-    input.event = event.clone();
-    input.wrap = wrap.to_string();
-    input.action_path = "finance:invoice.total".into();
+    let input = PolicySystemCompileInput {
+        event: event.clone(),
+        wrap: wrap.to_string(),
+        action_path: "finance:invoice.total".into(),
+        ..Default::default()
+    };
     compile_policy_system_walls_from(Some(&policy_dir()), &input)
         .into_iter()
         .map(|w| (w.id, w.closed))
@@ -68,11 +76,20 @@ fn red_team_and_unchanged_admit() {
     let dir = std::env::temp_dir().join(format!("ucm-redteam-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("dir");
     let trusted = dir.join("trusted.txt");
-    std::fs::write(&trusted, format!("# trusted UCM nodes\n{}\n", key.public_hex)).expect("trusted");
+    std::fs::write(
+        &trusted,
+        format!("# trusted UCM nodes\n{}\n", key.public_hex),
+    )
+    .expect("trusted");
     std::env::set_var("AEP_UCM_TRUSTED_KEYS", &trusted);
 
     let total_src = "input p: money[EUR];\ninput n: int;\nround(p * n * 1.081, 2, \"half_even\")";
-    let good = receipt(&key, total_src, json!({ "p": "19.90 EUR", "n": "3" }), ProgramSource::Agent);
+    let good = receipt(
+        &key,
+        total_src,
+        json!({ "p": "19.90 EUR", "n": "3" }),
+        ProgramSource::Agent,
+    );
     assert_eq!(good["result"]["decimal"], "64.54");
     let tax = receipt(
         &key,
@@ -80,14 +97,32 @@ fn red_team_and_unchanged_admit() {
         json!({}),
         ProgramSource::Agent,
     );
-    let stale = receipt(&key, "money(\"10.00\", \"EUR\")", json!({}), ProgramSource::Agent);
-    let stranger = receipt(&other, total_src, json!({ "p": "19.90 EUR", "n": "3" }), ProgramSource::Agent);
+    let stale = receipt(
+        &key,
+        "money(\"10.00\", \"EUR\")",
+        json!({}),
+        ProgramSource::Agent,
+    );
+    let stranger = receipt(
+        &other,
+        total_src,
+        json!({ "p": "19.90 EUR", "n": "3" }),
+        ProgramSource::Agent,
+    );
     let echo = receipt(&key, "\"64.54\"", json!({}), ProgramSource::Agent);
-    let honest = action(&["/total"], json!({ "total": "64.54" }), json!({ "/total": good }));
+    let honest = action(
+        &["/total"],
+        json!({ "total": "64.54" }),
+        json!({ "/total": good }),
+    );
 
     // Profile off: the policy closes nothing, even for an attack.
     std::env::set_var("AEP_UCM_RECEIPT_PROFILE", "off");
-    let attack = action(&["/total"], json!({ "total": "99.00" }), json!({ "/total": good }));
+    let attack = action(
+        &["/total"],
+        json!({ "total": "99.00" }),
+        json!({ "/total": good }),
+    );
     assert!(ucm_closed(&attack, "").is_empty());
 
     // Admit is unchanged for actions with no computed field, in every profile.
@@ -101,7 +136,10 @@ fn red_team_and_unchanged_admit() {
     for p in ["warn", "strict"] {
         std::env::set_var("AEP_UCM_RECEIPT_PROFILE", p);
         let after: Vec<Vec<(String, bool)>> = plain.iter().map(|e| walls(e, "")).collect();
-        assert_eq!(before, after, "profile {p} changed Admit for actions without computed fields");
+        assert_eq!(
+            before, after,
+            "profile {p} changed Admit for actions without computed fields"
+        );
     }
 
     std::env::set_var("AEP_UCM_RECEIPT_PROFILE", "strict");
@@ -126,7 +164,13 @@ fn red_team_and_unchanged_admit() {
         f(&mut r);
         r
     };
-    let one = |r: Value, total: Value| action(&["/total"], json!({ "total": total }), json!({ "/total": r }));
+    let one = |r: Value, total: Value| {
+        action(
+            &["/total"],
+            json!({ "total": total }),
+            json!({ "/total": r }),
+        )
+    };
 
     let mut attacks: Vec<(&str, Value, &str)> = vec![
         (
@@ -146,17 +190,27 @@ fn red_team_and_unchanged_admit() {
         ),
         (
             "receipt under a wrong pointer",
-            action(&["/total"], json!({ "total": "64.54" }), json!({ "/sum": good })),
+            action(
+                &["/total"],
+                json!({ "total": "64.54" }),
+                json!({ "/sum": good }),
+            ),
             "ucm_receipt_present",
         ),
         (
             "receipt is an id string",
-            one(json!("ucmr_00000000000000000000000000000000"), json!("64.54")),
+            one(
+                json!("ucmr_00000000000000000000000000000000"),
+                json!("64.54"),
+            ),
             "ucm_receipt_valid",
         ),
         (
             "result decimal edited",
-            one(edit(&|r| r["result"]["decimal"] = json!("99.00")), json!("99.00")),
+            one(
+                edit(&|r| r["result"]["decimal"] = json!("99.00")),
+                json!("99.00"),
+            ),
             "ucm_receipt_valid",
         ),
         (
@@ -167,9 +221,9 @@ fn red_team_and_unchanged_admit() {
         (
             "result resealed without key",
             one(
-                reseal_without_key(edit(&|r| {
-                    r["result"] = json!({ "type": "money", "currency": "EUR", "value": "99", "decimal": "99" })
-                })),
+                reseal_without_key(edit(
+                    &|r| r["result"] = json!({ "type": "money", "currency": "EUR", "value": "99", "decimal": "99" }),
+                )),
                 json!("99"),
             ),
             "ucm_receipt_valid",
@@ -194,7 +248,10 @@ fn red_team_and_unchanged_admit() {
         ),
         (
             "signature garbage",
-            one(edit(&|r| r["signature"] = json!("00ff00ff")), json!("64.54")),
+            one(
+                edit(&|r| r["signature"] = json!("00ff00ff")),
+                json!("64.54"),
+            ),
             "ucm_receipt_valid",
         ),
         (
@@ -217,27 +274,42 @@ fn red_team_and_unchanged_admit() {
         ),
         (
             "node id edited",
-            one(edit(&|r| r["node_id"] = json!("ucm-node-0000000000000000")), json!("64.54")),
+            one(
+                edit(&|r| r["node_id"] = json!("ucm-node-0000000000000000")),
+                json!("64.54"),
+            ),
             "ucm_receipt_valid",
         ),
         (
             "inputs edited",
-            one(edit(&|r| r["inputs"]["p"] = json!("29.90 EUR")), json!("64.54")),
+            one(
+                edit(&|r| r["inputs"]["p"] = json!("29.90 EUR")),
+                json!("64.54"),
+            ),
             "ucm_receipt_valid",
         ),
         (
             "input digest edited",
-            one(edit(&|r| r["input_digest"] = json!("00".repeat(32))), json!("64.54")),
+            one(
+                edit(&|r| r["input_digest"] = json!("00".repeat(32))),
+                json!("64.54"),
+            ),
             "ucm_receipt_valid",
         ),
         (
             "program edited",
-            one(edit(&|r| r["program"]["inputs"] = json!([])), json!("64.54")),
+            one(
+                edit(&|r| r["program"]["inputs"] = json!([])),
+                json!("64.54"),
+            ),
             "ucm_receipt_valid",
         ),
         (
             "program hash edited",
-            one(edit(&|r| r["program_hash"] = json!("00".repeat(32))), json!("64.54")),
+            one(
+                edit(&|r| r["program_hash"] = json!("00".repeat(32))),
+                json!("64.54"),
+            ),
             "ucm_receipt_valid",
         ),
         (
@@ -247,7 +319,10 @@ fn red_team_and_unchanged_admit() {
         ),
         (
             "schema tag edited",
-            one(edit(&|r| r["ucm"] = json!("ucm-receipt-v2")), json!("64.54")),
+            one(
+                edit(&|r| r["ucm"] = json!("ucm-receipt-v2")),
+                json!("64.54"),
+            ),
             "ucm_receipt_valid",
         ),
         (
@@ -257,21 +332,38 @@ fn red_team_and_unchanged_admit() {
         ),
         (
             "source flipped to library",
-            one(edit(&|r| r["program_source"] = json!("library")), json!("64.54")),
+            one(
+                edit(&|r| r["program_source"] = json!("library")),
+                json!("64.54"),
+            ),
             "ucm_receipt_valid",
         ),
         (
             "engine build edited",
-            one(edit(&|r| r["engine_build"] = json!("aep-ucm/9.9.9")), json!("64.54")),
+            one(
+                edit(&|r| r["engine_build"] = json!("aep-ucm/9.9.9")),
+                json!("64.54"),
+            ),
             "ucm_receipt_valid",
         ),
         (
             "issue time edited",
-            one(edit(&|r| r["issued_at"] = json!("2020-01-01T00:00:00Z")), json!("64.54")),
+            one(
+                edit(&|r| r["issued_at"] = json!("2020-01-01T00:00:00Z")),
+                json!("64.54"),
+            ),
             "ucm_receipt_valid",
         ),
-        ("untrusted signer", one(stranger.clone(), json!("64.54")), "ucm_receipt_valid"),
-        ("field differs from result", one(good.clone(), json!("65.00")), "ucm_result_matches"),
+        (
+            "untrusted signer",
+            one(stranger.clone(), json!("64.54")),
+            "ucm_receipt_valid",
+        ),
+        (
+            "field differs from result",
+            one(good.clone(), json!("65.00")),
+            "ucm_result_matches",
+        ),
         (
             "field in another currency",
             one(good.clone(), json!("64.54 USD")),
@@ -301,9 +393,17 @@ fn red_team_and_unchanged_admit() {
             ),
             "ucm_result_matches",
         ),
-        ("text echo program", one(echo.clone(), json!("64.54")), "ucm_result_matches"),
+        (
+            "text echo program",
+            one(echo.clone(), json!("64.54")),
+            "ucm_result_matches",
+        ),
     ];
-    attacks.push(("agent program in a library only wrap", honest.clone(), "ucm_receipt_valid"));
+    attacks.push((
+        "agent program in a library only wrap",
+        honest.clone(),
+        "ucm_receipt_valid",
+    ));
 
     let mut failures = Vec::new();
     for (name, event, want) in &attacks {
@@ -329,7 +429,10 @@ fn red_team_and_unchanged_admit() {
         attacks.len(),
         failures.join("\n")
     );
-    assert!(attacks.len() >= 30, "the red team set needs at least 30 cases");
+    assert!(
+        attacks.len() >= 30,
+        "the red team set needs at least 30 cases"
+    );
 
     // Replay mode passes the honest receipt and refuses one whose budget is above the cap.
     std::env::set_var("AEP_UCM_RECEIPT_VERIFY", "replay");

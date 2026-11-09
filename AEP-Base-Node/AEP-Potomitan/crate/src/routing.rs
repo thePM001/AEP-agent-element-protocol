@@ -71,7 +71,10 @@ mod tests {
         }];
         let table = RoutingTable::rebuild_from_peers(&peers);
         assert_eq!(table.reachable_destinations(), 1);
-        assert_eq!(table.route_to("pot-01").unwrap().via_endpoint, "tls://10.0.0.2:12345");
+        assert_eq!(
+            table.route_to("pot-01").unwrap().via_endpoint,
+            "tls://10.0.0.2:12345"
+        );
     }
 
     #[test]

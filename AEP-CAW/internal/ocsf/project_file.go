@@ -126,15 +126,15 @@ func init() {
 		// a failed registry write attempt; it carries no operation context.
 		// FileActivityUnknown (0) is the correct classification for this
 		// catch-all monitoring-layer error event.
-		"registry_error":    FileActivityUnknown,
+		"registry_error": FileActivityUnknown,
 		// Dynamically-emitted types (helper-based; not caught by AST walker).
 		// See exhaustiveness_test.go comment for context.
-		"dir_list":      FileActivityRead,
-		"dir_create":    FileActivityCreate,
-		"dir_delete":    FileActivityDelete,
-		"file_stat":     FileActivityRead,
+		"dir_list":       FileActivityRead,
+		"dir_create":     FileActivityCreate,
+		"dir_delete":     FileActivityDelete,
+		"file_stat":      FileActivityRead,
 		"symlink_create": FileActivityCreate,
-		"symlink_read":  FileActivityRead,
+		"symlink_read":   FileActivityRead,
 	}
 	// renameAllowlist carries the destination path and the optional
 	// cross_mount flag from fuse rename events. to_path is the move

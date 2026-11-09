@@ -9,13 +9,13 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/spf13/cobra"
 	dbpolicy "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policy"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/db/policyexplain"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy/signing"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policygen"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/spf13/cobra"
 )
 
 func newPolicyCmd() *cobra.Command {

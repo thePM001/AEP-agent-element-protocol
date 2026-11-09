@@ -38,6 +38,11 @@ file_rules:
 		t.Fatal(err)
 	}
 
+	// Root ignores the 0555 mode below, so the bind never fails with a permission error.
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: a read-only directory does not stop root from binding")
+	}
+
 	// Use /tmp for shorter socket path (macOS has 104 char limit)
 	sockDir, err := os.MkdirTemp("/tmp", "agsh")
 	if err != nil {

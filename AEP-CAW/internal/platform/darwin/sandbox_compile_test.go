@@ -264,10 +264,10 @@ func TestClassifyPath(t *testing.T) {
 	}{
 		{"/dir/*", "subpath"},
 		{"/dir/", "subpath"},
-		{"/dir/subdir", "subpath"},       // no extension = directory
+		{"/dir/subdir", "subpath"}, // no extension = directory
 		{"/dir/file.txt", "literal"},
 		{"/dir/file.tar.gz", "literal"},
-		{"/usr/bin/python3", "subpath"},   // no extension = directory heuristic
+		{"/usr/bin/python3", "subpath"}, // no extension = directory heuristic
 	}
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {

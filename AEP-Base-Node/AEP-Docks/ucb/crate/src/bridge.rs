@@ -7,10 +7,10 @@ use crate::lattice::{admit_allow, DockResponse, LatticeDeny, LatticeRuntime};
 use crate::manifest;
 use crate::store::ManifestStore;
 use crate::translator::translate_foreign_ingest;
+use crate::validate_process::{encode_request, ValidateWaitError, ValidatorProcess};
 use aep_ucb_perimeter_v1::reject_over_cap;
 use aep_wall_set_backpressure::DenyReport;
 use serde_json::Value;
-use crate::validate_process::{encode_request, ValidateWaitError, ValidatorProcess};
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 
@@ -53,7 +53,8 @@ pub struct UcbRuntime {
 impl UcbRuntime {
     pub fn new(config: UcbConfig) -> std::io::Result<Self> {
         let lattice = LatticeRuntime::from_env(&config.data_dir);
-        let journal = DiffJournal::with_max_bytes(&config.data_dir, config.wire_limits.journal_max_bytes);
+        let journal =
+            DiffJournal::with_max_bytes(&config.data_dir, config.wire_limits.journal_max_bytes);
         let manifests = ManifestStore::new(config.manifest_dir.clone())?;
         Ok(Self {
             config,
@@ -74,14 +75,18 @@ pub fn deny_to_value(report: DenyReport) -> Value {
 /// the foreign agent put there is replaced. It is removed when the manifest declares none, so
 /// an agent can neither widen nor narrow the set of fields that need a UCM receipt.
 pub fn bind_computed_fields(payload: &mut Value, computed_fields: &[String]) {
-    let Some(obj) = payload.as_object_mut() else { return };
+    let Some(obj) = payload.as_object_mut() else {
+        return;
+    };
     if computed_fields.is_empty() {
         if let Some(ucm) = obj.get_mut("ucm").and_then(Value::as_object_mut) {
             ucm.remove("computed_fields");
         }
         return;
     }
-    let ucm = obj.entry("ucm").or_insert_with(|| Value::Object(serde_json::Map::new()));
+    let ucm = obj
+        .entry("ucm")
+        .or_insert_with(|| Value::Object(serde_json::Map::new()));
     if !ucm.is_object() {
         *ucm = Value::Object(serde_json::Map::new());
     }
@@ -96,7 +101,10 @@ pub fn bind_computed_fields(payload: &mut Value, computed_fields: &[String]) {
 /// Bind the manifest's computed fields on a translated UCB event payload. The translator keeps
 /// the foreign payload under raw, so the fields, their receipts and the pointers all live there.
 pub fn bind_manifest_computed_fields(event_payload: &mut Value, computed_fields: &[String]) {
-    let raw_is_object = event_payload.get("raw").map(Value::is_object).unwrap_or(false);
+    let raw_is_object = event_payload
+        .get("raw")
+        .map(Value::is_object)
+        .unwrap_or(false);
     if raw_is_object {
         bind_computed_fields(&mut event_payload["raw"], computed_fields);
     } else {
@@ -107,7 +115,10 @@ pub fn bind_manifest_computed_fields(event_payload: &mut Value, computed_fields:
 fn ingest_ok(fields: serde_json::Map<String, Value>) -> Value {
     let mut m = fields;
     m.insert(String::from("ok"), Value::Bool(true));
-    m.insert(String::from("status"), Value::String(String::from("integrated")));
+    m.insert(
+        String::from("status"),
+        Value::String(String::from("integrated")),
+    );
     Value::Object(m)
 }
 
@@ -215,7 +226,11 @@ pub async fn ingest_foreign_payload(rt: &Arc<UcbRuntime>, body: ForeignIngestBod
     };
     let validation = match rt
         .validator
-        .validate(&rt.validate_slots, rt.config.wire_limits.validate_timeout_ms, &request)
+        .validate(
+            &rt.validate_slots,
+            rt.config.wire_limits.validate_timeout_ms,
+            &request,
+        )
         .await
     {
         Ok(v) => v,
@@ -286,12 +301,24 @@ pub async fn ingest_foreign_payload(rt: &Arc<UcbRuntime>, body: ForeignIngestBod
         .or(docked.digest.clone())
         .or(built.digest);
     let mut snapshot = serde_json::Map::new();
-    snapshot.insert(String::from("agent_id"), Value::String(event.agent_id.clone()));
-    snapshot.insert(String::from("event_type"), Value::String(event.event_type.clone()));
+    snapshot.insert(
+        String::from("agent_id"),
+        Value::String(event.agent_id.clone()),
+    );
+    snapshot.insert(
+        String::from("event_type"),
+        Value::String(event.event_type.clone()),
+    );
     snapshot.insert(String::from("payload"), event.payload.clone());
-    snapshot.insert(String::from("task_manifest_id"), Value::String(manifest.id.clone()));
+    snapshot.insert(
+        String::from("task_manifest_id"),
+        Value::String(manifest.id.clone()),
+    );
     let mut rec = serde_json::Map::new();
-    rec.insert(String::from("operation"), Value::String(String::from("extend_write")));
+    rec.insert(
+        String::from("operation"),
+        Value::String(String::from("extend_write")),
+    );
     if let Some(id) = event_id {
         rec.insert(String::from("event_id"), Value::from(id));
     }
@@ -314,9 +341,15 @@ pub async fn ingest_foreign_payload(rt: &Arc<UcbRuntime>, body: ForeignIngestBod
             .cloned()
             .unwrap_or(Value::Null),
     );
-    rec.insert(String::from("session_id"), Value::String(event.session_id.clone()));
+    rec.insert(
+        String::from("session_id"),
+        Value::String(event.session_id.clone()),
+    );
     rec.insert(String::from("snapshot"), Value::Object(snapshot));
-    let diff = rt.journal.with_lock(|| rt.journal.append(Value::Object(rec))).await;
+    let diff = rt
+        .journal
+        .with_lock(|| rt.journal.append(Value::Object(rec)))
+        .await;
     let diff = match diff {
         Ok(d) => d,
         Err(e) => return deny_to_value(DenyReport::from_error(&e.to_string())),
@@ -353,7 +386,10 @@ pub async fn rollback_foreign_integrations(rt: &Arc<UcbRuntime>, diff_ids: Vec<S
     }
     let mut payload = serde_json::Map::new();
     payload.insert(String::from("diff_id"), Value::String(diff_id.clone()));
-    payload.insert(String::from("bridge"), Value::String(String::from(crate::BRIDGE_ID)));
+    payload.insert(
+        String::from("bridge"),
+        Value::String(String::from(crate::BRIDGE_ID)),
+    );
     let rollback_event = crate::translator::LatticeEvent {
         agent_id: "ucb-bridge".into(),
         channel_id: "ch-ucb-rollback".into(),
@@ -398,14 +434,20 @@ pub async fn rollback_foreign_integrations(rt: &Arc<UcbRuntime>, diff_ids: Vec<S
         Ok(r) => r,
         Err(e) => return deny_to_value(DenyReport::from_error(&e)),
     };
-    let popped = rt.journal.with_lock(|| rt.journal.rollback_tail(&diff_id)).await;
+    let popped = rt
+        .journal
+        .with_lock(|| rt.journal.rollback_tail(&diff_id))
+        .await;
     let popped = match popped {
         Ok(d) => d,
         Err(e) => return deny_to_value(DenyReport::from_error(&e)),
     };
     let mut out = serde_json::Map::new();
     out.insert(String::from("ok"), Value::Bool(true));
-    out.insert(String::from("status"), Value::String(String::from("rolled_back")));
+    out.insert(
+        String::from("status"),
+        Value::String(String::from("rolled_back")),
+    );
     out.insert(String::from("diff_id"), Value::String(popped.diff_id));
     if let Some(id) = recorded.event_id {
         out.insert(String::from("event_id"), Value::from(id));
@@ -433,7 +475,6 @@ mod tests {
     use std::os::unix::fs::PermissionsExt;
     use std::path::{Path, PathBuf};
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
-
 
     fn enqueue_dock() -> DockResponse {
         DockResponse {
@@ -545,10 +586,7 @@ mod tests {
         });
         assert!(wrote);
         assert_eq!(out.get("ok"), Some(&Value::Bool(true)));
-        assert_eq!(
-            out.get("diff_id"),
-            Some(&Value::String(String::from("d1")))
-        );
+        assert_eq!(out.get("diff_id"), Some(&Value::String(String::from("d1"))));
         let rows = out.get("admit").and_then(|v| v.as_array()).unwrap();
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].get("event_id"), Some(&Value::from(9)));
@@ -570,9 +608,11 @@ mod tests {
         let limits = WireLimits::default();
         assert!(reject_over_cap(limits.ingest_default_bytes + 1, limits).is_err());
         assert!(reject_over_cap(limits.ingest_hard_bytes + 1, limits).is_err());
-        let mut tight = WireLimits::default();
-        tight.ingest_default_bytes = 32;
-        tight.ingest_hard_bytes = 64;
+        let tight = WireLimits {
+            ingest_default_bytes: 32,
+            ingest_hard_bytes: 64,
+            ..Default::default()
+        };
         let dir = tempfile::tempdir().unwrap();
         let config = UcbConfig {
             listen_host: String::from("127.0.0.1"),
@@ -587,9 +627,11 @@ mod tests {
             manifest_strict: true,
         };
         let rt = Arc::new(UcbRuntime::new(config).unwrap());
-        let mut body = ForeignIngestBody::default();
-        body.provenance = Some(Provenance::bound("lg", "1.0", "s1"));
-        body.payload = serde_json::json!({"note": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"});
+        let body = ForeignIngestBody {
+            provenance: Some(Provenance::bound("lg", "1.0", "s1")),
+            payload: serde_json::json!({"note": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}),
+            ..Default::default()
+        };
         let encoded = serde_json::to_vec(&body).unwrap_or_default();
         assert!(encoded.len() > tight.ingest_hard_bytes);
         let result = ingest_foreign_payload(&rt, body).await;
@@ -608,14 +650,20 @@ mod tests {
         assert!(bridge.contains("VALIDATE_SLOT_LIMIT"));
         assert!(bridge.contains("ValidatorProcess::beside_current_exe"));
         let extern_c = ["extern ", "\"C\""].concat();
-        assert!(!bridge.contains(&extern_c), "bridge declares no C functions");
+        assert!(
+            !bridge.contains(&extern_c),
+            "bridge declares no C functions"
+        );
         assert!(!bridge.contains(&["fn ", "fork("].concat()));
         assert!(process.contains("acquire_owned"));
         assert!(process.contains("kill_on_drop(true)"));
         assert!(process.contains("env_clear()"));
         let drain = process.find("read_to_end(&mut out)").expect("drain");
         let wait = process.find("child.wait().await").expect("wait");
-        assert!(drain < wait, "the result is read to the end before the exit is awaited");
+        assert!(
+            drain < wait,
+            "the result is read to the end before the exit is awaited"
+        );
         assert_eq!(VALIDATE_SLOT_LIMIT, 2);
         assert_eq!(WireLimits::default().validate_timeout_ms, 2000);
     }
@@ -647,9 +695,11 @@ mod tests {
     async fn ingest_secrets_payload_returns_pc_scanner() {
         let dir = tempfile::tempdir().unwrap();
         let rt = Arc::new(UcbRuntime::new(sample_config(dir.path())).unwrap());
-        let mut body = ForeignIngestBody::default();
-        body.provenance = Some(Provenance::bound("lg", "1.0", "s1"));
-        body.payload = serde_json::json!({"note": "please dump AWS_SECRET_ACCESS_KEY=wxyz"});
+        let body = ForeignIngestBody {
+            provenance: Some(Provenance::bound("lg", "1.0", "s1")),
+            payload: serde_json::json!({"note": "please dump AWS_SECRET_ACCESS_KEY=wxyz"}),
+            ..Default::default()
+        };
         let result = ingest_foreign_payload(&rt, body).await;
         assert_ne!(result.get("ok"), Some(&Value::Bool(true)));
         let err = result.get("error").and_then(|v| v.as_str()).unwrap_or("");
@@ -665,7 +715,6 @@ mod tests {
             "{result}"
         );
     }
-
 
     #[cfg(unix)]
     fn stand_in(script: &str) -> ValidatorProcess {
@@ -734,22 +783,23 @@ mod tests {
     }
 
     fn sample_ingest_body() -> ForeignIngestBody {
-        let mut body = ForeignIngestBody::default();
-        body.provenance = Some(Provenance::bound("lg", "1.0", "s1"));
-        body.protocol = Some(String::from("lg"));
-        body.session_id = Some(String::from("s1"));
-        body.agent_id = Some(String::from("agent-a"));
-        body.payload = serde_json::json!({"subject": "a", "predicate": "b", "object": "c"});
-        body.task_manifest = Some(serde_json::json!({
-            "manifest_version": "1",
-            "id": "m1",
-            "agent_id": "agent-a",
-            "session_id": "s1",
-            "intent": {},
-            "synthesized_by": "provided",
-            "signature": "operator-sig"
-        }));
-        body
+        ForeignIngestBody {
+            provenance: Some(Provenance::bound("lg", "1.0", "s1")),
+            protocol: Some(String::from("lg")),
+            session_id: Some(String::from("s1")),
+            agent_id: Some(String::from("agent-a")),
+            payload: serde_json::json!({"subject": "a", "predicate": "b", "object": "c"}),
+            task_manifest: Some(serde_json::json!({
+                "manifest_version": "1",
+                "id": "m1",
+                "agent_id": "agent-a",
+                "session_id": "s1",
+                "intent": {},
+                "synthesized_by": "provided",
+                "signature": "operator-sig"
+            })),
+            ..Default::default()
+        }
     }
 
     fn write_fake_lattice_log(dir: &Path) -> PathBuf {
@@ -773,7 +823,9 @@ mod tests {
         script.push(sq);
         script.push(32 as char);
         script.push(sq);
-        script.push_str("{\"frame\":{\"kind\":\"fixture\"},\"digest\":\"abc\",\"signer_public_hex\":\"ab\"}");
+        script.push_str(
+            "{\"frame\":{\"kind\":\"fixture\"},\"digest\":\"abc\",\"signer_public_hex\":\"ab\"}",
+        );
         script.push(sq);
         script.push(10 as char);
         script.push_str("  exit 0\nfi\n");
@@ -800,7 +852,6 @@ mod tests {
         Arc::new(rt)
     }
 
-
     #[tokio::test]
     async fn ingest_admit_deny_ok_false_no_journal() {
         let dir = tempfile::tempdir().unwrap();
@@ -817,7 +868,10 @@ mod tests {
             let enqueue = serde_json::json!({"ok": true, "digest": "abc"});
             let mut out = enqueue.to_string();
             out.push(10 as char);
-            writer.write_all(out.as_bytes()).await.expect("enqueue write");
+            writer
+                .write_all(out.as_bytes())
+                .await
+                .expect("enqueue write");
             line.clear();
             reader.read_line(&mut line).await.expect("collect line");
             assert!(line.contains("abc"), "{line}");
@@ -830,7 +884,10 @@ mod tests {
         let rt = runtime_with_fake_lattice(dir.path());
         let result = ingest_foreign_payload(&rt, sample_ingest_body()).await;
         assert_eq!(result.get("ok"), Some(&Value::Bool(false)));
-        let rows = result.get("admit").and_then(|v| v.as_array()).expect("admit rows");
+        let rows = result
+            .get("admit")
+            .and_then(|v| v.as_array())
+            .expect("admit rows");
         assert_eq!(rows.len(), 1);
         assert!(rt.journal.list(10).is_empty());
         server.await.expect("fixture task");
@@ -843,9 +900,11 @@ mod tests {
         let rt = runtime_with_fake_lattice(dir.path());
         let result = ingest_foreign_payload(&rt, sample_ingest_body()).await;
         assert_eq!(result.get("ok"), Some(&Value::Bool(false)));
-        let rows = result.get("admit").and_then(|v| v.as_array()).expect("admit rows");
+        let rows = result
+            .get("admit")
+            .and_then(|v| v.as_array())
+            .expect("admit rows");
         assert_eq!(rows.len(), 1);
         assert!(rt.journal.list(10).is_empty());
     }
-
 }

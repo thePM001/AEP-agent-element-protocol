@@ -92,7 +92,7 @@ func TestIntegration_PolicyYAML_FullFlow(t *testing.T) {
 			Name:     "github",
 			Upstream: "https://api.github.com",
 			Secret:   &policy.HTTPServiceSecret{Ref: "keyring://aep-caw/github_token", Format: "ghp_{rand:34}"},
-			Inject:   &policy.HTTPServiceInject{Header: &policy.HTTPServiceInjectHeader{
+			Inject: &policy.HTTPServiceInject{Header: &policy.HTTPServiceInjectHeader{
 				Name: "Authorization", Template: "Bearer {{secret}}",
 			}},
 		},

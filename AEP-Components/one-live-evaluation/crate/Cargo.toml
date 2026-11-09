@@ -16,3 +16,6 @@ aep-envelope = { path = "../../envelope/crate" }
 aep-live-entry = { path = "../../live-entry/crate" }
 anyhow = "1"
 serde_json = "1"
+
+[lints]
+workspace = true

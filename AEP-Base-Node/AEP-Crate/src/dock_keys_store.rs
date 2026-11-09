@@ -4,6 +4,8 @@
 //! Every secret file is mode 0600 inside a 0700 directory. Minting lives in
 //! dock_keys_provision.rs.
 
+#![allow(unsafe_code)]
+
 use aep_lattice_crypto::{generate_kem_keypair, KemKeypair, SignKeypair};
 use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Nonce};
@@ -124,7 +126,8 @@ fn resolve_seal_key(data_dir: &Path) -> Result<[u8; 32], BaseNodeError> {
     if let Ok(hex_key) = std::env::var("AEP_DOCK_SEAL_KEY") {
         let trimmed = hex_key.trim();
         if !trimmed.is_empty() {
-            let bytes = hex::decode(trimmed).map_err(|e| BaseNodeError::SealKeyDecode(e.to_string()))?;
+            let bytes =
+                hex::decode(trimmed).map_err(|e| BaseNodeError::SealKeyDecode(e.to_string()))?;
             if bytes.len() != 32 {
                 return Err(BaseNodeError::SealKeyLength(bytes.len()));
             }
@@ -136,11 +139,16 @@ fn resolve_seal_key(data_dir: &Path) -> Result<[u8; 32], BaseNodeError> {
     let path = dock_seal_key_path(data_dir);
     if path.exists() {
         if !secret_file_permissions_ok(&path) {
-            return Err(BaseNodeError::SealKeyPermissions { path: path.display().to_string() });
+            return Err(BaseNodeError::SealKeyPermissions {
+                path: path.display().to_string(),
+            });
         }
         let raw = fs::read(&path)?;
         if raw.len() != 32 {
-            return Err(BaseNodeError::SealKeyFileLength { got: raw.len(), path: path.display().to_string() });
+            return Err(BaseNodeError::SealKeyFileLength {
+                got: raw.len(),
+                path: path.display().to_string(),
+            });
         }
         let mut out = [0u8; 32];
         out.copy_from_slice(&raw);
@@ -159,7 +167,8 @@ fn resolve_seal_key(data_dir: &Path) -> Result<[u8; 32], BaseNodeError> {
 
 fn seal_plaintext(data_dir: &Path, plaintext: &[u8]) -> Result<String, BaseNodeError> {
     let key = resolve_seal_key(data_dir)?;
-    let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| BaseNodeError::Crypto(e.to_string()))?;
+    let cipher =
+        Aes256Gcm::new_from_slice(&key).map_err(|e| BaseNodeError::Crypto(e.to_string()))?;
     let mut nonce_bytes = [0u8; 12];
     rand::thread_rng().fill_bytes(&mut nonce_bytes);
     let nonce = Nonce::from_slice(&nonce_bytes);
@@ -180,10 +189,14 @@ fn open_sealed_or_plaintext(data_dir: &Path, raw: &str) -> Result<String, BaseNo
     // v2 sealed envelope
     if let Ok(env) = serde_json::from_str::<SealedEnvelope>(trimmed) {
         if env.v != 2 || env.alg != "aes-256-gcm" {
-            return Err(BaseNodeError::SealedEnvelopeUnsupported { v: env.v, alg: env.alg.clone() });
+            return Err(BaseNodeError::SealedEnvelopeUnsupported {
+                v: env.v,
+                alg: env.alg.clone(),
+            });
         }
         let key = resolve_seal_key(data_dir)?;
-        let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| BaseNodeError::Crypto(e.to_string()))?;
+        let cipher =
+            Aes256Gcm::new_from_slice(&key).map_err(|e| BaseNodeError::Crypto(e.to_string()))?;
         let nonce_bytes = hex::decode(&env.nonce_hex)?;
         if nonce_bytes.len() != 12 {
             return Err(BaseNodeError::SealedEnvelopeNonce);
@@ -199,7 +212,11 @@ fn open_sealed_or_plaintext(data_dir: &Path, raw: &str) -> Result<String, BaseNo
     Ok(trimmed.to_string())
 }
 
-fn write_sealed_secret(data_dir: &Path, path: &Path, plaintext_json: &str) -> Result<(), BaseNodeError> {
+fn write_sealed_secret(
+    data_dir: &Path,
+    path: &Path,
+    plaintext_json: &str,
+) -> Result<(), BaseNodeError> {
     let sealed = seal_plaintext(data_dir, plaintext_json.as_bytes())?;
     write_secret_json(path, &sealed)?;
     Ok(())
@@ -223,13 +240,14 @@ pub fn try_load_or_create_dock_kem(data_dir: &Path) -> Result<KemKeypair, BaseNo
         if let Ok(raw) = fs::read_to_string(&path) {
             if let Ok(plain) = open_sealed_or_plaintext(data_dir, &raw) {
                 if let Ok(file) = serde_json::from_str::<KemKeyFile>(&plain) {
-                    if let (Ok(public), Ok(secret)) = (
-                        hex::decode(&file.public_hex),
-                        hex::decode(&file.secret_hex),
-                    ) {
+                    if let (Ok(public), Ok(secret)) =
+                        (hex::decode(&file.public_hex), hex::decode(&file.secret_hex))
+                    {
                         if !public.is_empty() && !secret.is_empty() {
                             if !perms_ok {
-                                return Err(BaseNodeError::DockKemPermissions { path: path.display().to_string() });
+                                return Err(BaseNodeError::DockKemPermissions {
+                                    path: path.display().to_string(),
+                                });
                             }
                             // Migrate legacy plaintext to sealed v2 on load when possible.
                             if serde_json::from_str::<SealedEnvelope>(raw.trim()).is_err() {
@@ -249,7 +267,9 @@ pub fn try_load_or_create_dock_kem(data_dir: &Path) -> Result<KemKeypair, BaseNo
             .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
             .unwrap_or(false);
         if !force {
-            return Err(BaseNodeError::DockKemCorrupt { path: path.display().to_string() });
+            return Err(BaseNodeError::DockKemCorrupt {
+                path: path.display().to_string(),
+            });
         }
         tracing::warn!(path = %path.display(), "AEP_DOCK_KEM_FORCE_REGEN set; rotating dock KEM");
     }
@@ -398,9 +418,9 @@ impl AgentSignKeyStore {
         if t.len() > 128 {
             return Err(BaseNodeError::AgentIdTooLong);
         }
-        if t.chars().any(|c| {
-            !(c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' || c == ':')
-        }) {
+        if t.chars()
+            .any(|c| !(c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' || c == ':'))
+        {
             return Err(BaseNodeError::AgentIdChars);
         }
         Ok(())
@@ -420,10 +440,12 @@ impl AgentSignKeyStore {
             );
             return Err(BaseNodeError::SignKeysPoisoned);
         }
-        Err(BaseNodeError::SignKeyMissing { agent_id: agent_id.to_string() })
+        Err(BaseNodeError::SignKeyMissing {
+            agent_id: agent_id.to_string(),
+        })
     }
 
- /// Lookup only. First-mint is not the identity issuer.
+    /// Lookup only. First-mint is not the identity issuer.
     pub fn get_or_create(&mut self, agent_id: &str) -> Result<SignKeypair, BaseNodeError> {
         self.get(agent_id)
     }
@@ -470,8 +492,7 @@ impl AgentSignKeyStore {
                 .collect(),
         };
         let plain = serde_json::to_string_pretty(&file)?;
-        write_sealed_secret(&self.data_dir, &self.path, &plain)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        write_sealed_secret(&self.data_dir, &self.path, &plain).map_err(std::io::Error::other)?;
         self.dirty = false;
         Ok(())
     }
@@ -511,12 +532,13 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
         let mode = fs::metadata(&path).expect("meta").permissions().mode() & 0o777;
         assert_eq!(mode, 0o600);
-        let seal_mode =
-            fs::metadata(dock_seal_key_path(dir.path())).expect("meta").permissions().mode()
-                & 0o777;
+        let seal_mode = fs::metadata(dock_seal_key_path(dir.path()))
+            .expect("meta")
+            .permissions()
+            .mode()
+            & 0o777;
         assert_eq!(seal_mode, 0o600);
     }
-
 
     #[test]
     fn corrupt_dock_kem_refuses_silent_regeneration() {
@@ -578,7 +600,9 @@ mod tests {
         std::env::remove_var("AEP_AGENT_SIGN_KEYS_FORCE_REGEN");
         let dir = tempfile::tempdir().expect("tempdir");
         let mut store = AgentSignKeyStore::load(dir.path());
-        let err = store.get_or_create("AG-NEW").expect_err("first-mint must not issue");
+        let err = store
+            .get_or_create("AG-NEW")
+            .expect_err("first-mint must not issue");
         assert!(
             err.to_string().contains("no provisioned sign key"),
             "unexpected err: {err}"
@@ -626,7 +650,8 @@ mod tests {
         fs::set_permissions(&path, p).expect("chmod 0644");
         let err = try_load_or_create_dock_kem(dir.path()).unwrap_err();
         assert!(
-            err.to_string().contains("world/group-readable") || err.to_string().contains("refusing load"),
+            err.to_string().contains("world/group-readable")
+                || err.to_string().contains("refusing load"),
             "unexpected err: {err}"
         );
     }

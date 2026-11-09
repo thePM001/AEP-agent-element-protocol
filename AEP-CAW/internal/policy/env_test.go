@@ -68,8 +68,8 @@ func TestEngine_CheckEnv_AllowPatterns(t *testing.T) {
 		{"USER", true, "allow"},
 		{"MY_VAR", true, "allow"},
 		{"MY_APP_DATA", true, "allow"},
-		{"MY_SECRET", false, "deny"},           // Deny wins over allow
-		{"OTHER_VAR", false, "default-deny"},   // Not in allow list
+		{"MY_SECRET", false, "deny"},         // Deny wins over allow
+		{"OTHER_VAR", false, "default-deny"}, // Not in allow list
 		{"AWS_ACCESS_KEY_ID", false, "default-deny"},
 	}
 
@@ -153,9 +153,9 @@ func TestBuildEnv_GlobPatterns(t *testing.T) {
 	}
 
 	expected := map[string]bool{
-		"PATH=/usr/bin":    true,
-		"HOME=/home/user":  true,
-		"MY_VAR=value1":    true,
+		"PATH=/usr/bin":   true,
+		"HOME=/home/user": true,
+		"MY_VAR=value1":   true,
 	}
 
 	if len(result) != len(expected) {

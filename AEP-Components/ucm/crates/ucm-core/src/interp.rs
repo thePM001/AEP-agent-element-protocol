@@ -19,7 +19,12 @@ pub fn coerce(v: Value, t: &Ty) -> Result<Value> {
         (Value::Int(i), Ty::Rational) => Value::Rat(crate::num::Rat::from_integer(i)),
         (Value::Int(i), Ty::Decimal) => Value::Dec(Decimal::from_int(&i)),
         (Value::Dec(d), Ty::Rational) => Value::Rat(d.to_rat()),
-        (Value::Vec(items), Ty::Vector(el)) => Value::Vec(items.into_iter().map(|x| coerce(x, el)).collect::<Result<Vec<_>>>()?),
+        (Value::Vec(items), Ty::Vector(el)) => Value::Vec(
+            items
+                .into_iter()
+                .map(|x| coerce(x, el))
+                .collect::<Result<Vec<_>>>()?,
+        ),
         (v, t) => {
             if v.ty().conforms(t) || *t == Ty::Empty {
                 v
@@ -36,7 +41,10 @@ pub fn coerce(v: Value, t: &Ty) -> Result<Value> {
 
 impl<'a, 'b> Evaluator<'a, 'b> {
     pub fn new(ctx: &'b mut Ctx<'a>) -> Self {
-        Evaluator { ctx, scopes: Vec::new() }
+        Evaluator {
+            ctx,
+            scopes: Vec::new(),
+        }
     }
 
     pub fn bind(&mut self, n: &str, v: Value) {
@@ -77,7 +85,7 @@ impl<'a, 'b> Evaluator<'a, 'b> {
         r
     }
 
-    fn lambda_parts<'e>(e: &'e Expr) -> Result<(&'e [String], &'e Expr)> {
+    fn lambda_parts(e: &Expr) -> Result<(&[String], &Expr)> {
         match e {
             Expr::Lambda(ps, body) => Ok((ps, body)),
             _ => type_err("expected a lambda"),
@@ -156,7 +164,9 @@ impl<'a, 'b> Evaluator<'a, 'b> {
             _ => return type_err("formula needs a text literal id"),
         };
         let lib = self.ctx.lib;
-        let fm = lib.formula(&id).ok_or_else(|| UcmError::Unbound(format!("formula {id}")))?;
+        let fm = lib
+            .formula(&id)
+            .ok_or_else(|| UcmError::Unbound(format!("formula {id}")))?;
         let mut vals = Vec::new();
         for (a, t) in args[1..].iter().zip(&fm.input_types) {
             let v = self.run_expr(a)?;
@@ -196,27 +206,43 @@ impl<'a, 'b> Evaluator<'a, 'b> {
                 Value::Bool(Self::truth(self.run_expr(&a[1])?)?)
             }
             Expr::Op(op, a) => {
-                let vals = a.iter().map(|x| self.run_expr(x)).collect::<Result<Vec<_>>>()?;
+                let vals = a
+                    .iter()
+                    .map(|x| self.run_expr(x))
+                    .collect::<Result<Vec<_>>>()?;
                 let lit_nonneg = matches!((op, a.get(1)), (Op::Pow, Some(Expr::Lit(Lit::Int(i)))) if i.sign() != num_bigint::Sign::Minus);
                 if *op == Op::Pow {
                     // Bound the result size before computing: bits(base) * |exp| must fit.
                     if let (Some(b), Value::Int(n)) = (vals.first().map(|v| v.bits()), &vals[1]) {
-                        let n = num_traits::ToPrimitive::to_u64(&num_traits::Signed::abs(n)).unwrap_or(u64::MAX);
+                        let n = num_traits::ToPrimitive::to_u64(&num_traits::Signed::abs(n))
+                            .unwrap_or(u64::MAX);
                         if b.saturating_mul(n) > self.ctx.budget.limits.bits {
                             return Err(UcmError::BudgetExceeded {
-                                what: format!("number size above {} bits", self.ctx.budget.limits.bits),
+                                what: format!(
+                                    "number size above {} bits",
+                                    self.ctx.budget.limits.bits
+                                ),
                             });
                         }
                     }
                 }
-                apply(*op, &vals, self.ctx.float_mode, lit_nonneg, self.ctx.budget.max_exponent())?
+                apply(
+                    *op,
+                    &vals,
+                    self.ctx.float_mode,
+                    lit_nonneg,
+                    self.ctx.budget.max_exponent(),
+                )?
             }
             Expr::Call(f, args) => {
                 if crate::builtins::HIGHER_ORDER.contains(&f.as_str()) {
                     self.higher_order(f, args)?
                 } else {
                     let b = lookup(f).ok_or_else(|| UcmError::UnknownFunction(f.clone()))?;
-                    let vals = args.iter().map(|x| self.run_expr(x)).collect::<Result<Vec<_>>>()?;
+                    let vals = args
+                        .iter()
+                        .map(|x| self.run_expr(x))
+                        .collect::<Result<Vec<_>>>()?;
                     (b.run)(self.ctx, &vals)?
                 }
             }
@@ -238,7 +264,12 @@ impl<'a, 'b> Evaluator<'a, 'b> {
             Expr::Lambda(..) => return type_err("lambda outside a higher order call"),
             Expr::Vec(items) => {
                 self.ctx.budget.len(items.len() as u64)?;
-                Value::Vec(items.iter().map(|x| self.run_expr(x)).collect::<Result<Vec<_>>>()?)
+                Value::Vec(
+                    items
+                        .iter()
+                        .map(|x| self.run_expr(x))
+                        .collect::<Result<Vec<_>>>()?,
+                )
             }
             Expr::Float(inner) => {
                 self.ctx.float_used = true;

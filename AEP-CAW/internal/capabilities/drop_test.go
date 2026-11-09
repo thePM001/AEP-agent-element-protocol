@@ -78,8 +78,8 @@ func TestIsAlwaysDrop_CaseInsensitive(t *testing.T) {
 		{"CAP_SYS_ADMIN", true},
 		{"cap_sys_admin", true},
 		{"Cap_Sys_Admin", true},
-		{"SYS_ADMIN", true},  // Without CAP_ prefix
-		{"sys_admin", true},  // Without CAP_ prefix, lowercase
+		{"SYS_ADMIN", true}, // Without CAP_ prefix
+		{"sys_admin", true}, // Without CAP_ prefix, lowercase
 		{"CAP_NET_RAW", false},
 		{"NET_RAW", false},
 	}

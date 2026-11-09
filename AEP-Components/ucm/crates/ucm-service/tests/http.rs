@@ -20,7 +20,13 @@ fn engine(tag: &str, key: Option<&str>) -> Arc<Engine> {
     Engine::open(cfg).expect("engine")
 }
 
-async fn call(e: &Arc<Engine>, method: &str, path: &str, key: Option<&str>, body: Option<Value>) -> (StatusCode, Value) {
+async fn call(
+    e: &Arc<Engine>,
+    method: &str,
+    path: &str,
+    key: Option<&str>,
+    body: Option<Value>,
+) -> (StatusCode, Value) {
     let mut b = Request::builder()
         .method(method)
         .uri(path)
@@ -34,7 +40,10 @@ async fn call(e: &Arc<Engine>, method: &str, path: &str, key: Option<&str>, body
     let resp = router(e.clone()).oneshot(req).await.expect("response");
     let status = resp.status();
     let bytes = resp.into_body().collect().await.expect("body").to_bytes();
-    (status, serde_json::from_slice(&bytes).unwrap_or(Value::Null))
+    (
+        status,
+        serde_json::from_slice(&bytes).unwrap_or(Value::Null),
+    )
 }
 
 #[tokio::test]
@@ -46,7 +55,14 @@ async fn eval_verify_and_auth() {
     let body = json!({ "program": "input p: money[CHF];\nround(p * 1.081, 2, \"half_even\")", "inputs": { "p": "10.00 CHF" } });
     let (s, v) = call(&e, "POST", "/ucm/v1/eval", None, Some(body.clone())).await;
     assert_eq!(s, StatusCode::UNAUTHORIZED, "{v}");
-    let (s, _) = call(&e, "POST", "/ucm/v1/eval", Some("wrong"), Some(body.clone())).await;
+    let (s, _) = call(
+        &e,
+        "POST",
+        "/ucm/v1/eval",
+        Some("wrong"),
+        Some(body.clone()),
+    )
+    .await;
     assert_eq!(s, StatusCode::UNAUTHORIZED);
 
     let (s, v) = call(&e, "POST", "/ucm/v1/eval", Some("test-key"), Some(body)).await;
@@ -69,10 +85,24 @@ async fn eval_verify_and_auth() {
     assert_eq!(s, StatusCode::OK);
     let mut forged = r.clone();
     forged["result"]["decimal"] = json!("11.00");
-    let (s, v) = call(&e, "POST", "/ucm/v1/verify", Some("test-key"), Some(json!({ "receipt": forged }))).await;
+    let (s, v) = call(
+        &e,
+        "POST",
+        "/ucm/v1/verify",
+        Some("test-key"),
+        Some(json!({ "receipt": forged })),
+    )
+    .await;
     assert_eq!(s, StatusCode::BAD_REQUEST, "{v}");
 
-    let (s, _) = call(&e, "GET", "/ucm/v1/receipts/..%2F..%2Fetc%2Fpasswd", None, None).await;
+    let (s, _) = call(
+        &e,
+        "GET",
+        "/ucm/v1/receipts/..%2F..%2Fetc%2Fpasswd",
+        None,
+        None,
+    )
+    .await;
     assert_eq!(s, StatusCode::NOT_FOUND);
 }
 
@@ -113,10 +143,24 @@ async fn limits_and_errors() {
     assert_eq!(v["error"]["code"], "library_mismatch");
 
     let big = "1 + ".repeat(300_000) + "1";
-    let (s, _) = call(&e, "POST", "/ucm/v1/eval", None, Some(json!({ "program": big }))).await;
+    let (s, _) = call(
+        &e,
+        "POST",
+        "/ucm/v1/eval",
+        None,
+        Some(json!({ "program": big })),
+    )
+    .await;
     assert_eq!(s, StatusCode::PAYLOAD_TOO_LARGE);
 
-    let (s, v) = call(&e, "POST", "/ucm/v1/eval", None, Some(json!({ "program": "1 +" }))).await;
+    let (s, v) = call(
+        &e,
+        "POST",
+        "/ucm/v1/eval",
+        None,
+        Some(json!({ "program": "1 +" })),
+    )
+    .await;
     assert_eq!(s, StatusCode::BAD_REQUEST);
     assert_eq!(v["error"]["code"], "parse_error");
 }
@@ -124,7 +168,12 @@ async fn limits_and_errors() {
 #[tokio::test]
 async fn library_program_source() {
     let e = engine("library", None);
-    let f = e.lib.formula("finance.compound_amount").expect("formula").program_text.clone();
+    let f = e
+        .lib
+        .formula("finance.compound_amount")
+        .expect("formula")
+        .program_text
+        .clone();
     let (s, v) = call(&e, "POST", "/ucm/v1/eval", None, Some(json!({ "program": f, "library_formula": "finance.compound_amount", "inputs": { "principal": "1000 EUR", "rate": "5/100", "periods": "2" } }))).await;
     assert_eq!(s, StatusCode::OK, "{v}");
     assert_eq!(v["receipt"]["program_source"], "library");
@@ -150,7 +199,14 @@ async fn lookup_and_mcp() {
         .iter()
         .any(|x| x["entry"]["id"] == "formula.finance.annuity_payment"));
 
-    let (s, v) = call(&e, "POST", "/ucm/v1/lookup", None, Some(json!({ "query": "x", "tier": "2" }))).await;
+    let (s, v) = call(
+        &e,
+        "POST",
+        "/ucm/v1/lookup",
+        None,
+        Some(json!({ "query": "x", "tier": "2" })),
+    )
+    .await;
     assert_eq!(s, StatusCode::BAD_REQUEST);
     assert_eq!(v["error"]["code"], "ranker_off");
 
@@ -165,8 +221,7 @@ async fn lookup_and_mcp() {
     assert_eq!(s, StatusCode::OK);
     assert_eq!(v["result"]["tools"].as_array().expect("tools").len(), 4);
 
-    let call_eval =
-        json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": { "name": "ucm_eval", "arguments": { "program": "1/0" } } });
+    let call_eval = json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": { "name": "ucm_eval", "arguments": { "program": "1/0" } } });
     let (_, v) = call(&e, "POST", "/ucm/v1/mcp", None, Some(call_eval)).await;
     assert_eq!(v["result"]["isError"], true);
 

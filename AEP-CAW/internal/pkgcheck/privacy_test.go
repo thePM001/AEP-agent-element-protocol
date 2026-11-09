@@ -154,12 +154,12 @@ func TestPrivacyFilter_NormalizesRegistryURLs(t *testing.T) {
 
 func TestNormalizeRegistry(t *testing.T) {
 	cases := map[string]string{
-		"registry.npmjs.org":             "registry.npmjs.org",
-		"https://registry.npmjs.org/":    "registry.npmjs.org",
-		"https://registry.npmjs.org":     "registry.npmjs.org",
-		"http://Registry.NPMJS.org/path": "registry.npmjs.org/path",
+		"registry.npmjs.org":               "registry.npmjs.org",
+		"https://registry.npmjs.org/":      "registry.npmjs.org",
+		"https://registry.npmjs.org":       "registry.npmjs.org",
+		"http://Registry.NPMJS.org/path":   "registry.npmjs.org/path",
 		"https://artifact.example/team-a/": "artifact.example/team-a",
-		"":                               "",
+		"":                                 "",
 	}
 	for in, want := range cases {
 		if got := normalizeRegistry(in); got != want {

@@ -1,4 +1,3 @@
-
 use crate::error::PredicateError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

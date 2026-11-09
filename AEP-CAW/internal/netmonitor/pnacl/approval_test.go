@@ -9,12 +9,12 @@ import (
 
 // MockPromptProvider is a mock implementation of PromptProvider for testing.
 type MockPromptProvider struct {
-	mu        sync.Mutex
-	response  ApprovalResponse
-	err       error
-	delay     time.Duration
-	calls     []ApprovalRequest
-	onPrompt  func(req ApprovalRequest) (ApprovalResponse, error)
+	mu       sync.Mutex
+	response ApprovalResponse
+	err      error
+	delay    time.Duration
+	calls    []ApprovalRequest
+	onPrompt func(req ApprovalRequest) (ApprovalResponse, error)
 }
 
 func (m *MockPromptProvider) Prompt(ctx context.Context, req ApprovalRequest) (ApprovalResponse, error) {

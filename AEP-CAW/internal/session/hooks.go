@@ -66,20 +66,20 @@ func (h *LifecycleHooks) Merge(other *LifecycleHooks) *LifecycleHooks {
 	}
 
 	return &LifecycleHooks{
-		OnBeforeStart: chainBeforeStart(h.OnBeforeStart, other.OnBeforeStart),
-		OnStart:       chain(h.OnStart, other.OnStart),
-		OnOperation:   chainIOEvent(h.OnOperation, other.OnOperation),
-		OnBlocked:     chainIOEvent(h.OnBlocked, other.OnBlocked),
-		OnApprovalNeeded: chainApproval(h.OnApprovalNeeded, other.OnApprovalNeeded),
+		OnBeforeStart:      chainBeforeStart(h.OnBeforeStart, other.OnBeforeStart),
+		OnStart:            chain(h.OnStart, other.OnStart),
+		OnOperation:        chainIOEvent(h.OnOperation, other.OnOperation),
+		OnBlocked:          chainIOEvent(h.OnBlocked, other.OnBlocked),
+		OnApprovalNeeded:   chainApproval(h.OnApprovalNeeded, other.OnApprovalNeeded),
 		OnApprovalResolved: chainApprovalResolved(h.OnApprovalResolved, other.OnApprovalResolved),
-		OnHeartbeat:   chain(h.OnHeartbeat, other.OnHeartbeat),
-		OnPause:       chain(h.OnPause, other.OnPause),
-		OnResume:      chain(h.OnResume, other.OnResume),
-		OnBeforeEnd:   chain(h.OnBeforeEnd, other.OnBeforeEnd),
-		OnEnd:         chainEnd(h.OnEnd, other.OnEnd),
-		OnError:       chainError(h.OnError, other.OnError),
-		OnCheckpoint:  chainCheckpoint(h.OnCheckpoint, other.OnCheckpoint),
-		OnStatsUpdate: chainStats(h.OnStatsUpdate, other.OnStatsUpdate),
+		OnHeartbeat:        chain(h.OnHeartbeat, other.OnHeartbeat),
+		OnPause:            chain(h.OnPause, other.OnPause),
+		OnResume:           chain(h.OnResume, other.OnResume),
+		OnBeforeEnd:        chain(h.OnBeforeEnd, other.OnBeforeEnd),
+		OnEnd:              chainEnd(h.OnEnd, other.OnEnd),
+		OnError:            chainError(h.OnError, other.OnError),
+		OnCheckpoint:       chainCheckpoint(h.OnCheckpoint, other.OnCheckpoint),
+		OnStatsUpdate:      chainStats(h.OnStatsUpdate, other.OnStatsUpdate),
 	}
 }
 

@@ -131,7 +131,7 @@ fn run(program: &str, args: &[&str], envs: &[(&str, String)]) -> (i32, String, S
 fn first_line(text: &str) -> String {
     text.lines()
         .map(str::trim)
-        .find(|line| line.is_empty() == false)
+        .find(|line| !line.is_empty())
         .unwrap_or("")
         .to_string()
 }
@@ -215,7 +215,10 @@ fn ledger_count(ctx: &Ctx) -> Result<u64, String> {
     let config = ctx.base_node_config.to_string_lossy().to_string();
     let (code, out, err) = run(&ctx.lattice_log_bin, &["--config", &config, "count"], &[]);
     if code != 0 {
-        return Err(format!("count refused with exit {code}: {}", first_line(&err)));
+        return Err(format!(
+            "count refused with exit {code}: {}",
+            first_line(&err)
+        ));
     }
     let value: serde_json::Value =
         serde_json::from_str(&out).map_err(|e| format!("count is not JSON: {e}"))?;
@@ -233,7 +236,10 @@ fn ledger_tail(ctx: &Ctx) -> Result<Vec<serde_json::Value>, String> {
         &[],
     );
     if code != 0 {
-        return Err(format!("export refused with exit {code}: {}", first_line(&err)));
+        return Err(format!(
+            "export refused with exit {code}: {}",
+            first_line(&err)
+        ));
     }
     serde_json::from_str(&out).map_err(|e| format!("export is not JSON: {e}"))
 }
@@ -270,7 +276,10 @@ fn ucb_ingest(
         &[],
     );
     if code != 0 {
-        return Err(format!("curl refused with exit {code}: {}", first_line(&err)));
+        return Err(format!(
+            "curl refused with exit {code}: {}",
+            first_line(&err)
+        ));
     }
     let raw = fs::read_to_string(&out_path).map_err(|e| e.to_string())?;
     let value: serde_json::Value =
@@ -502,7 +511,10 @@ fn run_main() -> Result<(), String> {
     println!("AEP end to end run. The refuse path prints first and the pass path prints second.");
     println!("kernel pulse ms {}", PULSE_MS);
     println!("kernel drift bound ms {}", MAX_DRIFT_MS);
-    println!("attach action {} scene {} agent {}", ctx.attach_action, ctx.attach_scene, ctx.attach_agent);
+    println!(
+        "attach action {} scene {} agent {}",
+        ctx.attach_action, ctx.attach_scene, ctx.attach_agent
+    );
     println!();
 
     let mut refuse_steps: Vec<Step> = Vec::new();
@@ -587,7 +599,7 @@ fn run_main() -> Result<(), String> {
 
     let refuse_plan = plan_apply(&kernel.refuse_admit, &kernel.snap);
     refuse_steps.push(
-        if refuse_plan.ledger_allow == false && refuse_plan.increment_rate == false {
+        if !refuse_plan.ledger_allow && !refuse_plan.increment_rate {
             Step::refuse(
                 "5 apply",
                 String::from("collect all admit refused, so the plan holds no ledger allowance and no rate step and no row is written"),
@@ -654,7 +666,7 @@ fn run_main() -> Result<(), String> {
     println!();
 
     let mut pass_steps: Vec<Step> = Vec::new();
-    pass_steps.push(if caw_session.is_empty() == false {
+    pass_steps.push(if !caw_session.is_empty() {
         Step::pass(
             "1 caw session",
             format!("the session {caw_session} holds the workspace"),
@@ -840,7 +852,7 @@ fn refusal_shaped(value: &serde_json::Value) -> bool {
     value
         .get("error")
         .and_then(|v| v.as_str())
-        .map(|e| e.trim().is_empty() == false)
+        .map(|e| !e.trim().is_empty())
         .unwrap_or(false)
 }
 
@@ -856,7 +868,10 @@ fn refusal_line(value: &serde_json::Value) -> String {
             rows.iter()
                 .map(|row| {
                     let id = row.get("id").and_then(|v| v.as_str()).unwrap_or("unknown");
-                    let class = row.get("class").and_then(|v| v.as_str()).unwrap_or("unknown");
+                    let class = row
+                        .get("class")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown");
                     format!("{id}={class}")
                 })
                 .collect()

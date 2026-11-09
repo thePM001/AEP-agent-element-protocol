@@ -16,3 +16,6 @@ path = "src/lib.rs"
 
 [dependencies]
 aep-admit = { path = "../../admit/crate" }
+
+[lints]
+workspace = true

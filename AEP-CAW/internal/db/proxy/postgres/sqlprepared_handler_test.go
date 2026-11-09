@@ -84,8 +84,8 @@ func multiQueryUpstreamFixture(t *testing.T, responses [][]pgproto3.BackendMessa
 //     was not populated.
 func TestSQLPreparedHandler_PrepareDeny_InterceptedNotForwarded(t *testing.T) {
 	var (
-		mu              sync.Mutex
-		upstreamSawAny  bool
+		mu             sync.Mutex
+		upstreamSawAny bool
 	)
 
 	pc, clientFE, sink := newSimpleQueryFixture(t)

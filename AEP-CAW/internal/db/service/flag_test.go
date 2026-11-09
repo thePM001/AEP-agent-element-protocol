@@ -12,7 +12,7 @@ func TestUnavoidability_StringAndParse(t *testing.T) {
 		{"observe", UnavoidabilityObserve, true},
 		{"enforce", UnavoidabilityEnforce, true},
 		{"", UnavoidabilityOff, false},
-		{"OFF", UnavoidabilityOff, false},        // case-sensitive
+		{"OFF", UnavoidabilityOff, false}, // case-sensitive
 		{"unknown", UnavoidabilityOff, false},
 	}
 	for _, tc := range tests {

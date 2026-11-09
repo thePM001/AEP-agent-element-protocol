@@ -25,4 +25,3 @@ pub fn signer_rate_key(signer_public: &[u8]) -> String {
     use sha2::{Digest, Sha256};
     hex::encode(Sha256::digest(signer_public))
 }
-

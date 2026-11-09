@@ -54,7 +54,7 @@ func DefaultPtraceConfig() SandboxPtraceConfig {
 			MaxTracees:       500,
 			MaxHoldMs:        5000,
 		},
-		MaskTracerPid:   "off",
+		MaskTracerPid: "off",
 		// MEDIUM: production default fail-closed on attach failure
 		OnAttachFailure: "fail_closed",
 	}

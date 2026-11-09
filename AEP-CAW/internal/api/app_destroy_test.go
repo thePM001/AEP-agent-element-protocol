@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/events"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/store/composite"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/trash"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/go-chi/chi/v5"
 )
 
 type memEventStore struct{}
@@ -29,6 +29,8 @@ func TestDestroySessionPurgesTrash(t *testing.T) {
 	trashDir := filepath.Join(workspace, ".aep-caw_trash")
 
 	cfg := &config.Config{}
+	// This test is about the trash purge, not operator ownership.
+	cfg.Development.DisableAuth = true
 	enabled := true
 	cfg.Sandbox.FUSE.Audit.Enabled = &enabled
 	cfg.Sandbox.FUSE.Audit.TrashPath = ".aep-caw_trash"

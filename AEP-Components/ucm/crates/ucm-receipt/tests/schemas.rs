@@ -28,8 +28,15 @@ fn validator(name: &str) -> Validator {
 }
 
 fn assert_valid(v: &Validator, doc: &Value, what: &str) {
-    let errs: Vec<String> = v.iter_errors(doc).map(|e| format!("{} at {}", e, e.instance_path)).collect();
-    assert!(errs.is_empty(), "{what} does not validate:\n{}", errs.join("\n"));
+    let errs: Vec<String> = v
+        .iter_errors(doc)
+        .map(|e| format!("{} at {}", e, e.instance_path))
+        .collect();
+    assert!(
+        errs.is_empty(),
+        "{what} does not validate:\n{}",
+        errs.join("\n")
+    );
 }
 
 fn vector_programs() -> Vec<(String, Value, Value)> {
@@ -41,7 +48,8 @@ fn vector_programs() -> Vec<(String, Value, Value)> {
         .collect();
     files.sort();
     for f in files {
-        let doc: Value = serde_json::from_str(&std::fs::read_to_string(&f).expect("read")).expect("json");
+        let doc: Value =
+            serde_json::from_str(&std::fs::read_to_string(&f).expect("read")).expect("json");
         for c in doc["cases"].as_array().expect("cases") {
             out.push((
                 c["id"].as_str().unwrap_or("").to_string(),
@@ -85,7 +93,15 @@ fn programs_receipts_and_catalog_validate() {
     for f in &lib.formulas {
         let v = &f.vectors[0];
         let o = evaluate(&f.program, &v["inputs"], Limits::DEFAULT, &lib).expect("formula");
-        let r = issue(&key, &f.program, &v["inputs"], &o, &lib, ProgramSource::Library).expect("issue");
+        let r = issue(
+            &key,
+            &f.program,
+            &v["inputs"],
+            &o,
+            &lib,
+            ProgramSource::Library,
+        )
+        .expect("issue");
         assert_valid(&rv, &r, &format!("receipt for formula {}", f.id));
         receipts += 1;
     }

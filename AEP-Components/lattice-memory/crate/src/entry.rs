@@ -59,7 +59,11 @@ pub fn parse_timestamp_unix(iso: &str) -> u64 {
         return v;
     }
     // Minimal ISO8601: take leading digits if present else now
-    let digits: String = iso.chars().filter(|c| c.is_ascii_digit()).take(14).collect();
+    let digits: String = iso
+        .chars()
+        .filter(|c| c.is_ascii_digit())
+        .take(14)
+        .collect();
     if digits.len() >= 10 {
         digits[..10].parse().unwrap_or_else(|_| now_unix())
     } else {
@@ -73,4 +77,3 @@ fn now_unix() -> u64 {
         .map(|d| d.as_secs())
         .unwrap_or(0)
 }
-

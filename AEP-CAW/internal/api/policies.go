@@ -115,7 +115,6 @@ func (a *App) updatePolicy(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// deletePolicy removes a policy.
 // deletePolicy does not mutate enforcement (not implemented / fail closed).
 func (a *App) deletePolicy(w http.ResponseWriter, r *http.Request) {
 	policyID := chi.URLParam(r, "policyId")

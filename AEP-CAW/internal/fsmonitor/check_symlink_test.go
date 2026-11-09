@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	"github.com/hanwen/go-fuse/v2/fs"
 )
 
 func newCheckTestNode(t *testing.T, workspace string, pol *policy.Policy) *node {

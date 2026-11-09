@@ -14,7 +14,7 @@ type Metrics interface {
 // nopMetrics is a no-op implementation used when no metrics collector is configured.
 type nopMetrics struct{}
 
-func (nopMetrics) SetTraceeCount(int)     {}
+func (nopMetrics) SetTraceeCount(int)      {}
 func (nopMetrics) IncAttachFailure(string) {}
-func (nopMetrics) IncTimeout()            {}
-func (nopMetrics) IncExitStopSkipped()    {}
+func (nopMetrics) IncTimeout()             {}
+func (nopMetrics) IncExitStopSkipped()     {}

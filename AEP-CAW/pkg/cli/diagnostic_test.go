@@ -154,9 +154,9 @@ func TestDiagnosticCollector_WriteJSON(t *testing.T) {
 
 func TestDiagnosticCollector_WriteTarGz(t *testing.T) {
 	client := &mockClient{
-		status:  &Status{Version: "1.0.0"},
-		metrics: &Metrics{SessionsTotal: 10},
-		config:  map[string]any{"key": "value"},
+		status:   &Status{Version: "1.0.0"},
+		metrics:  &Metrics{SessionsTotal: 10},
+		config:   map[string]any{"key": "value"},
 		sessions: []SessionInfo{{ID: "sess-1"}},
 	}
 	buf := &bytes.Buffer{}

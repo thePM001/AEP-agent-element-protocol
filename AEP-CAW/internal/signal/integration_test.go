@@ -8,9 +8,9 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/signal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/signal"
 )
 
 func TestSignalInterceptionE2E(t *testing.T) {

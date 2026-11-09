@@ -85,11 +85,11 @@ func buildConnInfo(ev types.Event) *ocsfpb.ConnectionInfo {
 		ci.ProtocolName = strp("tcp")
 		ci.Direction = strp("Outbound")
 		populated = true
-	// transparent_net_setup, transparent_net_ready, and transparent_net_failed
-	// are lifecycle events about the transparent-networking subsystem itself
-	// (e.g. tproxy/redirect table setup or teardown), not events for an
-	// individual network connection. They carry no protocol, direction, or
-	// endpoint information, so ConnectionInfo is intentionally omitted (nil).
+		// transparent_net_setup, transparent_net_ready, and transparent_net_failed
+		// are lifecycle events about the transparent-networking subsystem itself
+		// (e.g. tproxy/redirect table setup or teardown), not events for an
+		// individual network connection. They carry no protocol, direction, or
+		// endpoint information, so ConnectionInfo is intentionally omitted (nil).
 	}
 	if !populated {
 		return nil

@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
+	seccomp "github.com/seccomp/libseccomp-golang"
 	seccompkg "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/seccomp"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
-	seccomp "github.com/seccomp/libseccomp-golang"
 	"golang.org/x/sys/unix"
 )
 

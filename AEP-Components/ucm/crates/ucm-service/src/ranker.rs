@@ -22,7 +22,9 @@ Reply with catalog ids from the list, one per line with the best first. Write no
 
 impl Ranker {
     pub fn from_config(cfg: &Config) -> Result<Option<Ranker>, String> {
-        let Some(url) = cfg.ranker_url.clone() else { return Ok(None) };
+        let Some(url) = cfg.ranker_url.clone() else {
+            return Ok(None);
+        };
         let key = match &cfg.ranker_key_file {
             Some(p) => Some(
                 std::fs::read_to_string(p)
@@ -44,7 +46,13 @@ impl Ranker {
         }))
     }
 
-    pub async fn rank(&self, query: &str, index: &Index, shortlist: &[(String, f64)], k: usize) -> Result<Vec<(String, f64)>, String> {
+    pub async fn rank(
+        &self,
+        query: &str,
+        index: &Index,
+        shortlist: &[(String, f64)],
+        k: usize,
+    ) -> Result<Vec<(String, f64)>, String> {
         let body = json!({
             "model": self.model,
             "temperature": 0,
@@ -66,11 +74,17 @@ impl Ranker {
         let text = v["choices"][0]["message"]["content"].as_str().unwrap_or("");
         let ids: Vec<String> = text
             .split(|c: char| c == '\n' || c == ',' || c.is_whitespace())
-            .map(|t| t.trim_matches(|c: char| !(c.is_alphanumeric() || c == '.' || c == '_')).to_string())
+            .map(|t| {
+                t.trim_matches(|c: char| !(c.is_alphanumeric() || c == '.' || c == '_'))
+                    .to_string()
+            })
             .filter(|t| !t.is_empty())
             .collect();
         // Only ids from the shortlist count, so the model cannot pull in an unrelated entry.
-        let allowed: Vec<String> = ids.into_iter().filter(|id| shortlist.iter().any(|(s, _)| s == id)).collect();
+        let allowed: Vec<String> = ids
+            .into_iter()
+            .filter(|id| shortlist.iter().any(|(s, _)| s == id))
+            .collect();
         Ok(index.accept_ranked(&allowed, k))
     }
 }

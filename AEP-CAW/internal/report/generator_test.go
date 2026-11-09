@@ -17,7 +17,7 @@ func (m *mockEventStore) QueryEvents(ctx context.Context, q types.EventQuery) ([
 }
 
 func (m *mockEventStore) AppendEvent(ctx context.Context, ev types.Event) error { return nil }
-func (m *mockEventStore) Close() error                                         { return nil }
+func (m *mockEventStore) Close() error                                          { return nil }
 
 func TestGenerateSummaryReport(t *testing.T) {
 	store := &mockEventStore{

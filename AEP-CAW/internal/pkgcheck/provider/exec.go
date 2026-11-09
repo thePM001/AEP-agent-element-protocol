@@ -89,7 +89,7 @@ func (p *execProvider) Capabilities() []pkgcheck.FindingType {
 
 // execRequest is what we send to the subprocess on stdin.
 type execRequest struct {
-	Ecosystem string               `json:"ecosystem"`
+	Ecosystem string                `json:"ecosystem"`
 	Packages  []pkgcheck.PackageRef `json:"packages"`
 	Config    map[string]any        `json:"config,omitempty"`
 }

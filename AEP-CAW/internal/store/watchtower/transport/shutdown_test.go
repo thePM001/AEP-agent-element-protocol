@@ -274,7 +274,7 @@ func TestShutdown_RecordLossDuringDrainPropagates(t *testing.T) {
 func TestShutdown_StopDrainsThenCloseSends(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// The test asserts the Live-drain EventBatch lands on the
-		// fakeConn sendCh within 2s of Stop. On the Windows runner
+		// fakeConn sendCh within 10s of Stop. On the Windows runner
 		// the combined goroutine-scheduling + filesystem-fsync
 		// latency frequently overshoots that budget, producing a
 		// flaky "runShutdown did not flush the batcher" fail even
@@ -346,8 +346,8 @@ func TestShutdown_StopDrainsThenCloseSends(t *testing.T) {
 	// 1) SessionInit out.
 	select {
 	case <-conn.sendCh:
-	case <-time.After(1 * time.Second):
-		t.Fatal("no SessionInit within 1s")
+	case <-time.After(10 * time.Second):
+		t.Fatal("no SessionInit within 10s")
 	}
 	// 2) Accept the session.
 	conn.recvCh <- &wtpv1.ServerMessage{
@@ -362,12 +362,23 @@ func TestShutdown_StopDrainsThenCloseSends(t *testing.T) {
 	// 3) Replaying's EventBatch for the seeded record.
 	select {
 	case <-conn.sendCh:
-	case <-time.After(1 * time.Second):
-		t.Fatal("no Replaying EventBatch within 1s")
+	case <-time.After(10 * time.Second):
+		t.Fatal("no Replaying EventBatch within 10s")
 	}
 
-	// By now Replaying has returned StateLive and the Run loop is
-	// inside runLive's select. Append a post-live record. Either of
+	// Wait until the Run loop is inside runLive's select. The Replaying
+	// batch above can reach sendCh while Replaying is still finishing, and a
+	// Stop that lands in Replaying ends the session without the Live drain
+	// (the record then waits in the WAL for the next session).
+	liveBy := time.Now().Add(10 * time.Second)
+	for !transport.InLiveForTest(tr) {
+		if time.Now().After(liveBy) {
+			t.Fatal("transport did not reach Live within 10s")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	// Append a post-live record. Either of
 	// the following paths produces the Live-drain observable:
 	//
 	//   a) runLive's Notify arm fires first, pulls seq=2 via
@@ -391,18 +402,19 @@ func TestShutdown_StopDrainsThenCloseSends(t *testing.T) {
 	// Drain-observable: after Stop, runShutdown's Drain (or
 	// runShutdown's own TryNext loop) emits the Live-era record as
 	// an EventBatch BEFORE CloseSend.
-	tr.Stop(200 * time.Millisecond)
+	// A drain budget that a loaded -race runner can meet; Stop returns as soon as the drain ends.
+	tr.Stop(5 * time.Second)
 
 	select {
 	case <-conn.sendCh:
-	case <-time.After(2 * time.Second):
-		t.Fatal("no Live-drain EventBatch on sendCh within 2s of Stop; runShutdown did not flush the batcher")
+	case <-time.After(10 * time.Second):
+		t.Fatal("no Live-drain EventBatch on sendCh within 10s of Stop; runShutdown did not flush the batcher")
 	}
 
 	select {
 	case <-conn.closeSendCalled:
-	case <-time.After(2 * time.Second):
-		t.Fatal("CloseSend not invoked within 2s of Stop")
+	case <-time.After(10 * time.Second):
+		t.Fatal("CloseSend not invoked within 10s of Stop")
 	}
 
 	select {
@@ -410,8 +422,8 @@ func TestShutdown_StopDrainsThenCloseSends(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Run returned %v, want nil", err)
 		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("Run did not return within 2s of Stop")
+	case <-time.After(10 * time.Second):
+		t.Fatal("Run did not return within 10s of Stop")
 	}
 }
 

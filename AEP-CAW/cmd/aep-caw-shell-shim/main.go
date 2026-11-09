@@ -201,6 +201,10 @@ func main() {
 	case conf.Force:
 		forceShim = "1"
 		debugLog("shim.conf force=true: enforcing policy despite non-interactive stdin")
+	case allowNonInteractiveBypass:
+		// Operator opt-out: piped stdin may run the real shell directly.
+		forceShim = ""
+		debugLog("AEP_CAW_SHIM_ALLOW_NONINTERACTIVE=1: non-interactive bypass allowed")
 	default:
 		// Production default: force-enforce for non-TTY (fail-closed)
 		forceShim = "1"

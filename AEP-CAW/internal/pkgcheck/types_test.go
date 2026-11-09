@@ -191,8 +191,8 @@ func TestInstallPlan_AllPackages_Empty(t *testing.T) {
 
 func TestInstallPlan_AllPackagesWithRegistry(t *testing.T) {
 	plan := InstallPlan{
-		Registry: "registry.npmjs.org",
-		Direct:   []PackageRef{{Name: "lodash", Version: "1"}, {Name: "weird", Version: "1", Registry: "explicit.example"}},
+		Registry:   "registry.npmjs.org",
+		Direct:     []PackageRef{{Name: "lodash", Version: "1"}, {Name: "weird", Version: "1", Registry: "explicit.example"}},
 		Transitive: []PackageRef{{Name: "underscore", Version: "1"}},
 	}
 	out := plan.AllPackagesWithRegistry()
@@ -268,8 +268,8 @@ func TestInstallPlan_AllPackagesWithRegistry_ScopedPackagePreservesEmpty(t *test
 	plan := InstallPlan{
 		Registry: "registry.npmjs.org",
 		Direct: []PackageRef{
-			{Name: "lodash", Version: "1"},                  // unscoped → inherits
-			{Name: "@acme/private", Version: "1"},           // scoped, empty Registry → kept empty
+			{Name: "lodash", Version: "1"},                                       // unscoped → inherits
+			{Name: "@acme/private", Version: "1"},                                // scoped, empty Registry → kept empty
 			{Name: "@acme/public", Version: "1", Registry: "registry.npmjs.org"}, // scoped with explicit → kept
 		},
 	}
@@ -287,12 +287,12 @@ func TestInstallPlan_AllPackagesWithRegistry_ScopedPackagePreservesEmpty(t *test
 
 func TestIsScopedName(t *testing.T) {
 	cases := map[string]bool{
-		"@acme/foo":      true,
-		"@scope/pkg":     true,
-		"@":              false,
-		"@noslash":       false,
-		"plain":          false,
-		"":               false,
+		"@acme/foo":  true,
+		"@scope/pkg": true,
+		"@":          false,
+		"@noslash":   false,
+		"plain":      false,
+		"":           false,
 	}
 	for name, want := range cases {
 		if got := isScopedName(name); got != want {

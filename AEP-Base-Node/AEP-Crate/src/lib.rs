@@ -9,25 +9,22 @@ pub mod docking;
 #[cfg(test)]
 mod docking_fixtures;
 // docking/ holds the facade children freshness, pulse, rate, serve and apply.
+pub mod caw_kernel_dock;
+pub mod correctwriting_en;
+pub mod data_dock;
 pub mod envelope_admit;
 pub mod error;
-pub mod correctwriting_en;
 pub mod lattice_log;
 pub mod side_channel_monitor;
 pub mod task_manifest;
-pub mod data_dock;
-pub mod caw_kernel_dock;
 
 use aep_agentmesh::{create_bundle, AgentMeshBundle};
 use aep_lattice_channel::{
     frame_digest, open_verified_capsule, verify_and_open_frame, ContractRegistry, DockingPort,
-    CHANNEL_VERSION, LatticeChannelFrame,
+    LatticeChannelFrame, CHANNEL_VERSION,
 };
 use aep_lattice_crypto::KemKeypair;
-pub use side_channel_monitor::{
-    record_side_channel_anomaly, SideChannelAnomaly, SideChannelAnomalyKind,
-    SIDE_CHANNEL_EVENT_TYPE,
-};
+use aep_potomitan::{detect_network_mode, status, MeshMode, MeshSupervisor, MESH_PEERS_FILE};
 pub use docking::{
     drain_docking_servers, process_request, pulse_beat, run_docking_servers, sockets_exist,
     unlink_sockets, DockFrameResponse, DockingRuntime,
@@ -36,11 +33,15 @@ pub use lattice_log::{
     build_transport_frame, default_aep_data_dir, default_lattice_db_path, export_dynaep_events,
     open_lattice_db, record_dynaep_event, refuse_world_writable_lattice_parent,
     refuse_world_writable_lattice_parent_with_allow, world_writable_lattice_parent_allowed,
-    ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV, DynAepEventExport, DynAepEventInput, DynAepEventRecord,
+    DynAepEventExport, DynAepEventInput, DynAepEventRecord,
+    ALLOW_WORLD_WRITABLE_LATTICE_PARENT_ENV,
 };
-use aep_potomitan::{detect_network_mode, status, MeshMode, MeshSupervisor, MESH_PEERS_FILE};
-use rusqlite::{Connection, params};
+use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
+pub use side_channel_monitor::{
+    record_side_channel_anomaly, SideChannelAnomaly, SideChannelAnomalyKind,
+    SIDE_CHANNEL_EVENT_TYPE,
+};
 use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -58,11 +59,11 @@ pub use aep_live_entry::agent_permission;
 pub use envelope_admit::admit_sealed_payload as process_sealed;
 
 pub use correctwriting_en::{
-    enforce_writing_payload, enforce_writing_text, enforce_writing_value, lint_writing_prose, value_has_writing_violations,
-    WritingEnforceResult, WritingViolation, CORRECTWRITING_EN_CORE_ID, WRITING_GAP_DOMAIN,
-    WRITING_RULE_IDS, WRITING_RULE_NO_DASH_SUBSTITUTES, WRITING_RULE_NO_DOUBLE_HYPHEN,
-    WRITING_RULE_NO_EM_DASHES, WRITING_RULE_NO_EN_DASHES, WRITING_RULE_NO_MINUS_AS_DASH,
-    WRITING_RULE_NO_OXFORD_COMMA,
+    enforce_writing_payload, enforce_writing_text, enforce_writing_value, lint_writing_prose,
+    value_has_writing_violations, WritingEnforceResult, WritingViolation,
+    CORRECTWRITING_EN_CORE_ID, WRITING_GAP_DOMAIN, WRITING_RULE_IDS,
+    WRITING_RULE_NO_DASH_SUBSTITUTES, WRITING_RULE_NO_DOUBLE_HYPHEN, WRITING_RULE_NO_EM_DASHES,
+    WRITING_RULE_NO_EN_DASHES, WRITING_RULE_NO_MINUS_AS_DASH, WRITING_RULE_NO_OXFORD_COMMA,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -179,9 +180,8 @@ pub fn init_action_lattice_db(path: &Path) -> rusqlite::Result<Connection> {
     lattice_log::refuse_world_writable_lattice_parent(path)?;
     if let Some(parent) = path.parent() {
         if !parent.as_os_str().is_empty() {
-            std::fs::create_dir_all(parent).map_err(|e| {
-                rusqlite::Error::ToSqlConversionFailure(Box::new(e))
-            })?;
+            std::fs::create_dir_all(parent)
+                .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
         }
     }
     let conn = Connection::open(path)?;
@@ -248,6 +248,11 @@ impl ReplayGuard {
     pub fn len(&self) -> usize {
         self.seen.len()
     }
+
+    #[cfg(test)]
+    pub fn is_empty(&self) -> bool {
+        self.seen.is_empty()
+    }
 }
 
 #[cfg(test)]
@@ -265,10 +270,7 @@ mod replay_guard_tests {
     fn replay_guard_evicts_oldest_at_capacity() {
         let mut g = ReplayGuard::default();
         for i in 0..REPLAY_CACHE_MAX {
-            assert!(
-                g.check_and_record(&format!("d{i}"), i as u64),
-                "insert {i}"
-            );
+            assert!(g.check_and_record(&format!("d{i}"), i as u64), "insert {i}");
         }
         assert_eq!(g.len(), REPLAY_CACHE_MAX);
         // One more forces eviction of d0
@@ -320,10 +322,11 @@ pub fn record_channel_frame(
             ));
         }
     }
-    let applied: i64 = match conn.query_row("SELECT COUNT(*) FROM action_lattice_events WHERE frame_digest = ?1", [digest.as_str()], |r| r.get(0)) {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
+    let applied: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM action_lattice_events WHERE frame_digest = ?1",
+        [digest.as_str()],
+        |r| r.get(0),
+    )?;
     if applied > 0 {
         return Err(rusqlite::Error::SqliteFailure(
             rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CONSTRAINT_UNIQUE),
@@ -357,7 +360,10 @@ pub fn record_channel_frame(
             agentmesh_json,
         ],
     )?;
-    let _ = conn.execute("DELETE FROM held_frame_digests WHERE frame_digest = ?1", params![digest]);
+    let _ = conn.execute(
+        "DELETE FROM held_frame_digests WHERE frame_digest = ?1",
+        params![digest],
+    );
     Ok(conn.last_insert_rowid())
 }
 
@@ -403,7 +409,9 @@ pub fn record_lattice_event(
 }
 
 pub fn event_count(conn: &Connection) -> rusqlite::Result<u64> {
-    let count: i64 = conn.query_row("SELECT COUNT(*) FROM action_lattice_events", [], |r| r.get(0))?;
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM action_lattice_events", [], |r| {
+        r.get(0)
+    })?;
     Ok(count as u64)
 }
 
@@ -431,7 +439,6 @@ pub fn resolve_mesh_peers(
     (fallback, fallback, None)
 }
 
-
 pub fn rollup_status(
     docking_ports_listening: bool,
     hub_loaded: bool,
@@ -440,11 +447,7 @@ pub fn rollup_status(
 ) -> &'static str {
     if sqlite_closed {
         "error"
-    } else if docking_ports_listening == false {
-        "degraded"
-    } else if hub_loaded == false {
-        "degraded"
-    } else if mesh_peers_load_error.is_some() {
+    } else if !docking_ports_listening || !hub_loaded || mesh_peers_load_error.is_some() {
         "degraded"
     } else {
         "ok"
@@ -495,7 +498,10 @@ pub fn health(input: HealthInput<'_>) -> BaseNodeHealth {
 }
 
 /// Rollup status of a running node from its live parts.
-pub fn runtime_status(runtime: &DockingRuntime, mesh_peers_load_error: Option<&str>) -> &'static str {
+pub fn runtime_status(
+    runtime: &DockingRuntime,
+    mesh_peers_load_error: Option<&str>,
+) -> &'static str {
     rollup_status(
         runtime.docking_ports_listening(),
         runtime.admit.hub.is_loaded(),
@@ -505,7 +511,10 @@ pub fn runtime_status(runtime: &DockingRuntime, mesh_peers_load_error: Option<&s
 }
 
 pub fn persist_held_digest(conn: &Connection, digest: &str, at_unix: i64) -> rusqlite::Result<()> {
-    conn.execute("INSERT OR IGNORE INTO held_frame_digests (frame_digest, held_at_unix) VALUES (?1, ?2)", params![digest, at_unix])?;
+    conn.execute(
+        "INSERT OR IGNORE INTO held_frame_digests (frame_digest, held_at_unix) VALUES (?1, ?2)",
+        params![digest, at_unix],
+    )?;
     Ok(())
 }
 pub fn now_unix() -> u64 {
@@ -629,7 +638,7 @@ mod tests {
             ..ready_input()
         });
         assert_eq!(report.status, "error");
-        assert_eq!(report.sqlite_closed, true);
+        assert!(report.sqlite_closed);
         assert_eq!(report.exit_code(), 2);
     }
 
@@ -652,12 +661,14 @@ mod tests {
 
     #[test]
     fn rollup_status_degraded_when_mesh_peers_load_error() {
-        assert_eq!(rollup_status(true, true, Some("load failed"), false), "degraded")
+        assert_eq!(
+            rollup_status(true, true, Some("load failed"), false),
+            "degraded"
+        )
     }
 
     #[test]
     fn rollup_status_ok_when_ready() {
         assert_eq!(rollup_status(true, true, None, false), "ok")
     }
-
 }

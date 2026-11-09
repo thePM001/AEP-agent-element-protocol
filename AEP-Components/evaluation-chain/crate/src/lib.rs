@@ -88,7 +88,7 @@ fn derived_admit(rows: &[Wall]) -> AdmitResult {
         let row = AdmitWall {
             id: format!("chain.{}", w.name),
             family: String::from("evaluation-chain"),
-            closed: w.open == false,
+            closed: !w.open,
             reason: w.reason.clone(),
         };
         if row.closed {
@@ -104,7 +104,10 @@ fn derived_admit(rows: &[Wall]) -> AdmitResult {
 /// allow flag is read from the admit result, so this function decides nothing.
 pub fn meet(mut walls: Vec<Wall>) -> Result<MeetResult, EvaluationChainError> {
     if walls.len() != CHAIN_STEP_COUNT {
-        return Err(EvaluationChainError::WrongLen { expected: CHAIN_STEP_COUNT, got: walls.len() });
+        return Err(EvaluationChainError::WrongLen {
+            expected: CHAIN_STEP_COUNT,
+            got: walls.len(),
+        });
     }
     walls.sort_by_key(|w| w.step);
     for (i, w) in walls.iter().enumerate() {
@@ -150,7 +153,10 @@ pub fn meet_named(open: [bool; CHAIN_STEP_COUNT], reasons: [&str; CHAIN_STEP_COU
 }
 
 // Ledger helper. Not live evaluation. Live path is Admit collect-all then Apply.
-pub fn ledger_from_open_flags(open: [bool; CHAIN_STEP_COUNT], reasons: [&str; CHAIN_STEP_COUNT]) -> MeetResult {
+pub fn ledger_from_open_flags(
+    open: [bool; CHAIN_STEP_COUNT],
+    reasons: [&str; CHAIN_STEP_COUNT],
+) -> MeetResult {
     meet_named(open, reasons)
 }
 
@@ -182,12 +188,12 @@ pub fn run_meet_ledger(names: &[&str], fail_at: &[usize]) -> MeetResult {
     meet(walls).expect("ledger meet is always 15 walls")
 }
 
+#[cfg(test)]
 fn split_lemma(a: &str, b: &str) -> String {
     let mut s = String::from(a);
     s.push_str(b);
     s
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -283,7 +289,7 @@ mod tests {
         let mut closed = 0usize;
         let mut i = 0usize;
         while i < r.ledger.len() {
-            if r.ledger[i].open == false {
+            if !r.ledger[i].open {
                 closed += 1;
             }
             if r.ledger[i].reason.as_str() == "skip" {
@@ -306,7 +312,7 @@ mod tests {
         let mut reasons = reasons_ok();
         reasons[4] = "rate closed";
         let r = meet_named(open, reasons);
-        assert_eq!(r.derived, true);
+        assert!(r.derived);
         assert_eq!(r.allow, r.admit.allow);
         assert_eq!(r.closed.len(), 1);
         assert_eq!(r.admit.closed.len(), 1);
@@ -316,8 +322,8 @@ mod tests {
     fn chain_does_not_compute_allow_locally() {
         let src = include_str!("lib.rs");
         let needle = ["allow: closed", ".is_empty()"].concat();
-        assert_eq!(src.contains(&needle), false);
-        assert_eq!(src.contains(LIVE_ADMIT_CLOSER), true);
+        assert!(!src.contains(&needle));
+        assert!(src.contains(LIVE_ADMIT_CLOSER));
     }
 
     #[test]
@@ -331,7 +337,7 @@ mod tests {
             i += 1;
         }
         let src = include_str!("lib.rs");
-        assert_eq!(src.contains(&banned), false);
+        assert!(!src.contains(&banned));
     }
 
     fn live_rel(rel: &str) -> PathBuf {
@@ -354,7 +360,7 @@ mod tests {
         while i < rels.len() {
             let path = live_rel(rels[i]);
             if path.is_file() {
-                let src = fs::read_to_string(&path).expect("read live path");
+                let _src = fs::read_to_string(&path).expect("read live path");
             }
             i += 1;
         }

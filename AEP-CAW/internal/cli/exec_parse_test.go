@@ -26,7 +26,9 @@ func TestParseExecInput_JSON(t *testing.T) {
 // as a regular argument, not treated as the aep-caw separator.
 // e.g. aep-caw exec SESSION -- opencode run --format json -- "prompt"
 // After Cobra strips the first "--", args is:
-//   ["opencode", "run", "--format", "json", "--", "prompt"]
+//
+//	["opencode", "run", "--format", "json", "--", "prompt"]
+//
 // The inner "--" belongs to opencode, not aep-caw.
 func TestParseExecInput_NestedDoubleDash(t *testing.T) {
 	// Simulate what Cobra passes after stripping the outer "--":

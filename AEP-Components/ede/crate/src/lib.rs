@@ -38,13 +38,28 @@ pub struct Report {
 
 impl Report {
     fn allow(code: &str, draft: &str, note: &str) -> Self {
-        Report { ok: true, code: code.into(), draft: draft.into(), note: note.into() }
+        Report {
+            ok: true,
+            code: code.into(),
+            draft: draft.into(),
+            note: note.into(),
+        }
     }
     fn deny(code: &str, draft: &str, note: &str) -> Self {
-        Report { ok: false, code: code.into(), draft: draft.into(), note: note.into() }
+        Report {
+            ok: false,
+            code: code.into(),
+            draft: draft.into(),
+            note: note.into(),
+        }
     }
     pub fn render(&self) -> String {
-        let mut s = format!("verdict: {}\ncode: aep.ede.{}\ndraft: {}\n", if self.ok { "allow" } else { "deny" }, self.code, self.draft);
+        let mut s = format!(
+            "verdict: {}\ncode: aep.ede.{}\ndraft: {}\n",
+            if self.ok { "allow" } else { "deny" },
+            self.code,
+            self.draft
+        );
         if !self.note.is_empty() {
             s.push_str(&format!("note: {}\n", self.note));
         }
@@ -96,12 +111,19 @@ fn read_manifest(d: &Path) -> Vec<(String, String)> {
     fs::read_to_string(d.join("manifest"))
         .unwrap_or_default()
         .lines()
-        .filter_map(|l| l.split_once(": ").map(|(k, v)| (k.to_string(), v.to_string())))
+        .filter_map(|l| {
+            l.split_once(": ")
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+        })
         .collect()
 }
 
 fn field(d: &Path, key: &str) -> String {
-    read_manifest(d).into_iter().find(|(k, _)| k == key).map(|(_, v)| v).unwrap_or_default()
+    read_manifest(d)
+        .into_iter()
+        .find(|(k, _)| k == key)
+        .map(|(_, v)| v)
+        .unwrap_or_default()
 }
 
 fn set_fields(d: &Path, updates: &[(&str, &str)]) -> Result<(), String> {
@@ -118,7 +140,12 @@ fn set_fields(d: &Path, updates: &[(&str, &str)]) -> Result<(), String> {
 
 fn git(tree: &Path, env: &[(String, String)], args: &[&str]) -> Result<String, String> {
     let mut c = Command::new("git");
-    c.arg("-C").arg(tree).arg("-c").arg("core.hooksPath=/dev/null").args(args).env("GIT_TERMINAL_PROMPT", "0");
+    c.arg("-C")
+        .arg(tree)
+        .arg("-c")
+        .arg("core.hooksPath=/dev/null")
+        .args(args)
+        .env("GIT_TERMINAL_PROMPT", "0");
     for (k, v) in env {
         c.env(k, v);
     }
@@ -140,14 +167,23 @@ fn hash_bytes(data: &[u8]) -> Result<String, String> {
         .stdout(std::process::Stdio::piped())
         .spawn()
         .map_err(|e| e.to_string())?;
-    child.stdin.take().ok_or("stdin")?.write_all(data).map_err(|e| e.to_string())?;
+    child
+        .stdin
+        .take()
+        .ok_or("stdin")?
+        .write_all(data)
+        .map_err(|e| e.to_string())?;
     let o = child.wait_with_output().map_err(|e| e.to_string())?;
     Ok(String::from_utf8_lossy(&o.stdout).trim().to_string())
 }
 
 fn new_draft_id(repo: &str) -> String {
-    let now = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
-    let tag = hash_bytes(format!("{}-{}-{}", repo, now, std::process::id()).as_bytes()).unwrap_or_default();
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let tag = hash_bytes(format!("{}-{}-{}", repo, now, std::process::id()).as_bytes())
+        .unwrap_or_default();
     format!("ede-{}-{}", now / 1_000_000_000, &tag[..12.min(tag.len())])
 }
 
@@ -163,7 +199,11 @@ pub fn seed(forge: &dyn forge::Forge, repo: &str, reference: &str) -> Report {
     if let Err(e) = prof.allow("seed", repo) {
         return Report::deny("profile_refused", "", &e);
     }
-    let branch = if reference.is_empty() { "main" } else { reference };
+    let branch = if reference.is_empty() {
+        "main"
+    } else {
+        reference
+    };
     let draft = new_draft_id(repo);
     let d = root().join(&draft);
     if fs::create_dir_all(&d).is_err() {
@@ -172,7 +212,13 @@ pub fn seed(forge: &dyn forge::Forge, repo: &str, reference: &str) -> Report {
     let tree = tree_dir(&d);
     let url = forge.clone_url(repo);
     let mut c = Command::new("git");
-    c.arg("clone").arg("-q").arg("--branch").arg(branch).arg(&url).arg(&tree).env("GIT_TERMINAL_PROMPT", "0");
+    c.arg("clone")
+        .arg("-q")
+        .arg("--branch")
+        .arg(branch)
+        .arg(&url)
+        .arg(&tree)
+        .env("GIT_TERMINAL_PROMPT", "0");
     for (k, v) in forge.git_env() {
         c.env(k, v);
     }
@@ -180,14 +226,31 @@ pub fn seed(forge: &dyn forge::Forge, repo: &str, reference: &str) -> Report {
         Ok(o) if o.status.success() => {}
         Ok(o) => {
             let _ = fs::remove_dir_all(&d);
-            return Report::deny("seed_clone", "", String::from_utf8_lossy(&o.stderr).lines().last().unwrap_or("clone failed"));
+            return Report::deny(
+                "seed_clone",
+                "",
+                String::from_utf8_lossy(&o.stderr)
+                    .lines()
+                    .last()
+                    .unwrap_or("clone failed"),
+            );
         }
         Err(e) => {
             let _ = fs::remove_dir_all(&d);
             return Report::deny("seed_clone", "", &e.to_string());
         }
     }
-    let _ = git(&tree, &[], &["remote", "set-url", "--push", "origin", "push-refused-only-aep-ede-promote-lands-work"]);
+    let _ = git(
+        &tree,
+        &[],
+        &[
+            "remote",
+            "set-url",
+            "--push",
+            "origin",
+            "push-refused-only-aep-ede-promote-lands-work",
+        ],
+    );
     let _ = git(&tree, &[], &["config", "user.name", "aep-ede"]);
     let _ = git(&tree, &[], &["config", "user.email", "aep-ede@localhost"]);
     let base = match git(&tree, &[], &["rev-parse", "HEAD"]) {
@@ -204,11 +267,18 @@ pub fn seed(forge: &dyn forge::Forge, repo: &str, reference: &str) -> Report {
         ("base", base.as_str()),
         ("state", "seeded"),
     ];
-    let body: String = fields.iter().map(|(k, v)| format!("{}: {}\n", k, v)).collect();
+    let body: String = fields
+        .iter()
+        .map(|(k, v)| format!("{}: {}\n", k, v))
+        .collect();
     if fs::write(d.join("manifest"), body).is_err() {
         return Report::deny("seed_manifest", &draft, "");
     }
-    Report::allow("seeded", &draft, &format!("work in {} then run aep-ede scan {}", tree.display(), draft))
+    Report::allow(
+        "seeded",
+        &draft,
+        &format!("work in {} then run aep-ede scan {}", tree.display(), draft),
+    )
 }
 
 /// The change set of a draft against its base commit.
@@ -216,7 +286,11 @@ pub fn changes(d: &Path) -> Result<Vec<Change>, String> {
     let tree = tree_dir(d);
     let base = field(d, "base");
     git(&tree, &[], &["add", "-A"])?;
-    let raw = git(&tree, &[], &["diff", "--cached", "--raw", "--no-renames", "-z", &base])?;
+    let raw = git(
+        &tree,
+        &[],
+        &["diff", "--cached", "--raw", "--no-renames", "-z", &base],
+    )?;
     let mut out = Vec::new();
     let mut parts = raw.split('\0').filter(|s| !s.is_empty());
     while let Some(meta) = parts.next() {
@@ -272,7 +346,9 @@ fn du_bytes(p: &Path) -> u64 {
             Err(_) => return 0,
         };
         if m.is_dir() {
-            fs::read_dir(p).map(|rd| rd.flatten().map(|e| walk(&e.path())).sum()).unwrap_or(0)
+            fs::read_dir(p)
+                .map(|rd| rd.flatten().map(|e| walk(&e.path())).sum())
+                .unwrap_or(0)
         } else {
             m.len()
         }
@@ -342,10 +418,17 @@ pub fn scan(draft: &str) -> Report {
     if let Err(r) = agent_gate(&d, draft, "scan") {
         return r;
     }
-    let quota = std::env::var("AEP_EDE_QUOTA").ok().and_then(|v| v.parse().ok()).unwrap_or(QUOTA_BYTES);
+    let quota = std::env::var("AEP_EDE_QUOTA")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(QUOTA_BYTES);
     let used = du_bytes(&d);
     if used > quota {
-        return Report::deny("scan_quota", draft, &format!("the draft holds {} bytes and its quota is {}", used, quota));
+        return Report::deny(
+            "scan_quota",
+            draft,
+            &format!("the draft holds {} bytes and its quota is {}", used, quota),
+        );
     }
     let list = match changes(&d) {
         Ok(l) => l,
@@ -356,14 +439,25 @@ pub fn scan(draft: &str) -> Report {
     }
     let findings = writing_findings(&d, &list);
     if !findings.is_empty() {
-        return Report::deny("scan_writing", draft, &format!("{} findings: {}", findings.len(), findings.join(" | ")));
+        return Report::deny(
+            "scan_writing",
+            draft,
+            &format!("{} findings: {}", findings.len(), findings.join(" | ")),
+        );
     }
     let digest = match change_digest(&d, &list) {
         Ok(x) => x,
         Err(e) => return Report::deny("scan_digest", draft, &e),
     };
     let count = list.len().to_string();
-    if let Err(e) = set_fields(&d, &[("state", "scanned"), ("digest", &digest), ("changes", &count)]) {
+    if let Err(e) = set_fields(
+        &d,
+        &[
+            ("state", "scanned"),
+            ("digest", &digest),
+            ("changes", &count),
+        ],
+    ) {
         return Report::deny("scan_manifest", draft, &e);
     }
     Report::allow("scanned", draft, &list_note(&list))
@@ -376,24 +470,46 @@ fn sync_to_tip(d: &Path, forge: &dyn forge::Forge) -> Result<(), Report> {
     let tree = tree_dir(d);
     let branch = field(d, "branch");
     let base = field(d, "base");
-    git(&tree, &forge.git_env(), &["fetch", "-q", "origin", &branch]).map_err(|e| Report::deny("tip_fetch", &draft, &e))?;
-    let tip = git(&tree, &[], &["rev-parse", "FETCH_HEAD"]).map_err(|e| Report::deny("tip_fetch", &draft, &e))?.trim().to_string();
+    git(&tree, &forge.git_env(), &["fetch", "-q", "origin", &branch])
+        .map_err(|e| Report::deny("tip_fetch", &draft, &e))?;
+    let tip = git(&tree, &[], &["rev-parse", "FETCH_HEAD"])
+        .map_err(|e| Report::deny("tip_fetch", &draft, &e))?
+        .trim()
+        .to_string();
     if tip == base {
         return Ok(());
     }
-    let dirty = !changes(d).map_err(|e| Report::deny("scan_tree", &draft, &e))?.is_empty();
+    let dirty = !changes(d)
+        .map_err(|e| Report::deny("scan_tree", &draft, &e))?
+        .is_empty();
     if dirty {
-        git(&tree, &[], &["commit", "-q", "--no-verify", "-m", "ede work"]).map_err(|e| Report::deny("tip_commit", &draft, &e))?;
+        git(
+            &tree,
+            &[],
+            &["commit", "-q", "--no-verify", "-m", "ede work"],
+        )
+        .map_err(|e| Report::deny("tip_commit", &draft, &e))?;
         if git(&tree, &[], &["rebase", "-q", &tip]).is_err() {
-            let conflicts = git(&tree, &[], &["diff", "--name-only", "--diff-filter=U"]).unwrap_or_default();
+            let conflicts =
+                git(&tree, &[], &["diff", "--name-only", "--diff-filter=U"]).unwrap_or_default();
             let _ = git(&tree, &[], &["rebase", "--abort"]);
             let _ = git(&tree, &[], &["reset", "-q", "--mixed", &base]);
             let paths: Vec<&str> = conflicts.lines().filter(|l| !l.is_empty()).collect();
-            return Err(Report::deny("tip_conflict", &draft, &format!("{} moved and these paths conflict with the work: {}", branch, paths.join(" "))));
+            return Err(Report::deny(
+                "tip_conflict",
+                &draft,
+                &format!(
+                    "{} moved and these paths conflict with the work: {}",
+                    branch,
+                    paths.join(" ")
+                ),
+            ));
         }
-        git(&tree, &[], &["reset", "-q", "--mixed", &tip]).map_err(|e| Report::deny("tip_reset", &draft, &e))?;
+        git(&tree, &[], &["reset", "-q", "--mixed", &tip])
+            .map_err(|e| Report::deny("tip_reset", &draft, &e))?;
     } else {
-        git(&tree, &[], &["checkout", "-q", "-B", "ede-work", &tip]).map_err(|e| Report::deny("tip_checkout", &draft, &e))?;
+        git(&tree, &[], &["checkout", "-q", "-B", "ede-work", &tip])
+            .map_err(|e| Report::deny("tip_checkout", &draft, &e))?;
     }
     set_fields(d, &[("base", &tip)]).map_err(|e| Report::deny("tip_manifest", &draft, &e))?;
     Ok(())
@@ -433,7 +549,13 @@ pub fn promote(forge: &dyn forge::Forge, draft: &str, message: &str) -> Report {
     };
     match change_digest(&d, &list) {
         Ok(x) if x == field(&d, "digest") => {}
-        Ok(_) => return Report::deny("promote_changed_since_scan", draft, "the tree changed after the scan: scan again"),
+        Ok(_) => {
+            return Report::deny(
+                "promote_changed_since_scan",
+                draft,
+                "the tree changed after the scan: scan again",
+            )
+        }
         Err(e) => return Report::deny("promote_digest", draft, &e),
     }
     if let Err(r) = sync_to_tip(&d, forge) {
@@ -443,11 +565,17 @@ pub fn promote(forge: &dyn forge::Forge, draft: &str, message: &str) -> Report {
     let base = field(&d, "base");
     let repo = field(&d, "repo");
     let branch = field(&d, "branch");
-    if let Err(e) = git(&tree, &[], &["add", "-A"]).and_then(|_| git(&tree, &[], &["commit", "-q", "--no-verify", "-m", message])) {
+    if let Err(e) = git(&tree, &[], &["add", "-A"])
+        .and_then(|_| git(&tree, &[], &["commit", "-q", "--no-verify", "-m", message]))
+    {
         return Report::deny("promote_commit", draft, &e);
     }
     let _ = git(&tree, &[], &["remote", "remove", "ede-land"]);
-    if let Err(e) = git(&tree, &[], &["remote", "add", "ede-land", &forge.clone_url(&repo)]) {
+    if let Err(e) = git(
+        &tree,
+        &[],
+        &["remote", "add", "ede-land", &forge.clone_url(&repo)],
+    ) {
         let _ = git(&tree, &[], &["reset", "-q", "--mixed", &base]);
         return Report::deny("promote_remote", draft, &e);
     }
@@ -455,9 +583,23 @@ pub fn promote(forge: &dyn forge::Forge, draft: &str, message: &str) -> Report {
     let _ = git(&tree, &[], &["remote", "remove", "ede-land"]);
     match landed {
         Ok(what) => {
-            let commit = git(&tree, &[], &["rev-parse", "HEAD"]).unwrap_or_default().trim().to_string();
-            let _ = set_fields(&d, &[("state", "promoted"), ("landed", &what), ("commit", &commit)]);
-            Report::allow("promoted", draft, &format!("{} with {}", what, list_note(&list)))
+            let commit = git(&tree, &[], &["rev-parse", "HEAD"])
+                .unwrap_or_default()
+                .trim()
+                .to_string();
+            let _ = set_fields(
+                &d,
+                &[
+                    ("state", "promoted"),
+                    ("landed", &what),
+                    ("commit", &commit),
+                ],
+            );
+            Report::allow(
+                "promoted",
+                draft,
+                &format!("{} with {}", what, list_note(&list)),
+            )
         }
         Err(e) => {
             let _ = git(&tree, &[], &["reset", "-q", "--mixed", &base]);
@@ -471,7 +613,13 @@ pub fn status(draft: &str) -> Report {
         Some(d) => Report::allow(
             &field(&d, "state"),
             draft,
-            &format!("tree {} repo {} base {} forge {}", tree_dir(&d).display(), field(&d, "repo"), field(&d, "base"), field(&d, "forge")),
+            &format!(
+                "tree {} repo {} base {} forge {}",
+                tree_dir(&d).display(),
+                field(&d, "repo"),
+                field(&d, "base"),
+                field(&d, "forge")
+            ),
         ),
         None => Report::deny("draft_missing", draft, ""),
     }
@@ -491,10 +639,15 @@ pub fn expire(draft: &str) -> Report {
 /// the draft. A draft belongs to the agent that seeded it.
 fn agent_gate(d: &Path, draft: &str, verb: &str) -> Result<profile::Profile, Report> {
     let prof = profile::load().map_err(|e| Report::deny("profile_missing", draft, &e))?;
-    prof.allow(verb, &field(d, "repo")).map_err(|e| Report::deny("profile_refused", draft, &e))?;
+    prof.allow(verb, &field(d, "repo"))
+        .map_err(|e| Report::deny("profile_refused", draft, &e))?;
     let owner = field(d, "agent");
     if owner != prof.agent_id {
-        return Err(Report::deny("draft_foreign_agent", draft, &format!("the draft belongs to the agent {}", owner)));
+        return Err(Report::deny(
+            "draft_foreign_agent",
+            draft,
+            &format!("the draft belongs to the agent {}", owner),
+        ));
     }
     Ok(prof)
 }

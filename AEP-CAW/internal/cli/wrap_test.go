@@ -11,10 +11,10 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
-	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/client"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/pkg/types"
 )
 
 func TestWrapCmd_RequiresCommand(t *testing.T) {
@@ -244,7 +244,7 @@ func TestSetupWrapInterception_CallsWrapInit(t *testing.T) {
 
 	mc := &mockWrapClient{
 		wrapInitResp: types.WrapInitResponse{
-			EnvPolicy: &types.EnvPolicyWire{},
+			EnvPolicy:     &types.EnvPolicyWire{},
 			WrapperBinary: "/bin/true",
 			SeccompConfig: `{"unix_socket_enabled":true}`,
 			NotifySocket:  "/tmp/aep-caw-notify-test.sock",
@@ -298,7 +298,7 @@ func TestSetupWrapInterception_EmptyWrapperBinary(t *testing.T) {
 
 	mc := &mockWrapClient{
 		wrapInitResp: types.WrapInitResponse{
-			EnvPolicy: &types.EnvPolicyWire{},
+			EnvPolicy:     &types.EnvPolicyWire{},
 			WrapperBinary: "",
 		},
 	}
@@ -565,7 +565,7 @@ func TestWrapLaunchConfig_EnvContainsSessionAndWrapper(t *testing.T) {
 
 	mc := &mockWrapClient{
 		wrapInitResp: types.WrapInitResponse{
-			EnvPolicy: &types.EnvPolicyWire{},
+			EnvPolicy:     &types.EnvPolicyWire{},
 			WrapperBinary: "/bin/true",
 			SeccompConfig: `{"unix_socket_enabled":true}`,
 			NotifySocket:  "/tmp/aep-caw-notify-test.sock",
@@ -609,7 +609,7 @@ func TestWrapLaunchConfig_AppliesEnvInject(t *testing.T) {
 
 	mc := &mockWrapClient{
 		wrapInitResp: types.WrapInitResponse{
-			EnvPolicy: &types.EnvPolicyWire{},
+			EnvPolicy:     &types.EnvPolicyWire{},
 			WrapperBinary: "/bin/true",
 			NotifySocket:  "/tmp/aep-caw-notify-test.sock",
 			WrapperEnv: map[string]string{
@@ -647,7 +647,7 @@ func TestWrapLaunchConfig_AppliesEnvInject_PtraceMode(t *testing.T) {
 
 	mc := &mockWrapClient{
 		wrapInitResp: types.WrapInitResponse{
-			EnvPolicy: &types.EnvPolicyWire{},
+			EnvPolicy:    &types.EnvPolicyWire{},
 			PtraceMode:   true,
 			NotifySocket: "/tmp/aep-caw-ptrace-test.sock",
 			EnvInject: map[string]string{
@@ -682,7 +682,7 @@ func TestWrapLaunchConfig_EnvIncludesInSessionWhenSafe(t *testing.T) {
 
 	mc := &mockWrapClient{
 		wrapInitResp: types.WrapInitResponse{
-			EnvPolicy: &types.EnvPolicyWire{},
+			EnvPolicy:             &types.EnvPolicyWire{},
 			WrapperBinary:         "/bin/true",
 			NotifySocket:          "/tmp/aep-caw-notify-test.sock",
 			SafeToBypassShellShim: true,
@@ -716,7 +716,7 @@ func TestWrapLaunchConfig_EnvOmitsInSessionWhenUnsafe(t *testing.T) {
 
 	mc := &mockWrapClient{
 		wrapInitResp: types.WrapInitResponse{
-			EnvPolicy: &types.EnvPolicyWire{},
+			EnvPolicy:             &types.EnvPolicyWire{},
 			WrapperBinary:         "/bin/true",
 			NotifySocket:          "/tmp/aep-caw-notify-test.sock",
 			SafeToBypassShellShim: false,
