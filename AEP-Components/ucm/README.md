@@ -1,6 +1,6 @@
 # Universal Computation Module (UCM)
 
-Status: normative. Stability: the program form, the receipt form and the error codes are stable for ucm-rules-1.
+Status: normative. Stability: the program form, the receipt form and the error codes are stable for ucm-rules-1. The TypeScript client in clients/ts is reference.
 
 UCM is the calculation engine of AEP. Agents call it instead of producing numbers in token space. Every result is exact unless a program asks for binary64, every evaluation runs under a budget and touches no file, network or process. Every result comes with a receipt signed with ML-DSA-65 that anyone can check and replay. Admit can require such a receipt for any field a task manifest declares as computed.
 
@@ -83,7 +83,7 @@ Under strict, a missing receipt, an invalid or untrusted receipt and a field tha
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| UCM_HOST, UCM_PORT | 127.0.0.1, 8414 | Listen address |
+| UCM_HOST, UCM_PORT | IPv4 loopback, 8414 | Listen address |
 | UCM_DATA | AEP_DATA/ucm | Node key, receipts and the receipt log |
 | UCM_API_KEY | none | Key for POST endpoints |
 | UCM_TRUSTED_KEYS | none | Extra trusted public keys for verify, one per line |

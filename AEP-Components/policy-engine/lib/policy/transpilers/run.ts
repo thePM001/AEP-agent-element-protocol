@@ -9,7 +9,7 @@ function argValue(argv: string[], name: string): string {
   if (i < 0 || i + 1 >= argv.length) {
     return "";
   }
-  return argv[i + 1];
+  return argv[i + 1] ?? "";
 }
 
 function main(argv: string[]): void {
@@ -24,7 +24,7 @@ function main(argv: string[]): void {
     throw new Error("usage: run.ts <input> --from <cedar|rego|gap> --to <gap|cedar|rego> --output <path>");
   }
   const src = readFileSync(input, "utf8");
-  let out = "";
+  let out: string;
   if (from === "cedar" && to === "gap") {
     out = transpileCedarToGap(src);
   } else if (from === "rego" && to === "gap") {

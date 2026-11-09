@@ -8,6 +8,12 @@ import { randomUUID } from "node:crypto";
 import type { Dataset, DatasetEntry, DatasetSummary } from "./types.js";
 import type { LedgerEntry } from "../../evidence-ledger/lib/ledger/types.js";
 
+// Dataset names become file names under .aep/datasets: a name must not carry
+// a path separator (or NUL), or it could read and write outside that folder.
+function isSafeDatasetName(name: string): boolean {
+  return name.length > 0 && !/[/\\\0]/.test(name);
+}
+
 export class DatasetManager {
   private baseDir: string;
 
@@ -26,6 +32,9 @@ export class DatasetManager {
   }
 
   private datasetPath(name: string): string {
+    if (!isSafeDatasetName(name)) {
+      throw new Error(`Invalid dataset name "${name}": path separators are not allowed.`);
+    }
     return join(this.datasetsDir, `${name}.json`);
   }
 
@@ -104,7 +113,7 @@ export class DatasetManager {
       if (filter?.outcome && filter.outcome !== expectedOutcome) continue;
 
       const tool = (entry.data.tool as string) ?? "unknown";
-      const category = tool.split(":")[0];
+      const category = tool.split(":")[0] ?? tool;
       if (filter?.category && category !== filter.category) continue;
 
       const input = entry.data.input

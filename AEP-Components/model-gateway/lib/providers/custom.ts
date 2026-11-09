@@ -2,7 +2,13 @@
 // OpenAI-compatible endpoint adapter. Works with any API that follows
 // the OpenAI chat completions format (vLLM, Together, Groq, etc.).
 
-import type { ProviderAdapter, ModelConfig, ModelRequest, ModelResponse } from "../types.js";
+import type {
+  ProviderAdapter,
+  ModelConfig,
+  ModelRequest,
+  ModelResponse,
+  GatewayFetch,
+} from "../types.js";
 import { latticeGatedFetch } from "../../../lattice-channels/client/lattice/index.js";
 
 interface CustomMessage {
@@ -41,6 +47,12 @@ interface CustomStreamChunk {
 
 export class CustomAdapter implements ProviderAdapter {
   readonly provider = "custom" as const;
+  private readonly fetchImpl: GatewayFetch;
+
+  /** @param fetchImpl outbound HTTP; defaults to the lattice-gated fetch. */
+  constructor(fetchImpl: GatewayFetch = latticeGatedFetch) {
+    this.fetchImpl = fetchImpl;
+  }
 
   async complete(request: ModelRequest, config: ModelConfig): Promise<ModelResponse> {
     const start = Date.now();
@@ -83,7 +95,7 @@ export class CustomAdapter implements ProviderAdapter {
         ? baseUrl
         : `${baseUrl.replace(/\/$/, "")}/chat/completions`;
 
-      const res = await latticeGatedFetch(
+      const res = await this.fetchImpl(
         url,
         {
           method: "POST",
@@ -163,7 +175,7 @@ export class CustomAdapter implements ProviderAdapter {
         ? baseUrl
         : `${baseUrl.replace(/\/$/, "")}/chat/completions`;
 
-      const res = await latticeGatedFetch(
+      const res = await this.fetchImpl(
         url,
         {
           method: "POST",

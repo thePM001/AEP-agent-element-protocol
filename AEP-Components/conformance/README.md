@@ -1,5 +1,7 @@
 # AEP Conformance Test Suite
 
+Status: normative. Stability: evolving. The writing lint and the consolidation scan are release gates; the concern list of the scan still changes.
+
 Test battery that determines who gets to claim AEP-compliance for the **2.9 public tier**.
 
 ## Status

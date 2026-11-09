@@ -84,7 +84,7 @@ export interface LatticeConfig {
 }
 
 /**
- * Canonical event shape. Defined ONCE here -- every observer adapter
+ * Canonical event shape. Defined ONCE here: every observer adapter
  * and every consumer imports this type. Do NOT redefine elsewhere.
  */
 export interface LatticeEvent {
@@ -407,7 +407,6 @@ export class ActionLattice {
     const node = this.nodes.get(actionPath);
     if (!node) return false;
     const perms = node.agent_permission ?? [];
-    const systemish = node.category === "system_event" || node.category === "external_event";
     if (perms.length === 0) return false;
     return perms.some((item) => {
       if (item === "*") return Boolean(agentId);
@@ -423,7 +422,7 @@ export class ActionLattice {
   evaluateConstraints(
     actionPath: string,
     payload: Record<string, unknown>,
-    hook?: ValidationHook,
+    _hook?: ValidationHook,
   ): { passed: string[]; failed: Array<{ constraint: LatticeConstraint; reason: string }> } {
     const node = this.nodes.get(actionPath);
     if (!node) {
@@ -557,7 +556,8 @@ export class ActionLattice {
       return { passed: true, reason: "" };
     }
     if (condition === "defined") {
-      return { passed: value !== null && value !== undefined, reason: "" };
+      const defined = value !== null;
+      return { passed: defined, reason: defined ? "" : `Field '${field}' is null` };
     }
     if (condition.startsWith("> ")) {
       const threshold = parseFloat(condition.substring(2));
@@ -642,9 +642,11 @@ export class ActionLattice {
     }
     if (condition.startsWith("between ")) {
       const match = condition.match(/between\s+([\d.]+)\s+and\s+([\d.]+)/);
-      if (match) {
-        const min = parseFloat(match[1]);
-        const max = parseFloat(match[2]);
+      const minText = match?.[1];
+      const maxText = match?.[2];
+      if (minText !== undefined && maxText !== undefined) {
+        const min = parseFloat(minText);
+        const max = parseFloat(maxText);
         const v = typeof value === "number" ? value : parseFloat(String(value));
         if (isNaN(v)) {
           return { passed: false, reason: `Field '${field}' is not numeric` };
@@ -687,9 +689,9 @@ export class ActionLattice {
       return { passed: false, reason: `Authorization field '${field}' is missing` };
     }
 
-    const tierMatch = condition.match(/>= (\d+)/);
-    if (tierMatch) {
-      const required = parseInt(tierMatch[1], 10);
+    const requiredText = condition.match(/>= (\d+)/)?.[1];
+    if (requiredText !== undefined) {
+      const required = parseInt(requiredText, 10);
       const actual = typeof value === "number" ? value : parseInt(String(value), 10);
       if (isNaN(actual)) {
         return { passed: false, reason: `Cannot parse trust tier from '${value}'` };

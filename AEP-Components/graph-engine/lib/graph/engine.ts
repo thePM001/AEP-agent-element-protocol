@@ -10,7 +10,6 @@ import type {
   GraphNode,
   NodeExecutionResult,
   NodeExecutor,
-  PolicyEvaluator,
   RetryPolicy,
 } from "./types.js";
 
@@ -163,7 +162,6 @@ export class GraphEngine {
             attempts: 0,
             error: `Loop bound exceeded (${max})`,
           });
-          currentId = null;
           break;
         }
         loopCounters.set(node.id, count);
@@ -211,7 +209,7 @@ export class GraphEngine {
       }
 
       const nextIds = result.next ?? node.next;
-      currentId = nextIds.length > 0 ? nextIds[0] : null;
+      currentId = nextIds[0] ?? null;
     }
 
     return {

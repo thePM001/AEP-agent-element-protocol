@@ -48,6 +48,29 @@ jobs:
       - name: conformance runner
         run: bash AEP-Components/conformance/runner/run.sh
 
+  typescript:
+    name: TypeScript typecheck, lint and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      # The root package.json is an npm workspace over the AEP-Components TypeScript
+      # and mjs packages. tsconfig.base.json holds the strict compiler settings.
+      - name: npm ci
+        run: npm ci --no-audit --no-fund
+      - name: tsc --noEmit
+        run: npm run typecheck
+      - name: eslint
+        run: npm run lint
+      - name: vitest
+        run: npm test
+
   gap-pin:
     name: GAP byte pin and version check
     runs-on: ubuntu-latest

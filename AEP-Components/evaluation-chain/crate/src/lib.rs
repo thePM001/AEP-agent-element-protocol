@@ -360,7 +360,6 @@ mod tests {
             "AEP-Components/admit/crate/src/compile_permission.rs",
             "AEP-Components/admit/crate/src/compile_lattice.rs",
             "AEP-Components/envelope/crate/src/lib.rs",
-            "AEP-Components/workflow/lib/executor.ts",
         ];
         let mut i = 0usize;
         while i < rels.len() {

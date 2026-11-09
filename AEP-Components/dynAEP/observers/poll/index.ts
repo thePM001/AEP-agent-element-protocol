@@ -32,8 +32,8 @@
 // ```
 // =============================================================================
 
-import { LatticeEvent, ObserverAdapter } from "../interface";
-import { observerLatticeFetch } from "../lib/outbound-fetch";
+import type { LatticeEvent, ObserverAdapter } from "../interface.js";
+import { observerLatticeFetch } from "../lib/outbound-fetch.js";
 
 // ── Configuration ──────────────────────────────────────────────────────────
 
@@ -96,10 +96,11 @@ export class PollObserverAdapter implements ObserverAdapter {
   readonly name: string;
   private config: Required<
     Omit<PollObserverConfig, "headers" | "signal">
-  > & { headers?: Record<string, string>; signal?: AbortSignal };
+  > & { headers?: Record<string, string> | undefined; signal?: AbortSignal | undefined };
   private eventCallback: ((event: LatticeEvent) => void) | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private previousSnapshot: unknown = null;
+  private hasSnapshot = false;
   private started = false;
 
   constructor(config: PollObserverConfig) {
@@ -202,9 +203,10 @@ export class PollObserverAdapter implements ObserverAdapter {
 
       const data: unknown = await response.json();
 
-      if (this.previousSnapshot === null) {
+      if (!this.hasSnapshot) {
         // First poll - capture the snapshot but don't emit events.
         this.previousSnapshot = data;
+        this.hasSnapshot = true;
         console.log(
           `[${this.name}] Initial snapshot captured (${this.describeSize(data)})`
         );
@@ -212,11 +214,12 @@ export class PollObserverAdapter implements ObserverAdapter {
       }
 
       // Detect and emit changes
-      if (this.config.mode === "array" && Array.isArray(data)) {
-        this.detectArrayChanges(
-          this.previousSnapshot as unknown[],
-          data as unknown[]
-        );
+      if (
+        this.config.mode === "array" &&
+        Array.isArray(data) &&
+        Array.isArray(this.previousSnapshot)
+      ) {
+        this.detectArrayChanges(this.previousSnapshot, data);
       } else {
         this.detectFullChange(data);
       }
@@ -268,7 +271,7 @@ export class PollObserverAdapter implements ObserverAdapter {
 
     // Added elements
     for (const [id, element] of Object.entries(currMap)) {
-      if (!(id in prevMap)) {
+      if (!Object.hasOwn(prevMap, id)) {
         this.eventCallback?.({
           source: this.config.source,
           action_path: `${this.config.actionPath}:added`,
@@ -284,7 +287,7 @@ export class PollObserverAdapter implements ObserverAdapter {
 
     // Removed elements
     for (const [id, element] of Object.entries(prevMap)) {
-      if (!(id in currMap)) {
+      if (!Object.hasOwn(currMap, id)) {
         this.eventCallback?.({
           source: this.config.source,
           action_path: `${this.config.actionPath}:removed`,
@@ -300,8 +303,9 @@ export class PollObserverAdapter implements ObserverAdapter {
 
     // Modified elements
     for (const [id, prevElement] of Object.entries(prevMap)) {
+      if (!Object.hasOwn(currMap, id)) continue;
       const currElement = currMap[id];
-      if (currElement && !this.deepEqual(prevElement, currElement)) {
+      if (!this.deepEqual(prevElement, currElement)) {
         this.eventCallback?.({
           source: this.config.source,
           action_path: `${this.config.actionPath}:modified`,
@@ -344,6 +348,7 @@ export class PollObserverAdapter implements ObserverAdapter {
     if (a === b) return true;
     if (a === null || b === null) return a === b;
     if (typeof a !== typeof b) return false;
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
 
     if (Array.isArray(a) && Array.isArray(b)) {
       if (a.length !== b.length) return false;

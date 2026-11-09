@@ -1,5 +1,7 @@
 # Lattice Channels (unified)
 
+Status: normative. Stability: evolving. Frame sealing calls the aep-lattice-log binary; lattice-gated-fetch .ts, .mjs and .js keep the same exports.
+
 Single AEP component for lattice channel transport, TypeScript client helpers and the Rust `aep-lattice-channel` crate.
 
 - `lib/` - MJS/TS transport (`latticeGatedFetch`, frame builder)

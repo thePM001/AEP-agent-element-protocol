@@ -1,5 +1,7 @@
 # Agent Identity
 
+Status: normative. Stability: stable.
+
 Agent identity manager and compact identity types.
 
 - **Component ID:** `identity`

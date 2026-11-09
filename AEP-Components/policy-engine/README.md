@@ -1,5 +1,7 @@
 # Policy Engine
 
+Status: normative. Stability: evolving.
+
 YAML policy loading, validation and evaluation.
 
 - **Component ID:** `policy-engine`

@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import { explainIntent, verifyChain } from "./ledger.mjs";
-import { buildLatticeBlastOverlay } from "../../semantic-topology/lib/lattice-overlay.mjs";
 import { buildPolicyLatticeView } from "../../hyperlattice/lib/policy-lattice.mjs";
 import {
   resolveEvidenceLedgerDir,
@@ -10,7 +9,7 @@ import {
 import { historyIntentKnots, searchIntentKnots } from "./intent-knots.mjs";
 
 /**
- * Rich intent explanation: ledger chain + hyperlattice blast overlay + policy lattice summary.
+ * Rich intent explanation: ledger chain + evidence sessions + intent knots + policy lattice summary.
  * @param {string} dataDir
  * @param {string} intentId
  * @param {{ activeLrps?: string[] }} [opts]
@@ -18,18 +17,6 @@ import { historyIntentKnots, searchIntentKnots } from "./intent-knots.mjs";
 export function explainIntentRich(dataDir, intentId, opts = {}) {
   const base = explainIntent(dataDir, intentId);
   const activeLrps = opts.activeLrps ?? [];
-
-  let lattice_overlay = null;
-  let overlay_error = null;
-  try {
-    lattice_overlay = buildLatticeBlastOverlay({
-      intentId,
-      dataDir,
-      activeLrps,
-    });
-  } catch (err) {
-    overlay_error = err instanceof Error ? err.message : String(err);
-  }
 
   const policyView = buildPolicyLatticeView(activeLrps);
   const chainVerify = verifyChain(dataDir);
@@ -65,8 +52,6 @@ export function explainIntentRich(dataDir, intentId, opts = {}) {
     },
     evidence_sessions,
     intent_knots,
-    lattice_overlay,
-    overlay_error,
     policy_lattice_summary: {
       hierarchy: (policyView.hierarchy ?? []).map((h) => ({
         id: h.id,
@@ -74,13 +59,7 @@ export function explainIntentRich(dataDir, intentId, opts = {}) {
         level: h.level,
       })),
       active_lrp_ids: (policyView.active_lrps ?? []).map((l) => l.id),
-      policy_bindings: lattice_overlay?.policy_bindings ?? [],
       channel_bindings: (policyView.channel_bindings ?? []).length,
-    },
-    composer: {
-      graph_ref: "composer-lite-graph.json",
-      blast_overlay_url: `/api/graph/blast-overlay?intent_id=${encodeURIComponent(intentId)}`,
-      highlighted_node_count: lattice_overlay?.highlighted_node_ids?.length ?? 0,
     },
   };
 }

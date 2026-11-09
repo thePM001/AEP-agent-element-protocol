@@ -2,8 +2,8 @@
 // hooks/interface.ts
 // Validation Hook Interface for dynAEP Lattice Events.
 //
-// The canonical ValidationHook interface and HookRegistry now live in
-// bridge/lattice/index.ts to prevent circular dependencies and type
+// The canonical ValidationHook interface, HookResult type and HookRegistry
+// live in bridge/lattice/index.ts to prevent circular dependencies and type
 // duplication. This file re-exports them for backward compatibility
 // and provides the documentation reference.
 //
@@ -13,22 +13,13 @@
 // (constraint.type === "custom") are delegated to registered hooks.
 //
 // To implement a custom hook:
-//   1. Import { ValidationHook } from "../../hooks/interface";
+//   1. Import { ValidationHook } from "../../hooks/interface.js";
 //   2. Import { LatticeEvent, ActionLattice, LatticeNode }
-//      from "../../bridge/lattice";
+//      from "../../bridge/lattice/index.js";
 //   3. Export an object conforming to ValidationHook
 //   4. Register it in the LatticeFilter's HookRegistry
 // =============================================================================
 
-export type { ValidationHook } from "../bridge/lattice";
-export { HookRegistry } from "../bridge/lattice";
-export type { LatticeEvent, ActionLattice, LatticeNode } from "../bridge/lattice";
-
-// Re-export HookResult type for convenience
-export interface HookResult {
-  passed: boolean;
-  score: number;
-  confidence: number;
-  adjustments?: Record<string, unknown>;
-  details?: string;
-}
+export type { ValidationHook, HookResult } from "../bridge/lattice/index.js";
+export { HookRegistry } from "../bridge/lattice/index.js";
+export type { LatticeEvent, ActionLattice, LatticeNode } from "../bridge/lattice/index.js";

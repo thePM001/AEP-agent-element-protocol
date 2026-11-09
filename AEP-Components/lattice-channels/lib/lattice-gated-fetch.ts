@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { connect } from "node:net";
 
 export interface LatticeGatewayMeta {
   agentId?: string;
@@ -18,7 +19,7 @@ export interface LatticeGatewayMeta {
   payloadExtra?: Record<string, unknown>;
 }
 
-function latticeStrictEnabled(): boolean {
+export function latticeStrictEnabled(): boolean {
   const v = process.env.AEP_LATTICE_STRICT ?? "1";
   if (v === "0") {
     // HIGH: refuse production kill-switch unless explicit dev flag
@@ -30,137 +31,11 @@ function latticeStrictEnabled(): boolean {
   return true;
 }
 
-type SsrfLookup = (host: string) => string[];
-type SsrfPolicy = { allowLoopback: boolean; allowPrivate: boolean };
-type AddrClass = "public" | "loopback" | "private" | "linklocal" | "unspecified";
-
-function ssrfPolicyFromEnv(env: NodeJS.ProcessEnv = process.env): SsrfPolicy {
-  return {
-    allowLoopback: env.AEP_LATTICE_ALLOW_LOOPBACK === "1",
-    allowPrivate: env.AEP_LATTICE_ALLOW_PRIVATE === "1",
-  };
-}
-
-function parseIpv4NumericPart(part: string): number | null {
-  if (!part) return null;
-  if (/^0x[0-9a-f]+$/i.test(part)) {
-    const n = Number.parseInt(part.slice(2), 16);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  if (part.length > 1 && part.startsWith("0") && /^[0-7]+$/.test(part)) {
-    const n = Number.parseInt(part, 8);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  if (/^\d+$/.test(part)) {
-    const n = Number.parseInt(part, 10);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  return null;
-}
-
-function parseWeirdIpv4(host: string): number[] | null {
-  if (!host || host.includes(":")) return null;
-  const parts = host.split(".");
-  if (parts.length < 1 || parts.length > 4) return null;
-  const nums = parts.map(parseIpv4NumericPart);
-  if (nums.some((n) => n === null)) return null;
-  const typed = nums as number[];
-  if (typed.length === 1) {
-    const n = typed[0] >>> 0;
-    return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255];
-  }
-  if (typed.length === 2) {
-    const [a, b] = typed;
-    if (a > 255 || b > 0xffffff) return null;
-    return [a, (b >>> 16) & 255, (b >>> 8) & 255, b & 255];
-  }
-  if (typed.length === 3) {
-    const [a, b, c] = typed;
-    if (a > 255 || b > 255 || c > 0xffff) return null;
-    return [a, b, (c >>> 8) & 255, c & 255];
-  }
-  const [a, b, c, d] = typed;
-  if (a > 255 || b > 255 || c > 255 || d > 255) return null;
-  return [a, b, c, d];
-}
-
-function classifyV4(octets: number[]): AddrClass {
-  const a = octets[0];
-  const b = octets[1];
-  if (a === 0) return "unspecified";
-  if (a === 127) return "loopback";
-  if (a === 169 && b === 254) return "linklocal";
-  if (a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31)) return "private";
-  if (a === 255 && b === 255 && octets[2] === 255 && octets[3] === 255) return "private";
-  return "public";
-}
-
-function parseIpv6MappedV4(host: string): number[] | null {
-  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
-  const dotted = h.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
-  if (dotted) return parseWeirdIpv4(dotted[1]);
-  const hex = h.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
-  if (hex) {
-    const hi = Number.parseInt(hex[1], 16);
-    const lo = Number.parseInt(hex[2], 16);
-    return [(hi >> 8) & 255, hi & 255, (lo >> 8) & 255, lo & 255];
-  }
-  return null;
-}
-
-function classifyIpv6(host: string): AddrClass {
-  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
-  const mapped = parseIpv6MappedV4(h);
-  if (mapped) return classifyV4(mapped);
-  if (h === "::1") return "loopback";
-  if (h === "::" || h === "0:0:0:0:0:0:0:0") return "unspecified";
-  if (/^f[cd][0-9a-f]{2}:/i.test(h)) return "private";
-  if (/^fe[89ab][0-9a-f]:/i.test(h)) return "linklocal";
-  return "public";
-}
-
-function denyClass(cls: AddrClass, policy: SsrfPolicy): void {
-  if (cls === "public") return;
-  if (cls === "loopback" || cls === "unspecified") {
-    if (!policy.allowLoopback) throw new Error("lattice-gated-fetch: loopback blocked");
-    return;
-  }
-  if (!policy.allowPrivate) throw new Error("lattice-gated-fetch: private/metadata host blocked");
-}
-
-function isMetadataName(host: string): boolean {
-  const h = host.replace(/\.+$/, "").toLowerCase();
-  return h === "metadata" || h === "metadata.google.internal" || h.endsWith(".internal") || h.endsWith(".local");
-}
-
-function defaultLookup(host: string): string[] {
-  const script =
-    "const dns=require('node:dns');dns.lookup(" +
-    JSON.stringify(host) +
-    ",{all:true,verbatim:true},(err,addrs)=>{if(err){process.stderr.write(String(err.message||err));process.exit(2);}process.stdout.write(JSON.stringify((addrs||[]).map(a=>a.address)));});";
-  try {
-    const out = execFileSync(process.execPath, ["-e", script], { encoding: "utf8", maxBuffer: 1024 * 1024 });
-    const parsed = JSON.parse(String(out).trim()) as unknown;
-    if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("empty");
-    return parsed.map(String);
-  } catch {
-    throw new Error("lattice-gated-fetch: DNS resolve failed");
-  }
-}
-
-function classifyAddressString(addr: string): AddrClass {
-  const a = addr.toLowerCase().replace(/^\[|\]$/g, "");
-  if (a.includes(":")) return classifyIpv6(a);
-  const v4 = parseWeirdIpv4(a);
-  if (v4) return classifyV4(v4);
-  throw new Error("lattice-gated-fetch: DNS resolve failed");
-}
-
 export type SsrfLookup = (host: string) => string[];
-type SsrfPolicy = { allowLoopback: boolean; allowPrivate: boolean };
+export type SsrfPolicy = { allowLoopback: boolean; allowPrivate: boolean };
 type AddrClass = "public" | "loopback" | "private" | "linklocal" | "unspecified";
 
-function ssrfPolicyFromEnv(env: NodeJS.ProcessEnv = process.env): SsrfPolicy {
+export function ssrfPolicyFromEnv(env: NodeJS.ProcessEnv = process.env): SsrfPolicy {
   return {
     allowLoopback: env.AEP_LATTICE_ALLOW_LOOPBACK === "1",
     allowPrivate: env.AEP_LATTICE_ALLOW_PRIVATE === "1",
@@ -188,299 +63,48 @@ function parseWeirdIpv4(host: string): number[] | null {
   if (!host || host.includes(":")) return null;
   const parts = host.split(".");
   if (parts.length < 1 || parts.length > 4) return null;
-  const nums = parts.map(parseIpv4NumericPart);
-  if (nums.some((n) => n === null)) return null;
-  const typed = nums as number[];
-  if (typed.length === 1) {
-    const n = typed[0] >>> 0;
-    return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255];
+  const nums: number[] = [];
+  for (const part of parts) {
+    const n = parseIpv4NumericPart(part);
+    if (n === null) return null;
+    nums.push(n);
   }
-  if (typed.length === 2) {
-    const [a, b] = typed;
+  const [a = 0, b = 0, c = 0, d = 0] = nums;
+  if (nums.length === 1) {
+    return [(a >>> 24) & 255, (a >>> 16) & 255, (a >>> 8) & 255, a & 255];
+  }
+  if (nums.length === 2) {
     if (a > 255 || b > 0xffffff) return null;
     return [a, (b >>> 16) & 255, (b >>> 8) & 255, b & 255];
   }
-  if (typed.length === 3) {
-    const [a, b, c] = typed;
+  if (nums.length === 3) {
     if (a > 255 || b > 255 || c > 0xffff) return null;
     return [a, b, (c >>> 8) & 255, c & 255];
   }
-  const [a, b, c, d] = typed;
   if (a > 255 || b > 255 || c > 255 || d > 255) return null;
   return [a, b, c, d];
 }
 
 function classifyV4(octets: number[]): AddrClass {
-  const a = octets[0];
-  const b = octets[1];
+  const [a = 0, b = 0, c = 0, d = 0] = octets;
   if (a === 0) return "unspecified";
   if (a === 127) return "loopback";
   if (a === 169 && b === 254) return "linklocal";
   if (a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31)) return "private";
-  if (a === 255 && b === 255 && octets[2] === 255 && octets[3] === 255) return "private";
+  if (a === 255 && b === 255 && c === 255 && d === 255) return "private";
   return "public";
 }
 
 function parseIpv6MappedV4(host: string): number[] | null {
   const h = host.toLowerCase().replace(/^\[|\]$/g, "");
-  const dotted = h.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
-  if (dotted) return parseWeirdIpv4(dotted[1]);
+  const dotted = h.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/)?.[1];
+  if (dotted !== undefined) return parseWeirdIpv4(dotted);
   const hex = h.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
-  if (hex) {
-    const hi = Number.parseInt(hex[1], 16);
-    const lo = Number.parseInt(hex[2], 16);
-    return [(hi >> 8) & 255, hi & 255, (lo >> 8) & 255, lo & 255];
-  }
-  return null;
-}
-
-function classifyIpv6(host: string): AddrClass {
-  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
-  const mapped = parseIpv6MappedV4(h);
-  if (mapped) return classifyV4(mapped);
-  if (h === "::1") return "loopback";
-  if (h === "::" || h === "0:0:0:0:0:0:0:0") return "unspecified";
-  if (/^f[cd][0-9a-f]{2}:/i.test(h)) return "private";
-  if (/^fe[89ab][0-9a-f]:/i.test(h)) return "linklocal";
-  return "public";
-}
-
-function denyClass(cls: AddrClass, policy: SsrfPolicy): void {
-  if (cls === "public") return;
-  if (cls === "loopback" || cls === "unspecified") {
-    if (!policy.allowLoopback) throw new Error("lattice-gated-fetch: loopback blocked");
-    return;
-  }
-  if (!policy.allowPrivate) throw new Error("lattice-gated-fetch: private/metadata host blocked");
-}
-
-function isMetadataName(host: string): boolean {
-  const h = host.replace(/\.+$/, "").toLowerCase();
-  return h === "metadata" || h === "metadata.google.internal" || h.endsWith(".internal") || h.endsWith(".local");
-}
-
-function defaultLookup(host: string): string[] {
-  const script =
-    "const dns=require('node:dns');dns.lookup(" +
-    JSON.stringify(host) +
-    ",{all:true,verbatim:true},(err,addrs)=>{if(err){process.stderr.write(String(err.message||err));process.exit(2);}process.stdout.write(JSON.stringify((addrs||[]).map(a=>a.address)));});";
-  try {
-    const out = execFileSync(process.execPath, ["-e", script], { encoding: "utf8", maxBuffer: 1024 * 1024 });
-    const parsed = JSON.parse(String(out).trim()) as unknown;
-    if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("empty");
-    return parsed.map(String);
-  } catch {
-    throw new Error("lattice-gated-fetch: DNS resolve failed");
-  }
-}
-
-function classifyAddressString(addr: string): AddrClass {
-  const a = addr.toLowerCase().replace(/^\[|\]$/g, "");
-  if (a.includes(":")) return classifyIpv6(a);
-  const v4 = parseWeirdIpv4(a);
-  if (v4) return classifyV4(v4);
-  throw new Error("lattice-gated-fetch: DNS resolve failed");
-}
-
-export type SsrfLookup = (host: string) => string[];
-type SsrfPolicy = { allowLoopback: boolean; allowPrivate: boolean };
-type AddrClass = "public" | "loopback" | "private" | "linklocal" | "unspecified";
-
-function ssrfPolicyFromEnv(env: NodeJS.ProcessEnv = process.env): SsrfPolicy {
-  return {
-    allowLoopback: env.AEP_LATTICE_ALLOW_LOOPBACK === "1",
-    allowPrivate: env.AEP_LATTICE_ALLOW_PRIVATE === "1",
-  };
-}
-
-function parseIpv4NumericPart(part: string): number | null {
-  if (!part) return null;
-  if (/^0x[0-9a-f]+$/i.test(part)) {
-    const n = Number.parseInt(part.slice(2), 16);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  if (part.length > 1 && part.startsWith("0") && /^[0-7]+$/.test(part)) {
-    const n = Number.parseInt(part, 8);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  if (/^\d+$/.test(part)) {
-    const n = Number.parseInt(part, 10);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  return null;
-}
-
-function parseWeirdIpv4(host: string): number[] | null {
-  if (!host || host.includes(":")) return null;
-  const parts = host.split(".");
-  if (parts.length < 1 || parts.length > 4) return null;
-  const nums = parts.map(parseIpv4NumericPart);
-  if (nums.some((n) => n === null)) return null;
-  const typed = nums as number[];
-  if (typed.length === 1) {
-    const n = typed[0] >>> 0;
-    return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255];
-  }
-  if (typed.length === 2) {
-    const [a, b] = typed;
-    if (a > 255 || b > 0xffffff) return null;
-    return [a, (b >>> 16) & 255, (b >>> 8) & 255, b & 255];
-  }
-  if (typed.length === 3) {
-    const [a, b, c] = typed;
-    if (a > 255 || b > 255 || c > 0xffff) return null;
-    return [a, b, (c >>> 8) & 255, c & 255];
-  }
-  const [a, b, c, d] = typed;
-  if (a > 255 || b > 255 || c > 255 || d > 255) return null;
-  return [a, b, c, d];
-}
-
-function classifyV4(octets: number[]): AddrClass {
-  const a = octets[0];
-  const b = octets[1];
-  if (a === 0) return "unspecified";
-  if (a === 127) return "loopback";
-  if (a === 169 && b === 254) return "linklocal";
-  if (a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31)) return "private";
-  if (a === 255 && b === 255 && octets[2] === 255 && octets[3] === 255) return "private";
-  return "public";
-}
-
-function parseIpv6MappedV4(host: string): number[] | null {
-  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
-  const dotted = h.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
-  if (dotted) return parseWeirdIpv4(dotted[1]);
-  const hex = h.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
-  if (hex) {
-    const hi = Number.parseInt(hex[1], 16);
-    const lo = Number.parseInt(hex[2], 16);
-    return [(hi >> 8) & 255, hi & 255, (lo >> 8) & 255, lo & 255];
-  }
-  return null;
-}
-
-function classifyIpv6(host: string): AddrClass {
-  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
-  const mapped = parseIpv6MappedV4(h);
-  if (mapped) return classifyV4(mapped);
-  if (h === "::1") return "loopback";
-  if (h === "::" || h === "0:0:0:0:0:0:0:0") return "unspecified";
-  if (/^f[cd][0-9a-f]{2}:/i.test(h)) return "private";
-  if (/^fe[89ab][0-9a-f]:/i.test(h)) return "linklocal";
-  return "public";
-}
-
-function denyClass(cls: AddrClass, policy: SsrfPolicy): void {
-  if (cls === "public") return;
-  if (cls === "loopback" || cls === "unspecified") {
-    if (!policy.allowLoopback) throw new Error("lattice-gated-fetch: loopback blocked");
-    return;
-  }
-  if (!policy.allowPrivate) throw new Error("lattice-gated-fetch: private/metadata host blocked");
-}
-
-function isMetadataName(host: string): boolean {
-  const h = host.replace(/\.+$/, "").toLowerCase();
-  return h === "metadata" || h === "metadata.google.internal" || h.endsWith(".internal") || h.endsWith(".local");
-}
-
-function defaultLookup(host: string): string[] {
-  const script =
-    "const dns=require('node:dns');dns.lookup(" +
-    JSON.stringify(host) +
-    ",{all:true,verbatim:true},(err,addrs)=>{if(err){process.stderr.write(String(err.message||err));process.exit(2);}process.stdout.write(JSON.stringify((addrs||[]).map(a=>a.address)));});";
-  try {
-    const out = execFileSync(process.execPath, ["-e", script], { encoding: "utf8", maxBuffer: 1024 * 1024 });
-    const parsed = JSON.parse(String(out).trim()) as unknown;
-    if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("empty");
-    return parsed.map(String);
-  } catch {
-    throw new Error("lattice-gated-fetch: DNS resolve failed");
-  }
-}
-
-function classifyAddressString(addr: string): AddrClass {
-  const a = addr.toLowerCase().replace(/^\[|\]$/g, "");
-  if (a.includes(":")) return classifyIpv6(a);
-  const v4 = parseWeirdIpv4(a);
-  if (v4) return classifyV4(v4);
-  throw new Error("lattice-gated-fetch: DNS resolve failed");
-}
-
-export type SsrfLookup = (host: string) => string[];
-type SsrfPolicy = { allowLoopback: boolean; allowPrivate: boolean };
-type AddrClass = "public" | "loopback" | "private" | "linklocal" | "unspecified";
-
-function ssrfPolicyFromEnv(env: NodeJS.ProcessEnv = process.env): SsrfPolicy {
-  return {
-    allowLoopback: env.AEP_LATTICE_ALLOW_LOOPBACK === "1",
-    allowPrivate: env.AEP_LATTICE_ALLOW_PRIVATE === "1",
-  };
-}
-
-function parseIpv4NumericPart(part: string): number | null {
-  if (!part) return null;
-  if (/^0x[0-9a-f]+$/i.test(part)) {
-    const n = Number.parseInt(part.slice(2), 16);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  if (part.length > 1 && part.startsWith("0") && /^[0-7]+$/.test(part)) {
-    const n = Number.parseInt(part, 8);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  if (/^\d+$/.test(part)) {
-    const n = Number.parseInt(part, 10);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  return null;
-}
-
-function parseWeirdIpv4(host: string): number[] | null {
-  if (!host || host.includes(":")) return null;
-  const parts = host.split(".");
-  if (parts.length < 1 || parts.length > 4) return null;
-  const nums = parts.map(parseIpv4NumericPart);
-  if (nums.some((n) => n === null)) return null;
-  const typed = nums as number[];
-  if (typed.length === 1) {
-    const n = typed[0] >>> 0;
-    return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255];
-  }
-  if (typed.length === 2) {
-    const [a, b] = typed;
-    if (a > 255 || b > 0xffffff) return null;
-    return [a, (b >>> 16) & 255, (b >>> 8) & 255, b & 255];
-  }
-  if (typed.length === 3) {
-    const [a, b, c] = typed;
-    if (a > 255 || b > 255 || c > 0xffff) return null;
-    return [a, b, (c >>> 8) & 255, c & 255];
-  }
-  const [a, b, c, d] = typed;
-  if (a > 255 || b > 255 || c > 255 || d > 255) return null;
-  return [a, b, c, d];
-}
-
-function classifyV4(octets: number[]): AddrClass {
-  const a = octets[0];
-  const b = octets[1];
-  if (a === 0) return "unspecified";
-  if (a === 127) return "loopback";
-  if (a === 169 && b === 254) return "linklocal";
-  if (a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31)) return "private";
-  if (a === 255 && b === 255 && octets[2] === 255 && octets[3] === 255) return "private";
-  return "public";
-}
-
-function parseIpv6MappedV4(host: string): number[] | null {
-  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
-  const dotted = h.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
-  if (dotted) return parseWeirdIpv4(dotted[1]);
-  const hex = h.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
-  if (hex) {
-    const hi = Number.parseInt(hex[1], 16);
-    const lo = Number.parseInt(hex[2], 16);
+  const hiText = hex?.[1];
+  const loText = hex?.[2];
+  if (hiText !== undefined && loText !== undefined) {
+    const hi = Number.parseInt(hiText, 16);
+    const lo = Number.parseInt(loText, 16);
     return [(hi >> 8) & 255, hi & 255, (lo >> 8) & 255, lo & 255];
   }
   return null;
@@ -579,13 +203,13 @@ export function assertUrlNotSsrf(
   for (const addr of addrs) denyClass(classifyAddressString(addr), policy);
 }
 
-function resolveSocketBase(): string {
+export function resolveSocketBase(): string {
   if (process.env.AEP_SOCKET_BASE) return process.env.AEP_SOCKET_BASE;
   const data = process.env.AEP_DATA || join(homedir(), ".aep");
   return join(data, "sockets");
 }
 
-function resolveLatticeLogBin(): string {
+export function resolveLatticeLogBin(): string {
   return process.env.AEP_LATTICE_LOG_BIN || process.env.AEP_LATTICE_LOG_CLI || "aep-lattice-log";
 }
 
@@ -595,7 +219,13 @@ function resolveConfigPath(): string | undefined {
   return existsSync(path) ? path : undefined;
 }
 
-function buildLatticeFrame(event: Record<string, unknown>): { frame: Record<string, unknown> } {
+export interface SealedLatticeFrame {
+  frame: Record<string, unknown>;
+  signer_public_hex?: string;
+  signerPublicHex?: string;
+}
+
+export function buildLatticeFrame(event: Record<string, unknown>): SealedLatticeFrame {
   const bin = resolveLatticeLogBin();
   const args: string[] = [];
   const configPath = resolveConfigPath();
@@ -606,49 +236,76 @@ function buildLatticeFrame(event: Record<string, unknown>): { frame: Record<stri
     encoding: "utf8",
     maxBuffer: 8 * 1024 * 1024,
   }).trim();
-  const parsed = JSON.parse(out) as { frame?: Record<string, unknown> };
-  if (!parsed.frame) {
+  const parsed = JSON.parse(out) as Partial<SealedLatticeFrame>;
+  const frame = parsed.frame;
+  if (!frame) {
     throw new Error("aep-lattice-log build-frame missing LatticeChannelFrame");
   }
-  return parsed as { frame: Record<string, unknown> };
+  return { ...parsed, frame };
 }
 
-function sendLatticeLine(socketPath: string, line: string, timeoutMs = 8000): string {
+/** Map a docking port name to its Unix socket file name under the socket base. */
+export function dockSuffix(dockPort: string): string {
+  if (dockPort === "inference_engine") return "inference";
+  if (dockPort === "validation_engine") return "validation";
+  if (dockPort === "future_features") return "future";
+  if (dockPort === "regulation_module") return "regulation";
+  return dockPort;
+}
+
+/**
+ * Write one newline-terminated line to a lattice dock Unix socket and resolve with the
+ * first response line (trimmed). Rejects when the socket file is missing, on socket
+ * error, on timeout, or when the peer closes before sending a full line.
+ */
+export function sendLatticeLine(socketPath: string, line: string, timeoutMs = 8000): Promise<string> {
   if (!existsSync(socketPath)) {
-    throw new Error(`lattice socket not found: ${socketPath}`);
+    return Promise.reject(new Error(`lattice socket not found: ${socketPath}`));
   }
-  const script = `
-    const net = require("node:net");
-    const path = ${JSON.stringify(socketPath)};
-    const payload = ${JSON.stringify(`${line}\n`)};
-    const timeout = ${timeoutMs};
-    const socket = net.connect({ path });
+  return new Promise<string>((resolve, reject) => {
+    const socket = connect({ path: socketPath });
     let buf = "";
-    const timer = setTimeout(() => {
-      socket.destroy(new Error("lattice socket timeout"));
-    }, timeout);
-    socket.on("connect", () => socket.write(payload));
-    socket.on("data", (chunk) => {
-      buf += chunk.toString();
-      if (buf.includes("\\n")) {
-        clearTimeout(timer);
-        process.stdout.write(buf.split("\\n")[0]);
-        socket.end();
-      }
-    });
-    socket.on("error", (err) => {
+    let done = false;
+    const finish = (err: Error | null, value: string): void => {
+      if (done) return;
+      done = true;
       clearTimeout(timer);
-      console.error(err.message);
-      process.exit(1);
+      if (err) {
+        socket.destroy();
+        reject(err);
+        return;
+      }
+      socket.end();
+      resolve(value.trim());
+    };
+    const timer = setTimeout(() => finish(new Error("lattice socket timeout"), ""), timeoutMs);
+    socket.setEncoding("utf8");
+    socket.on("connect", () => socket.write(`${line}\n`));
+    socket.on("data", (chunk: string) => {
+      buf += chunk;
+      const nl = buf.indexOf("\n");
+      if (nl >= 0) finish(null, buf.slice(0, nl));
     });
-  `;
-  return execFileSync(process.execPath, ["-e", script], {
-    encoding: "utf8",
-    maxBuffer: 8 * 1024 * 1024,
-  }).trim();
+    socket.on("error", (err) => finish(err, ""));
+    socket.on("close", () => finish(new Error("lattice socket closed before a response line"), ""));
+  });
 }
 
-function responseFromDockAllow(resp: { ok?: boolean; error?: string; http?: { status?: number; status_text?: string; headers?: string[][]; body_b64?: string } }): Response {
+export interface DockHttpResponse {
+  status?: number;
+  status_text?: string;
+  headers?: string[][];
+  body_b64?: string;
+}
+
+export interface DockAllowResponse {
+  ok?: boolean;
+  error?: string;
+  http?: DockHttpResponse;
+}
+
+/** Turn a dock allow reply into a fetch Response; a reply that is not ok throws. */
+export function responseFromDockAllow(resp: DockAllowResponse | null | undefined): Response {
   if (!resp || resp.ok !== true) {
     throw new Error((resp && resp.error) || "lattice frame rejected");
   }
@@ -666,59 +323,47 @@ function responseFromDockAllow(resp: { ok?: boolean; error?: string; http?: { st
   const headers = new Headers();
   const pairs = Array.isArray(http.headers) ? http.headers : [];
   for (const pair of pairs) {
-    if (Array.isArray(pair) && pair.length >= 2) {
-      headers.append(String(pair[0]), String(pair[1]));
+    const [name, value] = Array.isArray(pair) ? pair : [];
+    if (name !== undefined && value !== undefined) {
+      headers.append(String(name), String(value));
     }
   }
-  return new Response(body, { status: Number(http.status) || 0, statusText: String(http.status_text || ""), headers });
+  const status = Number(http.status);
+  if (!Number.isInteger(status) || status < 200 || status > 599) {
+    throw new Error(`lattice-gated-fetch: dock allow returned invalid http status ${String(http.status)}`);
+  }
+  // 204, 205 and 304 carry no body; the Response constructor throws if one is given.
+  const nullBody = status === 204 || status === 205 || status === 304;
+  return new Response(nullBody ? null : body, { status, statusText: String(http.status_text || ""), headers });
 }
 
-function latticeDockRequest(
+async function latticeDockRequest(
   socketBase: string,
   dockPort: string,
   event: Record<string, unknown>,
-) {
-  const suffix =
-    dockPort === "inference_engine"
-      ? "inference"
-      : dockPort === "validation_engine"
-        ? "validation"
-        : dockPort === "future_features"
-          ? "future"
-          : dockPort === "regulation_module"
-            ? "regulation"
-            : dockPort;
-  const socketPath = join(socketBase, suffix);
+): Promise<DockAllowResponse> {
+  const socketPath = join(socketBase, dockSuffix(dockPort));
   const sealed = buildLatticeFrame(event);
-  const signer =
-    (sealed as { signer_public_hex?: string }).signer_public_hex ||
-    (sealed as { signerPublicHex?: string }).signerPublicHex ||
-    "";
+  const signer = sealed.signer_public_hex || sealed.signerPublicHex || "";
   if (!signer) {
     throw new Error("signer_public_hex required for lattice dock send (fail-closed)");
   }
   const wire = JSON.stringify({ frame: sealed.frame, signer_public_hex: signer });
-  const line = sendLatticeLine(socketPath, wire);
-  const resp = JSON.parse(line) as { ok?: boolean; error?: string; http?: { status?: number; status_text?: string; headers?: string[][]; body_b64?: string } };
+  const line = await sendLatticeLine(socketPath, wire);
+  const resp = JSON.parse(line) as DockAllowResponse;
   if (!resp.ok) {
     throw new Error(resp.error ?? "lattice frame rejected");
   }
   return resp;
 }
 
-export async function latticeGatedFetch(
+/** The lattice event that latticeGatedFetch seals for the inference_engine dock. */
+export function buildGatewayEvent(
   url: string | URL,
   init: RequestInit = {},
   meta: LatticeGatewayMeta = {},
-  socketBase?: string,
-): Promise<Response> {
-  assertUrlNotSsrf(url);
-  if (!latticeStrictEnabled()) {
-    // Dev-only path when AEP_LATTICE_STRICT_DEV=1 and STRICT=0
-    return fetch(url, init);
-  }
-  const base = socketBase ?? resolveSocketBase();
-  const event = {
+): Record<string, unknown> {
+  return {
     agent_id: meta.agentId ?? "lattice-gateway",
     channel_id: meta.channelId ?? "ch-outbound-gateway",
     contract_id: meta.contractId ?? "lattice-channel-default",
@@ -734,8 +379,23 @@ export async function latticeGatedFetch(
       ...(meta.payloadExtra ?? {}),
     },
   };
+}
+
+export async function latticeGatedFetch(
+  url: string | URL,
+  init: RequestInit = {},
+  meta: LatticeGatewayMeta = {},
+  socketBase?: string,
+): Promise<Response> {
+  assertUrlNotSsrf(url);
+  if (!latticeStrictEnabled()) {
+    // Dev-only path when AEP_LATTICE_STRICT_DEV=1 and STRICT=0
+    return fetch(url, init);
+  }
+  const base = socketBase ?? resolveSocketBase();
+  const event = buildGatewayEvent(url, init, meta);
   const inferencePath = join(base, "inference");
-  const resp = latticeDockRequest(base, "inference_engine", event);
+  const resp = await latticeDockRequest(base, "inference_engine", event);
   if (!existsSync(inferencePath)) {
     throw new Error(
       `inference_engine dock required for lattice-gated fetch: ${inferencePath}`,

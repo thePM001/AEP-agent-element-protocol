@@ -57,7 +57,8 @@ export class AgentIdentityManager {
       identity.publicKey = pubKey.export({ type: "spki", format: "pem" }) as string;
     } catch (err) {
       throw new Error(
-        `Failed to derive public key from private key: ${err instanceof Error ? err.message : String(err)}`
+        `Failed to derive public key from private key: ${err instanceof Error ? err.message : String(err)}`,
+        { cause: err },
       );
     }
 
@@ -122,7 +123,8 @@ export class AgentIdentityManager {
         return sig.toString("base64");
       } catch (err) {
         throw new Error(
-          `Identity signing failed (no soft hash fallback): ${err instanceof Error ? err.message : String(err)}`
+          `Identity signing failed (no soft hash fallback): ${err instanceof Error ? err.message : String(err)}`,
+          { cause: err },
         );
       }
     }

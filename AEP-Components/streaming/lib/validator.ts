@@ -21,11 +21,11 @@ export interface StreamValidatorOptions {
 }
 
 export class AEPStreamValidator implements StreamValidator {
-  private covenant?: CovenantSpec;
-  private policy?: Policy;
-  private scene?: AEPScene;
-  private registry?: AEPRegistry;
-  private scannerPipeline?: ScannerPipeline;
+  private covenant: CovenantSpec | undefined;
+  private policy: Policy | undefined;
+  private scene: AEPScene | undefined;
+  private registry: AEPRegistry | undefined;
+  private scannerPipeline: ScannerPipeline | undefined;
   private abortController: AbortController;
 
   constructor(options: StreamValidatorOptions) {
@@ -161,14 +161,16 @@ export class AEPStreamValidator implements StreamValidator {
     let idMatch: RegExpExecArray | null;
     idPattern.lastIndex = 0;
     while ((idMatch = idPattern.exec(accumulated)) !== null) {
-      ids.push({ id: idMatch[1], index: idMatch.index });
+      const id = idMatch[1];
+      if (id !== undefined) ids.push({ id, index: idMatch.index });
     }
 
     const zs: Array<{ z: number; index: number }> = [];
     let zMatch: RegExpExecArray | null;
     zPattern.lastIndex = 0;
     while ((zMatch = zPattern.exec(accumulated)) !== null) {
-      zs.push({ z: parseInt(zMatch[1], 10), index: zMatch.index });
+      const zText = zMatch[1];
+      if (zText !== undefined) zs.push({ z: parseInt(zText, 10), index: zMatch.index });
     }
 
     for (const idm of ids) {
@@ -182,7 +184,7 @@ export class AEPStreamValidator implements StreamValidator {
         }
       }
       if (!best) continue;
-      const prefix = idm.id.split("-")[0];
+      const prefix = idm.id.split("-")[0] ?? "";
       const band = this.registry.zBands[prefix];
       if (band && (best.z < band[0] || best.z > band[1])) {
         return {
@@ -206,7 +208,8 @@ export class AEPStreamValidator implements StreamValidator {
     let pMatch: RegExpExecArray | null;
     while ((pMatch = parentNullPattern.exec(accumulated)) !== null) {
       const id = pMatch[1];
-      const prefix = id.split("-")[0];
+      if (id === undefined) continue;
+      const prefix = id.split("-")[0] ?? "";
       const rules = this.registry.parentRules[prefix];
       if (rules?.requireParent) {
         return {
@@ -258,6 +261,7 @@ export class AEPStreamValidator implements StreamValidator {
     if (hardFindings.length === 0) return null;
 
     const first = hardFindings[0];
+    if (first === undefined) return null;
     return {
       rule: `scanner:${first.scanner}:${first.category}`,
       reason: `Content scanner "${first.scanner}" detected: ${first.match}`,

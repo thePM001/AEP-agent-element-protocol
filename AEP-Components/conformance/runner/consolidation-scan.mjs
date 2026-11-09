@@ -7,17 +7,16 @@
 //
 // Usage: node AEP-Components/conformance/runner/consolidation-scan.mjs [repo-root]
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, dirname as upDir } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative, resolve, dirname as upDir } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = upDir(fileURLToPath(import.meta.url));
-const ROOT = process.argv[2] ?? join(HERE, "..", "..", "..");
 const SKIP_DIRS = new Set([".git", "node_modules", "target", "dist", "build", "vendor"]);
-const CODE_EXTS = [".rs", ".mjs", ".js", ".ts", ".go", ".json", ".yaml", ".yml", ".gap", ".md"];
+const CODE_EXTS = [".rs", ".mjs", ".js", ".ts", ".go", ".json", ".yaml", ".yml", ".gap", ".md", ".rego"];
 const SELF = "AEP-Components/conformance/runner/consolidation-scan.mjs";
 
-function walk(dir, out = []) {
+export function walk(dir, out = []) {
   let entries;
   try {
     entries = readdirSync(dir, { withFileTypes: true });
@@ -36,8 +35,11 @@ function walk(dir, out = []) {
   return out;
 }
 
-const FILES = walk(ROOT).filter((path) => CODE_EXTS.some((ext) => path.endsWith(ext)))
-  .map((path) => ({ path, rel: relative(ROOT, path).replace(/\\/g, "/") }));
+/** Every code or document file under root, with its slash separated relative path. */
+export function scanFiles(root) {
+  return walk(root).filter((path) => CODE_EXTS.some((ext) => path.endsWith(ext)))
+    .map((path) => ({ path, rel: relative(root, path).replace(/\\/g, "/") }));
+}
 
 function read(file) {
   try {
@@ -52,12 +54,12 @@ function read(file) {
 const INTERNAL_MARKER = "NO" + "SHIP";
 
 /** A shipped file. Internal records are not live code. */
-function shipped(entry) {
+export function shipped(entry) {
   if (entry.rel === SELF) return false;
   return entry.rel.startsWith("AEP-" + INTERNAL_MARKER + "/") === false;
 }
 
-function matches(regex, { internal = false } = {}) {
+function matches(FILES, regex, { internal = false } = {}) {
   const hits = [];
   for (const entry of FILES) {
     if (internal === false && shipped(entry) === false) continue;
@@ -120,18 +122,18 @@ const DEAD_PATHS = [
   { name: "caw framework components path", regex: /AEP-Components\/caw-framework\b/ },
 ];
 
-function authoringForms() {
+function authoringForms(FILES) {
   const forms = ["GAP (json records under AEP-Policy-System/reference/)"];
   const yaml = FILES.filter((entry) => entry.rel.startsWith("AEP-Policy-System/") && entry.rel.endsWith(".policy.yaml"));
   const rego = FILES.filter((entry) => entry.rel.endsWith(".rego") && entry.rel.startsWith("AEP-Policy-System/"));
-  const unmarkedYaml = yaml.filter((entry) => HOST_YAML_MARK.test(read(entry)) === false);
-  const unmarkedRego = rego.filter((entry) => HOST_REGO_MARK.test(read(entry)) === false);
-  if (unmarkedYaml.length > 0) forms.push(`policy YAML unmarked (${unmarkedYaml.length})`);
-  if (unmarkedRego.length > 0) forms.push(`rego unmarked (${unmarkedRego.length})`);
+  const unlabelledYaml = yaml.filter((entry) => HOST_YAML_MARK.test(read(entry)) === false);
+  const unlabelledRego = rego.filter((entry) => HOST_REGO_MARK.test(read(entry)) === false);
+  if (unlabelledYaml.length > 0) forms.push(`policy YAML without host label (${unlabelledYaml.length})`);
+  if (unlabelledRego.length > 0) forms.push(`rego without host label (${unlabelledRego.length})`);
   return { forms, yaml: yaml.length, rego: rego.length };
 }
 
-function ownersOf(surfaces, regex) {
+function ownersOf(FILES, surfaces, regex) {
   const owners = [];
   for (const rel of surfaces) {
     const entry = FILES.find((candidate) => candidate.rel === rel);
@@ -141,7 +143,7 @@ function ownersOf(surfaces, regex) {
   return owners;
 }
 
-function enforcementComponents() {
+function enforcementComponents(FILES) {
   const components = new Set();
   for (const entry of FILES) {
     if (shipped(entry) === false) continue;
@@ -153,111 +155,127 @@ function enforcementComponents() {
   return [...components].sort();
 }
 
-function deadPathHits(regex) {
+function deadPathHits(FILES, regex) {
   return FILES.filter((entry) => {
     if (entry.rel.startsWith("AEP-" + INTERNAL_MARKER + "/")) return false;
     return regex.test(read(entry));
   }).map((entry) => entry.rel).sort();
 }
 
-const rows = [];
+/** One row per concern: the count of definition sites, the expected count and the proof. */
+export function consolidationRows(root) {
+  const FILES = scanFiles(root);
+  const rows = [];
 
-{
-  const hits = matches(WRITING_DEFINITION[0]);
-  for (const regex of WRITING_DEFINITION.slice(1)) {
-    for (const rel of matches(regex)) if (hits.includes(rel) === false) hits.push(rel);
+  {
+    const hits = matches(FILES, WRITING_DEFINITION[0]);
+    for (const regex of WRITING_DEFINITION.slice(1)) {
+      for (const rel of matches(FILES, regex)) if (hits.includes(rel) === false) hits.push(rel);
+    }
+    rows.push({ concern: "writing rule family definition sites", count: hits.length, expected: 1, proof: hits });
   }
-  rows.push({ concern: "writing rule family definition sites", count: hits.length, expected: 1, proof: hits });
+
+  {
+    const hits = matches(FILES, PULSE_DEFINITION);
+    rows.push({ concern: "pulse constant definition sites", count: hits.length, expected: 1, proof: hits });
+  }
+
+  {
+    const hits = matches(FILES, ADMIT_RESULT_BUILD);
+    const live = hits.filter((rel) => {
+      const entry = FILES.find((candidate) => candidate.rel === rel);
+      return entry ? DERIVED_LABEL.test(read(entry).slice(0, 1200)) === false : false;
+    });
+    const derived = hits.filter((rel) => live.includes(rel) === false);
+    rows.push({
+      concern: "live admit result build sites",
+      count: live.length,
+      expected: 1,
+      proof: live.concat(["derived surfaces: " + derived.join(", ")]),
+    });
+  }
+
+  {
+    const forms = authoringForms(FILES);
+    rows.push({
+      concern: "authoring forms that reach the Admit layer",
+      count: forms.forms.length,
+      expected: 1,
+      proof: forms.forms.concat([`host policy YAML files: ${forms.yaml}`, `host rego files: ${forms.rego}`]),
+    });
+  }
+
+  {
+    const hits = matches(FILES, SCAN_RULE_SOURCE);
+    rows.push({ concern: "admit layer scan rule sources", count: hits.length, expected: 1, proof: hits });
+  }
+
+  {
+    const components = enforcementComponents(FILES);
+    rows.push({ concern: "enforcement implementations", count: components.length, expected: 1, proof: components });
+  }
+
+  {
+    const owners = ownersOf(FILES, GRAPH_OWNER_FILES, OWNS_RUNTIME_STATE);
+    const derived = GRAPH_PROJECTION_FILES;
+    rows.push({
+      concern: "graph state owners",
+      count: owners.length,
+      expected: 1,
+      proof: owners.concat(["derived surfaces: " + derived.join(", ")]),
+    });
+  }
+
+  {
+    const owners = ownersOf(FILES, LEDGER_SURFACES, DECLARES_RUNTIME_LEDGER);
+    const derived = LEDGER_SURFACES.filter((rel) => owners.includes(rel) === false);
+    rows.push({
+      concern: "runtime ledger names",
+      count: owners.length,
+      expected: 1,
+      proof: owners.concat(["derived surfaces: " + derived.join(", ")]),
+    });
+  }
+
+  for (const dead of DEAD_PATHS) {
+    const hits = deadPathHits(FILES, dead.regex);
+    rows.push({ concern: `dead path references, ${dead.name}`, count: hits.length, expected: 0, proof: hits });
+  }
+  return rows;
 }
 
-{
-  const hits = matches(PULSE_DEFINITION);
-  rows.push({ concern: "pulse constant definition sites", count: hits.length, expected: 1, proof: hits });
+/** The printed report as lines, and whether every count matches the plan. */
+export function formatConsolidationReport(rows, root) {
+  const lines = [];
+  const width = Math.max(...rows.map((row) => row.concern.length));
+  lines.push("AEP 2.9 consolidation scan");
+  lines.push(`Root: ${root}`);
+  lines.push("");
+  lines.push(`${"concern".padEnd(width)}  count  expect  state`);
+  for (const row of rows) {
+    const state = row.count === row.expected ? "PASS" : "FAIL";
+    lines.push(`${row.concern.padEnd(width)}  ${String(row.count).padStart(5)}  ${String(row.expected).padStart(6)}  ${state}`);
+  }
+  lines.push("");
+  lines.push("proof");
+  for (const row of rows) {
+    lines.push(`- ${row.concern}`);
+    for (const line of row.proof.length === 0 ? ["(no hit)"] : row.proof) lines.push(`    ${line}`);
+  }
+
+  const failed = rows.filter((row) => row.count !== row.expected);
+  lines.push("");
+  if (failed.length > 0) {
+    lines.push(`FAIL ${failed.length} concern(s) do not match the plan`);
+  } else {
+    lines.push("PASS every count matches the plan");
+  }
+  return { lines, ok: failed.length === 0 };
 }
 
-{
-  const hits = matches(ADMIT_RESULT_BUILD);
-  const live = hits.filter((rel) => {
-    const entry = FILES.find((candidate) => candidate.rel === rel);
-    return entry ? DERIVED_LABEL.test(read(entry).slice(0, 1200)) === false : false;
-  });
-  const derived = hits.filter((rel) => live.includes(rel) === false);
-  rows.push({
-    concern: "live admit result build sites",
-    count: live.length,
-    expected: 1,
-    proof: live.concat(["derived surfaces: " + derived.join(", ")]),
-  });
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const ROOT = process.argv[2] ?? join(HERE, "..", "..", "..");
+  const report = formatConsolidationReport(consolidationRows(ROOT), ROOT);
+  for (const line of report.lines) console.log(line);
+  if (report.ok === false) process.exit(1);
 }
-
-{
-  const forms = authoringForms();
-  rows.push({
-    concern: "authoring forms that reach the Admit layer",
-    count: forms.forms.length,
-    expected: 1,
-    proof: forms.forms.concat([`host policy YAML files: ${forms.yaml}`, `host rego files: ${forms.rego}`]),
-  });
-}
-
-{
-  const hits = matches(SCAN_RULE_SOURCE);
-  rows.push({ concern: "admit layer scan rule sources", count: hits.length, expected: 1, proof: hits });
-}
-
-{
-  const components = enforcementComponents();
-  rows.push({ concern: "enforcement implementations", count: components.length, expected: 1, proof: components });
-}
-
-{
-  const owners = ownersOf(GRAPH_OWNER_FILES, OWNS_RUNTIME_STATE);
-  const derived = GRAPH_PROJECTION_FILES;
-  rows.push({
-    concern: "graph state owners",
-    count: owners.length,
-    expected: 1,
-    proof: owners.concat(["derived surfaces: " + derived.join(", ")]),
-  });
-}
-
-{
-  const owners = ownersOf(LEDGER_SURFACES, DECLARES_RUNTIME_LEDGER);
-  const derived = LEDGER_SURFACES.filter((rel) => owners.includes(rel) === false);
-  rows.push({
-    concern: "runtime ledger names",
-    count: owners.length,
-    expected: 1,
-    proof: owners.concat(["derived surfaces: " + derived.join(", ")]),
-  });
-}
-
-for (const dead of DEAD_PATHS) {
-  const hits = deadPathHits(dead.regex);
-  rows.push({ concern: `dead path references, ${dead.name}`, count: hits.length, expected: 0, proof: hits });
-}
-
-const width = Math.max(...rows.map((row) => row.concern.length));
-console.log("AEP 2.9 consolidation scan");
-console.log(`Root: ${ROOT}`);
-console.log("");
-console.log(`${"concern".padEnd(width)}  count  expect  state`);
-for (const row of rows) {
-  const state = row.count === row.expected ? "PASS" : "FAIL";
-  console.log(`${row.concern.padEnd(width)}  ${String(row.count).padStart(5)}  ${String(row.expected).padStart(6)}  ${state}`);
-}
-console.log("");
-console.log("proof");
-for (const row of rows) {
-  console.log(`- ${row.concern}`);
-  for (const line of row.proof.length === 0 ? ["(no hit)"] : row.proof) console.log(`    ${line}`);
-}
-
-const failed = rows.filter((row) => row.count !== row.expected);
-if (failed.length > 0) {
-  console.log("");
-  console.log(`FAIL ${failed.length} concern(s) do not match the plan`);
-  process.exit(1);
-}
-console.log("");
-console.log("PASS every count matches the plan");

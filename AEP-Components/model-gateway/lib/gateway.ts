@@ -17,10 +17,14 @@ import type { Policy } from "../../policy-engine/lib/policy/types.js";
 import type { EvidenceLedger } from "../../evidence-ledger/lib/ledger/ledger.js";
 import type { ScannerPipeline } from "../../scanners/lib/pipeline.js";
 import type { RecoveryEngine } from "../../recovery/lib/engine.js";
-import type { PromptOptimizer } from "../../optimization/lib/optimizer.js";
 import type { AEPTelemetryExporter } from "../../telemetry/lib/otel-exporter.js";
 import type { Violation } from "../../recovery/lib/types.js";
-import type { Finding, ScanResult } from "../../scanners/lib/types.js";
+import type { Finding } from "../../scanners/lib/types.js";
+
+/** Adds the governance context of the active policy to a system prompt. */
+export interface GovernanceContextInjector {
+  injectGovernanceContext(systemPrompt: string): string;
+}
 
 function collectHardFindings(scan: { findings?: Finding[] } | null | undefined): Finding[] {
   return (scan?.findings ?? []).filter((f) => f.severity === "hard");
@@ -35,6 +39,7 @@ function uniqueCategories(findings: Finding[]): string[] {
 import {
   EconomicsGatewayHooks,
   type EconomicsGatewayDeps,
+  type EconomicsPrecheckResult,
 } from "../../economics/lib/gateway-integration.js";
 
 export interface GatewayDependencies {
@@ -42,7 +47,7 @@ export interface GatewayDependencies {
   ledger?: EvidenceLedger;
   scanner?: ScannerPipeline;
   recovery?: RecoveryEngine;
-  optimizer?: PromptOptimizer;
+  optimizer?: GovernanceContextInjector;
   telemetry?: AEPTelemetryExporter;
   registry?: ProviderRegistry;
   economics?: EconomicsGatewayDeps;
@@ -55,7 +60,7 @@ export class GovernedModelGateway {
   private ledger: EvidenceLedger | null;
   private scanner: ScannerPipeline | null;
   private recovery: RecoveryEngine | null;
-  private optimizer: PromptOptimizer | null;
+  private optimizer: GovernanceContextInjector | null;
   private telemetry: AEPTelemetryExporter | null;
   private registry: ProviderRegistry;
   private adapter: ProviderAdapter;
@@ -105,7 +110,7 @@ export class GovernedModelGateway {
     let recoveryAttempted = false;
     let recoverySucceeded = false;
     let promptOptimised = false;
-    let economicsPrecheck: Awaited<ReturnType<EconomicsGatewayHooks["preDispatch"]>> | undefined;
+    let economicsPrecheck: EconomicsPrecheckResult | undefined;
 
     if (this.economics) {
       economicsPrecheck = await this.economics.preDispatch(request, this.config);
@@ -114,7 +119,7 @@ export class GovernedModelGateway {
     let economicsRecorded = false;
     const releaseEconomicsOnError = (err: unknown) => {
       if (!economicsRecorded && this.economics) {
-        this.economics.recordFailure(this.config, err);
+        this.economics.recordFailure(this.config, err, economicsPrecheck);
         economicsRecorded = true;
       }
     };
@@ -166,10 +171,11 @@ export class GovernedModelGateway {
     // Step 3: Optimise prompts
     if (this.optimisePrompts && this.optimizer) {
       const systemIdx = messages.findIndex(m => m.role === "system");
-      if (systemIdx >= 0) {
+      const systemMessage = messages[systemIdx];
+      if (systemMessage !== undefined) {
         messages[systemIdx] = {
-          ...messages[systemIdx],
-          content: this.optimizer.injectGovernanceContext(messages[systemIdx].content),
+          ...systemMessage,
+          content: this.optimizer.injectGovernanceContext(systemMessage.content),
         };
         promptOptimised = true;
       } else {
@@ -234,7 +240,7 @@ export class GovernedModelGateway {
           recoveryAttempted = true;
           const softViolation = this.findingsToViolation(outputScan.findings);
 
-          const result = this.recovery.attemptRecovery(
+          this.recovery.attemptRecovery(
             softViolation,
             (correctionPrompt: string) => {
               // H-24: correction prompt is not model output
@@ -250,7 +256,7 @@ export class GovernedModelGateway {
             },
           );
 
-          // H-24: re-call with buildCorrectionPrompt (never treat prompt as finalOutput)
+          // H-24: re-call with buildCorrectionPrompt (never treat the prompt as recovered output)
           {
             const correctionPrompt = this.recovery.buildCorrectionPrompt(softViolation);
             try {
@@ -266,8 +272,8 @@ export class GovernedModelGateway {
 
               // Re-scan the recovered output
               if (this.scanner) {
-                const finalScan = this.scanner.scan(recoveredResponse.content);
-                if (finalScan.passed) {
+                const closingScan = this.scanner.scan(recoveredResponse.content);
+                if (closingScan.passed) {
                   response = recoveredResponse;
                   recoverySucceeded = true;
                   trustDelta += 10;
@@ -290,7 +296,7 @@ export class GovernedModelGateway {
     // Step 7: Compute cost
     const cost = this.computeCost(response);
     if (this.economics) {
-      this.economics.recordSuccess(response, this.config);
+      this.economics.recordSuccess(response, this.config, economicsPrecheck);
       economicsRecorded = true;
     }
 
@@ -408,18 +414,20 @@ export class GovernedModelGateway {
   async *stream(request: ModelRequest): AsyncGenerator<GovernedChunk, void, unknown> {
     // TM-13: parity with call() - economics + scanner fail-closed + per-chunk scan before yield
     let economicsRecorded = false;
+    let economicsPrecheck: EconomicsPrecheckResult | undefined;
     const releaseEconomicsOnError = (err: unknown) => {
       if (!economicsRecorded && this.economics) {
-        this.economics.recordFailure(this.config, err);
+        this.economics.recordFailure(this.config, err, economicsPrecheck);
         economicsRecorded = true;
       }
     };
 
     if (this.economics) {
       try {
-        await this.economics.preDispatch(request, this.config);
+        economicsPrecheck = await this.economics.preDispatch(request, this.config);
       } catch (err) {
-        releaseEconomicsOnError(err);
+        // preDispatch already returned its concurrency permit when it refused.
+        economicsRecorded = true;
         yield {
           content: "",
           done: true,
@@ -434,169 +442,184 @@ export class GovernedModelGateway {
       }
     }
 
-    if (this.scanInput && !this.scanner) {
-      const err = new Error(
-        "GovernedModelGateway.stream: scanInput enabled but scanner dependency is missing (fail-closed)",
-      );
-      releaseEconomicsOnError(err);
-      throw err;
-    }
-    if (this.scanOutput && !this.scanner) {
-      const err = new Error(
-        "GovernedModelGateway.stream: scanOutput enabled but scanner dependency is missing (fail-closed)",
-      );
-      releaseEconomicsOnError(err);
-      throw err;
-    }
-
-    const messages = [...request.messages];
-
-    if (this.scanInput && this.scanner) {
-      const inputContent = messages.map(m => m.content).join("\n");
-      const inputScan = this.scanner.scan(inputContent);
-      if (!inputScan.passed) {
-        const hardFindings = collectHardFindings(inputScan);
-        if (hardFindings.length > 0) {
-          yield {
-            content: "",
-            done: true,
-            accumulated: "",
-            index: 0,
-            governance: {
-              aborted: true,
-              reason: `Input blocked: ${uniqueCategories(hardFindings).join(", ")}`,
-              findings: hardFindings.map(f => `${f.scanner}:${f.category}`),
-            },
-          };
-          return;
-        }
-      }
-    }
-
-    if (this.optimisePrompts && this.optimizer) {
-      const systemIdx = messages.findIndex(m => m.role === "system");
-      if (systemIdx >= 0) {
-        messages[systemIdx] = {
-          ...messages[systemIdx],
-          content: this.optimizer.injectGovernanceContext(messages[systemIdx].content),
-        };
-      } else {
-        messages.unshift({
-          role: "system",
-          content: this.optimizer.injectGovernanceContext(""),
-        });
-      }
-    }
-
-    const enrichedRequest: ModelRequest = { ...request, messages };
-
-    let accumulated = "";
-    let index = 0;
-    let aborted = false;
-
     try {
-      for await (const chunk of this.adapter.stream(enrichedRequest, this.config)) {
-        accumulated += chunk.content;
-        index++;
+      if (this.scanInput && !this.scanner) {
+        const err = new Error(
+          "GovernedModelGateway.stream: scanInput enabled but scanner dependency is missing (fail-closed)",
+        );
+        releaseEconomicsOnError(err);
+        throw err;
+      }
+      if (this.scanOutput && !this.scanner) {
+        const err = new Error(
+          "GovernedModelGateway.stream: scanOutput enabled but scanner dependency is missing (fail-closed)",
+        );
+        releaseEconomicsOnError(err);
+        throw err;
+      }
 
-        // Scan accumulated output BEFORE yielding each chunk (fail closed).
-        if (this.scanOutput && this.scanner) {
-          const midScan = this.scanner.scan(accumulated);
-          const hardFindings = collectHardFindings(midScan);
+      const messages = [...request.messages];
+
+      if (this.scanInput && this.scanner) {
+        const inputContent = messages.map(m => m.content).join("\n");
+        const inputScan = this.scanner.scan(inputContent);
+        if (!inputScan.passed) {
+          const hardFindings = collectHardFindings(inputScan);
           if (hardFindings.length > 0) {
-            aborted = true;
+            releaseEconomicsOnError(
+              new Error(`Input blocked by scanner: ${hardFindings.map(f => f.category).join(", ")}`),
+            );
             yield {
               content: "",
               done: true,
               accumulated: "",
-              index,
+              index: 0,
               governance: {
                 aborted: true,
-                reason: `Stream aborted: ${uniqueCategories(hardFindings).join(", ")}`,
+                reason: `Input blocked: ${uniqueCategories(hardFindings).join(", ")}`,
                 findings: hardFindings.map(f => `${f.scanner}:${f.category}`),
               },
             };
-            this.logToLedger("stream:abort", {
+            return;
+          }
+        }
+      }
+
+      if (this.optimisePrompts && this.optimizer) {
+        const systemIdx = messages.findIndex(m => m.role === "system");
+        const systemMessage = messages[systemIdx];
+        if (systemMessage !== undefined) {
+          messages[systemIdx] = {
+            ...systemMessage,
+            content: this.optimizer.injectGovernanceContext(systemMessage.content),
+          };
+        } else {
+          messages.unshift({
+            role: "system",
+            content: this.optimizer.injectGovernanceContext(""),
+          });
+        }
+      }
+
+      const enrichedRequest: ModelRequest = { ...request, messages };
+
+      let accumulated = "";
+      let index = 0;
+      let aborted = false;
+
+      try {
+        for await (const chunk of this.adapter.stream(enrichedRequest, this.config)) {
+          accumulated += chunk.content;
+          index++;
+
+          // Scan accumulated output BEFORE yielding each chunk (fail closed).
+          if (this.scanOutput && this.scanner) {
+            const midScan = this.scanner.scan(accumulated);
+            const hardFindings = collectHardFindings(midScan);
+            if (hardFindings.length > 0) {
+              aborted = true;
+              yield {
+                content: "",
+                done: true,
+                accumulated: "",
+                index,
+                governance: {
+                  aborted: true,
+                  reason: `Stream aborted: ${uniqueCategories(hardFindings).join(", ")}`,
+                  findings: hardFindings.map(f => `${f.scanner}:${f.category}`),
+                },
+              };
+              this.logToLedger("stream:abort", {
+                sessionId: this.sessionId,
+                provider: this.config.provider,
+                model: this.config.model,
+                reason: "hard_violation_mid_stream",
+                findings: hardFindings.map(f => `${f.scanner}:${f.category}`),
+                chunksProcessed: index,
+              });
+              return;
+            }
+          }
+
+          yield {
+            content: chunk.content,
+            done: chunk.done,
+            accumulated,
+            index,
+          };
+
+          if (chunk.done) break;
+        }
+      } catch (err) {
+        releaseEconomicsOnError(err);
+        yield {
+          content: "",
+          done: true,
+          accumulated,
+          index,
+          governance: {
+            aborted: true,
+            reason: err instanceof Error ? err.message : String(err),
+          },
+        };
+        return;
+      }
+
+      // Closing output scan after the stream completes
+      if (!aborted && this.scanOutput && this.scanner) {
+        const closingScan = this.scanner.scan(accumulated);
+        if (!closingScan.passed) {
+          const hardFindings = collectHardFindings(closingScan);
+          const softFindings = closingScan.findings.filter(f => f.severity === "soft");
+          if (hardFindings.length > 0 || softFindings.length > 0) {
+            const findings = hardFindings.length > 0 ? hardFindings : softFindings;
+            yield {
+              content: "",
+              done: true,
+              accumulated: "",
+              index: index + 1,
+              governance: {
+                aborted: true,
+                softDenied: softFindings.length > 0 && hardFindings.length === 0,
+                reason: `Post-stream scan failed: ${uniqueCategories(findings).join(", ")}`,
+                findings: findings.map(f => `${f.scanner}:${f.category}`),
+              },
+            };
+            this.logToLedger("model:call", {
               sessionId: this.sessionId,
               provider: this.config.provider,
               model: this.config.model,
-              reason: "hard_violation_mid_stream",
-              findings: hardFindings.map(f => `${f.scanner}:${f.category}`),
+              findings: findings.map(f => `${f.scanner}:${f.category}`),
+              decision: "deny",
+              streaming: true,
               chunksProcessed: index,
+              contentLength: 0,
             });
             return;
           }
         }
-
-        yield {
-          content: chunk.content,
-          done: chunk.done,
-          accumulated,
-          index,
-        };
-
-        if (chunk.done) break;
       }
-    } catch (err) {
-      releaseEconomicsOnError(err);
-      yield {
-        content: "",
-        done: true,
-        accumulated,
-        index,
-        governance: {
-          aborted: true,
-          reason: err instanceof Error ? err.message : String(err),
-        },
-      };
-      return;
-    }
 
-    // Final output scan after stream completes
-    if (!aborted && this.scanOutput && this.scanner) {
-      const finalScan = this.scanner.scan(accumulated);
-      if (!finalScan.passed) {
-        const hardFindings = collectHardFindings(finalScan);
-        const softFindings = finalScan.findings.filter(f => f.severity === "soft");
-        if (hardFindings.length > 0 || softFindings.length > 0) {
-          const findings = hardFindings.length > 0 ? hardFindings : softFindings;
-          yield {
-            content: "",
-            done: true,
-            accumulated: "",
-            index: index + 1,
-            governance: {
-              aborted: true,
-              softDenied: softFindings.length > 0 && hardFindings.length === 0,
-              reason: `Post-stream scan failed: ${uniqueCategories(findings).join(", ")}`,
-              findings: findings.map(f => `${f.scanner}:${f.category}`),
-            },
-          };
-          this.logToLedger("model:call", {
-            sessionId: this.sessionId,
-            provider: this.config.provider,
-            model: this.config.model,
-            findings: findings.map(f => `${f.scanner}:${f.category}`),
-            decision: "deny",
-            streaming: true,
-            chunksProcessed: index,
-            contentLength: 0,
-          });
-          return;
-        }
+      // Record to ledger
+      this.logToLedger("model:call", {
+        sessionId: this.sessionId,
+        provider: this.config.provider,
+        model: this.config.model,
+        decision: "allow",
+        streaming: true,
+        chunksProcessed: index,
+        contentLength: accumulated.length,
+      });
+    } finally {
+      // A stream that reached the provider and was not refused settles here: the
+      // reserved estimate remains the charge because stream adapters report no usage,
+      // and the concurrency permit is returned. This also runs when the consumer
+      // stops reading early.
+      if (!economicsRecorded && this.economics) {
+        this.economics.recordStreamComplete(this.config);
+        economicsRecorded = true;
       }
     }
-
-    // Record to ledger
-    this.logToLedger("model:call", {
-      sessionId: this.sessionId,
-      provider: this.config.provider,
-      model: this.config.model,
-      decision: "allow",
-      streaming: true,
-      chunksProcessed: index,
-      contentLength: accumulated.length,
-    });
   }
 
   /**
@@ -613,7 +636,7 @@ export class GovernedModelGateway {
     return this.sessionId;
   }
 
-  // -- Private Helpers ----------------------------------------------
+  // Private Helpers ----------------------------------------------
 
   private computeCost(response: ModelResponse): GovernedModelResponse["cost"] {
     if (!this.costTracking) {

@@ -1,5 +1,7 @@
 # Economics
 
+Status: reference. Stability: evolving. Model-gateway calls it for cost estimates, budget caps and concurrency.
+
 **Economics is a distinct AEP 2.9 component.** Pricing catalogs, budget enforcement, cost estimation, provider balancing and X402 nanopayment negotiation.
 
 - **Implementation:** `economics/lib/`

@@ -14,7 +14,8 @@ export interface ScanRule {
   class: string;
   category: string;
   ts?: ScanRulePattern;
-  admit?: Record<string, unknown>;
+  /** Admit crate matcher for this row; null when the Admit crate has no matcher for it. */
+  admit?: Record<string, unknown> | null;
 }
 
 export const SCAN_RULE_TABLE_ID = "scan-rule-table";

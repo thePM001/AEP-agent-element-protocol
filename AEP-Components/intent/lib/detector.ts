@@ -133,7 +133,8 @@ export class IntentDriftDetector {
   private extractPrefix(input: Record<string, unknown>): string | null {
     const id = input.id ?? input.elementId ?? input.target;
     if (typeof id === "string" && id.includes("-")) {
-      return id.split("-")[0];
+      const [prefix] = id.split("-");
+      return prefix ?? null;
     }
     const path = input.path;
     if (typeof path === "string") {

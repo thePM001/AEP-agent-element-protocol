@@ -1,4 +1,4 @@
-import type { CovenantSpec, CovenantRule, Condition } from "./types.js";
+import type { CovenantSpec, CovenantRule } from "./types.js";
 
 export interface CompiledCovenant {
   name: string;

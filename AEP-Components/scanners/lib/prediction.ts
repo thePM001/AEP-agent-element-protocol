@@ -38,7 +38,6 @@ const NUMERIC_PREDICTION_PATTERN = /(?:will\s+(?:reach|hit|exceed|surpass|achiev
 
 const YEAR_PATTERN = /\bby\s+(20\d{2})\b/gi;
 const WITHIN_YEARS_PATTERN = /\bwithin\s+(\d+)\s+years?\b/gi;
-const QUARTER_PATTERN = /\b(?:next|in)\s+(?:Q[1-4]|(?:the\s+)?(?:first|second|third|fourth)\s+quarter)\s+(?:of\s+)?(20\d{2})?\b/gi;
 
 export class PredictionScanner implements Scanner {
   name = "prediction";
@@ -63,7 +62,9 @@ export class PredictionScanner implements Scanner {
     PERCENTAGE_PATTERN.lastIndex = 0;
     let match: RegExpExecArray | null;
     while ((match = PERCENTAGE_PATTERN.exec(content)) !== null) {
-      const pct = parseFloat(match[1]);
+      const pctText = match[1];
+      if (pctText === undefined) continue;
+      const pct = parseFloat(pctText);
       if (pct > this.maxPercentage) {
         findings.push({
           scanner: this.name,
@@ -122,7 +123,9 @@ export class PredictionScanner implements Scanner {
 
     YEAR_PATTERN.lastIndex = 0;
     while ((match = YEAR_PATTERN.exec(content)) !== null) {
-      const year = parseInt(match[1], 10);
+      const yearText = match[1];
+      if (yearText === undefined) continue;
+      const year = parseInt(yearText, 10);
       const targetDate = new Date(year, 0, 1);
       if (targetDate > maxDate) {
         findings.push({
@@ -137,7 +140,9 @@ export class PredictionScanner implements Scanner {
 
     WITHIN_YEARS_PATTERN.lastIndex = 0;
     while ((match = WITHIN_YEARS_PATTERN.exec(content)) !== null) {
-      const years = parseInt(match[1], 10);
+      const yearsText = match[1];
+      if (yearsText === undefined) continue;
+      const years = parseInt(yearsText, 10);
       const daysAhead = years * 365;
       if (daysAhead > this.maxHorizonDays) {
         findings.push({

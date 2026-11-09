@@ -415,7 +415,6 @@ The library is counted by this layer table. Folder count is not the library coun
 | Hyperlattice wrap | One mechanism per system | [`AEP-Components/hyperlattice/`](AEP-Components/hyperlattice/) |
 | Docks | UCD egress airlock and optional UCB | [`AEP-Base-Node/AEP-Docks/`](AEP-Base-Node/AEP-Docks/) |
 | UCB airlock (optional) | Foreign MCP or HTTP attach only | [`AEP-Base-Node/AEP-Docks/ucb/`](AEP-Base-Node/AEP-Docks/ucb/) |
-| Coding governance | Propose a change then lock it | [`AEP-Components/coding-governance/`](AEP-Components/coding-governance/) |
 | Policy | GAP nodes and subprotocol validators | [`AEP-Policy-System/`](AEP-Policy-System/) |
 | Multi-base-node (2.8b) | Federate multiple Base Node kernels (optional experimental surface) | [`AEP-Base-Node/AEP-Multi-Base-Node/`](AEP-Base-Node/AEP-Multi-Base-Node/) |
 
@@ -614,8 +613,6 @@ The tables below name working protocol parts a builder can attach. They are comp
 |---------|------|
 | Agent identity (Ed25519, challenge-response) | `AEP-Components/identity/` |
 | Data permission system | `AEP-Components/permissions/` |
-| Fleet governance (limits, cost caps, drift) | `AEP-Components/fleet/` |
-| Multi-agent collaboration (supervisor, debate, delegation) | `AEP-Components/fleet/lib/collaboration/` |
 | Model gateway (governed LLM calls, streaming abort) | `AEP-Components/model-gateway/` |
 | CAW execution sandboxes (shell, file, network, LLM proxy) | `AEP-CAW/` |
 | Recovery engine (soft violation retry) | `AEP-Components/recovery/` |

@@ -2,6 +2,18 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-09 - The TypeScript and mjs components typecheck strictly, lint clean and carry tests
+The tree had about 175 TypeScript files with one tsconfig under dynAEP and no CI job typechecked them. Imports of zod and yaml had no manifest that declared them. Most TypeScript and mjs component folders had no tests and no README said whether a component was normative. Several components imported code that earlier releases had removed, so they could not load at all.
+
+- The root `package.json` is an npm workspace over 32 component packages. Each package declares the dependencies it imports. `tsconfig.base.json` turns on `strict`, `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes` and `tsconfig.json` covers every TypeScript file under `AEP-Components`.
+- The new CI job `TypeScript typecheck, lint and tests` runs `npm ci`, `tsc --noEmit`, ESLint with typescript-eslint at zero warnings and vitest. Each step blocks.
+- 72 test files with 1210 tests cover every normative component. They need no network, no child process and no Rust binary.
+- Every TypeScript and mjs component README states its status (normative, reference or sketch) and its stability. `AEP-Components/README.md` defines the three values.
+- The components eval, optimization, proxy, fleet, workflow, coding-governance and semantic-topology are removed. They imported the TypeScript SDK gateway, the aep-subprotocol binary or the commerce schema, which earlier releases removed. Their registry entries and every reference to them are gone. The fleet block of a policy document is still parsed: its schema now lives in policy-engine. The commerce block is no longer read.
+- The dynAEP timing scripts and their workflow are removed because they imported the removed SDK. The hook loader ships its pass-through hook (`noopValidationHook`) itself because its example hooks were removed. A config that names the MLE hook gets DENY on custom constraints until the host registers one. The wizard folder is removed because it held a byte copy of `platform-core/lib/paths.mjs`.
+- zod moves to 4.6.7 because 3.x carries a high memory exhaustion advisory. Object defaults use `prefault` so nested defaults of a policy document still apply.
+- Faults the strict typecheck and the new tests found are fixed. Merkle proofs for the last leaf of an odd layer did not verify. A child task could gain unrestricted scope when its scope did not overlap its parent. A dataset name could leave the dataset folder. The model gateway charged a call twice and never returned the concurrency permit of a stream. The lattice-gated-fetch module carried its SSRF block five times and the mjs copy did not load. The admit writing walls called an undefined function. hyperlattice and platform-core read a catalog key the catalog no longer has. The GAP to Rego and GAP to Cedar transpilers left line breaks unescaped. The webhook, SSE and poll observers mishandled non-object JSON, CRLF streams and prototype keys. OTLP trace ids could carry a minus sign. x402 accepted a signature from an earlier session.
+
 ## [2.9.0] - 2026-11-09 - Every listed conformance check runs and language neutral vectors ship
 The conformance manifest listed 15 vitest checks and the harness shipped no test files, so run.sh skipped all 15 and public compliance rested on the checks that did run. The Rust runner also used CC-15 for a check the manifest did not name. Running the suite needed a Rust build, so no third party could check its own implementation without Rust.
 

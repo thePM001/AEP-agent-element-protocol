@@ -52,6 +52,14 @@ export class BudgetEnforcer {
     this.spentMicroUsd.set(key, (this.spentMicroUsd.get(key) || 0) + cost);
   }
 
+  /** Return a previously recorded charge (for example a reservation); never goes below zero. */
+  release(estimate: CostEstimate, scope?: string): void {
+    if (!this.config.enabled) return;
+    const key = scope || "default";
+    const cost = estimate.estimated_prompt_micro_usd + (estimate.estimated_completion_micro_usd || 0);
+    this.spentMicroUsd.set(key, Math.max(0, (this.spentMicroUsd.get(key) || 0) - cost));
+  }
+
   /** M-7: atomic check+record to close TOCTOU under concurrent async callers */
   checkAndRecord(estimate: CostEstimate, scope?: string): BudgetStatus {
     const status = this.check(estimate, scope);

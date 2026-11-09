@@ -1,5 +1,7 @@
 # GAP: Governed Agentic Programming
 
+Status: normative. Stability: stable.
+
 GAP is the native instructions language for governed agency in the Agent Element Protocol and an instruction is the atomic unit so agents, workflows, validators, compositions and governance rules are all instructions that generate further instructions.
 
 Live evaluation follows AEP 2.9: seal a lattice-channel capsule, freeze the clock at seal, wait 1000 ms, run every check together as collect-all Admit and then Apply the allowed action. After the wait the client collects by capsule hash and live AEP 2.9 EPSCOM trust bundle mode is sha256-structure. Presence of trust_ring is Deny. Who-may is agent_permission.

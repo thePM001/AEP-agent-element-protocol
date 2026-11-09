@@ -1,5 +1,7 @@
 # MCP Security
 
+Status: normative. Stability: stable.
+
 MCP security scanners and policies.
 
 - **Component ID:** `mcp-security`

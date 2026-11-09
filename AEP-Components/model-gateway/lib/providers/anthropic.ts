@@ -1,7 +1,13 @@
 // AEP 2.9 - Anthropic Provider Adapter
 // Lattice-gated fetch via inference_engine dock.
 
-import type { ProviderAdapter, ModelConfig, ModelRequest, ModelResponse } from "../types.js";
+import type {
+  ProviderAdapter,
+  ModelConfig,
+  ModelRequest,
+  ModelResponse,
+  GatewayFetch,
+} from "../types.js";
 import { latticeGatedFetch } from "../../../lattice-channels/client/lattice/index.js";
 
 const DEFAULT_BASE_URL = "https://api.anthropic.com";
@@ -36,6 +42,12 @@ interface AnthropicStreamEvent {
 
 export class AnthropicAdapter implements ProviderAdapter {
   readonly provider = "anthropic" as const;
+  private readonly fetchImpl: GatewayFetch;
+
+  /** @param fetchImpl outbound HTTP; defaults to the lattice-gated fetch. */
+  constructor(fetchImpl: GatewayFetch = latticeGatedFetch) {
+    this.fetchImpl = fetchImpl;
+  }
 
   async complete(request: ModelRequest, config: ModelConfig): Promise<ModelResponse> {
     const start = Date.now();
@@ -73,7 +85,7 @@ export class AnthropicAdapter implements ProviderAdapter {
     const timeout = setTimeout(() => controller.abort(), config.timeoutMs ?? 120000);
 
     try {
-      const res = await latticeGatedFetch(
+      const res = await this.fetchImpl(
         `${baseUrl}/v1/messages`,
         {
           method: "POST",
@@ -151,7 +163,7 @@ export class AnthropicAdapter implements ProviderAdapter {
     const timeout = setTimeout(() => controller.abort(), config.timeoutMs ?? 120000);
 
     try {
-      const res = await latticeGatedFetch(
+      const res = await this.fetchImpl(
         `${baseUrl}/v1/messages`,
         {
           method: "POST",

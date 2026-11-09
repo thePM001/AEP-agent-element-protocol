@@ -346,17 +346,6 @@
       "role": "companion"
     },
     {
-      "id": "fleet",
-      "name": "Fleet Governance",
-      "kind": "library",
-      "bundled": true,
-      "default_enabled": false,
-      "path": "AEP-Components/fleet/",
-      "description": "Multi-agent fleet manager, spawn governance, message scanning.",
-      "manifest": "AEP-Base-Node/AEP-Registry/components/fleet.json",
-      "role": "companion"
-    },
-    {
       "id": "covenant",
       "name": "Behavioral Covenants",
       "kind": "library",
@@ -401,17 +390,6 @@
       "role": "companion"
     },
     {
-      "id": "workflow",
-      "name": "Workflow Phases",
-      "kind": "library",
-      "bundled": true,
-      "default_enabled": false,
-      "path": "AEP-Components/workflow/",
-      "description": "Multi-phase workflow executor and fine-tuning templates.",
-      "manifest": "AEP-Base-Node/AEP-Registry/components/workflow.json",
-      "role": "companion"
-    },
-    {
       "id": "identity",
       "name": "Agent Identity",
       "kind": "library",
@@ -453,17 +431,6 @@
       "path": "AEP-Components/telemetry/",
       "description": "OpenTelemetry span and event exporter for AEP.",
       "manifest": "AEP-Base-Node/AEP-Registry/components/telemetry.json",
-      "role": "companion"
-    },
-    {
-      "id": "proxy",
-      "name": "AEP Proxy",
-      "kind": "library",
-      "bundled": true,
-      "default_enabled": false,
-      "path": "AEP-Components/proxy/",
-      "description": "MCP and shell proxy servers under lattice governance.",
-      "manifest": "AEP-Base-Node/AEP-Registry/components/proxy.json",
       "role": "companion"
     },
     {
@@ -522,28 +489,6 @@
       "role": "companion"
     },
     {
-      "id": "eval",
-      "name": "Eval Lifecycle",
-      "kind": "library",
-      "bundled": true,
-      "default_enabled": false,
-      "path": "AEP-Components/eval/",
-      "description": "Eval runner, rule generator and ML metrics.",
-      "manifest": "AEP-Base-Node/AEP-Registry/components/eval.json",
-      "role": "companion"
-    },
-    {
-      "id": "optimization",
-      "name": "Prompt Optimization",
-      "kind": "library",
-      "bundled": true,
-      "default_enabled": false,
-      "path": "AEP-Components/optimization/",
-      "description": "Governed prompt optimizer and version manager.",
-      "manifest": "AEP-Base-Node/AEP-Registry/components/optimization.json",
-      "role": "companion"
-    },
-    {
       "id": "permissions",
       "name": "Permissions",
       "kind": "library",
@@ -588,17 +533,6 @@
       "role": "kernel"
     },
     {
-      "id": "coding-governance",
-      "name": "Coding Governance",
-      "kind": "library",
-      "bundled": true,
-      "default_enabled": false,
-      "path": "AEP-Components/coding-governance/",
-      "description": "Pre-change intent and blast radius for AI coding.",
-      "manifest": "AEP-Base-Node/AEP-Registry/components/coding-governance.json",
-      "role": "companion"
-    },
-    {
       "id": "intent-ledger",
       "name": "Intent Ledger",
       "kind": "library",
@@ -610,26 +544,15 @@
       "role": "companion"
     },
     {
-      "id": "semantic-topology",
-      "name": "Semantic Topology",
+      "id": "admit",
+      "name": "Admit",
       "kind": "library",
       "bundled": true,
-      "default_enabled": false,
-      "path": "AEP-Components/semantic-topology/",
-      "description": "Semantic DAG builder for features, invariants, and blast-radius visualization.",
-      "manifest": "AEP-Base-Node/AEP-Registry/components/semantic-topology.json",
-      "role": "companion"
-    },
-    {
-     "id": "admit",
-     "name": "Admit",
-     "kind": "library",
-     "bundled": true,
-     "default_enabled": true,
-     "path": "AEP-Components/admit/",
-     "description": "Admit walls: AND collect-all live evaluator. Rust crate is the spec. JS admit.mjs is the live dynAEP path.",
-     "manifest": "AEP-Base-Node/AEP-Registry/components/admit.json",
-     "role": "kernel"
+      "default_enabled": true,
+      "path": "AEP-Components/admit/",
+      "description": "Admit walls: AND collect-all live evaluator. Rust crate is the spec. JS admit.mjs is the live dynAEP path.",
+      "manifest": "AEP-Base-Node/AEP-Registry/components/admit.json",
+      "role": "kernel"
     }
   ]
 }

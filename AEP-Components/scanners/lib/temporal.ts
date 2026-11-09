@@ -31,44 +31,41 @@ const PROMOTION_PATTERNS: RegExp[] = [
 ];
 
 function parseDate(dateStr: string, format: string): Date | null {
-  try {
-    switch (format) {
-      case "iso": {
-        const [y, m, d] = dateStr.split("-").map(Number);
-        return new Date(y, m - 1, d);
-      }
-      case "month_dd_yyyy": {
-        const parts = dateStr.match(
-          /(\w+)\s+(\d+),?\s+(\d+)/
-        );
-        if (!parts) return null;
-        const month = MONTH_MAP[parts[1].toLowerCase()];
-        if (month === undefined) return null;
-        return new Date(parseInt(parts[3]), month, parseInt(parts[2]));
-      }
-      case "dd_mm_yyyy": {
-        const [d, m, y] = dateStr.split("/").map(Number);
-        return new Date(y, m - 1, d);
-      }
-      case "quarter": {
-        const qParts = dateStr.match(/Q(\d)\s+(\d{4})/);
-        if (!qParts) return null;
-        const q = parseInt(qParts[1]);
-        const year = parseInt(qParts[2]);
-        return new Date(year, (q - 1) * 3, 1);
-      }
-      case "month_year": {
-        const mParts = dateStr.match(/(\w+)\s+(\d{4})/);
-        if (!mParts) return null;
-        const mo = MONTH_MAP[mParts[1].toLowerCase()];
-        if (mo === undefined) return null;
-        return new Date(parseInt(mParts[2]), mo, 1);
-      }
-      default:
-        return null;
+  switch (format) {
+    case "iso": {
+      const [y, m, d] = dateStr.split("-").map(Number);
+      if (y === undefined || m === undefined || d === undefined) return null;
+      return new Date(y, m - 1, d);
     }
-  } catch {
-    return null;
+    case "month_dd_yyyy": {
+      const parts = dateStr.match(/(\w+)\s+(\d+),?\s+(\d+)/);
+      const [, monthName, day, year] = parts ?? [];
+      if (monthName === undefined || day === undefined || year === undefined) return null;
+      const month = MONTH_MAP[monthName.toLowerCase()];
+      if (month === undefined) return null;
+      return new Date(parseInt(year, 10), month, parseInt(day, 10));
+    }
+    case "dd_mm_yyyy": {
+      const [d, m, y] = dateStr.split("/").map(Number);
+      if (y === undefined || m === undefined || d === undefined) return null;
+      return new Date(y, m - 1, d);
+    }
+    case "quarter": {
+      const qParts = dateStr.match(/Q(\d)\s+(\d{4})/i);
+      const [, quarter, year] = qParts ?? [];
+      if (quarter === undefined || year === undefined) return null;
+      return new Date(parseInt(year, 10), (parseInt(quarter, 10) - 1) * 3, 1);
+    }
+    case "month_year": {
+      const mParts = dateStr.match(/(\w+)\s+(\d{4})/);
+      const [, monthName, year] = mParts ?? [];
+      if (monthName === undefined || year === undefined) return null;
+      const mo = MONTH_MAP[monthName.toLowerCase()];
+      if (mo === undefined) return null;
+      return new Date(parseInt(year, 10), mo, 1);
+    }
+    default:
+      return null;
   }
 }
 

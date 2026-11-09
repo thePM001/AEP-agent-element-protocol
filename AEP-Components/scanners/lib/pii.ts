@@ -25,7 +25,7 @@ function luhnCheck(num: string): boolean {
   let sum = 0;
   let alt = false;
   for (let i = digits.length - 1; i >= 0; i--) {
-    let n = parseInt(digits[i], 10);
+    let n = Number(digits.charAt(i));
     if (alt) {
       n *= 2;
       if (n > 9) n -= 9;

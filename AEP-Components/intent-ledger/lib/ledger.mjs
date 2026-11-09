@@ -148,7 +148,7 @@ export function listIntentSnapshots(dataDir, limit = 20) {
     })
     .sort((a, b) => b.mtime - a.mtime)
     .slice(0, limit);
-  return rows.map(({ mtime, ...rest }) => rest);
+  return rows.map(({ mtime: _mtime, ...rest }) => rest);
 }
 
 export function saveIntentSnapshot(dataDir, intentId, declaration, blastRadius) {

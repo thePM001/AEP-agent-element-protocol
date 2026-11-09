@@ -10,6 +10,7 @@ import {
   listPlatformMandatoryPolicies,
   loadLrpModule,
 } from "../../platform-core/lib/lrp.mjs";
+import { platformWritingAuthority } from "./policy-lattice.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "../../..");
@@ -100,7 +101,7 @@ export function loadPolicySystemContext(repoRoot = REPO_ROOT) {
     compliance_modules: listComplianceModules(catalog),
     platform_contracts: listPlatformContracts(catalog),
     platform_mandatory_policies: listPlatformMandatoryPolicies(catalog),
-    epscom: catalog.epscom,
+    epscom: platformWritingAuthority(catalog),
   };
 }
 
@@ -148,7 +149,7 @@ export function formatPolicySystemForPrompt(ctx) {
     "AEP Policy System (canonical: AEP-Policy-System/):",
     `EPSCOM (${ctx.epscom.id}, priority ${ctx.epscom.priority}) is supreme platform authority - not an LRP.`,
     "",
-    "Policy lattice hierarchy (most permissive → most restrictive):",
+    "Policy lattice hierarchy (most permissive to most restrictive):",
     ctx.hierarchy.map((h) => `- ${h.label}`).join("\n"),
     "",
     "Reference GAP policies (AEP-Policy-System/reference/):",

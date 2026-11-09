@@ -47,7 +47,7 @@ export class StreamMiddleware {
               reason: verdict.violation.reason,
             };
 
-            ledger?.append("stream:abort", abortInfo as unknown as Record<string, unknown>);
+            ledger?.append("stream:abort", { ...abortInfo });
 
             // Cancel the upstream reader
             try {

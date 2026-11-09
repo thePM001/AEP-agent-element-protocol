@@ -1,5 +1,7 @@
 # Task Decomposition
 
+Status: reference. Stability: evolving. The completion criteria tests_pass and custom are treated as met.
+
 Governed task tree decomposition and completion gates.
 
 - **Component ID:** `decomposition`

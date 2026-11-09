@@ -1,5 +1,7 @@
 # Proof Bundles
 
+Status: normative. Stability: evolving. The reliability weights are still tunable.
+
 Build and verify session proof bundles with reliability index.
 
 - **Component ID:** `proof-bundle`

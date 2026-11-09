@@ -19,7 +19,7 @@ export class ModelMapper {
 
   resolveFirst(canonicalName: string): ModelId | null {
     const ids = this.resolve(canonicalName);
-    return ids.length > 0 ? ids[0] : null;
+    return ids[0] ?? null;
   }
 
   static providerFromId(modelId: ModelId): ProviderId {
@@ -68,5 +68,5 @@ export class ModelMapper {
 export function resolveModelId(canonicalName: string, mapping?: ModelMapping): ModelId | null {
   if (!mapping) return null;
   const ids = mapping[canonicalName];
-  return ids && ids.length > 0 ? ids[0] : null;
+  return ids?.[0] ?? null;
 }

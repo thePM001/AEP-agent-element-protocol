@@ -13,7 +13,7 @@
 // This file imports from there. Do NOT redefine LatticeEvent.
 // =============================================================================
 
-import type { LatticeEvent } from "../bridge/lattice";
+import type { LatticeEvent } from "../bridge/lattice/index.js";
 
 // Re-export for adapter convenience
 export type { LatticeEvent };

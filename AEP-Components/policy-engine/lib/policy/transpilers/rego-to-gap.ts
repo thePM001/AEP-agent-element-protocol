@@ -15,8 +15,7 @@ export function transpileRegoToGap(regoSource: string): string {
   const invariants: Array<Record<string, string>> = [];
   const steps: string[] = [];
   constraints.push("rego:package:" + (pkg.length > 0 ? pkg : "data"));
-  for (let i = 0; i < rules.length; i++) {
-    const r = rules[i];
+  for (const [i, r] of rules.entries()) {
     steps.push(r.kind === "deny" ? "deny" : "allow");
     constraints.push("rego:" + r.kind + ":" + String(i + 1));
     if (r.msg.length > 0) {
@@ -51,7 +50,7 @@ function matchPackage(text: string): string {
   if (m === null) {
     return "";
   }
-  return m[1];
+  return m[1] ?? "";
 }
 
 function extractRules(text: string): RegoRule[] {
@@ -77,7 +76,7 @@ function extractRules(text: string): RegoRule[] {
     }
     const body = text.slice(start, end).trim();
     const msgMatch = body.match(/msg\s*:?=\s*sprintf\("([^"]+)"/) || body.match(/msg\s*:?=\s*"([^"]+)"/);
-    const msg = msgMatch !== null ? msgMatch[1] : "";
+    const msg = msgMatch?.[1] ?? "";
     out.push({ kind, body, msg });
   }
   return out;

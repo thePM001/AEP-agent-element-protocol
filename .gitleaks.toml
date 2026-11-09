@@ -30,7 +30,6 @@ paths = [
     '''(?:^|/)AEP-CAW/internal/proxy/integration_test\.go$''',
     '''(?:^|/)AEP-CAW/internal/proxy/secrets/vault/provider_test\.go$''',
     '''(?:^|/)AEP-CAW/internal/session/secrets_test\.go$''',
-    '''(?:^|/)AEP-Components/dynAEP/bench[m]arks/bench-005-scanner-throughput\.ts$''',
 ]
 regexes = [
     '''^s[k]_live_(?:FAKE|REAL)567890abcdef12$''',

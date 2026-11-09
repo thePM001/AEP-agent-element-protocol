@@ -7,7 +7,8 @@ import type { CovenantSpec } from "../../covenant/lib/types.js";
 import type { SessionReport } from "../../session/lib/session.js";
 import type { TaskTree } from "../../decomposition/lib/types.js";
 import { MerkleTree } from "../../evidence-ledger/lib/ledger/merkle.js";
-import { EvidenceLedger } from "../../evidence-ledger/lib/ledger/ledger.js";
+import type { EvidenceLedger } from "../../evidence-ledger/lib/ledger/ledger.js";
+import type { LedgerEntry } from "../../evidence-ledger/lib/ledger/types.js";
 
 export interface ProofBundleBuildContext {
   sessionReport: SessionReport;
@@ -81,7 +82,7 @@ export class ProofBundleBuilder {
   }
 
   static computeReliability(
-    entries: import("../ledger/types.js").LedgerEntry[],
+    entries: LedgerEntry[],
     trustScore: TrustScore,
     driftScore: number,
     weights: ReliabilityWeights,
@@ -188,7 +189,8 @@ export class ProofBundleBuilder {
       } catch (err) {
         // SEC-10 / C-4: no unauthenticated SHA-256(payload+key) soft signature
         throw new Error(
-          `Proof bundle signing failed (no soft hash fallback): ${err instanceof Error ? err.message : String(err)}`
+          `Proof bundle signing failed (no soft hash fallback): ${err instanceof Error ? err.message : String(err)}`,
+          { cause: err },
         );
       }
     }

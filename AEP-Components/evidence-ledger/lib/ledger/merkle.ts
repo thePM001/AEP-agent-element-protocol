@@ -10,8 +10,7 @@ export class MerkleTree {
   }
 
   getRoot(): string {
-    if (this.layers.length === 0) return MerkleTree.hash("");
-    return this.layers[this.layers.length - 1][0] ?? MerkleTree.hash("");
+    return this.layers.at(-1)?.[0] ?? MerkleTree.hash("");
   }
 
   generateProof(index: number): string[] {
@@ -19,14 +18,15 @@ export class MerkleTree {
     const proof: string[] = [];
     let idx = index;
 
-    for (let i = 0; i < this.layers.length - 1; i++) {
-      const layer = this.layers[i];
+    // The top layer is the root and has no sibling.
+    for (const layer of this.layers.slice(0, -1)) {
       const isRight = idx % 2 === 1;
       const siblingIdx = isRight ? idx - 1 : idx + 1;
-
-      if (siblingIdx < layer.length) {
-        proof.push((isRight ? "L:" : "R:") + layer[siblingIdx]);
-      }
+      // An odd last node is paired with itself in buildTree, so its proof step
+      // is its own hash on the right.
+      const sibling = layer[siblingIdx] ?? layer[idx];
+      if (sibling === undefined) break;
+      proof.push((isRight ? "L:" : "R:") + sibling);
       idx = Math.floor(idx / 2);
     }
 
@@ -64,20 +64,20 @@ export class MerkleTree {
   private buildTree(): string[][] {
     if (this.leaves.length === 0) return [];
     const layers: string[][] = [this.leaves];
+    let current = this.leaves;
 
-    while (layers[layers.length - 1].length > 1) {
-      const current = layers[layers.length - 1];
+    while (current.length > 1) {
       const next: string[] = [];
 
       for (let i = 0; i < current.length; i += 2) {
-        if (i + 1 < current.length) {
-          next.push(MerkleTree.hash(current[i] + current[i + 1]));
-        } else {
-          next.push(MerkleTree.hash(current[i] + current[i]));
-        }
+        const left = current[i] ?? "";
+        // Odd node count: the last node is paired with itself.
+        const right = current[i + 1] ?? left;
+        next.push(MerkleTree.hash(left + right));
       }
 
       layers.push(next);
+      current = next;
     }
 
     return layers;

@@ -1,6 +1,6 @@
 // AEP 2.9 - Scanner Pipeline
 // Orchestrates all content scanners in sequence.
-// Runs AFTER structural validation, BEFORE final approval.
+// Runs AFTER structural validation, BEFORE the closing approval.
 
 import type { Scanner, ScanResult, Finding, ScannersConfig } from "./types.js";
 import { PIIScanner } from "./pii.js";
@@ -110,7 +110,9 @@ export function createDefaultPipeline(config?: Partial<ScannersConfig>): Scanner
     scanners.push(
       new ToxicityScanner({
         severity: config?.toxicity?.severity ?? "soft",
-        custom_words: config?.toxicity?.custom_words,
+        ...(config?.toxicity?.custom_words !== undefined
+          ? { custom_words: config.toxicity.custom_words }
+          : {}),
       })
     );
   }
@@ -190,7 +192,9 @@ export function createDefaultPipeline(config?: Partial<ScannersConfig>): Scanner
         check_stale_references: config.temporal.check_stale_references,
         check_undated_statistics: config.temporal.check_undated_statistics,
         check_expired_content: config.temporal.check_expired_content,
-        reference_date: config.temporal.reference_date,
+        ...(config.temporal.reference_date !== undefined
+          ? { reference_date: config.temporal.reference_date }
+          : {}),
       })
     );
   }

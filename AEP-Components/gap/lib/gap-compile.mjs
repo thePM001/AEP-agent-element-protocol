@@ -280,6 +280,7 @@ export function listGapCawProfiles(repoRoot) {
 
 function isMain(importMetaUrl) {
   const entry = process.argv[1] ?? "";
+  if (entry === "") return false;
   return importMetaUrl.endsWith(entry) || entry.endsWith("gap-compile.mjs");
 }
 

@@ -72,7 +72,7 @@ export class RollbackManager {
     }
 
     const executor = this.compensationExecutor ?? this.defaultCompensationExecutor.bind(this);
-    let applied = false;
+    let applied: boolean;
     try {
       applied = executor(plan.compensationAction, plan);
     } catch (err) {
@@ -127,8 +127,7 @@ export class RollbackManager {
     const remaining: string[] = [];
 
     // Rollback in reverse order
-    for (let i = actionIds.length - 1; i >= 0; i--) {
-      const id = actionIds[i];
+    for (const id of [...actionIds].reverse()) {
       const result = this.rollback(id);
       results.push(result);
       // H-34: keep failed actions on the session list for retry

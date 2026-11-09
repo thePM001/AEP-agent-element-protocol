@@ -1,5 +1,7 @@
 # Cross-Agent Verification
 
+Status: normative. Stability: evolving.
+
 Handshake proofs and counterparty verification.
 
 - **Component ID:** `verification`

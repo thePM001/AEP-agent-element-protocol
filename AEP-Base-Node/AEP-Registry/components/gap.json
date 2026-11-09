@@ -52,7 +52,6 @@
       "user only wants raw ungoverned shell scripts without lattice"
     ],
     "pairs_with": [
-      "coding-governance",
       "dynaep-core",
       "policy-engine",
       "wasm-policy-sandbox"

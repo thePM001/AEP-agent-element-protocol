@@ -22,11 +22,11 @@ dynAEP-lattice:
 dynAEP-hook-loader:
   label: "Validation Hook Loader"
   category: governance
-  description: "Registers built-in MLE and noop hooks; resolves config aliases (mle -> mle-validator)."
+  description: "Registers the built-in noop hook and resolves config aliases (mle -> mle-validator). A host registers its own MLE hook."
   agent_permission: ["*"]
   version: "1.0.0"
   location: "bridge/hook-loader.ts"
-  dependencies: ["dynAEP-mle-hook", "dynAEP-hooks"]
+  dependencies: ["dynAEP-hooks"]
   interfaces:
     - "registerBuiltinHooks(registry) -> void"
     - "resolveHookName(configName) -> string | null"
@@ -34,7 +34,7 @@ dynAEP-hook-loader:
 dynAEP-hooks:
   label: "Validation Hook Interface"
   category: governance
-  description: "Pluggable validation hook trait. MLE reference implementation ships in box."
+  description: "Pluggable validation hook trait. The public tree ships the noop hook; an MLE hook is host supplied."
   agent_permission: ["*"]
   version: "1.0.0"
   location: "hooks/interface.ts"
@@ -64,16 +64,6 @@ dynAEP-lattice-registry:
   location: "registries/aep-lattice.yaml"
   dependencies: ["dynAEP-lattice"]
 
-dynAEP-mle-hook:
-  label: "MLE Validation Hook (Reference)"
-  category: validation
-  description: "Morpho-Logic Engine binary hypervector constraint checking. XOR + POPCNT on u64 vectors. Sub-millisecond per event."
-  agent_permission: ["*"]
-  version: "1.0.0"
-  location: "hooks/examples/mle-hook/index.ts"
-  dependencies: ["dynAEP-hooks"]
-  interfaces:
-    - "MleHook.validate(event, lattice, node) -> HookResult"
 
 dynAEP-lattice-policy:
   label: "Lattice Rego Policy"

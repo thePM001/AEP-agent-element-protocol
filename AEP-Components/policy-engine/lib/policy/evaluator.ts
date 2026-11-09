@@ -1,6 +1,7 @@
 import { randomUUID, createHash, verify as cryptoVerify, createPublicKey } from "node:crypto";
 import type {
   Policy,
+  ScannersPolicyConfig,
   AgentAction,
   Verdict,
   Capability,
@@ -15,6 +16,20 @@ import {
   createDefaultPipeline,
   type ScannerPipeline,
 } from "../../../scanners/lib/pipeline.js";
+import type { ScannersConfig } from "../../../scanners/lib/types.js";
+
+/**
+ * Policy scanner block as scanner pipeline config. The parsed policy carries
+ * `reference_date: undefined` when the key is absent; the pipeline config omits it.
+ */
+function scannersConfigFromPolicy(cfg: ScannersPolicyConfig): Partial<ScannersConfig> {
+  if (cfg === undefined) return {};
+  const { reference_date, ...temporal } = cfg.temporal;
+  return {
+    ...cfg,
+    temporal: reference_date === undefined ? temporal : { ...temporal, reference_date },
+  };
+}
 
 /** Canonical bytes for agent action signatures (identity gate). */
 function agentActionCanonical(action: AgentAction): Buffer {
@@ -64,9 +79,9 @@ export function labPolicyEvaluatorEnabled(): boolean {
 export class PolicyEvaluator {
   private policy: Policy;
   private policyHash: string;
-  private covenant?: CovenantSpec;
-  private intentDetector?: IntentDriftDetector;
-  private systemRateCounter?: { count: number; windowStart: number };
+  private covenant: CovenantSpec | undefined;
+  private intentDetector: IntentDriftDetector | undefined;
+  private systemRateCounter: { count: number; windowStart: number } | undefined;
   private systemRateLimit: number;
   private scanner: ScannerPipeline | null;
 
@@ -84,7 +99,7 @@ export class PolicyEvaluator {
       this.scanner = options.scanner;
     } else if (policy.scanners?.enabled !== false) {
       // Wire scanners from policy config (fail closed when enabled)
-      this.scanner = createDefaultPipeline(policy.scanners ?? {});
+      this.scanner = createDefaultPipeline(scannersConfigFromPolicy(policy.scanners));
     } else {
       this.scanner = null;
     }
@@ -448,7 +463,7 @@ export class PolicyEvaluator {
       // BM-13: broader ReDoS guard - nested quantifiers, huge patterns, catastrophic forms
       if (
         fp.pattern.length > 128 ||
-        /(?:\+\+|\*\*|\{\d{3,}|\(\?[^)]*\)[\*\+]|\.\*[\\.*+{])/.test(fp.pattern) ||
+        /(?:\+\+|\*\*|\{\d{3,}|\(\?[^)]*\)[*+]|\.\*[\\.*+{])/.test(fp.pattern) ||
         /(a\+)+|(\w\*){3,}/.test(fp.pattern)
       ) {
         // Unsafe as RegExp: literal substring match only
@@ -506,7 +521,7 @@ export class PolicyEvaluator {
         return false;
       }
       const id = String(action.input.id);
-      const prefix = id.split("-")[0];
+      const prefix = id.split("-")[0] ?? "";
       if (!scope.element_prefixes.includes(prefix)) {
         return false;
       }
@@ -522,9 +537,10 @@ export class PolicyEvaluator {
       }
       const inBand = scope.z_bands.some((band: string) => {
         const parts = band.split("-");
-        if (parts.length === 2) {
-          const lo = parseInt(parts[0], 10);
-          const hi = parseInt(parts[1], 10);
+        const [loText, hiText] = parts;
+        if (parts.length === 2 && loText !== undefined && hiText !== undefined) {
+          const lo = parseInt(loText, 10);
+          const hi = parseInt(hiText, 10);
           return z >= lo && z <= hi;
         }
         return false;
@@ -562,7 +578,7 @@ export class PolicyEvaluator {
       ) {
         return false;
       }
-      const cmd = String(action.input.command).split(/\s+/)[0];
+      const cmd = String(action.input.command).split(/\s+/)[0] ?? "";
       if (
         !scope.binaries.includes(cmd) &&
         !scope.binaries.includes("*")

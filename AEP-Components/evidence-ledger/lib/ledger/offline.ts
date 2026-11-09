@@ -15,10 +15,16 @@ export class OfflineLedger {
   private queue: OfflineEntry[] = [];
   private prevHash: string = "offline:0000";
   private seq: number = 0;
+  private readonly clock: () => Date;
+
+  /** `clock` is the time source for entry timestamps (defaults to the system clock). */
+  constructor(options?: { clock?: () => Date }) {
+    this.clock = options?.clock ?? (() => new Date());
+  }
 
   append(type: LedgerEntryType, data: Record<string, unknown>): OfflineEntry {
     this.seq++;
-    const ts = new Date().toISOString();
+    const ts = this.clock().toISOString();
     const payload = this.prevHash + type + JSON.stringify(data);
     const localHash = "offline:" + createHash("sha256").update(payload).digest("hex");
 

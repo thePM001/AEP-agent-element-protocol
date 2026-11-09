@@ -82,7 +82,9 @@ function parseJson<T>(raw: string, label: string): T {
   try {
     return JSON.parse(raw.trim()) as T;
   } catch (e) {
-    throw new Error(`${label}: invalid JSON from aep-ml-dsa: ${e instanceof Error ? e.message : String(e)}`);
+    throw new Error(`${label}: invalid JSON from aep-ml-dsa: ${e instanceof Error ? e.message : String(e)}`, {
+      cause: e,
+    });
   }
 }
 

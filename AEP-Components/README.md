@@ -15,6 +15,31 @@ Infrastructure and top-level surfaces outside this folder:
 
 The catalog resolves component paths via `AEP-Base-Node/AEP-Registry/catalog.json` (`repository.components_root`).
 
+## Component status
+
+Every TypeScript and mjs component README carries one line after its title: `Status: <status>. Stability: <stability>.`
+
+| Status | Meaning |
+|--------|---------|
+| normative | AEP relies on this code at runtime or in a release gate. It typechecks strictly and has tests. |
+| reference | A tested implementation of a contract that a Rust crate or the host owns. A tested library that the live path does not call is reference too. |
+| sketch | Illustrative code under a `sketch/` folder. It compiles and is not shipped behaviour. |
+
+Stability is `stable`, `evolving` or `experimental`.
+
+## TypeScript and mjs checks
+
+The root `package.json` is an npm workspace over the TypeScript and mjs components. `tsconfig.base.json` holds the strict compiler settings (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`). Run from the repository root:
+
+```bash
+npm ci
+npm run typecheck   # tsc -p tsconfig.json, no emit
+npm run lint        # eslint with typescript-eslint, zero warnings
+npm test            # vitest over AEP-Components/**/*.test.{ts,mjs}
+```
+
+The CI job `TypeScript typecheck, lint and tests` in `.github/workflows/baseline.yml` runs the same four steps and blocks on each. Tests live in `<component>/tests/`. A single component runs with `npx vitest run AEP-Components/<component>`.
+
 ## Kernel pulse owner
 
 The kernel pulse (the 1000 ms wait after freeze-at-seal) is owned by Base Node at `AEP-Base-Node/` with constants in `AEP-Components/base-node-pulse/`. TypeScript dynAEP does not own it. `dynaep-config.yaml` has no `pulse_ms` key. Palette READMEs that do not mention the wait are not a second pulse owner. To change the wait in theory, rebuild Base Node after editing compiled `PULSE_MS`. Keep freeze-at-seal. Do not set kernel drift to the wait length. Keep age longer than the wait.

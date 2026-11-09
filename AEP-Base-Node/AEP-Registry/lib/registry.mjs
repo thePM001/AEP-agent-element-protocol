@@ -217,7 +217,6 @@ const COMPOSER_PALETTE_SKIP = new Set([
   "session",
   "policy-engine",
   "evidence-ledger",
-  "coding-governance",
   "gap",
   "agentmesh",
   "caw-framework",

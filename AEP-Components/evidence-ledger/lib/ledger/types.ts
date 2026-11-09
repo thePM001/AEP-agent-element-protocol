@@ -5,6 +5,7 @@ export type LedgerEntryType =
   | "action:result"
   | "action:gate"
   | "action:rollback"
+  | "aep:compensate"
   | "aep:validate"
   | "aep:reject"
   | "stream:abort"

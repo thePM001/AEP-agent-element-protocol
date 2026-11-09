@@ -1,6 +1,8 @@
 import { AgentIdentityManager } from "../../identity/lib/manager.js";
 import { MerkleTree } from "../../evidence-ledger/lib/ledger/merkle.js";
 import type { ProofBundle, HandshakeResult, CovenantRequirement } from "./types.js";
+import type { AgentIdentity } from "../../identity/lib/types.js";
+import type { CovenantSpec } from "../../covenant/lib/types.js";
 
 function normalizeAction(action: string): string {
   return action.trim().replace(/\s+/g, " ").toUpperCase();
@@ -116,8 +118,8 @@ export function verifyCounterparty(
 }
 
 export function generateProof(
-  identity: import("../identity/types.js").AgentIdentity,
-  covenant: import("../covenant/types.js").CovenantSpec | null,
+  identity: AgentIdentity,
+  covenant: CovenantSpec | null,
   merkleRoot: string,
   actionCount: number
 ): ProofBundle {

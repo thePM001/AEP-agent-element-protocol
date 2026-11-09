@@ -37,8 +37,21 @@ const DOCK_BY_CONTRACT = {
   "iso-42001": "regulation_module",
 };
 
-export function buildPolicyLatticeView(activeRegulationLrps = []) {
-  const catalog = loadLrpCatalog();
+/**
+ * The supreme platform writing authority record of the LRP catalog. The catalog
+ * names it correctwriting_en; older catalogs named it epscom.
+ * @param {object} catalog
+ */
+export function platformWritingAuthority(catalog) {
+  const record = catalog?.correctwriting_en ?? catalog?.epscom ?? null;
+  if (!record || !record.id) {
+    throw new Error("LRP catalog has no platform writing authority record (correctwriting_en)");
+  }
+  return record;
+}
+
+export function buildPolicyLatticeView(activeRegulationLrps = [], catalog = loadLrpCatalog()) {
+  const epscom = platformWritingAuthority(catalog);
   const regulationLrps = activeRegulationLrps.length
     ? activeRegulationLrps.filter((id) => catalog.lrps?.some((l) => l.id === id))
     : (catalog.lrps ?? []).filter((l) => l.default_enabled).map((l) => l.id);
@@ -53,11 +66,11 @@ export function buildPolicyLatticeView(activeRegulationLrps = []) {
 
   const channelBindings = [
     {
-      lrp_id: catalog.epscom.id,
-      contract_id: catalog.epscom.id,
-      channel_id: `ch-${catalog.epscom.id}`,
-      docking_port: DOCK_BY_CONTRACT[catalog.epscom.id] ?? "regulation_module",
-      priority: catalog.epscom.priority,
+      lrp_id: epscom.id,
+      contract_id: epscom.id,
+      channel_id: `ch-${epscom.id}`,
+      docking_port: DOCK_BY_CONTRACT[epscom.id] ?? "regulation_module",
+      priority: epscom.priority,
       pq_capsule: true,
       agentmesh_required: true,
       epscom_supremacy: false,
@@ -95,7 +108,7 @@ export function buildPolicyLatticeView(activeRegulationLrps = []) {
   return {
     hierarchy: LATTICE_HIERARCHY,
     reference_policies: referencePolicies,
-    epscom: catalog.epscom,
+    epscom,
     platform_contracts: platformContracts,
     platform_mandatory_policies: platformMandatoryPolicies,
     active_regulation_lrps: regulationLrps.map((id) => {
@@ -119,7 +132,7 @@ export function buildPolicyLatticeView(activeRegulationLrps = []) {
         name: meta?.name ?? id,
         priority: meta?.priority ?? 0,
         mandatory: false,
-        epscom_priority: catalog.epscom.priority,
+        epscom_priority: epscom.priority,
         category: "compliance",
         framework: meta?.framework ?? null,
         gap_ref: meta?.gap_ref ?? null,
@@ -129,7 +142,7 @@ export function buildPolicyLatticeView(activeRegulationLrps = []) {
     }),
     compliance_modules: complianceModules,
     channel_bindings: channelBindings,
-    epscom_priority: catalog.epscom.priority,
+    epscom_priority: epscom.priority,
   };
 }
 

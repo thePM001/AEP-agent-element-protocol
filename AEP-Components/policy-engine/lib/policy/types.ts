@@ -1,11 +1,9 @@
 import { z } from "zod";
 import { ModelGatewayPolicySchema } from "../../../model-gateway/lib/types.js";
-import { CommercePolicySchema } from "../../../commerce/lib/types.js";
-import { FleetPolicySchema } from "../../../fleet/lib/types.js";
 
 export const CapabilitySchema = z.object({
   tool: z.string(),
-  scope: z.record(z.array(z.string())).optional().default({}),
+  scope: z.record(z.string(), z.array(z.string())).prefault({}),
 });
 
 export const LimitsSchema = z.object({
@@ -68,11 +66,11 @@ export const TrustConfigSchema = z.object({
     rate_limit: z.number().nonnegative().optional().default(10),
     forbidden_match: z.number().nonnegative().optional().default(100),
     intent_drift: z.number().nonnegative().optional().default(75),
-  }).optional().default({}),
+  }).prefault({}),
   rewards: z.object({
     successful_action: z.number().nonnegative().optional().default(5),
     successful_rollback: z.number().nonnegative().optional().default(10),
-  }).optional().default({}),
+  }).prefault({}),
 }).optional();
 
 export const RingConfigSchema = z.object({
@@ -80,11 +78,11 @@ export const RingConfigSchema = z.object({
   promotion: z.object({
     to_ring_1: z.object({
       require_approval: z.boolean().optional().default(false),
-    }).optional().default({}),
+    }).prefault({}),
     to_ring_0: z.object({
       require_approval: z.boolean().optional().default(true),
-    }).optional().default({}),
-  }).optional().default({}),
+    }).prefault({}),
+  }).prefault({}),
 }).optional();
 
 export const IntentConfigSchema = z.object({
@@ -217,23 +215,23 @@ export const TemporalScannerConfigSchema = z.object({
 
 export const ScannersConfigSchema = z.object({
   enabled: z.boolean().optional().default(true),
-  pii: ScannerItemConfigSchema.optional().default({}),
-  injection: ScannerItemConfigSchema.optional().default({}),
-  secrets: ScannerItemConfigSchema.optional().default({}),
-  jailbreak: ScannerItemConfigSchema.optional().default({}),
-  toxicity: ToxicityScannerConfigSchema.optional().default({}),
-  urls: URLScannerConfigSchema.optional().default({}),
-  profiler: DataProfileScannerConfigSchema.optional().default({}),
-  prediction: PredictionScannerConfigSchema.optional().default({}),
-  brand: BrandScannerConfigSchema.optional().default({}),
-  regulatory: RegulatoryScannerConfigSchema.optional().default({}),
-  temporal: TemporalScannerConfigSchema.optional().default({}),
+  pii: ScannerItemConfigSchema.prefault({}),
+  injection: ScannerItemConfigSchema.prefault({}),
+  secrets: ScannerItemConfigSchema.prefault({}),
+  jailbreak: ScannerItemConfigSchema.prefault({}),
+  toxicity: ToxicityScannerConfigSchema.prefault({}),
+  urls: URLScannerConfigSchema.prefault({}),
+  profiler: DataProfileScannerConfigSchema.prefault({}),
+  prediction: PredictionScannerConfigSchema.prefault({}),
+  brand: BrandScannerConfigSchema.prefault({}),
+  regulatory: RegulatoryScannerConfigSchema.prefault({}),
+  temporal: TemporalScannerConfigSchema.prefault({}),
 }).optional();
 
 export const WorkflowConfigSchema = z.object({
   enabled: z.boolean().optional().default(false),
   definition: z.string().optional(),
-  templates: z.record(z.array(z.string())).optional().default({}),
+  templates: z.record(z.string(), z.array(z.string())).prefault({}),
 }).optional();
 
 export const TelemetryConfigSchema = z.object({
@@ -258,13 +256,24 @@ export const KnowledgeConfigSchema = z.object({
   double_scan: z.boolean().optional().default(true),
 }).optional();
 
+// Fleet limits block of a policy document. The GAP meta schema carries the same
+// block under metadata.fleet.
+export const FleetPolicySchema = z.object({
+  enabled: z.boolean().optional().default(false),
+  max_agents: z.number().positive().optional().default(10),
+  max_total_cost_per_hour: z.number().nonnegative().optional().default(100),
+  max_ring0_agents: z.number().nonnegative().optional().default(1),
+  drift_pause_threshold: z.number().positive().optional().default(3),
+  require_parent_covenant_subset: z.boolean().optional().default(true),
+}).optional();
+
 export const PolicySchema = z.object({
   version: z.string(),
   name: z.string(),
   capabilities: z.array(CapabilitySchema),
   limits: LimitsSchema,
   gates: z.array(GateSchema).optional().default([]),
-  evidence: EvidenceConfigSchema.optional().default({}),
+  evidence: EvidenceConfigSchema.prefault({}),
   forbidden: z.array(ForbiddenPatternSchema).optional().default([]),
   session: SessionConfigSchema,
   remediation: RemediationConfigSchema.optional(),
@@ -285,7 +294,6 @@ export const PolicySchema = z.object({
   tracking: TrackingConfigSchema,
   knowledge: KnowledgeConfigSchema,
   model_gateway: ModelGatewayPolicySchema,
-  commerce: CommercePolicySchema,
   fleet: FleetPolicySchema,
 });
 
@@ -314,7 +322,6 @@ export type TelemetryPolicyConfig = z.infer<typeof TelemetryConfigSchema>;
 export type TrackingPolicyConfig = z.infer<typeof TrackingConfigSchema>;
 export type KnowledgePolicyConfig = z.infer<typeof KnowledgeConfigSchema>;
 export type ModelGatewayPolicyConfig = z.infer<typeof ModelGatewayPolicySchema>;
-export type CommercePolicyConfig = z.infer<typeof CommercePolicySchema>;
 export type FleetPolicyConfig = z.infer<typeof FleetPolicySchema>;
 
 export interface AgentAction {

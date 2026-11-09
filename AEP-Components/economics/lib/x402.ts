@@ -5,10 +5,10 @@
  */
 
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
-import { ProviderId } from './types.js';
 
 export enum PaymentScheme { Exact = "exact", UpTo = "upto", BatchSettlement = "batch-settlement" }
-export enum SignatureFormat { Ed25519 = "ed25519", Secp256k1 = "secp256k1" }
+// verifyPaymentSignature implements HMAC-SHA256 only; Ed25519 and Secp256k1 claims fail closed.
+export enum SignatureFormat { HmacSha256 = "hmac-sha256", Ed25519 = "ed25519", Secp256k1 = "secp256k1" }
 
 export const DEFAULT_X402 = {
   FACILITATOR_URL: process.env.X402_FACILITATOR_URL ?? "https://x402.facilitator.example",
@@ -103,6 +103,12 @@ export class X402Gateway {
     }
     const session = this.sessions.get(agentId);
     if (!session) { this.metrics.failed_verifications++; return { authorized: false, reason: "No active session" }; }
+    // The signed payload names a session; it must be the agent's live session, so a signature
+    // made for an earlier (closed) session of the same agent cannot be replayed here.
+    if (request.session_id !== session.session_id) {
+      this.metrics.failed_verifications++;
+      return { authorized: false, reason: "Session mismatch" };
+    }
     if (!Number.isFinite(request.amount_micro_usd) || request.amount_micro_usd <= 0) {
       this.metrics.failed_verifications++;
       return { authorized: false, reason: "amount_micro_usd must be positive" };
@@ -187,7 +193,7 @@ export class X402Gateway {
       return {
         settled: false,
         total_settled_micro_usd: 0,
-        error: settlement.error ?? "Facilitator settlement failed",
+        error: settlement.error || "Facilitator settlement failed",
       };
     }
     session.settled_micro_usd += amount;
@@ -206,7 +212,7 @@ export class X402Gateway {
     session: X402Session,
     request: X402SettleRequest,
     amount: number,
-  ): Promise<{ ok: boolean; settlementId?: string; error?: string }> {
+  ): Promise<{ ok: true; settlementId: string } | { ok: false; error: string }> {
     const url = `${this.config.facilitator_url.replace(/\/$/, "")}/v1/settle`;
     try {
       const res = await fetch(url, {

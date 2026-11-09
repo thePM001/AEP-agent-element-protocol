@@ -1,5 +1,7 @@
 # Evaluation Chain
 
+Status: reference. Stability: stable. The Rust crate is the normative meet; the TypeScript lib holds the step activation profile that mirrors it.
+
 Reference component. AEP 2.9 is a reference protocol library. This crate is not a factory.
 
 ## What it is

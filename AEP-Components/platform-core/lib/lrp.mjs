@@ -20,6 +20,20 @@ export function loadLrpModule(manifestPath) {
   return JSON.parse(readFileSync(resolved, "utf8"));
 }
 
+/**
+ * The supreme platform writing authority record of the LRP catalog. The catalog
+ * names it correctwriting_en; older catalogs named it epscom. Reading
+ * catalog.epscom alone threw a TypeError on the current catalog.
+ * @param {object} catalog
+ */
+export function platformWritingAuthority(catalog) {
+  const record = catalog?.correctwriting_en ?? catalog?.epscom ?? null;
+  if (!record || !record.id) {
+    throw new Error("LRP catalog has no platform writing authority record (correctwriting_en)");
+  }
+  return record;
+}
+
 export function listPlatformContracts(catalog) {
   return catalog.platform_contracts ?? [];
 }
@@ -59,8 +73,9 @@ async function promptLrpGroup(rl, promptYesNo, label, lrps, selected) {
 
 export async function selectLrpsInteractive(catalog, rl, promptYesNo) {
   const selected = [];
+  const authority = platformWritingAuthority(catalog);
   console.log(
-    `\nEPSCOM: ${catalog.epscom.name} (mandatory platform authority, priority ${catalog.epscom.priority}; not an LRP)`,
+    `\nEPSCOM: ${authority.name} (mandatory platform authority, priority ${authority.priority}; not an LRP)`,
   );
 
   const platform = listPlatformContracts(catalog);

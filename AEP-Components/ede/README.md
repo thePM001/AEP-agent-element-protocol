@@ -115,7 +115,7 @@ Drafts live under `AEP_EDE_ROOT`, by default `~/.aep-ede`. `aep-ede expire <draf
 
 ## Where it sits in AEP
 
-The EDE is the coding agent side of Admit. Coding governance (`AEP-Components/coding-governance`) links governance records to git state. The EDE decides how the git state of a coding agent may change at all: through a scanned draft and nothing else.
+The EDE is the coding agent side of Admit. The EDE decides how the git state of a coding agent may change at all: through a scanned draft and nothing else.
 
 ## Build and test
 

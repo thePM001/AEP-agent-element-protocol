@@ -168,7 +168,7 @@ export class TaskDecompositionManager {
     if (scope.allowedPrefixes.length > 0) {
       const id = input.id ?? input.elementId ?? input.target;
       if (typeof id === "string" && id.includes("-")) {
-        const prefix = id.split("-")[0];
+        const prefix = id.slice(0, id.indexOf("-"));
         if (!scope.allowedPrefixes.includes(prefix)) {
           return `AEP prefix "${prefix}" is outside task scope. Allowed: ${scope.allowedPrefixes.join(", ")}`;
         }
@@ -298,47 +298,58 @@ export class TaskDecompositionManager {
    * A child can NEVER have more access than its parent.
    */
   private intersectScope(parentScope: TaskScope, childScope: TaskScope): TaskScope {
+    const allowedTools =
+      childScope.allowedTools.length > 0
+        ? childScope.allowedTools.filter(
+            (t) =>
+              parentScope.allowedTools.length === 0 ||
+              parentScope.allowedTools.includes(t) ||
+              parentScope.allowedTools.some((pt) => {
+                if (pt === "*") return true;
+                if (pt.endsWith(":*")) return t.startsWith(pt.slice(0, -1));
+                return false;
+              })
+          )
+        : [...parentScope.allowedTools];
+
+    const allowedPrefixes =
+      childScope.allowedPrefixes.length > 0
+        ? childScope.allowedPrefixes.filter(
+            (p) =>
+              parentScope.allowedPrefixes.length === 0 ||
+              parentScope.allowedPrefixes.includes(p)
+          )
+        : [...parentScope.allowedPrefixes];
+
+    const allowedPaths =
+      childScope.allowedPaths.length > 0
+        ? childScope.allowedPaths.filter(
+            (p) =>
+              parentScope.allowedPaths.length === 0 ||
+              parentScope.allowedPaths.some(
+                (pp) =>
+                  p === pp ||
+                  p.startsWith(pp.replace(/\/?\*\*?$/, "") + "/") ||
+                  pp === "*" ||
+                  pp === "**"
+              )
+          )
+        : [...parentScope.allowedPaths];
+
+    // An empty allow-list means "unrestricted". If the child declared entries and
+    // none of them survive the intersection, the child may do nothing in that
+    // dimension; leaving the list empty would widen it to unrestricted. Fail
+    // closed with a zero action budget instead.
+    const emptied =
+      (childScope.allowedTools.length > 0 && allowedTools.length === 0) ||
+      (childScope.allowedPrefixes.length > 0 && allowedPrefixes.length === 0) ||
+      (childScope.allowedPaths.length > 0 && allowedPaths.length === 0);
+
     return {
-      allowedTools:
-        childScope.allowedTools.length > 0
-          ? childScope.allowedTools.filter(
-              (t) =>
-                parentScope.allowedTools.length === 0 ||
-                parentScope.allowedTools.includes(t) ||
-                parentScope.allowedTools.some((pt) => {
-                  if (pt === "*") return true;
-                  if (pt.endsWith(":*")) return t.startsWith(pt.slice(0, -1));
-                  return false;
-                })
-            )
-          : [...parentScope.allowedTools],
-
-      allowedPrefixes:
-        childScope.allowedPrefixes.length > 0
-          ? childScope.allowedPrefixes.filter(
-              (p) =>
-                parentScope.allowedPrefixes.length === 0 ||
-                parentScope.allowedPrefixes.includes(p)
-            )
-          : [...parentScope.allowedPrefixes],
-
-      allowedPaths:
-        childScope.allowedPaths.length > 0
-          ? childScope.allowedPaths.filter(
-              (p) =>
-                parentScope.allowedPaths.length === 0 ||
-                parentScope.allowedPaths.some(
-                  (pp) =>
-                    p === pp ||
-                    p.startsWith(pp.replace(/\/?\*\*?$/, "") + "/") ||
-                    pp === "*" ||
-                    pp === "**"
-                )
-            )
-          : [...parentScope.allowedPaths],
-
-      maxActions: Math.min(parentScope.maxActions, childScope.maxActions),
-
+      allowedTools,
+      allowedPrefixes,
+      allowedPaths,
+      maxActions: emptied ? 0 : Math.min(parentScope.maxActions, childScope.maxActions),
       inheritFromParent: childScope.inheritFromParent,
     };
   }

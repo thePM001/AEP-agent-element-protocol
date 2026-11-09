@@ -45,8 +45,10 @@ function traceIdFromSession(sessionId: string): string {
   return (
     h1.toString(16).padStart(8, "0") +
     h2.toString(16).padStart(8, "0") +
-    (h1 ^ h2).toString(16).padStart(8, "0") +
-    Math.imul(h1 || 1, (h2 || 1) >>> 0).toString(16).padStart(8, "0")
+    // XOR and Math.imul yield signed 32-bit ints; >>> 0 keeps them unsigned so
+    // the id never carries a "-" sign and is valid OTLP hex.
+    ((h1 ^ h2) >>> 0).toString(16).padStart(8, "0") +
+    (Math.imul(h1 || 1, h2 || 1) >>> 0).toString(16).padStart(8, "0")
   ).slice(0, 32);
 }
 
@@ -64,6 +66,29 @@ function spanIdFromSeq(seq: number, salt: string): string {
 function isoToNano(iso: string): string {
   const ms = new Date(iso).getTime();
   return (BigInt(ms) * 1_000_000n).toString();
+}
+
+type OtlpAnyValue =
+  | { stringValue: string }
+  | { intValue: number }
+  | { doubleValue: number }
+  | { boolValue: boolean };
+
+/**
+ * Encode span or event attributes as OTLP key/value pairs. OTLP intValue must be
+ * an integer, so fractional numbers (for example a latency of 12.5 ms) are sent
+ * as doubleValue.
+ */
+function toOtlpAttributes(
+  attributes: Record<string, string | number | boolean>,
+): Array<{ key: string; value: OtlpAnyValue }> {
+  return Object.entries(attributes).map(([key, v]) => {
+    let value: OtlpAnyValue;
+    if (typeof v === "string") value = { stringValue: v };
+    else if (typeof v === "number") value = Number.isInteger(v) ? { intValue: v } : { doubleValue: v };
+    else value = { boolValue: v };
+    return { key, value };
+  });
 }
 
 export class AEPTelemetryExporter {
@@ -310,25 +335,11 @@ export class AEPTelemetryExporter {
             kind: s.kind === "INTERNAL" ? 1 : s.kind === "CLIENT" ? 3 : 2,
             startTimeUnixNano: s.startTimeUnixNano,
             endTimeUnixNano: s.endTimeUnixNano,
-            attributes: Object.entries(s.attributes).map(([k, v]) => ({
-              key: k,
-              value: typeof v === "string"
-                ? { stringValue: v }
-                : typeof v === "number"
-                ? { intValue: v }
-                : { boolValue: v },
-            })),
+            attributes: toOtlpAttributes(s.attributes),
             events: s.events.map((e) => ({
               name: e.name,
               timeUnixNano: e.timeUnixNano,
-              attributes: Object.entries(e.attributes).map(([k, v]) => ({
-                key: k,
-                value: typeof v === "string"
-                  ? { stringValue: v }
-                  : typeof v === "number"
-                  ? { intValue: v }
-                  : { boolValue: v },
-              })),
+              attributes: toOtlpAttributes(e.attributes),
             })),
             status: { code: s.status.code === "OK" ? 1 : 2, message: s.status.message },
           })),

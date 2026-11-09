@@ -8,11 +8,16 @@ import { PriceCatalogEntry, ModelPrice, ProviderId } from './types.js';
 
 export class PriceCatalog {
   private entries: Map<string, PriceCatalogEntry>;
+  private duplicates: string[];
 
   constructor(entries: PriceCatalogEntry[] = []) {
     this.entries = new Map();
+    this.duplicates = [];
     for (const e of entries) {
-      this.entries.set(`${e.provider}/${e.model}`, e);
+      const key = `${e.provider}/${e.model}`;
+      // The later entry wins; remember the clash so validate() can report it.
+      if (this.entries.has(key)) this.duplicates.push(key);
+      this.entries.set(key, e);
     }
   }
 
@@ -56,11 +61,9 @@ export class PriceCatalog {
 
   validate(): string[] {
     const errors: string[] = [];
-    const seen = new Set<string>();
+    for (const key of this.duplicates) errors.push(`Duplicate entry: ${key}`);
     for (const entry of this.entries.values()) {
       const key = `${entry.provider}/${entry.model}`;
-      if (seen.has(key)) errors.push(`Duplicate entry: ${key}`);
-      seen.add(key);
       if (!entry.price) errors.push(`Missing price for ${key}`);
     }
     if (this.entries.size === 0) errors.push("Price catalog is empty");

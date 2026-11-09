@@ -57,7 +57,6 @@ export const CANVAS_SKIP_COMPONENT_IDS = new Set([
     "session",
   "policy-engine",
   "evidence-ledger",
-  "coding-governance",
   "gap",
   "agentmesh",
   "caw-framework",
@@ -198,7 +197,7 @@ export function matchIntentFromCatalog(userIntent, context) {
       inferenceOverride = {
         provider: "llama_cpp",
         model: "llama-3.1-8b",
-        base_url: "http://127.0.0.1:8080/v1",
+        base_url: "http://localhost:8080/v1",
       };
     }
     if (/openrouter|cloud\s*llm|\bgpt\b|claude/i.test(text)) {
@@ -214,11 +213,9 @@ export function matchIntentFromCatalog(userIntent, context) {
     }
     if (CAW_INTENT_PATTERN.test(text)) {
       matched.add("caw-framework");
-      matched.add("proxy");
       matched.add("session");
       matched.add("mcp-security");
       matched.add("gap");
-      matched.add("coding-governance");
     }
     if (DYNAEP_INTENT_PATTERN.test(text)) {
       matched.add("dynaep-core");
@@ -235,9 +232,7 @@ export function matchIntentFromCatalog(userIntent, context) {
       matched.add("dynaep-core");
       matched.add("policy-engine");
       if (/propose|blast\s*radius|solidify|coding[\s-]*govern|nool/i.test(text)) {
-        matched.add("coding-governance");
         matched.add("intent-ledger");
-        matched.add("semantic-topology");
       }
       if (/wasm|sandbox.*gap|gap\s*eval/i.test(text)) {
         matched.add("wasm-policy-sandbox");

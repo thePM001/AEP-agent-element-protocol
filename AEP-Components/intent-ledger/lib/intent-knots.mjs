@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 
 import { deriveEmbedding } from "./embedding.mjs";
 import { explainIntent } from "./ledger.mjs";
-import { expandHome, defaultPaths } from "../../wizard/lib/paths.mjs";
+import { expandHome, defaultPaths } from "../../platform-core/lib/paths.mjs";
 import {
   mirrorIntentKnotToAgentstream,
   resolveAgentstreamKnotConfig,
@@ -272,7 +272,6 @@ export function searchIntentKnots(intentId, opts = {}) {
       accepted_only: false,
     });
     const filtered = (matches ?? []).filter((m) => {
-      const p = m.entry?.proposal ?? m.entry?.metadata;
       const kind = m.entry?.proposal?.kind ?? m.entry?.metadata?.kind;
       const el = m.entry?.element_id;
       return kind === INTENT_KNOT_KIND || el === intentId;

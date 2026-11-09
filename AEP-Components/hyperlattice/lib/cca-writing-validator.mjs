@@ -125,11 +125,11 @@ export function lintCcaWritingHelpSymbolRefs(text, opts = {}) {
   const needs = [];
   if (/[?]|question mark/i.test(userMsg)) needs.push("`?`");
   if (/[!]|exclamation/i.test(userMsg)) needs.push("`!`");
-  if (/[\[]|bracket/i.test(userMsg)) needs.push("`[`");
+  if (/[[]|bracket/i.test(userMsg)) needs.push("`[`");
   if (/[\]]|bracket/i.test(userMsg)) needs.push("`]`");
   if (/[(]|parenthes/i.test(userMsg)) needs.push("`(`");
   if (/[)]|parenthes/i.test(userMsg)) needs.push("`)`");
-  if (!needs.length && /[?!\[\]\(\)]/.test(userMsg)) {
+  if (!needs.length && /[?![\]()]/.test(userMsg)) {
     needs.push("`?`", "`!`", "`[`", "`]`");
   }
   const missing = needs.filter((ref) => !trimmed.includes(ref));

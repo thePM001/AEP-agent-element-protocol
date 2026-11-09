@@ -142,11 +142,12 @@ export class DataProfileScanner implements Scanner {
     }
 
     // Check 4: Schema consistency (rows with different column counts)
-    if (rows.length > 1) {
-      const expectedKeys = Object.keys(rows[0]).sort().join(",");
+    const [firstRow, ...restRows] = rows;
+    if (firstRow !== undefined && restRows.length > 0) {
+      const expectedKeys = Object.keys(firstRow).sort().join(",");
       let inconsistentCount = 0;
-      for (let i = 1; i < rows.length; i++) {
-        const rowKeys = Object.keys(rows[i]).sort().join(",");
+      for (const row of restRows) {
+        const rowKeys = Object.keys(row).sort().join(",");
         if (rowKeys !== expectedKeys) {
           inconsistentCount++;
         }
@@ -163,8 +164,8 @@ export class DataProfileScanner implements Scanner {
     }
 
     // Check 5: Class imbalance (last column treated as label if categorical)
-    if (columns.length > 0) {
-      const labelCol = columns[columns.length - 1];
+    const labelCol = columns[columns.length - 1];
+    if (labelCol !== undefined) {
       const nonEmpty = labelCol.values.filter((v) => v !== "");
       const labelCounts = new Map<string, number>();
       for (const v of nonEmpty) {
@@ -196,16 +197,18 @@ export class DataProfileScanner implements Scanner {
     const lines = content.split("\n").filter((l) => l.trim() !== "");
     if (lines.length < 2) return null;
 
-    const headers = lines[0].split(",").map((h) => h.trim());
+    const [headerLine, ...dataLines] = lines;
+    if (headerLine === undefined) return null;
+    const headers = headerLine.split(",").map((h) => h.trim());
     if (headers.length === 0) return null;
 
     const rows: Record<string, string>[] = [];
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(",").map((v) => v.trim());
+    for (const line of dataLines) {
+      const values = line.split(",").map((v) => v.trim());
       const row: Record<string, string> = {};
-      for (let j = 0; j < headers.length; j++) {
-        row[headers[j]] = values[j] ?? "";
-      }
+      headers.forEach((header, j) => {
+        row[header] = values[j] ?? "";
+      });
       rows.push(row);
     }
 
@@ -213,9 +216,10 @@ export class DataProfileScanner implements Scanner {
   }
 
   private profileColumns(rows: Record<string, string>[]): ColumnProfile[] {
-    if (rows.length === 0) return [];
+    const firstRow = rows[0];
+    if (firstRow === undefined) return [];
 
-    const columnNames = Object.keys(rows[0]);
+    const columnNames = Object.keys(firstRow);
     return columnNames.map((name) => {
       const values = rows.map((r) => r[name] ?? "");
       const nullCount = values.filter(

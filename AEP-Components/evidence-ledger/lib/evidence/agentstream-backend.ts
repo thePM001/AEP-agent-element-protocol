@@ -3,12 +3,21 @@
  * All outbound calls are lattice-gated via inference_engine dock.
  */
 
-import { latticeGatedFetch } from "../../../lattice-channels/client/lattice/index.js";
+import { latticeGatedFetch, type LatticeGatewayMeta } from "../../../lattice-channels/client/lattice/index.js";
+
+/** Outbound HTTP shape. The default is the lattice-gated fetch. */
+export type AgentstreamFetch = (
+  url: string,
+  init: RequestInit,
+  meta: LatticeGatewayMeta,
+) => Promise<Response>;
 
 export interface AgentstreamConfig {
   url: string;
   capsule?: string;
   timeoutMs?: number;
+  /** Override the outbound client (tests inject a fake). Defaults to latticeGatedFetch. */
+  fetchImpl?: AgentstreamFetch;
 }
 
 export interface EvidenceEntry {
@@ -22,18 +31,20 @@ export class AgentstreamEvidenceBackend {
   private readonly url: string;
   private readonly capsule: string;
   private readonly timeoutMs: number;
+  private readonly fetchImpl: AgentstreamFetch;
 
   constructor(config: AgentstreamConfig) {
     this.url = config.url.replace(/\/$/, "");
     this.capsule = config.capsule ?? "aep-evidence";
     this.timeoutMs = config.timeoutMs ?? 5000;
+    this.fetchImpl = config.fetchImpl ?? ((url, init, meta) => latticeGatedFetch(url, init, meta));
   }
 
   async healthCheck(): Promise<{ ok: boolean; status: string }> {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), this.timeoutMs);
-      const res = await latticeGatedFetch(
+      const res = await this.fetchImpl(
         `${this.url}/api/health`,
         {
           signal: controller.signal,
@@ -66,7 +77,7 @@ export class AgentstreamEvidenceBackend {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
-      const res = await latticeGatedFetch(
+      const res = await this.fetchImpl(
         `${this.url}/api/evidence/${encodeURIComponent(this.capsule)}`,
         {
           method: "POST",

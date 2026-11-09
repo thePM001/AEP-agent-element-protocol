@@ -1,5 +1,7 @@
 # Streaming Validation
 
+Status: normative. Stability: evolving.
+
 Stream validator and middleware for governed output.
 
 - **Component ID:** `streaming`

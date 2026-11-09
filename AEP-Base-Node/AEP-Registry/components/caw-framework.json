@@ -79,7 +79,6 @@
       "gap-runtime-scanners",
       "evidence-ledger",
       "mcp-security",
-      "proxy",
       "session",
       "conformance-runner"
     ]

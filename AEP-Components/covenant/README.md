@@ -1,5 +1,7 @@
 # Behavioral Covenants
 
+Status: normative. Stability: stable.
+
 Parse, evaluate and compile behavioral covenant specs.
 
 - **Component ID:** `covenant`

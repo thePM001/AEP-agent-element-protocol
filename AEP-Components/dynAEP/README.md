@@ -1,10 +1,12 @@
 # dynAEP 1.0: Open-Source Real-Time Event Governance Protocol for AI
 
+Status: normative. Stability: evolving. The Action Lattice, the hook loader and the webhook, SSE and poll observers are tested; the MLE hook is host supplied.
+
 **Version 1.0** - June 2026
 **Author:** thePM_001
 **License:** Apache-2.0
 
-**Canonical source (AEP 2.8.6):** `AEP-Components/dynAEP/` in [https://github.com/thePM001/AEP-agent-element-protocol](https://github.com/thePM001/AEP-agent-element-protocol). There is no standalone mirror. The reserved-name conformance suite is at [https://github.com/thePM001/aep-conformance](https://github.com/thePM001/aep-conformance).
+**Canonical source (AEP 2.9):** `AEP-Components/dynAEP/` in [https://github.com/thePM001/AEP-agent-element-protocol](https://github.com/thePM001/AEP-agent-element-protocol). There is no standalone mirror. The reserved-name conformance suite is at [https://github.com/thePM001/aep-conformance](https://github.com/thePM001/aep-conformance).
 
 dynAEP 1.0 is an open-source protocol for governing real-time events in multi-agent AI systems. Events that carry an `action_path` and match an active lattice governance mode pass through the Action Lattice before downstream pipeline stages. The lattice validates partial-order dependencies, enforces constraints and routes matching events to interested agents. UI mutations, external events (webhooks, blockchain, email, sensors), agent actions and human-facing outputs share the same bridge architecture; lattice gating applies per `lattice.governance` and event shape (see §11).
 
@@ -598,13 +600,11 @@ interface ObserverAdapter {
 
 ### Built-in Adapters
 
-**WebhookAdapter** (`observers/webhook/`): HTTP POST receiver with optional HMAC-SHA256 verification. Defaults: `host: 127.0.0.1`, `port: 9000`, `endpoint: /events`, header `x-signature-256`. When HMAC is enabled and the lattice requires `required_field: signature`, the adapter injects the verified hex digest into `payload.signature` so lattice `required_field` checks pass.
+**WebhookAdapter** (`observers/webhook/`): HTTP POST receiver with optional HMAC-SHA256 verification. Defaults: the IPv4 loopback host (`DEFAULT_WEBHOOK_HOST`), `port: 9000`, `endpoint: /events`, header `x-signature-256`. When HMAC is enabled and the lattice requires `required_field: signature`, the adapter injects the verified hex digest into `payload.signature` so lattice `required_field` checks pass.
 
 **SSEAdapter** (`observers/sse/`): Server-Sent Events consumer with auto-reconnect.
 
 **PollAdapter** (`observers/poll/`): REST poller with diff-based change detection.
-
-**BlockchainAdapter** (`observers/examples/blockchain/`): reference Ethereum log poller only.
 
 **EmailAdapter**: not implemented; interface documented in `MIGRATION-v0.4-to-v1.0.md` for custom adapters.
 
@@ -720,7 +720,7 @@ For the full configuration reference including temporal authority, causal orderi
 
 ---
 
-## 13. SDK Packages (AEP 2.8 layout)
+## 13. SDK Packages (AEP 2.9 layout)
 
 ### Standalone Rust crate
 

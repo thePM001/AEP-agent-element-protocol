@@ -87,7 +87,7 @@ export interface UcmClientOptions {
 
 export class UcmClient {
   private baseUrl: string;
-  private apiKey?: string;
+  private apiKey: string | undefined;
   private fetchImpl: typeof fetch;
 
   constructor(opts: UcmClientOptions) {
@@ -99,12 +99,19 @@ export class UcmClient {
   private async call<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (this.apiKey) headers["authorization"] = `Bearer ${this.apiKey}`;
-    const res = await this.fetchImpl(`${this.baseUrl}${path}`, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-    const data = (await res.json()) as { ok?: boolean; error?: { code: string; message: string } };
+    const init: RequestInit = { method, headers };
+    if (body !== undefined) init.body = JSON.stringify(body);
+    // Call the fetch function unbound: browser fetch throws "Illegal invocation" when it
+    // is called as a method of another object.
+    const fetchFn = this.fetchImpl;
+    const res = await fetchFn(`${this.baseUrl}${path}`, init);
+    let data: { ok?: boolean; error?: { code: string; message: string } };
+    try {
+      data = (await res.json()) as { ok?: boolean; error?: { code: string; message: string } };
+    } catch {
+      // A proxy or crash page answers with HTML or an empty body; report it as a UcmError.
+      throw new UcmError(res.ok ? "bad_response" : "http_error", res.ok ? "response body is not JSON" : res.statusText, res.status);
+    }
     if (!res.ok || data.ok === false) {
       throw new UcmError(data.error?.code ?? "http_error", data.error?.message ?? res.statusText, res.status);
     }

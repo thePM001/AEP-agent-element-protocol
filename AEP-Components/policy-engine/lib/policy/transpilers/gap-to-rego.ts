@@ -10,22 +10,20 @@ export function transpileGapToRego(gapSource: string): string {
   if (gap.invariants.length === 0 && gap.constraints.length === 0) {
     throw new Error("GAP source has no invariants or constraints");
   }
-  for (let i = 0; i < gap.invariants.length; i++) {
-    const inv = gap.invariants[i];
+  for (const [i, inv] of gap.invariants.entries()) {
     const ident = identOf(inv.expr, i);
     lines.push("deny[msg] {");
     lines.push("  not input.satisfied[\"" + ident + "\"]");
     const desc = inv.description.length > 0 ? inv.description : inv.expr;
-    lines.push("  msg := sprintf(\"" + escapeRego(desc) + "\", [])");
+    lines.push("  msg := sprintf(\"" + sprintfText(desc) + "\", [])");
     lines.push("}");
     lines.push("");
   }
-  for (let i = 0; i < gap.constraints.length; i++) {
-    const c = gap.constraints[i];
+  for (const [i, c] of gap.constraints.entries()) {
     const ident = identOf(c, i + gap.invariants.length);
     lines.push("deny[msg] {");
     lines.push("  not input.constraints[\"" + ident + "\"]");
-    lines.push("  msg := sprintf(\"constraint failed: " + escapeRego(c) + "\", [])");
+    lines.push("  msg := sprintf(\"constraint failed: " + sprintfText(c) + "\", [])");
     lines.push("}");
     lines.push("");
   }
@@ -45,8 +43,8 @@ function parseGap(src: string): GapDoc {
     let parsed: unknown;
     try {
       parsed = JSON.parse(trimmed);
-    } catch (_e) {
-      throw new Error("GAP JSON is not parseable");
+    } catch (e) {
+      throw new Error("GAP JSON is not parseable", { cause: e });
     }
     return fromUnknown(parsed);
   }
@@ -135,6 +133,17 @@ function identOf(expr: string, i: number): string {
   return cleaned.slice(0, 72);
 }
 
+/** Text for a sprintf format string with no arguments: escaped, with `%` doubled. */
+function sprintfText(s: string): string {
+  return escapeRego(s).replace(/%/g, "%%");
+}
+
 function escapeRego(s: string): string {
-  return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  // Line breaks and tabs are escaped too: a raw newline is not valid inside a string literal.
+  return s
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t");
 }

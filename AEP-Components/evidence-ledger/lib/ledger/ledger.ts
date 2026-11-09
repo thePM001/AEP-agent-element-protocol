@@ -28,12 +28,15 @@ export class EvidenceLedger {
   private filePath: string;
   private seq: number = 0;
   private prevHash: string = ZERO_HASH;
-  private stateProvider?: () => Record<string, unknown>;
+  private stateProvider: (() => Record<string, unknown>) | undefined;
+  private clock: () => Date;
 
   constructor(options: {
     dir: string;
     sessionId: string;
     stateProvider?: () => Record<string, unknown>;
+    /** Time source for entry timestamps. Defaults to the system clock. */
+    clock?: () => Date;
   }) {
     this.dir = options.dir;
     if (!SAFE_SESSION_ID.test(options.sessionId)) {
@@ -41,6 +44,7 @@ export class EvidenceLedger {
     }
     this.sessionId = options.sessionId;
     this.stateProvider = options.stateProvider;
+    this.clock = options.clock ?? (() => new Date());
     this.filePath = join(this.dir, `${this.sessionId}.jsonl`);
 
     if (!existsSync(this.dir)) {
@@ -50,16 +54,16 @@ export class EvidenceLedger {
     // If file already exists, load the chain state
     if (existsSync(this.filePath)) {
       try {
-        const existing = this.entries();
-        if (existing.length > 0) {
-          const last = existing[existing.length - 1];
+        const last = this.entries().at(-1);
+        if (last) {
           this.seq = last.seq;
           this.prevHash = last.hash;
         }
       } catch (e) {
         // HIGH: do not silently reset tip over a non-empty corrupt file
         throw new Error(
-          `evidence ledger load failed for session ${this.sessionId}: ${e instanceof Error ? e.message : String(e)}`
+          `evidence ledger load failed for session ${this.sessionId}: ${e instanceof Error ? e.message : String(e)}`,
+          { cause: e },
         );
       }
     }
@@ -71,7 +75,7 @@ export class EvidenceLedger {
     options?: { tokens?: TokenUsage; cost?: CostRecord }
   ): LedgerEntry {
     this.seq++;
-    const ts = new Date().toISOString();
+    const ts = this.clock().toISOString();
     const hash = this.computeHash(this.prevHash, type, data);
 
     let stateRef: string | undefined;
@@ -144,14 +148,13 @@ export class EvidenceLedger {
     }
 
     const verification = this.verify();
+    const first = all[0];
+    const last = all.at(-1);
 
     return {
       sessionId: this.sessionId,
       entryCount: all.length,
-      timeRange:
-        all.length > 0
-          ? { first: all[0].ts, last: all[all.length - 1].ts }
-          : null,
+      timeRange: first && last ? { first: first.ts, last: last.ts } : null,
       actionCounts,
       chainValid: verification.valid,
     };

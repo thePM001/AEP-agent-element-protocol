@@ -8,7 +8,9 @@ import { CostEstimate, PriceCatalogEntry, ProviderId } from './types.js';
 
 export function estimateTokens(text: string): number {
   if (!text || text.length === 0) return 0;
-  const words = text.split(" ").filter(function(w) { return w.length > 0; });
+  // Split on any whitespace: the gateway joins messages with newlines, and a split on
+  // spaces alone merged the last word of one message with the first of the next.
+  const words = text.split(/\s+/).filter(function(w) { return w.length > 0; });
   if (words.length > 0) return Math.ceil(words.length * 1.3);
   return Math.ceil(text.length / 4);
 }
@@ -29,15 +31,17 @@ export function estimateCost(input: EstimateInput): CostEstimate {
   // M-9: micro-USD = tokens * (price_per_million) / 1e6 * 1e6 = tokens * price_per_million / 1? 
   // Correct: cost_usd = tokens/1e6 * price; micro = cost_usd * 1e6 = tokens * price
   const pmu = pt * p.prompt;
-  const cmu = ot > 0 ? ot * p.completion : undefined;
-  return {
+  const estimate: CostEstimate = {
     estimated_input_tokens: pt, estimated_output_tokens: ot,
     estimated_prompt_micro_usd: Math.round(pmu * 100) / 100,
-    estimated_completion_micro_usd: cmu !== undefined ? Math.round(cmu * 100) / 100 : undefined,
     provider: input.provider, model: input.model,
     price_per_million_prompt: p.prompt, price_per_million_completion: p.completion,
     from_cache: false,
   };
+  if (ot > 0) {
+    estimate.estimated_completion_micro_usd = Math.round(ot * p.completion * 100) / 100;
+  }
+  return estimate;
 }
 
 export function estimateCostFromUsage(

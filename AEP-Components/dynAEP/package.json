@@ -1,0 +1,12 @@
+{
+  "name": "@aep/dynaep",
+  "version": "2.9.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run --root ../.. --dir AEP-Components/dynAEP"
+  },
+  "dependencies": {
+    "js-yaml": "^4.3.2"
+  }
+}

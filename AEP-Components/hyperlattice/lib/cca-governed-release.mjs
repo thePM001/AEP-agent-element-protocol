@@ -197,7 +197,7 @@ export async function releaseCcaReplyViaHyperlattice(text, opts = {}) {
   const stages = [];
   const mode = opts.mode   ??   "chat";
   const ccaChat = opts.ccaChat   ??   mode === "chat";
-  let gapPolicyValidation = null;
+  let gapPolicyValidation;
 
   try {
     gapPolicyValidation = await assertCcaGapPoliciesOnline(opts.env);

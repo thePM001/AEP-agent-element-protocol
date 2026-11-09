@@ -23,7 +23,7 @@ function resolveWritingKernel() {
     const candidate = join(root, rel);
     try {
       if (existsSync(candidate)) return candidate;
-    } catch (e) {
+    } catch {
       continue;
     }
   }
@@ -214,7 +214,7 @@ export function lintWritingGapContent(content, rel, kind = "markdown") {
   const violations = [];
   const prose = kind === "markdown" ? stripMarkdownCode(content) : content;
   const proseLines = prose.split("\n");
-  let kernel = [];
+  let kernel;
   try {
     kernel = kernelWritingViolations(prose);
   } catch (err) {

@@ -77,7 +77,7 @@ export function writingRuleTable() {
     try {
       source = readFileSync(candidate, "utf8");
       break;
-    } catch (e) {
+    } catch {
       continue;
     }
   }
@@ -102,6 +102,23 @@ const WRITING_RULES = [
   WRITING_RULE_NO_OXFORD_COMMA,
   WRITING_RULE_PUNCTUATION_WORD_SPACE,
 ];
+
+/** Resolve the Base Node kernel binary for the one compiled wall set. */
+export function resolveWritingKernel(env = process.env) {
+  if (env.AEP_LATTICE_LOG_BIN) return env.AEP_LATTICE_LOG_BIN;
+  const here = dirname(fileURLToPath(import.meta.url));
+  const root = join(here, "../../..");
+  for (const rel of [
+    "rust/target/release/aep-lattice-log",
+    "rust/target/debug/aep-lattice-log",
+    "target/release/aep-lattice-log",
+    "target/debug/aep-lattice-log",
+  ]) {
+    const candidate = join(root, rel);
+    if (existsSync(candidate)) return candidate;
+  }
+  return "aep-lattice-log";
+}
 
 /** Ask the Base Node kernel for the one compiled writing wall set. */
 function kernelClosedRules(text) {

@@ -23,8 +23,8 @@
 // ```
 // =============================================================================
 
-import { LatticeEvent, ObserverAdapter } from "../interface";
-import { observerLatticeFetch } from "../lib/outbound-fetch";
+import type { LatticeEvent, ObserverAdapter } from "../interface.js";
+import { observerLatticeFetch } from "../lib/outbound-fetch.js";
 
 // ── Configuration ──────────────────────────────────────────────────────────
 
@@ -77,7 +77,10 @@ export class SSEConsumerAdapter implements ObserverAdapter {
       SSEConsumerConfig,
       "typeToActionPath" | "signal"
     >
-  > & { typeToActionPath?: Record<string, string>; signal?: AbortSignal };
+  > & {
+    typeToActionPath?: Record<string, string> | undefined;
+    signal?: AbortSignal | undefined;
+  };
   private eventCallback: ((event: LatticeEvent) => void) | null = null;
   private abortController: AbortController | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -114,11 +117,16 @@ export class SSEConsumerAdapter implements ObserverAdapter {
 
     this.abortController = new AbortController();
 
-    // If an external signal was provided, forward the abort.
+    // An external abort stops the consumer (no reconnect loop on an
+    // already-aborted signal).
     if (this.config.signal) {
+      if (this.config.signal.aborted) {
+        await this.stop();
+        return;
+      }
       this.config.signal.addEventListener(
         "abort",
-        () => this.abortController?.abort(),
+        () => void this.stop(),
         { once: true }
       );
     }
@@ -174,7 +182,7 @@ export class SSEConsumerAdapter implements ObserverAdapter {
             Accept: "text/event-stream",
             "Cache-Control": "no-cache",
           },
-          signal: this.abortController?.signal,
+          signal: this.abortController?.signal ?? null,
         },
         {
           adapter: "sse",
@@ -204,7 +212,8 @@ export class SSEConsumerAdapter implements ObserverAdapter {
         const { done, value } = await reader.read();
         if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
+        // Normalise CRLF / CR line endings so the "\n\n" split works.
+        buffer += decoder.decode(value, { stream: true }).replace(/\r\n?/g, "\n");
 
         // Process complete SSE messages (delimited by double newline)
         const parts = buffer.split("\n\n");
@@ -273,15 +282,16 @@ export class SSEConsumerAdapter implements ObserverAdapter {
 
     const lines = block.split("\n");
     let eventType = "";
-    let data = "";
+    const dataLines: string[] = [];
     let eventId = "";
 
     for (const line of lines) {
       if (line.startsWith("event:")) {
         eventType = line.slice(6).trim();
       } else if (line.startsWith("data:")) {
-        // SSE data lines may start with "data: " or "data:"
-        data = line.slice(5).trim();
+        // SSE data lines may start with "data: " or "data:"; multiple data
+        // lines in one message are joined with a newline (SSE spec).
+        dataLines.push(line.slice(5).trim());
       } else if (line.startsWith("id:")) {
         eventId = line.slice(3).trim();
       }
@@ -289,25 +299,24 @@ export class SSEConsumerAdapter implements ObserverAdapter {
       // Lines starting with "retry:" could be handled but are omitted for brevity.
     }
 
+    const data = dataLines.join("\n");
+
     // SSE heartbeat (empty data) - skip
     if (!data && !eventType) return;
 
     // Determine action_path
-    let actionPath: string;
-    if (eventType && this.config.typeToActionPath?.[eventType]) {
-      actionPath = this.config.typeToActionPath[eventType];
-    } else if (eventType) {
-      actionPath = eventType;
-    } else {
-      actionPath = this.config.defaultActionPath;
-    }
+    const mapped = eventType ? this.config.typeToActionPath?.[eventType] : undefined;
+    const actionPath = mapped || eventType || this.config.defaultActionPath;
 
-    // Parse data as JSON if possible; otherwise wrap as text
-    let payload: Record<string, unknown>;
+    // Parse data as a JSON object if possible; otherwise wrap as text
+    let payload: Record<string, unknown> = { text: data, event_id: eventId };
     try {
-      payload = JSON.parse(data) as Record<string, unknown>;
+      const parsed: unknown = JSON.parse(data);
+      if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+        payload = parsed as Record<string, unknown>;
+      }
     } catch {
-      payload = { text: data, event_id: eventId };
+      // not JSON: keep the text wrapper
     }
 
     const event: LatticeEvent = {

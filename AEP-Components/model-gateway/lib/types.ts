@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 
-// -- Provider Identification ------------------------------------------
+// Provider Identification ------------------------------------------
 
 export const ModelProviderSchema = z.enum([
   "anthropic",
@@ -15,7 +15,7 @@ export const ModelProviderSchema = z.enum([
 
 export type ModelProvider = z.infer<typeof ModelProviderSchema>;
 
-// -- Model Configuration ----------------------------------------------
+// Model Configuration ----------------------------------------------
 
 export const ModelConfigSchema = z.object({
   provider: ModelProviderSchema,
@@ -26,13 +26,13 @@ export const ModelConfigSchema = z.object({
   temperature: z.number().min(0).max(2).optional().default(1),
   topP: z.number().min(0).max(1).optional(),
   stopSequences: z.array(z.string()).optional().default([]),
-  headers: z.record(z.string()).optional().default({}),
+  headers: z.record(z.string(), z.string()).prefault({}),
   timeoutMs: z.number().positive().optional().default(120000),
 });
 
 export type ModelConfig = z.infer<typeof ModelConfigSchema>;
 
-// -- Model Request ----------------------------------------------------
+// Model Request ----------------------------------------------------
 
 export const ModelMessageSchema = z.object({
   role: z.enum(["system", "user", "assistant"]),
@@ -53,7 +53,7 @@ export const ModelRequestSchema = z.object({
 
 export type ModelRequest = z.infer<typeof ModelRequestSchema>;
 
-// -- Raw Model Response (from provider adapter) -----------------------
+// Raw Model Response (from provider adapter) -----------------------
 
 export interface ModelResponse {
   content: string;
@@ -69,7 +69,7 @@ export interface ModelResponse {
   raw?: unknown;
 }
 
-// -- Governed Model Response (post-evaluation chain) ------------------
+// Governed Model Response (post-evaluation chain) ------------------
 
 export interface GovernedModelResponse {
   content: string;
@@ -94,12 +94,16 @@ export interface GovernedModelResponse {
     recoverySucceeded: boolean;
     trustDelta: number;
     promptOptimised: boolean;
+    /** Set when the response content was withheld by governance. */
+    aborted?: boolean;
+    /** Set when soft scanner findings were not recovered and content was withheld. */
+    softDenied?: boolean;
   };
   finishReason: "stop" | "length" | "content_filter" | "error" | "unknown";
   latencyMs: number;
 }
 
-// -- Streaming Chunk --------------------------------------------------
+// Streaming Chunk --------------------------------------------------
 
 export interface GovernedChunk {
   content: string;
@@ -114,7 +118,26 @@ export interface GovernedChunk {
   };
 }
 
-// -- Provider Adapter Interface ---------------------------------------
+// Outbound HTTP used by provider adapters ---------------------------
+
+/** Audit metadata every adapter attaches to its outbound request. */
+export interface GatewayFetchMeta {
+  agentId: string;
+  channelId: string;
+  gateway: string;
+}
+
+/**
+ * Outbound HTTP function used by provider adapters. Defaults to the
+ * lattice-gated fetch; tests and embedders may inject their own.
+ */
+export type GatewayFetch = (
+  url: string,
+  init: RequestInit,
+  meta: GatewayFetchMeta,
+) => Promise<Response>;
+
+// Provider Adapter Interface ---------------------------------------
 
 export interface ProviderAdapter {
   readonly provider: ModelProvider;
@@ -129,7 +152,7 @@ export interface ProviderAdapter {
   ): AsyncGenerator<{ content: string; done: boolean }, void, unknown>;
 }
 
-// -- Policy Configuration for Model Gateway ---------------------------
+// Policy Configuration for Model Gateway ---------------------------
 
 export const ModelGatewayPolicySchema = z.object({
   enabled: z.boolean().optional().default(false),
@@ -140,18 +163,18 @@ export const ModelGatewayPolicySchema = z.object({
   optimise_prompts: z.boolean().optional().default(true),
   max_retries: z.number().nonnegative().optional().default(2),
   cost_tracking: z.boolean().optional().default(true),
-  providers: z.record(z.object({
+  providers: z.record(z.string(), z.object({
     api_key_env: z.string().optional(),
     base_url: z.string().optional(),
     models: z.array(z.string()).optional().default([]),
     cost_per_million_input: z.number().nonnegative().optional(),
     cost_per_million_output: z.number().nonnegative().optional(),
-  })).optional().default({}),
+  })).prefault({}),
 }).optional();
 
 export type ModelGatewayPolicy = z.infer<typeof ModelGatewayPolicySchema>;
 
-// -- Gateway Options --------------------------------------------------
+// Gateway Options --------------------------------------------------
 
 export interface ModelGatewayOptions {
   sessionId: string;

@@ -5,9 +5,7 @@
   "kind": "library",
   "path": "AEP-Components/intent-ledger/",
   "description": "Append-only intent provenance store for solidify records.",
-  "requires": [
-    "coding-governance"
-  ],
+  "requires": [],
   "capabilities": [
     "coding:provenance",
     "coding:explain"
@@ -42,7 +40,6 @@
       "ephemeral throwaway coding without audit trail"
     ],
     "pairs_with": [
-      "coding-governance",
       "evidence-ledger"
     ]
   },

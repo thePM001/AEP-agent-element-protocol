@@ -10,8 +10,7 @@ export function transpileCedarToGap(cedarSource: string): string {
   const constraints: string[] = [];
   const invariants: Array<Record<string, string>> = [];
   const steps: string[] = [];
-  for (let i = 0; i < statements.length; i++) {
-    const st = statements[i];
+  for (const [i, st] of statements.entries()) {
     const effect = st.effect;
     steps.push(effect === "forbid" ? "deny" : "allow");
     if (st.action.length > 0) {
@@ -68,15 +67,14 @@ function splitCedar(text: string): CedarStatement[] {
   const starts: Array<{ effect: "permit" | "forbid"; index: number }> = [];
   while ((m = re.exec(text)) !== null) {
     starts.push({
-      effect: m[1].toLowerCase() as "permit" | "forbid",
+      effect: m[1]?.toLowerCase() === "forbid" ? "forbid" : "permit",
       index: m.index,
     });
   }
-  for (let i = 0; i < starts.length; i++) {
-    const begin = starts[i].index;
-    const end = i + 1 < starts.length ? starts[i + 1].index : text.length;
-    const raw = text.slice(begin, end).trim().replace(/;+\s*$/, "");
-    out.push(parseOne(starts[i].effect, raw));
+  for (const [i, start] of starts.entries()) {
+    const end = starts[i + 1]?.index ?? text.length;
+    const raw = text.slice(start.index, end).trim().replace(/;+\s*$/, "");
+    out.push(parseOne(start.effect, raw));
   }
   return out;
 }

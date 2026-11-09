@@ -1,5 +1,7 @@
 # GAP Runtime Scanners
 
+Status: normative. Stability: evolving. The scanners are pattern lists that the shared rule table still changes.
+
 Optional 11-scanner GAP bundle.
 
 - **Component ID:** `gap-runtime-scanners`

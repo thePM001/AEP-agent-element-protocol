@@ -1,5 +1,7 @@
 # Action Intercept
 
+Status: reference. Stability: experimental.
+
 Pre/post action intercept hooks.
 
 - **Component ID:** `intercept`

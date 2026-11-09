@@ -19,8 +19,7 @@ export function transpileGapToCedar(gapSource: string): string {
     lines.push("  " + (cond.length > 0 ? cond : "true"));
     lines.push("};");
   }
-  for (let i = 0; i < invariants.length; i++) {
-    const inv = invariants[i];
+  for (const [i, inv] of invariants.entries()) {
     const effect = inv.severity === "hard" ? "forbid" : "permit";
     lines.push(effect + " (");
     lines.push("  principal,");
@@ -52,8 +51,8 @@ function parseGap(src: string): GapDoc {
     let parsed: unknown;
     try {
       parsed = JSON.parse(trimmed);
-    } catch (_e) {
-      throw new Error("GAP JSON is not parseable");
+    } catch (e) {
+      throw new Error("GAP JSON is not parseable", { cause: e });
     }
     return fromUnknown(parsed);
   }
@@ -124,5 +123,11 @@ function fromLines(src: string): GapDoc {
 }
 
 function escapeCedar(s: string): string {
-  return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  // Line breaks and tabs are escaped too: a raw newline is not valid inside a string literal.
+  return s
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t");
 }

@@ -525,22 +525,6 @@ const MANIFESTS = {
     implementation: { module: "AEP-Components/model-gateway/lib/gateway.ts" },
   },
 
-  "fleet": {
-    manifest_version: "1",
-    id: "fleet",
-    version: "2.9.0",
-    kind: "library",
-    path: "AEP-Components/fleet/",
-    description: "Multi-agent fleet manager, spawn governance, message scanning.",
-    requires: ["policy-engine", "covenant"],
-    capabilities: ["fleet:register", "fleet:spawn", "fleet:scan-messages"],
-    actions: [],
-    setup_hooks: [],
-    resource_requirements: RR(128, 30),
-    cca: CCA("Govern multi-agent fleets with spawn limits.", ["multi-agent orchestration"], ["single agent only"]),
-    implementation: { module: "AEP-Components/fleet/lib/manager.ts" },
-  },
-
   "covenant": {
     manifest_version: "1",
     id: "covenant",
@@ -587,22 +571,6 @@ const MANIFESTS = {
     resource_requirements: RR(64, 20),
     cca: CCA("Automated recovery from policy violations.", ["self-healing agents"], []),
     implementation: { module: "AEP-Components/recovery/lib/engine.ts" },
-  },
-
-  "workflow": {
-    manifest_version: "1",
-    id: "workflow",
-    version: "2.9.0",
-    kind: "library",
-    path: "AEP-Components/workflow/",
-    description: "Multi-phase workflow executor and fine-tuning templates.",
-    requires: ["policy-engine"],
-    capabilities: ["workflow:execute", "workflow:phases", "workflow:fine-tuning"],
-    actions: [],
-    setup_hooks: [],
-    resource_requirements: RR(64, 20),
-    cca: CCA("Phased workflows with per-phase verdicts.", ["multi-step training pipelines"], []),
-    implementation: { module: "AEP-Components/workflow/lib/executor.ts" },
   },
 
   "identity": {
@@ -667,22 +635,6 @@ const MANIFESTS = {
     resource_requirements: RR(32, 10),
     cca: CCA("Export AEP spans to OpenTelemetry backends.", ["observability stack integration"], []),
     implementation: { module: "AEP-Components/telemetry/lib/otel-exporter.ts" },
-  },
-
-  "proxy": {
-    manifest_version: "1",
-    id: "proxy",
-    version: "2.9.0",
-    kind: "library",
-    path: "AEP-Components/proxy/",
-    description: "MCP and shell proxy servers under lattice governance.",
-    requires: ["policy-engine"],
-    capabilities: ["proxy:mcp", "proxy:shell"],
-    actions: [],
-    setup_hooks: [],
-    resource_requirements: RR(64, 20),
-    cca: CCA("Proxy MCP and shell access through AgentGateway.", ["MCP tool governance"], []),
-    implementation: { module: "AEP-Components/proxy/lib/mcp-proxy.ts" },
   },
 
   "datasets": {
@@ -763,39 +715,6 @@ const MANIFESTS = {
     resource_requirements: RR(32, 10),
     cca: CCA("Security layer for MCP tool calls.", ["MCP integrations"], []),
     implementation: { module: "AEP-Components/mcp-security/lib/mcp-security/index.ts" },
-  },
-
-
-  "eval": {
-    manifest_version: "1",
-    id: "eval",
-    version: "2.9.0",
-    kind: "library",
-    path: "AEP-Components/eval/",
-    description: "Eval runner, rule generator, and ML metrics.",
-    requires: ["datasets"],
-    capabilities: ["eval:run", "eval:rules", "eval:ml-metrics"],
-    actions: [],
-    setup_hooks: [],
-    resource_requirements: RR(128, 50),
-    cca: CCA("Eval-to-guardrail lifecycle with ML metrics.", ["building guardrails from eval data"], []),
-    implementation: { module: "AEP-Components/eval/lib/runner.ts" },
-  },
-
-  "optimization": {
-    manifest_version: "1",
-    id: "optimization",
-    version: "2.9.0",
-    kind: "library",
-    path: "AEP-Components/optimization/",
-    description: "Governed prompt optimizer and version manager.",
-    requires: ["eval", "covenant"],
-    capabilities: ["optimize:prompt", "optimize:version"],
-    actions: [],
-    setup_hooks: [],
-    resource_requirements: RR(128, 30),
-    cca: CCA("Prompt optimization under covenant and eval constraints.", ["prompt tuning with governance"], []),
-    implementation: { module: "AEP-Components/optimization/lib/optimizer.ts" },
   },
 
   "permissions": {

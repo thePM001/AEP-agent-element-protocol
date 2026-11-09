@@ -1,0 +1,9 @@
+{
+  "name": "@aep/named-surfaces",
+  "version": "2.9.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run --root ../.. --dir AEP-Components/named-surfaces"
+  }
+}

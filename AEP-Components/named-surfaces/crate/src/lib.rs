@@ -1,4 +1,4 @@
-// Named surfaces execute so transpilers emit GAP and MCP backend transport forwards allowed calls.
+// Named surfaces execute so the policy transpilers emit GAP.
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
@@ -86,35 +86,6 @@ pub fn scan_transpilers_emit_gap(src: &str) -> Result<String, String> {
     Ok(String::from("ok transpilers emit GAP"))
 }
 
-pub fn scan_mcp_backend_transport(src: &str) -> Result<String, String> {
-    if lower_has(src, "backend transport not implemented") {
-        return Err(String::from("MCP backend transport still not live"));
-    }
-    if src.contains("initialize") == false {
-        return Err(String::from("MCP backend missing initialize"));
-    }
-    if src.contains("tools/call") == false {
-        return Err(String::from("MCP backend missing tools/call"));
-    }
-    if src.contains("mcp-session-id") == false {
-        return Err(String::from("MCP backend missing mcp-session-id"));
-    }
-    Ok(String::from("ok MCP backend transport forwards"))
-}
-
-pub fn scan_mcp_proxy_wires_backend(src: &str) -> Result<String, String> {
-    if src.contains("forwardMcpCall") == false {
-        return Err(String::from("mcp-proxy missing forwardMcpCall"));
-    }
-    if src.contains("mcp-backend") == false {
-        return Err(String::from("mcp-proxy missing mcp-backend import"));
-    }
-    if lower_has(src, "backend transport not implemented") {
-        return Err(String::from("mcp-proxy still names missing transport"));
-    }
-    Ok(String::from("ok mcp-proxy forwards"))
-}
-
 pub fn scan_readme_names_surfaces(src: &str) -> Result<String, String> {
     let low = src.to_ascii_lowercase();
     if low.contains("execut") == false && low.contains("live") == false {
@@ -122,9 +93,6 @@ pub fn scan_readme_names_surfaces(src: &str) -> Result<String, String> {
     }
     if low.contains("gap") == false {
         return Err(String::from("README missing GAP"));
-    }
-    if low.contains("mcp") == false {
-        return Err(String::from("README missing MCP"));
     }
     Ok(String::from("ok README names live surfaces"))
 }
@@ -159,19 +127,7 @@ pub fn run_named_surface_gate() -> Result<i32, String> {
         Ok(v) => v,
         Err(e) => return Err(e),
     };
-    let mcp_backend_src = match must_read(&root, &["AEP-Components", "proxy", "lib", "mcp-backend.ts"], "mcp-backend") {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
-    let mcp_proxy_src = match must_read(&root, &["AEP-Components", "proxy", "lib", "mcp-proxy.ts"], "mcp-proxy") {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
     let named_readme_src = match must_read(&root, &["AEP-Components", "named-surfaces", "README.md"], "named-surfaces README") {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
-    let proxy_readme_src = match must_read(&root, &["AEP-Components", "proxy", "README.md"], "proxy README") {
         Ok(v) => v,
         Err(e) => return Err(e),
     };
@@ -196,23 +152,11 @@ pub fn run_named_surface_gate() -> Result<i32, String> {
         Ok(v) => proofs.push(v),
         Err(e) => return Err(e),
     }
-    match scan_mcp_backend_transport(&mcp_backend_src) {
-        Ok(v) => proofs.push(v),
-        Err(e) => return Err(e),
-    }
-    match scan_mcp_proxy_wires_backend(&mcp_proxy_src) {
-        Ok(v) => proofs.push(v),
-        Err(e) => return Err(e),
-    }
     match scan_readme_names_surfaces(&named_readme_src) {
         Ok(v) => proofs.push(v),
         Err(e) => return Err(e),
     }
-    if proxy_readme_src.to_ascii_lowercase().contains("mcp") == false || proxy_readme_src.to_ascii_lowercase().contains("forward") == false {
-        return Err(String::from("proxy README missing MCP forward"));
-    }
-    proofs.push(String::from("ok proxy README"));
-        if transpiler_readme_src.contains("GAP-to-Rego") == false || transpiler_readme_src.contains("GAP-to-Cedar") == false {
+    if transpiler_readme_src.contains("GAP-to-Rego") == false || transpiler_readme_src.contains("GAP-to-Cedar") == false {
         return Err(String::from("transpilers README missing reverse surfaces"));
     }
     for proof in proofs {
@@ -254,25 +198,6 @@ pub mod hvvcas_scan_transpilers_emit_gap {
         }
         pub fn process(&mut self) -> anyhow::Result<()> {
             self.scan = match super::scan_transpilers_emit_gap(&self.src) {
-                Ok(v) => v,
-                Err(e) => e,
-            };
-            Ok(())
-        }
-    }
-}
-
-pub mod hvvcas_scan_mcp_backend_transport {
-    pub struct ScanMcpBackendTransport {
-        pub src: String,
-        pub scan: String,
-    }
-    impl ScanMcpBackendTransport {
-        pub fn new() -> Self {
-            Self { src: String::new(), scan: String::new() }
-        }
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            self.scan = match super::scan_mcp_backend_transport(&self.src) {
                 Ok(v) => v,
                 Err(e) => e,
             };
@@ -345,18 +270,6 @@ mod tests {
         match scan_transpilers_emit_gap("refusing pass-through") {
             Err(e) => {
                 if e.contains("address") == false {
-                    fail();
-                }
-            }
-            Ok(_) => fail(),
-        }
-    }
-
-    #[test]
-    fn mcp_scan_rejects_missing_initialize() {
-        match scan_mcp_backend_transport("tools/call mcp-session-id") {
-            Err(e) => {
-                if e.contains("initialize") == false {
                     fail();
                 }
             }

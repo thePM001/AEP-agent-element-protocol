@@ -1,5 +1,7 @@
 # Intent Ledger Component
 
+Status: normative. Stability: evolving. Intent knots call the aep-memory binary.
+
 Append-only **Intent Provenance Ledger** for coding governance. Stores `SolidifyRecord` entries. Validation lives in kernel Admit plus GAP reference policies.
 
 ## Standing
@@ -44,7 +46,7 @@ Intent knots are searchable attractors in lattice memory. The file ledger remain
 | Module | Role |
 |--------|------|
 | `lib/ledger.mjs` | append, hash chain, `verifyChain`, `listIntentSnapshots` |
-| `lib/explain.mjs` | `explainIntentRich` (overlay + policy + evidence summary) |
+| `lib/explain.mjs` | `explainIntentRich` (policy lattice, evidence sessions and intent knots) |
 | `lib/evidence-link.mjs` | evidence-ledger session summary + ref builder |
 | `lib/intent-knots.mjs` | Lattice memory (sqlite-vec + USearch) + optional Agentstream knot record/search |
 | `lib/agentstream-knots.mjs` | Optional Agentstream mirror for knots |

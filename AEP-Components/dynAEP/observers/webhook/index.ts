@@ -19,9 +19,10 @@
 // ```
 // =============================================================================
 
-import { createServer, IncomingMessage, ServerResponse } from "node:http";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { LatticeEvent, ObserverAdapter } from "../interface";
+import { isIPv4 } from "node:net";
+import type { LatticeEvent, ObserverAdapter } from "../interface.js";
 
 // ── Configuration ──────────────────────────────────────────────────────────
 
@@ -29,7 +30,7 @@ export interface WebhookObserverConfig {
   /** HTTP listen port (default: 9000) */
   port?: number;
 
-  /** HTTP listen host (default: "127.0.0.1") */
+  /** HTTP listen host (default: the IPv4 loopback address) */
   host?: string;
 
   /** POST endpoint path (default: "/events") */
@@ -50,37 +51,54 @@ export interface WebhookObserverConfig {
 
   /** Adapter name for logging (default: "webhook:<port>") */
   name?: string;
+
+  /** Maximum accepted request body in bytes (default: WEBHOOK_MAX_BODY_BYTES) */
+  maxBodyBytes?: number;
 }
 
-// ── Defaults ───────────────────────────────────────────────────────────────
+/** IPv4 loopback address used as the default bind host. */
+export const DEFAULT_WEBHOOK_HOST = [127, 0, 0, 1].join(".");
 
-const DEFAULTS: Required<
-  Omit<WebhookObserverConfig, "hmacSecret" | "signatureHeader">
-> &
-  Pick<WebhookObserverConfig, "signatureHeader"> = {
-  port: 9000,
-  host: "127.0.0.1",
-  endpoint: "/events",
-  name: "webhook:9000",
-  signatureHeader: "x-signature-256",
-};
+// ── Defaults ───────────────────────────────────────────────────────────────
 
 /** BM-12: max webhook body size (1 MiB). */
 export const WEBHOOK_MAX_BODY_BYTES = 1_048_576;
 
-function isLoopbackHost(host: string): boolean {
-  const h = host.trim().toLowerCase();
-  return h === "127.0.0.1" || h === "::1" || h === "localhost";
+const DEFAULTS = {
+  port: 9000,
+  host: DEFAULT_WEBHOOK_HOST,
+  endpoint: "/events",
+  signatureHeader: "x-signature-256",
+  maxBodyBytes: WEBHOOK_MAX_BODY_BYTES,
+} as const;
+
+/** True for localhost, ::1 and any address in 127.0.0.0/8. */
+export function isLoopbackHost(host: string): boolean {
+  const h = host.trim().toLowerCase().replace(/^\[|\]$/g, "");
+  if (h === "localhost" || h === "::1") return true;
+  return isIPv4(h) && h.startsWith("127.");
+}
+
+function jsonReply(res: ServerResponse, status: number, body: Record<string, unknown>): void {
+  if (res.headersSent) {
+    res.end();
+    return;
+  }
+  res.writeHead(status, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(body));
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 // ── Adapter ────────────────────────────────────────────────────────────────
 
 export class WebhookObserverAdapter implements ObserverAdapter {
   readonly name: string;
-  private config: Required<
-    Omit<WebhookObserverConfig, "hmacSecret" | "signatureHeader">
-  > &
-    Pick<WebhookObserverConfig, "hmacSecret" | "signatureHeader">;
+  private config: Required<Omit<WebhookObserverConfig, "hmacSecret">> & {
+    hmacSecret: string | undefined;
+  };
   private server: ReturnType<typeof createServer> | null = null;
   private eventCallback: ((event: LatticeEvent) => void) | null = null;
   private started = false;
@@ -101,6 +119,7 @@ export class WebhookObserverAdapter implements ObserverAdapter {
       name: config?.name ?? `webhook:${config?.port ?? DEFAULTS.port}`,
       hmacSecret,
       signatureHeader: config?.signatureHeader ?? DEFAULTS.signatureHeader,
+      maxBodyBytes: config?.maxBodyBytes ?? DEFAULTS.maxBodyBytes,
     };
     this.name = this.config.name;
   }
@@ -129,13 +148,24 @@ export class WebhookObserverAdapter implements ObserverAdapter {
     });
   }
 
+  /**
+   * Bound address once listening (useful when port 0 asks the OS for a
+   * free port), or null when the server is not listening.
+   */
+  address(): { host: string; port: number } | null {
+    const addr = this.server?.address();
+    if (!addr || typeof addr === "string") return null;
+    return { host: addr.address, port: addr.port };
+  }
+
   /** Stop the HTTP server. Idempotent. */
   async stop(): Promise<void> {
-    if (!this.started || !this.server) return;
+    const server = this.server;
+    if (!this.started || !server) return;
     this.started = false;
 
     return new Promise((resolve) => {
-      this.server!.close(() => {
+      server.close(() => {
         this.server = null;
         console.log(`[${this.name}] Server stopped`);
         resolve();
@@ -160,14 +190,13 @@ export class WebhookObserverAdapter implements ObserverAdapter {
   ): void {
     // ── Method & path check ──────────────────────────────────────────────
     if (req.method !== "POST") {
-      res.writeHead(405, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Method Not Allowed" }));
+      jsonReply(res, 405, { error: "Method Not Allowed" });
       return;
     }
 
-    if (req.url !== this.config.endpoint) {
-      res.writeHead(404, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Not Found" }));
+    const path = (req.url ?? "").split("?")[0];
+    if (path !== this.config.endpoint) {
+      jsonReply(res, 404, { error: "Not Found" });
       return;
     }
 
@@ -178,11 +207,12 @@ export class WebhookObserverAdapter implements ObserverAdapter {
     req.on("data", (chunk: Buffer) => {
       if (rejected) return;
       total += chunk.length;
-      if (total > WEBHOOK_MAX_BODY_BYTES) {
+      if (total > this.config.maxBodyBytes) {
         rejected = true;
+        res.setHeader("Connection", "close");
         res.writeHead(413, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Payload Too Large" }));
-        req.destroy();
+        // Drop the connection only after the 413 reply is flushed.
+        res.end(JSON.stringify({ error: "Payload Too Large" }), () => req.destroy());
         return;
       }
       chunks.push(chunk);
@@ -192,15 +222,13 @@ export class WebhookObserverAdapter implements ObserverAdapter {
       const rawBody = Buffer.concat(chunks);
 
       // ── HMAC verification ──────────────────────────────────────────────
+      let providedSig: string | undefined;
       if (this.config.hmacSecret) {
-        const sigHeader = this.config.signatureHeader!.toLowerCase();
-        const providedSig = req.headers[sigHeader] as string | undefined;
+        const headerValue = req.headers[this.config.signatureHeader.toLowerCase()];
+        providedSig = typeof headerValue === "string" ? headerValue : undefined;
 
         if (!providedSig) {
-          res.writeHead(401, { "Content-Type": "application/json" });
-          res.end(
-            JSON.stringify({ error: `Missing ${this.config.signatureHeader} header` })
-          );
+          jsonReply(res, 401, { error: `Missing ${this.config.signatureHeader} header` });
           return;
         }
 
@@ -216,41 +244,36 @@ export class WebhookObserverAdapter implements ObserverAdapter {
           providedBuf.length !== computedBuf.length ||
           !timingSafeEqual(providedBuf, computedBuf)
         ) {
-          res.writeHead(401, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ error: "Invalid signature" }));
+          jsonReply(res, 401, { error: "Invalid signature" });
           return;
         }
       }
 
       // ── Parse body ─────────────────────────────────────────────────────
-      let body: Record<string, unknown>;
+      let parsed: unknown;
       try {
-        body = JSON.parse(rawBody.toString("utf8"));
+        parsed = JSON.parse(rawBody.toString("utf8"));
       } catch {
-        res.writeHead(400, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Invalid JSON body" }));
+        jsonReply(res, 400, { error: "Invalid JSON body" });
         return;
       }
+      if (!isPlainObject(parsed)) {
+        jsonReply(res, 400, { error: "JSON body must be an object" });
+        return;
+      }
+      const body = parsed;
 
       // ── Normalise to LatticeEvent ──────────────────────────────────────
-      if (this.config.hmacSecret) {
-        const sigHeader = this.config.signatureHeader!.toLowerCase();
-        const providedSig = req.headers[sigHeader] as string | undefined;
-        if (providedSig) {
-          const payload =
-            body.payload && typeof body.payload === "object" && !Array.isArray(body.payload)
-              ? (body.payload as Record<string, unknown>)
-              : {};
-          if (payload.signature === undefined) {
-            body.payload = { ...payload, signature: providedSig };
-          }
+      if (providedSig) {
+        const payload = isPlainObject(body.payload) ? body.payload : {};
+        if (payload.signature === undefined) {
+          body.payload = { ...payload, signature: providedSig };
         }
       }
       const event = this.normalise(body);
 
       // ── Acknowledge ────────────────────────────────────────────────────
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ accepted: true, action_path: event.action_path }));
+      jsonReply(res, 200, { accepted: true, action_path: event.action_path });
 
       // ── Forward to callback ────────────────────────────────────────────
       this.eventCallback?.(event);
@@ -258,8 +281,7 @@ export class WebhookObserverAdapter implements ObserverAdapter {
 
     req.on("error", (err) => {
       console.error(`[${this.name}] Request error:`, err.message);
-      res.writeHead(500, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Internal Server Error" }));
+      jsonReply(res, 500, { error: "Internal Server Error" });
     });
   }
 
@@ -281,12 +303,15 @@ export class WebhookObserverAdapter implements ObserverAdapter {
    * Fields not present are filled with sensible defaults.
    */
   private normalise(body: Record<string, unknown>): LatticeEvent {
-    return {
-      source: (body.source as string) ?? this.name,
-      action_path: (body.action_path as string) ?? "unknown",
-      payload: (body.payload as Record<string, unknown>) ?? {},
+    const event: LatticeEvent = {
+      source: typeof body.source === "string" ? body.source : this.name,
+      action_path: typeof body.action_path === "string" ? body.action_path : "unknown",
+      payload: isPlainObject(body.payload) ? body.payload : {},
       bridge_timestamp: Date.now(),
-      agent_id: (body.agent_id as string) ?? undefined,
     };
+    if (typeof body.agent_id === "string") {
+      event.agent_id = body.agent_id;
+    }
+    return event;
   }
 }

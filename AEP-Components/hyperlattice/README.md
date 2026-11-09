@@ -1,5 +1,7 @@
 # AEP Hyperlattice
 
+Status: normative. Stability: evolving. It reads the dynAEP registry and the registry catalog, whose shapes still move.
+
 Canonical hyperlattice implementation for AEP 2.9.
 
 | Module | Purpose |

@@ -1,4 +1,4 @@
-import { BalanceConfig, WeightedProvider, WeightedModel, ProviderId, ModelId } from './types.js';
+import { BalanceConfig, ProviderId, ModelId } from './types.js';
 
 export class BalanceEngine {
   private configs: Map<string, BalanceConfig>;
@@ -11,28 +11,36 @@ export class BalanceEngine {
 
   selectProvider(endpointType: string): ProviderId | null {
     const config = this.configs.get(endpointType);
-    if (!config || !config.providers || config.providers.length === 0) return null;
-    const totalWeight = config.providers.reduce((sum, p) => sum + p.weight, 0);
-    if (totalWeight <= 0) return config.providers[0].provider;
+    const providers = config?.providers;
+    const first = providers?.[0];
+    if (!providers || !first) return null;
+    const totalWeight = providers.reduce((sum, p) => sum + p.weight, 0);
+    if (totalWeight <= 0) return first.provider;
     let r = Math.random() * totalWeight;
-    for (const p of config.providers) {
+    let picked = first;
+    for (const p of providers) {
+      picked = p;
       r -= p.weight;
       if (r <= 0) return p.provider;
     }
-    return config.providers[config.providers.length - 1].provider;
+    return picked.provider;
   }
 
   resolveModel(endpointType: string): ModelId | null {
     const config = this.configs.get(endpointType);
-    if (!config || !config.models || config.models.length === 0) return null;
-    const totalWeight = config.models.reduce((sum, m) => sum + m.weight, 0);
-    if (totalWeight <= 0) return config.models[0].model;
+    const models = config?.models;
+    const first = models?.[0];
+    if (!models || !first) return null;
+    const totalWeight = models.reduce((sum, m) => sum + m.weight, 0);
+    if (totalWeight <= 0) return first.model;
     let r = Math.random() * totalWeight;
-    for (const m of config.models) {
+    let picked = first;
+    for (const m of models) {
+      picked = m;
       r -= m.weight;
       if (r <= 0) return m.model;
     }
-    return config.models[config.models.length - 1].model;
+    return picked.model;
   }
 
   recordLatency(provider: ProviderId, latencyMs: number): void {

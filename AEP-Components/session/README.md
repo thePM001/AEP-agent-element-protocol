@@ -1,5 +1,7 @@
 # Session Governance
 
+Status: normative. Stability: stable.
+
 Agent session lifecycle, kill switch and session manager.
 
 - **Component ID:** `session`

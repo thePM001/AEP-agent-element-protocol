@@ -1,0 +1,9 @@
+{
+  "name": "@aep/proof-bundle",
+  "version": "2.9.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run --root ../.. --dir AEP-Components/proof-bundle"
+  }
+}

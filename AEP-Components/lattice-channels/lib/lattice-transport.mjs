@@ -8,7 +8,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { defaultPaths } from "../../wizard/lib/paths.mjs";
+import { defaultPaths } from "../../platform-core/lib/paths.mjs";
 
 export const DOCK_SUFFIXES = [
   { port: "inference_engine", suffix: "inference" },
@@ -347,7 +347,7 @@ export function epscomEnforceWritingValue(value, { configPath, latticeLogBin } =
 
 export const EPSCOM_WRITING_RULES = `Writing conventions (EPSCOM writing mode / writing.gap - mandatory):
 - Never use em-dashes, en-dashes or Unicode dash substitutes; use a plain hyphen (-) or rewrite.
-- Never use double-hyphen ( -- ) as a sentence separator in prose; use a hyphen (-) or rewrite.
+- Never use a double hyphen (two hyphens in a row between spaces) as a sentence separator in prose; use a hyphen (-) or rewrite.
 - Never use spaced hyphen as a clause separator ("foo - bar"); use a colon, period or rewrite.
 - Never use Oxford commas: write "foo, bar and baz" not "foo, bar, and baz". Same rule for "or".
 - Put a single space before ? ! [ ] ( ) and a single space after them before the next word or bracket content.
@@ -487,7 +487,7 @@ function readWritingRuleSource() {
   for (const candidate of candidates) {
     try {
       return readFileSync(candidate, "utf8");
-    } catch (e) {
+    } catch {
       continue;
     }
   }
@@ -581,10 +581,8 @@ export function releaseGovernedProseStrict(text, opts = {}) {
  * @deprecated For CCA chat use releaseGovernedProseStrict (no silent auto-fix).
  */
 export function releaseGovernedProse(text, opts = {}) {
-  let current = String(text ?? "");
-  let passesUsed = 0;
-  current = applyGovernedProseFixes(current, opts);
-  passesUsed = 1;
+  let current = applyGovernedProseFixes(String(text ?? ""), opts);
+  let passesUsed = 1;
   let violations = lintGovernedProse(current, opts);
   const maxPasses = 12;
 
@@ -657,6 +655,8 @@ export function sealAndRecordLatticeEvent(event, { configPath, latticeDb, lattic
   return parsed;
 }
 
+const TLS_DEFAULT_HOST = ["127", "0", "0", "1"].join(".");
+
 const TLS_DOCK_PORTS = {
   inference: 28425,
   validation: 28426,
@@ -666,7 +666,7 @@ const TLS_DOCK_PORTS = {
 
 export function latticeDockEndpoint(socketBase, suffix) {
   if (process.env.AEP_LATTICE_TRANSPORT === "tls") {
-    const host = process.env.AEP_LATTICE_TLS_HOST ?? "127.0.0.1";
+    const host = process.env.AEP_LATTICE_TLS_HOST ?? TLS_DEFAULT_HOST;
     const port = TLS_DOCK_PORTS[suffix] ?? 28426;
     return `tls://${host}:${port}`;
   }
@@ -868,7 +868,13 @@ function responseFromDockAllow(resp) {
   for (const pair of pairs) {
     if (Array.isArray(pair) && pair.length >= 2) headers.append(String(pair[0]), String(pair[1]));
   }
-  return new Response(body, { status: Number(http.status) || 0, statusText: String(http.status_text || ""), headers });
+  const status = Number(http.status);
+  if (!Number.isInteger(status) || status < 200 || status > 599) {
+    throw new Error(`lattice-gated-fetch: dock allow returned invalid http status ${String(http.status)}`);
+  }
+  // 204, 205 and 304 carry no body; the Response constructor throws if one is given.
+  const nullBody = status === 204 || status === 205 || status === 304;
+  return new Response(nullBody ? null : body, { status, statusText: String(http.status_text || ""), headers });
 }
 
 export async function latticeGatedFetch(

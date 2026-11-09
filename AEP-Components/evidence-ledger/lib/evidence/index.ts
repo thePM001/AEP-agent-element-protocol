@@ -1,3 +1,3 @@
 export { AgentstreamEvidenceBackend, createAgentstreamBackend } from "./agentstream-backend.js";
-export type { AgentstreamConfig, EvidenceEntry } from "./agentstream-backend.js";
+export type { AgentstreamConfig, AgentstreamFetch, EvidenceEntry } from "./agentstream-backend.js";
 // AEP 2.9 release line.

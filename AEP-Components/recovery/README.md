@@ -1,5 +1,7 @@
 # Recovery Engine
 
+Status: normative. Stability: stable.
+
 Violation detection and governed recovery attempts.
 
 - **Component ID:** `recovery`

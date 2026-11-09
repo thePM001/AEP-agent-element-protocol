@@ -25,6 +25,16 @@ const AD_DISCLOSURES = [
   "#sponsored",
 ];
 
+/**
+ * Whole-token match for disclosure labels. A bare substring test lets the
+ * short label "ad" match inside ordinary words such as "today" or "read",
+ * which would wrongly count as an ad disclosure.
+ */
+function containsLabel(lowerContent: string, label: string): boolean {
+  const escaped = label.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`).test(lowerContent);
+}
+
 const FINANCIAL_TRIGGERS: RegExp[] = [
   /\binvest\s+in\b/gi,
   /\bbuy\s+stock\b/gi,
@@ -134,9 +144,7 @@ export class RegulatoryScanner implements Scanner {
         return p.test(content);
       });
       if (hasAdTrigger) {
-        const hasDisclosure = AD_DISCLOSURES.some((d) =>
-          lower.includes(d.toLowerCase())
-        );
+        const hasDisclosure = AD_DISCLOSURES.some((d) => containsLabel(lower, d));
         if (!hasDisclosure) {
           findings.push({
             scanner: this.name,

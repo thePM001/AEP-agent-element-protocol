@@ -1,5 +1,7 @@
 # Model Gateway
 
+Status: normative. Stability: evolving.
+
 Governed multi-provider LLM gateway with adapters and optional economics hooks.
 
 - **Component ID:** `model-gateway`

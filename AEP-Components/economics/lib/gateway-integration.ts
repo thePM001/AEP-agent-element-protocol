@@ -22,6 +22,8 @@ export interface EconomicsGatewayDeps {
 export interface EconomicsPrecheckResult {
   estimate?: CostEstimate;
   budgetWarning?: boolean;
+  /** True when preDispatch already charged `estimate` to the budget (checkAndRecord). */
+  reserved?: boolean;
 }
 
 export class EconomicsGatewayHooks {
@@ -84,7 +86,11 @@ export class EconomicsGatewayHooks {
     return { estimate };
   }
 
-  recordSuccess(response: ModelResponse, config: ModelConfig): void {
+  /**
+   * Charge the actual usage. Pass the preDispatch result so a reserved estimate is
+   * released first; without it the reservation and the actual usage are both charged.
+   */
+  recordSuccess(response: ModelResponse, config: ModelConfig, precheck?: EconomicsPrecheckResult): void {
     const { budget, fallback, concurrency, priceCatalog, budgetScope } = this.deps;
 
     if (priceCatalog && budget) {
@@ -97,6 +103,7 @@ export class EconomicsGatewayHooks {
           response.model,
           priceEntry,
         );
+        this.releaseReservation(precheck);
         budget.record(actual, budgetScope);
       }
     }
@@ -105,12 +112,32 @@ export class EconomicsGatewayHooks {
     concurrency?.release();
   }
 
-  recordFailure(config: ModelConfig, err: unknown): void {
-    this.deps.fallback?.recordError(config.provider);
+  /**
+   * Settle a stream that reached the provider. Stream adapters report no usage, so the
+   * estimate reserved by preDispatch remains the charge for the call.
+   */
+  recordStreamComplete(config: ModelConfig): void {
+    this.deps.fallback?.recordSuccess(config.provider);
     this.deps.concurrency?.release();
+  }
+
+  /** Pass the preDispatch result so a reserved estimate is returned to the budget. */
+  recordFailure(config: ModelConfig, err: unknown, precheck?: EconomicsPrecheckResult): void {
+    this.releaseReservation(precheck);
+    // recordRateLimit counts the request and the error itself; calling recordError as
+    // well counted one rate-limited call as two failed requests.
     if (err instanceof Error && /rate limit/i.test(err.message)) {
       this.deps.fallback?.recordRateLimit(config.provider);
+    } else {
+      this.deps.fallback?.recordError(config.provider);
     }
+    this.deps.concurrency?.release();
+  }
+
+  private releaseReservation(precheck: EconomicsPrecheckResult | undefined): void {
+    const { budget, budgetScope } = this.deps;
+    if (!budget || !precheck?.reserved || !precheck.estimate) return;
+    budget.release(precheck.estimate, budgetScope);
   }
 
   estimateRequestCost(request: ModelRequest, config: ModelConfig): CostEstimate | null {

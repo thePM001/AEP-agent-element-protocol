@@ -10,13 +10,28 @@ export interface TimestampQueueOptions {
   flushIntervalMs?: number;
 }
 
+/** HTTP client shape used for TSA requests. */
+export type TsaFetch = (url: string, init: RequestInit) => Promise<Response>;
+
+/** Injectable dependencies (time source and HTTP client). */
+export interface TimestampQueueDeps {
+  /** Milliseconds since epoch. Defaults to Date.now. */
+  now?: () => number;
+  /** HTTP client used for TSA requests. Defaults to the global fetch. */
+  fetchImpl?: TsaFetch;
+}
+
 export class TimestampQueue {
   private queue: TimestampRequest[] = [];
   private processed: Map<string, string> = new Map();
   private options: Required<TimestampQueueOptions>;
   private flushTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly now: () => number;
+  private readonly fetchImpl: TsaFetch;
 
-  constructor(options?: TimestampQueueOptions) {
+  constructor(options?: TimestampQueueOptions, deps?: TimestampQueueDeps) {
+    this.now = deps?.now ?? (() => Date.now());
+    this.fetchImpl = deps?.fetchImpl ?? ((url, init) => fetch(url, init));
     this.options = {
       tsaUrl: options?.tsaUrl ?? "",
       batchSize: options?.batchSize ?? 10,
@@ -25,7 +40,7 @@ export class TimestampQueue {
   }
 
   enqueue(entryHash: string): void {
-    this.queue.push({ entryHash, queuedAt: Date.now() });
+    this.queue.push({ entryHash, queuedAt: this.now() });
   }
 
   async flush(): Promise<void> {
@@ -43,7 +58,7 @@ export class TimestampQueue {
           const msg = err instanceof Error ? err.message : String(err);
           this.processed.set(req.entryHash, "tsa-failed:" + msg.slice(0, 80));
         } else {
-          this.processed.set(req.entryHash, "offline:" + Date.now().toString(36));
+          this.processed.set(req.entryHash, "offline:" + this.now().toString(36));
         }
       }
     }
@@ -77,7 +92,7 @@ export class TimestampQueue {
     if (!this.options.tsaUrl) {
       const { createHash } = await import("node:crypto");
       const token = createHash("sha256")
-        .update(hash + Date.now().toString())
+        .update(hash + this.now().toString())
         .digest("hex");
       return "local:" + token.substring(0, 32);
     }
@@ -86,10 +101,10 @@ export class TimestampQueue {
     const body = JSON.stringify({
       hash,
       algorithm: "sha256",
-      requested_at: Date.now(),
+      requested_at: this.now(),
     });
 
-    const res = await fetch(this.options.tsaUrl, {
+    const res = await this.fetchImpl(this.options.tsaUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

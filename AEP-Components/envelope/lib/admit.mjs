@@ -17,7 +17,7 @@ function kernelClosedWritingRules(text) {
     }).trim();
     const parsed = JSON.parse(out);
     return (parsed.violations ?? []).map((v) => String(v.rule));
-  } catch (e) {
+  } catch {
     return ["writing_kernel_unavailable"];
   }
 }
@@ -37,7 +37,7 @@ function resolveWritingKernel() {
     const candidate = join(root, rel);
     try {
       if (existsSync(candidate)) return candidate;
-    } catch (e) {
+    } catch {
       continue;
     }
   }
@@ -242,7 +242,7 @@ export function admit(action, snap) {
   };
 }
 
-export function planApply(result, snap) {
+export function planApply(result, _snap) {
   if (result.allow) {
     return { increment_rate: true, ledger_allow: true };
   }

@@ -56,9 +56,8 @@ export interface HookResult {
 
 | Hook | File | Description |
 |---------------|-------------------------------------------|-------------------------------------------------|
-| `noop` | `examples/noop-hook/index.ts` | Pass-through; always passes with score 1.0 |
-| `mle-validator`| `examples/mle-hook/index.ts` | MLE-based hypervector similarity checking |
-| Config `mle` | `bridge/hook-loader.ts` | Aliases to `mle-validator` at bridge init |
+| Pass-through | `bridge/hook-loader.ts` (`noopValidationHook`) | Denies unless `AEP_ALLOW_NOOP_HOOK=1`, then passes with score 1.0 |
+| Config `mle` | `bridge/hook-loader.ts` | Aliases to `mle-validator`. The public tree ships no MLE hook. Custom constraints DENY until the host registers one |
 
 ## Writing a Custom Hook
 
