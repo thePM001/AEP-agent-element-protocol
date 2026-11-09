@@ -1,5 +1,10 @@
 //! Property tests: algebraic laws of exact arithmetic, rounding laws, square root bounds,
 //! unit laws and the text and JSON round trips of the program form.
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "integration test crate: a failed unwrap here is a failed test"
+)]
 
 use aep_ucm_core::{evaluate, load_program, parse::parse_program, Library, Limits, Program};
 use proptest::prelude::*;

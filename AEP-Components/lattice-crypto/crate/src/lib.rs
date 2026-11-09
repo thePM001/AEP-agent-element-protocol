@@ -40,6 +40,10 @@ pub enum CryptoError {
     BadSignature,
     #[error("fingerprint mismatch")]
     FingerprintMismatch,
+    #[error("key derivation failed: {0}")]
+    KeyDerivation(String),
+    #[error("capsule encode failed: {0}")]
+    Encode(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -152,16 +156,17 @@ pub fn kem_fingerprint(public_key: &[u8]) -> String {
 }
 
 /// BM-09: HKDF-SHA256 (not bare SHA-256) for ML-KEM shared secret to AES-256 key.
-fn derive_aes_key(shared_secret: &[u8]) -> [u8; 32] {
+fn derive_aes_key(shared_secret: &[u8]) -> Result<[u8; 32], CryptoError> {
     let hk = Hkdf::<Sha256>::new(None, shared_secret);
     let mut key = [0u8; 32];
-    // 32-byte OKM cannot fail under SHA-256; never return a fixed zero key.
+    // A 32-byte OKM is far below the HKDF-SHA256 limit, so this does not fail
+    // in practice. On an error the caller gets it and never a fixed zero key.
     hk.expand(AES_KDF_INFO, &mut key)
-        .expect("HKDF-SHA256 expand to 32 bytes must succeed");
-    key
+        .map_err(|e| CryptoError::KeyDerivation(e.to_string()))?;
+    Ok(key)
 }
 
-fn derive_aes_key_from_shared(shared_secret: &SharedKey) -> [u8; 32] {
+fn derive_aes_key_from_shared(shared_secret: &SharedKey) -> Result<[u8; 32], CryptoError> {
     derive_aes_key(shared_secret.as_slice())
 }
 
@@ -172,8 +177,8 @@ mod kdf_tests {
     #[test]
     fn bm09_hkdf_length_and_determinism() {
         let ss = b"shared-secret-material-for-test!!";
-        let a = derive_aes_key(ss);
-        let b = derive_aes_key(ss);
+        let a = derive_aes_key(ss).unwrap();
+        let b = derive_aes_key(ss).unwrap();
         assert_eq!(a, b);
         assert_ne!(a, [0u8; 32]);
         // not equal to bare SHA-256 of shared secret
@@ -193,16 +198,19 @@ fn random_nonce_12() -> [u8; 12] {
 /// When `binding_aad` is non-empty (LatticeChannelFrame headers), the signature
 /// cryptographically binds those headers to the capsule. Empty AAD is only for
 /// non-frame capsule use; docking MUST pass frame binding AAD (CAW C-01).
-fn signable_bytes(capsule: &PQEncryptedCapsule, binding_aad: &[u8]) -> Vec<u8> {
+fn signable_bytes(
+    capsule: &PQEncryptedCapsule,
+    binding_aad: &[u8],
+) -> Result<Vec<u8>, CryptoError> {
     let mut clone = capsule.clone();
     clone.signature = None;
-    let body = serde_json::to_vec(&clone).expect("capsule serializable");
+    let body = serde_json::to_vec(&clone).map_err(|e| CryptoError::Encode(e.to_string()))?;
     let mut out = Vec::with_capacity(24 + binding_aad.len() + body.len());
     out.extend_from_slice(b"aep-capsule-sig-v2\0");
     out.extend_from_slice(&(binding_aad.len() as u64).to_be_bytes());
     out.extend_from_slice(binding_aad);
     out.extend_from_slice(&body);
-    out
+    Ok(out)
 }
 
 /// Seal plaintext without frame binding (capsule-only). Prefer [`seal_with_binding`] for lattice frames.
@@ -223,7 +231,7 @@ pub fn seal_with_binding(
 ) -> Result<PQEncryptedCapsule, CryptoError> {
     let ek = ek_from_public(recipient_kem_public)?;
     let (ct, ss) = ek.encapsulate();
-    let aes_key = derive_aes_key_from_shared(&ss);
+    let aes_key = derive_aes_key_from_shared(&ss)?;
     let cipher =
         Aes256Gcm::new_from_slice(&aes_key).map_err(|e| CryptoError::Encrypt(e.to_string()))?;
     let nonce_bytes = random_nonce_12();
@@ -249,7 +257,7 @@ pub fn seal_with_binding(
 
     let sk = sk_from_secret(&signer.secret).map_err(|e| CryptoError::Encrypt(e.to_string()))?;
     let sig = sk
-        .try_sign(&signable_bytes(&capsule, binding_aad))
+        .try_sign(&signable_bytes(&capsule, binding_aad)?)
         .map_err(|e| CryptoError::Encrypt(format!("sign: {e}")))?;
     capsule.signature = Some(array_to_vec(sig.encode()));
     Ok(capsule)
@@ -285,7 +293,7 @@ pub fn verify_capsule_signature_with_binding(
     let sig = Signature::<MlDsa65>::try_from(sig_bytes.as_slice())
         .map_err(|_| CryptoError::BadSignature)?;
     let vk = vk_from_public(signer_public)?;
-    vk.verify(&signable_bytes(capsule, binding_aad), &sig)
+    vk.verify(&signable_bytes(capsule, binding_aad)?, &sig)
         .map_err(|_| CryptoError::BadSignature)
 }
 
@@ -322,7 +330,7 @@ pub fn open_with_binding(
     verify_capsule_signature_bound(capsule, signer_public, binding_aad)?;
 
     let ss = dk.decapsulate(&ct);
-    let aes_key = derive_aes_key_from_shared(&ss);
+    let aes_key = derive_aes_key_from_shared(&ss)?;
     let cipher =
         Aes256Gcm::new_from_slice(&aes_key).map_err(|e| CryptoError::Decrypt(e.to_string()))?;
     if capsule.nonce.len() != 12 {

@@ -7,16 +7,25 @@ use std::path::Path;
 
 use crate::error::MemoryError;
 
+/// The C signature of a SQLite extension entry point.
+type SqliteExtensionInit = unsafe extern "C" fn(
+    *mut rusqlite::ffi::sqlite3,
+    *mut *mut std::ffi::c_char,
+    *const rusqlite::ffi::sqlite3_api_routines,
+) -> std::ffi::c_int;
+
 pub fn register_sqlite_vec_extension() {
+    // SAFETY: sqlite3_vec_init is the C entry point of the statically linked
+    // sqlite-vec library. Its C definition has exactly the SqliteExtensionInit
+    // signature; the Rust binding only declares it without arguments. So the
+    // transmute restores the real type of a valid function pointer of the same
+    // size and never calls through a wrong signature. sqlite3_auto_extension is
+    // thread safe, keeps one entry per pointer when called again, and SQLite
+    // calls the pointer with the database it opens.
     unsafe {
-        sqlite3_auto_extension(Some(std::mem::transmute::<
-            *const (),
-            unsafe extern "C" fn(
-                *mut rusqlite::ffi::sqlite3,
-                *mut *mut i8,
-                *const rusqlite::ffi::sqlite3_api_routines,
-            ) -> i32,
-        >(sqlite3_vec_init as *const ())));
+        sqlite3_auto_extension(Some(std::mem::transmute::<*const (), SqliteExtensionInit>(
+            sqlite3_vec_init as *const (),
+        )));
     }
 }
 

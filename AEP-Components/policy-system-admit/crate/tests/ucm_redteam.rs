@@ -2,6 +2,11 @@
 //! over AEP-Policy-System. Every attack must close a UCM wall under the strict profile, the
 //! honest action must pass. Admit must decide exactly as before for actions that name
 //! no computed field. One test function, because the profile is process wide.
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "integration test crate: a failed unwrap here is a failed test"
+)]
 
 use aep_lattice_crypto as _;
 use aep_policy_system_admit::{

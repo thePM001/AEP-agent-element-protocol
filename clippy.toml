@@ -1,0 +1,5 @@
+# Clippy settings for the workspace lints in Cargo.toml.
+# unwrap_used and expect_used are deny for product code. Test code may unwrap
+# because a failed unwrap there is a failed test, not a crashed service.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true

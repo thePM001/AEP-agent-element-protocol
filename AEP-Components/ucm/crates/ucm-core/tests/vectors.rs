@@ -1,6 +1,11 @@
 //! Runs every conformance vector in AEP-Components/ucm/vectors and every vector that the
 //! formula library ships. A vector names a program, its inputs and either the exact result
 //! JSON or the error code.
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "integration test crate: a failed unwrap here is a failed test"
+)]
 
 use aep_ucm_core::{evaluate, load_program, Library, Limits};
 use serde_json::{json, Value};

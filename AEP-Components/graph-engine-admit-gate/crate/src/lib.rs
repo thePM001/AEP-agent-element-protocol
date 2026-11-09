@@ -67,17 +67,18 @@ pub fn scan_admit_gate_before_executor(src: &str) -> Result<String, String> {
     if admit_at.is_none() {
         return Err(String::from("executeNode never calls admitGate"));
     }
-    let admit_call = first_idx(&code, "awaitadmitGate").or_else(|| first_idx(&code, "admitGate("));
-    if admit_call.is_none() {
+    let Some(admit_call) =
+        first_idx(&code, "awaitadmitGate").or_else(|| first_idx(&code, "admitGate("))
+    else {
         return Err(String::from("executeNode does not invoke admitGate"));
-    }
-    let exec_call = first_idx(&code, "awaitexecutor(")
+    };
+    let Some(exec_call) = first_idx(&code, "awaitexecutor(")
         .or_else(|| first_idx(&code, "executor(node"))
-        .or_else(|| first_idx(&code, "awaitthis.options.nodeExecutor"));
-    if exec_call.is_none() {
+        .or_else(|| first_idx(&code, "awaitthis.options.nodeExecutor"))
+    else {
         return Err(String::from("executeNode never invokes nodeExecutor"));
-    }
-    if exec_call.unwrap() < admit_call.unwrap() {
+    };
+    if exec_call < admit_call {
         return Err(String::from(
             "executeNode invokes nodeExecutor without admitGate first",
         ));

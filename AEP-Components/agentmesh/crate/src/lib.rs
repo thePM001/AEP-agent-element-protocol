@@ -140,12 +140,28 @@ fn mtls_from_identity(agent_id: &str, now_unix: u64, identity: tls::MtlsIdentity
     }
 }
 
-fn issue_workload_cert(agent_id: &str, _trust_score: u16, now_unix: u64) -> MtlsCertState {
-    let identity = issue_agent_identity(agent_id).expect("workload cert generation");
-    mtls_from_identity(agent_id, now_unix, identity)
+/// Failure to build an AgentMesh identity. Issuance fails closed, so the caller
+/// gets this error and no bundle, never a placeholder identity.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum AgentMeshError {
+    #[error("workload identity required (fail closed): {0}")]
+    Identity(String),
 }
 
-pub fn create_mtls(agent_id: &str, trust_score: u16, now_unix: u64) -> MtlsCertState {
+fn issue_workload_cert(
+    agent_id: &str,
+    _trust_score: u16,
+    now_unix: u64,
+) -> Result<MtlsCertState, AgentMeshError> {
+    let identity = issue_agent_identity(agent_id).map_err(AgentMeshError::Identity)?;
+    Ok(mtls_from_identity(agent_id, now_unix, identity))
+}
+
+pub fn create_mtls(
+    agent_id: &str,
+    trust_score: u16,
+    now_unix: u64,
+) -> Result<MtlsCertState, AgentMeshError> {
     issue_workload_cert(agent_id, trust_score, now_unix)
 }
 
@@ -156,9 +172,8 @@ pub fn create_bundle(
     public_key: &[u8],
     capabilities: Vec<String>,
     now_unix: u64,
-) -> AgentMeshBundle {
-    let identity =
-        issue_agent_identity(agent_id).expect("workload identity required (fail closed)");
+) -> Result<AgentMeshBundle, AgentMeshError> {
+    let identity = issue_agent_identity(agent_id).map_err(AgentMeshError::Identity)?;
     let spiffe_id = format!("spiffe://{TRUST_DOMAIN}/agent/{agent_id}");
     let expires = now_unix.saturating_add(MTLS_TTL_SECS);
     let spiffe = SpiffeIdentity {
@@ -167,13 +182,13 @@ pub fn create_bundle(
         expires_at_unix: expires,
     };
     let mtls = mtls_from_identity(agent_id, now_unix, identity);
-    AgentMeshBundle {
+    Ok(AgentMeshBundle {
         agent_id: agent_id.into(),
         trust_score,
         spiffe,
         did: create_did(agent_id, public_key, capabilities),
         mtls,
-    }
+    })
 }
 
 /// Record isolation telemetry. Never reissue AgentMesh certs on score change.
@@ -195,7 +210,8 @@ mod tests {
             b"pk",
             vec!["validate".into()],
             1_700_000_000,
-        );
+        )
+        .unwrap();
         let old_fp = bundle.mtls.cert_fingerprint.clone();
         rotate_on_trust_change(&mut bundle, 500, 1_700_000_100);
         assert_eq!(bundle.mtls.cert_fingerprint, old_fp);
@@ -204,7 +220,7 @@ mod tests {
 
     #[test]
     fn mtls_cert_is_real_x509_pem() {
-        let mtls = create_mtls("AG-TEST", 700, 1_700_000_000);
+        let mtls = create_mtls("AG-TEST", 700, 1_700_000_000).unwrap();
         assert!(mtls.cert_pem.starts_with("-----BEGIN CERTIFICATE-----"));
         assert!(mtls.cert_fingerprint.len() == 64);
         assert!(mtls.not_after_unix > mtls.issued_at_unix);
@@ -222,7 +238,8 @@ mod tests {
             b"pk",
             vec!["validate".into()],
             1_700_000_000,
-        );
+        )
+        .unwrap();
         assert!(
             bundle.spiffe.svid.contains(&bundle.mtls.cert_fingerprint),
             "SPIFFE svid must reference mtls cert fingerprint"

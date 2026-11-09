@@ -156,9 +156,22 @@ pub(crate) fn resolve_agent_bundle(
     let mut bundles = lock_or_deny(&runtime.keys.agent_bundles, "agent_bundles")?;
     let mut trust_map = lock_or_deny(&runtime.keys.agent_trust, "agent_trust")?;
     trust_map.insert(agent_id.to_string(), score);
-    let entry = bundles
-        .entry(agent_id.to_string())
-        .or_insert_with(|| crate::agentmesh_bundle_for_frame(agent_id, score, sign_public));
+    let entry = match bundles.entry(agent_id.to_string()) {
+        std::collections::hash_map::Entry::Occupied(slot) => slot.into_mut(),
+        std::collections::hash_map::Entry::Vacant(slot) => {
+            match crate::agentmesh_bundle_for_frame(agent_id, score, sign_public) {
+                Ok(bundle) => slot.insert(bundle),
+                Err(e) => {
+                    return Err(deny_closed(
+                        None,
+                        e.to_string(),
+                        "agentmesh.identity",
+                        CLASS_SECURITY,
+                    ))
+                }
+            }
+        }
+    };
     entry.trust_score = score;
     Ok(entry.clone())
 }

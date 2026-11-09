@@ -50,7 +50,10 @@ fn parse_line(line: &str) -> Vec<AdmitWall> {
 
 fn main() {
     let mut buf = String::new();
-    io::stdin().read_to_string(&mut buf).expect("stdin");
+    if let Err(err) = io::stdin().read_to_string(&mut buf) {
+        eprintln!("stdin read failed: {err}");
+        std::process::exit(1);
+    }
     let mut walls: Vec<AdmitWall> = Vec::new();
     let mut agent_id = String::new();
     let mut action = String::new();

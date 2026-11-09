@@ -1,9 +1,9 @@
 //! AgentMesh identity binding for UCB ingress.
 
-use aep_agentmesh::{create_bundle, AgentMeshBundle};
+use aep_agentmesh::{create_bundle, AgentMeshBundle, AgentMeshError};
 use serde_json::Value;
 
-pub fn bundle_for_agent(agent_id: &str) -> AgentMeshBundle {
+pub fn bundle_for_agent(agent_id: &str) -> Result<AgentMeshBundle, AgentMeshError> {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
@@ -21,8 +21,8 @@ pub fn bundle_for_agent(agent_id: &str) -> AgentMeshBundle {
     )
 }
 
-pub fn agentmesh_json(agent_id: &str) -> Value {
-    let b = bundle_for_agent(agent_id);
+pub fn agentmesh_json(agent_id: &str) -> Result<Value, AgentMeshError> {
+    let b = bundle_for_agent(agent_id)?;
     let mut m = serde_json::Map::new();
     m.insert(String::from("agent_id"), Value::String(b.agent_id));
     m.insert(String::from("spiffe_id"), Value::String(b.spiffe.spiffe_id));
@@ -31,7 +31,7 @@ pub fn agentmesh_json(agent_id: &str) -> Value {
         String::from("mtls_fingerprint"),
         Value::String(b.mtls.cert_fingerprint),
     );
-    Value::Object(m)
+    Ok(Value::Object(m))
 }
 
 pub fn validate_bundle_present(agent_id: &str) -> Result<(), String> {

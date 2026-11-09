@@ -29,7 +29,10 @@ fn main() {
         }
     }
     let mut buf = String::new();
-    io::stdin().read_to_string(&mut buf).expect("stdin");
+    if let Err(err) = io::stdin().read_to_string(&mut buf) {
+        eprintln!("stdin read failed: {err}");
+        std::process::exit(1);
+    }
     let temporal = parse_temporal_from_text(&buf);
     let extra = parse_extra_walls(&buf);
     let result = fold_temporal_into_admit(&temporal, &extra);

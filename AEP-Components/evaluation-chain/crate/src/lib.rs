@@ -115,6 +115,12 @@ pub fn meet(mut walls: Vec<Wall>) -> Result<MeetResult, EvaluationChainError> {
             return Err(EvaluationChainError::StepGap);
         }
     }
+    Ok(meet_ordered(walls))
+}
+
+/// Ledger over walls already known to hold steps 0 to CHAIN_STEP_COUNT - 1 in
+/// order. meet checks that shape for outside input; the helpers below build it.
+fn meet_ordered(walls: Vec<Wall>) -> MeetResult {
     let mut closed = Vec::new();
     let mut open_walls = Vec::new();
     for w in &walls {
@@ -127,14 +133,14 @@ pub fn meet(mut walls: Vec<Wall>) -> Result<MeetResult, EvaluationChainError> {
     closed.sort_by(|a, b| a.name.cmp(&b.name));
     open_walls.sort_by(|a, b| a.name.cmp(&b.name));
     let admit = derived_admit(&walls);
-    Ok(MeetResult {
+    MeetResult {
         allow: admit.allow,
         closed,
         open_walls,
         ledger: walls,
         admit,
         derived: true,
-    })
+    }
 }
 
 pub fn meet_named(open: [bool; CHAIN_STEP_COUNT], reasons: [&str; CHAIN_STEP_COUNT]) -> MeetResult {
@@ -149,7 +155,7 @@ pub fn meet_named(open: [bool; CHAIN_STEP_COUNT], reasons: [&str; CHAIN_STEP_COU
         });
         i += 1;
     }
-    meet(walls).expect("named meet is always 15 walls")
+    meet_ordered(walls)
 }
 
 // Ledger helper. Not live evaluation. Live path is Admit collect-all then Apply.
@@ -185,7 +191,7 @@ pub fn run_meet_ledger(names: &[&str], fail_at: &[usize]) -> MeetResult {
         });
         step += 1;
     }
-    meet(walls).expect("ledger meet is always 15 walls")
+    meet_ordered(walls)
 }
 
 #[cfg(test)]

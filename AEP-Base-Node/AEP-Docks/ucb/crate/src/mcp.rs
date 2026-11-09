@@ -151,7 +151,7 @@ fn parse_tool_args(params: &Value, required: bool) -> Result<Value, String> {
                 Ok(json!({}))
             }
         }
-        Some(Value::Object(_)) => Ok(params.get("arguments").cloned().unwrap()),
+        Some(args @ Value::Object(_)) => Ok(args.clone()),
         Some(_) => Err(String::from("tool arguments must be an object")),
     }
 }

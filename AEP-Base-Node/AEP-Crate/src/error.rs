@@ -96,6 +96,8 @@ pub enum BaseNodeError {
     LatticeYamlUnreadable,
     #[error("hub load failed: {0}")]
     HubLoad(String),
+    #[error("{0}")]
+    AgentMesh(#[from] aep_agentmesh::AgentMeshError),
 }
 
 impl BaseNodeError {

@@ -927,3 +927,136 @@ fn short_digest(digest: &str) -> String {
     let head: String = digest.chars().take(12).collect();
     format!("{head}...")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_ctx() -> Ctx {
+        Ctx {
+            caw_bin: String::from("caw"),
+            caw_server: String::from("caw-server"),
+            workspace: PathBuf::from("/nonexistent/workspace"),
+            ucb_url: String::from("http://127.0.0.1:1"),
+            ucb_key: String::from("test-key"),
+            base_node_config: PathBuf::from("/nonexistent/base-node.toml"),
+            lattice_log_bin: String::from("/nonexistent/lattice-log"),
+            run_dir: PathBuf::from("/nonexistent/run"),
+            attach_action: String::from("ucb:ingest"),
+            attach_scene: String::from("scene-ucb"),
+            attach_agent: String::from("agent-a"),
+            refuse_agent: String::from("agent-b"),
+            provenance_digest_refuse: String::from("digest-refuse"),
+            provenance_digest_pass: String::from("digest-pass"),
+        }
+    }
+
+    #[test]
+    fn kernel_refuses_the_unlisted_agent_and_admits_the_listed_one() {
+        let kernel = build_kernel(&test_ctx(), 1_700_000_000_000).unwrap();
+        assert!(!kernel.refuse_admit.allow);
+        assert!(!kernel.refuse_admit.closed.is_empty());
+        assert!(kernel.pass_admit.allow, "{:?}", kernel.pass_admit.closed);
+        assert!(kernel.pass_plan.ledger_allow);
+        assert!(kernel.pass_plan.increment_rate);
+        assert!(kernel.applied_rate >= 1);
+    }
+
+    #[test]
+    fn refused_admit_never_plans_a_ledger_row() {
+        let kernel = build_kernel(&test_ctx(), 1_700_000_000_000).unwrap();
+        let plan = plan_apply(&kernel.refuse_admit, &kernel.snap);
+        assert!(!plan.ledger_allow);
+        assert!(!plan.increment_rate);
+    }
+
+    #[test]
+    fn lattice_grants_the_attach_action_to_the_named_agent_only() {
+        let yaml = lattice_yaml("ucb:ingest", "agent-a");
+        let nodes = load_lattice_yaml(&yaml).unwrap();
+        assert!(!nodes.is_empty());
+        assert!(yaml.contains("agent_permission: [\"agent-a\"]"));
+    }
+
+    #[test]
+    fn a_failing_command_reports_instead_of_panicking() {
+        let (code, out, err) = run("/nonexistent/aep-e2e-binary", &[], &[]);
+        assert_eq!(code, -1);
+        assert!(out.is_empty());
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn ledger_reads_return_errors_when_the_tool_is_missing() {
+        let ctx = test_ctx();
+        assert!(ledger_count(&ctx).is_err());
+        assert!(ledger_tail(&ctx).is_err());
+    }
+
+    #[test]
+    fn text_helpers_pick_the_first_line_and_compact_json() {
+        assert_eq!(first_line("\n  \n second \nthird"), "second");
+        assert_eq!(first_line(""), "");
+        assert_eq!(compact_json("{ \"a\" : 1 }"), "{\"a\":1}");
+        assert_eq!(compact_json("not json\nmore"), "not json");
+        assert_eq!(short_digest("0123456789abcdef"), "0123456789ab...");
+        assert_eq!(short_digest("abc"), "abc...");
+    }
+
+    #[test]
+    fn refusal_shape_accepts_ok_false_and_error_bodies() {
+        assert!(refusal_shaped(&serde_json::json!({"ok": false})));
+        assert!(refusal_shaped(&serde_json::json!({"error": "denied"})));
+        assert!(!refusal_shaped(&serde_json::json!({"error": "  "})));
+        assert!(!refusal_shaped(&serde_json::json!({"ok": true})));
+    }
+
+    #[test]
+    fn refusal_line_names_the_closed_walls() {
+        let body = serde_json::json!({
+            "error": "denied",
+            "closed": [{"id": "gap:agent_permission", "class": "permission"}]
+        });
+        assert_eq!(
+            refusal_line(&body),
+            "the DenyReport error is denied and the closed walls are gap:agent_permission=permission"
+        );
+        assert_eq!(
+            refusal_line(&serde_json::json!({})),
+            "the DenyReport error is no error line"
+        );
+    }
+
+    #[test]
+    fn row_formatting_tolerates_missing_fields() {
+        let body = serde_json::json!({
+            "admit": [{"event_id": 7, "allow": true, "digest": "abcdef0123456789"}]
+        });
+        assert_eq!(
+            admit_row(&body),
+            "event_id 7 allow true digest abcdef012345..."
+        );
+        assert_eq!(
+            admit_row(&serde_json::json!({})),
+            "event_id null allow null digest none"
+        );
+        assert_eq!(row_line(&[]), "none");
+        let rows = vec![serde_json::json!({"id": 3, "agent_id": "agent-a", "event_type": "E"})];
+        assert_eq!(
+            row_line(&rows),
+            "id 3 agent agent-a event_type E frame_digest none"
+        );
+    }
+
+    #[test]
+    fn ingest_body_binds_provenance_and_carries_manifest_on_request() {
+        let ctx = test_ctx();
+        let with = ingest_body(&ctx, "agent-a", SESSION_PASS, "digest-pass", true);
+        assert_eq!(with["provenance"]["digest"], "digest-pass");
+        assert_eq!(with["provenance"]["session_id"], SESSION_PASS);
+        assert_eq!(with["action_path"], "ucb:ingest");
+        assert_eq!(with["task_manifest"]["agent_id"], "agent-a");
+        let without = ingest_body(&ctx, "agent-b", SESSION_REFUSE, "digest-refuse", false);
+        assert!(without.get("task_manifest").is_none());
+    }
+}

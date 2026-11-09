@@ -241,7 +241,8 @@ fn cc_lattice_channel_frame() -> Result<(), String> {
 }
 
 fn cc_agentmesh_trust_rotation() -> Result<(), String> {
-    let mut bundle = create_bundle("AG-TRUST-CONF", 850, b"pk", vec![], 1_700_000_000);
+    let mut bundle = create_bundle("AG-TRUST-CONF", 850, b"pk", vec![], 1_700_000_000)
+        .map_err(|e| e.to_string())?;
     let fp_high = bundle.mtls.cert_fingerprint.clone();
     rotate_on_trust_change(&mut bundle, 450, 1_700_000_100);
     if bundle.mtls.cert_fingerprint != fp_high {
@@ -465,7 +466,7 @@ fn cc_plain_event_rejected() -> Result<(), String> {
 fn cc_docking_rate_limit() -> Result<(), String> {
     let (_dir, rt) = temp_docking_runtime()?;
     {
-        let mut limiter = rt.defence.rate_limiter.lock().expect("rate limiter lock");
+        let mut limiter = rt.defence.rate_limiter.lock().map_err(|e| e.to_string())?;
         for _ in 0..120 {
             limiter.check("AG-RATE-CONF").map_err(|e| e.to_string())?;
         }
@@ -538,12 +539,13 @@ fn cc_lrp_registration_flow() -> Result<(), String> {
     Ok(())
 }
 
-fn main() {
+/// Run every check in order and collect the report.
+fn run_checks(checks: &[Check]) -> ConformanceReport {
     let mut results = Vec::new();
     let mut passed = 0usize;
     let mut failed = 0usize;
 
-    for check in CHECKS {
+    for check in checks {
         match (check.run)() {
             Ok(()) => {
                 passed += 1;
@@ -568,19 +570,93 @@ fn main() {
         }
     }
 
-    let report = ConformanceReport {
+    ConformanceReport {
         suite: "aep-2.8-public",
         version: env!("CARGO_PKG_VERSION"),
         passed,
         failed,
         checks: results,
-    };
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&report).expect("report json")
-    );
+    }
+}
 
-    if failed > 0 {
+fn main() {
+    let report = run_checks(CHECKS);
+    match serde_json::to_string_pretty(&report) {
+        Ok(text) => println!("{text}"),
+        Err(err) => {
+            eprintln!("FAIL report could not be written as JSON - {err}");
+            std::process::exit(2);
+        }
+    }
+
+    if report.failed > 0 {
         std::process::exit(1);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeSet;
+
+    #[test]
+    fn every_mandatory_check_passes() {
+        let report = run_checks(CHECKS);
+        let failures: Vec<String> = report
+            .checks
+            .iter()
+            .filter(|c| !c.passed)
+            .map(|c| format!("{} {:?}", c.id, c.error))
+            .collect();
+        assert!(failures.is_empty(), "failed checks: {failures:?}");
+        assert_eq!(report.passed, CHECKS.len());
+        assert_eq!(report.failed, 0);
+    }
+
+    #[test]
+    fn check_ids_are_unique_and_named() {
+        let mut seen = BTreeSet::new();
+        for check in CHECKS {
+            assert!(check.id.starts_with("CC-"), "{}", check.id);
+            assert!(!check.name.trim().is_empty(), "{}", check.id);
+            assert!(seen.insert(check.id), "duplicate id {}", check.id);
+        }
+    }
+
+    fn passing() -> Result<(), String> {
+        Ok(())
+    }
+
+    fn failing() -> Result<(), String> {
+        Err(String::from("expected failure"))
+    }
+
+    #[test]
+    fn a_failed_check_is_counted_and_keeps_its_error() {
+        let checks = [
+            Check {
+                id: "T-01",
+                name: "passes",
+                run: passing,
+            },
+            Check {
+                id: "T-02",
+                name: "fails",
+                run: failing,
+            },
+        ];
+        let report = run_checks(&checks);
+        assert_eq!(report.passed, 1);
+        assert_eq!(report.failed, 1);
+        let json = serde_json::to_value(&report).unwrap();
+        assert!(json["checks"][0].get("error").is_none());
+        assert_eq!(json["checks"][1]["error"], "expected failure");
+        assert_eq!(json["checks"][1]["passed"], false);
+    }
+
+    #[test]
+    fn hex_is_lowercase_and_padded() {
+        assert_eq!(to_hex(&[0x00, 0x0a, 0xff]), "000aff");
+        assert_eq!(to_hex(&[]), "");
     }
 }

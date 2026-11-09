@@ -3,6 +3,11 @@
 //! These tests drive the real `aep-ucb-validate` binary that Cargo builds for
 //! this package, plus small shell programs that stand in for a slow, broken or
 //! talkative validator.
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "integration test crate: a failed unwrap here is a failed test"
+)]
 
 use aep_ucb::ingress::{ForeignIngestBody, Provenance};
 use aep_ucb::validate_process::{

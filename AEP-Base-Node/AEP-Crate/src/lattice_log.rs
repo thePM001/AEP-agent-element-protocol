@@ -290,7 +290,7 @@ fn build_sealed_frame(
         &sign.public,
         vec!["dynaep.validate".into(), "dynaep.lattice".into()],
         now,
-    );
+    )?;
 
     // Sealed inner bytes are an Admit event. Dock Admit reads action_path here.
     // Scene, time and sequence stay bound on the sealed event so unbound fields cannot fail-open.
@@ -338,7 +338,7 @@ pub fn record_dynaep_event(
     db_path: &Path,
 ) -> Result<DynAepEventRecord, BaseNodeError> {
     let (frame, bundle, plaintext, sealed_ts) = build_sealed_frame(input, contracts, db_path)?;
-    let digest = frame_digest(&frame);
+    let digest = frame_digest(&frame).map_err(|e| BaseNodeError::Channel(e.to_string()))?;
     let recorded_at = frame.sent_at_unix;
 
     // Kernel write only after dock Admit. Deny does not INSERT.

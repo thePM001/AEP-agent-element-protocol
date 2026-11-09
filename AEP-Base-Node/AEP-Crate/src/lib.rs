@@ -18,7 +18,7 @@ pub mod lattice_log;
 pub mod side_channel_monitor;
 pub mod task_manifest;
 
-use aep_agentmesh::{create_bundle, AgentMeshBundle};
+use aep_agentmesh::{create_bundle, AgentMeshBundle, AgentMeshError};
 use aep_lattice_channel::{
     frame_digest, open_verified_capsule, verify_and_open_frame, ContractRegistry, DockingPort,
     LatticeChannelFrame, CHANNEL_VERSION,
@@ -207,7 +207,7 @@ pub fn agentmesh_bundle_for_frame(
     agent_id: &str,
     trust_score: u16,
     sign_public: &[u8],
-) -> AgentMeshBundle {
+) -> Result<AgentMeshBundle, AgentMeshError> {
     create_bundle(
         agent_id,
         trust_score,
@@ -314,7 +314,8 @@ pub fn record_channel_frame(
     bundle: &AgentMeshBundle,
     replay_guard: Option<&mut ReplayGuard>,
 ) -> rusqlite::Result<i64> {
-    let digest = frame_digest(frame);
+    let digest =
+        frame_digest(frame).map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
     if let Some(guard) = replay_guard {
         if !guard.check_and_record(&digest, frame.sent_at_unix) {
             return Err(rusqlite::Error::InvalidParameterName(

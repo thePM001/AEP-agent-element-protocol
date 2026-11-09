@@ -463,7 +463,7 @@ fn run_self_test(
         &sign,
         now_unix(),
     )?;
-    let digest = frame_digest(&frame);
+    let digest = frame_digest(&frame)?;
     record_lattice_event(
         &conn,
         &frame.agent_id,

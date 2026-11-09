@@ -429,22 +429,18 @@ pub fn compile_wrap_prefix_bind(doc: &Value, req: &LiveAdmitRequest, wall: &mut 
 }
 
 pub fn compile_guard_wall(doc: &Value, wall: &mut AdmitWall) {
-    let p = doc.get("pattern");
-    if p.is_none() {
+    let Some(p) = doc.get("pattern") else {
         open_into(WALL_PATTERN_GUARD, wall);
         return;
-    }
-    let p = p.unwrap();
+    };
     if p.is_string() {
         open_into(WALL_PATTERN_GUARD, wall);
         return;
     }
-    let g = p.get("guard");
-    if g.is_none() {
+    let Some(g) = p.get("guard") else {
         open_into(WALL_PATTERN_GUARD, wall);
         return;
-    }
-    let g = g.unwrap();
+    };
     if g.is_string() {
         open_into(WALL_PATTERN_GUARD, wall);
         return;

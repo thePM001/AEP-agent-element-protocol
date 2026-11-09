@@ -1,5 +1,10 @@
 //! Every receipt, the catalog and the JSON form of every vector program validate against the
 //! public JSON Schemas in AEP-Base-Node/AEP-Registry/schemas.
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "integration test crate: a failed unwrap here is a failed test"
+)]
 
 use aep_ucm_core::{catalog_document, evaluate, load_program, Library, Limits};
 use aep_ucm_receipt::{issue, NodeKey, ProgramSource};

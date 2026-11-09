@@ -1,4 +1,9 @@
 //! HTTP and MCP tests against the real router, without a network listener.
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "integration test crate: a failed unwrap here is a failed test"
+)]
 
 use aep_ucm::engine::{Config, Engine};
 use aep_ucm::http::router;

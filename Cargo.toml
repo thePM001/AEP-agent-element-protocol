@@ -58,6 +58,11 @@ default-members = ["AEP-Base-Node/AEP-Crate"]
 [workspace.lints.rust]
 unsafe_code = "deny"
 
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+undocumented_unsafe_blocks = "deny"
+
 [workspace.package]
 version = "2.9.0"
 edition = "2021"

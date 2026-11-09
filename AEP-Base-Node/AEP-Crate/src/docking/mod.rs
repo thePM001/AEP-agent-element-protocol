@@ -467,7 +467,10 @@ fn handle_frame(
     }
 
     // Freeze and enqueue after digest replay. Admit collect-all then Apply runs on pulse_beat.
-    let digest = frame_digest(frame);
+    let digest = match frame_digest(frame) {
+        Ok(digest) => digest,
+        Err(e) => return deny_closed(None, e.to_string(), "frame.digest", CLASS_SECURITY),
+    };
     {
         let db = dock_lock!(&runtime.record.db, "db");
         // Fail closed: DB error treated as replay reject (do not admit frame).

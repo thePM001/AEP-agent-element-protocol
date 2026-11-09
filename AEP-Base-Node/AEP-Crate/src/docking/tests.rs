@@ -1607,7 +1607,7 @@ fn replay_ram_eviction_still_denied_by_sqlite() {
     let admitted = through_pulse(&rt, &DockingPort::ValidationEngine, &line);
     assert!(admitted.ok, "first frame must be admitted: {admitted:?}");
     assert!(admitted.event_id.is_some());
-    let digest = aep_lattice_channel::frame_digest(&frame);
+    let digest = aep_lattice_channel::frame_digest(&frame).unwrap();
     // Simulate RAM eviction: the in-memory guard no longer knows the digest.
     *rt.defence.replay_guard.lock().expect("replay") = crate::ReplayGuard::default();
     assert!(rt

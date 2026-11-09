@@ -10,7 +10,10 @@ fn parse_bool(raw: &str) -> bool {
 
 fn main() {
     let mut buf = String::new();
-    io::stdin().read_to_string(&mut buf).expect("stdin");
+    if let Err(err) = io::stdin().read_to_string(&mut buf) {
+        eprintln!("stdin read failed: {err}");
+        std::process::exit(1);
+    }
     let mut writing_src = String::new();
     let mut extra: Vec<AdmitWall> = Vec::new();
     for raw in buf.lines() {

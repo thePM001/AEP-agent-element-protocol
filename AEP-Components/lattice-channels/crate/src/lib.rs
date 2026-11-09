@@ -55,6 +55,8 @@ pub enum ChannelError {
     PipeInId(String),
     #[error("crypto: {0}")]
     Crypto(#[from] aep_lattice_crypto::CryptoError),
+    #[error("frame encode failed: {0}")]
+    Encode(String),
 }
 
 #[derive(Debug, Clone)]
@@ -138,9 +140,9 @@ impl ContractRegistry {
     }
 }
 
-pub fn frame_digest(frame: &LatticeChannelFrame) -> String {
-    let bytes = serde_json::to_vec(frame).expect("frame serializable");
-    hex::encode(Sha256::digest(bytes))
+pub fn frame_digest(frame: &LatticeChannelFrame) -> Result<String, ChannelError> {
+    let bytes = serde_json::to_vec(frame).map_err(|e| ChannelError::Encode(e.to_string()))?;
+    Ok(hex::encode(Sha256::digest(bytes)))
 }
 
 fn docking_port_label(docking_port: DockingPort) -> &'static str {

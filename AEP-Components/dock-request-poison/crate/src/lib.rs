@@ -235,7 +235,8 @@ pub mod lock_or_poison {
         pub fn process(&mut self) -> anyhow::Result<()> {
             let m = std::sync::Mutex::new(0u8);
             let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                let _g = m.lock().expect("lock");
+                // Holding the guard while panicking is what poisons the mutex.
+                let _g = m.lock();
                 panic!("poison");
             }));
             let label = if self.name.is_empty() {

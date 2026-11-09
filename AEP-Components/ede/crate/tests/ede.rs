@@ -1,4 +1,9 @@
 //! Tests of aep-ede against local bare repositories and a local stand-in for the GitHub API.
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "integration test crate: a failed unwrap here is a failed test"
+)]
 
 use aep_ede::forge::{Forge, GitForge, GitHubForge};
 use std::fs;
