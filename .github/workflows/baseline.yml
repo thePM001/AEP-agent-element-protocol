@@ -78,9 +78,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
       # gapc of the pinned GAP commit proves every AEP reference policy and the lattice
       # policy that policy-system-admit loads against the live meta schema and the load
-      # time profile walls.
+      # time profile walls. The AEP .cargo/config.toml sets target-dir for every build
+      # started from the AEP root, so the gapc build names its own target directory.
       - name: build gapc at the pinned GAP commit
-        run: cargo build --locked --release -p gapc --manifest-path gap-pinned/packages/Cargo.toml
+        run: >
+          cargo build --locked --release -p gapc
+          --manifest-path gap-pinned/packages/Cargo.toml
+          --target-dir gap-pinned/packages/target
       - name: gapc check of the AEP reference policies
         run: >
           gap-pinned/packages/target/release/gapc check
