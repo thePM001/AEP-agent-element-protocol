@@ -197,22 +197,111 @@ func (o Options) resolved() Options {
 	return o
 }
 
+// Verdict is how a caller reads one dock answer line. The Rust kernel reading
+// (DockFrameResponse::verdict in AEP-Base-Node/AEP-Crate) is normative. The
+// conformance vectors in AEP-Components/conformance/vectors/v1 pin it and the
+// vector test of this package runs them.
+type Verdict string
+
+const (
+	// VerdictAdmitted means ok with an event_id: the dock recorded the event.
+	VerdictAdmitted Verdict = "admitted"
+	// VerdictPending means the dock holds the frame until the pulse and gave
+	// the digest the caller collects with.
+	VerdictPending Verdict = "pending"
+	// VerdictRefused means the dock answered and did not admit.
+	VerdictRefused Verdict = "refused"
+	// VerdictMalformed means the line is not a dock answer.
+	VerdictMalformed Verdict = "malformed"
+)
+
 // dockAnswer is the part of a Base Node dock response the probe reads.
 type dockAnswer struct {
-	OK      bool   `json:"ok"`
-	EventID *int64 `json:"event_id"`
-	Digest  string `json:"digest"`
-	Error   string `json:"error"`
-	Pending *bool  `json:"pending"`
-	Deny    *struct {
-		Closed []struct {
-			ID     string `json:"id"`
-			Reason string `json:"reason"`
-		} `json:"closed"`
-	} `json:"deny"`
+	OK      bool
+	EventID *int64
+	Digest  string
+	Error   string
+	Pending *bool
+	Deny    *denyReport
+}
+
+// denyReport is the part of a kernel deny report the refusal text names.
+type denyReport struct {
+	Closed []struct {
+		ID     string `json:"id"`
+		Reason string `json:"reason"`
+	} `json:"closed"`
+}
+
+// parseAnswer reads one answer line the way the kernel writes it. Field names
+// match exactly, ok must be present and not null, and every scalar the kernel
+// types must carry that type, so a line the kernel would not read is malformed.
+func parseAnswer(line []byte) (dockAnswer, error) {
+	var a dockAnswer
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(bytes.TrimSpace(line), &fields); err != nil {
+		return a, err
+	}
+	if fields == nil {
+		return a, fmt.Errorf("answer is null")
+	}
+	ok, has := fields["ok"]
+	if !has || string(bytes.TrimSpace(ok)) == "null" {
+		return a, fmt.Errorf("answer has no ok")
+	}
+	if err := json.Unmarshal(ok, &a.OK); err != nil {
+		return a, fmt.Errorf("ok: %v", err)
+	}
+	var pong, httpQueued *bool
+	optional := []struct {
+		key  string
+		into any
+	}{
+		{"event_id", &a.EventID},
+		{"digest", &a.Digest},
+		{"error", &a.Error},
+		{"pending", &a.Pending},
+		{"pong", &pong},
+		{"http_queued", &httpQueued},
+		{"deny", &a.Deny},
+	}
+	for _, f := range optional {
+		raw, has := fields[f.key]
+		if !has {
+			continue
+		}
+		if err := json.Unmarshal(raw, f.into); err != nil {
+			return a, fmt.Errorf("%s: %v", f.key, err)
+		}
+	}
+	return a, nil
 }
 
 func (a dockAnswer) pending() bool { return a.Pending != nil && *a.Pending }
+
+// verdict reads the answer as the kernel does. Only ok with an event_id admits
+// and a pending answer without a digest to collect is a refusal.
+func (a dockAnswer) verdict() Verdict {
+	if a.pending() {
+		if a.Digest != "" {
+			return VerdictPending
+		}
+		return VerdictRefused
+	}
+	if a.OK && a.EventID != nil {
+		return VerdictAdmitted
+	}
+	return VerdictRefused
+}
+
+// ReadAnswer returns the verdict of one dock answer line.
+func ReadAnswer(line []byte) Verdict {
+	a, err := parseAnswer(line)
+	if err != nil {
+		return VerdictMalformed
+	}
+	return a.verdict()
+}
 
 func (a dockAnswer) refusalText() string {
 	if t := strings.TrimSpace(a.Error); t != "" {
@@ -252,7 +341,7 @@ func Probe(opts Options) error {
 		return refuse(err)
 	}
 	for answer.pending() {
-		if strings.TrimSpace(answer.Digest) == "" {
+		if answer.verdict() != VerdictPending {
 			return refuse(fmt.Errorf("dock held the sealed ping without a digest"))
 		}
 		if time.Now().Add(collectStep).After(deadline) {
@@ -267,7 +356,7 @@ func Probe(opts Options) error {
 			return refuse(err)
 		}
 	}
-	if !answer.OK || answer.EventID == nil {
+	if answer.verdict() != VerdictAdmitted {
 		return refuse(fmt.Errorf("dock refused the sealed ping: %s", answer.refusalText()))
 	}
 	return nil
@@ -355,7 +444,8 @@ func exchange(path string, line []byte, deadline time.Time) (dockAnswer, error) 
 	if err != nil && !(err == io.EOF && strings.TrimSpace(text) != "") {
 		return answer, err
 	}
-	if err := json.Unmarshal([]byte(strings.TrimSpace(text)), &answer); err != nil {
+	answer, err = parseAnswer([]byte(text))
+	if err != nil {
 		return answer, fmt.Errorf("dock answer is not a dock response: %v", err)
 	}
 	return answer, nil

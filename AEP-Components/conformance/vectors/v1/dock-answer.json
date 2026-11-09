@@ -1,0 +1,211 @@
+{
+ "format": "aep-conformance-vectors",
+ "format_version": 1,
+ "aep_version": "2.9.0",
+ "normative": "rust",
+ "suite": "dock-answer",
+ "checks": [
+  "CC-07"
+ ],
+ "description": "One answer line read back from a dock. A caller reads it as admitted, pending, refused or malformed. Only an answer with ok true and an event_id is admitted. A pending answer must carry the digest the caller collects with.",
+ "cases": [
+  {
+   "id": "admitted",
+   "input": {
+    "line": "{\"ok\":true,\"event_id\":7,\"digest\":\"ab12\"}"
+   },
+   "expect": {
+    "verdict": "admitted"
+   }
+  },
+  {
+   "id": "admitted-without-digest",
+   "input": {
+    "line": "{\"ok\":true,\"event_id\":1}"
+   },
+   "expect": {
+    "verdict": "admitted"
+   }
+  },
+  {
+   "id": "ok-without-event-id",
+   "input": {
+    "line": "{\"ok\":true,\"digest\":\"ab12\"}"
+   },
+   "expect": {
+    "verdict": "refused"
+   }
+  },
+  {
+   "id": "ok-with-null-event-id",
+   "input": {
+    "line": "{\"ok\":true,\"event_id\":null}"
+   },
+   "expect": {
+    "verdict": "refused"
+   }
+  },
+  {
+   "id": "pending",
+   "input": {
+    "line": "{\"ok\":false,\"digest\":\"ab12\",\"pending\":true}"
+   },
+   "expect": {
+    "verdict": "pending"
+   }
+  },
+  {
+   "id": "pending-without-digest",
+   "input": {
+    "line": "{\"ok\":false,\"pending\":true}"
+   },
+   "expect": {
+    "verdict": "refused"
+   }
+  },
+  {
+   "id": "pending-empty-digest",
+   "input": {
+    "line": "{\"ok\":false,\"digest\":\"\",\"pending\":true}"
+   },
+   "expect": {
+    "verdict": "refused"
+   }
+  },
+  {
+   "id": "pending-false",
+   "input": {
+    "line": "{\"ok\":false,\"digest\":\"ab12\",\"pending\":false}"
+   },
+   "expect": {
+    "verdict": "refused"
+   }
+  },
+  {
+   "id": "refused-with-error",
+   "input": {
+    "line": "{\"ok\":false,\"error\":\"plain ping rejected: LatticeChannelFrame required\"}"
+   },
+   "expect": {
+    "verdict": "refused"
+   }
+  },
+  {
+   "id": "unknown-fields-ignored",
+   "input": {
+    "line": "{\"ok\":true,\"event_id\":3,\"note\":\"x\"}"
+   },
+   "expect": {
+    "verdict": "admitted"
+   }
+  },
+  {
+   "id": "not-json",
+   "input": {
+    "line": "OK"
+   },
+   "expect": {
+    "verdict": "malformed"
+   }
+  },
+  {
+   "id": "array",
+   "input": {
+    "line": "[true]"
+   },
+   "expect": {
+    "verdict": "malformed"
+   }
+  },
+  {
+   "id": "ok-missing",
+   "input": {
+    "line": "{}"
+   },
+   "expect": {
+    "verdict": "malformed"
+   }
+  },
+  {
+   "id": "ok-as-string",
+   "input": {
+    "line": "{\"ok\":\"true\",\"event_id\":1}"
+   },
+   "expect": {
+    "verdict": "malformed"
+   }
+  },
+  {
+   "id": "event-id-as-string",
+   "input": {
+    "line": "{\"ok\":true,\"event_id\":\"1\"}"
+   },
+   "expect": {
+    "verdict": "malformed"
+   }
+  },
+  {
+   "id": "pending-as-string",
+   "input": {
+    "line": "{\"ok\":false,\"digest\":\"ab12\",\"pending\":\"true\"}"
+   },
+   "expect": {
+    "verdict": "malformed"
+   }
+  },
+  {
+   "id": "ok-null",
+   "input": {
+    "line": "{\"ok\":null,\"event_id\":1}"
+   },
+   "expect": {
+    "verdict": "malformed"
+   }
+  },
+  {
+   "id": "field-names-are-case-sensitive",
+   "input": {
+    "line": "{\"OK\":true,\"Event_ID\":1}"
+   },
+   "expect": {
+    "verdict": "malformed"
+   }
+  },
+  {
+   "id": "digest-not-string",
+   "input": {
+    "line": "{\"ok\":false,\"digest\":5,\"pending\":true}"
+   },
+   "expect": {
+    "verdict": "malformed"
+   }
+  },
+  {
+   "id": "event-id-fraction",
+   "input": {
+    "line": "{\"ok\":true,\"event_id\":1.5}"
+   },
+   "expect": {
+    "verdict": "malformed"
+   }
+  },
+  {
+   "id": "surrounding-whitespace",
+   "input": {
+    "line": "  {\"ok\":true,\"event_id\":2}\n"
+   },
+   "expect": {
+    "verdict": "admitted"
+   }
+  },
+  {
+   "id": "pong-not-bool",
+   "input": {
+    "line": "{\"ok\":true,\"event_id\":1,\"pong\":\"yes\"}"
+   },
+   "expect": {
+    "verdict": "malformed"
+   }
+  }
+ ]
+}

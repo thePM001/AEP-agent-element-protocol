@@ -130,6 +130,27 @@ jobs:
       - name: cargo clippy --workspace --all-targets
         run: cargo clippy --workspace --all-targets -- -D warnings
 
+  vectors-without-rust:
+    name: conformance vectors, example third-party runner without Rust
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: run the vectors with no Rust toolchain on PATH
+        run: |
+          NODE_DIR="$(dirname "$(command -v node)")"
+          env -i PATH="$NODE_DIR:/usr/bin:/bin" HOME="$HOME" sh -ec '
+            if command -v cargo || command -v rustc; then
+              echo "a Rust toolchain is on PATH"
+              exit 1
+            fi
+            node AEP-Components/conformance/vectors/examples/third-party-runner/run-vectors.mjs \
+              --require dock-socket,dock-request,dock-answer,mesh-mode --json
+          '
+
   caw:
     name: AEP-CAW go test, race and lint
     runs-on: ubuntu-latest
@@ -161,6 +182,8 @@ jobs:
           go test -race -p 2 ./...
         env:
           GOTMPDIR: ${{ runner.temp }}/go-tmp
+      - name: conformance vectors (Go CAW)
+        run: go test -run Vectors -v ./internal/kerneldock
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: v2.15.0

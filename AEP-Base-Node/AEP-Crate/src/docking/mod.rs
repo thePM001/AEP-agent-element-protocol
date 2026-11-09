@@ -60,6 +60,48 @@ pub struct DockFrameResponse {
     pub http_queued: Option<bool>,
 }
 
+/// How a caller reads one dock answer line. This is the normative reading that the
+/// language neutral conformance vectors pin for every other implementation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DockVerdict {
+    /// The dock admitted the frame and recorded an event.
+    Admitted,
+    /// The dock holds the frame until the pulse. The caller collects with the digest.
+    Pending,
+    /// The dock answered and did not admit.
+    Refused,
+    /// The line is not a dock answer.
+    Malformed,
+}
+
+impl DockFrameResponse {
+    /// Only ok with an event_id admits. A pending answer must carry the digest the
+    /// caller collects with, so a pending answer without one is a refusal.
+    pub fn verdict(&self) -> DockVerdict {
+        if self.pending == Some(true) {
+            return match self.digest.as_deref() {
+                Some(d) if !d.is_empty() => DockVerdict::Pending,
+                _ => DockVerdict::Refused,
+            };
+        }
+        if self.ok && self.event_id.is_some() {
+            DockVerdict::Admitted
+        } else {
+            DockVerdict::Refused
+        }
+    }
+
+    /// Read one answer line as a caller does. A line that does not parse as a dock
+    /// answer is malformed.
+    pub fn verdict_of_line(line: &str) -> DockVerdict {
+        match serde_json::from_str::<DockFrameResponse>(line.trim()) {
+            Ok(resp) => resp.verdict(),
+            Err(_) => DockVerdict::Malformed,
+        }
+    }
+}
+
 fn poisoned_lock_response(name: &'static str) -> DockFrameResponse {
     let detail = poisoned_lock_message(name);
     deny_closed(None, detail, "lock.poison", CLASS_POISON)

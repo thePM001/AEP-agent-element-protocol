@@ -233,17 +233,34 @@ export function wasmSandboxSocket(socketBase, env = process.env) {
   return env.WASM_SANDBOX_SOCKET || join(socketBase, "wasm_sandbox");
 }
 
-function runEpscomValidateWriting(text, { configPath, latticeLogBin } = {}) {
+function runEpscomWritingCommand(command, text, { configPath, latticeLogBin } = {}) {
   const bin = latticeLogBin ?? resolveLatticeLogBin();
   const args = [];
   if (configPath) args.push("--config", configPath);
-  args.push("validate-writing");
+  args.push(command);
   const out = execFileSync(bin, args, {
     input: JSON.stringify({ text: String(text ?? "") }),
     encoding: "utf8",
     maxBuffer: 8 * 1024 * 1024,
   }).trim();
   return JSON.parse(out);
+}
+
+function runEpscomValidateWriting(text, opts = {}) {
+  return runEpscomWritingCommand("validate-writing", text, opts);
+}
+
+/**
+ * EPSCOM kernel writing.gap enforcement without throwing: the fixed text, whether it
+ * is clean after the fix and the violations the fix could not remove.
+ */
+export function epscomValidateWriting(text, opts = {}) {
+  return runEpscomValidateWriting(text, opts);
+}
+
+/** EPSCOM kernel writing.gap findings of the text as written, before any fix. */
+export function epscomLintWriting(text, opts = {}) {
+  return runEpscomWritingCommand("lint-writing", text, opts);
 }
 
 /** EPSCOM kernel writing.gap enforcement (Base Node aep-lattice-log). */
@@ -489,9 +506,11 @@ export function lintGovernedProse(text, opts = {}) {
   const violations = [];
   const raw = String(text ?? "");
   // The writing rule family lives in one compiled wall set. This mirror asks the
-  // kernel for that decision and keeps no writing matcher of its own.
+  // kernel for that decision and keeps no writing matcher of its own. It reads the
+  // findings of the text as written, so a violation the kernel would fix is still
+  // reported here.
   try {
-    const kernel = runEpscomValidateWriting(raw, opts);
+    const kernel = epscomLintWriting(raw, opts);
     for (const v of kernel.violations ?? []) {
       violations.push({
         rule: v.rule ?? "epscom_kernel",

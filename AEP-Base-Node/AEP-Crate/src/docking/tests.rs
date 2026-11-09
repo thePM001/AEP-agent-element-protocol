@@ -16,6 +16,42 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
 
 #[test]
+fn dock_verdict_reads_answers_like_a_caller() {
+    let (_dir, rt) = temp_runtime();
+    let refused = process_request(&rt, &DockingPort::ValidationEngine, r#"{"ping":true}"#);
+    assert_eq!(refused.verdict(), DockVerdict::Refused);
+    let line = serde_json::to_string(&refused).unwrap();
+    assert_eq!(
+        DockFrameResponse::verdict_of_line(&line),
+        DockVerdict::Refused
+    );
+    assert_eq!(
+        pending_held_response(String::from("ab12")).verdict(),
+        DockVerdict::Pending
+    );
+    assert_eq!(
+        DockFrameResponse::verdict_of_line(r#"{"ok":true,"event_id":4}"#),
+        DockVerdict::Admitted
+    );
+    assert_eq!(
+        DockFrameResponse::verdict_of_line(r#"{"ok":true}"#),
+        DockVerdict::Refused
+    );
+    assert_eq!(
+        DockFrameResponse::verdict_of_line(r#"{"ok":false,"pending":true}"#),
+        DockVerdict::Refused
+    );
+    assert_eq!(
+        DockFrameResponse::verdict_of_line("{}"),
+        DockVerdict::Malformed
+    );
+    assert_eq!(
+        DockFrameResponse::verdict_of_line("OK"),
+        DockVerdict::Malformed
+    );
+}
+
+#[test]
 fn plain_ping_is_rejected() {
     let (_dir, rt) = temp_runtime();
     let resp = process_request(&rt, &DockingPort::ValidationEngine, r#"{"ping":true}"#);

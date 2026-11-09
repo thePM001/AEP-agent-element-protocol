@@ -1,6 +1,6 @@
 # AEP Conformance Test Suite
 
-Test battery that determines who gets to claim AEP-compliance for the **2.8 public tier**.
+Test battery that determines who gets to claim AEP-compliance for the **2.9 public tier**.
 
 ## Status
 
@@ -22,33 +22,46 @@ From the repository root:
 ./AEP-Components/conformance/runner/run.sh
 ```
 
-### Rust checks only
+The runner needs cargo and node 22 with npm. It validates the manifest, builds the kernel binaries, runs every listed check, runs the language neutral vectors and then accounts for the run. It fails when any listed check did not run or did not pass, so no check is declared and skipped.
+
+### Kernel checks only
 
 ```bash
 cargo run --release -p aep-conformance
 ```
 
-### Node integration checks only
+### Vectors against the kernel only
 
 ```bash
-cd AEP-Components/conformance/harness && npm install && ./node_modules/.bin/vitest run
+cargo build --release -p aep-conformance
+rust/target/release/aep-conformance vectors
 ```
 
-(Local harness only - not npm registry distribution.)
+### vitest checks
+
+The vitest checks run inside `run.sh`, which builds the kernel binaries, provisions the agent key CC-15 signs with and installs the harness from its lock file. Local harness only, not an npm registry distribution.
 
 ## Check Catalog
 
-See [`tests/manifest.json`](tests/manifest.json) for the full CC-01 through CC-16 catalog.
+[`tests/manifest.json`](tests/manifest.json) is the catalog. Its `checks` list holds every check a compliance claim rests on. Its `planned` list holds checks whose subject is not in the public tree. Each planned check gives its reason and carries `"claim": "none"`. Nothing runs it.
 
-| ID | Area |
-|----|------|
-| CC-01 - CC-09 | Rust mandatory (crypto, channel, mesh, docking) |
-| CC-10 | POTOMITAN mesh fallback health E2E |
-| CC-11 | AgentMesh trust rotation |
-| CC-12 | PQ capsule bridge roundtrip |
-| CC-13 - CC-14 | Plain ping/event side-channel rejection |
-| CC-15 | Lattice-mandatory policy artifacts |
-| CC-16 | writing.gap documentation lint |
+| ID | Runner | Area |
+|----|--------|------|
+| CC-01 - CC-09 | Rust kernel | Crypto, channel, mesh and docking |
+| CC-10 | Rust kernel | Base Node health in POTOMITAN mode when the internet drops and the mesh packet plane |
+| CC-11 | Rust kernel | Docking trust_score moves the AgentMesh trust tier |
+| CC-13 - CC-14 | Rust kernel | Plain ping and event side-channel rejection |
+| CC-15 | vitest | Lattice-mandatory policy artifacts and frame builder |
+| CC-16 | node | writing.gap documentation lint |
+| CC-17 | vitest | EPSCOM kernel writing enforcement through aep-lattice-log |
+| CC-24 | vitest | Intent ledger chain with evidence-ledger cross-ref |
+| CC-26 | vitest | Intent knots in Lattice Memory with the optional Agentstream mirror |
+| CC-28 - CC-34 | cargo test | UCM |
+| CC-12, CC-18 - CC-23, CC-25, CC-27 | planned | No claim |
+
+## Language neutral vectors
+
+[`vectors/`](vectors/README.md) holds versioned JSON vectors that pin the answers of the Rust kernel, which is normative. The Go CAW, the TypeScript helpers and the example third-party runner run the same files. A third party can run them without a Rust toolchain.
 
 ## Submitting a Conformance Report
 

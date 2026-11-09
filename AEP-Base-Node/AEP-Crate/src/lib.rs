@@ -27,7 +27,7 @@ use aep_lattice_crypto::KemKeypair;
 use aep_potomitan::{detect_network_mode, status, MeshMode, MeshSupervisor, MESH_PEERS_FILE};
 pub use docking::{
     drain_docking_servers, process_request, pulse_beat, run_docking_servers, sockets_exist,
-    unlink_sockets, DockFrameResponse, DockingRuntime,
+    unlink_sockets, DockFrameResponse, DockVerdict, DockingRuntime,
 };
 pub use lattice_log::{
     build_transport_frame, default_aep_data_dir, default_lattice_db_path, export_dynaep_events,

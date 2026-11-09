@@ -61,6 +61,8 @@ export function readChain(dataDir) {
 }
 
 export function appendSolidifyRecord(dataDir, record) {
+  // Check the intent id before the chain grows, so a refused record leaves no entry.
+  const snapshotDir = record.intent_id ? intentsDir(dataDir, record.intent_id) : null;
   mkdirSync(dataDir, { recursive: true });
   const chain = readChain(dataDir);
   const prevHash = chain.length ? chain[chain.length - 1].record_hash : "";
@@ -73,10 +75,9 @@ export function appendSolidifyRecord(dataDir, record) {
   entry.record_hash = hashRecord(entry, prevHash);
   appendFileSync(ledgerPath(dataDir), `${JSON.stringify(entry)}\n`, "utf8");
 
-  if (record.intent_id) {
-    const dir = intentsDir(dataDir, record.intent_id);
-    mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, "solidify-latest.json"), JSON.stringify(entry, null, 2));
+  if (snapshotDir) {
+    mkdirSync(snapshotDir, { recursive: true });
+    writeFileSync(join(snapshotDir, "solidify-latest.json"), JSON.stringify(entry, null, 2));
   }
 
   return entry;

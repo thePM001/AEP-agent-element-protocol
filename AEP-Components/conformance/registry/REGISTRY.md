@@ -4,16 +4,16 @@ Public registry for AEP 2.9 compliance reports.
 
 ## Submitting a Report
 
-1. Run the full suite:
+1. Run the full suite from the repository root. It must end with `All conformance checks passed`:
 
 ```bash
-./conformance/runner/run.sh
+./AEP-Components/conformance/runner/run.sh
 ```
 
-2. Save the JSON report:
+2. Save the JSON report of the kernel checks:
 
 ```bash
-cd rust && cargo run --release -p aep-conformance > /tmp/aep28-report.json
+cargo run --release -p aep-conformance > /tmp/aep29-report.json
 ```
 
 3. Open a PR adding `registry/reports/<your-org>-<date>.json` with:
@@ -25,7 +25,7 @@ cd rust && cargo run --release -p aep-conformance > /tmp/aep28-report.json
  "aep_version": "2.9.0",
  "report_generated_at": "2026-06-15T00:00:00Z",
  "suite": "aep-2.8-public",
- "passed": 9,
+ "passed": 13,
  "failed": 0,
  "environment": {
  "os": "linux",
@@ -37,6 +37,8 @@ cd rust && cargo run --release -p aep-conformance > /tmp/aep28-report.json
 ```
 
 4. Include the full `checks` array from the `aep-conformance` runner output.
+
+A report claims only the checks in the `checks` list of `tests/manifest.json`. Checks in its `planned` list carry no claim and a report must not list them as passed.
 
 ## Name Policy
 

@@ -574,7 +574,7 @@ A builder who wants a different wait rebuilds Base Node with a different compile
 | **POTOMITAN** | `AEP-Base-Node/AEP-Potomitan/` | Mesh fallback when normal internet is unavailable |
 | **dynAEP 1.0** | `AEP-Components/dynAEP/` | Hyperlattice runtime: `action_path` filter, temporal authority, bridge (merged from standalone repo) |
 | **Component registry** | `AEP-Base-Node/AEP-Registry/` | Offline catalog + optional extension merge |
-| **Conformance runner** | `AEP-Components/conformance/` | CC-01..CC-15 public tier compliance battery |
+| **Conformance runner** | `AEP-Components/conformance/` | Public tier compliance battery CC-01..CC-34 and language neutral vectors v1 |
 | **UCB (optional)** | `AEP-Base-Node/AEP-Docks/ucb/` | Universal Connect Bridge for **foreign** stacks only (`:8412`). Native AEP skips UCB. Set `UCB=0` to disable. |
 | **CAW framework** | `AEP-CAW/` | Execution-layer sandbox (`aep-caw`); profiles authored in GAP, compiled locally |
 | **GAP language** | `AEP-Components/gap/` | Governed Agentic Programming: policies, sandbox profiles, manifest/plan templates |
@@ -920,7 +920,7 @@ Public tier vendors run the conformance battery before claiming AEP compliance:
 ./AEP-Components/conformance/runner/run.sh
 ```
 
-Manifest: `AEP-Components/conformance/tests/manifest.json` (CC-01 through CC-15)
+Manifest: `AEP-Components/conformance/tests/manifest.json`. Every listed check runs on every run and the runner fails when one does not. Checks in the planned list carry no compliance claim. The Rust kernel is normative and the language neutral vectors in `AEP-Components/conformance/vectors/v1` let an implementation in any language check itself without a Rust toolchain.
 
 ---
 

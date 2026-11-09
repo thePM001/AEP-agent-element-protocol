@@ -1,0 +1,115 @@
+{
+ "format": "aep-conformance-vectors",
+ "format_version": 1,
+ "aep_version": "2.9.0",
+ "normative": "rust",
+ "suite": "dock-request",
+ "checks": [
+  "CC-09",
+  "CC-13",
+  "CC-14"
+ ],
+ "description": "One request line sent to a dock socket. Every plain wire format is refused, so only a sealed LatticeChannelFrame can reach Admit. Sealed frames need live keys and are covered by the Rust checks, not by these vectors.",
+ "cases": [
+  {
+   "id": "plain-ping",
+   "input": {
+    "line": "{\"ping\":true}"
+   },
+   "expect": {
+    "verdict": "refused",
+    "error": "plain ping rejected: LatticeChannelFrame required"
+   }
+  },
+  {
+   "id": "plain-ping-false",
+   "input": {
+    "line": "{\"ping\":false}"
+   },
+   "expect": {
+    "verdict": "refused",
+    "error": "plain ping rejected: LatticeChannelFrame required"
+   }
+  },
+  {
+   "id": "plain-event",
+   "input": {
+    "line": "{\"event\":{\"agent_id\":\"AG-SIDE-CONF\",\"channel_id\":\"ch-side\",\"contract_id\":\"dynaep-action-lattice\",\"event_type\":\"SIDE_CHANNEL_PROBE\",\"docking_port\":\"validation_engine\",\"payload\":{\"probe\":true}}}"
+   },
+   "expect": {
+    "verdict": "refused",
+    "error": "plain event rejected: seal payload into LatticeChannelFrame via aep-lattice-log build-frame"
+   }
+  },
+  {
+   "id": "plain-register-lrp",
+   "input": {
+    "line": "{\"register_lrp\":{\"lrp_id\":\"conf-lrp\"}}"
+   },
+   "expect": {
+    "verdict": "refused",
+    "error": "plain register_lrp rejected for conf-lrp: use LatticeChannelFrame on regulation_module dock"
+   }
+  },
+  {
+   "id": "collect-empty-digest",
+   "input": {
+    "line": "{\"collect\":\"\"}"
+   },
+   "expect": {
+    "verdict": "refused",
+    "error": "collect requires digest"
+   }
+  },
+  {
+   "id": "collect-unknown-digest",
+   "input": {
+    "line": "{\"collect\":\"0000feedface\"}"
+   },
+   "expect": {
+    "verdict": "refused",
+    "error": "collect unknown digest: 0000feedface"
+   }
+  },
+  {
+   "id": "not-json",
+   "input": {
+    "line": "PING"
+   },
+   "expect": {
+    "verdict": "refused",
+    "error_prefix": "invalid JSON: "
+   }
+  },
+  {
+   "id": "empty-object",
+   "input": {
+    "line": "{}"
+   },
+   "expect": {
+    "verdict": "refused",
+    "error_prefix": "invalid JSON: "
+   }
+  },
+  {
+   "id": "ping-not-bool",
+   "input": {
+    "line": "{\"ping\":1}"
+   },
+   "expect": {
+    "verdict": "refused",
+    "error_prefix": "invalid JSON: "
+   }
+  },
+  {
+   "id": "array-line",
+   "input": {
+    "line": "[\"ping\"]"
+   },
+   "expect": {
+    "verdict": "refused",
+    "error_prefix": "invalid JSON: "
+   }
+  }
+ ]
+}

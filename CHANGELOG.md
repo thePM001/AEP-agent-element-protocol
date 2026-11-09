@@ -2,6 +2,18 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-09 - Every listed conformance check runs and language neutral vectors ship
+The conformance manifest listed 15 vitest checks and the harness shipped no test files, so run.sh skipped all 15 and public compliance rested on the checks that did run. The Rust runner also used CC-15 for a check the manifest did not name. Running the suite needed a Rust build, so no third party could check its own implementation without Rust.
+
+- Every entry in the `checks` list of the manifest now runs on every run of run.sh. CC-10 and CC-11 run in the Rust kernel runner: CC-10 reloads a peer file, reads POTOMITAN mode from Base Node health when the internet drops, carries packets over the mesh plane and reports offline when the last peer goes. CC-11 docks signed frames whose trust_score moves the AgentMesh trust tier while the mTLS identity remains the same. CC-15, CC-17, CC-24 and CC-26 run as vitest checks. The mesh packet plane check that ran as CC-15 is now part of CC-10.
+- CC-12, CC-18 to CC-23, CC-25 and CC-27 test code that is not in the public tree. They move to a `planned` list. Each gives its reason and carries `"claim": "none"`. Nothing runs them.
+- run.sh validates the manifest, runs each check from it and ends with an account of the run. The run fails when a listed check did not run or did not pass. It also fails when a runner reports a check the manifest does not list. The harness gains the `package.json` its lock file belonged to and a vitest config.
+- Versioned JSON vectors in `AEP-Components/conformance/vectors/v1` cover the dock socket names, the dock answer to each plain request, how a caller reads a dock answer, POTOMITAN network mode and the writing rules. The Rust kernel is normative: `aep-conformance vectors` runs every case against it. The Go CAW and the TypeScript helpers run the suites they implement. An example third-party runner in plain Node imports nothing from the tree, implements four suites and runs in CI with no Rust toolchain on its PATH.
+- The Base Node kernel gains `DockFrameResponse::verdict`, the normative reading of a dock answer. The CAW kernel dock probe reads answers the same way: field names match exactly, `ok` must be present and a mistyped field makes the answer malformed. Before, Go matched field names in any case and read a missing `ok` as false.
+- `lintGovernedProse` in the lattice transport helpers reports the findings of the text as written. It asked the kernel for the findings left after its fix, so a draft with an em dash linted clean. `epscomLintWriting` and `epscomValidateWriting` expose the two kernel calls.
+- The intent ledger checks the intent id before it appends a solidify record, so a refused record no longer lands in the hash chain.
+- Verify with `bash AEP-Components/conformance/runner/run.sh`, `go test -run Vectors ./internal/kerneldock` in AEP-CAW and `node AEP-Components/conformance/vectors/examples/third-party-runner/run-vectors.mjs`.
+
 ## [2.9.0] - 2026-11-09 - Every AEP reference policy passes gapc and policy-system-admit reads GAP through the profile crate
 21 of 28 AEP reference policies failed `gapc check` against the live GAP meta schema v1.3. policy-system-admit read GAP source with a line scanner that took wrap, prefix and guard from any line that looked like a key, also inside a block scalar. A source that did not parse lost its profile walls. A policy outside the always-on and LRP sets that did not parse was skipped without a wall.
 

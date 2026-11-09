@@ -1,0 +1,372 @@
+{
+ "format": "aep-conformance-vectors",
+ "format_version": 1,
+ "aep_version": "2.9.0",
+ "normative": "rust",
+ "suite": "writing",
+ "checks": [
+  "CC-16",
+  "CC-17"
+ ],
+ "description": "writing.gap findings of prose as written, by rule and line, and the text the kernel fix produces. Inputs are escaped so this file stays ASCII.",
+ "cases": [
+  {
+   "id": "clean",
+   "input": {
+    "text": "Sealed frames reach Admit."
+   },
+   "expect": {
+    "violations": [],
+    "fixed": "Sealed frames reach Admit.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "empty",
+   "input": {
+    "text": ""
+   },
+   "expect": {
+    "violations": [],
+    "fixed": "",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "em-dash",
+   "input": {
+    "text": "The dock \u2014 the kernel."
+   },
+   "expect": {
+    "violations": [
+     {
+      "rule": "no_em_dashes",
+      "line": 1
+     }
+    ],
+    "fixed": "The dock  -  the kernel.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "en-dash-range",
+   "input": {
+    "text": "Pages 3\u20135 apply."
+   },
+   "expect": {
+    "violations": [
+     {
+      "rule": "no_en_dashes",
+      "line": 1
+     }
+    ],
+    "fixed": "Pages 3-5 apply.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "horizontal-bar",
+   "input": {
+    "text": "Docks \u2015 sealed."
+   },
+   "expect": {
+    "violations": [
+     {
+      "rule": "no_dash_substitutes",
+      "line": 1
+     }
+    ],
+    "fixed": "Docks  -  sealed.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "two-em-dash",
+   "input": {
+    "text": "Docks \u2e3a sealed."
+   },
+   "expect": {
+    "violations": [
+     {
+      "rule": "no_dash_substitutes",
+      "line": 1
+     }
+    ],
+    "fixed": "Docks  -  sealed.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "three-em-dash",
+   "input": {
+    "text": "Docks \u2e3b sealed."
+   },
+   "expect": {
+    "violations": [
+     {
+      "rule": "no_dash_substitutes",
+      "line": 1
+     }
+    ],
+    "fixed": "Docks  -  sealed.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "minus-as-dash",
+   "input": {
+    "text": "Ports \u2212 docks."
+   },
+   "expect": {
+    "violations": [
+     {
+      "rule": "no_minus_as_dash",
+      "line": 1
+     }
+    ],
+    "fixed": "Ports - docks.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "box-drawing-in-prose",
+   "input": {
+    "text": "Section \u2500 one."
+   },
+   "expect": {
+    "violations": [
+     {
+      "rule": "no_box_drawing_dashes",
+      "line": 1
+     }
+    ],
+    "fixed": "Section - one.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "tree-diagram-line",
+   "input": {
+    "text": "\u251c\u2500\u2500 src/main.rs"
+   },
+   "expect": {
+    "violations": [],
+    "fixed": "\u251c\u2500\u2500 src/main.rs",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "double-hyphen-prose",
+   "input": {
+    "text": "Ship it -- now."
+   },
+   "expect": {
+    "violations": [
+     {
+      "rule": "no_double_hyphen",
+      "line": 1
+     }
+    ],
+    "fixed": "Ship it -- now.",
+    "ok_after_fix": false
+   }
+  },
+  {
+   "id": "double-hyphen-flag",
+   "input": {
+    "text": "Run aep-conformance --help for the options."
+   },
+   "expect": {
+    "violations": [],
+    "fixed": "Run aep-conformance --help for the options.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "oxford-and",
+   "input": {
+    "text": "Red, white, and blue."
+   },
+   "expect": {
+    "violations": [
+     {
+      "rule": "no_oxford_comma",
+      "line": 1
+     }
+    ],
+    "fixed": "Red, white and blue.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "oxford-or",
+   "input": {
+    "text": "Ports, docks, or walls."
+   },
+   "expect": {
+    "violations": [
+     {
+      "rule": "no_oxford_comma",
+      "line": 1
+     }
+    ],
+    "fixed": "Ports, docks or walls.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "two-items-no-comma",
+   "input": {
+    "text": "Ports and docks."
+   },
+   "expect": {
+    "violations": [],
+    "fixed": "Ports and docks.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "sign-glued-to-word",
+   "input": {
+    "text": "Done!Next step."
+   },
+   "expect": {
+    "violations": [
+     {
+      "rule": "punctuation_word_space",
+      "line": 1
+     },
+     {
+      "rule": "space_before_spaced_signs",
+      "line": 1
+     }
+    ],
+    "fixed": "Done ! Next step.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "word-glued-to-bracket",
+   "input": {
+    "text": "Sealed(always) frames."
+   },
+   "expect": {
+    "violations": [
+     {
+      "rule": "punctuation_word_space",
+      "line": 1
+     },
+     {
+      "rule": "space_before_spaced_signs",
+      "line": 1
+     }
+    ],
+    "fixed": "Sealed ( always ) frames.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "space-before-comma",
+   "input": {
+    "text": "One , two ; three."
+   },
+   "expect": {
+    "violations": [
+     {
+      "rule": "attach_comma_semicolon",
+      "line": 1
+     }
+    ],
+    "fixed": "One, two; three.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "space-before-double-colon",
+   "input": {
+    "text": "Use the crate ::path form."
+   },
+   "expect": {
+    "violations": [
+     {
+      "rule": "attach_double_colon",
+      "line": 1
+     }
+    ],
+    "fixed": "Use the crate::path form.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "fullwidth-question",
+   "input": {
+    "text": "Why\uff1fBecause."
+   },
+   "expect": {
+    "violations": [
+     {
+      "rule": "punctuation_word_space",
+      "line": 1
+     },
+     {
+      "rule": "space_before_spaced_signs",
+      "line": 1
+     }
+    ],
+    "fixed": "Why ? Because.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "url-query",
+   "input": {
+    "text": "See https://example.org/a?b=1 for more."
+   },
+   "expect": {
+    "violations": [
+     {
+      "rule": "punctuation_word_space",
+      "line": 1
+     },
+     {
+      "rule": "space_before_spaced_signs",
+      "line": 1
+     }
+    ],
+    "fixed": "See https://example.org/a ? b=1 for more.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "multi-line",
+   "input": {
+    "text": "Line one is fine.\nLine two \u2014 not.\nRed, white, and blue."
+   },
+   "expect": {
+    "violations": [
+     {
+      "rule": "no_em_dashes",
+      "line": 2
+     },
+     {
+      "rule": "no_oxford_comma",
+      "line": 3
+     }
+    ],
+    "fixed": "Line one is fine.\nLine two  -  not.\nRed, white and blue.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "trailing-newline",
+   "input": {
+    "text": "Clean line.\n"
+   },
+   "expect": {
+    "violations": [],
+    "fixed": "Clean line.",
+    "ok_after_fix": true
+   }
+  }
+ ]
+}

@@ -146,12 +146,12 @@
     },
     {
       "id": "conformance-runner",
-      "name": "Conformance Runner CC-01..CC-16",
+      "name": "Conformance Runner CC-01..CC-34",
       "kind": "tooling",
       "bundled": true,
       "default_enabled": false,
       "path": "AEP-Components/conformance/",
-      "description": "Public tier conformance battery.",
+      "description": "Public tier conformance battery and language neutral conformance vectors.",
       "manifest": "AEP-Base-Node/AEP-Registry/components/conformance-runner.json",
       "role": "companion"
     },

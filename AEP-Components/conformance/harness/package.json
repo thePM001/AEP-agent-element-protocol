@@ -1,0 +1,18 @@
+{
+  "name": "aep-conformance-harness",
+  "private": true,
+  "type": "module",
+  "description": "Local harness for the AEP conformance vitest checks. Not published to any registry.",
+  "scripts": {
+    "test": "vitest run --config vitest.config.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "js-yaml": "^4.1.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.4",
+    "ws": "^8.21.0",
+    "yaml": "^2.7.0",
+    "zod": "^3.24.0"
+  }
+}

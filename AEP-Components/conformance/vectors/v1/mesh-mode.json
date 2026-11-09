@@ -1,0 +1,81 @@
+{
+ "format": "aep-conformance-vectors",
+ "format_version": 1,
+ "aep_version": "2.9.0",
+ "normative": "rust",
+ "suite": "mesh-mode",
+ "checks": [
+  "CC-04",
+  "CC-05",
+  "CC-10"
+ ],
+ "description": "POTOMITAN network mode from internet reachability and the active mesh peer count, and whether the node can reach anything in that mode.",
+ "cases": [
+  {
+   "id": "internet-no-peers",
+   "input": {
+    "internet_up": true,
+    "mesh_peers": 0
+   },
+   "expect": {
+    "mode": "internet",
+    "reachable": true
+   }
+  },
+  {
+   "id": "internet-with-peers",
+   "input": {
+    "internet_up": true,
+    "mesh_peers": 3
+   },
+   "expect": {
+    "mode": "internet",
+    "reachable": true
+   }
+  },
+  {
+   "id": "failover-one-peer",
+   "input": {
+    "internet_up": false,
+    "mesh_peers": 1
+   },
+   "expect": {
+    "mode": "potomitan",
+    "reachable": true
+   }
+  },
+  {
+   "id": "failover-two-peers",
+   "input": {
+    "internet_up": false,
+    "mesh_peers": 2
+   },
+   "expect": {
+    "mode": "potomitan",
+    "reachable": true
+   }
+  },
+  {
+   "id": "offline",
+   "input": {
+    "internet_up": false,
+    "mesh_peers": 0
+   },
+   "expect": {
+    "mode": "offline",
+    "reachable": false
+   }
+  },
+  {
+   "id": "failover-many-peers",
+   "input": {
+    "internet_up": false,
+    "mesh_peers": 4294967295
+   },
+   "expect": {
+    "mode": "potomitan",
+    "reachable": true
+   }
+  }
+ ]
+}

@@ -2,15 +2,20 @@
 //!
 //! Exit 0 = all mandatory checks passed. Used by `conformance/runner/run.sh`.
 
-use aep_agentmesh::{create_bundle, rotate_on_trust_change};
+mod vectors;
+
+use aep_agentmesh::{create_bundle, rotate_on_trust_change, trust_tier};
 use aep_base_node::{
-    open_lattice_db, process_request, pulse_beat, DockFrameResponse, DockingRuntime,
+    health, open_lattice_db, process_request, pulse_beat, DockFrameResponse, DockingRuntime,
+    HealthInput,
 };
 use aep_lattice_channel::{
     build_frame, build_frame_for_dock, open_frame, ContractRegistry, DockingPort,
 };
 use aep_lattice_crypto::{generate_kem_keypair, generate_sign_keypair, open, seal};
-use aep_potomitan::{detect_network_mode, MemoryFabric, MeshMode, MeshPeer, MeshSupervisor};
+use aep_potomitan::{
+    detect_network_mode, MemoryFabric, MeshMode, MeshPeer, MeshSupervisor, MESH_PEERS_FILE,
+};
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -86,6 +91,17 @@ const CHECKS: &[Check] = &[
         run: cc_lrp_registration_flow,
     },
     Check {
+        id: "CC-10",
+        name:
+            "Base Node health reports POTOMITAN failover and the mesh packet plane carries traffic",
+        run: cc_base_node_health_failover,
+    },
+    Check {
+        id: "CC-11",
+        name: "Docking trust_score from the signed frame moves the AgentMesh trust tier",
+        run: cc_docking_trust_score_tier,
+    },
+    Check {
         id: "CC-13",
         name: "Plain ping wire format rejected (side-channel defense)",
         run: cc_plain_ping_rejected,
@@ -94,11 +110,6 @@ const CHECKS: &[Check] = &[
         id: "CC-14",
         name: "Plain event wire format rejected (side-channel defense)",
         run: cc_plain_event_rejected,
-    },
-    Check {
-        id: "CC-15",
-        name: "POTOMITAN mesh packet plane send and recv",
-        run: cc_potomitan_packet_plane,
     },
 ];
 
@@ -292,6 +303,184 @@ fn cc_potomitan_packet_plane() -> Result<(), String> {
     Ok(())
 }
 
+/// Health input for a node whose docks listen and whose hub is loaded. Only the mesh
+/// fields vary, so the report shows what POTOMITAN failover changes.
+fn mesh_health_input<'a>(
+    data_dir: &'a std::path::Path,
+    internet_up: bool,
+    sup: &MeshSupervisor,
+) -> HealthInput<'a> {
+    HealthInput {
+        version: env!("CARGO_PKG_VERSION"),
+        mesh_peers: sup.peer_count(),
+        internet_up,
+        base_socket: "/run/aep-conformance/sockets",
+        lattice_events: 0,
+        correctwriting_en_priority: 255,
+        hub_loaded: true,
+        hub_sessions: 0,
+        hub_mounts: 0,
+        hub_permissions: 0,
+        mesh_peers_load_error: sup.load_error.clone(),
+        lattice_memory_attractors: 0,
+        lattice_memory_dim: 0,
+        sqlite_vec_version: None,
+        docking_ports_listening: true,
+        mesh_routes: sup.routing.reachable_destinations(),
+        data_dir: Some(data_dir),
+        sqlite_closed: false,
+        last_tls_handshake_err: None,
+        drain_aborted_tasks: 0,
+    }
+}
+
+/// CC-10: a node whose internet drops reports POTOMITAN in its health once a peer is
+/// on file, keeps that after a restart that reloads the peer file, carries packets
+/// to the peer over the mesh plane and falls to offline when the last peer goes.
+fn cc_base_node_health_failover() -> Result<(), String> {
+    let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
+    let node = dir.path().join("node-a");
+    std::fs::create_dir_all(&node).map_err(|e| e.to_string())?;
+
+    let mut sup = MeshSupervisor::load(&node, false);
+    let before = health(mesh_health_input(&node, false, &sup));
+    if before.mesh_mode != MeshMode::Offline || before.mesh_reachable {
+        return Err(format!(
+            "no peers and internet down must be offline and unreachable, got {:?} reachable={}",
+            before.mesh_mode, before.mesh_reachable
+        ));
+    }
+    sup.upsert_peer(MeshPeer {
+        node_id: "node-b".into(),
+        endpoint: "mem://node-b".into(),
+        public_key_hex: None,
+        active: true,
+    })
+    .map_err(|e| e.to_string())?;
+
+    // A restart reads the peer file the supervisor wrote.
+    let restarted = MeshSupervisor::load(&node, false);
+    if let Some(err) = &restarted.load_error {
+        return Err(format!("peer file did not reload: {err}"));
+    }
+    let failover = health(mesh_health_input(&node, false, &restarted));
+    if failover.mesh_mode != MeshMode::Potomitan {
+        return Err(format!(
+            "expected potomitan health, got {:?}",
+            failover.mesh_mode
+        ));
+    }
+    if !failover.mesh_reachable || failover.mesh_peers != 1 || failover.mesh_routes != 1 {
+        return Err(format!(
+            "potomitan health must reach one peer on one route, got reachable={} peers={} routes={}",
+            failover.mesh_reachable, failover.mesh_peers, failover.mesh_routes
+        ));
+    }
+    if !failover.potomitan_config.ends_with(MESH_PEERS_FILE)
+        || !failover
+            .potomitan_config
+            .starts_with(node.to_string_lossy().as_ref())
+    {
+        return Err(format!(
+            "health names the wrong peer file: {}",
+            failover.potomitan_config
+        ));
+    }
+    if failover.status != "ok" {
+        return Err(format!(
+            "failover alone must not degrade health, got {}",
+            failover.status
+        ));
+    }
+    let online = health(mesh_health_input(&node, true, &restarted));
+    if online.mesh_mode != MeshMode::Internet {
+        return Err(format!(
+            "internet up must win over peers, got {:?}",
+            online.mesh_mode
+        ));
+    }
+
+    cc_potomitan_packet_plane()?;
+
+    sup.remove_peer("node-b").map_err(|e| e.to_string())?;
+    let alone = MeshSupervisor::load(&node, false);
+    let offline = health(mesh_health_input(&node, false, &alone));
+    if offline.mesh_mode != MeshMode::Offline || offline.mesh_reachable {
+        return Err(format!(
+            "last peer gone must be offline, got {:?} reachable={}",
+            offline.mesh_mode, offline.mesh_reachable
+        ));
+    }
+    Ok(())
+}
+
+/// Bundle state the docking runtime holds for one agent.
+fn agent_bundle(
+    rt: &DockingRuntime,
+    agent_id: &str,
+) -> Result<aep_agentmesh::AgentMeshBundle, String> {
+    rt.keys
+        .agent_bundles
+        .lock()
+        .map_err(|e| e.to_string())?
+        .get(agent_id)
+        .cloned()
+        .ok_or_else(|| format!("no AgentMesh bundle for {agent_id}"))
+}
+
+/// CC-11: the trust_score the agent signs into the frame plaintext is the score the
+/// dock records on the AgentMesh bundle, so the trust tier follows it. The mTLS
+/// identity stays the same because a score change never reissues the cert.
+fn cc_docking_trust_score_tier() -> Result<(), String> {
+    let (_dir, rt) = temp_docking_runtime()?;
+    let agent = "AG-TRUST-DOCK-CONF";
+    let sign = arm_test_agent(&rt, agent, &["dynaep-action-lattice"])?;
+    let mut fingerprint = None;
+    for (seq, score, tier) in [(1u64, 850u16, 4u8), (2, 450, 2), (3, 120, 0)] {
+        let sent_at = now_unix();
+        let frame = conformance_frame_for_dock(
+            "ch-trust",
+            agent,
+            DockingPort::ValidationEngine,
+            "dynaep-action-lattice",
+            &admit_payload(&format!("\"trust_score\":{score},"), seq, sent_at),
+            sent_at,
+            rt.keys.dock_kem.public.as_slice(),
+            &sign,
+        )?;
+        // The wire field is unbound and must not override the signed score.
+        let line = serde_json::json!({ "frame": frame, "trust_score": 1000 }).to_string();
+        let resp = admit_through_pulse(&rt, &DockingPort::ValidationEngine, &line);
+        if !resp.ok || resp.event_id.is_none() {
+            return Err(format!(
+                "trust frame {seq} was not admitted: {:?} deny={:?}",
+                resp.error, resp.deny
+            ));
+        }
+        let bundle = agent_bundle(&rt, agent)?;
+        if bundle.trust_score != score {
+            return Err(format!(
+                "frame {seq} signed trust_score {score} but the bundle holds {}",
+                bundle.trust_score
+            ));
+        }
+        if trust_tier(bundle.trust_score) != tier {
+            return Err(format!(
+                "trust_score {score} must sit in tier {tier}, got {}",
+                trust_tier(bundle.trust_score)
+            ));
+        }
+        match &fingerprint {
+            None => fingerprint = Some(bundle.mtls.cert_fingerprint.clone()),
+            Some(fp) if *fp != bundle.mtls.cert_fingerprint => {
+                return Err("a trust_score change reissued the AgentMesh cert".into())
+            }
+            Some(_) => {}
+        }
+    }
+    Ok(())
+}
+
 fn cc_potomitan_failover() -> Result<(), String> {
     if detect_network_mode(false, 2) != MeshMode::Potomitan {
         return Err("expected Potomitan mode with peers and internet down".into());
@@ -340,7 +529,7 @@ fn cc_mesh_supervisor_routing() -> Result<(), String> {
 const CONFORMANCE_LATTICE: &str = "aep_version: \"2.9.0\"\ndynaep_version: \"1.0.0\"\nlattice_revision: 1\nactions:\n  root:ping:\n    label: ping\n    category: system_event\n    parents: []\n    children: []\n    constraints: []\n    agent_permission: [\"*\"]\n";
 
 /// Agent permission for the conformance agents that the Agent Control Hub reads.
-const CONFORMANCE_HUB_GAP: &str = "metadata:\n  wrap: caw\n  agent_permission:\n    - agent_id: AG-PING-CONF\n      action: root:ping\n    - agent_id: AG-LRP-CONF\n      action: root:ping\n";
+const CONFORMANCE_HUB_GAP: &str = "metadata:\n  wrap: caw\n  agent_permission:\n    - agent_id: AG-PING-CONF\n      action: root:ping\n    - agent_id: AG-LRP-CONF\n      action: root:ping\n    - agent_id: AG-TRUST-DOCK-CONF\n      action: root:ping\n";
 
 /// The LRP that CC-09 registers through the regulation dock.
 const CONFORMANCE_LRP: &str = "conf-lrp";
@@ -580,6 +769,18 @@ fn run_checks(checks: &[Check]) -> ConformanceReport {
 }
 
 fn main() {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(String::as_str) == Some("vectors") {
+        let dir = args
+            .get(1)
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(vectors::default_dir);
+        std::process::exit(vectors::run_cli(&dir));
+    }
+    if let Some(other) = args.first() {
+        eprintln!("usage: aep-conformance [vectors [dir]] (unknown argument {other})");
+        std::process::exit(2);
+    }
     let report = run_checks(CHECKS);
     match serde_json::to_string_pretty(&report) {
         Ok(text) => println!("{text}"),

@@ -1,0 +1,94 @@
+{
+ "format": "aep-conformance-vectors",
+ "format_version": 1,
+ "aep_version": "2.9.0",
+ "normative": "rust",
+ "suite": "dock-socket",
+ "checks": [
+  "CC-07"
+ ],
+ "description": "A dock port id as it travels on the wire maps to the socket file name the Base Node binds under the socket base. Any other id is not a dock.",
+ "cases": [
+  {
+   "id": "inference",
+   "input": {
+    "port": "inference_engine"
+   },
+   "expect": {
+    "suffix": "inference"
+   }
+  },
+  {
+   "id": "validation",
+   "input": {
+    "port": "validation_engine"
+   },
+   "expect": {
+    "suffix": "validation"
+   }
+  },
+  {
+   "id": "future",
+   "input": {
+    "port": "future_features"
+   },
+   "expect": {
+    "suffix": "future"
+   }
+  },
+  {
+   "id": "regulation",
+   "input": {
+    "port": "regulation_module"
+   },
+   "expect": {
+    "suffix": "regulation"
+   }
+  },
+  {
+   "id": "empty",
+   "input": {
+    "port": ""
+   },
+   "expect": {
+    "error": "unknown_dock"
+   }
+  },
+  {
+   "id": "suffix-is-not-a-port",
+   "input": {
+    "port": "validation"
+   },
+   "expect": {
+    "error": "unknown_dock"
+   }
+  },
+  {
+   "id": "case-sensitive",
+   "input": {
+    "port": "Validation_Engine"
+   },
+   "expect": {
+    "error": "unknown_dock"
+   }
+  },
+  {
+   "id": "kebab-case",
+   "input": {
+    "port": "validation-engine"
+   },
+   "expect": {
+    "error": "unknown_dock"
+   }
+  },
+  {
+   "id": "wasm-sandbox-is-not-a-dock",
+   "input": {
+    "port": "wasm_sandbox"
+   },
+   "expect": {
+    "error": "unknown_dock"
+   }
+  }
+ ]
+}

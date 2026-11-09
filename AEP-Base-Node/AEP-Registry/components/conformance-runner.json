@@ -4,13 +4,14 @@
   "version": "2.9.0",
   "kind": "tooling",
   "path": "AEP-Components/conformance/",
-  "description": "Conformance battery CC-01..CC-16 (Rust + vitest).",
+  "description": "Conformance battery CC-01..CC-34 (Rust kernel, vitest and node) with language neutral vectors v1. Planned checks carry no claim.",
   "requires": [
     "aep-base-node"
   ],
   "capabilities": [
     "conformance:run",
-    "conformance:cc-01-16"
+    "conformance:cc-01-34",
+    "conformance:vectors-v1"
   ],
   "actions": [
     {
