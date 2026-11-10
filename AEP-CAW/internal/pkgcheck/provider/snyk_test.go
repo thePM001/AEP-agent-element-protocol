@@ -154,9 +154,9 @@ func TestSnykProvider_NoIssues(t *testing.T) {
 }
 
 func TestSnykProvider_MultiplePackages(t *testing.T) {
-	requestCount := 0
+	var requestCount atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestCount++
+		requestCount.Add(1)
 		w.Header().Set("Content-Type", "application/vnd.api+json")
 		w.Write([]byte(`{"data": []}`))
 	}))
@@ -175,14 +175,14 @@ func TestSnykProvider_MultiplePackages(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
-	assert.Equal(t, 2, requestCount) // One request per package.
+	assert.Equal(t, int32(2), requestCount.Load()) // One request per package.
 }
 
 func TestSnykProvider_RetriesOn5xx(t *testing.T) {
-	attempts := 0
+	var attempts atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		attempts++
-		if attempts < 3 {
+		attempts.Add(1)
+		if attempts.Load() < 3 {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("server error"))
 			return
@@ -203,7 +203,7 @@ func TestSnykProvider_RetriesOn5xx(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Empty(t, resp.Findings)
-	assert.Equal(t, 3, attempts, "expected 3 server hits (2 failures + 1 success)")
+	assert.Equal(t, int32(3), attempts.Load(), "expected 3 server hits (2 failures + 1 success)")
 }
 
 func TestSnyk_Contract(t *testing.T) {
@@ -236,9 +236,9 @@ func TestSnyk_Contract(t *testing.T) {
 }
 
 func TestSnykProvider_BreakerOpensAfterRepeatedFailures(t *testing.T) {
-	serverHits := 0
+	var serverHits atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		serverHits++
+		serverHits.Add(1)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("server error"))
 	}))
@@ -263,7 +263,7 @@ func TestSnykProvider_BreakerOpensAfterRepeatedFailures(t *testing.T) {
 	_, err2 := p.CheckBatch(context.Background(), req)
 	require.Error(t, err2)
 
-	hitsAfterTwoCalls := serverHits
+	hitsAfterTwoCalls := serverHits.Load()
 
 	// Third call: breaker must be open - no server hit.
 	resp3, err3 := p.CheckBatch(context.Background(), req)
@@ -272,7 +272,7 @@ func TestSnykProvider_BreakerOpensAfterRepeatedFailures(t *testing.T) {
 	require.NotNil(t, resp3)
 	assert.True(t, resp3.Metadata.Partial, "expected Partial=true when breaker is open")
 	assert.Contains(t, resp3.Metadata.Error, "circuit breaker open")
-	assert.Equal(t, hitsAfterTwoCalls, serverHits, "third call must not hit the server")
+	assert.Equal(t, hitsAfterTwoCalls, serverHits.Load(), "third call must not hit the server")
 }
 
 func TestSnykProvider_ConcurrentFanOut(t *testing.T) {

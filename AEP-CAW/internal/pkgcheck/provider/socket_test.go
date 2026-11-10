@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -145,10 +146,10 @@ func TestSocketProvider_NoAlerts(t *testing.T) {
 }
 
 func TestSocketProvider_RetriesOn5xx(t *testing.T) {
-	attempts := 0
+	var attempts atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		attempts++
-		if attempts < 3 {
+		attempts.Add(1)
+		if attempts.Load() < 3 {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("server error"))
 			return
@@ -168,7 +169,7 @@ func TestSocketProvider_RetriesOn5xx(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Empty(t, resp.Findings)
-	assert.Equal(t, 3, attempts, "expected 3 server hits (2 failures + 1 success)")
+	assert.Equal(t, int32(3), attempts.Load(), "expected 3 server hits (2 failures + 1 success)")
 }
 
 func TestSocket_Contract(t *testing.T) {
@@ -199,9 +200,9 @@ func TestSocket_Contract(t *testing.T) {
 }
 
 func TestSocketProvider_BreakerOpensAfterRepeatedFailures(t *testing.T) {
-	serverHits := 0
+	var serverHits atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		serverHits++
+		serverHits.Add(1)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("server error"))
 	}))
@@ -227,7 +228,7 @@ func TestSocketProvider_BreakerOpensAfterRepeatedFailures(t *testing.T) {
 	_, err2 := p.CheckBatch(context.Background(), req)
 	require.Error(t, err2)
 
-	hitsAfterTwoCalls := serverHits
+	hitsAfterTwoCalls := serverHits.Load()
 
 	// Third call: breaker must be open - no server hit.
 	resp3, err3 := p.CheckBatch(context.Background(), req)
@@ -236,7 +237,7 @@ func TestSocketProvider_BreakerOpensAfterRepeatedFailures(t *testing.T) {
 	require.NotNil(t, resp3)
 	assert.True(t, resp3.Metadata.Partial, "expected Partial=true when breaker is open")
 	assert.Equal(t, "circuit breaker open", resp3.Metadata.Error)
-	assert.Equal(t, hitsAfterTwoCalls, serverHits, "third call must not hit the server")
+	assert.Equal(t, hitsAfterTwoCalls, serverHits.Load(), "third call must not hit the server")
 }
 
 func TestSocketProvider_MalformedResponseTripsBreaker(t *testing.T) {
