@@ -1,0 +1,4 @@
+kind: aep.wrap-coverage.inventory
+version: 1
+gap_dirs:
+  - no-such-folder

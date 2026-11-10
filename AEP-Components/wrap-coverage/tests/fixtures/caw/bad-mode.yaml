@@ -1,0 +1,4 @@
+version: 1
+name: fixture-bad-mode
+unmatched_egress: allow
+network_rules: []

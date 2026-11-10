@@ -467,6 +467,17 @@
       "role": "companion"
     },
     {
+      "id": "wrap-coverage",
+      "name": "Wrap Coverage",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": false,
+      "path": "AEP-Components/wrap-coverage/",
+      "description": "Wrap coverage report: every credential, egress route and tool with the wrap that governs it.",
+      "manifest": "AEP-Base-Node/AEP-Registry/components/wrap-coverage.json",
+      "role": "companion"
+    },
+    {
       "id": "streaming",
       "name": "Streaming Validation",
       "kind": "library",
@@ -552,6 +563,17 @@
       "path": "AEP-Components/admit/",
       "description": "Admit walls: AND collect-all live evaluator. Rust crate is the spec. JS admit.mjs is the live dynAEP path.",
       "manifest": "AEP-Base-Node/AEP-Registry/components/admit.json",
+      "role": "kernel"
+    },
+    {
+      "id": "admit-budget-window",
+      "name": "Admit Budget Window",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Components/admit-budget-window/",
+      "description": "Sliding window volume, sensitivity and novelty budgets per agent and per wrap from the budget GAP policy, conjoined on the live Admit pass.",
+      "manifest": "AEP-Base-Node/AEP-Registry/components/admit-budget-window.json",
       "role": "kernel"
     }
   ]

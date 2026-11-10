@@ -8,6 +8,8 @@ aep-caw is a security sandbox for AI agent command execution. It interposes betw
 
 ## Threat Model
 
+This section is the CAW layer of the protocol threat model. The model of every layer with its traced mitigations is [`THREAT_MODEL.md`](../THREAT_MODEL.md) at the repository root.
+
 ### What aep-caw Protects Against
 
 aep-caw is designed to mitigate risks from **semi-trusted AI agents** operating within a defined workspace:
@@ -124,6 +126,8 @@ sandbox:
 - DNS resolution for domain-based rules (with timeout)
 
 **Race condition mitigation:** Processes start in ptrace-stopped state; eBPF attaches before process resumes.
+
+**Unmatched egress (opt-in):** By default a catch-all network rule such as `domains: ["*"]` with `allow`, a ports-only `approve` rule or a `0.0.0.0/0` CIDR rule widens the egress boundary to every destination it reaches. A policy can set `unmatched_egress: deny` to close that gap. The mode is off by default. When it is on, catch-all rules (every domain is a wildcard pattern such as `*`, `**` or `*.*` or none is listed, every CIDR is `0.0.0.0/0` or `::/0` or none is listed, any ports) whose decision is not `deny` are ignored by the policy engine and left out of the eBPF allowlist. Catch-all `deny` rules still apply. A connection that no explicit domain or CIDR rule names is denied with the rule name `unmatched-egress-deny`.
 
 ### Command Execution
 

@@ -1,0 +1,14 @@
+version: 1
+name: fixture-undeclared
+unmatched_egress: deny
+network_rules:
+  - name: allow-docs-elsewhere
+    domains: ["docs.example.com"]
+    decision: allow
+  - name: deny-rest
+    domains: ["*"]
+    decision: deny
+mcp_rules:
+  allowed_tools:
+    - server: notes
+      tool: read_note

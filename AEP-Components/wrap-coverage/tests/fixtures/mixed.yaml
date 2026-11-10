@@ -1,0 +1,43 @@
+# Every entry kind of the wrap coverage report with matched, unmatched and
+# neutralized cases.
+kind: aep.wrap-coverage.inventory
+version: 1
+name: fixture-mixed
+
+gap_dirs:
+  - gap
+
+lattice: lattice.yaml
+
+caw:
+  - policy: caw/open.yaml
+    wrap: alpha
+  - policy: caw/neutralized.yaml
+    wrap: alpha
+  - policy: caw/undeclared.yaml
+    wrap: nowhere
+
+credentials:
+  - id: cred-granted
+    kind: api_key
+    description: Granted by name in wrap alpha.
+    agent_id: agent-a
+    action: read:docs
+  - id: cred-star-action
+    agent_id: agent-b
+    action: write:anything
+  - id: cred-star-agent
+    agent_id: any-agent
+    action: tool:run
+  - id: cred-orphan
+    agent_id: agent-a
+    action: write:docs
+
+tools:
+  - name: tool-granted
+    agent_id: agent-a
+    action: read:docs
+  - name: tool-orphan
+    description: Granted only by a GAP document with an empty wrap.
+    agent_id: agent-c
+    action: deploy:prod

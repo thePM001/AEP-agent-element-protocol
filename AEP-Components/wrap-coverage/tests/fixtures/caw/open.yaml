@@ -1,0 +1,37 @@
+version: 1
+name: fixture-open
+network_rules:
+  - name: allow-docs-api
+    domains: ["docs.example.com"]
+    ports: [443]
+    decision: allow
+  - name: allow-everything
+    domains: ["*"]
+    decision: allow
+  - name: approve-any-address
+    cidrs: ["0.0.0.0/0", "::/0"]
+    ports: [443]
+    decision: approve
+  - name: deny-rest
+    domains: ["*"]
+    decision: deny
+http_services:
+  - name: docs-api
+    upstream: https://docs.example.com
+    secret:
+      ref: "vault://kv/data/docs#token"
+      format: "tok_{rand:32}"
+    inject:
+      header:
+        name: Authorization
+        template: "Bearer {{secret}}"
+  - name: open-data
+    upstream: https://data.example.com
+mcp_rules:
+  enforce_policy: true
+  allowed_tools:
+    - server: files
+      tool: read_file
+    - server: files
+      tool: "*"
+    - server: files

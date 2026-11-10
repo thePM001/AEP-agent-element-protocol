@@ -1,0 +1,47 @@
+# Wrap coverage inventory of the end to end run.
+#
+# The wrap coverage report reads this file and every file it names, then
+# lists each agent credential, egress route, tool and lattice grant of the
+# run with the wrap that governs it. An entry that no wrap governs is an
+# unmatched entry and the report exits 1. run.sh deploys the same files.
+#
+#   node AEP-Components/wrap-coverage/lib/wrap-coverage.mjs \
+#     AEP-User-Experience/examples/end-to-end-run/deployment/wrap-coverage.yaml
+
+kind: aep.wrap-coverage.inventory
+version: 1
+name: end-to-end-run
+
+gap_dirs:
+  - gap
+
+lattice: lattice.yaml
+
+caw:
+  - policy: caw-policies/e2e-wrapped.yaml
+    wrap: caw
+
+ucb_manifests: []
+
+credentials:
+  - id: agent-a-sign-key
+    kind: agent_sign_key
+    description: The sign key run.sh provisions for the attach agent.
+    agent_id: agent-a
+    action: ucb:ingest
+  - id: caw-kernel-dock-identity
+    kind: kernel_dock_identity
+    description: The identity the CAW server seals its kernel dock ping with.
+    agent_id: caw-kernel-dock
+    action: root:ping
+  - id: ucb-api-key
+    kind: dock_gateway_key
+    description: The bearer key of the dock gateway that the attach ingest presents.
+    agent_id: agent-a
+    action: ucb:ingest
+
+tools:
+  - name: ucb-ingest
+    description: The dock gateway ingest route the attach agent calls.
+    agent_id: agent-a
+    action: ucb:ingest

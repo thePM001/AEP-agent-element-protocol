@@ -35,7 +35,8 @@
     "AEP-Components/streaming",
     "AEP-Components/telemetry",
     "AEP-Components/ucm",
-    "AEP-Components/verification"
+    "AEP-Components/verification",
+    "AEP-Components/wrap-coverage"
   ],
   "scripts": {
     "check": "node aep-check.mjs",

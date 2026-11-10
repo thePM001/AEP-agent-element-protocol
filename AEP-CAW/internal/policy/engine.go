@@ -65,6 +65,9 @@ type Engine struct {
 	compiledUnixRules     []compiledUnixRule
 	compiledRegistryRules []compiledRegistryRule
 
+	// unmatchedEgressDeny mirrors Policy.UnmatchedEgressDeny at build time.
+	unmatchedEgressDeny bool
+
 	// hasRestrictiveCommandRule is true iff any compiled command rule has
 	// a decision that restricts or instruments execution (deny, redirect,
 	// soft_delete, approve, audit). Gates the opaque-shell-c deny so that
@@ -120,6 +123,45 @@ type compiledNetworkRule struct {
 	ports       map[int]struct{}
 }
 
+// isCatchAll reports whether the compiled rule names no destination: every
+// domain is a wildcard pattern (or there are none) and every CIDR is 0.0.0.0/0 or ::/0 (or
+// there are none). Ports are ignored. It matches NetworkRule.IsCatchAll.
+func (c compiledNetworkRule) isCatchAll() bool {
+	for _, d := range c.rule.Domains {
+		if !IsWildcardDomain(d) {
+			return false
+		}
+	}
+	for _, n := range c.cidrs {
+		if ones, _ := n.Mask.Size(); ones != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// unmatchedEgressSkips reports whether a network rule is ignored under
+// unmatched_egress: deny. Catch-all rules whose decision is not deny name
+// no destination, so they do not count as a match in that mode. Catch-all
+// deny rules still apply.
+func unmatchedEgressSkips(r NetworkRule) bool {
+	return r.IsCatchAll() && !isDenyDecision(r.Decision)
+}
+
+// isDenyDecision reports whether a rule decision string is deny.
+func isDenyDecision(d string) bool {
+	return strings.EqualFold(strings.TrimSpace(d), string(types.DecisionDeny))
+}
+
+// networkFallback is the decision used when no network rule matches.
+func (e *Engine) networkFallback() Decision {
+	if e.unmatchedEgressDeny {
+		return e.wrapDecision(string(types.DecisionDeny), "unmatched-egress-deny",
+			"no explicit network rule names this destination and unmatched_egress is deny", nil)
+	}
+	return e.wrapDecision(string(types.DecisionDeny), "default-deny-network", "", nil)
+}
+
 type compiledCommandRule struct {
 	rule          CommandRule
 	basenames     map[string]struct{} // Commands without paths (e.g., "sh") - match by basename
@@ -173,6 +215,7 @@ func NewEngine(p *Policy, enforceApprovals bool, enforceRedirects bool) (*Engine
 		enforceApprovals: enforceApprovals,
 		enforceRedirects: enforceRedirects,
 	}
+	e.unmatchedEgressDeny = p.UnmatchedEgressDeny()
 
 	for _, r := range p.FileRules {
 		cr := compiledFileRule{
@@ -477,11 +520,24 @@ func expandPolicy(p *Policy, vars map[string]string) (*Policy, error) {
 }
 
 // NetworkRules returns the raw network rules for read-only inspection (e.g., ebpf allowlist).
+// When the policy sets unmatched_egress: deny, catch-all rules whose decision
+// is not deny are left out (a new slice is returned), because the engine does
+// not match them in that mode. Otherwise the policy's own slice is returned.
 func (e *Engine) NetworkRules() []NetworkRule {
 	if e == nil || e.policy == nil {
 		return nil
 	}
-	return e.policy.NetworkRules
+	if !e.unmatchedEgressDeny {
+		return e.policy.NetworkRules
+	}
+	out := make([]NetworkRule, 0, len(e.policy.NetworkRules))
+	for _, r := range e.policy.NetworkRules {
+		if unmatchedEgressSkips(r) {
+			continue
+		}
+		out = append(out, r)
+	}
+	return out
 }
 
 // Policy returns the underlying policy for read-only inspection (e.g., Landlock path derivation).
@@ -566,6 +622,9 @@ func (e *Engine) CheckNetworkIP(domain string, ip net.IP, port int) (dec Decisio
 
 	var netHits []scoredHit
 	for _, r := range e.compiledNetworkRules {
+		if e.unmatchedEgressDeny && r.isCatchAll() && !isDenyDecision(r.rule.Decision) {
+			continue
+		}
 		if len(r.ports) > 0 {
 			if _, ok := r.ports[port]; !ok {
 				continue
@@ -608,11 +667,11 @@ func (e *Engine) CheckNetworkIP(domain string, ip net.IP, port int) (dec Decisio
 		netHits = append(netHits, scoredHit{dec: dec, spec: scoreNetworkRule(r, domain, ips)})
 	}
 	if len(netHits) > 0 {
-		dec = e.pickMostSpecific(netHits, e.wrapDecision(string(types.DecisionDeny), "default-deny-network", "", nil))
+		dec = e.pickMostSpecific(netHits, e.networkFallback())
 		dec = attachThreat(dec, threatResult)
 		return dec
 	}
-	dec = e.wrapDecision(string(types.DecisionDeny), "default-deny-network", "", nil)
+	dec = e.networkFallback()
 	dec = attachThreat(dec, threatResult)
 	return dec
 }
@@ -1485,6 +1544,9 @@ func (e *Engine) CheckNetworkCtx(ctx context.Context, domain string, port int) (
 
 	var netHits []scoredHit
 	for _, r := range e.compiledNetworkRules {
+		if e.unmatchedEgressDeny && r.isCatchAll() && !isDenyDecision(r.rule.Decision) {
+			continue
+		}
 		if len(r.ports) > 0 {
 			if _, ok := r.ports[port]; !ok {
 				continue
@@ -1531,11 +1593,11 @@ func (e *Engine) CheckNetworkCtx(ctx context.Context, domain string, port int) (
 		netHits = append(netHits, scoredHit{dec: dec, spec: scoreNetworkRule(r, domain, ips)})
 	}
 	if len(netHits) > 0 {
-		dec = e.pickMostSpecific(netHits, e.wrapDecision(string(types.DecisionDeny), "default-deny-network", "", nil))
+		dec = e.pickMostSpecific(netHits, e.networkFallback())
 		dec = attachThreat(dec, threatResult)
 		return dec
 	}
-	dec = e.wrapDecision(string(types.DecisionDeny), "default-deny-network", "", nil)
+	dec = e.networkFallback()
 	dec = attachThreat(dec, threatResult)
 	return dec
 }

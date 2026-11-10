@@ -1,0 +1,125 @@
+# The CAW policy of the end to end run.
+#
+# The run wraps its CAW server in the caw wrap. This policy names every
+# network route the run may use and sets unmatched_egress to deny, so egress
+# that no explicit rule names is refused even when a catch-all rule would
+# have let it through. The wrap coverage report reads this file through
+# deployment/wrap-coverage.yaml.
+
+version: 1
+name: e2e-wrapped
+description: |
+  The wrapped CAW policy of the end to end run. Workspace and system reads,
+  the two commands of the run and the loopback dock gateway are named.
+  Downloads need an approval and egress that no rule names is denied.
+
+unmatched_egress: deny
+
+file_rules:
+  - name: deny-ssh-keys
+    description: Block access to SSH keys
+    paths:
+      - "${HOME}/.ssh/**"
+    operations:
+      - "*"
+    decision: deny
+
+  - name: allow-workspace-read
+    description: Allow reading any file in workspace
+    paths:
+      - "${PROJECT_ROOT}"
+      - "${PROJECT_ROOT}/**"
+    operations:
+      - read
+      - open
+      - stat
+      - list
+      - readlink
+    decision: allow
+
+  - name: allow-workspace-write
+    description: Allow writing and creating files in workspace
+    paths:
+      - "${PROJECT_ROOT}"
+      - "${PROJECT_ROOT}/**"
+    operations:
+      - write
+      - create
+      - mkdir
+      - chmod
+      - rename
+    decision: allow
+
+  - name: allow-tmp
+    description: Full access to temp directories
+    paths:
+      - "/tmp/**"
+      - "/var/tmp/**"
+    operations:
+      - "*"
+    decision: allow
+
+  - name: allow-system-read
+    description: Read access to standard system paths
+    paths:
+      - "/usr/**"
+      - "/lib/**"
+      - "/lib64/**"
+      - "/bin/**"
+      - "/sbin/**"
+      - "/etc/**"
+      - "/dev/**"
+    operations:
+      - read
+      - open
+      - stat
+      - list
+      - readlink
+    decision: allow
+
+network_rules:
+  - name: allow-dock-gateway-loopback
+    description: The dock gateway of the run listens on loopback.
+    cidrs:
+      - "127.0.0.1/32"
+    decision: allow
+
+  - name: deny-other-egress
+    description: Every destination that no rule above names is denied.
+    domains:
+      - "*"
+    decision: deny
+
+command_rules:
+  - name: approve-curl-wget
+    description: Require approval for downloads
+    commands:
+      - curl
+      - wget
+    decision: approve
+    message: "Agent wants to download: {{.Args}}"
+
+  - name: allow-run-commands
+    description: The two commands the pass path of the run starts
+    commands:
+      - sh
+      - printf
+    decision: allow
+
+resource_limits:
+  max_memory_mb: 2048
+  memory_swap_max_mb: 0
+  cpu_quota_percent: 80
+  pids_max: 100
+  command_timeout: 5m
+  session_timeout: 4h
+  idle_timeout: 30m
+
+audit:
+  log_allowed: true
+  log_denied: true
+  log_approved: true
+  include_stdout: false
+  include_stderr: true
+  include_file_content: false
+  retention_days: 30

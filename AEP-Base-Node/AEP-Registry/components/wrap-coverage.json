@@ -1,0 +1,42 @@
+{
+  "manifest_version": "1",
+  "id": "wrap-coverage",
+  "version": "2.9.0",
+  "kind": "library",
+  "path": "AEP-Components/wrap-coverage/",
+  "description": "Wrap coverage report. Lists every agent credential, egress route, tool and lattice grant of a deployment with the wrap that governs it and flags the entries no wrap governs.",
+  "requires": [
+    "gap"
+  ],
+  "capabilities": [
+    "report:wrap-coverage",
+    "wrap:coverage-gate"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 32,
+    "min_disk_mb": 5,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Every credential, egress route and tool of a deployment sits inside a declared wrap or the report exits 1.",
+    "use_when": [
+      "auditing a deployment for entries outside every wrap",
+      "gating CI on zero unmatched entries"
+    ],
+    "avoid_when": [
+      "never treat a neutralized catch-all as matched"
+    ],
+    "pairs_with": [
+      "gap",
+      "caw-framework",
+      "ucb"
+    ]
+  },
+  "implementation": {
+    "module": "AEP-Components/wrap-coverage/lib/wrap-coverage.mjs"
+  },
+  "role": "companion"
+}

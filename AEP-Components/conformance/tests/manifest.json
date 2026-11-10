@@ -166,6 +166,13 @@
    "runner": "rust",
    "crate": "aep-ucm",
    "cargo_test": "-p aep-ucm"
+  },
+  {
+   "id": "CC-35",
+   "name": "Multi-step red team corpus denied on the live Admit path with the budget GAP policy conjoined",
+   "runner": "rust",
+   "crate": "aep-conformance",
+   "cargo_test": "-p aep-conformance --test redteam_multistep"
   }
  ],
  "planned": [

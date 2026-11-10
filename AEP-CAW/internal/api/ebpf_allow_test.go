@@ -86,3 +86,31 @@ func TestBuildAllowedEndpoints_NonStrictOnCIDR(t *testing.T) {
 		t.Fatalf("expected cidr to be included")
 	}
 }
+
+func TestBuildAllowedEndpoints_UnmatchedEgressDenyDropsCatchAll(t *testing.T) {
+	t.Cleanup(func() { resolveDomainWithTTL = resolveDomainTTL })
+	resolveDomainWithTTL = func(_ string, _ time.Duration) ([]net.IP, time.Duration) {
+		return []net.IP{net.ParseIP("1.1.1.1")}, 30 * time.Second
+	}
+	build := func(mode string) bool {
+		pol := &policy.Policy{
+			UnmatchedEgress: mode,
+			NetworkRules: []policy.NetworkRule{
+				{Name: "allow-google", Domains: []string{"www.google.com"}, Ports: []int{443}, Decision: "allow"},
+				{Name: "allow-any", Domains: []string{"*"}, Decision: "allow"},
+			},
+		}
+		engine, err := policy.NewEngine(pol, false, true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _, _, _, strict, _, _ := buildAllowedEndpoints(engine, 60*time.Second)
+		return strict
+	}
+	if build("") {
+		t.Fatalf("mode off: a wildcard allow rule should disable strict/default-deny")
+	}
+	if !build("deny") {
+		t.Fatalf("unmatched_egress deny: the catch-all allow rule should be dropped so the allowlist is strict")
+	}
+}

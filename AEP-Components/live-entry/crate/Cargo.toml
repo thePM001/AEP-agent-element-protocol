@@ -12,6 +12,7 @@ path = "src/main.rs"
 
 [dependencies]
 aep-envelope = { path = "../../envelope/crate" }
+aep-admit-budget-window = { path = "../../admit-budget-window/crate" }
 anyhow = "1"
 thiserror.workspace = true
 serde = { version = "1", features = ["derive"] }

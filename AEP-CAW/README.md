@@ -155,6 +155,10 @@ Per-operation decisions: `allow`, `deny`, `approve`, `redirect`, `audit`, `soft_
 
 Default policy: `configs/policies/default.yaml`. Server config: `configs/server-config.yaml`.
 
+### Unmatched egress
+
+A policy may set `unmatched_egress: deny`. The key is opt-in and off by default (`""` or `default`), so a policy without it decides exactly as before. When it is on, a catch-all network rule whose decision is not `deny` stops matching. A catch-all rule names no destination: every domain it lists is a wildcard pattern that holds only `*`, `?` or `.` such as `*`, `**` or `*.*` (or it lists none) and every CIDR it lists is `0.0.0.0/0` or `::/0` (or it lists none), whatever its ports. Catch-all `deny` rules still apply. Egress that no explicit rule names is then denied with the rule name `unmatched-egress-deny`. The eBPF allowlist leaves the skipped rules out as well. Any other value fails validation.
+
 ### Policies and config as GAP
 
 A policy or the server config may be a GAP file instead of YAML. GAP source is YAML 1.2 with one instruction document first and typed data documents after it. CAW reads the policy from the `policy` field of a `kind: aep.caw.mount_policy` document and the server config from the `config` field of a `kind: aep.caw.server_config` document. It decodes that payload with the same strict decoder as a YAML file, so a GAP file and its YAML twin decide alike.

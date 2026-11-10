@@ -19,5 +19,9 @@ serde.workspace = true
 serde_json.workspace = true
 tempfile = "3"
 
+[dev-dependencies]
+aep-admit-live-dock = { path = "../../admit-live-dock/crate" }
+aep-live-entry = { path = "../../live-entry/crate" }
+
 [lints]
 workspace = true

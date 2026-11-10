@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"regexp"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -23,6 +24,14 @@ type Policy struct {
 	SignalRules          []SignalRule          `yaml:"signal_rules"`
 	DnsRedirectRules     []DnsRedirectRule     `yaml:"dns_redirects,omitempty"`
 	ConnectRedirectRules []ConnectRedirectRule `yaml:"connect_redirects,omitempty"`
+
+	// UnmatchedEgress selects how network rules that name no destination
+	// are treated. "" or "default" keeps the normal matching behaviour.
+	// "deny" is an opt-in mode: catch-all network rules (see
+	// NetworkRule.IsCatchAll) whose decision is not deny stop matching, so
+	// egress that no explicit rule names is denied with the rule name
+	// "unmatched-egress-deny".
+	UnmatchedEgress string `yaml:"unmatched_egress,omitempty"`
 
 	ResourceLimits ResourceLimits `yaml:"resource_limits"`
 	EnvPolicy      EnvPolicy      `yaml:"env_policy"`
@@ -473,6 +482,59 @@ type TransparentCommandsConfig struct {
 	Remove []string `yaml:"remove,omitempty"` // Remove from built-in defaults
 }
 
+// Values accepted for Policy.UnmatchedEgress. The empty string and
+// "default" both leave the mode off.
+const (
+	UnmatchedEgressModeDefault = ""
+	UnmatchedEgressModeDeny    = "deny"
+)
+
+// UnmatchedEgressDeny reports whether the opt-in unmatched_egress: deny mode
+// is on. It is false for a nil policy and for any value other than "deny".
+func (p *Policy) UnmatchedEgressDeny() bool {
+	return p != nil && p.UnmatchedEgress == UnmatchedEgressModeDeny
+}
+
+// IsCatchAll reports whether the rule names no destination. A rule is a
+// catch-all when every domain it lists is a wildcard pattern (or it lists
+// none) and every CIDR it lists is 0.0.0.0/0 or ::/0 (or it lists none). A
+// wildcard pattern holds no literal label character, so "*", "**", "*.*"
+// and "?*" are wildcards while "*.example.com" names a destination. Ports do
+// not count as a destination, so a ports-only rule is a catch-all. A CIDR
+// that does not parse is treated as naming a destination.
+func (r NetworkRule) IsCatchAll() bool {
+	for _, d := range r.Domains {
+		if !IsWildcardDomain(d) {
+			return false
+		}
+	}
+	for _, c := range r.CIDRs {
+		_, ipnet, err := net.ParseCIDR(strings.TrimSpace(c))
+		if err != nil {
+			return false
+		}
+		if ones, _ := ipnet.Mask.Size(); ones != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// IsWildcardDomain reports whether a domain pattern holds only the glob
+// characters '*' and '?' and the label separator '.', so it names no host.
+func IsWildcardDomain(pattern string) bool {
+	p := strings.TrimSpace(pattern)
+	if p == "" {
+		return false
+	}
+	for _, ch := range p {
+		if ch != '*' && ch != '?' && ch != '.' {
+			return false
+		}
+	}
+	return true
+}
+
 // Validate performs minimal semantic validation of a policy.
 func (p Policy) Validate() error {
 	if p.Version <= 0 {
@@ -480,6 +542,12 @@ func (p Policy) Validate() error {
 	}
 	if p.Name == "" {
 		return fmt.Errorf("name is required")
+	}
+
+	switch p.UnmatchedEgress {
+	case UnmatchedEgressModeDefault, "default", UnmatchedEgressModeDeny:
+	default:
+		return fmt.Errorf("unmatched_egress must be \"default\" or \"deny\" (got %q)", p.UnmatchedEgress)
 	}
 
 	for i, m := range p.Metadata {

@@ -40,13 +40,29 @@ The refuse section prints one line per layer, then a refuse report with the erro
 
 ## What the run configures
 
-The run is the operator for one temporary deployment. It writes all of this into a temp directory.
+The run is the operator for one temporary deployment. The files that declare what the deployment may do sit in `deployment/` beside the script and the run copies them into a temp directory unchanged.
+
+- `deployment/lattice.yaml`: the lattice that grants the attach action to the named attach agent and the kernel dock ping to the CAW kernel dock.
+- `deployment/gap/`: the two GAP grants of the `caw` wrap.
+- `deployment/caw-policies/e2e-wrapped.yaml`: the CAW policy. It names every route the run may use and sets `unmatched_egress: deny`, so egress that no explicit rule names is denied.
+- `deployment/wrap-coverage.yaml`: the wrap coverage inventory of the run.
+
+The run also writes these into the temp directory.
 
 - A base node config with a socket base and a lattice db.
-- A lattice that grants the attach action to the named attach agent.
 - A provisioned agent sign key for the attach agent.
-- A server config for the execution layer that keeps the sandbox shells off.
+- A server config for the execution layer that keeps the sandbox shells off and loads the wrapped CAW policy.
 - A task manifest on the pass ingest and no manifest on the refuse ingest.
+
+## Wrap coverage
+
+Before it starts anything the run checks that every agent credential, egress route, tool and lattice grant of the deployment sits inside a wrap. The check is the wrap coverage report of `AEP-Components/wrap-coverage` and the run stops when it lists an unmatched entry. Run it on its own from the repository root:
+
+```bash
+node AEP-Components/wrap-coverage/lib/wrap-coverage.mjs AEP-User-Experience/examples/end-to-end-run/deployment/wrap-coverage.yaml
+```
+
+The CI live-set job runs the same command and passes only with zero unmatched entries.
 
 The run reads the shipped reference policy set at `AEP-Policy-System`. The reference documents grant the named agent `agent-a` so the run attaches as that agent. An operator who installs a policy set under a different agent name changes the attach agent at the top of the run script.
 

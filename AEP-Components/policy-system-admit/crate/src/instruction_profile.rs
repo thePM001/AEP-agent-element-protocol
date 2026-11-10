@@ -113,6 +113,10 @@ mod tests {
         String::from("{\n  \"pattern\": {\n    \"guard\": \"deployment_attempt\",\n    \"invariants\": [\n      {\"expr\": \"human_approval_required == true\", \"description\": \"approval\"}\n    ]\n  },\n  \"metadata\": {\"action_path_prefix\": \"ops:\"}\n}")
     }
 
+    fn budget_gap() -> String {
+        String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"constraints\": [\"hard: agent.volume_bytes <= budget.agent.volume_bytes\"]\n  }\n}")
+    }
+
     fn write_tree(tmp: &Path) {
         std::fs::create_dir_all(tmp.join("reference")).expect("mkdir");
         std::fs::write(tmp.join("reference/writing.gap"), writing_gap()).expect("w");
@@ -122,6 +126,7 @@ mod tests {
         std::fs::write(tmp.join("lattice-channel-mandatory.gap"), lattice_gap()).expect("l");
         std::fs::write(tmp.join("reference/governance.gap"), gov_gap()).expect("g");
         std::fs::write(tmp.join("reference/deployment.gap"), deploy_gap()).expect("d");
+        std::fs::write(tmp.join("reference/budget.gap"), budget_gap()).expect("b");
     }
 
     #[test]

@@ -2,7 +2,7 @@
 // Extra_walls is AdmitWall id. Drop extra_walls conversion from a second admit_collect_all.
 // The source check in this crate is a conformance check named
 // conformance_check_one_live_evaluation_source. It is not a second admit path.
-use aep_admit_live_dock::{compile_live_walls, LiveDockContext};
+use aep_admit_live_dock::{compile_live_walls, compile_live_walls_and_charge, LiveDockContext};
 use aep_envelope::{admit_with_extra, dest_dock_from_opened_frame, EnvelopeAction};
 use aep_live_entry::{LiveEntry, ProcessOut};
 use serde_json::Value;
@@ -56,8 +56,10 @@ fn action_from_event(event: &Value, docking_port: &str) -> EnvelopeAction {
 /// Compile product wall crates onto LiveEntry extra walls. This is not a combinator.
 /// Extra walls keep AdmitWall id. Do not convert from a second admit_collect_all.
 pub fn attach_live_walls(live: &mut LiveEntry, event: &Value, dock: &LiveDockContext) {
-    let walls = compile_live_walls(live, event, dock);
+    let (walls, charge) = compile_live_walls_and_charge(live, event, dock);
     live.extra_walls = walls;
+    // process_event records this charge in the budget ledger only when Admit allows.
+    live.budget_charge = charge;
     let scene = event
         .get("target_id")
         .and_then(|v| v.as_str())

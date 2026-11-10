@@ -1,0 +1,40 @@
+{
+  "manifest_version": "1",
+  "id": "admit-budget-window",
+  "version": "2.9.0",
+  "kind": "library",
+  "path": "AEP-Components/admit-budget-window/",
+  "description": "Sliding window volume, sensitivity and novelty budgets per agent and per wrap from the budget GAP policy, conjoined on the live Admit pass.",
+  "requires": [
+    "admit",
+    "gap"
+  ],
+  "capabilities": [
+    "eval:walls",
+    "eval:budget"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 16,
+    "min_disk_mb": 5,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Budget walls per agent and wrap join the collect-all AND and Apply records only admitted actions.",
+    "use_when": [
+      "multi-step exfiltration",
+      "stepwise capability probing"
+    ],
+    "avoid_when": [],
+    "pairs_with": [
+      "admit",
+      "conformance-runner"
+    ]
+  },
+  "implementation": {
+    "crate": "AEP-Components/admit-budget-window/crate"
+  },
+  "role": "kernel"
+}

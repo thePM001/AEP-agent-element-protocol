@@ -4,23 +4,23 @@
 // classes. A rule id resolves against the shared table and no rule pattern is
 // written in Rust.
 use serde_json::Value;
+use std::collections::BTreeSet;
 use std::sync::OnceLock;
 
 /// The shared scan rule table. The same file is the source for the scanners package.
 pub const RULE_TABLE_PATH: &str = "AEP-Components/scanners/rules/scan-rule-table.json";
 
-pub const RULE_TABLE_JSON: &str =
-    include_str!("../../../scanners/rules/scan-rule-table.json");
+pub const RULE_TABLE_JSON: &str = include_str!("../../../scanners/rules/scan-rule-table.json");
 
 fn table() -> &'static Value {
     static TABLE: OnceLock<Value> = OnceLock::new();
     TABLE.get_or_init(|| serde_json::from_str(RULE_TABLE_JSON).unwrap_or(Value::Null))
 }
 
-fn rules() -> Vec<Value> {
+fn rules() -> &'static [Value] {
     match table().get("rules").and_then(|v| v.as_array()) {
-        Some(a) => a.clone(),
-        None => Vec::new(),
+        Some(a) => a.as_slice(),
+        None => &[],
     }
 }
 
@@ -43,24 +43,31 @@ fn admit_spec(rule: &Value) -> Option<Value> {
 
 /// Count the rules that carry an Admit matcher. The scan proof reads this number.
 pub fn admit_rule_count() -> usize {
-    rules()
-        .iter()
-        .filter(|r| admit_spec(r).is_some())
-        .count()
+    rules().iter().filter(|r| admit_spec(r).is_some()).count()
 }
 
 /// True when the shared table parsed and carries rules.
 pub fn rule_table_loaded() -> bool {
-    rules().is_empty() == false
+    !rules().is_empty()
+}
+
+/// Every class name of the shared table that carries an Admit matcher.
+pub fn classes() -> BTreeSet<&'static str> {
+    rules()
+        .iter()
+        .filter(|r| admit_spec(r).is_some())
+        .map(|r| field_str(r, "class"))
+        .filter(|c| !c.is_empty())
+        .collect()
 }
 
 /// True when one rule id matches the text.
 pub fn rule(id: &str, text: &str) -> bool {
-    for r in rules() {
-        if field_str(&r, "id") != id {
+    for r in rules().iter() {
+        if field_str(r, "id") != id {
             continue;
         }
-        if let Some(spec) = admit_spec(&r) {
+        if let Some(spec) = admit_spec(r) {
             if spec_hit(&spec, text) {
                 return true;
             }
@@ -71,11 +78,11 @@ pub fn rule(id: &str, text: &str) -> bool {
 
 /// True when any rule of one class with an Admit matcher matches the text.
 pub fn class(name: &str, text: &str) -> bool {
-    for r in rules() {
-        if field_str(&r, "class") != name {
+    for r in rules().iter() {
+        if field_str(r, "class") != name {
             continue;
         }
-        if let Some(spec) = admit_spec(&r) {
+        if let Some(spec) = admit_spec(r) {
             if spec_hit(&spec, text) {
                 return true;
             }
@@ -114,7 +121,7 @@ fn spec_hit(spec: &Value, text: &str) -> bool {
                 for t in a {
                     if let Some(s) = t.as_str() {
                         let needle = s.to_ascii_lowercase();
-                        if needle.is_empty() == false && low.contains(&needle) {
+                        if !needle.is_empty() && low.contains(&needle) {
                             hit = true;
                         }
                     }
@@ -125,8 +132,11 @@ fn spec_hit(spec: &Value, text: &str) -> bool {
         "all_any" => match_all_any(spec, &low),
         "prefix_len" => {
             let prefix = field_str(spec, "prefix").to_ascii_lowercase();
-            let min = spec.get("min_text_len").and_then(|v| v.as_u64()).unwrap_or(1) as usize;
-            prefix.is_empty() == false && low.contains(&prefix) && text.len() >= min
+            let min = spec
+                .get("min_text_len")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(1) as usize;
+            !prefix.is_empty() && low.contains(&prefix) && text.len() >= min
         }
         _ => false,
     }
@@ -137,13 +147,13 @@ fn match_all_any(spec: &Value, low: &str) -> bool {
     if let Some(a) = spec.get("all").and_then(|v| v.as_array()) {
         for t in a {
             if let Some(s) = t.as_str() {
-                if low.contains(&s.to_ascii_lowercase()) == false {
+                if !low.contains(&s.to_ascii_lowercase()) {
                     all_ok = false;
                 }
             }
         }
     }
-    if all_ok == false {
+    if !all_ok {
         return false;
     }
     match spec.get("any").and_then(|v| v.as_array()) {
@@ -198,7 +208,8 @@ fn match_email(text: &str) -> bool {
             }
             let mut r = i + 1;
             let mut dot = false;
-            while r < n && (chars[r].is_ascii_alphanumeric() || chars[r] == '.' || chars[r] == '-') {
+            while r < n && (chars[r].is_ascii_alphanumeric() || chars[r] == '.' || chars[r] == '-')
+            {
                 if chars[r] == '.' {
                     dot = true;
                 }
@@ -254,7 +265,7 @@ fn luhn_ok(digits: &[u8]) -> bool {
         sum += n;
         alt = !alt;
     }
-    sum % 10 == 0
+    sum.is_multiple_of(10)
 }
 
 fn match_luhn(text: &str) -> bool {
@@ -270,7 +281,7 @@ fn match_luhn(text: &str) -> bool {
                 if ch.is_ascii_digit() {
                     digits.push((ch as u8) - b'0');
                     j += 1;
-                } else if (ch == ' ' || ch == '-') && digits.is_empty() == false {
+                } else if (ch == ' ' || ch == '-') && !digits.is_empty() {
                     j += 1;
                 } else {
                     break;

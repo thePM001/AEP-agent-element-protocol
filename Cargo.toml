@@ -20,6 +20,7 @@ members = [
     "AEP-Components/admit-writing-walls/crate",
     "AEP-Components/admit-channel-order-walls/crate",
     "AEP-Components/admit-temporal-bounds/crate",
+    "AEP-Components/admit-budget-window/crate",
     "AEP-Components/admit-live-dock/crate",
     "AEP-Components/envelope-walls/crate",
     "AEP-Components/envelope/crate",

@@ -1,0 +1,8 @@
+kind: aep.wrap-coverage.inventory
+version: 1
+name: fixture-bad-mode
+gap_dirs:
+  - gap
+caw:
+  - policy: caw/bad-mode.yaml
+    wrap: alpha

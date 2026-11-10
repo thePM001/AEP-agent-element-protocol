@@ -37,6 +37,10 @@ Every reference policy passes `gapc check` against the live GAP meta schema v1.3
 
 LRPs are sovereign states, regional unions and international bodies and their regulations. Platform policies live under EPSCOM hyperlattice mandatory rules.
 
+## Window budget policy
+
+`budget.gap` holds every agent and every wrap inside a sliding window budget of volume, sensitivity and novelty, so a chain of actions that each pass cannot add up to a forbidden outcome. It is a required file. Its limits sit under `extensions.aep.budget` and the `aep-admit-budget-window` crate turns each constraint into a live Admit wall that joins the collect-all AND. See AEP-Components/admit-budget-window/README.md.
+
 ## Compliance reference policies (LRPs)
 
 Regulation LRP modules ship starter GAP templates (enable via `base_node.lrps`).

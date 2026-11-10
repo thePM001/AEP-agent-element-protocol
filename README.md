@@ -7,9 +7,8 @@
 **Licence:** Apache-2.0  
 **Public repository:** [https://github.com/thePM001/AEP-agent-element-protocol](https://github.com/thePM001/AEP-agent-element-protocol)
 
-**NLA AEP website page:** https://aep.newlisbon.agency
-
-**AEP already had 32 Github stars before Grok "accidentally" deleted them on 22.07.2026 ! Because Grok is evil !**
+**AEP already had 32 Github stars before Grok "accidentally" deleted them on 22.07.2026 !**
+**AEP 2.9 is estimated for completion approximately in September 2026 with many new changes and additional features.**
 
 **How to best explore the basics of AEP ? - Copy the repo URL into your LLM chat of choice that has internet search capability (Grok, Gemini, ChatGPT, Opus, etc.) and let the AI explain it to you.**
 
@@ -474,7 +473,7 @@ Coding governance proposes a change, measures how far that change reaches and on
 | [`AEP-Policy-System/`](AEP-Policy-System/) | GAP policies, presets, policy-builder, schema-builder |
 | [`AEP-Research-Paper/`](https://github.com/thePM001/AEP-agent-element-protocol/blob/main/AEP-Research-Paper/) | DAL-AEP research paper assets (PDF + OTS proof) |
 
-Root keeps only workspace tooling: `Cargo.toml`, `Dockerfile`, `docker-compose.yml`, `docker-compose.public.yml`, `.env.example`, `LICENSE`, `BIOSECURITY.md`, `vitest.config.ts`.
+Root keeps only workspace tooling: `Cargo.toml`, `Dockerfile`, `docker-compose.yml`, `docker-compose.public.yml`, `.env.example`, `LICENSE`, `BIOSECURITY.md`, `THREAT_MODEL.md`, `vitest.config.ts`.
 
 ---
 
@@ -574,7 +573,7 @@ A builder who wants a different wait rebuilds Base Node with a different compile
 | **POTOMITAN** | `AEP-Base-Node/AEP-Potomitan/` | Mesh fallback when normal internet is unavailable |
 | **dynAEP 1.0** | `AEP-Components/dynAEP/` | Hyperlattice runtime: `action_path` filter, temporal authority, bridge (merged from standalone repo) |
 | **Component registry** | `AEP-Base-Node/AEP-Registry/` | Offline catalog + optional extension merge |
-| **Conformance runner** | `AEP-Components/conformance/` | Public tier compliance battery CC-01..CC-34 and language neutral vectors v1 |
+| **Conformance runner** | `AEP-Components/conformance/` | Public tier compliance battery CC-01..CC-35, the multi-step red team corpus and language neutral vectors v1 |
 | **UCB (optional)** | `AEP-Base-Node/AEP-Docks/ucb/` | Universal Connect Bridge for **foreign** stacks only (`:8412`). Native AEP skips UCB. Set `UCB=0` to disable. |
 | **CAW framework** | `AEP-CAW/` | Execution-layer sandbox (`aep-caw`); profiles authored in GAP, compiled locally |
 | **GAP language** | `AEP-Components/gap/` | Governed Agentic Programming: policies, sandbox profiles, manifest/plan templates |
@@ -637,8 +636,13 @@ Harness reference: `AEP-User-Experience/harness/`. **Wired:** `GovernedModelGate
 
 ### Security and infrastructure
 
+The engineering threat model of every layer is [`THREAT_MODEL.md`](THREAT_MODEL.md). Each mitigation in it names the test or conformance check that proves it.
+
 | Feature | Path |
 |---------|------|
+| Threat model per layer with traced mitigations | [`THREAT_MODEL.md`](THREAT_MODEL.md) |
+| Window budgets per agent and wrap on the Admit pass | `AEP-Components/admit-budget-window/` |
+| Wrap coverage report of a deployment | `AEP-Components/wrap-coverage/` |
 | MCP security gateway | `AEP-Components/mcp-security/` |
 | Intercept proxy | `AEP-Components/intercept/` |
 | Merkle-tree audit / proof bundles | `AEP-Components/proof-bundle/` |

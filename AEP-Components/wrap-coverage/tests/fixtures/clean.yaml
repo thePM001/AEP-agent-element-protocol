@@ -1,0 +1,12 @@
+kind: aep.wrap-coverage.inventory
+version: 1
+name: fixture-clean
+gap_dirs:
+  - gap
+caw:
+  - policy: caw/neutralized.yaml
+    wrap: alpha
+credentials:
+  - id: cred-granted
+    agent_id: agent-a
+    action: read:docs

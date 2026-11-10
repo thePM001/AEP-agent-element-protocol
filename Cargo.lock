@@ -21,6 +21,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "aep-admit-budget-window"
+version = "0.1.0"
+dependencies = [
+ "aep-admit",
+ "aep-policy-system-admit",
+ "gap-schema-profile-v13",
+ "serde_json",
+]
+
+[[package]]
 name = "aep-admit-channel-order-walls"
 version = "0.1.0"
 dependencies = [
@@ -33,6 +43,7 @@ name = "aep-admit-live-dock"
 version = "0.1.0"
 dependencies = [
  "aep-admit",
+ "aep-admit-budget-window",
  "aep-admit-channel-order-walls",
  "aep-admit-temporal-bounds",
  "aep-admit-writing-walls",
@@ -157,10 +168,12 @@ dependencies = [
 name = "aep-conformance"
 version = "2.9.0"
 dependencies = [
+ "aep-admit-live-dock",
  "aep-agentmesh",
  "aep-base-node",
  "aep-lattice-channel",
  "aep-lattice-crypto",
+ "aep-live-entry",
  "aep-potomitan",
  "serde",
  "serde_json",
@@ -337,6 +350,7 @@ dependencies = [
 name = "aep-live-entry"
 version = "0.1.0"
 dependencies = [
+ "aep-admit-budget-window",
  "aep-envelope",
  "anyhow",
  "serde",

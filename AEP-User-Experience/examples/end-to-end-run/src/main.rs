@@ -647,7 +647,7 @@ fn run_main() -> Result<(), String> {
     refuse_steps.push(if ledger_after_refuse == ledger_before {
         Step::refuse(
             "8 ledger row",
-            format!("the refuse path wrote no row and the ledger count stays {ledger_before}"),
+            format!("the refuse path wrote no row and the ledger count remains {ledger_before}"),
         )
     } else {
         ok = false;

@@ -24,6 +24,7 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { loadLocalCatalog, loadComponentManifest } from "./AEP-Base-Node/AEP-Registry/lib/registry.mjs";
 import { validateFullCatalog } from "./AEP-Base-Node/AEP-Registry/lib/manifest-validator.mjs";
+import { checkThreatModel } from "./AEP-User-Experience/harness/check-threat-model-trace.mjs";
 
 const SKIP_DIRS = new Set([".git", "node_modules", "target", "dist", "build", ".gomodcache", ".gocache", ".gopath"]);
 const MARKDOWN = /\.(md|markdown)$/i;
@@ -222,9 +223,35 @@ function cawBuildSection(root) {
   return { passed: true };
 }
 
+function wrapCoverageSection(root) {
+  var script = join(root, "AEP-Components/wrap-coverage/lib/wrap-coverage.mjs");
+  var inventory = "AEP-User-Experience/examples/end-to-end-run/deployment/wrap-coverage.yaml";
+  var opts = new Object();
+  opts.encoding = "utf8";
+  opts.cwd = root;
+  opts.maxBuffer = CHILD_BUFFER;
+  var result = spawnSync(process.execPath, [script, inventory], opts);
+  if (result.status !== 0) {
+    printChildFailure("wrap coverage", "node AEP-Components/wrap-coverage/lib/wrap-coverage.mjs " + inventory, result);
+    return { passed: false };
+  }
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  return { passed: true };
+}
+
+function threatModelSection(root) {
+  var result = checkThreatModel(root);
+  for (var i = 0; i < result.findings.length; i++) console.log(result.findings[i]);
+  console.log("threat model: " + result.rows + " rows, " + result.checks + " cited checks, " + result.findings.length + " findings");
+  return { passed: result.findings.length === 0 };
+}
+
 const SECTIONS = [
   { name: "registry", run: registrySection },
   { name: "release strings", run: releaseStringsSection },
+  { name: "wrap coverage", run: wrapCoverageSection },
+  { name: "threat model", run: threatModelSection },
   { name: "rust build", run: rustBuildSection },
   { name: "caw build", run: cawBuildSection },
   { name: "links", run: linksSection },

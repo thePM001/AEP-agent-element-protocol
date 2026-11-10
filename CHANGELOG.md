@@ -2,6 +2,16 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-10 - A threat model per layer, a wrap coverage report and window budgets that deny multi-step attacks
+The tree had no engineering threat model. Credentials, egress routes and tools outside every wrap were not reported, so an agent could act ungoverned without anyone seeing it. Admit judged each action on its own, so a chain of permitted actions could reach a forbidden outcome such as data leaving in small slices.
+
+- `THREAT_MODEL.md` covers the Base Node, the docks, the UCB dock gateway, the CAW, the lattice channels and the Admit layer. Each layer names its assets, trust boundaries, attacker capabilities, threats and residual risk. Every mitigation names the test or conformance check that proves it. The new `threat model` section of `aep-check.mjs` fails when a row names no check or cites one that does not exist. README.md and AEP-CAW/SECURITY.md link the model.
+- `AEP-Components/wrap-coverage` lists every agent credential, egress route, tool and lattice grant of a deployment with the wrap that governs it and exits 1 on any unmatched entry. A CAW catch-all rule that is not deny counts as unmatched. The end-to-end example declares its deployment in `deployment/`, runs the report before it starts and reports 7 of 7 entries matched. The live-set CI job runs the report.
+- The CAW policy key `unmatched_egress: deny` is opt-in and off by default. When it is on, a catch-all network rule whose decision is not deny stops matching, the eBPF allowlist leaves it out and egress that no explicit rule names is denied as `unmatched-egress-deny`. A domain pattern made only of `*`, `?` and `.` counts as catch-all. Any other value of the key fails validation. The end-to-end example runs its CAW server with this mode.
+- `AEP-Policy-System/reference/budget.gap` is a required policy. It holds every agent and every wrap to sliding window budgets of volume, sensitivity and novelty. The new crate `aep-admit-budget-window` turns each of its constraints into a live Admit wall that joins the collect-all AND, so Admit semantics are unchanged. Sensitivity comes from action path weights and from the classes of the shared scan rule table, which the Admit layer now reads. The live entry records an action into the window only after Admit allows it.
+- Conformance check CC-35 runs a corpus of 55 multi-step attacks through the Base Node live dock entry with the reference policy system. Every case ends in a deny by its named wall and five control chains that spread the same work over time pass.
+- Verify with `node aep-check.mjs`, `cargo test -p aep-conformance --test redteam_multistep`, `go test ./internal/policy/` in AEP-CAW and `./AEP-User-Experience/examples/end-to-end-run/run.sh`.
+
 ## [2.9.0] - 2026-11-10 - URLs and query strings pass the writing fix unchanged
 The kernel writing fix put spaces around the question sign inside a URL. A governed value that carried a URL or a query string was stored corrupted.
 

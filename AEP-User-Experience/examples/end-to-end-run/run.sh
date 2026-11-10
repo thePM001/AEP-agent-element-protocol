@@ -15,10 +15,11 @@
 # The run writes its transcript to END-TO-END-RUN.transcript.md beside the
 # script, with the run directory and the two loopback ports replaced by tokens.
 #
-# The run is the operator for one temporary deployment. It writes a base node
-# config, a lattice for the attach, a provisioned agent sign key and a task
-# manifest, then it starts the kernel daemon and the dock gateway, then it runs
-# the runner binary that prints the transcript.
+# The run is the operator for one temporary deployment. It checks the wrap
+# coverage of deployment/, copies the lattice, the GAP grants and the wrapped
+# CAW policy from that folder, writes a base node config, provisions an agent
+# sign key and a task manifest, then it starts the kernel daemon and the dock
+# gateway, then it runs the runner binary that prints the transcript.
 
 set -euo pipefail
 
@@ -30,10 +31,10 @@ CAW_DIR="$ROOT/AEP-CAW"
 CAW_BIN="$CAW_DIR/bin/aep-caw"
 POLICY_DIR="$ROOT/AEP-Policy-System"
 TRANSCRIPT="$HERE/END-TO-END-RUN.transcript.md"
+DEPLOY="$HERE/deployment"
 ATTACH_AGENT="agent-a"
 ATTACH_ACTION="ucb:ingest"
 ATTACH_SCENE="scene-ucb"
-KERNEL_DOCK_AGENT="caw-kernel-dock"
 
 log() {
   printf '%s\n' "$*" >&2
@@ -76,6 +77,9 @@ print(hashlib.sha256((source + "|" + protocol + "|" + session).encode()).hexdige
 
 need_binaries
 
+log "checking wrap coverage of the deployment"
+node "$ROOT/AEP-Components/wrap-coverage/lib/wrap-coverage.mjs" "$DEPLOY/wrap-coverage.yaml" >&2
+
 RUN_DIR="$(mktemp -d)"
 SOCK="$RUN_DIR/sockets"
 MANIFESTS="$RUN_DIR/ucb/manifests"
@@ -105,83 +109,21 @@ cat > "$RUN_DIR/base-node.json" <<JSON
 }
 JSON
 
-# The CAW kernel dock gate seals one root:ping as caw-kernel-dock before every
-# exec and lets the command start only when the validation dock admits it. The
-# run grants that ping in the lattice and in a hub policy of its data folder.
-# Once the data folder holds a hub, Admit reads every grant from it.
-cat > "$RUN_DIR/lattice.yaml" <<YAML
-actions:
-  root:ping:
-    category: system_event
-    parents: []
-    children: []
-    agent_permission: ["$KERNEL_DOCK_AGENT"]
-  $ATTACH_ACTION:
-    category: external_event
-    parents: []
-    children: []
-    agent_permission: ["$ATTACH_AGENT"]
-YAML
-
-mkdir -p "$RUN_DIR/gap/policies/reference"
-cat > "$RUN_DIR/gap/policies/reference/caw-kernel-dock.gap" <<GAP
-address:
-  domain: e2e.aep.caw
-  id: e2e-kernel-dock.v1
-
-pattern: |
-  The kernel dock grant of the end to end run. The CAW server seals one
-  root:ping as $KERNEL_DOCK_AGENT before every exec and the exec starts only
-  when the validation dock admits that ping.
-
-weight: 1.0
-
-composition:
-  type: atomic
-
-metadata:
-  provenance: "aep-end-to-end-run"
-  version: "1.0.0"
-  stability: stable
-  wrap: caw
-  agent_permission:
-    - agent_id: $KERNEL_DOCK_AGENT
-      action: root:ping
----
-kind: aep.caw.profile
-profile_id: e2e-kernel-dock
-name: e2e-kernel-dock
-GAP
-
-# The hub of the data folder also grants the attach agent its ingest path, so
-# the pass ingest is admitted and the refuse ingest still fails on its manifest.
-cat > "$RUN_DIR/gap/policies/reference/caw-e2e-attach.gap" <<GAP
-address:
-  domain: e2e.aep.caw
-  id: e2e-attach.v1
-
-pattern: |
-  The attach grant of the end to end run. The dock gateway ingests one fact as
-  $ATTACH_AGENT on $ATTACH_ACTION and Admit lets it through only on this grant.
-
-weight: 1.0
-
-composition:
-  type: atomic
-
-metadata:
-  provenance: "aep-end-to-end-run"
-  version: "1.0.0"
-  stability: stable
-  wrap: caw
-  agent_permission:
-    - agent_id: $ATTACH_AGENT
-      action: $ATTACH_ACTION
----
-kind: aep.caw.profile
-profile_id: e2e-attach
-name: e2e-attach
-GAP
+# The deployment folder beside this script holds the lattice, the two GAP
+# grants of the caw wrap and the wrapped CAW policy. The run copies them into
+# the run folder unchanged. The wrap coverage report reads the same files
+# through deployment/wrap-coverage.yaml and the run stops when any agent
+# credential, egress route, tool or lattice grant of the run sits outside a
+# wrap. The CAW kernel dock gate seals one root:ping as caw-kernel-dock before
+# every exec and the hub of the data folder also grants the attach agent its
+# ingest path, so the pass ingest is admitted and the refuse ingest still
+# fails on its manifest.
+cp "$DEPLOY/lattice.yaml" "$RUN_DIR/lattice.yaml"
+mkdir -p "$RUN_DIR/gap/policies/reference" "$RUN_DIR/caw-policies"
+cp "$DEPLOY"/gap/*.gap "$RUN_DIR/gap/policies/reference/"
+# A CAW session that names no policy asks for the policy named default, so the
+# wrapped policy is deployed under that name.
+cp "$DEPLOY/caw-policies/e2e-wrapped.yaml" "$RUN_DIR/caw-policies/default.yaml"
 
 export AEP_DATA="$RUN_DIR"
 export AEP_SOCKET_BASE="$SOCK"
@@ -230,7 +172,7 @@ health:
   path: "/health"
   readiness_path: "/ready"
 policies:
-  dir: "./configs/policies"
+  dir: "$RUN_DIR/caw-policies"
   default: "default"
 sessions:
   base_dir: "$RUN_DIR/caw-sessions"

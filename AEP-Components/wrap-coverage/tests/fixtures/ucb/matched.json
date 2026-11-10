@@ -1,0 +1,13 @@
+{
+  "manifest_version": "1",
+  "id": "fixture-matched",
+  "agent_id": "ucb-agent",
+  "intent": { "summary": "ingest docs" },
+  "egress": {
+    "strict": true,
+    "routes": [
+      { "path_prefix": "/docs", "upstream": "https://docs.example.com", "auth_token_env": "DOCS_TOKEN" },
+      { "path_prefix": "/plain", "upstream": "https://plain.example.com" }
+    ]
+  }
+}

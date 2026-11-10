@@ -1,5 +1,6 @@
 // Load AEP-Policy-System GAP files as live Admit walls.
 // Bind GAP walls to LatticeNode.wrap or an action_path prefix. writing and security stay always-on.
+pub mod scan_rules;
 pub mod ucm_claims;
 
 use aep_admit::{admit_collect_all, AdmitResult, AdmitWall};
@@ -21,7 +22,12 @@ pub const ALWAYS_ON_STEMS: &[&str] = &[
     "lattice-channel-mandatory",
     "governance",
     "deployment",
+    "budget",
 ];
+
+/// Stems whose walls hold state across actions. The loader proves the file is present and
+/// parses. aep-admit-budget-window compiles the walls of the budget stem from the live ledger.
+pub const STATEFUL_STEMS: &[&str] = &["budget"];
 
 /// Stems that still evaluate on every action_path. Other stems bind to wrap or prefix.
 pub const ALWAYS_ON_EVAL_STEMS: &[&str] = &["writing", "security"];
@@ -1093,6 +1099,9 @@ fn compile_loaded_gaps(gaps: &[LoadedGap], input: &PolicySystemCompileInput) -> 
         if is_lrp(gap) && !lrp_enabled(gap, input) {
             continue;
         }
+        if STATEFUL_STEMS.contains(&gap.stem.as_str()) {
+            continue;
+        }
         for item in &gap.items {
             if !item_binds(gap, input) {
                 continue;
@@ -1553,8 +1562,13 @@ mod tests {
         String::from("{\n  \"address\": {\"domain\": \"aep.reference.compliance.gdpr\", \"id\": \"gdpr.v1\"},\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"constraints\": [\"hard: block export of unredacted PII without explicit consent record\"]\n  },\n  \"metadata\": {\"wrap\": \"privacy\"},\n  \"extensions\": {\"aep\": {\"lrp_id\": \"gdpr\"}}\n}")
     }
 
+    fn budget_gap() -> String {
+        String::from("{\n  \"address\": {\"domain\": \"aep.reference.budget\", \"id\": \"budget.v1\"},\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"constraints\": [\"hard: agent.volume_bytes <= budget.agent.volume_bytes\"]\n  }\n}")
+    }
+
     fn write_tree(tmp: &Path) {
         std::fs::create_dir_all(tmp.join("reference")).expect("mkdir");
+        std::fs::write(tmp.join("reference/budget.gap"), budget_gap()).expect("b");
         std::fs::write(tmp.join("reference/writing.gap"), writing_gap()).expect("w");
         std::fs::write(tmp.join("reference/security.gap"), security_gap()).expect("s");
         let net_file = super::join_parts(&["reference/network-egress-no-", "smt", "p", ".gap"]);
@@ -1563,6 +1577,42 @@ mod tests {
         std::fs::write(tmp.join("reference/governance.gap"), gov_gap()).expect("g");
         std::fs::write(tmp.join("reference/deployment.gap"), deploy_gap()).expect("d");
         std::fs::write(tmp.join("reference/gdpr.gap"), gdpr_gap()).expect("gdpr");
+    }
+
+    #[test]
+    fn missing_budget_policy_closes_its_loaded_wall() {
+        let tmp = std::env::temp_dir().join("aep-policy-system-no-budget");
+        let _ = std::fs::remove_dir_all(&tmp);
+        write_tree(&tmp);
+        std::fs::remove_file(tmp.join("reference/budget.gap")).expect("rm budget");
+        let walls =
+            compile_policy_system_walls_from(Some(&tmp), &PolicySystemCompileInput::default());
+        let _ = std::fs::remove_dir_all(&tmp);
+        must(
+            walls
+                .iter()
+                .any(|w| w.id == "policy:budget:loaded" && w.closed),
+        );
+    }
+
+    #[test]
+    fn budget_items_are_left_to_the_budget_wall_crate() {
+        let tmp = std::env::temp_dir().join("aep-policy-system-budget-items");
+        let _ = std::fs::remove_dir_all(&tmp);
+        write_tree(&tmp);
+        let walls =
+            compile_policy_system_walls_from(Some(&tmp), &PolicySystemCompileInput::default());
+        let _ = std::fs::remove_dir_all(&tmp);
+        must(
+            walls
+                .iter()
+                .any(|w| w.id == "policy:budget:loaded" && !w.closed),
+        );
+        must(
+            !walls
+                .iter()
+                .any(|w| w.id.starts_with("policy:budget:") && w.id != "policy:budget:loaded"),
+        );
     }
 
     #[test]

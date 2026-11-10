@@ -1,0 +1,16 @@
+[package]
+name = "aep-admit-budget-window"
+version = "0.1.0"
+edition = "2021"
+description = "Sliding window volume, sensitivity and novelty budgets per agent and per wrap, written in the budget GAP policy and conjoined on the live Admit pass."
+license = "UNLICENSED"
+publish = false
+
+[dependencies]
+aep-admit = { path = "../../admit/crate" }
+aep-policy-system-admit = { path = "../../policy-system-admit/crate" }
+gap-schema-profile-v13 = { path = "../../gap-schema-profile-v13/crate" }
+serde_json = "1"
+
+[lints]
+workspace = true

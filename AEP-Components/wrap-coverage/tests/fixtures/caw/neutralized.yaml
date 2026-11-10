@@ -1,0 +1,10 @@
+version: 1
+name: fixture-neutralized
+unmatched_egress: deny
+network_rules:
+  - name: allow-named
+    cidrs: ["10.0.0.0/8"]
+    decision: allow
+  - name: allow-all
+    domains: ["*"]
+    decision: allow

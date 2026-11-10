@@ -59,7 +59,12 @@ The vitest checks run inside `run.sh`, which builds the kernel binaries, provisi
 | CC-24 | vitest | Intent ledger chain with evidence-ledger cross-ref |
 | CC-26 | vitest | Intent knots in Lattice Memory with the optional Agentstream mirror |
 | CC-28 - CC-34 | cargo test | UCM |
+| CC-35 | cargo test | Multi-step red team corpus on the live Admit path |
 | CC-12, CC-18 - CC-23, CC-25, CC-27 | planned | No claim |
+
+## Multi-step red team corpus
+
+[`redteam/`](redteam/README.md) holds CC-35. Each of its 55 cases is a chain of actions that each pass on their own and that together reach a forbidden outcome, such as data leaving in slices or an agent probing one new capability after another. The harness drives every step through the Base Node live dock entry with the reference policy system, so the sliding window budget of `AEP-Policy-System/reference/budget.gap` and every other product wall answer. Every case must end in a deny by its named wall and every control chain must pass.
 
 ## Language neutral vectors
 

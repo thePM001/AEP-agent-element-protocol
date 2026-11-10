@@ -43,6 +43,11 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: install libseccomp for the CAW build
         run: sudo apt-get update && sudo apt-get install -y libseccomp-dev
+      # The wrap coverage report reads YAML through the yaml package of the root workspace.
+      - name: npm ci
+        run: npm ci --no-audit --no-fund
+      - name: Wrap coverage report on the end-to-end example
+        run: node AEP-Components/wrap-coverage/lib/wrap-coverage.mjs AEP-User-Experience/examples/end-to-end-run/deployment/wrap-coverage.yaml
       - name: node aep-check.mjs
         run: node aep-check.mjs
       - name: conformance runner

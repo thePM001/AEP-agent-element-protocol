@@ -1,0 +1,16 @@
+actions:
+  read:docs:
+    parents: []
+    agent_permission: ["agent-a"]
+  write:docs:
+    parents: []
+    agent_permission: ["agent-a"]
+  tool:run:
+    parents: []
+    agent_permission: ["*"]
+  deploy:prod:
+    parents: []
+    agent_permission: ["*"]
+  closed:action:
+    parents: []
+    agent_permission: []

@@ -12,6 +12,7 @@ aep-admit = { path = "../../admit/crate" }
 aep-admit-writing-walls = { path = "../../admit-writing-walls/crate" }
 aep-admit-channel-order-walls = { path = "../../admit-channel-order-walls/crate" }
 aep-admit-temporal-bounds = { path = "../../admit-temporal-bounds/crate" }
+aep-admit-budget-window = { path = "../../admit-budget-window/crate" }
 aep-envelope-walls = { path = "../../envelope-walls/crate" }
 aep-live-entry = { path = "../../live-entry/crate" }
 anyhow = "1"

@@ -1,0 +1,9 @@
+# UCB task manifests against a GAP folder whose one wrap grants ucb-agent.
+kind: aep.wrap-coverage.inventory
+version: 1
+name: fixture-ucb
+gap_dirs:
+  - gap-ucb
+ucb_manifests:
+  - ucb/matched.json
+  - ucb/unmatched.json

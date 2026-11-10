@@ -1,0 +1,11 @@
+{
+  "manifest_version": "1",
+  "id": "fixture-unmatched",
+  "agent_id": "stranger",
+  "intent": { "summary": "reach out" },
+  "egress": {
+    "routes": [
+      { "path_prefix": "/out", "upstream": "https://out.example.com", "auth_token_env": "OUT_TOKEN" }
+    ]
+  }
+}

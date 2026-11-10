@@ -8,6 +8,7 @@
 // Extra_walls is AdmitWall id. One Admit function. Drop conversion from a second admit_collect_all.
 // Collect-all Deny for empty action_path runs before Apply. process_event must not mutate LiveEntry then return Event.
 // A template target_id is not a skip. Every opened frame runs collect-all Admit then Apply.
+use aep_admit_budget_window::{BudgetCharge, BudgetLedger};
 use aep_envelope::{
     admit_with_extra, apply_admit, closed_reasons, dest_dock_from_opened_frame, load_lattice_file,
     load_lattice_gap, load_lattice_yaml, load_lattice_yaml_file, plan_apply, snapshot_from_nodes,
@@ -133,6 +134,10 @@ pub struct LiveEntry {
     pub extra_walls: Vec<AdmitWall>,
     pub opened_dest_dock: String,
     pub opened_agent_id: String,
+    /// Window spend of every agent and wrap. Only admitted actions are recorded.
+    pub budget_ledger: BudgetLedger,
+    /// Charge of the action whose budget walls sit in extra_walls. Taken by process_event.
+    pub budget_charge: Option<BudgetCharge>,
 }
 impl Default for LiveEntry {
     fn default() -> Self {
@@ -160,6 +165,8 @@ impl LiveEntry {
             extra_walls: Vec::new(),
             opened_dest_dock: String::new(),
             opened_agent_id: String::new(),
+            budget_ledger: BudgetLedger::new(),
+            budget_charge: None,
         }
     }
     pub fn from_yaml(text: &str) -> Result<Self, LiveEntryError> {
@@ -293,6 +300,7 @@ impl LiveEntry {
     }
     pub fn process_event(&mut self, mut event: Value) -> ProcessOut {
         let pending_extra = std::mem::take(&mut self.extra_walls);
+        let pending_charge = self.budget_charge.take();
         let action_path = event
             .get("action_path")
             .and_then(|v| v.as_str())
@@ -346,6 +354,10 @@ impl LiveEntry {
         if !action_path.is_empty() {
             let plan = plan_apply(&result, &self.snapshot);
             apply_admit(&mut self.snapshot, &action, &plan);
+            // The budget records the action only after Admit allowed it, beside Apply.
+            if let Some(charge) = pending_charge.as_ref() {
+                self.budget_ledger.commit(charge);
+            }
         }
         let now = self.now_ms();
         let agent_ts = event.get("timestamp").and_then(|v| v.as_i64());

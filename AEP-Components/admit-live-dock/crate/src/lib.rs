@@ -3,6 +3,7 @@
 // Extra temporal walls measure 50 ms drift against freeze, not live now.
 // Pass LatticeNode.wrap into policy-system compile.
 use aep_admit::{admit_collect_all, AdmitWall, LatticeCompileInput};
+use aep_admit_budget_window::{compile_live_budget, BudgetCharge, BudgetInput};
 use aep_admit_channel_order_walls::{
     compile_channel_walls, compile_partial_order_walls, ChannelCompileInput,
     PartialOrderCompileInput,
@@ -22,6 +23,7 @@ pub const PRODUCT_WALL_CRATES: &[&str] = &[
     "aep-admit-writing-walls",
     "aep-admit-channel-order-walls",
     "aep-admit-temporal-bounds",
+    "aep-admit-budget-window",
     "aep-envelope-walls",
     "aep-policy-system-admit",
 ];
@@ -31,6 +33,7 @@ pub const LIVE_PATH_CRATES: &[&str] = &[
     "aep-admit-writing-walls",
     "aep-admit-channel-order-walls",
     "aep-admit-temporal-bounds",
+    "aep-admit-budget-window",
     "aep-envelope-walls",
     "aep-envelope",
     "aep-live-entry",
@@ -154,6 +157,16 @@ pub fn compile_live_walls(
     event: &Value,
     dock: &LiveDockContext,
 ) -> Vec<AdmitWall> {
+    compile_live_walls_and_charge(live, event, dock).0
+}
+
+/// Compile product Admit wall crates and the budget charge of the action. The live entry
+/// holds the charge until Admit answers and records it only after an allow.
+pub fn compile_live_walls_and_charge(
+    live: &LiveEntry,
+    event: &Value,
+    dock: &LiveDockContext,
+) -> (Vec<AdmitWall>, Option<BudgetCharge>) {
     let action_path = event
         .get("action_path")
         .and_then(|v| v.as_str())
@@ -234,6 +247,13 @@ pub fn compile_live_walls(
         payload_repeated_violation: false,
     };
     walls.extend(compile_live_lattice_walls(&lattice_in));
+    // Sliding window budgets per agent and wrap from the budget GAP policy. The wrap is the
+    // wrap of the lattice node, so the event cannot move its spend into another wrap.
+    let budget_in =
+        BudgetInput::from_event(event, &lattice_in.agent_id, &wrap, &writing_text, bridge);
+    let policy_dir = aep_policy_system_admit::discover_policy_system_dir();
+    let (budget_walls, charge) =
+        compile_live_budget(policy_dir.as_deref(), &live.budget_ledger, &budget_in);
     let policy_in = PolicySystemCompileInput {
         text: writing_text,
         action_path: lattice_in.action_path.clone(),
@@ -251,7 +271,8 @@ pub fn compile_live_walls(
         ..Default::default()
     };
     walls.extend(compile_policy_system_walls(&policy_in));
-    walls
+    walls.extend(budget_walls);
+    (walls, charge)
 }
 
 /// Fold every product Admit wall crate into one live collect-all pass.
