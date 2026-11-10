@@ -6,6 +6,7 @@
 **Author:** thePM_001 ([https://x.com/thePM_001](https://x.com/thePM_001))  
 **Licence:** Apache-2.0  
 **Public repository:** [https://github.com/thePM001/AEP-agent-element-protocol](https://github.com/thePM001/AEP-agent-element-protocol)
+**NLA AEP website page:** https://aep.newlisbon.agency
 
 **AEP already had 32 Github stars before Grok "accidentally" deleted them on 22.07.2026 !**
 **AEP 2.9 is estimated for completion approximately in September 2026 with many new changes and additional features.**
