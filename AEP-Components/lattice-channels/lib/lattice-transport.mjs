@@ -9,6 +9,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defaultPaths } from "../../platform-core/lib/paths.mjs";
+import { protectedWritingTokenMask } from "../../admit/lib/writing-rules.mjs";
 
 export const DOCK_SUFFIXES = [
   { port: "inference_engine", suffix: "inference" },
@@ -380,10 +381,11 @@ function punctuationSpacingViolationAt(input, index) {
 }
 
 function fixPunctuationWordSpacingOnce(input) {
+  const mask = protectedWritingTokenMask(input);
   let out = "";
   for (let i = 0; i < input.length; i += 1) {
     const ch = input[i];
-    if (punctuationSpacingViolationAt(input, i)) {
+    if (!mask[i] && punctuationSpacingViolationAt(input, i)) {
       const normalized = SENTENCE_PUNCT_CHARS.has(ch) ? normalizeSentencePunct(ch) : ch;
       out += `${normalized} `;
       continue;

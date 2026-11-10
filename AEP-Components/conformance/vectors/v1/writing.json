@@ -323,17 +323,41 @@
     "text": "See https://example.org/a?b=1 for more."
    },
    "expect": {
-    "violations": [
-     {
-      "rule": "punctuation_word_space",
-      "line": 1
-     },
-     {
-      "rule": "space_before_spaced_signs",
-      "line": 1
-     }
-    ],
-    "fixed": "See https://example.org/a ? b=1 for more.",
+    "violations": [],
+    "fixed": "See https://example.org/a?b=1 for more.",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "payload-url",
+   "input": {
+    "text": "https://api.example.org/v1/items?id=7&page=2"
+   },
+   "expect": {
+    "violations": [],
+    "fixed": "https://api.example.org/v1/items?id=7&page=2",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "query-no-scheme",
+   "input": {
+    "text": "items?id=7&page=2"
+   },
+   "expect": {
+    "violations": [],
+    "fixed": "items?id=7&page=2",
+    "ok_after_fix": true
+   }
+  },
+  {
+   "id": "url-bracket",
+   "input": {
+    "text": "https://api.example.org/v1/items[0]?id=7"
+   },
+   "expect": {
+    "violations": [],
+    "fixed": "https://api.example.org/v1/items[0]?id=7",
     "ok_after_fix": true
    }
   },

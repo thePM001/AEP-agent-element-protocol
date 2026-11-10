@@ -5,6 +5,7 @@ import {
   writingRuleNamed,
   writingRuleTable,
 } from "../../../AEP-Components/lattice-channels/lib/lattice-transport.mjs";
+import { protectedWritingTokenMask } from "../../../AEP-Components/admit/lib/writing-rules.mjs";
 
 /** The writing rule family is read from the one source, writing.gap. */
 export function writingRuleIds() {
@@ -39,9 +40,11 @@ function skipSpacedSignAfterContext(raw, index) {
 export function lintMissingSpaceBeforeSentencePunct(text) {
   const violations = [];
   const raw = stripLintExemptRegions(text);
+  const mask = protectedWritingTokenMask(raw);
   for (let i = 1; i < raw.length; i += 1) {
     const ch = raw[i];
     const prev = raw[i - 1];
+    if (mask[i]) continue;
     if (SPACED_SIGN_CHARS.has(ch) && /[A-Za-z0-9]/.test(prev)) {
       violations.push({
         rule: writingRuleNamed("space_before_spaced_signs") ? "space_before_spaced_signs" : "writing_rule_not_in_source",
@@ -58,9 +61,11 @@ export function lintMissingSpaceBeforeSentencePunct(text) {
 export function lintMissingSpaceAfterSentencePunct(text) {
   const violations = [];
   const raw = stripLintExemptRegions(text);
+  const mask = protectedWritingTokenMask(raw);
   for (let i = 0; i < raw.length - 1; i += 1) {
     const ch = raw[i];
     const next = raw[i + 1];
+    if (mask[i]) continue;
     if (SPACED_SIGN_CHARS.has(ch) && /[A-Za-z0-9]/.test(next)) {
       if (skipSpacedSignAfterContext(raw, i)) continue;
       violations.push({

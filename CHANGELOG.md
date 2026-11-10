@@ -2,6 +2,13 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-10 - URLs and query strings pass the writing fix unchanged
+The kernel writing fix put spaces around the question sign inside a URL. A governed value that carried a URL or a query string was stored corrupted.
+
+- A URL token, a query string and the identifier tokens inside them stay outside the spaced sign rules on every input. Prose punctuation outside those tokens keeps its current answer. `building?` and `Hello[ hola ]` still close.
+- `enforce_writing_value` and `enforce_writing_payload` leave a URL or a query string byte for byte unchanged.
+- The writing vector `url-query` expects the URL to stay intact. New vectors cover a value that is a URL, a query string without a scheme and a bracket inside a URL.
+
 ## [2.9.0] - 2026-11-09 - clippy, cargo-deny, gitleaks, the CAW tests and the release string check pass on main
 Four blocking CI jobs and the release string section of aep-check failed on every push to main, so a red build carried no signal. Each gate was rerun on this host with the tool versions of the runner and each cause is fixed. Every gate still blocks.
 

@@ -54,10 +54,67 @@ function hasPattern(text, patterns) {
   return (patterns ?? []).some((pattern) => pattern !== "" && text.includes(pattern));
 }
 
+function isUrlByte(ch) {
+  return /[A-Za-z0-9]/.test(ch) || "-._~:/?#[]@!$&'()*+,;=%".includes(ch);
+}
+
+/** Indexes inside a URL token or a query string. Same spans as the Admit wall. */
+export function protectedWritingTokenMask(text) {
+  const chars = Array.from(String(text ?? ""));
+  const n = chars.length;
+  const mask = new Array(n).fill(false);
+  let i = 0;
+  while (i < n) {
+    if (/[A-Za-z]/.test(chars[i] ?? "")) {
+      let j = i + 1;
+      while (j < n && (/[A-Za-z0-9]/.test(chars[j] ?? "") || "+-.".includes(chars[j] ?? ""))) {
+        j += 1;
+      }
+      if (j + 2 < n && chars[j] === ":" && chars[j + 1] === "/" && chars[j + 2] === "/") {
+        let k = j + 3;
+        while (k < n && isUrlByte(chars[k] ?? "")) k += 1;
+        for (let t = i; t < k; t += 1) mask[t] = true;
+        i = k;
+        continue;
+      }
+    }
+    i += 1;
+  }
+  let q = 0;
+  while (q < n) {
+    if (chars[q] === "?" && !mask[q]) {
+      let k = q + 1;
+      let hasBinding = false;
+      while (k < n && isUrlByte(chars[k] ?? "") && chars[k] !== "?") {
+        if (chars[k] === "=" || chars[k] === "&") hasBinding = true;
+        k += 1;
+      }
+      if (hasBinding) {
+        let start = q;
+        while (
+          start > 0 &&
+          !mask[start - 1] &&
+          isUrlByte(chars[start - 1] ?? "") &&
+          chars[start - 1] !== "?"
+        ) {
+          start -= 1;
+        }
+        for (let t = start; t < k; t += 1) mask[t] = true;
+        q = k;
+        continue;
+      }
+    }
+    q += 1;
+  }
+  return mask;
+}
+
 /** Missing space after ? or ! before the next word, the kernel punctuation rule. */
 export function punctuationWordSpaceClosed(text) {
   const chars = Array.from(String(text ?? ""));
+  const mask = protectedWritingTokenMask(text);
   for (let i = 0; i < chars.length - 1; i += 1) {
+    if (mask[i]) continue;
     const ch = chars[i];
     const next = chars[i + 1];
     if ((ch === "?" || ch === "!") && /[A-Za-z0-9]/.test(next)) return true;

@@ -241,6 +241,93 @@ pub mod compile_writing_walls {
         prev == '/' || prev == '=' || prev == '&'
     }
 
+    fn is_url_byte(ch: char) -> bool {
+        ch.is_ascii_alphanumeric()
+            || matches!(
+                ch,
+                '-' | '.'
+                    | '_'
+                    | '~'
+                    | ':'
+                    | '/'
+                    | '?'
+                    | '#'
+                    | '['
+                    | ']'
+                    | '@'
+                    | '!'
+                    | '$'
+                    | '&'
+                    | '\''
+                    | '('
+                    | ')'
+                    | '*'
+                    | '+'
+                    | ','
+                    | ';'
+                    | '='
+                    | '%'
+            )
+    }
+
+    /// Indexes inside a URL token or a query string. Path segments, query keys
+    /// and query values are the identifier tokens of those spans. A `?` opens a
+    /// query string only when the following token carries `=` or `&`, so prose
+    /// such as `building?` stays under the spaced sign rules.
+    pub fn protected_writing_token_mask(chars: &[char]) -> Vec<bool> {
+        let n = chars.len();
+        let mut mask = vec![false; n];
+        let mut i = 0;
+        while i < n {
+            if chars[i].is_ascii_alphabetic() {
+                let mut j = i + 1;
+                while j < n
+                    && (chars[j].is_ascii_alphanumeric() || matches!(chars[j], '+' | '-' | '.'))
+                {
+                    j += 1;
+                }
+                if j + 2 < n && chars[j] == ':' && chars[j + 1] == '/' && chars[j + 2] == '/' {
+                    let mut k = j + 3;
+                    while k < n && is_url_byte(chars[k]) {
+                        k += 1;
+                    }
+                    mask[i..k].fill(true);
+                    i = k;
+                    continue;
+                }
+            }
+            i += 1;
+        }
+        let mut q = 0;
+        while q < n {
+            if chars[q] == '?' && !mask[q] {
+                let mut k = q + 1;
+                let mut has_binding = false;
+                while k < n && is_url_byte(chars[k]) && chars[k] != '?' {
+                    if chars[k] == '=' || chars[k] == '&' {
+                        has_binding = true;
+                    }
+                    k += 1;
+                }
+                if has_binding {
+                    let mut start = q;
+                    while start > 0
+                        && !mask[start - 1]
+                        && is_url_byte(chars[start - 1])
+                        && chars[start - 1] != '?'
+                    {
+                        start -= 1;
+                    }
+                    mask[start..k].fill(true);
+                    q = k;
+                    continue;
+                }
+            }
+            q += 1;
+        }
+        mask
+    }
+
     fn contains_char(text: &str, ch: char) -> bool {
         text.chars().any(|c| c == ch)
     }
@@ -267,11 +354,13 @@ pub mod compile_writing_walls {
             RULE_NO_OXFORD_COMMA => line.contains(", and ") || line.contains(", or "),
             RULE_PUNCTUATION_WORD_SPACE => {
                 let chars: Vec<char> = line.chars().collect();
+                let protected = protected_writing_token_mask(&chars);
                 let mut closed = false;
                 for i in 0..chars.len().saturating_sub(1) {
                     if is_spaced_sign(chars[i])
                         && chars[i + 1].is_ascii_alphanumeric()
                         && !skip_spaced_sign_after_context(&chars, i)
+                        && !protected[i]
                     {
                         closed = true;
                         break;
@@ -281,9 +370,13 @@ pub mod compile_writing_walls {
             }
             RULE_SPACE_BEFORE_SPACED_SIGNS => {
                 let chars: Vec<char> = line.chars().collect();
+                let protected = protected_writing_token_mask(&chars);
                 let mut closed = false;
                 for i in 1..chars.len() {
-                    if is_spaced_sign(chars[i]) && chars[i - 1].is_ascii_alphanumeric() {
+                    if is_spaced_sign(chars[i])
+                        && chars[i - 1].is_ascii_alphanumeric()
+                        && !protected[i]
+                    {
                         closed = true;
                         break;
                     }
@@ -409,6 +502,37 @@ pub mod compile_writing_walls {
             ));
             assert!(line_closes_rule(RULE_ATTACH_DOUBLE_COLON, "word :: here"));
         }
+
+        #[test]
+        fn url_and_query_tokens_stay_outside_the_spaced_sign_rules() {
+            let url = "https://api.example.org/v1/items?id=7&page=2";
+            let query = "items?id=7&page=2";
+            let bare = "?id=7&page=2";
+            let bracket = "https://api.example.org/v1/items[0]?id=7";
+            let prose = "See https://example.org/a?b=1 for more.";
+            for line in [url, query, bare, bracket, prose] {
+                assert!(
+                    !line_closes_rule(RULE_PUNCTUATION_WORD_SPACE, line),
+                    "{line}"
+                );
+                assert!(
+                    !line_closes_rule(RULE_SPACE_BEFORE_SPACED_SIGNS, line),
+                    "{line}"
+                );
+            }
+            assert!(line_closes_rule(
+                RULE_SPACE_BEFORE_SPACED_SIGNS,
+                "ready for building?"
+            ));
+            assert!(line_closes_rule(
+                RULE_PUNCTUATION_WORD_SPACE,
+                "How are you?I am here."
+            ));
+            assert!(line_closes_rule(
+                RULE_SPACE_BEFORE_SPACED_SIGNS,
+                "Hello[ hola ]"
+            ));
+        }
     }
 }
 
@@ -416,12 +540,12 @@ pub use admit_collect_all::admit_collect_all;
 pub use compile_writing_walls::{
     collect_payload_strings, compile_writing_walls, compile_writing_walls_for_strings,
     compile_writing_walls_line, is_allowed_double_hyphen_line, is_tree_diagram_line,
-    line_closes_rule, writing_rule_ids, writing_rule_ids_from_source, writing_rules_manifest_json,
-    writing_source_compiles, writing_wall_id, WritingRule, RULE_ATTACH_COMMA_SEMICOLON,
-    RULE_ATTACH_DOUBLE_COLON, RULE_NO_BOX_DRAWING_DASHES, RULE_NO_DASH_SUBSTITUTES,
-    RULE_NO_DOUBLE_HYPHEN, RULE_NO_EM_DASHES, RULE_NO_EN_DASHES, RULE_NO_MINUS_AS_DASH,
-    RULE_NO_OXFORD_COMMA, RULE_PUNCTUATION_WORD_SPACE, RULE_SPACED_SIGN_WORD_SPACE,
-    RULE_SPACE_BEFORE_SPACED_SIGNS, WRITING_GAP_SOURCE, WRITING_RULES,
+    line_closes_rule, protected_writing_token_mask, writing_rule_ids, writing_rule_ids_from_source,
+    writing_rules_manifest_json, writing_source_compiles, writing_wall_id, WritingRule,
+    RULE_ATTACH_COMMA_SEMICOLON, RULE_ATTACH_DOUBLE_COLON, RULE_NO_BOX_DRAWING_DASHES,
+    RULE_NO_DASH_SUBSTITUTES, RULE_NO_DOUBLE_HYPHEN, RULE_NO_EM_DASHES, RULE_NO_EN_DASHES,
+    RULE_NO_MINUS_AS_DASH, RULE_NO_OXFORD_COMMA, RULE_PUNCTUATION_WORD_SPACE,
+    RULE_SPACED_SIGN_WORD_SPACE, RULE_SPACE_BEFORE_SPACED_SIGNS, WRITING_GAP_SOURCE, WRITING_RULES,
 };
 
 pub mod compile_lattice;

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import {
   compileWritingWalls,
   lintWritingRules,
+  protectedWritingTokenMask,
   punctuationWordSpaceClosed,
   writingRule,
   writingRuleClosed,
@@ -69,6 +70,21 @@ describe("punctuationWordSpaceClosed", () => {
     expect(punctuationWordSpaceClosed("Ready?")).toBe(false);
     expect(punctuationWordSpaceClosed("Ready?!")).toBe(false);
     expect(punctuationWordSpaceClosed(null)).toBe(false);
+  });
+
+  it("leaves a URL, a query string and a bracket inside a URL open", () => {
+    const samples = [
+      "https://api.example.org/v1/items?id=7&page=2",
+      "items?id=7&page=2",
+      "?id=7&page=2",
+      "https://api.example.org/v1/items[0]?id=7",
+      "See https://example.org/a?b=1 for more.",
+    ];
+    for (const sample of samples) {
+      expect(punctuationWordSpaceClosed(sample)).toBe(false);
+      expect(protectedWritingTokenMask(sample).some(Boolean)).toBe(true);
+    }
+    expect(punctuationWordSpaceClosed("Ready?Go")).toBe(true);
   });
 });
 

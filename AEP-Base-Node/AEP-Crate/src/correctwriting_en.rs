@@ -9,11 +9,11 @@ use serde_json::Value;
 
 pub use aep_admit::{
     compile_writing_walls_line, is_allowed_double_hyphen_line, is_tree_diagram_line,
-    line_closes_rule, writing_rule_ids, WritingRule, RULE_ATTACH_COMMA_SEMICOLON,
-    RULE_ATTACH_DOUBLE_COLON, RULE_NO_BOX_DRAWING_DASHES, RULE_NO_DASH_SUBSTITUTES,
-    RULE_NO_DOUBLE_HYPHEN, RULE_NO_EM_DASHES, RULE_NO_EN_DASHES, RULE_NO_MINUS_AS_DASH,
-    RULE_NO_OXFORD_COMMA, RULE_PUNCTUATION_WORD_SPACE, RULE_SPACED_SIGN_WORD_SPACE,
-    RULE_SPACE_BEFORE_SPACED_SIGNS, WRITING_GAP_SOURCE, WRITING_RULES,
+    line_closes_rule, protected_writing_token_mask, writing_rule_ids, WritingRule,
+    RULE_ATTACH_COMMA_SEMICOLON, RULE_ATTACH_DOUBLE_COLON, RULE_NO_BOX_DRAWING_DASHES,
+    RULE_NO_DASH_SUBSTITUTES, RULE_NO_DOUBLE_HYPHEN, RULE_NO_EM_DASHES, RULE_NO_EN_DASHES,
+    RULE_NO_MINUS_AS_DASH, RULE_NO_OXFORD_COMMA, RULE_PUNCTUATION_WORD_SPACE,
+    RULE_SPACED_SIGN_WORD_SPACE, RULE_SPACE_BEFORE_SPACED_SIGNS, WRITING_GAP_SOURCE, WRITING_RULES,
 };
 
 pub const CORRECTWRITING_EN_CORE_ID: &str = "correctwriting-en";
@@ -154,9 +154,10 @@ pub fn fix_writing_prose_line(line: &str) -> String {
     out = out.replace(" ::", "::");
     let mut prefixed = String::new();
     let pre_chars: Vec<char> = out.chars().collect();
+    let pre_mask = protected_writing_token_mask(&pre_chars);
     for i in 0..pre_chars.len() {
         let ch = pre_chars[i];
-        if is_spaced_sign(ch) && i > 0 && pre_chars[i - 1].is_ascii_alphanumeric() {
+        if is_spaced_sign(ch) && i > 0 && pre_chars[i - 1].is_ascii_alphanumeric() && !pre_mask[i] {
             prefixed.push(' ');
         }
         prefixed.push(ch);
@@ -164,9 +165,15 @@ pub fn fix_writing_prose_line(line: &str) -> String {
     out = prefixed;
     let mut fixed = String::new();
     let chars: Vec<char> = out.chars().collect();
+    let mask = protected_writing_token_mask(&chars);
     let mut i = 0;
     while i < chars.len() {
         let ch = chars[i];
+        if mask[i] {
+            fixed.push(ch);
+            i += 1;
+            continue;
+        }
         if is_spaced_sign(ch)
             && i + 1 < chars.len()
             && chars[i + 1].is_ascii_alphanumeric()
@@ -414,5 +421,32 @@ mod tests {
             enforce_writing_value(&value)["ucm"]["receipts"]["/total"],
             receipt
         );
+    }
+
+    #[test]
+    fn url_and_query_values_stay_byte_for_byte() {
+        let samples = [
+            "https://api.example.org/v1/items?id=7&page=2",
+            "items?id=7&page=2",
+            "?id=7&page=2",
+            "/v1/items?id=7&page=2",
+            "https://api.example.org/v1/items[0]?id=7",
+            "See https://example.org/a?b=1 for more.",
+        ];
+        for sample in samples {
+            assert_eq!(fix_writing_prose(sample), sample, "{sample}");
+            assert!(lint_writing_prose(sample).is_empty(), "{sample}");
+            let wrapped = serde_json::json!({ "target_url": sample });
+            let fixed = enforce_writing_payload(&wrapped);
+            assert_eq!(fixed["target_url"].as_str().unwrap(), sample);
+        }
+    }
+
+    #[test]
+    fn prose_outside_a_url_still_takes_the_spaced_sign_fix() {
+        let text = "See https://example.org/a?b=1 now?Yes";
+        let result = enforce_writing_text(text);
+        assert!(result.ok);
+        assert_eq!(result.text, "See https://example.org/a?b=1 now ? Yes");
     }
 }

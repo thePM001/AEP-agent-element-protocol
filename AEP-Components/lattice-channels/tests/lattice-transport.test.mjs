@@ -213,6 +213,13 @@ describe("prose fixers", () => {
 
   it("fixPunctuationWordSpacing leaves query strings and lower-case dots alone", () => {
     expect(fixPunctuationWordSpacing("see /path/?q=1&x=?y")).toBe("see /path/?q=1&x=?y");
+    expect(fixPunctuationWordSpacing("https://api.example.org/v1/items?id=7&page=2")).toBe(
+      "https://api.example.org/v1/items?id=7&page=2",
+    );
+    expect(fixPunctuationWordSpacing("items?id=7&page=2")).toBe("items?id=7&page=2");
+    expect(fixPunctuationWordSpacing("https://api.example.org/v1/items[0]?id=7")).toBe(
+      "https://api.example.org/v1/items[0]?id=7",
+    );
     expect(fixPunctuationWordSpacing("file.txt and v2.0")).toBe("file.txt and v2.0");
     expect(fixPunctuationWordSpacing(undefined)).toBe("");
   });
