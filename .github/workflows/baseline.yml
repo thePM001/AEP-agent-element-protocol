@@ -193,19 +193,21 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libfuse-dev libfuse3-dev libseccomp-dev pkg-config
       - name: free disk space
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell
+      # scripts/ci-go-test.sh turns each failing test into an error annotation, which
+      # the checks API serves to readers that cannot fetch the job log.
       # t.TempDir follows GOTMPDIR. Tests bind Unix sockets under it and a socket path
       # holds at most 108 bytes, so the runner temp path is too long. /tmp/go-tmp keeps
       # the longest test socket path near 96 bytes.
       - name: go test ./...
         run: |
           mkdir -p "$GOTMPDIR"
-          go test -p 2 ./...
+          bash scripts/ci-go-test.sh -p 2 ./...
         env:
           GOTMPDIR: /tmp/go-tmp
       - name: go test -race ./...
         run: |
           mkdir -p "$GOTMPDIR"
-          go test -race -p 2 ./...
+          bash scripts/ci-go-test.sh -race -p 2 ./...
         env:
           GOTMPDIR: /tmp/go-tmp
       - name: conformance vectors (Go CAW)

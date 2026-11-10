@@ -9,7 +9,8 @@ Four blocking CI jobs and the release string section of aep-check failed on ever
 - cargo-deny: RUSTSEC-2026-0459 reported the SQLite that libsqlite3-sys 0.30 bundles. rusqlite moves from 0.32 to 0.41 and libsqlite3-sys to 0.39.1, which bundles SQLite 3.54.1. The `fallible_uint` feature keeps the checked u64 column reads of 0.32.
 - gitleaks: two CAW environment policy tests carried a fixture that the generic API key rule read as a secret. The fixture value is now plain.
 - CAW go test: Go test temp folders follow GOTMPDIR. The CI pointed it at the runner temp path, so the Unix socket paths of 12 tests passed the limit of 108 bytes. The job now uses `/tmp/go-tmp`. The long TMPDIR test of the wrap init path builds its 41 character folder under /tmp, so it no longer depends on GOTMPDIR.
-- aep-check release strings: a UCB history line that names the forked validator child of release 2.8.6 and an arithmetic test operand of 2.75 are on the allow list with their reasons.
+- aep-check release strings: a UCB history line about the forked validator child of the earlier release and a numeric operand of an arithmetic test vector are on the allow list with their reasons.
+- The CAW test steps run through `AEP-CAW/scripts/ci-go-test.sh`, which writes each failing test, failing package and failing build as a GitHub error annotation with the tail of its output, so the checks API names the failure without the job log.
 
 ## [2.9.0] - 2026-11-09 - The TypeScript and mjs components typecheck strictly, lint clean and carry tests
 The tree had about 175 TypeScript files with one tsconfig under dynAEP and no CI job typechecked them. Imports of zod and yaml had no manifest that declared them. Most TypeScript and mjs component folders had no tests and no README said whether a component was normative. Several components imported code that earlier releases had removed, so they could not load at all.
