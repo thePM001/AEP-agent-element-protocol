@@ -9,8 +9,7 @@
 
 **NLA AEP website page:** https://aep.newlisbon.agency
 
-**AEP already had 32 Github stars before Grok "accidentally" deleted them on 22.07.2026 !**
-**AEP 2.9 is estimated for completion approximately in September 2026 with many new changes and additional features.**
+**AEP already had 32 Github stars before Grok "accidentally" deleted them on 22.07.2026 ! Because Grok is evil !**
 
 **How to best explore the basics of AEP ? - Copy the repo URL into your LLM chat of choice that has internet search capability (Grok, Gemini, ChatGPT, Opus, etc.) and let the AI explain it to you.**
 
