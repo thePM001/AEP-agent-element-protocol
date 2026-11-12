@@ -2,6 +2,13 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-12 - Go 1.26.11 and rustix 1.1.6 close two advisories that were published after the last green run
+Two supply chain jobs failed on advisories that appeared between 2026-11-10 and 2026-11-12. No dependency of the tree had changed.
+
+- govulncheck: Go 1.26.11 fixes standard library advisories that the CAW reaches through net/http, among them GO-2026-6859. The toolchain line of `AEP-CAW/go.mod` moves from go1.26.10 to go1.26.11. The module requirements and `go.sum` are unchanged.
+- cargo-deny: RUSTSEC-2026-0486 reports unsound extended attribute functions in rustix before 1.1.6. `Cargo.lock` moves rustix from 1.1.4 to 1.1.6. No other lock entry changes.
+- Verified here with `cargo test --locked -p aep-base-node --lib` and with the CAW build and the Go tests of `internal/kerneldock`, `internal/policy` and `internal/api` on Go 1.26.11. The two advisory scanners themselves were not run on this host.
+
 ## [2.9.0] - 2026-11-12 - The docks count seal and transit time as age and no longer as clock drift
 The first form of the kernel clock change, pushed earlier the same day, refused every stamp more than 50 ms behind the Base Node clock. An agent writes its stamp before the seal and the Base Node reads it after the transit, so that bound counted the seal and the transit as clock drift. A release build seals in under 10 ms, but a debug build needs 10 to 150 ms for one seal and a slow processor needs longer. Such a caller was refused on every frame and `cargo test --workspace` failed on the public runner.
 

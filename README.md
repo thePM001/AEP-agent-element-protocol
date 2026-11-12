@@ -777,7 +777,7 @@ cargo build --release -p aep-base-node
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 
-# AEP-CAW needs Go 1.26.10, the toolchain line in AEP-CAW/go.mod.
+# AEP-CAW needs Go 1.26.11, the toolchain line in AEP-CAW/go.mod.
 # Install that Go and set GOTOOLCHAIN=local so the go command never downloads another toolchain.
 cd AEP-CAW
 export GOTOOLCHAIN=local
