@@ -2,6 +2,13 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-12 - The UCB tests find the validator under the build layout of cargo 1.100
+`cargo test --workspace` failed on the public runner after Rust 1.100 was released on 2026-11-12. Three UCB bridge tests answered `validate join refused`. Cargo 1.100 writes a test binary to `<profile>/build/<package>/<hash>/out` and no longer to `<profile>/deps`. The UCB looked for `aep-ucb-validate` beside the running executable and one folder above a `deps` folder, so a test binary no longer found it.
+
+- The lookup reads both cargo test layouts and nothing else. An installed `aep-ucb` still looks beside itself only.
+- A new test names the cause when the validator is not found, so the failure no longer shows up as a refused join in unrelated tests.
+- Verify with `cargo test -p aep-ucb` on Rust 1.100.
+
 ## [2.9.0] - 2026-11-12 - Go 1.26.11 and rustix 1.1.6 close two advisories that were published after the last green run
 Two supply chain jobs failed on advisories that appeared between 2026-11-10 and 2026-11-12. No dependency of the tree had changed.
 
@@ -10,7 +17,7 @@ Two supply chain jobs failed on advisories that appeared between 2026-11-10 and 
 - Verified here with `cargo test --locked -p aep-base-node --lib` and with the CAW build and the Go tests of `internal/kerneldock`, `internal/policy` and `internal/api` on Go 1.26.11. The two advisory scanners themselves were not run on this host.
 
 ## [2.9.0] - 2026-11-12 - The docks count seal and transit time as age and no longer as clock drift
-The first form of the kernel clock change, pushed earlier the same day, refused every stamp more than 50 ms behind the Base Node clock. An agent writes its stamp before the seal and the Base Node reads it after the transit, so that bound counted the seal and the transit as clock drift. A release build seals in under 10 ms, but a debug build needs 10 to 150 ms for one seal and a slow processor needs longer. Such a caller was refused on every frame and `cargo test --workspace` failed on the public runner.
+The first form of the kernel clock change, pushed earlier the same day, refused every stamp more than 50 ms behind the Base Node clock. An agent writes its stamp before the seal and the Base Node reads it after the transit, so that bound counted the seal and the transit as clock drift. A release build seals in under 10 ms, but a debug build needs 10 to 150 ms for one seal and a slow processor needs longer. Such a caller was refused on every frame. In a debug build on one busy processor the conformance unit test was refused on many frames and passed only through repeated seals.
 
 - The stamp window is no longer symmetric. Ahead of the Base Node clock only clock drift can put a stamp, so a stamp more than 50 ms ahead is still refused at enqueue as `temporal:future_skew`. Behind the clock the stamp may be as old as the age bound of 5000 ms. An older stamp is refused at enqueue as `temporal:stale_event`.
 - The Base Node clock alone decides the hold and the age of a capsule. A stamp in the past does not shorten the hold: the capsule turns ready one pulse after it arrived. A stamp ahead cannot make it wait longer.

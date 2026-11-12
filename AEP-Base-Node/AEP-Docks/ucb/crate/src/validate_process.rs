@@ -201,9 +201,9 @@ impl ValidatorProcess {
 
     /// The validator installed beside the running executable.
     ///
-    /// Release images install `aep-ucb-validate` next to `aep-ucb`. Cargo test
-    /// binaries live in `target/<profile>/deps` while package binaries live one
-    /// folder up, so that folder is checked as well. A missing validator is not
+    /// Release images install `aep-ucb-validate` next to `aep-ucb`. A cargo test
+    /// binary lives below the profile folder that holds the package binaries, so
+    /// that folder is checked as well for both cargo layouts. A missing validator is not
     /// an error here: every validation then returns [`ValidateWaitError::Join`].
     pub fn beside_current_exe() -> Self {
         Self::new(locate_validator())
@@ -311,20 +311,65 @@ fn locate_validator() -> PathBuf {
     if beside.is_file() {
         return beside;
     }
-    if dir.file_name().map(|n| n == "deps").unwrap_or(false) {
-        if let Some(up) = dir.parent().map(|p| p.join(&name)) {
-            if up.is_file() {
-                return up;
-            }
+    if let Some(up) = cargo_profile_dir(dir).map(|p| p.join(&name)) {
+        if up.is_file() {
+            return up;
         }
     }
     beside
+}
+
+/// The profile folder that holds the package binaries when `test_dir` is the folder
+/// of a cargo test binary. Only the two layouts that cargo writes are read:
+///
+/// - `<profile>/deps/<test binary>`, the layout up to cargo 1.99.
+/// - `<profile>/build/<package>/<hash>/out/<test binary>`, the layout from cargo 1.100.
+///
+/// Any other folder gives None, so an installed `aep-ucb` looks beside itself only.
+fn cargo_profile_dir(test_dir: &Path) -> Option<&Path> {
+    let leaf = test_dir.file_name()?;
+    if leaf == "deps" {
+        return test_dir.parent();
+    }
+    if leaf == "out" {
+        let build = test_dir.parent()?.parent()?.parent()?;
+        if build.file_name()? == "build" {
+            return build.parent();
+        }
+    }
+    None
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::ingress::Provenance;
+
+    #[test]
+    fn cargo_profile_dir_reads_both_cargo_test_layouts_and_nothing_else() {
+        let old = Path::new("/w/target/debug/deps");
+        assert_eq!(cargo_profile_dir(old), Some(Path::new("/w/target/debug")));
+        let new = Path::new("/w/target/debug/build/aep-ucb/0123abcd/out");
+        assert_eq!(cargo_profile_dir(new), Some(Path::new("/w/target/debug")));
+        // An installed binary and a folder that only looks similar give nothing.
+        assert_eq!(cargo_profile_dir(Path::new("/usr/local/bin")), None);
+        assert_eq!(cargo_profile_dir(Path::new("/srv/aep/out")), None);
+        assert_eq!(
+            cargo_profile_dir(Path::new("/a/notbuild/pkg/hash/out")),
+            None
+        );
+    }
+
+    #[test]
+    fn the_validator_is_found_from_the_test_binary() {
+        let found = locate_validator();
+        assert!(
+            found.is_file(),
+            "aep-ucb-validate not found from {:?}: looked at {}",
+            std::env::current_exe().ok(),
+            found.display()
+        );
+    }
 
     #[test]
     fn request_round_trips_through_answer() {
