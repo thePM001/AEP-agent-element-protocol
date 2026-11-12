@@ -6,13 +6,14 @@ use super::{
     lock_or_deny, port_event_type, DockFrameResponse, DockingRuntime,
 };
 use crate::dock_keys::decode_signer_public_hex;
-use crate::envelope_admit::admit_sealed_payload_report;
+use crate::envelope_admit::admit_sealed_payload_report_recorded;
 use crate::{
     enforce_writing_value, record_channel_frame, record_side_channel_anomaly,
     value_has_writing_violations, BaseNodeError, SideChannelAnomalyKind,
 };
+use aep_admit::AdmitWall;
 use aep_lattice_channel::DockingPort;
-use aep_wall_set_backpressure::{CLASS_CAPABILITY, CLASS_SECURITY};
+use aep_wall_set_backpressure::CLASS_SECURITY;
 use serde_json::Value;
 
 pub(crate) fn dock_port_name(port: &DockingPort) -> &'static str {
@@ -237,27 +238,101 @@ pub(crate) fn apply_held_capsule(
     guard.settle(resp);
 }
 
+/// Action path of the opened event. Empty when the plaintext is not JSON or names none.
+fn action_path_of(event: Option<&Value>) -> String {
+    event
+        .and_then(|v| v.get("action_path"))
+        .and_then(|x| x.as_str())
+        .map(String::from)
+        .unwrap_or_default()
+}
+
+/// Write the ledger row of an admitted frame. Runs as the record step of Admit, after
+/// every wall is open and before Apply, so no state changes without its row.
+// DockFrameResponse is the reply the node sends as is, so the deny path returns it unboxed.
+#[allow(clippy::result_large_err)]
+fn record_admitted_frame(
+    runtime: &DockingRuntime,
+    cap: &aep_base_node_pulse::QueuedCapsule,
+    held: &HeldCapsule,
+    event_type: &str,
+) -> Result<i64, DockFrameResponse> {
+    let db = lock_or_deny(&runtime.record.db, "db")?;
+    match record_channel_frame(&db, &held.frame, event_type, &held.bundle, None) {
+        Ok(event_id) => Ok(event_id),
+        Err(e) => Err(deny_closed(
+            Some(cap.digest.clone()),
+            format!("ledger unavailable: {e}"),
+            "ledger.unavailable",
+            "ledger.unavailable",
+        )),
+    }
+}
+
+/// Admit, the ledger row, Apply and only then the side effects of one held capsule.
+///
+/// Order of one admitted frame:
+/// 1. Admit: every wall, the hub permission of the signer among them, in one collect-all.
+/// 2. Record: the ledger row is written while the live entry is still unchanged.
+/// 3. Apply: the live entry records the action, the sequence number and the budget spend.
+/// 4. Side effects: the LRP contract registration and the bound outbound request.
+///
+/// A Deny at step 1 or a ledger error at step 2 leaves the live entry unchanged, registers
+/// nothing and sends nothing. Lock order: the live entry guard is held while the record
+/// step takes record.db. No path takes record.db first and the live entry second.
 fn answer_held_capsule(
     runtime: &DockingRuntime,
     cap: &aep_base_node_pulse::QueuedCapsule,
     held: &HeldCapsule,
 ) -> DockFrameResponse {
+    let event = serde_json::from_slice::<Value>(&held.plaintext).ok();
+    let action = action_path_of(event.as_ref());
+    // The hub is asked for the signer of the frame. Its answer is an Admit wall, so a hub
+    // deny is decided with every other wall and never after Apply.
+    let hub_permitted = runtime.admit.hub.agent_may(&held.frame.agent_id, &action);
     let dock = aep_admit_live_dock::LiveDockContext::from_open_frame(
         &held.frame.channel_id,
         &held.frame.agent_id,
         &held.frame.session_id,
         dock_port_name(&held.expected_port),
         &held.frame.contract_id,
-    );
+    )
+    .with_hub_permission(hub_permitted);
+    let event_type = if held.expected_port == DockingPort::RegulationModule {
+        "docking_regulation_lattice"
+    } else {
+        port_event_type(&held.expected_port)
+    };
+    let mut recorded: Option<i64> = None;
+    let mut record_deny: Option<DockFrameResponse> = None;
     let admit_res = match lock_or_deny(&runtime.admit.live_entry, "live_entry") {
         Ok(mut live) => {
             live.freeze_temporal_snapshot(cap.freeze.bridge_ts_ms);
-            let r = admit_sealed_payload_report(&mut live, &held.plaintext, &dock);
+            let r = admit_sealed_payload_report_recorded(
+                &mut live,
+                &held.plaintext,
+                &dock,
+                &mut || match record_admitted_frame(runtime, cap, held, event_type) {
+                    Ok(event_id) => {
+                        recorded = Some(event_id);
+                        Ok(())
+                    }
+                    Err(resp) => {
+                        let reason = resp.error.clone().unwrap_or_default();
+                        record_deny = Some(resp);
+                        Err(AdmitWall::close("ledger.unavailable", reason))
+                    }
+                },
+            );
             live.clear_temporal_freeze();
             r
         }
         Err(resp) => return resp,
     };
+    // The record step refused: nothing was applied and the ledger cannot take a row.
+    if let Some(resp) = record_deny {
+        return resp;
+    }
     if let Err(report) = admit_res {
         let detail = report.error.clone();
         if let Ok(db) = lock_or_deny(&runtime.record.db, "db") {
@@ -271,43 +346,29 @@ fn answer_held_capsule(
         }
         return deny_resp_report(Some(cap.digest.clone()), detail, report);
     }
-    let action = match serde_json::from_slice::<Value>(&held.plaintext) {
-        Ok(v) => match v.get("action_path") {
-            Some(x) => match x.as_str() {
-                Some(p) => String::from(p),
-                None => String::new(),
-            },
-            None => String::new(),
-        },
-        Err(_) => String::new(),
-    };
-    if !action.is_empty() && !runtime.admit.hub.agent_may(&held.frame.agent_id, &action) {
+    let Some(event_id) = recorded else {
         return deny_closed(
             Some(cap.digest.clone()),
-            String::from("hub permission denied"),
-            "gap.agent_permission",
-            CLASS_CAPABILITY,
+            String::from("apply ended without a ledger row"),
+            "ledger.unavailable",
+            "ledger.unavailable",
         );
-    }
-    if held.expected_port == DockingPort::RegulationModule {
-        if let Ok(value) = serde_json::from_slice::<Value>(&held.plaintext) {
-            if let Some(x) = value.get("action") {
-                if let Some("register_lrp") = x.as_str() {
-                    if let Ok(mut contracts) = lock_or_deny(&runtime.admit.contracts, "contracts") {
-                        contracts.register(&held.frame.contract_id)
-                    }
-                }
-            }
+    };
+    crate::dock_event!(debug, crate::dock_log::DockEvent::FrameApply, event_id, digest = %cap.digest, "frame applied");
+    let register_lrp = held.expected_port == DockingPort::RegulationModule
+        && event
+            .as_ref()
+            .and_then(|v| v.get("action"))
+            .and_then(|x| x.as_str())
+            == Some("register_lrp");
+    if register_lrp {
+        if let Ok(mut contracts) = lock_or_deny(&runtime.admit.contracts, "contracts") {
+            contracts.register(&held.frame.contract_id)
         }
     }
-    let event_type = if held.expected_port == DockingPort::RegulationModule {
-        "docking_regulation_lattice"
-    } else {
-        port_event_type(&held.expected_port)
-    };
-    let mut http_resp = DockFrameResponse {
+    let mut resp = DockFrameResponse {
         ok: true,
-        event_id: None,
+        event_id: Some(event_id),
         digest: Some(cap.digest.clone()),
         error: None,
         pong: None,
@@ -316,29 +377,9 @@ fn answer_held_capsule(
         pending: None,
         http_queued: None,
     };
-    attach_gateway_http_after_allow(&held.plaintext, &mut http_resp);
-    if !http_resp.ok {
-        return http_resp;
-    }
-    let recorded = match lock_or_deny(&runtime.record.db, "db") {
-        Ok(db) => record_channel_frame(&db, &held.frame, event_type, &held.bundle, None),
-        Err(resp) => return resp,
-    };
-    match recorded {
-        Ok(event_id) => {
-            crate::dock_event!(debug, crate::dock_log::DockEvent::FrameApply, event_id, digest = %cap.digest, "frame applied");
-            DockFrameResponse {
-                ok: true,
-                event_id: Some(event_id),
-                digest: Some(cap.digest.clone()),
-                error: None,
-                pong: None,
-                http: http_resp.http,
-                deny: None,
-                pending: None,
-                http_queued: None,
-            }
-        }
-        Err(e) => deny_resp(None, e.to_string()),
-    }
+    // The bound request leaves only now, with the row written. When it fails the answer
+    // is not ok and still carries the event id of the row, so the caller sees that the
+    // frame was recorded and that the request did not complete.
+    attach_gateway_http_after_allow(&held.plaintext, &mut resp);
+    resp
 }

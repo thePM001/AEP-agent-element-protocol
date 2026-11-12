@@ -11,6 +11,11 @@ pub const MAX_FRAME_AGE_SECS: u64 = 300;
 pub const MAX_FRAME_FUTURE_SKEW_SECS: u64 = 60;
 pub const QUEUE_CAP_CAPSULES: usize = 256;
 pub const QUEUE_CAP_BYTES: usize = 262144;
+/// One signer holds at most this part of the queue, so the frames of one signer
+/// never take the room of every other signer.
+pub const QUEUE_SIGNER_SHARE_DIVISOR: usize = 2;
+pub const QUEUE_SIGNER_SHARE_CAPSULES: usize = QUEUE_CAP_CAPSULES / QUEUE_SIGNER_SHARE_DIVISOR;
+pub const QUEUE_SIGNER_SHARE_BYTES: usize = QUEUE_CAP_BYTES / QUEUE_SIGNER_SHARE_DIVISOR;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FrozenSnapshot {
     pub bridge_ts_ms: i64,
@@ -31,6 +36,8 @@ pub enum EnqueueDeny {
     OverflowCapsules,
     OverflowBytes,
     DuplicateDigest,
+    SignerShareCapsules,
+    SignerShareBytes,
 }
 impl EnqueueDeny {
     pub fn as_str(&self) -> &'static str {
@@ -38,6 +45,8 @@ impl EnqueueDeny {
             EnqueueDeny::OverflowCapsules => "pulse queue overflow capsules",
             EnqueueDeny::OverflowBytes => "pulse queue overflow bytes",
             EnqueueDeny::DuplicateDigest => "frame replay rejected",
+            EnqueueDeny::SignerShareCapsules => "pulse queue signer share capsules",
+            EnqueueDeny::SignerShareBytes => "pulse queue signer share bytes",
         }
     }
 }
@@ -114,10 +123,31 @@ impl PulseQueue {
         if next > QUEUE_CAP_BYTES {
             return Err(EnqueueDeny::OverflowBytes);
         }
+        // The signer share is checked after the queue caps, so a full queue still
+        // answers with the queue overflow and a signer at its share reads its own deny.
+        let (signer_capsules, signer_bytes) = self.signer_load(&cap.agent_id);
+        if signer_capsules >= QUEUE_SIGNER_SHARE_CAPSULES {
+            return Err(EnqueueDeny::SignerShareCapsules);
+        }
+        if signer_bytes.saturating_add(cap.byte_len) > QUEUE_SIGNER_SHARE_BYTES {
+            return Err(EnqueueDeny::SignerShareBytes);
+        }
         self.queued_digests.insert(cap.digest.clone());
         self.bytes = next;
         self.items.push(cap);
         Ok(())
+    }
+    /// Capsules and bytes that one signer holds in the queue.
+    pub fn signer_load(&self, agent_id: &str) -> (usize, usize) {
+        let mut capsules = 0usize;
+        let mut bytes = 0usize;
+        for item in &self.items {
+            if item.agent_id == agent_id {
+                capsules = capsules.saturating_add(1);
+                bytes = bytes.saturating_add(item.byte_len);
+            }
+        }
+        (capsules, bytes)
     }
     pub fn beat(&mut self, now_ms: i64) -> BeatRelease {
         self.epoch = self.epoch.saturating_add(1);
@@ -420,6 +450,7 @@ mod tests {
         must(PULSE_MS == 1000 && MAX_DRIFT_MS == 50 && MAX_AGE_MS == 5000);
         must(MAX_FRAME_AGE_SECS == 300 && MAX_FRAME_FUTURE_SKEW_SECS == 60);
         must(QUEUE_CAP_CAPSULES == 256 && QUEUE_CAP_BYTES == 262144);
+        must(QUEUE_SIGNER_SHARE_CAPSULES == 128 && QUEUE_SIGNER_SHARE_BYTES == 131072);
         must(MAX_DRIFT_MS != PULSE_MS);
         must(MAX_DRIFT_MS != 1000);
         let freeze = freeze_temporal_snapshot(1_000_000, 1);
@@ -435,17 +466,20 @@ mod tests {
     fn overflow_and_duplicate() {
         let mut q = PulseQueue::new();
         for i in 0..QUEUE_CAP_CAPSULES {
-            q.enqueue(cap(&format!("d{i}"), "ag", i as i64 + 1, 1000, 1))
+            let signer = format!("ag-{}", i / QUEUE_SIGNER_SHARE_CAPSULES);
+            q.enqueue(cap(&format!("d{i}"), &signer, i as i64 + 1, 1000, 1))
                 .expect("enq");
         }
-        match q.enqueue(cap("overflow", "ag", 999, 1000, 1)) {
+        match q.enqueue(cap("overflow", "ag-new", 999, 1000, 1)) {
             Err(EnqueueDeny::OverflowCapsules) => {}
             _ => std::process::abort(),
         }
         let mut q = PulseQueue::new();
-        q.enqueue(cap("big", "ag", 1, 1000, QUEUE_CAP_BYTES))
+        q.enqueue(cap("big-a", "ag-a", 1, 1000, QUEUE_SIGNER_SHARE_BYTES))
             .expect("enq");
-        match q.enqueue(cap("one-more", "ag", 2, 1000, 1)) {
+        q.enqueue(cap("big-b", "ag-b", 1, 1000, QUEUE_SIGNER_SHARE_BYTES))
+            .expect("enq");
+        match q.enqueue(cap("one-more", "ag-c", 2, 1000, 1)) {
             Err(EnqueueDeny::OverflowBytes) => {}
             _ => std::process::abort(),
         }
@@ -453,6 +487,41 @@ mod tests {
         q.enqueue(cap("same", "ag", 1, 1000, 8)).expect("enq");
         match q.enqueue(cap("same", "ag", 2, 1000, 8)) {
             Err(EnqueueDeny::DuplicateDigest) => {}
+            _ => std::process::abort(),
+        }
+    }
+    #[test]
+    fn one_signer_holds_only_its_share() {
+        let mut q = PulseQueue::new();
+        for i in 0..QUEUE_SIGNER_SHARE_CAPSULES {
+            q.enqueue(cap(&format!("a{i}"), "ag-a", i as i64 + 1, 1000, 1))
+                .expect("enq");
+        }
+        match q.enqueue(cap("a-over", "ag-a", 999, 1000, 1)) {
+            Err(EnqueueDeny::SignerShareCapsules) => {}
+            _ => std::process::abort(),
+        }
+        // The share of one signer leaves the room of every other signer open.
+        q.enqueue(cap("b0", "ag-b", 1, 1000, 1)).expect("enq");
+        let mut q = PulseQueue::new();
+        q.enqueue(cap("a-big", "ag-a", 1, 1000, QUEUE_SIGNER_SHARE_BYTES))
+            .expect("enq");
+        match q.enqueue(cap("a-more", "ag-a", 2, 1000, 1)) {
+            Err(EnqueueDeny::SignerShareBytes) => {}
+            _ => std::process::abort(),
+        }
+        q.enqueue(cap("b-big", "ag-b", 1, 1000, QUEUE_SIGNER_SHARE_BYTES))
+            .expect("enq");
+        must(q.signer_load("ag-a") == (1, QUEUE_SIGNER_SHARE_BYTES));
+        let mut q = PulseQueue::new();
+        match q.enqueue(cap(
+            "too-big",
+            "ag-a",
+            1,
+            1000,
+            QUEUE_SIGNER_SHARE_BYTES + 1,
+        )) {
+            Err(EnqueueDeny::SignerShareBytes) => {}
             _ => std::process::abort(),
         }
     }

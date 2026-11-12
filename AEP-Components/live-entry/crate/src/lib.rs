@@ -298,9 +298,24 @@ impl LiveEntry {
         }
         Ok(())
     }
-    pub fn process_event(&mut self, mut event: Value) -> ProcessOut {
+    pub fn process_event(&mut self, event: Value) -> ProcessOut {
+        self.process_event_recorded(event, &mut || Ok(()))
+    }
+    /// One Admit then Apply with the record step between them.
+    ///
+    /// `record` runs once, after every wall is open and after the structure checks of the
+    /// event, before any state of the live entry changes. The Base Node writes its ledger
+    /// row there, so the row exists before Apply. A closed wall from `record` is a Deny
+    /// that leaves the live entry unchanged.
+    pub fn process_event_recorded(
+        &mut self,
+        mut event: Value,
+        record: &mut dyn FnMut() -> Result<(), AdmitWall>,
+    ) -> ProcessOut {
         let pending_extra = std::mem::take(&mut self.extra_walls);
         let pending_charge = self.budget_charge.take();
+        // The signer bound by attach_live_walls holds for this one event only.
+        let opened_agent_id = std::mem::take(&mut self.opened_agent_id);
         let action_path = event
             .get("action_path")
             .and_then(|v| v.as_str())
@@ -335,8 +350,10 @@ impl LiveEntry {
             None => self.now_ms(),
         };
         let mut action = action_from_event(&event, &self.opened_dest_dock);
-        if action.agent_id.is_empty() && !self.opened_agent_id.is_empty() {
-            action.agent_id = self.opened_agent_id.clone();
+        // The signer of the opened frame is the agent of every envelope wall and of Apply.
+        // The agent_id of the event text is read only when no frame was opened.
+        if !opened_agent_id.is_empty() {
+            action.agent_id = opened_agent_id;
         }
         // One live admit call. The one live closer is aep_envelope::admit_with_extra and
         // this facade carries the extra dock walls into it and then reads its result.
@@ -349,6 +366,25 @@ impl LiveEntry {
                 target_id: action_path,
                 error: s("Admit collect-all walls then Apply: ", &reasons.join("; ")),
                 closed,
+            });
+        }
+        // Every deny point sits before the first write. The structure checks of the event
+        // run here, so a refused delta or mutation leaves no satisfied action, no sequence
+        // number and no budget spend behind.
+        if let Err(rejection) = self.check_apply(&event) {
+            return ProcessOut::Reject(rejection);
+        }
+        // The record step is the last deny point. Nothing below this line refuses.
+        if let Err(wall) = record() {
+            let reason = if wall.reason.is_empty() {
+                wall.id.clone()
+            } else {
+                wall.reason.clone()
+            };
+            return ProcessOut::Reject(Rejection {
+                target_id: action_path,
+                error: s("Admit collect-all walls then Apply: ", &reason),
+                closed: vec![wall],
             });
         }
         if !action_path.is_empty() {
@@ -406,15 +442,36 @@ impl LiveEntry {
             other => other,
         }
     }
-    fn apply_state_delta(&mut self, event: Value) -> ProcessOut {
-        if !self.jit_on_every_delta {
-            return ProcessOut::Event(event);
+    /// Structure checks that Apply would refuse. Reads only, so process_event runs them
+    /// before the first write and Apply runs them once more on the same state.
+    fn check_apply(&self, event: &Value) -> Result<(), Rejection> {
+        let ty = event.get("type").and_then(|v| v.as_str()).unwrap_or("");
+        let dt = event
+            .get("dynaep_type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        if ty == "STATE_DELTA" {
+            return self.check_state_delta(event);
         }
-        let deltas = match event.get("delta").and_then(|v| v.as_array()).cloned() {
+        if ty != "CUSTOM" {
+            return Ok(());
+        }
+        match dt {
+            "AEP_MUTATE_STRUCTURE" => self.check_mutate_structure(event),
+            "AEP_MUTATE_BEHAVIOUR" => self.check_mutate_behaviour(event),
+            "AEP_MUTATE_SKIN" => self.check_mutate_skin(event),
+            _ => Ok(()),
+        }
+    }
+    fn check_state_delta(&self, event: &Value) -> Result<(), Rejection> {
+        if !self.jit_on_every_delta {
+            return Ok(());
+        }
+        let deltas = match event.get("delta").and_then(|v| v.as_array()) {
             Some(d) => d,
-            None => return ProcessOut::Event(event),
+            None => return Ok(()),
         };
-        for op in &deltas {
+        for op in deltas {
             let path = op.get("path").and_then(|v| v.as_str()).unwrap_or("");
             let parts: Vec<&str> = path.split('/').filter(|p| !p.is_empty()).collect();
             if parts.len() < 2 {
@@ -430,7 +487,7 @@ impl LiveEntry {
             let value = op.get("value").cloned().unwrap_or(Value::Null);
             if layer == "elements" {
                 if let Err(err) = self.validate_structure_delta(target_id, field, &value) {
-                    return ProcessOut::Reject(Rejection {
+                    return Err(Rejection {
                         target_id: target_id.to_string(),
                         error: err.to_string(),
                         closed: Vec::new(),
@@ -440,7 +497,7 @@ impl LiveEntry {
                     if let Some(exp) = event.get("expected_version").and_then(|v| v.as_u64()) {
                         let cur = self.versions.get(target_id).copied().unwrap_or(0);
                         if exp != cur {
-                            return ProcessOut::Reject(Rejection {
+                            return Err(Rejection {
                                 target_id: target_id.to_string(),
                                 error: s("Optimistic lock conflict on ", target_id),
                                 closed: Vec::new(),
@@ -452,13 +509,26 @@ impl LiveEntry {
                 && !self.registry.contains(target_id)
                 && !target_id.starts_with("CN-")
             {
-                return ProcessOut::Reject(Rejection {
+                return Err(Rejection {
                     target_id: target_id.to_string(),
                     error: s("Cannot mutate behaviour: ", target_id),
                     closed: Vec::new(),
                 });
             }
         }
+        Ok(())
+    }
+    fn apply_state_delta(&mut self, event: Value) -> ProcessOut {
+        if let Err(rejection) = self.check_state_delta(&event) {
+            return ProcessOut::Reject(rejection);
+        }
+        if !self.jit_on_every_delta {
+            return ProcessOut::Event(event);
+        }
+        let deltas = match event.get("delta").and_then(|v| v.as_array()).cloned() {
+            Some(d) => d,
+            None => return ProcessOut::Event(event),
+        };
         for op in &deltas {
             let path = op.get("path").and_then(|v| v.as_str()).unwrap_or("");
             let parts: Vec<&str> = path.split('/').filter(|p| !p.is_empty()).collect();
@@ -529,27 +599,39 @@ impl LiveEntry {
             _ => ProcessOut::Event(event),
         }
     }
-    fn mutate_structure(&mut self, event: Value) -> ProcessOut {
+    fn check_mutate_structure(&self, event: &Value) -> Result<(), Rejection> {
         let tid = event
             .get("target_id")
             .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-        if !self.live.contains_key(&tid) && !tid.starts_with("CN-") {
-            return ProcessOut::Reject(Rejection {
-                target_id: tid.clone(),
-                error: s("Unknown element: ", &tid),
+            .unwrap_or("");
+        if !self.live.contains_key(tid) && !tid.starts_with("CN-") {
+            return Err(Rejection {
+                target_id: tid.to_string(),
+                error: s("Unknown element: ", tid),
                 closed: Vec::new(),
             });
         }
         if let Some(parent) = event.pointer("/mutation/parent").and_then(|v| v.as_str()) {
             if !self.live.contains_key(parent) {
-                return ProcessOut::Reject(Rejection {
-                    target_id: tid.clone(),
+                return Err(Rejection {
+                    target_id: tid.to_string(),
                     error: s("Cannot move; parent missing: ", parent),
                     closed: Vec::new(),
                 });
             }
+        }
+        Ok(())
+    }
+    fn mutate_structure(&mut self, event: Value) -> ProcessOut {
+        if let Err(rejection) = self.check_mutate_structure(&event) {
+            return ProcessOut::Reject(rejection);
+        }
+        let tid = event
+            .get("target_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        if let Some(parent) = event.pointer("/mutation/parent").and_then(|v| v.as_str()) {
             let old = self.live.get(&tid).and_then(|e| e.parent.clone());
             if let Some(op) = old {
                 if let Some(p) = self.live.get_mut(&op) {
@@ -568,33 +650,45 @@ impl LiveEntry {
         *self.versions.entry(tid).or_insert(0) += 1;
         ProcessOut::Event(event)
     }
-    fn mutate_behaviour(&self, event: Value) -> ProcessOut {
+    fn check_mutate_behaviour(&self, event: &Value) -> Result<(), Rejection> {
         let tid = event
             .get("target_id")
             .and_then(|v| v.as_str())
             .unwrap_or("");
         if !self.registry.contains(tid) && !tid.starts_with("CN-") {
-            return ProcessOut::Reject(Rejection {
+            return Err(Rejection {
                 target_id: tid.into(),
                 error: s("Cannot mutate behaviour: ", tid),
                 closed: Vec::new(),
             });
         }
-        ProcessOut::Event(event)
+        Ok(())
     }
-    fn mutate_skin(&self, event: Value) -> ProcessOut {
+    fn mutate_behaviour(&self, event: Value) -> ProcessOut {
+        match self.check_mutate_behaviour(&event) {
+            Ok(()) => ProcessOut::Event(event),
+            Err(rejection) => ProcessOut::Reject(rejection),
+        }
+    }
+    fn check_mutate_skin(&self, event: &Value) -> Result<(), Rejection> {
         let tid = event
             .get("target_id")
             .and_then(|v| v.as_str())
             .unwrap_or("");
         if !self.styles.is_empty() && !self.styles.contains(tid) {
-            return ProcessOut::Reject(Rejection {
+            return Err(Rejection {
                 target_id: tid.into(),
                 error: s("Cannot mutate skin: ", tid),
                 closed: Vec::new(),
             });
         }
-        ProcessOut::Event(event)
+        Ok(())
+    }
+    fn mutate_skin(&self, event: Value) -> ProcessOut {
+        match self.check_mutate_skin(&event) {
+            Ok(()) => ProcessOut::Event(event),
+            Err(rejection) => ProcessOut::Reject(rejection),
+        }
     }
     fn handle_query(&self, event: &Value) -> Value {
         let q = event.get("query").and_then(|v| v.as_str()).unwrap_or("");
@@ -922,6 +1016,116 @@ mod tests {
             ProcessOut::Reject(r) => must(r.error.contains("z-band")),
             ProcessOut::Event(_) => std::process::abort(),
         }
+    }
+    /// What Apply writes on the live entry outside the element tree.
+    fn admit_state(le: &LiveEntry) -> (BTreeSet<String>, Vec<(String, i64)>, u32, BudgetLedger) {
+        let mut seqs: Vec<(String, i64)> = le
+            .snapshot
+            .last_seq_by_agent
+            .iter()
+            .map(|(k, v)| (k.clone(), *v))
+            .collect();
+        seqs.sort();
+        (
+            le.snapshot.satisfied_actions.clone(),
+            seqs,
+            le.snapshot.event_rate,
+            le.budget_ledger.clone(),
+        )
+    }
+    #[test]
+    fn refused_delta_leaves_no_admit_state_behind() {
+        let mut le = LiveEntry::from_yaml(yaml()).expect("yaml");
+        le.set_clock_ms(1000000);
+        bind_allow(&mut le, "scene-a");
+        seed_component(&mut le);
+        let before = admit_state(&le);
+        // Every wall is open. The z value sits outside the band of the element, so the
+        // structure check refuses the delta before the first write.
+        match le.process_event(ev_state_delta(90)) {
+            ProcessOut::Reject(r) => must(r.error.contains("z-band")),
+            ProcessOut::Event(_) => std::process::abort(),
+        }
+        must(admit_state(&le) == before);
+        must(le.live.get("CP-00001").unwrap().z == 20);
+        must(!action_is_satisfied(&le.snapshot, "root:ping", "agent-a"));
+    }
+    #[test]
+    fn record_step_runs_after_admit_and_before_apply() {
+        let mut le = LiveEntry::from_yaml(yaml()).expect("yaml");
+        le.set_clock_ms(1000000);
+        bind_allow(&mut le, "scene-a");
+        seed_component(&mut le);
+        let before = admit_state(&le);
+        // A closed wall from the record step is a Deny that changes nothing.
+        let mut calls = 0u32;
+        let out = le.process_event_recorded(ev_state_delta(21), &mut || {
+            calls += 1;
+            Err(AdmitWall::close("ledger.unavailable", "ledger unavailable"))
+        });
+        match out {
+            ProcessOut::Reject(r) => {
+                must(r.error.contains("ledger unavailable"));
+                must(r.closed.len() == 1 && r.closed[0].id == "ledger.unavailable");
+            }
+            ProcessOut::Event(_) => std::process::abort(),
+        }
+        must(calls == 1);
+        must(admit_state(&le) == before);
+        must(le.live.get("CP-00001").unwrap().z == 20);
+        // A delta that the structure check refuses never reaches the record step.
+        let mut calls = 0u32;
+        let out = le.process_event_recorded(ev_state_delta(90), &mut || {
+            calls += 1;
+            Ok(())
+        });
+        must(matches!(out, ProcessOut::Reject(_)));
+        must(calls == 0);
+        must(admit_state(&le) == before);
+        // An allow runs the record step once and then applies.
+        bind_allow(&mut le, "scene-a");
+        let mut calls = 0u32;
+        let out = le.process_event_recorded(ev_state_delta(21), &mut || {
+            calls += 1;
+            Ok(())
+        });
+        must(matches!(out, ProcessOut::Event(_)));
+        must(calls == 1);
+        must(admit_state(&le) != before);
+        must(le.live.get("CP-00001").unwrap().z == 21);
+    }
+    #[test]
+    fn opened_frame_signer_replaces_the_agent_of_the_event_text() {
+        let mut le = LiveEntry::from_yaml(yaml()).expect("yaml");
+        le.set_clock_ms(1000000);
+        bind_allow(&mut le, "scene-a");
+        le.snapshot
+            .satisfied_actions
+            .insert(String::from("root:ping"));
+        // agent-b signed the frame. The event names agent-a, who holds the grant.
+        le.opened_agent_id = String::from("agent-b");
+        match le.process_event(ev_allow()) {
+            ProcessOut::Reject(r) => must(r.closed.iter().any(|w| w.id == "gap.agent_permission")),
+            ProcessOut::Event(_) => std::process::abort(),
+        }
+        must(!action_is_satisfied(
+            &le.snapshot,
+            "action:write",
+            "agent-a",
+        ));
+        must(!action_is_satisfied(
+            &le.snapshot,
+            "action:write",
+            "agent-b",
+        ));
+        // The signer is bound for one event. Without an opened frame the event text is read.
+        must(le.opened_agent_id.is_empty());
+        bind_allow(&mut le, "scene-a");
+        match le.process_event(ev_allow()) {
+            ProcessOut::Event(_) => {}
+            ProcessOut::Reject(_) => std::process::abort(),
+        }
+        must(action_is_satisfied(&le.snapshot, "action:write", "agent-a"));
     }
     #[test]
     fn structural_apply_z_with_lattice() {

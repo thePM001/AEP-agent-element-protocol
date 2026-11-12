@@ -76,7 +76,8 @@ pub fn admit_opened_frame(
 ) -> aep_envelope::AdmitResult {
     let extra = compile_live_walls(live, event, dock);
     let mut action = action_from_event(event, &dock.docking_port);
-    if action.agent_id.is_empty() && !dock.agent_id.is_empty() {
+    // The signer of the opened frame is the agent. The event text does not replace it.
+    if !dock.agent_id.is_empty() {
         action.agent_id = dock.agent_id.clone();
     }
     admit_with_extra(&action, &live.snapshot, extra)

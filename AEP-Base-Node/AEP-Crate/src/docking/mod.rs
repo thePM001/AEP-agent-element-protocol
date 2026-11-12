@@ -35,7 +35,7 @@ use apply::{
     reject_side_channel, resolve_agent_bundle, resolve_signer_public,
 };
 use freshness::frame_is_fresh;
-use pulse::{collect_applied, pulse_enqueue};
+use pulse::{collect_applied, pulse_enqueue, pulse_now_ms};
 use rate::rate_limit_response;
 use serve::DockRequest;
 
@@ -233,10 +233,19 @@ pub fn process_request(
             trust_score,
             signer_public_hex,
         } => {
-            let _ = pulse_beat(runtime);
-            let resp = handle_frame(runtime, port, &frame, trust_score, signer_public_hex);
-            log_frame_outcome(port, &resp);
-            resp
+            // The kernel clock is read when the frame arrives, before the beat and before
+            // the frame is verified. The stamp of the agent is compared with this reading
+            // and the freeze takes it, so the time the kernel spends on its own work is
+            // never counted as drift of the agent.
+            let arrival_ms = pulse_now_ms(runtime);
+            frame_request(
+                runtime,
+                port,
+                &frame,
+                trust_score,
+                signer_public_hex,
+                arrival_ms,
+            )
         }
         DockRequest::Ping { .. } => reject_side_channel(
             runtime,
@@ -264,6 +273,54 @@ pub fn process_request(
                 register_lrp.lrp_id
             ),
         ),
+    }
+}
+
+/// One frame from arrival to its answer: the beat, then the frame against the arrival
+/// reading of the kernel clock.
+fn frame_request(
+    runtime: &DockingRuntime,
+    port: &DockingPort,
+    frame: &LatticeChannelFrame,
+    trust_score: Option<u16>,
+    signer_public_hex: Option<String>,
+    arrival_ms: Result<i64, DockFrameResponse>,
+) -> DockFrameResponse {
+    let _ = pulse_beat(runtime);
+    let resp = match arrival_ms {
+        Ok(ms) => handle_frame(runtime, port, frame, trust_score, signer_public_hex, ms),
+        Err(resp) => resp,
+    };
+    log_frame_outcome(port, &resp);
+    resp
+}
+
+/// Process a frame that the Base Node process sealed itself, such as a Data Dock action.
+///
+/// `sealed_at_ms` is the reading of the kernel clock that this process wrote into the
+/// event when it sealed the frame. That reading is the arrival of the frame, so the time
+/// the seal took is not counted as drift. A frame from a socket never comes through here:
+/// it goes through process_request, where the kernel reads its clock itself.
+pub(crate) fn process_kernel_sealed_frame(
+    runtime: &DockingRuntime,
+    port: &DockingPort,
+    line: &str,
+    sealed_at_ms: i64,
+) -> DockFrameResponse {
+    match serde_json::from_str::<DockRequest>(line) {
+        Ok(DockRequest::Frame {
+            frame,
+            trust_score,
+            signer_public_hex,
+        }) => frame_request(
+            runtime,
+            port,
+            &frame,
+            trust_score,
+            signer_public_hex,
+            Ok(sealed_at_ms),
+        ),
+        _ => process_request(runtime, port, line),
     }
 }
 
@@ -315,6 +372,7 @@ fn handle_frame(
     frame: &LatticeChannelFrame,
     trust_score: Option<u16>,
     signer_public_hex: Option<String>,
+    arrival_ms: i64,
 ) -> DockFrameResponse {
     if &frame.docking_port != expected_port {
         let db = dock_lock!(&runtime.record.db, "db");
@@ -592,7 +650,15 @@ fn handle_frame(
         Ok(b) => b,
         Err(resp) => return resp,
     };
-    pulse_enqueue(runtime, frame, &plaintext, expected_port, digest, bundle)
+    pulse_enqueue(
+        runtime,
+        frame,
+        &plaintext,
+        expected_port,
+        digest,
+        bundle,
+        arrival_ms,
+    )
 }
 
 #[cfg(test)]

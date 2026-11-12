@@ -102,3 +102,40 @@ rustls = { version = "0.23", default-features = false, features = ["ring", "std"
 # PEM parsing lives in rustls-pki-types (rustls-pemfile is unmaintained).
 rustls-pki-types = { version = "1", features = ["std"] }
 tokio-rustls = "0.26"
+
+# The post-quantum seal is slow without optimisation: in a plain debug build one
+# ML-DSA signature takes longer than the 50 ms drift bound of the docks. The seal
+# crates are built optimised in the dev profile too, so a debug build and its tests
+# seal a frame inside the bound. The test profile inherits these settings.
+[profile.dev.package.ml-dsa]
+opt-level = 3
+
+[profile.dev.package.ml-kem]
+opt-level = 3
+
+[profile.dev.package.module-lattice]
+opt-level = 3
+
+[profile.dev.package.sha3]
+opt-level = 3
+
+[profile.dev.package.keccak]
+opt-level = 3
+
+[profile.dev.package.sha2]
+opt-level = 3
+
+[profile.dev.package.aes-gcm]
+opt-level = 3
+
+[profile.dev.package.aes]
+opt-level = 3
+
+[profile.dev.package.ghash]
+opt-level = 3
+
+[profile.dev.package.polyval]
+opt-level = 3
+
+[profile.dev.package.hybrid-array]
+opt-level = 3

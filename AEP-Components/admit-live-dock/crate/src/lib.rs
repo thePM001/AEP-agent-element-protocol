@@ -51,9 +51,15 @@ pub const CI_ONLY_ADMIT_CRATES: &[&str] = &[
 
 pub const DROPPED_WALL_CRATES: &[&str] = &["aep-admit-trust-floor"];
 
+/// Closes when the opened event names an agent that is not the signer of the frame.
+pub const WALL_FRAME_AGENT_BINDING: &str = "frame.agent_binding";
+/// Closes when the Agent Control Hub holds no permission of the signer for the action.
+pub const WALL_HUB_AGENT_PERMISSION: &str = "hub.agent_permission";
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LiveDockContext {
     pub channel_id: String,
+    /// Signer of the opened frame. Every agent keyed wall judges this agent.
     pub agent_id: String,
     pub session_id: String,
     pub docking_port: String,
@@ -62,6 +68,9 @@ pub struct LiveDockContext {
     pub contract_active: bool,
     pub docking_wire: String,
     pub rate_limited: bool,
+    /// Answer of the Agent Control Hub for the signer and the action path. None when the
+    /// caller holds no hub, so the hub wall is not compiled.
+    pub hub_permission: Option<bool>,
 }
 
 impl LiveDockContext {
@@ -76,6 +85,7 @@ impl LiveDockContext {
             contract_active: true,
             docking_wire: String::from("frame"),
             rate_limited: false,
+            hub_permission: None,
         }
     }
 
@@ -96,7 +106,58 @@ impl LiveDockContext {
             contract_active: true,
             docking_wire: String::from("frame"),
             rate_limited: false,
+            hub_permission: None,
         }
+    }
+
+    /// The same context with the answer of the Agent Control Hub for the signer.
+    pub fn with_hub_permission(mut self, permitted: bool) -> Self {
+        self.hub_permission = Some(permitted);
+        self
+    }
+}
+
+/// The agent that every agent keyed wall judges. The signer of the opened frame is the
+/// agent. The agent_id of the event text is read only when no signer is known.
+pub fn bound_agent_id(event: &Value, dock: &LiveDockContext) -> String {
+    if !dock.agent_id.is_empty() {
+        return dock.agent_id.clone();
+    }
+    event
+        .get("agent_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string()
+}
+
+/// Binding of the event to the signer of its frame. An event may leave agent_id out
+/// or repeat the signer. An event that names any other agent closes the wall.
+pub fn compile_agent_binding_wall(event: &Value, dock: &LiveDockContext) -> AdmitWall {
+    let named = match event.get("agent_id") {
+        None | Some(Value::Null) => return AdmitWall::open(WALL_FRAME_AGENT_BINDING),
+        Some(Value::String(s)) => s.as_str(),
+        Some(_) => {
+            return AdmitWall::close(WALL_FRAME_AGENT_BINDING, "event agent_id is not a string");
+        }
+    };
+    if named.is_empty() || dock.agent_id.is_empty() || named == dock.agent_id {
+        return AdmitWall::open(WALL_FRAME_AGENT_BINDING);
+    }
+    AdmitWall::close(
+        WALL_FRAME_AGENT_BINDING,
+        "event names an agent that is not the signer of the frame",
+    )
+}
+
+/// Hub permission as an Admit wall, so a hub deny is decided before Apply.
+pub fn compile_hub_permission_wall(dock: &LiveDockContext) -> Option<AdmitWall> {
+    match dock.hub_permission {
+        None => None,
+        Some(true) => Some(AdmitWall::open(WALL_HUB_AGENT_PERMISSION)),
+        Some(false) => Some(AdmitWall::close(
+            WALL_HUB_AGENT_PERMISSION,
+            "hub permission denied",
+        )),
     }
 }
 
@@ -172,16 +233,9 @@ pub fn compile_live_walls_and_charge(
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
-    let event_agent = event
-        .get("agent_id")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
-    let agent_id = if event_agent.is_empty() {
-        dock.agent_id.clone()
-    } else {
-        event_agent
-    };
+    // The signer of the frame is the agent of every wall below: the lattice permission,
+    // the parent closure, the temporal walls, the policy walls and the budget charge.
+    let agent_id = bound_agent_id(event, dock);
     let timestamp = event.get("timestamp").and_then(|v| v.as_i64()).unwrap_or(0);
     // Extra temporal walls measure 50 ms drift against freeze, not live now.
     let bridge = live.wall_bridge_ts_ms();
@@ -214,6 +268,8 @@ pub fn compile_live_walls_and_charge(
     }
 
     walls.extend(compile_channel_walls(&channel_input(dock)));
+    walls.push(compile_agent_binding_wall(event, dock));
+    walls.extend(compile_hub_permission_wall(dock));
     let order = PartialOrderCompileInput {
         action_path: action_path.clone(),
         parents: parents.clone(),
@@ -885,6 +941,87 @@ mod tests {
                 .iter()
                 .any(|w| w.id == "temporal:drift_exceeded" && w.closed),
         );
+    }
+
+    fn write_event(named: &str) -> Value {
+        let mut event = serde_json::json!({
+            "type": "CUSTOM",
+            "action_path": "action:write",
+            "payload": {"ok": true},
+            "timestamp": 1000000,
+            "target_id": "scene-a",
+            "dest_dock": "inference_engine",
+            "_sequenceNumber": 1
+        });
+        if !named.is_empty() {
+            event["agent_id"] = Value::from(named);
+        }
+        event
+    }
+
+    fn wall_closed(walls: &[AdmitWall], id: &str) -> Option<bool> {
+        walls.iter().find(|w| w.id == id).map(|w| w.closed)
+    }
+
+    #[test]
+    fn event_that_names_another_agent_closes_the_binding_wall() {
+        let mut live = LiveEntry::from_yaml(yaml()).expect("yaml");
+        live.set_clock_ms(1000000);
+        live.snapshot
+            .satisfied_actions
+            .insert(String::from("root:ping"));
+        // agent-b signed the frame. Its event names agent-a, who holds the grant.
+        let mut dock = LiveDockContext::unit_open();
+        dock.agent_id = String::from("agent-b");
+        let forged = write_event("agent-a");
+        must(bound_agent_id(&forged, &dock) == "agent-b");
+        let (walls, charge) = compile_live_walls_and_charge(&live, &forged, &dock);
+        must(wall_closed(&walls, WALL_FRAME_AGENT_BINDING) == Some(true));
+        must(live_collect_all(&live, &forged, &dock).is_err());
+        // The budget charge is keyed by the signer, so the named agent spends nothing.
+        if let Some(c) = charge {
+            must(c.agent_key.contains("agent-b"));
+            must(!c.agent_key.contains("agent-a"));
+        }
+        // An event that leaves the field out or repeats the signer keeps the wall open.
+        let unnamed = compile_live_walls(&live, &write_event(""), &dock);
+        must(wall_closed(&unnamed, WALL_FRAME_AGENT_BINDING) == Some(false));
+        let own = compile_live_walls(&live, &write_event("agent-b"), &dock);
+        must(wall_closed(&own, WALL_FRAME_AGENT_BINDING) == Some(false));
+        // The grant holder that signs its own frame is admitted.
+        let holder = LiveDockContext::unit_open();
+        must(live_collect_all(&live, &write_event("agent-a"), &holder).is_ok());
+        must(live_collect_all(&live, &write_event(""), &holder).is_ok());
+    }
+
+    #[test]
+    fn hub_permission_is_an_admit_wall() {
+        let mut live = LiveEntry::from_yaml(yaml()).expect("yaml");
+        live.set_clock_ms(1000000);
+        live.snapshot
+            .satisfied_actions
+            .insert(String::from("root:ping"));
+        let event = write_event("");
+        // No hub on the path: the wall is not compiled.
+        let none = compile_live_walls(&live, &event, &LiveDockContext::unit_open());
+        must(wall_closed(&none, WALL_HUB_AGENT_PERMISSION).is_none());
+        let granted = LiveDockContext::unit_open().with_hub_permission(true);
+        must(
+            wall_closed(
+                &compile_live_walls(&live, &event, &granted),
+                WALL_HUB_AGENT_PERMISSION,
+            ) == Some(false),
+        );
+        must(live_collect_all(&live, &event, &granted).is_ok());
+        let denied = LiveDockContext::unit_open().with_hub_permission(false);
+        must(
+            wall_closed(
+                &compile_live_walls(&live, &event, &denied),
+                WALL_HUB_AGENT_PERMISSION,
+            ) == Some(true),
+        );
+        let err = live_collect_all(&live, &event, &denied).expect_err("deny");
+        must(err.contains("hub permission denied"));
     }
 
     #[test]

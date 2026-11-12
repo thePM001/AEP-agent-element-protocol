@@ -122,6 +122,19 @@ Typed kernel errors live on BaseNodeError. Admit wraps a DenyReport. Other varia
 
 An empty agent permission list refuses under class capability, so bind a non-empty agent permission list on the lattice node or GAP instruction then reseal. Retry is reseal yes and this is not a numeric score and not a past allow in Lattice Memory.
 
+## Signer, hub, stamp and queue refuses
+
+These refuses carry a wall id in the DenyReport and no BaseNodeError variant of their own.
+
+| looks_like | not_this | code | class | when | repair | retry |
+|------------|----------|------|-------|------|--------|-------|
+| The named agent lacks the grant | The frame names an agent that did not sign it | frame.agent_binding | security | The event carries an agent_id that is not the signer of the frame | Leave agent_id out of the payload or set it to the signer then reseal | reseal yes |
+| Lattice grant missing | The Agent Control Hub holds no permission | hub.agent_permission | capability | The lattice grants the action and no caw GAP policy grants it to the signer | Add the agent and the action to a caw GAP policy under gap/policies/reference then restart Base Node | reseal yes after the grant exists |
+| NTP LARGE_STEP misfire | The stamp is ahead of the Base Node clock | temporal:future_skew | temporal | The event timestamp is more than MAX_DRIFT_MS ahead of the Base Node clock on arrival | Stamp the event in milliseconds from a clock that agrees with Base Node then reseal | reseal yes |
+| Pulse too long | The stamp is behind the Base Node clock | temporal:drift_exceeded | temporal | The event timestamp is more than MAX_DRIFT_MS behind the Base Node clock on arrival | Stamp the event right before the seal and send the frame at once | reseal yes |
+| Dock down | One signer holds its share of the pulse queue | pulse.queue | temporal | The signer holds 128 capsules or 131072 bytes in the queue or one event plaintext is above 131072 bytes | Wait for the next pulse or send a smaller event | reseal yes after the pulse |
+| Disk death | The ledger refused the row | ledger.unavailable | ledger.unavailable | The held digest or the ledger row of an admitted frame could not be written | Repair the lattice sqlite file and its disk. Nothing was applied | reseal yes after the ledger writes |
+
 ## What is not a repair
 
 Setting an environment variable named pulse_ms is not a repair. Adding pulse_ms to a dynAEP yaml file is not a repair. Treating NTP LARGE_STEP as PULSE_MS is not a repair. Treating enqueue as Admit is not a repair. Treating TypeScript processEvent as product Admit is not a repair. Treating the theme yaml file as Admit authority is not a repair. Treating UCB or CAW as a second evaluator is not a repair. Treating a nearby Lattice Memory allow as allow is not a repair.

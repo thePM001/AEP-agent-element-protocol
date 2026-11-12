@@ -8,9 +8,10 @@ use crate::docking_fixtures::*;
 use crate::{docking_port_specs, open_lattice_db};
 use aep_base_node_pulse::{
     freeze_temporal_snapshot, EnqueueDeny, QueuedCapsule, MAX_AGE_MS, MAX_DRIFT_MS, PULSE_MS,
-    QUEUE_CAP_BYTES, QUEUE_CAP_CAPSULES,
+    QUEUE_CAP_BYTES, QUEUE_CAP_CAPSULES, QUEUE_SIGNER_SHARE_BYTES, QUEUE_SIGNER_SHARE_CAPSULES,
 };
 use aep_lattice_channel::build_frame_for_dock;
+use aep_wall_set_backpressure::CLASS_CAPABILITY;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
@@ -378,6 +379,8 @@ fn rejects_port_mismatch() {
 fn rejects_replayed_frame_digest() {
     let (_dir, rt) = temp_runtime();
     install_agent_manifest(&rt, "AG-REPLAY", "sess-1");
+    // The fixture event is stamped 1000000, so the kernel clock is set to that instant.
+    set_pulse_clock(&rt, 1_000_000);
     let (_frame, line) = build_test_frame(
         &rt,
         "ch-replay",
@@ -405,6 +408,8 @@ fn rejects_replayed_frame_digest() {
 async fn socket_roundtrip() {
     let (dir, runtime) = temp_runtime();
     install_agent_manifest(&runtime, "AG-SOCK", "sess-sock");
+    // The fixture event is stamped 1000000, so the kernel clock is set to that instant.
+    set_pulse_clock(&runtime, 1_000_000);
     let sock_base = runtime.io.socket_base.clone();
     let shared = Arc::new(runtime);
     let spec = docking_port_specs(&sock_base)
@@ -597,6 +602,8 @@ fn rejects_unbound_wire_signer_public_key() {
     // CRITICAL: client-supplied signer_public_hex must not impersonate without registration.
     let (_dir, rt) = temp_runtime();
     install_agent_manifest(&rt, "AG-BOUND", "sess-1");
+    // The fixture event is stamped 1000000, so the kernel clock is set to that instant.
+    set_pulse_clock(&rt, 1_000_000);
     let (frame, line) = build_test_frame(
         &rt,
         "ch-bound",
@@ -1424,7 +1431,8 @@ fn pulse_overflow_capsules_is_deny() {
                 .queue
                 .enqueue(QueuedCapsule {
                     digest: format!("pre-{i}"),
-                    agent_id: String::from("ag"),
+                    // One signer holds only its share, so the queue is filled by several.
+                    agent_id: format!("ag-{}", i / QUEUE_SIGNER_SHARE_CAPSULES),
                     sequence_number: i as i64 + 1,
                     byte_len: 1,
                     freeze: freeze_temporal_snapshot(1_000_000, 0),
@@ -1457,16 +1465,20 @@ fn pulse_overflow_bytes_is_deny() {
     let (_dir, rt) = temp_runtime();
     {
         let mut pulse = rt.record.pulse.lock().expect("pulse");
-        pulse
-            .queue
-            .enqueue(QueuedCapsule {
-                digest: String::from("big"),
-                agent_id: String::from("ag"),
-                sequence_number: 1,
-                byte_len: QUEUE_CAP_BYTES,
-                freeze: freeze_temporal_snapshot(1_000_000, 0),
-            })
-            .expect("prefill");
+        // One signer holds only its share, so the bytes are filled by several signers.
+        let signers = QUEUE_CAP_BYTES / QUEUE_SIGNER_SHARE_BYTES;
+        for i in 0..signers {
+            pulse
+                .queue
+                .enqueue(QueuedCapsule {
+                    digest: format!("big-{i}"),
+                    agent_id: format!("ag-{i}"),
+                    sequence_number: 1,
+                    byte_len: QUEUE_SIGNER_SHARE_BYTES,
+                    freeze: freeze_temporal_snapshot(1_000_000, 0),
+                })
+                .expect("prefill");
+        }
     }
     install_agent_manifest(&rt, "AG-OVB", "sess-1");
     set_pulse_clock(&rt, 1_000_000);
@@ -1586,16 +1598,528 @@ async fn stop_drains_dock_tasks_unlinks_sockets_and_closes_sqlite() {
     let _ = dir;
 }
 #[test]
-fn seal_stamp_is_adopted_only_within_the_frame_second() {
+fn agent_stamp_is_read_and_never_adopted_as_the_kernel_clock() {
     let body = br#"{"type":"PING","action_path":"root:ping","timestamp":1700000000500}"#;
-    assert_eq!(
-        super::pulse::seal_stamp_in_second(1700000000, body),
-        Some(1700000000500)
-    );
-    let far = br#"{"type":"PING","action_path":"root:ping","timestamp":1600000000000}"#;
-    assert_eq!(super::pulse::seal_stamp_in_second(1700000000, far), None);
+    assert_eq!(super::pulse::agent_stamp_ms(body), Some(1700000000500));
     let none = br#"{"type":"PING","action_path":"root:ping"}"#;
-    assert_eq!(super::pulse::seal_stamp_in_second(1700000000, none), None);
+    assert_eq!(super::pulse::agent_stamp_ms(none), None);
+    let zero = br#"{"type":"PING","action_path":"root:ping","timestamp":0}"#;
+    assert_eq!(super::pulse::agent_stamp_ms(zero), None);
+    assert_eq!(super::pulse::agent_stamp_ms(b"not-json"), None);
+    // The drift bound holds on both sides of the kernel clock.
+    use super::pulse::stamp_outside_drift;
+    assert!(stamp_outside_drift(1_000_000, 1_000_000, MAX_DRIFT_MS).is_none());
+    assert!(stamp_outside_drift(1_000_000 + MAX_DRIFT_MS, 1_000_000, MAX_DRIFT_MS).is_none());
+    assert!(stamp_outside_drift(1_000_000 - MAX_DRIFT_MS, 1_000_000, MAX_DRIFT_MS).is_none());
+    let ahead = stamp_outside_drift(1_000_000 + MAX_DRIFT_MS + 1, 1_000_000, MAX_DRIFT_MS);
+    assert_eq!(ahead.map(|w| w.0), Some("temporal:future_skew"));
+    let behind = stamp_outside_drift(1_000_000 - MAX_DRIFT_MS - 1, 1_000_000, MAX_DRIFT_MS);
+    assert_eq!(behind.map(|w| w.0), Some("temporal:drift_exceeded"));
+}
+
+// --- AEP-CRV-010 kernel identity, order and clock ---
+
+/// Lattice of the identity and order tests: action:write is granted to agent-a and to
+/// AG-HUBLESS only and action:child needs action:write as its parent.
+fn crv_lattice_yaml() -> &'static str {
+    "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: [\"root:ping\"]\n    children: []\n    agent_permission: [\"agent-a\", \"AG-HUBLESS\"]\n  action:child:\n    category: agent_action\n    parents: [\"action:write\"]\n    children: []\n    agent_permission: [\"AG-HUBLESS\"]\n"
+}
+
+/// Hub of the identity and order tests. agent-b holds a hub row for action:write, so the
+/// hub does not hide a frame that names agent-a. AG-HUBLESS holds no hub row for
+/// action:write and holds one for its child.
+fn crv_hub_gap() -> &'static str {
+    "metadata:\n  wrap: caw\n  agent_permission:\n    - agent_id: agent-a\n      action: root:ping\n    - agent_id: agent-a\n      action: action:write\n    - agent_id: agent-b\n      action: root:ping\n    - agent_id: agent-b\n      action: action:write\n    - agent_id: AG-HUBLESS\n      action: root:ping\n    - agent_id: AG-HUBLESS\n      action: action:child\n    - agent_id: AG-ONTIME\n      action: root:ping\n    - agent_id: AG-AHEAD\n      action: root:ping\n    - agent_id: AG-BEHIND\n      action: root:ping\n    - agent_id: AG-SHARE-A\n      action: root:ping\n    - agent_id: AG-SHARE-B\n      action: root:ping\n    - agent_id: AG-LEDGER\n      action: root:ping\n"
+}
+
+fn crv_runtime() -> (tempfile::TempDir, DockingRuntime) {
+    let dir = tempfile::tempdir().expect("tempdir");
+    std::fs::write(dir.path().join("lattice.yaml"), crv_lattice_yaml()).expect("lattice");
+    let reference = dir.path().join("gap").join("policies").join("reference");
+    std::fs::create_dir_all(&reference).expect("hub dir");
+    std::fs::write(reference.join("caw-test.gap"), crv_hub_gap()).expect("hub");
+    let conn = open_lattice_db(&dir.path().join("dock.db")).expect("db");
+    let sock_base = dir.path().join("sockets").to_string_lossy().to_string();
+    let rt = DockingRuntime::with_data_dir(sock_base, conn, &[], dir.path()).expect("runtime");
+    (dir, rt)
+}
+
+/// One event body of the identity and order tests. `named` is the agent_id the event
+/// text carries. Empty leaves the field out.
+fn crv_event(action_path: &str, named: &str, seq: i64, stamp_ms: i64) -> Vec<u8> {
+    let mut event = serde_json::json!({
+        "type": "CUSTOM",
+        "action_path": action_path,
+        "payload": {"ok": true},
+        "timestamp": stamp_ms,
+        "target_id": "scene-a",
+        "_sequenceNumber": seq,
+    });
+    if !named.is_empty() {
+        event["agent_id"] = Value::from(named);
+    }
+    event.to_string().into_bytes()
+}
+
+fn crv_send(rt: &DockingRuntime, agent: &str, body: &[u8]) -> DockFrameResponse {
+    let (_frame, line) = build_test_frame(
+        rt,
+        "ch-crv",
+        agent,
+        "sess-1",
+        DockingPort::ValidationEngine,
+        "dynaep-action-lattice",
+        body,
+        1,
+    );
+    through_pulse(rt, &DockingPort::ValidationEngine, &line)
+}
+
+/// What Apply writes on the live entry: the satisfied actions, the sequence numbers, the
+/// per second rate and the budget spend. The budget ledger is held in its debug form,
+/// which lists every scope with its spend.
+#[derive(Debug, PartialEq)]
+struct AppliedState {
+    satisfied: std::collections::BTreeSet<String>,
+    sequences: Vec<(String, i64)>,
+    event_rate: u32,
+    budget: String,
+}
+
+fn applied_state(rt: &DockingRuntime) -> AppliedState {
+    let live = rt.admit.live_entry.lock().expect("live");
+    let mut sequences: Vec<(String, i64)> = live
+        .snapshot
+        .last_seq_by_agent
+        .iter()
+        .map(|(k, v)| (k.clone(), *v))
+        .collect();
+    sequences.sort();
+    AppliedState {
+        satisfied: live.snapshot.satisfied_actions.clone(),
+        sequences,
+        event_rate: live.snapshot.event_rate,
+        budget: format!("{:?}", live.budget_ledger),
+    }
+}
+
+/// Ledger rows as (event type, agent) pairs, newest first.
+fn ledger_rows(rt: &DockingRuntime) -> Vec<(String, String)> {
+    let db = rt.record.db.lock().expect("db");
+    crate::export_dynaep_events(&db, Some(1000))
+        .expect("export")
+        .into_iter()
+        .map(|e| (e.event_type, e.agent_id))
+        .collect()
+}
+
+fn count_rows(rows: &[(String, String)], event_type_prefix: &str, agent: &str) -> usize {
+    rows.iter()
+        .filter(|(t, a)| t.starts_with(event_type_prefix) && a == agent)
+        .count()
+}
+
+fn closed_wall<'a>(resp: &'a DockFrameResponse, id: &str) -> Option<&'a ClosedWall> {
+    resp.deny
+        .as_ref()
+        .and_then(|d| d.closed.iter().find(|w| w.id == id))
+}
+
+/// Gate test 1. A frame that agent-b signs and that names agent-a is denied by the binding
+/// wall. Every agent keyed wall judges the signer and the budget of agent-a does not move.
+#[test]
+fn frame_of_agent_b_that_names_agent_a_is_denied_by_the_binding_wall() {
+    let (_dir, rt) = crv_runtime();
+    install_agent_manifest(&rt, "agent-a", "sess-1");
+    install_agent_manifest(&rt, "agent-b", "sess-1");
+    let ping = crv_send(&rt, "agent-a", &crv_event("root:ping", "", 1, 1_000_000));
+    assert!(ping.ok, "{:?}", ping.error);
+    let before = applied_state(&rt);
+    let rows_before = ledger_rows(&rt);
+
+    let forged = crv_send(
+        &rt,
+        "agent-b",
+        &crv_event("action:write", "agent-a", 1, 1_000_000),
+    );
+    assert!(
+        !forged.ok,
+        "a frame of agent-b that names agent-a was admitted"
+    );
+    assert!(forged.event_id.is_none());
+    let binding = closed_wall(&forged, "frame.agent_binding").expect("binding wall closed");
+    assert_eq!(binding.class, CLASS_SECURITY);
+    // The lattice permission wall judged the signer: action:write is not granted to agent-b.
+    assert!(closed_wall(&forged, "gap.agent_permission").is_some());
+    assert_eq!(
+        applied_state(&rt),
+        before,
+        "a denied frame changed the live entry"
+    );
+    let rows = ledger_rows(&rt);
+    assert_eq!(
+        count_rows(&rows, "docking_", "agent-b"),
+        0,
+        "the forged frame was recorded"
+    );
+    assert_eq!(
+        count_rows(&rows, "docking_", "agent-a"),
+        count_rows(&rows_before, "docking_", "agent-a")
+    );
+    assert_eq!(
+        count_rows(&rows, crate::SIDE_CHANNEL_EVENT_TYPE, "agent-b"),
+        1,
+        "one deny row for the signer"
+    );
+
+    // Control: the same action sealed by agent-a with its own name is admitted, so the
+    // deny above comes from the binding and not from the fixture.
+    let own = crv_send(
+        &rt,
+        "agent-a",
+        &crv_event("action:write", "agent-a", 2, 1_000_000),
+    );
+    assert!(own.ok, "{:?}", own.error);
+    assert!(own.event_id.is_some());
+    assert_ne!(applied_state(&rt), before);
+}
+
+/// The agent_id of the event text never widens what a signer may do: a frame of agent-b
+/// that leaves the field out is judged as agent-b by the lattice.
+#[test]
+fn unnamed_event_is_judged_as_the_signer_of_the_frame() {
+    let (_dir, rt) = crv_runtime();
+    install_agent_manifest(&rt, "agent-a", "sess-1");
+    install_agent_manifest(&rt, "agent-b", "sess-1");
+    let ping = crv_send(&rt, "agent-a", &crv_event("root:ping", "", 1, 1_000_000));
+    assert!(ping.ok, "{:?}", ping.error);
+    let before = applied_state(&rt);
+    let resp = crv_send(&rt, "agent-b", &crv_event("action:write", "", 1, 1_000_000));
+    assert!(!resp.ok);
+    assert!(closed_wall(&resp, "frame.agent_binding").is_none());
+    assert!(closed_wall(&resp, "gap.agent_permission").is_some());
+    assert_eq!(applied_state(&rt), before);
+}
+
+/// Gate test 2. The lattice grants the action and the hub holds no row. The hub wall
+/// closes inside Admit, the live entry is unchanged and one deny row exists.
+#[test]
+fn hub_deny_leaves_the_live_entry_unchanged_with_one_deny_row() {
+    let (_dir, rt) = crv_runtime();
+    install_agent_manifest(&rt, "AG-HUBLESS", "sess-1");
+    let ping = crv_send(&rt, "AG-HUBLESS", &crv_event("root:ping", "", 1, 1_000_000));
+    assert!(ping.ok, "{:?}", ping.error);
+    let before = applied_state(&rt);
+    let rows_before = ledger_rows(&rt);
+    assert_eq!(count_rows(&rows_before, "docking_", "AG-HUBLESS"), 1);
+    assert_eq!(
+        count_rows(&rows_before, crate::SIDE_CHANNEL_EVENT_TYPE, "AG-HUBLESS"),
+        0
+    );
+
+    let denied = crv_send(
+        &rt,
+        "AG-HUBLESS",
+        &crv_event("action:write", "", 2, 1_000_000),
+    );
+    assert!(!denied.ok);
+    assert!(denied.event_id.is_none());
+    let hub = closed_wall(&denied, "hub.agent_permission").expect("hub wall closed");
+    assert_eq!(hub.class, CLASS_CAPABILITY);
+    assert_eq!(hub.reason, "hub permission denied");
+    // The hub wall is the only closed wall: the lattice granted the action.
+    assert_eq!(denied.deny.as_ref().map(|d| d.closed.len()), Some(1));
+    assert_eq!(
+        applied_state(&rt),
+        before,
+        "a hub deny changed the live entry"
+    );
+    let rows = ledger_rows(&rt);
+    assert_eq!(
+        count_rows(&rows, crate::SIDE_CHANNEL_EVENT_TYPE, "AG-HUBLESS"),
+        1,
+        "one deny row"
+    );
+    assert_eq!(
+        count_rows(&rows, "docking_", "AG-HUBLESS"),
+        1,
+        "the denied frame left no admit row"
+    );
+
+    // The denied parent does not unlock its child: the hub grants action:child and the
+    // parent closure still closes.
+    let child = crv_send(
+        &rt,
+        "AG-HUBLESS",
+        &crv_event("action:child", "", 3, 1_000_000),
+    );
+    assert!(!child.ok, "a hub denied parent unlocked its child");
+    assert!(closed_wall(&child, "dag.parents").is_some());
+    assert!(closed_wall(&child, "hub.agent_permission").is_none());
+    assert_eq!(applied_state(&rt), before);
+}
+
+/// The ledger row is written before Apply. When the ledger refuses the row the answer is
+/// a deny and the live entry is unchanged.
+#[test]
+fn ledger_error_at_the_record_step_applies_nothing() {
+    let (_dir, rt) = crv_runtime();
+    install_agent_manifest(&rt, "AG-LEDGER", "sess-1");
+    let before = applied_state(&rt);
+    let (_frame, line) = build_test_frame(
+        &rt,
+        "ch-crv",
+        "AG-LEDGER",
+        "sess-1",
+        DockingPort::ValidationEngine,
+        "dynaep-action-lattice",
+        &crv_event("root:ping", "", 1, 1_000_000),
+        1,
+    );
+    set_pulse_clock(&rt, 1_000_000);
+    let enq = process_request(&rt, &DockingPort::ValidationEngine, &line);
+    assert_eq!(enq.pending, Some(true), "{:?}", enq.error);
+    let digest = enq.digest.clone().expect("digest");
+    // The ledger refuses every frame row from here on. Anomaly rows still enter.
+    rt.record
+        .db
+        .lock()
+        .expect("db")
+        .execute_batch(
+            "CREATE TRIGGER refuse_frame_rows BEFORE INSERT ON action_lattice_events \
+             WHEN NEW.event_type LIKE 'docking_%' \
+             BEGIN SELECT RAISE(ABORT, 'ledger refused the row'); END;",
+        )
+        .expect("trigger");
+    set_pulse_clock(&rt, 1_000_000 + PULSE_MS);
+    let _ = pulse_beat(&rt);
+    let answer = process_request(&rt, &DockingPort::ValidationEngine, &collect_line(&digest));
+    assert!(!answer.ok);
+    assert!(answer.event_id.is_none());
+    assert!(answer
+        .error
+        .as_deref()
+        .unwrap_or_default()
+        .contains("ledger unavailable"));
+    let wall = closed_wall(&answer, "ledger.unavailable").expect("ledger wall");
+    assert_eq!(wall.class, "ledger.unavailable");
+    assert_eq!(
+        applied_state(&rt),
+        before,
+        "a frame without a ledger row changed the live entry"
+    );
+    assert_eq!(count_rows(&ledger_rows(&rt), "docking_", "AG-LEDGER"), 0);
+}
+
+/// A failed enqueue leaves no capsule behind. The caller reads a deny and no later beat
+/// applies the frame.
+#[test]
+fn failed_enqueue_record_leaves_no_capsule_for_a_later_beat() {
+    let (_dir, rt) = crv_runtime();
+    install_agent_manifest(&rt, "AG-LEDGER", "sess-1");
+    let before = applied_state(&rt);
+    rt.record
+        .db
+        .lock()
+        .expect("db")
+        .execute_batch(
+            "CREATE TRIGGER refuse_held_rows BEFORE INSERT ON held_frame_digests \
+             BEGIN SELECT RAISE(ABORT, 'ledger refused the held digest'); END;",
+        )
+        .expect("trigger");
+    let (_frame, line) = build_test_frame(
+        &rt,
+        "ch-crv",
+        "AG-LEDGER",
+        "sess-1",
+        DockingPort::ValidationEngine,
+        "dynaep-action-lattice",
+        &crv_event("root:ping", "", 1, 1_000_000),
+        1,
+    );
+    set_pulse_clock(&rt, 1_000_000);
+    let enq = process_request(&rt, &DockingPort::ValidationEngine, &line);
+    assert!(!enq.ok);
+    assert_ne!(enq.pending, Some(true));
+    assert!(closed_wall(&enq, "ledger.unavailable").is_some());
+    {
+        let pulse = rt.record.pulse.lock().expect("pulse");
+        assert!(
+            pulse.queue.is_empty(),
+            "the refused capsule sits in the queue"
+        );
+        assert!(pulse.held.is_empty(), "the refused capsule is still held");
+    }
+    set_pulse_clock(&rt, 1_000_000 + PULSE_MS);
+    let rel = pulse_beat(&rt);
+    assert!(rel.ready.is_empty());
+    assert_eq!(applied_state(&rt), before);
+    assert_eq!(count_rows(&ledger_rows(&rt), "docking_", "AG-LEDGER"), 0);
+}
+
+/// Gate test 3. A frame stamped 30 s ahead of the kernel clock is refused at enqueue. It
+/// takes no room in the queue and the next agent is served.
+#[test]
+fn frame_stamped_thirty_seconds_ahead_is_refused_at_enqueue() {
+    let (_dir, rt) = crv_runtime();
+    install_agent_manifest(&rt, "AG-AHEAD", "sess-1");
+    install_agent_manifest(&rt, "AG-ONTIME", "sess-1");
+    let now_s = crate::now_unix();
+    let kernel_ms = (now_s as i64) * 1000;
+    set_pulse_clock(&rt, kernel_ms);
+    // The frame second and the stamp agree with each other, 30 s ahead of the kernel. The
+    // wire window of 60 s lets the frame through, so the stamp is what must refuse it.
+    let (_frame, line) = build_test_frame_at(
+        &rt,
+        "ch-crv",
+        "AG-AHEAD",
+        "sess-1",
+        DockingPort::ValidationEngine,
+        "dynaep-action-lattice",
+        &crv_event("root:ping", "", 1, kernel_ms + 30_000),
+        now_s + 30,
+    );
+    let resp = process_request(&rt, &DockingPort::ValidationEngine, &line);
+    assert!(!resp.ok);
+    assert_ne!(resp.pending, Some(true), "a future frame was held");
+    let wall = closed_wall(&resp, "temporal:future_skew").expect("future skew wall");
+    assert_eq!(wall.class, CLASS_TEMPORAL);
+    {
+        let pulse = rt.record.pulse.lock().expect("pulse");
+        assert!(
+            pulse.queue.is_empty(),
+            "a refused frame took room in the queue"
+        );
+        assert!(pulse.held.is_empty());
+    }
+    assert_eq!(
+        count_rows(
+            &ledger_rows(&rt),
+            crate::SIDE_CHANNEL_EVENT_TYPE,
+            "AG-AHEAD"
+        ),
+        1
+    );
+    // The queue is free for every other agent in the same instant.
+    let (_frame, line) = build_test_frame(
+        &rt,
+        "ch-crv",
+        "AG-ONTIME",
+        "sess-1",
+        DockingPort::ValidationEngine,
+        "dynaep-action-lattice",
+        &crv_event("root:ping", "", 1, kernel_ms),
+        1,
+    );
+    let ontime = process_request(&rt, &DockingPort::ValidationEngine, &line);
+    assert_eq!(ontime.pending, Some(true), "{:?}", ontime.error);
+}
+
+/// The freeze is the kernel clock. A stamp that agrees with its own frame second and
+/// that is behind the kernel by more than the drift bound is refused at enqueue.
+#[test]
+fn stamp_behind_the_kernel_clock_is_refused_at_enqueue() {
+    let (_dir, rt) = crv_runtime();
+    install_agent_manifest(&rt, "AG-BEHIND", "sess-1");
+    let now_s = crate::now_unix();
+    let kernel_ms = (now_s as i64) * 1000 + 900;
+    set_pulse_clock(&rt, kernel_ms);
+    // The stamp sits in the frame second and 900 ms behind the kernel clock.
+    let (_frame, line) = build_test_frame_at(
+        &rt,
+        "ch-crv",
+        "AG-BEHIND",
+        "sess-1",
+        DockingPort::ValidationEngine,
+        "dynaep-action-lattice",
+        &crv_event("root:ping", "", 1, (now_s as i64) * 1000),
+        now_s,
+    );
+    let resp = process_request(&rt, &DockingPort::ValidationEngine, &line);
+    assert!(!resp.ok);
+    assert_ne!(resp.pending, Some(true));
+    let wall = closed_wall(&resp, "temporal:drift_exceeded").expect("drift wall");
+    assert_eq!(wall.class, CLASS_TEMPORAL);
+    assert!(rt.record.pulse.lock().expect("pulse").queue.is_empty());
+}
+
+/// The capsule is frozen at the kernel clock, so it turns ready one pulse of kernel time
+/// after it arrived whatever stamp inside the drift bound the agent wrote.
+#[test]
+fn freeze_is_the_kernel_clock_and_not_the_stamp_of_the_agent() {
+    let (_dir, rt) = crv_runtime();
+    install_agent_manifest(&rt, "AG-ONTIME", "sess-1");
+    set_pulse_clock(&rt, 1_000_000);
+    let (_frame, line) = build_test_frame(
+        &rt,
+        "ch-crv",
+        "AG-ONTIME",
+        "sess-1",
+        DockingPort::ValidationEngine,
+        "dynaep-action-lattice",
+        &crv_event("root:ping", "", 1, 1_000_000 + MAX_DRIFT_MS),
+        1,
+    );
+    let enq = process_request(&rt, &DockingPort::ValidationEngine, &line);
+    assert_eq!(enq.pending, Some(true), "{:?}", enq.error);
+    set_pulse_clock(&rt, 1_000_000 + PULSE_MS - 1);
+    assert!(pulse_beat(&rt).ready.is_empty());
+    set_pulse_clock(&rt, 1_000_000 + PULSE_MS);
+    let rel = pulse_beat(&rt);
+    assert_eq!(rel.ready.len(), 1);
+    assert_eq!(rel.ready[0].freeze.bridge_ts_ms, 1_000_000);
+}
+
+/// One signer holds only its share of the pulse queue, so another signer is still served.
+#[test]
+fn signer_at_its_queue_share_leaves_room_for_another_signer() {
+    let (_dir, rt) = crv_runtime();
+    install_agent_manifest(&rt, "AG-SHARE-A", "sess-1");
+    install_agent_manifest(&rt, "AG-SHARE-B", "sess-1");
+    set_pulse_clock(&rt, 1_000_000);
+    {
+        let mut pulse = rt.record.pulse.lock().expect("pulse");
+        for i in 0..QUEUE_SIGNER_SHARE_CAPSULES {
+            pulse
+                .queue
+                .enqueue(QueuedCapsule {
+                    digest: format!("share-a-{i}"),
+                    agent_id: String::from("AG-SHARE-A"),
+                    sequence_number: i as i64 + 10,
+                    byte_len: 1,
+                    freeze: freeze_temporal_snapshot(1_000_000, 0),
+                })
+                .expect("prefill");
+        }
+    }
+    let (_frame, line_a) = build_test_frame(
+        &rt,
+        "ch-crv",
+        "AG-SHARE-A",
+        "sess-1",
+        DockingPort::ValidationEngine,
+        "dynaep-action-lattice",
+        &crv_event("root:ping", "", 1, 1_000_000),
+        1,
+    );
+    let over = process_request(&rt, &DockingPort::ValidationEngine, &line_a);
+    assert!(!over.ok);
+    assert_eq!(
+        over.error.as_deref(),
+        Some(EnqueueDeny::SignerShareCapsules.as_str())
+    );
+    let (_frame, line_b) = build_test_frame(
+        &rt,
+        "ch-crv",
+        "AG-SHARE-B",
+        "sess-1",
+        DockingPort::ValidationEngine,
+        "dynaep-action-lattice",
+        &crv_event("root:ping", "", 1, 1_000_000),
+        1,
+    );
+    let other = process_request(&rt, &DockingPort::ValidationEngine, &line_b);
+    assert_eq!(other.pending, Some(true), "{:?}", other.error);
 }
 #[test]
 fn pulse_decay_rate_clears_the_second_counter() {

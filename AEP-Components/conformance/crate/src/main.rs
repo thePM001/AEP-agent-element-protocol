@@ -210,6 +210,13 @@ fn now_unix() -> u64 {
         .unwrap_or(0)
 }
 
+fn now_unix_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
 fn cc_pq_capsule_roundtrip() -> Result<(), String> {
     let kem = generate_kem_keypair();
     let sign = generate_sign_keypair();
@@ -437,20 +444,21 @@ fn cc_docking_trust_score_tier() -> Result<(), String> {
     let sign = arm_test_agent(&rt, agent, &["dynaep-action-lattice"])?;
     let mut fingerprint = None;
     for (seq, score, tier) in [(1u64, 850u16, 4u8), (2, 450, 2), (3, 120, 0)] {
-        let sent_at = now_unix();
-        let frame = conformance_frame_for_dock(
-            "ch-trust",
-            agent,
-            DockingPort::ValidationEngine,
-            "dynaep-action-lattice",
-            &admit_payload(&format!("\"trust_score\":{score},"), seq, sent_at),
-            sent_at,
-            rt.keys.dock_kem.public.as_slice(),
-            &sign,
-        )?;
-        // The wire field is unbound and must not override the signed score.
-        let line = serde_json::json!({ "frame": frame, "trust_score": 1000 }).to_string();
-        let resp = admit_through_pulse(&rt, &DockingPort::ValidationEngine, &line);
+        let seal = || -> Result<String, String> {
+            let frame = conformance_frame_for_dock(
+                "ch-trust",
+                agent,
+                DockingPort::ValidationEngine,
+                "dynaep-action-lattice",
+                &admit_payload(&format!("\"trust_score\":{score},"), seq),
+                now_unix(),
+                rt.keys.dock_kem.public.as_slice(),
+                &sign,
+            )?;
+            // The wire field is unbound and must not override the signed score.
+            Ok(serde_json::json!({ "frame": frame, "trust_score": 1000 }).to_string())
+        };
+        let resp = admit_sealed(&rt, &DockingPort::ValidationEngine, &seal)?;
         if !resp.ok || resp.event_id.is_none() {
             return Err(format!(
                 "trust frame {seq} was not admitted: {:?} deny={:?}",
@@ -534,12 +542,12 @@ const CONFORMANCE_HUB_GAP: &str = "metadata:\n  wrap: caw\n  agent_permission:\n
 /// The LRP that CC-09 registers through the regulation dock.
 const CONFORMANCE_LRP: &str = "conf-lrp";
 
-/// Admit JSON for root:ping. The timestamp is the seal stamp in milliseconds and
-/// sits in the same second as the frame, so the kernel freezes at the seal.
-fn admit_payload(extra: &str, seq: u64, sent_at: u64) -> Vec<u8> {
+/// Admit JSON for root:ping. The timestamp is the clock of the caller in milliseconds,
+/// read right before the seal. The kernel compares it with its own clock on arrival.
+fn admit_payload(extra: &str, seq: u64) -> Vec<u8> {
     format!(
         "{{{extra}\"type\":\"PING\",\"action_path\":\"root:ping\",\"payload\":{{\"ok\":true}},\"timestamp\":{},\"target_id\":\"scene-a\",\"_sequenceNumber\":{seq}}}",
-        sent_at * 1000
+        now_unix_ms()
     )
     .into_bytes()
 }
@@ -568,6 +576,44 @@ fn admit_through_pulse(rt: &DockingRuntime, port: &DockingPort, line: &str) -> D
     last
 }
 
+/// True when the dock refused only the stamp of the frame: the frame was not held and
+/// every closed wall is a stamp wall of the enqueue check.
+fn stamp_refused(resp: &DockFrameResponse) -> bool {
+    if resp.ok || resp.pending == Some(true) {
+        return false;
+    }
+    match &resp.deny {
+        Some(deny) => {
+            !deny.closed.is_empty()
+                && deny
+                    .closed
+                    .iter()
+                    .all(|w| w.id == "temporal:drift_exceeded" || w.id == "temporal:future_skew")
+        }
+        None => false,
+    }
+}
+
+/// Seals one frame with `seal` and sends it through the pulse. The dock compares the
+/// stamp of the event with its own clock on arrival and refuses a stamp outside the
+/// drift bound before it holds the frame. A caller reads that refusal as the report
+/// asks: it seals a fresh frame, here up to three frames. Any other answer is returned
+/// as it is.
+fn admit_sealed(
+    rt: &DockingRuntime,
+    port: &DockingPort,
+    seal: &dyn Fn() -> Result<String, String>,
+) -> Result<DockFrameResponse, String> {
+    let mut resp = admit_through_pulse(rt, port, &seal()?);
+    for _ in 1..3 {
+        if !stamp_refused(&resp) {
+            break;
+        }
+        resp = admit_through_pulse(rt, port, &seal()?);
+    }
+    Ok(resp)
+}
+
 fn temp_docking_runtime() -> Result<(tempfile::TempDir, DockingRuntime), String> {
     let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
     std::fs::write(dir.path().join("lattice.yaml"), CONFORMANCE_LATTICE)
@@ -592,19 +638,20 @@ fn temp_docking_runtime() -> Result<(tempfile::TempDir, DockingRuntime), String>
 fn cc_docking_lattice_health() -> Result<(), String> {
     let (_dir, rt) = temp_docking_runtime()?;
     let sign = arm_test_agent(&rt, "AG-PING-CONF", &["dynaep-action-lattice"])?;
-    let sent_at = now_unix();
-    let frame = conformance_frame_for_dock(
-        "ch-lattice-health",
-        "AG-PING-CONF",
-        DockingPort::ValidationEngine,
-        "dynaep-action-lattice",
-        &admit_payload("", 1, sent_at),
-        sent_at,
-        rt.keys.dock_kem.public.as_slice(),
-        &sign,
-    )?;
-    let line = serde_json::json!({ "frame": frame }).to_string();
-    let resp = admit_through_pulse(&rt, &DockingPort::ValidationEngine, &line);
+    let seal = || -> Result<String, String> {
+        let frame = conformance_frame_for_dock(
+            "ch-lattice-health",
+            "AG-PING-CONF",
+            DockingPort::ValidationEngine,
+            "dynaep-action-lattice",
+            &admit_payload("", 1),
+            now_unix(),
+            rt.keys.dock_kem.public.as_slice(),
+            &sign,
+        )?;
+        Ok(serde_json::json!({ "frame": frame }).to_string())
+    };
+    let resp = admit_sealed(&rt, &DockingPort::ValidationEngine, &seal)?;
     if !resp.ok || resp.event_id.is_none() {
         return Err(format!(
             "lattice health frame failed: {:?} deny={:?}",
@@ -687,38 +734,40 @@ fn cc_lrp_registration_flow() -> Result<(), String> {
     // The LRP is allowlisted on the runtime but not active, so the regulation
     // frame is what registers it before the validation frame uses it.
     let sign = arm_test_agent(&rt, "AG-LRP-CONF", &["dynaep-action-lattice"])?;
-    let reg_at = now_unix();
-    let reg_frame = conformance_frame_for_dock(
-        "ch-lrp",
-        "AG-LRP-CONF",
-        DockingPort::RegulationModule,
-        CONFORMANCE_LRP,
-        &admit_payload("\"action\":\"register_lrp\",", 1, reg_at),
-        reg_at,
-        rt.keys.dock_kem.public.as_slice(),
-        &sign,
-    )?;
-    let reg_line = serde_json::json!({ "frame": reg_frame }).to_string();
-    let reg = admit_through_pulse(&rt, &DockingPort::RegulationModule, &reg_line);
+    let seal_reg = || -> Result<String, String> {
+        let reg_frame = conformance_frame_for_dock(
+            "ch-lrp",
+            "AG-LRP-CONF",
+            DockingPort::RegulationModule,
+            CONFORMANCE_LRP,
+            &admit_payload("\"action\":\"register_lrp\",", 1),
+            now_unix(),
+            rt.keys.dock_kem.public.as_slice(),
+            &sign,
+        )?;
+        Ok(serde_json::json!({ "frame": reg_frame }).to_string())
+    };
+    let reg = admit_sealed(&rt, &DockingPort::RegulationModule, &seal_reg)?;
     if !reg.ok || reg.event_id.is_none() {
         return Err(format!(
             "LRP lattice registration failed: {:?} deny={:?}",
             reg.error, reg.deny
         ));
     }
-    let event_at = now_unix();
-    let event_frame = conformance_frame_for_dock(
-        "ch-lrp",
-        "AG-LRP-CONF",
-        DockingPort::ValidationEngine,
-        CONFORMANCE_LRP,
-        &admit_payload("\"event_type\":\"LRP_BOUND\",", 2, event_at),
-        event_at,
-        rt.keys.dock_kem.public.as_slice(),
-        &sign,
-    )?;
-    let event_line = serde_json::json!({ "frame": event_frame }).to_string();
-    let resp = admit_through_pulse(&rt, &DockingPort::ValidationEngine, &event_line);
+    let seal_event = || -> Result<String, String> {
+        let event_frame = conformance_frame_for_dock(
+            "ch-lrp",
+            "AG-LRP-CONF",
+            DockingPort::ValidationEngine,
+            CONFORMANCE_LRP,
+            &admit_payload("\"event_type\":\"LRP_BOUND\",", 2),
+            now_unix(),
+            rt.keys.dock_kem.public.as_slice(),
+            &sign,
+        )?;
+        Ok(serde_json::json!({ "frame": event_frame }).to_string())
+    };
+    let resp = admit_sealed(&rt, &DockingPort::ValidationEngine, &seal_event)?;
     if !resp.ok || resp.event_id.is_none() {
         return Err(format!(
             "validation lattice frame after LRP register failed: {:?}",

@@ -518,6 +518,14 @@ pub fn persist_held_digest(conn: &Connection, digest: &str, at_unix: i64) -> rus
     )?;
     Ok(())
 }
+/// Take back the held record of a digest whose capsule never entered the pulse queue.
+pub fn forget_held_digest(conn: &Connection, digest: &str) -> rusqlite::Result<()> {
+    conn.execute(
+        "DELETE FROM held_frame_digests WHERE frame_digest = ?1",
+        params![digest],
+    )?;
+    Ok(())
+}
 pub fn now_unix() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)

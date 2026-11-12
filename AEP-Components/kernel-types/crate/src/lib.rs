@@ -265,6 +265,7 @@ pub fn classify_wall(id: &str, reason: &str) -> String {
     }
     if id == "digest.replay"
         || id == "kem.open"
+        || id == "frame.agent_binding"
         || reason_l.contains("replay")
         || reason_l.contains("kem")
         || reason_l.contains("decrypt failed")
@@ -606,11 +607,25 @@ fn repair_one(w: &ClosedWall) -> RepairHint {
             KIND_CLOSED_ONLY,
             "Wait for the 1000 ms pulse. Do not retry the same digest.",
         ),
-        "dag.membership" | "gap.agent_permission" | "dag.parents" => hint(
-            &w.id,
-            "",
-            KIND_CLOSED_ONLY,
-            "closed wall id and reason only. Grant lists stay off this report.",
+        "dag.membership" | "gap.agent_permission" | "hub.agent_permission" | "dag.parents" => {
+            hint(
+                &w.id,
+                "",
+                KIND_CLOSED_ONLY,
+                "closed wall id and reason only. Grant lists stay off this report.",
+            )
+        }
+        "frame.agent_binding" => hint(
+            "frame.agent_binding",
+            "agent_id",
+            KIND_BIND_FIELD,
+            "Leave agent_id out of the payload or set it to the signer of the frame.",
+        ),
+        "temporal:future_skew" => hint(
+            "temporal:future_skew",
+            "timestamp",
+            KIND_RESEAL_NEW_CAPSULE,
+            "Seal a fresh timestamp. The stamp is ahead of the kernel clock.",
         ),
         _ => hint(
             &w.id,
@@ -735,7 +750,7 @@ fn walls_from_error(error: &str) -> Vec<ClosedWall> {
             CLASS_SECURITY,
         )];
     }
-    if error.contains("pulse queue overflow") {
+    if error.contains("pulse queue overflow") || error.contains("pulse queue signer share") {
         return vec![ClosedWall::with_class("pulse.queue", error, CLASS_TEMPORAL)];
     }
     if error.contains("pulse capsule aged out") {
@@ -845,6 +860,43 @@ mod tests {
         let wall = ClosedWall::new("writing:no_em_dashes", "em dash");
         assert_eq!(wall.class, CLASS_WRITING);
         assert!(seal_probe());
+    }
+
+    #[test]
+    fn signer_hub_stamp_and_share_walls_carry_their_class_and_repair() {
+        let binding = ClosedWall::new(
+            "frame.agent_binding",
+            "event names an agent that is not the signer of the frame",
+        );
+        assert_eq!(binding.class, CLASS_SECURITY);
+        let hub = ClosedWall::new("hub.agent_permission", "hub permission denied");
+        assert_eq!(hub.class, CLASS_CAPABILITY);
+        let skew = ClosedWall::with_class("temporal:future_skew", "ahead", CLASS_TEMPORAL);
+        let repairs = repairs_for(&[binding, hub, skew]);
+        let of = |id: &str| repairs.iter().find(|h| h.wall_id == id).cloned();
+        let bind = of("frame.agent_binding").expect("binding repair");
+        assert_eq!(bind.kind, KIND_BIND_FIELD);
+        assert_eq!(bind.field, "agent_id");
+        assert_eq!(
+            of("hub.agent_permission").map(|h| h.kind),
+            Some(String::from(KIND_CLOSED_ONLY))
+        );
+        assert_eq!(
+            of("temporal:future_skew").map(|h| h.kind),
+            Some(String::from(KIND_RESEAL_NEW_CAPSULE))
+        );
+        // No repair names a grant list.
+        assert!(repairs.iter().all(|h| !grant_leaks_in_fix(&h.fix)));
+        // A signer at its share of the pulse queue reads the pulse queue wall.
+        for line in [
+            "pulse queue signer share capsules",
+            "pulse queue signer share bytes",
+        ] {
+            let report = from_error(line);
+            assert_eq!(report.closed.len(), 1);
+            assert_eq!(report.closed[0].id, "pulse.queue");
+            assert_eq!(report.closed[0].class, CLASS_TEMPORAL);
+        }
     }
 
     fn seal_probe() -> bool {

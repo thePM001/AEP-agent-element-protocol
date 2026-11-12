@@ -10,6 +10,7 @@
 //! aep-lattice-log Record must call admit_sealed_payload_on_live_dock before kernel INSERT.
 //! Every ClosedWall construction sets class. Writing walls stay on the Admit pass.
 use crate::BaseNodeError;
+use aep_admit::AdmitWall;
 use aep_admit_live_dock::LiveDockContext;
 use aep_live_entry::{LiveEntry, ProcessOut};
 use aep_one_live_evaluation::attach_live_walls;
@@ -67,10 +68,16 @@ pub fn admit_sealed_payload_on_live_dock(
     }
 }
 
-pub fn admit_sealed_payload_report(
+/// Admit, then the record step, then Apply, in one call under the live entry lock.
+///
+/// `record` runs once after every wall is open and before the live entry changes. The
+/// dock writes the ledger row there, so a frame is applied only with its row written.
+/// A closed wall from `record` is a Deny that leaves the live entry unchanged.
+pub fn admit_sealed_payload_report_recorded(
     live: &mut LiveEntry,
     plaintext: &[u8],
     dock: &LiveDockContext,
+    record: &mut dyn FnMut() -> Result<(), AdmitWall>,
 ) -> Result<(), DenyReport> {
     let value: Value = match serde_json::from_slice(plaintext) {
         Ok(v) => v,
@@ -102,7 +109,7 @@ pub fn admit_sealed_payload_report(
         ));
     }
     attach_live_walls(live, &value, dock);
-    match live.process_event(value) {
+    match live.process_event_recorded(value, record) {
         ProcessOut::Event(_) => Ok(()),
         ProcessOut::Reject(r) => {
             let closed: Vec<ClosedWall> = r
@@ -119,6 +126,15 @@ pub fn admit_sealed_payload_report(
             Err(DenyReport::from_error_and_closed(&r.error, &closed))
         }
     }
+}
+
+/// Admit then Apply with no record step. The lattice log and the unit paths use this.
+pub fn admit_sealed_payload_report(
+    live: &mut LiveEntry,
+    plaintext: &[u8],
+    dock: &LiveDockContext,
+) -> Result<(), DenyReport> {
+    admit_sealed_payload_report_recorded(live, plaintext, dock, &mut || Ok(()))
 }
 
 #[cfg(test)]

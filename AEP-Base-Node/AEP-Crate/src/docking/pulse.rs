@@ -13,7 +13,9 @@ use crate::{
     SideChannelAnomalyKind,
 };
 use aep_agent_control_hub::{resolve_gap_root, AgentControlHub};
-use aep_base_node_pulse::{freeze_temporal_snapshot, BeatRelease, PulseQueue, QueuedCapsule};
+use aep_base_node_pulse::{
+    freeze_temporal_snapshot, BeatRelease, EnqueueDeny, PulseQueue, QueuedCapsule, MAX_DRIFT_MS,
+};
 use aep_lattice_channel::{DockingPort, LatticeChannelFrame, RateLimiter};
 use aep_wall_set_backpressure::CLASS_SECURITY;
 use aep_wall_set_backpressure::CLASS_TEMPORAL;
@@ -267,32 +269,45 @@ pub(crate) fn pulse_now_ms(runtime: &DockingRuntime) -> Result<i64, DockFrameRes
     Ok(live.now_ms())
 }
 
-/// Seal stamp in milliseconds for a frame that carries one.
+/// Stamp of the agent in milliseconds, when the opened event carries one.
 ///
-/// The kernel freezes the bridge clock at the seal, so a frame that carries its
-/// own seal stamp is admitted against that stamp rather than against the time
-/// the kernel happened to read the frame. The stamp must sit in the same second
-/// as the frame seal, so the frame freshness walls still bound the frame and a
-/// stamp that disagrees with the frame is ignored here.
-fn seal_stamp_ms(frame: &LatticeChannelFrame, plaintext: &[u8]) -> Option<i64> {
-    seal_stamp_in_second(frame.sent_at_unix, plaintext)
-}
-
-/// Seal stamp in milliseconds when it sits in the given frame second.
-pub(crate) fn seal_stamp_in_second(frame_sec: u64, plaintext: &[u8]) -> Option<i64> {
+/// The stamp is a claim of the agent. The kernel never adopts it as its own clock:
+/// the freeze reads the kernel clock and the stamp is compared with that clock.
+pub(crate) fn agent_stamp_ms(plaintext: &[u8]) -> Option<i64> {
     let value: serde_json::Value = serde_json::from_slice(plaintext).ok()?;
     let ms = value.get("timestamp")?.as_i64()?;
     if ms <= 0 {
         return None;
     }
-    let frame_sec = frame_sec as i64;
-    if frame_sec <= 0 {
-        return None;
-    }
-    if (ms / 1000 - frame_sec).abs() > 1 {
-        return None;
-    }
     Some(ms)
+}
+
+/// Closed wall id and detail when the stamp of the agent sits outside the drift bound
+/// around the kernel clock. None when the stamp is inside the bound.
+pub(crate) fn stamp_outside_drift(
+    stamp_ms: i64,
+    kernel_ms: i64,
+    max_drift_ms: i64,
+) -> Option<(&'static str, String)> {
+    let ahead = stamp_ms.saturating_sub(kernel_ms);
+    if ahead > max_drift_ms {
+        return Some((
+            "temporal:future_skew",
+            format!(
+                "agent stamp is {ahead} ms ahead of the kernel clock: future skew over the {max_drift_ms} ms drift bound"
+            ),
+        ));
+    }
+    let behind = kernel_ms.saturating_sub(stamp_ms);
+    if behind > max_drift_ms {
+        return Some((
+            "temporal:drift_exceeded",
+            format!(
+                "agent stamp is {behind} ms behind the kernel clock: drift over the {max_drift_ms} ms drift bound"
+            ),
+        ));
+    }
+    None
 }
 
 pub(crate) fn collect_applied(runtime: &DockingRuntime, digest: &str) -> DockFrameResponse {
@@ -336,20 +351,37 @@ pub(crate) fn pulse_enqueue(
     expected_port: &DockingPort,
     digest: String,
     bundle: aep_agentmesh::AgentMeshBundle,
+    kernel_ms: i64,
 ) -> DockFrameResponse {
-    let mut freeze_ms = match pulse_now_ms(runtime) {
-        Ok(ms) => ms,
-        Err(resp) => return resp,
-    };
-    if let Some(ms) = seal_stamp_ms(frame, plaintext) {
-        freeze_ms = ms;
-    }
-    {
+    // The freeze is the kernel clock as read when the frame arrived. The stamp of the
+    // agent never becomes the freeze, so the drift, future and stale walls of Admit
+    // compare the stamp with a clock the agent does not set. A capsule is held for one
+    // pulse of kernel time.
+    let max_drift_ms = {
         let live = dock_lock!(&runtime.admit.live_entry, "live_entry");
-        let _ = live.now_ms();
+        if live.snapshot.max_drift_ms > 0 {
+            live.snapshot.max_drift_ms
+        } else {
+            MAX_DRIFT_MS
+        }
+    };
+    // A stamp outside the drift bound is refused here and takes no room in the queue.
+    // An event without a stamp goes on to Admit, whose time walls close with the report.
+    if let Some(stamp_ms) = agent_stamp_ms(plaintext) {
+        if let Some((wall_id, detail)) = stamp_outside_drift(stamp_ms, kernel_ms, max_drift_ms) {
+            let db = dock_lock!(&runtime.record.db, "db");
+            let _ = record_side_channel_anomaly(
+                &db,
+                SideChannelAnomalyKind::StaleFrameRejected,
+                &frame.agent_id,
+                expected_port,
+                detail.clone(),
+            );
+            return deny_closed(None, detail, wall_id, CLASS_TEMPORAL);
+        }
     }
     let seq = sequence_from_plaintext(plaintext);
-    let freeze = freeze_temporal_snapshot(freeze_ms, 0);
+    let freeze = freeze_temporal_snapshot(kernel_ms, 0);
     let cap = QueuedCapsule {
         digest: digest.clone(),
         agent_id: frame.agent_id.clone(),
@@ -357,21 +389,9 @@ pub(crate) fn pulse_enqueue(
         byte_len: plaintext.len(),
         freeze,
     };
-    {
-        let mut pulse = dock_lock!(&runtime.record.pulse, "pulse");
-        if let Err(e) = pulse.queue.enqueue(cap) {
-            return deny_resp(None, String::from(e.as_str()));
-        }
-        pulse.held.insert(
-            digest.clone(),
-            HeldCapsule {
-                frame: frame.clone(),
-                plaintext: plaintext.to_vec(),
-                expected_port: *expected_port,
-                bundle,
-            },
-        );
-    }
+    // The held digest is recorded before the capsule enters the queue. When the ledger
+    // refuses the record the caller reads a deny and no capsule exists that a later beat
+    // could apply.
     {
         let db = dock_lock!(&runtime.record.db, "db");
         if let Err(e) = crate::persist_held_digest(&db, &digest, crate::now_unix() as i64) {
@@ -382,6 +402,34 @@ pub(crate) fn pulse_enqueue(
                 "ledger.unavailable",
             );
         }
+    }
+    let refused = {
+        let mut pulse = dock_lock!(&runtime.record.pulse, "pulse");
+        match pulse.queue.enqueue(cap) {
+            Ok(()) => {
+                pulse.held.insert(
+                    digest.clone(),
+                    HeldCapsule {
+                        frame: frame.clone(),
+                        plaintext: plaintext.to_vec(),
+                        expected_port: *expected_port,
+                        bundle,
+                    },
+                );
+                None
+            }
+            Err(e) => Some(e),
+        }
+    };
+    if let Some(e) = refused {
+        // The queue refused the capsule, so its held record is taken back. A duplicate
+        // digest keeps the record: it belongs to the capsule that is already queued.
+        if e != EnqueueDeny::DuplicateDigest {
+            if let Ok(db) = lock_or_deny(&runtime.record.db, "db") {
+                let _ = crate::forget_held_digest(&db, &digest);
+            }
+        }
+        return deny_resp(None, String::from(e.as_str()));
     }
     DockFrameResponse {
         ok: false,
