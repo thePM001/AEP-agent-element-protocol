@@ -14,7 +14,8 @@ use crate::{
 };
 use aep_agent_control_hub::{resolve_gap_root, AgentControlHub};
 use aep_base_node_pulse::{
-    freeze_temporal_snapshot, BeatRelease, EnqueueDeny, PulseQueue, QueuedCapsule, MAX_DRIFT_MS,
+    freeze_temporal_snapshot, BeatRelease, EnqueueDeny, PulseQueue, QueuedCapsule, MAX_AGE_MS,
+    MAX_DRIFT_MS,
 };
 use aep_lattice_channel::{DockingPort, LatticeChannelFrame, RateLimiter};
 use aep_wall_set_backpressure::CLASS_SECURITY;
@@ -35,6 +36,10 @@ pub(crate) struct HeldCapsule {
     pub(crate) plaintext: Vec<u8>,
     pub(crate) expected_port: DockingPort,
     pub(crate) bundle: aep_agentmesh::AgentMeshBundle,
+    /// Event time that the time walls of Admit measure against: the stamp of the agent
+    /// once the kernel checked it against its own clock at enqueue. It is the arrival
+    /// reading of the kernel clock when the event carries no stamp.
+    pub(crate) wall_bridge_ms: i64,
 }
 
 pub struct PulseState {
@@ -282,12 +287,19 @@ pub(crate) fn agent_stamp_ms(plaintext: &[u8]) -> Option<i64> {
     Some(ms)
 }
 
-/// Closed wall id and detail when the stamp of the agent sits outside the drift bound
-/// around the kernel clock. None when the stamp is inside the bound.
-pub(crate) fn stamp_outside_drift(
+/// Closed wall id and detail when the stamp of the agent sits outside its window around
+/// the kernel clock. None when the stamp is inside the window.
+///
+/// The window is not symmetric. A stamp is written before the seal and read after the
+/// transit, so an agent whose clock agrees with the kernel always arrives with a stamp
+/// in the past. Ahead of the kernel clock only clock drift can put a stamp, so that side
+/// holds the drift bound. Behind the kernel clock the stamp may be as old as the age
+/// bound, which is the time the seal and the transit may take.
+pub(crate) fn stamp_outside_window(
     stamp_ms: i64,
     kernel_ms: i64,
     max_drift_ms: i64,
+    max_age_ms: i64,
 ) -> Option<(&'static str, String)> {
     let ahead = stamp_ms.saturating_sub(kernel_ms);
     if ahead > max_drift_ms {
@@ -299,11 +311,11 @@ pub(crate) fn stamp_outside_drift(
         ));
     }
     let behind = kernel_ms.saturating_sub(stamp_ms);
-    if behind > max_drift_ms {
+    if behind > max_age_ms {
         return Some((
-            "temporal:drift_exceeded",
+            "temporal:stale_event",
             format!(
-                "agent stamp is {behind} ms behind the kernel clock: drift over the {max_drift_ms} ms drift bound"
+                "agent stamp is {behind} ms behind the kernel clock: stale over the {max_age_ms} ms age bound"
             ),
         ));
     }
@@ -354,21 +366,32 @@ pub(crate) fn pulse_enqueue(
     kernel_ms: i64,
 ) -> DockFrameResponse {
     // The freeze is the kernel clock as read when the frame arrived. The stamp of the
-    // agent never becomes the freeze, so the drift, future and stale walls of Admit
-    // compare the stamp with a clock the agent does not set. A capsule is held for one
-    // pulse of kernel time.
-    let max_drift_ms = {
+    // agent never becomes the freeze, so a capsule is held for one pulse of kernel time
+    // whatever the agent stamped. The kernel clock also decides whether the stamp is
+    // acceptable: the check below runs before the capsule takes room in the queue.
+    let (max_drift_ms, max_age_ms) = {
         let live = dock_lock!(&runtime.admit.live_entry, "live_entry");
-        if live.snapshot.max_drift_ms > 0 {
+        let drift = if live.snapshot.max_drift_ms > 0 {
             live.snapshot.max_drift_ms
         } else {
             MAX_DRIFT_MS
-        }
+        };
+        let age = if live.snapshot.max_age_ms > 0 {
+            live.snapshot.max_age_ms
+        } else {
+            MAX_AGE_MS
+        };
+        (drift, age)
     };
-    // A stamp outside the drift bound is refused here and takes no room in the queue.
-    // An event without a stamp goes on to Admit, whose time walls close with the report.
-    if let Some(stamp_ms) = agent_stamp_ms(plaintext) {
-        if let Some((wall_id, detail)) = stamp_outside_drift(stamp_ms, kernel_ms, max_drift_ms) {
+    // A stamp outside its window is refused here. An event without a stamp goes on to
+    // Admit, whose time walls close with the report. A stamp inside the window is the
+    // event time that the time walls of Admit measure against, so the time the seal and
+    // the transit took is not read as clock drift.
+    let stamp = agent_stamp_ms(plaintext);
+    if let Some(stamp_ms) = stamp {
+        if let Some((wall_id, detail)) =
+            stamp_outside_window(stamp_ms, kernel_ms, max_drift_ms, max_age_ms)
+        {
             let db = dock_lock!(&runtime.record.db, "db");
             let _ = record_side_channel_anomaly(
                 &db,
@@ -380,6 +403,7 @@ pub(crate) fn pulse_enqueue(
             return deny_closed(None, detail, wall_id, CLASS_TEMPORAL);
         }
     }
+    let wall_bridge_ms = stamp.unwrap_or(kernel_ms);
     let seq = sequence_from_plaintext(plaintext);
     let freeze = freeze_temporal_snapshot(kernel_ms, 0);
     let cap = QueuedCapsule {
@@ -414,6 +438,7 @@ pub(crate) fn pulse_enqueue(
                         plaintext: plaintext.to_vec(),
                         expected_port: *expected_port,
                         bundle,
+                        wall_bridge_ms,
                     },
                 );
                 None

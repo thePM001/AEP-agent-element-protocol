@@ -1606,15 +1606,23 @@ fn agent_stamp_is_read_and_never_adopted_as_the_kernel_clock() {
     let zero = br#"{"type":"PING","action_path":"root:ping","timestamp":0}"#;
     assert_eq!(super::pulse::agent_stamp_ms(zero), None);
     assert_eq!(super::pulse::agent_stamp_ms(b"not-json"), None);
-    // The drift bound holds on both sides of the kernel clock.
-    use super::pulse::stamp_outside_drift;
-    assert!(stamp_outside_drift(1_000_000, 1_000_000, MAX_DRIFT_MS).is_none());
-    assert!(stamp_outside_drift(1_000_000 + MAX_DRIFT_MS, 1_000_000, MAX_DRIFT_MS).is_none());
-    assert!(stamp_outside_drift(1_000_000 - MAX_DRIFT_MS, 1_000_000, MAX_DRIFT_MS).is_none());
-    let ahead = stamp_outside_drift(1_000_000 + MAX_DRIFT_MS + 1, 1_000_000, MAX_DRIFT_MS);
-    assert_eq!(ahead.map(|w| w.0), Some("temporal:future_skew"));
-    let behind = stamp_outside_drift(1_000_000 - MAX_DRIFT_MS - 1, 1_000_000, MAX_DRIFT_MS);
-    assert_eq!(behind.map(|w| w.0), Some("temporal:drift_exceeded"));
+    // Ahead of the kernel clock the drift bound holds. Behind it the age bound holds,
+    // because the seal and the transit always put an agreeing stamp in the past.
+    let window = |stamp: i64| {
+        super::pulse::stamp_outside_window(stamp, 10_000_000, MAX_DRIFT_MS, MAX_AGE_MS).map(|w| w.0)
+    };
+    assert_eq!(window(10_000_000), None);
+    assert_eq!(window(10_000_000 + MAX_DRIFT_MS), None);
+    assert_eq!(
+        window(10_000_000 + MAX_DRIFT_MS + 1),
+        Some("temporal:future_skew")
+    );
+    assert_eq!(window(10_000_000 - MAX_DRIFT_MS - 1), None);
+    assert_eq!(window(10_000_000 - MAX_AGE_MS), None);
+    assert_eq!(
+        window(10_000_000 - MAX_AGE_MS - 1),
+        Some("temporal:stale_event")
+    );
 }
 
 // --- AEP-CRV-010 kernel identity, order and clock ---
@@ -2015,16 +2023,14 @@ fn frame_stamped_thirty_seconds_ahead_is_refused_at_enqueue() {
     assert_eq!(ontime.pending, Some(true), "{:?}", ontime.error);
 }
 
-/// The freeze is the kernel clock. A stamp that agrees with its own frame second and
-/// that is behind the kernel by more than the drift bound is refused at enqueue.
+/// A stamp older than the age bound of the kernel clock is refused at enqueue.
 #[test]
-fn stamp_behind_the_kernel_clock_is_refused_at_enqueue() {
+fn stamp_older_than_the_age_bound_is_refused_at_enqueue() {
     let (_dir, rt) = crv_runtime();
     install_agent_manifest(&rt, "AG-BEHIND", "sess-1");
     let now_s = crate::now_unix();
-    let kernel_ms = (now_s as i64) * 1000 + 900;
-    set_pulse_clock(&rt, kernel_ms);
-    // The stamp sits in the frame second and 900 ms behind the kernel clock.
+    let stamp_ms = (now_s as i64) * 1000;
+    set_pulse_clock(&rt, stamp_ms + MAX_AGE_MS + 1);
     let (_frame, line) = build_test_frame_at(
         &rt,
         "ch-crv",
@@ -2032,15 +2038,53 @@ fn stamp_behind_the_kernel_clock_is_refused_at_enqueue() {
         "sess-1",
         DockingPort::ValidationEngine,
         "dynaep-action-lattice",
-        &crv_event("root:ping", "", 1, (now_s as i64) * 1000),
+        &crv_event("root:ping", "", 1, stamp_ms),
         now_s,
     );
     let resp = process_request(&rt, &DockingPort::ValidationEngine, &line);
     assert!(!resp.ok);
     assert_ne!(resp.pending, Some(true));
-    let wall = closed_wall(&resp, "temporal:drift_exceeded").expect("drift wall");
+    let wall = closed_wall(&resp, "temporal:stale_event").expect("stale wall");
     assert_eq!(wall.class, CLASS_TEMPORAL);
     assert!(rt.record.pulse.lock().expect("pulse").queue.is_empty());
+}
+
+/// The time the seal and the transit took is not clock drift. A stamp 900 ms behind the
+/// kernel clock is accepted and admitted. It does not shorten the hold: the capsule
+/// turns ready one pulse of kernel time after it arrived, not one pulse after its stamp.
+#[test]
+fn seal_and_transit_time_is_not_drift_and_does_not_shorten_the_hold() {
+    let (_dir, rt) = crv_runtime();
+    install_agent_manifest(&rt, "AG-BEHIND", "sess-1");
+    let now_s = crate::now_unix();
+    let stamp_ms = (now_s as i64) * 1000;
+    let arrival_ms = stamp_ms + 900;
+    set_pulse_clock(&rt, arrival_ms);
+    let (_frame, line) = build_test_frame_at(
+        &rt,
+        "ch-crv",
+        "AG-BEHIND",
+        "sess-1",
+        DockingPort::ValidationEngine,
+        "dynaep-action-lattice",
+        &crv_event("root:ping", "", 1, stamp_ms),
+        now_s,
+    );
+    let enq = process_request(&rt, &DockingPort::ValidationEngine, &line);
+    assert_eq!(enq.pending, Some(true), "{:?}", enq.error);
+    let digest = enq.digest.clone().expect("digest");
+    // One pulse after the stamp the capsule still waits: the hold counts from arrival.
+    set_pulse_clock(&rt, stamp_ms + PULSE_MS);
+    assert!(pulse_beat(&rt).ready.is_empty());
+    set_pulse_clock(&rt, arrival_ms + PULSE_MS - 1);
+    assert!(pulse_beat(&rt).ready.is_empty());
+    set_pulse_clock(&rt, arrival_ms + PULSE_MS);
+    let rel = pulse_beat(&rt);
+    assert_eq!(rel.ready.len(), 1);
+    assert_eq!(rel.ready[0].freeze.bridge_ts_ms, arrival_ms);
+    let answer = process_request(&rt, &DockingPort::ValidationEngine, &collect_line(&digest));
+    assert!(answer.ok, "{:?}", answer.error);
+    assert!(answer.event_id.is_some());
 }
 
 /// The capsule is frozen at the kernel clock, so it turns ready one pulse of kernel time

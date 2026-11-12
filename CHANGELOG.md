@@ -2,6 +2,16 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-12 - The docks count seal and transit time as age and no longer as clock drift
+The first form of the kernel clock change, pushed earlier the same day, refused every stamp more than 50 ms behind the Base Node clock. An agent writes its stamp before the seal and the Base Node reads it after the transit, so that bound counted the seal and the transit as clock drift. A release build seals in under 10 ms, but a debug build needs 10 to 150 ms for one seal and a slow processor needs longer. Such a caller was refused on every frame and `cargo test --workspace` failed on the public runner.
+
+- The stamp window is no longer symmetric. Ahead of the Base Node clock only clock drift can put a stamp, so a stamp more than 50 ms ahead is still refused at enqueue as `temporal:future_skew`. Behind the clock the stamp may be as old as the age bound of 5000 ms. An older stamp is refused at enqueue as `temporal:stale_event`.
+- The Base Node clock alone decides the hold and the age of a capsule. A stamp in the past does not shorten the hold: the capsule turns ready one pulse after it arrived. A stamp ahead cannot make it wait longer.
+- A stamp inside the window is the event time that the time walls of Admit measure against. The walls of Admit are unchanged.
+- The workarounds of the first form are removed because nothing needs them: the Data Dock arrival path, the fresh seal of the CAW kernel dock probe and of the conformance checks and the optimised seal crates of the dev profile. Those files are back at their state before the change.
+- Two findings of the lint `needless_bool` of Rust 1.100, released on 2026-11-12, are fixed in `aep-policy-system-admit`. They were in code this change did not touch and failed the clippy job.
+- Verify with `cargo test --workspace`, `cargo clippy --workspace --all-targets` with warnings denied, `bash AEP-Components/conformance/runner/run.sh` and `./AEP-User-Experience/examples/end-to-end-run/run.sh`.
+
 ## [2.9.0] - 2026-11-12 - Admit judges the signer of the frame, the ledger row comes before Apply and the freeze reads the kernel clock
 Admit judged the agent that the event text named. An agent with its own key could seal a frame that named another agent, so the lattice permission, the parent closure and the budget ran for that other agent. Apply ran before the hub permission check and before the ledger row, so a hub deny or a ledger error left applied state without a row. The freeze took the timestamp of the agent, so the 50 ms drift wall compared that stamp with itself and one frame stamped ahead held the shared pulse queue for up to a minute.
 
@@ -10,10 +20,8 @@ Admit judged the agent that the event text named. An agent with its own key coul
 - After Admit the ledger row is written first, then the live entry is changed, then an LRP contract is registered and a bound outbound request is sent. A ledger error at that step is a deny that applies nothing and sends nothing. When the outbound request fails the answer is not ok and carries the event id of the row.
 - A STATE_DELTA or a structure mutation that the structure check refuses is refused before the first write, so it leaves no satisfied action, no sequence number and no budget spend behind.
 - The held digest is recorded before the capsule enters the pulse queue. When that record fails the caller reads a deny and no capsule exists that a later beat could apply.
-- The freeze is the Base Node clock, read when the frame arrives. The timestamp of the agent is compared with that clock and never replaces it. A stamp more than 50 ms ahead is refused at enqueue as `temporal:future_skew` and a stamp more than 50 ms behind as `temporal:drift_exceeded`. A caller has to stamp its event in milliseconds from a clock that agrees with the Base Node clock and send the frame right after the seal. A stamp truncated to the second is refused for most of every second.
+- The freeze is the Base Node clock, read when the frame arrives. The timestamp of the agent is compared with that clock and never replaces it. A stamp more than 50 ms ahead is refused at enqueue as `temporal:future_skew`. The entry above states how a stamp behind the clock is judged.
 - One signer holds at most half of the pulse queue: 128 capsules and 131072 bytes. A signer at its share reads `pulse queue signer share capsules` or `pulse queue signer share bytes` and every other signer is still served. An event plaintext above 131072 bytes is refused.
-- Callers follow the kernel clock. `aep-lattice-log build-frame` reads the stamp right before the seal. The Data Dock seals its frames inside the Base Node, so the reading it stamps is taken as the arrival of the frame. The CAW kernel dock probe and the conformance checks seal a fresh frame when the dock refused only the stamp, up to three frames. The UCB dock gateway does not seal again: a stamp refusal reaches its caller as a deny that asks for a new frame.
-- A release build seals a frame in under 10 ms. A plain debug build needed 40 to 300 ms for one ML-DSA seal, which is over the bound. The dev profile of the workspace now builds the seal crates optimised, so a debug build and its tests seal inside the bound.
 - `THREAT_MODEL.md` gains the rows BN-8, BN-9, DK-7 and DK-8 with their checks.
 - Verify with `cargo test -p aep-base-node --lib docking::tests`, `cargo test -p aep-live-entry`, `cargo test -p aep-admit-live-dock`, `cargo test -p aep-base-node-pulse` and `node aep-check.mjs`.
 

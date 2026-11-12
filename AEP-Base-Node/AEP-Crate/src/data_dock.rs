@@ -7,15 +7,14 @@
 use crate::dock_event;
 use crate::dock_keys::signer_rate_key;
 use crate::dock_log::DockEvent;
-use crate::docking::process_kernel_sealed_frame;
 use crate::lattice_log::{
-    build_transport_frame_stamped, export_dynaep_events, DockingPortWire, DynAepEventExport,
-    DynAepEventInput,
+    export_dynaep_events, DockingPortWire, DynAepEventExport, DynAepEventInput,
 };
 use crate::task_manifest::{TaskManifestTrust, TaskManifestV1};
 use crate::{
-    bootstrap_contracts, default_lattice_db_path, docking_port_specs, process_request, pulse_beat,
-    resolve_mesh_peers, runtime_status, DockFrameResponse, DockingRuntime,
+    bootstrap_contracts, build_transport_frame, default_lattice_db_path, docking_port_specs,
+    process_request, pulse_beat, resolve_mesh_peers, runtime_status, DockFrameResponse,
+    DockingRuntime,
 };
 use aep_base_node_pulse::PULSE_MS;
 use aep_lattice_channel::DockingPort;
@@ -864,9 +863,7 @@ async fn submit_action(
     }
     let db_path = db_path_from_runtime(runtime);
     let contracts = bootstrap_contracts();
-    // The Base Node seals this frame itself, so the stamp inside it is a reading of the
-    // kernel clock. The dock takes that reading as the arrival of the frame.
-    let (frame, sealed_at_ms) = match build_transport_frame_stamped(&input, &contracts, &db_path) {
+    let frame = match build_transport_frame(&input, &contracts, &db_path) {
         Ok(f) => f,
         Err(e) => {
             return Err((
@@ -884,7 +881,7 @@ async fn submit_action(
     })
     .to_string();
     let port = wire_to_port(&docking_port);
-    let first = process_kernel_sealed_frame(runtime, &port, &line, sealed_at_ms);
+    let first = process_request(runtime, &port, &line);
     let resp = wait_for_admit(runtime, first).await;
     if let Some(deny) = resp.deny {
         return Err((

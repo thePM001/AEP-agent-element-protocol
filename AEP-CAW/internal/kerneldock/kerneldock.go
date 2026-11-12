@@ -55,20 +55,7 @@ const (
 	pingChannel = "ch-caw-kernel-dock"
 	pingAction  = "root:ping"
 	collectStep = 100 * time.Millisecond
-	// maxSealAttempts bounds how often one probe seals a ping. The kernel
-	// compares the stamp of the sealed ping with its own clock when the frame
-	// arrives and refuses a stamp outside its drift bound before the frame is
-	// held. A host under load can delay one ping past that bound, so the probe
-	// seals a fresh ping for that refusal only.
-	maxSealAttempts = 3
 )
-
-// Wall ids the kernel closes when the stamp of a frame sits outside the drift
-// bound around its clock. The frame is refused at enqueue and nothing is held.
-var stampWalls = map[string]bool{
-	"temporal:drift_exceeded": true,
-	"temporal:future_skew":    true,
-}
 
 // dockSuffixes maps a dock port id to the socket file name the kernel binds
 // under the socket base.
@@ -316,22 +303,6 @@ func ReadAnswer(line []byte) Verdict {
 	return a.verdict()
 }
 
-// stampRefused reports a refusal whose only cause is the stamp of the frame:
-// the dock did not hold the frame and every closed wall is a stamp wall. A
-// fresh seal carries a fresh stamp, so this is the one refusal the probe may
-// answer with a new ping.
-func (a dockAnswer) stampRefused() bool {
-	if a.OK || a.pending() || a.Deny == nil || len(a.Deny.Closed) == 0 {
-		return false
-	}
-	for _, w := range a.Deny.Closed {
-		if !stampWalls[w.ID] {
-			return false
-		}
-	}
-	return true
-}
-
 func (a dockAnswer) refusalText() string {
 	if t := strings.TrimSpace(a.Error); t != "" {
 		return t
@@ -361,19 +332,13 @@ func Probe(opts Options) error {
 	refuse := func(cause error) error {
 		return &Refusal{Dock: opts.Dock, Socket: path, Cause: cause}
 	}
-	var answer dockAnswer
-	for attempt := 1; ; attempt++ {
-		wire, err := sealPing(opts, deadline)
-		if err != nil {
-			return refuse(err)
-		}
-		if answer, err = exchange(path, wire, deadline); err != nil {
-			return refuse(err)
-		}
-		// Only a stamp refusal is sealed again. Every other answer is read below.
-		if attempt >= maxSealAttempts || !answer.stampRefused() {
-			break
-		}
+	wire, err := sealPing(opts, deadline)
+	if err != nil {
+		return refuse(err)
+	}
+	answer, err := exchange(path, wire, deadline)
+	if err != nil {
+		return refuse(err)
 	}
 	for answer.pending() {
 		if answer.verdict() != VerdictPending {

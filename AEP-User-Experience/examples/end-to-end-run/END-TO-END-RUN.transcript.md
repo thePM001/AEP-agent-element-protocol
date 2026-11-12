@@ -19,14 +19,14 @@ This note records one observed run of the end to end example in this folder. The
 > REFUSE 8 ledger row: the refuse path wrote no row and the ledger count remains 2
 > 
 > == pass path
-> PASS 1 caw session: the session session-49c7e0a4-737d-4a43-b97e-924aae967ad7 holds the workspace
+> PASS 1 caw session: the session session-ba712901-25f7-40bd-9af4-bc3ad448e1ec holds the workspace
 > PASS 2 sealed capsule: the recipient key opened the capsule and the payload is aep-2.9-end-to-end-run
 > PASS 3 pulse: the seal stamp drifts 0 ms inside the 50 ms bound, the capsule waits at the seal beat and turns ready 1000 ms later
 > PASS 4 collect all: collect all ran every wall on the path and 0 walls closed
 > PASS 5 apply: the plan carries the ledger allowance and the rate step and the applied snapshot rate is 1
 > PASS 6 caw exec: the wrapped command returned exit 0 and the output is aep-2.9-end-to-end-pass
-> PASS 7 dock attach: the ingest returned status integrated and the admit row is event_id 3 allow true digest 79d75c137dc3...
-> PASS 8 ledger row: the pass path moved the ledger count from 2 to 4 and the newest row is id 4 agent agent-a event_type UCB_INGEST frame_digest a13a10e37cb1...
+> PASS 7 dock attach: the ingest returned status integrated and the admit row is event_id 3 allow true digest d19763a2e75e...
+> PASS 8 ledger row: the pass path moved the ledger count from 2 to 4 and the newest row is id 4 agent agent-a event_type UCB_INGEST frame_digest 34183f80f5bb...
 > 
 > == verdict
 > RESULT refuse path first and pass path second with the ledger row

@@ -188,10 +188,7 @@ pub fn wrap_or_prefix_binds(
         return true;
     }
     let pref = gap_prefix.trim();
-    if !pref.is_empty() && action_path_matches_prefix(action_path, pref) {
-        return true;
-    }
-    false
+    !pref.is_empty() && action_path_matches_prefix(action_path, pref)
 }
 
 fn item_binds(gap: &LoadedGap, input: &PolicySystemCompileInput) -> bool {
@@ -602,10 +599,7 @@ fn has_secret(text: &str) -> bool {
     let pw = join_parts(&["password", "="]);
     let ak = join_parts(&["api_key", "="]);
     let tok = join_parts(&["token", "="]);
-    if low.contains(&pw) || low.contains(&ak) || low.contains(&tok) {
-        return true;
-    }
-    false
+    low.contains(&pw) || low.contains(&ak) || low.contains(&tok)
 }
 
 fn has_injection(text: &str) -> bool {

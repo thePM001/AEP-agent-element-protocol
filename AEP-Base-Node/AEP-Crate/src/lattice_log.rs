@@ -280,6 +280,10 @@ fn build_sealed_frame(
     let sign = sign_store.get(&input.agent_id)?;
 
     let now = now_unix();
+    // The sealed stamp is milliseconds. A stamp truncated to the
+    // second drifts up to 999 ms and closes the 50 ms temporal wall on the dock
+    // Admit for most of every second.
+    let ts_ms = now_unix_ms();
     let bundle = create_bundle(
         &input.agent_id,
         0,
@@ -300,11 +304,6 @@ fn build_sealed_frame(
         .get("_sequenceNumber")
         .and_then(|v| v.as_i64())
         .unwrap_or(1);
-    // The sealed stamp is milliseconds. A stamp truncated to the
-    // second drifts up to 999 ms and closes the 50 ms temporal wall on the dock
-    // Admit for most of every second. The dock compares the stamp with its own
-    // clock when the frame arrives, so the stamp is read as late as the seal allows.
-    let ts_ms = now_unix_ms();
     let plaintext = serde_json::json!({
         "type": governed.event_type,
         "event_type": governed.event_type,
@@ -436,18 +435,6 @@ pub fn build_transport_frame(
 ) -> Result<LatticeChannelFrame, BaseNodeError> {
     let (frame, _bundle, _plaintext, _sealed_ts) = build_sealed_frame(input, contracts, db_path)?;
     Ok(frame)
-}
-
-/// A transport frame together with the stamp its sealed event carries, in milliseconds.
-/// The Base Node process uses this for the frames it seals itself, where the stamp is a
-/// reading of its own clock.
-pub(crate) fn build_transport_frame_stamped(
-    input: &DynAepEventInput,
-    contracts: &ContractRegistry,
-    db_path: &Path,
-) -> Result<(LatticeChannelFrame, i64), BaseNodeError> {
-    let (frame, _bundle, _plaintext, sealed_ts) = build_sealed_frame(input, contracts, db_path)?;
-    Ok((frame, sealed_ts))
 }
 
 #[cfg(test)]

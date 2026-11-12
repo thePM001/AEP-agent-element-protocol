@@ -307,7 +307,10 @@ fn answer_held_capsule(
     let mut record_deny: Option<DockFrameResponse> = None;
     let admit_res = match lock_or_deny(&runtime.admit.live_entry, "live_entry") {
         Ok(mut live) => {
-            live.freeze_temporal_snapshot(cap.freeze.bridge_ts_ms);
+            // The time walls of Admit measure against the event time that the kernel
+            // checked against its own clock at enqueue. The hold and the age of the
+            // capsule were judged by the kernel clock alone in the pulse queue.
+            live.freeze_temporal_snapshot(held.wall_bridge_ms);
             let r = admit_sealed_payload_report_recorded(
                 &mut live,
                 &held.plaintext,

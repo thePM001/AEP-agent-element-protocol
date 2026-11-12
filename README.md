@@ -509,7 +509,7 @@ A plain ping, event or register message on the wire is rejected and logged as a 
 
 Scene proof at boot checks that the scene graph is structurally valid. That boot proof is not the runtime check. Actions after a sealed capsule is opened are judged in the Base Node kernel.
 
-After the seal is verified, the writing scan and the capsule-hash replay, the capsule waits one second on the Base Node clock. Time is frozen at seal so that one-second hold still fits inside 50 ms of allowed clock drift. The freeze is the Base Node clock, read when the frame arrives. The timestamp an agent seals into its event is compared with that clock and never replaces it, so a stamp more than 50 ms ahead of or behind the Base Node clock is refused before the capsule is queued. A capsule older than five seconds fails. Replay is keyed by the capsule hash so the same sealed bytes cannot be judged twice as a new event.
+After the seal is verified, the writing scan and the capsule-hash replay, the capsule waits one second on the Base Node clock. Time is frozen at seal so that one-second hold still fits inside 50 ms of allowed clock drift. The freeze is the Base Node clock, read when the frame arrives. The timestamp an agent seals into its event is compared with that clock and never replaces it, so a stamp more than 50 ms ahead of the Base Node clock is refused before the capsule is queued. The time the seal and the transit take is age and not drift: a stamp up to five seconds behind the Base Node clock is accepted and an older one is refused. A capsule older than five seconds fails. Replay is keyed by the capsule hash so the same sealed bytes cannot be judged twice as a new event.
 
 ### Kernel pulse wait
 

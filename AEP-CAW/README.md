@@ -196,8 +196,6 @@ The Base Node kernel publishes one Unix socket dock per port under the socket ba
 
 The probe talks to the dock the same way every other caller does. It seals one `root:ping` as the agent `caw-kernel-dock` with `aep-lattice-log build-frame`, sends the frame to the dock and collects the outcome after the pulse. The run starts only when the dock admits that frame. A dock that does not answer, answers late or refuses the frame refuses the run.
 
-The kernel compares the stamp of the sealed ping with its own clock when the frame arrives and refuses a stamp more than 50 ms off before it holds the frame. A host under load can delay one ping past that bound. For that refusal only (`temporal:drift_exceeded` or `temporal:future_skew` as the only closed walls) the probe seals a fresh ping, up to three pings in one probe. Every other refusal refuses the run at once. A host whose clock is off refuses every ping, so the run is refused with the text of the dock.
-
 The check is on unless the config turns it off. It covers the plain exec, the streamed exec and the PTY start, so no entry point bypasses it.
 
 | Setting | Default | Meaning |
