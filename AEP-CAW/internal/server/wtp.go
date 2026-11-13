@@ -541,7 +541,9 @@ func makePolicyInstallHook(
 				"policy_id", p.PolicyID, "err", err.Error())
 			return
 		}
-		newEngine, err := policy.NewEngine(newPolicy, enforceApprovals, true)
+		// The pushed policy closes the control API to sessions like every
+		// other session policy (AEP-CRV-030).
+		newEngine, err := policy.NewEngine(appHolder.Load().SealControlPlane(newPolicy), enforceApprovals, true)
 		if err != nil {
 			slog.Warn("policy install: build new engine failed; engine not swapped",
 				"policy_id", p.PolicyID, "err", err.Error())

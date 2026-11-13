@@ -414,6 +414,12 @@ func (a *App) acceptPtracePID(ctx context.Context, listener net.Listener, socket
 		return
 	}
 
+	// The traced shell and everything it starts are session processes: the
+	// control API guard refuses them on state changing calls (AEP-CRV-030).
+	if sess, ok := a.sessions.Get(sessionID); ok {
+		sess.AddProcessRoot(pid)
+	}
+
 	// Clear read deadline for the keepalive phase
 	conn.SetDeadline(time.Time{})
 

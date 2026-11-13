@@ -37,6 +37,7 @@ func TestExec_IncludeEventsNone_ReturnsCountsOnly(t *testing.T) {
 
 	body := `{"command":"echo","args":["hi"],"include_events":"none"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions/"+sess.ID+"/exec", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
@@ -106,6 +107,7 @@ func TestExec_IncludeEventsSummary_CapsBlockedOps(t *testing.T) {
 	// Trigger a command policy deny (rm -rf) which returns blocked_operations in response.
 	body := `{"command":"rm","args":["-rf","/tmp/aep-caw-test"],"include_events":"summary"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions/"+sess.ID+"/exec", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusForbidden {

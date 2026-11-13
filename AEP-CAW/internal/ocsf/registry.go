@@ -91,6 +91,9 @@ var pendingTypes = map[string]struct{}{
 	// Base Node kernel dock gate. The execution path refuses the run and
 	// emits one event per silent dock before any command starts.
 	"kernel_dock_refused": {},
+	// Control API guard. A state changing call from a session process is
+	// refused before authentication (AEP-CRV-030).
+	"control_api_peer_refused": {},
 	// Application Activity (6005) - Task 22
 	"mcp_tool_called":             {},
 	"mcp_tool_seen":               {},

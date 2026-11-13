@@ -103,6 +103,9 @@ type App struct {
 	// is configured. When true, command execution is blocked to prevent running
 	// without syscall enforcement (fail-closed).
 	ptraceFailed atomic.Bool
+	// peerResolver classifies control API peers (AEP-CRV-030). Nil selects
+	// the host resolver; tests set it to classify synthetic peers.
+	peerResolver peerResolver
 	// ptraceDegraded is set when the runtime probe reports that ptrace syscall
 	// injection is unreliable on this kernel, causing initPtraceTracer to skip
 	// starting the tracer. Unlike ptraceFailed it is NOT fail-closed: commands
@@ -311,6 +314,10 @@ const (
 func (a *App) Router() http.Handler {
 	r := chi.NewRouter()
 
+	// The control guard runs before authentication (AEP-CRV-030): a session
+	// process is refused on every state changing route whatever credential
+	// it presents, and with auth disabled only loopback host names are served.
+	r.Use(a.controlGuardMiddleware)
 	r.Use(a.authMiddleware)
 
 	if a.cfg.Metrics.Enabled && a.cfg.Metrics.Path != "" && a.metrics != nil {
@@ -1423,8 +1430,7 @@ func addRedirectGuidance(resp *types.ExecResponse, pre policy.Decision, original
 
 func (a *App) streamEvents(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	if _, ok := a.sessions.Get(id); !ok {
-		writeJSON(w, http.StatusNotFound, map[string]any{"error": "session not found"})
+	if _, ok := a.ownedSessionHTTP(w, r, id); !ok {
 		return
 	}
 
@@ -1462,8 +1468,7 @@ func (a *App) streamEvents(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) sessionHistory(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	if _, ok := a.sessions.Get(id); !ok {
-		writeJSON(w, http.StatusNotFound, map[string]any{"error": "session not found"})
+	if _, ok := a.ownedSessionHTTP(w, r, id); !ok {
 		return
 	}
 	q, err := parseEventQuery(r)
@@ -1528,6 +1533,9 @@ func (a *App) searchEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if sid := r.URL.Query().Get("session_id"); sid != "" {
+		if _, ok := a.ownedSessionHTTP(w, r, sid); !ok {
+			return
+		}
 		q.SessionID = sid
 	}
 	evs, err := a.store.QueryEvents(r.Context(), q)
@@ -1535,17 +1543,20 @@ func (a *App) searchEvents(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, evs)
+	writeJSON(w, http.StatusOK, a.ownedEvents(r.Context(), evs))
 }
 
 func (a *App) getOutputChunk(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "id")
-	if _, ok := a.sessions.Get(sessionID); !ok {
-		writeJSON(w, http.StatusNotFound, map[string]any{"error": "session not found"})
+	if _, ok := a.ownedSessionHTTP(w, r, sessionID); !ok {
 		return
 	}
 
 	cmdID := chi.URLParam(r, "cmdID")
+	if !a.commandInSession(r.Context(), sessionID, cmdID) {
+		writeJSON(w, http.StatusNotFound, map[string]any{"error": "output not found"})
+		return
+	}
 	stream := r.URL.Query().Get("stream")
 	offset, _ := strconv.ParseInt(r.URL.Query().Get("offset"), 10, 64)
 	limit, _ := strconv.ParseInt(r.URL.Query().Get("limit"), 10, 64)
@@ -1690,9 +1701,11 @@ func (a *App) policyTest(w http.ResponseWriter, r *http.Request) {
 	// Honor session_id: route through policyEngineFor so per-session policy overrides are reflected.
 	engine := a.policy
 	if req.SessionID != "" {
-		if s, ok := a.sessions.Get(req.SessionID); ok {
-			engine = a.policyEngineFor(s)
+		s, ok := a.ownedSessionHTTP(w, r, req.SessionID)
+		if !ok {
+			return
 		}
+		engine = a.policyEngineFor(s)
 	}
 
 	if engine == nil {
@@ -1753,6 +1766,9 @@ func (a *App) policyTest(w http.ResponseWriter, r *http.Request) {
 
 // DefaultPolicyLoader loads policies from the configured policy directory.
 type DefaultPolicyLoader struct {
+	// cfg supplies the control API addresses every loaded policy denies to
+	// sessions (AEP-CRV-030). Nil leaves the policies as written.
+	cfg              *config.Config
 	policyDir        string
 	enforceApprovals bool
 	enforceRedirects bool
@@ -1769,6 +1785,13 @@ func NewDefaultPolicyLoader(policyDir string, enforceApprovals, enforceRedirects
 		signingMode:      signingMode,
 		trustStorePath:   trustStorePath,
 	}
+}
+
+// WithControlPlane makes every policy the loader returns deny the control API
+// addresses of cfg to sessions (AEP-CRV-030).
+func (l *DefaultPolicyLoader) WithControlPlane(cfg *config.Config) *DefaultPolicyLoader {
+	l.cfg = cfg
+	return l
 }
 
 // Load loads a policy by name and returns a policy engine.
@@ -1814,6 +1837,9 @@ func (l *DefaultPolicyLoader) Load(name string) (*policy.Engine, error) {
 	p, err := policy.LoadFromBytesNamed(policyBytes, name)
 	if err != nil {
 		return nil, fmt.Errorf("load policy %q: %w", name, err)
+	}
+	if l.cfg != nil {
+		p = SealControlPlane(l.cfg, p)
 	}
 	engine, err := policy.NewEngine(p, l.enforceApprovals, l.enforceRedirects)
 	if err != nil {

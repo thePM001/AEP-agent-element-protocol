@@ -2,6 +2,20 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-13 - The AEP-CAW control API is closed to session processes and the shell entry and exec gate are repaired
+A command inside a session could post a new session to the control API on the loopback address and run commands in it. The new process was a child of the server, so the confinement of the first session did not reach it. With auth type none no credential stood in the way. With api_key the wrapped agent holds an agent key. One ampersand took a command line past the shell entry binary to the real shell.
+
+- Control API guard: before authentication, every state changing HTTP route and gRPC method finds the local process that owns the client socket and refuses it when it belongs to a session. A process belongs to a session when it descends from the server or from a recorded command, PTY or wrapper root. It also belongs to a session when its process group or terminal session is such a root or when it runs in a session cgroup. The roots outlive the command, so the background child of a command that already returned is still refused. A session process may still read, ask a policy test and ask wrap-init for its own session. A loopback peer the guard cannot resolve is refused. The check reads procfs and runs on Linux.
+- Every write must carry a JSON content type. With auth disabled a loopback caller that names another host name is refused. Together they keep a web page in the browser of the operator away from the API.
+- Every policy a session runs under denies the addresses the server listens on (HTTP, gRPC, pprof and the API unix socket) with exact rules that no allow rule outranks, so an active enforcement backend stops the connection first.
+- A caller below the admin role names only the default policy or one in the new `policies.allowed` list, also with auth disabled. The sample config lists the runtime policies except `agent-observe`. A session on the filesystem root is refused. The bench policies moved from `configs/policies` to `test/policies`, so releases no longer ship them.
+- The shell entry binary starts aep-caw directly with no shell. It does so only for exactly one plain command that the shell parser of the tree accepts. A line with an operator, a substitution, a redirection, a wrapper or an assignment takes the enforced path.
+- wrap-init and the gRPC streamed exec run the kernel dock gate. A test lists every route and gRPC method and fails when one that starts a process is not classified.
+- `aep-caw wrap` exits with an error when interception setup fails. `--allow-unconfined` keeps the old direct start and prints a warning.
+- Every route and gRPC method that names a session checks its owner. Output is served only for a command of the named session and event search shows only the sessions of the caller.
+- Full path command rules compare exactly on Linux. Windows and macOS keep folding case.
+- Verify with `bash scripts/ci-go-test.sh ./...` and `go test -race` in `AEP-CAW`.
+
 ## [2.9.0] - 2026-11-12 - The kernel sends an outbound request only on the granted gateway path and one frame no longer stalls the docks
 Any admitted event with a `url` field made the Base Node send an HTTP request for the agent, with the method, headers and body of the same payload and no route list. The request used a blocking client inside the pulse and the async workers, so two slow frames stopped every dock. A query whose target id started with a multi byte character panicked while the live entry lock was held and every later frame was refused until restart. A peer without the key of an agent spent the rate slots of that agent. The dock kept idle connections and ended connection tasks without limit.
 

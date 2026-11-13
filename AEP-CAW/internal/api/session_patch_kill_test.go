@@ -82,6 +82,7 @@ func TestPatchSession_UpdatesCwdAndEnv(t *testing.T) {
 
 	reqBody := `{"cwd":"/workspace/sub","env":{"FOO":"bar"},"unset":["BAZ"]}`
 	req := httptest.NewRequest(http.MethodPatch, "/api/v1/sessions/"+s.ID, strings.NewReader(reqBody))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
@@ -122,6 +123,7 @@ func TestKillCommand_KillsRunningExec(t *testing.T) {
 	go func() {
 		body := `{"command":"sleep","args":["30"]}`
 		req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions/"+s.ID+"/exec", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
 		rr := httptest.NewRecorder()
 		h.ServeHTTP(rr, req)
 		execDone <- rr
@@ -141,6 +143,7 @@ func TestKillCommand_KillsRunningExec(t *testing.T) {
 	}
 
 	killReq := httptest.NewRequest(http.MethodPost, "/api/v1/sessions/"+s.ID+"/kill/"+cmdID, strings.NewReader(`{}`))
+	killReq.Header.Set("Content-Type", "application/json")
 	killRR := httptest.NewRecorder()
 	h.ServeHTTP(killRR, killReq)
 	if killRR.Code != http.StatusOK {

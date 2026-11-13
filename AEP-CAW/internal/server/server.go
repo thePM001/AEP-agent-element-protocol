@@ -174,7 +174,9 @@ func New(cfg *config.Config) (*Server, error) {
 		return nil, err
 	}
 	enforceApprovals := cfg.Approvals.Enabled
-	engine, err := policy.NewEngine(p, enforceApprovals, true)
+	// The global policy also runs commands of sessions without a policy dir,
+	// so it closes the control API to them (AEP-CRV-030).
+	engine, err := policy.NewEngine(api.SealControlPlane(cfg, p), enforceApprovals, true)
 	if err != nil {
 		return nil, err
 	}
@@ -537,7 +539,7 @@ func New(cfg *config.Config) (*Server, error) {
 	policyLoader := api.NewDefaultPolicyLoader(
 		cfg.Policies.Dir, enforceApprovals, true,
 		cfg.Policies.Signing.SigningMode(), cfg.Policies.Signing.TrustStore,
-	)
+	).WithControlPlane(cfg)
 
 	var cgroupMgr *limitspkg.CgroupManager
 	if runtime.GOOS == "linux" {
@@ -773,6 +775,7 @@ func New(cfg *config.Config) (*Server, error) {
 	s := &http.Server{
 		Addr:              cfg.Server.HTTP.Addr,
 		Handler:           handler,
+		ConnContext:       api.ControlConnContext,
 		ReadHeaderTimeout: 15 * time.Second,
 		ReadTimeout:       readTimeout,
 		WriteTimeout:      writeTimeout,
@@ -855,8 +858,10 @@ func New(cfg *config.Config) (*Server, error) {
 
 		var opts []grpc.ServerOption
 		opts = append(opts,
-			grpc.UnaryInterceptor(api.GRPCUnaryAuthInterceptor(app)),
-			grpc.StreamInterceptor(api.GRPCStreamAuthInterceptor(app)),
+			// The control guard runs first: a session process is refused on
+			// every state changing call whatever credential it presents.
+			grpc.ChainUnaryInterceptor(api.GRPCControlGuardUnaryInterceptor(app), api.GRPCUnaryAuthInterceptor(app)),
+			grpc.ChainStreamInterceptor(api.GRPCControlGuardStreamInterceptor(app), api.GRPCStreamAuthInterceptor(app)),
 		)
 		if cfg.Server.TLS.Enabled {
 			if cfg.Server.TLS.CertFile == "" || cfg.Server.TLS.KeyFile == "" {
@@ -927,6 +932,7 @@ func New(cfg *config.Config) (*Server, error) {
 		srv.unixPath = unixPath
 		srv.unixServer = &http.Server{
 			Handler:           handler,
+			ConnContext:       api.ControlConnContext,
 			ReadHeaderTimeout: 15 * time.Second,
 			ReadTimeout:       readTimeout,
 			WriteTimeout:      writeTimeout,

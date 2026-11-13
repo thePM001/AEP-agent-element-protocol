@@ -1002,6 +1002,7 @@ func TestWrapInit_HTTPResponseIncludesSafeToBypassShellShimFalse(t *testing.T) {
 
 	body := []byte(`{"agent_command":"/bin/echo","caller_uid":0}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions/"+s.ID+"/wrap-init", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 
 	app.Router().ServeHTTP(rr, req)
@@ -1680,6 +1681,12 @@ sandbox:
 	if cfg.Landlock.Network.AllowBindTCP == nil {
 		t.Fatal("applyDefaults should have filled AllowBindTCP")
 	}
+
+	// config.Load turns the kernel dock check on, and wrap-init now runs it
+	// (AEP-CRV-030). This test is about the Landlock defaults, so it runs
+	// without a dock; the dock gate has its own tests.
+	dockOff := false
+	cfg.KernelDock.Enabled = &dockOff
 
 	app, mgr := newTestAppForWrap(t, cfg)
 	s, err := mgr.Create(t.TempDir(), "default")

@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/shellparse"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/shim"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/shim/kernelinstall"
 	"golang.org/x/term"
@@ -54,29 +55,27 @@ func main() {
 	}
 
 	// Resolve the real shell early - needed by the kernelinstall branch and by
-	// the aep-caw CLI bypass below.  We capture the error rather than fataling
+	// the enforcement paths below.  We capture the error rather than fataling
 	// immediately so the in-session bypass can use its own PATH fallback (the
 	// .real file may not exist in containerised environments where the shim is
 	// installed but sh.real is absent).  Non-bypass paths fatal below if
 	// realShellErr != nil.
 	realShell, realShellErr := resolveRealShell(shellName)
 
-	// AepCaw CLI bypass: if the command being run IS the aep-caw binary,
-	// exec the real shell directly. The aep-caw CLI connects back to the
-	// server, which would deadlock if the server is handling this shim's
-	// exec request. This applies to: aep-caw detect, aep-caw --version,
-	// aep-caw debug policy-test, aep-caw trash list, etc.
+	// AepCaw CLI bypass: if the command line is exactly one plain aep-caw
+	// command, start the aep-caw binary directly. The aep-caw CLI connects
+	// back to the server, which would deadlock if the server is handling
+	// this shim's exec request. This applies to: aep-caw detect, aep-caw
+	// --version, aep-caw debug policy-test, aep-caw trash list, etc.
+	// No shell is involved, so nothing else on the line can run outside
+	// enforcement. Any line that is not a single plain command (operators,
+	// substitutions, redirections, wrappers, assignments or extra shell
+	// flags) takes the normal enforcement path below.
 	// Checked early so the kernelinstall branch below can also skip for
 	// aep-caw-CLI invocations without duplicating the check.
-	if isAepCawCommand(os.Args[1:]) {
-		if realShellErr != nil {
-			fatalWithHint(127,
-				fmt.Sprintf("aep-caw-shell-shim: resolve real shell: %v", realShellErr),
-				fmt.Sprintf("Expected %s.real to exist next to the shim (or in /bin or /usr/bin).", shellName),
-			)
-		}
-		debugLog("aep-caw CLI bypass: command is aep-caw itself, executing real shell %s", realShell)
-		runAndExit(realShell, argv0, os.Args[1:], os.Environ())
+	if directBin, directArgs, ok := aepCawDirectArgv(os.Args[1:]); ok {
+		debugLog("aep-caw CLI bypass: starting %s directly without a shell, args=%v", directBin, directArgs)
+		runAndExit(directBin, "", directArgs, os.Environ())
 		return
 	}
 
@@ -345,56 +344,26 @@ func isMCPCommand(argv0 string, args []string) bool {
 	return shim.IsMCPServer(argv0, args, nil)
 }
 
-// isAepCawCommand checks if the command being executed is the aep-caw binary.
-// This prevents a deadlock where the shim routes aep-caw CLI commands through
-// the server, and the CLI connects back to the same blocked server.
-// Fail-safe: returns false on any error (worst case is existing deadlock, not a bypass).
-func isAepCawCommand(args []string) bool {
-	// Only match when -c is the first argument. Scanning further into args
-	// could misinterpret script arguments as shell flags (e.g., "sh script.sh -c ...").
-	// Also reject login shell flags in the first position.
-	if len(args) < 2 {
-		return false
+// aepCawDirectArgv reports whether shellArgs ask the shell to run exactly one
+// plain aep-caw command (see shellparse.PlainCommand). On success it returns
+// the resolved aep-caw binary and the arguments to start it with, so the
+// caller can run aep-caw without a shell. This prevents a deadlock where the
+// shim routes aep-caw CLI commands through the server, and the CLI connects
+// back to the same blocked server.
+// Fail-safe: returns ok=false on any error (worst case is the existing
+// deadlock, not a bypass).
+func aepCawDirectArgv(shellArgs []string) (bin string, args []string, ok bool) {
+	argv, ok := shellparse.PlainCommand(shellArgs)
+	if !ok {
+		return "", nil, false
 	}
-	if args[0] == "-l" || args[0] == "--login" {
-		return false
-	}
-	if args[0] != "-c" {
-		return false
-	}
-	cmdStr := args[1]
-	if cmdStr == "" {
-		return false
-	}
-
-	// Reject compound commands (shell operators that chain multiple commands).
-	// Only bypass for simple single-command invocations to prevent enforcement
-	// bypass for chained commands like "aep-caw detect; rm -rf /".
-	// We check for compound OPERATORS, not individual characters, because
-	// characters like & and > appear in legitimate redirections (2>&1).
-	if containsCompoundOperator(cmdStr) {
-		return false
-	}
-
-	cmdParts := strings.Fields(cmdStr)
-	if len(cmdParts) == 0 {
-		return false
-	}
-	// Skip common shell prefixes to find the actual command:
-	// - "exec aep-caw detect" → "aep-caw"
-	// - "env FOO=1 aep-caw detect" → "aep-caw"
-	// - "env -i aep-caw detect" → "aep-caw"
-	cmd := extractCommand(cmdParts)
-	if cmd == "" {
-		return false
-	}
-	cmdPath, err := exec.LookPath(cmd)
+	cmdPath, err := exec.LookPath(argv[0])
 	if err != nil {
-		return false
+		return "", nil, false
 	}
 	aepCawPath, err := resolveAepCawBin()
 	if err != nil {
-		return false
+		return "", nil, false
 	}
 	// Resolve symlinks to handle installations where aep-caw is symlinked
 	// (e.g., /usr/local/bin/aep-caw -> /opt/aep-caw/bin/aep-caw).
@@ -406,52 +375,10 @@ func isAepCawCommand(args []string) bool {
 	if err != nil {
 		aepCawResolved = aepCawPath
 	}
-	return cmdResolved == aepCawResolved
-}
-
-// containsCompoundOperator checks if a shell command string contains operators
-// that chain multiple commands. Returns false for simple redirections like 2>&1.
-func containsCompoundOperator(s string) bool {
-	// These always indicate compound commands or subshells.
-	if strings.ContainsAny(s, ";`\n\r") {
-		return true
+	if cmdResolved != aepCawResolved {
+		return "", nil, false
 	}
-	if strings.Contains(s, "&&") || strings.Contains(s, "||") || strings.Contains(s, "$(") {
-		return true
-	}
-	// Check for pipe: | that is NOT preceded by > (which would be >| clobber
-	// or part of a >&| redirect). A bare | chains commands.
-	for i, c := range s {
-		if c == '|' {
-			if i > 0 && s[i-1] == '>' {
-				continue // part of >| or >&| redirect
-			}
-			if i+1 < len(s) && s[i+1] == '|' {
-				continue // || already handled above
-			}
-			return true // bare pipe
-		}
-	}
-	return false
-}
-
-// extractCommand skips shell builtins that don't affect command resolution
-// (exec, nice, nohup, command) to find the actual executable name.
-// Does NOT skip env or VAR=VAL prefixes because those can modify PATH and
-// change which binary is resolved - skipping them would be a security bypass.
-func extractCommand(parts []string) string {
-	i := 0
-	for i < len(parts) {
-		word := parts[i]
-		switch word {
-		case "exec", "nice", "nohup", "command":
-			// Shell builtins/wrappers that don't affect command resolution.
-			i++
-		default:
-			return word
-		}
-	}
-	return ""
+	return aepCawPath, argv[1:], true
 }
 
 func resolveAepCawBin() (string, error) {

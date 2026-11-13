@@ -30,6 +30,7 @@ func TestCreateSession_AllowsCustomID(t *testing.T) {
 
 	body := fmt.Sprintf(`{"id":"session_custom","workspace":%q,"policy":"default"}`, ws)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusCreated {
@@ -45,6 +46,7 @@ func TestCreateSession_AllowsCustomID(t *testing.T) {
 	}
 
 	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/sessions", strings.NewReader(body))
+	req2.Header.Set("Content-Type", "application/json")
 	rr2 := httptest.NewRecorder()
 	h.ServeHTTP(rr2, req2)
 	if rr2.Code != http.StatusConflict {

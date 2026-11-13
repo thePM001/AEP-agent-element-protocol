@@ -15,9 +15,11 @@ import (
 //
 // The check sits in the execution path rather than in a separate operator
 // script, so a wrapped command cannot start while the kernel that admits it is
-// not answering. Every exec entry point calls it: the plain exec, the streamed
-// exec and the PTY start. It returns the named kerneldock refusal, which the
-// caller reports as the run refusal.
+// not answering. Every entry point that starts a process calls it: the plain
+// exec (HTTP and gRPC), the streamed exec (HTTP and gRPC), the PTY start and
+// wrap-init. TestEveryProcessStartRouteChecksKernelDock keeps that list
+// complete. It returns the named kerneldock refusal, which the caller reports
+// as the run refusal.
 func (a *App) kernelDockGate(ctx context.Context, sessionID string, cmdID string) error {
 	if a == nil || a.cfg == nil {
 		return nil

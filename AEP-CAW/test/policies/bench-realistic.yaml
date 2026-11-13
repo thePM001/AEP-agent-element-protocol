@@ -222,7 +222,8 @@ file_rules:
     description: Block access to SSH keys
     paths:
       - "${HOME}/.ssh/**"
-      - "/root/.ssh/**"
+      # Any top level folder, so the keys of root are denied when HOME differs.
+      - "/*/.ssh/**"
     operations:
       - "*"
     decision: deny

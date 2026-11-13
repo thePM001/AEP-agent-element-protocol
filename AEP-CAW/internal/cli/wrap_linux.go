@@ -99,6 +99,12 @@ func platformSetupWrap(ctx context.Context, wrapResp types.WrapInitResponse, ses
 		}, nil
 	}
 
+	// Fail-closed env filter before any socket resources.
+	filtered, ferr := wrapenv.Filter(os.Environ(), wrapResp.EnvPolicy)
+	if ferr != nil {
+		return nil, fmt.Errorf("wrap env policy: %w", ferr)
+	}
+
 	// Create a socket pair for the notify fd exchange between the wrapper and this CLI process.
 	// The child end (fds[1]) is inherited by aep-caw-unixwrap as ExtraFiles[0] (fd 3).
 	// The parent end (fds[0]) receives the seccomp notify fd from the wrapper.
@@ -139,12 +145,6 @@ func platformSetupWrap(ctx context.Context, wrapResp types.WrapInitResponse, ses
 			signalChildFile.Close()
 			return nil, fmt.Errorf("fcntl clear cloexec signal: %w", errno)
 		}
-	}
-
-	// Fail-closed env filter before any socket resources.
-	filtered, ferr := wrapenv.Filter(os.Environ(), wrapResp.EnvPolicy)
-	if ferr != nil {
-		return nil, fmt.Errorf("wrap env policy: %w", ferr)
 	}
 
 	// Build env for the wrapped process

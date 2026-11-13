@@ -64,6 +64,7 @@ func TestCreateSessionWithProfile(t *testing.T) {
 
 	body := `{"profile":"test-profile"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
@@ -113,6 +114,7 @@ func TestCreateSessionWithProfile_ProfileNotFound(t *testing.T) {
 
 	body := `{"profile":"nonexistent-profile"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
@@ -160,6 +162,7 @@ func TestCreateSessionWithProfile_MissingMountPath(t *testing.T) {
 
 	body := `{"profile":"bad-path-profile"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
@@ -220,6 +223,7 @@ func TestCreateSessionWithProfile_RealPaths(t *testing.T) {
 
 	body := `{"profile":"test-profile","real_paths":true}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
@@ -281,6 +285,7 @@ func TestCreateSessionWithProfile_RealPathsDisabled(t *testing.T) {
 	// Request with real_paths=false overrides config default
 	body := `{"profile":"test-profile","real_paths":false}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 

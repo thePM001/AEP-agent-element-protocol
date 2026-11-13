@@ -30,6 +30,7 @@ func TestCreateSession_RealPaths_RequestOverride(t *testing.T) {
 
 	body := fmt.Sprintf(`{"id":"real-paths-test","workspace":%q,"policy":"default","real_paths":true}`, ws)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusCreated {
@@ -68,6 +69,7 @@ func TestCreateSession_RealPaths_ConfigDefault(t *testing.T) {
 	// Request WITHOUT real_paths field - should use config default (true)
 	body := fmt.Sprintf(`{"id":"config-default-test","workspace":%q,"policy":"default"}`, ws)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusCreated {
@@ -104,6 +106,7 @@ func TestCreateSession_RealPaths_RequestOverrideFalse(t *testing.T) {
 
 	body := fmt.Sprintf(`{"id":"override-false-test","workspace":%q,"policy":"default","real_paths":false}`, ws)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusCreated {

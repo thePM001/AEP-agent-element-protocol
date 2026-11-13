@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"syscall"
@@ -1198,7 +1199,7 @@ func TestServerIsLocal_HostnameResolution(t *testing.T) {
 	}
 }
 
-func TestIsAepCawCommand(t *testing.T) {
+func TestAepCawDirectArgv(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("shell-shim tests require Unix")
 	}
@@ -1213,63 +1214,88 @@ func TestIsAepCawCommand(t *testing.T) {
 	t.Setenv("PATH", tmp+":"+os.Getenv("PATH"))
 
 	tests := []struct {
-		name string
-		args []string
-		want bool
+		name     string
+		args     []string
+		wantArgs []string
+		wantOK   bool
 	}{
-		{"aep-caw detect", []string{"-c", "aep-caw detect"}, true},
-		{"aep-caw --version", []string{"-c", "aep-caw --version"}, true},
-		{"aep-caw trash list", []string{"-c", "aep-caw trash list"}, true},
-		{"absolute path", []string{"-c", aepCawBin + " detect"}, true},
-		{"exec aep-caw", []string{"-c", "exec aep-caw detect"}, true},
-		{"nice aep-caw", []string{"-c", "nice aep-caw detect"}, true},
-		{"command aep-caw", []string{"-c", "command aep-caw detect"}, true},
-		// -lc and -l -c are intentionally NOT handled (login shell PATH risk).
-		{"-lc flag", []string{"-lc", "aep-caw detect"}, false},
-		{"-l -c split", []string{"-l", "-c", "aep-caw detect"}, false},
-		{"echo hello", []string{"-c", "echo hello"}, false},
-		{"sudo aep-caw", []string{"-c", "sudo aep-caw detect"}, false},
-		// env and VAR=VAL prefixes are NOT skipped (they can modify PATH).
-		{"env aep-caw", []string{"-c", "env aep-caw detect"}, false},
-		{"env VAR=1 aep-caw", []string{"-c", "env FOO=bar aep-caw detect"}, false},
-		{"env -i aep-caw", []string{"-c", "env -i aep-caw detect"}, false},
-		{"bare VAR=VAL prefix", []string{"-c", "FOO=1 aep-caw detect"}, false},
-		{"PATH override", []string{"-c", "PATH=/tmp aep-caw detect"}, false},
-		// -c must be the first argument (not further into args).
-		{"--norc -c", []string{"--norc", "-c", "aep-caw detect"}, false},
-		// Login shell flags - bypass disabled.
-		{"-l -c login", []string{"-l", "-c", "aep-caw detect"}, false},
-		{"--login -c", []string{"--login", "-c", "aep-caw detect"}, false},
-		// Compound commands - bypass disabled (could bypass enforcement for chained commands).
-		{"semicolon chain", []string{"-c", "aep-caw detect; echo done"}, false},
-		{"and chain", []string{"-c", "aep-caw detect && echo done"}, false},
-		{"or chain", []string{"-c", "aep-caw detect || echo done"}, false},
-		{"pipe", []string{"-c", "aep-caw detect | grep ok"}, false},
-		{"subshell", []string{"-c", "$(aep-caw detect)"}, false},
-		{"backtick", []string{"-c", "`aep-caw detect`"}, false},
-		{"newline separator", []string{"-c", "aep-caw detect\nother-cmd"}, false},
-		// Redirections are NOT compound - they're single commands.
-		{"stderr redirect", []string{"-c", "aep-caw detect 2>&1"}, true},
-		{"stdout redirect", []string{"-c", "aep-caw detect > /dev/null"}, true},
-		{"stderr to file", []string{"-c", "aep-caw detect 2>/dev/null"}, true},
-		{"script with -c arg", []string{"script.sh", "-c", "aep-caw detect"}, false},
-		{"no -c flag", []string{"aep-caw", "detect"}, false},
-		{"empty command", []string{"-c", ""}, false},
-		{"just -c", []string{"-c"}, false},
-		{"no args", []string{}, false},
+		// Plain aep-caw commands start aep-caw directly with the parsed args.
+		{"aep-caw version", []string{"-c", "aep-caw version"}, []string{"version"}, true},
+		{"aep-caw detect", []string{"-c", "aep-caw detect"}, []string{"detect"}, true},
+		{"aep-caw detect --json", []string{"-c", "aep-caw detect --json"}, []string{"detect", "--json"}, true},
+		{"aep-caw --version", []string{"-c", "aep-caw --version"}, []string{"--version"}, true},
+		{"aep-caw trash list", []string{"-c", "aep-caw trash list"}, []string{"trash", "list"}, true},
+		{"single quoted arg", []string{"-c", "aep-caw debug policy-test 'rm -rf /'"}, []string{"debug", "policy-test", "rm -rf /"}, true},
+		{"double quoted arg", []string{"-c", `aep-caw debug policy-test "a; b & c"`}, []string{"debug", "policy-test", "a; b & c"}, true},
+		{"bare aep-caw", []string{"-c", "aep-caw"}, []string{}, true},
+		{"absolute path", []string{"-c", aepCawBin + " detect"}, []string{"detect"}, true},
+		// Other commands never bypass.
+		{"echo hello", []string{"-c", "echo hello"}, nil, false},
+		{"sudo aep-caw", []string{"-c", "sudo aep-caw detect"}, nil, false},
+		{"unknown binary", []string{"-c", "aep-caw-nonexistent detect"}, nil, false},
+		// Wrappers are not stripped: only a plain command line bypasses.
+		{"exec aep-caw", []string{"-c", "exec aep-caw detect"}, nil, false},
+		{"nice aep-caw", []string{"-c", "nice aep-caw detect"}, nil, false},
+		{"command aep-caw", []string{"-c", "command aep-caw detect"}, nil, false},
+		{"nohup aep-caw", []string{"-c", "nohup aep-caw detect"}, nil, false},
+		// env and VAR=VAL prefixes can modify PATH.
+		{"env aep-caw", []string{"-c", "env aep-caw detect"}, nil, false},
+		{"env VAR=1 aep-caw", []string{"-c", "env FOO=bar aep-caw detect"}, nil, false},
+		{"env -i aep-caw", []string{"-c", "env -i aep-caw detect"}, nil, false},
+		{"bare VAR=VAL prefix", []string{"-c", "FOO=1 aep-caw detect"}, nil, false},
+		{"PATH override", []string{"-c", "PATH=/tmp aep-caw detect"}, nil, false},
+		// Only exactly [-c, script] is accepted.
+		{"-lc flag", []string{"-lc", "aep-caw detect"}, nil, false},
+		{"-l -c split", []string{"-l", "-c", "aep-caw detect"}, nil, false},
+		{"--norc -c", []string{"--norc", "-c", "aep-caw detect"}, nil, false},
+		{"--login -c", []string{"--login", "-c", "aep-caw detect"}, nil, false},
+		{"positional arg after script", []string{"-c", "aep-caw detect", "sh"}, nil, false},
+		{"script with -c arg", []string{"script.sh", "-c", "aep-caw detect"}, nil, false},
+		{"no -c flag", []string{"aep-caw", "detect"}, nil, false},
+		{"empty command", []string{"-c", ""}, nil, false},
+		{"just -c", []string{"-c"}, nil, false},
+		{"no args", []string{}, nil, false},
+		// Chained commands and substitutions.
+		{"single ampersand", []string{"-c", "aep-caw version & id"}, nil, false},
+		{"process substitution in", []string{"-c", "aep-caw version <(id)"}, nil, false},
+		{"process substitution out", []string{"-c", "aep-caw version >(id)"}, nil, false},
+		{"semicolon chain", []string{"-c", "aep-caw detect; echo done"}, nil, false},
+		{"and chain", []string{"-c", "aep-caw detect && echo done"}, nil, false},
+		{"or chain", []string{"-c", "aep-caw detect || echo done"}, nil, false},
+		{"pipe", []string{"-c", "aep-caw detect | grep ok"}, nil, false},
+		{"command substitution", []string{"-c", "$(aep-caw detect)"}, nil, false},
+		{"backtick", []string{"-c", "`aep-caw detect`"}, nil, false},
+		{"newline separator", []string{"-c", "aep-caw detect\nother-cmd"}, nil, false},
+		// Redirections need a shell, so they take the enforcement path.
+		{"stderr redirect", []string{"-c", "aep-caw detect 2>&1"}, nil, false},
+		{"stdout redirect", []string{"-c", "aep-caw detect > /dev/null"}, nil, false},
+		{"stderr to file", []string{"-c", "aep-caw detect 2>/dev/null"}, nil, false},
+		{"unterminated quote", []string{"-c", "aep-caw 'detect"}, nil, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isAepCawCommand(tt.args)
-			if got != tt.want {
-				t.Errorf("isAepCawCommand(%v) = %v, want %v", tt.args, got, tt.want)
+			bin, args, ok := aepCawDirectArgv(tt.args)
+			if ok != tt.wantOK {
+				t.Fatalf("aepCawDirectArgv(%q) ok = %v, want %v", tt.args, ok, tt.wantOK)
+			}
+			if !ok {
+				if bin != "" || args != nil {
+					t.Fatalf("aepCawDirectArgv(%q) = (%q, %q), want empty results on rejection", tt.args, bin, args)
+				}
+				return
+			}
+			if bin != aepCawBin {
+				t.Fatalf("aepCawDirectArgv(%q) bin = %q, want %q", tt.args, bin, aepCawBin)
+			}
+			if !reflect.DeepEqual(args, tt.wantArgs) {
+				t.Fatalf("aepCawDirectArgv(%q) args = %q, want %q", tt.args, args, tt.wantArgs)
 			}
 		})
 	}
 }
 
-func TestIsAepCawCommand_Symlink(t *testing.T) {
+func TestAepCawDirectArgv_Symlink(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("shell-shim tests require Unix")
 	}
@@ -1299,8 +1325,15 @@ func TestIsAepCawCommand_Symlink(t *testing.T) {
 	t.Setenv("PATH", binDir+":"+os.Getenv("PATH"))
 
 	// Should detect aep-caw even though PATH resolves to a symlink.
-	if !isAepCawCommand([]string{"-c", "aep-caw detect"}) {
-		t.Fatalf("expected true: symlinked aep-caw should be detected")
+	bin, args, ok := aepCawDirectArgv([]string{"-c", "aep-caw detect"})
+	if !ok {
+		t.Fatalf("expected ok: symlinked aep-caw should be detected")
+	}
+	if bin != realBin {
+		t.Fatalf("bin = %q, want the resolved aep-caw binary %q", bin, realBin)
+	}
+	if !reflect.DeepEqual(args, []string{"detect"}) {
+		t.Fatalf("args = %q, want [detect]", args)
 	}
 }
 
@@ -1618,5 +1651,98 @@ exec "$@"
 	}
 	if ee.ExitCode() != 42 {
 		t.Fatalf("exit code = %d, want 42", ee.ExitCode())
+	}
+}
+
+// setupAepCawBypassFixture builds the shim into a temp dir next to a fake
+// aep-caw binary and a sh.real that points at /bin/sh. The fake aep-caw
+// prints "fake-aep-caw:" followed by its arguments and exits with code 7 so
+// tests can tell a direct aep-caw start from the enforcement path (which
+// starts aep-caw with "exec" as its first argument). shim.conf sets
+// shim_install=off so the kernel install branch never contacts a server.
+func setupAepCawBypassFixture(t *testing.T) (shimBin string, env []string) {
+	t.Helper()
+	tmp := t.TempDir()
+	shimBin = buildShim(t, tmp)
+	if err := os.Symlink("/bin/sh", filepath.Join(tmp, "sh.real")); err != nil {
+		t.Fatal(err)
+	}
+	fakeAepCaw := filepath.Join(tmp, "aep-caw")
+	fakeScript := "#!/bin/sh\necho \"fake-aep-caw:$*\"\nexit 7\n"
+	if err := os.WriteFile(fakeAepCaw, []byte(fakeScript), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	confDir := filepath.Join(tmp, "etc", "aep-caw")
+	if err := os.MkdirAll(confDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(confDir, "shim.conf"), []byte("shim_install=off\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	env = []string{
+		"PATH=" + tmp + ":/usr/bin:/bin",
+		"AEP_CAW_SESSION_ID=test-session",
+		"AEP_CAW_SHIM_CONF_ROOT=" + tmp,
+		"AEP_CAW_BIN=" + fakeAepCaw,
+	}
+	return shimBin, env
+}
+
+// TestShimAepCawBypass_StartsAepCawDirectly verifies that a plain aep-caw
+// command line skips enforcement (deadlock avoidance) and starts aep-caw
+// itself with the parsed argv, propagating its exit code.
+func TestShimAepCawBypass_StartsAepCawDirectly(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-shim tests require Unix")
+	}
+	shimBin, env := setupAepCawBypassFixture(t)
+
+	cmd := exec.Command(shimBin, "-c", `aep-caw detect --json 'two words'`) //nolint:gosec // G204: runs the shim this test just built
+	cmd.Stdin = strings.NewReader("")
+	cmd.Env = env
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	var ee *exec.ExitError
+	if !errors.As(err, &ee) || ee.ExitCode() != 7 {
+		t.Fatalf("expected exit code 7 from aep-caw, got err=%v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
+	}
+	if got, want := stdout.String(), "fake-aep-caw:detect --json two words\n"; got != want {
+		t.Fatalf("stdout = %q, want %q", got, want)
+	}
+}
+
+// TestShimAepCawBypass_RejectsChainedCommands verifies that a command line
+// starting with aep-caw but chaining another command (single ampersand or
+// process substitution) is not given to the real shell. It must take the
+// enforcement path, which starts aep-caw with "exec" as its first argument.
+func TestShimAepCawBypass_RejectsChainedCommands(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-shim tests require Unix")
+	}
+	shimBin, env := setupAepCawBypassFixture(t)
+
+	scripts := map[string]string{
+		"single ampersand":         "aep-caw version & echo bypass-marker",
+		"process substitution in":  "aep-caw version <(echo bypass-marker)",
+		"process substitution out": "aep-caw version >(echo bypass-marker)",
+		"stderr redirect":          "aep-caw version 2>&1",
+	}
+	for name, script := range scripts {
+		t.Run(name, func(t *testing.T) {
+			cmd := exec.Command(shimBin, "-c", script) //nolint:gosec // G204: runs the shim this test just built
+			cmd.Stdin = strings.NewReader("")
+			cmd.Env = env
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			// The exit code is the fake aep-caw's; only the path taken matters.
+			_ = cmd.Run()
+			if !strings.HasPrefix(stdout.String(), "fake-aep-caw:exec ") {
+				t.Fatalf("expected the aep-caw exec enforcement path, got stdout %q stderr %q", stdout.String(), stderr.String())
+			}
+		})
 	}
 }

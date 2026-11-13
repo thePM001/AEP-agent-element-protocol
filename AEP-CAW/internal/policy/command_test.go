@@ -232,6 +232,10 @@ func TestEngine_CheckCommand_SecurityBypass(t *testing.T) {
 }
 
 func TestEngine_CheckCommand_CaseInsensitive(t *testing.T) {
+	// Full path rules fold case only where the filesystem does (Windows and
+	// default macOS); pin that mode so the /BIN/SH cases exercise folding on
+	// every host. Linux exact matching is covered in command_path_case_test.go.
+	withCommandPathCaseFold(t, true)
 	p := &Policy{
 		Version: 1,
 		Name:    "test",

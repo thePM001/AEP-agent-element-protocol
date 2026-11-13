@@ -279,6 +279,11 @@ func (s *grpcServer) ExecStream(in *structpb.Struct, stream grpc.ServerStream) e
 	}
 
 	cmdID := "cmd-" + uuid.NewString()
+	// Kernel dock check (AEP-CRV-030, CAWA 02): the streamed gRPC exec refuses
+	// the same way as the HTTP exec paths while the kernel dock stays silent.
+	if err := s.app.kernelDockGate(stream.Context(), req.SessionID, cmdID); err != nil {
+		return status.Error(codes.Unavailable, err.Error())
+	}
 	start := time.Now().UTC()
 	unlock := sess.LockExec()
 	defer unlock()
@@ -488,8 +493,8 @@ func (s *grpcServer) EventsTail(in *structpb.Struct, stream grpc.ServerStream) e
 	if sid == "" {
 		return status.Error(codes.InvalidArgument, "session_id is required")
 	}
-	if _, ok := s.app.sessions.Get(sid); !ok {
-		return status.Error(codes.NotFound, "session not found")
+	if _, err := s.app.ownedSessionGRPC(stream.Context(), sid); err != nil {
+		return err
 	}
 
 	ch := s.app.broker.Subscribe(sid, 200)
@@ -524,7 +529,9 @@ func (s *grpcServer) ListSessions(ctx context.Context, in *structpb.Struct) (*st
 	all := s.app.sessions.List()
 	out := make([]types.Session, 0, len(all))
 	for _, sess := range all {
-		out = append(out, sess.Snapshot())
+		if s.app.canAccessSessionCtx(ctx, sess) {
+			out = append(out, sess.Snapshot())
+		}
 	}
 	return jsonToProto(out)
 }
@@ -641,9 +648,9 @@ func (s *grpcServer) KillCommand(ctx context.Context, in *structpb.Struct) (*str
 	if sessionID == "" {
 		return nil, status.Error(codes.InvalidArgument, "session_id is required")
 	}
-	sess, ok := s.app.sessions.Get(sessionID)
-	if !ok {
-		return nil, status.Error(codes.NotFound, "session not found")
+	sess, err := s.app.ownedSessionGRPC(ctx, sessionID)
+	if err != nil {
+		return nil, err
 	}
 	cmdID, _ := reqMap["command_id"].(string)
 	cmdID = strings.TrimSpace(cmdID)
@@ -680,8 +687,8 @@ func (s *grpcServer) QueryEvents(ctx context.Context, in *structpb.Struct) (*str
 	if sessionID == "" {
 		return nil, status.Error(codes.InvalidArgument, "session_id is required")
 	}
-	if _, ok := s.app.sessions.Get(sessionID); !ok {
-		return nil, status.Error(codes.NotFound, "session not found")
+	if _, err := s.app.ownedSessionGRPC(ctx, sessionID); err != nil {
+		return nil, err
 	}
 
 	q := eventQueryFromMap(reqMap)
@@ -703,14 +710,17 @@ func (s *grpcServer) SearchEvents(ctx context.Context, in *structpb.Struct) (*st
 	}
 
 	q := eventQueryFromMap(reqMap)
-	if sid, ok := reqMap["session_id"].(string); ok {
+	if sid, ok := reqMap["session_id"].(string); ok && strings.TrimSpace(sid) != "" {
+		if _, err := s.app.ownedSessionGRPC(ctx, sid); err != nil {
+			return nil, err
+		}
 		q.SessionID = strings.TrimSpace(sid)
 	}
 	evs, err := s.app.store.QueryEvents(ctx, q)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	return jsonToProto(evs)
+	return jsonToProto(s.app.ownedEvents(ctx, evs))
 }
 
 func (s *grpcServer) OutputChunk(ctx context.Context, in *structpb.Struct) (*structpb.Struct, error) {
@@ -726,13 +736,16 @@ func (s *grpcServer) OutputChunk(ctx context.Context, in *structpb.Struct) (*str
 	if sessionID == "" {
 		return nil, status.Error(codes.InvalidArgument, "session_id is required")
 	}
-	if _, ok := s.app.sessions.Get(sessionID); !ok {
-		return nil, status.Error(codes.NotFound, "session not found")
+	if _, err := s.app.ownedSessionGRPC(ctx, sessionID); err != nil {
+		return nil, err
 	}
 	cmdID, _ := reqMap["command_id"].(string)
 	cmdID = strings.TrimSpace(cmdID)
 	if cmdID == "" {
 		return nil, status.Error(codes.InvalidArgument, "command_id is required")
+	}
+	if !s.app.commandInSession(ctx, sessionID, cmdID) {
+		return nil, status.Error(codes.NotFound, "output not found")
 	}
 	stream, _ := reqMap["stream"].(string)
 	offset := int64(0)
@@ -828,9 +841,11 @@ func (s *grpcServer) PolicyTest(ctx context.Context, in *structpb.Struct) (*stru
 
 	engine := s.app.policy
 	if sessionID != "" {
-		if sess, ok := s.app.sessions.Get(sessionID); ok {
-			engine = s.app.policyEngineFor(sess)
+		sess, err := s.app.ownedSessionGRPC(ctx, sessionID)
+		if err != nil {
+			return nil, err
 		}
+		engine = s.app.policyEngineFor(sess)
 	}
 	if engine == nil {
 		return nil, status.Error(codes.Unavailable, "policy engine not available")

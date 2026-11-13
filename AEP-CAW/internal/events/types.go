@@ -166,6 +166,15 @@ const (
 	EventKernelDockRefused EventType = "kernel_dock_refused"
 )
 
+// Control API events.
+const (
+	// EventControlAPIPeerRefused is emitted when the control API refuses a
+	// state changing call from a session process or from a peer it cannot
+	// check (AEP-CRV-030). The event carries the rule, the call, the pid
+	// and the marker that identified the session process.
+	EventControlAPIPeerRefused EventType = "control_api_peer_refused"
+)
+
 // PolicyLoadedEvent is emitted when a policy is loaded.
 type PolicyLoadedEvent struct {
 	PolicyName    string `json:"policy_name"`

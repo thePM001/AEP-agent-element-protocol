@@ -39,6 +39,7 @@ func TestCreateSession_RequestTooLargeReturns413(t *testing.T) {
 	body := string(bodyBytes)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusRequestEntityTooLarge {

@@ -371,6 +371,7 @@ func TestExec_RealPaths_OutsideWorkspace_Allowed(t *testing.T) {
 		"include_events": "none",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions/"+sess.ID+"/exec", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
@@ -418,6 +419,7 @@ func TestExec_Default_OutsideWorkspace_Rejected(t *testing.T) {
 		"include_events": "none",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions/"+sess.ID+"/exec", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
@@ -468,6 +470,7 @@ func TestExec_RealPaths_InWorkspace_UsesRealPath(t *testing.T) {
 		"include_events": "none",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions/"+sess.ID+"/exec", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {

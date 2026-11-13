@@ -22,7 +22,18 @@ import (
 var (
 	ErrSessionExists    = errors.New("session already exists")
 	ErrInvalidSessionID = errors.New("invalid session id")
+	// ErrRootWorkspace refuses a session whose workspace is the filesystem
+	// root. Policy globs expand ${PROJECT_ROOT} from the workspace, so a root
+	// workspace turns every project rule into a rule over the whole host.
+	ErrRootWorkspace = errors.New("workspace must not be the filesystem root")
 )
+
+// isFilesystemRoot reports whether the cleaned absolute path p names a
+// filesystem root ("/" on Unix, a volume root such as `C:\` on Windows).
+func isFilesystemRoot(p string) bool {
+	p = filepath.Clean(p)
+	return filepath.Dir(p) == p
+}
 
 var sessionIDRe = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$`)
 
@@ -50,8 +61,14 @@ type Session struct {
 	stats   types.SessionStats
 	endedAt *time.Time
 
-	currentCommandID  string
-	currentProcPID    int
+	currentCommandID string
+	currentProcPID   int
+	// processRoots holds the pid of every process the session started (the
+	// command, PTY and wrapper roots). Each root is also the process group
+	// leader or session leader of what it starts, so the control API can tell
+	// a session process from an operator process even after the root exited
+	// and its children were reparented. See ProcessRoots and PruneProcessRoots.
+	processRoots      map[int]struct{}
 	currentTraceID    string // W3C trace context: trace ID (32 hex chars)
 	currentSpanID     string // W3C trace context: parent span ID (16 hex chars)
 	currentTraceFlags string // W3C trace context: trace flags (2 hex chars, e.g. "01")
@@ -204,6 +221,15 @@ func (m *Manager) CreateWithProfile(id, profile, basePolicy string, mounts []Res
 	if resolved, err := filepath.EvalSymlinks(primaryWorkspace); err == nil {
 		primaryWorkspace = resolved
 	}
+	for _, mnt := range mounts {
+		resolved := mnt.Path
+		if r, err := filepath.EvalSymlinks(resolved); err == nil {
+			resolved = r
+		}
+		if isFilesystemRoot(resolved) {
+			return nil, ErrRootWorkspace
+		}
+	}
 
 	now := time.Now().UTC()
 	s := &Session{
@@ -243,6 +269,9 @@ func (m *Manager) CreateWithID(id, workspace, policy string) (*Session, error) {
 	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
 		abs = resolved
 	}
+	if isFilesystemRoot(abs) {
+		return nil, ErrRootWorkspace
+	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -280,6 +309,20 @@ func (m *Manager) Get(id string) (*Session, bool) {
 	defer m.mu.RUnlock()
 	s, ok := m.sessions[id]
 	return s, ok
+}
+
+// ProcessRoots maps the recorded process roots of every live session to the
+// id of the session that started them.
+func (m *Manager) ProcessRoots() map[int]string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := make(map[int]string)
+	for id, s := range m.sessions {
+		for _, pid := range s.ProcessRoots() {
+			out[pid] = id
+		}
+	}
+	return out
 }
 
 func (m *Manager) List() []*Session {
@@ -392,6 +435,52 @@ func (s *Session) SetCurrentProcessPID(pid int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.currentProcPID = pid
+	s.addProcessRootLocked(pid)
+}
+
+// AddProcessRoot records pid as a root of this session's process tree. The
+// exec, PTY and wrap paths call it (exec and PTY through SetCurrentProcessPID)
+// for every process they start on behalf of the session.
+func (s *Session) AddProcessRoot(pid int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.addProcessRootLocked(pid)
+}
+
+func (s *Session) addProcessRootLocked(pid int) {
+	if pid <= 0 {
+		return
+	}
+	if s.processRoots == nil {
+		s.processRoots = make(map[int]struct{})
+	}
+	s.processRoots[pid] = struct{}{}
+}
+
+// ProcessRoots returns the recorded process roots of the session.
+func (s *Session) ProcessRoots() []int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]int, 0, len(s.processRoots))
+	for pid := range s.processRoots {
+		out = append(out, pid)
+	}
+	return out
+}
+
+// PruneProcessRoots drops every root for which live reports false. A root is
+// live while some process still runs with it as pid, process group or
+// session id. The kernel does not hand out a pid that is still in use as a
+// process group or session id, so a pruned root can never match a later
+// unrelated process and a kept root can never belong to one.
+func (s *Session) PruneProcessRoots(live func(pid int) bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for pid := range s.processRoots {
+		if !live(pid) {
+			delete(s.processRoots, pid)
+		}
+	}
 }
 
 func (s *Session) CurrentProcessPID() int {

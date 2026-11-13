@@ -39,6 +39,7 @@ func TestCreateSession_HomeFieldPropagated(t *testing.T) {
 	}
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions", strings.NewReader(string(bodyBytes)))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusCreated {

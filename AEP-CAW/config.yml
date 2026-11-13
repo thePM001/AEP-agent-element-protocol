@@ -368,6 +368,18 @@ policies:
   
   # Default policy to use if not specified
   default: "default"
+
+  # Policies a caller below the admin role may name when it creates a session,
+  # besides the default. With auth type none every caller is bound by this list.
+  # agent-observe audits without blocking and is left out on purpose.
+  allowed:
+    - "agent-default"
+    - "agent-sandbox"
+    - "agent-strict"
+    - "ci-strict"
+    - "dev-safe"
+    - "signal-strict"
+    - "system-readonly"
   
   # Policy reload interval (0 to disable hot reload)
   reload_interval: "30s"

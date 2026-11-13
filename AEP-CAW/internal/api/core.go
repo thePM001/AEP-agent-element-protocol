@@ -676,6 +676,9 @@ func (a *App) createSessionCore(ctx context.Context, req types.CreateSessionRequ
 	if policyName == "" {
 		policyName = a.cfg.Policies.Default
 	}
+	if err := a.sessionPolicyAllowed(ctx, policyName); err != nil {
+		return types.Session{}, http.StatusForbidden, err
+	}
 
 	// Determine if we should detect project root
 	shouldDetect := a.cfg.Policies.ShouldDetectProjectRoot()
@@ -847,6 +850,8 @@ func (a *App) createSessionCore(ctx context.Context, req types.CreateSessionRequ
 			"policy":       s.Policy,
 			"project_root": s.ProjectRoot,
 			"git_root":     s.GitRoot,
+			// The caller the policy was granted to (CAWB 02).
+			"operator_id": operatorIDFromContext(ctx),
 		},
 	}
 	_ = a.store.AppendEvent(ctx, ev)
@@ -1566,7 +1571,7 @@ func (a *App) ensureFUSEMount(ctx context.Context, s *session.Session) {
 						"HOME":         os.Getenv("HOME"),
 					}
 					enforceApprovals := a.cfg.Approvals.Enabled && a.cfg.Approvals.Mode != ""
-					engine, _ = policy.NewEngineWithVariables(pol, enforceApprovals, true, policyVars)
+					engine, _ = policy.NewEngineWithVariables(SealControlPlane(a.cfg, pol), enforceApprovals, true, policyVars)
 				}
 			}
 		}
@@ -1721,9 +1726,8 @@ func (a *App) emitPackageCheckEvent(ctx context.Context, sessionID, commandID st
 // running inside a session to associate their OTEL traces with aep-caw events.
 func (a *App) setTraceContext(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	s, ok := a.sessions.Get(id)
+	s, ok := a.ownedSessionHTTP(w, r, id)
 	if !ok {
-		writeJSON(w, http.StatusNotFound, map[string]any{"error": "session not found"})
 		return
 	}
 

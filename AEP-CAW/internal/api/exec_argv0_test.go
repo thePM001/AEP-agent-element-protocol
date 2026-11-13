@@ -42,6 +42,7 @@ func TestExec_Argv0_OverridesDollarZero(t *testing.T) {
 		"include_events": "none",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions/"+sess.ID+"/exec", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {

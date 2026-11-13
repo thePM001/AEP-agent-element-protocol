@@ -21,12 +21,22 @@ import (
 // override it to avoid forking a real aep-caw server subprocess.
 var ensureServerRunningFn = ensureServerRunning
 
+// newWrapClientFn builds the API client used by runWrap. Tests override it
+// to inject a mock client.
+var newWrapClientFn = client.NewForCLI
+
+// wrapGOOS is the operating system runWrap uses to decide whether exec
+// interception is supported. Tests override it to exercise the
+// unsupported-platform path.
+var wrapGOOS = runtime.GOOS
+
 func newWrapCmd() *cobra.Command {
 	var sessionID string
 	var policy string
 	var profile string
 	var root string
 	var report bool
+	var allowUnconfined bool
 
 	cmd := &cobra.Command{
 		Use:   "wrap [flags] -- COMMAND [ARGS...]",
@@ -35,6 +45,10 @@ func newWrapCmd() *cobra.Command {
 
 Every command spawned by the agent and its descendants is routed through the
 aep-caw exec pipeline (policy check, approval workflow, audit logging).
+
+If exec interception cannot be set up, wrap exits with an error and does
+not start the agent. Pass --allow-unconfined to start the agent without
+interception instead (a warning is printed).
 
 Examples:
   aep-caw wrap -- claude-code
@@ -55,6 +69,8 @@ Examples:
 				report:    report,
 				agentCmd:  args[0],
 				agentArgs: args[1:],
+
+				allowUnconfined: allowUnconfined,
 			})
 		},
 	}
@@ -64,6 +80,7 @@ Examples:
 	cmd.Flags().StringVar(&profile, "profile", "", "GAP mount profile (e.g. coding-agent)")
 	cmd.Flags().StringVar(&root, "root", "", "Workspace root (default: current directory)")
 	cmd.Flags().BoolVar(&report, "report", true, "Generate session report on exit")
+	cmd.Flags().BoolVar(&allowUnconfined, "allow-unconfined", false, "Start the agent without exec interception if interception setup fails (unsafe)")
 
 	return cmd
 }
@@ -76,11 +93,21 @@ type wrapOptions struct {
 	report    bool
 	agentCmd  string
 	agentArgs []string
+	// allowUnconfined lets the agent start without exec interception when
+	// interception setup fails (--allow-unconfined).
+	allowUnconfined bool
+	// stderr receives operator-facing status lines. Nil means os.Stderr.
+	stderr io.Writer
 }
 
 func runWrap(ctx context.Context, cfg *clientConfig, opts wrapOptions) error {
+	stderr := opts.stderr
+	if stderr == nil {
+		stderr = os.Stderr
+	}
+
 	// 1. Create or reuse session
-	c, err := client.NewForCLI(client.CLIOptions{
+	c, err := newWrapClientFn(client.CLIOptions{
 		HTTPBaseURL: cfg.serverAddr,
 		GRPCAddr:    cfg.grpcAddr,
 		APIKey:      cfg.apiKey,
@@ -109,9 +136,9 @@ func runWrap(ctx context.Context, cfg *clientConfig, opts wrapOptions) error {
 	llmProxyURL := sess.LLMProxyURL
 	if opts.sessionID == "" {
 		if opts.profile != "" {
-			fmt.Fprintf(os.Stderr, "aep-caw: session %s created (profile: %s)\n", sessID, opts.profile)
+			fmt.Fprintf(stderr, "aep-caw: session %s created (profile: %s)\n", sessID, opts.profile)
 		} else {
-			fmt.Fprintf(os.Stderr, "aep-caw: session %s created (policy: %s)\n", sessID, opts.policy)
+			fmt.Fprintf(stderr, "aep-caw: session %s created (policy: %s)\n", sessID, opts.policy)
 		}
 	}
 
@@ -119,7 +146,7 @@ func runWrap(ctx context.Context, cfg *clientConfig, opts wrapOptions) error {
 	// Use it as the working directory so all file operations go through FUSE.
 	workDir := ""
 	if workspaceMount != "" {
-		fmt.Fprintf(os.Stderr, "aep-caw: FUSE workspace mount: %s\n", workspaceMount)
+		fmt.Fprintf(stderr, "aep-caw: FUSE workspace mount: %s\n", workspaceMount)
 		workDir = workspaceMount
 	}
 
@@ -129,14 +156,23 @@ func runWrap(ctx context.Context, cfg *clientConfig, opts wrapOptions) error {
 		return fmt.Errorf("agent not found: %s: %w", opts.agentCmd, err)
 	}
 
-	// 3. Try to set up exec interception (Linux seccomp / macOS ES)
+	// 3. Set up exec interception (Linux seccomp or ptrace / macOS ES /
+	// Windows driver). Fail closed: without interception the agent and its
+	// descendants would run outside policy, so a setup failure refuses the
+	// run unless the operator explicitly passed --allow-unconfined.
 	var wrapCfg *wrapLaunchConfig
-	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
-		wrapCfg, err = setupWrapInterception(ctx, c, sessID, agentPath, opts.agentArgs, cfg)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "aep-caw: interception setup failed, running without interception: %v\n", err)
-			// Fall through to direct launch
+	var setupErr error
+	if wrapGOOS == "linux" || wrapGOOS == "darwin" || wrapGOOS == "windows" {
+		wrapCfg, setupErr = setupWrapInterception(ctx, c, sessID, agentPath, opts.agentArgs, cfg)
+	} else {
+		setupErr = fmt.Errorf("exec interception is not supported on %s", wrapGOOS)
+	}
+	if setupErr != nil {
+		wrapCfg = nil
+		if !opts.allowUnconfined {
+			return fmt.Errorf("interception setup failed: %w; the agent was not started (pass --allow-unconfined to run it without exec interception)", setupErr)
 		}
+		fmt.Fprintf(stderr, "aep-caw: WARNING: interception setup failed: %v; --allow-unconfined is set, so the agent runs without exec interception (commands bypass policy, approval and audit)\n", setupErr)
 	}
 
 	// 4. Build the agent command
@@ -172,7 +208,7 @@ func runWrap(ctx context.Context, cfg *clientConfig, opts wrapOptions) error {
 	// If the LLM proxy is active, route agent API calls through it so
 	// requests/responses are logged and DLP-scanned.
 	if llmProxyURL != "" {
-		fmt.Fprintf(os.Stderr, "aep-caw: LLM proxy: %s\n", llmProxyURL)
+		fmt.Fprintf(stderr, "aep-caw: LLM proxy: %s\n", llmProxyURL)
 		agentProc.Env = append(agentProc.Env,
 			fmt.Sprintf("ANTHROPIC_BASE_URL=%s", llmProxyURL),
 			fmt.Sprintf("OPENAI_BASE_URL=%s", llmProxyURL),
@@ -238,13 +274,13 @@ func runWrap(ctx context.Context, cfg *clientConfig, opts wrapOptions) error {
 		if wrapCfg.ptracePostStart != nil {
 			mechanism = "ptrace"
 		}
-		fmt.Fprintf(os.Stderr, "aep-caw: agent %s started with %s interception (pid: %d)\n", opts.agentCmd, mechanism, agentProc.Process.Pid)
+		fmt.Fprintf(stderr, "aep-caw: agent %s started with %s interception (pid: %d)\n", opts.agentCmd, mechanism, agentProc.Process.Pid)
 		// Forward the notify fd to the server in the background
 		if wrapCfg.postStart != nil {
 			go wrapCfg.postStart(agentProc.Process.Pid)
 		}
 	} else {
-		fmt.Fprintf(os.Stderr, "aep-caw: agent %s started (pid: %d)\n", opts.agentCmd, agentProc.Process.Pid)
+		fmt.Fprintf(stderr, "aep-caw: agent %s started (pid: %d)\n", opts.agentCmd, agentProc.Process.Pid)
 	}
 
 	// 5. Wait for agent to exit
@@ -273,7 +309,7 @@ func runWrap(ctx context.Context, cfg *clientConfig, opts wrapOptions) error {
 
 	// 6. Generate report
 	if opts.report {
-		fmt.Fprintf(os.Stderr, "\naep-caw: session %s complete (agent exit code: %d)\n", sessID, exitCode)
+		fmt.Fprintf(stderr, "\naep-caw: session %s complete (agent exit code: %d)\n", sessID, exitCode)
 	}
 
 	if exitCode != 0 {

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -162,13 +163,40 @@ func (e *Engine) networkFallback() Decision {
 	return e.wrapDecision(string(types.DecisionDeny), "default-deny-network", "", nil)
 }
 
+// commandPathsCaseInsensitive reports whether full path command rules should
+// compare case-insensitively on goos. Linux filesystems are case-sensitive, so
+// /USR/BIN/GIT is a different file from /usr/bin/git and an allow on one must
+// not admit the other. Windows and the default macOS filesystem (APFS or HFS+
+// case-insensitive) resolve both spellings to the same file, so folding case
+// there keeps a deny on /bin/sh from being bypassed via /BIN/SH.
+func commandPathsCaseInsensitive(goos string) bool {
+	return goos == "windows" || goos == "darwin"
+}
+
+// foldCommandPathCase is the host setting used when compiling command rules.
+// Tests override it to exercise both behaviors on any host.
+var foldCommandPathCase = commandPathsCaseInsensitive(runtime.GOOS)
+
 type compiledCommandRule struct {
 	rule          CommandRule
 	basenames     map[string]struct{} // Commands without paths (e.g., "sh") - match by basename
 	basenameGlobs []glob.Glob         // Glob patterns for basenames (e.g., "go*", "*")
-	fullPaths     map[string]struct{} // Commands with paths (e.g., "/bin/sh") - match exact path
+	fullPaths     map[string]struct{} // Commands with paths (e.g., "/bin/sh") - match exact path, keyed by commandPathKey
 	pathGlobs     []glob.Glob         // Glob patterns for paths (e.g., "/usr/*/sh")
 	argsRegexes   []*regexp.Regexp    // Regex patterns matched against joined args string
+	// foldPaths makes fullPaths and pathGlobs compare case-insensitively.
+	// Set from foldCommandPathCase at compile time; false on Linux.
+	foldPaths bool
+}
+
+// commandPathKey returns the form of a full command path used for fullPaths
+// lookups and path glob matching: exact on case-sensitive filesystems, lower
+// case where the filesystem folds case.
+func (r compiledCommandRule) commandPathKey(p string) string {
+	if r.foldPaths {
+		return strings.ToLower(p)
+	}
+	return p
 }
 
 type compiledUnixRule struct {
@@ -272,6 +300,7 @@ func NewEngine(p *Policy, enforceApprovals bool, enforceRedirects bool) (*Engine
 			rule:      r,
 			basenames: map[string]struct{}{},
 			fullPaths: map[string]struct{}{},
+			foldPaths: foldCommandPathCase,
 		}
 		for _, c := range r.Commands {
 			c = strings.TrimSpace(c)
@@ -287,13 +316,15 @@ func NewEngine(p *Policy, enforceApprovals bool, enforceRedirects bool) (*Engine
 					if err != nil {
 						// Failed to compile as glob (e.g., incomplete pattern like "[")
 						// Fall back to exact match
-						cr.fullPaths[strings.ToLower(c)] = struct{}{}
+						cr.fullPaths[cr.commandPathKey(c)] = struct{}{}
 					} else {
 						cr.pathGlobs = append(cr.pathGlobs, g)
 					}
 				} else {
-					// Exact path match (case-sensitive on Unix, but we lowercase for consistency)
-					cr.fullPaths[strings.ToLower(c)] = struct{}{}
+					// Exact path match: case-sensitive on Linux, folded only
+					// where the filesystem is case-insensitive (see
+					// commandPathsCaseInsensitive).
+					cr.fullPaths[cr.commandPathKey(c)] = struct{}{}
 				}
 			} else {
 				// Basename only - check if it's a glob pattern
@@ -853,7 +884,6 @@ func decisionStrictness(d types.Decision) int {
 // default-deny fall-through (kept here so callers that don't care about
 // match status continue to see deny-by-default).
 func (e *Engine) matchCommandRules(command string, args []string) (Decision, bool) {
-	cmdLower := strings.ToLower(command)
 	cmdBase := strings.ToLower(filepath.Base(command))
 	// The shim install renames the original shell to <name>.real and places
 	// the shim at the original path. Server-side, the shim forwards the
@@ -882,14 +912,15 @@ func (e *Engine) matchCommandRules(command string, args []string) (Decision, boo
 			commandMatched = true
 		} else {
 			// Check full path matches first (more specific)
-			if _, ok := r.fullPaths[cmdLower]; ok {
+			cmdPath := r.commandPathKey(command)
+			if _, ok := r.fullPaths[cmdPath]; ok {
 				commandMatched = true
 			}
 
 			// Check path glob patterns
 			if !commandMatched {
 				for _, g := range r.pathGlobs {
-					if g.Match(cmdLower) || g.Match(command) {
+					if g.Match(cmdPath) || g.Match(command) {
 						commandMatched = true
 						break
 					}
@@ -943,7 +974,7 @@ func (e *Engine) matchCommandRules(command string, args []string) (Decision, boo
 
 		hitDec := e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, r.rule.RedirectTo)
 		hitDec.EnvPolicy = MergeEnvPolicy(e.policy.EnvPolicy, r.rule)
-		cmdHits = append(cmdHits, scoredHit{dec: hitDec, spec: scoreCommandRule(r, command, cmdLower, cmdBase)})
+		cmdHits = append(cmdHits, scoredHit{dec: hitDec, spec: scoreCommandRule(r, command, cmdBase)})
 	}
 	if len(cmdHits) > 0 {
 		return e.pickMostSpecific(cmdHits, e.wrapDecision(string(types.DecisionDeny), "default-deny-commands", "", nil)), true
@@ -1044,7 +1075,7 @@ func scoreRegex(p string) specScore {
 	return specScore{exact: exact, prefix: lit, wild: -wild}
 }
 
-func scoreCommandRule(r compiledCommandRule, filename, cmdLower, cmdBase string) specScore {
+func scoreCommandRule(r compiledCommandRule, filename, cmdBase string) specScore {
 	cmds := r.rule.Commands
 	if len(cmds) == 0 {
 		return specScore{exact: 0, prefix: 0, wild: -1000}
@@ -1053,6 +1084,7 @@ func scoreCommandRule(r compiledCommandRule, filename, cmdLower, cmdBase string)
 	found := false
 	cmdBaseNorm := strings.TrimSuffix(cmdBase, ".real")
 	baseName := filepath.Base(filename)
+	cmdPath := r.commandPathKey(filename)
 	for _, c := range cmds {
 		c = strings.TrimSpace(c)
 		if c == "" {
@@ -1063,13 +1095,15 @@ func scoreCommandRule(r compiledCommandRule, filename, cmdLower, cmdBase string)
 		if strings.Contains(c, "/") {
 			if strings.ContainsAny(c, "*?[") {
 				for _, g := range r.pathGlobs {
-					if g.Match(cmdLower) || g.Match(filename) {
+					if g.Match(cmdPath) || g.Match(filename) {
 						matched = true
 						break
 					}
 				}
-			} else if _, ok := r.fullPaths[cl]; ok && cl == cmdLower {
-				matched = true
+			} else if pk := r.commandPathKey(c); pk == cmdPath {
+				if _, ok := r.fullPaths[pk]; ok {
+					matched = true
+				}
 			}
 		} else if strings.ContainsAny(c, "*?[") {
 			for _, g := range r.basenameGlobs {
@@ -1847,7 +1881,6 @@ func (e *Engine) CheckExecve(filename string, argv []string, depth int) (dec Dec
 		}
 	}
 	var execHits []scoredHit
-	cmdLower := strings.ToLower(filename)
 	cmdBase := strings.ToLower(filepath.Base(filename))
 
 	for _, r := range e.compiledCommandRules {
@@ -1864,14 +1897,15 @@ func (e *Engine) CheckExecve(filename string, argv []string, depth int) (dec Dec
 			commandMatched = true
 		} else {
 			// Check full path matches first (more specific)
-			if _, ok := r.fullPaths[cmdLower]; ok {
+			cmdPath := r.commandPathKey(filename)
+			if _, ok := r.fullPaths[cmdPath]; ok {
 				commandMatched = true
 			}
 
 			// Check path glob patterns
 			if !commandMatched {
 				for _, g := range r.pathGlobs {
-					if g.Match(cmdLower) || g.Match(filename) {
+					if g.Match(cmdPath) || g.Match(filename) {
 						commandMatched = true
 						break
 					}
@@ -1917,7 +1951,7 @@ func (e *Engine) CheckExecve(filename string, argv []string, depth int) (dec Dec
 
 		hitDec := e.wrapDecision(r.rule.Decision, r.rule.Name, r.rule.Message, r.rule.RedirectTo)
 		hitDec.EnvPolicy = MergeEnvPolicy(e.policy.EnvPolicy, r.rule)
-		execHits = append(execHits, scoredHit{dec: hitDec, spec: scoreCommandRule(r, filename, cmdLower, cmdBase)})
+		execHits = append(execHits, scoredHit{dec: hitDec, spec: scoreCommandRule(r, filename, cmdBase)})
 	}
 	if len(execHits) > 0 {
 		dec = e.pickMostSpecific(execHits, e.wrapDecision(string(types.DecisionDeny), "default-deny-execve", "", nil))

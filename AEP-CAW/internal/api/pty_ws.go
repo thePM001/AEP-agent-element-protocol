@@ -55,6 +55,10 @@ func (a *App) execInSessionPTYWS(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "session id is required"})
 		return
 	}
+	// Refuse a session of another operator before the upgrade (AEP-CRV-030).
+	if _, ok := a.ownedSessionHTTP(w, r, sessionID); !ok {
+		return
+	}
 
 	up := websocket.Upgrader{
 		// MEDIUM: same-origin or explicit AEP_CAW_WS_ORIGINS allowlist (comma-separated)

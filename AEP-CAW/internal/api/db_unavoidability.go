@@ -91,6 +91,8 @@ func (a *App) compileDBPolicyForSession(ctx context.Context, s *session.Session,
 	if base == nil {
 		return a.policy, nil, "", nil
 	}
+	// Every session policy closes the control API to the session (AEP-CRV-030).
+	base = SealControlPlane(a.cfg, base)
 	rs, warns, err := loadDBRuleSet(base)
 	if err != nil {
 		return nil, nil, "", err

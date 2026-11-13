@@ -41,6 +41,9 @@ COPY --from=builder /out/aep-caw-unixwrap  /usr/bin/aep-caw-unixwrap
 COPY --from=builder /out/aep-caw-stub      /usr/bin/aep-caw-stub
 
 COPY configs/policies/ /etc/aep-caw/policies/
+# The bench policies are test fixtures and stay out of the runtime policy folder
+# that releases ship (AEP-CRV-030): only the bench image gets them.
+COPY test/policies/bench-allow-all.yaml test/policies/bench-realistic.yaml /etc/aep-caw/policies/
 
 # Create a bare git repo with 20 Go source files for the git-workflow phase.
 RUN mkdir -p /bench/repo.git && cd /bench/repo.git && git init --bare && \

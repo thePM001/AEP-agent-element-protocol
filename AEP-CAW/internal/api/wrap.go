@@ -45,9 +45,8 @@ type wrapNotifyMetadata struct {
 // through the wrapper, and starts listening for the notify fd on a Unix socket.
 func (a *App) wrapInit(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "id")
-	s, ok := a.sessions.Get(sessionID)
+	s, ok := a.ownedSessionHTTP(w, r, sessionID)
 	if !ok {
-		writeJSON(w, http.StatusNotFound, map[string]any{"error": "session not found"})
 		return
 	}
 
@@ -125,6 +124,13 @@ func (a *App) wrapInitCore(s *session.Session, sessionID string, req types.WrapI
 	// Use a background context so the notify handler outlives the HTTP request.
 	// The handler will be cleaned up when the session ends or the connection closes.
 	ctx := context.Background()
+
+	// Kernel dock check (AEP-CRV-030, CAWA 02): wrap-init hands out the wrapper
+	// that starts the agent, so it refuses the same way as every exec path
+	// while the Base Node kernel dock stays silent.
+	if err := a.kernelDockGate(ctx, sessionID, "wrap-init"); err != nil {
+		return types.WrapInitResponse{}, http.StatusServiceUnavailable, err
+	}
 
 	// Shim mode: pre-check the agent command against policy before issuing
 	// the wrapper. The shim's kernel-install path replaces the existing
@@ -850,6 +856,11 @@ func (a *App) acceptNotifyFD(ctx context.Context, listener net.Listener, socketP
 		}
 		cleanup = cgroupCleanup
 	}
+
+	// The wrapper execs the agent in place, so its pid roots the wrapped
+	// process tree: the control API guard refuses that tree on state
+	// changing calls (AEP-CRV-030).
+	s.AddProcessRoot(wrapperPID)
 
 	slog.Info("wrap: received notify fd", "session_id", sessionID, "fd", notifyFD.Fd(), "wrapper_pid", wrapperPID)
 

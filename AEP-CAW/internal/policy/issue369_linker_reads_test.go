@@ -88,7 +88,7 @@ var denyByDefaultPoliciesWithSystemRead = []string{
 	"../../configs/policies/agent-sandbox.yaml",
 	"../../configs/policies/dev-safe.yaml",
 	"../../configs/policies/ci-strict.yaml",
-	"../../configs/policies/bench-realistic.yaml",
+	"../../test/policies/bench-realistic.yaml",
 }
 
 // TestIssue369_ShippedPoliciesAllowLoaderReads asserts the deny-by-default

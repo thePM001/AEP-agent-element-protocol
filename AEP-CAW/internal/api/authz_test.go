@@ -94,6 +94,7 @@ func TestApprovalsEndpointsForbiddenWhenAuthDisabled(t *testing.T) {
 	}
 
 	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/approvals/approval-1", nil)
+	req2.Header.Set("Content-Type", "application/json")
 	rr2 := httptest.NewRecorder()
 	h.ServeHTTP(rr2, req2)
 	if rr2.Code != http.StatusForbidden {

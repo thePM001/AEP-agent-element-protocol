@@ -101,6 +101,7 @@ func createTestSession(t *testing.T, h http.Handler) string {
 	}
 	body := fmt.Sprintf(`{"id":"trace-test-sess","workspace":%q,"policy":"default"}`, ws)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusCreated {
@@ -120,6 +121,7 @@ func TestSetTraceContext_Valid(t *testing.T) {
 
 	body := `{"trace_id":"0af7651916cd43dd8448eb211c80319c","span_id":"b7ad6b7169203331","trace_flags":"01"}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/sessions/"+sessID+"/trace-context", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
@@ -146,6 +148,7 @@ func TestSetTraceContext_ValidTraceIDOnly(t *testing.T) {
 
 	body := `{"trace_id":"0af7651916cd43dd8448eb211c80319c"}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/sessions/"+sessID+"/trace-context", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
@@ -222,6 +225,7 @@ func TestSetTraceContext_InvalidInputs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPut, "/api/v1/sessions/"+sessID+"/trace-context", strings.NewReader(tt.body))
+			req.Header.Set("Content-Type", "application/json")
 			rr := httptest.NewRecorder()
 			h.ServeHTTP(rr, req)
 
@@ -248,6 +252,7 @@ func TestSetTraceContext_SessionNotFound(t *testing.T) {
 
 	body := `{"trace_id":"0af7651916cd43dd8448eb211c80319c"}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/sessions/nonexistent/trace-context", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 

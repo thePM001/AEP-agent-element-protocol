@@ -30,6 +30,7 @@ func TestCreateSession_AllowsNonPrefixedCustomID(t *testing.T) {
 
 	body := fmt.Sprintf(`{"id":"AAABBBCCC","workspace":%q,"policy":"default"}`, ws)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sessions", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusCreated {
