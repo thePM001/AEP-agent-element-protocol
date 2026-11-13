@@ -385,17 +385,17 @@ fn admit_and_apply(
     };
     let mut recorded: Option<i64> = None;
     let mut record_deny: Option<DockFrameResponse> = None;
-    let admit_res = match lock_or_deny(&runtime.admit.live_entry, "live_entry") {
-        Ok(mut live) => {
-            // The time walls of Admit measure against the event time that the kernel
-            // checked against its own clock at enqueue. The hold and the age of the
-            // capsule were judged by the kernel clock alone in the pulse queue.
-            live.freeze_temporal_snapshot(held.wall_bridge_ms);
-            let r = admit_sealed_payload_report_recorded(
-                &mut live,
-                &held.plaintext,
-                &dock,
-                &mut || match record_admitted_frame(runtime, cap, held, event_type) {
+    // The live entry guard lives for this block only, so the lock is released
+    // before the record check and before Apply.
+    let admit_res = {
+        let mut live = lock_or_deny(&runtime.admit.live_entry, "live_entry")?;
+        // The time walls of Admit measure against the event time that the kernel
+        // checked against its own clock at enqueue. The hold and the age of the
+        // capsule were judged by the kernel clock alone in the pulse queue.
+        live.freeze_temporal_snapshot(held.wall_bridge_ms);
+        let r =
+            admit_sealed_payload_report_recorded(&mut live, &held.plaintext, &dock, &mut || {
+                match record_admitted_frame(runtime, cap, held, event_type) {
                     Ok(event_id) => {
                         recorded = Some(event_id);
                         Ok(())
@@ -405,12 +405,10 @@ fn admit_and_apply(
                         record_deny = Some(resp);
                         Err(AdmitWall::close("ledger.unavailable", reason))
                     }
-                },
-            );
-            live.clear_temporal_freeze();
-            r
-        }
-        Err(resp) => return Err(resp),
+                }
+            });
+        live.clear_temporal_freeze();
+        r
     };
     // The record step refused: nothing was applied and the ledger cannot take a row.
     if let Some(resp) = record_deny {

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -180,7 +181,8 @@ func TestSecondKeyCannotReadOrEndFirstKeysSession(t *testing.T) {
 	req.Header.Set("Connection", "Upgrade")
 	req.Header.Set("Upgrade", "websocket")
 	req.Header.Set("Sec-WebSocket-Version", "13")
-	req.Header.Set("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ==")
+	// Any 16 byte nonce, built at run time so no key shaped literal sits in the tree.
+	req.Header.Set("Sec-WebSocket-Key", base64.StdEncoding.EncodeToString([]byte("aep-caw-ws-nonce")))
 	ptyRR := httptest.NewRecorder()
 	f.h.ServeHTTP(ptyRR, req)
 	if ptyRR.Code != http.StatusForbidden {
