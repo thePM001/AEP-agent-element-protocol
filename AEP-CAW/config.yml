@@ -194,12 +194,17 @@ sandbox:
     transparent:
       enabled: false
       subnet_base: "10.250.0.0/16"
+    # The explicit proxy above is advisory: a client that ignores HTTP_PROXY
+    # connects directly. eBPF enforce is the network backend that holds the
+    # network_rules of the policy. Without an enforcing backend the server
+    # refuses a policy with network rules unless sandbox.allow_degraded is
+    # set. eBPF needs root with cgroup v2.
     ebpf:
-      enabled: false          # Linux only; set true to capture connects without proxy
-      required: false         # If true and unsupported, aep-caw fails to start; setting required=true implies enabled
+      enabled: true           # Linux only; observe connects without the proxy
+      required: true          # If true and unsupported, aep-caw fails to start; setting required=true implies enabled
       resolve_rdns: false     # Best-effort reverse DNS for ebpf net_connect events (adds latency if true)
-      enforce: false          # If true, deny connects in BPF unless allowed (only precise allow rules activate default-deny)
-      enforce_without_dns: false # If true, default-deny even when DNS resolution fails
+      enforce: true           # Deny connects in BPF unless a rule allows them; default deny stays armed and any setup failure refuses the command
+      enforce_without_dns: false # Kept for older configs; enforce mode always keeps the default deny armed
       map_allow_entries: 1024     # Optional override for allowlist map size (0 = default)
       map_deny_entries: 1024      # Optional override for denylist map size (0 = default)
       map_lpm_entries: 1024       # Optional override for LPM (CIDR) map size (0 = default)

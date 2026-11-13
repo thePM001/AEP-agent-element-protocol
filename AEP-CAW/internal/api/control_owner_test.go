@@ -293,6 +293,10 @@ func TestSessionPolicyAllowedListAndRootWorkspace(t *testing.T) {
 	f := newTwoKeyFixture(t, func(c *config.Config) {
 		c.Policies.Dir = policyDir
 		c.Policies.Allowed = []string{"agent-strict"}
+		// The test covers the allowed list and the root workspace check. The
+		// shipped policies hold file and network rules that this fixture runs
+		// no backend for, which AEP-CRV-040 refuses without the degraded switch.
+		c.Sandbox.AllowDegraded = true
 	})
 	cases := []struct {
 		key, policy string

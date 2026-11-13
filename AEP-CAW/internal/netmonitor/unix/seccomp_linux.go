@@ -91,13 +91,7 @@ func InstallFilter() (*Filter, error) {
 	}
 
 	trap := seccomp.ActNotify
-	rules := []seccomp.ScmpSyscall{
-		seccomp.ScmpSyscall(unix.SYS_SOCKET),
-		seccomp.ScmpSyscall(unix.SYS_CONNECT),
-		seccomp.ScmpSyscall(unix.SYS_BIND),
-		seccomp.ScmpSyscall(unix.SYS_LISTEN),
-		seccomp.ScmpSyscall(unix.SYS_SENDTO),
-	}
+	rules := unixSocketNotifySyscalls()
 	for _, sc := range rules {
 		if err := filt.AddRule(sc, trap); err != nil {
 			return nil, fmt.Errorf("add rule %v: %w", sc, err)
@@ -559,7 +553,9 @@ type fileMonitorRuleAdder interface {
 // unixSocketNotifySyscalls returns the socket-family syscalls the wrapper traps
 // via user-notify. Shared between the production filter builder and the
 // WAIT_KILLABLE_RECV behavioral probe (buildProbeFilterBytes) so the two
-// filter compositions can't drift apart (issue #369).
+// filter compositions can't drift apart (issue #369). sendmsg and sendmmsg
+// carry a destination in msg_name like sendto does in its address argument,
+// so a datagram to a denied unix socket path is judged too (CAWA-14).
 func unixSocketNotifySyscalls() []seccomp.ScmpSyscall {
 	return []seccomp.ScmpSyscall{
 		seccomp.ScmpSyscall(unix.SYS_SOCKET),
@@ -567,6 +563,8 @@ func unixSocketNotifySyscalls() []seccomp.ScmpSyscall {
 		seccomp.ScmpSyscall(unix.SYS_BIND),
 		seccomp.ScmpSyscall(unix.SYS_LISTEN),
 		seccomp.ScmpSyscall(unix.SYS_SENDTO),
+		seccomp.ScmpSyscall(unix.SYS_SENDMSG),
+		seccomp.ScmpSyscall(unix.SYS_SENDMMSG),
 	}
 }
 

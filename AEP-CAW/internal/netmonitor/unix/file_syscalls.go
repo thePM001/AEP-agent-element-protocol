@@ -436,7 +436,19 @@ func resolvePathAtImpl(pid int, dirfd int32, pathPtr uint64, useFallback bool) (
 		// Fail closed on EACCES/ELOOP/etc so policy is not evaluated on a weak path.
 		return "", fmt.Errorf("resolve via /proc/%d/root %q: %w", pid, abs, rerr)
 	}
-	// Nonexistent leaf (create/unlink target): keep absolute cleaned path.
+	// Nonexistent leaf (create/unlink target): resolve the parent directory
+	// so the policy judges the real directory and an emulated open that
+	// refuses symlinks walks the same path (CAWA-13). A parent that does not
+	// exist either keeps the absolute cleaned path; the syscall then fails
+	// with ENOENT in the kernel.
+	if abs != "/" {
+		parent, base := filepath.Dir(abs), filepath.Base(abs)
+		if rp, perr := resolveViaProcRoot(pid, parent); perr == nil {
+			return filepath.Join(rp, base), nil
+		} else if !os.IsNotExist(perr) {
+			return "", fmt.Errorf("resolve parent via /proc/%d/root %q: %w", pid, parent, perr)
+		}
+	}
 	return abs, nil
 }
 

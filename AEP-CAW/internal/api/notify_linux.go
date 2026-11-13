@@ -185,7 +185,7 @@ func notifyHandlerRecover(sessID string, store eventStore, broker eventBroker) {
 // *unixmon.BlockListConfig). A nil or zero-ActionByNr value is treated as
 // "no block-list notify routing needed" - safe for errno/kill modes which are
 // kernel-side.
-func startNotifyHandler(ctx context.Context, parentSock *os.File, sessID string, pol *policy.Engine, store eventStore, broker eventBroker, execveHandler any, fileMonitorCfg config.SandboxSeccompFileMonitorConfig, landlockEnabled bool, blockList any, ptraceReady chan<- error) {
+func startNotifyHandler(ctx context.Context, parentSock *os.File, sessID string, pol *policy.Engine, store eventStore, broker eventBroker, execveHandler any, fileMonitorCfg config.SandboxSeccompFileMonitorConfig, landlockEnabled bool, approvalMgr *approvals.Manager, blockList any, ptraceReady chan<- error) {
 	if parentSock == nil {
 		return
 	}
@@ -266,7 +266,7 @@ func startNotifyHandler(ctx context.Context, parentSock *os.File, sessID string,
 		emitter := &notifyEmitterAdapter{store: store, broker: broker}
 
 		// Create file handler if configured
-		fileHandler := createFileHandler(fileMonitorCfg, pol, emitter, landlockEnabled)
+		fileHandler := createFileHandler(fileMonitorCfg, pol, emitter, landlockEnabled, approvalMgr)
 
 		// Type-assert and set emitter on execve handler if configured
 		var h *unixmon.ExecveHandler

@@ -3,14 +3,21 @@
 package api
 
 import (
+	"context"
 	"log/slog"
 	"sync"
 
+	"github.com/google/uuid"
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/approvals"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/capabilities"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 	unixmon "github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/netmonitor/unix"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 )
+
+// seccompFileMonitorBuilt reports whether this build carries the seccomp file
+// monitor, so the enforcement check can count it as a file backend.
+const seccompFileMonitorBuilt = true
 
 var (
 	globalMountRegistry     *unixmon.MountRegistry
@@ -39,9 +46,40 @@ func (w *filePolicyEngineWrapper) CheckFile(path, operation string) unixmon.File
 	}
 }
 
+// fileApprovalAdapter adapts approvals.Manager to unixmon.FileApprover.
+type fileApprovalAdapter struct {
+	mgr *approvals.Manager
+}
+
+func (a *fileApprovalAdapter) RequestFileApproval(ctx context.Context, req unixmon.FileApprovalRequest) (bool, error) {
+	fields := map[string]any{
+		"path":      req.Path,
+		"operation": req.Operation,
+		"source":    "seccomp-file-monitor",
+	}
+	if req.Path2 != "" {
+		fields["path2"] = req.Path2
+	}
+	res, err := a.mgr.RequestApproval(ctx, approvals.Request{
+		ID:        "approval-" + uuid.NewString(),
+		SessionID: req.SessionID,
+		Kind:      "file",
+		Target:    req.Path,
+		Rule:      req.Rule,
+		Message:   req.Message,
+		Fields:    fields,
+	})
+	if err != nil {
+		return false, err
+	}
+	return res.Approved, nil
+}
+
 // createFileHandler creates a FileHandler from configuration.
 // landlockEnabled indicates whether Landlock enforcement is configured (not just kernel-available).
-func createFileHandler(cfg config.SandboxSeccompFileMonitorConfig, pol *policy.Engine, emitter unixmon.Emitter, landlockEnabled bool) *unixmon.FileHandler {
+// approvalMgr receives the approve decisions of the file policy (CAWA-11); nil
+// makes them deny.
+func createFileHandler(cfg config.SandboxSeccompFileMonitorConfig, pol *policy.Engine, emitter unixmon.Emitter, landlockEnabled bool, approvalMgr *approvals.Manager) *unixmon.FileHandler {
 	if !config.FileMonitorBoolWithDefault(cfg.Enabled, false) {
 		return nil
 	}
@@ -54,6 +92,9 @@ func createFileHandler(cfg config.SandboxSeccompFileMonitorConfig, pol *policy.E
 	registry := getMountRegistry()
 	enforce := config.FileMonitorBoolWithDefault(cfg.EnforceWithoutFUSE, false)
 	handler := unixmon.NewFileHandler(policyChecker, registry, emitter, enforce)
+	if approvalMgr != nil {
+		handler.SetApprover(&fileApprovalAdapter{mgr: approvalMgr}, 0)
+	}
 
 	// Enable AddFD emulation when configured and the kernel supports it.
 	// IMPORTANT: emulated opens run in the supervisor's context, outside the

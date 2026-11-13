@@ -158,7 +158,9 @@ func main() {
 	// actually have a notify fd to send). When all seccomp features are disabled
 	// the filter returns fd=-1 and there is nothing to hand off.
 	if notifFD >= 0 {
-		if err := sendFD(sockFD, notifFD); err != nil {
+		// The unix socket rules trap sendmsg (CAWA-14), so the handoff of
+		// the listener answers its own notification.
+		if err := unixmon.SendListenerFD(sockFD, notifFD, 0, cfg.UnixSocketEnabled); err != nil {
 			fatalf("send fd: %v", err)
 		}
 

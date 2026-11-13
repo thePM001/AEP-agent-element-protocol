@@ -561,6 +561,7 @@ command_rules:
     description: Require approval for package installation
     commands:
       - npm
+      - npm-cli.js       # the script /usr/bin/npm links to
       - pip
       - pip3
       - cargo
@@ -605,6 +606,7 @@ command_rules:
       - printf
       - date
       - which
+      - which.debianutils
       - whoami
       - id
       - uname
@@ -615,6 +617,7 @@ command_rules:
       - test
       - "["
       - sh
+      - dash             # /bin/sh resolves to dash on Debian and Ubuntu
       - bash
       - zsh
       - sh.real      # For aep-caw shell shim integration
@@ -627,9 +630,12 @@ command_rules:
       - git
       - node
       - npm
+      - npm-cli.js       # the script /usr/bin/npm links to
       - npx
+      - npx-cli.js
       - python
       - python3
+      - "python3.*"       # the versioned interpreter python3 links to
       - pip
       - pip3
       - cargo
@@ -661,6 +667,8 @@ command_rules:
       - cut
       - sed
       - awk
+      - gawk
+      - mawk
       - xargs
     decision: allow
 

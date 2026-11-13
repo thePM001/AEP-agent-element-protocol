@@ -653,7 +653,10 @@ func (a *App) createSession(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, code, snap)
 }
 
-func (a *App) startExplicitProxy(ctx context.Context, s *session.Session) {
+// startExplicitProxy starts the HTTP proxy of a session. It records the
+// outcome as a session event and returns the start error, so the caller can
+// fail the session (CAWA-08).
+func (a *App) startExplicitProxy(ctx context.Context, s *session.Session) error {
 	em := storeEmitter{store: a.store, broker: a.broker}
 	pr, proxyURL, err := netmonitor.StartProxy(a.cfg.Sandbox.Network.ProxyListenAddr, s.ID, s, a.policy, a.approvals, em, a.dbBypass)
 	if err != nil {
@@ -668,7 +671,7 @@ func (a *App) startExplicitProxy(ctx context.Context, s *session.Session) {
 		}
 		_ = a.store.AppendEvent(ctx, fail)
 		a.broker.Publish(fail)
-		return
+		return err
 	}
 	s.SetProxy(proxyURL, pr.Close)
 	okEv := types.Event{
@@ -682,6 +685,7 @@ func (a *App) startExplicitProxy(ctx context.Context, s *session.Session) {
 	}
 	_ = a.store.AppendEvent(ctx, okEv)
 	a.broker.Publish(okEv)
+	return nil
 }
 
 func (a *App) startLLMProxy(ctx context.Context, s *session.Session) {
@@ -818,7 +822,8 @@ func (a *App) startLLMProxy(ctx context.Context, s *session.Session) {
 }
 
 func (a *App) tryStartTransparentNetwork(ctx context.Context, s *session.Session) error {
-	// Implementation uses root-only Linux network namespaces. If it fails, we leave the session in proxy-env mode.
+	// Implementation uses root-only Linux network namespaces. An error fails
+	// the session unless sandbox.allow_degraded is set (startSessionNetwork).
 	em := storeEmitter{store: a.store, broker: a.broker}
 
 	// Start interceptors on host; netns will DNAT to host veth IP.
@@ -843,7 +848,7 @@ func (a *App) tryStartTransparentNetwork(ctx context.Context, s *session.Session
 
 	nsName := "aep-caw-" + strings.TrimPrefix(s.ID, "session-")
 	subnetCIDR, hostIPCIDR, nsIPCIDR, hostIf, nsIf := netmonitor.AllocateSubnet(a.cfg.Sandbox.Network.Transparent.SubnetBase, nsName)
-	ns, err := netmonitor.SetupNetNS(ctx, nsName, subnetCIDR, hostIf, nsIf, hostIPCIDR, nsIPCIDR, tcpPort, dnsPort, torRedirectPorts)
+	ns, err := setupTransparentNetNS(ctx, nsName, subnetCIDR, hostIf, nsIf, hostIPCIDR, nsIPCIDR, tcpPort, dnsPort, torRedirectPorts)
 	if err != nil {
 		_ = tcp.Close()
 		_ = dns.Close()

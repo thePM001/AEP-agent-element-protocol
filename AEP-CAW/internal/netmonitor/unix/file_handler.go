@@ -3,6 +3,7 @@
 package unix
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -43,13 +44,35 @@ type FileResult struct {
 	Errno  int32
 }
 
+// FileApprovalRequest describes a file operation that a policy rule with the
+// approve decision holds until a human answers.
+type FileApprovalRequest struct {
+	SessionID string
+	Path      string
+	Path2     string
+	Operation string
+	Rule      string
+	Message   string
+}
+
+// FileApprover asks for an approval of a file operation and reports the answer.
+type FileApprover interface {
+	RequestFileApproval(ctx context.Context, req FileApprovalRequest) (bool, error)
+}
+
+// defaultFileApprovalTimeout bounds the wait for an answer when the handler
+// is given no timeout of its own.
+const defaultFileApprovalTimeout = 5 * time.Minute
+
 // FileHandler processes file syscall notifications against policy.
 type FileHandler struct {
-	policy      FilePolicyChecker
-	registry    *MountRegistry
-	emitter     Emitter
-	enforce     bool
-	emulateOpen bool // When true, supervisor emulates openat via AddFD
+	policy          FilePolicyChecker
+	registry        *MountRegistry
+	emitter         Emitter
+	enforce         bool
+	emulateOpen     bool // When true, supervisor emulates openat via AddFD
+	approver        FileApprover
+	approvalTimeout time.Duration
 }
 
 // NewFileHandler creates a new FileHandler.
@@ -60,6 +83,17 @@ func NewFileHandler(policy FilePolicyChecker, registry *MountRegistry, emitter E
 		emitter:  emitter,
 		enforce:  enforce,
 	}
+}
+
+// SetApprover routes approve decisions to an approval flow (CAWA-11). Without
+// an approver an approve decision denies. A timeout of zero or less selects
+// defaultFileApprovalTimeout.
+func (h *FileHandler) SetApprover(a FileApprover, timeout time.Duration) {
+	h.approver = a
+	if timeout <= 0 {
+		timeout = defaultFileApprovalTimeout
+	}
+	h.approvalTimeout = timeout
 }
 
 // SetEmulateOpen enables or disables openat AddFD emulation.
@@ -180,8 +214,47 @@ func (h *FileHandler) Handle(req FileRequest) (FileResult, *types.Event) {
 		return FileResult{Action: ActionDeny, Errno: int32(sysunix.EACCES)}, h.buildFileEvent(req, dec, true, false)
 	}
 
-	// Allowed.
-	return FileResult{Action: ActionContinue}, h.buildFileEvent(req, dec, false, false)
+	if dec.EffectiveDecision == "allow" {
+		return FileResult{Action: ActionContinue}, h.buildFileEvent(req, dec, false, false)
+	}
+
+	// Every other effective decision holds the operation: approve goes to
+	// the approval flow (CAWA-11), and a decision this backend cannot carry
+	// out (redirect, an unknown value) denies.
+	if !h.enforce {
+		return FileResult{Action: ActionContinue}, h.buildFileEvent(req, dec, false, false)
+	}
+	if dec.EffectiveDecision == "approve" && h.approve(req, dec) {
+		return FileResult{Action: ActionContinue}, h.buildFileEvent(req, dec, false, false)
+	}
+	return FileResult{Action: ActionDeny, Errno: int32(sysunix.EACCES)}, h.buildFileEvent(req, dec, true, false)
+}
+
+// approve asks the approver about a file operation and reports whether it was
+// approved. No approver, an error and a timeout all count as a refusal.
+func (h *FileHandler) approve(req FileRequest, dec FilePolicyDecision) bool {
+	if h.approver == nil {
+		return false
+	}
+	timeout := h.approvalTimeout
+	if timeout <= 0 {
+		timeout = defaultFileApprovalTimeout
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	ok, err := h.approver.RequestFileApproval(ctx, FileApprovalRequest{
+		SessionID: req.SessionID,
+		Path:      req.Path,
+		Path2:     req.Path2,
+		Operation: req.Operation,
+		Rule:      dec.Rule,
+		Message:   dec.Message,
+	})
+	if err != nil {
+		slog.Warn("file approval failed; denying", "session_id", req.SessionID, "path", req.Path, "rule", dec.Rule, "error", err)
+		return false
+	}
+	return ok
 }
 
 // buildFileEvent builds a structured event for a file operation without emitting it.

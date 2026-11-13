@@ -100,6 +100,7 @@ func init() {
 		"ebpf_enforce_disabled":       AppActivityEBPFEnforceDisabled,
 		"ebpf_enforce_non_strict":     AppActivityEBPFEnforceNonStrict,
 		"ebpf_enforce_refresh_failed": AppActivityEBPFEnforceRefreshFailed,
+		"ebpf_enforce_unserved":       AppActivityEBPFEnforceUnserved,
 		"ebpf_unavailable":            AppActivityEBPFUnavailable,
 		"wrap_init":                   AppActivityWrapInit,
 		"fsevents_error":              AppActivityFSEventsError,

@@ -23,7 +23,7 @@ func boolPtr(v bool) *bool { return &v }
 
 func TestCreateFileHandler_Disabled(t *testing.T) {
 	cfg := config.SandboxSeccompFileMonitorConfig{Enabled: boolPtr(false)}
-	h := createFileHandler(cfg, nil, nil, false)
+	h := createFileHandler(cfg, nil, nil, false, nil)
 	assert.Nil(t, h)
 }
 
@@ -32,7 +32,7 @@ func TestCreateFileHandler_Enabled(t *testing.T) {
 		Enabled:            boolPtr(true),
 		EnforceWithoutFUSE: boolPtr(true),
 	}
-	h := createFileHandler(cfg, nil, nil, false)
+	h := createFileHandler(cfg, nil, nil, false, nil)
 	assert.NotNil(t, h)
 }
 
@@ -41,7 +41,7 @@ func TestCreateFileHandler_NilPolicy(t *testing.T) {
 		Enabled:            boolPtr(true),
 		EnforceWithoutFUSE: boolPtr(true),
 	}
-	h := createFileHandler(cfg, nil, nil, false)
+	h := createFileHandler(cfg, nil, nil, false, nil)
 	require.NotNil(t, h)
 
 	// With nil policy the file handler fails closed and denies.
@@ -76,7 +76,7 @@ func TestCreateFileHandler_EnforceWithoutFUSE(t *testing.T) {
 			Enabled:            boolPtr(true),
 			EnforceWithoutFUSE: boolPtr(false), // audit-only
 		}
-		h := createFileHandler(cfg, engine, nil, false)
+		h := createFileHandler(cfg, engine, nil, false, nil)
 		require.NotNil(t, h)
 
 		result, _ := h.Handle(unixmon.FileRequest{
@@ -93,7 +93,7 @@ func TestCreateFileHandler_EnforceWithoutFUSE(t *testing.T) {
 			Enabled:            boolPtr(true),
 			EnforceWithoutFUSE: boolPtr(true), // enforcing
 		}
-		h := createFileHandler(cfg, engine, nil, false)
+		h := createFileHandler(cfg, engine, nil, false, nil)
 		require.NotNil(t, h)
 
 		result, _ := h.Handle(unixmon.FileRequest{

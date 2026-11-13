@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/approvals"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/policy"
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/session"
@@ -39,7 +40,8 @@ type extraProcConfig struct {
 
 	// File monitor config
 	fileMonitorCfg  config.SandboxSeccompFileMonitorConfig
-	landlockEnabled bool // Whether Landlock enforcement is configured
+	landlockEnabled bool               // Whether Landlock enforcement is configured
+	fileApprovals   *approvals.Manager // Receives approve decisions of the file monitor (CAWA-11)
 
 	// Signal filter fields
 	signalParentSock *os.File            // Parent socket to receive signal filter fd
@@ -830,7 +832,7 @@ func startWrapperHandlers(ctx context.Context, extra *extraProcConfig, pid, pgid
 		extra.wrapperLogParent = nil
 	}
 	if extra.notifyParentSock != nil {
-		startNotifyHandler(ctx, extra.notifyParentSock, extra.notifySessionID, extra.notifyPolicy, extra.notifyStore, extra.notifyBroker, extra.execveHandler, extra.fileMonitorCfg, extra.landlockEnabled, extra.blockList, ptraceReady)
+		startNotifyHandler(ctx, extra.notifyParentSock, extra.notifySessionID, extra.notifyPolicy, extra.notifyStore, extra.notifyBroker, extra.execveHandler, extra.fileMonitorCfg, extra.landlockEnabled, extra.fileApprovals, extra.blockList, ptraceReady)
 	}
 	if extra.signalParentSock != nil && extra.signalEngine != nil {
 		if extra.signalRegistry != nil {

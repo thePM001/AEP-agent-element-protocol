@@ -541,8 +541,8 @@ type SandboxEBPFConfig struct {
 	Enabled           bool `yaml:"enabled"`
 	Required          bool `yaml:"required"`
 	ResolveRDNS       bool `yaml:"resolve_rdns"`         // optional reverse DNS on ebpf net events
-	Enforce           bool `yaml:"enforce"`              // deny in BPF if not allowed
-	EnforceWithoutDNS bool `yaml:"enforce_without_dns"`  // when true, default deny even if DNS resolution failed
+	Enforce           bool `yaml:"enforce"`              // deny in BPF if not allowed; every setup failure refuses the command
+	EnforceWithoutDNS bool `yaml:"enforce_without_dns"`  // no effect: enforce mode always keeps the default deny armed (AEP-CRV-040); kept so older configs load
 	MapAllowEntries   int  `yaml:"map_allow_entries"`    // optional override for allowlist map size
 	MapDenyEntries    int  `yaml:"map_deny_entries"`     // optional override for denylist map size
 	MapLPMEntries     int  `yaml:"map_lpm_entries"`      // optional override for LPM map size

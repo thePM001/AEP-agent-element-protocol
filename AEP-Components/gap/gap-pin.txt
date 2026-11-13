@@ -1,8 +1,8 @@
 # GAP byte pin. GAP-OPEN-SOURCE is the one source of these files and AEP holds byte copies.
 # AEP-Components/gap/bin/check-gap-pin.mjs checks every line. Its repin mode copies the files from a GAP checkout and rewrites this pin.
 gap_repository https://github.com/thePM001/GAP
-gap_commit 0e864107a53bd775ad426a4141bd3e8b479d21cb
-file zum465r6qyd4npzac3kvpuvd5uxgwqgwhr5igdjxsneiylxiun5a packages/gap-schema-profile-v13/Cargo.toml AEP-Components/gap-schema-profile-v13/crate/Cargo.toml
+gap_commit 22957aa04fdd177f7a9cadaff3504fbfc20a82fe
+file rbu2ztsw2kanh3nztx742db5sybmyugnxfv6traangl5szjvfqwq packages/gap-schema-profile-v13/Cargo.toml AEP-Components/gap-schema-profile-v13/crate/Cargo.toml
 file iz4a6zg2sem3dz6clzna5yjnvfsjdpmkyme24rzdljm6tigdzfiq packages/gap-schema-profile-v13/src/lib.rs AEP-Components/gap-schema-profile-v13/crate/src/lib.rs
 file 5ln6vkxgl3q43lqxr5aupdyklqpnh2lsnztx6w6nnav5dpd7uowq packages/gap-schema-profile-v13/src/main.rs AEP-Components/gap-schema-profile-v13/crate/src/main.rs
 file yuu6ilkpraysuq4rnbgu37xp5lfxcfd6csvnmwt7uy3mqdnuxnia packages/gap-schema-profile-v13/src/schema_v13.body AEP-Components/gap-schema-profile-v13/crate/src/schema_v13.body

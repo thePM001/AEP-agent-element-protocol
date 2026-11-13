@@ -361,6 +361,7 @@ command_rules:
       - echo
       - date
       - which
+      - which.debianutils
       - whoami
       - id
       - uname
@@ -412,9 +413,12 @@ command_rules:
       - git
       - node
       - npm
+      - npm-cli.js       # the script /usr/bin/npm links to
       - npx
+      - npx-cli.js
       - python
       - python3
+      - "python3.*"       # the versioned interpreter python3 links to
       - pip
       - pip3
       - cargo

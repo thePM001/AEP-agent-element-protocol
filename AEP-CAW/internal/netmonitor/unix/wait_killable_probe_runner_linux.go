@@ -161,8 +161,9 @@ func runProbeChild() {
 		childSetupFailure("install filter: %v", err)
 	}
 
-	// Hand notifyFD to the parent.
-	if err := sendProbeFD(sockFD, notifyFD); err != nil {
+	// Hand notifyFD to the parent. The probe composition traps sendmsg, so
+	// the child answers its own handoff notification.
+	if err := SendListenerFD(sockFD, notifyFD, 'F', true); err != nil {
 		childSetupFailure("send fd: %v", err)
 	}
 	_ = unix.Close(notifyFD)
@@ -247,12 +248,6 @@ func buildProbeFilterBytes() ([]byte, error) {
 	return exportFilterBPF(filt)
 }
 
-// sendProbeFD writes notifyFD over sockFD using SCM_RIGHTS.
-func sendProbeFD(sockFD, notifyFD int) error {
-	rights := unix.UnixRights(notifyFD)
-	return unix.Sendmsg(sockFD, []byte{'F'}, rights, nil, 0)
-}
-
 // recvProbeFD reads one fd from sockFD over SCM_RIGHTS.
 func recvProbeFD(sockFD int) (int, error) {
 	buf := make([]byte, 1)
@@ -284,7 +279,7 @@ func realRunProbeIteration(ctx context.Context) (IterationResult, error) {
 	defer unix.Close(parentSock)
 
 	// Apply a recv timeout to parentSock so a hung child (stuck inside
-	// loadRawFilter or before reaching sendProbeFD) cannot wedge the
+	// loadRawFilter or before reaching SendListenerFD) cannot wedge the
 	// parent. Set BEFORE cmd.Start so the guard is in place from the
 	// instant the child can begin executing - there's no race window
 	// where a wedged child could outrace SO_RCVTIMEO application.
@@ -355,7 +350,7 @@ func realRunProbeIteration(ctx context.Context) (IterationResult, error) {
 	}
 	// The fd was duped into the child; close our end immediately so
 	// the kernel can signal EOF on parentSock if the child dies
-	// before reaching sendProbeFD. Without this, recvProbeFD would
+	// before reaching SendListenerFD. Without this, recvProbeFD would
 	// block indefinitely on an early child crash because we'd still
 	// be a writer on the socketpair.
 	closeChild()

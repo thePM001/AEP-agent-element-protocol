@@ -880,7 +880,8 @@ func TestInstallUnixSocketNotifyRules_SocketScopedToAFUnix(t *testing.T) {
 	added, err := installUnixSocketNotifyRules(recorder, seccomp.ActNotify)
 
 	require.NoError(t, err)
-	require.Equal(t, 5, added)
+	// socket, connect, bind, listen, sendto, sendmsg and sendmmsg (CAWA-14).
+	require.Equal(t, 7, added)
 
 	// socket(2) must be conditional on arg0==AF_UNIX. A catch-all notify on
 	// socket(2) traps every socket() call to userspace, which shadows the
@@ -900,13 +901,17 @@ func TestInstallUnixSocketNotifyRules_SocketScopedToAFUnix(t *testing.T) {
 		Operand1: uint64(gounix.AF_UNIX),
 	}, "socket(2) notify must be scoped to AF_UNIX, not catch-all")
 
-	// connect/bind/listen/sendto operate on an already-created fd (the family
-	// is not in arg0), so they remain unconditional notify.
+	// connect/bind/listen/sendto/sendmsg/sendmmsg operate on an
+	// already-created fd (the family is not in arg0), so they remain
+	// unconditional notify. sendmsg and sendmmsg carry their destination in
+	// msg_name (CAWA-14).
 	for _, sc := range []seccomp.ScmpSyscall{
 		seccomp.ScmpSyscall(gounix.SYS_CONNECT),
 		seccomp.ScmpSyscall(gounix.SYS_BIND),
 		seccomp.ScmpSyscall(gounix.SYS_LISTEN),
 		seccomp.ScmpSyscall(gounix.SYS_SENDTO),
+		seccomp.ScmpSyscall(gounix.SYS_SENDMSG),
+		seccomp.ScmpSyscall(gounix.SYS_SENDMMSG),
 	} {
 		found := false
 		for _, c := range recorder.calls {

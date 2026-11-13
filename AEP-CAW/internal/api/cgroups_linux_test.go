@@ -209,7 +209,10 @@ func TestApplyCgroupV2_DetachesAndCleansCgroupWhenRequiredCollectorStartFails(t 
 	}
 }
 
-func TestApplyCgroupV2_CleansEBPFResourcesWhenOptionalEnforceCollectorStartFails(t *testing.T) {
+// Enforce mode is the network backend of the policy (AEP-CRV-040): a collector
+// that fails to start refuses the command instead of detaching the program and
+// running the command without it.
+func TestApplyCgroupV2_EnforceCollectorStartFailureRefusesCommand(t *testing.T) {
 	withEBPFHooks(t)
 	withDomainResolverHook(t, func(domain string, maxTTL time.Duration) ([]net.IP, time.Duration) {
 		return []net.IP{net.ParseIP("203.0.113.10")}, time.Second
@@ -252,26 +255,117 @@ func TestApplyCgroupV2_CleansEBPFResourcesWhenOptionalEnforceCollectorStartFails
 	}
 
 	cleanup, err := applyCgroupV2(context.Background(), storeEmitter{store: app.store, broker: app.broker}, app, "sess", "cmd", 1234, policy.Limits{}, nil, engine)
-	if err != nil {
-		t.Fatalf("optional collector failure should degrade without returning error: %v", err)
+	if err == nil {
+		t.Fatal("enforce collector failure must refuse the command")
 	}
-	if cleanup == nil {
-		t.Fatal("expected cgroup cleanup function")
+	if cleanup != nil {
+		t.Fatal("a refused command gets no cleanup function")
 	}
 	if got := populateCalls.Load(); got != 1 {
 		t.Fatalf("populate calls = %d, want 1", got)
 	}
 	if got := cleanupAllowlistCalls.Load(); got != 1 {
-		t.Fatalf("cleanup allowlist calls = %d, want 1 after optional collector failure", got)
+		t.Fatalf("cleanup allowlist calls = %d, want 1 after the collector failure", got)
 	}
 	if got := detachCalls.Load(); got != 1 {
 		t.Fatalf("detach calls = %d, want 1", got)
 	}
-	if _, statErr := os.Stat(cgPath); statErr != nil {
-		t.Fatalf("optional collector failure should leave cgroup for normal cleanup, stat err = %v", statErr)
+	if _, statErr := os.Stat(cgPath); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("expected cgroup cleanup after the refused command, stat err = %v", statErr)
 	}
-	if err := cleanup(); err != nil {
-		t.Fatalf("cleanup: %v", err)
+}
+
+// AEP-CRV-040: a populate error in enforce mode refuses the command even
+// without ebpf.required.
+func TestApplyCgroupV2_EnforcePopulateFailureRefusesWithoutRequired(t *testing.T) {
+	withEBPFHooks(t)
+	withDomainResolverHook(t, func(domain string, maxTTL time.Duration) ([]net.IP, time.Duration) {
+		return []net.IP{net.ParseIP("203.0.113.10")}, time.Second
+	})
+
+	cfg := &config.Config{}
+	cfg.Sandbox.Cgroups.Enabled = true
+	cfg.Sandbox.Network.EBPF.Enabled = true
+	cfg.Sandbox.Network.EBPF.Enforce = true
+	cgPath := filepath.Join(t.TempDir(), "aep-caw-test-cgroup")
+	app := newAppWithFakeCgroupManager(t, cfg, cgPath)
+	engine := networkPolicyEngineForCgroupTest(t)
+
+	var collectorStarted atomic.Bool
+	ebpfCheckSupport = func() ebpftrace.SupportStatus { return ebpftrace.SupportStatus{Supported: true} }
+	ebpfAttachConnectToCgroup = func(path string) (*ebpf.Collection, func() error, error) {
+		return &ebpf.Collection{}, func() error { return nil }, nil
+	}
+	ebpfCgroupID = func(path string) (uint64, error) { return 42, nil }
+	ebpfPopulateAllowlist = func(coll *ebpf.Collection, cgroupID uint64, allow []ebpftrace.AllowKey, allowCIDRs []ebpftrace.AllowCIDR, deny []ebpftrace.AllowKey, denyCIDRs []ebpftrace.AllowCIDR, defaultDeny bool) error {
+		return errors.New("map full")
+	}
+	ebpfCleanupAllowlist = func(coll *ebpf.Collection, cgroupID uint64) error { return nil }
+	ebpfStartCollector = func(coll *ebpf.Collection, bufSize int) (*ebpftrace.Collector, error) {
+		collectorStarted.Store(true)
+		return nil, errors.New("collector must not start")
+	}
+
+	cleanup, err := applyCgroupV2(context.Background(), storeEmitter{store: app.store, broker: app.broker}, app, "sess", "cmd", 1234, policy.Limits{}, nil, engine)
+	if err == nil || !strings.Contains(err.Error(), "populate allowlist") {
+		t.Fatalf("populate failure must refuse the command, err = %v", err)
+	}
+	if cleanup != nil {
+		t.Fatal("a refused command gets no cleanup function")
+	}
+	if collectorStarted.Load() {
+		t.Fatal("the collector started after a populate failure")
+	}
+}
+
+// AEP-CRV-040: the default deny reaches the kernel armed for a policy with
+// wildcard allow domains.
+func TestApplyCgroupV2_EnforceArmsDefaultDenyWithWildcards(t *testing.T) {
+	withEBPFHooks(t)
+	withDomainResolverHook(t, func(domain string, maxTTL time.Duration) ([]net.IP, time.Duration) {
+		return nil, 0
+	})
+
+	cfg := &config.Config{}
+	cfg.Sandbox.Cgroups.Enabled = true
+	cfg.Sandbox.Network.EBPF.Enabled = true
+	cfg.Sandbox.Network.EBPF.Enforce = true
+	cgPath := filepath.Join(t.TempDir(), "aep-caw-test-cgroup")
+	app := newAppWithFakeCgroupManager(t, cfg, cgPath)
+	engine, err := policy.NewEngine(&policy.Policy{
+		Version: 1,
+		Name:    "wild",
+		NetworkRules: []policy.NetworkRule{
+			{Name: "allow-wild", Domains: []string{"*.example.com", "unresolvable.example"}, Decision: "allow"},
+		},
+	}, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var gotDefaultDeny atomic.Bool
+	var populated atomic.Bool
+	ebpfCheckSupport = func() ebpftrace.SupportStatus { return ebpftrace.SupportStatus{Supported: true} }
+	ebpfAttachConnectToCgroup = func(path string) (*ebpf.Collection, func() error, error) {
+		return &ebpf.Collection{}, func() error { return nil }, nil
+	}
+	ebpfCgroupID = func(path string) (uint64, error) { return 42, nil }
+	ebpfPopulateAllowlist = func(coll *ebpf.Collection, cgroupID uint64, allow []ebpftrace.AllowKey, allowCIDRs []ebpftrace.AllowCIDR, deny []ebpftrace.AllowKey, denyCIDRs []ebpftrace.AllowCIDR, defaultDeny bool) error {
+		populated.Store(true)
+		gotDefaultDeny.Store(defaultDeny)
+		return nil
+	}
+	ebpfCleanupAllowlist = func(coll *ebpf.Collection, cgroupID uint64) error { return nil }
+	ebpfStartCollector = func(coll *ebpf.Collection, bufSize int) (*ebpftrace.Collector, error) {
+		return nil, errors.New("collector unavailable in this test")
+	}
+
+	_, _ = applyCgroupV2(context.Background(), storeEmitter{store: app.store, broker: app.broker}, app, "sess", "cmd", 1234, policy.Limits{}, nil, engine)
+	if !populated.Load() {
+		t.Fatal("the allow list was not populated")
+	}
+	if !gotDefaultDeny.Load() {
+		t.Fatal("wildcard and unresolved allow domains disarmed the default deny")
 	}
 }
 

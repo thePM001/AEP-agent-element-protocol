@@ -13,6 +13,9 @@ import (
 )
 
 // forwardConnectEvents transforms raw BPF connect events into aep-caw events.
+// ebpfDenyRule names the refusal of the BPF connect program in deny events.
+const ebpfDenyRule = "ebpf-enforce"
+
 func forwardConnectEvents(ctx context.Context, in <-chan ebpf.ConnectEvent, emit storeEmitter, sessionID string, commandID string, metrics *metrics.Collector) {
 	for {
 		select {
@@ -61,6 +64,16 @@ func forwardConnectEvents(ctx context.Context, in <-chan ebpf.ConnectEvent, emit
 				CommandID: commandID,
 				Remote:    remote,
 				Fields:    fields,
+			}
+			if ev.Blocked != 0 {
+				// The BPF program refused the connect: a deny rule of the
+				// policy or the default deny of enforce mode named it.
+				out.Policy = &types.PolicyInfo{
+					Decision:          types.DecisionDeny,
+					EffectiveDecision: types.DecisionDeny,
+					Rule:              ebpfDenyRule,
+				}
+				out.EffectiveAction = "blocked"
 			}
 			_ = emit.AppendEvent(context.Background(), out)
 			emit.Publish(out)

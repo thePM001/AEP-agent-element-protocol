@@ -102,4 +102,5 @@ const (
 	AppActivityCgroupMode               uint32 = 151
 	AppActivityMCPToolChanged           uint32 = 153
 	AppActivitySecretAccess             uint32 = 155
+	AppActivityEBPFEnforceUnserved      uint32 = 156
 )

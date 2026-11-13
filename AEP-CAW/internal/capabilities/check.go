@@ -173,12 +173,17 @@ func CheckAll(cfg *config.Config) error {
 	}
 
 	// Check ebpf cgroup attach feasibility (eBPF kernel support + attach-capable cgroup mode).
-	// Only recorded as a fatal failure when ebpf.required=true; enabled=true alone is best-effort.
+	// Recorded as a fatal failure when ebpf.required or ebpf.enforce is set:
+	// enforce mode is the network backend of the policy (AEP-CRV-040).
+	// enabled=true alone only observes and is best-effort.
 	if cfg.Sandbox.Network.EBPF.Enabled || cfg.Sandbox.Network.EBPF.Enforce || cfg.Sandbox.Network.EBPF.Required {
 		result := checkEBPFCgroupAttach()
 		result.ConfigKey = "sandbox.network.ebpf.enabled"
+		if cfg.Sandbox.Network.EBPF.Enforce {
+			result.ConfigKey = "sandbox.network.ebpf.enforce"
+		}
 		result.Suggestion = "See docs/ebpf.md for capability requirements (CAP_BPF, /sys/fs/bpf, CONFIG_CGROUP_BPF)"
-		if !result.Available && cfg.Sandbox.Network.EBPF.Required {
+		if !result.Available && (cfg.Sandbox.Network.EBPF.Required || cfg.Sandbox.Network.EBPF.Enforce) {
 			failures = append(failures, result)
 		}
 	}

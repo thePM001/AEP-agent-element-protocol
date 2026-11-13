@@ -196,6 +196,12 @@ Per-operation decisions: `allow`, `deny`, `approve`, `redirect`, `audit`, `soft_
 
 Default policy: `configs/policies/default.yaml`. Server config: `configs/server-config.yaml`.
 
+### Enforcement backends of the shipped config
+
+The shipped server config turns on three backends on Linux. The seccomp exec handler judges every nested exec. The seccomp file monitor judges file_rules and refuses with EACCES. The eBPF connect program judges network_rules and refuses with EPERM. Each refusal leaves one deny event. The eBPF backend needs root with cgroup v2.
+
+The server refuses to start when the default policy holds file or network rules that no active backend enforces. A session that names such a policy is refused too. A network interceptor that cannot start fails the session. `sandbox.allow_degraded: true` accepts these gaps and logs each one. See the section Enforcement backends of `SECURITY.md`.
+
 ### Unmatched egress
 
 A policy may set `unmatched_egress: deny`. The key is opt-in and off by default (`""` or `default`), so a policy without it decides exactly as before. When it is on, a catch-all network rule whose decision is not `deny` stops matching. A catch-all rule names no destination: every domain it lists is a wildcard pattern that holds only `*`, `?` or `.` such as `*`, `**` or `*.*` (or it lists none) and every CIDR it lists is `0.0.0.0/0` or `::/0` (or it lists none), whatever its ports. Catch-all `deny` rules still apply. Egress that no explicit rule names is then denied with the rule name `unmatched-egress-deny`. The eBPF allowlist leaves the skipped rules out as well. Any other value fails validation.

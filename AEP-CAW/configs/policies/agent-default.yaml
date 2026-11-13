@@ -181,6 +181,7 @@ command_rules:
       - ag
       - ack
       - which
+      - which.debianutils
       - whereis
       - type
       - locate
@@ -191,6 +192,8 @@ command_rules:
     commands:
       - sed
       - awk
+      - gawk
+      - mawk
       - tr
       - sort
       - uniq
@@ -212,6 +215,7 @@ command_rules:
     commands:
       - bash
       - sh
+      - dash             # /bin/sh resolves to dash on Debian and Ubuntu
       - zsh
       - env
       - printenv
@@ -248,13 +252,16 @@ command_rules:
       - git
       - node
       - npm
+      - npm-cli.js       # the script /usr/bin/npm links to
       - npx
+      - npx-cli.js
       - yarn
       - pnpm
       - bun
       - deno
       - python
       - python3
+      - "python3.*"       # the versioned interpreter python3 links to
       - pip
       - pip3
       - uv

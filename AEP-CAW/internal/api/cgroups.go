@@ -44,8 +44,8 @@ func cgroupBestEffortDegradable(cfg *config.Config) bool {
 		return false
 	}
 	e := cfg.Sandbox.Network.EBPF
-	// EnforceWithoutDNS is intentionally omitted: it is a modifier that has no
-	// effect unless Enforce is set, which is already checked above. #411.
+	// EnforceWithoutDNS is intentionally omitted: it has no effect, since
+	// enforce mode always keeps the default deny armed (AEP-CRV-040). #411.
 	return !e.Enabled && !e.Enforce && !e.Required
 }
 
@@ -87,9 +87,10 @@ func applyCgroupV2(ctx context.Context, emit storeEmitter, app *App, sessionID, 
 	}
 
 	ebpfEnabled := cfg.Sandbox.Network.EBPF.Enabled
-	ebpfRequired := cfg.Sandbox.Network.EBPF.Required
 	ebpfEnforce := cfg.Sandbox.Network.EBPF.Enforce
-	enforceNoDNS := cfg.Sandbox.Network.EBPF.EnforceWithoutDNS
+	// Enforce mode is the network backend of the policy, so every setup
+	// failure refuses the command, as with ebpf.required (CAWA-16).
+	ebpfRequired := cfg.Sandbox.Network.EBPF.Required || ebpfEnforce
 
 	memBytes := int64(0)
 	if lim.MaxMemoryMB > 0 {
@@ -324,20 +325,14 @@ func applyCgroupV2(ctx context.Context, emit storeEmitter, app *App, sessionID, 
 						}
 						_ = emit.AppendEvent(ctx, ev)
 						emit.Publish(ev)
-						if ebpfRequired {
-							cleanupAfterSetupFailure()
-							return nil, fmt.Errorf("ebpf enforcement setup failed and required: cgroup id: %w", cgErr)
-						}
+						cleanupAfterSetupFailure()
+						return nil, fmt.Errorf("ebpf enforcement setup failed: cgroup id: %w", cgErr)
 					} else {
 						allowlistColl = coll
 						allowCgid = cgid
 						maxTTL := time.Duration(cfg.Sandbox.Network.EBPF.DNSMaxTTLSeconds) * time.Second
-						ep, cidrs, denyKeys, denyCidrs, strict, hasDomains, ttlHint := buildAllowedEndpoints(pol, maxTTL)
-						if len(ep) == 0 && len(cidrs) == 0 && !enforceNoDNS {
-							// disable default deny when we couldn't resolve anything
-							strict = false
-						}
-						if err := ebpfPopulateAllowlist(coll, cgid, ep, cidrs, denyKeys, denyCidrs, strict); err != nil {
+						plan := buildAllowedEndpoints(pol, maxTTL)
+						if err := ebpfPopulateAllowlist(coll, cgid, plan.Allow, plan.AllowCIDRs, plan.Deny, plan.DenyCIDRs, plan.DefaultDeny); err != nil {
 							ev := types.Event{
 								ID:        uuid.NewString(),
 								Timestamp: time.Now().UTC(),
@@ -353,34 +348,18 @@ func applyCgroupV2(ctx context.Context, emit storeEmitter, app *App, sessionID, 
 							if m != nil {
 								m.IncEBPFAttachFail()
 							}
-							if ebpfRequired {
-								cleanupAfterSetupFailure()
-								return nil, fmt.Errorf("ebpf enforcement setup failed and required: populate allowlist: %w", err)
-							}
-							// best effort disable default deny and clear entries
-							_ = ebpfCleanupAllowlist(coll, cgid)
-							allowlistColl = nil
-							allowCgid = 0
+							// Enforce mode never runs a command with a partial
+							// allow list.
+							cleanupAfterSetupFailure()
+							return nil, fmt.Errorf("ebpf enforcement setup failed: populate allowlist: %w", err)
 						}
-						if ebpfEnforce && !strict {
-							ev := types.Event{
-								ID:        uuid.NewString(),
-								Timestamp: time.Now().UTC(),
-								Type:      "ebpf_enforce_non_strict",
-								SessionID: sessionID,
-								CommandID: cmdID,
-								Fields: map[string]any{
-									"reason": "rules include wildcards or cidrs; default-deny disabled",
-								},
-							}
-							_ = emit.AppendEvent(ctx, ev)
-							emit.Publish(ev)
-						}
+						emitEBPFEnforcePlan(ctx, emit, sessionID, cmdID, plan)
 
 						// Optional DNS refresh loop for domain-based rules.
-						if hasDomains && strict && refreshInterval > 0 {
+						if plan.HasDomains && refreshInterval > 0 {
 							refreshCtx, cancel := context.WithCancel(ctx)
 							refreshCancel = cancel
+							ttlHint := plan.TTLHint
 							go func() {
 								base := time.Duration(refreshInterval) * time.Second
 								if ttlHint > 0 && ttlHint < base {
@@ -393,8 +372,9 @@ func applyCgroupV2(ctx context.Context, emit storeEmitter, app *App, sessionID, 
 									case <-refreshCtx.Done():
 										return
 									case <-t.C:
-										ep2, cidrs2, deny2, denyCidrs2, strict2, _, ttl2 := buildAllowedEndpoints(pol, base)
-										if err := ebpfPopulateAllowlist(coll, cgid, ep2, cidrs2, deny2, denyCidrs2, strict2); err != nil {
+										plan2 := buildAllowedEndpoints(pol, base)
+										ttl2 := plan2.TTLHint
+										if err := ebpfPopulateAllowlist(coll, cgid, plan2.Allow, plan2.AllowCIDRs, plan2.Deny, plan2.DenyCIDRs, plan2.DefaultDeny); err != nil {
 											ev := types.Event{
 												ID:        uuid.NewString(),
 												Timestamp: time.Now().UTC(),
@@ -465,6 +445,46 @@ func applyCgroupV2(ctx context.Context, emit storeEmitter, app *App, sessionID, 
 	}
 
 	return cleanupResources, nil
+}
+
+// emitEBPFEnforcePlan records what the kernel allow list of a command can and
+// cannot carry. Hosts named only by wildcard patterns or by names that did not
+// resolve are refused by the armed default deny; the event names them so the
+// operator can see why such a connect fails. A policy with a catch-all allow
+// runs without the default deny, which the event also records.
+func emitEBPFEnforcePlan(ctx context.Context, emit storeEmitter, sessionID, cmdID string, plan ebpfAllowPlan) {
+	if !plan.DefaultDeny {
+		ev := types.Event{
+			ID:        uuid.NewString(),
+			Timestamp: time.Now().UTC(),
+			Type:      "ebpf_enforce_non_strict",
+			SessionID: sessionID,
+			CommandID: cmdID,
+			Fields: map[string]any{
+				"reason": "the policy allows every destination on every port; only deny rules are loaded",
+			},
+		}
+		_ = emit.AppendEvent(ctx, ev)
+		emit.Publish(ev)
+	}
+	if len(plan.UnservedWildcards) == 0 && len(plan.Unresolved) == 0 {
+		return
+	}
+	ev := types.Event{
+		ID:        uuid.NewString(),
+		Timestamp: time.Now().UTC(),
+		Type:      "ebpf_enforce_unserved",
+		SessionID: sessionID,
+		CommandID: cmdID,
+		Fields: map[string]any{
+			"wildcard_allows":   plan.UnservedWildcards,
+			"unresolved_allows": plan.Unresolved,
+			"default_deny":      plan.DefaultDeny,
+			"reason":            "the kernel allow list holds addresses; hosts only these rules allow are refused",
+		},
+	}
+	_ = emit.AppendEvent(ctx, ev)
+	emit.Publish(ev)
 }
 
 func sanitizeCgroupTag(s string) string {

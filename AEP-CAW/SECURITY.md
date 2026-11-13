@@ -961,6 +961,23 @@ For Windows deployments requiring full Linux-level security, aep-caw supports WS
 | Environment variables | Allow (unless in deny list or explicit allow-list defined) |
 | Approval timeout | Deny |
 
+### Enforcement backends
+
+A file or network default of deny holds only while a backend consults the policy. On Linux the shipped `configs/server-config.yaml` turns on three:
+
+| Rules | Backend | A refused operation |
+|-------|---------|---------------------|
+| `command_rules` of nested execs | seccomp exec handler (`sandbox.seccomp.execve`) | the exec fails with EACCES |
+| `file_rules` | seccomp file monitor (`sandbox.seccomp.file_monitor` with `enforce_without_fuse`) | the syscall fails with EACCES and leaves one deny event |
+| `network_rules` | eBPF connect program (`sandbox.network.ebpf` with `enforce` and `required`) | the connect fails with EPERM and leaves one `net_connect_blocked` event |
+
+- The server refuses to start when the default policy holds file or network rules that no active backend enforces. A session that names such a policy is refused too. Backends that do not refuse an operation do not count: the explicit HTTP proxy (a client that ignores `HTTP_PROXY` bypasses it), FUSE (the workspace mount only) and a file monitor without `enforce_without_fuse`.
+- A configured network interceptor (transparent mode or the explicit proxy) that cannot start fails the session.
+- `sandbox.allow_degraded: true` accepts both gaps. The server then logs every rule kind it runs unenforced. Keep it false in production.
+- eBPF enforce mode keeps the default deny armed for every policy that does not allow all destinations on all ports. The kernel list holds addresses, so a host that only a wildcard domain or a name that did not resolve allows is refused. When the policy names hosts by domain the system name servers are open on port 53. Any eBPF setup failure refuses the command. eBPF needs root with cgroup v2.
+- The exec handler judges the binary a command resolves to, so the shipped policies also name `dash`, `python3.*`, `gawk`, `mawk`, `which.debianutils` and the npm launcher scripts next to the names agents type.
+- `security.strict` and `security.minimum_mode` are checked at startup. A host that cannot meet them stops the server.
+
 ## Reporting Security Issues
 
 If you discover a security vulnerability in aep-caw:

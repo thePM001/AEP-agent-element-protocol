@@ -215,6 +215,18 @@ jobs:
           bash scripts/ci-go-test.sh -race -p 2 ./...
         env:
           GOTMPDIR: /tmp/go-tmp
+      # AEP-CRV-040: with the shipped server config and the default policy a
+      # denied file read and a denied connect each fail with one deny event.
+      # The eBPF network backend needs root, so this step runs the test under
+      # sudo. AEP_CAW_ENFORCEMENT_TEST=1 turns a missing precondition into a
+      # failure, so the step cannot pass by skipping.
+      - name: shipped config enforcement (root)
+        run: |
+          mkdir -p "$GOTMPDIR"
+          sudo -E env "PATH=$PATH" AEP_CAW_ENFORCEMENT_TEST=1 \
+            go test -count=1 -run '^TestShippedConfigEnforcesDefaultPolicy$' -v ./internal/server/
+        env:
+          GOTMPDIR: /tmp/go-tmp
       - name: conformance vectors (Go CAW)
         run: go test -run Vectors -v ./internal/kerneldock
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0

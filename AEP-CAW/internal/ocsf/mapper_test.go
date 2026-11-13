@@ -437,6 +437,7 @@ func goldenSampleEvents() []types.Event {
 		{ID: "ev-ebpf-enf-dis-1", Type: "ebpf_enforce_disabled", Timestamp: t0},
 		{ID: "ev-ebpf-non-strict-1", Type: "ebpf_enforce_non_strict", Timestamp: t0},
 		{ID: "ev-ebpf-refresh-fail-1", Type: "ebpf_enforce_refresh_failed", Timestamp: t0},
+		{ID: "ev-ebpf-unserved-1", Type: "ebpf_enforce_unserved", Timestamp: t0},
 		{ID: "ev-ebpf-unav-1", Type: "ebpf_unavailable", Timestamp: t0},
 		{ID: "ev-wrap-init-1", Type: "wrap_init", Timestamp: t0},
 		{ID: "ev-fsev-err-1", Type: "fsevents_error", Timestamp: t0, Fields: map[string]any{"reason": "queue overflow"}},

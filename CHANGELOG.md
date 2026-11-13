@@ -2,6 +2,26 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-13 - The GAP pin names the current commit of the GAP repository
+The GAP repository received a new history on 2026-11-13, so the commit that this tree pinned no longer exists there.
+
+- `AEP-Components/gap/gap-pin.txt` names the current commit of the GAP repository. The pinned schemas, the version values and the source of the profile crate are byte for byte the same as before.
+- The manifest of the profile crate lost one comment line in its head. No code line changed.
+
+## [2.9.0] - 2026-11-13 - AEP-CAW ships with its file and network backends on and refuses rules it cannot enforce
+The server config that the stack installs switched on no file, network or nested exec enforcement. The file_rules and network_rules of the policy were never consulted and the server started without a warning. A failed network interceptor left the session running without it. eBPF enforce mode dropped its default deny for every shipped policy.
+
+- The shipped `configs/server-config.yaml` and the sample `config.yml` turn on the seccomp exec handler, the seccomp file monitor with `enforce_without_fuse` and the eBPF connect program with `enforce` and `required`. With the default policy a denied file read fails with EACCES and a denied connect fails with EPERM. Each leaves one deny event.
+- The server refuses to start when the default policy holds file or network rules that no active backend enforces. A session that names such a policy is refused too. `sandbox.allow_degraded: true` runs them unenforced and logs each gap.
+- A transparent interceptor or an explicit proxy that cannot start fails the session unless `sandbox.allow_degraded` is set.
+- eBPF enforce mode keeps the default deny armed with wildcard domains and when a name does not resolve. Allow prefixes that the policy engine ranks above a wider deny are carved out of the kernel deny list, so 127.0.0.1 of the LLM proxy and the system name servers on port 53 are reachable under the default policy. Any setup failure refuses the command. Blocked connect events carry the deny decision.
+- The file monitor denies when it cannot read the path from the tracee and sends approve decisions to the approval flow. Emulated opens run with the filesystem credentials of the tracee and refuse symlinks through openat2.
+- The unix socket monitor judges the destinations of sendmsg and sendmmsg. io_uring is blocked whenever a seccomp notify control is active.
+- `security.strict` and `security.minimum_mode` are checked at startup. Strict mode also refuses Landlock or FUSE that the config turns on but the kernel lacks.
+- The shipped Linux policies name the binaries that common commands resolve to (`dash`, `python3.*`, `gawk`, `mawk`, `which.debianutils`, the npm launcher scripts), because the exec handler judges the resolved binary.
+- The end to end example runs its CAW server with the same backends. Without root and cgroup v2 it says so and runs the network rules unenforced.
+- Verify with `bash scripts/ci-go-test.sh ./...` in `AEP-CAW`. CI runs `TestShippedConfigEnforcesDefaultPolicy` as root.
+
 ## [2.9.0] - 2026-11-13 - The README of the GAP component follows the GAP page
 The README of component 06 carried the old GAP README as its body, with the same rules repeated and without a table of the fields and types of the language. The GAP repository received a rewritten README and this tree now carries the same content together with its own.
 

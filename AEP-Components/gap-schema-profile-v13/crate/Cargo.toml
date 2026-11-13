@@ -1,5 +1,4 @@
 # @PAD: gap-285-p1-schema-profile-v13
-# @GCDE: gaplune.policy.v1
 # GAP-OPEN-SOURCE is the one source of this crate. AEP holds a byte pinned copy of
 # this manifest, LICENSE and src. VERSIONING.md names the version rules.
 [package]

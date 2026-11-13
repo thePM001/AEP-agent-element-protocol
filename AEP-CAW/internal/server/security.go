@@ -8,11 +8,23 @@ import (
 	"github.com/thePM001/AEP-agent-element-protocol/AEP-CAW/internal/config"
 )
 
+// detectSecurityCapabilities is a seam for tests; the probes read kernel facts.
+var detectSecurityCapabilities = capabilities.DetectSecurityCapabilities
+
+// securityModeRequested reports whether the config asks the server to hold a
+// security mode: security.strict or security.minimum_mode. Only then does
+// startup run the capability probes, which fork helper processes.
+func securityModeRequested(cfg *config.Config) bool {
+	return cfg != nil && (cfg.Security.Strict || cfg.Security.MinimumMode != "")
+}
+
 // DetectAndValidateSecurityMode detects security capabilities and selects the appropriate mode.
 // Returns the selected mode, detected capabilities, and any error.
+// Server startup calls it whenever security.strict or security.minimum_mode is
+// set and refuses to start on its error (CAWA-12).
 func DetectAndValidateSecurityMode(cfg *config.Config) (string, *capabilities.SecurityCapabilities, error) {
 	// Detect available security capabilities
-	caps := capabilities.DetectSecurityCapabilities()
+	caps := detectSecurityCapabilities()
 
 	// Determine effective mode
 	var mode string
@@ -26,6 +38,15 @@ func DetectAndValidateSecurityMode(cfg *config.Config) (string, *capabilities.Se
 	if cfg != nil && cfg.Security.Strict {
 		if err := capabilities.ValidateStrictMode(mode, caps); err != nil {
 			return "", caps, fmt.Errorf("strict mode validation failed: %w", err)
+		}
+		// A layer the config switches on must exist on this kernel. Without
+		// this check the wrapper skips Landlock and the session skips the FUSE
+		// mount without an error.
+		if cfg.Landlock.Enabled && !caps.Landlock {
+			return "", caps, fmt.Errorf("strict mode validation failed: landlock.enabled is true but Landlock is unavailable")
+		}
+		if cfg.Sandbox.FUSE.Enabled && !caps.FUSE {
+			return "", caps, fmt.Errorf("strict mode validation failed: sandbox.fuse.enabled is true but FUSE is unavailable")
 		}
 	}
 

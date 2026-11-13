@@ -103,6 +103,7 @@ command_rules:
     description: The two commands the pass path of the run starts
     commands:
       - sh
+      - dash   # the CAW exec handler judges the binary /bin/sh resolves to
       - printf
     decision: allow
 

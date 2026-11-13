@@ -99,7 +99,13 @@ func (a *App) buildSeccompWrapperConfig(s *session.Session, p seccompWrapperPara
 			!seccompCfg.InterceptMetadata,
 		)
 	}
-	seccompCfg.BlockIOUring = config.FileMonitorBoolWithDefault(a.cfg.Sandbox.Seccomp.FileMonitor.BlockIOUring, fmDefault)
+	// io_uring submits connect, open and send operations that never pass the
+	// seccomp filter, so every notify-based control is blind to them. The
+	// block is on whenever any such control is active (CAWA-14); only an
+	// explicit block_io_uring: false turns it off.
+	notifyControl := seccompCfg.UnixSocketEnabled || seccompCfg.ExecveEnabled ||
+		seccompCfg.FileMonitorEnabled || seccompCfg.SignalFilterEnabled || fmDefault
+	seccompCfg.BlockIOUring = config.FileMonitorBoolWithDefault(a.cfg.Sandbox.Seccomp.FileMonitor.BlockIOUring, notifyControl)
 
 	// Pass the boot-time decision to every wrapper. The pointer is
 	// per-exec; the bool storage is the server-process App field. Issue #369.

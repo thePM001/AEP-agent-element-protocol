@@ -98,6 +98,45 @@ sandbox:
     # Add custom vars as needed:
     # MY_CUSTOM_VAR: "value"
 
+  # The file_rules and network_rules of a policy hold only through an active
+  # backend. The server refuses to start and refuses a session when the
+  # policy names rules that no backend below enforces. A configured network
+  # interceptor that cannot start fails the session. allow_degraded: true
+  # accepts both gaps and logs each one; keep it false in production.
+  allow_degraded: false
+
+  # Every command runs under aep-caw-unixwrap, the seccomp wrapper that
+  # carries the exec handler and the file monitor.
+  unix_sockets:
+    enabled: true
+
+  seccomp:
+    enabled: true
+    # Nested exec enforcement: every execve inside the session is judged
+    # against command_rules, not only the command the API starts.
+    execve:
+      enabled: true
+    # File backend: file_rules are judged on open, create, rename, delete
+    # and metadata syscalls. A denied operation fails with EACCES and
+    # leaves one deny event.
+    file_monitor:
+      enabled: true
+      enforce_without_fuse: true
+      intercept_metadata: true
+      openat_emulation: true
+      block_io_uring: true
+
+  # Network backend: an eBPF connect program on the cgroup of each command.
+  # Default deny stays armed, so a connect to an address no rule allows
+  # fails with EPERM and leaves one net_connect_blocked event. Hosts named
+  # only by wildcard domains are refused. Needs root with cgroup v2.
+  network:
+    ebpf:
+      enabled: true
+      enforce: true
+      required: true
+      dns_refresh_seconds: 60
+
 health:
   path: "/health"
   readiness_path: "/ready"

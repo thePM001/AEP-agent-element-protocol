@@ -121,6 +121,7 @@ var pendingTypes = map[string]struct{}{
 	"ebpf_enforce_disabled":       {},
 	"ebpf_enforce_non_strict":     {},
 	"ebpf_enforce_refresh_failed": {},
+	"ebpf_enforce_unserved":       {},
 	"ebpf_unavailable":            {},
 	"wrap_init":                   {},
 	"fsevents_error":              {},

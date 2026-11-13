@@ -274,6 +274,7 @@ command_rules:
     commands:
       - bash
       - sh
+      - dash             # /bin/sh resolves to dash on Debian and Ubuntu
       - zsh
     args_patterns:
       - "-i.*"
@@ -304,6 +305,7 @@ command_rules:
       - cargo
       - go
       - npm
+      - npm-cli.js       # the script /usr/bin/npm links to
       - yarn
     decision: allow
 

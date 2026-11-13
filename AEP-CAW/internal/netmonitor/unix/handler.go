@@ -4,6 +4,7 @@ package unix
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -76,6 +77,8 @@ func ServeNotify(ctx context.Context, fd *os.File, sessID string, pol *policy.En
 		// socket/listen often have no usable sockaddr; allow only those without path policy surface.
 		if ctxReq.Syscall == seccomp.ScmpSyscall(unix.SYS_SOCKET) || ctxReq.Syscall == seccomp.ScmpSyscall(unix.SYS_LISTEN) {
 			allow = true
+		} else if isMsgSendSyscall(ctxReq.Syscall) {
+			allow, path, abstract, ev = judgeMsgSend(ctxReq.PID, req, pol, emit, sessID, op)
 		} else if scope, raw, err := sockaddrTrapScope(ctxReq.Syscall, ctxReq.AddrPtr, ctxReq.AddrLen, func() ([]byte, error) {
 			return ReadSockaddr(ctxReq.PID, ctxReq.AddrPtr, ctxReq.AddrLen)
 		}); scope == trapContinue {
@@ -151,7 +154,8 @@ func sockaddrTrapScope(sc seccomp.ScmpSyscall, addrPtr, addrLen uint64, read fun
 
 func isUnixSocketSyscall(sc seccomp.ScmpSyscall) bool {
 	switch sc {
-	case seccomp.ScmpSyscall(unix.SYS_SOCKET), seccomp.ScmpSyscall(unix.SYS_CONNECT), seccomp.ScmpSyscall(unix.SYS_BIND), seccomp.ScmpSyscall(unix.SYS_LISTEN), seccomp.ScmpSyscall(unix.SYS_SENDTO):
+	case seccomp.ScmpSyscall(unix.SYS_SOCKET), seccomp.ScmpSyscall(unix.SYS_CONNECT), seccomp.ScmpSyscall(unix.SYS_BIND), seccomp.ScmpSyscall(unix.SYS_LISTEN), seccomp.ScmpSyscall(unix.SYS_SENDTO),
+		seccomp.ScmpSyscall(unix.SYS_SENDMSG), seccomp.ScmpSyscall(unix.SYS_SENDMMSG):
 		return true
 	default:
 		return false
@@ -170,6 +174,10 @@ func syscallName(sc seccomp.ScmpSyscall) string {
 		return "listen"
 	case seccomp.ScmpSyscall(unix.SYS_SENDTO):
 		return "sendto"
+	case seccomp.ScmpSyscall(unix.SYS_SENDMSG):
+		return "sendmsg"
+	case seccomp.ScmpSyscall(unix.SYS_SENDMMSG):
+		return "sendmmsg"
 	default:
 		return ""
 	}
@@ -360,6 +368,8 @@ func ServeNotifyWithExecve(ctx context.Context, fd *os.File, sessID string, pol 
 		op := syscallName(ctxReq.Syscall)
 		if ctxReq.Syscall == seccomp.ScmpSyscall(unix.SYS_SOCKET) || ctxReq.Syscall == seccomp.ScmpSyscall(unix.SYS_LISTEN) {
 			allow = true
+		} else if isMsgSendSyscall(ctxReq.Syscall) {
+			allow, path, abstract, ev = judgeMsgSend(ctxReq.PID, req, pol, emit, sessID, op)
 		} else if scope, raw, err := sockaddrTrapScope(ctxReq.Syscall, ctxReq.AddrPtr, ctxReq.AddrLen, func() ([]byte, error) {
 			return ReadSockaddr(ctxReq.PID, ctxReq.AddrPtr, ctxReq.AddrLen)
 		}); scope == trapContinue {
@@ -632,6 +642,10 @@ func handleFileNotification(goCtx context.Context, fd seccomp.ScmpFd, req *secco
 	}
 }
 
+// emulatedRespondDeny answers a notification of the emulated file handler
+// with an errno. It is a seam for tests, which have no seccomp listener fd.
+var emulatedRespondDeny = NotifRespondDeny
+
 // handleFileNotificationEmulated processes a file syscall notification using
 // AddFD emulation for open-family syscalls. For openat/openat2 (not O_TMPFILE,
 // not RESOLVE_*), the supervisor opens the file via /proc/<pid>/root/<path>
@@ -664,9 +678,11 @@ func handleFileNotificationEmulated(goCtx context.Context, fd seccomp.ScmpFd, re
 		}
 		howFlags, howMode, err := readOpenHowWithFallback(pid, fileArgs.HowPtr)
 		if err != nil {
-			slog.Debug("emulated file handler: failed to read open_how, CONTINUE", "pid", pid, "error", err)
-			if err := NotifRespondContinue(int(fd), req.ID); err != nil {
-				slog.Debug("emulated file handler: continue response failed", "pid", pid, "error", err)
+			// Without the flags the operation is unknown, so the policy
+			// cannot judge it: deny (CAWA-06).
+			slog.Debug("emulated file handler: failed to read open_how, denying", "pid", pid, "error", err)
+			if err := emulatedRespondDeny(int(fd), req.ID, int32(unix.EACCES)); err != nil {
+				slog.Error("emulated file handler: deny response failed", "pid", pid, "error", err)
 			}
 			return
 		}
@@ -683,35 +699,25 @@ func handleFileNotificationEmulated(goCtx context.Context, fd seccomp.ScmpFd, re
 	// ptrace_scope=1 for child processes in the `aep-caw wrap` path
 	// (PR_SET_PTRACER does not inherit across fork()).
 	//
-	// For mutating operations (writes, deletes, mkdir, etc.), we retry
-	// with /proc/<pid>/mem which uses PTRACE_MODE_ATTACH_FSCREDS and may
-	// succeed where ProcessVMReadv (PTRACE_MODE_ATTACH_REALCREDS) fails.
-	// This ensures deny rules are evaluated for writes even under Yama.
+	// When ProcessVMReadv fails the read is retried through /proc/<pid>/mem,
+	// which uses PTRACE_MODE_ATTACH_FSCREDS and may succeed where
+	// ProcessVMReadv (PTRACE_MODE_ATTACH_REALCREDS) fails.
 	//
-	// For read-only operations (open O_RDONLY, stat, access, readlink),
-	// resolution failure falls back to CONTINUE - the kernel handles the
-	// syscall without policy evaluation. This is safe because reads cannot
-	// mutate the filesystem.
+	// A path that still cannot be read gets no policy decision, so the
+	// syscall is denied with EACCES for reads and writes alike (CAWA-06), as
+	// the non-emulated handler does (TM-04). A read that ran unjudged would
+	// let a process that drops LD_PRELOAD read every path a deny rule names.
 	path, err := resolvePathAt(pid, fileArgs.Dirfd, fileArgs.PathPtr)
 	if err != nil {
-		// For writes, retry with /proc/<pid>/mem fallback - deny rules
-		// must be evaluated even when ProcessVMReadv is blocked by Yama.
-		if !isReadOnlyFileOp(args.Nr, fileArgs.Flags) {
-			path, err = resolvePathAtWithFallback(pid, fileArgs.Dirfd, fileArgs.PathPtr)
+		path, err = resolvePathAtWithFallback(pid, fileArgs.Dirfd, fileArgs.PathPtr)
+	}
+	if err != nil {
+		slog.Warn("emulated file handler: path resolution failed, denying",
+			"pid", pid, "error", err, "syscall", args.Nr, "session_id", sessID)
+		if err := emulatedRespondDeny(int(fd), req.ID, int32(unix.EACCES)); err != nil {
+			slog.Error("emulated file handler: deny response failed", "pid", pid, "error", err)
 		}
-		if err != nil {
-			if !isReadOnlyFileOp(args.Nr, fileArgs.Flags) {
-				slog.Warn("emulated file handler: path resolution failed for write, file policy not enforced",
-					"pid", pid, "error", err, "session_id", sessID)
-			} else {
-				slog.Debug("emulated file handler: path resolution failed for read, falling back to CONTINUE",
-					"pid", pid, "error", err)
-			}
-			if err := NotifRespondContinue(int(fd), req.ID); err != nil {
-				slog.Debug("emulated file handler: continue response failed", "pid", pid, "error", err)
-			}
-			return
-		}
+		return
 	}
 
 	// Resolve second path for rename/link.
@@ -719,14 +725,13 @@ func handleFileNotificationEmulated(goCtx context.Context, fd seccomp.ScmpFd, re
 	if fileArgs.HasSecondPath {
 		p2, err := resolvePathAt(pid, fileArgs.Dirfd2, fileArgs.PathPtr2)
 		if err != nil {
-			// Rename/link are always mutating - retry with fallback.
 			p2, err = resolvePathAtWithFallback(pid, fileArgs.Dirfd2, fileArgs.PathPtr2)
 		}
 		if err != nil {
-			slog.Warn("emulated file handler: second path resolution failed for mutating op, file policy not enforced",
+			slog.Warn("emulated file handler: second path resolution failed, denying",
 				"pid", pid, "error", err, "syscall", args.Nr, "session_id", sessID)
-			if err := NotifRespondContinue(int(fd), req.ID); err != nil {
-				slog.Debug("emulated file handler: continue response failed", "pid", pid, "error", err)
+			if err := emulatedRespondDeny(int(fd), req.ID, int32(unix.EACCES)); err != nil {
+				slog.Error("emulated file handler: deny response failed", "pid", pid, "error", err)
 			}
 			return
 		}
@@ -835,14 +840,23 @@ func handleFileNotificationEmulated(goCtx context.Context, fd seccomp.ScmpFd, re
 	}
 }
 
-// emulateOpenat opens a file on behalf of the tracee via /proc/<pid>/root/<path>,
+// emulateOpenat opens a file on behalf of the tracee inside /proc/<pid>/root,
 // then injects the resulting fd into the tracee using SECCOMP_ADDFD_FLAG_SEND.
 // This atomically installs the fd and completes the notification, eliminating
-// TOCTOU races between the policy check and the actual open.
+// TOCTOU races between the policy check and the actual open. The open runs
+// with the filesystem credentials of the tracee and refuses symlinks, so it
+// reaches the file the policy judged with the access the tracee holds
+// (CAWA-13). When the supervisor cannot open that way the kernel runs the
+// syscall in the tracee instead (CONTINUE).
 func emulateOpenat(fd seccomp.ScmpFd, req *seccomp.ScmpNotifReq, pid int, path string, flags uint32, mode uint32) {
-	procPath := fmt.Sprintf("/proc/%d/root%s", pid, path)
-
 	openFlags := int(flags) & int(emulableFlagMask)
+
+	continueInTracee := func(reason string, err error) {
+		slog.Debug("emulateOpenat: falling back to CONTINUE", "pid", pid, "reason", reason, "error", err)
+		if err := NotifRespondContinue(int(fd), req.ID); err != nil {
+			slog.Debug("emulateOpenat: continue response failed", "pid", pid, "error", err)
+		}
+	}
 
 	// When O_CREAT is set, apply the tracee's umask to the mode so that
 	// supervisor-created files have the same permissions the kernel would
@@ -853,16 +867,22 @@ func emulateOpenat(fd seccomp.ScmpFd, req *seccomp.ScmpNotifReq, pid int, path s
 		if err != nil {
 			// Can't read umask - fall back to CONTINUE to avoid creating
 			// files with potentially over-permissive modes.
-			slog.Debug("emulateOpenat: cannot read umask, falling back to CONTINUE", "pid", pid, "error", err)
-			if err := NotifRespondContinue(int(fd), req.ID); err != nil {
-				slog.Debug("emulateOpenat: continue response failed", "pid", pid, "error", err)
-			}
+			continueInTracee("cannot read umask", err)
 			return
 		}
 		effectiveMode = mode &^ umask
 	}
 
-	supervisorFD, err := unix.Open(procPath, openFlags, effectiveMode)
+	creds, err := readTraceeCreds(pid)
+	if err != nil {
+		continueInTracee("cannot read tracee credentials", err)
+		return
+	}
+	supervisorFD, err := openAsTracee(pid, path, openFlags, effectiveMode, creds)
+	if errors.Is(err, errEmulationUnavailable) {
+		continueInTracee("supervisor cannot open as the tracee", err)
+		return
+	}
 	if err != nil {
 		errno, ok := err.(unix.Errno)
 		if !ok {

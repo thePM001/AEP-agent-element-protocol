@@ -133,6 +133,22 @@ func New(cfg *config.Config) (*Server, error) {
 		return nil, err
 	}
 
+	if cfg.Sandbox.Network.EBPF.EnforceWithoutDNS {
+		slog.Warn("sandbox.network.ebpf.enforce_without_dns has no effect: enforce mode always keeps the default deny armed")
+	}
+
+	// security.strict and security.minimum_mode hold the server to a mode; a
+	// host that cannot meet it refuses to start (CAWA-12).
+	var secCaps *capabilities.SecurityCapabilities
+	if securityModeRequested(cfg) {
+		mode, caps, err := DetectAndValidateSecurityMode(cfg)
+		if err != nil {
+			return nil, err
+		}
+		secCaps = caps
+		LogSecurityCapabilities(caps, mode)
+	}
+
 	// Ensure data directories exist before opening stores/listeners.
 	for _, dir := range []string{
 		filepath.Dir(cfg.Server.UnixSocket.Path),
@@ -172,6 +188,17 @@ func New(cfg *config.Config) (*Server, error) {
 	p, err := pm.Get()
 	if err != nil {
 		return nil, err
+	}
+	// A policy whose file or network rules no active backend enforces would
+	// run as a list of wishes. The server refuses it unless the operator sets
+	// sandbox.allow_degraded (AEP-CRV-040).
+	if err := api.CheckPolicyEnforcement(cfg, p); err != nil {
+		return nil, err
+	}
+	if secCaps != nil {
+		for _, w := range capabilities.ValidatePolicyForMode(secCaps, len(p.UnixRules) > 0, len(p.SignalRules) > 0, len(p.NetworkRules) > 0) {
+			slog.Warn("policy enforcement limited on this host", "policy", p.Name, "detail", w.Message)
+		}
 	}
 	enforceApprovals := cfg.Approvals.Enabled
 	// The global policy also runs commands of sessions without a policy dir,
@@ -552,13 +579,19 @@ func New(cfg *config.Config) (*Server, error) {
 			// strict assertion that cgroup controllers work, so the probe must not
 			// fall back to attach-only on that path.
 			permitAttachOnly := !cfg.Sandbox.Cgroups.Enabled
+			// The eBPF network backend attaches to the per-command cgroup, so
+			// enforce mode needs the cgroup manager as much as required does.
+			ebpfMandatory := cfg.Sandbox.Network.EBPF.Required || cfg.Sandbox.Network.EBPF.Enforce
 			mgr, err := limitspkg.NewCgroupManager(context.Background(), cfg.Sandbox.Cgroups.BasePath, permitAttachOnly)
 			if err != nil {
+				if ebpfMandatory {
+					return nil, fmt.Errorf("ebpf enforce or required is set but the cgroup v2 probe failed: %w", err)
+				}
 				slog.Warn("cgroup v2 probe failed; per-command limits unavailable", "error", err)
 			} else {
 				probe := mgr.Probe()
-				if cfg.Sandbox.Network.EBPF.Required && probe.Mode == limitspkg.ModeUnavailable {
-					return nil, fmt.Errorf("ebpf.required=true but cgroup probe is unavailable: %s", probe.Reason)
+				if ebpfMandatory && probe.Mode == limitspkg.ModeUnavailable {
+					return nil, fmt.Errorf("ebpf enforce or required is set but the cgroup probe is unavailable: %s", probe.Reason)
 				}
 				cgroupMgr = mgr
 				modeEvent := types.Event{

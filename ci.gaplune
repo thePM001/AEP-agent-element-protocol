@@ -8,6 +8,9 @@ json: prohibited
 # public mirror stays green. The gate starts in shadow mode and moves to enforce after a
 # green week in the shadow ledger.
 gate: shadow
+# These jobs install from the npm registry, which the airlock of the agent cells refuses.
+# They are checked on GitHub only (operator decision of 2026-11-13).
+github_only: baseline.yml#typescript baseline.yml#live-set supply-chain.yml#npm-audit
 suites:
   - name: secrets
     run: gitleaks dir . --config .gitleaks.toml --redact --no-banner --exit-code 1 -v
@@ -49,24 +52,6 @@ suites:
     paths: AEP-Base-Node/ AEP-User-Experience/ rust/ Cargo.toml Cargo.lock
     timeout: 3600
     workflow: base-node.yml#end-to-end-example base-node.yml#probe base-node.yml#self-test
-  - name: typescript
-    run: |
-      npm ci --no-audit --no-fund
-      npm run typecheck
-      npm run lint
-      npm test
-    paths: *.ts *.mjs *.js package.json package-lock.json tsconfig.json tsconfig.base.json eslint.config.mjs vitest.config.mjs
-    timeout: 3600
-    workflow: baseline.yml#typescript
-  - name: live-set
-    run: |
-      npm ci --no-audit --no-fund
-      node AEP-Components/wrap-coverage/lib/wrap-coverage.mjs AEP-User-Experience/examples/end-to-end-run/deployment/wrap-coverage.yaml
-      node aep-check.mjs
-      bash AEP-Components/conformance/runner/run.sh
-    paths: AEP-Components/ AEP-User-Experience/ AEP-Policy-System/ aep-check.mjs THREAT_MODEL.md
-    timeout: 3600
-    workflow: baseline.yml#live-set
   - name: vectors-without-rust
     run: |
       NODE_DIR="$(dirname "$(command -v node)")"
@@ -84,8 +69,9 @@ suites:
   - name: caw-go
     dir: AEP-CAW
     run: |
-      export GOTMPDIR="${TMPDIR:-/tmp}/aep-caw-gotmp-$$"
-      mkdir -p "$GOTMPDIR"
+      # A short folder: tests bind unix sockets under it and a socket path has at most
+      # 108 bytes, which a long prefix plus a long test name passes.
+      export GOTMPDIR="$(mktemp -d /tmp/g.XXXXXX)"
       bash scripts/ci-go-test.sh -p 2 ./...
       bash scripts/ci-go-test.sh -race -p 2 ./...
       go test -run Vectors -v ./internal/kerneldock
@@ -106,8 +92,3 @@ suites:
     paths: Cargo.toml Cargo.lock deny.toml
     timeout: 1800
     workflow: supply-chain.yml#cargo-deny
-  - name: npm-audit
-    run: npm audit --audit-level=high
-    paths: package.json package-lock.json
-    timeout: 900
-    workflow: supply-chain.yml#npm-audit

@@ -55,10 +55,10 @@ need_binaries() {
       exit 1
     fi
   done
-  if [ ! -x "$CAW_BIN" ]; then
-    log "building CAW"
-    ( cd "$CAW_DIR" && make build )
-  fi
+  # Go rebuilds only what changed, so the run never uses a stale CAW server
+  # or seccomp wrapper either.
+  log "building CAW"
+  ( cd "$CAW_DIR" && make build )
 }
 
 free_port() {
@@ -156,6 +156,16 @@ fi
 
 CAW_PORT="$(free_port)"
 CAW_SERVER="http://127.0.0.1:$CAW_PORT"
+# The CAW network backend is eBPF enforce, which needs root and cgroup v2.
+# Without them the run says so and runs the network rules unenforced.
+CAW_EBPF=false
+CAW_DEGRADED=true
+if [ "$(id -u)" = "0" ] && [ -f /sys/fs/cgroup/cgroup.controllers ]; then
+  CAW_EBPF=true
+  CAW_DEGRADED=false
+else
+  log "WARNING: no root with cgroup v2; CAW network rules run unenforced (sandbox.allow_degraded)"
+fi
 cat > "$RUN_DIR/caw-server.yml" <<YAML
 server:
   http:
@@ -183,15 +193,25 @@ audit:
   storage:
     sqlite_path: "$RUN_DIR/caw-events.db"
 sandbox:
+  allow_degraded: $CAW_DEGRADED
   fuse:
     enabled: false
+  unix_sockets:
+    enabled: true
+    wrapper_bin: "$CAW_DIR/bin/aep-caw-unixwrap"
+  seccomp:
+    enabled: true
+    execve:
+      enabled: true
+    file_monitor:
+      enabled: true
+      enforce_without_fuse: true
   network:
     enabled: false
-  unix_sockets:
-    enabled: false
-  seccomp:
-    execve:
-      enabled: false
+    ebpf:
+      enabled: $CAW_EBPF
+      enforce: $CAW_EBPF
+      required: $CAW_EBPF
 YAML
 
 log "starting the CAW server"

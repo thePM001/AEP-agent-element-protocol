@@ -247,6 +247,7 @@ func (a *App) setupSeccompWrapper(req types.ExecRequest, sessionID string, s *se
 		origCommand:      origCommand, // Store original command for signal registry
 		fileMonitorCfg:   a.cfg.Sandbox.Seccomp.FileMonitor,
 		landlockEnabled:  a.cfg.Landlock.Enabled,
+		fileApprovals:    a.approvals,
 		ptraceSync:       a.ptraceTracer != nil && hasNotifyFeatures,
 		cmdResolver:      a.cmdResolver,
 		sessionTracker:   a.sessionTracker,
@@ -518,6 +519,9 @@ func (a *App) createSessionWithProfile(ctx context.Context, req types.CreateSess
 	if err != nil {
 		return types.Session{}, code, err
 	}
+	if err := CheckPolicyEnforcement(a.cfg, basePolicyDoc); err != nil {
+		return types.Session{}, http.StatusInternalServerError, err
+	}
 
 	// Build initial mounts from profile specs (without FUSE yet)
 	var initialMounts []session.ResolvedMount
@@ -649,6 +653,61 @@ func (a *App) createSessionWithProfile(ctx context.Context, req types.CreateSess
 	a.applyTorFailClosed(ctx, s, false)
 
 	return s.Snapshot(), http.StatusCreated, nil
+}
+
+// startSessionNetwork starts the network interceptor the config names for a
+// new session and reports whether the transparent interceptor is up. A
+// configured interceptor that cannot start fails the session (CAWA-08): the
+// operator asked for interception and a session without it would run with
+// the network reach of its uid. With sandbox.allow_degraded the operator
+// accepts the downgrade instead: a failed transparent interceptor falls back
+// to the explicit proxy and a failed proxy leaves the session without one.
+// Both paths record the failure as a session event.
+func (a *App) startSessionNetwork(ctx context.Context, s *session.Session) (bool, error) {
+	degraded := a.cfg.Sandbox.AllowDegraded
+	if a.cfg.Sandbox.Network.Transparent.Enabled {
+		if err := a.tryStartTransparentNetwork(ctx, s); err != nil {
+			fail := types.Event{
+				ID:        uuid.NewString(),
+				Timestamp: time.Now().UTC(),
+				Type:      "transparent_net_failed",
+				SessionID: s.ID,
+				Fields: map[string]any{
+					"error":    err.Error(),
+					"degraded": degraded,
+				},
+			}
+			_ = a.store.AppendEvent(ctx, fail)
+			a.broker.Publish(fail)
+			if !degraded {
+				return false, fmt.Errorf("transparent network interception failed to start: %w", err)
+			}
+			if a.cfg.Sandbox.Network.Enabled {
+				if perr := a.startExplicitProxy(ctx, s); perr != nil {
+					slog.Warn("explicit proxy fallback failed (sandbox.allow_degraded)", "session_id", s.ID, "error", perr)
+				}
+			}
+			return false, nil
+		}
+		okEv := types.Event{
+			ID:        uuid.NewString(),
+			Timestamp: time.Now().UTC(),
+			Type:      "transparent_net_ready",
+			SessionID: s.ID,
+		}
+		_ = a.store.AppendEvent(ctx, okEv)
+		a.broker.Publish(okEv)
+		return true, nil
+	}
+	if a.cfg.Sandbox.Network.Enabled {
+		if err := a.startExplicitProxy(ctx, s); err != nil {
+			if !degraded {
+				return false, fmt.Errorf("network proxy failed to start: %w", err)
+			}
+			slog.Warn("network proxy failed to start (sandbox.allow_degraded)", "session_id", s.ID, "error", err)
+		}
+	}
+	return false, nil
 }
 
 // rejectClientPathExpand blocks client-controlled roots that would widen policy globs.
@@ -784,6 +843,11 @@ func (a *App) createSessionCore(ctx context.Context, req types.CreateSessionRequ
 		if err != nil {
 			return types.Session{}, http.StatusInternalServerError, fmt.Errorf("load policy: %w", err)
 		}
+		// A session may name another policy than the one checked at server
+		// start, so its rules face the same enforcement check (AEP-CRV-040).
+		if err := CheckPolicyEnforcement(a.cfg, pol); err != nil {
+			return types.Session{}, http.StatusInternalServerError, err
+		}
 		basePolicy = pol
 	}
 
@@ -869,38 +933,10 @@ func (a *App) createSessionCore(ctx context.Context, req types.CreateSessionRequ
 		}
 	}
 
-	// Optional: start transparent network interception; fall back to explicit proxy on failure.
-	interceptorUp := false
-	if a.cfg.Sandbox.Network.Transparent.Enabled {
-		if err := a.tryStartTransparentNetwork(ctx, s); err != nil {
-			fail := types.Event{
-				ID:        uuid.NewString(),
-				Timestamp: time.Now().UTC(),
-				Type:      "transparent_net_failed",
-				SessionID: s.ID,
-				Fields: map[string]any{
-					"error": err.Error(),
-				},
-			}
-			_ = a.store.AppendEvent(ctx, fail)
-			a.broker.Publish(fail)
-			// Fall back to explicit proxy if configured.
-			if a.cfg.Sandbox.Network.Enabled {
-				a.startExplicitProxy(ctx, s)
-			}
-		} else {
-			interceptorUp = true
-			okEv := types.Event{
-				ID:        uuid.NewString(),
-				Timestamp: time.Now().UTC(),
-				Type:      "transparent_net_ready",
-				SessionID: s.ID,
-			}
-			_ = a.store.AppendEvent(ctx, okEv)
-			a.broker.Publish(okEv)
-		}
-	} else if a.cfg.Sandbox.Network.Enabled {
-		a.startExplicitProxy(ctx, s)
+	interceptorUp, err := a.startSessionNetwork(ctx, s)
+	if err != nil {
+		a.cleanupCreatedSession(s)
+		return types.Session{}, http.StatusInternalServerError, err
 	}
 	a.applyTorFailClosed(ctx, s, interceptorUp)
 

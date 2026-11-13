@@ -134,7 +134,7 @@ func startNotifyHandlerForWrap(ctx context.Context, notifyFD *os.File, sessionID
 	}
 
 	// Create file handler if configured
-	fileHandler := createFileHandler(a.cfg.Sandbox.Seccomp.FileMonitor, sessionPolicy, emitter, a.cfg.Landlock.Enabled)
+	fileHandler := createFileHandler(a.cfg.Sandbox.Seccomp.FileMonitor, sessionPolicy, emitter, a.cfg.Landlock.Enabled, a.approvals)
 
 	// Probe: verify ProcessVMReadv (or /proc/mem fallback) works against
 	// the wrapper before starting. Same logic as the exec path probe in
