@@ -307,3 +307,40 @@ See `docs/platform-comparison.md` for details.
 
 - [AGENTS.md](./AGENTS.md) - AI agent operating instructions
 - Feature docs in `docs/`
+
+## CAW sandbox profiles written in GAP
+
+Each profile is one `.gap` file with address `dev.aep.caw/<id>`. Operator picks a profile from deployment intent; you can also pass `--profile` on the CAW CLI.
+
+| GAP file | Address | Use when |
+|----------|---------|----------|
+| `caw-agent-sandbox.gap` | `dev.aep.caw/agent-sandbox.v1` | Untrusted or unknown agent code; strict `agent-sandbox` base policy |
+| `caw-coding-agent.gap` | `dev.aep.caw/coding-agent.v1` | **Governed coding agent** (Hermes, harness runners, any AEP agent; see below) |
+| `caw-restricted.gap` | `dev.aep.caw/restricted.v1` | Single project directory only, minimal base policy |
+| `caw-dev-multi-repo.gap` | `dev.aep.caw/dev-multi-repo.v1` | Multiple repos with different mount tiers |
+| `caw-compiled-runtime.gap` | `dev.aep.caw/compiled-runtime.v1` | Plan-once execute-many: LLM proxy **off**, deterministic runtime |
+
+#### What is `coding-agent` ?
+
+Default GAP profile for **any governed coding agent** (Hermes, harness runners, custom binaries). Agent-agnostic mount layout:
+
+1. **Workspace (`${PROJECT_ROOT}`):** read-write via `workspace-rw`. The agent edits the repo it was started in.
+2. **Agent config (`${AEP_AGENT_CONFIG_DIR}`, `${HOME}/.config/agent`, `${HOME}/.local/share/agent`):** read-only via `config-readonly`. The agent can read its config to run, but cannot rewrite or exfiltrate through those paths.
+3. **Base policy `default`:** standard CAW rules (not maximum-lockdown `agent-sandbox`).
+4. **Who may do what:** more capable than the untrusted sandbox profile, still lattice-governed.
+5. **LLM proxy on:** model calls through audited CAW proxy when enabled.
+
+Catalog maps intents like "coding agent", "Hermes" or "governed agent" to this profile. Use `agent-sandbox` for untrusted code; `compiled-runtime` when the LLM proxy must stay off.
+
+```bash
+node AEP-Components/gap/lib/gap-compile.mjs --list-profiles
+node AEP-Components/gap/lib/gap-compile.mjs --materialize /data/aep
+aep-caw profiles list
+aep-caw session create --profile coding-agent
+aep-caw wrap --profile coding-agent \
+-- <your-agent-binary>
+```
+
+Per-mount policy templates (`workspace-rw`, `config-readonly`, etc.) are defined in `caw-mount-policies.gap` and compiled into `$AEP_DATA/caw-framework/policies/`.
+
+Further detail: [`AEP-Components/gap/README.md`](../AEP-Components/gap/README.md), [`AEP-Base-Node/AEP-Agent-Control-Hub/README.md`](../AEP-Base-Node/AEP-Agent-Control-Hub/README.md).

@@ -219,6 +219,22 @@ The AEP 2.8 library now treats Base Node as the kernel: after a sealed lattice f
 
 AEP Base Node is the mandatory Rust daemon with inference validation future and regulation docking ports. Lattice Channels use PQEncryptedCapsule. UCB is the secured perimeter dock for non-AEP agent stacks. Live evaluation is collect-all Admit.
 
+### What was new in 2.8 compared to 2.75 (from May 2026)
+
+| Component | Path | Purpose |
+|-----------|------|---------|
+| **AEP Base Node** | `AEP-Base-Node/AEP-Crate/` | Mandatory local governance daemon with docking ports, compiled 1000 ms kernel pulse (not a dynAEP yaml key) and freeze-at-seal time |
+| **Lattice Channels** | `AEP-Components/lattice-channels/crate/` | PQEncryptedCapsule frames (ML-KEM + AES-256-GCM + ML-DSA) |
+| **AgentMesh** | `AEP-Components/agentmesh/crate/` | Local issuance X.509, DID and mTLS identity on lattice transport |
+| **Lattice Memory** | `AEP-Components/lattice-memory/crate/` | Attractor store (sqlite-vec + USearch) for forensic and health telemetry. Attractors do not skip Admit |
+| **POTOMITAN** | `AEP-Base-Node/AEP-Potomitan/` | Mesh fallback when normal internet is unavailable |
+| **dynAEP 1.0** | `AEP-Components/dynAEP/` | Hyperlattice runtime: `action_path` filter, temporal authority, bridge (merged from standalone repo) |
+| **Component registry** | `AEP-Base-Node/AEP-Registry/` | Offline catalog + optional extension merge |
+| **Conformance runner** | `AEP-Components/conformance/` | Public tier compliance battery CC-01..CC-35, the multi-step red team corpus and language neutral vectors v1 |
+| **UCB (optional)** | `AEP-Base-Node/AEP-Docks/ucb/` | Universal Connect Bridge for **foreign** stacks only (`:8412`). Native AEP skips UCB. Set `UCB=0` to disable. |
+| **CAW framework** | `AEP-CAW/` | Execution-layer sandbox (`aep-caw`); profiles authored in GAP, compiled locally |
+| **GAP language** | `AEP-Components/gap/` | Governed Agentic Programming: policies, sandbox profiles, manifest/plan templates |
+
 ## [2.75.0] - 2026-06-01
 The 2.75 line adds CLI power tools named aep doctor, aep verify, aep lint-policy and aep red-team scan plus OPA Rego and Cedar transpilers, an MCP security gateway, Merkle-tree audit records, an intercept proxy, a YAML policy importer, a reference policy lattice and multi-agent collaboration primitives.
 ## [2.2.0] - 2026-04-24

@@ -36,3 +36,20 @@ cargo test -p multi-base-node-core
 That command is the only thing that builds the crate. Nothing in the default path depends on it and no default run uses it.
 
 Agentstream is optional. Federation uses lattice-channel.v1 transport.
+
+## Summary from the root README
+
+**Status:** optional experimental surface. It is not part of the default build and it is not part of the default deployment, because the default workspace member is the single Base Node kernel.
+
+Govern multiple AEP Base Node kernels from a single `nodes.json` v2 registry: roles (`primary`, `replica`, `edge`, `science-isolated`), policy bundle Merkle sync over lattice channels and optional Agentstream topologies (`as-single`, `as-federated` with ASIP).
+
+| Resource | Path |
+| --- | --- |
+| Feature guide | [`AEP-Base-Node/AEP-Multi-Base-Node/docs/multi-base-node-28b.md`](./docs/multi-base-node-28b.md) |
+| Architecture diagram | [`AEP-Base-Node/AEP-Multi-Base-Node/docs/multi-base-node-28b-architecture.svg`](./docs/multi-base-node-28b-architecture.svg) |
+| Registry schema | [`AEP-Base-Node/AEP-Registry/schemas/nodes-registry-v2.json`](../AEP-Registry/schemas/nodes-registry-v2.json) |
+| Rust crate | [`AEP-Base-Node/AEP-Multi-Base-Node/crate/`](./crate/) |
+
+```bash
+cargo test -p multi-base-node-core
+```

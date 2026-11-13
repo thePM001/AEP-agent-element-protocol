@@ -350,3 +350,71 @@ dottxt constrains tokens to match JSON Schema, regex or CFG at the logits level 
 ## AI-eligibility status
 
 To win the fight against the synthetic nano-parasites (SNP/NanoSinp) alien WMD, we must be intelligent and biosecure. It is recommended that bioinsecure humans do not use the provided technology/protocol to avoid bad techno-spiritual AI outcomes for them. [*"bioinsecure" = carries injectable synthetic nano-parasites growth medium controllers - SNP GMCs]
+
+## GAP-centric policies and CAW sandboxes
+
+AEP 2.9 treats **GAP** (Governed Agentic Programming) as the single authoring language for policies and agent payloads. **CAW** (`aep-caw`, `AEP-CAW/`) is the execution-layer sandbox that enforces those policies on the host (file rules, command adapters, seccomp, LLM proxy, lattice audit). You do not maintain parallel YAML policy stacks: you author in GAP, compile locally and CAW runs the result.
+
+### How GAP and CAW relate
+
+```mermaid
+flowchart LR
+  subgraph AUTH_GAP[Authoritative GAP]
+    GAPREF["gap instructions in AEP-Components/gap/policies/reference"]
+    PS["platform policies in AEP-Policy-System/reference"]
+  end
+
+  subgraph LOCAL_COMPILE[Local compile]
+    GC["gap-compile.mjs"]
+  end
+
+  subgraph RT_ARTIFACTS[Runtime artifacts]
+    CAWCFG["AEP_DATA caw-framework server-config.yaml"]
+    MOUNT["mount_profiles and per-mount policies"]
+    TM["task-manifest-v1.json"]
+    PLAN["implementation-plan-v1.json"]
+  end
+
+  subgraph ENFORCEMENT[Enforcement]
+    CAW["aep-caw server and CLI"]
+    UCBGAP["UCB ingress port 8412"]
+    BN["Base Node docks"]
+  end
+
+  GAPREF --> GC
+  PS --> BN
+  GC --> CAWCFG
+  GC --> MOUNT
+  GC --> TM
+  CAWCFG --> CAW
+  MOUNT --> CAW
+  TM --> UCBGAP
+  TM --> BN
+  PLAN --> BN
+```
+
+| Layer | What it is | Its home |
+|-------|------------|----------------|
+| **GAP instruction** | Declares intent, who may do what, scanners, subprotocol bindings, structured types | `*.gap` under `AEP-Components/gap/policies/reference/` and `AEP-Policy-System/reference/` |
+| **GAP runtime doc** | Concrete profile payload (`kind: aep.caw.profile`) in the same `.gap` file after `---` | Second YAML document in multi-doc `.gap` files |
+| **Compile** | Turns GAP into CAW `mount_profiles`, per-mount policy YAML, manifests | `AEP-Components/gap/lib/gap-compile.mjs` |
+| **CAW session** | Host sandbox: policy engine, adapters, optional FUSE mounts, LLM proxy | `aep-caw session create`, `run`, `wrap` |
+
+**Rule:** JSON schemas (`task-manifest-v1.json`, `implementation-plan-v1.json`) and CAW YAML under `$AEP_DATA` are **materialized compile targets**, not places to hand-author policy.
+
+### UCB manifest synthesis env vars (optional tiers)
+
+Full UCB semantics (optional bridge, refuse on miss ingest, no fallback): see [UCB section](../../AEP-Base-Node/AEP-Docks/ucb/README.md) above.
+
+```bash
+# Tier 1 (GAP constrained decoding engine, endpoint you host yourself)
+export UCB_GAP_ENGINE_URL=https://<your-licensed-gap-engine>/synthesize
+
+# Tier 2 (constrained decoder, e.g. dottxt-style HTTP service)
+export UCB_CONSTRAINED_DECODER_URL=http://$AEP_HOST:8080/v1/constrained/task-manifest
+
+# Tier 3 (LLM structured output)
+export UCB_LLM_SYNTHESIS_URL=http://$AEP_HOST:8080/v1/structured/task-manifest
+```
+
+GAP template authority: `AEP-Components/gap/policies/reference/task-manifest-v1.gap`. Materialized JSON matches `task-manifest-v1.json`. Manifests land in `AEP_TASK_MANIFEST_DIR` (`$AEP_DATA/ucb/manifests/`). Plan execution can also write manifests.

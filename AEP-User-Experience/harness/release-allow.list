@@ -7,7 +7,6 @@
 # Tool: AEP-User-Experience/harness/check-release-strings.mjs
 #
 
-README.md	## What is new in 2.8 compared to 2.75 (from May 2026)	a heading that compares this release with the 2.75 release
 AEP-Components/gap/README.md	- Fit analysis of classic GAP against AEP 2.8.6 evaluation lives at docs/CLASSIC-GAP-VS-AEP-2.8.5.md on thePM001/GAP.	the name of an upstream analysis document
 AEP-Components/dynAEP/policies/chunk-hash-verification.gap	  provenance: Created after Turbopack dev server served stale v2.6 chunk for 24+ hours despite source being v2.75, causing hydration revert on every load.	a provenance note about an incident in the 2.75 release
 AEP-Components/telemetry/lib/otel-exporter.ts	        // Short-circuit chain attributes (added by v2.75 chain runner)	a note that the 2.75 chain runner added an attribute

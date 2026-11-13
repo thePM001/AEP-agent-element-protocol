@@ -108,3 +108,104 @@ From the repository root build packages aep-base-node and aep-ucb in release. Po
 ## Testing
 
 Run cargo test for package aep-ucb.
+
+## Foreign attach through UCB
+
+UCB is **not** part of the mandatory AEP kernel path. It exists for one purpose: let operators **safely attach non-AEP systems** (LangGraph, MCP servers, AutoGen, CrewAI, custom HTTP agents, etc.) to an AEP hyperlattice without giving those stacks raw lattice socket access.
+
+**If you do not need foreign attach, do not run UCB.** Native AEP components (CAW) use `lattice-transport` directly against Base Node docks. Skipping UCB is valid. Attaching foreign agents without UCB or without a task manifest is **at your own risk** - AEP will not invent a contract for you.
+
+### What UCB does
+
+| Capability | Description |
+|------------|-------------|
+| Ingress | Validate foreign payloads (P_P, P_S, P_C, P_R), translate to lattice events, seal to validation dock |
+| Manifest gate | Require a real task manifest before integration |
+| Egress | Manifest-scoped HTTP proxy with credential injection (`egress.routes`) |
+| MCP bridge | `ucb_ingest`, `ucb_delegate`, `ucb_rollback`, `ucb_health` tools |
+| Rollback | Extend-Write diff journal with lattice-gated rollback |
+
+### What UCB does **not** do
+
+| Anti-pattern | Why |
+|--------------|-----|
+| Replace `lattice-transport` for internal components | Internal lattice steps must not route through UCB |
+| Auto-generate task manifests | **No hardcoded fallback.** No `provisional_fallback`. No silent provisional contracts |
+| Force itself on every deployment | `UCB=0` in Docker; omit `aep-ucb` binary if unused |
+| Substitute for CAW / GAP policy | Manifest is a contract gate, not a policy author |
+
+### Task manifest required at ingest (refuse on miss)
+
+Every `POST /ucb/v1/ingest` needs a manifest from **one** of these sources:
+
+| Priority | Source | How |
+|----------|--------|-----|
+| 1 | **Provided** | Include `task_manifest` on the ingest JSON body (`synthesized_by: provided`) |
+| 2 | **Stored** | Reuse a previously saved non-provisional manifest for `agent_id` in `AEP_TASK_MANIFEST_DIR` |
+| 3 | **Synthesis tier** | Call an HTTP endpoint you configure (all tiers optional; unset = no auto-synthesis) |
+
+If none apply, UCB returns **422 rejected** with an explicit error. This is intentional.
+
+Optional synthesis tiers (strict priority, first success wins):
+
+| Tier | Mechanism | Env var |
+|------|-----------|---------|
+| 1 | GAP constrained decoding | `UCB_GAP_ENGINE_URL` (endpoint you host yourself) |
+| 2 | Other constrained decoding (e.g. dottxt-compatible) | `UCB_CONSTRAINED_DECODER_URL` |
+| 3 | LLM structured output | `UCB_LLM_SYNTHESIS_URL` |
+
+Tier 1 (GAP constrained decoding engine) is not shipped in the public OSS repo. Configure `UCB_GAP_ENGINE_URL` to your licensed or self-hosted tier-1 endpoint.
+
+### Example: ingest with caller-provided manifest
+
+```bash
+curl -s -H "Authorization: Bearer $UCB_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "protocol": "langgraph",
+    "session_id": "sess-1",
+    "provenance": { "source": "langgraph", "protocol": "1.0", "session_id": "sess-1" },
+    "payload": { "subject": "LangGraph", "predicate": "integrates_via", "object": "UCB" },
+    "task_manifest": {
+      "manifest_version": "1",
+      "id": "tm-sess-1",
+      "agent_id": "ucb-foreign-langgraph",
+      "session_id": "sess-1",
+      "intent": {
+        "summary": "LangGraph integrates via UCB",
+        "allowed_operations": ["ucb.ingest"]
+      },
+      "trust": { "tier": "standard", "max_trust_score": 500 },
+      "provisional": false,
+      "synthesized_by": "provided"
+    }
+  }' \
+  http://$AEP_HOST:8412/ucb/v1/ingest
+```
+
+### Example: ingest **without** manifest (rejected)
+
+```bash
+# No task_manifest, no synthesis URLs configured -> 422
+curl -s -H "Authorization: Bearer $UCB_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "protocol": "mcp",
+    "session_id": "sess-1",
+    "provenance": { "source": "mcp", "protocol": "1.0", "session_id": "sess-1" },
+    "payload": { "x": 1 }
+  }' \
+  http://$AEP_HOST:8412/ucb/v1/ingest
+# -> {"ok":false,"status":"rejected","error":"task manifest required: ..."}
+```
+
+### Disable UCB entirely
+
+```bash
+# Docker: foreign attach off, Base Node still runs
+UCB=0 docker compose -f docker-compose.public.yml up -d
+
+# Bare metal: do not start aep-ucb
+```
+
+Canonical implementation: [`AEP-Base-Node/AEP-Docks/ucb/README.md`](./README.md). GAP manifest template: [`AEP-Components/gap/policies/reference/task-manifest-v1.gap`](../../../AEP-Components/gap/policies/reference/task-manifest-v1.gap).
