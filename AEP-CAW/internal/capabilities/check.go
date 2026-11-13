@@ -34,6 +34,9 @@ var (
 	checkeBPF                    = realCheckeBPF
 	checkEBPFCgroupAttach        = realCheckEBPFCgroupAttach
 	checkWrapperBinary           = realCheckWrapperBinary
+
+	// runCgroupProbe fills the cgroup probe cache. Tests replace it.
+	runCgroupProbe = probeCgroupsV2
 )
 
 func realCheckSeccompUserNotify() CheckResult {
@@ -59,7 +62,7 @@ func realCheckCgroupsV2ResourceLimits() CheckResult {
 	// If the cache was already set (e.g., by another check or a test fixture)
 	// we skip the probe - the cached value wins.
 	if LastCgroupProbe() == nil {
-		probeCgroupsV2()
+		runCgroupProbe()
 	}
 	available := false
 	if last := LastCgroupProbe(); last != nil {
@@ -75,9 +78,17 @@ func realCheckeBPF() CheckResult {
 
 func realCheckEBPFCgroupAttach() CheckResult {
 	ebpfResult := checkeBPF()
+	// The resource limit check fills the probe cache only when cgroups.enabled
+	// is set. eBPF enforce needs the probe without it, so an empty cache runs
+	// the probe here instead of reading as unavailable (AEP-CRV-040).
+	if LastCgroupProbe() == nil {
+		runCgroupProbe()
+	}
 	var mode limits.CgroupMode = limits.ModeUnavailable
+	reason := "the cgroup probe gave no result"
 	if last := LastCgroupProbe(); last != nil {
 		mode = last.Mode
+		reason = last.Reason
 	}
 	available := ebpfResult.Available &&
 		(mode == limits.ModeNested || mode == limits.ModeTopLevel || mode == limits.ModeAttachOnly)
@@ -90,7 +101,7 @@ func realCheckEBPFCgroupAttach() CheckResult {
 		case !ebpfResult.Available:
 			r.Error = fmt.Errorf("eBPF kernel support unavailable: %v", ebpfResult.Error)
 		default:
-			r.Error = fmt.Errorf("cgroup attach feasibility unavailable: probe mode is %q", mode)
+			r.Error = fmt.Errorf("cgroup attach feasibility unavailable: probe mode is %q: %s", mode, reason)
 		}
 	}
 	return r

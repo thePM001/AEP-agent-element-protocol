@@ -118,3 +118,41 @@ func TestCheckEBPFCgroupAttach_KernelUnsupported(t *testing.T) {
 		t.Errorf("Error should name eBPF kernel blocker; got %v", r.Error)
 	}
 }
+
+// AEP-CRV-040: with cgroups.enabled off nothing else fills the probe cache, so
+// the eBPF attach check runs the probe itself. Before the fix an empty cache
+// read as unavailable and eBPF enforce refused every start.
+func TestCheckEBPFCgroupAttach_EmptyCacheRunsProbe(t *testing.T) {
+	resetCgroupProbeCache(t)
+	cgroupProbeCache = nil
+	probes := 0
+	prev := runCgroupProbe
+	t.Cleanup(func() { runCgroupProbe = prev })
+	runCgroupProbe = func() ProbeResult {
+		probes++
+		cacheCgroupProbe(&limits.CgroupProbeResult{Mode: limits.ModeAttachOnly, Reason: "test fixture"})
+		return ProbeResult{Available: false, Detail: "attach-only"}
+	}
+	checkeBPF = func() CheckResult { return CheckResult{Feature: "ebpf", Available: true} }
+	t.Cleanup(func() { checkeBPF = realCheckeBPF })
+
+	r := realCheckEBPFCgroupAttach()
+	if probes != 1 {
+		t.Fatalf("probe runs = %d, want 1", probes)
+	}
+	if !r.Available {
+		t.Fatalf("attach-only host must be available for eBPF; got %+v", r)
+	}
+}
+
+func TestCheckEBPFCgroupAttach_ErrorNamesProbeReason(t *testing.T) {
+	resetCgroupProbeCache(t)
+	cacheCgroupProbe(&limits.CgroupProbeResult{Mode: limits.ModeUnavailable, Reason: "root subtree_control not writable"})
+	checkeBPF = func() CheckResult { return CheckResult{Feature: "ebpf", Available: true} }
+	t.Cleanup(func() { checkeBPF = realCheckeBPF })
+
+	r := realCheckEBPFCgroupAttach()
+	if r.Error == nil || !strings.Contains(r.Error.Error(), "root subtree_control not writable") {
+		t.Fatalf("error must carry the probe reason; got %v", r.Error)
+	}
+}
