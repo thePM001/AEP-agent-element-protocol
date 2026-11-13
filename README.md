@@ -60,6 +60,43 @@ AEP 2.9 is a reference protocol library: a set of working components a builder a
 
 The numbers and names follow the AEP page at https://aep.newlisbon.agency. The data file [`AEP-Components/component-map.json`](AEP-Components/component-map.json) lists every folder of each component.
 
+```mermaid
+flowchart TB
+  subgraph ENTRY[Entry and transport]
+    C02[02 UCB]
+    C08[08 Lattice Channels]
+    C13[13 AgentMesh]
+  end
+  subgraph KERNEL[Kernel]
+    C01[01 AEP Base Node]
+    C10[10 Base Node Pulse]
+    C03[03 One Validation Envelope]
+    C04[04 Admit Gate]
+  end
+  subgraph POLICY[Policy and content]
+    C06[06 GAP]
+    C07[07 dynAEP]
+    C12[12 Scanners]
+    C18[18 TLA+]
+  end
+  subgraph RUN[Execution]
+    C05[05 Graph Engine]
+    C11[11 CAWs]
+    C17[17 Model Gateway]
+    C14[14 Economics]
+  end
+  subgraph RECORD[Record]
+    C09[09 Evidence Ledger]
+    C15[15 Lattice Memory]
+    C16[16 Intent Ledger]
+  end
+  ENTRY --> KERNEL
+  POLICY --> KERNEL
+  KERNEL --> RUN
+  KERNEL --> RECORD
+  RUN --> RECORD
+```
+
 | No | Component | What it is | Home folder | README |
 |----|-----------|------------|-------------|--------|
 | 01 | AEP Base Node | The local governance kernel that opens every sealed capsule, judges it and applies only the allowed action | `AEP-Base-Node/` | [README](AEP-Base-Node/README.md) |
@@ -138,6 +175,15 @@ node aep-check.mjs
 
 **What it is:** The Base Node is the governance kernel of AEP. It runs on your own machine as one daemon and no action of an agent becomes live before it allows the action.
 
+```mermaid
+flowchart TB
+  T1[Kernel zone: docks and the kernel pulse pass]
+  T2[Wall set: every written wall judged together]
+  T3[Dispatch: runtime ledger, registry and Apply]
+  T4[Potomitan mesh crate below the node]
+  T1 --> T2 --> T3 --> T4
+```
+
 **What ships in 2.9:** The daemon `aep-base-node` listens on four Unix socket docks named inference, validation, regulation and future. It verifies each sealed capsule, keeps it for one pulse, judges every wall in one pass, writes the runtime ledger and only then applies the action. The Data Dock serves admitted records as JSON on port 8413. The component registry, the Agent Control Hub and the Potomitan mesh crate live in the same folder. The Potomitan crate ships a packet plane with tests. The shipped daemon reads the mesh peer file and reports the mesh mode in its health answer. Mesh traffic from the daemon is planned. A multi base node mode exists as an optional experimental crate outside the default build.
 
 **Where it lives:** [`AEP-Base-Node/`](AEP-Base-Node/) with the crate in `AEP-Base-Node/AEP-Crate/`, plus `AEP-Components/kernel-types/`, `AEP-Components/live-entry/`, `AEP-Components/one-live-evaluation/` and `AEP-Components/wall-set-backpressure/`.
@@ -147,6 +193,15 @@ node aep-check.mjs
 ## 02 / UCB
 
 **What it is:** The Universal Connect Bridge (UCB) is the airlock for systems outside AEP, for example LangGraph, an MCP server, AutoGen, CrewAI or a custom HTTP agent. It lets such a system hand work to the Base Node without access to a dock socket.
+
+```mermaid
+flowchart LR
+  EXT[External system] --> ING[UCB ingest on port 8412]
+  ING --> MAN[Task manifest check]
+  MAN --> VAL[Confined validator process]
+  VAL --> CAP[Sealed capsule]
+  CAP --> DOCK[Validation dock of the Base Node]
+```
 
 **What ships in 2.9:** The service `aep-ucb` listens on port 8412 with key authentication. Every ingest needs a task manifest, the written contract of the external agent. UCB invents none: without a manifest the ingest is refused. Each ingest check runs in a separate process confined by a seccomp filter. UCB also ships model delegation, rollback of the last journal record, an egress proxy bound to the manifest and an MCP adapter. Components of this tree talk to the Base Node docks directly, so UCB is optional and `UCB=0` turns it off. The page describes UCB as the foundation of the internal docking ports. In this tree the internal docks are Unix sockets of the Base Node and the shared foundation is planned.
 
@@ -158,6 +213,13 @@ node aep-check.mjs
 
 **What it is:** The envelope is the one container for everything the kernel checks about an action. All checks see the same frozen snapshot and run in a single pass, so no rule can depend on the order of another rule.
 
+```mermaid
+flowchart LR
+  ACT[One action with agent, scene, time and channel] --> SNAP[One frozen snapshot]
+  SNAP --> WALLS[15 walls evaluated in one pass]
+  WALLS --> RES[One result with every closed wall]
+```
+
 **What ships in 2.9:** The crate `aep-envelope` evaluates 15 walls for each action: membership and parents in the action lattice, agent permission, writing, scene, time, channel dock, session rate, the scanner result, three policy walls, covenant tools, causal sequence and the anomaly forecast. A missing scene, timestamp or sequence number closes a wall. The crate `aep-evaluation-chain` derives a record of 15 named rows from the same evaluation for a later reader.
 
 **Where it lives:** [`AEP-Components/envelope/`](AEP-Components/envelope/), plus `AEP-Components/envelope-walls/`, `AEP-Components/evaluation-chain/` and `AEP-Components/unbound-field-close/`.
@@ -167,6 +229,16 @@ node aep-check.mjs
 ## 04 / Admit Gate
 
 **What it is:** Admit is the judgement itself. It collects every wall of an action and closes the action when any wall is closed. It never stops at the first closed wall, so one answer lists every failed rule.
+
+```mermaid
+flowchart LR
+  W1[Envelope walls] --> ALL[Collect every wall]
+  W2[Policy walls from GAP] --> ALL
+  W3[Writing, time, channel and budget walls] --> ALL
+  ALL --> Q{Any wall closed}
+  Q -->|yes| DENY[Deny with every closed wall and its reason]
+  Q -->|no| ALLOW[Allow, then ledger row and Apply]
+```
 
 **What ships in 2.9:** The crate `aep-admit` contains the one collect-all function for every caller. The writing rules, the agent permissions written in GAP, the time bounds, the channel order, the window budgets and the policy files of `AEP-Policy-System/reference/` compile into walls of the same pass. Covenants are the permit, forbid and require rules of an agent. They belong to this component together with the data permission system. An empty action lattice closes the membership wall, so nothing passes without written rules.
 
@@ -178,6 +250,15 @@ node aep-check.mjs
 
 **What it is:** The Graph Engine is the workflow runner of AEP. It moves a run through the nodes of a workflow graph and saves a checkpoint after each node, so a stopped run resumes at the last checkpoint.
 
+```mermaid
+flowchart LR
+  S[Start node] --> AG{Admit function allows}
+  AG -->|no| STOP[Node does not run]
+  AG -->|yes| RUNN[Run node: action, decision, wait, parallel or loop]
+  RUNN --> CP[Checkpoint]
+  CP --> NEXT[Next node]
+```
+
 **What ships in 2.9:** `GraphEngine` in TypeScript with five node types: action, decision, wait, parallel and loop. A node starts only after the admit function of the engine allows it and an engine without such a function runs nothing. Loops are bounded, retries back off and a wait node can time out to an escalation. The engine owns no graph state and it does not replace the kernel check. Task decomposition, session state, the kill switch and the recovery engine belong to this component.
 
 **Where it lives:** [`AEP-Components/graph-engine/`](AEP-Components/graph-engine/), plus `AEP-Components/graph-engine-admit-gate/`, `AEP-Components/decomposition/`, `AEP-Components/session/` and `AEP-Components/recovery/`.
@@ -187,6 +268,17 @@ node aep-check.mjs
 ## 06 / GAP
 
 **What it is:** GAP (Governed Agentic Programming) is the instruction language of AEP. Policies, agent profiles, sandbox profiles and task manifests are all written as GAP instructions and GAP is the only form the Admit Gate loads.
+
+```mermaid
+flowchart LR
+  GAPF[GAP files] --> REF[Reference policies]
+  GAPF --> PROF[Sandbox profiles]
+  GAPF --> TM[Task manifests]
+  REF --> ADM[Walls of the Admit Gate 04]
+  PROF --> COMP[gap-compile.mjs]
+  COMP --> CAW[CAW sandbox settings 11]
+  TM --> UCB[UCB ingest 02]
+```
 
 **What ships in 2.9:** The GAP meta-schema in version 1.3 with six composition types: atomic, sequence, conditional, loop, parallel and abstraction. The tree ships reference policies, a compiler from GAP profiles to CAW sandbox settings, transpilers to OPA Rego and Cedar, a YAML policy importer, the Policy Builder and the Schema Builder. The schema has the fields for self-generation and the builders estimate rules from data. A runtime with self-generation of policies through LRT and MLE is planned.
 
@@ -198,6 +290,27 @@ node aep-check.mjs
 
 **What it is:** dynAEP (dynamic AEP) governs events at run time: which actions exist, what must happen before each action and how old an event may be. It serves use cases such as live interfaces, where events arrive all the time.
 
+The hyperlattice wrap composes from the most permissive node to the most restrictive one and all applicable nodes must pass together:
+
+```
+SYSTEM (most permissive)
+  |-- governance
+  |-- deployment
+  |-- writing
+  |-- security
+  |-- compliance modules
+  |-- action-path nodes
+SANDBOX (most restrictive)
+```
+
+```mermaid
+flowchart LR
+  EV[Event with an action path] --> TIME[Time checks: drift, future and staleness]
+  TIME --> ORD[Causal order: parents completed first]
+  ORD --> LAT[Action Lattice]
+  LAT --> OUT[Delivered to interested agents]
+```
+
 **What ships in 2.9:** The Action Lattice, the one live graph of actions with their parents and constraints, in TypeScript with a Rust crate beside it. Events pass time checks and causal order checks. Observers bring in webhook, SSE and poll events. The hyperlattice is the wrap around one governed system: scene, action paths, written policy, compliance modules and dock channels are nodes and edges of one graph and all of them must pass together. A wrap coverage report lists which parts of a deployment sit inside the wrap. The 1000 ms kernel wait belongs to the Base Node Pulse (10) and is no dynAEP setting.
 
 **Where it lives:** [`AEP-Components/dynAEP/`](AEP-Components/dynAEP/), plus `AEP-Components/hyperlattice/`, `AEP-Components/named-surfaces/` and `AEP-Components/wrap-coverage/`. The guide for a domain of your own is [`CUSTOM-SUBLATTICE.md`](AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md).
@@ -207,6 +320,27 @@ node aep-check.mjs
 ## 08 / Lattice Channels
 
 **What it is:** Lattice Channels are the only transport of AEP. Every message to the Base Node travels as a sealed capsule with post-quantum encryption and a signature.
+
+```mermaid
+flowchart TB
+  subgraph BUILDER[Builder attach]
+    APP[Native AEP component]
+    UCB[UCB for external systems]
+  end
+  subgraph TRANSPORT[Lattice channels]
+    LC[Sealed encrypted capsule]
+  end
+  subgraph KERNEL[Base Node kernel]
+    DOCK[Dock opens the capsule]
+    EVAL[Wait one second, then every check, then Apply]
+    LEDGER[Runtime ledger row]
+  end
+  APP --> LC
+  UCB --> LC
+  LC --> DOCK
+  DOCK --> EVAL
+  EVAL --> LEDGER
+```
 
 **What ships in 2.9:** The crate `aep-lattice-channel` seals and opens capsules with ML-KEM-768 for the key exchange, AES-256-GCM for the content and ML-DSA-65 for the signature. A dock accepts sealed capsules only. A plain ping, event or register message is refused and logged as an attempt to bypass the seal. The same capsule bytes are never judged twice. JavaScript helpers seal capsules for clients and send outbound web requests of an agent through the Base Node.
 
@@ -218,6 +352,16 @@ node aep-check.mjs
 
 **What it is:** The Evidence Ledger is the audit trail a frontend or a gateway writes for a session. Each entry includes the hash of the entry before it, so a later change to any entry breaks the chain.
 
+```mermaid
+flowchart LR
+  E1[Entry 1] --> E2[Entry 2 with the hash of entry 1]
+  E2 --> E3[Entry 3 with the hash of entry 2]
+  E1 --> ROOT[Merkle root]
+  E2 --> ROOT
+  E3 --> ROOT
+  ROOT --> PB[Proof bundle for a third party]
+```
+
 **What ships in 2.9:** A SHA-256 hash chain with verification, Merkle trees with proofs for single entries, ML-DSA-65 signatures, a queue for external timestamps, an offline ledger with later sync and a rollback manager with compensation plans. Proof bundles pack a session for a third party and include the reliability index theta. An OpenTelemetry exporter ships with it. The runtime ledger of the kernel is the SQLite lattice log of the Base Node (01) and this component is a capability beside it.
 
 **Where it lives:** [`AEP-Components/evidence-ledger/`](AEP-Components/evidence-ledger/), plus `AEP-Components/proof-bundle/` and `AEP-Components/telemetry/`.
@@ -227,6 +371,15 @@ node aep-check.mjs
 ## 10 / Base Node Pulse
 
 **What it is:** The pulse is the fixed interval of the kernel. The Base Node freezes the clock when a capsule arrives, keeps the capsule for 1000 ms and then runs every check against the frozen time.
+
+```mermaid
+flowchart LR
+  ARR[Capsule arrives] --> FRZ[Clock frozen for this capsule]
+  FRZ --> WAIT[Wait of 1000 ms]
+  WAIT --> CHK[Every check against the frozen time]
+  ARR --> REF{Stamp over 50 ms ahead or over 5000 ms old}
+  REF -->|yes| OUT[Refused before the queue]
+```
 
 **What ships in 2.9:** The crate `aep-base-node-pulse` with the compiled constants: a hold of 1000 ms, an allowed clock drift of 50 ms and a maximum age of 5000 ms. A timestamp ahead of the Base Node clock by more than the drift is refused. A timestamp older than the age is refused too. The queue has room for 256 capsules and one signer may fill at most half of it. The wait is no environment variable and no configuration key. A builder who wants another wait rebuilds the Base Node.
 
@@ -238,6 +391,15 @@ node aep-check.mjs
 
 **What it is:** CAWs (Containerized Agentic Workflows) are the sandboxes on the host in which an agent process runs. A CAW enforces the written policy on shell commands, files, network connections, processes and model traffic of the agent.
 
+```mermaid
+flowchart LR
+  AG[Agent command] --> CAW[aep-caw]
+  CAW --> DK{Kernel dock of the Base Node answers}
+  DK -->|silent| NO[Run refused]
+  DK -->|allow| SB[Sandbox with the compiled GAP profile]
+  SB --> ENF[Rules on shell, files, network, processes and model traffic]
+```
+
 **What ships in 2.9:** The Go program `aep-caw` with a server, a command line and a shell adapter. Sandbox profiles are written in GAP (06) and compiled on the host. Before a command starts, CAW asks the kernel dock of the Base Node and refuses the run when the dock is silent. The page places the sandbox inside a COSHELL runtime. This tree ships `aep-caw` as the runtime and a part with the COSHELL name is planned. The components for the record of a sealed process, the intercept proxy and the MCP security gateway belong to this component.
 
 **Where it lives:** [`AEP-CAW/`](AEP-CAW/), plus `AEP-Components/isolation/`, `AEP-Components/intercept/`, `AEP-Components/mcp-security/` and `AEP-Components/caw-cve-demo-trees/`.
@@ -247,6 +409,14 @@ node aep-check.mjs
 ## 12 / Scanners
 
 **What it is:** The scanners read the content of a proposal or of a model answer and report findings such as a leaked secret or an injection attempt. Their result is one wall of the envelope (03).
+
+```mermaid
+flowchart LR
+  TXT[Content of a proposal or a model answer] --> PIPE[Pipeline of 13 scanners]
+  PIPE --> FIND[Findings with a severity]
+  FIND --> WALL[Wall scanner.bundle in the envelope 03]
+  WALL --> ADM[Admit Gate 04]
+```
 
 **What ships in 2.9:** A pipeline of 13 scanners in TypeScript: personal data (PII), injection, prompt injection, supply chain, secrets, jailbreak, toxicity, URLs, data profile, predictions, brand, regulatory wording and temporal claims. A scanner error fails the pipeline and never counts as a clean result. One shared rule table feeds the scanners and the kernel. The page lists eleven threat vectors under partly different names and the README of the component maps both lists.
 
@@ -297,6 +467,15 @@ node aep-check.mjs
 ## 17 / Model Gateway
 
 **What it is:** The Model Gateway is the one route for model calls. A call to any provider passes the policy first and the answer is checked while it streams.
+
+```mermaid
+flowchart LR
+  REQ[Model request] --> POL[Policy and input scan]
+  POL --> ECO[Budget and cost hooks of Economics 14]
+  ECO --> AD[Provider adapter: Anthropic, OpenAI, Ollama or custom]
+  AD --> OUT[Output scan and stream checks]
+  OUT --> LED[Evidence Ledger 09]
+```
 
 **What ships in 2.9:** `GovernedModelGateway` in TypeScript with adapters for Anthropic, OpenAI, Ollama and any endpoint with the OpenAI interface. The gateway evaluates the policy before the call, scans the output, writes to the Evidence Ledger (09) and can abort a stream on a violation. The hooks of Economics (14) add the budget check, the concurrency limit and the provider fallback.
 
