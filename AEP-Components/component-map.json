@@ -1,0 +1,235 @@
+{
+  "title": "AEP component map",
+  "release": "2.9.0",
+  "note": "The 18 main components in the order and with the names of the AEP page. Every folder under AEP-Components sits in exactly one row or in the list of shared parts. The README check of aep-check.mjs reads this file.",
+  "components": [
+    {
+      "number": "01",
+      "name": "AEP Base Node",
+      "home": "AEP-Base-Node",
+      "readme": "AEP-Base-Node/README.md",
+      "summary": "The local governance kernel that opens every sealed capsule, judges it and applies only what it allows.",
+      "folders": [
+        "AEP-Base-Node/AEP-Crate",
+        "AEP-Base-Node/AEP-Registry",
+        "AEP-Base-Node/AEP-Agent-Control-Hub",
+        "AEP-Base-Node/AEP-Potomitan",
+        "AEP-Base-Node/AEP-Multi-Base-Node",
+        "AEP-Components/kernel-types",
+        "AEP-Components/live-entry",
+        "AEP-Components/one-live-evaluation",
+        "AEP-Components/wall-set-backpressure"
+      ]
+    },
+    {
+      "number": "02",
+      "name": "UCB",
+      "home": "AEP-Base-Node/AEP-Docks/ucb",
+      "readme": "AEP-Base-Node/AEP-Docks/ucb/README.md",
+      "summary": "The Universal Connect Bridge, the airlock that brings the work of an external system to the Base Node as a sealed capsule.",
+      "folders": [
+        "AEP-Base-Node/AEP-Docks",
+        "AEP-Base-Node/AEP-Docks/universal-connect",
+        "AEP-Components/dock-line-reader",
+        "AEP-Components/dock-post-beat-collect",
+        "AEP-Components/dock-request-poison",
+        "AEP-Components/egress-address"
+      ]
+    },
+    {
+      "number": "03",
+      "name": "One Validation Envelope",
+      "home": "AEP-Components/envelope",
+      "readme": "AEP-Components/envelope/README.md",
+      "summary": "The one container in which every validation target of an action is checked in a single pass.",
+      "folders": [
+        "AEP-Components/envelope-walls",
+        "AEP-Components/evaluation-chain",
+        "AEP-Components/unbound-field-close"
+      ]
+    },
+    {
+      "number": "04",
+      "name": "Admit Gate",
+      "home": "AEP-Components/admit",
+      "readme": "AEP-Components/admit/README.md",
+      "summary": "The pass that collects every wall of an action, judges them together and denies by default.",
+      "folders": [
+        "AEP-Components/admit-budget-window",
+        "AEP-Components/admit-channel-order-walls",
+        "AEP-Components/admit-live-dock",
+        "AEP-Components/admit-temporal-bounds",
+        "AEP-Components/admit-writing-walls",
+        "AEP-Components/policy-system-admit",
+        "AEP-Components/one-admit-id",
+        "AEP-Components/covenant",
+        "AEP-Components/permissions"
+      ]
+    },
+    {
+      "number": "05",
+      "name": "Graph Engine",
+      "home": "AEP-Components/graph-engine",
+      "readme": "AEP-Components/graph-engine/README.md",
+      "summary": "The workflow runner that moves a run through its nodes and saves a checkpoint after each one.",
+      "folders": [
+        "AEP-Components/graph-engine-admit-gate",
+        "AEP-Components/decomposition",
+        "AEP-Components/session",
+        "AEP-Components/recovery"
+      ]
+    },
+    {
+      "number": "06",
+      "name": "GAP",
+      "home": "AEP-Components/gap",
+      "readme": "AEP-Components/gap/README.md",
+      "summary": "Governed Agentic Programming, the instruction language in which every policy and agent profile is written.",
+      "folders": [
+        "AEP-Components/gap-schema-profile-v13",
+        "AEP-Components/policy-engine",
+        "AEP-Components/policy-leftover-skins",
+        "AEP-Policy-System"
+      ]
+    },
+    {
+      "number": "07",
+      "name": "dynAEP",
+      "home": "AEP-Components/dynAEP",
+      "readme": "AEP-Components/dynAEP/README.md",
+      "summary": "The runtime for time rules and causal event order, with the hyperlattice as its policy wrap.",
+      "folders": [
+        "AEP-Components/hyperlattice",
+        "AEP-Components/named-surfaces",
+        "AEP-Components/wrap-coverage"
+      ]
+    },
+    {
+      "number": "08",
+      "name": "Lattice Channels",
+      "home": "AEP-Components/lattice-channels",
+      "readme": "AEP-Components/lattice-channels/README.md",
+      "summary": "The encrypted transport on which every message travels to the Base Node as a sealed capsule.",
+      "folders": [
+        "AEP-Components/lattice-crypto",
+        "AEP-Components/lattice-gated-fetch"
+      ]
+    },
+    {
+      "number": "09",
+      "name": "Evidence Ledger",
+      "home": "AEP-Components/evidence-ledger",
+      "readme": "AEP-Components/evidence-ledger/README.md",
+      "summary": "The hash chained audit record with Merkle proofs that a later reader can verify.",
+      "folders": [
+        "AEP-Components/proof-bundle",
+        "AEP-Components/telemetry"
+      ]
+    },
+    {
+      "number": "10",
+      "name": "Base Node Pulse",
+      "home": "AEP-Components/base-node-pulse",
+      "readme": "AEP-Components/base-node-pulse/README.md",
+      "summary": "The compiled 1000 ms interval that freezes a capsule at its seal before the checks run.",
+      "folders": []
+    },
+    {
+      "number": "11",
+      "name": "CAWs",
+      "home": "AEP-CAW",
+      "readme": "AEP-CAW/README.md",
+      "summary": "The host sandboxes in which an agent process runs under the written policy.",
+      "folders": [
+        "AEP-Components/isolation",
+        "AEP-Components/intercept",
+        "AEP-Components/mcp-security",
+        "AEP-Components/caw-cve-demo-trees"
+      ]
+    },
+    {
+      "number": "12",
+      "name": "Scanners",
+      "home": "AEP-Components/scanners",
+      "readme": "AEP-Components/scanners/README.md",
+      "summary": "The content scanners that read the text of a proposal for secrets, personal data, injection and more.",
+      "folders": []
+    },
+    {
+      "number": "13",
+      "name": "AgentMesh",
+      "home": "AEP-Components/agentmesh",
+      "readme": "AEP-Components/agentmesh/README.md",
+      "summary": "The identity layer that issues certificates and identifiers for agents on the local node.",
+      "folders": [
+        "AEP-Components/agentmesh-local-issuance",
+        "AEP-Components/identity"
+      ]
+    },
+    {
+      "number": "14",
+      "name": "Economics",
+      "home": "AEP-Components/economics",
+      "readme": "AEP-Components/economics/README.md",
+      "summary": "Cost estimation before a model call, budget caps and x402 payments.",
+      "folders": []
+    },
+    {
+      "number": "15",
+      "name": "Lattice Memory",
+      "home": "AEP-Components/lattice-memory",
+      "readme": "AEP-Components/lattice-memory/README.md",
+      "summary": "The store of the shapes of validated proposals, kept for audit, health telemetry and lookup.",
+      "folders": []
+    },
+    {
+      "number": "16",
+      "name": "Intent Ledger",
+      "home": "AEP-Components/intent-ledger",
+      "readme": "AEP-Components/intent-ledger/README.md",
+      "summary": "The append-only record that links the declared intent of a code change to the commit that carried it out.",
+      "folders": [
+        "AEP-Components/intent"
+      ]
+    },
+    {
+      "number": "17",
+      "name": "Model Gateway",
+      "home": "AEP-Components/model-gateway",
+      "readme": "AEP-Components/model-gateway/README.md",
+      "summary": "The governed route for model calls to several providers, with checks on the stream.",
+      "folders": [
+        "AEP-Components/streaming"
+      ]
+    },
+    {
+      "number": "18",
+      "name": "TLA+",
+      "home": "AEP-Components/tla",
+      "readme": "AEP-Components/tla/README.md",
+      "summary": "The formal models of the kernel rules and the checker that keeps them in step with the code.",
+      "folders": [
+        "AEP-Components/verification",
+        "AEP-Components/conformance"
+      ]
+    }
+  ],
+  "shared": [
+    {
+      "folder": "AEP-Components/datasets",
+      "role": "A file based store of evaluation datasets with simple versions."
+    },
+    {
+      "folder": "AEP-Components/ede",
+      "role": "Enforced draft environments, in which a coding agent changes a repository only through a scanned draft."
+    },
+    {
+      "folder": "AEP-Components/platform-core",
+      "role": "Shared path helpers and the catalog of regulation modules that several components import."
+    },
+    {
+      "folder": "AEP-Components/ucm",
+      "role": "The Universal Computation Module, the exact calculation engine with signed receipts."
+    }
+  ]
+}
