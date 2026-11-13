@@ -198,7 +198,11 @@ async fn call_openai_compatible(
             }
         });
     }
-    let client = reqwest::Client::new();
+    // The egress gate of UCB: the host is resolved once, every address is checked, the
+    // connection is pinned to them, redirects are not followed and the reply is capped.
+    let (client, url) = crate::egress::pinned_client(&url)
+        .await
+        .map_err(|e| format!("inference base_url rejected by SSRF gate: {e}"))?;
     let mut req = client
         .post(&url)
         .header("Content-Type", "application/json")
@@ -208,14 +212,16 @@ async fn call_openai_compatible(
     }
     let res = req.json(&body).send().await.map_err(|e| e.to_string())?;
     let status = res.status();
+    let cap = aep_ucb_perimeter_v1::WireLimits::default().egress_default_bytes;
+    let raw = crate::egress::read_capped(res, cap).await?;
     if !status.is_success() {
-        let text = res.text().await.unwrap_or_default();
+        let text = String::from_utf8_lossy(&raw);
         return Err(format!(
             "delegate LLM HTTP {status}: {}",
             text.chars().take(400).collect::<String>()
         ));
     }
-    let data: Value = res.json().await.map_err(|e| e.to_string())?;
+    let data: Value = serde_json::from_slice(&raw).map_err(|e| e.to_string())?;
     let content = data
         .pointer("/choices/0/message/content")
         .and_then(|v| v.as_str())

@@ -2,7 +2,7 @@
 name = "aep-lattice-gated-fetch"
 version = "0.1.0"
 edition = "2021"
-description = "After dock allow lattice-gated-fetch must not fall through to ordinary fetch."
+description = "The kernel outbound request of the one granted gateway path, with the operator route list, pinned addresses and a bounded reply."
 license = "UNLICENSED"
 publish = false
 
@@ -11,6 +11,7 @@ name = "aep-lattice-gated-fetch"
 path = "src/main.rs"
 
 [dependencies]
+aep-egress-address = { path = "../../egress-address/crate" }
 anyhow = "1"
 base64 = "0.22"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }

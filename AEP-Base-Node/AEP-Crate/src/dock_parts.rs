@@ -12,7 +12,11 @@ use tokio::sync::{watch, Semaphore};
 use tokio::task::JoinHandle;
 pub struct DockIo {
     pub socket_base: String,
-    pub connection_limit: Arc<Semaphore>,
+    /// Connection slots of each docking port, in the order of [`port_slot_index`]. Each
+    /// port holds its own share, so connections that fill one port leave the others free.
+    pub port_slots: [Arc<Semaphore>; 4],
+    /// A connection that completes no line within this time is closed.
+    pub idle_timeout: std::time::Duration,
     pub stop: watch::Sender<bool>,
     pub inflight: Arc<Mutex<Vec<JoinHandle<()>>>>,
     /// Last refused TLS handshake. Stored for health and never a stop signal.
@@ -43,7 +47,21 @@ pub struct DockRecord {
     pub pulse: Arc<Mutex<crate::docking::PulseState>>,
     pub sqlite_closed: AtomicBool,
 }
+/// Index of a docking port in [`DockIo::port_slots`].
+pub fn port_slot_index(port: aep_lattice_channel::DockingPort) -> usize {
+    use aep_lattice_channel::DockingPort;
+    match port {
+        DockingPort::InferenceEngine => 0,
+        DockingPort::ValidationEngine => 1,
+        DockingPort::FutureFeatures => 2,
+        DockingPort::RegulationModule => 3,
+    }
+}
 impl DockIo {
+    /// The connection slots of one docking port.
+    pub fn port_slot(&self, port: aep_lattice_channel::DockingPort) -> Arc<Semaphore> {
+        self.port_slots[port_slot_index(port)].clone()
+    }
     pub fn request_stop(&self) {
         self.stop.send_replace(true);
     }

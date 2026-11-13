@@ -87,13 +87,15 @@ Register new components in **`AEP-Base-Node/AEP-Registry/catalog.json`** + **`AE
 
 All traffic uses Lattice Channels with PQEncryptedCapsule encryption.
 
+Each port holds its own share of 16 of the 64 connection slots, so connections that fill one port leave the other ports free. A connection that completes no line in 30 seconds is closed. A connection that draws 32 refused lines is closed too. A refused line writes at most one anomaly row, which bounds the rows one connection can write. The signature of the registered key is checked before a frame spends a rate slot, so a frame that names an agent and fails the signature spends neither the dock wide slot nor a slot of that agent. Admit, Apply and every beat run on the blocking pool of the daemon and never on the workers that read the sockets.
+
 ## Kernel pulse
 
 Two compiled clocks live in `aep-base-node-pulse`. Pulse hold is the wait after a sealed capsule (the encrypted frame on the wire) is opened: Base Node freezes the clock at seal, waits 1000 ms, then runs every check together and only then carries out the allowed action. Putting a capsule on the dock is not that check because after the wait the client asks for the result by the capsule hash so a deny names the closed walls and an allow returns an event id. Allowed clock drift is 50 ms against the freeze which is why a 1000 ms hold still meets drift while a capsule held longer than 5000 ms is aged out.
 
 The freeze is the Base Node clock, read when the frame arrives. The timestamp an agent seals into its event is a claim. Base Node compares it with its own clock and never adopts it. A stamp more than 50 ms ahead is refused at enqueue as `temporal:future_skew`. The stamp is written before the seal and read after the transit, so behind the clock it may be as old as the age bound of 5000 ms. An older stamp is refused as `temporal:stale_event`. A refused frame takes no room in the pulse queue. A stamp in the past does not shorten the hold: the capsule turns ready one pulse after it arrived. One signer holds at most half of the queue (128 capsules and 131072 bytes), so the frames of one agent never shut out every other agent.
 
-Every wall judges the signer of the frame. An event may leave `agent_id` out or repeat the signer. An event that names another agent closes `frame.agent_binding`. The permission of the Agent Control Hub is one of the Admit walls (`hub.agent_permission`). After Admit the ledger row is written first, then the live entry is changed, then an LRP contract is registered and a bound outbound request is sent. A deny or a ledger error leaves the live entry unchanged and sends nothing.
+Every wall judges the signer of the frame. An event may leave `agent_id` out or repeat the signer. An event that names another agent closes `frame.agent_binding`. The permission of the Agent Control Hub is one of the Admit walls (`hub.agent_permission`). After Admit the ledger row is written first, then the live entry is changed, then an LRP contract is registered and, on the gateway path only, the outbound request starts. A deny or a ledger error leaves the live entry unchanged and sends nothing.
 
 Wire sent_at freshness is the other clock. Before open, `frame_is_fresh` checks `sent_at_unix` against `MAX_FRAME_AGE_SECS` (300) and `MAX_FRAME_FUTURE_SKEW_SECS` (60). The wire window is wider because it covers transit before open while pulse age covers hold after freeze so five seconds of pulse age is not the 300 second wire window.
 
@@ -102,6 +104,75 @@ The wait is the compiled constant `PULSE_MS` in `AEP-Components/base-node-pulse/
 ### How the wait can be changed in theory
 
 A builder who wants a different wait edits the compiled `PULSE_MS` constant and rebuilds Base Node. Freeze-at-seal must stay so the hold is judged against the freeze rather than a moving clock. Allowed drift must not be set to the wait length: crate tests require `MAX_DRIFT_MS != PULSE_MS` and reject a 1000 ms drift default so `MAX_DRIFT_MS` must not be set to 1000. Age must stay longer than the wait because if `PULSE_MS` were greater than `MAX_AGE_MS` (5000) capsules would expire before they became ready so pulse age 5000 must not be replaced with 300 seconds. Current crate tests also pin `PULSE_MS == 1000` so a theoretical rebuild must update those pins. This is a kernel rebuild rather than a yaml or env toggle.
+
+## Kernel outbound request
+
+Agent tools do not call the internet directly. They ask Base Node to make the call for them through the inference dock (the JavaScript helper `latticeGatedFetch` does this). Base Node checks the request with Admit, writes it to the ledger, fetches the page and hands the answer back. This covers only the web requests that Base Node makes for agents. The own network access of an agent is governed by the AEP-CAW network rules and is not changed by anything below.
+
+Base Node fetches a web address only when all of these hold:
+
+1. The request says it is an outbound web request: its action path is `gateway:outbound_http`. A `url` field in any other message is plain data and Base Node never fetches it.
+2. The agent may make outbound web requests, in the lattice and in the Agent Control Hub.
+3. The address is on the approved list of the operator.
+4. The address is a public internet address.
+5. The agent has fewer than 2 requests running and Base Node has fewer than 16.
+
+When any of these fails, the request is refused, nothing is fetched and the answer names the reason.
+
+### Set it up
+
+1. Write the approved list. Create `gateway-routes.json` in the Base Node data folder (`$AEP_DATA`, `/data/aep` in the container). One entry per site:
+
+   ```json
+   {"routes": [
+     {"id": "weather", "scheme": "https", "host": "api.weather.example", "path_prefix": "/v1", "methods": ["GET"]},
+     {"id": "github", "scheme": "https", "host": "api.github.com", "methods": ["GET", "POST"]}
+   ]}
+   ```
+
+   `id` is a name of your choice. `scheme` is `https` or `http`. `host` is the exact host name, so `api.github.com` does not open `github.com`. `port` is optional and defaults to 443 for https and 80 for http. `path_prefix` is optional and defaults to `/`, which opens every path; `/v1` opens `/v1` and everything below it, not `/v10`. `methods` lists the allowed methods. To keep the file somewhere else, set `AEP_GATEWAY_ROUTES` to its path.
+
+2. Allow the agent in the lattice. In `lattice.yaml` of the data folder, give the action `gateway:outbound_http` and name the agents that may use it:
+
+   ```yaml
+   actions:
+     gateway:outbound_http:
+       category: agent_action
+       parents: []
+       children: []
+       agent_permission: ["agent-a"]
+   ```
+
+3. Allow the agent in the Agent Control Hub. In a policy file under `gap/policies/reference/` of the data folder, add a permission row:
+
+   ```yaml
+   metadata:
+     agent_permission:
+       - agent_id: agent-a
+         action: gateway:outbound_http
+   ```
+
+4. Restart Base Node, because it reads the list once at start. In the Docker deploy, run this in the repository folder:
+
+   ```bash
+   docker compose restart aep && docker compose logs --tail 50 aep | grep -i "gateway route list"
+   ```
+
+   The first command restarts the Base Node container `aep-base-node`. The second shows its log lines about the route list. No output means the list was read. A line with `gateway route list refused` names the mistake in the file. Every outbound request is refused until you fix the file and restart again.
+
+### Check it
+
+Send one request from the agent for a listed address. The answer carries `http` with the status of the site. A request to an address that is not on the list is refused with the reason `gateway.route`. A request from an agent without the permission is refused with `gap.agent_permission` or `hub.agent_permission`.
+
+### What is always refused
+
+- Internal addresses: loopback (127.0.0.1, localhost), private networks (10.x, 172.16 to 172.31, 192.168.x), 100.64.x, cloud metadata (169.254.x, `metadata.google.internal`) and the reserved ranges. For a test setup, `AEP_LATTICE_ALLOW_LOOPBACK=1` opens loopback and `AEP_LATTICE_ALLOW_PRIVATE=1` opens private, 100.64.x and link local addresses. Reserved ranges never open.
+- Redirects. Base Node does not follow them.
+- Slow or large replies: the connection gets 3 seconds, the whole request 8 seconds and the reply at most 8 MiB.
+
+### How the request runs
+
+The request runs on a thread of its own after the ledger row is written, so a slow site never holds up other agents. The agent first reads pending with `http_queued` and then the result. The address check is the shared range list of `AEP-Components/egress-address`, which the UCB egress proxy and the JavaScript helpers also use. Base Node looks the host up once, every address must pass and it connects only to those addresses.
 
 ## Operator
 

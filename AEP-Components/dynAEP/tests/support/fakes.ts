@@ -4,8 +4,12 @@
 // SSRF checks and then hands the request to the fake.
 import { vi } from "vitest";
 
-/** Public documentation range (TEST-NET-3): classified public, never contacted. */
-export const PUBLIC_TEST_HOST = "203.0.113.10";
+/**
+ * A globally routed address, never contacted: the fake fetch answers instead. The
+ * documentation ranges such as TEST-NET-3 are reserved in the shared egress range list
+ * (AEP-Components/egress-address), so the gate refuses them like any other reserved address.
+ */
+export const PUBLIC_TEST_HOST = "93.184.216.34";
 
 export interface FakeCall {
   url: string;

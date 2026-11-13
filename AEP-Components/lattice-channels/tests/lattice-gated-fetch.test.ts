@@ -172,8 +172,17 @@ describe("assertUrlNotSsrf", () => {
     const env = { AEP_LATTICE_ALLOW_PRIVATE: "1" };
     expect(() => assertUrlNotSsrf("http://10.0.0.1/", lookupOf([]), env)).not.toThrow();
     expect(() => assertUrlNotSsrf("http://[fe80::1]/", lookupOf([]), env)).not.toThrow();
-    expect(() => assertUrlNotSsrf("http://metadata.google.internal/", lookupOf([]), env)).not.toThrow();
+    expect(() =>
+      assertUrlNotSsrf("http://metadata.google.internal/", lookupOf(["169.254.169.254"]), env),
+    ).not.toThrow();
     expect(() => assertUrlNotSsrf("http://[::1]/", lookupOf([]), env)).toThrow(LOOPBACK_ERR);
+  });
+
+  it("resolves an allowed metadata name and checks every answer", () => {
+    const env = { AEP_LATTICE_ALLOW_PRIVATE: "1" };
+    const lookup = lookupOf([LOOPBACK_V4]);
+    expect(() => assertUrlNotSsrf("http://evil.internal/", lookup, env)).toThrow(LOOPBACK_ERR);
+    expect(lookup.calls).toEqual(["evil.internal"]);
   });
 
   it("only the exact value 1 enables an allow flag", () => {
@@ -219,12 +228,13 @@ describe("latticeStrictEnabled", () => {
 });
 
 describe("buildGatewayEvent", () => {
-  it("fills gateway defaults with a low trust score", () => {
+  it("fills gateway defaults with a low trust score and the one gateway action path", () => {
     expect(buildGatewayEvent("https://api.example.com/x")).toEqual({
       agent_id: "lattice-gateway",
       channel_id: "ch-outbound-gateway",
       contract_id: "lattice-channel-default",
       event_type: "LATTICE_GATEWAY_REQUEST",
+      action_path: "gateway:outbound_http",
       session_id: "gateway-session",
       docking_port: "inference_engine",
       trust_score: 100,
@@ -252,6 +262,7 @@ describe("buildGatewayEvent", () => {
       channel_id: "ch-a",
       contract_id: "c-1",
       event_type: "CUSTOM",
+      action_path: "gateway:outbound_http",
       session_id: "s-1",
       docking_port: "inference_engine",
       trust_score: 640,

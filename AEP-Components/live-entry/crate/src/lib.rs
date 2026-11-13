@@ -38,6 +38,16 @@ const TYPE_TO_PREFIX: &[(&str, &str)] = &[
     ("form", "FM"),
     ("icon", "IC"),
 ];
+/// The type prefix of an element id: its first two characters, or nothing when the id is
+/// shorter. The cut is by characters, so an id that starts with a multi byte character
+/// never panics. Such an id carries no known prefix and gets the full band.
+pub fn id_prefix(id: &str) -> &str {
+    match id.char_indices().nth(2) {
+        Some((end, _)) => &id[..end],
+        None if id.chars().count() == 2 => id,
+        None => "",
+    }
+}
 pub fn z_band_for_prefix(prefix: &str) -> (i64, i64) {
     match prefix {
         "SH" => (0, 9),
@@ -566,12 +576,7 @@ impl LiveEntry {
         }
         if field == Some("z") {
             if let Some(z) = value.as_i64() {
-                let prefix = if target_id.len() >= 2 {
-                    &target_id[..2]
-                } else {
-                    ""
-                };
-                let (lo, hi) = z_band_for_prefix(prefix);
+                let (lo, hi) = z_band_for_prefix(id_prefix(target_id));
                 if z < lo || z > hi {
                     return Err(LiveEntryError::ZBand(target_id.to_string()));
                 }
@@ -704,8 +709,7 @@ impl LiveEntry {
                 None => Value::Null,
             },
             "z_band_of" => {
-                let p = if tid.len() >= 2 { &tid[..2] } else { "" };
-                let b = z_band_for_prefix(p);
+                let b = z_band_for_prefix(id_prefix(tid));
                 let arr = vec![Value::from(b.0), Value::from(b.1)];
                 Value::Array(arr)
             }
@@ -1428,5 +1432,21 @@ mod tests {
         must(le.snapshot.bridge_ts_ms == 1000000);
         must(le.wall_bridge_ts_ms() == 1000000);
         must(le.frozen_bridge_ts_ms() == Some(1000000));
+    }
+    /// A query whose target id starts with a multi byte character reads the band of
+    /// its first two characters and never cuts inside a character.
+    #[test]
+    fn z_band_query_cuts_the_target_id_by_characters() {
+        let le = LiveEntry::new();
+        for target in ["€€-00001", "中文", "é", "éx", "S", ""] {
+            let ev = serde_json::json!({"query": "z_band_of", "target_id": target});
+            must(le.handle_query(&ev)["result"] == serde_json::json!([0, 99]));
+        }
+        let ev = serde_json::json!({"query": "z_band_of", "target_id": "TT-00001"});
+        must(le.handle_query(&ev)["result"] == serde_json::json!([80, 89]));
+        must(id_prefix("TT-00001") == "TT");
+        must(id_prefix("TT") == "TT");
+        must(id_prefix("T").is_empty());
+        must(id_prefix("\u{20ac}\u{20ac}-1") == "\u{20ac}\u{20ac}");
     }
 }

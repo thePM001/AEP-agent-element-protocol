@@ -1,8 +1,9 @@
 //! Pulse queue enqueue and beat.
 
 use super::apply::apply_held_capsule;
+use super::outbound::{outbound_pending_response, DockOutbound, OutboundBook};
 use super::rate::{GLOBAL_RATE_LIMIT, SIGNER_RATE_LIMIT};
-use super::serve::MAX_CONNECTIONS;
+use super::serve::{DOCK_IDLE_TIMEOUT, PORT_CONNECTION_SHARE};
 use super::{
     deny_closed, deny_resp, dock_lock, lock_or_deny, pending_held_response, DockFrameResponse,
 };
@@ -49,6 +50,8 @@ pub struct PulseState {
     pub(crate) last_applied: HashMap<String, DockFrameResponse>,
     pub(crate) last_applied_at: HashMap<String, i64>,
     pub(crate) last_applied_order: VecDeque<String>,
+    /// Slots and in flight digests of the outbound requests of the gateway path.
+    pub(crate) outbound: OutboundBook,
 }
 
 impl Default for PulseState {
@@ -60,6 +63,7 @@ impl Default for PulseState {
             last_applied_at: HashMap::new(),
             last_applied_order: VecDeque::new(),
             last_applied: HashMap::new(),
+            outbound: OutboundBook::default(),
         }
     }
 }
@@ -80,8 +84,8 @@ pub(crate) fn remember_applied(pulse: &mut PulseState, digest: String, resp: Doc
 
 /// Record the answer for a held digest and drop it from the held map in one step.
 ///
-/// A digest must sit in `held` or in `last_applied` at every instant that the
-/// pulse lock is free, so a collect never finds it nowhere.
+/// A digest must sit in `held`, in the outbound book or in `last_applied` at every
+/// instant that the pulse lock is free, so a collect never finds it nowhere.
 pub(crate) fn settle_held(pulse: &mut PulseState, digest: &str, resp: DockFrameResponse) {
     pulse.held.remove(digest);
     remember_applied(pulse, String::from(digest), resp);
@@ -93,6 +97,8 @@ pub struct DockingRuntime {
     pub defence: crate::dock_parts::DockDefence,
     pub admit: crate::dock_parts::DockAdmit,
     pub record: crate::dock_parts::DockRecord,
+    /// The route list and the address policy of the gateway path.
+    pub outbound: DockOutbound,
 }
 
 impl DockingRuntime {
@@ -115,10 +121,17 @@ impl DockingRuntime {
         data_dir: &Path,
     ) -> Result<Self, BaseNodeError> {
         let live_entry = load_live_entry(data_dir)?;
+        let outbound = DockOutbound::load(data_dir);
+        if let Some(e) = &outbound.routes_error {
+            tracing::warn!(error = %e, "gateway route list refused: the gateway path opens no route");
+        }
         Ok(Self {
             io: crate::dock_parts::DockIo {
                 socket_base: socket_base.into(),
-                connection_limit: Arc::new(Semaphore::new(MAX_CONNECTIONS)),
+                port_slots: std::array::from_fn(|_| {
+                    Arc::new(Semaphore::new(PORT_CONNECTION_SHARE))
+                }),
+                idle_timeout: DOCK_IDLE_TIMEOUT,
                 stop: watch::channel(false).0,
                 inflight: Arc::new(Mutex::new(Vec::new())),
                 last_tls_handshake_err: Mutex::new(None),
@@ -171,6 +184,7 @@ impl DockingRuntime {
                 pulse: Arc::new(Mutex::new(PulseState::default())),
                 sqlite_closed: AtomicBool::new(false),
             },
+            outbound,
         })
     }
     pub fn port_specs(&self) -> Vec<DockingPortSpec> {
@@ -216,14 +230,15 @@ impl DockingRuntime {
         self.io.drain_aborted_tasks.load(Ordering::SeqCst)
     }
 
+    /// Keep the handle of a connection task. The handles of ended tasks are released
+    /// first, so the list holds the live connections and never grows with the daemon age.
     pub(crate) fn track_task(&self, handle: JoinHandle<()>) {
-        match self.io.inflight.lock() {
-            Ok(mut g) => g.push(handle),
-            Err(p) => {
-                let mut g = p.into_inner();
-                g.push(handle);
-            }
-        }
+        let mut g = match self.io.inflight.lock() {
+            Ok(g) => g,
+            Err(p) => p.into_inner(),
+        };
+        g.retain(|h| !h.is_finished());
+        g.push(handle);
     }
 
     pub(crate) fn take_inflight(&self) -> Vec<JoinHandle<()>> {
@@ -349,6 +364,9 @@ pub(crate) fn collect_applied(runtime: &DockingRuntime, digest: &str) -> DockFra
     }
     if pulse.held.contains_key(digest) {
         return pending_held_response(String::from(digest));
+    }
+    if pulse.outbound.is_in_flight(digest) {
+        return outbound_pending_response(digest);
     }
     deny_resp(
         Some(String::from(digest)),

@@ -1,0 +1,871 @@
+{
+  "schema": "aep.egress-address.vectors.v1",
+  "about": "Shared egress address vectors. The Rust crate aep-egress-address and the JavaScript module egress-address.mjs both read this file and must give the same answer for every row.",
+  "classes": [
+    "public",
+    "loopback",
+    "unspecified",
+    "private",
+    "shared",
+    "link_local",
+    "reserved"
+  ],
+  "policies": {
+    "default": {
+      "allow_loopback": false,
+      "allow_private": false
+    },
+    "loopback": {
+      "allow_loopback": true,
+      "allow_private": false
+    },
+    "private": {
+      "allow_loopback": false,
+      "allow_private": true
+    }
+  },
+  "rule": "public is allowed. loopback and unspecified are allowed only with allow_loopback. private, shared and link_local are allowed only with allow_private. reserved is never allowed.",
+  "addresses": [
+    {
+      "ip": "0.0.0.0",
+      "class": "unspecified",
+      "allowed": {
+        "default": false,
+        "loopback": true,
+        "private": false
+      }
+    },
+    {
+      "ip": "0.1.2.3",
+      "class": "unspecified",
+      "allowed": {
+        "default": false,
+        "loopback": true,
+        "private": false
+      }
+    },
+    {
+      "ip": "10.0.0.1",
+      "class": "private",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": true
+      }
+    },
+    {
+      "ip": "10.255.255.255",
+      "class": "private",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": true
+      }
+    },
+    {
+      "ip": "100.63.255.255",
+      "class": "public",
+      "allowed": {
+        "default": true,
+        "loopback": true,
+        "private": true
+      }
+    },
+    {
+      "ip": "100.64.0.1",
+      "class": "shared",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": true
+      }
+    },
+    {
+      "ip": "100.127.255.254",
+      "class": "shared",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": true
+      }
+    },
+    {
+      "ip": "100.128.0.1",
+      "class": "public",
+      "allowed": {
+        "default": true,
+        "loopback": true,
+        "private": true
+      }
+    },
+    {
+      "ip": "127.0.0.1",
+      "class": "loopback",
+      "allowed": {
+        "default": false,
+        "loopback": true,
+        "private": false
+      }
+    },
+    {
+      "ip": "127.255.255.254",
+      "class": "loopback",
+      "allowed": {
+        "default": false,
+        "loopback": true,
+        "private": false
+      }
+    },
+    {
+      "ip": "169.254.169.254",
+      "class": "link_local",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": true
+      }
+    },
+    {
+      "ip": "169.254.0.1",
+      "class": "link_local",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": true
+      }
+    },
+    {
+      "ip": "172.15.255.255",
+      "class": "public",
+      "allowed": {
+        "default": true,
+        "loopback": true,
+        "private": true
+      }
+    },
+    {
+      "ip": "172.16.0.1",
+      "class": "private",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": true
+      }
+    },
+    {
+      "ip": "172.31.255.255",
+      "class": "private",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": true
+      }
+    },
+    {
+      "ip": "172.32.0.1",
+      "class": "public",
+      "allowed": {
+        "default": true,
+        "loopback": true,
+        "private": true
+      }
+    },
+    {
+      "ip": "192.0.0.8",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "192.0.2.1",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "192.88.99.1",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "192.167.255.255",
+      "class": "public",
+      "allowed": {
+        "default": true,
+        "loopback": true,
+        "private": true
+      }
+    },
+    {
+      "ip": "192.168.1.1",
+      "class": "private",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": true
+      }
+    },
+    {
+      "ip": "198.17.255.255",
+      "class": "public",
+      "allowed": {
+        "default": true,
+        "loopback": true,
+        "private": true
+      }
+    },
+    {
+      "ip": "198.18.0.1",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "198.19.255.255",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "198.20.0.1",
+      "class": "public",
+      "allowed": {
+        "default": true,
+        "loopback": true,
+        "private": true
+      }
+    },
+    {
+      "ip": "198.51.100.7",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "203.0.113.9",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "224.0.0.1",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "239.255.255.250",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "240.0.0.1",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "255.255.255.255",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "1.1.1.1",
+      "class": "public",
+      "allowed": {
+        "default": true,
+        "loopback": true,
+        "private": true
+      }
+    },
+    {
+      "ip": "8.8.8.8",
+      "class": "public",
+      "allowed": {
+        "default": true,
+        "loopback": true,
+        "private": true
+      }
+    },
+    {
+      "ip": "93.184.216.34",
+      "class": "public",
+      "allowed": {
+        "default": true,
+        "loopback": true,
+        "private": true
+      }
+    },
+    {
+      "ip": "223.255.255.255",
+      "class": "public",
+      "allowed": {
+        "default": true,
+        "loopback": true,
+        "private": true
+      }
+    },
+    {
+      "ip": "::",
+      "class": "unspecified",
+      "allowed": {
+        "default": false,
+        "loopback": true,
+        "private": false
+      }
+    },
+    {
+      "ip": "::1",
+      "class": "loopback",
+      "allowed": {
+        "default": false,
+        "loopback": true,
+        "private": false
+      }
+    },
+    {
+      "ip": "::ffff:127.0.0.1",
+      "class": "loopback",
+      "allowed": {
+        "default": false,
+        "loopback": true,
+        "private": false
+      }
+    },
+    {
+      "ip": "::ffff:10.1.2.3",
+      "class": "private",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": true
+      }
+    },
+    {
+      "ip": "::ffff:100.64.0.1",
+      "class": "shared",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": true
+      }
+    },
+    {
+      "ip": "::ffff:169.254.169.254",
+      "class": "link_local",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": true
+      }
+    },
+    {
+      "ip": "::ffff:1.1.1.1",
+      "class": "public",
+      "allowed": {
+        "default": true,
+        "loopback": true,
+        "private": true
+      }
+    },
+    {
+      "ip": "::ffff:0:7f00:1",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "::7f00:1",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "::1.1.1.1",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "64:ff9b::7f00:1",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "64:ff9b::101:101",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "64:ff9b:1::1",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "100::1",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "2001::1",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "2001:0:4136:e378:8000:63bf:3fff:fdd2",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "2001:db8::1",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "2001:1ff::1",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "2001:200::1",
+      "class": "public",
+      "allowed": {
+        "default": true,
+        "loopback": true,
+        "private": true
+      }
+    },
+    {
+      "ip": "2002:7f00:1::1",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "2002:101:101::1",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "3fff::1",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "fc00::1",
+      "class": "private",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": true
+      }
+    },
+    {
+      "ip": "fd12:3456:789a::1",
+      "class": "private",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": true
+      }
+    },
+    {
+      "ip": "fe80::1",
+      "class": "link_local",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": true
+      }
+    },
+    {
+      "ip": "febf::1",
+      "class": "link_local",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": true
+      }
+    },
+    {
+      "ip": "fec0::1",
+      "class": "private",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": true
+      }
+    },
+    {
+      "ip": "ff02::1",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "ff0e::1",
+      "class": "reserved",
+      "allowed": {
+        "default": false,
+        "loopback": false,
+        "private": false
+      }
+    },
+    {
+      "ip": "2606:4700:4700::1111",
+      "class": "public",
+      "allowed": {
+        "default": true,
+        "loopback": true,
+        "private": true
+      }
+    },
+    {
+      "ip": "2a00:1450:4001:80b::200e",
+      "class": "public",
+      "allowed": {
+        "default": true,
+        "loopback": true,
+        "private": true
+      }
+    }
+  ],
+  "urls": [
+    {
+      "url": "https://1.1.1.1/x",
+      "verdict": "allow",
+      "class": "public"
+    },
+    {
+      "url": "http://[2606:4700:4700::1111]/",
+      "verdict": "allow",
+      "class": "public"
+    },
+    {
+      "url": "http://127.0.0.1/",
+      "verdict": "deny",
+      "class": "loopback",
+      "reason": "class"
+    },
+    {
+      "url": "http://127.0.0.1./",
+      "verdict": "deny",
+      "class": "loopback",
+      "reason": "class"
+    },
+    {
+      "url": "http://2130706433/",
+      "verdict": "deny",
+      "class": "loopback",
+      "reason": "class"
+    },
+    {
+      "url": "http://0x7f000001/",
+      "verdict": "deny",
+      "class": "loopback",
+      "reason": "class"
+    },
+    {
+      "url": "http://0177.0.0.1/",
+      "verdict": "deny",
+      "class": "loopback",
+      "reason": "class"
+    },
+    {
+      "url": "http://127.1/",
+      "verdict": "deny",
+      "class": "loopback",
+      "reason": "class"
+    },
+    {
+      "url": "http://0x7f.1/",
+      "verdict": "deny",
+      "class": "loopback",
+      "reason": "class"
+    },
+    {
+      "url": "http://[::1]/",
+      "verdict": "deny",
+      "class": "loopback",
+      "reason": "class"
+    },
+    {
+      "url": "http://[::ffff:127.0.0.1]/",
+      "verdict": "deny",
+      "class": "loopback",
+      "reason": "class"
+    },
+    {
+      "url": "http://[::ffff:7f00:1]/",
+      "verdict": "deny",
+      "class": "loopback",
+      "reason": "class"
+    },
+    {
+      "url": "http://0.0.0.0/",
+      "verdict": "deny",
+      "class": "unspecified",
+      "reason": "class"
+    },
+    {
+      "url": "http://[::]/",
+      "verdict": "deny",
+      "class": "unspecified",
+      "reason": "class"
+    },
+    {
+      "url": "http://10.0.0.1/",
+      "verdict": "deny",
+      "class": "private",
+      "reason": "class"
+    },
+    {
+      "url": "http://192.168.0.10:8080/",
+      "verdict": "deny",
+      "class": "private",
+      "reason": "class"
+    },
+    {
+      "url": "http://100.64.0.1/",
+      "verdict": "deny",
+      "class": "shared",
+      "reason": "class"
+    },
+    {
+      "url": "http://100.100.100.200/latest/meta-data",
+      "verdict": "deny",
+      "class": "shared",
+      "reason": "class"
+    },
+    {
+      "url": "http://169.254.169.254/latest/meta-data",
+      "verdict": "deny",
+      "class": "link_local",
+      "reason": "class"
+    },
+    {
+      "url": "http://[fe80::1]/",
+      "verdict": "deny",
+      "class": "link_local",
+      "reason": "class"
+    },
+    {
+      "url": "http://[fd00:ec2::254]/",
+      "verdict": "deny",
+      "class": "private",
+      "reason": "class"
+    },
+    {
+      "url": "http://198.18.0.1/",
+      "verdict": "deny",
+      "class": "reserved",
+      "reason": "class"
+    },
+    {
+      "url": "http://224.0.0.1/",
+      "verdict": "deny",
+      "class": "reserved",
+      "reason": "class"
+    },
+    {
+      "url": "http://255.255.255.255/",
+      "verdict": "deny",
+      "class": "reserved",
+      "reason": "class"
+    },
+    {
+      "url": "http://[64:ff9b::7f00:1]/",
+      "verdict": "deny",
+      "class": "reserved",
+      "reason": "class"
+    },
+    {
+      "url": "http://[64:ff9b::a9fe:a9fe]/",
+      "verdict": "deny",
+      "class": "reserved",
+      "reason": "class"
+    },
+    {
+      "url": "http://[2002:7f00:1::1]/",
+      "verdict": "deny",
+      "class": "reserved",
+      "reason": "class"
+    },
+    {
+      "url": "http://[2001:0:4136:e378:8000:63bf:3fff:fdd2]/",
+      "verdict": "deny",
+      "class": "reserved",
+      "reason": "class"
+    },
+    {
+      "url": "http://[::7f00:1]/",
+      "verdict": "deny",
+      "class": "reserved",
+      "reason": "class"
+    },
+    {
+      "url": "http://[ff02::1]/",
+      "verdict": "deny",
+      "class": "reserved",
+      "reason": "class"
+    },
+    {
+      "url": "http://localhost/",
+      "verdict": "deny",
+      "class": "loopback",
+      "reason": "name"
+    },
+    {
+      "url": "http://LOCALHOST./",
+      "verdict": "deny",
+      "class": "loopback",
+      "reason": "name"
+    },
+    {
+      "url": "http://api.localhost/",
+      "verdict": "deny",
+      "class": "loopback",
+      "reason": "name"
+    },
+    {
+      "url": "http://metadata/",
+      "verdict": "deny",
+      "class": "link_local",
+      "reason": "name"
+    },
+    {
+      "url": "http://metadata.google.internal/",
+      "verdict": "deny",
+      "class": "link_local",
+      "reason": "name"
+    },
+    {
+      "url": "http://db.internal/",
+      "verdict": "deny",
+      "class": "link_local",
+      "reason": "name"
+    },
+    {
+      "url": "http://printer.local/",
+      "verdict": "deny",
+      "class": "link_local",
+      "reason": "name"
+    },
+    {
+      "url": "ftp://1.1.1.1/",
+      "verdict": "deny",
+      "reason": "scheme"
+    },
+    {
+      "url": "file:///etc/passwd",
+      "verdict": "deny",
+      "reason": "scheme"
+    },
+    {
+      "url": "http://user:pass@1.1.1.1/",
+      "verdict": "deny",
+      "reason": "userinfo"
+    },
+    {
+      "url": "http://1.1.1.1@127.0.0.1/",
+      "verdict": "deny",
+      "reason": "userinfo"
+    },
+    {
+      "url": "not a url",
+      "verdict": "deny",
+      "reason": "invalid"
+    }
+  ]
+}

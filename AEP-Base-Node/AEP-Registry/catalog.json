@@ -29,8 +29,19 @@
       "bundled": true,
       "default_enabled": true,
       "path": "AEP-Components/lattice-gated-fetch/",
-      "description": "After dock allow execute bound HTTP and return http. Clients consume dock http.",
+      "description": "Kernel outbound request of the one granted gateway path: operator route list, pinned checked addresses and a bounded reply.",
       "manifest": "AEP-Base-Node/AEP-Registry/components/lattice-gated-fetch.json",
+      "role": "kernel"
+    },
+    {
+      "id": "egress-address",
+      "name": "Egress Address Check",
+      "kind": "library",
+      "bundled": true,
+      "default_enabled": true,
+      "path": "AEP-Components/egress-address/",
+      "description": "One address check for every outbound request: the full range list in Rust and JavaScript, pinned addresses, a bounded body read and shared vectors.",
+      "manifest": "AEP-Base-Node/AEP-Registry/components/egress-address.json",
       "role": "kernel"
     },
     {

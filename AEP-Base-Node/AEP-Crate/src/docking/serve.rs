@@ -1,7 +1,13 @@
 //! Dock listeners plus drain. The earlier law change facade split. The earlier law change drain.
+//!
+//! The async workers only read lines and write answers. Admit, Apply and every beat run on
+//! the blocking pool, and the outbound request of the gateway path runs on a thread of its
+//! own, so one slow frame never holds a worker that other connections need.
 
 use super::pulse::{collect_applied, pulse_beat, pulse_decay_rate, DockingRuntime};
-use super::{deny_resp, lock_or_deny, process_request, DockFrameResponse};
+use super::{
+    deny_closed, deny_resp, lock_or_deny, process_request, DockFrameResponse, DockVerdict,
+};
 use crate::dock_event;
 use crate::dock_log::DockEvent;
 use crate::{
@@ -11,6 +17,7 @@ use aep_base_node_pulse::PULSE_MS;
 use aep_dock_line_reader::{read_line_limited, MAX_LINE_BYTES, READ_CHUNK};
 use aep_lattice_channel::DockingPort;
 use aep_lattice_channel::LatticeChannelFrame;
+use aep_wall_set_backpressure::CLASS_SECURITY;
 use serde::Deserialize;
 use std::path::Path;
 use std::sync::Arc;
@@ -21,7 +28,16 @@ use tokio::task::JoinHandle;
 use tokio_rustls::TlsAcceptor;
 use tracing::warn;
 
+/// Connection slots of the whole dock.
 pub(crate) const MAX_CONNECTIONS: usize = 64;
+/// Connection slots of one docking port: an even share of [`MAX_CONNECTIONS`], so the
+/// connections of one port never take the slots of another.
+pub(crate) const PORT_CONNECTION_SHARE: usize = MAX_CONNECTIONS / 4;
+/// A connection that completes no line within this time is closed.
+pub(crate) const DOCK_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
+/// Refused lines one connection may draw before the dock closes it. A refusal writes at
+/// most one anomaly row, so this bounds the anomaly rows of one connection.
+pub(crate) const MAX_REFUSALS_PER_CONNECTION: usize = 32;
 const DRAIN_JOIN_TIMEOUT: Duration = Duration::from_secs(2);
 
 #[derive(Debug, Deserialize)]
@@ -113,13 +129,31 @@ async fn write_response_line(
     writer.write_all(format!("{line}\n").as_bytes()).await
 }
 
+/// Run one dock call on the blocking pool. A call that panics answers a Deny.
+pub(crate) async fn on_blocking_pool<F>(call: F) -> DockFrameResponse
+where
+    F: FnOnce() -> DockFrameResponse + Send + 'static,
+{
+    match tokio::task::spawn_blocking(call).await {
+        Ok(resp) => resp,
+        Err(e) => deny_closed(
+            None,
+            format!("dock request ended without an answer: {e}"),
+            "dock.interrupted",
+            CLASS_SECURITY,
+        ),
+    }
+}
+
 async fn wait_collect_if_needed(
-    runtime: &DockingRuntime,
-    port: &DockingPort,
-    line: &str,
+    runtime: &Arc<DockingRuntime>,
+    port: DockingPort,
+    line: String,
+    collect: bool,
 ) -> DockFrameResponse {
-    let first = process_request(runtime, port, line);
-    if !line_is_collect(line) {
+    let rt = runtime.clone();
+    let first = on_blocking_pool(move || process_request(&rt, &port, &line)).await;
+    if !collect {
         return first;
     }
     if !is_collect_pending(&first) {
@@ -131,19 +165,28 @@ async fn wait_collect_if_needed(
     };
     let deadline = tokio::time::Instant::now() + Duration::from_millis((3 * PULSE_MS as u64) + 250);
     loop {
-        if runtime.is_stopping() {
-            return collect_applied(runtime, &digest);
-        }
-        if tokio::time::Instant::now() >= deadline {
-            return collect_applied(runtime, &digest);
+        let rt = runtime.clone();
+        let d = digest.clone();
+        if runtime.is_stopping() || tokio::time::Instant::now() >= deadline {
+            return on_blocking_pool(move || collect_applied(&rt, &d)).await;
         }
         tokio::time::sleep(Duration::from_millis(25)).await;
-        let _ = pulse_beat(runtime);
-        let resp = collect_applied(runtime, &digest);
+        // collect_applied beats first, so a capsule that became ready is applied now.
+        let resp = on_blocking_pool(move || collect_applied(&rt, &d)).await;
         if !is_collect_pending(&resp) {
             return resp;
         }
     }
+}
+
+fn note_connection_closed(port: DockingPort, reason: &'static str) {
+    dock_event!(
+        info,
+        DockEvent::DockConnectionClosed,
+        port = super::port_event_type(&port),
+        reason,
+        "docking connection closed by the dock"
+    );
 }
 
 pub(crate) async fn serve_connection<R, W>(
@@ -158,6 +201,8 @@ where
 {
     let mut reader = BufReader::with_capacity(READ_CHUNK, reader);
     let mut stop_rx = runtime.io.stop.subscribe();
+    let idle = runtime.io.idle_timeout;
+    let mut refusals = 0usize;
     loop {
         if runtime.is_stopping() {
             break;
@@ -167,8 +212,14 @@ where
             _ = async { let _ = stop_rx.wait_for(|v| *v).await; } => {
                 None
             }
-            res = read_line_limited(&mut reader, MAX_LINE_BYTES) => {
-                Some(res?)
+            res = tokio::time::timeout(idle, read_line_limited(&mut reader, MAX_LINE_BYTES)) => {
+                match res {
+                    Ok(r) => Some(r?),
+                    Err(_) => {
+                        note_connection_closed(port, "idle");
+                        break;
+                    }
+                }
             }
         };
         let line = match read_res {
@@ -191,7 +242,8 @@ where
                 if !pending {
                     break;
                 }
-                let resp = match lock_or_deny(&runtime.record.db, "db") {
+                let rt = runtime.clone();
+                let resp = on_blocking_pool(move || match lock_or_deny(&rt.record.db, "db") {
                     Ok(db) => {
                         let _ = record_side_channel_anomaly(
                             &db,
@@ -203,13 +255,22 @@ where
                         deny_resp(None, String::from("line exceeds 4MB limit"))
                     }
                     Err(resp) => resp,
-                };
+                })
+                .await;
                 write_response_line(&mut writer, &resp).await?;
                 break;
             }
         };
-        let resp = wait_collect_if_needed(&runtime, &port, &line).await;
+        let collect = line_is_collect(&line);
+        let resp = wait_collect_if_needed(&runtime, port, line, collect).await;
         write_response_line(&mut writer, &resp).await?;
+        if !collect && resp.verdict() == DockVerdict::Refused {
+            refusals += 1;
+            if refusals >= MAX_REFUSALS_PER_CONNECTION {
+                note_connection_closed(port, "refusal bound");
+                break;
+            }
+        }
     }
     Ok(())
 }
@@ -231,7 +292,7 @@ async fn serve_port(
             _ = async { let _ = stop_rx.wait_for(|v| *v).await; } => {
                 break;
             }
-            p = runtime.io.connection_limit.clone().acquire_owned() => {
+            p = runtime.io.port_slot(port).acquire_owned() => {
                 p.map_err(|e| std::io::Error::other(e.to_string()))?
             }
         };
@@ -291,7 +352,7 @@ async fn serve_tls_port(
             _ = async { let _ = stop_rx.wait_for(|v| *v).await; } => {
                 break;
             }
-            p = runtime.io.connection_limit.clone().acquire_owned() => {
+            p = runtime.io.port_slot(port).acquire_owned() => {
                 p.map_err(|e| std::io::Error::other(e.to_string()))?
             }
         };
@@ -335,8 +396,13 @@ fn spawn_pulse_task(runtime: Arc<DockingRuntime>) -> JoinHandle<()> {
                 biased;
                 _ = async { let _ = stop_rx.wait_for(|v| *v).await; } => break,
                 _ = tokio::time::sleep(Duration::from_millis(PULSE_MS as u64)) => {
-                    let _ = pulse_beat(&runtime);
-                    pulse_decay_rate(&runtime);
+                    // The beat runs Admit and Apply, so it runs on the blocking pool.
+                    let rt = runtime.clone();
+                    let _ = tokio::task::spawn_blocking(move || {
+                        let _ = pulse_beat(&rt);
+                        pulse_decay_rate(&rt);
+                    })
+                    .await;
                 }
             }
         }

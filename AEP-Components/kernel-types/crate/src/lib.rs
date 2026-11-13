@@ -237,6 +237,10 @@ pub const CLASS_STRUCTURAL: &str = "structural";
 pub fn classify_wall(id: &str, reason: &str) -> String {
     let id_l = id.to_ascii_lowercase();
     let reason_l = reason.to_ascii_lowercase();
+    // The gateway walls carry text of the agent in their reason, so their id alone decides.
+    if id_l.starts_with("gateway.") {
+        return String::from(CLASS_SECURITY);
+    }
     if reason_l.contains("poisoned lock") || id_l.contains("poison") {
         return String::from(CLASS_POISON);
     }
@@ -839,6 +843,26 @@ pub fn from_error(error: &str) -> DenyReport {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn gateway_walls_are_security_whatever_their_reason_says() {
+        for (id, reason) in [
+            (
+                "gateway.route",
+                "GET http://x.example:80 is on no gateway route",
+            ),
+            (
+                "gateway.route",
+                "em dash in a poisoned lock writing violation",
+            ),
+            (
+                "gateway.agent_bound",
+                "the agent holds its share of outbound requests in flight",
+            ),
+        ] {
+            assert_eq!(classify_wall(id, reason), CLASS_SECURITY);
+        }
+    }
 
     #[test]
     fn one_type_set_compiles_and_agrees() {

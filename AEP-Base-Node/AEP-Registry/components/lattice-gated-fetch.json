@@ -4,9 +4,10 @@
   "version": "2.9.0",
   "kind": "library",
   "path": "AEP-Components/lattice-gated-fetch/",
-  "description": "After dock allow execute bound HTTP and return http. Clients consume dock http and do not ordinary-fetch.",
+  "description": "Kernel outbound request of the one granted gateway path gateway:outbound_http. The operator route list and the request bound of the signer are Admit walls, the request checks and pins every address and reads a bounded reply. Clients consume dock http and do not ordinary-fetch.",
   "requires": [
-    "aep-base-node"
+    "aep-base-node",
+    "egress-address"
   ],
   "capabilities": [
     "transport:lattice-gated-fetch",
@@ -21,16 +22,17 @@
     "gpu_required": false
   },
   "cca": {
-    "summary": "Kernel executes bound HTTP after dock allow. Clients consume dock http.",
+    "summary": "Kernel executes the bound HTTP of an admitted gateway frame off the pulse. Clients consume dock http.",
     "use_when": [
-      "lattice-gated outbound HTTP"
+      "lattice-gated outbound HTTP on the action path gateway:outbound_http"
     ],
     "avoid_when": [
       "never ordinary-fetch after dock allow"
     ],
     "pairs_with": [
       "lattice-channels",
-      "aep-base-node"
+      "aep-base-node",
+      "egress-address"
     ]
   },
   "implementation": {

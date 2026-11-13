@@ -11,9 +11,7 @@ use crate::{
 use aep_base_node_pulse::{MAX_FRAME_AGE_SECS, MAX_FRAME_FUTURE_SKEW_SECS};
 use aep_dock_request_poison::{lock_or_poison, poisoned_lock_message};
 use aep_lattice_channel::{frame_digest, ContractRegistry, DockingPort, LatticeChannelFrame};
-use aep_lattice_gated_fetch::{
-    execute_bound_http_after_allow, gateway_spec_from_plaintext, DockHttp,
-};
+use aep_lattice_gated_fetch::DockHttp;
 use aep_wall_set_backpressure::{
     ClosedWall, DenyReport, CLASS_POISON, CLASS_SECURITY, CLASS_TEMPORAL, CLASS_WRITING,
 };
@@ -23,11 +21,14 @@ use std::sync::Mutex;
 
 mod apply;
 mod freshness;
+mod outbound;
 mod pulse;
 mod rate;
 mod serve;
 
+pub use outbound::DockOutbound;
 pub use pulse::{pulse_beat, DockingRuntime, PulseState};
+pub(crate) use serve::on_blocking_pool;
 pub use serve::{drain_docking_servers, run_docking_servers, sockets_exist, unlink_sockets};
 
 use apply::{
@@ -190,23 +191,6 @@ pub(crate) fn pending_held_response(digest: String) -> DockFrameResponse {
     }
 }
 
-pub(crate) fn attach_gateway_http_after_allow(plaintext: &[u8], resp: &mut DockFrameResponse) {
-    let Some(spec) = gateway_spec_from_plaintext(plaintext) else {
-        return;
-    };
-    match execute_bound_http_after_allow(&spec) {
-        Ok(http) => {
-            resp.http = Some(http);
-            resp.http_queued = None;
-        }
-        Err(detail) => {
-            resp.http_queued = None;
-            resp.ok = false;
-            resp.error = Some(detail);
-        }
-    }
-}
-
 pub fn process_request(
     runtime: &DockingRuntime,
     port: &DockingPort,
@@ -358,14 +342,6 @@ fn handle_frame(
         }
     };
 
-    let rate_key = signer_rate_key(&signer_public);
-    if let Err(e) = dock_lock!(&runtime.defence.global_rate_limiter, "fleet_rate").check("global") {
-        return rate_limit_response(runtime, expected_port, &frame.agent_id, e.to_string());
-    }
-    if let Err(e) = dock_lock!(&runtime.defence.rate_limiter, "rate_limiter").check(&rate_key) {
-        return rate_limit_response(runtime, expected_port, &frame.agent_id, e.to_string());
-    }
-
     if let Err(err) = frame_is_fresh(frame.sent_at_unix) {
         let detail = err.to_string();
         let db = dock_lock!(&runtime.record.db, "db");
@@ -453,6 +429,17 @@ fn handle_frame(
             }
         }
     };
+
+    // The rate slots are spent only now, after the signature of the registered key
+    // verified. A frame that names an agent and fails the signature spends neither the
+    // dock wide slot nor a slot of the agent it names.
+    let rate_key = signer_rate_key(&signer_public);
+    if let Err(e) = dock_lock!(&runtime.defence.global_rate_limiter, "fleet_rate").check("global") {
+        return rate_limit_response(runtime, expected_port, &frame.agent_id, e.to_string());
+    }
+    if let Err(e) = dock_lock!(&runtime.defence.rate_limiter, "rate_limiter").check(&rate_key) {
+        return rate_limit_response(runtime, expected_port, &frame.agent_id, e.to_string());
+    }
 
     // BM-07: free outer wire trust_score is NOT authoritative.
     // Only signed plaintext trust_score (or stored agent trust) may drive tier.

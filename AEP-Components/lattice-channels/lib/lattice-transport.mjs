@@ -10,6 +10,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defaultPaths } from "../../platform-core/lib/paths.mjs";
 import { protectedWritingTokenMask } from "../../admit/lib/writing-rules.mjs";
+import {
+  GATEWAY_ACTION_PATH,
+  assertLatticeUrl,
+  egressPolicyFromEnv,
+} from "../../egress-address/lib/egress-address.mjs";
 
 export const DOCK_SUFFIXES = [
   { port: "inference_engine", suffix: "inference" },
@@ -42,102 +47,7 @@ export function latticeStrictEnabled(env = process.env) {
 }
 
 export function ssrfPolicyFromEnv(env = process.env) {
-  return {
-    allowLoopback: env.AEP_LATTICE_ALLOW_LOOPBACK === "1",
-    allowPrivate: env.AEP_LATTICE_ALLOW_PRIVATE === "1",
-  };
-}
-
-function parseIpv4NumericPart(part) {
-  if (!part) return null;
-  if (/^0x[0-9a-f]+$/i.test(part)) {
-    const n = Number.parseInt(part.slice(2), 16);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  if (part.length > 1 && part.startsWith("0") && /^[0-7]+$/.test(part)) {
-    const n = Number.parseInt(part, 8);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  if (/^\d+$/.test(part)) {
-    const n = Number.parseInt(part, 10);
-    return Number.isFinite(n) ? n >>> 0 : null;
-  }
-  return null;
-}
-
-function parseWeirdIpv4(host) {
-  if (!host || host.includes(":")) return null;
-  const parts = host.split(".");
-  if (parts.length < 1 || parts.length > 4) return null;
-  const nums = parts.map(parseIpv4NumericPart);
-  if (nums.some((n) => n === null)) return null;
-  const typed = nums;
-  if (typed.length === 1) {
-    const n = typed[0] >>> 0;
-    return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255];
-  }
-  if (typed.length === 2) {
-    const [a, b] = typed;
-    if (a > 255 || b > 0xffffff) return null;
-    return [a, (b >>> 16) & 255, (b >>> 8) & 255, b & 255];
-  }
-  if (typed.length === 3) {
-    const [a, b, c] = typed;
-    if (a > 255 || b > 255 || c > 0xffff) return null;
-    return [a, b, (c >>> 8) & 255, c & 255];
-  }
-  const [a, b, c, d] = typed;
-  if (a > 255 || b > 255 || c > 255 || d > 255) return null;
-  return [a, b, c, d];
-}
-
-function classifyV4(octets) {
-  const a = octets[0];
-  const b = octets[1];
-  if (a === 0) return "unspecified";
-  if (a === 127) return "loopback";
-  if (a === 169 && b === 254) return "linklocal";
-  if (a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31)) return "private";
-  if (a === 255 && b === 255 && octets[2] === 255 && octets[3] === 255) return "private";
-  return "public";
-}
-
-function parseIpv6MappedV4(host) {
-  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
-  const dotted = h.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
-  if (dotted) return parseWeirdIpv4(dotted[1]);
-  const hex = h.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
-  if (hex) {
-    const hi = Number.parseInt(hex[1], 16);
-    const lo = Number.parseInt(hex[2], 16);
-    return [(hi >> 8) & 255, hi & 255, (lo >> 8) & 255, lo & 255];
-  }
-  return null;
-}
-
-function classifyIpv6(host) {
-  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
-  const mapped = parseIpv6MappedV4(h);
-  if (mapped) return classifyV4(mapped);
-  if (h === "::1") return "loopback";
-  if (h === "::" || h === "0:0:0:0:0:0:0:0") return "unspecified";
-  if (/^f[cd][0-9a-f]{2}:/i.test(h)) return "private";
-  if (/^fe[89ab][0-9a-f]:/i.test(h)) return "linklocal";
-  return "public";
-}
-
-function denyClass(cls, policy) {
-  if (cls === "public") return;
-  if (cls === "loopback" || cls === "unspecified") {
-    if (!policy.allowLoopback) throw new Error("lattice-gated-fetch: loopback blocked");
-    return;
-  }
-  if (!policy.allowPrivate) throw new Error("lattice-gated-fetch: private/metadata host blocked");
-}
-
-function isMetadataName(host) {
-  const h = host.replace(/\.+$/, "").toLowerCase();
-  return h === "metadata" || h === "metadata.google.internal" || h.endsWith(".internal") || h.endsWith(".local");
+  return egressPolicyFromEnv(env);
 }
 
 function defaultLookup(host) {
@@ -155,53 +65,13 @@ function defaultLookup(host) {
   }
 }
 
-function classifyAddressString(addr) {
-  const a = addr.toLowerCase().replace(/^\[|\]$/g, "");
-  if (a.includes(":")) return classifyIpv6(a);
-  const v4 = parseWeirdIpv4(a);
-  if (v4) return classifyV4(v4);
-  throw new Error("lattice-gated-fetch: DNS resolve failed");
-}
-
+/**
+ * The address check of AEP-Components/egress-address: the full range list, the reserved
+ * names and every address of the lookup. The kernel checks the destination again before it
+ * connects, against the same list.
+ */
 export function assertUrlNotSsrf(urlInput, lookup = defaultLookup, env = process.env) {
-  let u;
-  try {
-    u = typeof urlInput === "string" ? new URL(urlInput) : urlInput;
-  } catch {
-    throw new Error("lattice-gated-fetch: invalid URL");
-  }
-  if (u.protocol !== "http:" && u.protocol !== "https:") {
-    throw new Error("lattice-gated-fetch: blocked protocol " + u.protocol);
-  }
-  if (u.username || u.password) {
-    throw new Error("lattice-gated-fetch: userinfo host spoof blocked");
-  }
-  const host = u.hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  if (!host) throw new Error("lattice-gated-fetch: invalid URL");
-  const policy = ssrfPolicyFromEnv(env);
-  if (isMetadataName(host)) {
-    denyClass("private", policy);
-    return;
-  }
-  const mapped = parseIpv6MappedV4(host);
-  if (mapped) {
-    denyClass(classifyV4(mapped), policy);
-    return;
-  }
-  if (host.includes(":")) {
-    denyClass(classifyIpv6(host), policy);
-    return;
-  }
-  const weird = parseWeirdIpv4(host);
-  if (weird) {
-    denyClass(classifyV4(weird), policy);
-    return;
-  }
-  const addrs = lookup(host);
-  if (!addrs || addrs.length === 0) {
-    throw new Error("lattice-gated-fetch: DNS resolve returned no addresses");
-  }
-  for (const addr of addrs) denyClass(classifyAddressString(addr), policy);
+  assertLatticeUrl(urlInput, lookup, env);
 }
 
 function repoLatticeLogCandidates() {
@@ -896,6 +766,7 @@ export async function latticeGatedFetch(
     channel_id: meta.channelId ?? "ch-outbound-gateway",
     contract_id: meta.contractId ?? "lattice-channel-default",
     event_type: meta.eventType ?? "LATTICE_GATEWAY_REQUEST",
+    action_path: GATEWAY_ACTION_PATH,
     session_id: meta.sessionId ?? "gateway-session",
     docking_port: "inference_engine",
     trust_score: meta.trustScore ?? 100,

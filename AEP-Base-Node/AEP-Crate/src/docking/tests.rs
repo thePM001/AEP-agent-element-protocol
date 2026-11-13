@@ -2277,3 +2277,652 @@ fn tls_handshake_err_still_does_not_request_stop() {
     note_tls_handshake_err(&rt, "refused");
     assert!(!rt.is_stopping())
 }
+
+// --- AEP-CRV-020 kernel outbound request, stalls and limits ---
+
+/// The one action path on which the kernel sends an outbound request.
+const CRV20_GATEWAY: &str = "gateway:outbound_http";
+
+/// Lattice of the outbound tests. The gateway path is granted to the gateway agents only.
+/// AG-NOGRANT holds a hub row for it and no lattice grant.
+fn crv20_lattice_yaml() -> &'static str {
+    "actions:\n  root:ping:\n    category: system_event\n    parents: []\n    children: []\n    agent_permission: [\"*\"]\n  action:write:\n    category: agent_action\n    parents: []\n    children: []\n    agent_permission: [\"AG-WRITE\"]\n  gateway:outbound_http:\n    category: agent_action\n    parents: []\n    children: []\n    agent_permission: [\"AG-GW\", \"AG-SLOW1\", \"AG-SLOW2\", \"AG-GW-BOUND\"]\n"
+}
+
+fn crv20_hub_gap() -> &'static str {
+    "metadata:\n  wrap: caw\n  agent_permission:\n    - agent_id: AG-WRITE\n      action: root:ping\n    - agent_id: AG-WRITE\n      action: action:write\n    - agent_id: AG-GW\n      action: gateway:outbound_http\n    - agent_id: AG-SLOW1\n      action: gateway:outbound_http\n    - agent_id: AG-SLOW2\n      action: gateway:outbound_http\n    - agent_id: AG-GW-BOUND\n      action: gateway:outbound_http\n    - agent_id: AG-NOGRANT\n      action: gateway:outbound_http\n    - agent_id: AG-QUICK\n      action: root:ping\n    - agent_id: AG-QUERY\n      action: root:ping\n    - agent_id: AG-VICTIM\n      action: root:ping\n"
+}
+
+/// Operator route list with one route: GET on any path of the local test server.
+fn crv20_routes(port: u16) -> String {
+    serde_json::json!({
+        "routes": [{
+            "id": "crv20-local",
+            "scheme": "http",
+            "host": "127.0.0.1",
+            "port": port,
+            "path_prefix": "/",
+            "methods": ["GET"],
+        }]
+    })
+    .to_string()
+}
+
+/// A runtime of the outbound tests. `routes` is the text of the operator route list and
+/// an empty text leaves the list out.
+fn crv20_runtime(routes: &str) -> (tempfile::TempDir, DockingRuntime) {
+    let dir = tempfile::tempdir().expect("tempdir");
+    std::fs::write(dir.path().join("lattice.yaml"), crv20_lattice_yaml()).expect("lattice");
+    let reference = dir.path().join("gap").join("policies").join("reference");
+    std::fs::create_dir_all(&reference).expect("hub dir");
+    std::fs::write(reference.join("caw-test.gap"), crv20_hub_gap()).expect("hub");
+    if !routes.is_empty() {
+        std::fs::write(dir.path().join("gateway-routes.json"), routes).expect("routes");
+    }
+    let conn = open_lattice_db(&dir.path().join("dock.db")).expect("db");
+    let sock_base = dir.path().join("sockets").to_string_lossy().to_string();
+    let rt = DockingRuntime::with_data_dir(sock_base, conn, &[], dir.path()).expect("runtime");
+    (dir, rt)
+}
+
+fn crv20_event(action_path: &str, seq: i64, payload: Value) -> Vec<u8> {
+    serde_json::json!({
+        "type": "CUSTOM",
+        "action_path": action_path,
+        "payload": payload,
+        "timestamp": 1_000_000,
+        "target_id": "scene-a",
+        "_sequenceNumber": seq,
+    })
+    .to_string()
+    .into_bytes()
+}
+
+fn crv20_frame_line(rt: &DockingRuntime, agent: &str, body: &[u8]) -> String {
+    build_test_frame(
+        rt,
+        "ch-crv20",
+        agent,
+        "sess-1",
+        DockingPort::ValidationEngine,
+        "dynaep-action-lattice",
+        body,
+        1,
+    )
+    .1
+}
+
+fn crv20_send(rt: &DockingRuntime, agent: &str, body: &[u8]) -> DockFrameResponse {
+    let line = crv20_frame_line(rt, agent, body);
+    through_pulse(rt, &DockingPort::ValidationEngine, &line)
+}
+
+/// Collect a digest until its answer is no longer pending or five seconds pass.
+fn crv20_settle(rt: &DockingRuntime, first: DockFrameResponse) -> DockFrameResponse {
+    let Some(digest) = first.digest.clone() else {
+        return first;
+    };
+    let mut resp = first;
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while resp.pending == Some(true) && std::time::Instant::now() < deadline {
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        resp = process_request(
+            rt,
+            &DockingPort::ValidationEngine,
+            &format!("{{\"collect\":\"{digest}\"}}"),
+        );
+    }
+    resp
+}
+
+/// The outbound tests send their requests to a server on 127.0.0.1, so the address check
+/// of the tests admits loopback. Every other address rule still applies.
+fn allow_loopback_outbound() {
+    std::env::set_var("AEP_LATTICE_ALLOW_LOOPBACK", "1");
+}
+
+/// A plain HTTP server for the outbound tests. Every connection is counted, waits for
+/// `delay` and is answered 204 with no body.
+struct TestHttp {
+    port: u16,
+    hits: Arc<std::sync::atomic::AtomicUsize>,
+}
+
+impl TestHttp {
+    fn start(delay: std::time::Duration) -> Self {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
+        let port = listener.local_addr().expect("addr").port();
+        let hits = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let counted = hits.clone();
+        std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                let Ok(mut stream) = stream else {
+                    break;
+                };
+                counted.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                std::thread::spawn(move || {
+                    use std::io::{Read, Write};
+                    let mut buf = [0u8; 4096];
+                    let _ = stream.read(&mut buf);
+                    std::thread::sleep(delay);
+                    let _ = stream.write_all(
+                        b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                    );
+                });
+            }
+        });
+        Self { port, hits }
+    }
+
+    fn url(&self, path: &str) -> String {
+        format!("http://127.0.0.1:{}{path}", self.port)
+    }
+
+    fn hits(&self) -> usize {
+        self.hits.load(std::sync::atomic::Ordering::SeqCst)
+    }
+}
+
+/// Gate test 1. An admitted write event with a url field sends no request, and neither
+/// does a url at the top level of a ping. Only the granted gateway path sends one.
+#[test]
+fn admitted_write_with_a_url_field_sends_no_request() {
+    allow_loopback_outbound();
+    let server = TestHttp::start(std::time::Duration::ZERO);
+    let (_dir, rt) = crv20_runtime(&crv20_routes(server.port));
+    install_agent_manifest(&rt, "AG-WRITE", "sess-1");
+
+    let write = crv20_event(
+        "action:write",
+        1,
+        serde_json::json!({"url": server.url("/write"), "method": "GET"}),
+    );
+    let resp = crv20_send(&rt, "AG-WRITE", &write);
+    assert!(resp.ok, "{:?}", resp.error);
+    assert!(resp.event_id.is_some());
+    assert!(resp.http.is_none(), "a write event received an http answer");
+
+    let mut ping: Value = serde_json::from_slice(&crv20_event(
+        "root:ping",
+        2,
+        serde_json::json!({"ok": true}),
+    ))
+    .expect("ping");
+    ping["url"] = Value::from(server.url("/ping"));
+    let resp = crv20_send(&rt, "AG-WRITE", ping.to_string().as_bytes());
+    assert!(resp.ok, "{:?}", resp.error);
+    assert!(resp.http.is_none(), "a ping received an http answer");
+
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    assert_eq!(
+        server.hits(),
+        0,
+        "the kernel sent a request for a url field outside the gateway path"
+    );
+}
+
+/// Control of gate test 1: the granted gateway path on a listed route sends one request
+/// and the answer carries the http reply.
+#[test]
+fn granted_gateway_frame_on_a_listed_route_sends_one_request() {
+    allow_loopback_outbound();
+    let server = TestHttp::start(std::time::Duration::ZERO);
+    let (_dir, rt) = crv20_runtime(&crv20_routes(server.port));
+    install_agent_manifest(&rt, "AG-GW", "sess-1");
+    let body = crv20_event(
+        CRV20_GATEWAY,
+        1,
+        serde_json::json!({"url": server.url("/ok"), "method": "GET"}),
+    );
+    let resp = crv20_settle(&rt, crv20_send(&rt, "AG-GW", &body));
+    assert!(resp.ok, "{:?}", resp.error);
+    assert!(resp.event_id.is_some());
+    assert_eq!(resp.http.as_ref().map(|h| h.status), Some(204));
+    assert_eq!(server.hits(), 1);
+}
+
+/// The gateway path needs the grant of the lattice: a hub row alone sends nothing.
+#[test]
+fn gateway_frame_without_a_lattice_grant_sends_no_request() {
+    allow_loopback_outbound();
+    let server = TestHttp::start(std::time::Duration::ZERO);
+    let (_dir, rt) = crv20_runtime(&crv20_routes(server.port));
+    install_agent_manifest(&rt, "AG-NOGRANT", "sess-1");
+    let body = crv20_event(
+        CRV20_GATEWAY,
+        1,
+        serde_json::json!({"url": server.url("/ok"), "method": "GET"}),
+    );
+    let resp = crv20_settle(&rt, crv20_send(&rt, "AG-NOGRANT", &body));
+    assert!(!resp.ok);
+    assert!(resp.event_id.is_none());
+    assert!(closed_wall(&resp, "gap.agent_permission").is_some());
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    assert_eq!(server.hits(), 0);
+}
+
+/// A destination outside the operator route list closes the route wall inside Admit, so
+/// nothing is applied, nothing is recorded and no connection is opened.
+#[test]
+fn gateway_frame_to_an_unlisted_destination_is_denied_by_the_route_wall() {
+    allow_loopback_outbound();
+    let listed = TestHttp::start(std::time::Duration::ZERO);
+    let unlisted = TestHttp::start(std::time::Duration::ZERO);
+    let (_dir, rt) = crv20_runtime(&crv20_routes(listed.port));
+    install_agent_manifest(&rt, "AG-GW", "sess-1");
+    let before = applied_state(&rt);
+    let body = crv20_event(
+        CRV20_GATEWAY,
+        1,
+        serde_json::json!({"url": unlisted.url("/x"), "method": "GET"}),
+    );
+    let resp = crv20_settle(&rt, crv20_send(&rt, "AG-GW", &body));
+    assert!(
+        !resp.ok,
+        "a request to an unlisted destination was admitted"
+    );
+    assert!(resp.event_id.is_none());
+    let wall = closed_wall(&resp, "gateway.route").expect("route wall closed");
+    assert_eq!(wall.class, CLASS_SECURITY);
+    assert_eq!(applied_state(&rt), before);
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    assert_eq!(unlisted.hits() + listed.hits(), 0);
+}
+
+/// One agent holds a bounded number of requests in flight. The next gateway frame of the
+/// same agent closes the bound wall and is not applied.
+#[test]
+fn one_agent_holds_a_bounded_number_of_requests_in_flight() {
+    allow_loopback_outbound();
+    let server = TestHttp::start(std::time::Duration::from_millis(1500));
+    let (_dir, rt) = crv20_runtime(&crv20_routes(server.port));
+    install_agent_manifest(&rt, "AG-GW-BOUND", "sess-1");
+    let mut answers = Vec::new();
+    for seq in 1..=3 {
+        let body = crv20_event(
+            CRV20_GATEWAY,
+            seq,
+            serde_json::json!({"url": server.url(&format!("/slow/{seq}")), "method": "GET"}),
+        );
+        answers.push(crv20_send(&rt, "AG-GW-BOUND", &body));
+    }
+    let third = answers.pop().expect("third");
+    assert!(!third.ok, "a third request in flight was admitted");
+    assert!(third.event_id.is_none());
+    assert!(closed_wall(&third, "gateway.agent_bound").is_some());
+    for first in answers {
+        let settled = crv20_settle(&rt, first);
+        assert!(settled.ok, "{:?}", settled.error);
+        assert_eq!(settled.http.as_ref().map(|h| h.status), Some(204));
+    }
+    assert_eq!(server.hits(), 2);
+}
+
+/// Read one answer line within `limit`, or None when the dock stays silent that long.
+async fn crv20_answer_within(
+    conn: &mut BufReader<UnixStream>,
+    limit: std::time::Duration,
+) -> Option<DockFrameResponse> {
+    let mut buf = String::new();
+    match tokio::time::timeout(limit, conn.read_line(&mut buf)).await {
+        Ok(Ok(n)) if n > 0 => serde_json::from_str(buf.trim()).ok(),
+        _ => None,
+    }
+}
+
+async fn crv20_send_line(conn: &mut BufReader<UnixStream>, line: &str) {
+    conn.get_mut()
+        .write_all(format!("{line}\n").as_bytes())
+        .await
+        .expect("send line");
+}
+
+/// Collect a digest on one connection until the answer is no longer pending.
+async fn crv20_collect_settled(
+    conn: &mut BufReader<UnixStream>,
+    digest: &str,
+) -> Option<DockFrameResponse> {
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(10);
+    loop {
+        crv20_send_line(conn, &format!("{{\"collect\":\"{digest}\"}}")).await;
+        let resp = crv20_answer_within(conn, std::time::Duration::from_secs(10)).await?;
+        if resp.pending != Some(true) || tokio::time::Instant::now() >= deadline {
+            return Some(resp);
+        }
+    }
+}
+
+async fn crv20_wait_hits(server: &TestHttp, hits: usize) {
+    let start = tokio::time::Instant::now();
+    while server.hits() < hits && start.elapsed() < std::time::Duration::from_secs(3) {
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+}
+
+/// Gate test 2. On two workers a collect answers within 500 ms while two slow fetches run.
+/// Each slow fetch starts from its own beat, so each one can hold one worker. The frame of
+/// a third agent and its collect must still be answered within 500 ms each.
+#[test]
+fn collect_answers_within_500_ms_while_two_slow_fetches_run() {
+    allow_loopback_outbound();
+    let server = TestHttp::start(std::time::Duration::from_millis(2000));
+    let (_dir, runtime) = crv20_runtime(&crv20_routes(server.port));
+    for agent in ["AG-SLOW1", "AG-SLOW2", "AG-QUICK"] {
+        install_agent_manifest(&runtime, agent, "sess-1");
+    }
+    let t0: i64 = 1_000_000;
+    let gateway_body = |seq: i64, stamp: i64, path: &str| {
+        let mut v: Value = serde_json::from_slice(&crv20_event(
+            CRV20_GATEWAY,
+            seq,
+            serde_json::json!({"url": server.url(path), "method": "GET"}),
+        ))
+        .expect("event");
+        v["timestamp"] = Value::from(stamp);
+        v.to_string().into_bytes()
+    };
+    let slow1 = crv20_frame_line(&runtime, "AG-SLOW1", &gateway_body(1, t0, "/slow/1"));
+    let slow2 = crv20_frame_line(
+        &runtime,
+        "AG-SLOW2",
+        &gateway_body(1, t0 + PULSE_MS, "/slow/2"),
+    );
+    let quick = {
+        let mut v: Value = serde_json::from_slice(&crv20_event(
+            "root:ping",
+            1,
+            serde_json::json!({"ok": true}),
+        ))
+        .expect("event");
+        v["timestamp"] = Value::from(t0 + 2 * PULSE_MS);
+        crv20_frame_line(&runtime, "AG-QUICK", v.to_string().as_bytes())
+    };
+    set_pulse_clock(&runtime, t0);
+    let shared = Arc::new(runtime);
+    let workers = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .expect("two workers");
+    let (quick_frame_ms, quick_collect_ms, slow) = workers.block_on(async {
+        let mut conns = Vec::new();
+        for _ in 0..3 {
+            let (client, server_end) = UnixStream::pair().expect("pair");
+            let (r, w) = server_end.into_split();
+            let rt = shared.clone();
+            tokio::spawn(async move {
+                let _ = serve_connection(rt, DockingPort::ValidationEngine, r, w).await;
+            });
+            conns.push(BufReader::new(client));
+        }
+        let wait = std::time::Duration::from_secs(10);
+        // The first slow fetch starts from the beat of its collect.
+        crv20_send_line(&mut conns[0], &slow1).await;
+        let a = crv20_answer_within(&mut conns[0], wait)
+            .await
+            .expect("frame 1");
+        assert_eq!(a.pending, Some(true), "{:?}", a.error);
+        set_pulse_clock(&shared, t0 + PULSE_MS);
+        let digest_a = a.digest.expect("digest a");
+        crv20_send_line(&mut conns[0], &format!("{{\"collect\":\"{digest_a}\"}}")).await;
+        crv20_wait_hits(&server, 1).await;
+        // The second slow fetch starts from the beat of its own collect.
+        crv20_send_line(&mut conns[1], &slow2).await;
+        let b = crv20_answer_within(&mut conns[1], wait)
+            .await
+            .expect("frame 2");
+        assert_eq!(b.pending, Some(true), "{:?}", b.error);
+        set_pulse_clock(&shared, t0 + 2 * PULSE_MS);
+        let digest_b = b.digest.expect("digest b");
+        crv20_send_line(&mut conns[1], &format!("{{\"collect\":\"{digest_b}\"}}")).await;
+        crv20_wait_hits(&server, 2).await;
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        // Two fetches run. A third agent sends a frame and collects its answer.
+        let limit = std::time::Duration::from_millis(500);
+        let started = std::time::Instant::now();
+        crv20_send_line(&mut conns[2], &quick).await;
+        let c = crv20_answer_within(&mut conns[2], limit).await;
+        let quick_frame_ms = started.elapsed().as_millis();
+        let c = c.expect("the frame of a third agent was not answered within 500 ms");
+        assert_eq!(c.pending, Some(true), "{:?}", c.error);
+        set_pulse_clock(&shared, t0 + 3 * PULSE_MS);
+        let started = std::time::Instant::now();
+        let digest_c = c.digest.expect("digest c");
+        crv20_send_line(&mut conns[2], &format!("{{\"collect\":\"{digest_c}\"}}")).await;
+        let collected = crv20_answer_within(&mut conns[2], limit).await;
+        let quick_collect_ms = started.elapsed().as_millis();
+        let collected = collected.expect("the collect was not answered within 500 ms");
+        assert!(collected.ok, "{:?}", collected.error);
+        assert!(collected.event_id.is_some());
+        // The two slow collects end with their http answers.
+        let mut slow = Vec::new();
+        for (conn, digest) in [(0usize, digest_a), (1usize, digest_b)] {
+            let mut resp = crv20_answer_within(&mut conns[conn], wait).await;
+            if resp.as_ref().is_some_and(|r| r.pending == Some(true)) {
+                resp = crv20_collect_settled(&mut conns[conn], &digest).await;
+            }
+            slow.push(resp);
+        }
+        (quick_frame_ms, quick_collect_ms, slow)
+    });
+    assert!(quick_frame_ms < 500, "frame took {quick_frame_ms} ms");
+    assert!(quick_collect_ms < 500, "collect took {quick_collect_ms} ms");
+    for resp in slow {
+        let resp = resp.expect("slow answer");
+        assert!(resp.ok, "{:?}", resp.error);
+        assert_eq!(resp.http.as_ref().map(|h| h.status), Some(204));
+    }
+    assert_eq!(server.hits(), 2);
+}
+
+/// Gate test 3. A query whose target id starts with a multi byte character is answered
+/// without a panic, the live entry lock stays whole and the next frame is admitted.
+#[test]
+fn query_with_a_multi_byte_target_id_is_answered_without_a_panic() {
+    let (_dir, rt) = crv20_runtime("");
+    install_agent_manifest(&rt, "AG-QUERY", "sess-1");
+    for (seq, target) in [(1, "€€-00001"), (2, "中文"), (3, "é")] {
+        let body = serde_json::json!({
+            "type": "CUSTOM",
+            "dynaep_type": "AEP_QUERY",
+            "query": "z_band_of",
+            "action_path": "root:ping",
+            "payload": {"ok": true},
+            "timestamp": 1_000_000,
+            "target_id": target,
+            "_sequenceNumber": seq,
+        })
+        .to_string()
+        .into_bytes();
+        let resp = crv20_send(&rt, "AG-QUERY", &body);
+        assert!(resp.ok, "{target}: {:?}", resp.error);
+        assert!(resp.event_id.is_some());
+    }
+    assert!(!rt.admit.live_entry.is_poisoned());
+    let next = crv20_send(
+        &rt,
+        "AG-QUERY",
+        &crv20_event("root:ping", 4, serde_json::json!({"ok": true})),
+    );
+    assert!(next.ok, "{:?}", next.error);
+}
+
+/// A frame that names an agent and carries a signature of another key is refused before
+/// it spends a rate slot, so the named agent keeps its whole minute.
+#[test]
+fn frame_with_a_bad_signature_spends_no_rate_slot_of_the_agent_it_names() {
+    let (_dir, rt) = crv20_runtime("");
+    install_agent_manifest(&rt, "AG-VICTIM", "sess-1");
+    let body = crv20_event("root:ping", 1, serde_json::json!({"ok": true}));
+    let forger = {
+        let mut keys = rt.keys.agent_sign_keys.lock().expect("keys");
+        keys.provision("AG-VICTIM").expect("victim key");
+        keys.provision("AG-FORGER").expect("forger key")
+    };
+    let frame = build_frame_for_dock(
+        "ch-crv20",
+        "AG-VICTIM",
+        "sess-1",
+        DockingPort::ValidationEngine,
+        "dynaep-action-lattice",
+        &body,
+        rt.dock_kem_public(),
+        &forger,
+        crate::now_unix(),
+    )
+    .expect("forged frame");
+    let forged = serde_json::json!({ "frame": frame }).to_string();
+    for _ in 0..(SIGNER_RATE_LIMIT + 5) {
+        let resp = process_request(&rt, &DockingPort::ValidationEngine, &forged);
+        assert!(!resp.ok);
+    }
+    let own = crv20_send(&rt, "AG-VICTIM", &body);
+    assert!(
+        own.ok,
+        "frames with a bad signature spent the rate slots of the agent they name: {:?}",
+        own.error
+    );
+}
+
+fn side_channel_rows(rt: &DockingRuntime) -> usize {
+    let db = rt.record.db.lock().expect("db");
+    crate::export_dynaep_events(&db, Some(100_000))
+        .expect("export")
+        .into_iter()
+        .filter(|e| e.event_type == crate::SIDE_CHANNEL_EVENT_TYPE)
+        .count()
+}
+
+/// A peer that sends unreadable lines writes a bounded number of anomaly rows before the
+/// dock closes its connection.
+#[tokio::test]
+async fn one_connection_writes_a_bounded_number_of_anomaly_rows() {
+    let (_dir, rt) = temp_runtime();
+    let shared = Arc::new(rt);
+    let (client, server_end) = UnixStream::pair().expect("pair");
+    let (r, w) = server_end.into_split();
+    let task = tokio::spawn(serve_connection(
+        shared.clone(),
+        DockingPort::ValidationEngine,
+        r,
+        w,
+    ));
+    let (cr, mut cw) = client.into_split();
+    for _ in 0..200 {
+        if cw.write_all(b"not json\n").await.is_err() {
+            break;
+        }
+    }
+    let _ = cw.shutdown().await;
+    let mut lines = BufReader::new(cr).lines();
+    let mut answers = 0usize;
+    while let Ok(Ok(Some(_))) =
+        tokio::time::timeout(std::time::Duration::from_secs(5), lines.next_line()).await
+    {
+        answers += 1;
+    }
+    let _ = task.await;
+    let rows = side_channel_rows(&shared);
+    assert!(
+        rows <= super::serve::MAX_REFUSALS_PER_CONNECTION,
+        "one connection wrote {rows} anomaly rows"
+    );
+    assert!(
+        answers <= super::serve::MAX_REFUSALS_PER_CONNECTION,
+        "the dock answered {answers} unreadable lines"
+    );
+    assert!(rows > 0, "the refusals wrote no anomaly row");
+}
+
+/// A connection that completes no line within the idle timeout is closed by the dock, so
+/// a silent peer cannot hold a connection slot for the life of the daemon.
+#[tokio::test]
+async fn idle_connection_is_closed_after_the_idle_timeout() {
+    let (_dir, mut rt) = temp_runtime();
+    rt.io.idle_timeout = std::time::Duration::from_millis(300);
+    let shared = Arc::new(rt);
+    let (client, server_end) = UnixStream::pair().expect("pair");
+    let (r, w) = server_end.into_split();
+    let task = tokio::spawn(serve_connection(
+        shared.clone(),
+        DockingPort::ValidationEngine,
+        r,
+        w,
+    ));
+    let (cr, mut cw) = client.into_split();
+    // A partial line: bytes arrive and no line completes.
+    cw.write_all(b"{\"collect\":").await.expect("partial line");
+    let ended = tokio::time::timeout(std::time::Duration::from_secs(3), task).await;
+    assert!(ended.is_ok(), "the dock kept an idle connection open");
+    let mut lines = BufReader::new(cr).lines();
+    assert!(matches!(lines.next_line().await, Ok(None)));
+}
+
+fn crv20_port_path(base: &str, port: DockingPort) -> String {
+    docking_port_specs(base)
+        .into_iter()
+        .find(|s| s.port == port)
+        .expect("port")
+        .listen_path
+}
+
+/// Connections that hold every slot of one port leave the other ports their own share.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_full_port_leaves_slots_for_the_other_ports() {
+    let (dir, runtime) = temp_runtime();
+    let base = runtime.io.socket_base.clone();
+    let (shared, handles) = run_docking_servers(runtime).await.expect("serve");
+    let inference = crv20_port_path(&base, DockingPort::InferenceEngine);
+    let validation = crv20_port_path(&base, DockingPort::ValidationEngine);
+    let mut held = Vec::new();
+    for _ in 0..64 {
+        held.push(UnixStream::connect(&inference).await.expect("connect"));
+    }
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    // Two connections to the validation port: the listener of a port waits for its next
+    // connection with one slot in hand, so the second connection needs a slot of its own.
+    let mut streams = Vec::new();
+    for _ in 0..2 {
+        let mut stream = UnixStream::connect(&validation).await.expect("connect");
+        stream.write_all(b"not json\n").await.expect("write");
+        let mut buf = String::new();
+        let read = tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            BufReader::new(&mut stream).read_line(&mut buf),
+        )
+        .await;
+        assert!(
+            read.is_ok(),
+            "the validation port found no slot while the inference port held 64 connections"
+        );
+        streams.push(stream);
+    }
+    drop(held);
+    drop(streams);
+    drain_docking_servers(&shared, handles).await;
+    let _ = dir;
+}
+
+/// The task list of the dock releases the handle of every ended connection.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ended_connection_tasks_are_released() {
+    let (dir, runtime) = temp_runtime();
+    let base = runtime.io.socket_base.clone();
+    let (shared, handles) = run_docking_servers(runtime).await.expect("serve");
+    let validation = crv20_port_path(&base, DockingPort::ValidationEngine);
+    for _ in 0..11 {
+        let mut stream = UnixStream::connect(&validation).await.expect("connect");
+        stream.write_all(b"not json\n").await.expect("write");
+        let mut buf = String::new();
+        BufReader::new(&mut stream)
+            .read_line(&mut buf)
+            .await
+            .expect("answer");
+        drop(stream);
+        tokio::time::sleep(std::time::Duration::from_millis(30)).await;
+    }
+    let held = shared.io.inflight.lock().expect("inflight").len();
+    assert!(held <= 2, "the dock still holds {held} connection handles");
+    drain_docking_servers(&shared, handles).await;
+    let _ = dir;
+}

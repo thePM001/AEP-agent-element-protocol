@@ -7,14 +7,14 @@
 use crate::dock_event;
 use crate::dock_keys::signer_rate_key;
 use crate::dock_log::DockEvent;
+use crate::docking::on_blocking_pool;
 use crate::lattice_log::{
     export_dynaep_events, DockingPortWire, DynAepEventExport, DynAepEventInput,
 };
 use crate::task_manifest::{TaskManifestTrust, TaskManifestV1};
 use crate::{
     bootstrap_contracts, build_transport_frame, default_lattice_db_path, docking_port_specs,
-    process_request, pulse_beat, resolve_mesh_peers, runtime_status, DockFrameResponse,
-    DockingRuntime,
+    process_request, resolve_mesh_peers, runtime_status, DockFrameResponse, DockingRuntime,
 };
 use aep_base_node_pulse::PULSE_MS;
 use aep_lattice_channel::DockingPort;
@@ -758,7 +758,7 @@ fn http_rate_gate(runtime: &DockingRuntime, signer_hex: &str) -> Result<(), Stri
 }
 
 async fn submit_action(
-    runtime: &DockingRuntime,
+    runtime: &Arc<DockingRuntime>,
     body: Value,
 ) -> Result<DataDockLedgerRow, (StatusCode, Value)> {
     if let Some(hit) = first_forbidden(&body) {
@@ -881,7 +881,9 @@ async fn submit_action(
     })
     .to_string();
     let port = wire_to_port(&docking_port);
-    let first = process_request(runtime, &port, &line);
+    // Admit and Apply run on the blocking pool, never on the worker that serves HTTP.
+    let rt = runtime.clone();
+    let first = on_blocking_pool(move || process_request(&rt, &port, &line)).await;
     let resp = wait_for_admit(runtime, first).await;
     if let Some(deny) = resp.deny {
         return Err((
@@ -937,7 +939,10 @@ async fn submit_action(
     })
 }
 
-async fn wait_for_admit(runtime: &DockingRuntime, first: DockFrameResponse) -> DockFrameResponse {
+async fn wait_for_admit(
+    runtime: &Arc<DockingRuntime>,
+    first: DockFrameResponse,
+) -> DockFrameResponse {
     if first.pending != Some(true) {
         return first;
     }
@@ -945,15 +950,21 @@ async fn wait_for_admit(runtime: &DockingRuntime, first: DockFrameResponse) -> D
         return first;
     };
     let deadline = tokio::time::Instant::now() + Duration::from_millis((3 * PULSE_MS as u64) + 250);
+    let line = json!({ "collect": digest }).to_string();
     loop {
+        let rt = runtime.clone();
+        let l = line.clone();
         if tokio::time::Instant::now() >= deadline {
-            let line = json!({ "collect": digest }).to_string();
-            return process_request(runtime, &DockingPort::ValidationEngine, &line);
+            return on_blocking_pool(move || {
+                process_request(&rt, &DockingPort::ValidationEngine, &l)
+            })
+            .await;
         }
         tokio::time::sleep(Duration::from_millis(25)).await;
-        let _ = pulse_beat(runtime);
-        let line = json!({ "collect": digest.clone() }).to_string();
-        let resp = process_request(runtime, &DockingPort::ValidationEngine, &line);
+        // A collect beats first, so a capsule that became ready is applied by this call.
+        let resp =
+            on_blocking_pool(move || process_request(&rt, &DockingPort::ValidationEngine, &l))
+                .await;
         if resp.pending != Some(true) {
             return resp;
         }

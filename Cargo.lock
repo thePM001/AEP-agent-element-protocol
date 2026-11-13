@@ -224,6 +224,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "aep-egress-address"
+version = "2.9.0"
+dependencies = [
+ "serde_json",
+ "url",
+]
+
+[[package]]
 name = "aep-end-to-end-run"
 version = "2.9.0"
 dependencies = [
@@ -324,6 +332,7 @@ dependencies = [
 name = "aep-lattice-gated-fetch"
 version = "0.1.0"
 dependencies = [
+ "aep-egress-address",
  "anyhow",
  "base64",
  "reqwest",
@@ -416,6 +425,7 @@ name = "aep-ucb"
 version = "2.9.0"
 dependencies = [
  "aep-agentmesh",
+ "aep-egress-address",
  "aep-ucb-perimeter-v1",
  "aep-wall-set-backpressure",
  "axum",

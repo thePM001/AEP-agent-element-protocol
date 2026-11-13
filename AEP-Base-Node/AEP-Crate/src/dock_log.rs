@@ -57,10 +57,14 @@ pub enum DockEvent {
     DockTlsHandshakeRefused,
     DockTlsConnectionClosed,
     DockDrain,
+    /// The dock closed a connection: idle past the timeout or past its refusal bound.
+    DockConnectionClosed,
     FrameDeny,
     FrameReplay,
     FramePending,
     FrameApply,
+    /// The outbound request of an admitted gateway frame settled.
+    FrameOutbound,
     HealthProbe,
     SqliteClose,
     StopSignal,
@@ -73,7 +77,7 @@ pub enum DockEvent {
 }
 
 impl DockEvent {
-    pub const ALL: [DockEvent; 21] = [
+    pub const ALL: [DockEvent; 23] = [
         DockEvent::BootStart,
         DockEvent::BootReady,
         DockEvent::BootDegraded,
@@ -82,10 +86,12 @@ impl DockEvent {
         DockEvent::DockTlsHandshakeRefused,
         DockEvent::DockTlsConnectionClosed,
         DockEvent::DockDrain,
+        DockEvent::DockConnectionClosed,
         DockEvent::FrameDeny,
         DockEvent::FrameReplay,
         DockEvent::FramePending,
         DockEvent::FrameApply,
+        DockEvent::FrameOutbound,
         DockEvent::HealthProbe,
         DockEvent::SqliteClose,
         DockEvent::StopSignal,
@@ -107,10 +113,12 @@ impl DockEvent {
             DockEvent::DockTlsHandshakeRefused => "dock.tls.handshake_refused",
             DockEvent::DockTlsConnectionClosed => "dock.tls.connection_closed",
             DockEvent::DockDrain => "dock.drain",
+            DockEvent::DockConnectionClosed => "dock.connection_closed",
             DockEvent::FrameDeny => "frame.deny",
             DockEvent::FrameReplay => "frame.replay",
             DockEvent::FramePending => "frame.pending",
             DockEvent::FrameApply => "frame.apply",
+            DockEvent::FrameOutbound => "frame.outbound",
             DockEvent::HealthProbe => "health.probe",
             DockEvent::SqliteClose => "sqlite.close",
             DockEvent::StopSignal => "stop.signal",
@@ -419,7 +427,9 @@ mod tests {
         for ev in DockEvent::ALL {
             assert!(seen.insert(ev.as_str()), "duplicate {}", ev.as_str());
         }
-        assert_eq!(seen.len(), 21);
+        assert_eq!(seen.len(), 23);
+        assert!(seen.contains("frame.outbound"));
+        assert!(seen.contains("dock.connection_closed"));
         assert!(seen.contains("data_dock.rate_limited"));
     }
 

@@ -1,9 +1,12 @@
 //! Egress proxy: credential injection + firewall-style access rules (Airlock patterns).
 
+use aep_egress_address::{
+    check_resolved, check_url, resolve_checked, EgressDeny, EgressPolicy, EgressTarget,
+};
 use aep_ucb_perimeter_v1::WireLimits;
 use axum::http::HeaderMap;
 use serde::{Deserialize, Serialize};
-use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
+use std::net::SocketAddr;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AccessRule {
@@ -224,71 +227,97 @@ pub fn strip_caller_headers(headers: &HeaderMap) -> HeaderMap {
     out
 }
 
-/// SSRF gate for egress upstream URLs. Private, loopback and link-local hosts refuse.
+/// UCB egress reaches public addresses only. The range list is the one of
+/// aep-egress-address, which the Base Node gateway and the JavaScript helpers share.
+pub const UPSTREAM_POLICY: EgressPolicy = EgressPolicy::STRICT;
+
+fn allow_http() -> bool {
+    std::env::var("UCB_EGRESS_ALLOW_HTTP")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
+}
+
+fn upstream_deny(e: &EgressDeny) -> String {
+    match e {
+        EgressDeny::Lookup(_) | EgressDeny::NoAddress => {
+            format!("upstream DNS resolve failed: {e}")
+        }
+        _ => format!("upstream refused: {e}"),
+    }
+}
+
+/// Check an upstream URL without a name lookup: the scheme, the http opt-in, the user info,
+/// an address literal and the reserved names. Default: https only unless
+/// UCB_EGRESS_ALLOW_HTTP=1.
+pub fn check_upstream_url(url: &str) -> Result<EgressTarget, String> {
+    let target = check_url(url, &UPSTREAM_POLICY).map_err(|e| upstream_deny(&e))?;
+    if target.url.scheme() == "http" && !allow_http() {
+        return Err("http upstream denied (set UCB_EGRESS_ALLOW_HTTP=1 to allow)".into());
+    }
+    Ok(target)
+}
+
+/// SSRF gate for an upstream URL at configuration time: the checks of
+/// [`check_upstream_url`] and every address of one blocking lookup. A request never relies
+/// on this answer: [`pinned_client`] checks again and connects only to what it checked.
 pub fn validate_upstream_url(url: &str) -> Result<(), String> {
-    let parsed = reqwest::Url::parse(url).map_err(|e| format!("invalid upstream url: {e}"))?;
-    let scheme = parsed.scheme().to_ascii_lowercase();
-    if scheme != "https" && scheme != "http" {
-        return Err(format!("upstream scheme not allowed: {scheme}"));
-    }
-    // Default: https only unless UCB_EGRESS_ALLOW_HTTP=1
-    if scheme == "http" {
-        let allow_http = std::env::var("UCB_EGRESS_ALLOW_HTTP")
-            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-            .unwrap_or(false);
-        if !allow_http {
-            return Err("http upstream denied (set UCB_EGRESS_ALLOW_HTTP=1 to allow)".into());
-        }
-    }
-    let host = parsed
-        .host_str()
-        .ok_or_else(|| "upstream missing host".to_string())?;
-    let host_l = host.to_ascii_lowercase();
-    if host_l == "localhost"
-        || host_l.ends_with(".localhost")
-        || host_l == "metadata.google.internal"
-        || host_l == "metadata"
-    {
-        return Err(format!("upstream host blocked: {host}"));
-    }
-    let port = parsed.port_or_known_default().unwrap_or(443);
-    let addrs = (host, port)
-        .to_socket_addrs()
-        .map_err(|e| format!("upstream DNS resolve failed: {e}"))?;
-    let mut saw = false;
-    for addr in addrs {
-        saw = true;
-        if is_blocked_socket_addr(addr) {
-            return Err(format!("upstream resolves to blocked address: {addr}"));
-        }
-    }
-    if !saw {
-        return Err("upstream DNS returned no addresses".into());
-    }
+    let target = check_upstream_url(url)?;
+    resolve_checked(&target, &UPSTREAM_POLICY).map_err(|e| upstream_deny(&e))?;
     Ok(())
 }
 
-fn is_blocked_socket_addr(addr: SocketAddr) -> bool {
-    match addr.ip() {
-        IpAddr::V4(v4) => {
-            v4.is_loopback()
-                || v4.is_private()
-                || v4.is_link_local()
-                || v4.is_broadcast()
-                || v4.is_unspecified()
-                || v4.octets()[0] == 169 && v4.octets()[1] == 254 // link-local / cloud metadata
-                || v4.octets()[0] == 0
-        }
-        IpAddr::V6(v6) => {
-            v6.is_loopback()
-                || v6.is_unique_local()
-                || v6.is_unicast_link_local()
-                || v6.is_unspecified()
-                || v6
-                    .to_ipv4_mapped()
-                    .is_some_and(|v4| v4.is_loopback() || v4.is_private() || v4.is_link_local())
+/// Resolve the host of a checked upstream once, on the async runtime, and check every
+/// address. The result is the set the connection is pinned to.
+pub async fn resolve_upstream(target: &EgressTarget) -> Result<Vec<SocketAddr>, String> {
+    if let Some(ip) = target.literal {
+        return Ok(vec![SocketAddr::new(ip, target.port)]);
+    }
+    let addrs = tokio::net::lookup_host((target.host.as_str(), target.port))
+        .await
+        .map_err(|e| format!("upstream DNS resolve failed: {e}"))?;
+    check_resolved(addrs, &UPSTREAM_POLICY).map_err(|e| upstream_deny(&e))
+}
+
+/// A client for one upstream URL: checked, resolved once and pinned to the checked
+/// addresses, with no redirects and the connect and total bounds of the wire limits.
+pub async fn pinned_client(url: &str) -> Result<(reqwest::Client, String), String> {
+    let target = check_upstream_url(url)?;
+    let pinned = resolve_upstream(&target).await?;
+    let limits = WireLimits::default();
+    let mut builder = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .connect_timeout(std::time::Duration::from_millis(limits.egress_connect_ms))
+        .timeout(std::time::Duration::from_millis(limits.egress_total_ms));
+    if target.literal.is_none() {
+        builder = builder.resolve_to_addrs(&target.host, &pinned);
+    }
+    let client = builder.build().map_err(|e| e.to_string())?;
+    Ok((client, target.url.to_string()))
+}
+
+/// Read a reply body and stop one chunk past the cap, so a large body is refused before
+/// it sits in memory whole.
+pub async fn read_capped(res: reqwest::Response, cap: usize) -> Result<Vec<u8>, String> {
+    if let Some(len) = res.content_length() {
+        if len > cap as u64 {
+            return Err("egress response over cap".into());
         }
     }
+    let mut acc: Vec<u8> = Vec::new();
+    let mut res = res;
+    loop {
+        match res.chunk().await {
+            Ok(Some(chunk)) => {
+                if acc.len().saturating_add(chunk.len()) > cap {
+                    return Err("egress response over cap".into());
+                }
+                acc.extend_from_slice(&chunk);
+            }
+            Ok(None) => break,
+            Err(e) => return Err(e.to_string()),
+        }
+    }
+    Ok(acc)
 }
 
 pub async fn proxy_request(
@@ -315,7 +344,7 @@ pub async fn proxy_request_isolated(
             body: br#"{"error":"access denied"}"#.to_vec(),
         });
     }
-    validate_upstream_url(&route.upstream)?;
+    check_upstream_url(&route.upstream)?;
     let strip = route.strip_prefix.as_deref().unwrap_or(&route.path_prefix);
     let upstream_path = if remainder_path.starts_with(strip) {
         remainder_path.replacen(strip, "", 1)
@@ -327,37 +356,9 @@ pub async fn proxy_request_isolated(
         return Err("egress path contains forbidden characters".into());
     }
     let url = format!("{}{}", route.upstream.trim_end_matches('/'), upstream_path);
-    // Re-validate full URL after join (redirect target still blocked by no-redirect).
-    validate_upstream_url(&url)?;
-    // MEDIUM: pin DNS to first safe SocketAddr to reduce rebinding TOCTOU window
-    let parsed = reqwest::Url::parse(&url).map_err(|e| format!("invalid url: {e}"))?;
-    let host = parsed
-        .host_str()
-        .ok_or_else(|| "upstream missing host".to_string())?
-        .to_string();
-    let port = parsed.port_or_known_default().unwrap_or(443);
-    let mut pinned: Option<std::net::SocketAddr> = None;
-    for addr in (host.as_str(), port)
-        .to_socket_addrs()
-        .map_err(|e| format!("upstream DNS re-resolve failed: {e}"))?
-    {
-        if is_blocked_socket_addr(addr) {
-            return Err(format!("upstream re-resolve hit blocked address: {addr}"));
-        }
-        if pinned.is_none() {
-            pinned = Some(addr);
-        }
-    }
-    let pinned =
-        pinned.ok_or_else(|| "upstream DNS re-resolve returned no addresses".to_string())?;
-    let limits = WireLimits::default();
-    let client = reqwest::Client::builder()
-        .redirect(reqwest::redirect::Policy::none())
-        .resolve(&host, pinned)
-        .connect_timeout(std::time::Duration::from_millis(limits.egress_connect_ms))
-        .timeout(std::time::Duration::from_millis(limits.egress_total_ms))
-        .build()
-        .map_err(|e| e.to_string())?;
+    // The joined URL is checked again, its host resolved once and the connection pinned
+    // to the checked addresses. Redirects are not followed.
+    let (client, url) = pinned_client(&url).await?;
     let mut req = match method.to_uppercase().as_str() {
         "GET" => client.get(&url),
         "POST" => client.post(&url),
@@ -404,30 +405,11 @@ pub async fn proxy_request_isolated(
         .get(reqwest::header::CONTENT_TYPE)
         .and_then(|v| v.to_str().ok())
         .map(str::to_string);
-    if let Some(len) = res.content_length() {
-        if response_over_cap(len as usize) {
-            return Err("egress response over cap".into());
-        }
-    }
-    let cap = WireLimits::default().egress_default_bytes;
-    let mut acc: Vec<u8> = Vec::new();
-    let mut res = res;
-    loop {
-        match res.chunk().await {
-            Ok(Some(chunk)) => {
-                if acc.len().saturating_add(chunk.len()) > cap {
-                    return Err("egress response over cap".into());
-                }
-                acc.extend_from_slice(&chunk);
-            }
-            Ok(None) => break,
-            Err(e) => return Err(e.to_string()),
-        }
-    }
+    let body = read_capped(res, WireLimits::default().egress_default_bytes).await?;
     Ok(ProxyResponse {
         status,
         content_type,
-        body: acc,
+        body,
     })
 }
 
@@ -440,6 +422,34 @@ mod tests {
         assert!(validate_upstream_url("http://127.0.0.1/evil").is_err());
         assert!(validate_upstream_url("http://localhost/evil").is_err());
         assert!(validate_upstream_url("http://169.254.169.254/latest/meta-data").is_err());
+    }
+
+    /// Every url row that the shared egress vectors refuse is refused by the UCB upstream
+    /// check too, without a lookup, and the public https row passes.
+    #[test]
+    fn upstream_check_holds_the_shared_egress_vectors() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../../AEP-Components/egress-address/vectors/egress-address-vectors.json");
+        let text = std::fs::read_to_string(&path).expect("vector file");
+        let vectors: serde_json::Value = serde_json::from_str(&text).expect("vector json");
+        let mut wrong = Vec::new();
+        for row in vectors["urls"].as_array().expect("urls") {
+            let url = row["url"].as_str().expect("url");
+            let refused = check_upstream_url(url).is_err();
+            if row["verdict"] == "deny" && !refused {
+                wrong.push(url.to_string());
+            }
+        }
+        assert!(wrong.is_empty(), "{wrong:?}");
+        assert!(check_upstream_url("https://1.1.1.1/x").is_ok());
+        for blocked in [
+            "https://100.64.0.1/",
+            "https://[64:ff9b::7f00:1]/",
+            "https://[2002:7f00:1::1]/",
+            "https://198.18.0.1/",
+        ] {
+            assert!(check_upstream_url(blocked).is_err(), "{blocked}");
+        }
     }
 
     #[test]

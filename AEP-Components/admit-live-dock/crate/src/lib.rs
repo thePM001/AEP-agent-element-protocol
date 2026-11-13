@@ -55,6 +55,10 @@ pub const DROPPED_WALL_CRATES: &[&str] = &["aep-admit-trust-floor"];
 pub const WALL_FRAME_AGENT_BINDING: &str = "frame.agent_binding";
 /// Closes when the Agent Control Hub holds no permission of the signer for the action.
 pub const WALL_HUB_AGENT_PERMISSION: &str = "hub.agent_permission";
+/// Closes when a request of the gateway path is malformed or sits on no operator route.
+pub const WALL_GATEWAY_ROUTE: &str = "gateway.route";
+/// Closes when the signer already holds its share of outbound requests in flight.
+pub const WALL_GATEWAY_AGENT_BOUND: &str = "gateway.agent_bound";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LiveDockContext {
@@ -71,6 +75,12 @@ pub struct LiveDockContext {
     /// Answer of the Agent Control Hub for the signer and the action path. None when the
     /// caller holds no hub, so the hub wall is not compiled.
     pub hub_permission: Option<bool>,
+    /// Gateway path only: the route list answer for the request of the event, with the
+    /// reason of a refusal. None for every other action path.
+    pub gateway_route: Option<Result<(), String>>,
+    /// Gateway path only: whether the signer holds a free outbound request slot. None for
+    /// every other action path.
+    pub gateway_slot: Option<bool>,
 }
 
 impl LiveDockContext {
@@ -86,6 +96,8 @@ impl LiveDockContext {
             docking_wire: String::from("frame"),
             rate_limited: false,
             hub_permission: None,
+            gateway_route: None,
+            gateway_slot: None,
         }
     }
 
@@ -107,12 +119,22 @@ impl LiveDockContext {
             docking_wire: String::from("frame"),
             rate_limited: false,
             hub_permission: None,
+            gateway_route: None,
+            gateway_slot: None,
         }
     }
 
     /// The same context with the answer of the Agent Control Hub for the signer.
     pub fn with_hub_permission(mut self, permitted: bool) -> Self {
         self.hub_permission = Some(permitted);
+        self
+    }
+
+    /// The same context with the gateway answers for an event on the gateway path: the
+    /// route list verdict and whether the signer holds a free request slot.
+    pub fn with_gateway(mut self, route: Result<(), String>, slot: bool) -> Self {
+        self.gateway_route = Some(route);
+        self.gateway_slot = Some(slot);
         self
     }
 }
@@ -159,6 +181,27 @@ pub fn compile_hub_permission_wall(dock: &LiveDockContext) -> Option<AdmitWall> 
             "hub permission denied",
         )),
     }
+}
+
+/// The gateway walls, compiled only for an event on the gateway path. The route list and
+/// the request bound are Admit walls, so a refused destination or a full share is decided
+/// before Apply and leaves the live entry unchanged.
+pub fn compile_gateway_walls(dock: &LiveDockContext) -> Vec<AdmitWall> {
+    let mut walls = Vec::new();
+    match &dock.gateway_route {
+        None => {}
+        Some(Ok(())) => walls.push(AdmitWall::open(WALL_GATEWAY_ROUTE)),
+        Some(Err(reason)) => walls.push(AdmitWall::close(WALL_GATEWAY_ROUTE, reason.clone())),
+    }
+    match dock.gateway_slot {
+        None => {}
+        Some(true) => walls.push(AdmitWall::open(WALL_GATEWAY_AGENT_BOUND)),
+        Some(false) => walls.push(AdmitWall::close(
+            WALL_GATEWAY_AGENT_BOUND,
+            "the agent holds its share of outbound requests in flight",
+        )),
+    }
+    walls
 }
 
 fn deny_prefix(reasons: &[String]) -> String {
@@ -270,6 +313,7 @@ pub fn compile_live_walls_and_charge(
     walls.extend(compile_channel_walls(&channel_input(dock)));
     walls.push(compile_agent_binding_wall(event, dock));
     walls.extend(compile_hub_permission_wall(dock));
+    walls.extend(compile_gateway_walls(dock));
     let order = PartialOrderCompileInput {
         action_path: action_path.clone(),
         parents: parents.clone(),
@@ -1022,6 +1066,47 @@ mod tests {
         );
         let err = live_collect_all(&live, &event, &denied).expect_err("deny");
         must(err.contains("hub permission denied"));
+    }
+
+    #[test]
+    fn gateway_route_and_bound_are_admit_walls() {
+        let mut live = LiveEntry::from_yaml(yaml()).expect("yaml");
+        live.set_clock_ms(1000000);
+        live.snapshot
+            .satisfied_actions
+            .insert(String::from("root:ping"));
+        let event = write_event("");
+        // Outside the gateway path neither wall is compiled.
+        let none = compile_live_walls(&live, &event, &LiveDockContext::unit_open());
+        must(wall_closed(&none, WALL_GATEWAY_ROUTE).is_none());
+        must(wall_closed(&none, WALL_GATEWAY_AGENT_BOUND).is_none());
+        let open = LiveDockContext::unit_open().with_gateway(Ok(()), true);
+        let walls = compile_live_walls(&live, &event, &open);
+        must(wall_closed(&walls, WALL_GATEWAY_ROUTE) == Some(false));
+        must(wall_closed(&walls, WALL_GATEWAY_AGENT_BOUND) == Some(false));
+        must(live_collect_all(&live, &event, &open).is_ok());
+        let off_route = LiveDockContext::unit_open().with_gateway(
+            Err(String::from(
+                "GET http://x.example:80 is on no gateway route",
+            )),
+            true,
+        );
+        must(
+            wall_closed(
+                &compile_live_walls(&live, &event, &off_route),
+                WALL_GATEWAY_ROUTE,
+            ) == Some(true),
+        );
+        let err = live_collect_all(&live, &event, &off_route).expect_err("deny");
+        must(err.contains("on no gateway route"));
+        let full = LiveDockContext::unit_open().with_gateway(Ok(()), false);
+        must(
+            wall_closed(
+                &compile_live_walls(&live, &event, &full),
+                WALL_GATEWAY_AGENT_BOUND,
+            ) == Some(true),
+        );
+        must(live_collect_all(&live, &event, &full).is_err());
     }
 
     #[test]

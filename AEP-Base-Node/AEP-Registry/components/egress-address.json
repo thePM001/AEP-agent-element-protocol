@@ -1,0 +1,43 @@
+{
+  "manifest_version": "1",
+  "id": "egress-address",
+  "version": "2.9.0",
+  "kind": "library",
+  "path": "AEP-Components/egress-address/",
+  "description": "One address check for every outbound request of AEP. The Rust crate and the JavaScript module carry the same range list and one vector file holds both to the same answer.",
+  "requires": [],
+  "capabilities": [
+    "egress:address-check",
+    "egress:pinned-addresses",
+    "egress:bounded-body"
+  ],
+  "actions": [],
+  "setup_hooks": [],
+  "resource_requirements": {
+    "min_memory_mb": 4,
+    "min_disk_mb": 1,
+    "requires_internet": false,
+    "gpu_required": false
+  },
+  "cca": {
+    "summary": "Classify an address, check a URL without a lookup, check every answer of one lookup and pin the connection to them.",
+    "use_when": [
+      "any outbound request of the kernel, the UCB egress proxy or a lattice client helper"
+    ],
+    "avoid_when": [
+      "never resolve a checked host a second time for the connection"
+    ],
+    "pairs_with": [
+      "lattice-gated-fetch",
+      "lattice-channels",
+      "aep-ucb"
+    ]
+  },
+  "implementation": {
+    "crate": "AEP-Components/egress-address/crate",
+    "module": "AEP-Components/egress-address/lib/egress-address.mjs",
+    "vectors": "AEP-Components/egress-address/vectors/egress-address-vectors.json",
+    "vector_run": "node AEP-Components/egress-address/bin/run-vectors.mjs"
+  },
+  "role": "kernel"
+}

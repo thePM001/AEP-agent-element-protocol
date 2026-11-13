@@ -17,6 +17,7 @@ path = "src/bin/aep-ucb-validate.rs"
 aep-agentmesh = { path = "../../../../AEP-Components/agentmesh/crate" }
 aep-wall-set-backpressure = { path = "../../../../AEP-Components/wall-set-backpressure/crate" }
 aep-ucb-perimeter-v1 = { path = "../perimeter-v1" }
+aep-egress-address = { path = "../../../../AEP-Components/egress-address/crate" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

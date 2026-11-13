@@ -58,8 +58,9 @@ pub fn resolve_inference_config(data_dir: &Path) -> Result<InferenceConfig, Stri
                 .or_else(|| defaults.2.map(str::to_string)),
         }
     };
-    // MEDIUM: SSRF-validate inference base_url (reuse egress gate)
-    crate::egress::validate_upstream_url(&cfg.base_url)
+    // SSRF gate of the egress module without a lookup. The delegation request checks the
+    // addresses of the host when it resolves it and connects only to those.
+    crate::egress::check_upstream_url(&cfg.base_url)
         .map_err(|e| format!("inference base_url rejected by SSRF gate: {e}"))?;
     Ok(cfg)
 }

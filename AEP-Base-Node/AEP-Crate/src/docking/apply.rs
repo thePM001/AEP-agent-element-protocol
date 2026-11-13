@@ -1,9 +1,10 @@
 //! Collect-all Admit then Apply for held dock capsules.
 
+use super::outbound::{self, OutboundJob};
 use super::pulse::{settle_held, HeldCapsule};
 use super::{
-    attach_gateway_http_after_allow, deny_closed, deny_resp, deny_resp_report, dock_lock,
-    lock_or_deny, port_event_type, DockFrameResponse, DockingRuntime,
+    deny_closed, deny_resp, deny_resp_report, dock_lock, lock_or_deny, port_event_type,
+    DockFrameResponse, DockingRuntime,
 };
 use crate::dock_keys::decode_signer_public_hex;
 use crate::envelope_admit::admit_sealed_payload_report_recorded;
@@ -13,6 +14,7 @@ use crate::{
 };
 use aep_admit::AdmitWall;
 use aep_lattice_channel::DockingPort;
+use aep_lattice_gated_fetch::gateway_request_of;
 use aep_wall_set_backpressure::CLASS_SECURITY;
 use serde_json::Value;
 
@@ -201,6 +203,17 @@ impl<'a> HeldGuard<'a> {
             settle_held(&mut pulse, self.digest, resp);
         }
     }
+
+    /// Hand an admitted gateway frame to its outbound request. The request records the
+    /// answer when it settles.
+    pub(crate) fn hand_off(&mut self, job: OutboundJob) {
+        self.settled = true;
+        outbound::start(
+            &self.runtime.record.pulse,
+            self.runtime.outbound.policy,
+            job,
+        );
+    }
 }
 
 impl Drop for HeldGuard<'_> {
@@ -217,11 +230,19 @@ impl Drop for HeldGuard<'_> {
     }
 }
 
+/// The answer of one released capsule: now, or when its outbound request settles.
+pub(crate) enum HeldAnswer {
+    Now(DockFrameResponse),
+    Outbound(OutboundJob),
+}
+
 /// Run Admit then Apply for one released capsule.
 ///
 /// The frame is copied out of the held map and remains there while Admit runs.
 /// The answer is recorded and the frame leaves the held map in the same pulse
 /// lock step, so a collect that arrives at any moment reads pending or the answer.
+/// An admitted gateway frame moves to the outbound book in one step instead and reads
+/// pending until its request settles.
 pub(crate) fn apply_held_capsule(
     runtime: &DockingRuntime,
     cap: &aep_base_node_pulse::QueuedCapsule,
@@ -234,8 +255,10 @@ pub(crate) fn apply_held_capsule(
         Err(_) => return,
     };
     let mut guard = HeldGuard::new(runtime, &cap.digest);
-    let resp = answer_held_capsule(runtime, cap, &held);
-    guard.settle(resp);
+    match answer_held_capsule(runtime, cap, &held) {
+        HeldAnswer::Now(resp) => guard.settle(resp),
+        HeldAnswer::Outbound(job) => guard.hand_off(job),
+    }
 }
 
 /// Action path of the opened event. Empty when the plaintext is not JSON or names none.
@@ -273,18 +296,21 @@ fn record_admitted_frame(
 ///
 /// Order of one admitted frame:
 /// 1. Admit: every wall, the hub permission of the signer among them, in one collect-all.
+///    On the gateway path the route list and the request bound of the signer are walls too.
 /// 2. Record: the ledger row is written while the live entry is still unchanged.
 /// 3. Apply: the live entry records the action, the sequence number and the budget spend.
-/// 4. Side effects: the LRP contract registration and the bound outbound request.
+/// 4. Side effects: the LRP contract registration, and on the gateway path the bound
+///    outbound request, which runs on a thread of its own.
 ///
 /// A Deny at step 1 or a ledger error at step 2 leaves the live entry unchanged, registers
 /// nothing and sends nothing. Lock order: the live entry guard is held while the record
-/// step takes record.db. No path takes record.db first and the live entry second.
+/// step takes record.db. No path takes record.db first and the live entry second. The
+/// request slot is reserved under the pulse lock before the live entry lock is taken.
 fn answer_held_capsule(
     runtime: &DockingRuntime,
     cap: &aep_base_node_pulse::QueuedCapsule,
     held: &HeldCapsule,
-) -> DockFrameResponse {
+) -> HeldAnswer {
     let event = serde_json::from_slice::<Value>(&held.plaintext).ok();
     let action = action_path_of(event.as_ref());
     // The hub is asked for the signer of the frame. Its answer is an Admit wall, so a hub
@@ -298,6 +324,60 @@ fn answer_held_capsule(
         &held.frame.contract_id,
     )
     .with_hub_permission(hub_permitted);
+    // Only an event on the gateway path is a request. A url field of any other event is
+    // data. The route list and the slot of the signer become Admit walls. The slot guard
+    // returns the slot on every path except the one that hands it to the request.
+    let gateway = event.as_ref().and_then(gateway_request_of);
+    let mut slot: Option<outbound::SlotGuard<'_>> = None;
+    let dock = match &gateway {
+        None => dock,
+        Some(request) => {
+            let route = match request {
+                Ok(spec) => runtime.outbound.route_verdict(spec),
+                Err(e) => Err(e.clone()),
+            };
+            slot = outbound::reserve_slot(&runtime.record.pulse, &held.frame.agent_id);
+            dock.with_gateway(route, slot.is_some())
+        }
+    };
+    let event_id = match admit_and_apply(runtime, cap, held, event.as_ref(), dock) {
+        Ok(event_id) => event_id,
+        Err(resp) => return HeldAnswer::Now(resp),
+    };
+    match (gateway, slot) {
+        (Some(Ok(spec)), Some(slot)) => {
+            slot.hand_to_request();
+            HeldAnswer::Outbound(OutboundJob {
+                digest: cap.digest.clone(),
+                agent_id: held.frame.agent_id.clone(),
+                event_id,
+                spec,
+            })
+        }
+        _ => HeldAnswer::Now(DockFrameResponse {
+            ok: true,
+            event_id: Some(event_id),
+            digest: Some(cap.digest.clone()),
+            error: None,
+            pong: None,
+            http: None,
+            deny: None,
+            pending: None,
+            http_queued: None,
+        }),
+    }
+}
+
+/// Admit, the record step and Apply of one held capsule. Returns the event id of the row.
+// DockFrameResponse is the reply the node sends as is, so the deny path returns it unboxed.
+#[allow(clippy::result_large_err)]
+fn admit_and_apply(
+    runtime: &DockingRuntime,
+    cap: &aep_base_node_pulse::QueuedCapsule,
+    held: &HeldCapsule,
+    event: Option<&Value>,
+    dock: aep_admit_live_dock::LiveDockContext,
+) -> Result<i64, DockFrameResponse> {
     let event_type = if held.expected_port == DockingPort::RegulationModule {
         "docking_regulation_lattice"
     } else {
@@ -330,11 +410,11 @@ fn answer_held_capsule(
             live.clear_temporal_freeze();
             r
         }
-        Err(resp) => return resp,
+        Err(resp) => return Err(resp),
     };
     // The record step refused: nothing was applied and the ledger cannot take a row.
     if let Some(resp) = record_deny {
-        return resp;
+        return Err(resp);
     }
     if let Err(report) = admit_res {
         let detail = report.error.clone();
@@ -347,42 +427,23 @@ fn answer_held_capsule(
                 detail.clone(),
             );
         }
-        return deny_resp_report(Some(cap.digest.clone()), detail, report);
+        return Err(deny_resp_report(Some(cap.digest.clone()), detail, report));
     }
     let Some(event_id) = recorded else {
-        return deny_closed(
+        return Err(deny_closed(
             Some(cap.digest.clone()),
             String::from("apply ended without a ledger row"),
             "ledger.unavailable",
             "ledger.unavailable",
-        );
+        ));
     };
     crate::dock_event!(debug, crate::dock_log::DockEvent::FrameApply, event_id, digest = %cap.digest, "frame applied");
     let register_lrp = held.expected_port == DockingPort::RegulationModule
-        && event
-            .as_ref()
-            .and_then(|v| v.get("action"))
-            .and_then(|x| x.as_str())
-            == Some("register_lrp");
+        && event.and_then(|v| v.get("action")).and_then(|x| x.as_str()) == Some("register_lrp");
     if register_lrp {
         if let Ok(mut contracts) = lock_or_deny(&runtime.admit.contracts, "contracts") {
             contracts.register(&held.frame.contract_id)
         }
     }
-    let mut resp = DockFrameResponse {
-        ok: true,
-        event_id: Some(event_id),
-        digest: Some(cap.digest.clone()),
-        error: None,
-        pong: None,
-        http: None,
-        deny: None,
-        pending: None,
-        http_queued: None,
-    };
-    // The bound request leaves only now, with the row written. When it fails the answer
-    // is not ok and still carries the event id of the row, so the caller sees that the
-    // frame was recorded and that the request did not complete.
-    attach_gateway_http_after_allow(&held.plaintext, &mut resp);
-    resp
+    Ok(event_id)
 }

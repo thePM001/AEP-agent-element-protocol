@@ -1,0 +1,16 @@
+[package]
+name = "aep-egress-address"
+description = "One address check for every outbound request of AEP: the full range list, pinned addresses and a bounded body read."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+url = "2.5"
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true
