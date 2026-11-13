@@ -10,7 +10,7 @@ json: prohibited
 gate: shadow
 suites:
   - name: secrets
-    run: gitleaks dir . --config .gitleaks.toml --redact --no-banner --exit-code 1
+    run: gitleaks dir . --config .gitleaks.toml --redact --no-banner --exit-code 1 -v
     always: true
     timeout: 900
     workflow: supply-chain.yml#gitleaks
