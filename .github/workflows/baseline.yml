@@ -220,11 +220,19 @@ jobs:
       # The eBPF network backend needs root, so this step runs the test under
       # sudo. AEP_CAW_ENFORCEMENT_TEST=1 turns a missing precondition into a
       # failure, so the step cannot pass by skipping.
+      # The server needs a cgroup of its own for the per-command cgroups the
+      # BPF program attaches to, as a systemd unit with Delegate=yes gets. The
+      # runner shell sits in a service cgroup that refuses child cgroups, so
+      # the step builds the test binary and runs it alone in a fresh cgroup.
       - name: shipped config enforcement (root)
         run: |
           mkdir -p "$GOTMPDIR"
-          sudo -E env "PATH=$PATH" AEP_CAW_ENFORCEMENT_TEST=1 \
-            go test -count=1 -run '^TestShippedConfigEnforcesDefaultPolicy$' -v ./internal/server/
+          go test -c -o "$GOTMPDIR/server.test" ./internal/server/
+          sudo mkdir -p /sys/fs/cgroup/aep-caw-ci
+          cd internal/server
+          sudo env "PATH=$PATH" "HOME=$HOME" "GOTMPDIR=$GOTMPDIR" AEP_CAW_ENFORCEMENT_TEST=1 \
+            sh -c 'echo $$ > /sys/fs/cgroup/aep-caw-ci/cgroup.procs && exec "$0" -test.count=1 -test.v -test.run "^TestShippedConfigEnforcesDefaultPolicy$"' \
+            "$GOTMPDIR/server.test"
         env:
           GOTMPDIR: /tmp/go-tmp
       - name: conformance vectors (Go CAW)

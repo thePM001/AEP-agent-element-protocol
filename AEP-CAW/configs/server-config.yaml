@@ -129,7 +129,10 @@ sandbox:
   # Network backend: an eBPF connect program on the cgroup of each command.
   # Default deny stays armed, so a connect to an address no rule allows
   # fails with EPERM and leaves one net_connect_blocked event. Hosts named
-  # only by wildcard domains are refused. Needs root with cgroup v2.
+  # only by wildcard domains are refused. Needs root with cgroup v2 and a
+  # cgroup of its own that may hold child cgroups: run the server as a
+  # systemd unit with Delegate=yes or start it in a fresh cgroup. Inside a
+  # cgroup that refuses child cgroups the server refuses to start.
   network:
     ebpf:
       enabled: true
