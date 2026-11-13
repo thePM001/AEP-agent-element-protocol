@@ -2,6 +2,14 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-13 - The README of the GAP component follows the GAP page
+The README of component 06 carried the old GAP README as its body, with the same rules repeated and without a table of the fields and types of the language. The GAP repository received a rewritten README and this tree now carries the same content together with its own.
+
+- `AEP-Components/gap/README.md` describes the language in the order of the GAP page: the anatomy of an instruction and the seven sections Six Native Primitives, Everything as Instruction, Write. Check. Admit., Instructions Generate Instructions, Structural Governance, Mathematically Verified and Six-Rung Ladder.
+- Each of the seven sections states what the AEP tree ships, where it lives in this tree and how to run or test it here. A point that the tree does not carry is worded as planned, for example a decoder for Layer 1 and a runtime for self-generation.
+- The content that only AEP has remains: the ten parts of the component template, the vendor tree, the relation of GAP and CAW with its diagram and the UCB synthesis tiers.
+- The detail of live evaluation is no longer repeated in this file. It is linked at the components that own it: the envelope, the Base Node Pulse and the lattice channels.
+
 ## [2.9.0] - 2026-11-13 - The README files follow the 18 main components of the AEP page
 A reader who came from the AEP page found none of its 18 component numbers in the repository. The root README spent 355 lines on policy wrap detail before the architecture and started Quick start at line 746. Most component README files were too short to explain their component and the TLA+ folder had none.
 
