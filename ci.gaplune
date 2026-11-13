@@ -70,8 +70,10 @@ suites:
     dir: AEP-CAW
     run: |
       # A short folder: tests bind unix sockets under it and a socket path has at most
-      # 108 bytes, which a long prefix plus a long test name passes.
+      # 108 bytes, which a long prefix plus a long test name passes. It is open like /tmp,
+      # because some tests switch to another user (uid 65534) inside it.
       export GOTMPDIR="$(mktemp -d /tmp/g.XXXXXX)"
+      chmod 1777 "$GOTMPDIR"
       bash scripts/ci-go-test.sh -p 2 ./...
       bash scripts/ci-go-test.sh -race -p 2 ./...
       go test -run Vectors -v ./internal/kerneldock
