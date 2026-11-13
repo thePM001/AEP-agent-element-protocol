@@ -111,7 +111,7 @@ flowchart TB
 | 10 | Base Node Pulse | The compiled 1000 ms interval, which freezes a capsule at its seal before the checks run | `AEP-Components/base-node-pulse/` | [README](AEP-Components/base-node-pulse/README.md) |
 | 11 | CAWs | The host sandboxes in which an agent process runs under the written policy | `AEP-CAW/` | [README](AEP-CAW/README.md) |
 | 12 | Scanners | The content scanners, which read the text of a proposal for secrets, personal data, injection and more | `AEP-Components/scanners/` | [README](AEP-Components/scanners/README.md) |
-| 13 | AgentMesh | The identity layer with certificates and identifiers issued for agents on the local node | `AEP-Components/agentmesh/` | [README](AEP-Components/agentmesh/README.md) |
+| 13 | AgentMesh | The identity layer with local issuance of certificates and identifiers for agents, built by the crate in `AEP-Components/agentmesh/crate/` | `AEP-Components/agentmesh/` | [README](AEP-Components/agentmesh/README.md) |
 | 14 | Economics | Cost estimation before a model call, budget caps and x402 payments | `AEP-Components/economics/` | [README](AEP-Components/economics/README.md) |
 | 15 | Lattice Memory | The store of the shapes of validated proposals, kept for audit, health telemetry and lookup | `AEP-Components/lattice-memory/` | [README](AEP-Components/lattice-memory/README.md) |
 | 16 | Intent Ledger | The append-only record linking the declared intent of a code change to its commit | `AEP-Components/intent-ledger/` | [README](AEP-Components/intent-ledger/README.md) |
