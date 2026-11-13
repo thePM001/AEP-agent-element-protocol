@@ -1,0 +1,113 @@
+@PAD: aep-ci-manifest-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.nla.ede.ci.v1
+format: gaplune
+json: prohibited
+# The CI of this repository for nla-ede verify (ticket EDE-CI-001). Each suite mirrors
+# the GitHub workflow jobs it names, so a change is checked before promote and the
+# public mirror stays green. The gate starts in shadow mode and moves to enforce after a
+# green week in the shadow ledger.
+gate: shadow
+suites:
+  - name: secrets
+    run: gitleaks dir . --config .gitleaks.toml --redact --no-banner --exit-code 1
+    always: true
+    timeout: 900
+    workflow: supply-chain.yml#gitleaks
+  - name: rust-test
+    run: cargo test --workspace --no-fail-fast
+    paths: *.rs Cargo.toml Cargo.lock deny.toml clippy.toml rust/ AEP-Base-Node/ AEP-Components/ AEP-User-Experience/
+    timeout: 7200
+    workflow: baseline.yml#rust-workspace base-node.yml#test
+  - name: rust-clippy
+    run: cargo clippy --workspace --all-targets -- -D warnings
+    paths: *.rs Cargo.toml Cargo.lock clippy.toml
+    timeout: 3600
+    workflow: baseline.yml#clippy
+  - name: format
+    run: |
+      cargo fmt --all --check
+      out=$(gofmt -l AEP-CAW)
+      if [ -n "$out" ]; then echo "$out"; echo "error: gofmt reports drift"; exit 1; fi
+    paths: *.rs *.go
+    timeout: 900
+    workflow: baseline.yml#format
+  - name: base-node-binaries
+    run: |
+      cargo check -p aep-end-to-end-run
+      cargo build -p aep-base-node --bin aep-base-node
+      bin="${CARGO_TARGET_DIR:-rust/target}/debug/aep-base-node"
+      "$bin" --self-test
+      set +e
+      "$bin" --health > "${TMPDIR:-/tmp}/aep-health-$$.json"
+      code=$?
+      set -e
+      if [ "$code" != 0 ] && [ "$code" != 1 ]; then cat "${TMPDIR:-/tmp}/aep-health-$$.json"; exit 1; fi
+      jq -e 'has("sqlite_closed")' "${TMPDIR:-/tmp}/aep-health-$$.json"
+      rm -f "${TMPDIR:-/tmp}/aep-health-$$.json"
+      test ! -d AEP-Components/display-api
+    paths: AEP-Base-Node/ AEP-User-Experience/ rust/ Cargo.toml Cargo.lock
+    timeout: 3600
+    workflow: base-node.yml#end-to-end-example base-node.yml#probe base-node.yml#self-test
+  - name: typescript
+    run: |
+      npm ci --no-audit --no-fund
+      npm run typecheck
+      npm run lint
+      npm test
+    paths: *.ts *.mjs *.js package.json package-lock.json tsconfig.json tsconfig.base.json eslint.config.mjs vitest.config.mjs
+    timeout: 3600
+    workflow: baseline.yml#typescript
+  - name: live-set
+    run: |
+      npm ci --no-audit --no-fund
+      node AEP-Components/wrap-coverage/lib/wrap-coverage.mjs AEP-User-Experience/examples/end-to-end-run/deployment/wrap-coverage.yaml
+      node aep-check.mjs
+      bash AEP-Components/conformance/runner/run.sh
+    paths: AEP-Components/ AEP-User-Experience/ AEP-Policy-System/ aep-check.mjs THREAT_MODEL.md
+    timeout: 3600
+    workflow: baseline.yml#live-set
+  - name: vectors-without-rust
+    run: |
+      NODE_DIR="$(dirname "$(command -v node)")"
+      env -i PATH="$NODE_DIR:/usr/bin:/bin" HOME="$HOME" sh -ec 'if command -v cargo || command -v rustc; then echo "error: a Rust toolchain is on PATH"; exit 1; fi; node AEP-Components/conformance/vectors/examples/third-party-runner/run-vectors.mjs --require dock-socket,dock-request,dock-answer,mesh-mode --json'
+    paths: AEP-Components/conformance/
+    timeout: 900
+    workflow: baseline.yml#vectors-without-rust
+  - name: gap-pin
+    # The workflow also builds gapc of the pinned GAP commit from GitHub and checks the
+    # reference policies; that half needs the pinned GAP clone and runs on GitHub only.
+    run: node AEP-Components/gap/bin/check-gap-pin.mjs
+    paths: AEP-Components/gap/ AEP-Policy-System/
+    timeout: 900
+    workflow: baseline.yml#gap-pin
+  - name: caw-go
+    dir: AEP-CAW
+    run: |
+      export GOTMPDIR="${TMPDIR:-/tmp}/aep-caw-gotmp-$$"
+      mkdir -p "$GOTMPDIR"
+      bash scripts/ci-go-test.sh -p 2 ./...
+      bash scripts/ci-go-test.sh -race -p 2 ./...
+      go test -run Vectors -v ./internal/kerneldock
+      rm -rf "$GOTMPDIR"
+    paths: AEP-CAW/
+    timeout: 7200
+    workflow: baseline.yml#caw
+  - name: caw-govulncheck
+    dir: AEP-CAW
+    run: govulncheck ./...
+    paths: AEP-CAW/
+    timeout: 1800
+    workflow: supply-chain.yml#govulncheck
+  - name: cargo-deny
+    run: |
+      cargo-deny --all-features --workspace --locked check advisories
+      cargo-deny --all-features --workspace --locked check bans licenses sources
+    paths: Cargo.toml Cargo.lock deny.toml
+    timeout: 1800
+    workflow: supply-chain.yml#cargo-deny
+  - name: npm-audit
+    run: npm audit --audit-level=high
+    paths: package.json package-lock.json
+    timeout: 900
+    workflow: supply-chain.yml#npm-audit
