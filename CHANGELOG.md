@@ -2,6 +2,13 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-13 - The repository declares its CI in ci.gaplune
+A change used to meet the checks of the GitHub workflows only after it was published. The repository now declares the same checks in one file, so a change can pass them before it lands.
+
+- `ci.gaplune` at the root names 10 suites: gitleaks, the Rust tests, clippy, format, the Base Node binaries, the vectors without Rust, the GAP pin check, the AEP-CAW Go suites with the race run, govulncheck and cargo-deny. Each suite names the workflow jobs it mirrors, so a workflow job without a suite shows up as drift.
+- Three jobs that install from the npm registry (TypeScript, the live set and npm audit) are named `github_only`: they run on GitHub alone.
+- A suite runs like a workflow step: any failing line fails the suite. Path filters choose the suites a change triggers. The secret scan runs for every change and names the rule, file and line of a finding.
+
 ## [2.9.0] - 2026-11-13 - The GAP pin names the current commit of the GAP repository
 The GAP repository received a new history on 2026-11-13, so the commit that this tree pinned no longer exists there.
 
