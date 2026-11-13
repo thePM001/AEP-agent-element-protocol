@@ -1,6 +1,47 @@
-# dynAEP 1.0: Open-Source Real-Time Event Governance Protocol for AI
+# 07 / dynAEP
 
 Status: normative. Stability: evolving. The Action Lattice, the hook loader and the webhook, SSE and poll observers are tested; the MLE hook is host supplied.
+
+## What it is
+
+dynAEP (dynamic AEP) is the engine for temporal governance and causal event order. It knows which actions exist, what must have happened before each action and how old an event may be. It serves systems in which events arrive all the time, for example live interfaces with several agents.
+
+## Place among the 18
+
+Events come from agents, interfaces and external sources through observers. dynAEP validates them against the Action Lattice and routes them to interested agents. Crossings into the kernel travel on the Lattice Channels (08) to the AEP Base Node (01), where the Admit Gate (04) is the product verdict. The Graph Engine (05) and the hyperlattice read projections of the live graph. Policy nodes are written in GAP (06).
+
+## What ships in 2.9
+
+- The Action Lattice in TypeScript, the one live graph of actions with parents and constraints, with the Rust crate `aep-dynaep` beside it.
+- Temporal authority with a staleness threshold and causal ordering of events.
+- Observers for webhook, SSE and poll sources and a loader for validation hooks.
+- The hyperlattice in `AEP-Components/hyperlattice/`: one policy wrap per governed system and the guide for a custom sub-lattice.
+- The wrap coverage report in `AEP-Components/wrap-coverage/`.
+- The page gives a threshold of 5000 ms for every event. In this tree `max_staleness_ms: 5000` is the value in the configuration reference and an operator can change it. The fixed age bound of 5000 ms in the kernel belongs to the Base Node Pulse (10).
+
+## Layout
+
+| Path | Role |
+|------|------|
+| `bridge/` | The TypeScript runtime with the Action Lattice |
+| `crate/` | The crate `aep-dynaep` |
+| `observers/`, `hooks/` | Event sources and validation hooks |
+| `registries/`, `policies/` | Lattice registry and policy files |
+| `dynaep-config.yaml` | The configuration file |
+| `tests/` | vitest suites |
+| `SPEC.md`, `CONFIG.md`, `EVENT-TYPES.md`, `NAME-POLICY.md` | Protocol documents |
+| `AEP-Components/hyperlattice/` | The hyperlattice view and the custom sub-lattice guide |
+| `AEP-Components/named-surfaces/` | Source check and sketch for named surfaces |
+| `AEP-Components/wrap-coverage/` | The wrap coverage report |
+
+## Interfaces
+
+- Configuration: `dynaep-config.yaml`, described in `CONFIG.md`. It has no `pulse_ms` key.
+- Event types: `EVENT-TYPES.md`.
+- Registry: `registries/aep-lattice.yaml` lists the actions with their parents.
+- Command: `node AEP-Components/wrap-coverage/lib/wrap-coverage.mjs <inventory.yaml>` for the coverage report.
+
+**dynAEP 1.0: Open-Source Real-Time Event Governance Protocol for AI**
 
 **Version 1.0** - June 2026
 **Author:** thePM_001
@@ -475,10 +516,10 @@ The bridge re-syncs at configurable intervals (default: every 30 seconds). Clock
 
 ### Timestamp Validation
 
-Every incoming event passes through temporal validation:
+Every incoming event passes through temporal validation in the bridge, which takes the following steps in this order:
 
-1. Bridge reads the agent-provided timestamp (may be null).
-2. Bridge stamps the event with authoritative time.
+1. The bridge reads the timestamp the agent provided, which may be null when the agent sent none.
+2. The bridge then stamps the event with its own authoritative time before any further check runs.
 3. If `bridge_is_authority` is true (default), the event timestamp is overwritten. The original is preserved in metadata for audit.
 4. Drift check: if the difference between agent time and bridge time exceeds `max_drift_ms` (default: 50 ms), the event is rejected.
 5. Future check: if the agent timestamp is more than `max_future_ms` (default: 500 ms) ahead of bridge time, the event is rejected.
@@ -504,14 +545,14 @@ Three-phase recovery for graceful bridge restarts: First stage announces recover
 
 The CausalOrderingEngine enforces happens-before relationships across multi-agent event streams using Lamport vector clocks. This is unchanged from v0.4.
 
-Every agent registered with the bridge receives a vector clock entry. Each event carries a per-agent sequence number (monotonically increasing). The engine:
+Every agent registered with the bridge receives a vector clock entry. Each event carries a per-agent sequence number (monotonically increasing). The engine then works through these steps for every event it receives:
 
-1. Compares incoming sequence numbers against expected values.
-2. Delivers in-order events immediately, advancing the vector clock.
-3. Buffers out-of-order events in a reorder buffer (configurable size, default: 64) and waits up to `max_reorder_wait_ms` (default: 200 ms) for missing predecessors.
-4. Rejects events with clock regression (sequence number lower than expected).
-5. Verifies declared causal dependencies have been delivered.
-6. Detects concurrent mutations on the same element from different agents and applies conflict resolution (last-write-wins or optimistic locking).
+1. It compares the incoming sequence numbers against the values it expects for each agent.
+2. It delivers events that arrive in order immediately and advances the vector clock for them.
+3. It buffers out-of-order events in a reorder buffer (configurable size, default: 64) and waits up to `max_reorder_wait_ms` (default: 200 ms) for missing predecessors.
+4. It rejects events with clock regression, meaning a sequence number lower than the expected one.
+5. It verifies that the declared causal dependencies of an event have already been delivered.
+6. It detects concurrent mutations on the same element from different agents and applies conflict resolution (last-write-wins or optimistic locking).
 
 The LatticeFilter and CausalOrderingEngine work together. The lattice filter validates the action-level partial order (what type of event can happen next). The causal engine validates the agent-level sequence order (what event from this agent can happen next). Both must pass for an event to be accepted.
 
@@ -556,7 +597,7 @@ interface HookResult {
 
 ### Hook Registry and Loader
 
-The `HookRegistry` manages registered hooks keyed by name. Built-in hooks are registered at bridge init via `registerBuiltinHooks()` in `bridge/hook-loader.ts` (synced to `AEP-Components/dynAEP/typescript/dynaep/src/lattice/hook-loader.ts`).
+The `HookRegistry` manages registered hooks keyed by name. Built-in hooks are registered at bridge init via `registerBuiltinHooks()` in `bridge/hook-loader.ts` (synced to `AEP-Components/dynAEP/bridge/hook-loader.ts`).
 
 Config alias resolution (`lattice.hook` in YAML):
 
@@ -576,9 +617,9 @@ The MLE (Machine Learning Evaluation) hook is a reference implementation that us
 
 To create a custom hook:
 
-1. Import `ValidationHook` and `HookResult` from `hooks/interface.ts`.
-2. Import `LatticeEvent`, `ActionLattice`, `LatticeNode` from the bridge lattice module.
-3. Export an object conforming to `ValidationHook`.
+1. Import `ValidationHook` and `HookResult` from `hooks/interface.ts`, the file with the hook contract.
+2. Import `LatticeEvent`, `ActionLattice` and `LatticeNode` from the bridge lattice module, which defines the event and node types.
+3. Export an object conforming to `ValidationHook`, with the name and the validate function the contract requires.
 4. Register via `HookRegistry.register()` before bridge init or extend `registerBuiltinHooks()`.
 
 Hooks may be synchronous or async. The bridge awaits each hook's `validate()` method inside `filterAsync()` and records results in `constraints_passed` / `constraints_failed` (e.g. `hook:mle-validator:0.92`).
@@ -610,10 +651,10 @@ interface ObserverAdapter {
 
 ### Adapter Lifecycle
 
-1. Construct the adapter with its configuration.
+1. Construct the adapter with its configuration, for example the port or the endpoint it reads from.
 2. Call `onEvent` to register the callback that receives normalized events.
-3. Call `start()` to begin consuming events. Implementations must be idempotent.
-4. Call `stop()` to tear down resources (server sockets, timers, connections). Implementations must be idempotent and safe to call even if not started.
+3. Call `start()` to begin consuming events and make sure the implementation of this call is idempotent.
+4. Call `stop()` to tear down resources such as server sockets, timers and connections. An implementation must be idempotent and safe to call even if it was not started.
 
 All adapters normalize their native event shape into a LatticeEvent with `source`, `action_path`, `payload`, `bridge_timestamp` and optional `agent_id`. The bridge then routes each event through the lattice filter.
 
@@ -735,7 +776,6 @@ aep-dynaep = { path = "AEP-Components/dynAEP/crate" }
 cargo test -p aep-dynaep --lib
 ```
 
-
 **This component ships no SDK tree.** The protocol source of truth is `AEP-Components/dynAEP/` and the crate beside it. The reference action checker is the Base Node kernel Admit pass and there is no package registry distribution for this component.
 
 ### 13.1 Hyperlattice and Base Node integration
@@ -773,4 +813,24 @@ dynAEP 1.0 introduces the Action Lattice as the central governance mechanism for
 
 dynAEP 1.0 governs the event lifecycle through a single bridge pipeline: pluggable observer adapters, optional lattice validation (`filterAsync` + hooks), temporal authority and causal ordering, AEP structural validation, perception governance for human-facing outputs and programmatic agent interest registration for selective routing.
 
-The agent provides the semantic intelligence. The Action Lattice provides the event order. The bridge clock provides the temporal law. The perception registry provides the perceptual law. The durable store provides the persistence law. dynAEP 1.0 is the enforcement layer that connects them all through a single deterministic pipeline.
+The agent provides the semantic intelligence, the Action Lattice provides the event order, the bridge clock provides the temporal law, the perception registry provides the perceptual law and the durable store provides the persistence law. dynAEP 1.0 is the enforcement layer that connects them all through a single deterministic pipeline.
+
+## Limits
+
+- dynAEP does not own the kernel wait, because the Base Node Pulse (10) compiles it into the kernel.
+- The TypeScript event path is not the product verdict, which is the Admit Gate (04) in the AEP Base Node (01).
+- dynAEP owns the live graph state. The hyperlattice and the Graph Engine (05) keep projections only.
+
+## Run and test
+
+```bash
+npx vitest run AEP-Components/dynAEP AEP-Components/hyperlattice AEP-Components/wrap-coverage
+cargo test -p aep-dynaep
+```
+
+## Related documents
+
+- `AEP-Components/dynAEP/SPEC.md` and `AEP-Components/dynAEP/CONFIG.md`
+- `AEP-Components/hyperlattice/README.md` and `AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md`
+- `AEP-Components/wrap-coverage/README.md`
+- `AEP-User-Experience/harness/TEMPORAL-AUTHORITY.md`

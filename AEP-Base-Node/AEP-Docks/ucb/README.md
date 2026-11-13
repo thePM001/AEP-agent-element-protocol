@@ -1,6 +1,43 @@
-# Universal Connect Bridge (UCB)
+# 02 / UCB
 
-To attach a foreign wrap, start aep-ucb on port 8412 with UCB_API_KEY set. Send ingest, delegate, rollback, egress, compile-manifest or mcp only with that key. Health and capabilities remain public. Every ingest needs a task manifest.
+Status: normative. Stability: evolving. The HTTP interface and the manifest rule are tested and the perimeter profile still changes.
+
+## What it is
+
+The Universal Connect Bridge (UCB) is the secured docking port for systems outside AEP. An external agent framework, an MCP server or a custom HTTP agent hands its work to UCB. UCB checks the task manifest, the written contract of this agent, validates the content and sends the work to the Base Node as a sealed capsule. The external system never touches a dock socket.
+
+## Place among the 18
+
+UCB receives work from external systems and hands sealed capsules over the Lattice Channels (08) to the validation dock of the AEP Base Node (01). The Admit Gate (04) judges each capsule and UCB reports the answer to the caller. Task manifests are written in GAP (06). Identities come from AgentMesh (13).
+
+## What ships in 2.9
+
+- The service `aep-ucb` on port 8412 with key authentication for every route except health and capabilities.
+- Ingest with a mandatory task manifest. A missing or provisional manifest refuses the ingest and UCB invents no contract.
+- One validator process per ingest check, `aep-ucb-validate`, confined by a seccomp filter.
+- Model delegation, rollback of the last journal record, an egress proxy bound to the manifest, a local manifest compiler and an MCP adapter.
+- A hash chained journal.
+- The page describes UCB as the foundation of the internal docking ports. In this tree the internal docks are Unix sockets inside the Base Node crate and components of the tree use them directly. UCB as the shared foundation of those docks is planned. UCB is optional and `UCB=0` turns it off.
+
+## Layout
+
+| Path | Role |
+|------|------|
+| `crate/` | The crate `aep-ucb` with the binaries `aep-ucb` and `aep-ucb-validate` |
+| `perimeter-v1/` | The crate `aep-ucb-perimeter-v1`, the default content profile |
+| `HISTORY.md` | The public attach record |
+| `AEP-Base-Node/AEP-Docks/` | Dock specs and the list of regulated HTTP docks |
+| `AEP-Base-Node/AEP-Docks/universal-connect/` | The Universal Connect Dock for optional module downloads through UCB |
+| `AEP-Components/dock-line-reader/` | Source check on the dock line reader |
+| `AEP-Components/dock-post-beat-collect/` | The collect of a result by capsule hash after the pulse |
+| `AEP-Components/dock-request-poison/` | Source check: a poisoned lock answers and never aborts |
+| `AEP-Components/egress-address/` | The shared address check for every outbound request |
+
+## Interfaces
+
+The sections Service, HTTP API, MCP, Authentication and Environment variables below list every route, tool, key source and variable.
+
+To attach a foreign wrap, start aep-ucb on port 8412 with UCB_API_KEY set. Send ingest, delegate, rollback, egress, compile-manifest or mcp only with that key. Health and capabilities remain public and every ingest needs a task manifest.
 
 ## What UCB is
 
@@ -209,3 +246,23 @@ UCB=0 docker compose -f docker-compose.public.yml up -d
 ```
 
 Canonical implementation: [`AEP-Base-Node/AEP-Docks/ucb/README.md`](./README.md). GAP manifest template: [`AEP-Components/gap/policies/reference/task-manifest-v1.gap`](../../../AEP-Components/gap/policies/reference/task-manifest-v1.gap).
+
+## Limits
+
+- UCB is no second evaluator. The Admit Gate (04) in the Base Node (01) judges.
+- UCB writes no policy and no manifest for an agent.
+- Components of this tree do not route through UCB.
+
+## Run and test
+
+```bash
+cargo build --release -p aep-base-node -p aep-ucb
+cargo test -p aep-ucb -p aep-ucb-perimeter-v1
+```
+
+## Related documents
+
+- `AEP-Base-Node/AEP-Docks/ucb/HISTORY.md` for the attach record
+- `AEP-Base-Node/AEP-Docks/README.md` for all docks
+- `AEP-User-Experience/docs/FOREIGN-ATTACH.md` and `AEP-User-Experience/docs/UCB-ATTACH-NOTES.md` for the attach guides
+- `AEP-Components/gap/policies/reference/task-manifest-v1.gap` for the manifest template

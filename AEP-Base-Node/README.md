@@ -1,8 +1,60 @@
-# AEP Base Node
+# 01 / AEP Base Node
 
-Mandatory local governance **kernel** for every AEP 2.9 installation.
+Status: normative. Stability: evolving. The docks, the kernel pass and the runtime ledger are the code every other component relies on.
 
-Lives at the **repository root** (`AEP-Base-Node/`), not under `AEP-Components/`. Every other component docks into Base Node; it is not a palette component.
+## What it is
+
+The AEP Base Node is the governance kernel of the protocol. It runs on your own machine as one daemon and every other component docks into it. An agent proposes an action in a sealed capsule and the Base Node opens the capsule, judges it and applies the action only after every check passed. The folder lives at the repository root and not under `AEP-Components/`, because the kernel is mandatory and no component of choice.
+
+## Place among the 18
+
+Work arrives as sealed capsules on the Lattice Channels (08), either straight from a component or through UCB (02). The Base Node hosts UCB (02) under `AEP-Docks/` and it runs the Base Node Pulse (10) as its clock. It places each proposal in the One Validation Envelope (03) and the Admit Gate (04) judges it with the GAP policy (06), the Scanners (12) and the identity from AgentMesh (13). After an allow the CAWs (11) run host commands and Lattice Memory (15) stores the shape of the judged proposal.
+
+## What ships in 2.9
+
+- The daemon `aep-base-node` with four Unix socket docks named inference, validation, regulation and future. A dock accepts sealed capsules only.
+- One kernel pass per capsule: verify the seal, freeze the clock, wait one pulse of 1000 ms, judge every wall together, write the ledger row and then apply.
+- The runtime ledger, a SQLite lattice log with the command line program `aep-lattice-log`.
+- The Data Dock, an HTTP surface on port 8413 for records the kernel already admitted.
+- The outbound web request for agents on one granted action path with an operator route list.
+- The component registry with catalog and manifests.
+- The Agent Control Hub crate for agent permissions.
+- The Potomitan crate with a mesh packet plane, a peer registry and routing, proven by its crate tests and by the conformance check for mesh mode. The shipped daemon reads the mesh peer file and reports the mesh mode (internet, potomitan or offline) in its health answer. It binds no mesh socket. Mesh traffic from the daemon is planned.
+- The multi base node crate, an optional experimental surface outside the default build.
+
+## Layout
+
+| Path | Role |
+|------|------|
+| `AEP-Crate/` | The crate `aep-base-node` with the daemon and the `aep-lattice-log` program |
+| `AEP-Docks/` | Dock specs, UCB (02) and the Universal Connect Dock |
+| `AEP-Registry/` | Component catalog, manifests and schemas |
+| `AEP-Agent-Control-Hub/` | Kernel extension for GAP sessions, mounts and agent permissions |
+| `AEP-Potomitan/` | Mesh fallback crate `aep-potomitan` |
+| `AEP-Multi-Base-Node/` | Optional experimental crate for several kernels |
+| `AEP-Components/kernel-types/` | The one public set of kernel types |
+| `AEP-Components/live-entry/` | The live entry: load, Admit and Apply in one process |
+| `AEP-Components/one-live-evaluation/` | Source check: one Admit function judges the opened capsule |
+| `AEP-Components/wall-set-backpressure/` | The deny report with closed walls, class and repair |
+
+## Interfaces
+
+- Binaries: `aep-lattice-log` and `aep-base-node` with `--daemon`, `--health` and `--self-test`.
+- Sockets: `inference`, `validation`, `regulation` and `future` under `$AEP_DATA/sockets`.
+- Ports: 8413 for the Data Dock. UCB (02) listens on 8412 as a service of its own.
+- Environment: `AEP_DATA`, `AEP_GATEWAY_ROUTES`, `DATA_DOCK`, `DATA_DOCK_API_KEY`, `AEP_LOG`, `AEP_LOG_JSON` and `AEP_LOG_FILE`.
+- Files: `lattice.yaml`, `gateway-routes.json` and the `action-lattice.db` store in the data folder.
+
+## Four tiers of the page and four planes of the code
+
+The AEP page draws the Base Node in four tiers. The code describes itself in four planes. Both describe the same kernel and this table maps them.
+
+| Tier on the page | Planes and parts in this tree |
+|------------------|-------------------------------|
+| Kernel zone for governance | The intake and dock plane and the kernel pulse pass: `AEP-Crate/src/docking/` and the Base Node Pulse (10) |
+| Wall set for redundancy | The wall set: the wall crates of the One Validation Envelope (03) and the Admit Gate (04) |
+| Architectural efficiency and dispatch | The record plane with Apply: the runtime ledger, the registry and the Agent Control Hub |
+| Potomitan mesh fallback | `AEP-Potomitan/`, the mesh crate described under What ships in 2.9 |
 
 ## Architecture shape
 
@@ -72,7 +124,7 @@ Register new components in **`AEP-Base-Node/AEP-Registry/catalog.json`** + **`AE
 | `AEP-Crate/` | `aep-base-node` Rust crate + `aep-lattice-log` CLI binary. Nested rust leaf crate/ under a product remains. |
 | `AEP-Docks/` | Live dock products ucb and universal-connect. Spec table names kernel admit dock. |
 | `AEP-Potomitan/` | POTOMITAN mesh peer registry (`aep-potomitan` crate) |
-| `AEP-Multi-Base-Node/` | Multi-base-node (2.8b) mode: federate multiple Base Node kernels (optional experimental surface, not in the default build) |
+| `AEP-Multi-Base-Node/` | Multi base node mode: federate multiple Base Node kernels (optional experimental surface, not in the default build) |
 | `AEP-Registry/` | Component catalog + manifests (`catalog.json`, `components/*.json`) |
 | `AEP-Agent-Control-Hub/` | Kernel extension. The daemon loads the crate and binds GAP session, mount and agent-permission state. |
 
@@ -114,7 +166,7 @@ Base Node fetches a web address only when all of these hold:
 1. The request says it is an outbound web request: its action path is `gateway:outbound_http`. A `url` field in any other message is plain data and Base Node never fetches it.
 2. The agent may make outbound web requests, in the lattice and in the Agent Control Hub.
 3. The address is on the approved list of the operator.
-4. The address is a public internet address.
+4. The address is a public internet address and no internal one.
 5. The agent has fewer than 2 requests running and Base Node has fewer than 16.
 
 When any of these fails, the request is refused, nothing is fetched and the answer names the reason.
@@ -196,3 +248,28 @@ cargo build --release -p aep-base-node
 The default build is the single Base Node kernel. Other workspace crates, such as the multi base node, are built on purpose and they are not part of the default build or the default deployment.
 
 Verify the kernel with `cargo test -p aep-base-node --lib`. The same command runs in `.github/workflows/base-node.yml` on every push and pull request.
+
+## Limits
+
+- The Base Node does not write policy. Policies are GAP (06) files loaded at start.
+- It does not confine a process on the host. The CAWs (11) do.
+- It does not attach external systems by itself. UCB (02) does.
+- The pulse length is no setting. The Base Node Pulse (10) compiles it.
+
+## Run and test
+
+```bash
+cargo build --release -p aep-base-node
+./rust/target/release/aep-base-node --self-test
+cargo test -p aep-base-node --lib
+cargo test -p aep-potomitan -p aep-agent-control-hub
+```
+
+## Related documents
+
+- `AEP-Base-Node/AEP-Registry/README.md` for the catalog and the manifest schema
+- `AEP-Base-Node/AEP-Docks/README.md` for the docks
+- `AEP-Base-Node/AEP-Potomitan/README.md` for the mesh crate
+- `AEP-User-Experience/docs/DATA-DOCK.md` for the Data Dock routes
+- `AEP-User-Experience/docs/AEP-2.9-SECURE-DEPLOYMENT-GUIDE.md` for deployment
+- `THREAT_MODEL.md` for the threat model of each layer

@@ -1,14 +1,43 @@
-# Lattice Channels (unified)
+# 08 / Lattice Channels
 
 Status: normative. Stability: evolving. Frame sealing calls the aep-lattice-log binary; lattice-gated-fetch .ts, .mjs and .js keep the same exports.
 
-Single AEP component for lattice channel transport, TypeScript client helpers and the Rust `aep-lattice-channel` crate.
+## What it is
 
-- `lib/` - MJS/TS transport (`latticeGatedFetch`, frame builder)
-- `client/` - TypeScript client re-exports
-- `crate/` - Rust lattice channel implementation
+Lattice Channels are the transport of AEP. Every message to the Base Node travels as a sealed capsule: the content is encrypted, the sender signs it and the header binds it to one dock. Post-quantum schemes protect both the key exchange and the signature. No other path leads into the Base Node.
 
-Compiled AI: deterministic frame contracts; no runtime LLM in this layer.
+## Place among the 18
+
+Every component hands its messages to the channel and UCB (02) seals the work of external systems for it. The capsule ends at a dock of the AEP Base Node (01), where the Base Node Pulse (10) takes over. AgentMesh (13) supplies the identity of the signer and the mTLS settings for TCP endpoints.
+
+## What ships in 2.9
+
+- The crate `aep-lattice-channel` builds, verifies and opens capsules. ML-KEM-768 protects the key exchange, AES-256-GCM the content and ML-DSA-65 the signature.
+- A dock accepts sealed capsules only. A plain ping, event or register message is refused and logged.
+- Replay protection by capsule hash and a rate limiter per agent.
+- The layer is deterministic and no model runs in it.
+- JavaScript helpers build capsules for clients and send the outbound web request of an agent through the Base Node.
+- The crate `aep-lattice-gated-fetch` executes the one granted outbound request against the operator route list.
+
+## Layout
+
+| Path | Role |
+|------|------|
+| `crate/` | The crate `aep-lattice-channel` |
+| `lib/lattice-transport.mjs` | Dock paths, capsule helpers and the writing checks for clients |
+| `lib/lattice-gated-fetch.ts` | The outbound request helper, also as `.mjs` and `.js` |
+| `client/` | TypeScript client exports |
+| `tests/` | vitest suites |
+| `AEP-Components/lattice-crypto/` | The crate `aep-lattice-crypto` with ML-KEM-768 and ML-DSA-65 and the program `aep-ml-dsa` |
+| `AEP-Components/lattice-gated-fetch/` | The outbound request of the kernel |
+
+## Interfaces
+
+- Rust: `build_frame`, `build_frame_for_dock`, `verify_and_open_frame`, `open_frame` and `frame_digest`.
+- JavaScript: `latticeGatedFetch`, `dockPath`, `normalizeDockPort` and `resolveLatticeLogBin`.
+- Docks: `inference`, `validation`, `regulation` and `future`.
+- Environment: `AEP_LATTICE_LOG_BIN`, `AEP_LATTICE_ALLOW_LOOPBACK` and `AEP_LATTICE_ALLOW_PRIVATE`.
+- Wire format: one sealed capsule per line. The channel version is `2.9`.
 
 ## Kernel pulse after the sealed capsule
 
@@ -60,3 +89,22 @@ flowchart LR
 | Outbound HTTP | Lattice-gated via inference dock | Audit frame before fetch |
 | Optional foreign airlock | HTTP/MCP on `:8412` | Only for non-AEP foreign stacks. API-key auth; manifest required; no fallback synthesis |
 | Policy | lattice-channel mandatory at boot | Strict lattice at runtime |
+
+## Limits
+
+- The channel transports and proves origin. It does not judge. The Admit Gate (04) does.
+- The channel does not own the wait after the seal. The Base Node Pulse (10) does.
+- Writing rules shape output and are no transport security.
+
+## Run and test
+
+```bash
+cargo test -p aep-lattice-channel -p aep-lattice-crypto -p aep-lattice-gated-fetch
+npx vitest run AEP-Components/lattice-channels
+```
+
+## Related documents
+
+- `AEP-Base-Node/AEP-Docks/docs/DOCKING-PORTS.md` for the wire protocol of the docks
+- `AEP-Components/lattice-gated-fetch/README.md` for the outbound request
+- `AEP-Components/base-node-pulse/README.md` for the wait after the seal

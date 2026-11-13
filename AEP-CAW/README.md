@@ -1,4 +1,46 @@
-# AEP CAW Framework
+# 11 / CAWs
+
+Status: normative. Stability: evolving. The policy engine and the kernel dock check are tested on Linux and platform support differs by enforcement backend.
+
+## What it is
+
+CAWs (Containerized Agentic Workflows) are isolated execution sandboxes on the host for AI agents. The program `aep-caw` starts an agent command inside a sandbox and enforces the written policy on its shell commands, files, network connections, processes and model traffic. The Base Node decides whether an action is allowed and the CAW confines the process running it.
+
+## Place among the 18
+
+The Admit Gate (04) in the AEP Base Node (01) governs every run: before a command starts, CAW asks the kernel dock and refuses the run when the dock is silent. GAP (06) governs the sandbox itself, because every sandbox profile is a GAP file compiled on the host. CAW reports its events to the validation dock and keeps a host audit log, a derived view beside the runtime ledger.
+
+## What ships in 2.9
+
+- The Go program `aep-caw` with server, command line and the shell adapter `aep-caw-shell-adapter`.
+- A policy engine for file, command, network and process rules with enforcement backends such as seccomp on Linux.
+- A model proxy with audit and the sandbox profiles `agent-sandbox`, `coding-agent`, `restricted`, `dev-multi-repo` and `compiled-runtime`.
+- The kernel dock check on every execution path and a control API closed to processes of a session.
+- The page places the sandbox inside a COSHELL runtime. This tree ships `aep-caw` as the runtime of the sandbox. A part with the COSHELL name is planned.
+
+## Layout
+
+| Path | Role |
+|------|------|
+| `cmd/` | Entry points of the programs |
+| `internal/`, `pkg/` | Server, policy engine and enforcement backends |
+| `configs/`, `default-policy.yml`, `config.yml` | Sample configuration and the default policy |
+| `shim/`, `drivers/`, `lib/` | Shell entry and platform parts |
+| `packaging/`, `scripts/`, `test/` | Packaging, scripts and tests |
+| `SECURITY.md`, `AGENTS.md` | Security notes and the rules for agents |
+| `AEP-Components/isolation/` | The seal record of one confined process |
+| `AEP-Components/intercept/` | Hooks before and after an action |
+| `AEP-Components/mcp-security/` | Scanners and policies for MCP traffic |
+| `AEP-Components/caw-cve-demo-trees/` | Source check: no demo tree ships as a component |
+
+## Interfaces
+
+- Programs: `aep-caw-shell-adapter` and `aep-caw` with commands such as `session create`, `exec`, `wrap`, `detect` and `profiles list`.
+- Configuration: `{AEP_DATA}/caw-framework/server-config.yaml`, written by the GAP compiler.
+- Component id `caw-framework` with the manifest `AEP-Base-Node/AEP-Registry/components/caw-framework.json`.
+- Go module `github.com/thePM001/AEP-agent-element-protocol/AEP-CAW`.
+
+**AEP CAW Framework**
 
 **CAW (Containerized Agentic Workflows)** is AEP 2.9 Execution-Layer Security (ELS). It is the execution layer that this stack requires for coding agents and containerized agentic workflows: it enforces policy on shell, file, network, process, database wire and LLM traffic at runtime and it confines the host process that runs an agent command. The catalog ships the component default enabled, so the catalog default enables it for every coding agent plan. CAW is not a second evaluator because the walls belong to Base Node.
 
@@ -58,7 +100,6 @@ The catalog treats `caw-framework` as the required execution layer for coding ag
 | **Pairs** | Catalog pairs_with includes caw-framework |
 
 ### Coding agent plan
-
 
 Generated plan includes `caw-framework` in `components[]` and `caw_framework` policy block.
 
@@ -344,3 +385,26 @@ aep-caw wrap --profile coding-agent \
 Per-mount policy templates (`workspace-rw`, `config-readonly`, etc.) are defined in `caw-mount-policies.gap` and compiled into `$AEP_DATA/caw-framework/policies/`.
 
 Further detail: [`AEP-Components/gap/README.md`](../AEP-Components/gap/README.md), [`AEP-Base-Node/AEP-Agent-Control-Hub/README.md`](../AEP-Base-Node/AEP-Agent-Control-Hub/README.md).
+
+## Limits
+
+- CAW is no second evaluator. The walls belong to the AEP Base Node (01).
+- CAW writes no policy. Profiles are written in GAP (06).
+- A seal record in `AEP-Components/isolation/` without a CAW session is a record and no confinement.
+
+## Run and test
+
+```bash
+cd AEP-CAW
+export GOTOOLCHAIN=local
+make build
+go test ./...
+go test -race ./...
+```
+
+## Related documents
+
+- `AEP-CAW/SECURITY.md` and `AEP-CAW/AGENTS.md`
+- `AEP-Components/gap/README.md` for the profile sources
+- `AEP-Base-Node/AEP-Agent-Control-Hub/README.md` for the routing on the Base Node
+- `AEP-Components/isolation/README.md` for the seal record

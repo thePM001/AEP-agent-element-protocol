@@ -1,6 +1,48 @@
-# GAP: Governed Agentic Programming
+# 06 / GAP
 
 Status: normative. Stability: stable.
+
+## What it is
+
+GAP (Governed Agentic Programming) is the native instruction language of AEP. An instruction is the smallest unit: a policy, an agent profile, a sandbox profile, a task manifest and a workflow are all instructions. Instructions combine through six composition types: atomic, sequence, conditional, loop, parallel and abstraction. GAP is the only form of policy the Admit Gate loads.
+
+## Place among the 18
+
+An operator writes GAP files. The Admit Gate (04) receives them as walls, the CAWs (11) receive sandbox profiles compiled from them and UCB (02) receives task manifests. The AEP Base Node (01) loads the policy files at start. dynAEP (07) binds policy nodes into the hyperlattice.
+
+## What ships in 2.9
+
+- The GAP meta-schema in version 1.3 as the live authoring constraint, pinned to its upstream commit and checked byte for byte.
+- Reference instructions for coding governance, CAW sandbox profiles, task manifests and implementation plans.
+- `lib/gap-compile.mjs`, the compiler from GAP profiles to CAW mount profiles and policies.
+- The live policy files, presets, the Policy Builder and the Schema Builder in `AEP-Policy-System/`.
+- Transpilers to OPA Rego and Cedar and a YAML policy importer in `AEP-Components/policy-engine/`.
+- The schema has the fields for self-generation, for example `self_generate` and `lrt`. The Schema Builder estimates fields with MLE and the Policy Builder detects invariants in data. A runtime with self-generation of new policies through LRT and MLE, as the page describes it, is planned.
+
+## Layout
+
+| Path | Role |
+|------|------|
+| `schemas/` | The GAP meta-schema files |
+| `policies/reference/` | Reference instructions |
+| `lib/gap-compile.mjs` | The profile compiler |
+| `bin/check-gap-pin.mjs` | The check of the pinned upstream bytes |
+| `gap-pin.txt`, `gap-versions.toml` | The upstream pin |
+| `FILE-FORMAT.md` | Notes on the file format |
+| `tests/` | vitest suites for the compiler and the pin check |
+| `AEP-Components/gap-schema-profile-v13/` | The live Admit profile of schema version 1.3 as a crate |
+| `AEP-Components/policy-engine/` | Policy loading, evaluation and transpilers |
+| `AEP-Components/policy-leftover-skins/` | Source check: only GAP reference documents load as live walls |
+| `AEP-Policy-System/` | Live policy files, presets and builders |
+
+## Interfaces
+
+- Command: `node AEP-Components/gap/lib/gap-compile.mjs` with `--list-profiles` and `--materialize <data folder>`.
+- File format: one `.gap` file per instruction, with an optional second YAML document for a runtime profile. See `FILE-FORMAT.md`.
+- Compile targets: CAW settings under `$AEP_DATA/caw-framework/`, `task-manifest-v1.json` and `implementation-plan-v1.json`.
+- Agent permission is the field `agent_permission`. The presence of a `trust_ring` field is a deny.
+
+**GAP: Governed Agentic Programming**
 
 GAP is the native instructions language for governed agency in the Agent Element Protocol and an instruction is the atomic unit so agents, workflows, validators, compositions and governance rules are all instructions that generate further instructions.
 
@@ -417,4 +459,26 @@ export UCB_CONSTRAINED_DECODER_URL=http://$AEP_HOST:8080/v1/constrained/task-man
 export UCB_LLM_SYNTHESIS_URL=http://$AEP_HOST:8080/v1/structured/task-manifest
 ```
 
-GAP template authority: `AEP-Components/gap/policies/reference/task-manifest-v1.gap`. Materialized JSON matches `task-manifest-v1.json`. Manifests land in `AEP_TASK_MANIFEST_DIR` (`$AEP_DATA/ucb/manifests/`). Plan execution can also write manifests.
+GAP template authority: `AEP-Components/gap/policies/reference/task-manifest-v1.gap`. Materialized JSON matches `task-manifest-v1.json` and manifests land in `AEP_TASK_MANIFEST_DIR` (`$AEP_DATA/ucb/manifests/`), where plan execution can also write them.
+
+## Limits
+
+- GAP states rules. It enforces nothing by itself: the Admit Gate (04) judges and the CAWs (11) confine.
+- The compile targets are outputs. Policy is written in `.gap` files only.
+- A formal model in TLA+ (18) never replaces a GAP policy.
+
+## Run and test
+
+```bash
+node AEP-Components/gap/lib/gap-compile.mjs --list-profiles
+node AEP-Components/gap/bin/check-gap-pin.mjs
+npx vitest run AEP-Components/gap AEP-Components/policy-engine
+cargo test -p gap-schema-profile-v13 -p aep-policy-leftover-skins
+```
+
+## Related documents
+
+- `AEP-Components/gap/FILE-FORMAT.md` for the file format
+- `AEP-Policy-System/README.md` for the policy files, presets and builders
+- `AEP-Policy-System/SETUP.md` and `AEP-Policy-System/AUTHORING-FORM.md` for setup and authoring
+- `AEP-CAW/README.md` for the sandbox profiles in use
