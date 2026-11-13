@@ -2,6 +2,16 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-13 - The README files follow the 18 main components of the AEP page
+A reader who came from the AEP page found none of its 18 component numbers in the repository. The root README spent 355 lines on policy wrap detail before the architecture and started Quick start at line 746. Most component README files were too short to explain their component and the TLA+ folder had none.
+
+- The root README now shows the path of one action through the components, one table of the 18 main components, Quick start near the top and one section per component in the order and with the names of the page. It has 425 lines in place of 1075. Its opening and its two closing sections are unchanged.
+- Each of the 18 components has a README of one shape with ten parts: title, status line, What it is, Place among the 18, What ships in 2.9, Layout, Interfaces, Limits, Run and test and Related documents.
+- A README states what the tree ships. A point the page describes beyond the tree is worded as planned, for example the feed of stored shapes into Admit, the self-generation of policies and a recorded exhaustive model check.
+- Every section that left the root README has a new home: the hyperlattice, lattice channel, pulse, graph, UCB, GAP and CAW detail moved to the README of its component and the table of what was new in the release of May 2026 moved into the history of this file.
+- The data file `AEP-Components/component-map.json` places every folder under `AEP-Components` in exactly one of the 18 components or in the shared parts. Seventeen folders that had no README received one, `AEP-Policy-System` has a README and the main folder README files state their component.
+- `node aep-check.mjs` gains the section readme. It tests the 18 sections of the root README, every tree path written in a README, the ten parts of each component README, the folder map and that no README has a version label older than 2.9. `AEP_CHECK_ONLY=readme node aep-check.mjs` runs this section alone.
+
 ## [2.9.0] - 2026-11-13 - The AEP-CAW control API is closed to session processes and the shell entry and exec gate are repaired
 A command inside a session could post a new session to the control API on the loopback address and run commands in it. The new process was a child of the server, so the confinement of the first session did not reach it. With auth type none no credential stood in the way. With api_key the wrapped agent holds an agent key. One ampersand took a command line past the shell entry binary to the real shell.
 
@@ -182,7 +192,7 @@ The CAW kernel dock probe no longer sends a plain ping, which every dock refuses
 The rate.session wall no longer closes a session. Before this change every admitted write added one to a session counter that never reset, so a Base Node refused every write after 200 admits until it restarted. Admit no longer counts into that counter and the wall always opens. The per-second event rate that the pulse clears on every beat is the only rate limit. The wall row and snapshot fields remain so wall lists and older snapshots do not change. Verify with cargo test -p aep-envelope -p aep-base-node.
 
 ## [2.8.6] - 2026-09-27 - Base Node nine to ten
-Workspace no longer pins wasmtime. No wasm sandbox crate. Data Dock off loopback without DATA_DOCK_API_KEY now mints $AEP_DATA/keys/data-dock.http-key with mode 0600 on first boot and reuses it after that, while an env key still wins over the file and the log names only the file path. The base-node workflow gains a probe job that builds aep-base-node and checks the --health JSON. Verify with cargo test -p aep-base-node --lib.
+The workspace no longer pins wasmtime and has no wasm sandbox crate. Data Dock off loopback without DATA_DOCK_API_KEY now mints $AEP_DATA/keys/data-dock.http-key with mode 0600 on first boot and reuses it after that, while an env key still wins over the file and the log names only the file path. The base-node workflow gains a probe job that builds aep-base-node and checks the --health JSON. Verify with cargo test -p aep-base-node --lib.
 
 ## [2.8.6] - 2026-09-27 - Base Node ten of ten
 Data Dock on 8413 requires DATA_DOCK_API_KEY when it is not on loopback. It binds loopback by default even in Docker, answers 401 on a missing or wrong key and 429 over the DockDefence limits before any frame is built. Health status is one rollup used by aep-base-node --health with exit codes 0, 1 and 2 and by GET /health, where a closed ledger now reads as error. The official aep-base-node log lives in dock_log.rs with a closed set of event ids and redaction of keys and seal material. Drain aborts and counts late tasks, DockingRuntime remains five parts and Display API remains gone. Verify with cargo test -p aep-base-node --lib.
@@ -254,4 +264,3 @@ The 1.1 line adds protocol extension registries for workflow, API, event and IaC
 ## [1.0.0] - 2026-04-01
 
 Initial AEP protocol specification with a three-layer architecture of Structure Behaviour and Skin plus Z-band hierarchy and AOT and JIT validation modes.
-
