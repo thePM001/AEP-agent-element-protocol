@@ -136,183 +136,183 @@ node aep-check.mjs
 
 ## 01 / AEP Base Node
 
-**What it is.** The Base Node is the governance kernel of AEP. It runs on your own machine as one daemon and no action of an agent becomes live before it allows the action.
+**What it is:** The Base Node is the governance kernel of AEP. It runs on your own machine as one daemon and no action of an agent becomes live before it allows the action.
 
-**What ships in 2.9.** The daemon `aep-base-node` listens on four Unix socket docks named inference, validation, regulation and future. It verifies each sealed capsule, keeps it for one pulse, judges every wall in one pass, writes the runtime ledger and only then applies the action. The Data Dock serves admitted records as JSON on port 8413. The component registry, the Agent Control Hub and the Potomitan mesh crate live in the same folder. The Potomitan crate ships a packet plane with tests. The shipped daemon reads the mesh peer file and reports the mesh mode in its health answer. Mesh traffic from the daemon is planned. A multi base node mode exists as an optional experimental crate outside the default build.
+**What ships in 2.9:** The daemon `aep-base-node` listens on four Unix socket docks named inference, validation, regulation and future. It verifies each sealed capsule, keeps it for one pulse, judges every wall in one pass, writes the runtime ledger and only then applies the action. The Data Dock serves admitted records as JSON on port 8413. The component registry, the Agent Control Hub and the Potomitan mesh crate live in the same folder. The Potomitan crate ships a packet plane with tests. The shipped daemon reads the mesh peer file and reports the mesh mode in its health answer. Mesh traffic from the daemon is planned. A multi base node mode exists as an optional experimental crate outside the default build.
 
-**Where it lives.** [`AEP-Base-Node/`](AEP-Base-Node/) with the crate in `AEP-Base-Node/AEP-Crate/`, plus `AEP-Components/kernel-types/`, `AEP-Components/live-entry/`, `AEP-Components/one-live-evaluation/` and `AEP-Components/wall-set-backpressure/`.
+**Where it lives:** [`AEP-Base-Node/`](AEP-Base-Node/) with the crate in `AEP-Base-Node/AEP-Crate/`, plus `AEP-Components/kernel-types/`, `AEP-Components/live-entry/`, `AEP-Components/one-live-evaluation/` and `AEP-Components/wall-set-backpressure/`.
 
-**Run and test.** `cargo build --release -p aep-base-node`, `./rust/target/release/aep-base-node --self-test` and `cargo test -p aep-base-node --lib`. The component README has the detail: [`AEP-Base-Node/README.md`](AEP-Base-Node/README.md).
+**Run and test:** `cargo build --release -p aep-base-node`, `./rust/target/release/aep-base-node --self-test` and `cargo test -p aep-base-node --lib`. The component README has the detail: [`AEP-Base-Node/README.md`](AEP-Base-Node/README.md).
 
 ## 02 / UCB
 
-**What it is.** The Universal Connect Bridge (UCB) is the airlock for systems outside AEP, for example LangGraph, an MCP server, AutoGen, CrewAI or a custom HTTP agent. It lets such a system hand work to the Base Node without access to a dock socket.
+**What it is:** The Universal Connect Bridge (UCB) is the airlock for systems outside AEP, for example LangGraph, an MCP server, AutoGen, CrewAI or a custom HTTP agent. It lets such a system hand work to the Base Node without access to a dock socket.
 
-**What ships in 2.9.** The service `aep-ucb` listens on port 8412 with key authentication. Every ingest needs a task manifest, the written contract of the external agent. UCB invents none: without a manifest the ingest is refused. Each ingest check runs in a separate process confined by a seccomp filter. UCB also ships model delegation, rollback of the last journal record, an egress proxy bound to the manifest and an MCP adapter. Components of this tree talk to the Base Node docks directly, so UCB is optional and `UCB=0` turns it off. The page describes UCB as the foundation of the internal docking ports. In this tree the internal docks are Unix sockets of the Base Node and the shared foundation is planned.
+**What ships in 2.9:** The service `aep-ucb` listens on port 8412 with key authentication. Every ingest needs a task manifest, the written contract of the external agent. UCB invents none: without a manifest the ingest is refused. Each ingest check runs in a separate process confined by a seccomp filter. UCB also ships model delegation, rollback of the last journal record, an egress proxy bound to the manifest and an MCP adapter. Components of this tree talk to the Base Node docks directly, so UCB is optional and `UCB=0` turns it off. The page describes UCB as the foundation of the internal docking ports. In this tree the internal docks are Unix sockets of the Base Node and the shared foundation is planned.
 
-**Where it lives.** [`AEP-Base-Node/AEP-Docks/ucb/`](AEP-Base-Node/AEP-Docks/ucb/), the dock specs in `AEP-Base-Node/AEP-Docks/`, plus `AEP-Components/dock-line-reader/`, `AEP-Components/dock-post-beat-collect/`, `AEP-Components/dock-request-poison/` and `AEP-Components/egress-address/`.
+**Where it lives:** [`AEP-Base-Node/AEP-Docks/ucb/`](AEP-Base-Node/AEP-Docks/ucb/), the dock specs in `AEP-Base-Node/AEP-Docks/`, plus `AEP-Components/dock-line-reader/`, `AEP-Components/dock-post-beat-collect/`, `AEP-Components/dock-request-poison/` and `AEP-Components/egress-address/`.
 
-**Run and test.** `cargo build --release -p aep-ucb` and `cargo test -p aep-ucb`. The component README has the detail: [`AEP-Base-Node/AEP-Docks/ucb/README.md`](AEP-Base-Node/AEP-Docks/ucb/README.md).
+**Run and test:** `cargo build --release -p aep-ucb` and `cargo test -p aep-ucb`. The component README has the detail: [`AEP-Base-Node/AEP-Docks/ucb/README.md`](AEP-Base-Node/AEP-Docks/ucb/README.md).
 
 ## 03 / One Validation Envelope
 
-**What it is.** The envelope is the one container for everything the kernel checks about an action. All checks see the same frozen snapshot and run in a single pass, so no rule can depend on the order of another rule.
+**What it is:** The envelope is the one container for everything the kernel checks about an action. All checks see the same frozen snapshot and run in a single pass, so no rule can depend on the order of another rule.
 
-**What ships in 2.9.** The crate `aep-envelope` evaluates 15 walls for each action: membership and parents in the action lattice, agent permission, writing, scene, time, channel dock, session rate, the scanner result, three policy walls, covenant tools, causal sequence and the anomaly forecast. A missing scene, timestamp or sequence number closes a wall. The crate `aep-evaluation-chain` derives a record of 15 named rows from the same evaluation for a later reader.
+**What ships in 2.9:** The crate `aep-envelope` evaluates 15 walls for each action: membership and parents in the action lattice, agent permission, writing, scene, time, channel dock, session rate, the scanner result, three policy walls, covenant tools, causal sequence and the anomaly forecast. A missing scene, timestamp or sequence number closes a wall. The crate `aep-evaluation-chain` derives a record of 15 named rows from the same evaluation for a later reader.
 
-**Where it lives.** [`AEP-Components/envelope/`](AEP-Components/envelope/), plus `AEP-Components/envelope-walls/`, `AEP-Components/evaluation-chain/` and `AEP-Components/unbound-field-close/`.
+**Where it lives:** [`AEP-Components/envelope/`](AEP-Components/envelope/), plus `AEP-Components/envelope-walls/`, `AEP-Components/evaluation-chain/` and `AEP-Components/unbound-field-close/`.
 
-**Run and test.** `cargo test -p aep-envelope -p aep-evaluation-chain` and `npx vitest run AEP-Components/envelope`. The component README has the detail: [`AEP-Components/envelope/README.md`](AEP-Components/envelope/README.md).
+**Run and test:** `cargo test -p aep-envelope -p aep-evaluation-chain` and `npx vitest run AEP-Components/envelope`. The component README has the detail: [`AEP-Components/envelope/README.md`](AEP-Components/envelope/README.md).
 
 ## 04 / Admit Gate
 
-**What it is.** Admit is the judgement itself. It collects every wall of an action and closes the action when any wall is closed. It never stops at the first closed wall, so one answer lists every failed rule.
+**What it is:** Admit is the judgement itself. It collects every wall of an action and closes the action when any wall is closed. It never stops at the first closed wall, so one answer lists every failed rule.
 
-**What ships in 2.9.** The crate `aep-admit` contains the one collect-all function for every caller. The writing rules, the agent permissions written in GAP, the time bounds, the channel order, the window budgets and the policy files of `AEP-Policy-System/reference/` compile into walls of the same pass. Covenants are the permit, forbid and require rules of an agent. They belong to this component together with the data permission system. An empty action lattice closes the membership wall, so nothing passes without written rules.
+**What ships in 2.9:** The crate `aep-admit` contains the one collect-all function for every caller. The writing rules, the agent permissions written in GAP, the time bounds, the channel order, the window budgets and the policy files of `AEP-Policy-System/reference/` compile into walls of the same pass. Covenants are the permit, forbid and require rules of an agent. They belong to this component together with the data permission system. An empty action lattice closes the membership wall, so nothing passes without written rules.
 
-**Where it lives.** [`AEP-Components/admit/`](AEP-Components/admit/), plus `AEP-Components/admit-budget-window/`, `AEP-Components/admit-channel-order-walls/`, `AEP-Components/admit-live-dock/`, `AEP-Components/admit-temporal-bounds/`, `AEP-Components/admit-writing-walls/`, `AEP-Components/policy-system-admit/`, `AEP-Components/one-admit-id/`, `AEP-Components/covenant/` and `AEP-Components/permissions/`.
+**Where it lives:** [`AEP-Components/admit/`](AEP-Components/admit/), plus `AEP-Components/admit-budget-window/`, `AEP-Components/admit-channel-order-walls/`, `AEP-Components/admit-live-dock/`, `AEP-Components/admit-temporal-bounds/`, `AEP-Components/admit-writing-walls/`, `AEP-Components/policy-system-admit/`, `AEP-Components/one-admit-id/`, `AEP-Components/covenant/` and `AEP-Components/permissions/`.
 
-**Run and test.** `cargo test -p aep-admit -p aep-admit-live-dock` and `npx vitest run AEP-Components/admit`. The component README has the detail: [`AEP-Components/admit/README.md`](AEP-Components/admit/README.md).
+**Run and test:** `cargo test -p aep-admit -p aep-admit-live-dock` and `npx vitest run AEP-Components/admit`. The component README has the detail: [`AEP-Components/admit/README.md`](AEP-Components/admit/README.md).
 
 ## 05 / Graph Engine
 
-**What it is.** The Graph Engine is the workflow runner of AEP. It moves a run through the nodes of a workflow graph and saves a checkpoint after each node, so a stopped run resumes at the last checkpoint.
+**What it is:** The Graph Engine is the workflow runner of AEP. It moves a run through the nodes of a workflow graph and saves a checkpoint after each node, so a stopped run resumes at the last checkpoint.
 
-**What ships in 2.9.** `GraphEngine` in TypeScript with five node types: action, decision, wait, parallel and loop. A node starts only after the admit function of the engine allows it and an engine without such a function runs nothing. Loops are bounded, retries back off and a wait node can time out to an escalation. The engine owns no graph state and it does not replace the kernel check. Task decomposition, session state, the kill switch and the recovery engine belong to this component.
+**What ships in 2.9:** `GraphEngine` in TypeScript with five node types: action, decision, wait, parallel and loop. A node starts only after the admit function of the engine allows it and an engine without such a function runs nothing. Loops are bounded, retries back off and a wait node can time out to an escalation. The engine owns no graph state and it does not replace the kernel check. Task decomposition, session state, the kill switch and the recovery engine belong to this component.
 
-**Where it lives.** [`AEP-Components/graph-engine/`](AEP-Components/graph-engine/), plus `AEP-Components/graph-engine-admit-gate/`, `AEP-Components/decomposition/`, `AEP-Components/session/` and `AEP-Components/recovery/`.
+**Where it lives:** [`AEP-Components/graph-engine/`](AEP-Components/graph-engine/), plus `AEP-Components/graph-engine-admit-gate/`, `AEP-Components/decomposition/`, `AEP-Components/session/` and `AEP-Components/recovery/`.
 
-**Run and test.** `npx vitest run AEP-Components/graph-engine` and `cargo test -p aep-graph-engine-admit-gate`. The component README has the detail: [`AEP-Components/graph-engine/README.md`](AEP-Components/graph-engine/README.md).
+**Run and test:** `npx vitest run AEP-Components/graph-engine` and `cargo test -p aep-graph-engine-admit-gate`. The component README has the detail: [`AEP-Components/graph-engine/README.md`](AEP-Components/graph-engine/README.md).
 
 ## 06 / GAP
 
-**What it is.** GAP (Governed Agentic Programming) is the instruction language of AEP. Policies, agent profiles, sandbox profiles and task manifests are all written as GAP instructions and GAP is the only form the Admit Gate loads.
+**What it is:** GAP (Governed Agentic Programming) is the instruction language of AEP. Policies, agent profiles, sandbox profiles and task manifests are all written as GAP instructions and GAP is the only form the Admit Gate loads.
 
-**What ships in 2.9.** The GAP meta-schema in version 1.3 with six composition types: atomic, sequence, conditional, loop, parallel and abstraction. The tree ships reference policies, a compiler from GAP profiles to CAW sandbox settings, transpilers to OPA Rego and Cedar, a YAML policy importer, the Policy Builder and the Schema Builder. The schema has the fields for self-generation and the builders estimate rules from data. A runtime with self-generation of policies through LRT and MLE is planned.
+**What ships in 2.9:** The GAP meta-schema in version 1.3 with six composition types: atomic, sequence, conditional, loop, parallel and abstraction. The tree ships reference policies, a compiler from GAP profiles to CAW sandbox settings, transpilers to OPA Rego and Cedar, a YAML policy importer, the Policy Builder and the Schema Builder. The schema has the fields for self-generation and the builders estimate rules from data. A runtime with self-generation of policies through LRT and MLE is planned.
 
-**Where it lives.** [`AEP-Components/gap/`](AEP-Components/gap/) and [`AEP-Policy-System/`](AEP-Policy-System/), plus `AEP-Components/gap-schema-profile-v13/`, `AEP-Components/policy-engine/` and `AEP-Components/policy-leftover-skins/`.
+**Where it lives:** [`AEP-Components/gap/`](AEP-Components/gap/) and [`AEP-Policy-System/`](AEP-Policy-System/), plus `AEP-Components/gap-schema-profile-v13/`, `AEP-Components/policy-engine/` and `AEP-Components/policy-leftover-skins/`.
 
-**Run and test.** `node AEP-Components/gap/lib/gap-compile.mjs --list-profiles`, `npx vitest run AEP-Components/gap AEP-Components/policy-engine` and `cargo test -p gap-schema-profile-v13`. The component README has the detail: [`AEP-Components/gap/README.md`](AEP-Components/gap/README.md).
+**Run and test:** `node AEP-Components/gap/lib/gap-compile.mjs --list-profiles`, `npx vitest run AEP-Components/gap AEP-Components/policy-engine` and `cargo test -p gap-schema-profile-v13`. The component README has the detail: [`AEP-Components/gap/README.md`](AEP-Components/gap/README.md).
 
 ## 07 / dynAEP
 
-**What it is.** dynAEP (dynamic AEP) governs events at run time: which actions exist, what must happen before each action and how old an event may be. It serves use cases such as live interfaces, where events arrive all the time.
+**What it is:** dynAEP (dynamic AEP) governs events at run time: which actions exist, what must happen before each action and how old an event may be. It serves use cases such as live interfaces, where events arrive all the time.
 
-**What ships in 2.9.** The Action Lattice, the one live graph of actions with their parents and constraints, in TypeScript with a Rust crate beside it. Events pass time checks and causal order checks. Observers bring in webhook, SSE and poll events. The hyperlattice is the wrap around one governed system: scene, action paths, written policy, compliance modules and dock channels are nodes and edges of one graph and all of them must pass together. A wrap coverage report lists which parts of a deployment sit inside the wrap. The 1000 ms kernel wait belongs to the Base Node Pulse (10) and is no dynAEP setting.
+**What ships in 2.9:** The Action Lattice, the one live graph of actions with their parents and constraints, in TypeScript with a Rust crate beside it. Events pass time checks and causal order checks. Observers bring in webhook, SSE and poll events. The hyperlattice is the wrap around one governed system: scene, action paths, written policy, compliance modules and dock channels are nodes and edges of one graph and all of them must pass together. A wrap coverage report lists which parts of a deployment sit inside the wrap. The 1000 ms kernel wait belongs to the Base Node Pulse (10) and is no dynAEP setting.
 
-**Where it lives.** [`AEP-Components/dynAEP/`](AEP-Components/dynAEP/), plus `AEP-Components/hyperlattice/`, `AEP-Components/named-surfaces/` and `AEP-Components/wrap-coverage/`. The guide for a domain of your own is [`CUSTOM-SUBLATTICE.md`](AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md).
+**Where it lives:** [`AEP-Components/dynAEP/`](AEP-Components/dynAEP/), plus `AEP-Components/hyperlattice/`, `AEP-Components/named-surfaces/` and `AEP-Components/wrap-coverage/`. The guide for a domain of your own is [`CUSTOM-SUBLATTICE.md`](AEP-Components/hyperlattice/CUSTOM-SUBLATTICE.md).
 
-**Run and test.** `npx vitest run AEP-Components/dynAEP AEP-Components/hyperlattice` and `cargo test -p aep-dynaep`. The component README has the detail: [`AEP-Components/dynAEP/README.md`](AEP-Components/dynAEP/README.md).
+**Run and test:** `npx vitest run AEP-Components/dynAEP AEP-Components/hyperlattice` and `cargo test -p aep-dynaep`. The component README has the detail: [`AEP-Components/dynAEP/README.md`](AEP-Components/dynAEP/README.md).
 
 ## 08 / Lattice Channels
 
-**What it is.** Lattice Channels are the only transport of AEP. Every message to the Base Node travels as a sealed capsule with post-quantum encryption and a signature.
+**What it is:** Lattice Channels are the only transport of AEP. Every message to the Base Node travels as a sealed capsule with post-quantum encryption and a signature.
 
-**What ships in 2.9.** The crate `aep-lattice-channel` seals and opens capsules with ML-KEM-768 for the key exchange, AES-256-GCM for the content and ML-DSA-65 for the signature. A dock accepts sealed capsules only. A plain ping, event or register message is refused and logged as an attempt to bypass the seal. The same capsule bytes are never judged twice. JavaScript helpers seal capsules for clients and send outbound web requests of an agent through the Base Node.
+**What ships in 2.9:** The crate `aep-lattice-channel` seals and opens capsules with ML-KEM-768 for the key exchange, AES-256-GCM for the content and ML-DSA-65 for the signature. A dock accepts sealed capsules only. A plain ping, event or register message is refused and logged as an attempt to bypass the seal. The same capsule bytes are never judged twice. JavaScript helpers seal capsules for clients and send outbound web requests of an agent through the Base Node.
 
-**Where it lives.** [`AEP-Components/lattice-channels/`](AEP-Components/lattice-channels/), plus `AEP-Components/lattice-crypto/` and `AEP-Components/lattice-gated-fetch/`.
+**Where it lives:** [`AEP-Components/lattice-channels/`](AEP-Components/lattice-channels/), plus `AEP-Components/lattice-crypto/` and `AEP-Components/lattice-gated-fetch/`.
 
-**Run and test.** `cargo test -p aep-lattice-channel -p aep-lattice-crypto` and `npx vitest run AEP-Components/lattice-channels`. The component README has the detail: [`AEP-Components/lattice-channels/README.md`](AEP-Components/lattice-channels/README.md).
+**Run and test:** `cargo test -p aep-lattice-channel -p aep-lattice-crypto` and `npx vitest run AEP-Components/lattice-channels`. The component README has the detail: [`AEP-Components/lattice-channels/README.md`](AEP-Components/lattice-channels/README.md).
 
 ## 09 / Evidence Ledger
 
-**What it is.** The Evidence Ledger is the audit trail a frontend or a gateway writes for a session. Each entry includes the hash of the entry before it, so a later change to any entry breaks the chain.
+**What it is:** The Evidence Ledger is the audit trail a frontend or a gateway writes for a session. Each entry includes the hash of the entry before it, so a later change to any entry breaks the chain.
 
-**What ships in 2.9.** A SHA-256 hash chain with verification, Merkle trees with proofs for single entries, ML-DSA-65 signatures, a queue for external timestamps, an offline ledger with later sync and a rollback manager with compensation plans. Proof bundles pack a session for a third party and include the reliability index theta. An OpenTelemetry exporter ships with it. The runtime ledger of the kernel is the SQLite lattice log of the Base Node (01) and this component is a capability beside it.
+**What ships in 2.9:** A SHA-256 hash chain with verification, Merkle trees with proofs for single entries, ML-DSA-65 signatures, a queue for external timestamps, an offline ledger with later sync and a rollback manager with compensation plans. Proof bundles pack a session for a third party and include the reliability index theta. An OpenTelemetry exporter ships with it. The runtime ledger of the kernel is the SQLite lattice log of the Base Node (01) and this component is a capability beside it.
 
-**Where it lives.** [`AEP-Components/evidence-ledger/`](AEP-Components/evidence-ledger/), plus `AEP-Components/proof-bundle/` and `AEP-Components/telemetry/`.
+**Where it lives:** [`AEP-Components/evidence-ledger/`](AEP-Components/evidence-ledger/), plus `AEP-Components/proof-bundle/` and `AEP-Components/telemetry/`.
 
-**Run and test.** Run `npx vitest run AEP-Components/evidence-ledger AEP-Components/proof-bundle AEP-Components/telemetry` from the repository root. The component README has the detail: [`AEP-Components/evidence-ledger/README.md`](AEP-Components/evidence-ledger/README.md).
+**Run and test:** Run `npx vitest run AEP-Components/evidence-ledger AEP-Components/proof-bundle AEP-Components/telemetry` from the repository root. The component README has the detail: [`AEP-Components/evidence-ledger/README.md`](AEP-Components/evidence-ledger/README.md).
 
 ## 10 / Base Node Pulse
 
-**What it is.** The pulse is the fixed interval of the kernel. The Base Node freezes the clock when a capsule arrives, keeps the capsule for 1000 ms and then runs every check against the frozen time.
+**What it is:** The pulse is the fixed interval of the kernel. The Base Node freezes the clock when a capsule arrives, keeps the capsule for 1000 ms and then runs every check against the frozen time.
 
-**What ships in 2.9.** The crate `aep-base-node-pulse` with the compiled constants: a hold of 1000 ms, an allowed clock drift of 50 ms and a maximum age of 5000 ms. A timestamp ahead of the Base Node clock by more than the drift is refused. A timestamp older than the age is refused too. The queue has room for 256 capsules and one signer may fill at most half of it. The wait is no environment variable and no configuration key. A builder who wants another wait rebuilds the Base Node.
+**What ships in 2.9:** The crate `aep-base-node-pulse` with the compiled constants: a hold of 1000 ms, an allowed clock drift of 50 ms and a maximum age of 5000 ms. A timestamp ahead of the Base Node clock by more than the drift is refused. A timestamp older than the age is refused too. The queue has room for 256 capsules and one signer may fill at most half of it. The wait is no environment variable and no configuration key. A builder who wants another wait rebuilds the Base Node.
 
-**Where it lives.** The whole component lives in the one folder [`AEP-Components/base-node-pulse/`](AEP-Components/base-node-pulse/) and no other folder belongs to it.
+**Where it lives:** The whole component lives in the one folder [`AEP-Components/base-node-pulse/`](AEP-Components/base-node-pulse/) and no other folder belongs to it.
 
-**Run and test.** Run `cargo test -p aep-base-node-pulse` from the repository root. The component README has the detail: [`AEP-Components/base-node-pulse/README.md`](AEP-Components/base-node-pulse/README.md).
+**Run and test:** Run `cargo test -p aep-base-node-pulse` from the repository root. The component README has the detail: [`AEP-Components/base-node-pulse/README.md`](AEP-Components/base-node-pulse/README.md).
 
 ## 11 / CAWs
 
-**What it is.** CAWs (Containerized Agentic Workflows) are the sandboxes on the host in which an agent process runs. A CAW enforces the written policy on shell commands, files, network connections, processes and model traffic of the agent.
+**What it is:** CAWs (Containerized Agentic Workflows) are the sandboxes on the host in which an agent process runs. A CAW enforces the written policy on shell commands, files, network connections, processes and model traffic of the agent.
 
-**What ships in 2.9.** The Go program `aep-caw` with a server, a command line and a shell adapter. Sandbox profiles are written in GAP (06) and compiled on the host. Before a command starts, CAW asks the kernel dock of the Base Node and refuses the run when the dock is silent. The page places the sandbox inside a COSHELL runtime. This tree ships `aep-caw` as the runtime and a part with the COSHELL name is planned. The components for the record of a sealed process, the intercept proxy and the MCP security gateway belong to this component.
+**What ships in 2.9:** The Go program `aep-caw` with a server, a command line and a shell adapter. Sandbox profiles are written in GAP (06) and compiled on the host. Before a command starts, CAW asks the kernel dock of the Base Node and refuses the run when the dock is silent. The page places the sandbox inside a COSHELL runtime. This tree ships `aep-caw` as the runtime and a part with the COSHELL name is planned. The components for the record of a sealed process, the intercept proxy and the MCP security gateway belong to this component.
 
-**Where it lives.** [`AEP-CAW/`](AEP-CAW/), plus `AEP-Components/isolation/`, `AEP-Components/intercept/`, `AEP-Components/mcp-security/` and `AEP-Components/caw-cve-demo-trees/`.
+**Where it lives:** [`AEP-CAW/`](AEP-CAW/), plus `AEP-Components/isolation/`, `AEP-Components/intercept/`, `AEP-Components/mcp-security/` and `AEP-Components/caw-cve-demo-trees/`.
 
-**Run and test.** In `AEP-CAW/` with Go 1.26.11 and `GOTOOLCHAIN=local`: `make build` and `go test ./...`. The component README has the detail: [`AEP-CAW/README.md`](AEP-CAW/README.md).
+**Run and test:** In `AEP-CAW/` with Go 1.26.11 and `GOTOOLCHAIN=local`: `make build` and `go test ./...`. The component README has the detail: [`AEP-CAW/README.md`](AEP-CAW/README.md).
 
 ## 12 / Scanners
 
-**What it is.** The scanners read the content of a proposal or of a model answer and report findings such as a leaked secret or an injection attempt. Their result is one wall of the envelope (03).
+**What it is:** The scanners read the content of a proposal or of a model answer and report findings such as a leaked secret or an injection attempt. Their result is one wall of the envelope (03).
 
-**What ships in 2.9.** A pipeline of 13 scanners in TypeScript: personal data (PII), injection, prompt injection, supply chain, secrets, jailbreak, toxicity, URLs, data profile, predictions, brand, regulatory wording and temporal claims. A scanner error fails the pipeline and never counts as a clean result. One shared rule table feeds the scanners and the kernel. The page lists eleven threat vectors under partly different names and the README of the component maps both lists.
+**What ships in 2.9:** A pipeline of 13 scanners in TypeScript: personal data (PII), injection, prompt injection, supply chain, secrets, jailbreak, toxicity, URLs, data profile, predictions, brand, regulatory wording and temporal claims. A scanner error fails the pipeline and never counts as a clean result. One shared rule table feeds the scanners and the kernel. The page lists eleven threat vectors under partly different names and the README of the component maps both lists.
 
-**Where it lives.** The whole component lives in the one folder [`AEP-Components/scanners/`](AEP-Components/scanners/) and no other folder belongs to it.
+**Where it lives:** The whole component lives in the one folder [`AEP-Components/scanners/`](AEP-Components/scanners/) and no other folder belongs to it.
 
-**Run and test.** Run `npx vitest run AEP-Components/scanners` from the repository root. The component README has the detail: [`AEP-Components/scanners/README.md`](AEP-Components/scanners/README.md).
+**Run and test:** Run `npx vitest run AEP-Components/scanners` from the repository root. The component README has the detail: [`AEP-Components/scanners/README.md`](AEP-Components/scanners/README.md).
 
 ## 13 / AgentMesh
 
-**What it is.** AgentMesh gives each agent an identity issued on the local node. The Base Node and the docks use it to know which agent signed a capsule.
+**What it is:** AgentMesh gives each agent an identity issued on the local node. The Base Node and the docks use it to know which agent signed a capsule.
 
-**What ships in 2.9.** The crate `aep-agentmesh` issues X.509 workload certificates from a local certificate authority, writes `did:aep` identifier documents and builds the mTLS settings for Lattice Channel endpoints over TCP. Issuance is local: no external certificate authority and no attestation by other nodes takes part. The TypeScript identity manager adds Ed25519 keys with a challenge and response.
+**What ships in 2.9:** The crate `aep-agentmesh` issues X.509 workload certificates from a local certificate authority, writes `did:aep` identifier documents and builds the mTLS settings for Lattice Channel endpoints over TCP. Issuance is local: no external certificate authority and no attestation by other nodes takes part. The TypeScript identity manager adds Ed25519 keys with a challenge and response.
 
-**Where it lives.** [`AEP-Components/agentmesh/`](AEP-Components/agentmesh/), plus `AEP-Components/agentmesh-local-issuance/` and `AEP-Components/identity/`.
+**Where it lives:** [`AEP-Components/agentmesh/`](AEP-Components/agentmesh/), plus `AEP-Components/agentmesh-local-issuance/` and `AEP-Components/identity/`.
 
-**Run and test.** `cargo test -p aep-agentmesh -p aep-agentmesh-local-issuance` and `npx vitest run AEP-Components/identity`. The component README has the detail: [`AEP-Components/agentmesh/README.md`](AEP-Components/agentmesh/README.md).
+**Run and test:** `cargo test -p aep-agentmesh -p aep-agentmesh-local-issuance` and `npx vitest run AEP-Components/identity`. The component README has the detail: [`AEP-Components/agentmesh/README.md`](AEP-Components/agentmesh/README.md).
 
 ## 14 / Economics
 
-**What it is.** Economics is the cost control of AEP. It estimates the cost of a model call before the call, enforces budget caps and handles x402 payments, the payments an agent makes in answer to an HTTP 402 reply.
+**What it is:** Economics is the cost control of AEP. It estimates the cost of a model call before the call, enforces budget caps and handles x402 payments, the payments an agent makes in answer to an HTTP 402 reply.
 
-**What ships in 2.9.** A TypeScript library with a price catalog, a cost estimator, a budget enforcer with daily and monthly periods, a limiter for concurrent requests, provider selection by weight or latency, a fallback to a healthy provider and the x402 verify and settle flow. The Model Gateway (17) calls these hooks before and after each model call.
+**What ships in 2.9:** A TypeScript library with a price catalog, a cost estimator, a budget enforcer with daily and monthly periods, a limiter for concurrent requests, provider selection by weight or latency, a fallback to a healthy provider and the x402 verify and settle flow. The Model Gateway (17) calls these hooks before and after each model call.
 
-**Where it lives.** The whole component lives in the one folder [`AEP-Components/economics/`](AEP-Components/economics/) and no other folder belongs to it.
+**Where it lives:** The whole component lives in the one folder [`AEP-Components/economics/`](AEP-Components/economics/) and no other folder belongs to it.
 
-**Run and test.** Run `npx vitest run AEP-Components/economics` from the repository root. The component README has the detail: [`AEP-Components/economics/README.md`](AEP-Components/economics/README.md).
+**Run and test:** Run `npx vitest run AEP-Components/economics` from the repository root. The component README has the detail: [`AEP-Components/economics/README.md`](AEP-Components/economics/README.md).
 
 ## 15 / Lattice Memory
 
-**What it is.** Lattice Memory stores the shapes of judged proposals as vectors, called attractors, for audit, health telemetry and similarity search. A stored shape never replaces a check: a proposal similar to an earlier allow still passes the full Admit Gate (04).
+**What it is:** Lattice Memory stores the shapes of judged proposals as vectors, called attractors, for audit, health telemetry and similarity search. A stored shape never replaces a check: a proposal similar to an earlier allow still passes the full Admit Gate (04).
 
-**What ships in 2.9.** The crate `aep-lattice-memory` with two stores: sqlite-vec for durable vectors in the SQLite file of the Base Node and USearch for a fast index in memory. The command line program `aep-memory` records and searches entries. The Base Node reports the number of stored attractors in its health answer. The page describes stored shapes feeding the admit phase for lower cost over time. That feed is planned and in this tree no stored shape takes part in Admit.
+**What ships in 2.9:** The crate `aep-lattice-memory` with two stores: sqlite-vec for durable vectors in the SQLite file of the Base Node and USearch for a fast index in memory. The command line program `aep-memory` records and searches entries. The Base Node reports the number of stored attractors in its health answer. The page describes stored shapes feeding the admit phase for lower cost over time. That feed is planned and in this tree no stored shape takes part in Admit.
 
-**Where it lives.** The whole component lives in the one folder [`AEP-Components/lattice-memory/`](AEP-Components/lattice-memory/) and no other folder belongs to it.
+**Where it lives:** The whole component lives in the one folder [`AEP-Components/lattice-memory/`](AEP-Components/lattice-memory/) and no other folder belongs to it.
 
-**Run and test.** Run `cargo test -p aep-lattice-memory` from the repository root. The component README has the detail: [`AEP-Components/lattice-memory/README.md`](AEP-Components/lattice-memory/README.md).
+**Run and test:** Run `cargo test -p aep-lattice-memory` from the repository root. The component README has the detail: [`AEP-Components/lattice-memory/README.md`](AEP-Components/lattice-memory/README.md).
 
 ## 16 / Intent Ledger
 
-**What it is.** The Intent Ledger is the provenance record for code changes. A coding agent first declares what it intends to change and the ledger later links the commit to this declaration.
+**What it is:** The Intent Ledger is the provenance record for code changes. A coding agent first declares what it intends to change and the ledger later links the commit to this declaration.
 
-**What ships in 2.9.** An append-only file with a hash chain of solidify records, the records written when a declared change lands as a commit. A chain check, an explain view per intent and a similarity search over past intents through Lattice Memory (15) ship with it. The intent drift detector compares the actions of an agent with its baseline. The page describes commits verified through semantic topology. This tree links commits to intents by record and hash. The semantic verification is planned.
+**What ships in 2.9:** An append-only file with a hash chain of solidify records, the records written when a declared change lands as a commit. A chain check, an explain view per intent and a similarity search over past intents through Lattice Memory (15) ship with it. The intent drift detector compares the actions of an agent with its baseline. The page describes commits verified through semantic topology. This tree links commits to intents by record and hash. The semantic verification is planned.
 
-**Where it lives.** [`AEP-Components/intent-ledger/`](AEP-Components/intent-ledger/), plus `AEP-Components/intent/`.
+**Where it lives:** [`AEP-Components/intent-ledger/`](AEP-Components/intent-ledger/), plus `AEP-Components/intent/`.
 
-**Run and test.** Run `npx vitest run AEP-Components/intent-ledger AEP-Components/intent` from the repository root. The component README has the detail: [`AEP-Components/intent-ledger/README.md`](AEP-Components/intent-ledger/README.md).
+**Run and test:** Run `npx vitest run AEP-Components/intent-ledger AEP-Components/intent` from the repository root. The component README has the detail: [`AEP-Components/intent-ledger/README.md`](AEP-Components/intent-ledger/README.md).
 
 ## 17 / Model Gateway
 
-**What it is.** The Model Gateway is the one route for model calls. A call to any provider passes the policy first and the answer is checked while it streams.
+**What it is:** The Model Gateway is the one route for model calls. A call to any provider passes the policy first and the answer is checked while it streams.
 
-**What ships in 2.9.** `GovernedModelGateway` in TypeScript with adapters for Anthropic, OpenAI, Ollama and any endpoint with the OpenAI interface. The gateway evaluates the policy before the call, scans the output, writes to the Evidence Ledger (09) and can abort a stream on a violation. The hooks of Economics (14) add the budget check, the concurrency limit and the provider fallback.
+**What ships in 2.9:** `GovernedModelGateway` in TypeScript with adapters for Anthropic, OpenAI, Ollama and any endpoint with the OpenAI interface. The gateway evaluates the policy before the call, scans the output, writes to the Evidence Ledger (09) and can abort a stream on a violation. The hooks of Economics (14) add the budget check, the concurrency limit and the provider fallback.
 
-**Where it lives.** [`AEP-Components/model-gateway/`](AEP-Components/model-gateway/), plus `AEP-Components/streaming/`.
+**Where it lives:** [`AEP-Components/model-gateway/`](AEP-Components/model-gateway/), plus `AEP-Components/streaming/`.
 
-**Run and test.** Run `npx vitest run AEP-Components/model-gateway AEP-Components/streaming` from the repository root. The component README has the detail: [`AEP-Components/model-gateway/README.md`](AEP-Components/model-gateway/README.md).
+**Run and test:** Run `npx vitest run AEP-Components/model-gateway AEP-Components/streaming` from the repository root. The component README has the detail: [`AEP-Components/model-gateway/README.md`](AEP-Components/model-gateway/README.md).
 
 ## 18 / TLA+
 
-**What it is.** TLA+ is a language for formal models of a system. AEP writes the central kernel rules as TLA+ models, so a model checker can search every state of a rule for a violation.
+**What it is:** TLA+ is a language for formal models of a system. AEP writes the central kernel rules as TLA+ models, so a model checker can search every state of a rule for a violation.
 
-**What ships in 2.9.** Five models: AdmitConjunction, DockPulse, WrapComplete, TemporalBounds and LastApplied. The checker `aep-tla-verify` tests the shape of every model in each run. It runs the TLC model checker only when the profile `AEP_TLA_PROFILE` is `warn` or `strict` and TLC is installed. The public Docker image installs neither TLC nor Apalache. The page states proven safety, liveness and freedom from deadlock. This tree ships the models and the checker. It ships no stored result of an exhaustive model check and such a proof run is planned. The conformance battery and the handshake verification belong to this component.
+**What ships in 2.9:** Five models: AdmitConjunction, DockPulse, WrapComplete, TemporalBounds and LastApplied. The checker `aep-tla-verify` tests the shape of every model in each run. It runs the TLC model checker only when the profile `AEP_TLA_PROFILE` is `warn` or `strict` and TLC is installed. The public Docker image installs neither TLC nor Apalache. The page states proven safety, liveness and freedom from deadlock. This tree ships the models and the checker. It ships no stored result of an exhaustive model check and such a proof run is planned. The conformance battery and the handshake verification belong to this component.
 
-**Where it lives.** [`AEP-Components/tla/`](AEP-Components/tla/), plus `AEP-Components/verification/` and `AEP-Components/conformance/`.
+**Where it lives:** [`AEP-Components/tla/`](AEP-Components/tla/), plus `AEP-Components/verification/` and `AEP-Components/conformance/`.
 
-**Run and test.** `cargo test -p aep-tla-verify` and `./AEP-Components/conformance/runner/run.sh`. The component README has the detail: [`AEP-Components/tla/README.md`](AEP-Components/tla/README.md).
+**Run and test:** `cargo test -p aep-tla-verify` and `./AEP-Components/conformance/runner/run.sh`. The component README has the detail: [`AEP-Components/tla/README.md`](AEP-Components/tla/README.md).
 
 ## Shared parts
 
