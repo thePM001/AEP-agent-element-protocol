@@ -7,6 +7,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
+aep-caw-egress = { path = "../aep-caw-egress" }
 aep-caw-policy = { path = "../aep-caw-policy" }
 aep-isolation = { path = "../../AEP-Components/isolation/crate" }
 rustix = { version = "1", features = ["net"] }

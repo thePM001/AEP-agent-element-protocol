@@ -4,7 +4,10 @@
 //!
 //! Usage: caw-run-proof <runsc> <record.json> <project folder> <work folder> <command> [args]
 //!
-//! Prints one line per deny event, one AUDIT line and one RESULT line:
+//! The path of the init program comes from the variable CAW_PROOF_INIT.
+//!
+//! Prints one line per deny event, one line per other egress request, one AUDIT line
+//! and one RESULT line:
 //!
 //! ```text
 //! DENY kind=file-outside target=/home/agent/.ssh/id process=sh errno=2 rule=
@@ -20,7 +23,9 @@ use std::time::Duration;
 
 use aep_caw_policy::plan::Variables;
 use aep_caw_runtime::audit::verify;
-use aep_caw_runtime::session::{create, exec, CawConfig, GateRequest, KernelGate, Layout};
+use aep_caw_runtime::session::{
+    create, default_init, exec, CawConfig, GateRequest, KernelGate, Layout,
+};
 
 /// Admits every run. Only this proof tool uses it.
 struct ProofGate;
@@ -63,6 +68,7 @@ fn prove(args: &[String]) -> Result<i32, String> {
     let config = CawConfig {
         allowed_profiles: vec![profile.clone()],
         runsc: args[0].clone().into(),
+        init: std::env::var_os("CAW_PROOF_INIT").map_or_else(default_init, Into::into),
     };
     let home = std::env::var("CAW_PROOF_HOME").unwrap_or_else(|_| "/home/agent".to_string());
     let vars = Variables::new()
@@ -88,6 +94,22 @@ fn prove(args: &[String]) -> Result<i32, String> {
             event.errno,
             event.rule
         );
+    }
+    for event in &outcome.egress {
+        let target = format!("{}:{}", event.host, event.port);
+        match (&event.allowed, &event.refusal) {
+            (Some((route, address)), _) => {
+                println!("EGRESS allowed target={target} route={route} address={address}")
+            }
+            (None, Some(refusal)) if refusal.is_policy() => println!(
+                "DENY kind=egress target={target} process=- errno=0 rule={}",
+                refusal.name()
+            ),
+            (None, Some(refusal)) => {
+                println!("EGRESS failed target={target} reason={}", refusal.name())
+            }
+            (None, None) => {}
+        }
     }
     let audit = layout.session(&session.session_id).join("audit.log");
     match verify(&audit) {

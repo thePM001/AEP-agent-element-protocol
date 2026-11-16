@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Core acceptance of the CAW: what the policy allows passes with no deny event and
 # what it refuses fails inside the sandbox with exactly one deny event.
-# Usage: core-acceptance.sh <path to runsc> <path to caw-run-proof> <profile record> [path to aep-caw]
-# With the fourth argument the script also checks the aep-caw command: it creates a
-# session and its exec refuses with the rule kernel-dock-silent while the build has
-# no kernel dock client.
+# Usage: core-acceptance.sh <runsc> <caw-run-proof> <profile record> <aep-caw-init> [aep-caw] [egress record]
+# With aep-caw the script also checks the command: it creates a session and its exec
+# refuses with the rule kernel-dock-silent while the build has no kernel dock client.
+# With the egress record it also checks the egress proxy: a request with no route, an
+# address literal, a name with a loopback address and a connect past the proxy each
+# fail with exactly one deny event.
 # Runs as a user that is not root. A root caller is handed over to the user nobody.
 # Prints one line per check: CHECK <name> PASS|FAIL <detail>. Exit 0 only when every
 # check holds.
@@ -13,19 +15,24 @@ set -uo pipefail
 RUNSC="${1:?path to runsc}"
 PROOF="${2:?path to caw-run-proof}"
 RECORD="${3:?profile record}"
-CAW="${4:-}"
+INIT="${4:?path to aep-caw-init}"
+CAW="${5:-}"
+EGRESS_RECORD="${6:-}"
 
 if [ "$(id -u)" = 0 ]; then
   W="$(mktemp -d /var/tmp/caw-accept.XXXXXX)"
   cp "$0" "$W/core-acceptance.sh"
   cp "$PROOF" "$W/caw-run-proof"
   cp "$RECORD" "$W/record.json"
+  cp "$INIT" "$W/aep-caw-init"
   CAWCOPY=""
   if [ -n "$CAW" ]; then cp "$CAW" "$W/aep-caw"; CAWCOPY="$W/aep-caw"; fi
+  EGRESSCOPY=""
+  if [ -n "$EGRESS_RECORD" ]; then cp "$EGRESS_RECORD" "$W/egress-record.json"; EGRESSCOPY="$W/egress-record.json"; fi
   chown -R 65534:65534 "$W"
   setpriv --reuid=65534 --regid=65534 --clear-groups \
     env HOME="$W" CAW_ACCEPT_WORK="$W" PATH="$PATH" \
-    bash "$W/core-acceptance.sh" "$RUNSC" "$W/caw-run-proof" "$W/record.json" "$CAWCOPY"
+    bash "$W/core-acceptance.sh" "$RUNSC" "$W/caw-run-proof" "$W/record.json" "$W/aep-caw-init" "$CAWCOPY" "$EGRESSCOPY"
   code=$?
   rm -rf "$W"
   exit "$code"
@@ -44,6 +51,7 @@ cp /usr/bin/true "$W/outside/tool"
 chmod 0755 "$W/outside/tool"
 echo "hello" > "$P/readme.txt"
 export CAW_PROOF_HOME="$W/home"
+export CAW_PROOF_INIT="$INIT"
 
 FAILED=0
 N=0
@@ -60,8 +68,9 @@ check() {
   deny="$(grep -c '^DENY ' "$out")"
   kinds="$(grep '^DENY ' "$out" | sed 's/^DENY kind=\([a-z-]*\) .*/\1/' | sort -u | tr '\n' ' ')"
   complete="$(printf '%s' "$result" | sed -n 's/.* dropped=0 complete=true$/yes/p')"
-  # One line for the session, one start, one seal, one per deny event and one end.
-  audit="$(grep -c "^AUDIT lines=$((deny + 4)) chain=ok$" "$out")"
+  # One line for the session, one start, one seal, one end, one per deny event and
+  # one per other egress request.
+  audit="$(grep -c "^AUDIT lines=$((deny + 4 + $(grep -c '^EGRESS ' "$out"))) chain=ok$" "$out")"
   [ -n "$result" ] || problem="no result line"
   [ -n "$problem" ] || [ "$complete" = yes ] || problem="the trace stream lost points or did not end in order"
   [ -n "$problem" ] || [ "$code" = "$want_exit" ] || problem="exit $code, want $want_exit"
@@ -108,12 +117,30 @@ else
   echo "CHECK no-variable-of-the-caller PASS no variable of the caller reached the sandbox"
 fi
 
+if [ -n "$EGRESS_RECORD" ]; then
+  # The egress profile holds sh and curl and one route: plain HTTP to the name
+  # localhost on port 80. The checks need no network.
+  RECORD="$EGRESS_RECORD"
+  check egress-no-route 7 1 egress "status 403" \
+    sh -c "curl -sS -m 10 -o /dev/null -w 'status %{http_code}\\n' http://blocked.example.com/; exit 7"
+  check egress-address-literal 7 1 egress "rule=address-literal" \
+    sh -c "curl -sS -m 10 -o /dev/null http://169.254.169.254/latest/meta-data/; exit 7"
+  check egress-name-with-a-loopback-address 7 1 egress "rule=address" \
+    sh -c "curl -sS -m 10 -o /dev/null http://localhost/; exit 7"
+  check egress-tunnel-with-no-route 7 1 egress "target=blocked.example.com:443 " \
+    sh -c "curl -sS -m 10 -o /dev/null https://blocked.example.com/; exit 7"
+  check denied-connect-past-the-proxy 7 1 connect "target=192.0.2.1:80 " \
+    sh -c "curl -sS -m 10 --noproxy '*' -o /dev/null http://192.0.2.1/; exit 7"
+  check proxy-address-in-the-environment 0 0 - "HTTPS_PROXY=http://127.0.0.1:3128" \
+    env
+fi
+
 if [ -n "$CAW" ]; then
   D="$W/data"
   PROFILE="$(tr ',' '\n' < "$RECORD" | sed -n 's/^"profile_id":"\(.*\)"$/\1/p' | head -1)"
   mkdir -p "$D/caw-framework/profiles"
   cp "$RECORD" "$D/caw-framework/profiles/$PROFILE.json"
-  printf 'allowed_profiles = ["%s"]\nrunsc = "%s"\n' "$PROFILE" "$RUNSC" > "$D/caw-framework/caw.toml"
+  printf 'allowed_profiles = ["%s"]\nrunsc = "%s"\ninit = "%s"\n' "$PROFILE" "$RUNSC" "$INIT" > "$D/caw-framework/caw.toml"
   # cli <name> <want exit> <want text in output> <arguments of aep-caw...>
   cli() {
     local name="$1" want_exit="$2" want_text="$3"

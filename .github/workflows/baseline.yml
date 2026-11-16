@@ -124,7 +124,7 @@ jobs:
       - name: build the proof programs
         run: |
           cargo build -p aep-caw-runtime --examples
-          cargo build -p aep-caw
+          cargo build -p aep-caw -p aep-caw-init
       - name: gVisor facts and trace events as the runner user
         run: |
           . AEP-CAWs-RustGvisor/proof/runsc-pin.env
@@ -132,7 +132,7 @@ jobs:
       - name: core acceptance as the runner user
         run: |
           . AEP-CAWs-RustGvisor/proof/runsc-pin.env
-          bash AEP-CAWs-RustGvisor/proof/core-acceptance.sh "$RUNSC_BIN" "${CARGO_TARGET_DIR:-rust/target}/debug/examples/caw-run-proof" AEP-CAWs-RustGvisor/aep-caw-policy/tests/fixtures/restricted.json "${CARGO_TARGET_DIR:-rust/target}/debug/aep-caw"
+          bash AEP-CAWs-RustGvisor/proof/core-acceptance.sh "$RUNSC_BIN" "${CARGO_TARGET_DIR:-rust/target}/debug/examples/caw-run-proof" AEP-CAWs-RustGvisor/aep-caw-policy/tests/fixtures/restricted.json "${CARGO_TARGET_DIR:-rust/target}/debug/aep-caw-init" "${CARGO_TARGET_DIR:-rust/target}/debug/aep-caw" AEP-CAWs-RustGvisor/proof/fixtures/egress-proof.json
 
   format:
     name: format

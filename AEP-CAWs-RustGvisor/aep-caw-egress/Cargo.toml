@@ -1,0 +1,15 @@
+[package]
+name = "aep-caw-egress"
+description = "Egress proxy of the CAW: one Unix socket per command, every request judged against the routes of the sandbox plan and dialed only to a checked address."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+aep-caw-policy = { path = "../aep-caw-policy" }
+aep-egress-address = { path = "../../AEP-Components/egress-address/crate" }
+thiserror.workspace = true
+
+[lints]
+workspace = true

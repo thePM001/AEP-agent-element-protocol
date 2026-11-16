@@ -173,6 +173,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "aep-caw-egress"
+version = "2.9.0"
+dependencies = [
+ "aep-caw-policy",
+ "aep-egress-address",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "aep-caw-init"
+version = "2.9.0"
+dependencies = [
+ "rustix",
+]
+
+[[package]]
 name = "aep-caw-policy"
 version = "2.9.0"
 dependencies = [
@@ -187,6 +203,7 @@ dependencies = [
 name = "aep-caw-runtime"
 version = "2.9.0"
 dependencies = [
+ "aep-caw-egress",
  "aep-caw-policy",
  "aep-isolation",
  "rustix",

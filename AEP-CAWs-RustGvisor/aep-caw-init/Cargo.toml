@@ -1,0 +1,17 @@
+[package]
+name = "aep-caw-init"
+description = "Process 1 of every CAW sandbox: relays the loopback proxy port to the egress socket, starts the command and reaps children."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "aep-caw-init"
+path = "src/main.rs"
+
+[dependencies]
+rustix = { version = "1", features = ["process"] }
+
+[lints]
+workspace = true

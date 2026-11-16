@@ -24,8 +24,9 @@ use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use aep_caw_egress::{EgressEvent, EgressProxy, ProxyConfig};
 use aep_caw_policy::canonical::{canonical_json, digest_without_field};
-use aep_caw_policy::plan::{compile, plan_digest, SandboxPlan, Variables};
+use aep_caw_policy::plan::{compile, plan_digest, PlanProgram, SandboxPlan, Variables};
 use aep_caw_policy::record::parse_record;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -36,7 +37,7 @@ use aep_isolation::{seal_process, IsolationSpec};
 use crate::audit::AuditLog;
 use crate::bundle::Limits;
 use crate::rootfs::{build_root, resolve_root, verify_root, RootImage, DEFAULT_LIBRARY_DIRS};
-use crate::sandbox::{run, RunInput, RunOutcome};
+use crate::sandbox::{run, short_private_dir, RunInput, RunOutcome};
 
 /// The rule a refusal carries when the kernel gate did not admit the run.
 pub const RULE_KERNEL_DOCK_SILENT: &str = "kernel-dock-silent";
@@ -47,6 +48,13 @@ pub const EXIT_ENFORCER_INCOMPLETE: i32 = 125;
 
 /// Name of the sandbox runtime in a seal record.
 pub const RUNTIME_NAME: &str = "gvisor-systrap";
+
+/// Path of the init program inside every sandbox.
+pub const INIT_PATH: &str = "/usr/bin/aep-caw-init";
+/// Port of the relay on the loopback device of a sandbox.
+pub const RELAY_PORT: u16 = 3128;
+/// Path of the egress socket inside a sandbox.
+pub const EGRESS_SOCKET: &str = "/run/caw/egress.sock";
 
 /// The pin file of gVisor, read at build time.
 const RUNSC_PIN: &str = include_str!("../../proof/runsc-pin.env");
@@ -106,6 +114,9 @@ pub enum SessionError {
         /// The digest found.
         found: String,
     },
+    /// The egress proxy cannot serve its socket.
+    #[error("the egress proxy did not start: {0}")]
+    Egress(String),
     /// The kernel gate did not admit the run.
     #[error("refused by the rule {RULE_KERNEL_DOCK_SILENT}: {0}")]
     KernelDockSilent(String),
@@ -123,6 +134,17 @@ pub struct CawConfig {
     pub allowed_profiles: Vec<String>,
     /// Path of the runsc program.
     pub runsc: PathBuf,
+    /// Path of the program aep-caw-init on the host. It becomes process 1 of
+    /// every sandbox.
+    pub init: PathBuf,
+}
+
+/// The init program next to the running program, the place a release puts it.
+pub fn default_init() -> PathBuf {
+    std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|dir| dir.join("aep-caw-init")))
+        .unwrap_or_else(|| PathBuf::from(INIT_PATH))
 }
 
 fn quoted(text: &str) -> Option<&str> {
@@ -130,11 +152,12 @@ fn quoted(text: &str) -> Option<&str> {
     (!inner.contains(['"', '\\'])).then_some(inner)
 }
 
-/// Reads `caw.toml`. The file knows two keys, each on one line:
+/// Reads `caw.toml`. The file knows three keys, each on one line:
 ///
 /// ```text
 /// allowed_profiles = ["restricted", "coding-agent"]
 /// runsc = "/usr/bin/runsc"
+/// init = "/usr/libexec/aep-caw-init"
 /// ```
 ///
 /// A line that starts with `#` is a comment. Any other content is refused, so a
@@ -142,6 +165,7 @@ fn quoted(text: &str) -> Option<&str> {
 pub fn parse_config(text: &str) -> Result<CawConfig, SessionError> {
     let mut allowed: Option<Vec<String>> = None;
     let mut runsc: Option<PathBuf> = None;
+    let mut init: Option<PathBuf> = None;
     for (i, raw) in text.lines().enumerate() {
         let bad = |reason| SessionError::Config {
             line: i + 1,
@@ -188,6 +212,16 @@ pub fn parse_config(text: &str) -> Result<CawConfig, SessionError> {
                 }
                 runsc = Some(PathBuf::from(path));
             }
+            "init" => {
+                if init.is_some() {
+                    return Err(bad("init is set twice"));
+                }
+                let path = quoted(value).ok_or_else(|| bad("init must be a quoted text"))?;
+                if !path.starts_with('/') {
+                    return Err(bad("init must be an absolute path"));
+                }
+                init = Some(PathBuf::from(path));
+            }
             _ => return Err(bad("unknown key")),
         }
     }
@@ -195,6 +229,7 @@ pub fn parse_config(text: &str) -> Result<CawConfig, SessionError> {
         allowed_profiles: allowed.unwrap_or_default(),
         runsc: runsc
             .unwrap_or_else(|| PathBuf::from(pin_value("RUNSC_BIN").unwrap_or("/usr/bin/runsc"))),
+        init: init.unwrap_or_else(default_init),
     })
 }
 
@@ -369,7 +404,14 @@ pub fn create(
     let workspace = workspace.to_string_lossy().into_owned();
     let variables = variables.clone().with("PROJECT_ROOT", &workspace);
     let plan = compile(&record, &variables)?;
-    let root = resolve_root(&plan.programs, &DEFAULT_LIBRARY_DIRS)?;
+    // The init program is part of every root, whatever the toolset holds.
+    let mut programs = plan.programs.clone();
+    programs.push(PlanProgram {
+        name: "aep-caw-init".to_string(),
+        source: config.init.to_string_lossy().into_owned(),
+        path: INIT_PATH.to_string(),
+    });
+    let root = resolve_root(&programs, &DEFAULT_LIBRARY_DIRS)?;
 
     let session_id = random_id()?;
     let dir = layout.session(&session_id);
@@ -465,6 +507,8 @@ pub struct ExecOutcome {
     pub deny_count: usize,
     /// What the sandbox reported.
     pub run: RunOutcome,
+    /// What the egress proxy saw, one entry per request.
+    pub egress: Vec<EgressEvent>,
 }
 
 /// Runs one command in a session. This is the only function that starts a sandbox.
@@ -543,16 +587,52 @@ pub fn exec(
             .map(|_| ())
             .map_err(|e| e.to_string())
     };
+    // Process 1 is the init program. With a route in the plan it also relays the
+    // loopback proxy port to the egress socket and the proxy serves that socket.
+    let mut sandbox_args = vec![INIT_PATH.to_string()];
+    let mut extra_env: Vec<(String, String)> = Vec::new();
+    let mut proxy: Option<(EgressProxy, PathBuf)> = None;
+    if !session.plan.routes.is_empty() {
+        let egress_dir = short_private_dir()?;
+        let started = EgressProxy::start(
+            &egress_dir.join("egress.sock"),
+            ProxyConfig::new(session.plan.routes.clone()),
+        );
+        match started {
+            Ok(running) => proxy = Some((running, egress_dir)),
+            Err(err) => {
+                let _ = fs::remove_dir_all(&egress_dir);
+                let _ = fs::remove_dir_all(&work);
+                let mut log = audit.into_inner();
+                log.append(
+                    now_unix_ms(),
+                    &json!({"kind": "end", "session": session_id, "command": command_id, "error": err.to_string()}),
+                )?;
+                return Err(SessionError::Egress(err.to_string()));
+            }
+        }
+        sandbox_args.extend([
+            "--relay".to_string(),
+            RELAY_PORT.to_string(),
+            EGRESS_SOCKET.to_string(),
+        ]);
+        let address = format!("http://127.0.0.1:{RELAY_PORT}");
+        for name in ["HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"] {
+            extra_env.push((name.to_string(), address.clone()));
+        }
+    }
+    sandbox_args.push("--".to_string());
+    sandbox_args.extend(args.iter().cloned());
     let result = run(
         &session.plan,
         &RunInput {
             runsc: &config.runsc,
             root: &root,
             work: &work,
-            args,
+            args: &sandbox_args,
             cwd: &session.workspace,
-            egress_dir: None,
-            extra_env: &[],
+            egress_dir: proxy.as_ref().map(|(_, dir)| dir.as_path()),
+            extra_env: &extra_env,
             limits: Limits::default(),
             time_limit,
             on_started: Some(&seal),
@@ -560,6 +640,14 @@ pub fn exec(
     );
     let mut audit = audit.into_inner();
     let _ = fs::remove_dir_all(&work);
+    let egress = match proxy {
+        Some((running, egress_dir)) => {
+            let events = running.finish();
+            let _ = fs::remove_dir_all(&egress_dir);
+            events
+        }
+        None => Vec::new(),
+    };
     let run = match result {
         Ok(run) => run,
         Err(err) => {
@@ -586,6 +674,28 @@ pub fn exec(
             }),
         )?;
     }
+    let mut egress_denied = 0usize;
+    for event in &egress {
+        let refused_by_policy = event.refusal.as_ref().is_some_and(|r| r.is_policy());
+        if refused_by_policy {
+            egress_denied += 1;
+        }
+        audit.append(
+            now_unix_ms(),
+            &json!({
+                "kind": if refused_by_policy { "deny" } else { "egress" },
+                "session": session_id,
+                "command": command_id,
+                "deny": if refused_by_policy { "egress" } else { "" },
+                "scheme": event.scheme,
+                "target": format!("{}:{}", event.host, event.port),
+                "route": event.allowed.as_ref().map(|(route, _)| route.clone()),
+                "address": event.allowed.as_ref().map(|(_, address)| address.to_string()),
+                "refusal": event.refusal.as_ref().map(|r| r.name()),
+            }),
+        )?;
+    }
+    let deny_count = run.deny_events.len() + egress_denied;
     let enforcer_complete = run.trace_complete && run.trace_dropped == 0;
     let exit_code = if enforcer_complete {
         run.exit_code
@@ -601,7 +711,7 @@ pub fn exec(
             "exit_code": exit_code,
             "command_exit_code": run.exit_code,
             "timed_out": run.timed_out,
-            "deny_count": run.deny_events.len(),
+            "deny_count": deny_count,
             "trace_points": run.trace_points,
             "trace_dropped": run.trace_dropped,
             "trace_complete": run.trace_complete,
@@ -609,8 +719,9 @@ pub fn exec(
     )?;
     Ok(ExecOutcome {
         exit_code,
-        deny_count: run.deny_events.len(),
+        deny_count,
         run,
+        egress,
     })
 }
 
@@ -685,13 +796,14 @@ mod tests {
         let config = CawConfig {
             allowed_profiles: vec!["test".to_string()],
             runsc: base.join("no-runsc"),
+            init: tool.clone(),
         };
         (base, layout, config, workspace)
     }
 
     #[test]
     fn the_configuration_knows_two_keys_and_refuses_the_rest() {
-        let config = parse_config("# CAW settings\nallowed_profiles = [\"restricted\", \"coding-agent\"]\nrunsc = \"/opt/gvisor/runsc\"\n")
+        let config = parse_config("# CAW settings\nallowed_profiles = [\"restricted\", \"coding-agent\"]\nrunsc = \"/opt/gvisor/runsc\"\ninit = \"/opt/caw/aep-caw-init\"\n")
             .expect("parses");
         assert_eq!(
             config.allowed_profiles,
@@ -709,6 +821,8 @@ mod tests {
             "runsc = runsc",
             "runsc = \"bin/runsc\"",
             "runsc = \"/a\"\nrunsc = \"/b\"",
+            "init = \"relative/init\"",
+            "init = \"/a\"\ninit = \"/b\"",
             "just a line",
             "[section]",
         ] {
@@ -733,7 +847,8 @@ mod tests {
         assert_eq!(session.session_id.len(), 32);
         assert_eq!(session.plan.profile_id, "test");
         assert_eq!(session.workspace, workspace.to_string_lossy());
-        assert_eq!(session.root.files.len(), 1);
+        assert_eq!(session.root.files.len(), 2);
+        assert!(session.root.files.iter().any(|f| f.path == INIT_PATH));
         let dir = layout.session(&session.session_id);
         assert!(dir.join("rootfs/usr/bin/tool").is_file());
         assert!(dir

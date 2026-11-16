@@ -132,7 +132,7 @@ fn private_dir(path: &Path) -> Result<(), RunError> {
 ///
 /// The name comes from the random source of the kernel and the folder must not
 /// exist yet, so no other user can prepare it.
-fn short_private_dir() -> Result<PathBuf, RunError> {
+pub(crate) fn short_private_dir() -> Result<PathBuf, RunError> {
     use std::io::Read;
     let source = Path::new("/dev/urandom");
     let mut bytes = [0u8; 8];
