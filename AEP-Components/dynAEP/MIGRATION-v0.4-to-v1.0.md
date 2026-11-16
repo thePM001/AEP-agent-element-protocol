@@ -330,7 +330,7 @@ machine-readable inventory of the protocol stack for tooling and auditing.
 
 ```bash
 # Check your current config
-cd /root/dynAEP
+cd path/to/dynAEP
 cat dynaep-config.yaml | head -5
 # Expected: dynaep_version: "0.4"
 
@@ -637,7 +637,7 @@ await adapter.start();
 **Step 14: Run the test suite**
 
 ```bash
-cd /root/dynAEP
+cd path/to/dynAEP
 python3 -m pytest sdk/python/tests/ -v 2>&1 | tail -20
 ```
 
@@ -830,7 +830,7 @@ If you need to revert to v0.4, follow these steps:
 ### 6.1 Rollback via Backup
 
 ```bash
-cd /root/dynAEP
+cd path/to/dynAEP
 
 # Restore config
 cp dynaep-config.yaml.v0.4-backup dynaep-config.yaml
@@ -852,7 +852,7 @@ grep dynaep_version dynaep-config.yaml
 ### 6.2 Rollback via Git
 
 ```bash
-cd /root/dynAEP
+cd path/to/dynAEP
 git checkout 46da843 -- dynaep-config.yaml registries/ policies/
 ```
 
