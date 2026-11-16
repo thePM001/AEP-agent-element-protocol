@@ -179,7 +179,11 @@ dependencies = [
 name = "aep-caw-runtime"
 version = "2.9.0"
 dependencies = [
+ "aep-caw-policy",
  "rustix",
+ "serde",
+ "serde_json",
+ "sha2",
  "thiserror 2.0.21",
 ]
 

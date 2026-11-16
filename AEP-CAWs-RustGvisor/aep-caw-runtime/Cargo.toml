@@ -1,13 +1,17 @@
 [package]
 name = "aep-caw-runtime"
-description = "Runtime of the CAW: runs one agent command in one gVisor sandbox. This first part holds the listener for the gVisor trace sink."
+description = "Runtime of the CAW: runs one agent command in one gVisor sandbox. Holds the trace listener, the reader of program needs and the audit log."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish = false
 
 [dependencies]
+aep-caw-policy = { path = "../aep-caw-policy" }
 rustix = { version = "1", features = ["net"] }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
 thiserror.workspace = true
 
 [lints]

@@ -111,7 +111,7 @@ jobs:
           AEP-Components/gap/policies/reference
 
   caw-gvisor:
-    name: CAW on gVisor, facts with the pinned runsc and no root
+    name: CAW on gVisor, facts and core acceptance with the pinned runsc and no root
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -121,12 +121,16 @@ jobs:
         run: sudo bash AEP-CAWs-RustGvisor/proof/install-runsc.sh
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      - name: build the trace listener
-        run: cargo build -p aep-caw-runtime --example caw-trace-proof
+      - name: build the proof programs
+        run: cargo build -p aep-caw-runtime --examples
       - name: gVisor facts and trace events as the runner user
         run: |
           . AEP-CAWs-RustGvisor/proof/runsc-pin.env
           bash AEP-CAWs-RustGvisor/proof/gvisor-facts.sh "$RUNSC_BIN" "${CARGO_TARGET_DIR:-rust/target}/debug/examples/caw-trace-proof"
+      - name: core acceptance as the runner user
+        run: |
+          . AEP-CAWs-RustGvisor/proof/runsc-pin.env
+          bash AEP-CAWs-RustGvisor/proof/core-acceptance.sh "$RUNSC_BIN" "${CARGO_TARGET_DIR:-rust/target}/debug/examples/caw-run-proof" AEP-CAWs-RustGvisor/aep-caw-policy/tests/fixtures/restricted.json
 
   format:
     name: format

@@ -32,6 +32,13 @@ doc = false
 bench = false
 
 [[bin]]
+name = "read_elf_needs"
+path = "fuzz_targets/read_elf_needs.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "decode_trace_packet"
 path = "fuzz_targets/decode_trace_packet.rs"
 test = false
