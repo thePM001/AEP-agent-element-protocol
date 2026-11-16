@@ -188,6 +188,7 @@ name = "aep-caw-runtime"
 version = "2.9.0"
 dependencies = [
  "aep-caw-policy",
+ "aep-isolation",
  "rustix",
  "serde",
  "serde_json",
@@ -329,6 +330,7 @@ version = "2.9.0"
 dependencies = [
  "aep-kernel-types",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

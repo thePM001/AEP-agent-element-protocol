@@ -28,6 +28,14 @@ is a record and not confinement.
 | `seal_holds` | True only for the same process and the same specification |
 | `seal_once` | One seal per process, so a caller cannot widen a live seal |
 
+## Binding a seal to a sandbox plan
+
+A specification carries two optional fields. `runtime` is the name of the sandbox
+runtime. `plan_digest` is the sha256 digest of the sandbox plan. Both are empty
+or both are set. `IsolationSpec::for_sandbox` sets them. A seal over such a
+specification holds only for the process that runs under exactly that plan in that
+runtime. A specification with neither field has the digest it always had.
+
 ## Tests
 
 `cargo test -p aep-isolation` runs the seal record tests in `crate/src/lib.rs`

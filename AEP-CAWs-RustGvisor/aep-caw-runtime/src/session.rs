@@ -11,7 +11,9 @@
 //! 4. Ask the kernel gate. A silent or refusing gate ends the run with the rule
 //!    `kernel-dock-silent`.
 //! 5. Append the start event to the audit log and sync it.
-//! 6. Start the sandbox.
+//! 6. Start the sandbox and append its seal record: the process id bound to the
+//!    runtime and to the digest of the plan. A seal that cannot be stored ends the
+//!    sandbox at once.
 //!
 //! After the command the gate appends one event per deny event and the end event,
 //! removes the folder of the command and returns the exit code.
@@ -29,6 +31,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha512};
 
+use aep_isolation::{seal_process, IsolationSpec};
+
 use crate::audit::AuditLog;
 use crate::bundle::Limits;
 use crate::rootfs::{build_root, resolve_root, verify_root, RootImage, DEFAULT_LIBRARY_DIRS};
@@ -40,6 +44,9 @@ pub const RULE_KERNEL_DOCK_SILENT: &str = "kernel-dock-silent";
 pub const EXIT_REFUSED: i32 = 126;
 /// Exit code of a run whose trace stream was not complete.
 pub const EXIT_ENFORCER_INCOMPLETE: i32 = 125;
+
+/// Name of the sandbox runtime in a seal record.
+pub const RUNTIME_NAME: &str = "gvisor-systrap";
 
 /// The pin file of gVisor, read at build time.
 const RUNSC_PIN: &str = include_str!("../../proof/runsc-pin.env");
@@ -512,6 +519,30 @@ pub fn exec(
 
     let work = dir.join("commands").join(&command_id);
     private_dir(&work)?;
+    let audit = std::cell::RefCell::new(audit);
+    let seal = |pid: u32| -> Result<(), String> {
+        let spec = IsolationSpec::for_sandbox(RUNTIME_NAME, &session.plan.digest);
+        let now = now_unix_ms();
+        let sealed = seal_process(pid, &spec, i64::try_from(now).unwrap_or(i64::MAX))?;
+        audit
+            .borrow_mut()
+            .append(
+                now,
+                &json!({
+                    "kind": "seal",
+                    "session": session_id,
+                    "command": command_id,
+                    "pid": sealed.pid,
+                    "seal": sealed.seal,
+                    "algorithm": sealed.algorithm,
+                    "spec_digest": sealed.spec_digest,
+                    "runtime": RUNTIME_NAME,
+                    "plan_digest": session.plan.digest,
+                }),
+            )
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    };
     let result = run(
         &session.plan,
         &RunInput {
@@ -524,8 +555,10 @@ pub fn exec(
             extra_env: &[],
             limits: Limits::default(),
             time_limit,
+            on_started: Some(&seal),
         },
     );
+    let mut audit = audit.into_inner();
     let _ = fs::remove_dir_all(&work);
     let run = match result {
         Ok(run) => run,

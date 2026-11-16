@@ -32,6 +32,14 @@ pub struct IsolationSpec {
     pub seccomp_profile: String,
     pub landlock_ruleset: String,
     pub network_egress_deny: bool,
+    /// Name of the sandbox runtime that confines the process, such as
+    /// `gvisor-systrap`. Empty when no sandbox plan is bound.
+    #[serde(default)]
+    pub runtime: String,
+    /// Digest of the sandbox plan the process runs under, in the form
+    /// `sha256:<hex>`. Empty when no sandbox plan is bound.
+    #[serde(default)]
+    pub plan_digest: String,
 }
 
 impl Default for IsolationSpec {
@@ -44,11 +52,25 @@ impl Default for IsolationSpec {
             seccomp_profile: String::from("default"),
             landlock_ruleset: String::from("read-only-data"),
             network_egress_deny: true,
+            runtime: String::new(),
+            plan_digest: String::new(),
         }
     }
 }
 
 impl IsolationSpec {
+    /// A specification bound to one sandbox plan. A seal over it holds only for
+    /// the process that runs under exactly that plan in that runtime.
+    pub fn for_sandbox(runtime: &str, plan_digest: &str) -> Self {
+        Self {
+            seccomp_profile: String::from(runtime),
+            landlock_ruleset: String::from(runtime),
+            runtime: String::from(runtime),
+            plan_digest: String::from(plan_digest),
+            ..Self::default()
+        }
+    }
+
     /// One canonical line per field, in a fixed order, so the digest is stable.
     pub fn canonical(&self) -> String {
         let mut out = String::new();
@@ -77,6 +99,16 @@ impl IsolationSpec {
             "false"
         });
         out.push('\n');
+        // The two sandbox fields are written only when a plan is bound, so the
+        // digest of a specification without a plan is the one it always had.
+        if !self.runtime.is_empty() || !self.plan_digest.is_empty() {
+            out.push_str("runtime=");
+            out.push_str(&self.runtime);
+            out.push('\n');
+            out.push_str("plan_digest=");
+            out.push_str(&self.plan_digest);
+            out.push('\n');
+        }
         out
     }
 
@@ -98,6 +130,24 @@ impl IsolationSpec {
         }
         if self.address_space_bytes == 0 {
             return Err(String::from("isolation needs an address space bound"));
+        }
+        if self.runtime.is_empty() != self.plan_digest.is_empty() {
+            return Err(String::from(
+                "a sandbox seal needs the runtime and the plan digest together",
+            ));
+        }
+        if !self.runtime.is_empty() {
+            let plain = |text: &str| !text.contains(['\n', '\r', '\u{1f}']);
+            let hex = self.plan_digest.strip_prefix("sha256:").unwrap_or("");
+            let digest_ok = hex.len() == 64
+                && hex
+                    .bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b));
+            if !plain(&self.runtime) || !digest_ok {
+                return Err(String::from(
+                    "a sandbox seal needs a plain runtime name and a sha256 plan digest",
+                ));
+            }
         }
         Ok(())
     }
@@ -204,6 +254,63 @@ mod tests {
         };
         assert!(seal_process(7, &empty, 1).is_err());
         assert!(seal_process(0, &IsolationSpec::default(), 1).is_err());
+    }
+
+    const PLAN: &str = "sha256:1111111111111111111111111111111111111111111111111111111111111111";
+    const OTHER_PLAN: &str =
+        "sha256:2222222222222222222222222222222222222222222222222222222222222222";
+
+    #[test]
+    fn a_specification_without_a_plan_keeps_its_digest() {
+        let spec = IsolationSpec::default();
+        assert!(!spec.canonical().contains("runtime="));
+        assert!(spec.canonical().ends_with("network_egress_deny=true\n"));
+        let old: IsolationSpec = serde_json::from_str(
+            r#"{"address_space_bytes":4294967296,"open_files":1024,"processes":256,"no_new_privs":true,"seccomp_profile":"default","landlock_ruleset":"read-only-data","network_egress_deny":true}"#,
+        )
+        .expect("a record without the two fields still reads");
+        assert_eq!(old, spec);
+    }
+
+    #[test]
+    fn a_seal_binds_the_process_to_the_exact_sandbox_plan() {
+        let spec = IsolationSpec::for_sandbox("gvisor-systrap", PLAN);
+        assert!(spec
+            .canonical()
+            .ends_with(&format!("runtime=gvisor-systrap\nplan_digest={PLAN}\n")));
+        let sealed = seal_process(900, &spec, 5).expect("seal");
+        assert!(seal_holds(&sealed, 900, &spec));
+        assert!(!seal_holds(
+            &sealed,
+            900,
+            &IsolationSpec::for_sandbox("gvisor-systrap", OTHER_PLAN)
+        ));
+        assert!(!seal_holds(
+            &sealed,
+            900,
+            &IsolationSpec::for_sandbox("gvisor-kvm", PLAN)
+        ));
+        assert!(!seal_holds(&sealed, 900, &IsolationSpec::default()));
+        assert_ne!(spec.digest(), IsolationSpec::default().digest());
+    }
+
+    #[test]
+    fn a_sandbox_seal_needs_both_fields_in_plain_form() {
+        let cases = [
+            ("gvisor-systrap", ""),
+            ("", PLAN),
+            ("gvisor-systrap", "sha256:short"),
+            (
+                "gvisor-systrap",
+                "md5:1111111111111111111111111111111111111111111111111111111111111111",
+            ),
+            ("gvisor\nplan_digest=x", PLAN),
+        ];
+        for (runtime, plan) in cases {
+            let spec = IsolationSpec::for_sandbox(runtime, plan);
+            assert!(seal_process(7, &spec, 1).is_err(), "{runtime:?} {plan:?}");
+        }
+        assert!(seal_process(7, &IsolationSpec::for_sandbox("gvisor-systrap", PLAN), 1).is_ok());
     }
 
     #[test]

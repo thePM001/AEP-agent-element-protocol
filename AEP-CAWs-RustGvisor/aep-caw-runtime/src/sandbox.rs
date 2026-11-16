@@ -38,7 +38,6 @@ const TRACE_POINTS: [&str; 7] = [
 ];
 
 /// What one run needs besides the plan.
-#[derive(Debug, Clone)]
 pub struct RunInput<'a> {
     /// Path of the runsc program.
     pub runsc: &'a Path,
@@ -59,6 +58,9 @@ pub struct RunInput<'a> {
     pub limits: Limits,
     /// The command is ended after this time.
     pub time_limit: Option<Duration>,
+    /// Called once with the process id of the sandbox right after it started. An
+    /// `Err` ends the sandbox at once and the run is refused with that reason.
+    pub on_started: Option<&'a dyn Fn(u32) -> Result<(), String>>,
 }
 
 /// What one run gave.
@@ -100,6 +102,9 @@ pub enum RunError {
     /// The trace socket cannot be bound.
     #[error(transparent)]
     Trace(#[from] TraceError),
+    /// The caller refused the sandbox right after its start.
+    #[error("the sandbox was ended right after its start: {0}")]
+    Refused(String),
     /// runsc cannot be started.
     #[error("runsc {path} cannot be started: {source}")]
     Spawn {
@@ -297,6 +302,14 @@ pub fn run(plan: &SandboxPlan, input: &RunInput<'_>) -> Result<RunOutcome, RunEr
         }
     };
 
+    let mut refused = None;
+    if let Some(hook) = input.on_started {
+        if let Err(reason) = hook(child.id()) {
+            let _ = child.kill();
+            refused = Some(reason);
+        }
+    }
+
     // The output of the command is relayed, not inherited. A sandbox that holds the
     // file of the caller writes at an offset of its own and would overwrite what
     // the caller wrote to the same file.
@@ -355,6 +368,9 @@ pub fn run(plan: &SandboxPlan, input: &RunInput<'_>) -> Result<RunOutcome, RunEr
     });
 
     let _ = fs::remove_dir_all(&socket_dir);
+    if let Some(reason) = refused {
+        return Err(RunError::Refused(reason));
+    }
 
     let trace_points = result.events.len() as u64;
     let mut classifier = Classifier::new(plan);

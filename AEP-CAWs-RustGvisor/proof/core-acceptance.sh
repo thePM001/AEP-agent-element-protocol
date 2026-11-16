@@ -60,8 +60,8 @@ check() {
   deny="$(grep -c '^DENY ' "$out")"
   kinds="$(grep '^DENY ' "$out" | sed 's/^DENY kind=\([a-z-]*\) .*/\1/' | sort -u | tr '\n' ' ')"
   complete="$(printf '%s' "$result" | sed -n 's/.* dropped=0 complete=true$/yes/p')"
-  # One line for the session, one start, one per deny event and one end.
-  audit="$(grep -c "^AUDIT lines=$((deny + 3)) chain=ok$" "$out")"
+  # One line for the session, one start, one seal, one per deny event and one end.
+  audit="$(grep -c "^AUDIT lines=$((deny + 4)) chain=ok$" "$out")"
   [ -n "$result" ] || problem="no result line"
   [ -n "$problem" ] || [ "$complete" = yes ] || problem="the trace stream lost points or did not end in order"
   [ -n "$problem" ] || [ "$code" = "$want_exit" ] || problem="exit $code, want $want_exit"

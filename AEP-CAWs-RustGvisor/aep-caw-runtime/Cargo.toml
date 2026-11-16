@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 aep-caw-policy = { path = "../aep-caw-policy" }
+aep-isolation = { path = "../../AEP-Components/isolation/crate" }
 rustix = { version = "1", features = ["net"] }
 serde.workspace = true
 serde_json.workspace = true
