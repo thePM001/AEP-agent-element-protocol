@@ -3,8 +3,12 @@
 //! One command walks every layer twice. The refuse path runs first and every
 //! layer fails closed. The pass path runs second and the same layers allow.
 //!
-//! Layer order: a CAW session, a sealed capsule, the pulse, collect all, apply,
-//! a CAW exec, a dock attach and a ledger row.
+//! Layer order: a sealed capsule, the pulse, collect all, apply, a dock attach
+//! and a ledger row.
+//!
+//! This release ships no host sandbox. The Go CAW is retired and a Rust CAW
+//! with gVisor replaces it, so the walk has no CAW session and no CAW exec
+//! layer until that CAW lands.
 //!
 //! Base Node is the only live evaluator and this run is not a second evaluator.
 //! The run prints what the layers decide. It does not publish measurement
@@ -29,17 +33,12 @@ use std::path::PathBuf;
 use std::process::Command;
 
 const PAYLOAD: &[u8] = b"aep-2.9-end-to-end-run";
-const CAW_POLICY_REFUSE: &str = "aep-e2e-missing-policy";
-const CAW_DENIED_BINARY: &str = "/usr/bin/curl";
 const PROVENANCE_SOURCE: &str = "mcp";
 const PROVENANCE_PROTOCOL: &str = "1.0";
 const SESSION_REFUSE: &str = "e2e-refuse";
 const SESSION_PASS: &str = "e2e-pass";
 
 struct Ctx {
-    caw_bin: String,
-    caw_server: String,
-    workspace: PathBuf,
     ucb_url: String,
     ucb_key: String,
     base_node_config: PathBuf,
@@ -57,9 +56,6 @@ impl Ctx {
     fn from_env() -> Result<Self, String> {
         let need = |key: &str| env::var(key).map_err(|_| format!("missing env {key}"));
         Ok(Ctx {
-            caw_bin: need("AEP_E2E_CAW_BIN")?,
-            caw_server: need("AEP_E2E_CAW_SERVER")?,
-            workspace: PathBuf::from(need("AEP_E2E_WORKSPACE")?),
             ucb_url: need("AEP_E2E_UCB_URL")?,
             ucb_key: need("AEP_E2E_UCB_KEY")?,
             base_node_config: PathBuf::from(need("AEP_E2E_BASE_NODE_CONFIG")?),
@@ -388,95 +384,6 @@ fn run_main() -> Result<(), String> {
     let kernel = build_kernel(&ctx, now_ms)?;
 
     // Live refuse path.
-    let caw_refuse_session = {
-        let workspace = ctx.workspace.to_string_lossy().to_string();
-        let (code, out, err) = run(
-            &ctx.caw_bin,
-            &[
-                "session",
-                "create",
-                "--workspace",
-                &workspace,
-                "--policy",
-                CAW_POLICY_REFUSE,
-                "--json",
-            ],
-            &[("AEP_CAW_SERVER", ctx.caw_server.clone())],
-        );
-        let line = if err.trim().is_empty() {
-            first_line(&out)
-        } else {
-            first_line(&err)
-        };
-        (code, line)
-    };
-
-    let caw_session = {
-        let workspace = ctx.workspace.to_string_lossy().to_string();
-        let (code, out, err) = run(
-            &ctx.caw_bin,
-            &["session", "create", "--workspace", &workspace, "--json"],
-            &[("AEP_CAW_SERVER", ctx.caw_server.clone())],
-        );
-        if code != 0 {
-            return Err(format!(
-                "caw session create refused with exit {code}: {}",
-                first_line(&err)
-            ));
-        }
-        let value: serde_json::Value =
-            serde_json::from_str(&out).map_err(|e| format!("session reply is not JSON: {e}"))?;
-        value
-            .get("id")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string()
-    };
-
-    let caw_exec_refuse = {
-        let (code, out, err) = run(
-            &ctx.caw_bin,
-            &[
-                "exec",
-                &caw_session,
-                "--",
-                CAW_DENIED_BINARY,
-                "-sS",
-                "--max-time",
-                "2",
-                "https://example.invalid",
-            ],
-            &[("AEP_CAW_SERVER", ctx.caw_server.clone())],
-        );
-        let line = if err.trim().is_empty() {
-            first_line(&out)
-        } else {
-            first_line(&err)
-        };
-        (code, line)
-    };
-
-    let caw_exec_pass = {
-        let (code, out, err) = run(
-            &ctx.caw_bin,
-            &[
-                "exec",
-                &caw_session,
-                "--",
-                "sh",
-                "-c",
-                "printf aep-2.9-end-to-end-pass",
-            ],
-            &[("AEP_CAW_SERVER", ctx.caw_server.clone())],
-        );
-        let line = if out.trim().is_empty() {
-            first_line(&err)
-        } else {
-            first_line(&out)
-        };
-        (code, line)
-    };
-
     let ledger_before = ledger_count(&ctx)?;
 
     let dock_refuse = ucb_ingest(
@@ -515,34 +422,19 @@ fn run_main() -> Result<(), String> {
         "attach action {} scene {} agent {}",
         ctx.attach_action, ctx.attach_scene, ctx.attach_agent
     );
+    println!("host sandbox: none in this release, the Go CAW is retired and a Rust CAW with gVisor replaces it");
     println!();
 
     let mut refuse_steps: Vec<Step> = Vec::new();
-    refuse_steps.push(if caw_refuse_session.0 != 0 {
-        Step::refuse(
-            "1 caw session",
-            format!(
-                "policy {CAW_POLICY_REFUSE} is absent, so the session refused with exit {}: {}",
-                caw_refuse_session.0, caw_refuse_session.1
-            ),
-        )
-    } else {
-        ok = false;
-        Step::fail(
-            "1 caw session",
-            String::from("the absent policy did not refuse the session"),
-        )
-    });
-
     refuse_steps.push(match &capsule_refuse {
         Some(e) => Step::refuse(
-            "2 sealed capsule",
+            "1 sealed capsule",
             format!("a foreign recipient key refused the capsule: {e}"),
         ),
         None => {
             ok = false;
             Step::fail(
-                "2 sealed capsule",
+                "1 sealed capsule",
                 String::from("a foreign recipient key opened the capsule"),
             )
         }
@@ -550,7 +442,7 @@ fn run_main() -> Result<(), String> {
 
     refuse_steps.push(if drifted > MAX_DRIFT_MS {
         Step::refuse(
-            "3 pulse",
+            "2 pulse",
             format!(
                 "the agent stamp drifts {drifted} ms past the {MAX_DRIFT_MS} ms freeze bound and the temporal wall closes"
             ),
@@ -558,7 +450,7 @@ fn run_main() -> Result<(), String> {
     } else {
         ok = false;
         Step::fail(
-            "3 pulse",
+            "2 pulse",
             String::from("the pulse did not close a drifted stamp"),
         )
     });
@@ -578,12 +470,12 @@ fn run_main() -> Result<(), String> {
     if kernel.refuse_admit.allow {
         ok = false;
         refuse_steps.push(Step::fail(
-            "4 collect all",
+            "3 collect all",
             String::from("the refused path admitted"),
         ));
     } else {
         refuse_steps.push(Step::refuse(
-            "4 collect all",
+            "3 collect all",
             format!(
                 "{} walls closed together on one path and every wall ran, so this is a collect all deny and not an early exit",
                 refuse_ids.len()
@@ -601,32 +493,19 @@ fn run_main() -> Result<(), String> {
     refuse_steps.push(
         if !refuse_plan.ledger_allow && !refuse_plan.increment_rate {
             Step::refuse(
-                "5 apply",
+                "4 apply",
                 String::from("collect all admit refused, so the plan holds no ledger allowance and no rate step and no row is written"),
             )
         } else {
             ok = false;
-            Step::fail("5 apply", String::from("apply ran after a refused admit"))
+            Step::fail("4 apply", String::from("apply ran after a refused admit"))
         },
     );
-
-    refuse_steps.push(if caw_exec_refuse.0 != 0 {
-        Step::refuse(
-            "6 caw exec",
-            format!(
-                "the wrapped command refused with exit {}: {}",
-                caw_exec_refuse.0, caw_exec_refuse.1
-            ),
-        )
-    } else {
-        ok = false;
-        Step::fail("6 caw exec", String::from("the denied command ran"))
-    });
 
     let dock_refuse_ok = refusal_shaped(&dock_refuse.1);
     refuse_steps.push(if dock_refuse_ok {
         Step::refuse(
-            "7 dock attach",
+            "5 dock attach",
             format!(
                 "the ingest refused with HTTP {} and {}",
                 dock_refuse.0,
@@ -636,7 +515,7 @@ fn run_main() -> Result<(), String> {
     } else {
         ok = false;
         Step::fail(
-            "7 dock attach",
+            "5 dock attach",
             format!(
                 "the ingest without a task manifest was accepted: {}",
                 compact_json(&dock_refuse.1.to_string())
@@ -646,13 +525,13 @@ fn run_main() -> Result<(), String> {
 
     refuse_steps.push(if ledger_after_refuse == ledger_before {
         Step::refuse(
-            "8 ledger row",
+            "6 ledger row",
             format!("the refuse path wrote no row and the ledger count remains {ledger_before}"),
         )
     } else {
         ok = false;
         Step::fail(
-            "8 ledger row",
+            "6 ledger row",
             format!(
                 "the refuse path moved the ledger count from {ledger_before} to {ledger_after_refuse}"
             ),
@@ -666,22 +545,9 @@ fn run_main() -> Result<(), String> {
     println!();
 
     let mut pass_steps: Vec<Step> = Vec::new();
-    pass_steps.push(if !caw_session.is_empty() {
-        Step::pass(
-            "1 caw session",
-            format!("the session {caw_session} holds the workspace"),
-        )
-    } else {
-        ok = false;
-        Step::fail(
-            "1 caw session",
-            String::from("the session reply carried no id"),
-        )
-    });
-
     pass_steps.push(match &capsule_pass {
         Ok(opened) if opened.as_slice() == PAYLOAD => Step::pass(
-            "2 sealed capsule",
+            "1 sealed capsule",
             format!(
                 "the recipient key opened the capsule and the payload is {}",
                 String::from_utf8_lossy(opened)
@@ -690,14 +556,14 @@ fn run_main() -> Result<(), String> {
         Ok(_) => {
             ok = false;
             Step::fail(
-                "2 sealed capsule",
+                "1 sealed capsule",
                 String::from("the opened payload differs from the sealed payload"),
             )
         }
         Err(e) => {
             ok = false;
             Step::fail(
-                "2 sealed capsule",
+                "1 sealed capsule",
                 format!("the recipient key was refused: {e}"),
             )
         }
@@ -709,7 +575,7 @@ fn run_main() -> Result<(), String> {
             && at_beat == CapsuleFate::Ready
         {
             Step::pass(
-                "3 pulse",
+                "2 pulse",
                 format!(
                     "the seal stamp drifts {sealed_drift} ms inside the {MAX_DRIFT_MS} ms bound, the capsule waits at the seal beat and turns ready {} ms later",
                     PULSE_MS
@@ -718,7 +584,7 @@ fn run_main() -> Result<(), String> {
         } else {
             ok = false;
             Step::fail(
-                "3 pulse",
+                "2 pulse",
                 format!(
                     "drift {sealed_drift} ms, fate at the seal {at_seal:?} and fate at the beat {at_beat:?}"
                 ),
@@ -734,7 +600,7 @@ fn run_main() -> Result<(), String> {
         .collect();
     pass_steps.push(if kernel.pass_admit.allow && pass_closed.is_empty() {
         Step::pass(
-            "4 collect all",
+            "3 collect all",
             format!(
                 "collect all ran every wall on the path and {} walls closed",
                 pass_closed.len()
@@ -743,7 +609,7 @@ fn run_main() -> Result<(), String> {
     } else {
         ok = false;
         Step::fail(
-            "4 collect all",
+            "3 collect all",
             format!("the permitted path closed {}", pass_closed.join(" ")),
         )
     });
@@ -751,7 +617,7 @@ fn run_main() -> Result<(), String> {
     pass_steps.push(
         if kernel.pass_plan.ledger_allow && kernel.pass_plan.increment_rate {
             Step::pass(
-                "5 apply",
+                "4 apply",
                 format!(
                     "the plan carries the ledger allowance and the rate step and the applied snapshot rate is {}",
                     kernel.applied_rate
@@ -760,30 +626,11 @@ fn run_main() -> Result<(), String> {
         } else {
             ok = false;
             Step::fail(
-                "5 apply",
+                "4 apply",
                 String::from("the plan carried no ledger allowance"),
             )
         },
     );
-
-    pass_steps.push(if caw_exec_pass.0 == 0 {
-        Step::pass(
-            "6 caw exec",
-            format!(
-                "the wrapped command returned exit 0 and the output is {}",
-                caw_exec_pass.1
-            ),
-        )
-    } else {
-        ok = false;
-        Step::fail(
-            "6 caw exec",
-            format!(
-                "the wrapped command refused with exit {}: {}",
-                caw_exec_pass.0, caw_exec_pass.1
-            ),
-        )
-    });
 
     let dock_pass_status = dock_pass
         .1
@@ -794,7 +641,7 @@ fn run_main() -> Result<(), String> {
     let dock_ok = dock_pass.1.get("ok").and_then(|v| v.as_bool()) == Some(true);
     pass_steps.push(if dock_ok && dock_pass_status == "integrated" {
         Step::pass(
-            "7 dock attach",
+            "5 dock attach",
             format!(
                 "the ingest returned status {dock_pass_status} and the admit row is {}",
                 admit_row(&dock_pass.1)
@@ -803,7 +650,7 @@ fn run_main() -> Result<(), String> {
     } else {
         ok = false;
         Step::fail(
-            "7 dock attach",
+            "5 dock attach",
             format!(
                 "the ingest returned HTTP {} body {}",
                 dock_pass.0,
@@ -814,7 +661,7 @@ fn run_main() -> Result<(), String> {
 
     pass_steps.push(if ledger_after_pass > ledger_after_refuse {
         Step::pass(
-            "8 ledger row",
+            "6 ledger row",
             format!(
                 "the pass path moved the ledger count from {ledger_after_refuse} to {ledger_after_pass} and the newest row is {}",
                 row_line(&tail)
@@ -823,7 +670,7 @@ fn run_main() -> Result<(), String> {
     } else {
         ok = false;
         Step::fail(
-            "8 ledger row",
+            "6 ledger row",
             format!("the pass path left the ledger count at {ledger_after_pass}"),
         )
     });
@@ -934,9 +781,6 @@ mod tests {
 
     fn test_ctx() -> Ctx {
         Ctx {
-            caw_bin: String::from("caw"),
-            caw_server: String::from("caw-server"),
-            workspace: PathBuf::from("/nonexistent/workspace"),
             ucb_url: String::from("http://127.0.0.1:1"),
             ucb_key: String::from("test-key"),
             base_node_config: PathBuf::from("/nonexistent/base-node.toml"),

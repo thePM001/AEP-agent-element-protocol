@@ -4,29 +4,26 @@ This note records one observed run of the end to end example in this folder. The
 > kernel pulse ms 1000
 > kernel drift bound ms 50
 > attach action ucb:ingest scene scene-ucb agent agent-a
+> host sandbox: none in this release, the Go CAW is retired and a Rust CAW with gVisor replaces it
 > 
 > == refuse path
-> REFUSE 1 caw session: policy aep-e2e-missing-policy is absent, so the session refused with exit 1: POST /api/v1/sessions: 400 Bad Request: {"error":"resolve policy: policy \"aep-e2e-missing-policy\" not found in \"<run-dir>/caw-policies\""}
-> REFUSE 2 sealed capsule: a foreign recipient key refused the capsule: fingerprint mismatch
-> REFUSE 3 pulse: the agent stamp drifts 500 ms past the 50 ms freeze bound and the temporal wall closes
-> REFUSE 4 collect all: 4 walls closed together on one path and every wall ran, so this is a collect all deny and not an early exit
+> REFUSE 1 sealed capsule: a foreign recipient key refused the capsule: fingerprint mismatch
+> REFUSE 2 pulse: the agent stamp drifts 500 ms past the 50 ms freeze bound and the temporal wall closes
+> REFUSE 3 collect all: 4 walls closed together on one path and every wall ran, so this is a collect all deny and not an early exit
 > REFUSE REPORT error: Admit collect-all walls then Apply: no sequence bound; this agent does not have permission for this action; no scene bound; drift 500 exceeds 50
 > REFUSE REPORT closed walls: causal.sequence=structural gap.agent_permission=capability scene.membership=structural time.authority=temporal
 > REFUSE REPORT closed set key length: 216
-> REFUSE 5 apply: collect all admit refused, so the plan holds no ledger allowance and no rate step and no row is written
-> REFUSE 6 caw exec: the wrapped command refused with exit 126: aep-caw: command denied by policy (rule=approve-curl-wget)
-> REFUSE 7 dock attach: the ingest refused with HTTP 422 and the DenyReport error is ManifestMissing and the closed walls are ucb.manifest=structural
-> REFUSE 8 ledger row: the refuse path wrote no row and the ledger count remains 2
+> REFUSE 4 apply: collect all admit refused, so the plan holds no ledger allowance and no rate step and no row is written
+> REFUSE 5 dock attach: the ingest refused with HTTP 422 and the DenyReport error is ManifestMissing and the closed walls are ucb.manifest=structural
+> REFUSE 6 ledger row: the refuse path wrote no row and the ledger count remains 0
 > 
 > == pass path
-> PASS 1 caw session: the session session-ba712901-25f7-40bd-9af4-bc3ad448e1ec holds the workspace
-> PASS 2 sealed capsule: the recipient key opened the capsule and the payload is aep-2.9-end-to-end-run
-> PASS 3 pulse: the seal stamp drifts 0 ms inside the 50 ms bound, the capsule waits at the seal beat and turns ready 1000 ms later
-> PASS 4 collect all: collect all ran every wall on the path and 0 walls closed
-> PASS 5 apply: the plan carries the ledger allowance and the rate step and the applied snapshot rate is 1
-> PASS 6 caw exec: the wrapped command returned exit 0 and the output is aep-2.9-end-to-end-pass
-> PASS 7 dock attach: the ingest returned status integrated and the admit row is event_id 3 allow true digest d19763a2e75e...
-> PASS 8 ledger row: the pass path moved the ledger count from 2 to 4 and the newest row is id 4 agent agent-a event_type UCB_INGEST frame_digest 34183f80f5bb...
+> PASS 1 sealed capsule: the recipient key opened the capsule and the payload is aep-2.9-end-to-end-run
+> PASS 2 pulse: the seal stamp drifts 0 ms inside the 50 ms bound, the capsule waits at the seal beat and turns ready 1000 ms later
+> PASS 3 collect all: collect all ran every wall on the path and 0 walls closed
+> PASS 4 apply: the plan carries the ledger allowance and the rate step and the applied snapshot rate is 1
+> PASS 5 dock attach: the ingest returned status integrated and the admit row is event_id 1 allow true digest 18fdf9fef07e...
+> PASS 6 ledger row: the pass path moved the ledger count from 0 to 2 and the newest row is id 2 agent agent-a event_type UCB_INGEST frame_digest 9153422f2195...
 > 
 > == verdict
 > RESULT refuse path first and pass path second with the ledger row

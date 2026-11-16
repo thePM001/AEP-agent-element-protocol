@@ -45,7 +45,6 @@ function greenTree() {
   put("AEP-Components/admit/result.rs", `fn r() -> R { R { ${ALLOW_BUILD} } }\n`);
   put("AEP-Components/derived/result.rs", `// derived view\nfn r() -> R { R { ${ALLOW_BUILD} } }\n`);
   put("AEP-Components/scanners/rules.json", `{"schema": "${SCAN_TABLE}"}\n`);
-  put("AEP-CAW/internal/sandbox.go", "func apply() { seccompLoad() }\n");
   put("AEP-Components/README.md", "One live graph owns the state.\n");
   put("AEP-Components/intent-ledger/README.md", "The one runtime ledger.\n");
   put("AEP-Policy-System/host.policy.yaml", "# Host layer policy. Not an Admit layer authoring form\n");
@@ -70,9 +69,10 @@ describe("walk and scanFiles", () => {
 });
 
 describe("shipped", () => {
-  it("excludes the scan itself and the internal records area", () => {
+  it("excludes the scan itself and the two internal areas", () => {
     expect(shipped({ rel: "AEP-Components/conformance/runner/consolidation-scan.mjs" })).toBe(false);
     expect(shipped({ rel: `${INTERNAL}/x.md` })).toBe(false);
+    expect(shipped({ rel: `${INTERNAL.slice(4)}/legacy/sandbox.go` })).toBe(false);
     expect(shipped({ rel: "AEP-Components/x.md" })).toBe(true);
   });
 });
@@ -89,7 +89,7 @@ describe("consolidationRows", () => {
       "AEP-Components/admit/result.rs",
       "derived surfaces: AEP-Components/derived/result.rs",
     ]);
-    expect(rowOf(rows, "enforcement implementations").proof).toEqual(["AEP-CAW"]);
+    expect(rowOf(rows, "enforcement implementations").proof).toEqual([]);
     expect(rowOf(rows, "graph state owners").proof[0]).toBe("AEP-Components/README.md");
     expect(rowOf(rows, "runtime ledger names").proof[0]).toBe("AEP-Components/intent-ledger/README.md");
     expect(rowOf(rows, "authoring forms that reach the Admit layer").proof).toEqual([
@@ -129,7 +129,8 @@ describe("consolidationRows", () => {
       `policy YAML ${UNLABELLED} (1)`,
       `rego ${UNLABELLED} (1)`,
     ]);
-    expect(rowOf(rows, "enforcement implementations").proof).toEqual(["AEP-Base-Node", "AEP-CAW"]);
+    expect(rowOf(rows, "enforcement implementations").proof).toEqual(["AEP-Base-Node"]);
+    expect(rowOf(rows, "enforcement implementations").count).not.toBe(rowOf(rows, "enforcement implementations").expected);
     expect(rowOf(rows, "dead path references, cca components path").proof).toEqual(["docs/old.md"]);
     expect(rowOf(rows, "dead path references, caw framework components path").count).toBe(0);
   });

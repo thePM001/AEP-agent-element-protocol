@@ -181,13 +181,11 @@ start_ucm() {
 }
 
 
-# CAW (execution-layer security) is host ELS. The public Docker image may not
-# ship aep-caw; coding agents on the host should enable CAW on the host.
-# CAW host ELS note: do not claim container-side aep-caw is always running.
-if [ "${CAW:-0}" = "1" ] && command -v aep-caw >/dev/null 2>&1; then
-  echo "CAW binary present (aep-caw); operator must still wrap workloads explicitly." >&2
-elif [ "${CAW:-0}" = "1" ]; then
-  echo "WARN: CAW=1 set but aep-caw not on PATH in this image (host ELS expected outside container)." >&2
+# This release ships no host sandbox. The Go CAW is retired and a Rust CAW with
+# gVisor replaces it. CAW=1 has no effect until that CAW lands, so the image says
+# so instead of implying that agent processes are confined.
+if [ "${CAW:-0}" = "1" ]; then
+  echo "WARN: CAW=1 has no effect: this release ships no host sandbox and agent processes are not confined." >&2
 fi
 
 # With UCM_LATTICE_RECORD=1 UCM records each receipt digest as agent aep-ucm on the

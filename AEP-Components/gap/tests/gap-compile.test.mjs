@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import YAML from "yaml";
@@ -223,18 +223,14 @@ describe("mergeGapProfilesIntoCawConfig", () => {
 });
 
 describe("materializeCawRuntimeFromGap", () => {
-  it("copies bundled config and policies, writes mount policies and points the config at them", () => {
+  it("writes mount policies and points an existing operator config at them", () => {
     fakeRepo();
-    put("AEP-CAW/configs/server-config.yaml", YAML.stringify({ listen: "local", policies: { strict: true } }));
-    put("AEP-CAW/configs/policies/base.yaml", "allow: []\n");
-    put("AEP-CAW/configs/policies/ignored.txt", "x");
     const data = join(root, "data");
+    put("data/caw-framework/server-config.yaml", YAML.stringify({ listen: "local", policies: { strict: true } }));
     const out = materializeCawRuntimeFromGap(data, root);
     expect(out.configPath).toBe(join(data, "caw-framework", "server-config.yaml"));
     expect(out.policiesDir).toBe(join(data, "caw-framework", "policies"));
     expect(Object.keys(out.profiles).sort()).toEqual(["alpha", "zeta"]);
-    expect(existsSync(join(out.policiesDir, "base.yaml"))).toBe(true);
-    expect(existsSync(join(out.policiesDir, "ignored.txt"))).toBe(false);
     expect(YAML.parse(readFileSync(join(out.policiesDir, "rw.yaml"), "utf8"))).toEqual({ allow: ["read", "write"] });
     const cfg = YAML.parse(readFileSync(out.configPath, "utf8"));
     expect(cfg.listen).toBe("local");
@@ -242,10 +238,8 @@ describe("materializeCawRuntimeFromGap", () => {
     expect(Object.keys(cfg.mount_profiles)).toEqual(["alpha", "zeta"]);
   });
 
-  it("does not overwrite an existing config or policy file", () => {
+  it("keeps an existing policy file that GAP does not name", () => {
     fakeRepo();
-    put("AEP-CAW/configs/server-config.yaml", "listen: bundled\n");
-    put("AEP-CAW/configs/policies/base.yaml", "bundled: true\n");
     const data = join(root, "data");
     put("data/caw-framework/server-config.yaml", "listen: mine\n");
     put("data/caw-framework/policies/base.yaml", "mine: true\n");

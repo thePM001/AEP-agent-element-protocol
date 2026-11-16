@@ -6,7 +6,6 @@ import {
   writeFileSync,
   mkdirSync,
   readdirSync,
-  copyFileSync,
 } from "node:fs";
 import { join, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -154,7 +153,10 @@ export function mergeGapProfilesIntoCawConfig(serverConfigPath, repoRoot) {
 }
 
 /**
- * Materialize CAW runtime under AEP_DATA from GAP + bundled defaults.
+ * Materialize the CAW runtime under AEP_DATA from GAP. The tree bundles no CAW
+ * config or policies: the Go CAW is retired and a Rust CAW with gVisor replaces
+ * it. An operator config already under AEP_DATA is kept and pointed at the
+ * mount policies that GAP compiles.
  * @param {string} dataDir
  * @param {string} [repoRoot]
  */
@@ -163,21 +165,9 @@ export function materializeCawRuntimeFromGap(dataDir, repoRoot) {
   const cawRoot = join(dataDir, "caw-framework");
   const configPath = join(cawRoot, "server-config.yaml");
   const policiesDir = join(cawRoot, "policies");
-  const bundledConfig = join(root, "AEP-CAW/configs/server-config.yaml");
-  const bundledPolicies = join(root, "AEP-CAW/configs/policies");
 
   mkdirSync(cawRoot, { recursive: true });
   mkdirSync(policiesDir, { recursive: true });
-
-  if (!existsSync(configPath) && existsSync(bundledConfig)) {
-    copyFileSync(bundledConfig, configPath);
-  }
-  if (existsSync(bundledPolicies)) {
-    for (const f of readdirSync(bundledPolicies).filter((n) => n.endsWith(".yaml"))) {
-      const dest = join(policiesDir, f);
-      if (!existsSync(dest)) copyFileSync(join(bundledPolicies, f), dest);
-    }
-  }
 
   for (const path of listGapReferencePolicies(root)) {
     const { runtime } = parseGapFile(path);

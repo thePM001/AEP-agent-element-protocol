@@ -1,13 +1,6 @@
-# The lattice of the end to end run. The CAW kernel dock gate seals one
-# root:ping as caw-kernel-dock before every exec and lets the command start
-# only when the validation dock admits it. The attach agent ingests on
+# The lattice of the end to end run. The attach agent ingests on
 # ucb:ingest. run.sh copies this file into the run folder.
 actions:
-  root:ping:
-    category: system_event
-    parents: []
-    children: []
-    agent_permission: ["caw-kernel-dock"]
   ucb:ingest:
     category: external_event
     parents: []

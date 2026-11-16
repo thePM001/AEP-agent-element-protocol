@@ -14,7 +14,7 @@
  *
  * The check also asks for the five layers of the model (Base Node, docks, UCB,
  * CAW and lattice channels) each with assets, trust boundaries, attacker
- * capabilities and residual risk. README.md and AEP-CAW/SECURITY.md must link
+ * capabilities and residual risk. README.md must link
  * the model.
  *
  * Run:  node AEP-User-Experience/harness/check-threat-model-trace.mjs [tree root]
@@ -27,7 +27,7 @@ import { fileURLToPath } from 'node:url';
 
 export const MODEL = 'THREAT_MODEL.md';
 export const MANIFEST = 'AEP-Components/conformance/tests/manifest.json';
-export const LINKED_FROM = ['README.md', 'AEP-CAW/SECURITY.md'];
+export const LINKED_FROM = ['README.md'];
 export const LAYERS = ['Base Node', 'Docks', 'UCB', 'CAW', 'Lattice channels'];
 export const LAYER_PARTS = ['**Assets.**', '**Trust boundaries.**', '**Attacker capabilities.**', '**Residual risk.**'];
 

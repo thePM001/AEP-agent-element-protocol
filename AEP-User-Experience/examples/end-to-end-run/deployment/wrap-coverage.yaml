@@ -17,10 +17,6 @@ gap_dirs:
 
 lattice: lattice.yaml
 
-caw:
-  - policy: caw-policies/e2e-wrapped.yaml
-    wrap: caw
-
 ucb_manifests: []
 
 credentials:
@@ -29,11 +25,6 @@ credentials:
     description: The sign key run.sh provisions for the attach agent.
     agent_id: agent-a
     action: ucb:ingest
-  - id: caw-kernel-dock-identity
-    kind: kernel_dock_identity
-    description: The identity the CAW server seals its kernel dock ping with.
-    agent_id: caw-kernel-dock
-    action: root:ping
   - id: ucb-api-key
     kind: dock_gateway_key
     description: The bearer key of the dock gateway that the attach ingest presents.

@@ -259,10 +259,7 @@ fn rust_sources(dir: &Path, out: &mut Vec<PathBuf>) {
         let name = entry.file_name();
         let name = name.to_string_lossy();
         if path.is_dir() {
-            if matches!(
-                name.as_ref(),
-                "target" | ".git" | "node_modules" | "AEP-CAW"
-            ) {
+            if matches!(name.as_ref(), "target" | ".git" | "node_modules") {
                 continue;
             }
             rust_sources(&path, out);

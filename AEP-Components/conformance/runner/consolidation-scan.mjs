@@ -56,6 +56,7 @@ const INTERNAL_MARKER = "NO" + "SHIP";
 /** A shipped file. Internal records are not live code. */
 export function shipped(entry) {
   if (entry.rel === SELF) return false;
+  if (entry.rel.startsWith(INTERNAL_MARKER + "/")) return false;
   return entry.rel.startsWith("AEP-" + INTERNAL_MARKER + "/") === false;
 }
 
@@ -112,7 +113,6 @@ const LEDGER_SURFACES = [
   "AEP-Components/evidence-ledger/README.md",
   "AEP-Components/intent-ledger/README.md",
   "AEP-Components/evaluation-chain/crate/src/lib.rs",
-  "AEP-CAW/internal/audit/crypto.go",
 ];
 const DECLARES_RUNTIME_LEDGER = /The one runtime ledger\./;
 
@@ -158,6 +158,7 @@ function enforcementComponents(FILES) {
 function deadPathHits(FILES, regex) {
   return FILES.filter((entry) => {
     if (entry.rel.startsWith("AEP-" + INTERNAL_MARKER + "/")) return false;
+    if (entry.rel.startsWith(INTERNAL_MARKER + "/")) return false;
     return regex.test(read(entry));
   }).map((entry) => entry.rel).sort();
 }
@@ -211,8 +212,11 @@ export function consolidationRows(root) {
   }
 
   {
+    // The Go CAW is retired and no host sandbox ships in this release, so the
+    // tree holds no enforcement implementation. The Rust CAW with gVisor will be
+    // the one enforcer and the expected count returns to 1 when it lands.
     const components = enforcementComponents(FILES);
-    rows.push({ concern: "enforcement implementations", count: components.length, expected: 1, proof: components });
+    rows.push({ concern: "enforcement implementations", count: components.length, expected: 0, proof: components });
   }
 
   {

@@ -209,20 +209,6 @@ function rustBuildSection(root) {
   return { passed: true };
 }
 
-function cawBuildSection(root) {
-  var opts = new Object();
-  opts.encoding = "utf8";
-  opts.cwd = join(root, "AEP-CAW");
-  opts.maxBuffer = CHILD_BUFFER;
-  var result = spawnSync("make", ["build"], opts);
-  if (result.status !== 0) {
-    printChildFailure("caw build", "make build", result);
-    return { passed: false };
-  }
-  console.log("caw build: make build");
-  return { passed: true };
-}
-
 function wrapCoverageSection(root) {
   var script = join(root, "AEP-Components/wrap-coverage/lib/wrap-coverage.mjs");
   var inventory = "AEP-User-Experience/examples/end-to-end-run/deployment/wrap-coverage.yaml";
@@ -477,7 +463,6 @@ const SECTIONS = [
   { name: "wrap coverage", run: wrapCoverageSection },
   { name: "threat model", run: threatModelSection },
   { name: "rust build", run: rustBuildSection },
-  { name: "caw build", run: cawBuildSection },
   { name: "links", run: linksSection },
   { name: "readme", run: readmeSection },
 ];
