@@ -315,7 +315,7 @@ mod tests {
         s.push_str("metadata:\n");
         s.push_str("  wrap: caw\n");
         s.push_str("  agent_permission:\n");
-        s.push_str("    - agent_id: build-agent\n");
+        s.push_str("    - agent_id: coding-agent\n");
         s.push_str("      action: compile\n");
         s.push_str("---\n");
         s.push_str("kind: aep.caw.profile\n");
@@ -341,7 +341,7 @@ mod tests {
         let mounts = hub.mounts_for("coding-agent");
         assert_eq!(mounts.len(), 1);
         assert_eq!(mounts[0].policy, "workspace-rw");
-        assert!(hub.agent_may("build-agent", "compile"));
+        assert!(hub.agent_may("coding-agent", "compile"));
     }
     #[test]
     fn load_from_gap_reads_caw_files() {
@@ -359,7 +359,7 @@ mod tests {
         match AgentControlHub::load_from_gap(dir.path()) {
             Ok(hub) => {
                 assert!(hub.is_loaded());
-                assert!(hub.agent_may("build-agent", "compile"));
+                assert!(hub.agent_may("coding-agent", "compile"));
             }
             Err(e) => panic!("{}", e),
         }
@@ -388,7 +388,7 @@ mod tests {
         match AgentControlHub::load_from_gap(&gap) {
             Ok(hub) => {
                 assert!(hub.sessions.len() >= 4);
-                assert!(hub.agent_may("build-agent", "compile"));
+                assert!(hub.agent_may("coding-agent", "compile"));
             }
             Err(e) => panic!("{}", e),
         }

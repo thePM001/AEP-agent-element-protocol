@@ -21,9 +21,9 @@ metadata:
   version: 1.0.0
   stability: experimental
   agent_permission:
-    - agent_id: build-agent
+    - agent_id: coding-agent
       action: write
-    - agent_id: build-agent
+    - agent_id: coding-agent
       action: federate
   wrap: federation
   action_path_prefix: federation

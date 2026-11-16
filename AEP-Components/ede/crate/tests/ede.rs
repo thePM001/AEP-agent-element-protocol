@@ -572,9 +572,9 @@ fn the_reference_profile_grants_the_five_verbs() {
             "ede.expire"
         ]
     );
-    assert!(records.iter().all(|r| r.agent_id == "example-coding-agent"));
+    assert!(records.iter().all(|r| r.agent_id == "coding-agent"));
     assert_eq!(repos, vec!["owner/repo".to_string()]);
-    let generated = aep_ede::profile::template("example-coding-agent", &repos);
+    let generated = aep_ede::profile::template("coding-agent", &repos);
     let (g_records, g_repos) = aep_ede::profile::parse(&generated).unwrap();
     assert_eq!(g_records, records);
     assert_eq!(g_repos, repos);

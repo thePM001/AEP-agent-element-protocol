@@ -39,14 +39,14 @@ The agent proves who it is with a frame signed by its own ML-DSA-65 key, the sam
 
 ```
 aep-ede agent keygen /home/agent/.aep-ede.seed          # by the agent: prints the public key
-aep-ede agent register my-coding-agent <public-hex>      # by the operator
-aep-ede profile init my-coding-agent owner/repo          # by the operator
+aep-ede agent register coding-agent <public-hex>      # by the operator
+aep-ede profile init coding-agent owner/repo          # by the operator
 ```
 
 The agent runs with two variables. Neither is a control: a wrong value only fails the proof.
 
 ```
-export AEP_AGENT_ID=my-coding-agent
+export AEP_AGENT_ID=coding-agent
 export AEP_AGENT_KEY=/home/agent/.aep-ede.seed
 ```
 

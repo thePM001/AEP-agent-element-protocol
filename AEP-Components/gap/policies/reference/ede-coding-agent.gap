@@ -1,10 +1,10 @@
 address:
   domain: dev.aep.ede
-  id: example-coding-agent-coding.v1
+  id: coding-agent-coding.v1
 
 pattern: |
   Reference agent profile for enforced draft environments (AEP-Components/ede).
-  The agent example-coding-agent changes the listed repositories only through aep-ede drafts:
+  The agent coding-agent changes the listed repositories only through aep-ede drafts:
   seed a clone, scan the change set, promote it as a pull request or a branch.
   Copy this file per agent. aep-ede profile init <agent-id> <owner/repo> creates one as well.
 
@@ -25,15 +25,15 @@ metadata:
   stability: stable
   aspect: procedural
   agent_permission:
-    - agent_id: example-coding-agent
+    - agent_id: coding-agent
       action: ede.seed
-    - agent_id: example-coding-agent
+    - agent_id: coding-agent
       action: ede.refresh
-    - agent_id: example-coding-agent
+    - agent_id: coding-agent
       action: ede.scan
-    - agent_id: example-coding-agent
+    - agent_id: coding-agent
       action: ede.promote
-    - agent_id: example-coding-agent
+    - agent_id: coding-agent
       action: ede.expire
 
 extensions:

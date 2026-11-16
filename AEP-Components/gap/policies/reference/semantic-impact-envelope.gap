@@ -23,9 +23,9 @@ metadata:
   version: "1.0.0"
   stability: stable
   agent_permission:
-    - agent_id: build-agent
+    - agent_id: coding-agent
       action: write
-    - agent_id: build-agent
+    - agent_id: coding-agent
       action: siee
   wrap: coding
   action_path_prefix: coding

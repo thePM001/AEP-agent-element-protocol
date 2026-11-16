@@ -18,8 +18,8 @@ vectors:
   - draft_id ede-123456789012345678901-0123456789abcdef0123456789abcdef => no
   - agent coder => ok
   - agent coder-two => ok
-  - agent build-agent => ok
-  - agent review-agent-coding => ok
+  - agent coding-agent => ok
+  - agent coordinator => ok
   - agent Coder => no
   - agent coder_two => no
   - agent -coder => no

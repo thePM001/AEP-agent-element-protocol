@@ -14,7 +14,7 @@
 //! ```text
 //! metadata:
 //!   agent_permission:
-//!     - agent_id: my-coding-agent
+//!     - agent_id: coding-agent
 //!       action: ede.seed
 //! extensions:
 //!   aep:
