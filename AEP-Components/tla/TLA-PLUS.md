@@ -24,5 +24,3 @@ Public Docker does not install TLC or Apalache and GAP remains the one form for 
 ## Run
 
 cargo test -p aep-tla-verify
-
-/* nla-type-salt: 10 */

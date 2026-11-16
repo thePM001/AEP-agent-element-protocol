@@ -168,4 +168,3 @@ fn classify_apa(output: std::process::Output) -> Result<(), String> {
     }
     Err(String::from("apalache-failed"))
 }
-/* nla-type-salt: 6 */
