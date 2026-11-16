@@ -20,6 +20,7 @@ const REQUIRED_TOP = [
 ];
 
 const RESOURCE_KEYS = ["min_memory_mb", "min_disk_mb", "requires_internet", "gpu_required"];
+const STATUSES = new Set(["active", "experimental", "retired"]);
 const CCA_KEYS = ["summary", "use_when", "avoid_when"];
 
 /**
@@ -68,9 +69,28 @@ export function validateManifest(manifest, opts = {}) {
     errors.push('manifest_version must be "1"');
   }
 
+  // A retired component keeps its id but ships nothing, so it has no path on
+  // disk and offers no action, setup hook or implementation.
+  const retired = manifest.status === "retired";
+  if (manifest.status !== undefined && !STATUSES.has(manifest.status)) {
+    errors.push(`status must be one of ${[...STATUSES].join(", ")}`);
+  }
   for (const key of REQUIRED_TOP) {
+    if (retired && key === "path") continue;
     if (manifest[key] === undefined || manifest[key] === null) {
       errors.push(`missing required field: ${key}`);
+    }
+  }
+  if (retired) {
+    if (manifest.path !== undefined) errors.push("a retired component has no path");
+    if (Array.isArray(manifest.actions) && manifest.actions.length > 0) {
+      errors.push("a retired component offers no actions");
+    }
+    if (Array.isArray(manifest.setup_hooks) && manifest.setup_hooks.length > 0) {
+      errors.push("a retired component has no setup hooks");
+    }
+    if (manifest.implementation && Object.keys(manifest.implementation).length > 0) {
+      errors.push("a retired component has no implementation");
     }
   }
 
@@ -152,7 +172,16 @@ export function validateCatalogEntry(catalogEntry, manifest, repoRoot) {
   if (!catalogEntry?.id) errors.push("catalog entry missing id");
   if (!catalogEntry?.manifest) errors.push(`catalog entry ${catalogEntry?.id} missing manifest path`);
 
-  if (catalogEntry?.kind !== "template" && !catalogEntry?.path) {
+  const retired = catalogEntry?.status === "retired";
+  if (retired) {
+    if (catalogEntry.path !== undefined) errors.push(`retired catalog entry ${catalogEntry.id} has a path`);
+    if (catalogEntry.bundled !== false || catalogEntry.default_enabled !== false) {
+      errors.push(`retired catalog entry ${catalogEntry.id} must set bundled and default_enabled to false`);
+    }
+    if (manifest && manifest.status !== "retired") {
+      errors.push(`retired catalog entry ${catalogEntry.id} needs a retired manifest`);
+    }
+  } else if (catalogEntry?.kind !== "template" && !catalogEntry?.path) {
     errors.push(`catalog entry ${catalogEntry?.id} missing path`);
   }
 

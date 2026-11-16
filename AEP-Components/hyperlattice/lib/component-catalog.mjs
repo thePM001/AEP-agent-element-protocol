@@ -212,7 +212,7 @@ export function matchIntentFromCatalog(userIntent, context) {
       matched.add("conformance-runner");
     }
     if (CAW_INTENT_PATTERN.test(text)) {
-      matched.add("caw-framework");
+      // caw-framework is retired: no host sandbox ships in this release.
       matched.add("session");
       matched.add("mcp-security");
       matched.add("gap");
@@ -279,7 +279,7 @@ export function buildPlanComponents(registryComponents, componentIds, userIntent
   const idSet = new Set(componentIds);
   return registryComponents
     .map((c) => {
-      const enabled = idSet.has(c.id) || c.default_enabled;
+      const enabled = c.status !== "retired" && (idSet.has(c.id) || c.default_enabled);
       let config;
       if (c.id === "connector-postgres" && enabled && /postgres|postgresql/i.test(userIntent)) {
         config = {
@@ -482,5 +482,5 @@ export function componentIdsFromGraph(graph, registryComponents) {
  * @param {object[]} components
  */
 export function allSelectableComponentIds(components) {
-  return components.filter((c) => c.kind !== "template").map((c) => c.id);
+  return components.filter((c) => c.kind !== "template" && c.status !== "retired").map((c) => c.id);
 }

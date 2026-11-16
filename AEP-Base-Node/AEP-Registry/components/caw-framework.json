@@ -3,98 +3,28 @@
   "id": "caw-framework",
   "version": "2.9.0",
   "kind": "daemon",
-  "path": "AEP-CAW/",
-  "description": "AEP CAW Framework: Execution-Layer Security for containerized agentic workflows (Apache 2.0).",
+  "status": "retired",
+  "description": "Retired. The Go CAW left the tree and this release ships no host sandbox. A Rust CAW with gVisor takes this id over when it lands.",
   "requires": [
-    "aep-base-node",
-    "lattice-channels",
-    "evidence-ledger"
+    "aep-base-node"
   ],
-  "capabilities": [
-    "caw:exec",
-    "caw:session",
-    "caw:policy",
-    "caw:file-enforce",
-    "caw:network-enforce",
-    "caw:process-enforce",
-    "caw:llm-proxy",
-    "caw:postgres-proxy",
-    "caw:mcp-security",
-    "caw:checkpoint",
-    "caw:lattice-audit"
-  ],
-  "actions": [
-    {
-      "id": "detect",
-      "description": "Probe host enforcement primitives",
-      "runtime": "cli",
-      "method": "aep-caw detect"
-    },
-    {
-      "id": "start_server",
-      "description": "Start CAW execution gateway server",
-      "runtime": "plan",
-      "method": "caw_framework.server"
-    },
-    {
-      "id": "install_shim",
-      "description": "Install shell shim for enforced exec",
-      "runtime": "cli",
-      "method": "aep-caw shim install-shell"
-    }
-  ],
-  "setup_hooks": [
-    {
-      "id": "caw_policy_section",
-      "policy_section": "caw_framework",
-      "default": {
-        "enabled": true,
-        "mode": "enforce",
-        "shell_shim": true,
-        "lattice_audit": true,
-        "policy_name": "default"
-      }
-    }
-  ],
+  "capabilities": [],
+  "actions": [],
+  "setup_hooks": [],
   "resource_requirements": {
-    "min_memory_mb": 512,
-    "min_disk_mb": 200,
+    "min_memory_mb": 0,
+    "min_disk_mb": 0,
     "requires_internet": false,
     "gpu_required": false
   },
   "cca": {
-    "summary": "Execution-Layer Security for CAW: policy-enforced shell, file, network, process and DB wire governance.",
-    "use_when": [
-      "coding agents",
-      "containerized agentic workflows",
-      "CAW",
-      "shell enforcement",
-      "execution layer security",
-      "subprocess audit"
-    ],
+    "summary": "Retired. No host sandbox ships in this release, so no agent process is confined on the host.",
+    "use_when": [],
     "avoid_when": [
-      "UI-only Schema Builder work with no shell"
+      "every deployment of this release: the component ships nothing"
     ],
-    "pairs_with": [
-      "gap-runtime-scanners",
-      "evidence-ledger",
-      "mcp-security",
-      "session",
-      "conformance-runner"
-    ]
+    "pairs_with": []
   },
-  "implementation": {
-    "binary": "AEP-CAW/cmd/aep-caw",
-    "shim": "AEP-CAW/cmd/aep-caw-shell-shim",
-    "build": "make -C AEP-CAW build",
-    "bridge": "AEP-CAW/lib/lattice-bridge.mjs",
-    "service": "AEP-CAW/lib/caw-service.mjs"
-  },
-  "conformance": {
-    "tests": [
-      "AEP-Components/conformance/runner/run.sh",
-      "AEP-Components/conformance/tests/manifest.json"
-    ]
-  },
+  "implementation": {},
   "role": "kernel"
 }

@@ -8,7 +8,6 @@
  "id",
  "version",
  "kind",
- "path",
  "description",
  "requires",
  "capabilities",
@@ -18,7 +17,13 @@
  "cca",
  "implementation"
  ],
+ "if": {
+ "not": { "required": ["status"], "properties": { "status": { "const": "retired" } } }
+ },
+ "then": { "required": ["path"] },
+ "else": { "not": { "required": ["path"] } },
  "properties": {
+ "status": { "type": "string", "enum": ["active", "experimental", "retired"] },
  "manifest_version": { "const": "1" },
  "id": { "type": "string", "minLength": 1 },
  "version": { "type": "string" },

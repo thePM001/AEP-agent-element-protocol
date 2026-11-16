@@ -248,9 +248,10 @@ describe("matchIntentFromCatalog", () => {
     expect(matchIntentFromCatalog("run conformance", ctx()).componentIds).toContain("conformance-runner");
   });
 
-  it("caw intent adds the caw family", () => {
+  it("caw intent adds session, mcp-security and gap but not the retired caw-framework", () => {
     const ids = matchIntentFromCatalog("an aep-caw coding agent", ctx()).componentIds;
-    for (const id of ["caw-framework", "session", "mcp-security", "gap"]) expect(ids).toContain(id);
+    for (const id of ["session", "mcp-security", "gap"]) expect(ids).toContain(id);
+    expect(ids).not.toContain("caw-framework");
   });
 
   it("dynaep intent adds core, typescript and optional python and scanners", () => {
@@ -426,5 +427,20 @@ describe("allSelectableComponentIds", () => {
     const ids = allSelectableComponentIds(COMPONENTS);
     expect(ids).not.toContain("starter-template");
     expect(ids).toHaveLength(COMPONENTS.length - 1);
+  });
+
+  it("excludes retired components", () => {
+    const retired = { id: "old-sandbox", name: "Old", kind: "daemon", status: "retired" };
+    const ids = allSelectableComponentIds([...COMPONENTS, retired]);
+    expect(ids).not.toContain("old-sandbox");
+    expect(ids).toHaveLength(COMPONENTS.length - 1);
+  });
+});
+
+describe("buildPlanComponents with a retired component", () => {
+  it("never enables a retired component, even when named or enabled by default", () => {
+    const retired = { id: "old-sandbox", name: "Old", kind: "daemon", status: "retired", default_enabled: true };
+    const out = buildPlanComponents([...COMPONENTS, retired], ["old-sandbox"], "sandbox", {});
+    expect(out.map((c) => c.id)).not.toContain("old-sandbox");
   });
 });

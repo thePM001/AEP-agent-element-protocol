@@ -145,6 +145,7 @@ export async function selectComponentsInteractive(components, rl, promptYesNo) {
     console.log(`\n${kind.replace(/_/g, " ").toUpperCase()} components:`);
     for (const comp of list) {
       if (comp.bundled === false && comp.kind === "template") continue;
+      if (comp.status === "retired") continue;
       const tag = comp.bundled ? "bundled" : "remote";
       const enable = await promptYesNo(
         rl,
