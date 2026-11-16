@@ -35,6 +35,8 @@ metadata:
       action: ede.promote
     - agent_id: coding-agent
       action: ede.expire
+    - agent_id: coding-agent
+      action: ede.stage
 
 extensions:
   aep:

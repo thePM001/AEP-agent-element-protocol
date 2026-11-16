@@ -31,6 +31,8 @@ fn ede_wall(args: &[String]) -> i32 {
         draft_max: 0,
         scan_max: 0,
         seal_max: 0,
+        staged: 0,
+        stage_max: 0,
     };
     let mut i = 0;
     while i < args.len() {
@@ -70,6 +72,8 @@ fn ede_wall(args: &[String]) -> i32 {
             "--draft-max" => num(&v).map(|n| req.draft_max = n).is_some(),
             "--scan-max" => num(&v).map(|n| req.scan_max = n).is_some(),
             "--seal-max" => num(&v).map(|n| req.seal_max = n).is_some(),
+            "--staged" => num(&v).map(|n| req.staged = n).is_some(),
+            "--stage-max" => num(&v).map(|n| req.stage_max = n).is_some(),
             _ => false,
         };
         if !ok {

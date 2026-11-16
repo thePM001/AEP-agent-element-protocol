@@ -7,12 +7,39 @@
 //! signed draft record (the state, the satisfied lifecycle nodes and the times of the
 //! seed, the scan and the CI seal) with the age bounds of its operator. The wall is one
 //! collect-all pass with default deny like every Admit of AEP.
+//!
+//! Provisional staging puts the host change of a promoted draft in place for a trial:
+//! ede.stage under ede.promote, ede.check under ede.stage, ede.confirm under ede.check
+//! and ede.revert under ede.stage. A stage verb hands in the state of the stage, not of
+//! the draft, with the time of the stage and the stage deadline of the operator. Check
+//! and confirm close once the deadline has passed; revert remains open so the way back
+//! always works.
 
 use crate::{wall, AdmitResult, AdmitWall, LatticeNode};
 use std::collections::{BTreeSet, HashMap};
 
 /// The verbs of the lifecycle, each one a node ede.<verb>.
-pub const VERBS: &[&str] = &["seed", "refresh", "scan", "verify", "promote", "expire"];
+pub const VERBS: &[&str] = &[
+    "seed", "refresh", "scan", "verify", "promote", "expire", "stage", "check", "confirm", "revert",
+];
+
+/// The verbs of provisional staging. Their state is the state of the stage.
+pub const STAGE_VERBS: &[&str] = &["stage", "check", "confirm", "revert"];
+
+/// The states a stage can name. none stands for a draft without a stage.
+pub const STAGE_STATES: &[&str] = &[
+    "none",
+    "staged",
+    "checked",
+    "failed",
+    "confirmed",
+    "reverted",
+];
+
+/// True for a verb of provisional staging.
+pub fn is_stage_verb(verb: &str) -> bool {
+    STAGE_VERBS.contains(&verb)
+}
 
 /// The states a draft record can name. none stands for a draft that does not exist yet.
 pub const STATES: &[&str] = &[
@@ -42,6 +69,10 @@ pub struct EdeRequest {
     pub draft_max: u64,
     pub scan_max: u64,
     pub seal_max: u64,
+    /// Unix seconds of the stage; 0 when there is none.
+    pub staged: u64,
+    /// The stage deadline of the operator, in seconds. A stage verb needs it set.
+    pub stage_max: u64,
 }
 
 /// The node of a verb.
@@ -98,7 +129,32 @@ fn wall_parents(nodes: &HashMap<String, LatticeNode>, req: &EdeRequest) -> Admit
     }
 }
 
+fn wall_stage_state(req: &EdeRequest) -> AdmitWall {
+    let s = req.state.as_str();
+    if !STAGE_STATES.contains(&s) {
+        return closed("ede.state", "ede", &format!("unknown stage state {}", s));
+    }
+    let admitted: &[&str] = match req.verb.as_str() {
+        "stage" => &["none", "reverted"],
+        "check" => &["staged", "checked"],
+        "confirm" => &["checked"],
+        _ => &["staged", "checked", "failed"],
+    };
+    if admitted.contains(&s) {
+        open("ede.state", "ede", "stage state admits the verb")
+    } else {
+        closed(
+            "ede.state",
+            "ede",
+            &format!("the stage state {} does not admit {}", s, req.verb),
+        )
+    }
+}
+
 fn wall_state(req: &EdeRequest) -> AdmitWall {
+    if is_stage_verb(&req.verb) {
+        return wall_stage_state(req);
+    }
     let s = req.state.as_str();
     if !STATES.contains(&s) {
         return closed("ede.state", "ede", &format!("unknown state {}", s));
@@ -123,7 +179,8 @@ fn wall_time(req: &EdeRequest) -> AdmitWall {
     if req.now == 0 {
         return closed("time.authority", "time", "no clock");
     }
-    if req.seeded > req.now || req.scanned > req.now || req.sealed > req.now {
+    if req.seeded > req.now || req.scanned > req.now || req.sealed > req.now || req.staged > req.now
+    {
         return closed(
             "time.authority",
             "time",
@@ -137,7 +194,35 @@ fn wall_bounds(req: &EdeRequest) -> AdmitWall {
     if req.draft_max == 0 || req.scan_max == 0 || req.seal_max == 0 {
         return closed("ede.bounds", "ede", "every age bound must be set");
     }
+    if is_stage_verb(&req.verb) && req.stage_max == 0 {
+        return closed("ede.bounds", "ede", "a stage verb needs the stage deadline");
+    }
     open("ede.bounds", "ede", "bounds set")
+}
+
+fn wall_stage_age(req: &EdeRequest) -> AdmitWall {
+    if !matches!(req.verb.as_str(), "check" | "confirm") {
+        return open(
+            "ede.stage_age",
+            "ede",
+            "only check and confirm read the deadline",
+        );
+    }
+    if req.staged == 0 {
+        return closed("ede.stage_age", "ede", "the stage has no time");
+    }
+    if req.now.saturating_sub(req.staged) > req.stage_max {
+        return closed(
+            "ede.stage_age",
+            "ede",
+            &format!(
+                "the stage is {} s old and its deadline is {} s: revert it",
+                req.now.saturating_sub(req.staged),
+                req.stage_max
+            ),
+        );
+    }
+    open("ede.stage_age", "ede", "stage inside its deadline")
 }
 
 fn wall_draft_age(req: &EdeRequest) -> AdmitWall {
@@ -206,6 +291,7 @@ pub fn ede_wall(nodes: &HashMap<String, LatticeNode>, req: &EdeRequest) -> Admit
         wall_draft_age(req),
         wall_scan_age(req),
         wall_seal_age(req),
+        wall_stage_age(req),
     ];
     walls.sort_by(|a, b| a.id.cmp(&b.id));
     AdmitResult::from_walls(&walls)
@@ -251,7 +337,98 @@ mod tests {
             draft_max: 5_000,
             scan_max: 1_000,
             seal_max: 1_000,
+            staged: 9_800,
+            stage_max: 600,
         }
+    }
+
+    const PROMOTED: [&str; 4] = ["ede.seed", "ede.scan", "ede.verify", "ede.promote"];
+
+    #[test]
+    fn the_shipped_lattice_holds_provisional_staging() {
+        let nodes = lattice();
+        for (node, parents) in [
+            ("stage", vec!["ede.promote"]),
+            ("check", vec!["ede.stage"]),
+            ("confirm", vec!["ede.check"]),
+            ("revert", vec!["ede.stage"]),
+        ] {
+            let mut p = nodes[&node_of(node)].parents.clone();
+            p.sort();
+            assert_eq!(p, parents, "{}", node);
+        }
+    }
+
+    #[test]
+    fn a_stage_needs_a_promoted_draft_and_each_stage_verb_its_state() {
+        let nodes = lattice();
+        assert!(ede_wall(&nodes, &req("stage", "none", &PROMOTED)).allow);
+        let r = ede_wall(&nodes, &req("stage", "none", &["ede.seed", "ede.scan"]));
+        assert_eq!(
+            closed_ids(&r),
+            vec!["dag.parents"],
+            "a stage before the promote"
+        );
+        let staged: Vec<&str> = PROMOTED.iter().copied().chain(["ede.stage"]).collect();
+        let checked: Vec<&str> = staged.iter().copied().chain(["ede.check"]).collect();
+        assert!(ede_wall(&nodes, &req("check", "staged", &staged)).allow);
+        assert!(ede_wall(&nodes, &req("confirm", "checked", &checked)).allow);
+        for s in ["staged", "checked", "failed"] {
+            assert!(
+                ede_wall(&nodes, &req("revert", s, &staged)).allow,
+                "revert on {}",
+                s
+            );
+        }
+        for (v, s) in [
+            ("stage", "staged"),
+            ("stage", "checked"),
+            ("confirm", "staged"),
+            ("confirm", "failed"),
+            ("check", "failed"),
+            ("revert", "confirmed"),
+            ("revert", "reverted"),
+            ("check", "promoted"),
+        ] {
+            let r = ede_wall(&nodes, &req(v, s, &checked));
+            assert_eq!(closed_ids(&r), vec!["ede.state"], "{} on {}", v, s);
+        }
+        assert!(ede_wall(&nodes, &req("stage", "reverted", &PROMOTED)).allow);
+    }
+
+    #[test]
+    fn the_stage_deadline_closes_check_and_confirm_but_never_revert() {
+        let nodes = lattice();
+        let checked: Vec<&str> = PROMOTED
+            .iter()
+            .copied()
+            .chain(["ede.stage", "ede.check"])
+            .collect();
+        for v in ["check", "confirm"] {
+            let mut late = req(v, if v == "check" { "staged" } else { "checked" }, &checked);
+            late.staged = 9_000;
+            assert_eq!(
+                closed_ids(&ede_wall(&nodes, &late)),
+                vec!["ede.stage_age"],
+                "{}",
+                v
+            );
+        }
+        let mut late = req("revert", "checked", &checked);
+        late.staged = 1_000;
+        assert!(ede_wall(&nodes, &late).allow);
+        let mut unbounded = req("stage", "none", &PROMOTED);
+        unbounded.stage_max = 0;
+        assert_eq!(
+            closed_ids(&ede_wall(&nodes, &unbounded)),
+            vec!["ede.bounds"]
+        );
+        let mut future = req("check", "staged", &checked);
+        future.staged = 20_000;
+        assert_eq!(
+            closed_ids(&ede_wall(&nodes, &future)),
+            vec!["time.authority"]
+        );
     }
 
     fn closed_ids(r: &AdmitResult) -> Vec<String> {

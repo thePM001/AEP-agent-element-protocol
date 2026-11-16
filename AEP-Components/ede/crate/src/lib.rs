@@ -24,6 +24,7 @@
 
 pub mod forge;
 pub mod git;
+pub mod hoststage;
 pub mod ident;
 pub mod identity;
 pub mod operator;
@@ -173,6 +174,8 @@ impl Ctx {
             draft_max: self.op.draft_max_age_secs,
             scan_max: self.op.scan_max_age_secs,
             seal_max: self.op.seal_max_age_secs,
+            staged: 0,
+            stage_max: self.op.stage_max_age_secs,
         };
         let result = aep_dynaep::ede::ede_wall(&self.lattice()?, &req);
         if result.allow {
@@ -267,7 +270,7 @@ fn list_note(list: &[git::Entry]) -> String {
     s
 }
 
-fn restore(ctx: &Ctx, r: &Record) -> Result<(), String> {
+pub(crate) fn restore(ctx: &Ctx, r: &Record) -> Result<(), String> {
     let config = store::load_git_config(&ctx.op, &r.draft_id)?;
     git::restore(r, &config)
 }
@@ -890,6 +893,7 @@ pub fn sweep() -> Vec<String> {
             }
         }
     }
+    out.extend(hoststage::sweep_deadlines(&ctx));
     out
 }
 

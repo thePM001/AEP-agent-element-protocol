@@ -470,13 +470,46 @@ actions:
     label: "Land the scanned tree of a draft in one commit"
     category: agent_action
     parents: [ede.scan, ede.verify]
-    children: []
+    children: [ede.stage]
     agent_permission: ["*"]
 
   ede.expire:
     label: "Expire a draft and leave a tombstone in the ledger"
     category: agent_action
     parents: [ede.seed]
+    children: []
+    agent_permission: ["*"]
+
+  # -- EDE Provisional Staging --
+  # The host change of a promoted draft goes in place for a trial. The wall
+  # judges the state of the stage, closes check and confirm after the stage
+  # deadline of the operator and leaves revert open, so the way back always works.
+
+  ede.stage:
+    label: "Put the host change of a promoted draft in place and save the old targets"
+    category: agent_action
+    parents: [ede.promote]
+    children: [ede.check, ede.revert]
+    agent_permission: ["*"]
+
+  ede.check:
+    label: "Run the check of a staged host change"
+    category: agent_action
+    parents: [ede.stage]
+    children: [ede.confirm]
+    agent_permission: ["*"]
+
+  ede.confirm:
+    label: "Make a checked stage permanent; only the operator confirms"
+    category: agent_action
+    parents: [ede.check]
+    children: []
+    agent_permission: ["*"]
+
+  ede.revert:
+    label: "Put every saved target of a stage back with its owner and mode"
+    category: agent_action
+    parents: [ede.stage]
     children: []
     agent_permission: ["*"]
 

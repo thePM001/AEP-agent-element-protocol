@@ -4,6 +4,7 @@ use std::io::Write;
 
 const USAGE: &str = "usage: aep-ede seed <owner/repo> [branch] | diff <draft> | scan <draft> | promote <draft> -m <message> | refresh <draft> | status <draft> | path <draft> | expire <draft>
        aep-ede profile init <agent-id> <owner/repo>... | profile check | agent keygen <seed-file> | agent register <agent-id> <public-hex> | sweep | ledger-check
+       aep-ede stage <draft> <manifest> | stage-check <draft> | stage-revert <draft> | stage-confirm <draft> | stage-status <draft>
 Every verb proves the agent of AEP_AGENT_ID with the signing seed in the file AEP_AGENT_KEY against the key the operator registered.
 Every control (forge, roots, quota, age bounds) comes from the operator folder /etc/aep-ede.";
 
@@ -135,6 +136,14 @@ fn main() {
             }
             aep_ede::promote(draft, &message)
         }
+        "stage" => match args.get(2) {
+            Some(manifest) => aep_ede::hoststage::stage(draft, manifest),
+            None => usage(),
+        },
+        "stage-check" => aep_ede::hoststage::stage_check(draft),
+        "stage-revert" => aep_ede::hoststage::stage_revert(draft),
+        "stage-confirm" => aep_ede::hoststage::stage_confirm(draft),
+        "stage-status" => aep_ede::hoststage::stage_status(draft),
         _ => usage(),
     };
     let _ = std::io::stdout().write_all(report.render().as_bytes());

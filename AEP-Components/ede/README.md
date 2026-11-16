@@ -80,6 +80,47 @@ aep-ede expire <draft>              # end a draft and leave a tombstone
 
 Every seed, scan, rescan, refresh, promote, expire and sweep is one entry of a chained ledger in the record root. `aep-ede ledger-check` checks the chain. `aep-ede sweep`, run by the operator, expires drafts past `draft_max_age_secs`.
 
+## 4. Stage a host change provisionally
+
+A promote that changes a host carries a deploy manifest in its tree. The stage verbs read the manifest and every source from the git tree the scan judged, never from the working folder and put the change in place for a trial with a saved way back.
+
+```
+aep-ede stage <draft> deploy/host.gaplune   # build, save the old targets, put the files in place, run the check
+aep-ede stage-check <draft>                 # run the check again inside the deadline
+aep-ede stage-revert <draft>                # put every saved target back and remove what the stage added
+aep-ede stage-confirm <draft>               # the operator makes a checked stage permanent
+aep-ede stage-status <draft>                # the state of the stage
+```
+
+A deploy manifest:
+
+```
+schema_id: gaplune.aep.ede.deploy-manifest.v1
+build: cargo build --release -p example-tool
+check: /usr/local/bin/example-tool --version
+users:
+  - name: example-svc
+    shell: /usr/sbin/nologin
+files:
+  - source: target/release/example-tool
+    target: /usr/local/bin/example-tool
+    owner: root
+    mode: 0755
+```
+
+| Rule | What holds |
+|------|------------|
+| targets | Every target lies inside a folder that `stage_targets` of `operator.conf` lists. The operator folder, the record and state roots, the lattice of the wall and the binary of aep-ede are refused. A finding names the target and the rule. |
+| saved way back | Before a target changes, its bytes, owner, group and mode go into the record root. A target the stage adds is removed on revert. A revert proves every target back in its old state. |
+| check | A failed check or a failed step reverts at once. A revert that cannot finish leaves the stage `failed` with every error named, holding its targets for the operator. |
+| deadline | A stage is provisional for `stage_max_age_secs`. After it, check and confirm close and `aep-ede sweep` reverts the stage. Revert remains open. |
+| confirm | Only the operator confirms: a caller without an agent identity whose user id `stage_confirm_uids` lists. An agent stages, checks and reverts with the grant `ede.stage` of its profile. |
+| one stage per target | A target that an open stage holds refuses a second stage until the first one is confirmed or reverted. |
+| users | A user the manifest needs and the host lacks is created with a free system id and its own group and is removed on revert. |
+| record | Each stage action is a sealed stage record and an entry of the ledger. The EDE wall of dynAEP judges `ede.stage`, `ede.check`, `ede.confirm` and `ede.revert`. |
+
+Writing to a host folder needs the rights of that folder: a stage runs with the user of its caller.
+
 ## Identifiers
 
 Every draft environment of AEP follows one identifier specification. Its vectors are `identifier-vectors.gaplune` of this component.
@@ -104,7 +145,7 @@ The operator folder picks the forge.
 
 ## Where it sits in AEP
 
-The EDE is the coding agent side of Admit. The EDE decides how the git state of a coding agent may change at all: through a scanned draft and nothing else. Its lifecycle is part of the action lattice of dynAEP (the nodes `ede.seed` to `ede.expire`).
+The EDE is the coding agent side of Admit. The EDE decides how the git state of a coding agent may change at all: through a scanned draft and nothing else. Its lifecycle is part of the action lattice of dynAEP (the nodes `ede.seed` to `ede.expire` and the stage nodes `ede.stage` to `ede.revert`).
 
 The record root and the EDE key are out of reach of an agent only while the agent runs as a user other than the EDE user and other than root. The sandbox that runs the agent carries that side of the boundary.
 

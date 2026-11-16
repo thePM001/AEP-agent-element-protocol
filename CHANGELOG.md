@@ -2,6 +2,16 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-16 - The draft environment stages the host change of a promote provisionally
+A promote ended in the forge. What it changed on a host went in place by hand, with no trial, no saved way back and no record of what changed.
+
+- A promote that changes a host carries a deploy manifest (`gaplune.aep.ede.deploy-manifest.v1`) with a build, a check, the users it needs and each file with its target, owner, group and mode.
+- `aep-ede stage` reads the manifest and every source from the git tree the scan judged, builds in an export of that tree, saves every old target with its owner, group and mode in the record root, creates the users it needs and puts the files in place. Then it runs the check. A failed check or a failed step reverts at once.
+- A stage is provisional for `stage_max_age_secs`. Only the operator confirms it with `aep-ede stage-confirm`. `aep-ede stage-revert` puts every target back and proves it. `aep-ede sweep` reverts a stage after its deadline.
+- Targets lie inside the folders `stage_targets` of `operator.conf` lists. The operator folder, the record and state roots, the lattice of the wall and the binary of aep-ede are refused. A target that an open stage holds refuses a second stage.
+- The action lattice of dynAEP holds `ede.stage` under `ede.promote`, `ede.check` and `ede.revert` under `ede.stage` and `ede.confirm` under `ede.check`. The EDE wall judges the state of the stage and closes check and confirm after the stage deadline; revert remains open.
+- Agent profiles grant the stage verbs with the action `ede.stage`.
+
 ## [2.9.0] - 2026-11-16 - The draft environment keeps its evidence out of reach of the agent and binds every identifier
 A coding agent could write the scan record of its own draft, name another agent in a variable, plant a hook that saw the forge token and land a change set no scan judged. Two seeds in one second shared one draft id. aep-ede now takes every control from an operator folder, proves the agent with a signed frame and lands exactly the tree it scanned.
 

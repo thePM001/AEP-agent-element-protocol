@@ -32,7 +32,7 @@ use std::fs;
 use std::path::PathBuf;
 
 /// The verbs a profile grants. diff, status and path read a draft under the grant of scan.
-pub const VERBS: &[&str] = &["seed", "refresh", "scan", "promote", "expire"];
+pub const VERBS: &[&str] = &["seed", "refresh", "scan", "promote", "expire", "stage"];
 
 pub struct Profile {
     pub agent_id: String,

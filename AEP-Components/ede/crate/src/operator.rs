@@ -47,6 +47,17 @@ pub struct Operator {
     /// The lattice of the lifecycle wall; empty for the lattice of dynAEP that ships with
     /// this crate.
     pub lattice: Option<PathBuf>,
+    /// Provisional staging: the folders a stage may write, the stage deadline, the time
+    /// limits of build and check, the user tools with their tables and the user ids
+    /// that confirm a stage as the operator.
+    pub stage_targets: Vec<PathBuf>,
+    pub stage_max_age_secs: u64,
+    pub stage_build_timeout_secs: u64,
+    pub stage_check_timeout_secs: u64,
+    pub user_tool_dir: PathBuf,
+    pub passwd_file: PathBuf,
+    pub group_file: PathBuf,
+    pub stage_confirm_uids: Vec<u32>,
 }
 
 impl Operator {
@@ -69,6 +80,14 @@ impl Operator {
             scan_max_age_secs: 86400,
             seal_max_age_secs: 86400,
             lattice: None,
+            stage_targets: Vec::new(),
+            stage_max_age_secs: 3600,
+            stage_build_timeout_secs: 3600,
+            stage_check_timeout_secs: 300,
+            user_tool_dir: "/usr/sbin".into(),
+            passwd_file: "/etc/passwd".into(),
+            group_file: "/etc/group".into(),
+            stage_confirm_uids: vec![0],
         }
     }
 
@@ -175,13 +194,42 @@ pub fn parse(dir: &Path, body: &str) -> Result<Operator, String> {
             "scan_max_age_secs" => op.scan_max_age_secs = number(k, v)?,
             "seal_max_age_secs" => op.seal_max_age_secs = number(k, v)?,
             "lattice" => op.lattice = Some(path(k, v)?),
+            "stage_targets" => {
+                op.stage_targets = Vec::new();
+                for p in v.split_whitespace() {
+                    let p = path(k, p)?;
+                    if p == Path::new("/") {
+                        return Err("stage_targets never names the root folder".into());
+                    }
+                    op.stage_targets.push(p);
+                }
+            }
+            "stage_max_age_secs" => op.stage_max_age_secs = number(k, v)?,
+            "stage_build_timeout_secs" => op.stage_build_timeout_secs = number(k, v)?,
+            "stage_check_timeout_secs" => op.stage_check_timeout_secs = number(k, v)?,
+            "user_tool_dir" => op.user_tool_dir = path(k, v)?,
+            "passwd_file" => op.passwd_file = path(k, v)?,
+            "group_file" => op.group_file = path(k, v)?,
+            "stage_confirm_uids" => {
+                op.stage_confirm_uids = v
+                    .split_whitespace()
+                    .map(|u| {
+                        u.parse::<u32>()
+                            .map_err(|_| format!("stage_confirm_uids holds {}", u))
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+            }
             other => return Err(format!("unknown key {}", other)),
         }
     }
     if op.forge == ForgeKind::Git && op.git_remote.is_empty() {
         return Err("the git forge needs git_remote".into());
     }
-    if op.draft_max_age_secs == 0 || op.scan_max_age_secs == 0 || op.seal_max_age_secs == 0 {
+    if op.draft_max_age_secs == 0
+        || op.scan_max_age_secs == 0
+        || op.seal_max_age_secs == 0
+        || op.stage_max_age_secs == 0
+    {
         return Err("an age bound is zero".into());
     }
     if op.record_root.starts_with(&op.state_root) || op.state_root.starts_with(&op.record_root) {

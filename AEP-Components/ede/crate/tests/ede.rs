@@ -495,7 +495,7 @@ fn every_verb_proves_its_agent_and_passes_its_profile() {
     let prof = aep_ede::profile::load(&op, "test-agent").unwrap();
     assert!(
         prof.summary()
-            .contains("grants seed refresh scan promote expire for owner/demo"),
+            .contains("grants seed refresh scan promote expire stage for owner/demo"),
         "{}",
         prof.summary()
     );
@@ -558,7 +558,7 @@ fn every_verb_proves_its_agent_and_passes_its_profile() {
 }
 
 #[test]
-fn the_reference_profile_grants_the_five_verbs() {
+fn the_reference_profile_grants_the_six_verbs() {
     let text = include_str!("../../../gap/policies/reference/ede-coding-agent.gap");
     let (records, repos) = aep_ede::profile::parse(text).unwrap();
     let actions: Vec<&str> = records.iter().map(|r| r.action.as_str()).collect();
@@ -569,7 +569,8 @@ fn the_reference_profile_grants_the_five_verbs() {
             "ede.refresh",
             "ede.scan",
             "ede.promote",
-            "ede.expire"
+            "ede.expire",
+            "ede.stage"
         ]
     );
     assert!(records.iter().all(|r| r.agent_id == "coding-agent"));
@@ -877,8 +878,19 @@ fn the_variables_of_the_old_aep_ede_change_no_verdict() {
 #[test]
 fn a_release_build_reads_no_control_from_the_environment() {
     let allowed = ["env::var(k)", "\"AEP_AGENT_ID\"", "\"AEP_AGENT_KEY\""];
-    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    for e in fs::read_dir(&src).unwrap().flatten() {
+    // Every source file, the module folders included.
+    let mut files = Vec::new();
+    let mut dirs = vec![Path::new(env!("CARGO_MANIFEST_DIR")).join("src")];
+    while let Some(d) = dirs.pop() {
+        for e in fs::read_dir(&d).unwrap().flatten() {
+            if e.path().is_dir() {
+                dirs.push(e.path());
+            } else if e.path().extension().and_then(|x| x.to_str()) == Some("rs") {
+                files.push(e);
+            }
+        }
+    }
+    for e in files {
         let body = fs::read_to_string(e.path()).unwrap();
         let lines: Vec<&str> = body.lines().collect();
         for (i, l) in lines.iter().enumerate() {

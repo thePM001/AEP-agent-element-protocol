@@ -12,7 +12,8 @@
     "lattice:causal-log",
     "hyperlattice:ssot",
     "lattice:rust-crate",
-    "lattice:ede-lifecycle-wall"
+    "lattice:ede-lifecycle-wall",
+    "lattice:ede-provisional-staging"
   ],
   "actions": [
     {
