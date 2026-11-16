@@ -18,7 +18,7 @@ The home folder of a component contains its README with ten parts: title, status
 | 08 | Lattice Channels | `AEP-Components/lattice-channels` | `lattice-crypto`, `lattice-gated-fetch` |
 | 09 | Evidence Ledger | `AEP-Components/evidence-ledger` | `proof-bundle`, `telemetry` |
 | 10 | Base Node Pulse | `AEP-Components/base-node-pulse` | none |
-| 11 | CAWs | `AEP-CAW` | `isolation`, `intercept`, `mcp-security`, `caw-cve-demo-trees` |
+| 11 | CAWs | `AEP-Components/caws` | `isolation`, `intercept`, `mcp-security`, `caw-cve-demo-trees` |
 | 12 | Scanners | `AEP-Components/scanners` | none |
 | 13 | AgentMesh | `AEP-Components/agentmesh` | `agentmesh-local-issuance`, `identity` |
 | 14 | Economics | `AEP-Components/economics` | none |
@@ -45,7 +45,7 @@ Every subfolder has a `README.md`. The README of a home folder describes the who
 Infrastructure and top-level surfaces outside this folder:
 
 - `AEP-Base-Node/` - **mandatory AEP governance kernel**, component 01
-- `AEP-CAW/` - CAW host sandboxes, component 11. An incorporated part of AEP that runs on the host
+- `AEP-Components/caws/` - CAW host sandboxes, component 11. This release ships none: the Go CAW is retired and a Rust CAW with gVisor replaces it
 - `AEP-Base-Node/AEP-Docks/` - socket dock specs, the UCB bridge of component 02 and the Universal Connect Dock (UCD)
 - `AEP-Policy-System/` - policy files plus `policy-builder/` and `schema-builder/`, part of component 06
 - `docker/` - container entrypoint and runtime deps
@@ -99,4 +99,4 @@ Every other ledger surface is a derived view or a capability that calls the runt
 | evidence-ledger component | A capability that frontends call, which is not the runtime ledger |
 | intent-ledger component | A derived provenance view |
 | evaluation chain meet result | A derived view. It is not the runtime ledger |
-| host audit log in AEP-CAW | A derived view that records what the enforcer did |
+| host audit log of a CAW | A derived view that records what the enforcer did. No CAW ships in this release |

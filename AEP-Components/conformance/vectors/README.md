@@ -48,7 +48,6 @@ The rules behind each suite:
 | Implementation | Runs | Where |
 |----------------|------|-------|
 | Rust kernel (normative) | every suite | `aep-conformance vectors` in `run.sh` and `cargo test -p aep-conformance` |
-| Go CAW | `dock-socket`, `dock-answer` | `go test -run Vectors ./internal/kerneldock` in `AEP-CAW` |
 | TypeScript helpers | `dock-socket`, `writing` | `tests/vectors-ts-helpers.test.mjs` in the vitest harness of `run.sh` |
 | Example third-party runner | `dock-socket`, `dock-request`, `dock-answer`, `mesh-mode` | `examples/third-party-runner/run-vectors.mjs` |
 

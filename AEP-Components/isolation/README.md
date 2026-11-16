@@ -14,10 +14,10 @@ record. The record binds the process id, the algorithm and the specification
 digest, so a reused process id with a different specification can never satisfy
 a seal.
 
-This crate is not an enforcer. The host sandbox under `AEP-CAW/` carries the real
-restrictions, which are landlock, seccomp and ptrace. That host sandbox is the
-only enforcer in the shipped stack, so a seal on its own is a record and not
-confinement.
+This crate is not an enforcer. It applies no restriction of its own. This release
+ships no host sandbox: the Go CAW is retired and a Rust CAW with gVisor replaces
+it. Until that CAW lands nothing confines a sealed process, so a seal on its own
+is a record and not confinement.
 
 ## Read the record
 

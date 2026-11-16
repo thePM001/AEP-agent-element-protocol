@@ -74,11 +74,13 @@ describe("wrap coverage on the end-to-end example", () => {
     for (const e of report.entries) expect(e.wrap, `${e.kind} ${e.id}`).toBe("caw");
   });
 
-  it("the end-to-end inventory covers its credentials, tool, lattice grants and CAW egress", () => {
+  // The example deploys no CAW policy, because this release ships no host sandbox,
+  // so its inventory names no egress route.
+  it("the end-to-end inventory covers its credentials, tool and lattice grants", () => {
     const report = coverageForFile(E2E);
     const kinds = new Set(report.entries.map((e) => e.kind));
-    expect([...kinds].sort()).toEqual(["action_grant", "credential", "egress_route", "tool"]);
-    expect(entry(report, "egress_route", "network_rules.allow-dock-gateway-loopback").status).toBe("MATCHED");
+    expect([...kinds].sort()).toEqual(["action_grant", "credential", "tool"]);
+    expect(entry(report, "action_grant", "ucb:ingest@agent-a").status).toBe("MATCHED");
     expect(report.inventory).toBe("AEP-User-Experience/examples/end-to-end-run/deployment/wrap-coverage.yaml");
   });
 });

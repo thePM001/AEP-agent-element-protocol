@@ -137,9 +137,9 @@
     {
       "number": "11",
       "name": "CAWs",
-      "home": "AEP-CAW",
-      "readme": "AEP-CAW/README.md",
-      "summary": "The host sandboxes in which an agent process runs under the written policy.",
+      "home": "AEP-Components/caws",
+      "readme": "AEP-Components/caws/README.md",
+      "summary": "The host sandboxes in which an agent process runs under the written policy. This release ships none: the Go CAW is retired and a Rust CAW with gVisor replaces it.",
       "folders": [
         "AEP-Components/isolation",
         "AEP-Components/intercept",

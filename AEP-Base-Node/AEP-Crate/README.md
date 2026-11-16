@@ -6,7 +6,7 @@ This is the kernel daemon crate for Base Node: the workspace package is aep-base
 
 This folder is one of the six kernel children under AEP-Base-Node/. The six children are AEP-Crate, AEP-Docks, AEP-Potomitan, AEP-Multi-Base-Node, AEP-Registry and AEP-Agent-Control-Hub.
 
-After admit, CAW at AEP-CAW/ runs the admitted action.
+After admit, a CAW is meant to run the admitted action on the host. This release ships no CAW.
 
 A nested Rust leaf folder named crate/ under a product remains.
 

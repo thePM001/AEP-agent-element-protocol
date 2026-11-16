@@ -2,13 +2,15 @@
 
 This is the engineering threat model of the AEP 2.9 public tree. It covers the Base Node kernel, the docks, the UCB dock gateway, the CAW execution layer, the lattice channels and the Admit layer with its written policy. For each layer it names the assets, the trust boundaries, what an attacker can do, the threats with their mitigations and the risk that remains.
 
+This release ships no host sandbox. The Go CAW is retired and a Rust CAW with gVisor replaces it. Until that CAW lands nothing in this tree confines an agent process on the host. Layer 4 records what that leaves open.
+
 Every mitigation names at least one check that proves it. A check is a conformance id such as `CC-13` from `AEP-Components/conformance/tests/manifest.json`. A check can also be a test written as `path::name`, where `name` is a Rust `fn`, a Go `func` or a quoted vitest title. The live-set CI job runs `node aep-check.mjs`, whose `threat model` section reads every table row below and fails when a row names no check. It also fails when a cited conformance id is missing or only planned and when a cited test is not in its file.
 
 ```bash
 node AEP-User-Experience/harness/check-threat-model-trace.mjs
 ```
 
-`BIOSECURITY.md` is the access policy of the tree and is not part of this model. `AEP-CAW/SECURITY.md` holds the full CAW security notes and `AEP-Components/ucm/THREAT-MODEL.md` the UCM notes. This file is the root they belong under.
+`BIOSECURITY.md` is the access policy of the tree and is not part of this model. `AEP-Components/ucm/THREAT-MODEL.md` holds the UCM notes. This file is the root they belong under.
 
 ## System and trust boundaries
 
@@ -108,20 +110,17 @@ Out of scope: an attacker with root on the Base Node host, a compromised kernel 
 
 **Assets.** The host files outside the workspace, the network beyond the declared routes, the processes of other sessions and the credentials of declared HTTP services.
 
-**Trust boundaries.** TB-5, plus TB-1 for the kernel dock ping the CAW seals before every exec.
+**Status.** This release ships no host sandbox. The Go CAW is retired and a Rust CAW with gVisor replaces it. The rows that the Go CAW carried left with it, because their checks no longer ship.
+
+**Trust boundaries.** TB-5. In this release no code of the tree enforces it.
 
 **Attacker capabilities.** AC-5.
 
 | Id | Threat | Mitigation | Checks |
 |----|--------|------------|--------|
-| CW-1 | A command starts without the validation dock admitting it. | The kernel dock gate seals a ping before every exec and refuses on a missing socket, a silent dock, a deny or a missing sign key. | `AEP-CAW/internal/kerneldock/kerneldock_test.go::TestProbeRefusesDockDeny`, `AEP-CAW/internal/kerneldock/kerneldock_test.go::TestProbeRefusesMissingSocket`, `AEP-CAW/internal/kerneldock/kerneldock_test.go::TestProbeRefusesWithoutASignKey` |
-| CW-2 | Egress reaches a destination that no rule names because a catch-all rule lets it through. | With `unmatched_egress: deny` a catch-all rule that is not deny stops matching, the eBPF allowlist drops it and the connection is denied as `unmatched-egress-deny`. The wrap coverage report lists every catch-all as unmatched until the mode is on. | `AEP-CAW/internal/policy/unmatched_egress_test.go::TestUnmatchedEgress_DenyIgnoresCatchAllNonDenyRules`, `AEP-CAW/internal/policy/unmatched_egress_test.go::TestUnmatchedEgress_DoubleStarAllowIsCatchAll`, `AEP-CAW/internal/api/ebpf_allow_test.go::TestBuildAllowedEndpoints_UnmatchedEgressDenyDropsCatchAll`, `AEP-Components/wrap-coverage/tests/wrap-coverage.test.mjs::"a CAW catch-all allow rule without unmatched_egress deny is unmatched"` |
-| CW-3 | A domain on a threat feed is reached. | A threat feed match in deny mode refuses before rule evaluation and audit mode still respects the default deny. | `AEP-CAW/internal/policy/engine_threat_test.go::TestCheckNetworkCtx_ThreatFeedDeny`, `AEP-CAW/internal/policy/engine_threat_test.go::TestCheckNetworkCtx_ThreatFeedAuditRespectsDefaultDeny` |
-| CW-4 | A wrapped process reads files outside its grant or traces another process. | Landlock confines file access and seccomp blocks ptrace. | `AEP-CAW/internal/landlock/integration_test.go::TestLandlockEnforcement_BlocksUnauthorizedAccess`, `AEP-CAW/internal/seccomp/integration_test.go::TestSeccompBlocksPtrace` |
-| CW-5 | An opaque shell script hides a denied command. | An opaque `sh -c` script is denied when execve enforcement is not active. | `AEP-CAW/internal/policy/command_shellc_interception_test.go::TestCheckCommand_OpaqueDeniedWhenNoExecveEnforcement` |
-| CW-6 | A policy switch is set to a value the engine does not know and silently means allow. | `unmatched_egress` accepts only empty, `default` or `deny` and validation refuses anything else. | `AEP-CAW/internal/policy/unmatched_egress_test.go::TestUnmatchedEgress_ValidateRejectsUnknownValue` |
+| CW-1 | A deployment declares a catch-all egress rule that reaches any destination. | The wrap coverage report lists every CAW catch-all allow rule as unmatched until unmatched egress deny is on. | `AEP-Components/wrap-coverage/tests/wrap-coverage.test.mjs::"a CAW catch-all allow rule without unmatched_egress deny is unmatched"` |
 
-**Residual risk.** `unmatched_egress` is off by default so existing policies keep their decisions. A policy without it still lets a catch-all allow or approve rule reach any destination on its ports. Approval rules become allow only when the operator sets the shadow allow switch. Kernel level confinement depends on the host kernel features listed in `AEP-CAW/SECURITY.md`.
+**Residual risk.** An agent process on the host runs with the rights of its user. It can read files outside the workspace, reach any network destination and trace other processes of that user. The kernel still judges every action that reaches a dock. A process that never asks the kernel is not stopped. Until the Rust CAW lands, run agents inside a container or a virtual machine with its own limits.
 
 ## Layer 5: Lattice channels and crypto
 
@@ -173,6 +172,5 @@ Out of scope: an attacker with root on the Base Node host, a compromised kernel 
 Each row above names its checks in the last column. The checks run in these places.
 
 - Rust tests and conformance checks: `bash AEP-Components/conformance/runner/run.sh` and `cargo test --workspace` in the live-set and rust-workspace CI jobs. CC-35 is listed in the conformance manifest.
-- Go tests: `go test ./...` in the caw CI job.
 - vitest tests: `npm test` in the TypeScript CI job.
 - The wrap coverage report on the end-to-end example and this traceability check: the live-set CI job.

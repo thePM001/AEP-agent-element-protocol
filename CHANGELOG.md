@@ -2,6 +2,17 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-16 - The Go CAW is retired and this release ships no host sandbox
+The Go CAW leaves the public tree. A Rust CAW replaces it: a policy engine written in Rust that runs every agent process inside gVisor. Until that CAW lands nothing in this tree confines an agent process on the host.
+
+- The folder `AEP-CAW` is gone from the public tree. Its history remains in the git history of this repository.
+- CI runs no Go: the caw and govulncheck jobs, setup-go, gofmt and the Go suites of `ci.gaplune` are gone.
+- The end to end example walks six layers: the sealed capsule, the pulse, collect all, apply, the dock attach and the ledger row. It prints one line that says no host sandbox runs. It no longer needs Python.
+- The registry keeps the id `caw-framework` with the status retired, so the Rust CAW takes it over without a new catalog id. The validator knows a retired component and the composer never selects one.
+- Component 11 lives in `AEP-Components/caws/` with a README that says what ships and what does not.
+- `THREAT_MODEL.md` Layer 4 lists what the missing sandbox leaves open. Run agents inside a container or a virtual machine with its own limits until the Rust CAW lands.
+- `CAW=1` in the Docker image now warns that it has no effect.
+
 ## [2.9.0] - 2026-11-13 - The repository declares its CI in ci.gaplune
 A change used to meet the checks of the GitHub workflows only after it was published. The repository now declares the same checks in one file, so a change can pass them before it lands.
 

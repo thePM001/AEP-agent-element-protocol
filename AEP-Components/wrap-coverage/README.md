@@ -45,9 +45,7 @@ version: 1
 name: end-to-end-run
 gap_dirs: [gap]                 # every *.gap below these folders is read
 lattice: lattice.yaml           # optional: actions.<path>.agent_permission
-caw:
-  - policy: caw-policies/e2e-wrapped.yaml
-    wrap: caw
+caw: []                         # optional: CAW policy files, each with its wrap
 ucb_manifests: []               # UCB task manifest files
 credentials:
   - { id: agent-a-sign-key, kind: agent_sign_key, description: "...", agent_id: agent-a, action: ucb:ingest }
