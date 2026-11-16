@@ -6,7 +6,7 @@ Status: sketch. Stability: experimental. This release ships no host sandbox.
 
 CAWs (Containerized Agentic Workflows) are the sandboxes on the host in which an agent process runs under the written policy. A CAW confines the shell commands, files, network connections and processes of an agent and asks the kernel dock of the Base Node before a command starts.
 
-The Go CAW that earlier releases carried is retired. A Rust CAW replaces it: a policy engine written in Rust that runs every agent process inside gVisor. Until that CAW lands this component holds no runtime.
+The Go CAW that earlier releases carried is retired. A Rust CAW replaces it: a policy engine written in Rust that runs every agent process inside gVisor. This root folder is where that CAW lands. Until then it holds this README only.
 
 ## Place among the 18
 

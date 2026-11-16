@@ -9,7 +9,7 @@ The Go CAW leaves the public tree. A Rust CAW replaces it: a policy engine writt
 - CI runs no Go: the caw and govulncheck jobs, setup-go, gofmt and the Go suites of `ci.gaplune` are gone.
 - The end to end example walks six layers: the sealed capsule, the pulse, collect all, apply, the dock attach and the ledger row. It prints one line that says no host sandbox runs. It no longer needs Python.
 - The registry keeps the id `caw-framework` with the status retired, so the Rust CAW takes it over without a new catalog id. The validator knows a retired component and the composer never selects one.
-- Component 11 lives in `AEP-Components/caws/` with a README that says what ships and what does not.
+- Component 11 has its own root folder `AEP-CAWs-RustGvisor/`, where the Rust CAW with gVisor will land. Its README says what ships and what does not.
 - `THREAT_MODEL.md` Layer 4 lists what the missing sandbox leaves open. Run agents inside a container or a virtual machine with its own limits until the Rust CAW lands.
 - `CAW=1` in the Docker image now warns that it has no effect.
 

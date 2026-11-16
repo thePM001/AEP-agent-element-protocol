@@ -121,7 +121,6 @@ jobs:
       # Format drift fails the build.
       - name: cargo fmt --all --check
         run: cargo fmt --all --check
-          fi
 
   clippy:
     name: cargo clippy --workspace

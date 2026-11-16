@@ -109,7 +109,7 @@ flowchart TB
 | 08 | Lattice Channels | The encrypted transport on which every message travels to the Base Node as a sealed capsule | `AEP-Components/lattice-channels/` | [README](AEP-Components/lattice-channels/README.md) |
 | 09 | Evidence Ledger | The hash chained audit record with Merkle proofs for a later reader to verify | `AEP-Components/evidence-ledger/` | [README](AEP-Components/evidence-ledger/README.md) |
 | 10 | Base Node Pulse | The compiled 1000 ms interval, which freezes a capsule at its seal before the checks run | `AEP-Components/base-node-pulse/` | [README](AEP-Components/base-node-pulse/README.md) |
-| 11 | CAWs | The host sandboxes in which an agent process runs under the written policy. This release ships none | `AEP-Components/caws/` | [README](AEP-Components/caws/README.md) |
+| 11 | CAWs | The host sandboxes in which an agent process runs under the written policy. This release ships none | `AEP-CAWs-RustGvisor/` | [README](AEP-CAWs-RustGvisor/README.md) |
 | 12 | Scanners | The content scanners, which read the text of a proposal for secrets, personal data, injection and more | `AEP-Components/scanners/` | [README](AEP-Components/scanners/README.md) |
 | 13 | AgentMesh | The identity layer with local issuance of certificates and identifiers for agents, built by the crate in `AEP-Components/agentmesh/crate/` | `AEP-Components/agentmesh/` | [README](AEP-Components/agentmesh/README.md) |
 | 14 | Economics | Cost estimation before a model call, budget caps and x402 payments | `AEP-Components/economics/` | [README](AEP-Components/economics/README.md) |
@@ -388,9 +388,9 @@ flowchart LR
 
 **What ships in 2.9:** No host sandbox. The Go CAW of earlier releases is retired. A Rust CAW replaces it: a policy engine written in Rust that runs every agent process inside gVisor. Until it lands nothing in this tree confines an agent process on the host, so run agents inside a container or a virtual machine with its own limits. The kernel still judges every action that reaches a dock. GAP (06) keeps compiling the sandbox profiles and the registry keeps the id `caw-framework` with the status retired for the Rust CAW. `THREAT_MODEL.md` Layer 4 lists what this leaves open.
 
-**Where it lives:** [`AEP-Components/caws/`](AEP-Components/caws/), plus `AEP-Components/isolation/`, `AEP-Components/intercept/`, `AEP-Components/mcp-security/` and `AEP-Components/caw-cve-demo-trees/`. None of these folders confines a process.
+**Where it lives:** [`AEP-CAWs-RustGvisor/`](AEP-CAWs-RustGvisor/), plus `AEP-Components/isolation/`, `AEP-Components/intercept/`, `AEP-Components/mcp-security/` and `AEP-Components/caw-cve-demo-trees/`. None of these folders confines a process.
 
-**Run and test:** Nothing to run in this release. The component README has the detail: [`AEP-Components/caws/README.md`](AEP-Components/caws/README.md).
+**Run and test:** Nothing to run in this release. The component README has the detail: [`AEP-CAWs-RustGvisor/README.md`](AEP-CAWs-RustGvisor/README.md).
 
 ## 12 / Scanners
 
@@ -496,6 +496,7 @@ Four folders under `AEP-Components/` serve more than one component:
 |-----------|------|
 | [`AEP-Base-Node/`](AEP-Base-Node/) | Kernel: daemon, registry, Potomitan mesh, Agent Control Hub and the docks with UCB |
 | [`AEP-Components/`](AEP-Components/) | Protocol components and the component map |
+| [`AEP-CAWs-RustGvisor/`](AEP-CAWs-RustGvisor/) | CAW host sandboxes, component 11. In this release it holds only its README: the Rust CAW with gVisor lands here |
 | [`AEP-Policy-System/`](AEP-Policy-System/) | GAP policies, presets, Policy Builder and Schema Builder |
 | [`AEP-User-Experience/`](AEP-User-Experience/) | Harness, operator documents and examples |
 | [`AEP-Research-Paper/`](https://github.com/thePM001/AEP-agent-element-protocol/blob/main/AEP-Research-Paper/) | DAL-AEP research paper assets (PDF + OTS proof) |
@@ -542,7 +543,7 @@ Manifest: `AEP-Components/conformance/tests/manifest.json`. Every listed check r
 | [`AEP-Components/lattice-channels/README.md`](AEP-Components/lattice-channels/README.md) | 08 Lattice Channels: sealed transport and its security rules |
 | [`AEP-Components/evidence-ledger/README.md`](AEP-Components/evidence-ledger/README.md) | 09 Evidence Ledger: hash chain, Merkle proofs and rollback |
 | [`AEP-Components/base-node-pulse/README.md`](AEP-Components/base-node-pulse/README.md) | 10 Base Node Pulse: compiled clocks of the kernel |
-| [`AEP-Components/caws/README.md`](AEP-Components/caws/README.md) | 11 CAWs: no host sandbox ships, the Rust CAW with gVisor replaces the retired Go CAW |
+| [`AEP-CAWs-RustGvisor/README.md`](AEP-CAWs-RustGvisor/README.md) | 11 CAWs: no host sandbox ships, the Rust CAW with gVisor replaces the retired Go CAW |
 | [`AEP-Components/scanners/README.md`](AEP-Components/scanners/README.md) | 12 Scanners: the scanner pipeline and the rule table |
 | [`AEP-Components/agentmesh/README.md`](AEP-Components/agentmesh/README.md) | 13 AgentMesh: local identity issuance |
 | [`AEP-Components/economics/README.md`](AEP-Components/economics/README.md) | 14 Economics: cost, budgets and x402 |
