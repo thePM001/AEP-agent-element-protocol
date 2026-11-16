@@ -17,19 +17,19 @@ paths = [
     # Secret scanner rule tables list the PEM headers they detect.
     '''(?:^|/)AEP-Components/scanners/lib/admit-rule-table\.ts$''',
     '''(?:^|/)AEP-Components/scanners/rules/scan-rule-table\.json$''',
-    # CAW MCP output inspection tests feed a truncated PEM header to the inspector.
-    '''(?:^|/)AEP-CAW/internal/mcpinspect/[^/]+_test\.go$''',
+    # The MCP output inspection tests of the retired Go CAW feed a truncated PEM header to the inspector.
+    '''(?:^|/)NOSHIP/CAW-LEGACY/internal/mcpinspect/[^/]+_test\.go$''',
 ]
 
 [[allowlists]]
 description = "Fake credentials that tests and performance evaluations feed to the AEP and CAW secret detectors"
 condition = "AND"
 paths = [
-    '''(?:^|/)AEP-CAW/internal/proxy/declared_service_test\.go$''',
-    '''(?:^|/)AEP-CAW/internal/proxy/dlp_test\.go$''',
-    '''(?:^|/)AEP-CAW/internal/proxy/integration_test\.go$''',
-    '''(?:^|/)AEP-CAW/internal/proxy/secrets/vault/provider_test\.go$''',
-    '''(?:^|/)AEP-CAW/internal/session/secrets_test\.go$''',
+    '''(?:^|/)NOSHIP/CAW-LEGACY/internal/proxy/declared_service_test\.go$''',
+    '''(?:^|/)NOSHIP/CAW-LEGACY/internal/proxy/dlp_test\.go$''',
+    '''(?:^|/)NOSHIP/CAW-LEGACY/internal/proxy/integration_test\.go$''',
+    '''(?:^|/)NOSHIP/CAW-LEGACY/internal/proxy/secrets/vault/provider_test\.go$''',
+    '''(?:^|/)NOSHIP/CAW-LEGACY/internal/session/secrets_test\.go$''',
 ]
 regexes = [
     '''^s[k]_live_(?:FAKE|REAL)567890abcdef12$''',
@@ -44,5 +44,5 @@ regexes = [
 description = "Postgres SASL mechanism name in an error string, not a credential"
 condition = "AND"
 targetRules = ["generic-api-key"]
-paths = ['''(?:^|/)AEP-CAW/internal/db/proxy/postgres/authforward\.go$''']
+paths = ['''(?:^|/)NOSHIP/CAW-LEGACY/internal/db/proxy/postgres/authforward\.go$''']
 regexes = ['''^SCRAM-SHA-256-PLUS$''']

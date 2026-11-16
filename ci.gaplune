@@ -28,11 +28,8 @@ suites:
     timeout: 3600
     workflow: baseline.yml#clippy
   - name: format
-    run: |
-      cargo fmt --all --check
-      out=$(gofmt -l AEP-CAW)
-      if [ -n "$out" ]; then echo "$out"; echo "error: gofmt reports drift"; exit 1; fi
-    paths: *.rs *.go
+    run: cargo fmt --all --check
+    paths: *.rs
     timeout: 900
     workflow: baseline.yml#format
   - name: base-node-binaries
@@ -66,27 +63,6 @@ suites:
     paths: AEP-Components/gap/ AEP-Policy-System/
     timeout: 900
     workflow: baseline.yml#gap-pin
-  - name: caw-go
-    dir: AEP-CAW
-    run: |
-      # A short folder: tests bind unix sockets under it and a socket path has at most
-      # 108 bytes, which a long prefix plus a long test name passes. It is open like /tmp,
-      # because some tests switch to another user (uid 65534) inside it.
-      export GOTMPDIR="$(mktemp -d /tmp/g.XXXXXX)"
-      chmod 1777 "$GOTMPDIR"
-      bash scripts/ci-go-test.sh -p 2 ./...
-      bash scripts/ci-go-test.sh -race -p 2 ./...
-      go test -run Vectors -v ./internal/kerneldock
-      rm -rf "$GOTMPDIR"
-    paths: AEP-CAW/
-    timeout: 7200
-    workflow: baseline.yml#caw
-  - name: caw-govulncheck
-    dir: AEP-CAW
-    run: govulncheck ./...
-    paths: AEP-CAW/
-    timeout: 1800
-    workflow: supply-chain.yml#govulncheck
   - name: cargo-deny
     run: |
       cargo-deny --all-features --workspace --locked check advisories
