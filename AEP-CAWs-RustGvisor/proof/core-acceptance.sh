@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Core acceptance of the CAW: what the policy allows passes with no deny event and
 # what it refuses fails inside the sandbox with exactly one deny event.
-# Usage: core-acceptance.sh <path to runsc> <path to caw-run-proof> <profile record>
+# Usage: core-acceptance.sh <path to runsc> <path to caw-run-proof> <profile record> [path to aep-caw]
+# With the fourth argument the script also checks the aep-caw command: it creates a
+# session and its exec refuses with the rule kernel-dock-silent while the build has
+# no kernel dock client.
 # Runs as a user that is not root. A root caller is handed over to the user nobody.
 # Prints one line per check: CHECK <name> PASS|FAIL <detail>. Exit 0 only when every
 # check holds.
@@ -10,16 +13,19 @@ set -uo pipefail
 RUNSC="${1:?path to runsc}"
 PROOF="${2:?path to caw-run-proof}"
 RECORD="${3:?profile record}"
+CAW="${4:-}"
 
 if [ "$(id -u)" = 0 ]; then
   W="$(mktemp -d /var/tmp/caw-accept.XXXXXX)"
   cp "$0" "$W/core-acceptance.sh"
   cp "$PROOF" "$W/caw-run-proof"
   cp "$RECORD" "$W/record.json"
+  CAWCOPY=""
+  if [ -n "$CAW" ]; then cp "$CAW" "$W/aep-caw"; CAWCOPY="$W/aep-caw"; fi
   chown -R 65534:65534 "$W"
   setpriv --reuid=65534 --regid=65534 --clear-groups \
     env HOME="$W" CAW_ACCEPT_WORK="$W" PATH="$PATH" \
-    bash "$W/core-acceptance.sh" "$RUNSC" "$W/caw-run-proof" "$W/record.json"
+    bash "$W/core-acceptance.sh" "$RUNSC" "$W/caw-run-proof" "$W/record.json" "$CAWCOPY"
   code=$?
   rm -rf "$W"
   exit "$code"
@@ -49,14 +55,17 @@ check() {
   local out="$W/out$N.txt"
   "$PROOF" "$RUNSC" "$RECORD" "$P" "$W/work$N" "$@" > "$out" 2>&1
   local code=$?
-  local result deny kinds complete problem=""
+  local result deny kinds complete audit problem=""
   result="$(grep '^RESULT ' "$out" | tail -1)"
   deny="$(grep -c '^DENY ' "$out")"
   kinds="$(grep '^DENY ' "$out" | sed 's/^DENY kind=\([a-z-]*\) .*/\1/' | sort -u | tr '\n' ' ')"
   complete="$(printf '%s' "$result" | sed -n 's/.* dropped=0 complete=true$/yes/p')"
+  # One line for the session, one start, one per deny event and one end.
+  audit="$(grep -c "^AUDIT lines=$((deny + 3)) chain=ok$" "$out")"
   [ -n "$result" ] || problem="no result line"
   [ -n "$problem" ] || [ "$complete" = yes ] || problem="the trace stream lost points or did not end in order"
   [ -n "$problem" ] || [ "$code" = "$want_exit" ] || problem="exit $code, want $want_exit"
+  [ -n "$problem" ] || [ "$audit" = 1 ] || problem="the audit log does not hold its chain with one line per event"
   [ -n "$problem" ] || [ "$deny" = "$want_deny" ] || problem="$deny deny events, want $want_deny"
   [ -n "$problem" ] || [ "$want_kind" = - ] || [ "$kinds" = "$want_kind " ] || problem="deny kinds [$kinds], want $want_kind"
   [ -n "$problem" ] || [ "$want_text" = - ] || grep -q -F -- "$want_text" "$out" || problem="the output lacks: $want_text"
@@ -97,6 +106,57 @@ if grep -q -E '^(AWS|GITHUB|SSH|CAW_PROOF)' "$W/out7.txt" 2>/dev/null; then
   echo "CHECK no-variable-of-the-caller FAIL a variable of the caller reached the sandbox"
 else
   echo "CHECK no-variable-of-the-caller PASS no variable of the caller reached the sandbox"
+fi
+
+if [ -n "$CAW" ]; then
+  D="$W/data"
+  PROFILE="$(tr ',' '\n' < "$RECORD" | sed -n 's/^"profile_id":"\(.*\)"$/\1/p' | head -1)"
+  mkdir -p "$D/caw-framework/profiles"
+  cp "$RECORD" "$D/caw-framework/profiles/$PROFILE.json"
+  printf 'allowed_profiles = ["%s"]\nrunsc = "%s"\n' "$PROFILE" "$RUNSC" > "$D/caw-framework/caw.toml"
+  # cli <name> <want exit> <want text in output> <arguments of aep-caw...>
+  cli() {
+    local name="$1" want_exit="$2" want_text="$3"
+    shift 3
+    local out="$W/cli-$name.txt"
+    "$CAW" "$@" > "$out" 2>&1
+    local code=$?
+    if [ "$code" = "$want_exit" ] && grep -q -F -- "$want_text" "$out"; then
+      echo "CHECK $name PASS exit $code"
+    else
+      FAILED=$((FAILED + 1))
+      echo "CHECK $name FAIL exit $code, want $want_exit with: $want_text"
+      sed 's/^/    /' "$out" | tail -8
+    fi
+  }
+  cli command-lists-profiles 0 "$PROFILE allowed" profiles list --data "$D"
+  cli command-has-no-server-mode 64 "unknown command" serve --data "$D"
+  cli command-refuses-a-profile-not-allowed 126 "not in the allowed list" \
+    session create --data "$D" --profile other --workspace "$P"
+  SESSION="$("$CAW" session create --data "$D" --profile "$PROFILE" --workspace "$P" \
+    --var HOME="$W/home" --var AEP_MODEL_GATEWAY_HOST=gateway.example.com 2> "$W/cli-create.txt")"
+  if printf '%s' "$SESSION" | grep -q -E '^[0-9a-f]{32}$'; then
+    echo "CHECK command-creates-a-session PASS"
+    cli command-exec-refuses-without-the-dock 126 "kernel-dock-silent" \
+      exec --data "$D" --session "$SESSION" -- sh -c "echo ran > $P/ran-without-dock"
+    if [ -e "$P/ran-without-dock" ]; then
+      FAILED=$((FAILED + 1))
+      echo "CHECK no-command-runs-without-the-dock FAIL the command ran"
+    else
+      echo "CHECK no-command-runs-without-the-dock PASS the command did not run"
+    fi
+    LOG="$D/caw-framework/sessions/$SESSION/audit.log"
+    if grep -q '"kind":"refused"' "$LOG" && grep -q '"rule":"kernel-dock-silent"' "$LOG"; then
+      echo "CHECK refusal-is-in-the-audit-log PASS"
+    else
+      FAILED=$((FAILED + 1))
+      echo "CHECK refusal-is-in-the-audit-log FAIL"
+    fi
+  else
+    FAILED=$((FAILED + 1))
+    echo "CHECK command-creates-a-session FAIL"
+    sed 's/^/    /' "$W/cli-create.txt" | tail -8
+  fi
 fi
 
 echo

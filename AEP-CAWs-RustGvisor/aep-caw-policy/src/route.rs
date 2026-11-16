@@ -11,10 +11,10 @@
 //! - A wildcard `*.example.com` matches every name below `example.com` and not
 //!   `example.com` itself.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// Scheme of a route.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Scheme {
     /// Plain HTTP.
@@ -35,7 +35,8 @@ impl Scheme {
 }
 
 /// One route of a sandbox plan, with its host in normal form.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct PlanRoute {
     /// Name of the route.
     pub name: String,

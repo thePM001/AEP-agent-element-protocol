@@ -11,6 +11,7 @@
 //!   root folder of a session from the pinned copies.
 //! - [`bundle`]: writes the OCI configuration of one command from a sandbox plan.
 //! - [`sandbox`]: starts runsc for one command and collects its deny events.
+//! - [`session`]: the session folder and the one gate that starts a sandbox.
 //! - [`audit`]: the append only audit log of a session with its hash chain.
 
 pub mod audit;
@@ -18,5 +19,6 @@ pub mod bundle;
 pub mod elf;
 pub mod rootfs;
 pub mod sandbox;
+pub mod session;
 pub mod trace;
 pub mod trace_listener;

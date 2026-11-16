@@ -158,6 +158,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "aep-caw"
+version = "2.9.0"
+dependencies = [
+ "aep-caw-policy",
+ "aep-caw-runtime",
+]
+
+[[package]]
 name = "aep-caw-cve-demo-trees"
 version = "0.1.0"
 dependencies = [

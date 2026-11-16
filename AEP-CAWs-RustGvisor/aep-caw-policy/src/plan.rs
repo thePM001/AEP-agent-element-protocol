@@ -11,7 +11,7 @@
 
 use std::collections::BTreeMap;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::canonical::{canonical_json, sha256_label};
 use crate::error::PolicyError;
@@ -48,7 +48,7 @@ impl Variables {
 }
 
 /// How one folder tree appears inside the sandbox.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum MountMode {
     /// The host folder, read only.
@@ -60,7 +60,8 @@ pub enum MountMode {
 }
 
 /// One mount of a plan. The path is the same on the host and inside the sandbox.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct PlanMount {
     /// Absolute path of the folder tree.
     pub path: String,
@@ -73,7 +74,8 @@ pub struct PlanMount {
 }
 
 /// One program of a plan.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct PlanProgram {
     /// Name of the program.
     pub name: String,
@@ -84,7 +86,8 @@ pub struct PlanProgram {
 }
 
 /// Everything one sandbox holds.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SandboxPlan {
     /// Id of the profile.
     pub profile_id: String,

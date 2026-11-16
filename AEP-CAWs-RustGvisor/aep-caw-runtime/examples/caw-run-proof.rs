@@ -1,12 +1,14 @@
-//! Runs one command in a sandbox built from a profile record and prints what the
-//! policy refused. A proof tool for the acceptance script, not the CAW command.
+//! Runs one command through a session of the CAW and prints what the policy refused.
+//! A proof tool for the acceptance script, not the CAW command: its kernel gate
+//! admits every run, so it proves the sandbox and the audit log, not the dock.
 //!
 //! Usage: caw-run-proof <runsc> <record.json> <project folder> <work folder> <command> [args]
 //!
-//! Prints one line per deny event and one RESULT line:
+//! Prints one line per deny event, one AUDIT line and one RESULT line:
 //!
 //! ```text
 //! DENY kind=file-outside target=/home/agent/.ssh/id process=sh errno=2 rule=
+//! AUDIT lines=4 chain=ok
 //! RESULT exit=0 deny=1 points=212 dropped=0 complete=true
 //! ```
 //!
@@ -14,12 +16,20 @@
 
 use std::path::Path;
 use std::process::ExitCode;
+use std::time::Duration;
 
-use aep_caw_policy::plan::{compile, Variables};
-use aep_caw_policy::record::parse_record;
-use aep_caw_runtime::bundle::Limits;
-use aep_caw_runtime::rootfs::{build_root, resolve_root, DEFAULT_LIBRARY_DIRS};
-use aep_caw_runtime::sandbox::{run, RunInput};
+use aep_caw_policy::plan::Variables;
+use aep_caw_runtime::audit::verify;
+use aep_caw_runtime::session::{create, exec, CawConfig, GateRequest, KernelGate, Layout};
+
+/// Admits every run. Only this proof tool uses it.
+struct ProofGate;
+
+impl KernelGate for ProofGate {
+    fn admit(&self, _: &GateRequest<'_>) -> Result<(), String> {
+        Ok(())
+    }
+}
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -37,37 +47,39 @@ fn main() -> ExitCode {
 }
 
 fn prove(args: &[String]) -> Result<i32, String> {
-    let project = &args[2];
-    let work = Path::new(&args[3]);
     let text = std::fs::read_to_string(&args[1]).map_err(|e| format!("{}: {e}", args[1]))?;
-    let record = parse_record(&text).map_err(|e| e.to_string())?;
+    let profile = serde_json::from_str::<serde_json::Value>(&text)
+        .ok()
+        .and_then(|v| {
+            v.get("profile_id")
+                .and_then(|p| p.as_str())
+                .map(str::to_string)
+        })
+        .ok_or("the record names no profile")?;
+    let layout = Layout::new(Path::new(&args[3]));
+    std::fs::create_dir_all(layout.profiles()).map_err(|e| e.to_string())?;
+    std::fs::write(layout.profiles().join(format!("{profile}.json")), &text)
+        .map_err(|e| e.to_string())?;
+    let config = CawConfig {
+        allowed_profiles: vec![profile.clone()],
+        runsc: args[0].clone().into(),
+    };
     let home = std::env::var("CAW_PROOF_HOME").unwrap_or_else(|_| "/home/agent".to_string());
     let vars = Variables::new()
-        .with("PROJECT_ROOT", project)
         .with("HOME", &home)
         .with("AEP_MODEL_GATEWAY_HOST", "gateway.example.com");
-    let plan = compile(&record, &vars).map_err(|e| e.to_string())?;
-    let image = resolve_root(&plan.programs, &DEFAULT_LIBRARY_DIRS).map_err(|e| e.to_string())?;
-    let root = work.join("rootfs");
-    let mount_paths: Vec<&str> = plan.mounts.iter().map(|m| m.path.as_str()).collect();
-    build_root(&image, &mount_paths, &root).map_err(|e| e.to_string())?;
-    let command_dir = work.join("command");
-    let outcome = run(
-        &plan,
-        &RunInput {
-            runsc: Path::new(&args[0]),
-            root: &root,
-            work: &command_dir,
-            args: &args[4..],
-            cwd: project,
-            egress_dir: None,
-            extra_env: &[],
-            limits: Limits::default(),
-            time_limit: Some(std::time::Duration::from_secs(60)),
-        },
+    let session = create(&layout, &config, &profile, Path::new(&args[2]), &vars)
+        .map_err(|e| e.to_string())?;
+    let outcome = exec(
+        &layout,
+        &config,
+        &ProofGate,
+        &session.session_id,
+        &args[4..],
+        Some(Duration::from_secs(60)),
     )
     .map_err(|e| e.to_string())?;
-    for event in &outcome.deny_events {
+    for event in &outcome.run.deny_events {
         println!(
             "DENY kind={} target={} process={} errno={} rule={}",
             event.kind.name(),
@@ -77,13 +89,18 @@ fn prove(args: &[String]) -> Result<i32, String> {
             event.rule
         );
     }
+    let audit = layout.session(&session.session_id).join("audit.log");
+    match verify(&audit) {
+        Ok((lines, _)) => println!("AUDIT lines={lines} chain=ok"),
+        Err(err) => println!("AUDIT chain=broken {err}"),
+    }
     println!(
         "RESULT exit={} deny={} points={} dropped={} complete={}",
         outcome.exit_code,
-        outcome.deny_events.len(),
-        outcome.trace_points,
-        outcome.trace_dropped,
-        outcome.trace_complete
+        outcome.deny_count,
+        outcome.run.trace_points,
+        outcome.run.trace_dropped,
+        outcome.run.trace_complete
     );
     Ok(outcome.exit_code)
 }

@@ -123,6 +123,26 @@ fn private_dir(path: &Path) -> Result<(), RunError> {
         .map_err(io("create the folder", path))
 }
 
+/// Creates a new folder with a short path that only the CAW user can enter.
+///
+/// The name comes from the random source of the kernel and the folder must not
+/// exist yet, so no other user can prepare it.
+fn short_private_dir() -> Result<PathBuf, RunError> {
+    use std::io::Read;
+    let source = Path::new("/dev/urandom");
+    let mut bytes = [0u8; 8];
+    fs::File::open(source)
+        .and_then(|mut f| f.read_exact(&mut bytes))
+        .map_err(io("read", source))?;
+    let name: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
+    let dir = std::env::temp_dir().join(format!("caw-{name}"));
+    fs::DirBuilder::new()
+        .mode(0o700)
+        .create(&dir)
+        .map_err(io("create the folder", &dir))?;
+    Ok(dir)
+}
+
 /// Turns one trace point into what the classifier reads.
 pub fn observation(event: TraceEvent) -> Option<Observation> {
     match event.kind {
@@ -195,7 +215,10 @@ pub fn run(plan: &SandboxPlan, input: &RunInput<'_>) -> Result<RunOutcome, RunEr
     let config_path = bundle.join("config.json");
     fs::write(&config_path, document.to_string()).map_err(io("write", &config_path))?;
 
-    let trace_socket = input.work.join("trace.sock");
+    // A Unix socket path holds at most 108 bytes and a session folder is longer
+    // than that. The sockets of a command live in a short folder of their own.
+    let socket_dir = short_private_dir()?;
+    let trace_socket = socket_dir.join("trace.sock");
     let points: Vec<_> = TRACE_POINTS
         .iter()
         .map(|name| json!({"name": name, "context_fields": ["process_name", "group_id", "container_id"]}))
@@ -210,7 +233,13 @@ pub fn run(plan: &SandboxPlan, input: &RunInput<'_>) -> Result<RunOutcome, RunEr
     let init_path = input.work.join("pod-init.json");
     fs::write(&init_path, session.to_string()).map_err(io("write", &init_path))?;
 
-    let listener = TraceListener::bind(&trace_socket)?;
+    let listener = match TraceListener::bind(&trace_socket) {
+        Ok(listener) => listener,
+        Err(err) => {
+            let _ = fs::remove_dir_all(&socket_dir);
+            return Err(err.into());
+        }
+    };
     let trace = std::thread::spawn(move || {
         let mut result = TraceResult {
             events: Vec::new(),
@@ -257,10 +286,16 @@ pub fn run(plan: &SandboxPlan, input: &RunInput<'_>) -> Result<RunOutcome, RunEr
         .stdin(Stdio::inherit())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    let mut child = command.spawn().map_err(|source| RunError::Spawn {
-        path: input.runsc.to_path_buf(),
-        source,
-    })?;
+    let mut child = match command.spawn() {
+        Ok(child) => child,
+        Err(source) => {
+            let _ = fs::remove_dir_all(&socket_dir);
+            return Err(RunError::Spawn {
+                path: input.runsc.to_path_buf(),
+                source,
+            });
+        }
+    };
 
     // The output of the command is relayed, not inherited. A sandbox that holds the
     // file of the caller writes at an offset of its own and would overwrite what
@@ -319,6 +354,8 @@ pub fn run(plan: &SandboxPlan, input: &RunInput<'_>) -> Result<RunOutcome, RunEr
         complete: false,
     });
 
+    let _ = fs::remove_dir_all(&socket_dir);
+
     let trace_points = result.events.len() as u64;
     let mut classifier = Classifier::new(plan);
     let mut deny_events = Vec::new();
@@ -362,6 +399,21 @@ mod tests {
             container_id: String::new(),
             thread_group_id: 5,
         }
+    }
+
+    #[test]
+    fn the_socket_folder_is_new_short_and_private() {
+        use std::os::unix::fs::PermissionsExt;
+        let one = short_private_dir().expect("creates");
+        let two = short_private_dir().expect("creates");
+        assert_ne!(one, two);
+        assert!(one.join("trace.sock").to_string_lossy().len() < 100);
+        assert_eq!(
+            fs::metadata(&one).expect("meta").permissions().mode() & 0o777,
+            0o700
+        );
+        let _ = fs::remove_dir_all(one);
+        let _ = fs::remove_dir_all(two);
     }
 
     #[test]

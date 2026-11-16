@@ -1,0 +1,18 @@
+[package]
+name = "aep-caw"
+description = "The CAW command: creates sessions from GAP profiles and runs each command in its own gVisor sandbox. No server mode."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "aep-caw"
+path = "src/main.rs"
+
+[dependencies]
+aep-caw-policy = { path = "../aep-caw-policy" }
+aep-caw-runtime = { path = "../aep-caw-runtime" }
+
+[lints]
+workspace = true

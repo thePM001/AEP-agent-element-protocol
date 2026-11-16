@@ -49,7 +49,7 @@ const MAX_FILE_BYTES: u64 = 512 * 1024 * 1024;
 const MAX_FILES: usize = 2048;
 
 /// What a file of the root is.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Role {
     /// A program of the toolset.
@@ -61,7 +61,8 @@ pub enum Role {
 }
 
 /// One pinned file of the root.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RootFile {
     /// Path of the file inside the sandbox.
     pub path: String,
@@ -74,7 +75,8 @@ pub struct RootFile {
 }
 
 /// Every file of the root, sorted by path.
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RootImage {
     /// The files.
     pub files: Vec<RootFile>,

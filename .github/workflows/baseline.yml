@@ -122,7 +122,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: build the proof programs
-        run: cargo build -p aep-caw-runtime --examples
+        run: |
+          cargo build -p aep-caw-runtime --examples
+          cargo build -p aep-caw
       - name: gVisor facts and trace events as the runner user
         run: |
           . AEP-CAWs-RustGvisor/proof/runsc-pin.env
@@ -130,7 +132,7 @@ jobs:
       - name: core acceptance as the runner user
         run: |
           . AEP-CAWs-RustGvisor/proof/runsc-pin.env
-          bash AEP-CAWs-RustGvisor/proof/core-acceptance.sh "$RUNSC_BIN" "${CARGO_TARGET_DIR:-rust/target}/debug/examples/caw-run-proof" AEP-CAWs-RustGvisor/aep-caw-policy/tests/fixtures/restricted.json
+          bash AEP-CAWs-RustGvisor/proof/core-acceptance.sh "$RUNSC_BIN" "${CARGO_TARGET_DIR:-rust/target}/debug/examples/caw-run-proof" AEP-CAWs-RustGvisor/aep-caw-policy/tests/fixtures/restricted.json "${CARGO_TARGET_DIR:-rust/target}/debug/aep-caw"
 
   format:
     name: format

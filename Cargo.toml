@@ -52,6 +52,7 @@ members = [
     # The CAW: a Rust policy engine that runs every agent command in gVisor.
     "AEP-CAWs-RustGvisor/aep-caw-policy",
     "AEP-CAWs-RustGvisor/aep-caw-runtime",
+    "AEP-CAWs-RustGvisor/aep-caw",
 ]
 # The default build is the single Base Node kernel. The multi base node is an
 # optional experimental surface and it is not a default member, so a plain
