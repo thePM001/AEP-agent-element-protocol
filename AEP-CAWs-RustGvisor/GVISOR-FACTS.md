@@ -4,21 +4,22 @@ Status: the first work package of the Rust CAW. The CAW design rests on the fact
 
 ## How the facts are proven
 
-`proof/gvisor-facts.sh` starts one gVisor sandbox as a user that is not root and prints one line per fact. `proof/install-runsc.sh` installs the pinned gVisor package. `proof/runsc-pin.env` holds the pin.
+`proof/gvisor-facts.sh` starts one gVisor sandbox as a user that is not root and prints one line per fact. With the program `caw-trace-proof` as its second argument it also starts a trace session and checks the events. `proof/install-runsc.sh` installs the pinned gVisor package. `proof/runsc-pin.env` holds the pin.
 
 ```bash
 sudo bash AEP-CAWs-RustGvisor/proof/install-runsc.sh
-bash AEP-CAWs-RustGvisor/proof/gvisor-facts.sh /usr/bin/runsc
+cargo build -p aep-caw-runtime --example caw-trace-proof
+bash AEP-CAWs-RustGvisor/proof/gvisor-facts.sh /usr/bin/runsc path/to/caw-trace-proof
 ```
 
-The second command needs no root. A root caller is handed over to the user nobody, because the proof is about a run without root.
+The last command needs no root. A root caller is handed over to the user nobody, because the proof is about a run without root.
 
 ## The proven run
 
 | Item | Value |
 |------|-------|
 | Date | 2026-11-16 |
-| Host | the build server, Ubuntu, kernel 7.0.0-42-generic, no /dev/kvm device |
+| Host | an Ubuntu server, kernel 7.0.0-42-generic, no /dev/kvm device |
 | User | 65534 (nobody) |
 | gVisor | release-20261109.0 |
 | Flags | `--rootless --platform=systrap --network=none --ignore-cgroups --host-uds=open` |
@@ -40,7 +41,10 @@ The second command needs no root. A root caller is handed over to the user nobod
 | A program inside the root runs | proven | `/usr/bin/true` left with exit 0. |
 | A Unix socket of the host, mounted into the sandbox, takes a connect | proven | A line sent inside the sandbox reached the host listener. Needs `--host-uds=open`. |
 | The start of one command takes less than one second | proven | 120, 128, 142, 126 and 191 ms over five runs of `/usr/bin/true`. |
-| A trace session reports calls to a sink on a Unix socket | open | This runsc lists 998 trace points and the sinks `null` and `remote`. The `remote` sink has not received an event in a test yet. |
+| A trace session reports calls to a sink on a Unix socket | proven | The listener of the crate `aep-caw-runtime` took 212 points of one sandbox with none dropped. |
+| A denied file open leaves one event with its path | proven | One `open` event with errno 2 names the denied file. |
+| A denied exec leaves one event with its path | proven, by a rule of two points | See "What a denied exec looks like" below. |
+| A denied connect leaves one event with its address | proven | One `connect` event with errno 101 carries the host address. |
 | The same facts hold on a standard GitHub runner | open | The job caw-gvisor of baseline.yml runs both scripts. It has not run on GitHub yet. |
 | The same facts hold on arm64 | open | The pin covers amd64 only. |
 
@@ -60,8 +64,19 @@ The gVisor release addresses for a single runsc file answer 404 for this release
 
 A connect from the sandbox to a mounted host socket needs `--host-uds=open`. gVisor logs that its own system call filter is less strict with this flag. The egress proxy is the only socket the CAW mounts, so the flag serves that one path only. The hostile corpus of work package 7 has to show that no other host socket is reachable.
 
+### What a denied exec looks like
+
+gVisor reports errno zero on the exit point of `execve` even when the program does not exist. So the errno of that point is no deny signal. The point `sentry/execve` fires only when a program image was loaded. A denied exec is an `execve` point for a path with no `sentry/execve` point after it. In the proven run the sandbox saw 14 `execve` points and 13 loaded programs. The one without a load was the program outside the root.
+
+### What leaves no event
+
+gVisor has typed trace points for open, execve and connect and none for stat. A program that only asks whether a file exists gets its refusal and leaves no event with a path. The deny events of the CAW are about an attempted open, exec or connect. The README of the CAW has to say this.
+
+### The trace socket
+
+The sink is a Unix socket of the type SOCK_SEQPACKET. runsc connects to it before the sandbox starts and hands the connection to the sandbox, so the socket needs no mount inside the sandbox. The session is given with the flag `--pod-init-config`, which starts it before the first program of the sandbox runs.
+
 ## Open facts and their next step
 
-1. The trace sink. The `remote` sink speaks a wire format of gVisor over a Unix socket. The next step is a listener for that format and a run that shows one event for a failed open, one for a failed exec and one for a failed connect. The fallback of the plan is unchanged: the system call log of runsc limited to open, exec and connect.
-2. The GitHub runner. The job caw-gvisor proves it on the first push of the mirror.
-3. arm64. Out of scope until an arm64 host is part of the CI.
+1. The GitHub runner. The job caw-gvisor proves it on the first push of the mirror.
+2. arm64. Out of scope until an arm64 host is part of the CI.

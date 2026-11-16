@@ -1,21 +1,26 @@
 #!/usr/bin/env bash
 # Proof of the gVisor facts the CAW of AEP 2.9 rests on.
-# Usage: gvisor-facts.sh <path to runsc>
+# Usage: gvisor-facts.sh <path to runsc> [path to the program caw-trace-proof]
+# With the second argument the script also proves the trace sink: a failed open, a
+# failed exec and a failed connect each arrive as an event on a Unix socket.
 # Runs one sandbox as a user that is not root, on the systrap platform, with cgroups
 # ignored and no network device. Prints one line per fact: FACT <name> PASS|FAIL <detail>.
 # Exit 0 only when every fact holds.
 set -uo pipefail
 
 RUNSC="${1:-runsc}"
+TRACE_PROOF="${2:-}"
 PORT=47611
 
 # A root caller hands over to the user nobody: the proof is about a run without root.
 if [ "$(id -u)" = 0 ]; then
   W="$(mktemp -d /var/tmp/caw-proof.XXXXXX)"
   cp "$0" "$W/gvisor-facts.sh"
+  TP=""
+  if [ -n "$TRACE_PROOF" ]; then cp "$TRACE_PROOF" "$W/caw-trace-proof"; TP="$W/caw-trace-proof"; fi
   chown -R 65534:65534 "$W"
   setpriv --reuid=65534 --regid=65534 --clear-groups \
-    env HOME="$W" CAW_PROOF_WORK="$W" PATH="$PATH" bash "$W/gvisor-facts.sh" "$RUNSC"
+    env HOME="$W" CAW_PROOF_WORK="$W" PATH="$PATH" bash "$W/gvisor-facts.sh" "$RUNSC" "$TP"
   code=$?
   rm -rf "$W"
   exit "$code"
@@ -71,7 +76,7 @@ fail() { echo "FACT \$1 FAIL \$2"; }
 if dmesg 2>/dev/null | grep -qi gvisor; then pass kernel-is-gvisor "the kernel log names gVisor"; else fail kernel-is-gvisor "the kernel log does not name gVisor"; fi
 devs=\$(sed 1,2d /proc/net/dev 2>/dev/null | cut -d: -f1 | tr -d ' ' | grep -v '^lo\$' | tr '\n' ' ')
 if [ -r /proc/net/dev ] && [ -z "\$devs" ]; then pass no-network-device "only lo or nothing"; else fail no-network-device "found: \$devs"; fi
-if cat "$W/outside/secret" >/dev/null 2>&1; then fail denied-file-read "a host file outside the mounts was read"; else pass denied-file-read "a host file outside the mounts is absent"; fi
+if (exec < "$W/outside/secret") 2>/dev/null; then fail denied-file-read "a host file outside the mounts was read"; else pass denied-file-read "a host file outside the mounts is absent"; fi
 if touch /caw-root-write 2>/dev/null; then fail read-only-root "the root took a write"; else pass read-only-root "the root refused a write"; fi
 if touch /work/ok 2>/dev/null && [ -f /work/ok ]; then pass allowed-file-write "the workspace took a write"; else fail allowed-file-write "the workspace refused a write"; fi
 if "$W/outside/tool" 2>/dev/null; then fail denied-exec "a program outside the root ran"; else pass denied-exec "a program outside the root did not run"; fi
@@ -181,6 +186,85 @@ for flags in "--host-uds=open" "--host-uds=all" "--host-uds=open --directfs=fals
         t1=$(date +%s%N)
         echo "run $i: $(( (t1 - t0) / 1000000 )) ms, exit $rc"
       done
+      if [ -n "$TRACE_PROOF" ]; then
+        echo
+        echo "== trace sink"
+        stop_listeners
+        TRUN="$W/trace"
+        mkdir -p "$TRUN/state" "$TRUN/log"
+        cat > "$TRUN/pod-init.json" <<TRACECONF
+{
+  "trace_session": {
+    "name": "Default",
+    "points": [
+      {"name": "syscall/open/exit", "context_fields": ["process_name", "container_id", "group_id"]},
+      {"name": "syscall/openat/exit", "context_fields": ["process_name", "container_id", "group_id"]},
+      {"name": "syscall/execve/exit", "context_fields": ["process_name", "container_id", "group_id"]},
+      {"name": "sentry/execve", "context_fields": ["process_name", "container_id", "group_id"]},
+      {"name": "syscall/connect/exit", "context_fields": ["process_name", "container_id", "group_id"]}
+    ],
+    "sinks": [
+      {"name": "remote", "config": {"endpoint": "$TRUN/trace.sock"}}
+    ]
+  }
+}
+TRACECONF
+        "$TRACE_PROOF" "$TRUN/trace.sock" > "$TRUN/trace.txt" 2> "$TRUN/trace.err" &
+        TPID=$!
+        for _ in 1 2 3 4 5 6 7 8 9 10; do
+          grep -q READY "$TRUN/trace.txt" 2>/dev/null && break
+          sleep 0.2
+        done
+        if [ -n "$ADDR" ]; then
+          nc -lk "$PORT" >/dev/null 2>&1 &
+          PIDS="$PIDS $!"
+        fi
+        write_config '["/bin/sh", "/proof/inside.sh"]'
+        RUN="$TRUN"
+        run_sandbox "$flags --pod-init-config=$TRUN/pod-init.json" > "$TRUN/out.txt" 2> "$TRUN/err.txt"
+        echo "runsc exit with the trace session: $?"
+        for _ in 1 2 3 4 5 6 7 8 9 10; do
+          kill -0 "$TPID" 2>/dev/null || break
+          sleep 0.3
+        done
+        kill "$TPID" 2>/dev/null
+        cat "$TRUN/trace.err"
+        grep -c "^EVENT " "$TRUN/trace.txt" | sed "s/^/events received: /"
+        grep "^DONE " "$TRUN/trace.txt"
+        echo "events by kind and errno:"
+        grep "^EVENT " "$TRUN/trace.txt" | awk '{print $2, $3}' | sort | uniq -c | sort -rn | head -12
+        echo "loaded programs, first 6:"
+        grep "^EVENT kind=exec-done " "$TRUN/trace.txt" | head -6 | cut -c1-200
+        echo "events that name the outside folder, first 6:"
+        grep "outside/" "$TRUN/trace.txt" | head -6 | cut -c1-200
+        echo "failed connect events, first 3:"
+        grep "^EVENT kind=connect errno=[1-9]" "$TRUN/trace.txt" | head -3 | cut -c1-120
+        {
+          n=$(grep -c "^EVENT kind=open errno=[1-9][0-9]* .* path=$W/outside/secret$" "$TRUN/trace.txt")
+          if [ "$n" -ge 1 ]; then echo "FACT trace-denied-open PASS $n event or events name the denied file"; else echo "FACT trace-denied-open FAIL no event names the denied file"; fi
+          asked=$(grep -c "^EVENT kind=execve .* path=$W/outside/tool$" "$TRUN/trace.txt")
+          loaded=$(grep -c "^EVENT kind=exec-done .* path=$W/outside/tool$" "$TRUN/trace.txt")
+          if [ "$asked" -ge 1 ] && [ "$loaded" = 0 ]; then echo "FACT trace-denied-exec PASS $asked execve event or events name the denied program and no program was loaded from it"; else echo "FACT trace-denied-exec FAIL asked $asked, loaded $loaded"; fi
+          asked=$(grep -c "^EVENT kind=execve .* path=/usr/bin/true$" "$TRUN/trace.txt")
+          loaded=$(grep -c "^EVENT kind=exec-done " "$TRUN/trace.txt")
+          if [ "$asked" -ge 1 ] && [ "$loaded" -ge 1 ]; then echo "FACT trace-allowed-exec PASS the allowed program has its execve event and $loaded programs were loaded in the run"; else echo "FACT trace-allowed-exec FAIL asked $asked, loaded $loaded"; fi
+          if [ -n "$ADDR" ]; then
+            n=$(grep -c "^EVENT kind=connect errno=[1-9]" "$TRUN/trace.txt")
+            if [ "$n" -ge 1 ]; then echo "FACT trace-denied-connect PASS $n event or events report a failed connect"; else echo "FACT trace-denied-connect FAIL no event reports a failed connect"; fi
+          else
+            echo "SKIP trace-denied-connect the host has no address to connect to"
+          fi
+        } | tee "$TRUN/facts.txt"
+        FAILED="$(grep -c "^FACT .* FAIL " "$TRUN/facts.txt")"
+        if [ "$FAILED" != 0 ]; then
+          echo "end of the runsc logs of the trace run:"
+          tail -5 "$TRUN/err.txt"
+          grep -h -i -E "seccheck|trace|sink|remote" "$TRUN"/log/* 2>/dev/null | grep -v "config.go" | tail -10 | cut -c1-400
+        fi
+      else
+        echo
+        echo "SKIP trace-sink no caw-trace-proof program was given"
+      fi
       break
     fi
     echo "lines of the debug logs that name the socket:"

@@ -49,6 +49,8 @@ members = [
     "AEP-Components/ucm/crates/ucm-service",
     # The end to end example is a member so the workspace build and CI compile it.
     "AEP-User-Experience/examples/end-to-end-run",
+    # The CAW: a Rust policy engine that runs every agent command in gVisor.
+    "AEP-CAWs-RustGvisor/aep-caw-runtime",
 ]
 # The default build is the single Base Node kernel. The multi base node is an
 # optional experimental surface and it is not a default member, so a plain
