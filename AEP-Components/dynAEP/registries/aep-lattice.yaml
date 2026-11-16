@@ -429,6 +429,57 @@ actions:
         description: "Haptic duration must be within perceptual bounds"
     agent_permission: ["*"]
 
+
+  # -- EDE Lifecycle --
+  # The verbs of the enforced draft environment as lattice nodes. Every
+  # draft environment asks the EDE wall of dynAEP (ede_wall in the Rust crate,
+  # aep-dynaep ede-wall on the command line) before each verb. Promote
+  # sits under scan and verify. The wall adds the age bounds of a draft,
+  # a scan and a CI seal and closes every verb on a promoted or expired
+  # draft.
+
+  ede.seed:
+    label: "Seed a draft from a read-only clone of a repository"
+    category: agent_action
+    parents: []
+    children: [ede.refresh, ede.scan, ede.verify, ede.expire]
+    agent_permission: ["*"]
+
+  ede.refresh:
+    label: "Bring a draft onto the tip of its branch"
+    category: agent_action
+    parents: [ede.seed]
+    children: []
+    agent_permission: ["*"]
+
+  ede.scan:
+    label: "Scan the change set of a draft and bind it to a scan id"
+    category: agent_action
+    parents: [ede.seed]
+    children: [ede.promote]
+    agent_permission: ["*"]
+
+  ede.verify:
+    label: "Run the CI of a draft and seal the result for its tree"
+    category: agent_action
+    parents: [ede.seed]
+    children: [ede.promote]
+    agent_permission: ["*"]
+
+  ede.promote:
+    label: "Land the scanned tree of a draft in one commit"
+    category: agent_action
+    parents: [ede.scan, ede.verify]
+    children: []
+    agent_permission: ["*"]
+
+  ede.expire:
+    label: "Expire a draft and leave a tombstone in the ledger"
+    category: agent_action
+    parents: [ede.seed]
+    children: []
+    agent_permission: ["*"]
+
 # ---------------------------------------------------------------------------
 # Agent Interest Registration (default)
 # ---------------------------------------------------------------------------

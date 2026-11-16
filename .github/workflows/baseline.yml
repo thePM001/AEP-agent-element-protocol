@@ -110,6 +110,20 @@ jobs:
           AEP-Policy-System/lattice-channel-mandatory.gap
           AEP-Components/gap/policies/reference
 
+  caw-gvisor:
+    name: CAW on gVisor, facts with the pinned runsc and no root
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      # Root is used once: the pinned package and the AppArmor profile of runsc.
+      - name: install the pinned gVisor
+        run: sudo bash AEP-CAWs-RustGvisor/proof/install-runsc.sh
+      - name: gVisor facts as the runner user
+        run: |
+          . AEP-CAWs-RustGvisor/proof/runsc-pin.env
+          bash AEP-CAWs-RustGvisor/proof/gvisor-facts.sh "$RUNSC_BIN"
+
   format:
     name: format
     runs-on: ubuntu-latest

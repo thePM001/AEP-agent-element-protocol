@@ -221,7 +221,7 @@
     },
     {
       "folder": "AEP-Components/ede",
-      "role": "Enforced draft environments, in which a coding agent changes a repository only through a scanned draft."
+      "role": "Enforced draft environments, in which a coding agent proven by its registered key changes a repository only through a scanned draft whose sealed record it cannot write."
     },
     {
       "folder": "AEP-Components/platform-core",

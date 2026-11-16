@@ -11,7 +11,8 @@
     "lattice:pad-router",
     "lattice:causal-log",
     "hyperlattice:ssot",
-    "lattice:rust-crate"
+    "lattice:rust-crate",
+    "lattice:ede-lifecycle-wall"
   ],
   "actions": [
     {

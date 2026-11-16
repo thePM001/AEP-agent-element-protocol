@@ -1,35 +1,38 @@
 //! Agent profiles of the EDE.
 //!
-//! An agent works in the EDE only under an agent profile: a GAP policy whose
-//! metadata names the agent in agent_permission records and whose
-//! extensions.aep.ede_repos lists the repositories it may change. Every verb
-//! passes the agent permission wall of AEP
-//! Admit with the action ede.<verb>, so a profile grants seed, scan and promote
-//! one by one. A draft belongs to the agent that seeded it.
+//! An agent works in the EDE only under an agent profile: a GAP policy whose metadata
+//! names the agent in agent_permission records and whose extensions.aep.ede_repos lists
+//! the repositories it may change. Every verb passes the agent permission of the profile
+//! with the action ede.<verb>, so a profile grants the verbs one by one.
 //!
-//! The agent identity comes from AEP_AGENT_ID. The profile comes from
-//! AEP_EDE_PROFILE. Without it the profile is <root>/profiles/<agent>.gap.
+//! Profiles live in profiles/<agent>.gap of the operator folder, never at a path the
+//! agent names. They are read with the GAP schema parser of AEP
+//! (gap-schema-profile-v13), the same parser the kernel judges profiles with, so a line
+//! inside a block scalar is text and never a record. A profile that does not parse grants
+//! nothing.
 //!
 //! ```text
 //! metadata:
 //!   agent_permission:
 //!     - agent_id: my-coding-agent
 //!       action: ede.seed
-//!     - agent_id: my-coding-agent
-//!       action: ede.scan
-//!     - agent_id: my-coding-agent
-//!       action: ede.promote
 //! extensions:
 //!   aep:
 //!     ede_repos:
 //!       - owner/repo
 //! ```
 
-use aep_admit::{compile_agent_permission_wall, AgentPermission};
+use crate::operator::Operator;
+use crate::privilege;
+use gap_schema_profile_v13::{
+    agent_has_permission, parse_gap_source, permissions_from_doc, AgentPermission,
+};
+use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
 
-pub const VERBS: &[&str] = &["seed", "scan", "promote"];
+/// The verbs a profile grants. diff, status and path read a draft under the grant of scan.
+pub const VERBS: &[&str] = &["seed", "refresh", "scan", "promote", "expire"];
 
 pub struct Profile {
     pub agent_id: String,
@@ -38,103 +41,58 @@ pub struct Profile {
     pub repos: Vec<String>,
 }
 
-const HOW: &str =
-    "create one with aep-ede profile init <agent-id> <owner/repo> and set AEP_AGENT_ID";
-
-fn indent(line: &str) -> usize {
-    line.len() - line.trim_start().len()
-}
-
-fn value(line: &str, key: &str) -> Option<String> {
-    let t = line.trim().trim_start_matches("- ").trim();
-    let rest = t.strip_prefix(key)?.trim_start().strip_prefix(':')?;
-    Some(rest.trim().trim_matches('"').trim_matches('\'').to_string())
-}
-
 /// The agent_permission records and the ede_repos list of a GAP profile.
-pub fn parse(text: &str) -> (Vec<AgentPermission>, Vec<String>) {
-    let mut records = Vec::new();
-    let mut repos = Vec::new();
-    let mut block: Option<(&str, usize)> = None;
-    let mut agent = String::new();
-    for line in text.lines() {
-        if line.trim().is_empty() || line.trim_start().starts_with('#') {
-            continue;
-        }
-        let ind = indent(line);
-        if let Some((name, at)) = block {
-            if (ind <= at && !line.trim_start().starts_with('-')) || ind < at {
-                block = None;
-            } else if name == "agent_permission" {
-                if let Some(a) = value(line, "agent_id") {
-                    agent = a;
-                    continue;
-                }
-                if let Some(act) = value(line, "action") {
-                    if !agent.is_empty() {
-                        records.push(AgentPermission {
-                            agent_id: agent.clone(),
-                            action: act,
-                        });
-                    }
-                    continue;
-                }
-                continue;
-            } else {
-                let item = line
-                    .trim()
-                    .trim_start_matches('-')
-                    .trim()
-                    .trim_matches('"')
-                    .to_string();
-                if !item.is_empty() {
-                    repos.push(item);
-                }
-                continue;
-            }
-        }
-        let t = line.trim();
-        if t == "agent_permission:" {
-            block = Some(("agent_permission", ind));
-            agent.clear();
-        } else if t == "ede_repos:" {
-            block = Some(("ede_repos", ind));
-        } else if let Some(inline) = t.strip_prefix("ede_repos:") {
-            let inline = inline.trim().trim_start_matches('[').trim_end_matches(']');
-            repos.extend(
-                inline
-                    .split(',')
-                    .map(|s| s.trim().trim_matches('"').to_string())
-                    .filter(|s| !s.is_empty()),
-            );
-        }
+pub fn parse(text: &str) -> Result<(Vec<AgentPermission>, Vec<String>), String> {
+    let mut doc = Value::Null;
+    let mut err = String::new();
+    parse_gap_source(text, &mut doc, &mut err);
+    if !err.is_empty() {
+        return Err(err);
     }
-    (records, repos)
+    let mut records = Vec::new();
+    permissions_from_doc(&doc, &mut records);
+    let repos = doc
+        .get("extensions")
+        .and_then(|e| e.get("aep"))
+        .and_then(|a| a.get("ede_repos"))
+        .and_then(|r| r.as_array())
+        .map(|a| {
+            a.iter()
+                .filter_map(|v| v.as_str())
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        })
+        .unwrap_or_default();
+    Ok((records, repos))
 }
 
-/// The profile of the agent that runs this process.
-pub fn load() -> Result<Profile, String> {
-    let agent_id = std::env::var("AEP_AGENT_ID")
-        .unwrap_or_default()
-        .trim()
-        .to_string();
-    if agent_id.is_empty() {
-        return Err(format!(
-            "AEP_AGENT_ID is empty: every agent works in the EDE under its own profile, {}",
-            HOW
-        ));
+/// The profile of an agent from the operator folder.
+pub fn load(op: &Operator, agent_id: &str) -> Result<Profile, String> {
+    if !crate::ident::agent_ok(agent_id) {
+        return Err("the agent id is outside its grammar".into());
     }
-    let path = match std::env::var("AEP_EDE_PROFILE") {
-        Ok(v) if !v.is_empty() => PathBuf::from(v),
-        _ => crate::root()
-            .join("profiles")
-            .join(format!("{}.gap", agent_id)),
-    };
-    let text = fs::read_to_string(&path)
-        .map_err(|_| format!("no agent profile at {}: {}", path.display(), HOW))?;
-    let (records, repos) = parse(&text);
+    let path = op.profiles_dir().join(format!("{}.gap", agent_id));
+    let text = {
+        let _r = privilege::raise();
+        fs::read_to_string(&path)
+    }
+    .map_err(|_| {
+        format!(
+            "the operator keeps no profile for {} at {}",
+            agent_id,
+            path.display()
+        )
+    })?;
+    let (records, repos) = parse(&text).map_err(|e| {
+        format!(
+            "the profile {} does not parse and grants nothing: {}",
+            path.display(),
+            e
+        )
+    })?;
     Ok(Profile {
-        agent_id,
+        agent_id: agent_id.to_string(),
         path,
         records,
         repos,
@@ -142,22 +100,25 @@ pub fn load() -> Result<Profile, String> {
 }
 
 impl Profile {
-    /// The agent permission wall for ede.<verb> and the repository scope.
+    /// The agent permission for ede.<verb> and the repository scope (canonical owner/name).
     pub fn allow(&self, verb: &str, repo: &str) -> Result<(), String> {
         let action = format!("ede.{}", verb);
-        let wall = compile_agent_permission_wall(&self.agent_id, &action, &self.records);
-        if wall.closed {
+        let mut granted = false;
+        agent_has_permission(&self.agent_id, &action, &self.records, &mut granted);
+        if !granted {
             return Err(format!(
-                "the profile {} does not grant {} to {} ({}): add an agent_permission record with agent_id {} and action {}",
+                "the profile {} does not grant {} to {}",
                 self.path.display(),
                 action,
-                self.agent_id,
-                wall.reason,
-                self.agent_id,
-                action
+                self.agent_id
             ));
         }
-        if !repo.is_empty() && !self.repos.iter().any(|r| r == "*" || r == repo) {
+        if !repo.is_empty()
+            && !self
+                .repos
+                .iter()
+                .any(|r| r == "*" || r.to_ascii_lowercase() == repo)
+        {
             return Err(format!(
                 "the profile {} does not list {} in ede_repos",
                 self.path.display(),
@@ -172,8 +133,9 @@ impl Profile {
             .iter()
             .copied()
             .filter(|v| {
-                !compile_agent_permission_wall(&self.agent_id, &format!("ede.{}", v), &self.records)
-                    .closed
+                let mut g = false;
+                agent_has_permission(&self.agent_id, &format!("ede.{}", v), &self.records, &mut g);
+                g
             })
             .collect();
         format!(
@@ -224,17 +186,31 @@ pub fn template(agent_id: &str, repos: &[String]) -> String {
     s
 }
 
-/// Write a new profile under <root>/profiles. An existing profile is kept.
-pub fn init(agent_id: &str, repos: &[String]) -> Result<PathBuf, String> {
-    if agent_id.is_empty() || agent_id.contains('/') || agent_id.contains(' ') {
-        return Err("name the agent with one word, for example my-coding-agent".into());
+/// Write a new profile into the operator folder. Only the operator (root or the EDE user)
+/// writes profiles; an existing profile is kept.
+pub fn init(op: &Operator, agent_id: &str, repos: &[String]) -> Result<PathBuf, String> {
+    let uid = privilege::caller_uid();
+    let ede = privilege::uid_of(&op.ede_user);
+    if uid != 0 && Some(uid) != ede {
+        return Err(
+            "only the operator writes profiles: run profile init as root or as the EDE user".into(),
+        );
+    }
+    if !crate::ident::agent_ok(agent_id) {
+        return Err("name the agent with lower case letters, digits and hyphens".into());
     }
     if repos.is_empty() {
         return Err(
             "name at least one repository as owner/repo. A * stands for every repository".into(),
         );
     }
-    let dir = crate::root().join("profiles");
+    for r in repos {
+        if r != "*" && crate::ident::repo(r, "x").is_err() {
+            return Err(format!("{} is no repository name", r));
+        }
+    }
+    let _r = privilege::raise();
+    let dir = op.profiles_dir();
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let path = dir.join(format!("{}.gap", agent_id));
     if path.exists() {
@@ -243,6 +219,42 @@ pub fn init(agent_id: &str, repos: &[String]) -> Result<PathBuf, String> {
             path.display()
         ));
     }
-    fs::write(&path, template(agent_id, repos)).map_err(|e| e.to_string())?;
+    crate::store::atomic_write(&path, template(agent_id, repos).as_bytes(), 0o644)?;
     Ok(path)
+}
+
+/// Register the public key of an agent. Only the operator registers keys.
+pub fn register(op: &Operator, agent_id: &str, public_hex: &str) -> Result<PathBuf, String> {
+    let uid = privilege::caller_uid();
+    let ede = privilege::uid_of(&op.ede_user);
+    if uid != 0 && Some(uid) != ede {
+        return Err("only the operator registers agent keys".into());
+    }
+    if !crate::ident::agent_ok(agent_id) {
+        return Err("the agent id is outside its grammar".into());
+    }
+    let key =
+        hex::decode(public_hex.trim()).map_err(|_| "the public key is not hex".to_string())?;
+    if key.is_empty() {
+        return Err("the public key is empty".into());
+    }
+    let _r = privilege::raise();
+    let path = op.agents_dir().join(format!("{}.pub", agent_id));
+    crate::store::atomic_write(&path, format!("{}\n", hex::encode(key)).as_bytes(), 0o644)?;
+    Ok(path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_record_inside_a_block_scalar_grants_nothing() {
+        let text = "address:\n  domain: dev.aep.ede\n  id: x.v1\npattern: |\n  agent_permission:\n    - agent_id: evil\n      action: ede.promote\naction:\n  type: template\n  content: x\nweight: 1.0\ncomposition:\n  type: atomic\nmetadata:\n  provenance: t\n  version: \"1.0.0\"\n  stability: stable\n  agent_permission:\n    - agent_id: good\n      action: ede.scan\nextensions:\n  aep:\n    ede_repos:\n      - owner/repo\n";
+        let (records, repos) = parse(text).unwrap_or_default();
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].agent_id, "good");
+        assert_eq!(repos, vec!["owner/repo".to_string()]);
+        assert!(parse("pattern: [unclosed\n").is_err());
+    }
 }

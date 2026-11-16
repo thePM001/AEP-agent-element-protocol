@@ -28,9 +28,13 @@ metadata:
     - agent_id: example-coding-agent
       action: ede.seed
     - agent_id: example-coding-agent
+      action: ede.refresh
+    - agent_id: example-coding-agent
       action: ede.scan
     - agent_id: example-coding-agent
       action: ede.promote
+    - agent_id: example-coding-agent
+      action: ede.expire
 
 extensions:
   aep:

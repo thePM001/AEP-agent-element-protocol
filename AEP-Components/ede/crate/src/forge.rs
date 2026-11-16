@@ -1,87 +1,45 @@
-//! Forges of the public EDE. A forge seeds a draft with a read-only clone and lands
-//! the work of a draft. Two forges ship: GitHub and plain git.
+//! Forges of the public EDE.
 //!
-//! - GitHub clones https://github.com/<owner>/<repo>.git. Promote pushes the work
-//!   to the branch aep-ede/<draft> and opens a pull request against the base
+//! The operator folder picks the forge, never the agent. Two forges ship:
+//!
+//! - GitHub clones <github_url>/<owner>/<repo>.git. Promote pushes the one landing
+//!   commit to the branch aep-ede/<draft> and opens a pull request against the base
 //!   branch, so the required checks of the repository decide the merge.
-//! - Plain git clones any remote. Promote pushes the work to the branch
-//!   aep-ede/<draft>. With AEP_EDE_GIT_DIRECT=1 it pushes to the base branch itself.
+//! - Plain git clones <git_remote>/<owner>/<repo>.git. Promote pushes the landing commit
+//!   to aep-ede/<draft>, or to the base branch itself with git_direct: on.
 //!
-//! A token reaches git through the environment of the git process only and
-//! reaches the GitHub API through a header file that promote removes again.
-//! No token is written to a git config or shown on a command line.
+//! The GitHub token lives in github-token of the operator folder (mode 0600, owner the
+//! EDE user). aep-ede reads it into memory. It reaches git only through the environment
+//! of the one git process that fetches or pushes, and the API only through a header of
+//! the request that aep-ede sends in process. No token is written to a file, a git
+//! config or a command line.
 
+use crate::ident::Repo;
+use crate::operator::{ForgeKind, Operator};
+use base64::Engine;
+use serde::Deserialize;
 use std::fs;
-use std::io::Write;
-use std::path::Path;
-use std::process::Command;
 
 pub trait Forge {
     fn name(&self) -> &'static str;
-    /// The URL a draft clones from.
-    fn clone_url(&self, repo: &str) -> String;
-    /// Extra environment for git calls that reach the forge.
+    /// The URL a draft clones from and lands to.
+    fn url(&self, repo: &Repo) -> String;
+    /// Environment of the git process that reaches the forge.
     fn git_env(&self) -> Vec<(String, String)>;
-    /// Land the commit at HEAD of `tree`. Returns the branch or pull request it landed as.
-    fn land(
+    /// The branch the landing commit goes to.
+    fn target(&self, base_branch: &str, draft: &str) -> String;
+    /// Whether the forge can land at all, checked before anything is pushed.
+    fn ready(&self) -> Result<(), String> {
+        Ok(())
+    }
+    /// The step after the push: a pull request or nothing. Returns what landed.
+    fn after_push(
         &self,
-        tree: &Path,
-        repo: &str,
+        repo: &Repo,
         base_branch: &str,
-        draft: &str,
+        branch: &str,
         message: &str,
     ) -> Result<String, String>;
-}
-
-fn env_or(key: &str, dflt: &str) -> String {
-    match std::env::var(key) {
-        Ok(v) if !v.is_empty() => v,
-        _ => dflt.to_string(),
-    }
-}
-
-fn git_out(tree: &Path, env: &[(String, String)], args: &[&str]) -> Result<String, String> {
-    let mut c = Command::new("git");
-    c.arg("-C")
-        .arg(tree)
-        .args(args)
-        .env("GIT_TERMINAL_PROMPT", "0");
-    for (k, v) in env {
-        c.env(k, v);
-    }
-    let o = c.output().map_err(|e| e.to_string())?;
-    if o.status.success() {
-        Ok(String::from_utf8_lossy(&o.stdout).trim().to_string())
-    } else {
-        Err(String::from_utf8_lossy(&o.stderr).trim().to_string())
-    }
-}
-
-/// Standard base64 without padding loss, for the basic auth header of git over HTTPS.
-pub fn base64(data: &[u8]) -> String {
-    const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut out = String::new();
-    for chunk in data.chunks(3) {
-        let b = [
-            chunk[0],
-            *chunk.get(1).unwrap_or(&0),
-            *chunk.get(2).unwrap_or(&0),
-        ];
-        let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | b[2] as u32;
-        out.push(T[(n >> 18) as usize & 63] as char);
-        out.push(T[(n >> 12) as usize & 63] as char);
-        out.push(if chunk.len() > 1 {
-            T[(n >> 6) as usize & 63] as char
-        } else {
-            '='
-        });
-        out.push(if chunk.len() > 2 {
-            T[n as usize & 63] as char
-        } else {
-            '='
-        });
-    }
-    out
 }
 
 pub struct GitForge {
@@ -89,207 +47,185 @@ pub struct GitForge {
     pub direct: bool,
 }
 
-impl GitForge {
-    pub fn from_env() -> Self {
-        GitForge {
-            remote_base: env_or("AEP_EDE_GIT_REMOTE", ""),
-            direct: env_or("AEP_EDE_GIT_DIRECT", "0") == "1",
-        }
-    }
-}
-
 impl Forge for GitForge {
     fn name(&self) -> &'static str {
         "git"
     }
-    fn clone_url(&self, repo: &str) -> String {
-        if self.remote_base.is_empty() {
-            repo.to_string()
-        } else {
-            format!("{}/{}.git", self.remote_base.trim_end_matches('/'), repo)
-        }
+    fn url(&self, repo: &Repo) -> String {
+        format!(
+            "{}/{}.git",
+            self.remote_base.trim_end_matches('/'),
+            repo.full()
+        )
     }
     fn git_env(&self) -> Vec<(String, String)> {
         Vec::new()
     }
-    fn land(
-        &self,
-        tree: &Path,
-        _repo: &str,
-        base_branch: &str,
-        draft: &str,
-        _message: &str,
-    ) -> Result<String, String> {
-        let target = if self.direct {
+    fn target(&self, base_branch: &str, draft: &str) -> String {
+        if self.direct {
             base_branch.to_string()
         } else {
             format!("aep-ede/{}", draft)
-        };
-        git_out(
-            tree,
-            &[],
-            &[
-                "push",
-                "-q",
-                "ede-land",
-                &format!("HEAD:refs/heads/{}", target),
-            ],
-        )?;
-        Ok(format!("branch {}", target))
+        }
+    }
+    fn after_push(
+        &self,
+        _repo: &Repo,
+        _base: &str,
+        branch: &str,
+        _message: &str,
+    ) -> Result<String, String> {
+        Ok(format!("branch {}", branch))
     }
 }
 
 pub struct GitHubForge {
     pub web: String,
     pub api: String,
-    pub token: String,
+    proxy: Option<String>,
+    token: String,
+}
+
+#[derive(Deserialize)]
+struct PullAnswer {
+    html_url: String,
+}
+
+#[derive(serde::Serialize)]
+struct PullRequest<'a> {
+    title: &'a str,
+    head: &'a str,
+    base: &'a str,
+    body: &'a str,
 }
 
 impl GitHubForge {
-    pub fn from_env() -> Self {
+    pub fn new(web: &str, api: &str, token: String, proxy: Option<String>) -> Self {
         GitHubForge {
-            web: env_or("AEP_EDE_GITHUB_URL", "https://github.com"),
-            api: env_or("AEP_EDE_GITHUB_API", "https://api.github.com"),
-            token: env_or("GITHUB_TOKEN", ""),
+            web: web.to_string(),
+            api: api.to_string(),
+            proxy,
+            token,
         }
     }
-}
-
-/// The value of a JSON string field in a flat answer, without a JSON library.
-pub fn json_field(body: &str, key: &str) -> Option<String> {
-    let at = body.find(&format!("\"{}\"", key))?;
-    let rest = &body[at + key.len() + 2..];
-    let rest = rest
-        .trim_start()
-        .strip_prefix(':')?
-        .trim_start()
-        .strip_prefix('"')?;
-    Some(rest.chars().take_while(|c| *c != '"').collect())
-}
-
-fn json_string(s: &str) -> String {
-    let mut out = String::from("\"");
-    for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\r' => {}
-            '\t' => out.push_str("\\t"),
-            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
 }
 
 impl Forge for GitHubForge {
     fn name(&self) -> &'static str {
         "github"
     }
-    fn clone_url(&self, repo: &str) -> String {
-        format!("{}/{}.git", self.web.trim_end_matches('/'), repo)
+    fn url(&self, repo: &Repo) -> String {
+        format!("{}/{}.git", self.web.trim_end_matches('/'), repo.full())
     }
     fn git_env(&self) -> Vec<(String, String)> {
-        if self.token.is_empty() {
-            return Vec::new();
+        let mut env = Vec::new();
+        if let Some(p) = &self.proxy {
+            env.push(("HTTPS_PROXY".into(), p.clone()));
         }
-        let basic = base64(format!("x-access-token:{}", self.token).as_bytes());
-        vec![
+        if self.token.is_empty() {
+            return env;
+        }
+        let basic = base64::engine::general_purpose::STANDARD
+            .encode(format!("x-access-token:{}", self.token));
+        env.extend([
             ("GIT_CONFIG_COUNT".into(), "1".into()),
             ("GIT_CONFIG_KEY_0".into(), "http.extraHeader".into()),
             (
                 "GIT_CONFIG_VALUE_0".into(),
                 format!("Authorization: Basic {}", basic),
             ),
-        ]
+        ]);
+        env
     }
-    fn land(
+    fn ready(&self) -> Result<(), String> {
+        if self.token.is_empty() {
+            return Err("the operator folder holds no github-token: a pull request needs a token with contents and pull request write access".into());
+        }
+        Ok(())
+    }
+    fn target(&self, _base_branch: &str, draft: &str) -> String {
+        format!("aep-ede/{}", draft)
+    }
+    fn after_push(
         &self,
-        tree: &Path,
-        repo: &str,
+        repo: &Repo,
         base_branch: &str,
-        draft: &str,
+        branch: &str,
         message: &str,
     ) -> Result<String, String> {
         if self.token.is_empty() {
-            return Err("GITHUB_TOKEN is empty: a pull request needs a token with contents and pull request write access".into());
+            return Err("the operator folder holds no github-token: a pull request needs a token with contents and pull request write access".into());
         }
-        let branch = format!("aep-ede/{}", draft);
-        git_out(
-            tree,
-            &self.git_env(),
-            &[
-                "push",
-                "-q",
-                "ede-land",
-                &format!("HEAD:refs/heads/{}", branch),
-            ],
-        )?;
         let mut lines = message.lines();
         let title = lines.next().unwrap_or("aep-ede promote").trim().to_string();
-        let body: Vec<&str> = lines.collect();
-        let payload = format!(
-            "{{\"title\":{},\"head\":{},\"base\":{},\"body\":{}}}",
-            json_string(&title),
-            json_string(&branch),
-            json_string(base_branch),
-            json_string(body.join("\n").trim())
+        let body = lines.collect::<Vec<_>>().join("\n");
+        let request = PullRequest {
+            title: &title,
+            head: branch,
+            base: base_branch,
+            body: body.trim(),
+        };
+        let url = format!(
+            "{}/repos/{}/{}/pulls",
+            self.api.trim_end_matches('/'),
+            repo.owner,
+            repo.name
         );
-        let headers = tree.parent().unwrap_or(tree).join("github-headers");
-        {
-            let mut f = fs::File::create(&headers).map_err(|e| e.to_string())?;
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::PermissionsExt;
-                let _ = fs::set_permissions(&headers, fs::Permissions::from_mode(0o600));
-            }
-            writeln!(f, "Authorization: Bearer {}", self.token).map_err(|e| e.to_string())?;
-            writeln!(f, "Accept: application/vnd.github+json").map_err(|e| e.to_string())?;
-            writeln!(f, "Content-Type: application/json").map_err(|e| e.to_string())?;
+        // The proxy of the request comes from the operator folder; a proxy variable of the
+        // agent environment is never read.
+        let mut builder = reqwest::blocking::Client::builder()
+            .timeout(std::time::Duration::from_secs(60))
+            .user_agent("aep-ede")
+            .no_proxy();
+        if let Some(p) = &self.proxy {
+            builder = builder.proxy(
+                reqwest::Proxy::all(p)
+                    .map_err(|e| format!("https_proxy of the operator: {}", e))?,
+            );
         }
-        let url = format!("{}/repos/{}/pulls", self.api.trim_end_matches('/'), repo);
-        let out = Command::new("curl")
-            .arg("-s")
-            .arg("-m")
-            .arg("60")
-            .arg("-X")
-            .arg("POST")
-            .arg("-H")
-            .arg(format!("@{}", headers.display()))
-            .arg("--data-binary")
-            .arg(&payload)
-            .arg("-w")
-            .arg("\n%{http_code}")
-            .arg(&url)
-            .output();
-        let _ = fs::remove_file(&headers);
-        let o = out.map_err(|e| e.to_string())?;
-        let text = String::from_utf8_lossy(&o.stdout).to_string();
-        let code = text.lines().last().unwrap_or("").trim().to_string();
-        if code != "201" {
+        let client = builder.build().map_err(|e| e.to_string())?;
+        let answer = client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", self.token))
+            .header("Accept", "application/vnd.github+json")
+            .json(&request)
+            .send()
+            .map_err(|e| format!("the pull request was not sent: {}", e.without_url()))?;
+        let status = answer.status().as_u16();
+        let text = answer.text().unwrap_or_default();
+        if status != 201 {
             return Err(format!(
                 "the pull request was refused with HTTP {}: {}",
-                code,
-                text.lines()
-                    .next()
-                    .unwrap_or("")
-                    .chars()
-                    .take(200)
-                    .collect::<String>()
+                status,
+                text.chars().take(200).collect::<String>()
             ));
         }
-        Ok(format!(
-            "pull request {}",
-            json_field(&text, "html_url").unwrap_or(branch)
-        ))
+        let parsed: PullAnswer = serde_json::from_str(&text)
+            .map_err(|e| format!("the answer of the pull request does not parse: {}", e))?;
+        Ok(format!("pull request {}", parsed.html_url))
     }
 }
 
-pub fn from_env() -> Box<dyn Forge> {
-    match env_or("AEP_EDE_FORGE", "github").as_str() {
-        "git" => Box::new(GitForge::from_env()),
-        _ => Box::new(GitHubForge::from_env()),
+/// The forge of the operator.
+pub fn of(op: &Operator) -> Box<dyn Forge> {
+    match op.forge {
+        ForgeKind::Git => Box::new(GitForge {
+            remote_base: op.git_remote.clone(),
+            direct: op.git_direct,
+        }),
+        ForgeKind::GitHub => {
+            let token = {
+                let _r = crate::privilege::raise();
+                fs::read_to_string(op.token_path())
+                    .map(|t| t.trim().to_string())
+                    .unwrap_or_default()
+            };
+            Box::new(GitHubForge::new(
+                &op.github_url,
+                &op.github_api,
+                token,
+                op.https_proxy.clone(),
+            ))
+        }
     }
 }

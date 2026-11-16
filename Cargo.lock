@@ -221,6 +221,17 @@ name = "aep-ede"
 version = "2.9.0"
 dependencies = [
  "aep-admit",
+ "aep-dynaep",
+ "aep-ede",
+ "aep-lattice-crypto",
+ "base64",
+ "gap-schema-profile-v13",
+ "hex",
+ "hmac",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]

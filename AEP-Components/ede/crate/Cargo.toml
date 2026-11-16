@@ -14,8 +14,27 @@ path = "src/main.rs"
 [lib]
 path = "src/lib.rs"
 
+# Test builds only: the operator folder, the clock and a forced id clash come from
+# AEP_EDE_TEST_* variables. cargo build never enables it, because the self
+# dev-dependency below reaches only tests.
+[features]
+test-env = []
+
 [dependencies]
 aep-admit = { path = "../../admit/crate" }
+aep-dynaep = { path = "../../dynAEP/crate" }
+aep-lattice-crypto = { path = "../../lattice-crypto/crate" }
+gap-schema-profile-v13 = { path = "../../gap-schema-profile-v13/crate" }
+sha2 = { workspace = true }
+hmac = "0.12"
+hex = { workspace = true }
+base64 = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+reqwest = { workspace = true, features = ["blocking"] }
+
+[dev-dependencies]
+aep-ede = { path = ".", features = ["test-env"] }
 
 [lints]
 workspace = true

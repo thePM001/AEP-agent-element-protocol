@@ -70,3 +70,13 @@ suites:
     paths: Cargo.toml Cargo.lock deny.toml
     timeout: 1800
     workflow: supply-chain.yml#cargo-deny
+  - name: caw-gvisor
+    # Proves the gVisor facts of the CAW with the pinned runsc as a user that is not root.
+    # The host needs one run of AEP-CAWs-RustGvisor/proof/install-runsc.sh as root.
+    run: |
+      . AEP-CAWs-RustGvisor/proof/runsc-pin.env
+      test "$(sha512sum "$RUNSC_BIN" | awk '{print $1}')" = "$RUNSC_BIN_SHA512"
+      bash AEP-CAWs-RustGvisor/proof/gvisor-facts.sh "$RUNSC_BIN"
+    paths: AEP-CAWs-RustGvisor/
+    timeout: 900
+    workflow: baseline.yml#caw-gvisor

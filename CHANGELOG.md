@@ -2,6 +2,19 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-16 - The draft environment keeps its evidence out of reach of the agent and binds every identifier
+A coding agent could write the scan record of its own draft, name another agent in a variable, plant a hook that saw the forge token and land a change set no scan judged. Two seeds in one second shared one draft id. aep-ede now takes every control from an operator folder, proves the agent with a signed frame and lands exactly the tree it scanned.
+
+- The operator folder `/etc/aep-ede` holds the forge, the roots, the quota, the age bounds, the agent profiles, the registered keys of the agents, the GitHub token and the EDE key. No variable of the agent environment is a control.
+- Every verb proves its agent with a frame signed by the ML-DSA-65 key the operator registered for it and passes the profile of that agent for the verb. A profile that does not parse grants nothing; the GAP schema parser of AEP reads it.
+- The record of each draft is sealed with the EDE key in a record root the agent does not write. A chained ledger records every seed, scan, rescan, refresh, promote, expire and sweep. A promoted or expired draft takes no further verb.
+- The git folder of a draft sits beside its tree. Every git call runs without hooks, file monitors, attribute files or the configuration of the draft.
+- Scan judges the blobs of the tree object it writes, checks each blob against its id and finds prose that is not UTF-8 text. Added lines are judged where they now stand.
+- The scan id is the sha256 of one length prefixed statement of the draft, the agent, the repository, the branch, the base, the tree with its modes and the times of seed and scan. promote lands that tree as one commit with the trailers `AEP-Agent`, `AEP-EDE-Draft`, `AEP-EDE-Scan` and `AEP-EDE-Base`. A moved branch means a merge onto the tip and a new scan.
+- Draft ids are `ede-<seconds>-<32 hex>` from 128 random bits, made with an exclusive create. One identifier specification with one file of test vectors governs every draft environment.
+- The pull request goes out in process: the token remains in memory and never reaches a file.
+- The action lattice of dynAEP holds the lifecycle nodes `ede.seed`, `ede.refresh`, `ede.scan`, `ede.verify`, `ede.promote` and `ede.expire`. The EDE wall (`aep-dynaep ede-wall`) closes a promote before its scan, a scan or a draft past its age bound and every verb on a finished draft.
+
 ## [2.9.0] - 2026-11-16 - The Go CAW is retired and this release ships no host sandbox
 The Go CAW leaves the public tree. A Rust CAW replaces it: a policy engine written in Rust that runs every agent process inside gVisor. Until that CAW lands nothing in this tree confines an agent process on the host.
 

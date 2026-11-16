@@ -6,6 +6,8 @@
 
 //! Standalone dynAEP crate. A builder can depend on only this crate.
 
+pub mod ede;
+
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashMap, HashSet};
 

@@ -1,0 +1,68 @@
+@PAD: aep-ede-identifier-vectors-v1
+@GCDE: gaplune.policy.v1
+schema_id: gaplune.aep.ede.identifier-vectors.v1
+format: gaplune
+json: prohibited
+note: One identifier specification for every draft environment of AEP. Every draft environment runs every vector of this file. A value writes a line break as \n, a tab as \t, a carriage return as \r and a NUL as \0. The repo vectors take the default owner thePM001 and name the canonical form or no.
+vectors:
+  - draft_id ede-1794837765-0123456789abcdef0123456789abcdef => ok
+  - draft_id ede-0-ffffffffffffffffffffffffffffffff => ok
+  - draft_id ede-01-0123456789abcdef0123456789abcdef => no
+  - draft_id ede-1794837765-167b3c247ebdcc4e => no
+  - draft_id ede-1794837765-167b3c247ebd => no
+  - draft_id ede-1794837765-0123456789ABCDEF0123456789abcdef => no
+  - draft_id ede--0123456789abcdef0123456789abcdef => no
+  - draft_id ede-1-0123456789abcdef0123456789abcdef\n => no
+  - draft_id ../ede-1-0123456789abcdef0123456789abcdef => no
+  - draft_id ede-1-0123456789abcdef0123456789abcdeg => no
+  - draft_id ede-123456789012345678901-0123456789abcdef0123456789abcdef => no
+  - agent coder => ok
+  - agent coder-two => ok
+  - agent build-agent => ok
+  - agent review-agent-coding => ok
+  - agent Coder => no
+  - agent coder_two => no
+  - agent -coder => no
+  - agent coder- => no
+  - agent coder--two => no
+  - agent coder\nstate: scanned => no
+  - agent coder/x => no
+  - agent aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa => no
+  - session c3f0d2a1-5b6e-4c9d-a1b2-0d4e6f8a9b10 => ok
+  - session sessA => ok
+  - session -x => no
+  - session a b => no
+  - session a\nb => no
+  - session a/b => no
+  - repo demo => thepm001/demo
+  - repo Acme-Org/Big_Repo => acme-org/big_repo
+  - repo Agent-Kit-v2.8.x => thepm001/agent-kit-v2.8.x
+  - repo owner/name.git => no
+  - repo ../x => no
+  - repo a/b/c => no
+  - repo -x => no
+  - repo demo\nx => no
+  - repo .demo => no
+  - repo owner/ => no
+  - branch main => ok
+  - branch feature/x-1 => ok
+  - branch release/2026.11 => ok
+  - branch -main => no
+  - branch main\nstate => no
+  - branch a b => no
+  - branch a..b => no
+  - branch a@{1} => no
+  - branch main.lock => no
+  - branch .hidden => no
+  - branch a/ => no
+  - rel a.txt => ok
+  - rel dir/b.rs => ok
+  - rel .github/workflows/ci.yml => ok
+  - rel /etc/passwd => no
+  - rel ../x => no
+  - rel a/../b => no
+  - rel a//b => no
+  - rel .git/config => no
+  - rel a/.git/hooks => no
+  - rel a\nb => no
+  - rel ./a => no

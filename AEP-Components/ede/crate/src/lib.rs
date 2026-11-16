@@ -2,31 +2,45 @@
 //!
 //! A coding agent changes a repository only through a draft:
 //!
-//! 1. seed: a clone of the repository at a ref, with no push URL. The draft
-//!    records the base commit.
+//! 1. seed: a clone of the repository at a branch. The git folder sits beside the tree
+//!    of the draft, never inside it. A sealed record in the record root of the operator
+//!    names the draft, the agent, the repository, the branch and the base commit.
 //! 2. The agent edits the tree of the draft.
 //! 3. diff: the change set against the base commit, new files included.
-//! 4. scan: every change set is judged before it lands. The added lines of
-//!    prose files pass the writing walls of AEP Admit (collect all, every finding
-//!    at once). Symbolic links, submodules and drafts above their quota are
-//!    refused. The digest of the change set is recorded.
-//! 5. promote: the change set must equal the scanned one. The draft fetches the
-//!    tip of its branch, rebases the work inside the draft (a conflict is refused
-//!    with every path named), commits it and lands it through its forge.
+//! 4. scan: git writes the tree object of the draft and scan judges its blobs. The added
+//!    lines of prose files pass the writing walls of AEP Admit (collect all, every
+//!    finding at once). Symbolic links, submodules, blobs that do not hold the bytes
+//!    their ids name, prose that is not UTF-8 text and drafts above their quota are
+//!    refused. The scan binds the tree id, the full listing with modes and the times of
+//!    seed and scan into one statement whose sha256 is the scan id.
+//! 5. promote: the scan must be inside its age bound. promote fetches the tip of the
+//!    branch. When the branch moved it merges the scanned tree onto the tip and scans
+//!    the merged tree again. It lands exactly that tree as one commit on the tip, with
+//!    the trailers AEP-Agent, AEP-EDE-Draft, AEP-EDE-Scan and AEP-EDE-Base.
 //!
-//! The forge decides what landing means: a pull request on GitHub, a branch on a
-//! plain git remote. See the forge module.
+//! Every verb proves the identity of the agent with a frame signed by its registered
+//! key (identity.rs), passes its agent profile from the operator folder (profile.rs),
+//! holds the lock of the draft and asks the EDE lifecycle wall of dynAEP.
 
 pub mod forge;
+pub mod git;
+pub mod ident;
+pub mod identity;
+pub mod operator;
+pub mod privilege;
 pub mod profile;
+pub mod seal;
+pub mod store;
 
+use operator::Operator;
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
+use store::{Record, State};
 
-pub const QUOTA_BYTES: u64 = 8 * 1024 * 1024 * 1024;
 const PROSE: &[&str] = &[".md", ".markdown", ".txt", ".rst", ".adoc"];
+const SHIPPED_LATTICE: &str = include_str!("../../../dynAEP/registries/aep-lattice.yaml");
 
 /// The answer of every verb.
 pub struct Report {
@@ -50,7 +64,10 @@ impl Report {
             ok: false,
             code: code.into(),
             draft: draft.into(),
-            note: note.into(),
+            note: note
+                .chars()
+                .map(|c| if c.is_control() { ' ' } else { c })
+                .collect(),
         }
     }
     pub fn render(&self) -> String {
@@ -67,587 +84,816 @@ impl Report {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum Change {
-    Put(String),
-    Delete(String),
-}
-
-impl Change {
-    pub fn path(&self) -> &str {
-        match self {
-            Change::Put(p) | Change::Delete(p) => p,
+/// The search path of every child process. A release build never takes the path of its
+/// caller, so a program the agent put first on its path never stands in for git.
+pub fn child_path() -> String {
+    #[cfg(feature = "test-env")]
+    {
+        if let Ok(p) = std::env::var("PATH") {
+            return p;
         }
     }
+    "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin".to_string()
 }
 
-/// The root that holds the drafts: AEP_EDE_ROOT, then $HOME/.aep-ede.
-pub fn root() -> PathBuf {
-    if let Ok(v) = std::env::var("AEP_EDE_ROOT") {
-        if !v.is_empty() {
-            return PathBuf::from(v);
+/// The unix second of now. Test builds read AEP_EDE_TEST_NOW.
+pub fn unix_now() -> u64 {
+    #[cfg(feature = "test-env")]
+    {
+        if let Some(n) = std::env::var("AEP_EDE_TEST_NOW")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+        {
+            return n;
         }
     }
-    PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| ".".into())).join(".aep-ede")
-}
-
-fn draft_dir(draft: &str) -> Option<PathBuf> {
-    if draft.is_empty() || draft.contains('/') || draft.contains("..") {
-        return None;
-    }
-    let d = root().join(draft);
-    if d.join("manifest").is_file() {
-        Some(d)
-    } else {
-        None
-    }
-}
-
-pub fn tree_dir(d: &Path) -> PathBuf {
-    d.join("tree")
-}
-
-fn read_manifest(d: &Path) -> Vec<(String, String)> {
-    fs::read_to_string(d.join("manifest"))
-        .unwrap_or_default()
-        .lines()
-        .filter_map(|l| {
-            l.split_once(": ")
-                .map(|(k, v)| (k.to_string(), v.to_string()))
-        })
-        .collect()
-}
-
-fn field(d: &Path, key: &str) -> String {
-    read_manifest(d)
-        .into_iter()
-        .find(|(k, _)| k == key)
-        .map(|(_, v)| v)
-        .unwrap_or_default()
-}
-
-fn set_fields(d: &Path, updates: &[(&str, &str)]) -> Result<(), String> {
-    let mut m = read_manifest(d);
-    for (k, v) in updates {
-        match m.iter_mut().find(|(mk, _)| mk == k) {
-            Some(slot) => slot.1 = v.to_string(),
-            None => m.push((k.to_string(), v.to_string())),
-        }
-    }
-    let body: String = m.iter().map(|(k, v)| format!("{}: {}\n", k, v)).collect();
-    fs::write(d.join("manifest"), body).map_err(|e| e.to_string())
-}
-
-fn git(tree: &Path, env: &[(String, String)], args: &[&str]) -> Result<String, String> {
-    let mut c = Command::new("git");
-    c.arg("-C")
-        .arg(tree)
-        .arg("-c")
-        .arg("core.hooksPath=/dev/null")
-        .args(args)
-        .env("GIT_TERMINAL_PROMPT", "0");
-    for (k, v) in env {
-        c.env(k, v);
-    }
-    let o = c.output().map_err(|e| e.to_string())?;
-    if o.status.success() {
-        Ok(String::from_utf8_lossy(&o.stdout).to_string())
-    } else {
-        Err(String::from_utf8_lossy(&o.stderr).trim().to_string())
-    }
-}
-
-/// The git object hash of some bytes. Git does the hashing, so the crate needs no
-/// hash code of its own.
-fn hash_bytes(data: &[u8]) -> Result<String, String> {
-    use std::io::Write as _;
-    let mut child = Command::new("git")
-        .args(["hash-object", "--stdin"])
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .spawn()
-        .map_err(|e| e.to_string())?;
-    child
-        .stdin
-        .take()
-        .ok_or("stdin")?
-        .write_all(data)
-        .map_err(|e| e.to_string())?;
-    let o = child.wait_with_output().map_err(|e| e.to_string())?;
-    Ok(String::from_utf8_lossy(&o.stdout).trim().to_string())
-}
-
-fn new_draft_id(repo: &str) -> String {
-    let now = SystemTime::now()
+    SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
-    let tag = hash_bytes(format!("{}-{}-{}", repo, now, std::process::id()).as_bytes())
-        .unwrap_or_default();
-    format!("ede-{}-{}", now / 1_000_000_000, &tag[..12.min(tag.len())])
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+/// The context of one verb.
+pub struct Ctx {
+    pub op: Operator,
+    pub now: u64,
+}
+
+impl Ctx {
+    pub fn load() -> Ctx {
+        privilege::init();
+        Ctx {
+            op: operator::load(),
+            now: unix_now(),
+        }
+    }
+
+    fn preamble(&self) -> Result<(), Report> {
+        if let Some(why) = &self.op.broken {
+            return Err(Report::deny("operator", "", why));
+        }
+        store::ensure_layout(&self.op).map_err(|e| Report::deny("record_root", "", &e))
+    }
+
+    fn lattice(
+        &self,
+    ) -> Result<std::collections::HashMap<String, aep_dynaep::LatticeNode>, String> {
+        let text = match &self.op.lattice {
+            Some(p) => {
+                let _r = privilege::raise();
+                fs::read_to_string(p).map_err(|e| format!("lattice {}: {}", p.display(), e))?
+            }
+            None => SHIPPED_LATTICE.to_string(),
+        };
+        aep_dynaep::load_lattice_yaml(&text).map_err(|e| e.to_string())
+    }
+
+    /// Ask the EDE lifecycle wall of dynAEP about one verb.
+    pub fn wall(&self, verb: &str, r: Option<&Record>) -> Result<(), String> {
+        let mut satisfied = BTreeSet::new();
+        if let Some(r) = r {
+            satisfied.insert("ede.seed".to_string());
+            if matches!(r.state, State::Scanned | State::Promoting | State::Promoted) {
+                satisfied.insert("ede.scan".to_string());
+            }
+            // aep-ede runs no CI of its own: the required checks of the forge decide the
+            // merge, so verify counts as done.
+            satisfied.insert("ede.verify".to_string());
+        }
+        let req = aep_dynaep::ede::EdeRequest {
+            verb: verb.to_string(),
+            state: r
+                .map(|r| r.state.as_str().to_string())
+                .unwrap_or_else(|| "none".into()),
+            satisfied,
+            now: self.now,
+            seeded: r.map(|r| r.seeded_unix).unwrap_or(0),
+            scanned: r.map(|r| r.scan_unix).unwrap_or(0),
+            sealed: 0,
+            draft_max: self.op.draft_max_age_secs,
+            scan_max: self.op.scan_max_age_secs,
+            seal_max: self.op.seal_max_age_secs,
+        };
+        let result = aep_dynaep::ede::ede_wall(&self.lattice()?, &req);
+        if result.allow {
+            Ok(())
+        } else {
+            Err(format!(
+                "the dynAEP lifecycle wall refused ede.{}: {}",
+                verb,
+                result
+                    .closed
+                    .iter()
+                    .map(|w| format!("{} {}", w.id, w.reason))
+                    .collect::<Vec<_>>()
+                    .join(" | ")
+            ))
+        }
+    }
+
+    /// A draft a verb works on: its lock, a valid record, the proven agent that seeded it,
+    /// the grant of its profile and the lifecycle wall.
+    fn open(
+        &self,
+        draft: &str,
+        verb: &str,
+        grant: &str,
+        ask_wall: bool,
+    ) -> Result<(Record, store::DraftLock, profile::Profile), Report> {
+        let lock = store::lock(&self.op, draft).map_err(|e| {
+            let code = if ident::draft_id_ok(draft) {
+                "draft_busy"
+            } else {
+                "draft_id_grammar"
+            };
+            Report::deny(code, draft, &e)
+        })?;
+        let r = store::load(&self.op, draft).map_err(|e| {
+            let note = match &e {
+                store::LoadError::Broken(m) => m.clone(),
+                _ => String::new(),
+            };
+            Report::deny(e.code(), draft, &note)
+        })?;
+        let agent = identity::caller(&self.op, verb, draft, &r.repo, self.now)
+            .map_err(|e| Report::deny("identity", draft, &e))?;
+        if agent != r.agent {
+            return Err(Report::deny(
+                "draft_foreign_agent",
+                draft,
+                &format!("the draft belongs to the agent {}", r.agent),
+            ));
+        }
+        let prof = profile::load(&self.op, &agent)
+            .map_err(|e| Report::deny("profile_missing", draft, &e))?;
+        prof.allow(grant, &r.repo)
+            .map_err(|e| Report::deny("profile_refused", draft, &e))?;
+        if r.state.terminal() {
+            return Err(Report::deny(
+                &format!("draft_{}", r.state.as_str()),
+                draft,
+                "no verb leaves this state: seed a new draft",
+            ));
+        }
+        if ask_wall {
+            self.wall(verb, Some(&r))
+                .map_err(|e| Report::deny("lifecycle_wall", draft, &e))?;
+        }
+        Ok((r, lock, prof))
+    }
+
+    fn event(&self, kind: &str, r: &Record, detail: &str) {
+        let _ = store::ledger(&self.op, kind, r, detail, self.now);
+    }
+}
+
+fn is_prose(path: &str) -> bool {
+    let lower = path.to_ascii_lowercase();
+    PROSE.iter().any(|ext| lower.ends_with(ext))
+}
+
+fn list_note(list: &[git::Entry]) -> String {
+    let mut s = format!("{} changes:", list.len());
+    for c in list.iter().take(60) {
+        s.push_str(&format!(
+            " {} {}",
+            if c.delete { "delete" } else { "put" },
+            c.path
+        ));
+    }
+    if list.len() > 60 {
+        s.push_str(" and more");
+    }
+    s
+}
+
+fn restore(ctx: &Ctx, r: &Record) -> Result<(), String> {
+    let config = store::load_git_config(&ctx.op, &r.draft_id)?;
+    git::restore(r, &config)
+}
+
+/// Mint a draft id and create its folder with an exclusive create, retrying on a clash.
+fn new_draft_folder(ctx: &Ctx, agent: &str) -> Result<(String, PathBuf), String> {
+    let parent = ctx.op.state_root.join(agent);
+    fs::create_dir_all(&parent).map_err(|e| format!("{}: {}", parent.display(), e))?;
+    for _ in 0..16 {
+        let id = ident::mint_draft_id(ctx.now)?;
+        #[cfg(feature = "test-env")]
+        let id = test_clash(id);
+        let folder = parent.join(&id);
+        match fs::create_dir(&folder) {
+            Ok(()) => return Ok((id, folder)),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(format!("{}: {}", folder.display(), e)),
+        }
+    }
+    Err("no free draft id after 16 tries".into())
+}
+
+#[cfg(feature = "test-env")]
+fn test_clash(id: String) -> String {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static USED: AtomicBool = AtomicBool::new(false);
+    match std::env::var("AEP_EDE_TEST_CLASH") {
+        Ok(v) if !v.is_empty() && !USED.swap(true, Ordering::SeqCst) => v,
+        _ => id,
+    }
 }
 
 /// Seed a draft with a clone of `repo` at `reference`.
-pub fn seed(forge: &dyn forge::Forge, repo: &str, reference: &str) -> Report {
-    if repo.is_empty() || repo.contains("..") || repo.contains(' ') {
-        return Report::deny("seed_repo", "", "name the repository as owner/name");
+pub fn seed(repo: &str, reference: &str) -> Report {
+    let ctx = Ctx::load();
+    if let Err(r) = ctx.preamble() {
+        return r;
     }
-    let prof = match profile::load() {
-        Ok(p) => p,
-        Err(e) => return Report::deny("profile_missing", "", &e),
+    let owner = if ctx.op.default_owner.is_empty() {
+        "-"
+    } else {
+        ctx.op.default_owner.as_str()
     };
-    if let Err(e) = prof.allow("seed", repo) {
-        return Report::deny("profile_refused", "", &e);
-    }
+    let repo = match ident::repo(repo, owner) {
+        Ok(r) => r,
+        Err(e) => return Report::deny("seed_repo", "", &e),
+    };
     let branch = if reference.is_empty() {
         "main"
     } else {
         reference
     };
-    let draft = new_draft_id(repo);
-    let d = root().join(&draft);
-    if fs::create_dir_all(&d).is_err() {
-        return Report::deny("seed_mkdir", &draft, &d.display().to_string());
+    if !ident::branch_ok(branch) {
+        return Report::deny(
+            "seed_branch",
+            "",
+            "the branch name is outside the grammar of git branch names",
+        );
     }
-    let tree = tree_dir(&d);
-    let url = forge.clone_url(repo);
-    let mut c = Command::new("git");
-    c.arg("clone")
-        .arg("-q")
-        .arg("--branch")
-        .arg(branch)
-        .arg(&url)
-        .arg(&tree)
-        .env("GIT_TERMINAL_PROMPT", "0");
-    for (k, v) in forge.git_env() {
-        c.env(k, v);
-    }
-    match c.output() {
-        Ok(o) if o.status.success() => {}
-        Ok(o) => {
-            let _ = fs::remove_dir_all(&d);
-            return Report::deny(
-                "seed_clone",
-                "",
-                String::from_utf8_lossy(&o.stderr)
-                    .lines()
-                    .last()
-                    .unwrap_or("clone failed"),
-            );
-        }
-        Err(e) => {
-            let _ = fs::remove_dir_all(&d);
-            return Report::deny("seed_clone", "", &e.to_string());
-        }
-    }
-    let _ = git(
-        &tree,
-        &[],
-        &[
-            "remote",
-            "set-url",
-            "--push",
-            "origin",
-            "push-refused-only-aep-ede-promote-lands-work",
-        ],
-    );
-    let _ = git(&tree, &[], &["config", "user.name", "aep-ede"]);
-    let _ = git(&tree, &[], &["config", "user.email", "aep-ede@localhost"]);
-    let base = match git(&tree, &[], &["rev-parse", "HEAD"]) {
-        Ok(s) => s.trim().to_string(),
-        Err(e) => return Report::deny("seed_base", &draft, &e),
+    let agent = match identity::caller(&ctx.op, "seed", "", &repo.canonical, ctx.now) {
+        Ok(a) => a,
+        Err(e) => return Report::deny("identity", "", &e),
     };
-    let _ = git(&tree, &[], &["checkout", "-q", "-B", "ede-work", &base]);
-    let fields = [
-        ("draft", draft.as_str()),
-        ("agent", prof.agent_id.as_str()),
-        ("forge", forge.name()),
-        ("repo", repo),
-        ("branch", branch),
-        ("base", base.as_str()),
-        ("state", "seeded"),
-    ];
-    let body: String = fields
-        .iter()
-        .map(|(k, v)| format!("{}: {}\n", k, v))
-        .collect();
-    if fs::write(d.join("manifest"), body).is_err() {
-        return Report::deny("seed_manifest", &draft, "");
+    let prof = match profile::load(&ctx.op, &agent) {
+        Ok(p) => p,
+        Err(e) => return Report::deny("profile_missing", "", &e),
+    };
+    if let Err(e) = prof.allow("seed", &repo.canonical) {
+        return Report::deny("profile_refused", "", &e);
     }
+    if let Err(e) = ctx.wall("seed", None) {
+        return Report::deny("lifecycle_wall", "", &e);
+    }
+    let (draft, folder) = match new_draft_folder(&ctx, &agent) {
+        Ok(x) => x,
+        Err(e) => return Report::deny("seed_mkdir", "", &e),
+    };
+    let forge = forge::of(&ctx.op);
+    let mut r = Record::new(&draft, &agent, &folder, ctx.now);
+    r.repo = repo.canonical.clone();
+    r.repo_owner = repo.owner.clone();
+    r.repo_name = repo.name.clone();
+    r.branch = branch.to_string();
+    // Only the folder this seed created is ever removed on a failure.
+    let undo = |code: &str, note: &str| {
+        let _ = fs::remove_dir_all(&folder);
+        Report::deny(code, "", note)
+    };
+    let (base, config) = match git::clone(&r, &forge.git_env(), &forge.url(&repo), branch) {
+        Ok(x) => x,
+        Err(e) => return undo("seed_clone", &e),
+    };
+    r.base = base.clone();
+    if let Err(e) = store::save_git_config(&ctx.op, &draft, &config) {
+        return undo("seed_record", &e);
+    }
+    if let Err(e) = store::create(&ctx.op, &r) {
+        return undo("seed_record", &e);
+    }
+    ctx.event("seed", &r, &format!("{} at {}", branch, base));
     Report::allow(
         "seeded",
         &draft,
-        &format!("work in {} then run aep-ede scan {}", tree.display(), draft),
+        &format!(
+            "work in {} then run aep-ede scan {}",
+            r.tree().display(),
+            draft
+        ),
     )
 }
 
-/// The change set of a draft against its base commit.
-pub fn changes(d: &Path) -> Result<Vec<Change>, String> {
-    let tree = tree_dir(d);
-    let base = field(d, "base");
-    git(&tree, &[], &["add", "-A"])?;
-    let raw = git(
-        &tree,
-        &[],
-        &["diff", "--cached", "--raw", "--no-renames", "-z", &base],
-    )?;
-    let mut out = Vec::new();
-    let mut parts = raw.split('\0').filter(|s| !s.is_empty());
-    while let Some(meta) = parts.next() {
-        let path = parts.next().ok_or("diff parse")?.to_string();
-        let f: Vec<&str> = meta.trim_start_matches(':').split_whitespace().collect();
-        if f.len() < 5 {
-            return Err("diff parse".into());
-        }
-        if f[4].starts_with('D') {
-            out.push(Change::Delete(path));
-            continue;
-        }
-        match f[1] {
-            "120000" => return Err(format!("symbolic link {}", path)),
-            "160000" => return Err(format!("submodule {}", path)),
-            _ => out.push(Change::Put(path)),
-        }
-    }
-    out.sort_by(|a, b| a.path().cmp(b.path()));
-    Ok(out)
-}
-
-fn list_note(list: &[Change]) -> String {
-    let mut s = format!("{} changes:", list.len());
-    for c in list.iter().take(60) {
-        match c {
-            Change::Put(p) => s.push_str(&format!(" put {}", p)),
-            Change::Delete(p) => s.push_str(&format!(" delete {}", p)),
-        }
-    }
-    s
-}
-
-fn change_digest(d: &Path, list: &[Change]) -> Result<String, String> {
-    let tree = tree_dir(d);
-    let mut blob = String::new();
-    for c in list {
-        match c {
-            Change::Put(p) => {
-                let bytes = fs::read(tree.join(p)).map_err(|e| format!("{}: {}", p, e))?;
-                blob.push_str(&format!("P\t{}\t{}\n", p, hash_bytes(&bytes)?));
-            }
-            Change::Delete(p) => blob.push_str(&format!("D\t{}\n", p)),
-        }
-    }
-    hash_bytes(blob.as_bytes())
-}
-
-fn du_bytes(p: &Path) -> u64 {
-    fn walk(p: &Path) -> u64 {
-        let m = match fs::symlink_metadata(p) {
-            Ok(m) => m,
-            Err(_) => return 0,
-        };
-        if m.is_dir() {
-            fs::read_dir(p)
-                .map(|rd| rd.flatten().map(|e| walk(&e.path())).sum())
-                .unwrap_or(0)
-        } else {
-            m.len()
-        }
-    }
-    walk(p)
-}
-
-/// The lines of `new` that `old` does not have, in order.
-pub fn added_lines(old: &str, new: &str) -> Vec<(usize, String)> {
-    let mut seen: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
-    for l in old.lines() {
-        *seen.entry(l).or_insert(0) += 1;
-    }
-    let mut out = Vec::new();
-    for (i, l) in new.lines().enumerate() {
-        match seen.get_mut(l) {
-            Some(n) if *n > 0 => *n -= 1,
-            _ => out.push((i + 1, l.to_string())),
-        }
-    }
-    out
-}
-
-/// Every closed writing wall on the added lines of prose files.
-fn writing_findings(d: &Path, list: &[Change]) -> Vec<String> {
-    let tree = tree_dir(d);
-    let base = field(d, "base");
-    let mut out = Vec::new();
-    for c in list {
-        let p = match c {
-            Change::Put(p) => p,
-            Change::Delete(_) => continue,
-        };
-        let lower = p.to_ascii_lowercase();
-        if !PROSE.iter().any(|ext| lower.ends_with(ext)) {
-            continue;
-        }
-        let new = fs::read_to_string(tree.join(p)).unwrap_or_default();
-        let old = git(&tree, &[], &["show", &format!("{}:{}", base, p)]).unwrap_or_default();
-        for (n, line) in added_lines(&old, &new) {
-            for w in aep_admit::compile_writing_walls(&line) {
-                if w.closed {
-                    out.push(format!("{}:{}: {} {}", p, n, w.id, w.reason));
-                }
-            }
-        }
-    }
-    out
-}
-
 pub fn diff(draft: &str) -> Report {
-    let d = match draft_dir(draft) {
-        Some(d) => d,
-        None => return Report::deny("draft_missing", draft, ""),
+    let ctx = Ctx::load();
+    if let Err(r) = ctx.preamble() {
+        return r;
+    }
+    let (r, _lock, _) = match ctx.open(draft, "diff", "scan", false) {
+        Ok(x) => x,
+        Err(e) => return e,
     };
-    match changes(&d) {
+    let listed = restore(&ctx, &r)
+        .and_then(|_| git::write_tree(&r))
+        .and_then(|t| git::tree_changes(&r, &r.base, &t));
+    match listed {
         Ok(l) => Report::allow("diff", draft, &list_note(&l)),
         Err(e) => Report::deny("diff_refused", draft, &e),
     }
 }
 
+/// Every finding of a change set from `from` to `tree`.
+fn findings(r: &Record, from: &str, tree: &str, list: &[git::Entry]) -> Vec<String> {
+    let mut out = Vec::new();
+    for e in list {
+        if e.delete {
+            continue;
+        }
+        match e.mode.as_str() {
+            "120000" => {
+                out.push(format!("{}: symbolic link", e.path));
+                continue;
+            }
+            "160000" => {
+                out.push(format!("{}: submodule", e.path));
+                continue;
+            }
+            _ => {}
+        }
+        let bytes = match git::blob(r, &e.id) {
+            Ok(b) => b,
+            Err(x) => {
+                out.push(format!("{}: {}", e.path, x));
+                continue;
+            }
+        };
+        if !is_prose(&e.path) {
+            continue;
+        }
+        if std::str::from_utf8(&bytes).is_err() {
+            out.push(format!("{}: prose file that is not UTF-8 text", e.path));
+            continue;
+        }
+        match git::added_lines(r, from, tree, &e.path) {
+            Ok(lines) => {
+                for (n, line) in lines {
+                    for w in aep_admit::compile_writing_walls(&line) {
+                        if w.closed {
+                            out.push(format!("{}:{}: {} {}", e.path, n, w.id, w.reason));
+                        }
+                    }
+                }
+            }
+            Err(x) => out.push(format!("{}: {}", e.path, x)),
+        }
+    }
+    out
+}
+
+fn policy_digest(prof: &profile::Profile) -> String {
+    let mut b = format!(
+        "aep-ede {} writing walls of aep-admit\n",
+        env!("CARGO_PKG_VERSION")
+    )
+    .into_bytes();
+    let _r = privilege::raise();
+    b.extend(fs::read(&prof.path).unwrap_or_default());
+    seal::sha256_hex(&b)
+}
+
 pub fn scan(draft: &str) -> Report {
-    let d = match draft_dir(draft) {
-        Some(d) => d,
-        None => return Report::deny("draft_missing", draft, ""),
-    };
-    if let Err(r) = agent_gate(&d, draft, "scan") {
+    let ctx = Ctx::load();
+    if let Err(r) = ctx.preamble() {
         return r;
     }
-    let quota = std::env::var("AEP_EDE_QUOTA")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(QUOTA_BYTES);
-    let used = du_bytes(&d);
-    if used > quota {
+    let (mut r, _lock, prof) = match ctx.open(draft, "scan", "scan", true) {
+        Ok(x) => x,
+        Err(e) => return e,
+    };
+    let used = git::du_bytes(&r.folder);
+    if used > ctx.op.quota_bytes {
         return Report::deny(
             "scan_quota",
             draft,
-            &format!("the draft holds {} bytes and its quota is {}", used, quota),
+            &format!(
+                "the draft holds {} bytes and its quota is {}",
+                used, ctx.op.quota_bytes
+            ),
         );
     }
-    let list = match changes(&d) {
+    if let Err(e) = restore(&ctx, &r) {
+        return Report::deny("scan_tree", draft, &e);
+    }
+    let tree = match git::write_tree(&r) {
+        Ok(t) => t,
+        Err(e) => return Report::deny("scan_tree", draft, &e),
+    };
+    let list = match git::tree_changes(&r, &r.base, &tree) {
         Ok(l) => l,
         Err(e) => return Report::deny("scan_tree", draft, &e),
     };
     if list.is_empty() {
         return Report::deny("scan_empty", draft, "the draft has no change");
     }
-    let findings = writing_findings(&d, &list);
-    if !findings.is_empty() {
+    let f = findings(&r, &r.base, &tree, &list);
+    if !f.is_empty() {
         return Report::deny(
-            "scan_writing",
+            "scan_findings",
             draft,
-            &format!("{} findings: {}", findings.len(), findings.join(" | ")),
+            &format!("{} findings: {}", f.len(), f.join(" | ")),
         );
     }
-    let digest = match change_digest(&d, &list) {
+    let listed = match git::listing(&r, &tree) {
+        Ok(l) => l,
+        Err(e) => return Report::deny("scan_tree", draft, &e),
+    };
+    r.state = State::Scanned;
+    r.scan_tree = tree;
+    r.scan_list = listed;
+    r.scan_unix = ctx.now;
+    r.policy_digest = policy_digest(&prof);
+    r.scan_id = store::Statement::of_record(&r).id();
+    if let Err(e) = store::save(&ctx.op, &r) {
+        return Report::deny("scan_record", draft, &e);
+    }
+    ctx.event(
+        "scan",
+        &r,
+        &format!("tree {} with {} changes", r.scan_tree, list.len()),
+    );
+    Report::allow(
+        "scanned",
+        draft,
+        &format!("{} | scan {}", list_note(&list), r.scan_id),
+    )
+}
+
+/// The trailers every landed commit carries.
+pub fn trailers(msg: &str, r: &Record) -> String {
+    format!(
+        "{}\n\nAEP-Agent: {}\nAEP-EDE-Draft: {}\nAEP-EDE-Scan: {}\nAEP-EDE-Base: {}",
+        msg.trim_end(),
+        r.agent,
+        r.draft_id,
+        r.scan_id,
+        r.base
+    )
+}
+
+pub fn promote(draft: &str, message: &str) -> Report {
+    let ctx = Ctx::load();
+    if let Err(r) = ctx.preamble() {
+        return r;
+    }
+    let (mut r, _lock, prof) = match ctx.open(draft, "promote", "promote", true) {
         Ok(x) => x,
-        Err(e) => return Report::deny("scan_digest", draft, &e),
+        Err(e) => return e,
     };
-    let count = list.len().to_string();
-    if let Err(e) = set_fields(
-        &d,
-        &[
-            ("state", "scanned"),
-            ("digest", &digest),
-            ("changes", &count),
-        ],
-    ) {
-        return Report::deny("scan_manifest", draft, &e);
-    }
-    Report::allow("scanned", draft, &list_note(&list))
-}
-
-/// Bring the draft onto the tip of its branch. The work is rebased inside the
-/// draft and remains uncommitted on the new base.
-fn sync_to_tip(d: &Path, forge: &dyn forge::Forge) -> Result<(), Report> {
-    let draft = field(d, "draft");
-    let tree = tree_dir(d);
-    let branch = field(d, "branch");
-    let base = field(d, "base");
-    git(&tree, &forge.git_env(), &["fetch", "-q", "origin", &branch])
-        .map_err(|e| Report::deny("tip_fetch", &draft, &e))?;
-    let tip = git(&tree, &[], &["rev-parse", "FETCH_HEAD"])
-        .map_err(|e| Report::deny("tip_fetch", &draft, &e))?
-        .trim()
-        .to_string();
-    if tip == base {
-        return Ok(());
-    }
-    let dirty = !changes(d)
-        .map_err(|e| Report::deny("scan_tree", &draft, &e))?
-        .is_empty();
-    if dirty {
-        git(
-            &tree,
-            &[],
-            &["commit", "-q", "--no-verify", "-m", "ede work"],
-        )
-        .map_err(|e| Report::deny("tip_commit", &draft, &e))?;
-        if git(&tree, &[], &["rebase", "-q", &tip]).is_err() {
-            let conflicts =
-                git(&tree, &[], &["diff", "--name-only", "--diff-filter=U"]).unwrap_or_default();
-            let _ = git(&tree, &[], &["rebase", "--abort"]);
-            let _ = git(&tree, &[], &["reset", "-q", "--mixed", &base]);
-            let paths: Vec<&str> = conflicts.lines().filter(|l| !l.is_empty()).collect();
-            return Err(Report::deny(
-                "tip_conflict",
-                &draft,
-                &format!(
-                    "{} moved and these paths conflict with the work: {}",
-                    branch,
-                    paths.join(" ")
-                ),
-            ));
-        }
-        git(&tree, &[], &["reset", "-q", "--mixed", &tip])
-            .map_err(|e| Report::deny("tip_reset", &draft, &e))?;
-    } else {
-        git(&tree, &[], &["checkout", "-q", "-B", "ede-work", &tip])
-            .map_err(|e| Report::deny("tip_checkout", &draft, &e))?;
-    }
-    set_fields(d, &[("base", &tip)]).map_err(|e| Report::deny("tip_manifest", &draft, &e))?;
-    Ok(())
-}
-
-pub fn refresh(forge: &dyn forge::Forge, draft: &str) -> Report {
-    let d = match draft_dir(draft) {
-        Some(d) => d,
-        None => return Report::deny("draft_missing", draft, ""),
-    };
-    match sync_to_tip(&d, forge) {
-        Ok(()) => Report::allow("at_tip", draft, &format!("base {}", field(&d, "base"))),
-        Err(r) => r,
-    }
-}
-
-pub fn promote(forge: &dyn forge::Forge, draft: &str, message: &str) -> Report {
-    let d = match draft_dir(draft) {
-        Some(d) => d,
-        None => return Report::deny("draft_missing", draft, ""),
-    };
-    let prof = match agent_gate(&d, draft, "promote") {
-        Ok(p) => p,
-        Err(r) => return r,
-    };
-    if field(&d, "state") != "scanned" {
+    if !matches!(r.state, State::Scanned | State::Promoting) {
         return Report::deny("promote_not_scanned", draft, "run aep-ede scan first");
+    }
+    if r.scan_id.is_empty() || r.scan_id != store::Statement::of_record(&r).id() {
+        return Report::deny(
+            "promote_scan_forged",
+            draft,
+            "the scan id does not match the scanned statement",
+        );
+    }
+    if ctx.now.saturating_sub(r.seeded_unix) > ctx.op.draft_max_age_secs {
+        return Report::deny(
+            "draft_too_old",
+            draft,
+            "the draft is older than its bound: seed a new draft",
+        );
+    }
+    if ctx.now.saturating_sub(r.scan_unix) > ctx.op.scan_max_age_secs {
+        return Report::deny(
+            "scan_too_old",
+            draft,
+            "the scan is older than its bound: scan again",
+        );
     }
     if message.trim().is_empty() {
         return Report::deny("promote_message", draft, "promote needs -m <message>");
     }
-    let message = format!("{}\n\nAEP-Agent: {}", message.trim_end(), prof.agent_id);
-    let message = message.as_str();
-    let list = match changes(&d) {
-        Ok(l) => l,
-        Err(e) => return Report::deny("scan_tree", draft, &e),
-    };
-    match change_digest(&d, &list) {
-        Ok(x) if x == field(&d, "digest") => {}
+    if message.chars().any(|c| c.is_control() && c != '\n') {
+        return Report::deny(
+            "promote_message",
+            draft,
+            "the message holds a control character other than a line break",
+        );
+    }
+    if let Err(e) = restore(&ctx, &r) {
+        return Report::deny("promote_tree", draft, &e);
+    }
+    match git::listing(&r, &r.scan_tree) {
+        Ok(d) if d == r.scan_list => {}
         Ok(_) => {
             return Report::deny(
-                "promote_changed_since_scan",
+                "promote_scan_forged",
                 draft,
-                "the tree changed after the scan: scan again",
+                "the scanned tree no longer lists what the scan recorded",
             )
         }
-        Err(e) => return Report::deny("promote_digest", draft, &e),
+        Err(e) => return Report::deny("promote_scan_forged", draft, &e),
     }
-    if let Err(r) = sync_to_tip(&d, forge) {
+    let forge = forge::of(&ctx.op);
+    let repo = ident::Repo {
+        canonical: r.repo.clone(),
+        owner: r.repo_owner.clone(),
+        name: r.repo_name.clone(),
+    };
+    let url = forge.url(&repo);
+    let env = forge.git_env();
+    let tip = match git::fetch_tip(&r, &env, &url) {
+        Ok(t) => t,
+        Err(e) => return Report::deny("tip_fetch", draft, &e),
+    };
+    let mut rescanned = String::new();
+    if tip != r.base {
+        let merged = match git::merge_onto(&r, &r.base, &r.scan_tree, &tip) {
+            Ok(t) => t,
+            Err(Ok(paths)) => {
+                return Report::deny(
+                    "tip_conflict",
+                    draft,
+                    &format!(
+                        "{} moved and these paths conflict with the work: {}",
+                        r.branch,
+                        paths.join(" ")
+                    ),
+                )
+            }
+            Err(Err(e)) => return Report::deny("tip_merge", draft, &e),
+        };
+        let list = match git::tree_changes(&r, &tip, &merged) {
+            Ok(l) if !l.is_empty() => l,
+            Ok(_) => return Report::deny("promote_empty", draft, "the work is already on the tip"),
+            Err(e) => return Report::deny("scan_tree", draft, &e),
+        };
+        let f = findings(&r, &tip, &merged, &list);
+        if !f.is_empty() {
+            return Report::deny("promote_rescan_findings", draft, &format!("the rescan of the tree merged onto the moved branch refused it: {} findings: {}", f.len(), f.join(" | ")));
+        }
+        r.rebased_from = r.base.clone();
+        r.base = tip.clone();
+        r.scan_list = match git::listing(&r, &merged) {
+            Ok(l) => l,
+            Err(e) => return Report::deny("scan_tree", draft, &e),
+        };
+        r.scan_tree = merged;
+        r.scan_unix = ctx.now;
+        r.policy_digest = policy_digest(&prof);
+        r.scan_id = store::Statement::of_record(&r).id();
+        rescanned = format!(" | rescanned on {}", tip);
+        if let Err(e) = store::save(&ctx.op, &r) {
+            return Report::deny("scan_record", draft, &e);
+        }
+        ctx.event(
+            "rescan",
+            &r,
+            &format!("tree {} on {} from {}", r.scan_tree, r.base, r.rebased_from),
+        );
+    }
+    if let Err(e) = forge.ready() {
+        return Report::deny("promote_land", draft, &e);
+    }
+    let message = trailers(message, &r);
+    let commit = match git::landing_commit(&r, &r.scan_tree, &tip, &message, r.scan_unix) {
+        Ok(c) => c,
+        Err(e) => return Report::deny("promote_commit", draft, &e),
+    };
+    r.state = State::Promoting;
+    if let Err(e) = store::save(&ctx.op, &r) {
+        return Report::deny("promote_record", draft, &e);
+    }
+    let target = forge.target(&r.branch, draft);
+    let own = target == format!("aep-ede/{}", draft);
+    if let Err(e) = git::push(&r, &env, &url, &commit, &target, own) {
+        return back_to_scanned(&ctx, r, Report::deny("promote_land", draft, &e));
+    }
+    let landed = match forge.after_push(&repo, &r.branch, &target, &message) {
+        Ok(w) => w,
+        Err(e) => return back_to_scanned(&ctx, r, Report::deny("promote_land", draft, &e)),
+    };
+    r.state = State::Promoted;
+    r.commit = commit.clone();
+    r.landed = landed.clone();
+    r.landed_unix = ctx.now;
+    if let Err(e) = store::save(&ctx.op, &r) {
+        return Report::deny(
+            "promote_record",
+            draft,
+            &format!("landed {} but the record was not written: {}", commit, e),
+        );
+    }
+    ctx.event("promote", &r, &format!("{} commit {}", landed, commit));
+    Report::allow(
+        "promoted",
+        draft,
+        &format!(
+            "{} with commit {} | scan {}{}",
+            landed, commit, r.scan_id, rescanned
+        ),
+    )
+}
+
+fn back_to_scanned(ctx: &Ctx, mut r: Record, rep: Report) -> Report {
+    r.state = State::Scanned;
+    let _ = store::save(&ctx.op, &r);
+    rep
+}
+
+/// Bring the draft onto the tip of its branch. The work remains uncommitted on the new
+/// base. A conflict changes nothing. A refresh ends any scan.
+pub fn refresh(draft: &str) -> Report {
+    let ctx = Ctx::load();
+    if let Err(r) = ctx.preamble() {
         return r;
     }
-    let tree = tree_dir(&d);
-    let base = field(&d, "base");
-    let repo = field(&d, "repo");
-    let branch = field(&d, "branch");
-    if let Err(e) = git(&tree, &[], &["add", "-A"])
-        .and_then(|_| git(&tree, &[], &["commit", "-q", "--no-verify", "-m", message]))
-    {
-        return Report::deny("promote_commit", draft, &e);
+    let (mut r, _lock, _) = match ctx.open(draft, "refresh", "refresh", true) {
+        Ok(x) => x,
+        Err(e) => return e,
+    };
+    if let Err(e) = restore(&ctx, &r) {
+        return Report::deny("tip_fetch", draft, &e);
     }
-    let _ = git(&tree, &[], &["remote", "remove", "ede-land"]);
-    if let Err(e) = git(
-        &tree,
-        &[],
-        &["remote", "add", "ede-land", &forge.clone_url(&repo)],
-    ) {
-        let _ = git(&tree, &[], &["reset", "-q", "--mixed", &base]);
-        return Report::deny("promote_remote", draft, &e);
+    let forge = forge::of(&ctx.op);
+    let repo = ident::Repo {
+        canonical: r.repo.clone(),
+        owner: r.repo_owner.clone(),
+        name: r.repo_name.clone(),
+    };
+    let tip = match git::fetch_tip(&r, &forge.git_env(), &forge.url(&repo)) {
+        Ok(t) => t,
+        Err(e) => return Report::deny("tip_fetch", draft, &e),
+    };
+    if tip == r.base {
+        return Report::allow("at_tip", draft, &format!("base {}", tip));
     }
-    let landed = forge.land(&tree, &repo, &branch, draft, message);
-    let _ = git(&tree, &[], &["remote", "remove", "ede-land"]);
-    match landed {
-        Ok(what) => {
-            let commit = git(&tree, &[], &["rev-parse", "HEAD"])
-                .unwrap_or_default()
-                .trim()
-                .to_string();
-            let _ = set_fields(
-                &d,
-                &[
-                    ("state", "promoted"),
-                    ("landed", &what),
-                    ("commit", &commit),
-                ],
-            );
-            Report::allow(
-                "promoted",
-                draft,
-                &format!("{} with {}", what, list_note(&list)),
-            )
+    let work = match git::write_tree(&r) {
+        Ok(t) => t,
+        Err(e) => return Report::deny("scan_tree", draft, &e),
+    };
+    let base_tree = git::git(&r, &["rev-parse", &format!("{}^{{tree}}", r.base)])
+        .map(|s| s.trim().to_string())
+        .unwrap_or_default();
+    let target = if work == base_tree {
+        format!("{}^{{tree}}", tip)
+    } else {
+        match git::merge_onto(&r, &r.base, &work, &tip) {
+            Ok(t) => t,
+            Err(Ok(paths)) => {
+                return Report::deny(
+                    "tip_conflict",
+                    draft,
+                    &format!(
+                        "{} moved and these paths conflict with the work: {}",
+                        r.branch,
+                        paths.join(" ")
+                    ),
+                )
+            }
+            Err(Err(e)) => return Report::deny("tip_merge", draft, &e),
         }
-        Err(e) => {
-            let _ = git(&tree, &[], &["reset", "-q", "--mixed", &base]);
-            Report::deny("promote_land", draft, &e)
-        }
+    };
+    let moved = git::git(&r, &["read-tree", "--reset", "-u", &target])
+        .and_then(|_| git::git(&r, &["update-ref", "refs/heads/ede-work", &tip]))
+        .and_then(|_| git::git(&r, &["symbolic-ref", "HEAD", "refs/heads/ede-work"]))
+        .and_then(|_| git::git(&r, &["reset", "-q"]));
+    if let Err(e) = moved {
+        return Report::deny("tip_reset", draft, &e);
     }
+    r.rebased_from = r.base.clone();
+    r.base = tip.clone();
+    r.state = State::Seeded;
+    r.scan_id.clear();
+    r.scan_tree.clear();
+    r.scan_list.clear();
+    r.scan_unix = 0;
+    if let Err(e) = store::save(&ctx.op, &r) {
+        return Report::deny("tip_record", draft, &e);
+    }
+    ctx.event(
+        "refresh",
+        &r,
+        &format!("base {} from {}", tip, r.rebased_from),
+    );
+    Report::allow("refreshed", draft, &format!("base {}", tip))
 }
 
 pub fn status(draft: &str) -> Report {
-    match draft_dir(draft) {
-        Some(d) => Report::allow(
-            &field(&d, "state"),
-            draft,
-            &format!(
-                "tree {} repo {} base {} forge {}",
-                tree_dir(&d).display(),
-                field(&d, "repo"),
-                field(&d, "base"),
-                field(&d, "forge")
-            ),
-        ),
-        None => Report::deny("draft_missing", draft, ""),
+    let ctx = Ctx::load();
+    if let Err(r) = ctx.preamble() {
+        return r;
     }
-}
-
-pub fn expire(draft: &str) -> Report {
-    match draft_dir(draft) {
-        Some(d) => {
-            let _ = fs::remove_dir_all(&d);
-            Report::allow("expired", draft, "")
-        }
-        None => Report::deny("draft_missing", draft, ""),
-    }
-}
-
-/// The profile of the running agent, checked for ede.<verb> on the repository of
-/// the draft. A draft belongs to the agent that seeded it.
-fn agent_gate(d: &Path, draft: &str, verb: &str) -> Result<profile::Profile, Report> {
-    let prof = profile::load().map_err(|e| Report::deny("profile_missing", draft, &e))?;
-    prof.allow(verb, &field(d, "repo"))
-        .map_err(|e| Report::deny("profile_refused", draft, &e))?;
-    let owner = field(d, "agent");
-    if owner != prof.agent_id {
-        return Err(Report::deny(
+    let r = match store::load(&ctx.op, draft) {
+        Ok(r) => r,
+        Err(e) => return Report::deny(e.code(), draft, ""),
+    };
+    let agent = match identity::caller(&ctx.op, "status", draft, &r.repo, ctx.now) {
+        Ok(a) => a,
+        Err(e) => return Report::deny("identity", draft, &e),
+    };
+    if agent != r.agent {
+        return Report::deny(
             "draft_foreign_agent",
             draft,
-            &format!("the draft belongs to the agent {}", owner),
-        ));
+            &format!("the draft belongs to the agent {}", r.agent),
+        );
     }
-    Ok(prof)
+    Report::allow(
+        r.state.as_str(),
+        draft,
+        &format!(
+            "tree {} repo {} base {} scan {}",
+            r.tree().display(),
+            r.repo,
+            r.base,
+            r.scan_id
+        ),
+    )
+}
+
+/// Expire a draft: the folder goes, the record remains as a tombstone and the ledger names it.
+pub fn expire(draft: &str) -> Report {
+    let ctx = Ctx::load();
+    if let Err(r) = ctx.preamble() {
+        return r;
+    }
+    let (r, _lock, _) = match ctx.open(draft, "expire", "expire", true) {
+        Ok(x) => x,
+        Err(e) => return e,
+    };
+    match tombstone(&ctx, r, "expire", "expired by its agent") {
+        Ok(()) => Report::allow("expired", draft, ""),
+        Err(e) => Report::deny("expire_record", draft, &e),
+    }
+}
+
+fn tombstone(ctx: &Ctx, mut r: Record, kind: &str, why: &str) -> Result<(), String> {
+    if r.folder.starts_with(&ctx.op.state_root)
+        && r.folder.file_name().and_then(|n| n.to_str()) == Some(r.draft_id.as_str())
+    {
+        let _ = fs::remove_dir_all(&r.folder);
+    }
+    r.state = State::Expired;
+    store::save(&ctx.op, &r)?;
+    ctx.event(kind, &r, why);
+    Ok(())
+}
+
+/// The sweep of the operator: drafts past their age bound expire with a tombstone and
+/// empty agent folders go. Only root or the EDE user runs it.
+pub fn sweep() -> Vec<String> {
+    let ctx = Ctx::load();
+    let mut out = Vec::new();
+    if let Some(why) = &ctx.op.broken {
+        out.push(format!("refused: {}", why));
+        return out;
+    }
+    let uid = privilege::caller_uid();
+    if uid != 0 && Some(uid) != privilege::uid_of(&ctx.op.ede_user) {
+        out.push("refused: only the EDE user or root runs the sweep".into());
+        return out;
+    }
+    if let Err(e) = store::ensure_layout(&ctx.op) {
+        out.push(format!("refused: {}", e));
+        return out;
+    }
+    for id in store::all_ids(&ctx.op) {
+        let Ok(lock) = store::lock(&ctx.op, &id) else {
+            out.push(format!("busy {}", id));
+            continue;
+        };
+        let r = match store::load(&ctx.op, &id) {
+            Ok(r) => r,
+            Err(e) => {
+                out.push(format!("unreadable {} {}", id, e.code()));
+                continue;
+            }
+        };
+        if !r.state.terminal() && ctx.now.saturating_sub(r.seeded_unix) > ctx.op.draft_max_age_secs
+        {
+            match tombstone(&ctx, r, "sweep", "past the draft age bound") {
+                Ok(()) => out.push(format!("expired {}", id)),
+                Err(e) => out.push(format!("failed {} {}", id, e)),
+            }
+        }
+        drop(lock);
+    }
+    if let Ok(rd) = fs::read_dir(&ctx.op.state_root) {
+        for e in rd.flatten() {
+            let p = e.path();
+            if p.is_dir()
+                && fs::read_dir(&p)
+                    .map(|mut r| r.next().is_none())
+                    .unwrap_or(false)
+            {
+                let _ = fs::remove_dir(&p);
+                out.push(format!("removed empty {}", p.display()));
+            }
+        }
+    }
+    out
+}
+
+/// The path of the tree of a draft, for callers outside this crate.
+pub fn tree_dir(folder: &Path) -> PathBuf {
+    folder.join("tree")
 }
