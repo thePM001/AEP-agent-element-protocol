@@ -1625,7 +1625,7 @@ fn agent_stamp_is_read_and_never_adopted_as_the_kernel_clock() {
     );
 }
 
-// --- AEP-CRV-010 kernel identity, order and clock ---
+// --- kernel identity, order and clock ---
 
 /// Lattice of the identity and order tests: action:write is granted to agent-a and to
 /// AG-HUBLESS only and action:child needs action:write as its parent.
@@ -2278,7 +2278,7 @@ fn tls_handshake_err_still_does_not_request_stop() {
     assert!(!rt.is_stopping())
 }
 
-// --- AEP-CRV-020 kernel outbound request, stalls and limits ---
+// --- kernel outbound request, stalls and limits ---
 
 /// The one action path on which the kernel sends an outbound request.
 const CRV20_GATEWAY: &str = "gateway:outbound_http";
