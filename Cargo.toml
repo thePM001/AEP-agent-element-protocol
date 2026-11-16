@@ -109,3 +109,9 @@ rustls = { version = "0.23", default-features = false, features = ["ring", "std"
 # PEM parsing lives in rustls-pki-types (rustls-pemfile is unmaintained).
 rustls-pki-types = { version = "1", features = ["std"] }
 tokio-rustls = "0.26"
+
+# The CAW pins every program of a sandbox by digest before each command. The hash
+# code is far too slow without optimisation, so it is compiled optimised in the
+# development profile as well.
+[profile.dev.package.sha2]
+opt-level = 3
