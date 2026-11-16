@@ -11,6 +11,7 @@ name = "aep-caw"
 path = "src/main.rs"
 
 [dependencies]
+aep-caw-dock = { path = "../aep-caw-dock" }
 aep-caw-policy = { path = "../aep-caw-policy" }
 aep-caw-runtime = { path = "../aep-caw-runtime" }
 

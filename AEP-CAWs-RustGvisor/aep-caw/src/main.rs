@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::Duration;
 
+use aep_caw_dock::DockClient;
 use aep_caw_policy::plan::Variables;
 use aep_caw_runtime::session::{
     check_runsc, create, exec, list_profiles, parse_config, pinned_runsc_release, CawConfig,
@@ -166,16 +167,21 @@ fn parse(args: &[String]) -> Result<Call, String> {
     }
 }
 
-/// The kernel gate of this build. The client of the kernel dock is not part of this
-/// build yet, so the gate admits nothing and no command starts.
-struct NoDockClient;
+/// The gate of a host whose caw.toml names no Base Node. It admits nothing, so no
+/// command starts on a host that was never tied to a kernel.
+struct NoBaseNode;
 
-impl KernelGate for NoDockClient {
+impl KernelGate for NoBaseNode {
     fn admit(&self, _: &GateRequest<'_>) -> Result<(), String> {
-        Err(
-            "this build of aep-caw has no kernel dock client, so no run can be admitted"
-                .to_string(),
-        )
+        Err("caw.toml names no Base Node: set base_node_data and dock_socket".to_string())
+    }
+}
+
+/// The kernel gate of a configuration: the dock client of the named Base Node.
+fn gate_of(config: &CawConfig) -> Box<dyn KernelGate> {
+    match (&config.base_node_data, &config.dock_socket) {
+        (Some(data), Some(socket)) => Box::new(DockClient::new(data, socket)),
+        _ => Box::new(NoBaseNode),
     }
 }
 
@@ -234,10 +240,27 @@ fn doctor(layout: &Layout) -> bool {
             "this host restricts user namespaces through AppArmor: the profile /etc/apparmor.d/runsc must exist".to_string(),
         );
     }
-    line(
-        false,
-        "this build has no kernel dock client: exec refuses every command".to_string(),
-    );
+    match read_config(layout) {
+        Ok(config) => {
+            let command = vec![String::from("doctor")];
+            let request = GateRequest {
+                session_id: "doctor",
+                plan_digest: "",
+                args: &command,
+            };
+            match gate_of(&config).admit(&request) {
+                Ok(()) => line(
+                    true,
+                    "the kernel dock of the Base Node admits a sealed ping".to_string(),
+                ),
+                Err(reason) => line(false, format!("kernel-dock-silent: {reason}")),
+            }
+        }
+        Err(_) => line(
+            false,
+            "kernel-dock-silent: caw.toml cannot be read".to_string(),
+        ),
+    }
     healthy
 }
 
@@ -287,10 +310,11 @@ fn run(call: Call) -> Result<u8, SessionError> {
         } => {
             let layout = Layout::new(&data);
             let config = read_config(&layout)?;
+            let gate = gate_of(&config);
             let outcome = exec(
                 &layout,
                 &config,
-                &NoDockClient,
+                gate.as_ref(),
                 &session,
                 &command,
                 time_limit,
@@ -407,12 +431,28 @@ mod tests {
     }
 
     #[test]
-    fn this_build_admits_no_run() {
+    fn a_configuration_with_no_base_node_admits_no_run() {
         let request = GateRequest {
             session_id: "s",
             plan_digest: "sha256:p",
             args: &args("true"),
         };
-        assert!(NoDockClient.admit(&request).is_err());
+        let mut config = CawConfig {
+            allowed_profiles: Vec::new(),
+            runsc: "/usr/bin/runsc".into(),
+            init: "/usr/bin/aep-caw-init".into(),
+            base_node_data: None,
+            dock_socket: None,
+        };
+        let refused = |config: &CawConfig, text: &str| {
+            gate_of(config)
+                .admit(&request)
+                .is_err_and(|e| e.contains(text))
+        };
+        assert!(refused(&config, "names no Base Node"));
+        config.base_node_data = Some("/nonexistent/aep".into());
+        assert!(refused(&config, "names no Base Node"));
+        config.dock_socket = Some("/nonexistent/aep/sockets/validation".into());
+        assert!(refused(&config, "has no dock key"));
     }
 }

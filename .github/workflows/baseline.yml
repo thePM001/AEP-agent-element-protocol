@@ -113,7 +113,7 @@ jobs:
   caw-gvisor:
     name: CAW on gVisor, facts and core acceptance with the pinned runsc and no root
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       # Root is used once: the pinned package and the AppArmor profile of runsc.
@@ -123,16 +123,19 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: build the proof programs
         run: |
-          cargo build -p aep-caw-runtime --examples
+          cargo build -p aep-caw-runtime -p aep-caw-dock --examples
           cargo build -p aep-caw -p aep-caw-init
+          cargo build -p aep-base-node --bin aep-base-node
       - name: gVisor facts and trace events as the runner user
         run: |
           . AEP-CAWs-RustGvisor/proof/runsc-pin.env
           bash AEP-CAWs-RustGvisor/proof/gvisor-facts.sh "$RUNSC_BIN" "${CARGO_TARGET_DIR:-rust/target}/debug/examples/caw-trace-proof"
+      - name: dock acceptance against a live Base Node
+        run: bash AEP-CAWs-RustGvisor/proof/dock-acceptance.sh "${CARGO_TARGET_DIR:-rust/target}/debug/aep-base-node" "${CARGO_TARGET_DIR:-rust/target}/debug/examples/caw-dock-proof"
       - name: core acceptance as the runner user
         run: |
           . AEP-CAWs-RustGvisor/proof/runsc-pin.env
-          bash AEP-CAWs-RustGvisor/proof/core-acceptance.sh "$RUNSC_BIN" "${CARGO_TARGET_DIR:-rust/target}/debug/examples/caw-run-proof" AEP-CAWs-RustGvisor/aep-caw-policy/tests/fixtures/restricted.json "${CARGO_TARGET_DIR:-rust/target}/debug/aep-caw-init" "${CARGO_TARGET_DIR:-rust/target}/debug/aep-caw" AEP-CAWs-RustGvisor/proof/fixtures/egress-proof.json
+          bash AEP-CAWs-RustGvisor/proof/core-acceptance.sh "$RUNSC_BIN" "${CARGO_TARGET_DIR:-rust/target}/debug/examples/caw-run-proof" AEP-CAWs-RustGvisor/aep-caw-policy/tests/fixtures/restricted.json "${CARGO_TARGET_DIR:-rust/target}/debug/aep-caw-init" "${CARGO_TARGET_DIR:-rust/target}/debug/aep-caw" AEP-CAWs-RustGvisor/proof/fixtures/egress-proof.json "${CARGO_TARGET_DIR:-rust/target}/debug/aep-base-node"
 
   format:
     name: format

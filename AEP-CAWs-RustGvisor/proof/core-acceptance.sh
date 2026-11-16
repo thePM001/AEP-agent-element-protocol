@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Core acceptance of the CAW: what the policy allows passes with no deny event and
 # what it refuses fails inside the sandbox with exactly one deny event.
-# Usage: core-acceptance.sh <runsc> <caw-run-proof> <profile record> <aep-caw-init> [aep-caw] [egress record]
+# Usage: core-acceptance.sh <runsc> <caw-run-proof> <profile record> <aep-caw-init> [aep-caw] [egress record] [aep-base-node]
 # With aep-caw the script also checks the command: it creates a session and its exec
 # refuses with the rule kernel-dock-silent while the build has no kernel dock client.
 # With the egress record it also checks the egress proxy: a request with no route, an
 # address literal, a name with a loopback address and a connect past the proxy each
 # fail with exactly one deny event.
+# With aep-base-node it also starts one Base Node: the command runs while the node
+# admits the sealed ping and refuses with kernel-dock-silent once the node is stopped.
 # Runs as a user that is not root. A root caller is handed over to the user nobody.
 # Prints one line per check: CHECK <name> PASS|FAIL <detail>. Exit 0 only when every
 # check holds.
@@ -18,6 +20,8 @@ RECORD="${3:?profile record}"
 INIT="${4:?path to aep-caw-init}"
 CAW="${5:-}"
 EGRESS_RECORD="${6:-}"
+NODE="${7:-}"
+POLICY_DIR="${CAW_ACCEPT_POLICY_DIR:-$(cd "$(dirname "$0")/../.." && pwd)/AEP-Policy-System}"
 
 if [ "$(id -u)" = 0 ]; then
   W="$(mktemp -d /var/tmp/caw-accept.XXXXXX)"
@@ -31,8 +35,8 @@ if [ "$(id -u)" = 0 ]; then
   if [ -n "$EGRESS_RECORD" ]; then cp "$EGRESS_RECORD" "$W/egress-record.json"; EGRESSCOPY="$W/egress-record.json"; fi
   chown -R 65534:65534 "$W"
   setpriv --reuid=65534 --regid=65534 --clear-groups \
-    env HOME="$W" CAW_ACCEPT_WORK="$W" PATH="$PATH" \
-    bash "$W/core-acceptance.sh" "$RUNSC" "$W/caw-run-proof" "$W/record.json" "$W/aep-caw-init" "$CAWCOPY" "$EGRESSCOPY"
+    env HOME="$W" CAW_ACCEPT_WORK="$W" CAW_ACCEPT_POLICY_DIR="$POLICY_DIR" PATH="$PATH" \
+    bash "$W/core-acceptance.sh" "$RUNSC" "$W/caw-run-proof" "$W/record.json" "$W/aep-caw-init" "$CAWCOPY" "$EGRESSCOPY" "$NODE"
   code=$?
   rm -rf "$W"
   exit "$code"
@@ -183,6 +187,83 @@ if [ -n "$CAW" ]; then
     FAILED=$((FAILED + 1))
     echo "CHECK command-creates-a-session FAIL"
     sed 's/^/    /' "$W/cli-create.txt" | tail -8
+  fi
+fi
+
+if [ -n "$CAW" ] && [ -n "$NODE" ] && [ -n "${SESSION:-}" ]; then
+  # A live Base Node admits the run. The same node stopped refuses it.
+  B="$W/node"
+  mkdir -p "$B/sockets" "$B/ucb/manifests" "$B/gap/policies/reference"
+  cat > "$B/base-node.json" <<JSON
+{
+  "version": "2.9",
+  "base_node": {
+    "socket_base": "$B/sockets",
+    "lattice_db": "$B/action-lattice.db",
+    "lrps": ["dynaep-action-lattice", "lattice-channel-default"],
+    "internet_up": true
+  }
+}
+JSON
+  cat > "$B/lattice.yaml" <<LATTICE
+actions:
+  root:ping:
+    category: system_event
+    parents: []
+    children: []
+    agent_permission: ["caw-kernel-dock"]
+LATTICE
+  cat > "$B/gap/policies/reference/caw-kernel-dock.gap" <<GRANT
+address:
+  domain: dev.aep.caw
+  id: kernel-dock.v1
+
+pattern: |
+  The hub grant of the CAW kernel dock.
+
+weight: 1.0
+
+composition:
+  type: atomic
+
+metadata:
+  provenance: "aep-caw-acceptance"
+  version: "1.0.0"
+  stability: stable
+  wrap: caw
+  agent_permission:
+    - agent_id: caw-kernel-dock
+      action: root:ping
+GRANT
+  AEP_DATA="$B" AEP_SOCKET_BASE="$B/sockets" AEP_TASK_MANIFEST_DIR="$B/ucb/manifests" \
+    AEP_POLICY_SYSTEM_DIR="$POLICY_DIR" DATA_DOCK_HOST=127.0.0.1 DATA_DOCK_PORT=0 \
+    "$NODE" --daemon --config "$B/base-node.json" > "$B/base-node.log" 2>&1 &
+  NODE_PID=$!
+  for _ in $(seq 1 100); do
+    if [ -S "$B/sockets/validation" ]; then break; fi
+    sleep 0.2
+  done
+  printf 'allowed_profiles = ["%s"]\nrunsc = "%s"\ninit = "%s"\nbase_node_data = "%s"\ndock_socket = "%s"\n' \
+    "$PROFILE" "$RUNSC" "$INIT" "$B" "$B/sockets/validation" > "$D/caw-framework/caw.toml"
+  cli command-exec-runs-with-a-live-base-node 0 "ran-with-the-dock" \
+    exec --data "$D" --session "$SESSION" -- sh -c "echo ran-with-the-dock; echo yes > $P/ran-with-dock"
+  if [ -e "$P/ran-with-dock" ] && grep -q '"kind":"seal"' "$LOG" && grep -q '"kind":"end"' "$LOG"; then
+    echo "CHECK admitted-run-is-in-the-audit-log PASS start, seal and end are recorded"
+  else
+    FAILED=$((FAILED + 1))
+    echo "CHECK admitted-run-is-in-the-audit-log FAIL"
+    tail -n 6 "$B/base-node.log" | sed 's/^/    log: /' | cut -c1-200
+  fi
+  cli doctor-is-healthy-with-a-live-base-node 0 "admits a sealed ping" doctor --data "$D"
+  kill "$NODE_PID" 2>/dev/null
+  wait "$NODE_PID" 2>/dev/null
+  cli command-exec-refuses-with-the-base-node-stopped 126 "kernel-dock-silent" \
+    exec --data "$D" --session "$SESSION" -- sh -c "echo yes > $P/ran-with-stopped-node"
+  if [ -e "$P/ran-with-stopped-node" ]; then
+    FAILED=$((FAILED + 1))
+    echo "CHECK no-command-runs-with-the-base-node-stopped FAIL the command ran"
+  else
+    echo "CHECK no-command-runs-with-the-base-node-stopped PASS the command did not run"
   fi
 fi
 

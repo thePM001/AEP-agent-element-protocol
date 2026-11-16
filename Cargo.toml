@@ -53,6 +53,7 @@ members = [
     "AEP-CAWs-RustGvisor/aep-caw-policy",
     "AEP-CAWs-RustGvisor/aep-caw-egress",
     "AEP-CAWs-RustGvisor/aep-caw-runtime",
+    "AEP-CAWs-RustGvisor/aep-caw-dock",
     "AEP-CAWs-RustGvisor/aep-caw",
     "AEP-CAWs-RustGvisor/aep-caw-init",
 ]

@@ -137,6 +137,10 @@ pub struct CawConfig {
     /// Path of the program aep-caw-init on the host. It becomes process 1 of
     /// every sandbox.
     pub init: PathBuf,
+    /// Data folder of the Base Node whose kernel dock admits every run.
+    pub base_node_data: Option<PathBuf>,
+    /// Path of the validation socket of that Base Node.
+    pub dock_socket: Option<PathBuf>,
 }
 
 /// The init program next to the running program, the place a release puts it.
@@ -152,12 +156,14 @@ fn quoted(text: &str) -> Option<&str> {
     (!inner.contains(['"', '\\'])).then_some(inner)
 }
 
-/// Reads `caw.toml`. The file knows three keys, each on one line:
+/// Reads `caw.toml`. The file knows five keys, each on one line:
 ///
 /// ```text
 /// allowed_profiles = ["restricted", "coding-agent"]
 /// runsc = "/usr/bin/runsc"
 /// init = "/usr/libexec/aep-caw-init"
+/// base_node_data = "/var/lib/aep"
+/// dock_socket = "/var/lib/aep/sockets/validation"
 /// ```
 ///
 /// A line that starts with `#` is a comment. Any other content is refused, so a
@@ -166,6 +172,8 @@ pub fn parse_config(text: &str) -> Result<CawConfig, SessionError> {
     let mut allowed: Option<Vec<String>> = None;
     let mut runsc: Option<PathBuf> = None;
     let mut init: Option<PathBuf> = None;
+    let mut base_node_data: Option<PathBuf> = None;
+    let mut dock_socket: Option<PathBuf> = None;
     for (i, raw) in text.lines().enumerate() {
         let bad = |reason| SessionError::Config {
             line: i + 1,
@@ -222,6 +230,27 @@ pub fn parse_config(text: &str) -> Result<CawConfig, SessionError> {
                 }
                 init = Some(PathBuf::from(path));
             }
+            "base_node_data" => {
+                if base_node_data.is_some() {
+                    return Err(bad("base_node_data is set twice"));
+                }
+                let path =
+                    quoted(value).ok_or_else(|| bad("base_node_data must be a quoted text"))?;
+                if !path.starts_with('/') {
+                    return Err(bad("base_node_data must be an absolute path"));
+                }
+                base_node_data = Some(PathBuf::from(path));
+            }
+            "dock_socket" => {
+                if dock_socket.is_some() {
+                    return Err(bad("dock_socket is set twice"));
+                }
+                let path = quoted(value).ok_or_else(|| bad("dock_socket must be a quoted text"))?;
+                if !path.starts_with('/') {
+                    return Err(bad("dock_socket must be an absolute path"));
+                }
+                dock_socket = Some(PathBuf::from(path));
+            }
             _ => return Err(bad("unknown key")),
         }
     }
@@ -230,6 +259,8 @@ pub fn parse_config(text: &str) -> Result<CawConfig, SessionError> {
         runsc: runsc
             .unwrap_or_else(|| PathBuf::from(pin_value("RUNSC_BIN").unwrap_or("/usr/bin/runsc"))),
         init: init.unwrap_or_else(default_init),
+        base_node_data,
+        dock_socket,
     })
 }
 
@@ -797,14 +828,22 @@ mod tests {
             allowed_profiles: vec!["test".to_string()],
             runsc: base.join("no-runsc"),
             init: tool.clone(),
+            base_node_data: None,
+            dock_socket: None,
         };
         (base, layout, config, workspace)
     }
 
     #[test]
     fn the_configuration_knows_two_keys_and_refuses_the_rest() {
-        let config = parse_config("# CAW settings\nallowed_profiles = [\"restricted\", \"coding-agent\"]\nrunsc = \"/opt/gvisor/runsc\"\ninit = \"/opt/caw/aep-caw-init\"\n")
+        let config = parse_config("# CAW settings\nallowed_profiles = [\"restricted\", \"coding-agent\"]\nrunsc = \"/opt/gvisor/runsc\"\ninit = \"/opt/caw/aep-caw-init\"\nbase_node_data = \"/var/lib/aep\"\ndock_socket = \"/var/lib/aep/sockets/validation\"\n")
             .expect("parses");
+        assert_eq!(config.init, PathBuf::from("/opt/caw/aep-caw-init"));
+        assert_eq!(config.base_node_data, Some(PathBuf::from("/var/lib/aep")));
+        assert_eq!(
+            config.dock_socket,
+            Some(PathBuf::from("/var/lib/aep/sockets/validation"))
+        );
         assert_eq!(
             config.allowed_profiles,
             vec!["restricted".to_string(), "coding-agent".to_string()]
@@ -823,6 +862,9 @@ mod tests {
             "runsc = \"/a\"\nrunsc = \"/b\"",
             "init = \"relative/init\"",
             "init = \"/a\"\ninit = \"/b\"",
+            "base_node_data = \"relative\"",
+            "dock_socket = \"relative.sock\"",
+            "dock_socket = \"/a\"\ndock_socket = \"/b\"",
             "just a line",
             "[section]",
         ] {

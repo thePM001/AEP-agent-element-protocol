@@ -1,0 +1,8 @@
+# The lattice of the dock acceptance. The agent caw-kernel-dock may ping the kernel
+# and nothing else. dock-acceptance.sh copies this file into its run folder.
+actions:
+  root:ping:
+    category: system_event
+    parents: []
+    children: []
+    agent_permission: ["caw-kernel-dock"]

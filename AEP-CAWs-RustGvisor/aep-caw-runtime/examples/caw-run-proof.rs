@@ -69,6 +69,8 @@ fn prove(args: &[String]) -> Result<i32, String> {
         allowed_profiles: vec![profile.clone()],
         runsc: args[0].clone().into(),
         init: std::env::var_os("CAW_PROOF_INIT").map_or_else(default_init, Into::into),
+        base_node_data: None,
+        dock_socket: None,
     };
     let home = std::env::var("CAW_PROOF_HOME").unwrap_or_else(|_| "/home/agent".to_string());
     let vars = Variables::new()

@@ -1,0 +1,17 @@
+[package]
+name = "aep-caw-dock"
+description = "Kernel dock client of the CAW: seals one root:ping as caw-kernel-dock, sends it to the validation dock of the Base Node and admits a run only when the dock admitted the ping."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+aep-base-node = { path = "../../AEP-Base-Node/AEP-Crate" }
+aep-caw-runtime = { path = "../aep-caw-runtime" }
+aep-lattice-channel = { path = "../../AEP-Components/lattice-channels/crate" }
+hex.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

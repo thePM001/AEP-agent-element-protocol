@@ -161,6 +161,7 @@ dependencies = [
 name = "aep-caw"
 version = "2.9.0"
 dependencies = [
+ "aep-caw-dock",
  "aep-caw-policy",
  "aep-caw-runtime",
 ]
@@ -170,6 +171,17 @@ name = "aep-caw-cve-demo-trees"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+]
+
+[[package]]
+name = "aep-caw-dock"
+version = "2.9.0"
+dependencies = [
+ "aep-base-node",
+ "aep-caw-runtime",
+ "aep-lattice-channel",
+ "hex",
+ "serde_json",
 ]
 
 [[package]]
