@@ -12,6 +12,9 @@
 //!   known when the command ends, so [`Classifier::finish`] reports it.
 //! - A failed connect to an address other than loopback is a deny event.
 //!
+//! A path is judged as the path it names: `/work/../home/a/.ssh/id` is a file under
+//! `/home/a`, however the program spelled it.
+//!
 //! A program that only asks whether a file exists leaves no event: gVisor has no
 //! trace point for stat. One target gives one deny event per process, however often
 //! the process tries.
@@ -128,13 +131,25 @@ pub struct Classifier<'a> {
     asked: BTreeMap<i32, Vec<(String, String)>>,
 }
 
-/// A path in plain form: absolute, no empty, `.` or `..` part.
-fn is_plain(path: &str) -> bool {
-    path.starts_with('/')
-        && (path.len() == 1
-            || path[1..]
-                .split('/')
-                .all(|part| !part.is_empty() && part != "." && part != ".."))
+/// The path a text names, read the way the kernel reads it without following links:
+/// a parent step leaves a folder, an empty part and a `.` part change nothing.
+/// `None` for a path that is not absolute, because the folder it starts from is not
+/// known here.
+fn named_path(path: &str) -> Option<String> {
+    if !path.starts_with('/') {
+        return None;
+    }
+    let mut parts: Vec<&str> = Vec::new();
+    for part in path.split('/') {
+        match part {
+            "" | "." => {}
+            ".." => {
+                parts.pop();
+            }
+            other => parts.push(other),
+        }
+    }
+    Some(format!("/{}", parts.join("/")))
 }
 
 /// Writes a raw socket address as text. `None` for a family the CAW does not judge.
@@ -208,9 +223,8 @@ impl<'a> Classifier<'a> {
         process: &str,
         thread_group: i32,
     ) -> Option<DenyEvent> {
-        if !is_plain(path) {
-            return None;
-        }
+        let named = named_path(path)?;
+        let path = named.as_str();
         let found = self.plan.mount_of(path).map(|m| (m.mode, m.rule.clone()));
         match found {
             Some((MountMode::Mask, rule)) => self.once(
@@ -297,9 +311,9 @@ impl<'a> Classifier<'a> {
         let mut events = Vec::new();
         for (thread_group, pending) in asked {
             for (path, process) in pending {
-                if !is_plain(&path) {
+                let Some(path) = named_path(&path) else {
                     continue;
-                }
+                };
                 let found = self
                     .plan
                     .mount_of(&path)

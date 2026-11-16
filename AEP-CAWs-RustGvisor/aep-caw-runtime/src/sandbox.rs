@@ -93,8 +93,8 @@ pub enum RunError {
         /// The error of the operating system.
         source: std::io::Error,
     },
-    /// A mount of the plan has no folder on the host.
-    #[error("the mount {0} of the plan is not a folder on this host")]
+    /// A mount of the plan is not a real folder at its own path.
+    #[error("the mount {0} of the plan is not a real folder at its own path: it is missing, it is a link or a link lies on the way to it")]
     MountSource(String),
     /// The bundle cannot be written.
     #[error(transparent)]
@@ -126,6 +126,40 @@ fn private_dir(path: &Path) -> Result<(), RunError> {
         .mode(0o700)
         .create(path)
         .map_err(io("create the folder", path))
+}
+
+/// True when `path` is a folder and no link stands in for it or for a folder on
+/// the way to it.
+fn is_real_dir(path: &str) -> bool {
+    fs::symlink_metadata(path).is_ok_and(|m| m.is_dir())
+        && fs::canonicalize(path).is_ok_and(|real| real == Path::new(path))
+}
+
+/// Checks every mount source of a plan right before a run.
+///
+/// A plan names folders by path. Between two commands a program in the sandbox may
+/// have put a link where a folder of the plan is expected, and a bind mount follows
+/// a link to whatever host folder it names. So a read only or read write mount whose
+/// source is not a real folder at its own path refuses the run. A mask is mounted
+/// only over a real folder: over anything else it has nothing of the host to hide.
+///
+/// Returns the mask paths that get a mount.
+pub fn check_mount_sources(plan: &SandboxPlan) -> Result<BTreeSet<String>, RunError> {
+    let mut existing_masks = BTreeSet::new();
+    for mount in &plan.mounts {
+        let real = is_real_dir(&mount.path);
+        match mount.mode {
+            MountMode::Mask if real => {
+                existing_masks.insert(mount.path.clone());
+            }
+            MountMode::Mask => {}
+            MountMode::ReadOnly | MountMode::ReadWrite if !real => {
+                return Err(RunError::MountSource(mount.path.clone()));
+            }
+            MountMode::ReadOnly | MountMode::ReadWrite => {}
+        }
+    }
+    Ok(existing_masks)
 }
 
 /// Creates a new folder with a short path that only the CAW user can enter.
@@ -184,20 +218,7 @@ struct TraceResult {
 
 /// Runs one command in one sandbox.
 pub fn run(plan: &SandboxPlan, input: &RunInput<'_>) -> Result<RunOutcome, RunError> {
-    let mut existing_masks = BTreeSet::new();
-    for mount in &plan.mounts {
-        let is_dir = fs::metadata(&mount.path).is_ok_and(|m| m.is_dir());
-        match mount.mode {
-            MountMode::Mask if is_dir => {
-                existing_masks.insert(mount.path.clone());
-            }
-            MountMode::Mask => {}
-            MountMode::ReadOnly | MountMode::ReadWrite if !is_dir => {
-                return Err(RunError::MountSource(mount.path.clone()));
-            }
-            MountMode::ReadOnly | MountMode::ReadWrite => {}
-        }
-    }
+    let existing_masks = check_mount_sources(plan)?;
 
     let bundle = input.work.join("bundle");
     let state = input.work.join("state");
@@ -415,6 +436,75 @@ mod tests {
             container_id: String::new(),
             thread_group_id: 5,
         }
+    }
+
+    fn plan_with(mounts: Vec<(&str, MountMode)>) -> SandboxPlan {
+        SandboxPlan {
+            profile_id: "test".to_string(),
+            record_digest: String::new(),
+            compiled_runtime: false,
+            mounts: mounts
+                .into_iter()
+                .map(|(path, mode)| aep_caw_policy::plan::PlanMount {
+                    path: path.to_string(),
+                    mode,
+                    exec: false,
+                    rule: "rule".to_string(),
+                })
+                .collect(),
+            programs: Vec::new(),
+            routes: Vec::new(),
+            digest: String::new(),
+        }
+    }
+
+    #[test]
+    fn a_link_in_the_place_of_a_mount_source_refuses_the_run() {
+        let base = fs::canonicalize(std::env::temp_dir()).expect("temp");
+        let dir = base.join(format!("caw-pin-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        for name in ["project", "project/docs", "project/.secrets", "outside"] {
+            fs::create_dir_all(dir.join(name)).expect("folder");
+        }
+        let path = |name: &str| dir.join(name).to_string_lossy().into_owned();
+        let (project, docs, secrets) = (
+            path("project"),
+            path("project/docs"),
+            path("project/.secrets"),
+        );
+
+        let plan = plan_with(vec![
+            (&project, MountMode::ReadWrite),
+            (&secrets, MountMode::Mask),
+            (&docs, MountMode::ReadOnly),
+        ]);
+        let masks = check_mount_sources(&plan).expect("real folders pass");
+        assert_eq!(masks.into_iter().collect::<Vec<_>>(), vec![secrets.clone()]);
+
+        // The docs folder is replaced by a link to a folder outside of the plan.
+        fs::remove_dir(&docs).expect("remove");
+        std::os::unix::fs::symlink(dir.join("outside"), &docs).expect("link");
+        assert!(matches!(check_mount_sources(&plan), Err(RunError::MountSource(p)) if p == docs));
+
+        // A missing source refuses too.
+        fs::remove_file(&docs).expect("remove link");
+        assert!(matches!(check_mount_sources(&plan), Err(RunError::MountSource(p)) if p == docs));
+        fs::create_dir(&docs).expect("folder");
+
+        // A link in the place of a mask gets no mount and does not refuse the run.
+        fs::remove_dir(&secrets).expect("remove");
+        std::os::unix::fs::symlink(dir.join("outside"), &secrets).expect("link");
+        assert!(check_mount_sources(&plan).expect("passes").is_empty());
+
+        // A link on the way to a source refuses the run.
+        std::os::unix::fs::symlink(&project, dir.join("alias")).expect("link");
+        let through_alias = path("alias/docs");
+        let aliased = plan_with(vec![(&through_alias, MountMode::ReadOnly)]);
+        assert!(matches!(
+            check_mount_sources(&aliased),
+            Err(RunError::MountSource(_))
+        ));
+        let _ = fs::remove_dir_all(dir);
     }
 
     #[test]

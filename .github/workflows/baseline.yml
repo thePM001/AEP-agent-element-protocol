@@ -111,7 +111,7 @@ jobs:
           AEP-Components/gap/policies/reference
 
   caw-gvisor:
-    name: CAW on gVisor, facts and core acceptance with the pinned runsc and no root
+    name: CAW on gVisor, facts, acceptance and hostile corpus with the pinned runsc and no root
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -136,6 +136,10 @@ jobs:
         run: |
           . AEP-CAWs-RustGvisor/proof/runsc-pin.env
           bash AEP-CAWs-RustGvisor/proof/core-acceptance.sh "$RUNSC_BIN" "${CARGO_TARGET_DIR:-rust/target}/debug/examples/caw-run-proof" AEP-CAWs-RustGvisor/aep-caw-policy/tests/fixtures/restricted.json "${CARGO_TARGET_DIR:-rust/target}/debug/aep-caw-init" "${CARGO_TARGET_DIR:-rust/target}/debug/aep-caw" AEP-CAWs-RustGvisor/proof/fixtures/egress-proof.json "${CARGO_TARGET_DIR:-rust/target}/debug/aep-base-node"
+      - name: hostile corpus as the runner user
+        run: |
+          . AEP-CAWs-RustGvisor/proof/runsc-pin.env
+          bash AEP-CAWs-RustGvisor/proof/hostile-corpus.sh "$RUNSC_BIN" "${CARGO_TARGET_DIR:-rust/target}/debug/examples/caw-run-proof" AEP-CAWs-RustGvisor/aep-caw-policy/tests/fixtures/restricted.json "${CARGO_TARGET_DIR:-rust/target}/debug/aep-caw-init"
 
   format:
     name: format

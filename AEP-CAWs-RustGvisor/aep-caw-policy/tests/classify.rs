@@ -156,12 +156,41 @@ fn one_target_gives_one_event_per_process() {
 }
 
 #[test]
-fn a_path_that_is_not_plain_gives_no_event() {
+fn a_path_is_judged_as_the_path_it_names() {
     let plan = plan(false);
     let mut c = Classifier::new(&plan);
-    for path in ["", "relative/file", "/a/../etc/passwd", "/a//b", "/a/./b"] {
+    // A path that is not absolute starts from a folder the classifier does not know.
+    for path in ["", "relative/file", "../outside/secret"] {
         assert_eq!(c.observe(open(path, ENOENT)), None, "{path:?}");
     }
+    // Parent steps that end inside the root or inside a mount name a plain missing file.
+    for path in [
+        "/a/../etc/passwd",
+        "/home/agent/project/src/../missing",
+        "/usr//lib/./x",
+    ] {
+        assert_eq!(c.observe(open(path, ENOENT)), None, "{path:?}");
+    }
+    // Parent steps out of a mount name a file outside of the plan.
+    let event = c
+        .observe(open("/home/agent/project/../.ssh/id_ed25519", ENOENT))
+        .expect("deny");
+    assert_eq!(event.kind, DenyKind::FileOutside);
+    assert_eq!(event.target, "/home/agent/.ssh/id_ed25519");
+    // The same file in another spelling is the same target and gives no second event.
+    assert_eq!(
+        c.observe(open("/home/agent//project/./../.ssh/id_ed25519", ENOENT)),
+        None
+    );
+    // Parent steps into a mask name the masked file.
+    let masked = c
+        .observe(open("/home/agent/project/src/../.secrets/token", ENOENT))
+        .expect("deny");
+    assert_eq!(masked.kind, DenyKind::FileMasked);
+    assert_eq!(masked.target, "/home/agent/project/.secrets/token");
+    // More parent steps than folders end at the root.
+    let root = c.observe(open("/../../outside/a", ENOENT)).expect("deny");
+    assert_eq!(root.target, "/outside/a");
 }
 
 #[test]
