@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { join, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 import YAML from "yaml";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -19,6 +20,8 @@ export const GAP_POLICY_SYSTEM_DIR = join(GAP_ROOT, "../../AEP-Policy-System/ref
 const AEP_RUNTIME_KINDS = new Set([
   "aep.caw.profile",
   "aep.caw.mount_policy",
+  "aep.caw.egress_policy",
+  "aep.caw.toolset",
   "aep.task_manifest.template",
   "aep.implementation_plan.template",
 ]);
@@ -99,7 +102,9 @@ export function compileMountProfilesFromGap(repoRoot) {
       gap_address: instruction
         ? `${instruction.address.domain}/${instruction.address.id}`
         : null,
-      enforcement_tier: profile.enforcement_tier ?? "shim",
+      enforcement_tier: profile.enforcement_tier ?? "none",
+      egress_policy: profile.egress_policy ?? null,
+      toolset: profile.toolset ?? null,
       llm_proxy: profile.llm_proxy !== false,
       compiled_runtime: profile.compiled_runtime === true,
     };
@@ -107,87 +112,361 @@ export function compileMountProfilesFromGap(repoRoot) {
   return profiles;
 }
 
-/**
- * Build mount_profiles YAML block for CAW server config.
- * @param {string} [repoRoot]
- */
-export function buildMountProfilesYaml(repoRoot) {
-  const profiles = compileMountProfilesFromGap(repoRoot);
-  const lines = ["mount_profiles:"];
-  for (const [name, p] of Object.entries(profiles).sort(([a], [b]) => a.localeCompare(b))) {
-    lines.push(`  ${name}:`);
-    lines.push(`    base_policy: "${p.base_policy}"`);
-    lines.push("    mounts:");
-    for (const m of p.mounts) {
-      lines.push(`      - path: "${m.path}"`);
-      lines.push(`        policy: "${m.policy}"`);
+/** The only tier the Rust CAW runs. */
+export const CAW_TIER_GVISOR = "gvisor";
+
+/** Name and version of the resolved profile record. */
+export const CAW_RESOLVED_RECORD = "aep.caw.resolved_profile";
+export const CAW_RESOLVED_VERSION = 1;
+
+/** A reference policy that cannot be compiled. `code` names the reason. */
+export class GapCompileError extends Error {
+  /**
+   * @param {string} code
+   * @param {string} message
+   */
+  constructor(code, message) {
+    super(message);
+    this.name = "GapCompileError";
+    this.code = code;
+  }
+}
+
+const PROFILE_KEYS = new Set([
+  "kind",
+  "profile_id",
+  "name",
+  "base_policy",
+  "enforcement_tier",
+  "llm_proxy",
+  "compiled_runtime",
+  "mounts",
+  "egress_policy",
+  "toolset",
+]);
+const MOUNT_KEYS = new Set(["path", "policy"]);
+const POLICY_KEYS = new Set(["version", "name", "description", "file_rules", "command_rules"]);
+const FILE_RULE_KEYS = new Set(["name", "description", "paths", "operations", "decision"]);
+const COMMAND_RULE_KEYS = new Set(["name", "description", "commands", "decision"]);
+const EGRESS_KEYS = new Set(["kind", "name", "description", "unmatched", "routes"]);
+const ROUTE_KEYS = new Set(["name", "scheme", "host", "port", "decision"]);
+const TOOLSET_KEYS = new Set(["kind", "name", "description", "programs"]);
+const PROGRAM_KEYS = new Set(["name", "source", "path"]);
+
+const NAME_RE = /^[a-z0-9][a-z0-9._-]*$/;
+const HOST_RE = /^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
+const HOST_VARIABLE_RE = /^\$\{[A-Z][A-Z0-9_]*\}$/;
+const PROGRAM_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._+-]*$/;
+
+function isObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function refuseUnknownKeys(value, known, what) {
+  if (!isObject(value)) {
+    throw new GapCompileError("not-a-record", `${what} is not a record`);
+  }
+  for (const key of Object.keys(value)) {
+    if (!known.has(key)) {
+      throw new GapCompileError("unknown-key", `${what} holds the unknown key ${key}`);
     }
   }
-  return `${lines.join("\n")}\n`;
+}
+
+function requireString(value, what) {
+  if (typeof value !== "string" || value === "") {
+    throw new GapCompileError("missing-field", `${what} must be a text that is not empty`);
+  }
+  return value;
+}
+
+function requireStringList(value, what) {
+  if (!Array.isArray(value) || value.length === 0 || value.some((v) => typeof v !== "string" || v === "")) {
+    throw new GapCompileError("missing-field", `${what} must be a list of texts that is not empty`);
+  }
+  return [...value];
 }
 
 /**
- * Merge GAP-compiled mount_profiles into a CAW server-config.yaml.
- * @param {string} serverConfigPath
+ * JSON text of a value with the keys of every record in sorted order and no
+ * white space. Two equal values give the same text, so the text carries a digest.
+ * @param {unknown} value
+ * @returns {string}
+ */
+export function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map((v) => canonicalJson(v)).join(",")}]`;
+  if (isObject(value)) {
+    const parts = Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`);
+    return `{${parts.join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/**
+ * Digest of a resolved profile record: sha256 over its canonical JSON without the
+ * field digest.
+ * @param {object} record
+ * @returns {string}
+ */
+export function cawRecordDigest(record) {
+  const { digest: _digest, ...rest } = record;
+  return `sha256:${createHash("sha256").update(canonicalJson(rest), "utf8").digest("hex")}`;
+}
+
+function normalizePolicy(doc, what) {
+  const policy = doc.policy ?? {};
+  refuseUnknownKeys(policy, POLICY_KEYS, what);
+  const fileRules = (policy.file_rules ?? []).map((rule, i) => {
+    const ruleWhat = `${what} file rule ${rule?.name ?? i + 1}`;
+    refuseUnknownKeys(rule, FILE_RULE_KEYS, ruleWhat);
+    return {
+      name: requireString(rule.name, `the name of ${ruleWhat}`),
+      paths: requireStringList(rule.paths, `the paths of ${ruleWhat}`),
+      operations: requireStringList(rule.operations, `the operations of ${ruleWhat}`),
+      decision: requireString(rule.decision, `the decision of ${ruleWhat}`),
+    };
+  });
+  const commandRules = (policy.command_rules ?? []).map((rule, i) => {
+    const ruleWhat = `${what} command rule ${rule?.name ?? i + 1}`;
+    refuseUnknownKeys(rule, COMMAND_RULE_KEYS, ruleWhat);
+    return {
+      name: requireString(rule.name, `the name of ${ruleWhat}`),
+      commands: requireStringList(rule.commands, `the commands of ${ruleWhat}`),
+      decision: requireString(rule.decision, `the decision of ${ruleWhat}`),
+    };
+  });
+  return { name: doc.name, file_rules: fileRules, command_rules: commandRules };
+}
+
+function normalizeEgressPolicy(doc) {
+  const what = `egress policy ${doc.name}`;
+  refuseUnknownKeys(doc, EGRESS_KEYS, what);
+  if (doc.unmatched !== undefined && doc.unmatched !== "deny") {
+    throw new GapCompileError(
+      "egress-unmatched",
+      `${what} sets unmatched to ${doc.unmatched}. A destination with no route is always denied.`,
+    );
+  }
+  if (!Array.isArray(doc.routes) || doc.routes.length === 0) {
+    throw new GapCompileError("missing-field", `${what} has no route`);
+  }
+  const seen = new Set();
+  const routes = doc.routes.map((route, i) => {
+    const routeWhat = `${what} route ${route?.name ?? i + 1}`;
+    refuseUnknownKeys(route, ROUTE_KEYS, routeWhat);
+    const name = requireString(route.name, `the name of ${routeWhat}`);
+    if (seen.has(name)) {
+      throw new GapCompileError("duplicate-name", `${what} holds two routes named ${name}`);
+    }
+    seen.add(name);
+    if (route.scheme !== "http" && route.scheme !== "https") {
+      throw new GapCompileError("egress-route", `${routeWhat} needs the scheme http or https`);
+    }
+    const host = requireString(route.host, `the host of ${routeWhat}`);
+    const numericEnd = /^[0-9]+$/.test(host.split(".").pop() ?? "");
+    if ((!HOST_RE.test(host) || numericEnd) && !HOST_VARIABLE_RE.test(host)) {
+      throw new GapCompileError(
+        "egress-route",
+        `${routeWhat} needs a lower case host name, a wildcard under one domain or one variable. An address is not a host name.`,
+      );
+    }
+    if (!Number.isInteger(route.port) || route.port < 1 || route.port > 65535) {
+      throw new GapCompileError("egress-route", `${routeWhat} needs a port from 1 to 65535`);
+    }
+    if (route.decision !== "allow" && route.decision !== "deny") {
+      throw new GapCompileError("egress-route", `${routeWhat} needs the decision allow or deny`);
+    }
+    return { name, scheme: route.scheme, host, port: route.port, decision: route.decision };
+  });
+  return { name: doc.name, unmatched: "deny", routes };
+}
+
+function normalizeToolset(doc) {
+  const what = `toolset ${doc.name}`;
+  refuseUnknownKeys(doc, TOOLSET_KEYS, what);
+  if (!Array.isArray(doc.programs) || doc.programs.length === 0) {
+    throw new GapCompileError("missing-field", `${what} has no program`);
+  }
+  const names = new Set();
+  const paths = new Set();
+  const programs = doc.programs.map((program, i) => {
+    const programWhat = `${what} program ${program?.name ?? i + 1}`;
+    refuseUnknownKeys(program, PROGRAM_KEYS, programWhat);
+    const name = requireString(program.name, `the name of ${programWhat}`);
+    if (!PROGRAM_NAME_RE.test(name)) {
+      throw new GapCompileError("toolset-program", `${programWhat} has a name that is not a plain program name`);
+    }
+    const source = requireString(program.source, `the source of ${programWhat}`);
+    const path = program.path === undefined ? `/usr/bin/${name}` : requireString(program.path, `the path of ${programWhat}`);
+    for (const [label, value] of [["source", source], ["path", path]]) {
+      if (!value.startsWith("/") || value.split("/").includes("..")) {
+        throw new GapCompileError("toolset-program", `the ${label} of ${programWhat} must be an absolute path with no parent step`);
+      }
+    }
+    if (names.has(name)) {
+      throw new GapCompileError("duplicate-name", `${what} holds two programs named ${name}`);
+    }
+    if (paths.has(path)) {
+      throw new GapCompileError("duplicate-name", `${what} places two programs at ${path}`);
+    }
+    names.add(name);
+    paths.add(path);
+    return { name, source, path };
+  });
+  return { name: doc.name, programs };
+}
+
+/**
+ * Collect every CAW record of the reference policies, each kind by its name.
+ * Two records of one kind with the same name are refused.
  * @param {string} [repoRoot]
  */
-export function mergeGapProfilesIntoCawConfig(serverConfigPath, repoRoot) {
-  const profiles = compileMountProfilesFromGap(repoRoot);
-  const parsed = existsSync(serverConfigPath)
-    ? (YAML.parse(readFileSync(serverConfigPath, "utf8")) ?? {})
-    : {};
-  parsed.mount_profiles = {};
-  for (const [name, profile] of Object.entries(profiles).sort(([a], [b]) =>
-    a.localeCompare(b),
-  )) {
-    parsed.mount_profiles[name] = {
-      base_policy: profile.base_policy,
-      mounts: (profile.mounts ?? []).map((mount) => ({
-        path: mount.path,
-        policy: mount.policy,
-      })),
-    };
+export function collectCawRecords(repoRoot) {
+  const profiles = new Map();
+  const mountPolicies = new Map();
+  const egressPolicies = new Map();
+  const toolsets = new Map();
+  const add = (map, name, value, kind, path) => {
+    if (typeof name !== "string" || !NAME_RE.test(name)) {
+      throw new GapCompileError("record-name", `a record of the kind ${kind} in ${basename(path)} has no plain lower case name`);
+    }
+    if (map.has(name)) {
+      throw new GapCompileError("duplicate-name", `two records of the kind ${kind} are named ${name}`);
+    }
+    map.set(name, value);
+  };
+  for (const path of listGapReferencePolicies(repoRoot)) {
+    const { instruction, runtime } = parseGapFile(path);
+    for (const doc of runtime) {
+      if (doc.kind === "aep.caw.profile") {
+        const address = instruction ? `${instruction.address.domain}/${instruction.address.id}` : null;
+        add(profiles, doc.profile_id, { doc, address }, doc.kind, path);
+      } else if (doc.kind === "aep.caw.mount_policy") {
+        add(mountPolicies, doc.name, doc, doc.kind, path);
+      } else if (doc.kind === "aep.caw.egress_policy") {
+        add(egressPolicies, doc.name, doc, doc.kind, path);
+      } else if (doc.kind === "aep.caw.toolset") {
+        add(toolsets, doc.name, doc, doc.kind, path);
+      }
+    }
   }
-  writeFileSync(serverConfigPath, YAML.stringify(parsed), "utf8");
-  return serverConfigPath;
+  return { profiles, mountPolicies, egressPolicies, toolsets };
+}
+
+function resolveFromRecords(profileId, records) {
+  const hit = records.profiles.get(profileId);
+  if (!hit) {
+    throw new GapCompileError("unknown-profile", `no CAW profile is named ${profileId}`);
+  }
+  const { doc, address } = hit;
+  const what = `profile ${profileId}`;
+  refuseUnknownKeys(doc, PROFILE_KEYS, what);
+  if (doc.enforcement_tier !== CAW_TIER_GVISOR) {
+    throw new GapCompileError(
+      "tier",
+      `${what} has the tier ${doc.enforcement_tier ?? "none"}. The CAW runs only profiles of the tier ${CAW_TIER_GVISOR}.`,
+    );
+  }
+  for (const field of ["llm_proxy", "compiled_runtime"]) {
+    if (typeof doc[field] !== "boolean") {
+      throw new GapCompileError("missing-field", `${what} must set ${field} to true or false`);
+    }
+  }
+  const policyOf = (name, use) => {
+    const policyDoc = records.mountPolicies.get(requireString(name, `the ${use} of ${what}`));
+    if (!policyDoc) {
+      throw new GapCompileError("unknown-policy", `${what} names the mount policy ${name}, which no reference policy defines`);
+    }
+    return normalizePolicy(policyDoc, `mount policy ${name}`);
+  };
+  if (!Array.isArray(doc.mounts) || doc.mounts.length === 0) {
+    throw new GapCompileError("missing-field", `${what} has no mount`);
+  }
+  const mounts = doc.mounts.map((mount, i) => {
+    refuseUnknownKeys(mount, MOUNT_KEYS, `mount ${i + 1} of ${what}`);
+    return {
+      path: requireString(mount.path, `the path of mount ${i + 1} of ${what}`),
+      policy: policyOf(mount.policy, `policy of mount ${i + 1}`),
+    };
+  });
+  if (doc.toolset === undefined || doc.toolset === null) {
+    throw new GapCompileError("no-toolset", `${what} names no toolset. A sandbox with no program runs nothing.`);
+  }
+  const toolsetDoc = records.toolsets.get(requireString(doc.toolset, `the toolset of ${what}`));
+  if (!toolsetDoc) {
+    throw new GapCompileError("unknown-toolset", `${what} names the toolset ${doc.toolset}, which no reference policy defines`);
+  }
+  let egress = null;
+  if (doc.egress_policy !== undefined && doc.egress_policy !== null) {
+    const egressDoc = records.egressPolicies.get(requireString(doc.egress_policy, `the egress policy of ${what}`));
+    if (!egressDoc) {
+      throw new GapCompileError("unknown-egress-policy", `${what} names the egress policy ${doc.egress_policy}, which no reference policy defines`);
+    }
+    egress = normalizeEgressPolicy(egressDoc);
+  }
+  if (doc.llm_proxy && !egress) {
+    throw new GapCompileError(
+      "llm-proxy-without-route",
+      `${what} sets llm_proxy to true and names no egress policy. The route to the model gateway must be written down.`,
+    );
+  }
+  const record = {
+    record: CAW_RESOLVED_RECORD,
+    version: CAW_RESOLVED_VERSION,
+    profile_id: profileId,
+    gap_address: address,
+    enforcement_tier: CAW_TIER_GVISOR,
+    llm_proxy: doc.llm_proxy,
+    compiled_runtime: doc.compiled_runtime,
+    base_policy: policyOf(doc.base_policy, "base policy"),
+    mounts,
+    egress_policy: egress,
+    toolset: normalizeToolset(toolsetDoc),
+  };
+  return { ...record, digest: cawRecordDigest(record) };
 }
 
 /**
- * Materialize the CAW runtime under AEP_DATA from GAP. The tree bundles no CAW
- * config or policies: the Go CAW is retired and a Rust CAW with gVisor replaces
- * it. An operator config already under AEP_DATA is kept and pointed at the
- * mount policies that GAP compiles.
+ * Resolve one CAW profile of the tier gvisor into its record: the profile with its
+ * mount policies, egress policy and toolset in one value with a sha256 digest. The
+ * record is the only policy input of the CAW. Variables such as PROJECT_ROOT are
+ * kept as written. The CAW fills them at session create.
+ * @param {string} profileId
+ * @param {string} [repoRoot]
+ */
+export function resolveCawProfile(profileId, repoRoot) {
+  return resolveFromRecords(profileId, collectCawRecords(repoRoot));
+}
+
+/**
+ * Write the resolved record of every profile of the tier gvisor to
+ * <dataDir>/caw-framework/profiles/<profile>.json. A profile of another tier is
+ * listed as skipped, because the CAW does not run it. One profile that cannot be
+ * resolved refuses the whole call and nothing is written.
  * @param {string} dataDir
  * @param {string} [repoRoot]
  */
-export function materializeCawRuntimeFromGap(dataDir, repoRoot) {
-  const root = repoRoot ?? join(GAP_ROOT, "../..");
-  const cawRoot = join(dataDir, "caw-framework");
-  const configPath = join(cawRoot, "server-config.yaml");
-  const policiesDir = join(cawRoot, "policies");
-
-  mkdirSync(cawRoot, { recursive: true });
-  mkdirSync(policiesDir, { recursive: true });
-
-  for (const path of listGapReferencePolicies(root)) {
-    const { runtime } = parseGapFile(path);
-    for (const doc of runtime) {
-      if (doc.kind !== "aep.caw.mount_policy" || !doc.name) continue;
-      const out = join(policiesDir, `${doc.name}.yaml`);
-      writeFileSync(out, YAML.stringify(doc.policy ?? {}), "utf8");
+export function materializeCawProfilesFromGap(dataDir, repoRoot) {
+  const records = collectCawRecords(repoRoot);
+  const resolved = [];
+  const skipped = [];
+  for (const [profileId, { doc }] of [...records.profiles].sort(([a], [b]) => a.localeCompare(b))) {
+    if (doc.enforcement_tier !== CAW_TIER_GVISOR) {
+      skipped.push({ profile_id: profileId, enforcement_tier: doc.enforcement_tier ?? "none" });
+      continue;
     }
+    resolved.push(resolveFromRecords(profileId, records));
   }
-
-  if (existsSync(configPath)) {
-    const raw = readFileSync(configPath, "utf8");
-    const parsed = YAML.parse(raw) ?? {};
-    parsed.policies = parsed.policies ?? {};
-    parsed.policies.dir = policiesDir;
-    writeFileSync(configPath, YAML.stringify(parsed), "utf8");
-  }
-
-  mergeGapProfilesIntoCawConfig(configPath, root);
-  return { configPath, policiesDir, profiles: compileMountProfilesFromGap(root) };
+  const profilesDir = join(dataDir, "caw-framework", "profiles");
+  mkdirSync(profilesDir, { recursive: true });
+  const written = resolved.map((record) => {
+    const path = join(profilesDir, `${record.profile_id}.json`);
+    writeFileSync(path, `${canonicalJson(record)}\n`, "utf8");
+    return { profile_id: record.profile_id, path, digest: record.digest };
+  });
+  return { profilesDir, profiles: written, skipped };
 }
 
 /**
@@ -263,6 +542,8 @@ export function listGapCawProfiles(repoRoot) {
     mounts: p.mounts,
     gap_address: p.gap_address,
     enforcement_tier: p.enforcement_tier,
+    egress_policy: p.egress_policy,
+    toolset: p.toolset,
     llm_proxy: p.llm_proxy,
     compiled_runtime: p.compiled_runtime,
   }));
@@ -277,19 +558,26 @@ function isMain(importMetaUrl) {
 if (isMain(import.meta.url)) {
   const args = process.argv.slice(2);
   const repoRoot = join(GAP_ROOT, "../..");
-  if (args.includes("--emit-mount-profiles")) {
-    process.stdout.write(buildMountProfilesYaml(repoRoot));
-    process.exit(0);
-  }
   if (args.includes("--list-profiles")) {
     console.log(JSON.stringify(listGapCawProfiles(repoRoot), null, 2));
     process.exit(0);
   }
-  if (args[0] === "--materialize" && args[1]) {
-    const out = materializeCawRuntimeFromGap(args[1], repoRoot);
-    console.log(JSON.stringify(out, null, 2));
-    process.exit(0);
+  try {
+    if (args[0] === "--resolve" && args[1]) {
+      console.log(JSON.stringify(resolveCawProfile(args[1], repoRoot), null, 2));
+      process.exit(0);
+    }
+    if (args[0] === "--materialize" && args[1]) {
+      console.log(JSON.stringify(materializeCawProfilesFromGap(args[1], repoRoot), null, 2));
+      process.exit(0);
+    }
+  } catch (err) {
+    if (err instanceof GapCompileError) {
+      console.error(`gap-compile: ${err.code}: ${err.message}`);
+      process.exit(2);
+    }
+    throw err;
   }
-  console.error("Usage: gap-compile.mjs --list-profiles | --emit-mount-profiles | --materialize <AEP_DATA>");
+  console.error("Usage: gap-compile.mjs --list-profiles | --resolve <profile> | --materialize <AEP_DATA>");
   process.exit(1);
 }

@@ -23,9 +23,9 @@ metadata:
   version: "1.0.0"
   stability: stable
   agent_permission:
-    - agent_id: grok-build
+    - agent_id: build-agent
       action: compile
-    - agent_id: grok-build
+    - agent_id: build-agent
       action: write
   wrap: caw
   action_path_prefix: caw
@@ -56,11 +56,11 @@ kind: aep.caw.profile
 profile_id: agent-sandbox
 name: agent-sandbox
 base_policy: agent-sandbox
-enforcement_tier: adapter
+enforcement_tier: gvisor
 llm_proxy: true
 compiled_runtime: false
+egress_policy: model-gateway
+toolset: core-tools
 mounts:
   - path: "${PROJECT_ROOT}"
-    policy: workspace-rw
-  - path: "/tmp"
     policy: workspace-rw

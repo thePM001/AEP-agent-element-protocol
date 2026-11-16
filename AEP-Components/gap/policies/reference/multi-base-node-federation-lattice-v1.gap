@@ -21,9 +21,9 @@ metadata:
   version: 1.0.0
   stability: experimental
   agent_permission:
-    - agent_id: grok-build
+    - agent_id: build-agent
       action: write
-    - agent_id: grok-build
+    - agent_id: build-agent
       action: federate
   wrap: federation
   action_path_prefix: federation

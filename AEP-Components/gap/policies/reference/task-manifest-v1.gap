@@ -22,9 +22,9 @@ metadata:
   version: "1.0.0"
   stability: stable
   agent_permission:
-    - agent_id: grok-build
+    - agent_id: build-agent
       action: write
-    - agent_id: grok-build
+    - agent_id: build-agent
       action: manifest
   wrap: ucb
   action_path_prefix: ucb

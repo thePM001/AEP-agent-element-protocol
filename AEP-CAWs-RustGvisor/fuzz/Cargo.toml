@@ -1,0 +1,39 @@
+[package]
+name = "aep-caw-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+license = "Apache-2.0"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+aep-caw-policy = { path = "../aep-caw-policy" }
+aep-caw-runtime = { path = "../aep-caw-runtime" }
+
+# Fuzzing needs nightly and cargo-fuzz, so this crate is its own workspace.
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "parse_record"
+path = "fuzz_targets/parse_record.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "decide_route"
+path = "fuzz_targets/decide_route.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "decode_trace_packet"
+path = "fuzz_targets/decode_trace_packet.rs"
+test = false
+doc = false
+bench = false

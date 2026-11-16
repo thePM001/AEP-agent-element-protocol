@@ -14,7 +14,7 @@ An operator writes GAP files. The Admit Gate (04) receives them as walls, the CA
 
 - The GAP meta-schema in version 1.3 as the live authoring constraint, pinned to its upstream commit and checked byte for byte.
 - Reference instructions for coding governance, CAW sandbox profiles, task manifests and implementation plans.
-- `lib/gap-compile.mjs`, the compiler from GAP profiles to CAW mount profiles and policies.
+- `lib/gap-compile.mjs`, the compiler from GAP profiles to the resolved profile records of the CAW.
 - The live policy files, presets, the Policy Builder and the Schema Builder in `AEP-Policy-System/`.
 - Transpilers to OPA Rego and Cedar and a YAML policy importer in `AEP-Components/policy-engine/`.
 - The schema has the fields for self-generation, for example `self_generate` and `lrt`. The Schema Builder estimates fields with MLE and the Policy Builder detects invariants in data. A runtime with self-generation of new policies through LRT and MLE, as the page describes it, is planned.
@@ -37,9 +37,9 @@ An operator writes GAP files. The Admit Gate (04) receives them as walls, the CA
 
 ## Interfaces
 
-- Command: `node AEP-Components/gap/lib/gap-compile.mjs` with `--list-profiles` and `--materialize <data folder>`.
+- Command: `node AEP-Components/gap/lib/gap-compile.mjs` with `--list-profiles`, `--resolve <profile>` and `--materialize <data folder>`.
 - File format: one `.gap` file per instruction, with an optional second YAML document for a runtime profile. See `FILE-FORMAT.md`.
-- Compile targets: CAW settings under `$AEP_DATA/caw-framework/`, `task-manifest-v1.json` and `implementation-plan-v1.json`.
+- Compile targets: one resolved CAW profile record per profile under `$AEP_DATA/caw-framework/profiles/`, `task-manifest-v1.json` and `implementation-plan-v1.json`.
 - Agent permission is the field `agent_permission`. The presence of a `trust_ring` field is a deny.
 
 ## The language in this file
@@ -464,7 +464,7 @@ This tree vendors classic GAP into `AEP-Components/gap/` from github.com/thePM00
 - `schemas/` holds GAP meta-schema v1.3 as the live Layer 1 authoring constraint mask. v1.1 and v1.2 remain as historical masks. The schemas are byte copies of GAP-OPEN-SOURCE pinned in `gap-pin.txt`.
 - `gap-pin.txt` names the GAP commit that the schemas, `gap-versions.toml` and the profile crate in `AEP-Components/gap-schema-profile-v13/` come from. `bin/check-gap-pin.mjs` checks every pinned byte and that the pinned GAP version values name this AEP release.
 - `policies/reference/` holds reference `.gap` instructions for coding governance, CAW sandbox profiles, task manifests and implementation plans.
-- `lib/gap-compile.mjs` compiles GAP profiles to CAW mount_profiles and per-mount policies for local use.
+- `lib/gap-compile.mjs` compiles each GAP profile of the tier `gvisor` into one resolved profile record with a sha256 digest. See `FILE-FORMAT.md` for the record kinds.
 - Coding governance validation runs in Rust on the AEP vendor tree.
 - GAP policies here declare what agents must do.
 - The subprotocol enforces domain actions propose, siee_check and solidify.
@@ -475,7 +475,7 @@ This tree vendors classic GAP into `AEP-Components/gap/` from github.com/thePM00
 - `${AEP_AGENT_CONFIG_DIR}`, `${HOME}/.config/agent` and `${HOME}/.local/share/agent` are read-only.
 - The base policy is `default` with agent_permission grants and the LLM proxy enabled.
 - Use `agent-sandbox` for untrusted code and `compiled-runtime` when the LLM proxy must stay off.
-- Compile with `node lib/gap-compile.mjs --list-profiles` or `node lib/gap-compile.mjs --materialize /data/aep` then wrap with `aep-caw wrap --profile coding-agent`.
+- Compile with `node lib/gap-compile.mjs --list-profiles`, `node lib/gap-compile.mjs --resolve coding-agent` or `node lib/gap-compile.mjs --materialize /data/aep`.
 - UCB is optional. Foreign ingest needs a task manifest that is caller-provided, stored or from an explicitly configured synthesis tier.
 - File format notes live at AEP-Components/gap/FILE-FORMAT.md.
 
@@ -505,25 +505,22 @@ flowchart LR
   end
 
   subgraph RT_ARTIFACTS[Runtime artifacts]
-    CAWCFG["AEP_DATA caw-framework server-config.yaml"]
-    MOUNT["mount_profiles and per-mount policies"]
+    CAWREC["AEP_DATA caw-framework profiles: one resolved record per profile"]
     TM["task-manifest-v1.json"]
     PLAN["implementation-plan-v1.json"]
   end
 
   subgraph ENFORCEMENT[Enforcement]
-    CAW["aep-caw server and CLI"]
+    CAW["aep-caw"]
     UCBGAP["UCB ingress port 8412"]
     BN["Base Node docks"]
   end
 
   GAPREF --> GC
   PS --> BN
-  GC --> CAWCFG
-  GC --> MOUNT
+  GC --> CAWREC
   GC --> TM
-  CAWCFG --> CAW
-  MOUNT --> CAW
+  CAWREC --> CAW
   TM --> UCBGAP
   TM --> BN
   PLAN --> BN
@@ -533,10 +530,10 @@ flowchart LR
 |-------|------------|----------------|
 | **GAP instruction** | Declares intent, who may do what, scanners, subprotocol bindings, structured types | `*.gap` under `AEP-Components/gap/policies/reference/` and `AEP-Policy-System/reference/` |
 | **GAP runtime doc** | Concrete profile payload (`kind: aep.caw.profile`) in the same `.gap` file after `---` | Second YAML document in multi-doc `.gap` files |
-| **Compile** | Turns GAP into CAW `mount_profiles`, per-mount policy YAML, manifests | `AEP-Components/gap/lib/gap-compile.mjs` |
+| **Compile** | Turns GAP into resolved CAW profile records and manifests | `AEP-Components/gap/lib/gap-compile.mjs` |
 | **CAW session** | Host sandbox: policy engine, adapters, optional FUSE mounts, LLM proxy | `aep-caw session create`, `run`, `wrap` |
 
-**Rule:** JSON schemas (`task-manifest-v1.json`, `implementation-plan-v1.json`) and CAW YAML under `$AEP_DATA` are **materialized compile targets**, not places to hand-author policy.
+**Rule:** JSON schemas (`task-manifest-v1.json`, `implementation-plan-v1.json`) and the CAW profile records under `$AEP_DATA` are **materialized compile targets**, not places to hand-author policy.
 
 ### UCB manifest synthesis env vars (optional tiers)
 

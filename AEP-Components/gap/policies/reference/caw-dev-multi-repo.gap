@@ -22,9 +22,9 @@ metadata:
   version: "1.0.0"
   stability: stable
   agent_permission:
-    - agent_id: grok-build
+    - agent_id: build-agent
       action: compile
-    - agent_id: grok-build
+    - agent_id: build-agent
       action: write
   wrap: caw
   action_path_prefix: caw
@@ -49,9 +49,11 @@ kind: aep.caw.profile
 profile_id: dev-multi-repo
 name: dev-multi-repo
 base_policy: dev-safe
-enforcement_tier: adapter
+enforcement_tier: gvisor
 llm_proxy: true
 compiled_runtime: false
+egress_policy: model-gateway
+toolset: coding-tools
 mounts:
   - path: "${HOME}/projects/frontend"
     policy: workspace-rw

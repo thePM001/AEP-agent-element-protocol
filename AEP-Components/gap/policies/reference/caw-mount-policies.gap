@@ -22,9 +22,9 @@ metadata:
   version: "1.0.0"
   stability: stable
   agent_permission:
-    - agent_id: grok-build
+    - agent_id: build-agent
       action: compile
-    - agent_id: grok-build
+    - agent_id: build-agent
       action: write
   wrap: caw
   action_path_prefix: caw
@@ -77,16 +77,12 @@ name: project-only
 policy:
   version: 1
   name: project-only
-  description: Limited read-write within project root only
+  description: Read-write access within the project root only
   file_rules:
     - name: allow-project-rw
       paths: ["${MOUNT_PATH}", "${MOUNT_PATH}/**"]
-      operations: ["read", "write", "create", "mkdir", "list", "stat"]
+      operations: ["read", "write", "create", "mkdir", "delete", "rename", "list", "stat"]
       decision: allow
-    - name: soft-delete-project
-      paths: ["${MOUNT_PATH}/**"]
-      operations: ["delete", "rmdir"]
-      decision: soft_delete
 ---
 kind: aep.caw.mount_policy
 name: minimal
@@ -95,10 +91,54 @@ policy:
   name: minimal
   description: Strict base policy for restricted agent sessions
   file_rules:
-    - name: allow-tmp
-      paths: ["/tmp/**"]
+    - name: deny-home-secrets
+      paths: ["${HOME}/.ssh/**", "${HOME}/.gnupg/**", "${HOME}/.aws/**"]
       operations: ["*"]
-      decision: allow
+      decision: deny
+  command_rules:
+    - name: deny-privilege-escalation
+      commands: ["sudo", "su", "doas"]
+      decision: deny
+---
+kind: aep.caw.mount_policy
+name: default
+policy:
+  version: 1
+  name: default
+  description: Base policy of a governed coding agent session
+  file_rules:
+    - name: deny-home-secrets
+      paths: ["${HOME}/.ssh/**", "${HOME}/.gnupg/**", "${HOME}/.aws/**"]
+      operations: ["*"]
+      decision: deny
+  command_rules:
+    - name: deny-privilege-escalation
+      commands: ["sudo", "su", "doas"]
+      decision: deny
+---
+kind: aep.caw.mount_policy
+name: agent-sandbox
+policy:
+  version: 1
+  name: agent-sandbox
+  description: Base policy of a session that runs code nobody reviewed
+  file_rules:
+    - name: deny-home-secrets
+      paths: ["${HOME}/.ssh/**", "${HOME}/.gnupg/**", "${HOME}/.aws/**"]
+      operations: ["*"]
+      decision: deny
+  command_rules:
+    - name: deny-privilege-escalation
+      commands: ["sudo", "su", "doas"]
+      decision: deny
+---
+kind: aep.caw.mount_policy
+name: dev-safe
+policy:
+  version: 1
+  name: dev-safe
+  description: Base policy of a development session over several repositories
+  file_rules:
     - name: deny-home-secrets
       paths: ["${HOME}/.ssh/**", "${HOME}/.gnupg/**", "${HOME}/.aws/**"]
       operations: ["*"]

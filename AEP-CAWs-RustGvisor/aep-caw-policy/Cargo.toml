@@ -1,0 +1,19 @@
+[package]
+name = "aep-caw-policy"
+description = "Policy engine of the CAW: turns one resolved profile record into a sandbox plan, judges egress routes and classifies deny events. No I/O."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest = "1"
+
+[lints]
+workspace = true

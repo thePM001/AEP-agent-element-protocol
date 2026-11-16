@@ -1,17 +1,20 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import YAML from "yaml";
 import {
+  CAW_RESOLVED_RECORD,
   GAP_REFERENCE_DIR,
-  buildMountProfilesYaml,
+  GapCompileError,
+  canonicalJson,
+  cawRecordDigest,
   compileMountProfilesFromGap,
   listGapCawProfiles,
   listGapReferencePolicies,
-  materializeCawRuntimeFromGap,
-  mergeGapProfilesIntoCawConfig,
+  materializeCawProfilesFromGap,
   parseGapFile,
+  resolveCawProfile,
   resolveGapProfileFile,
   synthesizeTaskManifestFromGap,
   validatePlanAgainstGapTemplate,
@@ -161,6 +164,8 @@ describe("compileMountProfilesFromGap and listGapCawProfiles", () => {
       mounts: [{ path: "/work", policy: "rw" }],
       gap_address: "dev.test/zeta.v1",
       enforcement_tier: "seccomp",
+      egress_policy: null,
+      toolset: null,
       llm_proxy: false,
       compiled_runtime: true,
     });
@@ -187,72 +192,275 @@ describe("compileMountProfilesFromGap and listGapCawProfiles", () => {
   });
 });
 
-describe("buildMountProfilesYaml", () => {
-  it("emits sorted mount_profiles YAML that parses back", () => {
-    fakeRepo();
-    const text = buildMountProfilesYaml(root);
-    expect(text.startsWith("mount_profiles:\n  alpha:\n")).toBe(true);
-    expect(text.endsWith("\n")).toBe(true);
-    expect(YAML.parse(text)).toEqual({
-      mount_profiles: {
-        alpha: { base_policy: "default", mounts: null },
-        zeta: { base_policy: "minimal", mounts: [{ path: "/work", policy: "rw" }] },
+/** The documents of one small repo with one CAW profile of the tier gvisor. */
+function gvisorDocs() {
+  return {
+    profile: {
+      kind: "aep.caw.profile",
+      profile_id: "g",
+      name: "g",
+      base_policy: "base",
+      enforcement_tier: "gvisor",
+      llm_proxy: true,
+      compiled_runtime: false,
+      egress_policy: "gateway",
+      toolset: "tools",
+      mounts: [{ path: "${PROJECT_ROOT}", policy: "rw" }],
+    },
+    rw: {
+      kind: "aep.caw.mount_policy",
+      name: "rw",
+      policy: {
+        version: 1,
+        name: "rw",
+        description: "read and write",
+        file_rules: [
+          { name: "allow-rw", paths: ["${MOUNT_PATH}", "${MOUNT_PATH}/**"], operations: ["read", "write"], decision: "allow" },
+        ],
       },
+    },
+    base: {
+      kind: "aep.caw.mount_policy",
+      name: "base",
+      policy: {
+        version: 1,
+        name: "base",
+        command_rules: [{ name: "no-sudo", commands: ["sudo"], decision: "deny" }],
+      },
+    },
+    egress: {
+      kind: "aep.caw.egress_policy",
+      name: "gateway",
+      unmatched: "deny",
+      routes: [{ name: "gateway", scheme: "https", host: "gateway.example.com", port: 443, decision: "allow" }],
+    },
+    toolset: {
+      kind: "aep.caw.toolset",
+      name: "tools",
+      programs: [{ name: "sh", source: "/usr/bin/sh" }, { name: "git", source: "/opt/git/bin/git", path: "/usr/local/bin/git" }],
+    },
+  };
+}
+
+/** Write the documents as one reference file of a fresh repo root. */
+function gvisorRepo(change = () => {}, extraDocs = []) {
+  const docs = gvisorDocs();
+  change(docs);
+  root = mkdtempSync(join(tmpdir(), "aep-"));
+  const all = [docs.profile, docs.rw, docs.base, docs.egress, docs.toolset, ...extraDocs].filter(Boolean);
+  put(
+    `${REF}/caw-g.gap`,
+    ["address:\n  domain: dev.test\n  id: g.v1\npattern: test\n", ...all.map((d) => YAML.stringify(d))].join("---\n"),
+  );
+  return root;
+}
+
+function refusal(fn) {
+  try {
+    fn();
+  } catch (err) {
+    expect(err).toBeInstanceOf(GapCompileError);
+    return err.code;
+  }
+  return "no refusal";
+}
+
+describe("canonicalJson and cawRecordDigest", () => {
+  it("sorts the keys of every record and keeps the order of lists", () => {
+    expect(canonicalJson({ b: 1, a: [{ d: null, c: "x" }, 2], e: true })).toBe('{"a":[{"c":"x","d":null},2],"b":1,"e":true}');
+  });
+
+  it("gives the same digest for the same content in another key order", () => {
+    const one = cawRecordDigest({ a: 1, b: { c: 2, d: 3 }, digest: "old" });
+    const two = cawRecordDigest({ b: { d: 3, c: 2 }, a: 1 });
+    expect(one).toBe(two);
+    expect(one).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(cawRecordDigest({ a: 2, b: { c: 2, d: 3 } })).not.toBe(one);
+  });
+});
+
+describe("resolveCawProfile", () => {
+  it("resolves a profile of the tier gvisor into one record with its digest", () => {
+    gvisorRepo();
+    const record = resolveCawProfile("g", root);
+    expect(record.record).toBe(CAW_RESOLVED_RECORD);
+    expect(record.version).toBe(1);
+    expect(record.profile_id).toBe("g");
+    expect(record.gap_address).toBe("dev.test/g.v1");
+    expect(record.enforcement_tier).toBe("gvisor");
+    expect(record.llm_proxy).toBe(true);
+    expect(record.compiled_runtime).toBe(false);
+    expect(record.base_policy).toEqual({
+      name: "base",
+      file_rules: [],
+      command_rules: [{ name: "no-sudo", commands: ["sudo"], decision: "deny" }],
     });
+    expect(record.mounts).toEqual([
+      {
+        path: "${PROJECT_ROOT}",
+        policy: {
+          name: "rw",
+          file_rules: [
+            { name: "allow-rw", paths: ["${MOUNT_PATH}", "${MOUNT_PATH}/**"], operations: ["read", "write"], decision: "allow" },
+          ],
+          command_rules: [],
+        },
+      },
+    ]);
+    expect(record.egress_policy).toEqual({
+      name: "gateway",
+      unmatched: "deny",
+      routes: [{ name: "gateway", scheme: "https", host: "gateway.example.com", port: 443, decision: "allow" }],
+    });
+    expect(record.toolset).toEqual({
+      name: "tools",
+      programs: [
+        { name: "sh", source: "/usr/bin/sh", path: "/usr/bin/sh" },
+        { name: "git", source: "/opt/git/bin/git", path: "/usr/local/bin/git" },
+      ],
+    });
+    expect(record.digest).toBe(cawRecordDigest(record));
+  });
+
+  it("changes the digest when one route changes", () => {
+    gvisorRepo();
+    const before = resolveCawProfile("g", root).digest;
+    rmSync(root, { recursive: true, force: true });
+    gvisorRepo((d) => {
+      d.egress.routes[0].port = 8443;
+    });
+    expect(resolveCawProfile("g", root).digest).not.toBe(before);
+  });
+
+  it("gives a profile with no egress policy no route at all", () => {
+    gvisorRepo((d) => {
+      d.profile.llm_proxy = false;
+      delete d.profile.egress_policy;
+    });
+    expect(resolveCawProfile("g", root).egress_policy).toBeNull();
+  });
+
+  it("takes a wildcard under one domain and one variable as a host", () => {
+    for (const host of ["*.example.com", "${AEP_MODEL_GATEWAY_HOST}"]) {
+      gvisorRepo((d) => {
+        d.egress.routes[0].host = host;
+      });
+      expect(resolveCawProfile("g", root).egress_policy.routes[0].host).toBe(host);
+      rmSync(root, { recursive: true, force: true });
+    }
+    root = "";
+  });
+
+  it("refuses what the CAW cannot run, each with its reason", () => {
+    const cases = [
+      ["tier", (d) => { d.profile.enforcement_tier = "seccomp"; }],
+      ["tier", (d) => { delete d.profile.enforcement_tier; }],
+      ["no-toolset", (d) => { delete d.profile.toolset; }],
+      ["unknown-toolset", (d) => { d.profile.toolset = "absent"; }],
+      ["unknown-policy", (d) => { d.profile.base_policy = "absent"; }],
+      ["unknown-policy", (d) => { d.profile.mounts[0].policy = "absent"; }],
+      ["unknown-egress-policy", (d) => { d.profile.egress_policy = "absent"; }],
+      ["llm-proxy-without-route", (d) => { delete d.profile.egress_policy; }],
+      ["missing-field", (d) => { delete d.profile.llm_proxy; }],
+      ["missing-field", (d) => { d.profile.compiled_runtime = "yes"; }],
+      ["missing-field", (d) => { d.profile.mounts = []; }],
+      ["missing-field", (d) => { d.egress.routes = []; }],
+      ["missing-field", (d) => { d.toolset.programs = []; }],
+      ["missing-field", (d) => { d.rw.policy.file_rules[0].paths = []; }],
+      ["unknown-key", (d) => { d.profile.approval = "ask"; }],
+      ["unknown-key", (d) => { d.profile.mounts[0].extra = true; }],
+      ["unknown-key", (d) => { d.rw.policy.network_rules = []; }],
+      ["unknown-key", (d) => { d.rw.policy.file_rules[0].redirect = "/x"; }],
+      ["unknown-key", (d) => { d.egress.routes[0].path = "/v1"; }],
+      ["unknown-key", (d) => { d.egress.default = "allow"; }],
+      ["unknown-key", (d) => { d.toolset.programs[0].sha256 = "x"; }],
+      ["egress-unmatched", (d) => { d.egress.unmatched = "allow"; }],
+      ["egress-route", (d) => { d.egress.routes[0].scheme = "ftp"; }],
+      ["egress-route", (d) => { d.egress.routes[0].host = "10.0.0.1"; }],
+      ["egress-route", (d) => { d.egress.routes[0].host = "Gateway.Example.com"; }],
+      ["egress-route", (d) => { d.egress.routes[0].host = "*"; }],
+      ["egress-route", (d) => { d.egress.routes[0].host = "a.*.example.com"; }],
+      ["egress-route", (d) => { d.egress.routes[0].port = 0; }],
+      ["egress-route", (d) => { d.egress.routes[0].port = "443"; }],
+      ["egress-route", (d) => { d.egress.routes[0].decision = "approve"; }],
+      ["toolset-program", (d) => { d.toolset.programs[0].source = "bin/sh"; }],
+      ["toolset-program", (d) => { d.toolset.programs[0].source = "/usr/../bin/sh"; }],
+      ["toolset-program", (d) => { d.toolset.programs[0].name = "../sh"; }],
+      ["duplicate-name", (d) => { d.toolset.programs.push({ name: "sh", source: "/bin/sh", path: "/bin/sh" }); }],
+      ["duplicate-name", (d) => { d.toolset.programs.push({ name: "dash", source: "/bin/dash", path: "/usr/bin/sh" }); }],
+      ["duplicate-name", (d) => { d.egress.routes.push({ ...d.egress.routes[0] }); }],
+    ];
+    for (const [code, change] of cases) {
+      gvisorRepo(change);
+      expect([code, refusal(() => resolveCawProfile("g", root))]).toEqual([code, code]);
+      rmSync(root, { recursive: true, force: true });
+    }
+    root = "";
+  });
+
+  it("refuses an unknown profile and two records with one name", () => {
+    gvisorRepo();
+    expect(refusal(() => resolveCawProfile("absent", root))).toBe("unknown-profile");
+    rmSync(root, { recursive: true, force: true });
+    gvisorRepo(() => {}, [{ kind: "aep.caw.toolset", name: "tools", programs: [{ name: "ls", source: "/usr/bin/ls" }] }]);
+    expect(refusal(() => resolveCawProfile("g", root))).toBe("duplicate-name");
+    rmSync(root, { recursive: true, force: true });
+    gvisorRepo(() => {}, [{ kind: "aep.caw.egress_policy", name: "Not Plain", routes: [] }]);
+    expect(refusal(() => resolveCawProfile("g", root))).toBe("record-name");
   });
 });
 
-describe("mergeGapProfilesIntoCawConfig", () => {
-  it("replaces mount_profiles and keeps other keys", () => {
-    fakeRepo();
-    const cfg = join(root, "server-config.yaml");
-    writeFileSync(cfg, YAML.stringify({ port: 9000, mount_profiles: { old: {} } }));
-    expect(mergeGapProfilesIntoCawConfig(cfg, root)).toBe(cfg);
-    const parsed = YAML.parse(readFileSync(cfg, "utf8"));
-    expect(parsed.port).toBe(9000);
-    expect(Object.keys(parsed.mount_profiles)).toEqual(["alpha", "zeta"]);
-    expect(parsed.mount_profiles.zeta.mounts).toEqual([{ path: "/work", policy: "rw" }]);
-  });
-
-  it("creates the config when it does not exist", () => {
-    fakeRepo();
-    const cfg = join(root, "new-config.yaml");
-    mergeGapProfilesIntoCawConfig(cfg, root);
-    expect(YAML.parse(readFileSync(cfg, "utf8")).mount_profiles.alpha.base_policy).toBe("default");
-  });
-});
-
-describe("materializeCawRuntimeFromGap", () => {
-  it("writes mount policies and points an existing operator config at them", () => {
-    fakeRepo();
+describe("materializeCawProfilesFromGap", () => {
+  it("writes one canonical record per profile of the tier gvisor and skips the others", () => {
+    gvisorRepo();
+    put(`${REF}/caw-old.gap`, profileGap("dev.test", "old.v1", { profile_id: "old", enforcement_tier: "seccomp" }));
     const data = join(root, "data");
-    put("data/caw-framework/server-config.yaml", YAML.stringify({ listen: "local", policies: { strict: true } }));
-    const out = materializeCawRuntimeFromGap(data, root);
-    expect(out.configPath).toBe(join(data, "caw-framework", "server-config.yaml"));
-    expect(out.policiesDir).toBe(join(data, "caw-framework", "policies"));
-    expect(Object.keys(out.profiles).sort()).toEqual(["alpha", "zeta"]);
-    expect(YAML.parse(readFileSync(join(out.policiesDir, "rw.yaml"), "utf8"))).toEqual({ allow: ["read", "write"] });
-    const cfg = YAML.parse(readFileSync(out.configPath, "utf8"));
-    expect(cfg.listen).toBe("local");
-    expect(cfg.policies).toEqual({ strict: true, dir: out.policiesDir });
-    expect(Object.keys(cfg.mount_profiles)).toEqual(["alpha", "zeta"]);
+    const out = materializeCawProfilesFromGap(data, root);
+    expect(out.profilesDir).toBe(join(data, "caw-framework", "profiles"));
+    expect(out.skipped).toEqual([{ profile_id: "old", enforcement_tier: "seccomp" }]);
+    expect(out.profiles.map((p) => p.profile_id)).toEqual(["g"]);
+    const text = readFileSync(out.profiles[0].path, "utf8");
+    const record = JSON.parse(text);
+    expect(text).toBe(`${canonicalJson(record)}\n`);
+    expect(record.digest).toBe(out.profiles[0].digest);
+    expect(record.digest).toBe(cawRecordDigest(record));
+    expect(existsSync(join(data, "caw-framework", "server-config.yaml"))).toBe(false);
+    expect(existsSync(join(data, "caw-framework", "policies"))).toBe(false);
   });
 
-  it("keeps an existing policy file that GAP does not name", () => {
-    fakeRepo();
+  it("writes nothing when one profile cannot be resolved", () => {
+    gvisorRepo((d) => {
+      d.profile.toolset = "absent";
+    });
     const data = join(root, "data");
-    put("data/caw-framework/server-config.yaml", "listen: mine\n");
-    put("data/caw-framework/policies/base.yaml", "mine: true\n");
-    const out = materializeCawRuntimeFromGap(data, root);
-    expect(YAML.parse(readFileSync(out.configPath, "utf8")).listen).toBe("mine");
-    expect(readFileSync(join(out.policiesDir, "base.yaml"), "utf8")).toBe("mine: true\n");
+    expect(refusal(() => materializeCawProfilesFromGap(data, root))).toBe("unknown-toolset");
+    expect(existsSync(data)).toBe(false);
   });
 
-  it("works without any bundled CAW config", () => {
-    fakeRepo();
-    const out = materializeCawRuntimeFromGap(join(root, "data"), root);
-    const cfg = YAML.parse(readFileSync(out.configPath, "utf8"));
-    expect(Object.keys(cfg)).toEqual(["mount_profiles"]);
+  it("resolves every shipped reference profile", () => {
+    root = mkdtempSync(join(tmpdir(), "aep-"));
+    const out = materializeCawProfilesFromGap(join(root, "data"));
+    expect(out.skipped).toEqual([]);
+    expect(out.profiles.map((p) => p.profile_id)).toEqual([
+      "agent-sandbox",
+      "coding-agent",
+      "compiled-runtime",
+      "dev-multi-repo",
+      "restricted",
+    ]);
+    const restricted = resolveCawProfile("restricted");
+    expect(restricted.egress_policy.routes).toEqual([
+      { name: "model-gateway", scheme: "https", host: "${AEP_MODEL_GATEWAY_HOST}", port: 443, decision: "allow" },
+    ]);
+    expect(resolveCawProfile("compiled-runtime").egress_policy).toBeNull();
+    for (const { profile_id } of out.profiles) {
+      const record = resolveCawProfile(profile_id);
+      const decisions = [record.base_policy, ...record.mounts.map((m) => m.policy)]
+        .flatMap((p) => [...p.file_rules, ...p.command_rules])
+        .map((r) => r.decision);
+      expect(decisions.every((d) => d === "allow" || d === "deny")).toBe(true);
+      expect(record.toolset.programs.some((p) => ["sudo", "su", "doas"].includes(p.name))).toBe(false);
+    }
   });
 });
 
