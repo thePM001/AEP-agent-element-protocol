@@ -1,9 +1,7 @@
-@PAD: aep-ede-identifier-vectors-v1
-@GCDE: gaplune.policy.v1
-schema_id: gaplune.aep.ede.identifier-vectors.v1
-format: gaplune
+schema_id: aep.ede.identifier-vectors.v1
+format: aep-record
 json: prohibited
-note: One identifier specification for every draft environment of AEP. Every draft environment runs every vector of this file. A value writes a line break as \n, a tab as \t, a carriage return as \r and a NUL as \0. The repo vectors take the default owner thePM001 and name the canonical form or no.
+note: One identifier specification for every draft environment of AEP. Every draft environment runs every vector of this file. A value writes a line break as \n, a tab as \t, a carriage return as \r, a NUL as \0 and the second hyphen of a doubled hyphen as \-. The repo vectors take the default owner thePM001 and name the canonical form or no.
 vectors:
   - draft_id ede-1794837765-0123456789abcdef0123456789abcdef => ok
   - draft_id ede-0-ffffffffffffffffffffffffffffffff => ok
@@ -11,7 +9,7 @@ vectors:
   - draft_id ede-1794837765-167b3c247ebdcc4e => no
   - draft_id ede-1794837765-167b3c247ebd => no
   - draft_id ede-1794837765-0123456789ABCDEF0123456789abcdef => no
-  - draft_id ede--0123456789abcdef0123456789abcdef => no
+  - draft_id ede-\-0123456789abcdef0123456789abcdef => no
   - draft_id ede-1-0123456789abcdef0123456789abcdef\n => no
   - draft_id ../ede-1-0123456789abcdef0123456789abcdef => no
   - draft_id ede-1-0123456789abcdef0123456789abcdeg => no
@@ -24,7 +22,7 @@ vectors:
   - agent coder_two => no
   - agent -coder => no
   - agent coder- => no
-  - agent coder--two => no
+  - agent coder-\-two => no
   - agent coder\nstate: scanned => no
   - agent coder/x => no
   - agent aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa => no

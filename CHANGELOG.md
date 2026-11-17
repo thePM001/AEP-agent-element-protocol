@@ -5,7 +5,7 @@ This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public
 ## [2.9.0] - 2026-11-16 - The draft environment stages the host change of a promote provisionally
 A promote ended in the forge. What it changed on a host went in place by hand, with no trial, no saved way back and no record of what changed.
 
-- A promote that changes a host carries a deploy manifest (`gaplune.aep.ede.deploy-manifest.v1`) with a build, a check, the users it needs and each file with its target, owner, group and mode.
+- A promote that changes a host carries a deploy manifest (`aep.ede.deploy-manifest.v1`) with a build, a check, the users it needs and each file with its target, owner, group and mode.
 - `aep-ede stage` reads the manifest and every source from the git tree the scan judged, builds in an export of that tree, saves every old target with its owner, group and mode in the record root, creates the users it needs and puts the files in place. Then it runs the check. A failed check or a failed step reverts at once.
 - A stage is provisional for `stage_max_age_secs`. Only the operator confirms it with `aep-ede stage-confirm`. `aep-ede stage-revert` puts every target back and proves it. `aep-ede sweep` reverts a stage after its deadline.
 - Targets lie inside the folders `stage_targets` of `operator.conf` lists. The operator folder, the record and state roots, the lattice of the wall and the binary of aep-ede are refused. A target that an open stage holds refuses a second stage.
@@ -29,17 +29,17 @@ A coding agent could write the scan record of its own draft, name another agent 
 The Go CAW leaves the public tree. A Rust CAW replaces it: a policy engine written in Rust that runs every agent process inside gVisor. Until that CAW lands nothing in this tree confines an agent process on the host.
 
 - The folder `AEP-CAW` is gone from the public tree. Its history remains in the git history of this repository.
-- CI runs no Go: the caw and govulncheck jobs, setup-go, gofmt and the Go suites of `ci.gaplune` are gone.
+- CI runs no Go: the caw and govulncheck jobs, setup-go, gofmt and the Go suites of the CI manifest are gone.
 - The end to end example walks six layers: the sealed capsule, the pulse, collect all, apply, the dock attach and the ledger row. It prints one line that says no host sandbox runs. It no longer needs Python.
 - The registry keeps the id `caw-framework` with the status retired, so the Rust CAW takes it over without a new catalog id. The validator knows a retired component and the composer never selects one.
 - Component 11 has its own root folder `AEP-CAWs-RustGvisor/`, where the Rust CAW with gVisor will land. Its README says what ships and what does not.
 - `THREAT_MODEL.md` Layer 4 lists what the missing sandbox leaves open. Run agents inside a container or a virtual machine with its own limits until the Rust CAW lands.
 - `CAW=1` in the Docker image now warns that it has no effect.
 
-## [2.9.0] - 2026-11-13 - The repository declares its CI in ci.gaplune
+## [2.9.0] - 2026-11-13 - The repository declares its CI in one manifest
 A change used to meet the checks of the GitHub workflows only after it was published. The repository now declares the same checks in one file, so a change can pass them before it lands.
 
-- `ci.gaplune` at the root names 10 suites: gitleaks, the Rust tests, clippy, format, the Base Node binaries, the vectors without Rust, the GAP pin check, the AEP-CAW Go suites with the race run, govulncheck and cargo-deny. Each suite names the workflow jobs it mirrors, so a workflow job without a suite shows up as drift.
+- The CI manifest at the root names 10 suites: gitleaks, the Rust tests, clippy, format, the Base Node binaries, the vectors without Rust, the GAP pin check, the AEP-CAW Go suites with the race run, govulncheck and cargo-deny. Each suite names the workflow jobs it mirrors, so a workflow job without a suite shows up as drift.
 - Three jobs that install from the npm registry (TypeScript, the live set and npm audit) are named `github_only`: they run on GitHub alone.
 - A suite runs like a workflow step: any failing line fails the suite. Path filters choose the suites a change triggers. The secret scan runs for every change and names the rule, file and line of a finding.
 

@@ -21,6 +21,16 @@ INIT="${4:?path to aep-caw-init}"
 CAW="${5:-}"
 EGRESS_RECORD="${6:-}"
 NODE="${7:-}"
+# A relative path becomes absolute, so a path that lands in caw.toml or in a sandbox
+# bundle holds from any folder. A bare program name stays a name for the PATH lookup.
+abs() { case "$1" in "" | /*) printf '%s' "$1" ;; */*) printf '%s/%s' "$PWD" "$1" ;; *) printf '%s' "$1" ;; esac; }
+RUNSC="$(abs "$RUNSC")"
+PROOF="$(abs "$PROOF")"
+RECORD="$(abs "$RECORD")"
+INIT="$(abs "$INIT")"
+CAW="$(abs "$CAW")"
+EGRESS_RECORD="$(abs "$EGRESS_RECORD")"
+NODE="$(abs "$NODE")"
 POLICY_DIR="${CAW_ACCEPT_POLICY_DIR:-$(cd "$(dirname "$0")/../.." && pwd)/AEP-Policy-System}"
 
 if [ "$(id -u)" = 0 ]; then

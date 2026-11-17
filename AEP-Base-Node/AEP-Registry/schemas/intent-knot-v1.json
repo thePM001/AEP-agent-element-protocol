@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://aep.dev/schemas/intent-knot-v1.json",
   "title": "Intent Knot v1",
-  "description": "Lattice Memory attractor for coding governance intent phases (propose, solidify, announce). Canonical storage: action-lattice.db via aep-memory (SQLite 3.46.0 bundled, sqlite-vec 0.1.9 vec0, USearch 2.25.3 sidecar). Optional mirror: Agentstream capsule aep-intent-knots.",
+  "description": "Lattice Memory attractor for coding governance intent phases (propose, solidify, announce). Canonical storage: action-lattice.db via aep-memory (SQLite 3.46.0 bundled, sqlite-vec 0.1.9 vec0, USearch 2.25.3 sidecar).",
   "type": "object",
   "required": ["kind", "phase", "intent_id"],
   "properties": {
@@ -27,7 +27,7 @@
     "sqlite_key": { "type": ["integer", "null"] },
     "backends": {
       "type": "array",
-      "items": { "enum": ["sqlite", "agentstream"] }
+      "items": { "enum": ["sqlite"] }
     }
   },
   "additionalProperties": true

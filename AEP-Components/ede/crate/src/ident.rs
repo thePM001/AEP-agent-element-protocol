@@ -2,7 +2,7 @@
 //!
 //! One identifier specification serves every draft environment of AEP. It is written in the readme
 //! of this component (section Identifiers) and its vectors
-//! (identifier-vectors.gaplune of this component).
+//! (identifier-vectors.rec of this component).
 //!
 //! - Draft id: ede-<unix seconds>-<32 lower hex> from 128 random bits of the kernel.
 //! - Agent id: lower case letters, digits and single hyphens, 1 to 64.

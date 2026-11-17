@@ -27,7 +27,6 @@ Coding agents inside the CAWs (11) propose and solidify through the `aep` comman
 | `lib/explain.mjs` | `explainIntentRich` over policy lattice, evidence sessions and intent knots |
 | `lib/evidence-link.mjs` | Summary of an evidence session and the reference builder |
 | `lib/intent-knots.mjs` | Record and search of intent knots in Lattice Memory |
-| `lib/agentstream-knots.mjs` | Optional mirror for knots |
 | `lib/embedding.mjs` | Deterministic embeddings for knot search |
 | `tests/` | vitest suites |
 | `AEP-Components/intent/` | Intent baseline and drift detection |
@@ -50,7 +49,7 @@ aep solidify --intent-id INT-... --no-git                            # skip git 
 aep solidify --intent-id INT-... --git-commit sha                    # manual override
 aep semantic explain INT-... [--lrps epscom-core,gap-runtime-scanners]
 aep semantic list [--limit 20]
-aep semantic knot INT-...              Search lattice memory knots (sqlite-vec + USearch; optional Agentstream)
+aep semantic knot INT-...              Search lattice memory knots (sqlite-vec + USearch)
 aep semantic knot INT-... --phase propose   Re-record knot for a governance phase
 ```
 
@@ -71,7 +70,6 @@ Intent knots are searchable attractors in lattice memory. The file ledger remain
 | Backend | Required | Notes |
 |---------|----------|-------|
 | Lattice Memory (`aep-memory`) | Yes | SQLite **3.54.1** bundled + **sqlite-vec 0.1.9** `vec0` + **USearch 2.25.3** `.usearch` companion file on `$AEP_LATTICE_DB` (`action-lattice.db`) |
-| Agentstream | No | Mirror when `AGENTSTREAM_URL` is set (capsule `aep-intent-knots`) |
 
 ## Limits
 

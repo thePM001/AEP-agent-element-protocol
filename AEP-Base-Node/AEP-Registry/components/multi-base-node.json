@@ -6,7 +6,7 @@
   "built": true,
   "kind": "daemon",
   "path": "AEP-Base-Node/AEP-Multi-Base-Node/",
-  "description": "AEP 2.8b multi-base-node registry: node roles, lattice federation, policy bundle sync. Optional experimental surface, so it is not part of the default build and no default run uses it. Agentstream is optional.",
+  "description": "AEP 2.8b multi-base-node registry: node roles, lattice federation, policy bundle sync. Optional experimental surface, so it is not part of the default build and no default run uses it.",
   "requires": [
     "aep-base-node",
     "lattice-channels"
@@ -15,7 +15,6 @@
     "aep:multi-base-node-registry",
     "aep:node-role-assignment",
     "aep:gap-bundle-sync",
-    "aep:agentstream-topology-optional",
     "aep:lattice-federation"
   ],
   "actions": [
@@ -43,8 +42,7 @@
     "summary": "Optional experimental surface for orchestration of multiple AEP Base Node kernels over lattice-channel.v1. The default build is the single Base Node kernel.",
     "use_when": [
       "registering primary replica edge science-isolated nodes",
-      "federating policy bundles between Base Nodes",
-      "optional as-federated Agentstream with ASIP"
+      "federating policy bundles between Base Nodes"
     ],
     "avoid_when": [
       "single-kernel deploy with no federation need",
@@ -59,7 +57,7 @@
     "rust_crate": "multi-base-node-core",
     "registry_file": "AEP-Base-Node/AEP-Registry/nodes.json",
     "schema_file": "AEP-Base-Node/AEP-Registry/schemas/nodes-registry-v2.json",
-    "default_profile": "AEP-Base-Node/AEP-Registry/profiles/as-single-polar.json",
+    "default_profile": "AEP-Base-Node/AEP-Registry/profiles/single-polar.json",
     "lattice_channel": "aep.multi_base_node",
     "gap_sync_channel": "aep.gap_sync",
     "docs": "AEP-Base-Node/AEP-Multi-Base-Node/docs/multi-base-node-28b.md",

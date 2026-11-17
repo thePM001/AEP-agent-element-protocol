@@ -23,7 +23,7 @@
     },
     {
       "id": "single-node-profile",
-      "path": "AEP-Base-Node/AEP-Registry/profiles/as-single-polar.json",
+      "path": "AEP-Base-Node/AEP-Registry/profiles/single-polar.json",
       "status": "experimental"
     },
     {

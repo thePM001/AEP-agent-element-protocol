@@ -12,7 +12,7 @@
       {"expr": "containerized-modular-deploy", "lang": "gapdsl", "severity": "hard", "description": "Base Node kernel deploys via Docker or kernel admit dock only"},
       {"expr": "wasm-sandbox-lattice-socket", "lang": "gapdsl", "severity": "hard", "description": "WASM sandbox listens on Unix socket wasm_sandbox and plain HTTP :8423 is rejected"},
       {"expr": "composer-lite-wasm-lattice-proxy", "lang": "gapdsl", "severity": "hard", "description": "hyperlattice /api/wasm routes through the lattice channel socket only"},
-      {"expr": "outbound-gateway-lattice-gate", "lang": "gapdsl", "severity": "hard", "description": "LLM, Agentstream, registry and external HTTP gated via the inference_engine dock"},
+      {"expr": "outbound-gateway-lattice-gate", "lang": "gapdsl", "severity": "hard", "description": "LLM, registry and external HTTP gated via the inference_engine dock"},
       {"expr": "setup-agent-inference-lattice-register", "lang": "gapdsl", "severity": "hard", "description": "INFERENCE_ENGINE_REGISTER sealed as a LatticeChannelFrame on the kernel admit dock"},
       {"expr": "docking-frame-only", "lang": "gapdsl", "severity": "hard", "description": "Docking client logEvent and ping use build-frame and no plain wire bypass"},
       {"expr": "ucb-secured-perimeter-dock", "lang": "gapdsl", "severity": "hard", "description": "Non AEP agent stacks integrate only via UCB :8412 and UCB uses lattice transport internally"},

@@ -14,4 +14,4 @@ pub use registry::{
     save_registry, update_gap_checkpoint, validate_node, validate_registry,
 };
 pub use sync::merkle_root_hex;
-pub use types::{AgentstreamTopology, NodeRecord, NodeRole, NodesRegistryV2};
+pub use types::{NodeRecord, NodeRole, NodesRegistryV2};

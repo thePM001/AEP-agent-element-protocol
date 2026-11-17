@@ -85,7 +85,7 @@ Every seed, scan, rescan, refresh, promote, expire and sweep is one entry of a c
 A promote that changes a host carries a deploy manifest in its tree. The stage verbs read the manifest and every source from the git tree the scan judged, never from the working folder and put the change in place for a trial with a saved way back.
 
 ```
-aep-ede stage <draft> deploy/host.gaplune   # build, save the old targets, put the files in place, run the check
+aep-ede stage <draft> deploy/host.rec   # build, save the old targets, put the files in place, run the check
 aep-ede stage-check <draft>                 # run the check again inside the deadline
 aep-ede stage-revert <draft>                # put every saved target back and remove what the stage added
 aep-ede stage-confirm <draft>               # the operator makes a checked stage permanent
@@ -95,7 +95,7 @@ aep-ede stage-status <draft>                # the state of the stage
 A deploy manifest:
 
 ```
-schema_id: gaplune.aep.ede.deploy-manifest.v1
+schema_id: aep.ede.deploy-manifest.v1
 build: cargo build --release -p example-tool
 check: /usr/local/bin/example-tool --version
 users:
@@ -123,7 +123,7 @@ Writing to a host folder needs the rights of that folder: a stage runs with the 
 
 ## Identifiers
 
-Every draft environment of AEP follows one identifier specification. Its vectors are `identifier-vectors.gaplune` of this component.
+Every draft environment of AEP follows one identifier specification. Its vectors are `identifier-vectors.rec` of this component.
 
 | Identifier | Grammar |
 |------------|---------|

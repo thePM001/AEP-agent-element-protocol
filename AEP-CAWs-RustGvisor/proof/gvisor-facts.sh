@@ -10,6 +10,11 @@ set -uo pipefail
 
 RUNSC="${1:-runsc}"
 TRACE_PROOF="${2:-}"
+# A relative path becomes absolute, so a path that lands in caw.toml or in a sandbox
+# bundle holds from any folder. A bare program name stays a name for the PATH lookup.
+abs() { case "$1" in "" | /*) printf '%s' "$1" ;; */*) printf '%s/%s' "$PWD" "$1" ;; *) printf '%s' "$1" ;; esac; }
+RUNSC="$(abs "$RUNSC")"
+TRACE_PROOF="$(abs "$TRACE_PROOF")"
 PORT=47611
 
 # A root caller hands over to the user nobody: the proof is about a run without root.

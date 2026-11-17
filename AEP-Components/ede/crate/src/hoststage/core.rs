@@ -113,7 +113,7 @@ pub fn parse_manifest(text: &str, schema: &str) -> Result<Manifest, String> {
             section.clear();
             match k.trim() {
                 "schema_id" => schema_ok = v == schema,
-                "format" | "json" | "json_prohibited" | "@PAD" | "@GCDE" | "note" | "ticket" => {}
+                "format" | "json" | "json_prohibited" | "note" | "ticket" => {}
                 "build" => m.build = v.to_string(),
                 "check" => m.check = v.to_string(),
                 "users" | "files" => {
@@ -323,7 +323,10 @@ fn one_line(s: &str) -> String {
 
 impl StageRecord {
     pub fn body(&self, schema: &str) -> String {
-        let mut s = format!("schema_id: {}\nformat: gaplune\njson: prohibited\n", schema);
+        let mut s = format!(
+            "schema_id: {}\nformat: aep-record\njson: prohibited\n",
+            schema
+        );
         for (k, v) in [
             ("draft_id", self.draft_id.clone()),
             ("owner", self.owner.clone()),
@@ -483,7 +486,7 @@ pub fn clear_copies(record_root: &Path, draft: &str) {
 }
 
 fn record_file(record_root: &Path, draft: &str) -> PathBuf {
-    stage_area(record_root).join(format!("{}.gaplune", draft))
+    stage_area(record_root).join(format!("{}.rec", draft))
 }
 
 /// Write the stage record of a draft, sealed with the key of the draft environment.
@@ -545,7 +548,7 @@ pub fn all_records(record_root: &Path) -> Vec<String> {
                 .filter_map(|e| {
                     e.file_name()
                         .to_str()
-                        .and_then(|n| n.strip_suffix(".gaplune"))
+                        .and_then(|n| n.strip_suffix(".rec"))
                         .map(|n| n.to_string())
                 })
                 .collect()
@@ -1000,7 +1003,7 @@ mod tests {
         let r = StageRecord {
             draft_id: "ede-1-00000000000000000000000000000001".into(),
             owner: "coding-agent".into(),
-            manifest: "deploy/host.gaplune".into(),
+            manifest: "deploy/host.rec".into(),
             manifest_sha: "ab".into(),
             state: "checked".into(),
             staged_unix: 10,

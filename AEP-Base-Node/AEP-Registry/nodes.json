@@ -1,7 +1,7 @@
 {
   "manifest_version": "1",
   "schema_version": "2",
-  "profile": "as-single-polar",
+  "profile": "single-polar",
   "nodes": [
     {
       "node_id": "primary",
@@ -9,7 +9,6 @@
       "base_node_url": "http://127.0.0.1:7800",
       "lattice_channel": "aep.node.primary",
       "isolation_class": "caw",
-      "agentstream_topology": "as-single",
       "health_sla_ms": 5000
     }
   ]

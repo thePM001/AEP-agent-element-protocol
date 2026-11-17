@@ -157,7 +157,7 @@ fn gather_dir(dir: &Path, out: &mut Vec<PathBuf>) {
 fn write_audit(row: &str) {
     let dir = PathBuf::from("target").join("aep-tla-verify");
     let _ = fs::create_dir_all(&dir);
-    let path = dir.join("audit.gaplune");
+    let path = dir.join("audit.rec");
     if let Ok(mut f) = fs::OpenOptions::new().create(true).append(true).open(path) {
         let _ = f.write_all(row.as_bytes());
     }

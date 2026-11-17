@@ -8,7 +8,7 @@ Federate multiple AEP Base Node kernels from one `nodes.json` v2 registry.
 
 ## Architecture
 
-![AEP multi-base-node architecture: nodes.json registry, single and multi-kernel federation, optional Agentstream, lattice channels, Rust crate, federation policies](./docs/multi-base-node-28b-architecture.svg)
+![AEP multi-base-node architecture: nodes.json registry, single and multi-kernel federation, lattice channels, Rust crate, federation policies](./docs/multi-base-node-28b-architecture.svg)
 
 Source: [`docs/multi-base-node-28b-architecture.svg`](./docs/multi-base-node-28b-architecture.svg)
 
@@ -27,7 +27,7 @@ Source: [`docs/multi-base-node-28b-architecture.svg`](./docs/multi-base-node-28b
 | --- | --- |
 | `../AEP-Registry/nodes.json` | Example registry |
 | `../AEP-Registry/schemas/nodes-registry-v2.json` | JSON schema v2 |
-| `../AEP-Registry/profiles/as-single-polar.json` | Single-node default profile |
+| `../AEP-Registry/profiles/single-polar.json` | Single-node default profile |
 
 ## Build
 
@@ -37,13 +37,13 @@ cargo test -p multi-base-node-core
 
 That command is the only thing that builds the crate. Nothing in the default path depends on it and no default run uses it.
 
-Agentstream is optional and federation uses lattice-channel.v1 transport.
+Federation uses lattice-channel.v1 transport.
 
 ## Overview
 
 **Status:** optional experimental surface. It is not part of the default build and it is not part of the default deployment, because the default workspace member is the single Base Node kernel.
 
-Govern multiple AEP Base Node kernels from a single `nodes.json` v2 registry: roles (`primary`, `replica`, `edge`, `science-isolated`), policy bundle Merkle sync over lattice channels and optional Agentstream topologies (`as-single`, `as-federated` with ASIP).
+Govern multiple AEP Base Node kernels from a single `nodes.json` v2 registry: roles (`primary`, `replica`, `edge`, `science-isolated`) and policy bundle Merkle sync over lattice channels.
 
 | Resource | Path |
 | --- | --- |

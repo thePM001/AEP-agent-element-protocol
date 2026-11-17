@@ -29,8 +29,6 @@ metadata:
   action_path_prefix: federation
   covenants:
     - "Cross-node federation MUST use lattice-channel.v1 not raw localhost bypass [hard]"
-    - "Agentstream is optional; topology fields apply only when Agentstream is deployed [hard]"
-    - "as-federated requires explicit agentstream_peers in nodes.json when Agentstream is used [hard]"
   scanners: [injection]
   budget:
     max_tokens: 5000

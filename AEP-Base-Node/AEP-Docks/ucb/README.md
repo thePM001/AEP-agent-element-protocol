@@ -41,7 +41,7 @@ To attach a foreign wrap, start aep-ucb on port 8412 with UCB_API_KEY set. Send 
 
 ## What UCB is
 
-UCB is optional. Native AEP components talk to Base Node directly. UCB exists for operators who attach a non-AEP wrap with a stored or provided task manifest. Prime Agent and Polygres are not default compose services.
+UCB is optional. Native AEP components talk to Base Node directly. UCB exists for operators who attach a non-AEP wrap with a stored or provided task manifest.
 
 | UCB is | UCB is not |
 |--------|------------|

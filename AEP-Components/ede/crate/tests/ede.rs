@@ -106,7 +106,7 @@ impl T {
         std::env::set_var("AEP_AGENT_KEY", self.base.join(format!("{}.seed", agent)));
     }
     fn ledger(&self) -> String {
-        fs::read_to_string(self.base.join("records/ledger/ledger.gaplune")).unwrap_or_default()
+        fs::read_to_string(self.base.join("records/ledger/ledger.rec")).unwrap_or_default()
     }
 }
 
@@ -593,12 +593,12 @@ fn hostile_records_folders_and_ids_are_denied() {
     let folder_b = tree(&b).parent().unwrap().to_path_buf();
     fs::write(folder_b.join("manifest"), "state: scanned\ndigest: x\n").unwrap();
     assert_eq!(aep_ede::promote(&b, "m").code, "lifecycle_wall");
-    let rb = t.base.join(format!("records/drafts/{}.gaplune", b));
+    let rb = t.base.join(format!("records/drafts/{}.rec", b));
     let body = fs::read_to_string(&rb).unwrap();
     fs::write(&rb, body.replace("state: seeded", "state: scanned")).unwrap();
     assert_eq!(aep_ede::status(&b).code, "draft_record_forged");
     // The sealed record of A copied over B names A.
-    fs::copy(t.base.join(format!("records/drafts/{}.gaplune", a)), &rb).unwrap();
+    fs::copy(t.base.join(format!("records/drafts/{}.rec", a)), &rb).unwrap();
     assert_eq!(aep_ede::promote(&b, "m").code, "draft_record_forged");
     // A renamed folder.
     let other = "ede-1-0123456789abcdef0123456789abcdef";
@@ -814,7 +814,7 @@ fn age_bounds_the_wall_and_the_sweep() {
     assert!(aep_ede::store::verify_ledger(&op).is_ok());
     let ledger = t.ledger();
     fs::write(
-        t.base.join("records/ledger/ledger.gaplune"),
+        t.base.join("records/ledger/ledger.rec"),
         ledger.replacen("kind: seed", "kind: sneak", 1),
     )
     .unwrap();
@@ -919,11 +919,12 @@ fn unescape(v: &str) -> String {
         .replace("\\t", "\t")
         .replace("\\r", "\r")
         .replace("\\0", "\0")
+        .replace("\\-", "-")
 }
 
 #[test]
 fn identifier_vectors_hold() {
-    let text = include_str!("../../identifier-vectors.gaplune");
+    let text = include_str!("../../identifier-vectors.rec");
     let mut count = 0;
     for line in text.lines() {
         let Some(line) = line.strip_prefix("  - ") else {

@@ -2,11 +2,11 @@
 //!
 //! The record root of the operator (owner the EDE user) holds what proves something:
 //!
-//! - drafts/<draft>.gaplune: the sealed record of each draft. The draft id inside equals
+//! - drafts/<draft>.rec: the sealed record of each draft. The draft id inside equals
 //!   the file name and the name of the draft folder. The state moves forward only:
 //!   seeded, scanned, promoting, then promoted or expired. No verb leaves promoted or
 //!   expired.
-//! - ledger/ledger.gaplune: one chained, sealed entry per seed, scan, rescan, refresh,
+//! - ledger/ledger.rec: one chained, sealed entry per seed, scan, rescan, refresh,
 //!   promote, expire and sweep. Each entry names the hash of the one before it.
 //! - locks/<draft>.lock: one lock per draft for every verb.
 //! - git-config/<draft>.config: the git configuration the seed wrote, put back before
@@ -23,8 +23,8 @@ use std::io::Write;
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 
-pub const RECORD_SCHEMA: &str = "gaplune.aep.ede.draft-record.v2";
-pub const LEDGER_SCHEMA: &str = "gaplune.aep.ede.ledger.v1";
+pub const RECORD_SCHEMA: &str = "aep.ede.draft-record.v2";
+pub const LEDGER_SCHEMA: &str = "aep.ede.ledger.v1";
 pub const STATEMENT_KIND: &str = "aep-ede-scan-v1";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -143,7 +143,7 @@ impl Record {
 
     pub fn body(&self) -> Result<String, String> {
         let mut s = format!(
-            "schema_id: {}\nformat: gaplune\njson: prohibited\n",
+            "schema_id: {}\nformat: aep-record\njson: prohibited\n",
             RECORD_SCHEMA
         );
         for (k, v) in self.fields() {
@@ -253,7 +253,7 @@ pub fn ensure_layout(op: &Operator) -> Result<(), String> {
 }
 
 fn record_path(op: &Operator, draft_id: &str) -> PathBuf {
-    op.drafts_dir().join(format!("{}.gaplune", draft_id))
+    op.drafts_dir().join(format!("{}.rec", draft_id))
 }
 
 pub fn save(op: &Operator, r: &Record) -> Result<(), String> {
@@ -340,7 +340,7 @@ pub fn all_ids(op: &Operator) -> Vec<String> {
                 .filter_map(|e| {
                     e.file_name()
                         .to_str()
-                        .and_then(|n| n.strip_suffix(".gaplune"))
+                        .and_then(|n| n.strip_suffix(".rec"))
                         .map(|s| s.to_string())
                 })
                 .filter(|n| ident::draft_id_ok(n))
@@ -478,7 +478,7 @@ pub fn ledger(
         .open(op.ledger_dir().join("ledger.lock"))
         .map_err(|e| e.to_string())?;
     lf.lock().map_err(|e| e.to_string())?;
-    let path = op.ledger_dir().join("ledger.gaplune");
+    let path = op.ledger_dir().join("ledger.rec");
     let text = fs::read_to_string(&path).unwrap_or_default();
     let mut seq = 0u64;
     let mut prev = GENESIS.to_string();
@@ -506,7 +506,7 @@ pub fn ledger(
     let sealv = seal::seal(op, hash.as_bytes())?;
     let mut out = if text.is_empty() {
         format!(
-            "schema_id: {}\nformat: gaplune\njson: prohibited\nentries:\n",
+            "schema_id: {}\nformat: aep-record\njson: prohibited\nentries:\n",
             LEDGER_SCHEMA
         )
     } else {
@@ -532,7 +532,7 @@ pub fn ledger(
 pub fn verify_ledger(op: &Operator) -> Result<u64, String> {
     let text = {
         let _r = privilege::raise();
-        fs::read_to_string(op.ledger_dir().join("ledger.gaplune")).unwrap_or_default()
+        fs::read_to_string(op.ledger_dir().join("ledger.rec")).unwrap_or_default()
     };
     let mut prev = GENESIS.to_string();
     let mut cur = String::new();

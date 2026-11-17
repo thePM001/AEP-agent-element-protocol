@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * Lattice Memory intent knots: dual-backend storage.
- * - Canonical: Lattice Memory via aep-memory CLI (SQLite 3.54.1 bundled + sqlite-vec 0.1.9 vec0 + USearch 2.25.3)
- * - Optional: Agentstream mirror (paid connector)
+ * Lattice Memory intent knots.
+ * - Store: Lattice Memory via aep-memory CLI (SQLite 3.54.1 bundled + sqlite-vec 0.1.9 vec0 + USearch 2.25.3)
  *
  * File ledger (intent-provenance.jsonl) remains source of truth; knots are searchable attractors.
  */
@@ -16,10 +15,6 @@ import { fileURLToPath } from "node:url";
 import { deriveEmbedding } from "./embedding.mjs";
 import { explainIntent } from "./ledger.mjs";
 import { expandHome, defaultPaths } from "../../platform-core/lib/paths.mjs";
-import {
-  mirrorIntentKnotToAgentstream,
-  resolveAgentstreamKnotConfig,
-} from "./agentstream-knots.mjs";
 
 export const INTENT_KNOT_DOMAIN = "event";
 export const INTENT_KNOT_KIND = "intent_knot";
@@ -171,67 +166,9 @@ export function recordIntentKnotSqlite(phase, fields, opts = {}) {
   return { knot, sqlite };
 }
 
-function scheduleAgentstreamMirror(knot, fields, phase, sqlite, opts = {}) {
-  if (opts.mirrorAgentstream === false) return;
-  const mirrorPayload = {
-    ...knot,
-    intent_id: fields.intentId,
-    phase,
-    sqlite_key: sqlite.key ?? null,
-  };
-  void mirrorIntentKnotToAgentstream(mirrorPayload, {
-    config: opts.agentstreamConfig ?? resolveAgentstreamKnotConfig(),
-    socketBase: opts.socketBase,
-    strict: opts.strictAgentstream ?? false,
-    probe: opts.probeAgentstream !== false,
-  }).catch(() => {
-    /* optional mirror; sqlite is canonical */
-  });
-}
-
-/**
- * Record intent knot to SQLite (sync) and schedule optional Agentstream mirror.
- */
+/** Record intent knot to Lattice Memory. The same as recordIntentKnotSqlite. */
 export function recordIntentKnot(phase, fields, opts = {}) {
-  const { knot, sqlite } = recordIntentKnotSqlite(phase, fields, opts);
-  scheduleAgentstreamMirror(knot, fields, phase, sqlite, opts);
-  return {
-    knot,
-    sqlite,
-    agentstream: {
-      scheduled: opts.mirrorAgentstream !== false && Boolean(resolveAgentstreamKnotConfig()?.url),
-    },
-  };
-}
-
-/**
- * Record intent knot to SQLite and await Agentstream mirror (CLI / tests).
- * @returns {Promise<{ knot: object, sqlite: object, agentstream: object }>}
- */
-export async function recordIntentKnotDual(phase, fields, opts = {}) {
-  const { knot, sqlite } = recordIntentKnotSqlite(phase, fields, opts);
-
-  let agentstream = { mirrored: false, skipped: true, reason: "disabled" };
-  if (opts.mirrorAgentstream !== false) {
-    const mirrorPayload = {
-      ...knot,
-      intent_id: fields.intentId,
-      phase,
-      sqlite_key: sqlite.key ?? null,
-    };
-    agentstream = await mirrorIntentKnotToAgentstream(mirrorPayload, {
-      config: opts.agentstreamConfig ?? resolveAgentstreamKnotConfig(),
-      socketBase: opts.socketBase,
-      strict: opts.strictAgentstream ?? false,
-      probe: opts.probeAgentstream !== false,
-    });
-  }
-
-  if (agentstream.mirrored) {
-    knot.metadata.backends = ["sqlite", "agentstream"];
-  }
-
-  return { knot, sqlite, agentstream };
+  return recordIntentKnotSqlite(phase, fields, opts);
 }
 
 /**
@@ -280,7 +217,7 @@ export function searchIntentKnots(intentId, opts = {}) {
       intent_id: intentId,
       db_path: dbPath,
       matches: filtered,
-      backends: { sqlite: true, agentstream: Boolean(resolveAgentstreamKnotConfig()) },
+      backends: { sqlite: true },
     };
   } catch (err) {
     return {

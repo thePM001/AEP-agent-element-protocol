@@ -718,7 +718,7 @@ export function latticeHealthPing(socketBase, dockPort = "validation_engine", op
 
 /**
  * Gate an outbound HTTP call behind inference_engine lattice audit.
- * External connectors (LLM APIs, Agentstream, registry) MUST use this path.
+ * External connectors (LLM APIs, registry) MUST use this path.
  */
 function responseFromDockAllow(resp) {
   if (!resp || resp.ok !== true) {

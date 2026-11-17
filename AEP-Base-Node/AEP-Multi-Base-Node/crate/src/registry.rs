@@ -3,7 +3,7 @@ use std::path::Path;
 
 use crate::error::{RegistryError, Result};
 use crate::sync::merkle_root_hex;
-use crate::types::{AgentstreamTopology, NodeRecord, NodeRole, NodesRegistryV2};
+use crate::types::{NodeRecord, NodeRole, NodesRegistryV2};
 
 pub fn parse_registry_json(raw: &str) -> Result<NodesRegistryV2> {
     let registry: NodesRegistryV2 = serde_json::from_str(raw)?;
@@ -123,14 +123,6 @@ pub fn validate_node(node: &NodeRecord) -> Result<()> {
             node.node_id
         )));
     }
-    if node.agentstream_topology == AgentstreamTopology::AsFederated
-        && node.agentstream_peers.is_empty()
-    {
-        return Err(RegistryError::Invalid(format!(
-            "as-federated requires agentstream_peers for {}",
-            node.node_id
-        )));
-    }
     Ok(())
 }
 
@@ -148,23 +140,6 @@ pub fn node_record_from_map(
         .ok_or_else(|| RegistryError::Invalid("role required".into()))?;
     let role = NodeRole::parse(role_str)
         .ok_or_else(|| RegistryError::Invalid(format!("invalid role: {role_str}")))?;
-    let topology_str = map
-        .get("agentstream_topology")
-        .and_then(|v| v.as_str())
-        .unwrap_or("as-single");
-    let agentstream_topology = AgentstreamTopology::parse(topology_str)
-        .ok_or_else(|| RegistryError::Invalid(format!("invalid topology: {topology_str}")))?;
-
-    let agentstream_peers = map
-        .get("agentstream_peers")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|v| v.as_str().map(str::to_string))
-                .collect()
-        })
-        .unwrap_or_default();
-
     Ok(NodeRecord {
         node_id,
         role,
@@ -189,8 +164,6 @@ pub fn node_record_from_map(
             .and_then(|v| v.as_str())
             .unwrap_or("internal")
             .to_string(),
-        agentstream_topology,
-        agentstream_peers,
         gap_bundle_checkpoint: map
             .get("gap_bundle_checkpoint")
             .and_then(|v| v.as_str())
@@ -221,8 +194,6 @@ mod tests {
                 base_node_url: "http://127.0.0.1:7800".into(),
                 lattice_channel: "aep.node.primary".into(),
                 isolation_class: "operator".into(),
-                agentstream_topology: AgentstreamTopology::AsSingle,
-                agentstream_peers: vec![],
                 gap_bundle_checkpoint: String::new(),
                 health_sla_ms: 5000,
             },
@@ -243,8 +214,6 @@ mod tests {
             base_node_url: "http://127.0.0.1:7800".into(),
             lattice_channel: "aep.node.primary".into(),
             isolation_class: "operator".into(),
-            agentstream_topology: AgentstreamTopology::AsSingle,
-            agentstream_peers: vec![],
             gap_bundle_checkpoint: String::new(),
             health_sla_ms: 5000,
         };
@@ -270,8 +239,6 @@ mod tests {
             base_node_url: format!("http://127.0.0.1:7800/{id}"),
             lattice_channel: format!("aep.node.{id}"),
             isolation_class: "operator".into(),
-            agentstream_topology: AgentstreamTopology::AsSingle,
-            agentstream_peers: vec![],
             gap_bundle_checkpoint: String::new(),
             health_sla_ms: 5000,
         };
@@ -293,8 +260,6 @@ mod tests {
             base_node_url: "http://127.0.0.1:7801".into(),
             lattice_channel: "aep.node.dup".into(),
             isolation_class: "operator".into(),
-            agentstream_topology: AgentstreamTopology::AsSingle,
-            agentstream_peers: vec![],
             gap_bundle_checkpoint: String::new(),
             health_sla_ms: 5000,
         };

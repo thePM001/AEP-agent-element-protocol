@@ -33,8 +33,8 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-pub const MANIFEST_SCHEMA: &str = "gaplune.aep.ede.deploy-manifest.v1";
-pub const RECORD_SCHEMA: &str = "gaplune.aep.ede.stage-record.v1";
+pub const MANIFEST_SCHEMA: &str = "aep.ede.deploy-manifest.v1";
+pub const RECORD_SCHEMA: &str = "aep.ede.stage-record.v1";
 
 /// The places a stage may write and never writes: the operator folder, the record and
 /// state roots, the lattice of the wall and the binary of aep-ede itself.

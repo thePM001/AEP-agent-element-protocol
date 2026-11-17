@@ -16,6 +16,14 @@ PROOF="${2:?path to caw-run-proof}"
 RECORD="${3:?draft profile record}"
 INIT="${4:?path to aep-caw-init}"
 TOOLCHAIN="${5:?rust toolchain folder}"
+# A relative path becomes absolute, so a path that lands in caw.toml or in a sandbox
+# bundle holds from any folder. A bare program name stays a name for the PATH lookup.
+abs() { case "$1" in "" | /*) printf '%s' "$1" ;; */*) printf '%s/%s' "$PWD" "$1" ;; *) printf '%s' "$1" ;; esac; }
+RUNSC="$(abs "$RUNSC")"
+PROOF="$(abs "$PROOF")"
+RECORD="$(abs "$RECORD")"
+INIT="$(abs "$INIT")"
+TOOLCHAIN="$(abs "$TOOLCHAIN")"
 
 # A root caller hands over to the user nobody. A toolchain in the home folder of
 # root is readable by root alone, so the script then copies it into its work folder.

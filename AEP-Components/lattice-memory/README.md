@@ -37,7 +37,6 @@ The AEP Base Node (01) records judged proposals and reports the number of attrac
 
 - Memory does not admit, does not apply and does not change an agent permission.
 - A similar earlier allow is no proof for the present capsule.
-- The optional graph and vector backend named Polygres is attached by an operator and is no default service.
 
 ## Run and test
 

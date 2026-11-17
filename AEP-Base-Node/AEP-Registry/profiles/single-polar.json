@@ -1,9 +1,9 @@
 {
   "manifest_version": "1",
-  "profile_id": "as-single-polar",
+  "profile_id": "single-polar",
   "description": "Single-node default profile on the AEP 2.9 release line: one primary Base Node kernel with federation disabled.",
   "deployment": {
-    "topology": "as-single",
+    "topology": "single",
     "default_role": "primary",
     "federation_enabled": false
   },
@@ -15,7 +15,6 @@
       "base_node_url": "http://127.0.0.1:7800",
       "lattice_channel": "aep.node.primary",
       "isolation_class": "caw",
-      "agentstream_topology": "as-single",
       "health_sla_ms": 5000
     }
   },

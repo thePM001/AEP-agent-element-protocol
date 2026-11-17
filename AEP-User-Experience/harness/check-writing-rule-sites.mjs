@@ -35,7 +35,7 @@ const READS_THE_SET = [
 ];
 const CODE_EXT = new Set(['.rs', '.mjs', '.js', '.ts', '.tsx', '.mts', '.cjs']);
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'target', 'dist', 'build']);
-const DOC_EXT = new Set(['.md', '.gap', '.gaplune', '.json', '.yaml', '.yml', '.txt', '.html']);
+const DOC_EXT = new Set(['.md', '.gap', '.json', '.yaml', '.yml', '.txt', '.html']);
 
 function walk(dir, out) {
   for (const name of readdirSync(dir)) {

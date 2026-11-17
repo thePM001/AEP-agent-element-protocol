@@ -208,7 +208,7 @@ fn promoted(manifest_text: &str) -> String {
     let tree = PathBuf::from(aep_ede::status(&d).note.split_whitespace().nth(1).unwrap());
     fs::create_dir_all(tree.join("deploy")).unwrap();
     fs::create_dir_all(tree.join("bin")).unwrap();
-    fs::write(tree.join("deploy/host.gaplune"), manifest_text).unwrap();
+    fs::write(tree.join("deploy/host.rec"), manifest_text).unwrap();
     fs::write(tree.join("bin/tool.sh"), "#!/bin/sh\necho staged\n").unwrap();
     let s = aep_ede::scan(&d);
     assert!(s.ok, "{}", s.render());
@@ -234,7 +234,7 @@ fn a_checked_stage_is_provisional_and_only_the_operator_confirms_it() {
         &[("out/tool", &tool, "root", "0755")],
         &[],
     ));
-    let r = hoststage::stage(&d, "deploy/host.gaplune");
+    let r = hoststage::stage(&d, "deploy/host.rec");
     assert!(r.ok, "{}", r.render());
     assert_eq!(r.code, "stage_checked");
     assert_eq!(
@@ -248,8 +248,7 @@ fn a_checked_stage_is_provisional_and_only_the_operator_confirms_it() {
     let r = t.as_operator(|| hoststage::stage_confirm(&d));
     assert!(r.ok, "{}", r.render());
     assert_eq!(t.record(&d).state, "confirmed");
-    let ledger =
-        fs::read_to_string(t.base.join("records/ledger/ledger.gaplune")).unwrap_or_default();
+    let ledger = fs::read_to_string(t.base.join("records/ledger/ledger.rec")).unwrap_or_default();
     for kind in [
         "kind: stage\n",
         "kind: stage-check\n",
@@ -274,7 +273,7 @@ fn a_failed_check_puts_every_target_back_and_removes_a_created_user() {
         ],
         &["svc-demo"],
     ));
-    let r = hoststage::stage(&d, "deploy/host.gaplune");
+    let r = hoststage::stage(&d, "deploy/host.rec");
     assert_eq!(r.code, "stage_check_failed", "{}", r.render());
     assert_eq!(fs::read_to_string(&tool).unwrap(), "old\n");
     let m = fs::metadata(&tool).unwrap();
@@ -309,7 +308,7 @@ fn targets_outside_the_list_or_on_a_protected_place_are_refused() {
         &[],
     ));
     let before = fs::read_to_string(&conf).unwrap();
-    let r = hoststage::stage(&d, "deploy/host.gaplune");
+    let r = hoststage::stage(&d, "deploy/host.rec");
     assert_eq!(r.code, "stage_targets", "{}", r.render());
     assert!(r.note.contains("outside the stage targets"), "{}", r.note);
     assert!(r.note.contains("protected place"), "{}", r.note);
@@ -328,7 +327,7 @@ fn an_agent_without_the_stage_grant_is_refused() {
         &[],
     ));
     t.register("coding-agent", false);
-    let r = hoststage::stage(&d, "deploy/host.gaplune");
+    let r = hoststage::stage(&d, "deploy/host.rec");
     assert_eq!(r.code, "profile_refused", "{}", r.render());
     assert!(!tool.exists());
 }
@@ -344,7 +343,7 @@ fn the_deadline_closes_confirm_and_the_sweep_reverts() {
         &[("out/tool", &tool, "root", "0755")],
         &[],
     ));
-    assert!(hoststage::stage(&d, "deploy/host.gaplune").ok);
+    assert!(hoststage::stage(&d, "deploy/host.rec").ok);
     let late = t.record(&d).deadline_unix + 1;
     std::env::set_var("AEP_EDE_TEST_NOW", late.to_string());
     let r = t.as_operator(|| hoststage::stage_confirm(&d));

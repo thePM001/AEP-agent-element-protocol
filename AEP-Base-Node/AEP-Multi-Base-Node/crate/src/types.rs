@@ -31,32 +31,6 @@ impl NodeRole {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "kebab-case")]
-pub enum AgentstreamTopology {
-    #[serde(rename = "as-single")]
-    AsSingle,
-    #[serde(rename = "as-federated")]
-    AsFederated,
-}
-
-impl AgentstreamTopology {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::AsSingle => "as-single",
-            Self::AsFederated => "as-federated",
-        }
-    }
-
-    pub fn parse(s: &str) -> Option<Self> {
-        match s {
-            "as-single" => Some(Self::AsSingle),
-            "as-federated" => Some(Self::AsFederated),
-            _ => None,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NodeRecord {
     pub node_id: String,
@@ -64,9 +38,6 @@ pub struct NodeRecord {
     pub base_node_url: String,
     pub lattice_channel: String,
     pub isolation_class: String,
-    pub agentstream_topology: AgentstreamTopology,
-    #[serde(default)]
-    pub agentstream_peers: Vec<String>,
     #[serde(default)]
     pub gap_bundle_checkpoint: String,
     #[serde(default = "default_health_sla_ms")]

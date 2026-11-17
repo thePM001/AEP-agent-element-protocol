@@ -283,7 +283,7 @@ Admit is the collect-all wall pass after the compiled pulse. Apply runs only aft
 
 ## 9. Operator reading order
 
-Read the error catalogue for the refuse dialect. Read the compiled note for the pulse constants. Read the memory note for the store and the optional Polygres backend. Read the foreign attach note for the manifest and the session refuses. Read the target note for the ISA, RAM, disk, GPU, RSS and latency floors. Read the wrap example for a documented command that returns allow true.
+Read the error catalogue for the refuse dialect. Read the compiled note for the pulse constants. Read the memory note for the store. Read the foreign attach note for the manifest and the session refuses. Read the target note for the ISA, RAM, disk, GPU, RSS and latency floors. Read the wrap example for a documented command that returns allow true.
 
 ## 10. Key repair notes
 

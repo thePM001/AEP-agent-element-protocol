@@ -4,7 +4,7 @@ address:
 
 pattern: |
   Multi-base-node federation transport MUST use lattice-channel.v1 frames.
-  Cross-node registry, policy bundle sync and optional ASIP handshakes MUST NOT bypass the lattice dock.
+  Cross-node registry and policy bundle sync MUST NOT bypass the lattice dock.
 
 action:
   type: pipeline
@@ -29,7 +29,6 @@ metadata:
   action_path_prefix: federation
   covenants:
     - "Cross-node IO MUST use lattice-channel.v1 not raw HTTP localhost bypass [hard]"
-    - "Agentstream is optional; agentstream_topology applies only when deployed [hard]"
   scanners: [injection]
   budget:
     max_tokens: 5000

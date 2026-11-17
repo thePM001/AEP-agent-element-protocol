@@ -16,9 +16,6 @@ const TOUCHED_KEYS = [
   "AEP_LATTICE_STRICT_DEV",
   "AEP_LATTICE_ALLOW_LOOPBACK",
   "AEP_LATTICE_ALLOW_PRIVATE",
-  "AGENTSTREAM_URL",
-  "AGENTSTREAM_INTENT_KNOTS_CAPSULE",
-  "AGENTSTREAM_INTENT_KNOTS_TIMEOUT_MS",
 ];
 
 /**
@@ -66,5 +63,3 @@ export function jsonResponse(status, body) {
   });
 }
 
-/** A literal public IPv4 host, so the SSRF guard needs no DNS lookup. */
-export const PUBLIC_AGENTSTREAM_URL = "http://93.184.216.34";

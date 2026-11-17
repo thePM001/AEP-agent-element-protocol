@@ -57,7 +57,7 @@ The vitest checks run inside `run.sh`, which builds the kernel binaries, provisi
 | CC-16 | node | writing.gap documentation lint |
 | CC-17 | vitest | EPSCOM kernel writing enforcement through aep-lattice-log |
 | CC-24 | vitest | Intent ledger chain with evidence-ledger cross-ref |
-| CC-26 | vitest | Intent knots in Lattice Memory with the optional Agentstream mirror |
+| CC-26 | vitest | Intent knots in Lattice Memory, recorded with no network call |
 | CC-28 - CC-34 | cargo test | UCM |
 | CC-35 | cargo test | Multi-step red team corpus on the live Admit path |
 | CC-12, CC-18 - CC-23, CC-25, CC-27 | planned | No claim |

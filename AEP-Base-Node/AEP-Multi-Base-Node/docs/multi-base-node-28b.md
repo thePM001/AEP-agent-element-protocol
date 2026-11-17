@@ -4,7 +4,7 @@
 
 ## Architecture
 
-![AEP 2.8b multi-base-node architecture: nodes.json registry, single and multi-kernel federation, optional Agentstream, lattice channels, Rust crate, federation policies](./multi-base-node-28b-architecture.svg)
+![AEP 2.8b multi-base-node architecture: nodes.json registry, single and multi-kernel federation, lattice channels, Rust crate, federation policies](./multi-base-node-28b-architecture.svg)
 
 Source: [`multi-base-node-28b-architecture.svg`](./multi-base-node-28b-architecture.svg)
 
@@ -21,22 +21,11 @@ Governed orchestration of **multiple AEP Base Node kernels** on the normal netwo
 
 - **Not raw localhost bypass** between engines (use `lattice-channel.v1`).
 
-## Optional Agentstream integration
-
-Agentstream is **optional**. A Base Node kernel can run multi-base-node federation without any Agentstream instance.
-
-When Agentstream is present, `nodes.json` may declare a topology:
-
-| Topology | ID | Use |
-| --- | --- | --- |
-| Single | `as-single` | One optional Agentstream instance bound to a node |
-| Multi | `as-federated` | Multiple optional instances coordinated via ASIP |
-
 ## Single-node default profile
 
-File: `AEP-Base-Node/AEP-Registry/profiles/as-single-polar.json`
+File: `AEP-Base-Node/AEP-Registry/profiles/single-polar.json`
 
-Single `primary` node, federation disabled by default. The filename is legacy naming only.
+Single `primary` node, federation disabled by default.
 
 ## Registry files
 
@@ -67,7 +56,6 @@ Instruction policies (`.gap` documents) in this repo:
 
 - `AEP-Components/gap/policies/reference/multi-base-node-federation-smoke.gap`
 - `AEP-Components/gap/policies/reference/multi-base-node-federation-lattice-v1.gap`
-- `AEP-Components/gap/policies/reference/multi-base-node-federation-asip-v1.gap`
 - `AEP-Components/gap/policies/reference/multi-base-node-federation-gap-sync-v1.gap`
 - `AEP-Components/gap/policies/reference/multi-base-node-federation-capsule-v1.gap`
 

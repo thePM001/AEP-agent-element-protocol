@@ -9,6 +9,11 @@ set -uo pipefail
 
 NODE="${1:?path to aep-base-node}"
 PROOF="${2:?path to caw-dock-proof}"
+# A relative path becomes absolute, so a path that lands in caw.toml or in a sandbox
+# bundle holds from any folder. A bare program name stays a name for the PATH lookup.
+abs() { case "$1" in "" | /*) printf '%s' "$1" ;; */*) printf '%s/%s' "$PWD" "$1" ;; *) printf '%s' "$1" ;; esac; }
+NODE="$(abs "$NODE")"
+PROOF="$(abs "$PROOF")"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 POLICY_DIR="$(cd "$HERE/../.." && pwd)/AEP-Policy-System"
 

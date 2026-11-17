@@ -9,14 +9,13 @@ import {
   INTENT_KNOT_DOMAIN,
   INTENT_KNOT_KIND,
   recordIntentKnot,
-  recordIntentKnotDual,
   recordIntentKnotSqlite,
   resolveLatticeDbPath,
   resolveMemoryCliPath,
   searchIntentKnots,
 } from "../lib/intent-knots.mjs";
 import { deriveEmbedding } from "../lib/embedding.mjs";
-import { jsonResponse, openSandbox, PUBLIC_AGENTSTREAM_URL, useDirectFetch } from "./env-guard.mjs";
+import { jsonResponse, openSandbox, useDirectFetch } from "./env-guard.mjs";
 
 let box;
 let dataDir;
@@ -178,67 +177,13 @@ describe("recording without the aep-memory binary", () => {
     );
   });
 
-  it("recordIntentKnot schedules nothing when Agentstream is off or unconfigured", () => {
+  it("recordIntentKnot records to Lattice Memory and makes no network call", () => {
     const calls = useDirectFetch(() => jsonResponse(200, {}));
-    const off = recordIntentKnot("propose", FIELDS, { dataDir, mirrorAgentstream: false });
-    expect(off.agentstream).toEqual({ scheduled: false });
-    expect(off.sqlite.recorded).toBe(false);
-    const unconfigured = recordIntentKnot("propose", FIELDS, { dataDir });
-    expect(unconfigured.agentstream).toEqual({ scheduled: false });
+    const out = recordIntentKnot("propose", FIELDS, { dataDir });
+    expect(Object.keys(out).sort()).toEqual(["knot", "sqlite"]);
+    expect(out.sqlite.recorded).toBe(false);
+    expect(out.knot.metadata.backends).toEqual(["sqlite"]);
     expect(calls).toHaveLength(0);
-  });
-
-  it("recordIntentKnot schedules the Agentstream mirror when configured", async () => {
-    process.env.AGENTSTREAM_URL = PUBLIC_AGENTSTREAM_URL;
-    const calls = useDirectFetch(() => jsonResponse(200, { status: "ok" }));
-    const out = recordIntentKnot("solidify", FIELDS, { dataDir });
-    expect(out.agentstream).toEqual({ scheduled: true });
-    await vi.waitFor(() => expect(calls).toHaveLength(2));
-    expect(calls[0].url).toBe(`${PUBLIC_AGENTSTREAM_URL}/api/health`);
-    const body = JSON.parse(calls[1].init.body);
-    expect(body.type).toBe("intent_knot");
-    expect(body.payload).toMatchObject({ intent_id: "intent-1", phase: "solidify", sqlite_key: null });
-  });
-
-  it("recordIntentKnotDual reports disabled when the mirror is off", async () => {
-    const out = await recordIntentKnotDual("propose", FIELDS, { dataDir, mirrorAgentstream: false });
-    expect(out.agentstream).toEqual({ mirrored: false, skipped: true, reason: "disabled" });
-    expect(out.knot.metadata.backends).toEqual(["sqlite"]);
-  });
-
-  it("recordIntentKnotDual adds the agentstream backend after a mirror", async () => {
-    const calls = useDirectFetch(() => jsonResponse(200, {}));
-    const out = await recordIntentKnotDual("propose", FIELDS, {
-      dataDir,
-      agentstreamConfig: { url: PUBLIC_AGENTSTREAM_URL, capsule: "c1", timeoutMs: 2000 },
-      probeAgentstream: false,
-    });
-    expect(out.agentstream).toEqual({ mirrored: true, capsule: "c1", url: PUBLIC_AGENTSTREAM_URL });
-    expect(out.knot.metadata.backends).toEqual(["sqlite", "agentstream"]);
-    expect(calls).toHaveLength(1);
-    expect(calls[0].url).toBe(`${PUBLIC_AGENTSTREAM_URL}/api/evidence/c1`);
-  });
-
-  it("recordIntentKnotDual keeps sqlite only when the mirror fails", async () => {
-    useDirectFetch(() => jsonResponse(500, {}));
-    const out = await recordIntentKnotDual("propose", FIELDS, {
-      dataDir,
-      agentstreamConfig: { url: PUBLIC_AGENTSTREAM_URL, capsule: "c1", timeoutMs: 2000 },
-    });
-    expect(out.agentstream).toEqual({ mirrored: false, skipped: true, reason: "http_500" });
-    expect(out.knot.metadata.backends).toEqual(["sqlite"]);
-  });
-
-  it("recordIntentKnotDual rejects in strict Agentstream mode on a failed append", async () => {
-    useDirectFetch(() => jsonResponse(500, {}));
-    await expect(
-      recordIntentKnotDual("propose", FIELDS, {
-        dataDir,
-        agentstreamConfig: { url: PUBLIC_AGENTSTREAM_URL, capsule: "c1", timeoutMs: 2000 },
-        probeAgentstream: false,
-        strictAgentstream: true,
-      }),
-    ).rejects.toThrow(/HTTP 500/);
   });
 });
 

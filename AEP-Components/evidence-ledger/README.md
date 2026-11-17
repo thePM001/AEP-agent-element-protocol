@@ -30,7 +30,6 @@ The Model Gateway (17) and the session tools of the Graph Engine (05) write entr
 | `lib/ledger/timestamp.ts` | Timestamp queue |
 | `lib/ledger/offline.ts` | Offline ledger with sync |
 | `lib/rollback/manager.ts` | Rollback with compensation plans |
-| `lib/evidence/` | Optional mirror backend |
 | `tests/` | vitest suites for ledger, Merkle, rollback, signatures and offline use |
 | `AEP-Components/proof-bundle/` | Builder and verifier for proof bundles |
 | `AEP-Components/telemetry/` | OpenTelemetry span and event exporter |

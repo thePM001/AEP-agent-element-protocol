@@ -68,7 +68,7 @@ pub fn promote_replica(
 mod tests {
     use super::*;
     use crate::registry::register_node;
-    use crate::types::{AgentstreamTopology, NodeRecord, NodesRegistryV2};
+    use crate::types::{NodeRecord, NodesRegistryV2};
 
     fn sample_node(id: &str, role: NodeRole) -> NodeRecord {
         NodeRecord {
@@ -80,8 +80,6 @@ mod tests {
             ),
             lattice_channel: format!("aep.node.{id}"),
             isolation_class: "operator".into(),
-            agentstream_topology: AgentstreamTopology::AsFederated,
-            agentstream_peers: vec!["as-peer-edge".into()],
             gap_bundle_checkpoint: String::new(),
             health_sla_ms: 5000,
         }
@@ -91,14 +89,7 @@ mod tests {
     fn promote_edge_to_primary_demotes_old_primary() {
         let mut registry = NodesRegistryV2::empty();
         register_node(&mut registry, sample_node("primary", NodeRole::Primary)).unwrap();
-        register_node(
-            &mut registry,
-            NodeRecord {
-                agentstream_peers: vec!["as-peer-edge".into()],
-                ..sample_node("edge-replica", NodeRole::Edge)
-            },
-        )
-        .unwrap();
+        register_node(&mut registry, sample_node("edge-replica", NodeRole::Edge)).unwrap();
 
         let result = promote_replica(&mut registry, "edge-replica").unwrap();
         assert_eq!(result.promoted_node_id, "edge-replica");

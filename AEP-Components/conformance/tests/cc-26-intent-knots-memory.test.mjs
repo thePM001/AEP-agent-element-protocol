@@ -1,6 +1,6 @@
 // CC-26: intent knots land in Lattice Memory (aep-memory: SQLite with sqlite-vec and
-// the USearch fast path) as the canonical store, and the Agentstream mirror is
-// optional: an absent or offline mirror never blocks the canonical record.
+// the USearch fast path), the one store of the knots. Recording a knot makes no
+// network call.
 
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -8,7 +8,7 @@ import { join } from "node:path";
 import {
   INTENT_KNOT_KIND,
   historyIntentKnots,
-  recordIntentKnotDual,
+  recordIntentKnot,
   recordIntentKnotSqlite,
   searchIntentKnots,
 } from "../../intent-ledger/lib/intent-knots.mjs";
@@ -22,11 +22,9 @@ let saved;
 beforeEach(() => {
   dataDir = mkdtempSync(join(tmpdir(), "aep-cc26-"));
   saved = {
-    AGENTSTREAM_URL: process.env.AGENTSTREAM_URL,
     AEP_INTENT_KNOT_STRICT: process.env.AEP_INTENT_KNOT_STRICT,
     AEP_LATTICE_DB: process.env.AEP_LATTICE_DB,
   };
-  delete process.env.AGENTSTREAM_URL;
   delete process.env.AEP_INTENT_KNOT_STRICT;
   delete process.env.AEP_LATTICE_DB;
 });
@@ -50,7 +48,7 @@ function knotCount(opts, intentId = INTENT) {
   return history.entries.length;
 }
 
-describe("CC-26 lattice memory intent knots, sqlite-vec plus USearch canonical, optional Agentstream mirror", () => {
+describe("CC-26 lattice memory intent knots, sqlite-vec plus USearch", () => {
   it("CC-26 propose and solidify knots are recorded in the canonical store", () => {
     const opts = store();
     const propose = recordIntentKnotSqlite(
@@ -91,28 +89,22 @@ describe("CC-26 lattice memory intent knots, sqlite-vec plus USearch canonical, 
     expect(search.matches.some((m) => m.entry?.element_id === INTENT)).toBe(true);
   });
 
-  it("CC-26 no Agentstream configured: the mirror is skipped and the canonical record stands", async () => {
+  it("CC-26 recording a knot makes no network call and the record stands", () => {
     const opts = store();
-    const out = await recordIntentKnotDual("propose", { intentId: INTENT, statement: "s" }, opts);
-    expect(out.sqlite.recorded).toBe(true);
-    expect(out.agentstream).toMatchObject({ mirrored: false, skipped: true, reason: "agentstream_unconfigured" });
-    expect(out.knot.metadata.backends).toEqual(["sqlite"]);
-  });
-
-  it("CC-26 an offline Agentstream never blocks the canonical record", async () => {
-    const opts = store();
-    const out = await recordIntentKnotDual(
-      "propose",
-      { intentId: INTENT, statement: "s" },
-      {
-        ...opts,
-        socketBase: join(dataDir, "no-sockets"),
-        agentstreamConfig: { url: "http://127.0.0.1:9", capsule: "aep-intent-knots", timeoutMs: 500 },
-      },
-    );
-    expect(out.sqlite.recorded).toBe(true);
-    expect(out.agentstream.mirrored).toBe(false);
-    expect(out.knot.metadata.backends).toEqual(["sqlite"]);
+    const savedFetch = globalThis.fetch;
+    const calls = [];
+    globalThis.fetch = async (url) => {
+      calls.push(String(url));
+      throw new Error("no network call expected");
+    };
+    try {
+      const out = recordIntentKnot("propose", { intentId: INTENT, statement: "s" }, opts);
+      expect(out.sqlite.recorded).toBe(true);
+      expect(out.knot.metadata.backends).toEqual(["sqlite"]);
+    } finally {
+      globalThis.fetch = savedFetch;
+    }
+    expect(calls).toHaveLength(0);
     expect(knotCount(opts)).toBe(1);
   });
 
