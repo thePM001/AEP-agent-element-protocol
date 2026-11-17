@@ -4,6 +4,8 @@
 //! every trace point to the classifier. runsc runs without root, on the systrap
 //! platform, with no network device and with no cgroup setup.
 //!
+//! No sandbox is started as root.
+//!
 //! A run whose trace stream never opened or lost points is reported as such. The
 //! caller must treat it as a failed enforcer: its deny events are not complete.
 
@@ -54,6 +56,8 @@ pub struct RunInput<'a> {
     pub egress_dir: Option<&'a Path>,
     /// Further variables of the environment.
     pub extra_env: &'a [(String, String)],
+    /// The pinned folder trees of the session.
+    pub trees: &'a [crate::rootfs::PinnedTree],
     /// Bounds of the sandbox.
     pub limits: Limits,
     /// The command is ended after this time.
@@ -102,6 +106,9 @@ pub enum RunError {
     /// The trace socket cannot be bound.
     #[error(transparent)]
     Trace(#[from] TraceError),
+    /// The caller is root.
+    #[error("the CAW starts no sandbox as root: run it as the user of the agent harness")]
+    Root,
     /// The caller refused the sandbox right after its start.
     #[error("the sandbox was ended right after its start: {0}")]
     Refused(String),
@@ -218,12 +225,28 @@ struct TraceResult {
 
 /// Runs one command in one sandbox.
 pub fn run(plan: &SandboxPlan, input: &RunInput<'_>) -> Result<RunOutcome, RunError> {
+    // runsc is proven here in its mode without root only. Started by root it
+    // takes another path: it leaves a mount of its own behind on the host and the
+    // sandbox user owns every file it touches as root.
+    if rustix::process::geteuid().is_root() {
+        return Err(RunError::Root);
+    }
     let existing_masks = check_mount_sources(plan)?;
 
     let bundle = input.work.join("bundle");
     let state = input.work.join("state");
     private_dir(&bundle)?;
     private_dir(&state)?;
+    let trees: Vec<(String, String)> = input
+        .trees
+        .iter()
+        .map(|t| (t.source.to_string_lossy().into_owned(), t.path.clone()))
+        .collect();
+    let path_dirs: Vec<String> = input
+        .trees
+        .iter()
+        .filter_map(|t| t.bin.as_ref().map(|bin| format!("{}/{bin}", t.path)))
+        .collect();
     let root = input.root.to_string_lossy();
     let egress = input.egress_dir.map(|p| p.to_string_lossy().into_owned());
     let document = config(
@@ -235,6 +258,8 @@ pub fn run(plan: &SandboxPlan, input: &RunInput<'_>) -> Result<RunOutcome, RunEr
             existing_masks: &existing_masks,
             egress_dir: egress.as_deref(),
             extra_env: input.extra_env,
+            trees: &trees,
+            path_dirs: &path_dirs,
             limits: input.limits,
         },
     )?;
@@ -453,6 +478,7 @@ mod tests {
                 })
                 .collect(),
             programs: Vec::new(),
+            trees: Vec::new(),
             routes: Vec::new(),
             digest: String::new(),
         }

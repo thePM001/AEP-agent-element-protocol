@@ -32,6 +32,25 @@ The Admit Gate (04) in the AEP Base Node (01) judges every action that reaches a
 
 None in this release. The Rust CAW will take its sandbox profiles from GAP and ask the kernel dock before every command, as the Go CAW did.
 
+## Pairing with the EDE
+
+The CAW and the EDE (`AEP-Components/ede`) are deployed together. The EDE decides how the git state of a coding agent may change. The CAW decides what a command of the agent can touch while it runs.
+
+```
+aep-ede seed owner/repo main                                   # outside the sandbox: prints the draft id
+aep-caw session create --data /var/lib/aep --profile ede-draft \
+    --workspace "$(aep-ede path <draft>)" \
+    --var RUST_TOOLCHAIN="$(rustc --print sysroot)"            # prints the session id
+aep-caw exec --data /var/lib/aep --session <session> --run cargo test --offline
+aep-ede scan <draft>                                           # outside the sandbox
+aep-ede promote <draft> -m "Title"                             # outside the sandbox
+```
+
+- The workspace of the session is the tree of the draft. The git folder beside the tree, the record root, the EDE key and the sign key of the agent are outside every mount.
+- The harness that calls both programs runs outside the sandbox and holds the sign key of the agent. The CAW confines the tool commands of the agent. It does not confine the harness.
+- The reference profile `ede-draft` mounts a Rust toolchain and the C linker as read only trees, lets programs built in the tree run and opens no route.
+- `proof/ede-pairing.sh` proves the pairing on a live sandbox.
+
 ## Limits
 
 - An agent process on the host runs with the rights of its user. It can read files outside the workspace, reach any network destination and trace other processes of that user.

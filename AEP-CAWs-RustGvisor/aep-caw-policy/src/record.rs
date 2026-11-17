@@ -132,6 +132,24 @@ pub struct Toolset {
     pub name: String,
     /// The programs.
     pub programs: Vec<Program>,
+    /// Folder trees of the host that the sandbox mounts read only, such as a
+    /// compiler toolchain. A record written before trees existed has none.
+    #[serde(default)]
+    pub trees: Vec<Tree>,
+}
+
+/// One folder tree of a toolset.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Tree {
+    /// Name of the tree.
+    pub name: String,
+    /// Folder of the host, with a variable as written.
+    pub source: String,
+    /// Path of the folder inside the sandbox.
+    pub path: String,
+    /// Folder inside the tree that holds its programs. It joins the search path.
+    pub bin: Option<String>,
 }
 
 /// One program of a toolset.

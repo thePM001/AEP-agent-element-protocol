@@ -41,7 +41,7 @@ A `.gap` file may carry runtime documents after its instruction, one YAML docume
 | `aep.caw.profile` | `profile_id`, `name`, `base_policy`, `enforcement_tier`, `llm_proxy`, `compiled_runtime`, `mounts`, `egress_policy`, `toolset` | One sandbox profile. `mounts` is a list of `path` and `policy`. The CAW runs only the tier `gvisor`. |
 | `aep.caw.mount_policy` | `name`, `policy` with `version`, `name`, `description`, `file_rules`, `command_rules` | Rules for one mounted folder tree or for the base of a profile. A file rule has `name`, `paths`, `operations` and `decision`. A command rule has `name`, `commands` and `decision`. |
 | `aep.caw.egress_policy` | `name`, `description`, `unmatched`, `routes` | A named list of routes. A route has `name`, `scheme` (`http` or `https`), `host`, `port` and `decision` (`allow` or `deny`). `unmatched` is `deny` and no other value compiles. |
-| `aep.caw.toolset` | `name`, `description`, `programs` | A named list of programs. A program has `name`, `source` (its path on the host) and an optional `path` inside the sandbox, which is `/usr/bin/<name>` when absent. |
+| `aep.caw.toolset` | `name`, `description`, `programs`, `trees` | A named list of programs and folder trees. A program has `name`, `source` (its path on the host) and an optional `path` inside the sandbox, which is `/usr/bin/<name>` when absent. A tree has `name`, `source` (a folder of the host, which may start with one variable), `path` (a folder below `/usr` or below a library folder of the root) and an optional `bin` folder inside the tree that joins the search path. |
 
 Rules of the profile:
 
@@ -56,6 +56,8 @@ Rules of a route host:
 - An address is not a host name and does not compile.
 
 The compiler resolves a profile with everything it names into one record `aep.caw.resolved_profile`. The record is JSON with the keys of every object in sorted order and no white space. Its field `digest` is the sha256 of that text without the field `digest`. `--materialize` writes one record per profile to `caw-framework/profiles/<profile>.json` under the data folder. Variables such as `${PROJECT_ROOT}`, `${HOME}` and `${MOUNT_PATH}` are kept as written. The CAW fills them when a session is created and refuses a variable that the call does not supply.
+
+A tree is for what a single program cannot carry, such as a compiler toolchain. The sandbox mounts the folder of the host read only. The CAW pins a tree at session create by a digest over the content of every file and checks its listing before every command. A program may not lie inside the path of a tree, because the tree brings its own programs.
 
 A sandbox has its own empty `/tmp`. No reference profile mounts the `/tmp` of the host.
 

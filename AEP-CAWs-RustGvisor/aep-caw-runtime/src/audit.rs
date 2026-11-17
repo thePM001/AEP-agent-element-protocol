@@ -175,14 +175,40 @@ mod tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
 
-    fn temp_log(name: &str) -> PathBuf {
+    /// The path of a log in a folder of its own. The folder goes when the value goes.
+    struct TempLog {
+        dir: PathBuf,
+        path: PathBuf,
+    }
+
+    impl std::ops::Deref for TempLog {
+        type Target = Path;
+        fn deref(&self) -> &Path {
+            &self.path
+        }
+    }
+
+    impl AsRef<Path> for TempLog {
+        fn as_ref(&self) -> &Path {
+            &self.path
+        }
+    }
+
+    impl Drop for TempLog {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.dir);
+        }
+    }
+
+    fn temp_log(name: &str) -> TempLog {
         let dir = std::env::temp_dir().join(format!("caw-audit-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).expect("temp dir");
-        dir.join("audit.log")
+        let path = dir.join("audit.log");
+        TempLog { dir, path }
     }
 
-    fn filled(name: &str) -> PathBuf {
+    fn filled(name: &str) -> TempLog {
         let path = temp_log(name);
         let mut log = AuditLog::open(&path).expect("open");
         log.append(

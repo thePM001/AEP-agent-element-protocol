@@ -94,6 +94,14 @@ pub enum PolicyError {
         /// What is wrong with it.
         reason: String,
     },
+    /// A tree of the toolset is not usable.
+    #[error("tree {tree} of the toolset: {reason}")]
+    Tree {
+        /// Name of the tree.
+        tree: String,
+        /// What is wrong with it.
+        reason: String,
+    },
     /// A route is not usable.
     #[error("route {route}: {reason}")]
     Route {

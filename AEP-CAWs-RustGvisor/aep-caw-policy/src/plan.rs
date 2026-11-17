@@ -85,6 +85,23 @@ pub struct PlanProgram {
     pub path: String,
 }
 
+/// Trees of the root file system that may hold a tree of a toolset.
+pub const TREE_ROOTS: [&str; 5] = ["/usr", "/lib", "/lib32", "/lib64", "/libx32"];
+
+/// One folder tree of a plan: a folder of the host, mounted read only.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PlanTree {
+    /// Name of the tree.
+    pub name: String,
+    /// Folder of the host.
+    pub source: String,
+    /// Path of the folder inside the sandbox.
+    pub path: String,
+    /// Folder inside the tree that joins the search path of programs.
+    pub bin: Option<String>,
+}
+
 /// Everything one sandbox holds.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -99,6 +116,9 @@ pub struct SandboxPlan {
     pub mounts: Vec<PlanMount>,
     /// The programs of the root file system.
     pub programs: Vec<PlanProgram>,
+    /// The folder trees of the root file system.
+    #[serde(default)]
+    pub trees: Vec<PlanTree>,
     /// The routes out of the sandbox. Empty means no network at all.
     pub routes: Vec<PlanRoute>,
     /// sha256 over the canonical JSON of the plan without this field.
@@ -403,6 +423,57 @@ pub fn compile(record: &ResolvedProfile, vars: &Variables) -> Result<SandboxPlan
             reason: "the toolset is empty".to_string(),
         });
     }
+    let mut trees: Vec<PlanTree> = Vec::new();
+    for tree in &record.toolset.trees {
+        let bad = |reason: &str| PolicyError::Tree {
+            tree: tree.name.clone(),
+            reason: reason.to_string(),
+        };
+        let place = format!("tree {}", tree.name);
+        let source = substitute(&tree.source, vars, None, &place)?;
+        let source = plain_path(&source, &place)
+            .map_err(|_| bad("the source is not an absolute path in plain form"))?;
+        let path = plain_path(&tree.path, &place)
+            .map_err(|_| bad("the path is not an absolute path in plain form"))?;
+        if !TREE_ROOTS
+            .iter()
+            .any(|root| path != *root && is_under(&path, root))
+        {
+            return Err(bad(
+                "the path is not a folder below /usr or below a library folder of the root",
+            ));
+        }
+        if let Some(bin) = &tree.bin {
+            let plain = !bin.is_empty()
+                && !bin.starts_with('/')
+                && bin
+                    .split('/')
+                    .all(|part| !part.is_empty() && part != "." && part != "..");
+            if !plain {
+                return Err(bad("the bin folder is not a plain path inside the tree"));
+            }
+        }
+        if trees
+            .iter()
+            .any(|t| t.name == tree.name || is_under(&path, &t.path) || is_under(&t.path, &path))
+        {
+            return Err(bad(
+                "the toolset holds the name twice or places two trees inside each other",
+            ));
+        }
+        if let Some(program) = programs.iter().find(|p| is_under(&p.path, &path)) {
+            return Err(bad(&format!(
+                "the program {} lies inside the tree, which brings its own programs",
+                program.name
+            )));
+        }
+        trees.push(PlanTree {
+            name: tree.name.clone(),
+            source,
+            path,
+            bin: tree.bin.clone(),
+        });
+    }
     let policies =
         std::iter::once(&record.base_policy).chain(record.mounts.iter().map(|m| &m.policy));
     for policy in policies {
@@ -475,6 +546,7 @@ pub fn compile(record: &ResolvedProfile, vars: &Variables) -> Result<SandboxPlan
         compiled_runtime: record.compiled_runtime,
         mounts,
         programs,
+        trees,
         routes,
         digest: String::new(),
     };

@@ -56,6 +56,11 @@ pub struct BundleInput<'a> {
     pub egress_dir: Option<&'a str>,
     /// Further variables of the environment, such as the proxy address.
     pub extra_env: &'a [(String, String)],
+    /// The folder trees of the toolset: the folder of the host and its path inside
+    /// the sandbox. Each is mounted read only.
+    pub trees: &'a [(String, String)],
+    /// Folders of the trees that join the search path of programs.
+    pub path_dirs: &'a [String],
     /// Bounds of the sandbox.
     pub limits: Limits,
 }
@@ -87,9 +92,16 @@ fn plain_path(path: &str) -> bool {
 
 /// The environment of a command. It is built from nothing: no variable of the
 /// caller reaches the sandbox unless the gate passes it in `extra`.
-pub fn environment(extra: &[(String, String)]) -> Result<Vec<String>, BundleError> {
+pub fn environment(
+    extra: &[(String, String)],
+    path_dirs: &[String],
+) -> Result<Vec<String>, BundleError> {
     let mut env = vec![
-        "PATH=/usr/bin:/bin".to_string(),
+        // The programs of the toolset come first, then the folders of its trees.
+        std::iter::once("PATH=/usr/bin:/bin".to_string())
+            .chain(path_dirs.iter().cloned())
+            .collect::<Vec<_>>()
+            .join(":"),
         "HOME=/tmp".to_string(),
         "TMPDIR=/tmp".to_string(),
         "LANG=C.UTF-8".to_string(),
@@ -121,7 +133,7 @@ pub fn config(plan: &SandboxPlan, input: &BundleInput<'_>) -> Result<Value, Bund
     if !plain_path(input.cwd) {
         return Err(BundleError::Cwd(input.cwd.to_string()));
     }
-    let env = environment(input.extra_env)?;
+    let env = environment(input.extra_env, input.path_dirs)?;
 
     let mut mounts = vec![
         json!({"destination": "/proc", "type": "proc", "source": "proc"}),
@@ -133,6 +145,16 @@ pub fn config(plan: &SandboxPlan, input: &BundleInput<'_>) -> Result<Value, Bund
             "options": ["nosuid", "nodev", "noexec", format!("size={}", input.limits.tmp_bytes)],
         }),
     ];
+    // A tree of the toolset is a folder of the host, read only. Its programs may
+    // run: a compiler is of no use otherwise.
+    for (source, path) in input.trees {
+        mounts.push(json!({
+            "destination": path,
+            "type": "bind",
+            "source": source,
+            "options": ["bind", "ro", "nosuid", "nodev"],
+        }));
+    }
     for mount in &plan.mounts {
         match mount.mode {
             MountMode::Mask => {
@@ -234,6 +256,7 @@ mod tests {
                 mount("/srv/config", MountMode::ReadOnly),
             ],
             programs: Vec::new(),
+            trees: Vec::new(),
             routes: Vec::new(),
             digest: "sha256:p".to_string(),
         }
@@ -255,6 +278,8 @@ mod tests {
                 existing_masks: &masks,
                 egress_dir: egress,
                 extra_env: &[],
+                trees: &[],
+                path_dirs: &[],
                 limits: Limits::default(),
             },
         )
@@ -332,7 +357,7 @@ mod tests {
             ("HOME".to_string(), "/home/agent/project".to_string()),
         ];
         assert_eq!(
-            environment(&extra),
+            environment(&extra, &[]),
             Ok(vec![
                 "PATH=/usr/bin:/bin".to_string(),
                 "TMPDIR=/tmp".to_string(),
@@ -344,12 +369,15 @@ mod tests {
         for name in ["", "1A", "A=B", "A B", "LD-PRELOAD"] {
             let bad = vec![(name.to_string(), "x".to_string())];
             assert_eq!(
-                environment(&bad),
+                environment(&bad, &[]),
                 Err(BundleError::EnvName(name.to_string()))
             );
         }
         let zero = vec![("A".to_string(), "x\0y".to_string())];
-        assert!(matches!(environment(&zero), Err(BundleError::ZeroByte(_))));
+        assert!(matches!(
+            environment(&zero, &[]),
+            Err(BundleError::ZeroByte(_))
+        ));
     }
 
     #[test]
@@ -399,6 +427,56 @@ mod tests {
     }
 
     #[test]
+    fn a_tree_is_mounted_read_only_before_the_mounts_of_the_plan_and_joins_the_path() {
+        let command = args(&["cargo", "test"]);
+        let masks = BTreeSet::new();
+        let trees = vec![(
+            "/opt/rust/stable".to_string(),
+            "/usr/local/rust".to_string(),
+        )];
+        let path_dirs = vec!["/usr/local/rust/bin".to_string()];
+        let p = plan(true);
+        let config = config(
+            &p,
+            &BundleInput {
+                args: &command,
+                cwd: "/home/agent/project",
+                root: "/r",
+                existing_masks: &masks,
+                egress_dir: None,
+                extra_env: &[],
+                trees: &trees,
+                path_dirs: &path_dirs,
+                limits: Limits::default(),
+            },
+        )
+        .expect("config");
+        let tree = mount_at(&config, "/usr/local/rust").expect("tree");
+        assert_eq!(tree["source"], "/opt/rust/stable");
+        assert_eq!(options(tree), vec!["bind", "ro", "nosuid", "nodev"]);
+        let order: Vec<&str> = config["mounts"]
+            .as_array()
+            .expect("mounts")
+            .iter()
+            .map(|m| m["destination"].as_str().expect("text"))
+            .collect();
+        assert_eq!(
+            order[..5],
+            [
+                "/proc",
+                "/dev",
+                "/tmp",
+                "/usr/local/rust",
+                "/home/agent/project"
+            ]
+        );
+        assert_eq!(
+            config["process"]["env"][0],
+            "PATH=/usr/bin:/bin:/usr/local/rust/bin"
+        );
+    }
+
+    #[test]
     fn the_egress_socket_folder_is_mounted_only_when_given() {
         assert!(mount_at(&built(&plan(false), &[], None), EGRESS_DIR).is_none());
         let config = built(&plan(false), &[], Some("/var/lib/caw/s1/run/c1"));
@@ -435,6 +513,8 @@ mod tests {
                     existing_masks: &masks,
                     egress_dir: None,
                     extra_env: &[],
+                    trees: &[],
+                    path_dirs: &[],
                     limits: Limits::default(),
                 },
             )

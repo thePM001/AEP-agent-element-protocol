@@ -4,7 +4,9 @@
 //!
 //! Usage: caw-run-proof <runsc> <record.json> <project folder> <work folder> <command> [args]
 //!
-//! The path of the init program comes from the variable CAW_PROOF_INIT.
+//! The path of the init program comes from the variable CAW_PROOF_INIT. A variable
+//! named CAW_PROOF_VAR_<NAME> sets the profile variable <NAME>. CAW_PROOF_TIME_LIMIT
+//! sets the time limit of the command in seconds, 60 when absent.
 //!
 //! Prints one line per deny event, one line per other egress request, one AUDIT line
 //! and one RESULT line:
@@ -76,6 +78,17 @@ fn prove(args: &[String]) -> Result<i32, String> {
     let vars = Variables::new()
         .with("HOME", &home)
         .with("AEP_MODEL_GATEWAY_HOST", "gateway.example.com");
+    let vars = std::env::vars()
+        .filter_map(|(key, value)| {
+            key.strip_prefix("CAW_PROOF_VAR_")
+                .map(|name| (name.to_string(), value))
+        })
+        .fold(vars, |vars, (name, value)| vars.with(&name, &value));
+    let limit = std::env::var("CAW_PROOF_TIME_LIMIT")
+        .ok()
+        .and_then(|text| text.parse::<u64>().ok())
+        .filter(|seconds| *seconds > 0)
+        .unwrap_or(60);
     let session = create(&layout, &config, &profile, Path::new(&args[2]), &vars)
         .map_err(|e| e.to_string())?;
     let outcome = exec(
@@ -84,7 +97,7 @@ fn prove(args: &[String]) -> Result<i32, String> {
         &ProofGate,
         &session.session_id,
         &args[4..],
-        Some(Duration::from_secs(60)),
+        Some(Duration::from_secs(limit)),
     )
     .map_err(|e| e.to_string())?;
     for event in &outcome.run.deny_events {

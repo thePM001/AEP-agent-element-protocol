@@ -318,6 +318,7 @@ describe("resolveCawProfile", () => {
         { name: "sh", source: "/usr/bin/sh", path: "/usr/bin/sh" },
         { name: "git", source: "/opt/git/bin/git", path: "/usr/local/bin/git" },
       ],
+      trees: [],
     });
     expect(record.digest).toBe(cawRecordDigest(record));
   });
@@ -348,6 +349,67 @@ describe("resolveCawProfile", () => {
       expect(resolveCawProfile("g", root).egress_policy.routes[0].host).toBe(host);
       rmSync(root, { recursive: true, force: true });
     }
+    root = "";
+  });
+
+  it("takes the trees of a toolset with their source, path and bin folder", () => {
+    gvisorRepo((d) => {
+      d.toolset.trees = [
+        { name: "rust", source: "${RUST_TOOLCHAIN}", path: "/usr/local/rust", bin: "bin" },
+        { name: "host-libraries", source: "/usr/lib/x86_64-linux-gnu", path: "/usr/lib/x86_64-linux-gnu" },
+      ];
+    });
+    expect(resolveCawProfile("g", root).toolset.trees).toEqual([
+      { name: "rust", source: "${RUST_TOOLCHAIN}", path: "/usr/local/rust", bin: "bin" },
+      { name: "host-libraries", source: "/usr/lib/x86_64-linux-gnu", path: "/usr/lib/x86_64-linux-gnu", bin: null },
+    ]);
+  });
+
+  it("refuses a tree that is not a plain folder of the root, each with its reason", () => {
+    const tree = (change) => (d) => {
+      const one = { name: "rust", source: "/opt/rust", path: "/usr/local/rust", bin: "bin" };
+      change(one, d);
+      d.toolset.trees = [one];
+    };
+    const cases = [
+      ["toolset-tree", tree((t) => { t.name = "Rust Toolchain"; })],
+      ["toolset-tree", tree((t) => { t.source = "opt/rust"; })],
+      ["toolset-tree", tree((t) => { t.source = "/opt/../etc"; })],
+      ["toolset-tree", tree((t) => { t.source = "/opt/rust/"; })],
+      ["toolset-tree", tree((t) => { t.path = "/home/agent/rust"; })],
+      ["toolset-tree", tree((t) => { t.path = "/etc/rust"; })],
+      ["toolset-tree", tree((t) => { t.path = "/usr"; })],
+      ["toolset-tree", tree((t) => { t.path = "/usr/local/../rust"; })],
+      ["toolset-tree", tree((t) => { t.path = "usr/local/rust"; })],
+      ["toolset-tree", tree((t) => { t.bin = "/bin"; })],
+      ["toolset-tree", tree((t) => { t.bin = "../bin"; })],
+      ["toolset-tree", tree((t) => { t.path = "/usr/local"; })],
+      ["toolset-tree", tree((t, d) => { d.toolset.programs.push({ name: "cargo", source: "/x/cargo", path: "/usr/local/rust/bin/cargo" }); })],
+      ["unknown-key", tree((t) => { t.sha256 = "x"; })],
+      ["missing-field", tree((t) => { delete t.source; })],
+      ["missing-field", tree((t) => { delete t.path; })],
+    ];
+    for (const [code, change] of cases) {
+      gvisorRepo(change);
+      expect([code, refusal(() => resolveCawProfile("g", root))]).toEqual([code, code]);
+      rmSync(root, { recursive: true, force: true });
+    }
+    gvisorRepo((d) => {
+      d.toolset.trees = [
+        { name: "a", source: "/opt/a", path: "/usr/local/a" },
+        { name: "b", source: "/opt/b", path: "/usr/local/a/b" },
+      ];
+    });
+    expect(refusal(() => resolveCawProfile("g", root))).toBe("toolset-tree");
+    rmSync(root, { recursive: true, force: true });
+    gvisorRepo((d) => {
+      d.toolset.trees = [
+        { name: "a", source: "/opt/a", path: "/usr/local/a" },
+        { name: "a", source: "/opt/b", path: "/usr/local/b" },
+      ];
+    });
+    expect(refusal(() => resolveCawProfile("g", root))).toBe("duplicate-name");
+    rmSync(root, { recursive: true, force: true });
     root = "";
   });
 
@@ -446,6 +508,7 @@ describe("materializeCawProfilesFromGap", () => {
       "coding-agent",
       "compiled-runtime",
       "dev-multi-repo",
+      "ede-draft",
       "restricted",
     ]);
     const restricted = resolveCawProfile("restricted");
@@ -453,6 +516,16 @@ describe("materializeCawProfilesFromGap", () => {
       { name: "model-gateway", scheme: "https", host: "${AEP_MODEL_GATEWAY_HOST}", port: 443, decision: "allow" },
     ]);
     expect(resolveCawProfile("compiled-runtime").egress_policy).toBeNull();
+    const draft = resolveCawProfile("ede-draft");
+    expect(draft.egress_policy).toBeNull();
+    expect(draft.compiled_runtime).toBe(true);
+    expect(draft.toolset.trees.map((t) => t.name)).toEqual([
+      "rust-toolchain",
+      "compiler-support",
+      "compiler-programs",
+      "host-libraries",
+    ]);
+    expect(draft.toolset.trees[0].source).toBe("${RUST_TOOLCHAIN}");
     for (const { profile_id } of out.profiles) {
       const record = resolveCawProfile(profile_id);
       const decisions = [record.base_policy, ...record.mounts.map((m) => m.policy)]

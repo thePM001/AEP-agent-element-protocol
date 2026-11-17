@@ -149,6 +149,27 @@ The EDE is the coding agent side of Admit. The EDE decides how the git state of 
 
 The record root and the EDE key are out of reach of an agent only while the agent runs as a user other than the EDE user and other than root. The sandbox that runs the agent carries that side of the boundary.
 
+## Run the agent in a sandbox
+
+The EDE and the CAW (`AEP-CAWs-RustGvisor`) are deployed together. The EDE decides how the git state may change. The CAW decides what a command of the agent can touch while it runs.
+
+```
+aep-ede seed owner/repo main                                   # outside the sandbox: prints the draft id
+aep-caw session create --data /var/lib/aep --profile ede-draft \
+    --workspace "$(aep-ede path <draft>)" \
+    --var RUST_TOOLCHAIN="$(rustc --print sysroot)"            # prints the session id
+aep-caw exec --data /var/lib/aep --session <session> --run cargo test --offline
+aep-ede scan <draft>                                           # outside the sandbox
+aep-ede promote <draft> -m "Title"                             # outside the sandbox
+```
+
+- A draft keeps its git folder beside the tree. The session mounts the tree and nothing else, so the git folder, the record root, the EDE key and the sign key of the agent do not exist inside the sandbox.
+- Every tool command of the agent runs through `aep-caw exec`. The verbs of `aep-ede` run outside the sandbox, because `aep-ede` needs the record root and its set user id bit.
+- The harness that calls both programs runs outside the sandbox and holds the sign key of the agent. The CAW confines the tool commands of the agent. It does not confine the harness.
+- The profile `ede-draft` has no network. A build takes its dependencies from the tree of the draft or from a read only tree of the toolset.
+
+`AEP-CAWs-RustGvisor/proof/ede-pairing.sh` proves the pairing: it builds and tests a crate inside a sandbox whose workspace has the layout of a draft and shows that the git folder, the record root and the keys are out of reach.
+
 ## Build and test
 
 ```

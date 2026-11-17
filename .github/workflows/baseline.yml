@@ -140,6 +140,10 @@ jobs:
         run: |
           . AEP-CAWs-RustGvisor/proof/runsc-pin.env
           bash AEP-CAWs-RustGvisor/proof/hostile-corpus.sh "$RUNSC_BIN" "${CARGO_TARGET_DIR:-rust/target}/debug/examples/caw-run-proof" AEP-CAWs-RustGvisor/aep-caw-policy/tests/fixtures/restricted.json "${CARGO_TARGET_DIR:-rust/target}/debug/aep-caw-init"
+      - name: pairing with the EDE as the runner user
+        run: |
+          . AEP-CAWs-RustGvisor/proof/runsc-pin.env
+          bash AEP-CAWs-RustGvisor/proof/ede-pairing.sh "$RUNSC_BIN" "${CARGO_TARGET_DIR:-rust/target}/debug/examples/caw-run-proof" AEP-CAWs-RustGvisor/proof/fixtures/ede-draft-proof.json "${CARGO_TARGET_DIR:-rust/target}/debug/aep-caw-init" "$(rustc --print sysroot)"
 
   format:
     name: format

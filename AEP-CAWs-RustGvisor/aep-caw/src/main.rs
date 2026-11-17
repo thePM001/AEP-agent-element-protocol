@@ -4,6 +4,7 @@
 //! aep-caw profiles list  --data <folder>
 //! aep-caw session create --data <folder> --profile <id> --workspace <folder> [--var NAME=VALUE]...
 //! aep-caw exec           --data <folder> --session <id> [--time-limit <seconds>] -- <command> [args]
+//! aep-caw exec           --data <folder> --session <id> [--time-limit <seconds>] --run <command> [args]
 //! aep-caw doctor         --data <folder>
 //! ```
 //!
@@ -68,7 +69,8 @@ impl Options {
         let mut i = 0;
         while i < args.len() {
             let name = args[i].as_str();
-            if name == "--" {
+            // The command follows two dashes or the word --run. Both mean the same.
+            if name == "--" || name == "--run" {
                 options.command = args[i + 1..].to_vec();
                 return Ok(options);
             }
@@ -401,6 +403,17 @@ mod tests {
                 command: args("ls --data /other --session x"),
             }
         );
+    }
+
+    #[test]
+    fn the_command_may_follow_the_word_run_in_place_of_the_two_dashes() {
+        assert_eq!(
+            parse(&args(
+                "exec --data /d --session s --run cargo test --offline"
+            )),
+            parse(&args("exec --data /d --session s -- cargo test --offline"))
+        );
+        assert!(parse(&args("exec --data /d --session s --run")).is_err());
     }
 
     #[test]

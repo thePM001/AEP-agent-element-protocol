@@ -584,6 +584,96 @@ fn the_toolset_is_checked() {
     }
 }
 
+fn tree(name: &str, source: &str, path: &str, bin: Option<&str>) -> aep_caw_policy::record::Tree {
+    aep_caw_policy::record::Tree {
+        name: name.to_string(),
+        source: source.to_string(),
+        path: path.to_string(),
+        bin: bin.map(str::to_string),
+    }
+}
+
+#[test]
+fn the_trees_of_a_toolset_are_compiled_with_their_variables() {
+    let mut p = profile();
+    p.toolset.trees = vec![
+        tree("rust", "${RUST_TOOLCHAIN}", "/usr/local/rust", Some("bin")),
+        tree(
+            "libraries",
+            "/usr/lib/x86_64-linux-gnu",
+            "/usr/lib/x86_64-linux-gnu",
+            None,
+        ),
+    ];
+    assert!(matches!(
+        compile(&p, &vars()),
+        Err(PolicyError::MissingVariable { name, .. }) if name == "RUST_TOOLCHAIN"
+    ));
+    let session = vars().with("RUST_TOOLCHAIN", "/opt/rust/stable");
+    let plan = compile(&p, &session).expect("compiles");
+    assert_eq!(plan.trees.len(), 2);
+    assert_eq!(plan.trees[0].source, "/opt/rust/stable");
+    assert_eq!(plan.trees[0].path, "/usr/local/rust");
+    assert_eq!(plan.trees[0].bin.as_deref(), Some("bin"));
+    assert_eq!(plan.trees[1].bin, None);
+    let without = compile(&profile(), &session).expect("compiles");
+    assert!(without.trees.is_empty());
+    assert_ne!(plan.digest, without.digest);
+    let moved = vars().with("RUST_TOOLCHAIN", "/opt/rust/other");
+    assert_ne!(plan.digest, compile(&p, &moved).expect("compiles").digest);
+}
+
+#[test]
+fn a_tree_that_is_not_a_plain_folder_of_the_root_is_refused() {
+    let cases: [(&str, &str, Option<&str>); 12] = [
+        ("relative/rust", "/usr/local/rust", None),
+        ("/opt/../etc", "/usr/local/rust", None),
+        ("/opt/rust/", "/usr/local/rust", None),
+        ("/opt/rust", "/home/agent/rust", None),
+        ("/opt/rust", "/etc/rust", None),
+        ("/opt/rust", "/tmp/rust", None),
+        ("/opt/rust", "/usr", None),
+        ("/opt/rust", "/lib64", None),
+        ("/opt/rust", "/usr/local/../rust", None),
+        ("/opt/rust", "/usr/local/rust", Some("/bin")),
+        ("/opt/rust", "/usr/local/rust", Some("../bin")),
+        ("/opt/rust", "/usr/local/rust", Some("")),
+    ];
+    for (source, path, bin) in cases {
+        let mut p = profile();
+        p.toolset.trees = vec![tree("rust", source, path, bin)];
+        let result = compile(&p, &vars());
+        assert!(
+            matches!(result, Err(PolicyError::Tree { .. })),
+            "{source} {path} {bin:?}: {result:?}"
+        );
+    }
+    let mut nested = profile();
+    nested.toolset.trees = vec![
+        tree("a", "/opt/a", "/usr/local/a", None),
+        tree("b", "/opt/b", "/usr/local/a/b", None),
+    ];
+    assert!(matches!(
+        compile(&nested, &vars()),
+        Err(PolicyError::Tree { .. })
+    ));
+    let mut twice = profile();
+    twice.toolset.trees = vec![
+        tree("a", "/opt/a", "/usr/local/a", None),
+        tree("a", "/opt/b", "/usr/local/b", None),
+    ];
+    assert!(matches!(
+        compile(&twice, &vars()),
+        Err(PolicyError::Tree { .. })
+    ));
+    let mut over_program = profile();
+    over_program.toolset.trees = vec![tree("bin", "/opt/bin", "/usr/bin", None)];
+    assert!(matches!(
+        compile(&over_program, &vars()),
+        Err(PolicyError::Tree { reason, .. }) if reason.contains("the program sh")
+    ));
+}
+
 #[test]
 fn routes_are_compiled_with_their_variables_and_checked() {
     let mut p = profile();

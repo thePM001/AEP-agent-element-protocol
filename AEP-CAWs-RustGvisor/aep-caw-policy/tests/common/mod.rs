@@ -100,6 +100,7 @@ pub fn profile() -> ResolvedProfile {
         toolset: Toolset {
             name: "tools".to_string(),
             programs: vec![program("sh"), program("cat")],
+            trees: Vec::new(),
         },
         digest: "sha256:test".to_string(),
     }

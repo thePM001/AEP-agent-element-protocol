@@ -146,6 +146,29 @@ fn the_reference_profiles_compile_into_plans() {
 }
 
 #[test]
+fn a_record_with_trees_parses_and_an_unknown_tree_key_is_refused() {
+    let mut value: Value = serde_json::from_str(RESTRICTED).expect("json");
+    value["toolset"]["trees"] = serde_json::json!([
+        {"name": "rust", "source": "${RUST_TOOLCHAIN}", "path": "/usr/local/rust", "bin": "bin"},
+        {"name": "libraries", "source": "/usr/lib/x86_64-linux-gnu", "path": "/usr/lib/x86_64-linux-gnu", "bin": null}
+    ]);
+    let record = parse_record(&resealed(value.clone())).expect("parses");
+    assert_eq!(record.toolset.trees.len(), 2);
+    assert_eq!(record.toolset.trees[0].bin.as_deref(), Some("bin"));
+    assert_eq!(record.toolset.trees[1].bin, None);
+    // A record written before trees existed has none.
+    assert!(parse_record(RESTRICTED)
+        .expect("parses")
+        .toolset
+        .trees
+        .is_empty());
+    value["toolset"]["trees"][0]["sha256"] = Value::String("x".to_string());
+    assert!(
+        matches!(parse_record(&resealed(value)), Err(PolicyError::Shape(m)) if m.contains("unknown field"))
+    );
+}
+
+#[test]
 fn a_reference_profile_with_no_gateway_host_is_refused() {
     let result = compile(&parse_record(RESTRICTED).expect("parses"), &vars());
     assert!(

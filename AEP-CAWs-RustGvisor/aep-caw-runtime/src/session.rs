@@ -442,7 +442,7 @@ pub fn create(
         source: config.init.to_string_lossy().into_owned(),
         path: INIT_PATH.to_string(),
     });
-    let root = resolve_root(&programs, &DEFAULT_LIBRARY_DIRS)?;
+    let root = resolve_root(&programs, &plan.trees, &DEFAULT_LIBRARY_DIRS)?;
 
     let session_id = random_id()?;
     let dir = layout.session(&session_id);
@@ -664,6 +664,7 @@ pub fn exec(
             cwd: &session.workspace,
             egress_dir: proxy.as_ref().map(|(_, dir)| dir.as_path()),
             extra_env: &extra_env,
+            trees: &session.root.trees,
             limits: Limits::default(),
             time_limit,
             on_started: Some(&seal),
@@ -774,13 +775,6 @@ mod tests {
         }
     }
 
-    fn temp(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("caw-session-{}-{name}", std::process::id()));
-        let _ = fs::remove_dir_all(&dir);
-        fs::create_dir_all(&dir).expect("temp dir");
-        dir
-    }
-
     /// A data folder with one profile record whose toolset is one static program,
     /// and a workspace outside of the root trees.
     fn fixture(name: &str) -> (PathBuf, Layout, CawConfig, PathBuf) {
@@ -789,7 +783,6 @@ mod tests {
             std::process::id()
         ));
         let _ = fs::remove_dir_all(&base);
-        let _ = temp(name);
         let workspace = base.join("project");
         fs::create_dir_all(&workspace).expect("workspace");
         let tool = base.join("tool");

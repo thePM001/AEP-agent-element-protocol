@@ -150,13 +150,18 @@ const FILE_RULE_KEYS = new Set(["name", "description", "paths", "operations", "d
 const COMMAND_RULE_KEYS = new Set(["name", "description", "commands", "decision"]);
 const EGRESS_KEYS = new Set(["kind", "name", "description", "unmatched", "routes"]);
 const ROUTE_KEYS = new Set(["name", "scheme", "host", "port", "decision"]);
-const TOOLSET_KEYS = new Set(["kind", "name", "description", "programs"]);
+const TOOLSET_KEYS = new Set(["kind", "name", "description", "programs", "trees"]);
+const TREE_KEYS = new Set(["name", "source", "path", "bin"]);
 const PROGRAM_KEYS = new Set(["name", "source", "path"]);
 
 const NAME_RE = /^[a-z0-9][a-z0-9._-]*$/;
 const HOST_RE = /^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
 const HOST_VARIABLE_RE = /^\$\{[A-Z][A-Z0-9_]*\}$/;
 const PROGRAM_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._+-]*$/;
+// A tree source is an absolute path. It may start with one variable.
+const TREE_SOURCE_RE = /^(\$\{[A-Z][A-Z0-9_]*\}|\/)[^\0]*$/;
+// Trees of a toolset land in the program and library part of the root.
+const TREE_ROOTS = ["/usr", "/lib", "/lib32", "/lib64", "/libx32"];
 
 function isObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -315,7 +320,59 @@ function normalizeToolset(doc) {
     paths.add(path);
     return { name, source, path };
   });
-  return { name: doc.name, programs };
+  const treeNames = new Set();
+  const treePaths = [];
+  const trees = (doc.trees ?? []).map((tree, i) => {
+    const treeWhat = `${what} tree ${tree?.name ?? i + 1}`;
+    refuseUnknownKeys(tree, TREE_KEYS, treeWhat);
+    const name = requireString(tree.name, `the name of ${treeWhat}`);
+    if (!NAME_RE.test(name)) {
+      throw new GapCompileError("toolset-tree", `${treeWhat} has no plain lower case name`);
+    }
+    const source = requireString(tree.source, `the source of ${treeWhat}`);
+    const path = requireString(tree.path, `the path of ${treeWhat}`);
+    const steps = (value) => value.split("/").some((part) => part === ".." || part === ".");
+    if (!TREE_SOURCE_RE.test(source) || steps(source) || source.endsWith("/")) {
+      throw new GapCompileError(
+        "toolset-tree",
+        `the source of ${treeWhat} must be an absolute folder path or start with one variable, with no parent step`,
+      );
+    }
+    const inRoot = TREE_ROOTS.some((root) => path === root || path.startsWith(`${root}/`));
+    if (!path.startsWith("/") || steps(path) || path.endsWith("/") || path.includes("//") || !inRoot || TREE_ROOTS.includes(path)) {
+      throw new GapCompileError(
+        "toolset-tree",
+        `the path of ${treeWhat} must be a folder below /usr or a library folder of the root, in plain form`,
+      );
+    }
+    let bin = null;
+    if (tree.bin !== undefined && tree.bin !== null) {
+      bin = requireString(tree.bin, `the bin folder of ${treeWhat}`);
+      if (bin.startsWith("/") || steps(bin) || bin.endsWith("/") || bin.includes("//")) {
+        throw new GapCompileError("toolset-tree", `the bin folder of ${treeWhat} must be a plain path inside the tree`);
+      }
+    }
+    if (treeNames.has(name)) {
+      throw new GapCompileError("duplicate-name", `${what} holds two trees named ${name}`);
+    }
+    for (const other of treePaths) {
+      if (other === path || other.startsWith(`${path}/`) || path.startsWith(`${other}/`)) {
+        throw new GapCompileError("toolset-tree", `${what} places the trees ${other} and ${path} inside each other`);
+      }
+    }
+    for (const program of programs) {
+      if (program.path === path || program.path.startsWith(`${path}/`)) {
+        throw new GapCompileError(
+          "toolset-tree",
+          `${what} places the program ${program.name} inside the tree ${name}. The tree brings its own programs.`,
+        );
+      }
+    }
+    treeNames.add(name);
+    treePaths.push(path);
+    return { name, source, path, bin };
+  });
+  return { name: doc.name, programs, trees };
 }
 
 /**
