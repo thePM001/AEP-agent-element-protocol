@@ -64,7 +64,7 @@ jobs:
           echo "no wildcard registry dependency"
 
   npm-audit:
-    name: npm audit (high)
+    name: npm audit (high for shipped packages, critical for development tools)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -75,8 +75,13 @@ jobs:
         with:
           node-version: 22
       # npm audit reads package-lock.json and needs no install.
-      - name: npm audit --audit-level=high
-        run: npm audit --audit-level=high
+      # A package that ships fails the job at high. A development tool, such as the test runner
+      # or the linter, fails it at critical, so an advisory without a patched version in a
+      # development tool stays visible in the log and holds no push.
+      - name: npm audit --omit=dev --audit-level=high
+        run: npm audit --omit=dev --audit-level=high
+      - name: npm audit --audit-level=critical
+        run: npm audit --audit-level=critical
 
   gitleaks:
     name: gitleaks
