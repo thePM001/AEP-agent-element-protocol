@@ -2,7 +2,7 @@
 
 This is the engineering threat model of the AEP 2.9 public tree. It covers the Base Node kernel, the docks, the UCB dock gateway, the CAW execution layer, the lattice channels and the Admit layer with its written policy. For each layer it names the assets, the trust boundaries, what an attacker can do, the threats with their mitigations and the risk that remains.
 
-This release ships no host sandbox. The Go CAW is retired and a Rust CAW with gVisor replaces it. Until that CAW lands nothing in this tree confines an agent process on the host. Layer 4 records what that leaves open.
+The Go CAW is retired. The Rust CAW with gVisor is in the tree under `AEP-CAWs-RustGvisor`. Its registry entry is retired until the job caw-gvisor has passed on a GitHub runner, so until then treat the CAW as not shipped. Layer 4 lists what it does and what it leaves open. Layer 4 records what that leaves open.
 
 Every mitigation names at least one check that proves it. A check is a conformance id such as `CC-13` from `AEP-Components/conformance/tests/manifest.json`. A check can also be a test written as `path::name`, where `name` is a Rust `fn`, a Go `func` or a quoted vitest title. The live-set CI job runs `node aep-check.mjs`, whose `threat model` section reads every table row below and fails when a row names no check. It also fails when a cited conformance id is missing or only planned and when a cited test is not in its file.
 
@@ -110,17 +110,35 @@ Out of scope: an attacker with root on the Base Node host, a compromised kernel 
 
 **Assets.** The host files outside the workspace, the network beyond the declared routes, the processes of other sessions and the credentials of declared HTTP services.
 
-**Status.** This release ships no host sandbox. The Go CAW is retired and a Rust CAW with gVisor replaces it. The rows that the Go CAW carried left with it, because their checks no longer ship.
+**Status.** The tree holds the Rust CAW with gVisor under `AEP-CAWs-RustGvisor`. Its registry entry is retired until the job caw-gvisor has passed on a GitHub runner. Until then treat the CAW as not shipped. The rows that the Go CAW carried left with it.
 
-**Trust boundaries.** TB-5. In this release no code of the tree enforces it.
+**Trust boundaries.** TB-5. The CAW enforces it for every command that runs through `aep-caw exec`.
 
 **Attacker capabilities.** AC-5.
 
 | Id | Threat | Mitigation | Checks |
 |----|--------|------------|--------|
 | CW-1 | A deployment declares a catch-all egress rule that reaches any destination. | The wrap coverage report lists every CAW catch-all allow rule as unmatched until unmatched egress deny is on. | `AEP-Components/wrap-coverage/tests/wrap-coverage.test.mjs::"a CAW catch-all allow rule without unmatched_egress deny is unmatched"` |
+| CW-2 | A command reads a file of the host outside its workspace. | A path that no rule of the profile allows is not mounted, so it does not exist inside the sandbox. A failed open of such a path is one deny event. | `AEP-CAWs-RustGvisor/aep-caw-policy/tests/plan.rs::a_path_that_no_rule_allows_is_not_in_the_plan`, `AEP-CAWs-RustGvisor/aep-caw-policy/tests/classify.rs::a_failed_open_outside_the_plan_is_one_deny_event` |
+| CW-3 | A command changes a program of its toolset or keeps a privilege. | The root file system is read only. The process has no capability and takes no new privilege. | `AEP-CAWs-RustGvisor/aep-caw-runtime/src/bundle.rs::the_root_is_read_only_and_the_process_has_no_privilege` |
+| CW-4 | A command drops a program into its workspace and runs it. | The mounts of a profile that does not set compiled_runtime carry noexec. The attempt is one deny event. | `AEP-CAWs-RustGvisor/aep-caw-runtime/src/bundle.rs::mounts_follow_the_plan_and_a_workspace_program_does_not_run`, `AEP-CAWs-RustGvisor/aep-caw-policy/tests/classify.rs::an_exec_that_was_asked_for_and_never_loaded_is_denied_at_the_end` |
+| CW-5 | A command reaches a network destination that the profile does not name. | The sandbox has no network device. The only way out is the egress proxy, which refuses a destination with no route, every spelling of an address and a name with a private answer. | `AEP-CAWs-RustGvisor/aep-caw-egress/src/lib.rs::a_destination_with_no_route_is_refused_with_one_event`, `AEP-CAWs-RustGvisor/aep-caw-egress/src/lib.rs::every_spelling_of_an_address_is_refused_before_any_lookup`, `AEP-CAWs-RustGvisor/aep-caw-egress/src/lib.rs::a_name_with_one_private_answer_is_refused_as_a_whole` |
+| CW-6 | A command starts while the Base Node is silent. | One gate starts every sandbox. It asks the kernel dock first and a silent, refusing or late dock refuses the run. | `AEP-CAWs-RustGvisor/aep-caw-runtime/tests/one_gate.rs::exactly_one_place_calls_the_sandbox_and_it_is_the_gate`, `AEP-CAWs-RustGvisor/aep-caw-dock/src/lib.rs::a_dock_that_does_not_answer_in_time_refuses_the_run` |
+| CW-7 | A program, a toolchain or a mounted folder is swapped after the session was created. | Programs are pinned copies, a tree is pinned by its listing and a mount source that is a link refuses the run. | `AEP-CAWs-RustGvisor/aep-caw-runtime/src/rootfs.rs::a_program_that_changes_after_the_pin_is_not_copied`, `AEP-CAWs-RustGvisor/aep-caw-runtime/src/rootfs.rs::a_tree_that_changed_after_the_pin_fails_the_check_of_the_root`, `AEP-CAWs-RustGvisor/aep-caw-runtime/src/sandbox.rs::a_link_in_the_place_of_a_mount_source_refuses_the_run` |
+| CW-8 | The audit log of a session is edited after the fact. | Every line carries the hash of the line before it. A changed, removed or swapped line breaks the chain. | `AEP-CAWs-RustGvisor/aep-caw-runtime/src/audit.rs::a_changed_line_breaks_the_chain`, `AEP-CAWs-RustGvisor/aep-caw-runtime/src/audit.rs::a_removed_line_breaks_the_chain` |
+| CW-9 | A rule that a sandbox cannot express is applied in a weaker form. | The engine refuses the session and names the rule. | `AEP-CAWs-RustGvisor/aep-caw-policy/tests/plan.rs::a_decision_other_than_allow_or_deny_is_refused_with_its_rule`, `AEP-CAWs-RustGvisor/aep-caw-policy/tests/plan.rs::a_part_of_the_write_or_read_operations_is_refused` |
+| CW-10 | A secret of the caller reaches the command through the environment. | The environment of a command is built from nothing. | `AEP-CAWs-RustGvisor/aep-caw-runtime/src/bundle.rs::the_environment_is_built_from_nothing` |
+| CW-11 | A profile record is changed after the GAP compiler wrote it. | The record carries a sha256 digest and the engine refuses a record that does not match it. | `AEP-CAWs-RustGvisor/aep-caw-policy/tests/record.rs::one_changed_character_breaks_the_digest` |
 
-**Residual risk.** An agent process on the host runs with the rights of its user. It can read files outside the workspace, reach any network destination and trace other processes of that user. The kernel still judges every action that reaches a dock. A process that never asks the kernel is not stopped. Until the Rust CAW lands, run agents inside a container or a virtual machine with its own limits.
+**Residual risk.**
+
+- The CAW confines the commands that run through `aep-caw exec`. It does not confine the harness that calls it. An agent process that is started any other way runs with the rights of its user.
+- The user that runs the CAW reads the key store of the Base Node, because the kernel dock client signs its ping with a key from that store. That user can sign as any agent of that Base Node.
+- gVisor reports open, exec and connect calls and no stat call. A program that only asks whether a file exists is refused and leaves no deny event.
+- A tool that looks for its configuration in the folders above the workspace leaves one deny event per folder.
+- The CAW runs on Linux on amd64 with the systrap platform of gVisor and never as root. A host that restricts user namespaces through AppArmor needs the profile of runsc.
+- A tree of a toolset is checked before each command by its listing, which reads no file content. A change that keeps size, mode and change time of every file is seen only at the next session create.
+- The kernel still judges every action that reaches a dock. A process that never asks the kernel is stopped only by the sandbox.
 
 ## Layer 5: Lattice channels and crypto
 
