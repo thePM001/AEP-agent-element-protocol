@@ -20,6 +20,12 @@ ignore = [
     # open against either crate. Moving dynAEP, envelope and live-entry to a
     # maintained YAML crate is a code change tracked outside this gate.
     { id = "RUSTSEC-2024-0449", reason = "unsafe-libyaml unmaintained via serde_yaml 0.9, no open vulnerability" },
+    # chrono and chrono-tz were declared unmaintained on 2026-11-17 with no
+    # vulnerability open against them. Only the UCM crates use them, for calendar
+    # dates and IANA time zones. Moving UCM to a maintained crate is a code change
+    # with its own tests, tracked outside this gate.
+    { id = "RUSTSEC-2026-0543", reason = "chrono unmaintained, used by aep-ucm-core and aep-ucm-receipt, no open vulnerability" },
+    { id = "RUSTSEC-2026-0555", reason = "chrono-tz unmaintained, used by aep-ucm-core, no open vulnerability" },
 ]
 
 [licenses]
