@@ -213,7 +213,7 @@ function rustBuildSection(root) {
  * Section caw build. The root build covers the default member only, the Base Node.
  * This section builds the programs of the CAW: aep-caw and aep-caw-init. A program
  * that does not build fails the section. The section builds and runs nothing inside
- * a sandbox: the suite caw-gvisor of ci.gaplune does that on a host with runsc.
+ * a sandbox: the CI job caw-gvisor does that on a host with runsc.
  */
 const CAW_PROGRAMS = ["aep-caw", "aep-caw-init"];
 const CAW_PIN = "AEP-CAWs-RustGvisor/proof/runsc-pin.env";
