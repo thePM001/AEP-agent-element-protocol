@@ -209,6 +209,35 @@ function rustBuildSection(root) {
   return { passed: true };
 }
 
+/*
+ * Section caw build. The root build covers the default member only, the Base Node.
+ * This section builds the programs of the CAW: aep-caw and aep-caw-init. A program
+ * that does not build fails the section. The section builds and runs nothing inside
+ * a sandbox: the suite caw-gvisor of ci.gaplune does that on a host with runsc.
+ */
+const CAW_PROGRAMS = ["aep-caw", "aep-caw-init"];
+const CAW_PIN = "AEP-CAWs-RustGvisor/proof/runsc-pin.env";
+
+function cawBuildSection(root) {
+  if (!existsSync(join(root, CAW_PIN))) {
+    console.log("caw build: " + CAW_PIN + " is missing, the CAW has no pinned gVisor");
+    return { passed: false };
+  }
+  var opts = new Object();
+  opts.encoding = "utf8";
+  opts.cwd = root;
+  opts.maxBuffer = CHILD_BUFFER;
+  var args = ["build"];
+  for (var i = 0; i < CAW_PROGRAMS.length; i++) args.push("-p", CAW_PROGRAMS[i]);
+  var result = spawnSync("cargo", args, opts);
+  if (result.status !== 0) {
+    printChildFailure("caw build", "cargo " + args.join(" "), result);
+    return { passed: false };
+  }
+  console.log("caw build: cargo " + args.join(" "));
+  return { passed: true };
+}
+
 function wrapCoverageSection(root) {
   var script = join(root, "AEP-Components/wrap-coverage/lib/wrap-coverage.mjs");
   var inventory = "AEP-User-Experience/examples/end-to-end-run/deployment/wrap-coverage.yaml";
@@ -463,6 +492,7 @@ const SECTIONS = [
   { name: "wrap coverage", run: wrapCoverageSection },
   { name: "threat model", run: threatModelSection },
   { name: "rust build", run: rustBuildSection },
+  { name: "caw build", run: cawBuildSection },
   { name: "links", run: linksSection },
   { name: "readme", run: readmeSection },
 ];
