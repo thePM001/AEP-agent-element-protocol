@@ -2,6 +2,13 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-17 - The Rust CAW with gVisor confines every agent command
+This release shipped no host sandbox after the Go CAW left: an agent process on the host ran with the rights of its user.
+
+- `AEP-CAWs-RustGvisor` holds the Rust CAW: the programs `aep-caw` and `aep-caw-init` and the crates `aep-caw-policy`, `aep-caw-runtime`, `aep-caw-egress` and `aep-caw-dock`. Every agent command runs inside gVisor with the systrap platform as a user that is not root, after the kernel dock admitted a sealed `root:ping`.
+- The CI job `caw-gvisor` runs the gVisor facts, the dock acceptance, the core acceptance, the hostile corpus and the pairing with the EDE on a GitHub runner with the pinned runsc.
+- The registry entry `caw-framework` is active at `AEP-CAWs-RustGvisor/`. The documents that said no host sandbox ships say what the CAW does. The readme section of `aep-check.mjs` refuses that sentence.
+
 ## [2.9.0] - 2026-11-16 - The draft environment stages the host change of a promote provisionally
 A promote ended in the forge. What it changed on a host went in place by hand, with no trial, no saved way back and no record of what changed.
 

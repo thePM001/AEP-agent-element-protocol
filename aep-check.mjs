@@ -281,6 +281,10 @@ function threatModelSection(root) {
  * 5. No README carries a version label older than 2.9. CHANGELOG.md is not a
  *    README, so the history lives there. A line that the release allow list
  *    names is exempt.
+ * 6. No shipped document says that this release ships no host sandbox. The
+ *    Rust CAW is active since its CI job passed on a GitHub runner. The section
+ *    reads every markdown file except CHANGELOG.md and the files that
+ *    RETIRED_CAW_FILES names.
  */
 
 const COMPONENT_MAP = "AEP-Components/component-map.json";
@@ -299,6 +303,13 @@ const STATUS_LINE = /^Status: (normative|reference|sketch)\. Stability: (stable|
 const OLD_LABEL = /(?<![\w.])v?2\.(?:8(?:b|\.x|\.\d+)?|75)(?![\w.])/;
 const PAPER_NUMBER = /\b(?:Definition|Theorem|Lemma|Proposition|Corollary|Section|Table|Figure|Algorithm)\s+2\.(?:8|75)\b/;
 const SAMPLE_PATH = /[*<>{}$\s]|\.\.\./;
+const RETIRED_CAW = /ships no host sandbox|no host sandbox ships|ships no CAW|no CAW runtime ships|ships none: the Go CAW|until (?:that|the Rust) CAW lands|\bNo host sandbox\./i;
+const RETIRED_CAW_FILES = [
+  "AEP-Components/component-map.json",
+  "AEP-Base-Node/AEP-Registry/catalog.json",
+  "AEP-Base-Node/AEP-Registry/components/caw-framework.json",
+  "docker/entrypoint.sh",
+];
 
 /** Every README.md below a tree root, in path order. */
 function collectReadmeFiles(root) {
@@ -479,6 +490,23 @@ function readmeSection(root) {
       if (allowed.has(`${here}\t${raw[i]}`)) continue;
       findings.push(`${here}:${i + 1}: version label ${label[0]} is older than 2.9`);
     }
+  }
+
+  /* 6. No shipped sentence of the retired CAW condition. */
+  const caw = collectMarkdownFiles(root)
+    .map((file) => relative(root, file).split(sep).join("/"))
+    .filter((rel) => rel !== "CHANGELOG.md")
+    .concat(RETIRED_CAW_FILES);
+  for (const rel of caw) {
+    let text;
+    try {
+      text = readFileSync(join(root, rel), "utf8");
+    } catch {
+      continue;
+    }
+    text.split("\n").forEach((textLine, i) => {
+      if (RETIRED_CAW.test(textLine)) findings.push(`${rel}:${i + 1}: says that no host sandbox ships, the Rust CAW is active`);
+    });
   }
 
   for (const item of findings) console.log(item);

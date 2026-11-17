@@ -32,7 +32,7 @@ Each crate of the workspace belongs to one of the 18 main components or to the s
 | 07 dynAEP | `aep-dynaep` |
 | 08 Lattice Channels | `aep-lattice-channel`, `aep-lattice-crypto` and `aep-lattice-gated-fetch` |
 | 10 Base Node Pulse | `aep-base-node-pulse` |
-| 11 CAWs | `aep-isolation` and `aep-caw-cve-demo-trees`. No CAW runtime ships in this release: the Go CAW is retired and a Rust CAW with gVisor replaces it |
+| 11 CAWs | `aep-caw-policy`, `aep-caw-runtime`, `aep-caw-egress`, `aep-caw-dock`, the programs `aep-caw` and `aep-caw-init`, `aep-isolation` and `aep-caw-cve-demo-trees` |
 | 13 AgentMesh | `aep-agentmesh` and `aep-agentmesh-local-issuance` |
 | 15 Lattice Memory | `aep-lattice-memory` |
 | 18 TLA+ | `aep-tla-verify` and `aep-conformance` |

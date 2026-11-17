@@ -248,10 +248,9 @@ describe("matchIntentFromCatalog", () => {
     expect(matchIntentFromCatalog("run conformance", ctx()).componentIds).toContain("conformance-runner");
   });
 
-  it("caw intent adds session, mcp-security and gap but not the retired caw-framework", () => {
+  it("caw intent adds caw-framework, session, mcp-security and gap", () => {
     const ids = matchIntentFromCatalog("an aep-caw coding agent", ctx()).componentIds;
-    for (const id of ["session", "mcp-security", "gap"]) expect(ids).toContain(id);
-    expect(ids).not.toContain("caw-framework");
+    for (const id of ["caw-framework", "session", "mcp-security", "gap"]) expect(ids).toContain(id);
   });
 
   it("dynaep intent adds core, typescript and optional python and scanners", () => {

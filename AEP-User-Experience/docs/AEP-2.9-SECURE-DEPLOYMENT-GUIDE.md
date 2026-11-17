@@ -194,10 +194,11 @@ export UCB_API_KEY=...
 
 ### 2.7 CAW (execution layer)
 
-- Enable CAW for coding agents / shell workloads via catalog plans (`default_enabled` in catalog).
-- Prefer enforce mode with a non-nil policy engine.
-- Seccomp path resolve failures **deny** (deny by default).
-- soft_delete without FUSE/ptrace trash **denies** destructive ops on seccomp-only path.
+- Install the pinned gVisor once with `sudo bash AEP-CAWs-RustGvisor/proof/install-runsc.sh` and run the CAW as the user of the Base Node, never as root.
+- Write the profile, its egress policy and its toolset in GAP and allow only the profiles you use in `caw.toml`. A rule that a sandbox cannot express refuses the session.
+- Grant `root:ping` to `caw-kernel-dock` in the lattice and in a hub policy (`AEP-CAWs-RustGvisor/proof/dock-deployment/`). The CAW refuses every command while the kernel dock is silent.
+- A destination with no route is denied. So is every address literal and every name with a private answer.
+- Run `aep-caw doctor --data <folder>` after every change of the host.
 - Do not run production coding agents without CAW when shell is in scope.
 - CAW is host ELS. It does not replace **Base Node** as the kernel. TypeScript dynAEP is not product Admit.
 
@@ -252,7 +253,7 @@ export UCB_API_KEY=...
 # Base Node docks refuse plain ping
 # Workers reach AEP only via Path A (Base Node/lattice) or Path B (UCB)
 # UCB without key returns 401 when UCB is enabled
-# CAW: resolve-fail and soft_delete paths deny under enforce
+# CAW: a silent kernel dock refuses the command with exit 126
 ```
 
 ## 6. Mapping to source

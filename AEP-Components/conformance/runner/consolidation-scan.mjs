@@ -212,9 +212,9 @@ export function consolidationRows(root) {
   }
 
   {
-    // The Go CAW is retired and no host sandbox ships in this release, so the
-    // tree holds no enforcement implementation. The Rust CAW with gVisor will be
-    // the one enforcer and the expected count returns to 1 when it lands.
+    // The Rust CAW confines a command through gVisor: aep-caw-runtime writes the
+    // bundle and runsc applies the restrictions, so no file of the tree calls
+    // seccomp, landlock or ptrace itself and the expected count is 0.
     const components = enforcementComponents(FILES);
     rows.push({ concern: "enforcement implementations", count: components.length, expected: 0, proof: components });
   }

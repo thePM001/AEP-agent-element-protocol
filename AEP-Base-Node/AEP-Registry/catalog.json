@@ -536,10 +536,11 @@
       "id": "caw-framework",
       "name": "AEP CAW Framework",
       "kind": "daemon",
-      "status": "retired",
+      "status": "active",
       "bundled": false,
       "default_enabled": false,
-      "description": "Retired. The Go CAW left the tree and this release ships no host sandbox. A Rust CAW with gVisor takes this id over when it lands.",
+      "path": "AEP-CAWs-RustGvisor/",
+      "description": "Rust CAW: runs every agent command inside gVisor as a user that is not root, after the kernel dock of the Base Node admitted a sealed ping.",
       "manifest": "AEP-Base-Node/AEP-Registry/components/caw-framework.json",
       "role": "kernel"
     },

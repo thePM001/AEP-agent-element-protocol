@@ -386,11 +386,11 @@ flowchart LR
 
 **What it is:** CAWs (Containerized Agentic Workflows) are the sandboxes on the host in which an agent process runs. A CAW confines the shell commands, files, network connections and processes of the agent under the written policy.
 
-**What ships in 2.9:** No host sandbox. The Go CAW of earlier releases is retired. A Rust CAW replaces it: a policy engine written in Rust that runs every agent process inside gVisor. Until it lands nothing in this tree confines an agent process on the host, so run agents inside a container or a virtual machine with its own limits. The kernel still judges every action that reaches a dock. GAP (06) keeps compiling the sandbox profiles and the registry keeps the id `caw-framework` with the status retired for the Rust CAW. `THREAT_MODEL.md` Layer 4 lists what this leaves open.
+**What ships in 2.9:** The Rust CAW. The program `aep-caw` runs every agent command inside gVisor (`runsc`, systrap platform) as a user that is not root, after the kernel dock of the Base Node admitted a sealed ping. Profiles, egress policies and toolsets are written in GAP (06). Every denied file, program or destination is an event in a hash chained audit log. The Go CAW of earlier releases is retired. The CI job `caw-gvisor` proves the sandbox on a GitHub runner and `THREAT_MODEL.md` Layer 4 names the check behind every claim.
 
-**Where it lives:** [`AEP-CAWs-RustGvisor/`](AEP-CAWs-RustGvisor/), plus `AEP-Components/isolation/`, `AEP-Components/intercept/`, `AEP-Components/mcp-security/` and `AEP-Components/caw-cve-demo-trees/`. None of these folders confines a process.
+**Where it lives:** [`AEP-CAWs-RustGvisor/`](AEP-CAWs-RustGvisor/) with the programs `aep-caw` and `aep-caw-init` and four crates, plus `AEP-Components/isolation/`, `AEP-Components/intercept/`, `AEP-Components/mcp-security/` and `AEP-Components/caw-cve-demo-trees/`.
 
-**Run and test:** Nothing to run in this release. The component README has the detail: [`AEP-CAWs-RustGvisor/README.md`](AEP-CAWs-RustGvisor/README.md).
+**Run and test:** Install the pinned gVisor once with `sudo bash AEP-CAWs-RustGvisor/proof/install-runsc.sh`, then run `cargo test -p aep-caw-policy -p aep-caw-runtime -p aep-caw-egress -p aep-caw-dock`. The component README has every command: [`AEP-CAWs-RustGvisor/README.md`](AEP-CAWs-RustGvisor/README.md).
 
 ## 12 / Scanners
 
@@ -543,7 +543,7 @@ Manifest: `AEP-Components/conformance/tests/manifest.json`. Every listed check r
 | [`AEP-Components/lattice-channels/README.md`](AEP-Components/lattice-channels/README.md) | 08 Lattice Channels: sealed transport and its security rules |
 | [`AEP-Components/evidence-ledger/README.md`](AEP-Components/evidence-ledger/README.md) | 09 Evidence Ledger: hash chain, Merkle proofs and rollback |
 | [`AEP-Components/base-node-pulse/README.md`](AEP-Components/base-node-pulse/README.md) | 10 Base Node Pulse: compiled clocks of the kernel |
-| [`AEP-CAWs-RustGvisor/README.md`](AEP-CAWs-RustGvisor/README.md) | 11 CAWs: no host sandbox ships, the Rust CAW with gVisor replaces the retired Go CAW |
+| [`AEP-CAWs-RustGvisor/README.md`](AEP-CAWs-RustGvisor/README.md) | 11 CAWs: the Rust CAW that runs every agent command inside gVisor |
 | [`AEP-Components/scanners/README.md`](AEP-Components/scanners/README.md) | 12 Scanners: the scanner pipeline and the rule table |
 | [`AEP-Components/agentmesh/README.md`](AEP-Components/agentmesh/README.md) | 13 AgentMesh: local identity issuance |
 | [`AEP-Components/economics/README.md`](AEP-Components/economics/README.md) | 14 Economics: cost, budgets and x402 |

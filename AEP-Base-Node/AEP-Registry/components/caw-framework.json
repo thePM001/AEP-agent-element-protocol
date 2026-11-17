@@ -3,28 +3,72 @@
   "id": "caw-framework",
   "version": "2.9.0",
   "kind": "daemon",
-  "status": "retired",
-  "description": "Retired. The Go CAW left the tree and this release ships no host sandbox. A Rust CAW with gVisor takes this id over when it lands.",
+  "status": "active",
+  "path": "AEP-CAWs-RustGvisor/",
+  "description": "Rust CAW: runs every agent command inside gVisor as a user that is not root, after the kernel dock of the Base Node admitted a sealed ping. Profiles, egress policies and toolsets come from GAP.",
   "requires": [
-    "aep-base-node"
+    "aep-base-node",
+    "gap"
   ],
-  "capabilities": [],
-  "actions": [],
+  "capabilities": [
+    "caw:gvisor-sandbox",
+    "caw:egress-proxy",
+    "caw:kernel-dock-gate",
+    "caw:audit-log"
+  ],
+  "actions": [
+    {
+      "id": "list_profiles",
+      "description": "List the profiles that caw.toml allows",
+      "runtime": "cli",
+      "method": "aep-caw profiles list --data <folder>"
+    },
+    {
+      "id": "create_session",
+      "description": "Open a session on a workspace under one profile",
+      "runtime": "cli",
+      "method": "aep-caw session create --data <folder> --profile <id> --workspace <folder>"
+    },
+    {
+      "id": "exec",
+      "description": "Run one command in the gVisor sandbox of a session",
+      "runtime": "cli",
+      "method": "aep-caw exec --data <folder> --session <id> --run <command>"
+    },
+    {
+      "id": "doctor",
+      "description": "Check caw.toml, the profiles, the pinned runsc and the kernel dock",
+      "runtime": "cli",
+      "method": "aep-caw doctor --data <folder>"
+    }
+  ],
   "setup_hooks": [],
   "resource_requirements": {
-    "min_memory_mb": 0,
-    "min_disk_mb": 0,
+    "min_memory_mb": 256,
+    "min_disk_mb": 200,
     "requires_internet": false,
     "gpu_required": false
   },
   "cca": {
-    "summary": "Retired. No host sandbox ships in this release, so no agent process is confined on the host.",
-    "use_when": [],
-    "avoid_when": [
-      "every deployment of this release: the component ships nothing"
+    "summary": "Rust CAW with gVisor: every agent command runs in a sandbox under a GAP profile after the kernel admitted a sealed ping.",
+    "use_when": [
+      "coding agents or shell workloads on a Linux host",
+      "confining tool commands of an agent to a workspace",
+      "pairing with the EDE for coding agents"
     ],
-    "pairs_with": []
+    "avoid_when": [
+      "hosts that are not Linux on amd64",
+      "running the CAW as root"
+    ],
+    "pairs_with": [
+      "aep-base-node",
+      "gap",
+      "session",
+      "mcp-security"
+    ]
   },
-  "implementation": {},
+  "implementation": {
+    "path": "AEP-CAWs-RustGvisor/"
+  },
   "role": "kernel"
 }

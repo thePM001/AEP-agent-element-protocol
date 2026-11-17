@@ -1,9 +1,9 @@
 // The seal record contract test for the aep-isolation crate.
 //
 // This crate records one process against one isolation specification and it
-// applies no restriction of its own, because it makes no system call. This
-// release ships no host sandbox: the Go CAW is retired and a Rust CAW with gVisor
-// replaces it. A seal on its own is a record and not confinement.
+// applies no restriction of its own, because it makes no system call. The Rust
+// CAW in AEP-CAWs-RustGvisor confines a process inside gVisor. A seal on its own
+// is a record and not confinement.
 
 use aep_isolation::{isolation_spec_digest, seal_holds, seal_once, seal_process, IsolationSpec};
 

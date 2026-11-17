@@ -489,7 +489,7 @@ To win the fight against the synthetic nano-parasites (SNP/NanoSinp) alien WMD, 
 
 ## GAP-centric policies and CAW sandboxes
 
-AEP 2.9 treats **GAP** (Governed Agentic Programming) as the single authoring language for policies and agent payloads. **CAW** is the execution-layer sandbox that enforces those policies on the host. This release ships no CAW: the Go CAW is retired and a Rust CAW with gVisor replaces it. The GAP compiler keeps compiling the CAW profiles for it. You do not maintain parallel YAML policy stacks: you author in GAP and compile locally.
+AEP 2.9 treats **GAP** (Governed Agentic Programming) as the single authoring language for policies and agent payloads. **CAW** is the execution-layer sandbox that enforces those policies on the host. The Rust CAW in `AEP-CAWs-RustGvisor` runs every agent command inside gVisor under a profile that the GAP compiler resolved. The Go CAW is retired. You do not maintain parallel YAML policy stacks: you author in GAP and compile locally.
 
 ### How GAP and CAW relate
 

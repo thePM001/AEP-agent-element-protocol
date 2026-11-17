@@ -1,8 +1,8 @@
 //! CAW kernel dock identity.
 //!
 //! A CAW refuses to start a host command while the Base Node kernel is silent.
-//! The Go CAW that used this dock is retired and the Rust CAW with gVisor will use
-//! the same dock.
+//! The Rust CAW with gVisor (AEP-CAWs-RustGvisor, crate aep-caw-dock) uses this
+//! dock before every command.
 //! The docks accept only sealed LatticeChannelFrames, so the CAW probe proves a
 //! live kernel with one sealed root:ping on the validation dock and passes only
 //! when that frame is admitted. The frame is signed as caw-kernel-dock.

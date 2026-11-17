@@ -4,7 +4,7 @@ This folder belongs to component 01 (AEP Base Node) and the README of the whole 
 
 This crate is a Base Node kernel extension that the daemon loads, while the GAP profile language lives in AEP-Components/gap. This crate binds those instructions into kernel-owned session, mount and agent-permission state.
 
-CAW is the execution companion. This release ships no CAW: the Go CAW is retired and a Rust CAW with gVisor replaces it. The Hub does not compile CAW. They meet at GAP files under AEP-Components/gap/policies/reference that start with caw- and end in .gap with kind aep.caw.profile.
+CAW is the execution companion: the Rust CAW in `AEP-CAWs-RustGvisor` runs agent commands inside gVisor. The Hub does not compile CAW. They meet at GAP files under AEP-Components/gap/policies/reference that start with caw- and end in .gap with kind aep.caw.profile.
 
 ## Crate
 

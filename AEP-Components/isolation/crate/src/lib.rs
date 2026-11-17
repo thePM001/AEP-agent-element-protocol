@@ -9,9 +9,9 @@
 // different specification can never satisfy the seal.
 //
 // This crate is a seal record contract and it is not an enforcer. It applies no
-// restriction of its own, because it makes no system call. This release ships no
-// host sandbox: the Go CAW is retired and a Rust CAW with gVisor replaces it. A
-// seal on its own is a record and not confinement.
+// restriction of its own, because it makes no system call. The Rust CAW in
+// AEP-CAWs-RustGvisor confines a process inside gVisor. A seal on its own is a
+// record and not confinement.
 
 use aep_kernel_types::{seal_digest, ProcessSealed};
 use serde::{Deserialize, Serialize};

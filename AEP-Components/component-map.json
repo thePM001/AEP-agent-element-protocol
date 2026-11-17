@@ -139,7 +139,7 @@
       "name": "CAWs",
       "home": "AEP-CAWs-RustGvisor",
       "readme": "AEP-CAWs-RustGvisor/README.md",
-      "summary": "The host sandboxes in which an agent process runs under the written policy. This release ships none: the Go CAW is retired and a Rust CAW with gVisor replaces it.",
+      "summary": "The host sandboxes in which an agent process runs under the written policy. The Rust CAW runs every agent command inside gVisor under a GAP profile. The Go CAW is retired.",
       "folders": [
         "AEP-Components/isolation",
         "AEP-Components/intercept",

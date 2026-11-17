@@ -181,11 +181,11 @@ start_ucm() {
 }
 
 
-# This release ships no host sandbox. The Go CAW is retired and a Rust CAW with
-# gVisor replaces it. CAW=1 has no effect until that CAW lands, so the image says
-# so instead of implying that agent processes are confined.
+# This image carries no CAW. The Rust CAW runs on the host beside the Base Node
+# (AEP-CAWs-RustGvisor/README.md), so CAW=1 has no effect inside the image and the
+# image says so instead of implying that agent processes are confined.
 if [ "${CAW:-0}" = "1" ]; then
-  echo "WARN: CAW=1 has no effect: this release ships no host sandbox and agent processes are not confined." >&2
+  echo "WARN: CAW=1 has no effect: this image carries no CAW, install the Rust CAW on the host (AEP-CAWs-RustGvisor/README.md)." >&2
 fi
 
 # With UCM_LATTICE_RECORD=1 UCM records each receipt digest as agent aep-ucm on the

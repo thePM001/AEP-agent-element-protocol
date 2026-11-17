@@ -87,10 +87,12 @@ describe("retired registry components", () => {
     expect(errors).toContain("retired catalog entry old-sandbox needs a retired manifest");
   });
 
-  it("validates the catalog of this tree with caw-framework retired", () => {
+  it("validates the catalog of this tree with caw-framework active at the Rust CAW", () => {
     const catalog = loadLocalCatalog(ROOT);
     const caw = catalog.components.find((c) => c.id === "caw-framework");
-    expect(caw.status).toBe("retired");
+    expect(caw.status).toBe("active");
+    expect(caw.path).toBe("AEP-CAWs-RustGvisor/");
+    expect(loadComponentManifest(caw.manifest, ROOT).status).toBe("active");
     const full = validateFullCatalog(catalog, ROOT, (p) => loadComponentManifest(p, ROOT));
     expect(full.results.filter((r) => !r.valid)).toEqual([]);
   });

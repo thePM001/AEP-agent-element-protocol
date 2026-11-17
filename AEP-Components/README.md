@@ -45,7 +45,7 @@ Every subfolder has a `README.md`. The README of a home folder describes the who
 Infrastructure and top-level surfaces outside this folder:
 
 - `AEP-Base-Node/` - **mandatory AEP governance kernel**, component 01
-- `AEP-CAWs-RustGvisor/` - CAW host sandboxes, component 11. This release ships none: the Go CAW is retired and a Rust CAW with gVisor replaces it
+- `AEP-CAWs-RustGvisor/` - CAW host sandboxes, component 11. The Rust CAW runs every agent command inside gVisor; the Go CAW is retired
 - `AEP-Base-Node/AEP-Docks/` - socket dock specs, the UCB bridge of component 02 and the Universal Connect Dock (UCD)
 - `AEP-Policy-System/` - policy files plus `policy-builder/` and `schema-builder/`, part of component 06
 - `docker/` - container entrypoint and runtime deps

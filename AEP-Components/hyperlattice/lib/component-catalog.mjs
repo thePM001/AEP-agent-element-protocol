@@ -212,7 +212,7 @@ export function matchIntentFromCatalog(userIntent, context) {
       matched.add("conformance-runner");
     }
     if (CAW_INTENT_PATTERN.test(text)) {
-      // caw-framework is retired: no host sandbox ships in this release.
+      matched.add("caw-framework");
       matched.add("session");
       matched.add("mcp-security");
       matched.add("gap");

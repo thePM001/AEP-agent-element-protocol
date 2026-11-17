@@ -1,42 +1,89 @@
 # 11 / CAWs
 
-Status: sketch. Stability: experimental. This release ships no host sandbox.
+Status: reference. Stability: experimental. The Rust CAW runs every agent command inside gVisor.
 
 ## What it is
 
-CAWs (Containerized Agentic Workflows) are the sandboxes on the host in which an agent process runs under the written policy. A CAW confines the shell commands, files, network connections and processes of an agent and asks the kernel dock of the Base Node before a command starts.
+CAWs (Containerized Agentic Workflows) are the sandboxes on the host in which an agent process runs under the written policy. The CAW of AEP 2.9 is written in Rust. It compiles a sandbox profile from GAP into a plan, asks the kernel dock of the Base Node before every command and runs the command inside gVisor (`runsc`, systrap platform) as a user that is not root. Every denied file, program and network destination becomes one event in a hash chained audit log of the session.
 
-The Go CAW that earlier releases carried is retired. A Rust CAW replaces it: a policy engine written in Rust that runs every agent process inside gVisor. This root folder is where that CAW lands. Until then it holds this README only.
+The Go CAW of earlier releases is retired. Its approve and redirect decisions and its MCP inspection did not move into the Rust CAW: the model gateway and the MCP security gateway keep those jobs.
 
 ## Place among the 18
 
-The Admit Gate (04) in the AEP Base Node (01) judges every action that reaches a dock. GAP (06) describes the sandbox profiles of a CAW in files of the kinds `aep.caw.profile` and `aep.caw.mount_policy`. The GAP compiler keeps compiling them for the Rust CAW. The CAW is the part that confines a process on the host. In this release that part is missing, so a process that never asks the kernel is not stopped.
+GAP (06) is the only place a sandbox profile is written. The AEP Base Node (01) owns the kernel dock: the CAW starts no command while that dock is silent or refuses its sealed `root:ping`. The Admit Gate (04) still judges every action that reaches a dock. The EDE pairs with the CAW for coding agents: the EDE decides how the git state of a draft may change, the CAW decides what a command may touch while it runs. The registry lists this component as `caw-framework` with the status active.
 
 ## What ships in 2.9
 
-- No host sandbox and no `aep-caw` program.
-- The registry keeps the id `caw-framework` with the status retired, so the Rust CAW can take it over without a new catalog id.
-- The kernel side of the CAW kernel dock in `AEP-Base-Node/AEP-Crate/src/caw_kernel_dock.rs`, which the Rust CAW will use.
-- The four folders below. They hold the seal record contract, the intercept hooks, the MCP security gateway and the check that keeps CVE demo trees out of the attachable set. None of them confines a process.
+- The program `aep-caw` with four commands: list the allowed profiles, create a session, run one command in the sandbox and check the host.
+- The program `aep-caw-init`, process 1 inside every sandbox. It starts the command, relays the egress port and reaps every child.
+- Four library crates: the policy engine, the runtime around `runsc`, the egress proxy and the kernel dock client.
+- A pinned gVisor release with its install script.
+- The proof scripts that the CI job `caw-gvisor` runs on a GitHub runner as a user that is not root.
+- Six reference profiles in GAP: `restricted`, `coding-agent`, `compiled-runtime`, `agent-sandbox`, `dev-multi-repo` and `ede-draft`.
 
 ## Layout
 
 | Path | Role |
 |------|------|
-| `AEP-Components/isolation/` | Seal record contract for one process and one isolation specification |
-| `AEP-Components/intercept/` | Hooks before and after an action |
-| `AEP-Components/mcp-security/` | MCP security gateway |
-| `AEP-Components/caw-cve-demo-trees/` | Keeps CVE demo trees out of the attachable component set |
+| `aep-caw-policy/` | Pure policy engine: profile records, the sandbox plan, routes and the classification of trace events into deny events |
+| `aep-caw-runtime/` | Root file system of pinned programs and trees, the OCI bundle, the `runsc` run, the trace listener, the audit log and the one gate in front of every command |
+| `aep-caw-egress/` | Egress proxy on a Unix socket: one route list, no address literal, no private answer |
+| `aep-caw-dock/` | Client of the kernel dock: one sealed `root:ping` before every command |
+| `aep-caw/` | The program `aep-caw` |
+| `aep-caw-init/` | The program `aep-caw-init` |
+| `proof/` | The pin of gVisor, its install script, the proof scripts and the files a deployment adds to the Base Node |
+| `fuzz/` | Fuzz targets of the policy engine, in a workspace of their own |
+| `GVISOR-FACTS.md` | What the pinned gVisor does and does not report, with the script that proves each fact |
+
+The folders `AEP-Components/isolation`, `AEP-Components/intercept`, `AEP-Components/mcp-security` and `AEP-Components/caw-cve-demo-trees` belong to this component too. They hold the seal record contract, the hooks around an action, the MCP security gateway and the check that keeps CVE demo trees out of the attachable set.
 
 ## Interfaces
 
-None in this release. The Rust CAW will take its sandbox profiles from GAP and ask the kernel dock before every command, as the Go CAW did.
+The commands of `aep-caw`:
+
+```text
+aep-caw profiles list  --data <folder>
+aep-caw session create --data <folder> --profile <id> --workspace <folder> [--var NAME=VALUE]...
+aep-caw exec           --data <folder> --session <id> [--time-limit <seconds>] --run <command> [args]
+aep-caw doctor         --data <folder>
+```
+
+- `session create` prints the session id. The variables of a profile, such as `${HOME}` or `${PROJECT_ROOT}`, come from `--var` and `--workspace` only and never from the environment of the caller.
+- `exec` returns the exit code of the command. It returns 126 when the CAW refuses to start the command, for example while the kernel dock is silent. It returns 125 when the trace of the run is incomplete. The environment of the command is built from nothing.
+- `doctor` checks `caw.toml`, the record of every allowed profile, the pinned `runsc`, the AppArmor profile on a host that needs it and the kernel dock. It prints one line per check.
+
+The folder given with `--data` is the data folder of the Base Node. The CAW reads `caw-framework/caw.toml` and the compiled profile records in `caw-framework/profiles/` below it and writes each session to `caw-framework/sessions/<id>/`:
+
+```text
+allowed_profiles = ["coding-agent"]
+runsc = "/usr/bin/runsc"
+init = "/usr/local/bin/aep-caw-init"
+base_node_data = "/var/lib/aep"
+dock_socket = "/var/lib/aep/sockets/validation"
+```
+
+`dock_socket` is the validation socket below the `socket_base` of the Base Node configuration.
+
+A profile is written in GAP with three kinds of documents. The reference files under `AEP-Components/gap/policies/reference/` hold one of each:
+
+- `kind: aep.caw.profile` (`caw-coding-agent.gap`) names its mounts, its egress policy, its toolset and whether programs built in the workspace may run.
+- `kind: aep.caw.egress_policy` (`caw-egress-policies.gap`) lists the routes. A destination with no route is denied.
+- `kind: aep.caw.toolset` (`caw-toolsets.gap`) lists the programs and the read only trees that the sandbox may run.
+
+The GAP compiler lists the profiles and writes their records into a data folder:
+
+```bash
+node AEP-Components/gap/lib/gap-compile.mjs --list-profiles
+node AEP-Components/gap/lib/gap-compile.mjs --materialize "$(mktemp -d)"
+```
+
+The Base Node of a deployment grants `root:ping` to the agent `caw-kernel-dock` in its lattice and in a hub policy of its data folder. `proof/dock-deployment/` holds both files. The CAW runs as the user of that Base Node, because it signs its ping with a key from the key store of the node. The two are one trust domain. The key store is outside every mount.
 
 ## Pairing with the EDE
 
-The CAW and the EDE (`AEP-Components/ede`) are deployed together. The EDE decides how the git state of a coding agent may change. The CAW decides what a command of the agent can touch while it runs.
+The CAW and the EDE (`AEP-Components/ede`) are deployed together for coding agents.
 
-```
+```text
 aep-ede seed owner/repo main                                   # outside the sandbox: prints the draft id
 aep-caw session create --data /var/lib/aep --profile ede-draft \
     --workspace "$(aep-ede path <draft>)" \
@@ -49,20 +96,57 @@ aep-ede promote <draft> -m "Title"                             # outside the san
 - The workspace of the session is the tree of the draft. The git folder beside the tree, the record root, the EDE key and the sign key of the agent are outside every mount.
 - The harness that calls both programs runs outside the sandbox and holds the sign key of the agent. The CAW confines the tool commands of the agent. It does not confine the harness.
 - The reference profile `ede-draft` mounts a Rust toolchain and the C linker as read only trees, lets programs built in the tree run and opens no route.
-- `proof/ede-pairing.sh` proves the pairing on a live sandbox.
 
 ## Limits
 
-- An agent process on the host runs with the rights of its user. It can read files outside the workspace, reach any network destination and trace other processes of that user.
-- Run agents inside a container or a virtual machine with its own limits until the Rust CAW lands.
-- `THREAT_MODEL.md` Layer 4 lists what this leaves open.
+- Linux on amd64 only, with the systrap platform of gVisor. The CAW never runs a sandbox as root. A host that restricts user namespaces through AppArmor needs the profile that `proof/install-runsc.sh` installs.
+- A rule that a sandbox cannot express refuses the session at `session create`, with the name of the rule. Nothing is applied in a weaker form.
+- gVisor reports open, exec and connect calls and no stat call. A program that only asks whether a file exists is refused and leaves no deny event: the hostile corpus case `probe-with-stat-leaves-no-event` holds this on purpose.
+- A tool that looks for its configuration in the folders above the workspace, such as cargo, leaves one deny event per folder.
+- A tree of a toolset is checked before each command by its listing, which reads no file content. A change that keeps size, mode and change time of every file is seen only at the next `session create`.
+- The CAW confines the commands that run through `aep-caw exec`. It does not confine the harness that calls it. An agent process started any other way runs with the rights of its user.
+- The Docker image of this release carries no CAW. Install the CAW on the host as described below.
+- The model gateway and the MCP security gateway keep the jobs the Go CAW did beside the sandbox: approval, redirection and the inspection of tool calls.
+- `THREAT_MODEL.md` Layer 4 lists every threat with the check that holds it.
 
 ## Run and test
 
-Nothing to run. The end to end example in `AEP-User-Experience/examples/end-to-end-run/` walks its six layers without a CAW and prints one line that says no host sandbox runs.
+Install the pinned gVisor once as root, install the JavaScript dependencies and build the programs:
+
+```bash
+sudo bash AEP-CAWs-RustGvisor/proof/install-runsc.sh
+npm ci
+cargo build --release -p aep-base-node --bins -p aep-ucb -p aep-end-to-end-run -p aep-caw -p aep-caw-init
+```
+
+Run one command in a sandbox with a live Base Node, as the user of the deployment and not as root. The end to end example starts a Base Node with the grant of the kernel dock, compiles the reference profiles, writes `caw.toml`, opens a session under the profile `compiled-runtime`, runs a refused read and an allowed command and prints one line per layer:
+
+```bash
+AEP_E2E_BIN="$PWD/rust/target/release" bash AEP-User-Experience/examples/end-to-end-run/run.sh
+```
+
+Run the tests and the proof scripts as the CI job `caw-gvisor` does, as a user that is not root:
+
+```bash
+cargo test -p aep-caw-policy -p aep-caw-runtime -p aep-caw-egress -p aep-caw-dock -p aep-caw -p aep-caw-init
+cargo build -p aep-caw-runtime -p aep-caw-dock --examples
+cargo build -p aep-caw -p aep-caw-init
+cargo build -p aep-base-node --bin aep-base-node
+. AEP-CAWs-RustGvisor/proof/runsc-pin.env
+bash AEP-CAWs-RustGvisor/proof/gvisor-facts.sh "$RUNSC_BIN" rust/target/debug/examples/caw-trace-proof
+bash AEP-CAWs-RustGvisor/proof/dock-acceptance.sh rust/target/debug/aep-base-node rust/target/debug/examples/caw-dock-proof
+bash AEP-CAWs-RustGvisor/proof/core-acceptance.sh "$RUNSC_BIN" rust/target/debug/examples/caw-run-proof AEP-CAWs-RustGvisor/aep-caw-policy/tests/fixtures/restricted.json rust/target/debug/aep-caw-init rust/target/debug/aep-caw AEP-CAWs-RustGvisor/proof/fixtures/egress-proof.json rust/target/debug/aep-base-node
+bash AEP-CAWs-RustGvisor/proof/hostile-corpus.sh "$RUNSC_BIN" rust/target/debug/examples/caw-run-proof AEP-CAWs-RustGvisor/aep-caw-policy/tests/fixtures/restricted.json rust/target/debug/aep-caw-init
+bash AEP-CAWs-RustGvisor/proof/ede-pairing.sh "$RUNSC_BIN" rust/target/debug/examples/caw-run-proof AEP-CAWs-RustGvisor/proof/fixtures/ede-draft-proof.json rust/target/debug/aep-caw-init "$(rustc --print sysroot)"
+```
+
+Each proof script prints one line per check and exits 0 only when every check holds.
 
 ## Related documents
 
 - `THREAT_MODEL.md`, Layer 4: CAW
-- `AEP-Base-Node/AEP-Registry/components/caw-framework.json`, the retired registry entry
+- `AEP-CAWs-RustGvisor/GVISOR-FACTS.md`
+- `AEP-Base-Node/AEP-Registry/components/caw-framework.json`, the registry entry
 - `AEP-Components/gap/README.md` for the GAP kinds of a sandbox profile
+- `AEP-Components/ede/README.md` for the pairing with the EDE
+- `AEP-User-Experience/examples/end-to-end-run/README.md` for the run with a live Base Node

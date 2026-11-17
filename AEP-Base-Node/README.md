@@ -96,7 +96,7 @@ flowchart TB
   L --> X[CAW runs the admitted action]
 ```
 
-The executor after admit is a CAW. This release ships none: the Go CAW is retired and a Rust CAW with gVisor replaces it.
+The executor after admit is a CAW: the Rust CAW in `AEP-CAWs-RustGvisor` asks the kernel dock with a sealed `root:ping` and runs the command inside gVisor only after the dock admitted it.
 
 ## What lives here
 
@@ -159,7 +159,7 @@ A builder who wants a different wait edits the compiled `PULSE_MS` constant and 
 
 ## Kernel outbound request
 
-Agent tools do not call the internet directly. They ask Base Node to make the call for them through the inference dock (the JavaScript helper `latticeGatedFetch` does this). Base Node checks the request with Admit, writes it to the ledger, fetches the page and hands the answer back. This covers only the web requests that Base Node makes for agents. The own network access of an agent is not governed in this release: no host sandbox ships until the Rust CAW lands.
+Agent tools do not call the internet directly. They ask Base Node to make the call for them through the inference dock (the JavaScript helper `latticeGatedFetch` does this). Base Node checks the request with Admit, writes it to the ledger, fetches the page and hands the answer back. This covers only the web requests that Base Node makes for agents. The own network access of an agent command is governed by the Rust CAW: the sandbox has no network device and its egress proxy allows only the routes of the profile.
 
 Base Node fetches a web address only when all of these hold:
 

@@ -2,7 +2,7 @@
 
 This is the engineering threat model of the AEP 2.9 public tree. It covers the Base Node kernel, the docks, the UCB dock gateway, the CAW execution layer, the lattice channels and the Admit layer with its written policy. For each layer it names the assets, the trust boundaries, what an attacker can do, the threats with their mitigations and the risk that remains.
 
-The Go CAW is retired. The Rust CAW with gVisor is in the tree under `AEP-CAWs-RustGvisor`. Its registry entry is retired until the job caw-gvisor has passed on a GitHub runner, so until then treat the CAW as not shipped. Layer 4 lists what it does and what it leaves open. Layer 4 records what that leaves open.
+The Go CAW is retired. The Rust CAW with gVisor under `AEP-CAWs-RustGvisor` confines every command that runs through `aep-caw exec`. The CI job caw-gvisor proves it on a GitHub runner. Layer 4 lists what it does and what it leaves open.
 
 Every mitigation names at least one check that proves it. A check is a conformance id such as `CC-13` from `AEP-Components/conformance/tests/manifest.json`. A check can also be a test written as `path::name`, where `name` is a Rust `fn`, a Go `func` or a quoted vitest title. The live-set CI job runs `node aep-check.mjs`, whose `threat model` section reads every table row below and fails when a row names no check. It also fails when a cited conformance id is missing or only planned and when a cited test is not in its file.
 
@@ -110,7 +110,7 @@ Out of scope: an attacker with root on the Base Node host, a compromised kernel 
 
 **Assets.** The host files outside the workspace, the network beyond the declared routes, the processes of other sessions and the credentials of declared HTTP services.
 
-**Status.** The tree holds the Rust CAW with gVisor under `AEP-CAWs-RustGvisor`. Its registry entry is retired until the job caw-gvisor has passed on a GitHub runner. Until then treat the CAW as not shipped. The rows that the Go CAW carried left with it.
+**Status.** The Rust CAW with gVisor under `AEP-CAWs-RustGvisor` is active in the registry. The CI job caw-gvisor runs its facts, its acceptance, its hostile corpus and its pairing with the EDE on a GitHub runner as a user that is not root. The rows that the Go CAW carried left with it.
 
 **Trust boundaries.** TB-5. The CAW enforces it for every command that runs through `aep-caw exec`. The CAW runs as the user of the Base Node, because the kernel dock client signs its ping with a key from the key store of the node. The two are one trust domain. The key store is outside every mount, so no command inside a sandbox reaches it.
 

@@ -74,8 +74,8 @@ describe("wrap coverage on the end-to-end example", () => {
     for (const e of report.entries) expect(e.wrap, `${e.kind} ${e.id}`).toBe("caw");
   });
 
-  // The example deploys no CAW policy, because this release ships no host sandbox,
-  // so its inventory names no egress route.
+  // The example deploys a CAW profile that opens no route, so its inventory names
+  // no egress route.
   it("the end-to-end inventory covers its credentials, tool and lattice grants", () => {
     const report = coverageForFile(E2E);
     const kinds = new Set(report.entries.map((e) => e.kind));
