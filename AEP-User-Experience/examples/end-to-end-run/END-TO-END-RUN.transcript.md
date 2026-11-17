@@ -4,7 +4,7 @@ This note records one observed run of the end to end example in this folder. The
 > kernel pulse ms 1000
 > kernel drift bound ms 50
 > attach action ucb:ingest scene scene-ucb agent agent-a
-> host sandbox: none in this release, the Go CAW is retired and a Rust CAW with gVisor replaces it
+> host sandbox: the Rust CAW with gVisor under the profile compiled-runtime
 > 
 > == refuse path
 > REFUSE 1 sealed capsule: a foreign recipient key refused the capsule: fingerprint mismatch
@@ -16,14 +16,18 @@ This note records one observed run of the end to end example in this folder. The
 > REFUSE 4 apply: collect all admit refused, so the plan holds no ledger allowance and no rate step and no row is written
 > REFUSE 5 dock attach: the ingest refused with HTTP 422 and the DenyReport error is ManifestMissing and the closed walls are ucb.manifest=structural
 > REFUSE 6 ledger row: the refuse path wrote no row and the ledger count remains 0
+> REFUSE 7 CAW session: the profile e2e-absent is not in the allowed list of caw.toml and no session opens (exit 126)
+> REFUSE 8 CAW command: the read of a host file outside the workspace fails inside the sandbox and the audit log holds one deny event file-outside on <run-dir>/outside/secret
 > 
 > == pass path
 > PASS 1 sealed capsule: the recipient key opened the capsule and the payload is aep-2.9-end-to-end-run
 > PASS 2 pulse: the seal stamp drifts 0 ms inside the 50 ms bound, the capsule waits at the seal beat and turns ready 1000 ms later
 > PASS 3 collect all: collect all ran every wall on the path and 0 walls closed
 > PASS 4 apply: the plan carries the ledger allowance and the rate step and the applied snapshot rate is 1
-> PASS 5 dock attach: the ingest returned status integrated and the admit row is event_id 1 allow true digest 18fdf9fef07e...
-> PASS 6 ledger row: the pass path moved the ledger count from 0 to 2 and the newest row is id 2 agent agent-a event_type UCB_INGEST frame_digest 9153422f2195...
+> PASS 5 dock attach: the ingest returned status integrated and the admit row is event_id 1 allow true digest a8eec1a9c10b...
+> PASS 6 ledger row: the pass path moved the ledger count from 0 to 2 and the newest row is id 2 agent agent-a event_type UCB_INGEST frame_digest e200a5ac0853...
+> PASS 7 CAW session: the session opens on the workspace under the profile compiled-runtime and its plan holds 1 mounts, 19 programs and 0 routes
+> PASS 8 CAW command: the command returns exit 0 and prints e2e-command-ran, its write reaches the workspace on the host and the audit chain of 8 lines holds with no new deny event
 > 
 > == verdict
-> RESULT refuse path first and pass path second with the ledger row
+> RESULT refuse path first and pass path second with the ledger row and the sandboxed command

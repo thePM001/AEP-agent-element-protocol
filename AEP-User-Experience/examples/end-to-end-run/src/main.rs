@@ -3,12 +3,8 @@
 //! One command walks every layer twice. The refuse path runs first and every
 //! layer fails closed. The pass path runs second and the same layers allow.
 //!
-//! Layer order: a sealed capsule, the pulse, collect all, apply, a dock attach
-//! and a ledger row.
-//!
-//! This release ships no host sandbox. The Go CAW is retired and a Rust CAW
-//! with gVisor replaces it, so the walk has no CAW session and no CAW exec
-//! layer until that CAW lands.
+//! Layer order: a sealed capsule, the pulse, collect all, apply, a dock attach,
+//! a ledger row, a CAW session and a command in the gVisor sandbox of the CAW.
 //!
 //! Base Node is the only live evaluator and this run is not a second evaluator.
 //! The run prints what the layers decide. It does not publish measurement
@@ -37,6 +33,219 @@ const PROVENANCE_SOURCE: &str = "mcp";
 const PROVENANCE_PROTOCOL: &str = "1.0";
 const SESSION_REFUSE: &str = "e2e-refuse";
 const SESSION_PASS: &str = "e2e-pass";
+
+/// The CAW of the run: the program aep-caw and the folders run.sh prepared.
+struct Caw {
+    bin: String,
+    data: PathBuf,
+    profile: String,
+    workspace: PathBuf,
+    outside: PathBuf,
+    home: String,
+}
+
+impl Caw {
+    fn from_env() -> Result<Self, String> {
+        let need = |key: &str| env::var(key).map_err(|_| format!("missing env {key}"));
+        Ok(Caw {
+            bin: need("AEP_E2E_CAW_BIN")?,
+            data: PathBuf::from(need("AEP_E2E_CAW_DATA")?),
+            profile: need("AEP_E2E_CAW_PROFILE")?,
+            workspace: PathBuf::from(need("AEP_E2E_CAW_WORKSPACE")?),
+            outside: PathBuf::from(need("AEP_E2E_CAW_OUTSIDE")?),
+            home: need("AEP_E2E_CAW_HOME")?,
+        })
+    }
+
+    /// The events of the audit log of one session, after a check of its hash chain.
+    fn audit(&self, session: &str) -> Result<(u64, Vec<serde_json::Value>), String> {
+        let path = self
+            .data
+            .join("caw-framework")
+            .join("sessions")
+            .join(session)
+            .join("audit.log");
+        let (lines, _) = aep_caw_runtime::audit::verify(&path).map_err(|e| e.to_string())?;
+        let text = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+        let events = text
+            .lines()
+            .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+            .map(|line| line["event"].clone())
+            .collect();
+        Ok((lines, events))
+    }
+}
+
+fn deny_events(events: &[serde_json::Value]) -> Vec<&serde_json::Value> {
+    events.iter().filter(|e| e["kind"] == "deny").collect()
+}
+
+/// Layers 7 and 8: a CAW session and one command in its sandbox, each with its
+/// refuse case first. Returns the refuse steps, the pass steps and the verdict.
+fn caw_layers(caw: &Caw) -> Result<(Vec<Step>, Vec<Step>, bool), String> {
+    const SESSION: &str = "7 CAW session";
+    const COMMAND: &str = "8 CAW command";
+    let data = caw.data.to_string_lossy().into_owned();
+    let workspace = caw.workspace.to_string_lossy().into_owned();
+    let home = format!("HOME={}", caw.home);
+    let mut refuse = Vec::new();
+    let mut pass = Vec::new();
+    let mut ok = true;
+
+    let (code, out, err) = run(
+        &caw.bin,
+        &[
+            "session",
+            "create",
+            "--data",
+            &data,
+            "--profile",
+            "e2e-absent",
+            "--workspace",
+            &workspace,
+        ],
+        &[],
+    );
+    if code != 0 && out.trim().is_empty() && err.contains("not in the allowed list") {
+        refuse.push(Step::refuse(
+            SESSION,
+            format!("the profile e2e-absent is not in the allowed list of caw.toml and no session opens (exit {code})"),
+        ));
+    } else {
+        ok = false;
+        refuse.push(Step::fail(
+            SESSION,
+            format!(
+                "a profile outside the allowed list did not refuse as expected (exit {code}): {}",
+                first_line(&err)
+            ),
+        ));
+    }
+
+    let (code, out, err) = run(
+        &caw.bin,
+        &[
+            "session",
+            "create",
+            "--data",
+            &data,
+            "--profile",
+            &caw.profile,
+            "--workspace",
+            &workspace,
+            "--var",
+            &home,
+        ],
+        &[],
+    );
+    let session = out.trim().to_string();
+    if code != 0 || session.len() != 32 || !session.bytes().all(|b| b.is_ascii_hexdigit()) {
+        let line = format!(
+            "the session did not open (exit {code}): {}",
+            first_line(&err)
+        );
+        pass.push(Step::fail(SESSION, line));
+        refuse.push(Step::fail(
+            COMMAND,
+            String::from("no session, so no command ran"),
+        ));
+        pass.push(Step::fail(
+            COMMAND,
+            String::from("no session, so no command ran"),
+        ));
+        return Ok((refuse, pass, false));
+    }
+    pass.push(Step::pass(
+        SESSION,
+        format!(
+            "the session opens on the workspace under the profile {} and its plan holds {}",
+            caw.profile,
+            // The digest of the plan names the random run folder, so the line leaves it out.
+            first_line(&err)
+                .split_once(" with ")
+                .map_or("", |(_, rest)| rest)
+        ),
+    ));
+
+    let outside = caw.outside.to_string_lossy().into_owned();
+    let script = format!("(exec < {outside}) 2> /dev/null; exit 7");
+    let (code, _, err) = run(
+        &caw.bin,
+        &[
+            "exec",
+            "--data",
+            &data,
+            "--session",
+            &session,
+            "--run",
+            "sh",
+            "-c",
+            &script,
+        ],
+        &[],
+    );
+    let (_, events) = caw.audit(&session)?;
+    let denies = deny_events(&events);
+    let denied_here = denies.len() == 1 && denies[0]["target"] == outside.as_str();
+    if code == 7 && denied_here {
+        refuse.push(Step::refuse(
+            COMMAND,
+            format!(
+                "the read of a host file outside the workspace fails inside the sandbox and the audit log holds one deny event {} on {outside}",
+                denies[0]["deny"].as_str().unwrap_or("")
+            ),
+        ));
+    } else {
+        ok = false;
+        refuse.push(Step::fail(
+            COMMAND,
+            format!(
+                "the denied read left {} deny events (exit {code}): {}",
+                denies.len(),
+                first_line(&err)
+            ),
+        ));
+    }
+
+    let target = caw.workspace.join("e2e-command.txt");
+    let script = format!("echo e2e-command-ran > {0} && cat {0}", target.display());
+    let (code, out, err) = run(
+        &caw.bin,
+        &[
+            "exec",
+            "--data",
+            &data,
+            "--session",
+            &session,
+            "--run",
+            "sh",
+            "-c",
+            &script,
+        ],
+        &[],
+    );
+    let (lines, after) = caw.audit(&session)?;
+    let new_denies = deny_events(&after).len().saturating_sub(denies.len());
+    let on_host = fs::read_to_string(&target)
+        .map(|text| text.trim() == "e2e-command-ran")
+        .unwrap_or(false);
+    if code == 0 && out.contains("e2e-command-ran") && on_host && new_denies == 0 {
+        pass.push(Step::pass(
+            COMMAND,
+            format!("the command returns exit 0 and prints e2e-command-ran, its write reaches the workspace on the host and the audit chain of {lines} lines holds with no new deny event"),
+        ));
+    } else {
+        ok = false;
+        pass.push(Step::fail(
+            COMMAND,
+            format!(
+                "the allowed command did not pass (exit {code}, written {on_host}, new deny events {new_denies}): {}",
+                first_line(&err)
+            ),
+        ));
+    }
+    Ok((refuse, pass, ok))
+}
 
 struct Ctx {
     ucb_url: String,
@@ -344,6 +553,7 @@ fn main() {
 
 fn run_main() -> Result<(), String> {
     let ctx = Ctx::from_env()?;
+    let caw = Caw::from_env()?;
     let mut ok = true;
 
     let now_ms = std::time::SystemTime::now()
@@ -415,6 +625,9 @@ fn run_main() -> Result<(), String> {
     let ledger_after_pass = ledger_count(&ctx)?;
     let tail = ledger_tail(&ctx)?;
 
+    // Live CAW layers.
+    let (caw_refuse, caw_pass, caw_ok) = caw_layers(&caw)?;
+
     println!("AEP end to end run. The refuse path prints first and the pass path prints second.");
     println!("kernel pulse ms {}", PULSE_MS);
     println!("kernel drift bound ms {}", MAX_DRIFT_MS);
@@ -422,7 +635,10 @@ fn run_main() -> Result<(), String> {
         "attach action {} scene {} agent {}",
         ctx.attach_action, ctx.attach_scene, ctx.attach_agent
     );
-    println!("host sandbox: none in this release, the Go CAW is retired and a Rust CAW with gVisor replaces it");
+    println!(
+        "host sandbox: the Rust CAW with gVisor under the profile {}",
+        caw.profile
+    );
     println!();
 
     let mut refuse_steps: Vec<Step> = Vec::new();
@@ -538,6 +754,8 @@ fn run_main() -> Result<(), String> {
         )
     });
 
+    refuse_steps.extend(caw_refuse);
+    ok &= caw_ok;
     println!("== refuse path");
     for step in &refuse_steps {
         step.emit();
@@ -675,6 +893,7 @@ fn run_main() -> Result<(), String> {
         )
     });
 
+    pass_steps.extend(caw_pass);
     println!("== pass path");
     for step in &pass_steps {
         step.emit();
@@ -682,7 +901,7 @@ fn run_main() -> Result<(), String> {
     println!();
     println!("== verdict");
     if ok {
-        println!("RESULT refuse path first and pass path second with the ledger row");
+        println!("RESULT refuse path first and pass path second with the ledger row and the sandboxed command");
         Ok(())
     } else {
         println!("RESULT the run did not hold both paths");

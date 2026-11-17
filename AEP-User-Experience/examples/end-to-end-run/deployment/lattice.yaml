@@ -1,6 +1,12 @@
 # The lattice of the end to end run. The attach agent ingests on
-# ucb:ingest. run.sh copies this file into the run folder.
+# ucb:ingest. The CAW kernel dock pings the kernel before every command of the
+# CAW. run.sh copies this file into the run folder.
 actions:
+  root:ping:
+    category: system_event
+    parents: []
+    children: []
+    agent_permission: ["caw-kernel-dock"]
   ucb:ingest:
     category: external_event
     parents: []

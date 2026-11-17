@@ -5,11 +5,13 @@ One command walks every layer of the stack twice. The refuse path runs first and
 ## Run it
 
 - From the repository root run the script at `AEP-User-Experience/examples/end-to-end-run/run.sh`.
-- The first run builds the kernel binaries, the dock gateway and the execution layer binaries. Later runs rebuild only what changed.
+- The run needs the pinned gVisor of the CAW. Install it once with `sudo bash AEP-CAWs-RustGvisor/proof/install-runsc.sh`.
+- The CAW starts no sandbox as root, so the script runs as the user of the deployment and refuses root.
+- The first run builds the kernel binaries, the dock gateway, the runner and the two programs of the CAW, `aep-caw` and `aep-caw-init`. Later runs rebuild only what changed. `AEP_E2E_BIN` names a folder of binaries that are built already and skips the build.
 - The run is a member of the root Cargo workspace, so `cargo build --workspace` and `cargo test --workspace` compile it and a kernel type change that breaks it fails the root build.
 - The run uses release binaries because the temporal wall measures the gap between the seal and the dock enqueue, so an unoptimized build signs slowly enough to cross the fifty millisecond bound.
 - The run writes its transcript into a quoted note beside this one, with the run directory and the two loopback ports replaced by tokens.
-- The run grants `root:ping` to `caw-kernel-dock` in its lattice and in a hub policy of its data folder, because the execution layer starts a command only after the validation dock admits that sealed ping. The same hub grants the attach agent its ingest path.
+- The run grants `root:ping` to `caw-kernel-dock` in its lattice and in a hub policy of its data folder, because the CAW starts a command only after the validation dock admits that sealed ping. The same hub grants the attach agent its ingest path.
 - The run gives the Data Dock a free loopback port, so it does not collide with a Base Node that already serves on 8413.
 
 ## Layer order
@@ -18,16 +20,16 @@ The run walks eight layers in this order and each layer takes the refuse path fi
 
 | Step | Layer | Refuse | Pass |
 |------|-------|--------|------|
-| 1 | Execution layer session | the named policy is absent so the session refuses | the session opens on the workspace |
-| 2 | Sealed capsule | a foreign recipient key refuses the capsule | the recipient key opens the capsule |
-| 3 | The pulse | the agent stamp drifts past the freeze bound so the temporal wall closes | the stamp sits inside the bound, the capsule waits at the seal beat and turns ready after the pulse |
-| 4 | Collect all | every wall on the path runs and the closed set carries several walls | every wall on the path runs and no wall closes |
-| 5 | Apply | the plan holds no ledger allowance so no row is written | the plan holds the ledger allowance and the rate step |
-| 6 | Execution layer command | the wrapped command is denied by a policy rule | the wrapped command returns exit 0 and prints its output |
-| 7 | Dock attach | the ingest refuses without a task manifest and carries a refuse report | the ingest returns the integrated status with an admit row |
-| 8 | Ledger row | the refuse path writes no row | the pass path writes a row in the kernel action lattice |
+| 1 | Sealed capsule | a foreign recipient key refuses the capsule | the recipient key opens the capsule |
+| 2 | The pulse | the agent stamp drifts past the freeze bound so the temporal wall closes | the stamp sits inside the bound, the capsule waits at the seal beat and turns ready after the pulse |
+| 3 | Collect all | every wall on the path runs and the closed set carries several walls | every wall on the path runs and no wall closes |
+| 4 | Apply | the plan holds no ledger allowance so no row is written | the plan holds the ledger allowance and the rate step |
+| 5 | Dock attach | the ingest refuses without a task manifest and carries a refuse report | the ingest returns the integrated status with an admit row |
+| 6 | Ledger row | the refuse path writes no row | the pass path writes a row in the kernel action lattice |
+| 7 | CAW session | a profile outside the allowed list of `caw.toml` opens no session | the session opens on the workspace under the profile `compiled-runtime` |
+| 8 | CAW command | a read of a host file outside the workspace fails inside the sandbox and leaves one deny event | the command returns exit 0 and its write reaches the workspace on the host, with no new deny event |
 
-The kernel, the execution layer and the dock are all live in this run. The kernel daemon serves the docking sockets. The dock gateway builds a sealed frame and sends it to the validation dock. The dock queues the frame on the pulse, runs collect-all admit and then applies the result. The apply writes the ledger row.
+The kernel, the dock and the CAW are all live in this run. The kernel daemon serves the docking sockets. The dock gateway builds a sealed frame and sends it to the validation dock. The dock queues the frame on the pulse, runs collect-all admit and then applies the result. The apply writes the ledger row. Before each command of layer 8 the CAW seals one `root:ping` to the same validation dock and starts the gVisor sandbox only after the dock admitted it.
 
 ## What the run prints
 
@@ -43,15 +45,16 @@ The refuse section prints one line per layer, then a refuse report with the erro
 The run is the operator for one temporary deployment. The files that declare what the deployment may do sit in `deployment/` beside the script and the run copies them into a temp directory unchanged.
 
 - `deployment/lattice.yaml`: the lattice that grants the attach action to the named attach agent and the kernel dock ping to the CAW kernel dock.
-- `deployment/gap/`: the two GAP grants of the `caw` wrap.
-- `deployment/caw-policies/e2e-wrapped.yaml`: the CAW policy. It names every route the run may use and sets `unmatched_egress: deny`, so egress that no explicit rule names is denied.
+- `deployment/gap/`: the two GAP grants of the `caw` wrap, the attach grant and the grant of the kernel dock ping.
 - `deployment/wrap-coverage.yaml`: the wrap coverage inventory of the run.
 
 The run also writes these into the temp directory.
 
 - A base node config with a socket base and a lattice db.
 - A provisioned agent sign key for the attach agent.
-- A server config for the execution layer that keeps the sandbox shells off and loads the wrapped CAW policy.
+- The resolved profile records of the reference policies of `AEP-Components/gap`, written by the GAP compiler.
+- A `caw.toml` that allows the profile `compiled-runtime` and names the pinned runsc, the init program and the validation dock of the kernel.
+- A workspace for the CAW session and a file outside of it.
 - A task manifest on the pass ingest and no manifest on the refuse ingest.
 
 ## Wrap coverage

@@ -5,11 +5,12 @@
 # layer fails closed. The pass path runs second and the same layers allow.
 #
 # Layers, in order: a sealed capsule, the pulse, collect all, apply, a dock
-# attach and a ledger row.
+# attach, a ledger row, a CAW session and a command in the gVisor sandbox of
+# the CAW.
 #
-# This release ships no host sandbox. The Go CAW is retired and a Rust CAW
-# with gVisor replaces it, so the walk has no CAW session and no CAW exec
-# layer until that CAW lands.
+# The CAW needs the pinned gVisor of AEP-CAWs-RustGvisor/proof/install-runsc.sh
+# and starts no sandbox as root, so the script runs as the user of the
+# deployment. AEP_E2E_BIN names a folder of built binaries and skips the build.
 #
 # From the repository root:
 #
@@ -30,7 +31,8 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/../../.." && pwd)"
 PROFILE="${AEP_E2E_PROFILE:-release}"
-BIN="$ROOT/rust/target/$PROFILE"
+BIN="${AEP_E2E_BIN:-$ROOT/rust/target/$PROFILE}"
+CAW_PROFILE="compiled-runtime"
 POLICY_DIR="$ROOT/AEP-Policy-System"
 TRANSCRIPT="$HERE/END-TO-END-RUN.transcript.md"
 DEPLOY="$HERE/deployment"
@@ -50,8 +52,10 @@ need_binaries() {
   if [ "$PROFILE" = "debug" ]; then
     profile_flag=""
   fi
-  ( cd "$ROOT" && cargo build $profile_flag -p aep-base-node --bins -p aep-ucb -p aep-end-to-end-run )
-  for name in aep-base-node aep-lattice-log aep-ucb aep-end-to-end-run; do
+  if [ -z "${AEP_E2E_BIN:-}" ]; then
+    ( cd "$ROOT" && cargo build $profile_flag -p aep-base-node --bins -p aep-ucb -p aep-end-to-end-run -p aep-caw -p aep-caw-init )
+  fi
+  for name in aep-base-node aep-lattice-log aep-ucb aep-ucb-validate aep-end-to-end-run aep-caw aep-caw-init; do
     if [ ! -x "$BIN/$name" ]; then
       log "missing $BIN/$name after the build"
       exit 1
@@ -68,6 +72,17 @@ s.listen(0, "127.0.0.1", () => { console.log(s.address().port); s.close(); });'
 provenance_digest() {
   printf '%s|%s|%s' "$1" "$2" "$3" | sha256sum | cut -d' ' -f1
 }
+
+if [ "$(id -u)" = 0 ]; then
+  log "the CAW starts no sandbox as root: run this script as the user of the deployment"
+  exit 1
+fi
+# shellcheck source=../../../AEP-CAWs-RustGvisor/proof/runsc-pin.env
+. "$ROOT/AEP-CAWs-RustGvisor/proof/runsc-pin.env"
+if [ ! -x "$RUNSC_BIN" ]; then
+  log "the pinned gVisor is missing at $RUNSC_BIN: run sudo bash AEP-CAWs-RustGvisor/proof/install-runsc.sh"
+  exit 1
+fi
 
 need_binaries
 
@@ -144,6 +159,21 @@ UCB_PORT="$(free_port)"
 UCB_URL="http://127.0.0.1:$UCB_PORT"
 UCB_KEY="aep-e2e-dock-$UCB_PORT"
 
+log "preparing the CAW"
+# The GAP compiler writes the resolved profile records of the reference policies
+# into the data folder. The CAW asks the validation dock of the kernel above
+# before every command, signed with the key the kernel provisioned at boot.
+node "$ROOT/AEP-Components/gap/lib/gap-compile.mjs" --materialize "$RUN_DIR" > /dev/null
+mkdir -p "$RUN_DIR/workspace" "$RUN_DIR/outside" "$RUN_DIR/home"
+echo "outside-the-workspace" > "$RUN_DIR/outside/secret"
+cat > "$RUN_DIR/caw-framework/caw.toml" <<TOML
+allowed_profiles = ["$CAW_PROFILE"]
+runsc = "$RUNSC_BIN"
+init = "$BIN/aep-caw-init"
+base_node_data = "$RUN_DIR"
+dock_socket = "$SOCK/validation"
+TOML
+
 log "starting the dock gateway (UCB)"
 UCB_HOST=127.0.0.1 UCB_PORT="$UCB_PORT" UCB_API_KEY="$UCB_KEY" \
   "$BIN/aep-ucb" > "$RUN_DIR/ucb.log" 2>&1 &
@@ -171,6 +201,12 @@ AEP_E2E_ATTACH_AGENT="$ATTACH_AGENT" \
 AEP_E2E_REFUSE_AGENT="agent-b" \
 AEP_E2E_PROVENANCE_DIGEST_REFUSE="$(provenance_digest mcp 1.0 e2e-refuse)" \
 AEP_E2E_PROVENANCE_DIGEST_PASS="$(provenance_digest mcp 1.0 e2e-pass)" \
+AEP_E2E_CAW_BIN="$BIN/aep-caw" \
+AEP_E2E_CAW_DATA="$RUN_DIR" \
+AEP_E2E_CAW_PROFILE="$CAW_PROFILE" \
+AEP_E2E_CAW_WORKSPACE="$RUN_DIR/workspace" \
+AEP_E2E_CAW_OUTSIDE="$RUN_DIR/outside/secret" \
+AEP_E2E_CAW_HOME="$RUN_DIR/home" \
   "$BIN/aep-end-to-end-run" | tee "$RUN_DIR/transcript.txt"
 RUN_RC="${PIPESTATUS[0]}"
 set -e

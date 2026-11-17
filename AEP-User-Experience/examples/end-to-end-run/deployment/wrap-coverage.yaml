@@ -30,6 +30,11 @@ credentials:
     description: The bearer key of the dock gateway that the attach ingest presents.
     agent_id: agent-a
     action: ucb:ingest
+  - id: caw-kernel-dock-sign-key
+    kind: agent_sign_key
+    description: The sign key the kernel provisions at boot for the CAW kernel dock. The CAW signs its ping with it before every command.
+    agent_id: caw-kernel-dock
+    action: root:ping
 
 tools:
   - name: ucb-ingest

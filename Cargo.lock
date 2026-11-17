@@ -309,6 +309,7 @@ version = "2.9.0"
 dependencies = [
  "aep-base-node",
  "aep-base-node-pulse",
+ "aep-caw-runtime",
  "aep-envelope",
  "aep-lattice-crypto",
  "serde_json",
