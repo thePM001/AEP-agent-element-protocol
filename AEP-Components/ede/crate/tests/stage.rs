@@ -37,6 +37,16 @@ fn exe(path: &Path, body: &str) {
     fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
 }
 
+/// The stage gives files to other owners and creates users, which only root may do. Run as
+/// any other user, a test that stages says so and returns. The verify of the EDE runs as root.
+fn needs_root(test: &str) -> bool {
+    if aep_ede::privilege::caller_uid() == 0 {
+        return false;
+    }
+    eprintln!("{test}: skipped, staging needs root");
+    true
+}
+
 fn whoami() -> String {
     let uid = aep_ede::privilege::caller_uid().to_string();
     fs::read_to_string("/etc/passwd")
@@ -225,6 +235,9 @@ fn old_target(path: &Path, body: &str) {
 
 #[test]
 fn a_checked_stage_is_provisional_and_only_the_operator_confirms_it() {
+    if needs_root("a_checked_stage_is_provisional_and_only_the_operator_confirms_it") {
+        return;
+    }
     let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let t = setup("confirm");
     let tool = t.host().join("bin/tool");
@@ -260,6 +273,9 @@ fn a_checked_stage_is_provisional_and_only_the_operator_confirms_it() {
 
 #[test]
 fn a_failed_check_puts_every_target_back_and_removes_a_created_user() {
+    if needs_root("a_failed_check_puts_every_target_back_and_removes_a_created_user") {
+        return;
+    }
     let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let t = setup("fail");
     let tool = t.host().join("bin/tool");
@@ -334,6 +350,9 @@ fn an_agent_without_the_stage_grant_is_refused() {
 
 #[test]
 fn the_deadline_closes_confirm_and_the_sweep_reverts() {
+    if needs_root("the_deadline_closes_confirm_and_the_sweep_reverts") {
+        return;
+    }
     let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let t = setup("deadline");
     let tool = t.host().join("bin/tool");
