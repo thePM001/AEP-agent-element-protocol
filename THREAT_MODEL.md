@@ -112,7 +112,7 @@ Out of scope: an attacker with root on the Base Node host, a compromised kernel 
 
 **Status.** The tree holds the Rust CAW with gVisor under `AEP-CAWs-RustGvisor`. Its registry entry is retired until the job caw-gvisor has passed on a GitHub runner. Until then treat the CAW as not shipped. The rows that the Go CAW carried left with it.
 
-**Trust boundaries.** TB-5. The CAW enforces it for every command that runs through `aep-caw exec`.
+**Trust boundaries.** TB-5. The CAW enforces it for every command that runs through `aep-caw exec`. The CAW runs as the user of the Base Node, because the kernel dock client signs its ping with a key from the key store of the node. The two are one trust domain. The key store is outside every mount, so no command inside a sandbox reaches it.
 
 **Attacker capabilities.** AC-5.
 
@@ -133,7 +133,6 @@ Out of scope: an attacker with root on the Base Node host, a compromised kernel 
 **Residual risk.**
 
 - The CAW confines the commands that run through `aep-caw exec`. It does not confine the harness that calls it. An agent process that is started any other way runs with the rights of its user.
-- The user that runs the CAW reads the key store of the Base Node, because the kernel dock client signs its ping with a key from that store. That user can sign as any agent of that Base Node.
 - gVisor reports open, exec and connect calls and no stat call. A program that only asks whether a file exists is refused and leaves no deny event.
 - A tool that looks for its configuration in the folders above the workspace leaves one deny event per folder.
 - The CAW runs on Linux on amd64 with the systrap platform of gVisor and never as root. A host that restricts user namespaces through AppArmor needs the profile of runsc.
