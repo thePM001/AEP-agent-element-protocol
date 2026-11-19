@@ -5,12 +5,23 @@ use aep_ucb_perimeter_v1::WireLimits;
 use aep_wall_set_backpressure::DenyReport;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 use tokio::time::{timeout, Duration};
+
+/// Lattice action path of a UCB rollback frame. The operator lattice grants it to
+/// the agent ucb-bridge.
+pub const ACTION_ROLLBACK: &str = "ucb:rollback";
+/// Lattice action path of a UCB delegate gate frame. The operator lattice grants it
+/// to each agent that may delegate.
+pub const ACTION_DELEGATE: &str = "ucb:delegate";
+/// Lattice action path of the UCB health ping. The operator lattice grants it to
+/// the agent ucb-bridge.
+pub const ACTION_HEALTH: &str = "ucb:health";
+/// The agent id of the frames UCB sends for itself: rollback and the health ping.
+pub const BRIDGE_AGENT: &str = "ucb-bridge";
 
 const DOCK_SUFFIXES: &[(&str, &str)] = &[
     ("inference_engine", "inference"),
@@ -23,7 +34,6 @@ const DOCK_SUFFIXES: &[(&str, &str)] = &[
 pub struct LatticeRuntime {
     pub socket_base: PathBuf,
     pub config_path: Option<PathBuf>,
-    pub lattice_db: Option<PathBuf>,
     pub lattice_log_bin: PathBuf,
 }
 
@@ -38,14 +48,12 @@ impl LatticeRuntime {
         } else {
             None
         };
-        let lattice_db = Some(data_dir.join("action-lattice.db"));
         let lattice_log_bin = std::env::var("AEP_LATTICE_LOG_BIN")
             .map(PathBuf::from)
             .unwrap_or_else(|_| PathBuf::from("aep-lattice-log"));
         Self {
             socket_base,
             config_path,
-            lattice_db,
             lattice_log_bin,
         }
     }
@@ -73,31 +81,24 @@ impl LatticeRuntime {
             .collect()
     }
 
-    pub fn build_frame(&self, event: &LatticeEvent) -> Result<BuiltFrame, String> {
+    /// Seal `event` into a lattice channel frame with aep-lattice-log build-frame.
+    /// The child is killed when it outlives the dock timeout. Building a frame writes
+    /// no ledger row: the dock Admit of the frame is the only Admit and the only
+    /// ledger write of the event.
+    pub async fn build_frame(&self, event: &LatticeEvent) -> Result<BuiltFrame, String> {
         let input = serde_json::to_string(event).map_err(|e| e.to_string())?;
-        let args = self.lattice_cli_args("build-frame", false);
-        run_lattice_build(&self.lattice_log_bin, &args, &input)
-    }
-
-    pub fn seal_and_record(&self, event: &LatticeEvent) -> Result<LatticeRecord, String> {
-        let input = serde_json::to_string(event).map_err(|e| e.to_string())?;
-        let args = self.lattice_cli_args("record", true);
-        run_lattice_log(&self.lattice_log_bin, &args, &input)
-    }
-
-    fn lattice_cli_args(&self, subcommand: &str, include_db: bool) -> Vec<String> {
         let mut args = Vec::new();
         if let Some(cfg) = &self.config_path {
-            args.push("--config".to_string());
+            args.push(String::from("--config"));
             args.push(cfg.display().to_string());
-        } else if include_db {
-            if let Some(db) = &self.lattice_db {
-                args.push("--db".to_string());
-                args.push(db.display().to_string());
-            }
         }
-        args.push(subcommand.to_string());
-        args
+        args.push(String::from("build-frame"));
+        let text = exec_lattice_log(&self.lattice_log_bin, &args, &input).await?;
+        let built: BuiltFrame = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+        if built.frame.is_null() {
+            return Err("aep-lattice-log build-frame missing LatticeChannelFrame".into());
+        }
+        Ok(built)
     }
 
     pub async fn send_frame(
@@ -178,19 +179,22 @@ impl LatticeRuntime {
         .map_err(|_| LatticeDeny::msg("lattice socket timeout"))?
     }
 
+    /// One health ping through the validation dock. It is bounded by the build
+    /// timeout and the dock timeout. UCB runs it in the background refresh only and
+    /// never per request.
     pub async fn health_ping(&self) -> Result<DockResponse, String> {
         let event = LatticeEvent {
-            agent_id: "ucb-bridge".into(),
+            agent_id: BRIDGE_AGENT.into(),
             channel_id: "ch-lattice-health".into(),
             contract_id: "lattice-channel-default".into(),
             event_type: "LATTICE_HEALTH_PING".into(),
             session_id: "ucb-health".into(),
             docking_port: "validation_engine".into(),
-            action_path: String::new(),
+            action_path: ACTION_HEALTH.into(),
             dock_wire_score: crate::DOCK_WIRE_SCORE,
             payload: serde_json::json!({ "probe": true }),
         };
-        let built = self.build_frame(&event)?;
+        let built = self.build_frame(&event).await?;
         let socket = self.dock_path("validation_engine")?;
         self.send_frame(
             &socket,
@@ -237,19 +241,6 @@ pub struct BuiltFrame {
     pub digest: Option<String>,
     #[serde(default)]
     pub signer_public_hex: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LatticeRecord {
-    pub ok: bool,
-    #[serde(default)]
-    pub event_id: Option<i64>,
-    #[serde(default)]
-    pub frame_digest: Option<String>,
-    #[serde(default)]
-    pub frame: Option<Value>,
-    #[serde(default)]
-    pub error: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -315,39 +306,30 @@ impl From<LatticeDeny> for String {
     }
 }
 
-fn run_lattice_build(bin: &Path, args: &[String], input: &str) -> Result<BuiltFrame, String> {
-    let text = exec_lattice_log(bin, args, input)?;
-    let built: BuiltFrame = serde_json::from_str(&text).map_err(|e| e.to_string())?;
-    if built.frame.is_null() {
-        return Err("aep-lattice-log build-frame missing LatticeChannelFrame".into());
-    }
-    Ok(built)
-}
-
-fn run_lattice_log(bin: &Path, args: &[String], input: &str) -> Result<LatticeRecord, String> {
-    let text = exec_lattice_log(bin, args, input)?;
-    let parsed: LatticeRecord = serde_json::from_str(&text).map_err(|e| e.to_string())?;
-    if !parsed.ok {
-        return Err(parsed
-            .error
-            .unwrap_or_else(|| "aep-lattice-log record failed".into()));
-    }
-    Ok(parsed)
-}
-
-fn exec_lattice_log(bin: &Path, args: &[String], input: &str) -> Result<String, String> {
-    let mut cmd = Command::new(bin);
-    cmd.args(args)
+/// Run aep-lattice-log with `input` on stdin. The child runs on the async runtime,
+/// so no worker thread blocks on it, and it is killed when it outlives the dock
+/// timeout.
+async fn exec_lattice_log(bin: &Path, args: &[String], input: &str) -> Result<String, String> {
+    let mut child = tokio::process::Command::new(bin)
+        .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    let mut child = cmd.spawn().map_err(|e| format!("spawn {bin:?}: {e}"))?;
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin
-            .write_all(input.as_bytes())
-            .map_err(|e| e.to_string())?;
-    }
-    let out = child.wait_with_output().map_err(|e| e.to_string())?;
+        .stderr(Stdio::piped())
+        .kill_on_drop(true)
+        .spawn()
+        .map_err(|e| format!("spawn {bin:?}: {e}"))?;
+    let run = async move {
+        if let Some(mut stdin) = child.stdin.take() {
+            stdin
+                .write_all(input.as_bytes())
+                .await
+                .map_err(|e| e.to_string())?;
+        }
+        child.wait_with_output().await.map_err(|e| e.to_string())
+    };
+    let out = timeout(dock_timeout(), run)
+        .await
+        .map_err(|_| String::from("aep-lattice-log timeout"))??;
     if !out.status.success() {
         let stderr = String::from_utf8_lossy(&out.stderr);
         return Err(format!("aep-lattice-log failed: {}", stderr.trim()));
@@ -472,7 +454,6 @@ mod tests {
         let rt = LatticeRuntime {
             socket_base: dir.path().to_path_buf(),
             config_path: None,
-            lattice_db: None,
             lattice_log_bin: PathBuf::from("aep-lattice-log"),
         };
         let frame = serde_json::json!({"kind": "fixture"});
@@ -517,7 +498,6 @@ mod tests {
         let rt = LatticeRuntime {
             socket_base: dir.path().to_path_buf(),
             config_path: None,
-            lattice_db: None,
             lattice_log_bin: PathBuf::from("aep-lattice-log"),
         };
         let frame = serde_json::json!({"kind": "fixture"});
@@ -552,7 +532,6 @@ mod tests {
         let rt = LatticeRuntime {
             socket_base: dir.path().to_path_buf(),
             config_path: None,
-            lattice_db: None,
             lattice_log_bin: PathBuf::from("aep-lattice-log"),
         };
         let started = std::time::Instant::now();
@@ -568,6 +547,45 @@ mod tests {
         server.abort();
     }
 
+    /// UCB 04: the health ping names the action path ucb:health and passes the dock.
+    #[tokio::test]
+    async fn health_ping_names_its_action_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let dock = crate::test_support::allowing_dock(&dir.path().join("sockets/validation"));
+        let rt = LatticeRuntime {
+            socket_base: dir.path().join("sockets"),
+            config_path: None,
+            lattice_log_bin: crate::test_support::recording_lattice_log(dir.path()),
+        };
+        let ping = rt.health_ping().await;
+        dock.abort();
+        let inputs = crate::test_support::lattice_inputs(dir.path());
+        assert_eq!(inputs.len(), 1, "{inputs:?}");
+        assert_eq!(inputs[0]["action_path"], "ucb:health");
+        assert_eq!(ping.map(|p| p.event_id), Ok(Some(7)));
+    }
+
+    /// UCB 06: a hung aep-lattice-log is killed at the dock timeout.
+    #[tokio::test]
+    async fn build_frame_kills_a_hung_lattice_log() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let bin = dir.path().join("hung-lattice-log");
+        std::fs::write(&bin, "#!/bin/sh\nexec sleep 30\n").unwrap();
+        std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let rt = LatticeRuntime {
+            socket_base: dir.path().join("sockets"),
+            config_path: None,
+            lattice_log_bin: bin,
+        };
+        let started = std::time::Instant::now();
+        let err = rt.health_ping().await.expect_err("hung build");
+        let elapsed = started.elapsed();
+        assert_eq!(err, "aep-lattice-log timeout");
+        assert!(elapsed >= Duration::from_millis(4000), "{elapsed:?}");
+        assert!(elapsed <= Duration::from_millis(9000), "{elapsed:?}");
+    }
+
     #[tokio::test]
     async fn send_frame_missing_dock_refuses() {
         let dir = tempfile::tempdir().unwrap();
@@ -575,7 +593,6 @@ mod tests {
         let rt = LatticeRuntime {
             socket_base: dir.path().to_path_buf(),
             config_path: None,
-            lattice_db: None,
             lattice_log_bin: PathBuf::from("aep-lattice-log"),
         };
         let frame = serde_json::json!({"kind": "fixture"});

@@ -84,6 +84,18 @@ Every ingest check runs in its own aep-ucb-validate process, never inside aep-uc
 
 Protected endpoints accept Authorization: Bearer KEY or X-UCB-API-Key: KEY. Operator key is UCB_API_KEY, foreign agents use per-agent keys from ucb-agent-keys.json and agent keys cannot rollback. Public UCB ships a local gap-manifest-v1 compiler and does not claim a restricted remote GAP engine.
 
+An agent key acts only for its own agent. Ingest, delegate, egress and the MCP ingest and delegate tools answer 403 when the body names another agent. An agent key granted rollback can only roll back diffs of its own agent. The operator key acts for every agent.
+
+### Manifest signatures
+
+A manifest signature is ML-DSA-65 over `aep-ucb-task-manifest-v1:` followed by the manifest digest. The digest covers the manifest without manifest_digest, signature and trust. The agent signs the same serialization that UCB stores and checks. Register the public key of each agent as `manifest_signer_public_hex` on its record in ucb-agent-keys.json. With strict manifests on, an unsigned manifest, a manifest of an agent with no registered key and a manifest whose signature does not verify are refused. A provided manifest that does not verify never replaces a stored one, even with strict manifests off. A stored manifest is checked again when it is loaded.
+
+### Lattice action paths
+
+Ingest sends `ucb:ingest`. Rollback sends `ucb:rollback` and the health ping sends `ucb:health`, both as agent `ucb-bridge`. Delegate sends `ucb:delegate` as the delegating agent. Grant these paths in the operator lattice, since dock Admit refuses a path it does not grant. The dock Admit is the only ledger write for a frame.
+
+Health answers from a snapshot in memory. A background task refreshes it every 10 seconds. An aep-lattice-log call that does not answer within the dock timeout is killed. At start UCB logs the validator program, whether it is present and the confinement it runs under.
+
 ### Ingest
 
 Every ingest needs a task manifest. Provide task_manifest on the ingest body, store a non-provisional manifest for that agent or compile provided GAP text or JSON with the local compiler. If none exist, ingest refuses with ManifestMissing. A provisional stored manifest refuses with ManifestProvisional. Trust fields on the body or the manifest refuse. Synthesis URLs are not a public source and dock-first send remains while the journal persists only after collect-all Admit allow. When collect-all Admit refuses, ingest reports ok false, admit rows are on the reply and the journal is not persisted. Enqueue with a digest and no event_id is not Admit.

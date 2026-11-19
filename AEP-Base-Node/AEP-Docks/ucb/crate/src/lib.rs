@@ -22,6 +22,9 @@ pub mod manifest;
 pub mod mcp;
 pub mod sandbox;
 pub mod store;
+#[cfg(all(test, unix))]
+#[allow(clippy::expect_used, clippy::unwrap_used)] // fixture code: a failed expect is a failed test
+pub(crate) mod test_support;
 pub mod translator;
 pub mod validate_process;
 

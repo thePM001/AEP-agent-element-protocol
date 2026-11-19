@@ -1,6 +1,6 @@
 //! Public UCB HTTP: ingest, delegate, health, rollback and egress.
 
-use crate::auth::{extract_bearer_or_header, AuthGuard};
+use crate::auth::{bind_agent, extract_bearer_or_header, AuthGuard};
 use crate::bridge::{ingest_foreign_payload, rollback_foreign_integrations, UcbRuntime};
 use crate::delegate::{delegate_to_foreign_model, DelegateBody};
 use crate::egress::{
@@ -9,11 +9,12 @@ use crate::egress::{
 };
 use crate::gap_manifest::{compile_provided, compile_provided_json, LOCAL_PROFILE};
 use crate::ingress::ForeignIngestBody;
-use crate::manifest::{egress_refused_unsigned, signed_from_task};
+use crate::lattice::{DockResponse, LatticeRuntime};
+use crate::manifest::{manifest_error_report, signed_from_task};
 use crate::mcp::{handle_mcp_request, mcp_capabilities, parse_rollback_diff_ids};
 use crate::store::TaskManifestV1;
 use crate::{BRIDGE_ID, UCB_VERSION};
-use aep_ucb_perimeter_v1::{egress_power_allowed, Scope, StrictMode, WireLimits};
+use aep_ucb_perimeter_v1::{egress_power_allowed, AuthIdentity, Scope, StrictMode, WireLimits};
 use axum::extract::{DefaultBodyLimit, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
@@ -62,8 +63,10 @@ fn obj(pairs: Vec<(&str, Value)>) -> Value {
     Value::Object(m)
 }
 
+/// The public health answer. It reads the snapshot in memory, so a request starts no
+/// process and sends no dock frame. The refresh task of the runtime keeps it current.
 async fn health_handler(State(state): State<AppState>) -> Json<Value> {
-    let full = health_snapshot(&state.runtime).await;
+    let full = state.runtime.health_snapshot();
     Json(obj(vec![
         (
             "service",
@@ -86,13 +89,17 @@ async fn health_handler(State(state): State<AppState>) -> Json<Value> {
     ]))
 }
 
-pub async fn health_snapshot(rt: &Arc<UcbRuntime>) -> Value {
-    let docks = rt.lattice.dock_status();
-    let listening = docks
-        .iter()
-        .filter(|d| d.get("listening").and_then(|v| v.as_bool()) == Some(true))
-        .count();
-    let lattice = match rt.lattice.health_ping().await {
+/// The lattice part of a health snapshot before the first ping has run.
+pub fn lattice_not_probed() -> Value {
+    obj(vec![
+        ("ok", Value::Bool(false)),
+        ("error", Value::String(String::from("not probed yet"))),
+    ])
+}
+
+/// The lattice part of a health snapshot from one ping.
+pub fn lattice_probe(ping: Result<DockResponse, String>) -> Value {
+    match ping {
         Ok(ping) => obj(vec![
             ("ok", Value::Bool(true)),
             (
@@ -108,7 +115,17 @@ pub async fn health_snapshot(rt: &Arc<UcbRuntime>) -> Value {
             ("ok", Value::Bool(false)),
             ("error", Value::String(e)),
         ]),
-    };
+    }
+}
+
+/// A full health snapshot from the dock sockets and the lattice part.
+pub fn health_document(lattice_rt: &LatticeRuntime, lattice: &Value) -> Value {
+    let docks = lattice_rt.dock_status();
+    let listening = docks
+        .iter()
+        .filter(|d| d.get("listening").and_then(|v| v.as_bool()) == Some(true))
+        .count();
+    let lattice = lattice.clone();
     let status = if listening >= 4 && lattice.get("ok") == Some(&Value::Bool(true)) {
         "ok"
     } else {
@@ -215,13 +232,51 @@ fn is_ok_true(v: &Value) -> bool {
     v.get("ok") == Some(&Value::Bool(true))
 }
 
+fn forbidden_other_agent() -> axum::response::Response {
+    (
+        StatusCode::FORBIDDEN,
+        Json(obj(vec![
+            ("ok", Value::Bool(false)),
+            (
+                "error",
+                Value::String(String::from("the UCB API key acts for another agent")),
+            ),
+        ])),
+    )
+        .into_response()
+}
+
+/// A refusal answered to the caller. Boxed so that the Ok path stays small.
+type Refusal = Box<axum::response::Response>;
+
+/// The agent the request acts for, or 403 when an agent key names another agent.
+fn bound_agent(
+    identity: &AuthIdentity,
+    requested: Option<&str>,
+) -> Result<Option<String>, Refusal> {
+    bind_agent(identity, requested).map_err(|_| Box::new(forbidden_other_agent()))
+}
+
+/// The agent of an agent key. The operator key acts for every agent.
+fn acting_agent(identity: &AuthIdentity) -> Option<&str> {
+    match identity {
+        AuthIdentity::Agent { agent_id, .. } => Some(agent_id.as_str()),
+        AuthIdentity::Operator => None,
+    }
+}
+
 async fn delegate_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Json(body): Json<DelegateBody>,
+    Json(mut body): Json<DelegateBody>,
 ) -> impl IntoResponse {
-    if let Some(resp) = require_auth(&state, &headers, Scope::Delegate) {
-        return resp;
+    let identity = match require_auth(&state, &headers, Scope::Delegate) {
+        Ok(i) => i,
+        Err(resp) => return *resp,
+    };
+    match bound_agent(&identity, body.agent_id.as_deref()) {
+        Ok(agent) => body.agent_id = agent,
+        Err(resp) => return *resp,
     }
     let result = delegate_to_foreign_model(&state.runtime, body).await;
     let status = if is_ok_true(&result) {
@@ -235,10 +290,15 @@ async fn delegate_handler(
 async fn ingest_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Json(body): Json<ForeignIngestBody>,
+    Json(mut body): Json<ForeignIngestBody>,
 ) -> impl IntoResponse {
-    if let Some(resp) = require_auth(&state, &headers, Scope::Ingest) {
-        return resp;
+    let identity = match require_auth(&state, &headers, Scope::Ingest) {
+        Ok(i) => i,
+        Err(resp) => return *resp,
+    };
+    match bound_agent(&identity, body.agent_id.as_deref()) {
+        Ok(agent) => body.agent_id = agent,
+        Err(resp) => return *resp,
     }
     let result = ingest_foreign_payload(&state.runtime, body).await;
     let status = if is_ok_true(&result) {
@@ -254,9 +314,10 @@ async fn rollback_handler(
     headers: HeaderMap,
     Json(body): Json<Value>,
 ) -> impl IntoResponse {
-    if let Some(resp) = require_auth(&state, &headers, Scope::Rollback) {
-        return resp;
-    }
+    let identity = match require_auth(&state, &headers, Scope::Rollback) {
+        Ok(i) => i,
+        Err(resp) => return *resp,
+    };
     let diff_ids = match parse_rollback_diff_ids(&body) {
         Ok(ids) => ids,
         Err(message) => {
@@ -270,7 +331,8 @@ async fn rollback_handler(
                 .into_response();
         }
     };
-    let result = rollback_foreign_integrations(&state.runtime, diff_ids).await;
+    let result =
+        rollback_foreign_integrations(&state.runtime, diff_ids, acting_agent(&identity)).await;
     let status = if is_ok_true(&result) {
         StatusCode::OK
     } else {
@@ -293,8 +355,12 @@ async fn egress_handler(
     headers: HeaderMap,
     Json(body): Json<EgressBody>,
 ) -> impl IntoResponse {
-    if let Some(resp) = require_auth(&state, &headers, Scope::Egress) {
-        return resp;
+    let identity = match require_auth(&state, &headers, Scope::Egress) {
+        Ok(i) => i,
+        Err(resp) => return *resp,
+    };
+    if let Err(resp) = bound_agent(&identity, Some(&body.agent_id)) {
+        return *resp;
     }
     let isolated = strip_caller_headers(&headers);
     let Some(manifest) = state.runtime.manifests.load(&body.agent_id) else {
@@ -310,11 +376,27 @@ async fn egress_handler(
         )
             .into_response();
     };
-    let signed = signed_from_task(&manifest);
-    if egress_power_allowed(&signed, StrictMode::On).is_err() {
+    // The manifest must be stored under the agent it names, its digest must match the
+    // one serialization that is digested and signed, and its signature must verify
+    // against the signer key registered for that agent.
+    if manifest.agent_id != body.agent_id {
         return (
             StatusCode::UNPROCESSABLE_ENTITY,
-            Json(crate::bridge::deny_to_value(egress_refused_unsigned())),
+            Json(crate::bridge::deny_to_value(
+                crate::manifest::agent_id_mismatch(),
+            )),
+        )
+            .into_response();
+    }
+    let signed = signed_from_task(&manifest);
+    if let Err(e) = egress_power_allowed(
+        &signed,
+        StrictMode::On,
+        state.runtime.signers.get(&body.agent_id),
+    ) {
+        return (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(crate::bridge::deny_to_value(manifest_error_report(&e))),
         )
             .into_response();
     }
@@ -333,7 +415,8 @@ async fn egress_handler(
         )
             .into_response();
     };
-    let inject = credential_inject_allowed(signed.signature.is_some(), signed.provisional);
+    // egress_power_allowed has verified the signature and refused a provisional manifest.
+    let inject = credential_inject_allowed(true, signed.provisional);
     if auth_token_env_denied(inject, route.auth_token_env.as_deref()) {
         return (
             StatusCode::UNPROCESSABLE_ENTITY,
@@ -421,8 +504,8 @@ async fn compile_handler(
     headers: HeaderMap,
     Json(body): Json<CompileBody>,
 ) -> impl IntoResponse {
-    if let Some(resp) = require_auth(&state, &headers, Scope::Ingest) {
-        return resp;
+    if let Err(resp) = require_auth(&state, &headers, Scope::Ingest) {
+        return *resp;
     }
     let compiled: Result<TaskManifestV1, _> = if let Some(src) = body
         .source
@@ -484,30 +567,68 @@ fn mcp_tool_scope(body: &Value) -> Scope {
     }
 }
 
+/// Bind the agent_id argument of an MCP ingest or delegate call to the key. Other
+/// methods and tools name no agent; rollback is bound in the rollback itself.
+fn bind_mcp_agent(body: &mut Value, identity: &AuthIdentity) -> Result<(), Refusal> {
+    if body.get("method").and_then(Value::as_str) != Some("tools/call") {
+        return Ok(());
+    }
+    let tool = body
+        .get("params")
+        .and_then(|p| p.get("name"))
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    if !matches!(tool, "ucb_ingest" | "ucb_delegate") {
+        return Ok(());
+    }
+    let Some(args) = body
+        .get_mut("params")
+        .and_then(|p| p.get_mut("arguments"))
+        .and_then(Value::as_object_mut)
+    else {
+        return Ok(());
+    };
+    let requested = args.get("agent_id").and_then(Value::as_str);
+    match bound_agent(identity, requested)? {
+        Some(agent) => {
+            args.insert(String::from("agent_id"), Value::String(agent));
+        }
+        None => {
+            args.remove("agent_id");
+        }
+    }
+    Ok(())
+}
+
 async fn mcp_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Json(body): Json<Value>,
+    Json(mut body): Json<Value>,
 ) -> impl IntoResponse {
-    if let Some(resp) = require_auth(&state, &headers, mcp_tool_scope(&body)) {
-        return resp;
+    let identity = match require_auth(&state, &headers, mcp_tool_scope(&body)) {
+        Ok(i) => i,
+        Err(resp) => return *resp,
+    };
+    if let Err(resp) = bind_mcp_agent(&mut body, &identity) {
+        return *resp;
     }
-    let result = handle_mcp_request(&state.runtime, body).await;
+    let result = handle_mcp_request(&state.runtime, body, acting_agent(&identity)).await;
     (StatusCode::OK, Json(result)).into_response()
 }
 
+/// Check the key of the request for `scope` and return its identity.
 fn require_auth(
     state: &AppState,
     headers: &HeaderMap,
     scope: Scope,
-) -> Option<axum::response::Response> {
+) -> Result<AuthIdentity, Refusal> {
     let auth_hdr = headers
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok());
     let api_hdr = headers.get("x-ucb-api-key").and_then(|v| v.to_str().ok());
     let token = extract_bearer_or_header(auth_hdr, api_hdr);
     let Some(token) = token else {
-        return Some(
+        return Err(Box::new(
             (
                 StatusCode::UNAUTHORIZED,
                 Json(obj(vec![
@@ -521,10 +642,10 @@ fn require_auth(
                 ])),
             )
                 .into_response(),
-        );
+        ));
     };
-    if state.auth.authorize(&token, scope).is_err() {
-        return Some(
+    state.auth.authorize(&token, scope).map_err(|_| {
+        Box::new(
             (
                 StatusCode::FORBIDDEN,
                 Json(obj(vec![
@@ -536,9 +657,8 @@ fn require_auth(
                 ])),
             )
                 .into_response(),
-        );
-    }
-    None
+        )
+    })
 }
 
 #[cfg(test)]
@@ -581,7 +701,9 @@ mod tests {
             .find("let diff_ids = match parse_rollback_diff_ids(&body)")
             .expect("parser call");
         let call_at = src
-            .find("rollback_foreign_integrations(&state.runtime, diff_ids)")
+            .find(
+                "rollback_foreign_integrations(&state.runtime, diff_ids, acting_agent(&identity))",
+            )
             .expect("rollback call");
         assert!(parse_at < call_at);
     }
@@ -626,6 +748,172 @@ mod tests {
             ),
             Scope::Ingest
         );
+    }
+
+    fn fixture_config(dir: &std::path::Path) -> crate::config::UcbConfig {
+        crate::config::UcbConfig {
+            listen_host: String::from("127.0.0.1"),
+            listen_port: 8412,
+            data_dir: dir.to_path_buf(),
+            manifest_dir: dir.join("manifests"),
+            api_key: Some(String::from("k")),
+            strict_egress: true,
+            socket_base: dir.join("sockets"),
+            predicate_profile: aep_ucb_perimeter_v1::PredicateProfile::PerimeterV1,
+            wire_limits: WireLimits::default(),
+            manifest_strict: true,
+        }
+    }
+
+    fn write_agent_key(dir: &std::path::Path, agent_id: &str, secret: &str, scopes: &[&str]) {
+        let rec = serde_json::json!({
+            "agents": [{
+                "agent_id": agent_id,
+                "key_id": "k-agent",
+                "key_hash": aep_ucb_perimeter_v1::AuthRegistry::hash_key(secret),
+                "scopes": scopes,
+            }]
+        });
+        std::fs::write(dir.join("ucb-agent-keys.json"), rec.to_string()).unwrap();
+    }
+
+    async fn post_json(app: &Router, uri: &str, key: &str, body: Value) -> (StatusCode, Value) {
+        use axum::body::Body;
+        use axum::http::Request;
+        use tower::ServiceExt;
+        let res = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(uri)
+                    .header("content-type", "application/json")
+                    .header("x-ucb-api-key", key)
+                    .body(Body::from(body.to_string()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let status = res.status();
+        let bytes = axum::body::to_bytes(res.into_body(), 1 << 20)
+            .await
+            .unwrap();
+        (
+            status,
+            serde_json::from_slice(&bytes).unwrap_or(Value::Null),
+        )
+    }
+
+    /// UCB 01: a key of agent A is refused for agent B on every agent route.
+    #[tokio::test]
+    async fn agent_key_is_refused_for_another_agent() {
+        let dir = tempfile::tempdir().unwrap();
+        write_agent_key(
+            dir.path(),
+            "agent-a",
+            "secret-a",
+            &["ingest", "egress", "delegate"],
+        );
+        let runtime = Arc::new(crate::bridge::UcbRuntime::new(fixture_config(dir.path())).unwrap());
+        let (auth, _) = crate::auth::bootstrap_auth(dir.path(), Some("operator-k"));
+        let app = build_router(AppState {
+            runtime,
+            auth,
+            base_path: String::new(),
+        });
+        let ingest = serde_json::json!({
+            "agent_id": "agent-b",
+            "payload": {"subject": "a", "predicate": "b", "object": "c"}
+        });
+        let (status, _) = post_json(&app, "/ucb/v1/ingest", "secret-a", ingest).await;
+        assert_eq!(status, StatusCode::FORBIDDEN, "ingest for another agent");
+        let egress = serde_json::json!({"agent_id": "agent-b", "method": "GET", "path": "/x"});
+        let (status, _) = post_json(&app, "/ucb/v1/egress", "secret-a", egress).await;
+        assert_eq!(status, StatusCode::FORBIDDEN, "egress for another agent");
+        let delegate = serde_json::json!({"agent_id": "agent-b", "prompt": "hi"});
+        let (status, _) = post_json(&app, "/ucb/v1/delegate", "secret-a", delegate).await;
+        assert_eq!(status, StatusCode::FORBIDDEN, "delegate for another agent");
+        let mcp = serde_json::json!({
+            "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            "params": {"name": "ucb_ingest", "arguments": {
+                "agent_id": "agent-b",
+                "payload": {"subject": "a", "predicate": "b", "object": "c"}
+            }}
+        });
+        let (status, _) = post_json(&app, "/ucb/v1/mcp", "secret-a", mcp).await;
+        assert_eq!(
+            status,
+            StatusCode::FORBIDDEN,
+            "MCP ingest for another agent"
+        );
+        // The key acts for its own agent, named or not, and the operator for any agent.
+        let own = serde_json::json!({
+            "agent_id": "agent-a",
+            "payload": {"subject": "a", "predicate": "b", "object": "c"}
+        });
+        let (status, _) = post_json(&app, "/ucb/v1/ingest", "secret-a", own).await;
+        assert_ne!(status, StatusCode::FORBIDDEN, "ingest for its own agent");
+        let unnamed =
+            serde_json::json!({"payload": {"subject": "a", "predicate": "b", "object": "c"}});
+        let (status, _) = post_json(&app, "/ucb/v1/ingest", "secret-a", unnamed).await;
+        assert_ne!(status, StatusCode::FORBIDDEN, "ingest that names no agent");
+        let any = serde_json::json!({"agent_id": "agent-b", "method": "GET", "path": "/x"});
+        let (status, _) = post_json(&app, "/ucb/v1/egress", "operator-k", any).await;
+        assert_ne!(
+            status,
+            StatusCode::FORBIDDEN,
+            "operator egress for any agent"
+        );
+    }
+
+    /// UCB 06: health answers from memory and starts no process and no dock frame.
+    #[tokio::test]
+    async fn health_answers_from_memory() {
+        use axum::body::Body;
+        use axum::http::Request;
+        use tower::ServiceExt;
+        let dir = tempfile::tempdir().unwrap();
+        let mut rt = crate::bridge::UcbRuntime::new(fixture_config(dir.path())).unwrap();
+        rt.lattice.socket_base = dir.path().join("sockets");
+        rt.lattice.lattice_log_bin = crate::test_support::recording_lattice_log(dir.path());
+        let rt = Arc::new(rt);
+        let (auth, _) = crate::auth::bootstrap_auth(dir.path(), Some("k"));
+        let app = build_router(AppState {
+            runtime: Arc::clone(&rt),
+            auth,
+            base_path: String::new(),
+        });
+        for uri in ["/health", "/ucb/v1/health"] {
+            let res = app
+                .clone()
+                .oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            assert_eq!(res.status(), StatusCode::OK);
+        }
+        assert!(
+            crate::test_support::lattice_calls(dir.path()).is_empty(),
+            "a health request must not start aep-lattice-log"
+        );
+        assert_eq!(rt.health_snapshot()["lattice"]["error"], "not probed yet");
+        // One refresh pings once and the next request reads its result from memory.
+        let dock = crate::test_support::allowing_dock(&dir.path().join("sockets/validation"));
+        rt.refresh_health().await;
+        dock.abort();
+        assert_eq!(crate::test_support::lattice_calls(dir.path()).len(), 1);
+        assert_eq!(rt.health_snapshot()["lattice"]["ok"], true);
+        assert_eq!(rt.health_snapshot()["lattice"]["event_id"], 7);
+        let res = app
+            .oneshot(
+                Request::builder()
+                    .uri("/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(crate::test_support::lattice_calls(dir.path()).len(), 1);
     }
 
     #[tokio::test]

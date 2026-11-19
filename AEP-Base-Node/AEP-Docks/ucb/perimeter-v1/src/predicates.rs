@@ -111,10 +111,9 @@ fn check_pr(view: &IngestView<'_>) -> Result<(), (&'static str, Option<ScannerId
     if view.prior_fingerprints.is_empty() {
         return Ok(());
     }
+    // One earlier copy of the payload inside the window is a replay.
     let fp = binding_fingerprint(view.payload);
-    let matches = view.prior_fingerprints.iter().filter(|p| **p == fp).count();
-    let ratio = 1.0 - (matches as f64 / view.prior_fingerprints.len() as f64);
-    if ratio < 0.05 {
+    if view.prior_fingerprints.contains(&fp) {
         return Err(("P_R", None, PredicateError::Replay.to_string()));
     }
     Ok(())

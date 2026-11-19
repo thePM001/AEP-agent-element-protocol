@@ -1,7 +1,7 @@
 //!
 //! AEP 2.9 UCB perimeter-v1 library. Default profile is signed provenance,
 //! schema plus byte caps, scanner-backed P_C, replay window, per-agent keys,
-//! signed manifests and a hash-chained evidence log. Paper 005 VSA stays off
+//! manifests signed with ML-DSA-65 and a hash-chained evidence log. Paper 005 VSA stays off
 //! unless named. Creation generate emitted a scaffold. This crate is the real
 //! library.
 
@@ -19,7 +19,8 @@ pub use error::PredicateError;
 pub use journal::{chain_append, rollback_named, verify_chain, ChainedDiffRecord, JournalError};
 pub use limits::{reject_over_cap, WireLimits};
 pub use manifest::{
-    digest_canonical, egress_power_allowed, ManifestError, SignedManifest, StrictMode,
+    digest_canonical, egress_power_allowed, manifest_signing_message, verify_manifest_signature,
+    ManifestError, ManifestSigners, SignedManifest, StrictMode, MANIFEST_SIGNATURE_CONTEXT,
 };
 pub use predicates::{validate_ingest, IngestView, PredicateVerdict, Provenance};
 pub use profile::{parse_profile, PredicateProfile};
@@ -77,8 +78,22 @@ mod tests {
         assert_eq!(v.scanner_id, Some(ScannerId::Secrets));
     }
 
+    fn signed(body: serde_json::Value, signer: &aep_lattice_crypto::SignKeypair) -> SignedManifest {
+        let digest = digest_canonical(&body);
+        let sig =
+            aep_lattice_crypto::mldsa65_sign_detached(&manifest_signing_message(&digest), signer)
+                .unwrap();
+        SignedManifest {
+            body,
+            digest,
+            signature: Some(hex::encode(sig)),
+            provisional: false,
+        }
+    }
+
     #[test]
     fn unsigned_manifest_refused() {
+        let key = aep_lattice_crypto::generate_sign_keypair();
         let m = SignedManifest {
             body: json!({"agent_id": "agent-1"}),
             digest: String::new(),
@@ -86,25 +101,79 @@ mod tests {
             provisional: false,
         };
         assert!(matches!(
-            egress_power_allowed(&m, StrictMode::On),
+            egress_power_allowed(&m, StrictMode::On, Some(&key.public)),
             Err(ManifestError::Unsigned)
         ));
     }
 
     #[test]
     fn provisional_cannot_egress() {
-        let body = json!({"agent_id": "agent-1"});
-        let digest = digest_canonical(&body);
-        let m = SignedManifest {
-            body,
-            digest,
-            signature: Some("operator-sig".into()),
-            provisional: true,
-        };
+        let key = aep_lattice_crypto::generate_sign_keypair();
+        let mut m = signed(json!({"agent_id": "agent-1"}), &key);
+        m.provisional = true;
         assert!(matches!(
-            egress_power_allowed(&m, StrictMode::On),
+            egress_power_allowed(&m, StrictMode::On, Some(&key.public)),
             Err(ManifestError::ProvisionalEgress)
         ));
+    }
+
+    /// UCB 02: only a signature that verifies against the registered key counts.
+    #[test]
+    fn signature_verifies_against_the_registered_key_only() {
+        let key = aep_lattice_crypto::generate_sign_keypair();
+        let other = aep_lattice_crypto::generate_sign_keypair();
+        let m = signed(json!({"agent_id": "agent-1"}), &key);
+        assert_eq!(
+            egress_power_allowed(&m, StrictMode::On, Some(&key.public)),
+            Ok(())
+        );
+        assert_eq!(
+            egress_power_allowed(&m, StrictMode::On, Some(&other.public)),
+            Err(ManifestError::SignatureInvalid)
+        );
+        assert_eq!(
+            egress_power_allowed(&m, StrictMode::On, None),
+            Err(ManifestError::NoSigner)
+        );
+        let mut present_only = m.clone();
+        present_only.signature = Some(String::from("operator-sig"));
+        assert_eq!(
+            egress_power_allowed(&present_only, StrictMode::On, Some(&key.public)),
+            Err(ManifestError::SignatureInvalid)
+        );
+        let mut tampered = m;
+        tampered.body = json!({"agent_id": "agent-2"});
+        tampered.digest = digest_canonical(&tampered.body);
+        assert_eq!(
+            egress_power_allowed(&tampered, StrictMode::On, Some(&key.public)),
+            Err(ManifestError::SignatureInvalid)
+        );
+    }
+
+    /// UCB 07: one earlier copy of the payload inside the replay window is a replay.
+    #[test]
+    fn replay_refuses_a_repeated_payload() {
+        let p = Provenance::bound("langgraph", "1.0", "sess-1");
+        let payload = json!({"subject": "a", "predicate": "b", "object": "c"});
+        let fp = predicates::binding_fingerprint(&payload);
+        let other = predicates::binding_fingerprint(&json!({"subject": "x"}));
+        let mut window = vec![other; 199];
+        window.push(fp);
+        let view = IngestView {
+            provenance: Some(&p),
+            payload: &payload,
+            content_type: Some("application/json"),
+            body_len: 40,
+            prior_fingerprints: &window,
+        };
+        let v = validate_ingest(PredicateProfile::PerimeterV1, &view, &DefaultScannerPack);
+        assert!(!v.ok, "a payload seen once in the window is a replay");
+        assert_eq!(v.predicate, Some("P_R"));
+        let fresh = IngestView {
+            prior_fingerprints: &[other, other],
+            ..view
+        };
+        assert!(validate_ingest(PredicateProfile::PerimeterV1, &fresh, &DefaultScannerPack).ok);
     }
 
     #[test]

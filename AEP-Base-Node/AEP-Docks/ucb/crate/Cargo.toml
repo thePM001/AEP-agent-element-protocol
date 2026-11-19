@@ -36,6 +36,7 @@ rand.workspace = true
 libc = "0.2"
 
 [dev-dependencies]
+aep-lattice-crypto = { path = "../../../../AEP-Components/lattice-crypto/crate" }
 tempfile = "3"
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tower = { version = "0.5", features = ["util"] }

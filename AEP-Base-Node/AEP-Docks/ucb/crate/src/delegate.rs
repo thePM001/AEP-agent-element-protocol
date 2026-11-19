@@ -3,6 +3,7 @@
 use crate::bridge::{ingest_foreign_payload, UcbRuntime};
 use crate::inference::{resolve_api_key, resolve_inference_config, InferenceConfig};
 use crate::ingress::ForeignIngestBody;
+use crate::lattice::ACTION_DELEGATE;
 use crate::translator::{normalize_protocol, LatticeEvent};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -151,7 +152,7 @@ async fn lattice_gate_delegate(
         event_type: "UCB_DELEGATE".into(),
         session_id: session_id.to_string(),
         docking_port: "inference_engine".into(),
-        action_path: String::new(),
+        action_path: ACTION_DELEGATE.into(),
         dock_wire_score: crate::DOCK_WIRE_SCORE,
         payload: json!({
             "gateway": inference.provider,
@@ -161,7 +162,7 @@ async fn lattice_gate_delegate(
             "prompt_preview": prompt.chars().take(120).collect::<String>(),
         }),
     };
-    let built = rt.lattice.build_frame(&event)?;
+    let built = rt.lattice.build_frame(&event).await?;
     let socket = rt.lattice.dock_path("inference_engine")?;
     rt.lattice
         .send_frame(
@@ -247,4 +248,55 @@ fn now_ms() -> u64 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::UcbConfig;
+    use aep_ucb_perimeter_v1::{PredicateProfile, WireLimits};
+
+    /// UCB 04: the delegate gate frame names the action path ucb:delegate and passes the dock.
+    #[tokio::test]
+    async fn delegate_gate_names_its_action_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let dock = crate::test_support::allowing_dock(&dir.path().join("sockets/inference"));
+        let mut rt = UcbRuntime::new(UcbConfig {
+            listen_host: String::from("127.0.0.1"),
+            listen_port: 8412,
+            data_dir: dir.path().to_path_buf(),
+            manifest_dir: dir.path().join("manifests"),
+            api_key: Some(String::from("k")),
+            strict_egress: true,
+            socket_base: dir.path().join("sockets"),
+            predicate_profile: PredicateProfile::PerimeterV1,
+            wire_limits: WireLimits::default(),
+            manifest_strict: true,
+        })
+        .unwrap();
+        rt.lattice.socket_base = dir.path().join("sockets");
+        rt.lattice.lattice_log_bin = crate::test_support::recording_lattice_log(dir.path());
+        let rt = Arc::new(rt);
+        let inference = InferenceConfig {
+            provider: String::from("llama_cpp"),
+            model: String::from("fixture"),
+            base_url: String::from("http://127.0.0.1:1"),
+            api_key_env: None,
+        };
+        let gate = lattice_gate_delegate(
+            &rt,
+            &inference,
+            "fixture",
+            "agent-a",
+            "sess-1",
+            "summarize",
+            "read-only-delegation",
+        )
+        .await;
+        dock.abort();
+        let inputs = crate::test_support::lattice_inputs(dir.path());
+        assert_eq!(inputs.len(), 1, "{inputs:?}");
+        assert_eq!(inputs[0]["action_path"], "ucb:delegate");
+        assert_eq!(gate, Ok(()));
+    }
 }

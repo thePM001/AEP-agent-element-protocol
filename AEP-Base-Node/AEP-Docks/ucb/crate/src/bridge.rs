@@ -1,17 +1,20 @@
 //! Ingest and rollback. UCB is not a second evaluator.
 
+use crate::auth::load_manifest_signers;
 use crate::config::UcbConfig;
 use crate::ingress::ForeignIngestBody;
 use crate::journal::{persist_journal_if_admit, DiffJournal};
-use crate::lattice::{admit_allow, DockResponse, LatticeDeny, LatticeRuntime};
+use crate::lattice::{
+    admit_allow, DockResponse, LatticeDeny, LatticeRuntime, ACTION_ROLLBACK, BRIDGE_AGENT,
+};
 use crate::manifest;
 use crate::store::ManifestStore;
 use crate::translator::translate_foreign_ingest;
 use crate::validate_process::{encode_request, ValidateWaitError, ValidatorProcess};
-use aep_ucb_perimeter_v1::reject_over_cap;
+use aep_ucb_perimeter_v1::{reject_over_cap, ManifestSigners};
 use aep_wall_set_backpressure::DenyReport;
 use serde_json::Value;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use tokio::sync::Semaphore;
 
 /// Live validator processes at one time. A third check waits for a slot.
@@ -45,10 +48,17 @@ pub struct UcbRuntime {
     pub lattice: LatticeRuntime,
     pub journal: DiffJournal,
     pub manifests: ManifestStore,
+    /// The registered manifest signer key of each agent.
+    pub signers: ManifestSigners,
     pub validate_slots: Arc<Semaphore>,
     /// Program that runs each ingest check in its own confined process.
     pub validator: ValidatorProcess,
+    /// The last health snapshot. Requests read it; only the refresh task writes it.
+    pub health: RwLock<Value>,
 }
+
+/// The health refresh runs one lattice ping this often.
+pub const HEALTH_REFRESH_MS: u64 = 10_000;
 
 impl UcbRuntime {
     pub fn new(config: UcbConfig) -> std::io::Result<Self> {
@@ -56,13 +66,53 @@ impl UcbRuntime {
         let journal =
             DiffJournal::with_max_bytes(&config.data_dir, config.wire_limits.journal_max_bytes);
         let manifests = ManifestStore::new(config.manifest_dir.clone())?;
+        let signers = load_manifest_signers(&config.data_dir);
+        let health = RwLock::new(crate::http::health_document(
+            &lattice,
+            &crate::http::lattice_not_probed(),
+        ));
         Ok(Self {
             config,
             lattice,
             journal,
             manifests,
+            signers,
             validate_slots: Arc::new(Semaphore::new(VALIDATE_SLOT_LIMIT)),
             validator: ValidatorProcess::beside_current_exe(),
+            health,
+        })
+    }
+
+    /// The last health snapshot, from memory.
+    pub fn health_snapshot(&self) -> Value {
+        self.health
+            .read()
+            .map(|h| h.clone())
+            .unwrap_or_else(|poisoned| poisoned.into_inner().clone())
+    }
+
+    /// Ping the lattice once and store the result as the health snapshot. The ping
+    /// is bounded by the build and dock timeouts of the lattice runtime.
+    pub async fn refresh_health(&self) {
+        let lattice = crate::http::lattice_probe(self.lattice.health_ping().await);
+        let doc = crate::http::health_document(&self.lattice, &lattice);
+        match self.health.write() {
+            Ok(mut h) => *h = doc,
+            Err(poisoned) => *poisoned.into_inner() = doc,
+        }
+    }
+
+    /// Refresh the health snapshot now and then every HEALTH_REFRESH_MS on its own task.
+    pub fn spawn_health_refresh(self: &Arc<Self>) -> tokio::task::JoinHandle<()> {
+        let rt = Arc::clone(self);
+        tokio::spawn(async move {
+            let mut tick =
+                tokio::time::interval(std::time::Duration::from_millis(HEALTH_REFRESH_MS));
+            tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+            loop {
+                tick.tick().await;
+                rt.refresh_health().await;
+            }
         })
     }
 }
@@ -254,6 +304,8 @@ pub async fn ingest_foreign_payload(rt: &Arc<UcbRuntime>, body: ForeignIngestBod
     event.dock_wire_score = crate::DOCK_WIRE_SCORE;
     let manifest = match manifest::load_or_provided(
         &rt.manifests,
+        &rt.signers,
+        manifest::strict_mode(rt.config.manifest_strict),
         &event.agent_id,
         &event.session_id,
         body.task_manifest.clone(),
@@ -271,7 +323,7 @@ pub async fn ingest_foreign_payload(rt: &Arc<UcbRuntime>, body: ForeignIngestBod
         Ok(p) => p,
         Err(e) => return deny_to_value(DenyReport::from_error(&e)),
     };
-    let built = match rt.lattice.build_frame(&event) {
+    let built = match rt.lattice.build_frame(&event).await {
         Ok(b) => b,
         Err(e) => return deny_to_value(DenyReport::from_error(&e)),
     };
@@ -291,15 +343,10 @@ pub async fn ingest_foreign_payload(rt: &Arc<UcbRuntime>, body: ForeignIngestBod
     if persist_journal_if_admit(admit_allow(&docked), || ()).is_none() {
         return dock_denied_ack(&docked, vec![admit_ledger_row(&docked)]);
     }
-    let recorded = match rt.lattice.seal_and_record(&event) {
-        Ok(r) => r,
-        Err(e) => return deny_to_value(DenyReport::from_error(&e)),
-    };
-    let event_id = recorded.event_id.or(docked.event_id);
-    let frame_digest = recorded
-        .frame_digest
-        .or(docked.digest.clone())
-        .or(built.digest);
+    // The dock Admit of the frame is the one Admit of this ingest and its ledger row
+    // is the one ledger row. Nothing records the event a second time.
+    let event_id = docked.event_id;
+    let frame_digest = docked.digest.clone().or(built.digest);
     let mut snapshot = serde_json::Map::new();
     snapshot.insert(
         String::from("agent_id"),
@@ -370,7 +417,13 @@ pub async fn ingest_foreign_payload(rt: &Arc<UcbRuntime>, body: ForeignIngestBod
     ingest_ok(out)
 }
 
-pub async fn rollback_foreign_integrations(rt: &Arc<UcbRuntime>, diff_ids: Vec<String>) -> Value {
+/// Roll back the tail diff. `acting_agent` is the agent of an agent key: such a key
+/// rolls back only a diff of its own agent. The operator key passes None.
+pub async fn rollback_foreign_integrations(
+    rt: &Arc<UcbRuntime>,
+    diff_ids: Vec<String>,
+    acting_agent: Option<&str>,
+) -> Value {
     if diff_ids.len() != 1 {
         return deny_to_value(DenyReport::from_error(
             "rollback requires exactly one tail diff id",
@@ -379,7 +432,10 @@ pub async fn rollback_foreign_integrations(rt: &Arc<UcbRuntime>, diff_ids: Vec<S
     let diff_id = diff_ids[0].clone();
     if let Err(e) = rt
         .journal
-        .with_lock(|| rt.journal.check_rollback_named(&diff_ids))
+        .with_lock(|| {
+            rt.journal.check_rollback_named(&diff_ids)?;
+            rt.journal.check_diff_agent(&diff_id, acting_agent)
+        })
         .await
     {
         return deny_to_value(DenyReport::from_error(&e));
@@ -391,13 +447,13 @@ pub async fn rollback_foreign_integrations(rt: &Arc<UcbRuntime>, diff_ids: Vec<S
         Value::String(String::from(crate::BRIDGE_ID)),
     );
     let rollback_event = crate::translator::LatticeEvent {
-        agent_id: "ucb-bridge".into(),
+        agent_id: BRIDGE_AGENT.into(),
         channel_id: "ch-ucb-rollback".into(),
         contract_id: "dynaep-action-lattice".into(),
         event_type: "UCB_ROLLBACK".into(),
         session_id: format!("ucb-rollback-{}", now_ms()),
         docking_port: "validation_engine".into(),
-        action_path: String::new(),
+        action_path: ACTION_ROLLBACK.into(),
         dock_wire_score: crate::DOCK_WIRE_SCORE,
         payload: Value::Object(payload),
     };
@@ -405,7 +461,7 @@ pub async fn rollback_foreign_integrations(rt: &Arc<UcbRuntime>, diff_ids: Vec<S
         Ok(p) => p,
         Err(e) => return deny_to_value(DenyReport::from_error(&e)),
     };
-    let built = match rt.lattice.build_frame(&rollback_event) {
+    let built = match rt.lattice.build_frame(&rollback_event).await {
         Ok(b) => b,
         Err(e) => return deny_to_value(DenyReport::from_error(&e)),
     };
@@ -430,10 +486,6 @@ pub async fn rollback_foreign_integrations(rt: &Arc<UcbRuntime>, diff_ids: Vec<S
     if persist_journal_if_admit(admit_allow(&docked), || ()).is_none() {
         return deny_to_value(DenyReport::from_error("collect-all Admit refused"));
     }
-    let recorded = match rt.lattice.seal_and_record(&rollback_event) {
-        Ok(r) => r,
-        Err(e) => return deny_to_value(DenyReport::from_error(&e)),
-    };
     let popped = rt
         .journal
         .with_lock(|| rt.journal.rollback_tail(&diff_id))
@@ -449,10 +501,10 @@ pub async fn rollback_foreign_integrations(rt: &Arc<UcbRuntime>, diff_ids: Vec<S
         Value::String(String::from("rolled_back")),
     );
     out.insert(String::from("diff_id"), Value::String(popped.diff_id));
-    if let Some(id) = recorded.event_id {
+    if let Some(id) = docked.event_id {
         out.insert(String::from("event_id"), Value::from(id));
     }
-    if let Some(d) = recorded.frame_digest {
+    if let Some(d) = docked.digest.or(built.digest) {
         out.insert(String::from("frame_digest"), Value::String(d));
     }
     Value::Object(out)
@@ -472,8 +524,7 @@ mod tests {
     use crate::journal::persist_after_admit;
     use crate::validate_process::{decode_validation, encode_validation};
     use aep_ucb_perimeter_v1::{PredicateProfile, ScannerId, WireLimits};
-    use std::os::unix::fs::PermissionsExt;
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 
     fn enqueue_dock() -> DockResponse {
@@ -782,73 +833,41 @@ mod tests {
         }
     }
 
+    /// The manifest signer of agent-a in these tests.
+    fn agent_a_key() -> &'static aep_lattice_crypto::SignKeypair {
+        static KEY: std::sync::OnceLock<aep_lattice_crypto::SignKeypair> =
+            std::sync::OnceLock::new();
+        KEY.get_or_init(aep_lattice_crypto::generate_sign_keypair)
+    }
+
     fn sample_ingest_body() -> ForeignIngestBody {
+        let mut manifest = serde_json::json!({
+            "manifest_version": "1",
+            "id": "m1",
+            "agent_id": "agent-a",
+            "session_id": "s1",
+            "intent": {},
+            "synthesized_by": "provided"
+        });
+        crate::test_support::sign_provided(&mut manifest, agent_a_key());
         ForeignIngestBody {
             provenance: Some(Provenance::bound("lg", "1.0", "s1")),
             protocol: Some(String::from("lg")),
             session_id: Some(String::from("s1")),
             agent_id: Some(String::from("agent-a")),
             payload: serde_json::json!({"subject": "a", "predicate": "b", "object": "c"}),
-            task_manifest: Some(serde_json::json!({
-                "manifest_version": "1",
-                "id": "m1",
-                "agent_id": "agent-a",
-                "session_id": "s1",
-                "intent": {},
-                "synthesized_by": "provided",
-                "signature": "operator-sig"
-            })),
+            task_manifest: Some(manifest),
             ..Default::default()
         }
     }
 
-    fn write_fake_lattice_log(dir: &Path) -> PathBuf {
-        let path = dir.join("fake-lattice-log");
-        let dollar = char::from(36);
-        let at = format!("{}@", dollar);
-        let va = format!("{}a", dollar);
-        let vc = format!("{}cmd", dollar);
-        let mut script = String::new();
-        script.push_str("#!/bin/sh\ncmd=\n");
-        script.push_str(&format!("for a in \"{}\"; do\n", at));
-        script.push_str(&format!("  case \"{}\" in\n", va));
-        script.push_str("    build-frame) cmd=build-frame ;;\n");
-        script.push_str("    record) cmd=record ;;\n");
-        script.push_str("  esac\ndone\ncat >/dev/null\n");
-        let sq = char::from(39);
-        script.push_str(&format!("if [ \"{}\" = \"build-frame\" ]; then\n", vc));
-        script.push_str("  printf ");
-        script.push(sq);
-        script.push_str("%s\\n");
-        script.push(sq);
-        script.push(32 as char);
-        script.push(sq);
-        script.push_str(
-            "{\"frame\":{\"kind\":\"fixture\"},\"digest\":\"abc\",\"signer_public_hex\":\"ab\"}",
-        );
-        script.push(sq);
-        script.push(10 as char);
-        script.push_str("  exit 0\nfi\n");
-        script.push_str(&format!("if [ \"{}\" = \"record\" ]; then\n", vc));
-        script.push_str("  printf ");
-        script.push(sq);
-        script.push_str("%s\\n");
-        script.push(sq);
-        script.push(32 as char);
-        script.push(sq);
-        script.push_str("{\"ok\":true,\"event_id\":11,\"frame_digest\":\"abc\"}");
-        script.push(sq);
-        script.push(10 as char);
-        script.push_str("  exit 0\nfi\nexit 1\n");
-        std::fs::write(&path, script).unwrap();
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
-        path
-    }
-
+    /// A runtime whose aep-lattice-log is the recording stand-in, whose docks live in
+    /// `dir/sockets` and whose manifest signer of agent-a is registered.
     fn runtime_with_fake_lattice(dir: &Path) -> Arc<UcbRuntime> {
         let mut rt = UcbRuntime::new(sample_config(dir)).unwrap();
         rt.lattice.socket_base = dir.join("sockets");
-        rt.lattice.lattice_log_bin = write_fake_lattice_log(dir);
+        rt.lattice.lattice_log_bin = crate::test_support::recording_lattice_log(dir);
+        rt.signers.insert("agent-a", agent_a_key().public.clone());
         Arc::new(rt)
     }
 
@@ -891,6 +910,96 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert!(rt.journal.list(10).is_empty());
         server.await.expect("fixture task");
+    }
+
+    /// UCB 05: an admitted ingest passes Admit at the dock once. No second Admit
+    /// through aep-lattice-log record writes the ledger again.
+    #[tokio::test]
+    async fn admitted_ingest_passes_admit_once() {
+        let dir = tempfile::tempdir().unwrap();
+        let dock = crate::test_support::allowing_dock(&dir.path().join("sockets/validation"));
+        let rt = runtime_with_fake_lattice(dir.path());
+        let result = ingest_foreign_payload(&rt, sample_ingest_body()).await;
+        dock.abort();
+        assert_eq!(result.get("ok"), Some(&Value::Bool(true)), "{result}");
+        assert_eq!(result.get("event_id"), Some(&Value::from(7)), "{result}");
+        assert_eq!(
+            crate::test_support::lattice_calls(dir.path()),
+            vec![String::from("build-frame")],
+            "one frame, one Admit, no record"
+        );
+        assert_eq!(rt.journal.list(10).len(), 1);
+    }
+
+    /// UCB 04: the rollback frame names the action path ucb:rollback.
+    #[tokio::test]
+    async fn rollback_frame_names_its_action_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let dock = crate::test_support::allowing_dock(&dir.path().join("sockets/validation"));
+        let rt = runtime_with_fake_lattice(dir.path());
+        let diff = rt
+            .journal
+            .append(serde_json::json!({
+                "operation": "extend_write",
+                "snapshot": {"agent_id": "agent-a"}
+            }))
+            .unwrap();
+        let result = rollback_foreign_integrations(&rt, vec![diff.diff_id.clone()], None).await;
+        dock.abort();
+        let inputs = crate::test_support::lattice_inputs(dir.path());
+        assert_eq!(inputs.len(), 1, "{inputs:?}");
+        assert_eq!(inputs[0]["action_path"], "ucb:rollback");
+        assert_eq!(result.get("ok"), Some(&Value::Bool(true)), "{result}");
+        assert!(rt.journal.list(10).is_empty());
+    }
+
+    /// UCB 01: an agent key rolls back only a diff of its own agent.
+    #[tokio::test]
+    async fn agent_rolls_back_only_its_own_diff() {
+        let dir = tempfile::tempdir().unwrap();
+        let dock = crate::test_support::allowing_dock(&dir.path().join("sockets/validation"));
+        let rt = runtime_with_fake_lattice(dir.path());
+        let diff = rt
+            .journal
+            .append(serde_json::json!({
+                "operation": "extend_write",
+                "snapshot": {"agent_id": "agent-a"}
+            }))
+            .unwrap();
+        let refused =
+            rollback_foreign_integrations(&rt, vec![diff.diff_id.clone()], Some("agent-b")).await;
+        assert_ne!(refused.get("ok"), Some(&Value::Bool(true)), "{refused}");
+        assert_eq!(
+            rt.journal.list(10).len(),
+            1,
+            "the refused rollback keeps the diff"
+        );
+        assert!(crate::test_support::lattice_calls(dir.path()).is_empty());
+        let own =
+            rollback_foreign_integrations(&rt, vec![diff.diff_id.clone()], Some("agent-a")).await;
+        dock.abort();
+        assert_eq!(own.get("ok"), Some(&Value::Bool(true)), "{own}");
+        assert!(rt.journal.list(10).is_empty());
+    }
+
+    /// UCB 02: an ingest whose manifest no registered key signed is refused before
+    /// any frame is built.
+    #[tokio::test]
+    async fn ingest_with_an_unverified_manifest_is_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        let rt = runtime_with_fake_lattice(dir.path());
+        let mut body = sample_ingest_body();
+        if let Some(m) = body.task_manifest.as_mut() {
+            m["signature"] = Value::String(String::from("operator-sig"));
+        }
+        let result = ingest_foreign_payload(&rt, body).await;
+        assert_eq!(
+            result.get("error").and_then(Value::as_str),
+            Some("ManifestSignatureInvalid"),
+            "{result}"
+        );
+        assert!(crate::test_support::lattice_calls(dir.path()).is_empty());
+        assert!(rt.manifests.load("agent-a").is_none());
     }
 
     #[tokio::test]

@@ -1,6 +1,8 @@
 //! Per-agent UCB keys. Operator key is UCB_API_KEY.
 
-use aep_ucb_perimeter_v1::{AgentKey, AuthError, AuthIdentity, AuthRegistry, Scope};
+use aep_ucb_perimeter_v1::{
+    AgentKey, AuthError, AuthIdentity, AuthRegistry, ManifestSigners, Scope,
+};
 use rand::RngCore;
 use sha2::{Digest, Sha256};
 use std::fs;
@@ -68,21 +70,72 @@ fn parse_scope(raw: &str) -> Option<Scope> {
     }
 }
 
-fn load_agent_keys(data_dir: &Path) -> Vec<AgentKey> {
-    let path = data_dir.join("ucb-agent-keys.json");
-    let text = match fs::read_to_string(&path) {
-        Ok(t) => t,
-        Err(_) => return Vec::new(),
-    };
-    let parsed: serde_json::Value = match serde_json::from_str(&text) {
-        Ok(v) => v,
-        Err(_) => return Vec::new(),
-    };
-    let Some(arr) = parsed.get("agents").and_then(|v| v.as_array()) else {
+/// The agent records of `ucb-agent-keys.json` in the data folder.
+fn read_agent_records(data_dir: &Path) -> Vec<serde_json::Value> {
+    let path = data_dir.join(AGENT_KEYS_FILE);
+    let Ok(text) = fs::read_to_string(&path) else {
         return Vec::new();
     };
+    let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) else {
+        return Vec::new();
+    };
+    parsed
+        .get("agents")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default()
+}
+
+/// The file of the per-agent keys and manifest signer keys.
+pub const AGENT_KEYS_FILE: &str = "ucb-agent-keys.json";
+
+/// The manifest signer keys of the agents. Each agent record may name
+/// `manifest_signer_public_hex`, the hex ML-DSA-65 public key whose signature makes a
+/// task manifest of that agent count. A record with a key that is not hex is skipped.
+pub fn load_manifest_signers(data_dir: &Path) -> ManifestSigners {
+    let mut signers = ManifestSigners::new();
+    for item in read_agent_records(data_dir) {
+        let agent_id = item.get("agent_id").and_then(|v| v.as_str()).unwrap_or("");
+        let key_hex = item
+            .get("manifest_signer_public_hex")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .trim();
+        if agent_id.is_empty() || key_hex.is_empty() {
+            continue;
+        }
+        if let Ok(key) = hex::decode(key_hex) {
+            signers.insert(agent_id, key);
+        }
+    }
+    signers
+}
+
+/// A request named an agent other than the agent of its key.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AgentMismatch;
+
+/// The agent a request acts for. The operator key acts for the agent the request
+/// names. An agent key acts only for its own agent: a request that names another
+/// agent is refused and a request that names none acts for the agent of the key.
+pub fn bind_agent(
+    identity: &AuthIdentity,
+    requested: Option<&str>,
+) -> Result<Option<String>, AgentMismatch> {
+    let requested = requested.map(str::trim).filter(|s| !s.is_empty());
+    match identity {
+        AuthIdentity::Operator => Ok(requested.map(str::to_string)),
+        AuthIdentity::Agent { agent_id, .. } => match requested {
+            None => Ok(Some(agent_id.clone())),
+            Some(r) if r == agent_id => Ok(Some(agent_id.clone())),
+            Some(_) => Err(AgentMismatch),
+        },
+    }
+}
+
+fn load_agent_keys(data_dir: &Path) -> Vec<AgentKey> {
     let mut out = Vec::new();
-    for item in arr {
+    for item in read_agent_records(data_dir) {
         let agent_id = item
             .get("agent_id")
             .and_then(|v| v.as_str())
@@ -293,6 +346,48 @@ mod tests {
         assert!(guard.authorize(agent_secret, Scope::Ingest).is_ok());
         assert!(guard.authorize(agent_secret, Scope::Rollback).is_err());
         assert!(guard.authorize("operator-secret", Scope::Rollback).is_ok());
+    }
+
+    /// UCB 01: an agent key acts for its own agent only. The operator acts for any.
+    #[test]
+    fn agent_key_binds_to_its_agent() {
+        let agent = AuthIdentity::Agent {
+            agent_id: String::from("agent-a"),
+            key_id: String::from("k1"),
+        };
+        assert_eq!(
+            bind_agent(&agent, Some("agent-a")),
+            Ok(Some(String::from("agent-a")))
+        );
+        assert_eq!(bind_agent(&agent, None), Ok(Some(String::from("agent-a"))));
+        assert_eq!(
+            bind_agent(&agent, Some(" ")),
+            Ok(Some(String::from("agent-a")))
+        );
+        assert_eq!(bind_agent(&agent, Some("agent-b")), Err(AgentMismatch));
+        assert_eq!(
+            bind_agent(&AuthIdentity::Operator, Some("agent-b")),
+            Ok(Some(String::from("agent-b")))
+        );
+        assert_eq!(bind_agent(&AuthIdentity::Operator, None), Ok(None));
+    }
+
+    #[test]
+    fn manifest_signers_load_from_the_agent_keys_file() {
+        let dir = tempdir().unwrap();
+        let rec = serde_json::json!({
+            "agents": [
+                {"agent_id": "a", "key_id": "k", "key_hash": "h", "manifest_signer_public_hex": "0a0b"},
+                {"agent_id": "b", "key_id": "k", "key_hash": "h", "manifest_signer_public_hex": "zz"},
+                {"agent_id": "c", "key_id": "k", "key_hash": "h"}
+            ]
+        });
+        std::fs::write(dir.path().join(AGENT_KEYS_FILE), rec.to_string()).unwrap();
+        let signers = load_manifest_signers(dir.path());
+        assert_eq!(signers.get("a"), Some(&[0x0a, 0x0b][..]));
+        assert_eq!(signers.get("b"), None);
+        assert_eq!(signers.get("c"), None);
+        assert_eq!(signers.len(), 1);
     }
 
     #[test]

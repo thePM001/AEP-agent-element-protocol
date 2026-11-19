@@ -1,8 +1,7 @@
 //! Local gap-manifest-v1 compiler. Public UCB does not call a remote engine.
 
-use crate::manifest::{synthesis_forbidden, trust_fields_forbidden};
+use crate::manifest::{compute_manifest_digest, synthesis_forbidden, trust_fields_forbidden};
 use crate::store::{value_has_trust_fields, TaskManifestV1};
-use aep_ucb_perimeter_v1::digest_canonical;
 use aep_wall_set_backpressure::{ClosedWall, DenyReport, RepairHint, CLASS_STRUCTURAL};
 use serde_json::{Map, Value};
 
@@ -57,16 +56,6 @@ fn as_required_string(value: Option<&Value>) -> Option<String> {
         Some(Value::Number(n)) => Some(n.to_string()),
         _ => None,
     }
-}
-
-fn digest_of(manifest: &TaskManifestV1) -> String {
-    let mut value = serde_json::to_value(manifest).unwrap_or(Value::Null);
-    if let Some(obj) = value.as_object_mut() {
-        obj.remove("manifest_digest");
-        obj.remove("signature");
-        obj.remove("trust");
-    }
-    digest_canonical(&value)
 }
 
 fn compile_object(value: Value) -> Result<TaskManifestV1, DenyReport> {
@@ -152,7 +141,7 @@ fn compile_object(value: Value) -> Result<TaskManifestV1, DenyReport> {
             })
             .unwrap_or_default(),
     };
-    compiled.manifest_digest = digest_of(&compiled);
+    compiled.manifest_digest = compute_manifest_digest(&compiled);
     Ok(compiled)
 }
 

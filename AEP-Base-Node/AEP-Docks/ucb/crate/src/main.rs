@@ -33,6 +33,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let runtime = Arc::new(UcbRuntime::new(config.clone())?);
+    let confinement = runtime.validator.confinement_report();
+    tracing::info!("{confinement}");
+    eprintln!("{confinement}");
+    eprintln!(
+        "UCB manifest signers registered: {} (strict manifests: {})",
+        runtime.signers.len(),
+        config.manifest_strict
+    );
+    // Health requests read the snapshot in memory. Only this task pings the lattice.
+    runtime.spawn_health_refresh();
     let env_key = std::env::var("UCB_API_KEY").ok();
     let (auth, material) = bootstrap_auth(&config.data_dir, env_key.as_deref());
 

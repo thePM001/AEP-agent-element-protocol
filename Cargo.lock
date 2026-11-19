@@ -500,6 +500,7 @@ version = "2.9.0"
 dependencies = [
  "aep-agentmesh",
  "aep-egress-address",
+ "aep-lattice-crypto",
  "aep-ucb-perimeter-v1",
  "aep-wall-set-backpressure",
  "axum",
@@ -524,6 +525,7 @@ dependencies = [
 name = "aep-ucb-perimeter-v1"
 version = "2.9.0"
 dependencies = [
+ "aep-lattice-crypto",
  "hex",
  "serde",
  "serde_json",

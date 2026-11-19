@@ -2,7 +2,7 @@
 
 use crate::bridge::{ingest_foreign_payload, rollback_foreign_integrations, UcbRuntime};
 use crate::delegate::{delegate_to_foreign_model, DelegateBody};
-use crate::http::health_snapshot;
+
 use crate::ingress::ForeignIngestBody;
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -16,7 +16,13 @@ pub fn mcp_capabilities() -> Value {
     })
 }
 
-pub async fn handle_mcp_request(rt: &Arc<UcbRuntime>, body: Value) -> Value {
+/// Answer one MCP JSON-RPC request. `acting_agent` is the agent of an agent key; such
+/// a key rolls back only a diff of its own agent. The operator key passes None.
+pub async fn handle_mcp_request(
+    rt: &Arc<UcbRuntime>,
+    body: Value,
+    acting_agent: Option<&str>,
+) -> Value {
     let id = body.get("id").cloned();
     let method = body.get("method").and_then(|v| v.as_str()).unwrap_or("");
     let params = body.get("params").cloned().unwrap_or(json!({}));
@@ -84,9 +90,9 @@ pub async fn handle_mcp_request(rt: &Arc<UcbRuntime>, body: Value) -> Value {
                             });
                         }
                     };
-                    rollback_foreign_integrations(rt, diff_ids).await
+                    rollback_foreign_integrations(rt, diff_ids, acting_agent).await
                 }
-                "ucb_health" => health_snapshot(rt).await,
+                "ucb_health" => rt.health_snapshot(),
                 "ucb_compile_manifest" => {
                     let src = args.get("source").and_then(|v| v.as_str());
                     let compiled = if let Some(s) = src {
@@ -317,7 +323,7 @@ mod tests {
             "method": "tools/call",
             "params": { "name": "ucb_ingest", "arguments": "bad" }
         });
-        let out = handle_mcp_request(&rt, body).await;
+        let out = handle_mcp_request(&rt, body, None).await;
         assert_eq!(
             out.get("error").and_then(|e| e.get("code")),
             Some(&json!(-32602))
@@ -329,7 +335,7 @@ mod tests {
             "method": "tools/call",
             "params": { "name": "ucb_ingest" }
         });
-        let out = handle_mcp_request(&rt, missing).await;
+        let out = handle_mcp_request(&rt, missing, None).await;
         assert_eq!(
             out.get("error").and_then(|e| e.get("code")),
             Some(&json!(-32602))

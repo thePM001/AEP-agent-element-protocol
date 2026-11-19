@@ -97,7 +97,7 @@ fn unsigned_and_provisional_cannot_egress() {
         signature: None,
         provisional: false,
     };
-    assert!(egress_power_allowed(&unsigned, StrictMode::On).is_err());
+    assert!(egress_power_allowed(&unsigned, StrictMode::On, None).is_err());
     let digest = aep_ucb_perimeter_v1::digest_canonical(&serde_json::json!({"agent_id": "a"}));
     let prov = SignedManifest {
         body: serde_json::json!({"agent_id": "a"}),
@@ -105,7 +105,7 @@ fn unsigned_and_provisional_cannot_egress() {
         signature: Some("sig".into()),
         provisional: true,
     };
-    assert!(egress_power_allowed(&prov, StrictMode::On).is_err());
+    assert!(egress_power_allowed(&prov, StrictMode::On, None).is_err());
 }
 
 #[test]

@@ -146,6 +146,32 @@ impl DiffJournal {
             .map_err(rollback_err)
     }
 
+    /// An agent key rolls back only a diff of its own agent. `None` is the operator,
+    /// who acts for every agent.
+    pub fn check_diff_agent(
+        &self,
+        diff_id: &str,
+        acting_agent: Option<&str>,
+    ) -> Result<(), String> {
+        let Some(agent) = acting_agent else {
+            return Ok(());
+        };
+        let entries = read_entries(&self.path);
+        let Some(entry) = entries.iter().find(|e| e.diff_id == diff_id) else {
+            return Err("unknown diff id".into());
+        };
+        let owner = entry
+            .snapshot
+            .as_ref()
+            .and_then(|s| s.get("agent_id"))
+            .and_then(Value::as_str);
+        if owner == Some(agent) {
+            Ok(())
+        } else {
+            Err(format!("diff {diff_id} belongs to another agent"))
+        }
+    }
+
     pub fn rollback_tail(&self, diff_id: &str) -> Result<DiffRecord, String> {
         let entries = read_entries(&self.path);
         let chained: Vec<ChainedDiffRecord> = entries.iter().map(to_chained).collect();

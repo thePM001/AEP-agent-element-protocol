@@ -213,6 +213,21 @@ impl ValidatorProcess {
         &self.program
     }
 
+    /// The line the UCB logs at start: which validator it runs, whether that program
+    /// exists and which confinement the validator installs on this target.
+    pub fn confinement_report(&self) -> String {
+        let presence = if self.program.is_file() {
+            "present"
+        } else {
+            "missing, so every validation is refused"
+        };
+        format!(
+            "UCB validator {} ({presence}); confinement: {}",
+            self.program.display(),
+            crate::sandbox::confinement_state()
+        )
+    }
+
     /// Run one bounded validation of an encoded request.
     pub async fn validate(
         &self,
@@ -344,6 +359,31 @@ fn cargo_profile_dir(test_dir: &Path) -> Option<&Path> {
 mod tests {
     use super::*;
     use crate::ingress::Provenance;
+
+    /// Track F: the start log names the validator, whether it exists and its confinement.
+    #[test]
+    fn confinement_report_names_program_presence_and_state() {
+        let dir = tempfile::tempdir().unwrap();
+        let missing = ValidatorProcess::new(dir.path().join("no-validator")).confinement_report();
+        assert!(missing.contains("no-validator"), "{missing}");
+        assert!(missing.contains("missing"), "{missing}");
+        let program = dir.path().join("aep-ucb-validate");
+        std::fs::write(&program, b"").unwrap();
+        let present = ValidatorProcess::new(&program).confinement_report();
+        assert!(present.contains("(present)"), "{present}");
+        assert!(
+            present.ends_with(crate::sandbox::confinement_state()),
+            "{present}"
+        );
+        #[cfg(all(
+            target_os = "linux",
+            any(target_arch = "x86_64", target_arch = "aarch64")
+        ))]
+        assert!(
+            present.contains("seccomp allow list with no_new_privs"),
+            "{present}"
+        );
+    }
 
     #[test]
     fn cargo_profile_dir_reads_both_cargo_test_layouts_and_nothing_else() {

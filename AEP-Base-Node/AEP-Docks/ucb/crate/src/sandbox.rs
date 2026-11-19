@@ -41,6 +41,11 @@ pub const fn filter_supported() -> bool {
     imp::FILTER_SUPPORTED
 }
 
+/// The confinement the validator gets on this target, in words for the start log.
+pub const fn confinement_state() -> &'static str {
+    imp::STATE
+}
+
 #[cfg(all(
     target_os = "linux",
     any(target_arch = "x86_64", target_arch = "aarch64")
@@ -49,6 +54,7 @@ mod imp {
     use super::ConfineError;
 
     pub const FILTER_SUPPORTED: bool = true;
+    pub const STATE: &str = "seccomp allow list with no_new_privs";
 
     #[cfg(target_arch = "x86_64")]
     const AUDIT_ARCH: u32 = 0xC000_003E;
@@ -181,6 +187,8 @@ mod imp {
     use super::ConfineError;
 
     pub const FILTER_SUPPORTED: bool = false;
+    pub const STATE: &str =
+        "refused: no seccomp allow list for this architecture, so every validation fails closed";
 
     pub fn confine() -> Result<(), ConfineError> {
         Err(ConfineError(format!(
@@ -195,6 +203,7 @@ mod imp {
     use super::ConfineError;
 
     pub const FILTER_SUPPORTED: bool = false;
+    pub const STATE: &str = "unconfined: this target has no seccomp";
 
     pub fn confine() -> Result<(), ConfineError> {
         Ok(())
