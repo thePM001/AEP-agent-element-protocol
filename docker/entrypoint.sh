@@ -10,6 +10,31 @@ UCB_PID=""
 UCM_PID=""
 DAEMON_PID=""
 DAEMON_PIDFILE="/run/aep/daemon.pid"
+CAW_DATA="${AEP_DATA}/caw-framework"
+HUB_DIR="${AEP_DATA}/gap/policies/reference"
+# The reference profiles that run in this image. ede-draft needs a Rust toolchain on
+# the host and is left out. CAW_PROFILES narrows or widens the list of a fresh caw.toml.
+CAW_DEFAULT_PROFILES="restricted coding-agent compiled-runtime agent-sandbox dev-multi-repo"
+
+# The image runs the Base Node and the CAW as the user aep. The CAW never starts a
+# sandbox as root, so CAW=1 refuses a container started with --user 0.
+if [ "${CAW:-0}" = "1" ] && [ "$(id -u)" = 0 ]; then
+  echo "ERROR: CAW=1 needs a user that is not root. Start the container without --user 0." >&2
+  exit 2
+fi
+# The gVisor pin covers amd64. An image built for another platform carries no runsc.
+if [ "${CAW:-0}" = "1" ] && [ ! -x /usr/bin/runsc ]; then
+  echo "ERROR: CAW=1 needs gVisor and this image for $(uname -m) carries none: the gVisor pin of the CAW covers amd64 only." >&2
+  exit 2
+fi
+
+# A data volume written by an earlier image that ran as root belongs to root. The
+# user of this image cannot write it, so the container names the one fix and stops.
+if [ -d "${AEP_DATA}" ] && [ ! -w "${AEP_DATA}" ]; then
+  echo "ERROR: ${AEP_DATA} is not writable by uid $(id -u). A volume of an earlier image belongs to root. Give it to this user once:" >&2
+  echo "  docker run --rm --user 0 --entrypoint chown -v <volume>:${AEP_DATA} <image> -R $(id -u):$(id -g) ${AEP_DATA}" >&2
+  exit 2
+fi
 
 mkdir -p "${AEP_DATA}" "${AEP_SOCKET_BASE}" /run/aep
 LATTICE_YAML="${AEP_DATA}/lattice.yaml"
@@ -20,6 +45,15 @@ if [ ! -f "${LATTICE_YAML}" ] && [ -f /opt/aep/lattice.default.yaml ]; then
   cp /opt/aep/lattice.default.yaml "${LATTICE_YAML}"
   chmod 600 "${LATTICE_YAML}" 2>/dev/null || true
   echo "Seeded default lattice at ${LATTICE_YAML}. Replace it with the lattice of this deployment." >&2
+fi
+# The Agent Control Hub reads the caw-*.gap files of ${HUB_DIR}. A fresh data folder
+# gets the reference sandbox profiles of the image and the hub grant of the CAW kernel
+# dock. A hub the operator already placed is never overwritten.
+if [ ! -d "${HUB_DIR}" ] && [ -f /opt/aep/hub/caw-kernel-dock.gap ]; then
+  mkdir -p "${HUB_DIR}"
+  cp /opt/aep/AEP-Components/gap/policies/reference/caw-*.gap "${HUB_DIR}/"
+  cp /opt/aep/hub/caw-kernel-dock.gap "${HUB_DIR}/"
+  echo "Seeded the hub at ${HUB_DIR} with the reference profiles and the grant of the CAW kernel dock." >&2
 fi
 
 
@@ -181,12 +215,58 @@ start_ucm() {
 }
 
 
-# This image carries no CAW. The Rust CAW runs on the host beside the Base Node
-# (AEP-CAWs-RustGvisor/README.md), so CAW=1 has no effect inside the image and the
-# image says so instead of implying that agent processes are confined.
-if [ "${CAW:-0}" = "1" ]; then
-  echo "WARN: CAW=1 has no effect: this image carries no CAW, install the Rust CAW on the host (AEP-CAWs-RustGvisor/README.md)." >&2
-fi
+# With CAW=1 the image prepares the Rust CAW beside the running Base Node: the GAP
+# compiler writes the profile records of the image, a fresh caw.toml allows the
+# profiles of CAW_PROFILES and the CAW doctor must pass, which includes one sealed
+# root:ping that the kernel dock admits. A failed doctor stops the container, because
+# CAW=1 promises that agent commands run confined.
+write_caw_config() {
+  profiles="${CAW_PROFILES:-${CAW_DEFAULT_PROFILES}}"
+  list=""
+  for id in $(printf '%s' "${profiles}" | tr ',' ' '); do
+    case "${id}" in
+      *[!a-z0-9-]* | "")
+        echo "ERROR: CAW_PROFILES holds the name '${id}'; a profile id is lower case letters, digits and hyphens" >&2
+        return 1
+        ;;
+    esac
+    list="${list}${list:+, }\"${id}\""
+  done
+  if [ -z "${list}" ]; then
+    echo "ERROR: CAW_PROFILES names no profile" >&2
+    return 1
+  fi
+  cat > "${CAW_DATA}/caw.toml" <<EOF
+allowed_profiles = [${list}]
+runsc = "/usr/bin/runsc"
+init = "/usr/local/bin/aep-caw-init"
+base_node_data = "${AEP_DATA}"
+dock_socket = "${AEP_SOCKET_BASE}/validation"
+EOF
+  chmod 600 "${CAW_DATA}/caw.toml"
+  echo "Wrote ${CAW_DATA}/caw.toml with the profiles: ${list}" >&2
+}
+
+prepare_caw() {
+  if [ "${CAW:-0}" != "1" ]; then
+    return 0
+  fi
+  if ! node /opt/aep/AEP-Components/gap/lib/gap-compile.mjs --materialize "${AEP_DATA}" > /dev/null; then
+    echo "ERROR: the GAP compiler could not write the CAW profile records into ${CAW_DATA}/profiles" >&2
+    return 1
+  fi
+  if [ ! -f "${CAW_DATA}/caw.toml" ]; then
+    write_caw_config || return 1
+  fi
+  if ! aep-caw doctor --data "${AEP_DATA}" >&2; then
+    echo "ERROR: CAW=1 and the CAW doctor fails. The container needs the run options of docker-compose.caw.yml." >&2
+    echo "  A host that restricts user namespaces through AppArmor also needs docker-compose.caw-apparmor.yml." >&2
+    echo "  A data folder of an earlier image keeps its lattice and hub: grant root:ping to caw-kernel-dock in ${LATTICE_YAML}" >&2
+    echo "  and copy /opt/aep/hub/caw-kernel-dock.gap into ${HUB_DIR}." >&2
+    return 1
+  fi
+  echo "AEP CAW ready: aep-caw session create --data ${AEP_DATA} --profile <id> --workspace <folder> --var HOME=${AEP_DATA} [--var NAME=VALUE]..." >&2
+}
 
 # With UCM_LATTICE_RECORD=1 UCM records each receipt digest as agent aep-ucm on the
 # lattice action ucm:receipt. The daemon reads agent sign keys at boot, so the key is
@@ -234,6 +314,7 @@ if ! wait_for_data_dock; then
 fi
 start_ucb || exit 1
 start_ucm || exit 1
+prepare_caw || exit 1
 echo "AEP Base Node ready." >&2
 if [ -f "${AEP_DATA}/ucb-api-key.recovery.txt" ]; then
   echo "  UCB API key recovery: docker compose exec aep cat /data/aep/ucb-api-key.recovery.txt" >&2

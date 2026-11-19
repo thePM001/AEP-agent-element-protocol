@@ -1,0 +1,38 @@
+# AEP 2.9 - the Rust CAW in the Docker image. Add this file to the deploy:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.caw.yml up -d --build
+#
+# Then run agent commands in the gVisor sandbox of the CAW, as the user of the image:
+#
+#   docker compose exec aep aep-caw session create --data /data/aep --profile restricted --workspace /workspace \
+#       --var HOME=/data/aep --var AEP_MODEL_GATEWAY_HOST=<host of the model gateway>
+#   docker compose exec aep aep-caw exec --data /data/aep --session <id> --run ls /workspace
+#
+# runsc creates a user namespace and mounts inside it, which the default seccomp and
+# AppArmor profiles of Docker refuse. The container therefore runs without them and
+# gVisor filters the system calls of every sandbox itself. Every capability is
+# dropped and no process in the container may gain one.
+#
+# The gVisor pin covers amd64. On another platform the image builds without gVisor
+# and the container stops with CAW=1.
+#
+# A host that restricts user namespaces through AppArmor (Ubuntu 23.10 and later)
+# needs one run of AEP-CAWs-RustGvisor/proof/install-runsc.sh as root and the third
+# file docker-compose.caw-apparmor.yml.
+
+services:
+  aep:
+    environment:
+      CAW: "1"
+      CAW_PROFILES: "${CAW_PROFILES:-restricted coding-agent compiled-runtime agent-sandbox dev-multi-repo}"
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
+      - no-new-privileges
+    cap_drop:
+      - ALL
+    volumes:
+      - aep-workspace:/workspace
+
+volumes:
+  aep-workspace:

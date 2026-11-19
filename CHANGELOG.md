@@ -2,6 +2,17 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-19 - The Docker image carries the Rust CAW and runs as a user that is not root
+The Docker image ran the Base Node as root and carried no CAW. `CAW=1` had no effect. The image did not build either, because its builder lacked the CAW crates of the workspace.
+
+- The image builds `aep-caw` and `aep-caw-init` and carries the pinned `runsc`, installed by `AEP-CAWs-RustGvisor/proof/install-runsc.sh` and checked against its sha512 at build time.
+- The Base Node and the CAW run as the user `aep` (uid 10001), which is not root. When a data volume of an earlier image belongs to root, the entrypoint stops and prints the `chown` command. It refuses `CAW=1` under `--user 0`.
+- The default lattice grants `root:ping` to `caw-kernel-dock`. The entrypoint seeds the hub of a fresh data folder with the reference sandbox profiles and the hub grant `caw-kernel-dock.gap`. It never overwrites a lattice or a hub the operator placed.
+- With `CAW=1` the entrypoint compiles the profile records, writes a `caw.toml` for the profiles of `CAW_PROFILES` on a fresh data folder and stops unless `aep-caw doctor` passes, which includes a sealed `root:ping` that the kernel dock admits.
+- `docker-compose.caw.yml` holds the run options of a container that runs gVisor: no seccomp and AppArmor profile of Docker, every capability dropped and `no-new-privileges`. A host that restricts user namespaces through AppArmor adds `docker-compose.caw-apparmor.yml` after one run of `install-runsc.sh`.
+- The gVisor pin covers amd64. On other platforms the image still builds without gVisor. There it stops when it starts with `CAW=1`.
+- The image target `caw-proof` adds the proof programs and a Rust toolchain. `docker/caw-image-check.sh` opens a session in the image with `CAW=1`, runs an allowed command and a refused read, sees the refusal while the Base Node is stopped and runs every proof script of the CAW inside the image. The CI job `docker-caw` runs it on a GitHub runner.
+
 ## [2.9.0] - 2026-11-17 - The Rust CAW with gVisor confines every agent command
 This release shipped no host sandbox after the Go CAW left: an agent process on the host ran with the rights of its user.
 

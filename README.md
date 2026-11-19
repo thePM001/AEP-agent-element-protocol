@@ -51,7 +51,7 @@ flowchart LR
 6. The proposal enters the One Validation Envelope (03), which collects 15 walls. A wall is one named check with an open or closed result.
 7. The Admit Gate (04) judges every wall in one pass, together with the result of the Scanners (12) and the written GAP policy (06). The order of the walls does not change the answer and a missing answer counts as deny.
 8. A deny lists every closed wall with its reason. A retry must seal a new capsule.
-9. On allow the Base Node first writes a row to its runtime ledger, the SQLite lattice log. It then applies the action. A CAW sandbox (11) is meant to confine the host commands of an agent. This release ships none, see section 11.
+9. On allow the Base Node first writes a row to its runtime ledger, the SQLite lattice log. It then applies the action. The CAW (11) runs each host command of an agent inside its own gVisor sandbox, see section 11.
 10. The client asks for the result with the hash of its capsule on the same dock.
 
 AEP 2.9 is a reference protocol library: a set of working components a builder attaches to a system. The Base Node is the kernel. Every other folder is a protocol component, a runtime installer or a document.
@@ -109,7 +109,7 @@ flowchart TB
 | 08 | Lattice Channels | The encrypted transport on which every message travels to the Base Node as a sealed capsule | `AEP-Components/lattice-channels/` | [README](AEP-Components/lattice-channels/README.md) |
 | 09 | Evidence Ledger | The hash chained audit record with Merkle proofs for a later reader to verify | `AEP-Components/evidence-ledger/` | [README](AEP-Components/evidence-ledger/README.md) |
 | 10 | Base Node Pulse | The compiled 1000 ms interval, which freezes a capsule at its seal before the checks run | `AEP-Components/base-node-pulse/` | [README](AEP-Components/base-node-pulse/README.md) |
-| 11 | CAWs | The host sandboxes in which an agent process runs under the written policy. This release ships none | `AEP-CAWs-RustGvisor/` | [README](AEP-CAWs-RustGvisor/README.md) |
+| 11 | CAWs | The host sandboxes in which an agent process runs under the written policy. The Rust CAW runs each command in gVisor, on the host or in the Docker image | `AEP-CAWs-RustGvisor/` | [README](AEP-CAWs-RustGvisor/README.md) |
 | 12 | Scanners | The content scanners, which read the text of a proposal for secrets, personal data, injection and more | `AEP-Components/scanners/` | [README](AEP-Components/scanners/README.md) |
 | 13 | AgentMesh | The identity layer with local issuance of certificates and identifiers for agents, built by the crate in `AEP-Components/agentmesh/crate/` | `AEP-Components/agentmesh/` | [README](AEP-Components/agentmesh/README.md) |
 | 14 | Economics | Cost estimation before a model call, budget caps and x402 payments | `AEP-Components/economics/` | [README](AEP-Components/economics/README.md) |
@@ -128,6 +128,12 @@ docker compose up -d --build
 ```
 
 Lattice transport, the registry and conformance stay on the public path.
+
+The image runs as the user `aep`, which is not root. A data volume of an earlier image that ran as root needs one `chown` to that user and the container prints the command. To run agent commands in the gVisor sandbox of the CAW (11) inside the image, add `docker-compose.caw.yml`. The gVisor pin covers amd64. On a host that restricts user namespaces through AppArmor, such as Ubuntu 23.10 and later, run `sudo bash AEP-CAWs-RustGvisor/proof/install-runsc.sh` once and add `-f docker-compose.caw-apparmor.yml` as well:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.caw.yml up -d --build
+```
 
 ### Coding agents (Claude Code, Cursor, Codex)
 

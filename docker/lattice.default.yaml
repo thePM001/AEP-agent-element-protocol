@@ -3,6 +3,11 @@
 # The entrypoint copies this file to $AEP_DATA/lattice.yaml only when no lattice
 # exists yet, so an operator lattice is never overwritten. Replace it with the
 # lattice of your deployment. The Base Node refuses to start without a lattice.
+#
+# root:ping is granted to caw-kernel-dock, the agent the CAW signs as. Before every
+# command the CAW seals one root:ping and starts nothing unless Admit lets it
+# through. The hub grant in gap/policies/reference/caw-kernel-dock.gap of the data
+# folder is the second half of that grant.
 aep_version: "2.9.0"
 dynaep_version: "1.0.0"
 lattice_revision: 1
@@ -17,6 +22,7 @@ actions:
     constraints: []
     agent_permission:
       - data-dock
+      - caw-kernel-dock
   action:write:
     label: write
     category: agent_action

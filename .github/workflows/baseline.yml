@@ -145,6 +145,19 @@ jobs:
           . AEP-CAWs-RustGvisor/proof/runsc-pin.env
           bash AEP-CAWs-RustGvisor/proof/ede-pairing.sh "$RUNSC_BIN" "${CARGO_TARGET_DIR:-rust/target}/debug/examples/caw-run-proof" AEP-CAWs-RustGvisor/proof/fixtures/ede-draft-proof.json "${CARGO_TARGET_DIR:-rust/target}/debug/aep-caw-init" "$(rustc --print sysroot)"
 
+  docker-caw:
+    name: Docker image with CAW=1, a session as a user that is not root and the proof scripts inside the image
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      # Root is used once: the AppArmor profile of runsc, which the container of the
+      # CAW needs on a host that restricts user namespaces.
+      - name: install the pinned gVisor
+        run: sudo bash AEP-CAWs-RustGvisor/proof/install-runsc.sh
+      - name: build the image, run it with CAW=1 and run the proof scripts inside it
+        run: bash docker/caw-image-check.sh
+
   format:
     name: format
     runs-on: ubuntu-latest

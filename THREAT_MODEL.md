@@ -136,6 +136,7 @@ Out of scope: an attacker with root on the Base Node host, a compromised kernel 
 - gVisor reports open, exec and connect calls and no stat call. A program that only asks whether a file exists is refused and leaves no deny event.
 - A tool that looks for its configuration in the folders above the workspace leaves one deny event per folder.
 - The CAW runs on Linux on amd64 with the systrap platform of gVisor and never as root. A host that restricts user namespaces through AppArmor needs the profile of runsc.
+- In the Docker image the container of the CAW runs without the seccomp and AppArmor profiles of Docker, because runsc creates a user namespace and mounts inside it. gVisor filters the system calls of every sandbox. The container drops every capability and no process in it gains one. A process of the container that runs outside `aep-caw exec` is held by those limits alone.
 - A tree of a toolset is checked before each command by its listing, which reads no file content. A change that keeps size, mode and change time of every file is seen only at the next session create.
 - The kernel still judges every action that reaches a dock. A process that never asks the kernel is stopped only by the sandbox.
 

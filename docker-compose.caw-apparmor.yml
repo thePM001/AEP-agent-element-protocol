@@ -1,0 +1,20 @@
+# AEP 2.9 - the CAW in the Docker image on a host that restricts user namespaces
+# through AppArmor (kernel.apparmor_restrict_unprivileged_userns is 1, as on Ubuntu
+# 23.10 and later). Such a host lets runsc create a user namespace only under the
+# AppArmor profile that AEP-CAWs-RustGvisor/proof/install-runsc.sh loads, once, as root:
+#
+#   sudo bash AEP-CAWs-RustGvisor/proof/install-runsc.sh
+#   docker compose -f docker-compose.yml -f docker-compose.caw.yml -f docker-compose.caw-apparmor.yml up -d --build
+#
+# The profile attaches to /usr/bin/runsc, the path of runsc in the image too. The
+# CAW doctor in the container reads the profile file of the host through this mount.
+
+services:
+  aep:
+    volumes:
+      - type: bind
+        source: /etc/apparmor.d/runsc
+        target: /etc/apparmor.d/runsc
+        read_only: true
+        bind:
+          create_host_path: false

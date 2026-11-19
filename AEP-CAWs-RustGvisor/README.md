@@ -19,6 +19,7 @@ GAP (06) is the only place a sandbox profile is written. The AEP Base Node (01) 
 - Four library crates: the policy engine, the runtime around `runsc`, the egress proxy and the kernel dock client.
 - A pinned gVisor release with its install script.
 - The proof scripts that the CI job `caw-gvisor` runs on a GitHub runner as a user that is not root.
+- The Docker image of the repository carries `aep-caw`, `aep-caw-init` and the pinned `runsc` and runs them with the Base Node as one user that is not root. `CAW=1` turns the CAW on. Its default lattice and its hub grant `root:ping` to `caw-kernel-dock`. The CI job `docker-caw` runs the image with `CAW=1` and the proof scripts inside it.
 - Six reference profiles in GAP: `restricted`, `coding-agent`, `compiled-runtime`, `agent-sandbox`, `dev-multi-repo` and `ede-draft`.
 
 ## Layout
@@ -105,7 +106,9 @@ aep-ede promote <draft> -m "Title"                             # outside the san
 - A tool that looks for its configuration in the folders above the workspace, such as cargo, leaves one deny event per folder.
 - A tree of a toolset is checked before each command by its listing, which reads no file content. A change that keeps size, mode and change time of every file is seen only at the next `session create`.
 - The CAW confines the commands that run through `aep-caw exec`. It does not confine the harness that calls it. An agent process started any other way runs with the rights of its user.
-- The Docker image of this release carries no CAW. Install the CAW on the host as described below.
+- In the Docker image the container of the CAW runs without the seccomp and AppArmor profiles of Docker, because `runsc` creates a user namespace and mounts inside it. gVisor filters the system calls of every sandbox. The container drops every capability and no process in it gains one. A host that restricts user namespaces through AppArmor still needs the profile that `proof/install-runsc.sh` loads and the file `docker-compose.caw-apparmor.yml`.
+- The gVisor pin covers amd64. The image builds on other platforms without gVisor and stops when it starts with `CAW=1`.
+- The Docker image carries no Rust toolchain, so the profile `ede-draft` does not run in it. The `caw-proof` target of the image adds one for the pairing proof.
 - The model gateway and the MCP security gateway keep the jobs the Go CAW did beside the sandbox: approval, redirection and the inspection of tool calls.
 - `THREAT_MODEL.md` Layer 4 lists every threat with the check that holds it.
 
@@ -123,6 +126,21 @@ Run one command in a sandbox with a live Base Node, as the user of the deploymen
 
 ```bash
 AEP_E2E_BIN="$PWD/rust/target/release" bash AEP-User-Experience/examples/end-to-end-run/run.sh
+```
+
+Run the CAW in the Docker image. The image runs the Base Node and the CAW as the user `aep`. With `CAW=1` the entrypoint compiles the profile records, writes a `caw.toml` for the profiles of `CAW_PROFILES` on a fresh data folder and stops unless `aep-caw doctor` passes. `docker-compose.caw.yml` holds the run options the container needs. A host that restricts user namespaces through AppArmor, such as Ubuntu 23.10 and later, runs `proof/install-runsc.sh` once as root and adds `-f docker-compose.caw-apparmor.yml`:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.caw.yml up -d --build
+docker compose exec aep aep-caw session create --data /data/aep --profile restricted --workspace /workspace \
+    --var HOME=/data/aep --var AEP_MODEL_GATEWAY_HOST=<host of the model gateway>
+docker compose exec aep aep-caw exec --data /data/aep --session <id> --run ls /workspace
+```
+
+`docker/caw-image-check.sh` builds the image and its `caw-proof` target, opens a session in a container with `CAW=1`, runs an allowed command and a refused read, stops the Base Node to see the refusal and runs every proof script inside the image:
+
+```bash
+bash docker/caw-image-check.sh
 ```
 
 Run the tests and the proof scripts as the CI job `caw-gvisor` does, as a user that is not root:
