@@ -1,0 +1,9 @@
+# The key caw named policy files of the retired Go CAW.
+kind: aep.wrap-coverage.inventory
+version: 1
+name: fixture-caw-key
+gap_dirs:
+  - ../gap
+caw:
+  - policy: open.yaml
+    wrap: alpha

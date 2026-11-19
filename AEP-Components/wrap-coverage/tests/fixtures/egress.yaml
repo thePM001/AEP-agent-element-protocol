@@ -1,0 +1,8 @@
+# The egress policies of the Rust CAW in the GAP folders of the inventory.
+kind: aep.wrap-coverage.inventory
+version: 1
+name: fixture-egress
+gap_dirs:
+  - gap
+  - gap-egress
+  - gap-egress-no-wrap

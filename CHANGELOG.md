@@ -2,6 +2,14 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-19 - The wrap coverage report reads the egress policies of the Rust CAW
+The wrap coverage report read CAW policy files in the format of the retired Go CAW. A route of the Rust CAW to any host was not in the report, although THREAT_MODEL.md row CW-1 named the report as its check.
+
+- The report reads every `aep.caw.egress_policy` document in the GAP folders of an inventory. Each allow route is an `egress_route` entry under the wrap of its GAP file.
+- A route to any host, a wildcard over one top level label, an address route, a host that is no host name and a policy whose `unmatched` is not `deny` are UNMATCHED. The GAP compiler and the CAW refuse each of them.
+- The reader of the Go CAW format is gone: the inventory key `caw`, the `network_rules`, `http_services` and `mcp_rules` entries and the status NEUTRALIZED. An inventory with the key `caw` is rejected with a message that names the change.
+- The summary line reads `<n> entries, <m> matched, <u> unmatched`.
+
 ## [2.9.0] - 2026-11-19 - The Docker image carries the Rust CAW and runs as a user that is not root
 The Docker image ran the Base Node as root and carried no CAW. `CAW=1` had no effect. The image did not build either, because its builder lacked the CAW crates of the workspace.
 

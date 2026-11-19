@@ -28,22 +28,28 @@ const TOP_LEVEL_KEYS = new Set([
   "name",
   "gap_dirs",
   "lattice",
-  "caw",
   "ucb_manifests",
   "credentials",
   "tools",
 ]);
-const CAW_KEYS = new Set(["policy", "wrap"]);
 const CREDENTIAL_KEYS = new Set(["id", "kind", "description", "agent_id", "action"]);
 const TOOL_KEYS = new Set(["name", "description", "agent_id", "action"]);
-const UNMATCHED_EGRESS_MODES = new Set(["", "default", "deny"]);
-const CATCH_ALL_CIDRS = new Set(["0.0.0.0/0", "::/0"]);
+
+/** The GAP kind of the egress policy of the Rust CAW. */
+export const EGRESS_POLICY_KIND = "aep.caw.egress_policy";
+// The host rules of a route, the same as the GAP compiler (gap-compile.mjs) and the
+// route matcher of the CAW (aep-caw-policy route.rs) apply: a lower case host name of
+// at least two labels, a wildcard under such a name or one variable. An address in any
+// spelling is refused, including a last label that is a decimal or hexadecimal number.
+const HOST_NAME = /^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
+const HOST_VARIABLE = /^\$\{[A-Z][A-Z0-9_]*\}$/;
+const NUMBER_LABEL = /^(0x[0-9a-f]+|[0-9]+)$/i;
 
 /**
  * @typedef {{ agent_id: string, action: string }} Grant
  * @typedef {{ name: string, grants: Grant[], sources: string[] }} Wrap
  * @typedef {Map<string, Wrap>} WrapTable
- * @typedef {{ policy: string, wrap: string }} CawItem
+ * @typedef {{ label: string, docs: unknown[] }} GapFile
  * @typedef {{ id: string, kind: string, description: string, agent_id: string, action: string }} CredentialItem
  * @typedef {{ name: string, description: string, agent_id: string, action: string }} ToolItem
  * @typedef {{
@@ -52,14 +58,13 @@ const CATCH_ALL_CIDRS = new Set(["0.0.0.0/0", "::/0"]);
  *   name: string,
  *   gap_dirs: string[],
  *   lattice: string | null,
- *   caw: CawItem[],
  *   ucb_manifests: string[],
  *   credentials: CredentialItem[],
  *   tools: ToolItem[],
  * }} Inventory
- * @typedef {"MATCHED" | "UNMATCHED" | "NEUTRALIZED"} Status
+ * @typedef {"MATCHED" | "UNMATCHED"} Status
  * @typedef {{ kind: string, id: string, status: Status, wrap: string | null, reason: string | null, source: string }} Entry
- * @typedef {{ entries: number, matched: number, unmatched: number, neutralized: number }} Summary
+ * @typedef {{ entries: number, matched: number, unmatched: number }} Summary
  * @typedef {{ inventory: string, entries: Entry[], summary: Summary }} Report
  * @typedef {{ root?: string, inventoryPath?: string }} BuildOptions
  */
@@ -187,6 +192,11 @@ function listField(value, key) {
  */
 export function validateInventory(doc) {
   if (!isRecord(doc)) throw new InventoryError("inventory: the document must be a mapping");
+  if (doc.caw !== undefined) {
+    throw new InventoryError(
+      "inventory: the key caw named policy files of the retired Go CAW; the report reads the egress policies of the Rust CAW from the GAP documents of gap_dirs",
+    );
+  }
   rejectUnknownKeys(doc, TOP_LEVEL_KEYS, "inventory");
   if (doc.kind !== INVENTORY_KIND) {
     throw new InventoryError(`inventory: kind must be ${INVENTORY_KIND}, found ${JSON.stringify(doc.kind ?? null)}`);
@@ -204,12 +214,6 @@ export function validateInventory(doc) {
     if (typeof doc.lattice !== "string" || doc.lattice.trim() === "") throw new InventoryError("inventory: lattice must be a path");
     lattice = doc.lattice;
   }
-  const caw = listField(doc.caw, "caw").map((item, i) => {
-    const where = `inventory: caw[${i}]`;
-    if (!isRecord(item)) throw new InventoryError(`${where}: must be a mapping`);
-    rejectUnknownKeys(item, CAW_KEYS, where);
-    return { policy: stringField(item, "policy", where, true), wrap: stringField(item, "wrap", where, true) };
-  });
   const ucbManifests = listField(doc.ucb_manifests, "ucb_manifests").map((file, i) => {
     if (typeof file !== "string" || file.trim() === "") throw new InventoryError(`inventory: ucb_manifests[${i}] must be a path`);
     return file;
@@ -243,7 +247,6 @@ export function validateInventory(doc) {
     name,
     gap_dirs: gapDirs,
     lattice,
-    caw,
     ucb_manifests: ucbManifests,
     credentials,
     tools,
@@ -324,21 +327,43 @@ export function addWrapsFromDocuments(table, docs, source) {
 }
 
 /**
+ * The parsed documents of every GAP file in the given folders, each with its label.
+ * @param {string[]} dirs absolute folders
+ * @param {string} [root]
+ * @returns {GapFile[]}
+ */
+export function readGapFiles(dirs, root = REPO_ROOT) {
+  /** @type {GapFile[]} */
+  const out = [];
+  for (const dir of dirs) {
+    for (const file of gapFiles(dir)) {
+      const label = displayPath(file, root);
+      out.push({ label, docs: parseDocuments(readText(file, label), label) });
+    }
+  }
+  return out;
+}
+
+/**
+ * Every wrap that the documents of the given GAP files declare.
+ * @param {GapFile[]} files
+ * @returns {WrapTable}
+ */
+export function wrapsOfFiles(files) {
+  /** @type {WrapTable} */
+  const table = new Map();
+  for (const file of files) addWrapsFromDocuments(table, file.docs, file.label);
+  return table;
+}
+
+/**
  * Every wrap that the GAP documents in the given folders declare.
  * @param {string[]} dirs absolute folders
  * @param {string} [root]
  * @returns {WrapTable}
  */
 export function collectWraps(dirs, root = REPO_ROOT) {
-  /** @type {WrapTable} */
-  const table = new Map();
-  for (const dir of dirs) {
-    for (const file of gapFiles(dir)) {
-      const label = displayPath(file, root);
-      addWrapsFromDocuments(table, parseDocuments(readText(file, label), label), label);
-    }
-  }
-  return table;
+  return wrapsOfFiles(readGapFiles(dirs, root));
 }
 
 /**
@@ -388,109 +413,78 @@ function stringList(value) {
 }
 
 /**
- * True when a domain pattern holds only the glob characters * and ? and the
- * label separator, so it names no host. "*", "**" and "*.*" are wildcards and
- * "*.example.com" is not. Mirrors IsWildcardDomain in the Go CAW.
- * @param {unknown} pattern
+ * Why the host of a route lets more through than one named host. Null for a
+ * host the CAW accepts. A host that holds only `*`, `?` and `.` names any host and
+ * a wildcard over one label names every host under a top level label. Both are
+ * catch-all routes. The GAP compiler and the CAW refuse every host this function
+ * names a problem for.
+ * @param {unknown} host
+ * @returns {string | null}
  */
-export function isWildcardDomain(pattern) {
-  const p = typeof pattern === "string" ? pattern.trim() : "";
-  return p !== "" && /^[*?.]+$/.test(p);
+export function routeHostProblem(host) {
+  if (typeof host !== "string" || host.trim() === "") return "the route names no host";
+  if (HOST_VARIABLE.test(host)) return null;
+  if (/^[*?.]+$/.test(host)) return "catch-all route lets any host through";
+  if (host.startsWith("*.") && /^[a-z0-9-]+$/.test(host.slice(2))) {
+    return `catch-all route lets every name under .${host.slice(2)} through`;
+  }
+  const last = host.split(".").pop() ?? "";
+  if (host.startsWith("[") || host.includes(":") || NUMBER_LABEL.test(last)) return "the route names an address instead of a host";
+  if (!HOST_NAME.test(host)) return `the host ${host} is not a lower case host name`;
+  return null;
 }
 
 /**
- * A CAW network rule is a catch-all when it names no destination: every
- * domain is a wildcard pattern (or there is none) and every cidr is 0.0.0.0/0
- * or ::/0 (or there is none). Ports do not matter. Mirrors
- * NetworkRule.IsCatchAll in the Go CAW.
- * @param {unknown} rule
+ * The wrap of a GAP file: the metadata.wrap of its instruction document, the
+ * document with an address, as the GAP compiler reads it. Null when it has none.
+ * @param {unknown[]} docs
+ * @returns {string | null}
  */
-export function isCatchAllNetworkRule(rule) {
-  if (!isRecord(rule)) return false;
-  const cidrs = stringList(rule.cidrs);
-  const domains = stringList(rule.domains);
-  const anyDomain = domains.every(isWildcardDomain);
-  if (cidrs.length === 0) return anyDomain;
-  return cidrs.every((c) => CATCH_ALL_CIDRS.has(c)) && anyDomain;
+function instructionWrap(docs) {
+  const instruction = docs.find((d) => isRecord(d) && isRecord(d.address));
+  if (!isRecord(instruction) || !isRecord(instruction.metadata)) return null;
+  const wrap = instruction.metadata.wrap;
+  return typeof wrap === "string" && wrap.trim() !== "" ? wrap : null;
 }
 
 /**
- * @param {unknown} decision
- */
-function isDeny(decision) {
-  return typeof decision === "string" && decision.trim().toLowerCase() === "deny";
-}
-
-/**
- * The entries of one CAW policy document.
- * @param {unknown} policy parsed CAW policy
- * @param {string} wrapName the wrap the inventory binds the policy to
- * @param {WrapTable} wraps
+ * The egress_route entries of the CAW egress policies of one GAP file. Each allow
+ * route is an entry with the id <policy>/<route> under the wrap of its file. A route
+ * whose host is a catch-all, an address or no host name is UNMATCHED, as is a
+ * policy whose unmatched is not deny. A deny route is not an entry.
+ * @param {unknown[]} docs the documents of one GAP file
  * @param {string} source
  * @returns {Entry[]}
  */
-export function cawEntries(policy, wrapName, wraps, source) {
-  if (!isRecord(policy)) throw new InventoryError(`${source}: a CAW policy must be a mapping`);
-  const mode = policy.unmatched_egress ?? "";
-  if (typeof mode !== "string" || !UNMATCHED_EGRESS_MODES.has(mode)) {
-    throw new InventoryError(`${source}: unmatched_egress must be empty, default or deny, found ${JSON.stringify(mode)}`);
-  }
-  const declared = wraps.has(wrapName);
-  const undeclared = `wrap ${wrapName} is not declared by any GAP document`;
+export function egressEntries(docs, source) {
+  const wrap = instructionWrap(docs);
   /** @type {Entry[]} */
   const out = [];
   /**
-   * @param {string} kind
    * @param {string} id
-   * @param {string | null} catchAllReason
-   * @param {boolean} neutralized
+   * @param {string | null} problem
    */
-  const push = (kind, id, catchAllReason, neutralized) => {
-    if (!declared) {
-      out.push({ kind, id, status: "UNMATCHED", wrap: null, reason: undeclared, source });
-    } else if (catchAllReason !== null && neutralized) {
-      out.push({ kind, id, status: "NEUTRALIZED", wrap: wrapName, reason: `${catchAllReason}; unmatched_egress deny refuses it`, source });
-    } else if (catchAllReason !== null) {
-      out.push({ kind, id, status: "UNMATCHED", wrap: null, reason: catchAllReason, source });
+  const push = (id, problem) => {
+    if (problem !== null) {
+      out.push({ kind: "egress_route", id, status: "UNMATCHED", wrap: null, reason: `${problem}; the CAW refuses the policy`, source });
+    } else if (wrap === null) {
+      out.push({ kind: "egress_route", id, status: "UNMATCHED", wrap: null, reason: "the GAP file declares no wrap", source });
     } else {
-      out.push({ kind, id, status: "MATCHED", wrap: wrapName, reason: null, source });
+      out.push({ kind: "egress_route", id, status: "MATCHED", wrap, reason: null, source });
     }
   };
-
-  const network = Array.isArray(policy.network_rules) ? policy.network_rules : [];
-  network.forEach((rule, i) => {
-    if (!isRecord(rule) || isDeny(rule.decision)) return;
-    const name = typeof rule.name === "string" && rule.name !== "" ? rule.name : String(i);
-    const id = `network_rules.${name}`;
-    if (isCatchAllNetworkRule(rule)) {
-      const decision = typeof rule.decision === "string" && rule.decision !== "" ? rule.decision : "unset";
-      push("egress_route", id, `catch-all ${decision} rule lets unnamed destinations through`, mode === "deny");
-    } else {
-      push("egress_route", id, null, false);
+  docs.forEach((doc, i) => {
+    if (!isRecord(doc) || doc.kind !== EGRESS_POLICY_KIND) return;
+    const policy = typeof doc.name === "string" && doc.name !== "" ? doc.name : `[${i}]`;
+    if (doc.unmatched !== undefined && doc.unmatched !== "deny") {
+      push(policy, `unmatched is ${String(doc.unmatched)} so a destination with no route would pass`);
     }
-  });
-
-  const services = Array.isArray(policy.http_services) ? policy.http_services : [];
-  services.forEach((service, i) => {
-    if (!isRecord(service)) return;
-    const name = typeof service.name === "string" && service.name !== "" ? service.name : String(i);
-    if (typeof service.upstream === "string" && service.upstream !== "") {
-      push("egress_route", `http_services.${name}`, null, false);
-    }
-    if (isRecord(service.secret)) {
-      push("credential", `http_services.${name}.secret`, null, false);
-    }
-  });
-
-  const mcp = isRecord(policy.mcp_rules) ? policy.mcp_rules : {};
-  const tools = Array.isArray(mcp.allowed_tools) ? mcp.allowed_tools : [];
-  tools.forEach((tool, i) => {
-    const record = isRecord(tool) ? tool : {};
-    const server = typeof record.server === "string" && record.server !== "" ? record.server : "*";
-    const toolName = typeof record.tool === "string" ? record.tool.trim() : "";
-    const id = `mcp_rules.${server}/${toolName === "" ? `[${i}]` : toolName}`;
-    const catchAll = toolName === "" || toolName === "*";
-    push("tool", id, catchAll ? "catch-all tool grant" : null, false);
+    const routes = Array.isArray(doc.routes) ? doc.routes : [];
+    routes.forEach((route, j) => {
+      if (!isRecord(route) || route.decision === "deny") return;
+      const name = typeof route.name === "string" && route.name !== "" ? route.name : `[${j}]`;
+      push(`${policy}/${name}`, routeHostProblem(route.host));
+    });
   });
   return out;
 }
@@ -559,7 +553,6 @@ export function summarize(entries) {
     entries: entries.length,
     matched: entries.filter((e) => e.status === "MATCHED").length,
     unmatched: entries.filter((e) => e.status === "UNMATCHED").length,
-    neutralized: entries.filter((e) => e.status === "NEUTRALIZED").length,
   };
 }
 
@@ -574,10 +567,11 @@ export function summarize(entries) {
 export function buildCoverage(inventory, baseDir, options = {}) {
   const root = options.root ?? REPO_ROOT;
   const inventorySource = options.inventoryPath ? displayPath(options.inventoryPath, root) : displayPath(baseDir, root);
-  const wraps = collectWraps(
+  const gapFiles = readGapFiles(
     inventory.gap_dirs.map((d) => resolve(baseDir, d)),
     root,
   );
+  const wraps = wrapsOfFiles(gapFiles);
   /** @type {Entry[]} */
   const entries = [];
 
@@ -602,11 +596,7 @@ export function buildCoverage(inventory, baseDir, options = {}) {
     const label = displayPath(file, root);
     entries.push(...latticeEntries(readSingleDocument(file, label), wraps, label));
   }
-  for (const item of inventory.caw) {
-    const file = resolve(baseDir, item.policy);
-    const label = displayPath(file, root);
-    entries.push(...cawEntries(readSingleDocument(file, label), item.wrap, wraps, label));
-  }
+  for (const file of gapFiles) entries.push(...egressEntries(file.docs, file.label));
   for (const manifest of inventory.ucb_manifests) {
     const file = resolve(baseDir, manifest);
     const label = displayPath(file, root);
@@ -637,11 +627,10 @@ export function coverageForFile(file, options = {}) {
 export function formatText(report) {
   const lines = report.entries.map((e) => {
     if (e.status === "MATCHED") return `MATCHED ${e.kind} ${e.id} wrap=${e.wrap ?? ""} ${e.source}`;
-    if (e.status === "NEUTRALIZED") return `NEUTRALIZED ${e.kind} ${e.id} ${e.reason ?? ""} wrap=${e.wrap ?? ""} ${e.source}`;
     return `UNMATCHED ${e.kind} ${e.id} ${e.reason ?? ""} ${e.source}`;
   });
   const s = report.summary;
-  lines.push(`wrap coverage: ${s.entries} entries, ${s.matched} matched, ${s.unmatched} unmatched, ${s.neutralized} neutralized`);
+  lines.push(`wrap coverage: ${s.entries} entries, ${s.matched} matched, ${s.unmatched} unmatched`);
   return lines.join("\n") + "\n";
 }
 

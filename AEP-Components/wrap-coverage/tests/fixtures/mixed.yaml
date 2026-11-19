@@ -1,5 +1,5 @@
-# Every entry kind of the wrap coverage report with matched, unmatched and
-# neutralized cases.
+# Credentials, tools and lattice grants of the wrap coverage report with matched
+# and unmatched cases. egress.yaml holds the egress policies of the CAW.
 kind: aep.wrap-coverage.inventory
 version: 1
 name: fixture-mixed
@@ -8,14 +8,6 @@ gap_dirs:
   - gap
 
 lattice: lattice.yaml
-
-caw:
-  - policy: caw/open.yaml
-    wrap: alpha
-  - policy: caw/neutralized.yaml
-    wrap: alpha
-  - policy: caw/undeclared.yaml
-    wrap: nowhere
 
 credentials:
   - id: cred-granted

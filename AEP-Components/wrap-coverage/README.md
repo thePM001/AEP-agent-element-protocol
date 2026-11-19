@@ -21,13 +21,12 @@ Text mode prints one line per entry and then a summary line:
 ```text
 MATCHED <kind> <id> wrap=<wrap> <source file>
 UNMATCHED <kind> <id> <reason> <source file>
-NEUTRALIZED <kind> <id> <reason> wrap=<wrap> <source file>
-wrap coverage: <n> entries, <m> matched, <u> unmatched, <z> neutralized
+wrap coverage: <n> entries, <m> matched, <u> unmatched
 ```
 
 `--json` prints one object `{inventory, entries: [{kind, id, status, wrap, reason, source}], summary}`. Paths in the output are relative to the repository root when the file sits inside it.
 
-The module exports the pure steps for tests and for other tools: `loadInventory`, `validateInventory`, `buildCoverage(inventory, baseDir)`, `coverageForFile`, `collectWraps`, `grantCovers`, `findWrapFor`, `isCatchAllNetworkRule`, `cawEntries`, `ucbEntries`, `latticeEntries` and `formatText`.
+The module exports the pure steps for tests and for other tools: `loadInventory`, `validateInventory`, `buildCoverage(inventory, baseDir)`, `coverageForFile`, `readGapFiles`, `collectWraps`, `grantCovers`, `findWrapFor`, `routeHostProblem`, `egressEntries`, `ucbEntries`, `latticeEntries` and `formatText`.
 
 ## Exit codes
 
@@ -43,9 +42,8 @@ The module exports the pure steps for tests and for other tools: `loadInventory`
 kind: aep.wrap-coverage.inventory
 version: 1
 name: end-to-end-run
-gap_dirs: [gap]                 # every *.gap below these folders is read
+gap_dirs: [gap]                 # every *.gap below these folders is read, CAW egress policies too
 lattice: lattice.yaml           # optional: actions.<path>.agent_permission
-caw: []                         # optional: CAW policy files, each with its wrap
 ucb_manifests: []               # UCB task manifest files
 credentials:
   - { id: agent-a-sign-key, kind: agent_sign_key, description: "...", agent_id: agent-a, action: ucb:ingest }
@@ -53,7 +51,7 @@ tools:
   - { name: ucb-ingest, description: "...", agent_id: agent-a, action: ucb:ingest }
 ```
 
-Every path resolves against the folder of the inventory file. A wrong `kind`, a `version` other than 1, an unknown top-level key or an item without its required fields is rejected with exit 2.
+Every path resolves against the folder of the inventory file. A wrong `kind`, a `version` other than 1, an unknown top-level key or an item without its required fields is rejected with exit 2. The key `caw` named policy files of the retired Go CAW and is rejected with exit 2 as well: the egress policies of the Rust CAW are GAP documents and the report finds them in `gap_dirs`.
 
 ## Wraps
 
@@ -64,10 +62,16 @@ A wrap is a non-empty `metadata.wrap` on a GAP instruction document. A `.gap` fi
 1. **credential** from `credentials`: matched to the first wrap that grants `(agent_id, action)`. Otherwise UNMATCHED `no wrap grants <agent> <action>`.
 2. **tool** from `tools`: the same rule as a credential.
 3. **action_grant** for each lattice action and each agent of its `agent_permission`, with id `<action>@<agent>`. A `*` agent is its own entry. Matched when some wrap grants it.
-4. **CAW policy** bound to a wrap by the inventory. The `caw` list reads policy files in the format of the retired Go CAW. The routes of the Rust CAW are GAP documents of the kind `aep.caw.egress_policy`. This report does not read them yet. When no GAP document declares that wrap, every entry of the policy is UNMATCHED `wrap <w> is not declared by any GAP document`.
-   - **egress_route** for each `network_rules` item whose decision is not deny. A catch-all rule names no destination. It has no cidrs and its domains are empty or all wildcard patterns that hold only `*`, `?` or `.` such as `*`, `**` or `*.*`. It also counts when every cidr is `0.0.0.0/0` or `::/0` with no domain other than a wildcard pattern. Ports do not matter. A catch-all is UNMATCHED `catch-all <decision> rule lets unnamed destinations through` unless the policy sets `unmatched_egress: deny`, where it is NEUTRALIZED. A neutralized entry counts as neither matched nor unmatched and is still listed. An explicit rule matches the policy wrap. A deny rule is not an entry.
-   - **egress_route** for each `http_services[]` upstream and **credential** for each `http_services[].secret`, matched to the policy wrap.
-   - **tool** for each `mcp_rules.allowed_tools` item `{server, tool}`. A tool of `*` or an empty tool name is UNMATCHED `catch-all tool grant`. An explicit tool matches the policy wrap.
+4. **CAW egress policy**: every document of the kind `aep.caw.egress_policy` in a GAP file below `gap_dirs`, the routes of the Rust CAW. Each route whose decision is not deny is an **egress_route** entry with the id `<policy>/<route>`. It matches the wrap of its GAP file, the `metadata.wrap` of the instruction document of that file. A deny route is not an entry. The report applies the host rules of the GAP compiler and the CAW. Each route it flags is one that both refuse:
+   - A host that holds only `*`, `?` or `.` is UNMATCHED `catch-all route lets any host through`.
+   - A wildcard over one label, such as `*.com`, is UNMATCHED `catch-all route lets every name under .<label> through`.
+   - An address in any spelling is UNMATCHED `the route names an address instead of a host`. That includes a last label that is a decimal or hexadecimal number.
+   - A host that is not a lower case name of at least two labels is UNMATCHED as well.
+   - A host name, a wildcard under a domain such as `*.example.com` and one variable such as `${AEP_MODEL_GATEWAY_HOST}` match. The CAW checks the value of a variable when a session is created.
+   - A policy whose `unmatched` is set to anything but `deny` adds the entry `<policy>`, UNMATCHED `unmatched is <value> so a destination with no route would pass`.
+   - A route in a GAP file whose instruction document declares no wrap is UNMATCHED `the GAP file declares no wrap`.
+
+   Each reason for a refused route or policy ends with `; the CAW refuses the policy`.
 5. **UCB manifest**: each `egress.routes[]` item is an egress_route entry and each `auth_token_env` is a credential entry. They match when some wrap grants the manifest `agent_id` any action, through a grant that names that agent or `*`. Otherwise UNMATCHED `no wrap grants agent <agent> any action`.
 
 ## Tests
