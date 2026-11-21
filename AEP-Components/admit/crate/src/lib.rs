@@ -536,6 +536,180 @@ pub mod compile_writing_walls {
     }
 }
 
+// HVVCAS: admit_memory domain:admit type:library
+pub mod admit_memory {
+    //! What Admit reads of a memory of earlier verdicts. Admit only reads.
+    //!
+    //! Two things come in: a route hint and the stored rows of pure wall families. A
+    //! wall family is pure when its rows depend on nothing but the bytes it reads from
+    //! the proposal, the compiled lattice and the compiled wall set. A family that
+    //! reads the clock, a budget or any state that changes between two proposals is
+    //! not pure and is computed every time.
+    //!
+    //! Neither input decides a verdict. The hint says whether asking for stored rows
+    //! is worth the lookup. Stored rows are the rows the same family computed before
+    //! for byte identical input, so the collect-all pass reads the same rows either
+    //! way. Similarity alone never replaces a wall.
+    use super::AdmitWall;
+
+    /// What a memory says about a proposal before it is judged.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub enum RouteHint {
+        /// An accepted proposal of this shape, or one close to it, was judged before.
+        Hot,
+        /// Nothing is known. The proposal takes the cold path.
+        Cold,
+    }
+
+    /// Read-only view of the stored rows of pure wall families.
+    pub trait PureWallMemo {
+        /// The rows an earlier run of `family` computed for exactly `input` under the
+        /// same compiled lattice and the same wall set. None when no such rows exist.
+        fn replay(&self, family: &str, input: &str) -> Option<Vec<AdmitWall>>;
+    }
+
+    /// The view of a caller that holds no memory. Every lookup is a miss.
+    #[derive(Clone, Copy, Debug, Default)]
+    pub struct NoMemo;
+
+    impl PureWallMemo for NoMemo {
+        fn replay(&self, _family: &str, _input: &str) -> Option<Vec<AdmitWall>> {
+            None
+        }
+    }
+
+    /// What the caller of Admit hands over for one proposal.
+    #[derive(Clone, Copy)]
+    pub struct MemoryView<'a> {
+        pub route: RouteHint,
+        pub memo: &'a dyn PureWallMemo,
+    }
+
+    impl MemoryView<'static> {
+        /// The view without a memory: a cold route and no stored rows.
+        pub fn cold() -> Self {
+            MemoryView {
+                route: RouteHint::Cold,
+                memo: &NoMemo,
+            }
+        }
+    }
+
+    /// The rows of one pure wall family for one proposal and where they came from.
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct PureWallTrace {
+        pub family: &'static str,
+        /// The bytes the family read from the proposal.
+        pub input: String,
+        pub rows: Vec<AdmitWall>,
+        /// True when the rows were stored rows, false when they were computed now.
+        pub replayed: bool,
+    }
+
+    /// The rows of a pure wall family: stored rows on a hot route when the memo holds
+    /// rows that `well_formed` accepts, computed rows in every other case. A memo that
+    /// answers with rows of the wrong form is treated as a miss.
+    pub fn pure_walls(
+        view: &MemoryView<'_>,
+        family: &'static str,
+        input: &str,
+        well_formed: impl Fn(&[AdmitWall]) -> bool,
+        compute: impl FnOnce(&str) -> Vec<AdmitWall>,
+    ) -> PureWallTrace {
+        if view.route == RouteHint::Hot {
+            if let Some(rows) = view.memo.replay(family, input) {
+                if well_formed(&rows) {
+                    return PureWallTrace {
+                        family,
+                        input: input.to_string(),
+                        rows,
+                        replayed: true,
+                    };
+                }
+            }
+        }
+        PureWallTrace {
+            family,
+            input: input.to_string(),
+            rows: compute(input),
+            replayed: false,
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        struct Fixed(Vec<AdmitWall>);
+
+        impl PureWallMemo for Fixed {
+            fn replay(&self, family: &str, input: &str) -> Option<Vec<AdmitWall>> {
+                if family == "writing" && input == "same text" {
+                    Some(self.0.clone())
+                } else {
+                    None
+                }
+            }
+        }
+
+        fn computed(_input: &str) -> Vec<AdmitWall> {
+            vec![AdmitWall::close("writing:x", "computed")]
+        }
+
+        #[test]
+        fn a_cold_route_never_asks_the_memo() {
+            let memo = Fixed(vec![AdmitWall::open("writing:x")]);
+            let view = MemoryView {
+                route: RouteHint::Cold,
+                memo: &memo,
+            };
+            let trace = pure_walls(&view, "writing", "same text", |_| true, computed);
+            assert!(!trace.replayed);
+            assert_eq!(trace.rows, computed(""));
+        }
+
+        #[test]
+        fn a_hot_route_replays_only_byte_identical_input() {
+            let stored = vec![AdmitWall::close("writing:x", "stored")];
+            let memo = Fixed(stored.clone());
+            let view = MemoryView {
+                route: RouteHint::Hot,
+                memo: &memo,
+            };
+            let hit = pure_walls(&view, "writing", "same text", |_| true, computed);
+            assert!(hit.replayed);
+            assert_eq!(hit.rows, stored);
+            assert_eq!(hit.input, "same text");
+            let miss = pure_walls(&view, "writing", "same text.", |_| true, computed);
+            assert!(!miss.replayed);
+            assert_eq!(miss.rows, computed(""));
+            let other = pure_walls(&view, "policy", "same text", |_| true, computed);
+            assert!(!other.replayed);
+        }
+
+        #[test]
+        fn stored_rows_of_the_wrong_form_are_a_miss() {
+            let memo = Fixed(vec![AdmitWall::open("writing:x")]);
+            let view = MemoryView {
+                route: RouteHint::Hot,
+                memo: &memo,
+            };
+            let trace = pure_walls(&view, "writing", "same text", |_| false, computed);
+            assert!(!trace.replayed);
+            assert_eq!(trace.rows, computed(""));
+        }
+
+        #[test]
+        fn the_view_without_memory_is_cold_and_empty() {
+            let view = MemoryView::cold();
+            assert_eq!(view.route, RouteHint::Cold);
+            assert!(view.memo.replay("writing", "same text").is_none());
+        }
+    }
+}
+
+pub use admit_memory::{pure_walls, MemoryView, NoMemo, PureWallMemo, PureWallTrace, RouteHint};
+
 pub use admit_collect_all::admit_collect_all;
 pub use compile_writing_walls::{
     collect_payload_strings, compile_writing_walls, compile_writing_walls_for_strings,

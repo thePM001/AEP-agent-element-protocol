@@ -15,6 +15,7 @@ pub mod data_dock;
 pub mod envelope_admit;
 pub mod error;
 pub mod lattice_log;
+pub mod lattice_memory;
 pub mod side_channel_monitor;
 pub mod task_manifest;
 
@@ -96,9 +97,17 @@ pub struct BaseNodeHealth {
     pub docking_ports_listening: bool,
     pub action_lattice_events: u64,
     pub lattice_memory_attractors: u64,
+    /// Bits of the fingerprint of a recorded shape.
     pub lattice_memory_dim: u32,
     pub vector_store: &'static str,
-    pub sqlite_vec_version: Option<String>,
+    /// Records of the memory: every judged proposal is one.
+    pub lattice_memory_records: u64,
+    /// Verdicts the dock could not hand to the memory because its queue was full.
+    pub lattice_memory_dropped: u64,
+    /// Verdicts the memory could not write.
+    pub lattice_memory_failed: u64,
+    /// `ok`, `off`, `absent` when no store exists yet or `error`.
+    pub lattice_memory_status: &'static str,
     pub sqlite_closed: bool,
     pub last_tls_handshake_err: Option<String>,
     pub drain_aborted_tasks: u64,
@@ -136,9 +145,7 @@ pub struct HealthInput<'a> {
     pub hub_mounts: u32,
     pub hub_permissions: u32,
     pub mesh_peers_load_error: Option<String>,
-    pub lattice_memory_attractors: u64,
-    pub lattice_memory_dim: u32,
-    pub sqlite_vec_version: Option<String>,
+    pub lattice_memory: lattice_memory::MemoryReport,
     pub docking_ports_listening: bool,
     pub mesh_routes: u32,
     pub data_dir: Option<&'a Path>,
@@ -488,10 +495,13 @@ pub fn health(input: HealthInput<'_>) -> BaseNodeHealth {
         docking_ports: docking_port_specs(input.base_socket),
         docking_ports_listening: input.docking_ports_listening,
         action_lattice_events: input.lattice_events,
-        lattice_memory_attractors: input.lattice_memory_attractors,
-        lattice_memory_dim: input.lattice_memory_dim,
-        vector_store: "sqlite-vec+usearch",
-        sqlite_vec_version: input.sqlite_vec_version,
+        lattice_memory_attractors: input.lattice_memory.attractors,
+        lattice_memory_dim: lattice_memory::FINGERPRINT_BITS,
+        vector_store: lattice_memory::VECTOR_STORE,
+        lattice_memory_records: input.lattice_memory.records,
+        lattice_memory_dropped: input.lattice_memory.dropped,
+        lattice_memory_failed: input.lattice_memory.failed,
+        lattice_memory_status: input.lattice_memory.status,
         sqlite_closed: input.sqlite_closed,
         last_tls_handshake_err: input.last_tls_handshake_err,
         drain_aborted_tasks: input.drain_aborted_tasks,
@@ -575,9 +585,7 @@ mod tests {
             hub_mounts: 0,
             hub_permissions: 0,
             mesh_peers_load_error: None,
-            lattice_memory_attractors: 0,
-            lattice_memory_dim: 128,
-            sqlite_vec_version: None,
+            lattice_memory: lattice_memory::MemoryReport::absent(),
             docking_ports_listening: false,
             mesh_routes: 0,
             data_dir: None,

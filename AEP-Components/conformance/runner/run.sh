@@ -36,7 +36,7 @@ TARGET_DIR="$(cargo metadata --format-version 1 --no-deps \
   | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).target_directory))')"
 BIN="$TARGET_DIR/release"
 export AEP_LATTICE_LOG_BIN="$BIN/aep-lattice-log"
-export AEP_MEMORY_CLI="$BIN/aep-memory"
+export AEP_LATTICE_MEMORY_CLI="$BIN/aep-lattice-memory"
 echo
 
 echo "-- Kernel checks (aep-conformance) --"

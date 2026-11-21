@@ -30,8 +30,8 @@ export function explainIntentRich(dataDir, intentId, opts = {}) {
   );
 
   const intent_knots = {
-    history: historyIntentKnots(intentId, { dataDir, latticeDb: opts.latticeDb }),
-    nearest: searchIntentKnots(intentId, { dataDir, latticeDb: opts.latticeDb, limit: 5 }),
+    history: historyIntentKnots(intentId, { dataDir, memoryStore: opts.memoryStore }),
+    nearest: searchIntentKnots(intentId, { dataDir, memoryStore: opts.memoryStore, limit: 5 }),
   };
 
   const git = {

@@ -1,0 +1,19 @@
+[package]
+name = "aep-lattice-memory-core"
+description = "AEP 2.9 Lattice Memory core: shape digest, 256 bit SimHash, attractors, route hint and exact-match memo in pure Rust with no I/O"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+thiserror = { workspace = true }
+
+[[bench]]
+name = "search_2k_under_100us"
+harness = false
+
+[lints]
+workspace = true

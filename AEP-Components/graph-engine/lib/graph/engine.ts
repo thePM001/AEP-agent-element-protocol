@@ -3,6 +3,7 @@
 import type {
   AdmitGate,
   ApprovalGate,
+  CheckpointStore,
   GraphCheckpoint,
   GraphContext,
   GraphEngineOptions,
@@ -12,15 +13,18 @@ import type {
   NodeExecutor,
   RetryPolicy,
 } from "./types.js";
+import { VolatileCheckpointStore } from "./checkpoint-store.js";
 
 export class GraphEngine {
   private nodes = new Map<string, GraphNode>();
-  private checkpoints: GraphCheckpoint[] = [];
+  // The engine keeps no checkpoint itself. Every checkpoint goes to this store.
+  private readonly store: CheckpointStore;
   private vectorClock: Record<string, number> = {};
   private readonly options: GraphEngineOptions;
 
   constructor(options: GraphEngineOptions = {}) {
     this.options = options;
+    this.store = options.checkpointStore ?? new VolatileCheckpointStore();
     const agentId = options.vectorClockAgentId ?? "graph-engine";
     this.vectorClock[agentId] = 0;
   }
@@ -98,11 +102,11 @@ export class GraphEngine {
   }
 
   getCheckpoints(): GraphCheckpoint[] {
-    return [...this.checkpoints];
+    return this.store.list();
   }
 
   restoreCheckpoint(nodeId: string): GraphContext | null {
-    const cp = [...this.checkpoints].reverse().find((c) => c.nodeId === nodeId);
+    const cp = this.store.list().reverse().find((c) => c.nodeId === nodeId);
     if (!cp) return null;
     this.vectorClock = { ...cp.vectorClock };
     return {
@@ -145,7 +149,7 @@ export class GraphEngine {
           status: "failed",
           history,
           context,
-          checkpoints: [...this.checkpoints],
+          checkpoints: this.listKept(),
           error: `Missing node ${currentId}`,
           vectorClock: { ...this.vectorClock },
         };
@@ -175,7 +179,7 @@ export class GraphEngine {
           status: "failed",
           history,
           context,
-          checkpoints: [...this.checkpoints],
+          checkpoints: this.listKept(),
           error: result.error,
           vectorClock: { ...this.vectorClock },
         };
@@ -184,7 +188,21 @@ export class GraphEngine {
       context.history.push(node.id);
 
       if (result.checkpoint) {
-        this.checkpoints.push(result.checkpoint);
+        // The checkpoint is handed to the store. A checkpoint that cannot be kept
+        // ends the run, because the run could not be resumed from it.
+        try {
+          this.store.append(result.checkpoint);
+        } catch (err) {
+          const detail = err instanceof Error ? err.message : String(err);
+          return {
+            status: "failed",
+            history,
+            context,
+            checkpoints: this.listKept(),
+            error: `checkpoint_not_persisted: ${detail}`,
+            vectorClock: { ...this.vectorClock },
+          };
+        }
       }
 
       if (result.status === "waiting") {
@@ -192,7 +210,7 @@ export class GraphEngine {
           status: "waiting",
           history,
           context,
-          checkpoints: [...this.checkpoints],
+          checkpoints: this.listKept(),
           vectorClock: { ...this.vectorClock },
         };
       }
@@ -202,7 +220,7 @@ export class GraphEngine {
           status: "failed",
           history,
           context,
-          checkpoints: [...this.checkpoints],
+          checkpoints: this.listKept(),
           error: result.error ?? `Node ${node.id} failed`,
           vectorClock: { ...this.vectorClock },
         };
@@ -216,7 +234,7 @@ export class GraphEngine {
       status: "completed",
       history,
       context,
-      checkpoints: [...this.checkpoints],
+      checkpoints: this.listKept(),
       vectorClock: { ...this.vectorClock },
     };
   }
@@ -333,6 +351,15 @@ export class GraphEngine {
       },
       vectorClock: { ...this.vectorClock },
     };
+  }
+
+  /** The kept checkpoints for a result. A store that cannot be read gives none. */
+  private listKept(): GraphCheckpoint[] {
+    try {
+      return this.store.list();
+    } catch {
+      return [];
+    }
   }
 
   private tickVectorClock(): void {

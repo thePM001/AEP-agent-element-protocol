@@ -601,3 +601,7 @@ fn handle_frame(
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "../docking_memory_tests.rs"]
+mod memory_tests;

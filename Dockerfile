@@ -72,7 +72,7 @@ RUN groupadd --system --gid "${AEP_GID}" aep \
 
 COPY --from=rust-builder /build/rust/target/release/aep-base-node /usr/local/bin/
 COPY --from=rust-builder /build/rust/target/release/aep-lattice-log /usr/local/bin/
-COPY --from=rust-builder /build/rust/target/release/aep-memory /usr/local/bin/
+COPY --from=rust-builder /build/rust/target/release/aep-lattice-memory /usr/local/bin/
 COPY --from=rust-builder /build/rust/target/release/aep-ucb /usr/local/bin/
 COPY --from=rust-builder /build/rust/target/release/aep-ucb-validate /usr/local/bin/
 COPY --from=rust-builder /build/rust/target/release/aep-ucm /usr/local/bin/
@@ -109,7 +109,7 @@ ENV AEP_DATA=/data/aep \
     AEP_MANIFEST_RELOAD_INTERVAL_SECS=0 \
     AEP_BASE_NODE_BIN=/usr/local/bin/aep-base-node \
     AEP_LATTICE_LOG_BIN=/usr/local/bin/aep-lattice-log \
-    AEP_MEMORY_BIN=/usr/local/bin/aep-memory \
+    AEP_LATTICE_MEMORY_CLI=/usr/local/bin/aep-lattice-memory \
     AEP_LATTICE_STRICT=1 \
     UCB_PORT=8412 \
     DATA_DOCK_PORT=8413 \

@@ -2,6 +2,20 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-20 - Lattice Memory is rebuilt in pure Rust and the Base Node records every verdict of Admit
+Lattice Memory recorded no judged proposal and Admit never read it. Its writes failed at 2000 rows, rewrote a whole index file on every record and were not atomic. Its fingerprint kept no similarity, operator embeddings were cut or padded without an error and ISO timestamps were read as dates in 2034.
+
+- The earlier crate, its program `aep-memory` and the libraries usearch and sqlite-vec are gone. The memory uses no database engine, no query language and no C or C++ code.
+- `aep-lattice-memory-core` computes and does no I/O: the shape digest of a proposal, a 256 bit SimHash, operator embeddings quantized to bytes, attractors with support counts and eviction in a fixed order, the route hint and the exact-match memo.
+- `aep-lattice-memory` stores one append-only log file per domain with a hash chain. A record is whole or absent, also after a crash in the middle of a write. Two writer processes never give out one key twice. A changed, removed or moved record is reported. The program `aep-lattice-memory` serves callers outside the Base Node.
+- The Base Node hands every verdict of Admit to the memory after the verdict is written, through a bounded queue that drops and counts when it is full and never holds a verdict back. A node whose memory is off or failed judges on the cold path.
+- Admit reads a route hint and the stored rows of the writing walls for byte identical text through a read-only view. The Admit crates do not depend on the memory. Every verdict of the multi-step corpus is the same with and without memory.
+- An operator embedding of the wrong dimension is refused with an error. ISO timestamps parse to the right unix time. A health check opens the store to read and changes nothing.
+- The write of a record costs the same at 2000 and at 100000 attractors: about 5 microseconds on the build host. A record the Base Node writes after its route hint costs 6 and 9 microseconds, because the write reuses the answer of the hint. The lookup of the nearest attractor, done once per proposal for the hint, costs 8 and 28 microseconds there.
+- The Intent Ledger records its knots in the domain `intent` and searches with the shape it recorded. The Graph Engine hands its checkpoints to a store, which can be Lattice Memory, so a second engine resumes a run after a restart.
+- The health answer carries `lattice_memory_status`, `lattice_memory_records`, `lattice_memory_dropped` and `lattice_memory_failed`. `vector_store` reads `simhash256+log`, `lattice_memory_dim` reads 256 and `sqlite_vec_version` is gone.
+- A node starts a fresh store in the folder `lattice-memory` of its data folder and removes the rows and the index file of the earlier store. The earlier rows are not carried over.
+
 ## [2.9.0] - 2026-11-19 - The wrap coverage report reads the egress policies of the Rust CAW
 The wrap coverage report read CAW policy files in the format of the retired Go CAW. A route of the Rust CAW to any host was not in the report, although THREAT_MODEL.md row CW-1 named the report as its check.
 

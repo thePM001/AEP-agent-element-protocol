@@ -4,7 +4,7 @@ This engine runs cyclic workflows on the AEP scene graph, meaning the map of wha
 
 ## Features
 
-- Stateful persistent workflows on the lattice memory fabric
+- Checkpoints kept in a store that a deployment sets to Lattice Memory
 - Cyclic execution with loop detection
 - Checkpoints at every node
 - Human-in-the-loop branch points
@@ -34,7 +34,7 @@ The GraphEngine local vector clock is metadata after allow. It is not live Admit
 
 ## Persistence
 
-State is persisted to the lattice memory fabric so a run can resume from checkpoints after restart. The local vector clock ticks only after admitGate allow.
+The engine holds no checkpoint itself. It hands every checkpoint to its checkpoint store and reads the kept ones back from it. The default store lives in the process. `LatticeMemoryCheckpointStore` writes each checkpoint as one record of Lattice Memory through a program function the deployment hands in, so a second engine resumes the run from its checkpoints after a restart. A checkpoint that cannot be kept ends the run. The local vector clock ticks only after admitGate allow.
 
 ## Standing
 

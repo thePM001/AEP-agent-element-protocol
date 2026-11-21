@@ -45,6 +45,6 @@ export function defaultPaths() {
     socketBase: resolveSocketBase(dataDir),
     baseNodeBin: resolveBinary("aep-base-node"),
     latticeLogBin: resolveBinary("aep-lattice-log"),
-    memoryBin: resolveBinary("aep-memory"),
+    memoryBin: resolveBinary("aep-lattice-memory"),
   };
 }

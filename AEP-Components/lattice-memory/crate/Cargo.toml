@@ -1,23 +1,29 @@
 [package]
 name = "aep-lattice-memory"
-description = "AEP 2.9 Lattice Memory: sqlite-vec persistence + USearch fast-path"
+description = "AEP 2.9 Lattice Memory: an append-only record log with a hash chain and attractors, with an in-memory backend and a log file backend"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+publish = false
 
 [[bin]]
-name = "aep-memory"
+name = "aep-lattice-memory"
 path = "src/main.rs"
 
 [dependencies]
+aep-lattice-memory-core = { path = "../core" }
 clap = { workspace = true }
-rusqlite = { workspace = true }
-sqlite-vec = { workspace = true }
-usearch = { workspace = true }
+hex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-tracing = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
+
+[[bench]]
+name = "record_flat_cost_vs_n"
+harness = false
 
 [lints]
 workspace = true

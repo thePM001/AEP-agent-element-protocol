@@ -1,6 +1,20 @@
 import { describe, it, expect } from "vitest";
-import { GraphEngine, createGraphEngine } from "../lib/graph/index.js";
-import type { AdmitGate, GraphNode, GraphEngineOptions, NodeExecutor } from "../lib/graph/index.js";
+import {
+  GRAPH_CHECKPOINT_DOMAIN,
+  GraphEngine,
+  LatticeMemoryCheckpointStore,
+  VolatileCheckpointStore,
+  createGraphEngine,
+} from "../lib/graph/index.js";
+import type {
+  AdmitGate,
+  CheckpointStore,
+  GraphCheckpoint,
+  GraphNode,
+  GraphEngineOptions,
+  MemoryProgram,
+  NodeExecutor,
+} from "../lib/graph/index.js";
 
 const allow: AdmitGate = async () => true;
 
@@ -261,5 +275,151 @@ describe("GraphEngine.restoreCheckpoint", () => {
     const after = await engine.execute();
     // The clock resumed from the restored value (1) and ticked twice more.
     expect(after.vectorClock).toEqual({ "graph-engine": 3 });
+  });
+});
+
+describe("checkpoint stores", () => {
+  const chain = [action("start", ["b"]), action("b", ["c"]), action("c")];
+  const run: GraphEngineOptions = { admitGate: allow, nodeExecutor: async (n) => ({ ok: n.id }) };
+
+  /** A stand-in for the program of Lattice Memory: it keeps what `record` hands it. */
+  function fakeProgram(): { program: MemoryProgram; records: Record<string, unknown>[] } {
+    const records: Record<string, unknown>[] = [];
+    const program: MemoryProgram = (command, request) => {
+      const asked = request as Record<string, unknown>;
+      if (command === "record") {
+        records.push(JSON.parse(JSON.stringify(asked)) as Record<string, unknown>);
+        return { ok: true, key: records.length };
+      }
+      return records.filter((r) => r.domain === asked.domain && r.element_id === asked.element_id);
+    };
+    return { program, records };
+  }
+
+  it("hands every checkpoint to the store and reads the kept ones back from it", async () => {
+    const kept: GraphCheckpoint[] = [];
+    const store: CheckpointStore = {
+      append: (checkpoint) => {
+        kept.push(checkpoint);
+      },
+      list: () => [...kept],
+    };
+    const engine = engineWith(chain, { ...run, checkpointStore: store });
+    const result = await engine.execute({ input: { n: 1 } });
+    expect(result.status).toBe("completed");
+    expect(kept.map((c) => c.nodeId)).toEqual(["start", "b", "c"]);
+    expect(result.checkpoints).toEqual(kept);
+    expect(engine.getCheckpoints()).toEqual(kept);
+    // A second engine on the same store resumes from what the first one kept.
+    const second = engineWith(chain, { ...run, checkpointStore: store });
+    expect(second.restoreCheckpoint("c")).toEqual({ input: { n: 1 }, variables: {}, history: ["start", "b"] });
+  });
+
+  it("ends the run when a checkpoint cannot be kept", async () => {
+    const store: CheckpointStore = {
+      append: () => {
+        throw new Error("disk full");
+      },
+      list: () => [],
+    };
+    const result = await engineWith(chain, { ...run, checkpointStore: store }).execute();
+    expect(result.status).toBe("failed");
+    expect(result.error).toBe("checkpoint_not_persisted: disk full");
+    expect(result.history.map((h) => h.nodeId)).toEqual(["start"]);
+  });
+
+  it("gives no checkpoints in a result when the store cannot be read", async () => {
+    const store: CheckpointStore = {
+      append: () => undefined,
+      list: () => {
+        throw new Error("unreadable");
+      },
+    };
+    const engine = engineWith(chain, { ...run, checkpointStore: store });
+    const result = await engine.execute();
+    expect(result.status).toBe("completed");
+    expect(result.checkpoints).toEqual([]);
+    expect(() => engine.getCheckpoints()).toThrow(/unreadable/);
+  });
+
+  it("the volatile store keeps copies, so a caller cannot change what is kept", () => {
+    const store = new VolatileCheckpointStore();
+    const checkpoint: GraphCheckpoint = {
+      nodeId: "a",
+      timestamp: 1,
+      context: { input: { n: 1 }, variables: {}, history: ["x"] },
+      vectorClock: { e: 1 },
+    };
+    store.append(checkpoint);
+    checkpoint.context.history.push("changed");
+    for (const listed of store.list()) listed.vectorClock.e = 99;
+    expect(store.list()).toEqual([
+      { nodeId: "a", timestamp: 1, context: { input: { n: 1 }, variables: {}, history: ["x"] }, vectorClock: { e: 1 } },
+    ]);
+  });
+
+  it("the Lattice Memory store needs a run id and a program", () => {
+    const { program } = fakeProgram();
+    expect(() => new LatticeMemoryCheckpointStore({ runId: "", program })).toThrow(/runId is required/);
+    expect(
+      () => new LatticeMemoryCheckpointStore({ runId: "r", program: undefined as unknown as MemoryProgram }),
+    ).toThrow(/program is required/);
+    expect(GRAPH_CHECKPOINT_DOMAIN).toBe("graph");
+  });
+
+  it("the Lattice Memory store writes one record per checkpoint and reads a run back", async () => {
+    const { program, records } = fakeProgram();
+    const first = engineWith(chain, {
+      ...run,
+      checkpointStore: new LatticeMemoryCheckpointStore({ runId: "run-1", program }),
+    });
+    const result = await first.execute({ input: { n: 1, nested: { a: [1, 2] } } });
+    expect(result.status).toBe("completed");
+    expect(records).toHaveLength(3);
+    expect(records.map((r) => r.element_id)).toEqual(["run-1", "run-1", "run-1"]);
+    expect(records.map((r) => r.domain)).toEqual(["graph", "graph", "graph"]);
+    expect(records.map((r) => r.result)).toEqual(["accepted", "accepted", "accepted"]);
+    expect(records.map((r) => (r.labels as Record<string, string>).node_id)).toEqual(["start", "b", "c"]);
+    expect(records[2]?.shape).toEqual({ kind: "graph_checkpoint", node_id: "c", history: ["start", "b"] });
+    expect(new Set(records.map((r) => r.id)).size).toBe(3);
+    // Another engine on the same run, as after a restart, reads the checkpoints back.
+    const second = engineWith(chain, {
+      ...run,
+      checkpointStore: new LatticeMemoryCheckpointStore({ runId: "run-1", program }),
+    });
+    expect(second.getCheckpoints()).toEqual(result.checkpoints);
+    expect(second.restoreCheckpoint("c")).toEqual({
+      input: { n: 1, nested: { a: [1, 2] } },
+      variables: {},
+      history: ["start", "b"],
+    });
+    // Another run in the same store has checkpoints of its own.
+    expect(new LatticeMemoryCheckpointStore({ runId: "run-2", program }).list()).toEqual([]);
+  });
+
+  it("the Lattice Memory store skips records that hold no checkpoint", () => {
+    const program: MemoryProgram = () => [
+      { body: null },
+      { body: { nodeId: "a" } },
+      "text",
+      { body: { nodeId: "a", timestamp: 2, context: { input: {}, variables: {}, history: [] }, vectorClock: {} } },
+    ];
+    const store = new LatticeMemoryCheckpointStore({ runId: "run-1", program });
+    expect(store.list().map((c) => c.nodeId)).toEqual(["a"]);
+    const none: MemoryProgram = () => null;
+    expect(new LatticeMemoryCheckpointStore({ runId: "run-1", program: none }).list()).toEqual([]);
+  });
+
+  it("a program that fails ends the run and names the failure", async () => {
+    const program: MemoryProgram = () => {
+      throw new Error("aep-lattice-memory record failed: no such file");
+    };
+    const engine = engineWith(chain, {
+      ...run,
+      checkpointStore: new LatticeMemoryCheckpointStore({ runId: "run-1", program }),
+    });
+    const result = await engine.execute();
+    expect(result.status).toBe("failed");
+    expect(result.error).toBe("checkpoint_not_persisted: aep-lattice-memory record failed: no such file");
   });
 });

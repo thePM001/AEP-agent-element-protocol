@@ -113,7 +113,7 @@ flowchart TB
 | 12 | Scanners | The content scanners, which read the text of a proposal for secrets, personal data, injection and more | `AEP-Components/scanners/` | [README](AEP-Components/scanners/README.md) |
 | 13 | AgentMesh | The identity layer with local issuance of certificates and identifiers for agents, built by the crate in `AEP-Components/agentmesh/crate/` | `AEP-Components/agentmesh/` | [README](AEP-Components/agentmesh/README.md) |
 | 14 | Economics | Cost estimation before a model call, budget caps and x402 payments | `AEP-Components/economics/` | [README](AEP-Components/economics/README.md) |
-| 15 | Lattice Memory | The store of the shapes of validated proposals, kept for audit, health telemetry and lookup | `AEP-Components/lattice-memory/` | [README](AEP-Components/lattice-memory/README.md) |
+| 15 | Lattice Memory | The record of every verdict of the Admit Gate with attractors of the accepted shapes, kept for audit, health telemetry and a route hint | `AEP-Components/lattice-memory/` | [README](AEP-Components/lattice-memory/README.md) |
 | 16 | Intent Ledger | The append-only record linking the declared intent of a code change to its commit | `AEP-Components/intent-ledger/` | [README](AEP-Components/intent-ledger/README.md) |
 | 17 | Model Gateway | The governed route for model calls to several providers, with checks on the stream | `AEP-Components/model-gateway/` | [README](AEP-Components/model-gateway/README.md) |
 | 18 | TLA+ | The formal models of the kernel rules and the checker for their shape | `AEP-Components/tla/` | [README](AEP-Components/tla/README.md) |
@@ -438,13 +438,13 @@ flowchart LR
 
 ## 15 / Lattice Memory
 
-**What it is:** Lattice Memory stores the shapes of judged proposals as vectors, called attractors, for audit, health telemetry and similarity search. A stored shape never replaces a check: a proposal similar to an earlier allow still passes the full Admit Gate (04).
+**What it is:** Lattice Memory keeps what the Admit Gate (04) judged. Every verdict is one record in an append-only log with a hash chain and accepted records form attractors with support counts. A stored shape never replaces a check: a proposal similar to an earlier allow still passes every wall of the Admit Gate.
 
-**What ships in 2.9:** The crate `aep-lattice-memory` with two stores: sqlite-vec for durable vectors in the SQLite file of the Base Node and USearch for a fast index in memory. The command line program `aep-memory` records and searches entries. The Base Node reports the number of stored attractors in its health answer. The page describes stored shapes feeding the admit phase for lower cost over time. That feed is planned and in this tree no stored shape takes part in Admit.
+**What ships in 2.9:** Two pure Rust crates with no database engine and no C code. `aep-lattice-memory-core` computes the shape digest, a 256 bit SimHash, the attractors, the route hint and the exact-match memo. `aep-lattice-memory` stores one append-only log file per domain and ships the program `aep-lattice-memory`. The AEP Base Node (01) records every verdict of Admit after it is written, through a bounded queue that never holds a verdict back. Admit reads a route hint and a memo of the writing walls for byte identical text. Every verdict is the same with and without memory.
 
-**Where it lives:** The whole component lives in the one folder [`AEP-Components/lattice-memory/`](AEP-Components/lattice-memory/) and no other folder belongs to it.
+**Where it lives:** The whole component lives in the one folder [`AEP-Components/lattice-memory/`](AEP-Components/lattice-memory/). The Base Node side is `AEP-Base-Node/AEP-Crate/src/lattice_memory.rs`.
 
-**Run and test:** Run `cargo test -p aep-lattice-memory` from the repository root. The component README has the detail: [`AEP-Components/lattice-memory/README.md`](AEP-Components/lattice-memory/README.md).
+**Run and test:** Run `cargo test -p aep-lattice-memory-core -p aep-lattice-memory` from the repository root. The component README has the detail: [`AEP-Components/lattice-memory/README.md`](AEP-Components/lattice-memory/README.md).
 
 ## 16 / Intent Ledger
 
@@ -553,7 +553,7 @@ Manifest: `AEP-Components/conformance/tests/manifest.json`. Every listed check r
 | [`AEP-Components/scanners/README.md`](AEP-Components/scanners/README.md) | 12 Scanners: the scanner pipeline and the rule table |
 | [`AEP-Components/agentmesh/README.md`](AEP-Components/agentmesh/README.md) | 13 AgentMesh: local identity issuance |
 | [`AEP-Components/economics/README.md`](AEP-Components/economics/README.md) | 14 Economics: cost, budgets and x402 |
-| [`AEP-Components/lattice-memory/README.md`](AEP-Components/lattice-memory/README.md) | 15 Lattice Memory: attractor store |
+| [`AEP-Components/lattice-memory/README.md`](AEP-Components/lattice-memory/README.md) | 15 Lattice Memory: record log and attractors |
 | [`AEP-Components/intent-ledger/README.md`](AEP-Components/intent-ledger/README.md) | 16 Intent Ledger: provenance of code changes |
 | [`AEP-Components/model-gateway/README.md`](AEP-Components/model-gateway/README.md) | 17 Model Gateway: governed model calls |
 | [`AEP-Components/tla/README.md`](AEP-Components/tla/README.md) | 18 TLA+: models and checker |

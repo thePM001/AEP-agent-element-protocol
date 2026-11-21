@@ -11,9 +11,9 @@
 //! Every ClosedWall construction sets class. Writing walls stay on the Admit pass.
 use crate::BaseNodeError;
 use aep_admit::AdmitWall;
-use aep_admit_live_dock::LiveDockContext;
+use aep_admit_live_dock::{LiveDockContext, MemoryView, PureWallTrace};
 use aep_live_entry::{LiveEntry, ProcessOut};
-use aep_one_live_evaluation::attach_live_walls;
+use aep_one_live_evaluation::attach_live_walls_in_view;
 use aep_wall_set_backpressure::{classify_wall, ClosedWall, DenyReport, CLASS_STRUCTURAL};
 use serde_json::Value;
 use std::path::Path;
@@ -68,28 +68,38 @@ pub fn admit_sealed_payload_on_live_dock(
     }
 }
 
-/// Admit, then the record step, then Apply, in one call under the live entry lock.
+/// Admit, then the record step, then Apply, in one call under the live entry lock and
+/// in the view of a memory.
 ///
 /// `record` runs once after every wall is open and before the live entry changes. The
 /// dock writes the ledger row there, so a frame is applied only with its row written.
 /// A closed wall from `record` is a Deny that leaves the live entry unchanged.
-pub fn admit_sealed_payload_report_recorded(
+///
+/// `view` is read and never written. It may hand over the stored rows of the pure
+/// wall family for byte identical text. Every wall still stands in the collect-all
+/// pass and the verdict is the one that pass gives. The second part of the answer
+/// names the rows of the pure family once the walls were compiled.
+pub fn admit_sealed_payload_report_in_view(
     live: &mut LiveEntry,
     plaintext: &[u8],
     dock: &LiveDockContext,
     record: &mut dyn FnMut() -> Result<(), AdmitWall>,
-) -> Result<(), DenyReport> {
+    view: &MemoryView<'_>,
+) -> (Result<(), DenyReport>, Option<PureWallTrace>) {
     let value: Value = match serde_json::from_slice(plaintext) {
         Ok(v) => v,
         Err(_) => {
-            return Err(DenyReport::from_error_and_closed(
-                "Admit collect-all walls then Apply: plaintext is not JSON",
-                &[ClosedWall::with_class(
-                    "payload.json",
-                    "plaintext is not JSON",
-                    CLASS_STRUCTURAL,
-                )],
-            ));
+            return (
+                Err(DenyReport::from_error_and_closed(
+                    "Admit collect-all walls then Apply: plaintext is not JSON",
+                    &[ClosedWall::with_class(
+                        "payload.json",
+                        "plaintext is not JSON",
+                        CLASS_STRUCTURAL,
+                    )],
+                )),
+                None,
+            );
         }
     };
     let action_path = value
@@ -99,17 +109,20 @@ pub fn admit_sealed_payload_report_recorded(
         .to_string();
     // Empty action_path is collect-all Deny before Apply.
     if action_path.is_empty() {
-        return Err(DenyReport::from_error_and_closed(
-            "Admit collect-all walls then Apply: missing action_path",
-            &[ClosedWall::with_class(
-                "action.path",
-                "missing action_path",
-                CLASS_STRUCTURAL,
-            )],
-        ));
+        return (
+            Err(DenyReport::from_error_and_closed(
+                "Admit collect-all walls then Apply: missing action_path",
+                &[ClosedWall::with_class(
+                    "action.path",
+                    "missing action_path",
+                    CLASS_STRUCTURAL,
+                )],
+            )),
+            None,
+        );
     }
-    attach_live_walls(live, &value, dock);
-    match live.process_event_recorded(value, record) {
+    let trace = attach_live_walls_in_view(live, &value, dock, view);
+    let verdict = match live.process_event_recorded(value, record) {
         ProcessOut::Event(_) => Ok(()),
         ProcessOut::Reject(r) => {
             let closed: Vec<ClosedWall> = r
@@ -125,7 +138,18 @@ pub fn admit_sealed_payload_report_recorded(
                 .collect();
             Err(DenyReport::from_error_and_closed(&r.error, &closed))
         }
-    }
+    };
+    (verdict, Some(trace))
+}
+
+/// Admit, then the record step, then Apply, without a memory.
+pub fn admit_sealed_payload_report_recorded(
+    live: &mut LiveEntry,
+    plaintext: &[u8],
+    dock: &LiveDockContext,
+    record: &mut dyn FnMut() -> Result<(), AdmitWall>,
+) -> Result<(), DenyReport> {
+    admit_sealed_payload_report_in_view(live, plaintext, dock, record, &MemoryView::cold()).0
 }
 
 /// Admit then Apply with no record step. The lattice log and the unit paths use this.

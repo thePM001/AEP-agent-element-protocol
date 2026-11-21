@@ -32,6 +32,14 @@ export interface GraphCheckpoint {
   vectorClock: Record<string, number>;
 }
 
+/** Where the checkpoints of a run are kept. The engine holds none itself. */
+export interface CheckpointStore {
+  /** Keep one checkpoint. Throws when the checkpoint cannot be kept. */
+  append(checkpoint: GraphCheckpoint): void;
+  /** Every kept checkpoint of the run in the order it was kept. */
+  list(): GraphCheckpoint[];
+}
+
 export interface GraphContext {
   input: Record<string, unknown>;
   variables: Record<string, unknown>;
@@ -86,4 +94,9 @@ export interface GraphEngineOptions {
   approvalGate?: ApprovalGate;
   admitGate?: AdmitGate;
   vectorClockAgentId?: string;
+  /**
+   * Where the checkpoints of the run are kept. Default: a store that lives in the
+   * process. Hand in a LatticeMemoryCheckpointStore to resume a run after a restart.
+   */
+  checkpointStore?: CheckpointStore;
 }

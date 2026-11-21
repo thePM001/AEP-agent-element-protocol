@@ -64,7 +64,7 @@ function readExportIgnore(root) {
 }
 const SKIP_EXT = new Set([
   '.png', '.jpg', '.jpeg', '.gif', '.ico', '.pdf', '.woff', '.woff2', '.ttf', '.eot',
-  '.ots', '.zip', '.gz', '.tgz', '.wasm', '.so', '.dylib', '.dll', '.bin', '.db', '.usearch',
+  '.ots', '.zip', '.gz', '.tgz', '.wasm', '.so', '.dylib', '.dll', '.bin', '.db', '.lmlog', '.lmsnap',
   '.lock',
 ]);
 

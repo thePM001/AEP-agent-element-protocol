@@ -1,23 +1,33 @@
 #!/usr/bin/env node
 
 /**
- * Lattice Memory intent knots.
- * - Store: Lattice Memory via aep-memory CLI (SQLite 3.54.1 bundled + sqlite-vec 0.1.9 vec0 + USearch 2.25.3)
+ * Intent knots in Lattice Memory.
  *
- * File ledger (intent-provenance.jsonl) remains source of truth; knots are searchable attractors.
+ * A knot is one record of the domain `intent`, written through the program
+ * `aep-lattice-memory`. The program computes the shape digest and the fingerprint of
+ * a knot from its shape, so recording and searching use one and the same shape.
+ *
+ * The file ledger (intent-provenance.jsonl) remains the source of truth. Knots make
+ * past intents searchable. Lattice Memory keeps the digest, the fingerprint and the
+ * labels of a knot and never its statement.
  */
 
 import { existsSync, readFileSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
-import { deriveEmbedding } from "./embedding.mjs";
 import { explainIntent } from "./ledger.mjs";
 import { expandHome, defaultPaths } from "../../platform-core/lib/paths.mjs";
 
-export const INTENT_KNOT_DOMAIN = "event";
+/** Intent knots are provenance, not judged proposals, so they have a domain of their own. */
+export const INTENT_KNOT_DOMAIN = "intent";
 export const INTENT_KNOT_KIND = "intent_knot";
+export const MEMORY_PROGRAM = "aep-lattice-memory";
+export const MEMORY_BACKEND = "lattice-memory";
+/** Folder of the memory under the data folder of the node. */
+export const MEMORY_STORE_DIR = "lattice-memory";
 
 function repoRoot() {
   const here = dirname(fileURLToPath(import.meta.url));
@@ -25,18 +35,18 @@ function repoRoot() {
 }
 
 export function resolveMemoryCliPath(configPath) {
-  if (process.env.AEP_MEMORY_CLI) return process.env.AEP_MEMORY_CLI;
+  if (process.env.AEP_LATTICE_MEMORY_CLI) return process.env.AEP_LATTICE_MEMORY_CLI;
   const root = repoRoot();
   const candidates = [
-    join(root, "rust/target/release/aep-memory"),
-    join(root, "rust/target/debug/aep-memory"),
+    join(root, "rust/target/release", MEMORY_PROGRAM),
+    join(root, "rust/target/debug", MEMORY_PROGRAM),
     defaultPaths().memoryBin,
   ];
   if (configPath && existsSync(configPath)) {
     try {
       const cfg = JSON.parse(readFileSync(configPath, "utf8"));
       const bin = cfg.base_node?.binary_path;
-      if (bin) candidates.unshift(join(dirname(bin), "aep-memory"));
+      if (bin) candidates.unshift(join(dirname(bin), MEMORY_PROGRAM));
     } catch {
       /* ignore */
     }
@@ -47,22 +57,30 @@ export function resolveMemoryCliPath(configPath) {
   return candidates[0];
 }
 
-export function resolveLatticeDbPath(configPath, dataDir) {
-  if (process.env.AEP_LATTICE_DB) return expandHome(process.env.AEP_LATTICE_DB);
-  const path = configPath ?? join(expandHome(dataDir ?? defaultPaths().dataDir), "base-node.json");
+/**
+ * The folder of the memory: AEP_LATTICE_MEMORY_DIR, else the folder `lattice-memory`
+ * beside the ledger file the node is configured with, else under the data folder.
+ * The Base Node writes its records to the same folder.
+ */
+export function resolveMemoryStorePath(configPath, dataDir) {
+  if (process.env.AEP_LATTICE_MEMORY_DIR) return expandHome(process.env.AEP_LATTICE_MEMORY_DIR);
+  const base = expandHome(dataDir ?? defaultPaths().dataDir);
+  const path = configPath ?? join(base, "base-node.json");
   if (existsSync(path)) {
     try {
       const cfg = JSON.parse(readFileSync(path, "utf8"));
-      if (cfg.base_node?.lattice_db) return expandHome(cfg.base_node.lattice_db);
+      if (cfg.base_node?.lattice_db) {
+        return join(dirname(expandHome(cfg.base_node.lattice_db)), MEMORY_STORE_DIR);
+      }
     } catch {
       /* ignore */
     }
   }
-  return expandHome(defaultPaths().latticeDb);
+  return join(base, MEMORY_STORE_DIR);
 }
 
-function runMemoryCli(cli, dbPath, command, input) {
-  const args = ["--db", dbPath, command];
+function runMemoryCli(cli, storePath, command, input) {
+  const args = ["--store", storePath, command];
   const result = spawnSync(cli, args, {
     input: input ? JSON.stringify(input) : undefined,
     encoding: "utf8",
@@ -73,7 +91,7 @@ function runMemoryCli(cli, dbPath, command, input) {
       result.stderr?.trim() ||
         result.stdout?.trim() ||
         result.error?.message ||
-        `aep-memory ${command} failed`,
+        `${MEMORY_PROGRAM} ${command} failed`,
     );
   }
   const stdout = (result.stdout ?? "").trim();
@@ -81,12 +99,36 @@ function runMemoryCli(cli, dbPath, command, input) {
   return JSON.parse(stdout);
 }
 
+/**
+ * One store of Lattice Memory as a function: a command name and its request go in,
+ * the answer of the program comes out. A command that fails throws. Other components
+ * hand this function on, such as the checkpoint store of the Graph Engine, so this
+ * module is the one place in the JavaScript tree that runs the memory program.
+ */
+export function memoryProgram(cli, storePath) {
+  return (command, input) => runMemoryCli(cli, storePath, command, input);
+}
+
 function isStrict() {
   return process.env.AEP_INTENT_KNOT_STRICT === "1";
 }
 
 /**
- * Build a lattice memory entry for an intent governance phase.
+ * The shape of the knots of one intent: what the intent is about. Every phase of an
+ * intent has this shape, and a search for an intent uses it too, so the knots of one
+ * intent meet in one attractor and a search finds what was recorded.
+ */
+export function intentKnotShape({ intentId, statement, components }) {
+  return {
+    kind: INTENT_KNOT_KIND,
+    intent_id: intentId,
+    statement: statement ?? null,
+    components: [...(components ?? [])].sort(),
+  };
+}
+
+/**
+ * Build the knot of an intent governance phase.
  * @param {"propose"|"solidify"|"announce"} phase
  */
 export function buildIntentKnotEntry(phase, {
@@ -100,6 +142,7 @@ export function buildIntentKnotEntry(phase, {
   threadId,
   sessionId,
 }) {
+  const components = blastRadius?.impact?.components ?? blastRadius?.components ?? [];
   const proposal = {
     kind: INTENT_KNOT_KIND,
     phase,
@@ -112,7 +155,7 @@ export function buildIntentKnotEntry(phase, {
     blast_radius: blastRadius
       ? {
           within_envelope: blastRadius.within_envelope ?? null,
-          components: blastRadius?.impact?.components ?? blastRadius?.components ?? [],
+          components,
         }
       : null,
     propose_token_hash: proposeToken?.blast_radius_hash ?? null,
@@ -120,8 +163,8 @@ export function buildIntentKnotEntry(phase, {
     evidence_ledger_ref: solidifyEntry?.evidence_ledger_ref ?? null,
   };
 
-  const memoryEntry = {
-    id: `ik-${phase}-${intentId}-${Date.now()}`,
+  return {
+    id: `ik-${phase}-${intentId}-${Date.now()}-${randomBytes(4).toString("hex")}`,
     timestamp: new Date().toISOString(),
     element_id: intentId,
     domain: INTENT_KNOT_DOMAIN,
@@ -129,95 +172,96 @@ export function buildIntentKnotEntry(phase, {
     result: "accepted",
     errors: [],
     traversal_path: [`coding_governance:${phase}`],
+    shape: intentKnotShape({ intentId, statement, components }),
     metadata: {
       kind: INTENT_KNOT_KIND,
       phase,
       intent_id: intentId,
-      backends: ["sqlite"],
+      backends: [MEMORY_BACKEND],
     },
   };
-  memoryEntry.embedding = deriveEmbedding(memoryEntry);
-  return memoryEntry;
 }
 
-function recordSqliteKnot(memoryEntry, opts = {}) {
+/** What the program stores of a knot: its ids, its shape and its labels. */
+function memoryRecord(knot) {
+  return {
+    id: knot.id,
+    timestamp: knot.timestamp,
+    element_id: knot.element_id,
+    domain: knot.domain,
+    result: knot.result,
+    shape: knot.shape,
+    labels: {
+      kind: INTENT_KNOT_KIND,
+      phase: String(knot.metadata.phase),
+      intent_id: String(knot.metadata.intent_id),
+    },
+  };
+}
+
+/** A stored record as the callers of this module read a knot. */
+function knotEntry(record) {
+  return { ...record, metadata: record.labels ?? {} };
+}
+
+function recordMemoryKnot(knot, opts = {}) {
   const configPath = opts.configPath ?? join(expandHome(opts.dataDir ?? defaultPaths().dataDir), "base-node.json");
   const cli = opts.memoryCliPath ?? resolveMemoryCliPath(configPath);
-  const dbPath = opts.latticeDb ?? resolveLatticeDbPath(configPath, opts.dataDir);
+  const storePath = opts.memoryStore ?? resolveMemoryStorePath(configPath, opts.dataDir);
   if (!existsSync(cli)) {
-    const err = new Error(`aep-memory binary not found: ${cli}`);
+    const err = new Error(`${MEMORY_PROGRAM} binary not found: ${cli}`);
     if (isStrict()) throw err;
-    return { recorded: false, backend: "sqlite", error: err.message };
+    return { recorded: false, backend: MEMORY_BACKEND, error: err.message };
   }
   try {
-    const res = runMemoryCli(cli, dbPath, "record", memoryEntry);
-    return { recorded: true, backend: "sqlite", key: res?.key ?? null, db_path: dbPath };
+    const res = runMemoryCli(cli, storePath, "record", memoryRecord(knot));
+    return { recorded: true, backend: MEMORY_BACKEND, key: res?.key ?? null, store_path: storePath };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (isStrict()) throw err;
-    return { recorded: false, backend: "sqlite", error: message };
+    return { recorded: false, backend: MEMORY_BACKEND, error: message };
   }
 }
 
-/** Record knot to SQLite only (sync, canonical open-source path). */
-export function recordIntentKnotSqlite(phase, fields, opts = {}) {
-  const knot = buildIntentKnotEntry(phase, fields);
-  const sqlite = recordSqliteKnot(knot, opts);
-  return { knot, sqlite };
-}
-
-/** Record intent knot to Lattice Memory. The same as recordIntentKnotSqlite. */
+/** Record the knot of one phase in Lattice Memory. Makes no network call. */
 export function recordIntentKnot(phase, fields, opts = {}) {
-  return recordIntentKnotSqlite(phase, fields, opts);
+  const knot = buildIntentKnotEntry(phase, fields);
+  const memory = recordMemoryKnot(knot, opts);
+  return { knot, memory };
 }
 
 /**
- * Search lattice memory for knots related to an intent (by embedding similarity).
+ * Search Lattice Memory for the knots nearest to an intent. The search uses the shape
+ * the knots of the intent were recorded with.
  */
 export function searchIntentKnots(intentId, opts = {}) {
   const dataDir = expandHome(opts.dataDir ?? defaultPaths().dataDir);
   const intent = explainIntent(dataDir, intentId);
-  const statement = intent.declaration?.statement ?? intentId;
-  const embedding = deriveEmbedding({
-    element_id: intentId,
-    domain: INTENT_KNOT_DOMAIN,
-    proposal: {
-      kind: INTENT_KNOT_KIND,
-      intent_id: intentId,
-      statement,
-      blast_radius: intent.blast_radius
-        ? { components: intent.blast_radius?.impact?.components ?? [] }
-        : null,
-    },
-    result: "accepted",
+  const shape = intentKnotShape({
+    intentId,
+    statement: intent.declaration?.statement ?? null,
+    components: intent.blast_radius?.impact?.components ?? intent.blast_radius?.components ?? [],
   });
 
   const configPath = opts.configPath ?? join(dataDir, "base-node.json");
   const cli = opts.memoryCliPath ?? resolveMemoryCliPath(configPath);
-  const dbPath = opts.latticeDb ?? resolveLatticeDbPath(configPath, dataDir);
+  const storePath = opts.memoryStore ?? resolveMemoryStorePath(configPath, dataDir);
   if (!existsSync(cli)) {
-    return { intent_id: intentId, matches: [], error: `aep-memory not found: ${cli}` };
+    return { intent_id: intentId, matches: [], error: `${MEMORY_PROGRAM} not found: ${cli}` };
   }
 
-  const limit = opts.limit ?? 5;
-  const threshold = opts.threshold ?? 0.0;
+  const request = { domain: INTENT_KNOT_DOMAIN, shape, limit: opts.limit ?? 5 };
+  if (opts.minScore !== undefined) request.min_score = opts.minScore;
   try {
-    const matches = runMemoryCli(cli, dbPath, "search", {
-      embedding,
-      limit,
-      threshold,
-      accepted_only: false,
-    });
-    const filtered = (matches ?? []).filter((m) => {
-      const kind = m.entry?.proposal?.kind ?? m.entry?.metadata?.kind;
-      const el = m.entry?.element_id;
-      return kind === INTENT_KNOT_KIND || el === intentId;
-    });
+    const matches = runMemoryCli(cli, storePath, "search", request);
     return {
       intent_id: intentId,
-      db_path: dbPath,
-      matches: filtered,
-      backends: { sqlite: true },
+      store_path: storePath,
+      matches: (matches ?? []).map((m) => ({
+        ...m,
+        entry: m.entry ? knotEntry(m.entry) : null,
+      })),
+      backends: { [MEMORY_BACKEND]: true },
     };
   } catch (err) {
     return {
@@ -229,26 +273,25 @@ export function searchIntentKnots(intentId, opts = {}) {
 }
 
 /**
- * History of intent knots for an element_id (= intent_id).
+ * The knots of one intent in the order they were recorded.
  */
 export function historyIntentKnots(intentId, opts = {}) {
   const dataDir = expandHome(opts.dataDir ?? defaultPaths().dataDir);
   const configPath = opts.configPath ?? join(dataDir, "base-node.json");
   const cli = opts.memoryCliPath ?? resolveMemoryCliPath(configPath);
-  const dbPath = opts.latticeDb ?? resolveLatticeDbPath(configPath, dataDir);
+  const storePath = opts.memoryStore ?? resolveMemoryStorePath(configPath, dataDir);
   if (!existsSync(cli)) {
-    return { intent_id: intentId, entries: [], error: `aep-memory not found: ${cli}` };
+    return { intent_id: intentId, entries: [], error: `${MEMORY_PROGRAM} not found: ${cli}` };
   }
   try {
-    const entries = runMemoryCli(cli, dbPath, "history", {
-      element_id: intentId,
-      result: opts.result ?? null,
-    });
-    const filtered = (entries ?? []).filter((e) => {
-      const kind = e.proposal?.kind ?? e.metadata?.kind;
-      return kind === INTENT_KNOT_KIND || e.element_id === intentId;
-    });
-    return { intent_id: intentId, db_path: dbPath, entries: filtered };
+    const request = { domain: INTENT_KNOT_DOMAIN, element_id: intentId };
+    if (opts.result) request.result = opts.result;
+    const entries = runMemoryCli(cli, storePath, "history", request);
+    return {
+      intent_id: intentId,
+      store_path: storePath,
+      entries: (entries ?? []).map(knotEntry),
+    };
   } catch (err) {
     return {
       intent_id: intentId,
@@ -257,4 +300,3 @@ export function historyIntentKnots(intentId, opts = {}) {
     };
   }
 }
-

@@ -1,15 +1,15 @@
-// CC-26: intent knots land in Lattice Memory (aep-memory: SQLite with sqlite-vec and
-// the USearch fast path), the one store of the knots. Recording a knot makes no
-// network call.
+// CC-26: intent knots land in Lattice Memory through the program aep-lattice-memory,
+// the one store of the knots. A knot is one record of the domain intent. Recording a
+// knot makes no network call.
 
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   INTENT_KNOT_KIND,
+  MEMORY_BACKEND,
   historyIntentKnots,
   recordIntentKnot,
-  recordIntentKnotSqlite,
   searchIntentKnots,
 } from "../../intent-ledger/lib/intent-knots.mjs";
 import { saveIntentSnapshot } from "../../intent-ledger/lib/ledger.mjs";
@@ -23,10 +23,10 @@ beforeEach(() => {
   dataDir = mkdtempSync(join(tmpdir(), "aep-cc26-"));
   saved = {
     AEP_INTENT_KNOT_STRICT: process.env.AEP_INTENT_KNOT_STRICT,
-    AEP_LATTICE_DB: process.env.AEP_LATTICE_DB,
+    AEP_LATTICE_MEMORY_DIR: process.env.AEP_LATTICE_MEMORY_DIR,
   };
   delete process.env.AEP_INTENT_KNOT_STRICT;
-  delete process.env.AEP_LATTICE_DB;
+  delete process.env.AEP_LATTICE_MEMORY_DIR;
 });
 
 afterEach(() => {
@@ -38,55 +38,75 @@ afterEach(() => {
 });
 
 function store() {
-  return { dataDir, memoryCliPath: memoryBin(), latticeDb: join(dataDir, "action-lattice.db") };
+  return { dataDir, memoryCliPath: memoryBin(), memoryStore: join(dataDir, "lattice-memory") };
 }
 
-/** Knots of one intent in the canonical store, read back through aep-memory history. */
+/** Knots of one intent in the store, read back through the history of the program. */
 function knotCount(opts, intentId = INTENT) {
   const history = historyIntentKnots(intentId, opts);
   if (history.error) throw new Error(history.error);
   return history.entries.length;
 }
 
-describe("CC-26 lattice memory intent knots, sqlite-vec plus USearch", () => {
-  it("CC-26 propose and solidify knots are recorded in the canonical store", () => {
+describe("CC-26 lattice memory intent knots", () => {
+  it("CC-26 propose and solidify knots are recorded in the store", () => {
     const opts = store();
-    const propose = recordIntentKnotSqlite(
+    const propose = recordIntentKnot(
       "propose",
       { intentId: INTENT, statement: "conformance knot", agentId: "AG-CONF-26" },
       opts,
     );
-    expect(propose.sqlite).toMatchObject({ recorded: true, backend: "sqlite", db_path: opts.latticeDb });
-    expect(propose.knot.metadata).toMatchObject({ kind: INTENT_KNOT_KIND, phase: "propose", backends: ["sqlite"] });
-    expect(propose.knot.embedding.length).toBeGreaterThan(0);
-    const solidify = recordIntentKnotSqlite(
+    expect(propose.memory).toMatchObject({
+      recorded: true,
+      backend: MEMORY_BACKEND,
+      key: 1,
+      store_path: opts.memoryStore,
+    });
+    expect(propose.knot.metadata).toMatchObject({
+      kind: INTENT_KNOT_KIND,
+      phase: "propose",
+      backends: [MEMORY_BACKEND],
+    });
+    const solidify = recordIntentKnot(
       "solidify",
-      { intentId: INTENT, solidifyEntry: { record_hash: "rh-conf" } },
+      { intentId: INTENT, statement: "conformance knot", solidifyEntry: { record_hash: "rh-conf" } },
       opts,
     );
-    expect(solidify.sqlite.recorded).toBe(true);
+    expect(solidify.memory).toMatchObject({ recorded: true, key: 2 });
     expect(knotCount(opts)).toBe(2);
+    // The store is one folder with one log per domain.
+    expect(readdirSync(opts.memoryStore)).toContain("intent.lmlog");
   });
 
-  it("CC-26 history and similarity search find the knots of one intent", () => {
+  it("CC-26 history and search find the knots of one intent", () => {
     const opts = store();
     saveIntentSnapshot(dataDir, INTENT, { statement: "conformance knot" }, null);
-    recordIntentKnotSqlite("propose", { intentId: INTENT, statement: "conformance knot" }, opts);
-    recordIntentKnotSqlite("solidify", { intentId: INTENT }, opts);
-    recordIntentKnotSqlite("propose", { intentId: "INT-OTHER", statement: "unrelated" }, opts);
+    recordIntentKnot("propose", { intentId: INTENT, statement: "conformance knot" }, opts);
+    recordIntentKnot("solidify", { intentId: INTENT, statement: "conformance knot" }, opts);
+    recordIntentKnot("propose", { intentId: "INT-OTHER", statement: "an unrelated piece of work" }, opts);
 
     const history = historyIntentKnots(INTENT, opts);
     expect(history.error).toBeUndefined();
-    expect(history.entries.map((e) => e.metadata?.phase ?? e.proposal?.phase).sort()).toEqual([
-      "propose",
-      "solidify",
-    ]);
+    expect(history.entries.map((e) => e.metadata.phase)).toEqual(["propose", "solidify"]);
     expect(history.entries.every((e) => e.element_id === INTENT)).toBe(true);
+    expect(history.entries.every((e) => e.metadata.kind === INTENT_KNOT_KIND)).toBe(true);
+    // The store keeps digests and labels and never the statement of an intent.
+    expect(JSON.stringify(history.entries)).not.toContain("conformance knot");
 
+    // The search uses the shape the knots were recorded with, so the knots of the
+    // intent are the exact match: both phases met in one attractor.
     const search = searchIntentKnots(INTENT, { ...opts, limit: 10 });
     expect(search.error).toBeUndefined();
-    expect(search.matches.length).toBeGreaterThan(0);
-    expect(search.matches.some((m) => m.entry?.element_id === INTENT)).toBe(true);
+    expect(search.matches).toHaveLength(2);
+    expect(search.matches[0].similarity).toBe(1);
+    expect(search.matches[0].attractor.support).toBe(2);
+    expect(search.matches[0].entry.element_id).toBe(INTENT);
+    expect(search.matches[0].entry.metadata.phase).toBe("solidify");
+    expect(search.matches[1].entry.element_id).toBe("INT-OTHER");
+    expect(search.matches[1].similarity).toBeLessThan(0.9);
+    // With the threshold of an attractor only the knots of the intent remain.
+    const near = searchIntentKnots(INTENT, { ...opts, minScore: 230 });
+    expect(near.matches.map((m) => m.entry.element_id)).toEqual([INTENT]);
   });
 
   it("CC-26 recording a knot makes no network call and the record stands", () => {
@@ -99,8 +119,8 @@ describe("CC-26 lattice memory intent knots, sqlite-vec plus USearch", () => {
     };
     try {
       const out = recordIntentKnot("propose", { intentId: INTENT, statement: "s" }, opts);
-      expect(out.sqlite.recorded).toBe(true);
-      expect(out.knot.metadata.backends).toEqual(["sqlite"]);
+      expect(out.memory.recorded).toBe(true);
+      expect(out.knot.metadata.backends).toEqual([MEMORY_BACKEND]);
     } finally {
       globalThis.fetch = savedFetch;
     }
@@ -108,13 +128,13 @@ describe("CC-26 lattice memory intent knots, sqlite-vec plus USearch", () => {
     expect(knotCount(opts)).toBe(1);
   });
 
-  it("CC-26 strict mode fails closed when the canonical store is missing", () => {
+  it("CC-26 strict mode fails closed when the program is missing", () => {
     process.env.AEP_INTENT_KNOT_STRICT = "1";
     expect(() =>
-      recordIntentKnotSqlite("propose", { intentId: INTENT }, {
+      recordIntentKnot("propose", { intentId: INTENT }, {
         ...store(),
-        memoryCliPath: join(dataDir, "absent-aep-memory"),
+        memoryCliPath: join(dataDir, "absent-aep-lattice-memory"),
       }),
-    ).toThrow(/aep-memory binary not found/);
+    ).toThrow(/aep-lattice-memory binary not found/);
   });
 });

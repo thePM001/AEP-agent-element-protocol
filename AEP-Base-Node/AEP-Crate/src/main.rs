@@ -2,15 +2,14 @@ use aep_agent_control_hub::{resolve_gap_root, AgentControlHub};
 use aep_base_node::dock_event;
 use aep_base_node::dock_keys::{load_or_create_dock_kem, AgentSignKeyStore};
 use aep_base_node::dock_log::{DockEvent, LogConfig};
+use aep_base_node::lattice_memory::MemoryReport;
 use aep_base_node::{
     bootstrap_contracts_from_lrps, drain_docking_servers, health, now_unix, open_lattice_db,
     record_lattice_event, run_docking_servers, sockets_exist, BaseNodeHealth, DockingRuntime,
     HealthInput, COMPONENT_ID, CORRECTWRITING_EN_PRIORITY,
 };
 use aep_lattice_channel::{build_frame_for_dock, frame_digest, DockingPort};
-use aep_lattice_memory::{AttractorRecord, LatticeMemoryStore};
 use clap::Parser;
-use rand::RngCore;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use tracing::info;
@@ -190,33 +189,12 @@ fn load_hub(data_dir: &Path) -> Option<AgentControlHub> {
 /// database that cannot be opened reads as a closed ledger.
 fn offline_health(cfg: &ResolvedConfig, lattice_db: &Path) -> BaseNodeHealth {
     let data_dir = data_dir_for(lattice_db);
-    let (events, mut sqlite_closed) = match open_lattice_db(lattice_db) {
+    let (events, sqlite_closed) = match open_lattice_db(lattice_db) {
         Ok(conn) => match aep_base_node::event_count(&conn) {
             Ok(n) => (n, false),
             Err(_) => (0, true),
         },
         Err(_) => (0, true),
-    };
-    let (attractors, dim, vec_version) = match LatticeMemoryStore::open_default(lattice_db) {
-        Ok(memory) => match memory.attractor_count() {
-            Ok(n) => (
-                n,
-                memory.embedding_dim() as u32,
-                memory.sqlite_vec_version(),
-            ),
-            Err(_) => {
-                sqlite_closed = true;
-                (
-                    0,
-                    memory.embedding_dim() as u32,
-                    memory.sqlite_vec_version(),
-                )
-            }
-        },
-        Err(_) => {
-            sqlite_closed = true;
-            (0, 0, None)
-        }
     };
     let (mesh_peers, mesh_routes, mesh_load_error) =
         aep_base_node::resolve_mesh_peers(Some(&data_dir), cfg.internet_up, cfg.mesh_peers);
@@ -236,9 +214,7 @@ fn offline_health(cfg: &ResolvedConfig, lattice_db: &Path) -> BaseNodeHealth {
             .map(|h| h.permissions.len() as u32)
             .unwrap_or(0),
         mesh_peers_load_error: mesh_load_error,
-        lattice_memory_attractors: attractors,
-        lattice_memory_dim: dim,
-        sqlite_vec_version: vec_version,
+        lattice_memory: MemoryReport::offline(&data_dir),
         docking_ports_listening: sockets_exist(&cfg.socket_base),
         mesh_routes,
         data_dir: Some(&data_dir),
@@ -254,7 +230,6 @@ fn daemon_health(
     runtime: &DockingRuntime,
     cfg: &ResolvedConfig,
     data_dir: &Path,
-    lattice_db: &Path,
 ) -> BaseNodeHealth {
     let sqlite_closed = runtime.sqlite_is_closed();
     let events = if sqlite_closed {
@@ -264,14 +239,6 @@ fn daemon_health(
             Ok(db) => aep_base_node::event_count(&db).unwrap_or(0),
             Err(p) => aep_base_node::event_count(&p.into_inner()).unwrap_or(0),
         }
-    };
-    let (attractors, dim, vec_version) = match LatticeMemoryStore::open_default(lattice_db) {
-        Ok(memory) => (
-            memory.attractor_count().unwrap_or(0),
-            memory.embedding_dim() as u32,
-            memory.sqlite_vec_version(),
-        ),
-        Err(_) => (0, 0, None),
     };
     let (mesh_peers, mesh_routes, mesh_load_error) =
         aep_base_node::resolve_mesh_peers(Some(data_dir), cfg.internet_up, cfg.mesh_peers);
@@ -288,9 +255,7 @@ fn daemon_health(
         hub_mounts: hub.mounts.len() as u32,
         hub_permissions: hub.permissions.len() as u32,
         mesh_peers_load_error: mesh_load_error,
-        lattice_memory_attractors: attractors,
-        lattice_memory_dim: dim,
-        sqlite_vec_version: vec_version,
+        lattice_memory: MemoryReport::of_runtime(&runtime.record),
         docking_ports_listening: runtime.docking_ports_listening(),
         mesh_routes,
         data_dir: Some(data_dir),
@@ -330,6 +295,11 @@ async fn run_daemon(
         }
     };
     let data_dir = data_dir_for(lattice_db);
+    // The store before this one kept its rows in the ledger file and an index file
+    // beside it. Lattice Memory starts fresh in a folder of its own.
+    if aep_base_node::lattice_memory::retire_old_store(&conn, lattice_db) {
+        info!("the rows and the index file of the earlier memory store were removed");
+    }
     let runtime =
         match DockingRuntime::with_data_dir(cfg.socket_base.clone(), conn, &cfg.lrps, &data_dir) {
             Ok(r) => r,
@@ -393,7 +363,7 @@ async fn run_daemon(
             }
         }
     }
-    let report = daemon_health(&runtime, cfg, &data_dir, lattice_db);
+    let report = daemon_health(&runtime, cfg, &data_dir);
     match report.status {
         "ok" => dock_event!(
             info,
@@ -447,7 +417,6 @@ fn run_self_test(
     contracts: &aep_lattice_channel::ContractRegistry,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let conn = open_lattice_db(lattice_db)?;
-    let mut memory = LatticeMemoryStore::open_default(lattice_db)?;
     let data_dir = data_dir_for(lattice_db);
     let dock_kem = load_or_create_dock_kem(&data_dir);
     let mut sign_store = AgentSignKeyStore::load(&data_dir);
@@ -479,27 +448,9 @@ fn run_self_test(
         return Err("self-test failed: dynaep-action-lattice contract inactive".into());
     }
 
-    let mut probe = vec![0.0_f32; memory.embedding_dim()];
-    probe[0] = 1.0;
-    let mut nonce = [0u8; 4];
-    rand::thread_rng().fill_bytes(&mut nonce);
-    memory.record(AttractorRecord {
-        entry_id: format!("selftest-{}-{}", now_unix(), hex::encode(nonce)),
-        element_id: "AG-BOOT".into(),
-        domain: "event".into(),
-        outcome: "accepted".into(),
-        recorded_at_unix: now_unix(),
-        embedding: probe,
-    })?;
-    let hits = memory.search(&[1.0, 0.0, 0.0], 1)?;
-    if hits.is_empty() {
-        return Err("self-test failed: lattice memory vector search returned no hits".into());
-    }
-    info!(
-        attractors = memory.attractor_count()?,
-        sqlite_vec = ?memory.sqlite_vec_version(),
-        "self-test lattice memory index ok"
-    );
+    // The memory is tested in the process. The self-test writes no record to any store.
+    let attractors = aep_base_node::lattice_memory::self_test()?;
+    info!(attractors, "self-test lattice memory ok");
     Ok(())
 }
 

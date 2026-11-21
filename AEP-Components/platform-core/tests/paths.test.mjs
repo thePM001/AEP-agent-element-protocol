@@ -19,7 +19,7 @@ const KEYS = [
   "AEP_AEP_LATTICE_LOG_BIN",
   "AEP_LATTICE_LOG_BIN",
   "AEP_LATTICE_LOG_CLI",
-  "AEP_AEP_MEMORY_BIN",
+  "AEP_AEP_LATTICE_MEMORY_BIN",
 ];
 
 let saved = {};
@@ -79,14 +79,14 @@ describe("resolveAepData and resolveSocketBase", () => {
 describe("resolveBinary", () => {
   it("defaults to /usr/local/bin/<name>", () => {
     expect(resolveBinary()).toBe("/usr/local/bin/aep-base-node");
-    expect(resolveBinary("aep-memory")).toBe("/usr/local/bin/aep-memory");
+    expect(resolveBinary("aep-lattice-memory")).toBe("/usr/local/bin/aep-lattice-memory");
   });
 
   it("reads the generic AEP_<NAME>_BIN key first", () => {
-    process.env.AEP_AEP_MEMORY_BIN = "/opt/mem";
+    process.env.AEP_AEP_LATTICE_MEMORY_BIN = "/opt/mem";
     process.env.AEP_AEP_LATTICE_LOG_BIN = "/opt/generic-log";
     process.env.AEP_LATTICE_LOG_BIN = "/opt/log";
-    expect(resolveBinary("aep-memory")).toBe("/opt/mem");
+    expect(resolveBinary("aep-lattice-memory")).toBe("/opt/mem");
     expect(resolveBinary("aep-lattice-log")).toBe("/opt/generic-log");
   });
 
@@ -101,7 +101,7 @@ describe("resolveBinary", () => {
 
   it("does not apply the short keys to other binaries", () => {
     process.env.AEP_BASE_NODE_BIN = "/opt/node";
-    expect(resolveBinary("aep-memory")).toBe("/usr/local/bin/aep-memory");
+    expect(resolveBinary("aep-lattice-memory")).toBe("/usr/local/bin/aep-lattice-memory");
   });
 });
 
@@ -117,7 +117,7 @@ describe("defaultPaths", () => {
       socketBase: join(data, "sockets"),
       baseNodeBin: "/usr/local/bin/aep-base-node",
       latticeLogBin: "/usr/local/bin/aep-lattice-log",
-      memoryBin: "/usr/local/bin/aep-memory",
+      memoryBin: "/usr/local/bin/aep-lattice-memory",
     });
   });
 

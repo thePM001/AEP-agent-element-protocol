@@ -85,7 +85,7 @@
       "bundled": true,
       "default_enabled": true,
       "path": "AEP-Components/lattice-memory/",
-      "description": "sqlite-vec validation memory and attractor search.",
+      "description": "Record of every Admit verdict with attractors of the accepted shapes.",
       "manifest": "AEP-Base-Node/AEP-Registry/components/lattice-memory.json",
       "role": "kernel"
     },

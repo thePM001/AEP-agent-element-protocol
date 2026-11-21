@@ -28,7 +28,7 @@ export function kernelBinary(name, envKey) {
 }
 
 export const latticeLogBin = () => kernelBinary("aep-lattice-log", "AEP_LATTICE_LOG_BIN");
-export const memoryBin = () => kernelBinary("aep-memory", "AEP_MEMORY_CLI");
+export const memoryBin = () => kernelBinary("aep-lattice-memory", "AEP_LATTICE_MEMORY_CLI");
 
 /**
  * The kernel fixture folder run.sh prepares with the Base Node operator provision

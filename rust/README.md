@@ -6,7 +6,7 @@ Build output is directed here via .cargo/config.toml:
 
     rust/target/release/aep-base-node
     rust/target/release/aep-lattice-log
-    rust/target/release/aep-memory
+    rust/target/release/aep-lattice-memory
     rust/target/release/aep-conformance
     rust/target/release/aep-ucb
 
@@ -34,7 +34,7 @@ Each crate of the workspace belongs to one of the 18 main components or to the s
 | 10 Base Node Pulse | `aep-base-node-pulse` |
 | 11 CAWs | `aep-caw-policy`, `aep-caw-runtime`, `aep-caw-egress`, `aep-caw-dock`, the programs `aep-caw` and `aep-caw-init`, `aep-isolation` and `aep-caw-cve-demo-trees` |
 | 13 AgentMesh | `aep-agentmesh` and `aep-agentmesh-local-issuance` |
-| 15 Lattice Memory | `aep-lattice-memory` |
+| 15 Lattice Memory | `aep-lattice-memory-core` and `aep-lattice-memory` |
 | 18 TLA+ | `aep-tla-verify` and `aep-conformance` |
 | Shared parts | `aep-ede`, `aep-ucm-core`, `aep-ucm-receipt`, `aep-ucm-lookup` and `aep-ucm` |
 

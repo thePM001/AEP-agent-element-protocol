@@ -8,7 +8,7 @@ The AEP Base Node is the governance kernel of the protocol. It runs on your own 
 
 ## Place among the 18
 
-Work arrives as sealed capsules on the Lattice Channels (08), either straight from a component or through UCB (02). The Base Node hosts UCB (02) under `AEP-Docks/` and it runs the Base Node Pulse (10) as its clock. It places each proposal in the One Validation Envelope (03) and the Admit Gate (04) judges it with the GAP policy (06), the Scanners (12) and the identity from AgentMesh (13). After an allow the CAWs (11) run host commands and Lattice Memory (15) stores the shape of the judged proposal.
+Work arrives as sealed capsules on the Lattice Channels (08), either straight from a component or through UCB (02). The Base Node hosts UCB (02) under `AEP-Docks/` and it runs the Base Node Pulse (10) as its clock. It places each proposal in the One Validation Envelope (03) and the Admit Gate (04) judges it with the GAP policy (06), the Scanners (12) and the identity from AgentMesh (13). After an allow the CAWs (11) run host commands. After every verdict of Admit is written, the Base Node hands a record of it to Lattice Memory (15) through a bounded queue that never holds a verdict back. Admit reads a route hint and an exact-match memo from that memory and takes no verdict from it.
 
 ## What ships in 2.9
 
@@ -42,8 +42,8 @@ Work arrives as sealed capsules on the Lattice Channels (08), either straight fr
 - Binaries: `aep-lattice-log` and `aep-base-node` with `--daemon`, `--health` and `--self-test`.
 - Sockets: `inference`, `validation`, `regulation` and `future` under `$AEP_DATA/sockets`.
 - Ports: 8413 for the Data Dock. UCB (02) listens on 8412 as a service of its own.
-- Environment: `AEP_DATA`, `AEP_GATEWAY_ROUTES`, `DATA_DOCK`, `DATA_DOCK_API_KEY`, `AEP_LOG`, `AEP_LOG_JSON` and `AEP_LOG_FILE`.
-- Files: `lattice.yaml`, `gateway-routes.json` and the `action-lattice.db` store in the data folder.
+- Environment: `AEP_DATA`, `AEP_GATEWAY_ROUTES`, `DATA_DOCK`, `DATA_DOCK_API_KEY`, `AEP_LOG`, `AEP_LOG_JSON`, `AEP_LOG_FILE` and `AEP_LATTICE_MEMORY`, which turns Lattice Memory off when set to `off`.
+- Files: `lattice.yaml`, `gateway-routes.json`, the `action-lattice.db` store and the folder `lattice-memory` in the data folder.
 
 ## Four tiers of the page and four planes of the code
 
@@ -230,7 +230,7 @@ The request runs on a thread of its own after the ledger row is written, so a sl
 
 `aep-base-node --health` prints the BaseNodeHealth JSON without binding any dock. The exit code is 0 for ok, 1 for degraded and 2 for error, so a script can gate on it. The flag cannot be combined with `--daemon` or `--self-test`.
 
-The status comes from one rollup that the daemon ready log and the Data Dock `GET /health` share. It is `error` when the lattice ledger is closed and `degraded` when the dock sockets are missing, the Agent Control Hub is not loaded or the mesh peer file failed to load. Any other state is `ok`. The report also carries `sqlite_closed`, `last_tls_handshake_err` and `drain_aborted_tasks`.
+The status comes from one rollup that the daemon ready log and the Data Dock `GET /health` share. It is `error` when the lattice ledger is closed and `degraded` when the dock sockets are missing, the Agent Control Hub is not loaded or the mesh peer file failed to load. Any other state is `ok`. The report also carries `sqlite_closed`, `last_tls_handshake_err` and `drain_aborted_tasks`. For Lattice Memory (15) it carries `lattice_memory_status`, `lattice_memory_records`, `lattice_memory_attractors`, `lattice_memory_dropped` and `lattice_memory_failed`. A running node answers these from its live counters. A health check of a node that is not running opens the store to read and changes nothing. The status of the memory does not enter the rollup: a node whose memory is off or failed judges every proposal on the cold path.
 
 The daemon listens on four unix docks for inference, validation, regulation and future. UCB remains on 8412 and Data Dock serves HTTP JSON on 8413 as a surface in front of those docks rather than a fifth dock. Data Dock binds loopback by default. On any other host it uses `DATA_DOCK_API_KEY` when set, else the key file `$AEP_DATA/keys/data-dock.http-key`, else it mints that file with mode 0600 on first boot as described in the Data Dock guide. `DATA_DOCK=0` turns the HTTP surface off. See [`DATA-DOCK.md`](../AEP-User-Experience/docs/DATA-DOCK.md) for the routes.
 

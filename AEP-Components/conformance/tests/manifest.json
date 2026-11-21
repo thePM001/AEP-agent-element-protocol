@@ -114,7 +114,7 @@
   },
   {
    "id": "CC-26",
-   "name": "Lattice memory intent knots sqlite-vec plus USearch",
+   "name": "Lattice Memory intent knots through the program aep-lattice-memory",
    "runner": "vitest",
    "file": "AEP-Components/conformance/tests/cc-26-intent-knots-memory.test.mjs"
   },

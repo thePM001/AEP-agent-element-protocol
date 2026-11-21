@@ -7,7 +7,6 @@ import {
   resolveEvidenceLedgerDir,
   summarizeEvidenceSession,
 } from "../lib/evidence-link.mjs";
-import { DEFAULT_EMBEDDING_DIM, deriveEmbedding } from "../lib/embedding.mjs";
 import { openSandbox } from "./env-guard.mjs";
 
 let box;
@@ -122,55 +121,5 @@ describe("buildEvidenceLedgerRef", () => {
     expect(() => buildEvidenceLedgerRef(ledgerDir, "nope")).toThrow(
       /evidence ledger not found for session 'nope'/,
     );
-  });
-});
-
-describe("deriveEmbedding", () => {
-  const entry = {
-    element_id: "intent-1",
-    domain: "event",
-    proposal: { kind: "intent_knot", statement: "s" },
-    result: "accepted",
-  };
-
-  function norm(v) {
-    return Math.sqrt(v.reduce((acc, x) => acc + x * x, 0));
-  }
-
-  it("returns a unit vector of the default dimension", () => {
-    const v = deriveEmbedding(entry);
-    expect(DEFAULT_EMBEDDING_DIM).toBe(128);
-    expect(v).toHaveLength(128);
-    expect(norm(v)).toBeCloseTo(1, 10);
-    for (const x of v) expect(Number.isFinite(x)).toBe(true);
-  });
-
-  it("is deterministic and ignores fields outside the hashed set", () => {
-    const a = deriveEmbedding(entry);
-    const b = deriveEmbedding({ ...entry, id: "other", timestamp: "now", embedding: [1] });
-    expect(b).toEqual(a);
-  });
-
-  it("changes when a hashed field changes", () => {
-    const a = deriveEmbedding(entry);
-    expect(deriveEmbedding({ ...entry, element_id: "intent-2" })).not.toEqual(a);
-    expect(deriveEmbedding({ ...entry, result: "rejected" })).not.toEqual(a);
-    expect(deriveEmbedding({ ...entry, proposal: { kind: "intent_knot", statement: "t" } })).not.toEqual(a);
-  });
-
-  it("honours a custom dimension and repeats the seed past 32 bytes", () => {
-    const v = deriveEmbedding(entry, 64);
-    expect(v).toHaveLength(64);
-    expect(norm(v)).toBeCloseTo(1, 10);
-    expect(v.slice(32)).toEqual(v.slice(0, 32));
-  });
-
-  it("produces the same direction for every dimension prefix", () => {
-    const short = deriveEmbedding(entry, 8);
-    const long = deriveEmbedding(entry, 32);
-    const ratio = short[0] / long[0];
-    for (let i = 0; i < 8; i++) {
-      expect(short[i] / long[i]).toBeCloseTo(ratio, 10);
-    }
   });
 });

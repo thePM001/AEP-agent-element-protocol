@@ -7,6 +7,7 @@ members = [
     "AEP-Components/lattice-channels/crate",
     "AEP-Components/agentmesh/crate",
     "AEP-Base-Node/AEP-Potomitan/crate",
+    "AEP-Components/lattice-memory/core",
     "AEP-Components/lattice-memory/crate",
     "AEP-Base-Node/AEP-Multi-Base-Node/crate",
     "AEP-Base-Node/AEP-Crate",
@@ -93,11 +94,8 @@ ml-kem = { version = "0.3", features = ["getrandom"] }
 ml-dsa = { version = "0.1", features = ["getrandom"] }
 base64 = "0.22"
 rusqlite = { version = "0.41", features = ["bundled", "fallible_uint"] }
-sqlite-vec = "0.1.9"
-usearch = "2.26"
-# Pin soundness-fixed transitive deps (RUSTSEC-2026-0190 / RUSTSEC-2026-0202).
+# Pin the soundness-fixed version of a transitive dependency (RUSTSEC-2026-0190).
 anyhow = "1.0.103"
-cxx = "1.0.195"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "io-util", "signal", "sync", "time"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

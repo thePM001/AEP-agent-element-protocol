@@ -46,6 +46,13 @@ pub struct DockRecord {
     pub db: Arc<Mutex<Connection>>,
     pub pulse: Arc<Mutex<crate::docking::PulseState>>,
     pub sqlite_closed: AtomicBool,
+    /// Lattice Memory of the node. None when it is off or could not be opened: the node
+    /// then judges every proposal on the cold path.
+    pub memory: Option<Arc<crate::lattice_memory::VerdictMemory>>,
+    /// `ok`, `off` or `error`.
+    pub memory_status: &'static str,
+    /// Why the memory could not be opened.
+    pub memory_error: Option<String>,
 }
 /// Index of a docking port in [`DockIo::port_slots`].
 pub fn port_slot_index(port: aep_lattice_channel::DockingPort) -> usize {

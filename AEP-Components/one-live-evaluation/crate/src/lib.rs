@@ -2,7 +2,9 @@
 // Extra_walls is AdmitWall id. Drop extra_walls conversion from a second admit_collect_all.
 // The source check in this crate is a conformance check named
 // conformance_check_one_live_evaluation_source. It is not a second admit path.
-use aep_admit_live_dock::{compile_live_walls, compile_live_walls_and_charge, LiveDockContext};
+use aep_admit_live_dock::{
+    compile_live_walls, compile_live_walls_in_view, LiveDockContext, MemoryView, PureWallTrace,
+};
 use aep_envelope::{admit_with_extra, dest_dock_from_opened_frame, EnvelopeAction};
 use aep_live_entry::{LiveEntry, ProcessOut};
 use serde_json::Value;
@@ -53,19 +55,32 @@ fn action_from_event(event: &Value, docking_port: &str) -> EnvelopeAction {
     }
 }
 
-/// Compile product wall crates onto LiveEntry extra walls. This is not a combinator.
-/// Extra walls keep AdmitWall id. Do not convert from a second admit_collect_all.
-pub fn attach_live_walls(live: &mut LiveEntry, event: &Value, dock: &LiveDockContext) {
-    let (walls, charge) = compile_live_walls_and_charge(live, event, dock);
-    live.extra_walls = walls;
+/// Compile product wall crates onto LiveEntry extra walls in the view of a memory. This
+/// is not a combinator. Extra walls keep AdmitWall id. Do not convert from a second
+/// admit_collect_all. The answer names the rows of the pure wall family and whether
+/// they were stored rows, so the caller can store computed rows after the verdict.
+pub fn attach_live_walls_in_view(
+    live: &mut LiveEntry,
+    event: &Value,
+    dock: &LiveDockContext,
+    view: &MemoryView<'_>,
+) -> PureWallTrace {
+    let compiled = compile_live_walls_in_view(live, event, dock, view);
+    live.extra_walls = compiled.walls;
     // process_event records this charge in the budget ledger only when Admit allows.
-    live.budget_charge = charge;
+    live.budget_charge = compiled.charge;
     let scene = event
         .get("target_id")
         .and_then(|v| v.as_str())
         .unwrap_or("");
     live.bind_opened_frame(scene, &dock.docking_port);
     live.opened_agent_id = dock.agent_id.clone();
+    compiled.pure
+}
+
+/// Compile product wall crates onto LiveEntry extra walls without a memory.
+pub fn attach_live_walls(live: &mut LiveEntry, event: &Value, dock: &LiveDockContext) {
+    let _ = attach_live_walls_in_view(live, event, dock, &MemoryView::cold());
 }
 
 /// One Admit function for the opened frame. Wall-crate walls plus envelope walls. One AND.

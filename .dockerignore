@@ -4,7 +4,8 @@
 **/.aep
 **/dist
 *.db
-*.usearch
+*.lmlog
+*.lmsnap
 .env
 .env.*
 AEP-Research-Paper

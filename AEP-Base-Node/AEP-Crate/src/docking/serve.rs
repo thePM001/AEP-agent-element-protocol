@@ -541,4 +541,8 @@ pub async fn drain_docking_servers(runtime: &DockingRuntime, handles: Vec<JoinHa
         closed = runtime.sqlite_is_closed(),
         "lattice sqlite closed"
     );
+    // The memory writes what its queue still holds and its snapshots.
+    if let Some(memory) = runtime.record.memory.as_deref() {
+        memory.stop();
+    }
 }

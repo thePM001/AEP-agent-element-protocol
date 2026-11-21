@@ -6,15 +6,15 @@ import { join } from "node:path";
 import {
   buildIntentKnotEntry,
   historyIntentKnots,
+  intentKnotShape,
   INTENT_KNOT_DOMAIN,
   INTENT_KNOT_KIND,
+  MEMORY_BACKEND,
   recordIntentKnot,
-  recordIntentKnotSqlite,
-  resolveLatticeDbPath,
   resolveMemoryCliPath,
+  resolveMemoryStorePath,
   searchIntentKnots,
 } from "../lib/intent-knots.mjs";
-import { deriveEmbedding } from "../lib/embedding.mjs";
 import { jsonResponse, openSandbox, useDirectFetch } from "./env-guard.mjs";
 
 let box;
@@ -43,11 +43,12 @@ const FIELDS = {
 };
 
 describe("buildIntentKnotEntry", () => {
-  it("builds a lattice memory entry with the full proposal", () => {
+  it("builds a knot of the intent domain with the full proposal", () => {
     const knot = buildIntentKnotEntry("solidify", FIELDS);
-    expect(knot.id).toMatch(/^ik-solidify-intent-1-\d+$/);
+    expect(knot.id).toMatch(/^ik-solidify-intent-1-\d+-[0-9a-f]{8}$/);
     expect(knot.element_id).toBe("intent-1");
     expect(knot.domain).toBe(INTENT_KNOT_DOMAIN);
+    expect(INTENT_KNOT_DOMAIN).toBe("intent");
     expect(knot.result).toBe("accepted");
     expect(knot.errors).toEqual([]);
     expect(knot.traversal_path).toEqual(["coding_governance:solidify"]);
@@ -55,7 +56,7 @@ describe("buildIntentKnotEntry", () => {
       kind: INTENT_KNOT_KIND,
       phase: "solidify",
       intent_id: "intent-1",
-      backends: ["sqlite"],
+      backends: [MEMORY_BACKEND],
     });
     expect(knot.proposal).toEqual({
       kind: "intent_knot",
@@ -74,10 +75,29 @@ describe("buildIntentKnotEntry", () => {
     expect(Number.isNaN(Date.parse(knot.timestamp))).toBe(false);
   });
 
-  it("carries an embedding derived from the hashed fields", () => {
+  it("gives two knots of one phase different ids", () => {
+    const a = buildIntentKnotEntry("propose", FIELDS);
+    const b = buildIntentKnotEntry("propose", FIELDS);
+    expect(a.id).not.toBe(b.id);
+  });
+
+  it("carries the shape of the intent and no embedding", () => {
     const knot = buildIntentKnotEntry("propose", FIELDS);
-    expect(knot.embedding).toHaveLength(128);
-    expect(knot.embedding).toEqual(deriveEmbedding(knot));
+    expect(knot.shape).toEqual({
+      kind: "intent_knot",
+      intent_id: "intent-1",
+      statement: "rename the parser module",
+      components: ["admit", "gap"],
+    });
+    expect(knot.embedding).toBeUndefined();
+  });
+
+  it("gives every phase of one intent the same shape", () => {
+    const propose = buildIntentKnotEntry("propose", FIELDS);
+    const solidify = buildIntentKnotEntry("solidify", FIELDS);
+    const announce = buildIntentKnotEntry("announce", FIELDS);
+    expect(solidify.shape).toEqual(propose.shape);
+    expect(announce.shape).toEqual(propose.shape);
   });
 
   it("fills nulls for missing optional fields", () => {
@@ -93,106 +113,128 @@ describe("buildIntentKnotEntry", () => {
       solidify_record_hash: null,
       evidence_ledger_ref: null,
     });
+    expect(knot.shape).toEqual({
+      kind: "intent_knot",
+      intent_id: "intent-2",
+      statement: null,
+      components: [],
+    });
   });
 
   it("reads top level blast radius components and defaults to an empty list", () => {
     const flat = buildIntentKnotEntry("propose", { intentId: "i", blastRadius: { components: ["x"] } });
     expect(flat.proposal.blast_radius).toEqual({ within_envelope: null, components: ["x"] });
+    expect(flat.shape.components).toEqual(["x"]);
     const bare = buildIntentKnotEntry("propose", { intentId: "i", blastRadius: {} });
     expect(bare.proposal.blast_radius).toEqual({ within_envelope: null, components: [] });
   });
 });
 
-describe("resolveMemoryCliPath", () => {
-  it("prefers AEP_MEMORY_CLI", () => {
-    process.env.AEP_MEMORY_CLI = "/opt/custom/aep-memory";
-    expect(resolveMemoryCliPath()).toBe("/opt/custom/aep-memory");
+describe("intentKnotShape", () => {
+  it("does not depend on the order of the components", () => {
+    const a = intentKnotShape({ intentId: "i", statement: "s", components: ["b", "a"] });
+    const b = intentKnotShape({ intentId: "i", statement: "s", components: ["a", "b"] });
+    expect(a).toEqual(b);
   });
 
-  it("uses the aep-memory next to the configured base node binary when it exists", () => {
-    delete process.env.AEP_MEMORY_CLI;
-    const binDir = join(box.dir, "bin");
-    mkdirSync(binDir, { recursive: true });
-    writeFileSync(join(binDir, "aep-memory"), "");
-    const configPath = join(box.dir, "base-node.json");
-    writeFileSync(configPath, JSON.stringify({ base_node: { binary_path: join(binDir, "aep-base-node") } }));
-    expect(resolveMemoryCliPath(configPath)).toBe(join(binDir, "aep-memory"));
-  });
-
-  it("ignores a corrupt config and still returns an aep-memory path", () => {
-    delete process.env.AEP_MEMORY_CLI;
-    const configPath = join(box.dir, "base-node.json");
-    writeFileSync(configPath, "{broken");
-    expect(resolveMemoryCliPath(configPath)).toMatch(/aep-memory$/);
+  it("leaves the list it was given as it is", () => {
+    const components = ["b", "a"];
+    intentKnotShape({ intentId: "i", components });
+    expect(components).toEqual(["b", "a"]);
   });
 });
 
-describe("resolveLatticeDbPath", () => {
-  it("prefers AEP_LATTICE_DB and expands the home prefix", () => {
-    process.env.AEP_LATTICE_DB = "~/lattice/x.db";
-    expect(resolveLatticeDbPath()).toBe(join(homedir(), "lattice/x.db"));
+describe("resolveMemoryCliPath", () => {
+  it("prefers AEP_LATTICE_MEMORY_CLI", () => {
+    process.env.AEP_LATTICE_MEMORY_CLI = "/opt/custom/aep-lattice-memory";
+    expect(resolveMemoryCliPath()).toBe("/opt/custom/aep-lattice-memory");
   });
 
-  it("reads base_node.lattice_db from the config file", () => {
+  it("uses the program next to the configured base node binary when it exists", () => {
+    delete process.env.AEP_LATTICE_MEMORY_CLI;
+    const binDir = join(box.dir, "bin");
+    mkdirSync(binDir, { recursive: true });
+    writeFileSync(join(binDir, "aep-lattice-memory"), "");
     const configPath = join(box.dir, "base-node.json");
-    writeFileSync(configPath, JSON.stringify({ base_node: { lattice_db: "/srv/lattice.db" } }));
-    expect(resolveLatticeDbPath(configPath)).toBe("/srv/lattice.db");
+    writeFileSync(configPath, JSON.stringify({ base_node: { binary_path: join(binDir, "aep-base-node") } }));
+    expect(resolveMemoryCliPath(configPath)).toBe(join(binDir, "aep-lattice-memory"));
+  });
+
+  it("ignores a corrupt config and still returns a path of the program", () => {
+    delete process.env.AEP_LATTICE_MEMORY_CLI;
+    const configPath = join(box.dir, "base-node.json");
+    writeFileSync(configPath, "{broken");
+    expect(resolveMemoryCliPath(configPath)).toMatch(/aep-lattice-memory$/);
+  });
+});
+
+describe("resolveMemoryStorePath", () => {
+  it("prefers AEP_LATTICE_MEMORY_DIR and expands the home prefix", () => {
+    process.env.AEP_LATTICE_MEMORY_DIR = "~/lattice/memory";
+    expect(resolveMemoryStorePath()).toBe(join(homedir(), "lattice/memory"));
+  });
+
+  it("is the folder beside the ledger file of the config", () => {
+    const configPath = join(box.dir, "base-node.json");
+    writeFileSync(configPath, JSON.stringify({ base_node: { lattice_db: "/srv/aep/lattice.db" } }));
+    expect(resolveMemoryStorePath(configPath)).toBe("/srv/aep/lattice-memory");
   });
 
   it("reads the config from dataDir when no config path is given", () => {
-    writeFileSync(join(dataDir, "base-node.json"), JSON.stringify({ base_node: { lattice_db: "/srv/d.db" } }));
-    expect(resolveLatticeDbPath(undefined, dataDir)).toBe("/srv/d.db");
+    writeFileSync(join(dataDir, "base-node.json"), JSON.stringify({ base_node: { lattice_db: "/srv/d/d.db" } }));
+    expect(resolveMemoryStorePath(undefined, dataDir)).toBe("/srv/d/lattice-memory");
   });
 
-  it("falls back to the default lattice db under AEP_DATA", () => {
+  it("falls back to the folder under the data folder", () => {
     const configPath = join(box.dir, "base-node.json");
     writeFileSync(configPath, "{broken");
-    const expected = join(process.env.AEP_DATA, "action-lattice.db");
-    expect(resolveLatticeDbPath(configPath)).toBe(expected);
-    expect(resolveLatticeDbPath(join(box.dir, "absent.json"))).toBe(expected);
+    const expected = join(process.env.AEP_DATA, "lattice-memory");
+    expect(resolveMemoryStorePath(configPath)).toBe(expected);
+    expect(resolveMemoryStorePath(join(box.dir, "absent.json"))).toBe(expected);
+    expect(resolveMemoryStorePath(undefined, dataDir)).toBe(join(dataDir, "lattice-memory"));
   });
 });
 
-describe("recording without the aep-memory binary", () => {
-  it("returns the knot and a not recorded sqlite result", () => {
-    const { knot, sqlite } = recordIntentKnotSqlite("propose", FIELDS, { dataDir });
+describe("recording without the memory program", () => {
+  it("returns the knot and a not recorded result", () => {
+    const { knot, memory } = recordIntentKnot("propose", FIELDS, { dataDir });
     expect(knot.element_id).toBe("intent-1");
-    expect(sqlite).toEqual({
+    expect(memory).toEqual({
       recorded: false,
-      backend: "sqlite",
-      error: `aep-memory binary not found: ${process.env.AEP_MEMORY_CLI}`,
+      backend: MEMORY_BACKEND,
+      error: `aep-lattice-memory binary not found: ${process.env.AEP_LATTICE_MEMORY_CLI}`,
     });
   });
 
   it("honours an explicit memoryCliPath", () => {
-    const cli = join(box.dir, "elsewhere", "aep-memory");
-    const { sqlite } = recordIntentKnotSqlite("propose", FIELDS, { dataDir, memoryCliPath: cli });
-    expect(sqlite.error).toBe(`aep-memory binary not found: ${cli}`);
+    const cli = join(box.dir, "elsewhere", "aep-lattice-memory");
+    const { memory } = recordIntentKnot("propose", FIELDS, { dataDir, memoryCliPath: cli });
+    expect(memory.error).toBe(`aep-lattice-memory binary not found: ${cli}`);
   });
 
   it("throws in strict mode", () => {
     process.env.AEP_INTENT_KNOT_STRICT = "1";
-    expect(() => recordIntentKnotSqlite("propose", FIELDS, { dataDir })).toThrow(
-      /aep-memory binary not found/,
+    expect(() => recordIntentKnot("propose", FIELDS, { dataDir })).toThrow(
+      /aep-lattice-memory binary not found/,
     );
   });
 
-  it("recordIntentKnot records to Lattice Memory and makes no network call", () => {
+  it("recordIntentKnot makes no network call", () => {
     const calls = useDirectFetch(() => jsonResponse(200, {}));
     const out = recordIntentKnot("propose", FIELDS, { dataDir });
-    expect(Object.keys(out).sort()).toEqual(["knot", "sqlite"]);
-    expect(out.sqlite.recorded).toBe(false);
-    expect(out.knot.metadata.backends).toEqual(["sqlite"]);
+    expect(Object.keys(out).sort()).toEqual(["knot", "memory"]);
+    expect(out.memory.recorded).toBe(false);
+    expect(out.knot.metadata.backends).toEqual([MEMORY_BACKEND]);
     expect(calls).toHaveLength(0);
   });
 });
 
-describe("search and history without the aep-memory binary", () => {
-  it("searchIntentKnots returns no matches and names the missing binary", () => {
+describe("search and history without the memory program", () => {
+  it("searchIntentKnots returns no matches and names the missing program", () => {
     expect(searchIntentKnots("intent-1", { dataDir })).toEqual({
       intent_id: "intent-1",
       matches: [],
-      error: `aep-memory not found: ${process.env.AEP_MEMORY_CLI}`,
+      error: `aep-lattice-memory not found: ${process.env.AEP_LATTICE_MEMORY_CLI}`,
     });
   });
 
@@ -200,12 +242,12 @@ describe("search and history without the aep-memory binary", () => {
     expect(() => searchIntentKnots("../x", { dataDir })).toThrow(/invalid intent_id/);
   });
 
-  it("historyIntentKnots returns no entries and names the missing binary", () => {
-    const cli = join(box.dir, "other", "aep-memory");
+  it("historyIntentKnots returns no entries and names the missing program", () => {
+    const cli = join(box.dir, "other", "aep-lattice-memory");
     expect(historyIntentKnots("intent-1", { dataDir, memoryCliPath: cli })).toEqual({
       intent_id: "intent-1",
       entries: [],
-      error: `aep-memory not found: ${cli}`,
+      error: `aep-lattice-memory not found: ${cli}`,
     });
   });
 });

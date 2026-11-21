@@ -2,7 +2,9 @@
 // Product Admit wall crates fold into envelope_admit collect-all.
 // Extra temporal walls measure 50 ms drift against freeze, not live now.
 // Pass LatticeNode.wrap into policy-system compile.
-use aep_admit::{admit_collect_all, AdmitWall, LatticeCompileInput};
+use aep_admit::{admit_collect_all, pure_walls, AdmitWall, LatticeCompileInput};
+// The types of the read-only memory view, for the callers of the live pass.
+pub use aep_admit::{MemoryView, NoMemo, PureWallMemo, PureWallTrace, RouteHint};
 use aep_admit_budget_window::{compile_live_budget, BudgetCharge, BudgetInput};
 use aep_admit_channel_order_walls::{
     compile_channel_walls, compile_partial_order_walls, ChannelCompileInput,
@@ -255,22 +257,62 @@ fn channel_input(dock: &LiveDockContext) -> ChannelCompileInput {
     }
 }
 
-/// Compile product Admit wall crates. This is not a combinator.
-pub fn compile_live_walls(
-    live: &LiveEntry,
-    event: &Value,
-    dock: &LiveDockContext,
-) -> Vec<AdmitWall> {
-    compile_live_walls_and_charge(live, event, dock).0
+/// The one pure wall family of the live pass: the writing rules over the text of the
+/// event. Its rows depend on that text and on the compiled writing rules alone.
+pub const PURE_FAMILY_WRITING: &str = "writing";
+
+/// The walls of one live pass, the budget charge of the action and the rows of the
+/// pure wall family with their origin.
+pub struct LiveWalls {
+    pub walls: Vec<AdmitWall>,
+    pub charge: Option<BudgetCharge>,
+    pub pure: PureWallTrace,
 }
 
-/// Compile product Admit wall crates and the budget charge of the action. The live entry
-/// holds the charge until Admit answers and records it only after an allow.
-pub fn compile_live_walls_and_charge(
+/// The writing rows of a text: one wall per writing rule in table order, then every
+/// closed row of the writing fold that is not among them yet. Nothing but the text
+/// and the compiled writing rules is read, so equal texts give equal rows.
+pub fn compile_writing_block(text: &str) -> Vec<AdmitWall> {
+    let writing_walls = aep_admit::compile_writing_walls(text);
+    let folded = fold_writing_into_admit(text, &[]);
+    let _ = aep_admit_writing_walls::writing_wall_id(aep_admit::RULE_NO_EM_DASHES);
+
+    let mut walls: Vec<AdmitWall> = writing_walls;
+    if !folded.allow {
+        for w in folded.closed {
+            if !walls.iter().any(|x| x.id == w.id && x.reason == w.reason) {
+                walls.push(w);
+            }
+        }
+    }
+    walls
+}
+
+/// True when rows have the form of a writing block: one row per writing rule in table
+/// order first and writing rows only. Stored rows of any other form are not replayed.
+pub fn writing_block_is_well_formed(rows: &[AdmitWall]) -> bool {
+    let rules = aep_admit::WRITING_RULES;
+    if rows.len() < rules.len() {
+        return false;
+    }
+    for (row, rule) in rows.iter().zip(rules.iter()) {
+        if row.id != aep_admit::writing_wall_id(rule.id) {
+            return false;
+        }
+    }
+    rows.iter().all(|row| row.id.starts_with("writing:"))
+}
+
+/// Compile product Admit wall crates and the budget charge of the action in the view of
+/// a memory. This is not a combinator. The view may hand over stored rows of the pure
+/// writing family for byte identical text. Every other wall is computed here on every
+/// call: the walls of time, order, budget, channel, hub, gateway, lattice and policy.
+pub fn compile_live_walls_in_view(
     live: &LiveEntry,
     event: &Value,
     dock: &LiveDockContext,
-) -> (Vec<AdmitWall>, Option<BudgetCharge>) {
+    view: &MemoryView<'_>,
+) -> LiveWalls {
     let action_path = event
         .get("action_path")
         .and_then(|v| v.as_str())
@@ -297,18 +339,14 @@ pub fn compile_live_walls_and_charge(
         &mut strings,
     );
     let writing_text = strings.join("\n");
-    let writing_walls = aep_admit::compile_writing_walls(&writing_text);
-    let folded = fold_writing_into_admit(&writing_text, &[]);
-    let _ = aep_admit_writing_walls::writing_wall_id(aep_admit::RULE_NO_EM_DASHES);
-
-    let mut walls: Vec<AdmitWall> = writing_walls;
-    if !folded.allow {
-        for w in folded.closed {
-            if !walls.iter().any(|x| x.id == w.id && x.reason == w.reason) {
-                walls.push(w);
-            }
-        }
-    }
+    let pure = pure_walls(
+        view,
+        PURE_FAMILY_WRITING,
+        &writing_text,
+        writing_block_is_well_formed,
+        compile_writing_block,
+    );
+    let mut walls: Vec<AdmitWall> = pure.rows.clone();
 
     walls.extend(compile_channel_walls(&channel_input(dock)));
     walls.push(compile_agent_binding_wall(event, dock));
@@ -372,7 +410,32 @@ pub fn compile_live_walls_and_charge(
     };
     walls.extend(compile_policy_system_walls(&policy_in));
     walls.extend(budget_walls);
-    (walls, charge)
+    LiveWalls {
+        walls,
+        charge,
+        pure,
+    }
+}
+
+/// Compile product Admit wall crates without a memory. This is not a combinator.
+pub fn compile_live_walls(
+    live: &LiveEntry,
+    event: &Value,
+    dock: &LiveDockContext,
+) -> Vec<AdmitWall> {
+    compile_live_walls_in_view(live, event, dock, &MemoryView::cold()).walls
+}
+
+/// Compile product Admit wall crates and the budget charge of the action without a
+/// memory. The live entry holds the charge until Admit answers and records it only
+/// after an allow.
+pub fn compile_live_walls_and_charge(
+    live: &LiveEntry,
+    event: &Value,
+    dock: &LiveDockContext,
+) -> (Vec<AdmitWall>, Option<BudgetCharge>) {
+    let compiled = compile_live_walls_in_view(live, event, dock, &MemoryView::cold());
+    (compiled.walls, compiled.charge)
 }
 
 /// Fold every product Admit wall crate into one live collect-all pass.
@@ -1135,5 +1198,155 @@ mod tests {
             .collect();
         must(compact.contains("policy_in.agent_id=lattice_in.agent_id.clone()"));
         must(compact.contains("policy_in.action=lattice_in.action_path.clone()"));
+    }
+
+    /// A memo that hands back what it was given for one text and counts its lookups.
+    struct OneText {
+        text: String,
+        rows: Vec<AdmitWall>,
+        asked: std::cell::Cell<u32>,
+    }
+
+    impl PureWallMemo for OneText {
+        fn replay(&self, family: &str, input: &str) -> Option<Vec<AdmitWall>> {
+            self.asked.set(self.asked.get() + 1);
+            if family == PURE_FAMILY_WRITING && input == self.text {
+                Some(self.rows.clone())
+            } else {
+                None
+            }
+        }
+    }
+
+    fn note_event(note: &str) -> Value {
+        let mut payload = serde_json::Map::new();
+        payload.insert(String::from("note"), Value::String(String::from(note)));
+        let mut map = serde_json::Map::new();
+        map.insert(String::from("type"), Value::String(String::from("PING")));
+        map.insert(
+            String::from("action_path"),
+            Value::String(String::from("root:ping")),
+        );
+        map.insert(String::from("timestamp"), Value::from(1000000));
+        map.insert(String::from("payload"), Value::Object(payload));
+        Value::Object(map)
+    }
+
+    fn live_at_clock() -> LiveEntry {
+        let mut le = match LiveEntry::from_yaml(yaml()) {
+            Ok(v) => v,
+            Err(_) => std::process::abort(),
+        };
+        le.set_clock_ms(1000000);
+        le
+    }
+
+    #[test]
+    fn writing_block_is_one_row_per_rule_in_table_order() {
+        for text in ["plain words", "red, white, and blue", "first -- second", ""] {
+            let block = compile_writing_block(text);
+            must(writing_block_is_well_formed(&block));
+            must(block.len() >= aep_admit::WRITING_RULES.len());
+            // The block is a pure function of the text.
+            must(block == compile_writing_block(text));
+        }
+        let closed = compile_writing_block("red, white, and blue");
+        must(wall_closed(&closed, &writing_wall_id(aep_admit::RULE_NO_OXFORD_COMMA)) == Some(true));
+    }
+
+    #[test]
+    fn rows_of_another_form_are_not_a_writing_block() {
+        let good = compile_writing_block("plain words");
+        must(!writing_block_is_well_formed(&[]));
+        must(!writing_block_is_well_formed(&good[1..]));
+        let mut swapped = good.clone();
+        swapped.swap(0, 1);
+        must(!writing_block_is_well_formed(&swapped));
+        let mut foreign = good.clone();
+        foreign.push(AdmitWall::open("gap.agent_permission"));
+        must(!writing_block_is_well_formed(&foreign));
+    }
+
+    #[test]
+    fn a_view_gives_the_same_walls_as_no_view() {
+        let le = live_at_clock();
+        let dock = LiveDockContext::unit_open();
+        for note in ["plain words", "red, white, and blue"] {
+            let event = note_event(note);
+            let cold = compile_live_walls_in_view(&le, &event, &dock, &MemoryView::cold());
+            must(!cold.pure.replayed);
+            must(cold.pure.family == PURE_FAMILY_WRITING);
+            must(cold.walls.starts_with(&cold.pure.rows));
+            // A memo that holds the rows of this text: the rows are replayed and
+            // every wall of the pass is the same.
+            let memo = OneText {
+                text: cold.pure.input.clone(),
+                rows: cold.pure.rows.clone(),
+                asked: std::cell::Cell::new(0),
+            };
+            let hot = MemoryView {
+                route: RouteHint::Hot,
+                memo: &memo,
+            };
+            let warm = compile_live_walls_in_view(&le, &event, &dock, &hot);
+            must(warm.pure.replayed);
+            must(memo.asked.get() == 1);
+            must(warm.walls == cold.walls);
+            must(warm.charge.is_some() == cold.charge.is_some());
+            // The same memo under a cold hint is not asked.
+            let cold_view = MemoryView {
+                route: RouteHint::Cold,
+                memo: &memo,
+            };
+            let again = compile_live_walls_in_view(&le, &event, &dock, &cold_view);
+            must(!again.pure.replayed);
+            must(memo.asked.get() == 1);
+            must(again.walls == cold.walls);
+            // The functions without a view give the same walls.
+            must(compile_live_walls(&le, &event, &dock) == cold.walls);
+            must(compile_live_walls_and_charge(&le, &event, &dock).0 == cold.walls);
+        }
+    }
+
+    #[test]
+    fn a_memo_of_another_text_or_of_a_wrong_form_is_not_replayed() {
+        let le = live_at_clock();
+        let dock = LiveDockContext::unit_open();
+        let event = note_event("red, white, and blue");
+        let cold = compile_live_walls_in_view(&le, &event, &dock, &MemoryView::cold());
+        // Rows of a clean text stored under another text: a miss, so the closed
+        // writing wall of this text is computed and present.
+        let other = OneText {
+            text: String::from("some other text"),
+            rows: compile_writing_block("plain words"),
+            asked: std::cell::Cell::new(0),
+        };
+        let view = MemoryView {
+            route: RouteHint::Hot,
+            memo: &other,
+        };
+        let walls = compile_live_walls_in_view(&le, &event, &dock, &view);
+        must(!walls.pure.replayed);
+        must(walls.walls == cold.walls);
+        // Rows of a wrong form stored under this very text: refused, computed.
+        let wrong = OneText {
+            text: cold.pure.input.clone(),
+            rows: vec![AdmitWall::open("writing:no_oxford_comma")],
+            asked: std::cell::Cell::new(0),
+        };
+        let view = MemoryView {
+            route: RouteHint::Hot,
+            memo: &wrong,
+        };
+        let walls = compile_live_walls_in_view(&le, &event, &dock, &view);
+        must(wrong.asked.get() == 1);
+        must(!walls.pure.replayed);
+        must(walls.walls == cold.walls);
+        must(
+            wall_closed(
+                &walls.walls,
+                &writing_wall_id(aep_admit::RULE_NO_OXFORD_COMMA),
+            ) == Some(true),
+        );
     }
 }

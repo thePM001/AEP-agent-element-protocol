@@ -96,12 +96,12 @@ describe("explainIntentRich", () => {
     });
   });
 
-  it("reports intent knots as unavailable without the aep-memory binary", () => {
+  it("reports intent knots as unavailable without the memory program", () => {
     const out = explainIntentRich(dataDir, "intent-1");
     expect(out.intent_knots.history).toMatchObject({ intent_id: "intent-1", entries: [] });
-    expect(out.intent_knots.history.error).toMatch(/aep-memory not found/);
+    expect(out.intent_knots.history.error).toMatch(/aep-lattice-memory not found/);
     expect(out.intent_knots.nearest).toMatchObject({ intent_id: "intent-1", matches: [] });
-    expect(out.intent_knots.nearest.error).toMatch(/aep-memory not found/);
+    expect(out.intent_knots.nearest.error).toMatch(/aep-lattice-memory not found/);
   });
 
   it("summarizes the policy lattice hierarchy and channel bindings", () => {

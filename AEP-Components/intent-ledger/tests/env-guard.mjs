@@ -8,8 +8,9 @@ const TOUCHED_KEYS = [
   "AEP_DATA",
   "AEP_LATTICE_DB",
   "AEP_LEDGER_DIR",
-  "AEP_MEMORY_CLI",
-  "AEP_AEP_MEMORY_BIN",
+  "AEP_LATTICE_MEMORY_CLI",
+  "AEP_LATTICE_MEMORY_DIR",
+  "AEP_AEP_LATTICE_MEMORY_BIN",
   "AEP_INTENT_KNOT_STRICT",
   "AEP_SOCKET_BASE",
   "AEP_LATTICE_STRICT",
@@ -29,8 +30,8 @@ export function openSandbox() {
   const savedFetch = globalThis.fetch;
   for (const key of TOUCHED_KEYS) delete process.env[key];
   process.env.AEP_DATA = join(dir, "aep-data");
-  // A path that never exists keeps every aep-memory call on the no-binary branch.
-  process.env.AEP_MEMORY_CLI = join(dir, "missing-bin", "aep-memory");
+  // A path that never exists keeps every call of the memory program on the no-binary branch.
+  process.env.AEP_LATTICE_MEMORY_CLI = join(dir, "missing-bin", "aep-lattice-memory");
   return {
     dir,
     restore() {

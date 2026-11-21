@@ -1,6 +1,6 @@
 # 16 / Intent Ledger
 
-Status: normative. Stability: evolving. Intent knots call the aep-memory binary of Lattice Memory for record and search.
+Status: normative. Stability: evolving. Intent knots call the program `aep-lattice-memory` of Lattice Memory for record and search.
 
 ## What it is
 
@@ -27,7 +27,6 @@ Coding agents inside the CAWs (11) propose and solidify through the `aep` comman
 | `lib/explain.mjs` | `explainIntentRich` over policy lattice, evidence sessions and intent knots |
 | `lib/evidence-link.mjs` | Summary of an evidence session and the reference builder |
 | `lib/intent-knots.mjs` | Record and search of intent knots in Lattice Memory |
-| `lib/embedding.mjs` | Deterministic embeddings for knot search |
 | `tests/` | vitest suites |
 | `AEP-Components/intent/` | Intent baseline and drift detection |
 
@@ -49,7 +48,7 @@ aep solidify --intent-id INT-... --no-git                            # skip git 
 aep solidify --intent-id INT-... --git-commit sha                    # manual override
 aep semantic explain INT-... [--lrps epscom-core,gap-runtime-scanners]
 aep semantic list [--limit 20]
-aep semantic knot INT-...              Search lattice memory knots (sqlite-vec + USearch)
+aep semantic knot INT-...              Search the intent knots in Lattice Memory
 aep semantic knot INT-... --phase propose   Re-record knot for a governance phase
 ```
 
@@ -65,11 +64,11 @@ Solidify records may include `evidence_ledger_ref` pointing at a gateway session
 
 ## Lattice memory knots (11E)
 
-Intent knots are searchable attractors in lattice memory. The file ledger remains canonical; knots enable similarity search across past intents.
+Intent knots are records of the domain `intent` in Lattice Memory. Every phase of one intent has the same shape, so the knots of an intent meet in one attractor and a search for an intent uses the shape its knots were recorded with. The file ledger remains canonical and the knots make past intents searchable. Lattice Memory keeps the digest, the fingerprint and the labels of a knot and never its statement.
 
 | Backend | Required | Notes |
 |---------|----------|-------|
-| Lattice Memory (`aep-memory`) | Yes | SQLite **3.54.1** bundled + **sqlite-vec 0.1.9** `vec0` + **USearch 2.25.3** `.usearch` companion file on `$AEP_LATTICE_DB` (`action-lattice.db`) |
+| Lattice Memory (`aep-lattice-memory`) | Yes | One append-only log file per domain in the folder `lattice-memory` beside the ledger file. `AEP_LATTICE_MEMORY_DIR` names another folder and `AEP_LATTICE_MEMORY_CLI` the path of the program |
 
 ## Limits
 

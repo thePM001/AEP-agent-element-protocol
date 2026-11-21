@@ -7,12 +7,13 @@ use super::{
     DockFrameResponse, DockingRuntime,
 };
 use crate::dock_keys::decode_signer_public_hex;
-use crate::envelope_admit::admit_sealed_payload_report_recorded;
+use crate::envelope_admit::admit_sealed_payload_report_in_view;
+use crate::lattice_memory::{Probe, VerdictMemory, VerdictNote};
 use crate::{
     enforce_writing_value, record_channel_frame, record_side_channel_anomaly,
     value_has_writing_violations, BaseNodeError, SideChannelAnomalyKind,
 };
-use aep_admit::AdmitWall;
+use aep_admit::{AdmitWall, MemoryView, PureWallTrace};
 use aep_lattice_channel::DockingPort;
 use aep_lattice_gated_fetch::gateway_request_of;
 use aep_wall_set_backpressure::CLASS_SECURITY;
@@ -368,6 +369,31 @@ fn answer_held_capsule(
     }
 }
 
+/// What the dock holds of one proposal for the memory until its verdict is written.
+struct MemoryNote<'a> {
+    memory: &'a VerdictMemory,
+    probe: Probe,
+    entry_id: &'a str,
+    agent_id: &'a str,
+}
+
+impl MemoryNote<'_> {
+    /// Hand the written verdict to the memory. This never waits.
+    fn verdict(self, accepted: bool, closed: &[String], trace: Option<PureWallTrace>) {
+        self.memory.note_verdict(
+            self.probe,
+            &VerdictNote {
+                entry_id: self.entry_id,
+                agent_id: self.agent_id,
+                accepted,
+                at_unix: crate::now_unix() as i64,
+                closed,
+            },
+            trace,
+        );
+    }
+}
+
 /// Admit, the record step and Apply of one held capsule. Returns the event id of the row.
 // DockFrameResponse is the reply the node sends as is, so the deny path returns it unboxed.
 #[allow(clippy::result_large_err)]
@@ -385,33 +411,58 @@ fn admit_and_apply(
     };
     let mut recorded: Option<i64> = None;
     let mut record_deny: Option<DockFrameResponse> = None;
+    // The place of the proposal in the memory and its route hint are computed before
+    // the live entry lock is taken. A node without memory judges on the cold path.
+    let no_event = Value::Null;
+    let note = runtime.record.memory.as_deref().map(|memory| MemoryNote {
+        memory,
+        probe: memory.probe(
+            event.unwrap_or(&no_event),
+            &held.frame.agent_id,
+            dock_port_name(&held.expected_port),
+            &held.frame.contract_id,
+        ),
+        entry_id: &cap.digest,
+        agent_id: &held.frame.agent_id,
+    });
     // The live entry guard lives for this block only, so the lock is released
     // before the record check and before Apply.
-    let admit_res = {
+    let (admit_res, trace) = {
         let mut live = lock_or_deny(&runtime.admit.live_entry, "live_entry")?;
         // The time walls of Admit measure against the event time that the kernel
         // checked against its own clock at enqueue. The hold and the age of the
         // capsule were judged by the kernel clock alone in the pulse queue.
         live.freeze_temporal_snapshot(held.wall_bridge_ms);
-        let r =
-            admit_sealed_payload_report_recorded(&mut live, &held.plaintext, &dock, &mut || {
-                match record_admitted_frame(runtime, cap, held, event_type) {
-                    Ok(event_id) => {
-                        recorded = Some(event_id);
-                        Ok(())
-                    }
-                    Err(resp) => {
-                        let reason = resp.error.clone().unwrap_or_default();
-                        record_deny = Some(resp);
-                        Err(AdmitWall::close("ledger.unavailable", reason))
-                    }
+        // Admit reads the hint and the memo and writes neither.
+        let view = match note.as_ref() {
+            Some(note) => note.memory.view(&note.probe),
+            None => MemoryView::cold(),
+        };
+        let r = admit_sealed_payload_report_in_view(
+            &mut live,
+            &held.plaintext,
+            &dock,
+            &mut || match record_admitted_frame(runtime, cap, held, event_type) {
+                Ok(event_id) => {
+                    recorded = Some(event_id);
+                    Ok(())
                 }
-            });
+                Err(resp) => {
+                    let reason = resp.error.clone().unwrap_or_default();
+                    record_deny = Some(resp);
+                    Err(AdmitWall::close("ledger.unavailable", reason))
+                }
+            },
+            &view,
+        );
         live.clear_temporal_freeze();
         r
     };
     // The record step refused: nothing was applied and the ledger cannot take a row.
     if let Some(resp) = record_deny {
+        if let Some(note) = note {
+            note.verdict(false, &[String::from("ledger.unavailable")], trace);
+        }
         return Err(resp);
     }
     if let Err(report) = admit_res {
@@ -425,9 +476,17 @@ fn admit_and_apply(
                 detail.clone(),
             );
         }
+        // The deny is written. The memory hears of it now.
+        if let Some(note) = note {
+            let closed: Vec<String> = report.closed.iter().map(|w| w.id.clone()).collect();
+            note.verdict(false, &closed, trace);
+        }
         return Err(deny_resp_report(Some(cap.digest.clone()), detail, report));
     }
     let Some(event_id) = recorded else {
+        if let Some(note) = note {
+            note.verdict(false, &[String::from("ledger.unavailable")], trace);
+        }
         return Err(deny_closed(
             Some(cap.digest.clone()),
             String::from("apply ended without a ledger row"),
@@ -435,6 +494,10 @@ fn admit_and_apply(
             "ledger.unavailable",
         ));
     };
+    // The ledger row is written and Apply is done. The memory hears of the allow now.
+    if let Some(note) = note {
+        note.verdict(true, &[], trace);
+    }
     crate::dock_event!(debug, crate::dock_log::DockEvent::FrameApply, event_id, digest = %cap.digest, "frame applied");
     let register_lrp = held.expected_port == DockingPort::RegulationModule
         && event.and_then(|v| v.get("action")).and_then(|x| x.as_str()) == Some("register_lrp");

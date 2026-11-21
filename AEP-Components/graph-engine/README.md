@@ -8,7 +8,7 @@ The Graph Engine is the workflow state machine and runner of AEP. A workflow is 
 
 ## Place among the 18
 
-A workflow author hands a graph to the engine. Before each node the engine asks its admit function, which a deployment connects to the Admit Gate (04). The engine reads the scene graph owned by dynAEP (07) and it can persist run data to Lattice Memory (15). Its result is the finished or paused run with its checkpoints.
+A workflow author hands a graph to the engine. Before each node the engine asks its admit function, which a deployment connects to the Admit Gate (04). The engine reads the scene graph owned by dynAEP (07) and it keeps the checkpoints of a run in a store, which a deployment sets to Lattice Memory (15) to resume a run after a restart. Its result is the finished or paused run with its checkpoints.
 
 ## What ships in 2.9
 
@@ -25,8 +25,10 @@ A workflow author hands a graph to the engine. Before each node the engine asks 
 |------|------|
 | `lib/graph/engine.ts` | The engine |
 | `lib/graph/types.ts` | Node, context and checkpoint types |
+| `lib/graph/checkpoint-store.ts` | The checkpoint stores: one in the process and one on Lattice Memory |
 | `lib/graph/index.ts` | The public module |
 | `tests/engine.test.ts` | vitest suite |
+| `tests/checkpoint-memory.test.mjs` | The checkpoint store on the program of Lattice Memory |
 | `AEP-Components/graph-engine-admit-gate/` | Source check: the engine calls no node without the admit function |
 | `AEP-Components/decomposition/` | Task tree decomposition with completion checks |
 | `AEP-Components/session/` | Session lifecycle and kill switch |
@@ -38,6 +40,7 @@ A workflow author hands a graph to the engine. Before each node the engine asks 
 - `admitGate` on `GraphEngineOptions`, default deny
 - `policyEvaluator` with a `branches` map for decision nodes. This evaluator is not Admit.
 - `createGraphEngine(options)` as a factory
+- `checkpointStore` on `GraphEngineOptions`. The default keeps checkpoints in the process. `LatticeMemoryCheckpointStore` writes each checkpoint as one record of the domain `graph` of Lattice Memory, so another engine reads the run back after a restart. The engine starts no program itself: the store takes the program of Lattice Memory as a function, `memoryProgram` of `AEP-Components/intent-ledger/lib/intent-knots.mjs`. A checkpoint that cannot be kept ends the run
 - Component id `graph-engine` with the manifest `AEP-Base-Node/AEP-Registry/components/graph-engine.json`
 
 ## AEP-Graph Orchestration
@@ -64,7 +67,7 @@ A local vector clock, meaning a per-graph step counter, ticks only after that ga
 
 ### Features
 
-The engine can loop with bounded cycle detection and checkpoint every node so work can resume after a failure. It can wait for a human with timeout escalation, retry with configurable backoff and branch on written policy while it persists to lattice memory.
+The engine can loop with bounded cycle detection and checkpoint every node so work can resume after a failure. It can wait for a human with timeout escalation, retry with configurable backoff and branch on written policy while it hands every checkpoint to its checkpoint store.
 
 The local step counter still ticks only after the gate allows because the kernel check remains clock drift, age, future time, sequence and capsule-hash replay.
 

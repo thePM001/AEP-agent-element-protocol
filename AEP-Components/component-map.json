@@ -179,7 +179,7 @@
       "name": "Lattice Memory",
       "home": "AEP-Components/lattice-memory",
       "readme": "AEP-Components/lattice-memory/README.md",
-      "summary": "The store of the shapes of validated proposals, kept for audit, health telemetry and lookup.",
+      "summary": "The record of every verdict of the Admit Gate with attractors of the accepted shapes, kept for audit, health telemetry and a route hint.",
       "folders": []
     },
     {
