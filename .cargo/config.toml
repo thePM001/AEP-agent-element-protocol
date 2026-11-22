@@ -7,5 +7,8 @@ target-dir = "rust/target"
 # are compute bound: on the 4 vCPU host memory_verdict_identity took 223 s at level 0 and
 # 53 s at level 1, redteam_multistep 75 s and 14 s, for about the same cold build time.
 # Debug assertions and overflow checks remain on, so every check of a debug build remains.
+# Debug info holds line tables only: backtraces and panics keep file and line, while the
+# build writes and links far less, which shortens every rebuild.
 [profile.dev]
 opt-level = 1
+debug = "line-tables-only"
