@@ -121,8 +121,9 @@ impl DockingRuntime {
         data_dir: &Path,
     ) -> Result<Self, BaseNodeError> {
         let live_entry = load_live_entry(data_dir)?;
-        // The memory binds the lattice as it was compiled at this start.
-        let memory = crate::lattice_memory::start_for(data_dir, &live_entry);
+        // The memory keeps the heads of its logs in the ledger, so it takes the ledger.
+        let db = Arc::new(Mutex::new(conn));
+        let memory = crate::lattice_memory::start_for(data_dir, &db);
         let outbound = DockOutbound::load(data_dir);
         if let Some(e) = &outbound.routes_error {
             tracing::warn!(error = %e, "gateway route list refused: the gateway path opens no route");
@@ -182,7 +183,7 @@ impl DockingRuntime {
                 },
             },
             record: crate::dock_parts::DockRecord {
-                db: Arc::new(Mutex::new(conn)),
+                db,
                 pulse: Arc::new(Mutex::new(PulseState::default())),
                 sqlite_closed: AtomicBool::new(false),
                 memory: memory.memory,

@@ -130,6 +130,12 @@ pub(crate) fn runtime_in(dir: tempfile::TempDir) -> (tempfile::TempDir, DockingR
     let conn = open_lattice_db(&db_path).expect("db");
     let sock_base = dir.path().join("sockets").to_string_lossy().to_string();
     plant_hub_gap(dir.path());
+    // A fixed memory key: the keyed fingerprint of a shape depends on the key, so a
+    // random key would move the distance between two near shapes from run to run.
+    let key_file = dir.path().join(crate::lattice_memory::KEY_FILE);
+    if !key_file.exists() {
+        std::fs::write(&key_file, [7u8; 32]).expect("memory key");
+    }
     let rt = DockingRuntime::with_data_dir(sock_base, conn, &[], dir.path()).expect("runtime");
     (dir, rt)
 }

@@ -4,7 +4,7 @@
 use super::*;
 use crate::docking_fixtures::*;
 use crate::lattice_memory::{memory_dir, MEMORY_DIR};
-use aep_lattice_memory::{CoreConfig, LogBackend, MemoryBackend, StoredRecord};
+use aep_lattice_memory::{CoreConfig, LogBackend, MemoryBackend, RecordQuery, StoredRecord};
 use std::time::Duration;
 
 const PORT: DockingPort = DockingPort::ValidationEngine;
@@ -43,11 +43,17 @@ fn payload(note: &str, seq: i64) -> Vec<u8> {
 }
 
 fn stored(dir: &std::path::Path) -> Vec<StoredRecord> {
-    let mut store =
-        LogBackend::open_read_only(&memory_dir(dir), CoreConfig::default()).expect("store");
-    store.open_all().expect("domains");
+    let store = LogBackend::open_read_only(&memory_dir(dir), CoreConfig::default()).expect("store");
     store.verify().expect("verify");
-    store.export(None, usize::MAX).expect("export")
+    let query = RecordQuery {
+        domain: None,
+        element_id: None,
+        accepted: None,
+        after: None,
+        limit: usize::MAX,
+        max_bytes: usize::MAX,
+    };
+    store.records(&query).expect("records").records
 }
 
 #[test]
@@ -132,7 +138,7 @@ fn the_dock_records_every_admit_verdict_after_it_is_written() {
 }
 
 #[test]
-fn a_repeated_proposal_takes_the_hot_route_and_gets_the_same_verdict() {
+fn a_repeated_proposal_is_answered_from_the_memo_with_the_same_verdict() {
     let (_dir, rt) = temp_runtime();
     let memory = rt.record.memory.clone().expect("memory");
     let mut answers = Vec::new();
@@ -146,16 +152,34 @@ fn a_repeated_proposal_takes_the_hot_route_and_gets_the_same_verdict() {
         answers.push((answer.ok, answer.deny.map(|d| d.closed)));
         assert!(memory.wait_idle(Duration::from_secs(30)));
     }
-    // The same text gives the same verdict every time, hot or cold.
+    // The same text gives the same verdict every time, computed or replayed.
     assert!(answers[0].0 && answers[2].0 && answers[4].0);
     assert!(!answers[1].0 && !answers[3].0 && !answers[5].0);
     assert_eq!(answers[1], answers[3]);
     assert_eq!(answers[3], answers[5]);
     let counters = memory.counters();
     assert_eq!(counters.recorded, 6);
-    // The first allow was cold. The later ones found its attractor.
-    assert!(counters.hot >= 2, "{counters:?}");
-    assert!(counters.memo_replayed >= 2, "{counters:?}");
+    // The first proposal of each text computed its writing rows and the memo took
+    // them. The two later ones of each text were answered from the memo.
+    assert_eq!(counters.memo_stored, 2, "{counters:?}");
+    assert_eq!(counters.memo_replayed, 4, "{counters:?}");
+    // The first allow was of a shape nobody had accepted. Every later proposal is of
+    // that shape or of one near it, the denied ones too: they differ in one note. A
+    // hot count says what the memory knew of a shape and nothing about its verdict.
+    assert_eq!((counters.hot, counters.cold), (5, 1), "{counters:?}");
+    let report = crate::lattice_memory::MemoryReport::of_runtime(&rt.record);
+    assert_eq!(
+        (report.status, report.records, report.hot, report.cold),
+        ("ok", 6, 5, 1)
+    );
+    assert_eq!(report.memo_replayed, 4);
+    assert_eq!(
+        (report.queue_depth, report.dropped, report.failed),
+        (0, 0, 0)
+    );
+    // Every verdict has its row in the ledger and its record in the memory.
+    assert_eq!(report.ledger_gap, Some(0));
+    assert!(!report.durable);
 }
 
 #[test]
@@ -200,6 +224,7 @@ fn a_node_without_memory_answers_the_same() {
         (report.status, report.records, report.dropped),
         ("ok", 8, 0)
     );
+    assert_eq!(report.ledger_gap, Some(0));
 }
 
 #[test]
@@ -235,8 +260,22 @@ fn the_drain_writes_what_the_queue_holds() {
     memory.stop();
     assert_eq!(memory.counters().recorded, 5);
     assert_eq!(stored(dir.path()).len(), 5);
-    // A verdict after the stop is judged as before and counted as not recorded.
+    // The heads of the judged domains are in the ledger once the queue is drained.
+    let heads: i64 = {
+        let db = rt.record.db.lock().expect("db");
+        db.query_row(
+            "SELECT records FROM lattice_memory_heads WHERE domain = 'admit.validation_engine'",
+            [],
+            |row| row.get(0),
+        )
+        .expect("head row")
+    };
+    assert_eq!(heads, 5);
+    // A verdict after the stop is judged as before and counted as not recorded. The
+    // health of the memory says that it takes no record, and the gap shows the one.
     let (answer, _) = send(&rt, "AG-DOCK", &payload("read the build log", 6));
     assert!(answer.ok, "{:?}", answer.error);
     assert_eq!(memory.counters().failed, 1);
+    let report = crate::lattice_memory::MemoryReport::of_runtime(&rt.record);
+    assert_eq!((report.status, report.ledger_gap), ("failing", Some(1)));
 }

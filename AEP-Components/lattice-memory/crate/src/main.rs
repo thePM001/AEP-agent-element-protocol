@@ -2,13 +2,20 @@
 //!
 //! Every command reads JSON on standard input where it needs a request and writes JSON
 //! on standard output. An error goes to standard error and the exit code is 1.
+//!
+//! A command opens what it needs and nothing more. A write opens the log of its
+//! domain. A search opens the attractors of its domain. History, export, count and
+//! verdicts read frames of the logs they name and open no attractors at all. The
+//! program writes no record into a domain of judged proposals: those belong to the
+//! Base Node alone.
 
 use aep_lattice_memory::wire::{
-    fingerprint_of, health_json, match_json, parse_result, record_json, verify_json, WireExport,
-    WireHistory, WireRecord, WireSearch,
+    fingerprint_of, health_json, match_json, page_json, parse_result, record_json, verdicts_json,
+    verify_json, WireExport, WireHistory, WireRecord, WireSearch, WireVerdicts,
 };
 use aep_lattice_memory::{
-    CoreConfig, LogBackend, MemoryBackend, MemoryError, OpenOptionsLog, ProposalShape,
+    is_judged_domain, CoreConfig, CoreError, Cursor, LogBackend, MemoryBackend, MemoryError,
+    OpenOptionsLog, ProposalShape, RecordQuery, DEFAULT_PAGE_BYTES, JUDGED_DOMAIN,
 };
 use clap::{Parser, Subcommand};
 use serde_json::json;
@@ -45,18 +52,22 @@ enum Command {
     /// Write one record. The request is one JSON record on standard input.
     Record,
     /// Write one record per line of standard input and answer with one line each.
+    /// This is the way to write many records: the store is opened once.
     RecordLines,
     /// Exact search over the attractors of one domain.
     Search,
-    /// The records of one element in one domain.
+    /// One page of the records of one element in one domain.
     History,
-    /// The records of one domain or of every domain.
+    /// One page of the records of one domain or of every domain.
     Export,
     /// The number of records of one element in one domain.
     Count,
+    /// One page of the verdicts the Base Node recorded for one docking port.
+    Verdicts,
     /// Counts of the store. Opens files to read and changes nothing.
     Health,
-    /// Walk the hash chain of every domain and rebuild its attractors from the log.
+    /// Walk the hash chain of every domain, rebuild its attractors from the log and
+    /// compare its snapshot with the log.
     Verify,
 }
 
@@ -117,15 +128,22 @@ fn open_writer(cli: &Cli) -> Result<LogBackend, MemoryError> {
 }
 
 fn open_reader(cli: &Cli) -> Result<LogBackend, MemoryError> {
-    let mut backend = LogBackend::open_read_only(&store_dir(cli), config(cli))?;
-    backend.open_all()?;
-    Ok(backend)
+    LogBackend::open_read_only(&store_dir(cli), config(cli))
 }
 
 fn write_record(
     backend: &mut LogBackend,
     wire: WireRecord,
 ) -> Result<serde_json::Value, MemoryError> {
+    if is_judged_domain(&wire.domain) {
+        return Err(MemoryError::Core(CoreError::Invalid {
+            field: "domain",
+            reason: format!(
+                "{} is a domain of judged proposals: only the Base Node writes there",
+                wire.domain
+            ),
+        }));
+    }
     let record = wire.into_record(backend.config().embedding_dim, now_unix())?;
     let receipt = backend.record(&record)?;
     Ok(json!({
@@ -135,6 +153,11 @@ fn write_record(
         "attractor_key": receipt.attractor_key,
         "hash": hex::encode(receipt.hash),
     }))
+}
+
+/// The place a request names as the start of its page.
+fn cursor_of(after: Option<&str>) -> Result<Option<Cursor>, MemoryError> {
+    after.map(str::parse::<Cursor>).transpose()
 }
 
 fn run(cli: &Cli) -> Result<(), MemoryError> {
@@ -158,7 +181,8 @@ fn run(cli: &Cli) -> Result<(), MemoryError> {
         }
         Command::Search => {
             let request: WireSearch = read_request()?;
-            let backend = open_reader(cli)?;
+            let mut backend = open_reader(cli)?;
+            backend.open_domain(&request.domain)?;
             let shape = ProposalShape::from_value(&request.shape.unwrap_or(json!({})));
             let fingerprint = fingerprint_of(
                 &shape,
@@ -180,36 +204,77 @@ fn run(cli: &Cli) -> Result<(), MemoryError> {
                 None => None,
                 Some(text) => Some(parse_result(text)?),
             };
-            let backend = open_reader(cli)?;
-            let records = backend.history(
-                &request.domain,
-                &request.element_id,
+            let after = cursor_of(request.after.as_deref())?;
+            let page = open_reader(cli)?.records(&RecordQuery {
+                domain: Some(&request.domain),
+                element_id: Some(&request.element_id),
                 accepted,
-                request.limit,
-            )?;
-            let printed: Vec<_> = records.iter().map(record_json).collect();
-            writeln!(out, "{}", serde_json::Value::Array(printed))?;
+                after: after.as_ref(),
+                limit: request.limit,
+                max_bytes: request.max_bytes.unwrap_or(DEFAULT_PAGE_BYTES),
+            })?;
+            writeln!(out, "{}", page_json(&page, record_json))?;
         }
         Command::Export => {
             let request: WireExport = read_request()?;
-            let backend = open_reader(cli)?;
-            let records = backend.export(request.domain.as_deref(), request.limit)?;
-            let printed: Vec<_> = records.iter().map(record_json).collect();
-            writeln!(out, "{}", serde_json::Value::Array(printed))?;
+            let after = cursor_of(request.after.as_deref())?;
+            let page = open_reader(cli)?.records(&RecordQuery {
+                domain: request.domain.as_deref(),
+                element_id: None,
+                accepted: None,
+                after: after.as_ref(),
+                limit: request.limit,
+                max_bytes: request.max_bytes.unwrap_or(DEFAULT_PAGE_BYTES),
+            })?;
+            writeln!(out, "{}", page_json(&page, record_json))?;
         }
         Command::Count => {
             let request: WireHistory = read_request()?;
-            let backend = open_reader(cli)?;
-            let records =
-                backend.history(&request.domain, &request.element_id, None, usize::MAX)?;
-            writeln!(out, "{}", json!({ "count": records.len() }))?;
+            let accepted = match request.result.as_deref() {
+                None => None,
+                Some(text) => Some(parse_result(text)?),
+            };
+            let count = open_reader(cli)?.count(&RecordQuery {
+                domain: Some(&request.domain),
+                element_id: Some(&request.element_id),
+                accepted,
+                after: None,
+                limit: usize::MAX,
+                max_bytes: usize::MAX,
+            })?;
+            writeln!(out, "{}", json!({ "count": count }))?;
+        }
+        Command::Verdicts => {
+            let request: WireVerdicts = read_request()?;
+            let domain = format!("{JUDGED_DOMAIN}.{}", request.port);
+            let accepted = match request.verdict.as_deref() {
+                None => None,
+                Some("allow") => Some(true),
+                Some("deny") => Some(false),
+                Some(other) => {
+                    return Err(MemoryError::Core(CoreError::Invalid {
+                        field: "verdict",
+                        reason: format!("is {other}, expected allow or deny"),
+                    }))
+                }
+            };
+            let after = cursor_of(request.after.as_deref())?;
+            let page = open_reader(cli)?.records(&RecordQuery {
+                domain: Some(&domain),
+                element_id: request.agent_id.as_deref(),
+                accepted,
+                after: after.as_ref(),
+                limit: request.limit,
+                max_bytes: request.max_bytes.unwrap_or(DEFAULT_PAGE_BYTES),
+            })?;
+            writeln!(out, "{}", verdicts_json(&domain, &page))?;
         }
         Command::Health => {
             let health = LogBackend::health(&store_dir(cli))?;
             writeln!(out, "{}", health_json(&health))?;
         }
         Command::Verify => {
-            let backend = LogBackend::open_read_only(&store_dir(cli), config(cli))?;
+            let backend = open_reader(cli)?;
             writeln!(out, "{}", verify_json(&backend.verify()?))?;
         }
     }

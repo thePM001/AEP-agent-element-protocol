@@ -23,6 +23,8 @@ pub const DEFAULT_SIMHASH_MIN_SCORE: i32 = 230;
 pub const DEFAULT_EMBEDDING_MIN_SCORE: i32 = 15_323;
 /// Longest domain name.
 pub const MAX_DOMAIN_LEN: usize = 64;
+/// Domains of one memory that hold a lookup table: one for each docking port.
+pub const DEFAULT_LOOKUP_TABLE_DOMAINS: usize = 4;
 
 /// The settings of a memory.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,6 +37,11 @@ pub struct CoreConfig {
     pub embedding_dim: usize,
     /// Lowest score of two embeddings that counts as the same attractor.
     pub embedding_min_score: i32,
+    /// Domains that may hold a lookup table of the nearest attractor at one time. A
+    /// table takes 16.8 MB and up to 6.4 MB more at 100000 attractors, so this bounds
+    /// the memory of the attractors. A large domain beyond the bound answers by the
+    /// scan: the same answers at a higher cost.
+    pub lookup_table_domains: usize,
 }
 
 impl Default for CoreConfig {
@@ -44,6 +51,7 @@ impl Default for CoreConfig {
             simhash_min_score: DEFAULT_SIMHASH_MIN_SCORE,
             embedding_dim: 0,
             embedding_min_score: DEFAULT_EMBEDDING_MIN_SCORE,
+            lookup_table_domains: DEFAULT_LOOKUP_TABLE_DOMAINS,
         }
     }
 }
@@ -248,10 +256,12 @@ impl MemoryCore {
         check_domain(observation.domain)?;
         self.check_fingerprint(observation.domain, observation.fingerprint)?;
         let kind = observation.fingerprint.kind();
+        let table = self.may_hold_table(observation.domain);
         let index = self
             .domains
             .entry(observation.domain.to_string())
             .or_insert_with(|| DomainIndex::new(kind));
+        index.set_lookup_table(table);
         let attractor = Attractor {
             key,
             fingerprint: observation.fingerprint.clone(),
@@ -272,20 +282,29 @@ impl MemoryCore {
         check_domain(domain)?;
         self.check_fingerprint(domain, &attractor.fingerprint)?;
         let kind = attractor.fingerprint.kind();
-        self.domains
+        let table = self.may_hold_table(domain);
+        let index = self
+            .domains
             .entry(domain.to_string())
-            .or_insert_with(|| DomainIndex::new(kind))
-            .insert(attractor)
+            .or_insert_with(|| DomainIndex::new(kind));
+        index.set_lookup_table(table);
+        index.insert(attractor)
+    }
+
+    /// True when `domain` holds a lookup table or may build one: fewer other domains
+    /// hold a table than the setting allows.
+    fn may_hold_table(&self, domain: &str) -> bool {
+        let others = self
+            .domains
+            .iter()
+            .filter(|(name, index)| name.as_str() != domain && index.has_chunk_table())
+            .count();
+        others < self.config.lookup_table_domains
     }
 
     /// Forget one domain. A store calls this before it reads the domain again.
     pub fn clear_domain(&mut self, domain: &str) {
         self.domains.remove(domain);
-    }
-
-    /// Forget every domain.
-    pub fn clear(&mut self) {
-        self.domains.clear();
     }
 
     /// The hint for a proposal that is about to be judged.
@@ -321,35 +340,8 @@ impl MemoryCore {
         }
     }
 
-    /// Exact search in one domain: the `limit` best attractors at or above `min_score`.
-    pub fn search(
-        &self,
-        domain: &str,
-        fingerprint: &Fingerprint,
-        limit: usize,
-        min_score: i32,
-    ) -> Vec<Hit> {
-        match self.domains.get(domain) {
-            Some(index) => index.scan(fingerprint, limit, min_score),
-            None => Vec::new(),
-        }
-    }
-
     pub fn domain(&self, domain: &str) -> Option<&DomainIndex> {
         self.domains.get(domain)
-    }
-
-    /// The domains in name order with their attractor counts.
-    pub fn domain_counts(&self) -> Vec<(String, usize)> {
-        self.domains
-            .iter()
-            .map(|(name, index)| (name.clone(), index.len()))
-            .collect()
-    }
-
-    /// Attractors of every domain together.
-    pub fn attractor_count(&self) -> usize {
-        self.domains.values().map(DomainIndex::len).sum()
     }
 }
 
@@ -466,7 +458,7 @@ mod tests {
             &obs("admit", &far, &digest(3), true, 40),
         );
         assert_eq!(fourth, Plan::Form { evict: None });
-        assert_eq!(core.attractor_count(), 2);
+        assert_eq!(core.domain("admit").map(DomainIndex::len), Some(2));
     }
 
     #[test]
@@ -482,7 +474,6 @@ mod tests {
             );
             assert_eq!(plan, Plan::LogOnly);
         }
-        assert_eq!(core.attractor_count(), 0);
         assert!(core.domain("admit").is_none());
         assert_eq!(core.route_hint("admit", &fp, &digest(1)), RouteHint::Cold);
         // A rejection next to an attractor does not raise its support.
@@ -599,10 +590,8 @@ mod tests {
                 &obs(domain, &hash(seed), &digest(seed), true, seed as i64),
             );
         }
-        assert_eq!(
-            core.domain_counts(),
-            vec![("admit".to_string(), 2), ("intent".to_string(), 2)]
-        );
+        assert_eq!(core.domain("admit").map(DomainIndex::len), Some(2));
+        assert_eq!(core.domain("intent").map(DomainIndex::len), Some(2));
         // An attractor of one domain is not a hint in the other.
         assert_eq!(
             core.route_hint("admit", &hash(5), &digest(5)),
@@ -778,13 +767,69 @@ mod tests {
                 live.route_hint("admit", &fp, &digest(seed))
             );
             assert_eq!(
-                rebuilt.search("admit", &fp, 5, 0),
-                live.search("admit", &fp, 5, 0)
+                rebuilt.domain("admit").unwrap().scan(&fp, 5, 0),
+                live.domain("admit").unwrap().scan(&fp, 5, 0)
             );
             assert_eq!(
                 rebuilt.plan(&obs("admit", &fp, &digest(seed), true, 100)),
                 live.plan(&obs("admit", &fp, &digest(seed), true, 100))
             );
         }
+    }
+
+    #[test]
+    fn the_number_of_domains_with_a_lookup_table_is_bounded() {
+        let config = CoreConfig {
+            lookup_table_domains: 1,
+            ..CoreConfig::default()
+        };
+        let mut core = MemoryCore::new(config).unwrap();
+        // The same attractors without any table are the reference.
+        let mut plain = MemoryCore::new(CoreConfig {
+            lookup_table_domains: 0,
+            ..CoreConfig::default()
+        })
+        .unwrap();
+        let mut key = 0;
+        let mut plain_key = 0;
+        for seed in 1..=2300u64 {
+            for domain in ["admit.one", "admit.two"] {
+                let fp = hash(seed * 2 + u64::from(domain == "admit.two"));
+                let shape = digest(seed);
+                let observation = obs(domain, &fp, &shape, true, seed as i64);
+                record(&mut core, &mut key, &observation);
+                record(&mut plain, &mut plain_key, &observation);
+            }
+        }
+        // The first domain that grew large holds the one table.
+        assert!(core.domain("admit.one").unwrap().has_chunk_table());
+        assert!(!core.domain("admit.two").unwrap().has_chunk_table());
+        assert!(!plain.domain("admit.one").unwrap().has_chunk_table());
+        // With a table and without one the answers are the same.
+        let none = digest(0);
+        for seed in 1..=300u64 {
+            for domain in ["admit.one", "admit.two"] {
+                let fp = hash(seed * 7);
+                assert_eq!(
+                    core.route_hint(domain, &fp, &none),
+                    plain.route_hint(domain, &fp, &none),
+                    "{domain} {seed}"
+                );
+                assert_eq!(
+                    core.plan(&obs(domain, &fp, &none, true, 1)),
+                    plain.plan(&obs(domain, &fp, &none, true, 1))
+                );
+            }
+        }
+        // When the domain with the table is gone, the next large domain may build one.
+        core.clear_domain("admit.one");
+        let fp = hash(9_000_001);
+        let shape = digest(9_000_001);
+        record(
+            &mut core,
+            &mut key,
+            &obs("admit.two", &fp, &shape, true, 5000),
+        );
+        assert!(core.domain("admit.two").unwrap().has_chunk_table());
     }
 }

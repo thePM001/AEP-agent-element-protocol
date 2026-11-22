@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  CHECKPOINT_PAGE_RECORDS,
   GRAPH_CHECKPOINT_DOMAIN,
   GraphEngine,
   LatticeMemoryCheckpointStore,
@@ -282,18 +283,37 @@ describe("checkpoint stores", () => {
   const chain = [action("start", ["b"]), action("b", ["c"]), action("c")];
   const run: GraphEngineOptions = { admitGate: allow, nodeExecutor: async (n) => ({ ok: n.id }) };
 
-  /** A stand-in for the program of Lattice Memory: it keeps what `record` hands it. */
-  function fakeProgram(): { program: MemoryProgram; records: Record<string, unknown>[] } {
+  /**
+   * A stand-in for the program of Lattice Memory: it keeps what `record` hands it and
+   * answers `history` in pages, as the program does. The place of the next page is the
+   * count of the records read so far.
+   */
+  function fakeProgram(): {
+    program: MemoryProgram;
+    records: Record<string, unknown>[];
+    pages: () => number;
+  } {
     const records: Record<string, unknown>[] = [];
+    let pages = 0;
     const program: MemoryProgram = (command, request) => {
       const asked = request as Record<string, unknown>;
       if (command === "record") {
         records.push(JSON.parse(JSON.stringify(asked)) as Record<string, unknown>);
         return { ok: true, key: records.length };
       }
-      return records.filter((r) => r.domain === asked.domain && r.element_id === asked.element_id);
+      pages += 1;
+      const from = typeof asked.after === "string" ? Number(asked.after) : 0;
+      const limit = typeof asked.limit === "number" ? asked.limit : 1000;
+      const found: Record<string, unknown>[] = [];
+      let at = from;
+      while (at < records.length && found.length < limit) {
+        const record = records[at] as Record<string, unknown>;
+        if (record.domain === asked.domain && record.element_id === asked.element_id) found.push(record);
+        at += 1;
+      }
+      return { records: found, next: at < records.length ? String(at) : null };
     };
-    return { program, records };
+    return { program, records, pages: () => pages };
   }
 
   it("hands every checkpoint to the store and reads the kept ones back from it", async () => {
@@ -398,16 +418,67 @@ describe("checkpoint stores", () => {
   });
 
   it("the Lattice Memory store skips records that hold no checkpoint", () => {
-    const program: MemoryProgram = () => [
-      { body: null },
-      { body: { nodeId: "a" } },
-      "text",
-      { body: { nodeId: "a", timestamp: 2, context: { input: {}, variables: {}, history: [] }, vectorClock: {} } },
-    ];
+    const program: MemoryProgram = () => ({
+      records: [
+        { body: null },
+        { body: { nodeId: "a" } },
+        "text",
+        { body: { nodeId: "a", timestamp: 2, context: { input: {}, variables: {}, history: [] }, vectorClock: {} } },
+      ],
+      next: null,
+    });
     const store = new LatticeMemoryCheckpointStore({ runId: "run-1", program });
     expect(store.list().map((c) => c.nodeId)).toEqual(["a"]);
-    const none: MemoryProgram = () => null;
-    expect(new LatticeMemoryCheckpointStore({ runId: "run-1", program: none }).list()).toEqual([]);
+  });
+
+  it("the Lattice Memory store refuses an answer that is no page", () => {
+    for (const answer of [null, [], "text", { records: "none" }]) {
+      const program: MemoryProgram = () => answer;
+      const store = new LatticeMemoryCheckpointStore({ runId: "run-1", program });
+      expect(() => store.list()).toThrow(/no page of records/);
+    }
+    // A next page that is the page just read would never end.
+    const stuck: MemoryProgram = () => ({ records: [], next: "7" });
+    expect(() => new LatticeMemoryCheckpointStore({ runId: "run-1", program: stuck }).list()).toThrow(
+      /names no next page/,
+    );
+    const odd: MemoryProgram = () => ({ records: [], next: 7 });
+    expect(() => new LatticeMemoryCheckpointStore({ runId: "run-1", program: odd }).list()).toThrow(
+      /names no next page/,
+    );
+  });
+
+  it("a run of 10000 checkpoints is read back in pages and resumes", () => {
+    const { program, records, pages } = fakeProgram();
+    const store = new LatticeMemoryCheckpointStore({ runId: "long-run", program });
+    const other = new LatticeMemoryCheckpointStore({ runId: "other-run", program });
+    for (let index = 0; index < 10_000; index += 1) {
+      store.append({
+        nodeId: `n-${index}`,
+        timestamp: 1_000 + index,
+        context: { input: { n: index }, variables: {}, history: index === 0 ? [] : [`n-${index - 1}`] },
+        vectorClock: { e: index + 1 },
+      });
+      if (index % 100 === 0) {
+        other.append({
+          nodeId: `o-${index}`,
+          timestamp: 1_000 + index,
+          context: { input: {}, variables: {}, history: [] },
+          vectorClock: { e: 1 },
+        });
+      }
+    }
+    expect(records).toHaveLength(10_100);
+    const kept = new LatticeMemoryCheckpointStore({ runId: "long-run", program }).list();
+    expect(kept).toHaveLength(10_000);
+    expect(kept.map((c) => c.nodeId)).toEqual(Array.from({ length: 10_000 }, (_, index) => `n-${index}`));
+    // No request asked for more than one page of records.
+    expect(pages()).toBeGreaterThanOrEqual(10_000 / CHECKPOINT_PAGE_RECORDS);
+    const engine = engineWith([action("n-9999")], {
+      ...run,
+      checkpointStore: new LatticeMemoryCheckpointStore({ runId: "long-run", program }),
+    });
+    expect(engine.restoreCheckpoint("n-9999")).toEqual({ input: { n: 9999 }, variables: {}, history: ["n-9998"] });
   });
 
   it("a program that fails ends the run and names the failure", async () => {

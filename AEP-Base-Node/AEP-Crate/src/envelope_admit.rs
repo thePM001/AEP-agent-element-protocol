@@ -149,7 +149,14 @@ pub fn admit_sealed_payload_report_recorded(
     dock: &LiveDockContext,
     record: &mut dyn FnMut() -> Result<(), AdmitWall>,
 ) -> Result<(), DenyReport> {
-    admit_sealed_payload_report_in_view(live, plaintext, dock, record, &MemoryView::cold()).0
+    admit_sealed_payload_report_in_view(
+        live,
+        plaintext,
+        dock,
+        record,
+        &MemoryView::without_memory(),
+    )
+    .0
 }
 
 /// Admit then Apply with no record step. The lattice log and the unit paths use this.

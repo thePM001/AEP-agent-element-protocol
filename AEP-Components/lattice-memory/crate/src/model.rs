@@ -6,7 +6,6 @@ use aep_lattice_memory_core::{
     MAX_BODY_BYTES,
 };
 use std::collections::BTreeMap;
-use std::sync::{Arc, RwLock};
 
 use crate::error::MemoryError;
 
@@ -339,40 +338,105 @@ impl VerifyReport {
     }
 }
 
-/// A read-only handle on the attractors of an open backend. A clone can live on
-/// another thread than the backend. Reading never waits: while the backend writes, the
-/// handle answers that no hint is at hand.
-#[derive(Debug, Clone)]
-pub struct HintReader {
-    core: Arc<RwLock<MemoryCore>>,
+/// Where the log of one domain stands: how many records it holds and the hash of the
+/// newest one. A caller keeps anchors outside the store, such as the Base Node in its
+/// Evidence Ledger, and hands them back to find a log that was cut or replaced.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DomainAnchor {
+    pub domain: String,
+    pub records: u64,
+    /// Hash of record number `records`, or the genesis hash of an empty log.
+    pub head_hash: [u8; 32],
 }
 
-impl HintReader {
-    pub(crate) fn new(core: Arc<RwLock<MemoryCore>>) -> Self {
-        HintReader { core }
-    }
+/// A place in the records of a store: behind record `key` of `domain`. A page of
+/// records names the place where the next page starts.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Cursor {
+    pub(crate) domain: String,
+    pub(crate) key: i64,
+    /// Offset behind the frame of the record in a log file. A backend without files
+    /// leaves it zero.
+    pub(crate) offset: u64,
+}
 
-    /// The route hint for a proposal. None when the attractors cannot be read at this
-    /// instant, which a caller treats as a cold route.
-    pub fn route_hint(
-        &self,
-        domain: &str,
-        fingerprint: &Fingerprint,
-        shape_digest: &[u8; 32],
-    ) -> Option<RouteHint> {
-        match self.core.try_read() {
-            Ok(core) => Some(core.route_hint(domain, fingerprint, shape_digest)),
-            Err(_) => None,
+impl std::fmt::Display for Cursor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}:{}", self.domain, self.key, self.offset)
+    }
+}
+
+impl std::str::FromStr for Cursor {
+    type Err = MemoryError;
+
+    /// Read a cursor as a page printed it. A text that is no cursor is refused.
+    fn from_str(text: &str) -> Result<Self, MemoryError> {
+        let bad = || invalid("after", "is no place a page named");
+        let mut parts = text.rsplitn(3, ':');
+        let offset = parts.next().and_then(|t| t.parse::<u64>().ok());
+        let key = parts.next().and_then(|t| t.parse::<i64>().ok());
+        let domain = parts.next();
+        match (domain, key, offset) {
+            (Some(domain), Some(key), Some(offset)) if key >= 0 => {
+                check_domain(domain).map_err(|_| bad())?;
+                Ok(Cursor {
+                    domain: domain.to_string(),
+                    key,
+                    offset,
+                })
+            }
+            _ => Err(bad()),
+        }
+    }
+}
+
+/// Bytes of records one page holds unless the caller names another bound.
+pub const DEFAULT_PAGE_BYTES: usize = 4 * 1024 * 1024;
+
+/// Which records a caller asks for. The records come in the order they were written,
+/// one domain after the other in name order.
+#[derive(Debug, Clone, Copy)]
+pub struct RecordQuery<'a> {
+    /// One domain, or every domain when absent.
+    pub domain: Option<&'a str>,
+    /// Keep only the records of this element.
+    pub element_id: Option<&'a str>,
+    /// Keep only accepted records or only rejections.
+    pub accepted: Option<bool>,
+    /// Start behind this place. Absent means the first record.
+    pub after: Option<&'a Cursor>,
+    /// Most records of one page.
+    pub limit: usize,
+    /// A page ends with the record that brings its stored bytes to this bound, so a
+    /// page always holds at least one record when one is left.
+    pub max_bytes: usize,
+}
+
+impl<'a> RecordQuery<'a> {
+    /// Every record of one domain from its first one, in pages of the default size.
+    pub fn domain(domain: &'a str) -> Self {
+        RecordQuery {
+            domain: Some(domain),
+            element_id: None,
+            accepted: None,
+            after: None,
+            limit: usize::MAX,
+            max_bytes: DEFAULT_PAGE_BYTES,
         }
     }
 
-    /// Attractors of every domain together. None when they cannot be read at this instant.
-    pub fn attractor_count(&self) -> Option<u64> {
-        match self.core.try_read() {
-            Ok(core) => Some(core.attractor_count() as u64),
-            Err(_) => None,
-        }
+    pub(crate) fn keeps(&self, entry: &LogEntry) -> bool {
+        self.element_id.is_none_or(|want| entry.element_id == want)
+            && self.accepted.is_none_or(|want| entry.accepted == want)
     }
+}
+
+/// One page of records.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Page {
+    pub records: Vec<StoredRecord>,
+    /// Where the next page starts. None when the query has no further record.
+    pub next: Option<Cursor>,
 }
 
 /// The store behind Lattice Memory. Two backends ship: one in memory for development
@@ -383,7 +447,9 @@ pub trait MemoryBackend {
     /// together or not at all.
     fn record(&mut self, record: &NewRecord) -> Result<Receipt, MemoryError>;
 
-    /// The route hint for a proposal that is about to be judged.
+    /// What the attractors say about a shape: hot when an accepted record of the same
+    /// shape or a near one was written, cold otherwise. A hint is a statistic and
+    /// never a permission.
     fn route_hint(
         &self,
         domain: &str,
@@ -400,27 +466,26 @@ pub trait MemoryBackend {
         min_score: i32,
     ) -> Result<Vec<Match>, MemoryError>;
 
-    /// The records of one element in one domain in the order they were written.
-    /// `accepted` keeps only accepted records or only rejections.
-    fn history(
-        &self,
-        domain: &str,
-        element_id: &str,
-        accepted: Option<bool>,
-        limit: usize,
-    ) -> Result<Vec<StoredRecord>, MemoryError>;
+    /// One page of the records a query names.
+    fn records(&self, query: &RecordQuery<'_>) -> Result<Page, MemoryError>;
 
-    /// The records of one domain, or of every domain in name order, each domain in
-    /// the order its records were written.
-    fn export(&self, domain: Option<&str>, limit: usize) -> Result<Vec<StoredRecord>, MemoryError>;
+    /// The number of records a query names from its start on. No record is kept in
+    /// memory for the count.
+    fn count(&self, query: &RecordQuery<'_>) -> Result<u64, MemoryError>;
 
+    /// Counts of the domains this backend has open.
     fn counts(&self) -> Result<Counts, MemoryError>;
+
+    /// Where the log of each open domain stands.
+    fn anchors(&self) -> Vec<DomainAnchor>;
+
+    /// Flush every record written so far to the disk. A caller does this before it
+    /// keeps anchors outside the store, so no anchor names a record a loss of power
+    /// can still take away.
+    fn sync(&mut self) -> Result<(), MemoryError>;
 
     /// Walk the hash chain of every domain and rebuild its attractors from the log.
     fn verify(&self) -> Result<VerifyReport, MemoryError>;
-
-    /// A read-only handle on the attractors that another thread may hold.
-    fn reader(&self) -> HintReader;
 
     fn config(&self) -> CoreConfig;
 }

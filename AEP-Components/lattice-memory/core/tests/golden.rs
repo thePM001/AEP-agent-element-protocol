@@ -153,7 +153,7 @@ fn the_log_entry_hash_and_the_memo_key_are_pinned() {
         hex(&entry_hash("admit.validation_engine", &entry.encode())),
         GOLDEN_ENTRY_HASH
     );
-    let key = MemoKey::derive("writing", &base().digest(), &[1; 32], &[2; 32]);
+    let key = MemoKey::of("writing", base().canonical().as_bytes());
     assert_eq!(hex(key.as_bytes()), GOLDEN_MEMO_KEY);
 }
 
@@ -175,4 +175,4 @@ const GOLDEN_EMBEDDING: &[i8] = &[
 const GOLDEN_EMBEDDING_SCORE: i32 = 16127;
 const GOLDEN_GENESIS: &str = "9767d49b22b0f6c373f19c5ef74e865ce435ba148f4ded00530af639f6e0c432";
 const GOLDEN_ENTRY_HASH: &str = "62bd0cf7e8ded2d7ff82b4ac5d6d6d1f472e3bc818181d73c538aa34b449950c";
-const GOLDEN_MEMO_KEY: &str = "de3740b2ea746fde8817c75225340e7817d22b325c130b8de69c49ea8a434fad";
+const GOLDEN_MEMO_KEY: &str = "91a0096cd455ee84df3b6de814137029b07e3b7f03cad256c7bf41fd86e89725";

@@ -1,9 +1,9 @@
 //! Lattice Memory of AEP 2.9: the store.
 //!
-//! Lattice Memory keeps what the Admit Gate judged. Every judged proposal is one
-//! record in an append-only log with a hash chain. Accepted records form attractors
-//! with support counts. The computing part is the crate `aep-lattice-memory-core`.
-//! This crate adds the backends behind one trait:
+//! Lattice Memory is the record of what the Admit Gate judged. Every recorded verdict
+//! is one record in an append-only log with a hash chain. Accepted records form
+//! attractors with support counts. The computing part is the crate
+//! `aep-lattice-memory-core`. This crate adds the backends behind one trait:
 //!
 //! - [`InMemoryBackend`] for development and tests
 //! - [`LogBackend`] for production: one log file per domain in one folder
@@ -14,9 +14,11 @@
 //! A stored shape is evidence for a later reader. It is never a permission.
 
 mod error;
+mod frames;
 mod logstore;
 mod memory;
 mod model;
+mod snapshot;
 pub mod wire;
 
 pub use aep_lattice_memory_core as core;
@@ -25,12 +27,14 @@ pub use aep_lattice_memory_core::{
     QuantizedEmbedding, RouteHint, SimHash,
 };
 pub use error::MemoryError;
+pub use frames::FORMAT_VERSION;
 pub use logstore::{
-    LogBackend, OpenOptionsLog, FORMAT_VERSION, LOG_SUFFIX, META_FILE, SNAPSHOT_EVERY,
-    SNAPSHOT_SUFFIX,
+    LogBackend, OpenOptionsLog, LOG_SUFFIX, META_FILE, SNAPSHOT_EVERY, SNAPSHOT_SHARE,
 };
 pub use memory::InMemoryBackend;
 pub use model::{
-    is_judged_domain, Counts, DomainCounts, DomainVerify, HintReader, Match, MemoryBackend,
-    MemoryHealth, NewRecord, Receipt, StoredRecord, VerifyReport, JUDGED_DOMAIN,
+    is_judged_domain, Counts, Cursor, DomainAnchor, DomainCounts, DomainVerify, Match,
+    MemoryBackend, MemoryHealth, NewRecord, Page, Receipt, RecordQuery, StoredRecord, VerifyReport,
+    DEFAULT_PAGE_BYTES, JUDGED_DOMAIN,
 };
+pub use snapshot::SNAPSHOT_SUFFIX;

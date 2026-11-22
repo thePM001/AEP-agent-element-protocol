@@ -13,6 +13,7 @@
 use crate::error::CoreError;
 use crate::fingerprint::{dot_i8, Fingerprint, FingerprintKind, SimHash, SIMHASH_MAX_SCORE};
 use std::collections::{BTreeSet, HashMap, VecDeque};
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Mutex;
 
 /// Chunks of a SimHash in the chunk table.
@@ -176,39 +177,8 @@ impl ChunkTable {
         }
     }
 
-    /// The slot `from` moves to the free slot `to`: every bucket that holds `from`
-    /// holds `to` in the same place afterwards.
-    fn rename(&mut self, hash: &SimHash, from: usize, to: usize) {
-        let old = from as u32;
-        let new = to as u32;
-        for chunk in 0..CHUNKS {
-            let at = Self::bucket_at(chunk, chunk_of(hash, chunk));
-            if let Some(place) = self.buckets[at].inline.iter().position(|s| *s == old) {
-                self.buckets[at].inline[place] = new;
-                continue;
-            }
-            let after = self.next_of(chunk, old);
-            if self.buckets[at].over == old {
-                self.buckets[at].over = new;
-                self.set_next(chunk, to, after);
-                continue;
-            }
-            let mut walk = self.buckets[at].over;
-            while walk != NONE {
-                let following = self.next_of(chunk, walk);
-                if following == old {
-                    self.set_next(chunk, walk as usize, new);
-                    self.set_next(chunk, to, after);
-                    break;
-                }
-                walk = following;
-            }
-        }
-    }
-
-    /// Call `visit` with every slot of one bucket.
-    fn each(&self, chunk: usize, value: u16, visit: &mut impl FnMut(usize)) {
-        let bucket = self.buckets[Self::bucket_at(chunk, value)];
+    /// Call `visit` with every slot of a bucket of `chunk` that was already read.
+    fn each_of(&self, chunk: usize, bucket: Bucket, visit: &mut impl FnMut(usize)) {
         for slot in bucket.inline {
             if slot == NONE {
                 return;
@@ -256,6 +226,36 @@ struct Answer {
 #[derive(Debug, Default)]
 struct AnswerCache {
     answers: Mutex<Vec<Option<Answer>>>,
+    /// Lookups in a row that left the chunk table for the scan.
+    overflow_run: AtomicU32,
+    /// Lookups that still go to the scan without a try of the chunk table.
+    rest_left: AtomicU32,
+}
+
+impl AnswerCache {
+    /// True while the chunk table rests. Each call takes one lookup off the rest.
+    fn table_rests(&self) -> bool {
+        self.rest_left
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |left| {
+                left.checked_sub(1)
+            })
+            .is_ok()
+    }
+
+    /// A lookup left the chunk table for the scan. After `TABLE_OVERFLOW_RUN` such
+    /// lookups in a row the table rests for `TABLE_REST` lookups.
+    fn table_overflowed(&self) {
+        let run = self.overflow_run.fetch_add(1, Ordering::Relaxed) + 1;
+        if run >= TABLE_OVERFLOW_RUN {
+            self.overflow_run.store(0, Ordering::Relaxed);
+            self.rest_left.store(TABLE_REST, Ordering::Relaxed);
+        }
+    }
+
+    /// A lookup got its answer from the chunk table.
+    fn table_answered(&self) {
+        self.overflow_run.store(0, Ordering::Relaxed);
+    }
 }
 
 impl Clone for AnswerCache {
@@ -289,6 +289,8 @@ pub struct DomainIndex {
     eviction: BTreeSet<(u64, i64, i64)>,
     /// SimHash domains from `CHUNK_TABLE_FROM` attractors on: the chunk table.
     chunk_table: Option<ChunkTable>,
+    /// False for a domain that may not build a chunk table. Its lookups scan.
+    lookup_table: bool,
     /// Rises with every change of the set of attractors. A reinforcement is no change
     /// of the set.
     version: u64,
@@ -302,7 +304,6 @@ pub struct DomainIndex {
 
 impl DomainIndex {
     pub fn new(kind: FingerprintKind) -> Self {
-        let chunk_table = None;
         DomainIndex {
             kind,
             keys: Vec::new(),
@@ -313,7 +314,8 @@ impl DomainIndex {
             slot_of: HashMap::new(),
             by_digest: HashMap::new(),
             eviction: BTreeSet::new(),
-            chunk_table,
+            chunk_table: None,
+            lookup_table: true,
             version: 0,
             formed: VecDeque::new(),
             formed_dropped: 0,
@@ -376,7 +378,7 @@ impl DomainIndex {
                 match self.chunk_table.as_mut() {
                     Some(table) => table.link(hash, slot),
                     None => {
-                        if self.hashes.len() >= CHUNK_TABLE_FROM {
+                        if self.lookup_table && self.hashes.len() >= CHUNK_TABLE_FROM {
                             let mut table = ChunkTable::new();
                             for (at, stored) in self.hashes.iter().enumerate() {
                                 table.link(stored, at);
@@ -460,49 +462,6 @@ impl DomainIndex {
             last_seen_unix: attractor.last_seen_unix,
         };
         Ok(())
-    }
-
-    /// Remove an attractor. Returns false when the key is not in the index.
-    pub fn remove(&mut self, key: i64) -> bool {
-        let Some(slot) = self.slot_of.remove(&key) else {
-            return false;
-        };
-        let last = self.keys.len() - 1;
-        let meta = self.meta[slot].clone();
-        self.eviction
-            .remove(&(meta.support, meta.last_seen_unix, key));
-        if self.by_digest.get(&meta.shape_digest) == Some(&key) {
-            self.by_digest.remove(&meta.shape_digest);
-        }
-        match self.kind {
-            FingerprintKind::SimHash => {
-                let removed = self.hashes[slot];
-                let moved = self.hashes[last];
-                if let Some(table) = self.chunk_table.as_mut() {
-                    table.unlink(&removed, slot);
-                    if slot != last {
-                        table.rename(&moved, last, slot);
-                    }
-                }
-                self.hashes.swap_remove(slot);
-                self.first_words.swap_remove(slot);
-            }
-            FingerprintKind::Embedding { dim } => {
-                if slot != last {
-                    let (head, tail) = self.vectors.split_at_mut(last * dim);
-                    head[slot * dim..slot * dim + dim].copy_from_slice(&tail[..dim]);
-                }
-                self.vectors.truncate(last * dim);
-            }
-        }
-        self.version += 1;
-        self.keys.swap_remove(slot);
-        self.meta.swap_remove(slot);
-        if slot != last {
-            let moved_key = self.keys[slot];
-            self.slot_of.insert(moved_key, slot);
-        }
-        true
     }
 
     /// Count one more accepted record on an attractor. Returns the new support.
@@ -596,24 +555,13 @@ impl DomainIndex {
     /// runs before the cut to `limit`, so a search never returns fewer hits than exist.
     /// Order: highest score first, the lowest key first among equal scores.
     pub fn scan(&self, query: &Fingerprint, limit: usize, min_score: i32) -> Vec<Hit> {
-        self.scan_where(query, limit, min_score, |_| true)
-    }
-
-    /// Exact scan with a filter on the key that runs before the cut to `limit`.
-    pub fn scan_where(
-        &self,
-        query: &Fingerprint,
-        limit: usize,
-        min_score: i32,
-        mut keep: impl FnMut(i64) -> bool,
-    ) -> Vec<Hit> {
         if limit == 0 || self.kind != query.kind() {
             return Vec::new();
         }
         let mut hits: Vec<Hit> = Vec::new();
         for slot in 0..self.keys.len() {
             let score = self.score_at(slot, query);
-            if score >= min_score && keep(self.keys[slot]) {
+            if score >= min_score {
                 hits.push(Hit {
                     key: self.keys[slot],
                     score,
@@ -641,7 +589,11 @@ impl DomainIndex {
             if let Some(answer) = self.remembered(hash, max_distance) {
                 return answer;
             }
-            let answer = match (self.chunk_table.as_ref(), chunk_radius(min_score)) {
+            let table = match self.chunk_table.as_ref() {
+                Some(_) if self.answers.table_rests() => None,
+                table => table,
+            };
+            let answer = match (table, chunk_radius(min_score)) {
                 (Some(table), Some(radius)) => {
                     self.nearest_by_chunks(table, hash, max_distance, radius)
                 }
@@ -772,12 +724,32 @@ impl DomainIndex {
         }
     }
 
-    /// The nearest attractor within `max_distance` by a pass over every hash. A hash
-    /// is left as soon as its counted bits exceed the bound.
+    /// The nearest attractor within `max_distance` by a pass over every hash.
+    ///
+    /// The pass reads the compact array of first words and reads a full hash only when
+    /// the first word leaves room for a match. Once an attractor is found the bound
+    /// drops to its distance: a later one must be nearer, or as near with a lower key.
     fn nearest_by_bounded_scan(&self, hash: &SimHash, max_distance: u32) -> Option<Hit> {
         let mut best: Option<Hit> = None;
-        for slot in 0..self.hashes.len() {
-            self.offer(&mut best, slot, hash, max_distance);
+        let mut bound = max_distance;
+        let first = hash.0[0];
+        for (slot, word) in self.first_words.iter().enumerate() {
+            if (word ^ first).count_ones() > bound {
+                continue;
+            }
+            let Some(distance) = distance_within(&self.hashes[slot], hash, bound) else {
+                continue;
+            };
+            let score = SIMHASH_MAX_SCORE - distance as i32;
+            let key = self.keys[slot];
+            let better = match best {
+                None => true,
+                Some(b) => score > b.score || (score == b.score && key < b.key),
+            };
+            if better {
+                best = Some(Hit { key, score });
+                bound = distance;
+            }
         }
         best
     }
@@ -801,20 +773,37 @@ impl DomainIndex {
         let outside = (max_distance / (radius + 1)) as usize;
         let need = CHUNKS.saturating_sub(outside).max(1);
         let mut best: Option<Hit> = None;
+        // Hashes of shapes that share most of their tokens share chunk values, so a
+        // bucket can hold a large part of the domain. The table is left once it has
+        // handed out more slots than the bound, and the scan gives the same answer.
+        let mut visited = 0usize;
         if need < 2 {
             // One table may be the only one that holds a match: every slot is compared.
-            let mut consider = |slot: usize| self.offer(&mut best, slot, hash, max_distance);
             for chunk in 0..CHUNKS {
-                probe_chunk(table, hash, chunk, radius, &mut consider);
+                probe_chunk(table, hash, chunk, radius, &mut |slot| {
+                    visited += 1;
+                    self.offer(&mut best, slot, hash, max_distance)
+                });
+                if visited > TABLE_VISIT_BOUND {
+                    self.answers.table_overflowed();
+                    return self.nearest_by_bounded_scan(hash, max_distance);
+                }
             }
+            self.answers.table_answered();
             return best;
         }
         let mut seen = SeenSlots::new();
         for chunk in 0..CHUNKS {
             probe_chunk(table, hash, chunk, radius, &mut |slot| {
+                visited += 1;
                 seen.count(slot as u32)
             });
+            if visited > TABLE_VISIT_BOUND {
+                self.answers.table_overflowed();
+                return self.nearest_by_bounded_scan(hash, max_distance);
+            }
         }
+        self.answers.table_answered();
         seen.each(|slot, tables| {
             if tables as usize >= need {
                 self.offer(&mut best, slot as usize, hash, max_distance);
@@ -827,6 +816,15 @@ impl DomainIndex {
     pub fn has_chunk_table(&self) -> bool {
         self.chunk_table.is_some()
     }
+
+    /// Allow or refuse this domain a chunk table. A built table takes 16.8 MB of
+    /// buckets at any size of the domain and up to 6.4 MB of chains at 100000
+    /// attractors, so a memory bounds the number of domains that hold one. A domain that is
+    /// refused answers every lookup by the scan and gives the same answers. A table
+    /// that is built remains.
+    pub fn set_lookup_table(&mut self, allowed: bool) {
+        self.lookup_table = allowed;
+    }
 }
 
 /// Call `visit` with every slot of the buckets of one table whose chunk value differs
@@ -838,20 +836,48 @@ fn probe_chunk(
     radius: u32,
     visit: &mut impl FnMut(usize),
 ) {
+    // The values are listed first and their buckets read in a second loop. No read
+    // there depends on another, so the processor fetches the buckets of a large table
+    // at the same time instead of waiting for one after the other. The slots are then
+    // visited in the order of the list, which is the order of the values.
     let value = chunk_of(hash, chunk);
-    table.each(chunk, value, visit);
+    let mut values = [0u16; PROBES_PER_CHUNK];
+    let mut count = 0;
+    values[count] = value;
+    count += 1;
     if radius >= 1 {
         for i in 0..CHUNK_BITS {
             let one = value ^ (1u16 << i);
-            table.each(chunk, one, visit);
+            values[count] = one;
+            count += 1;
             if radius >= 2 {
                 for j in (i + 1)..CHUNK_BITS {
-                    table.each(chunk, one ^ (1u16 << j), visit);
+                    values[count] = one ^ (1u16 << j);
+                    count += 1;
                 }
             }
         }
     }
+    let mut buckets = [EMPTY_BUCKET; PROBES_PER_CHUNK];
+    for (bucket, value) in buckets.iter_mut().zip(&values[..count]) {
+        *bucket = table.buckets[ChunkTable::bucket_at(chunk, *value)];
+    }
+    for bucket in &buckets[..count] {
+        table.each_of(chunk, *bucket, visit);
+    }
 }
+
+/// Values one chunk probes at the largest radius: the value, the values one bit away
+/// and the values two bits away.
+const PROBES_PER_CHUNK: usize =
+    1 + CHUNK_BITS as usize + (CHUNK_BITS * (CHUNK_BITS - 1) / 2) as usize;
+
+/// Slots one lookup takes from the chunk table before it turns to the scan.
+const TABLE_VISIT_BOUND: usize = 2048;
+/// Lookups in a row that leave the chunk table before the table rests.
+const TABLE_OVERFLOW_RUN: u32 = 8;
+/// Lookups that go to the scan while the table rests. The table is tried again after.
+const TABLE_REST: u32 = 512;
 
 /// Places of the small table of [`SeenSlots`]. A power of two.
 const SEEN_PLACES: usize = 1024;
@@ -1091,11 +1117,10 @@ mod tests {
         for key in 11..=13i64 {
             index.insert(attractor(key, rng.near(&base, 4))).unwrap();
         }
-        // Even keys only: the filter runs before the cut, so both near even keys
-        // would be found if two existed. Here one near key is even.
-        let hits = index.scan_where(&Fingerprint::SimHash(base), 2, 240, |key| key % 2 == 0);
-        assert_eq!(hits.iter().map(|h| h.key).collect::<Vec<_>>(), vec![12]);
+        // The threshold filters before the cut: the far attractors with low keys take
+        // no place among the hits.
         let hits = index.scan(&Fingerprint::SimHash(base), 2, 240);
+        assert!(hits.iter().all(|h| h.key >= 11));
         assert_eq!(hits.len(), 2);
         let hits = index.scan(&Fingerprint::SimHash(base), 100, 240);
         assert_eq!(hits.len(), 3);
@@ -1116,10 +1141,13 @@ mod tests {
                 let hash = rng.near_within(&base, 70);
                 index.insert(attractor(key, hash)).unwrap();
             }
-            // Remove some so the swapped slots are part of the comparison.
+            // Replace some, so slots that changed their hash are part of the comparison.
             for key in (1..=2500i64).filter(|k| k % 7 == 0) {
-                assert!(index.remove(key));
+                let base = seeds[(rng.next() % 30) as usize];
+                let hash = rng.near_within(&base, 70);
+                index.replace(key, attractor(10_000 + key, hash)).unwrap();
             }
+            assert_eq!(index.len(), 2500);
             for round in 0..250 {
                 let base = seeds[round % 30];
                 let query = Fingerprint::SimHash(rng.near_within(&base, 60));
@@ -1150,7 +1178,7 @@ mod tests {
     }
 
     #[test]
-    fn remove_keeps_every_other_attractor_findable() {
+    fn replace_keeps_every_other_attractor_findable() {
         let mut rng = Lcg(3);
         let mut index = DomainIndex::new(FingerprintKind::SimHash);
         let mut all: Vec<(i64, SimHash)> = Vec::new();
@@ -1159,14 +1187,14 @@ mod tests {
             index.insert(attractor(key, hash)).unwrap();
             all.push((key, hash));
         }
-        let mut removed = 0;
-        while all.len() > 5 {
+        for round in 1..=600i64 {
             let at = (rng.next() % all.len() as u64) as usize;
-            let (key, _) = all.swap_remove(at);
-            assert!(index.remove(key));
-            assert!(!index.remove(key));
-            removed += 1;
-            if removed % 25 == 0 {
+            let (gone, _) = all.swap_remove(at);
+            let hash = rng.hash();
+            index.replace(gone, attractor(1000 + round, hash)).unwrap();
+            all.push((1000 + round, hash));
+            assert!(!index.contains(gone));
+            if round % 25 == 0 {
                 for (key, hash) in &all {
                     let found = index.nearest(&Fingerprint::SimHash(*hash), 256);
                     assert_eq!(found.map(|h| h.key), Some(*key));
@@ -1181,23 +1209,29 @@ mod tests {
     }
 
     #[test]
-    fn chunk_table_follows_removals() {
+    fn chunk_table_follows_replacements() {
         let mut rng = Lcg(5);
         let mut index = DomainIndex::new(FingerprintKind::SimHash);
         let mut all: Vec<(i64, SimHash)> = Vec::new();
-        for key in 1..=2300i64 {
-            // Few distinct chunk values, so the chains hold several slots.
+        // Few distinct chunk values, so the chains hold several slots.
+        let narrow = |rng: &mut Lcg| {
             let mut hash = rng.hash();
             hash.0[0] &= 0x0003_0003_0003_0003;
+            hash
+        };
+        for key in 1..=2300i64 {
+            let hash = narrow(&mut rng);
             index.insert(attractor(key, hash)).unwrap();
             all.push((key, hash));
             assert_eq!(index.has_chunk_table(), key >= CHUNK_TABLE_FROM as i64);
         }
-        for removed in 1..=900 {
+        for round in 1..=900i64 {
             let at = (rng.next() % all.len() as u64) as usize;
-            let (key, _) = all.swap_remove(at);
-            assert!(index.remove(key));
-            if removed % 150 == 0 {
+            let (gone, _) = all.swap_remove(at);
+            let hash = narrow(&mut rng);
+            index.replace(gone, attractor(5000 + round, hash)).unwrap();
+            all.push((5000 + round, hash));
+            if round % 150 == 0 {
                 assert!(index.has_chunk_table());
                 for (key, hash) in &all {
                     let query = Fingerprint::SimHash(*hash);
@@ -1207,48 +1241,85 @@ mod tests {
                 }
             }
         }
-        // New attractors go into the slots the removals freed.
-        for key in 5000..5200i64 {
-            let hash = rng.hash();
-            index.insert(attractor(key, hash)).unwrap();
-            let found = index.nearest(&Fingerprint::SimHash(hash), 256);
-            assert_eq!(found.map(|h| h.key), Some(key));
+        // A domain that is refused its lookup table answers by the scan and gives the
+        // same answers.
+        let mut plain = DomainIndex::new(FingerprintKind::SimHash);
+        plain.set_lookup_table(false);
+        for (key, hash) in &all {
+            plain.insert(attractor(*key, *hash)).unwrap();
         }
+        assert!(!plain.has_chunk_table());
+        for _ in 0..200 {
+            let at = (rng.next() % all.len() as u64) as usize;
+            let query = Fingerprint::SimHash(rng.near_within(&all[at].1, 40));
+            for min_score in [256, 230, 200] {
+                assert_eq!(
+                    plain.nearest(&query, min_score),
+                    index.nearest(&query, min_score)
+                );
+            }
+        }
+        // Once the table is allowed the next attractor builds it.
+        plain.set_lookup_table(true);
+        plain.insert(attractor(9000, narrow(&mut rng))).unwrap();
+        assert!(plain.has_chunk_table());
+    }
+
+    /// The attractor eviction removes next, read from a plain list.
+    fn first_to_go(held: &[Attractor]) -> i64 {
+        held.iter()
+            .map(|a| (a.support, a.last_seen_unix, a.key))
+            .min()
+            .map(|lowest| lowest.2)
+            .unwrap_or(0)
     }
 
     #[test]
-    fn replace_leaves_what_a_removal_and_an_insert_leave() {
+    fn replace_leaves_what_a_fresh_index_of_the_same_attractors_holds() {
         for size in [300i64, 2300] {
             let mut rng = Lcg(size as u64);
             let mut replaced = DomainIndex::new(FingerprintKind::SimHash);
-            let mut reference = DomainIndex::new(FingerprintKind::SimHash);
+            // The attractors the index must hold, kept in a plain list.
+            let mut held: Vec<Attractor> = Vec::new();
             for key in 1..=size {
-                let hash = rng.hash();
-                replaced.insert(attractor(key, hash)).unwrap();
-                reference.insert(attractor(key, hash)).unwrap();
+                let one = attractor(key, rng.hash());
+                replaced.insert(one.clone()).unwrap();
+                held.push(one);
             }
             for round in 0..600i64 {
-                let evicted = reference.eviction_candidate().unwrap();
+                let evicted = first_to_go(&held);
                 assert_eq!(replaced.eviction_candidate(), Some(evicted));
                 let hash = rng.hash();
                 let key = size + 1 + round;
                 replaced.replace(evicted, attractor(key, hash)).unwrap();
-                assert!(reference.remove(evicted));
-                reference.insert(attractor(key, hash)).unwrap();
+                held.retain(|a| a.key != evicted);
+                held.push(attractor(key, hash));
                 // Now and then an attractor is reinforced, so the eviction order moves.
                 if round % 3 == 0 {
                     let lucky = size + 1 + round / 2;
-                    assert_eq!(
-                        replaced.reinforce(lucky, round),
-                        reference.reinforce(lucky, round)
-                    );
+                    let expected = held.iter_mut().find(|a| a.key == lucky).map(|a| {
+                        a.support += 1;
+                        a.last_seen_unix = a.last_seen_unix.max(round);
+                        a.support
+                    });
+                    assert_eq!(replaced.reinforce(lucky, round), expected);
                 }
                 let query = Fingerprint::SimHash(hash);
                 assert_eq!(replaced.nearest(&query, 256).map(|h| h.key), Some(key));
                 assert!(!replaced.contains(evicted));
                 if round % 100 == 99 {
+                    // A fresh index of the same attractors is the reference.
+                    let mut reference = DomainIndex::new(FingerprintKind::SimHash);
+                    held.sort_by_key(|a| a.key);
+                    for one in &held {
+                        reference.insert(one.clone()).unwrap();
+                    }
                     assert_eq!(replaced.attractors(), reference.attractors());
                     assert_eq!(replaced.len(), size as usize);
+                    assert_eq!(
+                        replaced.eviction_candidate(),
+                        reference.eviction_candidate()
+                    );
                     for _ in 0..50 {
                         let probe = Fingerprint::SimHash(rng.hash());
                         for min_score in [256, 230, 150, 0] {
@@ -1345,10 +1416,14 @@ mod tests {
                         held.push((next_key, hash));
                     }
                     2 => {
-                        // The attractor a query remembers may be the one that leaves.
+                        // The attractor a query remembers may be the one that leaves,
+                        // and the one that takes its place is far from every query.
+                        next_key += 1;
                         let at = (rng.next() % held.len() as u64) as usize;
-                        let (key, _) = held.swap_remove(at);
-                        assert!(index.remove(key));
+                        let (evicted, _) = held.swap_remove(at);
+                        let hash = rng.hash();
+                        index.replace(evicted, attractor(next_key, hash)).unwrap();
+                        held.push((next_key, hash));
                     }
                     3 => {
                         next_key += 1;
@@ -1385,7 +1460,7 @@ mod tests {
         }
     }
     #[test]
-    fn exact_digest_lookup_follows_insert_and_remove() {
+    fn exact_digest_lookup_follows_insert_and_replace() {
         let mut index = DomainIndex::new(FingerprintKind::SimHash);
         let mut first = attractor(1, SimHash([1, 0, 0, 0]));
         first.shape_digest = [7; 32];
@@ -1394,8 +1469,13 @@ mod tests {
         index.insert(first).unwrap();
         index.insert(second).unwrap();
         assert_eq!(index.exact(&[7; 32]), Some(1));
-        assert!(index.remove(1));
+        // The attractor that held the digest leaves. The one that takes its place
+        // brings a digest of its own.
+        let mut third = attractor(3, SimHash([3, 0, 0, 0]));
+        third.shape_digest = [9; 32];
+        index.replace(1, third).unwrap();
         assert_eq!(index.exact(&[7; 32]), None);
+        assert_eq!(index.exact(&[9; 32]), Some(3));
         assert_eq!(index.exact(&[8; 32]), None);
     }
 
@@ -1432,7 +1512,7 @@ mod tests {
     }
 
     #[test]
-    fn embedding_domain_scans_removes_and_checks_the_dimension() {
+    fn embedding_domain_scans_replaces_and_checks_the_dimension() {
         let mut index = DomainIndex::new(FingerprintKind::Embedding { dim: 3 });
         let rows = [
             (1i64, [1.0f32, 0.0, 0.0]),
@@ -1449,7 +1529,9 @@ mod tests {
         let hits = index.scan(&query, 2, 0);
         assert_eq!(hits.iter().map(|h| h.key).collect::<Vec<_>>(), vec![1, 3]);
         assert_eq!(index.nearest(&query, 15_000).map(|h| h.key), Some(1));
-        assert!(index.remove(1));
+        let mut fifth = attractor(5, SimHash([0; 4]));
+        fifth.fingerprint = embedding(&[0.0, 0.0, -1.0]);
+        index.replace(1, fifth).unwrap();
         assert_eq!(index.nearest(&query, 15_000).map(|h| h.key), Some(3));
         assert_eq!(
             index.get(4).map(|a| a.fingerprint),
@@ -1470,5 +1552,70 @@ mod tests {
         assert!(index
             .scan(&Fingerprint::SimHash(SimHash([0; 4])), 5, i32::MIN)
             .is_empty());
+    }
+
+    #[test]
+    fn a_table_that_keeps_overflowing_rests_and_is_tried_again() {
+        let mut rng = Lcg(91);
+        let base = rng.hash();
+        let mut index = DomainIndex::new(FingerprintKind::SimHash);
+        let mut all = Vec::new();
+        for key in 1..=6000i64 {
+            let mut hash = base;
+            hash.0[3] = rng.next();
+            index.insert(attractor(key, hash)).unwrap();
+            all.push((key, hash));
+        }
+        assert!(index.has_chunk_table());
+        let mut rested = 0u32;
+        let mut most = 0u32;
+        for round in 0..1200usize {
+            let mut query = all[round * 5].1;
+            query.0[3] ^= 1u64 << (round % 64);
+            let fp = Fingerprint::SimHash(query);
+            assert_eq!(
+                index.nearest(&fp, 230),
+                index.scan(&fp, 1, 230).first().copied(),
+                "round {round}"
+            );
+            let left = index.answers.rest_left.load(Ordering::Relaxed);
+            most = most.max(left);
+            if left > 0 {
+                rested += 1;
+            }
+        }
+        // The table rested, never for longer than one rest, and was tried again.
+        assert!(rested > 900, "rested {rested}");
+        assert!(most <= TABLE_REST);
+        assert!(rested < 1200);
+    }
+
+    #[test]
+    fn clustered_hashes_leave_the_table_for_the_scan_and_get_the_same_answer() {
+        // Hashes that share twelve of their sixteen chunks, as the hashes of shapes
+        // that share most of their tokens do: one bucket holds most of the domain.
+        let mut rng = Lcg(77);
+        let base = rng.hash();
+        let mut index = DomainIndex::new(FingerprintKind::SimHash);
+        let mut all = Vec::new();
+        for key in 1..=6000i64 {
+            let mut hash = base;
+            hash.0[3] = rng.next();
+            index.insert(attractor(key, hash)).unwrap();
+            all.push((key, hash));
+        }
+        assert!(index.has_chunk_table());
+        for round in 0..200usize {
+            let mut query = all[round * 29].1;
+            query.0[3] ^= 1u64 << (round % 64);
+            let fp = Fingerprint::SimHash(query);
+            for min_score in [256, 250, 230, 225] {
+                assert_eq!(
+                    index.nearest(&fp, min_score),
+                    index.scan(&fp, 1, min_score).first().copied(),
+                    "round {round} min_score {min_score}"
+                );
+            }
+        }
     }
 }

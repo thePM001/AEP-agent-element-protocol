@@ -40,7 +40,7 @@ A workflow author hands a graph to the engine. Before each node the engine asks 
 - `admitGate` on `GraphEngineOptions`, default deny
 - `policyEvaluator` with a `branches` map for decision nodes. This evaluator is not Admit.
 - `createGraphEngine(options)` as a factory
-- `checkpointStore` on `GraphEngineOptions`. The default keeps checkpoints in the process. `LatticeMemoryCheckpointStore` writes each checkpoint as one record of the domain `graph` of Lattice Memory, so another engine reads the run back after a restart. The engine starts no program itself: the store takes the program of Lattice Memory as a function, `memoryProgram` of `AEP-Components/intent-ledger/lib/intent-knots.mjs`. A checkpoint that cannot be kept ends the run
+- `checkpointStore` on `GraphEngineOptions`. The default keeps checkpoints in the process. `LatticeMemoryCheckpointStore` writes each checkpoint as one record of the domain `graph` of Lattice Memory, so another engine reads the run back after a restart. It reads the run in pages of 500 records, so a run of any length is read in answers of a bounded size. The engine starts no program itself: the store takes the program of Lattice Memory as a function, `memoryProgram` of `AEP-Components/intent-ledger/lib/intent-knots.mjs`. A checkpoint that cannot be kept ends the run
 - Component id `graph-engine` with the manifest `AEP-Base-Node/AEP-Registry/components/graph-engine.json`
 
 ## AEP-Graph Orchestration

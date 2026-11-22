@@ -113,7 +113,7 @@ flowchart TB
 | 12 | Scanners | The content scanners, which read the text of a proposal for secrets, personal data, injection and more | `AEP-Components/scanners/` | [README](AEP-Components/scanners/README.md) |
 | 13 | AgentMesh | The identity layer with local issuance of certificates and identifiers for agents, built by the crate in `AEP-Components/agentmesh/crate/` | `AEP-Components/agentmesh/` | [README](AEP-Components/agentmesh/README.md) |
 | 14 | Economics | Cost estimation before a model call, budget caps and x402 payments | `AEP-Components/economics/` | [README](AEP-Components/economics/README.md) |
-| 15 | Lattice Memory | The record of every verdict of the Admit Gate with attractors of the accepted shapes, kept for audit, health telemetry and a route hint | `AEP-Components/lattice-memory/` | [README](AEP-Components/lattice-memory/README.md) |
+| 15 | Lattice Memory | The record of the verdicts of the Admit Gate with attractors of the accepted shapes, kept for audit and health telemetry | `AEP-Components/lattice-memory/` | [README](AEP-Components/lattice-memory/README.md) |
 | 16 | Intent Ledger | The append-only record linking the declared intent of a code change to its commit | `AEP-Components/intent-ledger/` | [README](AEP-Components/intent-ledger/README.md) |
 | 17 | Model Gateway | The governed route for model calls to several providers, with checks on the stream | `AEP-Components/model-gateway/` | [README](AEP-Components/model-gateway/README.md) |
 | 18 | TLA+ | The formal models of the kernel rules and the checker for their shape | `AEP-Components/tla/` | [README](AEP-Components/tla/README.md) |
@@ -438,9 +438,9 @@ flowchart LR
 
 ## 15 / Lattice Memory
 
-**What it is:** Lattice Memory keeps what the Admit Gate (04) judged. Every verdict is one record in an append-only log with a hash chain and accepted records form attractors with support counts. A stored shape never replaces a check: a proposal similar to an earlier allow still passes every wall of the Admit Gate.
+**What it is:** Lattice Memory is the record of what the Admit Gate (04) judged. A recorded verdict is one record in an append-only log with a hash chain and accepted records form attractors with support counts. A stored shape never replaces a check: a proposal similar to an earlier allow still passes every wall of the Admit Gate.
 
-**What ships in 2.9:** Two pure Rust crates with no database engine and no C code. `aep-lattice-memory-core` computes the shape digest, a 256 bit SimHash, the attractors, the route hint and the exact-match memo. `aep-lattice-memory` stores one append-only log file per domain and ships the program `aep-lattice-memory`. The AEP Base Node (01) records every verdict of Admit after it is written, through a bounded queue that never holds a verdict back. Admit reads a route hint and a memo of the writing walls for byte identical text. Every verdict is the same with and without memory.
+**What ships in 2.9:** Two pure Rust crates with no database engine and no C code. `aep-lattice-memory-core` computes the shape digest, a 256 bit SimHash, the attractors, the route hint and the exact-match memo. `aep-lattice-memory` stores one append-only log file per domain and ships the program `aep-lattice-memory`. The AEP Base Node (01) hands every verdict of Admit to a bounded queue after the verdict is written. One thread writes the records. The queue never holds a verdict back: it takes every verdict it has room for and counts the ones it drops. The health answer shows the gap to the Evidence Ledger (09). Admit reads one thing, a memo of the writing walls for byte identical text. Every verdict is the same with and without memory.
 
 **Where it lives:** The whole component lives in the one folder [`AEP-Components/lattice-memory/`](AEP-Components/lattice-memory/). The Base Node side is `AEP-Base-Node/AEP-Crate/src/lattice_memory.rs`.
 

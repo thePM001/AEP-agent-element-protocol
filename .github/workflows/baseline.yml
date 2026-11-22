@@ -204,3 +204,42 @@ jobs:
             node AEP-Components/conformance/vectors/examples/third-party-runner/run-vectors.mjs \
               --require dock-socket,dock-request,dock-answer,mesh-mode --json
           '
+
+  lattice-memory-wasm:
+    name: Lattice Memory core for wasm32-wasip2, golden values under Wasmtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          targets: wasm32-wasip2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      # Wasmtime comes from the crate registry with the lock file of its release, so
+      # the registry checksums pin every byte of it.
+      - name: install Wasmtime
+        run: cargo install wasmtime-cli --version 25.0.0 --locked
+      - name: the core builds for wasm32-wasip2
+        run: cargo test -p aep-lattice-memory-core --test wasm_build -- --ignored
+      # The same file runs natively in the workspace tests. Its constants are pinned,
+      # so a pass here is the proof that both targets compute the same bits.
+      - name: golden values as wasm32-wasip2 under Wasmtime
+        env:
+          CARGO_TARGET_WASM32_WASIP2_RUNNER: wasmtime
+        run: cargo test -p aep-lattice-memory-core --target wasm32-wasip2 --test golden
+
+  lattice-memory-bench:
+    name: Lattice Memory benches, dock latency with memory on against off and record cost
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: dock latency with memory on against off
+        env:
+          AEP_LATENCY_GATE: "1"
+          AEP_LATENCY_ROUNDS: "5"
+        run: cargo test --release -p aep-base-node --lib admit_latency_memory_on_vs_off -- --nocapture --test-threads=1
+      - name: record cost at 2000 against 100000 attractors, short form
+        run: cargo bench -p aep-lattice-memory --bench record_flat_cost_vs_n -- --short

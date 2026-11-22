@@ -76,21 +76,41 @@ export class LatticeMemoryCheckpointStore implements CheckpointStore {
     });
   }
 
+  /**
+   * Every kept checkpoint of the run. The program answers a history request with one
+   * page of records and the place of the next page, so a run of any length is read
+   * in answers of a bounded size. An answer that is no page throws: a list that
+   * silently ended early would resume a run from the wrong place.
+   */
   list(): GraphCheckpoint[] {
-    const records = this.program("history", {
-      domain: GRAPH_CHECKPOINT_DOMAIN,
-      element_id: this.runId,
-      limit: 1_000_000,
-    });
-    if (!Array.isArray(records)) return [];
     const kept: GraphCheckpoint[] = [];
-    for (const record of records) {
-      const body = isRecord(record) ? record.body : undefined;
-      if (isCheckpoint(body)) kept.push(copyCheckpoint(body));
+    let after: string | null = null;
+    for (;;) {
+      const request: Record<string, unknown> = {
+        domain: GRAPH_CHECKPOINT_DOMAIN,
+        element_id: this.runId,
+        limit: CHECKPOINT_PAGE_RECORDS,
+      };
+      if (after !== null) request.after = after;
+      const page = this.program("history", request);
+      if (!isRecord(page) || !Array.isArray(page.records)) {
+        throw new Error("checkpoint store: the history answer is no page of records");
+      }
+      for (const record of page.records) {
+        const body = isRecord(record) ? record.body : undefined;
+        if (isCheckpoint(body)) kept.push(copyCheckpoint(body));
+      }
+      if (page.next === null || page.next === undefined) return kept;
+      if (typeof page.next !== "string" || page.next === after) {
+        throw new Error("checkpoint store: the history answer names no next page");
+      }
+      after = page.next;
     }
-    return kept;
   }
 }
+
+/** Records one history request asks for. The program also bounds the bytes of a page. */
+export const CHECKPOINT_PAGE_RECORDS = 500;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

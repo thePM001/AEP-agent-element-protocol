@@ -1,5 +1,6 @@
 export { GraphEngine, createGraphEngine } from "./engine.js";
 export {
+  CHECKPOINT_PAGE_RECORDS,
   GRAPH_CHECKPOINT_DOMAIN,
   GRAPH_CHECKPOINT_KIND,
   LatticeMemoryCheckpointStore,

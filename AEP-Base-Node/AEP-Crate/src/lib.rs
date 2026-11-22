@@ -100,13 +100,28 @@ pub struct BaseNodeHealth {
     /// Bits of the fingerprint of a recorded shape.
     pub lattice_memory_dim: u32,
     pub vector_store: &'static str,
-    /// Records of the memory: every judged proposal is one.
+    /// Records of the memory in the domains of judged proposals: one for each verdict
+    /// the memory took and wrote.
     pub lattice_memory_records: u64,
     /// Verdicts the dock could not hand to the memory because its queue was full.
     pub lattice_memory_dropped: u64,
     /// Verdicts the memory could not write.
     pub lattice_memory_failed: u64,
-    /// `ok`, `off`, `absent` when no store exists yet or `error`.
+    /// Verdicts that wait in the queue of the memory.
+    pub lattice_memory_queue_depth: u64,
+    /// Recorded proposals whose shape, or one near it, was accepted before.
+    pub lattice_memory_hot: u64,
+    /// Recorded proposals of a shape that was not accepted before.
+    pub lattice_memory_cold: u64,
+    /// Proposals whose writing rows Admit took from the memo.
+    pub lattice_memory_memo_replayed: u64,
+    /// Verdict rows of the Evidence Ledger minus records of the memory, counted from
+    /// the first start of the memory on. Null when a node that is not running is asked.
+    pub lattice_memory_ledger_gap: Option<i64>,
+    /// True when the memory flushes every record to the disk.
+    pub lattice_memory_durable: bool,
+    /// `ok`, `failing` while writes fail, `off`, `absent` when no store exists yet
+    /// or `error` when the store could not be opened.
     pub lattice_memory_status: &'static str,
     pub sqlite_closed: bool,
     pub last_tls_handshake_err: Option<String>,
@@ -501,6 +516,12 @@ pub fn health(input: HealthInput<'_>) -> BaseNodeHealth {
         lattice_memory_records: input.lattice_memory.records,
         lattice_memory_dropped: input.lattice_memory.dropped,
         lattice_memory_failed: input.lattice_memory.failed,
+        lattice_memory_queue_depth: input.lattice_memory.queue_depth,
+        lattice_memory_hot: input.lattice_memory.hot,
+        lattice_memory_cold: input.lattice_memory.cold,
+        lattice_memory_memo_replayed: input.lattice_memory.memo_replayed,
+        lattice_memory_ledger_gap: input.lattice_memory.ledger_gap,
+        lattice_memory_durable: input.lattice_memory.durable,
         lattice_memory_status: input.lattice_memory.status,
         sqlite_closed: input.sqlite_closed,
         last_tls_handshake_err: input.last_tls_handshake_err,

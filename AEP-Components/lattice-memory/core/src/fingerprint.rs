@@ -7,7 +7,7 @@
 //! for the same input, bit for bit.
 
 use crate::error::CoreError;
-use crate::shape::{sha256, ProposalShape};
+use crate::shape::{hmac_sha256, sha256, ProposalShape};
 
 /// Bits of a SimHash.
 pub const SIMHASH_BITS: u32 = 256;
@@ -31,9 +31,25 @@ impl SimHash {
     /// its SHA-256. A bit is set when more tokens vote for it than against it. No
     /// token gives the zero hash.
     pub fn of_tokens<S: AsRef<str>>(tokens: &[S]) -> Self {
+        SimHash::of_digests(tokens.iter().map(|token| sha256(token.as_ref().as_bytes())))
+    }
+
+    /// The SimHash of a list of tokens under a key. Every token votes with the bits
+    /// of its HMAC-SHA-256 under the key. Two hashes under one key are as close as
+    /// their token lists are alike, as without a key. A reader without the key cannot
+    /// compute the hash of a shape it guesses.
+    pub fn of_tokens_keyed<S: AsRef<str>>(tokens: &[S], key: &[u8; 32]) -> Self {
+        SimHash::of_digests(
+            tokens
+                .iter()
+                .map(|token| hmac_sha256(key, token.as_ref().as_bytes())),
+        )
+    }
+
+    /// The hash that one vote of each digest gives.
+    fn of_digests(digests: impl Iterator<Item = [u8; 32]>) -> Self {
         let mut votes = [0i32; SIMHASH_BITS as usize];
-        for token in tokens {
-            let digest = sha256(token.as_ref().as_bytes());
+        for digest in digests {
             for (byte_index, byte) in digest.iter().enumerate() {
                 for bit in 0..8 {
                     let slot = byte_index * 8 + bit;
@@ -57,6 +73,11 @@ impl SimHash {
     /// The SimHash of a shape.
     pub fn of_shape(shape: &ProposalShape) -> Self {
         SimHash::of_tokens(&shape.tokens())
+    }
+
+    /// The SimHash of a shape under a key.
+    pub fn of_shape_keyed(shape: &ProposalShape, key: &[u8; 32]) -> Self {
+        SimHash::of_tokens_keyed(&shape.tokens(), key)
     }
 
     /// Number of bits in which two hashes differ.
@@ -476,5 +497,28 @@ mod tests {
         let stored = Fingerprint::from_stored(2, &emb.to_bytes(), 2).unwrap();
         assert_eq!(stored, emb);
         assert!(Fingerprint::from_stored(9, &[], 0).is_err());
+    }
+
+    #[test]
+    fn a_keyed_simhash_keeps_similarity_and_hides_the_shape() {
+        let key = [7u8; 32];
+        let other_key = [8u8; 32];
+        let words: Vec<String> = (0..40).map(|index| format!("note~word{index}")).collect();
+        let mut near = words.clone();
+        near[3] = String::from("note~changed");
+        let far: Vec<String> = (0..40).map(|index| format!("body~other{index}")).collect();
+        let base = SimHash::of_tokens_keyed(&words, &key);
+        // The same tokens under the same key give the same hash.
+        assert_eq!(base, SimHash::of_tokens_keyed(&words, &key));
+        // One changed token of forty stays close, unrelated tokens do not.
+        assert!(base.score(&SimHash::of_tokens_keyed(&near, &key)) >= 230);
+        assert!(base.score(&SimHash::of_tokens_keyed(&far, &key)) < 180);
+        // Without the key, and under another key, the hash of the same tokens is as
+        // far away as the hash of unrelated tokens.
+        assert!(base.score(&SimHash::of_tokens(&words)) < 180);
+        assert!(base.score(&SimHash::of_tokens_keyed(&words, &other_key)) < 180);
+        // No token gives the zero hash under any key.
+        let none: [&str; 0] = [];
+        assert_eq!(SimHash::of_tokens_keyed(&none, &key), SimHash([0; 4]));
     }
 }

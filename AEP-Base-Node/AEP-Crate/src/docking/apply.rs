@@ -8,7 +8,7 @@ use super::{
 };
 use crate::dock_keys::decode_signer_public_hex;
 use crate::envelope_admit::admit_sealed_payload_report_in_view;
-use crate::lattice_memory::{Probe, VerdictMemory, VerdictNote};
+use crate::lattice_memory::{VerdictMemory, VerdictNote};
 use crate::{
     enforce_writing_value, record_channel_frame, record_side_channel_anomaly,
     value_has_writing_violations, BaseNodeError, SideChannelAnomalyKind,
@@ -372,19 +372,24 @@ fn answer_held_capsule(
 /// What the dock holds of one proposal for the memory until its verdict is written.
 struct MemoryNote<'a> {
     memory: &'a VerdictMemory,
-    probe: Probe,
     entry_id: &'a str,
     agent_id: &'a str,
+    docking_port: &'static str,
+    contract_id: &'a str,
+    plaintext: &'a [u8],
 }
 
 impl MemoryNote<'_> {
-    /// Hand the written verdict to the memory. This never waits.
+    /// Hand the written verdict to the memory. This never waits. The memory computes
+    /// the shape of the proposal on its own thread.
     fn verdict(self, accepted: bool, closed: &[String], trace: Option<PureWallTrace>) {
         self.memory.note_verdict(
-            self.probe,
             &VerdictNote {
                 entry_id: self.entry_id,
                 agent_id: self.agent_id,
+                docking_port: self.docking_port,
+                contract_id: self.contract_id,
+                plaintext: self.plaintext,
                 accepted,
                 at_unix: crate::now_unix() as i64,
                 closed,
@@ -411,19 +416,16 @@ fn admit_and_apply(
     };
     let mut recorded: Option<i64> = None;
     let mut record_deny: Option<DockFrameResponse> = None;
-    // The place of the proposal in the memory and its route hint are computed before
-    // the live entry lock is taken. A node without memory judges on the cold path.
-    let no_event = Value::Null;
+    // What the memory hears of this proposal once its verdict is written. Nothing is
+    // computed for the memory here: a node with memory and a node without it do the
+    // same work up to the verdict, except for the lookup of the memo.
     let note = runtime.record.memory.as_deref().map(|memory| MemoryNote {
         memory,
-        probe: memory.probe(
-            event.unwrap_or(&no_event),
-            &held.frame.agent_id,
-            dock_port_name(&held.expected_port),
-            &held.frame.contract_id,
-        ),
         entry_id: &cap.digest,
         agent_id: &held.frame.agent_id,
+        docking_port: dock_port_name(&held.expected_port),
+        contract_id: &held.frame.contract_id,
+        plaintext: &held.plaintext,
     });
     // The live entry guard lives for this block only, so the lock is released
     // before the record check and before Apply.
@@ -433,10 +435,10 @@ fn admit_and_apply(
         // checked against its own clock at enqueue. The hold and the age of the
         // capsule were judged by the kernel clock alone in the pulse queue.
         live.freeze_temporal_snapshot(held.wall_bridge_ms);
-        // Admit reads the hint and the memo and writes neither.
+        // Admit reads the memo and writes nothing.
         let view = match note.as_ref() {
-            Some(note) => note.memory.view(&note.probe),
-            None => MemoryView::cold(),
+            Some(note) => note.memory.view(),
+            None => MemoryView::without_memory(),
         };
         let r = admit_sealed_payload_report_in_view(
             &mut live,

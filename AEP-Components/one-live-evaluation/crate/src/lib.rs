@@ -80,7 +80,7 @@ pub fn attach_live_walls_in_view(
 
 /// Compile product wall crates onto LiveEntry extra walls without a memory.
 pub fn attach_live_walls(live: &mut LiveEntry, event: &Value, dock: &LiveDockContext) {
-    let _ = attach_live_walls_in_view(live, event, dock, &MemoryView::cold());
+    let _ = attach_live_walls_in_view(live, event, dock, &MemoryView::without_memory());
 }
 
 /// One Admit function for the opened frame. Wall-crate walls plus envelope walls. One AND.

@@ -14,9 +14,9 @@
 //! - `time`: timestamps as unix seconds
 //!
 //! A stored shape is evidence for a later reader. It is never a permission. The route
-//! hint schedules work and the memo replays the rows of a pure check for byte
-//! identical input. Neither turns a deny into an allow and similarity alone never
-//! skips a wall.
+//! hint is a statistic: it says whether an accepted shape of this kind was recorded
+//! before. The memo replays the rows of a pure check for byte identical input.
+//! Neither turns a deny into an allow and similarity alone never skips a wall.
 
 pub mod attractor;
 pub mod chain;
@@ -29,8 +29,8 @@ pub mod time;
 
 pub use attractor::{
     check_domain, CoreConfig, MemoryCore, Observation, Plan, RouteHint,
-    DEFAULT_CAPACITY_PER_DOMAIN, DEFAULT_EMBEDDING_MIN_SCORE, DEFAULT_SIMHASH_MIN_SCORE,
-    MAX_DOMAIN_LEN,
+    DEFAULT_CAPACITY_PER_DOMAIN, DEFAULT_EMBEDDING_MIN_SCORE, DEFAULT_LOOKUP_TABLE_DOMAINS,
+    DEFAULT_SIMHASH_MIN_SCORE, MAX_DOMAIN_LEN,
 };
 pub use chain::{
     canonical_labels, check_id, entry_hash, genesis_hash, parse_labels, LogEntry, Outcome,
@@ -42,9 +42,9 @@ pub use fingerprint::{
     MAX_EMBEDDING_DIM, SIMHASH_BITS, SIMHASH_MAX_SCORE,
 };
 pub use index::{Attractor, DomainIndex, Hit};
-pub use memo::{ExactMemo, MemoKey, WallRow, DEFAULT_MEMO_CAPACITY};
+pub use memo::{ExactMemo, MemoKey, WallRow, DEFAULT_MEMO_BYTES, DEFAULT_MEMO_CAPACITY};
 pub use shape::{
-    canonical_json, sha256, FrameContext, ProposalShape, MAX_SHAPE_TOKENS, SHAPE_EVENT_FIELDS,
-    SHAPE_FRAME_FIELDS, SHAPE_LEFT_OUT,
+    canonical_json, hmac_sha256, sha256, FrameContext, ProposalShape, MAX_SHAPE_TOKENS,
+    SHAPE_EVENT_FIELDS, SHAPE_FRAME_FIELDS, SHAPE_LEFT_OUT,
 };
 pub use time::{format_unix_iso, parse_timestamp_unix};

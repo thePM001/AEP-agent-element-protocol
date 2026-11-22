@@ -4,7 +4,7 @@
 //! digest and the fingerprint from it and stores those. The shape itself is not stored.
 
 use crate::error::MemoryError;
-use crate::model::{Match, MemoryHealth, NewRecord, StoredRecord, VerifyReport};
+use crate::model::{Match, MemoryHealth, NewRecord, Page, StoredRecord, VerifyReport};
 use aep_lattice_memory_core::{
     format_unix_iso, parse_timestamp_unix, CoreError, Fingerprint, ProposalShape,
     QuantizedEmbedding, SimHash,
@@ -67,8 +67,15 @@ pub struct WireHistory {
     /// `accepted` or `rejected` to keep only those records.
     #[serde(default)]
     pub result: Option<String>,
+    /// Most records of one page.
     #[serde(default = "default_history_limit")]
     pub limit: usize,
+    /// The `next` of the page before. Absent means the first page.
+    #[serde(default)]
+    pub after: Option<String>,
+    /// A page ends with the record that brings its stored bytes to this bound.
+    #[serde(default)]
+    pub max_bytes: Option<usize>,
 }
 
 /// An export request as a caller writes it.
@@ -76,8 +83,37 @@ pub struct WireHistory {
 pub struct WireExport {
     #[serde(default)]
     pub domain: Option<String>,
+    /// Most records of one page.
     #[serde(default = "default_history_limit")]
     pub limit: usize,
+    /// The `next` of the page before. Absent means the first page.
+    #[serde(default)]
+    pub after: Option<String>,
+    /// A page ends with the record that brings its stored bytes to this bound.
+    #[serde(default)]
+    pub max_bytes: Option<usize>,
+}
+
+/// A request for the verdicts the Base Node recorded for one docking port.
+#[derive(Debug, Clone, Deserialize)]
+pub struct WireVerdicts {
+    /// The docking port, such as `validation_engine`.
+    pub port: String,
+    /// Keep only the verdicts on proposals this agent signed.
+    #[serde(default)]
+    pub agent_id: Option<String>,
+    /// `allow` or `deny` to keep only those verdicts.
+    #[serde(default)]
+    pub verdict: Option<String>,
+    /// Most verdicts of one page.
+    #[serde(default = "default_history_limit")]
+    pub limit: usize,
+    /// The `next` of the page before. Absent means the first page.
+    #[serde(default)]
+    pub after: Option<String>,
+    /// A page ends with the record that brings its stored bytes to this bound.
+    #[serde(default)]
+    pub max_bytes: Option<usize>,
 }
 
 fn invalid(field: &'static str, reason: impl Into<String>) -> MemoryError {
@@ -173,6 +209,45 @@ pub fn record_json(record: &StoredRecord) -> Value {
         "body": body,
         "hash": hex::encode(record.hash),
     })
+}
+
+/// One page of records as the program prints it: the records and the place of the
+/// next page, which is null when no record is left.
+pub fn page_json(page: &Page, print: impl Fn(&StoredRecord) -> Value) -> Value {
+    json!({
+        "records": page.records.iter().map(print).collect::<Vec<_>>(),
+        "next": page.next.as_ref().map(|next| next.to_string()),
+    })
+}
+
+/// One recorded verdict as an operator reads it: who asked, when, what the Admit Gate
+/// answered and which walls were closed. The proposal itself is not in the store.
+fn verdict_json(record: &StoredRecord) -> Value {
+    let entry = &record.entry;
+    let labels = record.labels();
+    let closed: Vec<&str> = labels
+        .get("closed")
+        .map(|text| text.split(',').filter(|id| !id.is_empty()).collect())
+        .unwrap_or_default();
+    json!({
+        "key": entry.key,
+        "frame": entry.entry_id,
+        "agent_id": entry.element_id,
+        "verdict": if entry.accepted { "allow" } else { "deny" },
+        "closed": closed,
+        "timestamp": format_unix_iso(entry.recorded_at_unix),
+        "recorded_at_unix": entry.recorded_at_unix,
+        "shape_digest": hex::encode(entry.shape_digest),
+        "attractor_key": entry.outcome.attractor(),
+        "hash": hex::encode(record.hash),
+    })
+}
+
+/// One page of the verdicts of a domain of judged proposals as the program prints it.
+pub fn verdicts_json(domain: &str, page: &Page) -> Value {
+    let mut printed = page_json(page, verdict_json);
+    printed["domain"] = Value::from(domain);
+    printed
 }
 
 /// One hit of a search as the program prints it.

@@ -100,6 +100,28 @@ function runMemoryCli(cli, storePath, command, input) {
 }
 
 /**
+ * Every record a history request names. The program answers with one page of records
+ * and the place of the next page, so each answer has a bounded size. An answer that is
+ * no page throws.
+ */
+function readHistory(cli, storePath, request) {
+  const records = [];
+  let after = null;
+  for (;;) {
+    const page = runMemoryCli(cli, storePath, "history", after === null ? request : { ...request, after });
+    if (!page || !Array.isArray(page.records)) {
+      throw new Error(`${MEMORY_PROGRAM} history: the answer is no page of records`);
+    }
+    records.push(...page.records);
+    if (page.next === null || page.next === undefined) return records;
+    if (typeof page.next !== "string" || page.next === after) {
+      throw new Error(`${MEMORY_PROGRAM} history: the answer names no next page`);
+    }
+    after = page.next;
+  }
+}
+
+/**
  * One store of Lattice Memory as a function: a command name and its request go in,
  * the answer of the program comes out. A command that fails throws. Other components
  * hand this function on, such as the checkpoint store of the Graph Engine, so this
@@ -286,11 +308,11 @@ export function historyIntentKnots(intentId, opts = {}) {
   try {
     const request = { domain: INTENT_KNOT_DOMAIN, element_id: intentId };
     if (opts.result) request.result = opts.result;
-    const entries = runMemoryCli(cli, storePath, "history", request);
+    const entries = readHistory(cli, storePath, request);
     return {
       intent_id: intentId,
       store_path: storePath,
-      entries: (entries ?? []).map(knotEntry),
+      entries: entries.map(knotEntry),
     };
   } catch (err) {
     return {

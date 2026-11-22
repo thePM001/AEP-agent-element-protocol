@@ -131,6 +131,25 @@ pub fn sha256(bytes: &[u8]) -> [u8; 32] {
     hasher.finalize().into()
 }
 
+/// HMAC-SHA-256 of a message under a key, as RFC 2104 defines it.
+pub fn hmac_sha256(key: &[u8; 32], message: &[u8]) -> [u8; 32] {
+    const BLOCK: usize = 64;
+    let mut inner_pad = [0x36u8; BLOCK];
+    let mut outer_pad = [0x5cu8; BLOCK];
+    for (index, byte) in key.iter().enumerate() {
+        inner_pad[index] ^= byte;
+        outer_pad[index] ^= byte;
+    }
+    let mut inner = Sha256::new();
+    inner.update(inner_pad);
+    inner.update(message);
+    let inner_digest: [u8; 32] = inner.finalize().into();
+    let mut outer = Sha256::new();
+    outer.update(outer_pad);
+    outer.update(inner_digest);
+    outer.finalize().into()
+}
+
 /// The shape of one proposal.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProposalShape {
@@ -182,6 +201,12 @@ impl ProposalShape {
         sha256(self.canonical().as_bytes())
     }
 
+    /// The shape digest under a key: HMAC-SHA-256 over the canonical JSON of the
+    /// shape. A reader without the key cannot confirm a shape it guesses.
+    pub fn keyed_digest(&self, key: &[u8; 32]) -> [u8; 32] {
+        hmac_sha256(key, self.canonical().as_bytes())
+    }
+
     /// The tokens of the shape in byte order, without duplicates.
     ///
     /// Each leaf gives one token for its place. A leaf of one word or one number adds
@@ -189,13 +214,36 @@ impl ProposalShape {
     /// per word instead, so two texts that differ in one word remain close. Places in a
     /// list carry no index, so the order of a list does not change the tokens.
     pub fn tokens(&self) -> Vec<String> {
-        let mut set = BTreeSet::new();
+        let mut set = TokenSet {
+            kept: BTreeSet::new(),
+        };
         collect_tokens("", &self.value, 0, &mut set);
-        set.into_iter().take(MAX_SHAPE_TOKENS).collect()
+        set.kept.into_iter().collect()
     }
 }
 
-fn collect_tokens(path: &str, value: &Value, depth: usize, out: &mut BTreeSet<String>) {
+/// The tokens of a shape while they are collected. The set never holds more than
+/// [`MAX_SHAPE_TOKENS`] tokens: once it is full, a new token takes the place of the
+/// last one in byte order or is dropped. What remains is what a cut of the whole set
+/// would leave, and the memory of the set does not grow with the proposal.
+struct TokenSet {
+    kept: BTreeSet<String>,
+}
+
+impl TokenSet {
+    fn insert(&mut self, token: String) {
+        if self.kept.len() >= MAX_SHAPE_TOKENS {
+            let among_the_first = self.kept.last().is_some_and(|last| token < *last);
+            if !among_the_first || self.kept.contains(&token) {
+                return;
+            }
+            self.kept.pop_last();
+        }
+        self.kept.insert(token);
+    }
+}
+
+fn collect_tokens(path: &str, value: &Value, depth: usize, out: &mut TokenSet) {
     if depth >= MAX_TOKEN_DEPTH {
         out.insert(format!("{path}={}", canonical_json(value)));
         return;
@@ -219,13 +267,17 @@ fn collect_tokens(path: &str, value: &Value, depth: usize, out: &mut BTreeSet<St
         }
         Value::String(text) => {
             out.insert(format!("#{path}"));
-            let words: Vec<String> = words_of(text);
-            if words.len() > 1 {
-                for word in words {
-                    out.insert(format!("{path}~{word}"));
+            // The words are read one at a time, so a long text is never held twice.
+            let mut words = words_of(text);
+            match (words.next(), words.next()) {
+                (Some(first), Some(second)) => {
+                    out.insert(format!("{path}~{first}"));
+                    out.insert(format!("{path}~{second}"));
+                    for word in words {
+                        out.insert(format!("{path}~{word}"));
+                    }
                 }
-            } else {
-                out.insert(format!("{path}={}", canonical_json(value)));
+                _ => out.insert(format!("{path}={}", canonical_json(value))),
             }
         }
         scalar => {
@@ -236,11 +288,10 @@ fn collect_tokens(path: &str, value: &Value, depth: usize, out: &mut BTreeSet<St
 }
 
 /// The words of a text in lower case. A word is a run of letters and digits.
-fn words_of(text: &str) -> Vec<String> {
+fn words_of(text: &str) -> impl Iterator<Item = String> + '_ {
     text.split(|c: char| !c.is_alphanumeric())
         .filter(|w| !w.is_empty())
         .map(str::to_lowercase)
-        .collect()
 }
 
 #[cfg(test)]
@@ -473,6 +524,68 @@ mod tests {
         let mut sorted = tokens.clone();
         sorted.sort();
         assert_eq!(tokens, sorted);
+    }
+
+    #[test]
+    fn the_keyed_digest_is_hmac_sha256() {
+        // Values of an independent HMAC-SHA-256 for the key 01 02 .. 20.
+        let mut key = [0u8; 32];
+        for (index, byte) in key.iter_mut().enumerate() {
+            *byte = index as u8 + 1;
+        }
+        let hex =
+            |bytes: [u8; 32]| -> String { bytes.iter().map(|b| format!("{b:02x}")).collect() };
+        assert_eq!(
+            hex(hmac_sha256(&key, b"what do ya want for nothing?")),
+            "4d9d653fcd05f91cd858a20d50c74b604fe38f2cac49d9b0a7099584cf4fb35a"
+        );
+        assert_eq!(
+            hex(hmac_sha256(&key, b"")),
+            "462476a897ddfdbd40d1420e08a5bcfeeb25c3e2ade6a0a9083b327b9ef9fca1"
+        );
+        // The keyed digest of a shape is the HMAC of its canonical JSON. It differs
+        // from the plain digest and from the digest under another key.
+        let shape = ProposalShape::from_event(&event(), &frame());
+        let keyed = shape.keyed_digest(&key);
+        assert_eq!(keyed, hmac_sha256(&key, shape.canonical().as_bytes()));
+        assert_ne!(keyed, shape.digest());
+        let mut other = key;
+        other[0] ^= 1;
+        assert_ne!(keyed, shape.keyed_digest(&other));
+        assert_eq!(keyed, shape.keyed_digest(&key));
+    }
+
+    #[test]
+    fn tokens_are_capped_while_they_are_collected() {
+        // Tokens arrive in an order that is not byte order. The set never holds more
+        // than the cap, and it ends with the tokens a cut of the whole set would keep.
+        let mut state = 7u64;
+        let mut arriving = Vec::new();
+        for _ in 0..3 * MAX_SHAPE_TOKENS {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            arriving.push(format!("t{:05}", (state >> 33) % 9000));
+        }
+        let mut set = TokenSet {
+            kept: BTreeSet::new(),
+        };
+        for token in &arriving {
+            set.insert(token.clone());
+            assert!(set.kept.len() <= MAX_SHAPE_TOKENS);
+        }
+        let whole: BTreeSet<String> = arriving.into_iter().collect();
+        assert!(whole.len() > MAX_SHAPE_TOKENS);
+        let cut: Vec<String> = whole.into_iter().take(MAX_SHAPE_TOKENS).collect();
+        assert_eq!(set.kept.into_iter().collect::<Vec<_>>(), cut);
+
+        // A text of many words gives one token per word up to the cap.
+        let text: Vec<String> = (0..20_000).map(|index| format!("w{index}")).collect();
+        let shape = ProposalShape::from_value(&json!({"note": text.join(" ")}));
+        let tokens = shape.tokens();
+        assert_eq!(tokens.len(), MAX_SHAPE_TOKENS);
+        assert_eq!(tokens[0], "#note");
+        assert!(tokens[1..].iter().all(|token| token.starts_with("note~w")));
     }
 
     #[test]

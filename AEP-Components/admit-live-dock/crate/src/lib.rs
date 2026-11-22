@@ -4,7 +4,7 @@
 // Pass LatticeNode.wrap into policy-system compile.
 use aep_admit::{admit_collect_all, pure_walls, AdmitWall, LatticeCompileInput};
 // The types of the read-only memory view, for the callers of the live pass.
-pub use aep_admit::{MemoryView, NoMemo, PureWallMemo, PureWallTrace, RouteHint};
+pub use aep_admit::{MemoryView, NoMemo, PureWallMemo, PureWallTrace};
 use aep_admit_budget_window::{compile_live_budget, BudgetCharge, BudgetInput};
 use aep_admit_channel_order_walls::{
     compile_channel_walls, compile_partial_order_walls, ChannelCompileInput,
@@ -423,7 +423,7 @@ pub fn compile_live_walls(
     event: &Value,
     dock: &LiveDockContext,
 ) -> Vec<AdmitWall> {
-    compile_live_walls_in_view(live, event, dock, &MemoryView::cold()).walls
+    compile_live_walls_in_view(live, event, dock, &MemoryView::without_memory()).walls
 }
 
 /// Compile product Admit wall crates and the budget charge of the action without a
@@ -434,7 +434,7 @@ pub fn compile_live_walls_and_charge(
     event: &Value,
     dock: &LiveDockContext,
 ) -> (Vec<AdmitWall>, Option<BudgetCharge>) {
-    let compiled = compile_live_walls_in_view(live, event, dock, &MemoryView::cold());
+    let compiled = compile_live_walls_in_view(live, event, dock, &MemoryView::without_memory());
     (compiled.walls, compiled.charge)
 }
 
@@ -1273,7 +1273,8 @@ mod tests {
         let dock = LiveDockContext::unit_open();
         for note in ["plain words", "red, white, and blue"] {
             let event = note_event(note);
-            let cold = compile_live_walls_in_view(&le, &event, &dock, &MemoryView::cold());
+            let cold =
+                compile_live_walls_in_view(&le, &event, &dock, &MemoryView::without_memory());
             must(!cold.pure.replayed);
             must(cold.pure.family == PURE_FAMILY_WRITING);
             must(cold.walls.starts_with(&cold.pure.rows));
@@ -1284,23 +1285,16 @@ mod tests {
                 rows: cold.pure.rows.clone(),
                 asked: std::cell::Cell::new(0),
             };
-            let hot = MemoryView {
-                route: RouteHint::Hot,
-                memo: &memo,
-            };
-            let warm = compile_live_walls_in_view(&le, &event, &dock, &hot);
+            let view = MemoryView { memo: &memo };
+            let warm = compile_live_walls_in_view(&le, &event, &dock, &view);
             must(warm.pure.replayed);
             must(memo.asked.get() == 1);
             must(warm.walls == cold.walls);
             must(warm.charge.is_some() == cold.charge.is_some());
-            // The same memo under a cold hint is not asked.
-            let cold_view = MemoryView {
-                route: RouteHint::Cold,
-                memo: &memo,
-            };
-            let again = compile_live_walls_in_view(&le, &event, &dock, &cold_view);
-            must(!again.pure.replayed);
-            must(memo.asked.get() == 1);
+            // The memo is asked once for every pass.
+            let again = compile_live_walls_in_view(&le, &event, &dock, &view);
+            must(again.pure.replayed);
+            must(memo.asked.get() == 2);
             must(again.walls == cold.walls);
             // The functions without a view give the same walls.
             must(compile_live_walls(&le, &event, &dock) == cold.walls);
@@ -1313,7 +1307,7 @@ mod tests {
         let le = live_at_clock();
         let dock = LiveDockContext::unit_open();
         let event = note_event("red, white, and blue");
-        let cold = compile_live_walls_in_view(&le, &event, &dock, &MemoryView::cold());
+        let cold = compile_live_walls_in_view(&le, &event, &dock, &MemoryView::without_memory());
         // Rows of a clean text stored under another text: a miss, so the closed
         // writing wall of this text is computed and present.
         let other = OneText {
@@ -1321,10 +1315,7 @@ mod tests {
             rows: compile_writing_block("plain words"),
             asked: std::cell::Cell::new(0),
         };
-        let view = MemoryView {
-            route: RouteHint::Hot,
-            memo: &other,
-        };
+        let view = MemoryView { memo: &other };
         let walls = compile_live_walls_in_view(&le, &event, &dock, &view);
         must(!walls.pure.replayed);
         must(walls.walls == cold.walls);
@@ -1334,10 +1325,7 @@ mod tests {
             rows: vec![AdmitWall::open("writing:no_oxford_comma")],
             asked: std::cell::Cell::new(0),
         };
-        let view = MemoryView {
-            route: RouteHint::Hot,
-            memo: &wrong,
-        };
+        let view = MemoryView { memo: &wrong };
         let walls = compile_live_walls_in_view(&le, &event, &dock, &view);
         must(wrong.asked.get() == 1);
         must(!walls.pure.replayed);
@@ -1348,5 +1336,49 @@ mod tests {
                 &writing_wall_id(aep_admit::RULE_NO_OXFORD_COMMA),
             ) == Some(true),
         );
+    }
+
+    /// The rows of the writing family are what the memo of a node stores under the
+    /// text alone. That holds only when nothing else feeds them: not the lattice the
+    /// node runs, not the signer, not the port and not the clock. The rules of the
+    /// family are compiled into the process, so they cannot change while it runs.
+    #[test]
+    fn the_writing_rows_follow_from_the_text_alone() {
+        let other_lattice = "actions:\n  root:ping:\n    category: agent_action\n    parents: []\n    children: []\n    agent_permission: [\"someone\"]\n  other:act:\n    category: system_event\n    parents: [\"root:ping\"]\n    children: []\n    agent_permission: [\"*\"]\n";
+        let mut second = match LiveEntry::from_yaml(other_lattice) {
+            Ok(v) => v,
+            Err(_) => std::process::abort(),
+        };
+        second.set_clock_ms(99_000_000);
+        second.snapshot.event_rate = 9;
+        let first = live_at_clock();
+        let mut elsewhere = LiveDockContext::unit_open();
+        elsewhere.agent_id = String::from("another-agent");
+        elsewhere.docking_port = String::from("inference_engine");
+        elsewhere.contract_id = String::from("another-contract");
+        for note in ["plain words", "red, white, and blue", "first -- second"] {
+            let event = note_event(note);
+            let a = compile_live_walls_in_view(
+                &first,
+                &event,
+                &LiveDockContext::unit_open(),
+                &MemoryView::without_memory(),
+            );
+            let b = compile_live_walls_in_view(
+                &second,
+                &event,
+                &elsewhere,
+                &MemoryView::without_memory(),
+            );
+            must(a.pure.input == b.pure.input);
+            must(a.pure.rows == b.pure.rows);
+            must(a.pure.rows == compile_writing_block(&a.pure.input));
+            // The other walls of the two passes differ, so the passes did differ.
+            must(a.walls != b.walls);
+        }
+        // The rule table and the rule source are constants of the build.
+        let rules: &'static [aep_admit::WritingRule] = aep_admit::WRITING_RULES;
+        let source: &'static str = aep_admit::WRITING_GAP_SOURCE;
+        must(!rules.is_empty() && !source.is_empty());
     }
 }

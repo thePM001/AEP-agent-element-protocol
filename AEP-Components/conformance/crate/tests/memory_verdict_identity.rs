@@ -1,20 +1,26 @@
 //! Memory never changes a verdict.
 //!
 //! Every chain of the multi-step red team corpus and every one of its control chains
-//! is judged three times through the Base Node live dock entry: once without memory
-//! and twice with one memory that lives across all chains. In the second run with
-//! memory the accepted shapes are known, so route hints are hot and the rows of the
-//! pure writing family are replayed from the memo. Every step must answer with the
-//! same verdict and the same deny report in all three runs.
+//! is judged three times through the Admit entry of the Base Node: once without
+//! memory and twice with one memory that lives across all chains. In the second run
+//! with memory every text was judged before, so the rows of the pure writing family
+//! are replayed from the memo. Every step must answer with the same verdict and the
+//! same deny report in all three runs, and the counters of the memory are checked
+//! after each run.
 //!
 //! A second test does the same with generated proposals: texts with and without
 //! writing violations, known and unknown action paths and several agents, in an
 //! order a fixed generator picks.
-use aep_admit_live_dock::{LiveDockContext, MemoryView, PureWallMemo, RouteHint};
+//!
+//! The same corpus through the whole dock, sealed frames through the pulse on a node
+//! with memory and on a node without it, is the test
+//! `the_corpus_through_the_dock_gets_the_same_answers_with_and_without_memory` of the
+//! Base Node crate, which holds the clock of the pulse.
+use aep_admit_live_dock::{LiveDockContext, MemoryView, PureWallMemo};
 use aep_base_node::envelope_admit::{
     admit_sealed_payload_report, admit_sealed_payload_report_in_view,
 };
-use aep_base_node::lattice_memory::{MemoryDigests, VerdictMemory, VerdictNote};
+use aep_base_node::lattice_memory::{MemoryCounters, VerdictMemory, VerdictNote};
 use aep_base_node::{AdmitWall, DenyReport};
 use aep_live_entry::LiveEntry;
 use serde_json::{json, Value};
@@ -25,8 +31,8 @@ use redteam_support::{clock_of, corpus, n, steps_of, Run};
 
 type Verdict = Result<(), DenyReport>;
 
-/// Judge one opened event with memory: the hint and the memo are read before the
-/// verdict and the verdict is handed to the memory after it.
+/// Judge one opened event with memory: Admit reads the memo, and the verdict is handed
+/// to the memory after it.
 fn judge_with_memory(
     memory: &VerdictMemory,
     live: &mut LiveEntry,
@@ -34,15 +40,8 @@ fn judge_with_memory(
     dock: &LiveDockContext,
     entry_id: &str,
 ) -> Verdict {
-    let event: Value = serde_json::from_slice(bytes).unwrap_or(Value::Null);
-    let probe = memory.probe(
-        &event,
-        &dock.agent_id,
-        &dock.docking_port,
-        &dock.contract_id,
-    );
     let (verdict, trace) = {
-        let view = memory.view(&probe);
+        let view = memory.view();
         admit_sealed_payload_report_in_view(live, bytes, dock, &mut || Ok(()), &view)
     };
     let closed: Vec<String> = match &verdict {
@@ -50,18 +49,20 @@ fn judge_with_memory(
         Err(report) => report.closed.iter().map(|w| w.id.clone()).collect(),
     };
     memory.note_verdict(
-        probe,
         &VerdictNote {
             entry_id,
             agent_id: &dock.agent_id,
+            docking_port: &dock.docking_port,
+            contract_id: &dock.contract_id,
+            plaintext: bytes,
             accepted: verdict.is_ok(),
             at_unix: 1_795_000_000,
             closed: &closed,
         },
         trace,
     );
-    // The writer takes the note before the next step, so the hint of the next step
-    // is the same on every run of this test.
+    // The writer takes the note before the next step, so the counters of the memory
+    // are the same on every run of this test.
     assert!(memory.wait_idle(Duration::from_secs(30)));
     verdict
 }
@@ -95,14 +96,26 @@ fn judge_chain(
     verdicts
 }
 
-fn memory_for(lattice: &Value) -> std::sync::Arc<VerdictMemory> {
-    let live = match LiveEntry::from_yaml(&lattice.to_string()) {
-        Ok(live) => live,
-        Err(e) => panic!("corpus lattice does not load: {e}"),
-    };
-    match VerdictMemory::in_memory(MemoryDigests::of(&live)) {
+fn memory() -> std::sync::Arc<VerdictMemory> {
+    match VerdictMemory::in_memory() {
         Ok(memory) => memory,
         Err(e) => panic!("memory does not start: {e}"),
+    }
+}
+
+/// What the counters of a memory moved by since `before`.
+fn moved(memory: &VerdictMemory, before: &MemoryCounters) -> MemoryCounters {
+    let now = memory.counters();
+    MemoryCounters {
+        enqueued: now.enqueued - before.enqueued,
+        recorded: now.recorded - before.recorded,
+        dropped: now.dropped - before.dropped,
+        failed: now.failed - before.failed,
+        hot: now.hot - before.hot,
+        cold: now.cold - before.cold,
+        memo_replayed: now.memo_replayed - before.memo_replayed,
+        memo_stored: now.memo_stored - before.memo_stored,
+        records_at_start: now.records_at_start,
     }
 }
 
@@ -126,13 +139,14 @@ fn verdict_identical_with_and_without_memory() {
         "the corpus holds {} chains",
         chains.len()
     );
-    let memory = memory_for(&lattice);
+    let memory = memory();
     let mut steps = 0u64;
     let mut allowed = 0u64;
     let mut denied = 0u64;
     for (index, chain) in chains.iter().enumerate() {
         let id = redteam_support::s(chain, "id");
         let cold = judge_chain(chain, &lattice, start_ms, step_ms, None);
+        let before = memory.counters();
         let first = judge_chain(
             chain,
             &lattice,
@@ -140,6 +154,8 @@ fn verdict_identical_with_and_without_memory() {
             step_ms,
             Some((&memory, &format!("a{index}"))),
         );
+        let first_run = moved(&memory, &before);
+        let before = memory.counters();
         let second = judge_chain(
             chain,
             &lattice,
@@ -147,7 +163,32 @@ fn verdict_identical_with_and_without_memory() {
             step_ms,
             Some((&memory, &format!("b{index}"))),
         );
+        let second_run = moved(&memory, &before);
         assert!(!cold.is_empty(), "{id}: no steps");
+        // The counters of each run with memory: every verdict was taken and written,
+        // none was dropped and none failed.
+        let chain_steps = cold.len() as u64;
+        let chain_allowed = cold.iter().filter(|verdict| verdict.is_ok()).count() as u64;
+        for (run, counters) in [("first", &first_run), ("second", &second_run)] {
+            assert_eq!(counters.enqueued, chain_steps, "{id} {run} run");
+            assert_eq!(counters.recorded, chain_steps, "{id} {run} run");
+            assert_eq!(counters.dropped + counters.failed, 0, "{id} {run} run");
+            assert_eq!(counters.hot + counters.cold, chain_steps, "{id} {run} run");
+        }
+        // Each text of the first run was computed once or replayed, and the second
+        // run found every text in the memo and computed none.
+        assert_eq!(
+            first_run.memo_replayed + first_run.memo_stored,
+            chain_steps,
+            "{id} first run"
+        );
+        assert_eq!(second_run.memo_replayed, chain_steps, "{id} second run");
+        assert_eq!(second_run.memo_stored, 0, "{id} second run");
+        // The writer knew every shape the first run saw accepted.
+        assert!(
+            second_run.hot >= chain_allowed,
+            "{id} second run: {second_run:?}"
+        );
         for (step, verdict) in cold.iter().enumerate() {
             assert_eq!(
                 verdict, &first[step],
@@ -180,10 +221,10 @@ fn verdict_identical_with_and_without_memory() {
     assert_eq!(counters.dropped, 0);
     assert_eq!(counters.failed, 0);
     assert_eq!(memory.records(), 2 * steps);
-    // The fast path was taken: hints were hot and rows were replayed from the memo.
-    assert!(counters.hot > 0, "no hot hint");
-    assert!(counters.memo_replayed > 0, "no memo replay");
+    // The memo was used and the writer counted every record as hot or cold.
+    assert!(counters.memo_replayed >= steps, "{counters:?}");
     assert!(counters.memo_stored > 0, "no memo entry");
+    assert!(counters.hot >= allowed, "{counters:?}");
     assert_eq!(counters.hot + counters.cold, 2 * steps);
 }
 
@@ -240,7 +281,7 @@ fn generated_proposals_get_the_same_verdict_with_and_without_memory() {
     let lattice = generated_lattice();
     let mut cold = LiveEntry::from_yaml(lattice).expect("lattice");
     let mut warm = LiveEntry::from_yaml(lattice).expect("lattice");
-    let memory = VerdictMemory::in_memory(MemoryDigests::of(&warm)).expect("memory");
+    let memory = VerdictMemory::in_memory().expect("memory");
     let mut rng = Lcg(2026);
     let mut now_ms = 1_000_000i64;
     let mut seq = [0i64; 3];
@@ -315,10 +356,7 @@ fn stored_rows_of_the_wrong_form_never_reach_a_verdict() {
     let lattice = generated_lattice();
     let mut cold = LiveEntry::from_yaml(lattice).expect("lattice");
     let mut warm = LiveEntry::from_yaml(lattice).expect("lattice");
-    let view = MemoryView {
-        route: RouteHint::Hot,
-        memo: &WrongForm,
-    };
+    let view = MemoryView { memo: &WrongForm };
     for (index, text) in texts.iter().enumerate() {
         let now_ms = 1_000_000 + index as i64 * 1500;
         cold.set_clock_ms(now_ms);

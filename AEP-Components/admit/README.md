@@ -48,7 +48,7 @@ The One Validation Envelope (03) hands over its 15 walls. GAP (06) adds the wall
 ## Limits
 
 - Admit does not apply an action. The AEP Base Node (01) applies after an allow.
-- Admit takes no verdict from stored shapes. It reads a route hint and the stored rows of the writing walls for byte identical text through the read-only view `MemoryView`. Lattice Memory (15) never replaces a check. The Admit crates do not depend on the memory.
+- Admit takes no verdict from stored shapes. It reads the stored rows of the writing walls for byte identical text through the read-only view `MemoryView`. Those rows follow from the text and from rules compiled into the process and from nothing else. Lattice Memory (15) never replaces a check. The Admit crates do not depend on the memory.
 - Admit does not write policy. GAP (06) is the only form it loads.
 
 ## Run and test

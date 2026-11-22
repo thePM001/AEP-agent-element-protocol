@@ -83,6 +83,11 @@ struct Cli {
     /// Print BaseNodeHealth JSON without binding any dock. Exit 0 ok, 1 degraded, 2 error.
     #[arg(long, default_value_t = false, conflicts_with_all = ["daemon", "self_test"])]
     health: bool,
+    /// Verify the store of Lattice Memory of a node that is not running: every frame of
+    /// every log, each snapshot against its log and each head of the Evidence Ledger
+    /// against its log. Prints JSON. Exit 0 when the store verifies, 2 when it does not.
+    #[arg(long, default_value_t = false, conflicts_with_all = ["daemon", "self_test", "health"])]
+    verify_memory: bool,
     /// Run as daemon with Unix socket docking port listeners (Phase 4).
     #[arg(long, default_value_t = false)]
     daemon: bool,
@@ -506,6 +511,9 @@ async fn run() -> Result<u8, Box<dyn std::error::Error>> {
             Err(text) => return Err(text.into()),
         }
     }
+    if cli.verify_memory {
+        return Ok(verify_memory(&lattice_db));
+    }
     if cli.daemon {
         return run_daemon(&cfg, &lattice_db).await;
     }
@@ -536,6 +544,45 @@ async fn run() -> Result<u8, Box<dyn std::error::Error>> {
         );
     }
     Ok(0)
+}
+
+/// Verify the store of Lattice Memory of a node that is not running and print the
+/// result as JSON. The exit code is 0 when the store verifies and 2 when it does not.
+fn verify_memory(lattice_db: &Path) -> u8 {
+    let data_dir = data_dir_for(lattice_db);
+    let verified = open_lattice_db(lattice_db)
+        .map_err(|e| format!("the Evidence Ledger does not open: {e}"))
+        .and_then(|conn| aep_base_node::lattice_memory::verify_store(&data_dir, &conn));
+    match verified {
+        Ok(report) => {
+            let domains: Vec<serde_json::Value> = report
+                .domains
+                .iter()
+                .map(|domain| {
+                    serde_json::json!({
+                        "domain": domain.domain,
+                        "records": domain.records,
+                        "attractors": domain.attractors,
+                        "head_hash": hex::encode(domain.head_hash),
+                    })
+                })
+                .collect();
+            println!(
+                "{}",
+                serde_json::json!({
+                    "ok": true,
+                    "records": report.records,
+                    "attractors": report.attractors,
+                    "domains": domains,
+                })
+            );
+            0
+        }
+        Err(error) => {
+            println!("{}", serde_json::json!({ "ok": false, "error": error }));
+            2
+        }
+    }
 }
 
 fn issue_mesh_identity(data_dir: &std::path::Path, agent_id: &str) -> Result<(), String> {

@@ -5,8 +5,9 @@
 //! and its length once more. The entry bytes hold the hash of the entry before, so the
 //! frames of one log form a hash chain.
 //!
-//! - One write is one frame. A frame is whole or it is not there: a frame that a crash
-//!   cut short fails its length or its hash and is cut off by the next writer.
+//! - One write is one frame. A frame is whole or it is not there. The rest of a write
+//!   that a crash cut short is cut off by the next writer. Every other damage is
+//!   reported as corrupt and never cut off: see the module `frames`.
 //! - A writer holds the exclusive lock of the log file while it reads what other
 //!   processes appended, decides and appends. The key of a record is its place in the
 //!   log, so two processes never give out the same key.
@@ -14,45 +15,44 @@
 //!   removes a record.
 //! - The attractors live in memory and follow from the log alone. They are rebuilt at
 //!   open. A snapshot file per domain lets a large log open without a full replay. A
-//!   snapshot that does not match its log is ignored and the log is replayed.
+//!   log that is shorter than its snapshot or holds another record where the snapshot
+//!   names one was cut or changed and is reported as corrupt.
+//! - A backend opens the log of a domain when a caller first names it. A call on one
+//!   domain reads no other domain.
 //! - A health check opens files to read, takes a shared lock and reads the last frame
 //!   of each log. It creates nothing and changes nothing.
 
 use crate::error::MemoryError;
-use crate::memory::verify_entries;
-use crate::model::{
-    apply_entry, build_entry, check_record, Counts, DomainCounts, DomainHead, DomainVerify,
-    HintReader, Match, MemoryBackend, MemoryHealth, NewRecord, Receipt, StoredRecord, VerifyReport,
+use crate::frames::{
+    frame_bytes, header_bytes, Frame, FrameReader, FORMAT_VERSION, FRAME_OVERHEAD, HEADER_BYTES,
+    MIN_ENTRY_BYTES,
 };
+use crate::model::{
+    apply_entry, build_entry, check_record, Counts, Cursor, DomainAnchor, DomainCounts, DomainHead,
+    DomainVerify, Match, MemoryBackend, MemoryHealth, NewRecord, Page, Receipt, RecordQuery,
+    StoredRecord, VerifyReport,
+};
+use crate::snapshot::{snapshot_path, Snapshot, SnapshotFile};
 use aep_lattice_memory_core::{
-    check_domain, entry_hash, sha256, Attractor, CoreConfig, Fingerprint, LogEntry, MemoryCore,
-    Outcome, RouteHint, MAX_ENTRY_BYTES,
+    check_domain, entry_hash, Attractor, CoreConfig, Fingerprint, LogEntry, MemoryCore, Outcome,
+    RouteHint, MAX_ENTRY_BYTES,
 };
 use std::collections::{BTreeMap, HashMap};
 use std::fs::{File, OpenOptions};
-use std::io::{BufReader, Read, Seek, SeekFrom, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock};
 
-/// Version of the store format.
-pub const FORMAT_VERSION: u32 = 1;
 /// Name of the settings file of a store.
 pub const META_FILE: &str = "store.lmmeta";
 /// Suffix of a log file.
 pub const LOG_SUFFIX: &str = ".lmlog";
-/// Suffix of a snapshot file.
-pub const SNAPSHOT_SUFFIX: &str = ".lmsnap";
-/// Records a writer appends to a domain between two snapshots.
+/// Records a writer that stays open appends to a domain between two snapshots.
 pub const SNAPSHOT_EVERY: u64 = 50_000;
-
-const LOG_MAGIC: &[u8; 8] = b"AEPLML01";
-const SNAPSHOT_MAGIC: &[u8; 8] = b"AEPLMS01";
-/// Bytes of the header of a log file: the magic and the format version.
-const HEADER_BYTES: u64 = 12;
-/// Bytes a frame adds around its entry: two lengths and the hash.
-const FRAME_OVERHEAD: u64 = 4 + 32 + 4;
-/// Fewest bytes of an entry: its fixed fields and four empty framed fields.
-const MIN_ENTRY_BYTES: usize = 108 + 16;
+/// A writer that closes writes the snapshot of a domain only when the records behind
+/// the last snapshot are at least one part in this many of the records it covers. A
+/// caller that adds one record to a large domain therefore writes no snapshot, and the
+/// work of all snapshots of a domain stays within a fixed multiple of its log.
+pub const SNAPSHOT_SHARE: u64 = 4;
 
 /// How a store is opened.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -62,7 +62,7 @@ pub struct OpenOptionsLog {
     /// the flush to the snapshots and to the operating system: a crash of the process
     /// loses nothing, a loss of power may lose the newest records and never the order.
     pub durable: bool,
-    /// Records a writer appends to a domain between two snapshots.
+    /// Records a writer that stays open appends to a domain between two snapshots.
     pub snapshot_every: u64,
 }
 
@@ -74,135 +74,6 @@ impl OpenOptionsLog {
             snapshot_every: SNAPSHOT_EVERY,
         }
     }
-}
-
-/// One frame read from a log.
-#[derive(Debug)]
-enum Frame {
-    Entry {
-        /// Offset of the first byte of the frame.
-        offset: u64,
-        entry: Box<LogEntry>,
-        hash: [u8; 32],
-    },
-    /// The log ends here.
-    End,
-    /// The bytes from this offset on are the rest of a write a crash cut short.
-    Torn { offset: u64 },
-}
-
-/// Reads the frames of one log in order.
-struct FrameReader<'a> {
-    domain: &'a str,
-    reader: BufReader<File>,
-    at: u64,
-    len: u64,
-}
-
-impl<'a> FrameReader<'a> {
-    /// A reader over the bytes of `path` from `from` up to `len`.
-    fn open(path: &Path, domain: &'a str, from: u64, len: u64) -> Result<Self, MemoryError> {
-        let mut file = File::open(path)?;
-        file.seek(SeekFrom::Start(from))?;
-        Ok(FrameReader {
-            domain,
-            reader: BufReader::with_capacity(1 << 16, file),
-            at: from,
-            len,
-        })
-    }
-
-    /// True when every byte from the present place to the end is zero. A loss of power
-    /// can leave such a tail when the size of a file reached the disk before its bytes.
-    fn rest_is_zero(&mut self) -> Result<bool, MemoryError> {
-        let mut left = self.len - self.at;
-        let mut buffer = [0u8; 8192];
-        while left > 0 {
-            let take = left.min(buffer.len() as u64) as usize;
-            self.reader.read_exact(&mut buffer[..take])?;
-            if buffer[..take].iter().any(|b| *b != 0) {
-                return Ok(false);
-            }
-            left -= take as u64;
-        }
-        Ok(true)
-    }
-
-    fn corrupt(&self, offset: u64, what: &str) -> MemoryError {
-        MemoryError::Corrupt(format!(
-            "domain {}: the frame at byte {offset} {what}",
-            self.domain
-        ))
-    }
-
-    fn read_frame(&mut self) -> Result<Frame, MemoryError> {
-        let offset = self.at;
-        let left = self.len - offset;
-        if left == 0 {
-            return Ok(Frame::End);
-        }
-        if left < 4 {
-            return Ok(Frame::Torn { offset });
-        }
-        let mut raw = [0u8; 4];
-        self.reader.read_exact(&mut raw)?;
-        let entry_len = u32::from_le_bytes(raw) as usize;
-        let frame_len = entry_len as u64 + FRAME_OVERHEAD;
-        if !(MIN_ENTRY_BYTES..=MAX_ENTRY_BYTES).contains(&entry_len) {
-            // Not the start of a frame. A tail of zero bytes is the rest of a cut write.
-            self.reader.seek(SeekFrom::Start(offset))?;
-            self.at = offset;
-            if self.rest_is_zero()? {
-                return Ok(Frame::Torn { offset });
-            }
-            return Err(self.corrupt(offset, "holds a length no entry has"));
-        }
-        if frame_len > left {
-            return Ok(Frame::Torn { offset });
-        }
-        let mut bytes = vec![0u8; entry_len];
-        self.reader.read_exact(&mut bytes)?;
-        let mut hash = [0u8; 32];
-        self.reader.read_exact(&mut hash)?;
-        self.reader.read_exact(&mut raw)?;
-        let is_last = frame_len == left;
-        if u32::from_le_bytes(raw) as usize != entry_len || entry_hash(self.domain, &bytes) != hash
-        {
-            if is_last {
-                return Ok(Frame::Torn { offset });
-            }
-            self.reader.seek(SeekFrom::Start(offset))?;
-            self.at = offset;
-            if self.rest_is_zero()? {
-                return Ok(Frame::Torn { offset });
-            }
-            return Err(self.corrupt(offset, "does not hash to its stored hash"));
-        }
-        let entry = LogEntry::decode(&bytes)?;
-        self.at = offset + frame_len;
-        Ok(Frame::Entry {
-            offset,
-            entry: Box::new(entry),
-            hash,
-        })
-    }
-}
-
-/// The bytes of one frame.
-fn frame_bytes(entry_bytes: &[u8], hash: &[u8; 32]) -> Vec<u8> {
-    let mut frame = Vec::with_capacity(entry_bytes.len() + FRAME_OVERHEAD as usize);
-    frame.extend_from_slice(&(entry_bytes.len() as u32).to_le_bytes());
-    frame.extend_from_slice(entry_bytes);
-    frame.extend_from_slice(hash);
-    frame.extend_from_slice(&(entry_bytes.len() as u32).to_le_bytes());
-    frame
-}
-
-fn header_bytes() -> [u8; HEADER_BYTES as usize] {
-    let mut header = [0u8; HEADER_BYTES as usize];
-    header[..8].copy_from_slice(LOG_MAGIC);
-    header[8..].copy_from_slice(&FORMAT_VERSION.to_le_bytes());
-    header
 }
 
 /// Holds the lock of a log file and gives it back when it goes out of scope.
@@ -279,10 +150,6 @@ fn log_path(dir: &Path, domain: &str) -> PathBuf {
     dir.join(format!("{domain}{LOG_SUFFIX}"))
 }
 
-fn snapshot_path(dir: &Path, domain: &str) -> PathBuf {
-    dir.join(format!("{domain}{SNAPSHOT_SUFFIX}"))
-}
-
 /// The domains that have a log file in the folder, in name order.
 fn domains_on_disk(dir: &Path) -> Result<Vec<String>, MemoryError> {
     let mut names = Vec::new();
@@ -321,121 +188,23 @@ struct DomainLog {
     snapshot_key: i64,
 }
 
-/// What a snapshot file holds.
-struct Snapshot {
-    end: u64,
-    head: DomainHead,
-    attractors: Vec<(Attractor, u64)>,
-}
-
-struct ByteReader<'a> {
-    bytes: &'a [u8],
-    at: usize,
-}
-
-impl<'a> ByteReader<'a> {
-    fn take(&mut self, len: usize) -> Option<&'a [u8]> {
-        let end = self.at.checked_add(len)?;
-        let slice = self.bytes.get(self.at..end)?;
-        self.at = end;
-        Some(slice)
-    }
-
-    fn u64(&mut self) -> Option<u64> {
-        let mut raw = [0u8; 8];
-        raw.copy_from_slice(self.take(8)?);
-        Some(u64::from_le_bytes(raw))
-    }
-
-    fn i64(&mut self) -> Option<i64> {
-        self.u64().map(|v| v as i64)
-    }
-
-    fn digest(&mut self) -> Option<[u8; 32]> {
-        let mut raw = [0u8; 32];
-        raw.copy_from_slice(self.take(32)?);
-        Some(raw)
+impl DomainLog {
+    /// Follow one applied entry: remember which frame touched which attractor.
+    fn touched(&mut self, entry: &LogEntry, offset: u64) {
+        note_touch(&mut self.last_touch, entry, offset);
     }
 }
 
-impl Snapshot {
-    fn encode(&self) -> Vec<u8> {
-        let mut out = Vec::with_capacity(128 + self.attractors.len() * 128);
-        out.extend_from_slice(SNAPSHOT_MAGIC);
-        out.extend_from_slice(&self.end.to_le_bytes());
-        out.extend_from_slice(&self.head.last_key.to_le_bytes());
-        out.extend_from_slice(&self.head.head_hash);
-        out.extend_from_slice(&self.head.last_attractor_key.to_le_bytes());
-        out.extend_from_slice(&(self.attractors.len() as u64).to_le_bytes());
-        for (attractor, touch) in &self.attractors {
-            let vector = attractor.fingerprint.to_bytes();
-            out.extend_from_slice(&attractor.key.to_le_bytes());
-            out.extend_from_slice(&attractor.support.to_le_bytes());
-            out.extend_from_slice(&attractor.formed_at_unix.to_le_bytes());
-            out.extend_from_slice(&attractor.last_seen_unix.to_le_bytes());
-            out.extend_from_slice(&touch.to_le_bytes());
-            out.extend_from_slice(&attractor.shape_digest);
-            out.extend_from_slice(&(attractor.fingerprint.kind().code() as u64).to_le_bytes());
-            out.extend_from_slice(&(vector.len() as u64).to_le_bytes());
-            out.extend_from_slice(&vector);
-        }
-        let digest = sha256(&out);
-        out.extend_from_slice(&digest);
-        out
+fn note_touch(last_touch: &mut HashMap<i64, u64>, entry: &LogEntry, offset: u64) {
+    if let Some(attractor) = entry.outcome.attractor() {
+        last_touch.insert(attractor, offset);
     }
-
-    /// Read a snapshot. None for bytes that are not a whole snapshot of this format.
-    fn decode(bytes: &[u8], embedding_dim: usize) -> Option<Self> {
-        let body_len = bytes.len().checked_sub(32)?;
-        let (body, digest) = bytes.split_at(body_len);
-        if sha256(body) != digest {
-            return None;
-        }
-        let mut reader = ByteReader { bytes: body, at: 0 };
-        if reader.take(8)? != SNAPSHOT_MAGIC {
-            return None;
-        }
-        let end = reader.u64()?;
-        let last_key = reader.i64()?;
-        let head_hash = reader.digest()?;
-        let last_attractor_key = reader.i64()?;
-        let count = reader.u64()?;
-        let mut attractors = Vec::new();
-        for _ in 0..count {
-            let key = reader.i64()?;
-            let support = reader.u64()?;
-            let formed_at_unix = reader.i64()?;
-            let last_seen_unix = reader.i64()?;
-            let touch = reader.u64()?;
-            let shape_digest = reader.digest()?;
-            let kind = reader.i64()?;
-            let vector_len = reader.u64()? as usize;
-            let vector = reader.take(vector_len)?;
-            let fingerprint = Fingerprint::from_stored(kind, vector, embedding_dim).ok()?;
-            attractors.push((
-                Attractor {
-                    key,
-                    fingerprint,
-                    shape_digest,
-                    support,
-                    formed_at_unix,
-                    last_seen_unix,
-                },
-                touch,
-            ));
-        }
-        if reader.at != body.len() {
-            return None;
-        }
-        Some(Snapshot {
-            end,
-            head: DomainHead {
-                last_key,
-                head_hash,
-                last_attractor_key,
-            },
-            attractors,
-        })
+    if let Outcome::Form {
+        evicted: Some(evicted),
+        ..
+    } = entry.outcome
+    {
+        last_touch.remove(&evicted);
     }
 }
 
@@ -467,7 +236,7 @@ pub struct LogBackend {
     durable: bool,
     snapshot_every: u64,
     read_only: bool,
-    core: Arc<RwLock<MemoryCore>>,
+    core: MemoryCore,
     domains: BTreeMap<String, DomainLog>,
     #[cfg(test)]
     pub(crate) fail_at: Option<FailPoint>,
@@ -552,30 +321,24 @@ impl LogBackend {
             durable: options.durable,
             snapshot_every: options.snapshot_every.max(1),
             read_only,
-            core: Arc::new(RwLock::new(MemoryCore::new(config)?)),
+            core: MemoryCore::new(config)?,
             domains: BTreeMap::new(),
             #[cfg(test)]
             fail_at: None,
         })
     }
 
-    /// The folder of the store.
-    pub fn dir(&self) -> &Path {
-        &self.dir
+    /// The domains that have a log in the store at `dir`, in name order.
+    pub fn domains(dir: &Path) -> Result<Vec<String>, MemoryError> {
+        domains_on_disk(dir)
     }
 
-    /// Open the log of every domain the folder holds. A long running writer calls this
-    /// once at start so its hints cover every domain from the first proposal on.
-    pub fn open_all(&mut self) -> Result<(), MemoryError> {
-        for domain in domains_on_disk(&self.dir)? {
-            self.ensure_domain(&domain)?;
-        }
-        Ok(())
-    }
-
-    /// Open the log of a domain when it is not open yet. Returns false when the store
-    /// is read-only and the domain has no log.
-    fn ensure_domain(&mut self, domain: &str) -> Result<bool, MemoryError> {
+    /// Open the log of one domain: read its snapshot and replay the frames behind it.
+    /// A writer makes the log when the domain has none. Returns false when the store
+    /// is read-only and the domain has no log. A write and a search open the domain
+    /// they name by themselves, so a caller needs this only to pay for the open at a
+    /// time of its choice.
+    pub fn open_domain(&mut self, domain: &str) -> Result<bool, MemoryError> {
         if self.domains.contains_key(domain) {
             return Ok(true);
         }
@@ -603,6 +366,9 @@ impl LogBackend {
             snapshot_key: 0,
         };
         let read_only = self.read_only;
+        let config = self.config;
+        let dir = self.dir.clone();
+        let core = &mut self.core;
         let opened = with_lock(&mut log, !read_only, |log| {
             let len = log.file.metadata()?.len();
             if len < HEADER_BYTES {
@@ -625,18 +391,14 @@ impl LogBackend {
                     )));
                 }
             }
-            let mut core = self.core.write().map_err(|_| MemoryError::Poisoned)?;
             core.clear_domain(domain);
-            let loaded = load_snapshot(&self.dir, domain, log, &mut core, self.config);
-            if !loaded {
+            let loaded = load_snapshot(&dir, domain, log, core, config);
+            let caught = loaded.and_then(|_| catch_up(domain, log, core, read_only));
+            if caught.is_err() {
+                // The domain is not open, so nothing of it stays among the attractors.
                 core.clear_domain(domain);
-                log.end = HEADER_BYTES;
-                log.head = DomainHead::empty();
-                log.last_touch.clear();
-                log.snapshot_key = 0;
             }
-            catch_up(domain, log, &mut core, read_only)?;
-            Ok(true)
+            caught.map(|()| true)
         })?;
         if opened {
             self.domains.insert(domain.to_string(), log);
@@ -644,25 +406,27 @@ impl LogBackend {
         Ok(opened)
     }
 
-    /// Read what other processes appended to the open logs since this backend last
-    /// looked. A writer does this on every record. A reader that lives long calls it
-    /// before it reads.
-    pub fn refresh(&mut self) -> Result<(), MemoryError> {
-        let mut core = self.core.write().map_err(|_| MemoryError::Poisoned)?;
-        for (domain, log) in self.domains.iter_mut() {
-            with_lock(log, false, |log| catch_up(domain, log, &mut core, true))?;
-        }
-        Ok(())
+    /// The domains this backend has open, in name order.
+    pub fn open_domains(&self) -> Vec<String> {
+        self.domains.keys().cloned().collect()
     }
 
-    /// Write the snapshot of every domain that changed since its last snapshot.
-    pub fn checkpoint(&mut self) -> Result<(), MemoryError> {
+    /// True when the records behind the last snapshot of a domain are at least one
+    /// part in [`SNAPSHOT_SHARE`] of the records that snapshot covers.
+    fn snapshot_due(log: &DomainLog) -> bool {
+        let behind = (log.head.last_key - log.snapshot_key) as u64;
+        behind > 0 && behind.saturating_mul(SNAPSHOT_SHARE) >= log.snapshot_key as u64
+    }
+
+    /// Write the snapshot of every open domain whose snapshot is due.
+    fn write_due_snapshots(&mut self) -> Result<(), MemoryError> {
         if self.read_only {
-            return Err(MemoryError::ReadOnly);
+            return Ok(());
         }
-        let core = self.core.read().map_err(|_| MemoryError::Poisoned)?;
+        let core = &self.core;
+        let dir = &self.dir;
         for (domain, log) in self.domains.iter_mut() {
-            if log.head.last_key == log.snapshot_key {
+            if !Self::snapshot_due(log) {
                 continue;
             }
             with_lock(log, true, |log| {
@@ -672,7 +436,7 @@ impl LogBackend {
                     return Ok(());
                 }
                 log.file.sync_data()?;
-                write_snapshot(&self.dir, domain, log, &core)
+                write_snapshot(dir, domain, log, core)
             })?;
         }
         Ok(())
@@ -692,7 +456,7 @@ impl LogBackend {
             let _lock = LockGuard::shared(&file)?;
             let len = file.metadata()?.len();
             let (records, attractors) = match last_frame(&path, &domain, len) {
-                Some(entry) => (entry.key as u64, entry.attractors_after),
+                Some((entry, _)) => (entry.key as u64, entry.attractors_after),
                 None => count_forward(&path, &domain, len)?,
             };
             domains.push(DomainCounts {
@@ -710,6 +474,71 @@ impl LogBackend {
             attractors: counts.attractors,
             domains: counts.domains,
         })
+    }
+
+    /// Compare the log of a domain in the store at `dir` with an anchor a caller kept
+    /// outside the store. The log must hold at least the records the anchor names and
+    /// the record with that number must carry the hash of the anchor. A log that is
+    /// shorter or holds another record there was cut or replaced. Files are opened to
+    /// read and nothing is changed.
+    pub fn check_anchor(dir: &Path, anchor: &DomainAnchor) -> Result<(), MemoryError> {
+        if anchor.records == 0 {
+            return Ok(());
+        }
+        let domain = anchor.domain.as_str();
+        check_domain(domain)?;
+        let short = |held: u64| {
+            MemoryError::Corrupt(format!(
+                "domain {domain}: the log holds {held} records, the anchor outside the store names {}",
+                anchor.records
+            ))
+        };
+        let path = log_path(dir, domain);
+        let file = match File::open(&path) {
+            Ok(file) => file,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Err(short(0)),
+            Err(e) => return Err(MemoryError::Io(e)),
+        };
+        let _lock = LockGuard::shared(&file)?;
+        let len = file.metadata()?.len();
+        let other = || {
+            MemoryError::Corrupt(format!(
+                "domain {domain}: record {} is not the record the anchor outside the store names",
+                anchor.records
+            ))
+        };
+        if let Some((entry, hash)) = last_frame(&path, domain, len) {
+            if entry.key as u64 == anchor.records {
+                return if hash == anchor.head_hash {
+                    Ok(())
+                } else {
+                    Err(other())
+                };
+            }
+            if (entry.key as u64) < anchor.records {
+                return Err(short(entry.key as u64));
+            }
+        }
+        if len <= HEADER_BYTES {
+            return Err(short(0));
+        }
+        let mut reader = FrameReader::open(&path, domain, HEADER_BYTES, len)?;
+        let mut held = 0u64;
+        loop {
+            match reader.read_frame()? {
+                Frame::Entry { entry, hash, .. } => {
+                    held = entry.key as u64;
+                    if held == anchor.records {
+                        return if hash == anchor.head_hash {
+                            Ok(())
+                        } else {
+                            Err(other())
+                        };
+                    }
+                }
+                Frame::End | Frame::Torn { .. } => return Err(short(held)),
+            }
+        }
     }
 
     #[cfg(test)]
@@ -756,33 +585,6 @@ impl LogBackend {
         }
     }
 
-    /// Call `visit` with every record of a domain until it answers false.
-    fn each_record(
-        &self,
-        domain: &str,
-        mut visit: impl FnMut(StoredRecord) -> bool,
-    ) -> Result<(), MemoryError> {
-        let Some(log) = self.domains.get(domain) else {
-            return Ok(());
-        };
-        let mut reader = FrameReader::open(&log.path, domain, HEADER_BYTES, log.end)?;
-        loop {
-            match reader.read_frame()? {
-                Frame::Entry { entry, hash, .. } => {
-                    let keep_going = visit(StoredRecord {
-                        domain: domain.to_string(),
-                        hash,
-                        entry: *entry,
-                    });
-                    if !keep_going {
-                        return Ok(());
-                    }
-                }
-                Frame::End | Frame::Torn { .. } => return Ok(()),
-            }
-        }
-    }
-
     /// The domains this backend reads for a question about every domain: the open
     /// ones and the ones on disk.
     fn all_domains(&self) -> Result<Vec<String>, MemoryError> {
@@ -794,6 +596,99 @@ impl LogBackend {
         }
         names.sort();
         Ok(names)
+    }
+
+    /// The domains a query reads, in name order, from the domain of its cursor on.
+    fn query_domains(&self, query: &RecordQuery<'_>) -> Result<Vec<String>, MemoryError> {
+        let mut names = match query.domain {
+            Some(name) => {
+                check_domain(name)?;
+                vec![name.to_string()]
+            }
+            None => self.all_domains()?,
+        };
+        if let Some(after) = query.after {
+            if !names.contains(&after.domain) {
+                return Err(bad_cursor());
+            }
+            names.retain(|name| *name >= after.domain);
+        }
+        Ok(names)
+    }
+
+    /// Call `visit` with every record a query names until it answers false. The
+    /// second argument is the place behind the record. Returns true when the walk
+    /// reached the end of the last domain.
+    fn walk(
+        &self,
+        query: &RecordQuery<'_>,
+        mut visit: impl FnMut(StoredRecord, Cursor, u64) -> bool,
+    ) -> Result<bool, MemoryError> {
+        for name in self.query_domains(query)? {
+            let path = log_path(&self.dir, &name);
+            let file = match File::open(&path) {
+                Ok(file) => file,
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+                Err(e) => return Err(MemoryError::Io(e)),
+            };
+            let _lock = LockGuard::shared(&file)?;
+            let len = file.metadata()?.len();
+            let from = match query.after {
+                Some(after) if after.domain == name => place_of(&path, &name, after, len)?,
+                _ => HEADER_BYTES,
+            };
+            if len <= from {
+                continue;
+            }
+            let mut reader = FrameReader::open(&path, &name, from, len)?;
+            // The walk of a log ends at its end or before the rest of a cut write.
+            while let Frame::Entry {
+                entry,
+                hash,
+                offset,
+            } = reader.read_frame()?
+            {
+                if !query.keeps(&entry) {
+                    continue;
+                }
+                let place = Cursor {
+                    domain: name.clone(),
+                    key: entry.key,
+                    offset: reader.at,
+                };
+                let record = StoredRecord {
+                    domain: name.clone(),
+                    hash,
+                    entry: *entry,
+                };
+                if !visit(record, place, reader.at - offset) {
+                    return Ok(false);
+                }
+            }
+        }
+        Ok(true)
+    }
+}
+
+fn bad_cursor() -> MemoryError {
+    MemoryError::Core(aep_lattice_memory_core::CoreError::Invalid {
+        field: "after",
+        reason: String::from("is no place of this store"),
+    })
+}
+
+/// The offset a cursor names in a log, after a check that a record with the key of
+/// the cursor ends there.
+fn place_of(path: &Path, domain: &str, after: &Cursor, len: u64) -> Result<u64, MemoryError> {
+    if after.key == 0 && after.offset == HEADER_BYTES {
+        return Ok(HEADER_BYTES);
+    }
+    if after.offset > len {
+        return Err(bad_cursor());
+    }
+    match last_frame(path, domain, after.offset) {
+        Some((entry, _)) if entry.key == after.key => Ok(after.offset),
+        _ => Err(bad_cursor()),
     }
 }
 
@@ -814,45 +709,60 @@ fn with_lock<T>(
     out
 }
 
-/// Put a valid snapshot into the attractors. False when no snapshot fits the log.
+/// Put the snapshot of a domain into the attractors. A domain without a snapshot and
+/// a snapshot file whose bytes are damaged leave the attractors empty, so the log is
+/// replayed from its first frame. A whole snapshot that does not fit its log is an
+/// error: the log was cut or changed.
 fn load_snapshot(
     dir: &Path,
     domain: &str,
     log: &mut DomainLog,
     core: &mut MemoryCore,
     config: CoreConfig,
-) -> bool {
-    let Ok(bytes) = std::fs::read(snapshot_path(dir, domain)) else {
-        return false;
+) -> Result<(), MemoryError> {
+    let snapshot = match Snapshot::read(dir, domain, config.embedding_dim)? {
+        SnapshotFile::Whole(snapshot) => snapshot,
+        SnapshotFile::Absent | SnapshotFile::Damaged => return Ok(()),
     };
-    let Some(snapshot) = Snapshot::decode(&bytes, config.embedding_dim) else {
-        return false;
-    };
-    let Ok(len) = log.file.metadata().map(|m| m.len()) else {
-        return false;
-    };
-    // The snapshot must name a frame boundary of this log: the frame that ends there
-    // carries the head hash of the snapshot.
-    if snapshot.end > len || snapshot.end < HEADER_BYTES {
-        return false;
-    }
-    if snapshot.head.last_key == 0 {
-        if snapshot.end != HEADER_BYTES || !snapshot.attractors.is_empty() {
-            return false;
-        }
-    } else if hash_before(&log.path, snapshot.end) != Some(snapshot.head.head_hash) {
-        return false;
-    }
+    let len = log.file.metadata()?.len();
+    check_snapshot_place(domain, &log.path, &snapshot, len)?;
     for (attractor, touch) in &snapshot.attractors {
-        if core.load(domain, attractor.clone()).is_err() {
-            return false;
-        }
+        core.load(domain, attractor.clone())?;
         log.last_touch.insert(attractor.key, *touch);
     }
     log.end = snapshot.end;
     log.head = snapshot.head;
     log.snapshot_key = snapshot.head.last_key;
-    true
+    Ok(())
+}
+
+/// A snapshot names a frame boundary of its log: the frame that ends there carries
+/// the head hash of the snapshot.
+fn check_snapshot_place(
+    domain: &str,
+    path: &Path,
+    snapshot: &Snapshot,
+    len: u64,
+) -> Result<(), MemoryError> {
+    if snapshot.end > len {
+        return Err(MemoryError::Corrupt(format!(
+            "domain {domain}: the log is shorter than its snapshot: it ends at byte {len}, the snapshot covers {} records up to byte {}",
+            snapshot.head.last_key, snapshot.end
+        )));
+    }
+    let fits = if snapshot.head.last_key == 0 {
+        snapshot.end == HEADER_BYTES && snapshot.attractors.is_empty()
+    } else {
+        snapshot.end >= HEADER_BYTES + FRAME_OVERHEAD
+            && hash_before(path, snapshot.end) == Some(snapshot.head.head_hash)
+    };
+    if !fits {
+        return Err(MemoryError::Corrupt(format!(
+            "domain {domain}: the log does not hold record {} where its snapshot names it",
+            snapshot.head.last_key
+        )));
+    }
+    Ok(())
 }
 
 /// Write the snapshot of a domain under another name and put it in place whole.
@@ -879,7 +789,8 @@ fn write_snapshot(
     };
     let target = snapshot_path(dir, domain);
     let scratch = dir.join(format!(
-        "{domain}{SNAPSHOT_SUFFIX}.{}.new",
+        "{domain}{}.{}.new",
+        crate::snapshot::SNAPSHOT_SUFFIX,
         std::process::id()
     ));
     {
@@ -893,7 +804,8 @@ fn write_snapshot(
 }
 
 /// Apply the frames between the known end of a log and its present end. A writer cuts
-/// off a torn tail. A reader leaves it and stops before it.
+/// off the rest of a cut write. A reader leaves it and stops before it. Damage is an
+/// error for both and nothing is cut.
 fn catch_up(
     domain: &str,
     log: &mut DomainLog,
@@ -926,25 +838,16 @@ fn catch_up(
                 hash,
             } => {
                 apply_entry(core, &mut log.head, domain, &entry, hash)?;
-                if let Some(attractor) = entry.outcome.attractor() {
-                    log.last_touch.insert(attractor, offset);
-                }
-                if let Outcome::Form {
-                    evicted: Some(evicted),
-                    ..
-                } = entry.outcome
-                {
-                    log.last_touch.remove(&evicted);
-                }
+                log.touched(&entry, offset);
                 log.end = reader.at;
             }
         }
     }
 }
 
-/// The entry of the last frame of a log, read from the end. None when the log holds
-/// no frame or its tail is not a whole frame.
-fn last_frame(path: &Path, domain: &str, len: u64) -> Option<LogEntry> {
+/// The entry and the hash of the last frame of the first `len` bytes of a log, read
+/// from the end. None when those bytes hold no frame or do not end in a whole frame.
+fn last_frame(path: &Path, domain: &str, len: u64) -> Option<(LogEntry, [u8; 32])> {
     if len < HEADER_BYTES + FRAME_OVERHEAD + MIN_ENTRY_BYTES as u64 {
         return None;
     }
@@ -959,7 +862,7 @@ fn last_frame(path: &Path, domain: &str, len: u64) -> Option<LogEntry> {
     }
     let mut reader = FrameReader::open(path, domain, start, len).ok()?;
     match reader.read_frame().ok()? {
-        Frame::Entry { entry, .. } if reader.at == len => Some(*entry),
+        Frame::Entry { entry, hash, .. } if reader.at == len => Some((*entry, hash)),
         _ => None,
     }
 }
@@ -980,20 +883,163 @@ fn count_forward(path: &Path, domain: &str, len: u64) -> Result<(u64, u64), Memo
     }
 }
 
+/// What the attractors of an open domain are at the end this backend holds.
+struct LiveDomain {
+    end: u64,
+    head: DomainHead,
+    attractors: Vec<Attractor>,
+}
+
+/// Walk the log of one domain from its first frame to its end: every frame must be
+/// whole, every entry must hash to its stored hash and follow the entry before it,
+/// and the attractors are rebuilt in a core of their own. The snapshot file of the
+/// domain must fit the log at the record it names, and the attractors of an open
+/// domain must be the rebuilt ones at the end the backend holds.
+fn verify_domain(
+    dir: &Path,
+    domain: &str,
+    config: CoreConfig,
+    live: Option<LiveDomain>,
+) -> Result<DomainVerify, MemoryError> {
+    let path = log_path(dir, domain);
+    let file = File::open(&path)?;
+    let _lock = LockGuard::shared(&file)?;
+    let len = file.metadata()?.len();
+    let not_whole = |offset: u64| {
+        MemoryError::Corrupt(format!(
+            "domain {domain}: the log ends at byte {offset} in a frame that is not whole"
+        ))
+    };
+    if len < HEADER_BYTES {
+        return Err(not_whole(0));
+    }
+    let mut header = [0u8; HEADER_BYTES as usize];
+    File::open(&path)?.read_exact(&mut header)?;
+    if header != header_bytes() {
+        return Err(MemoryError::Format(format!(
+            "{} is not a log of format version {FORMAT_VERSION}",
+            path.display()
+        )));
+    }
+    let snapshot = match Snapshot::read(dir, domain, config.embedding_dim)? {
+        SnapshotFile::Absent => None,
+        SnapshotFile::Damaged => {
+            return Err(MemoryError::Corrupt(format!(
+                "domain {domain}: the snapshot file is damaged"
+            )))
+        }
+        SnapshotFile::Whole(snapshot) => {
+            check_snapshot_place(domain, &path, &snapshot, len)?;
+            Some(snapshot)
+        }
+    };
+
+    let mut core = MemoryCore::new(config)?;
+    let mut head = DomainHead::empty();
+    let mut last_touch: HashMap<i64, u64> = HashMap::new();
+    let mut snapshot_seen = false;
+    let mut live_seen = false;
+    let rebuilt = |core: &MemoryCore| {
+        core.domain(domain)
+            .map(|index| index.attractors())
+            .unwrap_or_default()
+    };
+    // Compare what the walk rebuilt up to `at` with the snapshot and with the open
+    // domain when either stands at that place.
+    let mut compare = |core: &MemoryCore,
+                       head: &DomainHead,
+                       last_touch: &HashMap<i64, u64>,
+                       at: u64|
+     -> Result<(), MemoryError> {
+        if let Some(snapshot) = &snapshot {
+            if !snapshot_seen && snapshot.head.last_key == head.last_key {
+                let with_touch: Vec<(Attractor, u64)> = rebuilt(core)
+                    .into_iter()
+                    .map(|attractor| {
+                        let touch = last_touch.get(&attractor.key).copied().unwrap_or(0);
+                        (attractor, touch)
+                    })
+                    .collect();
+                if snapshot.end != at || snapshot.head != *head || snapshot.attractors != with_touch
+                {
+                    return Err(MemoryError::Corrupt(format!(
+                        "domain {domain}: the snapshot does not hold what the log says at record {}",
+                        head.last_key
+                    )));
+                }
+                snapshot_seen = true;
+            }
+        }
+        if let Some(live) = &live {
+            if !live_seen && live.end == at {
+                if live.head != *head || live.attractors != rebuilt(core) {
+                    return Err(MemoryError::Corrupt(format!(
+                        "domain {domain}: the attractors do not follow from the log"
+                    )));
+                }
+                live_seen = true;
+            }
+        }
+        Ok(())
+    };
+    compare(&core, &head, &last_touch, HEADER_BYTES)?;
+    let mut reader = FrameReader::open(&path, domain, HEADER_BYTES, len)?;
+    loop {
+        match reader.read_frame()? {
+            Frame::Entry {
+                offset,
+                entry,
+                hash,
+            } => {
+                if entry.hash(domain) != hash {
+                    return Err(MemoryError::Corrupt(format!(
+                        "domain {domain}: entry {} does not hash to its stored hash",
+                        entry.key
+                    )));
+                }
+                apply_entry(&mut core, &mut head, domain, &entry, hash)?;
+                note_touch(&mut last_touch, &entry, offset);
+                compare(&core, &head, &last_touch, reader.at)?;
+            }
+            Frame::End => break,
+            Frame::Torn { offset } => return Err(not_whole(offset)),
+        }
+    }
+    if snapshot.is_some() && !snapshot_seen {
+        return Err(MemoryError::Corrupt(format!(
+            "domain {domain}: the log holds {} records and not the record its snapshot names",
+            head.last_key
+        )));
+    }
+    if live.is_some() && !live_seen {
+        return Err(MemoryError::Corrupt(format!(
+            "domain {domain}: the attractors do not follow from the log"
+        )));
+    }
+    Ok(DomainVerify {
+        domain: domain.to_string(),
+        records: head.last_key as u64,
+        attractors: rebuilt(&core).len() as u64,
+        head_hash: head.head_hash,
+    })
+}
+
 impl MemoryBackend for LogBackend {
     fn record(&mut self, record: &NewRecord) -> Result<Receipt, MemoryError> {
         if self.read_only {
             return Err(MemoryError::ReadOnly);
         }
         let checked = check_record(record)?;
-        self.ensure_domain(&record.domain)?;
+        self.open_domain(&record.domain)?;
         let domain = record.domain.as_str();
         let Some(mut log) = self.domains.remove(domain) else {
             return Err(MemoryError::Corrupt(format!(
                 "domain {domain}: the log is not open"
             )));
         };
-        let written = self.record_locked(domain, &mut log, &checked);
+        let written = with_lock(&mut log, true, |log| {
+            self.record_under_lock(domain, log, &checked)
+        });
         self.domains.insert(domain.to_string(), log);
         written
     }
@@ -1004,8 +1050,7 @@ impl MemoryBackend for LogBackend {
         fingerprint: &Fingerprint,
         shape_digest: &[u8; 32],
     ) -> Result<RouteHint, MemoryError> {
-        let core = self.core.read().map_err(|_| MemoryError::Poisoned)?;
-        Ok(core.route_hint(domain, fingerprint, shape_digest))
+        Ok(self.core.route_hint(domain, fingerprint, shape_digest))
     }
 
     fn search(
@@ -1015,9 +1060,8 @@ impl MemoryBackend for LogBackend {
         limit: usize,
         min_score: i32,
     ) -> Result<Vec<Match>, MemoryError> {
-        let core = self.core.read().map_err(|_| MemoryError::Poisoned)?;
-        core.check_fingerprint(domain, fingerprint)?;
-        let (Some(index), Some(log)) = (core.domain(domain), self.domains.get(domain)) else {
+        self.core.check_fingerprint(domain, fingerprint)?;
+        let (Some(index), Some(log)) = (self.core.domain(domain), self.domains.get(domain)) else {
             return Ok(Vec::new());
         };
         let mut matches = Vec::new();
@@ -1039,124 +1083,89 @@ impl MemoryBackend for LogBackend {
         Ok(matches)
     }
 
-    fn history(
-        &self,
-        domain: &str,
-        element_id: &str,
-        accepted: Option<bool>,
-        limit: usize,
-    ) -> Result<Vec<StoredRecord>, MemoryError> {
-        let mut found = Vec::new();
-        if limit == 0 {
-            return Ok(found);
+    fn records(&self, query: &RecordQuery<'_>) -> Result<Page, MemoryError> {
+        let mut page = Page::default();
+        if query.limit == 0 {
+            return Ok(page);
         }
-        self.each_record(domain, |record| {
-            if record.entry.element_id == element_id
-                && accepted.is_none_or(|want| record.entry.accepted == want)
-            {
-                found.push(record);
+        let mut bytes = 0usize;
+        let mut last: Option<Cursor> = None;
+        let ended = self.walk(query, |record, place, frame_bytes| {
+            // The page is full: this record proves that a next page exists.
+            let full = page.records.len() >= query.limit
+                || (!page.records.is_empty() && bytes >= query.max_bytes);
+            if full {
+                return false;
             }
-            found.len() < limit
+            page.records.push(record);
+            bytes = bytes.saturating_add(frame_bytes as usize);
+            last = Some(place);
+            true
         })?;
-        Ok(found)
+        if !ended {
+            page.next = last;
+        }
+        Ok(page)
     }
 
-    fn export(&self, domain: Option<&str>, limit: usize) -> Result<Vec<StoredRecord>, MemoryError> {
-        let mut found = Vec::new();
-        if limit == 0 {
-            return Ok(found);
-        }
-        let names: Vec<String> = match domain {
-            Some(name) => vec![name.to_string()],
-            None => self.domains.keys().cloned().collect(),
-        };
-        for name in names {
-            self.each_record(&name, |record| {
-                found.push(record);
-                found.len() < limit
-            })?;
-            if found.len() >= limit {
-                break;
-            }
-        }
-        Ok(found)
+    fn count(&self, query: &RecordQuery<'_>) -> Result<u64, MemoryError> {
+        let mut count = 0u64;
+        self.walk(query, |_, _, _| {
+            count += 1;
+            true
+        })?;
+        Ok(count)
     }
 
     fn counts(&self) -> Result<Counts, MemoryError> {
-        let core = self.core.read().map_err(|_| MemoryError::Poisoned)?;
         let domains = self
             .domains
             .iter()
             .map(|(name, log)| DomainCounts {
                 domain: name.clone(),
                 records: log.head.last_key as u64,
-                attractors: core.domain(name).map(|i| i.len()).unwrap_or(0) as u64,
+                attractors: self.core.domain(name).map(|i| i.len()).unwrap_or(0) as u64,
             })
             .collect();
         Ok(Counts::of(domains))
     }
 
-    fn verify(&self) -> Result<VerifyReport, MemoryError> {
-        let live = self.core.read().map_err(|_| MemoryError::Poisoned)?;
-        let mut domains = Vec::new();
-        for name in self.all_domains()? {
-            let path = log_path(&self.dir, &name);
-            let file = File::open(&path)?;
-            let _lock = LockGuard::shared(&file)?;
-            // An open domain is checked up to the end this backend holds, so its
-            // attractors can be compared. Any other domain is checked to its end.
-            let open = self.domains.get(&name);
-            let len = match open {
-                Some(log) => log.end,
-                None => file.metadata()?.len(),
-            };
-            let mut entries: Vec<(LogEntry, [u8; 32])> = Vec::new();
-            if len > HEADER_BYTES {
-                let mut reader = FrameReader::open(&path, &name, HEADER_BYTES, len)?;
-                loop {
-                    match reader.read_frame()? {
-                        Frame::Entry { entry, hash, .. } => entries.push((*entry, hash)),
-                        Frame::End => break,
-                        Frame::Torn { offset } => {
-                            if open.is_some() {
-                                return Err(MemoryError::Corrupt(format!(
-                                    "domain {name}: the log is cut short at byte {offset}"
-                                )));
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
-            let (rebuilt, head) =
-                verify_entries(self.config, &name, entries.iter().map(|(e, h)| (e, *h)))?;
-            let rebuilt_attractors = rebuilt
-                .domain(&name)
-                .map(|i| i.attractors())
-                .unwrap_or_default();
-            if let Some(log) = open {
-                let live_attractors = live
-                    .domain(&name)
-                    .map(|i| i.attractors())
-                    .unwrap_or_default();
-                if rebuilt_attractors != live_attractors || head != log.head {
-                    return Err(MemoryError::Corrupt(format!(
-                        "domain {name}: the attractors do not follow from the log"
-                    )));
-                }
-            }
-            domains.push(DomainVerify {
-                domain: name,
-                records: head.last_key as u64,
-                attractors: rebuilt_attractors.len() as u64,
-                head_hash: head.head_hash,
-            });
-        }
-        Ok(VerifyReport::of(domains))
+    fn anchors(&self) -> Vec<DomainAnchor> {
+        self.domains
+            .iter()
+            .map(|(name, log)| DomainAnchor {
+                domain: name.clone(),
+                records: log.head.last_key as u64,
+                head_hash: log.head.head_hash,
+            })
+            .collect()
     }
 
-    fn reader(&self) -> HintReader {
-        HintReader::new(self.core.clone())
+    fn sync(&mut self) -> Result<(), MemoryError> {
+        if self.read_only {
+            return Ok(());
+        }
+        for log in self.domains.values() {
+            log.file.sync_data()?;
+        }
+        Ok(())
+    }
+
+    fn verify(&self) -> Result<VerifyReport, MemoryError> {
+        let mut domains = Vec::new();
+        for name in self.all_domains()? {
+            let live = self.domains.get(&name).map(|log| LiveDomain {
+                end: log.end,
+                head: log.head,
+                attractors: self
+                    .core
+                    .domain(&name)
+                    .map(|i| i.attractors())
+                    .unwrap_or_default(),
+            });
+            domains.push(verify_domain(&self.dir, &name, self.config, live)?);
+        }
+        Ok(VerifyReport::of(domains))
     }
 
     fn config(&self) -> CoreConfig {
@@ -1165,21 +1174,9 @@ impl MemoryBackend for LogBackend {
 }
 
 impl LogBackend {
-    /// The write of one record under the exclusive lock of its log.
-    fn record_locked(
-        &self,
-        domain: &str,
-        log: &mut DomainLog,
-        checked: &crate::model::CheckedRecord<'_>,
-    ) -> Result<Receipt, MemoryError> {
-        with_lock(log, true, |log| {
-            self.record_under_lock(domain, log, checked)
-        })
-    }
-
     /// The write of one record. The caller holds the exclusive lock of the log.
     fn record_under_lock(
-        &self,
+        &mut self,
         domain: &str,
         log: &mut DomainLog,
         checked: &crate::model::CheckedRecord<'_>,
@@ -1187,13 +1184,9 @@ impl LogBackend {
         // What other processes appended comes first, so the key and the hash before
         // are the ones of the true end of the log.
         if log.file.metadata()?.len() != log.end {
-            let mut core = self.core.write().map_err(|_| MemoryError::Poisoned)?;
-            catch_up(domain, log, &mut core, false)?;
+            catch_up(domain, log, &mut self.core, false)?;
         }
-        let (entry, plan) = {
-            let core = self.core.read().map_err(|_| MemoryError::Poisoned)?;
-            build_entry(&core, &log.head, checked)?
-        };
+        let (entry, plan) = build_entry(&self.core, &log.head, checked)?;
         let bytes = entry.encode();
         if bytes.len() > MAX_ENTRY_BYTES {
             return Err(MemoryError::Core(
@@ -1208,41 +1201,25 @@ impl LogBackend {
         let offset = log.end;
         self.append(&log.file, &frame)?;
         // The frame is in the log. The attractors follow it.
-        {
-            let mut core = self.core.write().map_err(|_| MemoryError::Poisoned)?;
-            apply_entry(&mut core, &mut log.head, domain, &entry, hash)?;
-        }
+        apply_entry(&mut self.core, &mut log.head, domain, &entry, hash)?;
         log.end = offset + frame.len() as u64;
-        let attractor_key = entry.outcome.attractor();
-        if let Some(attractor) = attractor_key {
-            log.last_touch.insert(attractor, offset);
-        }
-        if let Outcome::Form {
-            evicted: Some(evicted),
-            ..
-        } = entry.outcome
-        {
-            log.last_touch.remove(&evicted);
-        }
+        log.touched(&entry, offset);
         if (log.head.last_key - log.snapshot_key) as u64 >= self.snapshot_every {
-            let core = self.core.read().map_err(|_| MemoryError::Poisoned)?;
             log.file.sync_data()?;
-            write_snapshot(&self.dir, domain, log, &core)?;
+            write_snapshot(&self.dir, domain, log, &self.core)?;
         }
         Ok(Receipt {
             key: entry.key,
             hash,
             plan,
-            attractor_key,
+            attractor_key: entry.outcome.attractor(),
         })
     }
 }
 
 impl Drop for LogBackend {
     fn drop(&mut self) {
-        if !self.read_only {
-            let _ = self.checkpoint();
-        }
+        let _ = self.write_due_snapshots();
     }
 }
 
