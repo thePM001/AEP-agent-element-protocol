@@ -9,7 +9,7 @@
   "CC-05",
   "CC-10"
  ],
- "description": "POTOMITAN network mode from internet reachability and the active mesh peer count, and whether the node can reach anything in that mode.",
+ "description": "POTOMITAN network mode from internet reachability and the active mesh peer count, and whether the node can reach anything in that mode. The optional plane input is what a bound packet plane proved: bound is true when a plane is bound and proven_peers counts the known peers whose datagrams it accepted. No plane input means no plane is bound. In POTOMITAN mode the node is reachable only when a bound plane proved at least one peer, never from the peer count alone.",
  "cases": [
   {
    "id": "internet-no-peers",
@@ -34,10 +34,55 @@
    }
   },
   {
-   "id": "failover-one-peer",
+   "id": "failover-peer-file-only",
    "input": {
     "internet_up": false,
     "mesh_peers": 1
+   },
+   "expect": {
+    "mode": "potomitan",
+    "reachable": false
+   }
+  },
+  {
+   "id": "failover-plane-bound-unproven",
+   "input": {
+    "internet_up": false,
+    "mesh_peers": 2,
+    "plane": {
+     "bound": true,
+     "proven_peers": 0
+    }
+   },
+   "expect": {
+    "mode": "potomitan",
+    "reachable": false
+   }
+  },
+  {
+   "id": "failover-plane-unbound-claims-proof",
+   "input": {
+    "internet_up": false,
+    "mesh_peers": 2,
+    "plane": {
+     "bound": false,
+     "proven_peers": 2
+    }
+   },
+   "expect": {
+    "mode": "potomitan",
+    "reachable": false
+   }
+  },
+  {
+   "id": "failover-one-peer-proven",
+   "input": {
+    "internet_up": false,
+    "mesh_peers": 1,
+    "plane": {
+     "bound": true,
+     "proven_peers": 1
+    }
    },
    "expect": {
     "mode": "potomitan",
@@ -45,10 +90,14 @@
    }
   },
   {
-   "id": "failover-two-peers",
+   "id": "failover-two-peers-one-proven",
    "input": {
     "internet_up": false,
-    "mesh_peers": 2
+    "mesh_peers": 2,
+    "plane": {
+     "bound": true,
+     "proven_peers": 1
+    }
    },
    "expect": {
     "mode": "potomitan",
@@ -67,10 +116,29 @@
    }
   },
   {
-   "id": "failover-many-peers",
+   "id": "offline-ignores-plane",
    "input": {
     "internet_up": false,
-    "mesh_peers": 4294967295
+    "mesh_peers": 0,
+    "plane": {
+     "bound": true,
+     "proven_peers": 1
+    }
+   },
+   "expect": {
+    "mode": "offline",
+    "reachable": false
+   }
+  },
+  {
+   "id": "failover-many-peers-proven",
+   "input": {
+    "internet_up": false,
+    "mesh_peers": 4294967295,
+    "plane": {
+     "bound": true,
+     "proven_peers": 4294967295
+    }
    },
    "expect": {
     "mode": "potomitan",

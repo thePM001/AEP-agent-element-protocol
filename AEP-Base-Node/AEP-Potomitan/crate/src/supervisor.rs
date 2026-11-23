@@ -6,7 +6,7 @@ use crate::peer::{PeerRegistry, MESH_PEERS_FILE};
 use crate::plane::MeshPacketPlane;
 use crate::routing::RoutingTable;
 use crate::transport::{MemoryFabric, MemoryTransport, PlaneError, UdpTransport};
-use crate::{detect_network_mode, status, MeshMode, MeshStatus};
+use crate::{detect_network_mode, status, MeshMode, MeshStatus, PlaneProof};
 use std::path::{Path, PathBuf};
 
 pub enum BoundPacketPlane {
@@ -49,8 +49,17 @@ impl MeshSupervisor {
         detect_network_mode(self.internet_up, self.peer_count())
     }
 
+    /// What the bound plane proved. The proof is unbound when no plane is bound.
+    pub fn plane_proof(&self) -> PlaneProof {
+        match self.plane.as_ref() {
+            Some(BoundPacketPlane::Memory(p)) => p.proof(),
+            Some(BoundPacketPlane::Udp(p)) => p.proof(),
+            None => PlaneProof::unbound(),
+        }
+    }
+
     pub fn mesh_status(&self) -> MeshStatus {
-        status(self.mesh_mode(), self.peer_count())
+        status(self.mesh_mode(), self.peer_count(), self.plane_proof())
     }
 
     pub fn should_use_mesh_transport(&self) -> bool {
@@ -89,11 +98,9 @@ impl MeshSupervisor {
         Ok(endpoint)
     }
 
+    /// Send over the bound plane. The plane sends whatever the mode: the mode is a
+    /// signal of which path the node prefers, not a gate on the plane.
     pub fn send_packet(&mut self, dst: &str, payload: Vec<u8>) -> Result<u64, PlaneError> {
-        if !self.should_use_mesh_transport() && self.plane.is_some() {
-            // Plane may still send while internet is up; supervisor prefers internet
-            // only as a mode signal. Packet plane remains available when bound.
-        }
         match self.plane.as_mut() {
             Some(BoundPacketPlane::Memory(p)) => p.send(dst, payload),
             Some(BoundPacketPlane::Udp(p)) => p.send(dst, payload),
@@ -113,7 +120,7 @@ impl MeshSupervisor {
         &mut self,
         peer: crate::peer::MeshPeer,
     ) -> Result<(), crate::peer::PeerError> {
-        self.registry.upsert(peer);
+        self.registry.upsert(peer)?;
         self.routing = RoutingTable::rebuild_from_peers(&self.registry.list());
         self.sync_plane_routes();
         self.registry.save(&self.config_path)?;
@@ -141,7 +148,7 @@ mod tests {
         let mut sup = MeshSupervisor::load(dir.path(), true);
         sup.upsert_peer(MeshPeer {
             node_id: "peer-1".into(),
-            endpoint: "tls://mesh:1".into(),
+            endpoint: "udp://10.0.0.1:1".into(),
             public_key_hex: None,
             active: true,
         })
@@ -149,6 +156,44 @@ mod tests {
         sup.internet_up = false;
         assert_eq!(sup.mesh_mode(), MeshMode::Potomitan);
         assert!(sup.should_use_mesh_transport());
+        // A peer on file selects the mesh but proves no reach: no plane is bound.
+        let s = sup.mesh_status();
+        assert!(!s.reachable);
+        assert!(!s.packet_plane);
+        assert_eq!(s.routes, 0);
+    }
+
+    #[test]
+    fn upsert_refuses_tls_peer_and_keeps_file() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut sup = MeshSupervisor::load(dir.path(), false);
+        let err = sup
+            .upsert_peer(MeshPeer {
+                node_id: "peer-tls".into(),
+                endpoint: "tls://10.0.0.1:1".into(),
+                public_key_hex: None,
+                active: true,
+            })
+            .expect_err("tls refused");
+        assert!(err.to_string().contains("no TLS transport"), "{err}");
+        assert_eq!(sup.peer_count(), 0);
+        assert!(!sup.config_path.exists(), "a refused peer wrote the file");
+    }
+
+    #[test]
+    fn peer_file_with_tls_peer_is_a_load_error() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(
+            dir.path().join(MESH_PEERS_FILE),
+            r#"{"version":"2.9.0","peers":[{"node_id":"t","endpoint":"tls://10.0.0.1:1"}]}"#,
+        )
+        .expect("write");
+        let sup = MeshSupervisor::load(dir.path(), false);
+        assert!(sup
+            .load_error
+            .as_deref()
+            .is_some_and(|e| e.contains("no TLS transport")));
+        assert_eq!(sup.mesh_mode(), MeshMode::Offline);
     }
 
     #[test]
@@ -186,9 +231,16 @@ mod tests {
         .expect("upsert b");
         a.open_memory_plane("a".into(), fabric.clone());
         b.open_memory_plane("b".into(), fabric);
+        assert!(!b.mesh_status().reachable, "bound but nothing proved yet");
+        assert!(b.mesh_status().packet_plane);
         a.send_packet("b", b"mesh-hi".to_vec()).expect("send");
         let got = b.poll_packet().expect("poll").expect("pkt");
         assert_eq!(got.payload, b"mesh-hi");
         assert_eq!(got.src, "a");
+        let s = b.mesh_status();
+        assert_eq!(s.mode, MeshMode::Potomitan);
+        assert!(s.reachable, "a known peer reached the bound plane");
+        assert_eq!(s.proven_peers, 1);
+        assert_eq!(s.routes, 1);
     }
 }

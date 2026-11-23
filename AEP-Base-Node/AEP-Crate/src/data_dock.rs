@@ -534,7 +534,7 @@ pub fn provision_server_identity(
 }
 
 fn health_body(state: &DataDockState) -> DataDockHealth {
-    let (_, _, mesh_err) = resolve_mesh_peers(Some(&state.data_dir), state.internet_up, 0);
+    let (_, mesh_err) = resolve_mesh_peers(Some(&state.data_dir), state.internet_up, 0);
     let status = runtime_status(&state.runtime, mesh_err.as_deref());
     DataDockHealth {
         ok: status != "error",

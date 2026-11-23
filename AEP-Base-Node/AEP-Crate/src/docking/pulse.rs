@@ -36,7 +36,8 @@ pub(crate) struct HeldCapsule {
     pub(crate) frame: LatticeChannelFrame,
     pub(crate) plaintext: Vec<u8>,
     pub(crate) expected_port: DockingPort,
-    pub(crate) bundle: aep_agentmesh::AgentMeshBundle,
+    /// AgentMesh column of the ledger row: the certificate the peer presented, or none.
+    pub(crate) mesh: aep_agentmesh::LedgerMeshRecord,
     /// Event time that the time walls of Admit measure against: the stamp of the agent
     /// once the kernel checked it against its own clock at enqueue. It is the arrival
     /// reading of the kernel clock when the event carries no stamp.
@@ -386,7 +387,7 @@ pub(crate) fn pulse_enqueue(
     plaintext: &[u8],
     expected_port: &DockingPort,
     digest: String,
-    bundle: aep_agentmesh::AgentMeshBundle,
+    mesh: aep_agentmesh::LedgerMeshRecord,
     kernel_ms: i64,
 ) -> DockFrameResponse {
     // The freeze is the kernel clock as read when the frame arrived. The stamp of the
@@ -461,7 +462,7 @@ pub(crate) fn pulse_enqueue(
                         frame: frame.clone(),
                         plaintext: plaintext.to_vec(),
                         expected_port: *expected_port,
-                        bundle,
+                        mesh,
                         wall_bridge_ms,
                     },
                 );

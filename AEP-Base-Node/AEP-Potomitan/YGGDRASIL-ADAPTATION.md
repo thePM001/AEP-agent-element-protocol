@@ -4,7 +4,7 @@ Upstream: https://github.com/yggdrasil-network/yggdrasil-go
 License: MIT / upstream custom license
 
 Node identity maps to MeshPeer.node_id.
-Peer endpoint maps to MeshPeer.endpoint (tls://host:port, udp://host:port, mem://id).
+Peer endpoint maps to MeshPeer.endpoint (udp://host:port, mem://id). Yggdrasil peers over tls://host:port. POTOMITAN refuses that form until it has a TLS transport.
 Routing table is RoutingTable per active peer plus explicit insert.
 Switch packet is MeshPacket POTM wire with hop_limit, seq and payload.
 Packet plane is MeshPacketPlane send, poll and forward.

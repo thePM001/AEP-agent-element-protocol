@@ -21,6 +21,8 @@ pub enum PlaneError {
     TransportPoison,
     #[error("io: {0}")]
     Io(String),
+    #[error("tls peer address refused: the mesh has no TLS transport")]
+    TlsTransportAbsent,
 }
 
 /// Where a peer endpoint should deliver a datagram.
@@ -31,10 +33,15 @@ pub enum DatagramTarget {
 }
 
 /// Parse Yggdrasil-style peer endpoints onto the packet plane.
-/// `mem://id` is in-process. `udp://host:port` and `tls://host:port` use host:port as a UDP target.
+/// `mem://id` is in-process and `udp://host:port` (or a bare `host:port`) is UDP.
+/// `tls://host:port` is refused: the mesh has no TLS transport. Sending the datagram
+/// in clear UDP to an address that promises TLS would mislead the operator.
 pub fn datagram_target(endpoint: &str) -> Result<DatagramTarget, PlaneError> {
     if endpoint.is_empty() {
         return Err(PlaneError::BadEndpoint);
+    }
+    if endpoint.starts_with("tls://") {
+        return Err(PlaneError::TlsTransportAbsent);
     }
     if let Some(rest) = endpoint.strip_prefix("mem://") {
         if rest.is_empty() {
@@ -42,10 +49,7 @@ pub fn datagram_target(endpoint: &str) -> Result<DatagramTarget, PlaneError> {
         }
         return Ok(DatagramTarget::Memory(rest.to_string()));
     }
-    let rest = endpoint
-        .strip_prefix("udp://")
-        .or_else(|| endpoint.strip_prefix("tls://"))
-        .unwrap_or(endpoint);
+    let rest = endpoint.strip_prefix("udp://").unwrap_or(endpoint);
     if rest.is_empty() || !rest.contains(':') {
         return Err(PlaneError::BadEndpoint);
     }
@@ -182,8 +186,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parses_tls_as_udp_target() {
-        let t = datagram_target("tls://10.0.0.2:12345").expect("parse");
+    fn refuses_tls_until_a_tls_transport_exists() {
+        assert_eq!(
+            datagram_target("tls://10.0.0.2:12345"),
+            Err(PlaneError::TlsTransportAbsent)
+        );
+        let mut t = UdpTransport::bind("127.0.0.1:0").expect("bind");
+        assert_eq!(
+            t.send_datagram("tls://127.0.0.1:9", b"x"),
+            Err(PlaneError::TlsTransportAbsent)
+        );
+    }
+
+    #[test]
+    fn parses_udp_target() {
+        let t = datagram_target("udp://10.0.0.2:12345").expect("parse");
         assert_eq!(t, DatagramTarget::Udp("10.0.0.2:12345".into()));
     }
 

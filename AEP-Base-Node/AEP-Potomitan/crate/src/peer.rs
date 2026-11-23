@@ -14,6 +14,24 @@ pub enum PeerError {
     Io(#[from] std::io::Error),
     #[error("json: {0}")]
     Json(#[from] serde_json::Error),
+    #[error("peer {node_id} endpoint {endpoint} refused: {reason}")]
+    Endpoint {
+        node_id: String,
+        endpoint: String,
+        reason: String,
+    },
+}
+
+/// Refuse a peer whose endpoint the packet plane cannot reach. A `tls://` address is
+/// refused because the mesh has no TLS transport.
+fn check_endpoint(peer: &MeshPeer) -> Result<(), PeerError> {
+    crate::transport::datagram_target(&peer.endpoint)
+        .map(|_| ())
+        .map_err(|e| PeerError::Endpoint {
+            node_id: peer.node_id.clone(),
+            endpoint: peer.endpoint.clone(),
+            reason: e.to_string(),
+        })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -58,12 +76,13 @@ impl PeerRegistry {
         Self::default()
     }
 
-    pub fn from_peers(peers: Vec<MeshPeer>) -> Self {
+    /// Registry of `peers`. One refused endpoint refuses the whole list.
+    pub fn from_peers(peers: Vec<MeshPeer>) -> Result<Self, PeerError> {
         let mut reg = Self::new();
         for peer in peers {
-            reg.upsert(peer);
+            reg.upsert(peer)?;
         }
-        reg
+        Ok(reg)
     }
 
     pub fn load(path: &Path) -> Result<Self, PeerError> {
@@ -72,7 +91,7 @@ impl PeerRegistry {
         }
         let raw = fs::read_to_string(path)?;
         let file: MeshPeerFile = serde_json::from_str(&raw)?;
-        Ok(Self::from_peers(file.peers))
+        Self::from_peers(file.peers)
     }
 
     pub fn save(&self, path: &Path) -> Result<MeshPeerFile, PeerError> {
@@ -89,8 +108,11 @@ impl PeerRegistry {
         Ok(file)
     }
 
-    pub fn upsert(&mut self, peer: MeshPeer) {
+    /// Add or replace a peer. A peer whose endpoint the plane cannot reach is refused.
+    pub fn upsert(&mut self, peer: MeshPeer) -> Result<(), PeerError> {
+        check_endpoint(&peer)?;
         self.peers.insert(peer.node_id.clone(), peer);
+        Ok(())
     }
 
     pub fn remove(&mut self, node_id: &str) -> bool {
@@ -138,10 +160,11 @@ mod tests {
         let mut reg = PeerRegistry::new();
         reg.upsert(MeshPeer {
             node_id: "node-a".into(),
-            endpoint: "tls://peer.a:12345".into(),
+            endpoint: "udp://10.0.0.1:12345".into(),
             public_key_hex: None,
             active: true,
-        });
+        })
+        .expect("upsert");
         reg.save(&path).expect("save");
         #[cfg(unix)]
         {
@@ -156,16 +179,18 @@ mod tests {
         let mut reg = PeerRegistry::new();
         reg.upsert(MeshPeer {
             node_id: "node-a".into(),
-            endpoint: "tls://peer.a:12345".into(),
+            endpoint: "udp://10.0.0.1:12345".into(),
             public_key_hex: None,
             active: true,
-        });
+        })
+        .expect("upsert");
         reg.upsert(MeshPeer {
             node_id: "node-b".into(),
-            endpoint: "tls://peer.b:12345".into(),
+            endpoint: "udp://10.0.0.2:12345".into(),
             public_key_hex: None,
             active: false,
-        });
+        })
+        .expect("upsert");
         assert_eq!(reg.active_count(), 1);
     }
 
@@ -177,13 +202,15 @@ mod tests {
             endpoint: "mem://old".into(),
             public_key_hex: None,
             active: true,
-        });
+        })
+        .expect("upsert");
         reg.upsert(MeshPeer {
             node_id: "node-a".into(),
             endpoint: "mem://new".into(),
             public_key_hex: None,
             active: true,
-        });
+        })
+        .expect("upsert");
         let list = reg.list();
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].endpoint, "mem://new");
@@ -203,5 +230,33 @@ mod tests {
         let path = dir.path().join(MESH_PEERS_FILE);
         fs::write(&path, "not-json").expect("write");
         assert!(PeerRegistry::load(&path).is_err());
+    }
+
+    #[test]
+    fn tls_peer_address_is_refused() {
+        let mut reg = PeerRegistry::new();
+        let err = reg
+            .upsert(MeshPeer {
+                node_id: "node-tls".into(),
+                endpoint: "tls://10.0.0.9:12345".into(),
+                public_key_hex: None,
+                active: true,
+            })
+            .expect_err("tls must be refused");
+        assert!(err.to_string().contains("no TLS transport"), "{err}");
+        assert_eq!(reg.active_count(), 0);
+    }
+
+    #[test]
+    fn peer_file_with_tls_peer_is_refused() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join(MESH_PEERS_FILE);
+        fs::write(
+            &path,
+            r#"{"version":"2.9.0","peers":[{"node_id":"a","endpoint":"udp://10.0.0.1:1"},{"node_id":"b","endpoint":"tls://10.0.0.2:1"}]}"#,
+        )
+        .expect("write");
+        let err = PeerRegistry::load(&path).expect_err("tls peer in file");
+        assert!(err.to_string().contains("peer b"), "{err}");
     }
 }

@@ -11,7 +11,7 @@ use aep_base_node::{
     DockFrameResponse,
 };
 use aep_lattice_channel::DockingPort;
-use aep_potomitan::{detect_network_mode, status};
+use aep_potomitan::{detect_network_mode, status, PlaneProof};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
@@ -227,8 +227,32 @@ fn mesh_mode(case: &Case) -> Result<Value, String> {
         .and_then(Value::as_u64)
         .ok_or("input.mesh_peers is not an unsigned integer")?;
     let peers = u32::try_from(peers).map_err(|_| "input.mesh_peers is above u32")?;
+    let plane = plane_input(&case.input)?;
     let mode = detect_network_mode(internet_up, peers);
-    Ok(json!({ "mode": mode, "reachable": status(mode, peers).reachable }))
+    Ok(json!({ "mode": mode, "reachable": status(mode, peers, plane).reachable }))
+}
+
+/// The optional `plane` input: what a bound packet plane proved. Absent means no plane
+/// is bound.
+fn plane_input(input: &Value) -> Result<PlaneProof, String> {
+    let Some(plane) = input.get("plane") else {
+        return Ok(PlaneProof::unbound());
+    };
+    let bound = plane
+        .get("bound")
+        .and_then(Value::as_bool)
+        .ok_or("input.plane.bound is not a bool")?;
+    let proven = plane
+        .get("proven_peers")
+        .and_then(Value::as_u64)
+        .ok_or("input.plane.proven_peers is not an unsigned integer")?;
+    let proven_peers =
+        u32::try_from(proven).map_err(|_| "input.plane.proven_peers is above u32")?;
+    Ok(PlaneProof {
+        bound,
+        proven_peers,
+        routes: 0,
+    })
 }
 
 fn writing(case: &Case) -> Result<Value, String> {

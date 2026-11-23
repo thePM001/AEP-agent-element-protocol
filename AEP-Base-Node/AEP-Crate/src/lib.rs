@@ -19,12 +19,13 @@ pub mod lattice_memory;
 pub mod side_channel_monitor;
 pub mod task_manifest;
 
-use aep_agentmesh::{create_bundle, AgentMeshBundle, AgentMeshError};
+use aep_agentmesh::{create_bundle, AgentMeshBundle, AgentMeshError, LedgerMeshRecord};
 use aep_lattice_channel::{
     frame_digest, open_verified_capsule, verify_and_open_frame, ContractRegistry, DockingPort,
     LatticeChannelFrame, CHANNEL_VERSION,
 };
 use aep_lattice_crypto::KemKeypair;
+pub use aep_potomitan::PlaneProof;
 use aep_potomitan::{detect_network_mode, status, MeshMode, MeshSupervisor, MESH_PEERS_FILE};
 pub use docking::{
     drain_docking_servers, process_request, pulse_beat, run_docking_servers, sockets_exist,
@@ -81,10 +82,18 @@ pub struct BaseNodeHealth {
     pub version: String,
     pub channel_version: String,
     pub mesh_mode: MeshMode,
+    /// Active peers in the peer file: a count, not a proof of reach.
     pub mesh_peers: u32,
     pub internet_up: bool,
+    /// In POTOMITAN mode true only when a bound packet plane accepted a datagram from a
+    /// known peer.
     pub mesh_reachable: bool,
+    /// Routes of the bound packet plane, zero when no plane is bound.
     pub mesh_routes: u32,
+    /// A mesh packet plane is bound.
+    pub mesh_packet_plane: bool,
+    /// Known peers whose datagrams the bound plane accepted.
+    pub mesh_proven_peers: u32,
     pub potomitan_config: String,
     pub correctwriting_en_priority: u8,
     pub hub_loaded: bool,
@@ -162,7 +171,8 @@ pub struct HealthInput<'a> {
     pub mesh_peers_load_error: Option<String>,
     pub lattice_memory: lattice_memory::MemoryReport,
     pub docking_ports_listening: bool,
-    pub mesh_routes: u32,
+    /// What a bound packet plane proved. Unbound when the node binds no plane.
+    pub mesh_plane: PlaneProof,
     pub data_dir: Option<&'a Path>,
     pub sqlite_closed: bool,
     pub last_tls_handshake_err: Option<String>,
@@ -329,11 +339,14 @@ pub fn verify_inbound_dock_frame(
     result.map_err(|e| BaseNodeError::Channel(e.to_string()))
 }
 
+/// Write the ledger row of a frame. The AgentMesh column is `mesh`: the certificate the
+/// peer presented on the connection that carried the frame. It is empty when no
+/// certificate was presented.
 pub fn record_channel_frame(
     conn: &Connection,
     frame: &LatticeChannelFrame,
     event_type: &str,
-    bundle: &AgentMeshBundle,
+    mesh: &LedgerMeshRecord,
     replay_guard: Option<&mut ReplayGuard>,
 ) -> rusqlite::Result<i64> {
     let digest =
@@ -362,7 +375,7 @@ pub fn record_channel_frame(
             return Err(rusqlite::Error::ToSqlConversionFailure(Box::new(e)));
         }
     };
-    let agentmesh_json = match serde_json::to_string(bundle) {
+    let agentmesh_json = match serde_json::to_string(mesh) {
         Ok(v) => v,
         Err(e) => {
             return Err(rusqlite::Error::ToSqlConversionFailure(Box::new(e)));
@@ -438,28 +451,22 @@ pub fn event_count(conn: &Connection) -> rusqlite::Result<u64> {
     Ok(count as u64)
 }
 
-#[allow(clippy::too_many_arguments)]
+/// Active peer count of the peer file of `data_dir` with its load error. With no peer
+/// file it is `fallback` peers from the config. A count selects the mesh mode. It never
+/// proves a route: routes and reach come from a bound plane only.
 pub fn resolve_mesh_peers(
     data_dir: Option<&Path>,
     internet_up: bool,
     fallback: u32,
-) -> (u32, u32, Option<String>) {
+) -> (u32, Option<String>) {
     if let Some(dir) = data_dir {
         let sup = MeshSupervisor::load(dir, internet_up);
         let peers = sup.peer_count();
-        let routes = sup.routing.reachable_destinations();
-        let load_error = sup.load_error;
-        if sup.config_path.exists() {
-            return (peers, routes, load_error);
-        }
-        if peers > 0 {
-            return (peers, routes, load_error);
-        }
-        if load_error.is_some() {
-            return (peers, routes, load_error);
+        if sup.config_path.exists() || peers > 0 || sup.load_error.is_some() {
+            return (peers, sup.load_error);
         }
     }
-    (fallback, fallback, None)
+    (fallback, None)
 }
 
 pub fn rollup_status(
@@ -479,7 +486,7 @@ pub fn rollup_status(
 
 pub fn health(input: HealthInput<'_>) -> BaseNodeHealth {
     let mesh_mode = detect_network_mode(input.internet_up, input.mesh_peers);
-    let mesh = status(mesh_mode, input.mesh_peers);
+    let mesh = status(mesh_mode, input.mesh_peers, input.mesh_plane);
     let potomitan_config = input
         .data_dir
         .map(|d| d.join(MESH_PEERS_FILE).to_string_lossy().to_string())
@@ -498,7 +505,9 @@ pub fn health(input: HealthInput<'_>) -> BaseNodeHealth {
         mesh_peers: input.mesh_peers,
         internet_up: input.internet_up,
         mesh_reachable: mesh.reachable,
-        mesh_routes: input.mesh_routes,
+        mesh_routes: mesh.routes,
+        mesh_packet_plane: mesh.packet_plane,
+        mesh_proven_peers: mesh.proven_peers,
         potomitan_config,
         correctwriting_en_priority: input.correctwriting_en_priority,
         hub_loaded: input.hub_loaded,
@@ -608,7 +617,7 @@ mod tests {
             mesh_peers_load_error: None,
             lattice_memory: lattice_memory::MemoryReport::absent(),
             docking_ports_listening: false,
-            mesh_routes: 0,
+            mesh_plane: PlaneProof::unbound(),
             data_dir: None,
             sqlite_closed: false,
             last_tls_handshake_err: None,
@@ -625,7 +634,6 @@ mod tests {
             hub_mounts: 1,
             hub_permissions: 1,
             docking_ports_listening: true,
-            mesh_routes: 1,
             ..isolated_input()
         }
     }
@@ -636,6 +644,48 @@ mod tests {
         assert_eq!(report.mesh_mode, MeshMode::Offline);
         assert!(!report.mesh_reachable);
         assert!(!report.internet_up);
+    }
+
+    #[test]
+    fn health_reports_the_mesh_only_from_a_bound_authenticated_plane() {
+        // Peers on file and internet down: POTOMITAN is selected, nothing is proved.
+        let on_file = health(HealthInput {
+            internet_up: false,
+            mesh_peers: 3,
+            ..ready_input()
+        });
+        assert_eq!(on_file.mesh_mode, MeshMode::Potomitan);
+        assert!(!on_file.mesh_reachable);
+        assert!(!on_file.mesh_packet_plane);
+        assert_eq!(on_file.mesh_routes, 0);
+        assert_eq!(on_file.mesh_proven_peers, 0);
+        // A bound plane that no known peer reached yet proves no reach.
+        let bound = health(HealthInput {
+            internet_up: false,
+            mesh_peers: 3,
+            mesh_plane: PlaneProof {
+                bound: true,
+                proven_peers: 0,
+                routes: 3,
+            },
+            ..ready_input()
+        });
+        assert!(!bound.mesh_reachable);
+        assert!(bound.mesh_packet_plane);
+        assert_eq!(bound.mesh_routes, 3);
+        // A bound plane that a known peer reached is the mesh path health reports.
+        let proven = health(HealthInput {
+            internet_up: false,
+            mesh_peers: 3,
+            mesh_plane: PlaneProof {
+                bound: true,
+                proven_peers: 1,
+                routes: 3,
+            },
+            ..ready_input()
+        });
+        assert!(proven.mesh_reachable);
+        assert_eq!(proven.mesh_proven_peers, 1);
     }
 
     #[test]

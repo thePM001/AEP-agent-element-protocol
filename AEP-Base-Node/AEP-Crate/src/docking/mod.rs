@@ -191,6 +191,7 @@ pub(crate) fn pending_held_response(digest: String) -> DockFrameResponse {
     }
 }
 
+/// Answer one dock line from a connection that presented no certificate.
 pub fn process_request(
     runtime: &DockingRuntime,
     port: &DockingPort,
@@ -216,20 +217,16 @@ pub fn process_request(
             frame,
             trust_score,
             signer_public_hex,
-        } => {
-            // The kernel clock is read when the frame arrives, before the beat and before
-            // the frame is verified. The stamp of the agent is compared with this reading
-            // and the freeze takes it, so the time the kernel spends on its own work is
-            // never counted against the agent.
-            let arrival_ms = pulse_now_ms(runtime);
-            let _ = pulse_beat(runtime);
-            let resp = match arrival_ms {
-                Ok(ms) => handle_frame(runtime, port, &frame, trust_score, signer_public_hex, ms),
-                Err(resp) => resp,
-            };
-            log_frame_outcome(port, &resp);
-            resp
-        }
+        } => answer_frame(
+            runtime,
+            port,
+            &frame,
+            FrameClaims {
+                trust_score,
+                signer_public_hex,
+                presented: None,
+            },
+        ),
         DockRequest::Ping { .. } => reject_side_channel(
             runtime,
             port,
@@ -257,6 +254,59 @@ pub fn process_request(
             ),
         ),
     }
+}
+
+/// Answer one dock line. `presented` is the certificate the peer presented on the
+/// connection that carried the line. The ledger row of an admitted frame names it.
+/// Every line that is not a frame is answered by `process_request`, because no answer
+/// but the ledger row of a frame depends on the certificate.
+pub fn process_request_presented(
+    runtime: &DockingRuntime,
+    port: &DockingPort,
+    line: &str,
+    presented: Option<&aep_agentmesh::PresentedCertificate>,
+) -> DockFrameResponse {
+    if let Some(cert) = presented {
+        if let Ok(DockRequest::Frame {
+            frame,
+            trust_score,
+            signer_public_hex,
+        }) = serde_json::from_str::<DockRequest>(line)
+        {
+            return answer_frame(
+                runtime,
+                port,
+                &frame,
+                FrameClaims {
+                    trust_score,
+                    signer_public_hex,
+                    presented: Some(cert.clone()),
+                },
+            );
+        }
+    }
+    process_request(runtime, port, line)
+}
+
+/// Answer one frame: read the kernel clock, beat, verify and enqueue.
+fn answer_frame(
+    runtime: &DockingRuntime,
+    port: &DockingPort,
+    frame: &LatticeChannelFrame,
+    claims: FrameClaims,
+) -> DockFrameResponse {
+    // The kernel clock is read when the frame arrives, before the beat and before
+    // the frame is verified. The stamp of the agent is compared with this reading
+    // and the freeze takes it, so the time the kernel spends on its own work is
+    // never counted against the agent.
+    let arrival_ms = pulse_now_ms(runtime);
+    let _ = pulse_beat(runtime);
+    let resp = match arrival_ms {
+        Ok(ms) => handle_frame(runtime, port, frame, claims, ms),
+        Err(resp) => resp,
+    };
+    log_frame_outcome(port, &resp);
+    resp
 }
 
 /// One kernel event per frame outcome. Only the digest and the deny text are
@@ -301,14 +351,26 @@ fn log_frame_outcome(port: &DockingPort, resp: &DockFrameResponse) {
     }
 }
 
+/// What came with a frame besides the frame: the wire fields of the request and the
+/// certificate the peer presented on the connection.
+struct FrameClaims {
+    trust_score: Option<u16>,
+    signer_public_hex: Option<String>,
+    presented: Option<aep_agentmesh::PresentedCertificate>,
+}
+
 fn handle_frame(
     runtime: &DockingRuntime,
     expected_port: &DockingPort,
     frame: &LatticeChannelFrame,
-    trust_score: Option<u16>,
-    signer_public_hex: Option<String>,
+    claims: FrameClaims,
     arrival_ms: i64,
 ) -> DockFrameResponse {
+    let FrameClaims {
+        trust_score,
+        signer_public_hex,
+        presented,
+    } = claims;
     if &frame.docking_port != expected_port {
         let db = dock_lock!(&runtime.record.db, "db");
         let detail = format!(
@@ -588,13 +650,17 @@ fn handle_frame(
         Ok(b) => b,
         Err(resp) => return resp,
     };
+    // The ledger row names the certificate the peer presented, never the identity the
+    // node keeps for the agent.
+    let mesh =
+        aep_agentmesh::LedgerMeshRecord::for_frame(&frame.agent_id, bundle.trust_score, presented);
     pulse_enqueue(
         runtime,
         frame,
         &plaintext,
         expected_port,
         digest,
-        bundle,
+        mesh,
         arrival_ms,
     )
 }

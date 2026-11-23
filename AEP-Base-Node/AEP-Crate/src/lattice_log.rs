@@ -5,7 +5,7 @@
 //! aep-lattice-log Record must go through dock Admit or stop being a kernel write path.
 
 use crate::dock_keys::{load_or_create_dock_kem, AgentSignKeyStore};
-use aep_agentmesh::{create_bundle, AgentMeshBundle};
+use aep_agentmesh::LedgerMeshRecord;
 use aep_lattice_channel::{
     build_frame_for_dock, frame_digest, ContractRegistry, DockingPort, LatticeChannelFrame,
 };
@@ -265,7 +265,7 @@ fn build_sealed_frame(
     input: &DynAepEventInput,
     contracts: &ContractRegistry,
     db_path: &Path,
-) -> Result<(LatticeChannelFrame, AgentMeshBundle, Vec<u8>, i64), BaseNodeError> {
+) -> Result<(LatticeChannelFrame, Vec<u8>, i64), BaseNodeError> {
     if !contracts.is_active(&input.contract_id) {
         return Err(BaseNodeError::ContractInactive(input.contract_id.clone()));
     }
@@ -284,13 +284,6 @@ fn build_sealed_frame(
     // second drifts up to 999 ms and closes the 50 ms temporal wall on the dock
     // Admit for most of every second.
     let ts_ms = now_unix_ms();
-    let bundle = create_bundle(
-        &input.agent_id,
-        0,
-        &sign.public,
-        vec!["dynaep.validate".into(), "dynaep.lattice".into()],
-        now,
-    )?;
 
     // Sealed inner bytes are an Admit event. Dock Admit reads action_path here.
     // Scene, time and sequence stay bound on the sealed event so unbound fields cannot fail-open.
@@ -328,7 +321,7 @@ fn build_sealed_frame(
         now,
     )
     .map_err(|e| BaseNodeError::Channel(e.to_string()))?;
-    Ok((frame, bundle, plain_bytes, ts_ms))
+    Ok((frame, plain_bytes, ts_ms))
 }
 
 pub fn record_dynaep_event(
@@ -337,7 +330,7 @@ pub fn record_dynaep_event(
     contracts: &ContractRegistry,
     db_path: &Path,
 ) -> Result<DynAepEventRecord, BaseNodeError> {
-    let (frame, bundle, plaintext, sealed_ts) = build_sealed_frame(input, contracts, db_path)?;
+    let (frame, plaintext, sealed_ts) = build_sealed_frame(input, contracts, db_path)?;
     let digest = frame_digest(&frame).map_err(|e| BaseNodeError::Channel(e.to_string()))?;
     let recorded_at = frame.sent_at_unix;
 
@@ -357,7 +350,8 @@ pub fn record_dynaep_event(
     crate::envelope_admit::admit_sealed_payload_on_live_dock(&mut live, &plaintext, &dock)?;
 
     let payload_json = serde_json::to_string(&enforce_writing_payload(&input.payload))?;
-    let agentmesh_json = serde_json::to_string(&bundle)?;
+    // A locally sealed frame crossed no connection, so no certificate was presented.
+    let agentmesh_json = serde_json::to_string(&LedgerMeshRecord::local_seal(&input.agent_id, 0))?;
 
     conn.execute(
         "INSERT INTO action_lattice_events
@@ -433,7 +427,7 @@ pub fn build_transport_frame(
     contracts: &ContractRegistry,
     db_path: &Path,
 ) -> Result<LatticeChannelFrame, BaseNodeError> {
-    let (frame, _bundle, _plaintext, _sealed_ts) = build_sealed_frame(input, contracts, db_path)?;
+    let (frame, _plaintext, _sealed_ts) = build_sealed_frame(input, contracts, db_path)?;
     Ok(frame)
 }
 
@@ -490,10 +484,14 @@ mod tests {
         assert_eq!(exported.len(), 1);
         assert_eq!(exported[0].event_type, "STATE_DELTA");
         assert_eq!(exported[0].agent_id, "agent-a");
-        // Must match capsule bundle, not a stale placeholder key.
-        assert_ne!(
-            exported[0].agentmesh["did"]["verification_key_hex"].as_str(),
-            Some("64796e6165702d627269646765"),
+        // A locally sealed frame crossed no connection: the ledger names no certificate.
+        let mesh = &exported[0].agentmesh;
+        assert_eq!(mesh["agent_id"], "agent-a");
+        assert_eq!(mesh["transport"], "local_seal");
+        assert!(mesh["presented_certificate"].is_null(), "{mesh}");
+        assert!(
+            mesh.get("mtls").is_none(),
+            "ledger names a minted cert: {mesh}"
         );
     }
 

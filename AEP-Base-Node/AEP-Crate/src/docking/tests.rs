@@ -164,13 +164,82 @@ fn frame_attaches_agentmesh_bundle() {
     let resp = through_pulse(&rt, &DockingPort::ValidationEngine, &line);
     assert!(resp.ok, "{:?}", resp.error);
 
+    // A Unix socket presents no certificate, so the ledger names none.
     let db = rt.record.db.lock().expect("db lock");
     let exported = crate::export_dynaep_events(&db, Some(1)).expect("export");
     assert_eq!(exported.len(), 1);
-    assert_eq!(exported[0].agentmesh["agent_id"], "AG-MESH");
-    assert!(exported[0].agentmesh["spiffe"]["spiffe_id"]
-        .as_str()
-        .is_some());
+    let mesh = &exported[0].agentmesh;
+    assert_eq!(mesh["agent_id"], "AG-MESH");
+    assert_eq!(mesh["transport"], "unix_socket");
+    assert!(mesh["presented_certificate"].is_null(), "{mesh}");
+    assert!(
+        mesh.get("mtls").is_none(),
+        "ledger names a minted cert: {mesh}"
+    );
+    assert!(
+        mesh.get("spiffe").is_none(),
+        "ledger names a minted cert: {mesh}"
+    );
+}
+
+#[test]
+fn ledger_names_the_certificate_the_peer_presented() {
+    use rustls::pki_types::pem::PemObject;
+    let (_dir, rt) = temp_runtime();
+    install_agent_manifest(&rt, "AG-MESH", "sess-1");
+    let (_frame, line) = build_test_frame(
+        &rt,
+        "ch-dock-test",
+        "AG-MESH",
+        "sess-1",
+        DockingPort::ValidationEngine,
+        "dynaep-action-lattice",
+        admit_ok_payload(),
+        1,
+    );
+    let now = aep_agentmesh::tls::now_unix();
+    let peer = aep_agentmesh::tls::issue_workload_identity(
+        "AG-MESH",
+        aep_agentmesh::Validity::starting(now, 3600),
+    )
+    .expect("peer identity");
+    let der =
+        rustls::pki_types::CertificateDer::from_pem_slice(peer.cert_pem.as_bytes()).expect("der");
+    let presented = aep_agentmesh::tls::presented_certificate(der.as_ref()).expect("read");
+    let resp =
+        through_pulse_presented(&rt, &DockingPort::ValidationEngine, &line, Some(&presented));
+    assert!(resp.ok, "{:?}", resp.error);
+
+    let db = rt.record.db.lock().expect("db lock");
+    let exported = crate::export_dynaep_events(&db, Some(1)).expect("export");
+    let mesh = &exported[0].agentmesh;
+    assert_eq!(mesh["transport"], "mtls");
+    assert_eq!(
+        mesh["presented_certificate"]["cert_fingerprint"],
+        peer.cert_fingerprint.as_str()
+    );
+    assert_eq!(mesh["presented_certificate"]["subject_cn"], "AG-MESH");
+    assert_eq!(
+        mesh["presented_certificate"]["not_after_unix"],
+        peer.validity.not_after_unix
+    );
+    // The identity the node keeps for the agent is a different certificate and is not
+    // what the ledger names.
+    let kept = rt
+        .keys
+        .agent_bundles
+        .lock()
+        .expect("bundles")
+        .get("AG-MESH")
+        .expect("bundle")
+        .mtls
+        .cert_fingerprint
+        .clone();
+    assert_ne!(kept, peer.cert_fingerprint);
+    assert!(
+        !mesh.to_string().contains(&kept),
+        "ledger names the kept cert"
+    );
 }
 
 #[test]

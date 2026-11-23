@@ -4,10 +4,65 @@
 pub mod tls;
 
 use serde::{Deserialize, Serialize};
+pub use tls::{PresentedCertificate, Validity};
 
 pub const TRUST_DOMAIN: &str = "aep.protocol.local";
 pub const DID_METHOD: &str = "aep";
-const MTLS_TTL_SECS: u64 = 3600;
+/// Stated lifetime of the mTLS state of a bundle. The issued certificate ends no later.
+pub const MTLS_TTL_SECS: u64 = tls::WORKLOAD_IDENTITY_LIFETIME_SECS;
+
+/// How a frame reached the node.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PeerTransport {
+    /// A local Unix socket dock. No certificate is presented on it.
+    UnixSocket,
+    /// A dock TLS port. The peer presented a client certificate of the mesh CA.
+    Mtls,
+    /// Sealed and recorded in process by the node itself. No peer exists.
+    LocalSeal,
+}
+
+/// The AgentMesh column of a ledger row. It names the certificate the peer presented
+/// on the connection that carried the frame. It names none when no certificate was
+/// presented and never a certificate the node minted for itself.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LedgerMeshRecord {
+    pub agent_id: String,
+    pub trust_score: u16,
+    pub transport: PeerTransport,
+    pub presented_certificate: Option<PresentedCertificate>,
+}
+
+impl LedgerMeshRecord {
+    /// Record of a frame that arrived with `presented` or without a certificate.
+    pub fn for_frame(
+        agent_id: &str,
+        trust_score: u16,
+        presented: Option<PresentedCertificate>,
+    ) -> Self {
+        Self {
+            agent_id: agent_id.to_string(),
+            trust_score,
+            transport: if presented.is_some() {
+                PeerTransport::Mtls
+            } else {
+                PeerTransport::UnixSocket
+            },
+            presented_certificate: presented,
+        }
+    }
+
+    /// Record of a frame the node sealed and recorded in process.
+    pub fn local_seal(agent_id: &str, trust_score: u16) -> Self {
+        Self {
+            agent_id: agent_id.to_string(),
+            trust_score,
+            transport: PeerTransport::LocalSeal,
+            presented_certificate: None,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpiffeIdentity {
@@ -66,23 +121,24 @@ pub fn create_spiffe(
     now_unix: u64,
 ) -> Result<SpiffeIdentity, String> {
     let spiffe_id = format!("spiffe://{TRUST_DOMAIN}/agent/{agent_id}");
-    let expires = now_unix.saturating_add(ttl_secs);
-    let id = issue_agent_identity(agent_id)?;
+    let id = issue_agent_identity(agent_id, Validity::starting(now_unix, ttl_secs))?;
     Ok(SpiffeIdentity {
         svid: format!("x509-svid:{spiffe_id}:sha256:{}", id.cert_fingerprint),
         spiffe_id,
-        expires_at_unix: expires,
+        expires_at_unix: id.validity.not_after_unix,
     })
 }
 
-fn issue_agent_identity(agent_id: &str) -> Result<tls::MtlsIdentity, String> {
+/// Issue an agent identity valid for `validity`. With AEP_DATA it is signed by the mesh
+/// CA and ends no later than the CA. The CA is loaded or reissued against the wall clock.
+fn issue_agent_identity(agent_id: &str, validity: Validity) -> Result<tls::MtlsIdentity, String> {
     // Prefer mesh CA-signed identity when AEP_DATA is available.
     if let Ok(data) = std::env::var("AEP_DATA") {
         let path = std::path::Path::new(&data);
         if path.is_dir() {
-            match tls::ensure_mesh_ca(path) {
+            match tls::ensure_mesh_ca(path, tls::now_unix()) {
                 Ok((ca_pem, ca_key)) => {
-                    return tls::issue_signed_identity(&ca_pem, &ca_key, agent_id)
+                    return tls::issue_signed_identity(&ca_pem, &ca_key, agent_id, validity)
                         .map_err(|e| e.to_string());
                 }
                 Err(e) => {
@@ -91,7 +147,7 @@ fn issue_agent_identity(agent_id: &str) -> Result<tls::MtlsIdentity, String> {
             }
         }
     }
-    tls::issue_workload_identity(agent_id).map_err(|e| e.to_string())
+    tls::issue_workload_identity(agent_id, validity).map_err(|e| e.to_string())
 }
 
 /// Honest capability flag: full SPIFFE Workload API attestation is opt-in infra.
@@ -128,12 +184,13 @@ pub fn create_did(agent_id: &str, public_key: &[u8], capabilities: Vec<String>) 
     }
 }
 
-fn mtls_from_identity(agent_id: &str, now_unix: u64, identity: tls::MtlsIdentity) -> MtlsCertState {
+/// mTLS state of an issued identity. The stated window is the window of the certificate.
+fn mtls_from_identity(agent_id: &str, identity: tls::MtlsIdentity) -> MtlsCertState {
     MtlsCertState {
         agent_id: agent_id.into(),
         cert_fingerprint: identity.cert_fingerprint,
-        issued_at_unix: now_unix,
-        not_after_unix: now_unix.saturating_add(MTLS_TTL_SECS),
+        issued_at_unix: identity.validity.not_before_unix,
+        not_after_unix: identity.validity.not_after_unix,
         cert_pem: identity.cert_pem,
         key_pem: Some(identity.key_pem),
         subject: format!("CN={agent_id},O=AEP AgentMesh"),
@@ -153,8 +210,9 @@ fn issue_workload_cert(
     _trust_score: u16,
     now_unix: u64,
 ) -> Result<MtlsCertState, AgentMeshError> {
-    let identity = issue_agent_identity(agent_id).map_err(AgentMeshError::Identity)?;
-    Ok(mtls_from_identity(agent_id, now_unix, identity))
+    let identity = issue_agent_identity(agent_id, Validity::starting(now_unix, MTLS_TTL_SECS))
+        .map_err(AgentMeshError::Identity)?;
+    Ok(mtls_from_identity(agent_id, identity))
 }
 
 pub fn create_mtls(
@@ -173,15 +231,15 @@ pub fn create_bundle(
     capabilities: Vec<String>,
     now_unix: u64,
 ) -> Result<AgentMeshBundle, AgentMeshError> {
-    let identity = issue_agent_identity(agent_id).map_err(AgentMeshError::Identity)?;
+    let identity = issue_agent_identity(agent_id, Validity::starting(now_unix, MTLS_TTL_SECS))
+        .map_err(AgentMeshError::Identity)?;
     let spiffe_id = format!("spiffe://{TRUST_DOMAIN}/agent/{agent_id}");
-    let expires = now_unix.saturating_add(MTLS_TTL_SECS);
     let spiffe = SpiffeIdentity {
         svid: format!("x509-svid:{spiffe_id}:sha256:{}", identity.cert_fingerprint),
         spiffe_id,
-        expires_at_unix: expires,
+        expires_at_unix: identity.validity.not_after_unix,
     };
-    let mtls = mtls_from_identity(agent_id, now_unix, identity);
+    let mtls = mtls_from_identity(agent_id, identity);
     Ok(AgentMeshBundle {
         agent_id: agent_id.into(),
         trust_score,
@@ -249,6 +307,32 @@ mod tests {
         assert!(
             !json.contains("BEGIN PRIVATE KEY"),
             "private key must not serialize into AgentMeshBundle JSON"
+        );
+    }
+
+    /// Validity window written into an issued certificate, in unix seconds.
+    fn x509_validity(cert_pem: &str) -> (i64, i64) {
+        let params = rcgen::CertificateParams::from_ca_cert_pem(cert_pem).expect("parse cert");
+        (
+            params.not_before.unix_timestamp(),
+            params.not_after.unix_timestamp(),
+        )
+    }
+
+    #[test]
+    fn issued_mtls_cert_lives_no_longer_than_its_stated_lifetime() {
+        let now = 1_900_000_000u64;
+        let mtls = create_mtls("AG-LIFETIME", 700, now).unwrap();
+        let (not_before, not_after) = x509_validity(&mtls.cert_pem);
+        assert!(
+            not_before >= mtls.issued_at_unix as i64,
+            "cert starts {not_before} before its stated issue time {}",
+            mtls.issued_at_unix
+        );
+        assert!(
+            not_after <= mtls.not_after_unix as i64,
+            "cert ends {not_after} after its stated not_after {}",
+            mtls.not_after_unix
         );
     }
 

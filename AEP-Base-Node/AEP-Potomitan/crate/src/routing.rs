@@ -1,6 +1,7 @@
 //! Simplified Yggdrasil-style routing table for POTOMITAN mesh fallback.
 
 use crate::peer::MeshPeer;
+use crate::transport::datagram_target;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -54,6 +55,19 @@ impl RoutingTable {
     pub fn reachable_destinations(&self) -> u32 {
         self.routes.len() as u32
     }
+
+    /// True when `endpoint` is the next hop endpoint of a route, so a datagram from it
+    /// comes from a known peer. Endpoints compare by their datagram target, so
+    /// `udp://10.0.0.2:1` and `10.0.0.2:1` are the same sender. A UDP peer must be
+    /// listed by the address its datagrams arrive from: a host name never matches.
+    pub fn knows_endpoint(&self, endpoint: &str) -> bool {
+        let Ok(sender) = datagram_target(endpoint) else {
+            return false;
+        };
+        self.routes
+            .values()
+            .any(|r| datagram_target(&r.via_endpoint).is_ok_and(|t| t == sender))
+    }
 }
 
 #[cfg(test)]
@@ -65,7 +79,7 @@ mod tests {
     fn builds_direct_routes_for_active_peers() {
         let peers = vec![MeshPeer {
             node_id: "pot-01".into(),
-            endpoint: "tls://10.0.0.2:12345".into(),
+            endpoint: "udp://10.0.0.2:12345".into(),
             public_key_hex: None,
             active: true,
         }];
@@ -73,8 +87,12 @@ mod tests {
         assert_eq!(table.reachable_destinations(), 1);
         assert_eq!(
             table.route_to("pot-01").unwrap().via_endpoint,
-            "tls://10.0.0.2:12345"
+            "udp://10.0.0.2:12345"
         );
+        assert!(table.knows_endpoint("udp://10.0.0.2:12345"));
+        assert!(table.knows_endpoint("10.0.0.2:12345"));
+        assert!(!table.knows_endpoint("udp://10.0.0.3:12345"));
+        assert!(!table.knows_endpoint("mem://pot-01"));
     }
 
     #[test]

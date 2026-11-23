@@ -133,9 +133,14 @@ export function dockAnswer(input) {
 
 // mesh-mode -----------------------------------------------------------------
 
+// In POTOMITAN mode only a bound plane that proved a known peer makes the node
+// reachable. A peer count on file proves nothing. No plane input means no plane.
 export function meshMode(input) {
   if (input.internet_up) return { mode: "internet", reachable: true };
-  if (input.mesh_peers > 0) return { mode: "potomitan", reachable: true };
+  if (input.mesh_peers > 0) {
+    const plane = input.plane ?? { bound: false, proven_peers: 0 };
+    return { mode: "potomitan", reachable: plane.bound === true && plane.proven_peers > 0 };
+  }
   return { mode: "offline", reachable: false };
 }
 

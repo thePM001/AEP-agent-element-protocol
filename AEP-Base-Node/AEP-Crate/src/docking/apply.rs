@@ -282,7 +282,7 @@ fn record_admitted_frame(
     event_type: &str,
 ) -> Result<i64, DockFrameResponse> {
     let db = lock_or_deny(&runtime.record.db, "db")?;
-    match record_channel_frame(&db, &held.frame, event_type, &held.bundle, None) {
+    match record_channel_frame(&db, &held.frame, event_type, &held.mesh, None) {
         Ok(event_id) => Ok(event_id),
         Err(e) => Err(deny_closed(
             Some(cap.digest.clone()),

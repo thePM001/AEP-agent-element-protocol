@@ -6,7 +6,7 @@ use aep_base_node::lattice_memory::MemoryReport;
 use aep_base_node::{
     bootstrap_contracts_from_lrps, drain_docking_servers, health, now_unix, open_lattice_db,
     record_lattice_event, run_docking_servers, sockets_exist, BaseNodeHealth, DockingRuntime,
-    HealthInput, COMPONENT_ID, CORRECTWRITING_EN_PRIORITY,
+    HealthInput, PlaneProof, COMPONENT_ID, CORRECTWRITING_EN_PRIORITY,
 };
 use aep_lattice_channel::{build_frame_for_dock, frame_digest, DockingPort};
 use clap::Parser;
@@ -201,7 +201,7 @@ fn offline_health(cfg: &ResolvedConfig, lattice_db: &Path) -> BaseNodeHealth {
         },
         Err(_) => (0, true),
     };
-    let (mesh_peers, mesh_routes, mesh_load_error) =
+    let (mesh_peers, mesh_load_error) =
         aep_base_node::resolve_mesh_peers(Some(&data_dir), cfg.internet_up, cfg.mesh_peers);
     let hub = load_hub(&data_dir);
     health(HealthInput {
@@ -221,7 +221,8 @@ fn offline_health(cfg: &ResolvedConfig, lattice_db: &Path) -> BaseNodeHealth {
         mesh_peers_load_error: mesh_load_error,
         lattice_memory: MemoryReport::offline(&data_dir),
         docking_ports_listening: sockets_exist(&cfg.socket_base),
-        mesh_routes,
+        // A node that is not running here binds no mesh plane.
+        mesh_plane: PlaneProof::unbound(),
         data_dir: Some(&data_dir),
         sqlite_closed,
         last_tls_handshake_err: None,
@@ -245,7 +246,7 @@ fn daemon_health(
             Err(p) => aep_base_node::event_count(&p.into_inner()).unwrap_or(0),
         }
     };
-    let (mesh_peers, mesh_routes, mesh_load_error) =
+    let (mesh_peers, mesh_load_error) =
         aep_base_node::resolve_mesh_peers(Some(data_dir), cfg.internet_up, cfg.mesh_peers);
     let hub = &runtime.admit.hub;
     health(HealthInput {
@@ -262,7 +263,8 @@ fn daemon_health(
         mesh_peers_load_error: mesh_load_error,
         lattice_memory: MemoryReport::of_runtime(&runtime.record),
         docking_ports_listening: runtime.docking_ports_listening(),
-        mesh_routes,
+        // The daemon binds no mesh plane, so health claims no mesh path.
+        mesh_plane: PlaneProof::unbound(),
         data_dir: Some(data_dir),
         sqlite_closed,
         last_tls_handshake_err: runtime.last_tls_handshake_err(),
@@ -589,14 +591,18 @@ fn issue_mesh_identity(data_dir: &std::path::Path, agent_id: &str) -> Result<(),
     if agent_id.is_empty() {
         return Err(String::from("missing agent id DENY on miss"));
     }
-    let (ca_pem, ca_key_pem) = match aep_agentmesh::tls::ensure_mesh_ca(data_dir) {
+    let now = aep_agentmesh::tls::now_unix();
+    let (ca_pem, ca_key_pem) = match aep_agentmesh::tls::ensure_mesh_ca(data_dir, now) {
         Ok(value) => value,
         Err(_) => return Err(String::from("missing mesh ca DENY on miss")),
     };
-    let identity = match aep_agentmesh::tls::issue_signed_identity(&ca_pem, &ca_key_pem, agent_id) {
-        Ok(value) => value,
-        Err(_) => return Err(String::from("missing mesh identity DENY on miss")),
-    };
+    let validity =
+        aep_agentmesh::Validity::starting(now, aep_agentmesh::tls::CLIENT_IDENTITY_LIFETIME_SECS);
+    let identity =
+        match aep_agentmesh::tls::issue_signed_identity(&ca_pem, &ca_key_pem, agent_id, validity) {
+            Ok(value) => value,
+            Err(_) => return Err(String::from("missing mesh identity DENY on miss")),
+        };
     let dir = data_dir.join("agentmesh").join("clients");
     if std::fs::create_dir_all(&dir).is_err() {
         return Err(String::from("missing mesh identity DENY on miss"));
@@ -631,6 +637,9 @@ fn issue_mesh_identity(data_dir: &std::path::Path, agent_id: &str) -> Result<(),
         "ca_path": ca_path.to_string_lossy(),
         "cert_path": cert_path.to_string_lossy(),
         "key_path": key_path.to_string_lossy(),
+        "cert_fingerprint": identity.cert_fingerprint,
+        "not_before_unix": identity.validity.not_before_unix,
+        "not_after_unix": identity.validity.not_after_unix,
     });
     match serde_json::to_string(&out) {
         Ok(text) => {

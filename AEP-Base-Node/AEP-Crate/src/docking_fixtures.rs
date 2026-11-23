@@ -91,8 +91,17 @@ pub(crate) fn through_pulse(
     port: &DockingPort,
     line: &str,
 ) -> DockFrameResponse {
+    through_pulse_presented(rt, port, line, None)
+}
+/// Like `through_pulse` for a frame whose connection presented `presented`.
+pub(crate) fn through_pulse_presented(
+    rt: &DockingRuntime,
+    port: &DockingPort,
+    line: &str,
+    presented: Option<&aep_agentmesh::PresentedCertificate>,
+) -> DockFrameResponse {
     set_pulse_clock(rt, 1_000_000);
-    let enq = process_request(rt, port, line);
+    let enq = crate::docking::process_request_presented(rt, port, line, presented);
     let digest = match enq.digest.clone() {
         Some(d) => d,
         None => return enq,

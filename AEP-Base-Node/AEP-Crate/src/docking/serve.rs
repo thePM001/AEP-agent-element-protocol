@@ -6,13 +6,15 @@
 
 use super::pulse::{collect_applied, pulse_beat, pulse_decay_rate, DockingRuntime};
 use super::{
-    deny_closed, deny_resp, lock_or_deny, process_request, DockFrameResponse, DockVerdict,
+    deny_closed, deny_resp, lock_or_deny, process_request_presented, DockFrameResponse, DockVerdict,
 };
 use crate::dock_event;
 use crate::dock_log::DockEvent;
 use crate::{
     docking_port_specs, record_side_channel_anomaly, DynAepEventInput, SideChannelAnomalyKind,
 };
+use aep_agentmesh::tls::presented_certificate;
+use aep_agentmesh::PresentedCertificate;
 use aep_base_node_pulse::PULSE_MS;
 use aep_dock_line_reader::{read_line_limited, MAX_LINE_BYTES, READ_CHUNK};
 use aep_lattice_channel::DockingPort;
@@ -150,9 +152,12 @@ async fn wait_collect_if_needed(
     port: DockingPort,
     line: String,
     collect: bool,
+    presented: Option<PresentedCertificate>,
 ) -> DockFrameResponse {
     let rt = runtime.clone();
-    let first = on_blocking_pool(move || process_request(&rt, &port, &line)).await;
+    let first =
+        on_blocking_pool(move || process_request_presented(&rt, &port, &line, presented.as_ref()))
+            .await;
     if !collect {
         return first;
     }
@@ -189,11 +194,45 @@ fn note_connection_closed(port: DockingPort, reason: &'static str) {
     );
 }
 
+/// Serve a connection that presented no certificate: a Unix socket dock.
 pub(crate) async fn serve_connection<R, W>(
     runtime: Arc<DockingRuntime>,
     port: DockingPort,
     reader: R,
+    writer: W,
+) -> std::io::Result<()>
+where
+    R: AsyncRead + Unpin,
+    W: AsyncWrite + Unpin,
+{
+    serve_connection_presented(runtime, port, reader, writer, None).await
+}
+
+/// The certificate the TLS peer presented in the handshake. The client verifier of the
+/// dock requires one, so a stream without one or with one the node cannot read is refused.
+fn presented_by<IO>(
+    tls: &tokio_rustls::server::TlsStream<IO>,
+) -> Result<PresentedCertificate, String> {
+    let certs = tls
+        .get_ref()
+        .1
+        .peer_certificates()
+        .ok_or_else(|| String::from("TLS peer presented no certificate"))?;
+    let leaf = certs
+        .first()
+        .ok_or_else(|| String::from("TLS peer presented an empty chain"))?;
+    presented_certificate(leaf.as_ref())
+        .map_err(|e| format!("TLS peer certificate unreadable: {e}"))
+}
+
+/// Serve one dock connection. `presented` is the certificate the peer presented, which
+/// every ledger row of a frame from this connection names.
+pub(crate) async fn serve_connection_presented<R, W>(
+    runtime: Arc<DockingRuntime>,
+    port: DockingPort,
+    reader: R,
     mut writer: W,
+    presented: Option<PresentedCertificate>,
 ) -> std::io::Result<()>
 where
     R: AsyncRead + Unpin,
@@ -262,7 +301,7 @@ where
             }
         };
         let collect = line_is_collect(&line);
-        let resp = wait_collect_if_needed(&runtime, port, line, collect).await;
+        let resp = wait_collect_if_needed(&runtime, port, line, collect, presented.clone()).await;
         write_response_line(&mut writer, &resp).await?;
         if !collect && resp.verdict() == DockVerdict::Refused {
             refusals += 1;
@@ -371,12 +410,18 @@ async fn serve_tls_port(
         let handle = tokio::spawn(async move {
             let _permit = permit;
             match acceptor.accept(tcp).await {
-                Ok(tls) => {
-                    let (reader, writer) = tokio::io::split(tls);
-                    if let Err(e) = serve_connection(rt, port, reader, writer).await {
-                        dock_event!(warn, DockEvent::DockTlsConnectionClosed, error = %e, "docking TLS connection closed with error");
+                Ok(tls) => match presented_by(&tls) {
+                    Ok(presented) => {
+                        let (reader, writer) = tokio::io::split(tls);
+                        if let Err(e) =
+                            serve_connection_presented(rt, port, reader, writer, Some(presented))
+                                .await
+                        {
+                            dock_event!(warn, DockEvent::DockTlsConnectionClosed, error = %e, "docking TLS connection closed with error");
+                        }
                     }
-                }
+                    Err(e) => note_tls_handshake_err(&rt, e),
+                },
                 Err(e) => note_tls_handshake_err(&rt, e),
             }
         });
@@ -418,14 +463,16 @@ pub async fn run_docking_servers(
     handles.push(spawn_pulse_task(shared.clone()));
     if std::env::var("AEP_LATTICE_TRANSPORT").unwrap_or_default() == "tls" {
         let data_dir = std::env::var("AEP_DATA").unwrap_or_else(|_| "/data/aep".into());
-        let (ca_pem, _) = aep_agentmesh::tls::ensure_mesh_ca(std::path::Path::new(&data_dir))
+        let data_path = std::path::Path::new(&data_dir);
+        let now = aep_agentmesh::tls::now_unix();
+        // The server identity is loaded first: it reissues the CA when the CA is due, so
+        // the CA read next is the one the server certificate chains to.
+        let server = aep_agentmesh::tls::ensure_dock_server_identity(data_path, now)
             .map_err(std::io::Error::other)?;
-        let server =
-            aep_agentmesh::tls::ensure_dock_server_identity(std::path::Path::new(&data_dir))
-                .map_err(std::io::Error::other)?;
-        let server_cfg =
-            aep_agentmesh::tls::build_server_config(&ca_pem, &server.cert_pem, &server.key_pem)
-                .map_err(std::io::Error::other)?;
+        let (ca_pem, ca_key_pem) =
+            aep_agentmesh::tls::ensure_mesh_ca(data_path, now).map_err(std::io::Error::other)?;
+        let server_cfg = aep_agentmesh::tls::build_server_config(&ca_pem, &ca_key_pem, &server)
+            .map_err(std::io::Error::other)?;
         let acceptor = TlsAcceptor::from(server_cfg);
         let host = std::env::var("AEP_LATTICE_TLS_BIND").unwrap_or_else(|_| "127.0.0.1".into());
         let mut tls_bound = Vec::new();

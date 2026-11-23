@@ -14,7 +14,8 @@ use aep_lattice_channel::{
 };
 use aep_lattice_crypto::{generate_kem_keypair, generate_sign_keypair, open, seal};
 use aep_potomitan::{
-    detect_network_mode, MemoryFabric, MeshMode, MeshPeer, MeshSupervisor, MESH_PEERS_FILE,
+    detect_network_mode, MemoryFabric, MemoryTransport, MeshMode, MeshPacketPlane, MeshPeer,
+    MeshSupervisor, RouteEntry, RoutingTable, MESH_PEERS_FILE,
 };
 use serde::Serialize;
 
@@ -72,7 +73,7 @@ const CHECKS: &[Check] = &[
     },
     Check {
         id: "CC-06",
-        name: "MeshSupervisor routing table matches active peer count",
+        name: "MeshSupervisor routing table matches active peer count and refuses tls peers",
         run: cc_mesh_supervisor_routing,
     },
     Check {
@@ -324,7 +325,7 @@ fn mesh_health_input<'a>(
         mesh_peers_load_error: sup.load_error.clone(),
         lattice_memory: aep_base_node::lattice_memory::MemoryReport::absent(),
         docking_ports_listening: true,
-        mesh_routes: sup.routing.reachable_destinations(),
+        mesh_plane: sup.plane_proof(),
         data_dir: Some(data_dir),
         sqlite_closed: false,
         last_tls_handshake_err: None,
@@ -332,9 +333,11 @@ fn mesh_health_input<'a>(
     }
 }
 
-/// CC-10: a node whose internet drops reports POTOMITAN in its health once a peer is
-/// on file, keeps that after a restart that reloads the peer file, carries packets
-/// to the peer over the mesh plane and falls to offline when the last peer goes.
+/// CC-10: a node whose internet drops selects POTOMITAN once a peer is on file and keeps
+/// that after a restart that reloads the peer file. Its health reports the mesh as
+/// reachable only after a bound plane accepted a datagram from that peer. A datagram
+/// from an unknown sender is dropped and proves nothing. The node falls to offline when
+/// the last peer goes.
 fn cc_base_node_health_failover() -> Result<(), String> {
     let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
     let node = dir.path().join("node-a");
@@ -357,7 +360,7 @@ fn cc_base_node_health_failover() -> Result<(), String> {
     .map_err(|e| e.to_string())?;
 
     // A restart reads the peer file the supervisor wrote.
-    let restarted = MeshSupervisor::load(&node, false);
+    let mut restarted = MeshSupervisor::load(&node, false);
     if let Some(err) = &restarted.load_error {
         return Err(format!("peer file did not reload: {err}"));
     }
@@ -368,10 +371,71 @@ fn cc_base_node_health_failover() -> Result<(), String> {
             failover.mesh_mode
         ));
     }
-    if !failover.mesh_reachable || failover.mesh_peers != 1 || failover.mesh_routes != 1 {
+    if failover.mesh_reachable || failover.mesh_routes != 0 || failover.mesh_packet_plane {
         return Err(format!(
-            "potomitan health must reach one peer on one route, got reachable={} peers={} routes={}",
-            failover.mesh_reachable, failover.mesh_peers, failover.mesh_routes
+            "a peer file without a bound plane must claim no mesh path, got reachable={} routes={} plane={}",
+            failover.mesh_reachable, failover.mesh_routes, failover.mesh_packet_plane
+        ));
+    }
+
+    // Bind the plane of node-a and let node-b, the peer on file, reach it.
+    let fabric = MemoryFabric::new();
+    let peer_dir = dir.path().join("node-b");
+    std::fs::create_dir_all(&peer_dir).map_err(|e| e.to_string())?;
+    let mut peer = MeshSupervisor::load(&peer_dir, false);
+    peer.upsert_peer(MeshPeer {
+        node_id: "node-a".into(),
+        endpoint: "mem://node-a".into(),
+        public_key_hex: None,
+        active: true,
+    })
+    .map_err(|e| e.to_string())?;
+    restarted.open_memory_plane("node-a".into(), fabric.clone());
+    peer.open_memory_plane("node-b".into(), fabric.clone());
+
+    // A stranger is dropped and proves nothing.
+    let mut stranger =
+        MeshPacketPlane::new("node-x".into(), MemoryTransport::bind(fabric, "node-x"), {
+            let mut table = RoutingTable::new();
+            table.insert(RouteEntry {
+                destination: "node-a".into(),
+                next_hop: "node-a".into(),
+                cost: 1,
+                via_endpoint: "mem://node-a".into(),
+            });
+            table
+        });
+    stranger
+        .send("node-a", b"intruder".to_vec())
+        .map_err(|e| e.to_string())?;
+    if restarted
+        .poll_packet()
+        .map_err(|e| e.to_string())?
+        .is_some()
+    {
+        return Err(String::from(
+            "a datagram from an unknown sender was delivered",
+        ));
+    }
+    if health(mesh_health_input(&node, false, &restarted)).mesh_reachable {
+        return Err(String::from("an unknown sender made the mesh reachable"));
+    }
+
+    peer.send_packet("node-a", b"cc-10".to_vec())
+        .map_err(|e| e.to_string())?;
+    restarted
+        .poll_packet()
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| String::from("the known peer did not reach node-a"))?;
+    let proven = health(mesh_health_input(&node, false, &restarted));
+    if !proven.mesh_reachable
+        || proven.mesh_peers != 1
+        || proven.mesh_routes != 1
+        || proven.mesh_proven_peers != 1
+    {
+        return Err(format!(
+            "a proven plane must reach one peer on one route, got reachable={} peers={} routes={} proven={}",
+            proven.mesh_reachable, proven.mesh_peers, proven.mesh_routes, proven.mesh_proven_peers
         ));
     }
     if !failover.potomitan_config.ends_with(MESH_PEERS_FILE)
@@ -498,18 +562,30 @@ fn cc_mesh_supervisor_routing() -> Result<(), String> {
     let mut sup = MeshSupervisor::load(dir.path(), false);
     sup.upsert_peer(MeshPeer {
         node_id: "pot-conf-01".into(),
-        endpoint: "tls://10.0.0.9:12345".into(),
+        endpoint: "udp://10.0.0.9:12345".into(),
         public_key_hex: None,
         active: true,
     })
     .map_err(|e| e.to_string())?;
     sup.upsert_peer(MeshPeer {
         node_id: "pot-conf-02".into(),
-        endpoint: "tls://10.0.0.10:12345".into(),
+        endpoint: "udp://10.0.0.10:12345".into(),
         public_key_hex: None,
         active: false,
     })
     .map_err(|e| e.to_string())?;
+    // The mesh has no TLS transport, so a tls peer address is refused.
+    if sup
+        .upsert_peer(MeshPeer {
+            node_id: "pot-conf-03".into(),
+            endpoint: "tls://10.0.0.11:12345".into(),
+            public_key_hex: None,
+            active: true,
+        })
+        .is_ok()
+    {
+        return Err("a tls peer address was accepted without a TLS transport".into());
+    }
     if sup.peer_count() != 1 {
         return Err(format!("expected 1 active peer, got {}", sup.peer_count()));
     }

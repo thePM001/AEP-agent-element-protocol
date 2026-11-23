@@ -18,6 +18,23 @@ The AEP Base Node (01) asks AgentMesh for identities when it registers agents an
 - Attestation through a SPIFFE Workload API is an opt-in with `AEP_AGENTMESH_SPIFFE_WORKLOAD_API`.
 - The TypeScript identity manager with Ed25519 keys in `AEP-Components/identity/`.
 
+## Certificate lifetimes
+
+Every issued certificate carries a validity window and no certificate outlives the CA that signed it.
+
+The lifetime of each kind is a constant in `crate/src/tls.rs`, counted in seconds.
+
+| Certificate | Lifetime constant | Value | Issued by |
+|-------------|-------------------|-------|-----------|
+| Mesh CA | `MESH_CA_LIFETIME_SECS` | 31536000 | `ensure_mesh_ca` |
+| Dock server | `DOCK_SERVER_LIFETIME_SECS` | 2592000 | `ensure_dock_server_identity` |
+| Client identity of an agent | `CLIENT_IDENTITY_LIFETIME_SECS` | 604800 | `aep-base-node --issue-mesh-identity` |
+| Workload identity of a bundle | `WORKLOAD_IDENTITY_LIFETIME_SECS`, the stated `not_after_unix` of its mTLS state | 3600 | `create_bundle`, `create_mtls` and `create_spiffe` |
+
+A stored certificate is reissued once less than a quarter of its lifetime remains, once it has expired and once it claims a longer life than its kind allows, so a CA or a dock server certificate from an earlier release without a lifetime is replaced on the next load. A new CA voids the leaves of the old one: the dock server certificate is reissued on load and agents get new client identities. The dock TLS port reissues its server certificate under the CA it started with before the certificate expires. It does not rotate the CA while it runs. Once that CA has expired it serves no certificate until it restarts. The dock refuses an expired client certificate.
+
+The Evidence Ledger names the certificate the peer presented on the dock TLS port: its SHA-256 fingerprint over the DER bytes, its subject CN and its window. A frame from a Unix socket dock or sealed by the node itself names no certificate.
+
 ## Layout
 
 | Path | Role |
@@ -29,7 +46,8 @@ The AEP Base Node (01) asks AgentMesh for identities when it registers agents an
 
 ## Interfaces
 
-- Functions: `create_bundle`, `create_spiffe`, `create_did`, `create_mtls`, `ensure_mesh_ca`, `issue_workload_identity`, `build_server_config` and `build_client_config`.
+- Functions: `create_bundle`, `create_spiffe`, `create_did`, `create_mtls`, `ensure_mesh_ca`, `ensure_dock_server_identity`, `issue_workload_identity`, `issue_signed_identity`, `presented_certificate`, `build_server_config` and `build_client_config`.
+- Types: `Validity`, `PresentedCertificate` and `LedgerMeshRecord`, the AgentMesh column of a ledger row.
 - Environment: `AEP_DATA` for the data folder, `AEP_AGENTMESH_SPIFFE_WORKLOAD_API` and `AEP_MESH_CA_FORCE_REGEN`.
 - Files: the certificate authority and the certificates under the data folder.
 
