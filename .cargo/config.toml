@@ -12,3 +12,11 @@ target-dir = "rust/target"
 [profile.dev]
 opt-level = 1
 debug = "line-tables-only"
+
+# EDE-SPEED-001: the release build with incremental compile data, for the quick
+# conformance check of a draft only (AEP_CONFORMANCE_PROFILE=release-quick). It builds
+# into its own folder, so it never replaces the release build. The full check before a
+# change lands and the GitHub workflow test the release build itself.
+[profile.release-quick]
+inherits = "release"
+incremental = true

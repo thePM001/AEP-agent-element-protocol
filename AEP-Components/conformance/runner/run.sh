@@ -30,11 +30,16 @@ node "$CHECK" validate "$MANIFEST"
 echo "manifest ok"
 echo
 
-echo "-- Build release binaries --"
-cargo build --release -p aep-base-node -p aep-conformance -p aep-lattice-memory
+# The checks run on the release build. AEP_CONFORMANCE_PROFILE may name another cargo
+# profile that inherits release, such as release-quick of .cargo/config.toml, which the
+# quick check of a draft uses to reuse earlier compile work. The full check and GitHub
+# leave it unset and test the release build itself.
+PROFILE="${AEP_CONFORMANCE_PROFILE:-release}"
+echo "-- Build release binaries (profile $PROFILE) --"
+cargo build --profile "$PROFILE" -p aep-base-node -p aep-conformance -p aep-lattice-memory
 TARGET_DIR="$(cargo metadata --format-version 1 --no-deps \
   | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).target_directory))')"
-BIN="$TARGET_DIR/release"
+BIN="$TARGET_DIR/$PROFILE"
 export AEP_LATTICE_LOG_BIN="$BIN/aep-lattice-log"
 export AEP_LATTICE_MEMORY_CLI="$BIN/aep-lattice-memory"
 echo
@@ -46,10 +51,10 @@ echo
 echo "-- cargo test checks --"
 while IFS=$'\t' read -r ids args; do
   [ -n "$ids" ] || continue
-  echo "$ids: cargo test --release $args"
+  echo "$ids: cargo test --profile $PROFILE $args"
   # The manifest holds the argument list, one word per argument.
   read -r -a argv <<< "$args"
-  cargo test --release "${argv[@]}"
+  cargo test --profile "$PROFILE" "${argv[@]}"
   echo "$ids" >> "$REPORTS/ran.txt"
 done < <(node "$CHECK" cargo-tests "$MANIFEST")
 echo
