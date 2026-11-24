@@ -9,8 +9,11 @@
 # the CAW.
 #
 # The CAW needs the pinned gVisor of AEP-CAWs-RustGvisor/proof/install-runsc.sh
-# and starts no sandbox as root, so the script runs as the user of the
-# deployment. AEP_E2E_BIN names a folder of built binaries and skips the build.
+# and starts no sandbox as root, so the walk runs as the user of the
+# deployment. Started as root, the script builds the binaries, copies them into
+# a folder of the user nobody and runs the walk as nobody. AEP_E2E_BIN names a
+# folder of built binaries and skips the build. AEP_E2E_TRANSCRIPT names the
+# file the transcript goes to.
 #
 # From the repository root:
 #
@@ -31,10 +34,11 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/../../.." && pwd)"
 PROFILE="${AEP_E2E_PROFILE:-release}"
-BIN="${AEP_E2E_BIN:-$ROOT/rust/target/$PROFILE}"
+BIN="${AEP_E2E_BIN:-${CARGO_TARGET_DIR:-$ROOT/rust/target}/$PROFILE}"
+BINARIES="aep-base-node aep-lattice-log aep-ucb aep-ucb-validate aep-end-to-end-run aep-caw aep-caw-init"
 CAW_PROFILE="compiled-runtime"
 POLICY_DIR="$ROOT/AEP-Policy-System"
-TRANSCRIPT="$HERE/END-TO-END-RUN.transcript.md"
+TRANSCRIPT="${AEP_E2E_TRANSCRIPT:-$HERE/END-TO-END-RUN.transcript.md}"
 DEPLOY="$HERE/deployment"
 ATTACH_AGENT="agent-a"
 ATTACH_ACTION="ucb:ingest"
@@ -55,7 +59,7 @@ need_binaries() {
   if [ -z "${AEP_E2E_BIN:-}" ]; then
     ( cd "$ROOT" && cargo build $profile_flag -p aep-base-node --bins -p aep-ucb -p aep-end-to-end-run -p aep-caw -p aep-caw-init )
   fi
-  for name in aep-base-node aep-lattice-log aep-ucb aep-ucb-validate aep-end-to-end-run aep-caw aep-caw-init; do
+  for name in $BINARIES; do
     if [ ! -x "$BIN/$name" ]; then
       log "missing $BIN/$name after the build"
       exit 1
@@ -74,8 +78,26 @@ provenance_digest() {
 }
 
 if [ "$(id -u)" = 0 ]; then
-  log "the CAW starts no sandbox as root: run this script as the user of the deployment"
-  exit 1
+  # The CAW starts no sandbox as root. Root builds the binaries, then the walk runs as
+  # the user nobody from a folder of that user and the transcript comes back here.
+  need_binaries
+  W="$(mktemp -d /var/tmp/aep-e2e.XXXXXX)"
+  mkdir -p "$W/bin"
+  for name in $BINARIES; do
+    cp "$BIN/$name" "$W/bin/$name"
+  done
+  chown -R 65534:65534 "$W"
+  set +e
+  setpriv --reuid=65534 --regid=65534 --clear-groups \
+    env HOME="$W" TMPDIR="$W" PATH="$PATH" AEP_E2E_BIN="$W/bin" \
+    AEP_E2E_TRANSCRIPT="$W/transcript.md" bash "$HERE/run.sh"
+  code=$?
+  set -e
+  if [ -f "$W/transcript.md" ]; then
+    cp "$W/transcript.md" "$TRANSCRIPT"
+  fi
+  rm -rf "$W"
+  exit "$code"
 fi
 # shellcheck source=../../../AEP-CAWs-RustGvisor/proof/runsc-pin.env
 . "$ROOT/AEP-CAWs-RustGvisor/proof/runsc-pin.env"
@@ -173,6 +195,11 @@ init = "$BIN/aep-caw-init"
 base_node_data = "$RUN_DIR"
 dock_socket = "$SOCK/validation"
 TOML
+
+# The dock gateway reads the manifest signer keys of the agents at start, so the
+# key that signs the task manifest of the attach agent is registered first.
+log "registering the manifest signer key of the attach agent"
+"$BIN/aep-end-to-end-run" provision-manifest-signer "$RUN_DIR" "$ATTACH_AGENT"
 
 log "starting the dock gateway (UCB)"
 UCB_HOST=127.0.0.1 UCB_PORT="$UCB_PORT" UCB_API_KEY="$UCB_KEY" \

@@ -1,5 +1,25 @@
 {
   "extends": "./tsconfig.base.json",
-  "include": ["AEP-Components/**/*.ts"],
+  "compilerOptions": {
+    // The scripts outside AEP-Components are JavaScript and mjs. Each of them
+    // opens with // @ts-check, so the typecheck covers it. The mjs modules of
+    // AEP-Components that those scripts import join the program for their
+    // types and are not checked here.
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": [
+    "AEP-Components/**/*.ts",
+    "AEP-Policy-System/**/*.ts",
+    "AEP-Base-Node/**/*.ts",
+    "AEP-Base-Node/**/*.mjs",
+    "AEP-Base-Node/**/*.js",
+    "AEP-User-Experience/**/*.ts",
+    "AEP-User-Experience/**/*.mjs",
+    "AEP-User-Experience/**/*.js",
+    "*.ts",
+    "*.mjs",
+    "*.js"
+  ],
   "exclude": ["**/node_modules/**", "**/target/**", "**/dist/**"]
 }

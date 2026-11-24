@@ -17,7 +17,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-const RUNNERS = new Set(["rust", "vitest", "node"]);
+// corpus: the hostile agent corpus that run.sh runs and hostile-corpus.mjs accounts.
+const RUNNERS = new Set(["rust", "vitest", "node", "corpus"]);
 const ID_RE = /^CC-\d{2}$/;
 
 function readJson(path) {
@@ -48,7 +49,7 @@ export function validateManifest(manifest, repoRoot) {
       continue;
     }
     if (c.runner === "rust" && !c.crate) problems.push(`${c.id} names no crate`);
-    if (c.runner === "vitest" || c.runner === "node") {
+    if (c.runner === "vitest" || c.runner === "node" || c.runner === "corpus") {
       if (!c.file) problems.push(`${c.id} names no file`);
       else if (repoRoot && !existsSync(join(repoRoot, c.file))) {
         problems.push(`${c.id} file ${c.file} does not exist`);
@@ -122,8 +123,8 @@ export function account(manifest, reports) {
   // cargo test and node checks: run.sh records ids after the command exits 0.
   for (const id of reports.ran ?? []) {
     const c = listed.get(id);
-    if (!c || !(c.cargo_test || c.runner === "node")) {
-      problems.push(`run.sh recorded ${id}, which is not a cargo test or node check`);
+    if (!c || !(c.cargo_test || c.runner === "node" || c.runner === "corpus")) {
+      problems.push(`run.sh recorded ${id}, which is not a cargo test, node or corpus check`);
       continue;
     }
     executed.add(id);

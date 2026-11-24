@@ -68,6 +68,42 @@ while IFS=$'\t' read -r ids file; do
 done < <(node "$CHECK" node-checks "$MANIFEST")
 echo
 
+echo "-- Hostile agent corpus --"
+# Each case names one test that replays the attack of a finding. The runner lists one
+# cargo run per package and target, each run leaves its output and exit status in the
+# report folder and the account step fails unless every case ran its one test to a pass.
+# The cases run in the dev profile, which keeps debug assertions and overflow checks on.
+# AEP_HOSTILE_PROFILE names another cargo profile.
+HOSTILE="$CONF/runner/hostile-corpus.mjs"
+HPROF=()
+if [ -n "${AEP_HOSTILE_PROFILE:-}" ]; then
+  HPROF=(--profile "$AEP_HOSTILE_PROFILE")
+fi
+while IFS=$'\t' read -r n pkg target tests; do
+  [ -n "$n" ] || continue
+  read -r -a names <<< "$tests"
+  if [ "$target" = "--lib --bins" ]; then
+    # A lib test that starts a program of its package needs that program built.
+    cargo build -p "$pkg" "${HPROF[@]}" --bins
+    target="--lib"
+  fi
+  echo "run $n: cargo test -p $pkg $target"
+  set +e
+  cargo test -p "$pkg" "${HPROF[@]}" "$target" -- --exact --test-threads=1 "${names[@]}" \
+    > "$REPORTS/hostile-$n.out" 2>&1
+  echo "$?" > "$REPORTS/hostile-$n.code"
+  set -e
+done < <(node "$HOSTILE" runs "$ROOT")
+if node "$HOSTILE" account "$ROOT" "$REPORTS"; then
+  echo "CC-36" >> "$REPORTS/ran.txt"
+else
+  for f in "$REPORTS"/hostile-*.out; do
+    echo "== $f"
+    tail -n 40 "$f"
+  done
+fi
+echo
+
 echo "-- Kernel fixtures for the vitest checks --"
 # The operator provision step mints the sign key of the agent the CC-15 frame
 # builder signs as. HOME and AEP_DATA stay inside the report folder.

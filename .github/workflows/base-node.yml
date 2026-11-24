@@ -19,16 +19,36 @@ jobs:
         run: cargo test -p aep-base-node --lib
 
   end-to-end-example:
-    name: cargo check -p aep-end-to-end-run
+    name: end to end run, refuse path and pass path through the kernel, the dock gateway and the CAW
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      # Root is used once: the pinned package and the AppArmor profile of runsc.
+      - name: install the pinned gVisor
+        run: sudo bash AEP-CAWs-RustGvisor/proof/install-runsc.sh
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      # The wrap coverage check and the GAP compiler of the run read YAML through the
+      # yaml package of the root workspace.
+      - name: npm ci
+        run: npm ci --no-audit --no-fund
       # The end to end example is a workspace member, so a kernel type change
       # that breaks it fails here by name.
       - name: cargo check -p aep-end-to-end-run
         run: cargo check -p aep-end-to-end-run
+      # The run builds the release binaries, starts the kernel daemon and the dock
+      # gateway and walks every layer twice as the runner user. It exits 0 only when
+      # every refuse line and every pass line holds.
+      - name: run the end to end example
+        run: bash AEP-User-Experience/examples/end-to-end-run/run.sh
+      # The transcript carries the digests of this run, so it is read for its verdict
+      # and not compared with the committed note.
+      - name: the transcript holds the verdict
+        run: grep -q '^> RESULT refuse path first and pass path second' AEP-User-Experience/examples/end-to-end-run/END-TO-END-RUN.transcript.md
 
   probe:
     name: aep-base-node --health

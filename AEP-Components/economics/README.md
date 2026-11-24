@@ -74,4 +74,4 @@ npx vitest run AEP-Components/economics
 
 - `AEP-Components/model-gateway/README.md` for the caller
 - `AEP-Components/admit-budget-window/README.md` for the budget wall of the kernel
-- `AEP-User-Experience/harness/harness/aep-economics.js` for a harness example
+- `AEP-User-Experience/harness/harness/aep-economics.ts` for a harness example

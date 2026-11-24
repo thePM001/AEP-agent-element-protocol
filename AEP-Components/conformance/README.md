@@ -59,11 +59,25 @@ The vitest checks run inside `run.sh`, which builds the kernel binaries, provisi
 | CC-26 | vitest | Intent knots in Lattice Memory, recorded with no network call |
 | CC-28 - CC-34 | cargo test | UCM |
 | CC-35 | cargo test | Multi-step red team corpus on the live Admit path |
+| CC-36 | corpus | Hostile agent corpus over the kernel, the draft environment, the ledgers, the UCB and the mesh |
 | CC-12, CC-18 - CC-23, CC-25, CC-27 | planned | No claim |
 
 ## Multi-step red team corpus
 
 [`redteam/`](redteam/README.md) holds CC-35. Each of its 55 cases is a chain of actions that each pass on their own and that together reach a forbidden outcome, such as data leaving in slices or an agent probing one new capability after another. The harness drives every step through the Base Node live dock entry with the reference policy system, so the sliding window budget of `AEP-Policy-System/reference/budget.gap` and every other product wall answer. Every case must end in a deny by its named wall and every control chain must pass.
+
+## Hostile agent corpus
+
+[`hostile/corpus.json`](hostile/corpus.json) holds CC-36. Each case plays one attack of an agent and names the test that proves the attack fails: a frame that names another agent, a stamp ahead of the kernel clock, a url field that would send a request, a forged draft record, a planted git configuration, an edited or reordered ledger entry, a key used for another agent or an expired mesh certificate. The classes draft environment and ledger tampering must each hold at least one case.
+
+The corpus lists every finding of the AEP 2.9 full code review and places each in exactly one spot: a case that replays it, the open list whose remediation still owes its case or the elsewhere list. Findings of the retired Go CAW sit in the elsewhere list because the hostile corpus of the Rust CAW in `AEP-CAWs-RustGvisor/proof/hostile-corpus.sh` proves host sandbox enforcement. Entries of the open list carry no claim.
+
+[`runner/hostile-corpus.mjs`](runner/hostile-corpus.mjs) checks that the corpus is sound and that every case names a test function that exists in its file. It lists one cargo run per package and target for `run.sh` to run and then accounts the runs. The check passes only when each named test reported ok exactly once and each run passed exactly the named tests, so a filter that matches nothing fails. The cases run in the dev profile, which keeps debug assertions and overflow checks on. `AEP_HOSTILE_PROFILE` names another cargo profile.
+
+```bash
+node AEP-Components/conformance/runner/hostile-corpus.mjs validate
+node AEP-Components/conformance/runner/hostile-corpus.mjs runs
+```
 
 ## Language neutral vectors
 

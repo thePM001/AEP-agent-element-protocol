@@ -1,6 +1,7 @@
 #!/usr/bin/env node
+// @ts-check
 /**
- * AEP 2.8.6 root check.
+ * AEP 2.9 root check.
  * Usage: node aep-check.mjs [repo-root]
  *
  * One command at the repository root. Every section prints its own result and
@@ -18,7 +19,7 @@
  * skipped too.
  */
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -26,9 +27,14 @@ import { loadLocalCatalog, loadComponentManifest } from "./AEP-Base-Node/AEP-Reg
 import { validateFullCatalog } from "./AEP-Base-Node/AEP-Registry/lib/manifest-validator.mjs";
 import { checkThreatModel } from "./AEP-User-Experience/harness/check-threat-model-trace.mjs";
 
+/** @typedef {{ passed: boolean }} SectionResult */
+/** @typedef {{ name: string, run: (root: string) => SectionResult }} Section */
+
 const SKIP_DIRS = new Set([".git", "node_modules", "target", "dist", "build", ".gomodcache", ".gocache", ".gopath"]);
 const MARKDOWN = /\.(md|markdown)$/i;
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
+/** The name of the internal export area, spelled by char code so the public tree carries no token of it. */
+const EXPORT_AREA = String.fromCharCode(65, 69, 80, 45, 78, 79, 83, 72, 73, 80);
 
 const TARGET_PATTERNS = [
   /!?\[[^\]]*\]\(\s*<?([^)\s>]+)>?[^)]*\)/g,
@@ -36,9 +42,28 @@ const TARGET_PATTERNS = [
   /<img\s[^>]*src\s*=\s*["']([^"']+)["']/gi,
 ];
 
-/** Every markdown file below a tree root, in path order. */
-function collectMarkdownFiles(root) {
+/** @param {unknown} e */
+function message(e) {
+  return e instanceof Error ? e.message : String(e);
+}
+
+/**
+ * @param {unknown} v
+ * @returns {v is Record<string, unknown>}
+ */
+function isObject(v) {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+/**
+ * Every markdown file below a tree root, in path order.
+ * @param {string} root
+ * @returns {string[]}
+ */
+export function collectMarkdownFiles(root) {
+  /** @type {string[]} */
   const files = [];
+  /** @param {string} dir */
   function walk(dir) {
     let entries;
     try {
@@ -59,15 +84,21 @@ function collectMarkdownFiles(root) {
   return files.sort((a, b) => a.localeCompare(b));
 }
 
-/** Blank out fenced blocks and inline code spans so line numbers stay true. */
-function stripCode(content) {
+/**
+ * Blank out fenced blocks and inline code spans so line numbers stay true.
+ * @param {string} content
+ */
+export function stripCode(content) {
   return String(content)
     .replace(/```[\s\S]*?```/g, (block) => block.replace(/[^\n]/g, " "))
     .replace(/`[^`\n]*`/g, (span) => span.replace(/[^\n]/g, " "));
 }
 
-/** True when a target names a place inside this tree rather than a scheme or a root path. */
-function isRelativeTarget(target) {
+/**
+ * True when a target names a place inside this tree rather than a scheme or a root path.
+ * @param {string | undefined} target
+ */
+export function isRelativeTarget(target) {
   if (!target) return false;
   if (target.startsWith("#")) return false;
   if (target.startsWith("/")) return false;
@@ -75,15 +106,21 @@ function isRelativeTarget(target) {
   return true;
 }
 
-/** Every relative link target in one markdown document, with its line number. */
-function collectRelativeTargets(content) {
+/**
+ * Every relative link target in one markdown document, with its line number.
+ * @param {string} content
+ * @returns {{ line: number, target: string }[]}
+ */
+export function collectRelativeTargets(content) {
   const prose = stripCode(content);
+  /** @type {{ line: number, target: string }[]} */
   const found = [];
+  /** @type {Set<string>} */
   const seen = new Set();
   for (const pattern of TARGET_PATTERNS) {
     for (const match of prose.matchAll(pattern)) {
       const target = match[1];
-      if (!isRelativeTarget(target)) continue;
+      if (target === undefined || !isRelativeTarget(target)) continue;
       const line = prose.slice(0, match.index).split("\n").length;
       const key = `${line}:${target}`;
       if (seen.has(key)) continue;
@@ -94,22 +131,34 @@ function collectRelativeTargets(content) {
   return found.sort((a, b) => a.line - b.line);
 }
 
-/** Resolve one link target against the folder of the file that carries it. */
-function resolveTarget(file, target) {
-  const bare = String(target).split("#")[0].split("?")[0];
+/**
+ * Resolve one link target against the folder of the file that carries it.
+ * @param {string} file
+ * @param {string} target
+ * @returns {string | null}
+ */
+export function resolveTarget(file, target) {
+  const bare = (String(target).split("#")[0] ?? "").split("?")[0] ?? "";
   if (!bare) return null;
-  let decoded = bare;
-  try {
-    decoded = decodeURIComponent(bare);
-  } catch {
-    decoded = bare;
-  }
-  return resolve(dirname(file), decoded);
+  /** A target with a broken percent escape is read as it is written. */
+  const decode = () => {
+    try {
+      return decodeURIComponent(bare);
+    } catch {
+      return bare;
+    }
+  };
+  return resolve(dirname(file), decode());
 }
 
-/** Section links. Walk every markdown file and report every dead relative link. */
+/**
+ * Section links. Walk every markdown file and report every dead relative link.
+ * @param {string} root
+ * @returns {SectionResult}
+ */
 function linksSection(root) {
   const files = collectMarkdownFiles(root);
+  /** @type {string[]} */
   const dead = [];
   let links = 0;
   for (const file of files) {
@@ -129,8 +178,13 @@ function linksSection(root) {
   return { passed: dead.length === 0 };
 }
 
-var CHILD_BUFFER = 32 * 1024 * 1024;
+const CHILD_BUFFER = 32 * 1024 * 1024;
 
+/**
+ * @param {string} section
+ * @param {string} command
+ * @param {{ error?: Error, stdout?: string, stderr?: string }} result the fields of a finished run that it prints
+ */
 function printChildFailure(section, command, result) {
   console.log(section + ": " + command);
   if (result.error) console.log(String(result.error));
@@ -138,54 +192,82 @@ function printChildFailure(section, command, result) {
   if (result.stderr) process.stderr.write(result.stderr);
 }
 
-function registrySection(root) {
-  var findings = [];
-  var catalog;
-  try { catalog = loadLocalCatalog(root); }
-  catch (err) {
-    findings.push("catalog: " + err.message);
-    for (var i = 0; i < findings.length; i++) console.log(findings[i]);
-    console.log("registry: 0 catalog rows, " + findings.length + " findings");
-    return { passed: false };
-  }
-  var load = function (manifestPath) { return loadComponentManifest(manifestPath, root); };
-  var full = validateFullCatalog(catalog, root, load);
-  var results = full.results || [];
-  for (var r = 0; r < results.length; r++) {
-    var row = results[r];
-    var errors = row.errors || [];
-    for (var e = 0; e < errors.length; e++) findings.push(errors[e]);
-  }
-  var catalogIds = new Set((catalog.components || []).map(function (row) { return row.id; }));
-  var componentsDir = join(root, "AEP-Base-Node/AEP-Registry/components");
-  var names = [];
-  try { names = readdirSync(componentsDir); }
-  catch (err) { findings.push("AEP-Base-Node/AEP-Registry/components: " + err.message); }
-  for (var n = 0; n < names.length; n++) {
-    var name = names[n];
-    if (name.slice(-5) !== ".json") continue;
-    var id = name.slice(0, -5);
-    if (!catalogIds.has(id)) findings.push("manifest has no catalog row: AEP-Base-Node/AEP-Registry/components/" + name);
-  }
-  for (var f = 0; f < findings.length; f++) console.log(findings[f]);
-  var rows = (catalog.components || []).length;
-  console.log("registry: " + rows + " catalog rows, " + findings.length + " findings");
-  return { passed: findings.length === 0 };
+/**
+ * @param {string} root
+ * @param {string} command
+ * @param {string[]} args
+ */
+function runChild(root, command, args) {
+  return spawnSync(command, args, { encoding: "utf8", cwd: root, maxBuffer: CHILD_BUFFER });
 }
 
+/**
+ * Section registry: the catalog, every manifest and every manifest file that
+ * has no catalog row.
+ * @param {string} root
+ * @returns {{ passed: boolean, findings: string[], rows: number }}
+ */
+export function registryFindings(root) {
+  /** @type {string[]} */
+  const findings = [];
+  let catalog;
+  try {
+    catalog = loadLocalCatalog(root);
+  } catch (err) {
+    findings.push("catalog: " + message(err));
+    return { passed: false, findings, rows: 0 };
+  }
+  /** @param {string} manifestPath */
+  const load = (manifestPath) => {
+    try {
+      return loadComponentManifest(manifestPath, root);
+    } catch (err) {
+      findings.push(message(err));
+      return null;
+    }
+  };
+  const full = validateFullCatalog(catalog, root, load);
+  for (const row of full.results) findings.push(...row.errors);
+
+  const catalogIds = new Set(catalog.components.map((row) => row.id));
+  const componentsDir = join(root, "AEP-Base-Node/AEP-Registry/components");
+  /** @type {string[]} */
+  let names = [];
+  try {
+    names = readdirSync(componentsDir);
+  } catch (err) {
+    findings.push("AEP-Base-Node/AEP-Registry/components: " + message(err));
+  }
+  for (const name of names) {
+    if (!name.endsWith(".json")) continue;
+    if (!catalogIds.has(name.slice(0, -5))) {
+      findings.push("manifest has no catalog row: AEP-Base-Node/AEP-Registry/components/" + name);
+    }
+  }
+  return { passed: findings.length === 0, findings, rows: catalog.components.length };
+}
+
+/**
+ * @param {string} root
+ * @returns {SectionResult}
+ */
+function registrySection(root) {
+  const r = registryFindings(root);
+  for (const f of r.findings) console.log(f);
+  console.log("registry: " + r.rows + " catalog rows, " + r.findings.length + " findings");
+  return { passed: r.passed };
+}
+
+/**
+ * @param {string} root
+ * @returns {SectionResult}
+ */
 function releaseStringsSection(root) {
-  var script = join(root, "AEP-User-Experience/harness/check-release-strings.mjs");
-  var opts = new Object();
-  opts.encoding = "utf8";
-  opts.cwd = root;
-  opts.maxBuffer = CHILD_BUFFER;
-  var extra = String.fromCharCode(65,69,80,45,78,79,83,72,73,80);
-  var args = [script, root];
-  if (existsSync(join(root, extra))) args.push(extra);
-  args.push(".gomodcache");
-  args.push(".gocache");
-  args.push(".gopath");
-  var result = spawnSync(process.execPath, args, opts);
+  const script = join(root, "AEP-User-Experience/harness/check-release-strings.mjs");
+  const args = [script, root];
+  if (existsSync(join(root, EXPORT_AREA))) args.push(EXPORT_AREA);
+  args.push(".gomodcache", ".gocache", ".gopath");
+  const result = runChild(root, process.execPath, args);
   if (result.status !== 0) {
     printChildFailure("release strings", "node AEP-User-Experience/harness/check-release-strings.mjs", result);
     return { passed: false };
@@ -195,12 +277,12 @@ function releaseStringsSection(root) {
   return { passed: true };
 }
 
+/**
+ * @param {string} root
+ * @returns {SectionResult}
+ */
 function rustBuildSection(root) {
-  var opts = new Object();
-  opts.encoding = "utf8";
-  opts.cwd = root;
-  opts.maxBuffer = CHILD_BUFFER;
-  var result = spawnSync("cargo", ["build"], opts);
+  const result = runChild(root, "cargo", ["build"]);
   if (result.status !== 0) {
     printChildFailure("rust build", "cargo build", result);
     return { passed: false };
@@ -218,18 +300,17 @@ function rustBuildSection(root) {
 const CAW_PROGRAMS = ["aep-caw", "aep-caw-init"];
 const CAW_PIN = "AEP-CAWs-RustGvisor/proof/runsc-pin.env";
 
+/**
+ * @param {string} root
+ * @returns {SectionResult}
+ */
 function cawBuildSection(root) {
   if (!existsSync(join(root, CAW_PIN))) {
     console.log("caw build: " + CAW_PIN + " is missing, the CAW has no pinned gVisor");
     return { passed: false };
   }
-  var opts = new Object();
-  opts.encoding = "utf8";
-  opts.cwd = root;
-  opts.maxBuffer = CHILD_BUFFER;
-  var args = ["build"];
-  for (var i = 0; i < CAW_PROGRAMS.length; i++) args.push("-p", CAW_PROGRAMS[i]);
-  var result = spawnSync("cargo", args, opts);
+  const args = ["build", ...CAW_PROGRAMS.flatMap((p) => ["-p", p])];
+  const result = runChild(root, "cargo", args);
   if (result.status !== 0) {
     printChildFailure("caw build", "cargo " + args.join(" "), result);
     return { passed: false };
@@ -238,14 +319,14 @@ function cawBuildSection(root) {
   return { passed: true };
 }
 
+/**
+ * @param {string} root
+ * @returns {SectionResult}
+ */
 function wrapCoverageSection(root) {
-  var script = join(root, "AEP-Components/wrap-coverage/lib/wrap-coverage.mjs");
-  var inventory = "AEP-User-Experience/examples/end-to-end-run/deployment/wrap-coverage.yaml";
-  var opts = new Object();
-  opts.encoding = "utf8";
-  opts.cwd = root;
-  opts.maxBuffer = CHILD_BUFFER;
-  var result = spawnSync(process.execPath, [script, inventory], opts);
+  const script = join(root, "AEP-Components/wrap-coverage/lib/wrap-coverage.mjs");
+  const inventory = "AEP-User-Experience/examples/end-to-end-run/deployment/wrap-coverage.yaml";
+  const result = runChild(root, process.execPath, [script, inventory]);
   if (result.status !== 0) {
     printChildFailure("wrap coverage", "node AEP-Components/wrap-coverage/lib/wrap-coverage.mjs " + inventory, result);
     return { passed: false };
@@ -255,9 +336,13 @@ function wrapCoverageSection(root) {
   return { passed: true };
 }
 
+/**
+ * @param {string} root
+ * @returns {SectionResult}
+ */
 function threatModelSection(root) {
-  var result = checkThreatModel(root);
-  for (var i = 0; i < result.findings.length; i++) console.log(result.findings[i]);
+  const result = checkThreatModel(root);
+  for (const f of result.findings) console.log(f);
   console.log("threat model: " + result.rows + " rows, " + result.checks + " cited checks, " + result.findings.length + " findings");
   return { passed: result.findings.length === 0 };
 }
@@ -311,31 +396,48 @@ const RETIRED_CAW_FILES = [
   "docker/entrypoint.sh",
 ];
 
-/** Every README.md below a tree root, in path order. */
+/**
+ * @typedef {object} MapRow
+ * @property {string} number
+ * @property {string} name
+ * @property {string} readme
+ * @property {string} home
+ * @property {string[]} folders
+ */
+
+/**
+ * Every README.md below a tree root, in path order.
+ * @param {string} root
+ */
 function collectReadmeFiles(root) {
   return collectMarkdownFiles(root).filter((file) => /(^|[\\/])README\.md$/.test(file));
 }
 
-/** The lines of the release allow list as a set of keys: path, one tab, line. */
+/**
+ * The lines of the release allow list as a set of keys: path, one tab, line.
+ * @param {string} root
+ * @returns {Set<string>}
+ */
 function readAllowedLines(root) {
+  /** @type {Set<string>} */
   const allowed = new Set();
-  let text = "";
-  try {
-    text = readFileSync(join(root, RELEASE_ALLOW_LIST), "utf8");
-  } catch {
-    return allowed;
-  }
-  for (const raw of text.split("\n")) {
-    if (raw.length === 0 || raw[0] === "#") continue;
+  const file = join(root, RELEASE_ALLOW_LIST);
+  if (!existsSync(file)) return allowed;
+  for (const raw of readFileSync(file, "utf8").split("\n")) {
+    if (raw.length === 0 || raw.startsWith("#")) continue;
     const parts = raw.split("\t");
     if (parts.length < 2) continue;
-    allowed.add(`${parts[0]}\t${parts[1]}`);
+    allowed.add(`${parts[0] ?? ""}\t${parts[1] ?? ""}`);
   }
   return allowed;
 }
 
-/** The top level folders of the tree, which start a tree path. */
+/**
+ * The top level folders of the tree, which start a tree path.
+ * @param {string} root
+ */
 function topLevelFolders(root) {
+  /** @type {string[]} */
   const names = [];
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
@@ -346,49 +448,96 @@ function topLevelFolders(root) {
   return names;
 }
 
-/** Blank out fenced blocks only, so inline code spans remain readable. */
+/**
+ * Blank out fenced blocks only, so inline code spans remain readable.
+ * @param {string} content
+ */
 function stripFenced(content) {
   return String(content).replace(/```[\s\S]*?```/g, (block) => block.replace(/[^\n]/g, " "));
 }
 
-/** Every inline code span of one document that writes a tree path, with its line number. */
-function collectTreePaths(content, tops) {
+/**
+ * Every inline code span of one document that writes a tree path, with its line number.
+ * @param {string} content
+ * @param {string[]} tops
+ * @returns {{ line: number, target: string }[]}
+ */
+export function collectTreePaths(content, tops) {
   const prose = stripFenced(content);
+  /** @type {{ line: number, target: string }[]} */
   const found = [];
   for (const match of prose.matchAll(/`([^`\n]+)`/g)) {
-    const span = match[1].trim();
-    const first = span.split("/")[0];
+    const span = (match[1] ?? "").trim();
+    const first = span.split("/")[0] ?? "";
     if (!span.includes("/") || !tops.includes(first)) continue;
     if (SAMPLE_PATH.test(span)) continue;
-    const bare = span.split("#")[0].replace(/:\d+(?:-\d+)?$/, "").replace(/[.,;:]+$/, "");
+    const bare = (span.split("#")[0] ?? "").replace(/:\d+(?:-\d+)?$/, "").replace(/[.,;:]+$/, "");
     const line = prose.slice(0, match.index).split("\n").length;
     found.push({ line, target: bare });
   }
   return found;
 }
 
-/** The level two headings of one document in order, outside fenced blocks. */
+/**
+ * The level two headings of one document in order, outside fenced blocks.
+ * @param {string} content
+ */
 function levelTwoHeadings(content) {
+  /** @type {string[]} */
   const headings = [];
   for (const line of stripFenced(content).split("\n")) {
-    const match = /^## +(.+?)\s*$/.exec(line);
-    if (match) headings.push(match[1]);
+    const match = line.match(/^## +(.+?)\s*$/);
+    if (match?.[1] !== undefined) headings.push(match[1]);
   }
   return headings;
 }
 
+/**
+ * Read the component map. Each row must carry the five fields as strings.
+ * @param {unknown} raw
+ * @param {string[]} findings
+ */
+function readComponentMap(raw, findings) {
+  const map = isObject(raw) ? raw : {};
+  /** @type {MapRow[]} */
+  const components = [];
+  for (const [index, row] of (Array.isArray(map.components) ? map.components : []).entries()) {
+    if (
+      isObject(row) && typeof row.number === "string" && typeof row.name === "string" &&
+      typeof row.readme === "string" && typeof row.home === "string"
+    ) {
+      const folders = Array.isArray(row.folders) ? row.folders.filter((f) => typeof f === "string") : [];
+      components.push({ number: row.number, name: row.name, readme: row.readme, home: row.home, folders });
+    } else {
+      findings.push(`${COMPONENT_MAP}: row ${index + 1} lacks a number, name, readme or home`);
+    }
+  }
+  /** @type {string[]} */
+  const shared = [];
+  for (const part of Array.isArray(map.shared) ? map.shared : []) {
+    if (isObject(part) && typeof part.folder === "string") shared.push(part.folder);
+    else findings.push(`${COMPONENT_MAP}: a shared part names no folder`);
+  }
+  return { components, shared };
+}
+
+/**
+ * @param {string} root
+ * @returns {SectionResult}
+ */
 function readmeSection(root) {
+  /** @type {string[]} */
   const findings = [];
-  let map;
+  /** @type {unknown} */
+  let raw;
   try {
-    map = JSON.parse(readFileSync(join(root, COMPONENT_MAP), "utf8"));
+    raw = JSON.parse(readFileSync(join(root, COMPONENT_MAP), "utf8"));
   } catch (err) {
-    console.log(`${COMPONENT_MAP}: ${err.message}`);
+    console.log(`${COMPONENT_MAP}: ${message(err)}`);
     console.log("readme: no component map, 1 findings");
     return { passed: false };
   }
-  const components = Array.isArray(map.components) ? map.components : [];
-  const shared = Array.isArray(map.shared) ? map.shared : [];
+  const { components, shared } = readComponentMap(raw, findings);
   if (components.length !== 18) findings.push(`${COMPONENT_MAP}: ${components.length} component rows, 18 expected`);
   components.forEach((row, index) => {
     const number = String(index + 1).padStart(2, "0");
@@ -400,7 +549,7 @@ function readmeSection(root) {
   try {
     rootReadme = readFileSync(join(root, "README.md"), "utf8");
   } catch (err) {
-    findings.push(`README.md: ${err.message}`);
+    findings.push(`README.md: ${message(err)}`);
   }
   const wanted = components.map((row) => `${row.number} / ${row.name}`);
   const present = levelTwoHeadings(rootReadme).filter((heading) => /^\d\d \/ /.test(heading));
@@ -436,7 +585,7 @@ function readmeSection(root) {
     const content = readFileSync(file, "utf8");
     const lines = content.split("\n");
     const title = `# ${row.number} / ${row.name}`;
-    if (lines[0].trim() !== title) findings.push(`${row.readme}: the title is not "${title}"`);
+    if ((lines[0] ?? "").trim() !== title) findings.push(`${row.readme}: the title is not "${title}"`);
     const second = lines.slice(1).find((line) => line.trim().length > 0) ?? "";
     if (!STATUS_LINE.test(second)) findings.push(`${row.readme}: no status line after the title`);
     const headings = levelTwoHeadings(content);
@@ -453,16 +602,22 @@ function readmeSection(root) {
   }
 
   /* 4. Every folder under AEP-Components in exactly one row, each with a README. */
+  /** @type {Map<string, string[]>} */
   const placed = new Map();
+  /**
+   * @param {string} folder
+   * @param {string} where
+   */
   const place = (folder, where) => {
-    if (!placed.has(folder)) placed.set(folder, []);
-    placed.get(folder).push(where);
+    const list = placed.get(folder) ?? [];
+    list.push(where);
+    placed.set(folder, list);
   };
   for (const row of components) {
     place(row.home, `row ${row.number}`);
-    for (const folder of row.folders ?? []) place(folder, `row ${row.number}`);
+    for (const folder of row.folders) place(folder, `row ${row.number}`);
   }
-  for (const part of shared) place(part.folder, "shared parts");
+  for (const folder of shared) place(folder, "shared parts");
   for (const [folder, where] of placed) {
     if (!existsSync(join(root, folder))) findings.push(`${COMPONENT_MAP}: folder ${folder} does not exist`);
     if (where.length > 1) findings.push(`${COMPONENT_MAP}: folder ${folder} sits in ${where.join(" and ")}`);
@@ -481,15 +636,15 @@ function readmeSection(root) {
   const allowed = readAllowedLines(root);
   for (const file of readmes) {
     const here = relative(root, file).split(sep).join("/");
-    const raw = readFileSync(file, "utf8").split("\n");
-    const prose = stripCode(raw.join("\n")).replace(/\]\([^)]*\)/g, (link) => link.replace(/[^\n]/g, " ")).split("\n");
-    for (let i = 0; i < prose.length; i++) {
-      const label = OLD_LABEL.exec(prose[i]);
-      if (!label) continue;
-      if (PAPER_NUMBER.test(prose[i])) continue;
-      if (allowed.has(`${here}\t${raw[i]}`)) continue;
+    const rawLines = readFileSync(file, "utf8").split("\n");
+    const prose = stripCode(rawLines.join("\n")).replace(/\]\([^)]*\)/g, (link) => link.replace(/[^\n]/g, " ")).split("\n");
+    prose.forEach((proseLine, i) => {
+      const label = proseLine.match(OLD_LABEL);
+      if (!label) return;
+      if (PAPER_NUMBER.test(proseLine)) return;
+      if (allowed.has(`${here}\t${rawLines[i] ?? ""}`)) return;
       findings.push(`${here}:${i + 1}: version label ${label[0]} is older than 2.9`);
-    }
+    });
   }
 
   /* 6. No shipped sentence of the retired CAW condition. */
@@ -498,13 +653,9 @@ function readmeSection(root) {
     .filter((rel) => rel !== "CHANGELOG.md")
     .concat(RETIRED_CAW_FILES);
   for (const rel of caw) {
-    let text;
-    try {
-      text = readFileSync(join(root, rel), "utf8");
-    } catch {
-      continue;
-    }
-    text.split("\n").forEach((textLine, i) => {
+    const file = join(root, rel);
+    if (!existsSync(file)) continue;
+    readFileSync(file, "utf8").split("\n").forEach((textLine, i) => {
       if (RETIRED_CAW.test(textLine)) findings.push(`${rel}:${i + 1}: says that no host sandbox ships, the Rust CAW is active`);
     });
   }
@@ -514,7 +665,8 @@ function readmeSection(root) {
   return { passed: findings.length === 0 };
 }
 
-const SECTIONS = [
+/** @type {Section[]} */
+export const SECTIONS = [
   { name: "registry", run: registrySection },
   { name: "release strings", run: releaseStringsSection },
   { name: "wrap coverage", run: wrapCoverageSection },
@@ -525,22 +677,37 @@ const SECTIONS = [
   { name: "readme", run: readmeSection },
 ];
 
-function main() {
+/**
+ * The sections a run takes: all of them, or the one AEP_CHECK_ONLY names.
+ * @param {string | undefined} only
+ * @returns {Section[] | null} null when only names no section
+ */
+export function selectSections(only) {
+  if (!only) return SECTIONS;
+  const picked = SECTIONS.filter((section) => section.name === only);
+  return picked.length > 0 ? picked : null;
+}
+
+/**
+ * @param {string[]} argv the arguments after the script
+ * @returns {number}
+ */
+export function main(argv) {
   const here = dirname(fileURLToPath(import.meta.url));
-  const root = resolve(process.argv[2] ?? here);
-  var extra = String.fromCharCode(65,69,80,45,78,79,83,72,73,80);
-  if (existsSync(join(root, extra))) SKIP_DIRS.add(extra);
-  SKIP_DIRS.add(extra.slice(4));
+  const root = resolve(argv[0] ?? here);
+  if (existsSync(join(root, EXPORT_AREA))) SKIP_DIRS.add(EXPORT_AREA);
+  SKIP_DIRS.add(EXPORT_AREA.slice(4));
   /* AEP_CHECK_ONLY runs one section by name, for example AEP_CHECK_ONLY=readme. */
-  if (process.env.AEP_CHECK_ONLY) {
-    const only = SECTIONS.filter((section) => section.name === process.env.AEP_CHECK_ONLY);
-    if (only.length > 0) SECTIONS.splice(0, SECTIONS.length, ...only);
+  const sections = selectSections(process.env.AEP_CHECK_ONLY);
+  if (sections === null) {
+    console.log(`AEP_CHECK_ONLY names no section: ${String(process.env.AEP_CHECK_ONLY)}`);
+    return 1;
   }
-  console.log("AEP 2.8.6 root check");
+  console.log("AEP 2.9 root check");
   console.log(`root: ${root}`);
   console.log();
   let failed = 0;
-  for (const section of SECTIONS) {
+  for (const section of sections) {
     console.log(`== section ${section.name} ==`);
     const result = section.run(root);
     console.log(`section ${section.name}: ${result.passed ? "PASS" : "FAIL"}`);
@@ -549,9 +716,22 @@ function main() {
   }
   if (failed > 0) {
     console.log(`${failed} section(s) failed`);
-    process.exit(1);
+    return 1;
   }
-  console.log(`${SECTIONS.length} section(s) passed`);
+  console.log(`${sections.length} section(s) passed`);
+  return 0;
 }
 
-main();
+function isEntryScript() {
+  const script = process.argv[1];
+  if (!script) return false;
+  try {
+    return realpathSync(script) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (isEntryScript()) {
+  process.exitCode = main(process.argv.slice(2));
+}

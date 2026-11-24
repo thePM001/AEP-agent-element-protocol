@@ -1,17 +1,27 @@
 #!/usr/bin/env node
+// @ts-check
 /**
- * Materialize all AEP-Base-Node/AEP-Registry/components/*.json to manifest v1.
+ * Materialize the manifest v1 files of AEP-Base-Node/AEP-Registry/components.
+ * The committed manifests are the source of truth: the script writes a seed
+ * manifest from its table only for a catalog entry whose manifest file is
+ * missing. It never overwrites a committed manifest and never writes a
+ * manifest for an id that has no catalog row.
  * Run: node AEP-Base-Node/AEP-Registry/scripts/materialize-manifests-v1.mjs
  */
 
 import { writeFileSync, mkdirSync, readFileSync, existsSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "../../..");
-const OUT_DIR = join(REPO_ROOT, "AEP-Base-Node/AEP-Registry/components");
 
+/**
+ * @param {number} mb
+ * @param {number} [disk]
+ * @param {boolean} [internet]
+ * @param {boolean} [gpu]
+ */
 const RR = (mb, disk = 10, internet = false, gpu = false) => ({
   min_memory_mb: mb,
   min_disk_mb: disk,
@@ -19,6 +29,12 @@ const RR = (mb, disk = 10, internet = false, gpu = false) => ({
   gpu_required: gpu,
 });
 
+/**
+ * @param {string} summary
+ * @param {string[]} use_when
+ * @param {string[]} [avoid_when]
+ * @param {string[]} [pairs_with]
+ */
 const CCA = (summary, use_when, avoid_when = [], pairs_with = []) => ({
   summary,
   use_when,
@@ -26,7 +42,7 @@ const CCA = (summary, use_when, avoid_when = [], pairs_with = []) => ({
   pairs_with,
 });
 
-/** @type {Record<string, object>} */
+/** @type {Record<string, Record<string, unknown>>} */
 const MANIFESTS = {
   "aep-base-node": {
     manifest_version: "1",
@@ -469,7 +485,6 @@ const MANIFESTS = {
       ["user needs SQL database", "evidence persistence", "Postgres mentioned"],
       ["SQLite/local-only sufficient", "air-gapped with no database"],
       ["aep-base-node"],
-      "Enable connector-postgres and add connector node with storage_backend postgres",
     ),
     implementation: { module: "AEP-Base-Node/AEP-Docks/universal-connect/lib/postgres-connector.mjs" },
   },
@@ -834,6 +849,7 @@ const COMPLIANCE = [
 ];
 
 for (const [id, name, gap_ref] of COMPLIANCE) {
+  if (id === undefined || name === undefined || gap_ref === undefined) continue;
   MANIFESTS[id] = {
     manifest_version: "1",
     id,
@@ -861,22 +877,71 @@ for (const [id, name, gap_ref] of COMPLIANCE) {
   };
 }
 
-const catalog = JSON.parse(
-  readFileSync(join(REPO_ROOT, "AEP-Base-Node/AEP-Registry/catalog.json"), "utf8"),
-);
-for (const entry of catalog.components ?? []) {
-  if (MANIFESTS[entry.id]) continue;
-  const existing = join(OUT_DIR, `${entry.id}.json`);
-  if (existsSync(existing)) {
-    MANIFESTS[entry.id] = JSON.parse(readFileSync(existing, "utf8"));
-    console.log(`preserved existing manifest for ${entry.id}`);
+/** The seed table, for tests and for a reader of the script. */
+export const SEED_MANIFESTS = MANIFESTS;
+
+/**
+ * @typedef {object} MaterializePlan
+ * @property {{ id: string, file: string, manifest: Record<string, unknown> }[]} write
+ * @property {string[]} kept ids whose committed manifest stays as it is
+ * @property {string[]} unseeded ids with a catalog row, no manifest file and no seed
+ * @property {string[]} uncataloged seed ids that have no catalog row and are not written
+ */
+
+/**
+ * Decide which manifests to write for a repository.
+ * @param {string} repoRoot
+ * @returns {MaterializePlan}
+ */
+export function planMaterialize(repoRoot) {
+  const outDir = join(repoRoot, "AEP-Base-Node/AEP-Registry/components");
+  /** @type {unknown} */
+  const catalog = JSON.parse(readFileSync(join(repoRoot, "AEP-Base-Node/AEP-Registry/catalog.json"), "utf8"));
+  const rows = catalog !== null && typeof catalog === "object" && Array.isArray(/** @type {{ components?: unknown }} */ (catalog).components)
+    ? /** @type {unknown[]} */ (/** @type {{ components: unknown[] }} */ (catalog).components)
+    : [];
+  /** @type {Set<string>} */
+  const ids = new Set();
+  for (const row of rows) {
+    const id = row !== null && typeof row === "object" ? /** @type {{ id?: unknown }} */ (row).id : undefined;
+    // An id becomes a file name, so only a plain name is accepted.
+    if (typeof id === "string" && /^[a-z0-9][a-z0-9._-]*$/.test(id)) ids.add(id);
   }
+
+  /** @type {MaterializePlan} */
+  const plan = { write: [], kept: [], unseeded: [], uncataloged: [] };
+  for (const id of [...ids].sort()) {
+    const file = join(outDir, `${id}.json`);
+    if (existsSync(file)) {
+      plan.kept.push(id);
+      continue;
+    }
+    const manifest = MANIFESTS[id];
+    if (manifest) plan.write.push({ id, file, manifest });
+    else plan.unseeded.push(id);
+  }
+  plan.uncataloged = Object.keys(MANIFESTS).filter((id) => !ids.has(id)).sort();
+  return plan;
 }
 
-mkdirSync(OUT_DIR, { recursive: true });
-for (const [file, manifest] of Object.entries(MANIFESTS)) {
-  const out = join(OUT_DIR, `${file}.json`);
-  writeFileSync(out, `${JSON.stringify(manifest, null, 2)}\n`);
-  console.log(`wrote ${file}.json`);
+/**
+ * @param {string} repoRoot
+ * @param {(line: string) => void} [log]
+ */
+export function materialize(repoRoot, log = console.log) {
+  const plan = planMaterialize(repoRoot);
+  if (plan.write.length > 0) mkdirSync(join(repoRoot, "AEP-Base-Node/AEP-Registry/components"), { recursive: true });
+  for (const { id, file, manifest } of plan.write) {
+    writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`, { flag: "wx" });
+    log(`wrote ${id}.json`);
+  }
+  for (const id of plan.unseeded) log(`no manifest and no seed for ${id}`);
+  for (const id of plan.uncataloged) log(`seed ${id} has no catalog row and is not written`);
+  log(`Materialized ${plan.write.length} manifests, kept ${plan.kept.length} committed manifests.`);
+  return plan;
 }
-console.log(`Materialized ${Object.keys(MANIFESTS).length} manifests.`);
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const plan = materialize(REPO_ROOT);
+  if (plan.unseeded.length > 0) process.exitCode = 1;
+}

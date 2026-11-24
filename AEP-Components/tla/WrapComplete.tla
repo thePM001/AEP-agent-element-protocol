@@ -1,56 +1,42 @@
 ---- MODULE WrapComplete ----
-EXTENDS Integers
-VARIABLES scene, actionPaths, writtenPolicy, dockChannels, wrap
+\* A wrap succeeds only when scene, action paths, written policy and dock
+\* channels are all present. Every wrap request reaches a verdict.
+VARIABLES phase, present, wrap
+vars == <<phase, present, wrap>>
+Parts == {"scene", "actionPaths", "writtenPolicy", "dockChannels"}
 TypeOK ==
-  /\ scene \in BOOLEAN
-  /\ actionPaths \in BOOLEAN
-  /\ writtenPolicy \in BOOLEAN
-  /\ dockChannels \in BOOLEAN
-  /\ wrap \in BOOLEAN
-AllPresent ==
-  /\ scene
-  /\ actionPaths
-  /\ writtenPolicy
-  /\ dockChannels
-WrapOK == wrap <=> AllPresent
+  /\ phase \in {"idle", "checking", "decided"}
+  /\ present \in SUBSET Parts
+  /\ wrap \in {"none", "ok", "refused"}
 Init ==
-  /\ scene = TRUE
-  /\ actionPaths = TRUE
-  /\ writtenPolicy = TRUE
-  /\ dockChannels = TRUE
-  /\ wrap = TRUE
-DropScene ==
-  /\ scene = TRUE
-  /\ scene' = FALSE
-  /\ wrap' = FALSE
-  /\ UNCHANGED <<actionPaths, writtenPolicy, dockChannels>>
-DropActionPaths ==
-  /\ actionPaths = TRUE
-  /\ actionPaths' = FALSE
-  /\ wrap' = FALSE
-  /\ UNCHANGED <<scene, writtenPolicy, dockChannels>>
-DropWrittenPolicy ==
-  /\ writtenPolicy = TRUE
-  /\ writtenPolicy' = FALSE
-  /\ wrap' = FALSE
-  /\ UNCHANGED <<scene, actionPaths, dockChannels>>
-DropDockChannels ==
-  /\ dockChannels = TRUE
-  /\ dockChannels' = FALSE
-  /\ wrap' = FALSE
-  /\ UNCHANGED <<scene, actionPaths, writtenPolicy>>
-Keep == UNCHANGED <<scene, actionPaths, writtenPolicy, dockChannels, wrap>>
+  /\ phase = "idle"
+  /\ present = {}
+  /\ wrap = "none"
+\* A wrap request names some of the parts. The model covers every subset.
+Request(p) ==
+  /\ phase = "idle"
+  /\ phase' = "checking"
+  /\ present' = p
+  /\ wrap' = "none"
+Decide ==
+  /\ phase = "checking"
+  /\ phase' = "decided"
+  /\ wrap' = IF present = Parts THEN "ok" ELSE "refused"
+  /\ UNCHANGED present
+Release ==
+  /\ phase = "decided"
+  /\ phase' = "idle"
+  /\ wrap' = "none"
+  /\ UNCHANGED present
 Next ==
-  \/ DropScene
-  \/ DropActionPaths
-  \/ DropWrittenPolicy
-  \/ DropDockChannels
-  \/ Keep
-Spec == Init /\ [][Next]_<<scene, actionPaths, writtenPolicy, dockChannels, wrap>>
-DropKeepWrap ==
-  /\ scene = TRUE
-  /\ scene' = FALSE
-  /\ wrap' = TRUE
-  /\ UNCHANGED <<actionPaths, writtenPolicy, dockChannels>>
-InvHolds == WrapOK
+  \/ \E p \in SUBSET Parts: Request(p)
+  \/ Decide
+  \/ Release
+Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
+\* Safety: a wrap is complete exactly when every part is present.
+WrapNeedsAllParts == wrap = "ok" => present = Parts
+MissingPartRefuses == wrap = "refused" => present # Parts
+\* Liveness under weak fairness: every request is decided.
+RequestDecided == (phase = "checking") ~> (wrap # "none")
+WrapReturns == []<>(phase = "idle")
 ====

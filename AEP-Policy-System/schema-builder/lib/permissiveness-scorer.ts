@@ -100,8 +100,10 @@ export class PermissivenessScorer {
       return (prop.enum as unknown[]).length;
     }
 
-    // Unconstrained: large penalty
-    return 1e6;
+    // Unconstrained, such as an object or array with no constraint: it accepts
+    // more than any bounded string the scorer models (62 ^ 10, about 60 bits),
+    // so it counts as 128 bits and ranks as the weakest constraint.
+    return Math.pow(2, 128);
   }
 
   private estimatePatternCardinality(pattern: string): number {

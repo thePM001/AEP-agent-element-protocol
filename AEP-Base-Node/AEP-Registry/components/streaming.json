@@ -6,7 +6,7 @@
   "path": "AEP-Components/streaming/",
   "description": "Stream validator and middleware for governed output.",
   "requires": [
-    "scanners",
+    "gap-runtime-scanners",
     "policy-engine"
   ],
   "capabilities": [

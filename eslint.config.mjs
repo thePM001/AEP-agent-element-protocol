@@ -1,3 +1,4 @@
+// @ts-check
 import js from "@eslint/js";
 import globals from "globals";
 import tseslint from "typescript-eslint";
@@ -8,6 +9,20 @@ import tseslint from "typescript-eslint";
 const GATED_FETCH_MESSAGE =
   "The lattice channel client calls no fetch of its own. Outbound HTTP is a dock request of latticeGatedFetch.";
 const FETCH_HOLDERS = ["globalThis", "global", "self", "window"];
+
+/**
+ * The script files outside AEP-Components. They lint with type information
+ * from tsconfig.json, which typechecks every one of them. The standing test
+ * AEP-User-Experience/harness/tests/script-coverage.test.ts fails when a
+ * script file outside AEP-Components is missing from these globs or from the
+ * typecheck.
+ */
+export const SCRIPT_FILES = [
+  "*.{ts,mts,cts,mjs,js,cjs}",
+  "AEP-Policy-System/**/*.{ts,mts,cts,mjs,js,cjs}",
+  "AEP-Base-Node/**/*.{ts,mts,cts,mjs,js,cjs}",
+  "AEP-User-Experience/**/*.{ts,mts,cts,mjs,js,cjs}",
+];
 
 export default tseslint.config(
   { ignores: ["**/node_modules/**", "**/target/**", "**/dist/**"] },
@@ -61,6 +76,20 @@ export default tseslint.config(
         { selector: "Literal[value='fetch']", message: GATED_FETCH_MESSAGE },
         { selector: "TemplateLiteral[expressions.length=0][quasis.0.value.cooked='fetch']", message: GATED_FETCH_MESSAGE },
       ],
+    },
+  },
+  {
+    files: SCRIPT_FILES,
+    extends: [js.configs.recommended, ...tseslint.configs.recommendedTypeChecked],
+    languageOptions: {
+      globals: globals.node,
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" }],
     },
   },
 );

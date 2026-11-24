@@ -239,8 +239,17 @@ export class MLEEstimator {
     existing: MLEEstimation,
     newRecord: Record<string, unknown>
   ): MLEEstimation {
+    // Every field is copied with its arrays and maps, so the update never
+    // changes the estimation it was given.
     const updated = { ...existing, totalRecords: existing.totalRecords + 1 };
-    const fieldMap = new Map(updated.fields.map(f => [f.fieldName, { ...f }]));
+    const fieldMap = new Map(
+      updated.fields.map((f): [string, MLEFieldEstimate] => {
+        const copy: MLEFieldEstimate = { ...f };
+        if (f.mleEnum) copy.mleEnum = [...f.mleEnum];
+        if (f.mleDistribution) copy.mleDistribution = { ...f.mleDistribution };
+        return [f.fieldName, copy];
+      }),
+    );
 
     for (const [key, value] of Object.entries(newRecord)) {
       const field = fieldMap.get(key);
@@ -253,22 +262,35 @@ export class MLEEstimator {
       }
 
       if (field.fieldType === "numeric" && typeof value === "number") {
-        // H-40: n is prior sampleCount + 1 (no stale denominator)
-        const n = field.sampleCount + 1;
+        // Welford step. The stored variance is the sample variance, so the
+        // running sum of squares is variance * (n - 1).
+        const prior = field.sampleCount;
+        const n = prior + 1;
         const oldMean = field.mleMean ?? 0;
         const newMean = oldMean + (value - oldMean) / n;
-        const oldVariance = field.mleVariance ?? 0;
-        const newM2 = oldVariance * field.sampleCount + (value - oldMean) * (value - newMean);
+        const oldM2 = (field.mleVariance ?? 0) * Math.max(0, prior - 1);
+        const newM2 = oldM2 + (value - oldMean) * (value - newMean);
         field.sampleCount = n;
         field.mleMean = newMean;
         field.mleVariance = n > 1 ? newM2 / (n - 1) : 0;
-        if (field.mleMin !== undefined) field.mleMin = Math.min(field.mleMin, value);
-        if (field.mleMax !== undefined) field.mleMax = Math.max(field.mleMax, value);
-      } else if (field.fieldType === "enum" && typeof value === "string") {
-        field.sampleCount++;
-        if (field.mleDistribution) {
-          field.mleDistribution[value] = (field.mleDistribution[value] ?? 0) + 1;
+        field.mleMin = field.mleMin === undefined ? value : Math.min(field.mleMin, value);
+        field.mleMax = field.mleMax === undefined ? value : Math.max(field.mleMax, value);
+        if (n >= 2) {
+          const margin = this.zScore() * Math.sqrt(field.mleVariance) / Math.sqrt(n);
+          field.confidenceIntervalLower = newMean - margin;
+          field.confidenceIntervalUpper = newMean + margin;
         }
+      } else if (field.fieldType === "enum" && typeof value === "string") {
+        // The distribution holds shares of the sample, so every share is
+        // rescaled to the new sample size.
+        const prior = field.sampleCount;
+        const n = prior + 1;
+        const dist = field.mleDistribution ?? {};
+        const next: Record<string, number> = {};
+        for (const [k, share] of Object.entries(dist)) next[k] = (share * prior) / n;
+        next[value] = (next[value] ?? 0) + 1 / n;
+        field.mleDistribution = next;
+        field.sampleCount = n;
         if (field.mleEnum && !field.mleEnum.includes(value)) {
           field.mleEnum.push(value);
         }
@@ -382,19 +404,9 @@ export class MLEEstimator {
 
       // Confidence intervals (normal approximation)
       if (acc.count >= 2) {
-        const stddev = Math.sqrt(estimate.mleVariance!);
-        // M-27: full z-table for common confidence levels
-        const cl = this.config.confidenceLevel ?? 0.95;
-        const z =
-          cl >= 0.999 ? 3.291 :
-          cl >= 0.99 ? 2.576 :
-          cl >= 0.98 ? 2.326 :
-          cl >= 0.95 ? 1.96 :
-          cl >= 0.90 ? 1.645 :
-          1.96;
-        const margin = z * stddev / Math.sqrt(acc.count);
-        estimate.confidenceIntervalLower = estimate.mleMean! - margin;
-        estimate.confidenceIntervalUpper = estimate.mleMean! + margin;
+        const margin = this.zScore() * Math.sqrt(estimate.mleVariance) / Math.sqrt(acc.count);
+        estimate.confidenceIntervalLower = acc.mean - margin;
+        estimate.confidenceIntervalUpper = acc.mean + margin;
       }
     }
 
@@ -413,6 +425,17 @@ export class MLEEstimator {
     }
 
     return estimate;
+  }
+
+  /** Two sided z value of the configured confidence level. */
+  private zScore(): number {
+    const cl = this.config.confidenceLevel;
+    if (cl >= 0.999) return 3.291;
+    if (cl >= 0.99) return 2.576;
+    if (cl >= 0.98) return 2.326;
+    if (cl >= 0.95) return 1.96;
+    if (cl >= 0.9) return 1.645;
+    return 1.96;
   }
 
   private detectFieldType(acc: FieldAccumulator): MLEFieldEstimate["fieldType"] {
@@ -436,13 +459,16 @@ export class MLEEstimator {
     const nonEmpty = strings.filter((s) => s.length > 0);
     if (nonEmpty.length === 0) return "^$";
 
+    // An observed empty value keeps the lower length bound at zero, so the
+    // pattern accepts every value it learned from.
+    const sawEmpty = nonEmpty.length < strings.length;
     const lens = nonEmpty.map(s => s.length);
-    const minLen = Math.min(...lens);
+    const minLen = sawEmpty ? 0 : Math.min(...lens);
     const maxLen = Math.max(...lens);
     strings = nonEmpty;
 
     // Check for common prefix first (most specific pattern)
-    let prefix = strings[0];
+    let prefix = strings[0] ?? "";
     for (const s of strings) {
       while (!s.startsWith(prefix)) {
         prefix = prefix.slice(0, -1);
@@ -452,7 +478,9 @@ export class MLEEstimator {
     if (prefix.length > 0) {
       const suffixLen = maxLen - prefix.length;
       const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      return `^${escapedPrefix}.{0,${suffixLen}}$`;
+      return sawEmpty
+        ? `^(?:${escapedPrefix}.{0,${suffixLen}})?$`
+        : `^${escapedPrefix}.{0,${suffixLen}}$`;
     }
 
     // Check if all digits
@@ -475,7 +503,9 @@ export class MLEEstimator {
     if (hasUpper) charClass += "A-Z";
     if (hasLower) charClass += "a-z";
     if (hasDigit) charClass += "0-9";
-    if (hasSpecial) charClass += "\\W";
+    // The non word class leaves out the underscore, which the word classes
+    // above do not hold either, so it is added on its own.
+    if (hasSpecial) charClass += "\\W_";
 
     return `^[${charClass}]{${minLen},${maxLen}}$`;
   }

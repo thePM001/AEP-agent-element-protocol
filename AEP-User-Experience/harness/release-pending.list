@@ -8,10 +8,6 @@ AEP-Components/agentmesh/crate/src/lib.rs	1	the node scan law refuses this file 
 AEP-Components/conformance/lib/writing-gap-lint.mjs	1	the node scan law refuses a new landing of this file because it spawns a process
 AEP-Components/envelope/lib/admit.mjs	1	the node scan law refuses a new landing of this file because it spawns a process
 AEP-Components/lattice-channels/lib/lattice-transport.mjs	1	the node scan law refuses a new landing of this file because it spawns a process
-AEP-User-Experience/aep-base-node-preflight.mjs	2	the node scan law refuses a new landing of this file because it spawns a process
-AEP-User-Experience/aep-validate.js	1	the node scan law refuses a new landing of this file because it spawns a process
-AEP-User-Experience/harness/harness/aep-safety-guard.js	8	the node scan law refuses a new landing of this file because it spawns a process
 AEP-User-Experience/harness/protocols/AEP-2.6-Anti-Stub-Protocol.md	5	the node scan law refuses this file for banned words
-aep-check.mjs	2	the node scan law refuses a new landing of this file because it spawns a process
 AEP-Policy-System/public-plain-english.gap	1	the node scan law refuses this file because the policy names a banned word
 AEP-Policy-System/reference/eu-ai-act.gap	1	the node scan law refuses this file because it holds a banned key

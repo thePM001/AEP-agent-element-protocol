@@ -304,7 +304,7 @@ flowchart LR
 | Subject on the page | Fields of the language |
 | --- | --- |
 | Statistical Trigger (LRT) | `generation_constraints.lrt` with its switch, the significance level and the smallest sample per class |
-| Weight Estimation (MLE) | The top level block for weight estimation with its switch, the smallest sample, the decay window and the floor |
+| Weight Estimation (MLE) | The top level block for weight estimation with its switch, the smallest sample, `decay_window` and the floor |
 | Latent Governance | `metadata.latent_governance` with its switch, the rejection threshold, the smallest number of observations and `auto_apply` |
 | Limits of the process | `max_variants`, `min_quality_threshold`, `require_approval`, `max_generation_depth`, `pruning` and `promotion_threshold` |
 
@@ -423,11 +423,11 @@ flowchart LR
   TESTS --> REL
 ```
 
-**What ships:** The proofs are published in the research paper at [https://github.com/thePM001/GAP-research-paper-002](https://github.com/thePM001/GAP-research-paper-002) and not in this tree. The tree carries the executable side: five TLA+ models of the kernel rules, among them the conjunction of Admit and the order of seal, freeze, wait, collect and Apply, together with the tests of the walls. A stored result of an exhaustive model check is planned, as the README of component 18 states.
+**What ships:** The proofs are published in the research paper at [https://github.com/thePM001/GAP-research-paper-002](https://github.com/thePM001/GAP-research-paper-002) and not in this tree. The tree carries the executable side: five TLA+ models of the kernel rules, among them the conjunction of Admit and the order of seal, freeze, wait, collect and Apply, together with the tests of the walls. The model check runs TLC with the deadlock check on and liveness under weak fairness, as the README of component 18 states.
 
 **Where it lives:** `AEP-Components/tla/` for the models and their checker and `AEP-Components/conformance/` for the conformance battery.
 
-**Run and test:** `cargo test -p aep-tla-verify` checks the shape of every model. `AEP-Components/tla/README.md` names the profiles that also run the model checker.
+**Run and test:** `cargo test -p aep-tla-verify` checks the shape and the configuration walls of every model. `AEP-Components/tla/README.md` names the profiles that also run the model checker.
 
 ## Six-Rung Ladder
 

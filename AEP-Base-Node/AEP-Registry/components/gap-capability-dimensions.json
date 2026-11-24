@@ -6,7 +6,7 @@
   "path": "AEP-Components/admit/crate",
   "description": "Agent permission is the GAP dimension Conjunction. The dimension compiles in the admit permission wall.",
   "requires": [
-    "aep-admit"
+    "admit"
   ],
   "capabilities": [
     "admit:agent-permission",

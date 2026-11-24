@@ -822,6 +822,120 @@ fn age_bounds_the_wall_and_the_sweep() {
     std::env::remove_var("AEP_EDE_TEST_NOW");
 }
 
+/// The entries of the ledger text: the header and one block of lines per entry.
+fn ledger_blocks(text: &str) -> (String, Vec<String>) {
+    let mut header = String::new();
+    let mut blocks: Vec<String> = Vec::new();
+    for line in text.lines() {
+        if line.starts_with("  - seq: ") {
+            blocks.push(String::new());
+        }
+        match blocks.last_mut() {
+            Some(b) => {
+                b.push_str(line);
+                b.push('\n');
+            }
+            None => {
+                header.push_str(line);
+                header.push('\n');
+            }
+        }
+    }
+    (header, blocks)
+}
+
+/// The same entry without its hash and seal lines.
+fn unsealed(block: &str) -> String {
+    block
+        .lines()
+        .filter(|l| !l.starts_with("    hash: ") && !l.starts_with("    seal: "))
+        .map(|l| format!("{l}\n"))
+        .collect()
+}
+
+#[test]
+fn the_ledger_refuses_every_edit_cut_inside_reorder_and_unsealed_entry() {
+    let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let t = setup("ledger-tamper");
+    let d = seeded();
+    fs::write(tree(&d).join("x.rs"), "pub fn x() {}\n").unwrap();
+    assert!(aep_ede::scan(&d).ok);
+    let _second = seeded();
+    let op = aep_ede::operator::load();
+    let path = t.base.join("records/ledger/ledger.rec");
+    let good = t.ledger();
+    let (header, blocks) = ledger_blocks(&good);
+    assert!(blocks.len() >= 3, "{good}");
+    assert_eq!(
+        aep_ede::store::verify_ledger(&op),
+        Ok(blocks.len() as u64),
+        "{good}"
+    );
+    let agent_line = blocks[1]
+        .lines()
+        .find(|l| l.starts_with("    agent: "))
+        .unwrap()
+        .to_string();
+    let seal_of = |b: &str| {
+        b.lines()
+            .find(|l| l.starts_with("    seal: "))
+            .unwrap()
+            .to_string()
+    };
+    let join = |parts: &[&str]| format!("{header}{}", parts.concat());
+    let hostile: Vec<(&str, String)> = vec![
+        (
+            "an edited field",
+            good.replacen(&agent_line, "    agent: another-agent", 1),
+        ),
+        (
+            "a seal copied from another entry",
+            good.replacen(&seal_of(&blocks[1]), &seal_of(&blocks[0]), 1),
+        ),
+        (
+            "a removed entry inside the chain",
+            join(&[&blocks[0], &blocks[2]]),
+        ),
+        (
+            "two entries in swapped order",
+            join(&[&blocks[1], &blocks[0], &blocks[2]]),
+        ),
+        (
+            "an unsealed entry between two sealed ones",
+            join(&[&blocks[0], &unsealed(&blocks[1]), &blocks[1], &blocks[2]]),
+        ),
+        (
+            "an unsealed entry after the last one",
+            join(&[&blocks[0], &blocks[1], &blocks[2], &unsealed(&blocks[1])]),
+        ),
+        (
+            "a stray line after the last entry",
+            format!("{good}note: nothing to see\n"),
+        ),
+        (
+            "a stray line inside an entry",
+            good.replacen(&agent_line, &format!("{agent_line}\nextra line"), 1),
+        ),
+        (
+            "an entry whose seal line is gone",
+            good.replacen(&format!("{}\n", seal_of(&blocks[2])), "", 1),
+        ),
+        (
+            "a changed header",
+            good.replacen("json: prohibited", "json: allowed", 1),
+        ),
+    ];
+    for (what, text) in hostile {
+        fs::write(&path, &text).unwrap();
+        assert!(
+            aep_ede::store::verify_ledger(&op).is_err(),
+            "{what} passed the ledger check:\n{text}"
+        );
+    }
+    fs::write(&path, &good).unwrap();
+    assert_eq!(aep_ede::store::verify_ledger(&op), Ok(blocks.len() as u64));
+}
+
 #[test]
 fn the_variables_of_the_old_aep_ede_change_no_verdict() {
     let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());

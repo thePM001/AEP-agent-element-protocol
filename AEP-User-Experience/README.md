@@ -9,10 +9,12 @@ Operator-facing tooling: harness, agent skill, validation shortcuts and the wrap
 Path: `AEP-User-Experience/harness/`
 
 ```bash
-cd AEP-User-Experience/harness
 npm run check
-node ../aep-base-node-preflight.mjs
+node AEP-User-Experience/aep-base-node-preflight.mjs
+node AEP-User-Experience/harness/harness/aep-validate.js --src=./src --config=.
 ```
+
+The harness scripts are ES modules. Their tests sit in `AEP-User-Experience/harness/tests/` and run with `npm test`. The test `script-coverage.test.ts` fails when a script file outside `AEP-Components` is missing from the typecheck or from the type aware lint.
 
 Slash commands: `.claude/commands/aep-preflight.md`, `aep-validate.md`, `aep-register.md`, `aep-base-node.md`
 
@@ -48,7 +50,7 @@ Retained at repo root for reference only.
 | `harness/harness/aep-validate.js` | 07 dynAEP | Validation of the element registry, the scene and the theme |
 | `harness/harness/aep-temporal-validate.js` | 07 dynAEP | Validation of timestamps |
 | `harness/harness/aep-safety-guard.js` | 04 Admit Gate | Immutable safety rules |
-| `harness/harness/aep-economics.js` | 14 Economics | Cost wiring example |
+| `harness/harness/aep-economics.ts` | 14 Economics | Cost wiring example |
 | [`harness/TEMPORAL-AUTHORITY.md`](harness/TEMPORAL-AUTHORITY.md) | 07 dynAEP and 10 Base Node Pulse | Who owns which clock |
 | `aep-base-node-preflight.mjs` | 01 AEP Base Node | Health, docks and registry before a session |
 

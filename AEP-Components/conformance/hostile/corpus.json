@@ -1,0 +1,774 @@
+{
+ "suite": "aep-hostile-agent-corpus",
+ "version": "2.9.0",
+ "description": "Each case plays one attack of an agent against the stack and names the test that proves the attack fails. Every finding of the AEP 2.9 full code review sits in exactly one place: a case, the open list or the elsewhere list.",
+ "required_classes": [
+  "draft-environment",
+  "ledger-tampering"
+ ],
+ "findings": [
+  "KERNEL 01",
+  "KERNEL 02",
+  "KERNEL 03",
+  "KERNEL 04",
+  "KERNEL 05",
+  "KERNEL 06",
+  "KERNEL 07",
+  "ADMIT 01",
+  "ADMIT 02",
+  "ADMIT 03",
+  "ADMIT 04",
+  "ADMIT 05",
+  "ADMIT 06",
+  "ADMIT 07",
+  "ADMIT 08",
+  "ADMIT 09",
+  "ADMIT 10",
+  "ADMIT 11",
+  "CAWA 01",
+  "CAWA 02",
+  "CAWA 03",
+  "CAWA 04",
+  "CAWA 05",
+  "CAWA 06",
+  "CAWA 07",
+  "CAWA 08",
+  "CAWA 09",
+  "CAWA 10",
+  "CAWA 11",
+  "CAWA 12",
+  "CAWA 13",
+  "CAWA 14",
+  "CAWA 15",
+  "CAWA 16",
+  "CAWA 17",
+  "CAWA 18",
+  "CAWA 19",
+  "CAWA 20",
+  "CAWB 01",
+  "CAWB 02",
+  "CAWB 03",
+  "CAWB 04",
+  "CAWB 05",
+  "CAWB 06",
+  "CAWB 07",
+  "CAWB 08",
+  "CAWB 09",
+  "CAWB 10",
+  "CAWB 11",
+  "CAWB 12",
+  "CRYPTO 01",
+  "CRYPTO 02",
+  "CRYPTO 03",
+  "CRYPTO 04",
+  "CRYPTO 05",
+  "CRYPTO 06",
+  "CRYPTO 07",
+  "CRYPTO 08",
+  "CRYPTO 09",
+  "UCB 01",
+  "UCB 02",
+  "UCB 03",
+  "UCB 04",
+  "UCB 05",
+  "UCB 06",
+  "UCB 07",
+  "VERIF 01",
+  "VERIF 02",
+  "VERIF 03",
+  "VERIF 04",
+  "VERIF 05",
+  "VERIF 06",
+  "TSB 01",
+  "TSB 02",
+  "TSB 03",
+  "TSB 04",
+  "TSB 05",
+  "TSB 06",
+  "TSB 07",
+  "TSB 08",
+  "TSB 09",
+  "TSB 10",
+  "TSB 11",
+  "TSB 12",
+  "TSB 13",
+  "TSA 01",
+  "TSA 02",
+  "TSA 03",
+  "TSA 04",
+  "TSA 05",
+  "TSC 01",
+  "TSC 02",
+  "TSC 03",
+  "TSC 04",
+  "TSC 05",
+  "TSC 06",
+  "TSC 07",
+  "TSC 08",
+  "TSC 09",
+  "TSC 10",
+  "TSC 11",
+  "TSC 12",
+  "TSC 13",
+  "TSC 14",
+  "LEAD 01",
+  "LEAD 02",
+  "LEAD 03",
+  "LEAD 04",
+  "LEAD 05",
+  "LEAD 06",
+  "LEAD 07",
+  "HOSTILE 01",
+  "HOSTILE 02",
+  "HOSTILE 03",
+  "READ 01",
+  "READ 02",
+  "READ 03",
+  "READ 04",
+  "READ 05",
+  "READ 06",
+  "READ 07",
+  "READ 08",
+  "READ 09",
+  "READ 10",
+  "READ 11",
+  "READ 12",
+  "READ 13",
+  "READ 14",
+  "READ 15",
+  "READ 16",
+  "READ 17",
+  "READ 18",
+  "READ 19",
+  "READ 20",
+  "READ 21",
+  "READ 22",
+  "READ 23"
+ ],
+ "cases": [
+  {
+   "id": "HA-01",
+   "findings": [
+    "KERNEL 01",
+    "ADMIT 01"
+   ],
+   "class": "identity-binding",
+   "attack": "Agent B seals a frame whose event names agent A, so the walls would judge A and charge the budget of A.",
+   "expect": "The binding wall denies the frame and no budget of either agent changes.",
+   "package": "aep-base-node",
+   "target": "--lib",
+   "test": "docking::tests::frame_of_agent_b_that_names_agent_a_is_denied_by_the_binding_wall",
+   "file": "AEP-Base-Node/AEP-Crate/src/docking/tests.rs"
+  },
+  {
+   "id": "HA-02",
+   "findings": [
+    "KERNEL 02",
+    "ADMIT 04"
+   ],
+   "class": "apply-order",
+   "attack": "An agent sends a frame that Admit allows and the hub permission denies, hoping Apply already changed state.",
+   "expect": "The live entry stays unchanged and the ledger holds one deny row.",
+   "package": "aep-base-node",
+   "target": "--lib",
+   "test": "docking::tests::hub_deny_leaves_the_live_entry_unchanged_with_one_deny_row",
+   "file": "AEP-Base-Node/AEP-Crate/src/docking/tests.rs"
+  },
+  {
+   "id": "HA-03",
+   "findings": [
+    "KERNEL 05",
+    "ADMIT 03"
+   ],
+   "class": "clock",
+   "attack": "An agent stamps a large frame thirty seconds ahead to become the freeze clock and hold the shared pulse queue.",
+   "expect": "The kernel refuses the frame at enqueue against its own clock before it takes queue room.",
+   "package": "aep-base-node",
+   "target": "--lib",
+   "test": "docking::tests::frame_stamped_thirty_seconds_ahead_is_refused_at_enqueue",
+   "file": "AEP-Base-Node/AEP-Crate/src/docking/tests.rs"
+  },
+  {
+   "id": "HA-04",
+   "findings": [
+    "KERNEL 03"
+   ],
+   "class": "outbound-request",
+   "attack": "An agent puts a url field into an admitted write so the kernel sends a request for it.",
+   "expect": "No request leaves the kernel.",
+   "package": "aep-base-node",
+   "target": "--lib",
+   "test": "docking::tests::admitted_write_with_a_url_field_sends_no_request",
+   "file": "AEP-Base-Node/AEP-Crate/src/docking/tests.rs"
+  },
+  {
+   "id": "HA-05",
+   "findings": [
+    "KERNEL 04"
+   ],
+   "class": "stall",
+   "attack": "An agent sends two frames whose outbound requests hang, to stall the pulse and every collect.",
+   "expect": "A collect is answered within 500 ms while both slow requests run.",
+   "package": "aep-base-node",
+   "target": "--lib",
+   "test": "docking::tests::collect_answers_within_500_ms_while_two_slow_fetches_run",
+   "file": "AEP-Base-Node/AEP-Crate/src/docking/tests.rs"
+  },
+  {
+   "id": "HA-06",
+   "findings": [
+    "ADMIT 02"
+   ],
+   "class": "stall",
+   "attack": "An agent queries a target id that starts with a multi byte character to panic under the live entry lock.",
+   "expect": "The query is answered and the kernel keeps serving.",
+   "package": "aep-base-node",
+   "target": "--lib",
+   "test": "docking::tests::query_with_a_multi_byte_target_id_is_answered_without_a_panic",
+   "file": "AEP-Base-Node/AEP-Crate/src/docking/tests.rs"
+  },
+  {
+   "id": "HA-07",
+   "findings": [
+    "KERNEL 06"
+   ],
+   "class": "rate-limit",
+   "attack": "A peer without the key of an agent sends frames in its name to spend its rate slots.",
+   "expect": "A frame with a bad signature spends no rate slot of the agent it names.",
+   "package": "aep-base-node",
+   "target": "--lib",
+   "test": "docking::tests::frame_with_a_bad_signature_spends_no_rate_slot_of_the_agent_it_names",
+   "file": "AEP-Base-Node/AEP-Crate/src/docking/tests.rs"
+  },
+  {
+   "id": "HA-08",
+   "findings": [
+    "KERNEL 07"
+   ],
+   "class": "rate-limit",
+   "attack": "An agent fills every connection slot of one dock port to lock the other ports out.",
+   "expect": "The other ports keep their slots.",
+   "package": "aep-base-node",
+   "target": "--lib",
+   "test": "docking::tests::a_full_port_leaves_slots_for_the_other_ports",
+   "file": "AEP-Base-Node/AEP-Crate/src/docking/tests.rs"
+  },
+  {
+   "id": "HA-09",
+   "findings": [],
+   "class": "rate-limit",
+   "attack": "An agent opens and ends connections in a loop so the daemon keeps every ended task.",
+   "expect": "Ended connection tasks are released.",
+   "package": "aep-base-node",
+   "target": "--lib",
+   "test": "docking::tests::ended_connection_tasks_are_released",
+   "file": "AEP-Base-Node/AEP-Crate/src/docking/tests.rs"
+  },
+  {
+   "id": "HA-10",
+   "findings": [],
+   "class": "outbound-request",
+   "attack": "An agent names private, loopback, shared and transition addresses as outbound targets.",
+   "expect": "Every address and URL vector of the shared vector file gets the verdict it states without a name lookup.",
+   "package": "aep-egress-address",
+   "target": "--lib",
+   "test": "tests::every_url_vector_has_its_verdict_without_a_lookup",
+   "file": "AEP-Components/egress-address/crate/src/lib.rs"
+  },
+  {
+   "id": "HA-11",
+   "findings": [
+    "CRYPTO 01"
+   ],
+   "class": "draft-environment",
+   "attack": "An agent writes a manifest beside its tree, edits its sealed record, copies the record of another draft and renames draft folders.",
+   "expect": "Each forged record, copied record and renamed folder is refused and no draft lands unscanned.",
+   "package": "aep-ede",
+   "target": "--test=ede",
+   "test": "hostile_records_folders_and_ids_are_denied",
+   "file": "AEP-Components/ede/crate/tests/ede.rs"
+  },
+  {
+   "id": "HA-12",
+   "findings": [
+    "CRYPTO 02",
+    "CRYPTO 04",
+    "CRYPTO 06",
+    "CRYPTO 07"
+   ],
+   "class": "draft-environment",
+   "attack": "An agent plants a git config with a filter and a monitor, swaps blob bytes under a scanned id, hides prose behind an invalid byte and commits locally in its draft.",
+   "expect": "The planted config runs nothing, the swapped blob never lands, the undecodable prose is a finding and exactly one commit lands on the fetched tip.",
+   "package": "aep-ede",
+   "target": "--test=ede",
+   "test": "planted_config_blob_swaps_bad_prose_and_local_commits_change_nothing",
+   "file": "AEP-Components/ede/crate/tests/ede.rs"
+  },
+  {
+   "id": "HA-13",
+   "findings": [
+    "CRYPTO 05"
+   ],
+   "class": "draft-environment",
+   "attack": "An agent changes its tree after the scan, hoping promote stages the tree again.",
+   "expect": "Promote lands the scanned tree object as one commit.",
+   "package": "aep-ede",
+   "target": "--test=ede",
+   "test": "git_forge_lands_the_scanned_tree_as_one_commit",
+   "file": "AEP-Components/ede/crate/tests/ede.rs"
+  },
+  {
+   "id": "HA-14",
+   "findings": [],
+   "class": "draft-environment",
+   "attack": "An agent lands a draft whose branch moved after the scan.",
+   "expect": "The draft needs a new scan and a conflict is refused.",
+   "package": "aep-ede",
+   "target": "--test=ede",
+   "test": "a_moved_branch_means_a_new_scan_and_a_conflict_is_refused",
+   "file": "AEP-Components/ede/crate/tests/ede.rs"
+  },
+  {
+   "id": "HA-15",
+   "findings": [
+    "CRYPTO 03"
+   ],
+   "class": "draft-environment",
+   "attack": "An agent calls a verb on a draft without proving its identity or as an agent whose profile does not grant the verb.",
+   "expect": "Every verb proves its agent through a signed frame and passes its profile.",
+   "package": "aep-ede",
+   "target": "--test=ede",
+   "test": "every_verb_proves_its_agent_and_passes_its_profile",
+   "file": "AEP-Components/ede/crate/tests/ede.rs"
+  },
+  {
+   "id": "HA-16",
+   "findings": [],
+   "class": "draft-environment",
+   "attack": "An agent sets every variable that once moved the state root, the profile, the forge and the quota to a hostile value.",
+   "expect": "No verdict changes.",
+   "package": "aep-ede",
+   "target": "--test=ede",
+   "test": "the_variables_of_the_old_aep_ede_change_no_verdict",
+   "file": "AEP-Components/ede/crate/tests/ede.rs"
+  },
+  {
+   "id": "HA-17",
+   "findings": [],
+   "class": "draft-environment",
+   "attack": "An agent sets the test override of the operator folder against a release build.",
+   "expect": "A release build reads no control from the environment.",
+   "package": "aep-ede",
+   "target": "--test=ede",
+   "test": "a_release_build_reads_no_control_from_the_environment",
+   "file": "AEP-Components/ede/crate/tests/ede.rs"
+  },
+  {
+   "id": "HA-18",
+   "findings": [],
+   "class": "draft-environment",
+   "attack": "An agent pushes the token of the GitHub forge toward its draft through the git environment of promote.",
+   "expect": "The push and the pull request run in process with one commit and the token never reaches a file or a git process of the draft.",
+   "package": "aep-ede",
+   "target": "--test=ede",
+   "test": "github_forge_pushes_one_commit_and_opens_a_pull_request_in_process",
+   "file": "AEP-Components/ede/crate/tests/ede.rs"
+  },
+  {
+   "id": "HA-19",
+   "findings": [
+    "HOSTILE 01"
+   ],
+   "class": "ledger-tampering",
+   "attack": "A writer of the draft ledger edits a field, copies a seal, removes or swaps entries and inserts unsealed entries or stray lines.",
+   "expect": "The ledger check refuses every change and accepts the untouched ledger.",
+   "package": "aep-ede",
+   "target": "--test=ede",
+   "test": "the_ledger_refuses_every_edit_cut_inside_reorder_and_unsealed_entry",
+   "file": "AEP-Components/ede/crate/tests/ede.rs"
+  },
+  {
+   "id": "HA-20",
+   "findings": [],
+   "class": "ledger-tampering",
+   "attack": "A writer of the Lattice Memory log changes the bytes of a record.",
+   "expect": "The store finds the change and never cuts the log at it.",
+   "package": "aep-lattice-memory",
+   "target": "--lib",
+   "test": "logstore::tests::a_changed_record_is_found_and_never_cut_off",
+   "file": "AEP-Components/lattice-memory/crate/src/logstore_tests.rs"
+  },
+  {
+   "id": "HA-21",
+   "findings": [],
+   "class": "ledger-tampering",
+   "attack": "A writer of the Lattice Memory log removes a record or moves one to another place.",
+   "expect": "The store finds the removed or moved record.",
+   "package": "aep-lattice-memory",
+   "target": "--lib",
+   "test": "logstore::tests::a_removed_or_moved_record_is_found",
+   "file": "AEP-Components/lattice-memory/crate/src/logstore_tests.rs"
+  },
+  {
+   "id": "HA-22",
+   "findings": [],
+   "class": "ledger-tampering",
+   "attack": "A writer of the Lattice Memory log cuts its tail or replaces the whole log.",
+   "expect": "The anchor kept outside the store finds the cut or replaced log.",
+   "package": "aep-lattice-memory",
+   "target": "--lib",
+   "test": "logstore::tests::an_anchor_outside_the_store_finds_a_cut_or_replaced_log",
+   "file": "AEP-Components/lattice-memory/crate/src/logstore_tests.rs"
+  },
+  {
+   "id": "HA-23",
+   "findings": [],
+   "class": "ledger-tampering",
+   "attack": "A writer of the Lattice Memory chain changes any one field of an entry.",
+   "expect": "Every field changes the hash of the entry.",
+   "package": "aep-lattice-memory-core",
+   "target": "--lib",
+   "test": "chain::tests::every_field_changes_the_hash",
+   "file": "AEP-Components/lattice-memory/core/src/chain.rs"
+  },
+  {
+   "id": "HA-24",
+   "findings": [],
+   "class": "ledger-tampering",
+   "attack": "An agent edits a signed UCM receipt to claim another result.",
+   "expect": "Verification refuses the edited receipt.",
+   "package": "aep-ucm-receipt",
+   "target": "--lib",
+   "test": "tests::tampering_is_refused",
+   "file": "AEP-Components/ucm/crates/ucm-receipt/src/lib.rs"
+  },
+  {
+   "id": "HA-25",
+   "findings": [
+    "UCB 01"
+   ],
+   "class": "gateway",
+   "attack": "The holder of the key of agent A submits frames for agent B through the UCB dock gateway.",
+   "expect": "The key of A is refused for B.",
+   "package": "aep-ucb",
+   "target": "--lib --bins",
+   "test": "http::tests::agent_key_is_refused_for_another_agent",
+   "file": "AEP-Base-Node/AEP-Docks/ucb/crate/src/http.rs"
+  },
+  {
+   "id": "HA-26",
+   "findings": [
+    "UCB 02"
+   ],
+   "class": "gateway",
+   "attack": "An agent sends an unsigned manifest that would replace its stored manifest.",
+   "expect": "The replacement is refused.",
+   "package": "aep-ucb",
+   "target": "--lib --bins",
+   "test": "manifest::tests::unsigned_replacement_manifest_is_refused",
+   "file": "AEP-Base-Node/AEP-Docks/ucb/crate/src/manifest.rs"
+  },
+  {
+   "id": "HA-27",
+   "findings": [],
+   "class": "gateway",
+   "attack": "An agent signs a manifest with a key that is not registered for it or with no signer.",
+   "expect": "The signature does not count and the manifest is refused.",
+   "package": "aep-ucb",
+   "target": "--lib --bins",
+   "test": "manifest::tests::signature_of_another_key_or_no_signer_is_refused",
+   "file": "AEP-Base-Node/AEP-Docks/ucb/crate/src/manifest.rs"
+  },
+  {
+   "id": "HA-28",
+   "findings": [
+    "UCB 03"
+   ],
+   "class": "gateway",
+   "attack": "An agent with a stored signed manifest uses the egress route.",
+   "expect": "The digest of the stored manifest matches on egress, so the route does its work.",
+   "package": "aep-ucb",
+   "target": "--lib --bins",
+   "test": "manifest::tests::stored_manifest_digest_matches_on_egress",
+   "file": "AEP-Base-Node/AEP-Docks/ucb/crate/src/manifest.rs"
+  },
+  {
+   "id": "HA-29",
+   "findings": [
+    "UCB 04"
+   ],
+   "class": "gateway",
+   "attack": "An agent uses the rollback route, which would send an empty action path that the dock always denies.",
+   "expect": "The rollback frame names its action path.",
+   "package": "aep-ucb",
+   "target": "--lib --bins",
+   "test": "bridge::tests::rollback_frame_names_its_action_path",
+   "file": "AEP-Base-Node/AEP-Docks/ucb/crate/src/bridge.rs"
+  },
+  {
+   "id": "HA-30",
+   "findings": [
+    "UCB 05"
+   ],
+   "class": "gateway",
+   "attack": "An agent sends one ingest that would pass Admit and the ledger twice.",
+   "expect": "An admitted ingest passes Admit once.",
+   "package": "aep-ucb",
+   "target": "--lib --bins",
+   "test": "bridge::tests::admitted_ingest_passes_admit_once",
+   "file": "AEP-Base-Node/AEP-Docks/ucb/crate/src/bridge.rs"
+  },
+  {
+   "id": "HA-31",
+   "findings": [
+    "UCB 06"
+   ],
+   "class": "gateway",
+   "attack": "A caller without a key floods the health route to start a child process and a dock frame per request.",
+   "expect": "Health answers from memory.",
+   "package": "aep-ucb",
+   "target": "--lib --bins",
+   "test": "http::tests::health_answers_from_memory",
+   "file": "AEP-Base-Node/AEP-Docks/ucb/crate/src/http.rs"
+  },
+  {
+   "id": "HA-32",
+   "findings": [
+    "UCB 07"
+   ],
+   "class": "gateway",
+   "attack": "An agent repeats one payload below the old replay threshold.",
+   "expect": "The replay predicate refuses the repeated payload.",
+   "package": "aep-ucb-perimeter-v1",
+   "target": "--lib",
+   "test": "tests::replay_refuses_a_repeated_payload",
+   "file": "AEP-Base-Node/AEP-Docks/ucb/perimeter-v1/src/lib.rs"
+  },
+  {
+   "id": "HA-33",
+   "findings": [
+    "CRYPTO 08"
+   ],
+   "class": "mesh-identity",
+   "attack": "A peer presents a mesh certificate long past its stated lifetime.",
+   "expect": "Issued certificates live no longer than their stated lifetime.",
+   "package": "aep-agentmesh",
+   "target": "--lib",
+   "test": "tests::issued_mtls_cert_lives_no_longer_than_its_stated_lifetime",
+   "file": "AEP-Components/agentmesh/crate/src/lib.rs"
+  },
+  {
+   "id": "HA-34",
+   "findings": [],
+   "class": "mesh-identity",
+   "attack": "A peer presents an expired client certificate to the dock.",
+   "expect": "The dock sees the presented certificate and refuses the expired one.",
+   "package": "aep-agentmesh",
+   "target": "--lib",
+   "test": "tls::tests::dock_tls_sees_the_presented_client_cert_and_refuses_an_expired_one",
+   "file": "AEP-Components/agentmesh/crate/src/tls.rs"
+  },
+  {
+   "id": "HA-35",
+   "findings": [],
+   "class": "mesh-identity",
+   "attack": "A peer connects so the ledger would name a certificate the dock minted for itself.",
+   "expect": "The ledger names the certificate the peer presented.",
+   "package": "aep-base-node",
+   "target": "--lib",
+   "test": "docking::tests::ledger_names_the_certificate_the_peer_presented",
+   "file": "AEP-Base-Node/AEP-Crate/src/docking/tests.rs"
+  },
+  {
+   "id": "HA-36",
+   "findings": [
+    "CRYPTO 09"
+   ],
+   "class": "mesh-identity",
+   "attack": "An unknown sender sends datagrams to the mesh packet plane.",
+   "expect": "A datagram from an unknown sender is dropped.",
+   "package": "aep-potomitan",
+   "target": "--lib",
+   "test": "plane::tests::datagram_from_unknown_sender_is_dropped",
+   "file": "AEP-Base-Node/AEP-Potomitan/crate/src/plane.rs"
+  },
+  {
+   "id": "HA-37",
+   "findings": [],
+   "class": "mesh-identity",
+   "attack": "A peer file lists a mesh peer so health would report the mesh as reachable.",
+   "expect": "Health reports the mesh only from a bound and authenticated plane.",
+   "package": "aep-base-node",
+   "target": "--lib",
+   "test": "tests::health_reports_the_mesh_only_from_a_bound_authenticated_plane",
+   "file": "AEP-Base-Node/AEP-Crate/src/lib.rs"
+  }
+ ],
+ "open": [
+  {
+   "area": "Admit policy walls",
+   "findings": [
+    "ADMIT 05",
+    "ADMIT 06",
+    "ADMIT 07",
+    "ADMIT 08",
+    "ADMIT 09",
+    "ADMIT 10",
+    "ADMIT 11"
+   ],
+   "reason": "The remediation of these walls is open. Its gate adds one red team case per finding to the multi step corpus of CC-35 and a case here."
+  },
+  {
+   "area": "UCM limits and receipts",
+   "findings": [
+    "VERIF 01",
+    "VERIF 02",
+    "VERIF 03",
+    "VERIF 04",
+    "VERIF 05",
+    "VERIF 06"
+   ],
+   "reason": "The remediation of the UCM limits and receipts is open. Its gate adds the release build programs, the self signed receipt and the depth tests here."
+  },
+  {
+   "area": "Ledgers, proofs and covenants",
+   "findings": [
+    "TSB 01",
+    "TSB 02",
+    "TSB 03",
+    "TSB 04",
+    "TSB 05",
+    "TSB 06",
+    "TSB 07",
+    "TSB 08",
+    "TSB 09",
+    "TSB 10",
+    "TSB 11",
+    "TSB 12",
+    "TSB 13",
+    "HOSTILE 02"
+   ],
+   "reason": "The evidence ledger, the intent ledger and the UCB journal still accept edits outside their hash. Their remediation is open and its gate adds a tamper case per ledger field and a cut ledger case here."
+  },
+  {
+   "area": "Scanners, model gateway, graph engine and observers",
+   "findings": [
+    "TSA 01",
+    "TSA 02",
+    "TSA 03",
+    "TSA 04",
+    "TSA 05",
+    "TSC 01",
+    "TSC 02",
+    "TSC 03",
+    "TSC 04",
+    "TSC 05",
+    "TSC 06",
+    "TSC 07",
+    "TSC 08",
+    "TSC 09",
+    "TSC 10",
+    "TSC 11",
+    "TSC 12",
+    "TSC 13",
+    "TSC 14"
+   ],
+   "reason": "The remediation of the scanners, the gateway, the graph engine and the observers is open. Its gate adds the timing, key format, stream and graph cases here."
+  },
+  {
+   "area": "Release and container hygiene",
+   "findings": [
+    "LEAD 04",
+    "LEAD 05",
+    "LEAD 06",
+    "LEAD 07",
+    "HOSTILE 03"
+   ],
+   "reason": "Hygiene of the container, the toolchain, the lock files and the build order of the tests. No agent plays these. Their remediation is open."
+  },
+  {
+   "area": "Scripts outside the components",
+   "findings": [
+    "READ 03",
+    "READ 09",
+    "READ 10",
+    "READ 11",
+    "READ 12",
+    "READ 13",
+    "READ 15",
+    "READ 16",
+    "READ 19"
+   ],
+   "reason": "Findings of the follow-up reading in the policy builders, the registry, the plan generator, the scanners and the user experience harness that are open or fixed in part. Their tickets add the cases."
+  }
+ ],
+ "elsewhere": [
+  {
+   "area": "Retired Go CAW",
+   "findings": [
+    "CAWA 01",
+    "CAWA 02",
+    "CAWA 03",
+    "CAWA 04",
+    "CAWA 05",
+    "CAWA 06",
+    "CAWA 07",
+    "CAWA 08",
+    "CAWA 09",
+    "CAWA 10",
+    "CAWA 11",
+    "CAWA 12",
+    "CAWA 13",
+    "CAWA 14",
+    "CAWA 15",
+    "CAWA 16",
+    "CAWA 17",
+    "CAWA 18",
+    "CAWA 19",
+    "CAWA 20",
+    "CAWB 01",
+    "CAWB 02",
+    "CAWB 03",
+    "CAWB 04",
+    "CAWB 05",
+    "CAWB 06",
+    "CAWB 07",
+    "CAWB 08",
+    "CAWB 09",
+    "CAWB 10",
+    "CAWB 11",
+    "CAWB 12"
+   ],
+   "reason": "These findings name the Go CAW, which left the tree. Host sandbox enforcement of the CAW that ships is proven by AEP-CAWs-RustGvisor/proof/hostile-corpus.sh in the caw-gvisor job."
+  },
+  {
+   "area": "Verification depth",
+   "findings": [
+    "LEAD 01",
+    "LEAD 02",
+    "LEAD 03"
+   ],
+   "reason": "LEAD 01 is proven by the tests of aep-tla-verify, LEAD 02 by the script coverage test of the root vitest run and LEAD 03 by this corpus and the end to end job of the base-node workflow."
+  },
+  {
+   "area": "Scripts outside the components",
+   "findings": [
+    "READ 01",
+    "READ 02",
+    "READ 04",
+    "READ 05",
+    "READ 06",
+    "READ 07",
+    "READ 08",
+    "READ 14",
+    "READ 17",
+    "READ 18",
+    "READ 20",
+    "READ 21",
+    "READ 22",
+    "READ 23"
+   ],
+   "reason": "Fixed with the script tests of the policy builders, the registry, the universal connect client and the user experience harness, which the root vitest run holds."
+  }
+ ]
+}

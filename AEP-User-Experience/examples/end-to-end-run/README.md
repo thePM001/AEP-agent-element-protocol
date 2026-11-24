@@ -6,13 +6,15 @@ One command walks every layer of the stack twice. The refuse path runs first and
 
 - From the repository root run the script at `AEP-User-Experience/examples/end-to-end-run/run.sh`.
 - The run needs the pinned gVisor of the CAW. Install it once with `sudo bash AEP-CAWs-RustGvisor/proof/install-runsc.sh`.
-- The CAW starts no sandbox as root, so the script runs as the user of the deployment and refuses root.
+- The CAW starts no sandbox as root, so the walk runs as the user of the deployment. Started as root, the script builds the binaries, copies them into a folder of the user nobody, runs the walk as nobody and brings the transcript back. `AEP_E2E_TRANSCRIPT` names another file for the transcript.
+- The CI job `end-to-end-example` of the workflow `base-node.yml` installs the pinned gVisor, runs the script and reads the verdict line of the transcript. The transcript holds the digests of its run, so the job reads the verdict and does not compare the note.
 - The first run builds the kernel binaries, the dock gateway, the runner and the two programs of the CAW, `aep-caw` and `aep-caw-init`. Later runs rebuild only what changed. `AEP_E2E_BIN` names a folder of binaries that are built already and skips the build.
 - The run is a member of the root Cargo workspace, so `cargo build --workspace` and `cargo test --workspace` compile it and a kernel type change that breaks it fails the root build.
 - The run uses release binaries because the temporal wall measures the gap between the seal and the dock enqueue, so an unoptimized build signs slowly enough to cross the fifty millisecond bound.
 - The run writes its transcript into a quoted note beside this one, with the run directory and the two loopback ports replaced by tokens.
 - The run grants `root:ping` to `caw-kernel-dock` in its lattice and in a hub policy of its data folder, because the CAW starts a command only after the validation dock admits that sealed ping. The same hub grants the attach agent its ingest path.
 - The run gives the Data Dock a free loopback port, so it does not collide with a Base Node that already serves on 8413.
+- The dock gateway checks the task manifest of the attach agent with strict manifests on. Before the gateway starts, the runner makes an ML-DSA-65 key for the attach agent, keeps it in the run folder and registers its public half as `manifest_signer_public_hex` in `ucb-agent-keys.json`. The pass ingest carries the manifest signed with that key and the refuse ingest carries none.
 
 ## Layer order
 

@@ -56,5 +56,5 @@ docker compose -f docker-compose.public.yml up -d
 |--------|---------|
 | `harness/aep-validate.js` | UI element registry/scene/theme validation |
 | `harness/aep-safety-guard.js` | Immutable safety rules |
-| `harness/aep-economics.js` | Cost economics wiring |
+| `harness/aep-economics.ts` | Cost economics wiring |
 | `../aep-base-node-preflight.mjs` | Base Node health, docks, registry |

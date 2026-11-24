@@ -300,6 +300,9 @@ dependencies = [
  "aep-caw-runtime",
  "aep-envelope",
  "aep-lattice-crypto",
+ "aep-ucb",
+ "aep-ucb-perimeter-v1",
+ "hex",
  "serde_json",
 ]
 
@@ -487,6 +490,7 @@ dependencies = [
 name = "aep-tla-verify"
 version = "0.1.0"
 dependencies = [
+ "aep-base-node-pulse",
  "sha2",
 ]
 

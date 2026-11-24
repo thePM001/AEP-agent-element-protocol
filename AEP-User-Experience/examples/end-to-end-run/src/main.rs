@@ -259,17 +259,22 @@ struct Ctx {
     refuse_agent: String,
     provenance_digest_refuse: String,
     provenance_digest_pass: String,
+    /// The key that signs the task manifest of the attach agent. Its public half is
+    /// registered with the dock gateway before the gateway starts.
+    manifest_signer: SignKeypair,
 }
 
 impl Ctx {
     fn from_env() -> Result<Self, String> {
         let need = |key: &str| env::var(key).map_err(|_| format!("missing env {key}"));
+        let run_dir = PathBuf::from(need("AEP_E2E_RUN_DIR")?);
         Ok(Ctx {
             ucb_url: need("AEP_E2E_UCB_URL")?,
             ucb_key: need("AEP_E2E_UCB_KEY")?,
             base_node_config: PathBuf::from(need("AEP_E2E_BASE_NODE_CONFIG")?),
             lattice_log_bin: need("AEP_E2E_LATTICE_LOG_BIN")?,
-            run_dir: PathBuf::from(need("AEP_E2E_RUN_DIR")?),
+            manifest_signer: read_manifest_signer(&run_dir)?,
+            run_dir,
             attach_action: need("AEP_E2E_ATTACH_ACTION")?,
             attach_scene: need("AEP_E2E_ATTACH_SCENE")?,
             attach_agent: need("AEP_E2E_ATTACH_AGENT")?,
@@ -278,6 +283,60 @@ impl Ctx {
             provenance_digest_pass: need("AEP_E2E_PROVENANCE_DIGEST_PASS")?,
         })
     }
+}
+
+/// The file in the run folder that holds the manifest signer key of the attach agent:
+/// the secret seed and the public key, each in hex on its own line.
+const MANIFEST_SIGNER_FILE: &str = "e2e-manifest-signer.key";
+
+/// Make the manifest signer key of `agent`. The run keeps the key in the run folder and
+/// registers its public half as `manifest_signer_public_hex` in `ucb-agent-keys.json`,
+/// which the dock gateway reads at start. A signed manifest of that agent then counts
+/// under strict manifests.
+fn provision_manifest_signer(run_dir: &std::path::Path, agent: &str) -> Result<(), String> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+    let key = generate_sign_keypair();
+    let mut f = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(run_dir.join(MANIFEST_SIGNER_FILE))
+        .map_err(|e| format!("manifest signer key: {e}"))?;
+    writeln!(
+        f,
+        "{}\n{}",
+        hex::encode(&key.secret),
+        hex::encode(&key.public)
+    )
+    .map_err(|e| format!("manifest signer key: {e}"))?;
+    let records = serde_json::json!({
+        "agents": [{
+            "agent_id": agent,
+            "manifest_signer_public_hex": hex::encode(&key.public)
+        }]
+    });
+    fs::write(
+        run_dir.join(aep_ucb::auth::AGENT_KEYS_FILE),
+        format!("{records:#}\n"),
+    )
+    .map_err(|e| format!("agent keys file: {e}"))
+}
+
+fn read_manifest_signer(run_dir: &std::path::Path) -> Result<SignKeypair, String> {
+    let path = run_dir.join(MANIFEST_SIGNER_FILE);
+    let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let mut lines = text.lines();
+    let mut next = |what: &str| {
+        lines
+            .next()
+            .and_then(|l| hex::decode(l.trim()).ok())
+            .ok_or_else(|| format!("{}: no {what} in hex", path.display()))
+    };
+    Ok(SignKeypair {
+        secret: next("secret")?,
+        public: next("public key")?,
+    })
 }
 
 struct Step {
@@ -492,8 +551,11 @@ fn ucb_ingest(
     Ok((first_line(&http_code), value))
 }
 
-fn manifest_body(ctx: &Ctx) -> serde_json::Value {
-    serde_json::json!({
+/// The task manifest of the attach agent, signed with its registered key. The gateway
+/// compiles the provided manifest and checks an ML-DSA-65 signature over the digest of
+/// the compiled form, so the run signs that same form.
+fn manifest_body(ctx: &Ctx) -> Result<serde_json::Value, String> {
+    let mut raw = serde_json::json!({
         "manifest_version": "1",
         "id": "tm-e2e-dock-attach",
         "agent_id": ctx.attach_agent,
@@ -504,9 +566,17 @@ fn manifest_body(ctx: &Ctx) -> serde_json::Value {
         },
         "provisional": false,
         "synthesized_by": "provided",
-        "signature": "e2e-dock-attach-signature",
+        "signature": "00",
         "created_at_unix": 0
-    })
+    });
+    let compiled = aep_ucb::gap_manifest::compile_provided_json(raw.clone())
+        .map_err(|e| format!("the task manifest does not compile: {}", e.error))?;
+    let digest = aep_ucb::manifest::compute_manifest_digest(&compiled);
+    let message = aep_ucb_perimeter_v1::manifest_signing_message(&digest);
+    let signature = aep_lattice_crypto::mldsa65_sign_detached(&message, &ctx.manifest_signer)
+        .map_err(|e| format!("the task manifest cannot be signed: {e}"))?;
+    raw["signature"] = serde_json::Value::String(hex::encode(signature));
+    Ok(raw)
 }
 
 /// Ingest body for one attach. The provenance digest binds the provenance
@@ -519,7 +589,7 @@ fn ingest_body(
     session_id: &str,
     provenance_digest: &str,
     with_manifest: bool,
-) -> serde_json::Value {
+) -> Result<serde_json::Value, String> {
     let mut body = serde_json::json!({
         "protocol": "mcp",
         "session_id": session_id,
@@ -539,12 +609,25 @@ fn ingest_body(
         }
     });
     if with_manifest {
-        body["task_manifest"] = manifest_body(ctx);
+        body["task_manifest"] = manifest_body(ctx)?;
     }
-    body
+    Ok(body)
 }
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    // run.sh calls this before the dock gateway starts, so the gateway reads the key.
+    if args.get(1).map(String::as_str) == Some("provision-manifest-signer") {
+        let (Some(run_dir), Some(agent)) = (args.get(2), args.get(3)) else {
+            println!("usage: aep-end-to-end-run provision-manifest-signer <run-dir> <agent>");
+            std::process::exit(2);
+        };
+        if let Err(e) = provision_manifest_signer(std::path::Path::new(run_dir), agent) {
+            println!("FAIL provision: {e}");
+            std::process::exit(1);
+        }
+        return;
+    }
     if let Err(e) = run_main() {
         println!("FAIL run: {e}");
         std::process::exit(1);
@@ -605,7 +688,7 @@ fn run_main() -> Result<(), String> {
             SESSION_REFUSE,
             &ctx.provenance_digest_refuse,
             false,
-        ),
+        )?,
     )?;
 
     let ledger_after_refuse = ledger_count(&ctx)?;
@@ -619,7 +702,7 @@ fn run_main() -> Result<(), String> {
             SESSION_PASS,
             &ctx.provenance_digest_pass,
             true,
-        ),
+        )?,
     )?;
 
     let ledger_after_pass = ledger_count(&ctx)?;
@@ -1011,7 +1094,35 @@ mod tests {
             refuse_agent: String::from("agent-b"),
             provenance_digest_refuse: String::from("digest-refuse"),
             provenance_digest_pass: String::from("digest-pass"),
+            manifest_signer: generate_sign_keypair(),
         }
+    }
+
+    #[test]
+    fn the_signed_manifest_verifies_with_the_registered_key_only() {
+        let ctx = test_ctx();
+        let body = manifest_body(&ctx).unwrap();
+        let compiled = aep_ucb::gap_manifest::compile_provided_json(body).unwrap();
+        let mut signers = aep_ucb_perimeter_v1::ManifestSigners::new();
+        signers.insert("agent-a", ctx.manifest_signer.public.clone());
+        assert!(aep_ucb::manifest::verify_task_signature(&compiled, &signers).is_ok());
+        let mut other = aep_ucb_perimeter_v1::ManifestSigners::new();
+        other.insert("agent-a", generate_sign_keypair().public);
+        assert!(aep_ucb::manifest::verify_task_signature(&compiled, &other).is_err());
+    }
+
+    #[test]
+    fn the_provisioned_signer_is_registered_for_the_gateway() {
+        let dir = std::env::temp_dir().join(format!("aep-e2e-signer-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        provision_manifest_signer(&dir, "agent-a").unwrap();
+        let key = read_manifest_signer(&dir).unwrap();
+        let signers = aep_ucb::auth::load_manifest_signers(&dir);
+        assert_eq!(signers.get("agent-a"), Some(key.public.as_slice()));
+        // A second provision never replaces a key that exists.
+        assert!(provision_manifest_signer(&dir, "agent-a").is_err());
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -1114,12 +1225,12 @@ mod tests {
     #[test]
     fn ingest_body_binds_provenance_and_carries_manifest_on_request() {
         let ctx = test_ctx();
-        let with = ingest_body(&ctx, "agent-a", SESSION_PASS, "digest-pass", true);
+        let with = ingest_body(&ctx, "agent-a", SESSION_PASS, "digest-pass", true).unwrap();
         assert_eq!(with["provenance"]["digest"], "digest-pass");
         assert_eq!(with["provenance"]["session_id"], SESSION_PASS);
         assert_eq!(with["action_path"], "ucb:ingest");
         assert_eq!(with["task_manifest"]["agent_id"], "agent-a");
-        let without = ingest_body(&ctx, "agent-b", SESSION_REFUSE, "digest-refuse", false);
+        let without = ingest_body(&ctx, "agent-b", SESSION_REFUSE, "digest-refuse", false).unwrap();
         assert!(without.get("task_manifest").is_none());
     }
 }

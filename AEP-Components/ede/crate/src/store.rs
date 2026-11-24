@@ -505,10 +505,7 @@ pub fn ledger(
     let hash = seal::sha256_hex(format!("{}{}", prev, body).as_bytes());
     let sealv = seal::seal(op, hash.as_bytes())?;
     let mut out = if text.is_empty() {
-        format!(
-            "schema_id: {}\nformat: aep-record\njson: prohibited\nentries:\n",
-            LEDGER_SCHEMA
-        )
+        ledger_header()
     } else {
         String::new()
     };
@@ -527,44 +524,80 @@ pub fn ledger(
     Ok(hash)
 }
 
-/// Check the chain: every entry names the hash before it, every hash covers its entry and
-/// every seal verifies. Returns the number of entries.
+/// The first lines of the ledger file, written once when the file is created.
+fn ledger_header() -> String {
+    format!(
+        "schema_id: {}\nformat: aep-record\njson: prohibited\nentries:\n",
+        LEDGER_SCHEMA
+    )
+}
+
+/// The fields of one ledger entry after its sequence number, in the order `ledger` writes
+/// them. The hash and the seal close the entry.
+const LEDGER_FIELDS: [&str; 8] = [
+    "at", "kind", "draft_id", "agent", "repo", "scan_id", "detail", "prev",
+];
+
+/// Check the chain. The file is the header followed by complete entries and nothing else:
+/// each entry carries the next sequence number, every field in its place, the hash of the
+/// entry before it, a hash that covers it and a seal that verifies. Any other line, an
+/// entry without its hash or seal or a header that differs is refused, so no unsealed
+/// text can sit between, inside or after the sealed entries. Returns the number of
+/// entries.
+///
+/// A cut of the last entries leaves a chain that verifies. The draft records name the
+/// state of each draft independently of the ledger.
 pub fn verify_ledger(op: &Operator) -> Result<u64, String> {
     let text = {
         let _r = privilege::raise();
         fs::read_to_string(op.ledger_dir().join("ledger.rec")).unwrap_or_default()
     };
+    if text.is_empty() {
+        return Ok(0);
+    }
+    let Some(body) = text.strip_prefix(&ledger_header()) else {
+        return Err("the ledger header is not the one aep-ede writes".into());
+    };
+    if !body.is_empty() && !body.ends_with('\n') {
+        return Err("the ledger ends inside a line".into());
+    }
+    let mut lines = body.lines();
     let mut prev = GENESIS.to_string();
-    let mut cur = String::new();
     let mut count = 0u64;
-    for line in text.lines() {
-        if line.starts_with("  - seq: ") {
-            cur.clear();
+    while let Some(first) = lines.next() {
+        let n = count + 1;
+        if first != format!("  - seq: {}", n) {
+            return Err(format!(
+                "entry {} does not open with its sequence number",
+                n
+            ));
         }
-        if let Some(h) = line.strip_prefix("    hash: ") {
-            if !cur.contains(&format!("    prev: {}\n", prev)) {
-                return Err(format!(
-                    "entry {} does not name the hash before it",
-                    count + 1
-                ));
+        let mut cur = format!("{}\n", first);
+        for field in LEDGER_FIELDS {
+            let line = lines.next().unwrap_or_default();
+            if !line.starts_with(&format!("    {}: ", field)) {
+                return Err(format!("entry {} lacks its field {} in place", n, field));
             }
-            if seal::sha256_hex(format!("{}{}", prev, cur).as_bytes()) != h {
-                return Err(format!("entry {} changed after it was written", count + 1));
+            if field == "prev" && line != format!("    prev: {}", prev) {
+                return Err(format!("entry {} does not name the hash before it", n));
             }
-            prev = h.to_string();
-            continue;
-        }
-        if let Some(s) = line.strip_prefix("    seal: ") {
-            if !seal::verify(op, prev.as_bytes(), s) {
-                return Err(format!("entry {} carries a forged seal", count + 1));
-            }
-            count += 1;
-            continue;
-        }
-        if line.starts_with("  - ") || line.starts_with("    ") {
             cur.push_str(line);
             cur.push('\n');
         }
+        let Some(h) = lines.next().and_then(|l| l.strip_prefix("    hash: ")) else {
+            return Err(format!("entry {} carries no hash", n));
+        };
+        if seal::sha256_hex(format!("{}{}", prev, cur).as_bytes()) != h {
+            return Err(format!("entry {} changed after it was written", n));
+        }
+        let Some(s) = lines.next().and_then(|l| l.strip_prefix("    seal: ")) else {
+            return Err(format!("entry {} carries no seal", n));
+        };
+        if !seal::verify(op, h.as_bytes(), s) {
+            return Err(format!("entry {} carries a forged seal", n));
+        }
+        prev = h.to_string();
+        count = n;
     }
     Ok(count)
 }

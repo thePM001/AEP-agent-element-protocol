@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 
 /**
  * AEP 2.9 Agent Harness - Temporal Validation Module (dynAEP-TA)
@@ -18,14 +19,90 @@
  * Perception validation runs between temporal and structural.
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'node:fs';
+import path from 'node:path';
+
+/**
+ * @typedef {object} PerceptionBound
+ * @property {number} min
+ * @property {number} comfortable_min
+ * @property {number} comfortable_max
+ * @property {number} max
+ * @property {string} unit
+ * @property {string} source
+ */
+
+/** @typedef {Record<string, PerceptionBound>} ModalityBounds */
+
+/**
+ * @typedef {object} PerceptionGovernance
+ * @property {boolean} enabled
+ * @property {string} hard_violation_action
+ * @property {string} soft_violation_action
+ */
+
+/**
+ * @typedef {object} TrustPenalties
+ * @property {number} drift_exceeded
+ * @property {number} future_timestamp
+ * @property {number} stale_event
+ * @property {number} causal_regression
+ * @property {number} causal_missing_dep
+ * @property {number} perception_hard
+ * @property {number} perception_soft
+ * @property {number} modality_ceiling
+ */
+
+/**
+ * @typedef {object} TemporalConfig
+ * @property {boolean} enabled
+ * @property {number} max_drift_ms
+ * @property {number} max_staleness_ms
+ * @property {number} max_future_ms
+ * @property {boolean} causal_ordering_enabled
+ * @property {PerceptionGovernance} perception_governance
+ * @property {TrustPenalties} trust_penalties
+ */
+
+/**
+ * @typedef {object} TemporalEvent
+ * @property {unknown} bridgeTimeMs Bridge-authoritative timestamp
+ * @property {unknown} [agentTimeMs] Agent-reported timestamp (for drift check)
+ * @property {unknown} [agentId] Agent identifier for causal tracking
+ * @property {unknown} [causalPosition] Monotonic sequence number per agent
+ */
+
+/**
+ * @typedef {object} Violation
+ * @property {string} type
+ * @property {string} severity
+ * @property {string} message
+ * @property {string} [parameter]
+ */
+
+/**
+ * @typedef {object} TemporalResult
+ * @property {boolean} valid
+ * @property {Violation[]} violations
+ * @property {number} trustDelta
+ * @property {number} [bridgeTimeMs]
+ */
+
+/**
+ * @typedef {object} PerceptionResult
+ * @property {boolean} valid
+ * @property {Violation[]} violations
+ * @property {Record<string, unknown>} clamped
+ * @property {number} trustDelta
+ * @property {'governed' | 'softClamped' | 'original'} [applied]
+ */
 
 // ---------------------------------------------------------------------------
 // Perception Bounds Registry (built-in, research-derived)
 // ---------------------------------------------------------------------------
 
-const PERCEPTION_BOUNDS = {
+/** @type {Record<string, ModalityBounds>} */
+export const PERCEPTION_BOUNDS = {
     speech: {
         syllable_rate: {
             min: 1.0,
@@ -190,11 +267,31 @@ const PERCEPTION_BOUNDS = {
     },
 };
 
+/**
+ * The bounds of one modality, read only from the registry's own keys so a
+ * name such as __proto__ or constructor never resolves.
+ * @param {string} modality
+ * @returns {ModalityBounds | null}
+ */
+function boundsOf(modality) {
+    return Object.prototype.hasOwnProperty.call(PERCEPTION_BOUNDS, modality) ? (PERCEPTION_BOUNDS[modality] ?? null) : null;
+}
+
+/**
+ * @param {ModalityBounds} bounds
+ * @param {string} param
+ * @returns {PerceptionBound | null}
+ */
+function boundOf(bounds, param) {
+    return Object.prototype.hasOwnProperty.call(bounds, param) ? (bounds[param] ?? null) : null;
+}
+
 // ---------------------------------------------------------------------------
 // Default Temporal Configuration
 // ---------------------------------------------------------------------------
 
-const DEFAULT_TEMPORAL_CONFIG = {
+/** @type {TemporalConfig} */
+export const DEFAULT_TEMPORAL_CONFIG = {
     enabled: true,
     max_drift_ms: 50,
     max_staleness_ms: 30000,
@@ -221,14 +318,40 @@ const DEFAULT_TEMPORAL_CONFIG = {
 // Causal Ordering State
 // ---------------------------------------------------------------------------
 
+/** @type {{ agentSequences: Map<string, number>, lastBridgeTimeMs: number }} */
 const causalState = {
-    agentSequences: {},
+    agentSequences: new Map(),
     lastBridgeTimeMs: 0,
 };
 
-function resetCausalState() {
-    causalState.agentSequences = {};
+export function resetCausalState() {
+    causalState.agentSequences = new Map();
     causalState.lastBridgeTimeMs = 0;
+}
+
+/**
+ * A finite number, or undefined for anything else.
+ * @param {unknown} v
+ * @returns {number | undefined}
+ */
+function finite(v) {
+    return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+}
+
+/**
+ * Merge a partial configuration over the defaults. Nested objects merge too,
+ * so a caller that sets one trust penalty keeps the others.
+ * @param {Partial<TemporalConfig> | null | undefined} config
+ * @returns {TemporalConfig}
+ */
+function mergeConfig(config) {
+    const c = config ?? {};
+    return {
+        ...DEFAULT_TEMPORAL_CONFIG,
+        ...c,
+        perception_governance: { ...DEFAULT_TEMPORAL_CONFIG.perception_governance, ...(c.perception_governance ?? {}) },
+        trust_penalties: { ...DEFAULT_TEMPORAL_CONFIG.trust_penalties, ...(c.trust_penalties ?? {}) },
+    };
 }
 
 // ---------------------------------------------------------------------------
@@ -244,16 +367,13 @@ function resetCausalState() {
  *   3. Event is not stale (older than max staleness)
  *   4. Causal ordering is maintained (sequence numbers increase per agent)
  *
- * @param {object} event - The temporal event to validate
- * @param {number} event.bridgeTimeMs - Bridge-authoritative timestamp
- * @param {number} [event.agentTimeMs] - Agent-reported timestamp (for drift check)
- * @param {string} [event.agentId] - Agent identifier for causal tracking
- * @param {number} [event.causalPosition] - Monotonic sequence number per agent
- * @param {object} [config] - Temporal configuration overrides
- * @returns {object} Validation result with violations array and trust delta
+ * @param {TemporalEvent} event - The temporal event to validate
+ * @param {Partial<TemporalConfig> | null} [config] - Temporal configuration overrides
+ * @returns {TemporalResult} Validation result with violations array and trust delta
  */
-function validateTemporalEvent(event, config) {
-    const cfg = Object.assign({}, DEFAULT_TEMPORAL_CONFIG, config || {});
+export function validateTemporalEvent(event, config) {
+    const cfg = mergeConfig(config);
+    /** @type {Violation[]} */
     const violations = [];
     let trustDelta = 0;
 
@@ -262,9 +382,9 @@ function validateTemporalEvent(event, config) {
     }
 
     const nowMs = Date.now();
-    const bridgeTimeMs = event.bridgeTimeMs;
+    const bridgeTimeMs = finite(event.bridgeTimeMs);
 
-    if (typeof bridgeTimeMs !== 'number' || bridgeTimeMs <= 0) {
+    if (bridgeTimeMs === undefined || bridgeTimeMs <= 0) {
         violations.push({
             type: 'missing_bridge_time',
             severity: 'CRITICAL',
@@ -273,16 +393,18 @@ function validateTemporalEvent(event, config) {
         return { valid: false, violations, trustDelta: cfg.trust_penalties.stale_event };
     }
 
-    // Check 1: Drift between agent time and bridge time
-    if (typeof event.agentTimeMs === 'number') {
-        const driftMs = Math.abs(event.agentTimeMs - bridgeTimeMs);
+    // Check 1: Drift between agent time and bridge time. An agent time that is
+    // present and not a finite number is a violation of its own.
+    if (event.agentTimeMs !== undefined) {
+        const agentTimeMs = finite(event.agentTimeMs);
+        const driftMs = agentTimeMs === undefined ? Infinity : Math.abs(agentTimeMs - bridgeTimeMs);
         if (driftMs > cfg.max_drift_ms) {
             violations.push({
                 type: 'drift_exceeded',
                 severity: 'HIGH',
-                driftMs: driftMs,
-                maxDriftMs: cfg.max_drift_ms,
-                message: `Agent-bridge drift ${driftMs}ms exceeds threshold ${cfg.max_drift_ms}ms`,
+                message: agentTimeMs === undefined
+                    ? 'Agent time is not a finite number'
+                    : `Agent-bridge drift ${driftMs}ms exceeds threshold ${cfg.max_drift_ms}ms`,
             });
             trustDelta += cfg.trust_penalties.drift_exceeded;
         }
@@ -294,8 +416,6 @@ function validateTemporalEvent(event, config) {
         violations.push({
             type: 'future_timestamp',
             severity: 'CRITICAL',
-            futureByMs: futureGap,
-            maxFutureMs: cfg.max_future_ms,
             message: `Event is ${futureGap}ms in the future (max ${cfg.max_future_ms}ms)`,
         });
         trustDelta += cfg.trust_penalties.future_timestamp;
@@ -303,39 +423,33 @@ function validateTemporalEvent(event, config) {
 
     // Check 3: Staleness (event too old)
     const ageMs = nowMs - bridgeTimeMs;
-    if (ageMs > cfg.max_staleness_ms && bridgeTimeMs < nowMs) {
+    if (ageMs > cfg.max_staleness_ms) {
         violations.push({
             type: 'stale_event',
             severity: 'MEDIUM',
-            ageMs: ageMs,
-            maxStalenessMs: cfg.max_staleness_ms,
             message: `Event is ${ageMs}ms old (max ${cfg.max_staleness_ms}ms)`,
         });
         trustDelta += cfg.trust_penalties.stale_event;
     }
 
     // Check 4: Causal ordering
-    if (cfg.causal_ordering_enabled && event.agentId && typeof event.causalPosition === 'number') {
+    const causalPosition = finite(event.causalPosition);
+    if (cfg.causal_ordering_enabled && typeof event.agentId === 'string' && event.agentId !== '' && causalPosition !== undefined) {
         const agentId = event.agentId;
-        const lastPosition = causalState.agentSequences[agentId];
+        const lastPosition = causalState.agentSequences.get(agentId);
 
-        if (typeof lastPosition === 'number') {
-            if (event.causalPosition <= lastPosition) {
-                violations.push({
-                    type: 'causal_regression',
-                    severity: 'CRITICAL',
-                    agentId: agentId,
-                    currentPosition: event.causalPosition,
-                    lastPosition: lastPosition,
-                    message: `Causal regression: position ${event.causalPosition} <= last ${lastPosition} for agent ${agentId}`,
-                });
-                trustDelta += cfg.trust_penalties.causal_regression;
-            }
+        if (lastPosition !== undefined && causalPosition <= lastPosition) {
+            violations.push({
+                type: 'causal_regression',
+                severity: 'CRITICAL',
+                message: `Causal regression: position ${causalPosition} <= last ${lastPosition} for agent ${agentId}`,
+            });
+            trustDelta += cfg.trust_penalties.causal_regression;
         }
 
         // Update tracking (even on violation, to prevent cascading false positives)
-        if (typeof lastPosition !== 'number' || event.causalPosition > lastPosition) {
-            causalState.agentSequences[agentId] = event.causalPosition;
+        if (lastPosition === undefined || causalPosition > lastPosition) {
+            causalState.agentSequences.set(agentId, causalPosition);
         }
     }
 
@@ -344,8 +458,6 @@ function validateTemporalEvent(event, config) {
         violations.push({
             type: 'bridge_time_regression',
             severity: 'HIGH',
-            currentMs: bridgeTimeMs,
-            lastMs: causalState.lastBridgeTimeMs,
             message: `Bridge time went backwards: ${bridgeTimeMs} < ${causalState.lastBridgeTimeMs}`,
         });
         trustDelta += cfg.trust_penalties.causal_regression;
@@ -360,9 +472,9 @@ function validateTemporalEvent(event, config) {
 
     return {
         valid: violations.length === 0,
-        violations: violations,
-        trustDelta: trustDelta,
-        bridgeTimeMs: bridgeTimeMs,
+        violations,
+        trustDelta,
+        bridgeTimeMs,
     };
 }
 
@@ -374,16 +486,13 @@ function validateTemporalEvent(event, config) {
  * Validates perception annotations against modality bounds.
  *
  * @param {string} modality - One of: speech, haptic, notification, sensor, audio
- * @param {object} annotations - Key-value pairs of parameter names to values
- * @param {object} [config] - Perception governance config overrides
- * @returns {object} Validation result with violations, clamped values and trust delta
+ * @param {Record<string, unknown>} annotations - Key-value pairs of parameter names to values
+ * @param {Partial<PerceptionGovernance> | null} [config] - Perception governance config overrides
+ * @returns {PerceptionResult} Validation result with violations, clamped values and trust delta
  */
-function validatePerceptionAnnotation(modality, annotations, config) {
-    const cfg = Object.assign(
-        {},
-        DEFAULT_TEMPORAL_CONFIG.perception_governance,
-        config || {}
-    );
+export function validatePerceptionAnnotation(modality, annotations, config) {
+    const cfg = { ...DEFAULT_TEMPORAL_CONFIG.perception_governance, ...(config ?? {}) };
+    /** @type {Violation[]} */
     const violations = [];
     let trustDelta = 0;
 
@@ -391,90 +500,81 @@ function validatePerceptionAnnotation(modality, annotations, config) {
         return { valid: true, violations: [], clamped: annotations, trustDelta: 0 };
     }
 
-    const bounds = PERCEPTION_BOUNDS[modality];
+    const bounds = boundsOf(modality);
     if (!bounds) {
         return {
             valid: false,
             violations: [{
                 type: 'unknown_modality',
                 severity: 'HIGH',
-                message: `Unknown modality "${modality}". Valid: ${Object.keys(PERCEPTION_BOUNDS).join(', ')}`,
+                message: `Unknown modality "${modality}". Valid: ${listModalities().join(', ')}`,
             }],
             clamped: annotations,
             trustDelta: -5,
         };
     }
 
-    const clamped = Object.assign({}, annotations);
+    /** @type {Record<string, unknown>} */
+    const clamped = { ...annotations };
+    const penalties = DEFAULT_TEMPORAL_CONFIG.trust_penalties;
 
     for (const [param, value] of Object.entries(annotations)) {
-        const bound = bounds[param];
+        const bound = boundOf(bounds, param);
         if (!bound) {
             // Unknown parameter for this modality - skip, do not flag
             continue;
         }
 
-        if (typeof value !== 'number') {
+        if (typeof value !== 'number' || !Number.isFinite(value)) {
             violations.push({
                 parameter: param,
                 type: 'invalid_type',
                 severity: 'HIGH',
-                message: `Parameter "${param}" must be a number, got ${typeof value}`,
+                message: `Parameter "${param}" must be a finite number, got ${typeof value === 'number' ? String(value) : typeof value}`,
             });
             continue;
         }
 
-        // Check hard bounds (absolute human perception limits)
         if (value < bound.min) {
             violations.push({
                 parameter: param,
                 type: 'hard_violation',
                 severity: 'CRITICAL',
-                value: value,
-                bound_min: bound.min,
                 message: `${param} = ${value} below hard minimum ${bound.min} ${bound.unit}`,
             });
             clamped[param] = bound.min;
-            trustDelta += DEFAULT_TEMPORAL_CONFIG.trust_penalties.perception_hard;
+            trustDelta += penalties.perception_hard;
         } else if (value > bound.max) {
             violations.push({
                 parameter: param,
                 type: 'hard_violation',
                 severity: 'CRITICAL',
-                value: value,
-                bound_max: bound.max,
                 message: `${param} = ${value} exceeds hard maximum ${bound.max} ${bound.unit}`,
             });
             clamped[param] = bound.max;
-            trustDelta += DEFAULT_TEMPORAL_CONFIG.trust_penalties.perception_hard;
-        }
-        // Check soft bounds (comfortable range)
-        else if (value < bound.comfortable_min) {
+            trustDelta += penalties.perception_hard;
+        } else if (value < bound.comfortable_min) {
             violations.push({
                 parameter: param,
                 type: 'soft_violation',
                 severity: 'MEDIUM',
-                value: value,
-                comfortable_min: bound.comfortable_min,
                 message: `${param} = ${value} below comfortable minimum ${bound.comfortable_min} ${bound.unit}`,
             });
             if (cfg.soft_violation_action === 'clamp') {
                 clamped[param] = bound.comfortable_min;
             }
-            trustDelta += DEFAULT_TEMPORAL_CONFIG.trust_penalties.perception_soft;
+            trustDelta += penalties.perception_soft;
         } else if (value > bound.comfortable_max) {
             violations.push({
                 parameter: param,
                 type: 'soft_violation',
                 severity: 'MEDIUM',
-                value: value,
-                comfortable_max: bound.comfortable_max,
                 message: `${param} = ${value} exceeds comfortable maximum ${bound.comfortable_max} ${bound.unit}`,
             });
             if (cfg.soft_violation_action === 'clamp') {
                 clamped[param] = bound.comfortable_max;
             }
-            trustDelta += DEFAULT_TEMPORAL_CONFIG.trust_penalties.perception_soft;
+            trustDelta += penalties.perception_soft;
         }
     }
 
@@ -487,9 +587,9 @@ function validatePerceptionAnnotation(modality, annotations, config) {
 
     return {
         valid: violations.length === 0,
-        violations: violations,
-        clamped: clamped,
-        trustDelta: trustDelta,
+        violations,
+        clamped,
+        trustDelta,
         applied: hasHard ? 'governed' : (violations.length > 0 ? 'softClamped' : 'original'),
     };
 }
@@ -504,37 +604,21 @@ function validatePerceptionAnnotation(modality, annotations, config) {
  * for values within the hard range but outside the comfortable range.
  *
  * @param {string} modality - One of: speech, haptic, notification, sensor, audio
- * @param {object} annotations - Key-value pairs of parameter names to values
- * @returns {object} Clamped annotations (original keys preserved, values adjusted)
+ * @param {Record<string, unknown>} annotations - Key-value pairs of parameter names to values
+ * @returns {Record<string, unknown>} Clamped annotations (original keys preserved, values adjusted)
  */
-function clampToPerceptionBounds(modality, annotations) {
-    const bounds = PERCEPTION_BOUNDS[modality];
-    if (!bounds) {
-        return Object.assign({}, annotations);
-    }
-
-    const clamped = Object.assign({}, annotations);
+export function clampToPerceptionBounds(modality, annotations) {
+    const bounds = boundsOf(modality);
+    /** @type {Record<string, unknown>} */
+    const clamped = { ...annotations };
+    if (!bounds) return clamped;
 
     for (const [param, value] of Object.entries(annotations)) {
-        const bound = bounds[param];
-        if (!bound || typeof value !== 'number') continue;
-
-        // Clamp to hard bounds first
-        let result = value;
-        if (result < bound.min) {
-            result = bound.min;
-        } else if (result > bound.max) {
-            result = bound.max;
-        }
-
-        // Then clamp to comfortable bounds
-        if (result < bound.comfortable_min) {
-            result = bound.comfortable_min;
-        } else if (result > bound.comfortable_max) {
-            result = bound.comfortable_max;
-        }
-
-        clamped[param] = result;
+        const bound = boundOf(bounds, param);
+        if (!bound || typeof value !== 'number' || !Number.isFinite(value)) continue;
+        // The comfortable range lies inside the hard range, so clamping to it
+        // also enforces the hard bounds.
+        clamped[param] = Math.min(bound.comfortable_max, Math.max(bound.comfortable_min, value));
     }
 
     return clamped;
@@ -548,16 +632,17 @@ function clampToPerceptionBounds(modality, annotations) {
  * Returns the perception bounds for a given modality.
  *
  * @param {string} modality - One of: speech, haptic, notification, sensor, audio
- * @returns {object|null} Bounds object with parameter names as keys, or null if unknown
+ * @returns {ModalityBounds | null} Bounds object with parameter names as keys, or null if unknown
  */
-function getPerceptionBounds(modality) {
-    const bounds = PERCEPTION_BOUNDS[modality];
+export function getPerceptionBounds(modality) {
+    const bounds = boundsOf(modality);
     if (!bounds) return null;
 
     // Return a deep copy to prevent mutation
+    /** @type {ModalityBounds} */
     const copy = {};
     for (const [param, bound] of Object.entries(bounds)) {
-        copy[param] = Object.assign({}, bound);
+        copy[param] = { ...bound };
     }
     return copy;
 }
@@ -567,7 +652,7 @@ function getPerceptionBounds(modality) {
  *
  * @returns {string[]} Array of modality names
  */
-function listModalities() {
+export function listModalities() {
     return Object.keys(PERCEPTION_BOUNDS);
 }
 
@@ -576,12 +661,12 @@ function listModalities() {
  *
  * @param {string} modality - Modality name
  * @param {string} parameter - Parameter name within the modality
- * @returns {object|null} { min, max, unit } or null if not found
+ * @returns {{ min: number, max: number, unit: string } | null} The range or null if not found
  */
-function comfortableRange(modality, parameter) {
-    const bounds = PERCEPTION_BOUNDS[modality];
+export function comfortableRange(modality, parameter) {
+    const bounds = boundsOf(modality);
     if (!bounds) return null;
-    const bound = bounds[parameter];
+    const bound = boundOf(bounds, parameter);
     if (!bound) return null;
     return {
         min: bound.comfortable_min,
@@ -594,71 +679,107 @@ function comfortableRange(modality, parameter) {
 // Configuration Loader
 // ---------------------------------------------------------------------------
 
+/** @typedef {string | number | boolean | null} YamlScalar */
+/** @typedef {{ [key: string]: YamlScalar | YamlMap }} YamlMap */
+
+/**
+ * A map with no prototype, so a key such as __proto__ stays an ordinary key.
+ * @returns {YamlMap}
+ */
+function emptyMap() {
+    /** @type {YamlMap} */
+    const map = {};
+    Object.setPrototypeOf(map, null);
+    return map;
+}
+
+/**
+ * @param {YamlScalar | YamlMap | undefined} v
+ * @returns {YamlMap}
+ */
+function asMap(v) {
+    return v !== null && typeof v === 'object' ? v : {};
+}
+
+/**
+ * A positive finite number from the config, or the fallback.
+ * @param {YamlScalar | YamlMap | undefined} v
+ * @param {number} fallback
+ */
+function positive(v, fallback) {
+    return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : fallback;
+}
+
 /**
  * Loads temporal authority configuration from dynaep-config.yaml or returns defaults.
  *
  * @param {string} configDir - Directory containing dynaep-config.yaml
- * @returns {object} Merged temporal configuration
+ * @returns {TemporalConfig} Merged temporal configuration
  */
-function loadTemporalConfig(configDir) {
+export function loadTemporalConfig(configDir) {
     const configPath = path.join(configDir, 'dynaep-config.yaml');
     if (!fs.existsSync(configPath)) {
-        return Object.assign({}, DEFAULT_TEMPORAL_CONFIG);
+        return mergeConfig(null);
     }
 
+    let content;
     try {
-        const content = fs.readFileSync(configPath, 'utf8');
-        const parsed = parseSimpleYaml(content);
-
-        // Extract temporal_authority section
-        const ta = parsed.temporal_authority || {};
-        const pg = ta.perception_governance || {};
-
-        return {
-            enabled: ta.enabled !== false,
-            max_drift_ms: ta.max_drift_ms || DEFAULT_TEMPORAL_CONFIG.max_drift_ms,
-            max_staleness_ms: ta.max_staleness_ms || DEFAULT_TEMPORAL_CONFIG.max_staleness_ms,
-            max_future_ms: ta.max_future_ms || DEFAULT_TEMPORAL_CONFIG.max_future_ms,
-            causal_ordering_enabled: ta.causal_ordering !== false,
-            perception_governance: {
-                enabled: pg.enabled !== false,
-                hard_violation_action: pg.hard_violation_action || 'clamp',
-                soft_violation_action: pg.soft_violation_action || 'clamp',
-            },
-            trust_penalties: Object.assign(
-                {},
-                DEFAULT_TEMPORAL_CONFIG.trust_penalties,
-                ta.trust_penalties || {}
-            ),
-        };
-    } catch (e) {
-        return Object.assign({}, DEFAULT_TEMPORAL_CONFIG);
+        content = fs.readFileSync(configPath, 'utf8');
+    } catch {
+        return mergeConfig(null);
     }
+
+    const parsed = parseSimpleYaml(content);
+    const ta = asMap(parsed.temporal_authority);
+    const pg = asMap(ta.perception_governance);
+    const tp = asMap(ta.trust_penalties);
+
+    /** @type {TrustPenalties} */
+    const trust = { ...DEFAULT_TEMPORAL_CONFIG.trust_penalties };
+    for (const key of /** @type {(keyof TrustPenalties)[]} */ (Object.keys(trust))) {
+        const v = tp[key];
+        if (typeof v === 'number' && Number.isFinite(v)) trust[key] = v;
+    }
+
+    return {
+        enabled: ta.enabled !== false,
+        max_drift_ms: positive(ta.max_drift_ms, DEFAULT_TEMPORAL_CONFIG.max_drift_ms),
+        max_staleness_ms: positive(ta.max_staleness_ms, DEFAULT_TEMPORAL_CONFIG.max_staleness_ms),
+        max_future_ms: positive(ta.max_future_ms, DEFAULT_TEMPORAL_CONFIG.max_future_ms),
+        causal_ordering_enabled: ta.causal_ordering !== false,
+        perception_governance: {
+            enabled: pg.enabled !== false,
+            hard_violation_action: typeof pg.hard_violation_action === 'string' ? pg.hard_violation_action : 'clamp',
+            soft_violation_action: typeof pg.soft_violation_action === 'string' ? pg.soft_violation_action : 'clamp',
+        },
+        trust_penalties: trust,
+    };
 }
 
 /**
  * Minimal YAML parser for flat and one-level-nested key-value pairs.
  * Handles the subset of YAML used in dynaep-config.yaml without external deps.
+ * Keys are stored on objects without a prototype, so a key such as __proto__
+ * stays an ordinary key.
  *
  * @param {string} content - YAML string
- * @returns {object} Parsed object (flat or one-level nested)
+ * @returns {YamlMap} Parsed object (flat or one-level nested)
  */
-function parseSimpleYaml(content) {
-    const result = {};
-    const lines = content.split('\n');
-    let currentSection = null;
-    let currentSubSection = null;
+export function parseSimpleYaml(content) {
+    const result = emptyMap();
+    /** @type {YamlMap | null} */
+    let section = null;
+    /** @type {YamlMap | null} */
+    let subSection = null;
+    let subIndent = 0;
 
-    for (const rawLine of lines) {
-        // Skip comments and empty lines
+    for (const rawLine of content.split('\n')) {
         const commentIdx = rawLine.indexOf('#');
-        const line = commentIdx >= 0 ? rawLine.substring(0, commentIdx) : rawLine;
+        const line = (commentIdx >= 0 ? rawLine.substring(0, commentIdx) : rawLine).replace(/\r$/, '');
         if (line.trim().length === 0) continue;
 
         const indent = line.length - line.trimStart().length;
         const trimmed = line.trim();
-
-        // Check for key: value or key: (section header)
         const colonIdx = trimmed.indexOf(':');
         if (colonIdx < 0) continue;
 
@@ -666,30 +787,29 @@ function parseSimpleYaml(content) {
         const val = trimmed.substring(colonIdx + 1).trim();
 
         if (indent === 0) {
-            // Top-level key
             if (val.length === 0) {
-                currentSection = key;
-                currentSubSection = null;
-                if (!result[key]) result[key] = {};
+                const fresh = emptyMap();
+                result[key] = fresh;
+                section = fresh;
+                subSection = null;
             } else {
                 result[key] = parseYamlValue(val);
-                currentSection = null;
-                currentSubSection = null;
+                section = null;
+                subSection = null;
             }
-        } else if (indent <= 4 && currentSection) {
-            if (val.length === 0) {
-                currentSubSection = key;
-                if (!result[currentSection][key]) result[currentSection][key] = {};
+        } else if (section) {
+            // A key indented deeper than the header of the open sub section
+            // belongs to it. Any other key belongs to the section.
+            if (subSection && indent > subIndent) {
+                subSection[key] = parseYamlValue(val);
+            } else if (val.length === 0) {
+                const fresh = emptyMap();
+                section[key] = fresh;
+                subSection = fresh;
+                subIndent = indent;
             } else {
-                if (currentSubSection && typeof result[currentSection][currentSubSection] === 'object') {
-                    result[currentSection][currentSubSection][key] = parseYamlValue(val);
-                } else {
-                    result[currentSection][key] = parseYamlValue(val);
-                }
-            }
-        } else if (indent > 4 && currentSection && currentSubSection) {
-            if (typeof result[currentSection][currentSubSection] === 'object') {
-                result[currentSection][currentSubSection][key] = parseYamlValue(val);
+                section[key] = parseYamlValue(val);
+                subSection = null;
             }
         }
     }
@@ -699,34 +819,17 @@ function parseSimpleYaml(content) {
 
 /**
  * Parses a single YAML value string into the appropriate JS type.
+ * @param {string} val
+ * @returns {YamlScalar}
  */
-function parseYamlValue(val) {
+export function parseYamlValue(val) {
     if (val === 'true') return true;
     if (val === 'false') return false;
     if (val === 'null' || val === '~') return null;
-    // Remove surrounding quotes
-    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+    if (val.length >= 2 && ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'")))) {
         return val.substring(1, val.length - 1);
     }
-    // Try number
     const num = Number(val);
-    if (!isNaN(num) && val.length > 0) return num;
+    if (val.length > 0 && Number.isFinite(num)) return num;
     return val;
 }
-
-// ---------------------------------------------------------------------------
-// Exports
-// ---------------------------------------------------------------------------
-
-module.exports = {
-    validateTemporalEvent,
-    validatePerceptionAnnotation,
-    clampToPerceptionBounds,
-    getPerceptionBounds,
-    listModalities,
-    comfortableRange,
-    loadTemporalConfig,
-    resetCausalState,
-    PERCEPTION_BOUNDS,
-    DEFAULT_TEMPORAL_CONFIG,
-};

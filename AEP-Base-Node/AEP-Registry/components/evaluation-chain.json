@@ -6,8 +6,7 @@
   "path": "AEP-Components/evaluation-chain/",
   "description": "Rust meet of 15 walls. Live admit is collect-all AND. TypeScript runner is removed.",
   "requires": [
-    "policy-engine",
-    "aep-evaluation-chain"
+    "policy-engine"
   ],
   "capabilities": [
     "eval:chain",

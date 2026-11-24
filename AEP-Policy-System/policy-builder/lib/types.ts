@@ -1,8 +1,6 @@
 // Policy Builder types - AEP v2.9 Capability 13
 // Data-driven Rego policy generation with invariant detection
 
-import type { MLEEstimation, SpectralAnalysis } from "../../schema-builder/lib/types.js";
-
 /** A domain invariant detected from data or declared in a manifest. */
 export interface DomainInvariant {
   id: string;
@@ -10,6 +8,12 @@ export interface DomainInvariant {
   fields: string[];
   invariantType: 'equality' | 'inequality' | 'membership' | 'exclusion' | 'conditional' | 'temporal';
   expression?: string;
+  /** Membership: the allowed values. Conditional: the allowed values of the second field. */
+  values?: (string | number | boolean)[];
+  /** Exclusion: the value of the first field and the value of the second field that never co-occur. */
+  excludedPair?: [string, string];
+  /** Conditional: the value of the first field that restricts the second field. */
+  condition?: string;
 }
 
 /** Manifest of all domain invariants for a schema. */

@@ -2,7 +2,7 @@
 // coverage tracking and spectral impact analysis
 // AEP v2.9 Capability 13
 
-import type { SchemaCandidate, MLEEstimation, SpectralAnalysis } from "../../schema-builder/lib/types.js";
+import type { SchemaCandidate, SpectralAnalysis } from "../../schema-builder/lib/types.js";
 import { SpectralAnalyzer } from "../../schema-builder/lib/spectral-analyzer.js";
 import { MLEEstimator } from "../../schema-builder/lib/mle-estimator.js";
 import type {
@@ -46,7 +46,6 @@ export class PolicyBuilder {
     manifest?: InvariantManifest,
     options?: {
       historicalData?: Record<string, unknown>[];
-      mleEstimation?: MLEEstimation;
       spectral?: SpectralAnalysis;
     }
   ): PolicyValidationResult {
@@ -126,9 +125,21 @@ export class PolicyBuilder {
     } = {}
   ): {
     rules: RegoRuleProposal[];
+    /** Inferred rules whose confidence is below the configured threshold. They are not in rules. */
+    belowThreshold: RegoRuleProposal[];
     manifest: InvariantManifest;
     spectral: SpectralAnalysis;
   } {
+    // Rules of a detected or declared invariant always stay: dropping one
+    // would leave its invariant without a wall. The threshold applies to the
+    // rules this builder infers from the data and from the graph.
+    const belowThreshold: RegoRuleProposal[] = [];
+    const keepInferred = (proposals: RegoRuleProposal[]): RegoRuleProposal[] =>
+      proposals.filter((p) => {
+        if (p.confidence >= this.config.confidenceThreshold) return true;
+        belowThreshold.push(p);
+        return false;
+      });
     const packageName = `aep.schema.${schema.schemaId}`;
 
     // Detect invariants
@@ -174,7 +185,7 @@ export class PolicyBuilder {
         schema.schemaId,
         packageName
       );
-      rules.push(...mleRules);
+      rules.push(...keepInferred(mleRules));
     }
 
     // Compute spectral analysis of the complete rule set
@@ -191,9 +202,9 @@ export class PolicyBuilder {
         schema.schemaId,
         packageName
       );
-      rules.push(...gapRules);
+      rules.push(...keepInferred(gapRules));
     }
 
-    return { rules, manifest, spectral };
+    return { rules, belowThreshold, manifest, spectral };
   }
 }

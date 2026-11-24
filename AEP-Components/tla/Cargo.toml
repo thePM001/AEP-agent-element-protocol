@@ -2,7 +2,7 @@
 name = "aep-tla-verify"
 version = "0.1.0"
 edition = "2021"
-description = "TLA plus checker with profile off warn strict and L0 MODULE shape"
+description = "TLA plus checker: module shape, deadlock and liveness walls on every configuration and TLC under the profiles warn and strict"
 license = "Apache-2.0"
 publish = false
 
@@ -15,6 +15,18 @@ path = "src/lib.rs"
 
 [dependencies]
 sha2 = "0.10"
+
+# The model check needs TLC, so a plain cargo test leaves it out. Name it to run it:
+# cargo test -p aep-tla-verify --test model_check
+[[test]]
+name = "model_check"
+path = "tests/model_check.rs"
+test = false
+
+[dev-dependencies]
+# The time bounds of the TemporalBounds configuration are held to the constants of
+# the pulse, which the dock path enforces.
+aep-base-node-pulse = { path = "../base-node-pulse/crate" }
 
 [lints]
 workspace = true

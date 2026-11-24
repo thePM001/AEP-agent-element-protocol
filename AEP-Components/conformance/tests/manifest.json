@@ -167,6 +167,12 @@
    "runner": "rust",
    "crate": "aep-conformance",
    "cargo_test": "-p aep-conformance --test redteam_multistep"
+  },
+  {
+   "id": "CC-36",
+   "name": "Hostile agent corpus: the acceptance test of every closed finding of the code review replays its attack, with the draft environment and ledger tampering",
+   "runner": "corpus",
+   "file": "AEP-Components/conformance/hostile/corpus.json"
   }
  ],
  "planned": [

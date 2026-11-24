@@ -185,14 +185,18 @@ export class SchemaBuilder {
       }
     }
 
+    // A schema built from data accepts only the fields the data held.
+    const definition: Record<string, unknown> = {
+      type: "object",
+      properties,
+      additionalProperties: false,
+    };
+    if (required.length > 0) definition.required = required;
+
     return {
       schemaId,
       domain,
-      definition: {
-        type: "object",
-        properties,
-        required: required.length > 0 ? required : undefined,
-      },
+      definition,
       source: "mle_derived",
     };
   }
@@ -211,23 +215,20 @@ export class SchemaBuilder {
     best: SchemaCandidate;
   } {
     // M-28: empty candidates must not crash
-    if (!candidates || candidates.length === 0) {
+    const first = candidates[0];
+    if (first === undefined) {
       throw new Error("compareSchemas requires at least one candidate");
     }
     let mle: MLEEstimation | undefined;
     if (options.historicalData && options.historicalData.length > 0) {
-      mle = this.mleEstimator.estimateFromData(
-        options.historicalData,
-        candidates[0]?.domain ?? "unknown",
-        "comparison"
-      );
+      mle = this.mleEstimator.estimateFromData(options.historicalData, first.domain, "comparison");
     }
 
     const ranked = candidates
       .map(candidate => {
         const score = this.validateSchema(candidate, {
-          mleEstimation: mle,
-          regoRules: options.regoRules,
+          ...(mle ? { mleEstimation: mle } : {}),
+          ...(options.regoRules ? { regoRules: options.regoRules } : {}),
         });
         return { ...candidate, score };
       })
@@ -235,7 +236,7 @@ export class SchemaBuilder {
 
     return {
       ranked,
-      best: ranked[0] ?? candidates[0],
+      best: ranked[0] ?? first,
     };
   }
 

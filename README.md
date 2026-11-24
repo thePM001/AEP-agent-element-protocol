@@ -479,11 +479,11 @@ flowchart LR
 
 **What it is:** TLA+ is a language for formal models of a system. AEP writes the central kernel rules as TLA+ models, so a model checker can search every state of a rule for a violation.
 
-**What ships in 2.9:** Five models: AdmitConjunction, DockPulse, WrapComplete, TemporalBounds and LastApplied. The checker `aep-tla-verify` tests the shape of every model in each run. It runs the TLC model checker only when the profile `AEP_TLA_PROFILE` is `warn` or `strict` and TLC is installed. The public Docker image installs neither TLC nor Apalache. The page states proven safety, liveness and freedom from deadlock. This tree ships the models and the checker. It ships no stored result of an exhaustive model check and such a proof run is planned. The conformance battery and the handshake verification belong to this component.
+**What ships in 2.9:** Five models: AdmitConjunction, DockPulse, WrapComplete, TemporalBounds and LastApplied. Every configuration switches the deadlock check on and names safety invariants and liveness properties and every specification states weak fairness. TLC checks each model exhaustively for the finite instance its configuration names, so a passing run proves the invariants, the liveness properties under that fairness and freedom from deadlock of the model. The models abstract the kernel rules and the Rust kernel remains normative. The checker `aep-tla-verify` tests the shape and the configuration walls of every model in each run and runs TLC when the profile `AEP_TLA_PROFILE` is `warn` or `strict`. Eight mutants that each break one rule must fail the model check. The public Docker image installs neither TLC nor Apalache and no CI job runs TLC yet. The conformance battery and the handshake verification belong to this component.
 
 **Where it lives:** [`AEP-Components/tla/`](AEP-Components/tla/), plus `AEP-Components/verification/` and `AEP-Components/conformance/`.
 
-**Run and test:** `cargo test -p aep-tla-verify` and `./AEP-Components/conformance/runner/run.sh`. The component README has the detail: [`AEP-Components/tla/README.md`](AEP-Components/tla/README.md).
+**Run and test:** `cargo test -p aep-tla-verify`, `cargo test -p aep-tla-verify --test model_check` where TLC is installed and `./AEP-Components/conformance/runner/run.sh`. The component README has the detail: [`AEP-Components/tla/README.md`](AEP-Components/tla/README.md).
 
 ## Shared parts
 
