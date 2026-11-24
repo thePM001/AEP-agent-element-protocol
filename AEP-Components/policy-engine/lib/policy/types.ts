@@ -118,7 +118,7 @@ export const SystemConfigSchema = z.object({
 }).optional();
 
 export const CompletionCriterionSchema = z.object({
-  type: z.enum(["all_children_complete", "tests_pass", "no_violations", "trust_above", "drift_below", "custom"]),
+  type: z.enum(["all_children_complete", "tests_pass", "no_violations", "drift_below", "custom"]),
   value: z.union([z.number(), z.string()]).optional(),
   met: z.boolean().optional().default(false),
 });

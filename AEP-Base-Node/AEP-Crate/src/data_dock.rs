@@ -49,7 +49,6 @@ const FORBIDDEN_WIRE_KEYS: &[&str] = &[
     "frame",
     "sealed",
     "signer_public_hex",
-    "trust_score",
     "capsule",
     "lattice_frame",
     "agentmesh",

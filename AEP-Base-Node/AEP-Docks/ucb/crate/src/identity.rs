@@ -10,7 +10,6 @@ pub fn bundle_for_agent(agent_id: &str) -> Result<AgentMeshBundle, AgentMeshErro
         .unwrap_or(0);
     create_bundle(
         agent_id,
-        crate::DOCK_WIRE_SCORE,
         agent_id.as_bytes(),
         vec![
             "lattice.channel".into(),

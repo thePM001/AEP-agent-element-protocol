@@ -110,6 +110,44 @@ describe("GraphEngine.execute admit gate", () => {
     ]);
     expect(result.vectorClock).toEqual({ "graph-engine": 1 });
   });
+
+  // These behaviour tests replace the source text check of the former crate
+  // graph-engine-admit-gate: the gate is asked before the executor runs and the local
+  // clock ticks only after an allow.
+  it("asks the gate before the executor and ticks the clock only after an allow", async () => {
+    const calls: string[] = [];
+    const holder: { engine?: GraphEngine } = {};
+    const clock = (): number => holder.engine?.["vectorClock"]["graph-engine"] ?? -1;
+    holder.engine = engineWith([action("start", ["b"]), action("b")], {
+      admitGate: async (node) => {
+        calls.push(`admit:${node.id}:clock=${clock()}`);
+        return node.id === "start";
+      },
+      nodeExecutor: async (node) => {
+        calls.push(`exec:${node.id}:clock=${clock()}`);
+        return node.id;
+      },
+    });
+    const result = await holder.engine.execute();
+    expect(calls).toEqual(["admit:start:clock=0", "exec:start:clock=0", "admit:b:clock=1"]);
+    expect(result.error).toBe("admit_denied");
+    expect(result.vectorClock).toEqual({ "graph-engine": 1 });
+  });
+
+  it("never runs the executor when the injected gate throws", async () => {
+    let ran = false;
+    const engine = engineWith([action("start")], {
+      admitGate: async () => {
+        throw new Error("gate down");
+      },
+      nodeExecutor: async () => {
+        ran = true;
+        return "x";
+      },
+    });
+    await expect(engine.execute()).rejects.toThrow("gate down");
+    expect(ran).toBe(false);
+  });
 });
 
 describe("GraphEngine.execute flow", () => {

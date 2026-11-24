@@ -1,52 +1,13 @@
-// Prove filterCrossing folds temporal walls. Soft warn stays warn.
+// Self-check of the temporal fold on fixed inputs. Soft warn stays warn.
 
 use crate::compile::{
     compile_temporal_warns, fold_temporal_into_admit, TemporalCompileInput,
     WALL_TEMPORAL_CAUSAL_PARENT, WALL_TEMPORAL_DRIFT,
 };
 use aep_admit::AdmitWall;
-use std::fs;
-use std::path::{Path, PathBuf};
 
-fn extract_filter_crossing(src: &str) -> String {
-    let start = match src.find("async filterCrossing") {
-        Some(v) => v,
-        None => return String::new(),
-    };
-    src[start..].to_string()
-}
-
-pub fn filter_folds_temporal(filter_source: &str) -> Result<String, String> {
-    let body = extract_filter_crossing(filter_source);
-    if body.is_empty() {
-        return Err(String::from("filterCrossing not found"));
-    }
-    if !body.contains("compileTemporalWalls") {
-        return Err(String::from(
-            "filterCrossing does not compile temporal walls",
-        ));
-    }
-    Ok(String::from("ok filterCrossing folds temporal bounds"))
-}
-
-pub fn default_filter_ts() -> PathBuf {
-    let here =
-        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::from(".")));
-    let candidates = [
-        here.join("../../dynAEP/bridge/hyperlattice/HyperlatticeFilter.ts"),
-        here.join("../../../AEP-agent-element-protocol/AEP-Components/dynAEP/bridge/hyperlattice/HyperlatticeFilter.ts"),
-    ];
-    for p in candidates {
-        if p.is_file() {
-            return p;
-        }
-    }
-    here.join("../../dynAEP/bridge/hyperlattice/HyperlatticeFilter.ts")
-}
-
-pub fn run_gate(filter: &Path) -> Result<i32, String> {
-    let src = fs::read_to_string(filter).map_err(|e| e.to_string())?;
-    let proof = filter_folds_temporal(&src)?;
+/// Fold a skewed event with a missing causal parent and a soft drift event and check the walls.
+pub fn run_gate() -> Result<i32, String> {
     let mut skew = TemporalCompileInput::with_defaults();
     skew.has_agent_time = true;
     skew.agent_time_ms = 10_000;
@@ -82,8 +43,7 @@ pub fn run_gate(filter: &Path) -> Result<i32, String> {
         return Err(String::from("soft warn closed a wall"));
     }
     println!(
-        "aep-admit-temporal-bounds ok proof={} closed={} warns={}",
-        proof,
+        "aep-admit-temporal-bounds ok closed={} warns={}",
         admit.closed.len(),
         warns.len()
     );
@@ -95,16 +55,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn filter_source_folds_temporal() {
-        let path = default_filter_ts();
-        if !path.is_file() {
-            return;
-        }
-        let src = fs::read_to_string(&path).unwrap_or_default();
-        if src.is_empty() {
-            return;
-        }
-        assert!(filter_folds_temporal(&src).is_ok());
-        let _ = run_gate(&path).expect("run_gate");
+    fn run_gate_self_check_passes() {
+        assert_eq!(run_gate(), Ok(0));
     }
 }

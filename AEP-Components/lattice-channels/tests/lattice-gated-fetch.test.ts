@@ -1,8 +1,9 @@
-// Tests for the lattice-gated fetch module. The ".js" specifier loads lattice-gated-fetch.js
-// at runtime (which re-exports lattice-gated-fetch.mjs) while TypeScript checks the calls
-// against the lattice-gated-fetch.ts bridge, so these tests hold both twins to one API.
+// Tests for the lattice-gated fetch. lattice-gated-fetch.ts is the one source and
+// lattice-gated-fetch.js is its tsc emit. The ".js" specifier loads the emitted file at
+// runtime, the file every consumer loads, while TypeScript checks the calls against the
+// source. CI checks that the committed emit matches the source (npm run check:gated-fetch).
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,8 +11,10 @@ import {
   assertUrlNotSsrf,
   buildGatewayEvent,
   dockSuffix,
+  exchangeDockFrame,
   latticeGatedFetch,
   latticeStrictEnabled,
+  pendingDigest,
   responseFromDockAllow,
   sendLatticeLine,
   ssrfPolicyFromEnv,
@@ -228,8 +231,9 @@ describe("latticeStrictEnabled", () => {
 });
 
 describe("buildGatewayEvent", () => {
-  it("fills gateway defaults with a low trust score and the one gateway action path", () => {
-    expect(buildGatewayEvent("https://api.example.com/x")).toEqual({
+  it("fills gateway defaults with the one gateway action path", () => {
+    const event = buildGatewayEvent("https://api.example.com/x");
+    expect(event).toEqual({
       agent_id: "lattice-gateway",
       channel_id: "ch-outbound-gateway",
       contract_id: "lattice-channel-default",
@@ -237,8 +241,51 @@ describe("buildGatewayEvent", () => {
       action_path: "gateway:outbound_http",
       session_id: "gateway-session",
       docking_port: "inference_engine",
-      trust_score: 100,
       payload: { url: "https://api.example.com/x", method: "GET", gateway: "http" },
+    });
+  });
+
+  it("forwards request headers and a text or byte body as the kernel reads them", () => {
+    const text = buildGatewayEvent("https://api.example.com/v1", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Key": "k" },
+      body: '{"a":1}',
+    });
+    expect(text["payload"]).toEqual({
+      url: "https://api.example.com/v1",
+      method: "POST",
+      gateway: "http",
+      headers: { "content-type": "application/json", "x-key": "k" },
+      body: '{"a":1}',
+    });
+    const bytes = buildGatewayEvent("https://api.example.com/v1", { method: "PUT", body: Uint8Array.from([0, 255]) });
+    expect(bytes["payload"]).toMatchObject({ method: "PUT", body_b64: "AP8=" });
+    expect(() => buildGatewayEvent("https://api.example.com/v1", { method: "POST", body: new Blob(["x"]) })).toThrow(
+      "the request body must be text, bytes or URLSearchParams",
+    );
+  });
+
+  it("never lets payloadExtra replace the checked url or the request fields", () => {
+    const event = buildGatewayEvent(
+      "https://api.example.com/checked",
+      { method: "POST", body: "real" },
+      {
+        gateway: "llm",
+        payloadExtra: {
+          url: "http://169.254.169.254/latest/meta-data",
+          method: "DELETE",
+          gateway: "raw",
+          body: "forged",
+          model: "m-1",
+        },
+      },
+    );
+    expect(event["payload"]).toEqual({
+      url: "https://api.example.com/checked",
+      method: "POST",
+      gateway: "llm",
+      body: "real",
+      model: "m-1",
     });
   });
 
@@ -252,9 +299,8 @@ describe("buildGatewayEvent", () => {
         contractId: "c-1",
         eventType: "CUSTOM",
         sessionId: "s-1",
-        trustScore: 640,
         gateway: "llm",
-        payloadExtra: { model: "m-1", url: "ignored-by-spread-order" },
+        payloadExtra: { model: "m-1", url: "https://replaced.example/" },
       },
     );
     expect(event).toMatchObject({
@@ -265,10 +311,9 @@ describe("buildGatewayEvent", () => {
       action_path: "gateway:outbound_http",
       session_id: "s-1",
       docking_port: "inference_engine",
-      trust_score: 640,
     });
     expect(event["payload"]).toEqual({
-      url: "ignored-by-spread-order",
+      url: "https://api.example.com/y?q=1",
       method: "POST",
       gateway: "llm",
       model: "m-1",
@@ -438,5 +483,164 @@ describe("latticeGatedFetch guards", () => {
     setEnv("AEP_LATTICE_STRICT", "0");
     setEnv("AEP_LATTICE_STRICT_DEV", undefined);
     await expect(latticeGatedFetch("http://93.184.216.34/")).rejects.toThrow(/fail-closed/);
+  });
+});
+
+describe("pendingDigest", () => {
+  it("reads the digest of a pending answer and nothing else", () => {
+    expect(pendingDigest({ ok: false, pending: true, digest: "d1" })).toBe("d1");
+    expect(pendingDigest({ ok: true, event_id: 4 })).toBeUndefined();
+    expect(pendingDigest({ ok: false, error: "deny" })).toBeUndefined();
+  });
+
+  it("refuses a pending answer without a digest", () => {
+    expect(() => pendingDigest({ ok: false, pending: true })).toThrow("pending without a digest");
+    expect(() => pendingDigest({ ok: false, pending: true, digest: "" })).toThrow("pending without a digest");
+  });
+});
+
+// latticeGatedFetch against a test dock. The built-in fetch is replaced by one that throws,
+// so any request that leaves outside the dock fails the test. A stand-in aep-lattice-log
+// writes each event it seals to a file and prints a sealed frame.
+describe("latticeGatedFetch against a test dock", () => {
+  const PUBLIC_URL = "http://93.184.216.34/v1/items";
+  const SIGNER = "ab".repeat(32);
+  let dir = "";
+  let sockets = "";
+  let sealedLog = "";
+  let server: Server | null = null;
+  const received: string[] = [];
+  const directCalls: string[] = [];
+  let savedFetch: typeof globalThis.fetch | undefined;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "aep-gf-"));
+    sockets = join(dir, "s");
+    mkdirSync(sockets);
+    sealedLog = join(dir, "sealed.jsonl");
+    const bin = join(dir, "aep-lattice-log");
+    writeFileSync(
+      bin,
+      [
+        "#!/bin/sh",
+        `cat >> "${sealedLog}"`,
+        `printf '\\n' >> "${sealedLog}"`,
+        `printf '%s\\n' '{"frame":{"sealed":true},"signer_public_hex":"${SIGNER}"}'`,
+        "",
+      ].join("\n"),
+    );
+    chmodSync(bin, 0o755);
+    setEnv("AEP_LATTICE_LOG_BIN", bin);
+    setEnv("AEP_LATTICE_LOG_CLI", undefined);
+    setEnv("AEP_DATA", dir);
+    setEnv("AEP_SOCKET_BASE", undefined);
+    setEnv("AEP_LATTICE_STRICT", "1");
+    setEnv("AEP_LATTICE_STRICT_DEV", undefined);
+    received.length = 0;
+    directCalls.length = 0;
+    savedFetch = globalThis.fetch;
+    globalThis.fetch = (input: string | URL | Request): Promise<Response> => {
+      directCalls.push(String(input));
+      return Promise.reject(new Error("a request left outside the dock"));
+    };
+  });
+
+  afterEach(async () => {
+    if (savedFetch) globalThis.fetch = savedFetch;
+    const s = server;
+    server = null;
+    if (s) await new Promise<void>((resolve) => s.close(() => resolve()));
+    restoreEnv();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  /** A dock on the inference socket that answers each line with the next canned answer. */
+  async function dock(answers: Record<string, unknown>[]): Promise<string> {
+    const path = join(sockets, "inference");
+    const srv = createServer((sock) => {
+      let buf = "";
+      sock.setEncoding("utf8");
+      sock.on("data", (chunk: string) => {
+        buf += chunk;
+        let nl = buf.indexOf("\n");
+        while (nl >= 0) {
+          received.push(buf.slice(0, nl));
+          buf = buf.slice(nl + 1);
+          nl = buf.indexOf("\n");
+          const answer = answers.shift();
+          if (answer) sock.write(`${JSON.stringify(answer)}\n`);
+        }
+      });
+      sock.on("error", () => undefined);
+    });
+    server = srv;
+    await new Promise<void>((resolve) => srv.listen(path, () => resolve()));
+    return path;
+  }
+
+  function sealedEvents(): Record<string, unknown>[] {
+    if (!existsSync(sealedLog)) return [];
+    return readFileSync(sealedLog, "utf8")
+      .split("\n")
+      .filter((l) => l.trim())
+      .map((l) => JSON.parse(l) as Record<string, unknown>);
+  }
+
+  const allow = {
+    ok: true,
+    event_id: 41,
+    digest: "d1",
+    http: { status: 200, status_text: "OK", headers: [["x-dock", "1"]], body_b64: Buffer.from("hello").toString("base64") },
+  };
+
+  it("sends nothing and seals nothing when the inference socket is missing", async () => {
+    await expect(latticeGatedFetch(PUBLIC_URL, {}, {}, sockets)).rejects.toThrow(
+      `inference_engine dock required for lattice-gated fetch: ${join(sockets, "inference")}`,
+    );
+    expect(sealedEvents()).toEqual([]);
+    expect(directCalls).toEqual([]);
+  });
+
+  it("collects a pending answer by its digest until the dock carries the reply", async () => {
+    await dock([
+      { ok: false, pending: true, digest: "d1" },
+      { ok: false, pending: true, http_queued: true, digest: "d1" },
+      allow,
+    ]);
+    const res = await latticeGatedFetch(PUBLIC_URL, { method: "POST", body: "q" }, {}, sockets);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("x-dock")).toBe("1");
+    expect(await res.text()).toBe("hello");
+    expect(received).toHaveLength(3);
+    expect(JSON.parse(received[0] ?? "")).toEqual({ frame: { sealed: true }, signer_public_hex: SIGNER });
+    expect(received.slice(1)).toEqual(['{"collect":"d1"}', '{"collect":"d1"}']);
+    expect(directCalls).toEqual([]);
+    const [event] = sealedEvents();
+    expect(event).toBeDefined();
+    expect(event?.["payload"]).toEqual({ url: PUBLIC_URL, method: "POST", gateway: "http", body: "q" });
+  });
+
+  it("seals the checked url even when payloadExtra names another", async () => {
+    await dock([allow]);
+    await latticeGatedFetch(PUBLIC_URL, {}, { payloadExtra: { url: "http://10.0.0.1/admin" } }, sockets);
+    expect(sealedEvents()[0]?.["payload"]).toMatchObject({ url: PUBLIC_URL });
+  });
+
+  it("throws the dock refusal and never falls back to the built-in fetch", async () => {
+    await dock([{ ok: false, pending: true, digest: "d1" }, { ok: false, error: "gateway.route closed" }]);
+    await expect(latticeGatedFetch(PUBLIC_URL, {}, {}, sockets)).rejects.toThrow("gateway.route closed");
+    expect(directCalls).toEqual([]);
+  });
+
+  it("refuses a pending answer without a digest", async () => {
+    await dock([{ ok: false, pending: true }]);
+    await expect(latticeGatedFetch(PUBLIC_URL, {}, {}, sockets)).rejects.toThrow("pending without a digest");
+    expect(received).toHaveLength(1);
+  });
+
+  it("bounds the whole exchange by its timeout", async () => {
+    const path = await dock([{ ok: false, pending: true, digest: "d1" }]);
+    await expect(exchangeDockFrame(path, "{}", 100)).rejects.toThrow("lattice socket timeout");
+    expect(received).toEqual(["{}", '{"collect":"d1"}']);
   });
 });

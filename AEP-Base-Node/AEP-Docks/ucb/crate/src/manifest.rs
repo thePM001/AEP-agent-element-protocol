@@ -226,7 +226,7 @@ pub fn trust_fields_forbidden() -> DenyReport {
         "UCB forbids trust fields",
         CLASS_STRUCTURAL,
         "trust",
-        "remove trust, trust_score, trust_tier, trust_ring and max_trust_score then reseal",
+        "remove trust, trust_tier and trust_ring then reseal",
     )
 }
 
@@ -406,7 +406,7 @@ mod tests {
         let mut raw = signed_provided("agent-a", &key);
         raw.as_object_mut()
             .unwrap()
-            .insert(String::from("trust_score"), serde_json::Value::from(9u64));
+            .insert(String::from("trust_tier"), serde_json::Value::from(9u64));
         let err = load_or_provided(
             &store,
             &signers,

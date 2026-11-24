@@ -5,7 +5,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createWriteStream } from "node:fs";
 import { pipeline } from "node:stream/promises";
-import { latticeGatedFetch } from "../../../../AEP-Components/lattice-channels/lib/lattice-transport.mjs";
+// The one source of the gated fetch is lattice-gated-fetch.ts; this is its emitted module.
+import { latticeGatedFetch } from "../../../../AEP-Components/lattice-channels/lib/lattice-gated-fetch.js";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../../..");
 const MODULES_DIR = join(REPO_ROOT, "AEP-Base-Node/AEP-Docks/universal-connect/modules");
@@ -63,7 +64,7 @@ export function ensureUcdManifest(moduleSpec, dataDir) {
       summary: moduleSpec.description ?? `UCD install for ${moduleSpec.module_id}`,
       allowed_operations: [`ucd:install:${moduleSpec.module_id}`, "ucd:egress"],
     },
-    trust: { tier: "provisional", max_trust_score: 400 },
+    trust: { tier: "provisional" },
     egress: moduleSpec.egress ?? { routes: [] },
     provisional: true,
     synthesized_by: "schema_constrained",
@@ -128,15 +129,19 @@ export async function ucdFetch(moduleId, upstreamUrl, opts = {}) {
 
   if (opts.socketBase) {
     const res = await latticeGatedFetch(
-      opts.socketBase,
+      upstreamUrl,
+      {
+        method: opts.method ?? "GET",
+        headers: { Accept: opts.accept ?? "application/json", ...(opts.headers ?? {}) },
+        ...(opts.body === undefined ? {} : { body: opts.body }),
+      },
       {
         agentId,
         channelId: `ch-ucd-${moduleId}`,
         gateway: "ucd",
         eventType: opts.eventType ?? "UCD_MODULE_FETCH",
       },
-      upstreamUrl,
-      { headers: { Accept: opts.accept ?? "application/json", ...(opts.headers ?? {}) } },
+      opts.socketBase,
     );
     return { transport: "lattice-fallback", response: res };
   }

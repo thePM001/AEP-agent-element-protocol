@@ -351,7 +351,7 @@ pub fn record_dynaep_event(
 
     let payload_json = serde_json::to_string(&enforce_writing_payload(&input.payload))?;
     // A locally sealed frame crossed no connection, so no certificate was presented.
-    let agentmesh_json = serde_json::to_string(&LedgerMeshRecord::local_seal(&input.agent_id, 0))?;
+    let agentmesh_json = serde_json::to_string(&LedgerMeshRecord::local_seal(&input.agent_id))?;
 
     conn.execute(
         "INSERT INTO action_lattice_events
@@ -561,30 +561,19 @@ mod tests {
         assert_eq!(exported[0].event_type, "unknown");
     }
 
-    #[test]
-    fn live_input_has_no_numeric_score_field() {
-        let src = include_str!("lattice_log.rs");
-        let start = match src.find("pub struct DynAepEventInput") {
-            Some(v) => v,
-            None => panic!("DynAepEventInput missing"),
-        };
-        let rest = &src[start..];
-        let end = match rest.find("fn default_contract") {
-            Some(v) => v,
-            None => rest.len(),
-        };
-        let body = &rest[..end];
-        let needle = ["trust", "_score"].concat();
-        assert!(!body.contains(&needle));
+    /// lattice_log.rs read through the one source check.
+    fn own_source() -> aep_source_check::RustSource {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("lattice_log.rs");
+        aep_source_check::RustSource::read(&path).expect("lattice_log.rs parses")
     }
 
     #[test]
     fn default_lattice_db_path_fn_body_is_not_tmp() {
-        let src = include_str!("lattice_log.rs");
-        let start = src
-            .find("pub fn default_lattice_db_path")
+        let body = own_source()
+            .function("default_lattice_db_path")
             .expect("default_lattice_db_path");
-        let body = &src[start..start.saturating_add(220)];
         assert!(!body.contains("/tmp"));
         assert!(body.contains("aep-action-lattice.db"));
     }

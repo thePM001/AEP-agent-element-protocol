@@ -1,61 +1,9 @@
 // Dock request path returns ok false on poisoned locks.
-// Do not abort the process.
-use std::io::Write;
-use std::path::PathBuf;
+// Do not abort the process. The source gate that proves the Base Node docking module
+// keeps this rule is tests/source_gate.rs.
 use std::sync::{Mutex, MutexGuard};
 
 pub const POISONED_LOCK_PREFIX: &str = "poisoned lock:";
-
-fn extract_fn(src: &str, needle: &str) -> String {
-    let start = match src.find(needle) {
-        Some(v) => v,
-        None => return String::new(),
-    };
-    let rest = &src[start..];
-    let brace = match rest.find('{') {
-        Some(v) => v,
-        None => return String::new(),
-    };
-    let bytes = rest.as_bytes();
-    let mut i = brace;
-    let mut depth: i32 = 0;
-    while i < bytes.len() {
-        if bytes[i] == b'{' {
-            depth += 1;
-        } else if bytes[i] == b'}' {
-            depth -= 1;
-            if depth == 0 {
-                return rest[..=i].to_string();
-            }
-        }
-        i += 1;
-    }
-    String::new()
-}
-
-fn strip_line_comments(src: &str) -> String {
-    let mut out = String::new();
-    for line in src.lines() {
-        if let Some(i) = line.find("//") {
-            out.push_str(&line[..i]);
-        } else {
-            out.push_str(line);
-        }
-        out.push('\n');
-    }
-    out
-}
-
-fn compact(src: &str) -> String {
-    src.chars().filter(|c| !c.is_whitespace()).collect()
-}
-
-fn prod_src(src: &str) -> String {
-    match src.find("#[cfg(test)]") {
-        Some(i) => src[..i].to_string(),
-        None => src.to_string(),
-    }
-}
 
 /// Build the dock request ok false error string for a poisoned lock.
 pub fn poisoned_lock_message(name: &str) -> String {
@@ -73,298 +21,13 @@ pub fn lock_or_poison<'a, T>(mutex: &'a Mutex<T>, name: &str) -> Result<MutexGua
     }
 }
 
-/// Fail if production dock request path still uses lock expect or lock unwrap.
-pub fn scan_prod_no_lock_expect(src: &str) -> Result<String, String> {
-    let prod = compact(&strip_line_comments(&prod_src(src)));
-    if prod.contains(".lock().expect") {
-        return Err(String::from(
-            "production dock request path still uses lock expect",
-        ));
-    }
-    if prod.contains(".lock().unwrap()") {
-        return Err(String::from(
-            "production dock request path still uses lock unwrap",
-        ));
-    }
-    if prod.contains(".lock().unwrap_or_else") && prod.contains("into_inner") {
-        return Err(String::from(
-            "production dock request path still recovers poisoned inner state",
-        ));
-    }
-    Ok(String::from(
-        "ok production dock request path does not abort on lock",
-    ))
-}
-
-/// Fail if dock request path does not return ok false on poisoned locks.
-pub fn scan_ok_false_on_poison(src: &str) -> Result<String, String> {
-    let body = extract_fn(src, "pub fn process_request");
-    if body.is_empty() {
-        return Err(String::from("process_request not found"));
-    }
-    let prod = compact(&strip_line_comments(&prod_src(src)));
-    if !prod.contains("poisoned_lock_response") && !prod.contains("poisoned_lock_message") {
-        return Err(String::from(
-            "dock request path does not name poisoned lock ok false",
-        ));
-    }
-    if !prod.contains("lock_or_poison") && !prod.contains("lock_or_deny") {
-        return Err(String::from(
-            "dock request path does not map poisoned locks",
-        ));
-    }
-    if !prod.contains("ok:false") && !prod.contains("ok: false") {
-        let ok_false = prod.contains("ok:false") || src.contains("ok: false");
-        if !ok_false
-            && !prod.contains("ok:false")
-            && !src.contains("ok: false")
-            && !src.contains("ok:false")
-        {
-            return Err(String::from("dock request path does not return ok false"));
-        }
-    }
-    if !src.contains("ok: false") {
-        return Err(String::from("dock request path does not return ok false"));
-    }
-    Ok(String::from(
-        "ok dock request path returns ok false on poisoned locks",
-    ))
-}
-
-/// Production source of the Base Node docking module: mod.rs, then each child
-/// file in AEP-Crate/src/docking in name order, without the test file. Each
-/// file is cut at its own test tail so no child is lost behind mod.rs tests.
-fn read_docking_module(base_node: &std::path::Path) -> Result<String, String> {
-    let dir = base_node.join("AEP-Crate").join("src").join("docking");
-    let entries = match std::fs::read_dir(&dir) {
-        Ok(rd) => rd,
-        Err(e) => return Err(format!("missing docking module: {e}")),
-    };
-    let mut names: Vec<String> = entries
-        .filter_map(|e| e.ok())
-        .map(|e| e.file_name().to_string_lossy().into_owned())
-        .filter(|n| n.ends_with(".rs") && n != "tests.rs")
-        .collect();
-    names.sort_by(|a, b| (a != "mod.rs").cmp(&(b != "mod.rs")).then(a.cmp(b)));
-    let mut out = String::new();
-    for n in names {
-        match std::fs::read_to_string(dir.join(&n)) {
-            Ok(text) => {
-                let prod = match text.find("#[cfg(test)]") {
-                    Some(i) => &text[..i],
-                    None => text.as_str(),
-                };
-                out.push_str(prod);
-                out.push('\n');
-            }
-            Err(e) => return Err(e.to_string()),
-        }
-    }
-    if out.trim().is_empty() {
-        return Err(String::from("empty docking module"));
-    }
-    Ok(out)
-}
-
-fn walk_to_workspace() -> PathBuf {
-    let mut dir = if let Ok(m) = std::env::var("CARGO_MANIFEST_DIR") {
-        PathBuf::from(m)
-    } else {
-        std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
-    };
-    let mut i = 0usize;
-    while i < 12 {
-        let hangar = ["AEP", "Base", "Node"].join("-");
-        let probe = dir
-            .join(&hangar)
-            .join("AEP-Crate")
-            .join("src")
-            .join("docking")
-            .join("mod.rs");
-        if probe.is_file() {
-            return dir;
-        }
-        match dir.parent() {
-            Some(parent) => dir = parent.to_path_buf(),
-            None => break,
-        }
-        i = i.saturating_add(1);
-    }
-    PathBuf::from(".")
-}
-
-pub fn run_gate() -> Result<i32, String> {
-    let root = walk_to_workspace();
-    let hangar = ["AEP", "Base", "Node"].join("-");
-    let src = read_docking_module(&root.join(&hangar))?;
-    let proofs = [
-        scan_prod_no_lock_expect(&src)?,
-        scan_ok_false_on_poison(&src)?,
-    ];
-    for proof in proofs {
-        let mut line = String::from("aep-dock-request-poison ok proof=");
-        line.push_str(&proof);
-        line.push('\n');
-        let _ = std::io::stdout().write_all(line.as_bytes());
-    }
-    Ok(0)
-}
-
-// HVVCAS: lock_or_poison domain:lattice type:service
-pub mod lock_or_poison {
-    pub struct LockOrPoison {
-        pub name: String,
-        pub result: String,
-    }
-
-    impl Default for LockOrPoison {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl LockOrPoison {
-        pub fn new() -> Self {
-            Self {
-                name: String::new(),
-                result: String::new(),
-            }
-        }
-
-        /// Map a poisoned mutex to an error string. Do not abort the process.
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            let m = std::sync::Mutex::new(0u8);
-            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                // Holding the guard while panicking is what poisons the mutex.
-                let _g = m.lock();
-                panic!("poison");
-            }));
-            let label = if self.name.is_empty() {
-                "db"
-            } else {
-                self.name.as_str()
-            };
-            match super::lock_or_poison(&m, label) {
-                Ok(_) => self.result = String::from("lock was not poisoned"),
-                Err(e) => self.result = e,
-            }
-            Ok(())
-        }
-    }
-}
-
-// HVVCAS: poisoned_lock_message domain:lattice type:service
-pub mod poisoned_lock_message {
-    pub struct PoisonedLockMessage {
-        pub name: String,
-        pub message: String,
-    }
-
-    impl Default for PoisonedLockMessage {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl PoisonedLockMessage {
-        pub fn new() -> Self {
-            Self {
-                name: String::new(),
-                message: String::new(),
-            }
-        }
-
-        /// Build the dock request ok false error string for a poisoned lock
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            let label = if self.name.is_empty() {
-                "db"
-            } else {
-                self.name.as_str()
-            };
-            self.message = super::poisoned_lock_message(label);
-            Ok(())
-        }
-    }
-}
-
-// HVVCAS: scan_prod_no_lock_expect domain:lattice type:service
-pub mod scan_prod_no_lock_expect {
-    pub struct ScanProdNoLockExpect {
-        pub src: String,
-        pub scan: String,
-    }
-
-    impl Default for ScanProdNoLockExpect {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl ScanProdNoLockExpect {
-        pub fn new() -> Self {
-            Self {
-                src: String::new(),
-                scan: String::new(),
-            }
-        }
-
-        /// Fail if production dock request path still uses lock expect or lock unwrap
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            match super::scan_prod_no_lock_expect(&self.src) {
-                Ok(v) => self.scan = v,
-                Err(e) => self.scan = e,
-            }
-            Ok(())
-        }
-    }
-}
-
-// HVVCAS: scan_ok_false_on_poison domain:lattice type:service
-pub mod scan_ok_false_on_poison {
-    pub struct ScanOkFalseOnPoison {
-        pub src: String,
-        pub scan: String,
-    }
-
-    impl Default for ScanOkFalseOnPoison {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl ScanOkFalseOnPoison {
-        pub fn new() -> Self {
-            Self {
-                src: String::new(),
-                scan: String::new(),
-            }
-        }
-
-        /// Fail if dock request path does not return ok false on poisoned locks
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            match super::scan_ok_false_on_poison(&self.src) {
-                Ok(v) => self.scan = v,
-                Err(e) => self.scan = e,
-            }
-            Ok(())
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn must(cond: bool) {
-        if !cond {
-            std::process::abort();
-        }
-    }
     #[test]
     fn message_prefix() {
-        let m = poisoned_lock_message("db");
-        must(m.contains("poisoned lock:"));
-        must(m.contains("db"));
+        assert_eq!(poisoned_lock_message("db"), "poisoned lock: db");
     }
 
     #[test]
@@ -372,82 +35,23 @@ mod tests {
         let m = Mutex::new(7u8);
         let got = lock_or_poison(&m, "db");
         match got {
-            Ok(g) => must(*g == 7u8),
-            Err(_) => std::process::abort(),
-        }
+            Ok(g) => assert_eq!(*g, 7u8),
+            Err(e) => panic!("live mutex refused: {e}"),
+        };
     }
 
     #[test]
     fn lock_or_poison_err_on_poisoned_mutex() {
         let m = Mutex::new(0u8);
         let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            let _g = m.lock().expect("lock");
+            // Holding the guard while panicking is what poisons the mutex.
+            let _g = m.lock();
             panic!("poison");
         }));
         let got = lock_or_poison(&m, "db");
         match got {
-            Err(e) => must(e.contains("poisoned lock:")),
-            Ok(_) => std::process::abort(),
-        }
-    }
-
-    #[test]
-    fn scan_prod_lock_expect_fails() {
-        let bad =
-            "pub fn process_request() { let db = runtime.record.db.lock().expect(\"db lock\"); }";
-        match scan_prod_no_lock_expect(bad) {
-            Err(e) => must(e.contains("lock expect")),
-            Ok(_) => std::process::abort(),
-        }
-    }
-
-    #[test]
-    fn scan_prod_lock_ok() {
-        let good = "pub fn process_request() { let db = dock_lock!(&runtime.record.db, \"db\"); } #[cfg(test)]\nmod tests { let db = runtime.record.db.lock().expect(\"db lock\"); }";
-        match scan_prod_no_lock_expect(good) {
-            Ok(v) => must(v.contains("does not abort on lock")),
-            Err(_) => std::process::abort(),
-        }
-    }
-
-    #[test]
-    fn scan_ok_false_missing_fails() {
-        match scan_ok_false_on_poison("fn other() {}") {
-            Err(e) => must(e.contains("process_request not found")),
-            Ok(_) => std::process::abort(),
-        }
-    }
-
-    #[test]
-    fn scan_ok_false_good_passes() {
-        let good = "pub fn process_request() { let db = lock_or_deny(&runtime.record.db, \"db\"); return poisoned_lock_response(\"db\"); DockFrameResponse { ok: false, error: Some(poisoned_lock_message(\"db\")) } }";
-        match scan_ok_false_on_poison(good) {
-            Ok(v) => must(v.contains("ok false on poisoned locks")),
-            Err(_) => std::process::abort(),
-        }
-    }
-
-    #[test]
-    fn hvvc_lock_or_poison_process() {
-        let mut st = lock_or_poison::LockOrPoison::new();
-        st.name = String::from("db");
-        must(st.process().is_ok());
-        must(st.result.contains("poisoned lock:"));
-    }
-
-    #[test]
-    fn hvvc_poisoned_lock_message_process() {
-        let mut st = poisoned_lock_message::PoisonedLockMessage::new();
-        st.name = String::from("db");
-        must(st.process().is_ok());
-        must(st.message.contains("poisoned lock:"));
-    }
-
-    #[test]
-    fn run_gate_on_workspace_docking() {
-        match run_gate() {
-            Ok(code) => must(code == 0),
-            Err(_) => std::process::abort(),
-        }
+            Err(e) => assert_eq!(e, "poisoned lock: db"),
+            Ok(_) => panic!("poisoned mutex was taken"),
+        };
     }
 }

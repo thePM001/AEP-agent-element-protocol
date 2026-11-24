@@ -150,7 +150,7 @@ A denied write returns HTTP 422 with the deny payload from the dock.
 
 ## No seal on the frontend
 
-The frontend never seals anything and only adds the key header. A request that carries any of `agent_id`, `grants`, `agent_permission`, `frame`, `sealed`, `signer_public_hex`, `trust_score`, `capsule`, `lattice_frame` or `agentmesh` at any depth is refused with HTTP 400. The same keys are stripped from every row before it leaves the server, so public JSON never shows a sealed frame, an agent id or a grant.
+The frontend never seals anything and only adds the key header. A request that carries any of `agent_id`, `grants`, `agent_permission`, `frame`, `sealed`, `signer_public_hex`, `capsule`, `lattice_frame` or `agentmesh` at any depth is refused with HTTP 400. The same keys are stripped from every row before it leaves the server, so public JSON never shows a sealed frame, an agent id or a grant.
 
 ## Status codes
 

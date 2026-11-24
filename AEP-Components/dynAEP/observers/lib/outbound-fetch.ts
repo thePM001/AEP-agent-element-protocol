@@ -23,8 +23,6 @@ export async function observerLatticeFetch(
     contractId: meta.contractId ?? "lattice-channel-default",
     eventType: meta.eventType ?? "DYNAEP_OBSERVER_OUTBOUND",
     sessionId: meta.sessionId ?? `observer-${meta.adapter ?? "unknown"}`,
-    // MEDIUM: low default observer trust (was 720)
-    trustScore: meta.trustScore ?? 100,
     gateway: meta.gateway ?? "http",
     payloadExtra: {
       observer: meta.observer ?? meta.adapter,

@@ -5,95 +5,6 @@ pub use aep_admit::{
     writing_wall_id, RULE_NO_EM_DASHES, RULE_NO_OXFORD_COMMA,
 };
 
-// HVVCAS: compile_writing_walls domain:admit type:service
-pub mod compile_writing_walls_svc {
-    use aep_admit::AdmitWall;
-
-    pub struct CompileWritingWalls {
-        pub text: String,
-        pub walls: Vec<AdmitWall>,
-    }
-
-    impl Default for CompileWritingWalls {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl CompileWritingWalls {
-        pub fn new() -> Self {
-            Self {
-                text: Default::default(),
-                walls: Default::default(),
-            }
-        }
-
-        /// Compile writing.gap denies into Admit walls for one collect-all pass
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            self.walls = aep_admit::compile_writing_walls(&self.text);
-            Ok(())
-        }
-    }
-}
-
-// HVVCAS: collect_payload_strings domain:admit type:service
-pub mod collect_payload_strings_svc {
-    pub struct CollectPayloadStrings {
-        pub payload: String,
-        pub strings: Vec<String>,
-    }
-
-    impl Default for CollectPayloadStrings {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl CollectPayloadStrings {
-        pub fn new() -> Self {
-            Self {
-                payload: Default::default(),
-                strings: Default::default(),
-            }
-        }
-
-        /// Walk payload values and collect every string for writing walls
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            self.strings = aep_admit::collect_payload_strings(&self.payload);
-            Ok(())
-        }
-    }
-}
-
-// HVVCAS: writing_wall_ids domain:admit type:service
-pub mod writing_wall_ids {
-    pub struct WritingWallIds {
-        pub rule: String,
-        pub wall_id: String,
-    }
-
-    impl Default for WritingWallIds {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl WritingWallIds {
-        pub fn new() -> Self {
-            Self {
-                rule: Default::default(),
-                wall_id: Default::default(),
-            }
-        }
-
-        /// Name writing walls writing.no_em_dashes and writing.no_oxford_comma
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            self.wall_id = aep_admit::writing_wall_id(&self.rule);
-            Ok(())
-        }
-    }
-}
-
 /// Fold writing walls plus extra walls into one collect-all pass.
 pub fn fold_writing_into_admit(text: &str, extra: &[AdmitWall]) -> AdmitResult {
     let mut walls = aep_admit::compile_writing_walls(text);
@@ -149,10 +60,7 @@ mod tests {
     }
 
     #[test]
-    fn wall_id_prefix() {
-        let mut ids = writing_wall_ids::WritingWallIds::new();
-        ids.rule = RULE_NO_EM_DASHES.into();
-        ids.process().expect("ids");
-        assert_eq!(ids.wall_id, "writing:no_em_dashes");
+    fn writing_wall_id_has_writing_prefix() {
+        assert_eq!(writing_wall_id(RULE_NO_EM_DASHES), "writing:no_em_dashes");
     }
 }

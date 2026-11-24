@@ -15,9 +15,12 @@ aep-admit-temporal-bounds = { path = "../../admit-temporal-bounds/crate" }
 aep-admit-budget-window = { path = "../../admit-budget-window/crate" }
 aep-envelope-walls = { path = "../../envelope-walls/crate" }
 aep-live-entry = { path = "../../live-entry/crate" }
-anyhow = "1"
 serde_json = "1"
 aep-policy-system-admit = { path = "../../policy-system-admit/crate" }
+
+[dev-dependencies]
+# Two tests read compile_live_walls_in_view through the one source check.
+aep-source-check = { path = "../../source-check/crate" }
 
 [lints]
 workspace = true

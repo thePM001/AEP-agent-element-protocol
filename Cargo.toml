@@ -40,9 +40,10 @@ members = [
     "AEP-Components/caw-cve-demo-trees/crate",
     "AEP-Components/unbound-field-close/crate",
     "AEP-Components/base-node-pulse/crate",
-    "AEP-Components/graph-engine-admit-gate/crate",
     "AEP-Components/wall-set-backpressure/crate",
     "AEP-Components/dock-post-beat-collect/crate",
+    # The one source check: every crate that reads Rust source to prove a rule reads it here.
+    "AEP-Components/source-check/crate",
     "AEP-Components/tla",
     "AEP-Components/ucm/crates/ucm-core",
     "AEP-Components/ucm/crates/ucm-receipt",

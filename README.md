@@ -243,7 +243,7 @@ flowchart LR
 
 **What ships in 2.9:** The crate `aep-admit` contains the one collect-all function for every caller. The writing rules, the agent permissions written in GAP, the time bounds, the channel order, the window budgets and the policy files of `AEP-Policy-System/reference/` compile into walls of the same pass. Covenants are the permit, forbid and require rules of an agent. They belong to this component together with the data permission system. An empty action lattice closes the membership wall, so nothing passes without written rules.
 
-**Where it lives:** [`AEP-Components/admit/`](AEP-Components/admit/), plus `AEP-Components/admit-budget-window/`, `AEP-Components/admit-channel-order-walls/`, `AEP-Components/admit-live-dock/`, `AEP-Components/admit-temporal-bounds/`, `AEP-Components/admit-writing-walls/`, `AEP-Components/policy-system-admit/`, `AEP-Components/one-admit-id/`, `AEP-Components/covenant/` and `AEP-Components/permissions/`.
+**Where it lives:** [`AEP-Components/admit/`](AEP-Components/admit/), plus `AEP-Components/admit-budget-window/`, `AEP-Components/admit-channel-order-walls/`, `AEP-Components/admit-live-dock/`, `AEP-Components/admit-temporal-bounds/`, `AEP-Components/admit-writing-walls/`, `AEP-Components/policy-system-admit/`, `AEP-Components/covenant/` and `AEP-Components/permissions/`.
 
 **Run and test:** `cargo test -p aep-admit -p aep-admit-live-dock` and `npx vitest run AEP-Components/admit`. The component README has the detail: [`AEP-Components/admit/README.md`](AEP-Components/admit/README.md).
 
@@ -262,9 +262,9 @@ flowchart LR
 
 **What ships in 2.9:** `GraphEngine` in TypeScript with five node types: action, decision, wait, parallel and loop. A node starts only after the admit function of the engine allows it and an engine without such a function runs nothing. Loops are bounded, retries back off and a wait node can time out to an escalation. The engine owns no graph state and it does not replace the kernel check. Task decomposition, session state, the kill switch and the recovery engine belong to this component.
 
-**Where it lives:** [`AEP-Components/graph-engine/`](AEP-Components/graph-engine/), plus `AEP-Components/graph-engine-admit-gate/`, `AEP-Components/decomposition/`, `AEP-Components/session/` and `AEP-Components/recovery/`.
+**Where it lives:** [`AEP-Components/graph-engine/`](AEP-Components/graph-engine/), plus `AEP-Components/decomposition/`, `AEP-Components/session/` and `AEP-Components/recovery/`.
 
-**Run and test:** `npx vitest run AEP-Components/graph-engine` and `cargo test -p aep-graph-engine-admit-gate`. The component README has the detail: [`AEP-Components/graph-engine/README.md`](AEP-Components/graph-engine/README.md).
+**Run and test:** `npx vitest run AEP-Components/graph-engine`. The component README has the detail: [`AEP-Components/graph-engine/README.md`](AEP-Components/graph-engine/README.md).
 
 ## 06 / GAP
 

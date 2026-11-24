@@ -34,7 +34,6 @@ The One Validation Envelope (03) hands over its 15 walls. GAP (06) adds the wall
 | `AEP-Components/admit-channel-order-walls/` | Channel and partial order as walls |
 | `AEP-Components/admit-budget-window/` | Window budgets per agent and wrap |
 | `AEP-Components/policy-system-admit/` | Loads the policy files as walls bound to a wrap or a prefix |
-| `AEP-Components/one-admit-id/` | Source check: one Admit function and one id vocabulary |
 | `AEP-Components/covenant/` | Covenant parser, evaluator and compiler |
 | `AEP-Components/permissions/` | The public names of the agent permission check |
 

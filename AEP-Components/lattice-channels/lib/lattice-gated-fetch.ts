@@ -1,18 +1,29 @@
 /**
- * AEP 2.8 Lattice-gated outbound HTTP - all external calls audit via inference_engine dock.
+ * AEP 2.9 lattice-gated outbound HTTP. Every external call is sealed as a lattice frame
+ * for the inference_engine dock. The Base Node makes the request after Admit.
+ *
+ * This TypeScript file is the one source of the gated fetch. lattice-gated-fetch.js
+ * next to it is emitted from this file by tsc (npm run build:gated-fetch) and CI checks
+ * that the committed JavaScript matches a fresh emit (npm run check:gated-fetch).
  */
 
-import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { connect } from "node:net";
 import {
   GATEWAY_ACTION_PATH,
-  assertLatticeUrl,
   egressPolicyFromEnv,
   type EgressPolicy,
 } from "../../egress-address/lib/egress-address.mjs";
+// The name lookup and the frame seal run the aep-lattice-log binary and node in a child
+// process. Their one implementation is in the lattice transport. The gated fetch uses it,
+// so this module starts no process of its own.
+import {
+  assertUrlNotSsrf as transportAssertUrlNotSsrf,
+  buildLatticeFrame as transportBuildLatticeFrame,
+  resolveLatticeLogBin as transportResolveLatticeLogBin,
+} from "./lattice-transport.mjs";
 
 export { GATEWAY_ACTION_PATH };
 
@@ -22,19 +33,17 @@ export interface LatticeGatewayMeta {
   contractId?: string;
   eventType?: string;
   sessionId?: string;
-  trustScore?: number;
   gateway?: string;
+  /** Extra payload fields. They never replace url, method, gateway, headers or body. */
   payloadExtra?: Record<string, unknown>;
 }
 
 export function latticeStrictEnabled(): boolean {
   const v = process.env.AEP_LATTICE_STRICT ?? "1";
   if (v === "0") {
-    // HIGH: refuse production kill-switch unless explicit dev flag
+    // A production kill switch is refused unless the explicit dev flag is set.
     if (process.env.AEP_LATTICE_STRICT_DEV === "1") return false;
-    throw new Error(
-      "AEP_LATTICE_STRICT=0 refused outside AEP_LATTICE_STRICT_DEV=1 (fail-closed)",
-    );
+    throw new Error("AEP_LATTICE_STRICT=0 refused outside AEP_LATTICE_STRICT_DEV=1 (fail-closed)");
   }
   return true;
 }
@@ -46,32 +55,17 @@ export function ssrfPolicyFromEnv(env: NodeJS.ProcessEnv = process.env): SsrfPol
   return egressPolicyFromEnv(env);
 }
 
-function defaultLookup(host: string): string[] {
-  const script =
-    "const dns=require('node:dns');dns.lookup(" +
-    JSON.stringify(host) +
-    ",{all:true,verbatim:true},(err,addrs)=>{if(err){process.stderr.write(String(err.message||err));process.exit(2);}process.stdout.write(JSON.stringify((addrs||[]).map(a=>a.address)));});";
-  try {
-    const out = execFileSync(process.execPath, ["-e", script], { encoding: "utf8", maxBuffer: 1024 * 1024 });
-    const parsed = JSON.parse(String(out).trim()) as unknown;
-    if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("empty");
-    return parsed.map(String);
-  } catch {
-    throw new Error("lattice-gated-fetch: DNS resolve failed");
-  }
-}
-
 /**
  * The address check of AEP-Components/egress-address: the full range list, the reserved
  * names and every address of the lookup. The kernel checks the destination again before it
- * connects, against the same list.
+ * connects, against the same list. Without a lookup the name lookup of the transport runs.
  */
 export function assertUrlNotSsrf(
   urlInput: string | URL,
-  lookup: SsrfLookup = defaultLookup,
+  lookup?: SsrfLookup,
   env: NodeJS.ProcessEnv = process.env,
 ): void {
-  assertLatticeUrl(urlInput, lookup, env);
+  transportAssertUrlNotSsrf(urlInput, lookup, env);
 }
 
 export function resolveSocketBase(): string {
@@ -80,8 +74,9 @@ export function resolveSocketBase(): string {
   return join(data, "sockets");
 }
 
+/** The aep-lattice-log binary: AEP_LATTICE_LOG_BIN, AEP_LATTICE_LOG_CLI, a repository build or the installed one. */
 export function resolveLatticeLogBin(): string {
-  return process.env.AEP_LATTICE_LOG_BIN || process.env.AEP_LATTICE_LOG_CLI || "aep-lattice-log";
+  return transportResolveLatticeLogBin(process.env);
 }
 
 function resolveConfigPath(): string | undefined {
@@ -96,23 +91,12 @@ export interface SealedLatticeFrame {
   signerPublicHex?: string;
 }
 
+/** Seal an event as a lattice frame with aep-lattice-log build-frame. */
 export function buildLatticeFrame(event: Record<string, unknown>): SealedLatticeFrame {
-  const bin = resolveLatticeLogBin();
-  const args: string[] = [];
-  const configPath = resolveConfigPath();
-  if (configPath) args.push("--config", configPath);
-  args.push("build-frame");
-  const out = execFileSync(bin, args, {
-    input: JSON.stringify(event),
-    encoding: "utf8",
-    maxBuffer: 8 * 1024 * 1024,
-  }).trim();
-  const parsed = JSON.parse(out) as Partial<SealedLatticeFrame>;
-  const frame = parsed.frame;
-  if (!frame) {
-    throw new Error("aep-lattice-log build-frame missing LatticeChannelFrame");
-  }
-  return { ...parsed, frame };
+  return transportBuildLatticeFrame(event, {
+    configPath: resolveConfigPath(),
+    latticeLogBin: resolveLatticeLogBin(),
+  });
 }
 
 /** Map a docking port name to its Unix socket file name under the socket base. */
@@ -171,8 +155,97 @@ export interface DockHttpResponse {
 
 export interface DockAllowResponse {
   ok?: boolean;
+  event_id?: number;
+  digest?: string;
   error?: string;
   http?: DockHttpResponse;
+  pending?: boolean;
+  http_queued?: boolean;
+}
+
+/**
+ * The digest to collect with when a dock answer is pending, otherwise undefined. A
+ * pending answer without a digest is a refusal, as the dock verdict reads it.
+ */
+export function pendingDigest(resp: DockAllowResponse): string | undefined {
+  if (resp.pending !== true) return undefined;
+  const digest = typeof resp.digest === "string" ? resp.digest : "";
+  if (!digest) throw new Error("lattice dock answered pending without a digest");
+  return digest;
+}
+
+function parseDockAnswer(line: string): DockAllowResponse {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(line);
+  } catch {
+    throw new Error("lattice dock answer is not JSON");
+  }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("lattice dock answer is not an object");
+  }
+  return parsed as DockAllowResponse;
+}
+
+/**
+ * Send one frame line to a dock and read its answer. The dock answers a frame with
+ * pending and a digest while the frame waits for its pulse and while the gateway request
+ * of the kernel is in flight. On such an answer this function writes a collect line for
+ * the digest on the same connection and reads again until the answer is no longer
+ * pending. The whole exchange is bounded by timeoutMs.
+ */
+export function exchangeDockFrame(
+  socketPath: string,
+  line: string,
+  timeoutMs = 30000,
+): Promise<DockAllowResponse> {
+  if (!existsSync(socketPath)) {
+    return Promise.reject(new Error(`lattice socket not found: ${socketPath}`));
+  }
+  return new Promise<DockAllowResponse>((resolve, reject) => {
+    const socket = connect({ path: socketPath });
+    let buf = "";
+    let done = false;
+    const finish = (err: Error | null, value?: DockAllowResponse): void => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      if (err || value === undefined) {
+        socket.destroy();
+        reject(err ?? new Error("lattice dock gave no answer"));
+        return;
+      }
+      socket.end();
+      resolve(value);
+    };
+    const timer = setTimeout(() => finish(new Error("lattice socket timeout")), timeoutMs);
+    socket.setEncoding("utf8");
+    socket.on("connect", () => socket.write(`${line}\n`));
+    socket.on("data", (chunk: string) => {
+      buf += chunk;
+      let nl = buf.indexOf("\n");
+      while (nl >= 0 && !done) {
+        const answerLine = buf.slice(0, nl).trim();
+        buf = buf.slice(nl + 1);
+        nl = buf.indexOf("\n");
+        if (!answerLine) continue;
+        try {
+          const answer = parseDockAnswer(answerLine);
+          const digest = pendingDigest(answer);
+          if (digest === undefined) {
+            finish(null, answer);
+            return;
+          }
+          socket.write(`${JSON.stringify({ collect: digest })}\n`);
+        } catch (err) {
+          finish(err instanceof Error ? err : new Error(String(err)));
+          return;
+        }
+      }
+    });
+    socket.on("error", (err) => finish(err));
+    socket.on("close", () => finish(new Error("lattice socket closed before a response line")));
+  });
 }
 
 /** Turn a dock allow reply into a fetch Response; a reply that is not ok throws. */
@@ -208,32 +281,61 @@ export function responseFromDockAllow(resp: DockAllowResponse | null | undefined
   return new Response(nullBody ? null : body, { status, statusText: String(http.status_text || ""), headers });
 }
 
-async function latticeDockRequest(
-  socketBase: string,
-  dockPort: string,
-  event: Record<string, unknown>,
-): Promise<DockAllowResponse> {
-  const socketPath = join(socketBase, dockSuffix(dockPort));
+/** Seal the gateway event, send it to the inference dock and return its settled answer. */
+async function latticeDockRequest(socketPath: string, event: Record<string, unknown>): Promise<DockAllowResponse> {
   const sealed = buildLatticeFrame(event);
   const signer = sealed.signer_public_hex || sealed.signerPublicHex || "";
   if (!signer) {
     throw new Error("signer_public_hex required for lattice dock send (fail-closed)");
   }
   const wire = JSON.stringify({ frame: sealed.frame, signer_public_hex: signer });
-  const line = await sendLatticeLine(socketPath, wire);
-  const resp = JSON.parse(line) as DockAllowResponse;
-  if (!resp.ok) {
+  const resp = await exchangeDockFrame(socketPath, wire);
+  if (resp.ok !== true) {
     throw new Error(resp.error ?? "lattice frame rejected");
   }
   return resp;
 }
 
-/** The lattice event that latticeGatedFetch seals for the inference_engine dock. */
+/** The request headers as the object of text values that the kernel reads. */
+function gatewayHeaders(init: RequestInit): Record<string, string> | undefined {
+  if (init.headers === undefined) return undefined;
+  const out: Record<string, string> = {};
+  new Headers(init.headers).forEach((value, name) => {
+    out[name] = value;
+  });
+  return out;
+}
+
+/** The request body as the kernel reads it: text as body, bytes as body_b64. */
+function gatewayBody(init: RequestInit): { body?: string; body_b64?: string } {
+  const body = init.body;
+  if (body === undefined || body === null) return {};
+  if (typeof body === "string") return { body };
+  if (body instanceof URLSearchParams) return { body: body.toString() };
+  if (body instanceof Uint8Array) return { body_b64: Buffer.from(body).toString("base64") };
+  if (body instanceof ArrayBuffer) return { body_b64: Buffer.from(new Uint8Array(body)).toString("base64") };
+  throw new Error("lattice-gated-fetch: the request body must be text, bytes or URLSearchParams");
+}
+
+/**
+ * The lattice event that latticeGatedFetch seals for the inference_engine dock. The
+ * caller fields of payloadExtra go first, so the checked url and the request fields
+ * always win over them.
+ */
 export function buildGatewayEvent(
   url: string | URL,
   init: RequestInit = {},
   meta: LatticeGatewayMeta = {},
 ): Record<string, unknown> {
+  const headers = gatewayHeaders(init);
+  const payload: Record<string, unknown> = {
+    ...(meta.payloadExtra ?? {}),
+    url: String(url),
+    method: init.method ?? "GET",
+    gateway: meta.gateway ?? "http",
+    ...(headers === undefined ? {} : { headers }),
+    ...gatewayBody(init),
+  };
   return {
     agent_id: meta.agentId ?? "lattice-gateway",
     channel_id: meta.channelId ?? "ch-outbound-gateway",
@@ -242,14 +344,7 @@ export function buildGatewayEvent(
     action_path: GATEWAY_ACTION_PATH,
     session_id: meta.sessionId ?? "gateway-session",
     docking_port: "inference_engine",
-    // HIGH: low default trust; server must not treat client trust as authority
-    trust_score: meta.trustScore ?? 100,
-    payload: {
-      url: String(url),
-      method: init.method ?? "GET",
-      gateway: meta.gateway ?? "http",
-      ...(meta.payloadExtra ?? {}),
-    },
+    payload,
   };
 }
 
@@ -261,17 +356,18 @@ export async function latticeGatedFetch(
 ): Promise<Response> {
   assertUrlNotSsrf(url);
   if (!latticeStrictEnabled()) {
-    // Dev-only path when AEP_LATTICE_STRICT_DEV=1 and STRICT=0
+    // The dev path of AEP_LATTICE_STRICT_DEV=1 with AEP_LATTICE_STRICT=0 only.
+    // eslint-disable-next-line no-restricted-globals -- the one dev path, refused outside AEP_LATTICE_STRICT_DEV=1
     return fetch(url, init);
   }
   const base = socketBase ?? resolveSocketBase();
-  const event = buildGatewayEvent(url, init, meta);
-  const inferencePath = join(base, "inference");
-  const resp = await latticeDockRequest(base, "inference_engine", event);
+  const inferencePath = join(base, dockSuffix("inference_engine"));
+  // The dock makes the outbound request, so the socket is checked before any frame is
+  // built or sent: with no dock nothing is sealed and nothing leaves.
   if (!existsSync(inferencePath)) {
-    throw new Error(
-      `inference_engine dock required for lattice-gated fetch: ${inferencePath}`,
-    );
+    throw new Error(`inference_engine dock required for lattice-gated fetch: ${inferencePath}`);
   }
+  const event = buildGatewayEvent(url, init, meta);
+  const resp = await latticeDockRequest(inferencePath, event);
   return responseFromDockAllow(resp);
 }

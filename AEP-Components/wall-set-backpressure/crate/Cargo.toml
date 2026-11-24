@@ -6,15 +6,12 @@ description = "the earlier law change plus. Dock Deny returns closed-wall ids, c
 license = "UNLICENSED"
 publish = false
 
-[[bin]]
-name = "aep-wall-set-backpressure"
-path = "src/main.rs"
-
 [dependencies]
 aep-kernel-types = { path = "../../kernel-types/crate" }
-anyhow = "1"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+
+[dev-dependencies]
+# The source gate in tests/source_gate.rs reads the Deny paths through the one source check.
+aep-source-check = { path = "../../source-check/crate" }
 
 [lints]
 workspace = true

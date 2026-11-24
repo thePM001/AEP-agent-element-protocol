@@ -333,97 +333,49 @@ fn plain_register_lrp_is_rejected() {
 }
 
 #[test]
-fn frame_trust_score_does_not_rotate_agentmesh_certs() {
+fn later_frames_keep_the_agentmesh_identity_of_the_agent() {
     let (_dir, rt) = temp_runtime();
-    install_agent_manifest(&rt, "AG-TRUST", "sess-1");
-    // BM-07: trust must be inside signed plaintext, not free outer wire field
-    let (_frame, line_high) = build_test_frame(
-            &rt,
-            "ch-trust",
-            "AG-TRUST",
-            "sess-1",
-            DockingPort::ValidationEngine,
-            "dynaep-action-lattice",
-            br#"{"trust_score":850,"note":"high","type":"PING","action_path":"root:ping","payload":{"ok":true}}"#,
-            1,
-        );
-    let resp1 = process_request(&rt, &DockingPort::ValidationEngine, &line_high);
-    assert!(!resp1.ok);
-    assert_eq!(resp1.pending, Some(true));
-    let fp1 = rt
-        .keys
-        .agent_bundles
-        .lock()
-        .expect("lock")
-        .get("AG-TRUST")
-        .expect("bundle")
-        .mtls
-        .cert_fingerprint
-        .clone();
-
-    let (_frame2, line_low) = build_test_frame(
-            &rt,
-            "ch-trust",
-            "AG-TRUST",
-            "sess-1",
-            DockingPort::ValidationEngine,
-            "dynaep-action-lattice",
-            br#"{"trust_score":450,"note":"low","type":"PING","action_path":"root:ping","payload":{"ok":true}}"#,
-            2,
-        );
-    let resp2 = process_request(&rt, &DockingPort::ValidationEngine, &line_low);
-    assert!(!resp2.ok);
-    assert_eq!(resp2.pending, Some(true));
-    let fp2 = rt
-        .keys
-        .agent_bundles
-        .lock()
-        .expect("lock")
-        .get("AG-TRUST")
-        .expect("bundle")
-        .mtls
-        .cert_fingerprint
-        .clone();
-    assert_eq!(fp1, fp2);
-    let score = rt
-        .keys
-        .agent_bundles
-        .lock()
-        .expect("lock")
-        .get("AG-TRUST")
-        .expect("bundle")
-        .trust_score;
-    assert_eq!(score, 450);
-}
-
-#[test]
-fn bm07_wire_trust_score_ignored_without_signed_field() {
-    let (_dir, rt) = temp_runtime();
-    install_agent_manifest(&rt, "AG-WIRE", "sess-1");
-    let (_frame, line) = build_test_frame(
+    install_agent_manifest(&rt, "AG-KEEP", "sess-1");
+    let fingerprint = |rt: &DockingRuntime| {
+        rt.keys
+            .agent_bundles
+            .lock()
+            .expect("lock")
+            .get("AG-KEEP")
+            .expect("bundle")
+            .mtls
+            .cert_fingerprint
+            .clone()
+    };
+    let (_frame, first) = build_test_frame(
         &rt,
-        "ch-wire",
-        "AG-WIRE",
+        "ch-keep",
+        "AG-KEEP",
         "sess-1",
         DockingPort::ValidationEngine,
         "dynaep-action-lattice",
-        br#"{"type":"PING","action_path":"root:ping","payload":{"ok":true}}"#,
+        br#"{"note":"first","type":"PING","action_path":"root:ping","payload":{"ok":true}}"#,
         1,
     );
-    let mut wire = serde_json::from_str::<serde_json::Value>(&line).unwrap();
-    wire["trust_score"] = serde_json::json!(999);
-    let resp = process_request(&rt, &DockingPort::ValidationEngine, &wire.to_string());
-    assert!(!resp.ok);
-    assert_eq!(resp.pending, Some(true));
-    let score = *rt
-        .keys
-        .agent_trust
-        .lock()
-        .expect("lock")
-        .get("AG-WIRE")
-        .expect("trust");
-    // default 0 when no signed trust_score (wire 999 ignored; fail-closed trust)
-    assert_eq!(score, 0);
+    let resp1 = process_request(&rt, &DockingPort::ValidationEngine, &first);
+    assert!(!resp1.ok);
+    assert_eq!(resp1.pending, Some(true));
+    let fp1 = fingerprint(&rt);
+
+    let (_frame2, second) = build_test_frame(
+        &rt,
+        "ch-keep",
+        "AG-KEEP",
+        "sess-1",
+        DockingPort::ValidationEngine,
+        "dynaep-action-lattice",
+        br#"{"note":"second","type":"PING","action_path":"root:ping","payload":{"ok":true}}"#,
+        2,
+    );
+    let resp2 = process_request(&rt, &DockingPort::ValidationEngine, &second);
+    assert!(!resp2.ok);
+    assert_eq!(resp2.pending, Some(true));
+    assert_eq!(fp1, fingerprint(&rt));
 }
 
 #[test]
@@ -963,14 +915,6 @@ fn poisoned_replay_lock_returns_ok_false_without_abort() {
     let (_dir, rt) = temp_runtime();
     poisoned_ok_false_on_frame(&rt, "AG-POISON-REPLAY", "replay", |rt| {
         poison_std_mutex(&rt.defence.replay_guard);
-    });
-}
-
-#[test]
-fn poisoned_agent_trust_lock_returns_ok_false_without_abort() {
-    let (_dir, rt) = temp_runtime();
-    poisoned_ok_false_on_frame(&rt, "AG-POISON-TRUST", "agent_trust", |rt| {
-        poison_std_mutex(&rt.keys.agent_trust);
     });
 }
 

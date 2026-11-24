@@ -149,7 +149,6 @@ fn record_in_lattice(cfg: &Config, receipt: &J, digest: &str) -> String {
         "session_id": receipt["node_id"],
         "docking_port": "validation_engine",
         "action_path": cfg.lattice_action_path,
-        "trust_score": 0,
         "payload": {
             "target_id": cfg.lattice_scene,
             "receipt_id": receipt["receipt_id"],

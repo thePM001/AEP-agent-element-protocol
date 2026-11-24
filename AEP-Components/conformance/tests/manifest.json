@@ -71,12 +71,6 @@
    "crate": "aep-conformance"
   },
   {
-   "id": "CC-11",
-   "name": "Docking trust_score rotates AgentMesh tier",
-   "runner": "rust",
-   "crate": "aep-conformance"
-  },
-  {
    "id": "CC-13",
    "name": "Plain ping wire format rejected",
    "runner": "rust",

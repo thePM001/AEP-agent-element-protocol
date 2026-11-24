@@ -1,54 +1,10 @@
-// GAP-285-P15 HVVCAS process wrapper for instruction profile walls.
-use super::{compile_instruction_profile_walls, PolicySystemCompileInput};
-use aep_admit::AdmitWall;
+// GAP-285-P15 tests of the instruction profile walls.
 
-pub struct CompileInstructionProfileWalls {
-    pub source: String,
-    pub agent_id: String,
-    pub action: String,
-    pub wrap: String,
-    pub action_path: String,
-    pub walls: Vec<AdmitWall>,
-}
-
-impl Default for CompileInstructionProfileWalls {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl CompileInstructionProfileWalls {
-    pub fn new() -> Self {
-        Self {
-            source: String::new(),
-            agent_id: String::new(),
-            action: String::new(),
-            wrap: String::new(),
-            action_path: String::new(),
-            walls: Vec::new(),
-        }
-    }
-
-    pub fn process(&mut self) -> anyhow::Result<()> {
-        let input = PolicySystemCompileInput {
-            agent_id: self.agent_id.clone(),
-            action: self.action.clone(),
-            wrap: self.wrap.clone(),
-            action_path: self.action_path.clone(),
-            ..Default::default()
-        };
-        self.walls = compile_instruction_profile_walls(&self.source, &input);
-        Ok(())
-    }
-}
-
-#[cfg(test)]
 mod tests {
-    use super::CompileInstructionProfileWalls;
     use crate::{
-        compile_policy_system_walls_from, policy_wall_id, scan_policy_loader_compiles_profile,
-        scan_workspace_includes_gap_profile, walk_to_workspace, PolicySystemCompileInput,
-        TICKET_GAP285_P15,
+        compile_instruction_profile_walls, compile_policy_system_walls_from, policy_wall_id,
+        scan_policy_loader_compiles_profile, scan_workspace_includes_gap_profile,
+        walk_to_workspace, PolicySystemCompileInput, TICKET_GAP285_P15,
     };
     use aep_admit::admit_collect_all;
     use std::path::Path;
@@ -326,18 +282,19 @@ mod tests {
     }
 
     #[test]
-    fn hvvc_as_process_instruction_profile_walls() {
-        let mut svc = CompileInstructionProfileWalls::new();
-        svc.source = writing_gap_star_rank();
-        svc.agent_id = String::from("agent-a");
-        svc.action = String::from("write");
-        svc.process().expect("process");
+    fn instruction_profile_walls_close_rank_and_open_star_permission() {
+        let input = PolicySystemCompileInput {
+            agent_id: String::from("agent-a"),
+            action: String::from("write"),
+            ..Default::default()
+        };
+        let walls = compile_instruction_profile_walls(&writing_gap_star_rank(), &input);
         must(
-            svc.walls
+            walls
                 .iter()
                 .any(|w| w.id == gap_schema_profile_v13::WALL_LEFTOVER_RANK_FIELD && w.closed),
         );
-        must(!svc.walls.iter().any(|w| {
+        must(!walls.iter().any(|w| {
             w.id.starts_with(gap_schema_profile_v13::WALL_AGENT_PERMISSION) && w.closed
         }));
     }

@@ -713,9 +713,13 @@ mod tests {
         let src = include_str!("http.rs");
         assert!(src.contains("/ucb/v1/mcp"));
         assert!(src.contains("mcp_handler"));
-        let start = src.find("async fn mcp_handler").expect("mcp_handler");
-        let chunk = &src[start..start + 500];
-        assert!(chunk.contains("require_auth"));
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("http.rs");
+        let handler = aep_source_check::RustSource::read(&path)
+            .and_then(|s| s.function("mcp_handler"))
+            .expect("mcp_handler");
+        assert!(handler.contains("require_auth"));
         let ops = capabilities_document()
             .get("operations")
             .and_then(|o| o.as_array())

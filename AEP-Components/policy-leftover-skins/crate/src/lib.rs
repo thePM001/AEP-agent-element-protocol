@@ -220,43 +220,6 @@ pub fn run_gate() -> Result<(), String> {
     Ok(())
 }
 
-/// HVVCAS leftover_inventory domain:admit type:service
-pub mod leftover_inventory {
-    use super::*;
-    pub struct LeftoverInventory {
-        pub policy_system_dir: String,
-        pub leftover: Vec<String>,
-    }
-    impl Default for LeftoverInventory {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl LeftoverInventory {
-        pub fn new() -> Self {
-            Self {
-                policy_system_dir: String::new(),
-                leftover: Vec::new(),
-            }
-        }
-        /// List leftover yaml and rego files beside live GAP reference docs
-        pub fn process(&mut self) -> Result<(), String> {
-            let dir = PathBuf::from(&self.policy_system_dir);
-            let paths = leftover_paths(&dir);
-            self.leftover.clear();
-            let mut i = 0usize;
-            while i < paths.len() {
-                if let Some(s) = paths[i].to_str() {
-                    self.leftover.push(String::from(s));
-                }
-                i = i.saturating_add(1);
-            }
-            Ok(())
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -287,11 +250,9 @@ mod tests {
     }
 
     #[test]
-    fn leftover_inventory_lists_ticket_scope() {
-        let mut inv = leftover_inventory::LeftoverInventory::new();
-        inv.policy_system_dir = String::from("/tmp/ps");
-        inv.process().expect("inv");
-        assert_eq!(inv.leftover.len(), LEFTOVER_FILES.len());
+    fn leftover_paths_lists_ticket_scope() {
+        let paths = leftover_paths(Path::new("/tmp/ps"));
+        assert_eq!(paths.len(), LEFTOVER_FILES.len());
     }
 
     #[test]

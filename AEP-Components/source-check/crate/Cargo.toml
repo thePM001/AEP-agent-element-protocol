@@ -1,0 +1,18 @@
+[package]
+name = "aep-source-check"
+version = "0.1.0"
+edition = "2021"
+description = "The one source check of the workspace: parses Rust with syn, finds an item by its identifier and fails when the item is absent."
+license = "Apache-2.0"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", default-features = false, features = ["full", "parsing", "printing", "clone-impls"] }
+
+[lints]
+workspace = true

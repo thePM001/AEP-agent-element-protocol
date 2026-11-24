@@ -205,7 +205,7 @@ export class TaskDecompositionManager {
 
   completeTask(
     taskId: string,
-    context?: { trustScore?: number; driftScore?: number; violations?: number }
+    context?: { driftScore?: number; violations?: number }
   ): CompletionGate {
     const task = this.taskIndex.get(taskId);
     if (!task) {
@@ -227,12 +227,6 @@ export class TaskDecompositionManager {
 
         case "no_violations":
           criterion.met = (context?.violations ?? 0) === 0;
-          break;
-
-        case "trust_above":
-          if (typeof criterion.value === "number" && context?.trustScore !== undefined) {
-            criterion.met = context.trustScore > criterion.value;
-          }
           break;
 
         case "drift_below":

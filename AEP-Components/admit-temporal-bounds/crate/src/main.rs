@@ -1,30 +1,21 @@
 // stdin temporal records compiled to Admit walls then collect-all. Soft warn stays warn.
+// `--gate` runs the fold self-check on fixed inputs instead.
 
 use aep_admit_temporal_bounds::{
-    compile_temporal_warns, default_filter_ts, fold_temporal_into_admit, parse_extra_walls,
-    parse_temporal_from_text, run_gate,
+    compile_temporal_warns, fold_temporal_into_admit, parse_extra_walls, parse_temporal_from_text,
+    run_gate,
 };
 use std::env;
 use std::io::{self, Read};
-use std::path::PathBuf;
 use std::process;
 
 fn main() {
-    let mut args = env::args().skip(1);
-    let mut filter: Option<PathBuf> = None;
-    while let Some(a) = args.next() {
-        if a == "--filter" {
-            if let Some(v) = args.next() {
-                filter = Some(PathBuf::from(v));
-            }
-        } else if a == "--gate" {
-            let path = filter.unwrap_or_else(default_filter_ts);
-            match run_gate(&path) {
-                Ok(code) => process::exit(code),
-                Err(err) => {
-                    eprintln!("{err}");
-                    process::exit(1);
-                }
+    if env::args().skip(1).any(|a| a == "--gate") {
+        match run_gate() {
+            Ok(code) => process::exit(code),
+            Err(err) => {
+                eprintln!("{err}");
+                process::exit(1);
             }
         }
     }

@@ -55,8 +55,6 @@ pub(crate) enum DockRequest {
     Frame {
         frame: LatticeChannelFrame,
         #[serde(default)]
-        trust_score: Option<u16>,
-        #[serde(default)]
         signer_public_hex: Option<String>,
     },
     Event {

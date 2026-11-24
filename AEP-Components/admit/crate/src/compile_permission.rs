@@ -194,7 +194,6 @@ mod tests {
             Some(i) => &src[..i],
             None => src,
         };
-        assert!(!prod.contains("trust_score"));
         assert!(!prod.contains("trust_tier"));
         assert!(!prod.contains("trust_ring"));
         assert!(!prod.contains("score >"));

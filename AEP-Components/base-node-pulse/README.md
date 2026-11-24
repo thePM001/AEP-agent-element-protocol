@@ -72,8 +72,9 @@ A builder who wants a different wait rebuilds Base Node with a different compile
 
 ```bash
 cargo test -p aep-base-node-pulse
-cargo run -p aep-base-node-pulse
 ```
+
+`tests/source_gate.rs` of the crate reads the docking module, dynAEP, the envelope, the live entry and the live dock through `aep-source-check` and fails when the docking module stops owning the one pulse or a drift bound is set to the pulse length.
 
 ## Related documents
 

@@ -174,7 +174,6 @@ describe("TaskDecompositionManager completion", () => {
       completion_criteria: [
         { type: "all_children_complete", met: false },
         { type: "no_violations", met: false },
-        { type: "trust_above", value: 500, met: false },
         { type: "drift_below", value: 0.3, met: false },
         { type: "tests_pass", met: false },
       ],
@@ -182,27 +181,26 @@ describe("TaskDecompositionManager completion", () => {
     const root = mgr.createRoot("s", "r", scope());
     const [child] = mgr.decompose(root.taskId, [{ description: "c", scope: scope() }]);
 
-    const blocked = mgr.completeTask(root.taskId, { trustScore: 600, driftScore: 0.1, violations: 0 });
+    const blocked = mgr.completeTask(root.taskId, { driftScore: 0.1, violations: 0 });
     expect(blocked.passed).toBe(false);
     expect(blocked.criteria.map((c) => [c.type, c.met])).toEqual([
       ["all_children_complete", false],
       ["no_violations", true],
-      ["trust_above", true],
       ["drift_below", true],
       ["tests_pass", true],
     ]);
     expect(root.status).toBe("active");
 
     // child has no children: only context criteria apply
-    expect(mgr.completeTask(child?.taskId ?? "", { trustScore: 600, driftScore: 0.1 }).passed).toBe(true);
-    expect(mgr.completeTask(root.taskId, { trustScore: 600, driftScore: 0.1 }).passed).toBe(true);
+    expect(mgr.completeTask(child?.taskId ?? "", { driftScore: 0.1 }).passed).toBe(true);
+    expect(mgr.completeTask(root.taskId, { driftScore: 0.1 }).passed).toBe(true);
 
-    const low = mgr.completeTask(root.taskId, { trustScore: 100, driftScore: 0.9, violations: 2 });
-    expect(low.criteria.filter((c) => !c.met).map((c) => c.type)).toEqual(["no_violations", "trust_above", "drift_below"]);
+    const low = mgr.completeTask(root.taskId, { driftScore: 0.9, violations: 2 });
+    expect(low.criteria.filter((c) => !c.met).map((c) => c.type)).toEqual(["no_violations", "drift_below"]);
   });
 
   it("leaves numeric criteria unmet without context", () => {
-    const mgr = new TaskDecompositionManager({ completion_criteria: [{ type: "trust_above", value: 1, met: true }] });
+    const mgr = new TaskDecompositionManager({ completion_criteria: [{ type: "drift_below", value: 1, met: true }] });
     const root = mgr.createRoot("s", "r", scope());
     expect(mgr.completeTask(root.taskId).passed).toBe(false);
   });

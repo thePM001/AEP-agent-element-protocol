@@ -241,10 +241,9 @@ export UCB_API_KEY=...
 4. Mount Base Node dock sockets into a foreign stack to skip UCB.
 5. Bind UCB to all interfaces without auth and network policy.
 6. Give foreign agents raw lattice socket paths.
-7. Treat client-supplied wire trust_score as authorization (BM-07 forbids this).
-8. Run an interactive shell on a multi-user host without Origin policy and token.
-9. Claim ML-DSA trust-bundle authenticity without configured crypto verify.
-10. Disable CAW for coding agents and still claim host ELS.
+7. Run an interactive shell on a multi-user host without Origin policy and token.
+8. Claim ML-DSA trust-bundle authenticity without configured crypto verify.
+9. Disable CAW for coding agents and still claim host ELS.
 
 ## 5. Verification checklist
 
@@ -264,7 +263,6 @@ export UCB_API_KEY=...
 | Base Node kernel. TypeScript dynAEP is not product Admit | `AEP-Base-Node/`, `AEP-Components/dynAEP/` |
 | dynAEP config | `AEP-Components/dynAEP/CONFIG.md` |
 | Dock admit / plain reject | `AEP-Base-Node/AEP-Crate/src/docking/mod.rs` |
-| BM-07 trust | `attested_trust_score` in docking/apply.rs |
 | Lattice client | `AEP-Components/lattice-channels/lib/lattice-transport.mjs` |
 
 | UCB auth | `AEP-Base-Node/AEP-Docks/ucb/crate/src/auth.rs`, `http.rs` |

@@ -224,7 +224,6 @@ curl -s -H "Authorization: Bearer $UCB_API_KEY" \
         "summary": "LangGraph integrates via UCB",
         "allowed_operations": ["ucb.ingest"]
       },
-      "trust": { "tier": "standard", "max_trust_score": 500 },
       "provisional": false,
       "synthesized_by": "provided"
     }

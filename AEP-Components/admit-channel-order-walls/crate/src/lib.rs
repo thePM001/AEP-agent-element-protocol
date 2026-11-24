@@ -1,8 +1,6 @@
 // Fold channel and partial-order into Admit walls.
 
 use aep_admit::{admit_collect_all, AdmitResult, AdmitWall};
-use std::fs;
-use std::path::{Path, PathBuf};
 
 pub const WALL_CHANNEL_LATTICE_ONLY: &str = "channel:lattice_only";
 pub const WALL_CHANNEL_NON_FRAME: &str = "channel:non_frame_docking";
@@ -297,47 +295,8 @@ pub fn parse_extra_walls(text: &str) -> Vec<AdmitWall> {
     extra
 }
 
-fn extract_filter_crossing(src: &str) -> String {
-    let start = match src.find("async filterCrossing") {
-        Some(v) => v,
-        None => return String::new(),
-    };
-    src[start..].to_string()
-}
-
-pub fn filter_folds_channel_and_order(filter_source: &str) -> Result<String, String> {
-    let body = extract_filter_crossing(filter_source);
-    if body.is_empty() {
-        return Err(String::from("filterCrossing not found"));
-    }
-    if !body.contains("compileChannelWalls") {
-        return Err(String::from(
-            "filterCrossing does not compile channel walls",
-        ));
-    }
-    if !body.contains("compilePartialOrderWalls") {
-        return Err(String::from(
-            "filterCrossing does not compile partial-order walls",
-        ));
-    }
-    Ok(String::from(
-        "ok filterCrossing folds channel and partial-order",
-    ))
-}
-
-pub fn default_filter_ts() -> PathBuf {
-    let mut p =
-        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::from(".")));
-    p.push("../../dynAEP/bridge/hyperlattice/HyperlatticeFilter.ts");
-    p
-}
-
-pub fn run_gate(filter: &Path) -> Result<i32, String> {
-    let src = match fs::read_to_string(filter) {
-        Ok(t) => t,
-        Err(e) => return Err(e.to_string()),
-    };
-    let proof = filter_folds_channel_and_order(&src)?;
+/// Run the fold on a fixed frame and check that channel, partial-order and extra walls all close.
+pub fn run_gate() -> Result<i32, String> {
     let channel = ChannelCompileInput {
         channel_id: String::new(),
         agent_id: String::new(),
@@ -378,112 +337,10 @@ pub fn run_gate(filter: &Path) -> Result<i32, String> {
         return Err(String::from("extra constraint wall dropped"));
     }
     println!(
-        "aep-admit-channel-order-walls ok proof={} closed={}",
-        proof,
+        "aep-admit-channel-order-walls ok closed={}",
         admit.closed.len()
     );
     Ok(0)
-}
-
-// HVVCAS: compile_channel_walls domain:admit type:service
-pub mod compile_channel_walls {
-    use super::{compile_channel_walls, parse_channel_from_text, AdmitWall};
-
-    pub struct CompileChannelWalls {
-        pub frame: String,
-        pub walls: Vec<AdmitWall>,
-    }
-
-    impl Default for CompileChannelWalls {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl CompileChannelWalls {
-        pub fn new() -> Self {
-            Self {
-                frame: String::new(),
-                walls: Vec::new(),
-            }
-        }
-
-        /// Compile lattice channel invariants into Admit walls for one collect-all pass
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            let input = parse_channel_from_text(&self.frame);
-            self.walls = compile_channel_walls(&input);
-            Ok(())
-        }
-    }
-}
-
-// HVVCAS: compile_partial_order_walls domain:admit type:service
-pub mod compile_partial_order_walls {
-    use super::{compile_partial_order_walls, parse_order_from_text, AdmitWall};
-
-    pub struct CompilePartialOrderWalls {
-        pub order: String,
-        pub walls: Vec<AdmitWall>,
-    }
-
-    impl Default for CompilePartialOrderWalls {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl CompilePartialOrderWalls {
-        pub fn new() -> Self {
-            Self {
-                order: String::new(),
-                walls: Vec::new(),
-            }
-        }
-
-        /// Compile all-parents per-agent partial-order into Admit walls
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            let input = parse_order_from_text(&self.order);
-            self.walls = compile_partial_order_walls(&input);
-            Ok(())
-        }
-    }
-}
-
-// HVVCAS: fold_channel_order domain:admit type:service
-pub mod fold_channel_order {
-    use super::{
-        fold_channel_order_into_admit, parse_channel_from_text, parse_extra_walls,
-        parse_order_from_text, AdmitResult,
-    };
-
-    pub struct FoldChannelOrder {
-        pub extra: String,
-        pub result: Option<AdmitResult>,
-    }
-
-    impl Default for FoldChannelOrder {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl FoldChannelOrder {
-        pub fn new() -> Self {
-            Self {
-                extra: String::new(),
-                result: None,
-            }
-        }
-
-        /// Fold channel walls and partial-order walls plus extras into one collect-all pass
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            let channel = parse_channel_from_text(&self.extra);
-            let order = parse_order_from_text(&self.extra);
-            let extra = parse_extra_walls(&self.extra);
-            self.result = Some(fold_channel_order_into_admit(&channel, &order, &extra));
-            Ok(())
-        }
-    }
 }
 
 #[cfg(test)]
@@ -641,23 +498,14 @@ mod tests {
     }
 
     #[test]
-    fn hvvc_as_process_compiles_channel() {
-        let mut svc = compile_channel_walls::CompileChannelWalls::new();
-        svc.frame = String::from("channel_id=\ndocking_wire=ping\nhas_capsule=false\n");
-        svc.process().expect("process");
-        let admit = admit_collect_all(&svc.walls);
+    fn parsed_ping_frame_without_channel_id_closes_channel_walls() {
+        let input = parse_channel_from_text("channel_id=\ndocking_wire=ping\nhas_capsule=false\n");
+        let admit = admit_collect_all(&compile_channel_walls(&input));
         assert!(!admit.allow);
     }
+
     #[test]
-    fn filter_crossing_folds_channel_and_order() {
-        let path = default_filter_ts();
-        if !path.is_file() {
-            return;
-        }
-        let src = fs::read_to_string(&path).unwrap_or_default();
-        if src.is_empty() {
-            return;
-        }
-        assert!(filter_folds_channel_and_order(&src).is_ok());
+    fn run_gate_self_check_passes() {
+        assert_eq!(run_gate(), Ok(0));
     }
 }

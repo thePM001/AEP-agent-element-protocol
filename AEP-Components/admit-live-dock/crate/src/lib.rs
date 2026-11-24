@@ -1,4 +1,3 @@
-// HVVCAS: live_collect_all domain:admit type:service
 // Product Admit wall crates fold into envelope_admit collect-all.
 // Extra temporal walls measure 50 ms drift against freeze, not live now.
 // Pass LatticeNode.wrap into policy-system compile.
@@ -592,78 +591,6 @@ fn classify_admit_package(name: &str) -> &'static str {
     "unknown"
 }
 
-fn extract_after(src: &str, needle: &str) -> String {
-    let start = match src.find(needle) {
-        Some(v) => v,
-        None => return String::new(),
-    };
-    let rest = &src[start..];
-    let brace = match rest.find("{") {
-        Some(v) => v,
-        None => return String::new(),
-    };
-    let bytes = rest.as_bytes();
-    let mut i = brace;
-    let mut depth: i32 = 0;
-    while i < bytes.len() {
-        if bytes[i] == b"{"[0] {
-            depth += 1;
-        } else if bytes[i] == b"}"[0] {
-            depth -= 1;
-            if depth == 0 {
-                return rest[..=i].to_string();
-            }
-        }
-        i += 1;
-    }
-    String::new()
-}
-
-fn strip_line_comments(src: &str) -> String {
-    let mut out = String::new();
-    for line in src.lines() {
-        if let Some(i) = line.find("//") {
-            out.push_str(&line[..i]);
-        } else {
-            out.push_str(line);
-        }
-        out.push('\n');
-    }
-    out
-}
-
-fn compact_src(src: &str) -> String {
-    src.chars().filter(|c| !c.is_whitespace()).collect()
-}
-
-/// CI: envelope_admit is one Admit then Apply. Not live_collect_all beside process_event.
-pub fn scan_envelope_admit_one_live_evaluation(src: &str) -> Result<String, String> {
-    if !src.contains("aep_admit_live_dock") {
-        return Err(String::from("envelope_admit missing aep_admit_live_dock"));
-    }
-    if !src.contains("aep_one_live_evaluation") {
-        return Err(String::from(
-            "envelope_admit missing aep_one_live_evaluation",
-        ));
-    }
-    if !src.contains("attach_live_walls") {
-        return Err(String::from("envelope_admit missing attach_live_walls"));
-    }
-    if !src.contains("process_event") {
-        return Err(String::from("envelope_admit missing process_event"));
-    }
-    let body = extract_after(src, "fn admit_sealed_payload_on_live_dock");
-    if body.is_empty() {
-        return Err(String::from("admit_sealed_payload_on_live_dock not found"));
-    }
-    let code = compact_src(&strip_line_comments(&body));
-    if code.contains("live_collect_all") && code.contains("process_event") {
-        return Err(String::from(
-            "envelope_admit calls both live_collect_all and process_event Admit on the same plaintext",
-        ));
-    }
-    Ok(String::from("ok one live evaluation"))
-}
 /// Fail if a product Admit wall crate is a workspace member and not on the live dock path.
 pub fn live_path_wall_gate(root: &Path) -> Result<String, String> {
     let ws = read_text(&root.join("Cargo.toml"));
@@ -743,8 +670,6 @@ pub fn live_path_wall_gate(root: &Path) -> Result<String, String> {
             }
         }
     }
-    let admit_src = read_text(&root.join("AEP-Base-Node/AEP-Crate/src/envelope_admit.rs"));
-    scan_envelope_admit_one_live_evaluation(&admit_src)?;
     let base_cargo = dep_names(&read_text(&root.join("AEP-Base-Node/AEP-Crate/Cargo.toml")));
     if !set_has(&base_cargo, "aep-admit-live-dock") {
         return Err(String::from("aep-base-node missing aep-admit-live-dock"));
@@ -767,46 +692,6 @@ pub fn run_gate() -> Result<i32, String> {
     line.push('\n');
     let _ = std::io::stdout().write_all(line.as_bytes());
     Ok(0)
-}
-
-// HVVCAS: live_collect_all domain:admit type:service
-pub mod live_collect_all {
-    use super::{live_collect_all, LiveDockContext, LiveEntry};
-    use serde_json::Value;
-
-    pub struct LiveCollectAll {
-        pub event: String,
-        pub result: String,
-    }
-
-    impl Default for LiveCollectAll {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl LiveCollectAll {
-        pub fn new() -> Self {
-            Self {
-                event: String::new(),
-                result: String::new(),
-            }
-        }
-
-        /// Fold product Admit wall crates into one live collect-all pass
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            let value: Value = match serde_json::from_str(&self.event) {
-                Ok(v) => v,
-                Err(_) => Value::Null,
-            };
-            let live = LiveEntry::new();
-            match live_collect_all(&live, &value, &LiveDockContext::unit_open()) {
-                Ok(()) => self.result = String::from("allow=true"),
-                Err(e) => self.result = e,
-            }
-            Ok(())
-        }
-    }
 }
 
 #[cfg(test)]
@@ -892,11 +777,11 @@ mod tests {
     }
 
     #[test]
-    fn hvvc_as_process_collects() {
-        let mut svc = live_collect_all::LiveCollectAll::new();
-        svc.event = String::from("{\"type\":\"PING\"}");
-        svc.process().expect("process");
-        must(svc.result.contains("Admit collect-all walls then Apply"));
+    fn live_collect_all_on_an_empty_entry_denies() {
+        let event = serde_json::json!({"type": "PING"});
+        let err = live_collect_all(&LiveEntry::new(), &event, &LiveDockContext::unit_open())
+            .expect_err("an empty live entry admits nothing");
+        must(err.contains("Admit collect-all walls then Apply"));
     }
 
     #[test]
@@ -1032,13 +917,12 @@ mod tests {
             }
         }
         must(saw);
-        let compact: String = include_str!("lib.rs")
-            .chars()
-            .filter(|c| !c.is_whitespace())
-            .collect();
-        must(compact.contains("live.wall_bridge_ts_ms()"));
-        let bad = ["letbridge=live.now_ms", "()"].concat();
-        must(!compact.contains(&bad));
+        // The one view function binds the drift to the frozen time, never to live now.
+        let view = own_source()
+            .function("compile_live_walls_in_view")
+            .expect("compile_live_walls_in_view");
+        must(view.contains("let bridge = live.wall_bridge_ts_ms();"));
+        must(!view.contains("live.now_ms()"));
         let mut live2 = LiveEntry::from_yaml(yaml()).expect("yaml");
         live2.set_clock_ms(1001000);
         let event2 = serde_json::json !({"type":"PING","action_path":"root:ping","payload":{"ok":true},"timestamp":1000000,"target_id":"scene-a","_sequenceNumber":1});
@@ -1172,32 +1056,24 @@ mod tests {
         must(live_collect_all(&live, &event, &full).is_err());
     }
 
-    #[test]
-    fn dual_combinator_scan_fails() {
-        let bad = "use aep_admit_live_dock::LiveDockContext; use aep_one_live_evaluation::attach_live_walls; pub fn admit_sealed_payload_on_live_dock() { live_collect_all(live, &value, dock) ?; match live.process_event(value) { _ => {} } }";
-        match scan_envelope_admit_one_live_evaluation(bad) {
-            Err(e) => must(e.contains("both live_collect_all and process_event")),
-            Ok(_) => std::process::abort(),
-        }
-    }
-
-    #[test]
-    fn one_admit_scan_passes() {
-        let good = "use aep_admit_live_dock::LiveDockContext; use aep_one_live_evaluation::attach_live_walls; pub fn admit_sealed_payload_on_live_dock() { attach_live_walls(live, &value, dock); match live.process_event(value) { _ => {} } }";
-        match scan_envelope_admit_one_live_evaluation(good) {
-            Ok(v) => must(v.contains("ok one live evaluation")),
-            Err(_) => std::process::abort(),
-        }
+    /// The production source of this crate, read through the one source check.
+    fn own_source() -> aep_source_check::RustSource {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("lib.rs");
+        aep_source_check::RustSource::read(&path).expect("lib.rs parses")
     }
 
     #[test]
     fn compile_live_walls_passes_agent_and_action_into_policy() {
-        let compact: String = include_str!("lib.rs")
-            .chars()
-            .filter(|c| !c.is_whitespace())
-            .collect();
-        must(compact.contains("policy_in.agent_id=lattice_in.agent_id.clone()"));
-        must(compact.contains("policy_in.action=lattice_in.action_path.clone()"));
+        let view = own_source()
+            .function("compile_live_walls_in_view")
+            .expect("compile_live_walls_in_view");
+        let policy_in = view
+            .after_last("let policy_in = PolicySystemCompileInput {")
+            .expect("the policy input of the view");
+        must(policy_in.contains("agent_id: lattice_in.agent_id.clone(),"));
+        must(policy_in.contains("action: lattice_in.action_path.clone(),"));
     }
 
     /// A memo that hands back what it was given for one text and counts its lookups.

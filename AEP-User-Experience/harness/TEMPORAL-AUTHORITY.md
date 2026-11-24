@@ -31,24 +31,7 @@ New scanner interaction:
 - The temporal scanner calls `dynaep_temporal_query(staleness_check, target_id, max_age_ms)` instead of comparing against `Date.now()`.
 - If dynAEP-TA is unavailable, falls back to local clock with a warning.
 
-### 3. Trust Score Integration
-
-Temporal violations produce trust penalties through the existing trust scoring system:
-
-| Violation | Penalty |
-|---|---|
-| drift_exceeded | -10 trust |
-| future_timestamp | -15 trust |
-| stale_event | -5 trust |
-| causal_violation (regression) | -20 trust |
-| causal_violation (missing dependency) | -10 trust |
-| perception hard violation | -15 trust |
-| perception soft violation | -5 trust |
-| cross-modality ceiling exceeded | -20 trust |
-
-Successful temporal validations produce +1 trust reward per event (same as existing successful action rewards).
-
-### 4. Evidence Ledger Integration
+### 3. Evidence Ledger Integration
 
 Every temporal event produces an evidence ledger entry:
 
@@ -91,7 +74,7 @@ Perception governance events also produce ledger entries:
 }
 ```
 
-### 5. OTEL Integration
+### 4. OTEL Integration
 
 New OpenTelemetry spans emitted by the harness:
 
@@ -102,7 +85,7 @@ New OpenTelemetry spans emitted by the harness:
 - `dynaep.perception.governance` - perception validation and clamping
 - `dynaep.perception.profile_update` - adaptive profile learning
 
-### 6. Governance Preset Updates
+### 5. Governance Preset Updates
 
 The four governance presets now include temporal authority settings:
 
@@ -114,7 +97,7 @@ The four governance presets now include temporal authority settings:
 
 **audit**: NTP sync with 50 ms drift threshold, all temporal events logged to evidence ledger, full OTEL export for temporal and perception spans, perception hard violations logged without enforcement.
 
-### 7. Covenant Extension
+### 6. Covenant Extension
 
 New covenant keywords for temporal governance:
 

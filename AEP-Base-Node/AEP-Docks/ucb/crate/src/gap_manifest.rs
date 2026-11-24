@@ -337,7 +337,7 @@ mod tests {
         let mut raw = sample_json();
         raw.as_object_mut()
             .unwrap()
-            .insert(String::from("trust_score"), Value::from(9u64));
+            .insert(String::from("trust_tier"), Value::from(9u64));
         let err = compile_provided_json(raw).unwrap_err();
         assert!(err.error.contains("trust"));
 

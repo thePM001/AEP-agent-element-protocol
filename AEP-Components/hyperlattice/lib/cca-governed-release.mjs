@@ -152,7 +152,6 @@ function recordCcaLatticeStage(socketBase, stage, payload, opts = {}) {
     event_type: spec.event_type,
     session_id: opts.sessionId   ??   "cca-chat-session",
     docking_port: spec.docking_port,
-    trust_score: opts.trustScore   ??   750,
     payload: {
       action_path: spec.action_path,
       topology: "hyperlattice",

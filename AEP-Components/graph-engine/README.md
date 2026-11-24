@@ -27,9 +27,8 @@ A workflow author hands a graph to the engine. Before each node the engine asks 
 | `lib/graph/types.ts` | Node, context and checkpoint types |
 | `lib/graph/checkpoint-store.ts` | The checkpoint stores: one in the process and one on Lattice Memory |
 | `lib/graph/index.ts` | The public module |
-| `tests/engine.test.ts` | vitest suite |
+| `tests/engine.test.ts` | vitest suite. It proves by behaviour that the gate is asked before the executor, that the default denies and that the local clock ticks only after an allow |
 | `tests/checkpoint-memory.test.mjs` | The checkpoint store on the program of Lattice Memory |
-| `AEP-Components/graph-engine-admit-gate/` | Source check: the engine calls no node without the admit function |
 | `AEP-Components/decomposition/` | Task tree decomposition with completion checks |
 | `AEP-Components/session/` | Session lifecycle and kill switch |
 | `AEP-Components/recovery/` | Violation detection and governed retry |
@@ -98,7 +97,6 @@ With no gate, execute refuses to run the node and does not tick the local clock.
 
 ```bash
 npx vitest run AEP-Components/graph-engine AEP-Components/decomposition AEP-Components/session AEP-Components/recovery
-cargo test -p aep-graph-engine-admit-gate
 ```
 
 ## Related documents

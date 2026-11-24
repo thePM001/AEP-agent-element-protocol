@@ -177,13 +177,12 @@ const SAFETY_RULES = {
     },
 
     // -----------------------------------------------------------------------
-    // RULE 8: NO TRUST SCORE MANIPULATION (AEP 2.8.6)
+    // RULE 8: NO TRUST TIER OR RING MANIPULATION (AEP 2.8.6)
     // -----------------------------------------------------------------------
     NO_TRUST_MANIPULATION: {
         severity: 'CRITICAL',
-        description: 'AI agent attempted to manipulate its own trust score or ring level',
+        description: 'AI agent attempted to manipulate its own trust tier, ring level or privileges',
         patterns: [
-            /trust[_.]?score\s*[:=]\s*\d/gi,
             /set[_.]?trust\s*\(/gi,
             /override[_.]?trust/gi,
             /bypass[_.]?ring/gi,

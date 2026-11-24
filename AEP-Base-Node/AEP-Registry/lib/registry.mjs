@@ -10,7 +10,8 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { latticeGatedFetch } from "../../../AEP-Components/lattice-channels/lib/lattice-transport.mjs";
+// The one source of the gated fetch is lattice-gated-fetch.ts; this is its emitted module.
+import { latticeGatedFetch } from "../../../AEP-Components/lattice-channels/lib/lattice-gated-fetch.js";
 import { defaultPaths } from "../../../AEP-Components/platform-core/lib/paths.mjs";
 import { collectSetupHooks } from "./setup-hooks.mjs";
 
@@ -65,18 +66,18 @@ export async function fetchRemoteCatalog(env = process.env) {
   try {
     const paths = defaultPaths();
     const res = await latticeGatedFetch(
-      paths.socketBase,
+      url,
+      {
+        signal: controller.signal,
+        headers: { Accept: "application/json" },
+      },
       {
         agentId: "component-registry",
         channelId: "ch-registry-fetch",
         gateway: "registry",
         eventType: "REGISTRY_CATALOG_FETCH",
       },
-      url,
-      {
-        signal: controller.signal,
-        headers: { Accept: "application/json" },
-      },
+      paths.socketBase,
     );
     clearTimeout(timer);
     if (!res.ok) return null;

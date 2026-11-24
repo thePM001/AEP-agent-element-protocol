@@ -27,7 +27,6 @@ Each crate of the workspace belongs to one of the 18 main components or to the s
 | 02 UCB | `aep-ucb`, `aep-ucb-perimeter-v1`, `aep-dock-line-reader`, `aep-dock-post-beat-collect`, `aep-dock-request-poison` and `aep-egress-address` |
 | 03 One Validation Envelope | `aep-envelope`, `aep-envelope-walls`, `aep-evaluation-chain` and `aep-unbound-field-close` |
 | 04 Admit Gate | `aep-admit`, `aep-admit-live-dock`, `aep-admit-writing-walls`, `aep-admit-channel-order-walls`, `aep-admit-temporal-bounds`, `aep-admit-budget-window`, `aep-policy-system-admit` and `aep-permissions` |
-| 05 Graph Engine | `aep-graph-engine-admit-gate` |
 | 06 GAP | `gap-schema-profile-v13` and `aep-policy-leftover-skins` |
 | 07 dynAEP | `aep-dynaep` |
 | 08 Lattice Channels | `aep-lattice-channel`, `aep-lattice-crypto` and `aep-lattice-gated-fetch` |
@@ -36,6 +35,6 @@ Each crate of the workspace belongs to one of the 18 main components or to the s
 | 13 AgentMesh | `aep-agentmesh` and `aep-agentmesh-local-issuance` |
 | 15 Lattice Memory | `aep-lattice-memory-core` and `aep-lattice-memory` |
 | 18 TLA+ | `aep-tla-verify` and `aep-conformance` |
-| Shared parts | `aep-ede`, `aep-ucm-core`, `aep-ucm-receipt`, `aep-ucm-lookup` and `aep-ucm` |
+| Shared parts | `aep-ede`, `aep-source-check`, `aep-ucm-core`, `aep-ucm-receipt`, `aep-ucm-lookup` and `aep-ucm` |
 
-The components 09, 12, 14, 16 and 17 are written in TypeScript and have no crate. The example crate `aep-end-to-end-run` lives in `AEP-User-Experience/examples/end-to-end-run`.
+The components 05, 09, 12, 14, 16 and 17 are written in TypeScript and have no crate. The example crate `aep-end-to-end-run` lives in `AEP-User-Experience/examples/end-to-end-run`.

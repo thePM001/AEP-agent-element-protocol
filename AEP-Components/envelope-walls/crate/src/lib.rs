@@ -1,4 +1,4 @@
-// Compile lattice-policy.rego into Admit walls. Stop live OPA on action_path.
+// Compile lattice-policy.rego into Admit walls and prove the Rego file is their source.
 
 use aep_admit::{
     admit_collect_all, compile_lattice_policy, default_rego_path, load_policy_sets,
@@ -7,50 +7,13 @@ use aep_admit::{
 use std::fs;
 use std::path::{Path, PathBuf};
 
-fn extract_filter_crossing(src: &str) -> String {
-    let start = match src.find("async filterCrossing") {
-        Some(v) => v,
-        None => return String::new(),
-    };
-    src[start..].to_string()
-}
-
-pub fn live_opa_absent(filter_source: &str) -> Result<String, String> {
-    let body = extract_filter_crossing(filter_source);
-    if body.is_empty() {
-        return Err(String::from("filterCrossing not found"));
-    }
-    if body.contains("latticePolicy.evaluate") || body.contains("evaluateLatticePolicyWithOpa") {
-        return Err(String::from(
-            "filterCrossing still calls live OPA evaluate on action_path",
-        ));
-    }
-    if !body.contains("compileLatticePolicy") && !body.contains("compileLatticeWalls") {
-        return Err(String::from(
-            "filterCrossing does not compile lattice-policy walls",
-        ));
-    }
-    Ok(String::from("ok live OPA absent on filterCrossing"))
-}
-
-pub fn default_filter_ts() -> PathBuf {
-    let mut p =
-        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::from(".")));
-    p.push("../../dynAEP/bridge/hyperlattice/HyperlatticeFilter.ts");
-    p
-}
-
-pub fn run_gate(rego: &Path, filter: &Path) -> Result<i32, String> {
+/// Prove the Rego file is the wall source and that an unknown action path closes compiled walls.
+pub fn run_gate(rego: &Path) -> Result<i32, String> {
     let text = match fs::read_to_string(rego) {
         Ok(t) => t,
         Err(e) => return Err(e.to_string()),
     };
     let proof = prove_rego_source(&text)?;
-    let filter_src = match fs::read_to_string(filter) {
-        Ok(t) => t,
-        Err(e) => return Err(e.to_string()),
-    };
-    let absent = live_opa_absent(&filter_src)?;
     let sets = load_policy_sets(rego)?;
     let mut input = LatticeCompileInput {
         action_path: String::from("bogus:path"),
@@ -71,9 +34,8 @@ pub fn run_gate(rego: &Path, filter: &Path) -> Result<i32, String> {
         return Err(String::from("former Rego unknown-path deny missing"));
     }
     println!(
-        "aep-envelope-walls ok proof={} absent={} closed={}",
+        "aep-envelope-walls ok proof={} closed={}",
         proof,
-        absent,
         admit.closed.len()
     );
     Ok(0)
@@ -122,127 +84,6 @@ pub fn compile_live_lattice_walls(input: &LatticeCompileInput) -> Vec<AdmitWall>
     aep_admit::compile_lattice_walls(input, &load_live_policy_sets())
 }
 
-// HVVCAS: compile_lattice_walls domain:admit type:service
-pub mod compile_lattice_walls {
-    use super::*;
-
-    pub struct CompileLatticeWalls {
-        pub source: String,
-        pub scan: String,
-    }
-
-    impl Default for CompileLatticeWalls {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl CompileLatticeWalls {
-        pub fn new() -> Self {
-            Self {
-                source: String::new(),
-                scan: String::new(),
-            }
-        }
-
-        /// Compile lattice-policy.rego deny_lattice rules into Admit walls
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            let path = if self.source.is_empty() {
-                default_rego_path()
-            } else {
-                PathBuf::from(&self.source)
-            };
-            let sets = load_policy_sets(&path).map_err(anyhow::Error::msg)?;
-            let mut input = LatticeCompileInput {
-                action_path: String::from("bogus:path"),
-                ..Default::default()
-            };
-            input.all_actions.push(String::from("webhook:incoming"));
-            let compiled = compile_lattice_policy(&input, &sets);
-            let admit = admit_collect_all(&compiled.walls);
-            let mut scan = String::from("allow=");
-            scan.push_str(if admit.allow { "true" } else { "false" });
-            self.scan = scan;
-            Ok(())
-        }
-    }
-}
-
-// HVVCAS: prove_rego_source domain:admit type:service
-pub mod prove_rego_source {
-    use super::*;
-
-    pub struct ProveRegoSource {
-        pub policy_path: String,
-        pub proof: String,
-    }
-
-    impl Default for ProveRegoSource {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl ProveRegoSource {
-        pub fn new() -> Self {
-            Self {
-                policy_path: String::new(),
-                proof: String::new(),
-            }
-        }
-
-        /// Prove lattice-policy.rego is the source of compiled Admit walls at boot and CI
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            let path = if self.policy_path.is_empty() {
-                default_rego_path()
-            } else {
-                PathBuf::from(&self.policy_path)
-            };
-            let text = fs::read_to_string(&path).map_err(anyhow::Error::msg)?;
-            self.proof = prove_rego_source(&text).map_err(anyhow::Error::msg)?;
-            Ok(())
-        }
-    }
-}
-
-// HVVCAS: live_opa_absent domain:admit type:service
-pub mod live_opa_absent {
-    use super::*;
-
-    pub struct LiveOpaAbsent {
-        pub filter_source: String,
-        pub scan: String,
-    }
-
-    impl Default for LiveOpaAbsent {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl LiveOpaAbsent {
-        pub fn new() -> Self {
-            Self {
-                filter_source: String::new(),
-                scan: String::new(),
-            }
-        }
-
-        /// Prove HyperlatticeFilter.filterCrossing does not call LatticePolicyEvaluator.evaluate
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            let src = if self.filter_source.is_empty() {
-                fs::read_to_string(default_filter_ts()).map_err(anyhow::Error::msg)?
-            } else if Path::new(&self.filter_source).is_file() {
-                fs::read_to_string(&self.filter_source).map_err(anyhow::Error::msg)?
-            } else {
-                self.filter_source.clone()
-            };
-            self.scan = live_opa_absent(&src).map_err(anyhow::Error::msg)?;
-            Ok(())
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -272,16 +113,6 @@ mod tests {
     }
 
     #[test]
-    fn filter_crossing_does_not_call_evaluate() -> Result<(), String> {
-        let path = default_filter_ts();
-        if !path.is_file() {
-            return Ok(());
-        }
-        let src = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-        live_opa_absent(&src).map(|_| ())
-    }
-
-    #[test]
     fn rego_source_proves_at_boot() -> Result<(), String> {
         let text = fs::read_to_string(default_rego_path()).map_err(|e| e.to_string())?;
         prove_rego_source(&text).map(|_| ())
@@ -308,5 +139,10 @@ mod tests {
             return Err(String::from("live lattice walls missing unknown path"));
         }
         Ok(())
+    }
+
+    #[test]
+    fn run_gate_on_default_rego_passes() {
+        assert_eq!(run_gate(&default_rego_path()), Ok(0));
     }
 }

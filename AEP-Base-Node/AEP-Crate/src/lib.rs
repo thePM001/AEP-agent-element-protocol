@@ -237,12 +237,10 @@ pub fn init_action_lattice_db(path: &Path) -> rusqlite::Result<Connection> {
 
 pub fn agentmesh_bundle_for_frame(
     agent_id: &str,
-    trust_score: u16,
     sign_public: &[u8],
 ) -> Result<AgentMeshBundle, AgentMeshError> {
     create_bundle(
         agent_id,
-        trust_score,
         sign_public,
         vec!["lattice.channel".into(), "docking.transport".into()],
         now_unix(),

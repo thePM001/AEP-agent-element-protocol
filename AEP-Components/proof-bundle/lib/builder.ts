@@ -1,6 +1,6 @@
 import { createHash, sign, randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
-import type { ProofBundle, TrustScore, ReliabilityIndex, ReliabilityWeights } from "./types.js";
+import type { ProofBundle, ReliabilityIndex, ReliabilityWeights } from "./types.js";
 import { DEFAULT_RELIABILITY_WEIGHTS } from "./types.js";
 import type { AgentIdentity } from "../../identity/lib/types.js";
 import type { CovenantSpec } from "../../covenant/lib/types.js";
@@ -14,7 +14,6 @@ export interface ProofBundleBuildContext {
   sessionReport: SessionReport;
   agent: AgentIdentity;
   covenant: CovenantSpec | null;
-  trustScore: TrustScore;
   isolation_class: string;
   driftScore: number;
   ledger: EvidenceLedger;
@@ -42,7 +41,6 @@ export class ProofBundleBuilder {
     // Compute reliability index
     const reliabilityIndex = ProofBundleBuilder.computeReliability(
       entries,
-      context.trustScore,
       context.driftScore,
       context.reliabilityWeights ?? DEFAULT_RELIABILITY_WEIGHTS
     );
@@ -56,7 +54,6 @@ export class ProofBundleBuilder {
       sessionReport: context.sessionReport,
       merkleRoot,
       entryCount: entries.length,
-      trustScore: context.trustScore,
       isolation_class: context.isolation_class,
       driftScore: context.driftScore,
       ledgerHash,
@@ -83,7 +80,6 @@ export class ProofBundleBuilder {
 
   static computeReliability(
     entries: LedgerEntry[],
-    trustScore: TrustScore,
     driftScore: number,
     weights: ReliabilityWeights,
     mlScore?: number
@@ -107,9 +103,6 @@ export class ProofBundleBuilder {
     // Drift score: inverse of max drift (1 - drift, clamped 0-1)
     const driftComponent = Math.max(0, Math.min(1, 1 - driftScore));
 
-    // Trust score: normalised to 0-1
-    const trustComponent = Math.max(0, Math.min(1, trustScore.score / 1000));
-
     // Scanner pass rate: scans without findings / total scans
     const scannerFindings = entries.filter((e) => e.type === "scanner:finding");
     // Estimate total scans from action:result entries (each result implies a scan opportunity)
@@ -126,7 +119,6 @@ export class ProofBundleBuilder {
       weights.hard * hardComplianceRate +
       weights.recovery * softRecoveryRate +
       weights.drift * driftComponent +
-      weights.trust * trustComponent +
       weights.scanner * scannerPassRate +
       mlWeight * (mlComponent ?? 0)
     ));
@@ -135,7 +127,6 @@ export class ProofBundleBuilder {
       hardComplianceRate: Math.round(hardComplianceRate * 1000) / 1000,
       softRecoveryRate: Math.round(softRecoveryRate * 1000) / 1000,
       driftScore: Math.round(driftComponent * 1000) / 1000,
-      trustScore: Math.round(trustComponent * 1000) / 1000,
       scannerPassRate: Math.round(scannerPassRate * 1000) / 1000,
       theta: Math.round(theta * 1000) / 1000,
     };

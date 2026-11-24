@@ -58,8 +58,6 @@ pub struct ForeignIngestBody {
     #[serde(default)]
     pub task_manifest: Option<serde_json::Value>,
     #[serde(default)]
-    pub trust_score: Option<serde_json::Value>,
-    #[serde(default)]
     pub trust: Option<serde_json::Value>,
     #[serde(default)]
     pub trust_tier: Option<serde_json::Value>,
@@ -69,8 +67,7 @@ pub struct ForeignIngestBody {
 
 impl ForeignIngestBody {
     pub fn has_trust_fields(&self) -> bool {
-        self.trust_score.is_some()
-            || self.trust.is_some()
+        self.trust.is_some()
             || self.trust_tier.is_some()
             || self.trust_ring.is_some()
             || self
@@ -219,7 +216,7 @@ mod tests {
     #[test]
     fn trust_fields_on_body_are_detected() {
         let body = ForeignIngestBody {
-            trust_score: Some(serde_json::Value::from(9u64)),
+            trust_tier: Some(serde_json::Value::from(9u64)),
             ..Default::default()
         };
         assert!(body.has_trust_fields());

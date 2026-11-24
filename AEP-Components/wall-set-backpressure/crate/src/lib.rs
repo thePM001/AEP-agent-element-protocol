@@ -3,9 +3,6 @@
 // CORRECTWRITING_EN writing walls stay protocol law at priority 255. Writing walls are not transport security.
 // Unbound scene, dock, time, sequence and writing.gap get prescribed fixes.
 // Grant lists stay off repair.fix. No lattice-memory lookup. Reseal a new capsule.
-use std::fs;
-use std::io::Write;
-use std::path::PathBuf;
 
 pub const KIND_BIND_FIELD: &str = "bind_field";
 pub const KIND_REWRITE_WRITING: &str = "rewrite_writing";
@@ -23,478 +20,6 @@ pub use aep_kernel_types::{
 pub use aep_kernel_types::{
     from_closed, from_error, from_error_and_closed, grant_leaks_in_fix, repairs_for,
 };
-
-fn extract_fn(src: &str, needle: &str) -> String {
-    let start = match src.find(needle) {
-        Some(v) => v,
-        None => return String::new(),
-    };
-    let rest = &src[start..];
-    let bytes = rest.as_bytes();
-    let mut i = 0usize;
-    let mut start_brace = None;
-    while i < bytes.len() {
-        if bytes[i] == 123 {
-            start_brace = Some(i);
-            break;
-        }
-        i = i.saturating_add(1);
-    }
-    let brace = match start_brace {
-        Some(v) => v,
-        None => return String::new(),
-    };
-    let mut depth: i32 = 0;
-    i = brace;
-    while i < bytes.len() {
-        if bytes[i] == 123 {
-            depth += 1;
-        } else if bytes[i] == 125 {
-            depth -= 1;
-            if depth == 0 {
-                return rest[..=i].to_string();
-            }
-        }
-        i = i.saturating_add(1);
-    }
-    String::new()
-}
-
-fn strip_line_comments(src: &str) -> String {
-    let mut out = String::new();
-    for line in src.lines() {
-        if let Some(i) = line.find("//") {
-            out.push_str(&line[..i]);
-        } else {
-            out.push_str(line);
-        }
-        out.push('\n');
-    }
-    out
-}
-
-fn compact(src: &str) -> String {
-    src.chars().filter(|c| !c.is_whitespace()).collect()
-}
-
-fn prod_src(src: &str) -> String {
-    compact(&strip_line_comments(src))
-}
-
-pub fn scan_dock_deny_field(src: &str) -> Result<String, String> {
-    let body = extract_fn(src, "pub struct DockFrameResponse");
-    if body.is_empty() {
-        return Err(String::from("DockFrameResponse not found"));
-    }
-    let code = prod_src(&body);
-    if !code.contains("pubdeny:Option") {
-        return Err(String::from("DockFrameResponse missing deny field"));
-    }
-    if !src.contains("admit_sealed_payload_report") {
-        return Err(String::from(
-            "docking.rs does not call admit_sealed_payload_report",
-        ));
-    }
-    if !src.contains("deny_resp_report") {
-        return Err(String::from("docking.rs missing deny_resp_report"));
-    }
-    Ok(String::from("ok DockFrameResponse carries deny"))
-}
-
-pub fn scan_live_entry_closed(src: &str) -> Result<String, String> {
-    let body = extract_fn(src, "pub struct Rejection");
-    if body.is_empty() {
-        return Err(String::from("Rejection not found"));
-    }
-    let code = prod_src(&body);
-    if !code.contains("pubclosed:Vec<AdmitWall>") {
-        return Err(String::from("Rejection missing closed walls"));
-    }
-    let proc = extract_fn(src, "pub fn process_event");
-    let pcode = prod_src(&proc);
-    // process_event copies the admit result walls into Rejection.closed. Older
-    // source named the copy closed_walls, so both forms count.
-    let copies_walls = pcode.contains("closed_walls") || pcode.contains("result.closed.clone()");
-    if !copies_walls {
-        return Err(String::from(
-            "process_event does not copy closed_walls onto Rejection",
-        ));
-    }
-    Ok(String::from("ok Rejection carries closed walls"))
-}
-
-pub fn scan_ucb_deny_field(src: &str) -> Result<String, String> {
-    let body = extract_fn(src, "pub struct DockResponse");
-    if body.is_empty() {
-        return Err(String::from("UCB DockResponse not found"));
-    }
-    let code = prod_src(&body);
-    if !code.contains("pubdeny:Option") {
-        return Err(String::from("UCB DockResponse missing deny field"));
-    }
-    if !src.contains("LatticeDeny") {
-        return Err(String::from("UCB missing LatticeDeny"));
-    }
-    Ok(String::from("ok UCB forwards deny"))
-}
-
-pub fn scan_no_lookup(src: &str) -> Result<String, String> {
-    let a = ["attr", "actor"].concat();
-    let b = ["cos", "ine"].concat();
-    let c = ["lattice", "-", "memory"].concat();
-    let code = prod_src(src);
-    if code.contains(&a) {
-        return Err(String::from(
-            "crate must not look up forensic store entries",
-        ));
-    }
-    if code.contains(&b) {
-        return Err(String::from("crate must not score forensic store entries"));
-    }
-    if code.contains(&c) {
-        return Err(String::from("crate must not import the forensic store"));
-    }
-    Ok(String::from("ok no forensic lookup"))
-}
-
-pub fn scan_repairs_have_no_grant_lists() -> Result<String, String> {
-    let sample = vec![
-        ClosedWall::with_class(
-            "scene.membership",
-            "empty proven scene set closes membership",
-            CLASS_STRUCTURAL,
-        ),
-        ClosedWall::with_class(
-            "channel.dock",
-            "empty allowed docks closes channel",
-            CLASS_STRUCTURAL,
-        ),
-        ClosedWall::with_class(
-            "gap.agent_permission",
-            "GAP dimension closed: empty grants fail closed",
-            CLASS_CAPABILITY,
-        ),
-    ];
-    let report = from_closed(&sample);
-    for h in &report.repairs {
-        if grant_leaks_in_fix(&h.fix) {
-            return Err(String::from("repair.fix leaked a grant list field"));
-        }
-    }
-    Ok(String::from("ok repairs omit grant lists"))
-}
-
-/// Production source of the Base Node docking module: mod.rs, then each child
-/// file in AEP-Crate/src/docking in name order, without the test file. Each
-/// file is cut at its own test tail so no child is lost behind mod.rs tests.
-fn read_docking_module(base_node: &std::path::Path) -> Result<String, String> {
-    let dir = base_node.join("AEP-Crate").join("src").join("docking");
-    let entries = match std::fs::read_dir(&dir) {
-        Ok(rd) => rd,
-        Err(e) => return Err(format!("missing docking module: {e}")),
-    };
-    let mut names: Vec<String> = entries
-        .filter_map(|e| e.ok())
-        .map(|e| e.file_name().to_string_lossy().into_owned())
-        .filter(|n| n.ends_with(".rs") && n != "tests.rs")
-        .collect();
-    names.sort_by(|a, b| (a != "mod.rs").cmp(&(b != "mod.rs")).then(a.cmp(b)));
-    let mut out = String::new();
-    for n in names {
-        match std::fs::read_to_string(dir.join(&n)) {
-            Ok(text) => {
-                let prod = match text.find("#[cfg(test)]") {
-                    Some(i) => &text[..i],
-                    None => text.as_str(),
-                };
-                out.push_str(prod);
-                out.push('\n');
-            }
-            Err(e) => return Err(e.to_string()),
-        }
-    }
-    if out.trim().is_empty() {
-        return Err(String::from("empty docking module"));
-    }
-    Ok(out)
-}
-
-fn walk_to_workspace() -> PathBuf {
-    let mut dir = if let Ok(m) = std::env::var("CARGO_MANIFEST_DIR") {
-        PathBuf::from(m)
-    } else {
-        std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
-    };
-    let mut i = 0usize;
-    while i < 16 {
-        let dock = dir.join("AEP-Base-Node/AEP-Crate/src/docking/mod.rs");
-        if dock.is_file() {
-            return dir;
-        }
-        match dir.parent() {
-            Some(parent) => dir = parent.to_path_buf(),
-            None => break,
-        }
-        i = i.saturating_add(1);
-    }
-    PathBuf::from(".")
-}
-
-fn read_text(path: &PathBuf) -> String {
-    fs::read_to_string(path).unwrap_or_default()
-}
-
-pub fn run_gate() -> Result<i32, String> {
-    let root = walk_to_workspace();
-    let dock = read_docking_module(&root.join("AEP-Base-Node")).unwrap_or_default();
-    let live = read_text(&root.join("AEP-Components/live-entry/crate/src/lib.rs"));
-    let ucb = read_text(&root.join("AEP-Base-Node/AEP-Docks/ucb/crate/src/lattice.rs"));
-    let self_src = read_text(&root.join("AEP-Components/wall-set-backpressure/crate/src/lib.rs"));
-    let proofs = [
-        scan_dock_deny_field(&dock)?,
-        scan_live_entry_closed(&live)?,
-        scan_ucb_deny_field(&ucb)?,
-        scan_no_lookup(&self_src)?,
-        scan_repairs_have_no_grant_lists()?,
-        scan_closed_wall_has_class(&read_text(
-            &root.join("AEP-Components/kernel-types/crate/src/lib.rs"),
-        ))?,
-        scan_docking_sets_class(&dock)?,
-        scan_admit_sets_class(&root.join("AEP-Base-Node/AEP-Crate/src/envelope_admit.rs"))?,
-    ];
-    for proof in proofs {
-        let mut line = String::from("aep-wall-set-backpressure ok proof=");
-        line.push_str(&proof);
-        line.push('\n');
-        let _ = std::io::stdout().write_all(line.as_bytes());
-    }
-    Ok(0)
-}
-
-pub fn scan_closed_wall_has_class(src: &str) -> Result<String, String> {
-    let body = extract_fn(src, "pub struct ClosedWall");
-    if body.is_empty() {
-        return Err(String::from("ClosedWall not found"));
-    }
-    let code = prod_src(&body);
-    if !code.contains("pubclass:String") {
-        return Err(String::from("ClosedWall missing class"));
-    }
-    Ok(String::from("ok ClosedWall carries class"))
-}
-
-pub fn scan_docking_sets_class(src: &str) -> Result<String, String> {
-    if !src.contains("ClosedWall") {
-        return Err(String::from("docking.rs has no ClosedWall construction"));
-    }
-    if !src.contains("CLASS_WRITING")
-        || !src.contains("CLASS_SECURITY")
-        || !src.contains("CLASS_TEMPORAL")
-        || !src.contains("CLASS_POISON")
-    {
-        return Err(String::from("docking.rs does not set ClosedWall class"));
-    }
-    if src.contains("mod docking") {
-        return Err(String::from("docking.rs must stay one file"));
-    }
-    Ok(String::from(
-        "ok docking.rs sets ClosedWall class and stays one file",
-    ))
-}
-
-pub fn scan_admit_sets_class(path: &PathBuf) -> Result<String, String> {
-    let src = read_text(path);
-    if !src.contains("class:") && !src.contains("classify_wall") && !src.contains("CLASS_") {
-        return Err(String::from(
-            "envelope_admit.rs does not set ClosedWall class",
-        ));
-    }
-    Ok(String::from("ok envelope_admit.rs sets ClosedWall class"))
-}
-
-// HVVCAS: from_closed domain:admit type:library
-pub mod from_closed {
-    pub struct FromClosed {
-        pub src: String,
-        pub report: String,
-    }
-    impl Default for FromClosed {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl FromClosed {
-        pub fn new() -> Self {
-            Self {
-                src: String::new(),
-                report: String::new(),
-            }
-        }
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            let wall = super::ClosedWall::with_class(
-                self.src.clone(),
-                "no scene bound",
-                super::CLASS_STRUCTURAL,
-            );
-            let r = super::from_closed(&[wall]);
-            self.report = r.error.clone();
-            Ok(())
-        }
-    }
-}
-
-// HVVCAS: repairs_for domain:admit type:library
-pub mod repairs_for {
-    pub struct RepairsFor {
-        pub src: String,
-        pub repairs: String,
-    }
-    impl Default for RepairsFor {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl RepairsFor {
-        pub fn new() -> Self {
-            Self {
-                src: String::new(),
-                repairs: String::new(),
-            }
-        }
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            let wall = super::ClosedWall::with_class(
-                self.src.clone(),
-                "no scene bound",
-                super::CLASS_STRUCTURAL,
-            );
-            let r = super::repairs_for(&[wall]);
-            self.repairs = r
-                .iter()
-                .map(|h| h.fix.clone())
-                .collect::<Vec<String>>()
-                .join("; ");
-            Ok(())
-        }
-    }
-}
-
-// HVVCAS: scan_dock_deny_field domain:admit type:service
-pub mod scan_dock_deny_field {
-    pub struct ScanDockDenyField {
-        pub src: String,
-        pub scan: String,
-    }
-    impl Default for ScanDockDenyField {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl ScanDockDenyField {
-        pub fn new() -> Self {
-            Self {
-                src: String::new(),
-                scan: String::new(),
-            }
-        }
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            match super::scan_dock_deny_field(&self.src) {
-                Ok(v) => self.scan = v,
-                Err(e) => self.scan = e,
-            }
-            Ok(())
-        }
-    }
-}
-
-// HVVCAS: scan_live_entry_closed domain:admit type:service
-pub mod scan_live_entry_closed {
-    pub struct ScanLiveEntryClosed {
-        pub src: String,
-        pub scan: String,
-    }
-    impl Default for ScanLiveEntryClosed {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl ScanLiveEntryClosed {
-        pub fn new() -> Self {
-            Self {
-                src: String::new(),
-                scan: String::new(),
-            }
-        }
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            match super::scan_live_entry_closed(&self.src) {
-                Ok(v) => self.scan = v,
-                Err(e) => self.scan = e,
-            }
-            Ok(())
-        }
-    }
-}
-
-// HVVCAS: scan_ucb_deny_field domain:admit type:service
-pub mod scan_ucb_deny_field {
-    pub struct ScanUcbDenyField {
-        pub src: String,
-        pub scan: String,
-    }
-    impl Default for ScanUcbDenyField {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl ScanUcbDenyField {
-        pub fn new() -> Self {
-            Self {
-                src: String::new(),
-                scan: String::new(),
-            }
-        }
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            match super::scan_ucb_deny_field(&self.src) {
-                Ok(v) => self.scan = v,
-                Err(e) => self.scan = e,
-            }
-            Ok(())
-        }
-    }
-}
-
-// HVVCAS: scan_no_lookup domain:admit type:service
-pub mod scan_no_lookup {
-    pub struct ScanNoLookup {
-        pub src: String,
-        pub scan: String,
-    }
-    impl Default for ScanNoLookup {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl ScanNoLookup {
-        pub fn new() -> Self {
-            Self {
-                src: String::new(),
-                scan: String::new(),
-            }
-        }
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            match super::scan_no_lookup(&self.src) {
-                Ok(v) => self.scan = v,
-                Err(e) => self.scan = e,
-            }
-            Ok(())
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -581,9 +106,26 @@ mod tests {
 
     #[test]
     fn grant_lists_stay_off_repair_fix() {
-        match scan_repairs_have_no_grant_lists() {
-            Ok(v) => must(v.contains("ok repairs omit grant lists")),
-            Err(_) => std::process::abort(),
+        let report = from_closed(&[
+            ClosedWall::with_class(
+                "scene.membership",
+                "empty proven scene set closes membership",
+                CLASS_STRUCTURAL,
+            ),
+            ClosedWall::with_class(
+                "channel.dock",
+                "empty allowed docks closes channel",
+                CLASS_STRUCTURAL,
+            ),
+            ClosedWall::with_class(
+                "gap.agent_permission",
+                "GAP dimension closed: empty grants fail closed",
+                CLASS_CAPABILITY,
+            ),
+        ]);
+        must(!report.repairs.is_empty());
+        for h in &report.repairs {
+            must(!grant_leaks_in_fix(&h.fix));
         }
     }
 
@@ -609,29 +151,14 @@ mod tests {
     }
 
     #[test]
-    fn scan_dock_missing_deny_fails() {
-        let bad = "pub struct DockFrameResponse { pub ok: bool }";
-        match scan_dock_deny_field(bad) {
-            Err(e) => must(e.contains("missing deny field") || e.contains("does not call")),
-            Ok(_) => std::process::abort(),
-        }
-    }
-
-    #[test]
-    fn scan_live_missing_closed_fails() {
-        let bad = "pub struct Rejection { pub target_id: String, pub error: String }";
-        match scan_live_entry_closed(bad) {
-            Err(e) => must(e.contains("missing closed walls")),
-            Ok(_) => std::process::abort(),
-        }
-    }
-
-    #[test]
-    fn hvvc_from_closed_process() {
-        let mut st = from_closed::FromClosed::new();
-        st.src = String::from("scene.membership");
-        must(st.process().is_ok());
-        must(st.report.contains("Admit collect-all walls then Apply"));
+    fn from_closed_names_the_collect_all_pass() {
+        let r = from_closed(&[ClosedWall::with_class(
+            "scene.membership",
+            "no scene bound",
+            CLASS_STRUCTURAL,
+        )]);
+        must(r.error.contains("Admit collect-all walls then Apply"));
+        must(r.closed.iter().any(|w| w.id == "scene.membership"));
     }
 
     #[test]
@@ -748,14 +275,6 @@ mod tests {
             CLASS_STRUCTURAL,
         )]);
         must(seq.closed.iter().any(|w| w.class == CLASS_STRUCTURAL));
-    }
-
-    #[test]
-    fn closed_wall_struct_has_class() {
-        match scan_closed_wall_has_class(include_str!("../../../kernel-types/crate/src/lib.rs")) {
-            Ok(v) => must(v.contains("ok ClosedWall carries class")),
-            Err(_) => std::process::abort(),
-        }
     }
 
     #[test]

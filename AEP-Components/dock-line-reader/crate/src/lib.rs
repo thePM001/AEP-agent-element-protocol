@@ -1,7 +1,6 @@
 // Dock line reader must not read one byte per await up to 4MiB.
-use std::fs;
-use std::io::Write;
-use std::path::PathBuf;
+// The source gate that proves the Base Node dock reads its lines with this crate is
+// tests/source_gate.rs.
 use tokio::io::{AsyncBufRead, AsyncBufReadExt};
 
 pub const MAX_LINE_BYTES: usize = 4 * 1024 * 1024;
@@ -51,311 +50,6 @@ where
     }
 }
 
-fn extract_fn(src: &str, needle: &str) -> String {
-    let start = match src.find(needle) {
-        Some(v) => v,
-        None => return String::new(),
-    };
-    let rest = &src[start..];
-    let brace = match rest.find('{') {
-        Some(v) => v,
-        None => return String::new(),
-    };
-    let bytes = rest.as_bytes();
-    let mut i = brace;
-    let mut depth: i32 = 0;
-    while i < bytes.len() {
-        if bytes[i] == b'{' {
-            depth += 1;
-        } else if bytes[i] == b'}' {
-            depth -= 1;
-            if depth == 0 {
-                return rest[..=i].to_string();
-            }
-        }
-        i = i.saturating_add(1);
-    }
-    String::new()
-}
-
-fn strip_line_comments(src: &str) -> String {
-    let mut out = String::new();
-    for line in src.lines() {
-        if let Some(i) = line.find("//") {
-            out.push_str(&line[..i]);
-        } else {
-            out.push_str(line);
-        }
-        out.push('\n');
-    }
-    out
-}
-
-fn compact(src: &str) -> String {
-    src.chars().filter(|c| !c.is_whitespace()).collect()
-}
-
-fn prod_src(src: &str) -> String {
-    match src.find("#[cfg(test)]") {
-        Some(i) => src[..i].to_string(),
-        None => src.to_string(),
-    }
-}
-
-/// Fail if production dock line reader still awaits one byte up to the 4MiB cap.
-pub fn scan_no_one_byte_await(src: &str) -> Result<String, String> {
-    let prod = compact(&strip_line_comments(&prod_src(src)));
-    if prod.contains("[0u8;1]") || prod.contains("[0u8; 1]") {
-        return Err(String::from(
-            "production dock line reader still uses a one-byte buffer",
-        ));
-    }
-    if prod.contains("read(&mutbyte)") || prod.contains("read(&mut byte)") {
-        return Err(String::from(
-            "production dock line reader still awaits one byte",
-        ));
-    }
-    if prod.contains("read_u8(") {
-        return Err(String::from(
-            "production dock line reader still awaits one byte via read_u8",
-        ));
-    }
-    Ok(String::from(
-        "ok production dock line reader does not await one byte",
-    ))
-}
-
-/// Fail if production dock line reader does not fill_buf and consume.
-pub fn scan_fill_buf_consume(src: &str) -> Result<String, String> {
-    let prod = compact(&strip_line_comments(&prod_src(src)));
-    let has_fill = prod.contains("fill_buf");
-    let has_consume = prod.contains(".consume(") || prod.contains("consume(");
-    let uses_crate = prod.contains("aep_dock_line_reader") && prod.contains("read_line_limited");
-    if uses_crate {
-        return Ok(String::from(
-            "ok dock line reader uses aep_dock_line_reader fill_buf consume",
-        ));
-    }
-    if has_fill && has_consume {
-        return Ok(String::from(
-            "ok production dock line reader uses fill_buf and consume",
-        ));
-    }
-    Err(String::from(
-        "production dock line reader does not fill_buf and consume",
-    ))
-}
-
-/// Production source of the Base Node docking module: mod.rs, then each child
-/// file in AEP-Crate/src/docking in name order, without the test file. Each
-/// file is cut at its own test tail so no child is lost behind mod.rs tests.
-fn read_docking_module(base_node: &std::path::Path) -> Result<String, String> {
-    let dir = base_node.join("AEP-Crate").join("src").join("docking");
-    let entries = match std::fs::read_dir(&dir) {
-        Ok(rd) => rd,
-        Err(e) => return Err(format!("missing docking module: {e}")),
-    };
-    let mut names: Vec<String> = entries
-        .filter_map(|e| e.ok())
-        .map(|e| e.file_name().to_string_lossy().into_owned())
-        .filter(|n| n.ends_with(".rs") && n != "tests.rs")
-        .collect();
-    names.sort_by(|a, b| (a != "mod.rs").cmp(&(b != "mod.rs")).then(a.cmp(b)));
-    let mut out = String::new();
-    for n in names {
-        match std::fs::read_to_string(dir.join(&n)) {
-            Ok(text) => {
-                let prod = match text.find("#[cfg(test)]") {
-                    Some(i) => &text[..i],
-                    None => text.as_str(),
-                };
-                out.push_str(prod);
-                out.push('\n');
-            }
-            Err(e) => return Err(e.to_string()),
-        }
-    }
-    if out.trim().is_empty() {
-        return Err(String::from("empty docking module"));
-    }
-    Ok(out)
-}
-
-fn walk_to_workspace() -> PathBuf {
-    let mut dir = if let Ok(m) = std::env::var("CARGO_MANIFEST_DIR") {
-        PathBuf::from(m)
-    } else {
-        std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
-    };
-    let mut i = 0usize;
-    while i < 12 {
-        let hangar = ["AEP", "Base", "Node"].join("-");
-        let probe = dir
-            .join(&hangar)
-            .join("AEP-Crate")
-            .join("src")
-            .join("docking")
-            .join("mod.rs");
-        if probe.is_file() {
-            return dir;
-        }
-        match dir.parent() {
-            Some(parent) => dir = parent.to_path_buf(),
-            None => break,
-        }
-        i = i.saturating_add(1);
-    }
-    PathBuf::from(".")
-}
-
-fn read_src(path: &PathBuf, label: &str) -> Result<String, String> {
-    if !path.is_file() {
-        return Err(format!("missing {label} source"));
-    }
-    match fs::read_to_string(path) {
-        Ok(v) => {
-            if v.is_empty() {
-                Err(format!("empty {label} source"))
-            } else {
-                Ok(v)
-            }
-        }
-        Err(e) => Err(e.to_string()),
-    }
-}
-
-pub fn run_gate() -> Result<i32, String> {
-    let root = walk_to_workspace();
-    let hangar = ["AEP", "Base", "Node"].join("-");
-    let self_lib = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("src")
-        .join("lib.rs");
-    let dock_src = read_docking_module(&root.join(&hangar))?;
-    let lib_src = read_src(&self_lib, "dock-line-reader lib")?;
-    let proofs = [
-        scan_no_one_byte_await(&dock_src)?,
-        scan_fill_buf_consume(&dock_src)?,
-        scan_no_one_byte_await(&lib_src)?,
-        scan_fill_buf_consume(&lib_src)?,
-    ];
-    if extract_fn(&lib_src, "pub async fn read_line_limited").is_empty() {
-        return Err(String::from("read_line_limited not found"));
-    }
-    for proof in proofs {
-        let mut line = String::from("aep-dock-line-reader ok proof=");
-        line.push_str(&proof);
-        line.push('\n');
-        let _ = std::io::stdout().write_all(line.as_bytes());
-    }
-    Ok(0)
-}
-
-// HVVCAS: read_line_limited domain:lattice type:service
-pub mod read_line_limited {
-    pub struct ReadLineLimited {
-        pub max_bytes: String,
-        pub line: String,
-    }
-
-    impl Default for ReadLineLimited {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl ReadLineLimited {
-        pub fn new() -> Self {
-            Self {
-                max_bytes: String::new(),
-                line: String::new(),
-            }
-        }
-
-        /// Read one dock line using fill_buf and consume. Cap at max_bytes. Do not await one byte.
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            let max = self
-                .max_bytes
-                .parse::<usize>()
-                .unwrap_or(super::MAX_LINE_BYTES);
-            let data = b"ok-line\n";
-            let mut cursor = tokio::io::BufReader::new(&data[..]);
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()?;
-            match rt.block_on(super::read_line_limited(&mut cursor, max)) {
-                Ok(Some(l)) => self.line = l,
-                Ok(None) => self.line = String::from("none"),
-                Err(e) => self.line = e.to_string(),
-            }
-            Ok(())
-        }
-    }
-}
-
-// HVVCAS: scan_no_one_byte_await domain:lattice type:service
-pub mod scan_no_one_byte_await {
-    pub struct ScanNoOneByteAwait {
-        pub src: String,
-        pub scan: String,
-    }
-
-    impl Default for ScanNoOneByteAwait {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl ScanNoOneByteAwait {
-        pub fn new() -> Self {
-            Self {
-                src: String::new(),
-                scan: String::new(),
-            }
-        }
-
-        /// Fail if production dock line reader still awaits one byte up to the 4MiB cap
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            match super::scan_no_one_byte_await(&self.src) {
-                Ok(v) => self.scan = v,
-                Err(e) => self.scan = e,
-            }
-            Ok(())
-        }
-    }
-}
-
-// HVVCAS: scan_fill_buf_consume domain:lattice type:service
-pub mod scan_fill_buf_consume {
-    pub struct ScanFillBufConsume {
-        pub src: String,
-        pub scan: String,
-    }
-
-    impl Default for ScanFillBufConsume {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl ScanFillBufConsume {
-        pub fn new() -> Self {
-            Self {
-                src: String::new(),
-                scan: String::new(),
-            }
-        }
-
-        /// Fail if production dock line reader does not fill_buf and consume
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            match super::scan_fill_buf_consume(&self.src) {
-                Ok(v) => self.scan = v,
-                Err(e) => self.scan = e,
-            }
-            Ok(())
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -363,12 +57,6 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::task::{Context, Poll};
     use tokio::io::ReadBuf;
-
-    fn must(cond: bool) {
-        if !cond {
-            std::process::abort();
-        }
-    }
 
     struct CountFill {
         data: Vec<u8>,
@@ -429,22 +117,22 @@ mod tests {
 
     #[test]
     fn ticket_id() {
-        must(MAX_LINE_BYTES == 4 * 1024 * 1024);
-        must(READ_CHUNK >= 1024);
+        assert_eq!(MAX_LINE_BYTES, 4 * 1024 * 1024);
+        assert_eq!(READ_CHUNK, 64 * 1024);
     }
 
     #[tokio::test]
     async fn reads_line_without_newline_at_eof() {
         let mut r = tokio::io::BufReader::new(&b"partial"[..]);
         let got = read_line_limited(&mut r, 64).await.unwrap();
-        must(got == Some(String::from("partial")));
+        assert_eq!(got, Some(String::from("partial")));
     }
 
     #[tokio::test]
     async fn empty_eof_is_none() {
         let mut r = tokio::io::BufReader::new(&b""[..]);
         let got = read_line_limited(&mut r, 64).await.unwrap();
-        must(got.is_none());
+        assert!(got.is_none());
     }
 
     #[tokio::test]
@@ -452,36 +140,36 @@ mod tests {
         let mut r = tokio::io::BufReader::new(&b"ab\r\ncd\n"[..]);
         let first = read_line_limited(&mut r, 64).await.unwrap();
         let second = read_line_limited(&mut r, 64).await.unwrap();
-        must(first == Some(String::from("ab\r")));
-        must(second == Some(String::from("cd")));
+        assert_eq!(first, Some(String::from("ab\r")));
+        assert_eq!(second, Some(String::from("cd")));
     }
 
     #[tokio::test]
     async fn exact_max_then_newline_is_some() {
         let mut r = tokio::io::BufReader::new(&b"abc\n"[..]);
         let got = read_line_limited(&mut r, 3).await.unwrap();
-        must(got == Some(String::from("abc")));
+        assert_eq!(got, Some(String::from("abc")));
     }
 
     #[tokio::test]
     async fn oversize_without_newline_is_none() {
         let mut r = tokio::io::BufReader::new(&b"abcdef"[..]);
         let got = read_line_limited(&mut r, 3).await.unwrap();
-        must(got.is_none());
+        assert!(got.is_none());
     }
 
     #[tokio::test]
     async fn oversize_before_newline_is_none() {
         let mut r = tokio::io::BufReader::new(&b"abcdef\n"[..]);
         let got = read_line_limited(&mut r, 3).await.unwrap();
-        must(got.is_none());
+        assert!(got.is_none());
     }
 
     #[tokio::test]
     async fn invalid_utf8_is_error() {
         let mut r = tokio::io::BufReader::new(&[0xff, b'\n'][..]);
         let got = read_line_limited(&mut r, 16).await;
-        must(got.is_err());
+        assert!(got.is_err());
     }
 
     #[tokio::test]
@@ -490,11 +178,10 @@ mod tests {
         data.push(b'\n');
         let mut r = CountFill::new(data, 512);
         let got = read_line_limited(&mut r, MAX_LINE_BYTES).await.unwrap();
-        must(got.as_deref() == Some(&"x".repeat(4000)));
+        assert_eq!(got.as_deref(), Some("x".repeat(4000).as_str()));
         let fills = r.fills.load(Ordering::SeqCst);
-        must(fills > 0);
-        must(fills < 4000);
-        must(fills <= 16);
+        assert!(fills > 0);
+        assert!(fills <= 16);
     }
 
     #[tokio::test]
@@ -505,62 +192,7 @@ mod tests {
         let mut r = CountFill::new(data, 256);
         let first = read_line_limited(&mut r, 1024).await.unwrap();
         let second = read_line_limited(&mut r, 1024).await.unwrap();
-        must(first.as_deref() == Some(&"a".repeat(500)));
-        must(second == Some(String::from("z")));
-    }
-
-    #[test]
-    fn scan_one_byte_buffer_fails() {
-        let bad = "async fn read_line_limited() { let mut byte = [0u8; 1]; reader.read(&mut byte).await; }";
-        match scan_no_one_byte_await(bad) {
-            Err(e) => must(e.contains("one-byte") || e.contains("one byte")),
-            Ok(_) => std::process::abort(),
-        }
-    }
-
-    #[test]
-    fn scan_fill_buf_missing_fails() {
-        let bad = "async fn read_line_limited() { let mut byte = [0u8; 1]; }";
-        match scan_fill_buf_consume(bad) {
-            Err(e) => must(e.contains("fill_buf")),
-            Ok(_) => std::process::abort(),
-        }
-    }
-
-    #[test]
-    fn scan_crate_use_passes() {
-        let good = "use aep_dock_line_reader::{read_line_limited, MAX_LINE_BYTES}; let line = read_line_limited(&mut reader, MAX_LINE_BYTES).await;";
-        match scan_fill_buf_consume(good) {
-            Ok(v) => must(v.contains("aep_dock_line_reader")),
-            Err(_) => std::process::abort(),
-        }
-        match scan_no_one_byte_await(good) {
-            Ok(_) => {}
-            Err(_) => std::process::abort(),
-        }
-    }
-
-    #[test]
-    fn hvvc_scan_process() {
-        let mut st = scan_no_one_byte_await::ScanNoOneByteAwait::new();
-        st.src = String::from("use aep_dock_line_reader::read_line_limited; fill_buf; consume(");
-        must(st.process().is_ok());
-        must(st.scan.contains("does not await one byte"));
-    }
-
-    #[test]
-    fn hvvc_read_line_process() {
-        let mut st = read_line_limited::ReadLineLimited::new();
-        st.max_bytes = String::from("64");
-        must(st.process().is_ok());
-        must(st.line == "ok-line");
-    }
-
-    #[test]
-    fn run_gate_on_workspace_docking() {
-        match run_gate() {
-            Ok(code) => must(code == 0),
-            Err(_) => std::process::abort(),
-        }
+        assert_eq!(first.as_deref(), Some("a".repeat(500).as_str()));
+        assert_eq!(second, Some(String::from("z")));
     }
 }

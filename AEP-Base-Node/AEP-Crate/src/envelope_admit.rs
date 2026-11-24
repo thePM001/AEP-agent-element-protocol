@@ -238,37 +238,26 @@ mod tests {
         assert!(!src.contains(&b));
         assert!(!src.contains(&c));
     }
+    /// envelope_admit.rs read through the one source check.
+    fn own_source() -> aep_source_check::RustSource {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("envelope_admit.rs");
+        aep_source_check::RustSource::read(&path).expect("envelope_admit.rs parses")
+    }
+
     #[test]
     fn live_dock_is_on_path() {
-        let src = include_str!("envelope_admit.rs");
-        assert!(src.contains("aep_admit_live_dock"));
-        assert!(src.contains("aep_one_live_evaluation"));
-        assert!(src.contains("attach_live_walls"));
-        assert!(src.contains("process_event"));
-        let start = src.find("pub fn admit_sealed_payload_report").expect("fn");
-        let rest = &src[start..];
-        let brace = rest.find("{").expect("brace");
-        let bytes = rest.as_bytes();
-        let mut i = brace;
-        let mut depth: i32 = 0;
-        let mut end = rest.len();
-        while i < bytes.len() {
-            if bytes[i] == b"{"[0] {
-                depth += 1;
-            } else if bytes[i] == b"}"[0] {
-                depth -= 1;
-                if depth == 0 {
-                    end = i + 1;
-                    break;
-                }
-            }
-            i += 1;
-        }
-        let fn_body = &rest[..end];
-        let compact: String = fn_body.chars().filter(|c| !c.is_whitespace()).collect();
-        assert!(compact.contains("attach_live_walls"));
-        assert!(compact.contains("process_event"));
-        assert!(!compact.contains("live_collect_all"));
+        let src = own_source();
+        let prod = src.production();
+        assert!(prod.contains("aep_admit_live_dock"));
+        assert!(prod.contains("aep_one_live_evaluation"));
+        let admit = src
+            .function("admit_sealed_payload_report_in_view")
+            .expect("admit_sealed_payload_report_in_view");
+        assert!(admit.contains("attach_live_walls"));
+        assert!(admit.contains("process_event"));
+        assert!(!prod.contains("live_collect_all("));
     }
     #[test]
     fn non_json_report_has_payload_wall() {
@@ -522,19 +511,17 @@ mod tests {
     }
     #[test]
     fn collect_all_deny_runs_before_process_event() {
-        let src = include_str!("envelope_admit.rs");
-        let start = src
-            .find("pub fn admit_sealed_payload_on_live_dock")
-            .expect("fn");
-        let body = &src[start..];
+        let src = own_source();
+        let body = src
+            .function("admit_sealed_payload_report_in_view")
+            .expect("admit_sealed_payload_report_in_view");
         let empty = body.find("action_path.is_empty()").expect("empty check");
         let pe = body.find("live.process_event").expect("process_event");
         assert!(
             empty < pe,
             "empty action_path Deny must run before process_event"
         );
-        let compact: String = src.chars().filter(|c| !c.is_whitespace()).collect();
-        let a = ["ProcessOut::Event(_)=>", "{ifaction_path.is_empty()}"].concat();
-        assert!(!compact.contains(&a));
+        let late = ["ProcessOut::Event(_) =>", "{ if action_path.is_empty() }"].concat();
+        assert!(!src.production().contains(&late));
     }
 }

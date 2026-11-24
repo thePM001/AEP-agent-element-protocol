@@ -54,7 +54,7 @@ The table below is that derived fifteen-row ledger.
 | 6 | Escalation | Higher authority required |
 | 7 | Covenant evaluation | Permit, forbid and require rules |
 | 8 | Rego check | Environment forbidden patterns |
-| 9 | Capability | Written capabilities. A numeric trust score does not skip the check |
+| 9 | Capability | Written capabilities |
 | 10-14 | Scanners + lattice + perception | Content scanners, dynAEP lattice, perception bounds |
 
 ## Limits

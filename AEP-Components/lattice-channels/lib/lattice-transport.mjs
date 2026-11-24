@@ -10,11 +10,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defaultPaths } from "../../platform-core/lib/paths.mjs";
 import { protectedWritingTokenMask } from "../../admit/lib/writing-rules.mjs";
-import {
-  GATEWAY_ACTION_PATH,
-  assertLatticeUrl,
-  egressPolicyFromEnv,
-} from "../../egress-address/lib/egress-address.mjs";
+import { assertLatticeUrl, egressPolicyFromEnv } from "../../egress-address/lib/egress-address.mjs";
 
 export const DOCK_SUFFIXES = [
   { port: "inference_engine", suffix: "inference" },
@@ -545,7 +541,42 @@ export function latticeDockEndpoint(socketBase, suffix) {
   return join(socketBase, suffix);
 }
 
-function sendLatticeTls(endpoint, line, timeoutMs) {
+/**
+ * The answer reader of the child process that holds one dock connection. It prints the
+ * first answer line and ends. In collect mode (LATTICE_COLLECT=1) a pending answer with a
+ * digest is not the answer: the reader writes a collect line for the digest on the same
+ * connection and reads on, as the dock asks while a frame waits for its pulse or while the
+ * gateway request of the kernel is in flight.
+ */
+const DOCK_ANSWER_READER = `
+  function readDockAnswers(socket, timer) {
+    const collectMode = process.env.LATTICE_COLLECT === "1";
+    let buf = "";
+    socket.on("data", (chunk) => {
+      buf += chunk.toString();
+      let nl = buf.indexOf("\\n");
+      while (nl >= 0) {
+        const line = buf.slice(0, nl);
+        buf = buf.slice(nl + 1);
+        nl = buf.indexOf("\\n");
+        if (collectMode) {
+          let answer = null;
+          try { answer = JSON.parse(line); } catch { answer = null; }
+          if (answer && answer.pending === true && typeof answer.digest === "string" && answer.digest) {
+            socket.write(JSON.stringify({ collect: answer.digest }) + "\\n");
+            continue;
+          }
+        }
+        clearTimeout(timer);
+        process.stdout.write(line);
+        socket.end();
+        return;
+      }
+    });
+  }
+`;
+
+function sendLatticeTls(endpoint, line, timeoutMs, collect) {
   const url = new URL(endpoint);
   const cert = process.env.AEP_LATTICE_TLS_CERT;
   const key = process.env.AEP_LATTICE_TLS_KEY;
@@ -560,6 +591,7 @@ function sendLatticeTls(endpoint, line, timeoutMs) {
   const payload = line.endsWith("\n") ? line : `${line}\n`;
   const script = `
     const tls = require("node:tls");
+    ${DOCK_ANSWER_READER}
     const payload = ${JSON.stringify(payload)};
     const socket = tls.connect({
       host: ${JSON.stringify(url.hostname)},
@@ -570,17 +602,9 @@ function sendLatticeTls(endpoint, line, timeoutMs) {
       ca: process.env.AEP_LATTICE_TLS_CA,
       rejectUnauthorized: true,
     });
-    let buf = "";
     const timer = setTimeout(() => socket.destroy(new Error("lattice tls timeout")), ${timeoutMs});
     socket.on("secureConnect", () => socket.write(payload));
-    socket.on("data", (chunk) => {
-      buf += chunk.toString();
-      if (buf.includes("\\n")) {
-        clearTimeout(timer);
-        process.stdout.write(buf.split("\\n")[0]);
-        socket.end();
-      }
-    });
+    readDockAnswers(socket, timer);
     socket.on("error", (err) => { clearTimeout(timer); console.error(err.message); process.exit(1); });
   `;
   return execFileSync(process.execPath, ["-e", script], {
@@ -591,13 +615,19 @@ function sendLatticeTls(endpoint, line, timeoutMs) {
       AEP_LATTICE_TLS_CERT: cert,
       AEP_LATTICE_TLS_KEY: key,
       AEP_LATTICE_TLS_CA: ca,
+      LATTICE_COLLECT: collect ? "1" : "0",
     },
   }).trim();
 }
 
-export function sendLatticeLine(endpoint, line, timeoutMs = 8000) {
+/**
+ * Write one line to a dock and return the first answer line. With collect set, a pending
+ * answer is collected by its digest on the same connection until the dock answers with
+ * something other than pending, all within timeoutMs.
+ */
+export function sendLatticeLine(endpoint, line, timeoutMs = 8000, { collect = false } = {}) {
   if (String(endpoint).startsWith("tls://")) {
-    return sendLatticeTls(endpoint, line, timeoutMs);
+    return sendLatticeTls(endpoint, line, timeoutMs, collect);
   }
   const socketPath = endpoint;
   if (!existsSync(socketPath)) {
@@ -605,6 +635,7 @@ export function sendLatticeLine(endpoint, line, timeoutMs = 8000) {
   }
   const script = `
     const net = require("node:net");
+    ${DOCK_ANSWER_READER}
     const chunks = [];
     process.stdin.on("data", (chunk) => chunks.push(chunk));
     process.stdin.on("end", () => {
@@ -613,19 +644,11 @@ export function sendLatticeLine(endpoint, line, timeoutMs = 8000) {
       let payload = Buffer.concat(chunks).toString("utf8");
       if (!payload.endsWith("\\n")) payload += "\\n";
       const socket = net.connect({ path });
-      let buf = "";
       const timer = setTimeout(() => {
         socket.destroy(new Error("lattice socket timeout"));
       }, timeout);
       socket.on("connect", () => socket.write(payload));
-      socket.on("data", (chunk) => {
-        buf += chunk.toString();
-        if (buf.includes("\\n")) {
-          clearTimeout(timer);
-          process.stdout.write(buf.split("\\n")[0]);
-          socket.end();
-        }
-      });
+      readDockAnswers(socket, timer);
       socket.on("error", (err) => {
         clearTimeout(timer);
         console.error(err.message);
@@ -642,6 +665,7 @@ export function sendLatticeLine(endpoint, line, timeoutMs = 8000) {
       ...process.env,
       LATTICE_SOCKET_PATH: socketPath,
       LATTICE_SOCKET_TIMEOUT: String(timeoutMs),
+      LATTICE_COLLECT: collect ? "1" : "0",
     },
   }).trim();
 }
@@ -671,20 +695,23 @@ export function parseLatticeDockLine(line) {
   }
 }
 
+/** Time for one frame exchange, collects of a pending answer included. */
+export const FRAME_EXCHANGE_TIMEOUT_MS = 30000;
+
 export function sendLatticeFrame(socketPath, frame, opts = {}) {
-  const { trustScore, signerPublicHex, signer_public_hex: signerSnake } = opts;
+  const { signerPublicHex, signer_public_hex: signerSnake } = opts;
   const wire = { frame };
-  if (trustScore != null) wire.trust_score = trustScore;
   const signer = signerPublicHex ?? signerSnake;
   // HIGH residual: unbound frames fail closed (Base Node binds wire key to registered agent)
   if (!signer || String(signer).trim() === "") {
     throw new Error("signer_public_hex required for lattice dock send (fail-closed)");
   }
   wire.signer_public_hex = signer;
-  const line = sendLatticeLine(socketPath, JSON.stringify(wire));
+  const line = sendLatticeLine(socketPath, JSON.stringify(wire), FRAME_EXCHANGE_TIMEOUT_MS, { collect: true });
   const resp = parseLatticeDockLine(line);
   if (!resp.ok) {
-    throw new Error(resp.error ?? "lattice frame rejected");
+    const pendingNoDigest = resp.pending === true ? "lattice dock answered pending without a digest" : undefined;
+    throw new Error(resp.error ?? pendingNoDigest ?? "lattice frame rejected");
   }
   return resp;
 }
@@ -698,6 +725,7 @@ export function latticeDockRequest(socketBase, dockPort, event, opts = {}) {
   });
 }
 
+/** A health ping through one dock. */
 export function latticeHealthPing(socketBase, dockPort = "validation_engine", opts = {}) {
   return latticeDockRequest(
     socketBase,
@@ -709,80 +737,14 @@ export function latticeHealthPing(socketBase, dockPort = "validation_engine", op
       event_type: "LATTICE_HEALTH_PING",
       session_id: opts.sessionId ?? "health-check",
       docking_port: dockPort,
-      trust_score: opts.trustScore ?? 100,
       payload: { probe: true },
     },
     opts,
   );
 }
 
-/**
- * Gate an outbound HTTP call behind inference_engine lattice audit.
- * External connectors (LLM APIs, registry) MUST use this path.
- */
-function responseFromDockAllow(resp) {
-  if (!resp || resp.ok !== true) {
-    throw new Error((resp && resp.error) || "lattice frame rejected");
-  }
-  const http = resp.http;
-  if (!http) {
-    throw new Error("lattice-gated-fetch: dock allow did not return http");
-  }
-  const raw = String(http.body_b64 || "");
-  let body = new Uint8Array(0);
-  if (raw) {
-    const bin = atob(raw);
-    body = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i += 1) body[i] = bin.charCodeAt(i);
-  }
-  const headers = new Headers();
-  const pairs = Array.isArray(http.headers) ? http.headers : [];
-  for (const pair of pairs) {
-    if (Array.isArray(pair) && pair.length >= 2) headers.append(String(pair[0]), String(pair[1]));
-  }
-  const status = Number(http.status);
-  if (!Number.isInteger(status) || status < 200 || status > 599) {
-    throw new Error(`lattice-gated-fetch: dock allow returned invalid http status ${String(http.status)}`);
-  }
-  // 204, 205 and 304 carry no body; the Response constructor throws if one is given.
-  const nullBody = status === 204 || status === 205 || status === 304;
-  return new Response(nullBody ? null : body, { status, statusText: String(http.status_text || ""), headers });
-}
-
-export async function latticeGatedFetch(
-  socketBase,
-  meta,
-  url,
-  init = {},
-  opts = {},
-) {
-  assertUrlNotSsrf(url);
-  if (!latticeStrictEnabled()) {
-    return fetch(url, init);
-  }
-  const inferencePath = dockPath(socketBase, "inference_engine");
-  const event = {
-    agent_id: meta.agentId ?? "lattice-gateway",
-    channel_id: meta.channelId ?? "ch-outbound-gateway",
-    contract_id: meta.contractId ?? "lattice-channel-default",
-    event_type: meta.eventType ?? "LATTICE_GATEWAY_REQUEST",
-    action_path: GATEWAY_ACTION_PATH,
-    session_id: meta.sessionId ?? "gateway-session",
-    docking_port: "inference_engine",
-    trust_score: meta.trustScore ?? 100,
-    payload: {
-      url: String(url),
-      method: init.method ?? "GET",
-      gateway: meta.gateway ?? "http",
-      ...(meta.payloadExtra ?? {}),
-    },
-  };
-  const resp = latticeDockRequest(socketBase, "inference_engine", event, opts);
-  if (!existsSync(inferencePath)) {
-    throw new Error(`inference_engine dock required for lattice-gated fetch: ${inferencePath}`);
-  }
-  return responseFromDockAllow(resp);
-}
+// The gated outbound fetch has one source in lattice-gated-fetch.ts with its emitted
+// lattice-gated-fetch.js. This transport carries no copy of it.
 
 export function dockPaths(socketBase) {
   return DOCK_SUFFIXES.map((d) => ({

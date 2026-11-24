@@ -28,7 +28,6 @@ pub struct DockKeys {
     pub dock_kem: Arc<KemKeypair>,
     pub agent_sign_keys: Arc<Mutex<AgentSignKeyStore>>,
     pub agent_bundles: Arc<Mutex<HashMap<String, aep_agentmesh::AgentMeshBundle>>>,
-    pub agent_trust: Arc<Mutex<HashMap<String, u16>>>,
 }
 pub struct DockDefence {
     pub rate_limiter: Arc<Mutex<RateLimiter>>,

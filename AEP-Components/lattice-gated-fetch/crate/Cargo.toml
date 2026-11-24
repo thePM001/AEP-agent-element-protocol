@@ -6,18 +6,17 @@ description = "The kernel outbound request of the one granted gateway path, with
 license = "UNLICENSED"
 publish = false
 
-[[bin]]
-name = "aep-lattice-gated-fetch"
-path = "src/main.rs"
-
 [dependencies]
 aep-egress-address = { path = "../../egress-address/crate" }
-anyhow = "1"
 base64 = "0.22"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 url = "2.5"
+
+[dev-dependencies]
+# The source gate in tests/source_gate.rs reads the docking module through the one source check.
+aep-source-check = { path = "../../source-check/crate" }
 
 [lints]
 workspace = true

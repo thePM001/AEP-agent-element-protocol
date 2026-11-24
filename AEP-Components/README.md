@@ -11,8 +11,8 @@ The home folder of a component contains its README with ten parts: title, status
 | 01 | AEP Base Node | `AEP-Base-Node` | `kernel-types`, `live-entry`, `one-live-evaluation`, `wall-set-backpressure`, `AEP-Base-Node/AEP-Crate`, `AEP-Base-Node/AEP-Registry`, `AEP-Base-Node/AEP-Agent-Control-Hub`, `AEP-Base-Node/AEP-Potomitan`, `AEP-Base-Node/AEP-Multi-Base-Node` |
 | 02 | UCB | `AEP-Base-Node/AEP-Docks/ucb` | `dock-line-reader`, `dock-post-beat-collect`, `dock-request-poison`, `egress-address`, `AEP-Base-Node/AEP-Docks`, `AEP-Base-Node/AEP-Docks/universal-connect` |
 | 03 | One Validation Envelope | `AEP-Components/envelope` | `envelope-walls`, `evaluation-chain`, `unbound-field-close` |
-| 04 | Admit Gate | `AEP-Components/admit` | `admit-budget-window`, `admit-channel-order-walls`, `admit-live-dock`, `admit-temporal-bounds`, `admit-writing-walls`, `policy-system-admit`, `one-admit-id`, `covenant`, `permissions` |
-| 05 | Graph Engine | `AEP-Components/graph-engine` | `graph-engine-admit-gate`, `decomposition`, `session`, `recovery` |
+| 04 | Admit Gate | `AEP-Components/admit` | `admit-budget-window`, `admit-channel-order-walls`, `admit-live-dock`, `admit-temporal-bounds`, `admit-writing-walls`, `policy-system-admit`, `covenant`, `permissions` |
+| 05 | Graph Engine | `AEP-Components/graph-engine` | `decomposition`, `session`, `recovery` |
 | 06 | GAP | `AEP-Components/gap` | `gap-schema-profile-v13`, `policy-engine`, `policy-leftover-skins`, `AEP-Policy-System` |
 | 07 | dynAEP | `AEP-Components/dynAEP` | `hyperlattice`, `named-surfaces`, `wrap-coverage` |
 | 08 | Lattice Channels | `AEP-Components/lattice-channels` | `lattice-crypto`, `lattice-gated-fetch` |
@@ -36,6 +36,7 @@ These folders serve more than one component:
 | `datasets` | A file based store of evaluation datasets with simple versions. |
 | `ede` | Enforced draft environments, in which a coding agent changes a repository only through a scanned draft. |
 | `platform-core` | Shared path helpers and the catalog of regulation modules that several components import. |
+| `source-check` | The one source check of the workspace. It parses Rust with syn, finds an item by its identifier and fails when the item is absent, for the crates that prove a kernel rule by reading its source. |
 | `ucm` | The Universal Computation Module, the exact calculation engine with signed receipts. |
 
 ## README files and manifests

@@ -1,6 +1,6 @@
 # 08 / Lattice Channels
 
-Status: normative. Stability: evolving. Frame sealing calls the aep-lattice-log binary; lattice-gated-fetch .ts, .mjs and .js keep the same exports.
+Status: normative. Stability: evolving. Frame sealing calls the aep-lattice-log binary. `lib/lattice-gated-fetch.ts` is the one source of the gated fetch and `lib/lattice-gated-fetch.js` is its tsc emit.
 
 ## What it is
 
@@ -25,7 +25,9 @@ Every component hands its messages to the channel and UCB (02) seals the work of
 |------|------|
 | `crate/` | The crate `aep-lattice-channel` |
 | `lib/lattice-transport.mjs` | Dock paths, capsule helpers and the writing checks for clients |
-| `lib/lattice-gated-fetch.ts` | The outbound request helper, also as `.mjs` and `.js` |
+| `lib/lattice-gated-fetch.ts` | The outbound request helper, the one source of the gated fetch |
+| `lib/lattice-gated-fetch.js` | Its tsc emit, written by `npm run build:gated-fetch` and checked in CI by `npm run check:gated-fetch` |
+| `scripts/gated-fetch-emit.mjs` | Emits `lattice-gated-fetch.js` and with `--check` fails when the committed file differs from a fresh emit |
 | `client/` | TypeScript client exports |
 | `tests/` | vitest suites |
 | `AEP-Components/lattice-crypto/` | The crate `aep-lattice-crypto` with ML-KEM-768 and ML-DSA-65 and the program `aep-ml-dsa` |

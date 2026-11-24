@@ -35,7 +35,6 @@ name = "aep-admit-channel-order-walls"
 version = "0.1.0"
 dependencies = [
  "aep-admit",
- "anyhow",
 ]
 
 [[package]]
@@ -50,7 +49,7 @@ dependencies = [
  "aep-envelope-walls",
  "aep-live-entry",
  "aep-policy-system-admit",
- "anyhow",
+ "aep-source-check",
  "serde_json",
 ]
 
@@ -59,7 +58,6 @@ name = "aep-admit-temporal-bounds"
 version = "0.1.0"
 dependencies = [
  "aep-admit",
- "anyhow",
 ]
 
 [[package]]
@@ -67,7 +65,6 @@ name = "aep-admit-writing-walls"
 version = "0.1.0"
 dependencies = [
  "aep-admit",
- "anyhow",
 ]
 
 [[package]]
@@ -98,9 +95,6 @@ dependencies = [
 [[package]]
 name = "aep-agentmesh-local-issuance"
 version = "0.1.0"
-dependencies = [
- "anyhow",
-]
 
 [[package]]
 name = "aep-base-node"
@@ -125,6 +119,7 @@ dependencies = [
  "aep-live-entry",
  "aep-one-live-evaluation",
  "aep-potomitan",
+ "aep-source-check",
  "aep-wall-set-backpressure",
  "aes-gcm",
  "anyhow",
@@ -152,9 +147,7 @@ name = "aep-base-node-pulse"
 version = "0.1.0"
 dependencies = [
  "aep-kernel-types",
- "anyhow",
- "serde",
- "serde_json",
+ "aep-source-check",
 ]
 
 [[package]]
@@ -169,9 +162,6 @@ dependencies = [
 [[package]]
 name = "aep-caw-cve-demo-trees"
 version = "0.1.0"
-dependencies = [
- "anyhow",
-]
 
 [[package]]
 name = "aep-caw-dock"
@@ -245,7 +235,7 @@ dependencies = [
 name = "aep-dock-line-reader"
 version = "0.1.0"
 dependencies = [
- "anyhow",
+ "aep-source-check",
  "tokio",
 ]
 
@@ -254,16 +244,14 @@ name = "aep-dock-post-beat-collect"
 version = "0.1.0"
 dependencies = [
  "aep-kernel-types",
- "anyhow",
- "serde_json",
+ "aep-source-check",
 ]
 
 [[package]]
 name = "aep-dock-request-poison"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "serde_json",
+ "aep-source-check",
 ]
 
 [[package]]
@@ -271,6 +259,7 @@ name = "aep-dynaep"
 version = "2.9.0"
 dependencies = [
  "aep-kernel-types",
+ "aep-source-check",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -321,6 +310,7 @@ version = "2.9.0"
 dependencies = [
  "aep-admit",
  "aep-kernel-types",
+ "aep-source-check",
  "clap",
  "serde",
  "serde_json",
@@ -333,7 +323,6 @@ name = "aep-envelope-walls"
 version = "0.1.0"
 dependencies = [
  "aep-admit",
- "anyhow",
 ]
 
 [[package]]
@@ -344,14 +333,6 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.21",
-]
-
-[[package]]
-name = "aep-graph-engine-admit-gate"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "serde_json",
 ]
 
 [[package]]
@@ -407,7 +388,7 @@ name = "aep-lattice-gated-fetch"
 version = "0.1.0"
 dependencies = [
  "aep-egress-address",
- "anyhow",
+ "aep-source-check",
  "base64",
  "reqwest",
  "serde",
@@ -443,7 +424,7 @@ version = "0.1.0"
 dependencies = [
  "aep-admit-budget-window",
  "aep-envelope",
- "anyhow",
+ "aep-source-check",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -457,7 +438,7 @@ dependencies = [
  "aep-admit-live-dock",
  "aep-envelope",
  "aep-live-entry",
- "anyhow",
+ "aep-source-check",
  "serde_json",
 ]
 
@@ -480,7 +461,6 @@ dependencies = [
  "aep-lattice-crypto",
  "aep-ucm-core",
  "aep-ucm-receipt",
- "anyhow",
  "gap-schema-profile-v13",
  "serde_json",
 ]
@@ -493,6 +473,15 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "aep-source-check"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -509,6 +498,7 @@ dependencies = [
  "aep-agentmesh",
  "aep-egress-address",
  "aep-lattice-crypto",
+ "aep-source-check",
  "aep-ucb-perimeter-v1",
  "aep-wall-set-backpressure",
  "axum",
@@ -604,7 +594,7 @@ name = "aep-unbound-field-close"
 version = "0.1.0"
 dependencies = [
  "aep-envelope",
- "anyhow",
+ "aep-source-check",
  "serde_json",
 ]
 
@@ -613,9 +603,7 @@ name = "aep-wall-set-backpressure"
 version = "0.1.0"
 dependencies = [
  "aep-kernel-types",
- "anyhow",
- "serde",
- "serde_json",
+ "aep-source-check",
 ]
 
 [[package]]

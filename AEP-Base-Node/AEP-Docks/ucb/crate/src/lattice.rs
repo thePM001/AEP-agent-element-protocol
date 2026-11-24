@@ -105,7 +105,6 @@ impl LatticeRuntime {
         &self,
         socket_path: &Path,
         frame: Value,
-        dock_wire_score: u16,
         signer_public_hex: Option<&str>,
     ) -> Result<DockResponse, LatticeDeny> {
         let Some(hex) = signer_public_hex.filter(|s| !s.is_empty()) else {
@@ -115,7 +114,6 @@ impl LatticeRuntime {
         };
         let wire = serde_json::json!({
             "frame": frame,
-            "trust_score": dock_wire_score,
             "signer_public_hex": hex,
         });
         let mut payload =
@@ -191,19 +189,13 @@ impl LatticeRuntime {
             session_id: "ucb-health".into(),
             docking_port: "validation_engine".into(),
             action_path: ACTION_HEALTH.into(),
-            dock_wire_score: crate::DOCK_WIRE_SCORE,
             payload: serde_json::json!({ "probe": true }),
         };
         let built = self.build_frame(&event).await?;
         let socket = self.dock_path("validation_engine")?;
-        self.send_frame(
-            &socket,
-            built.frame,
-            event.dock_wire_score,
-            built.signer_public_hex.as_deref(),
-        )
-        .await
-        .map_err(String::from)
+        self.send_frame(&socket, built.frame, built.signer_public_hex.as_deref())
+            .await
+            .map_err(String::from)
     }
 }
 
@@ -458,7 +450,7 @@ mod tests {
         };
         let frame = serde_json::json!({"kind": "fixture"});
         let docked = rt
-            .send_frame(&sock, frame, crate::DOCK_WIRE_SCORE, Some("ab"))
+            .send_frame(&sock, frame, Some("ab"))
             .await
             .expect("admit allow");
         assert!(admit_allow(&docked));
@@ -502,7 +494,7 @@ mod tests {
         };
         let frame = serde_json::json!({"kind": "fixture"});
         let err = rt
-            .send_frame(&sock, frame, crate::DOCK_WIRE_SCORE, Some("ab"))
+            .send_frame(&sock, frame, Some("ab"))
             .await
             .expect_err("admit deny");
         let resp = DockResponse {
@@ -537,7 +529,7 @@ mod tests {
         let started = std::time::Instant::now();
         let frame = serde_json::json!({"kind": "fixture"});
         let err = rt
-            .send_frame(&sock, frame, crate::DOCK_WIRE_SCORE, Some("ab"))
+            .send_frame(&sock, frame, Some("ab"))
             .await
             .expect_err("silent dock");
         let elapsed = started.elapsed();
@@ -597,7 +589,7 @@ mod tests {
         };
         let frame = serde_json::json!({"kind": "fixture"});
         let err = rt
-            .send_frame(&sock, frame, crate::DOCK_WIRE_SCORE, Some("ab"))
+            .send_frame(&sock, frame, Some("ab"))
             .await
             .expect_err("missing dock");
         assert!(

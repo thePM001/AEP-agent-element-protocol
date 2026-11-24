@@ -41,6 +41,8 @@
   "scripts": {
     "check": "node aep-check.mjs",
     "typecheck": "tsc -p tsconfig.json",
+    "build:gated-fetch": "node AEP-Components/lattice-channels/scripts/gated-fetch-emit.mjs",
+    "check:gated-fetch": "node AEP-Components/lattice-channels/scripts/gated-fetch-emit.mjs --check",
     "lint": "eslint --max-warnings 0 AEP-Components",
     "test": "vitest run"
   },

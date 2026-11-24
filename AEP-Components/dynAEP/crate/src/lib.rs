@@ -867,17 +867,12 @@ mod tests {
 
     #[test]
     fn lattice_event_has_no_rank_field() {
-        let src = include_str!("lib.rs");
-        let start = match src.find("pub struct LatticeEvent") {
-            Some(v) => v,
-            None => panic!("LatticeEvent missing"),
-        };
-        let rest = &src[start..];
-        let end = match rest.find("pub struct Perception") {
-            Some(v) => v,
-            None => rest.len(),
-        };
-        let body = &rest[..end];
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("lib.rs");
+        let body = aep_source_check::RustSource::read(&path)
+            .and_then(|s| s.type_item("LatticeEvent"))
+            .expect("LatticeEvent");
         let needle = ["trust", "_tier"].concat();
         assert!(!body.contains(&needle));
         assert!(!body.contains("rank"));

@@ -301,7 +301,6 @@ pub async fn ingest_foreign_payload(rt: &Arc<UcbRuntime>, body: ForeignIngestBod
         Ok(e) => e,
         Err(err) => return deny_to_value(DenyReport::from_error(&err)),
     };
-    event.dock_wire_score = crate::DOCK_WIRE_SCORE;
     let manifest = match manifest::load_or_provided(
         &rt.manifests,
         &rt.signers,
@@ -332,7 +331,6 @@ pub async fn ingest_foreign_payload(rt: &Arc<UcbRuntime>, body: ForeignIngestBod
         .send_frame(
             &socket_path,
             built.frame.clone(),
-            event.dock_wire_score,
             built.signer_public_hex.as_deref(),
         )
         .await
@@ -454,7 +452,6 @@ pub async fn rollback_foreign_integrations(
         session_id: format!("ucb-rollback-{}", now_ms()),
         docking_port: "validation_engine".into(),
         action_path: ACTION_ROLLBACK.into(),
-        dock_wire_score: crate::DOCK_WIRE_SCORE,
         payload: Value::Object(payload),
     };
     let socket_path = match rt.lattice.dock_path("validation_engine") {
@@ -470,7 +467,6 @@ pub async fn rollback_foreign_integrations(
         .send_frame(
             &socket_path,
             built.frame,
-            rollback_event.dock_wire_score,
             built.signer_public_hex.as_deref(),
         )
         .await

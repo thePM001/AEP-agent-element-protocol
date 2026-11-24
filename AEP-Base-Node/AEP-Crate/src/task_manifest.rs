@@ -200,7 +200,6 @@ impl ManifestRegistry {
     pub fn validate_agent(
         &self,
         agent_id: &str,
-        trust_score: Option<u16>,
         session_id: Option<&str>,
     ) -> Result<(), BaseNodeError> {
         if !self.strict {
@@ -220,8 +219,6 @@ impl ManifestRegistry {
                 required: manifest.promotion_required.clone(),
             });
         }
-
-        let _ = trust_score;
 
         // LOW: production strict mode requires session_id on manifests
         if self.strict
@@ -271,7 +268,6 @@ mod tests {
     fn sample_manifest(
         agent_id: &str,
         provisional: bool,
-        _max_trust: u16,
         session_id: Option<&str>,
     ) -> TaskManifestV1 {
         TaskManifestV1 {
@@ -304,9 +300,7 @@ mod tests {
     fn missing_manifest_rejected_when_strict() {
         let dir = tempfile::tempdir().unwrap();
         let reg = ManifestRegistry::new(dir.path().to_path_buf(), true);
-        let err = reg
-            .validate_agent("AG-NONE", None, Some("sess-1"))
-            .unwrap_err();
+        let err = reg.validate_agent("AG-NONE", Some("sess-1")).unwrap_err();
         assert!(err.to_string().contains("missing"), "{err}");
     }
 
@@ -315,25 +309,11 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         write_manifest(
             dir.path(),
-            &sample_manifest("AG-PROV", true, 500, Some("sess-1")),
+            &sample_manifest("AG-PROV", true, Some("sess-1")),
         );
         let reg = ManifestRegistry::new(dir.path().to_path_buf(), true);
-        let err = reg
-            .validate_agent("AG-PROV", None, Some("sess-1"))
-            .unwrap_err();
+        let err = reg.validate_agent("AG-PROV", Some("sess-1")).unwrap_err();
         assert!(err.to_string().contains("provisional"), "{err}");
-    }
-
-    #[test]
-    fn trust_score_exceeds_max_still_ok() {
-        let dir = tempfile::tempdir().unwrap();
-        write_manifest(
-            dir.path(),
-            &sample_manifest("AG-TRUST", false, 100, Some("sess-1")),
-        );
-        let reg = ManifestRegistry::new(dir.path().to_path_buf(), true);
-        reg.validate_agent("AG-TRUST", Some(101), Some("sess-1"))
-            .expect("numeric trust_score is isolation telemetry");
     }
 
     #[test]
@@ -341,11 +321,11 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         write_manifest(
             dir.path(),
-            &sample_manifest("AG-SESS", false, 500, Some("sess-bound")),
+            &sample_manifest("AG-SESS", false, Some("sess-bound")),
         );
         let reg = ManifestRegistry::new(dir.path().to_path_buf(), true);
         let err = reg
-            .validate_agent("AG-SESS", Some(50), Some("sess-other"))
+            .validate_agent("AG-SESS", Some("sess-other"))
             .unwrap_err();
         assert!(
             err.to_string().contains("session registration mismatch"),
@@ -358,10 +338,10 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         write_manifest(
             dir.path(),
-            &sample_manifest("AG-NEED", false, 500, Some("sess-bound")),
+            &sample_manifest("AG-NEED", false, Some("sess-bound")),
         );
         let reg = ManifestRegistry::new(dir.path().to_path_buf(), true);
-        let err = reg.validate_agent("AG-NEED", Some(50), None).unwrap_err();
+        let err = reg.validate_agent("AG-NEED", None).unwrap_err();
         assert!(
             err.to_string().contains("session registration required"),
             "{err}"
@@ -371,13 +351,9 @@ mod tests {
     #[test]
     fn happy_path_with_session_bind_ok() {
         let dir = tempfile::tempdir().unwrap();
-        write_manifest(
-            dir.path(),
-            &sample_manifest("AG-OK", false, 500, Some("sess-1")),
-        );
+        write_manifest(dir.path(), &sample_manifest("AG-OK", false, Some("sess-1")));
         let reg = ManifestRegistry::new(dir.path().to_path_buf(), true);
-        reg.validate_agent("AG-OK", Some(200), Some("sess-1"))
-            .expect("ok");
+        reg.validate_agent("AG-OK", Some("sess-1")).expect("ok");
     }
 
     #[test]

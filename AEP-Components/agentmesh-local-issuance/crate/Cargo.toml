@@ -11,7 +11,6 @@ name = "aep-agentmesh-local-issuance"
 path = "src/main.rs"
 
 [dependencies]
-anyhow = "1"
 
 [lints]
 workspace = true

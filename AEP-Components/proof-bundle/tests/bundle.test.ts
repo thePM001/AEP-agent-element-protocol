@@ -49,7 +49,6 @@ describe("ProofBundleBuilder and ProofBundleVerifier", () => {
       },
       agent: agent(),
       covenant: { name: "C", rules: [{ type: "permit", action: "file:read", conditions: [] }] },
-      trustScore: { score: 600, tier: "standard" },
       isolation_class: "sandbox",
       driftScore: 0.1,
       ledger,
@@ -117,7 +116,7 @@ describe("ProofBundleBuilder and ProofBundleVerifier", () => {
     const tampered: ProofBundle[] = [
       { ...bundle, entryCount: 1 },
       { ...bundle, driftScore: 0 },
-      { ...bundle, trustScore: { score: 1000, tier: "privileged" } },
+      { ...bundle, isolation_class: "host" },
       { ...bundle, sessionReport: { ...bundle.sessionReport, denied: 0 } },
       { ...bundle, merkleRoot: MerkleTree.hash("x") },
     ];
@@ -209,13 +208,12 @@ describe("ProofBundleBuilder.computeReliability", () => {
     data,
   });
 
-  it("is perfect with no activity and full trust", () => {
-    const r = ProofBundleBuilder.computeReliability([], { score: 1000, tier: "x" }, 0, DEFAULT_RELIABILITY_WEIGHTS);
+  it("is perfect with no activity", () => {
+    const r = ProofBundleBuilder.computeReliability([], 0, DEFAULT_RELIABILITY_WEIGHTS);
     expect(r).toEqual({
       hardComplianceRate: 1,
       softRecoveryRate: 1,
       driftScore: 1,
-      trustScore: 1,
       scannerPassRate: 1,
       theta: 1,
     });
@@ -236,23 +234,28 @@ describe("ProofBundleBuilder.computeReliability", () => {
       entry("action:result"),
       entry("scanner:finding"),
     ];
-    const r = ProofBundleBuilder.computeReliability(entries, { score: 500, tier: "x" }, 0.25, DEFAULT_RELIABILITY_WEIGHTS);
+    const r = ProofBundleBuilder.computeReliability(entries, 0.25, DEFAULT_RELIABILITY_WEIGHTS);
     expect(r.hardComplianceRate).toBe(0.5);
     expect(r.softRecoveryRate).toBe(0.5);
     expect(r.driftScore).toBe(0.75);
-    expect(r.trustScore).toBe(0.5);
     expect(r.scannerPassRate).toBe(0.75);
-    // 0.3*0.5 + 0.2*0.5 + 0.15*0.75 + 0.2*0.5 + 0.15*0.75
-    expect(r.theta).toBeCloseTo(0.575, 3);
+    // 0.375*0.5 + 0.25*0.5 + 0.1875*0.75 + 0.1875*0.75 = 0.59375
+    expect(r.theta).toBeCloseTo(0.594, 3);
     expect(r.mlScore).toBeUndefined();
   });
 
   it("clamps out of range inputs and includes the ml score when given", () => {
-    const r = ProofBundleBuilder.computeReliability([], { score: 5000, tier: "x" }, 2, ML_RELIABILITY_WEIGHTS, 1.5);
+    const r = ProofBundleBuilder.computeReliability([], 2, ML_RELIABILITY_WEIGHTS, 1.5);
     expect(r.driftScore).toBe(0);
-    expect(r.trustScore).toBe(1);
     expect(r.mlScore).toBe(1);
-    // 0.25 + 0.15 + 0 + 0.15 + 0.15 + 0.2
-    expect(r.theta).toBeCloseTo(0.9, 3);
+    // (5 + 3 + 0 + 3 + 4) / 17 = 15/17
+    expect(r.theta).toBeCloseTo(0.882, 3);
+  });
+
+  it("uses weights that sum to 1", () => {
+    for (const w of [DEFAULT_RELIABILITY_WEIGHTS, ML_RELIABILITY_WEIGHTS]) {
+      const sum = w.hard + w.recovery + w.drift + w.scanner + (w.ml ?? 0);
+      expect(sum).toBeCloseTo(1, 10);
+    }
   });
 });

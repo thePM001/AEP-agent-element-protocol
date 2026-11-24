@@ -122,46 +122,18 @@ fn signer_public_keys_equal(a: &[u8], b: &[u8]) -> bool {
     diff == 0
 }
 
-/// BM-07: derive trust only from signed plaintext; ignore unbound wire field.
-pub(crate) fn attested_trust_score(
-    plaintext: &[u8],
-    _wire_trust_score: Option<u16>,
-) -> Option<u16> {
-    let Ok(value) = serde_json::from_slice::<Value>(plaintext) else {
-        return None;
-    };
-    let t = value
-        .get("trust_score")
-        .or_else(|| value.get("payload").and_then(|p| p.get("trust_score")))
-        .and_then(|v| v.as_u64())?;
-    if t > 1000 {
-        return None;
-    }
-    Some(t as u16)
-}
-
 // DockFrameResponse is the reply the node sends as is, so the deny path returns it unboxed.
 #[allow(clippy::result_large_err)]
 pub(crate) fn resolve_agent_bundle(
     runtime: &DockingRuntime,
     agent_id: &str,
-    trust_score: Option<u16>,
     sign_public: &[u8],
 ) -> Result<aep_agentmesh::AgentMeshBundle, DockFrameResponse> {
-    let score = match trust_score {
-        Some(s) => s,
-        None => {
-            let map = lock_or_deny(&runtime.keys.agent_trust, "agent_trust")?;
-            map.get(agent_id).copied().unwrap_or(0)
-        }
-    };
     let mut bundles = lock_or_deny(&runtime.keys.agent_bundles, "agent_bundles")?;
-    let mut trust_map = lock_or_deny(&runtime.keys.agent_trust, "agent_trust")?;
-    trust_map.insert(agent_id.to_string(), score);
     let entry = match bundles.entry(agent_id.to_string()) {
         std::collections::hash_map::Entry::Occupied(slot) => slot.into_mut(),
         std::collections::hash_map::Entry::Vacant(slot) => {
-            match crate::agentmesh_bundle_for_frame(agent_id, score, sign_public) {
+            match crate::agentmesh_bundle_for_frame(agent_id, sign_public) {
                 Ok(bundle) => slot.insert(bundle),
                 Err(e) => {
                     return Err(deny_closed(
@@ -174,7 +146,6 @@ pub(crate) fn resolve_agent_bundle(
             }
         }
     };
-    entry.trust_score = score;
     Ok(entry.clone())
 }
 

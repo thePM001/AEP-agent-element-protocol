@@ -153,7 +153,6 @@ async fn lattice_gate_delegate(
         session_id: session_id.to_string(),
         docking_port: "inference_engine".into(),
         action_path: ACTION_DELEGATE.into(),
-        dock_wire_score: crate::DOCK_WIRE_SCORE,
         payload: json!({
             "gateway": inference.provider,
             "model": inference.model,
@@ -165,12 +164,7 @@ async fn lattice_gate_delegate(
     let built = rt.lattice.build_frame(&event).await?;
     let socket = rt.lattice.dock_path("inference_engine")?;
     rt.lattice
-        .send_frame(
-            &socket,
-            built.frame,
-            event.dock_wire_score,
-            built.signer_public_hex.as_deref(),
-        )
+        .send_frame(&socket, built.frame, built.signer_public_hex.as_deref())
         .await?;
     Ok(())
 }

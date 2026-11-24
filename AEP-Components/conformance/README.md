@@ -51,7 +51,6 @@ The vitest checks run inside `run.sh`, which builds the kernel binaries, provisi
 |----|--------|------|
 | CC-01 - CC-09 | Rust kernel | Crypto, channel, mesh and docking |
 | CC-10 | Rust kernel | Base Node health in POTOMITAN mode when the internet drops and the mesh packet plane |
-| CC-11 | Rust kernel | Docking trust_score moves the AgentMesh trust tier |
 | CC-13 - CC-14 | Rust kernel | Plain ping and event side-channel rejection |
 | CC-15 | vitest | Lattice-mandatory policy artifacts and frame builder |
 | CC-16 | node | writing.gap documentation lint |

@@ -32,8 +32,8 @@ pub(crate) use serve::on_blocking_pool;
 pub use serve::{drain_docking_servers, run_docking_servers, sockets_exist, unlink_sockets};
 
 use apply::{
-    attested_trust_score, enforce_correctwriting_en_on_payload, is_lrp_allowlisted,
-    reject_side_channel, resolve_agent_bundle, resolve_signer_public,
+    enforce_correctwriting_en_on_payload, is_lrp_allowlisted, reject_side_channel,
+    resolve_agent_bundle, resolve_signer_public,
 };
 use freshness::frame_is_fresh;
 use pulse::{collect_applied, pulse_enqueue, pulse_now_ms};
@@ -215,14 +215,12 @@ pub fn process_request(
     match req {
         DockRequest::Frame {
             frame,
-            trust_score,
             signer_public_hex,
         } => answer_frame(
             runtime,
             port,
             &frame,
             FrameClaims {
-                trust_score,
                 signer_public_hex,
                 presented: None,
             },
@@ -269,7 +267,6 @@ pub fn process_request_presented(
     if let Some(cert) = presented {
         if let Ok(DockRequest::Frame {
             frame,
-            trust_score,
             signer_public_hex,
         }) = serde_json::from_str::<DockRequest>(line)
         {
@@ -278,7 +275,6 @@ pub fn process_request_presented(
                 port,
                 &frame,
                 FrameClaims {
-                    trust_score,
                     signer_public_hex,
                     presented: Some(cert.clone()),
                 },
@@ -354,7 +350,6 @@ fn log_frame_outcome(port: &DockingPort, resp: &DockFrameResponse) {
 /// What came with a frame besides the frame: the wire fields of the request and the
 /// certificate the peer presented on the connection.
 struct FrameClaims {
-    trust_score: Option<u16>,
     signer_public_hex: Option<String>,
     presented: Option<aep_agentmesh::PresentedCertificate>,
 }
@@ -367,7 +362,6 @@ fn handle_frame(
     arrival_ms: i64,
 ) -> DockFrameResponse {
     let FrameClaims {
-        trust_score,
         signer_public_hex,
         presented,
     } = claims;
@@ -503,10 +497,6 @@ fn handle_frame(
         return rate_limit_response(runtime, expected_port, &frame.agent_id, e.to_string());
     }
 
-    // BM-07: free outer wire trust_score is NOT authoritative.
-    // Only signed plaintext trust_score (or stored agent trust) may drive tier.
-    let trust_score = attested_trust_score(&plaintext, trust_score);
-
     if expected_port == &DockingPort::RegulationModule {
         if let Ok(value) = serde_json::from_slice::<Value>(&plaintext) {
             if value.get("action").and_then(|v| v.as_str()) == Some("register_lrp")
@@ -619,11 +609,7 @@ fn handle_frame(
     let manifest_check = {
         let mut manifests = dock_lock!(&runtime.admit.manifests, "manifests");
         manifests.reload_if_stale();
-        manifests.validate_agent(
-            &frame.agent_id,
-            trust_score,
-            Some(frame.session_id.as_str()),
-        )
+        manifests.validate_agent(&frame.agent_id, Some(frame.session_id.as_str()))
     };
     {
         if let Err(err) = manifest_check {
@@ -646,14 +632,13 @@ fn handle_frame(
         }
     }
 
-    let bundle = match resolve_agent_bundle(runtime, &frame.agent_id, trust_score, &signer_public) {
-        Ok(b) => b,
-        Err(resp) => return resp,
-    };
+    // The node keeps one AgentMesh identity per agent; a frame without one is refused.
+    if let Err(resp) = resolve_agent_bundle(runtime, &frame.agent_id, &signer_public) {
+        return resp;
+    }
     // The ledger row names the certificate the peer presented, never the identity the
     // node keeps for the agent.
-    let mesh =
-        aep_agentmesh::LedgerMeshRecord::for_frame(&frame.agent_id, bundle.trust_score, presented);
+    let mesh = aep_agentmesh::LedgerMeshRecord::for_frame(&frame.agent_id, presented);
     pulse_enqueue(
         runtime,
         frame,

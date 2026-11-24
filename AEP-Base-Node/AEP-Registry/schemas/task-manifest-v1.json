@@ -52,10 +52,9 @@
  },
  "trust": {
  "type": "object",
- "required": ["tier", "max_trust_score"],
+ "required": ["tier"],
  "properties": {
- "tier": { "enum": ["provisional", "standard", "elevated"] },
- "max_trust_score": { "type": "integer", "minimum": 0, "maximum": 1000 }
+ "tier": { "enum": ["provisional", "standard", "elevated"] }
  }
  },
  "agentmesh": {

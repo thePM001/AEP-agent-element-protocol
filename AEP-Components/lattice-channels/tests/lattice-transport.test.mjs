@@ -1,9 +1,12 @@
-// Pure helpers of lattice-transport.mjs. Nothing here runs the aep-lattice-log binary or
-// opens a socket: every case below returns or throws before any process or connection.
+// Helpers of lattice-transport.mjs. Nothing here runs the aep-lattice-log binary. Only
+// the frame exchange case opens a socket, to a test dock on a worker thread, because the
+// send of the transport blocks the main thread until the dock answers.
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Worker } from "node:worker_threads";
+import * as transport from "../lib/lattice-transport.mjs";
 import {
   ALLOWED_DOCK_PORTS,
   DOCK_SUFFIXES,
@@ -15,7 +18,6 @@ import {
   fixPunctuationWordSpacing,
   fixSpacedHyphenClauseSeparators,
   latticeDockEndpoint,
-  latticeGatedFetch,
   latticeStrictEnabled,
   normalizeDockPort,
   parseLatticeDockLine,
@@ -131,11 +133,77 @@ describe("strict mode and SSRF policy", () => {
     expect(() => assertUrlNotSsrf("gopher://a.example/", lookup([]), {})).toThrow("blocked protocol gopher:");
   });
 
-  it("latticeGatedFetch rejects an SSRF target before any dock work", async () => {
-    await expect(latticeGatedFetch("/nonexistent", {}, "http://169.254.169.254/latest")).rejects.toThrow(
-      "lattice-gated-fetch: private/metadata host blocked",
-    );
+  it("carries no gated fetch of its own: lattice-gated-fetch.ts is the one source", () => {
+    expect("latticeGatedFetch" in transport).toBe(false);
+    expect("responseFromDockAllow" in transport).toBe(false);
   });
+});
+
+// The test dock of fixtures/test-dock-worker.mjs: it answers each line with the next
+// canned answer and writes every line it reads to a file.
+const TEST_DOCK = new URL("./fixtures/test-dock-worker.mjs", import.meta.url);
+
+describe("sendLatticeFrame against a test dock", () => {
+  let dir = "";
+  let dock = null;
+  afterEach(async () => {
+    if (dock) await dock.terminate();
+    dock = null;
+    if (dir) rmSync(dir, { recursive: true, force: true });
+    dir = "";
+  });
+
+  async function startDock(answers) {
+    dir = mkdtempSync(join(tmpdir(), "aep-td-"));
+    const socket = join(dir, "validation");
+    const lines = join(dir, "lines");
+    dock = new Worker(TEST_DOCK, { workerData: { answers, socket, lines } });
+    await new Promise((resolve, reject) => {
+      dock.once("message", resolve);
+      dock.once("error", reject);
+      dock.once("exit", (code) => reject(new Error(`test dock exited with ${code}`)));
+    });
+    return { socket, lines: () => readFileSync(lines, "utf8").trim().split("\n") };
+  }
+
+  const SIGNER = "ab".repeat(32);
+
+  it("collects a pending answer by its digest on the same connection", async () => {
+    const { socket, lines } = await startDock([
+      { ok: false, pending: true, digest: "d7" },
+      { ok: false, pending: true, http_queued: true, digest: "d7" },
+      { ok: true, event_id: 7, digest: "d7" },
+    ]);
+    expect(sendLatticeFrame(socket, { a: 1 }, { signerPublicHex: SIGNER })).toEqual({
+      ok: true,
+      event_id: 7,
+      digest: "d7",
+    });
+    expect(lines()).toEqual([
+      JSON.stringify({ frame: { a: 1 }, signer_public_hex: SIGNER }),
+      '{"collect":"d7"}',
+      '{"collect":"d7"}',
+    ]);
+  }, 20000);
+
+  it("throws the refusal that ends a collect", async () => {
+    const { socket } = await startDock([{ ok: false, pending: true, digest: "d8" }, { ok: false, error: "walls closed" }]);
+    expect(() => sendLatticeFrame(socket, { a: 1 }, { signerPublicHex: SIGNER })).toThrow("walls closed");
+  }, 20000);
+
+  it("refuses a pending answer without a digest", async () => {
+    const { socket, lines } = await startDock([{ ok: false, pending: true }]);
+    expect(() => sendLatticeFrame(socket, { a: 1 }, { signerPublicHex: SIGNER })).toThrow(
+      "lattice dock answered pending without a digest",
+    );
+    expect(lines()).toHaveLength(1);
+  }, 20000);
+
+  it("a plain line send still returns the first answer line", async () => {
+    const { socket, lines } = await startDock([{ ok: false, pending: true, digest: "d9" }]);
+    expect(JSON.parse(sendLatticeLine(socket, '{"ping":true}'))).toEqual({ ok: false, pending: true, digest: "d9" });
+    expect(lines()).toEqual(['{"ping":true}']);
+  }, 20000);
 });
 
 describe("resolveLatticeLogBin", () => {

@@ -4,7 +4,7 @@
 
 mod vectors;
 
-use aep_agentmesh::{create_bundle, rotate_on_trust_change, trust_tier};
+use aep_agentmesh::create_bundle;
 use aep_base_node::{
     health, open_lattice_db, process_request, pulse_beat, DockFrameResponse, DockingRuntime,
     HealthInput,
@@ -58,8 +58,8 @@ const CHECKS: &[Check] = &[
     },
     Check {
         id: "CC-03",
-        name: "AgentMesh mTLS fingerprint stays when trust_score changes",
-        run: cc_agentmesh_trust_rotation,
+        name: "AgentMesh SPIFFE identity is bound to the mTLS certificate of the bundle",
+        run: cc_agentmesh_identity_binding,
     },
     Check {
         id: "CC-04",
@@ -96,11 +96,6 @@ const CHECKS: &[Check] = &[
         name:
             "Base Node health reports POTOMITAN failover and the mesh packet plane carries traffic",
         run: cc_base_node_health_failover,
-    },
-    Check {
-        id: "CC-11",
-        name: "Docking trust_score from the signed frame moves the AgentMesh trust tier",
-        run: cc_docking_trust_score_tier,
     },
     Check {
         id: "CC-13",
@@ -252,16 +247,17 @@ fn cc_lattice_channel_frame() -> Result<(), String> {
     Ok(())
 }
 
-fn cc_agentmesh_trust_rotation() -> Result<(), String> {
-    let mut bundle = create_bundle("AG-TRUST-CONF", 850, b"pk", vec![], 1_700_000_000)
-        .map_err(|e| e.to_string())?;
-    let fp_high = bundle.mtls.cert_fingerprint.clone();
-    rotate_on_trust_change(&mut bundle, 450, 1_700_000_100);
-    if bundle.mtls.cert_fingerprint != fp_high {
-        return Err("numeric trust_score rotated AgentMesh cert state".into());
+fn cc_agentmesh_identity_binding() -> Result<(), String> {
+    let bundle =
+        create_bundle("AG-MESH-CONF", b"pk", vec![], 1_700_000_000).map_err(|e| e.to_string())?;
+    if bundle.mtls.cert_fingerprint.len() != 64 {
+        return Err("AgentMesh mTLS fingerprint is not a SHA-256 hex digest".into());
     }
-    if bundle.trust_score != 450 {
-        return Err("trust score not updated".into());
+    if !bundle.spiffe.svid.contains(&bundle.mtls.cert_fingerprint) {
+        return Err("SPIFFE SVID does not name the mTLS certificate of the bundle".into());
+    }
+    if bundle.spiffe.expires_at_unix != bundle.mtls.not_after_unix {
+        return Err("SPIFFE identity and mTLS certificate end at different times".into());
     }
     Ok(())
 }
@@ -476,73 +472,6 @@ fn cc_base_node_health_failover() -> Result<(), String> {
     Ok(())
 }
 
-/// Bundle state the docking runtime holds for one agent.
-fn agent_bundle(
-    rt: &DockingRuntime,
-    agent_id: &str,
-) -> Result<aep_agentmesh::AgentMeshBundle, String> {
-    rt.keys
-        .agent_bundles
-        .lock()
-        .map_err(|e| e.to_string())?
-        .get(agent_id)
-        .cloned()
-        .ok_or_else(|| format!("no AgentMesh bundle for {agent_id}"))
-}
-
-/// CC-11: the trust_score the agent signs into the frame plaintext is the score the
-/// dock records on the AgentMesh bundle, so the trust tier follows it. The mTLS
-/// identity stays the same because a score change never reissues the cert.
-fn cc_docking_trust_score_tier() -> Result<(), String> {
-    let (_dir, rt) = temp_docking_runtime()?;
-    let agent = "AG-TRUST-DOCK-CONF";
-    let sign = arm_test_agent(&rt, agent, &["dynaep-action-lattice"])?;
-    let mut fingerprint = None;
-    for (seq, score, tier) in [(1u64, 850u16, 4u8), (2, 450, 2), (3, 120, 0)] {
-        let sent_at = now_unix();
-        let frame = conformance_frame_for_dock(
-            "ch-trust",
-            agent,
-            DockingPort::ValidationEngine,
-            "dynaep-action-lattice",
-            &admit_payload(&format!("\"trust_score\":{score},"), seq, sent_at),
-            sent_at,
-            rt.keys.dock_kem.public.as_slice(),
-            &sign,
-        )?;
-        // The wire field is unbound and must not override the signed score.
-        let line = serde_json::json!({ "frame": frame, "trust_score": 1000 }).to_string();
-        let resp = admit_through_pulse(&rt, &DockingPort::ValidationEngine, &line);
-        if !resp.ok || resp.event_id.is_none() {
-            return Err(format!(
-                "trust frame {seq} was not admitted: {:?} deny={:?}",
-                resp.error, resp.deny
-            ));
-        }
-        let bundle = agent_bundle(&rt, agent)?;
-        if bundle.trust_score != score {
-            return Err(format!(
-                "frame {seq} signed trust_score {score} but the bundle holds {}",
-                bundle.trust_score
-            ));
-        }
-        if trust_tier(bundle.trust_score) != tier {
-            return Err(format!(
-                "trust_score {score} must sit in tier {tier}, got {}",
-                trust_tier(bundle.trust_score)
-            ));
-        }
-        match &fingerprint {
-            None => fingerprint = Some(bundle.mtls.cert_fingerprint.clone()),
-            Some(fp) if *fp != bundle.mtls.cert_fingerprint => {
-                return Err("a trust_score change reissued the AgentMesh cert".into())
-            }
-            Some(_) => {}
-        }
-    }
-    Ok(())
-}
-
 fn cc_potomitan_failover() -> Result<(), String> {
     if detect_network_mode(false, 2) != MeshMode::Potomitan {
         return Err("expected Potomitan mode with peers and internet down".into());
@@ -710,7 +639,6 @@ fn cc_plain_event_rejected() -> Result<(), String> {
             "contract_id": "dynaep-action-lattice",
             "event_type": "SIDE_CHANNEL_PROBE",
             "docking_port": "validation_engine",
-            "trust_score": 700,
             "payload": { "probe": true }
         }
     })

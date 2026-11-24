@@ -21,7 +21,6 @@ pub enum SideChannelAnomalyKind {
     InvalidJson,
     MissingTaskManifest,
     ProvisionalManifestRejected,
-    TrustScoreExceedsManifest,
     CryptoVerificationFailed,
     FrameReplayRejected,
     StaleFrameRejected,

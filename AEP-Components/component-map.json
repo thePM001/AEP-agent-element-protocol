@@ -61,7 +61,6 @@
         "AEP-Components/admit-temporal-bounds",
         "AEP-Components/admit-writing-walls",
         "AEP-Components/policy-system-admit",
-        "AEP-Components/one-admit-id",
         "AEP-Components/covenant",
         "AEP-Components/permissions"
       ]
@@ -73,7 +72,6 @@
       "readme": "AEP-Components/graph-engine/README.md",
       "summary": "The workflow runner that moves a run through its nodes and saves a checkpoint after each one.",
       "folders": [
-        "AEP-Components/graph-engine-admit-gate",
         "AEP-Components/decomposition",
         "AEP-Components/session",
         "AEP-Components/recovery"
@@ -226,6 +224,10 @@
     {
       "folder": "AEP-Components/platform-core",
       "role": "Shared path helpers and the catalog of regulation modules that several components import."
+    },
+    {
+      "folder": "AEP-Components/source-check",
+      "role": "The one source check of the workspace. It parses Rust with syn, finds an item by its identifier and fails when the item is absent, for the crates that prove a kernel rule by reading its source."
     },
     {
       "folder": "AEP-Components/ucm",

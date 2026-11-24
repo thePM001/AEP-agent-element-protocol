@@ -125,7 +125,7 @@ fn value_string_list(v: &Value) -> Vec<String> {
     }
 }
 
-fn extract_lrp_ids(event: &Value) -> Vec<String> {
+fn lrp_ids_of_event(event: &Value) -> Vec<String> {
     let mut ids = Vec::new();
     if let Some(v) = event.get("lrp_ids") {
         ids.extend(value_string_list(v));
@@ -146,7 +146,7 @@ fn extract_lrp_ids(event: &Value) -> Vec<String> {
     ids
 }
 
-fn extract_wrap(event: &Value) -> String {
+fn wrap_of_event(event: &Value) -> String {
     if let Some(s) = json_str(event, "wrap") {
         return s;
     }
@@ -1133,12 +1133,12 @@ pub fn compile_policy_system_walls_from(
         collect_strings(&input.event, &mut strings);
         input.text = strings.join("\n");
     }
-    let extra = extract_lrp_ids(&input.event);
+    let extra = lrp_ids_of_event(&input.event);
     input.lrp_ids.extend(extra);
     input.lrp_ids.sort();
     input.lrp_ids.dedup();
     if input.wrap.is_empty() {
-        input.wrap = extract_wrap(&input.event);
+        input.wrap = wrap_of_event(&input.event);
     }
     let mut walls = Vec::new();
     let Some(dir) = dir else {
@@ -1313,164 +1313,9 @@ pub fn run_gate() -> Result<i32, String> {
     Ok(0)
 }
 
-pub mod discover_policy_system_dir {
-    pub struct DiscoverPolicySystemDir {
-        pub path: String,
-    }
-    impl Default for DiscoverPolicySystemDir {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl DiscoverPolicySystemDir {
-        pub fn new() -> Self {
-            Self {
-                path: String::new(),
-            }
-        }
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            match super::discover_policy_system_dir() {
-                Some(pb) => self.path = pb.to_string_lossy().into_owned(),
-                None => self.path = String::new(),
-            }
-            Ok(())
-        }
-    }
-}
-
-pub mod load_policy_system_gaps {
-    use std::path::PathBuf;
-    pub struct LoadPolicySystemGaps {
-        pub dir: String,
-        pub count: usize,
-    }
-    impl Default for LoadPolicySystemGaps {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl LoadPolicySystemGaps {
-        pub fn new() -> Self {
-            Self {
-                dir: String::new(),
-                count: 0,
-            }
-        }
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            let dir = if self.dir.is_empty() {
-                super::discover_policy_system_dir().unwrap_or_else(|| PathBuf::from("."))
-            } else {
-                PathBuf::from(&self.dir)
-            };
-            match super::load_policy_system_gaps(&dir) {
-                Ok(gaps) => {
-                    self.count = gaps.len();
-                    Ok(())
-                }
-                Err(e) => Err(anyhow::Error::msg(e)),
-            }
-        }
-    }
-}
-
-pub mod compile_policy_system_walls {
-    use super::{compile_policy_system_walls, PolicySystemCompileInput};
-    use aep_admit::AdmitWall;
-    pub struct CompilePolicySystemWalls {
-        pub text: String,
-        pub walls: Vec<AdmitWall>,
-    }
-    impl Default for CompilePolicySystemWalls {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl CompilePolicySystemWalls {
-        pub fn new() -> Self {
-            Self {
-                text: String::new(),
-                walls: Vec::new(),
-            }
-        }
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            let input = PolicySystemCompileInput {
-                text: self.text.clone(),
-                ..Default::default()
-            };
-            self.walls = compile_policy_system_walls(&input);
-            Ok(())
-        }
-    }
-}
-
-pub mod fold_policy_system_into_admit {
-    use super::{fold_policy_system_into_admit, PolicySystemCompileInput};
-    pub struct FoldPolicySystemIntoAdmit {
-        pub text: String,
-        pub result: String,
-    }
-    impl Default for FoldPolicySystemIntoAdmit {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl FoldPolicySystemIntoAdmit {
-        pub fn new() -> Self {
-            Self {
-                text: String::new(),
-                result: String::new(),
-            }
-        }
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            let input = PolicySystemCompileInput {
-                text: self.text.clone(),
-                ..Default::default()
-            };
-            let r = fold_policy_system_into_admit(&input, &[]);
-            if r.allow {
-                self.result = String::from("allow");
-            } else {
-                self.result = String::from("deny");
-            }
-            Ok(())
-        }
-    }
-}
-
-pub mod scan_kernel_loads_policy_system {
-    pub struct ScanKernelLoadsPolicySystem {
-        pub src: String,
-        pub scan: String,
-    }
-    impl Default for ScanKernelLoadsPolicySystem {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl ScanKernelLoadsPolicySystem {
-        pub fn new() -> Self {
-            Self {
-                src: String::new(),
-                scan: String::new(),
-            }
-        }
-        pub fn process(&mut self) -> anyhow::Result<()> {
-            match super::scan_kernel_loads_policy_system(&self.src) {
-                Ok(v) => self.scan = v,
-                Err(e) => self.scan = e,
-            }
-            Ok(())
-        }
-    }
-}
-
+#[cfg(test)]
 #[path = "instruction_profile.rs"]
-pub mod compile_instruction_profile_walls;
+mod instruction_profile;
 
 #[cfg(test)]
 mod tests {

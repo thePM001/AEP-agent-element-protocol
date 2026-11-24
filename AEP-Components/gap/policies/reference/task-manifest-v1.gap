@@ -47,7 +47,6 @@ types:
         type: object
         fields:
           tier: string
-          max_trust_score: integer
 
 extensions:
   aep:
@@ -61,7 +60,6 @@ kind: aep.task_manifest.template
 schema: task-manifest-v1
 defaults:
   trust_tier: standard
-  max_trust_score: 700
   caw_profile: agent-sandbox
   gap_address: dev.aep.caw/agent-sandbox.v1
   allowed_operations:

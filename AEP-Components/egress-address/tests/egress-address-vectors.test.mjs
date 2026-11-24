@@ -3,7 +3,7 @@
 // asks for one gets the verdict "lookup" and fails.
 import { describe, expect, it } from "vitest";
 import { assertUrlNotSsrf as transportCheck } from "../../lattice-channels/lib/lattice-transport.mjs";
-import { assertUrlNotSsrf as gatedFetchCheck } from "../../lattice-channels/lib/lattice-gated-fetch.mjs";
+import { assertUrlNotSsrf as gatedFetchCheck } from "../../lattice-channels/lib/lattice-gated-fetch.js";
 import { checkResolved, parseIpv4, parseIpv6 } from "../lib/egress-address.mjs";
 import { loadEgressVectors, runEgressVectors } from "../lib/egress-vectors.mjs";
 
@@ -30,7 +30,7 @@ describe("egress vectors", () => {
 
   for (const [name, check] of [
     ["lattice-transport.mjs", transportCheck],
-    ["lattice-gated-fetch.mjs", gatedFetchCheck],
+    ["lattice-gated-fetch.js", gatedFetchCheck],
   ]) {
     it(`${name} gives every url row its verdict`, () => {
       const wrong = vectors.urls.filter((row) => verdictOf(check, row.url) !== row.verdict).map((row) => row.url);

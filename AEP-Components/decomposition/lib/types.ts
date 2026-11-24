@@ -30,7 +30,6 @@ export interface CompletionCriterion {
     | "all_children_complete"
     | "tests_pass"
     | "no_violations"
-    | "trust_above"
     | "drift_below"
     | "custom";
   value?: number | string;

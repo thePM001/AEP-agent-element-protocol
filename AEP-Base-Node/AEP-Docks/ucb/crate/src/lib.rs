@@ -30,4 +30,3 @@ pub mod validate_process;
 
 pub const UCB_VERSION: &str = "2.9";
 pub const BRIDGE_ID: &str = "ucb/2.9";
-pub const DOCK_WIRE_SCORE: u16 = 0;

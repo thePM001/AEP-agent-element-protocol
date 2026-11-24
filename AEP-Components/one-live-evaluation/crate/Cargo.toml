@@ -6,16 +6,15 @@ description = "One live evaluation. One Admit function judges the opened frame."
 license = "UNLICENSED"
 publish = false
 
-[[bin]]
-name = "aep-one-live-evaluation"
-path = "src/main.rs"
-
 [dependencies]
 aep-admit-live-dock = { path = "../../admit-live-dock/crate" }
 aep-envelope = { path = "../../envelope/crate" }
 aep-live-entry = { path = "../../live-entry/crate" }
-anyhow = "1"
 serde_json = "1"
+
+[dev-dependencies]
+# The conformance source gate in tests/source_gate.rs reads the live dock through the one source check.
+aep-source-check = { path = "../../source-check/crate" }
 
 [lints]
 workspace = true

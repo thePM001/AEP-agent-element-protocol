@@ -1,4 +1,3 @@
-// HVVCAS: live_entry domain:envelope type:service
 // the earlier law change Rust live entry. aep_envelope admit in-process. Fail-closed for empty action_path when lattice is loaded.
 // Missing lattice, unreadable lattice and empty action_path on an empty lattice are Deny.
 // Empty lattice closes dag.membership and gap.agent_permission. Do not reopen the earlier law change.
@@ -126,8 +125,6 @@ pub fn seed_satisfied_action(live: &mut LiveEntry, agent_id: &str, path: &str) {
 }
 
 pub struct LiveEntry {
-    pub event: String,
-    pub result: String,
     pub snapshot: Snapshot,
     pub live: HashMap<String, Element>,
     pub versions: HashMap<String, u64>,
@@ -157,8 +154,6 @@ impl Default for LiveEntry {
 impl LiveEntry {
     pub fn new() -> Self {
         Self {
-            event: String::new(),
-            result: String::new(),
             snapshot: Snapshot::default(),
             live: HashMap::new(),
             versions: HashMap::new(),
@@ -276,37 +271,6 @@ impl LiveEntry {
         id.push('-');
         id.push_str(&pad5(next));
         Ok(id)
-    }
-    pub fn process(&mut self) -> anyhow::Result<()> {
-        let event: Value = match serde_json::from_str(&self.event) {
-            Ok(v) => v,
-            Err(e) => return Err(anyhow::Error::msg(e.to_string())),
-        };
-        match self.process_event(event) {
-            ProcessOut::Event(v) => self.result = v.to_string(),
-            ProcessOut::Reject(r) => {
-                let mut m = serde_json::Map::new();
-                m.insert(
-                    String::from("dynaep_type"),
-                    Value::String(String::from("DYNAEP_REJECTION")),
-                );
-                m.insert(String::from("target_id"), Value::String(r.target_id));
-                m.insert(String::from("error"), Value::String(r.error.clone()));
-                let closed_vals: Vec<Value> = r
-                    .closed
-                    .iter()
-                    .map(|w| {
-                        let mut row = serde_json::Map::new();
-                        row.insert(String::from("id"), Value::String(w.id.clone()));
-                        row.insert(String::from("reason"), Value::String(w.reason.clone()));
-                        Value::Object(row)
-                    })
-                    .collect();
-                m.insert(String::from("closed"), Value::Array(closed_vals));
-                self.result = Value::Object(m).to_string();
-            }
-        }
-        Ok(())
     }
     pub fn process_event(&mut self, event: Value) -> ProcessOut {
         self.process_event_recorded(event, &mut || Ok(()))
@@ -833,33 +797,50 @@ fn action_from_event(event: &Value, opened_dest_dock: &str) -> EnvelopeAction {
             .unwrap_or(0.0),
     }
 }
-pub fn journal_product_landed(src: &str) -> bool {
-    src.contains("admit_with_extra(&action, &self.snapshot, pending_extra)")
-        && src.contains("load_lattice_yaml")
-}
-pub fn product_source_has_no_seq_deniers(src: &str) -> bool {
-    let compact: String = src.chars().filter(|c| !c.is_whitespace()).collect();
-    if compact.contains("TemporalValidator") {
-        return false;
-    }
-    if compact.contains("UnifiedRegoEvaluator") {
-        return false;
-    }
-    if compact.contains("UnifiedScanner") {
-        return false;
-    }
-    if compact.contains("CausalOrderingEngine") {
-        return false;
-    }
-    true
-}
-pub mod live_entry {
-    pub use super::LiveEntry;
-}
 #[cfg(test)]
 mod tests {
     use super::*;
     use aep_envelope::action_is_satisfied;
+    use aep_source_check::{compact, CodeText, RustSource};
+
+    /// The production source of this crate, read through the one source check.
+    fn own_source() -> RustSource {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("lib.rs");
+        RustSource::read(&path).expect("lib.rs parses")
+    }
+
+    /// The one live entry language landed: Admit runs through admit_with_extra and the
+    /// lattice loads from YAML.
+    fn journal_product_landed(src: &str) -> bool {
+        let code = compact(src);
+        code.contains(&compact(
+            "admit_with_extra(&action, &self.snapshot, pending_extra)",
+        )) && code.contains("load_lattice_yaml")
+    }
+
+    /// No second sequence denier of the retired TypeScript stack is in the product.
+    fn product_source_has_no_seq_deniers(src: &str) -> bool {
+        let code = compact(src);
+        ![
+            "TemporalValidator",
+            "UnifiedRegoEvaluator",
+            "UnifiedScanner",
+            "CausalOrderingEngine",
+        ]
+        .iter()
+        .any(|name| code.contains(name))
+    }
+
+    /// The process_event_recorded text up to the one Admit call.
+    fn before_admit(view: &CodeText) -> String {
+        let code = view.as_str();
+        let at = view
+            .find("admit_with_extra(&action, &self.snapshot, pending_extra)")
+            .expect("the one Admit call");
+        code[..at].to_string()
+    }
     fn must(cond: bool) {
         if !cond {
             std::process::abort();
@@ -1286,21 +1267,19 @@ mod tests {
     }
     #[test]
     fn process_event_does_not_event_return_on_template_set() {
-        let src = include_str!("lib.rs");
-        let start = match src.find("pub fn process_event") {
-            Some(v) => v,
-            None => std::process::abort(),
-        };
-        let admit =
-            match src[start..].find("admit_with_extra(&action, &self.snapshot, pending_extra)") {
-                Some(v) => v,
-                None => std::process::abort(),
-            };
-        let slice = &src[start..start + admit];
-        must(!slice.contains("fast_exit"));
-        let compact: String = slice.chars().filter(|c| !c.is_whitespace()).collect();
-        must(!compact.contains("templates.contains"));
-        must(!compact.contains("returnProcessOut::Event"));
+        let src = own_source();
+        must(
+            src.function("process_event")
+                .expect("process_event")
+                .contains("self.process_event_recorded("),
+        );
+        let before = before_admit(
+            &src.function("process_event_recorded")
+                .expect("process_event_recorded"),
+        );
+        must(!before.contains("fast_exit"));
+        must(!before.contains("templates.contains"));
+        must(!before.contains("returnProcessOut::Event"));
     }
     fn ev_state_delta_no_path(z: i64) -> Value {
         let mut m = serde_json::Map::new();
@@ -1347,31 +1326,14 @@ mod tests {
     }
     #[test]
     fn empty_action_path_deny_is_before_apply() {
-        let src = include_str!("lib.rs");
-        let start = match src.find("pub fn process_event") {
-            Some(v) => v,
-            None => std::process::abort(),
-        };
-        let body = &src[start..];
-        let empty = match body.find("if action_path.is_empty() {") {
-            Some(v) => v,
-            None => std::process::abort(),
-        };
-        let clock = match body.find("self.snapshot.bridge_ts_ms") {
-            Some(v) => v,
-            None => std::process::abort(),
-        };
-        let delta = match body.find("self.apply_state_delta") {
-            Some(v) => v,
-            None => std::process::abort(),
-        };
-        let forecast = match body.find("self.forecast.insert") {
-            Some(v) => v,
-            None => std::process::abort(),
-        };
-        must(empty < clock);
-        must(empty < delta);
-        must(empty < forecast);
+        let body = own_source()
+            .function("process_event_recorded")
+            .expect("process_event_recorded");
+        let at = |needle: &str| body.find(needle).expect(needle);
+        let empty = at("if action_path.is_empty() {");
+        must(empty < at("self.snapshot.bridge_ts_ms"));
+        must(empty < at("self.apply_state_delta"));
+        must(empty < at("self.forecast.insert"));
     }
     #[test]
     fn add_element_mints() {
@@ -1384,15 +1346,10 @@ mod tests {
     }
     #[test]
     fn source_has_in_process_admit() {
-        // Scan only the production code above the checkers, because the
-        // checkers name the patterns they look for in their own bodies.
-        let src = include_str!("lib.rs");
-        let end = src
-            .find("pub fn journal_product_landed")
-            .unwrap_or(src.len());
-        let product = &src[..end];
-        must(product_source_has_no_seq_deniers(product));
-        must(journal_product_landed(product));
+        // The checkers are test code, so the production text holds none of their patterns.
+        let product = own_source().production();
+        must(product_source_has_no_seq_deniers(product.as_str()));
+        must(journal_product_landed(product.as_str()));
     }
     #[test]
     fn env031_one_live_entry_language() {
@@ -1402,18 +1359,6 @@ mod tests {
         must(product_source_has_no_seq_deniers(
             "admit apply_admit load_lattice_yaml mint_element_id",
         ));
-    }
-    #[test]
-    fn hvvc_as_process_json() {
-        let mut le = LiveEntry::from_yaml(yaml()).expect("yaml");
-        le.set_clock_ms(1000000);
-        bind_allow(&mut le, "scene-a");
-        le.snapshot
-            .satisfied_actions
-            .insert(String::from("root:ping"));
-        le.event = ev_allow().to_string();
-        must(le.process().is_ok());
-        must(!le.result.contains("DYNAEP_REJECTION"));
     }
     #[test]
     fn freeze_keeps_bridge_after_clock_advance() {

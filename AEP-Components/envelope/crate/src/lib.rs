@@ -913,19 +913,19 @@ mod tests {
         assert!(!closed_names(&r).contains("forecast.anomaly"));
     }
 
+    /// A production file of this crate, read through the one source check.
+    fn own_source(file: &str) -> aep_source_check::RustSource {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join(file);
+        aep_source_check::RustSource::read(&path).expect("the source parses")
+    }
+
     #[test]
     fn env068_wall_forecast_reads_live_score_only() {
-        let src = include_str!("seq_walls.rs");
-        let start = match src.find("pub fn wall_forecast") {
-            Some(v) => v,
-            None => panic!("wall_forecast missing"),
-        };
-        let rest = &src[start..];
-        let end = match rest.find("\npub fn ") {
-            Some(v) => v,
-            None => rest.len(),
-        };
-        let body = &rest[..end];
+        let body = own_source("seq_walls.rs")
+            .function("wall_forecast")
+            .expect("wall_forecast");
         assert!(!body.contains("forecast_cached_score"));
         assert!(body.contains("anomaly_score"));
     }
@@ -941,17 +941,9 @@ mod tests {
 
     #[test]
     fn env038_envelope_action_has_no_rank_field() {
-        let src = include_str!("lib.rs");
-        let start = match src.find("pub struct EnvelopeAction") {
-            Some(v) => v,
-            None => panic!("EnvelopeAction missing"),
-        };
-        let rest = &src[start..];
-        let end = match rest.find("pub struct Snapshot") {
-            Some(v) => v,
-            None => rest.len(),
-        };
-        let body = &rest[..end];
+        let body = own_source("lib.rs")
+            .type_item("EnvelopeAction")
+            .expect("EnvelopeAction");
         let needle = ["trust", "_tier"].concat();
         assert!(!body.contains(&needle));
     }

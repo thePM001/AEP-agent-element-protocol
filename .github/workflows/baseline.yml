@@ -61,6 +61,10 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: tsc --noEmit
         run: npm run typecheck
+      # lattice-gated-fetch.ts is the one source of the gated fetch. The committed
+      # lattice-gated-fetch.js must be its fresh tsc emit, so the two never drift.
+      - name: emitted gated fetch matches its source
+        run: npm run check:gated-fetch
       - name: eslint
         run: npm run lint
       - name: vitest

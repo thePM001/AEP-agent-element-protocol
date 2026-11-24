@@ -57,6 +57,8 @@ aep-admit-channel-order-walls = { path = "../../AEP-Components/admit-channel-ord
 aep-admit-temporal-bounds = { path = "../../AEP-Components/admit-temporal-bounds/crate" }
 aep-envelope = { path = "../../AEP-Components/envelope/crate" }
 aep-evaluation-chain = { path = "../../AEP-Components/evaluation-chain/crate" }
+# Source tests read one item through the one source check.
+aep-source-check = { path = "../../AEP-Components/source-check/crate" }
 tempfile = "3"
 tower = { version = "0.5", features = ["util"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "io-util"] }

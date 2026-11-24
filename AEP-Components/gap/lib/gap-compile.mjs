@@ -560,7 +560,6 @@ export function synthesizeTaskManifestFromGap(req, repoRoot) {
     },
     trust: {
       tier: req.trust_tier ?? tmpl.defaults?.trust_tier ?? "standard",
-      max_trust_score: req.trust_score ?? tmpl.defaults?.max_trust_score ?? 700,
     },
     mcp: req.mcp ?? tmpl.defaults?.mcp,
     provisional: req.provisional ?? false,

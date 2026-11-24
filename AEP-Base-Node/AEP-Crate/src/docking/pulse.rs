@@ -145,7 +145,6 @@ impl DockingRuntime {
                 dock_kem: Arc::new(load_or_create_dock_kem(data_dir)),
                 agent_sign_keys: Arc::new(Mutex::new(AgentSignKeyStore::load(data_dir))),
                 agent_bundles: Arc::new(Mutex::new(HashMap::new())),
-                agent_trust: Arc::new(Mutex::new(HashMap::new())),
             },
             defence: crate::dock_parts::DockDefence {
                 rate_limiter: Arc::new(Mutex::new(RateLimiter::new(

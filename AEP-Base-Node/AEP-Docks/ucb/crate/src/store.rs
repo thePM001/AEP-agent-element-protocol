@@ -71,10 +71,6 @@ impl ManifestStore {
                 String::from("tier"),
                 serde_json::Value::String(String::from("none")),
             );
-            trust.insert(
-                String::from("max_trust_score"),
-                serde_json::Value::from(0u64),
-            );
             obj.insert(String::from("trust"), serde_json::Value::Object(trust));
         }
         let text = serde_json::to_string_pretty(&value)
@@ -88,10 +84,8 @@ impl ManifestStore {
         let mut value: serde_json::Value = serde_json::from_str(&text).ok()?;
         if let Some(obj) = value.as_object_mut() {
             obj.remove("trust");
-            obj.remove("trust_score");
             obj.remove("trust_tier");
             obj.remove("trust_ring");
-            obj.remove("max_trust_score");
         }
         serde_json::from_value(value).ok()
     }
@@ -105,9 +99,5 @@ pub fn value_has_trust_fields(value: &serde_json::Value) -> bool {
     let Some(obj) = value.as_object() else {
         return false;
     };
-    obj.contains_key("trust")
-        || obj.contains_key("trust_score")
-        || obj.contains_key("trust_tier")
-        || obj.contains_key("trust_ring")
-        || obj.contains_key("max_trust_score")
+    obj.contains_key("trust") || obj.contains_key("trust_tier") || obj.contains_key("trust_ring")
 }

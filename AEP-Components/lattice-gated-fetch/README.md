@@ -14,4 +14,6 @@ Base Node sends a request for an agent only for an admitted event on the action 
 
 ## The source gate
 
-The binary `aep-lattice-gated-fetch` reads the Base Node docking module and the client twins in `lattice-channels/lib`. It fails when the dock no longer executes the bound request or when a twin calls an ordinary fetch after the dock answered.
+`crate/tests/source_gate.rs` reads the Base Node docking module through `aep-source-check` and fails when the dock no longer executes the bound request, no longer reads a gateway request through `gateway_request_of` or loses the `http` field of its answer. A renamed or missing item fails the gate.
+
+The client has one source in `lattice-channels/lib/lattice-gated-fetch.ts` with its emitted `lattice-gated-fetch.js`. The lint rules of the repository refuse every way of calling the built-in fetch there. Its vitest suite runs it against a test dock with a built-in fetch that throws, so no request leaves outside the dock.

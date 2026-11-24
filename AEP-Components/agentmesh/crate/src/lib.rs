@@ -29,21 +29,15 @@ pub enum PeerTransport {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LedgerMeshRecord {
     pub agent_id: String,
-    pub trust_score: u16,
     pub transport: PeerTransport,
     pub presented_certificate: Option<PresentedCertificate>,
 }
 
 impl LedgerMeshRecord {
     /// Record of a frame that arrived with `presented` or without a certificate.
-    pub fn for_frame(
-        agent_id: &str,
-        trust_score: u16,
-        presented: Option<PresentedCertificate>,
-    ) -> Self {
+    pub fn for_frame(agent_id: &str, presented: Option<PresentedCertificate>) -> Self {
         Self {
             agent_id: agent_id.to_string(),
-            trust_score,
             transport: if presented.is_some() {
                 PeerTransport::Mtls
             } else {
@@ -54,10 +48,9 @@ impl LedgerMeshRecord {
     }
 
     /// Record of a frame the node sealed and recorded in process.
-    pub fn local_seal(agent_id: &str, trust_score: u16) -> Self {
+    pub fn local_seal(agent_id: &str) -> Self {
         Self {
             agent_id: agent_id.to_string(),
-            trust_score,
             transport: PeerTransport::LocalSeal,
             presented_certificate: None,
         }
@@ -95,21 +88,9 @@ pub struct MtlsCertState {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentMeshBundle {
     pub agent_id: String,
-    pub trust_score: u16,
     pub spiffe: SpiffeIdentity,
     pub did: DidDocument,
     pub mtls: MtlsCertState,
-}
-
-/// Isolation telemetry only. Never stored on mTLS cert state. Never admits.
-pub fn trust_tier(score: u16) -> u8 {
-    match score {
-        800..=1000 => 4,
-        600..=799 => 3,
-        400..=599 => 2,
-        200..=399 => 1,
-        _ => 0,
-    }
 }
 
 /// Build SPIFFE identity bound to a real X.509 workload cert with SPIFFE URI SAN.
@@ -205,28 +186,16 @@ pub enum AgentMeshError {
     Identity(String),
 }
 
-fn issue_workload_cert(
-    agent_id: &str,
-    _trust_score: u16,
-    now_unix: u64,
-) -> Result<MtlsCertState, AgentMeshError> {
+/// Issue the mTLS state of one workload identity.
+pub fn create_mtls(agent_id: &str, now_unix: u64) -> Result<MtlsCertState, AgentMeshError> {
     let identity = issue_agent_identity(agent_id, Validity::starting(now_unix, MTLS_TTL_SECS))
         .map_err(AgentMeshError::Identity)?;
     Ok(mtls_from_identity(agent_id, identity))
 }
 
-pub fn create_mtls(
-    agent_id: &str,
-    trust_score: u16,
-    now_unix: u64,
-) -> Result<MtlsCertState, AgentMeshError> {
-    issue_workload_cert(agent_id, trust_score, now_unix)
-}
-
 /// Issue one EE identity; bind SPIFFE fingerprint and mTLS state to the same cert/key.
 pub fn create_bundle(
     agent_id: &str,
-    trust_score: u16,
     public_key: &[u8],
     capabilities: Vec<String>,
     now_unix: u64,
@@ -242,18 +211,10 @@ pub fn create_bundle(
     let mtls = mtls_from_identity(agent_id, identity);
     Ok(AgentMeshBundle {
         agent_id: agent_id.into(),
-        trust_score,
         spiffe,
         did: create_did(agent_id, public_key, capabilities),
         mtls,
     })
-}
-
-/// Record isolation telemetry. Never reissue AgentMesh certs on score change.
-pub fn rotate_on_trust_change(bundle: &mut AgentMeshBundle, new_score: u16, _now_unix: u64) {
-    let _ = trust_tier(bundle.trust_score);
-    bundle.trust_score = new_score.min(1000);
-    let _ = trust_tier(bundle.trust_score);
 }
 
 #[cfg(test)]
@@ -261,24 +222,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn trust_score_does_not_rotate_mtls() {
-        let mut bundle = create_bundle(
-            "AG-00001",
-            850,
-            b"pk",
-            vec!["validate".into()],
-            1_700_000_000,
-        )
-        .unwrap();
-        let old_fp = bundle.mtls.cert_fingerprint.clone();
-        rotate_on_trust_change(&mut bundle, 500, 1_700_000_100);
-        assert_eq!(bundle.mtls.cert_fingerprint, old_fp);
-        assert_eq!(bundle.trust_score, 500);
-    }
-
-    #[test]
     fn mtls_cert_is_real_x509_pem() {
-        let mtls = create_mtls("AG-TEST", 700, 1_700_000_000).unwrap();
+        let mtls = create_mtls("AG-TEST", 1_700_000_000).unwrap();
         assert!(mtls.cert_pem.starts_with("-----BEGIN CERTIFICATE-----"));
         assert!(mtls.cert_fingerprint.len() == 64);
         assert!(mtls.not_after_unix > mtls.issued_at_unix);
@@ -290,14 +235,8 @@ mod tests {
 
     #[test]
     fn create_bundle_binds_spiffe_fingerprint_to_mtls_cert() {
-        let bundle = create_bundle(
-            "AG-00001",
-            850,
-            b"pk",
-            vec!["validate".into()],
-            1_700_000_000,
-        )
-        .unwrap();
+        let bundle =
+            create_bundle("AG-00001", b"pk", vec!["validate".into()], 1_700_000_000).unwrap();
         assert!(
             bundle.spiffe.svid.contains(&bundle.mtls.cert_fingerprint),
             "SPIFFE svid must reference mtls cert fingerprint"
@@ -322,7 +261,7 @@ mod tests {
     #[test]
     fn issued_mtls_cert_lives_no_longer_than_its_stated_lifetime() {
         let now = 1_900_000_000u64;
-        let mtls = create_mtls("AG-LIFETIME", 700, now).unwrap();
+        let mtls = create_mtls("AG-LIFETIME", now).unwrap();
         let (not_before, not_after) = x509_validity(&mtls.cert_pem);
         assert!(
             not_before >= mtls.issued_at_unix as i64,

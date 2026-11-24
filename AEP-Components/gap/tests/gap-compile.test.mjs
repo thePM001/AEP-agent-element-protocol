@@ -76,7 +76,7 @@ function fakeRepo() {
     `${REF}/task-manifest-v1.gap`,
     YAML.stringify({
       kind: "aep.task_manifest.template",
-      defaults: { caw_profile: "zeta", gap_address: "dev.test/zeta.v1", trust_tier: "high", max_trust_score: 500, mcp: { servers: [] } },
+      defaults: { caw_profile: "zeta", gap_address: "dev.test/zeta.v1", trust_tier: "high", mcp: { servers: [] } },
     }),
   );
   put(
@@ -555,7 +555,7 @@ describe("synthesizeTaskManifestFromGap", () => {
         gap_address: "dev.test/zeta.v1",
         coding_governance: undefined,
       },
-      trust: { tier: "high", max_trust_score: 500 },
+      trust: { tier: "high" },
       mcp: { servers: [] },
       provisional: false,
       synthesized_by: "gap_constrained",
@@ -574,7 +574,6 @@ describe("synthesizeTaskManifestFromGap", () => {
         caw_profile: "alpha",
         gap_address: "dev.test/alpha.v1",
         trust_tier: "low",
-        trust_score: 10,
         mcp: { servers: ["one"] },
         provisional: true,
       },
@@ -586,7 +585,7 @@ describe("synthesizeTaskManifestFromGap", () => {
     expect(m.intent.summary).toBe("fallback intent");
     expect(m.intent.allowed_operations).toEqual(["read"]);
     expect(m.intent.caw_profile).toBe("alpha");
-    expect(m.trust).toEqual({ tier: "low", max_trust_score: 10 });
+    expect(m.trust).toEqual({ tier: "low" });
     expect(m.mcp).toEqual({ servers: ["one"] });
     expect(m.provisional).toBe(true);
   });

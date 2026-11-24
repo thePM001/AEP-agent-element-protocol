@@ -6,14 +6,13 @@ description = "Unbound scene, channel, time and sequence close. dest_dock may bi
 license = "UNLICENSED"
 publish = false
 
-[[bin]]
-name = "aep-unbound-field-close"
-path = "src/main.rs"
-
 [dependencies]
-anyhow = "1"
-serde_json = "1"
 aep-envelope = { path = "../../envelope/crate" }
+
+[dev-dependencies]
+# The source gate in tests/source_gate.rs reads the wall functions through the one source check.
+aep-source-check = { path = "../../source-check/crate" }
+serde_json = "1"
 
 [lints]
 workspace = true

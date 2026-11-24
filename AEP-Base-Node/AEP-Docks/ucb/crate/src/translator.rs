@@ -1,7 +1,6 @@
 //! Foreign payload translation. Fixture labels are not protocol members.
 
 use crate::ingress::{binding_fingerprint, normalize_dock_port};
-use crate::DOCK_WIRE_SCORE;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -18,8 +17,6 @@ pub struct LatticeEvent {
     /// Node lattice grants to the agent. An empty path stays a closed wall.
     #[serde(default)]
     pub action_path: String,
-    #[serde(rename = "trust_score")]
-    pub dock_wire_score: u16,
     pub payload: Value,
 }
 
@@ -126,7 +123,6 @@ pub fn translate_foreign_ingest(
         session_id,
         docking_port: dock,
         action_path: body.action_path.clone().unwrap_or_default(),
-        dock_wire_score: DOCK_WIRE_SCORE,
         payload: Value::Object(translated),
     })
 }

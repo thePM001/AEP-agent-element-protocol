@@ -44,7 +44,6 @@ export function starterGraph() {
           channel_id: "lattice-channel-default",
           lattice_id: "dynaep-action-lattice",
           contract_id: "dynaep-action-lattice",
-          trust_score: 900,
           pad_stage: "warn",
           notes: "",
         },
@@ -57,7 +56,6 @@ export function starterGraph() {
         y: 140,
         data: {
           contract_id: "dynaep-action-lattice",
-          trust_score: 800,
           notes: "",
         },
       },
@@ -69,7 +67,6 @@ export function starterGraph() {
         y: 320,
         data: {
           contract_id: "dynaep-action-lattice",
-          trust_score: 800,
           notes: "",
         },
       },
@@ -81,7 +78,6 @@ export function starterGraph() {
         y: 220,
         data: {
           contract_id: "dynaep-action-lattice",
-          trust_score: 700,
           notes: "",
         },
       },

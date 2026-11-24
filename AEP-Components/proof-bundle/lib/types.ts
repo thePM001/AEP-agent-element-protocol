@@ -3,16 +3,10 @@ import type { CovenantSpec } from "../../covenant/lib/types.js";
 import type { SessionReport } from "../../session/lib/session.js";
 import type { TaskTree } from "../../decomposition/lib/types.js";
 
-export interface TrustScore {
-  score: number;
-  tier: string;
-}
-
 export interface ReliabilityIndex {
   hardComplianceRate: number;
   softRecoveryRate: number;
   driftScore: number;
-  trustScore: number;
   scannerPassRate: number;
   mlScore?: number;
   theta: number;
@@ -22,26 +16,25 @@ export interface ReliabilityWeights {
   hard: number;
   recovery: number;
   drift: number;
-  trust: number;
   scanner: number;
   ml?: number;
 }
 
+// Weights sum to 1. Ratios 6:4:3:3 for hard, recovery, drift and scanner.
 export const DEFAULT_RELIABILITY_WEIGHTS: ReliabilityWeights = {
-  hard: 0.3,
-  recovery: 0.2,
-  drift: 0.15,
-  trust: 0.2,
-  scanner: 0.15,
+  hard: 0.375,
+  recovery: 0.25,
+  drift: 0.1875,
+  scanner: 0.1875,
 };
 
+// Weights sum to 1. Ratios 5:3:2:3:4 for hard, recovery, drift, scanner and ml.
 export const ML_RELIABILITY_WEIGHTS: ReliabilityWeights = {
-  hard: 0.25,
-  recovery: 0.15,
-  drift: 0.10,
-  trust: 0.15,
-  scanner: 0.15,
-  ml: 0.20,
+  hard: 5 / 17,
+  recovery: 3 / 17,
+  drift: 2 / 17,
+  scanner: 3 / 17,
+  ml: 4 / 17,
 };
 
 export interface ProofBundle {
@@ -53,7 +46,6 @@ export interface ProofBundle {
   sessionReport: SessionReport;
   merkleRoot: string;
   entryCount: number;
-  trustScore: TrustScore;
   isolation_class: string;
   driftScore: number;
   ledgerHash: string;

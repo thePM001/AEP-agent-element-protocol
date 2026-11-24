@@ -62,7 +62,6 @@ export async function wasmLatticeEvaluate(body: { input?: number }): Promise<Was
     event_type: "WASM_EVALUATE",
     session_id: "code-sandbox-evaluate",
     docking_port: "future_features",
-    trust_score: 100,
     payload: { input: body.input ?? 0 },
   };
   const recorded = sealAndRecord(event);
@@ -71,7 +70,7 @@ export async function wasmLatticeEvaluate(body: { input?: number }): Promise<Was
   }
   const line = await sendLatticeLine(
     wasmSandboxSocket(),
-    JSON.stringify({ frame: recorded.frame, trust_score: 100 }),
+    JSON.stringify({ frame: recorded.frame }),
   );
   const resp = JSON.parse(line) as WasmEvaluateResult & { ok?: boolean; error?: string };
   if (resp.ok === false) {

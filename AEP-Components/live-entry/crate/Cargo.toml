@@ -13,11 +13,14 @@ path = "src/main.rs"
 [dependencies]
 aep-envelope = { path = "../../envelope/crate" }
 aep-admit-budget-window = { path = "../../admit-budget-window/crate" }
-anyhow = "1"
 thiserror.workspace = true
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
+
+[dev-dependencies]
+# Source tests read one item through the one source check.
+aep-source-check = { path = "../../source-check/crate" }
 
 [lints]
 workspace = true
