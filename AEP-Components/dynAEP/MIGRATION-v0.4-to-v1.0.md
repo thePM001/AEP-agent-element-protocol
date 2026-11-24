@@ -141,16 +141,15 @@ you have verified your lattice definitions.
 These files did not exist in v0.4 and the bridge WILL NOT START without them:
 
 1. **`registries/aep-lattice.yaml`** - The Action Lattice definition.
- Contains all system actions, partial-order parents/children, constraints,
- and trust floors. See section 2.3 for the minimum viable lattice.
+ Contains all system actions, partial-order parents/children, constraints
+ and agent_permission grants. See section 2.3 for the minimum viable lattice.
 
 2. **`aep-registration.yaml`** - Component registration manifest.
  Declares all dynAEP 1.0 components (lattice, hooks, observers, SDK, etc.)
- with trust floors, locations and interface signatures.
+ with agent_permission grants, locations and interface signatures.
 
-3. **`policies/lattice-policy.rego`** - OPA/Rego rules for trust tier
- enforcement, forbidden sequences, rate limiting and cross-modality
- ceilings. If you use Rego bundles, add this to your bundle build.
+3. **`policies/lattice-policy.rego`** - OPA/Rego rules for forbidden
+ sequences, rate limiting and cross-modality ceilings. If you use Rego bundles, add this to your bundle build.
 
 ### 2.3 Minimum Viable Lattice for v0.4 Compatibility
 
@@ -206,19 +205,10 @@ All existing v0.4 event types still work (`AEP_MUTATE_STRUCTURE`,
 etc.). The bridge routes them through the lattice filter first, then passes
 them to the existing v0.4 handlers.
 
-### 2.6 Trust Tiers Are Now Enforced
-
-v0.4 had no trust tier system. v1.0 introduces trust tiers (1-5) that are
-enforced on every event:
-
-- Tier 1: external events (webhooks, blockchain, email, sensors)
-- Tier 2: registered agents (agent actions, UI mutations)
-- Tier 3: trusted agents (classification, analysis)
-- Tier 4: high-trust agents (email review, shutdown)
-- Tier 5: maximum trust (trade proposal, execution)
+### 2.6 Agent Permission Is Now Enforced
 
 Every lattice node has `agent_permission` grants. Events from agents not listed for the action
-are rejected. Review your agent trust assignments before upgrading.
+are rejected. Review your agent grants before upgrading.
 
 ### 2.7 Python SDK: No Breaking API Changes
 
@@ -245,12 +235,12 @@ perform. Each action has:
 - **children** - list of action paths that may follow
 - **constraints** - validation gates (required_field, threshold, authorization,
  custom)
-- **agent_permission** - GAP dimension grants. Agent A may X. Agent B may Y. No rank
+- **agent_permission** - GAP dimension grants. Agent A may X. Agent B may Y.
 
 The bridge validates every incoming event against the lattice:
 
 1. Lattice membership - does the action path exist?
-2. Trust floor check - does the agent have sufficient trust?
+2. Agent permission - is the agent granted this action ?
 3. Partial order - have all parent actions occurred?
 4. Constraint evaluation - required fields, thresholds, authorization
 5. Custom hooks - pluggable validators
@@ -317,7 +307,7 @@ New in-tree TypeScript lattice with full lattice integration:
 ### 3.7 Component Registration Manifest
 
 `aep-registration.yaml` declares all 7 dynAEP 1.0 components with their
-trust floors, locations and interface signatures. This provides a
+agent_permission grants, locations and interface signatures. This provides a
 machine-readable inventory of the protocol stack for tooling and auditing.
 
 ---
@@ -883,8 +873,8 @@ Do NOT rollback if:
 
 - You have already deployed observer adapters that depend on the
  `ObserverAdapter` interface (it does not exist in v0.4).
-- You have agents that depend on trust tier enforcement (v0.4 has no trust
- tier system).
+- You have agents that depend on agent_permission enforcement (v0.4 has no
+ agent_permission grants).
 - You have committed to the LATTICE_EVENT / LATTICE_FILTER_RESULT event
  format in downstream consumers.
 - You have TypeScript code using `@dynaep/core` (it was not published for

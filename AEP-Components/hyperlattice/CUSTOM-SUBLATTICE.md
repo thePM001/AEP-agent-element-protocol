@@ -172,13 +172,13 @@ actions:
     agent_permission: ["archivist"]
 ```
 
-`agent_permission` on the lattice node is the same who-may idea as GAP. Empty grants close the action. Rank rings are not the Admit floor. Agent A may create and agent B may archive with no rank between them.
+`agent_permission` on the lattice node is the same who-may idea as GAP. Empty grants close the action. Agent A may create and agent B may archive.
 
 ### Written policy (GAP)
 
 GAP is the written instruction that becomes a live Admit wall after a sealed capsule. Keep `.gap` as UTF-8 source with one instruction per document. Writing and security are always-on stems and they evaluate on every action path. Other walls bind to a wrap or to an `action_path_prefix` so a records wall does not close a payments ping.
 
-Who-may is `agent_permission` so an empty grant list closes that agent's action. `trust_ring` is a documentary label and rank use warns then denies while who-may remains `agent_permission`.
+Who-may is `agent_permission` so an empty grant list closes that agent's action.
 
 ```yaml
 address:

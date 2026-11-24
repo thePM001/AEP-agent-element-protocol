@@ -2,6 +2,14 @@
 
 This file is the EXTERNAL changelog. Public product notes for the AEP 2.9 public tree live here. Internal ticket-close records stay on the INTERNAL changelog and do not ride this tree.
 
+## [2.9.0] - 2026-11-24 - Agent permission is the one grant
+Trust tiers, trust rings and trust floors are not concepts of AEP. Agent permission is the agent id plus the action, granted by `agent_permission` in the lattice and in GAP.
+
+- The task manifest carries no trust block. The Base Node manifest has no trust field and the CAW kernel dock identity writes none. UCB no longer writes a trust block into a stored manifest, no longer strips one on load and no longer refuses a body or a manifest for naming one, since no such field has a meaning left. Its capability document drops the `trust_fields` entry.
+- The Admit pass no longer runs the leftover rank wall of the GAP profile crate. Only the agent permission wall is compiled from the instruction object. The Admit compile and the evaluation chain drop their rank checks. The tests that fed a ring into a policy to see it refused are gone. The product wall gate fails on any Admit member it does not know, in place of a list of dropped trust crates.
+- The policy engine, the covenant, the policy YAML files, dynAEP, the identity and telemetry modules, the hyperlattice, the GAP compile, the task manifest schema, the universal connect client, the LRP modules of the platform core and the safety guard carry no tier, ring or floor. The docs and the threat model name none.
+- The byte copy of the GAP profile crate still defines its rank wall on these names. It changes with the next GAP release and its pin.
+
 ## [2.9.0] - 2026-11-23 - One gated fetch source, one source check and no template modules
 The gated fetch of the lattice channel client lived in three copies: a TypeScript file that never ran, an mjs file that ran and was never typechecked and a third copy in the transport. Nine crates checked kernel code with their own copy of a text function extractor, which took a match in a comment or a string, counted braces inside literals and turned a renamed function into a pass. 81 generated template methods in 22 files wrapped functions without adding anything. Two crates sat outside the workspace.
 

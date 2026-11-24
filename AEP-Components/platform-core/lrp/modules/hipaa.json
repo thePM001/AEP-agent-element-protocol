@@ -13,7 +13,7 @@
     "164.308(a)(5) Security Awareness"
   ],
   "aep_features": [
-    "Execution Rings and Trust Tiers",
+    "Capability Scoping and Agent Permission",
     "Evidence Ledger SHA-256 hash chain",
     "Merkle Proofs and ML-DSA-65 signatures",
     "Agent Identity cross-agent verification",
@@ -21,7 +21,7 @@
     "OWASP Agentic AI mapping and Reference Policy Lattice"
   ],
   "controls": [
-    "phi_access_ring_restriction",
+    "phi_access_capability_restriction",
     "immutable_audit_trail_per_action",
     "integrity_verification_on_export",
     "authenticated_agent_identity_required",

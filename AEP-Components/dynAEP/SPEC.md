@@ -85,8 +85,8 @@ governs the events those tools produce and consume.
 The Action Lattice is a partial-order DAG (directed acyclic graph) of every
 action the system can perform. It is the central governance mechanism in
 dynAEP 1.0. Every event that enters the bridge is matched against the lattice
-to determine its validity, its ordering constraints, its required trust level,
-and its route to interested agents.
+to determine its validity, its ordering constraints, the agents granted the
+action and its route to interested agents.
 
 The lattice is defined declaratively in a YAML registry file
 (registries/aep-lattice.yaml). It is loaded at bridge startup and may be
@@ -128,7 +128,7 @@ Supported constraint types are required_field, threshold, authorization, and
 custom.
 
 agent_permission: GAP dimension grants for this action. Agent A may X. Agent B may Y.
-No rank. Empty list fail closed for agent_action and output.
+An empty list fails closed for agent_action and output.
 
 ### 2.3 LatticeEvent
 
@@ -154,9 +154,6 @@ overwrites any value provided by the agent.
 
 agent_id (string, optional): Identifies the originating agent if the event was
 produced by an agent. Null for external events and system events.
-
-trust_tier (number, optional): Client claim. Refused. Never a floor.
-Set by the bridge based on the agent identity. Not settable by the agent.
 
 ### 2.4 LatticeFilterResult
 
@@ -239,8 +236,7 @@ The filter runs seven checks in order.
  in order. For required_field constraints, the bridge checks that the named
  field exists in the event payload. For threshold constraints, the bridge
  evaluates the condition against the field value. For authorization
- constraints, the bridge checks the agent identity and trust tier against
- the condition.
+ constraints, the bridge checks the agent identity against the condition.
 
 5. Custom constraint evaluation. For constraints with type "custom", the
  bridge dispatches to the registered validation hook (see section 8).
@@ -303,7 +299,6 @@ input fields to Rego so the policy does not duplicate the lattice registry:
 
 - input.action_path: The lattice action path being evaluated.
 - input.category: The action category (from the lattice node).
-- input.trust_tier: Agent trust tier (1-5).
 - input.parents_of: Array of parent paths for this action (computed by the
  bridge from the lattice DAG at filter time).
 - input.is_root: Boolean (true if this action has no parents).
@@ -435,10 +430,10 @@ for the node.
 
 ### 4.5 GAP capability dimensions
 
-Agent permission-do-what is GAP dimension Conjunction. Agent A may X. Agent B may Y. No rank.
+Agent permission-do-what is GAP dimension Conjunction. Agent A may X. Agent B may Y.
 Each lattice node carries agent_permission records. Empty list fail closed for
 agent_action and output. Star grants any bound agent. Unbound grant matches
-empty agent_id. Isolation is not a trust rank.
+empty agent_id.
 
 The agent_permission wall is checked on the same collect-all Admit as every other wall.
 If the bound agent is not listed for the action, the event is rejected and a
@@ -448,14 +443,13 @@ LATTICE_FILTER_RESULT with agent_permission=false is returned.
 
 The lattice is loaded from the registry file at bridge startup. The bridge
 performs validation on load including cycle detection, orphan detection
-(parents that do not exist as nodes), constraint syntax validation and trust
-floor range checks (must be 1-5).
+(parents that do not exist as nodes) and constraint syntax validation.
 
 The lattice may be reloaded at runtime via the governance configuration
 interface. During reload, the bridge computes the diff between the old and
 new lattice. Only additive changes (new nodes added, new children added to
 existing nodes) are applied without restart. Destructive changes (node
-removal, parent modification, trust floor reduction) require a bridge restart
+removal, parent modification, agent_permission reduction) require a bridge restart
 and are logged as fatal configuration errors.
 
 ### 4.7 Satisfied Set Persistence
@@ -493,15 +487,14 @@ JSON Schema:
  "action_path": "<dot-delimited lattice path>",
  "payload": { <event-specific data> },
  "bridge_timestamp": <epoch ms>,
- "agent_id": "<agent id or null>",
- "trust_tier": <1-5>
+ "agent_id": "<agent id or null>"
 }
 
 The source field identifies the origin. The action_path field selects the
 lattice node. The payload field carries event-specific data. The
 bridge_timestamp field is set by the bridge at ingest time and overwrites
 any agent-provided value. The agent_id field is null for external and system
-events. The trust_tier field is refused on ingest.
+events.
 
 ### 5.3 LATTICE_FILTER_RESULT
 
@@ -519,7 +512,7 @@ JSON Schema:
  "constraints_failed": ["<reason string>"],
  "partial_order_satisfied": <true|false>,
  "missing_parents": ["<parent path>"],
- "trust_sufficient": <true|false>,
+ "agent_permission": <true|false>,
  "matched_interests": [
  {
  "agent_id": "<agent id>",
@@ -890,7 +883,7 @@ event: The incoming LatticeEvent. The hook may inspect any field including
 the action_path, payload, source and agent_id.
 
 lattice: The full ActionLattice. The hook may traverse the lattice to access
-ancestor and descendant nodes, constraints and trust floors.
+ancestor and descendant nodes, constraints and agent_permission grants.
 
 node: The specific LatticeNode matched by the event action_path. The hook
 may inspect node constraints and properties.
@@ -1211,15 +1204,15 @@ and the running configuration is unchanged.
 
 ## 12. Security Considerations
 
-### 12.1 Trust Tier Enforcement
+### 12.1 Agent Permission Enforcement
 
-The trust tier is the primary security mechanism in dynAEP 1.0. Every action
-in the lattice has a minimum trust tier. Agents cannot propose actions at a
-tier above their assigned level.
+Every action in the lattice carries agent_permission grants. An agent may
+propose an action only when a grant names it for that action. An empty grant
+list closes the action.
 
-Trust tiers are assigned during agent registration. The bridge validates the
-agent identity against the agent registry. Trust tiers cannot be self-assigned.
-The bridge manages all trust tier assignments.
+Grants are written by the operator in the lattice registry. The bridge
+validates the agent identity against the agent registry. Agents cannot grant
+themselves an action.
 
 ### 12.2 Signature Validation
 
@@ -1244,7 +1237,6 @@ Lattice nodes may specify authorization constraints that check agent
 credentials against the action requirements. Authorization constraints are
 evaluated during lattice filter execution and may reference:
 
-- Agent trust tier
 - Agent type (builder, reviewer, trader, etc.)
 - Agent capabilities declared during registration
 - Custom authorization hooks
@@ -1334,7 +1326,7 @@ pipeline.
 LatticeFilterResult: The structured verdict from the lattice filter.
 
 LatticeNode: A single action in the Action Lattice with path, category,
-parents, children, constraints and trust floor.
+parents, children, constraints and agent_permission grants.
 
 ObserverAdapter: A pluggable component that normalises external event sources
 into LatticeEvents.
@@ -1346,9 +1338,6 @@ Satisfied Set: The set of action paths that have been satisfied by events
 that passed the lattice filter.
 
 Tim: Temporal Integrity Metadata. IETF-compatible clock quality metadata.
-
-Trust Tier: An integer from 1 to 5 that governs which agents can propose
-which actions.
 
 ValidationHook: A pluggable module that inspects a LatticeEvent against a
 LatticeNode and produces a pass/fail verdict.

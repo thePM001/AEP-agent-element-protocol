@@ -21,7 +21,7 @@
       "rms_present_high_risk",
       "human_oversight_gate",
       "logging_enabled_high_risk",
-      "execution_rings_high_risk",
+      "scope_constrained_high_risk",
       "retention_configured_high_risk",
       "transparency_export_complete",
       "fria_record_public_context",
@@ -78,7 +78,7 @@
         "expr": "no_full_unconstrained_high_risk",
         "lang": "gapdsl",
         "severity": "hard",
-        "validator": "execution_rings_validator",
+        "validator": "scope_constrained_validator",
         "description": "Art 15 no full_unconstrained scope for high_risk"
       },
       {

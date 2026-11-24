@@ -21,9 +21,7 @@ capabilities:
     scope:
       binaries: ["npm", "node", "tsc", "git"]
   - tool: "agent:spawn"
-    min_trust_tier: "trusted"
   - tool: "agent:delegate"
-    min_trust_tier: "trusted"
 
 limits:
   max_runtime_ms: 3600000
@@ -71,31 +69,7 @@ covenant: |
     permit file:read;
     permit file:write (path in ["src/", "tests/"]);
     forbid file:delete;
-    require trustTier >= "standard";
   }
-
-trust:
-  initial_score: 400
-  decay_rate: 5
-  penalties:
-    policy_violation: 60
-    structural_violation: 40
-    rate_limit: 15
-    forbidden_match: 100
-    intent_drift: 80
-  rewards:
-    successful_action: 5
-    successful_rollback: 15
-
-ring:
-  default: 2
-  promotion:
-    to_ring_1:
-      min_trust_tier: "trusted"
-      require_approval: false
-    to_ring_0:
-      min_trust_tier: "privileged"
-      require_approval: true
 
 intent:
   tracking: true

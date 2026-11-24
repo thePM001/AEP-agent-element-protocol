@@ -41,7 +41,6 @@ metadata:
   stability: stable
   grade: 9
   aspect: procedural
-  trust_ring: system
   tools:
     allowed:
       - npx

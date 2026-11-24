@@ -2,14 +2,13 @@
  "$schema": "http://json-schema.org/draft-07/schema#",
  "$id": "https://aep.protocol.local/schemas/task-manifest-v1.json",
  "title": "AEP Task Manifest v1",
- "description": "Per-agent task contract: intent, trust, egress routes, MCP tools. Enforced at UCB ingress and Base Node docks.",
+ "description": "Per-agent task contract: intent, egress routes, MCP tools. Enforced at UCB ingress and Base Node docks.",
  "type": "object",
  "required": [
  "manifest_version",
  "id",
  "agent_id",
  "intent",
- "trust",
  "provisional",
  "synthesized_by"
  ],
@@ -48,13 +47,6 @@
  "announced_at": { "type": "string" }
  }
  }
- }
- },
- "trust": {
- "type": "object",
- "required": ["tier"],
- "properties": {
- "tier": { "enum": ["provisional", "standard", "elevated"] }
  }
  },
  "agentmesh": {

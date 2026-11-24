@@ -23,8 +23,6 @@ function agent(expiresAt = new Date(Date.now() + 3600_000).toISOString()) {
       capabilities: ["file:read"],
       covenants: [],
       endpoints: [],
-      maxTrustTier: "standard",
-      defaultRing: 2,
       expiresAt,
     },
     keys.privateKey,

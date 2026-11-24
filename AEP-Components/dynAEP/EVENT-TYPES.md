@@ -63,8 +63,7 @@ at arrival time.
  "action_path": "<dot-delimited lattice path>",
  "payload": { "<event-specific data>" },
  "bridge_timestamp": <epoch_ms>,
- "agent_id": "<agent id or null>",
- "trust_tier": <1-5>
+ "agent_id": "<agent id or null>"
 }
 ```
 
@@ -79,7 +78,6 @@ at arrival time.
 | payload | object | yes | Carries the event data. Structure is action-specific |
 | bridge_timestamp | number | yes | Authoritative time of arrival set by the bridge at ingest time |
 | agent_id | string | no | Identifies the originating agent. Null for external events and system events |
-| trust_tier | number | no | Client claim. Refused. Never a floor. Set by the bridge. Range 1-5 |
 
 **Example Payload:**
 
@@ -95,8 +93,7 @@ at arrival time.
  "data": { "id": "pi_123", "amount": 2999 }
  },
  "bridge_timestamp": 1714300800000,
- "agent_id": null,
- "trust_tier": 1
+ "agent_id": null
 }
 ```
 
@@ -117,7 +114,7 @@ the Bridge (Lattice Filter stage).
 The structured verdict produced by the lattice filter for every
 LATTICE_EVENT that passes through it. This is the only event type
 that carries the complete validation outcome including constraint
-results, partial-order status, trust evaluation and agent interest
+results, partial-order status, agent permission and agent interest
 matches.
 
 **JSON Schema:**
@@ -133,7 +130,7 @@ matches.
  "constraints_failed": ["<reason string>"],
  "partial_order_satisfied": <true|false>,
  "missing_parents": ["<parent path>"],
- "trust_sufficient": <true|false>,
+ "agent_permission": <true|false>,
  "matched_interests": [
  {
  "agent_id": "<agent id>",
@@ -159,7 +156,7 @@ matches.
 | constraints_failed | array | yes | Human-readable reason strings for failed constraints |
 | partial_order_satisfied| boolean | yes | True if all parent actions have occurred |
 | missing_parents | array | yes | Paths of parent actions that have not been satisfied |
-| trust_sufficient | boolean | yes | True if the agent trust tier meets the node trust floor |
+| agent_permission | boolean | yes | True if the bound agent is granted this action |
 | matched_interests | array | yes | List of AgentInterest records matching this event path |
 | next_actions | array | yes | Paths of child nodes that may follow this event |
 | duration_us | number | yes | Wall-clock time spent in filter execution in microseconds |
@@ -177,7 +174,7 @@ matches.
  "constraints_failed": [],
  "partial_order_satisfied": true,
  "missing_parents": [],
- "trust_sufficient": true,
+ "agent_permission": true,
  "matched_interests": [
  {
  "agent_id": "payment-agent",
@@ -200,10 +197,10 @@ matches.
  "passed": false,
  "matched_node": "agent:trade:execute",
  "constraints_passed": ["amount"],
- "constraints_failed": ["authorization: trust_tier >= 5 required, agent has tier 3"],
+ "constraints_failed": ["GAP dimension agent_permission closed: agent 'trader-beta' may not 'agent:trade:execute'"],
  "partial_order_satisfied": true,
  "missing_parents": [],
- "trust_sufficient": false,
+ "agent_permission": false,
  "matched_interests": [],
  "next_actions": [],
  "duration_us": 23

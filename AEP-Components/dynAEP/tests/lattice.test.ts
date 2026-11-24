@@ -8,7 +8,6 @@ import {
   HookRegistry,
   LatticeFilter,
   governanceAppliesToCategory,
-  ignoreClientTrustTier,
   type HookResult,
   type LatticeConfig,
   type LatticeConstraint,
@@ -124,12 +123,6 @@ describe("governanceAppliesToCategory", () => {
   });
 });
 
-describe("ignoreClientTrustTier", () => {
-  it("drops any client supplied tier", () => {
-    expect(ignoreClientTrustTier(5)).toBeUndefined();
-    expect(ignoreClientTrustTier()).toBeUndefined();
-  });
-});
 
 describe("HookRegistry", () => {
   it("registers, lists, resolves aliases and unregisters", () => {
@@ -409,20 +402,15 @@ describe("ActionLattice.evaluateConstraints", () => {
     expect(reason({ type: "threshold", field: "v" }, { v: 1 })).toMatch(/missing field or condition/);
   });
 
-  it("authorization refuses client trust fields and missing values", () => {
-    expect(reason({ type: "authorization", field: "trust_tier", condition: ">= 1" }, { trust_tier: 9 })).toBe(
-      "client trust fields are refused",
-    );
-    expect(reason({ type: "authorization", field: "tier", condition: ">= 1" }, {})).toMatch(/is missing/);
-    expect(reason({ type: "authorization", field: "tier" }, { tier: 1 })).toMatch(/missing field or condition/);
+  it("authorization refuses missing values", () => {
+    expect(reason({ type: "authorization", field: "who", condition: "matches_registered" }, {})).toMatch(/is missing/);
+    expect(reason({ type: "authorization", field: "who" }, { who: "alice" })).toMatch(/missing field or condition/);
   });
 
-  it("authorization numeric floor", () => {
-    const c: LatticeConstraint = { type: "authorization", field: "tier", condition: ">= 3" };
-    expect(passes(c, { tier: 3 })).toBe(true);
-    expect(passes(c, { tier: "4" })).toBe(true);
-    expect(reason(c, { tier: 2 })).toBe("Trust tier 2 below required 3");
-    expect(reason(c, { tier: "high" })).toMatch(/Cannot parse/);
+  it("authorization has no numeric floor and fails closed on one", () => {
+    const c: LatticeConstraint = { type: "authorization", field: "who", condition: ">= 3" };
+    expect(passes(c, { who: 9 })).toBe(false);
+    expect(reason(c, { who: 9 })).toBe("Unknown authorization condition '>= 3' (fail closed)");
   });
 
   it("authorization matches_registered requires a server registered set", () => {

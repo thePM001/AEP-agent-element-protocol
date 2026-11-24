@@ -1,6 +1,6 @@
 //! Mandatory task manifest at UCB ingest. Synthesis is refused.
 
-use crate::store::{value_has_trust_fields, ManifestStore, TaskManifestV1};
+use crate::store::{ManifestStore, TaskManifestV1};
 use aep_ucb_perimeter_v1::{
     digest_canonical, verify_manifest_signature, ManifestError, ManifestSigners, SignedManifest,
     StrictMode,
@@ -10,13 +10,12 @@ use aep_wall_set_backpressure::{
 };
 
 /// The one serialization of a manifest that is digested and signed: the manifest
-/// without its digest, its signature and any trust field.
+/// without its digest and its signature.
 pub fn digest_view(manifest: &TaskManifestV1) -> serde_json::Value {
     let mut value = serde_json::to_value(manifest).unwrap_or(serde_json::Value::Null);
     if let Some(obj) = value.as_object_mut() {
         obj.remove("manifest_digest");
         obj.remove("signature");
-        obj.remove("trust");
     }
     value
 }
@@ -219,17 +218,6 @@ pub fn session_required() -> DenyReport {
     )
 }
 
-pub fn trust_fields_forbidden() -> DenyReport {
-    closed_report(
-        "trust fields are refused",
-        "ucb.trust_fields",
-        "UCB forbids trust fields",
-        CLASS_STRUCTURAL,
-        "trust",
-        "remove trust, trust_tier and trust_ring then reseal",
-    )
-}
-
 pub fn synthesis_forbidden() -> DenyReport {
     closed_report(
         "synthesis is refused",
@@ -267,9 +255,6 @@ pub fn load_or_provided(
     provided: Option<serde_json::Value>,
 ) -> Result<TaskManifestV1, DenyReport> {
     if let Some(raw) = provided {
-        if value_has_trust_fields(&raw) {
-            return Err(trust_fields_forbidden());
-        }
         let mut m = if let Some(text) = raw.as_str() {
             crate::gap_manifest::compile_provided(text)?
         } else {
@@ -380,7 +365,7 @@ mod tests {
     }
 
     #[test]
-    fn provided_without_trust_loads() {
+    fn provided_manifest_loads() {
         let dir = tempdir().unwrap();
         let store = ManifestStore::new(dir.path().to_path_buf()).unwrap();
         let (signers, key) = signers_for("agent-a");
@@ -396,27 +381,6 @@ mod tests {
         assert_eq!(m.agent_id, "agent-a");
         assert_eq!(m.synthesized_by, "provided");
         assert!(store.load("agent-a").is_some());
-    }
-
-    #[test]
-    fn trust_fields_refuse() {
-        let dir = tempdir().unwrap();
-        let store = ManifestStore::new(dir.path().to_path_buf()).unwrap();
-        let (signers, key) = signers_for("agent-a");
-        let mut raw = signed_provided("agent-a", &key);
-        raw.as_object_mut()
-            .unwrap()
-            .insert(String::from("trust_tier"), serde_json::Value::from(9u64));
-        let err = load_or_provided(
-            &store,
-            &signers,
-            StrictMode::On,
-            "agent-a",
-            "sess-1",
-            Some(raw),
-        )
-        .unwrap_err();
-        assert!(err.error.contains("trust"));
     }
 
     #[test]

@@ -14,7 +14,7 @@
     "CC8.1 Change Management"
   ],
   "aep_features": [
-    "Execution Rings and Trust-Gated Capabilities",
+    "Scoped Capabilities and Agent Permission",
     "Agent Identity Manager with key expiry",
     "Evidence Ledger and Intent Drift Detection",
     "Kill Switch, Rollback and Fleet Manager",

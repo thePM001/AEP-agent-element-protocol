@@ -774,7 +774,7 @@ const MANIFESTS = {
     actions: [],
     setup_hooks: [],
     resource_requirements: RR(16, 5),
-    cca: CCA("GAP dimension agent permission on the same collect-all Admit.", ["agent capability without rank"], [], ["evaluation-chain", "envelope"]),
+    cca: CCA("GAP dimension agent permission on the same collect-all Admit.", ["agent capability per agent and action"], [], ["evaluation-chain", "envelope"]),
     implementation: { crate: "AEP-Components/admit/crate" },
   },
 

@@ -21,7 +21,7 @@ lattice_revision: 1
 #   parents:     list of action paths that must precede this one (partial order)
 #   children:    list of action paths that may follow (forward traversal)
 #   constraints: validation gates applied at event arrival time
-#   agent_permission: agents listed for this action. GAP dimension. No rank.
+#   agent_permission: agents listed for this action. GAP dimension.
 #
 # The partial order is the key governance mechanism. An action cannot
 # proceed until ALL its parents have been satisfied. This prevents

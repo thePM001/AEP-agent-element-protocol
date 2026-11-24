@@ -57,34 +57,6 @@ export const RemediationConfigSchema = z.object({
   cooldown_ms: z.number().nonnegative().optional().default(1000),
 });
 
-export const TrustConfigSchema = z.object({
-  initial_score: z.number().min(0).max(1000).optional().default(500),
-  decay_rate: z.number().nonnegative().optional().default(5),
-  penalties: z.object({
-    policy_violation: z.number().nonnegative().optional().default(50),
-    structural_violation: z.number().nonnegative().optional().default(30),
-    rate_limit: z.number().nonnegative().optional().default(10),
-    forbidden_match: z.number().nonnegative().optional().default(100),
-    intent_drift: z.number().nonnegative().optional().default(75),
-  }).prefault({}),
-  rewards: z.object({
-    successful_action: z.number().nonnegative().optional().default(5),
-    successful_rollback: z.number().nonnegative().optional().default(10),
-  }).prefault({}),
-}).optional();
-
-export const RingConfigSchema = z.object({
-  default: z.number().min(0).max(3).optional().default(2),
-  promotion: z.object({
-    to_ring_1: z.object({
-      require_approval: z.boolean().optional().default(false),
-    }).prefault({}),
-    to_ring_0: z.object({
-      require_approval: z.boolean().optional().default(true),
-    }).prefault({}),
-  }).prefault({}),
-}).optional();
-
 export const IntentConfigSchema = z.object({
   tracking: z.boolean().optional().default(false),
   drift_threshold: z.number().min(0).max(1).optional().default(0.5),
@@ -262,7 +234,6 @@ export const FleetPolicySchema = z.object({
   enabled: z.boolean().optional().default(false),
   max_agents: z.number().positive().optional().default(10),
   max_total_cost_per_hour: z.number().nonnegative().optional().default(100),
-  max_ring0_agents: z.number().nonnegative().optional().default(1),
   drift_pause_threshold: z.number().positive().optional().default(3),
   require_parent_covenant_subset: z.boolean().optional().default(true),
 }).optional();
@@ -277,8 +248,6 @@ export const PolicySchema = z.object({
   forbidden: z.array(ForbiddenPatternSchema).optional().default([]),
   session: SessionConfigSchema,
   remediation: RemediationConfigSchema.optional(),
-  trust: TrustConfigSchema.optional(),
-  ring: RingConfigSchema.optional(),
   covenant: z.string().optional(),
   intent: IntentConfigSchema.optional(),
   identity: IdentityConfigSchema.optional(),
@@ -306,8 +275,6 @@ export type SessionConfig = z.infer<typeof SessionConfigSchema>;
 export type EvidenceConfig = z.infer<typeof EvidenceConfigSchema>;
 export type RemediationConfig = z.infer<typeof RemediationConfigSchema>;
 export type Policy = z.infer<typeof PolicySchema>;
-export type TrustPolicyConfig = z.infer<typeof TrustConfigSchema>;
-export type RingPolicyConfig = z.infer<typeof RingConfigSchema>;
 export type IntentPolicyConfig = z.infer<typeof IntentConfigSchema>;
 export type IdentityPolicyConfig = z.infer<typeof IdentityConfigSchema>;
 export type QuantumPolicyConfig = z.infer<typeof QuantumConfigSchema>;

@@ -26,7 +26,6 @@ function parseActionRegistryDoc(doc, relPath) {
     category: node  ?.  category   ??   "unknown",
     parents: node  ?.  parents   ??   [],
     children: node  ?.  children   ??   [],
-    trust_floor: node  ?.  trust_floor   ??   1,
   }));
   return {
     path: relPath,

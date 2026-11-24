@@ -176,7 +176,6 @@ fn arm_test_agent(
         "agent_id": agent_id,
         "session_id": session_id,
         "intent": { "kind": "conformance" },
-        "trust": { "tier": "system" },
         "agentmesh": { "did": { "verification_key_hex": to_hex(&sign.public) } },
         "provisional": false,
         "synthesized_by": "aep-conformance"

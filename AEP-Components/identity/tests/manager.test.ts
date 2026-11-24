@@ -15,8 +15,6 @@ function input(overrides: Partial<CreateIdentityInput> = {}): CreateIdentityInpu
     capabilities: ["file:read", "file:write"],
     covenants: ["DataAgent"],
     endpoints: [{ protocol: "https", url: "https://agent.example.test" }],
-    maxTrustTier: "trusted",
-    defaultRing: 2,
     expiresAt: FUTURE,
     ...overrides,
   };
@@ -121,8 +119,8 @@ describe("AgentIdentityManager identities", () => {
     const id = AgentIdentityManager.create(input(), privateKey);
     const tampered: AgentIdentity[] = [
       { ...id, capabilities: [...id.capabilities, "command:run"] },
-      { ...id, maxTrustTier: "privileged" },
-      { ...id, defaultRing: 0 },
+      { ...id, covenants: [...id.covenants, "Other"] },
+      { ...id, operator: "someone-else" },
       { ...id, name: "other" },
       { ...id, expiresAt: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString() },
     ];

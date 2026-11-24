@@ -63,17 +63,7 @@ impl ManifestStore {
         let path = self.path_for(&manifest.agent_id);
         let mut persist = manifest.clone();
         persist.manifest_digest = crate::manifest::compute_manifest_digest(&persist);
-        let mut value = serde_json::to_value(&persist)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
-        if let Some(obj) = value.as_object_mut() {
-            let mut trust = serde_json::Map::new();
-            trust.insert(
-                String::from("tier"),
-                serde_json::Value::String(String::from("none")),
-            );
-            obj.insert(String::from("trust"), serde_json::Value::Object(trust));
-        }
-        let text = serde_json::to_string_pretty(&value)
+        let text = serde_json::to_string_pretty(&persist)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
         fs::write(path, format!("{text}\n"))
     }
@@ -81,23 +71,10 @@ impl ManifestStore {
     pub fn load(&self, agent_id: &str) -> Option<TaskManifestV1> {
         let path = self.path_for(agent_id);
         let text = fs::read_to_string(path).ok()?;
-        let mut value: serde_json::Value = serde_json::from_str(&text).ok()?;
-        if let Some(obj) = value.as_object_mut() {
-            obj.remove("trust");
-            obj.remove("trust_tier");
-            obj.remove("trust_ring");
-        }
-        serde_json::from_value(value).ok()
+        serde_json::from_str(&text).ok()
     }
 
     pub fn dir(&self) -> &Path {
         &self.dir
     }
-}
-
-pub fn value_has_trust_fields(value: &serde_json::Value) -> bool {
-    let Some(obj) = value.as_object() else {
-        return false;
-    };
-    obj.contains_key("trust") || obj.contains_key("trust_tier") || obj.contains_key("trust_ring")
 }

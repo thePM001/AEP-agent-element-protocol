@@ -57,25 +57,6 @@ pub struct ForeignIngestBody {
     pub agent_id: Option<String>,
     #[serde(default)]
     pub task_manifest: Option<serde_json::Value>,
-    #[serde(default)]
-    pub trust: Option<serde_json::Value>,
-    #[serde(default)]
-    pub trust_tier: Option<serde_json::Value>,
-    #[serde(default)]
-    pub trust_ring: Option<serde_json::Value>,
-}
-
-impl ForeignIngestBody {
-    pub fn has_trust_fields(&self) -> bool {
-        self.trust.is_some()
-            || self.trust_tier.is_some()
-            || self.trust_ring.is_some()
-            || self
-                .task_manifest
-                .as_ref()
-                .map(crate::store::value_has_trust_fields)
-                .unwrap_or(false)
-    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -211,16 +192,5 @@ mod tests {
         let r = validate_foreign_ingest_with_profile(&body, &[], PredicateProfile::PerimeterV1);
         assert!(!r.ok);
         assert_eq!(r.predicate, Some("P_P"));
-    }
-
-    #[test]
-    fn trust_fields_on_body_are_detected() {
-        let body = ForeignIngestBody {
-            trust_tier: Some(serde_json::Value::from(9u64)),
-            ..Default::default()
-        };
-        assert!(body.has_trust_fields());
-        let clean = ForeignIngestBody::default();
-        assert!(!clean.has_trust_fields());
     }
 }

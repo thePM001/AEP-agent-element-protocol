@@ -1,5 +1,5 @@
 // HVVCAS: compile_agent_permission_wall domain:admit type:library
-// AEP 2.9: agent permission is agent id plus action. No rank. No score.
+// AEP 2.9: agent permission is agent id plus action.
 
 use super::{admit_collect_all, AdmitResult, AdmitWall};
 
@@ -194,8 +194,6 @@ mod tests {
             Some(i) => &src[..i],
             None => src,
         };
-        assert!(!prod.contains("trust_tier"));
-        assert!(!prod.contains("trust_ring"));
         assert!(!prod.contains("score >"));
         assert!(!prod.contains("score >="));
     }

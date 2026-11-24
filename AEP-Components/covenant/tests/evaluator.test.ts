@@ -72,16 +72,25 @@ describe("evaluateCovenant decisions", () => {
 
 describe("evaluateCovenant require rules and operators", () => {
   const req = parseCovenant(`covenant Req {
-    require trust_tier >= "standard";
+    require environment == "staging";
     permit x;
   }`);
 
-  it("compares trust tiers by order", () => {
-    expect(evaluateCovenant(req, { action: "x", input: {}, trustTier: "trusted", trust_tier: "trusted" }).allowed).toBe(true);
-    expect(evaluateCovenant(req, { action: "x", input: { trust_tier: "standard" } }).allowed).toBe(true);
-    const low = evaluateCovenant(req, { action: "x", input: { trust_tier: "provisional" } });
-    expect(low.allowed).toBe(false);
-    expect(low.reason).toBe('Requirement not met: trust_tier >= "standard" (actual: "provisional")');
+  it("checks a require rule against the context and the input", () => {
+    expect(evaluateCovenant(req, { action: "x", input: {}, environment: "staging" }).allowed).toBe(true);
+    expect(evaluateCovenant(req, { action: "x", input: { environment: "staging" } }).allowed).toBe(true);
+    const other = evaluateCovenant(req, { action: "x", input: { environment: "production" } });
+    expect(other.allowed).toBe(false);
+    expect(other.reason).toBe('Requirement not met: environment == "staging" (actual: "production")');
+  });
+
+  it("orders only numbers so word values fail closed under >= and <=", () => {
+    const words = parseCovenant(`covenant W {
+    require size >= "large";
+    permit x;
+  }`);
+    expect(evaluateCovenant(words, { action: "x", input: { size: "huge" } }).allowed).toBe(false);
+    expect(evaluateCovenant(words, { action: "x", input: { size: "large" } }).allowed).toBe(false);
   });
 
   it("fails closed on a missing value", () => {

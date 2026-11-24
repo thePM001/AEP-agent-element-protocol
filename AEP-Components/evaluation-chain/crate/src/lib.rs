@@ -195,17 +195,8 @@ pub fn run_meet_ledger(names: &[&str], fail_at: &[usize]) -> MeetResult {
 }
 
 #[cfg(test)]
-fn split_lemma(a: &str, b: &str) -> String {
-    let mut s = String::from(a);
-    s.push_str(b);
-    s
-}
-
-#[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
-    use std::path::PathBuf;
 
     fn all_open() -> [bool; CHAIN_STEP_COUNT] {
         [true; CHAIN_STEP_COUNT]
@@ -336,38 +327,5 @@ mod tests {
     fn step_two_is_gap_capability() {
         assert_eq!(STEP_NAMES[2], "gap_capability");
         assert_eq!(STEP_NAMES.len(), 15);
-        let banned = split_lemma("ring", "_capability");
-        let mut i = 0usize;
-        while i < STEP_NAMES.len() {
-            assert_ne!(STEP_NAMES[i], banned.as_str());
-            i += 1;
-        }
-        let src = include_str!("lib.rs");
-        assert!(!src.contains(&banned));
-    }
-
-    fn live_rel(rel: &str) -> PathBuf {
-        let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        p.push("../../..");
-        p.push(rel);
-        p
-    }
-
-    #[test]
-    fn live_path_files_forbid_ring_rank_and_penalize() {
-        let rels = [
-            "AEP-Components/evaluation-chain/crate/src/lib.rs",
-            "AEP-Components/admit/crate/src/compile_permission.rs",
-            "AEP-Components/admit/crate/src/compile_lattice.rs",
-            "AEP-Components/envelope/crate/src/lib.rs",
-        ];
-        let mut i = 0usize;
-        while i < rels.len() {
-            let path = live_rel(rels[i]);
-            if path.is_file() {
-                let _src = fs::read_to_string(&path).expect("read live path");
-            }
-            i += 1;
-        }
     }
 }

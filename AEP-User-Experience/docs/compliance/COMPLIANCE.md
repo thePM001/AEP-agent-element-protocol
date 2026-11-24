@@ -14,7 +14,7 @@ This document maps AEP features to requirements in the EU AI Act, SOC 2 Type II,
 | Art. 9 - Risk Management System | Evidence Ledger with session reports, Kill Switch and Intent drift detection |
 | Art. 13 - Transparency and Provision of Information | Evidence Ledger with full action audit trail and session reports; Merkle-Tree Audit Records with cryptographic proof bundles |
 | Art. 14 - Human Oversight | Gates (human approval), Escalation Rules (automatic pause), Kill Switch; Workflow Graph with checkpoint-based phase approval |
-| Art. 15 - Accuracy, Robustness and Cybersecurity | Execution Rings (least privilege), Forbidden Patterns, Structural Validation; Policy Builder invariant validation; MCP Security Gateway (tool poisoning, typosquatting and drift detection) |
+| Art. 15 - Accuracy, Robustness and Cybersecurity | Agent Permission and Capability Scoping (least privilege), Forbidden Patterns, Structural Validation; Policy Builder invariant validation; MCP Security Gateway (tool poisoning, typosquatting and drift detection) |
 | Art. 52 - Transparency for Certain AI Systems | Agent Identity with cryptographic verification and compact serialisation; Proof Bundles with Merkle roots and Ed25519 signatures |
 | Art. 61 - Post-Market Monitoring | Evidence Ledger, Merkle Proofs and RFC 3161 Timestamps |
 
@@ -22,7 +22,7 @@ This document maps AEP features to requirements in the EU AI Act, SOC 2 Type II,
 
 | SOC 2 Trust Service Criteria | AEP 2.9 Feature |
 |------------------------------|-----------------|
-| CC6.1 - Logical and Physical Access Controls | Execution Rings, Agent Identity; MCP Security Gateway with tool-level blocking |
+| CC6.1 - Logical and Physical Access Controls | Agent Permission, Agent Identity; MCP Security Gateway with tool-level blocking |
 | CC6.2 - Prior to Issuing Credentials | Agent Identity Manager with key pair generation and expiry |
 | CC6.3 - Based on Authorisation | Capability Scoping with paths, binaries and element prefix constraints; Policy Builder invariant enforcement via Rego deny rules |
 | CC7.2 - Monitoring Activities | Evidence Ledger, Intent Drift Detection, Session Statistics; Intercept Proxy for MCP traffic monitoring; Graph Orchestration checkpoints |
@@ -34,7 +34,7 @@ This document maps AEP features to requirements in the EU AI Act, SOC 2 Type II,
 
 | HIPAA Safeguard | AEP 2.9 Feature |
 |----------------|-----------------|
-| 164.312(a) - Access Control | Execution Rings, Capability Scoping; MCP Intercept Proxy with policy-based tool blocking |
+| 164.312(a) - Access Control | Agent Permission, Capability Scoping; MCP Intercept Proxy with policy-based tool blocking |
 | 164.312(b) - Audit Controls | Evidence Ledger (SHA-256 hash-chained), Merkle Proofs; Proof Bundles with ML-DSA-65 post-quantum signatures |
 | 164.312(c) - Integrity | Merkle Tree per-entry verification, Post-Quantum Signatures; Policy Builder coverage tracking |
 | 164.312(d) - Person Authentication | Agent Identity (Ed25519/RSA), Cross-Agent Verification Handshake; Multi-Agent Collaboration with identity-gated delegation |

@@ -23,7 +23,7 @@
   "cca": {
     "summary": "GAP dimension agent permission on the same collect-all Admit.",
     "use_when": [
-      "agent capability without rank"
+      "agent capability per agent and action"
     ],
     "avoid_when": [],
     "pairs_with": [

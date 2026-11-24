@@ -155,7 +155,6 @@ pub fn health_document(lattice_rt: &LatticeRuntime, lattice: &Value) -> Value {
             ]),
         ),
         ("synthesis", Value::Bool(false)),
-        ("trust_fields", Value::Bool(false)),
         ("gap_engine", Value::String(String::from(LOCAL_PROFILE))),
         (
             "predicate_profile",
@@ -192,7 +191,6 @@ pub fn capabilities_document() -> Value {
             obj(vec![
                 ("required_for_ingest", Value::Bool(true)),
                 ("synthesis", Value::Bool(false)),
-                ("trust_fields", Value::Bool(false)),
                 ("compiler", Value::String(String::from(LOCAL_PROFILE))),
             ]),
         ),

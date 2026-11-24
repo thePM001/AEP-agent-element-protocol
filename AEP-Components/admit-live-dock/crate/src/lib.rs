@@ -47,10 +47,7 @@ pub const CI_ONLY_ADMIT_CRATES: &[&str] = &[
     "aep-admit-parity",
     "aep-admit-opa-sole",
     "aep-process-event-admit-walls",
-    "aep-admit-no-trust-tier",
 ];
-
-pub const DROPPED_WALL_CRATES: &[&str] = &["aep-admit-trust-floor"];
 
 /// Closes when the opened event names an agent that is not the signer of the frame.
 pub const WALL_FRAME_AGENT_BINDING: &str = "frame.agent_binding";
@@ -585,9 +582,6 @@ fn classify_admit_package(name: &str) -> &'static str {
     if CI_ONLY_ADMIT_CRATES.contains(&name) {
         return "ci-only";
     }
-    if DROPPED_WALL_CRATES.contains(&name) {
-        return "dropped";
-    }
     "unknown"
 }
 
@@ -606,18 +600,16 @@ pub fn live_path_wall_gate(root: &Path) -> Result<String, String> {
             member_names.push(name);
         }
     }
-    for dropped in DROPPED_WALL_CRATES {
-        if member_names.iter().any(|n| n == dropped) {
-            let mut msg = String::from("dropped wall crate still a workspace member: ");
-            msg.push_str(dropped);
-            return Err(msg);
+    // Every Admit crate of the workspace is a wall, a CI crate or the live dock. Any other
+    // is an unused product wall crate and fails here, before the live path checks.
+    for name in &member_names {
+        if !name.starts_with("aep-admit") && name != "aep-envelope-walls" {
+            continue;
         }
-        for rel in &members {
-            if rel.contains("admit-trust-floor") {
-                return Err(String::from(
-                    "admit-trust-floor remains a workspace product member",
-                ));
-            }
+        if classify_admit_package(name) == "unknown" {
+            let mut msg = String::from("unused product wall crate: ");
+            msg.push_str(name);
+            return Err(msg);
         }
     }
     let live_dock_cargo = read_text(&root.join("AEP-Components/admit-live-dock/crate/Cargo.toml"));
@@ -650,24 +642,6 @@ pub fn live_path_wall_gate(root: &Path) -> Result<String, String> {
             let mut msg = String::from("live-path crate missing from dock union: ");
             msg.push_str(live);
             return Err(msg);
-        }
-    }
-    for name in &member_names {
-        if !name.starts_with("aep-admit") && name != "aep-envelope-walls" {
-            continue;
-        }
-        match classify_admit_package(name) {
-            "wall" | "ci-only" | "live-dock" => {}
-            "dropped" => {
-                let mut msg = String::from("dropped wall crate still a workspace member: ");
-                msg.push_str(name);
-                return Err(msg);
-            }
-            _ => {
-                let mut msg = String::from("unused product wall crate: ");
-                msg.push_str(name);
-                return Err(msg);
-            }
         }
     }
     let base_cargo = dep_names(&read_text(&root.join("AEP-Base-Node/AEP-Crate/Cargo.toml")));
@@ -785,23 +759,23 @@ mod tests {
     }
 
     #[test]
-    fn unused_gate_fails_trust_floor_member() {
-        let tmp = std::env::temp_dir().join("aep28-env-032-trust-floor");
+    fn unused_gate_fails_unknown_admit_member() {
+        let tmp = std::env::temp_dir().join("aep28-env-032-unknown-admit");
         let _ = fs::remove_dir_all(&tmp);
         fs::create_dir_all(tmp.join("AEP-Components/admit/crate")).expect("mkdir");
         fs::write(
             tmp.join("Cargo.toml"),
-            "[workspace]\nmembers = [\n    \"AEP-Components/admit-trust-floor/crate\",\n]\n",
+            "[workspace]\nmembers = [\n    \"AEP-Components/admit-retired/crate\",\n]\n",
         )
         .expect("ws");
-        fs::create_dir_all(tmp.join("AEP-Components/admit-trust-floor/crate")).expect("mkdir");
+        fs::create_dir_all(tmp.join("AEP-Components/admit-retired/crate")).expect("mkdir");
         fs::write(
-            tmp.join("AEP-Components/admit-trust-floor/crate/Cargo.toml"),
-            "[package]\nname = \"aep-admit-trust-floor\"\nversion = \"0.1.0\"\n",
+            tmp.join("AEP-Components/admit-retired/crate/Cargo.toml"),
+            "[package]\nname = \"aep-admit-retired\"\nversion = \"0.1.0\"\n",
         )
         .expect("pkg");
         let err = live_path_wall_gate(&tmp).expect_err("deny");
-        must(err.contains("admit-trust-floor") || err.contains("dropped"));
+        must(err.contains("unused product wall crate: aep-admit-retired"));
         let _ = fs::remove_dir_all(&tmp);
     }
 

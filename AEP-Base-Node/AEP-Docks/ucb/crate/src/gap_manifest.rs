@@ -1,7 +1,7 @@
 //! Local gap-manifest-v1 compiler. Public UCB does not call a remote engine.
 
-use crate::manifest::{compute_manifest_digest, synthesis_forbidden, trust_fields_forbidden};
-use crate::store::{value_has_trust_fields, TaskManifestV1};
+use crate::manifest::{compute_manifest_digest, synthesis_forbidden};
+use crate::store::TaskManifestV1;
 use aep_wall_set_backpressure::{ClosedWall, DenyReport, RepairHint, CLASS_STRUCTURAL};
 use serde_json::{Map, Value};
 
@@ -27,22 +27,6 @@ fn required_keys_missing() -> DenyReport {
     report
 }
 
-fn contains_trust(value: &Value) -> bool {
-    match value {
-        Value::Object(_) => {
-            if value_has_trust_fields(value) {
-                return true;
-            }
-            value
-                .as_object()
-                .map(|m| m.values().any(contains_trust))
-                .unwrap_or(false)
-        }
-        Value::Array(items) => items.iter().any(contains_trust),
-        _ => false,
-    }
-}
-
 fn as_required_string(value: Option<&Value>) -> Option<String> {
     match value {
         Some(Value::String(s)) => {
@@ -59,9 +43,6 @@ fn as_required_string(value: Option<&Value>) -> Option<String> {
 }
 
 fn compile_object(value: Value) -> Result<TaskManifestV1, DenyReport> {
-    if contains_trust(&value) {
-        return Err(trust_fields_forbidden());
-    }
     let Some(obj) = value.as_object() else {
         return Err(required_keys_missing());
     };
@@ -333,21 +314,7 @@ mod tests {
     }
 
     #[test]
-    fn trust_fields_refused() {
-        let mut raw = sample_json();
-        raw.as_object_mut()
-            .unwrap()
-            .insert(String::from("trust_tier"), Value::from(9u64));
-        let err = compile_provided_json(raw).unwrap_err();
-        assert!(err.error.contains("trust"));
-
-        let mut ring = sample_json();
-        ring.as_object_mut()
-            .unwrap()
-            .insert(String::from("trust_ring"), Value::String(String::from("x")));
-        let err = compile_provided_json(ring).unwrap_err();
-        assert!(err.error.contains("trust"));
-
+    fn synthesis_refused() {
         let mut synth = sample_json();
         synth.as_object_mut().unwrap().insert(
             String::from("synthesized_by"),

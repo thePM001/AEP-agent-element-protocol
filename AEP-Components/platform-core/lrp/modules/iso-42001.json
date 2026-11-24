@@ -20,7 +20,7 @@
   ],
   "controls": [
     "documented_ai_impact_assessment_gate",
-    "competence_trust_tier_assignment",
+    "competence_agent_permission_assignment",
     "operational_monitoring_via_evidence_ledger",
     "performance_review_session_reports",
     "continual_improvement_via_policy_versioning"

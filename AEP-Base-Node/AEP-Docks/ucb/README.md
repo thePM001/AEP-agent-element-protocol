@@ -47,7 +47,7 @@ UCB is optional. Native AEP components talk to Base Node directly. UCB exists fo
 |--------|------------|
 | Optional attach gateway on port 8412 | A second evaluator |
 | Manifest gate at ingest | A synthesizer of contracts |
-| DenyReport in kernel shape | A trust rank service |
+| DenyReport in kernel shape | A rank service |
 | Capabilities ingest, delegate, health, rollback, egress, compile-manifest and mcp | A protocol member list of foreign frameworks |
 
 ## Perimeter
@@ -88,7 +88,7 @@ An agent key acts only for its own agent. Ingest, delegate, egress and the MCP i
 
 ### Manifest signatures
 
-A manifest signature is ML-DSA-65 over `aep-ucb-task-manifest-v1:` followed by the manifest digest. The digest covers the manifest without manifest_digest, signature and trust. The agent signs the same serialization that UCB stores and checks. Register the public key of each agent as `manifest_signer_public_hex` on its record in ucb-agent-keys.json. With strict manifests on, an unsigned manifest, a manifest of an agent with no registered key and a manifest whose signature does not verify are refused. A provided manifest that does not verify never replaces a stored one, even with strict manifests off. A stored manifest is checked again when it is loaded.
+A manifest signature is ML-DSA-65 over `aep-ucb-task-manifest-v1:` followed by the manifest digest. The digest covers the manifest without manifest_digest and signature. The agent signs the same serialization that UCB stores and checks. Register the public key of each agent as `manifest_signer_public_hex` on its record in ucb-agent-keys.json. With strict manifests on, an unsigned manifest, a manifest of an agent with no registered key and a manifest whose signature does not verify are refused. A provided manifest that does not verify never replaces a stored one, even with strict manifests off. A stored manifest is checked again when it is loaded.
 
 ### Lattice action paths
 
@@ -98,7 +98,7 @@ Health answers from a snapshot in memory. A background task refreshes it every 1
 
 ### Ingest
 
-Every ingest needs a task manifest. Provide task_manifest on the ingest body, store a non-provisional manifest for that agent or compile provided GAP text or JSON with the local compiler. If none exist, ingest refuses with ManifestMissing. A provisional stored manifest refuses with ManifestProvisional. Trust fields on the body or the manifest refuse. Synthesis URLs are not a public source and dock-first send remains while the journal persists only after collect-all Admit allow. When collect-all Admit refuses, ingest reports ok false, admit rows are on the reply and the journal is not persisted. Enqueue with a digest and no event_id is not Admit.
+Every ingest needs a task manifest. Provide task_manifest on the ingest body, store a non-provisional manifest for that agent or compile provided GAP text or JSON with the local compiler. If none exist, ingest refuses with ManifestMissing. A provisional stored manifest refuses with ManifestProvisional. Synthesis URLs are not a public source and dock-first send remains while the journal persists only after collect-all Admit allow. When collect-all Admit refuses, ingest reports ok false, admit rows are on the reply and the journal is not persisted. Enqueue with a digest and no event_id is not Admit.
 
 Session bind:
 

@@ -37,14 +37,6 @@ mod tests {
         String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"invariants\": [\n      {\"expr\": \"no_em_dashes\", \"description\": \"Zero em-dashes\"}\n    ]\n  },\n  \"metadata\": {\"agent_permission\": [\"*\"]}\n}")
     }
 
-    fn writing_gap_rank() -> String {
-        String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"invariants\": [\n      {\"expr\": \"no_em_dashes\", \"description\": \"Zero em-dashes\"}\n    ]\n  },\n  \"metadata\": {\"trust_ring\": \"user\"}\n}")
-    }
-
-    fn writing_gap_star_rank() -> String {
-        String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"invariants\": [\n      {\"expr\": \"no_em_dashes\", \"description\": \"Zero em-dashes\"}\n    ]\n  },\n  \"metadata\": {\"agent_permission\": [\"*\"], \"trust_ring\": \"user\"}\n}")
-    }
-
     fn security_gap() -> String {
         String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"invariants\": [\n      {\"expr\": \"no_pii_detected\", \"description\": \"no pii\"}\n    ]\n  }\n}")
     }
@@ -88,24 +80,6 @@ mod tests {
     #[test]
     fn ticket_const() {
         must(TICKET_GAP285_P15 == "GAP-285-P15");
-    }
-
-    #[test]
-    fn rank_presence_closes_on_trust_ring() {
-        let tmp = std::env::temp_dir().join("gap-285-p15-rank");
-        let _ = std::fs::remove_dir_all(&tmp);
-        write_tree(&tmp);
-        std::fs::write(tmp.join("reference/writing.gap"), writing_gap_rank()).expect("w");
-        let input = PolicySystemCompileInput::default();
-        let walls = compile_policy_system_walls_from(Some(&tmp), &input);
-        must(
-            walls
-                .iter()
-                .any(|w| w.id == gap_schema_profile_v13::WALL_LEFTOVER_RANK_FIELD && w.closed),
-        );
-        let r = admit_collect_all(&walls);
-        must(!r.allow);
-        let _ = std::fs::remove_dir_all(&tmp);
     }
 
     #[test]
@@ -167,8 +141,8 @@ mod tests {
     }
 
     #[test]
-    fn wrap_bound_rank_does_not_close_unbound_wrap() {
-        let tmp = std::env::temp_dir().join("gap-285-p15-wrap-rank");
+    fn wrap_bound_profile_does_not_close_unbound_wrap() {
+        let tmp = std::env::temp_dir().join("gap-285-p15-wrap-bound");
         let _ = std::fs::remove_dir_all(&tmp);
         write_tree(&tmp);
         std::fs::write(tmp.join("reference/writing.gap"), writing_gap_star()).expect("w");
@@ -177,7 +151,7 @@ mod tests {
         let net_file = crate::join_parts(&["reference/network-egress-no-", "smt", "p", ".gap"]);
         let mut s = String::from("{\n  \"pattern\": {\n    \"guard\": \"true\",\n    \"invariants\": [\n      {\"expr\": \"");
         s.push_str(&expr);
-        s.push_str("\", \"description\": \"no mta url\"}\n    ]\n  },\n  \"metadata\": {\"wrap\": \"finance\", \"trust_ring\": \"user\", \"agent_permission\": [\"*\"]}\n}");
+        s.push_str("\", \"description\": \"no mta url\"}\n    ]\n  },\n  \"metadata\": {\"wrap\": \"finance\", \"agent_permission\": []}\n}");
         std::fs::write(tmp.join(&net_file), s).expect("n");
         let inventory = PolicySystemCompileInput {
             wrap: String::from("inventory"),
@@ -186,21 +160,20 @@ mod tests {
             action: String::from("write"),
             ..Default::default()
         };
+        // The empty grant list of the finance profile closes agent permission in its own
+        // wrap and leaves every other wrap to its own walls.
+        let permission_closed = |walls: &[aep_admit::AdmitWall]| {
+            walls.iter().any(|w| {
+                w.id.starts_with(gap_schema_profile_v13::WALL_AGENT_PERMISSION) && w.closed
+            })
+        };
         let open = compile_policy_system_walls_from(Some(&tmp), &inventory);
-        must(
-            !open
-                .iter()
-                .any(|w| w.id == gap_schema_profile_v13::WALL_LEFTOVER_RANK_FIELD && w.closed),
-        );
+        must(!permission_closed(&open));
         let mut finance = inventory.clone();
         finance.wrap = String::from("finance");
         finance.action_path = String::from("finance:pay");
         let closed = compile_policy_system_walls_from(Some(&tmp), &finance);
-        must(
-            closed
-                .iter()
-                .any(|w| w.id == gap_schema_profile_v13::WALL_LEFTOVER_RANK_FIELD && w.closed),
-        );
+        must(permission_closed(&closed));
         let _ = std::fs::remove_dir_all(&tmp);
     }
 
@@ -282,18 +255,13 @@ mod tests {
     }
 
     #[test]
-    fn instruction_profile_walls_close_rank_and_open_star_permission() {
+    fn instruction_profile_walls_open_star_permission() {
         let input = PolicySystemCompileInput {
             agent_id: String::from("agent-a"),
             action: String::from("write"),
             ..Default::default()
         };
-        let walls = compile_instruction_profile_walls(&writing_gap_star_rank(), &input);
-        must(
-            walls
-                .iter()
-                .any(|w| w.id == gap_schema_profile_v13::WALL_LEFTOVER_RANK_FIELD && w.closed),
-        );
+        let walls = compile_instruction_profile_walls(&writing_gap_star(), &input);
         must(!walls.iter().any(|w| {
             w.id.starts_with(gap_schema_profile_v13::WALL_AGENT_PERMISSION) && w.closed
         }));

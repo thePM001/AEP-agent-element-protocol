@@ -16,7 +16,7 @@
   "aep_features": [
     "PII scanners in security.gap lattice",
     "Evidence Ledger with hash-chained audit",
-    "Capability Scoping and Execution Rings",
+    "Capability Scoping and Agent Permission",
     "MCP Security Gateway tool blocking",
     "Proof Bundles for breach evidence export"
   ],

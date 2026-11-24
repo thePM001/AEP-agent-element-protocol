@@ -250,7 +250,7 @@ export const NODE_PALETTE = [
     label: "Agent",
     short: "AG",
     color: "#3de8ff",
-    description: "Autonomous agent node with trust tier",
+    description: "Autonomous agent node with its agent_permission grants",
   },
   {
     type: "lattice",

@@ -993,7 +993,7 @@ fn gap_profile_binds(gap: &LoadedGap, input: &PolicySystemCompileInput) -> bool 
     wrap_or_prefix_binds(&gap.wrap, &gap.prefix, &input.wrap, &input.action_path)
 }
 
-/// GAP-285-P15. Leftover rank field and agent permission from the instruction object.
+/// GAP-285-P15. The agent permission wall from the instruction object.
 pub fn compile_instruction_profile_walls(
     source: &str,
     input: &PolicySystemCompileInput,
@@ -1004,15 +1004,10 @@ pub fn compile_instruction_profile_walls(
     gap_schema_profile_v13::parse_gap_source(source, &mut doc, &mut err);
     if !err.is_empty() {
         let mut reason =
-            String::from("GAP source does not parse, so its leftover rank and agent permission walls cannot open: ");
+            String::from("GAP source does not parse, so its agent permission wall cannot open: ");
         reason.push_str(&err);
         walls.push(AdmitWall::close(WALL_PROFILE_PARSED, reason));
         return walls;
-    }
-    let mut rank = empty_profile_wall();
-    gap_schema_profile_v13::compile_leftover_rank_field_wall(&doc, &mut rank);
-    if let Some(w) = closed_profile_wall(&rank) {
-        walls.push(w);
     }
     let req = gap_schema_profile_v13::LiveAdmitRequest {
         agent_id: input.agent_id.clone(),
@@ -1031,7 +1026,6 @@ pub fn compile_instruction_profile_walls(
 pub fn scan_policy_loader_compiles_profile(src: &str) -> Result<String, String> {
     for needle in [
         "compile_instruction_profile_walls",
-        "compile_leftover_rank_field_wall",
         "compile_agent_permission_profile_wall",
         "gap_schema_profile_v13",
     ] {
@@ -1041,9 +1035,7 @@ pub fn scan_policy_loader_compiles_profile(src: &str) -> Result<String, String> 
             return Err(msg);
         }
     }
-    Ok(String::from(
-        "ok policy loader compiles leftover rank field and agent permission",
-    ))
+    Ok(String::from("ok policy loader compiles agent permission"))
 }
 
 pub fn scan_workspace_includes_gap_profile(src: &str) -> Result<String, String> {

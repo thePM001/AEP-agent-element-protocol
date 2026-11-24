@@ -40,7 +40,7 @@ An operator writes GAP files. The Admit Gate (04) receives them as walls, the CA
 - Command: `node AEP-Components/gap/lib/gap-compile.mjs` with `--list-profiles`, `--resolve <profile>` and `--materialize <data folder>`.
 - File format: one `.gap` file per instruction, with an optional second YAML document for a runtime profile. See `FILE-FORMAT.md`.
 - Compile targets: one resolved CAW profile record per profile under `$AEP_DATA/caw-framework/profiles/`, `task-manifest-v1.json` and `implementation-plan-v1.json`.
-- Agent permission is the field `agent_permission`. The presence of a `trust_ring` field is a deny.
+- Agent permission is the field `agent_permission`.
 
 ## The language in this file
 
@@ -365,7 +365,7 @@ flowchart LR
 
 | Field of metadata | What it governs |
 | --- | --- |
-| `agent_permission` | Who may act. Each grant says that one agent may do one action. A grant is not a rank |
+| `agent_permission` | Who may act. Each grant says that one agent may do one action |
 | `wrap` | The lattice wrap that the instruction binds to |
 | `action_path_prefix` | The prefix of the action path that the instruction binds to |
 | `scanners` | The content scanners to run, from the eleven names below |
@@ -400,11 +400,11 @@ metadata:
     max_cost: 0.50
 ```
 
-Three rules decide the agent permission wall. A declared grant opens the wall for the named agent and action. A declared empty list closes every agent action. A document without the field leaves agent permission to other walls. The presence of `trust_ring`, of a rank or of a trust score on a live document is Deny and closes the wall `gap:leftover_rank_field`, so do not set these fields.
+Three rules decide the agent permission wall. A declared grant opens the wall for the named agent and action. A declared empty list closes every agent action. A document without the field leaves agent permission to other walls.
 
 Writing and security are always-on stems and they evaluate on every action path. Every other instruction binds through its wrap or its prefix. A proof algorithm that an instruction names is optional: the trust bundle mode of live AEP 2.9 is sha256-structure and a signed proof is not the default attach.
 
-**What ships:** All of it as running code. The agent permission wall, the leftover rank wall, the wrap bind wall and the guard wall are in the profile crate. The Scanners (12) run a pipeline whose scanner set is wider than the eleven names of the schema. Covenants and permissions are judged in the Admit Gate (04) and Economics (14) counts the budget.
+**What ships:** All of it as running code. The agent permission wall, the wrap bind wall and the guard wall are in the profile crate. The Scanners (12) run a pipeline whose scanner set is wider than the eleven names of the schema. Covenants and permissions are judged in the Admit Gate (04) and Economics (14) counts the budget.
 
 **Where it lives:** `AEP-Components/gap-schema-profile-v13/` for the walls, `AEP-Components/scanners/` for the scanners, `AEP-Components/covenant/` for the covenants and `AEP-Components/economics/` for the budget.
 

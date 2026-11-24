@@ -165,7 +165,7 @@ export class PolicyEvaluator {
     if (session.state === "terminated") {
       return this.deny(actionId, ["Session is terminated."], session);
     }
-    // H-28: enforce action limit before side-effecting steps (ring/drift/etc.)
+    // H-28: enforce action limit before side-effecting steps (drift etc.)
     {
       const maxActions = this.policy.session?.max_actions;
       if (maxActions !== undefined && session.stats.actionsEvaluated >= maxActions) {
@@ -184,7 +184,7 @@ export class PolicyEvaluator {
       );
     }
 
-    // Step 2: GAP capability is Admit wall gap.agent_permission. Rings are not a product member.
+    // Step 2: GAP capability is Admit wall gap.agent_permission.
 
     // Step 3: System-wide rate limit check
     if (this.systemRateCounter) {
@@ -337,7 +337,7 @@ export class PolicyEvaluator {
       return { ...verdict, matchedForbidden: forbiddenMatch };
     }
 
-    // Step 9: Capability match + trust tier check
+    // Step 9: Capability match
     const matchedCapability = this.matchCapability(action);
     if (!matchedCapability) {
       return this.deny(
@@ -349,7 +349,7 @@ export class PolicyEvaluator {
       );
     }
 
- // Agent permission is GAP dimension Conjunction. No rank compare.
+ // Agent permission is GAP dimension Conjunction.
 
     // Step 10: Budget/limit check
     const limits = this.policy.limits;

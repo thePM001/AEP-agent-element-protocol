@@ -46,7 +46,7 @@ pub(crate) fn build_test_frame(
 }
 
 pub(crate) fn install_agent_manifest(rt: &DockingRuntime, agent_id: &str, session_id: &str) {
-    use crate::task_manifest::{TaskManifestTrust, TaskManifestV1};
+    use crate::task_manifest::TaskManifestV1;
     let dir = {
         let m = rt.admit.manifests.lock().expect("manifests");
         m.manifest_dir().to_path_buf()
@@ -58,9 +58,6 @@ pub(crate) fn install_agent_manifest(rt: &DockingRuntime, agent_id: &str, sessio
         agent_id: agent_id.into(),
         session_id: Some(session_id.into()),
         intent: serde_json::json!({"op": "dock-test"}),
-        trust: TaskManifestTrust {
-            tier: "system".into(),
-        },
         agentmesh: None,
         provisional: false,
         synthesized_by: "provided".into(),

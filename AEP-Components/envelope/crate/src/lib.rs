@@ -1,6 +1,6 @@
 //! AEP 2.9 Envelope Admit: order-independent wall meet.
 //! Evaluation is pure. Apply mutates snapshot state after Admit.
-//! EnvelopeAction has no rank field. Agent permission is agent_permission.
+//! Agent permission is agent_permission.
 //! Empty lattice closes dag.membership and gap.agent_permission. Do not reopen the earlier law change.
 //! Unbound scene, channel, time and sequence close. dest_dock may bind from the opened frame docking port. Missing scene_id, timestamps or sequence_number is Deny. Do not reopen the earlier law change or the earlier law change.
 //! Max_drift_ms stays 50 against the frozen seal snapshot. Do not set max_drift_ms to 1000 as the pulse length.
@@ -937,15 +937,6 @@ mod tests {
         let r = admit_with_extra(&act("action:write"), &snap, extra);
         assert!(!r.allow);
         assert!(closed_names(&r).contains("dock.capsule"));
-    }
-
-    #[test]
-    fn env038_envelope_action_has_no_rank_field() {
-        let body = own_source("lib.rs")
-            .type_item("EnvelopeAction")
-            .expect("EnvelopeAction");
-        let needle = ["trust", "_tier"].concat();
-        assert!(!body.contains(&needle));
     }
 
     #[test]

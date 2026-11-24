@@ -261,9 +261,6 @@ pub fn ingest_ack_from_admit(
 }
 
 pub async fn ingest_foreign_payload(rt: &Arc<UcbRuntime>, body: ForeignIngestBody) -> Value {
-    if body.has_trust_fields() {
-        return deny_to_value(manifest::trust_fields_forbidden());
-    }
     let encoded = serde_json::to_vec(&body).unwrap_or_default();
     if let Err(e) = reject_over_cap(encoded.len(), rt.config.wire_limits) {
         return deny_to_value(DenyReport::from_error(&e.to_string()));

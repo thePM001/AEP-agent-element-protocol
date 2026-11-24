@@ -9,8 +9,6 @@ export interface CreateIdentityInput {
   capabilities: string[];
   covenants: string[];
   endpoints: Array<{ protocol: string; url: string }>;
-  maxTrustTier: string;
-  defaultRing: number;
   expiresAt: string;
 }
 
@@ -41,8 +39,6 @@ export class AgentIdentityManager {
       capabilities: info.capabilities,
       covenants: info.covenants,
       endpoints: info.endpoints,
-      maxTrustTier: info.maxTrustTier,
-      defaultRing: info.defaultRing,
       publicKey: "",
       createdAt: new Date().toISOString(),
       expiresAt: info.expiresAt,

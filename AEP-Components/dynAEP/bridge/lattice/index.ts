@@ -7,7 +7,7 @@
 // - parents (partial order: what must happen first)
 // - children (what may follow)
 // - constraints (validation gates at event arrival time)
-// - agent_permission (GAP dimension: which agents may this action. No rank.)
+// - agent_permission (GAP dimension: which agents may this action)
 //
 // The lattice filter validates every event against its partial-order
 // closure and constraints BEFORE it reaches any output renderer.
@@ -98,13 +98,6 @@ export interface LatticeEvent {
   bridge_timestamp: number;
   /** Optional agent that originated this event (if known) */
   agent_id?: string;
-  /** Non-authoritative client claim. Never compared as a floor. */
-  trust_tier?: number;
-}
-
-/** Drop client trust_tier. Agent permission is agent_permission. */
-export function ignoreClientTrustTier(_tier?: number): undefined {
-  return undefined;
 }
 
 export interface AgentInterest {
@@ -679,30 +672,8 @@ export class ActionLattice {
     condition: string,
     payload: Record<string, unknown> = {},
   ): { passed: boolean; reason: string } {
-    if (field === "trust_tier") {
-      return {
-        passed: false,
-        reason: "client trust fields are refused",
-      };
-    }
     if (value === undefined) {
       return { passed: false, reason: `Authorization field '${field}' is missing` };
-    }
-
-    const requiredText = condition.match(/>= (\d+)/)?.[1];
-    if (requiredText !== undefined) {
-      const required = parseInt(requiredText, 10);
-      const actual = typeof value === "number" ? value : parseInt(String(value), 10);
-      if (isNaN(actual)) {
-        return { passed: false, reason: `Cannot parse trust tier from '${value}'` };
-      }
-      return {
-        passed: actual >= required,
-        reason:
-          actual >= required
-            ? ""
-            : `Trust tier ${actual} below required ${required}`,
-      };
     }
 
     if (condition === "matches_registered") {
@@ -841,7 +812,7 @@ export class LatticeFilter {
     }
     result.matched_node = node;
 
-    // 2. GAP dimension agent permission-do-what. No client trust_tier floor compare.
+    // 2. GAP dimension agent permission-do-what.
     result.agent_permission = this.lattice.agentPermission(event.action_path, event.agent_id);
     if (!result.agent_permission) {
       const who = event.agent_id ? event.agent_id : "unbound";
@@ -886,7 +857,6 @@ export class LatticeFilter {
       registered_agent_ids: Array.from(this.interests.keys()),
     };
     delete serverPayload.registered;
-    delete serverPayload.trust_tier;
     const constraintCheck = this.lattice.evaluateConstraints(
       event.action_path,
       serverPayload,

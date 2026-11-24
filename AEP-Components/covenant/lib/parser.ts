@@ -58,7 +58,7 @@ export function parseCovenant(source: string): CovenantSpec {
     const severity = ruleMatch[3] as "hard" | "soft" | undefined;
 
     if (type === "require") {
-      // require trust_tier >= "standard"
+      // require field op "value", for example require environment == "staging"
       const reqMatch = rest.match(/^(\w+)\s*(==|!=|>|<|>=|<=)\s*"([^"]+)"$/);
       if (!reqMatch) {
         throw new Error(`Invalid require condition: "${rest}"`);

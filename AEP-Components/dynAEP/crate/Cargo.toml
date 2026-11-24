@@ -21,9 +21,5 @@ serde_json = { workspace = true }
 serde_yaml = "0.9"
 thiserror = { workspace = true }
 
-[dev-dependencies]
-# Source tests read one item through the one source check.
-aep-source-check = { path = "../../source-check/crate" }
-
 [lints]
 workspace = true

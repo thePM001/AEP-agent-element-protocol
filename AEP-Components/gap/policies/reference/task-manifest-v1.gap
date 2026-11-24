@@ -10,7 +10,7 @@ action:
   schema: TaskManifestV1
   structured_generation: true
   content: |
-    Synthesize task-manifest-v1 with GAP-typed intent, trust tier and CAW profile binding.
+    Synthesize task-manifest-v1 with GAP-typed intent and CAW profile binding.
 
 weight: 1.0
 
@@ -43,10 +43,6 @@ types:
           allowed_operations: array
           caw_profile: string
           gap_address: string
-      trust:
-        type: object
-        fields:
-          tier: string
 
 extensions:
   aep:
@@ -59,7 +55,6 @@ extensions:
 kind: aep.task_manifest.template
 schema: task-manifest-v1
 defaults:
-  trust_tier: standard
   caw_profile: agent-sandbox
   gap_address: dev.aep.caw/agent-sandbox.v1
   allowed_operations:

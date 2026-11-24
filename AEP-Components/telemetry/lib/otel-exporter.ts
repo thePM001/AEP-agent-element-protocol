@@ -163,7 +163,6 @@ export class AEPTelemetryExporter {
           "aep.tool": data.tool as string ?? "",
           "aep.decision": data.decision as string ?? "",
           "aep.trust_change": 0,
-          "aep.ring": 0,
         };
 
         // Short-circuit chain attributes (added by v2.75 chain runner)
@@ -270,7 +269,6 @@ export class AEPTelemetryExporter {
             "aep.workflow": data.workflow as string ?? "",
             "aep.phase": data.phase as string ?? "",
             "aep.role": data.role as string ?? "",
-            "aep.ring": data.ring as number ?? 0,
           },
           events: [],
           status: { code: "OK" },

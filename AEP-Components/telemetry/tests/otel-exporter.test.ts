@@ -100,7 +100,7 @@ describe("AEPTelemetryExporter span export", () => {
     exp.exportEntry(entry("session:start", { sessionId: "s" }));
     exp.exportEntry(entry("action:evaluate", { actionId: "a1", tool: "fs.write", decision: "allow" }));
     exp.exportEntry(
-      entry("action:evaluate", { actionId: "a2", tool: "net.fetch", decision: "deny", reasons: ["ring", "budget"] }),
+      entry("action:evaluate", { actionId: "a2", tool: "net.fetch", decision: "deny", reasons: ["scope", "budget"] }),
     );
     const [root, allowed, denied] = exp.getSpans();
     expect(allowed?.parentSpanId).toBe(root?.spanId);
@@ -109,7 +109,7 @@ describe("AEPTelemetryExporter span export", () => {
     expect(allowed?.status).toEqual({ code: "OK" });
     expect(allowed?.attributes).toMatchObject({ "aep.action_id": "a1", "aep.decision": "allow" });
     expect(allowed?.attributes).not.toHaveProperty("aep.chain.steps_total");
-    expect(denied?.status).toEqual({ code: "ERROR", message: "ring; budget" });
+    expect(denied?.status).toEqual({ code: "ERROR", message: "scope; budget" });
     expect(denied?.spanId).not.toBe(allowed?.spanId);
   });
 
@@ -133,7 +133,7 @@ describe("AEPTelemetryExporter span export", () => {
     exp.exportEntry(entry("session:start", { sessionId: "s" }));
     exp.exportEntry(entry("chain:evaluate", { tool: "deploy" }));
     exp.exportEntry(entry("recovery:attempt", { attemptNumber: 2, result: "failed" }));
-    exp.exportEntry(entry("workflow:phase_enter", { workflow: "release", phase: "review", role: "auditor", ring: 2 }));
+    exp.exportEntry(entry("workflow:phase_enter", { workflow: "release", phase: "review", role: "auditor" }));
     exp.exportEntry(entry("model:call", { provider: "local", model: "small", decision: "error", latencyMs: 12 }));
     exp.exportEntry(entry("model:call", { provider: "local", model: "small", decision: "deny", reason: "budget" }));
 
@@ -153,7 +153,6 @@ describe("AEPTelemetryExporter span export", () => {
       "aep.workflow": "release",
       "aep.phase": "review",
       "aep.role": "auditor",
-      "aep.ring": 2,
     });
     expect(spans[4]?.kind).toBe("CLIENT");
     expect(spans[4]?.status).toEqual({ code: "ERROR" });

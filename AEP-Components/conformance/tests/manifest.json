@@ -24,7 +24,7 @@
   },
   {
    "id": "CC-03",
-   "name": "AgentMesh trust-tier mTLS rotation",
+   "name": "AgentMesh SPIFFE identity bound to the mTLS certificate",
    "runner": "rust",
    "crate": "aep-conformance"
   },

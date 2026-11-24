@@ -43,7 +43,6 @@ describe("loadPolicy", () => {
       auto_bundle: false,
       bundle_on_terminate: false,
     });
-    expect(p.trust).toBeUndefined();
     expect(p.scanners).toBeUndefined();
     expect(p.model_gateway).toBeUndefined();
   });
@@ -53,8 +52,6 @@ describe("loadPolicy", () => {
       writePolicy(
         "nested.yaml",
         `${MINIMAL}
-trust: {}
-ring: {}
 scanners: {}
 model_gateway: {}
 fleet: {}
@@ -63,18 +60,6 @@ knowledge: {}
 `,
       ),
     );
-    expect(p.trust?.initial_score).toBe(500);
-    expect(p.trust?.penalties).toEqual({
-      policy_violation: 50,
-      structural_violation: 30,
-      rate_limit: 10,
-      forbidden_match: 100,
-      intent_drift: 75,
-    });
-    expect(p.trust?.rewards).toEqual({ successful_action: 5, successful_rollback: 10 });
-    expect(p.ring?.default).toBe(2);
-    expect(p.ring?.promotion.to_ring_0.require_approval).toBe(true);
-    expect(p.ring?.promotion.to_ring_1.require_approval).toBe(false);
     expect(p.scanners?.enabled).toBe(true);
     expect(p.scanners?.pii).toEqual({ enabled: true, severity: "hard" });
     expect(p.scanners?.toxicity).toEqual({ enabled: true, severity: "soft", custom_words: [] });
@@ -109,9 +94,8 @@ forbidden:
   - pattern: "rm -rf"
     reason: destructive
     severity: soft
-trust:
-  penalties:
-    rate_limit: 1
+remediation:
+  max_retries: 1
 scanners:
   urls:
     allowlist: [example.com]
@@ -128,8 +112,8 @@ scanners:
       },
     ]);
     expect(p.forbidden).toEqual([{ pattern: "rm -rf", reason: "destructive", severity: "soft" }]);
-    expect(p.trust?.penalties.rate_limit).toBe(1);
-    expect(p.trust?.penalties.policy_violation).toBe(50);
+    expect(p.remediation?.max_retries).toBe(1);
+    expect(p.remediation?.cooldown_ms).toBe(1000);
     expect(p.scanners?.urls).toEqual({ enabled: true, severity: "soft", allowlist: ["example.com"], blocklist: [] });
   });
 
@@ -152,8 +136,8 @@ gates:
   });
 
   it("rejects out-of-range numbers", () => {
-    const path = writePolicy("range.yaml", `${MINIMAL}\ntrust:\n  initial_score: 5000\n`);
-    expect(() => loadPolicy(path)).toThrow(/trust\.initial_score/);
+    const path = writePolicy("range.yaml", `${MINIMAL}\nintent:\n  drift_threshold: 5\n`);
+    expect(() => loadPolicy(path)).toThrow(/intent\.drift_threshold/);
   });
 
   it("surfaces YAML syntax errors and missing files", () => {

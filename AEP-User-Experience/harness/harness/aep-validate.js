@@ -393,7 +393,7 @@ class AEPValidator {
         // AEP 2.9: Validate evidence ledger integrity
         this.checkEvidenceLedger();
 
-        // AEP 2.9: Validate trust, ring, covenant and drift constraints
+        // AEP 2.9: Validate agent permission, kill switch, covenant and drift entries
         this.checkTrustViolations();
 
         // AEP 2.9: Validate recovery and scanner entries
@@ -474,11 +474,6 @@ class AEPValidator {
                     if (entry.trust_violation) {
                         this.addViolation(SEVERITY.CRITICAL, '.claude/aep-evidence.jsonl', i + 1,
                             'TRUST_VIOLATION',
-                            `GAP dimension agent_permission closed: agent '${entry.agent_id || 'unbound'}' may not '${entry.action}'`);
-                    }
-                    if (entry.ring_violation) {
-                        this.addViolation(SEVERITY.CRITICAL, '.claude/aep-evidence.jsonl', i + 1,
-                            'AGENT_PERMISSION_CLOSED',
                             `GAP dimension agent_permission closed: agent '${entry.agent_id || 'unbound'}' may not '${entry.action}'`);
                     }
                     if (entry.kill_switch_active) {

@@ -259,7 +259,6 @@ name = "aep-dynaep"
 version = "2.9.0"
 dependencies = [
  "aep-kernel-types",
- "aep-source-check",
  "serde",
  "serde_json",
  "serde_yaml",

@@ -7,8 +7,6 @@ export interface AgentIdentity {
   capabilities: string[];
   covenants: string[];
   endpoints: Array<{ protocol: string; url: string }>;
-  maxTrustTier: string;
-  defaultRing: number;
   publicKey: string;
   createdAt: string;
   expiresAt: string;

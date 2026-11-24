@@ -33,7 +33,7 @@ package dynaep.lattice
 # HELPER RULES
 # ---------------------------------------------------------------------------
 
-# Agent permission: agent id plus action. No rank.
+# Agent permission: agent id plus action.
 agent_has_permission {
     some i
     input.agent_permission[i] == input.agent_id

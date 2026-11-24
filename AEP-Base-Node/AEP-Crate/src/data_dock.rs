@@ -11,7 +11,7 @@ use crate::docking::on_blocking_pool;
 use crate::lattice_log::{
     export_dynaep_events, DockingPortWire, DynAepEventExport, DynAepEventInput,
 };
-use crate::task_manifest::{TaskManifestTrust, TaskManifestV1};
+use crate::task_manifest::TaskManifestV1;
 use crate::{
     bootstrap_contracts, build_transport_frame, default_lattice_db_path, docking_port_specs,
     process_request, resolve_mesh_peers, runtime_status, DockFrameResponse, DockingRuntime,
@@ -511,9 +511,6 @@ pub fn provision_server_identity(
         agent_id: String::from(DATA_DOCK_AGENT),
         session_id: Some(String::from(DATA_DOCK_SESSION)),
         intent: json!({ "op": "data-dock" }),
-        trust: TaskManifestTrust {
-            tier: String::from("system"),
-        },
         agentmesh: None,
         provisional: false,
         synthesized_by: String::from("provided"),

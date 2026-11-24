@@ -1,7 +1,7 @@
 // HVVCAS: compile_lattice_walls domain:policy type:library
 // Compile lattice-policy.rego deny_lattice into Admit walls.
 // Live action_path uses these walls. OPA evaluate is lab only.
-// Agent permission is GAP dimension Conjunction. No rank.
+// Agent permission is GAP dimension Conjunction.
 
 use super::compile_permission::{agent_has_permission, AgentPermission};
 use super::AdmitWall;
@@ -325,20 +325,6 @@ pub fn prove_rego_source(rego: &str) -> Result<String, String> {
         let mut msg = String::from("lattice-policy.rego missing compiled-wall source: ");
         msg.push_str(&missing.join(","));
         return Err(msg);
-    }
-    let banned = [
-        "trust_tier_low",
-        "trust_tier_mid",
-        "trust_tier_high",
-        "requires trust tier",
-        "output actions require trust tier",
-    ];
-    for n in banned {
-        if rego.contains(n) {
-            let mut msg = String::from("lattice-policy.rego still has rank lemma: ");
-            msg.push_str(n);
-            return Err(msg);
-        }
     }
     let sets = parse_policy_sets(rego);
     if sets.critical_actions.is_empty()

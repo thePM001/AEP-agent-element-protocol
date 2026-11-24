@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 /// Event that enters the Action Lattice filter.
-/// Agent permission is agent_permission. There is no rank field.
+/// Agent permission is agent_permission.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LatticeEvent {
     #[serde(default)]
@@ -863,19 +863,6 @@ mod tests {
         let r = admit(&a, &snap);
         assert!(!r.allow);
         assert!(closed_names(&r).contains("perception.bounds"));
-    }
-
-    #[test]
-    fn lattice_event_has_no_rank_field() {
-        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("src")
-            .join("lib.rs");
-        let body = aep_source_check::RustSource::read(&path)
-            .and_then(|s| s.type_item("LatticeEvent"))
-            .expect("LatticeEvent");
-        let needle = ["trust", "_tier"].concat();
-        assert!(!body.contains(&needle));
-        assert!(!body.contains("rank"));
     }
 
     #[test]

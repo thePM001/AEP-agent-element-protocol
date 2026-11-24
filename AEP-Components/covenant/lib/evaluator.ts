@@ -4,8 +4,6 @@ import type { CovenantSpec, CovenantRule, Condition } from "./types.js";
 export interface CovenantContext {
   action: string;
   input: Record<string, unknown>;
-  trustTier?: string;
-  ring?: number;
   [key: string]: unknown;
 }
 
@@ -200,9 +198,9 @@ function evaluateCondition(cond: Condition, actualValue: string): boolean {
       return a < b;
     }
     case ">=":
-      return compareTierOrNumber(actualValue, expected as string, ">=");
+      return compareNumber(actualValue, expected as string, ">=");
     case "<=":
-      return compareTierOrNumber(actualValue, expected as string, "<=");
+      return compareNumber(actualValue, expected as string, "<=");
     case "in":
       return Array.isArray(expected) && expected.map(String).includes(actualValue);
     case "matches": {
@@ -219,15 +217,7 @@ function evaluateCondition(cond: Condition, actualValue: string): boolean {
   }
 }
 
-function compareTierOrNumber(actual: string, expected: string, op: ">=" | "<="): boolean {
-  const tierOrder = ["untrusted", "provisional", "standard", "trusted", "privileged"];
-  const actualTierIdx = tierOrder.indexOf(actual);
-  const expectedTierIdx = tierOrder.indexOf(expected);
-
-  if (actualTierIdx !== -1 && expectedTierIdx !== -1) {
-    return op === ">=" ? actualTierIdx >= expectedTierIdx : actualTierIdx <= expectedTierIdx;
-  }
-
+function compareNumber(actual: string, expected: string, op: ">=" | "<="): boolean {
   const a = Number(actual);
   const b = Number(expected);
   // H-8: NaN comparisons must not pass

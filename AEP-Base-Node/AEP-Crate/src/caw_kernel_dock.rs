@@ -14,7 +14,7 @@
 //! caw-kernel-dock in the lattice and in a caw-*.gap hub policy.
 
 use crate::docking::DockingRuntime;
-use crate::task_manifest::{TaskManifestTrust, TaskManifestV1};
+use crate::task_manifest::TaskManifestV1;
 use serde_json::json;
 use std::path::{Path, PathBuf};
 
@@ -47,9 +47,6 @@ pub fn provision_caw_kernel_dock_identity(
         agent_id: String::from(CAW_KERNEL_DOCK_AGENT),
         session_id: Some(String::from(CAW_KERNEL_DOCK_SESSION)),
         intent: json!({ "op": "caw-kernel-dock" }),
-        trust: TaskManifestTrust {
-            tier: String::from("system"),
-        },
         agentmesh: None,
         provisional: false,
         synthesized_by: String::from("provided"),
@@ -96,7 +93,6 @@ mod tests {
         let m = manifests
             .get(CAW_KERNEL_DOCK_AGENT)
             .expect("manifest loaded");
-        assert_eq!(m.trust.tier, "system");
         assert_eq!(m.session_id.as_deref(), Some(CAW_KERNEL_DOCK_SESSION));
         assert!(!m.provisional);
     }

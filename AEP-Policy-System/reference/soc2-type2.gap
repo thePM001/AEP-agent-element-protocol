@@ -6,7 +6,7 @@
   "pattern": {
     "guard": "true",
     "constraints": [
-      "hard: enforce capability scoping and execution ring access controls",
+      "hard: enforce capability scoping and agent permission access controls",
       "hard: rotate and expire agent credentials per configured policy",
       "hard: monitor all sessions via evidence ledger and intent drift detection",
       "hard: enable kill switch and rollback on incident escalation",

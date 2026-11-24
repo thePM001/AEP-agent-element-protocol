@@ -77,7 +77,7 @@ dynAEP (Dynamic Agent Element Protocol) is the fusion of deterministic event gov
 
 **AEP** solves build-time structural governance: every UI element has a unique ID, exact spatial coordinates, defined behaviour and themed visuals. The AEP scene graph is a mathematically verified topological matrix that agents cannot hallucinate past.
 
-**dynAEP 1.0** solves runtime event governance: lattice-addressed events (those with an `action_path` registered in `registries/aep-lattice.yaml`) are validated against the Action Lattice at arrival time when governance is enabled. The lattice defines which actions exist, what must happen before each action (partial order), what constraints each action carries (required fields, thresholds, authorization levels, custom validators) and which trust tiers are required. Lattice violations are rejected before temporal, structural or perception stages run. Typical AEP UI mutations (`AEP_MUTATE_*` without `action_path`) use structural validation instead.
+**dynAEP 1.0** solves runtime event governance: lattice-addressed events (those with an `action_path` registered in `registries/aep-lattice.yaml`) are validated against the Action Lattice at arrival time when governance is enabled. The lattice defines which actions exist, what must happen before each action (partial order), what constraints each action carries (required fields, thresholds, authorization checks, custom validators) and which agents are granted each action. Lattice violations are rejected before temporal, structural or perception stages run. Typical AEP UI mutations (`AEP_MUTATE_*` without `action_path`) use structural validation instead.
 
 **dynAEP-TA** provides temporal authority: the bridge owns the clock. Agents never generate timestamps. The bridge stamps every event with authoritative time, orders events causally via vector clocks, detects anomalies via TimesFM forecasting and persists all ordering state across restarts.
 
@@ -157,7 +157,7 @@ The dynAEP bridge sits between all event sources and all event consumers. Lattic
  | | ACTION LATTICE FILTER | |
  | | | |
  | | 1. Lattice membership checks that the action path exists | |
- | | 2. Trust floor checks that the agent holds sufficient trust | |
+ | | 2. Agent permission checks that the agent is granted the action | |
  | | 3. Partial order checks that all parent actions occurred | |
  | | 4. Constraint evaluation checks required fields, thresholds and authority | |
  | | 5. Custom hooks run the pluggable validators such as MLE | |
@@ -230,7 +230,7 @@ Every action in the lattice has these properties:
 - **parents**: list of action paths that must be satisfied before this action can fire
 - **children**: list of action paths that may follow after this action
 - **constraints**: validation gates applied at event arrival time
-- **agent_permission**: GAP dimension grants. Agent A may X. Agent B may Y. No rank
+- **agent_permission**: GAP dimension grants. Agent A may X. Agent B may Y.
 
 ### Partial-Order Governance
 
@@ -330,7 +330,7 @@ actions:
  constraints: []
  agent_permission: ["*"]
 
- # Agent actions require higher trust
+ # Agent actions
  agent:register:
  label: "Register an agent with the system"
  category: agent_action
@@ -395,12 +395,10 @@ actions:
  agent_permission: ["*"]
 ```
 
-### Trust Tiers
+### Agent Permission
 
-Trust tiers (1-5) govern which agents can propose which actions. The mapping is:
-
-Who-may-do-what maps to the GAP dimension Conjunction, so agent A may do X while agent B may do Y. No rank.
-Each node lists agent_permission grants. Empty grants refuse on miss for agent_action and output. A star grants any bound agent while an unbound grant matches an empty agent_id while isolation is not a trust rank.
+Who-may-do-what maps to the GAP dimension Conjunction, so agent A may do X while agent B may do Y.
+Each node lists agent_permission grants. Empty grants refuse on miss for agent_action and output. A star grants any bound agent while an unbound grant matches an empty agent_id.
 
 The agent_permission wall is checked on the same collect-all Admit as every other wall. If the bound agent is not granted the action, the event is rejected before Apply.
 
@@ -426,12 +424,11 @@ The canonical event shape that flows through the bridge. Every observer adapter 
  "data": { "id": "pi_123", "amount": 2999 }
  },
  "bridge_timestamp": 1714300800000,
- "agent_id": null,
- "trust_tier": 1
+ "agent_id": null
 }
 ```
 
-Fields: `source` identifies the origin adapter, `action_path` selects the lattice node, `payload` carries the event data, `bridge_timestamp` is set by the bridge at ingest time, `agent_id` identifies the originating agent (if any), `trust_tier` conveys the agent's current authorization level.
+Fields: `source` identifies the origin adapter, `action_path` selects the lattice node, `payload` carries the event data, `bridge_timestamp` is set by the bridge at ingest time, `agent_id` identifies the originating agent (if any).
 
 ### 5.2 LATTICE_FILTER_RESULT
 
@@ -448,7 +445,7 @@ The bridge emits a filter result for every LATTICE_EVENT. This is the structured
  "constraints_failed": [],
  "partial_order_satisfied": true,
  "missing_parents": [],
- "trust_sufficient": true,
+ "agent_permission": true,
  "matched_interests": [
  {
  "agent_id": "payment-agent",
@@ -809,7 +806,7 @@ The names **AEP**, **Agent Element Protocol**, **AEP-compliant** and **dynAEP** 
 
 ## Summary
 
-dynAEP 1.0 introduces the Action Lattice as the central governance mechanism for lattice-addressed events in multi-agent systems. The lattice defines every registered action, partial-order dependencies, per-action constraints and trust tiers. Combined with AEP structural validation for UI mutations, this extends governance from scene-graph-only (v0.4) to external events, agent actions and outputs that carry `action_path`.
+dynAEP 1.0 introduces the Action Lattice as the central governance mechanism for lattice-addressed events in multi-agent systems. The lattice defines every registered action, partial-order dependencies, per-action constraints and agent_permission grants. Combined with AEP structural validation for UI mutations, this extends governance from scene-graph-only (v0.4) to external events, agent actions and outputs that carry `action_path`.
 
 dynAEP 1.0 governs the event lifecycle through a single bridge pipeline: pluggable observer adapters, optional lattice validation (`filterAsync` + hooks), temporal authority and causal ordering, AEP structural validation, perception governance for human-facing outputs and programmatic agent interest registration for selective routing.
 

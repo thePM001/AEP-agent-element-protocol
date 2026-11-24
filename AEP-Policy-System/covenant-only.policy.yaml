@@ -27,15 +27,7 @@ covenant: |
     permit file:write (path in ["src/", "tests/", "docs/"]);
     forbid file:delete;
     forbid command:run (command matches "rm.*-rf");
-    require trustTier >= "standard";
   }
-
-trust:
-  initial_score: 500
-  decay_rate: 5
-
-ring:
-  default: 2
 
 intent:
   tracking: true

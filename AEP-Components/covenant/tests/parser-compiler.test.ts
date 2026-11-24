@@ -10,7 +10,7 @@ covenant DataAgent {
   forbid file:delete [hard];
   forbid net:fetch (host in ["evil.test", "bad.test"]) [soft];
   permit aep:create_element;
-  require trust_tier >= "standard";
+  require environment == "staging";
   forbid command:run (risk == "high");
 }
 `;
@@ -36,8 +36,8 @@ describe("parseCovenant", () => {
       { type: "permit", action: "aep:create_element", conditions: [] },
       {
         type: "require",
-        action: "trust_tier",
-        conditions: [{ field: "trust_tier", operator: ">=", value: "standard" }],
+        action: "environment",
+        conditions: [{ field: "environment", operator: "==", value: "staging" }],
       },
       {
         type: "forbid",
@@ -79,8 +79,8 @@ describe("parseCovenant", () => {
   });
 
   it("rejects malformed require conditions", () => {
-    expect(() => parseCovenant('covenant C {\n require trust_tier ~ "x";\n}')).toThrow(/Invalid require condition/);
-    expect(() => parseCovenant("covenant C {\n require trust_tier >= standard;\n}")).toThrow(/Invalid require condition/);
+    expect(() => parseCovenant('covenant C {\n require environment ~ "x";\n}')).toThrow(/Invalid require condition/);
+    expect(() => parseCovenant("covenant C {\n require max_cost >= 100;\n}")).toThrow(/Invalid require condition/);
   });
 
   it("rejects malformed action expressions and conditions", () => {
@@ -98,12 +98,12 @@ describe("compileCovenant", () => {
       permit file:read (path matches "^/a");
       forbid file:delete;
       forbid file:delete (path == "/etc") [soft];
-      require ring <= "2";
-      require trust_tier >= "standard";
+      require max_cost <= "100";
+      require environment == "staging";
     }`);
     const compiled = compileCovenant(spec);
     expect(compiled.name).toBe("C");
-    expect(compiled.requireRules.map((r) => r.action)).toEqual(["ring", "trust_tier"]);
+    expect(compiled.requireRules.map((r) => r.action)).toEqual(["max_cost", "environment"]);
     expect([...compiled.permitRules.keys()]).toEqual(["file:read"]);
     expect(compiled.permitRules.get("file:read")).toHaveLength(2);
     expect(compiled.forbidRules.get("file:delete")?.map((r) => r.severity ?? "none")).toEqual(["none", "soft"]);

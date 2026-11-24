@@ -60,7 +60,7 @@ const PROTOCOL_ENTRYPOINTS = [
   {
     id: "lattice-registry",
     path: "AEP-Components/dynAEP/registries/aep-lattice.yaml",
-    role: "Partial-order action registry and trust floors",
+    role: "Partial-order action registry",
   },
   {
     id: "dynaep-config",

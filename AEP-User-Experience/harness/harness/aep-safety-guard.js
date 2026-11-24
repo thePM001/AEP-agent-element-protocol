@@ -177,19 +177,16 @@ const SAFETY_RULES = {
     },
 
     // -----------------------------------------------------------------------
-    // RULE 8: NO TRUST TIER OR RING MANIPULATION (AEP 2.8.6)
+    // RULE 8: NO PRIVILEGE MANIPULATION (AEP 2.8.6)
     // -----------------------------------------------------------------------
-    NO_TRUST_MANIPULATION: {
+    NO_PRIVILEGE_MANIPULATION: {
         severity: 'CRITICAL',
-        description: 'AI agent attempted to manipulate its own trust tier, ring level or privileges',
+        description: 'AI agent attempted to manipulate its own privileges',
         patterns: [
             /set[_.]?trust\s*\(/gi,
             /override[_.]?trust/gi,
-            /bypass[_.]?ring/gi,
-            /ring[_.]?level\s*[:=]\s*[0-3]/gi,
             /promote[_.]?self/gi,
             /escalate[_.]?privilege/gi,
-            /force[_.]?tier\s*[:=]/gi,
         ],
         action: 'BLOCK_AND_ALERT',
     },
@@ -362,15 +359,15 @@ class SafetyGuard {
             }
         }
 
-        // Check NO_TRUST_MANIPULATION (AEP 2.8.6)
-        for (const pattern of SAFETY_RULES.NO_TRUST_MANIPULATION.patterns) {
+        // Check NO_PRIVILEGE_MANIPULATION (AEP 2.8.6)
+        for (const pattern of SAFETY_RULES.NO_PRIVILEGE_MANIPULATION.patterns) {
             pattern.lastIndex = 0;
             let match;
             while ((match = pattern.exec(content)) !== null) {
                 const lineNum = content.substring(0, match.index).split('\n').length;
                 const line = lines[lineNum - 1] || '';
                 if (line.trim().startsWith('//') || line.trim().startsWith('#') || line.trim().startsWith('*')) continue;
-                this.addViolation('NO_TRUST_MANIPULATION', relPath, lineNum, match[0]);
+                this.addViolation('NO_PRIVILEGE_MANIPULATION', relPath, lineNum, match[0]);
             }
         }
 

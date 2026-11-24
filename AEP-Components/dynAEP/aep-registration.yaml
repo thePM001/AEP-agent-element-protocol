@@ -58,7 +58,7 @@ dynAEP-observers:
 dynAEP-lattice-registry:
   label: "Action Lattice Registry"
   category: configuration
-  description: "aep-lattice.yaml: declares all system actions, partial-order relationships, constraints, trust floors."
+  description: "aep-lattice.yaml: declares all system actions, partial-order relationships and constraints."
   agent_permission: ["*"]
   version: "1.0.0"
   location: "registries/aep-lattice.yaml"
@@ -68,7 +68,7 @@ dynAEP-lattice-registry:
 dynAEP-lattice-policy:
   label: "Lattice Rego Policy"
   category: policy
-  description: "OPA/Rego rules for trust tier enforcement, forbidden sequences, rate limiting, cross-modality ceilings."
+  description: "OPA/Rego rules for forbidden sequences, rate limiting and cross-modality ceilings."
   agent_permission: ["*"]
   version: "1.0.0"
   location: "policies/lattice-policy.rego"

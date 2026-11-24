@@ -67,22 +67,6 @@ remediation:
   max_retries: 2
   cooldown_ms: 2000
 
-trust:
-  initial_score: 400
-  decay_rate: 8
-  penalties:
-    policy_violation: 75
-    structural_violation: 50
-    rate_limit: 20
-    forbidden_match: 150
-    intent_drift: 100
-  rewards:
-    successful_action: 3
-    successful_rollback: 8
-
-ring:
-  default: 2
-
 intent:
   tracking: true
   drift_threshold: 0.4

@@ -32,7 +32,6 @@ actions:
     category: lifecycle
   agent:ready:
     parents: [agent:register]
-    trust_floor: 2
   agent:propose_action:
     parents: [agent:ready]
 `;
@@ -82,9 +81,8 @@ describe("action registries", () => {
       category: "lifecycle",
       parents: [],
       children: [],
-      trust_floor: 1,
     });
-    expect(reg.action_nodes[1]).toMatchObject({ label: "agent:ready", category: "unknown", trust_floor: 2 });
+    expect(reg.action_nodes[1]).toMatchObject({ label: "agent:ready", category: "unknown", parents: ["agent:register"] });
   });
 
   it("throws for a missing registry", () => {

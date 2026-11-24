@@ -14,7 +14,7 @@ pub const COMPONENT_ID: &str = "aep-kernel-types";
 /// This is the one definition site of the pulse constant. Every other crate imports it.
 pub const PULSE_MS: i64 = 1000;
 
-/// Closed-set id family for GAP agent permission walls. Not a rank.
+/// Closed-set id family for GAP agent permission walls.
 pub const WALL_AGENT_PERMISSION: &str = "gap:agent_permission";
 
 /// Exact Deny text when the permission wall closes.

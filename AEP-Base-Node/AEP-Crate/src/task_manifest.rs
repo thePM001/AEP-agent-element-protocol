@@ -24,11 +24,6 @@ pub enum SynthesizedBy {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TaskManifestTrust {
-    pub tier: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskManifestV1 {
     pub manifest_version: String,
     pub id: String,
@@ -37,7 +32,6 @@ pub struct TaskManifestV1 {
     #[serde(default)]
     pub session_id: Option<String>,
     pub intent: serde_json::Value,
-    pub trust: TaskManifestTrust,
     #[serde(default)]
     pub agentmesh: Option<serde_json::Value>,
     #[serde(default)]
@@ -276,9 +270,6 @@ mod tests {
             agent_id: agent_id.into(),
             session_id: session_id.map(str::to_string),
             intent: json!({"op": "test"}),
-            trust: TaskManifestTrust {
-                tier: "system".into(),
-            },
             agentmesh: None,
             provisional,
             synthesized_by: "provided".into(),

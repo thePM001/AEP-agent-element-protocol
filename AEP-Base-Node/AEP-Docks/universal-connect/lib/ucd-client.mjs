@@ -64,7 +64,6 @@ export function ensureUcdManifest(moduleSpec, dataDir) {
       summary: moduleSpec.description ?? `UCD install for ${moduleSpec.module_id}`,
       allowed_operations: [`ucd:install:${moduleSpec.module_id}`, "ucd:egress"],
     },
-    trust: { tier: "provisional" },
     egress: moduleSpec.egress ?? { routes: [] },
     provisional: true,
     synthesized_by: "schema_constrained",

@@ -19,8 +19,6 @@ function identity(expiresAt = new Date(Date.now() + 3600_000).toISOString()): Ag
       capabilities: ["file:read"],
       covenants: ["Peer"],
       endpoints: [],
-      maxTrustTier: "standard",
-      defaultRing: 2,
       expiresAt,
     },
     privateKey,

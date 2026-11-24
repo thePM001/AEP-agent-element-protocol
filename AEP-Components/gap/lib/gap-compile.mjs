@@ -558,9 +558,6 @@ export function synthesizeTaskManifestFromGap(req, repoRoot) {
       gap_address: req.gap_address ?? tmpl.defaults?.gap_address ?? "dev.aep.caw/agent-sandbox.v1",
       coding_governance: req.coding_governance ?? undefined,
     },
-    trust: {
-      tier: req.trust_tier ?? tmpl.defaults?.trust_tier ?? "standard",
-    },
     mcp: req.mcp ?? tmpl.defaults?.mcp,
     provisional: req.provisional ?? false,
     synthesized_by: "gap_constrained",

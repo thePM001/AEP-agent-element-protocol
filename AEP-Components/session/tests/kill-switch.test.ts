@@ -90,7 +90,7 @@ describe("KillSwitch.killAll", () => {
     const { m, ids } = managerWith(2);
     const trust = new FakeTrust(100, 30);
     const managers = new Map([[ids[0] ?? "", trust]]);
-    const result = new KillSwitch(m, undefined, managers).killAll("trust");
+    const result = new KillSwitch(m, undefined, managers).killAll("reset");
     expect(trust.getScore()).toBe(0);
     expect(trust.penalties).toBe(4);
     expect(result.trustReset).toBe(true);
